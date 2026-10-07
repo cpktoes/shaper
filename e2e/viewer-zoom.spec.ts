@@ -909,3 +909,340 @@ test.describe("261007-fnz TEMPLATE zoom — fingers (Android, real touch input)"
     await expect.poll(async () => levelNumber(page)).toBeGreaterThan(level);
   });
 });
+
+/* ── Plan 02: RAILS (each plot its own zoom) and FINS (up to 4x) ───────────────────────────── */
+
+type RailKey = "nose" | "center" | "tail";
+
+/** One RAILS plot on the computer's plot row (a phone held sideways lands there too). */
+function railPlot(page: Page, key: RailKey): Locator {
+  return page.locator(`[data-rail-plot-row="desktop"] svg[data-rail-section-plot="${key}"]`);
+}
+
+/** That plot's own zoom level, read off its own zoom row (at the right end of its title line). */
+function railLevel(page: Page, key: RailKey): Locator {
+  return page.locator(`[data-rail-zoom-host="${key}"] [data-viewer-zoom] [data-zoom-level]`);
+}
+
+async function openRails(page: Page) {
+  await page.goto("/design/rails");
+  await expect(page.locator('[data-rail-plot-row="desktop"][data-rail-plot-fit="measured"]')).toBeAttached({
+    timeout: 30_000,
+  });
+}
+
+/** `steps` wheel notches toward the reader, dispatched on the drawing itself at (x, y): the way the
+ * phone tests reach an exact level (Playwright has no wheel on a mobile WebKit, and a pinch does
+ * not land on an exact level). */
+async function wheelOn(target: Locator, at: { x: number; y: number }, steps: number) {
+  await target.evaluate(
+    (el, { at, steps }) => {
+      for (let i = 0; i < steps; i++) {
+        el.dispatchEvent(
+          new WheelEvent("wheel", { deltaY: -100, clientX: at.x, clientY: at.y, bubbles: true, cancelable: true }),
+        );
+      }
+    },
+    { at, steps },
+  );
+}
+
+/** A RAILS plot's axis numbers, dots and lines at their on-screen size. */
+async function railScreenSizes(plot: Locator) {
+  return plot.evaluate((svg) => {
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const number = svg.querySelector("text");
+    const dot = svg.querySelector("circle") as SVGCircleElement | null;
+    const tick = [...svg.querySelectorAll('line[stroke="var(--color-surf-ink-muted)"]')][0] as SVGLineElement | undefined;
+    if (!number || !dot || !tick) throw new Error("missing plot parts");
+    return {
+      axisNumber: Number.parseFloat(getComputedStyle(number).fontSize) * scaleOf(number),
+      dot: dot.r.baseVal.value * scaleOf(dot),
+      tickLength: Math.hypot(
+        tick.x2.baseVal.value - tick.x1.baseVal.value,
+        tick.y2.baseVal.value - tick.y1.baseVal.value,
+      ) * scaleOf(tick),
+    };
+  });
+}
+
+test.describe("261007-fnz RAILS zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("each plot zooms on its own: NOSE to 3x leaves CENTER and TAIL at 1x, with a finer grid and RAILS's own grid kept", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openRails(page);
+    const nose = railPlot(page, "nose");
+    for (const key of ["nose", "center", "tail"] as const) await expect(railLevel(page, key)).toHaveText("1x");
+    await expect(page.locator("[data-zoom-grid]")).toHaveCount(0);
+    await page.waitForTimeout(300);
+    const atOne = await railScreenSizes(nose);
+    const ownLinesAtOne = await nose.evaluate(
+      (svg) =>
+        [...svg.querySelectorAll("line")].filter(
+          (l) => !l.closest("[data-zoom-grid]") && (l.getAttribute("stroke") ?? "").includes("12%"),
+        ).length,
+    );
+
+    const box = await nose.boundingBox();
+    if (!box) throw new Error("no NOSE plot");
+    await page.mouse.move(Math.round(box.x + box.width * 0.8), Math.round(box.y + box.height * 0.6));
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(railLevel(page, "nose")).toHaveText("3x");
+    await expect(railLevel(page, "center")).toHaveText("1x");
+    await expect(railLevel(page, "tail")).toHaveText("1x");
+    await page.waitForTimeout(300);
+
+    const read = await nose.evaluate((svg) => {
+      const n = (l: Element, a: string) => Number(l.getAttribute(a));
+      const apex = svg.querySelector('line[stroke-dasharray="2 3"]');
+      if (!apex) throw new Error("no apex line");
+      const apexX = n(apex, "x1");
+      const fine = [...svg.querySelectorAll("[data-zoom-grid] line")];
+      const own = [...svg.querySelectorAll("line")].filter(
+        (l) => !l.closest("[data-zoom-grid]") && (l.getAttribute("stroke") ?? "").includes("12%"),
+      );
+      const fineAcross = fine.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1")).sort((a, b) => a - b);
+      const ownAcross = own.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1"));
+      const isWholeInch = (x: number) => Math.abs((x - apexX) / 56 - Math.round((x - apexX) / 56)) < 1e-6;
+      return {
+        fineStep: fineAcross[1] - fineAcross[0],
+        fineOnAWholeInch: fineAcross.some(isWholeInch),
+        ownCount: own.length,
+        ownAcrossUnique: new Set(ownAcross).size === ownAcross.length,
+      };
+    });
+    // M5: about 59.6 px per inch at 1x, so 179 at 3x — the 1/8" rung (7 drawing units at 56 per inch).
+    expect(read.fineStep).toBeCloseTo(7, 6);
+    expect(read.fineOnAWholeInch).toBe(false);
+    expect(read.ownCount).toBe(ownLinesAtOne);
+    expect(read.ownAcrossUnique).toBe(true);
+
+    const atThree = await railScreenSizes(nose);
+    for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+      expect(Math.abs(atThree[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atThree[key]} px at 3x`).toBeLessThan(
+        0.05,
+      );
+    }
+  });
+});
+
+test.describe("261007-fnz RAILS zoom — a phone held sideways (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("at 1x a thumb scrolls the drawing column; zoomed in it pans the plot instead; after reset it scrolls again", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await page.setViewportSize({ width: 844, height: 340 });
+    await openRails(page);
+    const main = page.locator("main");
+    const plot = railPlot(page, "center");
+    const cdp = await page.context().newCDPSession(page);
+    const scrollTop = () => main.evaluate((el) => el.scrollTop);
+    // Back to the top once any fling from the last swipe has run out.
+    const toTop = async () => {
+      await expect
+        .poll(
+          async () => {
+            await main.evaluate((el) => {
+              el.scrollTop = 0;
+            });
+            await page.waitForTimeout(250);
+            return scrollTop();
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(0);
+    };
+    // Where to put a thumb on the CENTER plot: the middle of the part of it the column shows.
+    const thumbSpot = async () => {
+      const m = await main.boundingBox();
+      const b = await plot.boundingBox();
+      if (!m || !b) throw new Error("no column or plot");
+      const top = Math.max(b.y, m.y);
+      const bottom = Math.min(b.y + b.height, m.y + m.height);
+      expect(bottom - top, "the CENTER plot is on screen").toBeGreaterThan(20);
+      return { x: b.x + b.width * 0.5, y: bottom - 6 };
+    };
+    // Proof this column can scroll at all (phone-rails.spec.ts proves the same at this size).
+    expect(await main.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+
+    // 1x: the browser's — the column scrolls and the plot stays put.
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+    const base = await plot.getAttribute("viewBox");
+    let at = await thumbSpot();
+    await swipe(cdp, at.x, at.y, at.x, at.y - 120, 8);
+    await expect.poll(scrollTop).toBeGreaterThan(0);
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+
+    // 3x on that plot alone: one finger pans the plot and the column stays where it is.
+    await toTop();
+    at = await thumbSpot();
+    await wheelOn(plot, at, 4);
+    await expect(railLevel(page, "center")).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const before = parseBox((await plot.getAttribute("viewBox")) ?? "");
+    await swipe(cdp, at.x, at.y, at.x - 40, at.y - 120, 8);
+    const after = parseBox((await plot.getAttribute("viewBox")) ?? "");
+    // The finger went up and left, so the drawing did: the view moved down and right (clamped).
+    expect(after.y).toBeGreaterThan(before.y);
+    expect(after.x).toBeGreaterThanOrEqual(before.x);
+    await page.waitForTimeout(300);
+    expect(await scrollTop()).toBe(0);
+
+    // Reset: 1x again, and the thumb is the browser's again.
+    const reset = page
+      .locator('[data-rail-zoom-host="center"]')
+      .getByRole("button", { name: "Back to 1x — the whole drawing" });
+    await reset.click();
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+    expect(await plot.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+    await toTop();
+    at = await thumbSpot();
+    await swipe(cdp, at.x, at.y, at.x, at.y - 120, 8);
+    await expect.poll(scrollTop).toBeGreaterThan(0);
+    await expect(plot).toHaveAttribute("viewBox", base ?? "");
+  });
+});
+
+/** FINS's tail diagram. */
+function finsSvg(page: Page): Locator {
+  return page.locator("[data-fin-plot] svg").first();
+}
+
+async function openFins(page: Page) {
+  await page.goto("/design/fins");
+  await expect(finsSvg(page)).toBeVisible({ timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-zoom] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
+}
+
+/** FINS's lines, dots and words at their on-screen size. */
+async function finScreenSizes(page: Page) {
+  return finsSvg(page).evaluate((svg) => {
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const stroke = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * scaleOf(el);
+    };
+    const label = svg.querySelector("[data-fin-dim]");
+    const dot = svg.querySelector('circle[fill="var(--outline-ink)"]') as SVGCircleElement | null;
+    if (!label || !dot) throw new Error("missing label or dot");
+    return {
+      outline: stroke(svg.querySelector('path[stroke="var(--outline-ink)"]'), "outline"),
+      centreline: stroke(
+        [...svg.querySelectorAll('line[stroke="var(--outline-station-line)"]')].find((l) => !l.closest("[data-zoom-grid]")),
+        "centreline",
+      ),
+      dimensionLine: stroke(svg.querySelector('line[stroke="var(--outline-dim-ink)"]'), "dimension line"),
+      finMark: stroke(svg.querySelector('line[stroke="var(--color-surf-accent-ink)"]'), "fin mark"),
+      label: Number.parseFloat(getComputedStyle(label).fontSize) * scaleOf(label),
+      dot: dot.r.baseVal.value * scaleOf(dot),
+    };
+  });
+}
+
+test.describe("261007-fnz FINS zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("FINS stops at 4x — zoom in, and the wheel — with the 1/2\" grid at 3x and lines and labels at their 1x size", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openFins(page);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await page.waitForTimeout(300);
+    const atOne = await finScreenSizes(page);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const grid = await finsSvg(page).evaluate((svg) => {
+      const n = (l: Element, a: string) => Number(l.getAttribute(a));
+      const lines = [...svg.querySelectorAll("[data-zoom-grid] line")];
+      const across = lines.filter((l) => n(l, "x1") === n(l, "x2")).map((l) => n(l, "x1")).sort((a, b) => a - b);
+      const along = lines.filter((l) => n(l, "y1") === n(l, "y2")).map((l) => n(l, "y1"));
+      const whole = (v: number) => Math.abs(v - Math.round(v)) < 1e-6;
+      return {
+        step: across[1] - across[0],
+        // Counted from the stringer (x 260) and the tail tip (y 320), 7 drawing units to the 1/2".
+        anchored: across.every((x) => whole((x - 260) / 7)) && along.length > 0 && along.every((y) => whole((y - 320) / 7)),
+      };
+    });
+    expect(grid.step).toBeCloseTo(7, 6);
+    expect(grid.anchored).toBe(true);
+
+    await zoomInButton(page).click();
+    await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("4x");
+    await expect(zoomInButton(page)).toBeDisabled();
+    await page.waitForTimeout(300);
+    const atFour = await finScreenSizes(page);
+    for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+      expect(Math.abs(atFour[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atFour[key]} px at 4x`).toBeLessThan(
+        0.05,
+      );
+    }
+
+    const box = await finsSvg(page).boundingBox();
+    if (!box) throw new Error("no FINS box");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("4x");
+  });
+});
+
+test.describe("261007-fnz FINS zoom — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("at 3x one finger drags the diagram around and scrolls nothing", async ({ page }) => {
+    await dismissChrome(page);
+    await openFins(page);
+    const svg = finsSvg(page);
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no FINS box");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await wheelOn(svg, at, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const scrolls = () =>
+      page.evaluate(() => ({ main: document.querySelector("main")?.scrollTop ?? 0, window: window.scrollY }));
+    const scrollBefore = await scrolls();
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const cdp = await page.context().newCDPSession(page);
+    await swipe(cdp, at.x, at.y, at.x + 50, at.y + 60, 6);
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(after.x).toBeLessThan(before.x);
+    expect(after.y).toBeLessThan(before.y);
+    await page.waitForTimeout(300);
+    expect(await scrolls()).toEqual(scrollBefore);
+  });
+});

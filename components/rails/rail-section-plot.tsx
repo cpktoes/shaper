@@ -9,9 +9,13 @@
  * `callouts` prop below — the plot itself stays the single component every rail drawing shares.
  */
 
-import { useRef } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { RailCallout } from "./rail-callouts";
 import { CALLOUT_CHAR_PX, CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { useViewerZoom, ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
+import { cn } from "@/lib/utils";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
 import { railPlotDots, type RailSectionKey, type RailSectionOutput, type RailSegmentKey } from "@/lib/geometry/rail-bands";
@@ -426,6 +430,49 @@ function chooseMetricLabelEvery(
   return METRIC_LABEL_EVERY_CANDIDATES[METRIC_LABEL_EVERY_CANDIDATES.length - 1];
 }
 
+/**
+ * One RAILS cross-section's own zoom (quick 261007-fnz, plan 02, 2026-10-07; D9: each plot zooms on
+ * its own). Wraps a plot box in its own `ViewerZoomProvider`, so zooming the NOSE plot leaves
+ * CENTER and TAIL where they are, and gives that plot its own zoom row.
+ *
+ * Where the row goes:
+ * - No `controlHost` (the phone's one plot): on the plot box's own top-right corner. On a touch
+ *   screen it is drawn only once zoomed in (P3), so a phone's 1x screen is unchanged.
+ * - A `controlHost` (the computer's plot row, R1): the row is handed to that element instead —
+ *   a React portal, so it still reads this plot's own zoom. `rail-band-editor.tsx` puts that
+ *   element at the right end of the plot's title line ("Nose", "Center", "Tail"), in a see-through
+ *   copy of the plot row's own layout laid over it, rather than inside the row itself: everything
+ *   inside the plot row is what the browser tests count as the drawing (`phone-rails.spec.ts`
+ *   counts its pictures), and the zoom row's three icons are not drawings. Inside the plot itself
+ *   the row would cover the deck by the apex on a plot as short as 132 px. `null` while the host
+ *   element is still being mounted.
+ *
+ * Only `rail-band-editor.tsx`'s VIEWER tab uses this. The order form's plots, the View Full Sized
+ * dialog and the INSTRUCTIONS card draw `RailSectionPlot` with no provider around it, so they are
+ * at 1x for good, exactly as before (D9, D11).
+ */
+export function RailPlotZoom({
+  controlHost,
+  className,
+  style,
+  children,
+}: {
+  controlHost?: HTMLElement | null;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  const control = <ViewerZoomControl placement="corner" />;
+  return (
+    <ViewerZoomProvider>
+      <div className={cn("relative", className)} style={style}>
+        {children}
+        {controlHost === undefined ? control : controlHost ? createPortal(control, controlHost) : null}
+      </div>
+    </ViewerZoomProvider>
+  );
+}
+
 export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
@@ -444,6 +491,20 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
   // render scale the labels will actually draw at.
   const fitScale = useSvgFitScale(svgRef, width, height);
 
+  // Quick 261007-fnz, plan 02 (2026-10-07): the plot zooms like ROCKER's side view, through the one
+  // shared zoom (D2) — inside a `RailPlotZoom` above; anywhere else `zoom` is 1 and `viewBox` is
+  // the base string, untouched. `touch: "pan"`: at exactly 1x one finger stays the browser's, so a
+  // thumb still scrolls RAILS's drawing column on a phone held sideways; once this plot is zoomed
+  // in one finger drags the plot around instead, and its reset gives the finger back (D6).
+  // `shownFit` is the fit times the zoom: what the pinned words below are sized against, so an
+  // axis number or a mark name keeps its screen size at every zoom (D4). The seven line kinds
+  // below already draw with `non-scaling-stroke` and stay exactly as they are (M10); everything
+  // else drawn in raw units — a dot, a tick's length, a label's gap off its line — is multiplied
+  // by `zoomUnit` (exactly 1 at 1x, so the 1x plot is the plot it always was).
+  const baseViewBox = `0 0 ${width} ${height}`;
+  const { zoom, zoomUnit, viewBox, view, svgProps } = useViewerZoom(svgRef, baseViewBox, { touch: "pan" });
+  const shownFit = fitScale * zoom;
+
   // Metric-only (Imperial's single-digit labels have always fitted and must stay unable to
   // change, D-13): thin the bottom axis's numbers until they stop colliding, then drop the left
   // axis's own millimetre mark if the (possibly still-suffixed) numbers do not fit its strip, and
@@ -452,14 +513,16 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
   let grid: RailPlotGrid;
   let leftLabelsInside = false;
   if (system === "metric") {
-    const labelEvery = chooseMetricLabelEvery({ minX, minY, maxY }, fitScale);
+    // Zoomed in, the numbers are as far apart on screen as the zoom makes them, so fewer are
+    // thinned out (261007-fnz): the same fit tests, asked about the scale actually drawn.
+    const labelEvery = chooseMetricLabelEvery({ minX, minY, maxY }, shownFit);
     const suffixedGrid = buildRailPlotGrid({ minX, minY, maxY }, "metric", { labelEvery });
-    if (railPlotLeftLabelsFit(suffixedGrid.yTicks, fitScale)) {
+    if (railPlotLeftLabelsFit(suffixedGrid.yTicks, shownFit)) {
       grid = suffixedGrid;
     } else {
       const bareGrid = buildRailPlotGrid({ minX, minY, maxY }, "metric", { labelEvery, leftAxisUnit: false });
       grid = bareGrid;
-      leftLabelsInside = !railPlotLeftLabelsFit(bareGrid.yTicks, fitScale);
+      leftLabelsInside = !railPlotLeftLabelsFit(bareGrid.yTicks, shownFit);
     }
   } else {
     grid = buildRailPlotGrid({ minX, minY, maxY }, system);
@@ -500,12 +563,12 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
   const xTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
     grid.xTicks.map((tick) => ({
       x1: px(tick.value),
-      y1: py(0) - 4,
+      y1: py(0) - 4 * zoomUnit,
       x2: px(tick.value),
-      y2: py(0) + 4,
+      y2: py(0) + 4 * zoomUnit,
       label: tick.label,
       lx: px(tick.value),
-      ly: py(0) + 16,
+      ly: py(0) + 16 * zoomUnit,
     }));
   // `leftLabelsInside` (Metric-only, set above): when even the bare numbers do not fit the
   // left-hand strip, a label reads from just inside the plot instead of outside it — anchored a
@@ -528,36 +591,66 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
     textAnchor: "start" | "end";
     halo: boolean;
   }[] = grid.yTicks.map((tick) => ({
-    x1: px(minX) - 4,
+    x1: px(minX) - 4 * zoomUnit,
     y1: py(tick.value),
-    x2: px(minX) + 4,
+    x2: px(minX) + 4 * zoomUnit,
     y2: py(tick.value),
     label: tick.label,
-    lx: leftLabelsInside ? px(minX) + 4 + Y_TICK_LABEL_GAP : px(minX) - Y_TICK_LABEL_GAP,
-    ly: leftLabelsInside ? py(tick.value) - 3 : py(tick.value) + 3,
+    lx: leftLabelsInside
+      ? px(minX) + 4 * zoomUnit + Y_TICK_LABEL_GAP * zoomUnit
+      : px(minX) - Y_TICK_LABEL_GAP * zoomUnit,
+    ly: leftLabelsInside ? py(tick.value) - 3 * zoomUnit : py(tick.value) + 3 * zoomUnit,
     textAnchor: leftLabelsInside ? "start" : "end",
     halo: leftLabelsInside,
   }));
 
-  const axisFontSize = fitScale > 0 ? CALLOUT_PX.name / fitScale : 10;
+  const axisFontSize = shownFit > 0 ? CALLOUT_PX.name / shownFit : 10;
   // Mark-name callouts (D-17) pin to the same Label-role size the plot's own axis ticks already
   // use, via the shared primitive rather than a second ad-hoc ternary.
-  const calloutFontSize = pinnedCalloutSizes(fitScale).name;
-  const CALLOUT_TEXT_GAP = 4;
+  const calloutFontSize = pinnedCalloutSizes(shownFit).name;
+  const CALLOUT_TEXT_GAP = 4 * zoomUnit;
+
+  // The finer grid (261007-fnz, D5): only above 1x, behind everything. RAILS keeps its own 1"
+  // (10 mm) grid, ticks and numbers at every zoom; this adds only the finer lines between them —
+  // the ladder starts at RAILS's own pitch (`majorIn`), the major lines are left to RAILS
+  // (`omitMajor`, so no line is drawn twice), and the lines span the box RAILS's own grid already
+  // spans: from its leftmost line to the apex across, from the bottom to its top line up.
+  const gridTopIn = grid.yGridPositions.length > 0 ? Math.max(...grid.yGridPositions) : 0;
+  const zoomGridBounds = {
+    x: px(grid.xGridMin),
+    y: py(gridTopIn),
+    width: px(0) - px(grid.xGridMin),
+    height: py(0) - py(gridTopIn),
+  };
 
   return (
     <svg
       ref={svgRef}
       // A handle for the browser tests: which of the three section plots this is. Nothing styles it.
       data-rail-section-plot={sectionKey}
-      viewBox={`0 0 ${width} ${height}`}
-      style={
-        fit === "height"
+      viewBox={viewBox}
+      {...svgProps}
+      style={{
+        ...(fit === "height"
           ? { height: "100%", width: "auto", maxWidth: "100%", aspectRatio: `${width} / ${height}` }
-          : { width: "100%", aspectRatio: `${width} / ${height}` }
-      }
+          : { width: "100%", aspectRatio: `${width} / ${height}` }),
+        ...svgProps.style,
+      }}
       className="block"
     >
+      <ZoomGrid
+        zoom={zoom}
+        fitScale={fitScale}
+        unitsPerInch={SCALE}
+        anchor={{ x: px(0), y: py(0) }}
+        bounds={zoomGridBounds}
+        visible={view}
+        system={system}
+        majorIn={system === "metric" ? mmToInches(mm(10)) : 1}
+        majorInk="color-mix(in srgb, var(--color-surf-ink-muted) 12%, transparent)"
+        minorInk="color-mix(in srgb, var(--color-surf-ink-muted) 7%, transparent)"
+        omitMajor
+      />
       {gridLines.map((gl, i) => (
         <line key={`g${i}`} x1={gl.x1} y1={gl.y1} x2={gl.x2} y2={gl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 12%, transparent)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
       ))}
@@ -569,7 +662,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       ))}
       {dots.map((dt, i) => (
-        <circle key={`d${i}`} cx={dt.cx} cy={dt.cy} r={2.75} fill={dt.color} />
+        <circle key={`d${i}`} cx={dt.cx} cy={dt.cy} r={2.75 * zoomUnit} fill={dt.color} />
       ))}
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
@@ -618,8 +711,8 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         // name whose `y` is its vertical middle. The `?? c.x`/`?? c.y` fallbacks let this render
         // compile and pass on its own, before `buildRailCallouts` (Task 2) starts populating
         // `anchorX`/`anchorY` — they are never exercised once that task lands.
-        const CALLOUT_LEADER_START_GAP = 2;
-        const CALLOUT_LEADER_END_GAP = 7;
+        const CALLOUT_LEADER_START_GAP = 2 * zoomUnit;
+        const CALLOUT_LEADER_END_GAP = 7 * zoomUnit;
         return (
           <g key={c.key}>
             {isBelow ? (

@@ -10,7 +10,8 @@ import { buildFinsPresetSource } from "@/lib/geometry/preset-source";
 import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
 import { FinModelInfo } from "./fin-model-info";
-import { FinViewer } from "./fin-viewer";
+import { FINS_MAX_ZOOM, FinViewer } from "./fin-viewer";
+import { ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { ToeAimTableModal } from "./toe-aim-table-modal";
 
@@ -106,14 +107,21 @@ export function FinPlacementEditor() {
         >
           {activeTab === "viewer" && (
             <div className="flex min-h-0 flex-1 flex-col items-center">
-              <FinViewer
-                result={result}
-                tailShape={spec.tailShape}
-                tailWidth12={spec.tailWidth12}
-                showCallouts={showCallouts}
-                outlineOverride={finTailOutline}
-                importedTail={finImportedTail}
-              />
+              {/* Quick 261007-fnz, plan 02 (2026-10-07): the tail diagram zooms like ROCKER's
+                  side view, up to 4x (D9, R3). The provider holds the level only, never saved
+                  (D2), and renders no element; it sits here rather than inside `FinViewer` so
+                  the viewer's own svg and its zoom row (in the plot box's corner) both read it.
+                  Leaving VIEWER unmounts it, so coming back is 1x. */}
+              <ViewerZoomProvider maxZoom={FINS_MAX_ZOOM}>
+                <FinViewer
+                  result={result}
+                  tailShape={spec.tailShape}
+                  tailWidth12={spec.tailWidth12}
+                  showCallouts={showCallouts}
+                  outlineOverride={finTailOutline}
+                  importedTail={finImportedTail}
+                />
+              </ViewerZoomProvider>
             </div>
           )}
 

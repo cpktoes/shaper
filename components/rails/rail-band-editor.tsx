@@ -13,7 +13,7 @@ import { RailControls } from "./rail-controls";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
-import { RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 import { ViewFullSizedDialog, firstOpenSection } from "./view-full-sized-dialog";
 
 type RailPage = "viewer" | "data" | "instructions";
@@ -122,6 +122,19 @@ export function RailBandEditor() {
   const openSectionsKey = openSections.join(",");
 
   const plotsContainerRef = useRef<HTMLDivElement | null>(null);
+  // Quick 261007-fnz, plan 02: where each computer plot's zoom row is handed (`RailPlotZoom`'s
+  // `controlHost`). One stable ref callback per section, made once, so React only calls each when
+  // its element mounts or unmounts — a fresh callback every render would set this state forever.
+  const [zoomHosts, setZoomHosts] = useState<Partial<Record<RailSectionKey, HTMLElement | null>>>({});
+  const [zoomHostRefs] = useState(
+    () =>
+      Object.fromEntries(
+        SECTION_KEYS.map((key) => [
+          key,
+          (el: HTMLElement | null) => setZoomHosts((hosts) => (hosts[key] === el ? hosts : { ...hosts, [key]: el })),
+        ]),
+      ) as Record<RailSectionKey, (el: HTMLElement | null) => void>,
+  );
   const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
   const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
   const [plotFitMeasured, setPlotFitMeasured] = useState(false);
@@ -313,7 +326,15 @@ export function RailBandEditor() {
               className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden [@media(max-height:500px)]:flex-none"
             >
               {openSections.map((key) => (
-                <div key={key} className="flex flex-none flex-col items-center" style={{ width: plotWidth }}>
+                // Quick 261007-fnz, plan 02: each plot zooms on its own (D9) — `RailPlotZoom` is
+                // that plot's provider, a box that renders exactly as the plain div it replaces —
+                // and hands its zoom row to the right end of its own title line (R1), below.
+                <RailPlotZoom
+                  key={key}
+                  controlHost={zoomHosts[key] ?? null}
+                  className="flex flex-none flex-col items-center"
+                  style={{ width: plotWidth }}
+                >
                   <div
                     ref={(el) => {
                       titleRefs.current[key] = el;
@@ -323,8 +344,38 @@ export function RailBandEditor() {
                     {SECTION_TITLE[key]}
                   </div>
                   <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
-                </div>
+                </RailPlotZoom>
               ))}
+            </div>
+            {/* Each plot's zoom row (quick 261007-fnz, plan 02, R1), at the right end of its title
+                line, centred on it (`-top-[5px]` puts a 34-px row's middle on the 24-px line).
+                The rows live here, in a see-through copy of the plot row laid over it — same
+                column, same widths, same gaps, a blank line where each title is and a box of the
+                plot's own shape where each plot is, so every row lands exactly where it would in
+                the plot row without a measurement — rather than in the plot row itself, whose
+                contents the browser tests count as the drawing. Nothing here takes a click or a
+                touch but the rows themselves, and it is not drawn on an upright phone, exactly
+                like the plot row. */}
+            <div
+              data-rail-zoom-rows
+              className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 max-shell:hidden"
+            >
+              {openSections.map((key) => {
+                const box = computeRailPlotBounds(bands[key], sharedXAxisMin);
+                return (
+                  <div key={key} className="relative flex flex-none flex-col items-center" style={{ width: plotWidth }}>
+                    <div aria-hidden className="mb-1 flex-none text-base font-extrabold">
+                      {"\u00a0"}
+                    </div>
+                    <div aria-hidden className="block w-full" style={{ aspectRatio: `${box.width} / ${box.height}` }} />
+                    <div
+                      ref={zoomHostRefs[key]}
+                      data-rail-zoom-host={key}
+                      className="pointer-events-auto absolute right-0 -top-[5px]"
+                    />
+                  </div>
+                );
+              })}
             </div>
             {/* Phone only (D-12): one rail cross-section at a time behind a NOSE/CENTER/TAIL
                 switch. Rendered in the same server tree as the desktop plot row above, both
@@ -384,9 +435,16 @@ export function RailBandEditor() {
                   );
                 })}
               </div>
-              <div className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line px-0.5 pb-0.5 pt-[11px] coarse:relative">
+              {/* Quick 261007-fnz, plan 02: the one plot zooms on its own, keyed on the section so
+                  switching NOSE/CENTER/TAIL starts that plot at 1x; its zoom row on the plot box's
+                  corner, drawn on a touch screen only once zoomed in (P3). `RailPlotZoom` makes the
+                  box `relative`, which it already was on a touch screen. */}
+              <RailPlotZoom
+                key={phoneSection}
+                className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line px-0.5 pb-0.5 pt-[11px]"
+              >
                 <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
-              </div>
+              </RailPlotZoom>
             </div>
             {legend.length > 0 && (
               // Item 9e (P-9): the key's 16px gap above it (mt-4) becomes 4px on an upright phone

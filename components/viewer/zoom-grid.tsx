@@ -45,6 +45,12 @@ export interface ZoomGridProps {
   majorIn?: number;
   majorInk?: string;
   minorInk?: string;
+  /**
+   * Draw only the finer lines, never the darker ones — for a viewer that already draws its own
+   * lines at the major spacing at every zoom (plan 02's RAILS, whose own 1" (10 mm) grid, ticks
+   * and numbers stay exactly as they are), so no line is ever drawn twice.
+   */
+  omitMajor?: boolean;
 }
 
 export function ZoomGrid({
@@ -58,6 +64,7 @@ export function ZoomGrid({
   majorIn,
   majorInk = "var(--outline-station-line)",
   minorInk = DEFAULT_MINOR_INK,
+  omitMajor = false,
 }: ZoomGridProps) {
   if (!(zoom > 1) || !visible) return null;
   const step = gridStep(unitsPerInch * fitScale * zoom, system, majorIn);
@@ -69,8 +76,10 @@ export function ZoomGrid({
   if (!(x1 > x0) || !(y1 > y0)) return null;
   const stepUnits = step.stepIn * unitsPerInch;
   const majorEvery = Math.round(step.majorIn / step.stepIn);
-  const across = gridPositions(anchor.x, stepUnits, x0, x1, majorEvery);
-  const along = gridPositions(anchor.y, stepUnits, y0, y1, majorEvery);
+  const keep = (p: { major: boolean }) => !(omitMajor && p.major);
+  const across = gridPositions(anchor.x, stepUnits, x0, x1, majorEvery).filter(keep);
+  const along = gridPositions(anchor.y, stepUnits, y0, y1, majorEvery).filter(keep);
+  if (omitMajor && across.length === 0 && along.length === 0) return null;
   const line = (key: string, major: boolean, ax: number, ay: number, bx: number, by: number) => (
     <line
       key={key}
