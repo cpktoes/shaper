@@ -788,6 +788,8 @@ export function OutlineViewer({
     isPinching,
   } = useViewerZoom(svgRef, viewBox, {
     touch: "viewer",
+    // A press TEMPLATE has already taken — it landed within a drag point's reach — never pans.
+    canPanFrom: () => !draggingRef.current,
     onPinchStart: () => {
       if (draggingRef.current) finishGesture(true, true);
     },
@@ -945,18 +947,19 @@ export function OutlineViewer({
     ? widepointChipY
     : widepointChipY + OUTLINE_CHIP_HEIGHT * zoomUnit + CHIP_STACK_GAP * zoomUnit;
 
-  // The pointer, shared (261007-fnz, D6). TEMPLATE's own handlers stay first: a mouse or pen
-  // press within a drag point's reach drags that point exactly as before, at any zoom; a press
-  // anywhere else — or any press while the construction lines are off, when TEMPLATE has no drag
-  // of its own — goes to the shared zoom, which pans the drawing once zoomed in and does nothing
-  // at 1x (so a 1x drag on empty canvas is still nothing at all). A finger never pans: one finger
-  // is TEMPLATE's, two are the zoom's, and while two are down TEMPLATE ignores the pointer.
+  // The pointer, shared (261007-fnz, D6). TEMPLATE's own press handler runs first — in the
+  // capture phase, ahead of the shared zoom's own press handler on the same svg — so a mouse or pen
+  // press within a drag point's reach drags that point exactly as before, at any zoom, and the zoom
+  // then sees `draggingRef` set and leaves it alone (`canPanFrom` above). A press anywhere else, or
+  // any press while the construction lines are off (when TEMPLATE has no drag of its own), reaches
+  // the zoom, which pans the drawing once zoomed in and does nothing at 1x — so a 1x drag on empty
+  // canvas is still nothing at all. A finger never pans: one finger is TEMPLATE's, two are the
+  // zoom's, and while two are down TEMPLATE ignores the pointer.
   const baseRect = parseViewBox(viewBox);
   const contentRotation = horizontal ? -90 : 0;
-  function onSvgPointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+  function onSvgPress(event: ReactPointerEvent<SVGSVGElement>) {
     if (isPinching()) return;
-    if (showConstruction && onOutlineDrag && handlePointerDown(event)) return;
-    if (event.pointerType !== "touch") zoomSvgProps.onPointerDown?.(event);
+    if (showConstruction && onOutlineDrag) handlePointerDown(event);
   }
   function onSvgPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
     if (isPinching()) return;
@@ -996,12 +999,14 @@ export function OutlineViewer({
       // Pitfall 3): the SVG text drawn near a drag point can start a selection too, not only the
       // hit circles themselves — both places get the same suppression.
       className="absolute inset-0 block h-full w-full select-none touch-none"
+      // The shared zoom's own handlers (empty outside a provider), then TEMPLATE's, which take
+      // over move, lift and cancel and hand on to the zoom's whatever TEMPLATE does not use.
+      {...zoomSvgProps}
       style={{ WebkitTouchCallout: "none", ...zoomSvgProps.style }}
-      onPointerDown={onSvgPointerDown}
+      onPointerDownCapture={onSvgPress}
       onPointerMove={onSvgPointerMove}
       onPointerUp={(event) => onSvgPointerEnd(event, false)}
       onPointerCancel={(event) => onSvgPointerEnd(event, true)}
-      onDoubleClick={zoomSvgProps.onDoubleClick}
     >
       {/* Every child below is drawn in the canonical (vertical) coordinate space, untouched —
           the rotation lives on this ONE group, so every projector (pxX, lenToY) and its ~40
