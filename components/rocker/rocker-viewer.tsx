@@ -101,6 +101,7 @@ import {
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
+import { useViewerZoom } from "@/components/viewer/zoom-viewport";
 import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
@@ -675,7 +676,11 @@ export function RockerViewer({
   // The viewBox string comes straight off the layout — the one place this drawing's frame is
   // decided. The vertical frame is built from its own rotated content, NOT a transposition of the
   // horizontal frame — the defect quick task 260825-w8d fixed on the outline viewer.
-  const { viewBox } = layout;
+  const { viewBox: baseViewBox } = layout;
+  // Quick 261007-fnz: the zoom (wheel, pinch, drag, the zoom control) turns the layout's own frame
+  // into the part of it on screen. At 1x, and always outside ROCKER's own zoom provider (the
+  // Summary order form's box), `viewBox` IS the layout's string, untouched (D11).
+  const { viewBox } = useViewerZoom(svgRef, baseViewBox);
   /** User units per CSS pixel — what the px-denominated dot radius and blank line are drawn in. */
   const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
 

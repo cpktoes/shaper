@@ -86,6 +86,7 @@ import {
   ViewerToolbarButton,
 } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import { boardLine } from "@/lib/geometry/blank-reasons";
 import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
@@ -302,82 +303,91 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             // toolbar stays inside this tab only (Task 2's plan text) — DATASHEET has no drawing
             // to rotate or hide a reference under.
             <div className="relative flex min-h-0 flex-1 items-center justify-center">
-              <ViewerToolbar>
-                <ViewerToolbarButton
-                  onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
-                  label="Rotate the board"
-                  // D-05/D-11: the rotate button's one job on a phone is done by turning the
-                  // phone, so it is absent below the shell breakpoint — the first of the phase's
-                  // three removed controls (wide view, on the toolbar button below, is the
-                  // third, added after the post-execution code review — see 09-REVIEW.md CR-01).
-                  // Now gated on width AND pointer (quick task 260909-h3g): on any coarse
-                  // pointer, `boardOrientation` above follows the device's own orientation query
-                  // and never reads this button's state, so the button had nothing to do. That
-                  // surfaced on a phone held sideways — 844px on an iPhone 14, 863px on a Pixel
-                  // 7, both wider than the 820px shell breakpoint, so the width rule alone let
-                  // the dead button back on screen. A touchscreen laptop hits the same case and
-                  // is covered by the same rule. A mouse-driven desktop is unaffected at every
-                  // width.
-                  className="max-shell:hidden coarse:hidden"
-                >
-                  <RotateBoardIcon className="size-6" />
-                </ViewerToolbarButton>
-                <ViewerToolbarButton
-                  onClick={handleToggleMeasuringPoints}
-                  pressed={showMeasuringPoints}
-                  label={showMeasuringPoints ? "Hide measuring points" : "Show measuring points"}
-                >
-                  <LocateFixedIcon className="size-6" />
-                </ViewerToolbarButton>
-                <ViewerToolbarButton
-                  onClick={handleToggleWideView}
-                  pressed={wideView}
-                  label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
-                  title={wideView ? "Show the sidebar" : "Wide view"}
-                  // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and
-                  // the controls are the entire column stacked beneath it, so there is nothing
-                  // to widen — pressing this button would only hide every control, with no way
-                  // back (the small icon that caused it would be gone too). Absent below the
-                  // shell breakpoint, gated on width alone — unlike Rotate above, which is now
-                  // gated on the pointer too — because a touchscreen laptop at desktop width
-                  // genuinely does have a sidebar to hide, so this button still does its real
-                  // job there. `DesignScreenShell` also refuses to fully drop the controls on a
-                  // phone even if `wideView` is somehow still true, belt-and-suspenders for a
-                  // desktop shaper who narrows the window after pressing this.
-                  className="max-shell:hidden"
-                >
-                  {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
-                </ViewerToolbarButton>
-                <ViewerToolbarButton
-                  onClick={() => setShowTopView((shown) => !shown)}
-                  pressed={showTopView}
-                  label={showTopView ? "Hide the blank from above" : "Show the blank from above"}
-                  // Quick 261006-qfm, D-03. The founder, 2026-10-06: "On a large desktop screen,
-                  // the mini blank/board image can be turned on/off by another button." DOM-last,
-                  // so it lands at the far left of the row. Absent on a phone and on a short screen,
-                  // where the top view has its own TOP VIEW tab instead and there is no corner
-                  // drawing to hide — the same two lines `smallScreen` above reads.
-                  className="max-shell:hidden [@media(max-height:500px)]:hidden"
-                >
-                  <BlankTopViewIcon className="size-6" />
-                </ViewerToolbarButton>
-              </ViewerToolbar>
-              {!smallScreen && showTopView && (
-                <TopViewInset
-                  topView={topView}
-                  length={sideProfile.length}
+              {/* Quick 261007-fnz: the side view zooms (wheel, pinch, drag to pan, the zoom
+                  control). The level lives in this provider only, never saved (D2), and it is keyed
+                  on the board's orientation so turning the board starts again at 1x — a turned
+                  frame is a different shape (P9). Leaving VIEWER unmounts it, so coming back is 1x
+                  too. Only the side view reads it; the blank-from-above picture does not zoom (D9). */}
+              <ViewerZoomProvider key={boardOrientation}>
+                <ViewerToolbar>
+                  <ViewerToolbarButton
+                    onClick={() => setOrientation((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
+                    label="Rotate the board"
+                    // D-05/D-11: the rotate button's one job on a phone is done by turning the
+                    // phone, so it is absent below the shell breakpoint — the first of the phase's
+                    // three removed controls (wide view, on the toolbar button below, is the
+                    // third, added after the post-execution code review — see 09-REVIEW.md CR-01).
+                    // Now gated on width AND pointer (quick task 260909-h3g): on any coarse
+                    // pointer, `boardOrientation` above follows the device's own orientation query
+                    // and never reads this button's state, so the button had nothing to do. That
+                    // surfaced on a phone held sideways — 844px on an iPhone 14, 863px on a Pixel
+                    // 7, both wider than the 820px shell breakpoint, so the width rule alone let
+                    // the dead button back on screen. A touchscreen laptop hits the same case and
+                    // is covered by the same rule. A mouse-driven desktop is unaffected at every
+                    // width.
+                    className="max-shell:hidden coarse:hidden"
+                  >
+                    <RotateBoardIcon className="size-6" />
+                  </ViewerToolbarButton>
+                  <ViewerToolbarButton
+                    onClick={handleToggleMeasuringPoints}
+                    pressed={showMeasuringPoints}
+                    label={showMeasuringPoints ? "Hide measuring points" : "Show measuring points"}
+                  >
+                    <LocateFixedIcon className="size-6" />
+                  </ViewerToolbarButton>
+                  <ViewerToolbarButton
+                    onClick={handleToggleWideView}
+                    pressed={wideView}
+                    label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+                    title={wideView ? "Show the sidebar" : "Wide view"}
+                    // 09-REVIEW.md CR-01: on a phone the drawing already has the whole width and
+                    // the controls are the entire column stacked beneath it, so there is nothing
+                    // to widen — pressing this button would only hide every control, with no way
+                    // back (the small icon that caused it would be gone too). Absent below the
+                    // shell breakpoint, gated on width alone — unlike Rotate above, which is now
+                    // gated on the pointer too — because a touchscreen laptop at desktop width
+                    // genuinely does have a sidebar to hide, so this button still does its real
+                    // job there. `DesignScreenShell` also refuses to fully drop the controls on a
+                    // phone even if `wideView` is somehow still true, belt-and-suspenders for a
+                    // desktop shaper who narrows the window after pressing this.
+                    className="max-shell:hidden"
+                  >
+                    {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
+                  </ViewerToolbarButton>
+                  <ViewerToolbarButton
+                    onClick={() => setShowTopView((shown) => !shown)}
+                    pressed={showTopView}
+                    label={showTopView ? "Hide the blank from above" : "Show the blank from above"}
+                    // Quick 261006-qfm, D-03. The founder, 2026-10-06: "On a large desktop screen,
+                    // the mini blank/board image can be turned on/off by another button." DOM-last,
+                    // so it lands at the far left of the row. Absent on a phone and on a short screen,
+                    // where the top view has its own TOP VIEW tab instead and there is no corner
+                    // drawing to hide — the same two lines `smallScreen` above reads.
+                    className="max-shell:hidden [@media(max-height:500px)]:hidden"
+                  >
+                    <BlankTopViewIcon className="size-6" />
+                  </ViewerToolbarButton>
+                </ViewerToolbar>
+                {/* The zoom level and its buttons, in their own row under the icons (P2). */}
+                <ViewerZoomControl />
+                {!smallScreen && showTopView && (
+                  <TopViewInset
+                    topView={topView}
+                    length={sideProfile.length}
+                    blank={sideProfile.blank ?? undefined}
+                    orientation={boardOrientation}
+                    showMeasuringPoints={showMeasuringPoints}
+                  />
+                )}
+                <RockerViewer
+                  profile={sideProfile}
                   blank={sideProfile.blank ?? undefined}
                   orientation={boardOrientation}
                   showMeasuringPoints={showMeasuringPoints}
+                  fitToBoard
                 />
-              )}
-              <RockerViewer
-                profile={sideProfile}
-                blank={sideProfile.blank ?? undefined}
-                orientation={boardOrientation}
-                showMeasuringPoints={showMeasuringPoints}
-                fitToBoard
-              />
+              </ViewerZoomProvider>
             </div>
           ) : activeTab === "topView" ? (
             // The TOP VIEW tab (quick 261006-qfm, D-04): the same drawing as the computer's corner
