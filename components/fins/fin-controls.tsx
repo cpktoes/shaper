@@ -565,7 +565,7 @@ export function FinControls({
                 </div>
                 <SliderRow
                   density="tight"
-                  label={`Forward/Aft position — ${formatMark(resolved.centerOffTail, system)}`}
+                  label={`Aft/Forward position — ${formatMark(resolved.centerOffTail, system)}`}
                   value={centerPositionSlider.value}
                   min={centerPositionSlider.min}
                   max={centerPositionSlider.max}
@@ -603,7 +603,7 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatMark(
+                    label={`Aft/Forward position — ${formatMark(
                       spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail,
                       system,
                     )} (off-rail unchanged)`}
@@ -612,8 +612,8 @@ export function FinControls({
                     max={forwardPositionSlider.max}
                     step={forwardPositionSlider.step}
                     onValueChange={(v) => updateAdvanced({ forwardPositionOffset: forwardPositionSlider.toMm(v) })}
-                    leftHint="Loose (fwd)"
-                    rightHint="Drivey (back)"
+                    leftHint="Drivey (back)"
+                    rightHint="Loose (fwd)"
                   />
                 </div>
                 <SliderRow
@@ -716,14 +716,14 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Forward/Aft position — ${formatMark(resolved.pairOffTail, system)} (off-rail unchanged)`}
+                    label={`Aft/Forward position — ${formatMark(resolved.pairOffTail, system)} (off-rail unchanged)`}
                     value={rearPositionSlider.value}
                     min={rearPositionSlider.min}
                     max={rearPositionSlider.max}
                     step={rearPositionSlider.step}
                     onValueChange={(v) => updateAdvanced({ rearPositionOffset: rearPositionSlider.toMm(v) })}
-                    leftHint="Loose (fwd)"
-                    rightHint="Drivey (back)"
+                    leftHint="Drivey (back)"
+                    rightHint="Loose (fwd)"
                   />
                 </div>
                 {flags.showRearOffRailSlider && (
