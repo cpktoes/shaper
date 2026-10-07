@@ -200,7 +200,10 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
 
   const DESKTOP_CASES = [
     { path: "/design/outline", label: "TEMPLATE", expectedCount: 4 },
-    { path: "/design/rocker", label: "ROCKER", expectedCount: 3 },
+    // Quick 261006-qfm added the blank-from-above toggle as ROCKER's fourth, DOM-last button, so it
+    // sits 120px in on the same 40px step; the phone describe is unchanged, because the button is
+    // hidden below 820.
+    { path: "/design/rocker", label: "ROCKER", expectedCount: 4 },
     { path: "/design/rails", label: "RAILS", expectedCount: 1 },
   ] as const;
 

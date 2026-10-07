@@ -57,9 +57,20 @@
  * than the full phone width (D-18) — do not "fix" this by narrowing `rocker-view-frame.ts`'s
  * card-rail reservation or reintroducing a shorter pinned-area ceiling; both were considered and
  * set aside.
+ *
+ * Quick 261006-qfm (2026-10-06) adds the blank seen from above (`rocker-top-view.tsx`), the one part
+ * of the fit the side view cannot show. On a computer it is a small drawing on its own plate over the
+ * VIEWER panel's top-left corner, beside the side view and not at its scale, with a fourth toolbar
+ * button to hide and show it; it turns with the Rotate button. On an upright phone, a phone held
+ * sideways, or any narrow or short window there is no room for it beside the side view, so a third
+ * tab, TOP VIEW, holds it instead (D-03, D-04, D-09). Which of the two exists is one derived boolean,
+ * so the top view is never drawn twice. Wide view's `bare` stays safe: TOP VIEW is never the active
+ * tab while wide view is on, because the button that starts wide view lives on VIEWER and TOP VIEW
+ * only exists on a small screen, where that button is absent. Wide view leaves the mini display as
+ * it is. The side view itself is untouched by all of this.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
@@ -68,18 +79,32 @@ import { Button } from "@/components/ui/button";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
-import { RotateBoardIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import {
+  BlankTopViewIcon,
+  RotateBoardIcon,
+  ViewerToolbar,
+  ViewerToolbarButton,
+} from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { boardLine } from "@/lib/geometry/blank-reasons";
+import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
+import { RockerTopView, TOP_VIEW_SAMPLES, TopViewInset } from "./rocker-top-view";
 import { RockerViewer } from "./rocker-viewer";
 
-type RockerTab = "viewer" | "datasheet";
+type RockerTab = "viewer" | "datasheet" | "topView";
 const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
   { id: "datasheet", label: "DATASHEET" },
+];
+/** On an upright phone, a phone held sideways, or a narrow or short window, the blank seen from
+ * above has no room beside the side view, so it gets a third tab, after DATASHEET so VIEWER and
+ * DATASHEET keep their places (quick 261006-qfm, D-04, D-09). */
+const ROCKER_TABS_SMALL_SCREEN: readonly PanelTab<RockerTab>[] = [
+  ...ROCKER_TABS,
+  { id: "topView", label: "TOP VIEW" },
 ];
 
 export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
@@ -122,7 +147,12 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
    * plain computed value, never a second piece of state kept in sync by an effect or a
    * render-time setState — this codebase's lint config rejects both. */
   const [measuringPointsOverride, setMeasuringPointsOverride] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<RockerTab>("viewer");
+  /** The tab the shaper last picked. What actually shows is `activeTab` below, derived from it. */
+  const [requestedTab, setRequestedTab] = useState<RockerTab>("viewer");
+  /** Whether the blank seen from above shows in the VIEWER panel's corner on a computer (quick
+   * 261006-qfm, D-03). View state, like `orientation` — not design data, never persisted, so a
+   * reload always comes back with it showing. Wide view leaves it alone. */
+  const [showTopView, setShowTopView] = useState(true);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** Wide view hides the `aside` below so `main` gets the full window width. Local view state, not
    * design data, deliberately not persisted — a reload always comes back with the sidebar showing.
@@ -147,6 +177,33 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
       ? "vertical"
       : "horizontal"
     : orientation;
+
+  // Quick 261006-qfm (D-04): a small screen — below the shell breakpoint, or short — has no room
+  // for the top view beside the side view, so it moves into its own TOP VIEW tab. Both hooks read
+  // the same lines the CSS layout rules draw; they decide which tabs exist, never the layout.
+  // Both hooks are called on every render, never short-circuited (the rules of hooks).
+  const belowShellWidth = ViewerMedia.useBelowShellWidth();
+  const shortScreen = ViewerMedia.useShortScreen();
+  const smallScreen = belowShellWidth || shortScreen;
+  const tabs = smallScreen ? ROCKER_TABS_SMALL_SCREEN : ROCKER_TABS;
+  // DERIVED, not stored: a window that crosses the line while TOP VIEW is open simply lands on
+  // VIEWER, because the requested tab is no longer in the list. This codebase's lint config rejects
+  // the alternatives (setting state in an effect, or during render), and a derived value is the
+  // one way left that never shows a tab that does not exist.
+  const activeTab: RockerTab = tabs.some((tab) => tab.id === requestedTab) ? requestedTab : "viewer";
+
+  // The top view, built once and handed to whichever place draws it (the corner on a computer, the
+  // tab on a small screen) — `buildBlankTopView` works out every number (CLAUDE.md Rule 1).
+  const topView = useMemo(
+    () =>
+      buildBlankTopView({
+        blank: sideProfile.blank,
+        geometry: outlineGeometry,
+        length: sideProfile.length,
+        samples: TOP_VIEW_SAMPLES,
+      }),
+    [sideProfile.blank, outlineGeometry, sideProfile.length],
+  );
 
   // The measuring points start OFF on every pointer (Phase 11 UI-SPEC section 10). The old
   // construction overlay started on for a touch device only so a thumb could find its drag
@@ -228,10 +285,10 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
       canvas={
         <TabbedPanel
           bare={wideView}
-          tabs={ROCKER_TABS}
+          tabs={tabs}
           active={activeTab}
-          onSelect={setActiveTab}
-          compactOnPhone={activeTab === "viewer" ? "drawing" : "text"}
+          onSelect={setRequestedTab}
+          compactOnPhone={activeTab === "datasheet" ? "text" : "drawing"}
         >
           {activeTab === "viewer" ? (
             // `relative` makes this div the positioning context for the two toolbar buttons
@@ -286,13 +343,48 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
                 >
                   {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
                 </ViewerToolbarButton>
+                <ViewerToolbarButton
+                  onClick={() => setShowTopView((shown) => !shown)}
+                  pressed={showTopView}
+                  label={showTopView ? "Hide the blank from above" : "Show the blank from above"}
+                  // Quick 261006-qfm, D-03. The founder, 2026-10-06: "On a large desktop screen,
+                  // the mini blank/board image can be turned on/off by another button." DOM-last,
+                  // so it lands at the far left of the row. Absent on a phone and on a short screen,
+                  // where the top view has its own TOP VIEW tab instead and there is no corner
+                  // drawing to hide — the same two lines `smallScreen` above reads.
+                  className="max-shell:hidden [@media(max-height:500px)]:hidden"
+                >
+                  <BlankTopViewIcon className="size-6" />
+                </ViewerToolbarButton>
               </ViewerToolbar>
+              {!smallScreen && showTopView && (
+                <TopViewInset
+                  topView={topView}
+                  length={sideProfile.length}
+                  blank={sideProfile.blank ?? undefined}
+                  orientation={boardOrientation}
+                  showMeasuringPoints={showMeasuringPoints}
+                />
+              )}
               <RockerViewer
                 profile={sideProfile}
                 blank={sideProfile.blank ?? undefined}
                 orientation={boardOrientation}
                 showMeasuringPoints={showMeasuringPoints}
                 fitToBoard
+              />
+            </div>
+          ) : activeTab === "topView" ? (
+            // The TOP VIEW tab (quick 261006-qfm, D-04): the same drawing as the computer's corner
+            // one, filling the panel the way VIEWER's side view does, standing up or lying flat
+            // with the board. No toolbar of its own; the measuring points follow VIEWER's toggle.
+            <div className="relative flex min-h-0 flex-1 items-center justify-center">
+              <RockerTopView
+                topView={topView}
+                length={sideProfile.length}
+                blank={sideProfile.blank ?? undefined}
+                orientation={boardOrientation}
+                showMeasuringPoints={showMeasuringPoints}
               />
             </div>
           ) : (

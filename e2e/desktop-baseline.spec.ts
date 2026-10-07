@@ -1,6 +1,19 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * RE-RECORDED 2026-10-06 (quick task 261006-qfm) — ROCKER only, `rocker-desktop.png`, for the blank
+ * seen from above: the VIEWER toolbar gains a fourth button at the left end of the row (hide / show
+ * the blank from above, on by default, so it draws in its pressed colour), and a small drawing of
+ * the default board seen from above now sits on its own plate over the panel's top-left corner. The
+ * side view itself did not move. The diff image, inspected before re-recording, showed exactly two
+ * changed areas — the new button and the corner drawing's plate and outline (2032 pixels) — with
+ * the side view, its station cards, the sidebar and the top bar untouched. TEMPLATE, RAILS, VOLUME
+ * and FINS were not re-recorded and are byte-for-byte what they were (SHA-256 ef4fa37e…c0 outline,
+ * 6c2c6b2b…73 rails, 4c0d673a…d9 volume, a925ba15…62 fins); ROCKER went from 5c8698df…0d to
+ * 175341c0…3e. The new PNG was rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3143)
+ * in the 261006-qfm worktree on this Mac; if the orchestrator's Turbopack run from the main checkout
+ * disagrees, it may re-record ROCKER once there, as the earlier entries say.
+ *
  * RE-RECORDED 2026-09-26 (quick task 260926-uub) — ROCKER and VOLUME only, `rocker-desktop.png` and
  * `volume-desktop.png`, for the founder's new default tips: a new board now starts with a 1/2" nose
  * tip and a 5/8" tail tip. On ROCKER the Nose Tip and Tail Tip station labels over the drawing now

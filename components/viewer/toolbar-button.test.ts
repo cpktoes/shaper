@@ -69,7 +69,9 @@ describe("viewer toolbar button extraction (05-06)", () => {
     // TEMPLATE's count grew to 5 with the last-edit ghost button (quick 260930-lia) — Rotate,
     // Export Template, construction lines, wide view, and the conditionally-rendered ghost toggle.
     expect(outlineSource.match(/<ViewerToolbarButton/g)?.length).toBe(5);
-    expect(rockerSource.match(/<ViewerToolbarButton/g)?.length).toBe(3);
+    // ROCKER's count grew to 4 with the blank-from-above toggle (quick 261006-qfm) — Rotate,
+    // measuring points, wide view, and the toggle that hides and shows the corner drawing.
+    expect(rockerSource.match(/<ViewerToolbarButton/g)?.length).toBe(4);
   });
 
   // 260909-hd9: all three editors — outline, rocker AND rails — draw their floating icons inside

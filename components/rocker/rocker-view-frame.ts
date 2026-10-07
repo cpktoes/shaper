@@ -806,6 +806,139 @@ export function rockerViewLayout({
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The top view (quick 261006-qfm): the picked blank seen from above with the board's outline on
+// it, drawn small in the corner of the VIEWER panel on a computer and in its own TOP VIEW tab on a
+// phone (`rocker-top-view.tsx`). Its frame is its own, NOT the side view's: the founder, 2026-10-06,
+// "The blank/board top view does not need to be the same scale. It can be a mini display, it's
+// really just for reference only." `rockerViewLayout` above is untouched by it.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Measuring-point dot radius, in CSS pixels — a marker is a UI affordance, not board geometry, so
+ * it holds a constant on-screen size rather than scaling with the drawing (the same size the
+ * construction overlay's plain knot dots always drew at). Divided by the live fit scale at render.
+ * (Moved here from `rocker-viewer.tsx` by quick 261006-qfm, D-13, so the side view and the top view
+ * read the one value.)
+ */
+export const KNOT_DOT_PX = 3;
+/** The blank silhouette's outline, in CSS pixels — screen-pinned like the dots above, so the
+ * blank's line stays a faint hairline behind the board's own 2-unit outline at any panel size.
+ * (Moved here from `rocker-viewer.tsx` by quick 261006-qfm, D-13; the top view draws the blank's
+ * outline at the same weight.) */
+export const BLANK_LINE_PX = 1;
+
+/** The pad round the top view's drawn extent, in SVG user units — the side view's own bare pad,
+ * so a stroked edge is never half-clipped (D-14). */
+export const TOP_VIEW_EDGE_PAD = BARE_PAD;
+
+/**
+ * The board's outline in the top view, in CSS pixels (D-17). The mini display draws at about 0.22
+ * to 0.28 pixels per unit (measured on a 1024 × 768 window, 2026-10-06), where a 2-unit outline
+ * would be half a pixel — so every line in the top view is pinned to the screen, multiplied by the
+ * drawing's own `handleUnit` the way `BLANK_LINE_PX` already is. 1.5 sits between the blank's
+ * hairline and a full-size drawing's ink: the planner's pick, for the founder to overrule from the
+ * pictures.
+ */
+export const TOP_VIEW_BOARD_LINE_PX = 1.5;
+/** The stringer and the three blank marks in the top view, in CSS pixels (D-17) — a 1-unit line
+ * would be a quarter of a pixel in the mini display, and the marks the founder asked for would
+ * vanish. */
+export const TOP_VIEW_MARK_LINE_PX = 1;
+/**
+ * The stringer's dash-dot in the top view, in CSS pixels (D-17): the same numbers as
+ * `app/globals.css`'s `--outline-stringer-dash`, read here in screen pixels and multiplied by
+ * `handleUnit`, because a CSS variable's list cannot be multiplied inside an SVG attribute.
+ * `rocker-view-frame.test.ts` reads the stylesheet and fails if the two ever disagree.
+ */
+export const TOP_VIEW_STRINGER_DASH_PX = [16, 4, 4, 4] as const;
+/** The 12" marks' dash in the top view, in CSS pixels (D-17): the same numbers as
+ * `--outline-station-dash`, kept equal by the same test. */
+export const TOP_VIEW_STATION_DASH_PX = [5, 4] as const;
+
+export interface RockerTopViewLayoutInput {
+  /** The board's length, in inches. */
+  lengthIn: number;
+  /** The widest half-width anywhere in the drawing (blank or board), in inches. */
+  halfWidthIn: number;
+  /** How far the blank reaches past the board's tail tip, in inches (0 without a blank). */
+  tailOverhangIn: number;
+  /** How far the blank reaches past the board's nose tip, in inches (0 without a blank). */
+  noseOverhangIn: number;
+  orientation: RockerViewOrientation;
+}
+
+export interface RockerTopViewLayout {
+  /** SVG user units per inch. */
+  scale: number;
+  /** The board's nose sits this far in from `PAD_X`, where the drawn extent's nose end lands. */
+  boardOffsetX: number;
+  /** The stringer's y, in the canonical (nose-left) frame. Always 0: the drawing is symmetric. */
+  centerY: number;
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+  /** The four frame numbers above, each at two decimals, ready for an svg `viewBox` attribute. */
+  viewBox: string;
+}
+
+/**
+ * The top view's own frame, for the TOP VIEW tab and the mini display alike (D-03, D-04) — a tight
+ * box round the drawn extent, NOT at the side view's scale (the founder's 2026-10-06 decision). The
+ * drawn span — the board plus however far the blank reaches past each tip — fills the same 820-unit
+ * drawing area the side view's fit-to-board rule uses, the extent's nose end on `PAD_X`, the
+ * stringer on y = 0, with `TOP_VIEW_EDGE_PAD` all round.
+ *
+ * Nose-up the content group is turned with `rotate(90)`, so a canonical `(x, y)` lands at `(-y, x)`;
+ * the nose-up box is built from those turned extents, not by swapping the nose-left numbers.
+ *
+ * A corrupt saved board must not blank the screen (T-11-22, T-qfm-02): a corrupt length resolves
+ * like the side view's, and a corrupt overhang or half-width reads as 0.
+ */
+export function rockerTopViewLayout({
+  lengthIn,
+  halfWidthIn,
+  tailOverhangIn,
+  noseOverhangIn,
+  orientation,
+}: RockerTopViewLayoutInput): RockerTopViewLayout {
+  const tail = resolveSpanIn(tailOverhangIn);
+  const nose = resolveSpanIn(noseOverhangIn);
+  const halfWidth = resolveSpanIn(halfWidthIn);
+  const scale = resolveScale(lengthIn, true, tail + nose);
+  const boardOffsetX = nose * scale;
+  const centerY = 0;
+  const span = (resolveEffectiveLengthIn(lengthIn) + tail + nose) * scale;
+
+  // The canonical (nose-left) box.
+  const flatMinX = PAD_X - TOP_VIEW_EDGE_PAD;
+  const flatMaxX = PAD_X + span + TOP_VIEW_EDGE_PAD;
+  const flatMinY = centerY - (halfWidth * scale + TOP_VIEW_EDGE_PAD);
+  const flatMaxY = centerY + (halfWidth * scale + TOP_VIEW_EDGE_PAD);
+
+  let minX: number;
+  let maxX: number;
+  let minY: number;
+  let maxY: number;
+  if (orientation === "vertical") {
+    // `(x, y)` → `(-y, x)`: the turned box's x runs over -y, its y over x.
+    minX = -flatMaxY;
+    maxX = -flatMinY;
+    minY = flatMinX;
+    maxY = flatMaxX;
+  } else {
+    minX = flatMinX;
+    maxX = flatMaxX;
+    minY = flatMinY;
+    maxY = flatMaxY;
+  }
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const viewBox = `${minX.toFixed(2)} ${minY.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)}`;
+  return { scale, boardOffsetX, centerY, minX, minY, width, height, viewBox };
+}
+
 /** Per-character em-advance table for the bold body face this drawing's readings are set in — an
  * advance ESTIMATE for sizing decisions, not a text-metrics engine. `compactRailReadingXs`'s own
  * separation sweep is what actually protects the layout from a mis-estimated width; this table

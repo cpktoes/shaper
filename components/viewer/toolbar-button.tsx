@@ -5,7 +5,8 @@
  * the TEMPLATE screen (`components/outline/outline-editor.tsx`), the ROCKER screen
  * (`components/rocker/rocker-editor.tsx`) and the RAILS screen
  * (`components/rails/rail-band-editor.tsx`), each holding a handful of icon buttons (Rotate,
- * Construction Lines, Wide view, Export Template, or on RAILS, View Full Sized).
+ * Construction Lines, Wide view, Export Template, or on RAILS, View Full Sized). ROCKER's row also
+ * holds the blank-from-above toggle on a computer (quick 261006-qfm, `BlankTopViewIcon` below).
  *
  * The three screens used to hand-mirror this button: the same border/radius/padding class
  * string, the same absolute box treatment, the same hover-accent fill, and the same
@@ -185,6 +186,28 @@ export function RotateBoardIcon({ className }: { className?: string }) {
       </g>
       <path d="M14.5 6.5A8 8 0 0 0 4.5 11.8" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
       <path d="M4.29 13.89 3.06 11.66 5.94 11.94Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
+ * The glyph on ROCKER's "Hide / Show the blank from above" toggle (quick 261006-qfm). The founder,
+ * 2026-10-06: "On a large desktop screen, the mini blank/board image can be turned on/off by another
+ * button." It pictures what the button shows: a blank seen from above, a board inside it pointed at
+ * the left (its nose, as ROCKER draws nose-left), and the stringer's dash-dot running through both.
+ * It is the ONE glyph for both states — only the button's label changes, like `RotateBoardIcon`.
+ */
+export function BlankTopViewIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <rect x={2.5} y={6.5} width={19} height={11} rx={3.5} stroke="currentColor" strokeWidth={1.25} />
+      <path
+        d="M5 12C7.6 9.4 11.5 8.8 15.2 8.8 17.6 8.8 19 10 19 12 19 14 17.6 15.2 15.2 15.2 11.5 15.2 7.6 14.6 5 12Z"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
+      <path d="M1.5 12H22.5" stroke="currentColor" strokeWidth={1} strokeDasharray="3 1.5 1 1.5" />
     </svg>
   );
 }

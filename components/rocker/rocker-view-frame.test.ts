@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import {
   BARE_PAD,
+  BLANK_LINE_PX,
+  KNOT_DOT_PX,
   BOTTOM_RAIL_GAP,
   CARD_GUTTER,
   CARD_NAME_DY,
@@ -28,6 +32,11 @@ import {
   STATION_CARD_WIDTH,
   STATION_NAME_SIZE,
   STATION_VALUE_SIZE,
+  TOP_VIEW_BOARD_LINE_PX,
+  TOP_VIEW_EDGE_PAD,
+  TOP_VIEW_MARK_LINE_PX,
+  TOP_VIEW_STATION_DASH_PX,
+  TOP_VIEW_STRINGER_DASH_PX,
   VIEW_W,
   bottomCardBandDepth,
   cardBandDepth,
@@ -38,6 +47,7 @@ import {
   maxCardPinScale,
   railLabelBandDepth,
   railLabelRunWidth,
+  rockerTopViewLayout,
   rockerViewLayout,
   stationCardRect,
   type RockerCardSide,
@@ -1801,6 +1811,130 @@ describe("rockerViewLayout — cards never collide at the ceiling scale (mirrors
           expect(card.y + card.height).toBeLessThanOrEqual(layout.minY + layout.height);
         }
       }
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The top view's own small frame (quick 261006-qfm). The blank and the board seen from above get
+// their own frame — the mini display on a computer and the TOP VIEW tab on a phone both read it —
+// at their own scale, not the side view's (the founder, 2026-10-06: "The blank/board top view does
+// not need to be the same scale. It can be a mini display, it's really just for reference only.").
+// Nothing above this line changed: the side view's frame is untouched.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+const TOP_VIEW_HALF_WIDTHS_IN = [9.5, 12.5, 16.5];
+const TOP_VIEW_OVERHANGS = [
+  { tailOverhangIn: 0, noseOverhangIn: 0 },
+  { tailOverhangIn: 1.5, noseOverhangIn: 2.5 },
+  { tailOverhangIn: 6, noseOverhangIn: 0 },
+];
+
+describe("rockerTopViewLayout — the top view's own frame (quick 261006-qfm)", () => {
+  it("fits the whole drawn span into the drawing area, the board's nose sitting the nose overhang in", () => {
+    for (const lengthIn of SPAN_LENGTHS_IN) {
+      for (const { tailOverhangIn, noseOverhangIn } of TOP_VIEW_OVERHANGS) {
+        for (const orientation of ORIENTATIONS) {
+          const layout = rockerTopViewLayout({ lengthIn, halfWidthIn: 9.5, tailOverhangIn, noseOverhangIn, orientation });
+          const scale = (VIEW_W - 2 * PAD_X) / (lengthIn + tailOverhangIn + noseOverhangIn);
+          expect(layout.scale).toBeCloseTo(scale, 12);
+          expect(layout.boardOffsetX).toBeCloseTo(noseOverhangIn * scale, 12);
+          expect(layout.centerY).toBe(0);
+        }
+      }
+    }
+  });
+
+  it("holds the drawn extent's four corners inside the frame, both orientations", () => {
+    for (const lengthIn of SPAN_LENGTHS_IN) {
+      for (const halfWidthIn of TOP_VIEW_HALF_WIDTHS_IN) {
+        for (const { tailOverhangIn, noseOverhangIn } of TOP_VIEW_OVERHANGS) {
+          for (const orientation of ORIENTATIONS) {
+            const layout = rockerTopViewLayout({ lengthIn, halfWidthIn, tailOverhangIn, noseOverhangIn, orientation });
+            const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (lengthIn - stationIn) * layout.scale;
+            const frame = layout as unknown as Parameters<typeof expectInsideFrame>[0];
+            for (const x of [pxX(lengthIn + noseOverhangIn), pxX(-tailOverhangIn)]) {
+              for (const y of [layout.centerY - halfWidthIn * layout.scale, layout.centerY + halfWidthIn * layout.scale]) {
+                expectInsideFrame(frame, rendered(orientation, x, y));
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("measures 836.00 × 232.39 for a 72-inch board 19 inches wide, and the same turned nose-up", () => {
+    const flat = rockerTopViewLayout({ lengthIn: 72, halfWidthIn: 9.5, tailOverhangIn: 0, noseOverhangIn: 0, orientation: "horizontal" });
+    expect(flat.width).toBeCloseTo(836.0, 2);
+    expect(flat.height).toBeCloseTo(232.39, 2);
+    const up = rockerTopViewLayout({ lengthIn: 72, halfWidthIn: 9.5, tailOverhangIn: 0, noseOverhangIn: 0, orientation: "vertical" });
+    expect(up.width).toBeCloseTo(232.39, 2);
+    expect(up.height).toBeCloseTo(836.0, 2);
+  });
+
+  it("leaves exactly TOP_VIEW_EDGE_PAD round the drawn extent on every side", () => {
+    for (const orientation of ORIENTATIONS) {
+      const lengthIn = 78;
+      const halfWidthIn = 12.5;
+      const tailOverhangIn = 1.5;
+      const noseOverhangIn = 2.5;
+      const layout = rockerTopViewLayout({ lengthIn, halfWidthIn, tailOverhangIn, noseOverhangIn, orientation });
+      const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (lengthIn - stationIn) * layout.scale;
+      const corners = [pxX(lengthIn + noseOverhangIn), pxX(-tailOverhangIn)].flatMap((x) =>
+        [-halfWidthIn * layout.scale, halfWidthIn * layout.scale].map((y) => rendered(orientation, x, y)),
+      );
+      const xs = corners.map((p) => p.x);
+      const ys = corners.map((p) => p.y);
+      expect(Math.min(...xs) - layout.minX).toBeCloseTo(TOP_VIEW_EDGE_PAD, 9);
+      expect(layout.minX + layout.width - Math.max(...xs)).toBeCloseTo(TOP_VIEW_EDGE_PAD, 9);
+      expect(Math.min(...ys) - layout.minY).toBeCloseTo(TOP_VIEW_EDGE_PAD, 9);
+      expect(layout.minY + layout.height - Math.max(...ys)).toBeCloseTo(TOP_VIEW_EDGE_PAD, 9);
+      expect(layout.viewBox).toBe(
+        `${layout.minX.toFixed(2)} ${layout.minY.toFixed(2)} ${layout.width.toFixed(2)} ${layout.height.toFixed(2)}`,
+      );
+    }
+  });
+
+  it("turns a corrupt length, overhang or half-width into a finite frame, the overhang and half-width read as 0", () => {
+    const bad = [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -4, 0];
+    for (const orientation of ORIENTATIONS) {
+      for (const value of bad) {
+        for (const layout of [
+          rockerTopViewLayout({ lengthIn: value, halfWidthIn: 9.5, tailOverhangIn: 0, noseOverhangIn: 0, orientation }),
+          rockerTopViewLayout({ lengthIn: 72, halfWidthIn: value, tailOverhangIn: value, noseOverhangIn: value, orientation }),
+        ]) {
+          for (const n of [layout.scale, layout.boardOffsetX, layout.minX, layout.minY, layout.width, layout.height]) {
+            expect(Number.isFinite(n)).toBe(true);
+          }
+          expect(layout.width).toBeGreaterThan(0);
+          expect(layout.height).toBeGreaterThan(0);
+        }
+        const clean = rockerTopViewLayout({ lengthIn: 72, halfWidthIn: 0, tailOverhangIn: 0, noseOverhangIn: 0, orientation });
+        const corrupt = rockerTopViewLayout({ lengthIn: 72, halfWidthIn: value, tailOverhangIn: value, noseOverhangIn: value, orientation });
+        expect(corrupt).toEqual(clean);
+      }
+    }
+  });
+});
+
+describe("the top view's screen-pinned line weights and dashes (D-17, quick 261006-qfm)", () => {
+  const css = readFileSync(join(__dirname, "../../app/globals.css"), "utf8");
+  const token = (name: string) => {
+    const match = css.match(new RegExp(`${name}\\s*:\\s*([^;]+);`));
+    if (!match) throw new Error(`${name} is not declared in app/globals.css`);
+    return match[1].trim().replace(/\s+/g, " ");
+  };
+
+  it("draws the stringer and station dashes with the same numbers as the two CSS tokens", () => {
+    expect(TOP_VIEW_STRINGER_DASH_PX.join(" ")).toBe(token("--outline-stringer-dash"));
+    expect(TOP_VIEW_STATION_DASH_PX.join(" ")).toBe(token("--outline-station-dash"));
+  });
+
+  it("pins every line weight and dot to a finite, positive number of screen pixels", () => {
+    for (const value of [TOP_VIEW_BOARD_LINE_PX, TOP_VIEW_MARK_LINE_PX, BLANK_LINE_PX, KNOT_DOT_PX, TOP_VIEW_EDGE_PAD]) {
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeGreaterThan(0);
     }
   });
 });
