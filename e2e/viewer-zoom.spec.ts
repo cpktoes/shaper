@@ -1246,3 +1246,106 @@ test.describe("261007-fnz FINS zoom — fingers (Android, real touch input)", ()
     expect(await scrolls()).toEqual(scrollBefore);
   });
 });
+
+/* ── Plan 02: the TOP VIEW tab zooms; the computer's corner picture never does ─────────────── */
+
+/** The blank seen from above — the TOP VIEW tab's drawing on a phone, the corner picture on a computer. */
+function topViewSvg(page: Page): Locator {
+  return page.locator('svg[aria-label^="The board\'s outline seen from above"]').first();
+}
+
+async function openTopViewTab(page: Page) {
+  await openRocker(page);
+  await pickFirstFittingBlank(page);
+  await page.getByRole("tab", { name: "TOP VIEW" }).click();
+  await expect(topViewSvg(page)).toBeVisible();
+}
+
+test.describe("261007-fnz the TOP VIEW tab — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("a pinch zooms the TOP VIEW tab; at 3x one finger moves it and scrolls nothing; reset gives the finger back", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openTopViewTab(page);
+    const svg = topViewSvg(page);
+    const base = (await svg.getAttribute("viewBox")) ?? "";
+    await expect(page.locator("[data-viewer-zoom]")).toBeHidden();
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no TOP VIEW box");
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const cdp = await page.context().newCDPSession(page);
+    await pinch(cdp, at.x, at.y, 40, 120);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1);
+    await expect(zoomLevel(page)).toBeVisible();
+    await resetButton(page).click();
+    await expect(svg).toHaveAttribute("viewBox", base);
+
+    await wheelOn(svg, at, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))));
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+    const scrolls = () =>
+      page.evaluate(() => ({ main: document.querySelector("main")?.scrollTop ?? 0, window: window.scrollY }));
+    const scrollBefore = await scrolls();
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    await swipe(cdp, at.x, at.y, at.x + 40, at.y + 60, 6);
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(0);
+    expect(after.y).toBeLessThanOrEqual(before.y);
+    await page.waitForTimeout(300);
+    expect(await scrolls()).toEqual(scrollBefore);
+
+    await resetButton(page).click();
+    await expect(svg).toHaveAttribute("viewBox", base);
+    expect(await svg.evaluate((el) => getComputedStyle(el).touchAction)).toBe("pan-x pan-y");
+  });
+});
+
+test.describe("261007-fnz the TOP VIEW tab — iPhone", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "an iPhone");
+  });
+
+  test("the TOP VIEW tab zooms in and its zoom row appears; at 1x nothing new is drawn", async ({ page }) => {
+    await dismissChrome(page);
+    await openTopViewTab(page);
+    const svg = topViewSvg(page);
+    await expect(page.locator("[data-viewer-zoom]")).toBeHidden();
+    await expect(page.locator("[data-zoom-grid]")).toHaveCount(0);
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no TOP VIEW box");
+    await wheelOn(svg, { x: box.x + box.width / 2, y: box.y + box.height * 0.2 }, 4);
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await expect(resetButton(page)).toBeVisible();
+  });
+});
+
+test.describe("261007-fnz the computer's corner picture of the blank never zooms", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("the wheel over the corner picture leaves it exactly as it was", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const inset = page.locator("[data-top-view-inset] svg");
+    await expect(inset).toBeVisible();
+    const viewBox = (await inset.getAttribute("viewBox")) ?? "";
+    const box = await inset.boundingBox();
+    if (!box) throw new Error("no corner picture");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(inset).toHaveAttribute("viewBox", viewBox);
+    await expect(page.locator("[data-top-view-inset] [data-zoom-grid]")).toHaveCount(0);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(inset).toHaveAttribute("viewBox", viewBox);
+  });
+});

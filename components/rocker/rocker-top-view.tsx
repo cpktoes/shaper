@@ -32,9 +32,12 @@
  * CLAUDE.md Rule 1) and the frame module; millimetres become inches through `mmToInches`.
  */
 
-import { useRef } from "react";
+import { useRef, type RefObject } from "react";
 import { useUnits } from "@/components/units-provider";
 import { useSvgFitScale, type ViewerOrientation } from "@/components/viewer/callout-primitives";
+import { useViewerZoom, type ViewerZoom } from "@/components/viewer/zoom-viewport";
+import { parseViewBox, rectInContentFrame } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import type { BlankTopView } from "@/lib/geometry/blank-top-view";
 import type { BlankSideView } from "@/lib/geometry/board-profile";
 import { stationLabel } from "@/lib/geometry/measure-display";
@@ -211,29 +214,75 @@ function topViewName(blank: BlankSideView | undefined, system: ReturnType<typeof
  * The top view as one fitted `<svg>`, filling whatever box holds it — the TOP VIEW tab's panel on a
  * phone, the mini display's plate on a computer. Nose-up is one `rotate(90)` group over the
  * canonical drawing, its frame built from its own turned content.
+ *
+ * `zoomable` (quick 261007-fnz, plan 02, 2026-10-07; D9, R4): only the TOP VIEW tab passes it, and
+ * there the drawing zooms like the side view — the wheel, a pinch, one finger to move it around
+ * once zoomed in, the zoom row in the tab's corner, a grid counted from the tail tip and the
+ * stringer. Without it — the computer's mini display, which sits inside the side view's own zoom
+ * provider and must never follow it — this is the component it always was: it never reads a zoom.
  */
-export function RockerTopView({ topView, length, blank, orientation, showMeasuringPoints }: RockerTopViewProps) {
-  const { system } = useUnits();
+export function RockerTopView({ zoomable = false, ...props }: RockerTopViewProps & { zoomable?: boolean }) {
+  return zoomable ? <ZoomableTopView {...props} /> : <TopViewSvg {...props} />;
+}
+
+/** The TOP VIEW tab's drawing: the top view wired to the nearest zoom provider (D2) with
+ * `touch: "pan"` — at 1x one finger is the browser's, zoomed in it moves the drawing (D6). */
+function ZoomableTopView(props: RockerTopViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const frame = topViewFrame(props.topView, props.length, props.orientation);
+  const zoom = useViewerZoom(svgRef, frame.viewBox, { touch: "pan" });
+  return <TopViewSvg {...props} zoomRef={svgRef} zoom={zoom} />;
+}
+
+function TopViewSvg({
+  topView,
+  length,
+  blank,
+  orientation,
+  showMeasuringPoints,
+  zoomRef,
+  zoom,
+}: RockerTopViewProps & { zoomRef?: RefObject<SVGSVGElement | null>; zoom?: ViewerZoom }) {
+  const { system } = useUnits();
+  const ownRef = useRef<SVGSVGElement>(null);
+  const svgRef = zoomRef ?? ownRef;
   const vertical = orientation === "vertical";
   const frame = topViewFrame(topView, length, orientation);
   const fitScale = useSvgFitScale(svgRef, frame.width, frame.height);
-  /** User units per CSS pixel — what every pinned weight is drawn in, guarded as the side view's. */
-  const handleUnit = fitScale > 0 ? 1 / fitScale : 1;
+  /** User units per CSS pixel — what every pinned weight is drawn in, guarded as the side view's.
+   * Times the zoom on the TOP VIEW tab (261007-fnz, D4), so every weight, dash and dot keeps its
+   * screen size at any zoom; exactly `1 / fitScale` at 1x and on the mini display. */
+  const handleUnit = fitScale > 0 ? 1 / (fitScale * (zoom?.zoom ?? 1)) : 1;
   const lengthIn = mmToInches(length);
   const pxX = (stationIn: number) => PAD_X + frame.boardOffsetX + (lengthIn - stationIn) * frame.scale;
+  const rotation = vertical ? 90 : 0;
+  const baseRect = zoom ? parseViewBox(frame.viewBox) : null;
 
   return (
     <svg
       ref={svgRef}
-      viewBox={frame.viewBox}
+      viewBox={zoom ? zoom.viewBox : frame.viewBox}
       preserveAspectRatio="xMidYMid meet"
       className="absolute inset-0 block h-full w-full select-none"
-      style={{ WebkitTouchCallout: "none" }}
+      {...zoom?.svgProps}
+      style={{ WebkitTouchCallout: "none", ...zoom?.svgProps.style }}
       role="img"
       aria-label={topViewName(blank, system)}
     >
       <g transform={vertical ? "rotate(90)" : undefined}>
+        {/* The grid (261007-fnz, D5): the TOP VIEW tab only, above 1x, behind the blank — counted
+            from the board's tail tip along it and the stringer across it, turning with it. */}
+        {zoom && baseRect && (
+          <ZoomGrid
+            zoom={zoom.zoom}
+            fitScale={fitScale}
+            unitsPerInch={frame.scale}
+            anchor={{ x: pxX(0), y: frame.centerY }}
+            bounds={rectInContentFrame(baseRect, rotation)}
+            visible={zoom.view ? rectInContentFrame(zoom.view, rotation) : null}
+            system={system}
+          />
+        )}
         <TopViewShapes
           topView={topView}
           pxX={pxX}
