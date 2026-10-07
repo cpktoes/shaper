@@ -128,7 +128,8 @@ each for the catalogue's 3", 6" and 12" last printed segments — in the app's o
    square-root curve, exactly, and every printed station still reads its printed number. The same rule would
    apply to a 0-wide tail, though no catalogue blank prints one. The founder's control point (B) was not chosen:
    it needs a handle share to pick. The width curve is shared with the fit check, so a board flagged too wide
-   inside the last printed station can come to fit once this is built.
+   inside the last printed station can come to fit once this is built. Built the same day in quick 261007-c3h
+   (`lib/geometry/round-tip.ts`; merged locally on main, the push on the founder's word).
 
 ## Open Questions
 

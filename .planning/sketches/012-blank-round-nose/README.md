@@ -83,6 +83,15 @@ point on the stringer, so the outline leaves the tip straight across the stringe
 printed width and at the curve's own slope. The two numbers that shape it come from the printed widths alone;
 nothing is set and nothing is stored. The control point (B) was not chosen: it needs a handle share to pick.
 
+## Built (2026-10-07)
+Quick task 261007-c3h, the same day: `lib/geometry/round-tip.ts` wraps the blank's width curve so a tip printed 0
+wide is the parabola from the tip inside the last printed station, applied under the live square-root rule only;
+`buildBlankTopView` adds 24 samples per tip spaced evenly in √(distance from the tip) so the drawn line stays within
+0.15 mm of the curve; the sketch's own `curves.js` is kept at `reference/sketches/012-round-nose-curves.js` and a
+golden generated from it (`scripts/extract-round-nose-golden.ts`) checks the app on all 43 affected blanks. Before and
+after pictures of the real screen are in the task folder's `pictures/`. Merged locally on main (1687852); the push
+waits for the founder's word.
+
 ## Pictures
 `pictures/`: `a-today-slate.png`, `b-control-point-slate.png` (and `-daylight`), `c-parabola-slate.png`,
 `side-by-side-slate.png` (and `-daylight`), and B on the Longboard at 20% and 50% handles.
