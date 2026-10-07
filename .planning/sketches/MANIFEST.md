@@ -70,7 +70,7 @@ each for the catalogue's 3", 6" and 12" last printed segments — in the app's o
 | 009 | phone-swipe-rack | On a phone or iPad, how does swiping along a sideways board rack feel, with the middle board turned to its outline? | **B — Turns as it passes** (in 010's Drawing look) | phone, home, board-rack, interaction, motion |
 | 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | **A — Drawing rack**, turn follows the cursor | desktop, home, board-rack, interaction, motion, reorder |
 | 011 | phone-rack-reorder | On a phone, where a sideways drag already swipes the rack, how does a shaper move a board to a new place? | **A — Hold and drag** (tried on a phone) | phone, home, board-rack, reorder, interaction |
-| 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | — (for the founder's pick) | viewer, rocker, top-view, blank, geometry |
+| 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 
 ## Decisions These Lock In
 
@@ -119,6 +119,16 @@ each for the catalogue's 3", 6" and 12" last printed segments — in the app's o
    2026-10-05, tried on the founder's phone) — a quick swipe still moves the rack; a held board turns blue and
    follows the thumb, the others slide over, a mark shows the gap, and near the screen's edge the rack scrolls
    along; the dropped board comes to the middle and turns. The heading reads "hold to move".
+
+15. **A nose printed 0 wide is drawn round, by a parabola from the tip** (sketch 012 C; the founder, 2026-10-07:
+   "C looks great and seems like the simplest update too") — inside the last printed width station the blank's
+   half-width is a·√d + b·d, d the distance in from the tip, so the outline leaves the tip straight across the
+   stringer and meets that station at its printed width and at the curve's own slope. The two numbers come from
+   the printed widths alone: nothing is set, nothing is stored. Everything from that station back is today's
+   square-root curve, exactly, and every printed station still reads its printed number. The same rule would
+   apply to a 0-wide tail, though no catalogue blank prints one. The founder's control point (B) was not chosen:
+   it needs a handle share to pick. The width curve is shared with the fit check, so a board flagged too wide
+   inside the last printed station can come to fit once this is built.
 
 ## Open Questions
 

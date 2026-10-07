@@ -2,7 +2,7 @@
 sketch: 012
 name: blank-round-nose
 question: "When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view?"
-winner: null
+winner: "C"
 tags: [viewer, rocker, top-view, blank, geometry]
 ---
 
@@ -38,7 +38,7 @@ off; on B it also has the handle-length slider. The ⚙ tools switch Slate / Day
   kinks; its handle at the tip points straight across the stringer, so the outline arrives perpendicular. Both
   handles are a share of the chord between the two points — a third by default (3 1/2" on the 7'4"SP), the
   slider runs 15% to 60%.
-- **C: Parabola from the tip**: inside the last printed station the half-width is a·√d + b·d, d the distance in
+- **C: Parabola from the tip ★ (the founder's pick)**: inside the last printed station the half-width is a·√d + b·d, d the distance in
   from the tip — a parabola with its point on the stringer, which is the shape every round nose has at its very
   tip — with a and b fixed by the printed width at the station and today's slope there. Nothing to set. At the
   tip it rounds like a circle of radius 8" to 12" on these five blanks (the circle through the tip and the last
@@ -75,6 +75,13 @@ points switch off and on.
 - B stores nothing new if the handle share is a constant; C stores nothing at all. The side view and the fit's
   thickness curve are untouched: this is width only.
 - The same rule would apply to a 0-wide tail, though no catalogue blank prints one.
+
+## Outcome (2026-10-07)
+**Winner: C, the parabola from the tip**, chosen by the founder from the page: "C looks great and seems like
+the simplest update too." Inside the last printed width station a blank's nose is drawn as a parabola with its
+point on the stringer, so the outline leaves the tip straight across the stringer and meets that station at its
+printed width and at the curve's own slope. The two numbers that shape it come from the printed widths alone;
+nothing is set and nothing is stored. The control point (B) was not chosen: it needs a handle share to pick.
 
 ## Pictures
 `pictures/`: `a-today-slate.png`, `b-control-point-slate.png` (and `-daylight`), `c-parabola-slate.png`,
