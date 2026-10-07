@@ -51,6 +51,15 @@
  * Every slider commits its own number through `measureSlider`'s conversion at its call site, and
  * every number reads through `lib/geometry/measure-display.ts` (CLAUDE.md Rule 2). Every control is
  * on screen from the moment the page opens, on a phone the same as on a desktop.
+ *
+ * Quick 261006-v20 (2026-10-06): the sidebar follows the tab in view (D-01). On VIEWER every control
+ * is live, as before; on DATASHEET only Center Thickness and THICKNESS's Nose Tip and Tail Tip; on TOP
+ * VIEW (small screens only) only the BLANK section and BOARD ON BLANK's Placement. Every other group
+ * stays exactly where it is, dimmed and inert, never hidden (D-02), through the one `Live` wrapper
+ * (`live.tsx`). Which group is live on which tab is the pure table in `rocker-live-controls.ts`, read
+ * once per render as `live`. A section that is wholly not live has its heading wrapped too; where only
+ * part of a section is (THICKNESS on DATASHEET, BOARD ON BLANK on either tab) the heading stays live
+ * and each row gets its own wrapper, so the column's `gap-3.5` stays exactly where it is (D-11).
  */
 
 import { type ReactNode } from "react";
@@ -87,6 +96,8 @@ import { cn } from "@/lib/utils";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { BlankPicker } from "./blank-picker";
 import { BoardOnBlankSection } from "./board-on-blank";
+import { Live } from "./live";
+import { liveControls, type RockerTab } from "./rocker-live-controls";
 
 export type RockerControlsSectionKey = "center" | "blank" | "boardOnBlank" | "rocker" | "thickness";
 
@@ -110,6 +121,8 @@ const FINE_TUNE_SURFACE_HINT: Record<FineTuneSurface, string> = {
 };
 
 interface RockerControlsProps {
+  /** The tab in view — the editor's derived `activeTab`, never the requested one (quick 261006-v20). */
+  tab: RockerTab;
   /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
   blanks: Promise<BlankCatalogResult>;
   /** The board's hand-set rocker (D-14) — four typed stations, the centre always 0. */
@@ -291,6 +304,7 @@ function ThinningStartRow({
 }
 
 export function RockerControls({
+  tab,
   blanks,
   rocker,
   foil,
@@ -316,56 +330,61 @@ export function RockerControls({
   // The typed field's bounds in ITS own domain (whole millimetres in Metric, inches in Imperial).
   const centerFieldBounds = typedFieldBounds(centerSlider, "mark", system);
   const view = blank ? sideProfile.blank : null;
+  const live = liveControls(tab);
   const noTweak = !blank || (blank.nose12Offset === 0 && blank.tail12Offset === 0);
   const station = stationLabel(system);
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <SectionHeading open={sectionOpen.center} onToggle={() => onToggleSectionOpen("center")}>
-          Center Thickness
-        </SectionHeading>
-        {sectionOpen.center && (
-          <div className="pt-3">
-            {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
-                the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm text-surf-ink-muted font-normal">Center Thickness</span>
-              <MeasureField
-                value={foil.center}
-                onCommit={(next) => onChangeFoil({ center: next })}
-                label="Center Thickness"
-                family="mark"
-                min={centerFieldBounds.min}
-                max={centerFieldBounds.max}
-                system={system}
+      <Live on={live.center}>
+        <div>
+          <SectionHeading open={sectionOpen.center} onToggle={() => onToggleSectionOpen("center")}>
+            Center Thickness
+          </SectionHeading>
+          {sectionOpen.center && (
+            <div className="pt-3">
+              {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
+                  the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-sm text-surf-ink-muted font-normal">Center Thickness</span>
+                <MeasureField
+                  value={foil.center}
+                  onCommit={(next) => onChangeFoil({ center: next })}
+                  label="Center Thickness"
+                  family="mark"
+                  min={centerFieldBounds.min}
+                  max={centerFieldBounds.max}
+                  system={system}
+                />
+              </div>
+              <Slider
+                value={centerSlider.value}
+                min={centerSlider.min}
+                max={centerSlider.max}
+                step={centerSlider.step}
+                onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
+                className="slider-accent"
               />
+              <div className="mt-2 text-xs text-surf-ink-muted font-normal">
+                The board&apos;s one center thickness — Rails and Volume read it too.
+              </div>
             </div>
-            <Slider
-              value={centerSlider.value}
-              min={centerSlider.min}
-              max={centerSlider.max}
-              step={centerSlider.step}
-              onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
-              className="slider-accent"
-            />
-            <div className="mt-2 text-xs text-surf-ink-muted font-normal">
-              The board&apos;s one center thickness — Rails and Volume read it too.
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </Live>
 
-      <div>
-        <SectionHeading open={sectionOpen.blank} onToggle={() => onToggleSectionOpen("blank")}>
-          Blank
-        </SectionHeading>
-        {sectionOpen.blank && (
-          <div className="pt-3">
-            <BlankPicker catalog={blanks} />
-          </div>
-        )}
-      </div>
+      <Live on={live.blank}>
+        <div>
+          <SectionHeading open={sectionOpen.blank} onToggle={() => onToggleSectionOpen("blank")}>
+            Blank
+          </SectionHeading>
+          {sectionOpen.blank && (
+            <div className="pt-3">
+              <BlankPicker catalog={blanks} />
+            </div>
+          )}
+        </div>
+      </Live>
 
       <div>
         <SectionHeading open={sectionOpen.boardOnBlank} onToggle={() => onToggleSectionOpen("boardOnBlank")}>
@@ -373,201 +392,228 @@ export function RockerControls({
         </SectionHeading>
         {sectionOpen.boardOnBlank && (
           <div className="pt-3">
-            <BoardOnBlankSection />
+            <BoardOnBlankSection live={{ placement: live.placement, deckSkin: live.deckSkin }} />
           </div>
         )}
       </div>
 
       {!blank && (
+        <Live on={live.rocker}>
+          <div>
+            <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
+              Rocker
+            </SectionHeading>
+            {sectionOpen.rocker && (
+              <div className="flex flex-col gap-3.5 pt-3">
+                <div className="text-xs text-surf-ink-muted font-normal">
+                  Hand-set until you pick a blank — measured up from a flat surface with the board
+                  bottom-down.
+                </div>
+
+                <SliderRow
+                  label={`Nose Tip — ${formatMark(rocker.noseTip, system)}`}
+                  value={rockerNoseTipSlider.value}
+                  min={rockerNoseTipSlider.min}
+                  max={rockerNoseTipSlider.max}
+                  step={rockerNoseTipSlider.step}
+                  onValueChange={(v) => onChangeRocker({ noseTip: rockerNoseTipSlider.toMm(v) })}
+                />
+
+                <SliderRow
+                  label={`Nose @ ${station} — ${formatMark(rocker.nose12, system)}`}
+                  value={rockerNose12Slider.value}
+                  min={rockerNose12Slider.min}
+                  max={rockerNose12Slider.max}
+                  step={rockerNose12Slider.step}
+                  onValueChange={(v) => onChangeRocker({ nose12: rockerNose12Slider.toMm(v) })}
+                />
+
+                <SliderRow
+                  label={`Tail @ ${station} — ${formatMark(rocker.tail12, system)}`}
+                  value={rockerTail12Slider.value}
+                  min={rockerTail12Slider.min}
+                  max={rockerTail12Slider.max}
+                  step={rockerTail12Slider.step}
+                  onValueChange={(v) => onChangeRocker({ tail12: rockerTail12Slider.toMm(v) })}
+                />
+
+                <SliderRow
+                  label={`Tail Tip — ${formatMark(rocker.tailTip, system)}`}
+                  value={rockerTailTipSlider.value}
+                  min={rockerTailTipSlider.min}
+                  max={rockerTailTipSlider.max}
+                  step={rockerTailTipSlider.step}
+                  onValueChange={(v) => onChangeRocker({ tailTip: rockerTailTipSlider.toMm(v) })}
+                />
+              </div>
+            )}
+          </div>
+        </Live>
+      )}
+
+      <Live on={live.thicknessHeading}>
         <div>
-          <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
-            Rocker
+          <SectionHeading open={sectionOpen.thickness} onToggle={() => onToggleSectionOpen("thickness")}>
+            Thickness
           </SectionHeading>
-          {sectionOpen.rocker && (
+          {sectionOpen.thickness && (
             <div className="flex flex-col gap-3.5 pt-3">
               <div className="text-xs text-surf-ink-muted font-normal">
-                Hand-set until you pick a blank — measured up from a flat surface with the board
-                bottom-down.
+                {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}
               </div>
 
-              <SliderRow
-                label={`Nose Tip — ${formatMark(rocker.noseTip, system)}`}
-                value={rockerNoseTipSlider.value}
-                min={rockerNoseTipSlider.min}
-                max={rockerNoseTipSlider.max}
-                step={rockerNoseTipSlider.step}
-                onValueChange={(v) => onChangeRocker({ noseTip: rockerNoseTipSlider.toMm(v) })}
-              />
+              <Live on={live.tipThickness}>
+                <ThicknessRow
+                  label="Nose Tip"
+                  value={foil.noseTip}
+                  system={system}
+                  onChange={(next) => onChangeFoil({ noseTip: next })}
+                />
+              </Live>
 
-              <SliderRow
-                label={`Nose @ ${station} — ${formatMark(rocker.nose12, system)}`}
-                value={rockerNose12Slider.value}
-                min={rockerNose12Slider.min}
-                max={rockerNose12Slider.max}
-                step={rockerNose12Slider.step}
-                onValueChange={(v) => onChangeRocker({ nose12: rockerNose12Slider.toMm(v) })}
-              />
+              {blank && view ? (
+                <>
+                  <Live on={live.fineTune}>
+                    <FineTuneRow
+                      label={`Nose @ ${station}`}
+                      finalThickness={sideProfile.effectiveFoil.nose12}
+                      derived={view.derived12.nose12}
+                      reachesStation={view.tips.nose.reachesStation}
+                      offset={blank.nose12Offset}
+                      system={system}
+                      onChange={(next) => onFineTune({ nose12Offset: next })}
+                    />
+                  </Live>
+                  <Live on={live.fineTune}>
+                    <FineTuneRow
+                      label={`Tail @ ${station}`}
+                      finalThickness={sideProfile.effectiveFoil.tail12}
+                      derived={view.derived12.tail12}
+                      reachesStation={view.tips.tail.reachesStation}
+                      offset={blank.tail12Offset}
+                      system={system}
+                      onChange={(next) => onFineTune({ tail12Offset: next })}
+                    />
+                  </Live>
+                  {/* Directly under the two 12" rows it governs (§5a); Tip Style stays last. */}
+                  <Live on={live.fineTune}>
+                    <div className="flex flex-col">
+                      <div className="mb-2 text-sm text-surf-ink-muted font-normal">Fine-tune off</div>
+                      <TwoOptionToggle
+                        options={["deck", "bottom"] as const}
+                        labels={["Deck", "Bottom"] as const}
+                        value={view.cut.fineTuneSurface}
+                        onChange={onFineTuneSurface}
+                        ariaLabel="Fine-tune off"
+                        className="self-start"
+                      />
+                      <div className="mt-2 text-xs text-surf-ink-muted font-normal">
+                        {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
+                      </div>
+                    </div>
+                  </Live>
+                </>
+              ) : (
+                <>
+                  <Live on={live.fineTune}>
+                    <ThicknessRow
+                      label={`Nose @ ${station}`}
+                      value={foil.nose12}
+                      system={system}
+                      onChange={(next) => onChangeFoil({ nose12: next })}
+                    />
+                  </Live>
+                  <Live on={live.fineTune}>
+                    <ThicknessRow
+                      label={`Tail @ ${station}`}
+                      value={foil.tail12}
+                      system={system}
+                      onChange={(next) => onChangeFoil({ tail12: next })}
+                    />
+                  </Live>
+                </>
+              )}
 
-              <SliderRow
-                label={`Tail @ ${station} — ${formatMark(rocker.tail12, system)}`}
-                value={rockerTail12Slider.value}
-                min={rockerTail12Slider.min}
-                max={rockerTail12Slider.max}
-                step={rockerTail12Slider.step}
-                onValueChange={(v) => onChangeRocker({ tail12: rockerTail12Slider.toMm(v) })}
-              />
+              <Live on={live.tipThickness}>
+                <ThicknessRow
+                  label="Tail Tip"
+                  value={foil.tailTip}
+                  system={system}
+                  onChange={(next) => onChangeFoil({ tailTip: next })}
+                />
+              </Live>
 
-              <SliderRow
-                label={`Tail Tip — ${formatMark(rocker.tailTip, system)}`}
-                value={rockerTailTipSlider.value}
-                min={rockerTailTipSlider.min}
-                max={rockerTailTipSlider.max}
-                step={rockerTailTipSlider.step}
-                onValueChange={(v) => onChangeRocker({ tailTip: rockerTailTipSlider.toMm(v) })}
-              />
+              {blank && (
+                // Stays in place when there is nothing to reset — dimmed and inert, so the rows
+                // above never shift. No confirmation: undo brings the tweaks back. Its `self-start`
+                // keeps working inside the `flex flex-col` wrapper (quick 261006-v20, D-10).
+                <Live on={live.fineTune}>
+                  <button
+                    type="button"
+                    aria-disabled={noTweak ? "true" : undefined}
+                    tabIndex={noTweak ? -1 : undefined}
+                    onClick={() => {
+                      if (!noTweak) onResetFineTune();
+                    }}
+                    className={cn(
+                      "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+                      noTweak && "pointer-events-none opacity-40",
+                    )}
+                  >
+                    ↺ Reset Fine-Tune
+                  </button>
+                </Live>
+              )}
+
+              {view && (
+                // At its natural width — "those who want it will find it" (§4); only the two Thinning
+                // Starts rows come after it (Phase 14, D-10).
+                <Live on={live.tipStyle}>
+                  <div className="flex flex-col">
+                    <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
+                    <TwoOptionToggle
+                      options={["pinDeck", "bottom"] as const}
+                      labels={["Pin deck", "Bottom"] as const}
+                      value={view.cut.tipStyle}
+                      onChange={onTipStyle}
+                      ariaLabel="Tip Style"
+                      className="self-start"
+                    />
+                    <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
+                  </div>
+                </Live>
+              )}
+
+              {view && (
+                // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
+                // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
+                <>
+                  <Live on={live.thinning}>
+                    <ThinningStartRow
+                      end="nose"
+                      tip={view.tips.nose}
+                      tipSetting={foil.noseTip}
+                      system={system}
+                      onChange={onThinningStart}
+                      onAutomatic={onThinningStartAutomatic}
+                    />
+                  </Live>
+                  <Live on={live.thinning}>
+                    <ThinningStartRow
+                      end="tail"
+                      tip={view.tips.tail}
+                      tipSetting={foil.tailTip}
+                      system={system}
+                      onChange={onThinningStart}
+                      onAutomatic={onThinningStartAutomatic}
+                    />
+                  </Live>
+                </>
+              )}
             </div>
           )}
         </div>
-      )}
-
-      <div>
-        <SectionHeading open={sectionOpen.thickness} onToggle={() => onToggleSectionOpen("thickness")}>
-          Thickness
-        </SectionHeading>
-        {sectionOpen.thickness && (
-          <div className="flex flex-col gap-3.5 pt-3">
-            <div className="text-xs text-surf-ink-muted font-normal">
-              {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}
-            </div>
-
-            <ThicknessRow
-              label="Nose Tip"
-              value={foil.noseTip}
-              system={system}
-              onChange={(next) => onChangeFoil({ noseTip: next })}
-            />
-
-            {blank && view ? (
-              <>
-                <FineTuneRow
-                  label={`Nose @ ${station}`}
-                  finalThickness={sideProfile.effectiveFoil.nose12}
-                  derived={view.derived12.nose12}
-                  reachesStation={view.tips.nose.reachesStation}
-                  offset={blank.nose12Offset}
-                  system={system}
-                  onChange={(next) => onFineTune({ nose12Offset: next })}
-                />
-                <FineTuneRow
-                  label={`Tail @ ${station}`}
-                  finalThickness={sideProfile.effectiveFoil.tail12}
-                  derived={view.derived12.tail12}
-                  reachesStation={view.tips.tail.reachesStation}
-                  offset={blank.tail12Offset}
-                  system={system}
-                  onChange={(next) => onFineTune({ tail12Offset: next })}
-                />
-                {/* Directly under the two 12" rows it governs (§5a); Tip Style stays last. */}
-                <div className="flex flex-col">
-                  <div className="mb-2 text-sm text-surf-ink-muted font-normal">Fine-tune off</div>
-                  <TwoOptionToggle
-                    options={["deck", "bottom"] as const}
-                    labels={["Deck", "Bottom"] as const}
-                    value={view.cut.fineTuneSurface}
-                    onChange={onFineTuneSurface}
-                    ariaLabel="Fine-tune off"
-                    className="self-start"
-                  />
-                  <div className="mt-2 text-xs text-surf-ink-muted font-normal">
-                    {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <ThicknessRow
-                  label={`Nose @ ${station}`}
-                  value={foil.nose12}
-                  system={system}
-                  onChange={(next) => onChangeFoil({ nose12: next })}
-                />
-                <ThicknessRow
-                  label={`Tail @ ${station}`}
-                  value={foil.tail12}
-                  system={system}
-                  onChange={(next) => onChangeFoil({ tail12: next })}
-                />
-              </>
-            )}
-
-            <ThicknessRow
-              label="Tail Tip"
-              value={foil.tailTip}
-              system={system}
-              onChange={(next) => onChangeFoil({ tailTip: next })}
-            />
-
-            {blank && (
-              // Stays in place when there is nothing to reset — dimmed and inert, so the rows
-              // above never shift. No confirmation: undo brings the tweaks back.
-              <button
-                type="button"
-                aria-disabled={noTweak ? "true" : undefined}
-                tabIndex={noTweak ? -1 : undefined}
-                onClick={() => {
-                  if (!noTweak) onResetFineTune();
-                }}
-                className={cn(
-                  "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
-                  noTweak && "pointer-events-none opacity-40",
-                )}
-              >
-                ↺ Reset Fine-Tune
-              </button>
-            )}
-
-            {view && (
-              // At its natural width — "those who want it will find it" (§4); only the two Thinning
-              // Starts rows come after it (Phase 14, D-10).
-              <div className="flex flex-col">
-                <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
-                <TwoOptionToggle
-                  options={["pinDeck", "bottom"] as const}
-                  labels={["Pin deck", "Bottom"] as const}
-                  value={view.cut.tipStyle}
-                  onChange={onTipStyle}
-                  ariaLabel="Tip Style"
-                  className="self-start"
-                />
-                <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
-              </div>
-            )}
-
-            {view && (
-              // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
-              // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
-              <>
-                <ThinningStartRow
-                  end="nose"
-                  tip={view.tips.nose}
-                  tipSetting={foil.noseTip}
-                  system={system}
-                  onChange={onThinningStart}
-                  onAutomatic={onThinningStartAutomatic}
-                />
-                <ThinningStartRow
-                  end="tail"
-                  tip={view.tips.tail}
-                  tipSetting={foil.tailTip}
-                  system={system}
-                  onChange={onThinningStart}
-                  onAutomatic={onThinningStartAutomatic}
-                />
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      </Live>
     </div>
   );
 }

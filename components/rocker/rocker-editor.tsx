@@ -91,10 +91,10 @@ import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
+import type { RockerTab } from "./rocker-live-controls";
 import { RockerTopView, TOP_VIEW_SAMPLES, TopViewInset } from "./rocker-top-view";
 import { RockerViewer } from "./rocker-viewer";
 
-type RockerTab = "viewer" | "datasheet" | "topView";
 const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
   { id: "datasheet", label: "DATASHEET" },
@@ -265,7 +265,10 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
             </div>
           </div>
 
+          {/* The sidebar follows the tab actually on screen, so a window that loses TOP VIEW lands on
+              VIEWER with every control live again (quick 261006-v20). */}
           <RockerControls
+            tab={activeTab}
             blanks={blanks}
             rocker={rocker}
             foil={foil}
