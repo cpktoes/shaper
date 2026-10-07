@@ -176,7 +176,7 @@ test.describe("ROCKER on a computer: a mini display of the blank from above (qui
     await expect(page.getByRole("img", { name: SIDE_VIEW_NAME, exact: true })).toBeVisible();
   });
 
-  test("with a blank, it adds the blank, its stringer and three marks, in the top-left corner clear of the toolbar", async ({
+  test("with a blank, it adds the blank, its stringer and three marks, centred above the side view and clear of the toolbar", async ({
     page,
   }) => {
     await openRocker(page);
@@ -193,7 +193,8 @@ test.describe("ROCKER on a computer: a mini display of the blank from above (qui
     const plate = await box(inset(page));
     const content = await box(viewerContent(page));
     const toolbar = await box(page.locator("[data-viewer-toolbar]"));
-    expect(Math.abs(plate.x - content.x)).toBeLessThanOrEqual(16);
+    // Centred above the side view (the founder's pick, 2026-10-06): its middle is the panel's middle.
+    expect(Math.abs(plate.x + plate.width / 2 - (content.x + content.width / 2))).toBeLessThanOrEqual(4);
     expect(Math.abs(plate.y - content.y)).toBeLessThanOrEqual(16);
     expect(plate.width).toBeLessThanOrEqual(content.width * 0.43 + 2);
     expect(plate.width).toBeLessThanOrEqual(434);

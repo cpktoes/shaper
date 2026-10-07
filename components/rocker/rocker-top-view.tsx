@@ -252,8 +252,14 @@ export function RockerTopView({ topView, length, blank, orientation, showMeasuri
  * top-left corner, on a computer only. The founder, 2026-10-06: "The blank/board top view does not
  * need to be the same scale. It can be a mini display, it's really just for reference only."
  *
- * - The top-LEFT corner, because the toolbar row owns the top-right. Positioned like that row
- *   (`absolute top-0`): the panel card's own padding is the inset, so no further offset.
+ * - Nose-left it is CENTRED at the top of the panel, directly above the side view, the way a blank
+ *   catalogue page stacks the plan view over the side view — the founder's pick from a mock-up at
+ *   their review (2026-10-06: "I like it centered"); the blank's centre mark lands over the side
+ *   view's Center column. Nose-up it stands in the top-LEFT corner instead, in the free column
+ *   beside the standing side view (there is no room above a board that fills the height). Either
+ *   way it is positioned like the toolbar row (`absolute top-0`): the panel card's own padding is
+ *   the inset, so no further offset. At a 1024-dot window the centred drawing clears the toolbar
+ *   row by a couple of dots; from 1280 up there is comfortable room (measured on the mock-up).
  * - An opaque plate — the toolbar button's own ground and padding, with no border since the founder's
  *   review (2026-10-06: "lose the border around the mini board") — so the side view's lines never run
  *   under the little drawing while nothing frames it; on every theme the ground matches the panel.
@@ -276,8 +282,8 @@ export function TopViewInset(props: RockerTopViewProps) {
     <div
       data-top-view-inset
       className={cn(
-        "pointer-events-none absolute top-0 left-0 z-10 bg-surf-ground p-1",
-        vertical ? "h-[54%] max-h-[540px]" : "w-[43%] max-w-[432px]",
+        "pointer-events-none absolute top-0 z-10 bg-surf-ground p-1",
+        vertical ? "left-0 h-[54%] max-h-[540px]" : "left-1/2 -translate-x-1/2 w-[43%] max-w-[432px]",
       )}
     >
       <div
