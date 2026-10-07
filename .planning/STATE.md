@@ -5,8 +5,8 @@ milestone_name: Ready for the Shapers
 status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
-last_activity: 2026-10-06
-last_activity_desc: Quick tasks 261006-qfm (the blank seen from above on ROCKER, with the founder's review tweaks as fast tasks 150 and 151) and 261006-v20 (the sidebar controls follow the tab in view) built and merged locally (main cfb4170); the full browser suite re-running on main; awaiting the founder's word before the push
+last_activity: 2026-10-07
+last_activity_desc: Pushed on the founder's word ("push all", 2026-10-06 late): quick 261006-qfm (the blank seen from above on ROCKER, centred, no border, 20% bigger, tabs VIEWER / TOP VIEW / DATASHEET), quick 261006-v20 (the sidebar controls follow the tab in view) and fast 152 (FINS Aft/Forward position wording) — main 06209f1, full browser suite and production checks green
 progress:
   total_phases: 3
   completed_phases: 1
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-06 — Quick tasks 261006-qfm (the blank seen from above on ROCKER, with the founder's review tweaks as fast tasks 150 and 151) and 261006-v20 (the sidebar controls follow the tab in view) built and merged locally (main cfb4170); the full browser suite re-running on main; awaiting the founder's word before the push
+Last activity: 2026-10-07 — Pushed on the founder's word ("push all", 2026-10-06 late): quick 261006-qfm (the blank seen from above on ROCKER, centred, no border, 20% bigger, tabs VIEWER / TOP VIEW / DATASHEET), quick 261006-v20 (the sidebar controls follow the tab in view) and fast 152 (FINS Aft/Forward position wording) — main 06209f1, full browser suite and production checks green
 
 ## Performance Metrics
 
@@ -361,6 +361,7 @@ Recent decisions affecting current work:
 | 150 | The founder's review of quick 261006-qfm: the mini blank/board drawing on ROCKER loses its border and grows 20% (43% of the panel's width, at most 432 dots, nose-left; 54% of its height, at most 540, nose-up; the ROCKER reference picture re-recorded), and on a phone the tabs run VIEWER, TOP VIEW, DATASHEET; the narrow-phone DATASHEET test waits for the strip to settle after hydration. Still local, awaiting the founder's word before the push | 2026-10-06 | 946a31a | fast (no directory) |
 | 151 | The founder's review of quick 261006-qfm, second round: the mini blank/board drawing on ROCKER sits centred above the side view when lying flat (a catalogue-page stack; standing up it keeps the left column), picked from a mock-up; the ROCKER reference picture re-recorded. Still local, awaiting the founder's word before the push | 2026-10-06 | 896bb71 | fast (no directory) |
 | 261006-v20 | ROCKER's sidebar controls follow the tab in view (the founder's rule, 2026-10-06): on DATASHEET only Center Thickness and the Nose Tip and Tail Tip thickness stay live; on TOP VIEW (phones and short screens) only the blank picker and the Placement slider; on VIEWER everything. The rest stays in place, dimmed and inert, never hidden, on every screen size; the DATASHEET table's own cells keep working; nothing saved changes and the five desktop reference pictures are untouched. Merged locally, awaiting the founder's word before the push | 2026-10-06 | cfb4170 | [261006-v20-rocker-s-sidebar-controls-follow-the-tab](./quick/261006-v20-rocker-s-sidebar-controls-follow-the-tab/) |
+| 152 | FINS: the three advanced position sliders are renamed Aft/Forward position (aft, nearer the tail, on the left) and the two side-fin sliders' captions are swapped so Drivey (back) sits left and Loose (fwd) right — the founder's correction, 2026-10-06; the slider itself was right. Pushed with the evening's ROCKER work | 2026-10-07 | 06209f1 | fast (no directory) |
 
 ## Deferred Items
 
