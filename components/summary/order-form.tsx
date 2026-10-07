@@ -164,9 +164,16 @@ function PageMark({ page, of, title }: { page: number; of: number; title: string
   return (
     <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-ink-muted order-form-micro">
       <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
-      {/* The site's address to the left of every page number (fast task 153, 2026-10-07). */}
-      <span>
-        <a href="https://www.ShaperAssistant.com">www.ShaperAssistant.com</a> · Page {page} of {of}
+      {/* The site's address to the left of every page number (fast task 153, 2026-10-07). On a sheet
+          narrower than 480 dots — the narrowest phone print pages, 268 to 479 — the address steps aside
+          (`order-form-mark-site`, hidden by a container query in order-form.css), because beside the
+          title it wrapped the mark onto a second line and pushed page 3's example rail 4px past its
+          edge (fast task 154). Every normal-size print keeps it. */}
+      <span className="whitespace-nowrap">
+        <span className="order-form-mark-site">
+          <a href="https://www.ShaperAssistant.com">www.ShaperAssistant.com</a> ·{" "}
+        </span>
+        Page {page} of {of}
       </span>
     </div>
   );

@@ -216,6 +216,17 @@
 [data-order-form-root] .order-form-micro {
   font-size: var(--order-form-micro);
 }
+/* The site's address in a page mark fits beside the mark's title only on a sheet at least 480 dots
+   wide. On the narrowest phone print pages (268–479 dots, e2e/summary-rail-instructions-fit.spec.ts's
+   sweep) it wrapped the mark onto a second line and pushed page 3's example rail 4px past its edge, so
+   there the address steps aside and the mark reads "Page N of M" alone (fast task 154, 2026-10-07).
+   A container query, because the sheet's own width is what decides it — the same `inline-size`
+   container every `cqw` token resolves against, on screen and in print alike. */
+@container (max-width: 479px) {
+  [data-order-form-root] .order-form-mark-site {
+    display: none;
+  }
+}
 [data-order-form-root] .order-form-value {
   font-size: var(--order-form-value);
 }
