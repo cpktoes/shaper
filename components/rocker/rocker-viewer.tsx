@@ -103,7 +103,8 @@ import {
 } from "@/components/viewer/callout-primitives";
 import { useUnits } from "@/components/units-provider";
 import { ScreenSizeGroup, useViewerZoom } from "@/components/viewer/zoom-viewport";
-import { scaleDash } from "@/components/viewer/zoom-math";
+import { parseViewBox, rectInContentFrame, scaleDash } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
@@ -696,7 +697,11 @@ export function RockerViewer({
   // Summary order form's box), `viewBox` IS the layout's string, untouched (D11).
   // One finger is left to the browser at 1x and pans the drawing once zoomed in (`touch: "pan"`,
   // D6 as revised): ROCKER has nothing to drag.
-  const { viewBox, zoom, zoomUnit, svgProps } = useViewerZoom(svgRef, baseViewBox, { touch: "pan" });
+  const { viewBox, view, zoom, zoomUnit, svgProps } = useViewerZoom(svgRef, baseViewBox, { touch: "pan" });
+  // The zoom's grid (D5) is drawn inside the turned content group, so the frame and the part of it
+  // on screen are turned into that group's own frame first.
+  const contentRotation = vertical ? 90 : 0;
+  const baseRect = parseViewBox(baseViewBox);
   /** User units per CSS pixel — what the px-denominated dot radius and blank line are drawn in. The
    * zoom is folded in, so a dot and the blank's line keep their screen size at every zoom (D4);
    * `cardPinScale` above still reads the BASE fit, so every card, rail and frame position is the
@@ -779,6 +784,21 @@ export function RockerViewer({
           drawing the layout they always drew. React omits an `undefined` attribute, so in
           horizontal this is a plain pass-through container with no transform. */}
       <g transform={vertical ? "rotate(90)" : undefined}>
+        {/* Quick 261007-fnz (D5, P8): zoomed in, a grid behind everything, counted from the board's
+            tail tip along the board and from the rocker baseline across it — ROCKER's side view has
+            no stringer, and the baseline is its zero line, the flat surface the board sits on.
+            Nothing at 1x (P7), and never in the order form's compact grammar. */}
+        {callouts === "full" && baseRect && (
+          <ZoomGrid
+            zoom={zoom}
+            fitScale={fitScale}
+            unitsPerInch={scale}
+            anchor={{ x: tailX, y: baselineY }}
+            bounds={rectInContentFrame(baseRect, contentRotation)}
+            visible={view ? rectInContentFrame(view, contentRotation) : null}
+            system={system}
+          />
+        )}
         {/* The flat surface the board sits on — the rocker's own zero reference, bottom-up — drawn
             faint and dashed, spanning only the drawn board's own length. Compact draws it at its
             own heavier stroke and longer dash (`COMPACT_BASELINE_*`): the 1-unit line washes out

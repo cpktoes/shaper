@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { mm, mmToInches } from "@/lib/geometry/units";
 import {
   baseFit,
   clientToUser,
   DEFAULT_MAX_ZOOM,
   formatViewBox,
   formatZoomLevel,
+  GRID_MIN_GAP_PX,
+  gridPositions,
+  gridStep,
   normaliseWheelDelta,
   panBy,
+  rectInContentFrame,
   parseViewBox,
   pinchState,
   scaleDash,
@@ -351,4 +356,108 @@ describe("zoomUnitTransform / scaleDash", () => {
     expect(scaleDash("4 3", 0.5)).toBe("2 1.5");
     expect(scaleDash("16,4,4,4", 0.25)).toBe("4 1 1 1");
   });
+});
+
+describe("gridStep (D5)", () => {
+  // M5: ROCKER at 1280×800 with its first fitting blank draws 9.80 px per inch at 1x; without a
+  // blank, 10.17.
+  const WITH_BLANK = 9.8;
+
+  it("picks the finest rung at least GRID_MIN_GAP_PX apart, on M5's own figures", () => {
+    expect(gridStep(WITH_BLANK * 1, "imperial")).toBeNull();
+    expect(gridStep(WITH_BLANK * 2, "imperial")).toBeNull();
+    expect(gridStep(WITH_BLANK * 2.5, "imperial")).toEqual({ stepIn: 1, majorIn: 1 });
+    expect(gridStep(WITH_BLANK * 6, "imperial")).toEqual({ stepIn: 0.5, majorIn: 1 });
+    expect(gridStep(WITH_BLANK * 10, "imperial")).toEqual({ stepIn: 0.25, majorIn: 1 });
+    expect(gridStep(10.17 * 2, "imperial")).toEqual({ stepIn: 1, majorIn: 1 });
+  });
+
+  it("reads Metric in centimetres and millimetres, through the units module", () => {
+    expect(gridStep(WITH_BLANK * 6, "metric")).toEqual({ stepIn: mmToInches(mm(10)), majorIn: mmToInches(mm(20)) });
+  });
+
+  it("starts the ladder at a given major spacing", () => {
+    const tenMm = mmToInches(mm(10));
+    // 30 px per inch: 2 cm is 23.6 px apart, 1 cm only 11.8.
+    expect(gridStep(30, "metric")).toEqual({ stepIn: mmToInches(mm(20)), majorIn: mmToInches(mm(20)) });
+    expect(gridStep(30, "metric", tenMm)).toBeNull();
+    expect(gridStep(WITH_BLANK * 6, "metric", tenMm)).toEqual({ stepIn: tenMm, majorIn: tenMm });
+    expect(gridStep(200, "imperial", 0.5)).toEqual({ stepIn: 0.125, majorIn: 0.5 });
+  });
+
+  it("counts a rung exactly GRID_MIN_GAP_PX apart", () => {
+    expect(gridStep(GRID_MIN_GAP_PX, "imperial")).toEqual({ stepIn: 1, majorIn: 1 });
+    expect(gridStep(GRID_MIN_GAP_PX * 16, "imperial")).toEqual({ stepIn: 1 / 16, majorIn: 1 });
+  });
+
+  it("never returns a rung under GRID_MIN_GAP_PX, and the next finer rung is under it", () => {
+    const imperial = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 16];
+    for (let pxPerIn = 1; pxPerIn < 600; pxPerIn += 0.7) {
+      const step = gridStep(pxPerIn, "imperial");
+      if (!step) {
+        expect(pxPerIn).toBeLessThan(GRID_MIN_GAP_PX);
+        continue;
+      }
+      expect(step.stepIn * pxPerIn).toBeGreaterThanOrEqual(GRID_MIN_GAP_PX - 1e-9);
+      const finer = imperial[imperial.indexOf(step.stepIn) + 1];
+      if (finer !== undefined) expect(finer * pxPerIn).toBeLessThan(GRID_MIN_GAP_PX);
+    }
+  });
+
+  it("draws nothing for an unmeasured drawing", () => {
+    expect(gridStep(0, "imperial")).toBeNull();
+    expect(gridStep(Number.NaN, "metric")).toBeNull();
+  });
+});
+
+describe("gridPositions", () => {
+  it("lists every anchor + k × step inside the range, in order, the majors every n-th from the anchor", () => {
+    const lines = gridPositions(100, 10, 71, 142, 2);
+    expect(lines.map((l) => l.at)).toEqual([80, 90, 100, 110, 120, 130, 140]);
+    expect(lines.filter((l) => l.major).map((l) => l.at)).toEqual([80, 100, 120, 140]);
+  });
+
+  it("includes the anchor and the range's own ends when they fall on a line", () => {
+    const lines = gridPositions(0, 5, -10, 10, 3);
+    expect(lines.map((l) => l.at)).toEqual([-10, -5, 0, 5, 10]);
+    expect(lines.filter((l) => l.major).map((l) => l.at)).toEqual([0]);
+  });
+
+  it("stops at the cap, and draws nothing for a bad step or an empty range", () => {
+    expect(gridPositions(0, 0.001, 0, 1000, 2)).toHaveLength(4000);
+    expect(gridPositions(0, 1, 0, 100, 2, 10)).toHaveLength(10);
+    expect(gridPositions(0, 0, 0, 10, 2)).toEqual([]);
+    expect(gridPositions(0, Number.NaN, 0, 10, 2)).toEqual([]);
+    expect(gridPositions(0, 1, 10, 0, 2)).toEqual([]);
+  });
+});
+
+describe("rectInContentFrame", () => {
+  const rect: ViewRect = { x: 30, y: -20, width: 200, height: 80 };
+  const corners = (r: ViewRect) => [
+    [r.x, r.y],
+    [r.x + r.width, r.y],
+    [r.x, r.y + r.height],
+    [r.x + r.width, r.y + r.height],
+  ];
+  /** SVG's `rotate(a)`. */
+  const turn = ([x, y]: number[], degrees: number) => {
+    const a = (degrees * Math.PI) / 180;
+    return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+  };
+  const sameCorners = (a: number[][], b: number[][]) => {
+    const key = (p: number[]) => p.map((v) => v.toFixed(6)).join(",");
+    expect(a.map(key).sort()).toEqual(b.map(key).sort());
+  };
+
+  it("is the same rectangle unturned", () => {
+    expect(rectInContentFrame(rect, 0)).toEqual(rect);
+  });
+
+  for (const rotation of [90, -90] as const) {
+    it(`turned by rotate(${rotation}) lands on the outer rectangle's corners`, () => {
+      const inner = rectInContentFrame(rect, rotation);
+      sameCorners(corners(inner).map((p) => turn(p, rotation)), corners(rect));
+    });
+  }
 });

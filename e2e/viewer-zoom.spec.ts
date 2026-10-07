@@ -269,6 +269,127 @@ test.describe("261007-fnz ROCKER zoom — computer", () => {
   });
 });
 
+test.describe("261007-fnz ROCKER zoom — the grid", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("no grid at 1x, fresh or in a blank, nose left or nose up", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    const grid = page.locator("[data-zoom-grid]");
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(grid).toHaveCount(0);
+    await pickFirstFittingBlank(page);
+    await expect(grid).toHaveCount(0);
+    await page.getByRole("button", { name: "Rotate the board" }).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(grid).toHaveCount(0);
+  });
+
+  test("at 6x on the nose: 1/2\" lines with the 1\" lines darker, counted from the tail tip and the baseline", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await zoomToSixOnTheNose(page);
+    const grid = await readGrid(page);
+    expect(grid.spacingPx).toBeGreaterThanOrEqual(20);
+    expect(grid.spacingPx).toBeLessThan(40);
+    expect(grid.majorsEverySecond).toBe(true);
+    expect(grid.anchoredAlong).toBe(true);
+    expect(grid.anchoredAcross).toBe(true);
+  });
+
+  test("Metric at 6x: 1 cm lines with the 2 cm lines darker", async ({ page, browser }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await zoomToSixOnTheNose(page);
+    const imperial = await readGrid(page);
+
+    const metricPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await dismissChrome(metricPage);
+    await metricPage.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await metricPage.context().addCookies([{ name: "shaper-units", value: "metric", domain: "localhost", path: "/" }]);
+    await openRocker(metricPage);
+    await pickFirstFittingBlank(metricPage);
+    await zoomToSixOnTheNose(metricPage);
+    const metric = await readGrid(metricPage);
+    expect(metric.spacingPx).toBeGreaterThanOrEqual(20);
+    expect(metric.majorsEverySecond).toBe(true);
+    // 1 cm against 1/2": 10 / 12.7 of the spacing.
+    expect(metric.spacingPx / imperial.spacingPx).toBeCloseTo(10 / 12.7, 2);
+    await metricPage.close();
+  });
+
+  test("the grid's lines draw one screen pixel wide at 3x and at 6x", async ({ page }) => {
+    await dismissChrome(page);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    expect(await gridLineWidths(page)).toEqual(["1px non-scaling-stroke"]);
+    for (let i = 0; i < 6; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("6x");
+    expect(await gridLineWidths(page)).toEqual(["1px non-scaling-stroke"]);
+  });
+});
+
+/** Task 1's wheel path: the pointer on the nose's measuring dot, ten notches, 6x. */
+async function zoomToSixOnTheNose(page: Page) {
+  await page.getByRole("button", { name: "Show measuring points" }).click();
+  const dot = await noseDotCentre(page);
+  await page.mouse.move(Math.round(dot.x), Math.round(dot.y));
+  for (let i = 0; i < 10; i++) {
+    await page.waitForTimeout(200);
+    await page.mouse.wheel(0, -100);
+  }
+  await expect(zoomLevel(page)).toHaveText("6x");
+  await expect(page.locator("[data-zoom-grid]")).toHaveCount(1);
+}
+
+/** The distinct widths and vector effects the grid's lines are drawn with. */
+async function gridLineWidths(page: Page): Promise<string[]> {
+  return page.evaluate(() => [
+    ...new Set(
+      [...document.querySelectorAll("[data-zoom-grid] line")].map((line) => {
+        const style = getComputedStyle(line);
+        return `${style.strokeWidth} ${style.vectorEffect}`;
+      }),
+    ),
+  ]);
+}
+
+/** The grid's lines across the board (nose left: the vertical ones), read on screen and in the drawing. */
+async function readGrid(page: Page) {
+  return page.evaluate(() => {
+    const svg = document.querySelector('svg:has([data-board-silhouette="profile"])');
+    const baseline = svg?.querySelector(":scope > g > line");
+    const lines = [...document.querySelectorAll("[data-zoom-grid] line")] as SVGLineElement[];
+    if (!svg || !baseline || lines.length === 0) throw new Error("no grid");
+    const tailX = Number(baseline.getAttribute("x1"));
+    const baselineY = Number(baseline.getAttribute("y1"));
+    // The attributes, not `baseVal` (which is single precision), so the anchor check is exact.
+    const n = (l: Element, a: string) => Number(l.getAttribute(a));
+    const isWhole = (v: number) => Math.abs(v - Math.round(v)) < 1e-6;
+    const along = lines.filter((l) => n(l, "x1") === n(l, "x2")).sort((a, b) => n(a, "x1") - n(b, "x1"));
+    const across = lines.filter((l) => n(l, "y1") === n(l, "y2")).sort((a, b) => n(a, "y1") - n(b, "y1"));
+    const stepUnits = n(along[1], "x1") - n(along[0], "x1");
+    const screen = along.map((l) => l.getBoundingClientRect().left);
+    const gaps = screen.slice(1).map((x, i) => x - screen[i]);
+    const majors = along.map((l) => l.hasAttribute("data-major"));
+    const firstMajor = majors.indexOf(true);
+    return {
+      spacingPx: gaps.reduce((a, b) => a + b, 0) / gaps.length,
+      majorsEverySecond: firstMajor >= 0 && majors.every((m, i) => m === ((i - firstMajor) % 2 === 0)),
+      anchoredAlong: along.every((l) => isWhole((n(l, "x1") - tailX) / stepUnits)),
+      anchoredAcross: across.length > 0 && across.every((l) => isWhole((n(l, "y1") - baselineY) / stepUnits)),
+    };
+  });
+}
+
 test.describe("261007-fnz ROCKER zoom — touch screens", () => {
   test.beforeEach(async ({}, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "a phone");

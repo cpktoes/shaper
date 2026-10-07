@@ -23,7 +23,14 @@
  * scrolling in the same burst takes one more step. A trackpad pinch (ctrl+wheel in Chrome and
  * Firefox) zooms proportionally instead, by `exp(-delta × PINCH_WHEEL_RATE)` per event. All four
  * numbers are named here so they can be tuned by feel without touching a component.
+ *
+ * The grid (D5). Zoomed in, a grid appears behind the drawing: the finest of 1", 1/2", 1/4", 1/8",
+ * 1/16" (Metric 2 cm, 1 cm, 5 mm, 2 mm, 1 mm) that leaves at least `GRID_MIN_GAP_PX` screen pixels
+ * between lines, with the 1" (2 cm) lines darker. This module owns only that spacing rule and where
+ * the lines fall; each viewer decides the grid's origin, orientation and units.
  */
+
+import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
 /** The whole drawing. Below this nothing happens (D3). */
 export const MIN_ZOOM = 1;
@@ -263,6 +270,72 @@ export function scaleDash(dash: string | undefined, zoomUnit: number): string | 
     .split(/[\s,]+/)
     .map((part) => fmt(Number(part) * zoomUnit))
     .join(" ");
+}
+
+/** The grid's rungs, coarse to fine (D5): 1", 1/2", 1/4", 1/8", 1/16". */
+const IMPERIAL_GRID_IN = [1, 1 / 2, 1 / 4, 1 / 8, 1 / 16];
+/** Metric's rungs in millimetres (D5): 2 cm, 1 cm, 5 mm, 2 mm, 1 mm — read into inches through the
+ * units module, never by a hand-typed 25.4 (CLAUDE.md Rule 2). */
+const METRIC_GRID_MM = [20, 10, 5, 2, 1];
+
+/**
+ * The grid's spacing for a drawing at `screenPxPerInch` (D5): the finest rung that leaves at least
+ * `GRID_MIN_GAP_PX` screen pixels between lines, or `null` when not even the coarsest does (no grid).
+ * `majorIn`, the darker lines' spacing, is the ladder's first rung — 1" (Imperial) or 2 cm (Metric)
+ * — unless a viewer gives its own, which also starts the ladder there (plan 02's RAILS starts
+ * Metric at 1 cm, its own plot pitch). Every value is in inches.
+ */
+export function gridStep(
+  screenPxPerInch: number,
+  system: UnitsSystem,
+  majorIn?: number,
+): { stepIn: number; majorIn: number } | null {
+  if (!(screenPxPerInch > 0) || !Number.isFinite(screenPxPerInch)) return null;
+  const full = system === "metric" ? METRIC_GRID_MM.map((v) => mmToInches(mm(v))) : IMPERIAL_GRID_IN;
+  const ladder = majorIn === undefined ? full : full.filter((rung) => rung <= majorIn * (1 + 1e-9));
+  if (ladder.length === 0) return null;
+  const major = majorIn ?? ladder[0];
+  let step: number | null = null;
+  for (const rung of ladder) {
+    if (rung * screenPxPerInch >= GRID_MIN_GAP_PX * (1 - 1e-9)) step = rung;
+  }
+  return step === null ? null : { stepIn: step, majorIn: major };
+}
+
+/**
+ * Where a grid's lines fall along one axis: every `anchor + k × step` inside [lo, hi], in order,
+ * `major` where k is a multiple of `majorEvery` (so the anchor itself is always a major line),
+ * never more than `cap` of them (T-fnz-01). A bad step or an empty range draws nothing.
+ */
+export function gridPositions(
+  anchor: number,
+  step: number,
+  lo: number,
+  hi: number,
+  majorEvery: number,
+  cap = 4000,
+): { at: number; major: boolean }[] {
+  if (!(step > 0) || !Number.isFinite(step) || !Number.isFinite(anchor) || !(hi >= lo)) return [];
+  const every = Math.max(1, Math.round(majorEvery));
+  const eps = 1e-9;
+  const first = Math.ceil((lo - anchor) / step - eps);
+  const last = Math.floor((hi - anchor) / step + eps);
+  const out: { at: number; major: boolean }[] = [];
+  for (let k = first; k <= last && out.length < cap; k++) {
+    out.push({ at: anchor + k * step, major: ((k % every) + every) % every === 0 });
+  }
+  return out;
+}
+
+/**
+ * A rectangle of a viewer's outer frame, expressed in the frame of a content group drawn with
+ * `rotate(rotation)` (ROCKER nose-up draws `rotate(90)`, TEMPLATE nose-left `rotate(-90)`), so a
+ * grid drawn inside the turned group can be clipped to what is on screen.
+ */
+export function rectInContentFrame(rect: ViewRect, rotation: 0 | 90 | -90): ViewRect {
+  if (rotation === 90) return { x: rect.y, y: -(rect.x + rect.width), width: rect.height, height: rect.width };
+  if (rotation === -90) return { x: -(rect.y + rect.height), y: rect.x, width: rect.height, height: rect.width };
+  return rect;
 }
 
 /** A wheel delta in pixels: lines are 16 px, pages the page's height. */
