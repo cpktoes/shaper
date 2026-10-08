@@ -127,70 +127,14 @@ function PillButton({
   );
 }
 
-/** A base-length field: text + Override button until pressed, then a number input, matching the
- * prototype's baseLenXEditing toggle (Fins.dc.html lines 241-249 and onToggleBaseLenXEdit). The
- * number box's domain (inches stepping 1/8, or Metric's whole millimetres stepping 1) is decided
- * by the caller's own `measureSlider` call against `BASE_LEN_BOUNDS`, so this field never converts
- * on its own (CLAUDE.md Rule 2). */
-function BaseLengthField({
-  label,
-  value,
-  system,
-  min,
-  max,
-  step,
-  toMm,
-  overridden,
-  editing,
-  onOverride,
-  onChange,
-}: {
-  label: string;
-  value: Mm;
-  system: UnitsSystem;
-  min: number;
-  max: number;
-  step: number;
-  toMm: (dragged: number) => Mm;
-  overridden: boolean;
-  editing: boolean;
-  onOverride: () => void;
-  onChange: (next: Mm) => void;
-}) {
-  // Metric snaps the seed value onto the whole-millimetre grid, matching roundToWholeMm's
-  // documented invariant and the read-only display above (formatMark rounds the same way) --
-  // otherwise clicking "Override" opens the box on a raw stored value like 114.3 (WR-01).
-  const displayValue = system === "metric" ? roundToWholeMm(value) : mmToInches(value);
-  return (
-    <div>
-      <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">{label}</div>
-      {editing ? (
-        <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={displayValue}
-          onChange={(e) => onChange(toMm(parseFloat(e.target.value)))}
-          className="w-full rounded-md border border-outline-sidebar-input-border bg-outline-sidebar-input-bg px-2 py-1.5 text-[13px] text-outline-sidebar-text"
-        />
-      ) : (
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold">
-            {formatMark(value, system)}
-            {!overridden && " standard"}
-          </span>
-          <button
-            type="button"
-            onClick={onOverride}
-            className="focus-ring-accent cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
-          >
-            Override
-          </button>
-        </div>
-      )}
-    </div>
-  );
+/** The label over a Fin Base Length slider: the value, and "(standard)" until the shaper has moved
+ * the slider — the base length then stays the shaper's own until they move it again. Fast task 155
+ * (2026-10-08): the founder retired the text box and its Override button ("doesn't work well on a
+ * phone … funny behaviour on a computer"); dragging the familiar slider is the override now. The
+ * slider's domain is the caller's `measureSlider` view against `BASE_LEN_BOUNDS`, so nothing here
+ * converts (CLAUDE.md Rule 2). */
+function baseLengthLabel(label: string, value: Mm, overridden: boolean, system: UnitsSystem): string {
+  return `${label} — ${formatMark(value, system)}${overridden ? "" : " (standard)"}`;
 }
 
 interface FinControlsProps {
@@ -225,9 +169,6 @@ export function FinControls({
   onToggleImportTemplate,
 }: FinControlsProps) {
   const { system } = useUnits();
-  const [editingForward, setEditingForward] = useState(false);
-  const [editingRear, setEditingRear] = useState(false);
-  const [editingCenter, setEditingCenter] = useState(false);
   const [editingRearOffTail, setEditingRearOffTail] = useState(false);
 
   const lengthIn = mmToInches(spec.boardLength);
@@ -253,17 +194,11 @@ export function FinControls({
   const updateAdvanced = (patch: Partial<FinAdvancedSpec>) => onChange({ advanced: { ...spec.advanced, ...patch } });
 
   const applySetup = (setup: FinSetup) => {
-    setEditingForward(false);
-    setEditingRear(false);
-    setEditingCenter(false);
     setEditingRearOffTail(false);
     onChange({ finSetup: setup, advanced: resetAdvanced(setup) });
   };
 
   const resetAdvancedSettings = () => {
-    setEditingForward(false);
-    setEditingRear(false);
-    setEditingCenter(false);
     setEditingRearOffTail(false);
     onChange({ advanced: resetAdvanced(spec.finSetup) });
   };
@@ -546,21 +481,14 @@ export function FinControls({
               <div>
                 <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
                 <div className="mb-2.5">
-                  <BaseLengthField
-                    label={flags.centerBaseLenFieldLabel}
-                    value={spec.advanced.baseLenCenter}
-                    system={system}
+                  <SliderRow
+                    density="tight"
+                    label={baseLengthLabel(flags.centerBaseLenFieldLabel, spec.advanced.baseLenCenter, spec.advanced.baseLenCenterOverridden, system)}
+                    value={baseLenCenterSlider.value}
                     min={baseLenCenterSlider.min}
                     max={baseLenCenterSlider.max}
                     step={baseLenCenterSlider.step}
-                    toMm={baseLenCenterSlider.toMm}
-                    overridden={spec.advanced.baseLenCenterOverridden}
-                    editing={editingCenter}
-                    onOverride={() => {
-                      setEditingCenter(true);
-                      updateAdvanced({ baseLenCenterOverridden: true });
-                    }}
-                    onChange={(next) => updateAdvanced({ baseLenCenter: next, baseLenCenterOverridden: true })}
+                    onValueChange={(v) => updateAdvanced({ baseLenCenter: baseLenCenterSlider.toMm(v), baseLenCenterOverridden: true })}
                   />
                 </div>
                 <SliderRow
@@ -583,21 +511,14 @@ export function FinControls({
                   Forward Fins — {flags.forwardSectionLabel}
                 </div>
                 <div className="mb-2.5">
-                  <BaseLengthField
-                    label="Fin Base Length"
-                    value={spec.advanced.baseLenForward}
-                    system={system}
+                  <SliderRow
+                    density="tight"
+                    label={baseLengthLabel("Fin Base Length", spec.advanced.baseLenForward, spec.advanced.baseLenForwardOverridden, system)}
+                    value={baseLenForwardSlider.value}
                     min={baseLenForwardSlider.min}
                     max={baseLenForwardSlider.max}
                     step={baseLenForwardSlider.step}
-                    toMm={baseLenForwardSlider.toMm}
-                    overridden={spec.advanced.baseLenForwardOverridden}
-                    editing={editingForward}
-                    onOverride={() => {
-                      setEditingForward(true);
-                      updateAdvanced({ baseLenForwardOverridden: true });
-                    }}
-                    onChange={(next) => updateAdvanced({ baseLenForward: next, baseLenForwardOverridden: true })}
+                    onValueChange={(v) => updateAdvanced({ baseLenForward: baseLenForwardSlider.toMm(v), baseLenForwardOverridden: true })}
                   />
                 </div>
                 <div className="mb-2.5">
@@ -645,21 +566,14 @@ export function FinControls({
                   Rear Fins — {flags.rearSectionLabel}
                 </div>
                 <div className="mb-2.5">
-                  <BaseLengthField
-                    label="Fin Base Length"
-                    value={spec.advanced.baseLenRear}
-                    system={system}
+                  <SliderRow
+                    density="tight"
+                    label={baseLengthLabel("Fin Base Length", spec.advanced.baseLenRear, spec.advanced.baseLenRearOverridden, system)}
+                    value={baseLenRearSlider.value}
                     min={baseLenRearSlider.min}
                     max={baseLenRearSlider.max}
                     step={baseLenRearSlider.step}
-                    toMm={baseLenRearSlider.toMm}
-                    overridden={spec.advanced.baseLenRearOverridden}
-                    editing={editingRear}
-                    onOverride={() => {
-                      setEditingRear(true);
-                      updateAdvanced({ baseLenRearOverridden: true });
-                    }}
-                    onChange={(next) => updateAdvanced({ baseLenRear: next, baseLenRearOverridden: true })}
+                    onValueChange={(v) => updateAdvanced({ baseLenRear: baseLenRearSlider.toMm(v), baseLenRearOverridden: true })}
                   />
                 </div>
                 {flags.showRearOffTailOverride && (
