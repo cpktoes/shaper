@@ -174,7 +174,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-13 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
+14 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -188,7 +188,8 @@ Recent decisions affecting current work:
 - [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
 - [minor/geometry] Retire today's curve and the 12" blend after the showing (kept by name for Phase 14's reports and pictures, D-25) — `.planning/todos/pending/2026-10-03-retire-todays-curve-and-12-inch-blend-after-the-showing.md`
 - [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
-- [minor/rocker] Show a miniature blank outline on the ROCKER viewer (the founder, 2026-10-02: a small top-down drawing of the picked blank with its 12" stations, center and stringer line, ideally with the board's outline inside it; on a small screen it can be its own tab. No date set) — `.planning/todos/pending/2026-10-02-show-a-miniature-blank-outline-on-the-rocker-viewer.md`
+- [minor/data] Lock a saved board so opening it never autosaves (the founder, 2026-10-08: "lock a board so it stops auto saving when you go back in to check it out"; how a locked board behaves and where the lock lives are for the founder to decide) — `.planning/todos/pending/2026-10-08-lock-a-saved-board-so-opening-it-never-autosaves.md`
+- [minor/geometry] Add an off-rail fine tuner for the fins (the founder, 2026-10-08; today the front and side fins take the template's off-rail with no adjustment, only the quad rears have an Off-Rail slider) — `.planning/todos/pending/2026-10-08-add-an-off-rail-fine-tuner-for-the-fins.md`
 
 ### Blockers/Concerns
 
