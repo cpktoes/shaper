@@ -5,7 +5,9 @@
  * D-04), and `hidden_blank_makers` (text), migration 0007 (quick task 260926-wmf: the blank makers a
  * shaper switched off in the gear menu), and `rack_order` (text), migration 0009 (Phase 15 D-03: the
  * shaper's own order of their saved boards on the Board Rack). It also reports the state of the retired
- * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19).
+ * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19). It
+ * also checks that `models` holds `locked` (boolean), migration 0010 (quick task 261008-lsy: whether
+ * the shaper has locked a saved board so it can't be changed by accident).
  *
  * By default the retired column is expected ABSENT: from migration 0008 on, "gone" is the normal
  * state everywhere the check runs. Pass `--before-drop` for the one case where PRESENT is expected
@@ -16,13 +18,15 @@
  * Why a separate check at all: `drizzle-kit migrate` prints "migrations applied successfully" even
  * when it applied nothing, so that line proves nothing on its own. This script asks the database.
  *
- * It writes nothing. It prints exactly two lines:
+ * It writes nothing. It prints exactly three lines:
  *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text, rack_order text (5 of 5 columns); extra_center_thickness_mm absent (expected absent)
+ *   models: locked boolean (1 of 1 columns)
  *   drizzle migrations recorded: <n>
  * with `missing` in place of any column it did not find, and the retired column's line-1 ending one
  * of `present (expected present)`, `absent (expected absent)`, `present (expected absent)` or
- * `absent (expected present)`. Exits 1 when fewer than 5 of the 5 columns match their types, or when
- * the retired column's actual state differs from the expected one. Only column names, their types
+ * `absent (expected present)`. Line 2 reads `models: locked missing (0 of 1 columns)` when the column
+ * is not there. Exits 1 when fewer than 5 of the 5 columns match their types, when `locked` is not a
+ * boolean, or when the retired column's actual state differs from the expected one. Only column names, their types
  * and a count are ever printed — never the connection string, never row data. When the check itself
  * fails (the database can't be reached, say) it prints one fixed sentence with the error's kind and
  * code only — never the driver's message, which can name the database host — unless `--verbose` is
@@ -53,6 +57,15 @@
  *   rack_order is ADDITIVE, so it runs BEFORE the push (CLAUDE.md Database): check first (expected
  *   `rack_order missing (4 of 5 columns)`, exit 1), then migrate, then check again (expected
  *   `rack_order text (5 of 5 columns)`, exit 0, one more migration recorded).
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
+ *     npm run db:migrate:prod
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
+ *
+ *   production — quick task 261008-lsy (the board lock), the founder only, from the main checkout.
+ *   Adding `models.locked` is ADDITIVE, so it runs BEFORE the push (CLAUDE.md Database): check first
+ *   (expected `locked missing (0 of 1 columns)`, exit 1), then migrate, then check again (expected
+ *   `locked boolean (1 of 1 columns)`, exit 0, one more migration recorded). The same three commands
+ *   as the Phase 15 go-live above:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
  *     npm run db:migrate:prod
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
@@ -127,6 +140,14 @@ async function main(): Promise<void> {
     found.set(String(row.column_name), String(row.data_type));
   }
 
+  const lockedResult = await db.execute(sql`
+    select column_name, data_type
+    from information_schema.columns
+    where table_name = 'models' and column_name = 'locked'
+  `);
+  const lockedType = (lockedResult.rows[0] as { data_type?: unknown } | undefined)?.data_type;
+  const lockedPresent = lockedType === "boolean";
+
   const countResult = await db.execute(sql`select count(*) as n from drizzle.__drizzle_migrations`);
   const recorded = String((countResult.rows[0] as { n: unknown } | undefined)?.n ?? "?");
 
@@ -139,6 +160,9 @@ async function main(): Promise<void> {
   console.log(
     `user_preferences: ${described.join(", ")} (${present} of ${NEW_COLUMNS.length} columns); ` +
       `${RETIRED_COLUMN} ${actualWord} (${expectedWord})`,
+  );
+  console.log(
+    `models: locked ${lockedPresent ? "boolean" : "missing"} (${lockedPresent ? 1 : 0} of 1 columns)`,
   );
   console.log(`drizzle migrations recorded: ${recorded}`);
 
@@ -162,7 +186,7 @@ async function main(): Promise<void> {
     );
   }
 
-  if (present !== NEW_COLUMNS.length || retiredPresent !== expectPresent) {
+  if (present !== NEW_COLUMNS.length || !lockedPresent || retiredPresent !== expectPresent) {
     process.exitCode = 1;
   }
 }

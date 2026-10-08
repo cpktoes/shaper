@@ -20,6 +20,7 @@ import {
   resolveRackStandInSave,
   standInBoardCount,
   standInRackRows,
+  standInRowsWithLocks,
 } from "./rack-stand-in";
 
 /**
@@ -149,6 +150,24 @@ describe("standInRackRows", () => {
   });
 });
 
+describe("standInRowsWithLocks (quick 261008-lsy)", () => {
+  it("marks exactly the named boards locked and leaves every other field alone", () => {
+    const rows = standInRackRows(3);
+    const result = standInRowsWithLocks(rows, new Set(["stand-in-02"]));
+    expect(result.map((row) => row.locked)).toEqual([false, true, false]);
+    expect(result.map((row) => ({ ...row, locked: undefined }))).toEqual(rows.map((row) => ({ ...row, locked: undefined })));
+  });
+
+  it("an empty set locks nothing", () => {
+    expect(standInRowsWithLocks(standInRackRows(2), new Set()).every((row) => row.locked === false)).toBe(true);
+  });
+
+  it("a locked row comes out of rackModelsFromRows as a locked rack card", () => {
+    const [first, second] = rackModelsFromRows(standInRowsWithLocks(standInRackRows(2), new Set(["stand-in-01"])), vi.fn());
+    expect([first.locked, second.locked]).toEqual([true, false]);
+  });
+});
+
 describe("the practice rack's saves (WR-04)", () => {
   const on = { nodeEnv: "development", flag: "1", signedIn: false, session: "abc-123" };
 
@@ -229,11 +248,11 @@ describe("boundary: the practice rack's saves stay on the server and off the liv
     expect(offenders).toEqual([]);
   });
 
-  it("only the rack-order action and the practice rack's page import it", () => {
+  it("only the rack-order action, the board actions and the practice rack's page import it", () => {
     const importers = [...sourceFiles(join(REPO_ROOT, "app")), ...sourceFiles(join(REPO_ROOT, "lib"))]
       .filter((file) => /from\s+["'][^"']*rack-stand-in-server["']/.test(readFileSync(file, "utf8")))
       .map((file) => relative(REPO_ROOT, file).split(sep).join("/"))
       .sort();
-    expect(importers).toEqual(["app/actions/rack-order.ts", "app/test-rack/page.tsx"]);
+    expect(importers).toEqual(["app/actions/rack-order.ts", "app/design/actions.ts", "app/test-rack/page.tsx"]);
   });
 });

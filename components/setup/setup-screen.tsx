@@ -80,7 +80,7 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
       return;
     }
     if (!hasBoardInProgress) {
-      applyModel(model.id, model.snapshot);
+      applyModel(model.id, model.snapshot, model.locked);
       goToEditor();
       return;
     }
@@ -92,7 +92,7 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
     if (pending?.kind === "preset") {
       applyPreset(pending.preset);
     } else if (pending?.kind === "model") {
-      applyModel(pending.model.id, pending.model.snapshot);
+      applyModel(pending.model.id, pending.model.snapshot, pending.model.locked);
     }
     setConfirmOpen(false);
     setPending(null);

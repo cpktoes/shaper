@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SetupScreen } from "@/components/setup/setup-screen";
 import { rackModelsFromRows } from "@/lib/models/rack-models";
-import { rackStandInRouteEnabled, standInBoardCount, standInRackRows } from "@/lib/models/rack-stand-in";
-import { standInRackOrderForRequest } from "@/lib/rack-stand-in-server";
+import {
+  rackStandInRouteEnabled,
+  standInBoardCount,
+  standInRackRows,
+  standInRowsWithLocks,
+} from "@/lib/models/rack-stand-in";
+import { standInLocksForRequest, standInRackOrderForRequest } from "@/lib/rack-stand-in-server";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Practice Rack",
@@ -44,5 +49,12 @@ export default async function TestRackPage({
   // The order this browser's practice-rack session last saved (lib/rack-stand-in-server.ts), read
   // the way app/page.tsx reads a shaper's own: null until a board is moved.
   const rackOrder = await standInRackOrderForRequest();
-  return <SetupScreen models={rackModelsFromRows(standInRackRows(standInBoardCount(boards)))} rackOrder={rackOrder} />;
+  // The boards this session has locked from the rack's ⋯ menu (quick 261008-lsy), kept the same way.
+  const locks = await standInLocksForRequest();
+  return (
+    <SetupScreen
+      models={rackModelsFromRows(standInRowsWithLocks(standInRackRows(standInBoardCount(boards)), locks))}
+      rackOrder={rackOrder}
+    />
+  );
 }

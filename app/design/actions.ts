@@ -24,6 +24,7 @@ import {
   parseSnapshot,
   type DesignSnapshotFields,
 } from "@/lib/models/design-snapshot";
+import { saveStandInLock } from "@/lib/rack-stand-in-server";
 import {
   orderAfterDuplicate,
   orderWithNewBoardFirst,
@@ -252,4 +253,40 @@ export async function deleteModel(modelId: string): Promise<void> {
 
   await db.delete(models).where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
   revalidatePath("/");
+}
+
+/** What `setModelLocked` answers: whether the lock was stored. */
+export interface SetModelLockedResult {
+  saved: boolean;
+}
+
+/**
+ * Locks or unlocks one of the shaper's own boards (quick 261008-lsy — "protect a board from
+ * accidentally getting changed"). Constrained on both the row id and the owning-user column, same
+ * as every other mutation here: another shaper's board id updates nothing and the action refuses
+ * (T-lsy-01). Only the `locked` column is written — never the design and never `updatedAt`, so
+ * "Last touched" keeps meaning when the board itself last changed and a board in a never-arranged
+ * rack does not jump to the front because it was locked.
+ *
+ * A signed-out caller never reaches the database. On the practice rack used by the browser tests
+ * (`/test-rack`, test servers only) the lock goes to the practice rack's in-memory stand-in
+ * (`lib/rack-stand-in-server.ts`); anywhere else it writes nothing and says so (`saved: false`).
+ * A value that is not a real boolean, or an empty board id, is refused before any database work
+ * (T-lsy-04).
+ */
+export async function setModelLocked(modelId: string, locked: boolean): Promise<SetModelLockedResult> {
+  const { userId } = await auth();
+  if (!userId) return { saved: await saveStandInLock(modelId, locked) };
+
+  if (typeof locked !== "boolean" || typeof modelId !== "string" || modelId.length === 0) {
+    return { saved: false };
+  }
+
+  const [row] = await db.update(models)
+    .set({ locked })
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)))
+    .returning({ id: models.id });
+  if (!row) throw new Error("Couldn't find that board.");
+  revalidatePath("/");
+  return { saved: true };
 }

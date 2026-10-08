@@ -26,6 +26,7 @@ const olderRow: ModelRow = {
   snapshot: olderSnapshot,
   createdAt: new Date("2026-09-01T10:00:00.000Z"),
   updatedAt: new Date("2026-09-20T12:30:00.000Z"),
+  locked: null,
 };
 
 const newerRow: ModelRow = {
@@ -35,6 +36,7 @@ const newerRow: ModelRow = {
   snapshot: newerSnapshot,
   createdAt: new Date("2026-10-01T08:00:00.000Z"),
   updatedAt: new Date("2026-10-02T09:15:00.000Z"),
+  locked: null,
 };
 
 const preferencesRow: UserPreferenceRow = {

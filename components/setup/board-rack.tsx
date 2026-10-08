@@ -35,7 +35,8 @@
  */
 
 import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { deleteModel, duplicateModel, renameModel } from "@/app/design/actions";
+import { deleteModel, duplicateModel, renameModel, setModelLocked } from "@/app/design/actions";
+import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { useDesign } from "@/components/design/design-store";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
@@ -83,7 +84,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   // Read for delete (see handleDeleteConfirm below) and for rename (see handleRenameConfirm) —
   // renaming the board currently open in the editor changes the store's label too, or the next
   // autosave would silently write the old name back over the rename.
-  const { modelId, setModelId, setBoardName } = useDesign();
+  const { modelId, setModelId, setBoardName, setOpenBoardLocked } = useDesign();
   const [renamingModel, setRenamingModel] = useState<RackModel | null>(null);
   const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
@@ -230,6 +231,21 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     }
   };
 
+  /**
+   * The lock row of a board's ⋯ menu (quick 261008-lsy): locks the board if it is open to change,
+   * unlocks it if it is locked. Any order save still on its way lands first, like Rename and
+   * Duplicate. When the board is the one open in the editor, the editor learns of the new lock at
+   * once. Spoken, not shown.
+   */
+  const handleToggleLock = async (model: RackModel) => {
+    await flushAndSettle();
+    const next = !model.locked;
+    const result = await setModelLocked(model.id, next);
+    if (!result.saved) return;
+    if (model.id === modelId) setOpenBoardLocked(next);
+    announce(next ? BOARD_LOCK_COPY.locked(model.name) : BOARD_LOCK_COPY.unlocked(model.name), { visible: false });
+  };
+
   /** Opens a board exactly as the old cards did: the saved board through the setup screen's
    * `handleSelectModel` (with its replace-board check), the unsaved one straight to the editor. */
   const openBoard = (board: RackBoard) => {
@@ -298,6 +314,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         onRename={model ? () => setRenamingModel(model) : undefined}
         onDuplicate={model ? () => void handleDuplicate(model) : undefined}
         onDelete={model ? () => setDeletingModel(model) : undefined}
+        onToggleLock={model ? () => void handleToggleLock(model) : undefined}
         duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}
         carrying={kind === "swipe" ? carrying : null}
         moves={

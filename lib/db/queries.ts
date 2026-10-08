@@ -28,6 +28,8 @@ export interface ListedModel {
   name: string;
   snapshot: unknown;
   updatedAt: Date;
+  /** Whether the shaper has locked this board (quick 261008-lsy); null or false means unlocked. */
+  locked: boolean | null;
 }
 
 /**
@@ -46,6 +48,7 @@ export async function listModels(clerkId: string): Promise<ListedModel[]> {
       name: models.name,
       snapshot: models.snapshot,
       updatedAt: models.updatedAt,
+      locked: models.locked,
     })
     .from(models)
     .where(eq(models.clerkUserId, clerkId))

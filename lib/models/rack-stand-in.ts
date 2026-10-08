@@ -130,6 +130,14 @@ export function standInRackRows(count: number): RackRow[] {
   });
 }
 
+/**
+ * The practice rack's rows with each board's lock applied (quick 261008-lsy): a row is locked when
+ * its id is in `lockedIds`. The locks themselves are kept per session by `lib/rack-stand-in-server.ts`.
+ */
+export function standInRowsWithLocks(rows: readonly RackRow[], lockedIds: ReadonlySet<string>): RackRow[] {
+  return rows.map((row) => ({ ...row, locked: lockedIds.has(row.id) }));
+}
+
 /*
  * The practice rack's saves (WR-04): a stand-in for the account a signed-in shaper's order is kept
  * on, so the browser suite — signed out, with no database — can prove the order survives Back, that

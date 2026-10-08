@@ -195,6 +195,11 @@ interface DesignState {
    * rather than as local state in the button because the nav is mounted once in the root layout
    * and this has to survive navigation between design screens. */
   saveStatus: SaveStatus;
+  /** Whether the open saved board is locked (quick 261008-lsy). Read from the board's row when it is
+   * opened (`applyModel`), changed by the Board Rack's lock row and by the top bar's Unlock button.
+   * Session bookkeeping like `modelId`: it is in neither `designSnapshotFields` nor the undo
+   * history, so a save never stores it and Undo never rolls it back. */
+  locked: boolean;
 }
 
 const DEFAULT_DESIGN_STATE: DesignState = {
@@ -213,6 +218,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   boardStarted: false,
   dirty: false,
   saveStatus: "idle",
+  locked: false,
 };
 
 /** The gear menu's two tip defaults (Fit & Tip Defaults, 11-08), as a new board's foil tips. */
@@ -363,7 +369,7 @@ interface DesignContextValue {
    * plus `modelId` and `boardStarted: true`. Wholesale replace, never a patch merge — D-11 says
    * reopening restores the design exactly, and a merge would let the board being replaced leak
    * into the board being opened. */
-  applyModel: (id: string, snapshot: DesignSnapshotFields) => void;
+  applyModel: (id: string, snapshot: DesignSnapshotFields, locked: boolean) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
@@ -381,6 +387,12 @@ interface DesignContextValue {
   setBoardName: (next: string) => void;
   setFinSystem: (next: FinSystem) => void;
   setModelId: (next: string | null) => void;
+  /** Whether the open saved board is locked (quick 261008-lsy): while true the store refuses every
+   * design change, nothing autosaves, and the top bar's Save is an Unlock button. */
+  locked: boolean;
+  /** Turns the open board's lock on or off in the store — bookkeeping only, after the server has
+   * stored the new lock (the rack's lock row, the top bar's Unlock). Changes nothing in the design. */
+  setOpenBoardLocked: (next: boolean) => void;
   /** Marks the store as freshly saved — called once, right after the shaper's own first manual
    * save succeeds (`save-button.tsx`'s name-prompt path, before `modelId` exists to autosave
    * against). Sets `modelId`, `boardName`, `dirty: false` and `saveStatus: "saved"` in one
@@ -501,6 +513,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     liveTipsRef.current = { noseTip: liveNoseTip, tailTip: liveTailTip };
   }, [liveNoseTip, liveTailTip]);
+
+  // The open board's lock, read through a ref because the keyboard listener and a drag's pointer
+  // handlers can run a closure bound before the lock changed. It is set synchronously wherever the
+  // lock changes and backed by an effect that copies state.locked into it after each commit.
+  const lockedRef = useRef(false);
+  useEffect(() => {
+    lockedRef.current = state.locked;
+  }, [state.locked]);
 
   // Phase 12 (D-01, D-04): the gear menu's Deck Skin and Tip Style, live, kept current the same
   // way. A board's FIRST pick bakes these into its blank; from then on the board keeps its own cut.
@@ -644,6 +664,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // the state replacement they belong with.
     pendingEditKeyRef.current = undefined;
     setHistory(emptyHistory());
+    // A new board is never locked (and its state comes from DEFAULT_DESIGN_STATE, locked: false).
+    lockedRef.current = false;
     setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
   };
 
@@ -651,7 +673,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // sets boardStarted true (a board is in progress) but leaves dirty at DEFAULT_DESIGN_STATE's
   // false, because the store now matches the row exactly (D-09) — there is nothing to autosave
   // until the shaper changes something.
-  const applyModel = (id: string, snapshot: DesignSnapshotFields) => {
+  const applyModel = (id: string, snapshot: DesignSnapshotFields, locked: boolean) => {
     // A fresh row has no save-failure history of its own — carrying over a backoff earned by
     // whatever board was open before would slow its first autosave for no reason.
     consecutiveFailuresRef.current = 0;
@@ -659,6 +681,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // opening a different saved board is exactly the moment it must not survive.
     pendingEditKeyRef.current = undefined;
     setHistory(emptyHistory());
+    lockedRef.current = locked;
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
@@ -674,6 +697,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       blank: snapshot.blank,
       modelId: id,
       boardStarted: true,
+      locked,
     }));
   };
 
@@ -741,6 +765,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // change the board itself, so this deliberately does NOT set boardStarted, and does NOT
   // noteEdit: it never changes historySnapshot's fields either.
   const setModelId = (next: string | null) => setState((prev) => ({ ...prev, modelId: next }));
+
+  // The open board's lock turned on or off (quick 261008-lsy). Bookkeeping like setModelId: no
+  // noteEdit, no startedFrom, no dirty — locking a board is not a design change. The ref is set
+  // first so a keyboard shortcut or a drag handler bound a moment ago already sees the new lock.
+  const setOpenBoardLocked = (next: boolean) => {
+    lockedRef.current = next;
+    setState((prev) => ({ ...prev, locked: next }));
+  };
 
   // The shaper's own first, deliberate save (D-08's "only does real work the first time") —
   // there was no modelId for the autosave effect to target until this moment, so it cannot have
@@ -1229,6 +1261,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       modelId: state.modelId,
       dirty: state.dirty,
       inFlight: saveInFlight,
+      locked: state.locked,
     });
     if (decision !== "save") return;
 
@@ -1239,7 +1272,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // re-create the effect (and reset the debounce timer) on every render for no behavioural
     // difference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn, state.modelId, state.dirty, saveInFlight, designSnapshotFields]);
+  }, [isSignedIn, state.modelId, state.dirty, state.locked, saveInFlight, designSnapshotFields]);
 
   /** Steps the board back one entry, or does nothing on an empty past. Spreading exactly the ten
    * `DesignHistorySnapshot` fields (the blank among them) into state — never the whole state object — is exactly why
@@ -1302,6 +1335,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     finSystem: state.finSystem,
     blank: state.blank,
     modelId: state.modelId,
+    locked: state.locked,
+    setOpenBoardLocked,
     hasBoardInProgress: state.boardStarted,
     designSnapshotFields,
     isDirty: state.dirty,

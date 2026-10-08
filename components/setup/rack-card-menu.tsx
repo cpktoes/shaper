@@ -8,8 +8,9 @@
  *
  * The trigger is icon-only, so it carries an accessible name naming the board it belongs to —
  * a screen-reader user opening a menu on a rack full of boards needs to know which one they just
- * opened. `Menu.Item` (not `Menu.RadioItem`) is used throughout: these are one-shot commands, not
- * a toggle group.
+ * opened. `Menu.Item` (not `Menu.RadioItem`) is used for the rows that are one-shot commands. The one
+ * exception is the lock row (quick 261008-lsy): a `Menu.CheckboxItem` between Duplicate and Delete,
+ * reading "Lock board" and, ticked, "Board Locked" — a toggle, because a board is either locked or not.
  *
  * Phase 15 (the Move rows, D-12): given `moves`, the menu opens with `Move left` and `Move right`
  * above a divider, then today's three rows exactly as they were. A move that can't happen (the first
@@ -20,7 +21,8 @@
  */
 
 import { Menu } from "@base-ui/react/menu";
-import { MoreVerticalIcon } from "lucide-react";
+import { LockIcon, MoreVerticalIcon } from "lucide-react";
+import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { RACK_COPY } from "@/components/setup/rack-config";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +50,11 @@ interface RackCardMenuProps {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  /** Whether this board is locked (quick 261008-lsy): the lock row is ticked, and — from the
+   * guards task on — Delete is greyed. */
+  locked: boolean;
+  /** The lock row was chosen: lock the board if it is open to change, unlock it if it is locked. */
+  onToggleLock: () => void;
   /** Move left / Move right above a divider (the hover rack; the swipe rack only with D-11 on). */
   moves?: RackCardMoves;
   /** The menu opened or closed. */
@@ -55,7 +62,17 @@ interface RackCardMenuProps {
   className?: string;
 }
 
-export function RackCardMenu({ boardName, onRename, onDuplicate, onDelete, moves, onOpenChange, className }: RackCardMenuProps) {
+export function RackCardMenu({
+  boardName,
+  onRename,
+  onDuplicate,
+  onDelete,
+  locked,
+  onToggleLock,
+  moves,
+  onOpenChange,
+  className,
+}: RackCardMenuProps) {
   return (
     <Menu.Root onOpenChange={onOpenChange ? (open) => onOpenChange(open) : undefined}>
       {/* Same fixed-square idiom phone-menu.tsx uses for its own icon-only trigger — 28px drawn
@@ -101,6 +118,15 @@ export function RackCardMenu({ boardName, onRename, onDuplicate, onDelete, moves
             <Menu.Item onClick={onDuplicate} className={cn(ROW_CLASS, "text-surf-ink")}>
               Duplicate
             </Menu.Item>
+            <Menu.CheckboxItem
+              checked={locked}
+              closeOnClick
+              onCheckedChange={() => onToggleLock()}
+              className={cn(ROW_CLASS, "text-surf-ink")}
+            >
+              {locked ? BOARD_LOCK_COPY.boardLocked : BOARD_LOCK_COPY.lockBoard}
+              {locked && <LockIcon aria-hidden className="ml-auto size-4 text-surf-ink-muted" />}
+            </Menu.CheckboxItem>
             {/* The one item that should draw the eye differently (UI-SPEC Visual Focal Points) —
                 the only place this color appears on the rack. */}
             <Menu.Item onClick={onDelete} className={cn(ROW_CLASS, "text-surf-warning-ink")}>

@@ -29,6 +29,15 @@ import {
 
 const STORE_KEY = "__shaperPracticeRackOrders";
 
+const LOCKS_KEY = "__shaperPracticeRackLocks";
+
+/** Every practice-rack session's locked boards (quick 261008-lsy), by session id. */
+function practiceRackLocks(): Map<string, Set<string>> {
+  const holder = globalThis as typeof globalThis & { [LOCKS_KEY]?: Map<string, Set<string>> };
+  holder[LOCKS_KEY] ??= new Map();
+  return holder[LOCKS_KEY];
+}
+
 /** Every practice-rack session's stored order, by session id. */
 function practiceRackOrders(): Map<string, string[]> {
   const holder = globalThis as typeof globalThis & { [STORE_KEY]?: Map<string, string[]> };
@@ -69,4 +78,41 @@ export async function standInRackOrderForRequest(): Promise<string[] | null> {
   const cookieStore = await cookies();
   const stored = practiceRackOrders().get(rackStandInSession(cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value));
   return stored ? [...stored] : null;
+}
+
+/**
+ * The practice rack's own lock save for a signed-out caller (quick 261008-lsy), decided exactly as
+ * the order save is: off outside a test server (false), a throw for the `fail` cookie, a wait for
+ * `slow`, otherwise the board is locked or unlocked for this browser's session. Only an id of 1 to 64
+ * letters, digits, `-` or `_` is kept (T-lsy-05); anything else stores nothing and answers false.
+ */
+export async function saveStandInLock(modelId: string, locked: boolean): Promise<boolean> {
+  const cookieStore = await cookies();
+  const decision = resolveRackStandInSave({
+    nodeEnv: process.env.NODE_ENV,
+    flag: process.env.SHAPER_RACK_STAND_IN,
+    signedIn: false,
+    choice: cookieStore.get(RACK_STAND_IN_SAVE_COOKIE)?.value,
+    session: cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value,
+  });
+  if (decision.kind === "off") return false;
+  if (decision.kind === "fail") throw new Error("The practice rack's save failed on purpose (test cookie)");
+  if (typeof modelId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(modelId) || typeof locked !== "boolean") return false;
+  if (decision.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, decision.delayMs));
+  const locks = practiceRackLocks();
+  const ids = locks.get(decision.session) ?? new Set<string>();
+  if (locked) ids.add(modelId);
+  else ids.delete(modelId);
+  locks.set(decision.session, ids);
+  revalidatePath(RACK_STAND_IN_ROUTE);
+  return true;
+}
+
+/** The boards this browser's practice-rack session has locked (empty when none, or when the
+ * practice rack is off). Read by `app/test-rack/page.tsx`. */
+export async function standInLocksForRequest(): Promise<Set<string>> {
+  if (!rackStandInRouteEnabled({ nodeEnv: process.env.NODE_ENV, flag: process.env.SHAPER_RACK_STAND_IN })) return new Set();
+  const cookieStore = await cookies();
+  const stored = practiceRackLocks().get(rackStandInSession(cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value));
+  return new Set(stored ?? []);
 }

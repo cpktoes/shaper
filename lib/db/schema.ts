@@ -7,7 +7,8 @@
  * `DesignSnapshot` (lib/models/design-snapshot.ts) — outline, rails, fins, volume,
  * finsImportTemplate, boardName, finSystem, wrapped with a version number. This file only
  * describes storage shape; it never validates or interprets that JSON — that boundary lives
- * entirely in lib/models/design-snapshot.ts.
+ * entirely in lib/models/design-snapshot.ts. The nullable `locked` column (quick 261008-lsy) is a
+ * setting about the saved record, not the design: it never touches `snapshot`.
  *
  * `userPreferences` (05-02, extended 08-02) holds one row per shaper for account-level
  * settings — the units system (Imperial/Metric, UNIT-03) and, from Phase 8, whether to include
@@ -71,6 +72,10 @@ export const models = pgTable(
     snapshot: jsonb("snapshot").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    // Quick task 261008-lsy: whether the shaper has locked this board so opening it can never change
+    // it. Null or false means unlocked; true means locked. A setting about the saved record, never
+    // part of the design, so it never touches `snapshot` and a copy can never carry it forward.
+    locked: boolean("locked"),
   },
   (table) => [index("models_clerk_user_id_idx").on(table.clerkUserId)],
 );

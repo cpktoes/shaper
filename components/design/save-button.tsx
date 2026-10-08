@@ -12,6 +12,11 @@
  * - Settled: "Saved" with a small accent check glyph — the one accent moment in this control.
  * - Failed: "Not saved" in warning-ink, itself clickable to retry immediately via `requestSave`.
  *
+ * - Locked (quick 261008-lsy): while the open board is locked this whole control is "Unlock" — an
+ *   outline button with a padlock — in the place of Save. Pressing it unlocks the board for good
+ *   (stored with the board), and the control goes back to the faces above. It reads "Unlocking…"
+ *   while it works and, if it fails, "Not unlocked" in warning-ink, clickable to try again.
+ *
  * All four are short, fixed strings in a fixed-width slot so the nav layout never shifts as they
  * swap (UI-SPEC save-control).
  *
@@ -22,16 +27,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, LockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { BoardNamePrompt } from "@/components/setup/board-name-prompt";
 import { useDesign } from "@/components/design/design-store";
-import { saveModel } from "@/app/design/actions";
+import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
+import { saveModel, setModelLocked } from "@/app/design/actions";
 
 export function SaveButton() {
   const { isSignedIn } = useUser();
-  const { boardName, modelId, saveStatus, designSnapshotFields, markSaved, requestSave } = useDesign();
+  const { boardName, modelId, saveStatus, designSnapshotFields, markSaved, requestSave, locked, setOpenBoardLocked } =
+    useDesign();
   const [signInOpen, setSignInOpen] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   // Only the button's own first-save request is "saving" here — once modelId exists, the
@@ -44,6 +51,24 @@ export function SaveButton() {
   // Set when a signed-out shaper presses Save — consumed the moment isSignedIn flips to true so
   // the interrupted save resumes automatically instead of requiring a second click.
   const resumeSaveAfterSignIn = useRef(false);
+  // The Unlock button's own request, recorded with the board it belongs to so opening another board
+  // never shows a stale "Unlocking…" or "Not unlocked".
+  const [unlockState, setUnlockState] = useState<{ modelId: string; kind: "busy" | "failed" } | null>(null);
+
+  const runUnlock = async (id: string) => {
+    setUnlockState({ modelId: id, kind: "busy" });
+    try {
+      const result = await setModelLocked(id, false);
+      if (result.saved) {
+        setOpenBoardLocked(false);
+        setUnlockState(null);
+        return;
+      }
+    } catch (error) {
+      console.error("Shaper: unlock failed", error);
+    }
+    setUnlockState({ modelId: id, kind: "failed" });
+  };
 
   // The shaper's own first, deliberate save (D-08) — there is no modelId yet for the store's
   // autosave effect to target, so this calls saveModel directly and then hands the result to
@@ -122,6 +147,38 @@ export function SaveButton() {
         <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
         <BoardNamePrompt open={namePromptOpen} onOpenChange={setNamePromptOpen} onSave={runFirstSave} />
       </>
+    );
+  }
+
+  // A locked board has no Save: the top bar offers Unlock instead (quick 261008-lsy).
+  if (locked) {
+    const mine = unlockState?.modelId === modelId ? unlockState : null;
+    if (mine?.kind === "failed") {
+      return (
+        <button
+          type="button"
+          onClick={() => void runUnlock(modelId)}
+          className="min-w-20 text-left text-sm text-surf-warning-ink underline-offset-4 hover:underline"
+          aria-live="polite"
+        >
+          {BOARD_LOCK_COPY.notUnlocked}
+        </button>
+      );
+    }
+    const busy = mine?.kind === "busy";
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="min-w-20 coarse:h-11"
+        onClick={() => void runUnlock(modelId)}
+        disabled={busy}
+        aria-label={BOARD_LOCK_COPY.unlockLabel}
+        title={BOARD_LOCK_COPY.unlockTitle}
+      >
+        <LockIcon aria-hidden className="size-3.5" />
+        {busy ? BOARD_LOCK_COPY.unlocking : BOARD_LOCK_COPY.unlock}
+      </Button>
     );
   }
 

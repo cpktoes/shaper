@@ -5,27 +5,37 @@ describe("decideAutosave", () => {
   it.each([
     {
       name: "signed out, dirty, with a modelId: idle (nothing to save to)",
-      input: { signedIn: false, modelId: "model-1", dirty: true, inFlight: false },
+      input: { signedIn: false, modelId: "model-1", dirty: true, inFlight: false, locked: false },
       expected: "idle",
     },
     {
       name: "signed in, dirty, modelId null: idle (never saved, no home yet)",
-      input: { signedIn: true, modelId: null, dirty: true, inFlight: false },
+      input: { signedIn: true, modelId: null, dirty: true, inFlight: false, locked: false },
       expected: "idle",
     },
     {
       name: "signed in, dirty, modelId present, nothing in flight: save",
-      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: false },
+      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: false, locked: false },
       expected: "save",
     },
     {
       name: "signed in, dirty, modelId present, already in flight: wait",
-      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: true },
+      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: true, locked: false },
       expected: "wait",
     },
     {
       name: "signed in, not dirty, modelId present: idle",
-      input: { signedIn: true, modelId: "model-1", dirty: false, inFlight: false },
+      input: { signedIn: true, modelId: "model-1", dirty: false, inFlight: false, locked: false },
+      expected: "idle",
+    },
+    {
+      name: "signed in, dirty, modelId present, locked: idle (a locked board never autosaves)",
+      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: false, locked: true },
+      expected: "idle",
+    },
+    {
+      name: "signed in, dirty, modelId present, locked and a save in flight: idle, not wait",
+      input: { signedIn: true, modelId: "model-1", dirty: true, inFlight: true, locked: true },
       expected: "idle",
     },
   ])("$name", ({ input, expected }) => {

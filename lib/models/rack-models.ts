@@ -27,6 +27,8 @@ export interface RackRow {
   name: string;
   snapshot: unknown;
   updatedAt: Date;
+  /** Whether the shaper locked this board (quick 261008-lsy); null, false or missing means unlocked. */
+  locked?: boolean | null;
 }
 
 /** A stored board ready to be a rack card. */
@@ -35,6 +37,8 @@ export interface RackModel {
   name: string;
   snapshot: DesignSnapshotFields;
   updatedAt: Date;
+  /** True only when the stored value is exactly true: a locked board can't be changed by accident. */
+  locked: boolean;
 }
 
 /** A board's card numbers and its rack art, worked out together. */
@@ -75,7 +79,7 @@ export function rackModelsAndDrops(
     try {
       const snapshot = parseSnapshot(row.snapshot, options);
       rackBoardFigures(snapshot);
-      return [{ id: row.id, name: row.name, snapshot, updatedAt: row.updatedAt }];
+      return [{ id: row.id, name: row.name, snapshot, updatedAt: row.updatedAt, locked: row.locked === true }];
     } catch (error) {
       log(`Shaper: dropped unparsable saved board ${row.id}`, error);
       dropped.push(row.id);

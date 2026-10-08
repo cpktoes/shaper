@@ -33,6 +33,8 @@ interface RackCaptionProps {
   onRename?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  /** The lock row of the ⋯ menu was chosen (quick 261008-lsy). */
+  onToggleLock?: () => void;
   /** Set after a Duplicate fails: shown under Open This Board until it is tried again (choosing
    * Duplicate again is the retry) or the page reloads. */
   duplicateError?: string | null;
@@ -54,6 +56,7 @@ export function RackCaption({
   onRename = () => {},
   onDuplicate = () => {},
   onDelete = () => {},
+  onToggleLock = () => {},
   duplicateError = null,
   carrying = null,
   moves,
@@ -94,6 +97,8 @@ export function RackCaption({
             onRename={onRename}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
+            locked={board.model?.locked ?? false}
+            onToggleLock={onToggleLock}
             moves={menuMoves}
             onOpenChange={onMenuOpenChange}
           />

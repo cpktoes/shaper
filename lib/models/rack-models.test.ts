@@ -76,6 +76,20 @@ describe("rackModelsFromRows", () => {
     expect(model.updatedAt).toEqual(new Date(0));
   });
 
+  it("reads the lock: true is locked; null, false and a missing value are not (quick 261008-lsy)", () => {
+    const withLock = (id: string, locked: boolean | null | undefined): RackRow => ({ ...row(id, FIELDS), locked });
+    const result = rackModelsFromRows(
+      [withLock("yes", true), withLock("nul", null), withLock("no", false), row("none", FIELDS)],
+      vi.fn(),
+    );
+    expect(result.map((model) => [model.id, model.locked])).toEqual([
+      ["yes", true],
+      ["nul", false],
+      ["no", false],
+      ["none", false],
+    ]);
+  });
+
   describe("a board saved under Phase 11 takes the Tip Style it is handed (D-14)", () => {
     /** An UNTYPED version-4 envelope with a Phase 11 blank — no cut on the blank — so no typed
      * literal is left without a cut once 12-09 makes the cut required. */

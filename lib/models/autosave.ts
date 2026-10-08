@@ -31,6 +31,9 @@ export interface AutosaveDecisionInput {
   dirty: boolean;
   /** True while a save/autosave `saveModel` call for this board is already in progress. */
   inFlight: boolean;
+  /** True when the shaper has locked this board (quick 261008-lsy). A locked board has nothing to
+   * write — it was locked so that it stays exactly as saved. */
+  locked: boolean;
 }
 
 /**
@@ -38,6 +41,8 @@ export interface AutosaveDecisionInput {
  * - Signed out: idle. A signed-out shaper has nothing to save to.
  * - Never saved (`modelId === null`): idle, even if dirty and signed in. A board with no home
  *   is saved only by the shaper's own deliberate first Save (D-03/D-08), never automatically.
+ * - Locked: idle, always — even when dirty and even with a save in flight. A locked board stays
+ *   exactly as it was saved (quick 261008-lsy).
  * - Not dirty: idle. Nothing has changed since the last confirmed write.
  * - Dirty, signed in, has a home, and a save is already in flight: wait — never two concurrent
  *   writes to one row.
@@ -46,6 +51,7 @@ export interface AutosaveDecisionInput {
 export function decideAutosave(input: AutosaveDecisionInput): AutosaveDecision {
   if (!input.signedIn) return "idle";
   if (input.modelId === null) return "idle";
+  if (input.locked) return "idle";
   if (!input.dirty) return "idle";
   if (input.inFlight) return "wait";
   return "save";

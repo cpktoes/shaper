@@ -363,7 +363,7 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
   });
 
   it("no handler that sets state skips startedFrom except opening a preset or a saved board, the save bookkeeping and undo", () => {
-    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "performSave", "undoEdit", "redoEdit"]);
+    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "setOpenBoardLocked", "performSave", "undoEdit", "redoEdit"]);
     for (const { name, body } of allHandlers()) {
       if (exempt.has(name)) continue;
       expect(body, `${name} edits the board without startedFrom`).toContain("startedFrom(");
