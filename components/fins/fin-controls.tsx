@@ -53,7 +53,9 @@ const TAIL_SHAPE_LABEL: Record<IconTailShape, string> = {
 };
 const FIN_SETUP_ORDER: FinSetupKind[] = ["single", "twin", "thruster", "2plus1", "quad"];
 
-const BASE_LEN_BOUNDS = { min: 2.5, max: 7.5, step: 0.125 };
+// Fin Base Length runs 2 1/2" to 10 1/2" — the top raised from 7 1/2" on the founder's word (fast task 156,
+// 2026-10-08) so a big keel or a longboard's single fin can be set on the slider.
+const BASE_LEN_BOUNDS = { min: 2.5, max: 10.5, step: 0.125 };
 const POS_BOUNDS = { min: -1.5, max: 1.5, step: 1 / 16 };
 const TOE_BOUNDS = { min: 0, max: 0.5, step: 1 / 16 };
 const OFF_RAIL_BOUNDS = { min: 1, max: 2, step: 1 / 16 };
@@ -184,9 +186,9 @@ export function FinControls({
   // than migrating to SliderRow — see the comment above this block's JSX for why.
   const tailWidth12Slider = measureSlider(spec.tailWidth12, { min: 10, max: 18 }, 0.125, 1, system);
 
-  // Each Fin Base Length field's own display-domain bounds/step/toMm (D-06: 64-190mm stepping 1
-  // in Metric, today's 2.5-7.5in stepping 1/8 in Imperial) — one measureSlider call per field,
-  // computed here so BaseLengthField itself never converts (CLAUDE.md Rule 2).
+  // Each Fin Base Length field's own display-domain bounds/step/toMm (D-06: 64-266mm stepping 1
+  // in Metric, 2.5-10.5in stepping 1/8 in Imperial since fast task 156) — one measureSlider call per field,
+  // computed here so the slider itself never converts (CLAUDE.md Rule 2).
   const baseLenCenterSlider = measureSlider(spec.advanced.baseLenCenter, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
   const baseLenForwardSlider = measureSlider(spec.advanced.baseLenForward, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
   const baseLenRearSlider = measureSlider(spec.advanced.baseLenRear, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
