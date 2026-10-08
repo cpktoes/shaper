@@ -435,11 +435,12 @@ async function openBoardMenu(page: Page, name: string) {
   return menu;
 }
 
-/** Every row of an open menu in order, by its role and words: `menuitem:Rename`, `separator:`. */
+/** Every row of an open menu in order, by its role and words: `menuitem:Rename`, `separator:`, and the
+ * lock row `menuitemcheckbox:Lock board` (quick 261008-lsy). */
 async function menuRows(page: Page) {
   return page
     .getByRole("menu")
-    .locator('[role="menuitem"], [role="separator"]')
+    .locator('[role="menuitem"], [role="menuitemcheckbox"], [role="separator"]')
     .evaluateAll((rows) => rows.map((row) => `${row.getAttribute("role")}:${(row.textContent ?? "").trim()}`));
 }
 
@@ -609,7 +610,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await page.waitForURL("**/design/outline");
   });
 
-  test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Delete — and each Move is dimmed where it can't move", async ({
+  test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Lock board, Delete — and each Move is dimmed where it can't move", async ({
     page,
   }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
@@ -622,6 +623,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
       "separator:",
       "menuitem:Rename",
       "menuitem:Duplicate",
+      "menuitemcheckbox:Lock board",
       "menuitem:Delete",
     ]);
     // The first board can't go left; the row keeps its place, dimmed.

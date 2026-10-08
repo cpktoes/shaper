@@ -836,7 +836,7 @@ test.describe("the Board Rack on a phone — the ⋯ menu's rows and a keyboard'
     await dismissBannerAndTip(page);
   });
 
-  test("19p. with D-11's switch off, the swipe rack's ⋯ is Rename, Duplicate and Delete — no Move rows, and no Move button anywhere", async ({
+  test("19p. with D-11's switch off, the swipe rack's ⋯ is Rename, Duplicate, Lock board and Delete — no Move rows, and no Move button anywhere", async ({
     page,
   }) => {
     test.skip(PHONE_MOVE_VIA_MENU, "D-11's switch is on: the swipe rack's ⋯ offers the moves (20p)");
@@ -845,6 +845,8 @@ test.describe("the Board Rack on a phone — the ⋯ menu's rows and a keyboard'
     const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     await expect(menu.getByRole("menuitem")).toHaveText(["Rename", "Duplicate", "Delete"]);
+    // The lock row (quick 261008-lsy) is a tick-box row, so it is not one of the menuitems above.
+    await expect(menu.getByRole("menuitemcheckbox")).toHaveText(["Lock board"]);
     await expect(menu.getByRole("separator")).toHaveCount(0);
     await expect(page.getByRole("menuitem", { name: /Move/ })).toHaveCount(0);
     await page.keyboard.press("Escape");
