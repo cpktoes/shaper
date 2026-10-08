@@ -600,11 +600,17 @@ export function tailClosureSegments(layout: TemplateLayout, closure: TailClosure
  * until the curve drawn in each sheet's own overlap strip lines up with the neighbour's, which is
  * only possible if the curve keeps drawing past the box line rather than stopping at it.
  *
- * On any edge with a neighbouring page in that direction, the box line sits `layout.overlap`
- * inset from this page's own printable edge — the strip between the box line and the printable
- * edge is exactly the shared duplicate-content zone. On an edge with no neighbour (an outer edge
- * of the whole grid), the box line sits flush with the printable edge itself — nothing to
- * duplicate there.
+ * On any edge with a neighbouring page in that direction, the box line sits HALF of
+ * `layout.overlap` inset from this page's own printable edge — down the middle of the strip the
+ * two pages share — so this page's box line and its neighbour's are the same station (or
+ * half-width) on the board. Lay one sheet's border line on the other's and the curve lines up;
+ * the curve still runs half the overlap past each line, into the margin, as the check. This is the
+ * Paper Saver's own rule (`stripRegistrationLines`). Fast task 157 (2026-10-08, the founder: "the
+ * margin boxes should line up ... so that the board's curve also lines up"): the box line used to
+ * sit the FULL overlap in, at the far side of the strip, which put two neighbouring pages' box
+ * lines 1/2" apart on the board — so lining the boxes up offset the curve by 1/2". On an edge with
+ * no neighbour (an outer edge of the whole grid), the box line sits flush with the printable edge
+ * itself — nothing to duplicate there.
  */
 export interface TemplatePageBox {
   pageIndex: number;
@@ -618,8 +624,9 @@ export interface TemplatePageBox {
 }
 
 /** Builds every page's own alignment box (see `TemplatePageBox`) from the layout's existing tile
- * grid and overlap — a page's box is inset from its own printable edge by `layout.overlap` on any
- * side that borders another page, and flush with the printable edge on any side that doesn't. */
+ * grid and overlap — a page's box is inset from its own printable edge by half of `layout.overlap`
+ * on any side that borders another page (so it meets the neighbour's box line exactly), and flush
+ * with the printable edge on any side that doesn't. */
 export function templatePageBoxes(layout: TemplateLayout): TemplatePageBox[] {
   return layout.pages.map((page) => {
     const hasNoseNeighbor = page.row > 0;
@@ -627,10 +634,11 @@ export function templatePageBoxes(layout: TemplateLayout): TemplatePageBox[] {
     const hasInwardNeighbor = page.col > 0;
     const hasOutwardNeighbor = page.col < layout.columns - 1;
 
-    const stationTop = page.stationRange[1] - (hasNoseNeighbor ? layout.overlap : 0);
-    const stationBottom = page.stationRange[0] + (hasTailNeighbor ? layout.overlap : 0);
-    const halfWidthLeft = page.halfWidthRange[0] + (hasInwardNeighbor ? layout.overlap : 0);
-    const halfWidthRight = page.halfWidthRange[1] - (hasOutwardNeighbor ? layout.overlap : 0);
+    const halfOverlap = layout.overlap / 2;
+    const stationTop = page.stationRange[1] - (hasNoseNeighbor ? halfOverlap : 0);
+    const stationBottom = page.stationRange[0] + (hasTailNeighbor ? halfOverlap : 0);
+    const halfWidthLeft = page.halfWidthRange[0] + (hasInwardNeighbor ? halfOverlap : 0);
+    const halfWidthRight = page.halfWidthRange[1] - (hasOutwardNeighbor ? halfOverlap : 0);
 
     return {
       pageIndex: page.index,

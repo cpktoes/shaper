@@ -80,6 +80,48 @@ function overlapLength(aRange: [number, number], bRange: [number, number]): numb
  * rubber-stamped digest. See `design_decision` §1 of that task's plan for the full ruling: split
  * the proof from the pin, then recapture, never overwrite on trust.
  */
+/** The page boxes exactly as `templatePageBoxes` built them BEFORE fast task 157 (2026-10-08): each
+ * border line a FULL overlap in from the printable edge, which put neighbouring pages' lines 1/2"
+ * apart on the board. Kept, frozen, only so the two characterisation pins below keep their
+ * original digests and so still prove nothing ELSE in the tile grid moved; each pin also checks the
+ * real boxes differ from these by exactly half the overlap, on joining sides only. */
+function boxesByThePreFastTask157Rule(layout: TemplateLayout) {
+  return layout.pages.map((page) => {
+    const hasNoseNeighbor = page.row > 0;
+    const hasTailNeighbor = page.row < layout.rows - 1;
+    const hasInwardNeighbor = page.col > 0;
+    const hasOutwardNeighbor = page.col < layout.columns - 1;
+
+    const stationTop = page.stationRange[1] - (hasNoseNeighbor ? layout.overlap : 0);
+    const stationBottom = page.stationRange[0] + (hasTailNeighbor ? layout.overlap : 0);
+    const halfWidthLeft = page.halfWidthRange[0] + (hasInwardNeighbor ? layout.overlap : 0);
+    const halfWidthRight = page.halfWidthRange[1] - (hasOutwardNeighbor ? layout.overlap : 0);
+
+    return {
+      pageIndex: page.index,
+      stationRange: [mm(stationBottom), mm(stationTop)],
+      halfWidthRange: [mm(halfWidthLeft), mm(halfWidthRight)],
+      stringerEdge: page.col === 0,
+    };
+  });
+}
+
+/** The real boxes sit exactly half the overlap OUTWARD of the old rule's on every side that joins
+ * another page, and exactly where they were on every outer edge (fast task 157). */
+function expectBoxesMovedByHalfTheOverlap(layout: TemplateLayout) {
+  const half = layout.overlap / 2;
+  const before = boxesByThePreFastTask157Rule(layout);
+  templatePageBoxes(layout).forEach((box, i) => {
+    const page = layout.pages[i];
+    const old = before[i];
+    expect(box.stationRange[1]).toBeCloseTo(old.stationRange[1] + (page.row > 0 ? half : 0), 6);
+    expect(box.stationRange[0]).toBeCloseTo(old.stationRange[0] - (page.row < layout.rows - 1 ? half : 0), 6);
+    expect(box.halfWidthRange[0]).toBeCloseTo(old.halfWidthRange[0] - (page.col > 0 ? half : 0), 6);
+    expect(box.halfWidthRange[1]).toBeCloseTo(old.halfWidthRange[1] + (page.col < layout.columns - 1 ? half : 0), 6);
+    expect(box.stringerEdge).toBe(old.stringerEdge);
+  });
+}
+
 describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
   const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
     "shortboard-letter": "3cbffdc1fc29fa49",
@@ -99,7 +141,10 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
       const marks = computeTemplateMarks(geometry);
       const placements = markPlacements(layout, marks, geometry);
       const lineSegments = markLineSegments(layout, marks, geometry);
-      const boxes = templatePageBoxes(layout);
+      // Fast task 157: the boxes moved on purpose (border lines now meet) — digest them by the old
+      // rule so this pin still proves every OTHER function is byte-identical.
+      const boxes = boxesByThePreFastTask157Rule(layout);
+      expectBoxesMovedByHalfTheOverlap(layout);
       const closure = computeTailClosure(geometry) ?? null;
       const closureSegments = closure ? tailClosureSegments(layout, closure) : [];
       const namePlacement = nameBlockPlacement(layout, geometry);
@@ -169,7 +214,10 @@ describe(
         const marks = computeTemplateMarks(geometry);
         const placements = markPlacements(layout, marks, geometry);
         const lineSegments = markLineSegments(layout, marks, geometry);
-        const boxes = templatePageBoxes(layout);
+        // Fast task 157: the boxes moved on purpose (border lines now meet) — digest them by the old
+        // rule so this pin still proves every OTHER function is byte-identical.
+        const boxes = boxesByThePreFastTask157Rule(layout);
+        expectBoxesMovedByHalfTheOverlap(layout);
         const closure = computeTailClosure(geometry) ?? null;
         const closureSegments = closure ? tailClosureSegments(layout, closure) : [];
         // namePlacement deliberately excluded — nameBlockPlacement is the one function this task
@@ -780,25 +828,67 @@ describe(
         });
 
         it.each(BOARD_PRESETS)(
-          "$id: on any side with a neighbour, the box line is inset from the page's own printable edge by exactly layout.overlap; flush with the edge otherwise",
+          "$id: on any side with a neighbour, the box line is inset from the page's own printable edge by half of layout.overlap (the middle of the shared strip); flush with the edge otherwise",
           (preset) => {
             const geometry = buildOutline(preset.outline);
             const layout = computeTemplateLayout(geometry, paper);
             const boxes = templatePageBoxes(layout);
+            const half = layout.overlap / 2;
 
             boxes.forEach((box) => {
               const page = layout.pages[box.pageIndex];
 
-              const expectedTop = page.row > 0 ? page.stationRange[1] - layout.overlap : page.stationRange[1];
-              const expectedBottom = page.row < layout.rows - 1 ? page.stationRange[0] + layout.overlap : page.stationRange[0];
-              const expectedLeft = page.col > 0 ? page.halfWidthRange[0] + layout.overlap : page.halfWidthRange[0];
-              const expectedRight = page.col < layout.columns - 1 ? page.halfWidthRange[1] - layout.overlap : page.halfWidthRange[1];
+              const expectedTop = page.row > 0 ? page.stationRange[1] - half : page.stationRange[1];
+              const expectedBottom = page.row < layout.rows - 1 ? page.stationRange[0] + half : page.stationRange[0];
+              const expectedLeft = page.col > 0 ? page.halfWidthRange[0] + half : page.halfWidthRange[0];
+              const expectedRight = page.col < layout.columns - 1 ? page.halfWidthRange[1] - half : page.halfWidthRange[1];
 
               expect(box.stationRange[1]).toBeCloseTo(expectedTop, 6);
               expect(box.stationRange[0]).toBeCloseTo(expectedBottom, 6);
               expect(box.halfWidthRange[0]).toBeCloseTo(expectedLeft, 6);
               expect(box.halfWidthRange[1]).toBeCloseTo(expectedRight, 6);
             });
+          },
+        );
+
+        it.each(BOARD_PRESETS)(
+          "$id: neighbouring pages' border lines are the same line on the board — lay one on the other and the curve lines up (fast task 157)",
+          (preset) => {
+            // The founder (2026-10-08): "The margin boxes should line up (overlapping margins) so
+            // that the board's curve also lines up." Every curve and mark is drawn in the board's own
+            // frame, so two sheets agree everywhere they overlap exactly when their border lines
+            // name the same station (rows) or the same half-width (columns). Before this fix they
+            // sat a full TEMPLATE_OVERLAP_MM (1/2") apart, at opposite sides of the shared strip.
+            const geometry = buildOutline(preset.outline);
+            const layout = computeTemplateLayout(geometry, paper);
+            const boxes = templatePageBoxes(layout);
+            const at = (row: number, col: number) => {
+              const page = layout.pages.find((p) => p.row === row && p.col === col)!;
+              return { page, box: boxes[page.index] };
+            };
+            let joins = 0;
+
+            for (const { row, col } of layout.pages) {
+              const here = at(row, col);
+              if (row + 1 < layout.rows) {
+                const below = at(row + 1, col);
+                expect(here.box.stationRange[0]).toBeCloseTo(below.box.stationRange[1], 6);
+                // The line sits inside both sheets' own drawing, with half the overlap of curve
+                // past it on each side to check the join by.
+                expect(here.box.stationRange[0] - here.page.stationRange[0]).toBeCloseTo(layout.overlap / 2, 6);
+                expect(below.page.stationRange[1] - below.box.stationRange[1]).toBeCloseTo(layout.overlap / 2, 6);
+                joins++;
+              }
+              if (col + 1 < layout.columns) {
+                const outward = at(row, col + 1);
+                expect(here.box.halfWidthRange[1]).toBeCloseTo(outward.box.halfWidthRange[0], 6);
+                expect(here.page.halfWidthRange[1] - here.box.halfWidthRange[1]).toBeCloseTo(layout.overlap / 2, 6);
+                expect(outward.box.halfWidthRange[0] - outward.page.halfWidthRange[0]).toBeCloseTo(layout.overlap / 2, 6);
+                joins++;
+              }
+            }
+            expect(joins).toBe((layout.rows - 1) * layout.columns + layout.rows * (layout.columns - 1));
+            expect(joins).toBeGreaterThan(0);
           },
         );
       });
@@ -2284,16 +2374,19 @@ describe("scaleSquarePlacement", () => {
   });
 
   it(
-    "derived outcome matches the planning facts: shortboard, fish, midlength, longboard and the widest shortboard keep the corner; the widest longboard and the noseFullness-100 longboard move interior",
+    "derived outcome matches the planning facts: every case keeps the corner on Letter; on A4 the widest longboard and the noseFullness-100 longboard move interior (fast task 157: the border lines moved half the overlap outward, so Letter's corner now has room on those two)",
     () => {
-      const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
+      const expectedInterior: Record<"letter" | "a4", Set<string>> = {
+        letter: new Set(),
+        a4: new Set(["widest-longboard", "fullnose-longboard"]),
+      };
       for (const paper of PAPERS) {
         for (const { id, outline } of PLANNING_CASES) {
           const geometry = buildOutline(outline);
           const layout = computeTemplateLayout(geometry, paper);
           const { placement } = computeScaleSquarePlacement(layout, geometry);
 
-          expect(placement.position).toBe(expectedCorner.has(id) ? "corner" : "interior");
+          expect(placement.position, `${paper} ${id}`).toBe(expectedInterior[paper].has(id) ? "interior" : "corner");
         }
       }
     },

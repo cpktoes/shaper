@@ -503,7 +503,9 @@ export function templateHowToLines(layout: TemplateLayout, system: UnitsSystem):
   const lines = [
     'Print at 100% — turn off "Fit to page."',
     line2,
-    "Lay each page so its edge lines up on the next page's border line — the curve should match where they overlap — then tape.",
+    // Fast task 157 (2026-10-08): neighbouring pages' border lines are now the same line on the
+    // board, so the shaper lays border line on border line — not a sheet's edge on a border line.
+    "Lay each page's border line on the next page's border line — the curve should match where they overlap — then tape.",
   ];
   if (layout.columns > 1) {
     lines.push("Line up left to right first, then row by row, nose to tail.");

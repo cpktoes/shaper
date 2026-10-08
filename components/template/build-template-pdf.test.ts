@@ -1175,13 +1175,16 @@ describe("templateScaleSquarePlacement / scaleSquareRect", () => {
     },
   );
 
-  it("derived outcome matches the planning facts: shortboard, fish, midlength, longboard and the widest shortboard keep the corner; the widest longboard and the noseFullness-100 longboard move interior", () => {
-    const expectedCorner = new Set(["shortboard", "fish", "midlength", "longboard", "widest-shortboard"]);
+  it("derived outcome matches the planning facts: every case keeps the corner on Letter; on A4 the widest longboard and the noseFullness-100 longboard move interior (fast task 157: the border lines moved half the overlap outward, so Letter's corner now has room on those two)", () => {
+    const expectedInterior: Record<"letter" | "a4", Set<string>> = {
+      letter: new Set(),
+      a4: new Set(["widest-longboard", "fullnose-longboard"]),
+    };
     for (const paper of ["letter", "a4"] as const) {
       for (const { id, build } of PLANNING_FACT_CASES) {
         const options = build(paper);
         const { placement } = templateScaleSquarePlacement(options);
-        expect(placement.position).toBe(expectedCorner.has(id) ? "corner" : "interior");
+        expect(placement.position, `${paper} ${id}`).toBe(expectedInterior[paper].has(id) ? "interior" : "corner");
       }
     }
   });
