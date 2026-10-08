@@ -265,3 +265,47 @@ describe("the public blank catalogue read (Phase 11)", () => {
     expect(stationLike).toEqual([]);
   });
 });
+
+/**
+ * The board lock (quick 261008-lsy): a locked board is protected on the server too, so a stale tab,
+ * a second device or a crafted call can neither save over it nor delete it, a copy never carries the
+ * lock forward, and locking never touches the design or "Last touched".
+ */
+describe("the board lock (quick 261008-lsy)", () => {
+  const actionsSource = stripComments(readFileSync(ACTIONS_PATH, "utf8"));
+  const body = (name: string) => {
+    const fn = exportedAsyncFunctions(actionsSource).find((candidate) => candidate.name === name);
+    expect(fn, `${name} not found`).toBeDefined();
+    return fn!.body;
+  };
+  /** The text of the first `db.<verb>(` statement in a body, up to the next db call. */
+  const statement = (source: string, verb: string) => {
+    const start = source.search(new RegExp(`\\bdb\\.${verb}\\s*\\(`));
+    expect(start, `no db.${verb} call`).toBeGreaterThanOrEqual(0);
+    const rest = source.slice(start + 1);
+    const next = rest.search(/\bdb\.(select|insert|update|delete)\s*\(/);
+    return next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
+  };
+
+  it("saveModel's update refuses a locked row (the lock condition is in its WHERE)", () => {
+    expect(statement(body("saveModel").slice(body("saveModel").indexOf("db.update")), "update")).toMatch(
+      /models\.locked\}\s*is not true/,
+    );
+  });
+
+  it("deleteModel's delete refuses a locked row", () => {
+    expect(statement(body("deleteModel"), "delete")).toMatch(/models\.locked\}\s*is not true/);
+  });
+
+  it("duplicateModel's copy is unlocked and the source's lock is never read", () => {
+    const fn = body("duplicateModel");
+    expect(statement(fn, "insert")).toMatch(/locked:\s*false/);
+    expect(statement(fn, "select")).not.toMatch(/models\.locked/);
+  });
+
+  it("setModelLocked writes the lock and nothing else: not the design, not updatedAt", () => {
+    const update = statement(body("setModelLocked"), "update");
+    expect(update).toMatch(/\.set\(\{\s*locked\s*\}\)/);
+    expect(update).not.toMatch(/updatedAt|snapshot/);
+  });
+});

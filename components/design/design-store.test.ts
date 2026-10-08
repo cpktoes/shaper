@@ -363,7 +363,7 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
   });
 
   it("no handler that sets state skips startedFrom except opening a preset or a saved board, the save bookkeeping and undo", () => {
-    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "setOpenBoardLocked", "performSave", "undoEdit", "redoEdit"]);
+    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "setOpenBoardLocked", "noteRenamed", "flushAutosave", "performSave", "undoEdit", "redoEdit"]);
     for (const { name, body } of allHandlers()) {
       if (exempt.has(name)) continue;
       expect(body, `${name} edits the board without startedFrom`).toContain("startedFrom(");
@@ -386,5 +386,52 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
     const body = balancedFrom(SOURCE, SOURCE.indexOf("{", start));
     expect(body).toMatch(/if \(prev\.boardStarted\) return prev;/);
     expect(body).toMatch(/foil:\s*\{\s*\.\.\.prev\.foil,\s*noseTip:\s*liveTips\.noseTip,\s*tailTip:\s*liveTips\.tailTip\s*\}/);
+  });
+});
+
+describe("design-store.tsx — the board lock is the real guard (quick 261008-lsy)", () => {
+  it("every handler that marks the board dirty, except applyPreset, starts with `if (lockedRef.current) return;`", () => {
+    const editors = allHandlers().filter(({ body }) => /\bdirty:\s*true\b/.test(body));
+    expect(editors.length).toBeGreaterThan(20);
+    for (const { name, body } of editors) {
+      if (name === "applyPreset") continue;
+      const afterArrow = body.slice(body.indexOf("=>") + 2);
+      expect(afterArrow.replace(/^\s*\{\s*/, ""), `${name} does not start with the lock check`).toMatch(
+        /^if \(lockedRef\.current\) return;/,
+      );
+    }
+  });
+
+  it("applyPreset starts a new board and so does not check the lock", () => {
+    expect(handler("applyPreset")).not.toContain("if (lockedRef.current) return;");
+    expect(handler("applyPreset")).toContain("lockedRef.current = false;");
+  });
+
+  it("performSave does nothing while locked", () => {
+    expect(handler("performSave")).toMatch(/if \(lockedRef\.current\) return;/);
+  });
+
+  it("canUndo and canRedo are false while locked, so the Undo pair hides itself", () => {
+    expect(SOURCE).toMatch(/canUndo:\s*!state\.locked\s*&&\s*canUndo\(history\)/);
+    expect(SOURCE).toMatch(/canRedo:\s*!state\.locked\s*&&\s*canRedo\(history\)/);
+  });
+
+  it("the lock is in neither the saved fields nor the undo history", () => {
+    expect(memo("designSnapshotFields").object).not.toMatch(/locked/);
+    expect(memo("designSnapshotFields").deps).not.toMatch(/locked/);
+    expect(memo("historySnapshot").object).not.toMatch(/locked/);
+    expect(memo("historySnapshot").deps).not.toMatch(/locked/);
+  });
+
+  it("the bookkeeping handlers never mark the board dirty", () => {
+    for (const name of ["setOpenBoardLocked", "noteRenamed", "flushAutosave"]) {
+      expect(handler(name), name).not.toMatch(/\bdirty:\s*true\b/);
+    }
+  });
+
+  it("a save the server refuses as locked turns the editor's lock on and leaves the edit unsaved", () => {
+    const body = handler("performSave");
+    expect(body).toMatch(/result\.locked/);
+    expect(body).toMatch(/lockedRef\.current = true/);
   });
 });

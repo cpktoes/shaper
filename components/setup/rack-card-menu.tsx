@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 const ROW_CLASS =
   "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm outline-none select-none coarse:min-h-11 data-highlighted:bg-surf-well";
 
-/** A Move row that can't move: dimmed, no hover wash, the arrow cursor — and inert (Base UI). */
+/** A row that can't be chosen — a Move row that can't move, Delete on a locked board: dimmed, no
+ * hover wash, the arrow cursor — and inert (Base UI). */
 const DISABLED_CLASS = "data-disabled:cursor-default data-disabled:opacity-50";
 
 /** The Move rows (D-12): one place left or right, each disabled when the board is already at that end. */
@@ -50,8 +51,8 @@ interface RackCardMenuProps {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  /** Whether this board is locked (quick 261008-lsy): the lock row is ticked, and — from the
-   * guards task on — Delete is greyed. */
+  /** Whether this board is locked (quick 261008-lsy): the lock row is ticked and Delete is greyed
+   * (Rename and Duplicate still work). */
   locked: boolean;
   /** The lock row was chosen: lock the board if it is open to change, unlock it if it is locked. */
   onToggleLock: () => void;
@@ -129,7 +130,9 @@ export function RackCardMenu({
             </Menu.CheckboxItem>
             {/* The one item that should draw the eye differently (UI-SPEC Visual Focal Points) —
                 the only place this color appears on the rack. */}
-            <Menu.Item onClick={onDelete} className={cn(ROW_CLASS, "text-surf-warning-ink")}>
+            {/* Greyed while the board is locked (quick 261008-lsy): Rename still works, and the server
+                refuses a delete of a locked board even if one is asked for directly. */}
+            <Menu.Item disabled={locked} onClick={onDelete} className={cn(ROW_CLASS, DISABLED_CLASS, "text-surf-warning-ink")}>
               Delete
             </Menu.Item>
           </Menu.Popup>

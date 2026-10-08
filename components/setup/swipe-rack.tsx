@@ -1230,7 +1230,7 @@ export function SwipeRack({
                 aria-label={
                   board.kind === "in-progress"
                     ? RACK_COPY.unsavedBoardLabel(board.name, lines[k], n)
-                    : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n)
+                    : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n, board.model?.locked)
                 }
                 aria-current={board.key === openKey ? "true" : undefined}
                 // Roving tabindex: the turned board is the rack's one tab stop.

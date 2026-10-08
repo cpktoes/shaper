@@ -1082,7 +1082,7 @@ export function HoverRack({
                 aria-label={
                   board.kind === "in-progress"
                     ? RACK_COPY.unsavedBoardLabel(board.name, lines[k], n)
-                    : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n)
+                    : RACK_COPY.boardLabel(board.name, lines[k], k + 1, n, board.model?.locked)
                 }
                 aria-current={board.key === openKey ? "true" : undefined}
                 tabIndex={board.key === turnedKey || (turnedIndex < 0 && k === 0) ? 0 : -1}

@@ -84,10 +84,13 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   // Read for delete (see handleDeleteConfirm below) and for rename (see handleRenameConfirm) —
   // renaming the board currently open in the editor changes the store's label too, or the next
   // autosave would silently write the old name back over the rename.
-  const { modelId, setModelId, setBoardName, setOpenBoardLocked } = useDesign();
+  const { modelId, setModelId, setBoardName, setOpenBoardLocked, noteRenamed, flushAutosave, locked: openBoardLocked } =
+    useDesign();
   const [renamingModel, setRenamingModel] = useState<RackModel | null>(null);
   const [deletingModel, setDeletingModel] = useState<RackModel | null>(null);
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
+  /** A board's lock row failed (quick 261008-lsy): the words shown under its Open This Board. */
+  const [lockErrors, setLockErrors] = useState<Record<string, string>>({});
   const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
   /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
   const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
@@ -199,7 +202,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
     // The board being renamed may be the one open in the editor right now — the shared store
     // still holds its old name, and the next autosave would write that stale name straight back
     // over the rename we just confirmed. Keeping the store in sync is what stops that.
-    if (renamingModel.id === modelId) setBoardName(name);
+    // A locked board refuses design changes in the store, so its name is kept in step without one.
+    if (renamingModel.id === modelId) {
+      if (openBoardLocked) noteRenamed(name);
+      else setBoardName(name);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -238,10 +245,26 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
    * once. Spoken, not shown.
    */
   const handleToggleLock = async (model: RackModel) => {
-    await flushAndSettle();
     const next = !model.locked;
-    const result = await setModelLocked(model.id, next);
-    if (!result.saved) return;
+    setLockErrors((prev) => {
+      if (!(model.id in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[model.id];
+      return rest;
+    });
+    await flushAndSettle();
+    // Locking the board that is open: an edit still waiting for its autosave is sent first. The
+    // server takes actions one at a time per browser, so that save reaches it ahead of the lock.
+    if (next && model.id === modelId) flushAutosave();
+    const failure = next ? BOARD_LOCK_COPY.lockFailed : BOARD_LOCK_COPY.unlockFailed;
+    try {
+      const result = await setModelLocked(model.id, next);
+      if (!result.saved) throw new Error("The lock was not stored.");
+    } catch {
+      setLockErrors((prev) => ({ ...prev, [model.id]: failure }));
+      announce(failure, { visible: false });
+      return;
+    }
     if (model.id === modelId) setOpenBoardLocked(next);
     announce(next ? BOARD_LOCK_COPY.locked(model.name) : BOARD_LOCK_COPY.unlocked(model.name), { visible: false });
   };
@@ -316,6 +339,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         onDelete={model ? () => setDeletingModel(model) : undefined}
         onToggleLock={model ? () => void handleToggleLock(model) : undefined}
         duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}
+        lockError={model ? (lockErrors[model.id] ?? null) : null}
         carrying={kind === "swipe" ? carrying : null}
         moves={
           savedIndex >= 0

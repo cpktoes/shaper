@@ -2,7 +2,7 @@
 
 /**
  * The caption under the Board Rack's turned board (Phase 15, UI-SPEC §4): the board's name, its
- * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Delete —
+ * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Lock board, Delete —
  * and, on the computer's rack, Move left / Move right above them, 15-11).
  * The unsaved board's caption is the tag `In progress — not saved`, its name, its card line and
  * Continue This Board, with no date and no ⋯ — as today's in-progress card. That tag is information,
@@ -18,6 +18,8 @@
  * width under the floor, used from 15-07).
  */
 
+import { LockIcon } from "lucide-react";
+import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { CardMetadataLine } from "@/components/setup/card-metadata-line";
 import { RackCardMenu, type RackCardMoves } from "@/components/setup/rack-card-menu";
 import { RACK_COPY, movesOffered } from "@/components/setup/rack-config";
@@ -38,6 +40,9 @@ interface RackCaptionProps {
   /** Set after a Duplicate fails: shown under Open This Board until it is tried again (choosing
    * Duplicate again is the retry) or the page reloads. */
   duplicateError?: string | null;
+  /** Set after locking or unlocking fails: shown under Open This Board, like `duplicateError`, until
+   * the lock row is chosen again. */
+  lockError?: string | null;
   /** While a finger carries a board on the swipe rack (15-09): that board's name. The caption block,
    * at its same height, then reads `Moving {name}. Let go where you want it.` and returns to the
    * caption on the drop. */
@@ -58,6 +63,7 @@ export function RackCaption({
   onDelete = () => {},
   onToggleLock = () => {},
   duplicateError = null,
+  lockError = null,
   carrying = null,
   moves,
   onMenuOpenChange,
@@ -88,11 +94,19 @@ export function RackCaption({
         </span>
       )}
       <div className="flex min-w-0 items-center gap-2">
-        <span className="block min-w-0 flex-1 truncate text-[20px] leading-[1.2] font-semibold text-foreground">
+        <span className="block min-w-0 truncate text-[20px] leading-[1.2] font-semibold text-foreground">
           {board.name}
         </span>
+        {/* A locked board's padlock (quick 261008-lsy): small, right after the name, in muted ink —
+            a lock is information, never the warning colour. */}
+        {board.model?.locked && (
+          <span role="img" aria-label={BOARD_LOCK_COPY.padlock} title={BOARD_LOCK_COPY.padlock} className="shrink-0 text-surf-ink-muted">
+            <LockIcon aria-hidden className="size-4" />
+          </span>
+        )}
         {saved && (
           <RackCardMenu
+            className="ml-auto"
             boardName={board.name}
             onRename={onRename}
             onDuplicate={onDuplicate}
@@ -120,6 +134,7 @@ export function RackCaption({
         {saved ? RACK_COPY.open : RACK_COPY.continueBoard}
       </button>
       {duplicateError && <p className="mt-1 text-xs leading-[1.4] text-surf-warning-ink">{duplicateError}</p>}
+      {lockError && <p className="mt-1 text-xs leading-[1.4] text-surf-warning-ink">{lockError}</p>}
     </div>
   );
 }

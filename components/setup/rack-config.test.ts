@@ -100,6 +100,10 @@ describe("every rack word, exactly as UI-SPEC § Copywriting has it", () => {
       "Swipe, or use the left and right arrow keys, to look along the rack. Press Enter to open the board.",
     );
     expect(RACK_COPY.boardLabel("Fish", "5'8\" · 20 1/4\"", 2, 15)).toBe("Fish, 5'8\" · 20 1/4\", board 2 of 15");
+    expect(RACK_COPY.boardLabel("Fish", "5'8\" · 20 1/4\"", 2, 15, true)).toBe(
+      "Fish, locked, 5'8\" · 20 1/4\", board 2 of 15",
+    );
+    expect(RACK_COPY.boardLabel("Fish", "5'8\"", 1, 3, false)).toBe("Fish, 5'8\", board 1 of 3");
     expect(RACK_COPY.unsavedBoardLabel("Fish", "5'8\"", 15)).toBe(
       "Fish, in progress and not saved, 5'8\", board 1 of 15",
     );

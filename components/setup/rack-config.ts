@@ -82,7 +82,10 @@ export const RACK_COPY = {
     "Use the left and right arrow keys to look along the rack, Enter to open the board, and Alt with an arrow key to move it one place.",
   swipeInstructions:
     "Swipe, or use the left and right arrow keys, to look along the rack. Press Enter to open the board.",
-  boardLabel: (name: string, line: string, i: number, n: number) => `${name}, ${line}, board ${i} of ${n}`,
+  // A locked board (quick 261008-lsy) says so after its name — the sideways name beside it has no
+  // padlock picture, so this is where a screen reader hears it.
+  boardLabel: (name: string, line: string, i: number, n: number, locked = false) =>
+    `${name}, ${locked ? "locked, " : ""}${line}, board ${i} of ${n}`,
   unsavedBoardLabel: (name: string, line: string, n: number) =>
     `${name}, in progress and not saved, ${line}, board 1 of ${n}`,
   captionGroup: (name: string) => `${name} actions`,

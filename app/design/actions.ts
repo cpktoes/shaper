@@ -13,7 +13,7 @@
  */
 
 import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db/client";
 import { models, userPreferences } from "@/lib/db/schema";
@@ -69,6 +69,10 @@ async function storeRackOrder(clerkId: string, ids: readonly string[]): Promise<
 
 export interface SaveModelResult {
   id: string;
+  /** Present (and true) only when the board is locked: nothing was written (quick 261008-lsy). It
+   * happens when the board was locked from another device while this one still had it open; the
+   * editor then locks itself too, and the unsaved edit stays on screen. */
+  locked?: true;
 }
 
 /**
@@ -77,6 +81,10 @@ export interface SaveModelResult {
  * supplies someone else's row id updates nothing rather than someone else's board (T-02-03).
  * The parameter list carries a row reference and nothing more: no user or owner field ever
  * comes from the client.
+ *
+ * A locked board is never written (quick 261008-lsy, T-lsy-03): the update's WHERE excludes a locked
+ * row, and when it matches nothing the row's lock is read — a locked board answers `{ locked: true }`
+ * without writing, a missing one throws as before.
  */
 export async function saveModel(
   modelId: string | null,
@@ -140,9 +148,15 @@ export async function saveModel(
   // renameModel/duplicateModel already refuse on a source row that doesn't resolve.
   const [row] = await db.update(models)
     .set({ name: trimmed, snapshot: envelope, updatedAt: new Date() })
-    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)))
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId), sql`${models.locked} is not true`))
     .returning({ id: models.id });
-  if (!row) throw new Error("Couldn't find that board.");
+  if (!row) {
+    const [current] = await db.select({ locked: models.locked })
+      .from(models)
+      .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+    if (current?.locked === true) return { id: modelId, locked: true };
+    throw new Error("Couldn't find that board.");
+  }
   revalidatePath("/");
   return { id: row.id };
 }
@@ -202,6 +216,9 @@ export interface DuplicateModelResult {
  * The copy no longer floats to the top of the rack: it stands right after its original, and that
  * fixes the rack's order — even in a rack the shaper never arranged — so the copy stays beside its
  * original from then on (Phase 15 D-02, D-16).
+ *
+ * The copy is always unlocked, whatever the original is (quick 261008-lsy; the founder: "Duplicates
+ * of locked boards should be unlocked by default"): the source's lock is never read.
  */
 export async function duplicateModel(modelId: string): Promise<DuplicateModelResult> {
   const { userId } = await auth();
@@ -222,7 +239,7 @@ export async function duplicateModel(modelId: string): Promise<DuplicateModelRes
   const envelope = buildSnapshot({ ...design, boardName: copyName });
 
   const [row] = await db.insert(models)
-    .values({ clerkUserId: userId, name: copyName, snapshot: envelope })
+    .values({ clerkUserId: userId, name: copyName, snapshot: envelope, locked: false })
     .returning({ id: models.id });
 
   // D-02 / D-16: the copy stands right after its original, and the whole rack order is stored. A
@@ -246,12 +263,25 @@ export async function duplicateModel(modelId: string): Promise<DuplicateModelRes
  * user column, same as every other mutation here. There is no soft-delete column and no trash
  * table: D-13 decided the confirm dialog is the safety, so this really does remove the row
  * (T-02-13, accepted).
+ *
+ * A locked board cannot be deleted (quick 261008-lsy, T-lsy-02), even by a stale page or a crafted
+ * call: the delete's WHERE excludes a locked row, and when nothing was deleted a locked board throws
+ * "Unlock this board before deleting it." (the delete dialog already shows its own failure line).
+ * A board that is simply gone stays a quiet no-op.
  */
 export async function deleteModel(modelId: string): Promise<void> {
   const { userId } = await auth();
   if (!userId) throw new Error("Sign in to delete a board.");
 
-  await db.delete(models).where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+  const deleted = await db.delete(models)
+    .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId), sql`${models.locked} is not true`))
+    .returning({ id: models.id });
+  if (deleted.length === 0) {
+    const [current] = await db.select({ locked: models.locked })
+      .from(models)
+      .where(and(eq(models.id, modelId), eq(models.clerkUserId, userId)));
+    if (current?.locked === true) throw new Error("Unlock this board before deleting it.");
+  }
   revalidatePath("/");
 }
 

@@ -393,6 +393,13 @@ interface DesignContextValue {
   /** Turns the open board's lock on or off in the store — bookkeeping only, after the server has
    * stored the new lock (the rack's lock row, the top bar's Unlock). Changes nothing in the design. */
   setOpenBoardLocked: (next: boolean) => void;
+  /** The board open in the editor was renamed from the Board Rack: updates only the store's name
+   * (no edit, no autosave, no undo step), so a locked board's name stays in step with the rack. */
+  noteRenamed: (name: string) => void;
+  /** Sends an edit still waiting for its autosave right now, if there is one — the rack calls it
+   * just before locking the open board so the lock never strands the last edit. Signed out, or with
+   * nothing waiting, it does nothing. */
+  flushAutosave: () => void;
   /** Marks the store as freshly saved — called once, right after the shaper's own first manual
    * save succeeds (`save-button.tsx`'s name-prompt path, before `modelId` exists to autosave
    * against). Sets `modelId`, `boardName`, `dirty: false` and `saveStatus: "saved"` in one
@@ -630,17 +637,25 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     return Object.keys(patch).sort().join(",");
   }
 
+  // The lock is the store's own guard (quick 261008-lsy): every edit below starts with
+  // `if (lockedRef.current) return;`, before it records an undo step or touches state. The greyed
+  // controls are what a shaper sees; this is what makes the lock true — a drag, a keyboard shortcut or
+  // a stale closure that slips past a disabled control still cannot change a locked board. The one
+  // exception is applyPreset, which starts a NEW board and leaves the locked one untouched in the rack.
   const updateOutline = (patch: Partial<OutlineSpec>) => {
+    if (lockedRef.current) return;
     noteEdit(`outline:${patchKey(patch)}`);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), outline: { ...prev.outline, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateRocker = (patch: Partial<FiveStationRocker>) => {
+    if (lockedRef.current) return;
     noteEdit(`rocker:${patchKey(patch)}`);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), rocker: { ...prev.rocker, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateFoil = (patch: Partial<FoilSpec>) => {
+    if (lockedRef.current) return;
     noteEdit(`foil:${patchKey(patch)}`);
     setState((current) => {
       const prev = startedFrom(current, liveTipsRef.current);
@@ -702,6 +717,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   };
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) => {
+    if (lockedRef.current) return;
     noteEdit(`rails:${key}:${patchKey(patch)}`);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
@@ -714,6 +730,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A discrete switch, not a slider — noteEdit(null) so flipping it twice is always two steps,
   // never folded into one the way a drag would be.
   const toggleTailHardEdge = () => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
@@ -724,17 +741,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   };
 
   const updateFins = (patch: Partial<FinPlacementSpec>) => {
+    if (lockedRef.current) return;
     noteEdit(`fins:${patchKey(patch)}`);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), fins: { ...prev.fins, ...patch }, boardStarted: true, dirty: true }));
   };
 
   const updateVolume = (patch: Partial<VolumeSpec>) => {
+    if (lockedRef.current) return;
     noteEdit(`volume:${patchKey(patch)}`);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), volume: { ...prev.volume, ...patch }, boardStarted: true, dirty: true }));
   };
 
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const setFinsImportTemplate = (next: boolean) => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), finsImportTemplate: next, boardStarted: true, dirty: true }));
   };
@@ -745,6 +765,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // link flips (D-09/D-10). See DesignContextValue.toggleRailsImportFoilThickness's doc comment.
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const toggleRailsImportFoilThickness = () => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), railsImportFoilThickness: !prev.railsImportFoilThickness, boardStarted: true, dirty: true }));
   };
@@ -752,11 +773,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // No noteEdit call: boardName is deliberately absent from historySnapshot (see
   // DesignHistorySnapshot's doc comment), so recording a pending key here would do nothing but
   // confuse the next real edit's coalescing — do not "fix" this by adding one.
-  const setBoardName = (next: string) =>
+  const setBoardName = (next: string) => {
+    if (lockedRef.current) return;
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), boardName: next, boardStarted: true, dirty: true }));
+  };
 
   // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null).
   const setFinSystem = (next: FinSystem) => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => ({ ...startedFrom(prev, liveTipsRef.current), finSystem: next, boardStarted: true, dirty: true }));
   };
@@ -773,6 +797,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     lockedRef.current = next;
     setState((prev) => ({ ...prev, locked: next }));
   };
+
+  // The board open in the editor was renamed from the Board Rack while it is locked (quick
+  // 261008-lsy). Bookkeeping only — no dirty, no undo step — so the store never holds a stale name
+  // that the first save after Unlock would write back over the rename.
+  const noteRenamed = (name: string) => setState((prev) => ({ ...prev, boardName: name }));
 
   // The shaper's own first, deliberate save (D-08's "only does real work the first time") —
   // there was no modelId for the autosave effect to target until this moment, so it cannot have
@@ -948,6 +977,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // A discrete choice, not a slider — noteEdit(null), so each pick is its own undo step.
   const pickBlank = (record: BlankRecord, placement: Mm) => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
@@ -973,6 +1003,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // A slider — one coalescing key, so a whole drag is one undo step.
   const setPlacement = (placement: Mm) => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit("blank:placement");
     setState((current) => {
@@ -983,6 +1014,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // A slider — one coalescing key, so a whole Deck Skin drag is one undo step (Phase 12, D-01).
   const setDeckSkin = (deckSkin: Mm) => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit("blank:deckSkin");
     setState((current) => {
@@ -995,6 +1027,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // against the board's resolved cut (the side profile's, always complete), so tapping the pill
   // that is already on writes nothing and leaves no empty undo step.
   const setTipStyle = (tipStyle: TipStyle) => {
+    if (lockedRef.current) return;
     if (!state.blank || sideProfile.blank?.cut.tipStyle === tipStyle) return;
     noteEdit(null);
     setState((current) => {
@@ -1006,6 +1039,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A discrete choice (Phase 12, D-13) — the same shape as setTipStyle. It only ever writes the
   // surface; the geometry moves the chosen surface and nothing else.
   const setFineTuneSurface = (surface: FineTuneSurface) => {
+    if (lockedRef.current) return;
     if (!state.blank || sideProfile.blank?.cut.fineTuneSurface === surface) return;
     noteEdit(null);
     setState((current) => {
@@ -1018,6 +1052,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // Sliders — keyed per field, like every patch-shaped mutator.
   const setFineTune = (patch: Partial<{ nose12Offset: Mm; tail12Offset: Mm }>) => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit(`blank:offset:${patchKey(patch)}`);
     setState((current) => {
@@ -1028,6 +1063,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // A discrete button — noteEdit(null).
   const resetFineTune = () => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit(null);
     setState((current) => {
@@ -1041,6 +1077,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A slider (Phase 14, D-11) — one coalescing key PER TIP, so a whole drag of one tip's start is
   // one undo step and dragging the nose then the tail is two.
   const setThinningStart = (end: TipEnd, start: Mm) => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit(`blank:thinningStart:${end}`);
     const key = end === "nose" ? "noseThinningStart" : "tailThinningStart";
@@ -1057,6 +1094,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // the key from a fresh copy of the blank rather than storing an empty value, so the board equals
   // one that never had a start.
   const setThinningStartAutomatic = (end: TipEnd) => {
+    if (lockedRef.current) return;
     const key = end === "nose" ? "noseThinningStart" : "tailThinningStart";
     if (!state.blank || state.blank[key] === undefined) return;
     noteEdit(null);
@@ -1078,6 +1116,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // board's own stored values. All three fields change in one setState, so a single undo brings
   // the blank — and the old hand-set values — back together.
   const removeBlank = () => {
+    if (lockedRef.current) return;
     if (!state.blank) return;
     noteEdit(null);
     const profileNow = sideProfile;
@@ -1105,6 +1144,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // A discrete switch — see toggleTailHardEdge's comment (above, near the other RAILS/FINS
   // toggles) for why noteEdit(null).
   const toggleImportTemplateDimensions = () => {
+    if (lockedRef.current) return;
     noteEdit(null);
     setState((current) => {
       const prev = startedFrom(current, liveTipsRef.current);
@@ -1136,6 +1176,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // AFTER the early-return guard below, so a no-op call (template import already off) records
   // nothing.
   const toggleImportRailThickness = () => {
+    if (lockedRef.current) return;
     if (!state.volume.importTemplateDimensions) return;
     noteEdit(null);
     setState((current) => {
@@ -1208,6 +1249,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // so the two paths can never drift into reporting status differently. A no-op while there is
   // no row to write to or a write is already in flight, mirroring `decideAutosave`'s own gates.
   const performSave = () => {
+    if (lockedRef.current) return;
     if (state.modelId === null || saveInFlight) return;
     const modelIdAtSaveTime = state.modelId;
     const nameAtSaveTime = state.boardName;
@@ -1227,6 +1269,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           // autosave effect (re-evaluated below when saveInFlight flips back to false) schedules
           // a follow-up save for the edit that would otherwise have been silently dropped.
           consecutiveFailuresRef.current = 0;
+          // The server refused because the board was locked from another device (quick 261008-lsy):
+          // nothing was written. This editor locks too, and the unsaved edit stays on screen — it is
+          // saved only if the shaper presses Unlock.
+          if (result.locked) {
+            lockedRef.current = true;
+            setState((prev) => ({ ...prev, locked: true, saveStatus: "idle" }));
+            return;
+          }
           setState((prev) => ({
             ...prev,
             dirty: designSnapshotFieldsRef.current !== snapshotAtSaveTime,
@@ -1243,6 +1293,21 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         })
         .finally(() => setSaveInFlight(false));
     });
+  };
+
+  // Sends an edit that is still waiting for its autosave right now (quick 261008-lsy) — used by the
+  // Board Rack just before it locks the open board, so the lock never strands a shaper's last edit.
+  // It asks the same pure decider the autosave effect does and does nothing unless the answer is
+  // "save" (signed out, never saved, nothing changed, already locked, or a save in flight: nothing).
+  const flushAutosave = () => {
+    const decision = decideAutosave({
+      signedIn: isSignedIn === true,
+      modelId: state.modelId,
+      dirty: state.dirty,
+      inFlight: saveInFlight,
+      locked: lockedRef.current,
+    });
+    if (decision === "save") performSave();
   };
 
   // The autosave effect (D-08): re-evaluates `decideAutosave` on every change to the snapshot
@@ -1282,6 +1347,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
    * edit. `pendingEditKeyRef` is cleared first so this restoring setState is never mistaken by the
    * recording effect above for a new edit to file away. */
   const undoEdit = () => {
+    if (lockedRef.current) return;
     const result = undo(history, historySnapshot);
     if (!result) return;
     pendingEditKeyRef.current = undefined;
@@ -1291,6 +1357,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   /** The mirror of undoEdit — see its doc comment above for why each line is there. */
   const redoEdit = () => {
+    if (lockedRef.current) return;
     const result = redo(history, historySnapshot);
     if (!result) return;
     pendingEditKeyRef.current = undefined;
@@ -1337,13 +1404,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     modelId: state.modelId,
     locked: state.locked,
     setOpenBoardLocked,
+    noteRenamed,
+    flushAutosave,
     hasBoardInProgress: state.boardStarted,
     designSnapshotFields,
     isDirty: state.dirty,
     saveStatus: state.saveStatus,
     requestSave: performSave,
-    canUndo: canUndo(history),
-    canRedo: canRedo(history),
+    canUndo: !state.locked && canUndo(history),
+    canRedo: !state.locked && canRedo(history),
     undoEdit,
     redoEdit,
     updateOutline,

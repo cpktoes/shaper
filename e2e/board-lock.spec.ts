@@ -102,4 +102,69 @@ test.describe("the board lock on a computer (quick 261008-lsy)", () => {
       "false",
     );
   });
+
+  test("t2. a locked board shows its padlock, greys Delete (Rename and Duplicate stay), and its controls refuse a change until Unlock", async ({
+    page,
+  }) => {
+    const first = board(1);
+    await openRack(page);
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+
+    // The padlock stands right beside the name in the caption.
+    await expect(captionFor(page, first.name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
+    const menu = await openBoardMenu(page, first.name);
+    await expect(menu.getByRole("menuitem", { name: "Delete" })).toBeDisabled();
+    await expect(menu.getByRole("menuitem", { name: "Rename" })).toBeEnabled();
+    await expect(menu.getByRole("menuitem", { name: "Duplicate" })).toBeEnabled();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+
+    await openFromCaption(page, first.name);
+    const controls = page.locator("[data-design-controls-scroll]");
+    const slider = controls.locator('input[type="range"]').first();
+    await expect(slider).toBeVisible();
+    const before = await controls.innerText();
+    await slider.focus();
+    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(300);
+    expect(await controls.innerText()).toBe(before);
+
+    // Unlock, and the same keys change the board.
+    await page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true }).click();
+    await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel })).toHaveCount(0);
+    await slider.focus();
+    for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowRight");
+    await expect.poll(() => controls.innerText()).not.toBe(before);
+  });
+
+  test("t3. locking the board that is open takes effect in the editor at once: Unlock is in the top bar, the Undo pair is gone, and Undo from the keyboard does nothing", async ({
+    page,
+  }) => {
+    const first = board(1);
+    await openRack(page);
+    await openFromCaption(page, first.name);
+
+    // An edit while unlocked: the Undo pair appears.
+    const controls = page.locator("[data-design-controls-scroll]");
+    const slider = controls.locator('input[type="range"]').first();
+    await slider.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+
+    // Back to the rack, lock this very board from its ⋯, then return to the editor.
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-board]")).toHaveCount(3);
+    await expect(captionFor(page, first.name)).toBeVisible();
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await page.goForward();
+    await page.waitForURL("**/design/outline");
+
+    await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
+    const before = await controls.innerText();
+    await page.keyboard.press("ControlOrMeta+Z");
+    await page.waitForTimeout(300);
+    expect(await controls.innerText()).toBe(before);
+  });
 });

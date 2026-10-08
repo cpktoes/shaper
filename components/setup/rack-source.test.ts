@@ -161,17 +161,27 @@ describe("R4 / SPEC constraint 2: the rack draws in the theme's own colours only
 describe("SPEC prohibition (R9): the unsaved board never takes the warning colour", () => {
   const WARNING = /surf-warning-ink/g;
 
-  it("rack-caption.tsx uses the warning ink exactly once, on the duplicate-failed line", () => {
+  it("rack-caption.tsx uses the warning ink exactly twice: the duplicate-failed line and the lock-failed line (quick 261008-lsy)", () => {
     const source = code("components/setup/rack-caption.tsx");
-    expect(source.match(WARNING) ?? []).toHaveLength(1);
+    expect(source.match(WARNING) ?? []).toHaveLength(2);
     const lines = source.split("\n").filter((line) => line.includes("surf-warning-ink"));
-    expect(lines).toHaveLength(1);
+    expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/\bduplicateError\b/);
+    expect(lines[1]).toMatch(/\blockError\b/);
   });
 
-  it("board-rack.tsx hands the caption a duplicate error only for a saved board", () => {
+  it("the padlock beside a locked board's name is muted ink, never the warning ink (quick 261008-lsy)", () => {
+    const padlock = code("components/setup/rack-caption.tsx")
+      .split("\n")
+      .filter((line) => line.includes("BOARD_LOCK_COPY.padlock"));
+    expect(padlock.length).toBeGreaterThan(0);
+    for (const line of padlock) expect(line).not.toMatch(/surf-warning-ink/);
+  });
+
+  it("board-rack.tsx hands the caption a duplicate error and a lock error only for a saved board", () => {
     // The unsaved board has no model, so its caption is always given null — it can never show the line.
     expect(code("components/setup/board-rack.tsx")).toMatch(/duplicateError=\{\s*model\s*\?[^}]*:\s*null\s*\}/);
+    expect(code("components/setup/board-rack.tsx")).toMatch(/lockError=\{\s*model\s*\?[^}]*:\s*null\s*\}/);
   });
 
   it.each([
