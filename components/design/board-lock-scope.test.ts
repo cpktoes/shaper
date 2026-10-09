@@ -18,6 +18,8 @@ const LOCKABLE_FILES = [
   "components/rocker/blank-flag.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
+  "components/volume/volume-controls.tsx",
+  "components/summary/order-form.tsx",
 ];
 
 /** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and
@@ -112,6 +114,11 @@ describe("board-lock-scope — the control inventory", () => {
     const fins = stripComments(read("components/fins/fin-controls.tsx"));
     const pill = fins.slice(fins.indexOf("function PillButton"), fins.indexOf("function baseLengthLabel"));
     expect(pill).toMatch(/useControlsLocked\(\)/);
+  });
+
+  it("the SUMMARY Board Name field is read-only while locked", () => {
+    const source = stripComments(read("components/summary/order-form.tsx"));
+    expect(source).toMatch(/label="Board Name"[^>]*readOnly=\{locked\}/);
   });
 
   it("the design layout wraps every screen in the lock scope", () => {

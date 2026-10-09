@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useUnits } from "@/components/units-provider";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
@@ -52,6 +53,7 @@ export function VolumeControls({
   onToggleImportRailThickness,
 }: VolumeControlsProps) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const lengthIn = mmToInches(effectiveVolume.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
@@ -99,6 +101,7 @@ export function VolumeControls({
       {templateAvailable && (
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal">
           <Checkbox
+            disabled={locked}
             checked={effectiveVolume.importTemplateDimensions}
             onCheckedChange={() => onToggleImportTemplateDimensions()}
           />
@@ -111,7 +114,7 @@ export function VolumeControls({
           <Checkbox
             checked={effectiveVolume.importRailThickness}
             onCheckedChange={() => onToggleImportRailThickness()}
-            disabled={!effectiveVolume.importTemplateDimensions}
+            disabled={locked || !effectiveVolume.importTemplateDimensions}
           />
           Use This Board&apos;s Real Rail &amp; Thickness Data
         </label>
@@ -132,7 +135,7 @@ export function VolumeControls({
               <Select
                 value={lengthFeet}
                 onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-                disabled={dimensionsDisabled}
+                disabled={locked || dimensionsDisabled}
               >
                 <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
                   <SelectValue />
@@ -148,7 +151,7 @@ export function VolumeControls({
               <Select
                 value={lengthInches}
                 onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-                disabled={dimensionsDisabled}
+                disabled={locked || dimensionsDisabled}
               >
                 <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
                   <SelectValue />
@@ -171,7 +174,7 @@ export function VolumeControls({
               min={boardLengthFieldBounds.min}
               max={boardLengthFieldBounds.max}
               system={system}
-              disabled={dimensionsDisabled}
+              disabled={locked || dimensionsDisabled}
             />
           )}
         </div>
@@ -180,7 +183,7 @@ export function VolumeControls({
           min={boardLength.min}
           max={boardLength.max}
           step={boardLength.step}
-          disabled={dimensionsDisabled}
+          disabled={locked || dimensionsDisabled}
           onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
@@ -193,7 +196,7 @@ export function VolumeControls({
         min={boardWidth.min}
         max={boardWidth.max}
         step={boardWidth.step}
-        disabled={dimensionsDisabled}
+        disabled={locked || dimensionsDisabled}
         onValueChange={(v) => onChange({ width: boardWidth.toMm(v) })}
       />
 

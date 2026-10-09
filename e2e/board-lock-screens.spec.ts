@@ -83,13 +83,14 @@ async function openLockedBoard(page: Page, n = 1) {
   await startPracticeRack(page);
   await lockFromRack(page, n);
   await openFromRack(page, n);
-  // The lock has arrived in the editor once the top bar offers Unlock.
-  await expect(unlockButton(page)).toHaveCount(1);
+  // The lock has arrived in the editor once the top bar offers Unlock (a cold dev server may still be compiling).
+  await expect(unlockButton(page)).toHaveCount(1, { timeout: 20_000 });
 }
 
 /** Whether the element is disabled to a mouse, a finger, the keyboard and a screen reader. */
 const IS_DISABLED = (el: Element) =>
   (el as HTMLButtonElement).disabled === true ||
+  (el as HTMLInputElement).readOnly === true ||
   el.getAttribute("aria-disabled") === "true" ||
   el.hasAttribute("data-disabled");
 
@@ -116,6 +117,12 @@ async function liveBoardControls(scope: Locator): Promise<string[]> {
     }
     return offenders;
   }, IS_DISABLED.toString());
+}
+
+/** After Unlock: some board-changing control in `scope` is live again (VOLUME and FINS keep most sliders
+ * off for their own reasons while the board imports its template, but their tick boxes and pills come back). */
+async function expectControlsBack(scope: Locator) {
+  await expect.poll(async () => (await liveBoardControls(scope)).length).toBeGreaterThan(0);
 }
 
 /** Every range input on the page is disabled (there is at least one), or none is. */
@@ -276,7 +283,117 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await pressUnlock(page);
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
   });
+  test("s-volume. VOLUME is greyed, and Unlock brings it back", async ({ page }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "VOLUME");
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+    await pressUnlock(page);
+    await expectControlsBack(controls);
+  });
+
+  test("s-summary. SUMMARY: the Board Name can't be typed in, the Fin System is greyed on screen but prints in full ink, printing still works, and Unlock brings it back", async ({
+    page,
+  }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "SUMMARY");
+    const form = page.locator("[data-order-form-page]");
+    await expect(form).toBeVisible();
+    // Nothing on the sheet that changes the board is live: the name is read-only, the Fin System disabled.
+    expect(await liveBoardControls(form), "controls still live on a locked order form").toEqual([]);
+    const boardName = form.getByRole("textbox", { name: /Board Name/ });
+    await expect(boardName).toHaveAttribute("readonly", "");
+    await expect(form.locator('input[type="text"]:not([readonly]):not([disabled])')).toHaveCount(0);
+    const finSystem = form.locator("select");
+    await expect(finSystem).toBeDisabled();
+    // Typing into the read-only name changes nothing.
+    const nameBefore = await boardName.inputValue();
+    await boardName.click({ force: true });
+    await page.keyboard.type("zzz");
+    expect(await boardName.inputValue()).toBe(nameBefore);
+    // Printing and exporting are viewing: they stay live.
+    await expect(page.getByRole("button", { name: "Print Order Form" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Export Template" })).toBeEnabled();
+
+    const look = () =>
+      finSystem.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        const fill = (cs as unknown as Record<string, string>).webkitTextFillColor ?? "";
+        return { opacity: cs.opacity, color: cs.color, fill, border: cs.borderTopColor, background: cs.backgroundColor };
+      });
+    // On screen it is greyed; on paper it is full ink.
+    const onScreen = await look();
+    expect(Number(onScreen.opacity)).toBeLessThan(1);
+    await page.emulateMedia({ media: "print" });
+    const lockedPrint = await look();
+    expect(lockedPrint.opacity).toBe("1");
+    await page.emulateMedia({ media: "screen" });
+
+    // After Unlock the same select prints with exactly the same colours.
+    await pressUnlock(page);
+    await expect(finSystem).toBeEnabled();
+    await page.emulateMedia({ media: "print" });
+    const unlockedPrint = await look();
+    expect(lockedPrint).toEqual(unlockedPrint);
+    await page.emulateMedia({ media: "screen" });
+    await expect(boardName).not.toHaveAttribute("readonly", "");
+  });
 });
 
-// The later task adds the VOLUME / SUMMARY / phone tests above; this keeps the imports in use.
-export type { ScreenLabel };
+test.describe("a locked board's controls are greyed on a phone (quick 261008-lsy, Plan 02)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phones' ☰ tiles, compact top bar and swipe rack");
+  });
+
+  const bar = (page: Page) => page.getByRole("banner");
+  const phoneUnlock = (page: Page) => bar(page).getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel });
+
+  /** On a locked board every range input is disabled, the Undo and Redo pair is gone and Unlock is in the bar. */
+  async function expectPhoneScreenGreyed(page: Page) {
+    await expect(phoneUnlock(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Redo" })).toHaveCount(0);
+    await expect
+      .poll(async () => (await rangeInputsDisabled(page)).live, { message: "range inputs still live on a locked board" })
+      .toBe(0);
+  }
+
+  const stepNav = (page: Page) => page.getByRole("navigation", { name: "Back and Next", exact: true });
+
+  test("p-screens. all six screens are greyed in turn, through the ☰ tiles and Back + Next, and Unlock on FINS brings its sliders back", async ({
+    page,
+  }) => {
+    await openLockedBoard(page, 1);
+    await expectPhoneScreenGreyed(page);
+    const walk: ScreenLabel[] = ["ROCKER", "RAILS", "VOLUME"];
+    for (const label of walk) {
+      await goToScreen(page, label);
+      await expectPhoneScreenGreyed(page);
+      const controls = page.locator("[data-design-controls-scroll]");
+      expect(await liveBoardControls(controls), `${label}: live controls on a locked board`).toEqual([]);
+    }
+    // Next, Next, then Back: FINS, SUMMARY, FINS again.
+    await stepNav(page).getByRole("link", { name: /^Next screen/ }).click();
+    await page.waitForURL("**/design/fins");
+    await expectPhoneScreenGreyed(page);
+    expect(await liveBoardControls(page.locator("[data-design-controls-scroll]")), "FINS: live controls").toEqual([]);
+    await stepNav(page).getByRole("link", { name: /^Next screen/ }).click();
+    await page.waitForURL("**/design/summary");
+    await expectPhoneScreenGreyed(page);
+    expect(await liveBoardControls(page.locator("[data-order-form-page]")), "SUMMARY: live controls").toEqual([]);
+    await stepNav(page).getByRole("link", { name: /^Previous screen/ }).click();
+    await page.waitForURL("**/design/fins");
+
+    await phoneUnlock(page).click();
+    await expect(phoneUnlock(page)).toHaveCount(0);
+    await expectControlsBack(page.locator("[data-design-controls-scroll]"));
+  });
+
+  test("p-sideways. held sideways, TEMPLATE is greyed and the compact bar shows Unlock", async ({ page }, testInfo) => {
+    await openLockedBoard(page, 1);
+    await page.setViewportSize(testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 360 });
+    await expectPhoneScreenGreyed(page);
+    await goToScreen(page, "RAILS");
+    await expectPhoneScreenGreyed(page);
+  });
+});

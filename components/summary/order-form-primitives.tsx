@@ -131,6 +131,7 @@ export function OrderFormField({
   prefix,
   className,
   labelClassName,
+  readOnly,
 }: {
   label: string;
   /** Omitted → a blank ruled line. Present without `onChange` → a printed read-only value.
@@ -142,6 +143,10 @@ export function OrderFormField({
   prefix?: string;
   className?: string;
   labelClassName?: string;
+  /** A live input that can be read and printed but not typed into — the board lock (quick
+   * 261008-lsy): a locked board's name stays a printed line, in full ink, and is announced as
+   * read-only. Only meaningful with `onChange`. */
+  readOnly?: boolean;
 }) {
   return (
     <label className={cn("flex min-w-0 items-baseline gap-1", className)}>
@@ -158,6 +163,7 @@ export function OrderFormField({
         <input
           type="text"
           value={value ?? ""}
+          readOnly={readOnly}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="min-w-0 flex-1 border-b border-surf-ink bg-transparent font-bold text-surf-ink outline-none placeholder:font-normal placeholder:text-surf-ink-muted/60 focus:border-surf-accent-ink order-form-value"

@@ -57,6 +57,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 import { useUnits } from "@/components/units-provider";
@@ -235,6 +236,8 @@ export function OrderForm() {
     blank,
   } = useDesign();
   const { system } = useUnits();
+  // A locked board's Board Name is read-only and its Fin System is greyed on screen; both print in full ink.
+  const locked = useControlsLocked();
   const { defaults } = useFitDefaults();
   const { rootRef, printOrderForm } = useOrderFormPrintFit();
   // The phone preview's scale, measured, for the engines whose stylesheet cannot divide two lengths
@@ -575,8 +578,10 @@ export function OrderForm() {
               >
                 <select
                   value={finSystem}
+                  disabled={locked}
                   onChange={(e) => setFinSystem(e.target.value as FinSystem)}
-                  className="w-full rounded-[2px] border border-surf-ink bg-surf-panel px-1.5 py-1 font-bold text-surf-ink outline-none focus:border-surf-accent-ink order-form-value"
+                  // Greyed on screen while locked; on paper it prints exactly like an unlocked one (full ink).
+                  className="w-full rounded-[2px] border border-surf-ink bg-surf-panel px-1.5 py-1 font-bold text-surf-ink outline-none focus:border-surf-accent-ink disabled:cursor-default disabled:opacity-40 print:disabled:opacity-100 print:disabled:[-webkit-text-fill-color:currentColor] order-form-value"
                 >
                   {FIN_SYSTEMS.map((sys) => (
                     <option key={sys.value} value={sys.value}>
@@ -892,6 +897,7 @@ export function OrderForm() {
                   label="Board Name"
                   value={boardName}
                   onChange={setBoardName}
+                  readOnly={locked}
                   placeholder="Name this board"
                 />
                 {/* Blank takes a line of its own, the whole width of the box, above the row that
@@ -938,6 +944,7 @@ export function OrderForm() {
       <div data-print-hide className="mt-4 flex flex-none flex-wrap items-center justify-center gap-3">
         <Button
           type="button"
+          data-lock-exempt
           onClick={printOrderForm}
           className="border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85"
         >
@@ -949,7 +956,7 @@ export function OrderForm() {
             Download PDF button. */}
         <ExportPreviewDialog
           trigger={
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" data-lock-exempt>
               Export Template
             </Button>
           }
@@ -959,6 +966,7 @@ export function OrderForm() {
             render, since both read/write usePrintRailInstructions() alone. */}
         <label className="flex cursor-pointer items-center gap-1.5 text-xs text-surf-ink-muted">
           <Checkbox
+            data-lock-exempt
             checked={printRailInstructions}
             onCheckedChange={() => setPrintRailInstructions(!printRailInstructions)}
           />

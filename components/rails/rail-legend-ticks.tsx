@@ -26,7 +26,7 @@ export function RailLegendTicks({ className }: { className?: string }) {
           key={entry.key}
           className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 print:min-h-0 text-surf-ink-muted"
         >
-          <Checkbox checked={visibleGroups.has(entry.key)} onCheckedChange={() => toggleGroup(entry.key)} />
+          <Checkbox data-lock-exempt checked={visibleGroups.has(entry.key)} onCheckedChange={() => toggleGroup(entry.key)} />
           <RailLegendSwatch color={entry.color} />
           {entry.label}
         </label>
