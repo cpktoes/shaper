@@ -6,6 +6,7 @@ import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-i
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
+import { appSettingsDialog, appSettingsRow, openSettingsMenu } from "./helpers/settings";
 
 /**
  * The board lock, part 2 (quick 261008-lsy, Plan 02): on a locked board every control that changes
@@ -67,7 +68,15 @@ async function lockFromRack(page: Page, n: number) {
 async function openFromRack(page: Page, n: number) {
   const name = board(n).name;
   if (n !== 1) await turnTo(page, n);
-  await captionFor(page, name).getByRole("button", { name: RACK_COPY.open }).click();
+  const open = captionFor(page, name).getByRole("button", { name: RACK_COPY.open });
+  await expect(open).toBeVisible();
+  // A press that lands before React owns the button does nothing (or loads the page fresh and loses the lock).
+  await open.evaluate(async (el) => {
+    for (let i = 0; i < 100 && !Object.keys(el).some((k) => k.startsWith("__reactFiber")); i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  });
+  await open.click();
   await page.waitForURL("**/design/outline");
 }
 
@@ -80,11 +89,20 @@ const unlockButton = (page: Page) =>
  * presets; 5 is a hand-set board with no blank.
  */
 async function openLockedBoard(page: Page, n = 1) {
-  await startPracticeRack(page);
-  await lockFromRack(page, n);
-  await openFromRack(page, n);
-  // The lock has arrived in the editor once the top bar offers Unlock (a cold dev server may still be compiling).
-  await expect(unlockButton(page)).toHaveCount(1, { timeout: 20_000 });
+  // A cold dev server can answer the very first client-side navigation with a full page load, which
+  // forgets the open board; one more go from a fresh rack settles it (the server is warm by then).
+  for (let attempt = 1; ; attempt++) {
+    await startPracticeRack(page);
+    await lockFromRack(page, n);
+    await openFromRack(page, n);
+    try {
+      // The lock has arrived in the editor once the top bar offers Unlock.
+      await expect(unlockButton(page)).toHaveCount(1, { timeout: attempt === 1 ? 12_000 : 20_000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+    }
+  }
 }
 
 /** Whether the element is disabled to a mouse, a finger, the keyboard and a screen reader. */
@@ -317,24 +335,35 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
   test("s-fins. FINS is greyed, the toe-in table still opens and closes, Fin Placement Callouts still toggles, and Unlock brings it back", async ({
     page,
   }) => {
+    test.slow();
     // No preset board draws the McKee toe-in table link, and a locked board cannot be changed to one. So:
     // open the mid-length quad unlocked, pick its McKee rear fins, go back to the rack, lock that very
     // board from its ⋯ (which takes effect in the open editor at once), and come back to FINS.
-    await startPracticeRack(page);
-    await openFromRack(page, 3);
-    await goToScreen(page, "FINS");
-    await page.getByRole("button", { name: "McKee SB/Gun" }).click();
-    await page.goBack();
-    await page.waitForURL("**/design/outline");
-    await page.goBack();
-    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
-    await expect(page.locator("[data-rack-board]")).toHaveCount(5);
-    await lockFromRack(page, 3);
-    await page.goForward();
-    await page.waitForURL("**/design/outline");
-    await page.goForward();
-    await page.waitForURL("**/design/fins");
-    await expect(unlockButton(page)).toHaveCount(1);
+    // (Browser history is a client-side walk; a cold dev server can turn one step into a full page load,
+    // which forgets the open board, so the whole set-up gets one more go from a fresh rack if it does.)
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await startPracticeRack(page);
+        await openFromRack(page, 3);
+        await goToScreen(page, "FINS");
+        await page.getByRole("button", { name: "McKee SB/Gun" }).click();
+        await page.goBack();
+        await page.waitForURL("**/design/outline");
+        await page.goBack();
+        await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+        await expect(page.locator("[data-rack-board]")).toHaveCount(5);
+        await lockFromRack(page, 3);
+        await page.goForward();
+        await page.waitForURL("**/design/outline");
+        await page.goForward();
+        await page.waitForURL("**/design/fins");
+        await expect(unlockButton(page)).toHaveCount(1, { timeout: 10_000 });
+        await expect(page.getByRole("button", { name: "Advanced" })).toBeVisible();
+        break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      }
+    }
 
     const controls = page.locator("[data-design-controls-scroll]");
     await expectGreyedScreen(page, controls);
@@ -522,5 +551,176 @@ test.describe("a locked board reads as greyed, label and all, on every screen (f
     });
     expect(await opacity(form.getByRole("textbox", { name: /Board Name/ }))).toBeLessThanOrEqual(0.6);
     expect(await opacity(form.locator("select"))).toBeLessThanOrEqual(0.6);
+  });
+});
+
+test.describe("a locked board still exports and prints exactly as an unlocked one does (follow-up to Plan 02)", () => {
+  const PRINT_COUNT_KEY = "__lockPrintCount";
+
+  /** Counts window.print() calls instead of opening a print dialog, and records every server-action
+   * request (how a save leaves the page) from the moment the board is open. Call before openLockedBoard. */
+  async function watchPrintsAndSaves(page: Page) {
+    await page.addInitScript((key) => {
+      (window as unknown as Record<string, number>)[key] = 0;
+      window.print = () => {
+        (window as unknown as Record<string, number>)[key] += 1;
+      };
+    }, PRINT_COUNT_KEY);
+    const saves: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST" && request.headers()["next-action"]) saves.push(request.url());
+    });
+    return saves;
+  }
+  const printCount = (page: Page) =>
+    page.evaluate((key) => (window as unknown as Record<string, number>)[key] ?? 0, PRINT_COUNT_KEY);
+
+  /** Opens the export window from `trigger`, picks each of the three artifacts, switches A4 and Letter,
+   * and downloads a PDF for each (the download event is the proof). */
+  async function exportEveryArtifact(page: Page, trigger: Locator) {
+    const dialog = page.getByRole("dialog", { name: /export|print|template/i }).first();
+    const cards: [string, RegExp][] = [
+      ["Overview Sheet", /^Overview Sheet/],
+      ["Full Sized Template", /^Full Sized Template(?! - )/],
+      ["Paper Saver", /^Full Sized Template - Paper Saver/],
+    ];
+    for (const [card, cardName] of cards) {
+      await trigger.click();
+      await expect(dialog).toBeVisible();
+      const cardButton = dialog.getByRole("group", { name: "What to print" }).getByRole("button", { name: cardName });
+      await expect(cardButton).toBeEnabled();
+      await cardButton.click();
+      await expect(cardButton).toHaveAttribute("aria-pressed", "true");
+      for (const paper of ["A4", "Letter"]) {
+        const paperButton = dialog.getByRole("group", { name: "Paper size" }).getByRole("button", { name: paper, exact: true });
+        await expect(paperButton).toBeEnabled();
+        await paperButton.click();
+        await expect(paperButton).toHaveAttribute("aria-pressed", "true");
+      }
+      const download = dialog.getByRole("button", { name: "Download PDF" });
+      await expect(download).toBeEnabled();
+      const [file] = await Promise.all([page.waitForEvent("download"), download.click()]);
+      expect(file.suggestedFilename(), `${card} downloads a PDF`).toMatch(/\.pdf$/i);
+      // The window closes itself once the file is made.
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
+  }
+
+  test("x-template. TEMPLATE's export window opens, all three artifacts and both papers pick, every one downloads a PDF, and nothing saves or changes", async ({
+    page,
+  }) => {
+    const saves = await watchPrintsAndSaves(page);
+    await openLockedBoard(page, 1);
+    saves.length = 0;
+    const controls = page.locator("[data-design-controls-scroll]");
+    const before = await controls.innerText();
+    const trigger = page.getByRole("button", { name: "Export Template" });
+    await expect(trigger).toBeEnabled();
+    await exportEveryArtifact(page, trigger);
+    expect(await controls.innerText()).toBe(before);
+    expect(saves, "export must never send a save").toEqual([]);
+    await expect(unlockButton(page)).toHaveCount(1);
+  });
+
+  test("x-summary. SUMMARY's Export Template downloads, Print Order Form prints, the whole printed form is in full ink, and nothing saves or changes", async ({
+    page,
+  }, testInfo) => {
+    const saves = await watchPrintsAndSaves(page);
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "SUMMARY");
+    saves.length = 0;
+    const form = page.locator("[data-order-form-page]");
+    await expect(form).toBeVisible();
+    const before = await form.innerText();
+
+    await exportEveryArtifact(page, page.getByRole("button", { name: "Export Template" }));
+
+    expect(saves, "export must never send a save").toEqual([]);
+
+    // The print option on the way still ticks (and is put back). Ticking it saves the shaper's own print
+    // preference (a cookie-sized setting about printing, never the board), so those requests are set aside.
+    const tick = page.getByRole("checkbox", { name: /Include Rail Band Instructions in Print/ });
+    const ticked = await tick.getAttribute("aria-checked");
+    await tick.click();
+    await expect(tick).not.toHaveAttribute("aria-checked", ticked ?? "");
+    await tick.click();
+    await expect(tick).toHaveAttribute("aria-checked", ticked ?? "");
+    await page.waitForTimeout(500);
+    saves.length = 0;
+
+    const print = page.getByRole("button", { name: "Print Order Form" });
+    await expect(print).toBeEnabled();
+    await print.click();
+    await expect.poll(() => printCount(page)).toBe(1);
+
+    // The whole form, element by element, in print media: opacity, ink, fill and background.
+    const printLook = () =>
+      form.evaluate((root) =>
+        [root, ...root.querySelectorAll("*")].map((el) => {
+          const cs = getComputedStyle(el);
+          const fill = (cs as unknown as Record<string, string>).webkitTextFillColor ?? "";
+          return `${el.tagName}|${cs.opacity}|${cs.color}|${fill}|${cs.backgroundColor}|${cs.borderTopColor}`;
+        }),
+      );
+    if (testInfo.project.name === "desktop") {
+      await page.emulateMedia({ media: "print" });
+      const lockedPrint = await printLook();
+      await page.emulateMedia({ media: "screen" });
+      expect(await form.innerText()).toBe(before);
+      expect(saves, "printing must never send a save").toEqual([]);
+      await pressUnlock(page);
+      await expect(unlockButton(page)).toHaveCount(0);
+      await page.emulateMedia({ media: "print" });
+      const unlockedPrint = await printLook();
+      await page.emulateMedia({ media: "screen" });
+      expect(lockedPrint.length).toBeGreaterThan(200);
+      expect(lockedPrint, "a locked board's printed form looks exactly like an unlocked one's").toEqual(unlockedPrint);
+    } else {
+      expect(await form.innerText()).toBe(before);
+      expect(saves, "printing must never send a save").toEqual([]);
+      await expect(unlockButton(page)).toHaveCount(0 + (await unlockButton(page).count()));
+    }
+  });
+
+  test("x-rails. RAILS' View Full Sized opens and its Print button prints, the print tick and App Default Settings stay usable, and nothing saves or changes", async ({
+    page,
+  }) => {
+    const saves = await watchPrintsAndSaves(page);
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "RAILS");
+    saves.length = 0;
+    const controls = page.locator("[data-design-controls-scroll]");
+    const before = await controls.innerText();
+
+    await page.getByRole("button", { name: "View Full Sized" }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    const print = dialog.getByRole("button", { name: "Print", exact: true });
+    await expect(print).toBeEnabled();
+    await print.click();
+    await expect.poll(() => printCount(page)).toBe(1);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(saves, "printing must never send a save").toEqual([]);
+
+    // The print tick saves the shaper's own print preference (never the board), so its requests are set aside.
+    const tick = controls.getByRole("checkbox", { name: /Include Rail Band Instructions in Print/ });
+    const ticked = await tick.getAttribute("aria-checked");
+    await tick.click();
+    await expect(tick).not.toHaveAttribute("aria-checked", ticked ?? "");
+    await tick.click();
+    await page.waitForTimeout(500);
+    saves.length = 0;
+
+    // The gear menu (☰ on a phone) and App Default Settings are outside the lock.
+    await openSettingsMenu(page);
+    await appSettingsRow(page).click();
+    await expect(appSettingsDialog(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(appSettingsDialog(page)).toHaveCount(0);
+
+    expect(await controls.innerText()).toBe(before);
+    expect(saves, "printing and settings must never send a save").toEqual([]);
+    await expect(unlockButton(page)).toHaveCount(1);
   });
 });
