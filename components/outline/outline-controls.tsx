@@ -34,6 +34,7 @@ import {
 } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
@@ -93,6 +94,7 @@ export function OutlineControls({
   onToggleConstruction,
 }: OutlineControlsProps) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const lengthIn = mmToInches(outline.length);
   const lengthFeet = Math.floor(lengthIn / 12);
   const lengthInches = Math.round(lengthIn - lengthFeet * 12);
@@ -144,6 +146,7 @@ export function OutlineControls({
                 <>
                   <Select
                     value={lengthFeet}
+                    disabled={locked}
                     onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
                   >
                     <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
@@ -159,6 +162,7 @@ export function OutlineControls({
                   </Select>
                   <Select
                     value={lengthInches}
+                    disabled={locked}
                     onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
                   >
                     <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
@@ -190,6 +194,7 @@ export function OutlineControls({
               min={boardLength.min}
               max={boardLength.max}
               step={boardLength.step}
+              disabled={locked}
               onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
               className="slider-accent"
             />
@@ -306,6 +311,7 @@ export function OutlineControls({
             <button
               key={shape}
               type="button"
+              disabled={locked}
               onClick={() =>
                 onChange({
                   tail: preset.tail,
@@ -313,7 +319,7 @@ export function OutlineControls({
                   tailFullness: preset.tailFullness,
                 })
               }
-              className="focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 coarse:min-h-11"
+              className="focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-1.5 coarse:min-h-11 disabled:cursor-default disabled:opacity-40"
               style={{
                 // Inline styles were invisible to both earlier passes: the border migration
                 // grepped for `border-surf-muted/N` classes, and the color-mix sweep only
@@ -426,7 +432,7 @@ export function OutlineControls({
           Settings
         </div>
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-          <Checkbox checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
+          <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
           View Construction Lines
         </label>
       </div>

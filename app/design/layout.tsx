@@ -1,4 +1,5 @@
 import { SignInBanner } from "@/components/auth/sign-in-banner";
+import { BoardLockScope } from "@/components/design/board-lock-scope";
 import { PhoneUndoBar } from "@/components/design/phone-undo-bar";
 import { ToolbarTip } from "@/components/design/toolbar-tip";
 import { RailLegendProvider } from "@/components/rails/rail-legend-provider";
@@ -25,19 +26,23 @@ import { RailLegendProvider } from "@/components/rails/rail-legend-provider";
  * narrowest mount that covers both screens, and it is what lets that shared set survive a
  * client-side walk from RAILS to SUMMARY. The provider paints no DOM of its own — it renders only
  * its context element — so it cannot disturb the flex sizing chain the rest of this comment is
- * about. The banner and the tip are both `flex-none`; each editor already declares
+ * about. `BoardLockScope` (quick 261008-lsy, Plan 02) wraps all of it so every control on a design
+ * screen can grey itself while the open board is locked; it too paints no DOM of its own, and it
+ * sits below the root layout's top bar, gear menu and ☰ sheet, which therefore stay usable. The banner and the tip are both `flex-none`; each editor already declares
  * `flex-1`/`min-h-0` on its own root, so adding any bar here does not disturb that sizing chain —
  * and `PhoneUndoBar` is fixed to the window at every width, so it never changes the layout.
  */
 export default function DesignLayout(props: LayoutProps<"/design">) {
   return (
     <RailLegendProvider>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <SignInBanner />
-        <ToolbarTip />
-        {props.children}
-        <PhoneUndoBar />
-      </div>
+      <BoardLockScope>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SignInBanner />
+          <ToolbarTip />
+          {props.children}
+          <PhoneUndoBar />
+        </div>
+      </BoardLockScope>
     </RailLegendProvider>
   );
 }

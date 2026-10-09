@@ -32,7 +32,7 @@ import { OutlineViewer } from "./outline-viewer";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement } = useDesign();
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
    * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
@@ -227,7 +227,9 @@ export function OutlineEditor() {
               outline={outline}
               showConstruction={showConstruction}
               ghostGeometry={showGhost ? outlineGhostGeometry : null}
-              onOutlineDrag={updateOutline}
+              // A locked board has no grab points: the viewer draws no hit targets and attaches no
+              // handlers when this is omitted (quick 261008-lsy). The store's guard backs it.
+              onOutlineDrag={locked ? undefined : updateOutline}
               finMarks={finPlacement.marks}
               hideFinMarks
               pinCalloutText

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +10,9 @@ import { cn } from "@/lib/utils";
  * either a bare number or a one-element array depending on the slider's arity. Every one of the
  * five control sidebars (TEMPLATE, ROCKER, RAILS, FINS, VOLUME) used to declare an identical copy
  * of this function; it now lives here once.
+ *
+ * Every row also reads the board lock (quick 261008-lsy, Plan 02): while the open board is locked the
+ * row is greyed and its slider disabled, exactly as if the caller had passed `disabled`.
  */
 export function sliderValue(v: number | readonly number[]): number {
   return typeof v === "number" ? v : (v[0] ?? 0);
@@ -81,7 +85,7 @@ export function SliderRow({
   max,
   step,
   onValueChange,
-  disabled,
+  disabled: disabledProp,
   leftHint,
   rightHint,
   hintAction,
@@ -91,6 +95,9 @@ export function SliderRow({
   sliderLabel,
   sliderValueText,
 }: SliderRowProps) {
+  // A locked board greys every row on a design screen (the scope is false anywhere else).
+  const locked = useControlsLocked();
+  const disabled = disabledProp || locked;
   // `false` counts as no action, so a caller can write `hintAction={cond && <Button />}`.
   const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
   return (

@@ -21,11 +21,16 @@
  * keeps this field usable inside a table cell that threads `system` from further up, without a
  * second, independent read of the units context.
  *
+ * A locked board disables the box automatically (quick 261008-lsy, Plan 02): every field on a design
+ * screen changes the board. App Default Settings also uses this component but sits outside the lock
+ * scope, so it is never greyed there.
+ *
  * `ImperialField` (`components/rocker/imperial-field.tsx`) is retired in Plan 03, once the ROCKER
  * datasheet's typed cells move over to this component.
  */
 
 import { useId, useState } from "react";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { Input } from "@/components/ui/input";
 import {
   commitTypedMeasure,
@@ -81,8 +86,10 @@ export function MeasureField({
   max,
   system,
   bare = false,
-  disabled = false,
+  disabled: disabledProp = false,
 }: MeasureFieldProps) {
+  const locked = useControlsLocked();
+  const disabled = disabledProp || locked;
   const [focused, setFocused] = useState(false);
   const [raw, setRaw] = useState(() => displayFor(value, family, system, bare));
   const [error, setError] = useState<string | null>(null);
