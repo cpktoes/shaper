@@ -34,6 +34,7 @@
 import { Suspense, use, useState } from "react";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useAppSettings } from "@/components/app-settings-provider";
 import { Button } from "@/components/ui/button";
@@ -114,15 +115,17 @@ interface BlankRowProps {
 /** One blank as a row: its name, its meta line, and for a greyed row the reason it won't fit. */
 function BlankRow({ record, reason, picked, system, onPick }: BlankRowProps) {
   const greyed = reason !== null;
+  const locked = useControlsLocked();
   const accessibleName = `Use ${record.vendor} ${record.name}${greyed ? `, doesn't fit: ${reason}` : ""}`;
   return (
     <button
       type="button"
       aria-pressed={picked}
       aria-label={accessibleName}
+      disabled={locked}
       onClick={onPick}
       className={cn(
-        "focus-ring-accent flex w-full cursor-pointer flex-col gap-1 px-2 py-2 text-left hover:bg-surf-well coarse:min-h-11",
+        "focus-ring-accent flex w-full cursor-pointer flex-col gap-1 px-2 py-2 text-left enabled:hover:bg-surf-well coarse:min-h-11 disabled:cursor-default disabled:opacity-60",
         // The 2px accent bar replaces 2px of the left padding, so the text does not shift.
         picked && "border-l-2 border-surf-accent-ink bg-surf-well pl-1.5",
       )}
@@ -175,7 +178,7 @@ function BlankListBody({
       <div className="flex flex-col gap-1" data-blank-list-empty>
         <div className="text-sm font-semibold text-surf-ink">{message.heading}</div>
         <div className="text-xs text-surf-ink-muted">{message.body}</div>
-        <Button variant="outline" className="mt-1 self-start max-shell:w-full max-shell:self-stretch" onClick={() => openAppSettings("fit")}>
+        <Button variant="outline" data-lock-exempt className="mt-1 self-start max-shell:w-full max-shell:self-stretch" onClick={() => openAppSettings("fit")}>
           Change Fit Rules
         </Button>
       </div>
@@ -196,7 +199,7 @@ function BlankListBody({
     return (
       <div className="flex flex-col items-start gap-1">
         <div className="text-xs break-words text-surf-ink-muted">No blanks match &quot;{query}&quot;.</div>
-        <button type="button" onClick={onClearSearch} className={cn(TEXT_LINK_CLASS, "text-surf-accent-ink")}>
+        <button type="button" data-lock-exempt onClick={onClearSearch} className={cn(TEXT_LINK_CLASS, "text-surf-accent-ink")}>
           Clear Search
         </button>
       </div>
@@ -240,6 +243,7 @@ function BlankListBody({
       {hiddenOrExpanded && (
         <button
           type="button"
+          data-lock-exempt
           onClick={() => setExpanded((open) => !open)}
           className={cn(TEXT_LINK_CLASS, "text-surf-accent-ink")}
         >
@@ -290,6 +294,7 @@ function BlankBrowser({ catalog, onPicked }: { catalog: Promise<BlankCatalogResu
         />
         <Input
           type="search"
+          data-lock-exempt
           aria-label="Search blanks"
           placeholder="Search blanks — e.g. Marko, 6'2, EPS"
           value={query}
@@ -322,6 +327,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
   const { blank, removeBlank } = useDesign();
   /** State C's Change Blank / Keep This Blank toggle — view state, never saved. */
   const [listOpen, setListOpen] = useState(false);
+  const locked = useControlsLocked();
 
   if (!blank) {
     return (
@@ -348,6 +354,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
+          data-lock-exempt
           aria-expanded={listOpen}
           onClick={() => setListOpen((open) => !open)}
           className={cn(TEXT_LINK_CLASS, "text-surf-accent-ink")}
@@ -356,11 +363,12 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
         </button>
         <button
           type="button"
+          disabled={locked}
           onClick={() => {
             setListOpen(false);
             removeBlank();
           }}
-          className={cn(TEXT_LINK_CLASS, "text-surf-ink-muted")}
+          className={cn(TEXT_LINK_CLASS, "text-surf-ink-muted disabled:cursor-default disabled:opacity-40")}
         >
           Remove This Blank
         </button>

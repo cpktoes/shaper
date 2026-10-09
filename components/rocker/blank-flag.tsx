@@ -42,6 +42,7 @@
 import { Suspense, use, useMemo, type ReactNode } from "react";
 import { TriangleAlertIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useAppSettings } from "@/components/app-settings-provider";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
@@ -104,6 +105,7 @@ function FlagBlock({
 /** The offer (or F5), once the list's verdicts are in. */
 function OfferBody({ records, current }: { records: readonly BlankRecord[]; current: BlankRecord }) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const { foil, pickBlank } = useDesign();
   const { openAppSettings } = useAppSettings();
   const { hidden } = useBlankMakers();
@@ -116,7 +118,7 @@ function OfferBody({ records, current }: { records: readonly BlankRecord[]; curr
     return (
       <>
         <p className="text-xs text-surf-ink">{nothingFitsSentence(catalogsPhrase(hidden))}</p>
-        <Button variant="outline" className={ACTION_CLASS} onClick={() => openAppSettings("fit")}>
+        <Button variant="outline" data-lock-exempt className={ACTION_CLASS} onClick={() => openAppSettings("fit")}>
           Change Fit Rules
         </Button>
       </>
@@ -128,7 +130,7 @@ function OfferBody({ records, current }: { records: readonly BlankRecord[]; curr
       <p data-blank-offer className="text-xs break-words text-surf-ink">
         {offerLine(record, system)}
       </p>
-      <Button variant="outline" className={ACTION_CLASS} onClick={() => pickBlank(record, offer.placement)}>
+      <Button variant="outline" disabled={locked} className={ACTION_CLASS} onClick={() => pickBlank(record, offer.placement)}>
         Switch to This Blank
       </Button>
     </>
@@ -164,6 +166,7 @@ function PickedBlankFlag({
   tailThinningStart: Mm | undefined;
 }) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const { outline, outlineGeometry, foil, setPlacement, resetFineTune } = useDesign();
   const { settings } = useFitDefaults();
   const { extraLength, planerMaxDepth, widthMargin } = settings;
@@ -234,7 +237,7 @@ function PickedBlankFlag({
         headline={FLAG_HEADLINES.doesNotFit}
         body={`${tweakOverSkinLine(mm(Math.max(nose12Offset, tail12Offset)), deckSkin, system)}.`}
       >
-        <Button variant="outline" className={ACTION_CLASS} onClick={resetFineTune}>
+        <Button variant="outline" disabled={locked} className={ACTION_CLASS} onClick={resetFineTune}>
           ↺ Reset Fine-Tune
         </Button>
       </FlagBlock>
@@ -275,6 +278,7 @@ function PickedBlankFlag({
       <FlagBlock headline={FLAG_HEADLINES.notHere} body={`${formatShortfall(current.worst, board, system)}.`}>
         <Button
           variant="outline"
+          disabled={locked}
           className={ACTION_CLASS}
           onClick={() => {
             const to = nearestFittingPlacement(prepared, ctx, { extraLength, planerMaxDepth, widthMargin }, placement);

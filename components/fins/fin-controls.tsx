@@ -40,6 +40,7 @@ import {
 } from "@/lib/geometry/measure-display";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { MeasureField } from "@/components/design/measure-field";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useUnits } from "@/components/units-provider";
 import { FinSetupIcon, type FinSetupKind } from "./fin-setup-icon";
 
@@ -86,6 +87,7 @@ function DisclosureHeading({
   return (
     <button
       type="button"
+      data-lock-exempt
       onClick={onToggle}
       className="focus-ring-accent flex w-full items-center justify-between border-b border-surf-line-faint pb-2 pl-3 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold"
     >
@@ -108,16 +110,19 @@ function PillButton({
   className?: string;
   disabled?: boolean;
 }) {
+  // Every pill here changes the board, so a locked board greys them all (quick 261008-lsy, Plan 02).
+  const locked = useControlsLocked();
+  const off = disabled || locked;
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || locked}
       className={
         // 09-REVIEW.md WR-02: hand-rolled, not the shared Button component, so it never got
         // Button's own coarse:h-11 for free -- coarse:min-h-11 mirrors that same pointer-keyed
         // rule by hand (a finger needs 44px; a mouse at any width still gets today's height).
-        `focus-ring-accent rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
+        `focus-ring-accent rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${off ? "cursor-not-allowed opacity-40" : "cursor-pointer"} ${
           active
             ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
             : "border-surf-line bg-surf-sidebar text-surf-ink"
@@ -171,6 +176,7 @@ export function FinControls({
   onToggleImportTemplate,
 }: FinControlsProps) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const [editingRearOffTail, setEditingRearOffTail] = useState(false);
 
   const lengthIn = mmToInches(spec.boardLength);
@@ -247,7 +253,7 @@ export function FinControls({
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
         <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 whitespace-nowrap text-xs text-surf-ink-muted font-normal">
-          <Checkbox checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
+          <Checkbox disabled={locked} checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
         </label>
       </div>
@@ -271,7 +277,7 @@ export function FinControls({
               <Select
                 value={lengthFeet}
                 onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-                disabled={importTemplate}
+                disabled={locked || importTemplate}
               >
                 <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
                   <SelectValue />
@@ -287,7 +293,7 @@ export function FinControls({
               <Select
                 value={lengthInches}
                 onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-                disabled={importTemplate}
+                disabled={locked || importTemplate}
               >
                 <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
                   <SelectValue />
@@ -310,7 +316,7 @@ export function FinControls({
               min={boardLengthFieldBounds.min}
               max={boardLengthFieldBounds.max}
               system={system}
-              disabled={importTemplate}
+              disabled={locked || importTemplate}
             />
           )}
         </div>
@@ -319,7 +325,7 @@ export function FinControls({
           min={boardLength.min}
           max={boardLength.max}
           step={boardLength.step}
-          disabled={importTemplate}
+          disabled={locked || importTemplate}
           onValueChange={(v) => onChange({ boardLength: boardLength.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
@@ -334,7 +340,7 @@ export function FinControls({
           min={tailWidth12Slider.min}
           max={tailWidth12Slider.max}
           step={tailWidth12Slider.step}
-          disabled={importTemplate}
+          disabled={locked || importTemplate}
           onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
           className="slider-accent"
         />
@@ -355,9 +361,10 @@ export function FinControls({
             <button
               key={shape}
               type="button"
+              disabled={locked}
               onClick={() => onChange({ tailShape: shape as FinTailShape })}
               className={
-                "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
+                "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 disabled:cursor-default disabled:opacity-40 " +
                 (spec.tailShape === shape
                   ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                   : "border-surf-line bg-surf-sidebar text-surf-ink")
@@ -382,9 +389,10 @@ export function FinControls({
               <button
                 key={setup}
                 type="button"
+                disabled={locked}
                 onClick={() => applySetup(setup)}
                 className={
-                  "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 " +
+                  "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 disabled:cursor-default disabled:opacity-40 " +
                   (spec.finSetup === setup
                     ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
                     : "border-surf-line bg-surf-sidebar text-surf-ink")
@@ -445,7 +453,7 @@ export function FinControls({
           </div>
           {flags.quadCenterFinAvailable && (
             <label className="flex cursor-pointer items-center gap-2 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-              <Checkbox checked={spec.quadCenterFinOn} onCheckedChange={() => onChange({ quadCenterFinOn: !spec.quadCenterFinOn })} />
+              <Checkbox disabled={locked} checked={spec.quadCenterFinOn} onCheckedChange={() => onChange({ quadCenterFinOn: !spec.quadCenterFinOn })} />
               Add 5th/Center fin
             </label>
           )}
@@ -553,6 +561,7 @@ export function FinControls({
                 {flags.showFrontToeTableLink && (
                   <button
                     type="button"
+                    data-lock-exempt
                     onClick={onOpenToeTable}
                     className="focus-ring-accent mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
                   >
@@ -586,6 +595,7 @@ export function FinControls({
                     {editingRearOffTail ? (
                       <input
                         type="number"
+                        disabled={locked}
                         min={quadRearOffTailSlider.min}
                         max={quadRearOffTailSlider.max}
                         step={quadRearOffTailSlider.step}
@@ -614,6 +624,7 @@ export function FinControls({
                         </span>
                         <button
                           type="button"
+                          disabled={locked}
                           onClick={() => {
                             setEditingRearOffTail(true);
                             updateAdvanced({
@@ -621,7 +632,7 @@ export function FinControls({
                               quadRearOffTailOverride: spec.advanced.quadRearOffTailOverride ?? resolved.quadRearOffTailBase,
                             });
                           }}
-                          className="focus-ring-accent cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text"
+                          className="focus-ring-accent cursor-pointer rounded-md border border-surf-line px-2.5 py-1 text-[11px] text-outline-sidebar-text disabled:cursor-default disabled:opacity-40"
                         >
                           Override
                         </button>
@@ -671,6 +682,7 @@ export function FinControls({
                 {flags.showRearToeTableLink && (
                   <button
                     type="button"
+                    data-lock-exempt
                     onClick={onOpenToeTable}
                     className="focus-ring-accent mt-2 cursor-pointer bg-transparent p-0 text-[11px] font-bold text-surf-accent-ink underline"
                   >
@@ -682,8 +694,9 @@ export function FinControls({
 
             <button
               type="button"
+              disabled={locked}
               onClick={resetAdvancedSettings}
-              className="focus-ring-accent cursor-pointer border-t border-surf-line-faint pt-4 text-left text-xs font-bold text-surf-accent-ink"
+              className="focus-ring-accent cursor-pointer border-t border-surf-line-faint pt-4 text-left text-xs font-bold text-surf-accent-ink disabled:cursor-default disabled:opacity-40"
             >
               ↺ Reset Advanced Settings
             </button>
@@ -698,7 +711,7 @@ export function FinControls({
         {settingsOpen && (
           <div className="mt-3 pl-3">
             <label className="mb-4 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-              <Checkbox checked={showCallouts} onCheckedChange={onToggleCallouts} />
+              <Checkbox data-lock-exempt checked={showCallouts} onCheckedChange={onToggleCallouts} />
               Fin Placement Callouts
             </label>
           </div>

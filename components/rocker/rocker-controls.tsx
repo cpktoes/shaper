@@ -95,6 +95,7 @@ import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { BlankPicker } from "./blank-picker";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { BoardOnBlankSection } from "./board-on-blank";
 import { Live } from "./live";
 import { liveControls, type RockerTab } from "./rocker-live-controls";
@@ -162,6 +163,7 @@ function SectionHeading({
   return (
     <button
       type="button"
+      data-lock-exempt
       onClick={onToggle}
       className="mt-1.5 flex w-full items-center justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold"
     >
@@ -238,9 +240,11 @@ function FineTuneRow({
  * shifts; the hint beside it says in words what the dimming means.
  */
 function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: boolean; onPress: () => void }) {
+  const locked = useControlsLocked();
   return (
     <button
       type="button"
+      disabled={locked}
       aria-label={automaticButtonLabel(end)}
       aria-pressed={automatic}
       aria-disabled={automatic ? "true" : undefined}
@@ -249,7 +253,7 @@ function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: 
         if (!automatic) onPress();
       }}
       className={cn(
-        "focus-ring-accent shrink-0 cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+        "focus-ring-accent shrink-0 cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
         automatic && "pointer-events-none opacity-40",
       )}
     >
@@ -322,6 +326,7 @@ export function RockerControls({
   onToggleSectionOpen,
 }: RockerControlsProps) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const rockerNoseTipSlider = measureSlider(rocker.noseTip, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const rockerNose12Slider = measureSlider(rocker.nose12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const rockerTail12Slider = measureSlider(rocker.tail12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
@@ -362,6 +367,7 @@ export function RockerControls({
                 min={centerSlider.min}
                 max={centerSlider.max}
                 step={centerSlider.step}
+                disabled={locked}
                 onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
                 className="slider-accent"
               />
@@ -504,6 +510,7 @@ export function RockerControls({
                         labels={["Deck", "Bottom"] as const}
                         value={view.cut.fineTuneSurface}
                         onChange={onFineTuneSurface}
+                        disabled={locked}
                         ariaLabel="Fine-tune off"
                         className="self-start"
                       />
@@ -550,13 +557,14 @@ export function RockerControls({
                 <Live on={live.fineTune}>
                   <button
                     type="button"
+                    disabled={locked}
                     aria-disabled={noTweak ? "true" : undefined}
                     tabIndex={noTweak ? -1 : undefined}
                     onClick={() => {
                       if (!noTweak) onResetFineTune();
                     }}
                     className={cn(
-                      "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center",
+                      "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
                       noTweak && "pointer-events-none opacity-40",
                     )}
                   >
@@ -576,6 +584,7 @@ export function RockerControls({
                       labels={["Pin deck", "Bottom"] as const}
                       value={view.cut.tipStyle}
                       onChange={onTipStyle}
+                      disabled={locked}
                       ariaLabel="Tip Style"
                       className="self-start"
                     />

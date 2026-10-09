@@ -13,11 +13,17 @@ import { describe, expect, it } from "vitest";
 /** Files whose controls change the board (or sit beside controls that do). Each task adds its own. */
 const LOCKABLE_FILES = [
   "components/outline/outline-controls.tsx",
+  "components/rocker/rocker-controls.tsx",
+  "components/rocker/blank-picker.tsx",
+  "components/rocker/blank-flag.tsx",
+  "components/rails/rail-controls.tsx",
+  "components/fins/fin-controls.tsx",
 ];
 
-/** The elements that can be pressed, ticked, dragged or typed into. `SelectTrigger`, `SelectItem` and
+/** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and
+ * its own `<button>` is checked here like any other. The elements that can be pressed, ticked, dragged or typed into. `SelectTrigger`, `SelectItem` and
  * `SliderRow` are different names and never match: only a Select's Root and a raw Slider do. */
-const INTERACTIVE = ["button", "Button", "Checkbox", "Select", "Slider", "TwoOptionToggle", "PillButton", "input", "Input", "select"];
+const INTERACTIVE = ["button", "Button", "Checkbox", "Select", "Slider", "TwoOptionToggle", "input", "Input", "select"];
 
 function stripComments(source: string): string {
   return source
@@ -99,6 +105,13 @@ describe("board-lock-scope — the control inventory", () => {
     for (const path of ["components/design/slider-row.tsx", "components/design/measure-field.tsx"]) {
       expect(stripComments(read(path)), path).toMatch(/useControlsLocked\(\)/);
     }
+  });
+
+  it("the two-option toggle can be disabled, and PillButton reads the lock itself", () => {
+    expect(stripComments(read("components/viewer/two-option-toggle.tsx"))).toMatch(/disabled=\{disabled\}/);
+    const fins = stripComments(read("components/fins/fin-controls.tsx"));
+    const pill = fins.slice(fins.indexOf("function PillButton"), fins.indexOf("function baseLengthLabel"));
+    expect(pill).toMatch(/useControlsLocked\(\)/);
   });
 
   it("the design layout wraps every screen in the lock scope", () => {

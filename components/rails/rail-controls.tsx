@@ -15,6 +15,7 @@ import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-
 import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
+import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 
 interface RailControlsProps {
@@ -89,6 +90,7 @@ function SectionHeading({
   return (
     <button
       type="button"
+      data-lock-exempt
       onClick={onToggle}
       className={
         small
@@ -148,6 +150,7 @@ function RailSectionControls({
   system,
   hiddenOnPhone,
 }: RailSectionControlsProps) {
+  const locked = useControlsLocked();
   const isTail = sectionKey === "tail";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
   // Inches-domain thickness stays around for deckProfileStep — the deck-profile step formula is a
@@ -234,6 +237,7 @@ function RailSectionControls({
                 min={1}
                 max={5}
                 step={1}
+                disabled={locked}
                 onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
                 className="slider-accent"
               />
@@ -257,6 +261,7 @@ function RailSectionControls({
                     hand-rolled control that skips this. */}
                 <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                   <Checkbox
+                    disabled={locked}
                     checked={spec.symmetrical}
                     onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
                   />
@@ -268,13 +273,14 @@ function RailSectionControls({
                 min={30}
                 max={70}
                 step={1}
+                disabled={locked}
                 onValueChange={(v) => onChange({ ratioTopPercent: clampFinite(sliderValue(v), 30, 70) })}
                 className="slider-accent"
               />
               <RatioTickCaptions />
               {isTail && (
                 <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-                  <Checkbox checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
+                  <Checkbox disabled={locked} checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
                   Hard Edge
                 </label>
               )}
@@ -298,6 +304,7 @@ function RailSectionControls({
                     </div>
                     <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                       <Checkbox
+                        disabled={locked}
                         checked={spec.removeCornerCut}
                         onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
                       />
@@ -310,7 +317,7 @@ function RailSectionControls({
                       min={cornerCutSlider.min}
                       max={cornerCutSlider.max}
                       step={cornerCutSlider.step}
-                      disabled={spec.removeCornerCut}
+                      disabled={locked || spec.removeCornerCut}
                       onValueChange={(v) =>
                         onChange({ cornerCutOffsetOverride: cornerCutSlider.toMm(sliderValue(v)) })
                       }
@@ -330,6 +337,7 @@ function RailSectionControls({
                       </div>
                       <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
                         <Checkbox
+                          disabled={locked}
                           checked={spec.singleTuck}
                           onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
                         />
@@ -341,6 +349,7 @@ function RailSectionControls({
                       min={bottomTuck3Slider.min}
                       max={bottomTuck3Slider.max}
                       step={bottomTuck3Slider.step}
+                      disabled={locked}
                       onValueChange={(v) => onChange({ bottomTuck3Override: bottomTuck3Slider.toMm(sliderValue(v)) })}
                       className="slider-accent"
                     />
@@ -349,8 +358,9 @@ function RailSectionControls({
 
                 <button
                   type="button"
+                  disabled={locked}
                   onClick={resetAdvanced}
-                  className="focus-ring-accent cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink"
+                  className="focus-ring-accent cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink disabled:cursor-default disabled:opacity-40"
                 >
                   ↺ Reset Advanced Settings
                 </button>
@@ -377,6 +387,7 @@ export function RailControls({
   phoneSection,
 }: RailControlsProps) {
   const { system } = useUnits();
+  const locked = useControlsLocked();
   const { included: printRailInstructions, setIncluded: setPrintRailInstructions } = usePrintRailInstructions();
   return (
     <div className="flex flex-col gap-5">
@@ -390,6 +401,7 @@ export function RailControls({
       <div>
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox
+            disabled={locked}
             checked={railsImportFoilThickness}
             onCheckedChange={() => onToggleRailsImportFoilThickness()}
           />
@@ -449,6 +461,7 @@ export function RailControls({
       <div>
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox
+            data-lock-exempt
             checked={printRailInstructions}
             onCheckedChange={() => setPrintRailInstructions(!printRailInstructions)}
           />

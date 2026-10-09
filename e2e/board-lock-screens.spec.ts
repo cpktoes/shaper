@@ -39,12 +39,8 @@ async function turnTo(page: Page, n: number) {
   await expect(page.locator(`[data-rack-art="${key}"]`)).toHaveAttribute("data-turn", "90");
 }
 
-/**
- * A locked practice board, open in the editor: a fresh practice rack, board `n` locked from its ⋯
- * menu, then opened with Open This Board. The sign-in banner and the toolbar tip are out of the way.
- * Board 1 is the turned one on a fresh rack (a finger's rack, too); another board is pointed at first.
- */
-async function openLockedBoard(page: Page, n = 1) {
+/** A fresh practice rack of this test's own, the sign-in banner and the toolbar tip out of the way. */
+async function startPracticeRack(page: Page) {
   await page.addInitScript(
     ([bannerKey, tipKey]) => {
       window.sessionStorage.setItem(bannerKey, "true");
@@ -54,6 +50,10 @@ async function openLockedBoard(page: Page, n = 1) {
   );
   await freshPracticeRack(page);
   await openRack(page);
+}
+
+/** Locks board `n` from its ⋯ menu on the rack (a board other than the first is pointed at first). */
+async function lockFromRack(page: Page, n: number) {
   const name = board(n).name;
   if (n !== 1) await turnTo(page, n);
   await page.getByRole("button", { name: `Board actions for ${name}` }).click();
@@ -61,8 +61,30 @@ async function openLockedBoard(page: Page, n = 1) {
   await expect(menu).toBeVisible();
   await menu.getByRole("menuitemcheckbox", { name: BOARD_LOCK_COPY.lockBoard }).click();
   await expect(page.getByRole("menu")).toHaveCount(0);
+}
+
+/** Opens board `n` with its caption's Open This Board and waits for the editor. */
+async function openFromRack(page: Page, n: number) {
+  const name = board(n).name;
+  if (n !== 1) await turnTo(page, n);
   await captionFor(page, name).getByRole("button", { name: RACK_COPY.open }).click();
   await page.waitForURL("**/design/outline");
+}
+
+const unlockButton = (page: Page) =>
+  page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true });
+
+/**
+ * A locked practice board, open in the editor: a fresh practice rack, board `n` locked from its ⋯
+ * menu, then opened with Open This Board. Board 1 is a preset with a blank; 2, 3 and 4 are the other
+ * presets; 5 is a hand-set board with no blank.
+ */
+async function openLockedBoard(page: Page, n = 1) {
+  await startPracticeRack(page);
+  await lockFromRack(page, n);
+  await openFromRack(page, n);
+  // The lock has arrived in the editor once the top bar offers Unlock.
+  await expect(unlockButton(page)).toHaveCount(1);
 }
 
 /** Whether the element is disabled to a mouse, a finger, the keyboard and a screen reader. */
@@ -112,7 +134,9 @@ async function expectGreyedScreen(page: Page, scope: Locator) {
   await expect(page.locator('input[type="range"]').first()).toBeAttached();
   const ranges = await rangeInputsDisabled(page);
   expect(ranges.total).toBeGreaterThan(0);
-  expect(ranges.live, "range inputs still live on a locked board").toBe(0);
+  await expect
+    .poll(async () => (await rangeInputsDisabled(page)).live, { message: "range inputs still live on a locked board" })
+    .toBe(0);
   expect(await liveBoardControls(scope), "board-changing controls still live on a locked board").toEqual([]);
 }
 
@@ -143,8 +167,116 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThanOrEqual(8);
     await expect.poll(() => page.locator("[data-drag-target]").count()).toBeGreaterThan(0);
   });
+  test("s-rocker. ROCKER (a board with a blank) is greyed on VIEWER and DATASHEET, the tabs still switch, and Unlock brings it back", async ({
+    page,
+  }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "ROCKER");
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+    // The board carries a blank, so the blank controls are on screen, and greyed with the rest.
+    await expect(controls.getByRole("button", { name: "Remove This Blank" })).toBeDisabled();
+
+    // The tabs are viewing: they switch. On DATASHEET every typed cell is disabled too.
+    await page.getByRole("tab", { name: "DATASHEET", exact: true }).click();
+    await expect(page.getByRole("tab", { name: "DATASHEET", exact: true })).toHaveAttribute("aria-selected", "true");
+    const typed = page.locator('input[type="text"]');
+    expect(await typed.count()).toBeGreaterThan(2);
+    expect(await typed.evaluateAll((els) => els.filter((e) => !(e as HTMLInputElement).disabled).length)).toBe(0);
+    await expectGreyedScreen(page, controls);
+    await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+    await expect(page.getByRole("tab", { name: "VIEWER", exact: true })).toHaveAttribute("aria-selected", "true");
+
+    await pressUnlock(page);
+    await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel })).toHaveCount(0);
+    await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(3);
+    await page.getByRole("tab", { name: "DATASHEET", exact: true }).click();
+    await expect.poll(() => typed.evaluateAll((els) => els.filter((e) => !(e as HTMLInputElement).disabled).length)).toBeGreaterThan(2);
+  });
+
+  test("s-rocker-hand-set. ROCKER on a hand-set board (no blank) is greyed too", async ({ page }) => {
+    await openLockedBoard(page, 5);
+    await goToScreen(page, "ROCKER");
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+    await expect(controls.getByRole("button", { name: "Remove This Blank" })).toHaveCount(0);
+    await pressUnlock(page);
+    await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(3);
+  });
+
+  test("s-rails. RAILS is greyed, a section still opens and closes, the print tick still toggles, and Unlock brings it back", async ({
+    page,
+  }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "RAILS");
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+
+    // Opening Advanced reveals more controls, and they are greyed as well.
+    const advanced = controls.getByRole("button", { name: "Advanced" }).first();
+    await advanced.click();
+    await expectGreyedScreen(page, controls);
+    const rangesOpen = (await rangeInputsDisabled(page)).total;
+
+    // Closing a whole section is viewing: it works, and it takes its sliders with it.
+    await controls.getByRole("button", { name: /Nose/ }).first().click();
+    await expect.poll(async () => (await rangeInputsDisabled(page)).total).toBeLessThan(rangesOpen);
+
+    // The print tick is not a board change.
+    const printTick = controls.getByRole("checkbox", { name: /Include Rail Band Instructions in Print/ });
+    const before = await printTick.getAttribute("aria-checked");
+    await printTick.click();
+    await expect(printTick).not.toHaveAttribute("aria-checked", before ?? "");
+
+    await pressUnlock(page);
+    await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
+  });
+
+  test("s-fins. FINS is greyed, the toe-in table still opens and closes, Fin Placement Callouts still toggles, and Unlock brings it back", async ({
+    page,
+  }) => {
+    // No preset board draws the McKee toe-in table link, and a locked board cannot be changed to one. So:
+    // open the mid-length quad unlocked, pick its McKee rear fins, go back to the rack, lock that very
+    // board from its ⋯ (which takes effect in the open editor at once), and come back to FINS.
+    await startPracticeRack(page);
+    await openFromRack(page, 3);
+    await goToScreen(page, "FINS");
+    await page.getByRole("button", { name: "McKee SB/Gun" }).click();
+    await page.goBack();
+    await page.waitForURL("**/design/outline");
+    await page.goBack();
+    await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+    await expect(page.locator("[data-rack-board]")).toHaveCount(5);
+    await lockFromRack(page, 3);
+    await page.goForward();
+    await page.waitForURL("**/design/outline");
+    await page.goForward();
+    await page.waitForURL("**/design/fins");
+    await expect(unlockButton(page)).toHaveCount(1);
+
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+    await controls.getByRole("button", { name: "Advanced" }).first().click();
+    await expectGreyedScreen(page, controls);
+
+    // The toe-in table link is viewing, so it stays live.
+    const toeLink = controls.getByRole("button", { name: /aim tables/i }).first();
+    await expect(toeLink).toBeEnabled();
+    await toeLink.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await controls.getByRole("button", { name: /^Settings/ }).click();
+    const callouts = controls.getByRole("checkbox", { name: /Fin Placement Callouts/ });
+    const before = await callouts.getAttribute("aria-checked");
+    await callouts.click();
+    await expect(callouts).not.toHaveAttribute("aria-checked", before ?? "");
+
+    await pressUnlock(page);
+    await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
+  });
 });
 
-// The later tasks add their screens above; this keeps the helpers referenced until they do.
+// The later task adds the VOLUME / SUMMARY / phone tests above; this keeps the imports in use.
 export type { ScreenLabel };
-void goToScreen;

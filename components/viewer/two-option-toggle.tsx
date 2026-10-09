@@ -29,6 +29,9 @@ export interface TwoOptionToggleProps<T extends string> {
    * name; when not, the wrapper stays a plain box, exactly as before. Always a constant from the
    * caller, never user text. */
   ariaLabel?: string;
+  /** Greys both pills and stops them responding (the board lock, quick 261008-lsy). Absent, the pair
+   * renders exactly as before. */
+  disabled?: boolean;
 }
 
 export function TwoOptionToggle<T extends string>({
@@ -38,6 +41,7 @@ export function TwoOptionToggle<T extends string>({
   onChange,
   className = "",
   ariaLabel,
+  disabled,
 }: TwoOptionToggleProps<T>) {
   return (
     <div
@@ -52,8 +56,9 @@ export function TwoOptionToggle<T extends string>({
             key={option}
             type="button"
             aria-pressed={active}
+            disabled={disabled}
             onClick={() => onChange(option)}
-            className={`focus-ring-accent cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 ${
+            className={`focus-ring-accent cursor-pointer rounded-md border px-1 py-2.5 text-[11px] font-bold coarse:min-h-11 disabled:cursor-default disabled:opacity-40 ${
               active ? "border-surf-on-accent bg-surf-accent text-surf-on-accent" : "border-surf-line bg-surf-sidebar text-surf-ink"
             }`}
           >
