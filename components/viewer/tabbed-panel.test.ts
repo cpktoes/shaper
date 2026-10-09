@@ -45,12 +45,19 @@ const SHAPE_C = {
   panelClassName: "gap-4",
 };
 
+/** The two phone side-padding classes the tabs gained (P-3): the one difference from the capture. */
+const PHONE_TAB_PADDING = " max-shell:px-2 [@media(max-height:500px)]:px-2";
+
 describe("TabbedPanel without a trailing slot", () => {
-  it("shape a: unchanged", () => {
-    expect(render(SHAPE_A)).toBe(before.a);
+  it("shape a: the same as before except each phone tab's 8-dot side padding", () => {
+    const html = render(SHAPE_A);
+    expect(html).toContain(PHONE_TAB_PADDING);
+    expect(html.split(PHONE_TAB_PADDING).join("")).toBe(before.a);
   });
-  it("shape b: unchanged", () => {
-    expect(render(SHAPE_B)).toBe(before.b);
+  it("shape b: the same as before except each phone tab's 8-dot side padding (one per tab)", () => {
+    const html = render(SHAPE_B);
+    expect(html.split(PHONE_TAB_PADDING).length - 1).toBe(3);
+    expect(html.split(PHONE_TAB_PADDING).join("")).toBe(before.b);
   });
   it("shape c (the View Full Sized dialog): unchanged", () => {
     expect(render(SHAPE_C)).toBe(before.c);

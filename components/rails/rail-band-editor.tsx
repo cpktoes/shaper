@@ -408,7 +408,11 @@ export function RailBandEditor() {
                 own outer TabbedPanel tab row ALSO tappable above this one (P-3), two stacked rows
                 of tappable tabs each need their own 11px of clearance above and below — this row's
                 `pt-[11px]` is where the outer row's own touch box stops, and the plot box's
-                `pt-[11px]` below is where THIS row's touch box stops — so the two never overlap. */}
+                `pt-[11px]` below is where THIS row's touch box stops — so the two never overlap.
+
+                Quick 261008-raw (P-3): the tabs' side padding is 8 dots here, not 18, to match the outer
+                row above it (which tightens to 8 under the same phone rules so the board's name fits
+                beside its three tabs) — the two stacked rows keep one look. */}
             <div data-rail-plot-row="phone" className="hidden min-h-0 w-full flex-1 flex-col max-shell:flex">
               <div className="flex flex-none gap-1.5 pt-[11px]" role="tablist">
                 {(
@@ -427,7 +431,7 @@ export function RailBandEditor() {
                       aria-selected={on}
                       onClick={() => setPhoneSection(tab.id)}
                       className={
-                        "cursor-pointer rounded-t-lg border px-[18px] py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                        "cursor-pointer rounded-t-lg border px-2 py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
                         "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-[''] " +
                         (on
                           ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"

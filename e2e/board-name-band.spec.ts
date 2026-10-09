@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
 import { RACK_COPY } from "../components/setup/rack-config";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
-import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
+import { RACK_STAND_IN_ROUTE, STAND_IN_LONG_NAME, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
@@ -228,5 +228,284 @@ test.describe("a rename that cannot be saved (quick 261008-raw)", () => {
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(bandName(page)).toHaveText(first.name);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Measured proof at every width the app supports (quick 261008-raw, Task 3).
+//
+// The long name (the practice rack's 45-character board, 279 dots at 12px) is put on the open board
+// by renaming it from the band itself, which also proves a tap or a click opens the popup and saves.
+// ---------------------------------------------------------------------------------------------
+
+const SCREEN_ORDER: ScreenLabel[] = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS"];
+/** Screens whose tab strip is tappable, so on a phone carries the tabs' 44-dot touch box. */
+const TAPPABLE: ScreenLabel[] = ["ROCKER", "RAILS", "FINS"];
+
+interface BandMeasure {
+  stripHeight: number;
+  stripLeft: number;
+  stripRight: number;
+  tabs: { left: number; right: number; height: number; paddingLeft: number; paddingRight: number }[];
+  name: { left: number; right: number; top: number; bottom: number; height: number; title: string };
+  textOverflowing: boolean;
+  ellipsis: string;
+  innerWidth: number;
+  pageScrollWidth: number;
+}
+
+async function measureBand(page: Page): Promise<BandMeasure> {
+  return page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll<HTMLElement>("[data-board-name-band]")).filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (buttons.length !== 1) throw new Error(`expected one visible band name, found ${buttons.length}`);
+    const button = buttons[0];
+    const strip = button.parentElement!.parentElement!;
+    const tabsRow = strip.firstElementChild!;
+    const rect = (el: Element) => el.getBoundingClientRect();
+    const text = button.querySelector<HTMLElement>("span.truncate")!;
+    const sr = rect(strip);
+    const nr = rect(button);
+    return {
+      stripHeight: sr.height,
+      stripLeft: sr.left,
+      stripRight: sr.right,
+      tabs: Array.from(tabsRow.children).map((tab) => {
+        const r = rect(tab);
+        const cs = getComputedStyle(tab);
+        return {
+          left: r.left,
+          right: r.right,
+          height: r.height,
+          paddingLeft: parseFloat(cs.paddingLeft),
+          paddingRight: parseFloat(cs.paddingRight),
+        };
+      }),
+      name: { left: nr.left, right: nr.right, top: nr.top, bottom: nr.bottom, height: nr.height, title: button.title },
+      textOverflowing: text.scrollWidth > text.clientWidth,
+      ellipsis: getComputedStyle(text).textOverflow,
+      innerWidth: window.innerWidth,
+      pageScrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+}
+
+/** The band's geometry rules, true at every width: every tab whole inside the strip and the window,
+ * the name right of the last tab (by `gap` dots at least) and inside the strip, on one line, the page
+ * not scrolling sideways. */
+function expectBandSound(m: BandMeasure, gap: number, where: string) {
+  const last = m.tabs[m.tabs.length - 1];
+  console.log(
+    `[board-name] ${where}: strip ${m.stripHeight.toFixed(1)} tall, last tab ends ${last.right.toFixed(1)}, ` +
+      `name ${m.name.left.toFixed(1)}-${m.name.right.toFixed(1)} (gap ${(m.name.left - last.right).toFixed(1)}), ` +
+      `tab padding ${last.paddingLeft}, ${m.textOverflowing ? "shortened with …" : "whole"}`,
+  );
+  for (const tab of m.tabs) {
+    expect(tab.left, `${where}: a tab starts inside the strip`).toBeGreaterThanOrEqual(m.stripLeft - 0.5);
+    expect(tab.right, `${where}: a tab ends inside the window`).toBeLessThanOrEqual(m.innerWidth + 0.5);
+    expect(tab.right, `${where}: a tab ends inside the strip`).toBeLessThanOrEqual(m.stripRight + 0.5);
+  }
+  const lastTab = m.tabs[m.tabs.length - 1];
+  expect(m.name.left - lastTab.right, `${where}: name starts clear of the last tab`).toBeGreaterThanOrEqual(gap - 0.5);
+  expect(m.name.right, `${where}: name ends inside the strip`).toBeLessThanOrEqual(m.stripRight + 0.5);
+  expect(m.name.right, `${where}: name ends inside the window`).toBeLessThanOrEqual(m.innerWidth + 0.5);
+  expect(Math.abs(m.name.height - m.tabs[0].height), `${where}: name is one line, as tall as a tab`).toBeLessThanOrEqual(1);
+  expect(m.pageScrollWidth, `${where}: no sideways page scroll`).toBeLessThanOrEqual(m.innerWidth);
+}
+
+/** Opens the practice rack's first board on the editor (rack caption on a computer, the swipe rack's
+ * Open This Board on a phone) and gives it the long name through the band's own popup. */
+async function openFirstBoardWithLongName(page: Page) {
+  const first = board(1);
+  await openRack(page);
+  await openFromCaption(page, first.name);
+  await renameFromBand(page, STAND_IN_LONG_NAME, "tap");
+}
+
+async function renameFromBand(page: Page, to: string, how: "tap" | "click") {
+  const name = bandName(page);
+  if (how === "tap") await name.tap();
+  else await name.click();
+  const dialog = page.getByRole("dialog", { name: "Rename board" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Board name" }).fill(to);
+  await dialog.getByRole("button", { name: "Save" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(bandName(page)).toHaveAccessibleName(`Board name: ${to} — rename`);
+}
+
+async function boundsForTouch(page: Page) {
+  const bar = await page.getByRole("banner").boundingBox();
+  const drawing = await page.locator("[data-viewer-panel]").evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return rect.y + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
+  });
+  if (!bar) throw new Error("no top bar");
+  return { topBarBottom: bar.y + bar.height, drawingTop: drawing };
+}
+
+/** The name's touch box. On ROCKER, RAILS and FINS it is the tabs' own 44 dots (10 reach above and
+ * below, never into the top bar or the drawing); on TEMPLATE and VOLUME it reaches 2 dots past the band
+ * each way (a point 1 dot out still hits it) and still never touches the top bar or the drawing. */
+async function expectNameTouchBox(page: Page, label: ScreenLabel) {
+  const bounds = await boundsForTouch(page);
+  const name = bandName(page);
+  const afterHeight = await name.evaluate((el) => parseFloat(getComputedStyle(el, "::after").height));
+  const outcome = await name.evaluate(
+    (el, args) => {
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const hits = (y: number) => {
+        const hit = document.elementFromPoint(cx, y);
+        return !!hit && (hit === el || el.contains(hit));
+      };
+      return {
+        above: hits(rect.top - args.reach),
+        below: hits(rect.bottom + args.reach),
+        aboveTopBar: hits(args.topBarBottom - 1),
+        intoDrawing: hits(args.drawingTop + 1),
+      };
+    },
+    { reach: TAPPABLE.includes(label) ? 10 : 1, ...bounds },
+  );
+  if (TAPPABLE.includes(label)) expect(Math.abs(afterHeight - 44), `${label}: the tabs' 44-dot box`).toBeLessThanOrEqual(0.5);
+  expect(outcome.above, `${label}: the touch box reaches above the name`).toBe(true);
+  expect(outcome.below, `${label}: the touch box reaches below the name`).toBe(true);
+  expect(outcome.aboveTopBar, `${label}: not 1 dot above the top bar's bottom edge`).toBe(false);
+  expect(outcome.intoDrawing, `${label}: not 1 dot into the drawing`).toBe(false);
+}
+
+async function expectPopupFits(page: Page) {
+  await bandName(page).tap();
+  const dialog = page.getByRole("dialog", { name: "Rename board" });
+  await expect(dialog).toBeVisible();
+  const box = await dialog.boundingBox();
+  const viewport = page.viewportSize()!;
+  if (!box) throw new Error("no dialog box");
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 0.5);
+  const fontSize = await dialog.getByRole("textbox", { name: "Board name" }).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(fontSize, "no zoom on focus").toBeGreaterThanOrEqual(16);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+}
+
+const stripHeightOn = (label: ScreenLabel) => (TAPPABLE.includes(label) || label === "RAILS" ? 31 : 21);
+
+test.describe("the name in the band on a phone (quick 261008-raw)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phones' swipe rack, band and touch boxes");
+    await startPracticeRack(page);
+  });
+
+  test("p1. upright: on every screen the name fits beside the tabs, shortens with …, is one line, and is tappable", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    const sizes =
+      testInfo.project.name === "iphone"
+        ? [{ width: 390, height: 844 }]
+        : [
+            { width: 412, height: 915 },
+            { width: 360, height: 780 },
+            { width: 375, height: 667 },
+          ];
+    await page.setViewportSize(sizes[0]);
+    await openFirstBoardWithLongName(page);
+
+    for (const label of SCREEN_ORDER) {
+      await goToScreen(page, label);
+      for (const size of sizes) {
+        await page.setViewportSize(size);
+        const where = `${label} at ${size.width}x${size.height}`;
+        await expect(bandName(page)).toHaveCount(1);
+        const m = await measureBand(page);
+        expect(Math.round(m.stripHeight), `${where}: the band's height is unchanged`).toBe(stripHeightOn(label));
+        expectBandSound(m, 6, where);
+        expect(m.name.title).toBe(STAND_IN_LONG_NAME);
+        if (label === "ROCKER") {
+          expect(m.ellipsis).toBe("ellipsis");
+          expect(m.textOverflowing, `${where}: the long name is shortened`).toBe(true);
+        }
+        await expectNameTouchBox(page, label);
+      }
+      await page.setViewportSize(sizes[0]);
+      await expectPopupFits(page);
+    }
+  });
+
+  test("p1b. a board with no name yet reads Untitled whole on ROCKER, even at 360 wide", async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.goto("/design/rocker");
+    await expect(bandName(page)).toHaveText("Untitled");
+    const m = await measureBand(page);
+    expect(m.textOverflowing, "Untitled fits whole").toBe(false);
+    expectBandSound(m, 6, "ROCKER Untitled at 360");
+    expect(Math.round(m.stripHeight)).toBe(31);
+  });
+
+  test("p2. held sideways: the same on every screen, and the tap opens the popup", async ({ page }, testInfo) => {
+    test.setTimeout(240_000);
+    const size = testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 360 };
+    await openFirstBoardWithLongName(page);
+    await page.setViewportSize(size);
+
+    for (const label of SCREEN_ORDER) {
+      await goToScreen(page, label);
+      const where = `${label} sideways ${size.width}x${size.height}`;
+      await expect(bandName(page)).toHaveCount(1);
+      const m = await measureBand(page);
+      expect(Math.round(m.stripHeight), `${where}: the band's height is unchanged`).toBe(stripHeightOn(label));
+      expectBandSound(m, 6, where);
+      expect(m.name.title).toBe(STAND_IN_LONG_NAME);
+      await expectNameTouchBox(page, label);
+      await expectPopupFits(page);
+    }
+  });
+});
+
+test.describe("the name in the band on a computer, at every width (quick 261008-raw)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer's rack and band");
+    await startPracticeRack(page);
+  });
+
+  test("d1. 1280, 1024 and 820 wide: the tabs keep their 18 dots, the name sits clear of them on one line and shortens when it must", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openRack(page);
+    await openFromCaption(page, board(1).name);
+    await renameFromBand(page, STAND_IN_LONG_NAME, "click");
+
+    for (const label of SCREEN_ORDER) {
+      await goToScreen(page, label);
+      for (const size of [
+        { width: 1280, height: 800 },
+        { width: 1024, height: 768 },
+        { width: 820, height: 800 },
+      ]) {
+        await page.setViewportSize(size);
+        const where = `${label} at ${size.width}`;
+        await expect(bandName(page)).toHaveCount(1);
+        const m = await measureBand(page);
+        expect([29, 30], `${where}: the band's height is unchanged`).toContain(Math.round(m.stripHeight));
+        for (const tab of m.tabs) {
+          expect(tab.paddingLeft, `${where}: tab side padding`).toBe(18);
+          expect(tab.paddingRight, `${where}: tab side padding`).toBe(18);
+        }
+        expectBandSound(m, 6, where);
+        expect(m.name.title).toBe(STAND_IN_LONG_NAME);
+        if (label === "RAILS" && size.width === 820) {
+          expect(m.ellipsis).toBe("ellipsis");
+          expect(m.textOverflowing, `${where}: shortened with an ellipsis`).toBe(true);
+        }
+      }
+    }
   });
 });

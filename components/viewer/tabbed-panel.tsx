@@ -135,6 +135,12 @@ export function TabbedPanel<T extends string>({
           // P-2: every tab on a phone draws 22px tall (py-0.5) instead of 30px (py-1.5), the
           // same slim strip on every one of the five drawing screens.
           !bare && compactOnPhone && "max-shell:py-0.5 [@media(max-height:500px)]:py-0.5",
+          // Quick 261008-raw (P-3): and 8 dots of side padding instead of 18, under the same two phone
+          // rules, so the board's name has room beside the tabs. Measured before the change: ROCKER's
+          // three tabs left 10.6 dots at 360 wide and 40.6 on an iPhone — no room even for "Untitled"
+          // (45.5 dots) — and 51 and 81 dots for the name's text after. A computer, a touch screen
+          // wide enough for the desktop layout, and RAILS' View Full Sized dialog keep 18.
+          !bare && compactOnPhone && "max-shell:px-2 [@media(max-height:500px)]:px-2",
         );
 
         if (!interactive) {
