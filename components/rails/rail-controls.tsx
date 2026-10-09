@@ -15,6 +15,7 @@ import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-
 import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
+import { cn } from "@/lib/utils";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { usePrintRailInstructions } from "@/components/print-instructions-provider";
 
@@ -228,7 +229,7 @@ function RailSectionControls({
               label and two-hint layout can hold. Both are named in slider-row.test.ts's
               allowlist. */}
           <div className="flex gap-3.5">
-            <div className="min-w-0 flex-1">
+            <div className={cn("min-w-0 flex-1", locked && "opacity-40")}>
               <div className="mb-2 min-h-5 leading-5 text-sm text-surf-ink-muted font-normal">
                 Family — {railFamilyLabel(spec.family)}
               </div>
@@ -248,7 +249,7 @@ function RailSectionControls({
               </div>
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className={cn("min-w-0 flex-1", locked && "opacity-40")}>
               <div className="mb-2 flex h-4 items-center justify-between leading-4">
                 <div className="text-sm text-surf-ink-muted font-normal">
                   Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
@@ -297,7 +298,7 @@ function RailSectionControls({
                     markup — each one's heading line carries its own checkbox (Remove / Use
                     Single Tuck) beside the label, which SliderRow's plain-string `label` prop has
                     no slot for. Both are named in slider-row.test.ts's allowlist. */}
-                <div>
+                <div className={locked ? "opacity-40" : undefined}>
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="text-sm text-surf-ink-muted font-normal">
                       Corner Cut Offset — {formatMark(cornerCutOffsetMm, system)}
@@ -330,7 +331,7 @@ function RailSectionControls({
                 </div>
 
                 {(!isTail || !hardEdgeOn) && (
-                  <div>
+                  <div className={locked ? "opacity-40" : undefined}>
                     <div className="mb-1.5 flex items-center justify-between">
                       <div className="text-sm text-surf-ink-muted font-normal">
                         Bottom Tuck 3 — {formatMark(output.result.bottomTuck3, system)}
@@ -398,7 +399,7 @@ export function RailControls({
         </div>
       </div>
 
-      <div>
+      <div className={locked ? "opacity-40" : undefined}>
         <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
           <Checkbox
             disabled={locked}

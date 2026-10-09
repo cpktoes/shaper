@@ -137,7 +137,8 @@ export function OutlineControls({
         // the slider's raw millimetre bounds. See typedFieldBounds's doc comment / CR-01.
         const boardLengthFieldBounds = typedFieldBounds(boardLength, "length", system);
         return (
-          <div>
+          // A locked board greys the whole row (label, pickers, slider), the way every SliderRow does.
+          <div className={locked ? "opacity-40" : undefined}>
             <div className="mb-2 text-sm text-surf-ink-muted font-normal">
               Board Length — {formatLength(outline.length, system)}
             </div>

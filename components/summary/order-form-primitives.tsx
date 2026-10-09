@@ -149,7 +149,8 @@ export function OrderFormField({
   readOnly?: boolean;
 }) {
   return (
-    <label className={cn("flex min-w-0 items-baseline gap-1", className)}>
+    // A read-only name (a locked board) is greyed on screen and prints in full ink, like the Fin System.
+    <label className={cn("flex min-w-0 items-baseline gap-1", className, readOnly && "opacity-40 print:opacity-100")}>
       <span
         className={cn(
           "flex-none font-display font-extrabold tracking-architectural text-surf-ink uppercase order-form-caption",

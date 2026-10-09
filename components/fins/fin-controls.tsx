@@ -177,6 +177,8 @@ export function FinControls({
 }: FinControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
+  // A locked board greys every label and caption beside a greyed control (the look SliderRow rows have).
+  const dim = locked ? " opacity-40" : "";
   const [editingRearOffTail, setEditingRearOffTail] = useState(false);
 
   const lengthIn = mmToInches(spec.boardLength);
@@ -252,7 +254,7 @@ export function FinControls({
 
       <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
         <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
-        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 whitespace-nowrap text-xs text-surf-ink-muted font-normal">
+        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 whitespace-nowrap text-xs text-surf-ink-muted font-normal${dim}`}>
           <Checkbox disabled={locked} checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Template Values
         </label>
@@ -267,8 +269,8 @@ export function FinControls({
           leave two adjacent sliders dimming to visibly different shades (SliderRow's own disabled
           state dims to Tailwind's 0.4, not 0.45), so both stay hand-rolled together and are named
           in the allowlist too. */}
-      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
+      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
+        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
           Board Length — {formatLength(spec.boardLength, system)}
         </div>
         <div className="mb-2 flex gap-2">
@@ -331,8 +333,8 @@ export function FinControls({
         />
       </div>
 
-      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
+      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
+        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
           {`Tail Width @ ${stationLabel(system)} — ${formatDim(spec.tailWidth12, system)}`}
         </div>
         <Slider
@@ -346,8 +348,8 @@ export function FinControls({
         />
       </div>
 
-      <div style={{ opacity: importTemplate ? 0.45 : 1 }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
+      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
+        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
           Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
         </div>
         {/* 09-REVIEW.md WR-02: hand-rolled <button>s, not PillButton or the shared Button
@@ -380,7 +382,7 @@ export function FinControls({
       <SectionHeading>Fin Selection</SectionHeading>
 
       <div>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Fin Setup</div>
+        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>Fin Setup</div>
         {/* 09-REVIEW.md WR-02: same hand-rolled coarse:min-h-11 as the tail-shape grid above. */}
         <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
           {FIN_SETUP_ORDER.map((setup) => {
@@ -408,7 +410,7 @@ export function FinControls({
 
       {spec.finSetup === "thruster" && (
         <div>
-          <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Thruster Model</div>
+          <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>Thruster Model</div>
           <div className="flex flex-wrap gap-1.5">
             {THRUSTER_FRONT_MODELS.map((opt) => (
               <PillButton
@@ -427,7 +429,7 @@ export function FinControls({
       {spec.finSetup === "quad" && (
         <>
           <div className="mb-6">
-            <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Quad Model</div>
+            <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>Quad Model</div>
             <div className="mt-2 grid grid-cols-2 gap-2.5">
               {QUAD_REAR_MODELS.map((opt) => (
                 <PillButton
@@ -446,13 +448,13 @@ export function FinControls({
               ))}
             </div>
             {!isQuadRearModelAvailable("mckeeLB", spec.boardLength) && (
-              <div className="mt-1.5 text-sm text-surf-ink-muted font-normal">
+              <div className={`mt-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
                 McKee Longboard needs a board 8&apos;0&quot; or longer.
               </div>
             )}
           </div>
           {flags.quadCenterFinAvailable && (
-            <label className="flex cursor-pointer items-center gap-2 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+            <label className={`flex cursor-pointer items-center gap-2 coarse:min-h-11 text-sm text-surf-ink-muted font-normal${dim}`}>
               <Checkbox disabled={locked} checked={spec.quadCenterFinOn} onCheckedChange={() => onChange({ quadCenterFinOn: !spec.quadCenterFinOn })} />
               Add 5th/Center fin
             </label>
@@ -465,7 +467,7 @@ export function FinControls({
 
       {spec.finSetup === "twin" && (
         <div>
-          <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">Twin Template</div>
+          <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>Twin Template</div>
           <div className="flex flex-wrap gap-1.5">
             {TWIN_TEMPLATES.map((opt) => (
               <PillButton
@@ -589,7 +591,7 @@ export function FinControls({
                 </div>
                 {flags.showRearOffTailOverride && (
                   <div className="mb-2.5">
-                    <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
+                    <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
                       {`Rear Off-Tail Position (½ front off-tail + ${quarterInchRuleText})`}
                     </div>
                     {editingRearOffTail ? (
@@ -618,7 +620,7 @@ export function FinControls({
                       />
                     ) : (
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold">
+                        <span className={`text-sm font-bold${dim}`}>
                           {formatMark(resolved.quadRearOffTailBase, system)}
                           {spec.advanced.quadRearOffTailOverridden ? " override" : ` auto (½ front off-tail + ${quarterInchRuleText})`}
                         </span>

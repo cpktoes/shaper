@@ -77,7 +77,7 @@ export function VolumeControls({
 
   const { templateAvailable, railAvailable, importingTemplate, importingRailThickness } = volumeResult;
   const dimensionsDisabled = importingTemplate;
-  const dimensionsOpacity = importingTemplate ? 0.4 : 1;
+  const dimensionsOpacity = locked || importingTemplate ? 0.4 : 1;
   const thicknessDisabled = importingRailThickness;
 
   return (
@@ -99,7 +99,7 @@ export function VolumeControls({
           accurate cross-section litres, everywhere the app quotes volume); off is this screen's
           own standalone quick estimate from a board type and its factor tables. */}
       {templateAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal">
+        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal${locked ? " opacity-40" : ""}`}>
           <Checkbox
             disabled={locked}
             checked={effectiveVolume.importTemplateDimensions}
@@ -110,7 +110,7 @@ export function VolumeControls({
       )}
 
       {railAvailable && (
-        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal">
+        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal${locked ? " opacity-40" : ""}`}>
           <Checkbox
             checked={effectiveVolume.importRailThickness}
             onCheckedChange={() => onToggleImportRailThickness()}

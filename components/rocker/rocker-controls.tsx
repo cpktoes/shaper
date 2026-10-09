@@ -347,7 +347,7 @@ export function RockerControls({
             Center Thickness
           </SectionHeading>
           {sectionOpen.center && (
-            <div className="pt-3">
+            <div className={cn("pt-3", locked && "opacity-40")}>
               {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
                   the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -504,7 +504,7 @@ export function RockerControls({
                   {/* Directly under the two 12" rows it governs (§5a); Tip Style stays last. */}
                   <Live on={live.fineTune}>
                     <div className="flex flex-col">
-                      <div className="mb-2 text-sm text-surf-ink-muted font-normal">Fine-tune off</div>
+                      <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>Fine-tune off</div>
                       <TwoOptionToggle
                         options={["deck", "bottom"] as const}
                         labels={["Deck", "Bottom"] as const}
@@ -514,7 +514,7 @@ export function RockerControls({
                         ariaLabel="Fine-tune off"
                         className="self-start"
                       />
-                      <div className="mt-2 text-xs text-surf-ink-muted font-normal">
+                      <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
                         {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
                       </div>
                     </div>
@@ -578,7 +578,7 @@ export function RockerControls({
                 // Starts rows come after it (Phase 14, D-10).
                 <Live on={live.tipStyle}>
                   <div className="flex flex-col">
-                    <div className="mb-2 text-sm text-surf-ink-muted font-normal">Tip Style</div>
+                    <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>Tip Style</div>
                     <TwoOptionToggle
                       options={["pinDeck", "bottom"] as const}
                       labels={["Pin deck", "Bottom"] as const}
@@ -588,7 +588,7 @@ export function RockerControls({
                       ariaLabel="Tip Style"
                       className="self-start"
                     />
-                    <div className="mt-2 text-xs text-surf-ink-muted font-normal">{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
+                    <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
                   </div>
                 </Live>
               )}

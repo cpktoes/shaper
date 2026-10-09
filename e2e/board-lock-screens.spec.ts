@@ -119,6 +119,81 @@ async function liveBoardControls(scope: Locator): Promise<string[]> {
   }, IS_DISABLED.toString());
 }
 
+/**
+ * The LOOK of a locked screen (follow-up to Plan 02, 2026-10-08): disabled is not enough, a locked
+ * control and its label, caption, tick marks and thumb must all read as greyed, the way SliderRow's rows
+ * do. For every board-changing control in `scope` (everything not `data-lock-exempt`) this measures the
+ * effective opacity, the product of its own and every ancestor's up to `scope`, and requires 0.6 or
+ * less for the control AND for every visible text in its row (the nearest ancestor that holds text
+ * beyond any control's own; a "row" holding more than six controls, or more than 240 characters, is a
+ * whole section, not a label, and is skipped). Returns what still reads as live, described, so a failure names it.
+ */
+async function greyedLookOffenders(scope: Locator): Promise<string[]> {
+  return scope.evaluate((root) => {
+    const MAX = 0.6;
+    const offenders = new Set<string>();
+    const visible = (el: Element) => el.getClientRects().length > 0;
+    const effective = (el: Element) => {
+      let o = 1;
+      for (let n: Element | null = el; n && n !== root.parentElement; n = n.parentElement) {
+        o *= Number(getComputedStyle(n).opacity);
+      }
+      return o;
+    };
+    const describe = (el: Element) => {
+      const text = (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+      return `<${el.tagName.toLowerCase()}> "${text}"`;
+    };
+    const SELECTOR =
+      'button, input:not([type="range"]), select, [role="checkbox"], [role="combobox"], [data-slot="select-trigger"], [data-slot="slider-thumb"]';
+    const controls = [...root.querySelectorAll(SELECTOR)].filter(
+      (el) => !el.closest("[data-lock-exempt]") && el.getAttribute("aria-hidden") !== "true" && visible(el),
+    );
+    const controlSet = new Set(controls);
+    const ownText = (el: Element) =>
+      [...el.childNodes].some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
+    for (const c of controls) {
+      if (effective(c) > MAX) offenders.add(`${describe(c)} (the control itself, opacity ${effective(c).toFixed(2)})`);
+      // The row: climb to the nearest ancestor holding visible text outside this control.
+      // A control inside a <label> has that label for its row.
+      let row: Element | null = c.closest("label") ?? c.parentElement;
+      while (row && row !== root && !row.matches("label")) {
+        const hasOtherText = [...row.querySelectorAll("*")].some(
+          (t) => ownText(t) && visible(t) && !t.closest(SELECTOR) && !t.closest("[data-lock-exempt]"),
+        );
+        if (hasOtherText) break;
+        row = row.parentElement;
+      }
+      if (!row || row === root) continue;
+      const inRow = controls.filter((o) => row!.contains(o)).length;
+      if (inRow > 6 || (row.textContent ?? "").length > 240) continue;
+      for (const t of row.querySelectorAll("*")) {
+        if ((c.contains(t) && t !== c) || !ownText(t) || !visible(t) || t.closest("[data-lock-exempt]")) continue;
+        const r = t.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        if (controlSet.has(t) || effective(t) <= MAX) continue;
+        offenders.add(`${describe(t)} (text in ${describe(c)}'s row, opacity ${effective(t).toFixed(2)})`);
+      }
+    }
+    return [...offenders];
+  });
+}
+
+/** Opens every visible Advanced disclosure so its controls are on screen too. */
+async function openAdvanced(scope: Locator) {
+  const buttons = scope.getByRole("button", { name: /^Advanced/ });
+  const n = await buttons.count();
+  for (let i = 0; i < n; i++) {
+    const b = buttons.nth(i);
+    if (await b.isVisible()) await b.click();
+  }
+}
+
+async function expectGreyedLook(scope: Locator, label: string) {
+  const offenders = await greyedLookOffenders(scope);
+  expect(offenders, `${label}: controls or labels that still read as live on a locked board:\n${offenders.join("\n")}`).toEqual([]);
+}
+
 /** After Unlock: some board-changing control in `scope` is live again (VOLUME and FINS keep most sliders
  * off for their own reasons while the board imports its template, but their tick boxes and pills come back). */
 async function expectControlsBack(scope: Locator) {
@@ -324,9 +399,18 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     // On screen it is greyed; on paper it is full ink.
     const onScreen = await look();
     expect(Number(onScreen.opacity)).toBeLessThan(1);
+    expect(await boardName.evaluate((el) => Number(getComputedStyle(el.closest("label") ?? el).opacity))).toBeLessThanOrEqual(0.6);
     await page.emulateMedia({ media: "print" });
     const lockedPrint = await look();
     expect(lockedPrint.opacity).toBe("1");
+    // The locked Board Name prints in full ink too: neither it nor any ancestor is dimmed in print.
+    expect(
+      await boardName.evaluate((el) => {
+        let o = 1;
+        for (let n: Element | null = el; n; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+        return o;
+      }),
+    ).toBe(1);
     await page.emulateMedia({ media: "screen" });
 
     // After Unlock the same select prints with exactly the same colours.
@@ -337,6 +421,7 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     expect(lockedPrint).toEqual(unlockedPrint);
     await page.emulateMedia({ media: "screen" });
     await expect(boardName).not.toHaveAttribute("readonly", "");
+    expect(await boardName.evaluate((el) => Number(getComputedStyle(el.closest("label") ?? el).opacity))).toBe(1);
   });
 });
 
@@ -395,5 +480,47 @@ test.describe("a locked board's controls are greyed on a phone (quick 261008-lsy
     await expectPhoneScreenGreyed(page);
     await goToScreen(page, "RAILS");
     await expectPhoneScreenGreyed(page);
+  });
+});
+
+test.describe("a locked board reads as greyed, label and all, on every screen (follow-up to Plan 02)", () => {
+  /** Boards worth looking at on this project: the phones' swipe rack opens board 1 only. */
+  const boardsFor = (project: string, wanted: number[]) => (project === "desktop" ? wanted : [1]);
+
+  for (const [screen, boards] of [
+    ["TEMPLATE", [1]],
+    ["ROCKER", [1, 5]],
+    ["RAILS", [1]],
+    ["VOLUME", [1]],
+    ["FINS", [1, 3]],
+  ] as const) {
+    test(`look-${screen.toLowerCase()}. every board-changing control and its label read as greyed`, async ({ page }, testInfo) => {
+      for (const n of boardsFor(testInfo.project.name, [...boards])) {
+        if (n !== boards[0]) await page.context().clearCookies();
+        await openLockedBoard(page, n);
+        if (screen !== "TEMPLATE") await goToScreen(page, screen);
+        const controls = page.locator("[data-design-controls-scroll]");
+        await expect(page.locator('input[type="range"]').first()).toBeAttached();
+        await expectGreyedLook(controls, `${screen}, board ${n}`);
+        if (process.env.LOOK_SHOTS) await page.screenshot({ path: `${process.env.LOOK_SHOTS}/${screen}-${n}-${testInfo.project.name}.png` });
+        if (screen === "RAILS" || screen === "FINS") {
+          await openAdvanced(controls);
+          await expectGreyedLook(controls, `${screen} Advanced, board ${n}`);
+        }
+      }
+    });
+  }
+
+  test("look-summary. the Board Name and Fin System read as greyed on the sheet", async ({ page }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "SUMMARY");
+    const form = page.locator("[data-order-form-page]");
+    const opacity = (loc: Locator) => loc.evaluate((el) => {
+      let o = 1;
+      for (let n: Element | null = el; n; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+      return o;
+    });
+    expect(await opacity(form.getByRole("textbox", { name: /Board Name/ }))).toBeLessThanOrEqual(0.6);
+    expect(await opacity(form.locator("select"))).toBeLessThanOrEqual(0.6);
   });
 });

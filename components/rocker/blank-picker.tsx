@@ -373,7 +373,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
           Remove This Blank
         </button>
       </div>
-      <div className="text-xs text-surf-ink-muted">
+      <div className={cn("text-xs text-surf-ink-muted", locked && "opacity-40")}>
         Removing it keeps the rocker and foil at the five stations and re-draws the curve through them, for you to set by hand.
       </div>
 
