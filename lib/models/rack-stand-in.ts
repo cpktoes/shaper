@@ -138,6 +138,28 @@ export function standInRowsWithLocks(rows: readonly RackRow[], lockedIds: Readon
   return rows.map((row) => ({ ...row, locked: lockedIds.has(row.id) }));
 }
 
+/**
+ * The practice rack's rows with each renamed board's new name applied (quick 261008-raw): a row whose
+ * id is in `names` takes that name, in its `name` AND in the snapshot's own `design.boardName` — the
+ * two a real rename writes together (`renameModel`), so opening the board from the rack reads the new
+ * name back. Every other row comes out deep-equal. The names themselves are kept per session by
+ * `lib/rack-stand-in-server.ts`.
+ */
+export function standInRowsWithNames(rows: readonly RackRow[], names: ReadonlyMap<string, string>): RackRow[] {
+  return rows.map((row) => {
+    const name = names.get(row.id);
+    if (name === undefined) return row;
+    const snapshot = row.snapshot as { design?: Record<string, unknown> } | null;
+    return {
+      ...row,
+      name,
+      snapshot: snapshot && typeof snapshot === "object" && snapshot.design
+        ? { ...snapshot, design: { ...snapshot.design, boardName: name } }
+        : row.snapshot,
+    };
+  });
+}
+
 /*
  * The practice rack's saves (WR-04): a stand-in for the account a signed-in shaper's order is kept
  * on, so the browser suite — signed out, with no database — can prove the order survives Back, that

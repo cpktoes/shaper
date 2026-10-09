@@ -7,8 +7,9 @@ import {
   standInBoardCount,
   standInRackRows,
   standInRowsWithLocks,
+  standInRowsWithNames,
 } from "@/lib/models/rack-stand-in";
-import { standInLocksForRequest, standInRackOrderForRequest } from "@/lib/rack-stand-in-server";
+import { standInLocksForRequest, standInNamesForRequest, standInRackOrderForRequest } from "@/lib/rack-stand-in-server";
 
 export const metadata: Metadata = {
   title: "Shaper Assistant — Practice Rack",
@@ -51,9 +52,13 @@ export default async function TestRackPage({
   const rackOrder = await standInRackOrderForRequest();
   // The boards this session has locked from the rack's ⋯ menu (quick 261008-lsy), kept the same way.
   const locks = await standInLocksForRequest();
+  // The boards this session has renamed from the tab band (quick 261008-raw), kept the same way.
+  const names = await standInNamesForRequest();
   return (
     <SetupScreen
-      models={rackModelsFromRows(standInRowsWithLocks(standInRackRows(standInBoardCount(boards)), locks))}
+      models={rackModelsFromRows(
+        standInRowsWithLocks(standInRowsWithNames(standInRackRows(standInBoardCount(boards)), names), locks),
+      )}
       rackOrder={rackOrder}
     />
   );

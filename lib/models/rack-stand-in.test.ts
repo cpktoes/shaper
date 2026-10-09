@@ -21,6 +21,7 @@ import {
   standInBoardCount,
   standInRackRows,
   standInRowsWithLocks,
+  standInRowsWithNames,
 } from "./rack-stand-in";
 
 /**
@@ -221,6 +222,29 @@ describe("the practice rack's saves (WR-04)", () => {
       session: RACK_STAND_IN_SHARED_SESSION,
       delayMs: 0,
     });
+  });
+});
+
+describe("standInRowsWithNames (quick 261008-raw)", () => {
+  it("renames exactly the named boards, in the row and in the snapshot's own boardName, and leaves the rest deep-equal", () => {
+    const rows = standInRackRows(3);
+    const result = standInRowsWithNames(rows, new Map([["stand-in-02", "Renamed Fish"]]));
+    expect(result[1].name).toBe("Renamed Fish");
+    expect((result[1].snapshot as { design: { boardName: string } }).design.boardName).toBe("Renamed Fish");
+    expect(result[0]).toEqual(rows[0]);
+    expect(result[2]).toEqual(rows[2]);
+    // Nothing else about the renamed board moved.
+    expect({ ...result[1], name: undefined, snapshot: undefined }).toEqual({ ...rows[1], name: undefined, snapshot: undefined });
+  });
+
+  it("an empty map renames nothing", () => {
+    const rows = standInRackRows(2);
+    expect(standInRowsWithNames(rows, new Map())).toEqual(rows);
+  });
+
+  it("a renamed row still comes out of rackModelsFromRows as a rack card with the new name", () => {
+    const [first] = rackModelsFromRows(standInRowsWithNames(standInRackRows(1), new Map([["stand-in-01", "Tracer Fish"]])), vi.fn());
+    expect(first.name).toBe("Tracer Fish");
   });
 });
 

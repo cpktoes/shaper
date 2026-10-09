@@ -24,7 +24,7 @@ import {
   parseSnapshot,
   type DesignSnapshotFields,
 } from "@/lib/models/design-snapshot";
-import { saveStandInLock } from "@/lib/rack-stand-in-server";
+import { saveStandInLock, saveStandInName } from "@/lib/rack-stand-in-server";
 import {
   orderAfterDuplicate,
   orderWithNewBoardFirst,
@@ -167,13 +167,26 @@ export async function saveModel(
  * The name column is unbounded text and stored verbatim: no normalization, no case folding, no
  * length cap. A name is a label, not an identity — two of a shaper's boards may share one, and
  * the row id remains the identity.
+ *
+ * There is deliberately no lock check: the board lock protects the design, never the name (the
+ * founder, 2026-10-08), so a locked board can still be renamed — from the Board Rack and from the
+ * name in the design screens' tab band (quick 261008-raw). Signed out, only the practice rack's
+ * stand-in can take a rename (see above); the live site always asks for sign-in.
  */
 export async function renameModel(modelId: string, name: string): Promise<void> {
   const { userId } = await auth();
-  if (!userId) throw new Error("Sign in to rename a board.");
 
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Board needs a name.");
+
+  if (!userId) {
+    // A signed-out caller never reaches the database. On the practice rack used by the browser tests
+    // (`/test-rack`, test servers only) the new name goes to the practice rack's in-memory stand-in
+    // (`lib/rack-stand-in-server.ts`, quick 261008-raw); anywhere else nothing is written and the
+    // shaper is told to sign in, exactly as before.
+    if (await saveStandInName(modelId, trimmed)) return;
+    throw new Error("Sign in to rename a board.");
+  }
 
   // The rename must reach the snapshot's embedded boardName too, not just the name column —
   // reopening restores the name from the snapshot, and the next autosave writes that restored

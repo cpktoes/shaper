@@ -42,6 +42,7 @@ export function TabbedPanel<T extends string>({
   bare = false,
   growOnShortScreen = false,
   compactOnPhone,
+  trailing,
 }: {
   tabs: readonly PanelTab<T>[];
   active: T;
@@ -102,8 +103,78 @@ export function TabbedPanel<T extends string>({
    * MODEL INFO/ESTIMATE tab never moves the frame itself, only what's drawn inside it (P-4).
    */
   compactOnPhone?: "drawing" | "text";
+  /**
+   * Quick 261008-raw (the founder, 2026-10-08: "we need to know what board we're on"). Something
+   * that sits at the RIGHT end of the tab strip, on the same line as the tabs — the board's name,
+   * passed by the five drawing screens (TEMPLATE, ROCKER, RAILS, VOLUME, FINS) and never by RAILS's
+   * View Full Sized dialog. Opt-in like `compactOnPhone`: when unset the strip renders exactly the
+   * markup it always has (`tabbed-panel.test.ts` holds that against a captured copy).
+   *
+   * Set, the tabs move into their own row (`flex-none`, so they never shrink or wrap — it is the
+   * trailing item that gives way, `min-w-0` letting a long name shorten with "…") and the tab list
+   * role moves onto that row, because a tab list may hold only tabs. The render prop is told
+   * whether the tabs carry the phone's 44-dot touch box (`touchClearance`), so the trailing item
+   * can take the same box where the strip has the 9 dots of clearance for it, and a smaller one
+   * where it does not (TEMPLATE and VOLUME, a single read-only label).
+   */
+  trailing?: (strip: { touchClearance: boolean }) => ReactNode;
 }) {
   const interactive = typeof onSelect === "function" && tabs.length > 1;
+  // True exactly when the tabs carry the tab touch box and the strip its 9-dot clearance.
+  const touchClearance = Boolean(compactOnPhone) && interactive;
+
+  const tabButtons = (
+    <>
+      {tabs.map((tab) => {
+        const on = tab.id === active;
+        const className = cn(
+          "rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase",
+          on
+            ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
+            : "border-transparent bg-transparent text-surf-ink-muted",
+          // P-2: every tab on a phone draws 22px tall (py-0.5) instead of 30px (py-1.5), the
+          // same slim strip on every one of the five drawing screens.
+          !bare && compactOnPhone && "max-shell:py-0.5 [@media(max-height:500px)]:py-0.5",
+        );
+
+        if (!interactive) {
+          return (
+            <span key={tab.id} className={className}>
+              {tab.label}
+            </span>
+          );
+        }
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onSelect?.(tab.id)}
+            className={cn(
+              "cursor-pointer",
+              className,
+              // P-3: on a touch screen only, a 44px-tall invisible box centred on the tab —
+              // the same idea as the slider thumb's own `::after` touch ring. Centred on a
+              // 22px tab it reaches 11px above and 11px below, into the empty frame a phone
+              // carries around the tab (the strip's own top padding above, the card's rim and
+              // this card's own top padding below) — never the top bar, never the drawing,
+              // never the viewer's own toolbar buttons. `z-10` keeps it above the folder card
+              // below, which it reaches down into. This tab's own real touch area (30px on
+              // every phone and orientation today) was never measured by
+              // `e2e/touch-sizing.spec.ts`, which covers sliders, typed fields, buttons,
+              // checkbox rows and a handful of hand-rolled grids — not this tab strip.
+              !bare &&
+                compactOnPhone &&
+                "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-['']",
+            )}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
     <>
@@ -117,56 +188,18 @@ export function TabbedPanel<T extends string>({
             // (centred on a 22px tab, reaching 11px above it) stops.
             !bare && compactOnPhone && interactive && "max-shell:pt-[9px] [@media(max-height:500px)]:pt-[9px]",
           )}
-          role={interactive ? "tablist" : undefined}
+          role={trailing ? undefined : interactive ? "tablist" : undefined}
         >
-          {tabs.map((tab) => {
-            const on = tab.id === active;
-            const className = cn(
-              "rounded-t-lg border px-[18px] py-1.5 text-xs font-display font-bold tracking-architectural uppercase",
-              on
-                ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
-                : "border-transparent bg-transparent text-surf-ink-muted",
-              // P-2: every tab on a phone draws 22px tall (py-0.5) instead of 30px (py-1.5), the
-              // same slim strip on every one of the five drawing screens.
-              !bare && compactOnPhone && "max-shell:py-0.5 [@media(max-height:500px)]:py-0.5",
-            );
-
-            if (!interactive) {
-              return (
-                <span key={tab.id} className={className}>
-                  {tab.label}
-                </span>
-              );
-            }
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => onSelect?.(tab.id)}
-                className={cn(
-                  "cursor-pointer",
-                  className,
-                  // P-3: on a touch screen only, a 44px-tall invisible box centred on the tab —
-                  // the same idea as the slider thumb's own `::after` touch ring. Centred on a
-                  // 22px tab it reaches 11px above and 11px below, into the empty frame a phone
-                  // carries around the tab (the strip's own top padding above, the card's rim and
-                  // this card's own top padding below) — never the top bar, never the drawing,
-                  // never the viewer's own toolbar buttons. `z-10` keeps it above the folder card
-                  // below, which it reaches down into. This tab's own real touch area (30px on
-                  // every phone and orientation today) was never measured by
-                  // `e2e/touch-sizing.spec.ts`, which covers sliders, typed fields, buttons,
-                  // checkbox rows and a handful of hand-rolled grids — not this tab strip.
-                  !bare &&
-                    compactOnPhone &&
-                    "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-['']",
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+          {trailing ? (
+            <>
+              <div className="flex flex-none gap-1.5" role={interactive ? "tablist" : undefined}>
+                {tabButtons}
+              </div>
+              <div className="ml-auto flex min-w-0">{trailing({ touchClearance })}</div>
+            </>
+          ) : (
+            tabButtons
+          )}
         </div>
       )}
 

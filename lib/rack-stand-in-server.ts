@@ -116,3 +116,51 @@ export async function standInLocksForRequest(): Promise<Set<string>> {
   const stored = practiceRackLocks().get(rackStandInSession(cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value));
   return new Set(stored ?? []);
 }
+
+const NAMES_KEY = "__shaperPracticeRackNames";
+
+/** Every practice-rack session's renamed boards (quick 261008-raw), by session id. */
+function practiceRackNames(): Map<string, Map<string, string>> {
+  const holder = globalThis as typeof globalThis & { [NAMES_KEY]?: Map<string, Map<string, string>> };
+  holder[NAMES_KEY] ??= new Map();
+  return holder[NAMES_KEY];
+}
+
+/**
+ * The practice rack's own rename for a signed-out caller (quick 261008-raw), decided exactly as the
+ * lock save is: off outside a test server (false), a throw for the `fail` cookie, a wait for `slow`,
+ * otherwise the board takes its new name for this browser's session. Only an id of 1 to 64 letters,
+ * digits, `-` or `_` is kept, and only a name of 1 to 200 characters once trimmed; anything else
+ * stores nothing and answers false (T-raw-03).
+ */
+export async function saveStandInName(modelId: string, name: string): Promise<boolean> {
+  const cookieStore = await cookies();
+  const decision = resolveRackStandInSave({
+    nodeEnv: process.env.NODE_ENV,
+    flag: process.env.SHAPER_RACK_STAND_IN,
+    signedIn: false,
+    choice: cookieStore.get(RACK_STAND_IN_SAVE_COOKIE)?.value,
+    session: cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value,
+  });
+  if (decision.kind === "off") return false;
+  if (decision.kind === "fail") throw new Error("The practice rack's save failed on purpose (test cookie)");
+  if (typeof modelId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(modelId) || typeof name !== "string") return false;
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 200) return false;
+  if (decision.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, decision.delayMs));
+  const all = practiceRackNames();
+  const names = all.get(decision.session) ?? new Map<string, string>();
+  names.set(modelId, trimmed);
+  all.set(decision.session, names);
+  revalidatePath(RACK_STAND_IN_ROUTE);
+  return true;
+}
+
+/** The boards this browser's practice-rack session has renamed, id to new name (empty when none, or
+ * when the practice rack is off). Read by `app/test-rack/page.tsx`. */
+export async function standInNamesForRequest(): Promise<Map<string, string>> {
+  if (!rackStandInRouteEnabled({ nodeEnv: process.env.NODE_ENV, flag: process.env.SHAPER_RACK_STAND_IN })) return new Map();
+  const cookieStore = await cookies();
+  const stored = practiceRackNames().get(rackStandInSession(cookieStore.get(RACK_STAND_IN_SESSION_COOKIE)?.value));
+  return new Map(stored ?? []);
+}

@@ -12,6 +12,7 @@ import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
 import { buildOutlinePresetSource } from "@/lib/geometry/preset-source";
 import { OutlineControls } from "./outline-controls";
+import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
 
@@ -277,6 +278,9 @@ export function OutlineEditor() {
           tabs={[{ id: "viewer" as const, label: "VIEWER" }]}
           active="viewer"
           compactOnPhone="drawing"
+          // Quick 261008-raw: the board's name at the band's right end. Wide View is `bare`, which
+          // draws no band, so the name goes with it.
+          trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
           {viewerContent}
         </TabbedPanel>
