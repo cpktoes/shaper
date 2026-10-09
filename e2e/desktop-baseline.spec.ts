@@ -1,6 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * RE-RECORDED 2026-10-08 (quick task 261008-raw) — all five, on the founder's approval ("approved,
+ * push all"), for the board's name in the tab band: the unsaved reference board now reads "Untitled"
+ * at the right end of each screen's VIEWER tab band. Compared old against new, region by region,
+ * before committing: exactly 285 changed pixels on every screen, all inside the band's right end
+ * (x >= 1190, y 93-123) — the word itself — and elsewhere 49 (TEMPLATE), 14 (ROCKER), 49 (RAILS),
+ * 0 (VOLUME) and 0 (FINS) pixels at no more than 2 levels of 255, the sidebar text's pre-existing
+ * anti-aliasing scatter (with the name switched off, all five old pictures still passed). Rendered by
+ * the Turbopack dev server from the main checkout (PW_PORT=3191). SHA-256 now 08ba7c34…fins,
+ * a4c58cbc…outline, 6b132ae5…rails, ccb2b9bd…rocker, 8db54027…volume.
+ *
  * RE-RECORDED 2026-10-06 (quick task 261006-qfm) — ROCKER only, `rocker-desktop.png`, for the blank
  * seen from above: the VIEWER toolbar gains a fourth button at the left end of the row (hide / show
  * the blank from above, on by default, so it draws in its pressed colour), and a small drawing of
