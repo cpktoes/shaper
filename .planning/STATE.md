@@ -6,7 +6,7 @@ status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
 last_activity: 2026-10-08
-last_activity_desc: Fast task 155: FINS Advanced: each Fin Base Length (center, forward, rear) is a familiar slider now — the label reads the length with '(standard)' until it is moved, and moving it is the override; the text box and its Override button are gone (the founder: it didn't work well on a phone and behaved oddly on a computer). Same range and steps, whole mm in Metric; Reset Advanced and a setup change still restore the standard lengths. Local, awaiting the founder's word before the push
+last_activity_desc: Quick task 261008-lsy: the board lock — lock a saved board from the Board Rack menu so it cannot be changed by accident; built and tested locally (production database step and push still to come, on the founder's go)
 progress:
   total_phases: 3
   completed_phases: 1
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-08 — Fast task 155: FINS Advanced: each Fin Base Length (center, forward, rear) is a familiar slider now — the label reads the length with "(standard)" until it is moved, and moving it is the override; the text box and its Override button are gone (the founder: it didn't work well on a phone and behaved oddly on a computer). Same range and steps, whole mm in Metric; Reset Advanced and a setup change still restore the standard lengths. Local, awaiting the founder's word before the push
+Last activity: 2026-10-08 — Quick task 261008-lsy: the board lock — lock a saved board from the Board Rack menu so it cannot be changed by accident; built and tested locally (production database step and push still to come, on the founder's go)
 
 ## Performance Metrics
 
@@ -174,7 +174,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-14 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
+13 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -188,7 +188,6 @@ Recent decisions affecting current work:
 - [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
 - [minor/geometry] Retire today's curve and the 12" blend after the showing (kept by name for Phase 14's reports and pictures, D-25) — `.planning/todos/pending/2026-10-03-retire-todays-curve-and-12-inch-blend-after-the-showing.md`
 - [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
-- [minor/data] Lock a saved board so opening it never autosaves (the founder, 2026-10-08: "lock a board so it stops auto saving when you go back in to check it out"; how a locked board behaves and where the lock lives are for the founder to decide) — `.planning/todos/pending/2026-10-08-lock-a-saved-board-so-opening-it-never-autosaves.md`
 - [minor/geometry] Add an off-rail fine tuner for the fins (the founder, 2026-10-08; today the front and side fins take the template's off-rail with no adjustment, only the quad rears have an Off-Rail slider) — `.planning/todos/pending/2026-10-08-add-an-off-rail-fine-tuner-for-the-fins.md`
 
 ### Blockers/Concerns
@@ -370,6 +369,7 @@ Recent decisions affecting current work:
 | 155 | FINS Advanced: each Fin Base Length (center, forward, rear) is a familiar slider now — the label reads the length with "(standard)" until it is moved, and moving it is the override; the text box and its Override button are gone (the founder: it didn't work well on a phone and behaved oddly on a computer). Same range and steps, whole mm in Metric; Reset Advanced and a setup change still restore the standard lengths. Pushed on the founder's word ("push", 2026-10-08) after the full browser suite (949 passed) and the production checks (18 passed) | 2026-10-08 | 1a2858d | fast (no directory) |
 | 156 | FINS Advanced: each Fin Base Length slider (center, forward, rear) now goes up to 10 1/2" instead of stopping at 7 1/2" — room for a big keel or a longboard single fin; 64 to 266 mm in Metric, 1/8" steps in Imperial. Standard lengths and saved boards unchanged. The founder's request, 2026-10-08 | 2026-10-08 | b57bde9 | fast (no directory) |
 | 157 | Full Sized Template: neighbouring pages' border lines now meet — each sits in the middle of the 1/2" overlap both pages share (the Paper Saver's own rule), so laying border on border lines up the curve; before, they sat 1/2" apart on the board and the curve jumped by that much at every join, nose to tail and stringer to rail. The taping line reads "Lay each page's border line on the next page's border line". The scale square and how-to box follow page 1's outer border 1/4" outward; the outline, marks, page grid and name box are unchanged (frozen fingerprints kept). The founder's report, 2026-10-08 | 2026-10-08 | f3225c4 | fast (no directory) |
+| 261008-lsy | Board lock (the founder, 2026-10-08): a saved board's Board Rack menu has Lock board / Board Locked; a locked board shows a padlock beside its name, Delete is greyed (Rename works), a copy comes out unlocked; opened, every control that changes the board is greyed and switched off on all six screens (computer, phone, phone sideways), Save becomes Unlock (permanent), it never autosaves and the server refuses saves and deletes to it; export and print still work in full ink. New column models.locked (migration 0010) — production migrates BEFORE the push. Two plans, the founder's look between | 2026-10-08 | 8c09fe9 | [261008-lsy-board-lock-protect-a-saved-board-from-ac](./quick/261008-lsy-board-lock-protect-a-saved-board-from-ac/) |
 
 ## Deferred Items
 
