@@ -33,12 +33,11 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { BoardNamePrompt } from "@/components/setup/board-name-prompt";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
-import { saveModel, setModelLocked } from "@/app/design/actions";
+import { setModelLocked } from "@/app/design/actions";
 
 export function SaveButton() {
   const { isSignedIn } = useUser();
-  const { boardName, modelId, saveStatus, designSnapshotFields, markSaved, requestSave, locked, setOpenBoardLocked } =
-    useDesign();
+  const { boardName, modelId, saveStatus, saveForFirstTime, requestSave, locked, setOpenBoardLocked } = useDesign();
   const [signInOpen, setSignInOpen] = useState(false);
   const [namePromptOpen, setNamePromptOpen] = useState(false);
   // Only the button's own first-save request is "saving" here — once modelId exists, the
@@ -71,16 +70,14 @@ export function SaveButton() {
   };
 
   // The shaper's own first, deliberate save (D-08) — there is no modelId yet for the store's
-  // autosave effect to target, so this calls saveModel directly and then hands the result to
-  // markSaved, which sets modelId/boardName/dirty/saveStatus together so the nav shows "Saved"
-  // on the very next render.
+  // autosave effect to target, so the store's `saveForFirstTime` writes the board and marks it saved
+  // (modelId/boardName/dirty/saveStatus together, so the nav shows "Saved" on the very next render).
+  // The same call serves the tab band's "Untitled" name (quick 261008-raw), so the two can never
+  // drift. This button keeps its own "Saving…" face around it.
   const runFirstSave = async (name: string) => {
     setFirstSaveInFlight(true);
     try {
-      // The snapshot must carry the name being saved, not the store's current (possibly still
-      // empty) boardName — designSnapshotFields was assembled before the prompt closed.
-      const { id } = await saveModel(modelId, name, { ...designSnapshotFields, boardName: name });
-      markSaved(id, name);
+      await saveForFirstTime(name);
     } finally {
       setFirstSaveInFlight(false);
     }

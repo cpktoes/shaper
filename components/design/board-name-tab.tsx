@@ -12,6 +12,11 @@
  * off screen. A locked board shows the Board Rack's small muted padlock after its name. Pressing the
  * name opens a small popup with the name and a Save button: on a saved board that renames it, exactly
  * as the Board Rack's Rename does (locked boards too — the lock protects the design, never the name).
+ * A board that has never been saved reads "Untitled"; pressing that does what the top bar's Save does:
+ * signed out, the sign-in step comes first and the name popup follows once they are in; signed in, the
+ * popup ("Name this board", pre-filled with any name already typed into SUMMARY's Board Name box)
+ * names the board AND saves it for the first time — through the same `saveForFirstTime` the top bar's
+ * Save uses, so there is one first save, not two.
  *
  * Why it looks the way it does (planner's choices P-1 to P-8, recorded in the quick task's plan):
  * - P-1 muted 12px semibold sentence case, full ink and an underline on a computer's hover, no pencil
@@ -25,12 +30,15 @@
  *   treat this as view-side.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { LockIcon } from "lucide-react";
 import { renameModel } from "@/app/design/actions";
+import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { bandBoardName, boardNameButtonLabel } from "@/components/design/board-name-copy";
 import { useDesign } from "@/components/design/design-store";
+import { BoardNamePrompt } from "@/components/setup/board-name-prompt";
 import { RenameDialog } from "@/components/setup/rename-dialog";
 import { cn } from "@/lib/utils";
 
@@ -43,8 +51,14 @@ const SHORT_TOUCH_BOX =
   "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:-inset-y-0.5 coarse:after:z-10 coarse:after:content-['']";
 
 export function BoardNameTab({ touchClearance }: { touchClearance: boolean }) {
-  const { boardName, modelId, locked, noteRenamed, setBoardName } = useDesign();
+  const { boardName, modelId, locked, noteRenamed, setBoardName, saveForFirstTime } = useDesign();
+  const { isSignedIn } = useUser();
   const [renameOpen, setRenameOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [namePromptOpen, setNamePromptOpen] = useState(false);
+  // Set when a signed-out shaper presses "Untitled" — consumed the moment they are signed in, so the
+  // name popup follows the sign-in without a second press (SaveButton's own resume pattern).
+  const resumeAfterSignIn = useRef(false);
 
   const saved = modelId !== null;
   const shown = bandBoardName(modelId, boardName);
@@ -60,6 +74,25 @@ export function BoardNameTab({ touchClearance }: { touchClearance: boolean }) {
     else setBoardName(name);
   };
 
+  const startNaming = () => {
+    if (!isSignedIn) {
+      resumeAfterSignIn.current = true;
+      setSignInOpen(true);
+      return;
+    }
+    setNamePromptOpen(true);
+  };
+
+  useEffect(() => {
+    if (isSignedIn && resumeAfterSignIn.current) {
+      resumeAfterSignIn.current = false;
+      startNaming();
+    }
+    // startNaming only reads isSignedIn; this should fire when sign-in lands, not on every render
+    // (the same deliberate narrow dependency list as save-button.tsx's resume effect).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
+
   return (
     <>
       <button
@@ -68,7 +101,7 @@ export function BoardNameTab({ touchClearance }: { touchClearance: boolean }) {
         data-board-name-band
         aria-label={boardNameButtonLabel(shown, { saved, locked })}
         title={shown}
-        onClick={() => setRenameOpen(true)}
+        onClick={saved ? () => setRenameOpen(true) : startNaming}
         className={cn(
           "flex min-w-0 cursor-pointer items-center gap-1 rounded-t-lg border border-b-0 border-transparent px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-surf-ink-muted",
           "hover:text-surf-ink hover:underline focus-ring-accent",
@@ -92,6 +125,17 @@ export function BoardNameTab({ touchClearance }: { touchClearance: boolean }) {
         )}
       </button>
       <RenameDialog open={renameOpen} onOpenChange={setRenameOpen} currentName={boardName} onRename={handleRename} />
+      {!saved && (
+        <>
+          <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
+          <BoardNamePrompt
+            open={namePromptOpen}
+            onOpenChange={setNamePromptOpen}
+            onSave={saveForFirstTime}
+            initialName={boardName}
+          />
+        </>
+      )}
     </>
   );
 }

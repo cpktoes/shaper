@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -54,5 +54,37 @@ describe("board-name-tab.tsx source contracts", () => {
 
   it("is exempt from the board lock's sweeps: renaming never changes the design", () => {
     expect(source).toMatch(/<button[^>]*data-lock-exempt/);
+  });
+});
+
+describe("one first save, and the five screens (quick 261008-raw)", () => {
+  it("the top bar's Save and the band's Untitled both go through saveForFirstTime, and neither calls saveModel itself", () => {
+    for (const path of ["components/design/save-button.tsx", "components/design/board-name-tab.tsx"]) {
+      const text = read(path);
+      expect(text, path).toMatch(/saveForFirstTime/);
+      expect(text, path).not.toMatch(/\bsaveModel\(/);
+    }
+  });
+
+  it("the five drawing screens each hand their tab strip the board's name", () => {
+    for (const path of [
+      "components/outline/outline-editor.tsx",
+      "components/rocker/rocker-editor.tsx",
+      "components/rails/rail-band-editor.tsx",
+      "components/volume/volume-estimator.tsx",
+      "components/fins/fin-placement-editor.tsx",
+    ]) {
+      const text = read(path);
+      expect(text, path).toMatch(/trailing=\{\(strip\) => <BoardNameTab touchClearance=\{strip\.touchClearance\} \/>\}/);
+    }
+  });
+
+  it("RAILS' View Full Sized dialog and SUMMARY carry no band name", () => {
+    expect((read("components/rails/rail-band-editor.tsx").match(/trailing=/g) ?? []).length).toBe(1);
+    const summaryFiles = readdirSync(join(REPO_ROOT, "components/summary")).filter((f) => /\.tsx?$/.test(f));
+    for (const file of summaryFiles) {
+      expect(read(`components/summary/${file}`), file).not.toMatch(/BoardNameTab/);
+    }
+    expect(read("app/design/summary/page.tsx")).not.toMatch(/BoardNameTab/);
   });
 });

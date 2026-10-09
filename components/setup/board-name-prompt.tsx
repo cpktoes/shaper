@@ -22,12 +22,29 @@ interface BoardNamePromptProps {
   onOpenChange: (open: boolean) => void;
   /** Runs the actual save; throws on failure. */
   onSave: (name: string) => Promise<void>;
+  /**
+   * What the field holds each time the prompt opens (quick 261008-raw): the tab band's "Untitled"
+   * opens it with whatever name was already typed into SUMMARY's Board Name box, so nothing the
+   * shaper wrote is lost. Omitted (the top bar's Save), the field starts empty as it always has.
+   */
+  initialName?: string;
 }
 
-export function BoardNamePrompt({ open, onOpenChange, onSave }: BoardNamePromptProps) {
-  const [name, setName] = useState("");
+export function BoardNamePrompt({ open, onOpenChange, onSave, initialName = "" }: BoardNamePromptProps) {
+  const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Re-filled on every open, adjusted during render (the same pattern as rename-dialog.tsx's
+  // `wasOpen`): the existing reset on close below still clears a stale name for the no-initial case.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setName(initialName);
+      setError(null);
+      setSaving(false);
+    }
+  }
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);

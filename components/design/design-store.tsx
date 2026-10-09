@@ -407,6 +407,13 @@ interface DesignContextValue {
    * "Save" button or an untouched "idle" status. Every later save goes through `requestSave` or
    * the autosave effect instead, which manage `saveStatus` themselves. */
   markSaved: (id: string, name: string) => void;
+  /** The shaper's own first save of a never-saved board under `name` (quick 261008-raw): writes the
+   * board to their account (`saveModel` with no id, the snapshot carrying `name` itself) and then
+   * `markSaved`. The one first-save implementation shared by the top bar's Save and the tab band's
+   * "Untitled". Does nothing when the board already has a home, and a second call while the first is
+   * still on its way returns that same save instead of writing a second board. Rejects when the save
+   * fails — the caller's dialog shows its own error. */
+  saveForFirstTime: (name: string) => Promise<void>;
   /** Toggling off also forces `importRailThickness` off and copies the currently effective
    * length/width into the stored manual fields; toggling on needs no copy (the derived override
    * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
@@ -1244,6 +1251,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     designSnapshotFieldsRef.current = designSnapshotFields;
   });
 
+  // The first save of a never-saved board (quick 261008-raw) — the two steps SaveButton used to
+  // carry itself: saveModel with no id, then markSaved with what came back, so the nav shows "Saved"
+  // on the very next render. The snapshot must carry the name being saved, not the store's current
+  // (possibly still empty) boardName. `firstSaveRef` holds the save while it is on its way: the top
+  // bar's Save and the tab band's "Untitled" can both be reached, and a second press must join the
+  // first rather than insert a second board (T-raw-05).
+  const firstSaveRef = useRef<Promise<void> | null>(null);
+  const saveForFirstTime = (name: string): Promise<void> => {
+    if (firstSaveRef.current) return firstSaveRef.current;
+    if (state.modelId !== null) return Promise.resolve();
+    const running = (async () => {
+      try {
+        const { id } = await saveModel(null, name, { ...designSnapshotFieldsRef.current, boardName: name });
+        markSaved(id, name);
+      } finally {
+        firstSaveRef.current = null;
+      }
+    })();
+    firstSaveRef.current = running;
+    return running;
+  };
+
   // The one path that actually calls `saveModel` for a board that already has a home — shared by
   // the autosave timer below and by `requestSave` (the nav's manual Save and its failure retry),
   // so the two paths can never drift into reporting status differently. A no-op while there is
@@ -1440,6 +1469,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setFinSystem,
     setModelId,
     markSaved,
+    saveForFirstTime,
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,

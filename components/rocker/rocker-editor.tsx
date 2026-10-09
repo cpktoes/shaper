@@ -78,6 +78,7 @@ import { useUnits } from "@/components/units-provider";
 import { Button } from "@/components/ui/button";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import * as ViewerMedia from "@/components/design/use-viewer-media";
+import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel, type PanelTab } from "@/components/viewer/tabbed-panel";
 import {
   BlankTopViewIcon,
@@ -295,6 +296,8 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
           active={activeTab}
           onSelect={setRequestedTab}
           compactOnPhone={activeTab === "datasheet" ? "text" : "drawing"}
+          // Quick 261008-raw: the board's name at the band's right end.
+          trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
           {activeTab === "viewer" ? (
             // `relative` makes this div the positioning context for the two toolbar buttons

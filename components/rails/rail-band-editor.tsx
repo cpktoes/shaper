@@ -10,6 +10,7 @@ import { buildRailsPresetSource } from "@/lib/geometry/preset-source";
 import { type RailSectionKey } from "@/lib/geometry/rail-bands";
 import { mm, type Mm } from "@/lib/geometry/units";
 import { RailControls } from "./rail-controls";
+import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
@@ -294,6 +295,9 @@ export function RailBandEditor() {
           // other screen gets, keyed the same way ROCKER and FINS are — VIEWER (the drawing) gets
           // no inner padding, DATA and INSTRUCTIONS (text/tables) keep an 8px reading margin.
           compactOnPhone={activePage === "viewer" ? "drawing" : "text"}
+          // Quick 261008-raw: the board's name at the band's right end (this outer panel only, never
+          // the View Full Sized dialog's own).
+          trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
         {activePage === "viewer" && (
           <div className="relative flex min-h-0 flex-1 flex-col [@media(max-height:500px)]:flex-none">

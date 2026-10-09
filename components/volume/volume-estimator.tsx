@@ -18,6 +18,7 @@ import { useUnits } from "@/components/units-provider";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { formatDim, formatLength } from "@/lib/geometry/measure-display";
 import { SIMPSON_PANEL_COUNT } from "@/lib/geometry/volume";
+import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { VolumeCalculationCard } from "./volume-calculation-card";
 import { VolumeControls } from "./volume-controls";
@@ -52,6 +53,8 @@ export function VolumeEstimator() {
           active="estimate"
           panelClassName="overflow-y-auto"
           compactOnPhone="text"
+          // Quick 261008-raw: the board's name at the band's right end.
+          trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
           <VolumeCalculationCard
             result={volumeResult}

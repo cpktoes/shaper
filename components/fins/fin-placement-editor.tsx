@@ -12,6 +12,7 @@ import { FinDataPanel } from "./fin-data-panel";
 import { FinModelInfo } from "./fin-model-info";
 import { FINS_MAX_ZOOM, FinViewer } from "./fin-viewer";
 import { ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
+import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { ToeAimTableModal } from "./toe-aim-table-modal";
 
@@ -104,6 +105,8 @@ export function FinPlacementEditor() {
           active={activeTab}
           onSelect={setActiveTab}
           compactOnPhone={activeTab === "viewer" ? "drawing" : "text"}
+          // Quick 261008-raw: the board's name at the band's right end.
+          trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
           {activeTab === "viewer" && (
             <div className="flex min-h-0 flex-1 flex-col items-center">
