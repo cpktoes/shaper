@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 /**
+ * RE-RECORDED 2026-10-10 (quick task 261010-km7) — all five, on the founder's standing go ("push all
+ * when live"), for the founder's new logo: "shaperassistant.com" replaces SHAPER ASSISTANT at the
+ * left of the top bar. Compared old against new before committing: exactly 1851 changed pixels on
+ * every screen, all inside the logo's box (x 40-232, y 24-58), and 0 pixels anywhere else on all
+ * five. Rendered by the Turbopack dev server from the main checkout (PW_PORT=3191). SHA-256 now
+ * 5a8556b4…fins, cc1d18e8…outline, 33695a65…rails, 48a22e9c…rocker, aebc623a…volume.
+ *
  * RE-RECORDED 2026-10-08 (quick task 261008-raw) — all five, on the founder's approval ("approved,
  * push all"), for the board's name in the tab band: the unsaved reference board now reads "Untitled"
  * at the right end of each screen's VIEWER tab band. Compared old against new, region by region,
