@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Shaper Assistant** (shaperassistant.com)
-Effective date: October 6, 2026
+Effective date: October 10, 2026
 
 This policy explains what information Shaper Assistant collects, why, and who else sees it. The short version: we collect what we need to run your account and save your designs, we don't sell it, and you can delete it.
 
@@ -11,7 +11,7 @@ Christopher Kontoes, operator of Shaper Assistant. Contact: chris@shaperassistan
 
 ## 2. What we collect
 
-**Account information.** When you sign up, our login provider (Clerk) collects your email address, your name if you give it, and, if you sign in with Google or another provider, the basic profile details that provider shares. We never see your password.
+**Account information.** When you sign up, our login provider (Clerk) collects your email address, your name if you give it, and, if you sign in with Google or another provider, the basic profile details that provider shares. We never see your password. When you create an account, we're sent a short email telling us your name (if you gave one), your email address, how you signed up and when. Resend, the service that also delivers messages from our Contact page, carries that email to us.
 
 **Your designs.** The boards you design — dimensions, rocker, blank choices, names and notes — are stored so you can come back to them. **On a free account, your designs and your display name are public:** anyone using the Service can see them and make a copy. On a paid plan they are private unless you share them. Your email address is never shown publicly. Choose a display name you're comfortable having next to your designs.
 
@@ -43,6 +43,7 @@ We rely on a few services to run Shaper Assistant. Each one sees only what it ne
 | Vercel | Hosting | Technical visit data (IP address, browser) |
 | [PAYMENT PROVIDER] | Payments | Billing details for paid plans |
 | Zoho | Sends account email | Email address |
+| Resend | Delivers the site's email to us | Your name and email address when you sign up, and anything you send from the Contact page |
 
 We may also disclose information if the law requires it, or to protect the Service and its users.
 

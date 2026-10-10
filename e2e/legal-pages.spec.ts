@@ -59,7 +59,8 @@ test.describe("Terms and Privacy pages", () => {
       if (slug === "privacy") {
         const table = legalPage.locator("table");
         await expect(table).toHaveCount(1);
-        await expect(table.locator("tbody tr")).toHaveCount(5);
+        // Six rows since quick 261010-j2f: Resend was added as the last row (Clerk, Neon, Vercel, payment provider, Zoho, Resend).
+        await expect(table.locator("tbody tr")).toHaveCount(6);
 
         const addresses = [...new Set(markdown.match(/[\w.+-]+@[\w-]+\.[\w.-]*\w/g) ?? [])];
         expect(addresses.length).toBeGreaterThan(0);
