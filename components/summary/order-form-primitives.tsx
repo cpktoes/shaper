@@ -11,6 +11,7 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
+import { Wordmark } from "@/components/wordmark";
 import { cn } from "@/lib/utils";
 
 /**
@@ -199,27 +200,29 @@ export function OrderFormTick({ label }: { label: string }) {
  * The shop's identity block, top-left, where the muse carries the Kontoes Surfboards logo and
  * phone number.
  *
- * A placeholder on purpose: this is the app's own wordmark and details, and uploading a real shop
- * logo and contact block is a paid-tier feature that has not been built. It is isolated in its own
- * component so that feature replaces one element rather than editing the sheet's header.
+ * It now carries the founder's logo, alone (quick 261010-km7): "shaperassistant.com" drawn in the
+ * sheet's own ink, centred in its bordered box. The site's address no longer sits under it
+ * ("drop it, make the footer address clickable" — the founder, 2026-10-10): the address lives at
+ * the foot of every page, in `PageMark`, as a link. The little rule that used to divide the name
+ * from the address went with it, because with nothing below it that rule would only read as an
+ * underline on the logo and would pull the logo up off the box's centre.
+ *
+ * The logo fills the box's width inside its padding and its height follows from its own
+ * proportions, so it scales with the sheet like every other size on the form and is always shorter
+ * than the two lines of text it replaced. It is a shape filled with the text colour around it, so
+ * it prints in the sheet's print ink with the browser's background-graphics option OFF, which a
+ * background picture or a CSS mask would not (components/wordmark.tsx says why). The
+ * `order-form-wordmark` class stays only so `e2e/summary-preview.spec.ts` can keep reading the
+ * form's wordmark size; it does not size this logo.
+ *
+ * Still a placeholder in one respect: uploading a real shop logo and contact block is a paid-tier
+ * feature that has not been built. It is isolated in its own component so that feature replaces
+ * one element rather than editing the sheet's header.
  */
 export function LogoBlock() {
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-1 rounded-[3px] border border-surf-ink px-3 py-2 text-center">
-      <div className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
-        Shaper Assistant
-      </div>
-      <div className="h-px w-2/3 bg-surf-ink" />
-      {/* The founder's default title (fast task 153, 2026-10-07): the wordmark, its line, and the site's
-          address under it — no "Custom Surfboard Order" line and no shop placeholder. A plain link:
-          the preflight gives it the form's ink and no underline, so it prints as the address and
-          stays clickable in a PDF. */}
-      <a
-        href="https://www.ShaperAssistant.com"
-        className="font-bold text-surf-ink leading-tight order-form-value"
-      >
-        www.ShaperAssistant.com
-      </a>
+    <div className="flex h-full min-h-0 flex-col items-center justify-center rounded-[3px] border border-surf-ink px-3 py-2">
+      <Wordmark className="block h-auto w-full text-surf-ink order-form-wordmark" />
     </div>
   );
 }

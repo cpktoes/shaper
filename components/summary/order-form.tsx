@@ -80,6 +80,7 @@ import {
 import { useOrderFormPreviewScale } from "./use-preview-scale";
 import { useOrderFormPrintFit } from "./use-print-fit";
 import { dimensionValueFitClass } from "./dimension-fit";
+import { Wordmark } from "@/components/wordmark";
 import { cn } from "@/lib/utils";
 import { StepNav } from "@/components/design/step-nav";
 import { SiteFooter } from "@/components/site-footer";
@@ -165,14 +166,23 @@ function PageMark({ page, of, title }: { page: number; of: number; title: string
   return (
     <div className="flex flex-none items-baseline justify-between gap-2 pt-0.5 text-surf-ink-muted order-form-micro">
       <span className="font-display font-extrabold tracking-architectural uppercase">{title}</span>
-      {/* The site's address to the left of every page number (fast task 153, 2026-10-07). On a sheet
-          narrower than 480 dots — the narrowest phone print pages, 268 to 479 — the address steps aside
-          (`order-form-mark-site`, hidden by a container query in order-form.css), because beside the
-          title it wrapped the mark onto a second line and pushed page 3's example rail 4px past its
-          edge (fast task 154). Every normal-size print keeps it. */}
+      {/* The order form's one printed, clickable address, to the left of every page number (fast task
+          153, 2026-10-07; quick 261010-km7 made it the only one, because the title block now holds
+          the logo alone). A plain anchor: the preflight gives it the form's ink and no underline, a
+          click on screen opens the site in a NEW tab so the Summary page, and a signed-out
+          shaper's unsaved board, stay put (the founder, D-16), and Chromium keeps it as a link
+          annotation in a saved PDF, one per page (proved by e2e/summary-logo.spec.ts). On a sheet
+          narrower than 480 dots — the narrowest phone print pages, 268 to 479 — the address steps
+          aside (`order-form-mark-site`, hidden by a container query in order-form.css), because
+          beside the title it wrapped the mark onto a second line and pushed page 3's example rail
+          4px past its edge (fast task 154); a narrow sheet's footer then reads Page N of M alone.
+          Every normal-size print keeps it. */}
       <span className="whitespace-nowrap">
         <span className="order-form-mark-site">
-          <a href="https://www.ShaperAssistant.com">www.ShaperAssistant.com</a> ·{" "}
+          <a href="https://www.ShaperAssistant.com" target="_blank" rel="noopener noreferrer">
+            www.ShaperAssistant.com
+          </a>{" "}
+          ·{" "}
         </span>
         Page {page} of {of}
       </span>
@@ -630,9 +640,22 @@ export function OrderForm() {
            */}
           <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-ink pb-1 order-form-band-refhead">
             <div className="flex min-w-0 items-baseline gap-2">
-              <span className="font-display font-extrabold tracking-architectural text-surf-ink uppercase leading-none order-form-wordmark">
-                Shaper Assistant
-              </span>
+              {/* The founder's logo, standing on the same baseline as the board's name (quick
+                  261010-km7, D-09/D-12). 8.7em of the wordmark size is 214 dots on screen (the old
+                  capitals were 309) and its box, 0.859em tall, is no taller than the old line's
+                  0.864em ascent, so the strip cannot grow; the p's tail paints below the baseline
+                  inside the strip's own room. Measured, though, the logo's box still stood 0.16 dot
+                  (screen) and 0.64 dot (print) above what the old line gave the strip, so the strip
+                  grew by that much; the 0.1em of negative top margin takes that out of the box's
+                  share of the strip's height without moving the letters (the baseline stays where
+                  it is, the box just reaches into the sheet's own padding), and the board's name then
+                  sets the strip's height, as it does in print today. The 7.16em floor is the width of ASSISTANT, the
+                  narrowest the old text could wrap down to, so a narrow phone sheet can shrink it
+                  no further than before. */}
+              <Wordmark
+                baseline
+                className="-mt-[0.1em] h-auto w-[8.7em] min-w-[7.16em] text-surf-ink order-form-wordmark"
+              />
               <span className="truncate font-bold text-surf-ink order-form-value">
                 {boardName || "Unnamed board"}
               </span>
