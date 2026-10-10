@@ -293,6 +293,23 @@ describe("sendWithResend", () => {
     spy.mockRestore();
   });
 
+  it("a fourth argument names the failure in the one log line (quick 261010-j2f); three arguments still say 'contact message'", async () => {
+    const failing = () => fakeFetch({ ok: false, status: 500, json: async () => ({ name: "application_error" }) });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await sendWithResend(message, "re_test_key", failing(), "sign-up email");
+    expect(spy).toHaveBeenCalledExactlyOnceWith("Shaper: sign-up email did not send", {
+      status: 500,
+      errorName: "application_error",
+    });
+    spy.mockClear();
+    await sendWithResend(message, "re_test_key", failing());
+    expect(spy).toHaveBeenCalledExactlyOnceWith("Shaper: contact message did not send", {
+      status: 500,
+      errorName: "application_error",
+    });
+    spy.mockRestore();
+  });
+
   it("a thrown fetch logs exactly status null, errorName null", async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error("network down"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});

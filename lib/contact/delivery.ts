@@ -72,11 +72,16 @@ export function isContactFormAvailable(delivery: ContactDelivery): boolean {
  * delivery object and Resend's `message` field are never logged: a failure a shaper never sees
  * still must not leak the key or a shaper's typed text into a server log a shaper never sees
  * either.
+ *
+ * `failureLabel` (quick 261010-j2f) names what failed in the one log line — "contact message" by
+ * default, "sign-up email" for the founder's new-account note — so a server log says which email
+ * did not go. Nothing else about the call changes.
  */
 export async function sendWithResend(
   body: ResendSendBody,
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
+  failureLabel = "contact message",
 ): Promise<{ ok: boolean }> {
   let status: number | null = null;
   let errorName: string | null = null;
@@ -122,7 +127,7 @@ export async function sendWithResend(
   }
 
   if (!ok) {
-    console.error("Shaper: contact message did not send", { status, errorName });
+    console.error(`Shaper: ${failureLabel} did not send`, { status, errorName });
   }
 
   return { ok };

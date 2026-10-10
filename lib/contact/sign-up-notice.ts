@@ -65,6 +65,10 @@ export const SIGN_UP_NOTICE_COPY = {
   methods: {
     google: "Google",
     emailPassword: "Email and password",
+    emailCode: "Email code (no password)",
+    otherProvider: "Another sign-in service",
+    invitation: "An invitation",
+    dashboard: "Added by hand in Clerk's dashboard",
     other: "Other",
   },
 } as const;
@@ -82,7 +86,21 @@ function primaryEmailEntry(user: SignUpUser) {
   );
 }
 
-/** How the shaper arrived, in plain words. Order: Google, then the primary email's own route. */
+/** An echoed provider or strategy: one line, at most 40 characters. */
+function echo(text: string): string {
+  return capped(oneLine(text), 40);
+}
+
+/** "oauth_apple" -> "apple". */
+function withoutOauthPrefix(name: string): string {
+  return name.startsWith("oauth_") ? name.slice("oauth_".length) : name;
+}
+
+/**
+ * How the shaper arrived, in plain words. Order: Google; another external provider; then the
+ * primary email's own route (email code or link, invitation, dashboard, a non-Google OAuth
+ * strategy, any other strategy); else "Other".
+ */
 export function signUpMethod(user: SignUpUser): string {
   const copy = SIGN_UP_NOTICE_COPY.methods;
   const primary = primaryEmailEntry(user);
@@ -95,9 +113,24 @@ export function signUpMethod(user: SignUpUser): string {
     (primary?.linked_to ?? []).some((link) => isGoogleProvider(link.type));
   if (googleByAccount || googleByEmail) return copy.google;
 
+  const otherProvider = (user.external_accounts ?? []).find(
+    (account) => typeof account.provider === "string" && echo(account.provider) !== "",
+  )?.provider;
+  if (otherProvider !== undefined) {
+    return `${copy.otherProvider} (${echo(withoutOauthPrefix(oneLine(otherProvider)))})`;
+  }
+
   const strategy = primary?.verification?.strategy;
-  if ((strategy === "email_code" || strategy === "email_link") && user.password_enabled === true) {
-    return copy.emailPassword;
+  if (strategy === "email_code" || strategy === "email_link") {
+    return user.password_enabled === true ? copy.emailPassword : copy.emailCode;
+  }
+  if (strategy === "ticket") return copy.invitation;
+  if (strategy === "admin") return copy.dashboard;
+  if (typeof strategy === "string" && strategy.startsWith("from_oauth_")) {
+    return `${copy.otherProvider} (${echo(strategy.slice("from_oauth_".length))})`;
+  }
+  if (typeof strategy === "string" && echo(strategy) !== "") {
+    return `${copy.other} (${echo(strategy)})`;
   }
 
   return copy.other;
@@ -184,7 +217,7 @@ export async function notifyFounderOfSignUp(
 
   try {
     const body = buildSignUpNotice(user, deps.nowMs);
-    const result = await sendWithResend(body, delivery.apiKey, deps.fetchImpl);
+    const result = await sendWithResend(body, delivery.apiKey, deps.fetchImpl, "sign-up email");
     return result.ok ? "sent" : "failed";
   } catch {
     return "failed";

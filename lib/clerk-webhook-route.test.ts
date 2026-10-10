@@ -224,6 +224,58 @@ describe("POST /api/webhooks/clerk — user.created sign-up note (quick 261010-j
   });
 });
 
+describe("POST /api/webhooks/clerk — user.created when the note cannot or does not send (quick 261010-j2f)", () => {
+  it("R10. with no RESEND_API_KEY the answer is 200 'skipped' and fetch is never called", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    const response = await POST(signedRequest(googleSignUpBody()));
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("Sign-up email skipped: no email key on this server");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("R11. with a key set AND the browser suite's stand-in switch on, the answer is the same 'skipped' and fetch is never called", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test_not_a_real_key");
+    vi.stubEnv("SHAPER_CONTACT_STAND_IN", "1");
+    try {
+      const response = await POST(signedRequest(googleSignUpBody()));
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("Sign-up email skipped: no email key on this server");
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.stubEnv("RESEND_API_KEY", "");
+      vi.stubEnv("SHAPER_CONTACT_STAND_IN", "");
+    }
+  });
+
+  it("R12. with a key set and Resend answering 500 the answer is still 200 'Sign-up email failed'", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test_not_a_real_key");
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ name: "application_error" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await POST(signedRequest(googleSignUpBody()));
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("Sign-up email failed");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const logged = JSON.stringify(errorSpy.mock.calls);
+      expect(logged).not.toContain("jane@example.com");
+      expect(logged).not.toContain("Jane");
+      expect(logged).not.toContain("user_test_signup");
+      expect(logged).not.toContain("re_test_not_a_real_key");
+    } finally {
+      errorSpy.mockRestore();
+      vi.stubEnv("RESEND_API_KEY", "");
+    }
+  });
+});
+
 describe("boundary: the signing secret never carries Next's public-variable prefix", () => {
   function collectSourceFiles(dir: string): string[] {
     const entries = readdirSync(dir, { withFileTypes: true });
