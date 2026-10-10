@@ -8,7 +8,10 @@
  * trick that would (a web app manifest with `display: standalone`, opening the site as a
  * Home-Screen app) silently breaks `window.print()` on iOS — the confirmed diagnosis of the
  * founder's own "print buttons dont do anything" report
- * (.planning/debug/phone-print-button-does-nothing.md). No manifest is added here, ever. So this
+ * (.planning/debug/phone-print-button-does-nothing.md). A manifest does exist now
+ * (app/manifest.ts, quick 261010-km7, there only so Android's Add to Home screen carries the
+ * founder's circle logo), but it asks for display "browser", never standalone, so the diagnosis
+ * stands and nothing about this tip changes. So this
  * component tells a shaper, once, quietly, how to do it themselves.
  *
  * Mounted once in `app/design/layout.tsx`, immediately after `<SignInBanner />` and before

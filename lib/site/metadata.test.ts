@@ -68,4 +68,13 @@ describe("SITE_METADATA", () => {
     });
     expect(SITE_METADATA.twitter).not.toHaveProperty("images");
   });
+
+  it("labels the Home Screen icon through apple-mobile-web-app-title, and never asks to open as a standalone app", () => {
+    expect(SITE_METADATA.other).toMatchObject({ "apple-mobile-web-app-title": SITE_NAME });
+    // Next's appleWebApp option defaults to "capable" and would write mobile-web-app-capable
+    // "yes", opening the icon as a standalone app, which breaks Print on an iPhone.
+    expect(SITE_METADATA).not.toHaveProperty("appleWebApp");
+    expect(SITE_METADATA.other).not.toHaveProperty("mobile-web-app-capable");
+    expect(SITE_METADATA.other).not.toHaveProperty("apple-mobile-web-app-capable");
+  });
 });

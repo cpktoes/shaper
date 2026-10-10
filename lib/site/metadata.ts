@@ -50,4 +50,13 @@ export const SITE_METADATA: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
+  // The label under the Home Screen icon on an iPhone or iPad (quick 261010-km7, D-15): Safari's
+  // Add to Home Screen suggests this rather than the page's long tab title. Written through
+  // `other`, NEVER through Next's `appleWebApp` option: that option treats the site as "capable"
+  // unless told otherwise and then writes mobile-web-app-capable "yes", which would open the icon
+  // as a standalone app, the mode that breaks Print on an iPhone (components/design/toolbar-tip.tsx).
+  // Android's label comes from the manifest's own name (app/manifest.ts).
+  other: {
+    "apple-mobile-web-app-title": SITE_NAME,
+  },
 };

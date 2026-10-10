@@ -158,6 +158,7 @@ know why:
 - `components/design/design-store.tsx` — the shared board-design state
 - `components/{outline,rails,fins,volume,summary}/` — per-screen UI
 - `reference/project/` — the original Claude Design prototype; source of truth for formulas
+- `brand/` — the founder's logo sources and the traced single-colour logo (not served; `brand/README.md` says how every derived file was made); `components/wordmark.tsx` draws the logo in whatever ink surrounds it
 - `.planning/` — GSD roadmap, phase plans and quick-task log
 
 Three switches live in `app/globals.css` and `components/fins/fin-viewer.tsx`, and each answers a
