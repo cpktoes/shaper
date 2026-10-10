@@ -82,15 +82,14 @@ async function assertThinBar(page: Page, width: number, height: number) {
   // it. The assertion above, against the token, stays as it is.
   expect(Math.abs(bannerBox.height - 48)).toBeLessThanOrEqual(1);
 
-  const wordmark = banner.getByText("SHAPER ASSISTANT", { exact: true });
-  await expect(wordmark).toBeVisible();
-  const wordmarkLineCount = await wordmark.evaluate((el) => {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const tops = new Set(Array.from(range.getClientRects()).map((rect) => Math.round(rect.top)));
-    return tops.size;
-  });
-  expect(wordmarkLineCount).toBe(1);
+  // Quick 261010-km7: the logo replaces the name, and on a short screen it is drawn at its full
+  // computer size, 175.4 x 21.8 dots (a logo cannot wrap, so the old line-count check became this).
+  const logo = banner.getByRole("img", { name: "Shaper Assistant", exact: true });
+  await expect(logo).toBeVisible();
+  const logoBox = await logo.boundingBox();
+  if (!logoBox) throw new Error("the logo has no bounding box");
+  expect(Math.abs(logoBox.width - 175.4)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(logoBox.height - 21.8)).toBeLessThanOrEqual(0.5);
 
   await expect(banner.getByRole("button", { name: "Menu" })).toBeVisible();
 
@@ -270,11 +269,11 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
     await account.scrollIntoViewIfNeeded();
     await expect(account).toBeVisible();
 
-    // On the home screen the wordmark is plain text (a dead tap, per phone-top-bar.tsx's own
-    // comment), and the Home row has nothing left to go home to.
+    // On the home screen the logo is a plain picture (a dead tap otherwise, per phone-top-bar.tsx's
+    // own comment), and the Home row has nothing left to go home to.
     await page.goto("/");
     const homeBanner = page.getByRole("banner");
-    await expect(homeBanner.getByText("SHAPER ASSISTANT", { exact: true })).toBeVisible();
+    await expect(homeBanner.getByRole("img", { name: "Shaper Assistant", exact: true })).toBeVisible();
     await expect(homeBanner.getByRole("link", { name: "SHAPER ASSISTANT" })).toHaveCount(0);
 
     const homePopup = await openMenu(page);

@@ -8,7 +8,7 @@
  * shown on a short screen, 500 dots tall or less, AT ANY WIDTH — a height-alone media query
  * written inline on the header's own className below, the same inline form
  * `design-screen-shell.tsx`, RAILS and FINS already use — so a phone held sideways gets this one
- * thin line instead of the desktop row, which used to wrap SHAPER ASSISTANT onto two lines there.
+ * thin line instead of the desktop row, which used to wrap the app's name onto two lines there.
  * Now 48 dots (`--phone-top-bar-h`, item 9e, quick 260930-s23, P-7 — was 56), still read from the
  * one token in `app/globals.css`. Wherever this bar draws, its menu opens a sheet that hangs from
  * the bar's own bottom edge and spans the window, starting with the six screen tiles (quick
@@ -21,7 +21,7 @@
  *
  * This bar is now mounted on the home screen (`/`) as well as the design screens (260909-hq9), so
  * the wordmark has two faces depending on which page it's on: on `/` a `<Link href="/">` would be
- * a dead tap (it points at the page you're already reading), so it renders as plain text there;
+ * a dead tap (it points at the page you're already reading), so it renders as a plain picture there;
  * everywhere else it stays the link back home it has always been. `WORDMARK_CLASS` is hoisted to
  * one module-level constant precisely so those two branches can never drift apart.
  */
@@ -32,16 +32,26 @@ import { usePathname } from "next/navigation";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneMenu } from "@/components/design/phone-menu";
 import type { NavLink } from "@/components/site-nav";
+import { Wordmark } from "@/components/wordmark";
 
-/** Deliberately one size smaller than SiteNav's own desktop wordmark class (D-01), now that the
- * name is longer — `tracking-architectural` and the weight still match, so the phone mark keeps
- * the app's one architectural tracking value, and only steps down from `text-sm` to `text-xs`.
- * Measured at planning time on `/design/outline` at 360px with a coarse pointer: the bar's inside
- * width is 328px, its right-hand cluster is 149.0px wide in Save's widest face (`min-w-20`, wider
- * than the everyday filled Save button), and `SHAPER ASSISTANT` at `text-xs` is 150.3px — leaving
- * 28.7px of clear air before Save, more than a same-size alternative would. Hoisted here (rather
- * than inlined twice below) so the linked and plain-text renderings of the mark can never drift. */
-const WORDMARK_CLASS = "text-xs font-extrabold tracking-architectural text-surf-ink";
+/** The founder's logo in the phone's bar (quick 261010-km7, D-14), sized by the room the bar has
+ * rather than by a font. Its width is the window's width less 201 dots, and never more than
+ * 175.4 dots, the size the logo draws on a computer — so the brand is one size wherever it has
+ * room, and in this 48-dot bar a 21.8-dot-tall logo is already half the height of the 44-dot
+ * controls beside it; any larger would crowd the bar. The 201 is the bar's two 16-dot side
+ * paddings, plus the right-hand cluster at 149.0 dots (measured at planning time with a touch
+ * pointer, in Save's widest face, `min-w-20`, wider than the everyday filled Save button), plus
+ * Save's 20 dots of clear air (the rule `e2e/phone-layout.spec.ts` has always held). In round
+ * numbers: 159.0 dots wide at 360, 174.0 at 375, 175.4 from 377 up and on every sideways or
+ * short-screen bar. With "Unlock" showing (82.7 wide, a cluster of 151.7) the air is 17.3 at 360,
+ * 30.9 at 390 and 52.9 at 412, all above that button's own 8-dot floor
+ * (`e2e/board-lock.spec.ts`). The 5.37rem floor is the 85.9 dots the old name's narrowest
+ * two-line shape took, so below 287 dots wide it still shrinks to fit as the name did. The
+ * `.com` at the end stands 3.6 dots tall at 360 and 4.0 at the full size. Hoisted here (rather
+ * than inlined twice below) so the linked and plain renderings of the logo can never drift. The
+ * colour is `text-surf-ink`: the logo is drawn in whatever ink surrounds it, so each theme's own
+ * ink follows with nothing else to say. */
+const WORDMARK_CLASS = "block w-[min(10.9625rem,100vw_-_12.5625rem)] min-w-[5.37rem] text-surf-ink";
 
 export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
   const pathname = usePathname();
@@ -64,10 +74,12 @@ export function PhoneTopBar({ screens }: { screens: readonly NavLink[] }) {
       className="hidden max-shell:flex [@media(max-height:500px)]:flex h-(--phone-top-bar-h) flex-none items-center justify-between border-b border-surf-line-faint bg-surf-ground pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]"
     >
       {onHomeScreen ? (
-        <span className={WORDMARK_CLASS}>SHAPER ASSISTANT</span>
+        <span className={WORDMARK_CLASS}>
+          <Wordmark className="block h-auto w-full" />
+        </span>
       ) : (
         <Link href="/" className={`${WORDMARK_CLASS} transition-colors hover:text-surf-accent-ink`}>
-          SHAPER ASSISTANT
+          <Wordmark className="block h-auto w-full" />
         </Link>
       )}
       <div className="flex items-center gap-3">

@@ -116,11 +116,13 @@ function homeHouse(page: Page) {
   return page.locator("nav:not([aria-label])").getByRole("link", { name: "Home", exact: true });
 }
 
-/** SHAPER ASSISTANT on one line: `text-sm` draws a 20px line, so two lines measure 40. */
+/** The logo drawn at its full computer size, 175.4 dots wide (quick 261010-km7). It took over from
+ * "the name on one line": the name wrapped onto two lines where it ran short of room, and the logo
+ * instead shrinks, so "full size" is how this suite now knows the row had all the room it needed. */
 async function assertWordmarkOnOneLine(page: Page) {
   const box = await page.getByRole("link", { name: "SHAPER ASSISTANT" }).boundingBox();
-  if (!box) throw new Error("missing bounding box for the wordmark");
-  expect(box.height).toBeLessThan(30);
+  if (!box) throw new Error("missing bounding box for the logo");
+  expect(Math.abs(box.width - 175.4)).toBeLessThanOrEqual(0.5);
 }
 
 test.describe("top nav row — fits without horizontal scroll, 820 to 870px wide (mouse)", () => {
@@ -200,7 +202,7 @@ test.describe("top nav row — fits without horizontal scroll on a touch screen 
  * 1194 wide (1080 on the 9th gen, 1133 on an iPad mini, 1024 on older models), so every iPad on its
  * side gets it; held upright, the 9th gen is 810 wide and gets the phone's top bar instead. The row
  * keeps its 24px side margins up to 1279 to make the room (`xl:px-12` in `components/site-nav.tsx`);
- * these cases prove the house is there, SHAPER ASSISTANT stays on one line and the row still fits,
+ * these cases prove the house is there, the logo stays at its full size and the row still fits,
  * and that below 1024 the house stays away and the wordmark is the way home.
  */
 test.describe("the Home house shows from 1024 wide up, with the row still whole (mouse)", () => {
@@ -209,7 +211,7 @@ test.describe("the Home house shows from 1024 wide up, with the row still whole 
     await dismissSignInBanner(page);
   });
 
-  test("at 1023 wide the house stays away, and SHAPER ASSISTANT is the way home", async ({ page }) => {
+  test("at 1023 wide the house stays away, and the logo is the way home", async ({ page }) => {
     await page.setViewportSize({ width: 1023, height: 800 });
     await page.goto("/design/outline");
     await expect(page.locator("nav:not([aria-label])")).toBeVisible();
@@ -217,7 +219,7 @@ test.describe("the Home house shows from 1024 wide up, with the row still whole 
   });
 
   for (const width of [1024, 1133, 1279, 1280]) {
-    test(`at ${width} wide the house shows, SHAPER ASSISTANT stays on one line, and the row fits`, async ({
+    test(`at ${width} wide the house shows, the logo stays at full size, and the row fits`, async ({
       page,
     }) => {
       await page.setViewportSize({ width, height: 800 });
@@ -242,7 +244,7 @@ test.describe("the Home house on an iPad held sideways in Safari (touch, WebKit)
     { label: "an iPad 9th gen", width: 1080, height: 736 },
     { label: "an iPad mini", width: 1133, height: 670 },
   ]) {
-    test(`${size.label} (${size.width}x${size.height}): the house shows, SHAPER ASSISTANT stays on one line, and the row fits`, async ({
+    test(`${size.label} (${size.width}x${size.height}): the house shows, the logo stays at full size, and the row fits`, async ({
       page,
     }) => {
       await page.setViewportSize({ width: size.width, height: size.height });

@@ -7,8 +7,8 @@
  * editing the URL. An anonymous or never-saved board still lives only in the design store's
  * memory, so a hard navigation would drop it — but a saved board on a signed-in shaper's account
  * now survives one, since it autosaves to Postgres regardless of how the shaper moves between
- * screens. The SHAPER ASSISTANT wordmark links back to `/` for the same client-side-navigation
- * reason.
+ * screens. The logo (quick 261010-km7: the founder's "shaperassistant.com", in place of the
+ * name set in capitals) links back to `/` for the same client-side-navigation reason.
  * Client component because it reads the active path (usePathname) to highlight the current link,
  * and mounts the nav's right-hand chrome cluster: the settings menu, the Save control (D-05), and
  * the sign-in/account control (D-02).
@@ -21,6 +21,7 @@ import { SettingsMenu } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
 import { SaveButton } from "@/components/design/save-button";
 import { PhoneTopBar } from "@/components/design/phone-top-bar";
+import { Wordmark } from "@/components/wordmark";
 
 /** The six design screens, in order — the one copy every reader shares, so the labels and order can
  * never drift: the desktop row below, the phone menu's six screen tiles (handed this same list as a
@@ -57,7 +58,7 @@ export type NavLink = (typeof NAV_LINKS)[number];
  * window is never under 500 dots tall, so a mouse never sees this. Measured before this change: at
  * 844x390 (a real iPhone sideways) and 863x360 (a real Pixel 7 sideways) this row drew 93 dots
  * tall in the test harness (about 105 on the live site, where Clerk's real account button is
- * wider than the harness's signed-out stand-in) with SHAPER ASSISTANT wrapped onto two lines; the
+ * wider than the harness's signed-out stand-in) with the name wrapped onto two lines; the
  * phone's bar draws 56 dots with the name on one line.
  *
  * The row's side margins are 24 dots up to 1279 wide and 48 from 1280 (`xl:px-12`). They used to
@@ -72,11 +73,18 @@ export function SiteNav() {
   return (
     <>
       <nav data-print-hide className={DESKTOP_NAV_CLASS}>
+        {/* The founder's logo (quick 261010-km7, D-07). It takes exactly the room the name took:
+            10.96rem (175.4 dots, the name's width on one line at text-sm) and no narrower than
+            6.26rem (100.2 dots, the name's width wrapped onto two lines), so the row's flex layout
+            sees the same inputs it always did. From 820 to 1023 wide, where the name used to wrap
+            onto two lines, the logo shrinks between those two instead and the row is 8 dots
+            shorter, with nothing wrapped. 21.8 dots tall at full width, under the row's tallest
+            control (32), so the row's height is the controls' height, as before. */}
         <Link
           href="/"
-          className="text-sm font-extrabold tracking-architectural text-surf-ink transition-colors hover:text-surf-accent-ink"
+          className="block w-[10.96rem] min-w-[6.26rem] text-surf-ink transition-colors hover:text-surf-accent-ink"
         >
-          SHAPER ASSISTANT
+          <Wordmark className="block h-auto w-full" />
         </Link>
         <div className="flex items-center gap-4 lg:gap-5">
           {NAV_LINKS.map((link) => {
@@ -100,18 +108,18 @@ export function SiteNav() {
               rather than by distance: it is chrome, not a sixth screen, so it should read as a
               different kind of thing without drifting away from the group. */}
           <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
-          {/* A way home that isn't the wordmark, sitting beside the gear as the same kind of
+          {/* A way home that isn't the logo, sitting beside the gear as the same kind of
               chrome. Shown from 1024px up (the founder, 2026-10-04, after an iPad 9th gen held
               sideways showed none): an iPad held sideways is 1024 to 1194 wide — 1080 on that
               iPad, 1133 on an iPad mini, 1024 on older models — so every iPad on its side gets
               the house. It used to start at 1280. Held upright, that iPad is 810 wide and gets
               the phone's top bar, whose menu has its own Home row. The room comes from the row's
               side margins staying at 24px up to 1279 (`xl:px-12` above): at 1024 that leaves
-              SHAPER ASSISTANT on one line with 38px to spare beyond the 40px gap (measured on the
+              the logo at full size with 38px to spare beyond the 40px gap (measured on the
               live site, signed out, mouse and touch alike). Below 1024 — a narrow but tall
-              window, 820 to 1023 wide, or an 11-inch iPad held upright — the wordmark stays the
+              window, 820 to 1023 wide, or an 11-inch iPad held upright — the logo stays the
               way home, since at 820 the cluster already ends at the padding edge with the
-              wordmark wrapped onto two lines. (A phone held sideways never reaches this row:
+              logo shrunk to its narrowest. (A phone held sideways never reaches this row:
               since quick 260930-r8s it gets the phone's thin bar, where Home is the wordmark and
               the menu's own Home row.) */}
           <Link

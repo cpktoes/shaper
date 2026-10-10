@@ -258,17 +258,17 @@ test.describe("the board lock on a phone (quick 261008-lsy)", () => {
     await openFromCaption(page, first.name);
   }
 
-  /** The compact bar's Unlock button: at least 44 dots tall, and clear of the wordmark by 8 dots. */
+  /** The compact bar's Unlock button: at least 44 dots tall, and clear of the logo by 8 dots. */
   async function assertUnlockFits(page: Page, minAir: number) {
     const bar = page.getByRole("banner");
     const unlock = bar.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel });
     await expect(unlock).toBeVisible();
     const unlockBox = await unlock.boundingBox();
-    const wordmarkBox = await bar.getByText("SHAPER ASSISTANT", { exact: true }).boundingBox();
+    const wordmarkBox = await bar.getByRole("img", { name: "Shaper Assistant", exact: true }).boundingBox();
     if (!unlockBox || !wordmarkBox) throw new Error("missing bounding box in the compact bar");
     expect(unlockBox.height).toBeGreaterThanOrEqual(44);
     const air = unlockBox.x - (wordmarkBox.x + wordmarkBox.width);
-    console.log(`[board-lock] Unlock ${unlockBox.width.toFixed(1)}x${unlockBox.height.toFixed(1)}, ${air.toFixed(1)} dots from the wordmark`);
+    console.log(`[board-lock] Unlock ${unlockBox.width.toFixed(1)}x${unlockBox.height.toFixed(1)}, ${air.toFixed(1)} dots from the logo`);
     expect(air).toBeGreaterThanOrEqual(minAir);
   }
 

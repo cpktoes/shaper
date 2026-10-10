@@ -27,7 +27,7 @@ test.describe("phone home screen — the compact top bar", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the desktop link row is hidden, the compact top bar shows SHAPER ASSISTANT/Save/Menu, and SHAPER ASSISTANT is not a link here", async ({
+  test("the desktop link row is hidden, the compact top bar shows the logo/Save/Menu, and the logo is not a link here", async ({
     page,
   }) => {
     await page.goto("/");
@@ -37,8 +37,8 @@ test.describe("phone home screen — the compact top bar", () => {
 
     const topBar = page.getByRole("banner");
     await expect(topBar).toBeVisible();
-    await expect(topBar.getByText("SHAPER ASSISTANT")).toBeVisible();
-    // On the page it points at, the wordmark is plain text, not a dead-tap link.
+    await expect(topBar.getByRole("img", { name: "Shaper Assistant", exact: true })).toBeVisible();
+    // On the page it points at, the logo is a plain picture, not a dead-tap link (quick 261010-km7).
     await expect(topBar.getByRole("link", { name: "SHAPER ASSISTANT" })).toHaveCount(0);
     await expect(topBar.getByRole("button", { name: "Save Board" })).toBeVisible();
     await expect(topBar.getByRole("button", { name: "Menu" })).toBeVisible();
