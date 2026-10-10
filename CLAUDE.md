@@ -21,7 +21,10 @@ answers, commit messages and summaries alike.
 - Domain email (the founder, 2026-09-29, Phase 13 item 10): Zoho Mail's free plan hosts
   `support@shaperassistant.com`, receiving and sending in Zoho's own apps. The Contact page's form sends
   through Resend's HTTP API (free plan) only when `RESEND_API_KEY` is set in Vercel — server-only, never
-  in Development — and shows the address instead until then. All their DNS records live in Vercel beside
+  in Development — and shows the address instead until then. The Clerk webhook
+  (`app/api/webhooks/clerk/route.ts`) also emails support@ one note per new account (`user.created`,
+  quick 261010-j2f, the founder's request 2026-10-10) through the same Resend call, skipped when
+  `RESEND_API_KEY` is unset, always answering Clerk 200. All their DNS records live in Vercel beside
   Clerk's: Zoho's at the root, Resend's on the `send.` subdomain plus its `resend._domainkey` key.
 - Visitor counts (Phase 13 item 11): Vercel Web Analytics, `@vercel/analytics` pinned to 2.0.1 and
   mounted once in the root layout — cookie-free, and every address is cut at its first `?` or `#` so

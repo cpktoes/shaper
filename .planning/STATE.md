@@ -5,8 +5,8 @@ milestone_name: Ready for the Shapers
 status: executing
 stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
 last_updated: "2026-10-06T18:00:12.531Z"
-last_activity: 2026-10-08
-last_activity_desc: Quick task 261008-raw: the board's name in the tab band on every design screen, click to rename — approved by the founder, pushed with the board lock live
+last_activity: 2026-10-10
+last_activity_desc: Quick task 261010-j2f: every new sign-up emails support@ (Clerk user.created via the existing webhook and Resend); privacy page updated
 progress:
   total_phases: 3
   completed_phases: 1
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-08 — Quick task 261008-raw: the board's name in the tab band on every design screen, click to rename — approved by the founder, pushed with the board lock live
+Last activity: 2026-10-10 — Quick task 261010-j2f: every new sign-up emails support@ (Clerk user.created via the existing webhook and Resend); privacy page updated
 
 ## Performance Metrics
 
@@ -371,6 +371,7 @@ Recent decisions affecting current work:
 | 157 | Full Sized Template: neighbouring pages' border lines now meet — each sits in the middle of the 1/2" overlap both pages share (the Paper Saver's own rule), so laying border on border lines up the curve; before, they sat 1/2" apart on the board and the curve jumped by that much at every join, nose to tail and stringer to rail. The taping line reads "Lay each page's border line on the next page's border line". The scale square and how-to box follow page 1's outer border 1/4" outward; the outline, marks, page grid and name box are unchanged (frozen fingerprints kept). The founder's report, 2026-10-08 | 2026-10-08 | f3225c4 | fast (no directory) |
 | 261008-lsy | Board lock (the founder, 2026-10-08): a saved board's Board Rack menu has Lock board / Board Locked; a locked board shows a padlock beside its name, Delete is greyed (Rename works), a copy comes out unlocked; opened, every control that changes the board is greyed and switched off on all six screens (computer, phone, phone sideways), Save becomes Unlock (permanent), it never autosaves and the server refuses saves and deletes to it; export and print still work in full ink. New column models.locked (migration 0010) — production migrates BEFORE the push. Two plans, the founder's look between | 2026-10-08 | 8c09fe9 | [261008-lsy-board-lock-protect-a-saved-board-from-ac](./quick/261008-lsy-board-lock-protect-a-saved-board-from-ac/) |
 | 261008-raw | The board's name (or Untitled) at the right end of the tab band on TEMPLATE, ROCKER, RAILS, VOLUME and FINS — computer, upright and sideways phone, shortened with an ellipsis; click/tap to rename (a saved board renames everywhere, Untitled names-and-saves like the top bar's Save), a locked board shows its padlock and can still be renamed; phone tabs' side padding 18 to 8 dots to make room; the five desktop reference pictures re-recorded on the founder's approval (only the word Untitled changed). The founder's request, 2026-10-08 | 2026-10-08 | 7fc1c14 | [261008-raw-board-name-in-the-tab-band-on-every-desi](./quick/261008-raw-board-name-in-the-tab-band-on-every-desi/) |
+| 261010-j2f | Every new sign-up emails support@shaperassistant.com (the founder's request, 2026-10-10): the existing Clerk webhook now handles user.created and sends one plain note through the Contact form's Resend call — name (or not given), email, how they signed up, when in Pacific time; Reply-To the new shaper; skipped with no RESEND_API_KEY; always answers Clerk 200 so it never retries; account deletion unchanged. Privacy page: one sentence, a Resend row, effective date October 10, 2026 (the founder approved the wording). The founder subscribed the endpoint to user.created in Clerk | 2026-10-10 | a8b12c8 | [261010-j2f-email-the-founder-for-every-new-sign-up](./quick/261010-j2f-email-the-founder-for-every-new-sign-up/) |
 
 ## Deferred Items
 
