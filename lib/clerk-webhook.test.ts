@@ -2,6 +2,7 @@ import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { describe, expect, it, vi } from "vitest";
 import type { AccountDataDeleted, ClerkWebhookDeps, ClerkWebhookLogLevel } from "./clerk-webhook";
 import { CLERK_WEBHOOK_BODIES, handleClerkWebhook } from "./clerk-webhook";
+import type { SignUpNoticeOutcome } from "./contact/sign-up-notice";
 import { buildSignedWebhookRequest, buildUnsignedRequest, createTestSigningSecret } from "./clerk-webhook-test-signing";
 
 /**
@@ -35,6 +36,7 @@ function makeDeps(overrides: Partial<ClerkWebhookDeps> = {}): {
   logs: RecordedLog[];
   verify: ReturnType<typeof vi.fn>;
   deleteAccountData: ReturnType<typeof vi.fn>;
+  notifySignUp: ReturnType<typeof vi.fn>;
 } {
   const logs: RecordedLog[] = [];
   const verify = vi.fn(async () => ({
@@ -45,14 +47,16 @@ function makeDeps(overrides: Partial<ClerkWebhookDeps> = {}): {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   })) as any;
   const deleteAccountData = vi.fn(async (): Promise<AccountDataDeleted> => ({ boards: 2, settings: 1 }));
+  const notifySignUp = vi.fn(async (): Promise<SignUpNoticeOutcome> => "sent");
   const deps: ClerkWebhookDeps = {
     signingSecretSet: true,
     verify,
     deleteAccountData,
+    notifySignUp,
     log: (level, line) => logs.push({ level, line }),
     ...overrides,
   };
-  return { deps, logs, verify, deleteAccountData };
+  return { deps, logs, verify, deleteAccountData, notifySignUp };
 }
 
 function fakeRequest(): Request {
@@ -141,10 +145,12 @@ describe("handleClerkWebhook", () => {
     expect(deleteAccountData).not.toHaveBeenCalled();
   });
 
-  it.each(["user.created", "session.created", "email.created"])(
-    "6. %s is acknowledged and ignored, deleteAccountData never called, the log names the type",
+  // quick 261010-j2f: user.created is no longer ignored (it sends the founder a sign-up note), so
+  // the one existing case that had to change is swapped for user.updated.
+  it.each(["user.updated", "session.created", "email.created"])(
+    "6. %s is acknowledged and ignored, deleteAccountData and notifySignUp never called, the log names the type",
     async (eventType) => {
-      const { deps, logs, deleteAccountData } = makeDeps({
+      const { deps, logs, deleteAccountData, notifySignUp } = makeDeps({
         verify: vi.fn(async () => ({
           type: eventType,
           object: "event",
@@ -159,6 +165,7 @@ describe("handleClerkWebhook", () => {
       expect(response.status).toBe(200);
       expect(bodyText).toBe(CLERK_WEBHOOK_BODIES.ignored);
       expect(deleteAccountData).not.toHaveBeenCalled();
+      expect(notifySignUp).not.toHaveBeenCalled();
       expect(logs.some((l) => l.line.includes(eventType))).toBe(true);
       expectNothingLeaked(bodyText, logs, [EMAIL]);
     },
@@ -245,5 +252,150 @@ describe("handleClerkWebhook", () => {
 
     expect(response.status).toBe(400);
     expect(deleteAccountData).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Quick 261010-j2f: a verified user.created tells the founder about the new account. The email
+ * itself is faked here (deps.notifySignUp); lib/contact/sign-up-notice.test.ts and the route tests
+ * prove what the email says. What this block pins: the answer is 200 whatever happened to the
+ * email (so Clerk never retries a sign-up note), one fixed log line per outcome, and nothing
+ * identifying in any body or log line.
+ */
+describe("user.created (quick 261010-j2f)", () => {
+  const SIGN_UP_NAME = "Jane Shaper";
+  const SIGN_UP_EMAIL = "jane@example.com";
+  const SIGN_UP_ID = "user_test_2abc";
+  const SIGN_UP_NEEDLES = [SIGN_UP_ID, SIGN_UP_EMAIL, "Jane", "Shaper Jane", SIGN_UP_NAME];
+
+  const googleUserData = {
+    object: "user",
+    id: SIGN_UP_ID,
+    first_name: "Jane",
+    last_name: "Shaper",
+    primary_email_address_id: "idn_test_1",
+    email_addresses: [
+      {
+        id: "idn_test_1",
+        email_address: SIGN_UP_EMAIL,
+        verification: { status: "verified", strategy: "from_oauth_google" },
+        linked_to: [{ type: "oauth_google", id: "idn_test_2" }],
+      },
+    ],
+    external_accounts: [{ provider: "oauth_google", verification: { strategy: "oauth_google" } }],
+    password_enabled: false,
+    image_url: "https://img.clerk.com/example",
+    created_at: Date.UTC(2026, 9, 10, 21, 15),
+  };
+
+  function userCreatedVerify() {
+    return vi.fn(async () => ({
+      type: "user.created",
+      object: "event",
+      data: googleUserData,
+      event_attributes: { http_request: { client_ip: "203.0.113.9", user_agent: "test-agent" } },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    })) as any;
+  }
+
+  it("a 'sent' note answers 200 'Sign-up email sent', calls notifySignUp once with the event's data, one info line naming user.created", async () => {
+    const { deps, logs, deleteAccountData, notifySignUp } = makeDeps({ verify: userCreatedVerify() });
+    const response = await handleClerkWebhook(fakeRequest(), deps);
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(bodyText).toBe(CLERK_WEBHOOK_BODIES.signUpEmailSent);
+    expect(bodyText).toBe("Sign-up email sent");
+    expect(notifySignUp).toHaveBeenCalledTimes(1);
+    expect(notifySignUp).toHaveBeenCalledWith(googleUserData);
+    expect(deleteAccountData).not.toHaveBeenCalled();
+    expect(logs).toHaveLength(1);
+    expect(logs[0].level).toBe("info");
+    expect(logs[0].line).toContain("user.created");
+    expectNothingLeaked(bodyText, logs, SIGN_UP_NEEDLES);
+  });
+
+  it("a 'skipped' note answers 200 'Sign-up email skipped: no email key on this server' with one info line saying no key is set", async () => {
+    const { deps, logs } = makeDeps({
+      verify: userCreatedVerify(),
+      notifySignUp: vi.fn(async (): Promise<SignUpNoticeOutcome> => "skipped"),
+    });
+    const response = await handleClerkWebhook(fakeRequest(), deps);
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(bodyText).toBe(CLERK_WEBHOOK_BODIES.signUpEmailSkipped);
+    expect(bodyText).toBe("Sign-up email skipped: no email key on this server");
+    expect(logs).toHaveLength(1);
+    expect(logs[0].level).toBe("info");
+    expect(logs[0].line).toContain("RESEND_API_KEY");
+    expect(logs[0].line.toLowerCase()).toContain("skipped");
+    expectNothingLeaked(bodyText, logs, SIGN_UP_NEEDLES);
+  });
+
+  it("a 'failed' note still answers 200 'Sign-up email failed' with one error line", async () => {
+    const { deps, logs } = makeDeps({
+      verify: userCreatedVerify(),
+      notifySignUp: vi.fn(async (): Promise<SignUpNoticeOutcome> => "failed"),
+    });
+    const response = await handleClerkWebhook(fakeRequest(), deps);
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(bodyText).toBe(CLERK_WEBHOOK_BODIES.signUpEmailFailed);
+    expect(bodyText).toBe("Sign-up email failed");
+    const errorLines = logs.filter((l) => l.level === "error");
+    expect(errorLines).toHaveLength(1);
+    expect(errorLines[0].line).toContain("user.created");
+    expectNothingLeaked(bodyText, logs, SIGN_UP_NEEDLES);
+  });
+
+  it("notifySignUp throwing an Error that carries the email answers 200 'Sign-up email failed' and the error line omits the message", async () => {
+    const thrown = new Error(`Resend refused ${SIGN_UP_EMAIL} for ${SIGN_UP_ID}`);
+    const { deps, logs } = makeDeps({
+      verify: userCreatedVerify(),
+      notifySignUp: vi.fn(async () => Promise.reject(thrown)),
+    });
+    const response = await handleClerkWebhook(fakeRequest(), deps);
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(bodyText).toBe(CLERK_WEBHOOK_BODIES.signUpEmailFailed);
+    expect(logs.filter((l) => l.level === "error")).toHaveLength(1);
+    expectNothingLeaked(bodyText, logs, [...SIGN_UP_NEEDLES, thrown.message]);
+  });
+
+  it("real signatures: a correctly signed user.created reaches notifySignUp with the parsed email_addresses", async () => {
+    const { key, secret } = createTestSigningSecret();
+    const body = JSON.stringify({ type: "user.created", data: googleUserData });
+    const request = buildSignedWebhookRequest({ url: "https://www.shaperassistant.com/api/webhooks/clerk", body, key });
+    const { deps, notifySignUp, deleteAccountData } = makeDeps({ verify: verifyReal(secret) });
+
+    const response = await handleClerkWebhook(request, deps);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(CLERK_WEBHOOK_BODIES.signUpEmailSent);
+    expect(notifySignUp).toHaveBeenCalledTimes(1);
+    const passed = notifySignUp.mock.calls[0][0] as { email_addresses: { email_address: string }[] };
+    expect(passed.email_addresses[0].email_address).toBe(SIGN_UP_EMAIL);
+    expect(deleteAccountData).not.toHaveBeenCalled();
+  });
+
+  it("real signatures: a user.created whose body changed after signing -> 400 and notifySignUp is never called", async () => {
+    const { key, secret } = createTestSigningSecret();
+    const signedBody = JSON.stringify({ type: "user.created", data: googleUserData });
+    const signed = buildSignedWebhookRequest({ url: "https://www.shaperassistant.com/api/webhooks/clerk", body: signedBody, key });
+    const tamperedBody = JSON.stringify({
+      type: "user.created",
+      data: { ...googleUserData, first_name: "Mallory" },
+    });
+    const tampered = new Request(signed.url, { method: "POST", body: tamperedBody, headers: signed.headers });
+    const { deps, notifySignUp } = makeDeps({ verify: verifyReal(secret) });
+
+    const response = await handleClerkWebhook(tampered, deps);
+
+    expect(response.status).toBe(400);
+    expect(await response.text()).toBe(CLERK_WEBHOOK_BODIES.refused);
+    expect(notifySignUp).not.toHaveBeenCalled();
   });
 });

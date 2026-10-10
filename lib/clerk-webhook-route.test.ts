@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildSignedWebhookRequest, buildUnsignedRequest, createTestSigningSecret } from "./clerk-webhook-test-signing";
+import { RESEND_SEND_URL } from "./contact/delivery";
+import { CONTACT_RECIPIENT, CONTACT_SENDER } from "./contact/message";
 
 /**
  * TDD RED for quick 260930-ckm, Task 2 (R1–R8): proof against the REAL route module — not the
@@ -37,6 +39,10 @@ beforeAll(async () => {
 
   vi.stubEnv("DATABASE_URL", "postgresql://nobody:nothing@localhost/none");
   vi.stubEnv("CLERK_WEBHOOK_SIGNING_SECRET", signingSecret);
+  // Quick 261010-j2f: no case in this file may ever send a real email. The key and the stand-in
+  // switch start blank; the sign-up cases below stub a fake key per case and restore it.
+  vi.stubEnv("RESEND_API_KEY", "");
+  vi.stubEnv("SHAPER_CONTACT_STAND_IN", "");
 
   routeModule = await import("@/app/api/webhooks/clerk/route");
   POST = routeModule.POST as typeof POST;
@@ -48,8 +54,12 @@ afterAll(() => {
 });
 
 let batchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  // Quick 261010-j2f: nothing in this file can reach the internet. Every case gets a fetch that
+  // rejects; the sign-up cases replace it with a canned Resend answer.
+  fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("no network in this file"));
   // Fresh spy per test (restored below): vi.spyOn on an already-mocked property returns the same
   // mock instance rather than a new one, which would otherwise leak call history across tests.
   batchSpy = vi.spyOn(db, "batch");
@@ -57,10 +67,49 @@ beforeEach(() => {
 
 afterEach(() => {
   batchSpy.mockRestore();
+  fetchSpy.mockRestore();
 });
 
 function userDeletedBody(id: string): string {
   return JSON.stringify({ type: "user.deleted", data: { object: "user", id, deleted: true } });
+}
+
+const SIGN_UP_SUBJECT = "New Shaper Assistant sign-up: Jane Shaper";
+const SIGN_UP_TEXT = [
+  "A new shaper just created an account on Shaper Assistant.",
+  "",
+  "Name: Jane Shaper",
+  "Email: jane@example.com",
+  "Signed up with: Google",
+  "When: Saturday, October 10, 2026 at 2:15 PM PDT (Pacific time)",
+  "",
+  "--",
+  "Sent automatically by shaperassistant.com when an account is created.",
+].join("\n");
+
+function googleSignUpBody(): string {
+  return JSON.stringify({
+    type: "user.created",
+    data: {
+      object: "user",
+      id: "user_test_signup",
+      first_name: "Jane",
+      last_name: "Shaper",
+      primary_email_address_id: "idn_test_1",
+      email_addresses: [
+        {
+          id: "idn_test_1",
+          email_address: "jane@example.com",
+          verification: { status: "verified", strategy: "from_oauth_google" },
+          linked_to: [{ type: "oauth_google", id: "idn_test_2" }],
+        },
+      ],
+      external_accounts: [{ provider: "oauth_google", verification: { strategy: "oauth_google" } }],
+      password_enabled: false,
+      image_url: "https://img.clerk.com/example",
+      created_at: Date.UTC(2026, 9, 10, 21, 15),
+    },
+  });
 }
 
 function signedRequest(body: string, key: Buffer = signingKey): Request {
@@ -138,6 +187,39 @@ describe("POST /api/webhooks/clerk (the real route)", () => {
     expect(typeof routeModule.POST).toBe("function");
     for (const method of ["GET", "PUT", "PATCH", "DELETE", "HEAD"]) {
       expect(routeModule[method]).toBeUndefined();
+    }
+  });
+});
+
+describe("POST /api/webhooks/clerk — user.created sign-up note (quick 261010-j2f)", () => {
+  it("R9. a correctly signed Google user.created sends exactly one Resend request carrying the pinned note", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test_not_a_real_key");
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: "re_test_1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    try {
+      const response = await POST(signedRequest(googleSignUpBody()));
+
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("Sign-up email sent");
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe(RESEND_SEND_URL);
+      const sent = JSON.parse(init.body as string);
+      expect(sent).toEqual({
+        from: CONTACT_SENDER,
+        to: [CONTACT_RECIPIENT],
+        subject: SIGN_UP_SUBJECT,
+        text: SIGN_UP_TEXT,
+        reply_to: "jane@example.com",
+      });
+      expect("html" in sent).toBe(false);
+      expect(batchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.stubEnv("RESEND_API_KEY", "");
     }
   });
 });
