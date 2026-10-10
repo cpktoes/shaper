@@ -70,7 +70,8 @@ describe("the Privacy Policy, drawn", () => {
     expect(texts(privacy, "th")).toEqual(["Service", "What it does", "What it sees"]);
     expect(count(privacy, /<th scope="col"/g)).toBe(3);
     const body = privacy.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
-    expect(count(body, /<tr\b/g)).toBe(5);
+    // Six rows since quick 261010-j2f: Resend was added as the last row.
+    expect(count(body, /<tr\b/g)).toBe(6);
   });
 
   it("draws every bold phrase as strong", () => {
