@@ -25,7 +25,8 @@ export const KNOWN_BLANK_VENDORS = ["US Blanks", "Arctic Foam", "Marko Foam", "M
  * makers' names are. Deliberately the same whatever makers a shaper has switched off in Settings —
  * it is a notice about whose catalogs and trademarks these are, not a list of what is shown — and
  * the test checks it names every maker above, so a fifth maker fails it until the founder's note
- * is updated too (Millennium Foam was added to the sentence on 2026-10-11, quick 261011-fzb). The apostrophe in "manufacturers'" is straight, as the founder typed it.
+ * is updated too (Millennium Foam was added to the sentence on 2026-10-11, quick 261011-fzb). The
+ * apostrophe in "manufacturers'" is straight, as the founder typed it.
  */
 export const BLANK_CATALOG_NOTE =
   "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam, Marko Foam and Millennium Foam are trademarks of their owners.";

@@ -240,6 +240,16 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
 
     await untickMaker(page, "Marko Foam");
     await expect(note).toHaveText("Showing US Blanks and Millennium Foam only — change in Settings");
+
+    // The fourth maker hides like the first three (quick 261011-fzb): its blanks are listed until its
+    // own tick box is cleared, and the note then names US Blanks alone.
+    const withoutMarko = await allRowLabels(page);
+    expect(withoutMarko.some((label) => label.includes("Millennium Foam"))).toBe(true);
+    await untickMaker(page, "Millennium Foam");
+    await expect(note).toHaveText("Showing US Blanks only — change in Settings");
+    const usBlanksOnly = await allRowLabels(page);
+    expect(usBlanksOnly.some((label) => label.includes("Millennium Foam"))).toBe(false);
+    expect(usBlanksOnly.some((label) => label.includes("US Blanks"))).toBe(true);
   });
 
   test("a picked blank stays on the board when its maker is unticked, and the offer never names that maker", async ({

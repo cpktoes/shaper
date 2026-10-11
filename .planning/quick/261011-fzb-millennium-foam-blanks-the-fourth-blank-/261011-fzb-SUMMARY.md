@@ -38,3 +38,19 @@ from `scripts/seed-blanks.ts`'s header after the deploy (an additive data change
 
 **Executed inline** by the orchestrator at the founder's request for speed ("Can we get this live quick?"), under this
 quick task's id.
+
+## Cleanup after the review (same day, the founder's "I have more time")
+
+The whole browser suite was run after the push (1,067 passed, 1 failed): the one failure was the desktop
+reference picture of ROCKER, whose blank list now interleaves Millennium blanks; the diff was confined to the
+sidebar's list rows (x 49–340, y 563–739), so that one picture was re-recorded. A code review of the two commits
+raised eight findings: three catalog figures that both units agree on but that break the blank's own foil
+(6'4"P nose 12" thickness 1 5/16"; 6'11"M nose tip 5/8"; the 9'4"M tail 12" already noted), the WS blanks'
+24" rows resting on the side-view template, no browser test hiding Millennium's own blanks, a hand-counted
+"four" in three places, a 160-column comment line, and the 1.5 MB tool archive. Done here: DATASHEET
+footnotes on the 6'4"P and 6'11"M rows and a fuller note on the WS 24" rows (numbers unchanged, 102 flags
+now); the comment wrapped; `e2e/blank-makers.spec.ts` now unticks Millennium Foam too and proves its blanks
+leave the list. Left as they are: the "four" literal (the test pins the wording), the archive, and the
+6'3"S nose call (pointed, 1") for the founder's eye. A smoothness pass (each station against the maker's
+own norm for that station) found nothing else odd in the Millennium set beyond design features (thick
+wake-surf noses, narrow gun noses).
