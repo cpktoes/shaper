@@ -1,5 +1,5 @@
 /**
- * SEEDS THE BLANK CATALOGUE — loads the three committed vendor catalogues under `db/seed/blanks/`
+ * SEEDS THE BLANK CATALOGUE — loads the four committed vendor catalogues under `db/seed/blanks/`
  * through the tested reader (`lib/blanks/seed-files.ts`, never a CSV parse of its own) and writes
  * them into the `blanks` table: one row per blank, its stations exactly as the catalogue printed
  * them, converted once to millimetres, with an empty cell stored as null — never 0, and never an
@@ -24,7 +24,7 @@
  * already saved is never affected: it carries its own copy of its blank.
  *
  * Every run ends with a read-only count of what the table now holds:
- *   blanks: <total> (US Blanks <n>, Arctic Foam <n>, Marko Foam <n>); pickable: <n>
+ *   blanks: <total> (US Blanks <n>, Arctic Foam <n>, Marko Foam <n>, Millennium Foam <n>); pickable: <n>
  * then exits 1, with one plain line saying what was expected and what was found, when the table
  * is empty, when its total differs from the catalogue's own count (read through `readSeedCatalog`,
  * never a typed number), or when any one vendor's count differs from that vendor's count in the
@@ -59,6 +59,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 // Pure and import-free, so it is safe to load before the env file is read.
 import { planBlankRemoval, readSeedOptions, staleBlanks } from "../lib/blanks/prune";
+import { KNOWN_BLANK_VENDORS } from "../lib/blanks/vendors";
 
 async function main(): Promise<void> {
   const options = readSeedOptions(process.argv.slice(2));
@@ -154,7 +155,7 @@ async function main(): Promise<void> {
 
   const perVendor = (vendor: string) => stored.filter((record) => record.vendor === vendor).length;
   console.log(
-    `blanks: ${stored.length} (US Blanks ${perVendor("US Blanks")}, Arctic Foam ${perVendor("Arctic Foam")}, Marko Foam ${perVendor("Marko Foam")}); pickable: ${stored.filter(isPickable).length}`,
+    `blanks: ${stored.length} (${KNOWN_BLANK_VENDORS.map((vendor) => `${vendor} ${perVendor(vendor)}`).join(", ")}); pickable: ${stored.filter(isPickable).length}`,
   );
 
   // The counts first: an empty or short table fails here, in --check mode too (WR-03). Every

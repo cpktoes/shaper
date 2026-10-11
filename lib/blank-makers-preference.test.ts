@@ -38,8 +38,8 @@ describe("blank makers preference boundary", () => {
     });
 
     it("reads a list hiding every maker as not chosen, so the blank list can never be emptied", () => {
-      expect(parseHiddenBlankMakers(["US Blanks", "Arctic Foam", "Marko Foam"])).toBeNull();
-      expect(parseHiddenBlankMakers(["Marko Foam", "US Blanks", "Arctic Foam", "Clark Foam"])).toBeNull();
+      expect(parseHiddenBlankMakers(["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"])).toBeNull();
+      expect(parseHiddenBlankMakers(["Marko Foam", "US Blanks", "Millennium Foam", "Arctic Foam", "Clark Foam"])).toBeNull();
     });
 
     it("reads a list of only unknown names as nothing hidden", () => {
@@ -84,7 +84,7 @@ describe("blank makers preference boundary", () => {
         ["Arctic Foam", "Clark Foam"],
         ["Arctic Foam", 3],
         ["Arctic Foam", "Arctic Foam"],
-        ["US Blanks", "Arctic Foam", "Marko Foam"],
+        ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"],
         ["US Blanks", "Arctic Foam", "Marko Foam", "Marko Foam"],
         ["Arctic Foam", null],
       ]) {
@@ -211,7 +211,8 @@ describe("blank makers preference boundary", () => {
     it("isLastShownMaker is true only for the one maker still shown", () => {
       expect(isLastShownMaker([], "US Blanks")).toBe(false);
       expect(isLastShownMaker(["Arctic Foam"], "US Blanks")).toBe(false);
-      expect(isLastShownMaker(["Arctic Foam", "Marko Foam"], "US Blanks")).toBe(true);
+      expect(isLastShownMaker(["Arctic Foam", "Marko Foam"], "US Blanks")).toBe(false);
+      expect(isLastShownMaker(["Arctic Foam", "Marko Foam", "Millennium Foam"], "US Blanks")).toBe(true);
       expect(isLastShownMaker(["Arctic Foam", "Marko Foam"], "Arctic Foam")).toBe(false);
     });
 
@@ -223,8 +224,8 @@ describe("blank makers preference boundary", () => {
     });
 
     it("refuses to hide the last maker still shown", () => {
-      const hidden = ["Arctic Foam", "Marko Foam"] as const;
-      expect(withMakerShown(hidden, "US Blanks", false)).toEqual(["Arctic Foam", "Marko Foam"]);
+      const hidden = ["Arctic Foam", "Marko Foam", "Millennium Foam"] as const;
+      expect(withMakerShown(hidden, "US Blanks", false)).toEqual(["Arctic Foam", "Marko Foam", "Millennium Foam"]);
     });
   });
 });

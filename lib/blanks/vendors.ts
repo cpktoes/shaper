@@ -1,33 +1,34 @@
 /**
- * The blank makers — the three companies whose catalogues the ROCKER blank list is built from —
+ * The blank makers — the four companies whose catalogues the ROCKER blank list is built from
+ * (Millennium Foam joined 2026-10-11, quick 261011-fzb) —
  * and the few pure rules a shaper's "which makers do I want to see" choice needs (quick task
  * 260926-wmf).
  *
  * The choice is stored as the makers a shaper switched OFF, not the ones they kept on. That way a
- * maker added to the catalogue later starts switched on for everybody, the same as the three here
+ * maker added to the catalogue later starts switched on for everybody, the same as the four here
  * did, instead of being silently hidden from every shaper who ever touched the tick boxes.
  *
  * The list of makers is written out here rather than read from the catalogue files, because the
  * file reader (`seed-files.ts`) reads the disk and only runs on the server, while this list is also
  * needed in the browser, where the tick boxes and the ROCKER list live. The unit test checks this
- * list against the files, so a fourth maker's catalogue fails a test until it is named here too.
+ * list against the files, so a fifth maker's catalogue fails a test until it is named here too.
  *
  * No React, browser, database or Node import.
  */
 
 /** The catalogue makers, in the order their catalogue files are read. */
-export const KNOWN_BLANK_VENDORS = ["US Blanks", "Arctic Foam", "Marko Foam"] as const;
+export const KNOWN_BLANK_VENDORS = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"] as const;
 
 /**
  * The note at the end of ROCKER's blank picker (the founder's own sentence, 2026-10-06, quick
  * 261006-fom, D-05): where the numbers come from, that real blanks vary, and whose trademarks the
  * makers' names are. Deliberately the same whatever makers a shaper has switched off in Settings —
  * it is a notice about whose catalogs and trademarks these are, not a list of what is shown — and
- * the test checks it names every maker above, so a fourth maker fails it until the founder's note
- * is updated too. The apostrophe in "manufacturers'" is straight, as the founder typed it.
+ * the test checks it names every maker above, so a fifth maker fails it until the founder's note
+ * is updated too (Millennium Foam was added to the sentence on 2026-10-11, quick 261011-fzb). The apostrophe in "manufacturers'" is straight, as the founder typed it.
  */
 export const BLANK_CATALOG_NOTE =
-  "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam and Marko Foam are trademarks of their owners.";
+  "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam, Marko Foam and Millennium Foam are trademarks of their owners.";
 
 /** One of the catalogue makers, spelled exactly as its catalogue spells it. */
 export type BlankVendor = (typeof KNOWN_BLANK_VENDORS)[number];
@@ -77,13 +78,13 @@ export function blankMakersNote(hidden: readonly BlankVendor[]): string | null {
 }
 
 /**
- * How the list's own sentences name the catalogues being searched: exactly "the three catalogs"
+ * How the list's own sentences name the catalogues being searched: exactly "the four catalogs"
  * with every maker shown (today's wording, unchanged), otherwise "the US Blanks catalog" or "the US
  * Blanks and Marko Foam catalogs" — so a sentence like "the longest blank in …" never quotes a
  * blank from a maker the shaper has switched off.
  */
 export function catalogsPhrase(hidden: readonly BlankVendor[]): string {
-  if (hidden.length === 0) return "the three catalogs";
+  if (hidden.length === 0) return "the four catalogs";
   const shown = shownBlankVendors(hidden);
   return `the ${joinNames(shown)} ${shown.length === 1 ? "catalog" : "catalogs"}`;
 }

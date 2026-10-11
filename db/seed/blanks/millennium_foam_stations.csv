@@ -1,0 +1,430 @@
+vendor,blank_name,station,station_in_from_tail,rocker_in,thickness_in,width_in,length_in,deck_length_in,volume_l,catalog_slug,pdf_page,flag
+Millennium Foam,"5'0""WS",T0,0.0,2.125,1.6875,17.1875,61.25,61.0,53.96,50WS,14,"rocker: catalog prints 2 1/8"" but 5.08 cm here; used the inch value; thickness: catalog prints 1 11/16"" but 2.54 cm here; used the inch value"
+Millennium Foam,"5'0""WS",T12,12.0,0.9375,2.5625,22.375,61.25,61.0,53.96,50WS,14,"thickness: catalog prints 2 9/16"" but 5.08 cm here; used the inch value; width: catalog prints 22 3/8"" but 55.88 cm here; used the inch value"
+Millennium Foam,"5'0""WS",T24,24.0,0.1875,3.0,,61.25,61.0,53.96,50WS,14,"width not printed at this station; the catalog draws only the 12"" and centre stations on this blank"
+Millennium Foam,"5'0""WS",C,30.625,0.0,3.0625,25.0,61.25,61.0,53.96,50WS,14,"thickness: catalog prints 3 1/16"" but 7.62 cm here; used the inch value"
+Millennium Foam,"5'0""WS",N24,37.25,0.125,3.0,,61.25,61.0,53.96,50WS,14,"width not printed at this station; the catalog draws only the 12"" and centre stations on this blank"
+Millennium Foam,"5'0""WS",N12,49.25,0.4375,2.6875,21.8125,61.25,61.0,53.96,50WS,14,"thickness: catalog prints 2 11/16"" but 5.08 cm here; used the inch value; width: catalog prints 21 13/16"" but 53.34 cm here; used the inch value"
+Millennium Foam,"5'0""WS",N0,61.25,2.125,1.8125,14.1875,61.25,61.0,53.96,50WS,14,"thickness: catalog prints 1 13/16"" but 2.54 cm here; used the inch value"
+Millennium Foam,"5'2""WS",T0,0.0,1.375,1.875,12.75,62.1875,62.0,48,52WS,15,"rocker: catalog prints 1 3/8"" but 2.54 cm here; used the inch value; thickness: catalog prints 1 7/8"" but 2.54 cm here; used the inch value; width: catalog prints 12 3/4"" but 30.48 cm here; used the inch value"
+Millennium Foam,"5'2""WS",T12,12.0,0.5,2.625,19.0,62.1875,62.0,48,52WS,15,"thickness: catalog prints 2 5/8"" but 5.08 cm here; used the inch value"
+Millennium Foam,"5'2""WS",T24,24.0,0.0625,3.0,,62.1875,62.0,48,52WS,15,"width not printed at this station; the catalog draws only the 12"" and centre stations on this blank"
+Millennium Foam,"5'2""WS",C,31.0938,0.0,3.0625,22.0,62.1875,62.0,48,52WS,15,"thickness: catalog prints 3 1/16"" but 7.62 cm here; used the inch value"
+Millennium Foam,"5'2""WS",N24,38.1875,0.0625,3.0,,62.1875,62.0,48,52WS,15,"width not printed at this station; the catalog draws only the 12"" and centre stations on this blank"
+Millennium Foam,"5'2""WS",N12,50.1875,0.625,2.5625,19.0625,62.1875,62.0,48,52WS,15,"thickness: catalog prints 2 9/16"" but 5.08 cm here; used the inch value; width: catalog prints 19 1/16"" but 48.26 cm here; used the inch value"
+Millennium Foam,"5'2""WS",N0,62.1875,2.375,1.6875,12.0,62.1875,62.0,48,52WS,15,"thickness: catalog prints 1 11/16"" but 2.54 cm here; used the inch value"
+Millennium Foam,"5'3""G",T0,0.0,1.875,1.0,5.875,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",T12,12.0,0.75,1.9375,14.875,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",T24,24.0,0.125,2.375,17.6875,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",C,32.125,0.0,2.5,18.1875,64.25,63.5,26.9,53G,16,"width: catalog prints 18 3/16"" but 46.03 cm here; used the inch value"
+Millennium Foam,"5'3""G",N24,40.25,0.125,2.5,17.5,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",N12,52.25,1.375,1.75,13.5625,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",N0,64.25,5.0625,0.9375,2.6875,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'8""R",T0,0.0,2.0625,1.0625,7.5,69.75,69.125,35.5,58R,17,"width: catalog prints 7 1/2"" but 15.24 cm here; used the inch value"
+Millennium Foam,"5'8""R",T12,12.0,0.9375,2.0,15.75,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'8""R",T24,24.0,0.25,2.5,19.0625,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'8""R",C,34.875,0.0,2.75,19.8125,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'8""R",N24,45.75,0.25,2.5,18.5625,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'8""R",N12,57.75,1.4375,1.875,14.3125,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'8""R",N0,69.75,4.6875,1.0625,3.875,69.75,69.125,35.5,58R,17,
+Millennium Foam,"5'10""F",T0,0.0,2.4375,1.375,14.8125,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",T12,12.0,1.3125,2.25,21.3125,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",T24,24.0,0.5,2.875,24.3125,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",C,35.8438,0.0,3.0,25.1875,71.6875,71.0,54.6,510F,18,"thickness: catalog prints 3"" but 7.3 cm here; used the inch value"
+Millennium Foam,"5'10""F",N24,47.6875,0.125,3.0,24.25,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",N12,59.6875,1.25,2.375,19.625,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",N0,71.6875,4.5,1.25,8.5625,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"6'0""DE",T0,0.0,2.0,1.5,9.0,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'0""DE",T12,12.0,0.9375,2.375,17.4375,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'0""DE",T24,24.0,0.25,3.0,21.0625,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'0""DE",C,36.125,0.0,3.125,22.0,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'0""DE",N24,48.25,0.25,2.9375,21.125,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'0""DE",N12,60.25,1.375,2.25,16.8125,72.25,72.0,45.9,60DE,19,"rocker: catalog prints 1 3/8"" but 1.38 cm here; used the inch value"
+Millennium Foam,"6'0""DE",N0,72.25,4.5,1.0625,5.0625,72.25,72.0,45.9,60DE,19,
+Millennium Foam,"6'1""DG",T0,0.0,1.875,1.25,8.0,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",T12,12.0,0.875,2.0625,15.5,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",T24,24.0,0.25,2.6875,19.3125,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",C,36.8438,0.0,3.0,20.625,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",N24,49.6875,0.5313,2.6875,18.625,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",N12,61.6875,2.125,2.0,13.5625,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""DG",N0,73.6875,5.4375,1.125,4.5,73.6875,73.0,42.6,61DG,20,
+Millennium Foam,"6'1""B",T0,0.0,2.125,1.25,8.0625,74.0,73.25,51.77,61B,21,
+Millennium Foam,"6'1""B",T12,12.0,0.875,2.25,17.375,74.0,73.25,51.77,61B,21,
+Millennium Foam,"6'1""B",T24,24.0,0.2188,2.875,20.6875,74.0,73.25,51.77,61B,21,
+Millennium Foam,"6'1""B",C,37.0,0.0,3.0625,21.6875,74.0,73.25,51.77,61B,21,
+Millennium Foam,"6'1""B",N24,50.0,0.375,2.8125,20.4375,74.0,73.25,51.77,61B,21,
+Millennium Foam,"6'1""B",N12,62.0,1.625,2.25,16.1875,74.0,73.25,51.77,61B,21,"rocker: catalog prints 1 5/8"" but 3.81 cm here; used the inch value"
+Millennium Foam,"6'1""B",N0,74.0,4.875,1.25,5.1875,74.0,73.25,51.77,61B,21,"rocker: catalog prints 4 7/8"" but 12.86 cm here; used the inch value"
+Millennium Foam,"6'1""A",T0,0.0,2.125,1.3125,9.0,73.625,73.0,44.6,61A,22,
+Millennium Foam,"6'1""A",T12,12.0,1.0,2.125,16.0,73.625,73.0,44.6,61A,22,
+Millennium Foam,"6'1""A",T24,24.0,0.3125,2.75,19.5625,73.625,73.0,44.6,61A,22,
+Millennium Foam,"6'1""A",C,36.8125,0.0,3.0625,20.5625,73.625,73.0,44.6,61A,22,"catalog's Max Width line prints 20 3/4""; this station prints 20 9/16"" (52.23 cm) and is used"
+Millennium Foam,"6'1""A",N24,49.625,0.4375,2.8125,19.625,73.625,73.0,44.6,61A,22,
+Millennium Foam,"6'1""A",N12,61.625,2.0,2.1875,15.25,73.625,73.0,44.6,61A,22,"rocker: catalog prints 2"" but 2.08 cm here; used the inch value; thickness: catalog prints 2 13/16"" but 5.55 cm here; used the cm value (2 3/16""), which fits the 12"" and 24"" stations either side"
+Millennium Foam,"6'1""A",N0,73.625,5.6875,0.9375,5.0,73.625,73.0,44.6,61A,22,
+Millennium Foam,"6'2""F",T0,0.0,1.8125,1.5,9.625,75.125,74.5,59.1,62F,23,"width: catalog prints 9 5/8"" but 18.89 cm here; used the inch value"
+Millennium Foam,"6'2""F",T12,12.0,0.875,2.25,16.4375,75.125,74.5,59.1,62F,23,"width: catalog prints 16 7/16"" but 48.26 cm here; used the inch value"
+Millennium Foam,"6'2""F",T24,24.0,0.25,2.75,20.25,75.125,74.5,59.1,62F,23,"width: catalog prints 20 1/4"" but 56.99 cm here; used the inch value"
+Millennium Foam,"6'2""F",C,37.5625,0.0,3.0625,23.3125,75.125,74.5,59.1,62F,23,"width: catalog prints 23 5/16"" but 60.33 cm here; used the inch value"
+Millennium Foam,"6'2""F",N24,51.125,0.375,2.875,21.25,75.125,74.5,59.1,62F,23,"width: catalog prints 21 1/4"" but 57.63 cm here; used the inch value"
+Millennium Foam,"6'2""F",N12,63.125,1.6875,2.1875,16.5,75.125,74.5,59.1,62F,23,"width: catalog prints 16 1/2"" but 48.42 cm here; used the inch value"
+Millennium Foam,"6'2""F",N0,75.125,4.9375,1.1875,6.125,75.125,74.5,59.1,62F,23,"thickness: catalog prints 1 3/16"" but 3.301 cm here; used the inch value"
+Millennium Foam,"6'2""DT",T0,0.0,1.75,1.375,10.0,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",T12,12.0,0.6875,2.25,17.9375,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",T24,24.0,0.375,2.8125,21.375,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",C,37.1875,0.0,3.0,22.75,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",N24,50.375,0.1875,2.8125,21.875,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",N12,62.375,1.375,2.25,17.375,74.375,73.75,53.5,62DT,24,"rocker: catalog prints 1 3/8"" but 1.38 cm here; used the inch value"
+Millennium Foam,"6'2""DT",N0,74.375,4.5,1.375,5.0,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'3""S",T0,0.0,1.4375,1.75,14.0,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",T12,12.0,0.75,2.5625,19.8125,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",T24,24.0,0.1875,3.0625,23.25,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",C,37.625,0.0,3.375,24.625,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",N24,51.25,0.375,3.125,23.5,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",N12,63.25,1.5625,2.5,18.9375,75.25,74.75,62.8,63S,25,
+Millennium Foam,"6'3""S",N0,75.25,4.9375,1.9375,1.0,75.25,74.75,62.8,63S,25,"width 1"": pointed nose, not printed in catalog; 1"" stands in for the point (0 is kept for a rounded nose)"
+Millennium Foam,"6'3""DG",T0,0.0,2.0625,1.3125,7.75,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",T12,12.0,1.0,2.125,15.5,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",T24,24.0,0.25,2.625,19.25,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",C,37.7813,0.0,2.875,20.625,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",N24,51.5625,0.3125,2.625,19.125,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",N12,63.5625,1.6875,2.0625,14.625,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'3""DG",N0,75.5625,5.375,1.0625,5.125,75.5625,74.75,43.16,63DG,26,
+Millennium Foam,"6'4""P",T0,0.0,2.125,1.1875,6.0,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",T12,12.0,0.875,2.1875,15.9375,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",T24,24.0,0.25,2.625,19.625,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",C,37.5625,0.0,2.8125,20.875,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",N24,51.125,0.375,2.5625,19.1875,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",N12,63.125,1.5625,1.3125,14.5625,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""P",N0,75.125,5.5,1.0,3.5,75.125,74.5,44.7,64P,27,
+Millennium Foam,"6'4""CT",T0,0.0,2.25,1.5,7.75,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",T12,12.0,0.75,2.5625,15.3125,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",T24,24.0,0.1875,3.125,19.0,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",C,38.5,0.0,3.3125,20.5,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",N24,53.0,0.3125,2.9375,19.0,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",N12,65.0,1.4375,2.1875,14.375,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""CT",N0,77.0,5.5,1.375,5.0,77.0,74.8125,48.2,64CT,28,
+Millennium Foam,"6'4""A",T0,0.0,2.25,1.4375,8.125,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",T12,12.0,0.875,2.5,16.5625,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",T24,24.0,0.25,3.125,20.125,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",C,38.4688,0.0,3.375,21.3125,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",N24,52.9375,0.3125,3.0,19.875,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",N12,64.9375,1.4375,2.25,15.75,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'4""A",N0,76.9375,5.0625,1.0,4.25,76.9375,76.0,52.7,64A,29,
+Millennium Foam,"6'5""F",T0,0.0,2.0,1.5625,14.125,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",T12,12.0,1.0625,2.375,19.0,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",T24,24.0,0.375,2.9375,22.0625,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",C,38.3125,0.0,3.25,23.625,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",N24,52.625,0.3125,3.125,22.8125,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",N12,64.625,1.5,2.5,19.1875,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""F",N0,76.625,4.875,1.1875,7.875,76.625,76.0,61,65F,30,
+Millennium Foam,"6'5""DE",T0,0.0,2.0,1.25,9.0,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",T12,12.0,1.0,2.375,17.625,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",T24,24.0,0.3125,3.0,20.875,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",C,39.3125,0.0,3.3125,22.0,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",N24,54.625,0.375,3.125,20.75,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",N12,66.625,1.625,2.5,17.0625,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'5""DE",N0,78.625,4.875,1.375,4.875,78.625,78.0,57.3,65DE,31,
+Millennium Foam,"6'6""DG",T0,0.0,2.5,1.1875,7.5,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",T12,12.0,1.25,2.125,15.1875,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",T24,24.0,0.4375,2.75,19.3125,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",C,39.0625,0.0,3.0,21.0,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",N24,54.125,0.4375,2.75,19.5,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",N12,66.125,1.6875,2.125,15.25,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'6""DG",N0,78.125,4.8125,1.3125,5.1875,78.125,77.5,45.3,66DG,32,
+Millennium Foam,"6'8""DG",T0,0.0,2.75,1.1875,7.0,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",T12,12.0,1.25,2.25,15.25,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",T24,24.0,0.375,2.875,19.3125,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",C,40.125,0.0,3.1875,21.125,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",N24,56.25,0.5,2.8125,19.5625,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",N12,68.25,1.75,2.125,15.1875,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'8""DG",N0,80.25,5.0625,1.125,4.6875,80.25,79.6875,50.9,68DG,33,
+Millennium Foam,"6'9""A",T0,0.0,2.75,1.125,8.5,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",T12,12.0,1.3125,2.3125,16.6875,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",T24,24.0,0.4375,3.0,20.5,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",C,40.8438,0.0,3.3125,22.1875,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",N24,57.6875,0.5,3.0,20.4375,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",N12,69.6875,1.75,2.25,15.8125,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'9""A",N0,81.6875,4.9375,1.125,4.9375,81.6875,81.0,57.5,69A,34,
+Millennium Foam,"6'10""M",T0,0.0,2.25,1.375,13.25,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",T12,12.0,1.125,2.1875,18.9375,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",T24,24.0,0.4375,2.8125,22.4375,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",C,41.25,0.0,3.1875,24.5,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",N24,58.5,0.4375,2.9375,23.0,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",N12,70.5,1.6875,2.25,18.9375,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'10""M",N0,82.5,4.75,1.3125,8.0,82.5,82.0,66.02,610M,35,
+Millennium Foam,"6'11""M",T0,0.0,2.125,1.0625,8.1875,83.125,82.0,57.39,611M,36,"rocker: catalog prints 2 1/8"" but 6.66 cm here; used the inch value"
+Millennium Foam,"6'11""M",T12,12.0,0.9375,2.25,17.25,83.125,82.0,57.39,611M,36,"rocker: catalog prints 15/16"" but 2.69 cm here; used the inch value"
+Millennium Foam,"6'11""M",T24,24.0,0.25,2.75,21.5,83.125,82.0,57.39,611M,36,"rocker: catalog prints 1/4"" but 0.79 cm here; used the inch value"
+Millennium Foam,"6'11""M",C,41.5625,0.0,3.125,23.25,83.125,82.0,57.39,611M,36,
+Millennium Foam,"6'11""M",N24,59.125,0.4375,2.875,21.4375,83.125,82.0,57.39,611M,36,
+Millennium Foam,"6'11""M",N12,71.125,1.6875,2.25,16.8125,83.125,82.0,57.39,611M,36,
+Millennium Foam,"6'11""M",N0,83.125,4.875,0.625,6.5,83.125,82.0,57.39,611M,36,
+Millennium Foam,"6'11""MT",T0,0.0,2.125,1.5,8.1875,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",T12,12.0,0.9375,2.375,17.25,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",T24,24.0,0.25,3.0,21.5,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",C,41.5625,0.0,3.375,23.25,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",N24,59.125,0.375,3.125,21.4375,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",N12,71.125,1.4375,2.5,16.8125,83.125,82.0,68,611MT,37,
+Millennium Foam,"6'11""MT",N0,83.125,4.5,1.375,6.5,83.125,82.0,68,611MT,37,"rocker: catalog prints 4 1/2"" but 15.24 cm here; used the inch value"
+Millennium Foam,"6'11""F",T0,0.0,1.875,1.375,13.5,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",T12,12.0,1.0,2.25,19.1875,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",T24,24.0,0.375,3.0,22.9375,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",C,41.125,0.0,3.5,25.0625,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",N24,58.25,0.5625,3.125,23.625,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",N12,70.25,1.875,2.375,19.25,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""F",N0,82.25,5.1875,1.25,7.6875,82.25,81.125,70.7,611F,38,
+Millennium Foam,"6'11""P",T0,0.0,2.3125,1.375,8.125,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",T12,12.0,1.0625,2.375,18.0,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",T24,24.0,0.375,3.0,21.9375,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",C,41.75,0.0,3.3125,23.75,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",N24,59.5,0.4063,3.0,23.0625,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",N12,71.5,1.4375,2.3125,20.3125,83.5,83.0,69.7,611P,39,
+Millennium Foam,"6'11""P",N0,83.5,4.25,1.1875,0.0,83.5,83.0,69.7,611P,39,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"7'1""DG",T0,0.0,2.75,1.25,7.75,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",T12,12.0,1.4375,2.25,15.4375,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",T24,24.0,0.5625,2.875,19.5,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",C,42.75,0.0,3.25,21.75,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",N24,61.5,0.625,2.8125,19.25,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",N12,73.5,2.125,2.125,14.25,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'1""DG",N0,85.5,5.75,1.25,4.875,85.5,84.0,56,71DG,40,
+Millennium Foam,"7'3""DG",T0,0.0,2.625,1.1875,6.0,88.25,87.25,60.5,73DG,41,"rocker: catalog prints 2 5/8"" but 6.35 cm here; used the inch value"
+Millennium Foam,"7'3""DG",T12,12.0,1.5,2.125,15.0,88.25,87.25,60.5,73DG,41,
+Millennium Foam,"7'3""DG",T24,24.0,0.625,2.8125,19.625,88.25,87.25,60.5,73DG,41,"rocker: catalog prints 5/8"" but 1.27 cm here; used the inch value"
+Millennium Foam,"7'3""DG",C,44.125,0.0,3.3125,21.9375,88.25,87.25,60.5,73DG,41,"catalog's Max Width line prints 21 1/2""; this station prints 21 15/16"" (55.72 cm) and is used"
+Millennium Foam,"7'3""DG",N24,64.25,0.6875,2.8125,18.9375,88.25,87.25,60.5,73DG,41,"width: catalog prints 18 15/16"" but 48.89 cm here; used the inch value"
+Millennium Foam,"7'3""DG",N12,76.25,2.1875,2.125,13.75,88.25,87.25,60.5,73DG,41,
+Millennium Foam,"7'3""DG",N0,88.25,5.5,1.375,5.0,88.25,87.25,60.5,73DG,41,
+Millennium Foam,"7'3""F",T0,0.0,2.25,1.4375,10.5,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'3""F",T12,12.0,1.3125,2.3125,18.0625,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'3""F",T24,24.0,0.625,3.0,21.5625,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'3""F",C,43.8125,0.0,3.5625,24.1875,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'3""F",N24,63.625,0.6875,3.125,22.8125,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'3""F",N12,75.625,2.125,2.4375,18.625,87.625,87.0,79.3,73F,42,"rocker: catalog prints 2 1/8"" but 3.4 cm here; used the inch value"
+Millennium Foam,"7'3""F",N0,87.625,5.3125,1.4375,6.4375,87.625,87.0,79.3,73F,42,
+Millennium Foam,"7'4""P",T0,0.0,2.3125,1.5625,8.5625,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",T12,12.0,1.125,2.4375,17.75,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",T24,24.0,0.4375,3.0,21.8125,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",C,44.75,0.0,3.4375,24.5,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",N24,65.5,0.5625,3.0,23.625,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",N12,77.5,1.625,2.375,20.6875,89.5,89.0,78.98,74P,43,
+Millennium Foam,"7'4""P",N0,89.5,4.25,1.3125,0.0,89.5,89.0,78.98,74P,43,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"7'5""HS",T0,0.0,2.75,1.4375,7.25,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",T12,12.0,1.4375,2.0625,16.5625,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",T24,24.0,0.5625,2.8125,20.9375,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",C,44.4375,0.0,3.25,23.5,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",N24,64.875,0.625,2.8125,21.5625,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",N12,76.875,1.875,2.0625,17.0625,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'5""HS",N0,88.875,5.125,1.3125,5.5,88.875,88.0,65.94,75HS,44,
+Millennium Foam,"7'7""B",T0,0.0,2.375,1.75,9.5,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",T12,12.0,1.3125,2.5625,16.4375,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",T24,24.0,0.5625,3.1875,20.25,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",C,45.6563,0.0,3.625,23.3125,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",N24,67.3125,0.75,3.1875,21.25,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",N12,79.3125,2.625,2.5,16.5,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'7""B",N0,91.3125,6.125,1.4375,3.5,91.3125,90.4375,76.5,77B,45,
+Millennium Foam,"7'9""P",T0,0.0,3.0,1.1875,8.6875,93.0,93.375,73,79P,46,"length: catalog prints a tip-to-tip deck of 7'9 3/8"" against a 7'9"" bottom length; both kept as printed"
+Millennium Foam,"7'9""P",T12,12.0,1.625,2.3125,17.0625,93.0,93.375,73,79P,46,
+Millennium Foam,"7'9""P",T24,24.0,0.75,2.875,21.0625,93.0,93.375,73,79P,46,
+Millennium Foam,"7'9""P",C,46.5,0.0,3.375,23.6875,93.0,93.375,73,79P,46,
+Millennium Foam,"7'9""P",N24,69.0,0.6875,2.875,22.6875,93.0,93.375,73,79P,46,
+Millennium Foam,"7'9""P",N12,81.0,1.8125,2.25,19.6875,93.0,93.375,73,79P,46,
+Millennium Foam,"7'9""P",N0,93.0,3.8125,1.1875,0.0,93.0,93.375,73,79P,46,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"7'9""PT",T0,0.0,3.0,1.5625,8.6875,93.0,93.375,85,79PT,47,"length: catalog prints a tip-to-tip deck of 7'9 3/8"" against a 7'9"" bottom length; both kept as printed"
+Millennium Foam,"7'9""PT",T12,12.0,1.625,2.625,17.0625,93.0,93.375,85,79PT,47,
+Millennium Foam,"7'9""PT",T24,24.0,0.75,3.25,21.0625,93.0,93.375,85,79PT,47,
+Millennium Foam,"7'9""PT",C,46.5,0.0,3.75,23.6875,93.0,93.375,85,79PT,47,
+Millennium Foam,"7'9""PT",N24,69.0,0.6875,3.125,22.6875,93.0,93.375,85,79PT,47,
+Millennium Foam,"7'9""PT",N12,81.0,1.8125,2.5,19.6875,93.0,93.375,85,79PT,47,
+Millennium Foam,"7'9""PT",N0,93.0,3.8125,1.625,0.0,93.0,93.375,85,79PT,47,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"7'10""DG",T0,0.0,2.9375,1.5625,4.25,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'10""DG",T12,12.0,1.75,2.25,15.125,94.25,93.5,69.9,710DG,48,"width: catalog prints 15 1/8"" but 38.57 cm here; used the inch value"
+Millennium Foam,"7'10""DG",T24,24.0,0.8125,2.9375,19.5,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'10""DG",C,47.125,0.0,3.5625,22.3125,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'10""DG",N24,70.25,0.625,3.0625,19.1875,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'10""DG",N12,82.25,2.25,2.375,14.0625,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'10""DG",N0,94.25,5.6875,1.625,4.8125,94.25,93.5,69.9,710DG,48,
+Millennium Foam,"7'11""CB",T0,0.0,2.3125,1.375,7.25,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",T12,12.0,1.25,2.375,17.8125,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",T24,24.0,0.4375,2.9375,21.75,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",C,47.6563,0.0,3.5,24.4375,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",N24,71.3125,0.6875,3.0,22.4375,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",N12,83.3125,2.4375,2.25,17.4375,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CB",N0,95.3125,5.75,1.1875,4.0,95.3125,94.4375,77.6,711CB,49,
+Millennium Foam,"7'11""CT",T0,0.0,2.3125,1.75,7.25,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",T12,12.0,1.25,2.5625,17.8125,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",T24,24.0,0.5625,3.3125,21.75,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",C,47.6563,0.0,3.6875,24.4375,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",N24,71.3125,0.875,3.25,22.4375,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",N12,83.3125,2.4375,2.5,17.4375,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",N0,95.3125,6.1875,1.5,4.0,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"8'3""",T0,0.0,3.1875,1.3125,7.4375,99.5,99.0625,75.9,83,51,
+Millennium Foam,"8'3""",T12,12.0,1.6875,2.125,16.625,99.5,99.0625,75.9,83,51,
+Millennium Foam,"8'3""",T24,24.0,0.75,2.875,20.625,99.5,99.0625,75.9,83,51,"width: catalog prints 20 5/8"" but 52.58 cm here; used the inch value"
+Millennium Foam,"8'3""",C,49.75,0.0,3.5,23.6875,99.5,99.0625,75.9,83,51,"thickness: catalog prints 3 1/2"" but 9.7 cm here; used the inch value"
+Millennium Foam,"8'3""",N24,75.5,0.9375,2.9375,22.25,99.5,99.0625,75.9,83,51,"width: catalog prints 22 1/4"" but 56.71 cm here; used the inch value"
+Millennium Foam,"8'3""",N12,87.5,2.125,2.1875,19.0,99.5,99.0625,75.9,83,51,
+Millennium Foam,"8'3""",N0,99.5,4.1875,1.375,0.0,99.5,99.0625,75.9,83,51,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"8'4""P",T0,0.0,2.875,1.5,7.4375,101.125,100.5625,85,84P,52,
+Millennium Foam,"8'4""P",T12,12.0,1.5625,2.5,16.8125,101.125,100.5625,85,84P,52,
+Millennium Foam,"8'4""P",T24,24.0,0.6875,3.0625,21.0,101.125,100.5625,85,84P,52,"thickness: catalog prints ""3 1/6"""" (no such fraction) but 7.77 cm here; used the cm value (3 1/16"")"
+Millennium Foam,"8'4""P",C,50.5625,0.0,3.625,24.3125,101.125,100.5625,85,84P,52,"thickness: catalog prints 3 5/8"" but 9.7 cm here; used the inch value"
+Millennium Foam,"8'4""P",N24,77.125,0.875,2.9375,22.75,101.125,100.5625,85,84P,52,
+Millennium Foam,"8'4""P",N12,89.125,2.125,2.25,19.25,101.125,100.5625,85,84P,52,
+Millennium Foam,"8'4""P",N0,101.125,4.9375,1.375,0.0,101.125,100.5625,85,84P,52,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"8'4""PT",T0,0.0,2.875,1.6875,7.4375,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",T12,12.0,1.5625,2.625,16.8125,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",T24,24.0,0.6875,3.25,21.0,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",C,50.5625,0.0,3.75,24.3125,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",N24,77.125,0.875,3.125,22.75,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",N12,89.125,2.125,2.5,19.25,101.125,100.5625,96,84PT,53,
+Millennium Foam,"8'4""PT",N0,101.125,4.9375,1.625,0.0,101.125,100.5625,96,84PT,53,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"8'4""CB",T0,0.0,2.625,1.1875,6.3125,100.5,100.0,80.4,84CB,54,"width: catalog prints 6 5/16"" but 13.49 cm here; used the inch value"
+Millennium Foam,"8'4""CB",T12,12.0,2.125,2.125,16.4375,100.5,100.0,80.4,84CB,54,
+Millennium Foam,"8'4""CB",T24,24.0,0.6875,2.8125,21.3125,100.5,100.0,80.4,84CB,54,
+Millennium Foam,"8'4""CB",C,50.25,0.0,3.375,25.125,100.5,100.0,80.4,84CB,54,"catalog's Max Thickness line prints 3 5/16""; this station prints 3 3/8"" (8.57 cm) and is used"
+Millennium Foam,"8'4""CB",N24,76.5,1.0,2.75,21.9375,100.5,100.0,80.4,84CB,54,
+Millennium Foam,"8'4""CB",N12,88.5,2.625,2.125,16.3125,100.5,100.0,80.4,84CB,54,"thickness: catalog prints 2 1/8"" but 8.57 cm here; used the inch value"
+Millennium Foam,"8'4""CB",N0,100.5,6.125,0.75,3.25,100.5,100.0,80.4,84CB,54,
+Millennium Foam,"8'5""B",T0,0.0,2.9375,1.6875,7.8125,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",T12,12.0,1.6875,2.625,16.6875,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",T24,24.0,0.8125,3.25,21.125,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",C,51.0,0.0,3.875,24.5625,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",N24,78.0,1.0,3.1875,21.875,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",N12,90.0,2.625,2.4375,16.6875,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'5""B",N0,102.0,6.125,1.1875,5.0,102.0,101.1875,97.53,85B,55,
+Millennium Foam,"8'8""DG",T0,0.0,3.3125,1.5,4.25,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",T12,12.0,2.125,2.5,14.5625,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",T24,24.0,1.1875,3.125,18.9375,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",C,53.0,0.0,4.0625,22.625,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",N24,82.0,1.25,3.3125,18.8125,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",N12,94.0,3.0625,2.5,13.9375,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'8""DG",N0,106.0,7.0,1.1875,1.0625,106.0,105.0,74.9,88DG,56,
+Millennium Foam,"8'10""M",T0,0.0,3.25,1.25,7.5,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",T12,12.0,1.875,2.125,16.625,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",T24,24.0,0.75,2.75,21.125,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",C,53.5,0.0,3.5,24.75,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",N24,83.0,1.125,2.75,23.0,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",N12,95.0,2.625,2.125,19.875,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",N0,107.0,5.0625,1.25,0.0,107.0,106.0,92.9,810M,57,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"8'10""MT",T0,0.0,3.5,1.5,7.5,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",T12,12.0,1.875,2.375,16.625,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",T24,24.0,0.75,3.0,21.125,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",C,53.5,0.0,3.75,24.75,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",N24,83.0,1.125,3.0625,23.0,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",N12,95.0,2.625,2.375,19.875,107.0,106.0,106.4,810MT,58,
+Millennium Foam,"8'10""MT",N0,107.0,5.0625,1.375,0.0,107.0,106.0,106.4,810MT,58,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'3""P",T0,0.0,3.3125,1.625,8.5,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",T12,12.0,1.8125,2.625,17.375,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",T24,24.0,0.9375,3.125,21.3125,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",C,55.875,0.0,3.5,25.0,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",N24,87.75,1.0625,3.0,23.75,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",N12,99.75,2.1875,2.4375,21.0,111.75,111.3125,100,93P,59,
+Millennium Foam,"9'3""P",N0,111.75,4.4375,1.375,0.0,111.75,111.3125,100,93P,59,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'3""G",T0,0.0,3.375,1.375,5.5625,112.75,111.8125,95.7,93G,60,"rocker: catalog prints 3 3/8"" but 3.51 cm here; used the inch value"
+Millennium Foam,"9'3""G",T12,12.0,1.875,2.625,13.9375,112.75,111.8125,95.7,93G,60,
+Millennium Foam,"9'3""G",T24,24.0,0.9375,3.375,17.8125,112.75,111.8125,95.7,93G,60,
+Millennium Foam,"9'3""G",C,56.375,0.0,4.125,22.25,112.75,111.8125,95.7,93G,60,"catalog's Max Width line prints 22 5/16""; this station prints 22 1/4"" (56.51 cm) and is used"
+Millennium Foam,"9'3""G",N24,88.75,1.3125,3.4375,19.0625,112.75,111.8125,95.7,93G,60,"rocker: catalog prints 1 5/16"" but 4.93 cm here; used the inch value"
+Millennium Foam,"9'3""G",N12,100.75,3.0625,2.5625,14.4375,112.75,111.8125,95.7,93G,60,
+Millennium Foam,"9'3""G",N0,112.75,6.8125,1.375,1.25,112.75,111.8125,95.7,93G,60,
+Millennium Foam,"9'4""M",T0,0.0,2.9375,1.4375,11.0,112.5,111.0,102.2,94M,61,
+Millennium Foam,"9'4""M",T12,12.0,1.8125,2.875,18.625,112.5,111.0,102.2,94M,61,"thickness: catalog prints 2 7/8"" in both units here, though the thicker 9'4""MT prints 2 9/16"" at this station"
+Millennium Foam,"9'4""M",T24,24.0,0.9375,3.0,22.125,112.5,111.0,102.2,94M,61,"width: catalog prints 22 1/8"" but 56.97 cm here; used the inch value"
+Millennium Foam,"9'4""M",C,56.25,0.0,3.4375,25.1875,112.5,111.0,102.2,94M,61,
+Millennium Foam,"9'4""M",N24,88.5,1.1875,3.0,24.0,112.5,111.0,102.2,94M,61,
+Millennium Foam,"9'4""M",N12,100.5,2.375,2.4375,20.875,112.5,111.0,102.2,94M,61,
+Millennium Foam,"9'4""M",N0,112.5,4.4375,1.1875,0.0,112.5,111.0,102.2,94M,61,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'4""MT",T0,0.0,2.9375,1.75,11.0,112.5,111.0,111.9,94MT,62,
+Millennium Foam,"9'4""MT",T12,12.0,1.8125,2.5625,18.625,112.5,111.0,111.9,94MT,62,
+Millennium Foam,"9'4""MT",T24,24.0,0.9375,3.125,22.125,112.5,111.0,111.9,94MT,62,"width: catalog prints 22 1/8"" but 56.97 cm here; used the inch value"
+Millennium Foam,"9'4""MT",C,56.25,0.0,3.6875,25.1875,112.5,111.0,111.9,94MT,62,
+Millennium Foam,"9'4""MT",N24,88.5,1.1875,3.125,24.0,112.5,111.0,111.9,94MT,62,
+Millennium Foam,"9'4""MT",N12,100.5,2.375,2.5625,20.875,112.5,111.0,111.9,94MT,62,
+Millennium Foam,"9'4""MT",N0,112.5,4.4375,1.5,0.0,112.5,111.0,111.9,94MT,62,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'5""",T0,0.0,3.375,1.5,9.25,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",T12,12.0,1.9375,2.4375,17.25,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",T24,24.0,1.0,3.0,21.3125,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",C,56.1563,0.0,3.5,24.75,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",N24,88.3125,1.1875,2.9375,23.5625,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",N12,100.3125,2.5625,2.3125,21.0625,112.3125,111.75,105.6,95,63,
+Millennium Foam,"9'5""",N0,112.3125,4.9375,1.125,0.0,112.3125,111.75,105.6,95,63,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'5""P",T0,0.0,3.875,1.5,6.9375,113.0625,112.4375,92.6,95P,64,"rocker: catalog prints 3 7/8"" but 9.48 cm here; used the inch value"
+Millennium Foam,"9'5""P",T12,12.0,2.25,2.3125,15.8125,113.0625,112.4375,92.6,95P,64,
+Millennium Foam,"9'5""P",T24,24.0,1.1875,2.75,19.9375,113.0625,112.4375,92.6,95P,64,
+Millennium Foam,"9'5""P",C,56.5313,0.0,3.375,24.5625,113.0625,112.4375,92.6,95P,64,
+Millennium Foam,"9'5""P",N24,89.0625,1.1875,2.8125,23.3125,113.0625,112.4375,92.6,95P,64,
+Millennium Foam,"9'5""P",N12,101.0625,2.4375,2.25,20.25,113.0625,112.4375,92.6,95P,64,
+Millennium Foam,"9'5""P",N0,113.0625,5.0625,1.3125,0.0,113.0625,112.4375,92.6,95P,64,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'7""G",T0,0.0,3.3125,1.4375,3.125,115.125,114.1875,106.6,97G,65,
+Millennium Foam,"9'7""G",T12,12.0,1.9375,2.75,13.625,115.125,114.1875,106.6,97G,65,
+Millennium Foam,"9'7""G",T24,24.0,0.9375,3.5625,17.875,115.125,114.1875,106.6,97G,65,
+Millennium Foam,"9'7""G",C,57.5625,0.0,4.3125,22.5,115.125,114.1875,106.6,97G,65,"thickness: catalog prints 4 5/16"" but 10.69 cm here; used the inch value"
+Millennium Foam,"9'7""G",N24,91.125,1.625,3.4375,18.5625,115.125,114.1875,106.6,97G,65,
+Millennium Foam,"9'7""G",N12,103.125,3.4375,2.6875,13.5,115.125,114.1875,106.6,97G,65,
+Millennium Foam,"9'7""G",N0,115.125,7.125,1.25,1.0,115.125,114.1875,106.6,97G,65,"width 1"": pointed nose, not printed in catalog; 1"" stands in for the point (0 is kept for a rounded nose)"
+Millennium Foam,"9'9""P",T0,0.0,4.125,1.5,7.375,118.1875,117.625,115,99P,66,"thickness: catalog prints ""1 1/3"""" (no such fraction) but 3.81 cm here; used the cm value (1 1/2"")"
+Millennium Foam,"9'9""P",T12,12.0,2.4375,2.375,16.5,118.1875,117.625,115,99P,66,
+Millennium Foam,"9'9""P",T24,24.0,1.1875,3.0625,20.75,118.1875,117.625,115,99P,66,
+Millennium Foam,"9'9""P",C,59.0937,0.0,4.0,25.125,118.1875,117.625,115,99P,66,
+Millennium Foam,"9'9""P",N24,94.1875,1.0625,3.1875,23.5,118.1875,117.625,115,99P,66,
+Millennium Foam,"9'9""P",N12,106.1875,2.1875,2.5,20.1875,118.1875,117.625,115,99P,66,"thickness: catalog prints 2 1/2"" but 7.62 cm here; used the inch value"
+Millennium Foam,"9'9""P",N0,118.1875,4.5,1.4375,0.0,118.1875,117.625,115,99P,66,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"9'9""Y",T0,0.0,3.5,1.375,9.0,117.25,116.75,114,99Y,67,
+Millennium Foam,"9'9""Y",T12,12.0,2.0,2.5,17.8125,117.25,116.75,114,99Y,67,
+Millennium Foam,"9'9""Y",T24,24.0,1.0,3.125,21.5625,117.25,116.75,114,99Y,67,
+Millennium Foam,"9'9""Y",C,58.625,0.0,3.75,25.3125,117.25,116.75,114,99Y,67,"catalog's Max Thickness line prints 3 1/2""; this station prints 3 3/4"" (9.52 cm) and is used"
+Millennium Foam,"9'9""Y",N24,93.25,1.3125,3.125,23.6875,117.25,116.75,114,99Y,67,"thickness: catalog prints 3 1/8"" but 7.77 cm here; used the inch value"
+Millennium Foam,"9'9""Y",N12,105.25,2.625,2.4375,20.9375,117.25,116.75,114,99Y,67,
+Millennium Foam,"9'9""Y",N0,117.25,4.875,1.5,0.0,117.25,116.75,114,99Y,67,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"10'2""P",T0,0.0,3.6875,1.25,8.5,122.75,122.25,123.9,102P,68,
+Millennium Foam,"10'2""P",T12,12.0,2.125,2.5625,17.8125,122.75,122.25,123.9,102P,68,
+Millennium Foam,"10'2""P",T24,24.0,1.125,3.125,21.875,122.75,122.25,123.9,102P,68,"rocker: catalog prints 1 1/8"" but 5.4 cm here; used the inch value"
+Millennium Foam,"10'2""P",C,61.375,0.0,3.8125,25.375,122.75,122.25,123.9,102P,68,"width: catalog prints 25 3/8"" but 65.42 cm here; used the inch value"
+Millennium Foam,"10'2""P",N24,98.75,1.25,3.125,23.8125,122.75,122.25,123.9,102P,68,
+Millennium Foam,"10'2""P",N12,110.75,2.5,2.5,20.6875,122.75,122.25,123.9,102P,68,
+Millennium Foam,"10'2""P",N0,122.75,4.875,1.375,0.0,122.75,122.25,123.9,102P,68,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"10'3""CT",T0,0.0,4.5,2.0,9.0,122.5,122.0,144.4,103CT,69,
+Millennium Foam,"10'3""CT",T12,12.0,2.6875,2.9375,17.3125,122.5,122.0,144.4,103CT,69,
+Millennium Foam,"10'3""CT",T24,24.0,1.5,3.5,21.125,122.5,122.0,144.4,103CT,69,"width: catalog prints 21 1/8"" but 53.5 cm here; used the inch value"
+Millennium Foam,"10'3""CT",C,61.25,0.0,4.1875,25.125,122.5,122.0,144.4,103CT,69,
+Millennium Foam,"10'3""CT",N24,98.5,1.5,3.625,23.375,122.5,122.0,144.4,103CT,69,
+Millennium Foam,"10'3""CT",N12,110.5,2.875,3.0,20.5,122.5,122.0,144.4,103CT,69,
+Millennium Foam,"10'3""CT",N0,122.5,5.25,1.875,0.0,122.5,122.0,144.4,103CT,69,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"10'3""G",T0,0.0,3.6875,1.3125,4.875,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",T12,12.0,2.1875,2.625,13.625,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",T24,24.0,1.1875,3.375,17.75,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",T48,48.0,,,21.8125,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",C,62.3125,0.0,4.375,22.625,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",N48,76.625,,,22.3125,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",N24,100.625,1.75,3.4375,18.6875,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",N12,112.625,3.625,2.6875,14.0,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'3""G",N0,124.625,7.5,1.3125,1.75,124.625,123.625,119.2,103G,70,
+Millennium Foam,"10'7""G",T0,0.0,3.75,1.75,3.9375,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",T12,12.0,2.125,3.0,14.25,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",T24,24.0,1.1875,3.8125,18.5,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",C,63.6875,0.0,4.6875,23.5,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",N24,103.375,1.9375,3.6875,19.25,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",N12,115.375,3.875,2.8125,14.4375,127.375,126.375,134.6,107G,71,
+Millennium Foam,"10'7""G",N0,127.375,7.6875,1.5,1.0,127.375,126.375,134.6,107G,71,"width 1"": pointed nose, not printed in catalog; 1"" stands in for the point (0 is kept for a rounded nose)"
+Millennium Foam,"11'3""P",T0,0.0,3.5625,1.875,8.5,136.5,136.0,168.7,113P,72,
+Millennium Foam,"11'3""P",T12,12.0,2.375,2.6875,17.8125,136.5,136.0,168.7,113P,72,
+Millennium Foam,"11'3""P",T24,24.0,1.5625,3.3125,22.25,136.5,136.0,168.7,113P,72,
+Millennium Foam,"11'3""P",C,68.25,0.0,4.25,26.9375,136.5,136.0,168.7,113P,72,
+Millennium Foam,"11'3""P",N24,112.5,1.375,3.5,23.3125,136.5,136.0,168.7,113P,72,
+Millennium Foam,"11'3""P",N12,124.5,2.75,2.8125,19.4375,136.5,136.0,168.7,113P,72,"width: catalog prints 19 7/16"" but 49.73 cm here; used the inch value"
+Millennium Foam,"11'3""P",N0,136.5,5.25,1.75,0.0,136.5,136.0,168.7,113P,72,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"11'9""P",T0,0.0,3.9375,2.0625,9.375,142.5,142.0,202.24,119P,73,
+Millennium Foam,"11'9""P",T12,12.0,2.5625,3.125,18.25,142.5,142.0,202.24,119P,73,
+Millennium Foam,"11'9""P",T24,24.0,1.5625,3.875,22.4375,142.5,142.0,202.24,119P,73,
+Millennium Foam,"11'9""P",C,71.25,0.0,4.875,26.9375,142.5,142.0,202.24,119P,73,
+Millennium Foam,"11'9""P",N24,118.5,1.6875,3.625,24.5,142.5,142.0,202.24,119P,73,"rocker: catalog prints 1 11/16"" but 4.69 cm here; used the inch value"
+Millennium Foam,"11'9""P",N12,130.5,3.0,2.9375,19.75,142.5,142.0,202.24,119P,73,
+Millennium Foam,"11'9""P",N0,142.5,5.125,1.9375,0.0,142.5,142.0,202.24,119P,73,"width 0: rounded nose, not printed in catalog"
+Millennium Foam,"12'2""P",T0,0.0,3.625,2.0,9.75,146.5,146.0,202.12,122P,74,
+Millennium Foam,"12'2""P",T12,12.0,2.625,2.8125,18.875,146.5,146.0,202.12,122P,74,
+Millennium Foam,"12'2""P",T24,24.0,1.75,3.4375,22.875,146.5,146.0,202.12,122P,74,"width: catalog prints 22 7/8"" but 56.52 cm here; used the inch value"
+Millennium Foam,"12'2""P",C,73.25,0.0,4.6875,26.9375,146.5,146.0,202.12,122P,74,"thickness: catalog prints 4 11/16"" but 11.49 cm here; used the inch value"
+Millennium Foam,"12'2""P",N24,122.5,1.6875,3.625,24.5,146.5,146.0,202.12,122P,74,
+Millennium Foam,"12'2""P",N12,134.5,3.125,2.9375,21.1875,146.5,146.0,202.12,122P,74,
+Millennium Foam,"12'2""P",N0,146.5,5.375,1.875,0.0,146.5,146.0,202.12,122P,74,"width 0: rounded nose, not printed in catalog"

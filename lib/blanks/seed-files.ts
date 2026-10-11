@@ -1,5 +1,5 @@
 /**
- * The committed blank catalogues — the ONE file that names the three seed CSVs under
+ * The committed blank catalogues — the ONE file that names the four seed CSVs under
  * `db/seed/blanks/`. The seed script (11-05), the database fallback for browser tests (11-05), the
  * preset generator (11-10) and the tests all read the catalogue through `readSeedCatalog`, so the
  * list of files and how they are read can never drift apart.
@@ -14,11 +14,12 @@ import type { BlankRecord } from "@/lib/geometry/blank";
 import { rowsToBlankRecords } from "./catalog";
 import { parseCsv } from "./csv";
 
-/** The three vendor catalogues, in the order they are read. */
+/** The four vendor catalogues, in the order they are read (Millennium Foam joined 2026-10-11, quick 261011-fzb). */
 export const SEED_CSV_FILES = [
   "us_blanks_stations.csv",
   "arctic_foam_stations.csv",
   "marko_foam_stations.csv",
+  "millennium_foam_stations.csv",
 ] as const;
 
 /**
@@ -33,7 +34,7 @@ export const SEED_CSV_FILES = [
  */
 export const SEED_CSV_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../../db/seed/blanks");
 
-/** Reads and maps all three catalogues: every blank, in file order, pickable or not. */
+/** Reads and maps all four catalogues: every blank, in file order, pickable or not. */
 export function readSeedCatalog(dir: string = SEED_CSV_DIR): BlankRecord[] {
   return SEED_CSV_FILES.flatMap((file) =>
     rowsToBlankRecords(parseCsv(readFileSync(join(dir, file), "utf8")), file),

@@ -35,7 +35,7 @@
  * `hidden_blank_makers`: the blank makers a shaper has switched off, read through
  * `lib/blank-makers-preference.ts`'s allow-list.
  *
- * `blanks` (Phase 11) holds the three vendor foam-blank catalogues — one row per blank, public
+ * `blanks` (Phase 11) holds the four vendor foam-blank catalogues — one row per blank, public
  * catalogue data that belongs to no shaper, so it has no owner column at all and is read through
  * its own file (`lib/db/blanks.ts`), never through the owner-scoped `queries.ts`. It stores the
  * catalogue's RAW stations only (R8): each station exactly as the catalogue printed it, converted

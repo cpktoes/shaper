@@ -49,11 +49,11 @@ export const FLAG_HEADLINES = {
 
 /**
  * F5's added sentence, when no blank in the catalogues being searched fits (so there is no offer).
- * `catalogs` names them — "the three catalogs" unless a shaper has switched blank makers off in the
+ * `catalogs` names them — "the four catalogs" unless a shaper has switched blank makers off in the
  * settings menu, when the caller passes the narrower phrase (`catalogsPhrase` in
  * `lib/blanks/vendors.ts`), so the sentence never claims to have searched a hidden maker.
  */
-export function nothingFitsSentence(catalogs: string = "the three catalogs"): string {
+export function nothingFitsSentence(catalogs: string = "the four catalogs"): string {
   return `No blank in ${catalogs} fits this board right now.`;
 }
 
@@ -484,7 +484,7 @@ export function floorShortfallMessage(
 /**
  * The empty list's heading and body (E1, E2, E3), naming the board's number, the catalogue's best
  * and the rule that ruled every blank out. `kind` is `listBlanks`'s `emptyReason`. `catalogs` names
- * the catalogues searched — "the three catalogs" unless a shaper has switched blank makers off, when
+ * the catalogues searched — "the four catalogs" unless a shaper has switched blank makers off, when
  * the caller passes the narrower phrase so the longest blank quoted is one they can actually see.
  * When the rules' Deck Skin is none (Phase 13 item 4b, FD-6/FD-8), the E2 body's closing advice
  * drops "your Deck Skin" — a skin that is already none cannot be lowered to help.
@@ -499,7 +499,7 @@ export function emptyListMessage(
     rules: CenterFloorRules;
   },
   system: UnitsSystem,
-  catalogs: string = "the three catalogs",
+  catalogs: string = "the four catalogs",
 ): { heading: string; body: string } {
   const extraLength = formatMark(numbers.rules.extraLength, system);
   if (kind === "length") {

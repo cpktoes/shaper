@@ -58,7 +58,7 @@ test.describe("Blank Makers — the tick toggles in App Default Settings", () =>
     await dismissBannerAndTip(page);
   });
 
-  test("all three makers are ticked for a shaper who never touched them", async ({ page }, testInfo) => {
+  test("all four makers are ticked for a shaper who never touched them", async ({ page }, testInfo) => {
     await page.goto("/design/outline");
     const group = await openBlankMakers(page);
 
@@ -125,6 +125,8 @@ test.describe("Blank Makers — the tick toggles in App Default Settings", () =>
     await expect(makerRow(group, "Arctic Foam")).toHaveAttribute("aria-pressed", "false");
     await makerRow(group, "Marko Foam").click();
     await expect(makerRow(group, "Marko Foam")).toHaveAttribute("aria-pressed", "false");
+    await makerRow(group, "Millennium Foam").click();
+    await expect(makerRow(group, "Millennium Foam")).toHaveAttribute("aria-pressed", "false");
 
     const usBlanks = makerRow(group, "US Blanks");
     await expect(usBlanks).toHaveAttribute("aria-disabled", "true");
@@ -224,7 +226,7 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     await search.fill("");
 
     await untickMaker(page, "Arctic Foam");
-    await expect(note).toHaveText("Showing US Blanks and Marko Foam only — change in Settings");
+    await expect(note).toHaveText("Showing US Blanks, Marko Foam and Millennium Foam only — change in Settings");
 
     const after = await allRowLabels(page);
     expect(after.some((label) => label.includes("Arctic Foam"))).toBe(false);
@@ -237,7 +239,7 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     await search.fill("");
 
     await untickMaker(page, "Marko Foam");
-    await expect(note).toHaveText("Showing US Blanks only — change in Settings");
+    await expect(note).toHaveText("Showing US Blanks and Millennium Foam only — change in Settings");
   });
 
   test("a picked blank stays on the board when its maker is unticked, and the offer never names that maker", async ({

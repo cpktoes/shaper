@@ -11,7 +11,7 @@
  *
  * Three states (§2):
  * - A — browsing, no search: the intro, the search box, the first six rows of one list across the
- *   blank makers ticked in the settings menu (all three unless a shaper has unticked some — then a
+ *   blank makers ticked in the settings menu (all four unless a shaper has unticked some — then a
  *   one-line note under the intro says which are shown), shortest first (the blanks that fit under FITS THIS BOARD, then the ones that
  *   don't, greyed, each with the one reason it fails), then "Show all {n} blanks".
  * - B — searching: every match, uncapped, or "No blanks match …" with Clear Search. The search is a

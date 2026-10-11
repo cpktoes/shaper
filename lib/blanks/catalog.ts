@@ -1,7 +1,7 @@
 /**
  * Blank catalogue mapping: CSV rows (as `parseCsv` returns them) → `BlankRecord`s.
  *
- * The three vendor catalogues print inches; this is the one place those inches become the app's
+ * The four vendor catalogues print inches; this is the one place those inches become the app's
  * millimetres, through `lib/geometry/units.ts` (CLAUDE.md Rule 2). Every cell is checked strictly:
  * the header must be exactly `BLANK_CSV_COLUMNS`, every row must have exactly that many fields, a
  * non-empty number cell must be a plain decimal number, and an EMPTY cell becomes `null` — never
@@ -15,7 +15,7 @@ import { z } from "zod";
 import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
 import { inchesToMm, litres, type Mm } from "@/lib/geometry/units";
 
-/** The catalogue CSV header, verbatim and in order — identical in all three files. */
+/** The catalogue CSV header, verbatim and in order — identical in all four files. */
 export const BLANK_CSV_COLUMNS = [
   "vendor",
   "blank_name",

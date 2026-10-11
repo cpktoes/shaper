@@ -31,7 +31,7 @@ describe("the blank makers", () => {
       if (!seen.includes(record.vendor)) seen.push(record.vendor);
     }
     expect([...KNOWN_BLANK_VENDORS]).toEqual(seen);
-    expect([...KNOWN_BLANK_VENDORS]).toEqual(["US Blanks", "Arctic Foam", "Marko Foam"]);
+    expect([...KNOWN_BLANK_VENDORS]).toEqual(["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"]);
   });
 
   it("isKnownBlankVendor matches a maker's name exactly and nothing else", () => {
@@ -43,8 +43,8 @@ describe("the blank makers", () => {
   });
 
   it("shownBlankVendors lists the makers still shown, in catalogue order", () => {
-    expect(shownBlankVendors([])).toEqual(["US Blanks", "Arctic Foam", "Marko Foam"]);
-    expect(shownBlankVendors(["Marko Foam", "US Blanks"])).toEqual(["Arctic Foam"]);
+    expect(shownBlankVendors([])).toEqual(["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"]);
+    expect(shownBlankVendors(["Marko Foam", "US Blanks"])).toEqual(["Arctic Foam", "Millennium Foam"]);
   });
 });
 
@@ -75,37 +75,39 @@ describe("blankMakersNote", () => {
   });
 
   it("names the makers still shown, joined the way a shaper would say it", () => {
-    expect(blankMakersNote(["Arctic Foam"])).toBe("Showing US Blanks and Marko Foam only — change in Settings");
-    expect(blankMakersNote(["Arctic Foam", "Marko Foam"])).toBe("Showing US Blanks only — change in Settings");
-    expect(blankMakersNote(["US Blanks"])).toBe("Showing Arctic Foam and Marko Foam only — change in Settings");
+    expect(blankMakersNote(["Arctic Foam"])).toBe("Showing US Blanks, Marko Foam and Millennium Foam only — change in Settings");
+    expect(blankMakersNote(["Arctic Foam", "Marko Foam"])).toBe("Showing US Blanks and Millennium Foam only — change in Settings");
+    expect(blankMakersNote(["US Blanks"])).toBe("Showing Arctic Foam, Marko Foam and Millennium Foam only — change in Settings");
+    expect(blankMakersNote(["Arctic Foam", "Marko Foam", "Millennium Foam"])).toBe("Showing US Blanks only — change in Settings");
   });
 
   it("always names the makers in catalogue order, whatever order the hidden list is in", () => {
-    expect(blankMakersNote(["Marko Foam", "Arctic Foam"])).toBe("Showing US Blanks only — change in Settings");
+    expect(blankMakersNote(["Marko Foam", "Arctic Foam"])).toBe("Showing US Blanks and Millennium Foam only — change in Settings");
     expect(blankMakersNote(["US Blanks", "Arctic Foam"])).toBe(blankMakersNote(["Arctic Foam", "US Blanks"]));
   });
 });
 
 describe("catalogsPhrase", () => {
   it("is exactly today's wording when every maker is shown", () => {
-    expect(catalogsPhrase([])).toBe("the three catalogs");
+    expect(catalogsPhrase([])).toBe("the four catalogs");
   });
 
   it("names one catalog, or several, when makers are hidden", () => {
-    expect(catalogsPhrase(["Arctic Foam"])).toBe("the US Blanks and Marko Foam catalogs");
-    expect(catalogsPhrase(["Arctic Foam", "Marko Foam"])).toBe("the US Blanks catalog");
-    expect(catalogsPhrase(["Marko Foam", "US Blanks"])).toBe("the Arctic Foam catalog");
+    expect(catalogsPhrase(["Arctic Foam"])).toBe("the US Blanks, Marko Foam and Millennium Foam catalogs");
+    expect(catalogsPhrase(["Arctic Foam", "Marko Foam"])).toBe("the US Blanks and Millennium Foam catalogs");
+    expect(catalogsPhrase(["Marko Foam", "US Blanks"])).toBe("the Arctic Foam and Millennium Foam catalogs");
+    expect(catalogsPhrase(["Arctic Foam", "Marko Foam", "Millennium Foam"])).toBe("the US Blanks catalog");
   });
 });
 
 describe("the catalog note under ROCKER's blank picker (quick 261006-fom, D-05)", () => {
   it("is the founder's sentence, exactly", () => {
     expect(BLANK_CATALOG_NOTE).toBe(
-      "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam and Marko Foam are trademarks of their owners.",
+      "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam, Marko Foam and Millennium Foam are trademarks of their owners.",
     );
   });
 
-  it("names every maker the app knows, so a fourth maker fails here until the note is updated", () => {
+  it("names every maker the app knows, so a fifth maker fails here until the note is updated", () => {
     for (const vendor of KNOWN_BLANK_VENDORS) {
       expect(BLANK_CATALOG_NOTE).toContain(vendor);
     }

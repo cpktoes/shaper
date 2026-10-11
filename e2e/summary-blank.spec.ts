@@ -211,9 +211,9 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
     test.skip(testInfo.project.name !== "desktop", "measures the printed sheet; one engine is enough");
 
     const { names, longestBlankIn } = readCatalogue();
-    // Never a vacuous pass: the three catalogues hold well over a hundred blanks, and the longest
+    // Never a vacuous pass: the four catalogues hold over two hundred blanks, and the longest
     // is a long board (the 12'6" blank at the time of writing).
-    expect(names.length).toBeGreaterThan(100);
+    expect(names.length).toBeGreaterThan(200);
     expect(longestBlankIn).toBeGreaterThan(100);
 
     // The widest note any blank can carry comes from the shortest board the app allows on the

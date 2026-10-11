@@ -181,14 +181,17 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
 
   /* -- BLANK MAKERS ---------------------------------------------------------------------- */
 
-  test("the three makers sit on one row; the last one ticked is locked with the hint", async ({ page }) => {
+  test("the four makers sit two to a row; the last one ticked is locked with the hint", async ({ page }) => {
     await page.goto("/design/outline");
     const dialog = await openAppSettings(page);
     const group = dialog.getByRole("group", { name: "Blank Makers" });
     const buttons = group.getByRole("button");
-    await expect(buttons).toHaveCount(3);
+    await expect(buttons).toHaveCount(4);
+    // Two rows of two since Millennium Foam made four makers (quick 261011-fzb).
     const tops = await buttons.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
-    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(1);
+    expect(Math.abs(tops[0] - tops[1])).toBeLessThanOrEqual(1);
+    expect(Math.abs(tops[2] - tops[3])).toBeLessThanOrEqual(1);
+    expect(tops[2] - tops[0]).toBeGreaterThan(10);
     for (const vendor of MAKERS) {
       await expect(maker(group, vendor)).toHaveAttribute("aria-pressed", "true");
       await expect(maker(group, vendor)).not.toHaveAttribute("aria-disabled", "true");
@@ -198,6 +201,8 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
     await expect(maker(group, "Arctic Foam")).toHaveAttribute("aria-pressed", "false");
     await maker(group, "Marko Foam").click();
     await expect(maker(group, "Marko Foam")).toHaveAttribute("aria-pressed", "false");
+    await maker(group, "Millennium Foam").click();
+    await expect(maker(group, "Millennium Foam")).toHaveAttribute("aria-pressed", "false");
 
     const usBlanks = maker(group, "US Blanks");
     await expect(usBlanks).toHaveAttribute("aria-disabled", "true");
@@ -224,6 +229,8 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
     await expect(maker(group, "US Blanks")).toHaveAttribute("aria-pressed", "false");
     await maker(group, "Marko Foam").click();
     await expect(maker(group, "Marko Foam")).toHaveAttribute("aria-pressed", "false");
+    await maker(group, "Millennium Foam").click();
+    await expect(maker(group, "Millennium Foam")).toHaveAttribute("aria-pressed", "false");
     await dialog.getByRole("button", { name: "Done" }).click();
     await expect(dialog).toBeHidden();
 
@@ -325,7 +332,7 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
 /* -- helpers for the tiles and makers ----------------------------------------------------- */
 
 const THEME_IDS = ["system", "daylight", "chalk", "slate", "phosphor"];
-const MAKERS = ["US Blanks", "Arctic Foam", "Marko Foam"];
+const MAKERS = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"];
 
 function tile(dialog: Locator, id: string): Locator {
   return dialog.locator(`[data-theme-tile="${id}"]`);

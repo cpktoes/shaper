@@ -49,13 +49,14 @@ function expectInchesMatch(value: Mm | null, cell: string, where: string) {
   expect(Number(mmToInches(value as Mm).toFixed(4)), where).toBe(Number(cell));
 }
 
-describe("the three seeded catalogues (R7)", () => {
-  it("reads 101 US Blanks, 33 Arctic Foam and 28 Marko Foam blanks — 162 in all", () => {
+describe("the four seeded catalogues (R7)", () => {
+  it("reads 101 US Blanks, 33 Arctic Foam, 28 Marko Foam and 61 Millennium Foam blanks — 223 in all", () => {
     const count = (vendor: string) => CATALOG.filter((b) => b.vendor === vendor).length;
     expect(count("US Blanks")).toBe(101);
     expect(count("Arctic Foam")).toBe(33);
     expect(count("Marko Foam")).toBe(28);
-    expect(CATALOG).toHaveLength(162);
+    expect(count("Millennium Foam")).toBe(61);
+    expect(CATALOG).toHaveLength(223);
   });
 
   it("makes one blank per distinct vendor + name in the files, and one station per row", () => {
@@ -185,9 +186,9 @@ describe("empty cells and flags (R8, R9, edge coverage)", () => {
 });
 
 describe("isPickable (R9 — a rule, not a list of names)", () => {
-  it("picks 158 blanks and leaves out exactly four, every one a Marko MK-SUP-STD", () => {
+  it("picks 219 blanks and leaves out exactly four, every one a Marko MK-SUP-STD", () => {
     const left = CATALOG.filter((b) => !isPickable(b));
-    expect(CATALOG.filter(isPickable)).toHaveLength(158);
+    expect(CATALOG.filter(isPickable)).toHaveLength(219);
     expect(left).toHaveLength(4);
     for (const blank of left) {
       expect(blank.vendor).toBe("Marko Foam");

@@ -237,14 +237,15 @@ export function AppSettingsDialog({
           <ThemeTiles />
         </section>
 
-        {/* Quick task 260926-wmf's tick boxes, as one row: an unticked maker's blanks leave the
+        {/* Quick task 260926-wmf's tick boxes, two to a row since Millennium Foam made four makers
+            (quick 261011-fzb): an unticked maker's blanks leave the
             ROCKER blank list. All ticked until a shaper chooses; the last one ticked is locked (not
             `disabled`, so it stays readable and reachable from the keyboard) and the hint says why,
             so the list can never be emptied. A long name wraps inside its chip on a narrow phone
             rather than running out of it (U-5). */}
         <section className="flex flex-col gap-2" aria-label="BLANK MAKERS">
           <h3 className={GROUP_LABEL_CLASS}>BLANK MAKERS</h3>
-          <div role="group" aria-label="Blank Makers" className="grid grid-cols-3 gap-1.5">
+          <div role="group" aria-label="Blank Makers" className="grid grid-cols-2 gap-1.5">
             {KNOWN_BLANK_VENDORS.map((vendor) => {
               const shown = !hidden.includes(vendor);
               const locked = isLastShownMaker(hidden, vendor);

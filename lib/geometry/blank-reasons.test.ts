@@ -890,10 +890,10 @@ describe("emptyListMessage — E1, E2, E3", () => {
     const numbers = { ...board, rules: DEFAULT_RULES };
     expect(emptyListMessage("length", numbers, "imperial")).toEqual({
       heading: "No blank is long enough",
-      body: `Your board is 12'6" and the longest blank in the three catalogs is 12'7 1/2", so none leaves the 2" of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
+      body: `Your board is 12'6" and the longest blank in the four catalogs is 12'7 1/2", so none leaves the 2" of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
     });
     expect(emptyListMessage("length", numbers, "metric").body).toBe(
-      "Your board is 381.0 cm and the longest blank in the three catalogs is 384.8 cm, so none leaves the 51 mm of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.",
+      "Your board is 381.0 cm and the longest blank in the four catalogs is 384.8 cm, so none leaves the 51 mm of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.",
     );
   });
 
@@ -907,13 +907,13 @@ describe("emptyListMessage — E1, E2, E3", () => {
     const numbers = { ...board, rules };
     const f = (value: Mm) => formatMark(value, system);
     expect(emptyListMessage("length", numbers, system).body).toBe(
-      `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in the three catalogs is ${formatLength(numbers.longest, system)}, so none leaves the ${f(rules.extraLength)} of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
+      `Your board is ${formatLength(numbers.boardLength, system)} and the longest blank in the four catalogs is ${formatLength(numbers.longest, system)}, so none leaves the ${f(rules.extraLength)} of spare length you've asked for. Shorten the board on the TEMPLATE screen, or ask for less spare length.`,
     );
     expect(emptyListMessage("thickness", numbers, system).body).toBe(
       `Your center is ${f(numbers.centre)} and the thickest blank is ${f(numbers.thickestCenter)} at the center, so none leaves room for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass. Try a thinner center, or change your Deck Skin or Planer Max Depth.`,
     );
     expect(emptyListMessage("both", numbers, system).body).toBe(
-      `Nothing in the three catalogs is both ${f(rules.extraLength)} longer than your board and thick enough at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass.`,
+      `Nothing in the four catalogs is both ${f(rules.extraLength)} longer than your board and thick enough at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass.`,
     );
   });
 });
@@ -971,10 +971,10 @@ describe("the centre floor with no deck skin (Phase 13 item 4b)", () => {
   it("E3 (emptyListMessage 'both') reads the verbatim zero body, in both systems", () => {
     const numbers = { ...board, rules: NO_SKIN_RULES };
     expect(emptyListMessage("both", numbers, "imperial").body).toBe(
-      `Nothing in the three catalogs is both 2" longer than your board and thick enough at the center for a 1/8" bottom pass.`,
+      `Nothing in the four catalogs is both 2" longer than your board and thick enough at the center for a 1/8" bottom pass.`,
     );
     expect(emptyListMessage("both", numbers, "metric").body).toBe(
-      "Nothing in the three catalogs is both 51 mm longer than your board and thick enough at the center for a 3 mm bottom pass.",
+      "Nothing in the four catalogs is both 51 mm longer than your board and thick enough at the center for a 3 mm bottom pass.",
     );
   });
 
@@ -1037,7 +1037,7 @@ describe("the flag's fixed copy", () => {
       doesNotFit: "This blank doesn't fit your board",
       notHere: "Doesn't fit at this placement",
     });
-    expect(NOTHING_FITS_SENTENCE).toBe("No blank in the three catalogs fits this board right now.");
+    expect(NOTHING_FITS_SENTENCE).toBe("No blank in the four catalogs fits this board right now.");
   });
 });
 
@@ -1132,7 +1132,7 @@ describe("the catalogs a sentence names, when a shaper has switched blank makers
 
   it("reads exactly as before when no catalogs phrase is passed", () => {
     for (const kind of ["length", "thickness", "both"] as const) {
-      expect(emptyListMessage(kind, numbers, "metric", "the three catalogs")).toEqual(
+      expect(emptyListMessage(kind, numbers, "metric", "the four catalogs")).toEqual(
         emptyListMessage(kind, numbers, "metric"),
       );
     }
