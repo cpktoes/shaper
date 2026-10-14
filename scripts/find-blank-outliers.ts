@@ -95,7 +95,7 @@ function plot(record: BlankRecord, attribute: BlankAttribute, marks: readonly Ma
   const span = Math.max(yMax - yMin, 0.5);
   const lo = yMin - span * 0.12;
   const hi = yMax + span * 0.12;
-  const sx = (x: number) => PAD.left + ((W - PAD.left - PAD.right) * x) / length;
+  const sx = (x: number) => PAD.left + ((W - PAD.left - PAD.right) * (length - x)) / length; // nose left, like the drawings
   const sy = (y: number) => H - PAD.bottom - ((H - PAD.top - PAD.bottom) * (y - lo)) / (hi - lo);
   const samples: string[] = [];
   for (let x = knots[0].x; x <= knots[knots.length - 1].x + 1e-9; x += 0.5) {
