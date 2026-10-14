@@ -18,7 +18,7 @@ Millennium Foam,"5'3""G",T12,12.0,0.75,1.9375,14.875,64.25,63.5,26.9,53G,16,
 Millennium Foam,"5'3""G",T24,24.0,0.125,2.375,17.6875,64.25,63.5,26.9,53G,16,
 Millennium Foam,"5'3""G",C,32.125,0.0,2.5,18.1875,64.25,63.5,26.9,53G,16,"width: catalog prints 18 3/16"" but 46.03 cm here; used the inch value"
 Millennium Foam,"5'3""G",N24,40.25,0.125,2.5,17.5,64.25,63.5,26.9,53G,16,
-Millennium Foam,"5'3""G",N12,52.25,1.375,1.75,13.5625,64.25,63.5,26.9,53G,16,
+Millennium Foam,"5'3""G",N12,52.25,1.375,2.375,13.5625,64.25,63.5,26.9,53G,16,"thickness: changed from 1 3/4"" to 2 3/8"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"5'3""G",N0,64.25,5.0625,0.9375,2.6875,64.25,63.5,26.9,53G,16,
 Millennium Foam,"5'8""R",T0,0.0,2.0625,1.0625,7.5,69.75,69.125,35.5,58R,17,"width: catalog prints 7 1/2"" but 15.24 cm here; used the inch value"
 Millennium Foam,"5'8""R",T12,12.0,0.9375,2.0,15.75,69.75,69.125,35.5,58R,17,
@@ -29,10 +29,10 @@ Millennium Foam,"5'8""R",N12,57.75,1.4375,1.875,14.3125,69.75,69.125,35.5,58R,17
 Millennium Foam,"5'8""R",N0,69.75,4.6875,1.0625,3.875,69.75,69.125,35.5,58R,17,
 Millennium Foam,"5'10""F",T0,0.0,2.4375,1.375,14.8125,71.6875,71.0,54.6,510F,18,
 Millennium Foam,"5'10""F",T12,12.0,1.3125,2.25,21.3125,71.6875,71.0,54.6,510F,18,
-Millennium Foam,"5'10""F",T24,24.0,0.5,2.875,24.3125,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",T24,24.0,0.3125,2.875,24.3125,71.6875,71.0,54.6,510F,18,"rocker: changed from 1/2"" to 5/16"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"5'10""F",C,35.8438,0.0,3.0,25.1875,71.6875,71.0,54.6,510F,18,"thickness: catalog prints 3"" but 7.3 cm here; used the inch value"
 Millennium Foam,"5'10""F",N24,47.6875,0.125,3.0,24.25,71.6875,71.0,54.6,510F,18,
-Millennium Foam,"5'10""F",N12,59.6875,1.25,2.375,19.625,71.6875,71.0,54.6,510F,18,
+Millennium Foam,"5'10""F",N12,59.6875,1.25,2.875,19.625,71.6875,71.0,54.6,510F,18,"thickness: changed from 2 3/8"" to 2 7/8"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"5'10""F",N0,71.6875,4.5,1.25,8.5625,71.6875,71.0,54.6,510F,18,
 Millennium Foam,"6'0""DE",T0,0.0,2.0,1.5,9.0,72.25,72.0,45.9,60DE,19,
 Millennium Foam,"6'0""DE",T12,12.0,0.9375,2.375,17.4375,72.25,72.0,45.9,60DE,19,
@@ -71,7 +71,7 @@ Millennium Foam,"6'2""F",N12,63.125,1.6875,2.1875,16.5,75.125,74.5,59.1,62F,23,"
 Millennium Foam,"6'2""F",N0,75.125,4.9375,1.1875,6.125,75.125,74.5,59.1,62F,23,"thickness: catalog prints 1 3/16"" but 3.301 cm here; used the inch value"
 Millennium Foam,"6'2""DT",T0,0.0,1.75,1.375,10.0,74.375,73.75,53.5,62DT,24,
 Millennium Foam,"6'2""DT",T12,12.0,0.6875,2.25,17.9375,74.375,73.75,53.5,62DT,24,
-Millennium Foam,"6'2""DT",T24,24.0,0.375,2.8125,21.375,74.375,73.75,53.5,62DT,24,
+Millennium Foam,"6'2""DT",T24,24.0,0.1875,2.8125,21.375,74.375,73.75,53.5,62DT,24,"rocker: changed from 3/8"" to 3/16"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"6'2""DT",C,37.1875,0.0,3.0,22.75,74.375,73.75,53.5,62DT,24,
 Millennium Foam,"6'2""DT",N24,50.375,0.1875,2.8125,21.875,74.375,73.75,53.5,62DT,24,
 Millennium Foam,"6'2""DT",N12,62.375,1.375,2.25,17.375,74.375,73.75,53.5,62DT,24,"rocker: catalog prints 1 3/8"" but 1.38 cm here; used the inch value"
@@ -95,7 +95,7 @@ Millennium Foam,"6'4""P",T12,12.0,0.875,2.1875,15.9375,75.125,74.5,44.7,64P,27,
 Millennium Foam,"6'4""P",T24,24.0,0.25,2.625,19.625,75.125,74.5,44.7,64P,27,
 Millennium Foam,"6'4""P",C,37.5625,0.0,2.8125,20.875,75.125,74.5,44.7,64P,27,
 Millennium Foam,"6'4""P",N24,51.125,0.375,2.5625,19.1875,75.125,74.5,44.7,64P,27,
-Millennium Foam,"6'4""P",N12,63.125,1.5625,1.3125,14.5625,75.125,74.5,44.7,64P,27,"thickness: catalog prints 1 5/16"" in both units, only 5/16"" more than the 1"" tip against 2 9/16"" at 24""; the maker's other blanks gain 3/4"" to 1"" over the first foot, so this may be a misprint; kept as printed"
+Millennium Foam,"6'4""P",N12,63.125,1.5625,1.9375,14.5625,75.125,74.5,44.7,64P,27,"thickness: catalog prints 1 5/16"" in both units, only 5/16"" more than the 1"" tip against 2 9/16"" at 24""; the maker's other blanks gain 3/4"" to 1"" over the first foot, so this may be a misprint; kept as printed; thickness: changed from 1 5/16"" to 1 15/16"" on 2026-10-14 by the founder (obviously wrong)"
 Millennium Foam,"6'4""P",N0,75.125,5.5,1.0,3.5,75.125,74.5,44.7,64P,27,
 Millennium Foam,"6'4""CT",T0,0.0,2.25,1.5,7.75,77.0,74.8125,48.2,64CT,28,
 Millennium Foam,"6'4""CT",T12,12.0,0.75,2.5625,15.3125,77.0,74.8125,48.2,64CT,28,
@@ -252,7 +252,7 @@ Millennium Foam,"7'11""CB",N24,71.3125,0.6875,3.0,22.4375,95.3125,94.4375,77.6,7
 Millennium Foam,"7'11""CB",N12,83.3125,2.4375,2.25,17.4375,95.3125,94.4375,77.6,711CB,49,
 Millennium Foam,"7'11""CB",N0,95.3125,5.75,1.1875,4.0,95.3125,94.4375,77.6,711CB,49,
 Millennium Foam,"7'11""CT",T0,0.0,2.3125,1.75,7.25,95.3125,94.4375,88.2,711CT,50,
-Millennium Foam,"7'11""CT",T12,12.0,1.25,2.5625,17.8125,95.3125,94.4375,88.2,711CT,50,
+Millennium Foam,"7'11""CT",T12,12.0,1.25,2.75,17.8125,95.3125,94.4375,88.2,711CT,50,"thickness: changed from 2 9/16"" to 2 3/4"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"7'11""CT",T24,24.0,0.5625,3.3125,21.75,95.3125,94.4375,88.2,711CT,50,
 Millennium Foam,"7'11""CT",C,47.6563,0.0,3.6875,24.4375,95.3125,94.4375,88.2,711CT,50,
 Millennium Foam,"7'11""CT",N24,71.3125,0.875,3.25,22.4375,95.3125,94.4375,88.2,711CT,50,
@@ -280,7 +280,7 @@ Millennium Foam,"8'4""PT",N24,77.125,0.875,3.125,22.75,101.125,100.5625,96,84PT,
 Millennium Foam,"8'4""PT",N12,89.125,2.125,2.5,19.25,101.125,100.5625,96,84PT,53,
 Millennium Foam,"8'4""PT",N0,101.125,4.9375,1.625,0.0,101.125,100.5625,96,84PT,53,"width 0: rounded nose, not printed in catalog"
 Millennium Foam,"8'4""CB",T0,0.0,2.625,1.1875,6.3125,100.5,100.0,80.4,84CB,54,"width: catalog prints 6 5/16"" but 13.49 cm here; used the inch value"
-Millennium Foam,"8'4""CB",T12,12.0,2.125,2.125,16.4375,100.5,100.0,80.4,84CB,54,
+Millennium Foam,"8'4""CB",T12,12.0,1.4375,2.125,16.4375,100.5,100.0,80.4,84CB,54,"rocker: changed from 2 1/8"" to 1 7/16"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"8'4""CB",T24,24.0,0.6875,2.8125,21.3125,100.5,100.0,80.4,84CB,54,
 Millennium Foam,"8'4""CB",C,50.25,0.0,3.375,25.125,100.5,100.0,80.4,84CB,54,"catalog's Max Thickness line prints 3 5/16""; this station prints 3 3/8"" (8.57 cm) and is used"
 Millennium Foam,"8'4""CB",N24,76.5,1.0,2.75,21.9375,100.5,100.0,80.4,84CB,54,
@@ -301,7 +301,7 @@ Millennium Foam,"8'8""DG",N24,82.0,1.25,3.3125,18.8125,106.0,105.0,74.9,88DG,56,
 Millennium Foam,"8'8""DG",N12,94.0,3.0625,2.5,13.9375,106.0,105.0,74.9,88DG,56,
 Millennium Foam,"8'8""DG",N0,106.0,7.0,1.1875,1.0625,106.0,105.0,74.9,88DG,56,
 Millennium Foam,"8'10""M",T0,0.0,3.25,1.25,7.5,107.0,106.0,92.9,810M,57,
-Millennium Foam,"8'10""M",T12,12.0,1.875,2.125,16.625,107.0,106.0,92.9,810M,57,
+Millennium Foam,"8'10""M",T12,12.0,1.6875,2.125,16.625,107.0,106.0,92.9,810M,57,"rocker: changed from 1 7/8"" to 1 11/16"" on 2026-10-14 by the founder (guess)"
 Millennium Foam,"8'10""M",T24,24.0,0.75,2.75,21.125,107.0,106.0,92.9,810M,57,
 Millennium Foam,"8'10""M",C,53.5,0.0,3.5,24.75,107.0,106.0,92.9,810M,57,
 Millennium Foam,"8'10""M",N24,83.0,1.125,2.75,23.0,107.0,106.0,92.9,810M,57,
@@ -329,7 +329,7 @@ Millennium Foam,"9'3""G",N24,88.75,1.3125,3.4375,19.0625,112.75,111.8125,95.7,93
 Millennium Foam,"9'3""G",N12,100.75,3.0625,2.5625,14.4375,112.75,111.8125,95.7,93G,60,
 Millennium Foam,"9'3""G",N0,112.75,6.8125,1.375,1.25,112.75,111.8125,95.7,93G,60,
 Millennium Foam,"9'4""M",T0,0.0,2.9375,1.4375,11.0,112.5,111.0,102.2,94M,61,
-Millennium Foam,"9'4""M",T12,12.0,1.8125,2.875,18.625,112.5,111.0,102.2,94M,61,"thickness: catalog prints 2 7/8"" in both units here, though the thicker 9'4""MT prints 2 9/16"" at this station"
+Millennium Foam,"9'4""M",T12,12.0,1.8125,2.4375,18.625,112.5,111.0,102.2,94M,61,"thickness: catalog prints 2 7/8"" in both units here, though the thicker 9'4""MT prints 2 9/16"" at this station; thickness: changed from 2 7/8"" to 2 7/16"" on 2026-10-14 by the founder"
 Millennium Foam,"9'4""M",T24,24.0,0.9375,3.0,22.125,112.5,111.0,102.2,94M,61,"width: catalog prints 22 1/8"" but 56.97 cm here; used the inch value"
 Millennium Foam,"9'4""M",C,56.25,0.0,3.4375,25.1875,112.5,111.0,102.2,94M,61,
 Millennium Foam,"9'4""M",N24,88.5,1.1875,3.0,24.0,112.5,111.0,102.2,94M,61,

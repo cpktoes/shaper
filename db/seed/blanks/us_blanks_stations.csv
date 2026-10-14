@@ -5,7 +5,7 @@ US Blanks,"5'0""W",T12,12,0.374,2.374,20.811,60.252,60.0,47.0,wake-surf/5-0-W,1,
 US Blanks,"5'0""W",T18,18,0.157,2.563,21.874,60.252,60.0,47.0,wake-surf/5-0-W,1,
 US Blanks,"5'0""W",C,30.126,0.0,2.74,22.689,60.252,60.0,47.0,wake-surf/5-0-W,1,
 US Blanks,"5'0""W",N18,42.252,0.252,2.74,21.811,60.252,60.0,47.0,wake-surf/5-0-W,1,
-US Blanks,"5'0""W",N12,48.252,0.689,2.374,20.374,60.252,60.0,47.0,wake-surf/5-0-W,1,
+US Blanks,"5'0""W",N12,48.252,0.689,2.625,20.374,60.252,60.0,47.0,wake-surf/5-0-W,1,"thickness: changed from 2 3/8"" to 2 5/8"" on 2026-10-14 by the founder (guess)"
 US Blanks,"5'0""W",N6,54.252,1.437,2.0,17.752,60.252,60.0,47.0,wake-surf/5-0-W,1,
 US Blanks,"5'0""W",N0,60.252,2.626,1.626,13.5,60.252,60.0,47.0,wake-surf/5-0-W,1,"wake-surf rocker as drawn (catalog also lists a natural rocker of 2 7/16""N 1""T)"
 US Blanks,"5'9""P",T0,0,2.0,0.937,5.5,70.252,69.626,32.2,shortboard/5-9-P,2,
@@ -155,7 +155,7 @@ US Blanks,"6'5""A",T0,0,1.752,1.5,12.5,77.5,76.874,60.9,fish-eggs/6-5A,15,
 US Blanks,"6'5""A",T6,6,1.311,1.752,16.0,77.5,76.874,60.9,fish-eggs/6-5A,15,
 US Blanks,"6'5""A",T12,12,0.874,2.126,18.374,77.5,76.874,60.9,fish-eggs/6-5A,15,
 US Blanks,"6'5""A",T18,18,0.563,2.5,20.252,77.5,76.874,60.9,fish-eggs/6-5A,15,
-US Blanks,"6'5""A",T24,24,0.311,2.689,21.752,77.5,76.874,60.9,fish-eggs/6-5A,15,
+US Blanks,"6'5""A",T24,24,0.311,2.8125,21.752,77.5,76.874,60.9,fish-eggs/6-5A,15,"thickness: changed from 2 11/16"" to 2 13/16"" on 2026-10-14 by the founder"
 US Blanks,"6'5""A",C,38.75,0.0,3.126,23.5,77.5,76.874,60.9,fish-eggs/6-5A,15,
 US Blanks,"6'5""A",N24,53.5,0.563,2.874,22.5,77.5,76.874,60.9,fish-eggs/6-5A,15,
 US Blanks,"6'5""A",N18,59.5,1.063,2.626,21.126,77.5,76.874,60.9,fish-eggs/6-5A,15,
@@ -166,7 +166,7 @@ US Blanks,"6'5""AX",T0,0,1.752,1.752,12.5,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""AX",T6,6,1.311,2.0,16.0,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""AX",T12,12,0.874,2.374,18.374,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""AX",T18,18,0.563,2.752,20.252,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
-US Blanks,"6'5""AX",T24,24,0.311,2.937,21.752,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
+US Blanks,"6'5""AX",T24,24,0.311,3.0625,21.752,77.5,76.874,66.5,fish-eggs/6-5-AX,16,"thickness: changed from 2 15/16"" to 3 1/16"" on 2026-10-14 by the founder"
 US Blanks,"6'5""AX",C,38.75,0.0,3.374,23.5,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""AX",N24,53.5,0.563,3.126,22.5,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""AX",N18,59.5,1.063,2.875,21.126,77.5,76.874,66.5,fish-eggs/6-5-AX,16,"thickness: catalog prints 2 7/8"" but 7.94 cm here; used the inch value"
@@ -175,7 +175,7 @@ US Blanks,"6'5""AX",N6,71.5,3.189,1.937,14.752,77.5,76.874,66.5,fish-eggs/6-5-AX
 US Blanks,"6'5""AX",N0,77.5,5.063,1.5,7.5,77.5,76.874,66.5,fish-eggs/6-5-AX,16,
 US Blanks,"6'5""R",T0,0,2.252,1.374,9.252,77.5,76.752,56.0,shortboard/6-5R,17,
 US Blanks,"6'5""R",T6,6,1.437,2.0,14.0,77.5,76.752,56.0,shortboard/6-5R,17,
-US Blanks,"6'5""R",T12,12,0.689,2.437,17.0,77.5,76.752,56.0,shortboard/6-5R,17,
+US Blanks,"6'5""R",T12,12,1.3125,2.437,17.0,77.5,76.752,56.0,shortboard/6-5R,17,"rocker: changed from 11/16"" to 1 5/16"" on 2026-10-14 by the founder"
 US Blanks,"6'5""R",T18,18,0.563,2.811,19.126,77.5,76.752,56.0,shortboard/6-5R,17,
 US Blanks,"6'5""R",T24,24,0.252,3.063,20.626,77.5,76.752,56.0,shortboard/6-5R,17,
 US Blanks,"6'5""R",C,38.75,0.0,3.25,21.752,77.5,76.752,56.0,shortboard/6-5R,17,"thickness: catalog prints 3 1/4"" but 8.62 cm here; used the inch value"
@@ -291,7 +291,7 @@ US Blanks,"6'10""A",T24,24,0.437,3.126,21.752,83.374,82.626,77.74,fish-eggs/610A
 US Blanks,"6'10""A",T36,36,0.063,3.563,23.626,83.374,82.626,77.74,fish-eggs/610A,27,
 US Blanks,"6'10""A",C,41.687,0.0,3.626,24.0,83.374,82.626,77.74,fish-eggs/610A,27,
 US Blanks,"6'10""A",N36,47.374,0.063,3.626,24.0,83.374,82.626,77.74,fish-eggs/610A,27,
-US Blanks,"6'10""A",N24,59.374,0.563,3.374,22.752,83.374,82.626,77.74,fish-eggs/610A,27,
+US Blanks,"6'10""A",N24,59.374,0.563,3.374,23.0625,83.374,82.626,77.74,fish-eggs/610A,27,"width: changed from 22 3/4"" to 23 1/16"" on 2026-10-14 by the founder"
 US Blanks,"6'10""A",N18,65.374,1.126,3.063,21.252,83.374,82.626,77.74,fish-eggs/610A,27,
 US Blanks,"6'10""A",N12,71.374,2.0,2.626,18.811,83.374,82.626,77.74,fish-eggs/610A,27,
 US Blanks,"6'10""A",N6,77.374,3.252,2.126,14.937,83.374,82.626,77.74,fish-eggs/610A,27,
@@ -300,7 +300,7 @@ US Blanks,"6'10""RH",T0,0,2.311,1.563,8.252,83.22,82.5,69.69,fish-eggs/610-RH,28
 US Blanks,"6'10""RH",T6,6,1.626,2.063,14.5,83.22,82.5,69.69,fish-eggs/610-RH,28,
 US Blanks,"6'10""RH",T12,12,1.063,2.5,17.748,83.22,82.5,69.69,fish-eggs/610-RH,28,
 US Blanks,"6'10""RH",T18,18,0.693,2.811,19.874,83.22,82.5,69.69,fish-eggs/610-RH,28,
-US Blanks,"6'10""RH",T24,24,0.374,3.063,21.437,83.22,82.5,69.69,fish-eggs/610-RH,28,
+US Blanks,"6'10""RH",T24,24,0.374,3.1875,21.437,83.22,82.5,69.69,fish-eggs/610-RH,28,"thickness: changed from 3 1/16"" to 3 3/16"" on 2026-10-14 by the founder"
 US Blanks,"6'10""RH",T36,36,0.063,3.374,23.126,83.22,82.5,69.69,fish-eggs/610-RH,28,
 US Blanks,"6'10""RH",C,41.61,0.0,3.374,23.5,83.22,82.5,69.69,fish-eggs/610-RH,28,
 US Blanks,"6'10""RH",N36,47.22,0.063,3.374,23.5,83.22,82.5,69.69,fish-eggs/610-RH,28,
@@ -382,7 +382,7 @@ US Blanks,"7'3""A",T24,24,0.5,3.0,21.374,86.874,86.374,77.7,fish-eggs/73A,34,
 US Blanks,"7'3""A",T36,36,0.094,3.437,23.5,86.874,86.374,77.7,fish-eggs/73A,34,
 US Blanks,"7'3""A",C,43.437,0.0,3.563,24.0,86.874,86.374,77.7,fish-eggs/73A,34,
 US Blanks,"7'3""A",N36,50.874,0.126,3.563,24.0,86.874,86.374,77.7,fish-eggs/73A,34,
-US Blanks,"7'3""A",N24,62.874,0.752,3.189,22.5,86.874,86.374,77.7,fish-eggs/73A,34,
+US Blanks,"7'3""A",N24,62.874,0.752,3.189,22.9375,86.874,86.374,77.7,fish-eggs/73A,34,"width: changed from 22 1/2"" to 22 15/16"" on 2026-10-14 by the founder"
 US Blanks,"7'3""A",N18,68.874,1.374,2.874,21.0,86.874,86.374,77.7,fish-eggs/73A,34,
 US Blanks,"7'3""A",N12,74.874,2.252,2.437,18.5,86.874,86.374,77.7,fish-eggs/73A,34,
 US Blanks,"7'3""A",N6,80.874,3.5,1.874,14.5,86.874,86.374,77.7,fish-eggs/73A,34,
@@ -450,7 +450,7 @@ US Blanks,"7'7""A",N36,54.626,0.189,3.437,22.689,90.626,90.0,74.6,fun-boards/77A
 US Blanks,"7'7""A",N24,66.626,0.937,3.063,20.752,90.626,90.0,74.6,fun-boards/77A,39,
 US Blanks,"7'7""A",N18,72.626,1.626,2.752,19.0,90.626,90.0,74.6,fun-boards/77A,39,
 US Blanks,"7'7""A",N12,78.626,2.563,2.311,16.252,90.626,90.0,74.6,fun-boards/77A,39,
-US Blanks,"7'7""A",N6,84.626,4.0,1.626,11.811,90.626,90.0,74.6,fun-boards/77A,39,
+US Blanks,"7'7""A",N6,84.626,4.0,1.875,11.811,90.626,90.0,74.6,fun-boards/77A,39,"thickness: changed from 1 5/8"" to 1 7/8"" on 2026-10-14 by the founder"
 US Blanks,"7'7""A",N0,90.626,6.0,1.378,4.752,90.626,90.0,74.6,fun-boards/77A,39,
 US Blanks,"7'8""A",T0,0,2.252,1.811,10.0,92.752,91.736,91.58,fun-boards/78A,40,
 US Blanks,"7'8""A",T6,6,1.752,2.189,14.752,92.752,91.736,91.58,fun-boards/78A,40,
@@ -473,7 +473,7 @@ US Blanks,"7'8""EA",T24,24,0.626,2.563,18.811,93.0,92.189,57.5,guns/78EA,41,
 US Blanks,"7'8""EA",T36,36,0.126,2.874,21.126,93.0,92.189,57.5,guns/78EA,41,
 US Blanks,"7'8""EA",C,46.5,0.0,3.0,21.874,93.0,92.189,57.5,guns/78EA,41,
 US Blanks,"7'8""EA",N36,57.0,0.126,3.0,21.0,93.0,92.189,57.5,guns/78EA,41,
-US Blanks,"7'8""EA",N24,69.0,0.811,2.563,18.189,93.0,92.189,57.5,guns/78EA,41,
+US Blanks,"7'8""EA",N24,69.0,0.811,2.6875,18.189,93.0,92.189,57.5,guns/78EA,41,"thickness: changed from 2 9/16"" to 2 11/16"" on 2026-10-14 by the founder"
 US Blanks,"7'8""EA",N18,75.0,1.5,2.252,16.0,93.0,92.189,57.5,guns/78EA,41,
 US Blanks,"7'8""EA",N12,81.0,2.5,1.811,12.752,93.0,92.189,57.5,guns/78EA,41,
 US Blanks,"7'8""EA",N6,87.0,4.0,1.374,8.874,93.0,92.189,57.5,guns/78EA,41,
@@ -541,7 +541,7 @@ US Blanks,"8'0""H",N36,60.126,0.189,3.189,23.437,96.126,95.626,78.4,fish-eggs/80
 US Blanks,"8'0""H",N24,72.126,0.752,2.811,22.189,96.126,95.626,78.4,fish-eggs/80H,46,
 US Blanks,"8'0""H",N18,78.126,1.252,2.5,21.063,96.126,95.626,78.4,fish-eggs/80H,46,
 US Blanks,"8'0""H",N12,84.126,1.874,2.126,19.063,96.126,95.626,78.4,fish-eggs/80H,46,
-US Blanks,"8'0""H",N6,90.126,2.626,1.752,15.374,96.126,95.626,78.4,fish-eggs/80H,46,
+US Blanks,"8'0""H",N6,90.126,2.626,1.625,15.374,96.126,95.626,78.4,fish-eggs/80H,46,"thickness: changed from 1 3/4"" to 1 5/8"" on 2026-10-14 by the founder"
 US Blanks,"8'0""H",N0,96.126,3.563,0.937,0,96.126,95.626,78.4,fish-eggs/80H,46,"width 0: rounded nose, not printed in catalog"
 US Blanks,"8'1""EA",T0,0,2.689,1.311,7.752,96.626,95.752,75.3,fun-boards/81EA,47,
 US Blanks,"8'1""EA",T6,6,2.0,1.689,13.374,96.626,95.752,75.3,fun-boards/81EA,47,
@@ -652,11 +652,11 @@ US Blanks,"8'9""Y",T6,6,2.374,1.9375,14.626,105.0,104.5,92.1,longboards/89Y,55,"
 US Blanks,"8'9""Y",T12,12,1.752,2.311,18.0,105.0,104.5,92.1,longboards/89Y,55,
 US Blanks,"8'9""Y",T18,18,1.252,2.626,20.126,105.0,104.5,92.1,longboards/89Y,55,
 US Blanks,"8'9""Y",T24,24,0.811,2.874,21.563,105.0,104.5,92.1,longboards/89Y,55,
-US Blanks,"8'9""Y",T36,36,0.311,3.189,23.437,105.0,104.5,92.1,longboards/89Y,55,
+US Blanks,"8'9""Y",T36,36,0.125,3.189,23.437,105.0,104.5,92.1,longboards/89Y,55,"rocker: changed from 5/16"" to 1/8"" on 2026-10-14 by the founder"
 US Blanks,"8'9""Y",T48,48,0,3.311,24.5,105.0,104.5,92.1,longboards/89Y,55,rocker 0: not printed in catalog
 US Blanks,"8'9""Y",C,52.5,0.0,3.374,24.689,105.0,104.5,92.1,longboards/89Y,55,
 US Blanks,"8'9""Y",N48,57.0,0,3.311,24.811,105.0,104.5,92.1,longboards/89Y,55,"rocker 0: not printed in catalog; width: catalog prints 25 13/16"" but 63.02 cm here; used the cm value (24 13/16"")"
-US Blanks,"8'9""Y",N36,69.0,0.28,3.126,24.5,105.0,104.5,92.1,longboards/89Y,55,
+US Blanks,"8'9""Y",N36,69.0,0.125,3.126,24.5,105.0,104.5,92.1,longboards/89Y,55,"rocker: changed from 1/4"" to 1/8"" on 2026-10-14 by the founder"
 US Blanks,"8'9""Y",N24,81.0,0.937,2.811,23.189,105.0,104.5,92.1,longboards/89Y,55,
 US Blanks,"8'9""Y",N18,87.0,1.437,2.626,22.126,105.0,104.5,92.1,longboards/89Y,55,
 US Blanks,"8'9""Y",N12,93.0,2.126,2.311,20.5,105.0,104.5,92.1,longboards/89Y,55,
@@ -667,11 +667,11 @@ US Blanks,"8'9""YX",T6,6,2.374,2.311,14.626,105.0,104.5,105.7,longboards/89YX,56
 US Blanks,"8'9""YX",T12,12,1.752,2.689,18.0,105.0,104.5,105.7,longboards/89YX,56,
 US Blanks,"8'9""YX",T18,18,1.252,3.0,20.126,105.0,104.5,105.7,longboards/89YX,56,
 US Blanks,"8'9""YX",T24,24,0.811,3.252,21.563,105.0,104.5,105.7,longboards/89YX,56,
-US Blanks,"8'9""YX",T36,36,0.311,3.563,23.437,105.0,104.5,105.7,longboards/89YX,56,
+US Blanks,"8'9""YX",T36,36,0.125,3.563,23.437,105.0,104.5,105.7,longboards/89YX,56,"rocker: changed from 5/16"" to 1/8"" on 2026-10-14 by the founder"
 US Blanks,"8'9""YX",T48,48,0,3.689,24.5,105.0,104.5,105.7,longboards/89YX,56,rocker 0: not printed in catalog
 US Blanks,"8'9""YX",C,52.5,0.0,3.752,24.689,105.0,104.5,105.7,longboards/89YX,56,
 US Blanks,"8'9""YX",N48,57.0,0,3.689,24.811,105.0,104.5,105.7,longboards/89YX,56,rocker 0: not printed in catalog
-US Blanks,"8'9""YX",N36,69.0,0.28,3.5,24.5,105.0,104.5,105.7,longboards/89YX,56,
+US Blanks,"8'9""YX",N36,69.0,0.125,3.5,24.5,105.0,104.5,105.7,longboards/89YX,56,"rocker: changed from 1/4"" to 1/8"" on 2026-10-14 by the founder"
 US Blanks,"8'9""YX",N24,81.0,0.937,3.189,23.189,105.0,104.5,105.7,longboards/89YX,56,
 US Blanks,"8'9""YX",N18,87.0,1.437,3.0,22.126,105.0,104.5,105.7,longboards/89YX,56,
 US Blanks,"8'9""YX",N12,93.0,2.126,2.689,20.5,105.0,104.5,105.7,longboards/89YX,56,
@@ -721,14 +721,14 @@ US Blanks,"9'3""AX",N12,99.563,3.752,2.626,17.126,111.563,110.626,135.73,fun-boa
 US Blanks,"9'3""AX",N6,105.563,5.5,2.063,12.311,111.563,110.626,135.73,fun-boards/93AX,59,
 US Blanks,"9'3""AX",N0,111.563,7.701,1.752,4.0,111.563,110.626,135.73,fun-boards/93AX,59,
 US Blanks,"9'3""Y",T0,0,3.252,1.437,9.252,111.0,110.626,104.7,longboards/93Y,60,
-US Blanks,"9'3""Y",T6,6,2.563,2.063,14.374,111.0,110.626,104.7,longboards/93Y,60,
+US Blanks,"9'3""Y",T6,6,2.4375,2.063,14.374,111.0,110.626,104.7,longboards/93Y,60,"rocker: changed from 2 9/16"" to 2 7/16"" on 2026-10-14 by the founder"
 US Blanks,"9'3""Y",T12,12,1.811,2.374,17.626,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",T18,18,1.311,2.689,19.874,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",T24,24,0.937,2.937,21.374,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",T36,36,0.374,3.252,23.374,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",T48,48,0.063,3.437,24.5,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",C,55.5,0.0,3.5,24.937,111.0,110.626,104.7,longboards/93Y,60,
-US Blanks,"9'3""Y",N48,63.0,0.063,3.374,25.063,111.0,110.626,104.7,longboards/93Y,60,
+US Blanks,"9'3""Y",N48,63.0,0.063,3.4375,25.063,111.0,110.626,104.7,longboards/93Y,60,"thickness: changed from 3 3/8"" to 3 7/16"" on 2026-10-14 by the founder"
 US Blanks,"9'3""Y",N36,75.0,0.374,3.252,24.563,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",N24,87.0,1.063,2.874,23.311,111.0,110.626,104.7,longboards/93Y,60,
 US Blanks,"9'3""Y",N18,93.0,1.626,2.689,22.189,111.0,110.626,104.7,longboards/93Y,60,
@@ -960,7 +960,7 @@ US Blanks,"10'8""Y",N18,109.874,2.189,2.874,22.189,127.874,127.311,135.1,longboa
 US Blanks,"10'8""Y",N12,115.874,2.937,2.563,20.5,127.874,127.311,135.1,longboards/108Y,75,
 US Blanks,"10'8""Y",N6,121.874,3.937,2.126,17.0,127.874,127.311,135.1,longboards/108Y,75,
 US Blanks,"10'8""Y",N0,127.874,5.252,1.563,0,127.874,127.311,135.1,longboards/108Y,75,"width 0: rounded nose, not printed in catalog"
-US Blanks,"10'10""T",T0,0,3.067,2.689,13.0,129.374,129.0,235.3,sups/1010T,76,"name: the catalog page titles this blank 10'0""T; its catalog address (sups/1010T) and its length (10'9 3/8"") are the 10'10""T's, the name used here"
+US Blanks,"10'10""T",T0,0,3.125,2.689,13.0,129.374,129.0,235.3,sups/1010T,76,"name: the catalog page titles this blank 10'0""T; its catalog address (sups/1010T) and its length (10'9 3/8"") are the 10'10""T's, the name used here; rocker: changed from 3 1/16"" to 3 1/8"" on 2026-10-14 by the founder"
 US Blanks,"10'10""T",T6,6,2.563,3.252,18.689,129.374,129.0,235.3,sups/1010T,76,
 US Blanks,"10'10""T",T12,12,2.063,3.563,21.937,129.374,129.0,235.3,sups/1010T,76,
 US Blanks,"10'10""T",T18,18,1.689,3.811,24.563,129.374,129.0,235.3,sups/1010T,76,
@@ -1037,7 +1037,7 @@ US Blanks,"6'5""X EPS",N0,77.811,5.5,1.626,3.0,77.811,76.811,,superfused/65xsupe
 US Blanks,"6'8"" EPS",T0,0,2.374,1.0,6.752,81.0,80.0,,superfused/68superfusedeps,83,
 US Blanks,"6'8"" EPS",T6,6,1.689,1.374,12.252,81.0,80.0,,superfused/68superfusedeps,83,
 US Blanks,"6'8"" EPS",T12,12,1.094,1.874,15.626,81.0,80.0,,superfused/68superfusedeps,83,
-US Blanks,"6'8"" EPS",T18,18,0.752,2.311,17.189,81.0,80.0,,superfused/68superfusedeps,83,
+US Blanks,"6'8"" EPS",T18,18,0.625,2.311,18.0,81.0,80.0,,superfused/68superfusedeps,83,"width: changed from 17 3/16"" to 18"" on 2026-10-14 by the founder; rocker: changed from 3/4"" to 5/8"" on 2026-10-14 by the founder (3/4"" is too much)"
 US Blanks,"6'8"" EPS",T24,24,0.374,2.559,19.626,81.0,80.0,,superfused/68superfusedeps,83,
 US Blanks,"6'8"" EPS",T36,36,0.031,2.811,21.311,81.0,80.0,,superfused/68superfusedeps,83,
 US Blanks,"6'8"" EPS",C,40.5,0.0,2.882,21.437,81.0,80.0,,superfused/68superfusedeps,83,
@@ -1050,7 +1050,7 @@ US Blanks,"6'8"" EPS",N0,81.0,5.374,0.937,4.0,81.0,80.0,,superfused/68superfused
 US Blanks,"6'8""X EPS",T0,0,2.374,1.374,6.752,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"6'8""X EPS",T6,6,1.689,1.811,12.252,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"6'8""X EPS",T12,12,1.094,2.252,15.626,81.0,80.0,,superfused/68xsuperfusedeps,84,
-US Blanks,"6'8""X EPS",T18,18,0.752,2.626,17.189,81.0,80.0,,superfused/68xsuperfusedeps,84,
+US Blanks,"6'8""X EPS",T18,18,0.625,2.626,18.0,81.0,80.0,,superfused/68xsuperfusedeps,84,"width: changed from 17 3/16"" to 18"" on 2026-10-14 by the founder; rocker: changed from 3/4"" to 5/8"" on 2026-10-14 by the founder (3/4 is too much)"
 US Blanks,"6'8""X EPS",T24,24,0.374,2.874,19.626,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"6'8""X EPS",T36,36,0.031,3.189,21.311,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"6'8""X EPS",C,40.5,0.0,3.252,21.437,81.0,80.0,,superfused/68xsuperfusedeps,84,
@@ -1061,9 +1061,9 @@ US Blanks,"6'8""X EPS",N12,69.0,1.874,2.189,14.563,81.0,80.0,,superfused/68xsupe
 US Blanks,"6'8""X EPS",N6,75.0,3.311,1.626,10.626,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"6'8""X EPS",N0,81.0,5.374,1.252,4.0,81.0,80.0,,superfused/68xsuperfusedeps,84,
 US Blanks,"7'2"" EPS",T0,0,2.874,1.126,5.0,86.752,85.752,,superfused/72superfusedeps,85,
-US Blanks,"7'2"" EPS",T6,6,1.937,1.563,11.311,86.752,85.752,,superfused/72superfusedeps,85,
-US Blanks,"7'2"" EPS",T12,12,1.252,2.126,14.811,86.752,85.752,,superfused/72superfusedeps,85,
-US Blanks,"7'2"" EPS",T18,18,0.811,2.189,17.626,86.752,85.752,,superfused/72superfusedeps,85,
+US Blanks,"7'2"" EPS",T6,6,1.937,1.8125,11.311,86.752,85.752,,superfused/72superfusedeps,85,"thickness: changed from 1 9/16"" to 1 13/16"" on 2026-10-14 by the founder"
+US Blanks,"7'2"" EPS",T12,12,1.252,2.126,15.125,86.752,85.752,,superfused/72superfusedeps,85,"width: changed from 14 13/16"" to 15 1/8"" on 2026-10-14 by the founder"
+US Blanks,"7'2"" EPS",T18,18,0.811,2.375,17.375,86.752,85.752,,superfused/72superfusedeps,85,"thickness: changed from 2 3/16"" to 2 3/8"" on 2026-10-14 by the founder; width: changed from 17 5/8"" to 17 3/8"" on 2026-10-14 by the founder"
 US Blanks,"7'2"" EPS",T24,24,0.5,2.563,19.252,86.752,85.752,,superfused/72superfusedeps,85,
 US Blanks,"7'2"" EPS",T36,36,0.063,2.874,21.252,86.752,85.752,,superfused/72superfusedeps,85,
 US Blanks,"7'2"" EPS",C,43.376,0.0,2.937,21.563,86.752,85.752,,superfused/72superfusedeps,85,
@@ -1074,9 +1074,9 @@ US Blanks,"7'2"" EPS",N12,74.752,2.063,1.874,13.752,86.752,85.752,,superfused/72
 US Blanks,"7'2"" EPS",N6,80.752,3.5,1.311,9.626,86.752,85.752,,superfused/72superfusedeps,85,
 US Blanks,"7'2"" EPS",N0,86.752,5.811,1.0,2.752,86.752,85.752,,superfused/72superfusedeps,85,
 US Blanks,"7'2""X EPS",T0,0,2.874,1.5,5.0,86.752,85.752,,superfused/72xsuperfusedeps,86,
-US Blanks,"7'2""X EPS",T6,6,1.937,1.937,11.311,86.752,85.752,,superfused/72xsuperfusedeps,86,
-US Blanks,"7'2""X EPS",T12,12,1.252,2.5,14.811,86.752,85.752,,superfused/72xsuperfusedeps,86,
-US Blanks,"7'2""X EPS",T18,18,0.811,2.563,17.626,86.752,85.752,,superfused/72xsuperfusedeps,86,
+US Blanks,"7'2""X EPS",T6,6,1.937,2.1875,11.311,86.752,85.752,,superfused/72xsuperfusedeps,86,"thickness: changed from 1 15/16"" to 2 3/16"" on 2026-10-14 by the founder"
+US Blanks,"7'2""X EPS",T12,12,1.252,2.5,15.125,86.752,85.752,,superfused/72xsuperfusedeps,86,"width: changed from 14 13/16"" to 15 1/8"" on 2026-10-14 by the founder"
+US Blanks,"7'2""X EPS",T18,18,0.811,2.75,17.375,86.752,85.752,,superfused/72xsuperfusedeps,86,"thickness: changed from 2 9/16"" to 2 3/4"" on 2026-10-14 by the founder; width: changed from 17 5/8"" to 17 3/8"" on 2026-10-14 by the founder"
 US Blanks,"7'2""X EPS",T24,24,0.5,2.9375,19.252,86.752,85.752,,superfused/72xsuperfusedeps,86,"thickness: catalog prints 2 13/16"" (7.14 cm) here; used 2 15/16"", the 7'2"" EPS plus 3/8"""
 US Blanks,"7'2""X EPS",T36,36,0.063,3.252,21.252,86.752,85.752,,superfused/72xsuperfusedeps,86,
 US Blanks,"7'2""X EPS",C,43.376,0.0,3.311,21.563,86.752,85.752,,superfused/72xsuperfusedeps,86,
@@ -1113,7 +1113,7 @@ US Blanks,"7'8""X EPS",N12,81.0,2.193,2.437,15.374,93.0,91.874,,superfused/78xsu
 US Blanks,"7'8""X EPS",N6,87.0,3.689,1.874,11.063,93.0,91.874,,superfused/78xsuperfusedeps,88,
 US Blanks,"7'8""X EPS",N0,93.0,5.563,1.437,4.0,93.0,91.874,,superfused/78xsuperfusedeps,88,
 US Blanks,"8'8"" EPS",T0,0,2.126,1.35,9.5,103.874,103.0,,superfused/88superfusedeps,89,
-US Blanks,"8'8"" EPS",T6,6,1.937,1.874,15.252,103.874,103.0,,superfused/88superfusedeps,89,
+US Blanks,"8'8"" EPS",T6,6,1.75,1.874,15.252,103.874,103.0,,superfused/88superfusedeps,89,"rocker: changed from 1 15/16"" to 1 3/4"" on 2026-10-14 by the founder"
 US Blanks,"8'8"" EPS",T12,12,1.311,2.311,18.5,103.874,103.0,,superfused/88superfusedeps,89,
 US Blanks,"8'8"" EPS",T18,18,0.811,2.626,20.752,103.874,103.0,,superfused/88superfusedeps,89,
 US Blanks,"8'8"" EPS",T24,24,0.5,2.874,22.374,103.874,103.0,,superfused/88superfusedeps,89,
@@ -1128,7 +1128,7 @@ US Blanks,"8'8"" EPS",N12,91.874,2.189,2.252,21.063,103.874,103.0,,superfused/88
 US Blanks,"8'8"" EPS",N6,97.874,3.189,1.752,17.811,103.874,103.0,,superfused/88superfusedeps,89,
 US Blanks,"8'8"" EPS",N0,103.874,4.252,1.252,6.752,103.874,103.0,,superfused/88superfusedeps,89,
 US Blanks,"8'8""X EPS",T0,0,2.126,1.752,10.252,103.874,103.0,,superfused/88xsuperfusedeps,90,
-US Blanks,"8'8""X EPS",T6,6,1.937,2.252,15.252,103.874,103.0,,superfused/88xsuperfusedeps,90,
+US Blanks,"8'8""X EPS",T6,6,1.75,2.252,15.252,103.874,103.0,,superfused/88xsuperfusedeps,90,"rocker: changed from 1 15/16"" to 1 3/4"" on 2026-10-14 by the founder"
 US Blanks,"8'8""X EPS",T12,12,1.311,2.689,18.5,103.874,103.0,,superfused/88xsuperfusedeps,90,
 US Blanks,"8'8""X EPS",T18,18,0.811,3.0,20.752,103.874,103.0,,superfused/88xsuperfusedeps,90,
 US Blanks,"8'8""X EPS",T24,24,0.5,3.252,22.374,103.874,103.0,,superfused/88xsuperfusedeps,90,
@@ -1198,7 +1198,7 @@ US Blanks,"8'6"" EPS",N12,90.626,1.937,3.252,32.0,102.626,102.0,,sups/86eps,96,"
 US Blanks,"8'6"" EPS",N0,102.626,4.752,1.937,32.0,102.626,102.0,,sups/86eps,96,
 US Blanks,"9'6"" EPS",T0,0,4.252,1.252,32.0,114.626,114.0,,sups/96eps,97,
 US Blanks,"9'6"" EPS",T12,12,2.063,3.126,32.0,114.626,114.0,,sups/96eps,97,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
-US Blanks,"9'6"" EPS",T24,24,1.063,4.063,32.0,114.626,114.0,,sups/96eps,97,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
+US Blanks,"9'6"" EPS",T24,24,0.625,4.063,32.0,114.626,114.0,,sups/96eps,97,"width not printed at this station; SUP blank is a constant-width block, filled with center width; rocker: changed from 1 1/16"" to 5/8"" on 2026-10-14 by the founder"
 US Blanks,"9'6"" EPS",T36,36,0.063,4.626,32.0,114.626,114.0,,sups/96eps,97,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"9'6"" EPS",T48,48,0,4.874,32.0,114.626,114.0,,sups/96eps,97,"width not printed at this station; SUP blank is a constant-width block, filled with center width; rocker 0: not printed in catalog"
 US Blanks,"9'6"" EPS",C,57.313,0.0,4.937,32.0,114.626,114.0,,sups/96eps,97,
@@ -1241,7 +1241,7 @@ US Blanks,"10'4""B SUP EPS",N24,101.252,1.5,3.937,32.0,125.252,124.0,,sups/104su
 US Blanks,"10'4""B SUP EPS",N12,113.252,3.063,3.311,32.0,125.252,124.0,,sups/104supb,100,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"10'4""B SUP EPS",N0,125.252,6.252,2.311,32.0,125.252,124.0,,sups/104supb,100,
 US Blanks,"11'2""A SUP EPS",T0,0,4.189,1.874,32.0,135.5,134.0,,sups/112supa,101,
-US Blanks,"11'2""A SUP EPS",T12,12,2.252,3.374,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
+US Blanks,"11'2""A SUP EPS",T12,12,2.375,3.374,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width; rocker: changed from 2 1/4"" to 2 3/8"" on 2026-10-14 by the founder"
 US Blanks,"11'2""A SUP EPS",T24,24,1.252,4.126,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"11'2""A SUP EPS",T36,36,0.626,4.563,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"11'2""A SUP EPS",T48,48,0.252,4.811,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
@@ -1252,7 +1252,7 @@ US Blanks,"11'2""A SUP EPS",N24,111.5,1.252,4.189,32.0,135.5,134.0,,sups/112supa
 US Blanks,"11'2""A SUP EPS",N12,123.5,2.5,3.374,32.0,135.5,134.0,,sups/112supa,101,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"11'2""A SUP EPS",N0,135.5,5.252,1.874,32.0,135.5,134.0,,sups/112supa,101,
 US Blanks,"11'2""B SUP EPS",T0,0,4.752,1.811,32.0,135.5,134.0,,sups/112supb,102,
-US Blanks,"11'2""B SUP EPS",T12,12,2.689,3.252,32.0,135.5,134.0,,sups/112supb,102,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
+US Blanks,"11'2""B SUP EPS",T12,12,3.0,3.252,32.0,135.5,134.0,,sups/112supb,102,"width not printed at this station; SUP blank is a constant-width block, filled with center width; rocker: changed from 2 11/16"" to 3"" on 2026-10-14 by the founder"
 US Blanks,"11'2""B SUP EPS",T24,24,1.752,4.063,32.0,135.5,134.0,,sups/112supb,102,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"11'2""B SUP EPS",T36,36,0.874,4.563,32.0,135.5,134.0,,sups/112supb,102,"width not printed at this station; SUP blank is a constant-width block, filled with center width"
 US Blanks,"11'2""B SUP EPS",T48,48,0.311,4.937,32.0,135.5,134.0,,sups/112supb,102,"width not printed at this station; SUP blank is a constant-width block, filled with center width"

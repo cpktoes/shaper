@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-14 - Quick task 261013-uoj follow-ups: maker catalog reports (one block per blank, three-way figures), Arctic fish tails and round noses, Marko 10'2" M pair nose/tail swap
+Last activity: 2026-10-14 - Quick task 261013-uoj: the founder's first catalogue review applied (52 changes), review controls and apply script in place
 
 ## Performance Metrics
 

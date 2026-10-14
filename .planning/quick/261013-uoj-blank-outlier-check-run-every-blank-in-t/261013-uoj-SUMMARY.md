@@ -94,3 +94,16 @@ decisions as JSON into a box on the page and enables a download of `blank-review
 `scripts/apply-blank-decisions.ts <file> [--write]` then makes exactly those changes to the catalogue files — rehearsal
 by default, all-or-nothing, refusing a decision whose "current" figure no longer matches the file — with a note on each
 row ("rocker: changed from X to Y on <date> by the founder (why)"), after which the usual gates and reseeds run.
+
+**The founder's first review applied (2026-10-14, `261013-uoj-review-decisions-2026-10-14.json` in this folder):**
+53 decisions; 52 changes written across US Blanks, Arctic Foam and Millennium Foam (each row notes what changed, from
+what, when and the founder's reason); one was a no-change tick (6'2"A nose 18" thickness ticked with its own figure
+and the comment "wrong") and is skipped with a notice — `apply-blank-decisions.ts` now treats such a tick as "left as
+is" rather than refusing the batch. One decision was put back after the gates: the 6'4"EAX nose 24" thickness came
+through as 1 11/16", a full inch under its neighbours (the unit suite's foil invariants caught it: a board would get
+thicker toward the nose); it stays 2 11/16" pending the founder's word — 2 13/16" as printed, or 2 11/16" as kept.
+A test that named the Arctic 7'9" SBF as "a blank whose tail sits below the board's centre" now finds its example by
+search (that blank first, then every pickable one), since the review raised that tail 12" rocker; two whole-catalogue
+stress tests got a 30-second limit after tipping over the default five under load. Goldens and presets unchanged; the
+ROCKER picture unchanged; both databases reseeded (223 of 223). The outlier page now lists 102 stations off their
+curve (from 133) and 58 unusual readings.

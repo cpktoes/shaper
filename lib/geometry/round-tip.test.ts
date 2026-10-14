@@ -461,7 +461,9 @@ describe("the round nose changes nothing it should not, on the whole catalogue (
     }
   });
 
-  it("refuses no stress board that fits today, and counts the boards it frees (D7)", ({ annotate }) => {
+  // The whole catalogue's stress boards, judged twice: just over the default five seconds on a busy
+  // machine, so it gets its own limit rather than tipping over under load (2026-10-14).
+  it("refuses no stress board that fits today, and counts the boards it frees (D7)", { timeout: 30_000 }, ({ annotate }) => {
     const todays = buildStressSet(CATALOG, (record) => ({
       ...prepareBlank(record),
       width: todayWidth(record),

@@ -116,7 +116,11 @@ function main(): void {
     if (d.current && shown && d.current !== shown) {
       return problems.push(`${where}: the page showed ${d.current} but the file now holds ${shown} — the file changed since the review; look again before applying`);
     }
-    if (before === cell) return problems.push(`${where}: the file already holds ${shown || "nothing"} — no change`);
+    if (before === cell) {
+      // Ticked with the figure it already has: nothing to change, and no reason to refuse the rest.
+      report.push(`${d.vendor} ${d.name}${d.station ? ` ${d.station}` : ""} ${WORD[d.attribute]}: already ${shown} — left as is${d.comment ? ` (the founder's note: ${d.comment})` : ""}`);
+      return;
+    }
     const note = `${WORD[d.attribute]}: changed from ${shown || "nothing"} to ${shownFigure(d.attribute, cell)} on ${today} by the founder${d.comment ? ` (${d.comment.replace(/[\r\n]+/g, " ").trim()})` : ""}`;
     for (const index of targets) {
       data.rows[index][col(column)] = cell;

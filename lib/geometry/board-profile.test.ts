@@ -461,37 +461,50 @@ describe("Remove This Blank keeps the five stations exactly (WR-01)", () => {
 });
 
 describe("Remove This Blank on a board whose tail sits below its centre (Phase 14 code review WR-02)", () => {
-  // The review's example: the default 6'0" outline on the Arctic Foam 7'9" SBF at a 1 1/4" centre,
-  // default tips, Pin deck, both starts on Automatic, laid where the fit check puts it. Under Pin
-  // deck the tail's thinning comes off the bottom, which drops that tip below the board's centre.
-  const record = findBlank("Arctic Foam", `7'9" SBF`);
-  const prepared = prepareBlank(record);
+  // The review's example: the default 6'0" outline on a blank at a 1 1/4" centre, default tips, Pin
+  // deck, both starts on Automatic, laid where the fit check puts it. Under Pin deck the tail's
+  // thinning comes off the bottom, which drops that tip below the board's centre. The review's own
+  // blank was the Arctic Foam 7'9" SBF; the founder's catalogue review of 2026-10-14 raised its tail
+  // 12" rocker, so the example is now FOUND rather than named — that blank first, then every pickable
+  // blank — and the guard below proves one was found.
   const length = DEFAULT_BOARD_SPEC.outline.length;
   const geometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
   const foil = { ...DEFAULT_FOIL_SPEC, center: inchesToMm(1.25) };
-  const verdict = judgeBlank(
-    prepared,
-    {
-      board: {
-        length,
-        centerThickness: foil.center,
-        noseTip: foil.noseTip,
-        tailTip: foil.tailTip,
-        nose12Offset: mm(0),
-        tail12Offset: mm(0),
-        ...DEFAULT_BLANK_CUT,
+  function profileOn(record: BlankRecord) {
+    const prepared = prepareBlank(record);
+    const verdict = judgeBlank(
+      prepared,
+      {
+        board: {
+          length,
+          centerThickness: foil.center,
+          noseTip: foil.noseTip,
+          tailTip: foil.tailTip,
+          nose12Offset: mm(0),
+          tail12Offset: mm(0),
+          ...DEFAULT_BLANK_CUT,
+        },
+        halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
+        widePointStation: geometry.widePointStation,
       },
-      halfWidthAt: (s: Mm) => sampleOutline(geometry, s),
-      widePointStation: geometry.widePointStation,
-    },
-    toFitSettings(DEFAULT_FIT_DEFAULTS),
-  );
-  const onBlank = buildBoardProfile({
-    length,
-    rocker: DEFAULT_FALLBACK_ROCKER,
-    foil,
-    blank: { prepared, placement: verdict.placement, nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT },
-  });
+      toFitSettings(DEFAULT_FIT_DEFAULTS),
+    );
+    return buildBoardProfile({
+      length,
+      rocker: DEFAULT_FALLBACK_ROCKER,
+      foil,
+      blank: { prepared, placement: verdict.placement, nose12Offset: mm(0), tail12Offset: mm(0), ...DEFAULT_BLANK_CUT },
+    });
+  }
+  const candidates = [findBlank("Arctic Foam", `7'9" SBF`), ...CATALOG.filter(isPickable)];
+  let onBlank = profileOn(candidates[0]);
+  for (const candidate of candidates) {
+    const profile = profileOn(candidate);
+    if (profile.blank !== null && profile.stationRocker.tailTip - profile.stationRocker.center < 0) {
+      onBlank = profile;
+      break;
+    }
+  }
   const handSet = handSetFromProfile(onBlank, foil);
   const after = buildBoardProfile({ length, rocker: handSet.rocker, foil: handSet.foil, blank: null });
   const lifts: Record<FoilStationKey, Mm> = { ...handSet.rocker, center: mm(0) };

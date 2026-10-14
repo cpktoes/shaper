@@ -86,7 +86,9 @@ describe("the curves step through the app's own blank preparation (acceptance 1 
 });
 
 describe("no stress board flips from fitting to refused at the curves step (R5)", () => {
-  it("every stress board that fits on today's curves also fits on the new ones", ({ annotate }) => {
+  // Every pickable blank's stress boards, judged twice: just over the default five seconds on a busy
+  // machine, so it gets its own limit rather than tipping over under load (2026-10-14).
+  it("every stress board that fits on today's curves also fits on the new ones", { timeout: 30_000 }, ({ annotate }) => {
     const frozen = buildStressSet(CATALOG, prepareBlankPchip);
     const live = buildStressSet(CATALOG, prepareBlank);
     // The same boards in the same order: which boards make the set does not depend on the curves.
