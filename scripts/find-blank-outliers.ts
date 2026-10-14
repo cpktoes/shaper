@@ -140,9 +140,9 @@ const PAGE_CSS = `
 /* -- the blank as the app builds it ---------------------------------------------------------- */
 
 const DRAW_W = 1040;
-const DRAW_PAD = { left: 24, right: 24, top: 44, bottom: 44 };
-/** The side view is only a few inches tall at 1:1, so it is stretched this much vertically. */
-const SIDE_STRETCH = 2;
+const DRAW_PAD = { left: 24, right: 24, top: 48, bottom: 48 };
+/** The side view's vertical scale against its length: 1 is true to life (the founder's ask, 2026-10-14). */
+const SIDE_STRETCH = 1;
 
 /** What the drawings say about one station of one attribute. */
 interface StationMark {
@@ -178,9 +178,8 @@ function marksOf(record: BlankRecord, outliers: readonly OutlierStation[], devia
 
 /**
  * The blank drawn from the same prepared curves every screen draws from, nose to the LEFT: the side
- * view (the levelled bottom rocker, and the deck as that bottom plus the thickness; stretched
- * `SIDE_STRETCH`× vertically) and the outline from above (half the width either side of the
- * stringer, 1:1), sampled every half inch. Every printed station is ticked and labelled, its printed
+ * view (the levelled bottom rocker, and the deck as that bottom plus the thickness) and the outline
+ * from above (half the width either side of the stringer), both 1:1, sampled every half inch. Every printed station is ticked and labelled, its printed
  * figures sit on the drawing as dots with their numbers (rocker under the bottom, thickness above the
  * deck, width on the upper rail), and a named station is red, with a hollow dot and the figure the
  * rest of the blank implies beside it.
@@ -248,7 +247,7 @@ function blankDrawings(record: BlankRecord, marks: StationMarks): string {
       return out;
     })
     .join("");
-  const side = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${sideH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">Side view — nose left, bottom rocker and deck as the app builds them, ${SIDE_STRETCH}× taller than life; thickness above the deck, rocker under the bottom</text><path d="${sidePath}" class="foam"/>${ticks(DRAW_PAD.top - 6, sideH - DRAW_PAD.bottom + 4, sideH - 6)}${sideDots}</svg>`;
+  const side = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${sideH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">Side view — nose left, bottom rocker and deck as the app builds them, 1:1; thickness above the deck, rocker under the bottom</text><path d="${sidePath}" class="foam"/>${ticks(DRAW_PAD.top - 6, sideH - DRAW_PAD.bottom + 4, sideH - 6)}${sideDots}</svg>`;
 
   // Top view.
   const halfMax = Math.max(...half);
@@ -363,7 +362,7 @@ ${offCurveRows(outliers.filter((o) => o.confidence === "low"))}
 ${makerNormRows(deviations)}
 </tbody></table>
 <h2>The blanks named, drawn</h2>
-<p class="muted">Each blank first as the app builds it from the dims, nose to the left — side view (bottom rocker and deck, stretched 2× vertically so the figures read) and outline from above (1:1) — every printed station a dot with its figure, the named ones in red with the figure the rest of the blank implies beside a hollow dot. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
+<p class="muted">Each blank first as the app builds it from the dims, nose to the left — side view (bottom rocker and deck) and outline from above, both 1:1 — every printed station a dot with its figure, the named ones in red with the figure the rest of the blank implies beside a hollow dot. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
 ${blocks.join("\n")}
 </body></html>
 `;
@@ -391,7 +390,7 @@ ${noted.length ? `<p class="muted notes">Catalogue notes: ${noted.map((s) => esc
 <title>Blank gallery</title>
 <style>${PAGE_CSS}</style></head><body>
 <h1>Blank gallery</h1>
-<p class="muted">${escape(new Date().toISOString().slice(0, 10))} · every blank the app holds, drawn from its own curves as ROCKER draws it, nose to the left: the side view (bottom rocker and deck, stretched 2× vertically so the figures read) and the outline from above (1:1); every printed station a dot with its figure, the stations named on the outlier page in red with the implied figure beside a hollow dot. Makers: ${KNOWN_BLANK_VENDORS.map((vendor) => `<a href="#${blankId(vendor, "")}">${escape(vendor)}</a>`).join(" · ")}. The <a href="blank-outliers.html">outlier page</a> has the numbers.</p>
+<p class="muted">${escape(new Date().toISOString().slice(0, 10))} · every blank the app holds, drawn from its own curves as ROCKER draws it, nose to the left: the side view (bottom rocker and deck) and the outline from above, both 1:1; every printed station a dot with its figure, the stations named on the outlier page in red with the implied figure beside a hollow dot. Makers: ${KNOWN_BLANK_VENDORS.map((vendor) => `<a href="#${blankId(vendor, "")}">${escape(vendor)}</a>`).join(" · ")}. The <a href="blank-outliers.html">outlier page</a> has the numbers.</p>
 ${makers.join("\n")}
 </body></html>
 `;
