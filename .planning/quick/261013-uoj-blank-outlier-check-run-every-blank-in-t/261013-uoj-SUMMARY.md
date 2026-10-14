@@ -63,3 +63,14 @@ every printed station is a dot with its figure on the drawing itself (thickness 
 bottom, width on the upper rail, neighbours staggered so 6" stations never overprint), and a station named on the
 outlier page is red with a hollow dot and "→ figure" for what the rest of the blank implies. The side view is drawn
 2× taller than life so the figures read (said on the drawing); the outline stays 1:1. Script only.
+
+**Notes for each maker (the founder, 2026-10-14: "downloads that I can send to each blank mfg … where cm/inches
+don't match and where values appear to be off … flag all T0 and N0 that are < 1""):** `scripts/make-catalog-reports.ts`
+writes one report per maker to `public/__dev/reports/` (HTML and, through the browser tests' own Chromium, a Letter
+landscape PDF): A. inches and centimetres that disagree (from the catalogue files' own notes), B. figures off the curve
+of the blank's other stations (the outlier check, by confidence, plus the maker-norm readings and the misprint notes),
+C. tip widths under an inch (and the tips not printed), D. headline lines against their stations, E. figures not printed
+or unreadable, F. every blank mentioned drawn with its figures. Written to the maker in plain terms, with their page
+numbers. The drawing and page helpers moved to `scripts/blank-report-shared.ts`, shared with the outlier script.
+Dev tooling only; nothing in the app changed. Sizes on 2026-10-14: US Blanks 91 pages, Millennium 55, Arctic 29,
+Marko 26.
