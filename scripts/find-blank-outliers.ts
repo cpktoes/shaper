@@ -25,6 +25,10 @@
  *   with the live curve through all its stations, the printed stations as dots, and the flagged
  *   ones in red beside the hollow point the rest of the blank implies.
  * - `blank-outliers.json` — the same findings as data.
+ * - `blank-gallery.html` — every blank in the catalogue drawn the same way (side view and outline,
+ *   1:1), maker by maker, shortest first, with a link to its outlier block when it has one: for
+ *   looking over the whole catalogue by eye, which is how the founder spots a curve that is not
+ *   smooth in the first place.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -113,6 +117,25 @@ function plot(record: BlankRecord, attribute: BlankAttribute, marks: readonly Ma
   const title = attribute[0].toUpperCase() + attribute.slice(1);
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><text x="${PAD.left}" y="16" class="title">${title}</text>${ticks.join("")}<polyline points="${samples.join(" ")}" class="curve"/>${dots.join("")}</svg>`;
 }
+
+/* -- the pages' one stylesheet --------------------------------------------------------------- */
+
+const PAGE_CSS = `
+  body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; color: #1d2a2a; background: #fbfaf7; }
+  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 28px 0 8px; } h3 { font-size: 15px; margin: 0 0 6px; }
+  .muted { color: #6b7a78; } .red { color: #b3261e; } .amber { color: #8a5a00; }
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; } th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e4e1d8; vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7a78; } td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  a { color: #1f5f5b; }
+  section.blank { background: #fff; border: 1px solid #e4e1d8; border-radius: 8px; padding: 12px 14px; margin: 14px 0; max-width: 1100px; }
+  .drawings { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; } svg.drawing { width: 100%; max-width: 1040px; height: auto; display: block; }
+  svg .foam { fill: #e6efe9; stroke: #1d2a2a; stroke-width: 1.2; } svg .stringer { stroke: #1d2a2a; stroke-width: 0.6; } svg .tick { stroke: #6b7a78; stroke-width: 0.8; stroke-dasharray: 3 3; } svg .tick.red { stroke: #b3261e; stroke-width: 1.2; stroke-dasharray: none; }
+  .plots { display: flex; flex-wrap: wrap; gap: 8px; }
+  svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; }
+  svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
+  ul.findings { margin: 6px 0 0; padding-left: 18px; } p.notes { margin: 6px 0 0; font-size: 12px; }
+  p.how { max-width: 900px; }
+`;
 
 /* -- the blank as the app builds it ---------------------------------------------------------- */
 
@@ -233,22 +256,7 @@ ${notes.length ? `<p class="muted notes">Catalogue notes on these stations: ${no
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blank outlier check</title>
-<style>
-  body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; color: #1d2a2a; background: #fbfaf7; }
-  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 28px 0 8px; } h3 { font-size: 15px; margin: 0 0 6px; }
-  .muted { color: #6b7a78; } .red { color: #b3261e; } .amber { color: #8a5a00; }
-  table { border-collapse: collapse; width: 100%; max-width: 1100px; } th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #e4e1d8; vertical-align: top; }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7a78; } td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  a { color: #1f5f5b; }
-  section.blank { background: #fff; border: 1px solid #e4e1d8; border-radius: 8px; padding: 12px 14px; margin: 14px 0; max-width: 1100px; }
-  .drawings { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; } svg.drawing { width: 100%; max-width: 1040px; height: auto; display: block; }
-  svg .foam { fill: #e6efe9; stroke: #1d2a2a; stroke-width: 1.2; } svg .stringer { stroke: #1d2a2a; stroke-width: 0.6; } svg .tick { stroke: #6b7a78; stroke-width: 0.8; stroke-dasharray: 3 3; } svg .tick.red { stroke: #b3261e; stroke-width: 1.2; stroke-dasharray: none; }
-  .plots { display: flex; flex-wrap: wrap; gap: 8px; }
-  svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; }
-  svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
-  ul.findings { margin: 6px 0 0; padding-left: 18px; } p.notes { margin: 6px 0 0; font-size: 12px; }
-  p.how { max-width: 900px; }
-</style></head><body>
+<style>${PAGE_CSS}</style></head><body>
 <h1>Blank outlier check</h1>
 <p class="muted">${escape(new Date().toISOString().slice(0, 10))} · ${catalogue.length} blanks read from the app's catalogue (the rows the database holds) · ${asked} interior stations asked · nothing changed</p>
 <p class="how"><b>Off its own curve</b>: each interior station taken out in turn and the blank's curve drawn through the rest with the rule ROCKER draws with; the gap between the printed figure and that curve, scored against the maker's other stations (|z| ≥ ${Z}, and at least 1/16" for rocker and thickness, 1/8" for width). Tips and the thickest, widest or lowest station cannot be asked this way. <b>Unusual for the maker</b> is the weaker signal: a station's share of its centre (or of its tip, for rocker) against the same station on the maker's other blanks — it reaches tips and centres, but it also flags honest design, like a gun's narrow nose.</p>
@@ -274,6 +282,33 @@ ${blocks.join("\n")}
 `;
 }
 
+/** Every blank drawn, maker by maker, shortest first. */
+function gallery(catalogue: readonly BlankRecord[], named: ReadonlySet<string>): string {
+  const makers = KNOWN_BLANK_VENDORS.map((vendor) => {
+    const blanks = catalogue.filter((r) => r.vendor === vendor).sort((a, b) => a.lengthMm - b.lengthMm);
+    const blocks = blanks.map((record) => {
+      const key = `${record.vendor}\u0000${record.name}`;
+      const link = named.has(key) ? ` · <a href="blank-outliers.html#${blankId(record.vendor, record.name)}">on the outlier page</a>` : "";
+      const flagged = new Set(record.stations.filter((s) => s.flag).map((s) => s.label));
+      return `<section class="blank" id="${blankId(record.vendor, record.name)}">
+<h3>${escape(record.name)} <span class="muted">· ${escape(formatInchesFraction(record.lengthMm))} long · catalog page ${record.pdfPage}${isPickable(record) ? "" : " · not pickable"}${link}</span></h3>
+${isPickable(record) ? blankDrawings(record, flagged) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
+${flagged.size ? `<p class="muted notes">Catalogue notes: ${record.stations.filter((s) => s.flag).map((s) => escape(`${s.label}: ${s.flag}`)).join(" · ")}</p>` : ""}
+</section>`;
+    });
+    return `<h2 id="${blankId(vendor, "")}">${escape(vendor)} <span class="muted">(${blanks.length})</span></h2>\n${blocks.join("\n")}`;
+  });
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blank gallery</title>
+<style>${PAGE_CSS}</style></head><body>
+<h1>Blank gallery</h1>
+<p class="muted">${escape(new Date().toISOString().slice(0, 10))} · every blank the app holds, drawn 1:1 from its own curves as ROCKER draws it: the side view (bottom rocker and deck) and the outline from above; printed stations ticked, stations with a catalogue note in red. Makers: ${KNOWN_BLANK_VENDORS.map((vendor) => `<a href="#${blankId(vendor, "")}">${escape(vendor)}</a>`).join(" · ")}. The <a href="blank-outliers.html">outlier page</a> has the numbers.</p>
+${makers.join("\n")}
+</body></html>
+`;
+}
+
 function main(): void {
   const catalogue = readSeedCatalog();
   const outliers = findOutliers(catalogue, THRESHOLDS);
@@ -282,7 +317,9 @@ function main(): void {
   mkdirSync(OUT_DIR, { recursive: true });
   const html = path.join(OUT_DIR, "blank-outliers.html");
   const json = path.join(OUT_DIR, "blank-outliers.json");
+  const galleryHtml = path.join(OUT_DIR, "blank-gallery.html");
   writeFileSync(html, page(catalogue, outliers, deviations, asked));
+  writeFileSync(galleryHtml, gallery(catalogue, new Set([...outliers, ...deviations].map((f) => `${f.vendor}\u0000${f.name}`))));
   writeFileSync(
     json,
     `${JSON.stringify(
@@ -305,7 +342,7 @@ function main(): void {
   for (const o of outliers.slice(0, 40)) {
     console.log(`  [${o.confidence}] ${o.vendor} ${o.name} ${o.label} ${o.attribute}: printed ${inchesText(o.printedMm)}, curve says ${inchesText(o.impliedMm)} (${signedInchesText(o.residualMm)}, z ${o.z.toFixed(1)})`);
   }
-  console.log(`wrote ${path.relative(process.cwd(), html)} and ${path.relative(process.cwd(), json)}`);
+  console.log(`wrote ${path.relative(process.cwd(), html)}, ${path.relative(process.cwd(), json)} and ${path.relative(process.cwd(), galleryHtml)}`);
 }
 
 main();

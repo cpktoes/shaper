@@ -47,3 +47,12 @@ dims — the side view (the levelled bottom rocker and the deck as bottom plus t
 (half the width either side of the stringer, rounded tips as on ROCKER), 1:1 from `prepareBlank`'s own curves, every
 printed station ticked and the flagged ones in red — above the three attribute plots. The drawings scale to the
 window. Script only; nothing in the app changed and no link to the site was added.
+
+**First corrections from the page (the founder, 2026-10-14):** Arctic Foam's three fish blanks — 6'2" F, 6'8" F and
+7'2" F — print 1/16" at both tips, so the app drew a pointed tail where the catalog's drawing shows a square tail about
+a foot wide, and a pointed nose. On the founder's word ("make all T0 = 13 1/16 … and they should all have a rounder
+nose") each tail tip is now 13 1/16" and each nose tip 0 (the app's round-nose rule), both flagged with the reason;
+nothing else moved. The round-nose golden gained the three (67 blanks); the presets' file is unchanged; the whole unit
+suite is green; the ROCKER reference picture was re-recorded, its only change the blank list's lower rows (the 6'2" F
+now fits the default board). A gallery page, `public/__dev/blank-gallery.html`, now draws every blank in the catalogue
+the same way as the outlier page, maker by maker, for looking over by eye.
