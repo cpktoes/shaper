@@ -1,0 +1,127 @@
+{
+  "generated": "2026-10-14T21:26:58.649Z",
+  "page": "/__dev/blank-outliers.html",
+  "decisions": [
+    {
+      "vendor": "Arctic Foam",
+      "name": "6'2\" F",
+      "station": "T0",
+      "attribute": "thickness",
+      "kind": "other",
+      "current": "",
+      "suggested": "",
+      "to": "1 5/8\"",
+      "comment": "add 1\""
+    },
+    {
+      "vendor": "Arctic Foam",
+      "name": "7'2\" F",
+      "station": "T0",
+      "attribute": "thickness",
+      "kind": "other",
+      "current": "",
+      "suggested": "",
+      "to": "2",
+      "comment": "add 1"
+    },
+    {
+      "vendor": "Arctic Foam",
+      "name": "7'9\" SBF",
+      "station": "N12",
+      "attribute": "thickness",
+      "kind": "units",
+      "current": "2 5/8\"",
+      "suggested": "2 5/8\"",
+      "to": "2 5/8",
+      "comment": "makes sense"
+    },
+    {
+      "vendor": "Arctic Foam",
+      "name": "7'9\" SBF",
+      "station": "T12",
+      "attribute": "thickness",
+      "kind": "off",
+      "current": "2 3/16\"",
+      "suggested": "2 13/16\"",
+      "to": "2 13/16",
+      "comment": ""
+    },
+    {
+      "vendor": "Millennium Foam",
+      "name": "5'3\"G",
+      "station": "N12",
+      "attribute": "thickness",
+      "kind": "unusual",
+      "current": "2 3/8\"",
+      "suggested": "1 11/16\"",
+      "to": "1 11/16",
+      "comment": ""
+    },
+    {
+      "vendor": "Millennium Foam",
+      "name": "9'4\"M",
+      "station": "T12",
+      "attribute": "thickness",
+      "kind": "misprint",
+      "current": "2 7/16\"",
+      "suggested": "",
+      "to": "2 7/16",
+      "comment": ""
+    },
+    {
+      "vendor": "US Blanks",
+      "name": "6'2\"A",
+      "station": "N18",
+      "attribute": "thickness",
+      "kind": "headline",
+      "current": "2 7/16\"",
+      "suggested": "",
+      "to": "2 7/16",
+      "comment": "wrong"
+    },
+    {
+      "vendor": "US Blanks",
+      "name": "6'4\"EAX",
+      "station": "N24",
+      "attribute": "thickness",
+      "kind": "misprint",
+      "current": "2 11/16\"",
+      "suggested": "",
+      "to": "1 11/16",
+      "comment": "wrong"
+    },
+    {
+      "vendor": "US Blanks",
+      "name": "6'5\"R",
+      "station": "T12",
+      "attribute": "rocker",
+      "kind": "off",
+      "current": "1 5/16\"",
+      "suggested": "15/16\"",
+      "to": "15/16",
+      "comment": "wrong"
+    },
+    {
+      "vendor": "US Blanks",
+      "name": "9'3\"Y",
+      "station": "T6",
+      "attribute": "rocker",
+      "kind": "other",
+      "current": "",
+      "suggested": "",
+      "to": "2 7/16",
+      "comment": ""
+    },
+    {
+      "vendor": "US Blanks",
+      "name": "10'10\"T",
+      "station": "T0",
+      "attribute": "rocker",
+      "kind": "other",
+      "current": "",
+      "suggested": "",
+      "to": "3 1/8",
+      "comment": ""
+    }
+  ]
+}

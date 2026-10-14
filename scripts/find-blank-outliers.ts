@@ -29,8 +29,16 @@
  *   1:1), maker by maker, shortest first, with a link to its outlier block when it has one: for
  *   looking over the whole catalogue by eye, which is how the founder spots a curve that is not
  *   smooth in the first place.
+ *
+ * The review controls (0ef5176) remember every tick and figure in the browser (localStorage key
+ * `shaper-blank-review`). The decisions files the founder has sent back live in
+ * db/seed/blanks/review-decisions/ and are embedded in the page as HANDLED, so a tick that was
+ * already submitted and handled is cleared when the page loads instead of coming back on the next
+ * submit — the second review re-sent seven handled ticks and one the founder had since overruled
+ * (2026-10-14). A tick is cleared only if its blank, station, attribute, figure and note are the same
+ * as a handled decision and it was not touched after that file was generated; ticking again says it again.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { isPickable } from "@/lib/blanks/catalog";
 import {
@@ -57,6 +65,20 @@ const OUT_DIR = path.resolve(process.cwd(), readArg("--out") ?? "public/__dev");
 const Z = Number(readArg("--z") ?? DEFAULT_OUTLIER_THRESHOLDS.z);
 if (!Number.isFinite(Z) || Z <= 0) throw new Error(`--z must be a positive number, not ${readArg("--z")}`);
 const THRESHOLDS = { ...DEFAULT_OUTLIER_THRESHOLDS, z: Z };
+/** The founder's decisions files, as submitted — see the folder's README. */
+const DECISIONS_DIR = path.resolve(process.cwd(), "db/seed/blanks/review-decisions");
+
+interface HandledDecision { vendor: string; name: string; station: string; attribute: string; to: string; comment: string; generatedMs: number; file: string }
+
+/** Every decision in every submitted file, oldest file first, for the page to clear ticks already handled. */
+function readHandledDecisions(): HandledDecision[] {
+  if (!existsSync(DECISIONS_DIR)) return [];
+  return readdirSync(DECISIONS_DIR).filter((file) => file.endsWith(".json")).sort().flatMap((file) => {
+    const parsed = JSON.parse(readFileSync(path.join(DECISIONS_DIR, file), "utf8")) as { generated?: string; decisions?: Partial<HandledDecision>[] };
+    const generatedMs = Date.parse(parsed.generated ?? "") || 0;
+    return (parsed.decisions ?? []).map((d) => ({ vendor: d.vendor ?? "", name: d.name ?? "", station: d.station ?? "", attribute: d.attribute ?? "", to: (d.to ?? "").trim(), comment: (d.comment ?? "").trim(), generatedMs, file }));
+  });
+}
 
 /* -- the page ------------------------------------------------------------------------------ */
 
@@ -173,11 +195,12 @@ ${offCurveRows(outliers.filter((o) => o.confidence === "low"))}
 ${makerNormRows(deviations)}
 </tbody></table>
 <h2>Review — tick what to change, type a different figure where you want one, then Submit</h2>
-<div class="bar" id="review-bar"><span id="review-count">0 changes ticked</span> <button type="button" id="review-submit">Submit</button> <button type="button" id="review-download" disabled>Download decisions file</button> <button type="button" id="review-clear">Clear all</button> <span class="muted">Your ticks and figures are remembered in this browser until you clear them.</span></div>
+<div class="bar" id="review-bar"><span id="review-count">0 changes ticked</span> <span id="review-cleared" class="muted"></span> <button type="button" id="review-submit">Submit</button> <button type="button" id="review-download" disabled>Download decisions file</button> <button type="button" id="review-clear">Clear all</button> <span class="muted">Your ticks and figures are remembered in this browser until you clear them.</span></div>
 <textarea id="review-out" class="out" readonly placeholder="Submit writes the decisions here, and the download button saves them as blank-review-decisions.json — send that file back."></textarea>
 <h2>The blanks named, drawn</h2>
 <p class="muted">Each blank first as the app builds it from the dims, nose to the left — side view (bottom rocker and deck) and outline from above, both 1:1 — every printed station a dot with its figure, the named ones in red with the figure the rest of the blank implies beside a hollow dot. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
 ${blocks.join("\n")}
+<script>var HANDLED = ${JSON.stringify(readHandledDecisions()).replace(/</g, "\\u003c")};</script>
 <script>${REVIEW_SCRIPT}</script>
 </body></html>
 `;
@@ -204,10 +227,27 @@ const REVIEW_SCRIPT = `
     var sel = { checked: item.querySelector("input.apply").checked, to: item.querySelector("input.to").value, comment: item.querySelector("input.comment").value };
     var st = item.querySelector("select.station"); if (st) sel.station = st.value;
     var at = item.querySelector("select.attribute"); if (at) sel.attribute = at.value;
+    sel.at = Date.now();
     if (sel.checked || sel.to !== (item.dataset.suggested || "").replace(/"$/, "") || sel.comment) state[k] = sel; else delete state[k];
     item.classList.toggle("ticked", sel.checked);
     item.classList.toggle("missing", sel.checked && !sel.to);
   }
+  // Ticks already submitted and handled (HANDLED: the decisions files under db/seed/blanks/review-decisions/)
+  // are cleared, so a submit carries only what is new. A tick matches when its blank, station, attribute,
+  // figure and note are the same and it was not touched after that file was generated. Each row's note
+  // says what became of a handled decision; ticking again says it again.
+  var handled = (typeof HANDLED !== "undefined" && HANDLED) || [];
+  var cleared = 0;
+  items.forEach(function (item) {
+    var k = keyOf(item); var sel = state[k];
+    if (!sel || !sel.checked) return;
+    var d = decisionOf(item, sel);
+    var done = handled.some(function (h) {
+      return h.vendor === d.vendor && h.name === d.name && h.station === d.station && h.attribute === d.attribute && h.to === d.to.trim() && h.comment === d.comment.trim() && (sel.at === undefined || sel.at <= h.generatedMs);
+    });
+    if (done) { delete state[k]; cleared++; }
+  });
+  document.getElementById("review-cleared").textContent = cleared ? "(" + cleared + (cleared === 1 ? " tick" : " ticks") + " submitted earlier and already handled cleared — each row's note says what became of it; tick again to say it again)" : "";
   items.forEach(function (item) {
     var saved = state[keyOf(item)];
     if (saved) {
@@ -222,14 +262,17 @@ const REVIEW_SCRIPT = `
     item.addEventListener("input", function () { read(item); save(); });
   });
   save();
+  function decisionOf(item, sel) {
+    var station = item.dataset.station !== undefined ? item.dataset.station : (sel.station || "");
+    var attribute = item.dataset.attribute !== undefined && item.dataset.attribute !== "" ? item.dataset.attribute : (sel.attribute || "");
+    return { vendor: item.dataset.vendor, name: item.dataset.name, station: station, attribute: attribute, kind: item.dataset.kind || "other", current: item.dataset.current || "", suggested: item.dataset.suggested || "", to: sel.to || "", comment: sel.comment || "" };
+  }
   function decisions() {
     var out = [];
     items.forEach(function (item) {
       var sel = state[keyOf(item)];
       if (!sel || !sel.checked) return;
-      var station = item.dataset.station !== undefined ? item.dataset.station : (sel.station || "");
-      var attribute = item.dataset.attribute !== undefined && item.dataset.attribute !== "" ? item.dataset.attribute : (sel.attribute || "");
-      out.push({ vendor: item.dataset.vendor, name: item.dataset.name, station: station, attribute: attribute, kind: item.dataset.kind || "other", current: item.dataset.current || "", suggested: item.dataset.suggested || "", to: sel.to || "", comment: sel.comment || "" });
+      out.push(decisionOf(item, sel));
     });
     return out;
   }

@@ -307,11 +307,15 @@ export function parseInchesText(text: string): number | null {
   const clean = text.replace(/[”“]/g, '"').replace(/^"+|"+$/g, "").replace(/\s*(in|inch|inches)$/i, "").trim();
   let m = /^(\d+)'\s*(\d+)?\s*(?:(\d+)\/(\d+))?"?$/.exec(clean);
   if (m) return Number(m[1]) * 12 + (m[2] ? Number(m[2]) : 0) + (m[3] ? Number(m[3]) / Number(m[4]) : 0);
-  m = /^(\d+(?:\.\d+)?)?\s*(?:(\d+)\/(\d+))?"?$/.exec(clean.replace(/"\s*\(.*$/, '"'));
-  if (m && (m[1] !== undefined || m[2] !== undefined) && !(m[1] && m[1].includes(".") && m[2])) {
-    return (m[1] ? Number(m[1]) : 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
-  }
-  return null;
+  // A whole number, a whole number then a space then a fraction, or a fraction on its own. The space
+  // is required: an optional one let "15/16" read as 1 + 5/16, which the first review's apply wrote
+  // into the 6'5"R tail 12" rocker (caught 2026-10-14 when the founder ticked the same figure again).
+  m = /^(?:(\d+(?:\.\d+)?)(?:\s+(\d+)\/(\d+))?|(\d+)\/(\d+))"?$/.exec(clean.replace(/"\s*\(.*$/, '"'));
+  if (!m) return null;
+  const numerator = m[2] ?? m[4];
+  const denominator = m[3] ?? m[5];
+  if (m[1] !== undefined && m[1].includes(".") && numerator !== undefined) return null; // "2.5 3/16" is no figure
+  return (m[1] !== undefined ? Number(m[1]) : 0) + (numerator !== undefined ? Number(numerator) / Number(denominator) : 0);
 }
 /** `5.08 cm here`, `274.32 cm (9'0")`, `29.86 cm = 11.756 in`, `69.05` → centimetres, or null (litres, cubic feet). */
 export function parseCmText(text: string): number | null {
