@@ -18,10 +18,12 @@
  *
  * Output, in `--out` (default `public/__dev/`, which is gitignored, so a running dev server shows
  * the page at http://localhost:<port>/__dev/blank-outliers.html and nothing ships):
- * - `blank-outliers.html` — a self-contained page: both tables, then one row of three plots
- *   (rocker, thickness, width) for every blank named, the live curve through all its stations,
- *   the printed stations as dots, the flagged ones in red beside the hollow point the rest of the
- *   blank implies.
+ * - `blank-outliers.html` — a self-contained page: both tables, then, for every blank named, the
+ *   blank itself as the app builds it from the dims — its side view (bottom rocker and deck) and
+ *   its outline from above, drawn 1:1 with `prepareBlank`'s own curves, the printed stations
+ *   ticked and the flagged ones in red — above one row of three plots (rocker, thickness, width)
+ *   with the live curve through all its stations, the printed stations as dots, and the flagged
+ *   ones in red beside the hollow point the rest of the blank implies.
  * - `blank-outliers.json` — the same findings as data.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -41,6 +43,7 @@ import {
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { KNOWN_BLANK_VENDORS } from "@/lib/blanks/vendors";
 import type { BlankRecord } from "@/lib/geometry/blank";
+import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { formatInchesFraction, formatSignedInchesFraction, mm, mmToInches } from "@/lib/geometry/units";
 
 function readArg(name: string): string | undefined {
@@ -111,6 +114,56 @@ function plot(record: BlankRecord, attribute: BlankAttribute, marks: readonly Ma
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><text x="${PAD.left}" y="16" class="title">${title}</text>${ticks.join("")}<polyline points="${samples.join(" ")}" class="curve"/>${dots.join("")}</svg>`;
 }
 
+/* -- the blank as the app builds it ---------------------------------------------------------- */
+
+const DRAW_W = 1040;
+const DRAW_PAD = { left: 20, right: 20, top: 22, bottom: 26 };
+
+/**
+ * The blank drawn 1:1 from the same prepared curves every screen draws from: the side view (the
+ * levelled bottom rocker, and the deck as that bottom plus the thickness) and the outline from above
+ * (half the width either side of the stringer), sampled every half inch; every printed station
+ * ticked and labelled, the flagged ones in red.
+ */
+function blankDrawings(record: BlankRecord, flagged: ReadonlySet<string>): string {
+  const prepared = prepareBlank(record);
+  const length = mmToInches(record.lengthMm);
+  const scale = (DRAW_W - DRAW_PAD.left - DRAW_PAD.right) / length;
+  const sx = (x: number) => DRAW_PAD.left + x * scale;
+  const xs: number[] = [];
+  for (let x = 0; x <= length + 1e-9; x += 0.5) xs.push(Math.min(x, length));
+  const bottom = xs.map((x) => mmToInches(mm(prepared.rocker.sample(x * 25.4))));
+  const deck = xs.map((x, i) => bottom[i] + mmToInches(mm(prepared.thickness.sample(x * 25.4))));
+  const half = xs.map((x) => mmToInches(mm(prepared.width.sample(x * 25.4))) / 2);
+  const stations = record.stations.map((s) => ({ label: s.label, x: mmToInches(s.fromTailMm) }));
+  const ticks = (y0: number, y1: number, labelY: number) =>
+    stations
+      .map(
+        (s) =>
+          `<line x1="${sx(s.x).toFixed(1)}" y1="${y0.toFixed(1)}" x2="${sx(s.x).toFixed(1)}" y2="${y1.toFixed(1)}" class="tick${flagged.has(s.label) ? " red" : ""}"/><text x="${sx(s.x).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" class="axis${flagged.has(s.label) ? " red" : ""}">${escape(s.label)}</text>`,
+      )
+      .join("");
+
+  // Side view: tail at the left, deck up; the levelled bottom's lowest point sits on the base line.
+  const deckMax = Math.max(...deck);
+  const sideH = DRAW_PAD.top + deckMax * scale + DRAW_PAD.bottom;
+  const syS = (y: number) => DRAW_PAD.top + (deckMax - y) * scale;
+  const sidePath =
+    `M ${xs.map((x, i) => `${sx(x).toFixed(1)} ${syS(bottom[i]).toFixed(1)}`).join(" L ")}` +
+    ` L ${[...xs].reverse().map((x, j) => `${sx(x).toFixed(1)} ${syS(deck[xs.length - 1 - j]).toFixed(1)}`).join(" L ")} Z`;
+  const side = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${sideH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">Side view, 1:1 — bottom rocker and deck as the app builds them</text><path d="${sidePath}" class="foam"/>${ticks(DRAW_PAD.top, sideH - DRAW_PAD.bottom, sideH - DRAW_PAD.bottom + 12)}</svg>`;
+
+  // Top view: the outline either side of the stringer.
+  const halfMax = Math.max(...half);
+  const topH = DRAW_PAD.top + 2 * halfMax * scale + DRAW_PAD.bottom;
+  const mid = DRAW_PAD.top + halfMax * scale;
+  const topPath =
+    `M ${xs.map((x, i) => `${sx(x).toFixed(1)} ${(mid - half[i] * scale).toFixed(1)}`).join(" L ")}` +
+    ` L ${[...xs].reverse().map((x, j) => `${sx(x).toFixed(1)} ${(mid + half[xs.length - 1 - j] * scale).toFixed(1)}`).join(" L ")} Z`;
+  const top = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${topH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">From above, 1:1 — the outline from the printed widths</text><path d="${topPath}" class="foam"/><line x1="${sx(0).toFixed(1)}" y1="${mid.toFixed(1)}" x2="${sx(length).toFixed(1)}" y2="${mid.toFixed(1)}" class="stringer"/>${ticks(DRAW_PAD.top, topH - DRAW_PAD.bottom, topH - DRAW_PAD.bottom + 12)}</svg>`;
+  return `<div class="drawings">${side}${top}</div>`;
+}
+
 /* -- the page ------------------------------------------------------------------------------ */
 
 function offCurveRows(outliers: readonly OutlierStation[]): string {
@@ -168,8 +221,10 @@ function page(
       )];
       const findings = [...outliers.filter((o) => o.vendor === record.vendor && o.name === record.name).map((o) => `<li class="red">${escape(o.label)} ${o.attribute}: printed ${escape(inchesText(o.printedMm))}, the rest of the blank implies ${escape(inchesText(o.impliedMm))} (${escape(signedInchesText(o.residualMm))}, z ${o.z.toFixed(1)})</li>`),
         ...deviations.filter((d) => d.vendor === record.vendor && d.name === record.name).map((d) => `<li class="amber">${escape(d.label)} ${d.attribute}: printed ${escape(inchesText(d.printedMm))}, ${(d.share * 100).toFixed(0)}% of its anchor where this maker's norm is ${(d.typicalShare * 100).toFixed(0)}% (about ${escape(inchesText(d.typicalMm))}; z ${d.z.toFixed(1)})</li>`)];
+      const flaggedLabels = new Set([...outliers, ...deviations].filter((f) => f.vendor === record.vendor && f.name === record.name).map((f) => f.label));
       return `<section class="blank" id="${blankId(record.vendor, record.name)}">
 <h3>${escape(record.vendor)} ${escape(record.name)} <span class="muted">· ${escape(formatInchesFraction(record.lengthMm))} long · catalog page ${record.pdfPage}${isPickable(record) ? "" : " · not pickable"}</span></h3>
+${isPickable(record) ? blankDrawings(record, flaggedLabels) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
 <div class="plots">${BLANK_ATTRIBUTES.map((attribute) => plot(record, attribute, marksFor(attribute))).join("")}</div>
 <ul class="findings">${findings.join("")}</ul>
 ${notes.length ? `<p class="muted notes">Catalogue notes on these stations: ${notes.map(escape).join(" · ")}</p>` : ""}
@@ -186,6 +241,8 @@ ${notes.length ? `<p class="muted notes">Catalogue notes on these stations: ${no
   th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7a78; } td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   a { color: #1f5f5b; }
   section.blank { background: #fff; border: 1px solid #e4e1d8; border-radius: 8px; padding: 12px 14px; margin: 14px 0; max-width: 1100px; }
+  .drawings { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; } svg.drawing { width: 100%; max-width: 1040px; height: auto; display: block; }
+  svg .foam { fill: #e6efe9; stroke: #1d2a2a; stroke-width: 1.2; } svg .stringer { stroke: #1d2a2a; stroke-width: 0.6; } svg .tick { stroke: #6b7a78; stroke-width: 0.8; stroke-dasharray: 3 3; } svg .tick.red { stroke: #b3261e; stroke-width: 1.2; stroke-dasharray: none; }
   .plots { display: flex; flex-wrap: wrap; gap: 8px; }
   svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; }
   svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
@@ -211,7 +268,7 @@ ${offCurveRows(outliers.filter((o) => o.confidence === "low"))}
 ${makerNormRows(deviations)}
 </tbody></table>
 <h2>The blanks named, drawn</h2>
-<p class="muted">Line: the live curve through every printed station. Dots: the printed stations; red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
+<p class="muted">Each blank first as the app builds it from the dims, 1:1 — side view (bottom rocker and deck) and outline from above — with every printed station ticked and the named ones in red. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
 ${blocks.join("\n")}
 </body></html>
 `;

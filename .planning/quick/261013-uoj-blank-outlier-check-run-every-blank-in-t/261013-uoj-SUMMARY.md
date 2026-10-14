@@ -40,3 +40,10 @@ the Marko 10'2" M pair's tail 24" rocker (5/8" against a curve at 1 13/16").
 suite was not run — no app file or browser test changed.
 
 **Executed inline** by the orchestrator under this quick id.
+
+**Follow-up (2026-10-14, the founder: "I don't want this to change the app. Just visual. … I just want to see the
+blank we've created from the dims"):** each named blank on the page is now drawn first as the app builds it from the
+dims — the side view (the levelled bottom rocker and the deck as bottom plus thickness) and the outline from above
+(half the width either side of the stringer, rounded tips as on ROCKER), 1:1 from `prepareBlank`'s own curves, every
+printed station ticked and the flagged ones in red — above the three attribute plots. The drawings scale to the
+window. Script only; nothing in the app changed and no link to the site was added.
