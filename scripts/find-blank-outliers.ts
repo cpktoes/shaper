@@ -239,7 +239,7 @@ const REVIEW_SCRIPT = `
     var missing = list.filter(function (d) { return !d.to || !d.attribute; });
     var text = JSON.stringify({ generated: new Date().toISOString(), page: location.pathname, decisions: list }, null, 2);
     var out = document.getElementById("review-out");
-    out.value = (missing.length ? "NOTE: " + missing.length + " ticked item(s) have no figure or no attribute — fill them in before sending.\n\n" : "") + text;
+    out.value = (missing.length ? "NOTE: " + missing.length + " ticked item(s) have no figure or no attribute — fill them in before sending.\\n\\n" : "") + text;
     out.scrollIntoView({ block: "start" });
     var blob = new Blob([text], { type: "application/json" });
     if (blobUrl) URL.revokeObjectURL(blobUrl);
