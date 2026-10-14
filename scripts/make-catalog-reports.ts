@@ -38,7 +38,7 @@ import { findOutliers, makerNormDeviations, type MakerNormDeviation, type Outlie
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
 import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
-import { formatInchesFraction, inchesToMm, mmToInches } from "@/lib/geometry/units";
+import { formatInchesFraction, inchesToMm } from "@/lib/geometry/units";
 import { PAGE_CSS, blankDrawings, blankId, escape, inchesText, marksOf, signedInchesText } from "./blank-report-shared";
 
 function readArg(name: string): string | undefined {
