@@ -16,10 +16,14 @@ import {
 } from "@/lib/blanks/outliers";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { prepareBlank } from "@/lib/geometry/blank-fit";
-import { formatInchesFraction, formatSignedInchesFraction, mm, mmToInches } from "@/lib/geometry/units";
+import { formatInchesFraction, formatSignedInchesFraction, mm, mmToCentimetres, mmToInches } from "@/lib/geometry/units";
 
-export const inchesText = (value: number) => formatInchesFraction(mm(value), 32);
-export const signedInchesText = (value: number) => formatSignedInchesFraction(mm(value), 32);
+/** A figure to the nearest 1/16" — the founder's rule for every figure shown (2026-10-14). */
+export const inchesText = (value: number) => formatInchesFraction(mm(value), 16);
+export const signedInchesText = (value: number) => formatSignedInchesFraction(mm(value), 16);
+/** A figure three ways: nearest 1/16", decimal inches, decimal centimetres — `2 3/16" (2.19 in, 5.56 cm)`. */
+export const figureText = (valueMm: number) =>
+  `${inchesText(valueMm)} (${mmToInches(mm(valueMm)).toFixed(2)} in, ${mmToCentimetres(mm(valueMm)).toFixed(2)} cm)`;
 export const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export const blankId = (vendor: string, name: string) => `${vendor} ${name}`.replace(/[^A-Za-z0-9]+/g, "-");
 
@@ -90,7 +94,7 @@ export const PAGE_CSS = `
   svg .foam { fill: #e6efe9; stroke: #1d2a2a; stroke-width: 1.2; } svg .stringer { stroke: #1d2a2a; stroke-width: 0.6; } svg .tick { stroke: #6b7a78; stroke-width: 0.8; stroke-dasharray: 3 3; } svg .tick.red { stroke: #b3261e; stroke-width: 1.2; stroke-dasharray: none; }
   .plots { display: flex; flex-wrap: wrap; gap: 8px; }
   svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; } svg text.figure { font-size: 9.5px; fill: #1d2a2a; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
-  svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
+  svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .cm { fill: #fff; stroke: #8a5a00; stroke-width: 1.5; } svg text.amber { fill: #8a5a00; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
   ul.findings { margin: 6px 0 0; padding-left: 18px; } p.notes { margin: 6px 0 0; font-size: 12px; }
   p.how { max-width: 900px; }
 `;
@@ -107,7 +111,9 @@ export interface StationMark {
   printedMm: number;
   /** The figure the rest of the blank implies, when the station is named on the outlier page. */
   impliedMm: number | null;
-  /** True when the station is named (off its curve, or unusual for the maker). */
+  /** The page's centimetre figure, when it disagrees with the inch figure (a hollow diamond). */
+  cmMm?: number | null;
+  /** True when the station is named (off its curve, unusual for the maker, or noted). */
   flagged: boolean;
 }
 export type StationMarks = Record<BlankAttribute, Map<string, StationMark>>;
@@ -168,12 +174,16 @@ export function blankDrawings(record: BlankRecord, marks: StationMarks): string 
       )
       .join("");
   /** A printed dot with its figure, and the hollow implied dot with its figure when there is one. */
-  const dot = (cx: number, cy: number, text: string, textY: number, red: boolean, implied: { cy: number; text: string } | null, stagger: number) =>
+  const dot = (cx: number, cy: number, text: string, textY: number, red: boolean, implied: { cy: number; text: string } | null, stagger: number, cmMark: { cy: number; text: string } | null = null) =>
     `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3" class="dot${red ? " red" : ""}"/>` +
     `<text x="${cx.toFixed(1)}" y="${(textY + stagger).toFixed(1)}" text-anchor="middle" class="figure${red ? " red" : ""}">${escape(text)}</text>` +
     (implied
       ? `<circle cx="${cx.toFixed(1)}" cy="${implied.cy.toFixed(1)}" r="4.5" class="implied"/><line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${implied.cy.toFixed(1)}" class="gap"/>` +
         `<text x="${cx.toFixed(1)}" y="${(textY + stagger + (textY > cy ? 11 : -11)).toFixed(1)}" text-anchor="middle" class="figure red">→ ${escape(implied.text)}</text>`
+      : "") +
+    (cmMark
+      ? `<rect x="${(cx - 4).toFixed(1)}" y="${(cmMark.cy - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${cx.toFixed(1)} ${cmMark.cy.toFixed(1)})" class="cm"/>` +
+        `<text x="${cx.toFixed(1)}" y="${(textY + stagger + (textY > cy ? 11 : -11) * (implied ? 2 : 1)).toFixed(1)}" text-anchor="middle" class="figure amber">cm says ${escape(cmMark.text)}</text>`
       : "");
   // Stagger neighbouring labels into two rows so 6" stations never overprint.
   const row = (i: number, step: number) => (i % 2 === 0 ? 0 : step);
@@ -195,12 +205,14 @@ export function blankDrawings(record: BlankRecord, marks: StationMarks): string 
       let out = "";
       if (rocker) {
         const impliedIn = rocker.impliedMm === null ? null : mmToInches(mm(rocker.impliedMm));
-        out += dot(cx, syS(bottomHere), inchesText(rocker.printedMm), syS(bottomHere) + 13, rocker.flagged, impliedIn === null ? null : { cy: syS(impliedIn - levelOffset), text: inchesText(rocker.impliedMm!) }, row(i, 11));
+        const cmIn = rocker.cmMm == null ? null : mmToInches(mm(rocker.cmMm));
+        out += dot(cx, syS(bottomHere), inchesText(rocker.printedMm), syS(bottomHere) + 13, rocker.flagged, impliedIn === null ? null : { cy: syS(impliedIn - levelOffset), text: inchesText(rocker.impliedMm!) }, row(i, 11), cmIn === null ? null : { cy: syS(cmIn - levelOffset), text: inchesText(rocker.cmMm!) });
       }
       if (thickness) {
         const deckHere = bottomHere + thicknessAt(s.x);
         const impliedIn = thickness.impliedMm === null ? null : mmToInches(mm(thickness.impliedMm));
-        out += dot(cx, syS(deckHere), inchesText(thickness.printedMm), syS(deckHere) - 7, thickness.flagged, impliedIn === null ? null : { cy: syS(bottomHere + impliedIn), text: inchesText(thickness.impliedMm!) }, -row(i, 11));
+        const cmIn = thickness.cmMm == null ? null : mmToInches(mm(thickness.cmMm));
+        out += dot(cx, syS(deckHere), inchesText(thickness.printedMm), syS(deckHere) - 7, thickness.flagged, impliedIn === null ? null : { cy: syS(bottomHere + impliedIn), text: inchesText(thickness.impliedMm!) }, -row(i, 11), cmIn === null ? null : { cy: syS(bottomHere + cmIn), text: inchesText(thickness.cmMm!) });
       }
       return out;
     })
@@ -221,8 +233,9 @@ export function blankDrawings(record: BlankRecord, marks: StationMarks): string 
       const cx = sx(s.x);
       const h = halfAt(s.x);
       const impliedHalf = width.impliedMm === null ? null : mmToInches(mm(width.impliedMm)) / 2;
+      const cmHalf = width.cmMm == null ? null : mmToInches(mm(width.cmMm)) / 2;
       return (
-        dot(cx, mid - h * scale, inchesText(width.printedMm), mid - h * scale - 7, width.flagged, impliedHalf === null ? null : { cy: mid - impliedHalf * scale, text: inchesText(width.impliedMm!) }, -row(i, 11)) +
+        dot(cx, mid - h * scale, inchesText(width.printedMm), mid - h * scale - 7, width.flagged, impliedHalf === null ? null : { cy: mid - impliedHalf * scale, text: inchesText(width.impliedMm!) }, -row(i, 11), cmHalf === null ? null : { cy: mid - cmHalf * scale, text: inchesText(width.cmMm!) }) +
         `<circle cx="${cx.toFixed(1)}" cy="${(mid + h * scale).toFixed(1)}" r="3" class="dot${width.flagged ? " red" : ""}"/>` +
         (impliedHalf === null ? "" : `<circle cx="${cx.toFixed(1)}" cy="${(mid + impliedHalf * scale).toFixed(1)}" r="4.5" class="implied"/>`)
       );

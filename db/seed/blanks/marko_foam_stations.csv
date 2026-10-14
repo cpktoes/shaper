@@ -107,16 +107,16 @@ Marko Foam,"9'1"" Machine All",N36,73.68,0.34,3.65,24.07,109.68,,,molded,33,
 Marko Foam,"9'1"" Machine All",N24,85.68,1.02,3.29,22.92,109.68,,,molded,33,
 Marko Foam,"9'1"" Machine All",N12,97.68,2.2,2.8,19.86,109.68,,,molded,33,
 Marko Foam,"9'1"" Machine All",N0,109.68,4.7,1.9,0.0,109.68,,,molded,33,"width 0: rounded nose, not printed in catalog"
-Marko Foam,"10'2"" M",T0,0.0,4.55,3.73,25.0,122.04,,,molded,34,
-Marko Foam,"10'2"" M",T24,24.0,0.61,4.23,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M",C,61.02,0.21,4.5,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M",N24,98.04,1.89,4.41,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M",N0,122.04,4.98,3.3,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M Thick",T0,0.0,4.58,4.74,25.0,122.0,,,molded,35,
-Marko Foam,"10'2"" M Thick",T24,24.0,0.61,5.23,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M Thick",C,61.0,0.21,5.5,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M Thick",N24,98.0,1.89,5.41,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
-Marko Foam,"10'2"" M Thick",N0,122.0,4.97,4.32,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere"
+Marko Foam,"10'2"" M",T0,0.0,4.98,3.3,25.0,122.04,,,molded,34,"nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M",T24,24.0,1.89,4.41,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M",C,61.02,0.21,4.5,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M",N24,98.04,0.61,4.23,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M",N0,122.04,4.55,3.73,25.0,122.04,,,molded,34,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M Thick",T0,0.0,4.97,4.32,25.0,122.0,,,molded,35,"nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M Thick",T24,24.0,1.89,5.41,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M Thick",C,61.0,0.21,5.5,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M Thick",N24,98.0,0.61,5.23,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
+Marko Foam,"10'2"" M Thick",N0,122.0,4.58,4.74,25.0,122.0,,,molded,35,"rectangular block blank: 25"" wide everywhere; nose and tail swapped on 2026-10-14 (the founder): the catalog page draws this blank with its nose on the right, and the first read took it the other way"
 Marko Foam,"9'6"" MK",T0,0.0,3.38,1.7,10.64,114.0,,,block-cut,36,
 Marko Foam,"9'6"" MK",T12,12.0,1.76,2.5,16.85,114.0,,,block-cut,36,
 Marko Foam,"9'6"" MK",T24,24.0,0.84,2.95,19.98,114.0,,,block-cut,36,

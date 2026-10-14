@@ -74,3 +74,10 @@ or unreadable, F. every blank mentioned drawn with its figures. Written to the m
 numbers. The drawing and page helpers moved to `scripts/blank-report-shared.ts`, shared with the outlier script.
 Dev tooling only; nothing in the app changed. Sizes on 2026-10-14: US Blanks 91 pages, Millennium 55, Arctic 29,
 Marko 26.
+
+**Later the same day:** the maker reports are now one block per blank (drawings with the notes under them, a hollow
+diamond and "cm says …" where the page's centimetre figure disagrees), every figure three ways — nearest 1/16",
+decimal inches, decimal centimetres — on the founder's ask. And the Marko 10'2" M and 10'2" M Thick had their nose
+and tail figures swapped at every station (the founder: that page draws the nose on the right, and the first read
+took it the other way); each row says so. Goldens unchanged, unit suite green, ROCKER list and picture specs green,
+both databases reseeded.
