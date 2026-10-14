@@ -247,7 +247,15 @@ const REVIEW_SCRIPT = `
     });
     if (done) { delete state[k]; cleared++; }
   });
-  document.getElementById("review-cleared").textContent = cleared ? "(" + cleared + (cleared === 1 ? " tick" : " ticks") + " submitted earlier and already handled cleared — each row's note says what became of it; tick again to say it again)" : "";
+  // A remembered tick whose note is no longer on the page (the figure changed, so the note went) would never be
+  // submitted anyway, but could come back on the wrong note if a note of the same kind returned at that station — dropped.
+  var present = {}; items.forEach(function (item) { present[keyOf(item)] = true; });
+  var gone = 0;
+  Object.keys(state).forEach(function (k) { if (!present[k]) { delete state[k]; gone++; } });
+  var said = [];
+  if (cleared) said.push(cleared + (cleared === 1 ? " tick" : " ticks") + " submitted earlier and already handled");
+  if (gone) said.push(gone + (gone === 1 ? " tick" : " ticks") + " whose note is no longer on this page");
+  document.getElementById("review-cleared").textContent = said.length ? "(cleared " + said.join(" and ") + " — each row's note says what became of a handled decision; tick again to say it again)" : "";
   items.forEach(function (item) {
     var saved = state[keyOf(item)];
     if (saved) {

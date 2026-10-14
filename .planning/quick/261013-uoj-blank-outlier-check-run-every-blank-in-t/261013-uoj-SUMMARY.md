@@ -117,3 +117,22 @@ the errors should remain on the maker pages." `scripts/make-catalog-reports.ts` 
 (`db/seed/blanks/snapshots/2026-10-14-before-review/`, `--from <dir>` for another) and never the live files; the
 review page keeps reading the live files, since it shows what the site uses and what is still off. Rebuilt reports
 total 133 off-curve stations again (Arctic 4, Marko 52, Millennium 22, US Blanks 55).
+
+**Second review applied (2026-10-14, later; the submitted files now live in `db/seed/blanks/review-decisions/`, the
+first one moved there):** 11 decisions came back. Seven were ticks the browser still remembered from the first review
+(already so — left as is); one was the 6'4"EAX nose 24" box still holding 1 11/16", left out since the founder has
+since ruled 2 11/16"; three were new — the Arctic 7'9" SBF tail 12" thickness 2 3/16" → 2 13/16", the Millennium
+5'3"G nose 12" thickness 2 3/8" → 1 11/16" (the founder's own first-review guess, taken back), and the US Blanks 6'5"R
+tail 12" rocker to 15/16". That last one exposed a parser fault: `parseInchesText` allowed no space between a whole
+number and a fraction, so the first review's "15/16" had been written as 1 5/16" (the one such figure in that file —
+every other plain fraction had a one-digit numerator). Fixed in `blank-report-shared.ts`: a space is required and a
+bare fraction is read on its own. The 6'5"R row was set to 15/16" by hand with an honest note, which the apply
+script's stale-figure check then rightly refused to re-apply. The same fault had printed "15/16" = 1 5/16"" and
+"13/16" = 1 3/16"" on three maker-report lines (one each in the Arctic, Millennium and US Blanks reports) — reports
+rebuilt from the before-review copy, the three PDFs re-sent. The review page now embeds every submitted decision
+(HANDLED, read from the review-decisions folder) and, when it loads, clears a tick already submitted and handled
+(same blank, station, attribute, figure and note, not touched since that file was generated) and any remembered
+tick whose note is no longer on the page, saying so beside the tick count — so the next submit carries only new
+decisions. Proved headless on a file:// copy, so the founder's real ticks on the dev server were never touched.
+Suite green (4692), goldens and presets unchanged, both databases reseeded (223 of 223). The outlier page now lists
+104 off-curve and 57 unusual.
