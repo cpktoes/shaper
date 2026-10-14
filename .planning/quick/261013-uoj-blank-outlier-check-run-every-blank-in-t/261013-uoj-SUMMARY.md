@@ -56,3 +56,10 @@ nothing else moved. The round-nose golden gained the three (67 blanks); the pres
 suite is green; the ROCKER reference picture was re-recorded, its only change the blank list's lower rows (the 6'2" F
 now fits the default board). A gallery page, `public/__dev/blank-gallery.html`, now draws every blank in the catalogue
 the same way as the outlier page, maker by maker, for looking over by eye.
+
+**Drawings with figures (the founder, 2026-10-14: "I need to see dimensions better … put the dots and the recommended
+changes on the blank drawings also … nose to the left tail to right"):** both pages now draw every blank nose-left;
+every printed station is a dot with its figure on the drawing itself (thickness above the deck, rocker under the
+bottom, width on the upper rail, neighbours staggered so 6" stations never overprint), and a station named on the
+outlier page is red with a hollow dot and "→ figure" for what the rest of the blank implies. The side view is drawn
+2× taller than life so the figures read (said on the drawing); the outline stays 1:1. Script only.

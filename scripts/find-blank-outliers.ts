@@ -131,7 +131,7 @@ const PAGE_CSS = `
   .drawings { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; } svg.drawing { width: 100%; max-width: 1040px; height: auto; display: block; }
   svg .foam { fill: #e6efe9; stroke: #1d2a2a; stroke-width: 1.2; } svg .stringer { stroke: #1d2a2a; stroke-width: 0.6; } svg .tick { stroke: #6b7a78; stroke-width: 0.8; stroke-dasharray: 3 3; } svg .tick.red { stroke: #b3261e; stroke-width: 1.2; stroke-dasharray: none; }
   .plots { display: flex; flex-wrap: wrap; gap: 8px; }
-  svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; }
+  svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; } svg text.figure { font-size: 9.5px; fill: #1d2a2a; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
   svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
   ul.findings { margin: 6px 0 0; padding-left: 18px; } p.notes { margin: 6px 0 0; font-size: 12px; }
   p.how { max-width: 900px; }
@@ -140,50 +140,138 @@ const PAGE_CSS = `
 /* -- the blank as the app builds it ---------------------------------------------------------- */
 
 const DRAW_W = 1040;
-const DRAW_PAD = { left: 20, right: 20, top: 22, bottom: 26 };
+const DRAW_PAD = { left: 24, right: 24, top: 44, bottom: 44 };
+/** The side view is only a few inches tall at 1:1, so it is stretched this much vertically. */
+const SIDE_STRETCH = 2;
+
+/** What the drawings say about one station of one attribute. */
+interface StationMark {
+  printedMm: number;
+  /** The figure the rest of the blank implies, when the station is named on the outlier page. */
+  impliedMm: number | null;
+  /** True when the station is named (off its curve, or unusual for the maker). */
+  flagged: boolean;
+}
+type StationMarks = Record<BlankAttribute, Map<string, StationMark>>;
+
+/** Every printed station of `record`, marked with the findings that name it. */
+function marksOf(record: BlankRecord, outliers: readonly OutlierStation[], deviations: readonly MakerNormDeviation[]): StationMarks {
+  const marks: StationMarks = { rocker: new Map(), thickness: new Map(), width: new Map() };
+  for (const station of record.stations) {
+    for (const attribute of BLANK_ATTRIBUTES) {
+      const value = attributeValue(station, attribute);
+      if (value !== null) marks[attribute].set(station.label, { printedMm: value, impliedMm: null, flagged: false });
+    }
+  }
+  for (const o of outliers) {
+    if (o.vendor !== record.vendor || o.name !== record.name) continue;
+    const mark = marks[o.attribute].get(o.label);
+    if (mark) Object.assign(mark, { impliedMm: o.impliedMm, flagged: true });
+  }
+  for (const d of deviations) {
+    if (d.vendor !== record.vendor || d.name !== record.name) continue;
+    const mark = marks[d.attribute].get(d.label);
+    if (mark && mark.impliedMm === null) Object.assign(mark, { impliedMm: d.typicalMm, flagged: true });
+  }
+  return marks;
+}
 
 /**
- * The blank drawn 1:1 from the same prepared curves every screen draws from: the side view (the
- * levelled bottom rocker, and the deck as that bottom plus the thickness) and the outline from above
- * (half the width either side of the stringer), sampled every half inch; every printed station
- * ticked and labelled, the flagged ones in red.
+ * The blank drawn from the same prepared curves every screen draws from, nose to the LEFT: the side
+ * view (the levelled bottom rocker, and the deck as that bottom plus the thickness; stretched
+ * `SIDE_STRETCH`× vertically) and the outline from above (half the width either side of the
+ * stringer, 1:1), sampled every half inch. Every printed station is ticked and labelled, its printed
+ * figures sit on the drawing as dots with their numbers (rocker under the bottom, thickness above the
+ * deck, width on the upper rail), and a named station is red, with a hollow dot and the figure the
+ * rest of the blank implies beside it.
  */
-function blankDrawings(record: BlankRecord, flagged: ReadonlySet<string>): string {
+function blankDrawings(record: BlankRecord, marks: StationMarks): string {
   const prepared = prepareBlank(record);
   const length = mmToInches(record.lengthMm);
   const scale = (DRAW_W - DRAW_PAD.left - DRAW_PAD.right) / length;
-  const sx = (x: number) => DRAW_PAD.left + x * scale;
+  const sx = (x: number) => DRAW_PAD.left + (length - x) * scale; // nose left, tail right
   const xs: number[] = [];
   for (let x = 0; x <= length + 1e-9; x += 0.5) xs.push(Math.min(x, length));
-  const bottom = xs.map((x) => mmToInches(mm(prepared.rocker.sample(x * 25.4))));
-  const deck = xs.map((x, i) => bottom[i] + mmToInches(mm(prepared.thickness.sample(x * 25.4))));
-  const half = xs.map((x) => mmToInches(mm(prepared.width.sample(x * 25.4))) / 2);
+  const bottomAt = (x: number) => mmToInches(mm(prepared.rocker.sample(x * 25.4)));
+  const thicknessAt = (x: number) => mmToInches(mm(prepared.thickness.sample(x * 25.4)));
+  const halfAt = (x: number) => mmToInches(mm(prepared.width.sample(x * 25.4))) / 2;
+  const bottom = xs.map(bottomAt);
+  const deck = xs.map((x, i) => bottom[i] + thicknessAt(x));
+  const half = xs.map(halfAt);
+  const levelOffset = mmToInches(mm(prepared.rocker.minimum)); // printed rocker − this = levelled
   const stations = record.stations.map((s) => ({ label: s.label, x: mmToInches(s.fromTailMm) }));
+  const flaggedLabels = new Set<string>();
+  for (const attribute of BLANK_ATTRIBUTES) for (const [label, mark] of marks[attribute]) if (mark.flagged) flaggedLabels.add(label);
+  const isRed = (label: string) => flaggedLabels.has(label);
   const ticks = (y0: number, y1: number, labelY: number) =>
     stations
       .map(
         (s) =>
-          `<line x1="${sx(s.x).toFixed(1)}" y1="${y0.toFixed(1)}" x2="${sx(s.x).toFixed(1)}" y2="${y1.toFixed(1)}" class="tick${flagged.has(s.label) ? " red" : ""}"/><text x="${sx(s.x).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" class="axis${flagged.has(s.label) ? " red" : ""}">${escape(s.label)}</text>`,
+          `<line x1="${sx(s.x).toFixed(1)}" y1="${y0.toFixed(1)}" x2="${sx(s.x).toFixed(1)}" y2="${y1.toFixed(1)}" class="tick${isRed(s.label) ? " red" : ""}"/><text x="${sx(s.x).toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" class="axis${isRed(s.label) ? " red" : ""}">${escape(s.label)}</text>`,
       )
       .join("");
+  /** A printed dot with its figure, and the hollow implied dot with its figure when there is one. */
+  const dot = (cx: number, cy: number, text: string, textY: number, red: boolean, implied: { cy: number; text: string } | null, stagger: number) =>
+    `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3" class="dot${red ? " red" : ""}"/>` +
+    `<text x="${cx.toFixed(1)}" y="${(textY + stagger).toFixed(1)}" text-anchor="middle" class="figure${red ? " red" : ""}">${escape(text)}</text>` +
+    (implied
+      ? `<circle cx="${cx.toFixed(1)}" cy="${implied.cy.toFixed(1)}" r="4.5" class="implied"/><line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${cx.toFixed(1)}" y2="${implied.cy.toFixed(1)}" class="gap"/>` +
+        `<text x="${cx.toFixed(1)}" y="${(textY + stagger + (textY > cy ? 11 : -11)).toFixed(1)}" text-anchor="middle" class="figure red">→ ${escape(implied.text)}</text>`
+      : "");
+  // Stagger neighbouring labels into two rows so 6" stations never overprint.
+  const row = (i: number, step: number) => (i % 2 === 0 ? 0 : step);
 
-  // Side view: tail at the left, deck up; the levelled bottom's lowest point sits on the base line.
+  // Side view.
+  const vs = scale * SIDE_STRETCH;
   const deckMax = Math.max(...deck);
-  const sideH = DRAW_PAD.top + deckMax * scale + DRAW_PAD.bottom;
-  const syS = (y: number) => DRAW_PAD.top + (deckMax - y) * scale;
+  const sideH = DRAW_PAD.top + deckMax * vs + DRAW_PAD.bottom + 12;
+  const syS = (y: number) => DRAW_PAD.top + (deckMax - y) * vs;
   const sidePath =
     `M ${xs.map((x, i) => `${sx(x).toFixed(1)} ${syS(bottom[i]).toFixed(1)}`).join(" L ")}` +
     ` L ${[...xs].reverse().map((x, j) => `${sx(x).toFixed(1)} ${syS(deck[xs.length - 1 - j]).toFixed(1)}`).join(" L ")} Z`;
-  const side = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${sideH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">Side view, 1:1 — bottom rocker and deck as the app builds them</text><path d="${sidePath}" class="foam"/>${ticks(DRAW_PAD.top, sideH - DRAW_PAD.bottom, sideH - DRAW_PAD.bottom + 12)}</svg>`;
+  const sideDots = stations
+    .map((s, i) => {
+      const cx = sx(s.x);
+      const rocker = marks.rocker.get(s.label);
+      const thickness = marks.thickness.get(s.label);
+      const bottomHere = bottomAt(s.x);
+      let out = "";
+      if (rocker) {
+        const impliedIn = rocker.impliedMm === null ? null : mmToInches(mm(rocker.impliedMm));
+        out += dot(cx, syS(bottomHere), inchesText(rocker.printedMm), syS(bottomHere) + 13, rocker.flagged, impliedIn === null ? null : { cy: syS(impliedIn - levelOffset), text: inchesText(rocker.impliedMm!) }, row(i, 11));
+      }
+      if (thickness) {
+        const deckHere = bottomHere + thicknessAt(s.x);
+        const impliedIn = thickness.impliedMm === null ? null : mmToInches(mm(thickness.impliedMm));
+        out += dot(cx, syS(deckHere), inchesText(thickness.printedMm), syS(deckHere) - 7, thickness.flagged, impliedIn === null ? null : { cy: syS(bottomHere + impliedIn), text: inchesText(thickness.impliedMm!) }, -row(i, 11));
+      }
+      return out;
+    })
+    .join("");
+  const side = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${sideH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">Side view — nose left, bottom rocker and deck as the app builds them, ${SIDE_STRETCH}× taller than life; thickness above the deck, rocker under the bottom</text><path d="${sidePath}" class="foam"/>${ticks(DRAW_PAD.top - 6, sideH - DRAW_PAD.bottom + 4, sideH - 6)}${sideDots}</svg>`;
 
-  // Top view: the outline either side of the stringer.
+  // Top view.
   const halfMax = Math.max(...half);
   const topH = DRAW_PAD.top + 2 * halfMax * scale + DRAW_PAD.bottom;
   const mid = DRAW_PAD.top + halfMax * scale;
   const topPath =
     `M ${xs.map((x, i) => `${sx(x).toFixed(1)} ${(mid - half[i] * scale).toFixed(1)}`).join(" L ")}` +
     ` L ${[...xs].reverse().map((x, j) => `${sx(x).toFixed(1)} ${(mid + half[xs.length - 1 - j] * scale).toFixed(1)}`).join(" L ")} Z`;
-  const top = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${topH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">From above, 1:1 — the outline from the printed widths</text><path d="${topPath}" class="foam"/><line x1="${sx(0).toFixed(1)}" y1="${mid.toFixed(1)}" x2="${sx(length).toFixed(1)}" y2="${mid.toFixed(1)}" class="stringer"/>${ticks(DRAW_PAD.top, topH - DRAW_PAD.bottom, topH - DRAW_PAD.bottom + 12)}</svg>`;
+  const topDots = stations
+    .map((s, i) => {
+      const width = marks.width.get(s.label);
+      if (!width) return "";
+      const cx = sx(s.x);
+      const h = halfAt(s.x);
+      const impliedHalf = width.impliedMm === null ? null : mmToInches(mm(width.impliedMm)) / 2;
+      return (
+        dot(cx, mid - h * scale, inchesText(width.printedMm), mid - h * scale - 7, width.flagged, impliedHalf === null ? null : { cy: mid - impliedHalf * scale, text: inchesText(width.impliedMm!) }, -row(i, 11)) +
+        `<circle cx="${cx.toFixed(1)}" cy="${(mid + h * scale).toFixed(1)}" r="3" class="dot${width.flagged ? " red" : ""}"/>` +
+        (impliedHalf === null ? "" : `<circle cx="${cx.toFixed(1)}" cy="${(mid + impliedHalf * scale).toFixed(1)}" r="4.5" class="implied"/>`)
+      );
+    })
+    .join("");
+  const top = `<svg class="drawing" viewBox="0 0 ${DRAW_W} ${topH.toFixed(0)}"><text x="${DRAW_PAD.left}" y="14" class="title">From above — nose left, the outline from the printed widths, 1:1; full width at each station</text><path d="${topPath}" class="foam"/><line x1="${sx(0).toFixed(1)}" y1="${mid.toFixed(1)}" x2="${sx(length).toFixed(1)}" y2="${mid.toFixed(1)}" class="stringer"/>${ticks(DRAW_PAD.top - 6, topH - DRAW_PAD.bottom + 4, topH - 6)}${topDots}</svg>`;
   return `<div class="drawings">${side}${top}</div>`;
 }
 
@@ -244,10 +332,9 @@ function page(
       )];
       const findings = [...outliers.filter((o) => o.vendor === record.vendor && o.name === record.name).map((o) => `<li class="red">${escape(o.label)} ${o.attribute}: printed ${escape(inchesText(o.printedMm))}, the rest of the blank implies ${escape(inchesText(o.impliedMm))} (${escape(signedInchesText(o.residualMm))}, z ${o.z.toFixed(1)})</li>`),
         ...deviations.filter((d) => d.vendor === record.vendor && d.name === record.name).map((d) => `<li class="amber">${escape(d.label)} ${d.attribute}: printed ${escape(inchesText(d.printedMm))}, ${(d.share * 100).toFixed(0)}% of its anchor where this maker's norm is ${(d.typicalShare * 100).toFixed(0)}% (about ${escape(inchesText(d.typicalMm))}; z ${d.z.toFixed(1)})</li>`)];
-      const flaggedLabels = new Set([...outliers, ...deviations].filter((f) => f.vendor === record.vendor && f.name === record.name).map((f) => f.label));
       return `<section class="blank" id="${blankId(record.vendor, record.name)}">
 <h3>${escape(record.vendor)} ${escape(record.name)} <span class="muted">· ${escape(formatInchesFraction(record.lengthMm))} long · catalog page ${record.pdfPage}${isPickable(record) ? "" : " · not pickable"}</span></h3>
-${isPickable(record) ? blankDrawings(record, flaggedLabels) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
+${isPickable(record) ? blankDrawings(record, marksOf(record, outliers, deviations)) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
 <div class="plots">${BLANK_ATTRIBUTES.map((attribute) => plot(record, attribute, marksFor(attribute))).join("")}</div>
 <ul class="findings">${findings.join("")}</ul>
 ${notes.length ? `<p class="muted notes">Catalogue notes on these stations: ${notes.map(escape).join(" · ")}</p>` : ""}
@@ -276,24 +363,25 @@ ${offCurveRows(outliers.filter((o) => o.confidence === "low"))}
 ${makerNormRows(deviations)}
 </tbody></table>
 <h2>The blanks named, drawn</h2>
-<p class="muted">Each blank first as the app builds it from the dims, 1:1 — side view (bottom rocker and deck) and outline from above — with every printed station ticked and the named ones in red. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
+<p class="muted">Each blank first as the app builds it from the dims, nose to the left — side view (bottom rocker and deck, stretched 2× vertically so the figures read) and outline from above (1:1) — every printed station a dot with its figure, the named ones in red with the figure the rest of the blank implies beside a hollow dot. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
 ${blocks.join("\n")}
 </body></html>
 `;
 }
 
 /** Every blank drawn, maker by maker, shortest first. */
-function gallery(catalogue: readonly BlankRecord[], named: ReadonlySet<string>): string {
+function gallery(catalogue: readonly BlankRecord[], outliers: readonly OutlierStation[], deviations: readonly MakerNormDeviation[]): string {
+  const named = new Set([...outliers, ...deviations].map((f) => `${f.vendor}\u0000${f.name}`));
   const makers = KNOWN_BLANK_VENDORS.map((vendor) => {
     const blanks = catalogue.filter((r) => r.vendor === vendor).sort((a, b) => a.lengthMm - b.lengthMm);
     const blocks = blanks.map((record) => {
       const key = `${record.vendor}\u0000${record.name}`;
       const link = named.has(key) ? ` · <a href="blank-outliers.html#${blankId(record.vendor, record.name)}">on the outlier page</a>` : "";
-      const flagged = new Set(record.stations.filter((s) => s.flag).map((s) => s.label));
+      const noted = record.stations.filter((s) => s.flag);
       return `<section class="blank" id="${blankId(record.vendor, record.name)}">
 <h3>${escape(record.name)} <span class="muted">· ${escape(formatInchesFraction(record.lengthMm))} long · catalog page ${record.pdfPage}${isPickable(record) ? "" : " · not pickable"}${link}</span></h3>
-${isPickable(record) ? blankDrawings(record, flagged) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
-${flagged.size ? `<p class="muted notes">Catalogue notes: ${record.stations.filter((s) => s.flag).map((s) => escape(`${s.label}: ${s.flag}`)).join(" · ")}</p>` : ""}
+${isPickable(record) ? blankDrawings(record, marksOf(record, outliers, deviations)) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
+${noted.length ? `<p class="muted notes">Catalogue notes: ${noted.map((s) => escape(`${s.label}: ${s.flag}`)).join(" · ")}</p>` : ""}
 </section>`;
     });
     return `<h2 id="${blankId(vendor, "")}">${escape(vendor)} <span class="muted">(${blanks.length})</span></h2>\n${blocks.join("\n")}`;
@@ -303,7 +391,7 @@ ${flagged.size ? `<p class="muted notes">Catalogue notes: ${record.stations.filt
 <title>Blank gallery</title>
 <style>${PAGE_CSS}</style></head><body>
 <h1>Blank gallery</h1>
-<p class="muted">${escape(new Date().toISOString().slice(0, 10))} · every blank the app holds, drawn 1:1 from its own curves as ROCKER draws it: the side view (bottom rocker and deck) and the outline from above; printed stations ticked, stations with a catalogue note in red. Makers: ${KNOWN_BLANK_VENDORS.map((vendor) => `<a href="#${blankId(vendor, "")}">${escape(vendor)}</a>`).join(" · ")}. The <a href="blank-outliers.html">outlier page</a> has the numbers.</p>
+<p class="muted">${escape(new Date().toISOString().slice(0, 10))} · every blank the app holds, drawn from its own curves as ROCKER draws it, nose to the left: the side view (bottom rocker and deck, stretched 2× vertically so the figures read) and the outline from above (1:1); every printed station a dot with its figure, the stations named on the outlier page in red with the implied figure beside a hollow dot. Makers: ${KNOWN_BLANK_VENDORS.map((vendor) => `<a href="#${blankId(vendor, "")}">${escape(vendor)}</a>`).join(" · ")}. The <a href="blank-outliers.html">outlier page</a> has the numbers.</p>
 ${makers.join("\n")}
 </body></html>
 `;
@@ -319,7 +407,7 @@ function main(): void {
   const json = path.join(OUT_DIR, "blank-outliers.json");
   const galleryHtml = path.join(OUT_DIR, "blank-gallery.html");
   writeFileSync(html, page(catalogue, outliers, deviations, asked));
-  writeFileSync(galleryHtml, gallery(catalogue, new Set([...outliers, ...deviations].map((f) => `${f.vendor}\u0000${f.name}`))));
+  writeFileSync(galleryHtml, gallery(catalogue, outliers, deviations));
   writeFileSync(
     json,
     `${JSON.stringify(
