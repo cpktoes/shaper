@@ -19,7 +19,8 @@
  * drawn as the app builds it from the figures (nose left, 1:1, every printed station a dot with its
  * figure; a station in question in red; a hollow circle where the other stations imply a different
  * figure, a hollow diamond where the page's centimetre figure says something else), and under it
- * that blank's notes, grouped: inches and centimetres that disagree; figures off the curve of the
+ * that blank's notes, grouped — the same notes `blankItems` (blank-report-shared.ts) builds for the
+ * dev page's review controls: inches and centimetres that disagree; figures off the curve of the
  * blank's other stations (the outlier check, `lib/blanks/outliers.ts`, with how much to trust the
  * reading); stations unusual for the maker; likely misprints; tip widths under an inch or not
  * printed; a headline line against its station; figures not printed or unreadable. Every figure is
@@ -33,12 +34,25 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { chromium } from "@playwright/test";
 import { isPickable } from "@/lib/blanks/catalog";
-import { findOutliers, makerNormDeviations, type BlankAttribute, type MakerNormDeviation, type OutlierStation } from "@/lib/blanks/outliers";
+import { findOutliers, makerNormDeviations, type MakerNormDeviation, type OutlierStation } from "@/lib/blanks/outliers";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { KNOWN_BLANK_VENDORS, type BlankVendor } from "@/lib/blanks/vendors";
 import type { BlankRecord } from "@/lib/geometry/blank";
-import { centimetresToMm, inchesToMm, mmToInches } from "@/lib/geometry/units";
-import { PAGE_CSS, blankDrawings, blankId, escape, figureText, inchesText, marksOf, signedInchesText } from "./blank-report-shared";
+import {
+  KIND_ORDER,
+  KIND_TITLE,
+  PAGE_CSS,
+  blankDrawings,
+  blankId,
+  blankItems,
+  escape,
+  figureText,
+  groupedItems,
+  marksOf,
+  noteParts,
+  readNote,
+  type ItemKind,
+} from "./blank-report-shared";
 
 function readArg(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -61,190 +75,31 @@ const FILE_STEM: Record<BlankVendor, string> = {
   "Millennium Foam": "millennium-foam",
 };
 
-/* -- reading the catalogue files' own notes ------------------------------------------------- */
-
-type Note =
-  | { kind: "units"; attribute: string; printedInch: string; printedCm: string; used: string }
-  | { kind: "headline"; text: string }
-  | { kind: "misprint"; text: string }
-  | { kind: "unprinted"; text: string }
-  | { kind: "tip"; text: string }
-  | { kind: "convention" };
-
-/** Splits a row's note into its parts — one sentence per figure — without cutting inside a sentence. */
-function noteParts(flag: string): string[] {
-  return flag
-    .split(/;\s(?=(?:rocker|thickness|width|length|volume|catalog's|only |moved |wake|rectangular|thick |sister|SUP |nose and tail swapped))/)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
-
-/** Reads one part of a note into the section it belongs to. */
-function readNote(part: string): Note {
-  let m = /^(rocker|thickness|width|length|volume): catalog prints (.+?) but (.+?); used the (inch|cm|cubic-foot) value(?: \(([^)]+)\))?/.exec(part);
-  if (m) {
-    const used = m[4] === "inch" ? "the inch figure" : m[4] === "cm" ? `the centimetre figure${m[5] ? ` (${m[5]})` : ""}` : `the cubic-foot figure${m[5] ? ` (${m[5]})` : ""}`;
-    return { kind: "units", attribute: m[1], printedInch: m[2], printedCm: m[3].replace(/ here$/, ""), used };
-  }
-  m = /^(width|thickness|rocker): catalog cm \((.+?)\) disagrees with inch \((.+?)\); used inch/.exec(part);
-  if (m) return { kind: "units", attribute: m[1], printedInch: m[3], printedCm: m[2], used: "the inch figure" };
-  m = /^width: catalog cm \((.+?)\) is a typo for (.+?) \((.*)\)/.exec(part);
-  if (m) return { kind: "units", attribute: "width", printedInch: "the inch figure and the summary box agree", printedCm: `${m[1]} cm`, used: `${m[2]} cm, which the inch figure and the summary box give` };
-  if (/^catalog's Max (Width|Thickness) line prints/.test(part) || /thicker than its own stated max/.test(part) || /^length: catalog prints a tip-to-tip deck/.test(part)) {
-    return { kind: "headline", text: part };
-  }
-  if (/may be a misprint|likely a catalog typo|missing digits|rocker set to .* to match|in both units/.test(part)) return { kind: "misprint", text: part };
-  if (/^thickness illegible in catalog/.test(part) || /not printed in catalog$/.test(part) || /^width not printed at this station/.test(part) || /^the catalog draws only/.test(part)) {
-    if (/rounded nose, not printed in catalog$/.test(part)) return { kind: "convention" }; // tips are their own kind
-    return { kind: "unprinted", text: part };
-  }
-  if (/^width: catalog prints 1\/16" at the tail tip/.test(part) || /^width 0: rounded nose — catalog prints/.test(part)) return { kind: "tip", text: part };
-  if (/^width 1": pointed nose/.test(part) || /^moved from drawn position/.test(part) || /^only thickness differs/.test(part) || /^thick version of/.test(part) || /^rectangular block blank/.test(part) || /^SUP blank is a constant-width block/.test(part) || /^width measured 3" back/.test(part) || /^wake-surf rocker as drawn/.test(part) || /^nose and tail swapped/.test(part) || /^width [\d.]+ (\(widest point.*\) )?assigned to center/.test(part) || /^catalog prints [\d.]+$/.test(part) || /^the \d.*page \d+ has/.test(part) || /^thickness: prints "/.test(part) || /^sister/.test(part)) {
-    return { kind: "convention" };
-  }
-  return { kind: "misprint", text: part }; // anything unrecognised is shown rather than lost
-}
-
-/** `6'2 1/8"`, `9'8"`, `2 13/16"`, `17/32"`, `"3 1/6""` → inches, or null when it is not a length. */
-function parseInchesText(text: string): number | null {
-  const clean = text.replace(/[”“]/g, '"').replace(/^"+|"+$/g, "").trim();
-  let m = /^(\d+)'\s*(\d+)?\s*(?:(\d+)\/(\d+))?"?/.exec(clean);
-  if (m) return Number(m[1]) * 12 + (m[2] ? Number(m[2]) : 0) + (m[3] ? Number(m[3]) / Number(m[4]) : 0);
-  m = /^(\d+)?\s*(?:(\d+)\/(\d+))?"?$/.exec(clean.replace(/"\s*\(.*$/, '"'));
-  if (m && (m[1] !== undefined || m[2] !== undefined)) return (m[1] ? Number(m[1]) : 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
-  return null;
-}
-/** `5.08 cm here`, `274.32 cm (9'0")`, `29.86 cm = 11.756 in`, `69.05` → centimetres, or null (litres, cubic feet). */
-function parseCmText(text: string): number | null {
-  if (/\bL\b|ft3/.test(text)) return null;
-  const m = /([\d.]+)\s*(?:cm|$)/.exec(text);
-  return m ? Number(m[1]) : null;
-}
-/** The three-way text for a printed figure, or the text itself when it is not a length. */
-function inchFigure(text: string): string {
-  const inches = parseInchesText(text);
-  if (inches === null) return text;
-  const three = figureText(inchesToMm(inches));
-  const printed = text.replace(/[”“]/g, '"');
-  // The printed fraction already is a sixteenth: no need to say it twice.
-  return three.startsWith(`${printed} `) ? three : `${printed} = ${three}`;
-}
-function cmFigure(text: string): string {
-  const cm = parseCmText(text);
-  return cm === null ? text : `${cm.toFixed(2)} cm (= ${inchesText(centimetresToMm(cm))}, ${mmToInches(centimetresToMm(cm)).toFixed(2)} in)`;
-}
-
-const STATION_WORD = (label: string) => (label === "C" ? "centre" : label.startsWith("N") ? `${label.slice(1)}" from the nose` : `${label.slice(1)}" from the tail`).replace(/^0" from the (nose|tail)$/, "$1 tip");
-
 /* -- one maker's report --------------------------------------------------------------------- */
-
-type ItemKind = "units" | "off" | "unusual" | "misprint" | "tip" | "headline" | "unprinted";
-const KIND_TITLE: Record<ItemKind, string> = {
-  units: "Inches and centimetres that disagree",
-  off: "Off the curve of the blank's other stations",
-  unusual: "Unusual for this catalog at that station",
-  misprint: "Likely misprints, and other notes from our read of the page",
-  tip: "Tip widths under an inch",
-  headline: "The page's headline against its station",
-  unprinted: "Not printed, or not readable",
-};
-const KIND_ORDER: ItemKind[] = ["units", "off", "unusual", "misprint", "tip", "headline", "unprinted"];
-
-interface Item {
-  kind: ItemKind;
-  label: string;
-  html: string;
-  attribute?: BlankAttribute;
-  cmMm?: number;
-}
 
 function report(vendor: BlankVendor, catalogue: readonly BlankRecord[], outliers: readonly OutlierStation[], deviations: readonly MakerNormDeviation[]): string {
   const blanks = catalogue.filter((r) => r.vendor === vendor).sort((a, b) => a.lengthMm - b.lengthMm);
   const stationCount = blanks.reduce((n, r) => n + r.stations.length, 0);
-  const items = new Map<BlankRecord, Item[]>();
-  const add = (record: BlankRecord, item: Item) => {
-    const list = items.get(record);
-    if (list) list.push(item);
-    else items.set(record, [item]);
-  };
-  const station = (label: string) => `<b>${escape(STATION_WORD(label))}</b>`;
-  const isAttribute = (word: string): word is BlankAttribute => word === "rocker" || word === "thickness" || word === "width";
+  const withItems = blanks.map((record) => ({ record, items: blankItems(record, outliers, deviations) })).filter(({ items }) => items.length > 0);
 
-  for (const record of blanks) {
-    for (const s of record.stations) {
-      // The catalogue files' own notes.
-      for (const part of s.flag ? noteParts(s.flag) : []) {
-        const note = readNote(part);
-        if (note.kind === "convention") continue;
-        if (note.kind === "units") {
-          const cm = parseCmText(note.printedCm);
-          add(record, {
-            kind: "units",
-            label: s.label,
-            attribute: isAttribute(note.attribute) ? note.attribute : undefined,
-            cmMm: cm === null || !isAttribute(note.attribute) ? undefined : centimetresToMm(cm),
-            html: `${station(s.label)}, ${escape(note.attribute)}: the page prints ${escape(inchFigure(note.printedInch))} against ${escape(cmFigure(note.printedCm))}; we used ${escape(note.used)}.`,
-          });
-        } else {
-          add(record, { kind: note.kind, label: s.label, html: `${station(s.label)}: ${escape(note.text)}.` });
-        }
-      }
-      // Tips under an inch.
-      if ((s.label === "T0" || s.label === "N0") && s.widthMm !== null && s.widthMm < inchesToMm(1)) {
-        const flag = s.flag ?? "";
-        const text = /rounded nose/.test(flag)
-          ? /catalog prints (1\/16")/.test(flag) ? 'the page prints 1/16" (we draw a round nose)' : "the page prints no width (we draw a round nose)"
-          : /pointed nose/.test(flag) ? 'the page prints no width (we use 1" for the point)'
-          : `the page prints ${figureText(s.widthMm)}`;
-        add(record, { kind: "tip", label: s.label, html: `${station(s.label)} width: ${escape(text)}.` });
-      }
-    }
-    // The outlier check.
-    for (const o of outliers) {
-      if (o.vendor !== vendor || o.name !== record.name) continue;
-      const trust = o.confidence === "high" ? "stations 6\" apart either side, so most likely a slip in the figure" : "stations 12\" or more apart either side, so worth a look, though our curve may be the one at fault";
-      add(record, {
-        kind: "off",
-        label: o.label,
-        attribute: o.attribute,
-        html: `${station(o.label)}, ${o.attribute}: the page prints ${escape(figureText(o.printedMm))}; the blank's other stations imply ${escape(figureText(o.impliedMm))}, ${escape(signedInchesText(o.residualMm))} off (${escape(trust)}).`,
-      });
-    }
-    for (const d of deviations) {
-      if (d.vendor !== vendor || d.name !== record.name) continue;
-      add(record, {
-        kind: "unusual",
-        label: d.label,
-        attribute: d.attribute,
-        html: `${station(d.label)}, ${d.attribute}: the page prints ${escape(figureText(d.printedMm))}, ${(d.share * 100).toFixed(0)}% of the ${d.attribute === "rocker" ? "tip's" : "centre's"} where your other blanks run near ${(d.typicalShare * 100).toFixed(0)}% (about ${escape(figureText(d.typicalMm))}); some of these will be design — tell us which.`,
-      });
-    }
-  }
-
-  // Counts for the summary.
   const counts = Object.fromEntries(KIND_ORDER.map((kind) => [kind, 0])) as Record<ItemKind, number>;
-  for (const list of items.values()) for (const item of list) counts[item.kind]++;
-  const mentioned = [...items.keys()].sort((a, b) => a.lengthMm - b.lengthMm);
+  for (const { items } of withItems) for (const item of items) counts[item.kind]++;
 
-  const blocks = mentioned.map((record) => {
-    const list = items.get(record)!;
+  const blocks = withItems.map(({ record, items }) => {
     const marks = marksOf(record, outliers, deviations);
-    for (const item of list) {
+    for (const item of items) {
       for (const key of ["rocker", "thickness", "width"] as const) {
         if (item.attribute && item.attribute !== key) continue;
         const mark = marks[key].get(item.label);
         if (!mark) continue;
         mark.flagged = true;
-        if (item.kind === "units" && item.cmMm !== undefined) mark.cmMm = item.cmMm;
+        if (item.cmMm !== undefined) mark.cmMm = item.cmMm;
       }
     }
-    const grouped = KIND_ORDER.filter((kind) => list.some((item) => item.kind === kind))
-      .map((kind) => `<h4>${escape(KIND_TITLE[kind])}</h4><ul>${list.filter((item) => item.kind === kind).map((item) => `<li>${item.html}</li>`).join("")}</ul>`)
-      .join("");
     return `<section class="blank" id="${blankId(record.vendor, record.name)}">
 <h3>${escape(record.name)} <span class="muted">· ${escape(figureText(record.lengthMm))} long · catalog page ${record.pdfPage}</span></h3>
 ${isPickable(record) ? blankDrawings(record, marks) : '<p class="muted">Not drawn: the page prints no thickness at the centre or at a tip, so we cannot build this blank.</p>'}
-<div class="notes">${grouped}</div>
+<div class="notes">${groupedItems(items, (item) => item.html.replace(/the maker's other blanks/g, "your other blanks"))}</div>
 </section>`;
   });
 
@@ -267,10 +122,10 @@ ${isPickable(record) ? blankDrawings(record, marks) : '<p class="muted">Not draw
 <p>What follows is one block per blank, shortest first: the blank drawn from the page's figures (nose to the left, 1:1 — the side view is the bottom rocker with the deck on top of it, the outline is from the widths), then the notes on it. Every printed station is a dot with its figure; a station we have a note on is red. A hollow circle with an arrow marks the figure the blank's other stations imply; a hollow diamond marks what the page's centimetre figure would make it. Figures are given three ways: nearest 1/16", decimal inches, decimal centimetres. Page numbers are the catalog PDF's; stations are named as the page prints them (12" from the nose, centre, 6" from the tail, …).</p>
 <h2>In brief</h2>
 <ul class="summary">
-<li>${mentioned.length} of ${blanks.length} blanks have a note.</li>
+<li>${withItems.length} of ${blanks.length} blanks have a note.</li>
 ${KIND_ORDER.map((kind) => `<li>${escape(KIND_TITLE[kind])}: ${counts[kind]}</li>`).join("\n")}
 </ul>
-<p class="muted">Blanks: ${mentioned.map((record) => `<a href="#${blankId(record.vendor, record.name)}">${escape(record.name)}</a>`).join(" · ")}</p>
+<p class="muted">Blanks: ${withItems.map(({ record }) => `<a href="#${blankId(record.vendor, record.name)}">${escape(record.name)}</a>`).join(" · ")}</p>
 </div>
 ${blocks.join("\n")}
 </body></html>
@@ -310,7 +165,7 @@ async function main(): Promise<void> {
   } finally {
     await browser?.close();
   }
-  // Coverage: every note part must land in a section or be a known convention — list the ones shown under "likely misprints" by default.
+  // Coverage: every note part must land in a kind or be a known convention — list the ones shown under "likely misprints" by default.
   const unrecognised = new Set<string>();
   for (const record of catalogue) {
     for (const s of record.stations) {

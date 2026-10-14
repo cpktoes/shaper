@@ -81,3 +81,16 @@ decimal inches, decimal centimetres — on the founder's ask. And the Marko 10'2
 and tail figures swapped at every station (the founder: that page draws the nose on the right, and the first read
 took it the other way); each row says so. Goldens unchanged, unit suite green, ROCKER list and picture specs green,
 both databases reseeded.
+
+**Review controls (the founder, 2026-10-14: "add check boxes and a text box on the dev page … after I go through the
+blanks, I can then submit my changes for you to make … keep a copy of the current database"):** the revert point is
+`db/seed/blanks/snapshots/2026-10-14-before-review/` (a dated copy of the four files, with a README) and the tags
+`blanks-2026-10-13-before-fixes` and `blanks-2026-10-14-before-review`. The outlier page now lists, under every blank
+with any note (the catalogue files' own notes as well as the outlier check's — the same `blankItems` the maker reports
+use, from `scripts/blank-report-shared.ts`), one control per note: an "apply" tick, a figure box pre-filled with the
+suggestion, a "why" box; plus an "anything else on this blank" line for a station nothing names. Ticks and figures are
+remembered in the browser (`localStorage`, key `shaper-blank-review`); a sticky bar counts them; Submit writes the
+decisions as JSON into a box on the page and enables a download of `blank-review-decisions.json`.
+`scripts/apply-blank-decisions.ts <file> [--write]` then makes exactly those changes to the catalogue files — rehearsal
+by default, all-or-nothing, refusing a decision whose "current" figure no longer matches the file — with a note on each
+row ("rocker: changed from X to Y on <date> by the founder (why)"), after which the usual gates and reseeds run.

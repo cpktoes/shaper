@@ -14,9 +14,9 @@ import {
   type MakerNormDeviation,
   type OutlierStation,
 } from "@/lib/blanks/outliers";
-import type { BlankRecord } from "@/lib/geometry/blank";
+import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
 import { prepareBlank } from "@/lib/geometry/blank-fit";
-import { formatInchesFraction, formatSignedInchesFraction, mm, mmToCentimetres, mmToInches } from "@/lib/geometry/units";
+import { centimetresToMm, formatInchesFraction, formatSignedInchesFraction, inchesToMm, mm, mmToCentimetres, mmToInches } from "@/lib/geometry/units";
 
 /** A figure to the nearest 1/16" — the founder's rule for every figure shown (2026-10-14). */
 export const inchesText = (value: number) => formatInchesFraction(mm(value), 16);
@@ -96,6 +96,17 @@ export const PAGE_CSS = `
   svg text { font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #1d2a2a; } svg text.axis { font-size: 10px; fill: #6b7a78; } svg text.title { font-weight: 600; } svg text.red { fill: #b3261e; font-weight: 600; } svg text.figure { font-size: 9.5px; fill: #1d2a2a; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
   svg .curve { fill: none; stroke: #1f5f5b; stroke-width: 1.5; } svg .cm { fill: #fff; stroke: #8a5a00; stroke-width: 1.5; } svg text.amber { fill: #8a5a00; } svg .dot { fill: #1d2a2a; } svg .dot.red { fill: #b3261e; } svg .implied { fill: #fff; stroke: #b3261e; stroke-width: 1.5; } svg .gap { stroke: #b3261e; stroke-width: 1; stroke-dasharray: 2 2; }
   ul.findings { margin: 6px 0 0; padding-left: 18px; } p.notes { margin: 6px 0 0; font-size: 12px; }
+  h4 { font-size: 12px; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7a78; }
+  .review ul { margin: 0; padding-left: 0; list-style: none; } .review li { margin: 3px 0; }
+  .item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; } .item.ticked { background: #eaf3ef; } .item.missing { background: #fbe9e7; }
+  .item label.apply { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; }
+  .item input.to { width: 7em; font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid #c9c4b6; border-radius: 4px; }
+  .item input.comment { width: 16em; font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid #e4e1d8; border-radius: 4px; }
+  .item select { font: inherit; font-size: 12px; padding: 2px; }
+  .item span.text { flex: 1 1 24em; }
+  .bar { position: sticky; top: 0; z-index: 2; background: #fff; border: 1px solid #e4e1d8; border-radius: 8px; padding: 8px 12px; margin: 8px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .bar button { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 6px; border: 1px solid #1f5f5b; background: #1f5f5b; color: #fff; cursor: pointer; } .bar button:disabled { opacity: 0.5; cursor: default; } .bar button#review-clear { background: #fff; color: #1f5f5b; }
+  textarea.out { width: 100%; max-width: 1100px; height: 7em; font: 11px/1.4 ui-monospace, Menlo, monospace; margin: 4px 0 10px; }
   p.how { max-width: 900px; }
 `;
 
@@ -245,3 +256,200 @@ export function blankDrawings(record: BlankRecord, marks: StationMarks): string 
   return `<div class="drawings">${side}${top}</div>`;
 }
 
+
+/* -- the catalogue files' own notes, and every note on a blank -------------------------------- */
+
+/** One part of a catalogue row's note, read into the kind of thing it says. */
+export type Note =
+  | { kind: "units"; attribute: string; printedInch: string; printedCm: string; used: string; usedInch: boolean }
+  | { kind: "headline"; text: string }
+  | { kind: "misprint"; text: string }
+  | { kind: "unprinted"; text: string }
+  | { kind: "tip"; text: string }
+  | { kind: "convention" };
+
+/** Splits a row's note into its parts — one sentence per figure — without cutting inside a sentence. */
+export function noteParts(flag: string): string[] {
+  return flag
+    .split(/;\s(?=(?:rocker|thickness|width|length|volume|catalog's|only |moved |wake|rectangular|thick |sister|SUP |nose and tail swapped|changed on ))/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+/** Reads one part of a note into the kind it belongs to. Anything unrecognised is kept as a misprint note rather than lost. */
+export function readNote(part: string): Note {
+  let m = /^(rocker|thickness|width|length|volume): catalog prints (.+?) but (.+?); used the (inch|cm|cubic-foot) value(?: \(([^)]+)\))?/.exec(part);
+  if (m) {
+    const used = m[4] === "inch" ? "the inch figure" : m[4] === "cm" ? `the centimetre figure${m[5] ? ` (${m[5]})` : ""}` : `the cubic-foot figure${m[5] ? ` (${m[5]})` : ""}`;
+    return { kind: "units", attribute: m[1], printedInch: m[2], printedCm: m[3].replace(/ here$/, ""), used, usedInch: m[4] === "inch" };
+  }
+  m = /^(width|thickness|rocker): catalog cm \((.+?)\) disagrees with inch \((.+?)\); used inch/.exec(part);
+  if (m) return { kind: "units", attribute: m[1], printedInch: m[3], printedCm: m[2], used: "the inch figure", usedInch: true };
+  m = /^width: catalog cm \((.+?)\) is a typo for (.+?) \((.*)\)/.exec(part);
+  if (m) return { kind: "units", attribute: "width", printedInch: "the inch figure and the summary box agree", printedCm: `${m[1]} cm`, used: `${m[2]} cm, which the inch figure and the summary box give`, usedInch: true };
+  if (/^catalog's Max (Width|Thickness) line prints/.test(part) || /thicker than its own stated max/.test(part) || /^length: catalog prints a tip-to-tip deck/.test(part)) {
+    return { kind: "headline", text: part };
+  }
+  if (/may be a misprint|likely a catalog typo|missing digits|rocker set to .* to match|in both units/.test(part)) return { kind: "misprint", text: part };
+  if (/^thickness illegible in catalog/.test(part) || /not printed in catalog$/.test(part) || /^width not printed at this station/.test(part) || /^the catalog draws only/.test(part)) {
+    if (/rounded nose, not printed in catalog$/.test(part)) return { kind: "convention" }; // tips are their own kind
+    return { kind: "unprinted", text: part };
+  }
+  if (/^width: catalog prints 1\/16" at the tail tip/.test(part) || /^width 0: rounded nose — catalog prints/.test(part)) return { kind: "tip", text: part };
+  if (/^width 1": pointed nose/.test(part) || /^moved from drawn position/.test(part) || /^only thickness differs/.test(part) || /^thick version of/.test(part) || /^rectangular block blank/.test(part) || /^SUP blank is a constant-width block/.test(part) || /^width measured 3" back/.test(part) || /^wake-surf rocker as drawn/.test(part) || /^nose and tail swapped/.test(part) || /^(rocker|thickness|width|length|deck length|volume): changed from/.test(part) || /^width [\d.]+ (\(widest point.*\) )?assigned to center/.test(part) || /^catalog prints [\d.]+$/.test(part) || /^the \d.*page \d+ has/.test(part) || /^thickness: prints "/.test(part) || /^sister/.test(part)) {
+    return { kind: "convention" };
+  }
+  return { kind: "misprint", text: part };
+}
+
+/** `6'2 1/8"`, `9'8"`, `2 13/16"`, `17/32"`, `2.19`, `"3 1/6""` → inches, or null when it is not a length. */
+export function parseInchesText(text: string): number | null {
+  const clean = text.replace(/[”“]/g, '"').replace(/^"+|"+$/g, "").replace(/\s*(in|inch|inches)$/i, "").trim();
+  let m = /^(\d+)'\s*(\d+)?\s*(?:(\d+)\/(\d+))?"?$/.exec(clean);
+  if (m) return Number(m[1]) * 12 + (m[2] ? Number(m[2]) : 0) + (m[3] ? Number(m[3]) / Number(m[4]) : 0);
+  m = /^(\d+(?:\.\d+)?)?\s*(?:(\d+)\/(\d+))?"?$/.exec(clean.replace(/"\s*\(.*$/, '"'));
+  if (m && (m[1] !== undefined || m[2] !== undefined) && !(m[1] && m[1].includes(".") && m[2])) {
+    return (m[1] ? Number(m[1]) : 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+  }
+  return null;
+}
+/** `5.08 cm here`, `274.32 cm (9'0")`, `29.86 cm = 11.756 in`, `69.05` → centimetres, or null (litres, cubic feet). */
+export function parseCmText(text: string): number | null {
+  if (/\bL\b|ft3/.test(text)) return null;
+  const m = /([\d.]+)\s*(?:cm|$)/.exec(text);
+  return m ? Number(m[1]) : null;
+}
+/** The three-way text for a printed figure, or the text itself when it is not a length. */
+export function inchFigure(text: string): string {
+  const inches = parseInchesText(text);
+  if (inches === null) return text;
+  const three = figureText(inchesToMm(inches));
+  const printed = text.replace(/[”“]/g, '"');
+  return three.startsWith(`${printed} `) ? three : `${printed} = ${three}`;
+}
+export function cmFigure(text: string): string {
+  const cm = parseCmText(text);
+  return cm === null ? text : `${cm.toFixed(2)} cm (= ${inchesText(centimetresToMm(cm))}, ${mmToInches(centimetresToMm(cm)).toFixed(2)} in)`;
+}
+
+/** A station label the way a page would say it: `12" from the nose`, `centre`, `tail tip`. */
+export const STATION_WORD = (label: string) =>
+  (label === "C" ? "centre" : label.startsWith("N") ? `${label.slice(1)}" from the nose` : `${label.slice(1)}" from the tail`).replace(/^0" from the (nose|tail)$/, "$1 tip");
+
+export type ItemKind = "units" | "off" | "unusual" | "misprint" | "tip" | "headline" | "unprinted";
+export const KIND_TITLE: Record<ItemKind, string> = {
+  units: "Inches and centimetres that disagree",
+  off: "Off the curve of the blank's other stations",
+  unusual: "Unusual for this catalog at that station",
+  misprint: "Likely misprints, and other notes from our read of the page",
+  tip: "Tip widths under an inch",
+  headline: "The page's headline against its station",
+  unprinted: "Not printed, or not readable",
+};
+export const KIND_ORDER: ItemKind[] = ["units", "off", "unusual", "misprint", "tip", "headline", "unprinted"];
+
+/** A figure a review can change: a station's rocker, thickness or width, or the blank's length, deck length or volume. */
+export type ReviewAttribute = BlankAttribute | "length" | "deck_length" | "volume";
+
+/** One note on one blank, with the figure as it stands and the figure the note suggests (both as text, nearest 1/16"). */
+export interface ReviewItem {
+  kind: ItemKind;
+  /** The station label, or `""` for a figure of the whole blank. */
+  label: string;
+  attribute: ReviewAttribute | null;
+  /** The sentence, as HTML. */
+  html: string;
+  current: string;
+  suggested: string;
+  /** The page's centimetre figure in mm, for the drawing's hollow diamond (units notes only). */
+  cmMm?: number;
+}
+
+const isStationAttribute = (word: string): word is BlankAttribute => word === "rocker" || word === "thickness" || word === "width";
+
+/** Every note on `record`, in the report's order: the catalogue file's own notes, then the outlier check's. */
+export function blankItems(record: BlankRecord, outliers: readonly OutlierStation[], deviations: readonly MakerNormDeviation[]): ReviewItem[] {
+  const items: ReviewItem[] = [];
+  const station = (label: string) => `<b>${escape(STATION_WORD(label))}</b>`;
+  const currentOf = (s: BlankStation, attribute: ReviewAttribute | null): string => {
+    if (attribute === null) return "";
+    if (attribute === "length") return inchesText(record.lengthMm);
+    if (attribute === "deck_length") return record.deckLengthMm === null ? "" : inchesText(record.deckLengthMm);
+    if (attribute === "volume") return record.volumeLitres === null ? "" : `${record.volumeLitres} L`;
+    const value = attributeValue(s, attribute);
+    return value === null ? "" : inchesText(value);
+  };
+  for (const s of record.stations) {
+    for (const part of s.flag ? noteParts(s.flag) : []) {
+      const note = readNote(part);
+      if (note.kind === "convention") continue;
+      if (note.kind === "units") {
+        const cm = parseCmText(note.printedCm);
+        const attribute: ReviewAttribute | null = isStationAttribute(note.attribute) ? note.attribute : note.attribute === "length" ? "length" : note.attribute === "volume" ? "volume" : null;
+        const inch = parseInchesText(note.printedInch);
+        // The alternative to what we used: the centimetre figure's inches when we took the inch, else the inch figure.
+        const suggested = note.usedInch ? (cm === null ? "" : inchesText(centimetresToMm(cm))) : inch === null ? "" : inchesText(inchesToMm(inch));
+        items.push({
+          kind: "units",
+          label: s.label,
+          attribute,
+          cmMm: cm === null || !isStationAttribute(note.attribute) ? undefined : centimetresToMm(cm),
+          html: `${station(s.label)}, ${escape(note.attribute)}: the page prints ${escape(inchFigure(note.printedInch))} against ${escape(cmFigure(note.printedCm))}; we used ${escape(note.used)}.`,
+          current: currentOf(s, attribute),
+          suggested,
+        });
+      } else {
+        const m = /^(rocker|thickness|width)\b/.exec(note.text);
+        const attribute: ReviewAttribute | null =
+          m && isStationAttribute(m[1]) ? m[1]
+          : /Max Width/.test(note.text) ? "width"
+          : /Max Thickness/.test(note.text) ? "thickness"
+          : /tip-to-tip deck/.test(note.text) ? "deck_length"
+          : /^thickness/.test(note.text) ? "thickness"
+          : /^rocker/.test(note.text) ? "rocker"
+          : /^width/.test(note.text) ? "width"
+          : null;
+        items.push({ kind: note.kind, label: s.label, attribute, html: `${station(s.label)}: ${escape(note.text)}.`, current: currentOf(s, attribute), suggested: "" });
+      }
+    }
+    if ((s.label === "T0" || s.label === "N0") && s.widthMm !== null && s.widthMm < inchesToMm(1)) {
+      const flag = s.flag ?? "";
+      const text = /rounded nose/.test(flag)
+        ? /catalog prints (1\/16")/.test(flag) ? 'the page prints 1/16" (we draw a round nose)' : "the page prints no width (we draw a round nose)"
+        : /pointed nose/.test(flag) ? 'the page prints no width (we use 1" for the point)'
+        : `the page prints ${figureText(s.widthMm)}`;
+      items.push({ kind: "tip", label: s.label, attribute: "width", html: `${station(s.label)} width: ${escape(text)}.`, current: inchesText(s.widthMm), suggested: "" });
+    }
+  }
+  for (const o of outliers) {
+    if (o.vendor !== record.vendor || o.name !== record.name) continue;
+    const trust = o.confidence === "high" ? 'stations 6" apart either side, so most likely a slip in the figure' : 'stations 12" or more apart either side, so worth a look, though our curve may be the one at fault';
+    items.push({
+      kind: "off",
+      label: o.label,
+      attribute: o.attribute,
+      html: `${station(o.label)}, ${o.attribute}: the page prints ${escape(figureText(o.printedMm))}; the blank's other stations imply ${escape(figureText(o.impliedMm))}, ${escape(signedInchesText(o.residualMm))} off (${escape(trust)}).`,
+      current: inchesText(o.printedMm),
+      suggested: inchesText(o.impliedMm),
+    });
+  }
+  for (const d of deviations) {
+    if (d.vendor !== record.vendor || d.name !== record.name) continue;
+    items.push({
+      kind: "unusual",
+      label: d.label,
+      attribute: d.attribute,
+      html: `${station(d.label)}, ${d.attribute}: the page prints ${escape(figureText(d.printedMm))}, ${(d.share * 100).toFixed(0)}% of the ${d.attribute === "rocker" ? "tip's" : "centre's"} where the maker's other blanks run near ${(d.typicalShare * 100).toFixed(0)}% (about ${escape(figureText(d.typicalMm))}).`,
+      current: inchesText(d.printedMm),
+      suggested: inchesText(d.typicalMm),
+    });
+  }
+  return items;
+}
+
+/** The items grouped by kind, as the report and the review page list them. */
+export function groupedItems(items: readonly ReviewItem[], render: (item: ReviewItem, index: number) => string): string {
+  return KIND_ORDER.filter((kind) => items.some((item) => item.kind === kind))
+    .map((kind) => `<h4>${escape(KIND_TITLE[kind])}</h4><ul>${items.map((item, index) => (item.kind === kind ? `<li>${render(item, index)}</li>` : "")).join("")}</ul>`)
+    .join("");
+}

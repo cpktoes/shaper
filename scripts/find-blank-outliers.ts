@@ -46,7 +46,7 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { KNOWN_BLANK_VENDORS } from "@/lib/blanks/vendors";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { formatInchesFraction, mm, mmToInches } from "@/lib/geometry/units";
-import { PAGE_CSS, blankDrawings, blankId, escape, inchesText, marksOf, plot, signedInchesText, type Mark } from "./blank-report-shared";
+import { PAGE_CSS, blankDrawings, blankId, blankItems, escape, groupedItems, inchesText, marksOf, plot, signedInchesText, type Mark, type ReviewItem } from "./blank-report-shared";
 
 function readArg(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -84,9 +84,15 @@ function page(
   deviations: readonly MakerNormDeviation[],
   asked: number,
 ): string {
+  // Every blank with any note at all — the outlier check's and the catalogue files' own — so the
+  // founder can review the whole catalogue from this one page.
+  const itemsOf = new Map<BlankRecord, ReviewItem[]>();
+  for (const record of catalogue) {
+    const items = blankItems(record, outliers, deviations);
+    if (items.length) itemsOf.set(record, items);
+  }
   const named = new Map<string, BlankRecord>();
-  for (const o of outliers) named.set(`${o.vendor}\u0000${o.name}`, catalogue.find((r) => r.vendor === o.vendor && r.name === o.name)!);
-  for (const d of deviations) named.set(`${d.vendor}\u0000${d.name}`, catalogue.find((r) => r.vendor === d.vendor && r.name === d.name)!);
+  for (const record of itemsOf.keys()) named.set(`${record.vendor}\u0000${record.name}`, record);
   const perMaker = KNOWN_BLANK_VENDORS.map(
     (vendor) =>
       `<li><b>${escape(vendor)}</b>: ${catalogue.filter((r) => r.vendor === vendor).length} blanks, ${outliers.filter((o) => o.vendor === vendor).length} stations off their curve, ${deviations.filter((d) => d.vendor === vendor).length} unusual for the maker</li>`,
@@ -108,19 +114,40 @@ function page(
         }
         return marks;
       };
-      const notes = [...new Set(
-        record.stations
-          .filter((s) => s.flag && [...outliers, ...deviations].some((f) => f.vendor === record.vendor && f.name === record.name && f.label === s.label))
-          .map((s) => `${s.label}: ${s.flag}`),
-      )];
-      const findings = [...outliers.filter((o) => o.vendor === record.vendor && o.name === record.name).map((o) => `<li class="red">${escape(o.label)} ${o.attribute}: printed ${escape(inchesText(o.printedMm))}, the rest of the blank implies ${escape(inchesText(o.impliedMm))} (${escape(signedInchesText(o.residualMm))}, z ${o.z.toFixed(1)})</li>`),
-        ...deviations.filter((d) => d.vendor === record.vendor && d.name === record.name).map((d) => `<li class="amber">${escape(d.label)} ${d.attribute}: printed ${escape(inchesText(d.printedMm))}, ${(d.share * 100).toFixed(0)}% of its anchor where this maker's norm is ${(d.typicalShare * 100).toFixed(0)}% (about ${escape(inchesText(d.typicalMm))}; z ${d.z.toFixed(1)})</li>`)];
+      const items = itemsOf.get(record) ?? [];
+      const marks = marksOf(record, outliers, deviations);
+      for (const item of items) {
+        for (const key of ["rocker", "thickness", "width"] as const) {
+          if (item.attribute && item.attribute !== key) continue;
+          const mark = marks[key].get(item.label);
+          if (!mark) continue;
+          mark.flagged = true;
+          if (item.cmMm !== undefined) mark.cmMm = item.cmMm;
+        }
+      }
+      const data = (item: ReviewItem, index: number) =>
+        `data-key="${escape(`${record.vendor}|${record.name}|${item.label}|${item.attribute ?? ""}|${item.kind}|${index}`)}" data-vendor="${escape(record.vendor)}" data-name="${escape(record.name)}" data-station="${escape(item.label)}" data-attribute="${escape(item.attribute ?? "")}" data-kind="${item.kind}" data-current="${escape(item.current)}" data-suggested="${escape(item.suggested)}"`;
+      const control = (item: ReviewItem, index: number) =>
+        `<div class="item" ${data(item, index)}>` +
+        `<label class="apply"><input type="checkbox" class="apply"> apply</label>` +
+        `<input type="text" class="to" value="${escape(item.suggested.replace(/"$/, ""))}" placeholder="${item.attribute ? "new figure" : "figure"}" title="The figure to use, in inches: 2 3/16, 2.19 or 6'2 1/8">` +
+        `<span class="text">${item.html}</span>` +
+        `<input type="text" class="comment" placeholder="why (optional)">` +
+        `</div>`;
+      const stationOptions = record.stations.map((s) => `<option>${escape(s.label)}</option>`).join("");
+      const other = `<div class="item other" data-vendor="${escape(record.vendor)}" data-name="${escape(record.name)}">` +
+        `<label class="apply"><input type="checkbox" class="apply"> apply</label>` +
+        `<select class="station"><option value="">station…</option>${stationOptions}<option value="">— whole blank —</option></select>` +
+        `<select class="attribute"><option value="rocker">rocker</option><option value="thickness">thickness</option><option value="width">width</option><option value="length">length</option><option value="deck_length">deck length</option><option value="volume">volume (L)</option></select>` +
+        `<input type="text" class="to" placeholder="new figure">` +
+        `<span class="text muted">Another change on this blank, for a station nothing above names.</span>` +
+        `<input type="text" class="comment" placeholder="why (optional)">` +
+        `</div>`;
       return `<section class="blank" id="${blankId(record.vendor, record.name)}">
 <h3>${escape(record.vendor)} ${escape(record.name)} <span class="muted">· ${escape(formatInchesFraction(record.lengthMm))} long · catalog page ${record.pdfPage}${isPickable(record) ? "" : " · not pickable"}</span></h3>
-${isPickable(record) ? blankDrawings(record, marksOf(record, outliers, deviations)) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
+${isPickable(record) ? blankDrawings(record, marks) : '<p class="muted">Not drawn: the app cannot fit this blank (a centre or tip thickness is missing).</p>'}
 <div class="plots">${BLANK_ATTRIBUTES.map((attribute) => plot(record, attribute, marksFor(attribute))).join("")}</div>
-<ul class="findings">${findings.join("")}</ul>
-${notes.length ? `<p class="muted notes">Catalogue notes on these stations: ${notes.map(escape).join(" · ")}</p>` : ""}
+<div class="review">${groupedItems(items, control)}<h4>Anything else on this blank</h4><ul><li>${other}</li></ul></div>
 </section>`;
     });
   return `<!doctype html>
@@ -145,12 +172,97 @@ ${offCurveRows(outliers.filter((o) => o.confidence === "low"))}
 <table><thead><tr><th>Maker</th><th>Blank</th><th>Station</th><th>Attribute</th><th>Printed</th><th>Maker's norm</th><th>Share</th><th>z</th><th>Blanks</th></tr></thead><tbody>
 ${makerNormRows(deviations)}
 </tbody></table>
+<h2>Review — tick what to change, type a different figure where you want one, then Submit</h2>
+<div class="bar" id="review-bar"><span id="review-count">0 changes ticked</span> <button type="button" id="review-submit">Submit</button> <button type="button" id="review-download" disabled>Download decisions file</button> <button type="button" id="review-clear">Clear all</button> <span class="muted">Your ticks and figures are remembered in this browser until you clear them.</span></div>
+<textarea id="review-out" class="out" readonly placeholder="Submit writes the decisions here, and the download button saves them as blank-review-decisions.json — send that file back."></textarea>
 <h2>The blanks named, drawn</h2>
 <p class="muted">Each blank first as the app builds it from the dims, nose to the left — side view (bottom rocker and deck) and outline from above, both 1:1 — every printed station a dot with its figure, the named ones in red with the figure the rest of the blank implies beside a hollow dot. Under it, each attribute's curve: the line is the live curve through every printed station; the dots are the printed stations, red where a station is named above, with the hollow point where the rest of the blank implies it. Hover a red dot for the numbers.</p>
 ${blocks.join("\n")}
+<script>${REVIEW_SCRIPT}</script>
 </body></html>
 `;
 }
+
+/** The review controls' behaviour: remember every tick and figure in the browser; Submit gathers the ticked ones. */
+const REVIEW_SCRIPT = `
+(function () {
+  var KEY = "shaper-blank-review";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  var items = Array.prototype.slice.call(document.querySelectorAll(".item"));
+  function keyOf(item) {
+    if (item.dataset.key) return item.dataset.key;
+    return item.dataset.vendor + "|" + item.dataset.name + "|other";
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    var n = Object.keys(state).filter(function (k) { return state[k].checked; }).length;
+    document.getElementById("review-count").textContent = n + (n === 1 ? " change ticked" : " changes ticked");
+  }
+  function read(item) {
+    var k = keyOf(item);
+    var sel = { checked: item.querySelector("input.apply").checked, to: item.querySelector("input.to").value, comment: item.querySelector("input.comment").value };
+    var st = item.querySelector("select.station"); if (st) sel.station = st.value;
+    var at = item.querySelector("select.attribute"); if (at) sel.attribute = at.value;
+    if (sel.checked || sel.to !== (item.dataset.suggested || "").replace(/"$/, "") || sel.comment) state[k] = sel; else delete state[k];
+    item.classList.toggle("ticked", sel.checked);
+    item.classList.toggle("missing", sel.checked && !sel.to);
+  }
+  items.forEach(function (item) {
+    var saved = state[keyOf(item)];
+    if (saved) {
+      item.querySelector("input.apply").checked = !!saved.checked;
+      if (saved.to !== undefined) item.querySelector("input.to").value = saved.to;
+      if (saved.comment) item.querySelector("input.comment").value = saved.comment;
+      var st = item.querySelector("select.station"); if (st && saved.station !== undefined) st.value = saved.station;
+      var at = item.querySelector("select.attribute"); if (at && saved.attribute) at.value = saved.attribute;
+      item.classList.toggle("ticked", !!saved.checked);
+    }
+    item.addEventListener("change", function () { read(item); save(); });
+    item.addEventListener("input", function () { read(item); save(); });
+  });
+  save();
+  function decisions() {
+    var out = [];
+    items.forEach(function (item) {
+      var sel = state[keyOf(item)];
+      if (!sel || !sel.checked) return;
+      var station = item.dataset.station !== undefined ? item.dataset.station : (sel.station || "");
+      var attribute = item.dataset.attribute !== undefined && item.dataset.attribute !== "" ? item.dataset.attribute : (sel.attribute || "");
+      out.push({ vendor: item.dataset.vendor, name: item.dataset.name, station: station, attribute: attribute, kind: item.dataset.kind || "other", current: item.dataset.current || "", suggested: item.dataset.suggested || "", to: sel.to || "", comment: sel.comment || "" });
+    });
+    return out;
+  }
+  var blobUrl = null;
+  document.getElementById("review-submit").addEventListener("click", function () {
+    var list = decisions();
+    var missing = list.filter(function (d) { return !d.to || !d.attribute; });
+    var text = JSON.stringify({ generated: new Date().toISOString(), page: location.pathname, decisions: list }, null, 2);
+    var out = document.getElementById("review-out");
+    out.value = (missing.length ? "NOTE: " + missing.length + " ticked item(s) have no figure or no attribute — fill them in before sending.\n\n" : "") + text;
+    out.scrollIntoView({ block: "start" });
+    var blob = new Blob([text], { type: "application/json" });
+    if (blobUrl) URL.revokeObjectURL(blobUrl);
+    blobUrl = URL.createObjectURL(blob);
+    document.getElementById("review-download").disabled = false;
+  });
+  document.getElementById("review-download").addEventListener("click", function () {
+    if (!blobUrl) return;
+    var a = document.createElement("a"); a.href = blobUrl; a.download = "blank-review-decisions.json"; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.getElementById("review-clear").addEventListener("click", function () {
+    if (!confirm("Clear every tick and figure on this page?")) return;
+    state = {}; save();
+    items.forEach(function (item) {
+      item.querySelector("input.apply").checked = false;
+      item.querySelector("input.to").value = (item.dataset.suggested || "").replace(/"$/, "");
+      item.querySelector("input.comment").value = "";
+      item.classList.remove("ticked", "missing");
+    });
+    document.getElementById("review-out").value = "";
+  });
+})();
+`;
 
 /** Every blank drawn, maker by maker, shortest first. */
 function gallery(catalogue: readonly BlankRecord[], outliers: readonly OutlierStation[], deviations: readonly MakerNormDeviation[]): string {
