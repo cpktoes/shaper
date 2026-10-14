@@ -7,13 +7,22 @@
  * decimals always, and give inches in decimals and rounded to nearest 1/16th inch"). It reads and
  * reports; it changes no number.
  *
- *   npx --no-install tsx --tsconfig ./tsconfig.json scripts/make-catalog-reports.ts [--out <dir>] [--no-pdf]
+ *   npx --no-install tsx --tsconfig ./tsconfig.json scripts/make-catalog-reports.ts [--from <dir>] [--out <dir>] [--no-pdf]
  *
  * run from the repository root. (Nothing in package.json — no npm script, no dependency beyond the
  * Playwright already installed for the browser tests, whose Chromium prints the PDFs; `--no-install`
  * means npx can only run the tsx already in node_modules, never download one. No database is
- * involved: the catalogue is read from the committed CSVs under db/seed/blanks/ through the tested
- * reader, `lib/blanks/seed-files.ts`.)
+ * involved.)
+ *
+ * WHICH CATALOGUE IT READS: the catalogue AS THE PAGES PRINT IT — the dated copy under
+ * db/seed/blanks/snapshots/ taken before the founder's station-by-station review (`AS_PRINTED_DIR`),
+ * read through the tested reader `lib/blanks/seed-files.ts` — never the live files under
+ * db/seed/blanks/. The live files carry the founder's review changes, which are for the site; a maker
+ * is told what its own pages say and where that looks wrong, and a figure the founder has since
+ * corrected would otherwise vanish from the report along with the note that it looked off (the
+ * founder, 2026-10-14: "I only wanted the adjustments to be on our site. The facts about the errors
+ * should remain on the maker pages"). `--from <dir>` reads another copy — a fresh snapshot after a
+ * maker sends a new edition, say.
  *
  * The report is one block per blank that has anything to say about it, shortest first: the blank
  * drawn as the app builds it from the figures (nose left, 1:1, every printed station a dot with its
@@ -59,6 +68,9 @@ function readArg(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 const OUT_DIR = path.resolve(process.cwd(), readArg("--out") ?? "public/__dev/reports");
+/** The catalogue as the pages print it: the before-review copy (see its README), not the live files. */
+const AS_PRINTED_DIR = "db/seed/blanks/snapshots/2026-10-14-before-review";
+const FROM_DIR = path.resolve(process.cwd(), readArg("--from") ?? AS_PRINTED_DIR);
 const WRITE_PDF = !process.argv.includes("--no-pdf");
 
 /** Which edition of each maker's catalog the figures were read from, named the way the maker would. */
@@ -133,7 +145,8 @@ ${blocks.join("\n")}
 }
 
 async function main(): Promise<void> {
-  const catalogue = readSeedCatalog();
+  const catalogue = readSeedCatalog(FROM_DIR);
+  console.log(`catalogue as printed, read from ${path.relative(process.cwd(), FROM_DIR)}/ (${catalogue.length} blanks)`);
   const outliers = findOutliers(catalogue);
   const deviations = makerNormDeviations(catalogue);
   mkdirSync(OUT_DIR, { recursive: true });

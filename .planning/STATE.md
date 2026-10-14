@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-14 - Quick task 261013-uoj: the founder's first catalogue review applied (52 changes), review controls and apply script in place
+Last activity: 2026-10-14 — quick 261013-uoj: two rulings noted on their rows (6'4"EAX N24 stays 2 11/16", 6'2"A N18 stays 2 7/16"); the maker reports now read the before-review catalogue copy, never the live files
 
 ## Performance Metrics
 

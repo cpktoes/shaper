@@ -6,7 +6,11 @@ before the founder's station-by-station review of the outlier page. Kept so any 
 by copying a file back and reseeding. Git holds every earlier version too: tag `blanks-2026-10-13-before-fixes`
 is the catalogue before any of the 2026-10-14 changes, and `blanks-2026-10-14-before-review` is this copy.
 
-Nothing reads this folder: the app and the seed read only the four files named in `lib/blanks/seed-files.ts`.
+The app and the seed never read this folder — they read only the four live files named in
+`lib/blanks/seed-files.ts`. One thing does: the maker reports (`scripts/make-catalog-reports.ts`) are built from
+this copy, not the live files, so each maker's report keeps saying what its catalog prints and where that looks
+wrong, while the live files carry the founder's review changes for the site (the founder, 2026-10-14: "I only
+wanted the adjustments to be on our site. The facts about the errors should remain on the maker pages").
 
 To put a file back:
 

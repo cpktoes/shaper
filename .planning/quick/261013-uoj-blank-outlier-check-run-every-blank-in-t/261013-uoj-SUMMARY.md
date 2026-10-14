@@ -107,3 +107,13 @@ search (that blank first, then every pickable one), since the review raised that
 stress tests got a 30-second limit after tipping over the default five under load. Goldens and presets unchanged; the
 ROCKER picture unchanged; both databases reseeded (223 of 223). The outlier page now lists 102 stations off their
 curve (from 133) and 58 unusual readings.
+
+**Two rulings, and the maker reports put back to the catalogs' facts (2026-10-14, later):** the founder confirmed the
+6'4"EAX nose 24" thickness stays 2 11/16" and the 6'2"A nose 18" thickness stays 2 7/16" — "I meant the catalog was
+wrong" — so both rows carry that ruling as a note and nothing in the data moved. And a correction to the work above: the
+maker reports had been rebuilt from the live files after the review, so they showed the founder's figures and dropped
+the off-curve notes those figures cured. The founder: "I only wanted the adjustments to be on our site. The facts about
+the errors should remain on the maker pages." `scripts/make-catalog-reports.ts` now reads the before-review copy
+(`db/seed/blanks/snapshots/2026-10-14-before-review/`, `--from <dir>` for another) and never the live files; the
+review page keeps reading the live files, since it shows what the site uses and what is still off. Rebuilt reports
+total 133 off-curve stations again (Arctic 4, Marko 52, Millennium 22, US Blanks 55).
