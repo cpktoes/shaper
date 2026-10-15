@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { chipValueFontSize } from "./chip-value-fit";
 
 /**
  * Shared callout-system primitives for the plan-view board viewers (outline-viewer.tsx,
@@ -517,6 +518,12 @@ export interface CalloutChipProps {
    * is exactly the straight leader it always was.
    */
   leaderAtY?: number;
+  /**
+   * Set a value too long for the chip a little smaller, so it sits inside it (quick 261015-hz7,
+   * D8): the WING chips' `1/4" @ 30 9/16"` ran 108.7 px in a 104 px chip. Omitted, the markup is
+   * byte-for-byte what it always was.
+   */
+  fitValue?: boolean;
 }
 
 /** A named input chip: a bordered box holding a name + value pair, optionally leadered to its
@@ -541,8 +548,10 @@ export function CalloutChip({
   nameColor = "var(--outline-callout-label)",
   leaderToX,
   leaderAtY,
+  fitValue,
 }: CalloutChipProps) {
   const sizes = useCalloutSizes();
+  const valueSize = fitValue ? chipValueFontSize(value, sizes) : sizes.value;
   const horizontal = useViewerOrientation() === "horizontal";
   const rectX = horizontal ? x - sizes.chipW / 2 : x - sizes.chipW;
   const rectY = horizontal ? y : y - sizes.chipH / 2;
@@ -581,7 +590,7 @@ export function CalloutChip({
           x={centerX}
           y={centerY + sizes.stackValueDy}
           textAnchor="middle"
-          style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
+          style={{ fontSize: valueSize, fontWeight: 700, fontFamily: "var(--font-body)" }}
           fill="var(--outline-ink)"
         >
           {value}

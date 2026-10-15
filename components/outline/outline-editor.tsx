@@ -41,7 +41,7 @@ type TemplateTab = "viewer" | "wings";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked, wingFrontFin } =
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked, wingFinEdges } =
     useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
@@ -91,10 +91,10 @@ export function OutlineEditor() {
   ];
   const activeTab: TemplateTab = requestedTab;
 
-  /** "+ Add a wing", shared by the empty tab's card and the sidebar's button (D3). */
+  /** "+ Add a wing" and "+ Add wing 2", the sidebar's button (D3; the empty tab's card went in quick 261015-hz7, D6). */
   function handleAddWing() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
-    updateOutline({ wings: [...wings, nextWing(wings, wingFrontFin, outline.length, system)] });
+    updateOutline({ wings: [...wings, nextWing(wings, wingFinEdges, outlineGeometry, system)] });
     // D4, P6, D7: the first wing switches Show fins on and asks the shaper to dial it in against
     // FINS — every time the board goes from no wings to one, as sketched.
     if (wingCount === 0) {
@@ -293,7 +293,9 @@ export function OutlineEditor() {
             outline={outline}
             onChange={updateOutline}
             onAddWing={handleAddWing}
-            frontFin={wingFrontFin}
+            geometry={outlineGeometry}
+            finEdges={wingFinEdges}
+            finMarks={finPlacement.marks}
             showConstruction={showConstruction}
             onToggleConstruction={handleToggleConstruction}
             showFins={showFins}
@@ -345,7 +347,6 @@ export function OutlineEditor() {
           {activeTab === "wings" ? (
             <WingsPanel
               outline={outline}
-              onAddWing={handleAddWing}
               showConstruction={showConstruction}
               onToggleConstruction={handleToggleConstruction}
               showFins={showFins}

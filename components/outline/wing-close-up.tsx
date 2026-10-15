@@ -30,13 +30,15 @@ import {
 } from "@/lib/geometry/outline-drag";
 import { MEASURE_STATION_MM, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
-import { frontFinEdges } from "@/lib/geometry/wing-lock";
+import { wingFinEdges } from "@/lib/geometry/wing-lock";
 import {
+  NO_FIN_EDGES,
   placedWings,
+  wingLockEdge,
   wingReadouts,
   wingedHalfWidthAt,
-  type FrontFinEdges,
   type Wing,
+  type WingFinEdges,
 } from "@/lib/geometry/wings";
 import { DRAG_TARGET_CORE_PX, DRAG_TARGET_OUTER_PX, DRAG_TARGET_RING_PX } from "./outline-viewer";
 import {
@@ -96,8 +98,8 @@ export interface WingCloseUpProps {
   /** The whole new wings list from a grab-point drag. Omitted on a locked board, which then draws
    * no grab points and attaches no handlers (the VIEWER's own rule for `onOutlineDrag`). */
   onWingsChange?: (wings: Wing[]) => void;
-  /** The front fin's edges as the store places them, for a locked wing's offset drag. */
-  edges?: FrontFinEdges | null;
+  /** The fins' trailing edges as the store places them, for a locked wing's offset drag (D1). */
+  edges?: WingFinEdges;
 }
 
 /** The hair either side of a corner the sketch reads widths at (1e-6"). */
@@ -135,7 +137,7 @@ export function WingCloseUp({
   showConstruction,
   window: frozenWindow,
   onWingsChange,
-  edges: storeEdges = null,
+  edges: storeEdges = NO_FIN_EDGES,
 }: WingCloseUpProps) {
   const { system } = useUnits();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -144,7 +146,7 @@ export function WingCloseUp({
   /** The window in force at the press, held until the lift (D5). */
   const [heldWindow, setHeldWindow] = useState<{ lo: Mm; hi: Mm } | null>(null);
 
-  const wings = placedWings(outline.wings ?? [], geometry.length);
+  const wings = placedWings(outline.wings ?? [], geometry);
   const hasWings = wings.length > 0;
   const win = frozenWindow ?? heldWindow ?? wingWindow(geometry.length, wings.map((w) => w.station));
   const loIn = mmToInches(win.lo);
@@ -253,8 +255,8 @@ export function WingCloseUp({
   if (inWindow(centreIn)) stationLines.push({ sIn: centreIn, dash: "--outline-stringer-dash" });
   if (inWindow(nose12In)) stationLines.push({ sIn: nose12In, dash: "--outline-station-dash" });
 
-  // The front fin's edges, for a locked wing's fin-edge line.
-  const edges = frontFinEdges(finMarks);
+  // The fins' trailing edges, for a locked wing's fin-edge line (front for wing 1, rear for wing 2).
+  const edges = wingFinEdges(finMarks);
 
   // 6-7. Per wing: its read-outs, and the right rail they join.
   const readouts = wingReadouts(geometry, wings);
@@ -305,14 +307,19 @@ export function WingCloseUp({
       station: `Behind wing ${i + 1}`,
     });
   });
+  // D7 (quick 261015-hz7): kept inside the drawing — a read-out's value line sits above its y and its
+  // name line below, so the bounds leave a value's height at the top and a name's at the bottom.
   const outputYs = spreadApart(
     outputs.map((o) => ({ y: toY(o.sIn), half: 0 })),
     READOUT_GAP_FACTOR * (sizes.value + sizes.name),
+    [],
+    { top: sizes.value + 4, bottom: frame.height - sizes.name - 4 },
   );
 
   // 8. The left gutter: a chip per wing.
   const chips = wings.map((w, i) => {
-    const locked = w.lock !== null && edges !== null;
+    // `WING n · FIN` only for a lock its slot holds with its fins present (D1).
+    const locked = wingLockEdge(w, i, edges) !== null;
     return {
       key: i,
       y: toY(mmToInches(w.station)),
@@ -325,6 +332,9 @@ export function WingCloseUp({
   const chipYs = spreadApart(
     chips.map((c) => ({ y: c.y, half: 0 })),
     sizes.chipH + CHIP_GAP,
+    [],
+    // D7: every chip whole inside the drawing, 2 units clear of each edge.
+    { top: sizes.chipH / 2 + 2, bottom: frame.height - sizes.chipH / 2 - 2 },
   );
 
   return (
@@ -482,7 +492,7 @@ export function WingCloseUp({
             const runY0 = toY(stationIn);
             const runY1 = toY(stationIn - mmToInches(w.run));
             const runX = frame.extensionEndX + 2;
-            const finEdge = w.lock !== null && edges ? (w.lock === "front-leading" ? edges.leading : edges.trailing) : null;
+            const finEdge = wingLockEdge(w, i, edges);
             return (
               <g key={i} data-wing-dims={i + 1}>
                 <line x1={xAhead} y1={toY(stepStartIn)} x2={xAhead} y2={yd + 5} stroke="var(--outline-station-line)" />
@@ -552,6 +562,8 @@ export function WingCloseUp({
               nameColor={c.nameColor}
               leaderToX={c.leaderToX}
               leaderAtY={c.y}
+              // D8: a long wing value is set small enough to sit inside its chip.
+              fitValue
             />
           ))}
 

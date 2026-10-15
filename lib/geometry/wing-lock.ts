@@ -1,5 +1,6 @@
 /**
- * A wing locked to the front fin (quick 261014-wii, 2026-10-14, D8, P2, P3).
+ * A wing locked to the fins (quick 261014-wii, 2026-10-14, D8, P2, P3; the slot locks, quick
+ * 261015-hz7, 2026-10-15, D1–D4).
  *
  * The founder's rule, 2026-10-14: "When marking your off-rail fin measurements on a board with
  * wings, you always mark from the true, actual rail line directly adjacent to where the fin is
@@ -9,12 +10,21 @@
  * next to them."
  *
  * So the fins are placed on the WINGED outline, exactly as Import Template places them on the drawn
- * outline (`deriveEffectiveFins` plus `importedFinTailFromOutline`), and a wing locked to the front
- * fin's trailing or leading edge sits at that edge plus the shaper's offset. The loop is real in one
- * corner only: on a narrow tail (a 12" width of 12.5" or less) the McKee front and centre fins move
- * with the 12" width, so a locked wing whose step crosses the 12" station moves its own target.
- * `resolveWingStations` settles it as a short fixed point — every locked wing, whatever the fin
- * model, capped at three passes; everywhere else it settles in one.
+ * outline (`deriveEffectiveFins` plus `importedFinTailFromOutline`). Each wing locks in its own slot
+ * only (the founder, 2026-10-15): "Only wing 1 gets lock to front fins option." "Wing 2 can lock to
+ * rear if it's a quad setup, otherwise no lock." "Fin edge should always be to trailing edge for the
+ * lock, so we can get rid of that selector." Wing 1 follows the front fins' trailing edge, wing 2 a
+ * quad's rear fins' trailing edge (the marks whose role is `"rear"` — no other setup has one), each
+ * plus the shaper's offset. A lock the fin setup cannot honour (a rear lock left on a thruster, a
+ * front lock on a single) is inert: the wing keeps its stored station, exactly as one placed by hand.
+ *
+ * The loop is real in one corner only: on a narrow tail (a 12" width of 12.5" or less) the McKee
+ * front and centre fins move with the 12" width, and a quad's rear spread follows the winged 12"
+ * width, so a locked wing whose step crosses the 12" station moves its own target.
+ * `resolveWingStations` settles it as a short fixed point — capped at three passes; everywhere else
+ * it settles in one. After the locks move, each pass keeps every wing under the top and wing 2 behind
+ * wing 1 (`clampWingStations`, D2, D3), so a locked wing 2 is held at the limit when its own target
+ * breaks the order rule, and springs back once there is room.
  *
  * The resolved station is NOT snapped to 1/16" (P3, a deliberate departure, measured F19): the
  * offset is on the grid, the fin edge is the FINS page's own number, and snapping their sum moved
@@ -37,44 +47,66 @@ import {
 } from "./fins";
 import { buildOutline } from "./outline";
 import { inchesToMm, mm, type Mm } from "./units";
-import { WING_POSITION_MIN_IN, type FrontFinEdges, type Wing } from "./wings";
+import {
+  WING_FIN_BOX_FREE_DEPTH_IN,
+  WING_POSITION_MIN_IN,
+  clampWingStations,
+  outlineWithoutWings,
+  wingFinBoxDistance,
+  wingLockEdge,
+  wingLockFitsSlot,
+  wingPositionTop,
+  type Wing,
+  type WingFinEdges,
+  type WingPlacementGeometry,
+} from "./wings";
 
-/** The fixed point stops once no locked wing moves by this much (1/32"). */
+/** The fixed point stops once no wing moves by this much (1/32"). */
 const SETTLED_MM = inchesToMm(1 / 32);
 /** And never runs more than three passes. */
 const MAX_PASSES = 3;
+/** The scaling rule's boundary tolerance, in millimetres (F14). */
+const FIN_BOX_EPS_MM = 1e-9;
 
-/** The front fin's two edges, from the tail: the first mark whose role is `"front"`, or `null` for a
- * fin setup with no front fin (a single), which cannot lock a wing. */
-export function frontFinEdges(marks: readonly FinMark[]): FrontFinEdges | null {
+/** The trailing edges a wing can lock to, from the tail (D1): the first mark whose role is
+ * `"front"`, and the first whose role is `"rear"` (a quad's rear fins), each `null` when the fin
+ * setup has none. */
+export function wingFinEdges(marks: readonly FinMark[]): WingFinEdges {
   const front = marks.find((m) => m.role === "front");
-  if (!front) return null;
-  return { trailing: front.offTail, leading: front.leadingOffTail };
+  const rear = marks.find((m) => m.role === "rear");
+  return { front: front ? front.offTail : null, rear: rear ? rear.offTail : null };
 }
 
-/** Where a locked wing sits: its fin edge plus its offset, kept between 2" and the board's centre.
- * Unsnapped (P3). A wing placed by hand keeps its own station. */
-export function lockedWingStation(w: Wing, edges: FrontFinEdges, length: Mm): Mm {
-  if (w.lock === null) return w.station;
-  const edge = w.lock === "front-leading" ? edges.leading : edges.trailing;
-  return mm(Math.max(inchesToMm(WING_POSITION_MIN_IN), Math.min(length / 2, edge + w.finOffset)));
+/** Where a wing sits by its lock: its slot's trailing edge plus its offset, kept between 2" and the
+ * top (D3). Unsnapped (P3). A wing placed by hand, a lock its slot may not hold, or a lock with no
+ * such fin keeps its own station. */
+export function lockedWingStation(w: Wing, index: number, edges: WingFinEdges, g: WingPlacementGeometry): Mm {
+  const edge = wingLockEdge(w, index, edges);
+  if (edge === null) return w.station;
+  return mm(Math.max(inchesToMm(WING_POSITION_MIN_IN), Math.min(wingPositionTop(g), edge + w.finOffset)));
 }
 
-function placeFrontFin(outline: OutlineSpec, fins: FinPlacementSpec, finsImportTemplate: boolean): FrontFinEdges | null {
+function placeFins(outline: OutlineSpec, fins: FinPlacementSpec, finsImportTemplate: boolean): WingFinEdges {
   const geometry = buildOutline(outline);
   const effective = deriveEffectiveFins(fins, finsImportTemplate, outline, geometry);
   const importedTail = finsImportTemplate ? importedFinTailFromOutline(geometry) : null;
-  return frontFinEdges(computeFinPlacement(effective, importedTail).marks);
+  return wingFinEdges(computeFinPlacement(effective, importedTail).marks);
+}
+
+/** The outline with its wings set to `wings`, or the same outline when the list did not change. */
+function withWings(outline: OutlineSpec, before: readonly Wing[], after: readonly Wing[]): OutlineSpec {
+  return after === before ? outline : { ...outline, wings: [...after] };
 }
 
 /**
- * The outline with every locked wing placed at its fin edge plus offset (P2). Returns the SAME
- * outline object, and 0 passes, when no wing is locked or the fin setup has no front fin (a locked
- * wing then keeps its stored station — the last one it resolved to). Otherwise it places the fins on
- * the outline as it stands, moves every locked wing to its target, and repeats until the largest
- * move is under 1/32", at most three passes. The stored station is the starting guess, so a board
- * saved with its resolved stations settles in one pass; a pass that moves nothing hands back the
- * same object.
+ * The outline with every locked wing placed at its slot's trailing edge plus offset (P2, D1), then
+ * every wing kept under the top and wing 2 behind wing 1 (D2, D3). Returns the SAME outline object,
+ * and 0 passes, when there are no wings, or no lock the slot and the fins can honour and nothing
+ * needs moving; with no honourable lock it only applies the clamp (still 0 passes). Otherwise each
+ * pass places the fins on the outline as it stands, moves every locked wing to its target, applies
+ * the clamp, and repeats until the largest move is under 1/32", at most three passes. The stored
+ * station is the starting guess, so a board saved with its resolved stations settles in one pass; a
+ * pass that moves nothing hands back the same object.
  */
 export function resolveWingStations(
   outline: OutlineSpec,
@@ -82,23 +114,62 @@ export function resolveWingStations(
   finsImportTemplate: boolean,
 ): { outline: OutlineSpec; passes: number } {
   const wings = outline.wings;
-  if (!wings || !wings.some((w) => w.lock !== null)) return { outline, passes: 0 };
+  if (!wings || wings.length === 0) return { outline, passes: 0 };
+
+  // The top reads the length and the widepoint only, the same with or without wings.
+  const g = buildOutline(outlineWithoutWings(outline));
+  const clampOnly = (o: OutlineSpec) => {
+    const ws = o.wings ?? [];
+    return withWings(o, ws, clampWingStations(ws, g));
+  };
+  if (!wings.some((w, i) => w.lock !== null && wingLockFitsSlot(i, w.lock))) {
+    return { outline: clampOnly(outline), passes: 0 };
+  }
 
   let current = outline;
   let passes = 0;
   while (passes < MAX_PASSES) {
-    const edges = placeFrontFin(current, fins, finsImportTemplate);
-    if (!edges) return { outline: current, passes };
-    passes += 1;
-    let largestMove = 0;
+    const edges = placeFins(current, fins, finsImportTemplate);
     const currentWings = current.wings ?? [];
-    const moved = currentWings.map((w) => {
-      const station = lockedWingStation(w, edges, current.length);
-      largestMove = Math.max(largestMove, Math.abs(station - w.station));
+    if (!currentWings.some((w, i) => wingLockEdge(w, i, edges) !== null)) {
+      // No fin to follow (a front lock on a single, a rear lock on a thruster): placed by hand.
+      return { outline: clampOnly(current), passes };
+    }
+    passes += 1;
+    const moved = currentWings.map((w, i) => {
+      const station = lockedWingStation(w, i, edges, g);
       return station === w.station ? w : { ...w, station };
     });
-    if (largestMove > 0) current = { ...current, wings: moved };
+    const clamped = clampWingStations(moved, g);
+    let largestMove = 0;
+    clamped.forEach((w, i) => {
+      largestMove = Math.max(largestMove, Math.abs(w.station - currentWings[i].station));
+    });
+    if (largestMove > 0) current = { ...current, wings: [...clamped] };
     if (largestMove < SETTLED_MM) break;
   }
   return { outline: current, passes };
+}
+
+/**
+ * The founder's scaling rule (D4, 2026-10-15): "If Wing Depth is > 3/16", recommend a distance using
+ * the formula Distance Behind Trailing Edge = (2 × Wing Depth) − 0.25", but that they should check
+ * their fin box specs also." Returns that distance (`wingFinBoxDistance`) when the wing is deeper
+ * than 3/16" and its apex sits AT or BEHIND a side fin's trailing-edge mark (a front or rear fin,
+ * side ±1) by less than it — `0 ≤ trailing edge − apex < D` — else `null`. The zone is the founder's
+ * (2026-10-15): "at or behind the fin mark only is fine for the warning, since the fin position jumps
+ * in based on the new narrower tail curve when the apex is above the trailing edge at all" — a wing
+ * ahead of the trailing edge already moves the fin inboard onto the stepped rail. The centre fin sits
+ * on the stringer, nowhere near the rail, so it is never checked. Compared with a 1e-9 mm tolerance
+ * (F14: inch sums land 1e-14 off): exactly D behind reads no warning, exactly at the mark reads one.
+ */
+export function wingFinBoxWarning(w: Pick<Wing, "station" | "depth">, marks: readonly FinMark[]): Mm | null {
+  if (!(w.depth > inchesToMm(WING_FIN_BOX_FREE_DEPTH_IN) + FIN_BOX_EPS_MM)) return null;
+  const distance = wingFinBoxDistance(w.depth);
+  for (const m of marks) {
+    if (m.side === 0 || (m.role !== "front" && m.role !== "rear")) continue;
+    const behind = m.offTail - w.station;
+    if (behind >= -FIN_BOX_EPS_MM && behind < distance - FIN_BOX_EPS_MM) return distance;
+  }
+  return null;
 }

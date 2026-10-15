@@ -74,9 +74,20 @@
  *    6's reason: the reader before this rule drops an unknown outline key (measured, F23), so a
  *    rollback opens a winged board without its wings rather than failing. Each wing is validated
  *    strictly — at most two, every number finite and bounded, a depth above 0, a lock that is
- *    `"front-trailing"`, `"front-leading"` or `null` — but the list is read forgivingly as a whole:
- *    anything malformed reads as no wings and the board still opens, with the key removed, exactly
- *    as rule 6 removes an Automatic start. Opening a board never rewrites a stored wing.
+ *    `"front-trailing"`, `"front-leading"`, `"rear-trailing"` or `null` — but the list is read
+ *    forgivingly as a whole: anything malformed reads as no wings and the board still opens, with
+ *    the key removed, exactly as rule 6 removes an Automatic start. Opening a board never rewrites a
+ *    stored wing.
+ *    The slot locks (quick 261015-hz7, 2026-10-15, D1, D10): wing 1 may lock only to the front fins'
+ *    trailing edge (`"front-trailing"`), wing 2 only to a quad's rear fins' trailing edge
+ *    (`"rear-trailing"`). On read, the first build's `"front-leading"` reads as `"front-trailing"`
+ *    (the Fin edge picker is gone — "Fin edge should always be to trailing edge for the lock"), and
+ *    a lock the wing's slot may not hold (a front lock on wing 2, a rear lock on wing 1) reads as
+ *    placed by hand at its stored station. A rear lock on a fin setup without rear fins is a
+ *    placement fact, left for the resolver to treat as inert. Wings stored out of order or past the
+ *    centre or the widepoint are left exactly as stored and corrected when the board is drawn
+ *    (`clampWingStations`, D2, D3). The version stays 5: the reader before this rule rejects
+ *    `"rear-trailing"` in its strict enum, which reads that board as no wings rather than failing.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -105,7 +116,7 @@ import {
 } from "@/lib/geometry/rocker";
 import { inchesToMm, mm, type Mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
-import { MAX_WINGS } from "@/lib/geometry/wings";
+import { MAX_WINGS, slotWingLocks, type Wing } from "@/lib/geometry/wings";
 
 export const DESIGN_SNAPSHOT_VERSION = 5;
 
@@ -156,7 +167,7 @@ const wingSchema = z.object({
   depth: z.number().gt(0).max(50),
   run: z.number().min(0).max(100),
   radius: z.number().min(0).max(5000),
-  lock: z.enum(["front-trailing", "front-leading"]).nullable(),
+  lock: z.enum(["front-trailing", "front-leading", "rear-trailing"]).nullable(),
   finOffset: z.number().min(-200).max(200),
 });
 
@@ -442,6 +453,20 @@ function withoutUnreadWings<T extends object>(outline: T): T {
 }
 
 /**
+ * A parsed outline's wing locks read by the slot rules (rule 7, quick 261015-hz7, D10): the legacy
+ * `"front-leading"` as `"front-trailing"`, then a lock its slot may not hold as none, the station
+ * kept. Returns the same outline, and the same wing objects, wherever nothing changes.
+ */
+function withSlotWingLocks<T extends object>(outline: T): T {
+  const wings = (outline as { wings?: readonly { lock: string | null }[] }).wings;
+  if (!wings) return outline;
+  const legacy = wings.map((w) => (w.lock === "front-leading" ? { ...w, lock: "front-trailing" } : w)) as Wing[];
+  const slotted = slotWingLocks(legacy);
+  if (slotted.every((w, i) => w === wings[i])) return outline;
+  return { ...outline, wings: slotted };
+}
+
+/**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
  * The rocker is always returned as five stations — a version-3 Bezier or a missing rocker is read
@@ -456,7 +481,10 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
   // The outline first: an older rocker is read at the board's OWN length. Rule 7: a wings list
   // that read as malformed comes back as a present-but-undefined key (F24) — delete it, so the
   // board is key for key one that never had wings.
-  const outline = (design.outline ? withoutUnreadWings(design.outline) : DEFAULT_BOARD_SPEC.outline) as OutlineSpec;
+  // The slot locks (quick 261015-hz7) are read here too, without rewriting anything stored.
+  const outline = (
+    design.outline ? withSlotWingLocks(withoutUnreadWings(design.outline)) : DEFAULT_BOARD_SPEC.outline
+  ) as OutlineSpec;
   const rocker: FiveStationRocker = !design.rocker
     ? bezierToFiveStations(DEFAULT_ROCKER_SPEC, outline.length)
     : isBezierV3Rocker(design.rocker)

@@ -769,4 +769,47 @@ describe("wings ride on the outline, read forgivingly as a whole (rule 7, quick 
     expect(parsed.fins).toEqual(BASE.fins);
     expect(parsed.boardName).toBe(BASE.boardName);
   });
+
+  // The slot locks (quick 261015-hz7, 2026-10-15, D1, D10): read on open, never rewritten.
+  const rearWing = {
+    station: inchesToMm(6.25),
+    depth: inchesToMm(3 / 16),
+    run: inchesToMm(1 / 2),
+    radius: inchesToMm(1 / 4),
+    lock: "rear-trailing" as const,
+    finOffset: mm(0),
+  };
+
+  it("an old leading-edge lock on wing 1 reads as the trailing edge, its station and offset kept", () => {
+    const leading = { ...oneWing, lock: "front-leading", finOffset: inchesToMm(1) };
+    const parsed = parseSnapshot(withWings([leading]));
+    expect(parsed.outline.wings).toEqual([{ ...leading, lock: "front-trailing" }]);
+  });
+
+  it("a front lock on wing 2 and a rear lock on wing 1 read as placed by hand at their stored stations", () => {
+    const parsed = parseSnapshot(withWings([{ ...rearWing, station: inchesToMm(11) }, { ...oneWing, station: inchesToMm(6) }]));
+    expect(parsed.outline.wings!.map((w) => w.lock)).toEqual([null, null]);
+    expect(parsed.outline.wings!.map((w) => w.station)).toEqual([inchesToMm(11), inchesToMm(6)]);
+    const leadingOnTwo = parseSnapshot(withWings([oneWing, { ...oneWing, station: inchesToMm(6), lock: "front-leading" }]));
+    expect(leadingOnTwo.outline.wings![1].lock).toBeNull();
+  });
+
+  it("a rear lock on wing 2 round-trips value for value", () => {
+    const wings = [oneWing, rearWing];
+    const fields = { ...BASE, outline: { ...BASE.outline, wings } };
+    const parsed = parseSnapshot(JSON.parse(JSON.stringify(buildSnapshot(fields))));
+    expect(parsed.outline.wings).toEqual(wings);
+  });
+
+  it("out-of-order and past-the-top stations parse exactly as stored (corrected only when drawn)", () => {
+    const outOfOrder = [{ ...oneWing, lock: null }, { ...twoWing }];
+    expect(parseSnapshot(withWings(outOfOrder)).outline.wings).toEqual(outOfOrder);
+    const pastTop = [{ ...oneWing, lock: null, station: inchesToMm(60) }];
+    expect(parseSnapshot(withWings(pastTop)).outline.wings).toEqual(pastTop);
+  });
+
+  it("a board whose locks all fit opens with the very same wing objects' values and no new keys", () => {
+    const parsed = parseSnapshot(withWings([oneWing, rearWing]));
+    expect(Object.keys(parsed.outline.wings![0]).sort()).toEqual(Object.keys(oneWing).sort());
+  });
 });

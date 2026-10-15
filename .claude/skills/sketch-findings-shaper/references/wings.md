@@ -13,9 +13,28 @@ so nothing saved changes shape, and every reader of the outline (prints, FINS' t
 the ☰ tiles) follows through the one builder and sampler.
 
 **Its numbers**, every one in **1/16" steps (1 mm in Metric)**, up to **two wings** per board:
-- **Position** — a station from the tail, **2" to the board's centre** (a stinger), or **locked to the front fin's
-  trailing or leading edge** plus an offset of −3" to +3", read from the FINS page's placement with Import Template
-  ticked. Position marks the wing's outer corner, where the step leaves the curve.
+- **Position** — a station from the tail, **2" to the board's centre or its widepoint, whichever is nearer the tail**
+  (the founder, 2026-10-15: "the wing's position off tail should be limited by center or the widepoint, whichever is
+  closer to the tail" — 35 1/2" on the default board, its widepoint; 34" on the Fish, its centre). Position marks the
+  wing's outer corner (its apex), where the step leaves the curve. Saved wings beyond the top are corrected when the
+  board is drawn, never rewritten.
+- **The slot locks** (2026-10-15: "Only wing 1 gets lock to front fins option." "Wing 2 can lock to rear if it's a
+  quad setup, otherwise no lock." "Fin edge should always be to trailing edge for the lock, so we can get rid of that
+  selector."). Wing 1 may lock to the **front fins' trailing edge**; wing 2 to a **quad's rear fins' trailing edge**
+  (the only setup with rear fins) and shows no lock at all on any other setup; a single shows wing 1's lock greyed
+  with its note. Each lock adds an offset of −3" to +3", read from the FINS page's placement with Import Template
+  ticked. There is no Fin edge picker. A lock the fins cannot honour (a rear lock left on a thruster) sits inert at
+  its stored station; an old leading-edge lock opens as the trailing edge.
+- **Wing 2 sits behind wing 1** (2026-10-15: "Wing 2 has to be closer to the tail than wing 1, and can't get any
+  closer than 1/2" or 2x the run along the stringer from wing 1 (whichever is larger)."). Wing 2's apex stays at least
+  max(1/2", 2 × wing 1's run) behind wing 1's apex — a flat of at least one run between wing 1's inner corner and wing
+  2's apex — and never under 2" from the tail; the 2" floor wins when there is no room. Moving wing 1 tail-ward, or
+  lengthening its run, pushes wing 2 with it; a rear-locked wing 2 is held at the limit with a note; "+ Add wing 2" is
+  greyed with a note when wing 1 sits too close to the tail. The sliders and grab points stop at the same limits.
+  Wing 1 is the forward wing (the front fins, or a stinger), wing 2 the aft one.
+- **New wings** (2026-10-15: "drop the default wing to 3/16""): the first at the front fins' trailing edge, locked
+  (11" by hand on a single), 3/16" deep, a 1/4" run, sharp; the second behind it — on a quad locked to the rear fins,
+  otherwise 3" behind wing 1 by hand — 3/16" deep, a 1/2" run, rounded as far as it fits.
 - **Depth** — 1/16" to 1" toward the stringer.
 - **Run along the stringer** — 0 (a square step) to 2".
 - **Corner radius** — rounds the outer and inner corners, capped at the largest radius whose two rounds still fit
@@ -31,9 +50,23 @@ placement"). While the tab is open **the sidebar holds only the wing controls, i
 no board length or other template control ("A, sidebar swaps"). The VIEWER tab draws the whole board with the wings
 applied and their chips (`WING 1 · 3/8" @ 11"`) and no wing control anywhere.
 
+**The empty tab** (2026-10-15: "There's currently two popups. I only want the second one."): ADD WINGS draws the
+bare tail with no wing and **no card over it**; the sidebar's "+ Add a wing" (on a phone, in the stacked controls
+under the drawing) is the way in.
+
 **Adding the first wing** switches on a **Show fins** setting under TEMPLATE's Settings (marks only, no dims) and
 opens a popup: *"Dial in your wing placement. Edit fin placement on the fins page, then return to the template to
-fine tune the wing."* with Open FINS / Got it.
+fine tune the wing."* with Open FINS / Got it — every time a board goes from no wings to one.
+
+**The founder's scaling rule** (2026-10-15): "If Wing Depth is > 3/16", recommend a distance using the formula
+Distance Behind Trailing Edge = (2 × Wing Depth) − 0.25", but that they should check their fin box specs also." A wing
+deeper than 3/16" whose apex sits at a side fin's trailing-edge mark (front or rear), or behind it by less than that
+distance, gets one line under its Depth row in the warning ink: *"Modern fin boxes: for a wing this deep, set its apex
+at least 1/2" behind the fin's trailing-edge mark (twice the depth less 1/4"). Check your fin box's spec too."* — the
+distance a mark (13 mm in Metric). The zone is theirs: "at or behind the fin mark only is fine for the warning, since
+the fin position jumps in based on the new narrower tail curve when the apex is above the trailing edge at all." The
+centre fin is never checked. The close-up does not mark it (the drawing keeps nothing but faint lines); the sidebar
+line is the warning.
 
 **Grab points follow the viewer's Show construction setting** (the toolbar's target button or the Settings tick), as
 the VIEWER's own drag points do: two per wing, drawn like the app's drag targets (a ring with a dot). The outer one
@@ -47,6 +80,18 @@ the far left; the depth as a short two-tick dimension in clear air just tail-war
 outside the ticks; the run as a vertical dimension beyond the extension lines; and on the right rail the widths
 ahead of and behind each wing with Tail @ 12" and the tail block, pushed apart when they would touch, an L-shaped
 leader keeping each at its true station. Nothing crosses the board but faint lines.
+
+**Every label fits** (quick 261015-hz7, 2026-10-15, after the founder's walk at 1024 × 768):
+- The close-up's full frame has a **268-unit right rail** (was 240), so the longest read-out, "Ahead of wing 2", fits
+  at the pinned floor with room to spare; read-outs and chips are also kept inside the drawing top and bottom (a
+  stinger with wing 2 just behind it used to push "Center" off the top).
+- A **long wing value is set a little smaller to sit inside its chip** (`1/4" @ 30 9/16"` ran 108.7 px in a 104 px
+  chip); the chip keeps its width and its place on the gutter rail, and every other chip is unchanged.
+- On the VIEWER, **every chip keeps the WIDEPOINT / WP OFFSET pair's own gap from every neighbour**. Upright, the
+  tail's chips step by the pair's centre-to-centre step, with LENGTH and the pair as fixed blocks (a chip landing on
+  one moves to its nearer side); on an upright iPhone the pair itself no longer overlaps. Turned, the WING chips ride
+  the **outer row** WP OFFSET uses — the inner row has no room beside LENGTH on a sideways phone — and are drawn first
+  so their leaders pass under the inner row.
 
 **Fins on a winged board — the founder's rule (2026-10-14):** "When marking your off-rail fin measurements on a
 board with wings, you always mark from the true, actual rail line directly adjacent to where the fin is sitting,
@@ -88,8 +133,8 @@ Stations `s` along the board from the tail; the curve's half-width `hw(s)`; inch
 <input type="range" min="0" max="0.1875" step="0.0625">
 <div class="ends"><span>Sharp</span><span>Round · 3/16" fits</span></div>
 
-<!-- the empty tab: a centred card in the drawing, and the same button in the sidebar -->
-<div class="empty"><h2>No wings yet</h2><p>A wing is a step in the outline near the fins. Add one, then dial it in against the fin placement.</p><button>+ Add a wing</button></div>
+<!-- the empty tab: the bare tail only; the button lives in the sidebar (the sketch's centred card was removed 2026-10-15) -->
+<button>+ Add a wing</button>
 ```
 
 ## What to Avoid
@@ -106,13 +151,20 @@ Stations `s` along the board from the tail; the curve's half-width `hw(s)`; inch
   the corner.
 - Replacing the outline curve (B-spline or G2 Bézier) for the sake of wings: a phase-sized job, since a saved board
   is its slider settings and every board would redraw, for a widepoint curvature match worth under 1/64".
+- A floating card over the empty tab beside the dial-in pop-up: the founder read it as two pop-ups (2026-10-15).
+- A leading-edge lock, or a Fin edge picker: the lock always follows the trailing edge (2026-10-15).
+- A wider WING chip to hold a long value: on the VIEWER at the pinned floor its gutter holds 162 units against a
+  157.6-unit chip, so it would clip; set the value smaller instead.
 
 ## Open Questions — settled
 The founder ruled on the four left open, after the first build (2026-10-15), each as built: a wing's **position
 marks the apex of the wing, the outer rail break point** where the step leaves the curve; the dial-in popup opens
 **every time a board goes from no wings to one**; the corner-radius slider stops at **the largest round that fits**
-the step; and coming back from FINS **lands on VIEWER**. Two wings close together still crowd the chips and the
-right rail — sketch 015's question, if it ever bites.
+the step; and coming back from FINS **lands on VIEWER**.
+
+**Two wings close together** (settled 2026-10-15, quick 261015-hz7): wing 2 now always sits at least max(1/2",
+2 × wing 1's run) behind wing 1, and the close-up keeps every chip and read-out inside its drawing, so the crowding
+sketch 015 would have explored cannot happen.
 
 ## Origin
 Synthesized from sketches 013 (wings-on-the-outline, A) and 014 (wings-tab, B), 2026-10-14, with the founder's

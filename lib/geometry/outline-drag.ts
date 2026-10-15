@@ -43,12 +43,13 @@ import {
   WING_RUN_RANGE_IN,
   WING_STEP_MM,
   wingFootprint,
-  wingPositionRangeIn,
+  wingLockEdge,
+  wingPositionRangeForSlot,
   wingRadiusTop,
   wingReadouts,
   wingedHalfWidthAt,
-  type FrontFinEdges,
   type Wing,
+  type WingFinEdges,
 } from "./wings";
 
 /**
@@ -333,7 +334,8 @@ export const OUTLINE_DRAG_HIT_COARSE_PX = 22;
 //
 // The WINGS close-up draws two grab points per wing (sketch 014's variant C): the OUTER one at the
 // step's outer corner slides the wing along the curve the shaper drew — or, while the wing is
-// locked to the front fin, sets its offset from the fin edge — and the INNER one, hung a few screen
+// locked (wing 1 to the front fins, wing 2 to a quad's rear fins, both at the trailing edge — quick
+// 261015-hz7, D1), sets its offset from that edge — and the INNER one, hung a few screen
 // dots below the inner corner on the depth dimension's own line so a sharp wing's two points never
 // sit on top of each other, sets the depth (in and out) and the run (along the stringer).
 //
@@ -408,10 +410,14 @@ export function wingDragPoints(geometry: OutlineGeometry, wings: readonly Wing[]
  * A dragged grab point solved back to the wing's numbers (D5; the sketch's own drag, F29). Returns
  * the whole new wings list with only the dragged wing changed — the others are the same objects.
  *
- * - **Outer, placed by hand:** the station is the pointer's, snapped, between 2" and the centre.
- * - **Outer, locked** (`lock` set and the fin setup has a front fin): the offset is the pointer's
- *   distance from the fin edge, snapped, within ±3"; the station is left to the store's resolution
- *   (`resolveWingStations`, P2).
+ * - **Outer, placed by hand:** the station is the pointer's, snapped, inside the slot's own range
+ *   (`wingPositionRangeForSlot`, quick 261015-hz7, D2, D3): 2" to the centre or the widepoint,
+ *   whichever is nearer the tail; wing 1 with a wing 2 no nearer the tail than 2" plus the gap;
+ *   wing 2 no nearer the nose than wing 1 less the gap.
+ * - **Outer, locked** (a lock its slot holds — wing 1 the front fins, wing 2 a quad's rear fins —
+ *   and those fins exist, D1): the offset is the pointer's distance from that trailing edge,
+ *   snapped, within ±3"; the station is left to the store's resolution (`resolveWingStations`, P2),
+ *   which also holds a wing 2 at the order limit.
  * - **Inner:** the run is how far the pointer (lifted back by the drop) sits tail-ward of the
  *   station; the depth is how far it sits in from the rail the board would have at the inner corner
  *   WITHOUT this wing — every other wing's take kept. (The sketch measured from the bare curve at
@@ -425,18 +431,18 @@ export function solveWingDrag(
   target: WingDragTarget,
   dragged: OutlineDragPoint,
   dropMm: Mm,
-  edges: FrontFinEdges | null,
+  edges: WingFinEdges,
   system: UnitsSystem,
 ): Wing[] {
   const w = wings[target.wing];
   if (!w) return [...wings];
   let next: Wing;
   if (target.point === "outer") {
-    if (w.lock !== null && edges !== null) {
-      const edge = w.lock === "front-leading" ? edges.leading : edges.trailing;
+    const edge = wingLockEdge(w, target.wing, edges);
+    if (edge !== null) {
       next = { ...w, finOffset: snapWing(dragged.station - edge, WING_FIN_OFFSET_RANGE_IN, system) };
     } else {
-      next = { ...w, station: snapWing(dragged.station, wingPositionRangeIn(geometry.length), system) };
+      next = { ...w, station: snapWing(dragged.station, wingPositionRangeForSlot(wings, target.wing, geometry), system) };
     }
   } else {
     const others = wings.filter((_, i) => i !== target.wing);
