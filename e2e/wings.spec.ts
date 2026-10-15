@@ -441,7 +441,7 @@ test.describe("wings on the TEMPLATE page", () => {
 
     await page.setViewportSize({ width: 1024, height: 768 });
     await addFirstWing(page);
-    await expectCompactCloseUpWhole(page);
+    await expectCloseUpWhole(page, "compact");
   });
 
   test("desktop: in Metric the wing reads its position and widths in centimetres and its depth in millimetres, and a drag lands on a whole millimetre", async ({
@@ -519,34 +519,94 @@ async function addFirstWingOnPhone(page: Page) {
   await expect(page.getByRole("tab", { name: "WINGS · 1" })).toBeVisible();
 }
 
-/** The close-up drawn compact and whole: every chip and read-out inside the drawing, no station
- * dimension, nothing wider than the window. */
-async function expectCompactCloseUpWhole(page: Page) {
+/**
+ * The close-up drawn whole (quick 261015-hz7, D7, D8): every chip and read-out inside the drawing on
+ * all four sides, and every chip's two lines of text inside its own box, side to side. With `frame`
+ * it also checks which frame drew — the compact one has no station dimension. Nothing is wider than
+ * the window. Every miss is collected before failing, so one run names them all.
+ */
+async function expectCloseUpWhole(page: Page, frame?: "compact" | "full") {
   const closeUp = page.locator("[data-wing-close-up]");
-  await expect(closeUp).toHaveAttribute("data-frame", "compact");
+  if (frame) await expect(closeUp).toHaveAttribute("data-frame", frame);
   await expect(closeUp.locator("[data-callout-chip]").first()).toBeVisible();
-  await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
-  const svg = await closeUp.boundingBox();
-  if (!svg) throw new Error("the close-up has no box");
-  // Every overflow is collected before failing, so one run names them all, by how far they stick out.
-  const outside: string[] = [];
-  for (const part of await closeUp.locator("[data-callout-chip], [data-output-rail]").all()) {
-    const box = await part.boundingBox();
-    if (!box) continue;
-    const name = (await part.getAttribute("data-callout-chip")) ?? (await part.getAttribute("data-output-rail"));
-    const past = {
-      left: svg.x - box.x,
-      top: svg.y - box.y,
-      right: box.x + box.width - (svg.x + svg.width),
-      bottom: box.y + box.height - (svg.y + svg.height),
-    };
-    for (const [side, by] of Object.entries(past)) {
-      if (by > 0.5) outside.push(`${name} past the ${side} by ${by.toFixed(1)} px`);
+  if (frame === "compact") await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
+  const misses = await closeUp.evaluate((svg) => {
+    const out: string[] = [];
+    const s = svg.getBoundingClientRect();
+    for (const part of svg.querySelectorAll("[data-callout-chip], [data-output-rail]")) {
+      const box = part.getBoundingClientRect();
+      const name = part.getAttribute("data-callout-chip") ?? part.getAttribute("data-output-rail");
+      const past = { left: s.left - box.left, top: s.top - box.top, right: box.right - s.right, bottom: box.bottom - s.bottom };
+      for (const [side, by] of Object.entries(past)) if (by > 0.5) out.push(`${name} past the ${side} by ${by.toFixed(1)} px`);
     }
-  }
-  expect(outside).toEqual([]);
+    out.push(...chipTextMisses(svg));
+    return out;
+
+    function chipTextMisses(root: Element): string[] {
+      const found: string[] = [];
+      for (const chip of root.querySelectorAll("[data-callout-chip]")) {
+        const rect = chip.querySelector("rect")?.getBoundingClientRect();
+        if (!rect) continue;
+        for (const text of chip.querySelectorAll("text")) {
+          const t = text.getBoundingClientRect();
+          const by = Math.max(rect.left - t.left, t.right - rect.right);
+          if (by > 0.5) found.push(`${chip.getAttribute("data-callout-chip")} "${text.textContent}" past its chip by ${by.toFixed(1)} px`);
+        }
+      }
+      return found;
+    }
+  });
+  expect(misses).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+}
+
+/**
+ * The VIEWER's chips clear of each other and of the drawing (quick 261015-hz7, D8, D9): every chip
+ * and its text inside the drawing, every chip's text inside its own box side to side, and every two
+ * chips at least the gap the WIDEPOINT / WP OFFSET pair keeps — upright, the pair's own step less a
+ * chip, max(38, chip height) + 6 − chip height in drawing units; turned, 6 units — read at the
+ * drawing's own scale, with a half-pixel tolerance.
+ */
+async function expectViewerChipsClear(page: Page, orientation: "upright" | "turned") {
+  const silhouette = page.locator("[data-board-silhouette='outline']");
+  await expect(silhouette).toBeVisible();
+  await expect(page.locator('[data-callout-chip^="WING"]').first()).toBeVisible();
+  const misses = await silhouette.evaluate((el, turned) => {
+    let svg = (el as SVGElement).ownerSVGElement!;
+    while (svg.ownerSVGElement) svg = svg.ownerSVGElement;
+    const scale = svg.getScreenCTM()!.a;
+    const s = svg.getBoundingClientRect();
+    const out: string[] = [];
+    const chips = [...svg.querySelectorAll("[data-callout-chip]")].map((chip) => ({
+      name: chip.getAttribute("data-callout-chip") ?? "?",
+      rect: chip.querySelector("rect")!.getBoundingClientRect(),
+      texts: [...chip.querySelectorAll("text")].map((t) => ({ text: t.textContent, box: t.getBoundingClientRect() })),
+    }));
+    for (const c of chips) {
+      const boxes = [{ what: "chip", box: c.rect }, ...c.texts.map((t) => ({ what: `"${t.text}"`, box: t.box }))];
+      for (const { what, box } of boxes) {
+        const past = { left: s.left - box.left, top: s.top - box.top, right: box.right - s.right, bottom: box.bottom - s.bottom };
+        for (const [side, by] of Object.entries(past)) if (by > 0.5) out.push(`${c.name} ${what} past the drawing's ${side} by ${by.toFixed(1)} px`);
+      }
+      for (const t of c.texts) {
+        const by = Math.max(c.rect.left - t.box.left, t.box.right - c.rect.right);
+        if (by > 0.5) out.push(`${c.name} "${t.text}" past its chip by ${by.toFixed(1)} px`);
+      }
+    }
+    for (let i = 0; i < chips.length; i++) {
+      for (let j = i + 1; j < chips.length; j++) {
+        const a = chips[i].rect;
+        const b = chips[j].rect;
+        const apart = Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
+        const chipH = Math.min(a.height, b.height);
+        const need = turned ? 6 * scale : Math.max(38 * scale, chipH) + 6 * scale - chipH;
+        if (apart < need - 0.5) out.push(`${chips[i].name} / ${chips[j].name} ${apart.toFixed(2)} px apart, need ${need.toFixed(2)}`);
+      }
+    }
+    return out;
+  }, orientation === "turned");
+  expect(misses).toEqual([]);
 }
 
 /** The phone's own checks: the close-up above the stacked controls, the wing controls in them, and
@@ -559,7 +619,7 @@ async function expectPhoneWingsLayout(page: Page) {
   const drawing = await closeUp.boundingBox();
   const stack = await controls.boundingBox();
   if (!drawing || !stack) throw new Error("the close-up or the controls have no box");
-  await expectCompactCloseUpWhole(page);
+  await expectCloseUpWhole(page, "compact");
   return { drawing, stack };
 }
 
@@ -699,3 +759,190 @@ async function grabCentre(page: Page, wing: number, point: "outer" | "inner"): P
   if (!box) throw new Error(`wing ${wing}'s ${point} grab point has no box`);
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
+
+// -------------------------------------------------------------------------------------------------
+// Quick 261015-hz7 (2026-10-15, D7, D8, D9): every wing label fits — the close-up's read-outs and
+// chips inside the drawing, every wing value inside its chip, and every VIEWER chip the pair's own
+// gap from its neighbours — on five boards, on a computer and on both phones either way up.
+// -------------------------------------------------------------------------------------------------
+
+/** The five boards: the default board (no card to click) and the four preset cards. */
+const FIVE_BOARDS = ["default", "Shortboard", "Fish", "Mid-length", "Longboard"] as const;
+type BoardName = (typeof FIVE_BOARDS)[number];
+
+/** Opens a board on TEMPLATE and adds its first wing on the WINGS tab. */
+async function openBoardWithAWing(page: Page, board: BoardName) {
+  if (board === "default") await page.goto("/design/outline");
+  else await openPreset(page, board);
+  await addWingsOnTab(page);
+}
+
+/**
+ * Places the two wings by the sidebar (F13: End, Home and the arrow keys only). A: wing 1 unlocked
+ * and slid to its top (a stinger), wing 2 where "+ Add wing 2" puts it — rear-locked on the
+ * Mid-length. B: wing 1 at its top and wing 2 at its limit, 1/2" behind it (on the Mid-length its
+ * rear lock unticked first).
+ */
+async function placeTwoWings(page: Page, placement: "A" | "B") {
+  const lock1 = page.locator('[data-wing-controls="1"]').getByRole("checkbox", { name: "Lock to front fin" });
+  if (await lock1.isChecked()) await lock1.click();
+  const position1 = page.getByRole("slider", { name: "Wing 1 position from tail" });
+  await expect(position1).toBeEnabled();
+  await position1.focus();
+  await page.keyboard.press("End");
+  await page.getByRole("button", { name: "+ Add wing 2" }).click();
+  await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+  if (placement === "B") {
+    const lock2 = page.locator('[data-wing-controls="2"]').getByRole("checkbox", { name: "Lock to rear fin" });
+    if ((await lock2.count()) > 0 && (await lock2.isChecked())) await lock2.click();
+    const position2 = page.getByRole("slider", { name: "Wing 2 position from tail" });
+    await expect(position2).toBeEnabled();
+    await position2.focus();
+    await page.keyboard.press("End");
+  }
+}
+
+/** The close-up whole, then the VIEWER's chips clear upright and — with the Rotate button, a
+ * computer only — turned. */
+async function expectWingLabelsFit(page: Page, orientation: "upright" | "turned" | "both") {
+  await expectCloseUpWhole(page);
+  await page.getByRole("tab", { name: "VIEWER" }).click();
+  if (orientation === "turned") {
+    await expectViewerChipsClear(page, "turned");
+    return;
+  }
+  await expectViewerChipsClear(page, "upright");
+  if (orientation === "both") {
+    await page.getByRole("button", { name: "Rotate the board to horizontal" }).click();
+    await expect(page.getByRole("button", { name: "Rotate the board to vertical" })).toBeVisible();
+    await expectViewerChipsClear(page, "turned");
+  }
+}
+
+/** The widest wing values (D8, F9): on the Longboard, wing 1 a step under its top with a depth a step
+ * under 1" in Imperial (`15/16" @ 53 15/16"`), then both at their ends in Metric (`25 mm @ 137.1 cm`)
+ * — each WING chip's value inside its chip on the close-up and the VIEWER. */
+async function expectWidestWingValuesFit(page: Page, orientation: "upright" | "turned") {
+  await openBoardWithAWing(page, "Longboard");
+  const position = page.getByRole("slider", { name: "Wing 1 position from tail" });
+  const depth = page.getByRole("slider", { name: "Wing 1 depth" });
+  await position.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowLeft");
+  await depth.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowLeft");
+  const closeUpChip = page.locator('[data-wing-close-up] [data-callout-chip^="WING 1"]');
+  await expect(closeUpChip).toContainText('15/16" @ 53 15/16"');
+  await expectCloseUpWhole(page);
+  await page.getByRole("tab", { name: "VIEWER" }).click();
+  await expect(page.locator('[data-callout-chip="WING 1"]')).toContainText('15/16" @ 53 15/16"');
+  await expectViewerChipsClear(page, orientation);
+
+  const dialog = await openAppSettings(page);
+  await dialog.getByRole("group", { name: "Units" }).getByRole("button", { name: /^Metric/ }).click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("tab", { name: /^WINGS/ }).click();
+  await position.focus();
+  await page.keyboard.press("End");
+  await depth.focus();
+  await page.keyboard.press("End");
+  await expect(closeUpChip).toContainText("25 mm @ 137.1 cm");
+  await expectCloseUpWhole(page);
+  await page.getByRole("tab", { name: "VIEWER" }).click();
+  await expect(page.locator('[data-callout-chip="WING 1"]')).toContainText("25 mm @ 137.1 cm");
+  await expectViewerChipsClear(page, orientation);
+}
+
+test.describe("every wing label fits on a computer (quick 261015-hz7)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+    await dismissSignInBanner(page);
+  });
+
+  for (const board of FIVE_BOARDS) {
+    for (const placement of ["A", "B"] as const) {
+      test(`1024 x 768, ${board}, placement ${placement}: the close-up whole, the VIEWER's chips clear upright and turned`, async ({
+        page,
+      }) => {
+        test.slow();
+        await page.setViewportSize({ width: 1024, height: 768 });
+        await openBoardWithAWing(page, board);
+        await placeTwoWings(page, placement);
+        await expectWingLabelsFit(page, "both");
+      });
+    }
+  }
+
+  test("1280 x 800, the default board, placement B: the close-up whole, the VIEWER's chips clear upright and turned", async ({
+    page,
+  }) => {
+    test.slow();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openBoardWithAWing(page, "default");
+    await placeTwoWings(page, "B");
+    await expectWingLabelsFit(page, "both");
+  });
+
+  test("1024 x 768: the widest wing values sit inside their chips, in Imperial and Metric", async ({ page }) => {
+    test.slow();
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expectWidestWingValuesFit(page, "upright");
+  });
+});
+
+test.describe("every wing label fits on a phone held upright (quick 261015-hz7)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone projects only");
+    await dismissSignInBanner(page);
+  });
+
+  for (const board of ["default", "Longboard"] as const) {
+    test(`${board}, placement B: the close-up whole, the VIEWER's chips clear`, async ({ page }) => {
+      test.slow();
+      await openBoardWithAWing(page, board);
+      await placeTwoWings(page, "B");
+      await expectWingLabelsFit(page, "upright");
+    });
+  }
+});
+
+test.describe("every wing label fits on a Pixel 7 held sideways (quick 261015-hz7)", () => {
+  test.use({ ...pixel7Landscape });
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await dismissSignInBanner(page);
+  });
+
+  for (const board of ["default", "Longboard"] as const) {
+    test(`${board}, placement B: the close-up whole, the turned VIEWER's chips clear`, async ({ page }) => {
+      test.slow();
+      await openBoardWithAWing(page, board);
+      await placeTwoWings(page, "B");
+      await expectWingLabelsFit(page, "turned");
+    });
+  }
+});
+
+test.describe("every wing label fits on a real iPhone held sideways (quick 261015-hz7)", () => {
+  test.use({ ...realSidewaysIphone });
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own viewport (844 x 390, WebKit)");
+    await dismissSignInBanner(page);
+  });
+
+  for (const board of ["default", "Longboard"] as const) {
+    test(`${board}, placement B: the close-up whole, the turned VIEWER's chips clear`, async ({ page }) => {
+      test.slow();
+      await openBoardWithAWing(page, board);
+      await placeTwoWings(page, "B");
+      await expectWingLabelsFit(page, "turned");
+    });
+  }
+
+  test("the widest wing values sit inside their chips, in Imperial and Metric", async ({ page }) => {
+    test.slow();
+    await expectWidestWingValuesFit(page, "turned");
+  });
+});
