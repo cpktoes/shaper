@@ -40,7 +40,8 @@ type TemplateTab = "viewer" | "wings";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked } = useDesign();
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked, wingFrontFin } =
+    useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
    * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
@@ -84,7 +85,8 @@ export function OutlineEditor() {
 
   /** "+ Add a wing", shared by the empty tab's card and the sidebar's button (D3). */
   function handleAddWing() {
-    updateOutline({ wings: [...wings, nextWing(wings, null, outline.length, system)] });
+    // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
+    updateOutline({ wings: [...wings, nextWing(wings, wingFrontFin, outline.length, system)] });
   }
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —

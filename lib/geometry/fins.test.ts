@@ -7,6 +7,7 @@ import {
   effectiveQuadRearModel,
   finRoundingGrain,
   finRoundingNote,
+  importedFinTailFromOutline,
   isQuadRearModelAvailable,
   resetAdvanced,
   toeAimTableFor,
@@ -18,10 +19,14 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "./fins";
-import { formatInchesFraction, inchesToMm, type Mm, mmToInches, parseImperial, parseMetric } from "./units";
+import { formatInchesFraction, inchesToMm, mm, type Mm, mmToInches, parseImperial, parseMetric } from "./units";
 import { formatDim, formatDimBare, formatMark, formatMarkBare } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
+import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
+import { deriveEffectiveFins } from "./design";
+import { buildOutline } from "./outline";
+import { wingFootprint, wingStepShare, type Wing } from "./wings";
 
 const TOLERANCE_IN = 1e-9;
 
@@ -631,5 +636,89 @@ describe("finRoundingNote — the fin notes' rounding line in the shaper's own u
       }
     }
     expect(checked).toBeGreaterThan(20);
+  });
+});
+
+describe("fins listen to the real rail beside them — wings (quick 261014-wii, D8, the founder's rule)", () => {
+  // "Fins listen to the closest piece of physical rail next to them." With Import Template ticked
+  // the fins are placed on the WINGED outline, exactly as on any drawn outline: the 12" width they
+  // read is the winged one, and every in-from-the-rail is the real rail at the fin's own station.
+  // Every expected value is worked out through the app's own wing and fin functions.
+  const OUTLINE = DEFAULT_BOARD_SPEC.outline;
+  const FINS = DEFAULT_FIN_PLACEMENT_SPEC;
+
+  function place(outline: OutlineSpec, fins: FinPlacementSpec, importTemplate = true) {
+    const g = buildOutline(outline);
+    return computeFinPlacement(
+      deriveEffectiveFins(fins, importTemplate, outline, g),
+      importTemplate ? importedFinTailFromOutline(g) : null,
+    );
+  }
+
+  function wingAt(station: number): Wing {
+    return {
+      station: mm(station),
+      depth: inchesToMm(3 / 8),
+      run: inchesToMm(1 / 4),
+      radius: mm(0),
+      lock: null,
+      finOffset: mm(0),
+    };
+  }
+
+  const bare = place(OUTLINE, FINS);
+  const front = bare.marks.find((m) => m.role === "front")!;
+
+  it("a wing ahead of the front fin moves it inboard by exactly the depth taken at its station", () => {
+    const wing = wingAt(front.offTail + inchesToMm(1));
+    const winged = place({ ...OUTLINE, wings: [wing] }, FINS);
+    const moved = winged.marks.find((m) => m.role === "front" && m.side === front.side)!;
+    const g = buildOutline(OUTLINE);
+    const inner = wingFootprint(wing).inner;
+    const fade = Math.min(1, Math.max(0, (front.offTail - g.tailPodStation) / (inner - g.tailPodStation)));
+    const take = wing.depth * wingStepShare(wing, front.offTail) * fade;
+    // Inboard: toward the stringer, whichever side the fin is on.
+    const inboard = (a: number, b: number) => Math.abs(a) - Math.abs(b);
+    expect(Math.abs(inboard(moved.lateral, front.lateral) + take)).toBeLessThan(1e-6);
+    expect(moved.offTail).toBe(front.offTail);
+    // The leading mark moves the same, so the toe rule holds.
+    expect(
+      Math.abs(inboard(moved.leadingLateral, front.leadingLateral) - inboard(moved.lateral, front.lateral)),
+    ).toBeLessThan(1e-9);
+  });
+
+  it("a wing AT the front fin's trailing edge leaves its trailing mark on the wider rail", () => {
+    const wing = wingAt(front.offTail);
+    const winged = place({ ...OUTLINE, wings: [wing] }, FINS);
+    const moved = winged.marks.find((m) => m.role === "front" && m.side === front.side)!;
+    const shift = Math.abs(moved.lateral) - Math.abs(front.lateral);
+    // Measured 0.0103 mm: the rail is now read from an exact sample at the step, not a chord.
+    expect(Math.abs(shift)).toBeLessThan(0.02);
+    expect(shift).toBeGreaterThan(-wing.depth / 2);
+  });
+
+  it("a quad's rear spread reads the winged 12-inch width when a wing crosses the 12-inch station", () => {
+    const quad: FinPlacementSpec = { ...FINS, finSetup: "quad", quadRearModel: "mckeeSB" };
+    const winged: OutlineSpec = { ...OUTLINE, wings: [wingAt(inchesToMm(15.5))] };
+    const g0 = buildOutline(OUTLINE);
+    const gW = buildOutline(winged);
+    const effective = deriveEffectiveFins(quad, true, winged, gW);
+    expect(effective.tailWidth12).toBe(gW.tailWidthAt12in);
+    expect(gW.tailWidthAt12in).toBeLessThan(g0.tailWidthAt12in);
+
+    const before = place(OUTLINE, quad).resolved.rearHalfSpread;
+    const after = place(winged, quad).resolved.rearHalfSpread;
+    expect(after).toBeLessThan(before);
+    // Fed the no-wing width instead, the spread would not move: it is the winged width that moves it.
+    const noWingWidth = computeFinPlacement(
+      { ...effective, tailWidth12: g0.tailWidthAt12in },
+      importedFinTailFromOutline(gW),
+    ).resolved.rearHalfSpread;
+    expect(noWingWidth).toBe(before);
+  });
+
+  it("with Import Template off a wing changes nothing — the standalone calculator never sees it", () => {
+    const winged: OutlineSpec = { ...OUTLINE, wings: [wingAt(front.offTail + inchesToMm(1))] };
+    expect(place(winged, FINS, false).marks).toEqual(place(OUTLINE, FINS, false).marks);
   });
 });

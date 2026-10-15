@@ -231,3 +231,24 @@ describe("the four editors share the one printer", () => {
     expect(source).not.toMatch(/roundedInches/);
   });
 });
+
+describe("Copy preset values never prints wings (quick 261014-wii, P1)", () => {
+  it("an outline carrying a wing prints the same block as one without", () => {
+    const winged: OutlineSpec = {
+      ...DEFAULT_BOARD_SPEC.outline,
+      wings: [
+        {
+          station: inchesToMm(11),
+          depth: inchesToMm(3 / 8),
+          run: inchesToMm(1 / 4),
+          radius: mm(0),
+          lock: "front-trailing",
+          finOffset: mm(0),
+        },
+      ],
+    };
+    const source = buildOutlinePresetSource(winged);
+    expect(source).not.toMatch(/wings/);
+    expect(source).toBe(buildOutlinePresetSource(DEFAULT_BOARD_SPEC.outline));
+  });
+});

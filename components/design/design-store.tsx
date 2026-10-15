@@ -75,9 +75,12 @@ import {
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
+  deriveEffectiveFins,
   deriveRailValues,
   deriveTemplateValues,
 } from "@/lib/geometry/design";
+import { frontFinEdges, resolveWingStations } from "@/lib/geometry/wing-lock";
+import { outlineWithoutWings, type FrontFinEdges } from "@/lib/geometry/wings";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -254,6 +257,13 @@ interface FinTailOutline {
 
 interface DesignContextValue {
   // Raw stored specs — the single place each screen's sidebar writes to.
+  /**
+   * The stored outline with every wing locked to the front fin placed at its fin edge plus offset
+   * (quick 261014-wii, P2) — `resolveWingStations` of the stored outline, the fins and Import
+   * Template. The SAME object as the stored outline whenever no wing is locked, so a board without
+   * locked wings is exactly what it always was. It is what the screens draw and what a save
+   * stores, so every reader of a saved board reads the station the screen showed.
+   */
   outline: OutlineSpec;
   /** The hand-set fallback rocker (D-14) — see `DesignState.rocker`. Draw from `sideProfile`, not
    * from this: with a blank picked, the drawn rocker is the blank's. */
@@ -424,7 +434,14 @@ interface DesignContextValue {
   toggleImportRailThickness: () => void;
 
   // Derived values.
+  /** The board's outline, wings and all (quick 261014-wii, D1). */
   outlineGeometry: OutlineGeometry;
+  /** The curve the shaper drew with no wings applied — the WINGS close-up's dashed line. The same
+   * object as `outlineGeometry` on a board without wings. */
+  baseOutlineGeometry: OutlineGeometry;
+  /** The front fin's trailing and leading edges as FINS places them, for the wing lock and its
+   * note (quick 261014-wii, D8); `null` for a fin setup with no front fin (a single). */
+  wingFrontFin: FrontFinEdges | null;
   /** TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, by the O-1
    * rule in `lib/outline-ghost.ts` — walk this session's undo history from its most recent entry
    * for the first one whose outline actually differs from what is on screen. Session-only (the
@@ -829,7 +846,20 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       saveStatus: "saved",
     }));
 
-  const outlineGeometry = useMemo(() => buildOutline(state.outline), [state.outline]);
+  // Wings (quick 261014-wii, P2): a wing locked to the front fin is placed where the store reads
+  // the outline, never written back by an effect. `resolvedOutline` is the SAME object as
+  // `state.outline` whenever no wing is locked (or the fin setup has no front fin).
+  const resolvedOutline = useMemo(
+    () => resolveWingStations(state.outline, state.fins, state.finsImportTemplate).outline,
+    [state.outline, state.fins, state.finsImportTemplate],
+  );
+  const outlineGeometry = useMemo(() => buildOutline(resolvedOutline), [resolvedOutline]);
+  // The curve with no wings, for the WINGS close-up's dashed line — today's geometry itself when
+  // the board has none.
+  const baseOutlineGeometry = useMemo(
+    () => (resolvedOutline.wings?.length ? buildOutline(outlineWithoutWings(resolvedOutline)) : outlineGeometry),
+    [resolvedOutline, outlineGeometry],
+  );
 
   // TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, picked
   // from this session's own undo history by the O-1 rule in lib/outline-ghost.ts. Read-only over
@@ -841,8 +871,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [history.past, state.outline],
   );
   const outlineGhostGeometry = useMemo(
-    () => (outlineGhost ? buildOutline(outlineGhost) : null),
-    [outlineGhost],
+    // A ghost with a locked wing is resolved against the live fins, the same way the board is.
+    () =>
+      outlineGhost
+        ? buildOutline(resolveWingStations(outlineGhost, state.fins, state.finsImportTemplate).outline)
+        : null,
+    [outlineGhost, state.fins, state.finsImportTemplate],
   );
 
   // The blank is fitted ONCE per blank copy (R14): keyed on the copy's own identity, which only
@@ -902,27 +936,28 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const railValues: VolumeRailValues = useMemo(() => deriveRailValues(railBands), [railBands]);
 
-  // OutlineSpec's TailShape and FinPlacementSpec's FinTailShape are kept structurally aligned on
-  // purpose (the same five kind names), so this mapping is a direct assignment rather than a
-  // translation table.
-  const effectiveFins: FinPlacementSpec = useMemo(() => {
-    if (!state.finsImportTemplate) return state.fins;
-    return {
-      ...state.fins,
-      boardLength: state.outline.length,
-      tailWidth12: outlineGeometry.tailWidthAt12in,
-      tailShape: state.outline.tail.kind,
-    };
-  }, [
-    state.fins,
-    state.finsImportTemplate,
-    state.outline.length,
-    state.outline.tail.kind,
-    outlineGeometry.tailWidthAt12in,
-  ]);
+  // Import Template's mapping, now `deriveEffectiveFins` in lib/geometry/design.ts (quick
+  // 261014-wii) so the wing lock places the fins exactly as this screen does. It reads the WINGED
+  // outline's 12" width (D8: fins listen to the real rail beside them).
+  const effectiveFins: FinPlacementSpec = useMemo(
+    () => deriveEffectiveFins(state.fins, state.finsImportTemplate, resolvedOutline, outlineGeometry),
+    // Deliberately narrower than "resolvedOutline"/"outlineGeometry" (eslint-disable below): the
+    // mapping reads only the length, the tail kind and the 12" tail width, the same dependency list
+    // this memo always had — widening it would recompute the fins on every unrelated outline edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.fins,
+      state.finsImportTemplate,
+      state.outline.length,
+      state.outline.tail.kind,
+      outlineGeometry.tailWidthAt12in,
+    ],
+  );
 
   // The real drawn tail the fin maths read (quick 260928-p45) — built only while Import Template
-  // is ticked, exactly the same condition `effectiveFins` above already follows.
+  // is ticked, exactly the same condition `effectiveFins` above already follows. Cut from the
+  // WINGED outline (quick 261014-wii, D8), so FINS' tail drawing shows the wings and every fin's
+  // in-from-the-rail is the real rail at its own station.
   const finImportedTail: ImportedFinTail | null = useMemo(
     () => (state.finsImportTemplate ? importedFinTailFromOutline(outlineGeometry) : null),
     [state.finsImportTemplate, outlineGeometry],
@@ -932,6 +967,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     () => computeFinPlacement(effectiveFins, finImportedTail),
     [effectiveFins, finImportedTail],
   );
+  // The front fin's edges for the wing lock and its sidebar note (quick 261014-wii, D8).
+  const wingFrontFin = useMemo(() => frontFinEdges(finPlacement.marks), [finPlacement.marks]);
 
   // Built from `finImportedTail`'s own points, so the drawing and the maths can never disagree —
   // the adapter's own 24in cut (`importedFinTailFromOutline`) is the same one this used to apply
@@ -1212,7 +1249,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   const designSnapshotFields: DesignSnapshotFields = useMemo(
     () => ({
-      outline: state.outline,
+      // The resolved outline (quick 261014-wii, P2), so a save stores the station the screen showed.
+      outline: resolvedOutline,
       rocker: state.rocker,
       foil,
       rails: state.rails,
@@ -1225,7 +1263,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       blank: state.blank,
     }),
     [
-      state.outline,
+      resolvedOutline,
       state.rocker,
       foil,
       state.rails,
@@ -1419,7 +1457,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   }, [history, historySnapshot]);
 
   const value: DesignContextValue = {
-    outline: state.outline,
+    outline: resolvedOutline,
     rocker: state.rocker,
     foil,
     rails: state.rails,
@@ -1473,6 +1511,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     toggleImportTemplateDimensions,
     toggleImportRailThickness,
     outlineGeometry,
+    baseOutlineGeometry,
+    wingFrontFin,
     outlineGhostGeometry,
     preparedBlank,
     sideProfile,

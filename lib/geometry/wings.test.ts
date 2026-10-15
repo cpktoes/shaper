@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import golden from "./__fixtures__/wings-golden.json";
 import { DEFAULT_BOARD_SPEC, TAIL_PRESETS, type OutlineSpec } from "./board";
 import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
@@ -14,6 +17,7 @@ import {
   wingStepShape,
   wingStepShare,
   wingedHalfWidthAt,
+  wingReadouts,
   type Wing,
 } from "./wings";
 
@@ -189,6 +193,63 @@ describe("the step's share of the depth (the sketch's check013)", () => {
       const depth = inchesToMm(depthIn);
       expect(Math.abs(maxWingRadius({ run: mm(0), depth }) - depth / 2)).toBeLessThan(1e-9);
     }
+  });
+});
+
+describe("the wing maths is the founder's own sketch (D10, F13, F14)", () => {
+  // The expected numbers are the sketch's own output: scripts/extract-wings-golden.ts EXECUTES
+  // reference/sketches/013-wings-curves.js and records what it draws. Each case's board spec is read
+  // from the golden's own `boards` entry — an input — so a later preset recapture never breaks it.
+  const boards = new Map(golden.boards.map((b) => [b.id, b.outline as unknown as OutlineSpec]));
+  const TOLERANCE_MM = 1e-9;
+  let pointsChecked = 0;
+
+  it.each(golden.cases.map((c) => ({ ...c, label: `${c.board}, ${c.setting}` })))(
+    "$label: every recorded width and readout",
+    (c) => {
+      const spec = boards.get(c.board);
+      if (!spec) throw new Error(`the golden names a board it does not record: ${c.board}`);
+      const g = buildOutline(spec);
+      const wingsMm: Wing[] = c.wings.map((w) => ({
+        station: inchesToMm(w.stationIn),
+        depth: inchesToMm(w.depthIn),
+        run: inchesToMm(w.runIn),
+        radius: inchesToMm(w.radiusIn),
+        lock: null,
+        finOffset: mm(0),
+      }));
+      let worst = 0;
+      for (const p of c.points) {
+        const app = 2 * wingedHalfWidthAt(g, wingsMm, inchesToMm(p.sIn));
+        worst = Math.max(worst, Math.abs(app - inchesToMm(p.widthIn)));
+      }
+      pointsChecked += c.points.length;
+      expect(worst).toBeLessThan(TOLERANCE_MM);
+
+      const readouts = wingReadouts(g, wingsMm);
+      c.readouts.forEach((r, i) => {
+        const w = wingsMm[i];
+        const f = wingFootprint(w);
+        expect(Math.abs(maxWingRadius(w) - inchesToMm(r.maxRadiusIn))).toBeLessThan(TOLERANCE_MM);
+        expect(Math.abs(effectiveWingRadius(w) - inchesToMm(r.radiusUsedIn))).toBeLessThan(TOLERANCE_MM);
+        expect(Math.abs(f.stepStart - inchesToMm(r.stepStartIn))).toBeLessThan(TOLERANCE_MM);
+        expect(Math.abs(f.inner - inchesToMm(r.innerIn))).toBeLessThan(TOLERANCE_MM);
+        expect(Math.abs(readouts[i].widthAhead - inchesToMm(r.widthAheadIn))).toBeLessThan(TOLERANCE_MM);
+        expect(Math.abs(readouts[i].widthBehind - inchesToMm(r.widthBehindIn))).toBeLessThan(TOLERANCE_MM);
+      });
+    },
+  );
+
+  it("checked every recorded station across all seven boards and five settings", () => {
+    expect(golden.cases).toHaveLength(golden.boards.length * 5);
+    expect(pointsChecked).toBeGreaterThan(8000);
+  });
+
+  it("the generator executes the sketch's own code", () => {
+    const source = readFileSync(path.resolve(process.cwd(), "scripts/extract-wings-golden.ts"), "utf8");
+    expect(source).toContain("reference/sketches/013-wings-curves.js");
+    expect(source).toContain("wingedPoints");
+    expect(golden.provenance).toContain("013-wings-curves.js");
   });
 });
 

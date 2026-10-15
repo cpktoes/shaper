@@ -34,6 +34,35 @@ import {
   type VolumeTemplateValues,
 } from "./volume";
 import type { Litres, Mm } from "./units";
+import type { FinPlacementSpec } from "./fins";
+
+/**
+ * FINS' Import Template mapping, moved here out of `design-store.tsx`'s `effectiveFins` memo
+ * unchanged (quick 261014-wii, 2026-10-14) so the wing lock (`wing-lock.ts`) places the fins
+ * exactly as the screen does. With Import Template off it is the stored fin spec itself — the
+ * standalone calculator, which never sees the outline or its wings. On, the fins read the board's
+ * length, tail shape and 12" tail width off the outline — the WINGED outline whenever the board has
+ * wings (D8, the founder: "Fins listen to the closest piece of physical rail next to them"), so a
+ * wing that crosses the 12" station moves every fin number that reads that width.
+ *
+ * OutlineSpec's TailShape and FinPlacementSpec's FinTailShape are kept structurally aligned on
+ * purpose (the same five kind names), so this mapping is a direct assignment rather than a
+ * translation table.
+ */
+export function deriveEffectiveFins(
+  fins: FinPlacementSpec,
+  finsImportTemplate: boolean,
+  outline: OutlineSpec,
+  geometry: OutlineGeometry,
+): FinPlacementSpec {
+  if (!finsImportTemplate) return fins;
+  return {
+    ...fins,
+    boardLength: outline.length,
+    tailWidth12: geometry.tailWidthAt12in,
+    tailShape: outline.tail.kind,
+  };
+}
 
 /** Same shape as `design-store.tsx`'s `templateValues` memo. */
 export function deriveTemplateValues(outline: OutlineSpec, geometry: OutlineGeometry): VolumeTemplateValues {
