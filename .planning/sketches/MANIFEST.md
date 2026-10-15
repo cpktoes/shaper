@@ -179,6 +179,10 @@ wing) with the corner radius and the grab points as a toggle.
    (the outer slides it along the curve, the inner sets depth and run) appear with the viewer's Show construction
    setting, and the view holds still while one is held — a window that re-framed mid-drag carried the wing away. The
    VIEWER tab draws the whole board with the wings and their chips and no wing control.
+   **Fins on a winged board** (the founder, 2026-10-14, during the build's planning): fins listen to the closest
+   piece of physical rail next to them — placement reads the winged outline, the 12" width is the finished
+   outline's, each fin's distance in from the rail is measured from the winged rail at its own station, and a
+   wing locked to the front fin settles by iteration and follows the fin's edge exactly.
 
 ## Open Questions
 

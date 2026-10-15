@@ -48,6 +48,20 @@ outside the ticks; the run as a vertical dimension beyond the extension lines; a
 ahead of and behind each wing with Tail @ 12" and the tail block, pushed apart when they would touch, an L-shaped
 leader keeping each at its true station. Nothing crosses the board but faint lines.
 
+**Fins on a winged board — the founder's rule (2026-10-14):** "When marking your off-rail fin measurements on a
+board with wings, you always mark from the true, actual rail line directly adjacent to where the fin is sitting,
+not the hypothetical original continuous rail line. Mark your distance up from the tail first to find your fore/aft
+positioning; from that exact horizontal line, measure inward from the physical edge of the foam to set your rail
+gap. Fins listen to the closest piece of physical rail next to them." In the app: fin placement reads the winged
+outline — the 12" tail width is the finished outline's width (it feeds the quad rear spreads, the narrow-tail
+shifts and the toe-aim table), and each fin's distance in from the rail is measured from the winged rail at the
+fin's own station, as Import Template already does against the drawn outline. A wing ahead of the fin moves it
+inboard by the depth; a wing cut at the fin's trailing edge leaves the fin on the wider rail, because a sharp step
+takes nothing at its outer corner. A wing locked to the front fin therefore settles by iteration (the fins move
+the wing, the wing moves the 12" width, the width moves the fins) — at most three passes, one on an ordinary
+board — and its resolved station follows the fin's edge exactly rather than snapping to a sixteenth; the offset
+and every set value still move in sixteenths. With Import Template off, FINS' standalone calculator knows no wings.
+
 ## The step, as maths
 Stations `s` along the board from the tail; the curve's half-width `hw(s)`; inches throughout.
 - Corners: outer `(S, 0)`, inner `(S − run, depth)`, along the board and inward.
