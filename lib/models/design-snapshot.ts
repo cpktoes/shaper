@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Six rules govern this file:
+ * Seven rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -69,6 +69,14 @@
  *    rewrites a stored start. They are independent of the cut (not counted by rule 5's "all three
  *    or none"), the Phase 11 carry-over sets none, and no database change is needed — the saved
  *    board is one JSON column.
+ * 7. Wings (quick 261014-wii, 2026-10-14, P1) ride on the outline as an optional `wings` list —
+ *    absent means no wings, which is every board saved before them. The version stays 5, for rule
+ *    6's reason: the reader before this rule drops an unknown outline key (measured, F23), so a
+ *    rollback opens a winged board without its wings rather than failing. Each wing is validated
+ *    strictly — at most two, every number finite and bounded, a depth above 0, a lock that is
+ *    `"front-trailing"`, `"front-leading"` or `null` — but the list is read forgivingly as a whole:
+ *    anything malformed reads as no wings and the board still opens, with the key removed, exactly
+ *    as rule 6 removes an Automatic start. Opening a board never rewrites a stored wing.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -97,6 +105,7 @@ import {
 } from "@/lib/geometry/rocker";
 import { inchesToMm, mm, type Mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC, type VolumeSpec } from "@/lib/geometry/volume";
+import { MAX_WINGS } from "@/lib/geometry/wings";
 
 export const DESIGN_SNAPSHOT_VERSION = 5;
 
@@ -136,6 +145,21 @@ export function isBoardLengthInRange(length: number): boolean {
   );
 }
 
+/**
+ * One wing (rule 7). Every bound is in millimetres and generous — the sliders set the real ranges
+ * (2" to the centre, 1/16" to 1" deep, a 0 to 2" run, ±3" off the fin); these only keep a stored
+ * value a number the step's maths can draw. Depth must be above 0, because the step's share
+ * divides by it.
+ */
+const wingSchema = z.object({
+  station: z.number().min(0).max(SNAPSHOT_BOARD_LENGTH_MM.max),
+  depth: z.number().gt(0).max(50),
+  run: z.number().min(0).max(100),
+  radius: z.number().min(0).max(5000),
+  lock: z.enum(["front-trailing", "front-leading"]).nullable(),
+  finOffset: z.number().min(-200).max(200),
+});
+
 const outlineSpecSchema = z.object({
   length: z.number().min(SNAPSHOT_BOARD_LENGTH_MM.min).max(SNAPSHOT_BOARD_LENGTH_MM.max),
   widePointWidth: z.number(),
@@ -147,6 +171,8 @@ const outlineSpecSchema = z.object({
   tailAngle: z.number(),
   tailFullness: z.number(),
   tail: tailShapeSchema,
+  // Rule 7: strict per wing, forgiving as a whole — a malformed list reads as no wings.
+  wings: z.array(wingSchema).max(MAX_WINGS).optional().catch(undefined),
 });
 
 /** The five-station hand-set rocker (version 4, D-14) — four typed lifts, the centre always 0 and
@@ -405,6 +431,17 @@ function withoutAutomaticStarts<T extends object>(blank: T): T {
 }
 
 /**
+ * A parsed outline with a `wings` key that read as malformed (`undefined`) removed (rule 7).
+ * Returns a new object only when there is something to remove.
+ */
+function withoutUnreadWings<T extends object>(outline: T): T {
+  if (!("wings" in outline) || (outline as { wings?: unknown }).wings !== undefined) return outline;
+  const copy = { ...outline } as Record<string, unknown>;
+  delete copy.wings;
+  return copy as T;
+}
+
+/**
  * Validates and unwraps a stored (or incoming) snapshot back into usable design fields, filling
  * any field an older version omitted from the matching geometry module's own DEFAULT_* constant.
  * The rocker is always returned as five stations — a version-3 Bezier or a missing rocker is read
@@ -416,8 +453,10 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
   const parsed = designSnapshotSchema.parse(value);
   const design = parsed.design;
 
-  // The outline first: an older rocker is read at the board's OWN length.
-  const outline = (design.outline ?? DEFAULT_BOARD_SPEC.outline) as OutlineSpec;
+  // The outline first: an older rocker is read at the board's OWN length. Rule 7: a wings list
+  // that read as malformed comes back as a present-but-undefined key (F24) — delete it, so the
+  // board is key for key one that never had wings.
+  const outline = (design.outline ? withoutUnreadWings(design.outline) : DEFAULT_BOARD_SPEC.outline) as OutlineSpec;
   const rocker: FiveStationRocker = !design.rocker
     ? bezierToFiveStations(DEFAULT_ROCKER_SPEC, outline.length)
     : isBezierV3Rocker(design.rocker)

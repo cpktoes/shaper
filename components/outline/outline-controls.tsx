@@ -78,7 +78,20 @@ function withEndWidth(tail: TailShape, endWidth: Mm): TailShape {
   }
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+/**
+ * A sidebar section's ruled heading. Exported (quick 261014-wii, P10) so the WINGS sidebar wears
+ * the Template Builder's own headings; `action` draws a control at the right end of the ruled line
+ * (a wing's "Remove"). Without it the markup is exactly what it always was.
+ */
+export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  if (action) {
+    return (
+      <div className="mt-1.5 flex items-baseline justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+        <span>{children}</span>
+        {action}
+      </div>
+    );
+  }
   return (
     <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
       {children}

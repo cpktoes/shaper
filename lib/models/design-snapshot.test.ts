@@ -709,3 +709,64 @@ describe("design-snapshot", () => {
     });
   });
 });
+
+describe("wings ride on the outline, read forgivingly as a whole (rule 7, quick 261014-wii)", () => {
+  const BASE: DesignSnapshotFields = FIXTURES[0];
+  const oneWing = {
+    station: inchesToMm(11),
+    depth: inchesToMm(3 / 8),
+    run: inchesToMm(1 / 4),
+    radius: mm(0),
+    lock: "front-trailing" as const,
+    finOffset: mm(0),
+  };
+  const twoWing = {
+    station: inchesToMm(15.5),
+    depth: inchesToMm(1 / 4),
+    run: inchesToMm(1 / 2),
+    radius: inchesToMm(3 / 16),
+    lock: null,
+    finOffset: inchesToMm(-1),
+  };
+  const withWings = (wings: unknown) =>
+    ({ version: DESIGN_SNAPSHOT_VERSION, design: { ...BASE, outline: { ...BASE.outline, wings } } }) as unknown;
+
+  it("the version stays 5", () => {
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+  });
+
+  it("an outline saved without wings opens with no wings key", () => {
+    const parsed = parseSnapshot(buildSnapshot(BASE));
+    expect("wings" in parsed.outline).toBe(false);
+    expect(parsed.outline).toEqual(BASE.outline);
+  });
+
+  it("one wing and two wings round-trip value for value", () => {
+    for (const wings of [[oneWing], [oneWing, twoWing]]) {
+      const fields = { ...BASE, outline: { ...BASE.outline, wings } };
+      const parsed = parseSnapshot(JSON.parse(JSON.stringify(buildSnapshot(fields))));
+      expect(parsed.outline.wings).toEqual(wings);
+      expect(parsed.outline).toEqual(fields.outline);
+    }
+  });
+
+  it("removing the last wing saves an empty list, which opens as an empty list", () => {
+    const parsed = parseSnapshot(withWings([]));
+    expect(parsed.outline.wings).toEqual([]);
+  });
+
+  it.each([
+    ["three wings", [oneWing, twoWing, oneWing]],
+    ["a depth of 0", [{ ...oneWing, depth: 0 }]],
+    ["a negative run", [{ ...oneWing, run: -1 }]],
+    ["a string station", [{ ...oneWing, station: "11" }]],
+    ["a sideways lock", [{ ...oneWing, lock: "sideways" }]],
+    ["not a list", { station: 1 }],
+  ])("%s opens the board with no wings, every other field intact", (_label, wings) => {
+    const parsed = parseSnapshot(withWings(wings));
+    expect("wings" in parsed.outline).toBe(false);
+    expect(parsed.outline).toEqual(BASE.outline);
+    expect(parsed.fins).toEqual(BASE.fins);
+    expect(parsed.boardName).toBe(BASE.boardName);
+  });
+});

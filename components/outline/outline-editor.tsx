@@ -15,6 +15,13 @@ import { OutlineControls } from "./outline-controls";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
+import { WingControls } from "./wing-controls";
+import { WingsPanel } from "./wings-panel";
+import { useUnits } from "@/components/units-provider";
+import { nextWing } from "@/lib/geometry/wings";
+
+/** TEMPLATE's two tabs (quick 261014-wii, D3): the whole board, and the tail close up with its wings. */
+type TemplateTab = "viewer" | "wings";
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -63,6 +70,22 @@ export function OutlineEditor() {
    * already behaves the same way. On by default, so a reload or a return to TEMPLATE always
    * brings it back showing. */
   const [showGhost, setShowGhost] = useState(true);
+  /** The tab the shaper last picked (quick 261014-wii, D3) — view state, never saved, so coming back
+   * to TEMPLATE always opens on VIEWER. */
+  const [requestedTab, setRequestedTab] = useState<TemplateTab>("viewer");
+  const { system } = useUnits();
+  const wings = outline.wings ?? [];
+  const wingCount = wings.length;
+  const templateTabs = [
+    { id: "viewer" as const, label: "VIEWER" },
+    { id: "wings" as const, label: wingCount === 0 ? "ADD WINGS" : `WINGS · ${wingCount}` },
+  ];
+  const activeTab: TemplateTab = requestedTab;
+
+  /** "+ Add a wing", shared by the empty tab's card and the sidebar's button (D3). */
+  function handleAddWing() {
+    updateOutline({ wings: [...wings, nextWing(wings, null, outline.length, system)] });
+  }
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
   // nose-up in portrait, flat in landscape — computed fresh every render, never stored. On a fine
@@ -246,13 +269,18 @@ export function OutlineEditor() {
   return (
     <DesignScreenShell
       controls={
-        <OutlineControls
-          outline={outline}
-          geometry={outlineGeometry}
-          onChange={updateOutline}
-          showConstruction={showConstruction}
-          onToggleConstruction={handleToggleConstruction}
-        />
+        // D3: while the WINGS tab is open the sidebar holds ONLY the wing controls.
+        activeTab === "wings" ? (
+          <WingControls outline={outline} onChange={updateOutline} onAddWing={handleAddWing} />
+        ) : (
+          <OutlineControls
+            outline={outline}
+            geometry={outlineGeometry}
+            onChange={updateOutline}
+            showConstruction={showConstruction}
+            onToggleConstruction={handleToggleConstruction}
+          />
+        )
       }
       canvas={
         // Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
@@ -275,14 +303,17 @@ export function OutlineEditor() {
         // always sits here; only its internal chrome varies.
         <TabbedPanel
           bare={wideView}
-          tabs={[{ id: "viewer" as const, label: "VIEWER" }]}
-          active="viewer"
+          // Quick 261014-wii (D3): a second tab, ADD WINGS until the board has a wing, then
+          // WINGS · 1 or · 2 — the tail close up, with the sidebar swapped to the wing controls.
+          tabs={templateTabs}
+          active={activeTab}
+          onSelect={setRequestedTab}
           compactOnPhone="drawing"
           // Quick 261008-raw: the board's name at the band's right end. Wide View is `bare`, which
           // draws no band, so the name goes with it.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
-          {viewerContent}
+          {activeTab === "wings" ? <WingsPanel outline={outline} onAddWing={handleAddWing} /> : viewerContent}
         </TabbedPanel>
       }
       wideView={wideView}
@@ -294,7 +325,8 @@ export function OutlineEditor() {
         // it past the bottom edge where it could only be met mid-scroll. Hidden entirely, not
         // resized, while wide view is on (DesignScreenShell hides the whole sidebar then) — a
         // quick task already had to fix this footer once because it was only pinned by luck.
-        process.env.NODE_ENV === "development" ? (
+        // P10: on the VIEWER tab only — the WINGS sidebar has no template values to copy.
+        process.env.NODE_ENV === "development" && activeTab === "viewer" ? (
           <div className="flex-none border-t border-surf-line-faint p-4">
             <Button
               variant="ghost"
