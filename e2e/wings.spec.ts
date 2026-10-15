@@ -160,4 +160,148 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "39.000");
     await expect(closeUp.locator('[data-output-rail="Behind wing 2"]')).toBeVisible();
   });
+
+  test("desktop: Got it closes the pop-up, Open FINS goes to FINS, and coming back lands on the VIEWER tab", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    // A real click on "Got it" — not Escape — closes the pop-up (addFirstWing asserts it gone).
+    await addFirstWing(page);
+    await expect(page.getByRole("tab", { name: "WINGS · 1" })).toHaveAttribute("aria-selected", "true");
+
+    // Remove it and add it again, so the pop-up opens a second time, and take Open FINS.
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Remove" }).click();
+    await sidebar.getByRole("button", { name: "+ Add a wing" }).click();
+    await page.getByRole("dialog", { name: "Dial in your wing placement" }).getByRole("link", { name: "Open FINS" }).click();
+    await expect(page).toHaveURL(/\/design\/fins$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    // The founder's ruling (2026-10-15): coming back from FINS lands on VIEWER, the wing still there.
+    await page.goBack();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect(page.getByRole("tab", { name: "VIEWER" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "WINGS · 1" })).toBeVisible();
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Plan 02 (2026-10-15, D5, P11): the grab points, and the window held still while one is held.
+  // ---------------------------------------------------------------------------------------------
+
+  test("desktop: with construction on each wing has two grab points, and pulling the outer one moves the wing along the rail", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+    const grabs = page.locator("[data-wing-close-up] [data-wing-grab]");
+    await expect(grabs).toHaveCount(0);
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await expect(grabs).toHaveCount(4);
+    await expect(page.locator("aside")).toContainText("View Construction Lines(the wing's grab points too)");
+
+    const position = wingRow(page, 2, "Position from tail");
+    const before = inchesOf(await position.textContent());
+    const ppi = await pixelsPerInch(page);
+    const start = await grabCentre(page, 2, "outer");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x, start.y - ppi, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => Math.abs(inchesOf(await position.textContent()) - before - 1)).toBeLessThanOrEqual(1 / 16 + 1e-9);
+  });
+
+  test("desktop: the close-up's window holds still while a grab point is held, even past 24 inches, and grows when it lifts", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const closeUp = page.locator("[data-wing-close-up]");
+    await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
+
+    const position = wingRow(page, 2, "Position from tail");
+    const before = inchesOf(await position.textContent());
+    const ppi = await pixelsPerInch(page);
+    const start = await grabCentre(page, 2, "outer");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await expect(closeUp).toHaveAttribute("data-held", "true");
+    // A small pull first: the window reads what it read before the press.
+    await page.mouse.move(start.x, start.y - ppi / 2, { steps: 4 });
+    await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
+    // One move that carries the wing to 25" — past the 24" the window grows at.
+    await page.mouse.move(start.x, start.y - (25 - before) * ppi);
+    await expect.poll(async () => inchesOf(await position.textContent())).toBeGreaterThan(24);
+    await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
+    await page.mouse.up();
+    await expect(closeUp).not.toHaveAttribute("data-held", "true");
+    const after = inchesOf(await position.textContent());
+    // The window rule again: the furthest wing plus 3".
+    await expect(closeUp).toHaveAttribute("data-window-hi-in", (after + 3).toFixed(3));
+  });
+
+  test("desktop: the inner grab point sets a wing's depth in and out and its run along the stringer", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const depth = wingRow(page, 1, "Depth");
+    const run = wingRow(page, 1, "Run along the stringer");
+    const depthBefore = inchesOf(await depth.textContent());
+    const runBefore = inchesOf(await run.textContent());
+    const ppi = await pixelsPerInch(page);
+
+    // Toward the stringer (the grab points sit on the right rail, so toward the left).
+    let start = await grabCentre(page, 1, "inner");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x - ppi / 2, start.y, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => inchesOf(await depth.textContent())).toBeGreaterThan(depthBefore);
+
+    // Tail-ward: the run grows.
+    start = await grabCentre(page, 1, "inner");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x, start.y + ppi, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(async () => inchesOf(await run.textContent())).toBeGreaterThan(runBefore);
+  });
 });
+
+/** A wing's slider row label (`Depth — 3/8"`), wherever the wing controls are drawn. */
+function wingRow(page: Page, wing: number, label: string) {
+  return page.locator(`[data-wing-controls="${wing}"]`).getByText(new RegExp(`^${label} — `));
+}
+
+/** The inches a row's label reads — `Position from tail — 15 1/2"` is 15.5. Imperial only. */
+function inchesOf(text: string | null): number {
+  const value = (text ?? "").split(" — ")[1] ?? "";
+  const m = value.match(/^(-?)(\d+)?\s*(?:(\d+)\/(\d+))?"/);
+  if (!m) throw new Error(`not an inch reading: ${text}`);
+  const whole = Number(m[2] ?? 0);
+  const fraction = m[3] ? Number(m[3]) / Number(m[4]) : 0;
+  return (m[1] ? -1 : 1) * (whole + fraction);
+}
+
+/** Screen pixels per inch of board on the close-up: its own units per inch times the svg's scale. */
+async function pixelsPerInch(page: Page): Promise<number> {
+  return page
+    .locator("[data-wing-close-up]")
+    .evaluate((svg) => Number((svg as SVGSVGElement).dataset.unitsPerInch) * (svg as SVGSVGElement).getScreenCTM()!.a);
+}
+
+/** A grab point's centre on screen. */
+async function grabCentre(page: Page, wing: number, point: "outer" | "inner"): Promise<{ x: number; y: number }> {
+  const box = await page.locator(`[data-wing-grab="${point}"][data-wing="${wing}"]`).boundingBox();
+  if (!box) throw new Error(`wing ${wing}'s ${point} grab point has no box`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   CalloutChip,
   CalloutSizeProvider,
@@ -16,10 +16,26 @@ import { useUnits } from "@/components/units-provider";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import { formatDim, formatMark, stationLabel } from "@/lib/geometry/measure-display";
+import {
+  OUTLINE_DRAG_HIT_PX,
+  WING_GRAB_DROP_PX,
+  nearestWingDragTarget,
+  solveWingDrag,
+  wingDragPoints,
+  type OutlineDragPoint,
+  type WingDragTarget,
+} from "@/lib/geometry/outline-drag";
 import { MEASURE_STATION_MM, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { frontFinEdges } from "@/lib/geometry/wing-lock";
-import { placedWings, wingReadouts, wingedHalfWidthAt } from "@/lib/geometry/wings";
+import {
+  placedWings,
+  wingReadouts,
+  wingedHalfWidthAt,
+  type FrontFinEdges,
+  type Wing,
+} from "@/lib/geometry/wings";
+import { DRAG_TARGET_CORE_PX, DRAG_TARGET_OUTER_PX, DRAG_TARGET_RING_PX } from "./outline-viewer";
 import { CLOSE_UP, closeUpFrame, spreadApart, widestHalfWidthIn, wingWindow } from "./wing-view-layout";
 
 /**
@@ -33,8 +49,16 @@ import { CLOSE_UP, closeUpFrame, spreadApart, widestHalfWidthIn, wingWindow } fr
  *
  * Always drawn tail-down: the window is near-square, so turning it buys nothing. No zoom: the
  * sketch's WINGS toolbar has only the construction and wide-view buttons. Its frame maths is pure in
- * `wing-view-layout.ts`. `window` is optional so plan 02 can hold the window still while a grab
- * point is held; the grab points themselves are plan 02's, drawn where the construction dots are.
+ * `wing-view-layout.ts`.
+ *
+ * The grab points (plan 02, 2026-10-15, D5, P11): with Show construction on and an
+ * `onWingsChange` handler, each wing draws two points exactly as the VIEWER draws its drag targets
+ * — the outer one at the step's outer corner, the inner one hung 22 dots below the inner corner on
+ * the depth dimension's line. A press picks one with `nearestWingDragTarget` (one delegated handler
+ * on the svg, as the VIEWER's), every move solves with `solveWingDrag`, and the whole new wings list
+ * goes up. **The window holds still from press to lift**: in the sketch's own check, a window that
+ * re-framed mid-drag carried the wing 4 1/2" from a 1" pull, so the window in force at the press is
+ * kept in state until the pointer lifts, and only then does the window rule apply again.
  *
  * Every number a shaper reads goes through `measure-display.ts` (CLAUDE.md Rule 2, D9): a wing's
  * position and every width is a DIM (`formatDim`), its depth and run are MARKS (`formatMark`). The
@@ -50,8 +74,13 @@ export interface WingCloseUpProps {
   finMarks: readonly FinMark[];
   showFins: boolean;
   showConstruction: boolean;
-  /** Plan 02 freezes the window during a drag; absent, it follows `wingWindow`. */
+  /** A window to draw instead of `wingWindow`'s — the close-up holds its own still during a drag. */
   window?: { lo: Mm; hi: Mm };
+  /** The whole new wings list from a grab-point drag. Omitted on a locked board, which then draws
+   * no grab points and attaches no handlers (the VIEWER's own rule for `onOutlineDrag`). */
+  onWingsChange?: (wings: Wing[]) => void;
+  /** The front fin's edges as the store places them, for a locked wing's offset drag. */
+  edges?: FrontFinEdges | null;
 }
 
 /** The hair either side of a corner the sketch reads widths at (1e-6"). */
@@ -88,13 +117,19 @@ export function WingCloseUp({
   showFins,
   showConstruction,
   window: frozenWindow,
+  onWingsChange,
+  edges: storeEdges = null,
 }: WingCloseUpProps) {
   const { system } = useUnits();
   const svgRef = useRef<SVGSVGElement>(null);
+  /** The live grab, from press to lift: which point, and the drop it was drawn with. */
+  const dragRef = useRef<{ target: WingDragTarget; dropMm: Mm } | null>(null);
+  /** The window in force at the press, held until the lift (D5). */
+  const [heldWindow, setHeldWindow] = useState<{ lo: Mm; hi: Mm } | null>(null);
 
   const wings = placedWings(outline.wings ?? [], geometry.length);
   const hasWings = wings.length > 0;
-  const win = frozenWindow ?? wingWindow(geometry.length, wings.map((w) => w.station));
+  const win = frozenWindow ?? heldWindow ?? wingWindow(geometry.length, wings.map((w) => w.station));
   const loIn = mmToInches(win.lo);
   const hiIn = mmToInches(win.hi);
   const widest = widestHalfWidthIn(hasWings ? [geometry.points, baseGeometry.points] : [geometry.points], loIn, hiIn);
@@ -102,6 +137,60 @@ export function WingCloseUp({
   const { toX, toY } = frame;
   const fit = useSvgFitScale(svgRef, frame.width, frame.height);
   const sizes = pinnedCalloutSizes(fit);
+
+  // The grab points (D5, P11). Screen-pixel sizes are divided by the live fit, so a point keeps its
+  // screen size in every window, as the VIEWER's do; the drop and the hit radius are converted to
+  // board millimetres at the same scale before the pure solve sees them.
+  const allWings = outline.wings ?? [];
+  const grabbing = showConstruction && onWingsChange !== undefined;
+  const handleUnit = fit > 0 ? 1 / fit : 1;
+  const unitsToMm = (units: number) => inchesToMm(units / frame.unitsPerInch);
+  const dropMm = unitsToMm(WING_GRAB_DROP_PX * handleUnit);
+  const hitRadiusUnits = OUTLINE_DRAG_HIT_PX * handleUnit;
+  const hitRadiusMm = unitsToMm(hitRadiusUnits);
+  const grabPoints = grabbing ? wingDragPoints(geometry, allWings, dropMm) : [];
+
+  /** A pointer's board position: the root svg's own matrix (the close-up is never turned or zoomed),
+   * then the frame's `toX`/`toY` run backwards. */
+  function toBoardPoint(event: ReactPointerEvent<SVGSVGElement>): OutlineDragPoint | null {
+    const ctm = svgRef.current?.getScreenCTM();
+    if (!ctm) return null;
+    const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+    return {
+      station: inchesToMm(loIn + (frame.toY(loIn) - local.y) / frame.unitsPerInch),
+      halfWidth: inchesToMm((local.x - frame.cx) / frame.unitsPerInch),
+    };
+  }
+
+  function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!grabbing) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    const hit = nearestWingDragTarget(grabPoints, boardPoint, hitRadiusMm);
+    if (!hit) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { target: hit, dropMm };
+    setHeldWindow(win);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    const drag = dragRef.current;
+    if (!drag || !onWingsChange) return;
+    const boardPoint = toBoardPoint(event);
+    if (!boardPoint) return;
+    onWingsChange(solveWingDrag(geometry, allWings, drag.target, boardPoint, drag.dropMm, storeEdges, system));
+  }
+
+  function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    // The window rule applies again from here: a wing carried past 24" now grows the window.
+    setHeldWindow(null);
+  }
 
   const lengthIn = mmToInches(geometry.length);
   const podIn = mmToInches(geometry.tailPodStation);
@@ -227,6 +316,12 @@ export function WingCloseUp({
           data-wing-close-up
           data-window-lo-in={loIn.toFixed(3)}
           data-window-hi-in={hiIn.toFixed(3)}
+          data-units-per-inch={frame.unitsPerInch.toFixed(4)}
+          data-held={heldWindow ? "true" : undefined}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={handlePointerEnd}
           role="img"
           aria-label="The tail close up, with each wing's step"
         >
@@ -285,8 +380,35 @@ export function WingCloseUp({
             </>
           )}
 
-          {/* 4. With Show construction: each wing's step start and inner corner. Plan 02's grab points go here. */}
+          {/* 4. With Show construction: each wing's two grab points, drawn as the VIEWER draws a drag
+              target — board-fill disc, accent ring, warning core — or, with no handler (a locked
+              board), plain dots at the step's start and inner corner. */}
+          {grabbing &&
+            allWings.map((_, i) => (
+              <g key={i} data-wing-construction={i + 1} pointerEvents="none">
+                {grabPoints
+                  .filter((p) => p.target.wing === i)
+                  .map((p) => {
+                    const x = toX(mmToInches(p.point.halfWidth));
+                    const y = toY(mmToInches(p.point.station));
+                    return (
+                      <g key={p.target.point}>
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={DRAG_TARGET_OUTER_PX * handleUnit}
+                          fill="var(--outline-board-fill)"
+                          stroke="var(--color-surf-accent-ink)"
+                          strokeWidth={DRAG_TARGET_RING_PX * handleUnit}
+                        />
+                        <circle cx={x} cy={y} r={DRAG_TARGET_CORE_PX * handleUnit} fill="var(--color-surf-warning)" />
+                      </g>
+                    );
+                  })}
+              </g>
+            ))}
           {showConstruction &&
+            !grabbing &&
             readouts.map((r, i) => (
               <g key={i} data-wing-construction={i + 1}>
                 <circle
@@ -432,6 +554,23 @@ export function WingCloseUp({
                 </g>
               );
             })}
+
+          {/* 10. The grab areas, last so they sit above everything they cover. No press handler of
+              their own — the svg's one delegated handler picks (as the VIEWER's); these are the
+              cursor and the `data-wing-grab` test hook. */}
+          {grabPoints.map((p) => (
+            <circle
+              key={`${p.target.wing}-${p.target.point}`}
+              data-wing-grab={p.target.point}
+              data-wing={p.target.wing + 1}
+              cx={toX(mmToInches(p.point.halfWidth))}
+              cy={toY(mmToInches(p.point.station))}
+              r={hitRadiusUnits}
+              fill="transparent"
+              className="cursor-grab touch-none select-none active:cursor-grabbing"
+              style={{ WebkitTouchCallout: "none" }}
+            />
+          ))}
         </svg>
       </ViewerOrientationProvider>
     </CalloutSizeProvider>

@@ -114,13 +114,13 @@ const CONSTRUCTION_SIDE = -1;
  * changes size with the window is a usability problem, not only a cosmetic one. Divided by the
  * live fit scale at render.
  */
-const DRAG_TARGET_OUTER_PX = 7;
-const DRAG_TARGET_RING_PX = 1.6;
-const DRAG_TARGET_CORE_PX = 2.6;
+export const DRAG_TARGET_OUTER_PX = 7;
+export const DRAG_TARGET_RING_PX = 1.6;
+export const DRAG_TARGET_CORE_PX = 2.6;
 /** The picked-point halo ring (D-07, 260909-ktq): one extra concentric circle, drawn only around
  * whichever point is currently picked, in the same accent stroke the drag-target ring already
  * uses. Only ever drawn on a touch pick, so a mouse-driven desktop screenshot cannot change. */
-const DRAG_SELECTED_HALO_PX = 11;
+export const DRAG_SELECTED_HALO_PX = 11;
 /** Fixed reference knots — deliberately plain, so only grabbable points look grabbable. */
 const KNOT_DOT_PX = 3;
 /**

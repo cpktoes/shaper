@@ -16,7 +16,7 @@ import { WingCloseUp } from "./wing-close-up";
  * `components/viewer/toolbar-button.test.ts` pins.
  *
  * The toolbar has only the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
- * VIEWER's: Show/Hide construction lines (the grab points follow it in plan 02, D5) and wide view.
+ * VIEWER's: Show/Hide construction lines (the wings' grab points follow it, D5) and wide view.
  * The close-up has no zoom and is never turned (P4). The handlers are the editor's, so the two tabs
  * share one construction setting and one wide view.
  */
@@ -39,7 +39,8 @@ export function WingsPanel({
   wideView,
   onToggleWideView,
 }: WingsPanelProps) {
-  const { outlineGeometry, baseOutlineGeometry, finPlacement } = useDesign();
+  const { outlineGeometry, baseOutlineGeometry, finPlacement, updateOutline, locked: boardLocked, wingFrontFin } =
+    useDesign();
   const locked = useControlsLocked();
   const wingCount = outline.wings?.length ?? 0;
 
@@ -73,6 +74,11 @@ export function WingsPanel({
           finMarks={finPlacement.marks}
           showFins={showFins}
           showConstruction={showConstruction}
+          // Plan 02 (D5): the grab points write the whole wings list back. A locked board has none —
+          // no handler, no grab areas, no press handling (the VIEWER's own rule); the store's lock
+          // guard backs it.
+          onWingsChange={boardLocked ? undefined : (wings) => updateOutline({ wings })}
+          edges={wingFrontFin}
         />
       </div>
 
