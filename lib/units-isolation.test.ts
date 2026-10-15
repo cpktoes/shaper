@@ -345,6 +345,8 @@ describe("the design screens read every measurement through the display boundary
     // Quick 261014-wii: the WINGS tab's close-up of the tail — every number it prints reads through
     // the boundary (a wing's position and the widths as dims, its depth and run as marks).
     { file: "components/outline/wing-close-up.tsx", converted: true },
+    // Quick 261014-wii: the WINGS sidebar — its sliders and labels read through the boundary too.
+    { file: "components/outline/wing-controls.tsx", converted: true },
     { file: "components/rocker/rocker-controls.tsx", converted: true },
     { file: "components/rocker/rocker-datasheet.tsx", converted: true },
     { file: "components/rocker/rocker-viewer.tsx", converted: true },

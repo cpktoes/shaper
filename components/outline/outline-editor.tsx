@@ -17,6 +17,7 @@ import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
 import { WingControls } from "./wing-controls";
 import { WingsPanel } from "./wings-panel";
+import { WingDialInDialog } from "./wing-dial-in-dialog";
 import { useUnits } from "@/components/units-provider";
 import { nextWing } from "@/lib/geometry/wings";
 
@@ -82,6 +83,8 @@ export function OutlineEditor() {
    * setting survives a trip to FINS and back, which remounts this screen. */
   const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
   const showFins = showFinsOverride ?? wingCount > 0;
+  /** The "Dial in your wing placement" pop-up (D4), opened by the first wing. */
+  const [dialInOpen, setDialInOpen] = useState(false);
   const templateTabs = [
     { id: "viewer" as const, label: "VIEWER" },
     { id: "wings" as const, label: wingCount === 0 ? "ADD WINGS" : `WINGS · ${wingCount}` },
@@ -92,8 +95,12 @@ export function OutlineEditor() {
   function handleAddWing() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
     updateOutline({ wings: [...wings, nextWing(wings, wingFrontFin, outline.length, system)] });
-    // D4, P6: the first wing switches Show fins on.
-    if (wingCount === 0) setShowFinsOverride(true);
+    // D4, P6, D7: the first wing switches Show fins on and asks the shaper to dial it in against
+    // FINS — every time the board goes from no wings to one, as sketched.
+    if (wingCount === 0) {
+      setShowFinsOverride(true);
+      setDialInOpen(true);
+    }
   }
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
@@ -264,7 +271,8 @@ export function OutlineEditor() {
               // handlers when this is omitted (quick 261008-lsy). The store's guard backs it.
               onOutlineDrag={locked ? undefined : updateOutline}
               finMarks={finPlacement.marks}
-              hideFinMarks
+              // D4: Show fins puts the fin marks on the VIEWER too — marks only, no dims.
+              hideFinMarks={!showFins}
               pinCalloutText
               orientation={boardOrientation}
             />
@@ -276,11 +284,21 @@ export function OutlineEditor() {
   );
 
   return (
+    <>
     <DesignScreenShell
       controls={
         // D3: while the WINGS tab is open the sidebar holds ONLY the wing controls.
         activeTab === "wings" ? (
-          <WingControls outline={outline} onChange={updateOutline} onAddWing={handleAddWing} />
+          <WingControls
+            outline={outline}
+            onChange={updateOutline}
+            onAddWing={handleAddWing}
+            frontFin={wingFrontFin}
+            showConstruction={showConstruction}
+            onToggleConstruction={handleToggleConstruction}
+            showFins={showFins}
+            onToggleShowFins={() => setShowFinsOverride(!showFins)}
+          />
         ) : (
           <OutlineControls
             outline={outline}
@@ -288,6 +306,8 @@ export function OutlineEditor() {
             onChange={updateOutline}
             showConstruction={showConstruction}
             onToggleConstruction={handleToggleConstruction}
+            showFins={showFins}
+            onToggleShowFins={() => setShowFinsOverride(!showFins)}
           />
         )
       }
@@ -362,5 +382,7 @@ export function OutlineEditor() {
       }
       phonePinned="66dvh"
     />
+    <WingDialInDialog open={dialInOpen} onOpenChange={setDialInOpen} />
+    </>
   );
 }
