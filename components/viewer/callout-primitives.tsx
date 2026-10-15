@@ -509,6 +509,14 @@ export interface CalloutChipProps {
    * y2 parameter to get wrong. Omit for a chip with no single point on the board (e.g. WP offset,
    * grouped under the Widepoint chip instead). */
   leaderToX?: number;
+  /**
+   * Where the leader actually lands, when the chip has been pushed off its own station to clear a
+   * neighbour (quick 261014-wii, P5, D6): given and at least half a unit from `y`, the leader is an
+   * L — out from the chip at its own y, then along to the true station, then in to `leaderToX` —
+   * so the chip keeps pointing at the place it names. Omitted (or within half a unit), the markup
+   * is exactly the straight leader it always was.
+   */
+  leaderAtY?: number;
 }
 
 /** A named input chip: a bordered box holding a name + value pair, optionally leadered to its
@@ -525,7 +533,15 @@ export interface CalloutChipProps {
  * `outline-viewer.tsx`), so the chip hangs straight DOWN from the anchor instead, centred on the
  * station across — down is correct because `+y` in `UprightAt`'s upright frame is screen-down,
  * which is away from the board. */
-export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-callout-label)", leaderToX }: CalloutChipProps) {
+export function CalloutChip({
+  x,
+  y,
+  name,
+  value,
+  nameColor = "var(--outline-callout-label)",
+  leaderToX,
+  leaderAtY,
+}: CalloutChipProps) {
   const sizes = useCalloutSizes();
   const horizontal = useViewerOrientation() === "horizontal";
   const rectX = horizontal ? x - sizes.chipW / 2 : x - sizes.chipW;
@@ -539,9 +555,17 @@ export function CalloutChip({ x, y, name, value, nameColor = "var(--outline-call
     // `data-board-silhouette`, `data-drag-target` and `data-output-rail`) to find the link-preview
     // picture's crop box, so the board and its cards are kept and the site nav and toolbar aren't.
     <g data-callout-chip={name}>
-      {leaderToX !== undefined && (
-        <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
-      )}
+      {leaderToX !== undefined &&
+        (leaderAtY !== undefined && Math.abs(leaderAtY - y) >= 0.5 ? (
+          <path
+            d={`M ${x} ${y} L ${leaderToX - 12 * u} ${y} L ${leaderToX - 12 * u} ${leaderAtY} L ${leaderToX} ${leaderAtY}`}
+            fill="none"
+            stroke="var(--outline-station-line)"
+            strokeWidth={u}
+          />
+        ) : (
+          <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
+        ))}
       <UprightAt x={x} y={y}>
         <CalloutChipFrame x={rectX} y={rectY} width={sizes.chipW} height={sizes.chipH} />
         <text
@@ -579,6 +603,13 @@ export interface OutputRailProps {
    * Defaults to the baseline constant for a board that needs no extra frame.
    */
   valueX?: number;
+  /**
+   * Where the value and its name draw, when the read-out has been pushed off its station to clear
+   * a neighbour (quick 261014-wii, D6, the sketch's `spread`). The tick stays at `(edgeX, y)`, the
+   * true station, and the extension line becomes an L that carries it across to the read-out.
+   * Omitted, the markup is exactly what it always was.
+   */
+  readoutY?: number;
 }
 
 /** A derived value read out to the shared output rail: extension line from the board edge, a tick
@@ -594,24 +625,36 @@ export interface OutputRailProps {
  * Rotated, the extension line runs vertically and cannot be straddled, so both lines sit above
  * its far end instead (the line already stops `CALLOUT_VALUE_GAP` short of the anchor, which
  * supplies the gap), in the same reading order — value over name — centred on the station. */
-export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X }: OutputRailProps) {
+export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_VALUE_X, readoutY }: OutputRailProps) {
   const sizes = useCalloutSizes();
   const horizontal = useViewerOrientation() === "horizontal";
   const u = useViewerZoomUnit();
   const reachX = valueX - CALLOUT_VALUE_GAP * u;
+  // Where the text draws: the station itself unless the read-out was pushed aside (`readoutY`).
+  const ty = readoutY ?? y;
+  const bent = readoutY !== undefined && Math.abs(readoutY - y) >= 0.5;
   return (
     // Quick 260930-fjm, Task 4: no stable hook for "a station read-out" existed before this — see
     // the `data-callout-chip` note on `CalloutChip` above; this is the same crop-box union's other
     // half, the three Nose/Center/Tail labels.
     <g data-output-rail={station}>
-      <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
+      {bent ? (
+        <path
+          d={`M ${edgeX} ${y} L ${reachX - 14 * u} ${y} L ${reachX - 14 * u} ${ty} L ${reachX} ${ty}`}
+          fill="none"
+          stroke="var(--outline-station-line)"
+          strokeWidth={u}
+        />
+      ) : (
+        <line x1={edgeX} y1={y} x2={reachX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
+      )}
       <DimensionTick x={edgeX} y={y} color="var(--outline-dim-ink)" />
-      <UprightAt x={valueX} y={y}>
+      <UprightAt x={valueX} y={ty}>
         <text
           x={valueX}
           // The 2-unit lift off the extension line is a gap, not a size, so it follows the zoom unit
           // too (quick 261007-fnz plan 02): exactly 2 at 1x, the same 2 screen-scaled units zoomed.
-          y={horizontal ? y - sizes.name * 1.15 : y - 2 * u}
+          y={horizontal ? ty - sizes.name * 1.15 : ty - 2 * u}
           textAnchor={horizontal ? "middle" : undefined}
           style={{ fontSize: sizes.value, fontWeight: 700, fontFamily: "var(--font-body)" }}
           fill="var(--outline-ink)"
@@ -620,7 +663,7 @@ export function OutputRail({ edgeX, y, value, station, valueX = OUTLINE_OUTPUT_V
         </text>
         <text
           x={valueX}
-          y={horizontal ? y : y + sizes.name}
+          y={horizontal ? ty : ty + sizes.name}
           textAnchor={horizontal ? "middle" : undefined}
           style={{ fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.1em" }}
           fill="var(--outline-callout-label)"

@@ -42,7 +42,9 @@ import {
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { formatDim, formatLength, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
+import { formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
+import { placedWings } from "@/lib/geometry/wings";
+import { spreadApart } from "./wing-view-layout";
 import { useUnits } from "@/components/units-provider";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import {
@@ -947,6 +949,26 @@ export function OutlineViewer({
     ? widepointChipY
     : widepointChipY + OUTLINE_CHIP_HEIGHT * zoomUnit + CHIP_STACK_GAP * zoomUnit;
 
+  // Wings (quick 261014-wii, D3, P5): a WING n chip per wing in the left gutter, naming its depth and
+  // position. The tail's chips — TAIL BLOCK, then each wing — are spread apart from the tail up so
+  // none touches the next, and the WIDEPOINT / WP OFFSET pair stays exactly where it is: a chip that
+  // would land on it jumps above it, its L leader keeping the wing's true station (the sketch's own
+  // VIEWER put WING 2 at 30" on WP OFFSET, F26). With no wings nothing here draws and TAIL BLOCK is
+  // exactly the chip it always was.
+  const viewerWings = placedWings(outline.wings ?? [], geometry.length);
+  const tailChipHalf = horizontal ? calloutSizes.chipW / 2 : calloutSizes.chipH / 2;
+  const tailChips = [
+    ...(geometry.tailBlockPinned ? [] : [{ y: tailBlockChipY, half: tailChipHalf }]),
+    ...viewerWings.map((w) => ({ y: lenToY(mmToInches(w.station)), half: tailChipHalf })),
+  ];
+  const wpBlock = horizontal
+    ? { top: widepointChipY - calloutSizes.chipW / 2, bottom: widepointChipY + calloutSizes.chipW / 2 }
+    : { top: widepointChipY - calloutSizes.chipH / 2, bottom: wpOffsetChipY + calloutSizes.chipH / 2 };
+  const tailChipYs =
+    viewerWings.length > 0 ? spreadApart(tailChips, CHIP_STACK_GAP * zoomUnit, [wpBlock]) : [];
+  const wingChipYs = tailChipYs.slice(geometry.tailBlockPinned ? 0 : 1);
+  const tailBlockSpreadY = !geometry.tailBlockPinned && viewerWings.length > 0 ? tailChipYs[0] : undefined;
+
   // The pointer, shared (261007-fnz, D6). TEMPLATE's own press handler runs first — in the
   // capture phase, ahead of the shared zoom's own press handler on the same svg — so a mouse or pen
   // press within a drag point's reach drags that point exactly as before, at any zoom, and the zoom
@@ -1194,7 +1216,7 @@ export function OutlineViewer({
       )}
       {!hideFinMarks &&
         finMarksSvg.map((fm, i) => (
-          <g key={i}>
+          <g key={i} data-fin-mark>
             <line
               x1={fm.x1}
               y1={fm.y1}
@@ -1254,15 +1276,36 @@ export function OutlineViewer({
                 leaderToX={pxX(-wpHalfWidthIn)}
               />
               <CalloutChip x={wpOffsetChipX} y={wpOffsetChipY} name="WP OFFSET" value={wpOffsetText} />
-              {!geometry.tailBlockPinned && (
+              {!geometry.tailBlockPinned &&
+                (tailBlockSpreadY === undefined ? (
+                  <CalloutChip
+                    x={frame.chipRightX}
+                    y={tailBlockChipY}
+                    name="TAIL BLOCK"
+                    value={tailBlockValue}
+                    leaderToX={pxX(-halfTailBlockWidthIn)}
+                  />
+                ) : (
+                  <CalloutChip
+                    x={frame.chipRightX}
+                    y={tailBlockSpreadY}
+                    name="TAIL BLOCK"
+                    value={tailBlockValue}
+                    leaderToX={pxX(-halfTailBlockWidthIn)}
+                    leaderAtY={tailBlockChipY}
+                  />
+                ))}
+              {viewerWings.map((w, i) => (
                 <CalloutChip
+                  key={`wing-${i}`}
                   x={frame.chipRightX}
-                  y={tailBlockChipY}
-                  name="TAIL BLOCK"
-                  value={tailBlockValue}
-                  leaderToX={pxX(-halfTailBlockWidthIn)}
+                  y={wingChipYs[i]}
+                  name={`WING ${i + 1}`}
+                  value={`${formatMark(w.depth, system)} @ ${formatDim(w.station, system)}`}
+                  leaderToX={pxX(-xAtStationIn(mmToInches(w.station)))}
+                  leaderAtY={lenToY(mmToInches(w.station))}
                 />
-              )}
+              ))}
           </>
         </>
       )}

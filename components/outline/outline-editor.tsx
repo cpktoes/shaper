@@ -77,6 +77,11 @@ export function OutlineEditor() {
   const { system } = useUnits();
   const wings = outline.wings ?? [];
   const wingCount = wings.length;
+  /** Show fins (quick 261014-wii, D4, P6): screen state like Show construction, never saved. `null`
+   * means the shaper has not chosen, and then the fins show while the board has a wing — so the
+   * setting survives a trip to FINS and back, which remounts this screen. */
+  const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
+  const showFins = showFinsOverride ?? wingCount > 0;
   const templateTabs = [
     { id: "viewer" as const, label: "VIEWER" },
     { id: "wings" as const, label: wingCount === 0 ? "ADD WINGS" : `WINGS · ${wingCount}` },
@@ -87,6 +92,8 @@ export function OutlineEditor() {
   function handleAddWing() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
     updateOutline({ wings: [...wings, nextWing(wings, wingFrontFin, outline.length, system)] });
+    // D4, P6: the first wing switches Show fins on.
+    if (wingCount === 0) setShowFinsOverride(true);
   }
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
@@ -315,7 +322,19 @@ export function OutlineEditor() {
           // draws no band, so the name goes with it.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
-          {activeTab === "wings" ? <WingsPanel outline={outline} onAddWing={handleAddWing} /> : viewerContent}
+          {activeTab === "wings" ? (
+            <WingsPanel
+              outline={outline}
+              onAddWing={handleAddWing}
+              showConstruction={showConstruction}
+              onToggleConstruction={handleToggleConstruction}
+              showFins={showFins}
+              wideView={wideView}
+              onToggleWideView={handleToggleWideView}
+            />
+          ) : (
+            viewerContent
+          )}
         </TabbedPanel>
       }
       wideView={wideView}
