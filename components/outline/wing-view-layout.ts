@@ -24,13 +24,22 @@ export const WINDOW_ROOM_IN = 3;
  * The close-up's frame, in its own viewBox units — the sketch's numbers. `padTop` leaves the
  * toolbar's row clear (D6); `gutterLeft` holds the WING chips and the station dimensions;
  * `railRight` holds the read-outs.
+ *
+ * `railRight` is 268, not the sketch's 240 (quick 261015-hz7, 2026-10-15, D7, F10): on the founder's
+ * walk at 1024 × 768 the full frame drew "Ahead of wing 1" and "Ahead of wing 2" 8.3 and 10.5 px past
+ * its right edge, their last letters cut off — 20 side room + 240 − 124 value offset left the
+ * read-outs 136 units. At 268 they get 164, the compact frame's own 164, which at the pinned floor
+ * (0.66) is 108.2 px against the longest label's 103.55 px ("Ahead of wing 2", letter-spaced).
+ * Measured over the five boards plus 60" and 120" boards, every full frame keeps at least 4.7 px
+ * beyond that label. The founder's walk now draws compact at 1024 × 768; at 1280 × 800 the default
+ * board's window grows from 882 to 910 units wide (fit 0.912 → 0.884).
  */
 export const CLOSE_UP = {
   height: 620,
   padTop: 56,
   padBottom: 16,
   gutterLeft: 214,
-  railRight: 240,
+  railRight: 268,
   sideRoom: 20,
   chipInset: 14,
   valueOffset: 124,
@@ -52,11 +61,12 @@ export const CLOSE_UP = {
  * units wide (`pinnedCalloutSizes(MIN_PINNED_FIT_SCALE).chipW`), so 150 put its left edge at −21.6,
  * clipped (measured F27); 14 inset + 158 + 8 to spare is 180.
  *
- * Two of the plan's numbers moved when the phones were run (2026-10-15): the right rail stays the
- * full frame's 240, not 190 — at the pinned floor the read-out "AHEAD OF WING 1", letter-spaced,
- * ran 37–39 units past 190 on an upright phone and at 1024 × 768 — and the bottom pad is 24, not
- * 16, because the tail block's name line, drawn a name's height under its station, ran 2.2 dots
- * below the drawing on a phone held sideways.
+ * Two of the plan's numbers moved when the phones were run (2026-10-15): the right rail is 240, not
+ * 190 — at the pinned floor the read-out "AHEAD OF WING 1", letter-spaced, ran 37–39 units past 190
+ * on an upright phone and at 1024 × 768 — and the bottom pad is 24, not 16, because the tail block's
+ * name line, drawn a name's height under its station, ran 2.2 dots below the drawing on a phone held
+ * sideways. The full frame's rail grew to 268 later the same day (quick 261015-hz7, D7); the compact
+ * frame keeps its own 240, which with its 96 value offset already gives the read-outs 164 units.
  */
 export const CLOSE_UP_COMPACT = {
   ...CLOSE_UP,
@@ -160,31 +170,73 @@ export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, compa
   };
 }
 
+/** A fixed block `spreadApart` keeps clear of, by its top and bottom y. */
+export interface SpreadBlock {
+  top: number;
+  bottom: number;
+}
+
 /**
  * Pushes labels apart so none touches the next (the sketch's `spread`, grown for the VIEWER's
  * gutter, P5). Items are placed from the largest y (nearest the tail) upward: each sits at its own
- * y, or `gap` above the one placed before it, whichever is higher. An item that would overlap a
- * fixed block (within `gap`) jumps above it. Items only ever move up; the result is in input order.
- * `half` is each item's half-height (0 treats `gap` as a centre-to-centre distance, as the sketch
- * does).
+ * y, or `gap` above the one placed before it, whichever is higher. `half` is each item's half-height
+ * (0 treats `gap` as a centre-to-centre distance, as the sketch does). The result is in input order,
+ * and the items stay in their station order.
+ *
+ * Quick 261015-hz7 (2026-10-15, D7, D9) taught it two things, and items now move down only for
+ * these:
+ * - **The nearer side of a block.** An item that would overlap a fixed block (within `gap`) moves to
+ *   whichever side of the block is nearer its own y — below only when there it still sits above
+ *   every item already placed, inside `bounds.bottom` and clear of every block (ties go below);
+ *   otherwise above, as before. (On the VIEWER a WING chip at the widepoint's tail end used to jump
+ *   the whole WIDEPOINT / WP OFFSET pair.)
+ * - **The drawing's bounds.** Nothing is placed below `bounds.bottom`; and when the chain would pass
+ *   `bounds.top`, it is laid down again from the top in order, each item at least `gap` below the one
+ *   before it and below any block it would then overlap — so a stinger with wing 2 just behind it
+ *   keeps every read-out inside the close-up (F10: "Center" and "Ahead of wing 1" ran 16 and 43 px
+ *   off the top of an upright iPhone).
  */
 export function spreadApart(
   items: readonly { y: number; half: number }[],
   gap: number,
-  fixed: readonly { top: number; bottom: number }[] = [],
+  fixed: readonly SpreadBlock[] = [],
+  bounds: { top?: number; bottom?: number } = {},
 ): number[] {
   const order = items.map((item, i) => ({ i, ...item })).sort((a, b) => b.y - a.y);
   const blocks = [...fixed].sort((a, b) => b.bottom - a.bottom);
+  const overlaps = (y: number, half: number, block: SpreadBlock) =>
+    y - half < block.bottom + gap && y + half > block.top - gap;
   const out = new Array<number>(items.length);
   let prevTop: number | null = null;
   for (const o of order) {
-    let y = o.y;
-    if (prevTop !== null) y = Math.min(y, prevTop - gap - o.half);
+    // The highest y this item may take: above everything already placed, inside the bottom bound.
+    let limit = Infinity;
+    if (prevTop !== null) limit = prevTop - gap - o.half;
+    if (bounds.bottom !== undefined) limit = Math.min(limit, bounds.bottom - o.half);
+    let y = Math.min(o.y, limit);
     for (const block of blocks) {
-      if (y - o.half < block.bottom + gap && y + o.half > block.top - gap) y = block.top - gap - o.half;
+      if (!overlaps(y, o.half, block)) continue;
+      const above = block.top - gap - o.half;
+      const below = block.bottom + gap + o.half;
+      const belowFits = below <= limit + 1e-9 && blocks.every((b) => b === block || !overlaps(below, o.half, b));
+      y = belowFits && Math.abs(below - o.y) <= Math.abs(above - o.y) ? below : above;
     }
     out[o.i] = y;
     prevTop = y - o.half;
+  }
+
+  if (bounds.top !== undefined && order.some((o) => out[o.i] - o.half < bounds.top! - 1e-9)) {
+    const down = [...order].sort((a, b) => out[a.i] - out[b.i]);
+    const blocksDown = [...fixed].sort((a, b) => a.top - b.top);
+    let prevBottom = bounds.top - gap;
+    for (const o of down) {
+      let y = Math.max(out[o.i], prevBottom + gap + o.half);
+      for (const block of blocksDown) {
+        if (overlaps(y, o.half, block)) y = block.bottom + gap + o.half;
+      }
+      out[o.i] = y;
+      prevBottom = y + o.half;
+    }
   }
   return out;
 }

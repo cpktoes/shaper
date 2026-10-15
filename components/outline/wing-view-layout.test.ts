@@ -70,7 +70,7 @@ describe("closeUpFrame — the sketch's closeUpSvg arithmetic", () => {
   });
 });
 
-describe("spreadApart — read-outs pushed apart, never down", () => {
+describe("spreadApart — read-outs pushed apart (down only to clear a block's near side or to stay inside the drawing)", () => {
   it("leaves labels that do not clash where they are", () => {
     expect(spreadApart([{ y: 100, half: 0 }, { y: 300, half: 0 }], 40)).toEqual([100, 300]);
   });
@@ -84,7 +84,7 @@ describe("spreadApart — read-outs pushed apart, never down", () => {
     expect(y).toBe(200 - 6 - 10);
   });
 
-  it("never moves anything down, and answers in input order", () => {
+  it("with no block in reach and no bounds, never moves anything down, and answers in input order", () => {
     const items = [
       { y: 50, half: 5 },
       { y: 400, half: 5 },
@@ -97,6 +97,85 @@ describe("spreadApart — read-outs pushed apart, never down", () => {
     expect(out[0]).toBe(50);
     expect(out[2]).toBeLessThan(out[1]);
     expect(out[3]).toBeLessThan(out[2]);
+  });
+
+  // Quick 261015-hz7 (D7, D9): the nearer side of a block, and the drawing's bounds.
+  it("an item on a block, nearer its tail side, lands below it when there is room", () => {
+    const [y] = spreadApart([{ y: 235, half: 10 }], 6, [{ top: 200, bottom: 240 }]);
+    expect(y).toBe(240 + 6 + 10);
+  });
+
+  it("... and above it when below would run into an item already placed", () => {
+    const out = spreadApart(
+      [
+        { y: 235, half: 10 },
+        { y: 262, half: 10 },
+      ],
+      6,
+      [{ top: 200, bottom: 240 }],
+    );
+    expect(out[1]).toBe(262);
+    expect(out[0]).toBe(200 - 6 - 10);
+  });
+
+  it("... and above it when below would pass the bottom bound", () => {
+    const [y] = spreadApart([{ y: 235, half: 10 }], 6, [{ top: 200, bottom: 240 }], { bottom: 260 });
+    expect(y).toBe(200 - 6 - 10);
+  });
+
+  it("a tie goes below", () => {
+    const [y] = spreadApart([{ y: 220, half: 10 }], 6, [{ top: 200, bottom: 240 }]);
+    expect(y).toBe(240 + 6 + 10);
+  });
+
+  it("with bounds.top, a chain that would pass the top is laid down from it in order, every gap kept", () => {
+    const items = [
+      { y: 30, half: 0 },
+      { y: 25, half: 0 },
+      { y: 20, half: 0 },
+    ];
+    const out = spreadApart(items, 40, [], { top: 10 });
+    expect(Math.min(...out)).toBeGreaterThanOrEqual(10);
+    const sorted = [...out].sort((a, b) => a - b);
+    for (let i = 1; i < sorted.length; i++) expect(sorted[i] - sorted[i - 1]).toBeGreaterThanOrEqual(40 - 1e-9);
+    // Station order kept: the item nearest the tail stays lowest.
+    expect(out[0]).toBeGreaterThan(out[1]);
+    expect(out[1]).toBeGreaterThan(out[2]);
+  });
+
+  it("laid down from the top, an item jumps below any block it would then overlap", () => {
+    const out = spreadApart([{ y: 5, half: 0 }], 10, [{ top: 15, bottom: 50 }], { top: 20 });
+    expect(out[0]).toBe(50 + 10);
+  });
+
+  it("with bounds.bottom, nothing is placed below it", () => {
+    const out = spreadApart(
+      [
+        { y: 500, half: 10 },
+        { y: 480, half: 10 },
+      ],
+      6,
+      [],
+      { bottom: 450 },
+    );
+    expect(out[0] + 10).toBeLessThanOrEqual(450);
+    expect(out[1]).toBeLessThan(out[0]);
+  });
+});
+
+describe("the close-up's right rail holds the longest read-out at the pinned floor (D7, F9, F10)", () => {
+  // "Ahead of wing 2" at 11 px, letter-spaced 0.1em, measures 103.55 px (F9): 104 rounded up.
+  const LONGEST_READOUT_PX = 104;
+  it.each([
+    ["full", CLOSE_UP],
+    ["compact", CLOSE_UP_COMPACT],
+  ] as const)("the %s frame", (_name, c) => {
+    expect(c.sideRoom + c.railRight - c.valueOffset).toBeGreaterThanOrEqual(LONGEST_READOUT_PX / MIN_PINNED_FIT_SCALE);
+  });
+
+  it("the full frame's rail is 268 and the compact keeps its own 240", () => {
+    expect(CLOSE_UP.railRight).toBe(268);
+    expect(CLOSE_UP_COMPACT.railRight).toBe(240);
   });
 });
 

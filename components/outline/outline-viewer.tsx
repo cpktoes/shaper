@@ -942,32 +942,66 @@ export function OutlineViewer({
   //
   // Both steps are gaps between two cards, so zoomed in they follow the zoom unit and the pair
   // stays together on screen (261007-fnz, D4); times exactly 1 at 1x, so nothing moves there.
+  //
+  // Upright, the pair steps by `chipStep` (quick 261015-hz7, 2026-10-15, D9): the unpinned 38-unit
+  // chip height or the live chip's own, whichever is taller, plus the 6-unit gap. On every desktop
+  // window the live chip is at most 38 units tall, so this is exactly the step it always was; on an
+  // upright iPhone the pinned chip is 48.5 units tall and the old 38-unit step overlapped the pair by
+  // 4.48 units with no wing at all (F11) — it now keeps 6.
+  const chipStep = Math.max(OUTLINE_CHIP_HEIGHT * zoomUnit, calloutSizes.chipH) + CHIP_STACK_GAP * zoomUnit;
   const wpOffsetChipX = horizontal
     ? frame.chipRightX - calloutSizes.chipH - CHIP_STACK_GAP * zoomUnit
     : frame.chipRightX;
+  // Summed in the same order as before, so every desktop window's markup is bit-for-bit unchanged.
   const wpOffsetChipY = horizontal
     ? widepointChipY
-    : widepointChipY + OUTLINE_CHIP_HEIGHT * zoomUnit + CHIP_STACK_GAP * zoomUnit;
+    : widepointChipY + Math.max(OUTLINE_CHIP_HEIGHT * zoomUnit, calloutSizes.chipH) + CHIP_STACK_GAP * zoomUnit;
 
   // Wings (quick 261014-wii, D3, P5): a WING n chip per wing in the left gutter, naming its depth and
-  // position. The tail's chips — TAIL BLOCK, then each wing — are spread apart from the tail up so
-  // none touches the next, and the WIDEPOINT / WP OFFSET pair stays exactly where it is: a chip that
-  // would land on it jumps above it, its L leader keeping the wing's true station (the sketch's own
+  // position, its L leader keeping the wing's true station when it is pushed off it (the sketch's own
   // VIEWER put WING 2 at 30" on WP OFFSET, F26). With no wings nothing here draws and TAIL BLOCK is
   // exactly the chip it always was.
+  //
+  // The founder (2026-10-15, D9): "Chips spread apart must keep the same gap the WIDEPOINT / WP OFFSET
+  // pair keeps from every neighbour — LENGTH, WIDEPOINT, WP OFFSET, TAIL BLOCK and each other — in
+  // both orientations." Measured (F11): upright, the pair showed 8.9 units at 1024 × 768 and 10.75 at
+  // 1280 × 800 while a spread chip kept exactly 6 — that difference was the "touching" they saw.
+  // - Upright: TAIL BLOCK and the wings spread at the pair's own centre-to-centre step, so the gap
+  //   between any two is `chipStep − chipH`, and the WIDEPOINT / WP OFFSET pair and LENGTH are fixed
+  //   blocks they keep that gap from; a chip that would land on one moves to its nearer side.
+  // - Turned: the pair sits one row apart with 6 units between rows, so the gap along the rail is 6.
+  //   On a sideways phone the inner row has no room for even one wing chip beside LENGTH and TAIL
+  //   BLOCK (F11), so every WING chip rides the OUTER row — the row WP OFFSET already uses — spread
+  //   along it with WP OFFSET as its block and the turned frame's two ends as bounds. TAIL BLOCK keeps
+  //   its own station on the inner row, exactly as with no wings. The wing chips are drawn first, so a
+  //   turned wing's leader passes under the inner row's chips.
   const viewerWings = placedWings(outline.wings ?? [], geometry);
-  const tailChipHalf = horizontal ? calloutSizes.chipW / 2 : calloutSizes.chipH / 2;
-  const tailChips = [
-    ...(geometry.tailBlockPinned ? [] : [{ y: tailBlockChipY, half: tailChipHalf }]),
-    ...viewerWings.map((w) => ({ y: lenToY(mmToInches(w.station)), half: tailChipHalf })),
-  ];
-  const wpBlock = horizontal
-    ? { top: widepointChipY - calloutSizes.chipW / 2, bottom: widepointChipY + calloutSizes.chipW / 2 }
-    : { top: widepointChipY - calloutSizes.chipH / 2, bottom: wpOffsetChipY + calloutSizes.chipH / 2 };
-  const tailChipYs =
-    viewerWings.length > 0 ? spreadApart(tailChips, CHIP_STACK_GAP * zoomUnit, [wpBlock]) : [];
-  const wingChipYs = tailChipYs.slice(geometry.tailBlockPinned ? 0 : 1);
-  const tailBlockSpreadY = !geometry.tailBlockPinned && viewerWings.length > 0 ? tailChipYs[0] : undefined;
+  const chipHalfUpright = calloutSizes.chipH / 2;
+  const chipHalfTurned = calloutSizes.chipW / 2;
+  const wingStationYs = viewerWings.map((w) => lenToY(mmToInches(w.station)));
+  const wingChipX = horizontal ? wpOffsetChipX : frame.chipRightX;
+  let wingChipYs: number[] = [];
+  let tailBlockSpreadY: number | undefined;
+  if (viewerWings.length > 0 && horizontal) {
+    wingChipYs = spreadApart(
+      wingStationYs.map((y) => ({ y, half: chipHalfTurned })),
+      CHIP_STACK_GAP * zoomUnit,
+      [{ top: widepointChipY - chipHalfTurned, bottom: widepointChipY + chipHalfTurned }],
+      { top: baseMinY - noseEndPad, bottom: baseMinY + baseH + tailEndPad },
+    );
+  } else if (viewerWings.length > 0) {
+    const tailChips = [
+      ...(geometry.tailBlockPinned ? [] : [{ y: tailBlockChipY, half: chipHalfUpright }]),
+      ...wingStationYs.map((y) => ({ y, half: chipHalfUpright })),
+    ];
+    const blocks = [
+      { top: widepointChipY - chipHalfUpright, bottom: wpOffsetChipY + chipHalfUpright },
+      { top: lengthChipY - chipHalfUpright, bottom: lengthChipY + chipHalfUpright },
+    ];
+    const tailChipYs = spreadApart(tailChips, chipStep - calloutSizes.chipH, blocks);
+    wingChipYs = tailChipYs.slice(geometry.tailBlockPinned ? 0 : 1);
+    tailBlockSpreadY = geometry.tailBlockPinned ? undefined : tailChipYs[0];
+  }
 
   // The pointer, shared (261007-fnz, D6). TEMPLATE's own press handler runs first — in the
   // capture phase, ahead of the shared zoom's own press handler on the same svg — so a mouse or pen
@@ -1260,6 +1294,21 @@ export function OutlineViewer({
               too — the Summary sheet is read at the blank, where the sidebar is not available, so
               the shaper needs the settings on the drawing itself. */}
           <>
+              {/* D9 (quick 261015-hz7): the WING chips first, so a turned wing's leader passes under
+                  the inner row's chips. */}
+              {viewerWings.map((w, i) => (
+                <CalloutChip
+                  key={`wing-${i}`}
+                  x={wingChipX}
+                  y={wingChipYs[i]}
+                  name={`WING ${i + 1}`}
+                  value={`${formatMark(w.depth, system)} @ ${formatDim(w.station, system)}`}
+                  leaderToX={pxX(-xAtStationIn(mmToInches(w.station)))}
+                  leaderAtY={wingStationYs[i]}
+                  // D8: a long wing value is set small enough to sit inside its chip.
+                  fitValue
+                />
+              ))}
               <CalloutChip
                 x={frame.chipRightX}
                 y={lengthChipY}
@@ -1295,17 +1344,6 @@ export function OutlineViewer({
                     leaderAtY={tailBlockChipY}
                   />
                 ))}
-              {viewerWings.map((w, i) => (
-                <CalloutChip
-                  key={`wing-${i}`}
-                  x={frame.chipRightX}
-                  y={wingChipYs[i]}
-                  name={`WING ${i + 1}`}
-                  value={`${formatMark(w.depth, system)} @ ${formatDim(w.station, system)}`}
-                  leaderToX={pxX(-xAtStationIn(mmToInches(w.station)))}
-                  leaderAtY={lenToY(mmToInches(w.station))}
-                />
-              ))}
           </>
         </>
       )}

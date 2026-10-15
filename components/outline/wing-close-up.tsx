@@ -307,9 +307,13 @@ export function WingCloseUp({
       station: `Behind wing ${i + 1}`,
     });
   });
+  // D7 (quick 261015-hz7): kept inside the drawing — a read-out's value line sits above its y and its
+  // name line below, so the bounds leave a value's height at the top and a name's at the bottom.
   const outputYs = spreadApart(
     outputs.map((o) => ({ y: toY(o.sIn), half: 0 })),
     READOUT_GAP_FACTOR * (sizes.value + sizes.name),
+    [],
+    { top: sizes.value + 4, bottom: frame.height - sizes.name - 4 },
   );
 
   // 8. The left gutter: a chip per wing.
@@ -328,6 +332,9 @@ export function WingCloseUp({
   const chipYs = spreadApart(
     chips.map((c) => ({ y: c.y, half: 0 })),
     sizes.chipH + CHIP_GAP,
+    [],
+    // D7: every chip whole inside the drawing, 2 units clear of each edge.
+    { top: sizes.chipH / 2 + 2, bottom: frame.height - sizes.chipH / 2 - 2 },
   );
 
   return (
@@ -555,6 +562,8 @@ export function WingCloseUp({
               nameColor={c.nameColor}
               leaderToX={c.leaderToX}
               leaderAtY={c.y}
+              // D8: a long wing value is set small enough to sit inside its chip.
+              fitValue
             />
           ))}
 
