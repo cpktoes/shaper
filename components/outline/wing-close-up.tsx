@@ -9,14 +9,17 @@ import {
   OutputRail,
   ViewerOrientationProvider,
   pinnedCalloutSizes,
+  useSvgClientSize,
   useSvgFitScale,
 } from "@/components/viewer/callout-primitives";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { useUnits } from "@/components/units-provider";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import { formatDim, formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import {
+  OUTLINE_DRAG_HIT_COARSE_PX,
   OUTLINE_DRAG_HIT_PX,
   WING_GRAB_DROP_PX,
   nearestWingDragTarget,
@@ -36,7 +39,14 @@ import {
   type Wing,
 } from "@/lib/geometry/wings";
 import { DRAG_TARGET_CORE_PX, DRAG_TARGET_OUTER_PX, DRAG_TARGET_RING_PX } from "./outline-viewer";
-import { CLOSE_UP, closeUpFrame, spreadApart, widestHalfWidthIn, wingWindow } from "./wing-view-layout";
+import {
+  CLOSE_UP,
+  closeUpFrame,
+  spreadApart,
+  useCompactFrame,
+  widestHalfWidthIn,
+  wingWindow,
+} from "./wing-view-layout";
 
 /**
  * The WINGS tab's drawing: the last 26" of the tail, about two and a half times closer than the
@@ -59,6 +69,13 @@ import { CLOSE_UP, closeUpFrame, spreadApart, widestHalfWidthIn, wingWindow } fr
  * goes up. **The window holds still from press to lift**: in the sketch's own check, a window that
  * re-framed mid-drag carried the wing 4 1/2" from a 1" pull, so the window in force at the press is
  * kept in state until the pointer lifts, and only then does the window rule apply again.
+ *
+ * On a phone, either way up, and in a computer window too narrow for the full frame, the close-up
+ * draws its COMPACT frame (P13): chosen by the drawing's own room — the full frame's fit against
+ * the pinned-callout floor — never by width or pointer, so CLAUDE.md's three switches stay
+ * separate. The compact frame draws no station dimensions. A finger gets the coarse hit radius,
+ * and the svg is `touch-none select-none`, so a thumb on a grab point drags the wing rather than
+ * scrolling the page (P14).
  *
  * Every number a shaper reads goes through `measure-display.ts` (CLAUDE.md Rule 2, D9): a wing's
  * position and every width is a DIM (`formatDim`), its depth and run are MARKS (`formatMark`). The
@@ -133,8 +150,13 @@ export function WingCloseUp({
   const loIn = mmToInches(win.lo);
   const hiIn = mmToInches(win.hi);
   const widest = widestHalfWidthIn(hasWings ? [geometry.points, baseGeometry.points] : [geometry.points], loIn, hiIn);
-  const frame = closeUpFrame(loIn, hiIn, widest);
+  // P13: the full frame's width is fixed for a given window, so reading it to choose never loops.
+  const box = useSvgClientSize(svgRef);
+  const fullFrame = closeUpFrame(loIn, hiIn, widest);
+  const compact = useCompactFrame(box.width, box.height, fullFrame.width, MIN_PINNED_FIT_SCALE);
+  const frame = compact ? closeUpFrame(loIn, hiIn, widest, true) : fullFrame;
   const { toX, toY } = frame;
+  const coarsePointer = useCoarsePointer();
   const fit = useSvgFitScale(svgRef, frame.width, frame.height);
   const sizes = pinnedCalloutSizes(fit);
 
@@ -146,7 +168,7 @@ export function WingCloseUp({
   const handleUnit = fit > 0 ? 1 / fit : 1;
   const unitsToMm = (units: number) => inchesToMm(units / frame.unitsPerInch);
   const dropMm = unitsToMm(WING_GRAB_DROP_PX * handleUnit);
-  const hitRadiusUnits = OUTLINE_DRAG_HIT_PX * handleUnit;
+  const hitRadiusUnits = (coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX) * handleUnit;
   const hitRadiusMm = unitsToMm(hitRadiusUnits);
   const grabPoints = grabbing ? wingDragPoints(geometry, allWings, dropMm) : [];
 
@@ -312,8 +334,12 @@ export function WingCloseUp({
           ref={svgRef}
           viewBox={`0 0 ${frame.width} ${frame.height}`}
           preserveAspectRatio="xMidYMid meet"
-          className="absolute inset-0 block h-full w-full select-none"
+          // P14, as TEMPLATE's VIEWER svg: `touch-none` so a thumb drag shapes the wing instead of
+          // scrolling the page, `select-none` and the callout suppression against iOS's long press.
+          className="absolute inset-0 block h-full w-full select-none touch-none"
+          style={{ WebkitTouchCallout: "none" }}
           data-wing-close-up
+          data-frame={compact ? "compact" : "full"}
           data-window-lo-in={loIn.toFixed(3)}
           data-window-hi-in={hiIn.toFixed(3)}
           data-units-per-inch={frame.unitsPerInch.toFixed(4)}
@@ -529,10 +555,9 @@ export function WingCloseUp({
             />
           ))}
 
-          {/* 9. Each wing's station from the tail, at the far left — only while the callouts are
-              pinned at full size; below that floor the chip column can cover them (F20; plan 02's
-              compact frame takes over there). */}
-          {fit >= MIN_PINNED_FIT_SCALE &&
+          {/* 9. Each wing's station from the tail, at the far left — on the full frame only; the
+              compact frame has no room beside its chip column (F20, P13). */}
+          {!compact &&
             loIn <= 0 &&
             wings.map((w, i) => {
               const x = frame.stationDimX(i);

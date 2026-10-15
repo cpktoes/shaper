@@ -42,6 +42,48 @@ export const CLOSE_UP = {
 } as const;
 
 /**
+ * The compact frame (plan 02, 2026-10-15, P13; sketch 014's own compact numbers, its chip gutter
+ * widened): a shorter top pad, narrower gutters, the read-outs closer in, and no station
+ * dimensions. Drawn whenever the full frame would fit its box below the pinned-callout floor — a
+ * phone either way up, or a narrow computer window — so the chips and read-outs keep their pinned
+ * size and stay inside the drawing.
+ *
+ * The left gutter is 180, not the sketch's 150: at the pinned floor the app's WING chip is 157.6
+ * units wide (`pinnedCalloutSizes(MIN_PINNED_FIT_SCALE).chipW`), so 150 put its left edge at −21.6,
+ * clipped (measured F27); 14 inset + 158 + 8 to spare is 180.
+ *
+ * Two of the plan's numbers moved when the phones were run (2026-10-15): the right rail stays the
+ * full frame's 240, not 190 — at the pinned floor the read-out "AHEAD OF WING 1", letter-spaced,
+ * ran 37–39 units past 190 on an upright phone and at 1024 × 768 — and the bottom pad is 24, not
+ * 16, because the tail block's name line, drawn a name's height under its station, ran 2.2 dots
+ * below the drawing on a phone held sideways.
+ */
+export const CLOSE_UP_COMPACT = {
+  ...CLOSE_UP,
+  padTop: 16,
+  padBottom: 24,
+  gutterLeft: 180,
+  railRight: 240,
+  valueOffset: 96,
+} as const;
+
+/**
+ * Whether the close-up draws its compact frame (P13): when the FULL frame, fitted into the svg's
+ * box, would sit below the pinned-callout floor `minFit` (pass `MIN_PINNED_FIT_SCALE` — this file
+ * never imports React, and that constant lives beside the callout components). It reads the full
+ * frame's width, a fixed number for a given window, never the frame it chooses, so the choice can
+ * never feed back into itself (the VIEWER's T-VOT-04 rule). An unmeasured box (0 × 0, before the
+ * first layout) keeps the full frame.
+ *
+ * A pure function despite its name (the plan's interface): it is the drawing fitting itself, like
+ * RAILS' plot fit, never a layout choice — width still picks the layout, pointer the sizing.
+ */
+export function useCompactFrame(boxWidth: number, boxHeight: number, fullWidth: number, minFit: number): boolean {
+  if (!(boxWidth > 0) || !(boxHeight > 0) || !(fullWidth > 0)) return false;
+  return Math.min(boxWidth / fullWidth, boxHeight / CLOSE_UP.height) < minFit;
+}
+
+/**
  * The stretch of the board the close-up shows, from the tail: the last 26" (or the whole board,
  * if shorter) while every wing sits at or under 24"; once one passes it, out to that wing plus 3",
  * never past the nose. The tail and the fins never leave the picture (sketch 014 B).
@@ -94,25 +136,27 @@ export interface CloseUpFrame {
 }
 
 /** The sketch's `closeUpSvg` frame: the window fills the height below the toolbar's row; the
- * width is the board's widest half-width each side of the stringer plus the two gutters. */
-export function closeUpFrame(loIn: number, hiIn: number, widestIn: number): CloseUpFrame {
+ * width is the board's widest half-width each side of the stringer plus the two gutters. `compact`
+ * builds it from `CLOSE_UP_COMPACT` instead (P13). */
+export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, compact = false): CloseUpFrame {
+  const c = compact ? CLOSE_UP_COMPACT : CLOSE_UP;
   const span = Math.max(hiIn - loIn, 1e-6);
-  const u = (CLOSE_UP.height - CLOSE_UP.padTop - CLOSE_UP.padBottom) / span;
-  const cx = CLOSE_UP.gutterLeft + widestIn * u + CLOSE_UP.sideRoom;
-  const width = Math.ceil(cx + widestIn * u + CLOSE_UP.sideRoom + CLOSE_UP.railRight);
-  const toY = (s: number) => CLOSE_UP.height - CLOSE_UP.padBottom - (s - loIn) * u;
+  const u = (c.height - c.padTop - c.padBottom) / span;
+  const cx = c.gutterLeft + widestIn * u + c.sideRoom;
+  const width = Math.ceil(cx + widestIn * u + c.sideRoom + c.railRight);
+  const toY = (s: number) => c.height - c.padBottom - (s - loIn) * u;
   const toX = (hw: number) => cx + hw * u;
   return {
     width,
-    height: CLOSE_UP.height,
+    height: c.height,
     unitsPerInch: u,
     cx,
     toY,
     toX,
-    valueX: toX(widestIn) + CLOSE_UP.valueOffset,
-    extensionEndX: toX(widestIn) + CLOSE_UP.extensionReach,
-    chipRightX: CLOSE_UP.gutterLeft - CLOSE_UP.chipInset,
-    stationDimX: (i: number) => CLOSE_UP.stationDimX0 + CLOSE_UP.stationDimStep * i,
+    valueX: toX(widestIn) + c.valueOffset,
+    extensionEndX: toX(widestIn) + c.extensionReach,
+    chipRightX: c.gutterLeft - c.chipInset,
+    stationDimX: (i: number) => c.stationDimX0 + c.stationDimStep * i,
   };
 }
 

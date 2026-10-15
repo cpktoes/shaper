@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Page } from "@playwright/test";
+import { openAppSettings } from "./helpers/settings";
 
 /**
  * Wings on the TEMPLATE page (quick 261014-wii, 2026-10-14; sketches 013 A and 014 B). A wing is a
@@ -274,6 +275,222 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.mouse.move(start.x, start.y + ppi, { steps: 6 });
     await page.mouse.up();
     await expect.poll(async () => inchesOf(await run.textContent())).toBeGreaterThan(runBefore);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Plan 02, Task 2 (P13): a narrow computer window, Metric, and FINS drawing the wing.
+  // ---------------------------------------------------------------------------------------------
+
+  test("desktop: at 1024 x 768 the close-up draws its compact frame, with no station dimensions", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await addFirstWing(page);
+    await expectCompactCloseUpWhole(page);
+  });
+
+  test("desktop: in Metric the wing reads its position and widths in centimetres and its depth in millimetres, and a drag lands on a whole millimetre", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.goto("/design/outline");
+    const dialog = await openAppSettings(page);
+    const units = dialog.getByRole("group", { name: "Units" });
+    await units.getByRole("button", { name: /^Metric/ }).click();
+    await expect(units.getByRole("button", { name: /^Metric/ })).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    await page.getByRole("tab", { name: "ADD WINGS" }).click();
+    await page.locator("aside").getByRole("button", { name: "+ Add a wing" }).click();
+    await page.getByRole("dialog", { name: "Dial in your wing placement" }).getByRole("button", { name: "Got it" }).click();
+
+    // F21, in Metric: the position is a dim (centimetres), the depth a mark (whole millimetres).
+    const closeUp = page.locator("[data-wing-close-up]");
+    await expect(closeUp.locator('[data-callout-chip^="WING 1"]')).toContainText("10 mm @ 27.9 cm");
+    await expect(closeUp.locator('[data-output-rail="Ahead of wing 1"]')).toContainText("36.2 cm");
+    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toContainText("34.0 cm");
+    await expect(closeUp.locator('[data-output-rail^="Tail @"]')).toContainText("37.4 cm");
+    await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 10 mm");
+
+    // A drag of the inner point lands the stored depth on a whole millimetre.
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const ppi = await pixelsPerInch(page);
+    const start = await grabCentre(page, 1, "inner");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(start.x - ppi * 0.37, start.y, { steps: 5 });
+    await page.mouse.up();
+    await expect(wingRow(page, 1, "Depth")).not.toHaveText("Depth — 10 mm");
+    await expect(wingRow(page, 1, "Depth")).toHaveText(/^Depth — \d+ mm$/);
+    const stored = Number(await page.getByRole("slider", { name: "Wing 1 depth" }).getAttribute("aria-valuenow"));
+    expect(Number.isInteger(stored)).toBe(true);
+  });
+
+  test("desktop: FINS draws the tail with the wing's step in it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    // A board without wings first: FINS' own tail drawing, with Import Template ticked (D8).
+    await page.goto("/design/fins");
+    const tail = page.locator('[data-fin-plot] path[stroke="var(--outline-ink)"]').first();
+    await expect(tail).toBeVisible();
+    const plain = await tail.getAttribute("d");
+
+    await page.goto("/design/outline");
+    await page.getByRole("tab", { name: "ADD WINGS" }).click();
+    await page.locator("aside").getByRole("button", { name: "+ Add a wing" }).click();
+    await page.getByRole("dialog", { name: "Dial in your wing placement" }).getByRole("link", { name: "Open FINS" }).click();
+    await expect(page).toHaveURL(/\/design\/fins$/);
+    await expect(tail).toBeVisible();
+    await expect.poll(() => tail.getAttribute("d")).not.toBe(plain);
+  });
+});
+
+// -------------------------------------------------------------------------------------------------
+// Plan 02, Task 2 (D3, P13, P14): the close-up on a phone, upright and sideways, and a thumb drag.
+// -------------------------------------------------------------------------------------------------
+
+/** On a phone: opens the WINGS tab and adds the first wing from the empty tab's own card. */
+async function addFirstWingOnPhone(page: Page) {
+  await page.goto("/design/outline");
+  await page.getByRole("tab", { name: "ADD WINGS" }).click();
+  await page.locator("[data-wings-empty]").getByRole("button", { name: "+ Add a wing" }).click();
+  const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Got it" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "WINGS · 1" })).toBeVisible();
+}
+
+/** The close-up drawn compact and whole: every chip and read-out inside the drawing, no station
+ * dimension, nothing wider than the window. */
+async function expectCompactCloseUpWhole(page: Page) {
+  const closeUp = page.locator("[data-wing-close-up]");
+  await expect(closeUp).toHaveAttribute("data-frame", "compact");
+  await expect(closeUp.locator("[data-callout-chip]").first()).toBeVisible();
+  await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
+  const svg = await closeUp.boundingBox();
+  if (!svg) throw new Error("the close-up has no box");
+  // Every overflow is collected before failing, so one run names them all, by how far they stick out.
+  const outside: string[] = [];
+  for (const part of await closeUp.locator("[data-callout-chip], [data-output-rail]").all()) {
+    const box = await part.boundingBox();
+    if (!box) continue;
+    const name = (await part.getAttribute("data-callout-chip")) ?? (await part.getAttribute("data-output-rail"));
+    const past = {
+      left: svg.x - box.x,
+      top: svg.y - box.y,
+      right: box.x + box.width - (svg.x + svg.width),
+      bottom: box.y + box.height - (svg.y + svg.height),
+    };
+    for (const [side, by] of Object.entries(past)) {
+      if (by > 0.5) outside.push(`${name} past the ${side} by ${by.toFixed(1)} px`);
+    }
+  }
+  expect(outside).toEqual([]);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+}
+
+/** The phone's own checks: the close-up above the stacked controls, the wing controls in them, and
+ * none of the Template Builder's. */
+async function expectPhoneWingsLayout(page: Page) {
+  const closeUp = page.locator("[data-wing-close-up]");
+  const controls = page.locator("[data-design-controls-scroll]");
+  await expect(controls.getByText("Wings", { exact: true })).toBeVisible();
+  await expect(page.getByText("Board Length")).toHaveCount(0);
+  const drawing = await closeUp.boundingBox();
+  const stack = await controls.boundingBox();
+  if (!drawing || !stack) throw new Error("the close-up or the controls have no box");
+  await expectCompactCloseUpWhole(page);
+  return { drawing, stack };
+}
+
+test.describe("wings on a phone held upright (plan 02)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone projects only");
+    await dismissSignInBanner(page);
+  });
+
+  test("the close-up draws compact and whole above the wing controls", async ({ page }) => {
+    await addFirstWingOnPhone(page);
+    const { drawing, stack } = await expectPhoneWingsLayout(page);
+    expect(drawing.y + drawing.height).toBeLessThanOrEqual(stack.y + 1);
+  });
+
+  test("a thumb on wing 1's outer grab point pulls it toward the nose", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only (the android project)");
+
+    await addFirstWingOnPhone(page);
+    // Construction is on by default for a touch screen (D-02), so the grab points show untouched.
+    const grabs = page.locator("[data-wing-close-up] [data-wing-grab]");
+    await expect(grabs).toHaveCount(2);
+    const position = wingRow(page, 1, "Position from tail");
+    const before = inchesOf(await position.textContent());
+    const ppi = await pixelsPerInch(page);
+    const start = await grabCentre(page, 1, "outer");
+
+    // Copied from e2e/outline-ghost.spec.ts's own CDP touch drag, as every spec here copies it.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: start.x, y: start.y }] });
+    for (let step = 1; step <= 6; step++) {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [{ x: start.x, y: start.y - (2 * ppi * step) / 6 }],
+      });
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    await expect.poll(async () => inchesOf(await position.textContent())).toBeGreaterThan(before + 1);
+  });
+});
+
+// The sideways phones, built as e2e/phone-sideways-top-bar.spec.ts builds them: Playwright's Pixel 7
+// landscape descriptor, and a real sideways iPhone's 844 x 390 (the emulator's own 750 x 340 is not
+// real hardware). `defaultBrowserType` cannot be set inside a describe and is redundant here.
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7Landscape } = devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphone = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
+
+/** Sideways: the desktop shell by width, the phone's compact top bar by height (CLAUDE.md
+ * "Layout"), and the close-up compact and whole beside the wing controls. */
+async function expectSidewaysWings(page: Page) {
+  await addFirstWingOnPhone(page);
+  await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
+  await expectPhoneWingsLayout(page);
+}
+
+test.describe("wings on a Pixel 7 held sideways (plan 02)", () => {
+  test.use({ ...pixel7Landscape });
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await dismissSignInBanner(page);
+  });
+
+  test("the close-up draws compact and whole, under the phone's compact top bar", async ({ page }) => {
+    await expectSidewaysWings(page);
+  });
+});
+
+test.describe("wings on a real iPhone held sideways (plan 02)", () => {
+  test.use({ ...realSidewaysIphone });
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own viewport (844 x 390, WebKit)");
+    await dismissSignInBanner(page);
+  });
+
+  test("the close-up draws compact and whole, under the phone's compact top bar", async ({ page }) => {
+    await expectSidewaysWings(page);
   });
 });
 
