@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 014 — The WINGS tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link id="theme-link" rel="stylesheet" href="../themes/app-daylight.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--color-page); color: var(--color-text); font-family: var(--font-sans); min-height: 100vh; }
+  button, input, select { font-family: inherit; }
+
+  /* ---------- sketch chrome (not part of the design) ---------- */
+  #chrome { position: sticky; top: 0; z-index: 9998; }
+  #variant-nav { display: flex; gap: 6px; align-items: center; padding: 8px 16px; background: #0d0f14; border-bottom: 1px solid #262a33; font: 13px/1.2 system-ui, sans-serif; color: #cfd5de; flex-wrap: wrap; }
+  #variant-nav .sketch-id { font-weight: 700; margin-right: 8px; color: #fff; }
+  .variant-tab { background: #1b1f27; color: #cfd5de; border: 1px solid #2c313b; border-radius: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s ease; font: inherit; }
+  .variant-tab:hover { border-color: #4b5361; color: #fff; }
+  .variant-tab.active { background: #234f66; border-color: #3490bc; color: #fff; }
+  .variant-tab.winner { border-color: #c9a227; }
+  .notes-btn { margin-left: auto; }
+  #sketch-bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 7px 16px; background: #14171d; border-bottom: 1px solid #262a33; font: 12px/1.3 system-ui, sans-serif; color: #aeb5c0; }
+  #sketch-bar .desc { flex: 1 1 300px; color: #dfe3ea; }
+  .grp { display: flex; align-items: center; gap: 6px; }
+  .seg { display: inline-flex; border: 1px solid #2f343e; border-radius: 6px; overflow: hidden; }
+  .seg button { background: transparent; color: #aeb5c0; border: 0; padding: 4px 8px; font: 12px system-ui, sans-serif; cursor: pointer; transition: all .15s ease; }
+  .seg button + button { border-left: 1px solid #2f343e; }
+  .seg button:hover { color: #fff; background: #222731; }
+  .seg button.on { background: #234f66; color: #fff; }
+  #notes-panel { display: none; position: absolute; right: 12px; top: calc(100% + 6px); width: 440px; max-height: 72vh; overflow-y: auto; background: #12151b; color: #dfe3ea; border: 1px solid #2c313b; border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.5); padding: 14px 16px; font: 13.5px/1.5 system-ui, sans-serif; }
+  #notes-panel.open { display: block; }
+  #notes-panel h2 { font-size: 14px; margin: 0 0 6px; color: #fff; }
+  #notes-panel h3 { font-size: 12px; margin: 12px 0 4px; letter-spacing: .05em; color: #fff; text-transform: uppercase; }
+  #notes-panel p, #notes-panel ul { margin: 0 0 8px; color: #aeb5c0; }
+  #notes-panel ul { padding-left: 18px; }
+  #notes-panel b { color: #dfe3ea; }
+  #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .7; transition: opacity .2s; display: flex; flex-direction: column; gap: 6px; }
+  #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
+  #sketch-tools:not(.open) .row { display: none; }
+  #tools-toggle { align-self: flex-end; }
+  #sketch-tools .row { display: flex; gap: 4px; align-items: center; }
+  #sketch-tools .row > span:first-child { width: 84px; color: #aeb5c0; }
+  #sketch-tools button, #tools-toggle { font: 11px system-ui, sans-serif; background: #22262e; color: #fff; border: 1px solid #3a404b; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+  #sketch-tools button.on { background: #234f66; border-color: #3490bc; }
+  #stage { padding: 18px 16px 70px; }
+  .intro { max-width: 1280px; margin: 0 auto 12px; font-size: 14px; line-height: 1.5; color: #aeb5c0; }
+  .intro b { color: #fff; font-weight: 600; }
+  .stage-note { max-width: 1280px; margin: 14px auto 0; font-size: 12.5px; line-height: 1.5; color: #aeb5c0; }
+  .stage-note b { color: #dfe3ea; }
+
+  /* ---------- the design: the app's own tokens ---------- */
+  :root {
+    --outline-board-fill: var(--color-board);
+    --outline-ink: var(--color-text);
+    --outline-dim-ink: var(--color-text);
+    --outline-station-line: color-mix(in srgb, var(--color-text-muted) 36%, transparent);
+    --outline-widepoint-knot: var(--color-accent-ink);
+    --outline-widepoint-line: color-mix(in srgb, var(--color-accent-ink) 45%, transparent);
+    --outline-construction: var(--color-accent-ink);
+    --outline-ghost: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    --outline-callout-label: var(--color-text-muted);
+    --outline-page-bg: var(--color-canvas);
+    --outline-fin: var(--color-accent-ink);
+    --outline-drag: #e8703a;
+  }
+  /* the mocked app page */
+  .device { margin: 0 auto; background: var(--color-bg); color: var(--color-text); border: 1px solid #000; box-shadow: 0 18px 50px rgba(0,0,0,.45); overflow: hidden; position: relative; }
+  .device.computer { width: 1280px; height: 800px; border-radius: 10px; }
+  .device.phone { width: 390px; height: 844px; border-radius: 34px; }
+  .topbar { height: 64px; display: flex; align-items: center; padding: 0 40px; gap: 18px; border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
+  .phone .topbar { height: 48px; padding: 0 14px; }
+  .wordmark { font-size: 22px; letter-spacing: -0.02em; }
+  .wordmark b { font-weight: 800; }
+  .wordmark small { font-size: 9px; margin-left: 2px; color: var(--color-text-muted); letter-spacing: 0; }
+  .topnav { margin-left: auto; display: flex; gap: 20px; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); }
+  .topnav span.on { color: var(--color-text); border-bottom: 2px solid var(--color-text); padding-bottom: 2px; }
+  .topnav .sep { width: 1px; height: 18px; background: var(--color-border); }
+  .ico { width: 18px; height: 18px; stroke: var(--color-text-muted); fill: none; stroke-width: 1.8; }
+  .save { background: var(--color-primary); color: var(--color-on-primary); border: 0; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 14px; }
+  .phone .save { margin-left: auto; padding: 10px 18px; }
+  .ham { font-size: 22px; margin-left: 8px; }
+  .shell { display: flex; height: calc(100% - 64px); }
+  .phone .shell { display: block; height: calc(100% - 48px); overflow-y: auto; }
+  .sidebar { width: 340px; flex: none; padding: 28px 40px 20px; overflow-y: auto; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 10px; }
+  .phone .sidebar { width: auto; border-right: 0; padding: 18px 16px 40px; }
+  .sidebar h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .sidebar .sub { margin: -6px 0 6px; font-size: 13px; color: var(--color-text-muted); }
+  .sidebar h3 { margin: 10px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--color-line); font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .sidebar .lbl { font-size: 13px; color: var(--color-text); }
+  .sidebar .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-muted); margin-top: -4px; }
+  .sidebar .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .sidebar input[type=range] { width: 100%; accent-color: var(--color-accent-ink); margin: 4px 0 2px; height: 18px; }
+  .sidebar input[type=range]:disabled { opacity: .5; }
+  .sidebar .sel { display: flex; gap: 10px; }
+  .sidebar .sel span { flex: 1; border: 1px solid var(--color-line); border-radius: 6px; padding: 7px 10px; font-size: 13px; display: flex; justify-content: space-between; }
+  .sidebar .tails { display: flex; gap: 6px; }
+  .sidebar .tails span { flex: 1; height: 44px; border: 1px solid var(--color-line); border-radius: 6px; }
+  .sidebar .tails span.on { background: var(--color-primary); }
+  .sidebar .ck { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .sidebar .pick { display: inline-flex; border: 1px solid var(--color-line); border-radius: 6px; overflow: hidden; }
+  .sidebar .pick button { background: transparent; color: var(--color-text-muted); border: 0; padding: 6px 10px; font: 12px/1 var(--font-sans); font-weight: 700; cursor: pointer; }
+  .sidebar .pick button + button { border-left: 1px solid var(--color-line); }
+  .sidebar .pick button.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .sidebar .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .sidebar h3.withlink { display: flex; justify-content: space-between; align-items: baseline; }
+  .sidebar .link { background: none; border: 0; color: var(--color-text-muted); font: 11px var(--font-sans); text-decoration: underline; cursor: pointer; letter-spacing: 0; text-transform: none; }
+  .sidebar .pair { display: flex; gap: 6px; margin-top: 6px; }
+  .sidebar .pair button { flex: 1; border: 1px solid var(--color-line); border-radius: 6px; background: transparent; color: var(--color-text); padding: 7px 0; font: 13px var(--font-sans); cursor: pointer; }
+  .sidebar .pair button.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .sidebar input[type=range]:not(:disabled) { accent-color: var(--color-accent-ink); }
+  .sidebar .wing { border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 8px; background: var(--color-bg); }
+  .sidebar .wing h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; display: flex; justify-content: space-between; }
+  .sidebar .wing h4 button { background: none; border: 0; color: var(--color-text-muted); font-size: 11px; text-decoration: underline; cursor: pointer; letter-spacing: 0; text-transform: none; }
+  .btn { border: 1px solid var(--color-line); background: transparent; color: var(--color-text); border-radius: 8px; padding: 9px 14px; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; cursor: pointer; transition: all .15s ease; }
+  .btn.primary { background: var(--color-primary); color: var(--color-on-primary); border-color: transparent; }
+  .btn:hover { filter: brightness(1.06); }
+  .stepnav { display: flex; gap: 10px; margin-top: 12px; }
+  .stepnav .btn { flex: 1; }
+  .note { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; }
+  .main { flex: 1; min-width: 0; padding: 12px; background: var(--color-canvas); display: flex; flex-direction: column; }
+  .phone .main { padding: 2px 2px 2px 2px; height: 480px; }
+  .tabs { display: flex; gap: 6px; align-items: flex-end; flex: none; }
+  .tab { border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; padding: 6px 18px; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); background: transparent; cursor: pointer; }
+  .tab.on { border-color: var(--color-line); background: var(--color-surface); color: var(--color-text); }
+  .phone .tab { padding: 2px 8px; }
+  .tabs .name { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--color-text-muted); padding: 0 10px 6px; }
+  .panel { flex: 1; min-height: 0; border: 1px solid var(--color-line); border-radius: 0 10px 10px 10px; margin-top: -1px; background: var(--color-surface); padding: 12px; display: flex; }
+  .phone .panel { padding: 2px; }
+  .inner { flex: 1; min-width: 0; min-height: 0; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); padding: 12px; position: relative; display: flex; gap: 12px; }
+  .phone .inner { padding: 4px; }
+  .drawing { flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+  .drawing svg { max-width: 100%; max-height: 100%; height: auto; display: block; }
+  .drawing svg.close { height: 100%; width: auto; max-width: 100%; }
+  .toolbar { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; z-index: 2; }
+  .toolbar .rowb { display: flex; gap: 6px; }
+  .tb { width: 36px; height: 36px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-surface); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .tb.on { background: var(--color-primary); }
+  .tb svg { width: 20px; height: 20px; stroke: var(--color-text); fill: none; stroke-width: 1.8; }
+  .tb.zoomlvl { width: 46px; font-size: 13px; font-weight: 600; }
+  .phone .toolbar { top: 6px; right: 6px; }
+  .phone .tb { width: 44px; height: 44px; }
+  .incol { width: 300px; flex: none; border-left: 1px solid var(--color-border); padding-left: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .incol h3 { margin: 4px 0 0; padding-bottom: 6px; border-bottom: 1px solid var(--color-line); font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .incol .wing { border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 8px; background: var(--color-bg); }
+  .incol .wing h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; display: flex; justify-content: space-between; }
+  .incol .wing h4 button { background: none; border: 0; color: var(--color-text-muted); font-size: 11px; text-decoration: underline; cursor: pointer; letter-spacing: 0; text-transform: none; }
+  .incol .lbl { font-size: 13px; }
+  .incol input[type=range] { width: 100%; accent-color: var(--color-accent-ink); margin: 4px 0 2px; height: 18px; }
+  .incol .ck { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .incol .pick { display: inline-flex; border: 1px solid var(--color-line); border-radius: 6px; overflow: hidden; }
+  .incol .pick button { background: transparent; color: var(--color-text-muted); border: 0; padding: 6px 10px; font: 12px/1 var(--font-sans); font-weight: 700; cursor: pointer; }
+  .incol .pick button + button { border-left: 1px solid var(--color-line); }
+  .incol .pick button.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .incol .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .empty { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 18px 20px; text-align: center; box-shadow: var(--shadow-lg); max-width: 300px; z-index: 3; }
+  .empty h2 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+  .empty p { margin: 0 0 12px; font-size: 13px; color: var(--color-text-muted); line-height: 1.45; }
+  .lbl-svg { font-family: var(--font-sans); font-weight: 700; fill: var(--outline-callout-label); }
+  .val-svg { font-family: var(--font-sans); font-weight: 700; fill: var(--outline-ink); }
+  .handle { cursor: grab; }
+  .handle:active { cursor: grabbing; }
+  #popup { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+  #popup.open { display: flex; }
+  #popup .card { width: min(420px, calc(100% - 32px)); background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 18px 18px 14px; }
+  #popup h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; line-height: 1.2; }
+  #popup p { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--color-text-muted); }
+  #popup .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div id="variant-nav"></div>
+  <div id="sketch-bar"></div>
+  <div id="notes-panel"></div>
+</div>
+<main id="stage"></main>
+<div id="sketch-tools">
+  <button id="tools-toggle" type="button">⚙ Sketch tools</button>
+  <div class="row"><span>Theme</span><span id="t-theme"></span></div>
+  <div class="row"><span>Device</span><span id="t-device"></span></div>
+  <div class="row"><span>Tail window</span><span id="t-zoom"></span></div>
+</div>
+<script>
+const DATA = {"boards":[{"id":"default","name":"Default board","spec":{"lengthIn":72,"widePointWidthIn":19,"widePointOffsetIn":-0.5,"tailRailLength":50,"noseRailLength":50,"noseAngle":55,"noseFullness":25,"tailAngle":60,"tailFullness":50.5,"tail":{"kind":"squash","endWidthIn":4}},"marks":[{"role":"front","side":-1,"offTailIn":10.976786,"lateralIn":-5.94205,"leadingOffTailIn":15.476786,"leadingLateralIn":-5.56705,"baseLengthIn":4.5,"toeIn":0.375},{"role":"front","side":1,"offTailIn":10.976786,"lateralIn":5.94205,"leadingOffTailIn":15.476786,"leadingLateralIn":5.56705,"baseLengthIn":4.5,"toeIn":0.375},{"role":"center","side":0,"offTailIn":3.3125,"lateralIn":0,"leadingOffTailIn":7.8125,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0}],"finSetup":"thruster"},{"id":"shortboard","name":"Shortboard","spec":{"lengthIn":74,"widePointWidthIn":18.75,"widePointOffsetIn":-1,"tailRailLength":50,"noseRailLength":50,"noseAngle":50,"noseFullness":20,"tailAngle":55,"tailFullness":45,"tail":{"kind":"squash","endWidthIn":4}},"marks":[{"role":"front","side":-1,"offTailIn":11,"lateralIn":-5.677054,"leadingOffTailIn":15.5,"leadingLateralIn":-5.427054,"baseLengthIn":4.5,"toeIn":0.25},{"role":"front","side":1,"offTailIn":11,"lateralIn":5.677054,"leadingOffTailIn":15.5,"leadingLateralIn":5.427054,"baseLengthIn":4.5,"toeIn":0.25},{"role":"center","side":0,"offTailIn":3.375,"lateralIn":0,"leadingOffTailIn":7.875,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0}],"finSetup":"thruster"},{"id":"fish","name":"Fish","spec":{"lengthIn":68,"widePointWidthIn":20.25,"widePointOffsetIn":2,"tailRailLength":40,"noseRailLength":59.25,"noseAngle":70,"noseFullness":48,"tailAngle":30,"tailFullness":15,"tail":{"kind":"swallow","endWidthIn":10,"crotchDepthIn":2.75}},"marks":[{"role":"front","side":-1,"offTailIn":7.5,"lateralIn":-5.843851,"leadingOffTailIn":13,"leadingLateralIn":-5.656351,"baseLengthIn":5.5,"toeIn":0.1875},{"role":"front","side":1,"offTailIn":7.5,"lateralIn":5.843851,"leadingOffTailIn":13,"leadingLateralIn":5.656351,"baseLengthIn":5.5,"toeIn":0.1875}],"finSetup":"twin"},{"id":"midlength","name":"Mid-length","spec":{"lengthIn":86,"widePointWidthIn":21.25,"widePointOffsetIn":2.5,"tailRailLength":72.75,"noseRailLength":60,"noseAngle":65,"noseFullness":76,"tailAngle":90,"tailFullness":46.75,"tail":{"kind":"round"}},"marks":[{"role":"front","side":-1,"offTailIn":12,"lateralIn":-6.073404,"leadingOffTailIn":16.5,"leadingLateralIn":-5.823404,"baseLengthIn":4.5,"toeIn":0.25},{"role":"front","side":1,"offTailIn":12,"lateralIn":6.073404,"leadingOffTailIn":16.5,"leadingLateralIn":5.823404,"baseLengthIn":4.5,"toeIn":0.25},{"role":"center","side":0,"offTailIn":3.604167,"lateralIn":0,"leadingOffTailIn":8.104167,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0},{"role":"rear","side":-1,"offTailIn":6.25,"lateralIn":-4.130587,"leadingOffTailIn":10.25,"leadingLateralIn":-3.943087,"baseLengthIn":4,"toeIn":0.1875},{"role":"rear","side":1,"offTailIn":6.25,"lateralIn":4.130587,"leadingOffTailIn":10.25,"leadingLateralIn":3.943087,"baseLengthIn":4,"toeIn":0.1875}],"finSetup":"quad"},{"id":"longboard","name":"Longboard","spec":{"lengthIn":108,"widePointWidthIn":22.5,"widePointOffsetIn":3.5,"tailRailLength":40,"noseRailLength":87,"noseAngle":90,"noseFullness":90,"tailAngle":30,"tailFullness":46.75,"tail":{"kind":"squash","endWidthIn":8.5}},"marks":[{"role":"center","side":0,"offTailIn":5.5,"lateralIn":0,"leadingOffTailIn":16,"leadingLateralIn":0,"baseLengthIn":10.5,"toeIn":0}],"finSetup":"single"}]};
+let drag = null; // the grab point being held, if any
+
+/* curves.js — sketch 013. The app's outline curve (lib/geometry/outline.ts `buildOutline`), ported to inches
+   line for line, plus the three wing constructions this sketch compares. Throwaway sketch code: the app's
+   TypeScript stays the one truth, and check013.mjs proves this port reproduces its 161 points. */
+
+const MARGIN = 16, DIAMOND_DEPTH_CAP = 5, DIAMOND_BLOCK_MARGIN = 2, MEASURE_STATION = 12;
+const HANDLE_CAP = 0.48, OVERSHOOT = 0.92, SAMPLES_PER_SEGMENT = 80, EPSILON = 1e-6;
+const railMult = (pct) => 0.8 + (pct / 100) * 0.8;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function tailHandleMaxLength(dirY, chord, cw, bw) {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * (cw - bw)) / dirY);
+}
+function noseHandleMaxLength(dirY, chord, cw) {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * cw) / Math.abs(dirY));
+}
+function bez1(p0, p1, p2, p3, t) { const mt = 1 - t; return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3; }
+
+function interpolateHalfWidth(points, station) {
+  for (let i = 0; i < points.length - 1; i++) {
+    const [y0, x0] = points[i], [y1, x1] = points[i + 1];
+    if (station >= y0 && station <= y1) { const t = y1 > y0 ? (station - y0) / (y1 - y0) : 0; return x0 + (x1 - x0) * t; }
+  }
+  return points[points.length - 1][1];
+}
+
+/* spec: { length, widePointWidth, widePointOffset, tailRailLength, noseRailLength, noseAngle, noseFullness,
+   tailAngle, tailFullness, tail: { kind, endWidth?, depth?, crotchDepth? } } — inches and degrees. */
+function buildOutline(spec) {
+  const length = spec.length, cw = spec.widePointWidth / 2, tail = spec.tail;
+  const tailBlockPinned = tail.kind === "pin" || tail.kind === "round";
+  let bw = 0, tailPodStation = 0, centreCloseStation = 0, effectiveDiamondDepth = 0;
+  switch (tail.kind) {
+    case "pin": case "round": bw = 0; break;
+    case "squash": bw = tail.endWidth / 2; break;
+    case "diamond": bw = tail.endWidth / 2; effectiveDiamondDepth = Math.max(0, Math.min(tail.depth, DIAMOND_DEPTH_CAP, tail.endWidth - DIAMOND_BLOCK_MARGIN)); tailPodStation = effectiveDiamondDepth; break;
+    case "swallow": bw = tail.endWidth / 2; centreCloseStation = tail.crotchDepth; break;
+  }
+  const widePointStation = Math.max(MARGIN, Math.min(length - MARGIN, length / 2 + spec.widePointOffset));
+  const tailRad = (spec.tailAngle * Math.PI) / 180, noseRad = (spec.noseAngle * Math.PI) / 180;
+  const dir0 = { x: Math.cos(tailRad), y: Math.sin(tailRad) }, dir4 = { x: Math.cos(noseRad), y: -Math.sin(noseRad) }, dir2 = { x: 1, y: 0 };
+  const P0 = { x: tailPodStation, y: Math.max(0, bw) }, P2 = { x: widePointStation, y: cw }, P4 = { x: length, y: 0 };
+  const knotPoints = [P0, P2, P4], knotDirs = [dir0, dir2, dir4];
+  const chord = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const chords = [chord(P0, P2), chord(P2, P4)];
+  const inLen0 = railMult(spec.tailRailLength) * HANDLE_CAP * chords[0];
+  const outLen1 = railMult(spec.noseRailLength) * HANDLE_CAP * chords[1];
+  const outLen0 = (spec.tailFullness / 100) * tailHandleMaxLength(dir0.y, chords[0], cw, P0.y);
+  const inLen1 = (spec.noseFullness / 100) * noseHandleMaxLength(dir4.y, chords[1], cw);
+  const outLen = [outLen0, outLen1], inLen = [inLen0, inLen1];
+  const controls = [];
+  for (let i = 0; i < 2; i++) {
+    const A = knotPoints[i], Ad = knotDirs[i], B = knotPoints[i + 1], Bd = knotDirs[i + 1];
+    controls.push({ c1: { x: A.x + outLen[i] * Ad.x, y: A.y + outLen[i] * Ad.y }, c2: { x: B.x - inLen[i] * Bd.x, y: B.y - inLen[i] * Bd.y } });
+  }
+  const raw = [];
+  for (let seg = 0; seg < 2; seg++) {
+    const A = knotPoints[seg], B = knotPoints[seg + 1], c = controls[seg], start = seg === 0 ? 0 : 1;
+    for (let i = start; i <= SAMPLES_PER_SEGMENT; i++) {
+      const t = i / SAMPLES_PER_SEGMENT;
+      raw.push([bez1(A.x, c.c1.x, c.c2.x, B.x, t), Math.max(0, Math.min(bez1(A.y, c.c1.y, c.c2.y, B.y, t), cw))]);
+    }
+  }
+  raw.sort((a, b) => a[0] - b[0]);
+  const points = raw;
+  const tailWidthAt12 = 2 * interpolateHalfWidth(points, Math.min(MEASURE_STATION, length));
+  const noseWidthAt12 = 2 * interpolateHalfWidth(points, Math.max(0, length - MEASURE_STATION));
+  let area = 0;
+  for (let i = 0; i < raw.length - 1; i++) area += ((raw[i][1] + raw[i + 1][1]) / 2) * (raw[i + 1][0] - raw[i][0]);
+  area *= 2;
+  const segments = [0, 1].map((i) => ({ p0: knotPoints[i], c0: controls[i].c1, c1: controls[i].c2, p1: knotPoints[i + 1] }));
+  return { spec, length, cw, bw, tailBlockPinned, widePointStation, tailPodStation, centreCloseStation, effectiveDiamondDepth, knots: knotPoints, dirs: knotDirs, controls, segments, points, tailWidthAt12, noseWidthAt12, area };
+}
+
+/* The exact curve (not the 161-point polyline) at a station, by solving the Bezier for its station. */
+function exactHalfWidthAt(g, s) {
+  if (s <= g.tailPodStation) return g.bw;
+  if (s >= g.length) return 0;
+  const seg = s <= g.widePointStation ? g.segments[0] : g.segments[1];
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (bez1(seg.p0.x, seg.c0.x, seg.c1.x, seg.p1.x, mid) < s) lo = mid; else hi = mid; }
+  const t = (lo + hi) / 2;
+  return clamp(bez1(seg.p0.y, seg.c0.y, seg.c1.y, seg.p1.y, t), 0, g.cw);
+}
+/* The exact curve's slope dy/ds at a station (for the key's angle readouts). */
+function exactSlopeAt(g, s, h = 1e-3) { return (exactHalfWidthAt(g, s + h) - exactHalfWidthAt(g, s - h)) / (2 * h); }
+
+/* ---- wings ----
+   A wing: { on, station, depth, run, smoothing }. `station` is the wing's OUTER corner — where the step leaves the
+   curve you drew; `run` is how far along the stringer the step travels to its INNER corner (0 = a square step);
+   `depth` is how far in. `smoothing` is a CORNER RADIUS (the founder, 2026-10-14: "more of a radius rounder on the
+   wing's outer and inner points rather than also adjusting along the stringer appearance"): both corners are rounded
+   with that radius, capped at the largest radius whose two rounds still fit on the step, so the run alone decides how
+   long the step is along the board. The step is worked out in inches along the board (x) and in toward the stringer
+   (y), as if the curve were locally straight, then applied as a share of the depth at each station. */
+function stepLeg(w) { return Math.hypot(w.run, w.depth); }
+function turnAngle(w) { return Math.atan2(w.depth, Math.max(w.run, 0)); }
+/* The largest corner radius whose two rounds fit on this step. A square 3/8" step takes 3/16"; a 1" run takes about 3". */
+function maxRadius(w) { const tanHalf = Math.tan(turnAngle(w) / 2); return tanHalf > 1e-9 ? (stepLeg(w) / 2) / tanHalf : 0; }
+function effectiveRadius(w) { return Math.max(0, Math.min(w.smoothing || 0, maxRadius(w))); }
+/* The step as a polyline in (station, inward offset) inches, from where it leaves the curve to where it rejoins. */
+function wingShape(w) {
+  const S = w.station, r = w.run, d = w.depth, R = effectiveRadius(w), L = stepLeg(w);
+  const u = L > 0 ? { x: -r / L, y: d / L } : { x: 0, y: 1 };
+  const t = R * Math.tan(turnAngle(w) / 2);
+  const c1 = { x: S, y: 0 }, c2 = { x: S - r, y: d };
+  if (t <= 1e-9) return { points: [c1, c2], t: 0, R: 0 };
+  const A1 = { x: S + t, y: 0 }, B1 = { x: c1.x + t * u.x, y: c1.y + t * u.y };
+  const B2 = { x: c2.x - t * u.x, y: c2.y - t * u.y }, A2 = { x: S - r - t, y: d };
+  const C1 = { x: S + t, y: R }, C2 = { x: S - r - t, y: d - R };
+  const arc = (C, from, to) => {
+    let a0 = Math.atan2(from.y - C.y, from.x - C.x), a1 = Math.atan2(to.y - C.y, to.x - C.x), da = a1 - a0;
+    while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    const n = Math.max(6, Math.ceil(Math.abs(da) / (Math.PI / 36))), out = [];
+    for (let i = 0; i <= n; i++) { const a = a0 + (da * i) / n; out.push({ x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a) }); }
+    return out;
+  };
+  return { points: [...arc(C1, A1, B1), ...arc(C2, B2, A2)], t, R };
+}
+function wingFootprint(w) { const sh = wingShape(w); return { hi: sh.points[0].x, lo: sh.points[sh.points.length - 1].x, inner: sh.points[sh.points.length - 1].x, t: sh.t, R: sh.R, shape: sh }; }
+/* Share of the depth taken at station s: 0 ahead of the step, 1 behind it, following the rounded step through it. */
+function stepProfile(w, s) {
+  const sh = wingShape(w), pts = sh.points, d = w.depth;
+  if (s >= pts[0].x) return 0;
+  if (s <= pts[pts.length - 1].x) return 1;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (s <= a.x && s >= b.x) { const f = a.x - b.x > 1e-12 ? (a.x - s) / (a.x - b.x) : 1; return clamp((a.y + (b.y - a.y) * f) / d, 0, 1); }
+  }
+  return 1;
+}
+
+/* Half-width at station s with the wings applied, under one of the three constructions:
+   "a" — the tail is re-drawn to the block you set: each wing's depth fades to nothing at the tail pod.
+   "b" — the tail is moved in: each wing's depth is carried all the way to the tail (the block narrows).
+   "c" — a flyer: the tail is as drawn; the outline AHEAD of the wing is widened by the depth, fading out by the widepoint. */
+function wingedHalfWidth(g, wings, variant, s) {
+  const base = exactHalfWidthAt(g, s);
+  if (s <= g.tailPodStation) {
+    if (variant !== "b") return base;
+    let hw = base; for (const w of wings) if (w.on) hw -= w.depth; return clamp(hw, 0, g.cw);
+  }
+  let hw = base;
+  for (const w of wings) {
+    if (!w.on) continue;
+    const p = stepProfile(w, s), inner = wingFootprint(w).inner;
+    if (variant === "a") {
+      const fade = inner > g.tailPodStation ? clamp((s - g.tailPodStation) / (inner - g.tailPodStation), 0, 1) : 0;
+      hw -= w.depth * p * fade;
+    } else if (variant === "b") {
+      hw -= w.depth * p;
+    } else {
+      const fadeWp = w.station < g.widePointStation ? clamp((g.widePointStation - s) / (g.widePointStation - w.station), 0, 1) : 0;
+      hw += w.depth * (1 - p) * fadeWp;
+    }
+  }
+  return clamp(hw, 0, g.cw);
+}
+
+/* A dense list of [station, halfWidth] for drawing: the app's own 161 stations, every 1/20" through the tail
+   and every wing's own corners (twice, a hair apart, so a square step draws vertical). */
+function wingedPoints(g, wings, variant, tailZoomTo = 30) {
+  const st = new Set(g.points.map((p) => p[0]));
+  for (let s = 0; s <= Math.min(tailZoomTo, g.length); s += 0.05) st.add(Number(s.toFixed(4)));
+  for (const w of wings) if (w.on) {
+    const f = wingFootprint(w);
+    for (const p of f.shape.points) { st.add(p.x); st.add(p.x - 1e-6); st.add(p.x + 1e-6); }
+    for (let x = f.lo; x <= f.hi; x += 0.02) st.add(Number(x.toFixed(5)));
+  }
+  st.add(g.tailPodStation); st.add(g.widePointStation); st.add(g.length);
+  const stations = [...st].filter((s) => s >= 0 && s <= g.length).sort((a, b) => a - b);
+  return stations.map((s) => [s, wingedHalfWidth(g, wings, variant, s)]);
+}
+
+function areaOf(points) { let a = 0; for (let i = 0; i < points.length - 1; i++) a += ((points[i][1] + points[i + 1][1]) / 2) * (points[i + 1][0] - points[i][0]); return 2 * a; }
+
+/* Readouts for the captions and the zoom's dimension lines. */
+function wingReadouts(g, wings, variant) {
+  return wings.map((w) => {
+    if (!w.on) return null;
+    const f = wingFootprint(w);
+    return {
+      station: w.station, inner: f.inner, depth: w.depth,
+      widthAhead: 2 * wingedHalfWidth(g, wings, variant, f.hi + 1e-6),
+      widthBehind: 2 * wingedHalfWidth(g, wings, variant, f.inner - 1e-6),
+      baseAhead: 2 * exactHalfWidthAt(g, f.hi), baseBehind: 2 * exactHalfWidthAt(g, f.inner),
+    };
+  });
+}
+
+const PALETTES = {
+  slate: { "--color-bg": "#12141a", "--color-surface": "#12141a", "--color-canvas": "#1a1d25", "--color-well": "#1b1f26", "--color-border": "#333842", "--color-line": "#6a707c", "--color-text": "#f2f4f7", "--color-text-muted": "#a1a8b4", "--color-primary": "#18526d", "--color-on-primary": "#f2f4f7", "--color-accent-ink": "#3490bc", "--color-board": "#1a2732", "--color-warning-ink": "#ff9670", "--color-page": "#0b0c10", "--compare-b": "#4aa8de", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.45)", "--outline-drag": "#e8703a" },
+  daylight: { "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-canvas": "#dfdcd3", "--color-well": "#dfdcd3", "--color-border": "#c9c2ad", "--color-line": "#897c58", "--color-text": "#1f2a3b", "--color-text-muted": "#566171", "--color-primary": "#8ec1b8", "--color-on-primary": "#1f2a3b", "--color-accent-ink": "#48605c", "--color-board": "#d9f2ed", "--color-warning-ink": "#ac3811", "--color-page": "#c9c5ba", "--compare-b": "#1d6fa5", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.18)", "--outline-drag": "#e06a2b" },
+};
+const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
+
+const VARIANTS = [
+  { id: "a", label: "A: Past 24\" the tab jumps to the whole board" },
+  { id: "b", label: "B: The window grows with the wing ★ Selected", winner: true },
+  { id: "c", label: "C: The window follows the wing" },
+];
+const DEFAULTS = { variant: "b", theme: "daylight", device: "computer", tab: "wings", board: "default", build: "a", marks: "start", showFins: true, construction: false, zoom: "26", wings: [{ station: 11, depth: 0.375, run: 0.25, smoothing: 0, lock: true, edge: "trailing", finOffset: 0 }] };
+let state = JSON.parse(JSON.stringify(DEFAULTS));
+try { const saved = JSON.parse(localStorage.getItem("sketch014-picked") || "{}"); Object.assign(state, saved); if (!Array.isArray(state.wings)) state.wings = DEFAULTS.wings; } catch (e) {}
+state.build = "a"; // sketch 013's decision (the founder, 2026-10-14): the tail re-drawn to the block you set
+function save() { try { localStorage.setItem("sketch014-picked", JSON.stringify(state)); } catch (e) {} }
+
+/* ---- numbers ---- */
+function frac(v, denom = 16) {
+  const neg = v < -1e-9; v = Math.abs(v);
+  let whole = Math.floor(v + 1e-9), n = Math.round((v - whole) * denom), d = denom;
+  if (n === denom) { whole += 1; n = 0; }
+  while (n > 0 && n % 2 === 0) { n /= 2; d /= 2; }
+  const f = n ? `${whole ? whole + " " : ""}${n}/${d}` : `${whole}`;
+  return (neg ? "−" : "") + f + '"';
+}
+function dec(v, d = 2) { return v.toFixed(d).replace(/\.?0+$/, "") + '"'; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+const r2 = (v) => Number(v).toFixed(2);
+const snap = (v, step) => Math.round(v / step) * step;
+
+/* ---- the board and its wings ---- */
+function boardOf() { return DATA.boards.find((b) => b.id === state.board) || DATA.boards[0]; }
+function specOf(s) { return { length: s.lengthIn, widePointWidth: s.widePointWidthIn, widePointOffset: s.widePointOffsetIn, tailRailLength: s.tailRailLength, noseRailLength: s.noseRailLength, noseAngle: s.noseAngle, noseFullness: s.noseFullness, tailAngle: s.tailAngle, tailFullness: s.tailFullness, tail: { kind: s.tail.kind, endWidth: s.tail.endWidthIn, depth: s.tail.depthIn, crotchDepth: s.tail.crotchDepthIn } }; }
+function frontFin(board) { return board.marks.find((m) => m.role === "front" && m.side === 1) || null; }
+function finEdgeStation(fin, edge) { return edge === "leading" ? fin.leadingOffTailIn : fin.offTailIn; }
+function stationRange(board) { return [2, board.spec.lengthIn / 2]; }
+const STEP = 0.0625; // every wing number moves in sixteenths (1 mm in Metric)
+function resolveWings(board) {
+  const fin = frontFin(board), range = stationRange(board);
+  return state.wings.map((w, i) => {
+    const T = w.run, locked = w.lock && !!fin;
+    let shown = locked ? finEdgeStation(fin, w.edge) + w.finOffset : w.station;
+    shown = Math.max(range[0], Math.min(range[1], shown));
+    const station = state.marks === "middle" ? shown + T / 2 : shown;
+    return { on: true, station, depth: w.depth, run: w.run, smoothing: Math.min(w.smoothing, maxRadius({ run: w.run, depth: w.depth })), shown, locked, edge: w.edge, finOffset: w.finOffset, label: `WING ${i + 1}`, finStation: locked ? finEdgeStation(fin, w.edge) : null, index: i };
+  });
+}
+function addWing() {
+  const board = boardOf(), fin = frontFin(board), first = state.wings.length === 0;
+  if (state.wings.length >= 2) return;
+  const station = fin ? snap(fin.offTailIn, STEP) : 11;
+  state.wings.push(state.wings.length === 0 ? { station, depth: 0.375, run: 0.25, smoothing: 0, lock: !!fin, edge: "trailing", finOffset: 0 } : { station: Math.min(stationRange(board)[1], (state.wings[0].lock && fin ? fin.offTailIn : state.wings[0].station) + 4.5), depth: 0.25, run: 0.5, smoothing: 3, lock: false, edge: "trailing", finOffset: 0 });
+  if (first) { state.showFins = true; save(); renderAll(); openPopup(); return; }
+  save(); renderAll();
+}
+function removeWing(i) { state.wings.splice(i, 1); save(); renderAll(); }
+
+/* ---- SVG pieces (sketch 013's, the app's own callout grammar) ---- */
+const HANDLE_DROP = 22;
+const CHIP_W = 112, CHIP_H = 38, CHIP_R = 4, FONT_VALUE = 17, FONT_NAME = 12, TICK = 4, VALUE_GAP = 6;
+const STRINGER_DASH = "16 4 4 4", STATION_DASH = "5 4", WIDEPOINT_DASH = "2 3";
+function chipSvg(x, y, name, value, nameColor, leader) {
+  let out = `<g data-chip="${esc(name)}">`;
+  if (leader) {
+    if (Math.abs(leader.atY - y) < 0.5) out += `<line x1="${r2(x)}" y1="${r2(y)}" x2="${r2(leader.toX)}" y2="${r2(y)}" stroke="var(--outline-station-line)" stroke-width="1"/>`;
+    else { const kx = leader.toX - 12; out += `<path d="M ${r2(x)} ${r2(y)} L ${r2(kx)} ${r2(y)} L ${r2(kx)} ${r2(leader.atY)} L ${r2(leader.toX)} ${r2(leader.atY)}" fill="none" stroke="var(--outline-station-line)" stroke-width="1"/>`; }
+  }
+  const cx = x - CHIP_W / 2;
+  out += `<rect x="${r2(x - CHIP_W)}" y="${r2(y - CHIP_H / 2)}" width="${CHIP_W}" height="${CHIP_H}" rx="${CHIP_R}" fill="var(--outline-page-bg)" stroke="var(--color-border)"/>`;
+  out += `<text class="lbl-svg" x="${r2(cx)}" y="${r2(y - FONT_VALUE * 0.34)}" text-anchor="middle" style="font-size:${FONT_NAME}px;letter-spacing:.12em;${nameColor ? `fill:${nameColor}` : ""}">${esc(name)}</text>`;
+  out += `<text class="val-svg" x="${r2(cx)}" y="${r2(y + FONT_VALUE * 0.76)}" text-anchor="middle" style="font-size:${value.length > 9 ? 14 : FONT_VALUE}px">${esc(value)}</text></g>`;
+  return out;
+}
+function tickSvg(x, y, color = "var(--outline-dim-ink)") { return `<line x1="${r2(x - TICK)}" y1="${r2(y + TICK)}" x2="${r2(x + TICK)}" y2="${r2(y - TICK)}" stroke="${color}" stroke-width="1.1"/>`; }
+function outputSvg(edgeX, atY, y, value, station, valueX) {
+  const reach = valueX - VALUE_GAP;
+  let out = `<g data-output="${esc(station)}">`;
+  if (Math.abs(atY - y) < 0.5) out += `<line x1="${r2(edgeX)}" y1="${r2(atY)}" x2="${r2(reach)}" y2="${r2(atY)}" stroke="var(--outline-station-line)" stroke-width="1"/>`;
+  else { const kx = reach - 14; out += `<path d="M ${r2(edgeX)} ${r2(atY)} L ${r2(kx)} ${r2(atY)} L ${r2(kx)} ${r2(y)} L ${r2(reach)} ${r2(y)}" fill="none" stroke="var(--outline-station-line)" stroke-width="1"/>`; }
+  out += tickSvg(edgeX, atY);
+  out += `<text class="val-svg" x="${r2(valueX)}" y="${r2(y - 2)}" style="font-size:${FONT_VALUE}px">${esc(value)}</text>`;
+  out += `<text class="lbl-svg" x="${r2(valueX)}" y="${r2(y + FONT_NAME)}" style="font-size:${FONT_NAME}px;letter-spacing:.1em">${esc(station)}</text></g>`;
+  return out;
+}
+function spread(items, minGap) {
+  const order = items.map((it, i) => ({ i, y: it.y })).sort((a, b) => b.y - a.y);
+  const out = new Array(items.length); let prev = null;
+  for (const o of order) { let y = o.y; if (prev !== null && y > prev - minGap) y = prev - minGap; out[o.i] = y; prev = y; }
+  return out;
+}
+function dimH(x1, x2, y, value, color = "var(--outline-dim-ink)") {
+  const left = Math.min(x1, x2), right = Math.max(x1, x2);
+  return `<g><line x1="${r2(left)}" y1="${r2(y)}" x2="${r2(right)}" y2="${r2(y)}" stroke="${color}" stroke-width="1.1"/>${tickSvg(left, y, color)}${tickSvg(right, y, color)}<text class="val-svg" x="${r2(right + 8)}" y="${r2(y + 4.5)}" style="font-size:13px">${esc(value)}</text></g>`;
+}
+function dimV(x, y1, y2, value, color = "var(--outline-dim-ink)") {
+  const top = Math.min(y1, y2), bottom = Math.max(y1, y2);
+  const label = bottom - top > 26 ? `<text class="val-svg" x="${r2(x + 7)}" y="${r2((top + bottom) / 2 + 4.5)}" style="font-size:13px">${esc(value)}</text>` : `<text class="val-svg" x="${r2(x + 7)}" y="${r2(top - 5)}" style="font-size:13px">${esc(value)}</text>`;
+  return `<g><line x1="${r2(x)}" y1="${r2(top)}" x2="${r2(x)}" y2="${r2(bottom)}" stroke="${color}" stroke-width="1.1"/>${tickSvg(x, top, color)}${tickSvg(x, bottom, color)}${label}</g>`;
+}
+function finLinesSvg(board, toX, toY) {
+  if (!state.showFins) return "";
+  return board.marks.map((m) => {
+    const lx = m.side === 0 ? 0 : Math.abs(m.lateralIn) * m.side, llx = m.side === 0 ? 0 : Math.abs(m.leadingLateralIn) * m.side;
+    return `<g data-fin="${m.role}${m.side}"><line x1="${r2(toX(lx))}" y1="${r2(toY(m.offTailIn))}" x2="${r2(toX(llx))}" y2="${r2(toY(m.leadingOffTailIn))}" stroke="var(--outline-fin)" stroke-width="2"/><circle cx="${r2(toX(lx))}" cy="${r2(toY(m.offTailIn))}" r="3.5" fill="var(--outline-ink)"/><circle cx="${r2(toX(llx))}" cy="${r2(toY(m.leadingOffTailIn))}" r="3.5" fill="var(--outline-ink)"/></g>`;
+  }).join("");
+}
+function outlinePath(pts, g, toX, toY, lo = 0, hi = Infinity) {
+  const vis = pts.filter(([s]) => s >= Math.max(lo, g.tailPodStation - 1e-9) && s <= hi);
+  const up = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(hw))} ${r2(toY(s))}`);
+  const down = vis.slice().reverse().map(([s, hw]) => `L ${r2(toX(-hw))} ${r2(toY(s))}`);
+  return `${up.join(" ")} ${down.join(" ")} L ${r2(toX(0))} ${r2(toY(Math.min(g.centreCloseStation, hi)))} Z`;
+}
+
+/* The VIEWER tab: the whole board as the app frames it, wings applied, no wing controls anywhere. */
+function templateSvg(board, g, wings, pts, basePts) {
+  const L = g.length, scale = (620 - 48) / L, cxl = 170, tailPy = 596, tipPy = 24;
+  const toY = (s) => tailPy - s * scale, toX = (hw) => cxl + hw * scale;
+  const halfPx = g.cw * scale, overflow = Math.max(0, halfPx - (282 - 36.5 - cxl));
+  const minX = -104 - overflow, width = 514 + 2 * overflow, chipRightX = 58 - overflow, valueX = 282 + overflow;
+  const hwAt = (s) => wingedHalfWidth(g, wings, state.build, s);
+  const wpS = g.widePointStation, midS = L / 2, noseS = L - 12, tailS = 12;
+  let out = `<svg viewBox="${r2(minX)} -16 ${r2(width)} 638" font-family="var(--font-sans)">`;
+  out += `<path d="${outlinePath(pts, g, toX, toY)}" fill="var(--outline-board-fill)" stroke="var(--outline-ink)" stroke-width="2" stroke-linejoin="round"/>`;
+  out += `<line x1="${cxl}" y1="${tipPy - 6}" x2="${cxl}" y2="${tailPy + 6}" stroke="var(--outline-station-line)" stroke-dasharray="${STRINGER_DASH}"/>`;
+  for (const [s, dash] of [[midS, STRINGER_DASH], [noseS, STATION_DASH], [tailS, STATION_DASH]]) { const hw = hwAt(s); out += `<line x1="${r2(toX(-hw))}" y1="${r2(toY(s))}" x2="${r2(toX(hw))}" y2="${r2(toY(s))}" stroke="var(--outline-station-line)" stroke-dasharray="${dash}"/>`; }
+  out += `<line x1="${r2(toX(-g.cw))}" y1="${r2(toY(wpS))}" x2="${r2(toX(g.cw))}" y2="${r2(toY(wpS))}" stroke="var(--outline-widepoint-line)" stroke-dasharray="${WIDEPOINT_DASH}"/>`;
+  out += `<circle cx="${r2(toX(-g.cw))}" cy="${r2(toY(wpS))}" r="2.6" fill="var(--outline-widepoint-knot)"/><circle cx="${r2(toX(g.cw))}" cy="${r2(toY(wpS))}" r="2.6" fill="var(--outline-widepoint-knot)"/>`;
+  out += finLinesSvg(board, toX, toY);
+  const outputs = [{ s: noseS, value: frac(2 * hwAt(noseS)), station: 'Nose @ 12"' }, { s: midS, value: frac(2 * hwAt(midS)), station: "Center" }, { s: tailS, value: frac(2 * hwAt(tailS)), station: 'Tail @ 12"' }];
+  const oy = spread(outputs.map((o) => ({ y: toY(o.s) })), 40);
+  outputs.forEach((o, i) => { out += outputSvg(toX(hwAt(o.s)), toY(o.s), oy[i], o.value, o.station, valueX); });
+  const s = board.spec;
+  out += chipSvg(chipRightX, tipPy, "LENGTH", `${Math.floor(L / 12 + 1e-9)}'${frac(L - 12 * Math.floor(L / 12 + 1e-9), 8)}`, null, { toX: cxl, atY: tipPy });
+  out += chipSvg(chipRightX, toY(wpS), "WIDEPOINT", frac(s.widePointWidthIn, 8), "var(--outline-widepoint-knot)", { toX: toX(-g.cw), atY: toY(wpS) });
+  out += chipSvg(chipRightX, toY(wpS) + CHIP_H + 6, "WP OFFSET", (s.widePointOffsetIn === 0 ? "0\"" : (s.widePointOffsetIn > 0 ? "+" : "−") + frac(Math.abs(s.widePointOffsetIn), 8)), null, null);
+  const tailChips = [];
+  if (!g.tailBlockPinned) tailChips.push({ y: toY(g.tailPodStation), name: "TAIL BLOCK", value: frac(2 * hwAt(g.tailPodStation + 1e-9), 8), toX: toX(-hwAt(g.tailPodStation + 1e-9)), color: null });
+  for (const w of wings) tailChips.push({ y: toY(w.shown), name: w.label, value: `${frac(w.depth)} @ ${frac(w.shown, 8)}`, toX: toX(-hwAt(w.station + 1e-6)), color: null, atY: toY(w.station) });
+  const cy = spread(tailChips.map((c) => ({ y: c.y })), CHIP_H + 6);
+  tailChips.forEach((c, i) => { out += chipSvg(chipRightX, cy[i], c.name, c.value, c.color, { toX: c.toX, atY: c.atY ?? c.y }); });
+  return out + "</svg>";
+}
+
+/* Which stretch of the board the WINGS tab shows. The 26" tail view until a wing passes 24"; then, by variant:
+   A jumps to the whole board, B grows the window to hold the wing with 3" of room, C slides a 26" window up to it. */
+function windowFor(board, wings) {
+  // a window that moved under a drag would carry the wing away with it (found in this sketch's own drag check), so it holds still while a grab point is held
+  if (drag && drag.win) return drag.win;
+  const L = board.spec.lengthIn, Z = Number(state.zoom), maxS = wings.length ? Math.max(...wings.map((w) => w.station)) : 0;
+  if (maxS <= 24) return [0, Math.min(Z, L)];
+  if (state.variant === "a") return [0, L];
+  if (state.variant === "b") return [0, Math.min(L, maxS + 3)];
+  const hi = Math.min(L, maxS + 6); return [Math.max(0, hi - Z), hi];
+}
+
+/* The WINGS tab: the tail, closer — the same strokes, the wing's own dimensions, and the grab points. */
+function closeUpSvg(board, g, wings, pts, basePts, { handles = false, compact = false, win = [0, 26] } = {}) {
+  // the toolbar sits in the panel's top-right corner, so the drawing and its read-outs start below its row
+  const [lo, hi] = win, span = hi - lo, padY = 16, padTop = compact ? 16 : 56, zs = (620 - padTop - padY) / span;
+  const inWin = ([s]) => s >= lo - 1e-9 && s <= hi + 1e-9;
+  const hwMax = Math.max(...pts.filter(inWin).map((p) => p[1]), ...basePts.filter(inWin).map((p) => p[1]), 0.5);
+  const gutterL = compact ? 150 : 214, railR = compact ? 190 : 240, cx = gutterL + hwMax * zs + 20, W = Math.ceil(cx + hwMax * zs + 20 + railR), H = 620;
+  const toY = (s) => H - padY - (s - lo) * zs, toX = (hw) => cx + hw * zs;
+  const hwAt = (s) => wingedHalfWidth(g, wings, state.build, s);
+  const tailShown = lo <= 0;
+  void padTop;
+  let out = `<svg class="close" data-closeup viewBox="0 0 ${W} ${H}" data-cx="${r2(cx)}" data-zs="${zs}" data-lo="${lo}" data-h="${H}" data-pady="${padY}" font-family="var(--font-sans)">`;
+  if (wings.length) out += `<path d="${outlinePath(basePts, g, toX, toY, lo, hi)}" fill="none" stroke="var(--outline-ghost)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  out += `<path d="${outlinePath(pts, g, toX, toY, lo, hi)}" fill="var(--outline-board-fill)" stroke="none"/>`;
+  const vis = pts.filter(([s]) => s >= Math.max(lo, g.tailPodStation) - 1e-9 && s <= hi + 1e-9);
+  const right = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(hw))} ${r2(toY(s))}`).join(" ");
+  const left = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(-hw))} ${r2(toY(s))}`).join(" ");
+  const tailClose = tailShown ? `M ${r2(toX(-vis[0][1]))} ${r2(toY(vis[0][0]))} L ${r2(toX(0))} ${r2(toY(g.centreCloseStation))} L ${r2(toX(vis[0][1]))} ${r2(toY(vis[0][0]))}` : "";
+  out += `<path d="${right} ${left} ${tailClose}" fill="none" stroke="var(--outline-ink)" stroke-width="2" stroke-linejoin="round"/>`;
+  out += `<line x1="${r2(cx)}" y1="${r2(toY(hi) - 6)}" x2="${r2(cx)}" y2="${r2(toY(lo) + 6)}" stroke="var(--outline-station-line)" stroke-dasharray="${STRINGER_DASH}"/>`;
+  const hw12 = hwAt(12);
+  if (12 >= lo && 12 <= hi) out += `<line x1="${r2(toX(-hw12))}" y1="${r2(toY(12))}" x2="${r2(toX(hw12))}" y2="${r2(toY(12))}" stroke="var(--outline-station-line)" stroke-dasharray="${STATION_DASH}"/>`;
+  if (g.length / 2 >= lo && g.length / 2 <= hi) { const hwm = hwAt(g.length / 2); out += `<line x1="${r2(toX(-hwm))}" y1="${r2(toY(g.length / 2))}" x2="${r2(toX(hwm))}" y2="${r2(toY(g.length / 2))}" stroke="var(--outline-station-line)" stroke-dasharray="${STRINGER_DASH}"/>`; }
+  if (g.length - 12 >= lo && g.length - 12 <= hi) { const hwn = hwAt(g.length - 12); out += `<line x1="${r2(toX(-hwn))}" y1="${r2(toY(g.length - 12))}" x2="${r2(toX(hwn))}" y2="${r2(toY(g.length - 12))}" stroke="var(--outline-station-line)" stroke-dasharray="${STATION_DASH}"/>`; }
+  if (g.widePointStation >= lo && g.widePointStation <= hi) out += `<line x1="${r2(toX(-g.cw))}" y1="${r2(toY(g.widePointStation))}" x2="${r2(toX(g.cw))}" y2="${r2(toY(g.widePointStation))}" stroke="var(--outline-widepoint-line)" stroke-dasharray="${WIDEPOINT_DASH}"/><circle cx="${r2(toX(-g.cw))}" cy="${r2(toY(g.widePointStation))}" r="2.6" fill="var(--outline-widepoint-knot)"/><circle cx="${r2(toX(g.cw))}" cy="${r2(toY(g.widePointStation))}" r="2.6" fill="var(--outline-widepoint-knot)"/>`;
+  if (state.construction) for (const w of wings) { const f = wingFootprint(w); for (const s of [f.hi, f.inner]) out += `<circle cx="${r2(toX(hwAt(s + (s === f.hi ? 1e-6 : -1e-6))))}" cy="${r2(toY(s))}" r="3.5" fill="var(--outline-construction)"/>`; }
+  out += finLinesSvg(board, toX, toY);
+  const valueX = toX(hwMax) + (compact ? 96 : 124), extEnd = toX(hwMax) + 50;
+  const outputs = [];
+  if (12 >= lo && 12 <= hi) outputs.push({ s: 12, value: frac(2 * hw12), station: 'Tail @ 12"', edge: toX(hw12) });
+  if (tailShown && !g.tailBlockPinned) outputs.push({ s: g.tailPodStation, value: frac(2 * hwAt(g.tailPodStation + 1e-9), 8), station: "Tail block", edge: toX(hwAt(g.tailPodStation + 1e-9)) });
+  if (g.length / 2 >= lo && g.length / 2 <= hi && hi > 30) outputs.push({ s: g.length / 2, value: frac(2 * hwAt(g.length / 2)), station: "Center", edge: toX(hwAt(g.length / 2)) });
+  if (g.length - 12 >= lo && g.length - 12 <= hi) outputs.push({ s: g.length - 12, value: frac(2 * hwAt(g.length - 12)), station: 'Nose @ 12"', edge: toX(hwAt(g.length - 12)) });
+  for (const w of wings) {
+    const f = wingFootprint(w), ahead = hwAt(f.hi + 1e-6), behind = hwAt(f.inner - 1e-6);
+    outputs.push({ s: f.hi, value: frac(2 * ahead), station: `Ahead of ${w.label.toLowerCase()}`, edge: toX(ahead) });
+    outputs.push({ s: f.inner, value: frac(2 * behind), station: `Behind ${w.label.toLowerCase()}`, edge: toX(behind) });
+    const yd = toY(f.inner) + 18;
+    out += `<line x1="${r2(toX(ahead))}" y1="${r2(toY(f.hi))}" x2="${r2(toX(ahead))}" y2="${r2(yd + 5)}" stroke="var(--outline-station-line)"/>`;
+    out += `<line x1="${r2(toX(behind))}" y1="${r2(toY(f.inner))}" x2="${r2(toX(behind))}" y2="${r2(yd + 5)}" stroke="var(--outline-station-line)"/>`;
+    out += dimH(toX(behind), toX(ahead), yd, frac(w.depth));
+    if (w.run > 0 && toY(w.station - w.run) - toY(w.station) >= 10) { const x = extEnd + 2, y0 = toY(w.station), y1 = toY(w.station - w.run); out += `<g><line x1="${r2(x)}" y1="${r2(y0)}" x2="${r2(x)}" y2="${r2(y1)}" stroke="var(--outline-dim-ink)" stroke-width="1.1"/>${tickSvg(x, y0)}${tickSvg(x, y1)}<text class="val-svg" x="${r2(x + 7)}" y="${r2((y0 + y1) / 2 + 4.5)}" style="font-size:13px">${esc(frac(w.run, 8))}</text></g>`; }
+    if (w.locked && state.showFins && w.finStation !== null) out += `<line x1="${r2(toX(0))}" y1="${r2(toY(w.finStation))}" x2="${r2(toX(-ahead) - 34)}" y2="${r2(toY(w.finStation))}" stroke="var(--outline-fin)" stroke-dasharray="2 3"/>`;
+  }
+  const oy = spread(outputs.map((o) => ({ y: toY(o.s) })), 40);
+  outputs.forEach((o, i) => { out += outputSvg(o.edge, toY(o.s), oy[i], o.value, o.station, valueX); });
+  const chipRight = gutterL - 14;
+  const chips = wings.map((w) => ({ y: toY(w.shown), atY: toY(w.station), name: w.label + (w.locked ? " · FIN" : ""), value: `${frac(w.depth)} @ ${frac(w.shown, 8)}`, toX: toX(-hwAt(w.station + 1e-6)), color: w.locked ? "var(--outline-fin)" : null }));
+  const cy = spread(chips.map((c) => ({ y: c.y })), CHIP_H + 6);
+  chips.forEach((c, i) => { out += chipSvg(chipRight, cy[i], c.name, c.value, c.color, { toX: c.toX, atY: c.atY }); });
+  if (!compact && tailShown) wings.forEach((w, wi) => { out += dimV(22 + wi * 30, toY(0), toY(w.shown), frac(w.shown, 8)); });
+  // variant C: grab points, drawn like the app's own drag targets — a ring with a dot, on the RIGHT rail
+  if (handles) for (const w of wings) {
+    const f = wingFootprint(w), ahead = hwAt(f.hi + 1e-6), behind = hwAt(f.inner - 1e-6);
+    const ring = (x, y, kind) => `<g class="handle" data-handle="${kind}" data-wing="${w.index}"><circle cx="${r2(x)}" cy="${r2(y)}" r="13" fill="var(--color-surface)" fill-opacity=".85" stroke="var(--outline-construction)" stroke-width="1.5"/><circle cx="${r2(x)}" cy="${r2(y)}" r="5" fill="var(--outline-drag)"/></g>`;
+    // the depth-and-run point hangs 22 units below the inner corner, on the depth dimension's own extension line, so a sharp wing's two points never overlap
+    out += ring(toX(ahead), toY(w.station), "outer") + ring(toX(behind), toY(w.station - w.run) + HANDLE_DROP, "inner");
+  }
+  return out + "</svg>";
+}
+
+/* ---- the mocked TEMPLATE page ---- */
+const ICONS = {
+  home: '<svg class="ico" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  gear: '<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  rotate: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>',
+  download: '<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v3h16v-3"/></svg>',
+  locate: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  panel: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M13 12l-2-2m0 0l2-2m-2 2h6"/></svg>',
+  wide: '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  zoomin: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>',
+  zoomout: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>',
+};
+function topBar() {
+  if (state.device === "phone") return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><button class="save">Save</button><span class="ham">☰</span></div>`;
+  return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><div class="topnav"><span class="on">Template</span><span>Rocker</span><span>Rails</span><span>Volume</span><span>Fins</span><span>Summary</span><span class="sep"></span>${ICONS.home}${ICONS.gear}<span class="sep"></span><button class="save">Save</button><span style="letter-spacing:0;text-transform:none;font-weight:500;font-size:14px">Sign in</span></div></div>`;
+}
+function slider(label, ends, pct) { return `<div><div class="lbl">${label}</div><input type="range" min="0" max="100" value="${pct}" disabled>${ends ? `<div class="ends"><span>${ends[0]}</span><span>${ends[1]}</span></div>` : ""}</div>`; }
+function builderSidebar(board) {
+  const s = board.spec, ft = Math.floor(s.lengthIn / 12), inch = s.lengthIn - ft * 12;
+  const kinds = ["pin", "round", "squash", "diamond", "swallow"];
+  return `<h1>Template builder</h1><div class="sub">Design and print full sized surfboard templates</div>
+    <h3>Board length</h3><div class="lbl">Board Length — ${ft}'${inch}"</div><div class="sel"><span>${ft}<span>▾</span></span><span>${inch}<span>▾</span></span></div>${slider("", null, Math.round((s.lengthIn - 60) / 60 * 100))}
+    <h3>Nose controls</h3><div class="two">${slider(`Nose Angle — ${s.noseAngle}°`, ["Pointy", "Round"], Math.round((s.noseAngle - 35) / 55 * 100))}${slider(`Fullness — ${s.noseFullness}%`, ["Thin", "Full"], s.noseFullness)}</div>
+    <h3>Widepoint controls</h3><div class="two">${slider(`Width — ${frac(s.widePointWidthIn, 8)}`, null, Math.round((s.widePointWidthIn - 16) / 9 * 100))}${slider(`Offset — ${s.widePointOffsetIn === 0 ? '0"' : (s.widePointOffsetIn > 0 ? "+" : "−") + frac(Math.abs(s.widePointOffsetIn), 8)}`, ["Tail", "Nose"], Math.round((s.widePointOffsetIn + 12) / 24 * 100))}</div>
+    <div class="two">${slider(`Tail Rail — ${s.tailRailLength}%`, ["Short", "Long"], s.tailRailLength)}${slider(`Nose Rail — ${s.noseRailLength}%`, ["Short", "Long"], s.noseRailLength)}</div>
+    <h3>Tail controls</h3><div class="tails">${kinds.map((k) => `<span class="${k === s.tail.kind ? "on" : ""}" title="${k}"></span>`).join("")}</div>
+    <div class="two">${slider(`Tail Angle — ${s.tailAngle}°`, ["Pointy", "Round"], Math.round((s.tailAngle - 30) / 60 * 100))}${slider(`Fullness — ${s.tailFullness}%`, ["Thin", "Full"], Math.round(s.tailFullness))}</div>
+    <h3>Settings</h3><label class="ck"><input type="checkbox" ${state.construction ? "checked" : ""} data-check="construction"> Show construction</label><label class="ck"><input type="checkbox" ${state.showFins ? "checked" : ""} data-check="showFins"> Show fins <span class="note">(marks only, no dims)</span></label>
+    <div class="stepnav"><button class="btn">Next → Rocker</button></div>`;
+}
+function fmtOffset(v) { return v === 0 ? '0"' : (v > 0 ? "+" : "−") + frac(Math.abs(v)); }
+function liveSlider(i, field, label, min, max, value, fmt, ends, dim) {
+  return `<div><div class="lbl" data-for="${field}-${i}">${label} — ${fmt(value)}</div><input type="range" data-wing="${i}" data-field="${field}" data-label="${esc(label)}" min="${min}" max="${max}" step="${STEP}" value="${value}" ${dim ? "disabled" : ""}>${ends ? `<div class="ends"><span>${ends[0]}</span><span>${ends[1]}</span></div>` : ""}</div>`;
+}
+function wingSection(w, i, board) {
+  const fin = frontFin(board), locked = w.lock && !!fin, range = stationRange(board);
+  const rmax = Math.floor(maxRadius({ run: w.run, depth: w.depth }) * 16) / 16, used = Math.min(w.smoothing, rmax);
+  return `<h3 class="withlink"><span>Wing ${i + 1}</span><button class="link" data-remove="${i}">Remove</button></h3>
+    ${liveSlider(i, "station", "Position from tail", range[0], range[1], w.station, (v) => frac(v), [frac(range[0]), `Centre ${frac(range[1])}`], locked)}
+    <label class="ck"><input type="checkbox" data-wing="${i}" data-check="lock" ${w.lock ? "checked" : ""} ${fin ? "" : "disabled"}> Lock to front fin${fin ? "" : ' <span class="note">(no side fins)</span>'}</label>
+    ${locked ? `<div class="two"><div><div class="lbl">Fin edge</div><div class="pair"><button data-wing="${i}" data-pick="edge" data-v="trailing" class="${w.edge === "trailing" ? "on" : ""}">Trailing</button><button data-wing="${i}" data-pick="edge" data-v="leading" class="${w.edge === "leading" ? "on" : ""}">Leading</button></div></div>${liveSlider(i, "finOffset", "Offset from the fin", -3, 3, w.finOffset, fmtOffset, ["Toward tail", "Toward nose"], false)}</div>` : ""}
+    <div class="two">${liveSlider(i, "depth", "Depth", STEP, 1, w.depth, (v) => frac(v), ["Shallow", "Deep"], false)}${liveSlider(i, "run", "Run along the stringer", 0, 2, w.run, (v) => frac(v), ["Square", `2"`], false)}</div>
+    ${liveSlider(i, "smoothing", "Corner radius", 0, Math.max(rmax, STEP), used, (v) => frac(v), ["Sharp", `Round · ${frac(rmax)} fits`], false)}`;
+}
+function wingControls(board) {
+  const fin = frontFin(board);
+  const sections = state.wings.map((w, i) => wingSection(w, i, board)).join("");
+  const add = state.wings.length < 2 ? `<button class="btn" data-add="1">${state.wings.length ? "+ Add wing 2" : "+ Add a wing"}</button>` : "";
+  return `<h1>Wings</h1><div class="sub">Up to two, locked to the front fin or placed by hand</div>
+    ${sections}${add}
+    <h3>Settings</h3>
+    <label class="ck"><input type="checkbox" ${state.showFins ? "checked" : ""} data-check="showFins"> Show fins <span class="note">(marks only, no dims)</span></label>
+    <label class="ck"><input type="checkbox" ${state.construction ? "checked" : ""} data-check="construction"> Show construction <span class="note">(the wing's grab points too)</span></label>
+    <p class="note">${fin ? `Front fins ${dec(fin.offTailIn)} off the tail at the trailing edge, from the FINS page.` : "This board has no side fins."} Edit fin placement on FINS, then come back here.</p>
+    <div class="stepnav"><button class="btn">Next → Rocker</button></div>`;
+}
+function toolbar(tab) {
+  const b = (icon, on = false, toggle = "") => `<button type="button" class="tb ${on ? "on" : ""}" ${toggle ? `data-toggle="${toggle}"` : ""}>${ICONS[icon]}</button>`;
+  const phone = state.device === "phone";
+  if (tab === "wings") return `<div class="toolbar"><div class="rowb">${b("locate", state.construction, "construction")}${phone ? "" : b("panel")}</div></div>`;
+  return `<div class="toolbar"><div class="rowb">${phone ? "" : b("rotate")}${b("download")}${b("locate", state.construction, "construction")}${phone ? "" : b("panel")}</div>${phone ? "" : `<div class="rowb">${b("zoomout")}<span class="tb zoomlvl">1x</span>${b("zoomin")}${b("wide")}</div>`}</div>`;
+}
+function panel(board, g, wings, pts, basePts) {
+  const tab = state.tab, v = state.variant, phone = state.device === "phone";
+  const wingsLabel = state.wings.length ? `Wings · ${state.wings.length}` : "Add wings";
+  const tabs = `<div class="tabs"><button class="tab ${tab === "viewer" ? "on" : ""}" data-tab="viewer">Viewer</button><button class="tab ${tab === "wings" ? "on" : ""}" data-tab="wings">${wingsLabel}</button><span class="name">Untitled</span></div>`;
+  let body;
+  if (tab === "viewer") body = `<div class="drawing">${toolbar("viewer")}${templateSvg(board, g, wings, pts, basePts)}</div>`;
+  else {
+    const empty = state.wings.length === 0 ? `<div class="empty"><h2>No wings yet</h2><p>A wing is a step in the outline near the fins. Add one, then dial it in against the fin placement.</p><button class="btn primary" data-add="1">+ Add a wing</button></div>` : "";
+    body = `<div class="drawing">${toolbar("wings")}${closeUpSvg(board, g, wings, pts, basePts, { handles: state.construction, compact: phone, win: windowFor(board, wings) })}${empty}</div>`;
+  }
+  return `<div class="main">${tabs}<div class="panel"><div class="inner">${body}</div></div></div>`;
+}
+function sidebar(board) {
+  const v = state.variant, tab = state.tab;
+  const content = tab === "wings" ? wingControls(board) : builderSidebar(board);
+  return `<aside class="sidebar">${content}</aside>`;
+}
+function mockHtml() {
+  const board = boardOf(), g = buildOutline(specOf(board.spec)), wings = resolveWings(board);
+  const basePts = wingedPoints(g, [], "a", Number(state.zoom)), pts = wingedPoints(g, wings, state.build, Number(state.zoom));
+  const phone = state.device === "phone";
+  const inner = phone ? `${panel(board, g, wings, pts, basePts)}${sidebar(board)}` : `${sidebar(board)}${panel(board, g, wings, pts, basePts)}`;
+  return `<div class="device ${state.device}">${topBar()}<div class="shell">${inner}</div><div id="popup" role="dialog" aria-modal="true"><div class="card"><h2>Dial in your wing placement</h2><p>Edit fin placement on the FINS page, then return to the TEMPLATE to fine tune the wing.</p><div class="acts"><button type="button" class="btn" data-popup="fins">Open FINS</button><button type="button" class="btn primary" data-popup="ok">Got it</button></div></div></div></div>`;
+}
+
+/* ---- render ---- */
+const INTROS = {
+  a: "<b>A — past 24\" the tab jumps to the whole board.</b> The 26\" tail view until a wing's position passes 24\"; then the WINGS tab shows the whole board at the VIEWER's scale, with the wing's dimensions on it. Slide Position past 24\" to see it switch.",
+  b: "<b>B — the window grows with the wing (chosen).</b> The tail view stretches to hold the wing with 3\" of room above it, so the drawing shrinks a little with every inch the wing moves up, and the tail and fins never leave the picture. The sidebar wears the Template builder's own dress; Position starts at 2\", Run reaches 2\", every number moves in sixteenths, and the grab points come and go with Show construction, as the VIEWER's own points do.",
+  c: "<b>C — the window follows the wing.</b> A 26\" window slides up the board with the wing, keeping the close-up's scale; the tail and the fins leave the picture once the wing is more than 20\" up.",
+};
+const SMOOTHING_NOTE = "<b>Smoothing is now a corner radius</b> (the founder, 2026-10-14): it rounds the wing's outer and inner corners, up to the largest radius whose two rounds fit on the step, so the run alone decides how long the step is along the stringer. A square 3/8\" step rounds up to 3/16\"; a 1\" run allows nearly 3\".";
+function renderNav() {
+  const nav = document.getElementById("variant-nav");
+  nav.innerHTML = `<span class="sketch-id">Sketch 014</span>` + VARIANTS.map((v) => `<button class="variant-tab${v.winner ? " winner" : ""}${v.id === state.variant ? " active" : ""}" data-variant="${v.id}">${esc(v.label)}</button>`).join("") + `<button class="variant-tab notes-btn" data-notes="1">${document.getElementById("notes-panel").classList.contains("open") ? "Close notes" : "Notes"}</button>`;
+}
+function seg(key, options) { return `<span class="seg">${options.map(([v, label]) => `<button data-set="${key}" data-v="${v}" class="${String(state[key]) === String(v) ? "on" : ""}">${label}</button>`).join("")}</span>`; }
+function renderBar() {
+  document.getElementById("sketch-bar").innerHTML = `<span class="desc">The <b>WINGS tab</b>: the tail 26" closer with only the wing controls beside it. A wing may slide up to the board's centre for a stinger — so once it passes 24", how does the view scale?</span>
+    <span class="grp"><span>Board</span>${seg("board", DATA.boards.map((b) => [b.id, b.name.replace(" board", "")]))}</span>
+    <span class="grp"><span>Position marks</span>${seg("marks", [["start", "Step start"], ["middle", "Its middle"]])}</span>`;
+}
+function renderStage() {
+  document.getElementById("stage").innerHTML = `<p class="intro">${INTROS[state.variant]} ${SMOOTHING_NOTE}</p>${mockHtml()}<p class="stage-note">The page is the app's TEMPLATE screen as it is today (top bar, Template builder sidebar, the VIEWER tab with its toolbar and the board name), with one tab added. The board is one of the app's own, its outline built by the app's curve and its fins placed by the FINS page with Import Template ticked. <b>Add a wing</b> from the WINGS tab: the first one switches Show fins on and asks you to dial in the placement. Remove both to see the empty tab. The ⚙ tools switch Slate / Daylight, computer / phone, and the tail window.</p>`;
+}
+function renderNotes() {
+  document.getElementById("notes-panel").innerHTML = `
+    <h2>Sketch 014 — the WINGS tab</h2>
+    <p>The founder, 2026-10-14, on seeing sketch 013: "maybe we need an 'add wings' tab on the template page, which provides this zoomed in section of the tail. Then go back to viewer for the full board. That simplifies the controls too, since the add wings tab would only have the wing controls and the regular viewer doesn't need them at all." And on the first round of this sketch: "26\" tail view is great, but the wing position from tail should actually slide up to the center of the board (for stingers). In which case, we'll need a way to scale the board when the position is more than 24\" from the tail. Maybe >24\" we jump to full board view. Do not show board length or other template controls on the wing tab."</p>
+    <p>So this round: the sidebar always swaps to the wing controls on the WINGS tab (round one's A, confirmed by the founder: "A, sidebar swaps"), the grab points are a toggle in the sketch bar (round one's C), Position runs to the board's centre, and the three variants are three ways the view scales past 24\". Smoothing became a corner radius at the founder's word: "maybe the smoothing should just be more of a radius rounder on the wing's outer and inner points rather than also adjusting along the stringer appearance."</p>
+    <h3>What is drawn</h3>
+    <ul>
+      <li>The TEMPLATE page with a second tab beside VIEWER: <b>ADD WINGS</b> while the board has none, <b>WINGS · 1</b> or <b>· 2</b> once it does. The tab shows the last 26" of the tail at three times the VIEWER's scale, with the fins and the wing's dimensions.</li>
+      <li><b>A:</b> past 24" the tab jumps to the whole board. <b>B:</b> the window grows to hold the wing with 3" of room. <b>C:</b> a 26" window slides up with the wing.</li>
+      <li>The VIEWER tab draws the whole board with the wings applied and their chips, and no wing control anywhere.</li>
+      <li>Adding the first wing turns Show fins on and opens the popup; Show fins also sits under Settings in both sidebars.</li>
+    </ul>
+    <h3>What to look for</h3>
+    <ul>
+      <li>The corner radius: with Run at 0 the radius tops out at half the depth (a square step can only round so far); at a 1" run it reaches nearly 3". Is a radius the right feel, and should its top be the step's own limit, as here, or a fixed 3"?</li>
+      <li>Slide a wing up past 24" in each variant: a jump (A) is simple and keeps the fins in view, but the wing's dimensions shrink to the VIEWER's scale; growing (B) is gradual but a 36" stinger halves the close-up; following (C) keeps the scale and loses the tail. Which reads best for a stinger at 30"?</li>
+      <li>On the phone the tab strip, the drawing and the controls beneath all stay where they are today; only the drawing's content and the controls' content change. Is that enough?</li>
+      <li>C: is the outer grab point (position) and the inner one (depth and run) the right split? Should smoothing be a handle too?</li>
+      <li>The empty tab: should the first wing be added from the tab, from the sidebar, or both?</li>
+      <li>Sketch 013's question is still open and lives in the sketch bar: what happens to the tail behind the wing (A re-drawn to your block, B moved in, C a flyer).</li>
+    </ul>`;
+}
+function renderTools() {
+  document.getElementById("t-theme").innerHTML = ["slate", "daylight"].map((t) => `<button data-tool="theme" data-v="${t}" class="${state.theme === t ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("");
+  document.getElementById("t-device").innerHTML = ["computer", "phone"].map((d) => `<button data-tool="device" data-v="${d}" class="${state.device === d ? "on" : ""}">${d[0].toUpperCase() + d.slice(1)}</button>`).join("");
+  document.getElementById("t-zoom").innerHTML = ["20", "26", "32"].map((z) => `<button data-tool="zoom" data-v="${z}" class="${state.zoom === z ? "on" : ""}">${z}"</button>`).join("");
+}
+function applyTheme() {
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[state.theme] })) root.setProperty(k, v);
+  const link = document.getElementById("theme-link"); if (link) link.href = `../themes/app-${state.theme}.css`;
+}
+function renderAll() { applyTheme(); renderNav(); renderBar(); renderNotes(); renderTools(); renderStage(); }
+function openPopup() { const p = document.getElementById("popup"); if (p) p.classList.add("open"); }
+function closePopup() { const p = document.getElementById("popup"); if (p) p.classList.remove("open"); }
+
+document.getElementById("variant-nav").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.notes) { document.getElementById("notes-panel").classList.toggle("open"); renderNav(); return; }
+  state.variant = b.dataset.variant; save(); renderAll();
+});
+document.getElementById("sketch-bar").addEventListener("click", (e) => { const b = e.target.closest("[data-set]"); if (!b) return; state[b.dataset.set] = b.dataset.v; save(); renderAll(); });
+document.getElementById("sketch-tools").addEventListener("click", (e) => { const b = e.target.closest("[data-tool]"); if (!b) return; state[b.dataset.tool] = b.dataset.v; save(); renderAll(); });
+document.getElementById("tools-toggle").onclick = () => document.getElementById("sketch-tools").classList.toggle("open");
+const stage = document.getElementById("stage");
+stage.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.popup) { closePopup(); return; }
+  if (b.dataset.toggle) { state[b.dataset.toggle] = !state[b.dataset.toggle]; save(); renderStage(); return; }
+  if (b.dataset.tab) { state.tab = b.dataset.tab; save(); renderStage(); return; }
+  if (b.dataset.add) { addWing(); return; }
+  if (b.dataset.remove !== undefined) { removeWing(Number(b.dataset.remove)); return; }
+  if (b.dataset.pick) { state.wings[Number(b.dataset.wing)][b.dataset.pick] = b.dataset.v; save(); renderStage(); return; }
+});
+stage.addEventListener("click", (e) => { if (e.target.id === "popup") closePopup(); });
+stage.addEventListener("input", (e) => {
+  const el = e.target; if (!el.matches("input[type=range]") || el.disabled) return;
+  state.wings[Number(el.dataset.wing)][el.dataset.field] = Number(el.value); save();
+  const fmt = { station: (v) => frac(v), finOffset: fmtOffset, depth: (v) => frac(v), run: (v) => frac(v), smoothing: (v) => frac(v) }[el.dataset.field];
+  const readout = el.previousElementSibling; if (readout && readout.classList.contains("lbl") && fmt) readout.textContent = `${el.dataset.label} — ${fmt(Number(el.value))}`;
+  redrawDrawing();
+  // run and depth change how much rounding fits, so the radius slider's top moves with them
+  if (el.dataset.field === "run" || el.dataset.field === "depth") { const w = state.wings[Number(el.dataset.wing)], rs = stage.querySelector(`input[data-field="smoothing"][data-wing="${el.dataset.wing}"]`); if (rs) { const rmax = Math.floor(maxRadius({ run: w.run, depth: w.depth }) * 16) / 16; rs.max = Math.max(rmax, STEP); rs.value = Math.min(w.smoothing, rmax); const ro = rs.previousElementSibling; if (ro) ro.textContent = `Corner radius — ${frac(Number(rs.value))}`; const ends = rs.nextElementSibling; if (ends) ends.lastElementChild.textContent = `Round · ${frac(rmax)} fits`; } }
+});
+stage.addEventListener("change", (e) => {
+  const el = e.target; if (!el.matches("input[type=checkbox]")) return;
+  if (el.dataset.check === "lock") state.wings[Number(el.dataset.wing)].lock = el.checked;
+  else state[el.dataset.check] = el.checked;
+  save(); renderStage();
+});
+function redrawDrawing() {
+  const board = boardOf(), g = buildOutline(specOf(board.spec)), wings = resolveWings(board);
+  const basePts = wingedPoints(g, [], "a", Number(state.zoom)), pts = wingedPoints(g, wings, state.build, Number(state.zoom));
+  const drawing = stage.querySelector(".drawing"); if (!drawing) return;
+  const phone = state.device === "phone";
+  drawing.innerHTML = state.tab === "viewer" ? `${toolbar("viewer")}${templateSvg(board, g, wings, pts, basePts)}` : `${toolbar("wings")}${closeUpSvg(board, g, wings, pts, basePts, { handles: state.construction, compact: phone, win: windowFor(board, wings) })}`;
+}
+/* variant C: dragging a grab point. The outer point slides the wing along the curve; the inner one sets depth and run. */
+stage.addEventListener("pointerdown", (e) => {
+  const h = e.target.closest("[data-handle]"); if (!h) return;
+  const svg = h.closest("svg[data-closeup]"); if (!svg) return;
+  e.preventDefault();
+  drag = { kind: h.dataset.handle, wing: Number(h.dataset.wing), win: windowFor(boardOf(), resolveWings(boardOf())) };
+});
+window.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const svg = stage.querySelector("svg[data-closeup]"); if (!svg) return;
+  const rect = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+  // the drawing keeps its proportions inside its box (preserveAspectRatio meet), so one scale and a centred offset
+  const k = Math.min(rect.width / vb.width, rect.height / vb.height);
+  const ox = (rect.width - vb.width * k) / 2, oy = (rect.height - vb.height * k) / 2;
+  const x = (e.clientX - rect.left - ox) / k, y = (e.clientY - rect.top - oy) / k;
+  const cx = Number(svg.dataset.cx), zs = Number(svg.dataset.zs), H = Number(svg.dataset.h), padY = Number(svg.dataset.pady), lo = Number(svg.dataset.lo || 0);
+  const station = lo + (H - padY - (drag.kind === "inner" ? y - HANDLE_DROP : y)) / zs, hw = Math.abs(x - cx) / zs;
+  const board = boardOf(), g = buildOutline(specOf(board.spec)), w = state.wings[drag.wing], fin = frontFin(board);
+  if (drag.kind === "outer") {
+    // the wing slides along the curve you drew; with the lock on, the drag sets the offset from the fin
+    const range = stationRange(board), target = Math.max(range[0], Math.min(range[1], snap(station, STEP)));
+    if (w.lock && fin) w.finOffset = Math.max(-3, Math.min(3, snap(target - finEdgeStation(fin, w.edge), STEP))); else w.station = target;
+  } else {
+    const r = resolveWings(board)[drag.wing];
+    const base = exactHalfWidthAt(g, r.station);
+    w.depth = Math.max(STEP, Math.min(1, snap(base - hw, STEP)));
+    w.run = Math.max(0, Math.min(2, snap(r.station - station, STEP)));
+  }
+  save(); redrawDrawing();
+  const side = stage.querySelector(".sidebar"); if (side) for (const inp of side.querySelectorAll(`input[type=range][data-wing="${drag.wing}"]`)) { const f = inp.dataset.field; if (f in w) { inp.value = w[f]; const ro = inp.previousElementSibling; if (ro) ro.textContent = `${inp.dataset.label} — ${f === "finOffset" ? fmtOffset(w[f]) : frac(w[f])}`; } }
+});
+window.addEventListener("pointerup", () => { drag = null; });
+window.addEventListener("pointercancel", () => { drag = null; });
+renderAll();
+</script>
+</body>
+</html>

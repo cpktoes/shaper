@@ -1,6 +1,6 @@
 ---
 name: sketch-findings-shaper
-description: Validated design decisions, CSS patterns, and visual direction from Shaper Assistant's sketch experiments — the drafting grammar of the board viewers, rotating the board in place, the phone's screen tiles and Back + Next, and the Board Rack (boards standing sideways at one scale, turning their real turn, reordered by drag or hold-and-drag). Auto-loaded during UI implementation on shaper.
+description: Validated design decisions, CSS patterns, and visual direction from Shaper Assistant's sketch experiments — the drafting grammar of the board viewers, rotating the board in place, the phone's screen tiles and Back + Next, the Board Rack (boards standing sideways at one scale, turning their real turn, reordered by drag or hold-and-drag), wings on the TEMPLATE page (a step after the curve, on a WINGS tab whose window grows with the wing), and a blank's 0-wide nose drawn round. Auto-loaded during UI implementation on shaper.
 ---
 
 <context>
@@ -17,7 +17,7 @@ Reference points: traditional drafting conventions (extension lines, end ticks, 
 long-short-short centreline), real full-size shaping templates, the app's own palettes in `app/globals.css`,
 an iPhone's home screen (hold an icon, slide it), and a surf shop's board rack.
 
-Sketch sessions wrapped: 2026-10-05 (sketches 001–011; 005 excluded as superseded by 006)
+Sketch sessions wrapped: 2026-10-05 (sketches 001–011; 005 excluded as superseded by 006); 2026-10-14 (sketches 012–014)
 </context>
 
 <design_direction>
@@ -35,6 +35,10 @@ Sketch sessions wrapped: 2026-10-05 (sketches 001–011; 005 excluded as superse
 - **Interaction:** direct and physical where it helps the shaper read a board (a board turns its real
   turn, worked out from its own rocker, thickness and outline), plain and predictable everywhere else.
   Everything works on older Safari: no CSS 3D, no scroll-driven animations.
+- **Features on a curve:** a new outline feature (a wing, a round blank nose) is applied after the curve the
+  app already draws, never a new curve family, so boards without it redraw identically and every reader of the
+  curve follows through the one builder; its numbers move in 1/16" steps (1 mm in Metric) and its grab points
+  come with Show construction.
 </design_direction>
 
 <findings_index>
@@ -46,6 +50,8 @@ Sketch sessions wrapped: 2026-10-05 (sketches 001–011; 005 excluded as superse
 | Board orientation | references/board-orientation.md | Rotate the Template board in place from one corner button; vertical by default, not remembered |
 | Phone chrome | references/phone-chrome.md | No tab bar: ☰ opens six screen tiles drawn from the current board; Back + Next end every screen |
 | Board Rack | references/board-rack.md | Boards stand sideways at one true scale and turn their real turn as the cursor or thumb passes; the shaper sets the order (drag / hold-and-drag); the unsaved board stays first |
+| Wings | references/wings.md | A wing is a step after the curve whose depth fades out by the tail pod; up to two, 2" to the centre or locked to the front fin, with a run and a corner radius in 1/16" steps; on a WINGS tab whose tail window grows with the wing, the sidebar swapped to the wing controls alone |
+| Blank top view | references/blank-top-view.md | A blank's 0-wide nose is drawn round by a parabola from the tip, fixed by the printed widths alone |
 
 ## Theme
 
@@ -72,7 +78,10 @@ Each `index.html` is self-contained and opens in any browser.
 - 009-phone-swipe-rack
 - 010-sideways-board-rack
 - 011-phone-rack-reorder
+- 012-blank-round-nose
+- 013-wings-on-the-outline
+- 014-wings-tab
 
-processed_sketches: [001, 002, 003, 004, 005, 006, 007, 008, 009, 010, 011]
+processed_sketches: [001, 002, 003, 004, 005, 006, 007, 008, 009, 010, 011, 012, 013, 014]
 (005 reviewed and excluded: superseded by 006)
 </metadata>

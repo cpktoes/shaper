@@ -1,5 +1,38 @@
 # Sketch Wrap-Up Summary
 
+## Wrap-up of 2026-10-14
+
+**Date:** 2026-10-14
+**Sketches processed:** 3 (3 included, 0 excluded)
+**Design areas:** Wings (new), Blank top view (new); the four earlier areas unchanged
+**Skill output:** `./.claude/skills/sketch-findings-shaper/`
+
+### Included Sketches
+| # | Name | Winner | Design Area |
+|---|------|--------|-------------|
+| 012 | blank-round-nose | C — Parabola from the tip | Blank top view |
+| 013 | wings-on-the-outline | A — Tail re-drawn to your block | Wings |
+| 014 | wings-tab | B — The window grows with the wing | Wings |
+
+### Design Direction
+A new feature on a curve is applied after the curve the app already draws, never a new curve family: the outline
+audit of 2026-10-14 found the two-span Bézier sound, so a wing is a step whose depth fades out by the tail pod, and a
+blank's 0-wide nose is a parabola from the tip fixed by the printed widths alone. Wings get their own tab on the
+TEMPLATE page with the tail 26" closer and only the wing controls beside it, in the Template builder's own dress; the
+window grows once a wing passes 24", every number moves in sixteenths, and the grab points come with Show construction.
+
+### Key Decisions
+- **Wing geometry:** up to two; position 2" to the centre or the front fin's edge plus an offset; depth 1/16" to 1";
+  run 0 to 2"; a corner radius capped at what fits the step; ahead of the nearest wing the curve is untouched; two
+  wings stack. Adding the first turns on Show fins and opens "Dial in your wing placement…".
+- **The tab:** ADD WINGS, then WINGS · n; the sidebar swaps; the view holds still during a drag.
+- **Lessons:** audit the maths before drawing; a window that re-frames mid-drag carries the thing away; two grab
+  points on a sharp corner overlap.
+
+---
+
+## Wrap-up of 2026-10-05
+
 **Date:** 2026-10-05
 **Sketches processed:** 11 (10 included, 1 excluded)
 **Design areas:** Drawing & callouts, Board orientation, Phone chrome, Board Rack

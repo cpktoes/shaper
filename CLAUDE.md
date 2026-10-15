@@ -253,4 +253,5 @@ corner drawing or its own TOP VIEW tab) — and none of the three is ever confla
 
 - **Sketch findings for shaper** (design decisions, CSS patterns, visual direction) → `Skill("sketch-findings-shaper")`
   — the viewers' drafting grammar, rotating the board in place, the phone's screen tiles and Back + Next, and the
-  Board Rack (sketches 001–011, wrapped 2026-10-05; the sketches themselves are in `.planning/sketches/`).
+  Board Rack, wings on the TEMPLATE page and a blank's round nose (sketches 001–014, wrapped 2026-10-05 and
+  2026-10-14; the sketches themselves are in `.planning/sketches/`).
