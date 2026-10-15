@@ -42,8 +42,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * | 863x360 | FINS | 56 | 25 | 38 | 38/38 | 199x426 |
  *
  * After this task: upright, the frame above a tabbed (`drawing`) screen is 11, below and at the
- * sides 5; a labelled (non-interactive) screen's own frame above is 2 (TEMPLATE) or 10 (VOLUME,
- * `text`); `text` screens keep an 8px reading margin, which is why VOLUME's own sides/below read
+ * sides 5; a labelled (non-interactive) screen's own frame above is 10 (VOLUME, `text`) — TEMPLATE's
+ * was 2 until quick 261014-wii gave it a WINGS tab, and it now has the tabbed screens' 11; `text` screens keep an 8px reading margin, which is why VOLUME's own sides/below read
  * 13, not 5. Sideways, the frame above a tabbed screen is still 11 and the bottom is the same 5
  * (`text`, VOLUME: 13) — the plan first kept a 64-dot band there so the floating Undo/Redo pair
  * never covered a chip; the founder chose its Alternative A (2026-09-30), every dot to the drawing
@@ -443,17 +443,18 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
   });
 });
 
-test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 9e, quick 260930-s23)", () => {
+test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VIEWER and WINGS (item 9e; quick 261014-wii, P7)", () => {
+  // Quick 261014-wii (2026-10-14): TEMPLATE gained its WINGS tab beside VIEWER, so its strip stopped
+  // being a single read-only label and took ROCKER's tappable shape — the 11-dot frame above the tab
+  // and a 44-dot touch box on each tab — at the cost of 18 dots of the phone's drawing height
+  // (measured F22: 380 x 508.0 upright on an iPhone). This describe is ROCKER's, line for line, on
+  // TEMPLATE's two tabs (VIEWER and ADD WINGS), with ROCKER's DATASHEET-only lines dropped.
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "this describe's own upright/sideways sizes are phone-only");
     await dismissChrome(page);
   });
 
-  function label(page: Page) {
-    return page.locator("main > div").first().locator("span").filter({ hasText: "VIEWER" });
-  }
-
-  test("iphone upright (390x844): label frame and drawing area", async ({ page }, testInfo) => {
+  test("iphone upright (390x844): frame, tab height, drawing area and touch boxes", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
     await page.setViewportSize(IPHONE_UPRIGHT);
     await gotoRoute(page, "/design/outline");
@@ -467,32 +468,38 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
 
     const topBar = await topBarBox(page);
     const main = await page.locator("main").boundingBox();
-    const labelBox = await label(page).boundingBox();
+    const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+    const wingsTab = page.getByRole("tab", { name: "ADD WINGS" });
+    const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !main || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] TEMPLATE 390x844 upright — label top ${labelBox.y - (topBar.y + topBar.height)}, ` +
-        `label height ${labelBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
+      `[9e] TEMPLATE 390x844 upright — top bar ${topBar.height}, tab top ${viewerBox.y - (topBar.y + topBar.height)}, ` +
+        `tab height ${viewerBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    expect(labelBox.height).toBeGreaterThanOrEqual(20);
-    expect(labelBox.height).toBeLessThanOrEqual(23);
-    expectWithin(content.y - (labelBox.y + labelBox.height), 2, 1);
+    expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(viewerBox.height, 22, 1);
+    expectWithin(content.y - (viewerBox.y + viewerBox.height), 11, 1);
     expectWithin(main.y + main.height - (content.y + content.height), 5, 1);
     expectWithin(content.x - main.x, 5, 1);
     expectWithin(main.x + main.width - (content.x + content.width), 5, 1);
 
-    // Growth floors (today 461x322).
-    expect(content.height).toBeGreaterThanOrEqual(501);
-    expect(content.width).toBeGreaterThanOrEqual(372);
+    // Growth floors, as ROCKER's (measured 380 x 508.0 after the tab strip, F22).
+    expect(content.height).toBeGreaterThanOrEqual(500);
+    expect(content.width).toBeGreaterThanOrEqual(375);
 
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(viewerTab, bounds);
+    await assertTabTouchBox(wingsTab, bounds);
+
+    // Nothing scrolls sideways.
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_UPRIGHT.width);
   });
 
-  test("android upright (412x915): label frame and drawing area", async ({ page }, testInfo) => {
+  test("android upright (412x915): frame, tab height, drawing area and touch boxes", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "android-only viewport");
     await page.setViewportSize(ANDROID_UPRIGHT);
     await gotoRoute(page, "/design/outline");
@@ -506,32 +513,37 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
 
     const topBar = await topBarBox(page);
     const main = await page.locator("main").boundingBox();
-    const labelBox = await label(page).boundingBox();
+    const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+    const wingsTab = page.getByRole("tab", { name: "ADD WINGS" });
+    const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !main || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] TEMPLATE 412x915 upright — label top ${labelBox.y - (topBar.y + topBar.height)}, ` +
-        `label height ${labelBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
+      `[9e] TEMPLATE 412x915 upright — top bar ${topBar.height}, tab top ${viewerBox.y - (topBar.y + topBar.height)}, ` +
+        `tab height ${viewerBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    expect(labelBox.height).toBeGreaterThanOrEqual(20);
-    expect(labelBox.height).toBeLessThanOrEqual(23);
-    expectWithin(content.y - (labelBox.y + labelBox.height), 2, 1);
+    expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(viewerBox.height, 22, 1);
+    expectWithin(content.y - (viewerBox.y + viewerBox.height), 11, 1);
     expectWithin(main.y + main.height - (content.y + content.height), 5, 1);
     expectWithin(content.x - main.x, 5, 1);
     expectWithin(main.x + main.width - (content.x + content.width), 5, 1);
 
-    // Growth floors (today 508x344).
-    expect(content.height).toBeGreaterThanOrEqual(548);
-    expect(content.width).toBeGreaterThanOrEqual(394);
+    // Growth floors, as ROCKER's (measured 402 x 554.9, F22).
+    expect(content.height).toBeGreaterThanOrEqual(545);
+    expect(content.width).toBeGreaterThanOrEqual(397);
+
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(viewerTab, bounds);
+    await assertTabTouchBox(wingsTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
   });
 
-  test("iphone sideways (844x390): label frame, drawing width and the Undo/Redo pair over the corner", async ({
+  test("iphone sideways (844x390): frame, drawing width, touch boxes and the Undo/Redo pair over the corner", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
@@ -545,19 +557,25 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
-    const labelBox = await label(page).boundingBox();
+    const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+    const wingsTab = page.getByRole("tab", { name: "ADD WINGS" });
+    const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !viewerBox) throw new Error("missing a bounding box");
 
     console.log(
       `[9e] TEMPLATE 844x390 sideways — main padding-bottom ${paddingBottom}, drawing area ${content.width}x${content.height}, ` +
         `drawing bottom clearance to window bottom ${IPHONE_SIDEWAYS.height - (content.y + content.height)}`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    // Growth floor (today 416 wide).
-    expect(content.width).toBeGreaterThanOrEqual(466);
+    expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+    // Growth floor, as ROCKER's (measured 482 wide, F22).
+    expect(content.width).toBeGreaterThanOrEqual(478);
     expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 5, 1);
+
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(viewerTab, bounds);
+    await assertTabTouchBox(wingsTab, bounds);
 
     // TEMPLATE sideways repeats the Undo/Redo check: under Alternative A the pair floats over the
     // drawing's corner on every drawing screen, not only ROCKER's.
@@ -580,7 +598,7 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
   });
 
-  test("android sideways (863x360): label frame and drawing width", async ({ page }, testInfo) => {
+  test("android sideways (863x360): frame, drawing width and touch boxes", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "android-only viewport");
     await page.setViewportSize(ANDROID_SIDEWAYS);
     await gotoRoute(page, "/design/outline");
@@ -592,19 +610,25 @@ test.describe("TEMPLATE — the slimmer phone frame, a label not a button (item 
     expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
-    const labelBox = await label(page).boundingBox();
+    const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+    const wingsTab = page.getByRole("tab", { name: "ADD WINGS" });
+    const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !viewerBox) throw new Error("missing a bounding box");
 
     console.log(
       `[9e] TEMPLATE 863x360 sideways — main padding-bottom ${paddingBottom}, drawing area ${content.width}x${content.height}, ` +
         `drawing bottom clearance to window bottom ${ANDROID_SIDEWAYS.height - (content.y + content.height)}`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    // Growth floor (today 426 wide).
-    expect(content.width).toBeGreaterThanOrEqual(476);
+    expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+    // Growth floor, as ROCKER's (measured 491.5 wide, F22).
+    expect(content.width).toBeGreaterThanOrEqual(488);
     expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 5, 1);
+
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(viewerTab, bounds);
+    await assertTabTouchBox(wingsTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1145,9 +1169,10 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
 });
 
 /** Every one of the five design screens, for the iPad-like and computer checks below — `tabs`
- * empty means a non-interactive single label (TEMPLATE, VOLUME), with nothing to tap. */
+ * empty means a non-interactive single label (VOLUME; TEMPLATE too until quick 261014-wii gave it a
+ * WINGS tab), with nothing to tap. */
 const ALL_FIVE_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
-  { path: "/design/outline", label: "TEMPLATE", tabs: [] },
+  { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS"] },
   { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
   { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
   { path: "/design/volume", label: "VOLUME", tabs: [] },

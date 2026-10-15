@@ -86,12 +86,15 @@ test.describe("the board's name in the tab band on a computer (quick 261008-raw)
     await expect(name).toHaveText(first.name);
     await expect(name).toHaveAccessibleName(`Board name: ${first.name} — rename`);
 
-    // On the band: the strip is the VIEWER label's row, the name is right of the label and ends at
-    // the strip's right edge, and the band is the computer's measured height.
+    // On the band: the strip is the VIEWER tab's row, the name is right of the tabs and ends at the
+    // strip's right edge, and the band is the computer's measured height. Quick 261014-wii gave
+    // TEMPLATE a second tab (ADD WINGS), so VIEWER is a button now and the strip measures 30, not 29.
     const geometry = await page.evaluate(() => {
       const button = document.querySelector<HTMLElement>("[data-board-name-band]")!;
       const strip = button.parentElement!.parentElement!;
-      const label = Array.from(strip.querySelectorAll<HTMLElement>("span")).find((el) => el.textContent === "VIEWER")!;
+      const label = Array.from(strip.querySelectorAll<HTMLElement>("span, button")).find(
+        (el) => el.textContent === "VIEWER",
+      )!;
       const b = button.getBoundingClientRect();
       const s = strip.getBoundingClientRect();
       const l = label.getBoundingClientRect();
@@ -99,7 +102,7 @@ test.describe("the board's name in the tab band on a computer (quick 261008-raw)
     });
     expect(geometry.nameLeft).toBeGreaterThan(geometry.labelRight);
     expect(Math.abs(geometry.nameRight - geometry.stripRight)).toBeLessThanOrEqual(1);
-    expect(Math.round(geometry.stripHeight)).toBe(29);
+    expect(Math.round(geometry.stripHeight)).toBe(30);
 
     await name.click();
     const dialog = page.getByRole("dialog", { name: "Rename board" });
@@ -239,8 +242,9 @@ test.describe("a rename that cannot be saved (quick 261008-raw)", () => {
 // ---------------------------------------------------------------------------------------------
 
 const SCREEN_ORDER: ScreenLabel[] = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS"];
-/** Screens whose tab strip is tappable, so on a phone carries the tabs' 44-dot touch box. */
-const TAPPABLE: ScreenLabel[] = ["ROCKER", "RAILS", "FINS"];
+/** Screens whose tab strip is tappable, so on a phone carries the tabs' 44-dot touch box. TEMPLATE
+ * joined them when quick 261014-wii gave it a WINGS tab beside VIEWER (P7). */
+const TAPPABLE: ScreenLabel[] = ["TEMPLATE", "ROCKER", "RAILS", "FINS"];
 
 interface BandMeasure {
   stripHeight: number;
@@ -346,8 +350,8 @@ async function boundsForTouch(page: Page) {
   return { topBarBottom: bar.y + bar.height, drawingTop: drawing };
 }
 
-/** The name's touch box. On ROCKER, RAILS and FINS it is the tabs' own 44 dots (10 reach above and
- * below, never into the top bar or the drawing); on TEMPLATE and VOLUME it reaches 2 dots past the band
+/** The name's touch box. On TEMPLATE, ROCKER, RAILS and FINS it is the tabs' own 44 dots (10 reach above and
+ * below, never into the top bar or the drawing); on VOLUME it reaches 2 dots past the band
  * each way (a point 1 dot out still hits it) and still never touches the top bar or the drawing. */
 async function expectNameTouchBox(page: Page, label: ScreenLabel) {
   const bounds = await boundsForTouch(page);

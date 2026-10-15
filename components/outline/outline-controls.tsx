@@ -46,6 +46,8 @@ interface OutlineControlsProps {
   onChange: (patch: Partial<OutlineSpec>) => void;
   showConstruction: boolean;
   onToggleConstruction: () => void;
+  showFins: boolean;
+  onToggleShowFins: () => void;
 }
 
 function clampFinite(value: number, min: number, max: number): number {
@@ -78,7 +80,20 @@ function withEndWidth(tail: TailShape, endWidth: Mm): TailShape {
   }
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+/**
+ * A sidebar section's ruled heading. Exported (quick 261014-wii, P10) so the WINGS sidebar wears
+ * the Template Builder's own headings; `action` draws a control at the right end of the ruled line
+ * (a wing's "Remove"). Without it the markup is exactly what it always was.
+ */
+export function SectionHeading({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  if (action) {
+    return (
+      <div className="mt-1.5 flex items-baseline justify-between border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+        <span>{children}</span>
+        {action}
+      </div>
+    );
+  }
   return (
     <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
       {children}
@@ -92,6 +107,8 @@ export function OutlineControls({
   onChange,
   showConstruction,
   onToggleConstruction,
+  showFins,
+  onToggleShowFins,
 }: OutlineControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -428,15 +445,43 @@ export function OutlineControls({
         />
       </div>
 
-      <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
-        <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-          Settings
-        </div>
-        <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-          <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
-          View Construction Lines
-        </label>
+      <TemplateSettings
+        showConstruction={showConstruction}
+        onToggleConstruction={onToggleConstruction}
+        showFins={showFins}
+        onToggleShowFins={onToggleShowFins}
+      />
+    </div>
+  );
+}
+
+export interface TemplateSettingsProps {
+  showConstruction: boolean;
+  onToggleConstruction: () => void;
+  showFins: boolean;
+  onToggleShowFins: () => void;
+}
+
+/**
+ * TEMPLATE's Settings block, shared by the Template Builder and the WINGS sidebar (quick 261014-wii,
+ * P10) so the two never drift: View Construction Lines, and Show fins (D4) — the fins where FINS
+ * puts them, marks only, no dims. Both are screen settings, never saved, and both stay usable on a
+ * locked board (`data-lock-exempt`), since neither changes the board.
+ */
+export function TemplateSettings({ showConstruction, onToggleConstruction, showFins, onToggleShowFins }: TemplateSettingsProps) {
+  return (
+    <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
+      <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+        Settings
       </div>
+      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+        <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
+        View Construction Lines
+      </label>
+      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+        <Checkbox data-lock-exempt checked={showFins} onCheckedChange={() => onToggleShowFins()} />
+        Show fins <span className="text-xs">(marks only, no dims)</span>
+      </label>
     </div>
   );
 }

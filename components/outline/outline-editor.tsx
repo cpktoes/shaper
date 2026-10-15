@@ -15,6 +15,14 @@ import { OutlineControls } from "./outline-controls";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
+import { WingControls } from "./wing-controls";
+import { WingsPanel } from "./wings-panel";
+import { WingDialInDialog } from "./wing-dial-in-dialog";
+import { useUnits } from "@/components/units-provider";
+import { nextWing } from "@/lib/geometry/wings";
+
+/** TEMPLATE's two tabs (quick 261014-wii, D3): the whole board, and the tail close up with its wings. */
+type TemplateTab = "viewer" | "wings";
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -33,7 +41,8 @@ import { OutlineViewer } from "./outline-viewer";
  */
 
 export function OutlineEditor() {
-  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked } = useDesign();
+  const { outline, updateOutline, outlineGeometry, outlineGhostGeometry, finPlacement, locked, wingFrontFin } =
+    useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
   /** View state, like the construction override below — not design data, and deliberately not a
    * stored preference (D-03), so a reload always comes back vertical. Still what the rotate
@@ -63,6 +72,36 @@ export function OutlineEditor() {
    * already behaves the same way. On by default, so a reload or a return to TEMPLATE always
    * brings it back showing. */
   const [showGhost, setShowGhost] = useState(true);
+  /** The tab the shaper last picked (quick 261014-wii, D3) — view state, never saved, so coming back
+   * to TEMPLATE always opens on VIEWER. */
+  const [requestedTab, setRequestedTab] = useState<TemplateTab>("viewer");
+  const { system } = useUnits();
+  const wings = outline.wings ?? [];
+  const wingCount = wings.length;
+  /** Show fins (quick 261014-wii, D4, P6): screen state like Show construction, never saved. `null`
+   * means the shaper has not chosen, and then the fins show while the board has a wing — so the
+   * setting survives a trip to FINS and back, which remounts this screen. */
+  const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
+  const showFins = showFinsOverride ?? wingCount > 0;
+  /** The "Dial in your wing placement" pop-up (D4), opened by the first wing. */
+  const [dialInOpen, setDialInOpen] = useState(false);
+  const templateTabs = [
+    { id: "viewer" as const, label: "VIEWER" },
+    { id: "wings" as const, label: wingCount === 0 ? "ADD WINGS" : `WINGS · ${wingCount}` },
+  ];
+  const activeTab: TemplateTab = requestedTab;
+
+  /** "+ Add a wing", shared by the empty tab's card and the sidebar's button (D3). */
+  function handleAddWing() {
+    // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
+    updateOutline({ wings: [...wings, nextWing(wings, wingFrontFin, outline.length, system)] });
+    // D4, P6, D7: the first wing switches Show fins on and asks the shaper to dial it in against
+    // FINS — every time the board goes from no wings to one, as sketched.
+    if (wingCount === 0) {
+      setShowFinsOverride(true);
+      setDialInOpen(true);
+    }
+  }
 
   // D-09/D-10: on a coarse (touch) pointer only, the board follows the phone's own orientation —
   // nose-up in portrait, flat in landscape — computed fresh every render, never stored. On a fine
@@ -232,7 +271,8 @@ export function OutlineEditor() {
               // handlers when this is omitted (quick 261008-lsy). The store's guard backs it.
               onOutlineDrag={locked ? undefined : updateOutline}
               finMarks={finPlacement.marks}
-              hideFinMarks
+              // D4: Show fins puts the fin marks on the VIEWER too — marks only, no dims.
+              hideFinMarks={!showFins}
               pinCalloutText
               orientation={boardOrientation}
             />
@@ -244,15 +284,32 @@ export function OutlineEditor() {
   );
 
   return (
+    <>
     <DesignScreenShell
       controls={
-        <OutlineControls
-          outline={outline}
-          geometry={outlineGeometry}
-          onChange={updateOutline}
-          showConstruction={showConstruction}
-          onToggleConstruction={handleToggleConstruction}
-        />
+        // D3: while the WINGS tab is open the sidebar holds ONLY the wing controls.
+        activeTab === "wings" ? (
+          <WingControls
+            outline={outline}
+            onChange={updateOutline}
+            onAddWing={handleAddWing}
+            frontFin={wingFrontFin}
+            showConstruction={showConstruction}
+            onToggleConstruction={handleToggleConstruction}
+            showFins={showFins}
+            onToggleShowFins={() => setShowFinsOverride(!showFins)}
+          />
+        ) : (
+          <OutlineControls
+            outline={outline}
+            geometry={outlineGeometry}
+            onChange={updateOutline}
+            showConstruction={showConstruction}
+            onToggleConstruction={handleToggleConstruction}
+            showFins={showFins}
+            onToggleShowFins={() => setShowFinsOverride(!showFins)}
+          />
+        )
       }
       canvas={
         // Normal view keeps TabbedPanel's folder-tab strip and its own padded card (the same
@@ -275,14 +332,29 @@ export function OutlineEditor() {
         // always sits here; only its internal chrome varies.
         <TabbedPanel
           bare={wideView}
-          tabs={[{ id: "viewer" as const, label: "VIEWER" }]}
-          active="viewer"
+          // Quick 261014-wii (D3): a second tab, ADD WINGS until the board has a wing, then
+          // WINGS · 1 or · 2 — the tail close up, with the sidebar swapped to the wing controls.
+          tabs={templateTabs}
+          active={activeTab}
+          onSelect={setRequestedTab}
           compactOnPhone="drawing"
           // Quick 261008-raw: the board's name at the band's right end. Wide View is `bare`, which
           // draws no band, so the name goes with it.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
-          {viewerContent}
+          {activeTab === "wings" ? (
+            <WingsPanel
+              outline={outline}
+              onAddWing={handleAddWing}
+              showConstruction={showConstruction}
+              onToggleConstruction={handleToggleConstruction}
+              showFins={showFins}
+              wideView={wideView}
+              onToggleWideView={handleToggleWideView}
+            />
+          ) : (
+            viewerContent
+          )}
         </TabbedPanel>
       }
       wideView={wideView}
@@ -294,7 +366,8 @@ export function OutlineEditor() {
         // it past the bottom edge where it could only be met mid-scroll. Hidden entirely, not
         // resized, while wide view is on (DesignScreenShell hides the whole sidebar then) — a
         // quick task already had to fix this footer once because it was only pinned by luck.
-        process.env.NODE_ENV === "development" ? (
+        // P10: on the VIEWER tab only — the WINGS sidebar has no template values to copy.
+        process.env.NODE_ENV === "development" && activeTab === "viewer" ? (
           <div className="flex-none border-t border-surf-line-faint p-4">
             <Button
               variant="ghost"
@@ -309,5 +382,7 @@ export function OutlineEditor() {
       }
       phonePinned="66dvh"
     />
+    <WingDialInDialog open={dialInOpen} onOpenChange={setDialInOpen} />
+    </>
   );
 }

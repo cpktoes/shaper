@@ -16,6 +16,12 @@
  * 3. DEAD CODE — the prototype's unused `HANDLE_FRAC = 0.33` is not ported.
  * 4. TAIL RULES are driven by the TailShape union instead of a string plus
  *    loose fields.
+ *
+ * WINGS (quick 261014-wii, 2026-10-14, D1) are not part of the curve. `buildOutline` builds the
+ * curve above exactly as it always has (`buildCurveOutline`, byte for byte), then — only when the
+ * outline carries a wing — hands it to `applyWings` (`./wings`), which takes each wing's step out
+ * of the points, the area and the 12" widths after the curve is drawn. A board with no wings gets
+ * today's object straight back, so the prototype golden parity test never sees a wing.
  */
 
 import type {
@@ -25,6 +31,7 @@ import type {
   Point2D,
 } from "./board";
 import { type Degrees, type Mm, inchesToMm, mm } from "./units";
+import { applyWings } from "./wings";
 
 const MARGIN_MM = inchesToMm(16);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
@@ -156,7 +163,17 @@ export function sampleOutline(geometry: OutlineGeometry, station: Mm): Mm {
   return mm(interpolateHalfWidth(geometry.points, station));
 }
 
+/**
+ * The board's outline: the curve the shaper drew, then any wings applied after it (D1). With no
+ * wings (no `wings` key, or `[]`) this is `buildCurveOutline`'s own object, untouched.
+ */
 export function buildOutline(spec: OutlineSpec): OutlineGeometry {
+  const curve = buildCurveOutline(spec);
+  if (!spec.wings || spec.wings.length === 0) return curve;
+  return applyWings(curve, spec.wings);
+}
+
+function buildCurveOutline(spec: OutlineSpec): OutlineGeometry {
   const length = spec.length;
   const halfWidePointWidth = spec.widePointWidth / 2;
 

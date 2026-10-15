@@ -20,6 +20,7 @@
 import { type Degrees, type Mm, degrees, inchesToMm } from "./units";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
+import type { Wing } from "./wings";
 
 /** Generic 2D point in millimetres. */
 export interface Point2D {
@@ -83,6 +84,14 @@ export interface OutlineSpec {
   /** Tail fullness, 0-100. */
   tailFullness: number;
   tail: TailShape;
+  /**
+   * Up to two wings — steps in the outline near the fins, applied AFTER the curve above (quick
+   * 261014-wii, 2026-10-14, D1). Optional on purpose (P1): a board with no `wings` key has no
+   * wings, and that is every board saved before wings existed and every preset, so neither
+   * `PINNED_PRESET_OUTLINES` nor "Copy preset values" ever has to mention them. Removing the last
+   * wing writes `[]`. See `lib/geometry/wings.ts` for the step's maths.
+   */
+  wings?: readonly Wing[];
 }
 
 /**
