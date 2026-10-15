@@ -67,6 +67,11 @@ of the tail. Then go back to viewer for the full board. That simplifies the cont
 only have the wing controls and the regular viewer doesn't need them at all." The sketch mocks today's TEMPLATE page with
 that tab beside VIEWER (ADD WINGS until there is one, then WINGS · 1 or · 2), the tail close-up inside it, and three homes
 for the controls: the sidebar swapping to them (A), a column inside the tab (B), and A with grab points on the drawing (C).
+The founder chose A ("A, sidebar swaps") and added: a wing may slide up to the board's centre for a stinger, so the view
+must scale once it passes 24" ("maybe >24" we jump to full board view"); no board length or other template control on the
+tab; and smoothing is "more of a radius rounder on the wing's outer and inner points rather than also adjusting along the
+stringer appearance". Round two draws three ways the view scales (jump to the whole board, grow the window, follow the
+wing) with the corner radius and the grab points as a toggle.
 
 ## Reference Points
 
@@ -92,7 +97,7 @@ for the controls: the sidebar swapping to them (A), a column inside the tab (B),
 | 011 | phone-rack-reorder | On a phone, where a sideways drag already swipes the rack, how does a shaper move a board to a new place? | **A — Hold and drag** (tried on a phone) | phone, home, board-rack, reorder, interaction |
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
-| 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how is a wing grabbed? | _pending_ | template, wings, tabs, controls, sidebar, phone, interaction |
+| 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
 
 ## Decisions These Lock In
 
@@ -157,10 +162,23 @@ for the controls: the sidebar swapping to them (A), a column inside the tab (B),
    2026-10-14: "construction wise, we definitely want to go A"). A wing is a step applied after today's curve: ahead of
    the wing nearest the nose the outline is the curve the shaper drew; behind each wing its depth (1/16" to 1") is taken
    out and fades to nothing at the tail pod, so the tail block stays as set and two wings add up like a staircase. The
-   step has a run along the stringer (0 to 1") and a smoothing (0 to 3", eased half at each corner); its position is a
-   station from the tail or the front fin's trailing or leading edge plus an offset. Boards without wings redraw
+   step has a run along the stringer (0 to 1") and a corner radius that rounds its outer and inner corners, up to the
+   largest radius whose two rounds fit the step (sketch 014 round two, the founder: "a radius rounder on the wing's outer
+   and inner points rather than also adjusting along the stringer appearance"); its position is a station from the tail,
+   up to the board's centre for a stinger, or the front fin's trailing or leading edge plus an offset. Boards without wings redraw
    identically. Adding a wing switches on a "Show fins" setting on the TEMPLATE page (marks only, no dims) and pops up
    "Dial in your wing placement. Edit fin placement on the fins page, then return to the template to fine tune the wing."
+
+17. **Wings live on a WINGS tab of the TEMPLATE page, and the tail view grows with the wing** (sketch 014 B; the founder,
+   2026-10-14). The tab reads ADD WINGS until the board has one, then WINGS · 1 or · 2; it shows the last 26" of the tail
+   three times closer with the fins where the FINS page puts them, and the sidebar swaps to the wing controls alone, in
+   the Template builder's own dress, with no board length or other template control ("A, sidebar swaps"). A wing's
+   position runs from 2" to the board's centre (a stinger); once one passes 24" the window stretches to hold it with 3"
+   of room, so the drawing shrinks gradually and the tail and fins never leave ("B, window grows with wing placement").
+   Run along the stringer reaches 2"; every wing number moves in 1/16" steps (1 mm in Metric). Two grab points per wing
+   (the outer slides it along the curve, the inner sets depth and run) appear with the viewer's Show construction
+   setting, and the view holds still while one is held — a window that re-framed mid-drag carried the wing away. The
+   VIEWER tab draws the whole board with the wings and their chips and no wing control.
 
 ## Open Questions
 
