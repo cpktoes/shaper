@@ -48,9 +48,11 @@ import {
 import { buildOutline } from "./outline";
 import { inchesToMm, mm, type Mm } from "./units";
 import {
+  WING_FIN_BOX_FREE_DEPTH_IN,
   WING_POSITION_MIN_IN,
   clampWingStations,
   outlineWithoutWings,
+  wingFinBoxDistance,
   wingLockEdge,
   wingLockFitsSlot,
   wingPositionTop,
@@ -63,6 +65,8 @@ import {
 const SETTLED_MM = inchesToMm(1 / 32);
 /** And never runs more than three passes. */
 const MAX_PASSES = 3;
+/** The scaling rule's boundary tolerance, in millimetres (F14). */
+const FIN_BOX_EPS_MM = 1e-9;
 
 /** The trailing edges a wing can lock to, from the tail (D1): the first mark whose role is
  * `"front"`, and the first whose role is `"rear"` (a quad's rear fins), each `null` when the fin
@@ -145,4 +149,27 @@ export function resolveWingStations(
     if (largestMove < SETTLED_MM) break;
   }
   return { outline: current, passes };
+}
+
+/**
+ * The founder's scaling rule (D4, 2026-10-15): "If Wing Depth is > 3/16", recommend a distance using
+ * the formula Distance Behind Trailing Edge = (2 × Wing Depth) − 0.25", but that they should check
+ * their fin box specs also." Returns that distance (`wingFinBoxDistance`) when the wing is deeper
+ * than 3/16" and its apex sits AT or BEHIND a side fin's trailing-edge mark (a front or rear fin,
+ * side ±1) by less than it — `0 ≤ trailing edge − apex < D` — else `null`. The zone is the founder's
+ * (2026-10-15): "at or behind the fin mark only is fine for the warning, since the fin position jumps
+ * in based on the new narrower tail curve when the apex is above the trailing edge at all" — a wing
+ * ahead of the trailing edge already moves the fin inboard onto the stepped rail. The centre fin sits
+ * on the stringer, nowhere near the rail, so it is never checked. Compared with a 1e-9 mm tolerance
+ * (F14: inch sums land 1e-14 off): exactly D behind reads no warning, exactly at the mark reads one.
+ */
+export function wingFinBoxWarning(w: Pick<Wing, "station" | "depth">, marks: readonly FinMark[]): Mm | null {
+  if (!(w.depth > inchesToMm(WING_FIN_BOX_FREE_DEPTH_IN) + FIN_BOX_EPS_MM)) return null;
+  const distance = wingFinBoxDistance(w.depth);
+  for (const m of marks) {
+    if (m.side === 0 || (m.role !== "front" && m.role !== "rear")) continue;
+    const behind = m.offTail - w.station;
+    if (behind >= -FIN_BOX_EPS_MM && behind < distance - FIN_BOX_EPS_MM) return distance;
+  }
+  return null;
 }

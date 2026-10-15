@@ -9,18 +9,23 @@ import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import { formatDim, formatMark, formatSignedMark, measureSlider } from "@/lib/geometry/measure-display";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
+import { lockedWingStation, wingFinBoxWarning } from "@/lib/geometry/wing-lock";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import {
   MAX_WINGS,
   WING_DEPTH_RANGE_IN,
+  WING_FIN_BOX_TRIM_IN,
   WING_FIN_OFFSET_RANGE_IN,
   WING_POSITION_MIN_IN,
   WING_RUN_RANGE_IN,
   WING_STEP_IN,
   WING_STEP_MM,
+  canAddSecondWing,
   effectiveWingRadius,
   removeWing,
   wingLockEdge,
+  wingOrderGap,
+  wingOrderState,
   wingPositionRangeForSlot,
   wingPositionTop,
   wingRadiusTop,
@@ -55,7 +60,7 @@ export interface WingControlsProps {
   /** The resolved outline — a locked wing at its fin edge plus offset. */
   outline: OutlineSpec;
   onChange: (patch: Partial<OutlineSpec>) => void;
-  /** Adds the next wing — shared with the empty tab's card, so both add the same wing. */
+  /** Adds the next wing (the dial-in pop-up opens with the first). The empty tab has no card of its own since quick 261015-hz7 (D6). */
   onAddWing: () => void;
   /** The board's outline, wings and all — for the position top (the centre or the widepoint). */
   geometry: OutlineGeometry;
@@ -75,6 +80,7 @@ export function WingControls({
   onAddWing,
   geometry,
   finEdges,
+  finMarks,
   showConstruction,
   onToggleConstruction,
   showFins,
@@ -86,6 +92,12 @@ export function WingControls({
   // D3: the top is the centre or the widepoint, whichever is nearer the tail; the hint names which.
   const top = wingPositionTop(geometry);
   const topHint = `${top < geometry.length / 2 ? "Widepoint" : "Centre"} ${formatDim(top, system)}`;
+  // D2: where wing 2 may sit at most, and the gap behind wing 1 — explanations, so muted ink, never
+  // the warning ink (that is for warnings only).
+  const order = wingOrderState(wings, geometry);
+  const gapText = wings[0] ? formatMark(wingOrderGap(wings[0]), system) : "";
+  const floorText = formatDim(inchesToMm(WING_POSITION_MIN_IN), system);
+  const canAddSecond = canAddSecondWing(wings, geometry);
 
   const setWing = (index: number, patch: Partial<Wing>) => {
     onChange({ wings: wings.map((w, i) => (i === index ? { ...w, ...patch } : w)) });
@@ -127,6 +139,17 @@ export function WingControls({
           const next = { ...wing, ...patch };
           setWing(index, { ...patch, radius: mm(Math.min(wing.radius, wingRadiusTop(next, system))) });
         };
+        // D2: wing 2 with no room behind wing 1 sits on the 2" floor, its row disabled.
+        const noRoom = index === 1 && order.noRoom;
+        // D2: a rear-locked wing 2 whose own target breaks the order rule is held at the limit.
+        const held =
+          index === 1 &&
+          lockedToFin &&
+          !order.noRoom &&
+          order.limit !== null &&
+          lockedWingStation(wing, index, finEdges, geometry) > order.limit + 1e-9;
+        // D4: the founder's scaling rule, for a deep wing too close behind a side fin's trailing edge.
+        const finBox = wingFinBoxWarning(wing, finMarks);
         return (
           <div key={index} className="flex flex-col gap-4" data-wing-controls={n}>
             <SectionHeading
@@ -151,13 +174,18 @@ export function WingControls({
               min={position.min}
               max={position.max}
               step={position.step}
-              disabled={lockedToFin}
+              disabled={lockedToFin || noRoom}
               onValueChange={(v) => setWing(index, { station: position.toMm(v) })}
-              leftHint={formatDim(inchesToMm(WING_POSITION_MIN_IN), system)}
+              leftHint={floorText}
               rightHint={topHint}
               sliderLabel={`Wing ${n} position from tail`}
               sliderValueText={formatDim(wing.station, system)}
             />
+            {noRoom && (
+              <p data-wing-no-room-note className="-mt-2 text-xs leading-[1.4] text-surf-ink-muted font-normal">
+                {`No room behind wing 1: wing 2 needs ${gapText} behind it, so it stays at ${floorText}.`}
+              </p>
+            )}
 
             {/* D1: wing 1 locks to the front fins (disabled with its note on a single); wing 2 locks to a
                 quad's rear fins and shows no lock row on any other fin setup. Both follow the
@@ -201,6 +229,11 @@ export function WingControls({
                 sliderLabel={`Wing ${n} offset from the fin`}
               />
             )}
+            {held && order.limit !== null && (
+              <p data-wing-held-note className="-mt-2 text-xs leading-[1.4] text-surf-ink-muted font-normal">
+                {`Held at ${formatDim(order.limit, system)} — wing 2 stays at least ${gapText} behind wing 1.`}
+              </p>
+            )}
 
             <div className="flex gap-4">
               <SliderRow
@@ -230,6 +263,13 @@ export function WingControls({
                 sliderLabel={`Wing ${n} run along the stringer`}
               />
             </div>
+            {/* D4: the founder's scaling rule, full width under the Depth and Run row, in the warning
+                ink (the palette keeps it for warnings only); the distances are MARKS (CLAUDE.md Rule 2). */}
+            {finBox !== null && (
+              <p data-wing-fin-box-warning={n} className="-mt-2 text-xs leading-[1.4] text-surf-warning-ink">
+                {`Modern fin boxes: for a wing this deep, set its apex at least ${formatMark(finBox, system)} behind the fin's trailing-edge mark (twice the depth less ${formatMark(inchesToMm(WING_FIN_BOX_TRIM_IN), system)}). Check your fin box's spec too.`}
+              </p>
+            )}
 
             <SliderRow
               label="Corner radius"
@@ -248,9 +288,22 @@ export function WingControls({
       })}
 
       {wings.length < MAX_WINGS && (
-        <Button variant="outline" className="w-full" disabled={boardLocked} onClick={onAddWing}>
-          {wings.length === 0 ? "+ Add a wing" : "+ Add wing 2"}
-        </Button>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            variant="outline"
+            className="w-full"
+            // D2: wing 2 needs room the gap behind wing 1 and 2" from the tail.
+            disabled={boardLocked || (wings.length === 1 && !canAddSecond)}
+            onClick={onAddWing}
+          >
+            {wings.length === 0 ? "+ Add a wing" : "+ Add wing 2"}
+          </Button>
+          {wings.length === 1 && !canAddSecond && (
+            <p data-wing-add-note className="text-xs leading-[1.4] text-surf-ink-muted font-normal">
+              {`No room for wing 2 — it sits at least ${gapText} behind wing 1 and ${floorText} from the tail.`}
+            </p>
+          )}
+        </div>
       )}
 
       <TemplateSettings

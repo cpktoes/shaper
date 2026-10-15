@@ -5,8 +5,8 @@ import { DEFAULT_FIN_PLACEMENT_SPEC, computeFinPlacement, importedFinTailFromOut
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, mm } from "./units";
-import { lockedWingStation, resolveWingStations, wingFinEdges } from "./wing-lock";
-import { wingOrderGap, wingPositionTop, type Wing, type WingFinEdges, type WingLock } from "./wings";
+import { lockedWingStation, resolveWingStations, wingFinBoxWarning, wingFinEdges } from "./wing-lock";
+import { wingFinBoxDistance, wingOrderGap, wingPositionTop, type Wing, type WingFinEdges, type WingLock } from "./wings";
 
 // A wing locked to the fins (quick 261014-wii, 2026-10-14, D8, P2, P3; the slot locks, the order rule
 // and the top, quick 261015-hz7, 2026-10-15, D1–D3). Every expected value is read off the app's own
@@ -256,5 +256,50 @@ describe("wing 2 locks to a quad's rear fins and always sits behind wing 1 (D1, 
       }
     }
     annotate(`worst passes ${worst}, worst residual ${(worstResidual / 25.4).toFixed(4)}"`);
+  });
+});
+
+describe("the founder's scaling rule: a deep wing too close behind a fin box (D4, F14)", () => {
+  const marks = placeFins(DEFAULT_BOARD_SPEC.outline, DEFAULT_FIN_PLACEMENT_SPEC).marks;
+  const te = marks.find((m) => m.role === "front")!.offTail;
+  const at = (depthIn: number, behindIn: number) => ({
+    station: mm(te - inchesToMm(behindIn)),
+    depth: inchesToMm(depthIn),
+  });
+
+  it("a wing exactly 3/16 inch deep at the trailing edge: no warning", () => {
+    expect(wingFinBoxWarning(at(3 / 16, 0), marks)).toBeNull();
+  });
+
+  it("3/8 inch deep: at the mark and 7/16 behind warn with 1/2 inch; exactly 1/2 behind and 1/16 ahead do not", () => {
+    const d = wingFinBoxDistance(inchesToMm(3 / 8));
+    expect(Math.abs(d - inchesToMm(1 / 2))).toBeLessThan(1e-9);
+    expect(wingFinBoxWarning(at(3 / 8, 0), marks)).toBe(d);
+    expect(wingFinBoxWarning(at(3 / 8, 7 / 16), marks)).toBe(d);
+    expect(wingFinBoxWarning(at(3 / 8, 1 / 2), marks)).toBeNull();
+    expect(wingFinBoxWarning(at(3 / 8, -1 / 16), marks)).toBeNull();
+  });
+
+  it("1 inch deep: 1 11/16 behind warns with 1 3/4; 1 3/4 behind does not", () => {
+    const d = wingFinBoxDistance(inchesToMm(1));
+    expect(wingFinBoxWarning(at(1, 1 + 11 / 16), marks)).toBe(d);
+    expect(wingFinBoxWarning(at(1, 1.75), marks)).toBeNull();
+  });
+
+  it("1/4 inch deep at the trailing edge warns with 1/4 inch", () => {
+    expect(wingFinBoxWarning(at(1 / 4, 0), marks)).toBe(wingFinBoxDistance(inchesToMm(1 / 4)));
+  });
+
+  it("the Mid-length: a 1/4 inch wing 2 at the rear trailing edge warns, 3/16 does not; the centre fin never does", () => {
+    const quad = placeFins(MIDLENGTH.outline, MIDLENGTH.fins).marks;
+    const rear = quad.find((m) => m.role === "rear")!.offTail;
+    expect(wingFinBoxWarning({ station: rear, depth: inchesToMm(1 / 4) }, quad)).toBe(wingFinBoxDistance(inchesToMm(1 / 4)));
+    expect(wingFinBoxWarning({ station: rear, depth: inchesToMm(3 / 16) }, quad)).toBeNull();
+    const centre = quad.find((m) => m.role === "center")!;
+    expect(centre.side).toBe(0);
+    // A 1/2" wing at the centre fin's trailing edge: warned only if a side fin is also that close.
+    const nearSide = quad.some((m) => m.side !== 0 && m.offTail - centre.offTail >= 0 && m.offTail - centre.offTail < inchesToMm(3 / 4));
+    expect(nearSide).toBe(false);
+    expect(wingFinBoxWarning({ station: centre.offTail, depth: inchesToMm(1 / 2) }, quad)).toBeNull();
   });
 });

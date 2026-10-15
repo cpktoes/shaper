@@ -91,7 +91,7 @@ export function OutlineEditor() {
   ];
   const activeTab: TemplateTab = requestedTab;
 
-  /** "+ Add a wing", shared by the empty tab's card and the sidebar's button (D3). */
+  /** "+ Add a wing" and "+ Add wing 2", the sidebar's button (D3; the empty tab's card went in quick 261015-hz7, D6). */
   function handleAddWing() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
     updateOutline({ wings: [...wings, nextWing(wings, wingFinEdges, outlineGeometry, system)] });
@@ -347,7 +347,6 @@ export function OutlineEditor() {
           {activeTab === "wings" ? (
             <WingsPanel
               outline={outline}
-              onAddWing={handleAddWing}
               showConstruction={showConstruction}
               onToggleConstruction={handleToggleConstruction}
               showFins={showFins}

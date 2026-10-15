@@ -205,6 +205,114 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(wingRow(page, 2, "Position from tail")).toHaveText('Position from tail — 2"');
   });
 
+  test("desktop: a wing deeper than 3/16 inch at the front fins' trailing edge shows the founder's fin-box line, in both systems", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    const warning = page.locator('[data-wing-fin-box-warning="1"]');
+    await expect(wingRow(page, 1, "Depth")).toHaveText('Depth — 3/16"');
+    await expect(warning).toHaveCount(0);
+
+    const depth = page.getByRole("slider", { name: "Wing 1 depth" });
+    await depth.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(wingRow(page, 1, "Depth")).toHaveText('Depth — 1/4"');
+    // D4: 2 x 1/4" less 1/4" = 1/4".
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText('at least 1/4" behind');
+    await expect(warning).toContainText("Check your fin box's spec too.");
+    await page.keyboard.press("ArrowLeft");
+    await expect(warning).toHaveCount(0);
+
+    // Metric: one step deeper than 3/16" is 6 mm; 2 x 6 less 6.35 reads 6 mm, and 1/4" reads 6 mm.
+    const dialog = await openAppSettings(page);
+    await dialog.getByRole("group", { name: "Units" }).getByRole("button", { name: /^Metric/ }).click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await depth.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 6 mm");
+    await expect(warning).toContainText("at least 6 mm behind");
+    await expect(warning).toContainText("less 6 mm");
+  });
+
+  test("desktop: with wing 1 at 2 inches there is no room for wing 2, and the button says why", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("checkbox", { name: "Lock to front fin" }).click();
+    const position = page.getByRole("slider", { name: "Wing 1 position from tail" });
+    await position.focus();
+    await page.keyboard.press("Home");
+    await expect(wingRow(page, 1, "Position from tail")).toHaveText('Position from tail — 2"');
+    const add = sidebar.getByRole("button", { name: "+ Add wing 2" });
+    await expect(add).toBeDisabled();
+    await expect(sidebar.locator("[data-wing-add-note]")).toHaveText(
+      'No room for wing 2 — it sits at least 1/2" behind wing 1 and 2" from the tail.',
+    );
+    await position.focus();
+    await page.keyboard.press("End");
+    await expect(add).toBeEnabled();
+    await expect(sidebar.locator("[data-wing-add-note]")).toHaveCount(0);
+  });
+
+  test("desktop: on the Mid-length a rear-locked wing 2 is held behind wing 1, and a thruster's wing 2 has no lock", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await openPreset(page, "Mid-length");
+    await addWingsOnTab(page);
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(sidebar.locator("[data-wing-held-note]")).toHaveCount(0);
+    // F8: wing 1 at its front fins less 3" (9") with a 2" run puts wing 2's limit at 5".
+    await page.getByRole("slider", { name: "Wing 1 offset from the fin" }).focus();
+    await page.keyboard.press("Home");
+    await page.getByRole("slider", { name: "Wing 1 run along the stringer" }).focus();
+    await page.keyboard.press("End");
+    await expect(wingRow(page, 1, "Position from tail")).toHaveText('Position from tail — 9"');
+    await expect(sidebar.locator("[data-wing-held-note]")).toHaveText(
+      'Held at 5" — wing 2 stays at least 4" behind wing 1.',
+    );
+    await expect(wingRow(page, 2, "Position from tail")).toHaveText('Position from tail — 5"');
+  });
+
+  test("desktop: on the default thruster wing 2 has no lock at all, and sits 3 inches behind wing 1", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await addFirstWing(page);
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.locator('[data-wing-controls="2"]')).toBeVisible();
+    await expect(sidebar.getByRole("checkbox", { name: "Lock to rear fin" })).toHaveCount(0);
+    // F7: 10.977" less 3", floored onto the 1/16" grid.
+    await expect(wingRow(page, 2, "Position from tail")).toHaveText('Position from tail — 7 15/16"');
+    await expect(page.getByRole("slider", { name: "Wing 2 position from tail" })).toBeEnabled();
+  });
+
+  test("desktop: the empty ADD WINGS tab draws the bare tail with no card, and only the first wing opens the pop-up", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.goto("/design/outline");
+    await page.getByRole("tab", { name: "ADD WINGS" }).click();
+    await expect(page.locator("[data-wing-close-up]")).toBeVisible();
+    await expect(page.getByText("No wings yet")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "+ Add a wing" })).toHaveCount(1);
+    await page.locator("aside").getByRole("button", { name: "+ Add a wing" }).click();
+    await expect(page.getByRole("dialog", { name: "Dial in your wing placement" })).toHaveCount(1);
+    await page.getByRole("dialog").getByRole("button", { name: "Got it" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
   test("desktop: Got it closes the pop-up, Open FINS goes to FINS, and coming back lands on the VIEWER tab", async ({
     page,
   }, testInfo) => {
@@ -399,11 +507,11 @@ test.describe("wings on the TEMPLATE page", () => {
 // Plan 02, Task 2 (D3, P13, P14): the close-up on a phone, upright and sideways, and a thumb drag.
 // -------------------------------------------------------------------------------------------------
 
-/** On a phone: opens the WINGS tab and adds the first wing from the empty tab's own card. */
+/** On a phone: opens the WINGS tab and adds the first wing from the stacked controls' "+ Add a wing" (the empty tab has no card since quick 261015-hz7, D6). */
 async function addFirstWingOnPhone(page: Page) {
   await page.goto("/design/outline");
   await page.getByRole("tab", { name: "ADD WINGS" }).click();
-  await page.locator("[data-wings-empty]").getByRole("button", { name: "+ Add a wing" }).click();
+  await page.locator("[data-design-controls-scroll]").getByRole("button", { name: "+ Add a wing" }).click();
   const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Got it" }).click();
@@ -555,7 +663,7 @@ async function openPreset(page: Page, name: string) {
  * stacked controls), and the dial-in pop-up closed. */
 async function addWingsOnTab(page: Page) {
   await page.getByRole("tab", { name: "ADD WINGS" }).click();
-  await page.getByRole("button", { name: "+ Add a wing" }).first().click();
+  await page.getByRole("button", { name: "+ Add a wing" }).click();
   const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Got it" }).click();
