@@ -125,25 +125,29 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(sidebar.getByText("Template Builder")).toBeVisible();
   });
 
-  test("desktop: the first wing locks to the front fin, follows its leading edge, and unlocks where it stands", async ({
+  test("desktop: the first wing locks to the front fin's trailing edge, moves with its offset, and unlocks where it stands", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 
     await addFirstWing(page);
     const chip = page.locator('[data-wing-close-up] [data-callout-chip^="WING 1"]');
-    // F21: the default thruster's front fin trails at 10.977", read as 11".
-    await expect(chip).toContainText('3/8" @ 11"');
+    // F21 / quick 261015-hz7 D5: the default thruster's front fin trails at 10.977", read as 11"; 3/16" deep.
+    await expect(chip).toContainText('3/16" @ 11"');
     await expect(chip).toHaveAttribute("data-callout-chip", "WING 1 · FIN");
     const position = page.getByRole("slider", { name: "Wing 1 position from tail" });
     await expect(position).toBeDisabled();
+    // D1: no Fin edge picker — the lock always follows the trailing edge.
+    await expect(page.locator("aside").getByRole("button", { name: "Leading" })).toHaveCount(0);
 
-    await page.locator("aside").getByRole("button", { name: "Leading" }).click();
-    await expect(chip).toContainText('@ 15 1/2"');
+    // The offset's End is +3" toward the nose: 10.977" + 3" reads 14".
+    await page.getByRole("slider", { name: "Wing 1 offset from the fin" }).focus();
+    await page.keyboard.press("End");
+    await expect(chip).toContainText('@ 14"');
 
     await page.locator("aside").getByRole("checkbox", { name: "Lock to front fin" }).click();
     await expect(chip).toHaveAttribute("data-callout-chip", "WING 1");
-    await expect(chip).toContainText('@ 15 1/2"');
+    await expect(chip).toContainText('@ 14"');
     await expect(position).toBeEnabled();
   });
 
@@ -154,12 +158,51 @@ test.describe("wings on the TEMPLATE page", () => {
     const closeUp = page.locator("[data-wing-close-up]");
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
     await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
-    const position = page.getByRole("slider", { name: "Wing 2 position from tail" });
+    // Quick 261015-hz7 (D2, D3): wing 1 is the forward wing, so it is wing 1 that goes up the board.
+    await page.locator("aside").getByRole("checkbox", { name: "Lock to front fin" }).click();
+    const position = page.getByRole("slider", { name: "Wing 1 position from tail" });
     await position.focus();
     await page.keyboard.press("End");
-    // The default board is 72" long, so its centre is 36" and the window reaches 36" + 3".
-    await expect(closeUp).toHaveAttribute("data-window-hi-in", "39.000");
-    await expect(closeUp.locator('[data-output-rail="Behind wing 2"]')).toBeVisible();
+    // The default board's top is its widepoint, 35 1/2" (its centre is 36"), so the window reaches 35 1/2" + 3".
+    await expect(closeUp).toHaveAttribute("data-window-hi-in", "38.500");
+    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toBeVisible();
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Quick 261015-hz7 (2026-10-15): the founder's fixes after the first preview — the slot locks
+  // (D1), wing 2 behind wing 1 (D2) and the position top (D3).
+  // -------------------------------------------------------------------------------------------
+
+  test("desktop: on the Mid-length quad wing 2 locks to the rear fins, and wing 1 slid to its minimum pushes wing 2 to 2 inches", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await openPreset(page, "Mid-length");
+    await addWingsOnTab(page);
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+
+    // F7: the Mid-length's rear fins trail at 6 1/4"; wing 2 locks there.
+    const wing2 = page.locator('[data-wing-controls="2"]');
+    await expect(wing2.getByRole("checkbox", { name: "Lock to rear fin" })).toBeChecked();
+    const chip2 = page.locator('[data-wing-close-up] [data-callout-chip^="WING 2"]');
+    await expect(chip2).toHaveAttribute("data-callout-chip", "WING 2 · FIN");
+    await expect(chip2).toContainText('@ 6 1/4"');
+
+    // Wing 1 locked at the front fins' 12", its position row disabled.
+    const position1 = page.getByRole("slider", { name: "Wing 1 position from tail" });
+    await expect(position1).toBeDisabled();
+    await expect(wingRow(page, 1, "Position from tail")).toHaveText('Position from tail — 12"');
+
+    // Unlocked and slid to its minimum: 2" plus its 1/2" gap — and wing 2 pushed to its limit, the 2" floor.
+    await page.locator('[data-wing-controls="1"]').getByRole("checkbox", { name: "Lock to front fin" }).click();
+    await expect(position1).toBeEnabled();
+    await position1.focus();
+    await page.keyboard.press("Home");
+    await expect(wingRow(page, 1, "Position from tail")).toHaveText('Position from tail — 2 1/2"');
+    await expect(wingRow(page, 2, "Position from tail")).toHaveText('Position from tail — 2"');
   });
 
   test("desktop: Got it closes the pop-up, Open FINS goes to FINS, and coming back lands on the VIEWER tab", async ({
@@ -222,14 +265,16 @@ test.describe("wings on the TEMPLATE page", () => {
 
     await addFirstWing(page);
     await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    // Quick 261015-hz7 (D2): wing 1 is the forward wing — unlock it and carry IT up the board.
+    await page.locator("aside").getByRole("checkbox", { name: "Lock to front fin" }).click();
     await page.getByRole("button", { name: "Show construction lines" }).click();
     const closeUp = page.locator("[data-wing-close-up]");
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
 
-    const position = wingRow(page, 2, "Position from tail");
+    const position = wingRow(page, 1, "Position from tail");
     const before = inchesOf(await position.textContent());
     const ppi = await pixelsPerInch(page);
-    const start = await grabCentre(page, 2, "outer");
+    const start = await grabCentre(page, 1, "outer");
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await expect(closeUp).toHaveAttribute("data-held", "true");
@@ -310,11 +355,12 @@ test.describe("wings on the TEMPLATE page", () => {
 
     // F21, in Metric: the position is a dim (centimetres), the depth a mark (whole millimetres).
     const closeUp = page.locator("[data-wing-close-up]");
-    await expect(closeUp.locator('[data-callout-chip^="WING 1"]')).toContainText("10 mm @ 27.9 cm");
+    // Quick 261015-hz7 (D5, F8): the first wing is 3/16" deep — 5 mm.
+    await expect(closeUp.locator('[data-callout-chip^="WING 1"]')).toContainText("5 mm @ 27.9 cm");
     await expect(closeUp.locator('[data-output-rail="Ahead of wing 1"]')).toContainText("36.2 cm");
-    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toContainText("34.0 cm");
+    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toContainText("35.0 cm");
     await expect(closeUp.locator('[data-output-rail^="Tail @"]')).toContainText("37.4 cm");
-    await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 10 mm");
+    await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 5 mm");
 
     // A drag of the inner point lands the stored depth on a whole millimetre.
     await page.getByRole("button", { name: "Show construction lines" }).click();
@@ -324,7 +370,7 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.mouse.down();
     await page.mouse.move(start.x - ppi * 0.37, start.y, { steps: 5 });
     await page.mouse.up();
-    await expect(wingRow(page, 1, "Depth")).not.toHaveText("Depth — 10 mm");
+    await expect(wingRow(page, 1, "Depth")).not.toHaveText("Depth — 5 mm");
     await expect(wingRow(page, 1, "Depth")).toHaveText(/^Depth — \d+ mm$/);
     const stored = Number(await page.getByRole("slider", { name: "Wing 1 depth" }).getAttribute("aria-valuenow"));
     expect(Number.isInteger(stored)).toBe(true);
@@ -493,6 +539,29 @@ test.describe("wings on a real iPhone held sideways (plan 02)", () => {
     await expectSidewaysWings(page);
   });
 });
+
+/** Opens a preset from the home screen's cards by name — `e2e/phone-screen-tiles.spec.ts`'s own
+ * `openPreset`, copied with its `toPass` retry (the card click flaked under three workers, F13). */
+async function openPreset(page: Page, name: string) {
+  await page.goto("/");
+  const button = page.getByRole("button").filter({ hasText: "Start Shaping" }).filter({ hasText: name }).first();
+  await expect(async () => {
+    await button.click();
+    await expect(page).toHaveURL(/\/design\/outline$/, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+}
+
+/** On the TEMPLATE page already open: the WINGS tab, the first wing from the sidebar (or the phone's
+ * stacked controls), and the dial-in pop-up closed. */
+async function addWingsOnTab(page: Page) {
+  await page.getByRole("tab", { name: "ADD WINGS" }).click();
+  await page.getByRole("button", { name: "+ Add a wing" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Got it" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "WINGS · 1" })).toBeVisible();
+}
 
 /** A wing's slider row label (`Depth — 3/8"`), wherever the wing controls are drawn. */
 function wingRow(page: Page, wing: number, label: string) {

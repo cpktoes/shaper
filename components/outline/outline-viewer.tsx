@@ -955,7 +955,7 @@ export function OutlineViewer({
   // would land on it jumps above it, its L leader keeping the wing's true station (the sketch's own
   // VIEWER put WING 2 at 30" on WP OFFSET, F26). With no wings nothing here draws and TAIL BLOCK is
   // exactly the chip it always was.
-  const viewerWings = placedWings(outline.wings ?? [], geometry.length);
+  const viewerWings = placedWings(outline.wings ?? [], geometry);
   const tailChipHalf = horizontal ? calloutSizes.chipW / 2 : calloutSizes.chipH / 2;
   const tailChips = [
     ...(geometry.tailBlockPinned ? [] : [{ y: tailBlockChipY, half: tailChipHalf }]),

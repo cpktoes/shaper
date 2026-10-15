@@ -3,7 +3,7 @@ import { MIN_PINNED_FIT_SCALE, pinnedCalloutSizes } from "@/components/viewer/ca
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { nextWing, outlineWithoutWings } from "@/lib/geometry/wings";
+import { NO_FIN_EDGES, nextWing, outlineWithoutWings } from "@/lib/geometry/wings";
 import {
   CLOSE_UP,
   CLOSE_UP_COMPACT,
@@ -45,7 +45,7 @@ describe("wingWindow — the last 26 inches, growing once a wing passes 24 (sket
 describe("closeUpFrame — the sketch's closeUpSvg arithmetic", () => {
   it("frames the default board's one-wing window from the sketch's constants", () => {
     const outline = DEFAULT_BOARD_SPEC.outline;
-    const wing = nextWing([], null, outline.length, "imperial");
+    const wing = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
     const winged = buildOutline({ ...outline, wings: [wing] });
     const base = buildOutline(outlineWithoutWings(outline));
     const { lo, hi } = wingWindow(outline.length, [wing.station]);
@@ -104,7 +104,7 @@ describe("the compact frame — the close-up fitting itself on a phone and a nar
   /** The default board's one-wing window, as the close-up frames it (F27). */
   function defaultWindow() {
     const outline = DEFAULT_BOARD_SPEC.outline;
-    const wing = nextWing([], null, outline.length, "imperial");
+    const wing = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
     const winged = buildOutline({ ...outline, wings: [wing] });
     const base = buildOutline(outlineWithoutWings(outline));
     const { lo, hi } = wingWindow(outline.length, [wing.station]);

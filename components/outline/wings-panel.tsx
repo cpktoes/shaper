@@ -39,7 +39,7 @@ export function WingsPanel({
   wideView,
   onToggleWideView,
 }: WingsPanelProps) {
-  const { outlineGeometry, baseOutlineGeometry, finPlacement, updateOutline, locked: boardLocked, wingFrontFin } =
+  const { outlineGeometry, baseOutlineGeometry, finPlacement, updateOutline, locked: boardLocked, wingFinEdges } =
     useDesign();
   const locked = useControlsLocked();
   const wingCount = outline.wings?.length ?? 0;
@@ -78,7 +78,7 @@ export function WingsPanel({
           // no handler, no grab areas, no press handling (the VIEWER's own rule); the store's lock
           // guard backs it.
           onWingsChange={boardLocked ? undefined : (wings) => updateOutline({ wings })}
-          edges={wingFrontFin}
+          edges={wingFinEdges}
         />
       </div>
 

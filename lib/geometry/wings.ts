@@ -30,6 +30,26 @@
  * floor, the share floor, the hair, the 0.02" grid). `lib/geometry/wings.test.ts` checks this file
  * against the sketch's own numbers at every recorded station (CLAUDE.md Rule 1, D10).
  *
+ * The founder's rulings after walking the first build (quick 261015-hz7, 2026-10-15), each a pure
+ * function below the step's maths:
+ * - **Slots (D1).** "Only wing 1 gets lock to front fins option." "Wing 2 can lock to rear if it's a
+ *   quad setup, otherwise no lock." "Fin edge should always be to trailing edge for the lock, so we
+ *   can get rid of that selector." So wing 1 may hold only `"front-trailing"` and wing 2 only
+ *   `"rear-trailing"` (`wingLockFitsSlot`, `slotWingLocks`), and a lock follows that fin group's
+ *   trailing edge plus the wing's offset (`wingLockEdge`).
+ * - **Order (D2).** "Wing 2 has to be closer to the tail than wing 1, and can't get any closer than
+ *   1/2" or 2x the run along the stringer from wing 1 (whichever is larger)." Wing 2's apex sits at
+ *   least `wingOrderGap` = max(1/2", 2 × wing 1's run) behind wing 1's apex, and never under 2" — the
+ *   2" floor wins when the two disagree (`clampWingStations`). Wing 1 is now the forward wing (the
+ *   front fins, or a stinger), wing 2 the aft one (a quad's rear fins, or by hand) — the reverse of
+ *   the first build, which added wing 2 4 1/2" nose-ward.
+ * - **Top (D3).** "The wing's position off tail should be limited by center or the widepoint,
+ *   whichever is closer to the tail." Every position runs from 2" to `wingPositionTop`.
+ * - **Defaults (D5).** "Drop the default wing to 3/16"": both wings are added 3/16" deep, so neither
+ *   opens with the fin-box warning (`wingFinBoxDistance`, D4).
+ * Saved wings out of order or past the top are corrected when the board is drawn (`placedWings`,
+ * and the store's `resolveWingStations`), never rewritten on open (rule 7 of design-snapshot.ts).
+ *
  * Pure: types only from `./board` and `./outline`, values only from `./units` (CLAUDE.md Rule 1).
  */
 
@@ -37,8 +57,12 @@ import type { OutlinePoint, OutlineSpec } from "./board";
 import type { OutlineGeometry } from "./outline";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
-/** Which edge of the front fin a wing follows, or `null` for a wing placed by hand (D8). */
-export type WingLock = "front-trailing" | "front-leading" | null;
+/**
+ * What a wing is locked to, or `null` for a wing placed by hand (quick 261015-hz7, D1): wing 1 may
+ * follow the front fins' trailing edge, wing 2 a quad's rear fins' trailing edge. (The first build's
+ * `"front-leading"` reads as `"front-trailing"` when a saved board opens — design-snapshot.ts, rule 7.)
+ */
+export type WingLock = "front-trailing" | "rear-trailing" | null;
 
 /**
  * One wing, stored on the outline (P1). `station` is the wing's OUTER corner from the tail —
@@ -56,12 +80,16 @@ export interface Wing {
   finOffset: Mm;
 }
 
-/** The front fin's two edges, measured from the tail — declared here so this file never imports
- * `fins.ts` (`wing-lock.ts` fills it in). */
-export interface FrontFinEdges {
-  trailing: Mm;
-  leading: Mm;
+/** The trailing edges a wing can lock to, measured from the tail: the front fins' and a quad's rear
+ * fins', each `null` when the fin setup has none — declared here so this file never imports
+ * `fins.ts` (`wing-lock.ts` fills it in from FINS' own marks; D1). */
+export interface WingFinEdges {
+  front: Mm | null;
+  rear: Mm | null;
 }
+
+/** No fins to lock to — every wing placed by hand. */
+export const NO_FIN_EDGES: WingFinEdges = { front: null, rear: null };
 
 /** Up to two wings per board (D2). */
 export const MAX_WINGS = 2;
@@ -78,12 +106,156 @@ export const WING_STEP_IN = 1 / 16;
 /** ... and 1 mm steps in Metric (D2, D9). */
 export const WING_STEP_MM = 1;
 
-/** The position slider's range: 2" to the board's centre (a stinger), in inches. */
-export function wingPositionRangeIn(length: Mm): { min: number; max: number } {
-  return { min: WING_POSITION_MIN_IN, max: mmToInches(length) / 2 };
-}
+/** A new wing's depth, in inches — the founder (2026-10-15): "drop the default wing to 3/16"" (D5). */
+export const WING_DEFAULT_DEPTH_IN = 3 / 16;
+/** Wing 2's apex sits at least this far behind wing 1's, in inches ... (D2) */
+export const WING_ORDER_MIN_GAP_IN = 1 / 2;
+/** ... or this many times wing 1's run, whichever is larger (D2). */
+export const WING_ORDER_RUN_TIMES = 2;
+/** A second wing placed by hand is added this far behind wing 1, in inches, or the gap if larger (D5). */
+export const WING_SECOND_BY_HAND_IN = 3;
+/** The founder's scaling rule (D4): a wing no deeper than this, in inches, needs no fin-box room ... */
+export const WING_FIN_BOX_FREE_DEPTH_IN = 3 / 16;
+/** ... and a deeper one wants its apex `2 × depth − this` behind a fin's trailing edge, in inches. */
+export const WING_FIN_BOX_TRIM_IN = 1 / 4;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** The geometry a wing's position limits read: the board's length and its widepoint station. */
+export type WingPlacementGeometry = Pick<OutlineGeometry, "length" | "widePointStation">;
+
+/**
+ * The furthest from the tail a wing may sit (D3): the board's centre or its widepoint, whichever is
+ * nearer the tail. The widepoint is the outline's own `widePointStation`, the same with or without
+ * wings.
+ */
+export function wingPositionTop(g: WingPlacementGeometry): Mm {
+  return mm(Math.min(g.length / 2, g.widePointStation));
+}
+
+/** The position slider's plain range, in inches: 2" to `wingPositionTop` (D3). */
+export function wingPositionRangeIn(g: WingPlacementGeometry): { min: number; max: number } {
+  return { min: WING_POSITION_MIN_IN, max: Math.max(WING_POSITION_MIN_IN, mmToInches(wingPositionTop(g))) };
+}
+
+/** How far behind wing 1's apex wing 2's apex must sit (D2): the larger of 1/2" and twice wing 1's
+ * run, so a flat of at least one run lies between wing 1's inner corner and wing 2's apex. */
+export function wingOrderGap(first: Pick<Wing, "run">): Mm {
+  return mm(Math.max(inchesToMm(WING_ORDER_MIN_GAP_IN), WING_ORDER_RUN_TIMES * Math.max(0, first.run)));
+}
+
+/** The tolerance the room test compares with, in millimetres (sums of inch figures carry float dust). */
+const ORDER_EPS_MM = 1e-9;
+
+/**
+ * Every wing's station kept inside 2" … `wingPositionTop` (D3), then wing 2 kept at least
+ * `wingOrderGap` behind wing 1 and never under 2" — the 2" floor wins when there is no room (D2).
+ * Applied after the locks resolve. Never drops a wing. Returns the SAME array when nothing moves, and
+ * the same objects for the wings that do not move.
+ */
+export function clampWingStations(wings: readonly Wing[], g: WingPlacementGeometry): readonly Wing[] {
+  const lo = inchesToMm(WING_POSITION_MIN_IN);
+  const top = wingPositionTop(g);
+  let changed = false;
+  const out = wings.map((w) => {
+    const station = clamp(w.station, lo, top);
+    if (station === w.station) return w;
+    changed = true;
+    return { ...w, station: mm(station) };
+  });
+  if (out.length >= 2) {
+    const limit = Math.max(lo, out[0].station - wingOrderGap(out[0]));
+    if (out[1].station > limit) {
+      out[1] = { ...out[1], station: mm(limit) };
+      changed = true;
+    }
+  }
+  return changed ? out : wings;
+}
+
+/**
+ * Where wing 2 may sit at most (D2): wing 1's station (kept under the top) less the gap — `null`
+ * with no wing — and whether that leaves no room above the 2" floor.
+ */
+export function wingOrderState(
+  wings: readonly Wing[],
+  g: WingPlacementGeometry,
+): { limit: Mm | null; noRoom: boolean } {
+  const first = wings[0];
+  if (!first) return { limit: null, noRoom: false };
+  const lo = inchesToMm(WING_POSITION_MIN_IN);
+  const limit = mm(clamp(first.station, lo, wingPositionTop(g)) - wingOrderGap(first));
+  return { limit, noRoom: limit < lo - ORDER_EPS_MM };
+}
+
+/**
+ * A wing's position slider range, in inches, for its slot (D2, D3). Wing 1 alone: 2" to the top.
+ * Wing 1 with a wing 2: from 2" plus the gap (never above the top), so wing 2 always has room.
+ * Wing 2: 2" to wing 1 less the gap. With no room for wing 2, the plain range — its row is disabled.
+ */
+export function wingPositionRangeForSlot(
+  wings: readonly Wing[],
+  index: number,
+  g: WingPlacementGeometry,
+): { min: number; max: number } {
+  const plain = wingPositionRangeIn(g);
+  const state = wingOrderState(wings, g);
+  if (wings.length < 2 || state.limit === null || state.noRoom) return plain;
+  if (index === 0) {
+    return { min: Math.min(plain.max, WING_POSITION_MIN_IN + mmToInches(wingOrderGap(wings[0]))), max: plain.max };
+  }
+  return { min: plain.min, max: clamp(mmToInches(state.limit), plain.min, plain.max) };
+}
+
+/** Whether "+ Add wing 2" can add one (D2): exactly one wing, far enough from the tail for a wing 2
+ * to sit the gap behind it and still 2" from the tail. */
+export function canAddSecondWing(wings: readonly Wing[], g: WingPlacementGeometry): boolean {
+  return wings.length === 1 && !wingOrderState(wings, g).noRoom;
+}
+
+/** Whether a lock fits a wing's slot (D1): wing 1 only the front fins', wing 2 only the rear fins'. */
+export function wingLockFitsSlot(index: number, lock: WingLock): boolean {
+  if (lock === null) return true;
+  return (index === 0 && lock === "front-trailing") || (index === 1 && lock === "rear-trailing");
+}
+
+/** Each wing whose lock its slot may not hold, read as placed by hand at its own station (D1, D10).
+ * The SAME array when every lock fits; new objects only where a lock is dropped. */
+export function slotWingLocks(wings: readonly Wing[]): Wing[] {
+  let changed = false;
+  const out = wings.map((w, i) => {
+    if (wingLockFitsSlot(i, w.lock)) return w;
+    changed = true;
+    return { ...w, lock: null };
+  });
+  return changed ? out : (wings as Wing[]);
+}
+
+/** The wings list with one removed; a wing 2 that becomes wing 1 drops its rear lock and keeps its
+ * station (D1). */
+export function removeWing(wings: readonly Wing[], index: number): Wing[] {
+  return slotWingLocks(wings.filter((_, i) => i !== index));
+}
+
+/**
+ * The trailing edge a wing follows (D1): wing 1 locked to the front fins, or wing 2 locked to a
+ * quad's rear fins, when those fins exist — else `null`, and the wing sits at its own station (a
+ * lock its slot may not hold, or a lock on a fin setup without those fins, is inert).
+ */
+export function wingLockEdge(w: Pick<Wing, "lock">, index: number, edges: WingFinEdges): Mm | null {
+  if (index === 0 && w.lock === "front-trailing") return edges.front;
+  if (index === 1 && w.lock === "rear-trailing") return edges.rear;
+  return null;
+}
+
+/**
+ * The founder's scaling rule (D4, 2026-10-15): "If Wing Depth is > 3/16", recommend a distance using
+ * the formula Distance Behind Trailing Edge = (2 × Wing Depth) − 0.25"" — 3/8" deep wants 1/2", 1/2"
+ * wants 3/4", 1" wants 1 3/4".
+ */
+export function wingFinBoxDistance(depth: Mm): Mm {
+  return mm(2 * depth - inchesToMm(WING_FIN_BOX_TRIM_IN));
+}
 
 /** The sketch's `wingShape` floor on the tangent length, 1e-9 inch. */
 const TANGENT_FLOOR_MM = inchesToMm(1e-9);
@@ -294,18 +466,13 @@ export function wingedHalfWidthAt(g: OutlineGeometry, wings: readonly Wing[], st
   return mm(wingedFromPrepared(g, prepare(wings), station));
 }
 
-/** Each wing's station kept inside 2" … the board's centre; a wing without depth dropped
- * (defensive — the share divides by the depth, and a saved board is read forgivingly). */
-export function placedWings(wings: readonly Wing[], length: Mm): Wing[] {
-  const lo = inchesToMm(WING_POSITION_MIN_IN);
-  const hi = length / 2;
-  const out: Wing[] = [];
-  for (const w of wings) {
-    if (!(w.depth > 0)) continue;
-    const station = clamp(w.station, lo, hi);
-    out.push(station === w.station ? w : { ...w, station: mm(station) });
-  }
-  return out;
+/** The wings as the board draws them: a wing without depth dropped (defensive — the share divides
+ * by the depth, and a saved board is read forgivingly), then every station kept inside 2" … the
+ * top and wing 2 behind wing 1 (`clampWingStations`, D2, D3) — so every reader of `buildOutline`
+ * (the rack, the prints, the tiles) draws the board the screen shows. */
+export function placedWings(wings: readonly Wing[], g: WingPlacementGeometry): readonly Wing[] {
+  const kept = wings.every((w) => w.depth > 0) ? wings : wings.filter((w) => w.depth > 0);
+  return clampWingStations(kept, g);
 }
 
 /** Today's `sampleOutline` rule (outline.ts's `interpolateHalfWidth`), for the 12" widths. */
@@ -331,7 +498,7 @@ function interpolateHalfWidth(points: readonly OutlinePoint[], station: number):
  * base's, unchanged.
  */
 export function applyWings(base: OutlineGeometry, wings: readonly Wing[]): OutlineGeometry {
-  const placed = placedWings(wings, base.length);
+  const placed = placedWings(wings, base);
   if (placed.length === 0) return base;
   const prepared = prepare(placed);
   const length = base.length;
@@ -422,35 +589,61 @@ export function wingRadiusTop(w: Pick<Wing, "run" | "depth">, system: UnitsSyste
   return mm(Math.max(1, steps) * grid);
 }
 
+/** A station floored onto the system's grid (1/16" or a whole millimetre), with `wingRadiusTop`'s
+ * nudge, so a by-hand default never lands a hair past a limit. */
+function floorToGrid(station: number, system: UnitsSystem): number {
+  const grid = gridMm(system);
+  return Math.floor(station / grid + 1e-9) * grid;
+}
+
 /**
- * The wing "+ Add a wing" adds (the sketch's `addWing`). The first locks to the front fin's
- * trailing edge when the fin setup has a front fin, else sits at 11" placed by hand; 3/8" deep, a
- * 1/4" run, sharp corners. The second sits 4 1/2" nose-ward of the first (never past the centre),
- * 1/4" deep, a 1/2" run, its corners rounded as far as they fit.
+ * The wing "+ Add a wing" adds (D5, quick 261015-hz7). The first sits at the front fins' trailing
+ * edge, locked, offset 0 — or at 11" placed by hand on a fin setup with no front fins — inside 2" …
+ * the top; 3/16" deep, a 1/4" run, sharp corners. The second sits BEHIND it (D2): on a quad, locked
+ * to the rear fins' trailing edge, offset 0, then held by the order rule; otherwise by hand at wing 1
+ * less the larger of the gap and 3", floored onto the grid and never under 2"; 3/16" deep, a 1/2"
+ * run, its corners rounded as far as they fit. Neither trips the fin-box warning (3/16" is not
+ * deeper than 3/16").
  */
 export function nextWing(
   wings: readonly Wing[],
-  edges: FrontFinEdges | null,
-  length: Mm,
+  edges: WingFinEdges,
+  g: WingPlacementGeometry,
   system: UnitsSystem,
 ): Wing {
   const lo = inchesToMm(WING_POSITION_MIN_IN);
-  const hi = length / 2;
+  const top = wingPositionTop(g);
+  const depth = inchesToMm(WING_DEFAULT_DEPTH_IN);
   if (wings.length === 0) {
     return {
-      station: mm(clamp(edges ? edges.trailing : inchesToMm(11), lo, hi)),
-      depth: inchesToMm(3 / 8),
+      station: mm(clamp(edges.front ?? inchesToMm(11), lo, top)),
+      depth,
       run: inchesToMm(1 / 4),
       radius: mm(0),
-      lock: edges ? "front-trailing" : null,
+      lock: edges.front !== null ? "front-trailing" : null,
       finOffset: mm(0),
     };
   }
-  const shape = { depth: inchesToMm(1 / 4), run: inchesToMm(1 / 2) };
+  const first = wings[0];
+  const gap = wingOrderGap(first);
+  const firstStation = clamp(first.station, lo, top);
+  const limit = Math.max(lo, firstStation - gap);
+  const shape = { depth, run: inchesToMm(1 / 2) };
+  const radius = wingRadiusTop(shape, system);
+  if (edges.rear !== null) {
+    return {
+      station: mm(Math.min(limit, clamp(edges.rear, lo, top))),
+      ...shape,
+      radius,
+      lock: "rear-trailing",
+      finOffset: mm(0),
+    };
+  }
+  const byHand = floorToGrid(firstStation - Math.max(gap, inchesToMm(WING_SECOND_BY_HAND_IN)), system);
   return {
-    station: mm(clamp(Math.min(hi, wings[0].station + inchesToMm(4.5)), lo, hi)),
+    station: mm(clamp(byHand, lo, limit)),
     ...shape,
-    radius: wingRadiusTop(shape, system),
+    radius,
     lock: null,
     finOffset: mm(0),
   };
