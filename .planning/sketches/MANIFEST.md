@@ -48,6 +48,26 @@ round. The sketch draws the live curve (A), the founder's control point across t
 length to feel) and a parabola from the tip fixed by the printed numbers alone (C), on five real blanks — one
 each for the catalogue's 3", 6" and 12" last printed segments — in the app's own top-view strokes.
 
+### Wings on the outline (sketch 013, 2026-10-14)
+
+The founder: up to two wings, each 1/16" to 1" deep toward the stringer, an offset of 0 to 1" along the stringer, and
+"a sharp wing to a smooth bump" — a smoothing slider spreading the step over 0 to 3" of curve; a wing may be locked to
+the front fin's position with an offset; adding a wing turns on a "Show fins" setting on the TEMPLATE page (marks, no
+dims) and pops up "Dial in your wing placement. Edit fin placement on the fins page, then return to the template to
+fine tune the wing." Before the sketch, a read-only audit of the outline maths (2026-10-14) found the two-span cubic
+Bézier sound enough to carry wings — never wider than the widepoint, smooth through the 12" stations, nose and tail
+shape already controllable — so the wing is drawn as a break applied after today's curve, not a new curve family. The
+sketch draws three constructions on five real boards with the real fin placement: the tail re-drawn to the block you
+set (A), the tail moved in (B), and a flyer that adds width ahead of the wing (C), every number on a live slider.
+
+### The WINGS tab (sketch 014, 2026-10-14)
+
+The founder, on seeing 013: "maybe we need an 'add wings' tab on the template page, which provides this zoomed in section
+of the tail. Then go back to viewer for the full board. That simplifies the controls too, since the add wings tab would
+only have the wing controls and the regular viewer doesn't need them at all." The sketch mocks today's TEMPLATE page with
+that tab beside VIEWER (ADD WINGS until there is one, then WINGS · 1 or · 2), the tail close-up inside it, and three homes
+for the controls: the sidebar swapping to them (A), a column inside the tab (B), and A with grab points on the drawing (C).
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -71,6 +91,8 @@ each for the catalogue's 3", 6" and 12" last printed segments — in the app's o
 | 010 | sideways-board-rack | On a computer, what does the Board Rack look like, and how does a board turn and move under the cursor? | **A — Drawing rack**, turn follows the cursor | desktop, home, board-rack, interaction, motion, reorder |
 | 011 | phone-rack-reorder | On a phone, where a sideways drag already swipes the rack, how does a shaper move a board to a new place? | **A — Hold and drag** (tried on a phone) | phone, home, board-rack, reorder, interaction |
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
+| 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
+| 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how is a wing grabbed? | _pending_ | template, wings, tabs, controls, sidebar, phone, interaction |
 
 ## Decisions These Lock In
 
@@ -130,6 +152,15 @@ each for the catalogue's 3", 6" and 12" last printed segments — in the app's o
    it needs a handle share to pick. The width curve is shared with the fit check, so a board flagged too wide
    inside the last printed station can come to fit once this is built. Built the same day in quick 261007-c3h
    (`lib/geometry/round-tip.ts`; merged locally on main, the push on the founder's word).
+
+16. **A wing takes its depth out behind the step and the tail block keeps its number** (sketch 013 A; the founder,
+   2026-10-14: "construction wise, we definitely want to go A"). A wing is a step applied after today's curve: ahead of
+   the wing nearest the nose the outline is the curve the shaper drew; behind each wing its depth (1/16" to 1") is taken
+   out and fades to nothing at the tail pod, so the tail block stays as set and two wings add up like a staircase. The
+   step has a run along the stringer (0 to 1") and a smoothing (0 to 3", eased half at each corner); its position is a
+   station from the tail or the front fin's trailing or leading edge plus an offset. Boards without wings redraw
+   identically. Adding a wing switches on a "Show fins" setting on the TEMPLATE page (marks only, no dims) and pops up
+   "Dial in your wing placement. Edit fin placement on the fins page, then return to the template to fine tune the wing."
 
 ## Open Questions
 

@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 013 — Wings on the outline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link id="theme-link" rel="stylesheet" href="../themes/app-slate.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--color-page); color: var(--color-text); font-family: var(--font-sans); min-height: 100vh; }
+  button, input, select { font-family: inherit; }
+
+  /* ---------- sketch chrome (not part of the design) ---------- */
+  #chrome { position: sticky; top: 0; z-index: 9998; }
+  #variant-nav { display: flex; gap: 6px; align-items: center; padding: 8px 16px; background: #0d0f14; border-bottom: 1px solid #262a33; font: 13px/1.2 system-ui, sans-serif; color: #cfd5de; flex-wrap: wrap; }
+  #variant-nav .sketch-id { font-weight: 700; margin-right: 8px; color: #fff; }
+  .variant-tab { background: #1b1f27; color: #cfd5de; border: 1px solid #2c313b; border-radius: 6px; padding: 6px 10px; cursor: pointer; transition: all .15s ease; font: inherit; }
+  .variant-tab:hover { border-color: #4b5361; color: #fff; }
+  .variant-tab.active { background: #234f66; border-color: #3490bc; color: #fff; }
+  .variant-tab.winner { border-color: #c9a227; }
+  .variant-tab.winner.active { background: #4a3d10; border-color: #e0b52c; }
+  .notes-btn { margin-left: auto; }
+  #sketch-bar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 7px 16px; background: #14171d; border-bottom: 1px solid #262a33; font: 12px/1.3 system-ui, sans-serif; color: #aeb5c0; }
+  #sketch-bar .desc { flex: 1 1 320px; color: #dfe3ea; }
+  .grp { display: flex; align-items: center; gap: 6px; }
+  .seg { display: inline-flex; border: 1px solid #2f343e; border-radius: 6px; overflow: hidden; }
+  .seg button { background: transparent; color: #aeb5c0; border: 0; padding: 4px 8px; font: 12px system-ui, sans-serif; cursor: pointer; transition: all .15s ease; }
+  .seg button + button { border-left: 1px solid #2f343e; }
+  .seg button:hover { color: #fff; background: #222731; }
+  .seg button.on { background: #234f66; color: #fff; }
+  .seg button:disabled { opacity: .4; cursor: not-allowed; }
+  #sketch-bar .legend { display: inline-flex; gap: 12px; align-items: center; }
+  #sketch-bar .legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+  #notes-panel { display: none; position: absolute; right: 12px; top: calc(100% + 6px); width: 440px; max-height: 72vh; overflow-y: auto; background: #12151b; color: #dfe3ea; border: 1px solid #2c313b; border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.5); padding: 14px 16px; font: 13.5px/1.5 system-ui, sans-serif; }
+  #notes-panel.open { display: block; }
+  #notes-panel h2 { font-size: 14px; margin: 0 0 6px; color: #fff; }
+  #notes-panel h3 { font-size: 12px; margin: 12px 0 4px; letter-spacing: .05em; color: #fff; text-transform: uppercase; }
+  #notes-panel p, #notes-panel ul { margin: 0 0 8px; color: #aeb5c0; }
+  #notes-panel ul { padding-left: 18px; }
+  #notes-panel b { color: #dfe3ea; }
+  #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .7; transition: opacity .2s; display: flex; flex-direction: column; gap: 6px; }
+  #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
+  #sketch-tools:not(.open) .row { display: none; }
+  #tools-toggle { align-self: flex-end; }
+  #sketch-tools .row { display: flex; gap: 4px; align-items: center; }
+  #sketch-tools .row > span:first-child { width: 84px; color: #aeb5c0; }
+  #sketch-tools button, #tools-toggle { font: 11px system-ui, sans-serif; background: #22262e; color: #fff; border: 1px solid #3a404b; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+  #sketch-tools button.on { background: #234f66; border-color: #3490bc; }
+
+  /* ---------- the design: the app's own tokens, derived exactly as app/globals.css derives them ---------- */
+  :root {
+    --outline-board-fill: var(--color-board);
+    --outline-ink: var(--color-text);
+    --outline-dim-ink: var(--color-text);
+    --outline-station-line: color-mix(in srgb, var(--color-text-muted) 36%, transparent);
+    --outline-widepoint-knot: var(--color-accent-ink);
+    --outline-widepoint-line: color-mix(in srgb, var(--color-accent-ink) 45%, transparent);
+    --outline-construction: var(--color-accent-ink);
+    --outline-ghost: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    --outline-callout-label: var(--color-text-muted);
+    --outline-page-bg: var(--color-canvas);
+    --outline-fin: var(--color-accent-ink);
+  }
+  #stage { padding: 18px 16px 70px; }
+  .intro { max-width: 1500px; margin: 0 auto 12px; font-size: 14px; line-height: 1.5; color: var(--color-text-muted); }
+  .intro b { color: var(--color-text); font-weight: 600; }
+  .sheet { max-width: 1500px; margin: 0 auto; display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+  .sidebar { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; }
+  .sidebar h3 { margin: 6px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); }
+  .sidebar .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+  .sidebar .row .v { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 64px; text-align: right; }
+  .sidebar input[type=range] { width: 100%; accent-color: var(--color-accent-ink); grid-column: 1 / -1; margin: 0; }
+  .sidebar .row.dim { opacity: .45; }
+  .sidebar label.ck { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .sidebar .note { font-size: 11.5px; color: var(--color-text-muted); line-height: 1.4; }
+  .sidebar .pick { display: inline-flex; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden; }
+  .sidebar .pick button { background: transparent; color: var(--color-text-muted); border: 0; padding: 5px 10px; font: 12px/1 var(--font-sans); font-weight: 600; cursor: pointer; transition: all .15s ease; }
+  .sidebar .pick button + button { border-left: 1px solid var(--color-border); }
+  .sidebar .pick button.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .sidebar .pick button:disabled { opacity: .4; cursor: not-allowed; }
+  .sidebar .wingcard { border-top: 1px solid var(--color-border); padding-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .sidebar .wingcard.off { opacity: .4; pointer-events: none; }
+  .plates { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
+  .plate.zoom { grid-column: 1 / -1; }
+  .plate.zoom svg { margin: 0 auto; }
+  .plate { background: var(--color-canvas); border: 1px solid var(--color-border); border-radius: 12px; padding: 10px; }
+  .plate h4 { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .plate h4 span { font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .plate svg { display: block; overflow: visible; max-width: 100%; height: auto; }
+  .cap { font-size: 13px; line-height: 1.55; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; padding: 12px 14px; }
+  .cap b { color: var(--color-text); font-weight: 600; }
+  .cap table { border-collapse: collapse; margin-top: 8px; font-size: 12.5px; }
+  .cap td, .cap th { padding: 3px 10px 3px 0; text-align: left; font-variant-numeric: tabular-nums; }
+  .cap th { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 10.5px; color: var(--color-text-muted); }
+  .cap td { color: var(--color-text); }
+  .lbl { font-family: var(--font-sans); font-weight: 700; fill: var(--outline-callout-label); }
+  .val { font-family: var(--font-sans); font-weight: 700; fill: var(--outline-ink); }
+  /* the popup — the app's own surfaces */
+  #popup { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+  #popup.open { display: flex; }
+  #popup .card { width: min(420px, calc(100vw - 32px)); background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 18px 18px 14px; }
+  #popup h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; line-height: 1.2; }
+  #popup p { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: var(--color-text-muted); }
+  #popup .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  #popup button { font: 12px/1 var(--font-sans); font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text); cursor: pointer; transition: all .15s ease; }
+  #popup button.primary { background: var(--color-primary); color: var(--color-on-primary); border-color: transparent; }
+  #popup button:hover { filter: brightness(1.08); }
+  @media (max-width: 1100px) { .plates { grid-template-columns: 1fr; } }
+  @media (max-width: 980px) { .sheet { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="chrome">
+  <div id="variant-nav"></div>
+  <div id="sketch-bar"></div>
+  <div id="notes-panel"></div>
+</div>
+<main id="stage"></main>
+<div id="popup" role="dialog" aria-modal="true"><div class="card"><h2>Dial in your wing placement</h2><p>Edit fin placement on the FINS page, then return to the TEMPLATE to fine tune the wing.</p><div class="acts"><button type="button" data-popup="fins">Open FINS</button><button type="button" class="primary" data-popup="ok">Got it</button></div></div></div>
+<div id="sketch-tools">
+  <button id="tools-toggle" type="button">⚙ Sketch tools</button>
+  <div class="row"><span>Theme</span><span id="t-theme"></span></div>
+  <div class="row"><span>Tail window</span><span id="t-zoom"></span></div>
+</div>
+<script>
+/* Every board below is one of the app's own: the default board and the four presets, their outlines built by
+   the app's buildOutline and their fins placed by the app's computeFinPlacement with Import Template ticked
+   (lib/geometry). Nothing here was typed by hand. Inches throughout: the app converts its millimetres once, at the edge. */
+const DATA = {"boards":[{"id":"default","name":"Default board","spec":{"lengthIn":72,"widePointWidthIn":19,"widePointOffsetIn":-0.5,"tailRailLength":50,"noseRailLength":50,"noseAngle":55,"noseFullness":25,"tailAngle":60,"tailFullness":50.5,"tail":{"kind":"squash","endWidthIn":4}},"points":[[0,2],[0.080395,2.130909],[0.17068,2.262262],[0.270827,2.394007],[0.380811,2.526089],[0.500605,2.658456],[0.630182,2.791055],[0.769516,2.923832],[0.918579,3.056734],[1.077346,3.189707],[1.24579,3.322698],[1.423885,3.455655],[1.611603,3.588523],[1.808919,3.72125],[2.015805,3.853782],[2.232236,3.986066],[2.458184,4.118048],[2.693623,4.249676],[2.938527,4.380896],[3.192869,4.511654],[3.456621,4.641898],[3.729759,4.771575],[4.012255,4.90063],[4.304083,5.029011],[4.605215,5.156664],[4.915626,5.283537],[5.23529,5.409575],[5.564178,5.534726],[5.902266,5.658936],[6.249526,5.782152],[6.605931,5.904321],[6.971456,6.02539],[7.346073,6.145304],[7.729756,6.264011],[8.122479,6.381458],[8.524215,6.497591],[8.934937,6.612358],[9.354619,6.725704],[9.783234,6.837576],[10.220756,6.947922],[10.667158,7.056687],[11.122413,7.16382],[11.586496,7.269265],[12.059379,7.372971],[12.541035,7.474884],[13.031439,7.57495],[13.530564,7.673116],[14.038383,7.769329],[14.55487,7.863536],[15.079997,7.955683],[15.61374,8.045718],[16.15607,8.133586],[16.706961,8.219235],[17.266387,8.302611],[17.834322,8.383661],[18.410738,8.462332],[18.99561,8.53857],[19.58891,8.612323],[20.190611,8.683536],[20.800689,8.752157],[21.419115,8.818133],[22.045864,8.881409],[22.680908,8.941933],[23.324222,8.999652],[23.975778,9.054512],[24.63555,9.10646],[25.303512,9.155442],[25.979636,9.201406],[26.663897,9.244298],[27.356268,9.284065],[28.056722,9.320653],[28.765233,9.35401],[29.481774,9.384082],[30.206319,9.410815],[30.938841,9.434156],[31.679313,9.454053],[32.427709,9.470452],[33.184002,9.483299],[33.948166,9.492542],[34.720174,9.498127],[35.5,9.5],[36.310686,9.496595],[37.113385,9.486479],[37.908059,9.469796],[38.69467,9.446693],[39.473181,9.417316],[40.243553,9.38181],[41.005749,9.340321],[41.759731,9.292995],[42.50546,9.239978],[43.242898,9.181416],[43.972009,9.117454],[44.692753,9.048239],[45.405093,8.973917],[46.108991,8.894632],[46.80441,8.810531],[47.49131,8.72176],[48.169655,8.628465],[48.839405,8.530791],[49.500525,8.428884],[50.152974,8.322891],[50.796716,8.212956],[51.431713,8.099226],[52.057926,7.981847],[52.675318,7.860965],[53.28385,7.736725],[53.883485,7.609273],[54.474186,7.478755],[55.055913,7.345317],[55.628629,7.209105],[56.192296,7.070264],[56.746877,6.92894],[57.292332,6.78528],[57.828625,6.639429],[58.355717,6.491533],[58.873571,6.341737],[59.382148,6.190188],[59.881411,6.037032],[60.371321,5.882413],[60.851841,5.726479],[61.322933,5.569375],[61.784559,5.411247],[62.23668,5.25224],[62.67926,5.0925],[63.112259,4.932174],[63.535641,4.771407],[63.949367,4.610346],[64.353399,4.449134],[64.747699,4.28792],[65.13223,4.126848],[65.506953,3.966064],[65.871831,3.805715],[66.226825,3.645946],[66.571898,3.486902],[66.907012,3.32873],[67.232129,3.171576],[67.54721,3.015585],[67.852218,2.860903],[68.147116,2.707677],[68.431864,2.556051],[68.706425,2.406172],[68.970762,2.258185],[69.224836,2.112237],[69.46861,1.968474],[69.702044,1.82704],[69.925102,1.688082],[70.137746,1.551746],[70.339938,1.418178],[70.531639,1.287523],[70.712812,1.159928],[70.883418,1.035537],[71.043421,0.914498],[71.192781,0.796955],[71.331462,0.683055],[71.459424,0.572944],[71.576631,0.466766],[71.683044,0.364669],[71.778626,0.266798],[71.863337,0.173299],[71.937141,0.084318],[72,0]],"marks":[{"role":"front","side":-1,"offTailIn":10.976786,"lateralIn":-5.94205,"leadingOffTailIn":15.476786,"leadingLateralIn":-5.56705,"baseLengthIn":4.5,"toeIn":0.375},{"role":"front","side":1,"offTailIn":10.976786,"lateralIn":5.94205,"leadingOffTailIn":15.476786,"leadingLateralIn":5.56705,"baseLengthIn":4.5,"toeIn":0.375},{"role":"center","side":0,"offTailIn":3.3125,"lateralIn":0,"leadingOffTailIn":7.8125,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0}],"finSetup":"thruster","tailWidthAt12In":14.719898,"noseWidthAt12In":11.999209,"areaSqIn":1041.0308,"widePointStationIn":35.5},{"id":"shortboard","name":"Shortboard","spec":{"lengthIn":74,"widePointWidthIn":18.75,"widePointOffsetIn":-1,"tailRailLength":50,"noseRailLength":50,"noseAngle":50,"noseFullness":20,"tailAngle":55,"tailFullness":45,"tail":{"kind":"squash","endWidthIn":4}},"points":[[0,2],[0.085116,2.115081],[0.180106,2.231285],[0.284944,2.348547],[0.399607,2.466802],[0.52407,2.585985],[0.658308,2.706029],[0.802297,2.826869],[0.956012,2.94844],[1.11943,3.070676],[1.292525,3.193511],[1.475274,3.316881],[1.667651,3.440719],[1.869632,3.564961],[2.081194,3.689539],[2.302311,3.81439],[2.532958,3.939448],[2.773112,4.064647],[3.022749,4.189921],[3.281843,4.315205],[3.55037,4.440434],[3.828305,4.565541],[4.115625,4.690462],[4.412305,4.815132],[4.71832,4.939483],[5.033646,5.063452],[5.358259,5.186972],[5.692133,5.309978],[6.035245,5.432404],[6.387571,5.554186],[6.749085,5.675256],[7.119763,5.795551],[7.49958,5.915004],[7.888514,6.03355],[8.286538,6.151123],[8.693628,6.267658],[9.109761,6.38309],[9.53491,6.497352],[9.969053,6.61038],[10.412165,6.722107],[10.864221,6.832469],[11.325196,6.941399],[11.795067,7.048833],[12.273809,7.154705],[12.761397,7.258948],[13.257807,7.361499],[13.763014,7.462291],[14.276995,7.561258],[14.799724,7.658336],[15.331177,7.753458],[15.87133,7.84656],[16.420158,7.937575],[16.977636,8.026439],[17.543742,8.113085],[18.118449,8.197448],[18.701733,8.279463],[19.293571,8.359064],[19.893937,8.436186],[20.502807,8.510763],[21.120157,8.582729],[21.745962,8.65202],[22.380197,8.718569],[23.022839,8.782311],[23.673863,8.84318],[24.333244,8.901112],[25.000959,8.95604],[25.676981,9.007899],[26.361288,9.056624],[27.053854,9.102149],[27.754656,9.144408],[28.463668,9.183336],[29.180867,9.218868],[29.906227,9.250938],[30.639724,9.27948],[31.381335,9.304429],[32.131034,9.325719],[32.888797,9.343286],[33.654599,9.357062],[34.428417,9.366984],[35.210225,9.372985],[36,9.375],[36.841401,9.371441],[37.674753,9.360868],[38.500008,9.343442],[39.317119,9.319322],[40.126038,9.288666],[40.92672,9.251633],[41.719116,9.208383],[42.503179,9.159075],[43.278862,9.103868],[44.046119,9.04292],[44.804901,8.976391],[45.555162,8.904441],[46.296854,8.827227],[47.029931,8.74491],[47.754345,8.657648],[48.470048,8.5656],[49.176995,8.468926],[49.875138,8.367784],[50.564429,8.262334],[51.244821,8.152734],[51.916267,8.039145],[52.578721,7.921724],[53.232134,7.800631],[53.87646,7.676025],[54.511651,7.548065],[55.137661,7.416911],[55.754442,7.28272],[56.361947,7.145653],[56.960129,7.005869],[57.548941,6.863525],[58.128335,6.718783],[58.698264,6.5718],[59.258682,6.422736],[59.80954,6.27175],[60.350793,6.119],[60.882392,5.964647],[61.404291,5.808849],[61.916442,5.651764],[62.418798,5.493554],[62.911312,5.334375],[63.393937,5.174388],[63.866626,5.013751],[64.329332,4.852624],[64.782006,4.691166],[65.224603,4.529535],[65.657075,4.367891],[66.079375,4.206393],[66.491455,4.0452],[66.89327,3.884471],[67.28477,3.724365],[67.66591,3.565042],[68.036641,3.406659],[68.396918,3.249377],[68.746692,3.093355],[69.085917,2.938751],[69.414545,2.785725],[69.732529,2.634435],[70.039822,2.485042],[70.336378,2.337703],[70.622148,2.192578],[70.897085,2.049826],[71.161143,1.909607],[71.414274,1.772078],[71.656431,1.6374],[71.887567,1.505731],[72.107635,1.377231],[72.316587,1.252058],[72.514377,1.130372],[72.700957,1.012331],[72.87628,0.898096],[73.040298,0.787824],[73.192966,0.681675],[73.334235,0.579808],[73.464058,0.482382],[73.582389,0.389557],[73.68918,0.301491],[73.784383,0.218343],[73.867953,0.140272],[73.939841,0.067438],[74,0]],"marks":[{"role":"front","side":-1,"offTailIn":11,"lateralIn":-5.677054,"leadingOffTailIn":15.5,"leadingLateralIn":-5.427054,"baseLengthIn":4.5,"toeIn":0.25},{"role":"front","side":1,"offTailIn":11,"lateralIn":5.677054,"leadingOffTailIn":15.5,"leadingLateralIn":5.427054,"baseLengthIn":4.5,"toeIn":0.25},{"role":"center","side":0,"offTailIn":3.375,"lateralIn":0,"leadingOffTailIn":7.875,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0}],"finSetup":"thruster","tailWidthAt12In":14.188306,"noseWidthAt12In":11.250898,"areaSqIn":1042.7913,"widePointStationIn":36},{"id":"fish","name":"Fish","spec":{"lengthIn":68,"widePointWidthIn":20.25,"widePointOffsetIn":2,"tailRailLength":40,"noseRailLength":59.25,"noseAngle":70,"noseFullness":48,"tailAngle":30,"tailFullness":15,"tail":{"kind":"swallow","endWidthIn":10,"crotchDepthIn":2.75}},"points":[[0,5],[0.052481,5.028245],[0.117976,5.059874],[0.196369,5.094791],[0.287549,5.1329],[0.391401,5.174107],[0.507812,5.218317],[0.636669,5.265433],[0.777857,5.315362],[0.931265,5.368007],[1.096778,5.423273],[1.274284,5.481065],[1.463667,5.541288],[1.664816,5.603847],[1.877617,5.668646],[2.101955,5.73559],[2.337719,5.804584],[2.584794,5.875532],[2.843067,5.94834],[3.112425,6.022912],[3.392753,6.099152],[3.68394,6.176966],[3.985871,6.256259],[4.298432,6.336934],[4.621511,6.418897],[4.954995,6.502053],[5.298768,6.586306],[5.652719,6.671561],[6.016734,6.757723],[6.390699,6.844696],[6.774501,6.932385],[7.168026,7.020696],[7.571162,7.109532],[7.983794,7.198799],[8.405809,7.288401],[8.837095,7.378243],[9.277536,7.468229],[9.727021,7.558266],[10.185435,7.648256],[10.652665,7.738106],[11.128597,7.827719],[11.61312,7.917],[12.106117,8.005855],[12.607478,8.094188],[13.117087,8.181904],[13.634832,8.268907],[14.160599,8.355102],[14.694274,8.440394],[15.235745,8.524688],[15.784898,8.607888],[16.341619,8.6899],[16.905796,8.770627],[17.477314,8.849976],[18.05606,8.927849],[18.64192,9.004153],[19.234782,9.078792],[19.834532,9.15167],[20.441057,9.222693],[21.054242,9.291765],[21.673976,9.358791],[22.300143,9.423676],[22.932631,9.486324],[23.571327,9.54664],[24.216116,9.604529],[24.866886,9.659896],[25.523523,9.712645],[26.185914,9.762682],[26.853944,9.80991],[27.527502,9.854235],[28.206473,9.895561],[28.890744,9.933793],[29.580202,9.968837],[30.274733,10.000596],[30.974223,10.028975],[31.67856,10.05388],[32.387629,10.075214],[33.101318,10.092883],[33.819513,10.106791],[34.542101,10.116844],[35.268968,10.122945],[36,10.125],[36.764681,10.122363],[37.51938,10.114506],[38.264128,10.101509],[38.998952,10.083451],[39.723881,10.060414],[40.438945,10.032476],[41.144172,9.999719],[41.839591,9.962222],[42.52523,9.920066],[43.201119,9.87333],[43.867286,9.822096],[44.52376,9.766441],[45.170569,9.706448],[45.807743,9.642196],[46.435311,9.573765],[47.053301,9.501235],[47.661741,9.424687],[48.260661,9.3442],[48.85009,9.259855],[49.430056,9.171731],[50.000588,9.07991],[50.561715,8.98447],[51.113465,8.885492],[51.655868,8.783057],[52.188953,8.677244],[52.712747,8.568133],[53.22728,8.455805],[53.73258,8.340339],[54.228677,8.221816],[54.715599,8.100316],[55.193375,7.975919],[55.662034,7.848706],[56.121604,7.718755],[56.572115,7.586148],[57.013595,7.450964],[57.446072,7.313283],[57.869576,7.173187],[58.284136,7.030754],[58.68978,6.886065],[59.086537,6.7392],[59.474436,6.590239],[59.853505,6.439263],[60.223774,6.28635],[60.585271,6.131583],[60.938025,5.975039],[61.282065,5.816801],[61.61742,5.656947],[61.944117,5.495558],[62.262187,5.332715],[62.571658,5.168496],[62.872558,5.002983],[63.164917,4.836255],[63.448764,4.668392],[63.724126,4.499476],[63.991033,4.329584],[64.249514,4.158799],[64.499597,3.9872],[64.741312,3.814867],[64.974686,3.64188],[65.19975,3.468319],[65.416531,3.294264],[65.625058,3.119797],[65.825361,2.944995],[66.017467,2.769941],[66.201406,2.594713],[66.377207,2.419393],[66.544898,2.244059],[66.704508,2.068793],[66.856066,1.893674],[66.999601,1.718782],[67.135141,1.544198],[67.262716,1.370002],[67.382353,1.196273],[67.494083,1.023092],[67.597933,0.85054],[67.693932,0.678695],[67.78211,0.507639],[67.862495,0.337451],[67.935115,0.168211],[68,0]],"marks":[{"role":"front","side":-1,"offTailIn":7.5,"lateralIn":-5.843851,"leadingOffTailIn":13,"leadingLateralIn":-5.656351,"baseLengthIn":5.5,"toeIn":0.1875},{"role":"front","side":1,"offTailIn":7.5,"lateralIn":5.843851,"leadingOffTailIn":13,"leadingLateralIn":5.656351,"baseLengthIn":5.5,"toeIn":0.1875}],"finSetup":"twin","tailWidthAt12In":15.973459,"noseWidthAt12In":15.506281,"areaSqIn":1109.046,"widePointStationIn":36},{"id":"midlength","name":"Mid-length","spec":{"lengthIn":86,"widePointWidthIn":21.25,"widePointOffsetIn":2.5,"tailRailLength":72.75,"noseRailLength":60,"noseAngle":65,"noseFullness":76,"tailAngle":90,"tailFullness":46.75,"tail":{"kind":"round"}},"points":[[0,0],[0.006803,0.17205],[0.027228,0.345403],[0.061298,0.519973],[0.109036,0.69567],[0.170466,0.872406],[0.245611,1.050092],[0.334494,1.228641],[0.437138,1.407964],[0.553567,1.587973],[0.683803,1.768579],[0.827871,1.949694],[0.985793,2.131229],[1.157593,2.313096],[1.343293,2.495208],[1.542918,2.677474],[1.75649,2.859808],[1.984033,3.04212],[2.22557,3.224323],[2.481124,3.406328],[2.750718,3.588046],[3.034376,3.769389],[3.332121,3.95027],[3.643977,4.130598],[3.969965,4.310287],[4.310111,4.489248],[4.664436,4.667392],[5.032965,4.844631],[5.41572,5.020877],[5.812725,5.196041],[6.224003,5.370035],[6.649577,5.54277],[7.089471,5.714159],[7.543707,5.884113],[8.01231,6.052543],[8.495302,6.219361],[8.992707,6.384478],[9.504547,6.547808],[10.030846,6.70926],[10.571628,6.868747],[11.126915,7.02618],[11.696731,7.181471],[12.2811,7.334531],[12.880043,7.485273],[13.493586,7.633607],[14.12175,7.779446],[14.764559,7.922701],[15.422037,8.063284],[16.094206,8.201106],[16.781091,8.336079],[17.482713,8.468115],[18.199097,8.597124],[18.930266,8.72302],[19.676242,8.845713],[20.43705,8.965116],[21.212712,9.081139],[22.003252,9.193695],[22.808693,9.302694],[23.629059,9.408049],[24.464371,9.509672],[25.314655,9.607474],[26.179932,9.701366],[27.060227,9.79126],[27.955562,9.877068],[28.865961,9.958702],[29.791447,10.036073],[30.732044,10.109092],[31.687774,10.177672],[32.658661,10.241724],[33.644727,10.30116],[34.645998,10.355891],[35.662494,10.405829],[36.694241,10.450885],[37.741261,10.490971],[38.803577,10.526],[39.881213,10.555882],[40.974191,10.580529],[42.082536,10.599852],[43.20627,10.613764],[44.345417,10.622176],[45.5,10.625],[46.457953,10.6235],[47.402469,10.618991],[48.333625,10.611462],[49.251498,10.6009],[50.156166,10.587294],[51.047704,10.57063],[51.926191,10.550897],[52.791702,10.528083],[53.644316,10.502175],[54.484108,10.473162],[55.311157,10.441031],[56.125538,10.40577],[56.927329,10.367367],[57.716608,10.32581],[58.49345,10.281086],[59.257932,10.233184],[60.010133,10.182091],[60.750128,10.127795],[61.477995,10.070285],[62.193811,10.009547],[62.897653,9.94557],[63.589597,9.878341],[64.269721,9.807849],[64.938101,9.734081],[65.594815,9.657025],[66.239939,9.576669],[66.873551,9.493001],[67.495728,9.406009],[68.106546,9.31568],[68.706082,9.222002],[69.294414,9.124963],[69.871618,9.024552],[70.437771,8.920755],[70.992951,8.813562],[71.537234,8.702958],[72.070698,8.588933],[72.593418,8.471475],[73.105473,8.35057],[73.606939,8.226208],[74.097893,8.098375],[74.578413,7.96706],[75.048574,7.83225],[75.508455,7.693934],[75.958131,7.552099],[76.397681,7.406733],[76.82718,7.257824],[77.246707,7.10536],[77.656337,6.949328],[78.056149,6.789717],[78.446218,6.626514],[78.826622,6.459707],[79.197438,6.289284],[79.558743,6.115233],[79.910614,5.937541],[80.253127,5.756198],[80.58636,5.571189],[80.91039,5.382504],[81.225293,5.190129],[81.531147,4.994054],[81.828029,4.794266],[82.116015,4.590752],[82.395183,4.3835],[82.665609,4.172499],[82.927371,3.957736],[83.180546,3.739199],[83.425209,3.516876],[83.66144,3.290754],[83.889313,3.060822],[84.108907,2.827068],[84.320299,2.589479],[84.523564,2.348042],[84.718781,2.102747],[84.906026,1.85358],[85.085377,1.600531],[85.25691,1.343585],[85.420701,1.082732],[85.576829,0.817959],[85.72537,0.549254],[85.866402,0.276605],[86,0]],"marks":[{"role":"front","side":-1,"offTailIn":12,"lateralIn":-6.073404,"leadingOffTailIn":16.5,"leadingLateralIn":-5.823404,"baseLengthIn":4.5,"toeIn":0.25},{"role":"front","side":1,"offTailIn":12,"lateralIn":6.073404,"leadingOffTailIn":16.5,"leadingLateralIn":5.823404,"baseLengthIn":4.5,"toeIn":0.25},{"role":"center","side":0,"offTailIn":3.604167,"lateralIn":0,"leadingOffTailIn":8.104167,"leadingLateralIn":0,"baseLengthIn":4.5,"toeIn":0},{"role":"rear","side":-1,"offTailIn":6.25,"lateralIn":-4.130587,"leadingOffTailIn":10.25,"leadingLateralIn":-3.943087,"baseLengthIn":4,"toeIn":0.1875},{"role":"rear","side":1,"offTailIn":6.25,"lateralIn":4.130587,"leadingOffTailIn":10.25,"leadingLateralIn":3.943087,"baseLengthIn":4,"toeIn":0.1875}],"finSetup":"quad","tailWidthAt12In":14.521808,"noseWidthAt12In":16.247728,"areaSqIn":1458.6212,"widePointStationIn":45.5},{"id":"longboard","name":"Longboard","spec":{"lengthIn":108,"widePointWidthIn":22.5,"widePointOffsetIn":3.5,"tailRailLength":40,"noseRailLength":87,"noseAngle":90,"noseFullness":90,"tailAngle":30,"tailFullness":46.75,"tail":{"kind":"squash","endWidthIn":8.5}},"points":[[0,4.25],[0.203006,4.36335],[0.420878,4.47756],[0.653546,4.59257],[0.900939,4.708324],[1.162989,4.824761],[1.439626,4.941826],[1.73078,5.059458],[2.036383,5.1776],[2.356363,5.296194],[2.690653,5.415181],[3.039181,5.534504],[3.401879,5.654104],[3.778678,5.773922],[4.169507,5.893902],[4.574297,6.013983],[4.992978,6.134109],[5.425481,6.25422],[5.871737,6.37426],[6.331675,6.494169],[6.805227,6.613889],[7.292322,6.733362],[7.792891,6.852531],[8.306865,6.971335],[8.834174,7.089719],[9.374749,7.207622],[9.928519,7.324988],[10.495416,7.441757],[11.075369,7.557872],[11.66831,7.673274],[12.274168,7.787905],[12.892875,7.901707],[13.52436,8.014622],[14.168554,8.126592],[14.825388,8.237557],[15.494792,8.347461],[16.176696,8.456245],[16.87103,8.56385],[17.577726,8.670218],[18.296714,8.775292],[19.027924,8.879012],[19.771286,8.981322],[20.526732,9.082162],[21.294191,9.181474],[22.073594,9.2792],[22.864871,9.375282],[23.667953,9.469662],[24.48277,9.562281],[25.309254,9.653082],[26.147333,9.742005],[26.996939,9.828993],[27.858002,9.913988],[28.730452,9.996931],[29.61422,10.077764],[30.509237,10.156429],[31.415433,10.232868],[32.332738,10.307022],[33.261082,10.378834],[34.200397,10.448244],[35.150613,10.515196],[36.111659,10.57963],[37.083467,10.641488],[38.065967,10.700713],[39.059089,10.757245],[40.062765,10.811027],[41.076923,10.862001],[42.101495,10.910108],[43.136412,10.95529],[44.181603,10.997489],[45.236999,11.036646],[46.302531,11.072704],[47.378128,11.105605],[48.463723,11.135289],[49.559244,11.161699],[50.664622,11.184776],[51.779788,11.204463],[52.904672,11.220701],[54.039205,11.233432],[55.183317,11.242598],[56.336938,11.24814],[57.5,11.25],[58.882061,11.249082],[60.241928,11.246287],[61.579725,11.24155],[62.895572,11.234807],[64.189594,11.225995],[65.461912,11.21505],[66.712649,11.201908],[67.941928,11.186505],[69.149871,11.168778],[70.3366,11.148662],[71.502238,11.126094],[72.646908,11.101011],[73.770732,11.073347],[74.873833,11.04304],[75.956333,11.010026],[77.018355,10.97424],[78.060021,10.935619],[79.081454,10.8941],[80.082777,10.849618],[81.064111,10.802109],[82.02558,10.751511],[82.967305,10.697758],[83.88941,10.640787],[84.792017,10.580535],[85.675249,10.516937],[86.539228,10.44993],[87.384076,10.37945],[88.209916,10.305433],[89.016871,10.227815],[89.805063,10.146533],[90.574615,10.061523],[91.32565,9.97272],[92.058288,9.880061],[92.772655,9.783483],[93.468871,9.682921],[94.147059,9.578312],[94.807343,9.469591],[95.449843,9.356696],[96.074684,9.239562],[96.681987,9.118125],[97.271876,8.992322],[97.844471,8.862088],[98.399897,8.727361],[98.938276,8.588076],[99.459729,8.444169],[99.964381,8.295576],[100.452352,8.142235],[100.923766,7.98408],[101.378746,7.821048],[101.817413,7.653076],[102.239891,7.480099],[102.646301,7.302054],[103.036767,7.118877],[103.41141,6.930504],[103.770355,6.736871],[104.113722,6.537915],[104.441634,6.333571],[104.754215,6.123776],[105.051586,5.908467],[105.33387,5.687578],[105.60119,5.461047],[105.853668,5.228809],[106.091427,4.990802],[106.314589,4.74696],[106.523276,4.49722],[106.717612,4.241519],[106.897719,3.979793],[107.063719,3.711977],[107.215735,3.438008],[107.353889,3.157822],[107.478304,2.871356],[107.589103,2.578545],[107.686408,2.279326],[107.770341,1.973635],[107.841025,1.661407],[107.898583,1.342581],[107.943137,1.01709],[107.974809,0.684873],[107.993723,0.345864],[108,0]],"marks":[{"role":"center","side":0,"offTailIn":5.5,"lateralIn":0,"leadingOffTailIn":16,"leadingLateralIn":0,"baseLengthIn":10.5,"toeIn":0}],"finSetup":"single","tailWidthAt12In":15.472063,"noseWidthAt12In":18.507125,"areaSqIn":2073.1132,"widePointStationIn":57.5}]};
+
+/* curves.js — sketch 013. The app's outline curve (lib/geometry/outline.ts `buildOutline`), ported to inches
+   line for line, plus the three wing constructions this sketch compares. Throwaway sketch code: the app's
+   TypeScript stays the one truth, and check013.mjs proves this port reproduces its 161 points. */
+
+const MARGIN = 16, DIAMOND_DEPTH_CAP = 5, DIAMOND_BLOCK_MARGIN = 2, MEASURE_STATION = 12;
+const HANDLE_CAP = 0.48, OVERSHOOT = 0.92, SAMPLES_PER_SEGMENT = 80, EPSILON = 1e-6;
+const railMult = (pct) => 0.8 + (pct / 100) * 0.8;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function tailHandleMaxLength(dirY, chord, cw, bw) {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * (cw - bw)) / dirY);
+}
+function noseHandleMaxLength(dirY, chord, cw) {
+  if (Math.abs(dirY) <= EPSILON) return HANDLE_CAP * chord;
+  return Math.min(HANDLE_CAP * chord, (OVERSHOOT * cw) / Math.abs(dirY));
+}
+function bez1(p0, p1, p2, p3, t) { const mt = 1 - t; return mt * mt * mt * p0 + 3 * mt * mt * t * p1 + 3 * mt * t * t * p2 + t * t * t * p3; }
+
+function interpolateHalfWidth(points, station) {
+  for (let i = 0; i < points.length - 1; i++) {
+    const [y0, x0] = points[i], [y1, x1] = points[i + 1];
+    if (station >= y0 && station <= y1) { const t = y1 > y0 ? (station - y0) / (y1 - y0) : 0; return x0 + (x1 - x0) * t; }
+  }
+  return points[points.length - 1][1];
+}
+
+/* spec: { length, widePointWidth, widePointOffset, tailRailLength, noseRailLength, noseAngle, noseFullness,
+   tailAngle, tailFullness, tail: { kind, endWidth?, depth?, crotchDepth? } } — inches and degrees. */
+function buildOutline(spec) {
+  const length = spec.length, cw = spec.widePointWidth / 2, tail = spec.tail;
+  const tailBlockPinned = tail.kind === "pin" || tail.kind === "round";
+  let bw = 0, tailPodStation = 0, centreCloseStation = 0, effectiveDiamondDepth = 0;
+  switch (tail.kind) {
+    case "pin": case "round": bw = 0; break;
+    case "squash": bw = tail.endWidth / 2; break;
+    case "diamond": bw = tail.endWidth / 2; effectiveDiamondDepth = Math.max(0, Math.min(tail.depth, DIAMOND_DEPTH_CAP, tail.endWidth - DIAMOND_BLOCK_MARGIN)); tailPodStation = effectiveDiamondDepth; break;
+    case "swallow": bw = tail.endWidth / 2; centreCloseStation = tail.crotchDepth; break;
+  }
+  const widePointStation = Math.max(MARGIN, Math.min(length - MARGIN, length / 2 + spec.widePointOffset));
+  const tailRad = (spec.tailAngle * Math.PI) / 180, noseRad = (spec.noseAngle * Math.PI) / 180;
+  const dir0 = { x: Math.cos(tailRad), y: Math.sin(tailRad) }, dir4 = { x: Math.cos(noseRad), y: -Math.sin(noseRad) }, dir2 = { x: 1, y: 0 };
+  const P0 = { x: tailPodStation, y: Math.max(0, bw) }, P2 = { x: widePointStation, y: cw }, P4 = { x: length, y: 0 };
+  const knotPoints = [P0, P2, P4], knotDirs = [dir0, dir2, dir4];
+  const chord = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const chords = [chord(P0, P2), chord(P2, P4)];
+  const inLen0 = railMult(spec.tailRailLength) * HANDLE_CAP * chords[0];
+  const outLen1 = railMult(spec.noseRailLength) * HANDLE_CAP * chords[1];
+  const outLen0 = (spec.tailFullness / 100) * tailHandleMaxLength(dir0.y, chords[0], cw, P0.y);
+  const inLen1 = (spec.noseFullness / 100) * noseHandleMaxLength(dir4.y, chords[1], cw);
+  const outLen = [outLen0, outLen1], inLen = [inLen0, inLen1];
+  const controls = [];
+  for (let i = 0; i < 2; i++) {
+    const A = knotPoints[i], Ad = knotDirs[i], B = knotPoints[i + 1], Bd = knotDirs[i + 1];
+    controls.push({ c1: { x: A.x + outLen[i] * Ad.x, y: A.y + outLen[i] * Ad.y }, c2: { x: B.x - inLen[i] * Bd.x, y: B.y - inLen[i] * Bd.y } });
+  }
+  const raw = [];
+  for (let seg = 0; seg < 2; seg++) {
+    const A = knotPoints[seg], B = knotPoints[seg + 1], c = controls[seg], start = seg === 0 ? 0 : 1;
+    for (let i = start; i <= SAMPLES_PER_SEGMENT; i++) {
+      const t = i / SAMPLES_PER_SEGMENT;
+      raw.push([bez1(A.x, c.c1.x, c.c2.x, B.x, t), Math.max(0, Math.min(bez1(A.y, c.c1.y, c.c2.y, B.y, t), cw))]);
+    }
+  }
+  raw.sort((a, b) => a[0] - b[0]);
+  const points = raw;
+  const tailWidthAt12 = 2 * interpolateHalfWidth(points, Math.min(MEASURE_STATION, length));
+  const noseWidthAt12 = 2 * interpolateHalfWidth(points, Math.max(0, length - MEASURE_STATION));
+  let area = 0;
+  for (let i = 0; i < raw.length - 1; i++) area += ((raw[i][1] + raw[i + 1][1]) / 2) * (raw[i + 1][0] - raw[i][0]);
+  area *= 2;
+  const segments = [0, 1].map((i) => ({ p0: knotPoints[i], c0: controls[i].c1, c1: controls[i].c2, p1: knotPoints[i + 1] }));
+  return { spec, length, cw, bw, tailBlockPinned, widePointStation, tailPodStation, centreCloseStation, effectiveDiamondDepth, knots: knotPoints, dirs: knotDirs, controls, segments, points, tailWidthAt12, noseWidthAt12, area };
+}
+
+/* The exact curve (not the 161-point polyline) at a station, by solving the Bezier for its station. */
+function exactHalfWidthAt(g, s) {
+  if (s <= g.tailPodStation) return g.bw;
+  if (s >= g.length) return 0;
+  const seg = s <= g.widePointStation ? g.segments[0] : g.segments[1];
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (bez1(seg.p0.x, seg.c0.x, seg.c1.x, seg.p1.x, mid) < s) lo = mid; else hi = mid; }
+  const t = (lo + hi) / 2;
+  return clamp(bez1(seg.p0.y, seg.c0.y, seg.c1.y, seg.p1.y, t), 0, g.cw);
+}
+/* The exact curve's slope dy/ds at a station (for the key's angle readouts). */
+function exactSlopeAt(g, s, h = 1e-3) { return (exactHalfWidthAt(g, s + h) - exactHalfWidthAt(g, s - h)) / (2 * h); }
+
+/* ---- wings ----
+   A wing: { on, station, depth, run, smoothing }. `station` is where the outline LEAVES the main curve (the
+   nose-side edge of the step); the full depth is reached `run + smoothing` further toward the tail. `run` is
+   the straight part of the step along the stringer (0 = square step); `smoothing` is spread half on each
+   corner, easing them (0 = sharp corners). */
+function wingFootprint(w) { return { hi: w.station, lo: w.station - w.run - w.smoothing, inner: w.station - w.run - w.smoothing }; }
+
+/* Share of the depth taken at station s: 0 ahead of the step, 1 behind it, eased through it. */
+function stepProfile(w, s) {
+  const T = w.run + w.smoothing, hi = w.station, lo = hi - T;
+  if (s >= hi) return 0;
+  if (s <= lo || T <= 0) return 1;
+  const u = (hi - s) / T;                 // 0 at the outer corner, 1 at the inner corner
+  const a = (w.smoothing / 2) / T;        // eased share at each end, 0 (sharp) to 1/2 (all ease)
+  if (a <= 0) return u;
+  const k = 1 / (1 - a);
+  if (u <= a) return (k * u * u) / (2 * a);
+  if (u >= 1 - a) return 1 - (k * (1 - u) * (1 - u)) / (2 * a);
+  return k * (u - a / 2);
+}
+
+/* Half-width at station s with the wings applied, under one of the three constructions:
+   "a" — the tail is re-drawn to the block you set: each wing's depth fades to nothing at the tail pod.
+   "b" — the tail is moved in: each wing's depth is carried all the way to the tail (the block narrows).
+   "c" — a flyer: the tail is as drawn; the outline AHEAD of the wing is widened by the depth, fading out by the widepoint. */
+function wingedHalfWidth(g, wings, variant, s) {
+  const base = exactHalfWidthAt(g, s);
+  if (s <= g.tailPodStation) {
+    if (variant !== "b") return base;
+    let hw = base; for (const w of wings) if (w.on) hw -= w.depth; return clamp(hw, 0, g.cw);
+  }
+  let hw = base;
+  for (const w of wings) {
+    if (!w.on) continue;
+    const p = stepProfile(w, s), inner = wingFootprint(w).inner;
+    if (variant === "a") {
+      const fade = inner > g.tailPodStation ? clamp((s - g.tailPodStation) / (inner - g.tailPodStation), 0, 1) : 0;
+      hw -= w.depth * p * fade;
+    } else if (variant === "b") {
+      hw -= w.depth * p;
+    } else {
+      const fadeWp = w.station < g.widePointStation ? clamp((g.widePointStation - s) / (g.widePointStation - w.station), 0, 1) : 0;
+      hw += w.depth * (1 - p) * fadeWp;
+    }
+  }
+  return clamp(hw, 0, g.cw);
+}
+
+/* A dense list of [station, halfWidth] for drawing: the app's own 161 stations, every 1/20" through the tail
+   and every wing's own corners (twice, a hair apart, so a square step draws vertical). */
+function wingedPoints(g, wings, variant, tailZoomTo = 30) {
+  const st = new Set(g.points.map((p) => p[0]));
+  for (let s = 0; s <= Math.min(tailZoomTo, g.length); s += 0.05) st.add(Number(s.toFixed(4)));
+  for (const w of wings) if (w.on) {
+    const f = wingFootprint(w);
+    for (const s of [f.hi, f.lo, f.hi - w.smoothing / 2, f.lo + w.smoothing / 2]) { st.add(s); st.add(s - 1e-6); st.add(s + 1e-6); }
+  }
+  st.add(g.tailPodStation); st.add(g.widePointStation); st.add(g.length);
+  const stations = [...st].filter((s) => s >= 0 && s <= g.length).sort((a, b) => a - b);
+  return stations.map((s) => [s, wingedHalfWidth(g, wings, variant, s)]);
+}
+
+function areaOf(points) { let a = 0; for (let i = 0; i < points.length - 1; i++) a += ((points[i][1] + points[i + 1][1]) / 2) * (points[i + 1][0] - points[i][0]); return 2 * a; }
+
+/* Readouts for the captions and the zoom's dimension lines. */
+function wingReadouts(g, wings, variant) {
+  return wings.map((w) => {
+    if (!w.on) return null;
+    const f = wingFootprint(w);
+    return {
+      station: w.station, inner: f.inner, depth: w.depth,
+      widthAhead: 2 * wingedHalfWidth(g, wings, variant, f.hi + 1e-6),
+      widthBehind: 2 * wingedHalfWidth(g, wings, variant, f.inner - 1e-6),
+      baseAhead: 2 * exactHalfWidthAt(g, f.hi), baseBehind: 2 * exactHalfWidthAt(g, f.inner),
+    };
+  });
+}
+
+const PALETTES = {
+  slate: { "--color-bg": "#12141a", "--color-surface": "#12141a", "--color-canvas": "#1a1d25", "--color-well": "#1b1f26", "--color-border": "#333842", "--color-line": "#6a707c", "--color-text": "#f2f4f7", "--color-text-muted": "#a1a8b4", "--color-primary": "#18526d", "--color-on-primary": "#f2f4f7", "--color-accent-ink": "#3490bc", "--color-board": "#1a2732", "--color-warning-ink": "#ff9670", "--color-page": "#0b0c10", "--compare-b": "#4aa8de", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.45)" },
+  daylight: { "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-canvas": "#dfdcd3", "--color-well": "#dfdcd3", "--color-border": "#897c58", "--color-line": "#897c58", "--color-text": "#1f2a3b", "--color-text-muted": "#566171", "--color-primary": "#8ec1b8", "--color-on-primary": "#1f2a3b", "--color-accent-ink": "#48605c", "--color-board": "#d9f2ed", "--color-warning-ink": "#ac3811", "--color-page": "#c9c5ba", "--compare-b": "#1d6fa5", "--shadow-lg": "0 10px 24px rgba(0,0,0,0.18)" },
+};
+const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
+
+const VARIANTS = [
+  { id: "a", label: "A: Tail re-drawn to your block ★ Selected", winner: true },
+  { id: "b", label: "B: Tail moved in" },
+  { id: "c", label: "C: Flyer — width added ahead" },
+  { id: "x", label: "Side by side" },
+];
+const DEFAULT_WING = (station, depth, run, smoothing) => ({ station, depth, run, smoothing, lock: false, edge: "trailing", finOffset: 0 });
+const DEFAULTS = { variant: "a", theme: "slate", board: "default", wings: "one", marks: "start", base: "on", showFins: true, construction: false, zoom: "26", w1: DEFAULT_WING(11, 0.375, 0.25, 0), w2: DEFAULT_WING(15.5, 0.25, 0, 1.5) };
+let state = JSON.parse(JSON.stringify(DEFAULTS));
+try { const saved = JSON.parse(localStorage.getItem("sketch013-picked") || "{}"); Object.assign(state, saved); state.w1 = { ...DEFAULTS.w1, ...(saved.w1 || {}) }; state.w2 = { ...DEFAULTS.w2, ...(saved.w2 || {}) }; } catch (e) {}
+function save() { try { localStorage.setItem("sketch013-picked", JSON.stringify(state)); } catch (e) {} }
+
+/* ---- numbers ---- */
+function frac(v, denom = 16) {
+  const neg = v < -1e-9; v = Math.abs(v);
+  let whole = Math.floor(v + 1e-9), n = Math.round((v - whole) * denom), d = denom;
+  if (n === denom) { whole += 1; n = 0; }
+  while (n > 0 && n % 2 === 0) { n /= 2; d /= 2; }
+  const f = n ? `${whole ? whole + " " : ""}${n}/${d}` : `${whole}`;
+  return (neg ? "−" : "") + f + '"';
+}
+function dec(v, d = 2) { return v.toFixed(d).replace(/\.?0+$/, "") + '"'; }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
+const r2 = (v) => Number(v).toFixed(2);
+
+/* ---- the board ---- */
+function boardOf() { return DATA.boards.find((b) => b.id === state.board) || DATA.boards[0]; }
+function specOf(s) { return { length: s.lengthIn, widePointWidth: s.widePointWidthIn, widePointOffset: s.widePointOffsetIn, tailRailLength: s.tailRailLength, noseRailLength: s.noseRailLength, noseAngle: s.noseAngle, noseFullness: s.noseFullness, tailAngle: s.tailAngle, tailFullness: s.tailFullness, tail: { kind: s.tail.kind, endWidth: s.tail.endWidthIn, depth: s.tail.depthIn, crotchDepth: s.tail.crotchDepthIn } }; }
+function frontFin(board) { return board.marks.find((m) => m.role === "front" && m.side === 1) || null; }
+function finEdgeStation(fin, edge) { return edge === "leading" ? fin.leadingOffTailIn : fin.offTailIn; }
+const STATION_RANGE = [6, 24];
+
+/* The two wings as the curve code reads them. `station` is where the outline leaves the main curve; with
+   "Station marks the middle of the step" the shaper's number is the step's middle instead, so the leaving
+   point sits half the step's length nose-ward of it. */
+function resolveWings(board) {
+  const fin = frontFin(board);
+  const count = state.wings === "none" ? 0 : state.wings === "one" ? 1 : 2;
+  return [state.w1, state.w2].map((w, i) => {
+    const on = i < count;
+    const T = w.run + w.smoothing;
+    const locked = w.lock && !!fin;
+    let shown = locked ? finEdgeStation(fin, w.edge) + w.finOffset : w.station;
+    shown = Math.max(STATION_RANGE[0], Math.min(STATION_RANGE[1], shown));
+    const station = state.marks === "middle" ? shown + T / 2 : shown;
+    return { on, station, depth: w.depth, run: w.run, smoothing: w.smoothing, shown, locked, edge: w.edge, finOffset: w.finOffset, label: `WING ${i + 1}`, finStation: locked ? finEdgeStation(fin, w.edge) : null };
+  });
+}
+
+/* ---- SVG pieces, the app's own callout grammar ---- */
+const CHIP_W = 112, CHIP_H = 38, CHIP_R = 4, FONT_VALUE = 17, FONT_NAME = 12, TICK = 4, VALUE_GAP = 6;
+const STRINGER_DASH = "16 4 4 4", STATION_DASH = "5 4", WIDEPOINT_DASH = "2 3";
+function chipSvg(x, y, name, value, nameColor, leader) {
+  // x: the chip's right edge; y: its centre. leader: { toX, atY } — horizontal at y when atY === y, an L otherwise.
+  let out = `<g data-chip="${esc(name)}">`;
+  if (leader) {
+    if (Math.abs(leader.atY - y) < 0.5) out += `<line x1="${r2(x)}" y1="${r2(y)}" x2="${r2(leader.toX)}" y2="${r2(y)}" stroke="var(--outline-station-line)" stroke-width="1"/>`;
+    else { const kx = leader.toX - 12; out += `<path d="M ${r2(x)} ${r2(y)} L ${r2(kx)} ${r2(y)} L ${r2(kx)} ${r2(leader.atY)} L ${r2(leader.toX)} ${r2(leader.atY)}" fill="none" stroke="var(--outline-station-line)" stroke-width="1"/>`; }
+  }
+  const cx = x - CHIP_W / 2;
+  out += `<rect x="${r2(x - CHIP_W)}" y="${r2(y - CHIP_H / 2)}" width="${CHIP_W}" height="${CHIP_H}" rx="${CHIP_R}" fill="var(--outline-page-bg)" stroke="var(--color-border)"/>`;
+  out += `<text class="lbl" x="${r2(cx)}" y="${r2(y - FONT_VALUE * 0.34)}" text-anchor="middle" style="font-size:${FONT_NAME}px;letter-spacing:.12em;${nameColor ? `fill:${nameColor}` : ""}">${esc(name)}</text>`;
+  out += `<text class="val" x="${r2(cx)}" y="${r2(y + FONT_VALUE * 0.76)}" text-anchor="middle" style="font-size:${value.length > 9 ? 14 : FONT_VALUE}px">${esc(value)}</text></g>`;
+  return out;
+}
+function tickSvg(x, y, color = "var(--outline-dim-ink)") { return `<line x1="${r2(x - TICK)}" y1="${r2(y + TICK)}" x2="${r2(x + TICK)}" y2="${r2(y - TICK)}" stroke="${color}" stroke-width="1.1"/>`; }
+function outputSvg(edgeX, atY, y, value, station, valueX) {
+  // extension line from the board edge at the true station (atY) to the rail; the text may be pushed to y to avoid a neighbour.
+  const reach = valueX - VALUE_GAP;
+  let out = `<g data-output="${esc(station)}">`;
+  if (Math.abs(atY - y) < 0.5) out += `<line x1="${r2(edgeX)}" y1="${r2(atY)}" x2="${r2(reach)}" y2="${r2(atY)}" stroke="var(--outline-station-line)" stroke-width="1"/>`;
+  else { const kx = reach - 14; out += `<path d="M ${r2(edgeX)} ${r2(atY)} L ${r2(kx)} ${r2(atY)} L ${r2(kx)} ${r2(y)} L ${r2(reach)} ${r2(y)}" fill="none" stroke="var(--outline-station-line)" stroke-width="1"/>`; }
+  out += tickSvg(edgeX, atY);
+  out += `<text class="val" x="${r2(valueX)}" y="${r2(y - 2)}" style="font-size:${FONT_VALUE}px">${esc(value)}</text>`;
+  out += `<text class="lbl" x="${r2(valueX)}" y="${r2(y + FONT_NAME)}" style="font-size:${FONT_NAME}px;letter-spacing:.1em">${esc(station)}</text></g>`;
+  return out;
+}
+/* Keep a column of labels apart: items {y} sorted toward the nose (smaller y = higher on screen); each is pushed
+   up until it clears the one below it. Returns the display y per item, in the given order. */
+function spread(items, minGap) {
+  const order = items.map((it, i) => ({ i, y: it.y })).sort((a, b) => b.y - a.y); // tail first (largest y)
+  const out = new Array(items.length);
+  let prev = null;
+  for (const o of order) { let y = o.y; if (prev !== null && y > prev - minGap) y = prev - minGap; out[o.i] = y; prev = y; }
+  return out;
+}
+function dimH(x1, x2, y, value, color = "var(--outline-dim-ink)") {
+  // a two-tick horizontal dimension; the value sits outside the ticks (to the right) because the span is short
+  const left = Math.min(x1, x2), right = Math.max(x1, x2);
+  return `<g><line x1="${r2(left)}" y1="${r2(y)}" x2="${r2(right)}" y2="${r2(y)}" stroke="${color}" stroke-width="1.1"/>${tickSvg(left, y, color)}${tickSvg(right, y, color)}<text class="val" x="${r2(right + 8)}" y="${r2(y + 4.5)}" style="font-size:13px">${esc(value)}</text></g>`;
+}
+function dimV(x, y1, y2, value, anchor = "start", color = "var(--outline-dim-ink)") {
+  const top = Math.min(y1, y2), bottom = Math.max(y1, y2);
+  const span = bottom - top, label = span > 26 ? `<text class="val" x="${r2(x + 7)}" y="${r2((top + bottom) / 2 + 4.5)}" text-anchor="${anchor}" style="font-size:13px">${esc(value)}</text>` : `<text class="val" x="${r2(x + 7)}" y="${r2(top - 5)}" text-anchor="${anchor}" style="font-size:13px">${esc(value)}</text>`;
+  return `<g><line x1="${r2(x)}" y1="${r2(top)}" x2="${r2(x)}" y2="${r2(bottom)}" stroke="${color}" stroke-width="1.1"/>${tickSvg(x, top, color)}${tickSvg(x, bottom, color)}${label}</g>`;
+}
+function finLinesSvg(board, toX, toY, lateralSign = 1) {
+  if (!state.showFins) return "";
+  return board.marks.map((m) => {
+    const lx = m.side === 0 ? 0 : Math.abs(m.lateralIn) * m.side * lateralSign, llx = m.side === 0 ? 0 : Math.abs(m.leadingLateralIn) * m.side * lateralSign;
+    return `<g data-fin="${m.role}${m.side}"><line x1="${r2(toX(lx))}" y1="${r2(toY(m.offTailIn))}" x2="${r2(toX(llx))}" y2="${r2(toY(m.leadingOffTailIn))}" stroke="var(--outline-fin)" stroke-width="2"/><circle cx="${r2(toX(lx))}" cy="${r2(toY(m.offTailIn))}" r="3.5" fill="var(--outline-ink)"/><circle cx="${r2(toX(llx))}" cy="${r2(toY(m.leadingOffTailIn))}" r="3.5" fill="var(--outline-ink)"/></g>`;
+  }).join("");
+}
+function outlinePath(pts, g, toX, toY, lo = 0, hi = Infinity) {
+  // right rail up from the tail pod, left rail back down, closed at the stringer (a swallow's notch sits forward)
+  const vis = pts.filter(([s]) => s >= Math.max(lo, g.tailPodStation - 1e-9) && s <= hi);
+  const up = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(hw))} ${r2(toY(s))}`);
+  const down = vis.slice().reverse().map(([s, hw]) => `L ${r2(toX(-hw))} ${r2(toY(s))}`);
+  const closeY = Math.min(g.centreCloseStation, hi);
+  return `${up.join(" ")} ${down.join(" ")} L ${r2(toX(0))} ${r2(toY(closeY))} Z`;
+}
+
+/* ---- the TEMPLATE drawing, as the app frames it (components/outline/outline-viewer.tsx, callout-primitives.tsx) ---- */
+function templateSvg(board, g, wings, variant, pts, basePts) {
+  const L = g.length, scale = (620 - 48) / L, cxl = 170, tailPy = 596, tipPy = 24;
+  const toY = (s) => tailPy - s * scale, toX = (hw) => cxl + hw * scale;
+  const halfPx = g.cw * scale, overflow = Math.max(0, halfPx - (282 - 36.5 - cxl));
+  const minX = -104 - overflow, width = 514 + 2 * overflow, chipRightX = 58 - overflow, valueX = 282 + overflow;
+  const hwAt = (s) => wingedHalfWidth(g, wings, variant, s);
+  const wpS = g.widePointStation, midS = L / 2, noseS = L - 12, tailS = 12;
+  let out = `<svg viewBox="${r2(minX)} -16 ${r2(width)} 638" width="${r2(width * 620 / 638)}" height="620" font-family="var(--font-sans)">`;
+  // base curve (wings off) as a ghost, under the board
+  if (state.base === "on" && wings.some((w) => w.on)) out += `<path d="${outlinePath(basePts, g, toX, toY)}" fill="none" stroke="var(--outline-ghost)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  out += `<path d="${outlinePath(pts, g, toX, toY)}" fill="var(--outline-board-fill)" stroke="var(--outline-ink)" stroke-width="2" stroke-linejoin="round"/>`;
+  // reference lines: stringer, mid-length, the two 12" stations, the widepoint (input colour + its dash)
+  out += `<line x1="${cxl}" y1="${tipPy - 6}" x2="${cxl}" y2="${tailPy + 6}" stroke="var(--outline-station-line)" stroke-dasharray="${STRINGER_DASH}"/>`;
+  for (const [s, dash] of [[midS, STRINGER_DASH], [noseS, STATION_DASH], [tailS, STATION_DASH]]) { const hw = hwAt(s); out += `<line x1="${r2(toX(-hw))}" y1="${r2(toY(s))}" x2="${r2(toX(hw))}" y2="${r2(toY(s))}" stroke="var(--outline-station-line)" stroke-dasharray="${dash}"/>`; }
+  out += `<line x1="${r2(toX(-g.cw))}" y1="${r2(toY(wpS))}" x2="${r2(toX(g.cw))}" y2="${r2(toY(wpS))}" stroke="var(--outline-widepoint-line)" stroke-dasharray="${WIDEPOINT_DASH}"/>`;
+  out += `<circle cx="${r2(toX(-g.cw))}" cy="${r2(toY(wpS))}" r="2.6" fill="var(--outline-widepoint-knot)"/><circle cx="${r2(toX(g.cw))}" cy="${r2(toY(wpS))}" r="2.6" fill="var(--outline-widepoint-knot)"/>`;
+  // construction: the app's three knots and four handles, plus each wing's two corners
+  if (state.construction) {
+    for (let i = 0; i < 2; i++) { const c = g.controls[i], A = g.knots[i], B = g.knots[i + 1]; out += `<line x1="${r2(toX(A.y))}" y1="${r2(toY(A.x))}" x2="${r2(toX(c.c1.y))}" y2="${r2(toY(c.c1.x))}" stroke="var(--outline-construction)" stroke-dasharray="2 3"/><line x1="${r2(toX(B.y))}" y1="${r2(toY(B.x))}" x2="${r2(toX(c.c2.y))}" y2="${r2(toY(c.c2.x))}" stroke="var(--outline-construction)" stroke-dasharray="2 3"/><circle cx="${r2(toX(c.c1.y))}" cy="${r2(toY(c.c1.x))}" r="3" fill="var(--color-bg)" stroke="var(--outline-construction)"/><circle cx="${r2(toX(c.c2.y))}" cy="${r2(toY(c.c2.x))}" r="3" fill="var(--color-bg)" stroke="var(--outline-construction)"/>`; }
+    for (const k of g.knots) out += `<circle cx="${r2(toX(k.y))}" cy="${r2(toY(k.x))}" r="3.5" fill="var(--outline-construction)"/>`;
+    for (const w of wings) if (w.on) { const f = wingFootprint(w); for (const s of [f.hi, f.inner]) out += `<circle cx="${r2(toX(hwAt(s + (s === f.hi ? 1e-6 : -1e-6))))}" cy="${r2(toY(s))}" r="3.5" fill="var(--outline-construction)"/>`; }
+  }
+  out += finLinesSvg(board, toX, toY);
+  // outputs on the one right rail: nose 12", centre, tail 12" — pushed apart only if they would touch
+  const outputs = [{ s: noseS, value: frac(2 * hwAt(noseS)), station: 'Nose @ 12"' }, { s: midS, value: frac(2 * hwAt(midS)), station: "Center" }, { s: tailS, value: frac(2 * hwAt(tailS)), station: 'Tail @ 12"' }];
+  const oy = spread(outputs.map((o) => ({ y: toY(o.s) })), 40);
+  outputs.forEach((o, i) => { out += outputSvg(toX(hwAt(o.s)), toY(o.s), oy[i], o.value, o.station, valueX); });
+  // inputs as chips in the left gutter: LENGTH, WIDEPOINT (+ WP OFFSET beneath), TAIL BLOCK, and each wing
+  const s = board.spec;
+  out += chipSvg(chipRightX, tipPy, "LENGTH", `${Math.floor(L / 12 + 1e-9)}'${frac(L - 12 * Math.floor(L / 12 + 1e-9), 8)}`, null, { toX: cxl, atY: tipPy });
+  out += chipSvg(chipRightX, toY(wpS), "WIDEPOINT", frac(s.widePointWidthIn, 8), "var(--outline-widepoint-knot)", { toX: toX(-g.cw), atY: toY(wpS) });
+  out += chipSvg(chipRightX, toY(wpS) + CHIP_H + 6, "WP OFFSET", (s.widePointOffsetIn === 0 ? "0\"" : (s.widePointOffsetIn > 0 ? "+" : "−") + frac(Math.abs(s.widePointOffsetIn), 8)), null, null);
+  const tailChips = [];
+  if (!g.tailBlockPinned) tailChips.push({ y: toY(g.tailPodStation), name: "TAIL BLOCK", value: frac(2 * hwAt(g.tailPodStation + 1e-9), 8), toX: toX(-hwAt(g.tailPodStation + 1e-9)), color: null });
+  for (const w of wings) if (w.on) tailChips.push({ y: toY(w.shown), name: w.label + (w.locked ? " · FIN" : ""), value: `${frac(w.depth)} @ ${frac(w.shown, 8)}`, toX: toX(-hwAt(w.station + 1e-6)), color: w.locked ? "var(--outline-fin)" : null, atY: toY(w.station) });
+  const cy = spread(tailChips.map((c) => ({ y: c.y })), CHIP_H + 6);
+  tailChips.forEach((c, i) => { out += chipSvg(chipRightX, cy[i], c.name, c.value, c.color, { toX: c.toX, atY: c.atY ?? c.y }); });
+  return out + "</svg>";
+}
+
+/* ---- the tail, closer: the same strokes, with the wing's own dimensions ---- */
+function zoomSvg(board, g, wings, variant, curves) {
+  const Z = Number(state.zoom), padY = 16, zs = (620 - 2 * padY) / Z;
+  const hwMax = Math.max(...curves.map((c) => Math.max(...c.pts.filter(([s]) => s <= Z).map((p) => p[1]))));
+  const gutterL = 214, railR = 240, cx = gutterL + hwMax * zs + 20, W = Math.ceil(cx + hwMax * zs + 20 + railR), H = 620;
+  const toY = (s) => H - padY - s * zs, toX = (hw) => cx + hw * zs;
+  const many = curves.length > 1, main = curves[0];
+  const hwAt = (s) => wingedHalfWidth(g, wings, variant, s);
+  let out = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="var(--font-sans)">`;
+  // the base curve under everything
+  if (state.base === "on" || many) out += `<path d="${outlinePath(main.basePts, g, toX, toY, 0, Z)}" fill="none" stroke="var(--outline-ghost)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  if (!many) {
+    out += `<path d="${outlinePath(main.pts, g, toX, toY, 0, Z)}" fill="var(--outline-board-fill)" stroke="none"/>`;
+    // the ink line: the two rails and the tail only (no line across the window's top)
+    const vis = main.pts.filter(([s]) => s >= g.tailPodStation - 1e-9 && s <= Z);
+    const right = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(hw))} ${r2(toY(s))}`).join(" ");
+    const left = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(-hw))} ${r2(toY(s))}`).join(" ");
+    const tailClose = `M ${r2(toX(-vis[0][1]))} ${r2(toY(vis[0][0]))} L ${r2(toX(0))} ${r2(toY(g.centreCloseStation))} L ${r2(toX(vis[0][1]))} ${r2(toY(vis[0][0]))}`;
+    out += `<path d="${right} ${left} ${tailClose}" fill="none" stroke="var(--outline-ink)" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  out += `<line x1="${r2(cx)}" y1="0" x2="${r2(cx)}" y2="${r2(toY(0) + 6)}" stroke="var(--outline-station-line)" stroke-dasharray="${STRINGER_DASH}"/>`;
+  // the 12" station and the widepoint if in the window
+  const hw12 = hwAt(12); out += `<line x1="${r2(toX(-hw12))}" y1="${r2(toY(12))}" x2="${r2(toX(hw12))}" y2="${r2(toY(12))}" stroke="var(--outline-station-line)" stroke-dasharray="${STATION_DASH}"/>`;
+  if (g.widePointStation <= Z) out += `<line x1="${r2(toX(-g.cw))}" y1="${r2(toY(g.widePointStation))}" x2="${r2(toX(g.cw))}" y2="${r2(toY(g.widePointStation))}" stroke="var(--outline-widepoint-line)" stroke-dasharray="${WIDEPOINT_DASH}"/>`;
+  if (many) for (const c of curves) {
+    const vis = c.pts.filter(([s]) => s >= g.tailPodStation - 1e-9 && s <= Z);
+    const d = vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(hw))} ${r2(toY(s))}`).join(" ") + " " + vis.map(([s, hw], i) => `${i ? "L" : "M"} ${r2(toX(-hw))} ${r2(toY(s))}`).join(" ");
+    out += `<path d="${d}" fill="none" stroke="${c.ink}" stroke-width="${c.width}" ${c.dash ? `stroke-dasharray="${c.dash}"` : ""} stroke-linejoin="round"/>`;
+  }
+  out += finLinesSvg(board, toX, toY);
+  // the right rail: derived widths at the 12" station, the tail block, and ahead of / behind each wing
+  const valueX = toX(hwMax) + 124, extEnd = toX(hwMax) + 50;
+  const outputs = [{ s: 12, value: frac(2 * hw12), station: 'Tail @ 12"', edge: toX(hw12) }];
+  if (!g.tailBlockPinned) outputs.push({ s: g.tailPodStation, value: frac(2 * hwAt(g.tailPodStation + 1e-9), 8), station: "Tail block", edge: toX(hwAt(g.tailPodStation + 1e-9)) });
+  wings.forEach((w, wi) => {
+    if (!w.on) return;
+    const f = wingFootprint(w), ahead = hwAt(f.hi + 1e-6), behind = hwAt(f.inner - 1e-6);
+    outputs.push({ s: f.hi, value: frac(2 * ahead), station: `Ahead of ${w.label.toLowerCase()}`, edge: toX(ahead) });
+    outputs.push({ s: f.inner, value: frac(2 * behind), station: `Behind ${w.label.toLowerCase()}`, edge: toX(behind) });
+    // the depth, dimensioned across the step in the clear air just tail-ward of the inner corner
+    const yd = toY(f.inner) + 18;
+    out += `<line x1="${r2(toX(ahead))}" y1="${r2(toY(f.hi))}" x2="${r2(toX(ahead))}" y2="${r2(yd + 5)}" stroke="var(--outline-station-line)"/>`;
+    out += `<line x1="${r2(toX(behind))}" y1="${r2(toY(f.inner))}" x2="${r2(toX(behind))}" y2="${r2(yd + 5)}" stroke="var(--outline-station-line)"/>`;
+    out += dimH(toX(behind), toX(ahead), yd, frac(w.depth));
+    // the step's length along the board, when it has one — to the right of the extension lines
+    const span = toY(f.inner) - toY(f.hi);
+    if (w.run + w.smoothing > 0 && span >= 10) {
+      const x = extEnd + 2;
+      out += `<g><line x1="${r2(x)}" y1="${r2(toY(f.hi))}" x2="${r2(x)}" y2="${r2(toY(f.inner))}" stroke="var(--outline-dim-ink)" stroke-width="1.1"/>${tickSvg(x, toY(f.hi))}${tickSvg(x, toY(f.inner))}<text class="val" x="${r2(x + 7)}" y="${r2((toY(f.hi) + toY(f.inner)) / 2 + 4.5)}" style="font-size:13px">${esc(frac(w.run + w.smoothing, 8))}</text></g>`;
+    }
+    // the fin lock: a dotted accent line at the fin's edge, from the stringer out past the rail
+    if (w.locked && state.showFins && w.finStation !== null) out += `<line x1="${r2(toX(0))}" y1="${r2(toY(w.finStation))}" x2="${r2(toX(-ahead) - 34)}" y2="${r2(toY(w.finStation))}" stroke="var(--outline-fin)" stroke-dasharray="2 3"/>`;
+  });
+  const oy = spread(outputs.map((o) => ({ y: toY(o.s) })), 40);
+  outputs.forEach((o, i) => { out += outputSvg(o.edge, toY(o.s), oy[i], o.value, o.station, valueX); });
+  // inputs: the wing chips in the left gutter, leader to where the outline leaves the curve
+  const chipRight = gutterL - 14;
+  const chips = wings.filter((w) => w.on).map((w) => ({ y: toY(w.shown), atY: toY(w.station), name: w.label + (w.locked ? " · FIN" : ""), value: `${frac(w.depth)} @ ${frac(w.shown, 8)}`, toX: toX(-hwAt(w.station + 1e-6)), color: w.locked ? "var(--outline-fin)" : null }));
+  const cy = spread(chips.map((c) => ({ y: c.y })), CHIP_H + 6);
+  chips.forEach((c, i) => { out += chipSvg(chipRight, cy[i], c.name, c.value, c.color, { toX: c.toX, atY: c.atY }); });
+  // each wing's station from the tail, dimensioned at the far left, clear of the chips
+  wings.forEach((w, wi) => { if (w.on) out += dimV(22 + wi * 30, toY(0), toY(w.shown), frac(w.shown, 8), "start"); });
+  return out + "</svg>";
+}
+
+/* ---- captions ---- */
+function describeWing(w, board, g, wings, variant, i) {
+  const fin = frontFin(board), f = wingFootprint(w);
+  const ahead = 2 * wingedHalfWidth(g, wings, variant, f.hi + 1e-6), behind = 2 * wingedHalfWidth(g, wings, variant, f.inner - 1e-6);
+  const kind = w.run + w.smoothing === 0 ? "a square step" : w.smoothing === 0 ? `an angled step ${frac(w.run, 8)} long` : w.run === 0 ? `a smooth bump eased over ${frac(w.smoothing, 8)}` : `a ${frac(w.run, 8)} step with its corners eased over ${frac(w.smoothing, 8)}`;
+  let where = `<b>${frac(w.shown, 8)}</b> from the tail`;
+  if (fin) { const d = w.shown - fin.offTailIn; where += w.locked ? ` — locked to the front fins' ${w.edge} edge${w.finOffset ? `, ${w.finOffset > 0 ? "+" : "−"}${frac(Math.abs(w.finOffset), 8)}` : ""}` : ` (the front fins' trailing edge is ${dec(fin.offTailIn)} off the tail, so the wing sits ${Math.abs(d) < 1 / 32 ? "right on it" : `${frac(Math.abs(d), 8)} ${d > 0 ? "ahead of" : "behind"} it`})`; }
+  return `<b>Wing ${i + 1}</b> at ${where}: ${frac(w.depth)} deep, ${kind}. Width <b>${frac(ahead)}</b> ahead → <b>${frac(behind)}</b> behind.`;
+}
+function captionHtml(board, g, wings, variant, pts, basePts) {
+  const on = wings.filter((w) => w.on);
+  const block = 2 * wingedHalfWidth(g, wings, variant, g.tailPodStation + 1e-9), blockBase = 2 * g.bw;
+  const area = areaOf(pts), areaBase = areaOf(basePts), t12 = 2 * wingedHalfWidth(g, wings, variant, 12), t12b = 2 * exactHalfWidthAt(g, 12);
+  const head = { a: "<b>A — the tail is re-drawn to the block you set.</b> Ahead of the wing nearest the nose the outline is exactly the curve you drew; behind each wing its depth is taken out and fades to nothing at the tail block, so the block stays the number on its chip. With two wings the steps add up, like a staircase.", b: "<b>B — the tail is moved in.</b> Behind a wing the whole tail is narrower by the depth, all the way down: the tail block narrows by twice the depth, and on a pin or round tail the tip arrives early.", c: "<b>C — a flyer.</b> The curve you drew is the tail; ahead of the wing the outline is widened by the depth, fading back to your curve by the widepoint. The tail block and the 12\" tail width are untouched; the width ahead of the fins grows.", x: "<b>All three on one tail.</b> Dotted: the curve with no wing. Solid ink: A. Blue: B. Dashed ink: C. The main drawing is hidden here; the sliders still work." }[variant];
+  if (!on.length) return `<p>${head}</p><p>No wing yet — pick <b>One</b> or <b>Two</b> in the sidebar. The drawing is the app's TEMPLATE screen for the ${esc(board.name)} exactly as it is today.</p>`;
+  const rows = on.map((w, i) => `<p>${describeWing(w, board, g, wings, variant, i)}</p>`).join("");
+  const table = `<table><tr><th></th><th>No wing</th><th>With wing${on.length > 1 ? "s" : ""}</th></tr>
+    <tr><td>Tail block</td><td>${g.tailBlockPinned ? "—" : frac(blockBase, 8)}</td><td>${g.tailBlockPinned ? "—" : frac(block, 8)}${!g.tailBlockPinned && Math.abs(block - blockBase) > 1e-6 ? " (narrowed)" : ""}</td></tr>
+    <tr><td>Tail @ 12"</td><td>${frac(t12b)}</td><td>${frac(t12)}</td></tr>
+    <tr><td>Planshape area</td><td>${areaBase.toFixed(0)} sq in</td><td>${area.toFixed(0)} sq in (${area >= areaBase ? "+" : "−"}${(Math.abs(area - areaBase) / areaBase * 100).toFixed(1)}%)</td></tr></table>`;
+  return `<p>${head}</p>${rows}${table}`;
+}
+
+/* ---- the sidebar (the TEMPLATE page's controls, as the sketch needs them) ---- */
+function sliderRow(wi, field, label, min, max, step, value, fmt, dim) {
+  return `<div class="row${dim ? " dim" : ""}"><span>${label}</span><span class="v">${fmt(value)}</span><input type="range" data-wing="${wi}" data-field="${field}" min="${min}" max="${max}" step="${step}" value="${value}" ${dim ? "disabled" : ""}></div>`;
+}
+function wingCard(i, w, board) {
+  const fin = frontFin(board), on = (state.wings === "one" && i === 0) || state.wings === "two";
+  const locked = w.lock && !!fin;
+  return `<div class="wingcard${on ? "" : " off"}">
+    <h3>Wing ${i + 1}</h3>
+    ${sliderRow(i, "station", "Position from tail", STATION_RANGE[0], STATION_RANGE[1], 0.125, w.station, (v) => frac(v, 8), locked)}
+    <label class="ck"><input type="checkbox" data-wing="${i}" data-check="lock" ${w.lock ? "checked" : ""} ${fin ? "" : "disabled"}> Lock to front fin${fin ? "" : " <span class=\"note\">(no side fins on this board)</span>"}</label>
+    ${locked ? `<div class="row"><span>Fin edge</span><span class="pick"><button data-wing="${i}" data-pick="edge" data-v="trailing" class="${w.edge === "trailing" ? "on" : ""}">Trailing</button><button data-wing="${i}" data-pick="edge" data-v="leading" class="${w.edge === "leading" ? "on" : ""}">Leading</button></span></div>
+      ${sliderRow(i, "finOffset", "Offset from the fin", -3, 3, 0.125, w.finOffset, (v) => (v === 0 ? '0"' : (v > 0 ? "+" : "−") + frac(Math.abs(v), 8)), false)}` : ""}
+    ${sliderRow(i, "depth", "Depth", 0.0625, 1, 0.0625, w.depth, (v) => frac(v), false)}
+    ${sliderRow(i, "run", "Run along the stringer", 0, 1, 0.125, w.run, (v) => frac(v, 8), false)}
+    ${sliderRow(i, "smoothing", "Smoothing", 0, 3, 0.125, w.smoothing, (v) => frac(v, 8), false)}
+  </div>`;
+}
+function sidebarHtml(board) {
+  const pick = (key, options) => `<span class="pick">${options.map(([v, label]) => `<button data-set="${key}" data-v="${v}" class="${String(state[key]) === String(v) ? "on" : ""}">${label}</button>`).join("")}</span>`;
+  return `<aside class="sidebar">
+    <h3>Board</h3>
+    <div class="row"><span>${esc(board.name)} · ${frac(board.spec.lengthIn, 8)} × ${frac(board.spec.widePointWidthIn, 8)} · ${esc(board.spec.tail.kind)} · ${esc(board.finSetup)}</span></div>
+    ${pick("board", DATA.boards.map((b) => [b.id, b.name.replace(" board", "")]))}
+    <h3>Wings</h3>
+    <div class="row"><span>How many</span>${pick("wings", [["none", "None"], ["one", "One"], ["two", "Two"]])}</div>
+    <div class="row"><span>Position marks</span>${pick("marks", [["start", "Where the step starts"], ["middle", "Its middle"]])}</div>
+    ${wingCard(0, state.w1, board)}
+    ${wingCard(1, state.w2, board)}
+    <h3>Settings</h3>
+    <label class="ck"><input type="checkbox" data-check="showFins" ${state.showFins ? "checked" : ""}> Show fins <span class="note">(marks only, no dims)</span></label>
+    <label class="ck"><input type="checkbox" data-check="construction" ${state.construction ? "checked" : ""}> Show construction</label>
+    <label class="ck"><input type="checkbox" data-check="base" ${state.base === "on" ? "checked" : ""}> Show the curve without wings</label>
+    <p class="note">Adding a wing turns <b>Show fins</b> on and asks you to dial in the placement (the founder, 2026-10-14). Fins come from the FINS page with Import Template ticked.</p>
+  </aside>`;
+}
+
+/* ---- render ---- */
+function renderNav() {
+  const nav = document.getElementById("variant-nav");
+  nav.innerHTML = `<span class="sketch-id">Sketch 013</span>` + VARIANTS.map((v) => `<button class="variant-tab${v.winner ? " winner" : ""}${v.id === state.variant ? " active" : ""}" data-variant="${v.id}">${esc(v.label)}</button>`).join("") + `<button class="variant-tab notes-btn" data-notes="1">${document.getElementById("notes-panel").classList.contains("open") ? "Close notes" : "Notes"}</button>`;
+}
+function renderBar() {
+  const bar = document.getElementById("sketch-bar");
+  const legend = state.variant === "x" ? `<span class="legend"><span><i style="border-color:var(--color-text-muted);border-top-style:dotted"></i>no wing</span><span><i style="border-color:var(--color-text)"></i>A</span><span><i style="border-color:var(--compare-b)"></i>B</span><span><i style="border-color:var(--color-text);border-top-style:dashed"></i>C</span></span>` : "";
+  bar.innerHTML = `<span class="desc">Up to <b>two wings</b> on the TEMPLATE outline — each ${frac(1 / 16)} to 1" deep, a step 0 to 1" long along the stringer, eased over 0 to 3", placed by hand or locked to the front fin. How should the step read, and what happens to the tail behind it?</span>${legend}`;
+}
+function platesHtml(board) {
+  const g = buildOutline(specOf(board.spec)), wings = resolveWings(board);
+  const off = wings.map((w) => ({ ...w, on: false }));
+  const basePts = wingedPoints(g, off, "a", Number(state.zoom));
+  const variant = state.variant, many = variant === "x";
+  const curves = many
+    ? [{ v: "a", pts: wingedPoints(g, wings, "a", Number(state.zoom)), basePts, ink: "var(--outline-ink)", width: 2 }, { v: "b", pts: wingedPoints(g, wings, "b", Number(state.zoom)), basePts, ink: "var(--compare-b)", width: 2 }, { v: "c", pts: wingedPoints(g, wings, "c", Number(state.zoom)), basePts, ink: "var(--outline-ink)", width: 1.5, dash: "6 3" }]
+    : [{ v: variant, pts: wingedPoints(g, wings, variant, Number(state.zoom)), basePts, ink: "var(--outline-ink)", width: 2 }];
+  const pts = curves[0].pts;
+  return `<div class="plate zoom"><h4>The tail, closer<span>last ${state.zoom}" · ${(620 / Number(state.zoom) / ((620 - 48) / g.length)).toFixed(1)}× the drawing beside</span></h4>${zoomSvg(board, g, wings, many ? "a" : variant, curves)}</div>
+    ${many ? "" : `<div class="plate tpl"><h4>Template<span>as the app frames it</span></h4>${templateSvg(board, g, wings, variant, pts, basePts)}</div>`}
+    <div class="cap" style="${many ? "grid-column:1 / -1" : ""}">${captionHtml(board, g, wings, many ? "a" : variant, pts, basePts)}</div>`;
+}
+function renderPlates() { const el = document.querySelector(".plates"); if (el) el.innerHTML = platesHtml(boardOf()); }
+function renderStage() {
+  const board = boardOf(), fin = frontFin(board);
+  const stage = document.getElementById("stage");
+  stage.innerHTML = `<p class="intro"><b>The TEMPLATE screen</b> for the ${esc(board.name)}, drawn with the app's own curve (this page's copy reproduces the app's 161 points to a millionth of an inch) and its own callout grammar, with the last ${state.zoom}" of the tail closer above it. ${fin ? `The ${esc(board.finSetup)} fins sit where the FINS page puts them: front fins ${dec(fin.offTailIn)} off the tail at the trailing edge, ${dec(fin.leadingOffTailIn)} at the leading edge.` : "This board has no side fins, so the fin lock is unavailable."}</p>
+    <div class="sheet">${sidebarHtml(board)}<div class="plates">${platesHtml(board)}</div></div>`;
+}
+function renderNotes() {
+  document.getElementById("notes-panel").innerHTML = `
+    <h2>Sketch 013 — wings on the outline</h2>
+    <p>The founder, 2026-10-14: up to two wings, each 1/16" to 1" deep (toward the stringer), an offset of 0 to 1" along the stringer, and "a sharp wing to a smooth bump" — a smoothing slider spreading the step over 0 to 3" of curve; a wing may be locked to the front fin's position, with an offset. Adding a wing turns on a "Show fins" setting on the TEMPLATE page (marks, no dims) and pops up "Dial in your wing placement…".</p>
+    <h3>How the four numbers are read here</h3>
+    <ul>
+      <li><b>Position</b> — the station where the outline leaves the curve you drew (or, with "Its middle", the middle of the step). Locked, it is the front fin's trailing or leading edge plus the offset.</li>
+      <li><b>Depth</b> — how far the outline steps in toward the stringer.</li>
+      <li><b>Run</b> — how far along the stringer the step itself travels: 0 is a square step, 1" an angled one.</li>
+      <li><b>Smoothing</b> — the step's two corners eased, half the length at each: 0 is a sharp wing, 3" a smooth bump. The step's whole length is run + smoothing.</li>
+    </ul>
+    <h3>The three constructions</h3>
+    <ul>
+      <li><b>A — tail re-drawn to your block.</b> Ahead of the wing nearest the nose the outline is your curve exactly; behind each wing its depth fades to nothing by the tail pod, so the tail block keeps its number. Two wings add up, like a staircase.</li>
+      <li><b>B — tail moved in.</b> The depth is carried all the way to the tail; the block narrows by twice the depth; pins and rounds reach zero width early.</li>
+      <li><b>C — flyer.</b> Your curve is the tail; ahead of the wing the outline is widened by the depth, fading back by the widepoint.</li>
+    </ul>
+    <h3>What to look for</h3>
+    <ul>
+      <li>Which construction matches what you'd cut: does a wing take width out of the tail (A, B) or add it ahead of the fins (C)? Should the tail block you set survive (A) or not (B)?</li>
+      <li>Drag Run and Smoothing: does run + smoothing cover every wing you've shaped, from a hard winger to a bump? Is 3" enough smoothing?</li>
+      <li>Lock a wing to the fin: trailing or leading edge — which do you measure a wing from? Try the Fish (twin) and the Mid-length (quad).</li>
+      <li>Two wings close together (try 11" and 13"): do the chips and read-outs stay legible? That is sketch 015's question, visible here.</li>
+      <li>The popup: once per board, or every time a wing is added?</li>
+    </ul>
+    <h3>If it gets built</h3>
+    <ul>
+      <li>The wing is a new outline feature in lib/geometry (station, depth, run, smoothing, lock), applied after today's curve: boards without wings redraw identically, so nothing saved changes. Every reader of the outline — the printed templates, FINS' tail drawing, volume, the rack, the ☰ tiles — follows automatically through the one builder.</li>
+      <li>The lock reads the FINS page's placement, so the two screens share state: the popup is how the shaper is told.</li>
+    </ul>`;
+}
+function renderTools() {
+  document.getElementById("t-theme").innerHTML = ["slate", "daylight"].map((t) => `<button data-tool="theme" data-v="${t}" class="${state.theme === t ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("");
+  document.getElementById("t-zoom").innerHTML = ["20", "26", "32"].map((z) => `<button data-tool="zoom" data-v="${z}" class="${state.zoom === z ? "on" : ""}">${z}"</button>`).join("");
+}
+function applyTheme() {
+  const root = document.documentElement.style;
+  for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[state.theme] })) root.setProperty(k, v);
+  const link = document.getElementById("theme-link"); if (link) link.href = `../themes/app-${state.theme}.css`;
+}
+function renderAll() { applyTheme(); renderNav(); renderBar(); renderNotes(); renderTools(); renderStage(); }
+function openPopup() { document.getElementById("popup").classList.add("open"); }
+function closePopup() { document.getElementById("popup").classList.remove("open"); }
+
+document.getElementById("variant-nav").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.notes) { document.getElementById("notes-panel").classList.toggle("open"); renderNav(); return; }
+  state.variant = b.dataset.variant; save(); renderAll();
+});
+document.getElementById("stage").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.set) {
+    const key = b.dataset.set, v = b.dataset.v, had = state.wings !== "none";
+    state[key] = v;
+    // the founder's rule: adding a wing turns Show fins on and asks the shaper to dial in the placement
+    if (key === "wings" && !had && v !== "none") { state.showFins = true; openPopup(); }
+    save(); renderStage(); return;
+  }
+  if (b.dataset.pick) { const w = state[b.dataset.wing === "0" ? "w1" : "w2"]; w[b.dataset.pick] = b.dataset.v; save(); renderStage(); }
+});
+document.getElementById("stage").addEventListener("input", (e) => {
+  const el = e.target; if (!el.matches("input[type=range]")) return;
+  const w = state[el.dataset.wing === "0" ? "w1" : "w2"]; w[el.dataset.field] = Number(el.value); save();
+  // redraw the plates and this slider's own readout, never the slider under the thumb
+  const fmt = { station: (v) => frac(v, 8), finOffset: (v) => (v === 0 ? '0"' : (v > 0 ? "+" : "−") + frac(Math.abs(v), 8)), depth: (v) => frac(v), run: (v) => frac(v, 8), smoothing: (v) => frac(v, 8) }[el.dataset.field];
+  const readout = el.parentElement.querySelector(".v"); if (readout && fmt) readout.textContent = fmt(Number(el.value));
+  renderPlates();
+});
+document.getElementById("stage").addEventListener("change", (e) => {
+  const el = e.target; if (!el.matches("input[type=checkbox]")) return;
+  if (el.dataset.check === "lock") { const w = state[el.dataset.wing === "0" ? "w1" : "w2"]; w.lock = el.checked; }
+  else if (el.dataset.check === "base") state.base = el.checked ? "on" : "off";
+  else state[el.dataset.check] = el.checked;
+  save(); renderStage();
+});
+document.getElementById("popup").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) closePopup(); else if (e.target.id === "popup") closePopup(); });
+document.getElementById("sketch-tools").addEventListener("click", (e) => { const b = e.target.closest("[data-tool]"); if (!b) return; state[b.dataset.tool] = b.dataset.v; save(); renderAll(); });
+document.getElementById("tools-toggle").onclick = () => document.getElementById("sketch-tools").classList.toggle("open");
+renderAll();
+</script>
+</body>
+</html>
