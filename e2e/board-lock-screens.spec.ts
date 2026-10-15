@@ -477,6 +477,10 @@ test.describe("a locked board's controls are greyed on a phone (quick 261008-lsy
   test("p-screens. all six screens are greyed in turn, through the ☰ tiles and Back + Next, and Unlock on FINS brings its sliders back", async ({
     page,
   }) => {
+    // Six screens in one test: on a freshly started dev server the first walk compiles every screen
+    // and took 29.8 s against the 30 s limit on the iPhone (quick 261014-wii, 2026-10-15 — the same
+    // timeout on the commit before wings, so not a wings fault). Tripled, like s-fins above.
+    test.slow();
     await openLockedBoard(page, 1);
     await expectPhoneScreenGreyed(page);
     const walk: ScreenLabel[] = ["ROCKER", "RAILS", "VOLUME"];

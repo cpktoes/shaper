@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { MIN_PINNED_FIT_SCALE, pinnedCalloutSizes } from "@/components/viewer/callout-primitives";
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import { nextWing, outlineWithoutWings } from "@/lib/geometry/wings";
 import {
   CLOSE_UP,
+  CLOSE_UP_COMPACT,
   TAIL_WINDOW_IN,
   WINDOW_ROOM_IN,
   closeUpFrame,
   spreadApart,
+  useCompactFrame,
   widestHalfWidthIn,
   wingWindow,
 } from "./wing-view-layout";
@@ -94,5 +97,73 @@ describe("spreadApart — read-outs pushed apart, never down", () => {
     expect(out[0]).toBe(50);
     expect(out[2]).toBeLessThan(out[1]);
     expect(out[3]).toBeLessThan(out[2]);
+  });
+});
+
+describe("the compact frame — the close-up fitting itself on a phone and a narrow window (plan 02, P13)", () => {
+  /** The default board's one-wing window, as the close-up frames it (F27). */
+  function defaultWindow() {
+    const outline = DEFAULT_BOARD_SPEC.outline;
+    const wing = nextWing([], null, outline.length, "imperial");
+    const winged = buildOutline({ ...outline, wings: [wing] });
+    const base = buildOutline(outlineWithoutWings(outline));
+    const { lo, hi } = wingWindow(outline.length, [wing.station]);
+    const loIn = mmToInches(lo);
+    const hiIn = mmToInches(hi);
+    return { loIn, hiIn, widest: widestHalfWidthIn([winged.points, base.points], loIn, hiIn) };
+  }
+
+  // TEMPLATE's drawing boxes with the tab strip tabbed (plan 01, F22), measured at plan time (F27).
+  const BOXES = [
+    { name: "iPhone upright (390 x 844)", w: 380, h: 508.0, compact: true },
+    { name: "Pixel upright (412 x 915)", w: 402, h: 554.9, compact: true },
+    { name: "iPhone sideways (844 x 390)", w: 482, h: 293, compact: true },
+    { name: "Pixel sideways (863 x 360)", w: 491.5, h: 263, compact: true },
+    { name: "computer 1024 x 768", w: 548, h: 582, compact: true },
+    { name: "computer 1280 x 800", w: 804, h: 614, compact: false },
+  ];
+
+  it.each(BOXES)("$name: compact is $compact", ({ w, h, compact }) => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const full = closeUpFrame(loIn, hiIn, widest);
+    expect(useCompactFrame(w, h, full.width, MIN_PINNED_FIT_SCALE)).toBe(compact);
+  });
+
+  it("an unmeasured box keeps the full frame", () => {
+    expect(useCompactFrame(0, 0, 882, MIN_PINNED_FIT_SCALE)).toBe(false);
+  });
+
+  it("is decided by the full frame's fit against the floor, nothing else", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const full = closeUpFrame(loIn, hiIn, widest);
+    const atFloor = full.width * MIN_PINNED_FIT_SCALE;
+    const roomy = 10000;
+    expect(useCompactFrame(atFloor + 1, roomy, full.width, MIN_PINNED_FIT_SCALE)).toBe(false);
+    expect(useCompactFrame(atFloor - 1, roomy, full.width, MIN_PINNED_FIT_SCALE)).toBe(true);
+    expect(useCompactFrame(roomy, CLOSE_UP.height * MIN_PINNED_FIT_SCALE - 1, full.width, MIN_PINNED_FIT_SCALE)).toBe(true);
+  });
+
+  it("closeUpFrame(..., true) is built from the compact constants", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const frame = closeUpFrame(loIn, hiIn, widest, true);
+    const c = CLOSE_UP_COMPACT;
+    const u = (c.height - c.padTop - c.padBottom) / (hiIn - loIn);
+    const cx = c.gutterLeft + widest * u + c.sideRoom;
+    expect(frame.unitsPerInch).toBeCloseTo(u, 12);
+    expect(frame.width).toBe(Math.ceil(cx + widest * u + c.sideRoom + c.railRight));
+    expect(frame.valueX).toBeCloseTo(cx + widest * u + c.valueOffset, 9);
+    expect(frame.chipRightX).toBe(c.gutterLeft - c.chipInset);
+    expect(frame.toY(hiIn)).toBeCloseTo(c.padTop, 9);
+    // Narrower than the full frame, and every inch drawn bigger.
+    const full = closeUpFrame(loIn, hiIn, widest);
+    expect(frame.width).toBeLessThan(full.width);
+    expect(frame.unitsPerInch).toBeGreaterThan(full.unitsPerInch);
+  });
+
+  it("its chip column holds a WING chip at the pinned floor, left edge inside the drawing", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const frame = closeUpFrame(loIn, hiIn, widest, true);
+    const { chipW } = pinnedCalloutSizes(MIN_PINNED_FIT_SCALE);
+    expect(frame.chipRightX - chipW).toBeGreaterThanOrEqual(0);
   });
 });

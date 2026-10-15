@@ -26,7 +26,30 @@ import {
   railPctFromMult,
   tailHandleMaxLength,
 } from "./outline";
-import { type Mm, degrees, inchesToMm, mm, mmToInches } from "./units";
+import {
+  type Mm,
+  type UnitsSystem,
+  degrees,
+  inchesToMm,
+  metricSliderRange,
+  mm,
+  mmToInches,
+  roundToSixteenthInch,
+  roundToWholeMm,
+} from "./units";
+import {
+  WING_DEPTH_RANGE_IN,
+  WING_FIN_OFFSET_RANGE_IN,
+  WING_RUN_RANGE_IN,
+  WING_STEP_MM,
+  wingFootprint,
+  wingPositionRangeIn,
+  wingRadiusTop,
+  wingReadouts,
+  wingedHalfWidthAt,
+  type FrontFinEdges,
+  type Wing,
+} from "./wings";
 
 /**
  * The five grabbable points: the widepoint knot, which slides along the board, and the four handle
@@ -304,3 +327,148 @@ export const OUTLINE_DRAG_HIT_PX = 15;
  * shrinking for the outline.
  */
 export const OUTLINE_DRAG_HIT_COARSE_PX = 22;
+
+// ---------------------------------------------------------------------------------------------
+// Wing grab points (quick 261014-wii, 2026-10-15, D2, D5, P11, P12).
+//
+// The WINGS close-up draws two grab points per wing (sketch 014's variant C): the OUTER one at the
+// step's outer corner slides the wing along the curve the shaper drew — or, while the wing is
+// locked to the front fin, sets its offset from the fin edge — and the INNER one, hung a few screen
+// dots below the inner corner on the depth dimension's own line so a sharp wing's two points never
+// sit on top of each other, sets the depth (in and out) and the run (along the stringer).
+//
+// They get their own target type rather than joining `OutlineDragTarget`: that five-target union
+// is switched exhaustively in `outline-viewer.tsx`, and the phone specs count the VIEWER's
+// `[data-drag-target]` points, so a wing point in that union would change both. Wing points are
+// `{ wing, point }` and hooked as `data-wing-grab` instead; the VIEWER's five are untouched.
+//
+// The same two rules as the outline's own solve hold here: every formula is imported from
+// `wings.ts`, never restated, and every result lands on the sidebar slider's own grid inside its
+// range — 1/16" in Imperial, a whole millimetre in Metric (P12) — so a drag never writes a number
+// the sidebar cannot show.
+// ---------------------------------------------------------------------------------------------
+
+/** Which of a wing's two grab points: the outer corner, or the point hung below the inner corner. */
+export type WingDragPoint = "outer" | "inner";
+
+/** A wing grab point — the wing's index in the outline's `wings` list, and which of its points. */
+export interface WingDragTarget {
+  wing: number;
+  point: WingDragPoint;
+}
+
+export interface WingDragPointAt {
+  target: WingDragTarget;
+  point: OutlineDragPoint;
+}
+
+/**
+ * How far below the inner corner the inner grab point hangs, in screen pixels (D5, the sketch's
+ * `HANDLE_DROP`). The caller converts it to millimetres at the live scale, exactly as it converts
+ * the hit radius, so the gap reads the same on every screen.
+ */
+export const WING_GRAB_DROP_PX = 22;
+
+/**
+ * Snap a wing number onto its slider's grid and keep it inside the slider's range (P12): 1/16" and
+ * the inch range in Imperial (`roundToSixteenthInch`); a whole millimetre and the inch range
+ * rounded inward in Metric (`roundToWholeMm`, `metricSliderRange` — what `measureSlider` gives the
+ * slider). Non-finite input falls back to the minimum, as `quantise` does above.
+ */
+function snapWing(value: number, rangeIn: { min: number; max: number }, system: UnitsSystem): Mm {
+  if (system === "metric") {
+    const range = metricSliderRange(rangeIn, WING_STEP_MM);
+    if (!Number.isFinite(value)) return mm(range.min);
+    return mm(Math.min(range.max, Math.max(range.min, roundToWholeMm(mm(value)))));
+  }
+  const lo = inchesToMm(rangeIn.min);
+  const hi = inchesToMm(rangeIn.max);
+  if (!Number.isFinite(value)) return lo;
+  return mm(Math.min(hi, Math.max(lo, roundToSixteenthInch(mm(value)))));
+}
+
+/**
+ * Where each wing's two grab points are, in board coordinates, wing by wing (outer then inner).
+ * The outer point is at the wing's station on the rail just nose-ward of the step; the inner one is
+ * `dropMm` tail-ward of the inner corner's station (station − run), on the rail just tail-ward of
+ * the step — the widths `wingReadouts` reads either side of it.
+ */
+export function wingDragPoints(geometry: OutlineGeometry, wings: readonly Wing[], dropMm: Mm): WingDragPointAt[] {
+  const readouts = wingReadouts(geometry, wings);
+  return wings.flatMap((w, i) => [
+    { target: { wing: i, point: "outer" as const }, point: point(w.station, readouts[i].widthAhead / 2) },
+    {
+      target: { wing: i, point: "inner" as const },
+      point: point(w.station - w.run - dropMm, readouts[i].widthBehind / 2),
+    },
+  ]);
+}
+
+/**
+ * A dragged grab point solved back to the wing's numbers (D5; the sketch's own drag, F29). Returns
+ * the whole new wings list with only the dragged wing changed — the others are the same objects.
+ *
+ * - **Outer, placed by hand:** the station is the pointer's, snapped, between 2" and the centre.
+ * - **Outer, locked** (`lock` set and the fin setup has a front fin): the offset is the pointer's
+ *   distance from the fin edge, snapped, within ±3"; the station is left to the store's resolution
+ *   (`resolveWingStations`, P2).
+ * - **Inner:** the run is how far the pointer (lifted back by the drop) sits tail-ward of the
+ *   station; the depth is how far it sits in from the rail the board would have at the inner corner
+ *   WITHOUT this wing — every other wing's take kept. (The sketch measured from the bare curve at
+ *   the wing's own station, which made a press without a move jump the depth by the other wing's
+ *   take, or by the curve's narrowing over a long run; measured here, a press alone changes
+ *   nothing.) The corner radius is pulled in to what fits the new step (`wingRadiusTop`, P8).
+ */
+export function solveWingDrag(
+  geometry: OutlineGeometry,
+  wings: readonly Wing[],
+  target: WingDragTarget,
+  dragged: OutlineDragPoint,
+  dropMm: Mm,
+  edges: FrontFinEdges | null,
+  system: UnitsSystem,
+): Wing[] {
+  const w = wings[target.wing];
+  if (!w) return [...wings];
+  let next: Wing;
+  if (target.point === "outer") {
+    if (w.lock !== null && edges !== null) {
+      const edge = w.lock === "front-leading" ? edges.leading : edges.trailing;
+      next = { ...w, finOffset: snapWing(dragged.station - edge, WING_FIN_OFFSET_RANGE_IN, system) };
+    } else {
+      next = { ...w, station: snapWing(dragged.station, wingPositionRangeIn(geometry.length), system) };
+    }
+  } else {
+    const others = wings.filter((_, i) => i !== target.wing);
+    const rail = wingedHalfWidthAt(geometry, others, wingFootprint(w).inner);
+    const depth = snapWing(rail - dragged.halfWidth, WING_DEPTH_RANGE_IN, system);
+    const run = snapWing(w.station - (dragged.station + dropMm), WING_RUN_RANGE_IN, system);
+    next = { ...w, depth, run, radius: mm(Math.min(w.radius, wingRadiusTop({ depth, run }, system))) };
+  }
+  return wings.map((x, i) => (i === target.wing ? next : x));
+}
+
+/**
+ * Which wing grab point a press has caught: the closest within `hitRadiusMm`, or `null`. Board
+ * millimetres in, as `nearestOutlineDragTarget`, and the same tie rule — strictly-less-than, so the
+ * earlier entry in `wingDragPoints`' order wins a tie.
+ */
+export function nearestWingDragTarget(
+  points: readonly WingDragPointAt[],
+  touch: OutlineDragPoint,
+  hitRadiusMm: Mm,
+): WingDragTarget | null {
+  let best: WingDragTarget | null = null;
+  let bestDistSq = Infinity;
+  const radiusSq = hitRadiusMm * hitRadiusMm;
+  for (const p of points) {
+    const dx = p.point.station - touch.station;
+    const dy = p.point.halfWidth - touch.halfWidth;
+    const distSq = dx * dx + dy * dy;
+    if (distSq <= radiusSq && distSq < bestDistSq) {
+      best = p.target;
+      bestDistSq = distSq;
+    }
+  }
+  return best;
+}

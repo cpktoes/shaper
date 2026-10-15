@@ -456,6 +456,9 @@ export function OutlineControls({
 }
 
 export interface TemplateSettingsProps {
+  /** A short note after "View Construction Lines" — the WINGS sidebar's "(the wing's grab points
+   * too)" (quick 261014-wii, P16); the Template Builder passes none. */
+  constructionNote?: string;
   showConstruction: boolean;
   onToggleConstruction: () => void;
   showFins: boolean;
@@ -468,7 +471,13 @@ export interface TemplateSettingsProps {
  * puts them, marks only, no dims. Both are screen settings, never saved, and both stay usable on a
  * locked board (`data-lock-exempt`), since neither changes the board.
  */
-export function TemplateSettings({ showConstruction, onToggleConstruction, showFins, onToggleShowFins }: TemplateSettingsProps) {
+export function TemplateSettings({
+  constructionNote,
+  showConstruction,
+  onToggleConstruction,
+  showFins,
+  onToggleShowFins,
+}: TemplateSettingsProps) {
   return (
     <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
       <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
@@ -477,6 +486,7 @@ export function TemplateSettings({ showConstruction, onToggleConstruction, showF
       <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
         <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
         View Construction Lines
+        {constructionNote && <span className="text-xs">{constructionNote}</span>}
       </label>
       <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
         <Checkbox data-lock-exempt checked={showFins} onCheckedChange={() => onToggleShowFins()} />

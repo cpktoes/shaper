@@ -12,12 +12,39 @@ import {
   type OutlineDragPoint,
   type OutlineDragPointAt,
   type OutlineDragTarget,
+  type WingDragPointAt,
+  type WingDragTarget,
   nearestOutlineDragTarget,
+  nearestWingDragTarget,
   outlineDragPoints,
   solveOutlineDrag,
+  solveWingDrag,
+  wingDragPoints,
 } from "./outline-drag";
+import { deriveEffectiveFins } from "./design";
+import { DEFAULT_FIN_PLACEMENT_SPEC, computeFinPlacement, importedFinTailFromOutline } from "./fins";
 import { buildOutline } from "./outline";
-import { MM_PER_INCH, type Mm, degrees, inchesToMm, mm, mmToInches } from "./units";
+import {
+  MM_PER_INCH,
+  type Mm,
+  degrees,
+  inchesToMm,
+  mm,
+  mmToInches,
+  roundToSixteenthInch,
+  roundToWholeMm,
+} from "./units";
+import { frontFinEdges } from "./wing-lock";
+import {
+  WING_DEPTH_RANGE_IN,
+  WING_FIN_OFFSET_RANGE_IN,
+  WING_POSITION_MIN_IN,
+  WING_RUN_RANGE_IN,
+  nextWing,
+  wingRadiusTop,
+  wingReadouts,
+  type Wing,
+} from "./wings";
 
 const BASE = DEFAULT_BOARD_SPEC.outline;
 
@@ -478,5 +505,210 @@ describe("a diamond tail's angle is pinned under the drag point, exactly as its 
       halfWidth: mm(point.halfWidth + 10),
     });
     expect(Object.keys(patch).sort()).toEqual(["tailAngle", "tailFullness"]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Wing grab points (quick 261014-wii, 2026-10-15, D2, D5, P11, P12). Every expected value is read
+// off the app's own functions — `wingReadouts`, `wingRadiusTop`, `roundToSixteenthInch`,
+// `roundToWholeMm` — never typed (CLAUDE.md Rule 1).
+// ---------------------------------------------------------------------------------------------
+
+describe("wing grab points — two per wing, beside the outline's own five", () => {
+  const LENGTH = BASE.length;
+  /** The default board's two wings as "+ Add a wing" makes them, the first placed by hand. */
+  const WING_1 = nextWing([], null, LENGTH, "imperial");
+  const WING_2 = nextWing([WING_1], null, LENGTH, "imperial");
+  const WINGS: Wing[] = [WING_1, WING_2];
+  const winged = buildOutline({ ...BASE, wings: WINGS });
+  /** The drop the close-up converts its 22 screen dots to — any positive length will do here. */
+  const DROP = inchesToMm(1);
+  const FIN_EDGES = frontFinEdges(
+    computeFinPlacement(
+      deriveEffectiveFins(DEFAULT_FIN_PLACEMENT_SPEC, true, BASE, buildOutline(BASE)),
+      importedFinTailFromOutline(buildOutline(BASE)),
+    ).marks,
+  );
+
+  function at(target: WingDragTarget) {
+    const entry = wingDragPoints(winged, WINGS, DROP).find(
+      (p) => p.target.wing === target.wing && p.target.point === target.point,
+    );
+    if (!entry) throw new Error(`no grab point for wing ${target.wing} ${target.point}`);
+    return entry.point;
+  }
+
+  it("the outer point sits at the wing's station on the rail ahead; the inner hangs the drop below the inner corner on the rail behind", () => {
+    const readouts = wingReadouts(winged, WINGS);
+    const points = wingDragPoints(winged, WINGS, DROP);
+    expect(points.map((p) => p.target)).toEqual([
+      { wing: 0, point: "outer" },
+      { wing: 0, point: "inner" },
+      { wing: 1, point: "outer" },
+      { wing: 1, point: "inner" },
+    ]);
+    WINGS.forEach((w, i) => {
+      expect(points[2 * i].point.station).toBe(w.station);
+      expect(points[2 * i].point.halfWidth).toBe(readouts[i].widthAhead / 2);
+      expect(points[2 * i + 1].point.station).toBe(w.station - w.run - DROP);
+      expect(points[2 * i + 1].point.halfWidth).toBe(readouts[i].widthBehind / 2);
+    });
+  });
+
+  it("a sharp square step's two points are never closer than the drop", () => {
+    const square: Wing = { ...WING_1, run: mm(0) };
+    const g = buildOutline({ ...BASE, wings: [square] });
+    const [outer, inner] = wingDragPoints(g, [square], DROP).map((p) => p.point);
+    expect(Math.hypot(outer.station - inner.station, outer.halfWidth - inner.halfWidth)).toBeGreaterThanOrEqual(DROP);
+  });
+
+  it("an unlocked wing's outer point slides the wing along the curve, on the 1/16 inch grid", () => {
+    const p = at({ wing: 1, point: "outer" });
+    const pulled = { ...p, station: mm(p.station + inchesToMm(1)) };
+    const next = solveWingDrag(winged, WINGS, { wing: 1, point: "outer" }, pulled, DROP, FIN_EDGES, "imperial");
+    expect(next[1].station).toBe(roundToSixteenthInch(mm(WING_2.station + inchesToMm(1))));
+    expect(next[1].depth).toBe(WING_2.depth);
+    expect(next[1].run).toBe(WING_2.run);
+  });
+
+  it("past the centre it clamps to the centre; at the tail it clamps to 2 inches", () => {
+    const p = at({ wing: 1, point: "outer" });
+    const target: WingDragTarget = { wing: 1, point: "outer" };
+    const far = solveWingDrag(winged, WINGS, target, { ...p, station: mm(LENGTH) }, DROP, null, "imperial");
+    expect(far[1].station).toBe(LENGTH / 2);
+    const tail = solveWingDrag(winged, WINGS, target, { ...p, station: mm(0) }, DROP, null, "imperial");
+    expect(tail[1].station).toBe(inchesToMm(WING_POSITION_MIN_IN));
+  });
+
+  it("in Metric the outer point lands on a whole millimetre", () => {
+    const p = at({ wing: 1, point: "outer" });
+    const station = mm(p.station + 17.3);
+    const next = solveWingDrag(winged, WINGS, { wing: 1, point: "outer" }, { ...p, station }, DROP, null, "metric");
+    expect(next[1].station).toBe(roundToWholeMm(station));
+    expect(Number.isInteger(next[1].station)).toBe(true);
+  });
+
+  it("a locked wing's outer point sets its offset from the fin edge, never its station", () => {
+    expect(FIN_EDGES).not.toBeNull();
+    const edges = FIN_EDGES!;
+    const locked: Wing[] = [{ ...WING_1, lock: "front-trailing" }, WING_2];
+    const g = buildOutline({ ...BASE, wings: locked });
+    const p = wingDragPoints(g, locked, DROP)[0].point;
+    const station = mm(edges.trailing + inchesToMm(1.3));
+    const next = solveWingDrag(g, locked, { wing: 0, point: "outer" }, { ...p, station }, DROP, edges, "imperial");
+    expect(next[0].finOffset).toBe(roundToSixteenthInch(mm(station - edges.trailing)));
+    expect(next[0].station).toBe(locked[0].station);
+
+    const leading: Wing[] = [{ ...WING_1, lock: "front-leading" }];
+    const back = solveWingDrag(
+      g,
+      leading,
+      { wing: 0, point: "outer" },
+      { ...p, station: mm(edges.leading - inchesToMm(9)) },
+      DROP,
+      edges,
+      "imperial",
+    );
+    expect(back[0].finOffset).toBe(inchesToMm(WING_FIN_OFFSET_RANGE_IN.min));
+  });
+
+  it("a lock with no front fin to follow drags like a wing placed by hand", () => {
+    const locked: Wing[] = [{ ...WING_1, lock: "front-trailing" }];
+    const g = buildOutline({ ...BASE, wings: locked });
+    const p = wingDragPoints(g, locked, DROP)[0].point;
+    const station = mm(p.station + inchesToMm(2));
+    const next = solveWingDrag(g, locked, { wing: 0, point: "outer" }, { ...p, station }, DROP, null, "imperial");
+    expect(next[0].station).toBe(roundToSixteenthInch(station));
+    expect(next[0].finOffset).toBe(WING_1.finOffset);
+  });
+
+  it("the inner point, pressed and not moved, gives the wing back as it is", () => {
+    for (const wing of [0, 1]) {
+      const p = at({ wing, point: "inner" });
+      const next = solveWingDrag(winged, WINGS, { wing, point: "inner" }, p, DROP, null, "imperial");
+      expect(next[wing].depth).toBe(roundToSixteenthInch(WINGS[wing].depth));
+      expect(next[wing].run).toBe(roundToSixteenthInch(WINGS[wing].run));
+    }
+  });
+
+  it("the inner point moved 1/8 inch toward the stringer deepens the wing by 1/8; moved 1/2 inch tail-ward it lengthens the run by 1/2", () => {
+    const p = at({ wing: 0, point: "inner" });
+    const target: WingDragTarget = { wing: 0, point: "inner" };
+    const deeper = solveWingDrag(winged, WINGS, target, { ...p, halfWidth: mm(p.halfWidth - inchesToMm(1 / 8)) }, DROP, null, "imperial");
+    expect(deeper[0].depth).toBe(roundToSixteenthInch(mm(WING_1.depth + inchesToMm(1 / 8))));
+    expect(deeper[0].run).toBe(roundToSixteenthInch(WING_1.run));
+    const longer = solveWingDrag(winged, WINGS, target, { ...p, station: mm(p.station - inchesToMm(1 / 2)) }, DROP, null, "imperial");
+    expect(longer[0].run).toBe(roundToSixteenthInch(mm(WING_1.run + inchesToMm(1 / 2))));
+    expect(longer[0].depth).toBe(roundToSixteenthInch(WING_1.depth));
+  });
+
+  it("depth stays between 1/16 and 1 inch and run between 0 and 2 inches", () => {
+    const p = at({ wing: 0, point: "inner" });
+    const target: WingDragTarget = { wing: 0, point: "inner" };
+    const wild = solveWingDrag(winged, WINGS, target, { station: mm(-500), halfWidth: mm(-500) }, DROP, null, "imperial");
+    expect(wild[0].depth).toBe(inchesToMm(WING_DEPTH_RANGE_IN.max));
+    expect(wild[0].run).toBe(inchesToMm(WING_RUN_RANGE_IN.max));
+    const out = solveWingDrag(
+      winged,
+      WINGS,
+      target,
+      { station: mm(p.station + 500), halfWidth: mm(p.halfWidth + 500) },
+      DROP,
+      null,
+      "imperial",
+    );
+    expect(out[0].depth).toBe(inchesToMm(WING_DEPTH_RANGE_IN.min));
+    expect(out[0].run).toBe(inchesToMm(WING_RUN_RANGE_IN.min));
+  });
+
+  it("non-finite pointer input falls back to each range's minimum, as the outline's own solve does", () => {
+    const bad = { station: mm(NaN), halfWidth: mm(Infinity) };
+    const inner = solveWingDrag(winged, WINGS, { wing: 0, point: "inner" }, bad, DROP, null, "imperial");
+    expect(inner[0].depth).toBe(inchesToMm(WING_DEPTH_RANGE_IN.min));
+    expect(inner[0].run).toBe(inchesToMm(WING_RUN_RANGE_IN.min));
+    const outer = solveWingDrag(winged, WINGS, { wing: 0, point: "outer" }, bad, DROP, null, "imperial");
+    expect(outer[0].station).toBe(inchesToMm(WING_POSITION_MIN_IN));
+  });
+
+  it("in Metric a drag lands depth and run on whole millimetres", () => {
+    const p = at({ wing: 0, point: "inner" });
+    const dragged = { station: mm(p.station - 3.3), halfWidth: mm(p.halfWidth - 2.6) };
+    const next = solveWingDrag(winged, WINGS, { wing: 0, point: "inner" }, dragged, DROP, null, "metric");
+    expect(Number.isInteger(next[0].depth)).toBe(true);
+    expect(Number.isInteger(next[0].run)).toBe(true);
+    expect(next[0].depth).toBe(roundToWholeMm(mm(WING_1.depth + 2.6)));
+  });
+
+  it("the corner radius never sits above what fits the step after the drag", () => {
+    // Wing 2 starts rounded as far as it fits; a shorter, shallower step fits less.
+    const p = at({ wing: 1, point: "inner" });
+    const dragged = { station: mm(p.station + inchesToMm(1 / 4)), halfWidth: mm(p.halfWidth + inchesToMm(1 / 8)) };
+    const next = solveWingDrag(winged, WINGS, { wing: 1, point: "inner" }, dragged, DROP, null, "imperial");
+    expect(next[1].radius).toBeLessThanOrEqual(wingRadiusTop(next[1], "imperial"));
+    expect(next[1].radius).toBeLessThan(WING_2.radius);
+  });
+
+  it("only the dragged wing changes: same length, the other wing the very same object", () => {
+    const p = at({ wing: 1, point: "inner" });
+    const dragged = { ...p, halfWidth: mm(p.halfWidth - 3) };
+    const next = solveWingDrag(winged, WINGS, { wing: 1, point: "inner" }, dragged, DROP, null, "imperial");
+    expect(next).toHaveLength(WINGS.length);
+    expect(next[0]).toBe(WINGS[0]);
+    expect(next).not.toBe(WINGS);
+  });
+
+  it("nearestWingDragTarget: nothing out of reach, the nearer point in reach, the earlier one on a tie", () => {
+    const points = wingDragPoints(winged, WINGS, DROP);
+    const outer0 = points[0].point;
+    expect(nearestWingDragTarget(points, { station: mm(outer0.station + 100), halfWidth: outer0.halfWidth }, mm(10))).toBeNull();
+    expect(nearestWingDragTarget(points, { station: mm(outer0.station + 1), halfWidth: outer0.halfWidth }, mm(10))).toEqual({
+      wing: 0,
+      point: "outer",
+    });
+    const twin: WingDragPointAt[] = [
+      { target: { wing: 0, point: "outer" }, point: outer0 },
+      { target: { wing: 1, point: "outer" }, point: outer0 },
+    ];
+    expect(nearestWingDragTarget(twin, outer0, mm(1))).toEqual({ wing: 0, point: "outer" });
   });
 });
