@@ -183,6 +183,9 @@ wing) with the corner radius and the grab points as a toggle.
    piece of physical rail next to them — placement reads the winged outline, the 12" width is the finished
    outline's, each fin's distance in from the rail is measured from the winged rail at its own station, and a
    wing locked to the front fin settles by iteration and follows the fin's edge exactly.
+   **Settled at the first build's look** (the founder, 2026-10-15): position marks the apex of the wing, the outer
+   rail break point; the popup opens every time a board goes from no wings to one; the radius slider stops at the
+   largest round that fits; the return from FINS lands on VIEWER. Built in quick 261014-wii.
 
 ## Open Questions
 

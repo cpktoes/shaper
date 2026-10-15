@@ -107,10 +107,12 @@ Stations `s` along the board from the tail; the curve's half-width `hw(s)`; inch
 - Replacing the outline curve (B-spline or G2 Bézier) for the sake of wings: a phase-sized job, since a saved board
   is its slider settings and every board would redraw, for a widepoint curvature match worth under 1/64".
 
-## Open Questions
-Position marks the step's start (as sketched) or its middle? The popup once per board, or every time a wing is
-added? The corner-radius slider's top: the step's own limit (as sketched) or a fixed 3"? Two wings close together
-(11" and 13") crowd the chips and the right rail — sketch 015's question.
+## Open Questions — settled
+The founder ruled on the four left open, after the first build (2026-10-15), each as built: a wing's **position
+marks the apex of the wing, the outer rail break point** where the step leaves the curve; the dial-in popup opens
+**every time a board goes from no wings to one**; the corner-radius slider stops at **the largest round that fits**
+the step; and coming back from FINS **lands on VIEWER**. Two wings close together still crowd the chips and the
+right rail — sketch 015's question, if it ever bites.
 
 ## Origin
 Synthesized from sketches 013 (wings-on-the-outline, A) and 014 (wings-tab, B), 2026-10-14, with the founder's
