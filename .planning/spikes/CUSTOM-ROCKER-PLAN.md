@@ -148,7 +148,9 @@ deploy that reads it.
    bent blank, a short mark across the bottom where each bend starts (the Thinning Starts mark's grammar), and **the
    deviation from natural drawn as US Blanks' catalogue draws it (September 2026, page 11): the blank's outline, deck
    and bottom, in red over the first adjustment's span and in blue over the second's, stacked on the first**, with the
-   note's figures in the same colours where the note is shown large (the popup's header). Two colour tokens per
+   note's figures in the same colours where the note is shown large (the popup's header). **The coloured lines live
+   only in the Customize Rocker popup** (the founder, round eleven): once the change is saved and the shaper is back
+   on the page, the VIEWER draws the bent blank with the natural rocker dashed behind it and nothing coloured. Two colour tokens per
    theme, chosen to read on Slate and Daylight (the sketch's `--adj-1` / `--adj-2`; the app's `globals.css` gets its
    own, like sketch 012's compare blue). The five board stations read the custom figures as they do today; "Show
    measuring points" unchanged. No tip close-ups. **The popup's drawing has a Show my board switch, off by default**

@@ -38,8 +38,9 @@ sketch go to a Fable session.
   to a different blank clears the custom rocker.** Every blank is named
   the name then its rocker on its own line, `Natural` included; tables show Natural Rocker over Custom Rocker.
 - **The drawing shows the deviation as US Blanks' catalogue (September 2026, p. 11) draws it:** the outline red
-  over the first adjustment's span, blue over the second's, in colours that read on every theme. **The popup's
-  drawing has a Show my board switch, off by default** — the blank alone unless switched on.
+  over the first adjustment's span, blue over the second's, in colours that read on every theme — **inside the
+  Customize Rocker popup only**, a live aid while adjusting; the VIEWER afterwards shows nothing coloured. **The
+  popup's drawing has a Show my board switch, off by default** — the blank alone unless switched on.
 
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
 decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the

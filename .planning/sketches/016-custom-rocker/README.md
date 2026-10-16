@@ -149,6 +149,12 @@ the tail tip reads 3 1/2" → 4", the 12" station +9/32"); the overlay now follo
 must never carry two specs into one drawing: the geometry hands its own spec to the drawing (the fix here), and a unit
 test should read the overlay's span off the same spec as the curve.
 
+**Round eleven (the founder, 2026-10-16):** *"The red and blue lines on the customize rocker should only be on the
+customize rocker pop-up. We don't need the colored lines after the change has been saved, and the user is back using
+the regular parts of the app."* — *"The red and blue line are just so you could see in real time what that change is
+doing to the actual curve of the blank."* So the overlay is a live aid inside the popup only; the VIEWER afterwards
+shows the bent blank with the natural rocker dashed behind it, nothing coloured.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the
