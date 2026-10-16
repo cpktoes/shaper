@@ -9,6 +9,11 @@ import {
 import { CHIP_VALUE_INSET_PX, fitTextSize } from "@/components/viewer/chip-value-fit";
 import { WING_CARD_LABEL_PX, WING_CARD_PX, wingCardHeightPx } from "./wing-view-layout";
 
+/** How far the head's name sits below a chip's own name line, in screen px. */
+const NAME_NUDGE_PX = 1;
+/** The head value's room is divided by this before its value is fitted (see the head below). */
+const HEAD_VALUE_ALLOWANCE = 1.05;
+
 /** One labelled row under a card's head: `RUN 1/2"`, `RADIUS 15/16"`, `OFFSET +1/4"`. */
 export interface WingDataCardRow {
   key: "run" | "radius" | "offset";
@@ -42,7 +47,7 @@ export interface WingDataCardProps {
  * Drawn on the system's one card surface (`CalloutChipFrame`), 120 px wide at the pinned callout
  * size, so it reads as the same family as every chip:
  *
- * - **The head**, 32 px — exactly a `CalloutChip`'s: the name (accent ink when the wing is locked)
+ * - **The head**, 32 px — a `CalloutChip`'s, the name 1 px lower: the name (accent ink when the wing is locked)
  *   over the value, both centred, the value set smaller only when it would pass the card less 4 px
  *   a side (the hz7 rule).
  * - **A hairline** across the card under the head, in the frame's own `var(--border)`.
@@ -66,7 +71,10 @@ export function WingDataCard({ x, y, name, nameColor = "var(--outline-callout-la
   const top = y - height / 2;
   const headCentreY = top + (WING_CARD_PX.head / 2) * k;
   const centreX = x - width / 2;
-  const headValueSize = fitTextSize(value, sizes.value, width - 2 * CHIP_VALUE_INSET_PX * k);
+  // The head's room, less a 5% allowance: on a phone held sideways (the drawing below the pinned
+  // floor) Safari drew the two longest values 4.4% wider than the measured table, 1.1 px from the
+  // card's edge (quick 261015-my3); the allowance keeps them 4 px of the card inside each side.
+  const headValueSize = fitTextSize(value, sizes.value, (width - 2 * CHIP_VALUE_INSET_PX * k) / HEAD_VALUE_ALLOWANCE);
   const nameStyle = { fontSize: sizes.name, fontWeight: 700, fontFamily: "var(--font-body)", letterSpacing: "0.12em" };
   const inset = WING_CARD_PX.inset * k;
 
@@ -84,7 +92,15 @@ export function WingDataCard({ x, y, name, nameColor = "var(--outline-callout-la
           <line x1={x} y1={y} x2={leaderToX} y2={y} stroke="var(--outline-station-line)" strokeWidth={u} />
         ))}
       <CalloutChipFrame x={left} y={top} width={width} height={height} />
-      <text x={centreX} y={headCentreY + sizes.stackNameDy} textAnchor="middle" style={nameStyle} fill={nameColor}>
+      <text
+        x={centreX}
+        // A chip's own name line, 1 px lower: on a chip the name's text box (its font's full ascent)
+        // reaches within 0.2 px of the top edge; the card keeps every word's box 1 px inside it.
+        y={headCentreY + sizes.stackNameDy + NAME_NUDGE_PX * k}
+        textAnchor="middle"
+        style={nameStyle}
+        fill={nameColor}
+      >
         {name}
       </text>
       <text

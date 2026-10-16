@@ -1349,3 +1349,385 @@ test.describe("261007-fnz the computer's corner picture of the blank never zooms
     await expect(inset).toHaveAttribute("viewBox", viewBox);
   });
 });
+
+/* ── Quick 261015-my3 (2026-10-15, D7): the WINGS close-up zooms like the VIEWER ──────────────── */
+
+/** The WINGS close-up's svg. */
+function wingsSvg(page: Page): Locator {
+  return page.locator("svg[data-wing-close-up]");
+}
+
+/**
+ * TEMPLATE with the two default wings ("+ Add a wing", "+ Add wing 2") on the default board, on the
+ * WINGS tab, once React owns its toolbar. The first wing's pop-up is closed with "Got it".
+ */
+async function openWings(page: Page) {
+  await openTemplate(page);
+  await page.getByRole("tab", { name: "ADD WINGS" }).click();
+  await page.getByRole("button", { name: "+ Add a wing" }).click();
+  const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
+  await dialog.getByRole("button", { name: "Got it" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "+ Add wing 2" }).click();
+  await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+  await expect(wingsSvg(page)).toBeVisible();
+  await page.waitForTimeout(300);
+}
+
+/** The close-up's lines and words at their on-screen size: a stroke's width or a text's font size
+ * times the element's own screen scale. */
+async function wingsScreenSizes(page: Page) {
+  return wingsSvg(page).evaluate((svg) => {
+    const scaleOf = (el: Element) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM();
+      if (!m) throw new Error("no screen matrix");
+      return Math.hypot(m.a, m.b);
+    };
+    const stroke = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * scaleOf(el);
+    };
+    const font = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return Number.parseFloat(getComputedStyle(el).fontSize) * scaleOf(el);
+    };
+    const radius = (el: Element | null | undefined, what: string) => {
+      if (!el) throw new Error(`missing ${what}`);
+      return (el as SVGCircleElement).r.baseVal.value * scaleOf(el);
+    };
+    const card = svg.querySelector('[data-callout-chip^="WING 1"]');
+    const cardTexts = card ? card.querySelectorAll(":scope > text") : [];
+    return {
+      board: stroke(svg.querySelector('[data-board-silhouette="wings"]'), "board line"),
+      stringer: stroke(svg.querySelector("[data-wing-stringer]"), "stringer"),
+      finMark: stroke(svg.querySelector("[data-fin-mark] line"), "fin mark"),
+      noWingsCurve: stroke(svg.querySelector("[data-wing-base-outline]"), "no-wings curve"),
+      cardFrame: stroke(card?.querySelector("rect"), "card frame"),
+      cardName: font(cardTexts[0], "card name"),
+      cardValue: font(cardTexts[1], "card value"),
+      runRow: font(card?.querySelector('[data-wing-card-row="run"] text'), "RUN row"),
+      tailBlockWords: font(svg.querySelector("[data-tail-block-words] tspan"), "tail block words"),
+      grabPoint: radius(svg.querySelector("[data-wing-grab]"), "grab point"),
+    };
+  });
+}
+
+/** A point over the board below its widest part, clear of every grab point. */
+async function overTheTail(page: Page) {
+  const b = await page.locator('[data-board-silhouette="wings"]').boundingBox();
+  if (!b) throw new Error("no board line");
+  return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height * 0.55) };
+}
+
+test.describe("261015-my3 WINGS zoom — computer", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a mouse and its wheel");
+  });
+
+  test("the wheel zooms the close-up toward the pointer: the point under it stays put", async ({ page }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    const svg = wingsSvg(page);
+    const base = (await svg.getAttribute("viewBox")) ?? "";
+    await expect(zoomLevel(page)).toHaveText("1x");
+    const at = await overTheTail(page);
+    // The board-space point under the pointer, before and after.
+    const boardPointUnder = () =>
+      svg.evaluate((el, p) => {
+        const m = (el as SVGSVGElement).getScreenCTM()!.inverse();
+        const q = new DOMPoint(p.x, p.y).matrixTransform(m);
+        return { x: q.x, y: q.y };
+      }, at);
+    const before = await boardPointUnder();
+    await page.mouse.move(at.x, at.y);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await expect(svg).not.toHaveAttribute("viewBox", base);
+    const after = await boardPointUnder();
+    const pxPerUnit = await svg.evaluate((el) => (el as SVGSVGElement).getScreenCTM()!.a);
+    expect(Math.hypot(after.x - before.x, after.y - before.y) * pxPerUnit).toBeLessThan(2);
+  });
+
+  test("zoom in, zoom out and reset, and a double-click goes back to 1x", async ({ page }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    const svg = wingsSvg(page);
+    const base = (await svg.getAttribute("viewBox")) ?? "";
+    await expect(zoomOutButton(page)).toBeDisabled();
+    await expect(resetButton(page)).toBeDisabled();
+    await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1.5x");
+    await zoomOutButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await resetButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(svg).toHaveAttribute("viewBox", base);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const at = await overTheTail(page);
+    await page.mouse.dblclick(at.x, at.y);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await expect(svg).toHaveAttribute("viewBox", base);
+  });
+
+  test("above 1x a drag on the close-up pans it, never past its edge; at 1x a drag changes nothing", async ({ page }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    const svg = wingsSvg(page);
+    const base = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const at = await overTheTail(page);
+
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 80, at.y + 40, { steps: 6 });
+    await page.mouse.up();
+    expect(parseBox((await svg.getAttribute("viewBox")) ?? "")).toEqual(base);
+
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const before = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    const unitsPerPx = await svg.evaluate((el) => 1 / (el as SVGSVGElement).getScreenCTM()!.a);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x, at.y - 60, { steps: 6 });
+    await page.mouse.up();
+    const after = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    // The drawing followed the pointer up: the view moved down by 60 px of drawing.
+    expect(after.y).toBeCloseTo(before.y + 60 * unitsPerPx, 1);
+
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 3000, at.y + 3000, { steps: 10 });
+    await page.mouse.up();
+    const far = parseBox((await svg.getAttribute("viewBox")) ?? "");
+    expect(far.x).toBeCloseTo(base.x, 3);
+    expect(far.y).toBeCloseTo(base.y, 3);
+  });
+
+  test("lines, cards, words and grab points keep their screen size at 6x, and the board line stays the VIEWER's weight", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await page.waitForTimeout(300);
+    const atOne = await wingsScreenSizes(page);
+    for (let i = 0; i < 10; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("6x");
+    await page.waitForTimeout(300);
+    const atSix = await wingsScreenSizes(page);
+    for (const key of Object.keys(atOne) as (keyof typeof atOne)[]) {
+      expect(atOne[key], `${key} at 1x`).toBeGreaterThan(0);
+      const tolerance = key.startsWith("card") || key.endsWith("Row") || key === "tailBlockWords" ? 0.5 : 0.05;
+      expect(Math.abs(atSix[key] - atOne[key]), `${key}: ${atOne[key]} px at 1x, ${atSix[key]} px at 6x`).toBeLessThan(tolerance);
+    }
+    // D1: at 6x the board line is still the VIEWER's own at 1x in this window.
+    await page.getByRole("tab", { name: "VIEWER" }).click();
+    await expect(templateSvg(page)).toBeVisible();
+    await page.waitForTimeout(300);
+    const viewerLine = await page.locator('[data-board-silhouette="outline"]').evaluate((el) => {
+      const m = (el as SVGGraphicsElement).getScreenCTM()!;
+      return Number.parseFloat(getComputedStyle(el).strokeWidth) * Math.hypot(m.a, m.b);
+    });
+    expect(Math.abs(atSix.board - viewerLine)).toBeLessThanOrEqual(0.05);
+  });
+
+  test("at 3x a grab point drags its wing to where the pointer is, and the close-up holds still while it is held", async ({
+    page,
+  }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    // Wing 1, unlocked, so its outer point slides it along the rail.
+    await page.getByRole("checkbox", { name: "Lock to front fin" }).click();
+    await page.getByRole("button", { name: "Show construction lines" }).click();
+    const svg = wingsSvg(page);
+    const grab = page.locator('[data-wing-grab="outer"][data-wing="1"]');
+    const at0 = await grab.boundingBox();
+    if (!at0) throw new Error("no grab point");
+    // Zoom toward the grab point itself so it stays on screen.
+    await page.mouse.move(at0.x + at0.width / 2, at0.y + at0.height / 2);
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(200);
+      await page.mouse.wheel(0, -100);
+    }
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.waitForTimeout(200);
+    const at = await grab.boundingBox();
+    if (!at) throw new Error("no grab point at 3x");
+    const start = { x: at.x + at.width / 2, y: at.y + at.height / 2 };
+    const position = page.locator('[data-wing-controls="1"]').getByText(/^Position from tail — /);
+    const inches = (t: string | null) => {
+      const m = (t ?? "").split(" — ")[1]?.match(/^(\d+)?\s*(?:(\d+)\/(\d+))?"/);
+      if (!m) throw new Error(`not an inch reading: ${t}`);
+      return Number(m[1] ?? 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+    };
+    const before = inches(await position.textContent());
+    const ppi = await svg.evaluate((el) => Number((el as SVGSVGElement).dataset.unitsPerInch) * (el as SVGSVGElement).getScreenCTM()!.a);
+    const viewBox = await svg.getAttribute("viewBox");
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await expect(svg).toHaveAttribute("data-held", "true");
+    await page.mouse.move(start.x, start.y - ppi / 2, { steps: 6 });
+    // Held still: the window and the zoomed view read what they read before the press.
+    await expect(svg).toHaveAttribute("viewBox", viewBox ?? "");
+    await page.mouse.up();
+    // Half an inch toward the nose, within one 1/16" step.
+    await expect.poll(async () => Math.abs(inches(await position.textContent()) - before - 0.5)).toBeLessThanOrEqual(1 / 16 + 1e-9);
+    await expect(zoomLevel(page)).toHaveText("3x");
+  });
+
+
+  // The orchestrator's ruling (2026-10-15): "zoom like the viewer" includes the VIEWER's grid. At 3x
+  // on a 1280 x 800 window the close-up draws about 66 px per inch, so the finest rung 20 px apart is
+  // 1/2" (1 cm in Metric), the inch (2 cm) lines darker.
+  for (const system of ["imperial", "metric"] as const) {
+    const [stepMm, majorMm, words] = system === "imperial" ? [12.7, 25.4, "1/2-inch lines, the inch lines"] : [10, 20, "1 cm lines, the 2 cm lines"];
+    test(`the grid (${system}): none at 1x; at 3x on the tail the ${words} darker, counted from the tail tip and the stringer`, async ({
+      page,
+    }) => {
+      await dismissChrome(page);
+      if (system === "metric") await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+      await openWings(page);
+      const grid = page.locator("[data-wing-close-up] [data-zoom-grid]");
+      await expect(zoomLevel(page)).toHaveText("1x");
+      await expect(grid).toHaveCount(0);
+      const at = await overTheTail(page);
+      await page.mouse.move(at.x, at.y);
+      for (let i = 0; i < 4; i++) {
+        await page.waitForTimeout(200);
+        await page.mouse.wheel(0, -100);
+      }
+      await expect(zoomLevel(page)).toHaveText("3x");
+      await expect(grid).toHaveCount(1);
+      const read = await wingsSvg(page).evaluate(
+        (svg, { stepMm, majorMm }) => {
+          const n = (l: Element, a: string) => Number(l.getAttribute(a));
+          const unitsPerMm = Number((svg as SVGSVGElement).dataset.unitsPerInch) / 25.4;
+          const stringer = svg.querySelector("[data-wing-stringer]")!;
+          const stringerX = n(stringer, "x1");
+          const tailY = n(stringer, "y2") - 6;
+          const lines = [...svg.querySelectorAll("[data-zoom-grid] line")];
+          const across = lines.filter((l) => n(l, "x1") === n(l, "x2"));
+          const along = lines.filter((l) => n(l, "y1") === n(l, "y2"));
+          const onGrid = (units: number, stepMmHere: number) => {
+            const k = units / unitsPerMm / stepMmHere;
+            return Math.abs(k - Math.round(k)) < 2e-3;
+          };
+          const offset = (l: Element) => (n(l, "x1") === n(l, "x2") ? n(l, "x1") - stringerX : tailY - n(l, "y1"));
+          const spacing = across.length > 1 ? Math.abs(n(across[1], "x1") - n(across[0], "x1")) / unitsPerMm : 0;
+          return {
+            spacingMm: Math.round(spacing * 10) / 10,
+            acrossOnGrid: across.length > 0 && across.every((l) => onGrid(offset(l), stepMm)),
+            alongOnGrid: along.length > 0 && along.every((l) => onGrid(offset(l), stepMm)),
+            majorsOnTheirGrid: lines.filter((l) => l.hasAttribute("data-major")).every((l) => onGrid(offset(l), majorMm)),
+            someMinor: lines.some((l) => !l.hasAttribute("data-major")),
+            someMajor: lines.some((l) => l.hasAttribute("data-major")),
+          };
+        },
+        { stepMm, majorMm },
+      );
+      expect(read).toEqual({
+        spacingMm: stepMm,
+        acrossOnGrid: true,
+        alongOnGrid: true,
+        majorsOnTheirGrid: true,
+        someMinor: true,
+        someMajor: true,
+      });
+    });
+  }
+
+  test("switching to VIEWER and back starts the close-up at 1x; nothing about the zoom is saved", async ({ page }) => {
+    await dismissChrome(page);
+    await openWings(page);
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    await page.getByRole("tab", { name: "VIEWER" }).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await page.getByRole("tab", { name: /^WINGS/ }).click();
+    await expect(zoomLevel(page)).toHaveText("1x");
+    for (let i = 0; i < 4; i++) await zoomInButton(page).click();
+    await expect(zoomLevel(page)).toHaveText("3x");
+    const keys = await page.evaluate(() => [...Object.keys(window.localStorage), ...Object.keys(window.sessionStorage)]);
+    expect(keys.filter((key) => /zoom/i.test(key))).toEqual([]);
+    const values = await page.evaluate(() =>
+      [...Object.values(window.localStorage), ...Object.values(window.sessionStorage)].join("\n"),
+    );
+    expect(values).not.toMatch(/zoom/i);
+    await page.reload();
+    await page.waitForFunction(() => {
+      const el = document.querySelector("[data-viewer-toolbar] button");
+      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+    });
+    // A reload starts a fresh board (signed out, nothing saved here), so the tab may read ADD WINGS.
+    await page.getByRole("tab", { name: /WINGS/ }).click();
+    await expect(wingsSvg(page)).toBeVisible();
+    await expect(zoomLevel(page)).toHaveText("1x");
+  });
+});
+
+test.describe("261015-my3 WINGS zoom — fingers (Android, real touch input)", () => {
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "CDP touch input is Chromium's");
+  });
+
+  test("two fingers pinch the close-up in and the page never zooms; a double-tap goes back to 1x; one finger on a grab point drags its wing while zoomed", async ({
+    page,
+  }) => {
+    test.slow();
+    await dismissChrome(page);
+    await page.goto("/design/outline");
+    await page.getByRole("tab", { name: "ADD WINGS" }).click();
+    await page.locator("[data-design-controls-scroll]").getByRole("button", { name: "+ Add a wing" }).click();
+    const dialog = page.getByRole("dialog", { name: "Dial in your wing placement" });
+    await dialog.getByRole("button", { name: "Got it" }).click();
+    await expect(dialog).toHaveCount(0);
+    // Unlocked, so the outer grab point slides wing 1 along the rail.
+    await page.getByRole("checkbox", { name: "Lock to front fin" }).click();
+    await expect(page.getByRole("slider", { name: "Wing 1 position from tail" })).toBeEnabled();
+    // The drawing back in view above the stacked controls.
+    await wingsSvg(page).scrollIntoViewIfNeeded();
+    const svg = wingsSvg(page);
+    const grab = page.locator('[data-wing-grab="outer"][data-wing="1"]');
+    await expect(grab).toHaveCount(1);
+    const cdp = await page.context().newCDPSession(page);
+
+    const g0 = await grab.boundingBox();
+    if (!g0) throw new Error("no grab point");
+    const gc = { x: g0.x + g0.width / 2, y: g0.y + g0.height / 2 };
+    // Two fingers either side of the grab point (30 px off it, outside its 22 px reach), spreading:
+    // the close-up zooms in about the grab point, which stays where it is.
+    await pinch(cdp, gc.x, gc.y, 60, 140);
+    await expect.poll(async () => levelNumber(page)).toBeGreaterThan(1);
+    expect(await page.evaluate(() => window.visualViewport?.scale ?? 1)).toBe(1);
+    const level = await levelNumber(page);
+
+    // One finger on the grab point drags the wing toward the nose, and never pans.
+    const g1 = await grab.boundingBox();
+    if (!g1) throw new Error("no grab point zoomed");
+    const position = page.locator('[data-wing-controls="1"]').getByText(/^Position from tail — /);
+    const before = await position.textContent();
+    const viewBox = await svg.getAttribute("viewBox");
+    await swipe(cdp, g1.x + g1.width / 2, g1.y + g1.height / 2, g1.x + g1.width / 2, g1.y + g1.height / 2 - 40, 6);
+    await expect(position).not.toHaveText(before ?? "");
+    expect(await levelNumber(page)).toBe(level);
+    await expect(svg).toHaveAttribute("viewBox", viewBox ?? "");
+
+    // A double-tap on empty canvas goes back to 1x.
+    const box = await svg.boundingBox();
+    if (!box) throw new Error("no close-up box");
+    const empty = { x: box.x + box.width - 30, y: box.y + box.height - 30 };
+    for (let i = 0; i < 2; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: empty.x, y: empty.y, id: 0 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(80);
+    }
+    await expect.poll(async () => levelNumber(page)).toBe(1);
+  });
+});
