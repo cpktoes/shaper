@@ -304,14 +304,16 @@ export function BlankFilterBar({
             <StarIcon aria-hidden className="size-3.5 fill-current" />
             Starred only
           </button>
-          <label data-sort-chip className={cn(CHIP_CLASS, CHIP_OFF, "cursor-default gap-1.5 py-0 pr-1.5")}>
+          {/* The select draws without the browser's own look (`appearance-none`), so WebKit honours its
+              44-dot touch height; the chevron is drawn here instead. */}
+          <label data-sort-chip className={cn(CHIP_CLASS, CHIP_OFF, "relative cursor-default gap-1.5 py-0 pr-2")}>
             Sort
             <select
               data-lock-exempt
               aria-label="Sort"
               value={sort}
               onChange={(event) => onSortChange(event.target.value as BlankSort)}
-              className="focus-ring-accent cursor-pointer rounded-full bg-surf-sidebar py-1.5 text-xs font-bold text-surf-ink coarse:min-h-11"
+              className="focus-ring-accent cursor-pointer appearance-none rounded-full bg-transparent py-1.5 pr-5 text-xs font-bold text-surf-ink coarse:min-h-11"
             >
               {BLANK_SORTS.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -319,6 +321,7 @@ export function BlankFilterBar({
                 </option>
               ))}
             </select>
+            <ChevronDownIcon aria-hidden className="pointer-events-none absolute right-2.5 size-3.5" />
           </label>
         </div>
       </div>

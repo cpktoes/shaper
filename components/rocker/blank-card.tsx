@@ -354,8 +354,16 @@ export function BlankCard({
           <div className="[@media(max-height:500px)]:hidden">
             <StationTable record={record} system={system} />
           </div>
+          {/* The line may wrap only at its " · " — never inside a figure like 4 7/8". */}
           <p data-compact-line className="hidden text-xs text-surf-ink-muted tabular-nums [@media(max-height:500px)]:block">
-            {compactLine(prepared, system)}
+            {compactLine(prepared, system)
+              .split(" · ")
+              .map((part, i) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  <span className="whitespace-nowrap">{part}</span>
+                </span>
+              ))}
           </p>
           {reasonLine}
         </div>
