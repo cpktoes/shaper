@@ -9,8 +9,12 @@
  * physical edge of the foam to set your rail gap. Fins listen to the closest piece of physical rail
  * next to them."
  *
- * So the fins are placed on the WINGED outline, exactly as Import Template places them on the drawn
- * outline (`deriveEffectiveFins` plus `importedFinTailFromOutline`). Each wing locks in its own slot
+ * So the fins are placed on the WINGED outline, exactly as Import Template places them on it
+ * (`deriveEffectiveFins` plus `importedFinTailFromOutline`) — with every wing's corner radius set to
+ * 0 (quick 261015-u8y, 2026-10-15). The founder: "I think the fin placement should be linked to the
+ * unrounded outline, so that the rounding has no affect on fin placement. It's the wing position
+ * that does." So a corner radius never moves a fin or a locked wing, while the lock still settles
+ * on exactly the outline the screen places the fins on (`outlineForFins`). Each wing locks in its own slot
  * only (the founder, 2026-10-15): "Only wing 1 gets lock to front fins option." "Wing 2 can lock to
  * rear if it's a quad setup, otherwise no lock." "Fin edge should always be to trailing edge for the
  * lock, so we can get rid of that selector." Wing 1 follows the front fins' trailing edge, wing 2 a
@@ -51,6 +55,7 @@ import {
   WING_FIN_BOX_FREE_DEPTH_IN,
   WING_POSITION_MIN_IN,
   clampWingStations,
+  outlineForFins,
   outlineWithoutWings,
   wingFinBoxDistance,
   wingLockEdge,
@@ -86,9 +91,12 @@ export function lockedWingStation(w: Wing, index: number, edges: WingFinEdges, g
   return mm(Math.max(inchesToMm(WING_POSITION_MIN_IN), Math.min(wingPositionTop(g), edge + w.finOffset)));
 }
 
+// The fins are placed on the sharp-cornered outline (quick 261015-u8y, D2): the same outline the
+// design store hands the fin maths, so the lock and the screen never disagree.
 function placeFins(outline: OutlineSpec, fins: FinPlacementSpec, finsImportTemplate: boolean): WingFinEdges {
-  const geometry = buildOutline(outline);
-  const effective = deriveEffectiveFins(fins, finsImportTemplate, outline, geometry);
+  const finOutline = outlineForFins(outline);
+  const geometry = buildOutline(finOutline);
+  const effective = deriveEffectiveFins(fins, finsImportTemplate, finOutline, geometry);
   const importedTail = finsImportTemplate ? importedFinTailFromOutline(geometry) : null;
   return wingFinEdges(computeFinPlacement(effective, importedTail).marks);
 }
@@ -106,7 +114,9 @@ function withWings(outline: OutlineSpec, before: readonly Wing[], after: readonl
  * pass places the fins on the outline as it stands, moves every locked wing to its target, applies
  * the clamp, and repeats until the largest move is under 1/32", at most three passes. The stored
  * station is the starting guess, so a board saved with its resolved stations settles in one pass; a
- * pass that moves nothing hands back the same object.
+ * pass that moves nothing hands back the same object. Every wing comes back with the corner radius
+ * the shaper asked for (261015-u8y, P4): only the stations move — the fins are placed on a sharpened
+ * copy inside `placeFins`, which is never stored or drawn.
  */
 export function resolveWingStations(
   outline: OutlineSpec,

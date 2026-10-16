@@ -38,8 +38,10 @@ the ☰ tiles) follows through the one builder and sampler.
 - **Depth** — 1/16" to 1" toward the stringer.
 - **Run along the stringer** — 0 (a square step) to 2".
 - **Corner radius** — rounds the outer and inner corners, capped at the largest radius whose two rounds still fit
-  the step, so the run alone decides the step's length: a square 3/8" step rounds up to 3/16", a 1" run allows nearly
-  3". The founder: "more of a radius rounder on the wing's outer and inner points rather than also adjusting along
+  the step: a square 3/8" step rounds up to 3/16", a 1" run allows nearly 3". The rounds reach a tangent length
+  `t = R·tan(θ/2)` beyond each end of the run, so a rounded step starts `t` nose-ward of the wing's position and
+  settles `t` past its inner corner (corrected 2026-10-15, quick 261015-u8y — this note used to say the run alone
+  decides the step's length). The founder: "more of a radius rounder on the wing's outer and inner points rather than also adjusting along
   the stringer appearance."
 
 **Where it lives** (014 B). A tab beside VIEWER on the TEMPLATE page: **ADD WINGS** until the board has one, then
@@ -142,6 +144,14 @@ takes nothing at its outer corner. A wing locked to the front fin therefore sett
 the wing, the wing moves the 12" width, the width moves the fins) — at most three passes, one on an ordinary
 board — and its resolved station follows the fin's edge exactly rather than snapping to a sixteenth; the offset
 and every set value still move in sixteenths. With Import Template off, FINS' standalone calculator knows no wings.
+
+**The fins read the step sharp (the founder, 2026-10-15, quick 261015-u8y).** Turning a wing's corner radius had been
+moving the quad's rear fins by a few hundredths of an inch, so the founder ruled: "I think the fin placement should be
+linked to the unrounded outline, so that the rounding has no affect on fin placement. It's the wing position that
+does." In the app: every fin calculation — the 12" width, each fin's distance in from the rail, and the wing lock —
+reads the winged outline with each corner radius set to 0 (`outlineForFins`), so a radius never moves a fin, while a
+wing's position, depth and run still do. FINS and every other drawing keep the rounded corners ("keep the rounded
+corners on the FINS drawing."), and a fin's in-from-the-rail is measured to the sharp step, not the drawn rounded rail.
 
 ## The step, as maths
 Stations `s` along the board from the tail; the curve's half-width `hw(s)`; inches throughout.

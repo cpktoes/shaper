@@ -416,13 +416,18 @@ interface FinViewerProps {
   showCallouts: boolean;
   /** The real designed outline (from the shared design store), drawn behind the fin marks in
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
-   * values. `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
+   * values. It is the DRAWN board, rounded wing corners included (quick 261015-u8y, D4: "keep the
+   * rounded corners on the FINS drawing."). `null`/`undefined` falls back to `tailOutlineHalfPoints`. */
   outlineOverride?: { points: Point2D[]; connector: Point2D | null } | null;
   /** The same tail `computeFinPlacement` was given while FINS imports the template (quick
    * 260928-p45). Every rail edge this drawing measures from reads it, exactly as the prototype
    * routes each through `effectiveHalfWidthAt`: the off-tail extension ends, the off-rail
-   * dimension's rail end, the half-spread extension and the callout column's clearance.
-   * `null`/`undefined` means the generic tail curve, as before. */
+   * dimension's rail end, the half-spread extension and the callout column's clearance. It is the
+   * tail the fin maths read, with every wing corner sharp (261015-u8y, P2), so each dimension line
+   * spans exactly its number and a fin's in-from-the-rail is measured to the sharp step — where a
+   * rounded corner reaches a fin, the off-rail line's rail end stands that far outside the drawn
+   * rail (0.024" on the Mid-length's rear-locked wing at its top radius). `null`/`undefined` means
+   * the generic tail curve, as before. */
   importedTail?: ImportedFinTail | null;
   /** Embedding-only display used by the Summary dashboard's Fin Placement card (Fins.dc.html
    * lines 25-72, 1363-1373): drops the legend column, adds a top-centre length heading, and

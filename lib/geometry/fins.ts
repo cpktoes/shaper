@@ -1247,7 +1247,9 @@ export function tailOffTailAtHalfWidth(
  * The one place the app builds the prototype's `tailGeom` (quick 260928-p45) — pure, reaching for
  * nothing outside `lib/geometry`. The store calls this only while FINS' Import Template box is
  * ticked, and passes the result as `computeFinPlacement`'s (and `tailHalfWidthAt`'s /
- * `tailOffTailAtHalfWidth`'s) `importedTail` argument.
+ * `tailOffTailAtHalfWidth`'s) `importedTail` argument. The store now cuts it twice while Import
+ * Template is ticked (quick 261015-u8y, D4): from the sharp-cornered outline for the fin maths, and
+ * from the drawn, rounded outline for FINS' drawing.
  */
 export function importedFinTailFromOutline(geometry: OutlineGeometry): ImportedFinTail {
   const points: Point2D[] = geometry.points
