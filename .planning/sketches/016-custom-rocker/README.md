@@ -140,6 +140,15 @@ switch, off by default: the blank alone on its bottom plane, its nose and tail f
 rails, the red and blue adjustments over it; switched on, the board sits in the blank with the five stations as the
 page draws them.
 
+**Round ten (the founder, 2026-10-16): a drawing bug, caught by the founder.** *"I'm seeing positive rocker, but the
+image is displaying it as reduced rocker"* and *"one of the examples said nose rocker was from center but the red line
+only went back about 18 inches."* The popup's drawing coloured the red and blue spans from the board's current rocker,
+not from the draft being edited, so the overlay could follow a different curve from the foam — and read as less rocker,
+or start at the saved blank's 18" bend while the draft said the centre. The figures were right throughout (for `+1/2"T`
+the tail tip reads 3 1/2" → 4", the 12" station +9/32"); the overlay now follows the curve it is drawn on. The build
+must never carry two specs into one drawing: the geometry hands its own spec to the drawing (the fix here), and a unit
+test should read the overlay's span off the same spec as the curve.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

@@ -375,7 +375,7 @@ function geometry(r = state.rocker) {
   const stationRocker = {}; for (const st of d.stations) { const i = Math.round((st.sIn / L) * (d.board.length - 1)); stationRocker[st.key] = boardRocker[i][1]; }
   const pivots = [...r.nose.filter((c) => c.a).map((c) => ({ end: "nose", c, x: c.f === null ? bl.centreFromTailIn : bl.lengthIn - c.f })), ...r.tail.filter((c) => c.a).map((c) => ({ end: "tail", c, x: c.f === null ? bl.centreFromTailIn : c.f }))];
   const lowMoved = Math.abs(lev) > 1e-6;
-  return { d, bl, L, start, u, shift, boardRocker, blankBottom, blankLev, natAt, stationRocker, pivots, lowMoved, lev };
+  return { r, d, bl, L, start, u, shift, boardRocker, blankBottom, blankLev, natAt, stationRocker, pivots, lowMoved, lev };
 }
 
 /* ---------- drawing ---------- */
@@ -384,7 +384,7 @@ function mainArt(device, g, opts = {}) {
   const showBoard = opts.board !== false;
   const upright = device === "phone";
   const W = upright ? 386 : device === "side" ? 530 : 880, H = upright ? 330 : device === "side" ? 220 : 420;
-  const r = state.rocker, custom = !isNatural(r);
+  const r = g.r || state.rocker, custom = !isNatural(r);
   const lo = Math.min(0, g.start), hi = Math.max(g.L, g.start + g.bl.lengthIn), span = hi - lo;
   const along = upright ? H - 36 : W - 110, k = along / span;
   // the board's height axis at the same scale (true proportion, as the app draws it)
@@ -462,7 +462,7 @@ function mainArt(device, g, opts = {}) {
 }
 /** A tip close-up: the last `win` inches of one end, at a scale that fills the box, natural dashed against custom. */
 function closeup(end, g) {
-  const r = state.rocker, custom = !isNatural(r);
+  const r = g.r || state.rocker, custom = !isNatural(r);
   const W = 620, H = 150, win = Math.min(36, g.bl.lengthIn / 3), L = g.L;
   const s0 = end === "nose" ? Math.max(g.start + g.bl.lengthIn, L) - win : Math.min(g.start, 0), s1 = s0 + win;
   const inWin = (pts) => pts.filter((p) => p[0] >= s0 - 0.01 && p[0] <= s1 + 0.01);
