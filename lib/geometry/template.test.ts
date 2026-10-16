@@ -44,6 +44,8 @@ import {
   templatePageBoxes,
 } from "./template";
 import { formatMark, stationLabel } from "./measure-display";
+import { formatDim } from "./measure-display";
+import { isWingMark, markLabel, wingMarkDistanceText } from "./template";
 import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -2483,5 +2485,211 @@ describe("scaleSquarePlacement", () => {
     // station) than the name-block ceiling actually used.
     const howToBoxCeiling = outboardHowToBox.topStation - HOWTO_BOX_HEIGHT_MM - NAME_BOX_CLEARANCE_MM;
     expect(placement.topStation).toBeGreaterThan(howToBoxCeiling);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Quick 261015-sei (2026-10-15): wing marks on the full-size prints. Added below the frozen pins;
+// no line above this comment changed (D4).
+
+describe("wing marks on the full-size prints (quick 261015-sei)", () => {
+  const FISH = BOARD_PRESETS.find((p) => p.id === "fish")!;
+  const MIDLENGTH = BOARD_PRESETS.find((p) => p.id === "midlength")!;
+  const WING_1 = inchesToMm(7.5);
+  const WING_2 = inchesToMm(4.5);
+  const fishGeometry = buildOutline(FISH.outline);
+  const wingStations = [{ station: WING_1 }, { station: WING_2 }];
+  const THRESHOLD = MARK_LABEL_COLLISION_THRESHOLD_MM;
+
+  it("gives a board with no wings exactly today's marks, placements, segments and strip rows (D4)", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      const plain = computeTemplateMarks(geometry);
+      const empty = computeTemplateMarks(geometry, []);
+      expect(JSON.stringify(empty)).toBe(JSON.stringify(plain));
+      expect(Object.keys(empty)).toEqual(Object.keys(plain));
+      for (const paper of PAPERS) {
+        const layout = computeTemplateLayout(geometry, paper);
+        expect(markPlacements(layout, empty, geometry)).toEqual(markPlacements(layout, plain, geometry));
+        expect(markLineSegments(layout, empty, geometry)).toEqual(markLineSegments(layout, plain, geometry));
+        const strip = computeStripLayout(geometry, paper);
+        expect(stripMarkSegments(strip, empty, geometry)).toEqual(stripMarkSegments(strip, plain, geometry));
+        expect(stripLabelRows(strip, empty, geometry)).toEqual(stripLabelRows(strip, plain, geometry));
+      }
+    }
+  });
+
+  it("adds wing1 and wing2 after the station marks, and only as many as there are wings", () => {
+    const marks = computeTemplateMarks(fishGeometry, wingStations);
+    const keys = Object.keys(marks);
+    expect(keys.slice(-2)).toEqual(["wing1", "wing2"]);
+    expect(marks.wing1).toBe(WING_1);
+    expect(marks.wing2).toBe(WING_2);
+    const one = computeTemplateMarks(fishGeometry, [wingStations[0]]);
+    expect(Object.keys(one)).toContain("wing1");
+    expect("wing2" in one).toBe(false);
+  });
+
+  it("names a wing's mark and reads its distance from the tail as a dim", () => {
+    expect(markLabel("wing1", "imperial")).toBe("Wing 1");
+    expect(markLabel("wing2", "metric")).toBe("Wing 2");
+    expect(wingMarkDistanceText(WING_1, "imperial")).toBe('7 1/2" from tail');
+    expect(wingMarkDistanceText(WING_1, "metric")).toBe("19.1 cm from tail");
+    for (const system of ["imperial", "metric"] as const) {
+      expect(wingMarkDistanceText(WING_1, system)).toBe(`${formatDim(WING_1, system)} from tail`);
+      for (const mark of ["noseTwelve", "tailTwelve", "center", "widepoint", "tailBlock"] as const) {
+        expect(markLabel(mark, system)).toBe(markLabels(system)[mark]);
+      }
+    }
+    expect(isWingMark("wing1")).toBe(true);
+    expect(isWingMark("center")).toBe(false);
+  });
+
+  it("draws each wing's line from the stringer to the curve, labelled on the column-0 page only", () => {
+    const marks = computeTemplateMarks(fishGeometry, wingStations);
+    for (const paper of PAPERS) {
+      const layout = computeTemplateLayout(fishGeometry, paper);
+      const segments = markLineSegments(layout, marks, fishGeometry);
+      for (const [name, station] of [["wing1", WING_1], ["wing2", WING_2]] as const) {
+        const mine = segments.filter((s) => s.mark === name);
+        expect(mine.length).toBeGreaterThan(0);
+        expect(mine[0].halfWidthRange[0]).toBe(0);
+        expect(mine[mine.length - 1].halfWidthRange[1]).toBeCloseTo(sampleOutline(fishGeometry, station), 6);
+        for (const s of mine) {
+          expect(s.hasLabel).toBe(layout.pages[s.pageIndex].col === 0);
+          expect(s.label).toBe(name === "wing1" ? "Wing 1" : "Wing 2");
+        }
+        expect(mine.filter((s) => s.hasLabel).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("labels the Paper Saver's wing rows with the distance from the tail", () => {
+    const marks = computeTemplateMarks(fishGeometry, wingStations);
+    const strip = computeStripLayout(fishGeometry, "letter");
+    const seg = stripMarkSegments(strip, marks, fishGeometry).find((s) => s.mark === "wing1");
+    expect(seg?.label).toBe('Wing 1 — 7 1/2" from tail');
+    const metric = stripMarkSegments(strip, marks, fishGeometry, "metric").find((s) => s.mark === "wing1");
+    expect(metric?.label).toBe("Wing 1 — 19.1 cm from tail");
+    // Every other mark still reads its width.
+    const center = stripMarkSegments(strip, marks, fishGeometry).find((s) => s.mark === "center");
+    expect(center?.label).toBe(`Centre — ${formatDim(mm(center!.halfWidthExtent * 2), "imperial")}`);
+  });
+
+  describe("a wing label never prints on another label (P5)", () => {
+    const midGeometry = buildOutline(MIDLENGTH.outline);
+    const anchor = (p: { station: number; labelOffsetMm: number }) => p.station - p.labelOffsetMm;
+
+    function pageWith(wingStation: number, paper: PaperSize) {
+      const layout = computeTemplateLayout(midGeometry, paper);
+      const marks = computeTemplateMarks(midGeometry, [{ station: mm(wingStation) }]);
+      const placements = markPlacements(layout, marks, midGeometry);
+      const wing = placements.find((p) => p.mark === "wing1")!;
+      const same = placements.filter((p) => p.pageIndex === wing.pageIndex);
+      return { wing, tail: same.find((p) => p.mark === "tailTwelve")!, same };
+    }
+
+    it("puts a wing exactly on the Tail 12 inch line under it, with Tail 12 above", () => {
+      for (const paper of PAPERS) {
+        const { wing, tail } = pageWith(MEASURE_STATION_MM, paper);
+        expect(wing.labelOffsetMm).toBe(THRESHOLD);
+        expect(tail.labelOffsetMm).toBe(0);
+      }
+    });
+
+    it("lets the nose-ward one of a close pair keep its label above its line", () => {
+      for (const paper of PAPERS) {
+        const nose = pageWith(MEASURE_STATION_MM + inchesToMm(1 / 8), paper);
+        expect(nose.wing.labelOffsetMm).toBe(0);
+        expect(nose.tail.labelOffsetMm).toBe(THRESHOLD);
+        const tailWard = pageWith(MEASURE_STATION_MM - inchesToMm(1 / 8), paper);
+        expect(tailWard.wing.labelOffsetMm).toBe(THRESHOLD);
+        expect(tailWard.tail.labelOffsetMm).toBe(0);
+      }
+    });
+
+    it("leaves a wing 30 mm from every mark exactly where it was", () => {
+      for (const paper of PAPERS) {
+        const { wing, same } = pageWith(MEASURE_STATION_MM + 30, paper);
+        expect(wing.labelOffsetMm).toBe(0);
+        const without = markPlacements(
+          computeTemplateLayout(midGeometry, paper),
+          computeTemplateMarks(midGeometry),
+          midGeometry,
+        ).filter((p) => p.pageIndex === wing.pageIndex);
+        for (const p of same.filter((q) => q.mark !== "wing1")) {
+          expect(p.labelOffsetMm).toBe(without.find((q) => q.mark === p.mark)!.labelOffsetMm);
+        }
+      }
+    });
+
+    it("sweeps every wing position on every preset and paper: wing labels stay a full threshold from every other label", () => {
+      let cases = 0;
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        const top = Math.min(geometry.length / 2, geometry.widePointStation);
+        for (const paper of PAPERS) {
+          const layout = computeTemplateLayout(geometry, paper);
+          for (let sixteenths = 32; inchesToMm(sixteenths / 16) <= top + 1e-9; sixteenths++) {
+            const first = inchesToMm(sixteenths / 16);
+            for (const behind of [null, 0.5, 1, 3]) {
+              let wings = [{ station: first }];
+              if (behind !== null) {
+                const second = first - inchesToMm(behind);
+                if (second < inchesToMm(2)) continue;
+                wings = [...wings, { station: mm(second) }];
+              }
+              const marks = computeTemplateMarks(geometry, wings);
+              const placements = markPlacements(layout, marks, geometry);
+              cases++;
+              for (const w of placements.filter((p) => p.mark === "wing1" || p.mark === "wing2")) {
+                const others = placements.filter((p) => p.pageIndex === w.pageIndex && p !== w);
+                for (const o of others) {
+                  expect(Math.abs(anchor(w) - anchor(o))).toBeGreaterThanOrEqual(THRESHOLD - 1e-6);
+                }
+                if (w.labelOffsetMm < THRESHOLD) expect(anchor(w)).toBeGreaterThanOrEqual(w.station - 1e-6);
+                else expect(anchor(w)).toBeLessThanOrEqual(w.station - THRESHOLD + 1e-6);
+              }
+            }
+          }
+        }
+      }
+      expect(cases).toBeGreaterThan(10_000);
+    });
+
+    it("sweeps the Paper Saver: no wing row within 6 mm of another row, and every row on its page", () => {
+      let cases = 0;
+      for (const preset of BOARD_PRESETS) {
+        const geometry = buildOutline(preset.outline);
+        const top = Math.min(geometry.length / 2, geometry.widePointStation);
+        for (const paper of PAPERS) {
+          const strip = computeStripLayout(geometry, paper);
+          for (let sixteenths = 32; inchesToMm(sixteenths / 16) <= top + 1e-9; sixteenths += 2) {
+            const first = inchesToMm(sixteenths / 16);
+            for (const behind of [null, 0.5, 1, 3]) {
+              let wings = [{ station: first }];
+              if (behind !== null) {
+                const second = first - inchesToMm(behind);
+                if (second < inchesToMm(2)) continue;
+                wings = [...wings, { station: mm(second) }];
+              }
+              const rows = stripLabelRows(strip, computeTemplateMarks(geometry, wings), geometry);
+              cases++;
+              for (const row of rows.filter((r) => r.text.startsWith("Wing "))) {
+                const page = strip.pages[row.pageIndex];
+                expect(row.baselineStation).toBeGreaterThanOrEqual(page.stationRange[0] - 1e-6);
+                expect(row.baselineStation).toBeLessThanOrEqual(page.stationRange[1] + 1e-6);
+                for (const other of rows.filter((r) => r.pageIndex === row.pageIndex && r !== row)) {
+                  expect(Math.abs(other.baselineStation - row.baselineStation)).toBeGreaterThanOrEqual(
+                    STRIP_LABEL_MIN_SEPARATION_MM - 1e-6,
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+      expect(cases).toBeGreaterThan(5_000);
+    });
   });
 });

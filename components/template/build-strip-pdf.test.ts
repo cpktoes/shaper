@@ -18,6 +18,9 @@ import {
 } from "@/lib/geometry/template";
 import { formatCalibrationMark, formatDim, formatMark } from "@/lib/geometry/measure-display";
 import { formatInchesFraction, inchesToMm, litres, mm } from "@/lib/geometry/units";
+import type { UnitsSystem } from "@/lib/geometry/units";
+import { wingFigures, type WingFigures } from "@/lib/geometry/wing-figures";
+import { placedWings, wingRadiusTop, type Wing } from "@/lib/geometry/wings";
 import {
   nameBlockContent,
   scaleSquareCaptionText as templateScaleSquareCaptionText,
@@ -396,6 +399,118 @@ describe("the name block's printed text comes from the shared build-template-pdf
     const longName = "The Founder's Extremely Long And Descriptive Board Name That Goes On And On For Testing";
     const result = templateNameBlockText(longName, 68, doc);
     expect(result.endsWith("…")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Quick 261015-sei (2026-10-15): the Paper Saver's name box and wing lines. Added below the frozen
+// tests (D4).
+
+/** F4's worst wing figures, typed as display strings — a layout test only. */
+const SEI_WORST_FIGURES: Record<"imperial" | "metric", WingFigures[]> = {
+  imperial: [1, 2].map((number) => ({
+    number,
+    locked: true,
+    station: mm(0),
+    depthAtPosition: '15/16" @ 33 15/16"',
+    run: '1 15/16"',
+    radius: '64 1/16"',
+    offset: '-2 15/16"',
+  })),
+  metric: [1, 2].map((number) => ({
+    number,
+    locked: true,
+    station: mm(0),
+    depthAtPosition: "25 mm @ 137.2 cm",
+    run: "51 mm",
+    radius: "1626 mm",
+    offset: "-76 mm",
+  })),
+};
+
+/** The founder's test board (F1) as the Paper Saver prints it. */
+function seiWingedFish(system: UnitsSystem, paper: PaperSize): BuildStripPdfOptions {
+  const preset = BOARD_PRESETS.find((p) => p.id === "fish")!;
+  const depth = inchesToMm(3 / 16);
+  const wings: Wing[] = [
+    { station: inchesToMm(7.5), depth, run: inchesToMm(1 / 4), radius: mm(0), lock: "front-trailing", finOffset: mm(0) },
+    {
+      station: inchesToMm(4.5),
+      depth,
+      run: inchesToMm(1 / 2),
+      radius: wingRadiusTop({ depth, run: inchesToMm(1 / 2) }, "imperial"),
+      lock: null,
+      finOffset: mm(0),
+    },
+  ];
+  const outline = { ...preset.outline, wings };
+  const geometry = buildOutline(outline);
+  const placed = placedWings(outline.wings, geometry);
+  return {
+    layout: computeStripLayout(geometry, paper),
+    marks: computeTemplateMarks(geometry, placed),
+    geometry,
+    paper,
+    boardName: preset.name,
+    system,
+    dims: {
+      length: outline.length,
+      widePointWidth: outline.widePointWidth,
+      centerThickness: preset.rails.center.boardThickness,
+      noseWidth12in: geometry.noseWidthAt12in,
+      tailWidth12in: geometry.tailWidthAt12in,
+      widePointOffset: outline.widePointOffset,
+      volumeLitres: litres(34),
+      wings: wingFigures(placed, { front: inchesToMm(7.5), rear: null }, system),
+    },
+  };
+}
+
+describe("the Paper Saver's name box and wing lines (quick 261015-sei)", () => {
+  const SYSTEMS = ["imperial", "metric"] as const;
+
+  for (const paper of PAPERS) {
+    for (const system of SYSTEMS) {
+      it.each(BOARD_PRESETS)(
+        `$id (${paper}, ${system}): with wing lines the furniture stays on its own page, clear of each other, the name box on page 1 or 2`,
+        (preset) => {
+          for (const wings of [seiWingedFish(system, paper).dims.wings!, SEI_WORST_FIGURES[system]]) {
+            const base = buildOptionsFor(preset, paper);
+            const options: BuildStripPdfOptions = { ...base, system, dims: { ...base.dims, wings } };
+            const rects = stripFurnitureRects(options);
+            for (const rect of rects) {
+              expect(rectContains(stripPrintableRect(options.layout, rect.pageIndex), rect), rect.name).toBe(true);
+            }
+            const scaleSquare = rects.find((r) => r.name === "scale-square")!;
+            const nameBlock = rects.find((r) => r.name === "name-block")!;
+            if (scaleSquare.pageIndex === nameBlock.pageIndex) {
+              expect(rectsOverlap(scaleSquare, nameBlock)).toBe(false);
+            }
+            // F5: only a narrow nose moves the box, and then no further than the second page.
+            expect(nameBlock.pageIndex).toBeLessThanOrEqual(1);
+          }
+        },
+      );
+    }
+
+    it(`the Fish keeps its name box on page 1 in both systems (${paper})`, () => {
+      for (const system of SYSTEMS) {
+        const nameBlock = stripFurnitureRects(seiWingedFish(system, paper)).find((r) => r.name === "name-block")!;
+        expect(nameBlock.pageIndex).toBe(0);
+      }
+    });
+  }
+
+  it("builds on Letter and A4 with each wing's numbers and its distance label in the file's own text", () => {
+    for (const paper of PAPERS) {
+      const options = seiWingedFish("imperial", paper);
+      const doc = buildStripPdf(options);
+      expect(doc.getNumberOfPages()).toBe(options.layout.pages.length);
+      const text = String(doc.output());
+      expect(text).toContain('Run 1/4"');
+      expect(text).toContain('Radius 1 7/16"');
+      expect(text).toContain('7 1/2" from tail');
+    }
   });
 });
 

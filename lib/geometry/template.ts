@@ -83,9 +83,10 @@ export interface TemplateLayout {
   overlap: Mm;
 }
 
-/** The four measuring-station marks a future plan draws onto the template (D-09) — computed here
- * because they come from the same `OutlineGeometry` this module already reads, even though this
- * plan's PDF renderer does not draw them yet. */
+/** The working marks a print draws onto the template (D-09) — computed here because they come
+ * from the same `OutlineGeometry` this module already reads. The four measuring stations, the tail
+ * block on a squared tail, and — only on a winged board (quick 261015-sei, 2026-10-15, D2, D4) —
+ * one mark per wing. */
 export interface TemplateMarks {
   noseTwelve: Mm;
   tailTwelve: Mm;
@@ -99,6 +100,22 @@ export interface TemplateMarks {
    * edge to mark (round 2 post-checkpoint fix, defect 1: "the tip of the tail... is not
    * printing"). */
   tailBlock?: Mm;
+  /** Each wing's outer corner — its `station`, where the step leaves the curve — so a shaper can
+   * mark it on the foam (quick 261015-sei, D2, P4). Present only on a winged board: a board with
+   * no wings has neither key, which is what keeps every frozen digest byte-identical (D4). A wing
+   * line draws in the station dash (only `widepoint` takes the dotted one). */
+  wing1?: Mm;
+  wing2?: Mm;
+}
+
+/** The two wing marks (quick 261015-sei, P4). */
+export type WingMarkName = "wing1" | "wing2";
+/** Every mark that is a measuring station or the tail block — the five names `markLabels` holds. */
+export type StationMarkName = Exclude<keyof TemplateMarks, WingMarkName>;
+
+/** True for a wing's mark: it labels with its distance from the tail, not the board's width. */
+export function isWingMark(mark: keyof TemplateMarks): mark is WingMarkName {
+  return mark === "wing1" || mark === "wing2";
 }
 
 /** How many fixed-size, constant-step tiles of `usable` millimetres (each overlapping the next by
@@ -178,8 +195,12 @@ export function computeTemplateLayout(
 
 /** The four measuring-station marks, expressed on this board's own station axis — plus the
  * tailblock mark (round 2 post-checkpoint fix, defect 1) when this tail actually has a squared
- * block to close off. */
-export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
+ * block to close off, and a `wing1` / `wing2` mark for each wing handed in (quick 261015-sei —
+ * the wings as the board draws them, `placedWings`). */
+export function computeTemplateMarks(
+  geometry: OutlineGeometry,
+  wings: readonly { station: Mm }[] = [],
+): TemplateMarks {
   const marks: TemplateMarks = {
     tailTwelve: MEASURE_STATION_MM,
     noseTwelve: mm(geometry.length - MEASURE_STATION_MM),
@@ -189,6 +210,11 @@ export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
   if (geometry.halfTailBlockWidth > 0) {
     marks.tailBlock = geometry.tailPodStation;
   }
+  // A winged board adds one mark per wing, after the station marks (quick 261015-sei, P4); a
+  // board with no wings gets exactly the object it always did. MAX_WINGS is 2 — any further entry
+  // is ignored.
+  if (wings.length > 0) marks.wing1 = wings[0].station;
+  if (wings.length > 1) marks.wing2 = wings[1].station;
   return marks;
 }
 
@@ -201,7 +227,10 @@ export function computeTemplateMarks(geometry: OutlineGeometry): TemplateMarks {
  * English words with no unit inside them and are unaffected by `system`. Exported for testability
  * — the new describe block below the frozen pins in `template.test.ts` asserts
  * `markLabels("imperial")` reproduces the exact strings those pins hash. */
-export function markLabels(system: UnitsSystem): Record<keyof TemplateMarks, string> {
+export function markLabels(system: UnitsSystem): Record<StationMarkName, string> & Partial<Record<WingMarkName, string>> {
+  // The record still holds only the five station names (F7) — the intersection type is what lets
+  // a caller index it with a wing mark's name without a type error; a wing's label comes from
+  // `markLabel`, below.
   return {
     noseTwelve: `Nose ${stationLabel(system)}`,
     tailTwelve: `Tail ${stationLabel(system)}`,
@@ -209,6 +238,20 @@ export function markLabels(system: UnitsSystem): Record<keyof TemplateMarks, str
     widepoint: "Wide point",
     tailBlock: "Tail Block",
   };
+}
+
+/** One mark's printed name (quick 261015-sei): `Wing 1` / `Wing 2` for a wing, `markLabels` for
+ * every other mark. */
+export function markLabel(mark: keyof TemplateMarks, system: UnitsSystem): string {
+  if (mark === "wing1") return "Wing 1";
+  if (mark === "wing2") return "Wing 2";
+  return markLabels(system)[mark];
+}
+
+/** A wing line's figure (quick 261015-sei, D2): its distance from the tail, e.g. `7 1/2" from tail`
+ * (Metric `19.1 cm from tail`) — a position, so a dim (`formatDim`). */
+export function wingMarkDistanceText(station: Mm, system: UnitsSystem): string {
+  return `${formatDim(station, system)} from tail`;
 }
 
 /** Where one working mark's tick is drawn, in the drawing module's own coordinate inputs — a page
@@ -257,7 +300,9 @@ const MARK_LABEL_COINCIDENT_EPSILON_MM = 1e-6;
  * (once per page) rather than being lost when the shaper trims one of the overlapping edges.
  *
  * CENTER and WIDEPOINT run through `resolveCenterWidepointLabelCollision` before returning (round
- * 4 post-checkpoint fix, defect 1) — every other mark's placement is unaffected.
+ * 4 post-checkpoint fix, defect 1) — every other mark's placement is unaffected. The last step is
+ * `resolveWingLabelCollisions` (quick 261015-sei, P5), which keeps a wing's label off every other
+ * label on its page and hands the list back untouched when the board has no wings.
  *
  * `system` (07-01) defaults to `"imperial"` — deliberately, so every existing zero-argument call
  * site, including the frozen characterisation pins in `template.test.ts`, keeps producing a
@@ -272,7 +317,6 @@ export function markPlacements(
 ): TemplateMarkPlacement[] {
   const placements: TemplateMarkPlacement[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
-  const labels = markLabels(system);
 
   for (const markName of markNames) {
     const station = marks[markName];
@@ -287,13 +331,95 @@ export function markPlacements(
         pageIndex: page.index,
         station,
         halfWidthExtent,
-        label: labels[markName],
+        label: markLabel(markName, system),
         labelOffsetMm: mm(0),
       });
     }
   }
 
-  return resolveCenterWidepointLabelCollision(placements);
+  return resolveWingLabelCollisions(resolveCenterWidepointLabelCollision(placements));
+}
+
+/**
+ * Keeps a wing's label off every other label on its page (quick 261015-sei, 2026-10-15, P5).
+ * The last step of `markPlacements`. With no wing among the placements it returns the very same
+ * array, untouched — the frozen digests hash that list's order (D4).
+ *
+ * Two steps, page by page, on copies of the placements:
+ *
+ * 1. **A close neighbour.** A wing and the nearest other mark whose station is within
+ *    `MARK_LABEL_COLLISION_THRESHOLD_MM` (10 mm) of it take their labels on OPPOSITE sides of the
+ *    pair: the nose-ward one keeps its label above its own line, the tail-ward one draws its label
+ *    one threshold UNDER its own line (a `labelOffsetMm` of +threshold; the wing when the two are
+ *    level). So the Midlength's wing locked exactly on the 12" line reads under it, with Tail 12"
+ *    above. One threshold under a line clears it whether the label prints on one line or two — 9 pt
+ *    text plus the 2 mm tick offset is well inside 10 mm.
+ * 2. **The guard.** Each wing, nose-most first, then walks its label (its anchor: the station the
+ *    label is drawn at, `station - labelOffsetMm`) away from every other label on the page until it
+ *    is a full threshold clear — toward the tail when it is already drawn under its line, toward
+ *    the nose otherwise — at most 20 rounds.
+ *
+ * Measured at plan time (F6): 24,640 cases over four presets, both papers, wing 1 every 1/16" from
+ * 2" to the top and a second wing absent or 1/2", 1", 2", 3" behind: no label ever prints on
+ * another, and no line runs through a wing's label. One accepted residual: a mark caught between
+ * two wings that are each within 10 mm of it (24 cases, wing 1 just nose-ward of Tail 12" and wing
+ * 2 just tail-ward of it) may have a wing's LINE cross its label — the labels still never touch.
+ */
+function resolveWingLabelCollisions(placements: TemplateMarkPlacement[]): TemplateMarkPlacement[] {
+  if (!placements.some((p) => isWingMark(p.mark))) return placements;
+
+  const copies = placements.map((p) => ({ ...p }));
+  const byPage = new Map<number, TemplateMarkPlacement[]>();
+  for (const copy of copies) {
+    const list = byPage.get(copy.pageIndex);
+    if (list) list.push(copy);
+    else byPage.set(copy.pageIndex, [copy]);
+  }
+
+  const threshold = MARK_LABEL_COLLISION_THRESHOLD_MM;
+  const anchorOf = (p: TemplateMarkPlacement) => p.station - p.labelOffsetMm;
+
+  for (const page of byPage.values()) {
+    const wings = page.filter((p) => isWingMark(p.mark)).sort((a, b) => b.station - a.station);
+
+    // Step 1: a wing and its nearest close neighbour take opposite sides of the pair.
+    for (const wing of wings) {
+      const close = page.filter((p) => p !== wing && Math.abs(p.station - wing.station) < threshold);
+      if (close.length === 0) continue;
+      const nearest = close.reduce((best, p) => {
+        const d = Math.abs(p.station - wing.station);
+        const bd = Math.abs(best.station - wing.station);
+        if (d < bd) return p;
+        if (d === bd && isWingMark(best.mark) && !isWingMark(p.mark)) return p; // equal: prefer a non-wing
+        return best;
+      });
+      if (nearest.station < wing.station - MARK_LABEL_COINCIDENT_EPSILON_MM) {
+        nearest.labelOffsetMm = mm(threshold); // the tail-ward neighbour draws under its own line
+      } else {
+        wing.labelOffsetMm = mm(threshold); // level, or the neighbour is nose-ward: the wing does
+      }
+    }
+
+    // Step 2: the guard — walk each wing's label clear of every other label on the page.
+    for (const wing of wings) {
+      const towardTail = wing.labelOffsetMm >= threshold;
+      let anchor = anchorOf(wing);
+      let moved = false;
+      for (let round = 0; round < 20; round++) {
+        const colliding = page.filter((p) => p !== wing && Math.abs(anchorOf(p) - anchor) < threshold - 1e-9);
+        if (colliding.length === 0) break;
+        const nearest = colliding.reduce((best, p) =>
+          Math.abs(anchorOf(p) - anchor) < Math.abs(anchorOf(best) - anchor) ? p : best,
+        );
+        anchor = anchorOf(nearest) + (towardTail ? -threshold : threshold);
+        moved = true;
+      }
+      // Written back only when the walk moved it, so an untouched label keeps its exact offset.
+      if (moved) wing.labelOffsetMm = mm(wing.station - anchor);
+    }
+  }
+
+  return copies;
 }
 
 /**
@@ -426,7 +552,6 @@ export function markLineSegments(
 ): TemplateMarkLineSegment[] {
   const segments: TemplateMarkLineSegment[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
-  const labels = markLabels(system);
 
   for (const markName of markNames) {
     if (markName === "tailBlock") continue; // drawn separately by tailClosureSegments
@@ -455,7 +580,7 @@ export function markLineSegments(
           halfWidthRange: [mm(start), mm(end)],
           hasLabel: page.col === 0,
           halfWidthExtent,
-          label: labels[markName],
+          label: markLabel(markName, system),
         });
       }
     }
@@ -1310,13 +1435,16 @@ export function stripMarkSegments(
 ): StripMarkSegment[] {
   const segments: StripMarkSegment[] = [];
   const markNames = Object.keys(marks) as (keyof TemplateMarks)[];
-  const labels = markLabels(system);
 
   for (const markName of markNames) {
     const station = marks[markName];
     if (station === undefined) continue; // tailBlock is absent for a pin/round tail
     const halfWidthExtent = sampleOutline(geometry, station);
-    const label = `${labels[markName]} — ${formatDim(mm(halfWidthExtent * 2), system)}`;
+    // A wing's label reads its distance from the tail, not the board's width (quick 261015-sei, D2):
+    // `Wing 1 — 7 1/2" from tail`.
+    const label = isWingMark(markName)
+      ? `${markLabel(markName, system)} — ${wingMarkDistanceText(station, system)}`
+      : `${markLabel(markName, system)} — ${formatDim(mm(halfWidthExtent * 2), system)}`;
 
     for (const page of layout.pages) {
       if (station < page.stationRange[0] || station > page.stationRange[1]) continue;

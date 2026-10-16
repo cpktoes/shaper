@@ -23,6 +23,7 @@ import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/ge
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { mm, squareMmToSquareInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { wingPrintName, type WingFigures } from "@/lib/geometry/wing-figures";
 import { wrapTextToWidth } from "@/components/template/build-template-pdf";
 
 export interface BuildOverviewPdfOptions {
@@ -34,6 +35,10 @@ export interface BuildOverviewPdfOptions {
    * `BuildTemplatePdfOptions.system`. This plan wires the field through; `buildOverviewPdf` does
    * not yet read it — Plan 03 is its consumer and converts the Overview Sheet's own text. */
   system: UnitsSystem;
+  /** Each wing's printed figures, as its card on the WINGS close-up reads them (quick 261015-sei, D1,
+   * D3) — the export dialog always passes it, computed once for all three printouts (P8). Absent or
+   * empty on a board without wings, so the sheet prints exactly as before (D4). */
+  wings?: readonly WingFigures[];
 }
 
 const TITLE_FONT_SIZE_PT = 18;
@@ -50,6 +55,10 @@ const SPEC_LINE_HEIGHT_MM = 5;
  * shrinking this never clips a line, it just reclaims real estate the drawing badly needed. */
 const SPEC_COLUMN_WIDTH_MM = 60;
 const COLUMN_GAP_MM = 8;
+/** The indent on a wing's Run / Radius / Offset rows (quick 261015-sei, P2): two no-break spaces.
+ * `wrapTextToWidth` splits on ordinary spaces only, so a no-break indent survives it, and jsPDF's
+ * courier draws U+00A0 as blank space of the same width as any other character (F3). */
+const WING_ROW_INDENT = "  ";
 
 const OUTLINE_LINE_WEIGHT_MM = 0.5;
 const STRINGER_LINE_WEIGHT_MM = 0.35;
@@ -107,8 +116,18 @@ function tailShapeLabel(kind: OutlineSpec["tail"]["kind"]): string {
  * (whole mm), the widepoint offset through `formatSignedDim`, and the two `@12"` station names
  * through `stationLabel`. Angles, percentages and the tail-shape name never take a formatter and
  * so are identical in both systems.
+ *
+ * Each wing (quick 261015-sei, D3, P2) follows the Swallow / Diamond Depth line and precedes Tail
+ * Angle: a head line `Wing 1 · Fin: 3/16" @ 7 1/2"` (depth @ distance from the tail, the card's own
+ * head), then one indented line per card row — `Run`, `Radius`, and `Offset` only for a locked wing.
+ * No wings (the default) adds no lines, so the list is byte-for-byte what it was (D4).
  */
-export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometry, system: UnitsSystem): string[] {
+export function overviewSpecLines(
+  outline: OutlineSpec,
+  geometry: OutlineGeometry,
+  system: UnitsSystem,
+  wings: readonly WingFigures[] = [],
+): string[] {
   const stationText = stationLabel(system);
   const lines = [
     `Length: ${formatLength(outline.length, system)}`,
@@ -125,6 +144,12 @@ export function overviewSpecLines(outline: OutlineSpec, geometry: OutlineGeometr
   }
   if (outline.tail.kind === "diamond") {
     lines.push(`Diamond Depth: ${formatMark(geometry.effectiveDiamondDepth, system)}`);
+  }
+  for (const f of wings) {
+    lines.push(`${wingPrintName(f)}: ${f.depthAtPosition}`);
+    lines.push(`${WING_ROW_INDENT}Run: ${f.run}`);
+    lines.push(`${WING_ROW_INDENT}Radius: ${f.radius}`);
+    if (f.offset !== null) lines.push(`${WING_ROW_INDENT}Offset: ${f.offset}`);
   }
   lines.push(`Tail Angle: ${outline.tailAngle}°  ·  Fullness: ${outline.tailFullness}%`);
   lines.push(`Tail Width @${stationText} (calculated): ${formatDim(geometry.tailWidthAt12in, system)}`);
@@ -337,7 +362,7 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // label and value stay column-aligned the way a shaper reads a spec sheet.
   doc.setFont("courier", "normal");
   doc.setFontSize(SPEC_FONT_SIZE_PT);
-  const wrappedSpecLines = overviewSpecLines(outline, geometry, system).flatMap((line) =>
+  const wrappedSpecLines = overviewSpecLines(outline, geometry, system, options.wings ?? []).flatMap((line) =>
     wrapTextToWidth(line, SPEC_COLUMN_WIDTH_MM, doc),
   );
   doc.setFont("courier", "normal");
