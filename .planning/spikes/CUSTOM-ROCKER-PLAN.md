@@ -159,6 +159,40 @@ deploy that reads it.
      needs the founder's yes to download), proofread Arctic's 33 tables, a second kind "figures at stations", the
      additive table, and a Rocker row in the picker's cards and on the picked blank.
 
+## 6a. Saving a custom blank for later (the founder, 2026-10-16)
+
+*"I also want to make sure that the user can save that blank for later. It should not replace the natural rocker
+blank, but essentially add a new blank to our catalogue."*
+
+So a custom rocker is not only a setting on one board: a shaper can keep it as **a blank of their own**, listed beside
+the maker's natural blank, and pick it for any later board.
+
+- **What is saved:** the base blank's catalogue rows by value (as a board keeps its blank, D-01, so a later catalogue
+  correction never moves it), the rocker spec, and the name the app wrote (`US Blanks 9'4"B -1/4"N18" +1/8"T36"
+  +1/8"T18"`). Nothing about the board.
+- **Starred on save** (the founder, 2026-10-16: "which should always be starred when saved"): saving a blank also
+  stars it, so it sits at the top of the picker under ★ STARRED from the first look. The star key is the blank's full
+  name, note included, so the stars list (sketch 015, quick 261015-ve9) holds it without a second mechanism; unstarring
+  later is the shaper's choice and doesn't delete the blank.
+- **Where it shows:** in the PICK A BLANK popup as a card with "Saved by you", starred, and under the maker's name among
+  the rest, its station table reading the rocker as ordered; the fit verdict is the base blank's (bending
+  changes no width or thickness); the nose-rocker filter and sort read the custom tip. The natural blank stays listed.
+  Picking it puts the base copy plus the spec on the board, so the board carries it exactly as a hand-set custom rocker
+  would.
+- **Where it is set from:** "Save this blank for later" under the rocker rows (sketch 016 round two); "Remove" from the
+  same line, or from the card.
+- **Storage — the one database change in the first build, additive:** a new table, one row per saved blank —
+  `user_blanks` (`id`, `clerk_user_id`, `base_vendor`, `base_name`, `name` (the note), `copy` jsonb, `rocker` jsonb,
+  `created_at`). Signed out, the browser keeps the list, joined on sign-in — the stars rule from sketch 015. Per
+  CLAUDE.md: **`npm run db:migrate:prod` before the deploy that reads it.** A nullable jsonb column on
+  `user_preferences` would also do; a table is cleaner for a list that grows and is deleted from one at a time.
+- **Not a catalogue change:** the `blanks` table and the CSVs stay the makers' printed figures. A saved blank is the
+  shaper's, private to their account, and its DATASHEET footnote says its rocker is as ordered, to be checked on the
+  foam.
+- **Plan impact:** plan 03 (the name everywhere) gains the save/remove actions, the table and its migration, the
+  picker's card and group, and the signed-out store — or becomes its own plan 04. Build it after the picker (quick
+  261015-ve9) and its stars have landed, so MY BLANKS and ★ STARRED share one way of keeping a shaper's lists.
+
 ## 7. Open questions a maker could answer
 
 - How a rocker table bends between the bend point and the tip (even vs beam: under 1 mm per 1/2", but a real

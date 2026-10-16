@@ -60,6 +60,14 @@ In every variant the same things happen around the control:
 - **Units**: every figure follows Imperial/Metric (marks in whole millimetres); the note stays in inches — it is the
   maker's order code, like the blank's name (the founder's decision, 2026-10-16).
 
+**Round two (the founder, 2026-10-16: "the user can save that blank for later. It should not replace the natural
+rocker blank, but essentially add a new blank to our catalogue" … "which should always be starred when saved"):**
+"Save this blank for later" under the rows keeps the custom rocker as a blank of the shaper's own —
+`US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"` — starred the moment it is saved, so it sits at the top of the PICK A
+BLANK popup under ★ STARRED with "Saved by you", its station table reading the rocker as ordered and a line to check it
+on the foam; the natural 9'4"B stays listed under FITS THIS BOARD. "✓ Saved in your blanks · Remove" takes it out again.
+Open Change blank › in the sketch to see the popup (`pictures/a-computer-picker-saved.png`, `a-phone-picker-saved.png`).
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

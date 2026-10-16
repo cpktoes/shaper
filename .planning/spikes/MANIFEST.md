@@ -20,6 +20,14 @@ sketch go to a Fable session.
   the bend starts, none for the centre.
 - A custom rocker is a step after the blank's natural curve (like wings and the round nose), re-levelled on its true
   low point; it changes the board's rocker, never the fit.
+- **The first build holds typed changes only** (the founder, 2026-10-16): a shaper copies a named rocker's figures off
+  the maker's sheet. Pick-lists and named rockers come later.
+- **The note stays in inches in Metric**; every drawn or tabled figure follows the shaper's units.
+- **Steppers, never typing, with room for a two-point change on one end** (the founder: "some custom rockers have a
+  2 point defined adjustment so we need to plan for that too").
+- **A custom blank can be saved for later as a blank of the shaper's own, beside the maker's natural one, and is
+  starred the moment it is saved** (the founder, 2026-10-16). The one database change in the first build: an additive
+  `user_blanks` table, migrated on production before the deploy.
 
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
 decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the
