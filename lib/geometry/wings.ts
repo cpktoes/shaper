@@ -47,6 +47,10 @@
  *   whichever is closer to the tail." Every position runs from 2" to `wingPositionTop`.
  * - **Defaults (D5).** "Drop the default wing to 3/16"": both wings are added 3/16" deep, so neither
  *   opens with the fin-box warning (`wingFinBoxDistance`, D4).
+ * - **Fins read the step sharp (quick 261015-u8y, 2026-10-15).** "I think the fin placement should be
+ *   linked to the unrounded outline, so that the rounding has no affect on fin placement. It's the
+ *   wing position that does." Every fin number reads the outline with each corner radius set to 0
+ *   (`outlineForFins`); the rounded corners stay on every drawing and print.
  * Saved wings out of order or past the top are corrected when the board is drawn (`placedWings`,
  * and the store's `resolveWingStations`), never rewritten on open (rule 7 of design-snapshot.ts).
  *
@@ -656,4 +660,26 @@ export function outlineWithoutWings(outline: OutlineSpec): OutlineSpec {
   const copy = { ...outline };
   delete copy.wings;
   return copy;
+}
+
+/**
+ * The outline the fins read (quick 261015-u8y, 2026-10-15, D2, D3, P1): the same wings — position,
+ * depth, run, lock, offset — with every corner radius set to 0. The founder: "I think the fin
+ * placement should be linked to the unrounded outline, so that the rounding has no affect on fin
+ * placement. It's the wing position that does." So the fins (the 12" width they take, the real tail
+ * each in-from-the-rail is measured on, and the wing lock's own fin placement) read THIS outline,
+ * and no drawing ever does: the board on every screen, the prints, the rack and the litres keep
+ * today's rounded corners. The two readers are `placeFins` in `wing-lock.ts` and the design store.
+ *
+ * Returns the SAME object when there is nothing to sharpen — no `wings` key, an empty list, or no
+ * wing whose radius is above 0 (a saved board's missing, negative or not-a-number radius already
+ * draws sharp: `effectiveWingRadius` reads `w.radius || 0` and floors at 0) — so a board without
+ * rounded wings places its fins exactly as it always did (D3). Otherwise a shallow copy whose wing
+ * list keeps each already-sharp wing as the same object. Never mutates its input.
+ */
+export function outlineForFins(outline: OutlineSpec): OutlineSpec {
+  const wings = outline.wings;
+  if (!wings || wings.length === 0) return outline;
+  if (!wings.some((w) => w.radius > 0)) return outline;
+  return { ...outline, wings: wings.map((w) => (w.radius > 0 ? { ...w, radius: mm(0) } : w)) };
 }

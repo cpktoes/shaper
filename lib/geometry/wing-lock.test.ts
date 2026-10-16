@@ -6,7 +6,17 @@ import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, mm } from "./units";
 import { lockedWingStation, resolveWingStations, wingFinBoxWarning, wingFinEdges } from "./wing-lock";
-import { wingFinBoxDistance, wingOrderGap, wingPositionTop, type Wing, type WingFinEdges, type WingLock } from "./wings";
+import {
+  nextWing,
+  outlineForFins,
+  wingFinBoxDistance,
+  wingOrderGap,
+  wingPositionTop,
+  wingRadiusTop,
+  type Wing,
+  type WingFinEdges,
+  type WingLock,
+} from "./wings";
 
 // A wing locked to the fins (quick 261014-wii, 2026-10-14, D8, P2, P3; the slot locks, the order rule
 // and the top, quick 261015-hz7, 2026-10-15, D1–D3). Every expected value is read off the app's own
@@ -301,5 +311,67 @@ describe("the founder's scaling rule: a deep wing too close behind a fin box (D4
     const nearSide = quad.some((m) => m.side !== 0 && m.offTail - centre.offTail >= 0 && m.offTail - centre.offTail < inchesToMm(3 / 4));
     expect(nearSide).toBe(false);
     expect(wingFinBoxWarning({ station: centre.offTail, depth: inchesToMm(1 / 2) }, quad)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// A corner radius never moves a fin (quick 261015-u8y, 2026-10-15, D2). The founder: "I think the
+// fin placement should be linked to the unrounded outline, so that the rounding has no affect on fin
+// placement. It's the wing position that does."
+// ---------------------------------------------------------------------------------------------
+
+/** A wing with its own corner radius (every length through `inchesToMm`, Rule 2). */
+function wingWith(
+  stationIn: number,
+  depthIn: number,
+  runIn: number,
+  radiusIn: number,
+  lock: WingLock,
+  offsetIn: number,
+): Wing {
+  return {
+    station: inchesToMm(stationIn),
+    depth: inchesToMm(depthIn),
+    run: inchesToMm(runIn),
+    radius: inchesToMm(radiusIn),
+    lock,
+    finOffset: inchesToMm(offsetIn),
+  };
+}
+
+describe("a wing's corner radius never moves a fin or a locked wing (quick 261015-u8y, D2)", () => {
+  it("resolveWingStations keeps the radius the shaper asked for on every wing it returns (P4)", () => {
+    const marks = placeFins(MIDLENGTH.outline, MIDLENGTH.fins).marks;
+    const edges = wingFinEdges(marks);
+    const g = buildOutline(MIDLENGTH.outline);
+    const first = nextWing([], edges, g, "imperial");
+    const second = nextWing([first], edges, g, "imperial");
+    expect(second.radius).toBe(wingRadiusTop(second, "imperial"));
+    const resolved = resolveWingStations({ ...MIDLENGTH.outline, wings: [first, second] }, MIDLENGTH.fins, true);
+    expect(resolved.outline.wings![1].radius).toBe(wingRadiusTop(second, "imperial"));
+    expect(resolved.outline.wings![0].radius).toBe(first.radius);
+    // The sharpening lives inside the fin placement only: what comes back is still the rounded outline.
+    expect(outlineForFins(resolved.outline)).not.toBe(resolved.outline);
+  });
+
+  it("the narrow squash McKee SB quad: the locked wings settle at the same stations at every radius", () => {
+    const fins: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "quad", quadRearModel: "mckeeSB" };
+    const settle = (radiusIn: number) => {
+      const outline: OutlineSpec = {
+        ...NARROW,
+        wings: [
+          wingWith(12.5, 3 / 16, 1 / 4, radiusIn, "front-trailing", 1),
+          wingWith(5.6, 3 / 16, 1 / 2, 0, "rear-trailing", 0),
+        ],
+      };
+      return resolveWingStations(outline, fins, true);
+    };
+    const sharp = settle(0);
+    expect(sharp.passes).toBeGreaterThan(1);
+    for (const radiusIn of [1 / 8, 1 / 4, 7 / 16]) {
+      const rounded = settle(radiusIn);
+      expect(rounded.outline.wings!.map((w) => w.station)).toEqual(sharp.outline.wings!.map((w) => w.station));
+      expect(rounded.passes).toBe(sharp.passes);
+    }
   });
 });

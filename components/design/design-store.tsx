@@ -80,7 +80,7 @@ import {
   deriveTemplateValues,
 } from "@/lib/geometry/design";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
-import { outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
+import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
@@ -468,16 +468,21 @@ interface DesignContextValue {
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
   /** `fins` unless `finsImportTemplate`, in which case boardLength/tailWidth12/tailShape come
-   * from the outline. */
+   * from the outline — the board with every wing's corner radius at 0 (quick 261015-u8y, D2: the
+   * founder, "the fin placement should be linked to the unrounded outline"). */
   effectiveFins: FinPlacementSpec;
   /** The designed outline's tail as the fin maths read it (quick 260928-p45) — the real rail FINS
-   * measures each rail-referenced fin in from. `null` when `finsImportTemplate` is unticked, which
-   * keeps the standalone calculator on the generic tail curve. */
+   * measures each rail-referenced fin in from, with every wing's corner radius at 0 (261015-u8y,
+   * D2): a fin's in-from-the-rail is measured to the sharp step, not to the drawn rounded rail.
+   * `null` when `finsImportTemplate` is unticked, which keeps the standalone calculator on the
+   * generic tail curve. */
   finImportedTail: ImportedFinTail | null;
   finPlacement: FinPlacementResult;
   /** The designed outline's tail, in `tailOutlineHalfPoints`' own shape, for the fin viewer to
-   * draw behind the fin marks — built from `finImportedTail`'s own points, so the drawing and the
-   * maths can never disagree. `null` when not importing. */
+   * draw behind the fin marks — cut from the real, rounded board (261015-u8y, D4: "keep the
+   * rounded corners on the FINS drawing."). On a board without rounded wings it is the same tail
+   * as `finImportedTail`; with them the two differ only around a rounded corner. `null` when not
+   * importing. */
   finTailOutline: FinTailOutline | null;
   /** `volume` with length/width/centerThickness overridden per the import toggles — the derived-
    * value equivalent of the prototype's `syncFromTemplate`. */
@@ -864,6 +869,16 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     () => (resolvedOutline.wings?.length ? buildOutline(outlineWithoutWings(resolvedOutline)) : outlineGeometry),
     [resolvedOutline, outlineGeometry],
   );
+  // What the fins read (quick 261015-u8y, 2026-10-15, D2, D3): the same board with every wing's
+  // corner radius at 0. The founder: "I think the fin placement should be linked to the unrounded
+  // outline, so that the rounding has no affect on fin placement. It's the wing position that
+  // does." The very same objects as the drawn board when no wing is rounded, so such a board keeps
+  // every memo and every fin number it always had.
+  const finOutline = useMemo(() => outlineForFins(resolvedOutline), [resolvedOutline]);
+  const finGeometry = useMemo(
+    () => (finOutline === resolvedOutline ? outlineGeometry : buildOutline(finOutline)),
+    [finOutline, resolvedOutline, outlineGeometry],
+  );
 
   // TEMPLATE's last-edit ghost (quick 260930-lia): the outline as it was one edit ago, picked
   // from this session's own undo history by the O-1 rule in lib/outline-ghost.ts. Read-only over
@@ -942,30 +957,39 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // Import Template's mapping, now `deriveEffectiveFins` in lib/geometry/design.ts (quick
   // 261014-wii) so the wing lock places the fins exactly as this screen does. It reads the WINGED
-  // outline's 12" width (D8: fins listen to the real rail beside them).
+  // outline's 12" width (D8: fins listen to the real rail beside them) — the winged board with its
+  // corner radii at 0 (quick 261015-u8y, D2), so the width the fins take never moves with a radius.
   const effectiveFins: FinPlacementSpec = useMemo(
-    () => deriveEffectiveFins(state.fins, state.finsImportTemplate, resolvedOutline, outlineGeometry),
-    // Deliberately narrower than "resolvedOutline"/"outlineGeometry" (eslint-disable below): the
-    // mapping reads only the length, the tail kind and the 12" tail width, the same dependency list
-    // this memo always had — widening it would recompute the fins on every unrelated outline edit.
+    () => deriveEffectiveFins(state.fins, state.finsImportTemplate, finOutline, finGeometry),
+    // Deliberately narrower than "finOutline"/"finGeometry" (eslint-disable below): the mapping
+    // reads only the length, the tail kind and the 12" tail width, the same dependency list this
+    // memo always had — widening it would recompute the fins on every unrelated outline edit.
+    // finOutline's length and tail kind are always the stored outline's: only radii differ.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       state.fins,
       state.finsImportTemplate,
       state.outline.length,
       state.outline.tail.kind,
-      outlineGeometry.tailWidthAt12in,
+      finGeometry.tailWidthAt12in,
     ],
   );
 
-  // The real drawn tail the fin maths read (quick 260928-p45) — built only while Import Template
-  // is ticked, exactly the same condition `effectiveFins` above already follows. Cut from the
-  // WINGED outline (quick 261014-wii, D8), so FINS' tail drawing shows the wings and every fin's
-  // in-from-the-rail is the real rail at its own station.
+  // The real tail the fin maths read (quick 260928-p45) — built only while Import Template is
+  // ticked, exactly the same condition `effectiveFins` above already follows. Cut from the WINGED
+  // outline (quick 261014-wii, D8) with every corner radius at 0 (quick 261015-u8y, D2), so every
+  // fin's in-from-the-rail is measured to the sharp step, not to the drawn rounded rail.
   const finImportedTail: ImportedFinTail | null = useMemo(
-    () => (state.finsImportTemplate ? importedFinTailFromOutline(outlineGeometry) : null),
-    [state.finsImportTemplate, outlineGeometry],
+    () => (state.finsImportTemplate ? importedFinTailFromOutline(finGeometry) : null),
+    [state.finsImportTemplate, finGeometry],
   );
+  // The tail FINS DRAWS (quick 261015-u8y, D4 — the founder: "keep the rounded corners on the FINS
+  // drawing."): cut from the real, rounded board. On a board without rounded wings it is the same
+  // tail object as the one the maths read; with them the two differ only around a rounded corner.
+  const finDrawnTail: ImportedFinTail | null = useMemo(() => {
+    if (!state.finsImportTemplate) return null;
+    return finGeometry === outlineGeometry ? finImportedTail : importedFinTailFromOutline(outlineGeometry);
+  }, [state.finsImportTemplate, finGeometry, outlineGeometry, finImportedTail]);
 
   const finPlacement = useMemo(
     () => computeFinPlacement(effectiveFins, finImportedTail),
@@ -974,11 +998,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // The trailing edges the wing locks follow, for the sidebar and the grab points (quick 261015-hz7, D1).
   const wingFinEdges = useMemo(() => wingFinEdgesOf(finPlacement.marks), [finPlacement.marks]);
 
-  // Built from `finImportedTail`'s own points, so the drawing and the maths can never disagree —
-  // the adapter's own 24in cut (`importedFinTailFromOutline`) is the same one this used to apply
-  // here directly.
+  // Built from `finDrawnTail`'s points (the rounded board, D4): on a board without rounded wings it is
+  // the maths' own tail, so the drawing and the maths are the same; with them they differ only around
+  // a rounded corner. The adapter's own 24in cut (`importedFinTailFromOutline`) is the same one this
+  // used to apply here directly.
   const finTailOutline: FinTailOutline | null = useMemo(() => {
-    if (finImportedTail === null) return null;
+    if (finDrawnTail === null) return null;
     const tailKind = state.outline.tail.kind;
     // The prototype's own connector rule (Template.dc.html line 276): diamond closes at the
     // origin, swallow closes at the crotch depth, everything else has no connector.
@@ -988,8 +1013,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         : tailKind === "swallow"
           ? { x: mm(0), y: outlineGeometry.centreCloseStation }
           : null;
-    return { points: finImportedTail.points, connector };
-  }, [finImportedTail, outlineGeometry, state.outline.tail.kind]);
+    return { points: finDrawnTail.points, connector };
+  }, [finDrawnTail, outlineGeometry, state.outline.tail.kind]);
 
   // Derived-value equivalent of the prototype's syncFromTemplate (Volume.dc.html lines 235-242):
   // produces the same observable values without an effect that writes back into state.

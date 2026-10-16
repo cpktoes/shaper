@@ -20,6 +20,7 @@ import {
   effectiveWingRadius,
   maxWingRadius,
   nextWing,
+  outlineForFins,
   outlineWithoutWings,
   placedWings,
   removeWing,
@@ -491,5 +492,58 @@ describe("nextWing adds 3/16 inch wings, the second behind the first (D5)", () =
     ]) {
       expect(Math.abs(wingFinBoxDistance(inchesToMm(depth)) - inchesToMm(want))).toBeLessThan(1e-9);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// The fins read the step sharp-cornered (quick 261015-u8y, 2026-10-15, D2, D3, P1). The founder:
+// "I think the fin placement should be linked to the unrounded outline, so that the rounding has no
+// affect on fin placement. It's the wing position that does."
+// ---------------------------------------------------------------------------------------------
+
+describe("outlineForFins: the outline the fins read has every wing's corner radius at 0 (D2, D3, P1)", () => {
+  const MID = BOARD_PRESETS.find((p) => p.id === "midlength")!;
+
+  /** The Mid-length with the two wings "+ Add a wing" makes: wing 1 sharp, wing 2 rounded to its top. */
+  function twoWingBoard(): OutlineSpec {
+    const g = buildOutline(MID.outline);
+    const marks = marksOf(MID.outline, MID.fins);
+    const edges = {
+      front: marks.find((m) => m.role === "front")!.offTail,
+      rear: marks.find((m) => m.role === "rear")!.offTail,
+    };
+    const first = nextWing([], edges, g, "imperial");
+    const second = nextWing([first], edges, g, "imperial");
+    return { ...MID.outline, wings: [first, second] };
+  }
+
+  it("hands back the very same object when there is nothing to sharpen (D3)", () => {
+    for (const outline of [DEFAULT_BOARD_SPEC.outline, ...BOARD_PRESETS.map((p) => p.outline)]) {
+      expect(outlineForFins(outline)).toBe(outline);
+    }
+    const empty: OutlineSpec = { ...DEFAULT_BOARD_SPEC.outline, wings: [] };
+    expect(outlineForFins(empty)).toBe(empty);
+    const board = twoWingBoard();
+    const bothSharp: OutlineSpec = { ...board, wings: board.wings!.map((w) => ({ ...w, radius: mm(0) })) };
+    expect(outlineForFins(bothSharp)).toBe(bothSharp);
+  });
+
+  it("copies the outline with each rounded wing's radius at 0, every other field kept, never mutating the input", () => {
+    const board = twoWingBoard();
+    const [first, second] = board.wings!;
+    expect(second.radius).toBeGreaterThan(0);
+    const sharpened = outlineForFins(board);
+    expect(sharpened).not.toBe(board);
+    expect(sharpened.wings![0]).toBe(first);
+    expect(sharpened.wings![1]).toEqual({ ...second, radius: mm(0) });
+    expect({ ...sharpened, wings: undefined }).toEqual({ ...board, wings: undefined });
+    expect(board.wings![1]).toBe(second);
+    expect(second.radius).toBe(wingRadiusTop(second, "imperial"));
+  });
+
+  it("a radius that is not a number already draws sharp, so it counts as sharp (T-u8y-01)", () => {
+    const board = twoWingBoard();
+    const odd: OutlineSpec = { ...board, wings: board.wings!.map((w) => ({ ...w, radius: mm(Number.NaN) })) };
+    expect(outlineForFins(odd)).toBe(odd);
   });
 });

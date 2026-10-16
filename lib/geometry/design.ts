@@ -43,7 +43,10 @@ import type { FinPlacementSpec } from "./fins";
  * standalone calculator, which never sees the outline or its wings. On, the fins read the board's
  * length, tail shape and 12" tail width off the outline — the WINGED outline whenever the board has
  * wings (D8, the founder: "Fins listen to the closest piece of physical rail next to them"), so a
- * wing that crosses the 12" station moves every fin number that reads that width.
+ * wing that crosses the 12" station moves every fin number that reads that width. Its callers pass
+ * the fins' outline — the winged outline with every corner radius set to 0 (`outlineForFins`, quick
+ * 261015-u8y, D2) — and that outline's geometry, so the 12" width the fins read is the
+ * sharp-cornered one.
  *
  * OutlineSpec's TailShape and FinPlacementSpec's FinTailShape are kept structurally aligned on
  * purpose (the same five kind names), so this mapping is a direct assignment rather than a

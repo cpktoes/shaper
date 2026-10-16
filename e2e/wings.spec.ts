@@ -566,6 +566,62 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(tail).toBeVisible();
     await expect.poll(() => tail.getAttribute("d")).not.toBe(plain);
   });
+
+  // Quick 261015-u8y (2026-10-15). The founder: "I think the fin placement should be linked to the
+  // unrounded outline, so that the rounding has no affect on fin placement. It's the wing position
+  // that does." So the fin marks and their words never move with a corner radius, while FINS keeps
+  // drawing the real, rounded board ("keep the rounded corners on the FINS drawing.").
+  test("desktop: on the Mid-length a wing's corner radius moves no fin on FINS, and FINS still draws the corner rounded (quick 261015-u8y)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await openPreset(page, "Mid-length");
+    await addWingsOnTab(page);
+    await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+    const wing2 = page.locator('[data-wing-controls="2"]');
+    await expect(wing2.getByRole("checkbox", { name: "Lock to rear fin" })).toBeChecked();
+    const card2 = page.locator('[data-wing-close-up] [data-callout-chip="WING 2 · FIN"]');
+    await expect(card2.locator('[data-wing-card-row="radius"]')).toHaveText(/RADIUS\s*1 7\/16"/);
+
+    // The top bar's nav, not the Back and Next pair's: a client-side move keeps the board.
+    const topNav = page.locator("nav:not([data-step-nav])");
+    const finsLink = topNav.getByRole("link", { name: "FINS", exact: true });
+    const templateLink = topNav.getByRole("link", { name: "TEMPLATE", exact: true });
+    await expect(finsLink).toHaveCount(1);
+    await expect(templateLink).toHaveCount(1);
+
+    const readFins = async () => {
+      await finsLink.click();
+      await expect(page).toHaveURL(/\/design\/fins$/);
+      const tail = page.locator('[data-fin-plot] path[stroke="var(--outline-ink)"]').first();
+      await expect(tail).toBeVisible();
+      await expect(page.locator("[data-fin-dim]").first()).toBeVisible();
+      return {
+        circles: await page
+          .locator("[data-fin-plot] circle")
+          .evaluateAll((els) => els.map((el) => [el.getAttribute("cx"), el.getAttribute("cy")])),
+        dims: await page.locator("[data-fin-dim]").allTextContents(),
+        path: await tail.getAttribute("d"),
+      };
+    };
+
+    const rounded = await readFins();
+    expect(rounded.circles.length).toBeGreaterThan(0);
+
+    await templateLink.click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await page.getByRole("tab", { name: "WINGS · 2" }).click();
+    await page.getByRole("slider", { name: "Wing 2 corner radius" }).focus();
+    await page.keyboard.press("Home");
+    await expect(card2.locator('[data-wing-card-row="radius"]')).toHaveText(/RADIUS\s*0"/);
+
+    const sharp = await readFins();
+    expect(sharp.circles).toEqual(rounded.circles);
+    expect(sharp.dims).toEqual(rounded.dims);
+    expect(sharp.path).not.toEqual(rounded.path);
+  });
 });
 
 // -------------------------------------------------------------------------------------------------
