@@ -111,6 +111,27 @@ const SCALE_SQUARE_LINE_WEIGHT_MM = 0.35;
  * converts that decision into page-local millimetres — see `scaleSquareRect`. */
 const SCALE_SQUARE_CAPTION_GAP_MM = 5;
 const SCALE_SQUARE_CAPTION_HEIGHT_MM = 3;
+/** The caption's own type — bold, at the 9pt it has always printed at. */
+const SCALE_SQUARE_CAPTION_FONT_SIZE_PT = 9;
+/** A caption wider than the square itself — Metric's `50.8 mm x 50.8 mm — measure before taping`
+ * is 67.7mm at 9pt under a 50.8mm square — breaks at its dash onto two lines at this size, each
+ * centred under the square and narrower than it (fast task, 2026-10-15). On one line it ran 8.5mm
+ * past the page box's right border, over the Longboard's outline on Letter, and over the stringer
+ * and the left border on A4, where the Longboard's square moves inside the outline. Kept within
+ * the square's own width, the caption stays wherever the square's placement already proves clear —
+ * inside the page box, off the curve, off the stringer. Imperial's `2" x 2" — measure before
+ * taping` (48.9mm) fits on one line and prints exactly as before. */
+const SCALE_SQUARE_CAPTION_WRAPPED_FONT_SIZE_PT = 8;
+/** The wrapped caption's two baselines, measured down from the square's bottom edge — both lines
+ * sit inside the same `SCALE_SQUARE_CAPTION_GAP_MM + SCALE_SQUARE_CAPTION_HEIGHT_MM` band the
+ * one-line caption has always reserved, about 1mm clear of the square above, of each other, and of
+ * the how-to box's top border below, so nothing under the square moves. */
+const SCALE_SQUARE_CAPTION_WRAPPED_BASELINES_MM = [3.2, 6.4] as const;
+/** Helvetica Bold's ascender and descender as fractions of the type size (Adobe's published font
+ * metrics, 718 and 207 per 1000) — used only to build a testable rectangle round each caption line
+ * (`scaleSquareCaptionRects`), never by the draw call, which places text by its baseline. */
+const CAPTION_ASCENT_EM = 0.718;
+const CAPTION_DESCENT_EM = 0.207;
 /** The square's own full vertical footprint on the page — its own height plus the caption's
  * reserved space below it — named once here rather than repeated at every call site that needs the
  * square's whole reserved band, not just the drawn square itself (quick task 260903-h7t). */
@@ -345,11 +366,79 @@ function drawScaleSquare(
   doc.setDrawColor(0);
   doc.setLineWidth(SCALE_SQUARE_LINE_WEIGHT_MM);
   doc.rect(x, y, squareMm, squareMm, "S");
+  drawScaleSquareCaption(doc, scaleSquareCaptionText(system), x, y, squareMm);
+}
+
+/** One printed line of the scale square's caption. */
+export interface ScaleSquareCaptionLine {
+  text: string;
+  fontSizePt: number;
+  /** The line's baseline, measured down from the square's bottom edge. */
+  baselineMm: number;
+  /** The line's own printed width, measured with jsPDF's `getTextWidth` at `fontSizePt`. */
+  widthMm: number;
+}
+
+/** The caption as it prints under a square `squareMm` wide: one 9pt line when it fits within the
+ * square's width, otherwise broken at its dash into the size and the instruction, two smaller lines
+ * that each do (see `SCALE_SQUARE_CAPTION_WRAPPED_FONT_SIZE_PT`). Shared with the Paper Saver, whose
+ * square and caption band are the same size. Leaves the doc's font at the last line's size. */
+export function scaleSquareCaptionLines(caption: string, squareMm: number, doc: jsPDF): ScaleSquareCaptionLine[] {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(0);
-  doc.text(scaleSquareCaptionText(system), x + squareMm / 2, y + squareMm + SCALE_SQUARE_CAPTION_GAP_MM, {
-    align: "center",
+  doc.setFontSize(SCALE_SQUARE_CAPTION_FONT_SIZE_PT);
+  const oneLineWidth = doc.getTextWidth(caption);
+  const dash = caption.indexOf(" — ");
+  if (oneLineWidth <= squareMm || dash < 0) {
+    return [
+      {
+        text: caption,
+        fontSizePt: SCALE_SQUARE_CAPTION_FONT_SIZE_PT,
+        baselineMm: SCALE_SQUARE_CAPTION_GAP_MM,
+        widthMm: oneLineWidth,
+      },
+    ];
+  }
+  doc.setFontSize(SCALE_SQUARE_CAPTION_WRAPPED_FONT_SIZE_PT);
+  return [caption.slice(0, dash), caption.slice(dash + " — ".length)].map((text, i) => ({
+    text,
+    fontSizePt: SCALE_SQUARE_CAPTION_WRAPPED_FONT_SIZE_PT,
+    baselineMm: SCALE_SQUARE_CAPTION_WRAPPED_BASELINES_MM[i],
+    widthMm: doc.getTextWidth(text),
+  }));
+}
+
+/** Draws the caption under a square whose top-left corner is at (`x`, `y`), each line centred on
+ * the square. Shared with the Paper Saver's `drawScaleSquare`. */
+export function drawScaleSquareCaption(doc: jsPDF, caption: string, x: number, y: number, squareMm: number): void {
+  for (const line of scaleSquareCaptionLines(caption, squareMm, doc)) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(line.fontSizePt);
+    doc.setTextColor(0);
+    doc.text(line.text, x + squareMm / 2, y + squareMm + line.baselineMm, { align: "center" });
+  }
+}
+
+/** The page-local rectangle each caption line's ink occupies under a square whose top-left corner
+ * is at (`x`, `y`) — its measured width, centred as drawn, from the font's ascender above the
+ * baseline to its descender below. Exported so the tests can prove the caption stays inside the
+ * page box and inside the square's own reserved footprint, without re-deriving the layout. */
+export function scaleSquareCaptionRects(
+  doc: jsPDF,
+  caption: string,
+  x: number,
+  y: number,
+  squareMm: number,
+): TemplateFurnitureRect[] {
+  return scaleSquareCaptionLines(caption, squareMm, doc).map((line, i) => {
+    doc.setFontSize(line.fontSizePt);
+    const em = doc.getTextDimensions(line.text).h;
+    return {
+      name: `scale-square-caption-${i + 1}`,
+      x: x + squareMm / 2 - line.widthMm / 2,
+      y: y + squareMm + line.baselineMm - CAPTION_ASCENT_EM * em,
+      width: line.widthMm,
+      height: (CAPTION_ASCENT_EM + CAPTION_DESCENT_EM) * em,
+    };
   });
 }
 
@@ -1082,6 +1171,18 @@ export function templateScaleSquarePlacement(
   const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
   const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims, system);
   return furniture.scaleSquare;
+}
+
+/** Page 0's scale-square caption lines as page-local rectangles (`scaleSquareCaptionRects`), from
+ * the same resolved furniture `buildTemplatePdf` draws — so a test can hold them against
+ * `templatePageZeroBoxRect` and the square's own footprint in `templatePageZeroFurnitureRects`. */
+export function templateScaleSquareCaptionRects(options: BuildTemplatePdfOptions): TemplateFurnitureRect[] {
+  const { layout, geometry, dims, paper, system } = options;
+  const box = templatePageBoxes(layout)[0];
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "portrait" });
+  const furniture = resolvePageZeroFurniture(doc, layout, geometry, box, dims, system);
+  const square = scaleSquareRect(furniture.scaleSquare, layout.pages[0], layout.margin);
+  return scaleSquareCaptionRects(doc, scaleSquareCaptionText(system), square.x, square.y, furniture.scaleSquare.squareMm);
 }
 
 /** Page 0's own alignment box, converted into the same local millimetre rectangle space

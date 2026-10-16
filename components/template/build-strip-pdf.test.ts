@@ -36,6 +36,7 @@ import {
   stripFileName,
   stripFurnitureRects,
   stripPrintableRect,
+  stripScaleSquareCaptionRects,
   type BuildStripPdfOptions,
 } from "./build-strip-pdf";
 
@@ -571,5 +572,38 @@ describe("the tail is drawn as it is cut (fast task, 2026-10-15: \"paper save di
     const options = buildOptionsFor(BOARD_PRESETS[1]);
     const rows = stripLabelRows(options.layout, options.marks, options.geometry, options.system);
     expect(rows.some((row) => row.text.startsWith("Tail Block — "))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Fast task (2026-10-15): the scale square's caption stays inside the printable area. In Metric the
+// one-line caption (67.7mm at 9pt) ran 8.5mm past the printable right edge, toward the paper's own
+// edge. Added below the frozen tests.
+
+describe("Paper Saver scale-square caption stays inside the printable area (fast task, 2026-10-15)", () => {
+  for (const paper of PAPERS) {
+    for (const system of ["imperial", "metric"] as const) {
+      it.each(BOARD_PRESETS)(
+        `$id (${paper}, ${system}): every caption line lies inside page 1's printable area and inside the square's own reserved footprint, below the square`,
+        (preset) => {
+          const options = { ...buildOptionsFor(preset, paper), system };
+          const square = stripFurnitureRects(options).find((r) => r.name === "scale-square")!;
+          const printable = stripPrintableRect(options.layout, square.pageIndex);
+          const lines = stripScaleSquareCaptionRects(options);
+
+          expect(lines.length).toBeGreaterThan(0);
+          for (const line of lines) {
+            expect(rectContains(printable, line), `${line.name} inside the printable area`).toBe(true);
+            expect(rectContains(square, line), `${line.name} inside the square's footprint`).toBe(true);
+            expect(line.y).toBeGreaterThanOrEqual(square.y + inchesToMm(2));
+          }
+        },
+      );
+    }
+  }
+
+  it("Imperial prints one line and Metric two — the same lines the full-size template prints", () => {
+    expect(stripScaleSquareCaptionRects({ ...buildOptionsFor(BOARD_PRESETS[0]), system: "imperial" })).toHaveLength(1);
+    expect(stripScaleSquareCaptionRects({ ...buildOptionsFor(BOARD_PRESETS[0]), system: "metric" })).toHaveLength(2);
   });
 });

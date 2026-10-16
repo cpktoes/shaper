@@ -36,8 +36,10 @@ import {
 import { formatCalibrationMark } from "@/lib/geometry/measure-display";
 import { inchesToMm, type UnitsSystem } from "@/lib/geometry/units";
 import {
+  drawScaleSquareCaption,
   nameBlockContent,
   rectContains,
+  scaleSquareCaptionRects,
   rectsOverlap,
   templateNameBlockText,
   type BuildTemplatePdfOptions,
@@ -296,15 +298,10 @@ function drawScaleSquare(
   doc.setLineWidth(SCALE_SQUARE_LINE_WEIGHT_MM);
   doc.rect(x, y, SCALE_SQUARE_MM, SCALE_SQUARE_MM, "S");
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(0);
-  doc.text(
-    scaleSquareCaptionText(system),
-    x + SCALE_SQUARE_MM / 2,
-    y + SCALE_SQUARE_MM + SCALE_SQUARE_CAPTION_GAP_MM,
-    { align: "center" },
-  );
+  // One 9pt line when the caption fits within the square, two smaller lines broken at its dash when
+  // it doesn't (Metric) — laid out by the full-size template's own helper, so the two prints can
+  // never disagree, and kept inside the same caption band `stripFurnitureRects` reserves below.
+  drawScaleSquareCaption(doc, scaleSquareCaptionText(system), x, y, SCALE_SQUARE_MM);
 }
 
 function drawNameBlock(
@@ -450,6 +447,23 @@ export function stripFurnitureRects(options: BuildStripPdfOptions): StripFurnitu
     ),
     toRect("name-block", nameBlock, NAME_BOX_WIDTH_MM, nameBoxHeight),
   ];
+}
+
+/** Page 1's scale-square caption lines as page-local rectangles — the Paper Saver's half of
+ * `templateScaleSquareCaptionRects`, so a test can hold them against `stripPrintableRect` and the
+ * square's own footprint in `stripFurnitureRects`. */
+export function stripScaleSquareCaptionRects(options: BuildStripPdfOptions): TemplateFurnitureRect[] {
+  const { layout, marks, geometry, dims, paper, system } = options;
+  const doc = new jsPDF({ unit: "mm", format: paper, orientation: "landscape" });
+  const { scaleSquare } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
+  const page = layout.pages[scaleSquare.pageIndex];
+  return scaleSquareCaptionRects(
+    doc,
+    scaleSquareCaptionText(system),
+    halfWidthToX(scaleSquare.halfWidthStart, page, layout.margin),
+    stationToY(scaleSquare.topStation, page, layout.margin),
+    SCALE_SQUARE_MM,
+  );
 }
 
 /** One page's own printable rectangle, in the same page-local millimetre space
