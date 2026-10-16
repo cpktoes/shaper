@@ -24,9 +24,11 @@
  * before-and-after reports (D-25). Phase 11 scaled the blank's thickness by one ratio instead; that
  * formula survives only in `phase11-foil.ts`, to carry Phase 11's saved boards across.
  *
- * Judging the catalogue (11-03): the two floors that hide a blank (D-04), the best-placement
- * search that decides whether a blank fits anywhere along its length (D-07), the list's two groups
- * (D-06), the "closest blank that fits" offer and the "Move to Where It Fits" rescue (D-08).
+ * Judging the catalogue (11-03): the two floors (D-04), the best-placement search that decides
+ * whether a blank fits anywhere along its length (D-07), the list's two groups (D-06), the "closest
+ * blank that fits" offer and the "Move to Where It Fits" rescue (D-08). Since quick 261015-ve9
+ * (the founder, 2026-10-15, D-07) only the LENGTH floor hides a blank: one too thin at its printed
+ * centre is listed in WON'T FIT, greyed, with the fit flag's own sentence, instead of being hidden.
  *
  * No React/browser/database import — pure geometry, unit-tested in blank-fit.test.ts, per
  * CLAUDE.md Rule 1. Every length is millimetres.
@@ -713,18 +715,35 @@ export interface BlankVerdict {
   fits: boolean;
   placement: Mm;
   worst: BlankShortfall;
+  /**
+   * Set only on a listed blank too thin at its printed centre for the board's centre, Deck Skin and
+   * one Planer Max Depth pass (the centre floor, D-04 / Phase 12 D-10) — by how much it is short.
+   * Such a blank is never placement-searched: it is read centred (placement 0, P-1), with `worst` the
+   * same shortfall at the board's centre (quick 261015-ve9, D-07).
+   */
+  centerShortBy?: Mm;
 }
 
-/** The list (D-06): both groups by length then name, and why it is empty when it is. */
+/**
+ * The list (D-06): both groups by length then name, why it is empty when it is, and — when blanks
+ * are listed but every one is too thin at its centre — why that is (quick 261015-ve9, P-3).
+ */
 export interface BlankListResult {
   fits: BlankVerdict[];
   wontFit: BlankVerdict[];
   /**
-   * Null when anything is listed. Otherwise `length` when no pickable blank is long enough (the
-   * first obstacle, reported even if the centre floor fails too), `thickness` when none is thick
-   * enough at its centre, and `both` when each floor alone leaves blanks but no blank passes both.
+   * Null when anything is listed; `length` when nothing is, because no pickable blank is long
+   * enough. Since quick 261015-ve9 (D-07) only the length floor hides a blank, so it is the one
+   * reason a list can be empty.
    */
-  emptyReason: null | "length" | "thickness" | "both";
+  emptyReason: null | "length";
+  /**
+   * Null when nothing is listed, or when any listed blank passes the centre floor. Otherwise every
+   * listed blank is too thin at its centre (each greyed in WON'T FIT): `thickness` when no blank
+   * handed in passes the centre floor at all, `both` when some blank does but is too short to be
+   * listed — the old empty-list E2 and E3 reasons, now shown above the greyed blanks (P-3).
+   */
+  tooThinReason: null | "thickness" | "both";
 }
 
 /**
@@ -740,24 +759,63 @@ const PLACEMENT_STEP_MM = inchesToMm(1 / 16);
 const COARSE_STEPS = 4;
 
 /**
- * The two floors that hide a blank from the list (Phase 11 D-04, Phase 12 D-10): the blank must be
- * at least Extra Length longer than the board, and its own centre-station thickness (Phase 11
- * D-18: the floor keeps the printed `C` value) must leave room above the target centre for the
- * board's Deck Skin — one deck pass — plus at least one bottom pass of the shaper's Planer Max
- * Depth. The amounts come from the board's own cut and `settings` — never a literal here. A failed
- * floor reports by how much it is short.
+ * The length floor alone: by how much the blank is shorter than the board plus Extra Length, or null
+ * when it is long enough (with `FLOOR_EPSILON_MM` of slack, Pitfall 6). Since quick 261015-ve9 (D-07)
+ * this is the one floor that keeps a blank off the list.
+ */
+export function lengthShortBy(prepared: PreparedBlank, boardLength: Mm, extraLength: Mm): Mm | null {
+  const short = boardLength + extraLength - prepared.lengthMm;
+  return short > FLOOR_EPSILON_MM ? mm(short) : null;
+}
+
+/**
+ * The two floors (Phase 11 D-04, Phase 12 D-10): the blank must be at least Extra Length longer
+ * than the board, and its own centre-station thickness (Phase 11 D-18: the floor keeps the printed
+ * `C` value) must leave room above the target centre for the board's Deck Skin — one deck pass —
+ * plus at least one bottom pass of the shaper's Planer Max Depth. The amounts come from the board's
+ * own cut and `settings` — never a literal here. A failed floor reports by how much it is short.
+ * Failing the length floor hides a blank from the list; failing only the centre floor greys it
+ * (quick 261015-ve9, D-07).
  */
 export function floorCheck(
   prepared: PreparedBlank,
   board: { length: Mm; centerThickness: Mm; deckSkin: Mm },
   settings: FitSettings,
 ): { passes: boolean; lengthShortBy: Mm | null; centerShortBy: Mm | null } {
-  const lengthShort = board.length + settings.extraLength - prepared.lengthMm;
+  const lengthShort = lengthShortBy(prepared, board.length, settings.extraLength);
   const centerShort =
     board.centerThickness + board.deckSkin + settings.planerMaxDepth - prepared.centerThicknessMm;
-  const lengthShortBy = lengthShort > FLOOR_EPSILON_MM ? mm(lengthShort) : null;
   const centerShortBy = centerShort > FLOOR_EPSILON_MM ? mm(centerShort) : null;
-  return { passes: lengthShortBy === null && centerShortBy === null, lengthShortBy, centerShortBy };
+  return { passes: lengthShort === null && centerShortBy === null, lengthShortBy: lengthShort, centerShortBy };
+}
+
+/**
+ * How many pickable blanks of each maker pass the length floor for this board, keyed by
+ * `record.vendor`. The PICK A BLANK popup's header reads their sum as "of {m} blanks" (P-4), and
+ * plan 02's maker chips read each count (quick 261015-ve9).
+ */
+export function longEnoughByMaker(
+  prepared: readonly PreparedBlank[],
+  boardLength: Mm,
+  extraLength: Mm,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const blank of prepared) {
+    if (!isPickable(blank.record)) continue;
+    if (lengthShortBy(blank, boardLength, extraLength) !== null) continue;
+    counts.set(blank.record.vendor, (counts.get(blank.record.vendor) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * The blank's bottom rocker at its nose and tail tips, read off the levelled curve (its lowest point
+ * reads 0) — the one "nose rocker" number the blank cards, the nose-rocker filter and the sort share
+ * (quick 261015-ve9, P-6). Where the catalogue's lowest printed rocker is not 0 this differs from the
+ * printed N0 / T0 by that lowest value; the station table still prints the catalogue's own figure.
+ */
+export function blankTipRockers(prepared: PreparedBlank): { nose: Mm; tail: Mm } {
+  return { nose: mm(prepared.rocker.sample(prepared.lengthMm)), tail: mm(prepared.rocker.sample(0)) };
 }
 
 /**
@@ -919,10 +977,14 @@ function byLengthThenName(a: BlankVerdict, b: BlankVerdict): number {
 }
 
 /**
- * The blank list for a board (D-04, D-06): pickable blanks only; a blank failing either floor
- * (`floorCheck` — the centre floor reads the board's own Deck Skin from `ctx.board`, Phase 12
- * D-10) is hidden; the rest are judged (`judgeBlank`) into FITS and WON'T FIT, each ordered by length then
- * name. An empty list says which floor emptied it. Takes no placement (R14).
+ * The blank list for a board (D-04, D-06): pickable blanks only. A blank failing the length floor is
+ * hidden. Since quick 261015-ve9 (the founder, 2026-10-15, D-07) a blank failing only the centre
+ * floor (`floorCheck` — it reads the board's own Deck Skin from `ctx.board`, Phase 12 D-10) is no
+ * longer hidden: it is listed in WON'T FIT, read centred with no placement search (P-1), its `worst`
+ * the centre shortfall and `centerShortBy` set, so its card can quote the fit flag's own sentence.
+ * The rest are judged (`judgeBlank`) into FITS and WON'T FIT. Each group is ordered by length then
+ * name. An empty list says the length floor emptied it; a list of only too-thin blanks says why in
+ * `tooThinReason`. Takes no placement (R14).
  */
 export function listBlanks(
   prepared: readonly PreparedBlank[],
@@ -932,24 +994,35 @@ export function listBlanks(
   const shared: BoardFitContext = { ...ctx, halfWidthAt: memoiseHalfWidth(ctx.halfWidthAt) };
   const fits: BlankVerdict[] = [];
   const wontFit: BlankVerdict[] = [];
-  let anyLongEnough = false;
   let anyThickEnough = false;
+  let anyListedThickEnough = false;
   for (const blank of prepared) {
     if (!isPickable(blank.record)) continue;
     const floor = floorCheck(blank, ctx.board, settings);
-    if (floor.lengthShortBy === null) anyLongEnough = true;
     if (floor.centerShortBy === null) anyThickEnough = true;
-    if (!floor.passes) continue;
+    if (floor.lengthShortBy !== null) continue;
+    if (floor.centerShortBy !== null) {
+      // Too thin at the centre: listed greyed, read centred, never searched (P-1).
+      wontFit.push({
+        prepared: blank,
+        fits: false,
+        placement: mm(0),
+        worst: { kind: "thin", station: mm(ctx.board.length / 2), amount: floor.centerShortBy },
+        centerShortBy: floor.centerShortBy,
+      });
+      continue;
+    }
+    anyListedThickEnough = true;
     const verdict = judgeWith(blank, shared, settings);
     (verdict.fits ? fits : wontFit).push(verdict);
   }
   fits.sort(byLengthThenName);
   wontFit.sort(byLengthThenName);
-  let emptyReason: BlankListResult["emptyReason"] = null;
-  if (fits.length === 0 && wontFit.length === 0) {
-    emptyReason = !anyLongEnough ? "length" : !anyThickEnough ? "thickness" : "both";
-  }
-  return { fits, wontFit, emptyReason };
+  const listed = fits.length + wontFit.length;
+  const emptyReason: BlankListResult["emptyReason"] = listed === 0 ? "length" : null;
+  let tooThinReason: BlankListResult["tooThinReason"] = null;
+  if (listed > 0 && !anyListedThickEnough) tooThinReason = anyThickEnough ? "both" : "thickness";
+  return { fits, wontFit, emptyReason, tooThinReason };
 }
 
 /**

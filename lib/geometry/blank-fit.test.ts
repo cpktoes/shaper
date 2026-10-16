@@ -18,6 +18,7 @@ import {
 import {
   BLANK_PLACEMENT_BUFFER_MM,
   blankStationOf,
+  blankTipRockers,
   boardOnBlank,
   catalogueExtremes,
   clampPlacement,
@@ -27,8 +28,10 @@ import {
   FLOOR_EPSILON_MM,
   floorCheck,
   judgeBlank,
+  lengthShortBy,
   levelCurve,
   listBlanks,
+  longEnoughByMaker,
   MIN_FOIL_THICKNESS_MM,
   nearestFit,
   nearestFittingPlacement,
@@ -1000,13 +1003,19 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     };
     expect(listedKeys(listBlanks(PREPARED_ALL, ctx, longer))).not.toContain(keyOf(mRegular));
 
-    // A planer pass deep enough that M-Regular's centre can't hold the skin and one pass any more.
+    // A planer pass deep enough that M-Regular's centre can't hold the skin and one pass any more:
+    // since quick 261015-ve9 (D-07) it is LISTED in WON'T FIT, too thin by that sixteenth, not hidden.
     const mRegularCentre = prepareBlank(mRegular).centerThicknessMm;
     const thicker: FitSettings = {
       ...DEFAULT_SETTINGS,
       planerMaxDepth: mm(mRegularCentre - ctx.board.centerThickness - DEFAULT_BLANK_CUT.deckSkin + SIXTEENTH_MM),
     };
-    expect(listedKeys(listBlanks(PREPARED_ALL, ctx, thicker))).not.toContain(keyOf(mRegular));
+    const thickerList = listBlanks(PREPARED_ALL, ctx, thicker);
+    expect(thickerList.fits.map((v) => keyOf(v.prepared.record))).not.toContain(keyOf(mRegular));
+    const greyed = thickerList.wontFit.find((v) => keyOf(v.prepared.record) === keyOf(mRegular));
+    expect(greyed).toBeDefined();
+    expect(greyed!.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
+    expect(greyed!.placement).toBe(0);
   });
 
   it("Pitfall 6: a board exactly Extra Length shorter than a blank lists it, even with float noise; a millimetre longer hides it", () => {
@@ -1036,6 +1045,25 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     expect(overCentre.lengthShortBy).toBeNull();
     expect(overCentre.centerShortBy).toBeCloseTo(1, 9);
     expect(FLOOR_EPSILON_MM).toBe(1e-6);
+
+    // The list reads the centre boundary the same way (quick 261015-ve9, D-07): exactly on the floor
+    // the blank is judged normally; a millimetre over, it is listed too thin by that millimetre.
+    const onList = listBlanks(
+      [prepared],
+      fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(60), mm(centreBoundary + 1e-9)),
+      DEFAULT_SETTINGS,
+    );
+    const onVerdict = [...onList.fits, ...onList.wontFit];
+    expect(onVerdict).toHaveLength(1);
+    expect(onVerdict[0].centerShortBy).toBeUndefined();
+    const overList = listBlanks(
+      [prepared],
+      fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(60), mm(centreBoundary + 1)),
+      DEFAULT_SETTINGS,
+    );
+    expect(overList.fits).toEqual([]);
+    expect(overList.wontFit).toHaveLength(1);
+    expect(overList.wontFit[0].centerShortBy).toBeCloseTo(1, 9);
   });
 
   it("floorCheck reports how short and how thin, and null for a floor that passes", () => {
@@ -1054,14 +1082,18 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
 
   it("D-10: out of the box the centre floor is the target + 1/4\" — the 1/8\" Deck Skin and one 1/8\" planer pass", () => {
     expect(DEFAULT_CENTRE_FLOOR).toBeCloseTo(inchesToMm(1 / 4), 9);
-    // A blank thinner than centre + skin + one pass at its printed centre is hidden; exactly on it
-    // is listed.
+    // A blank thinner than centre + skin + one pass at its printed centre is greyed as too thin
+    // (quick 261015-ve9, D-07 — it used to be hidden); exactly on it is judged normally.
     const prepared = prepareBlank(mRegular);
     const onFloor = mm(prepared.centerThicknessMm - DEFAULT_CENTRE_FLOOR);
-    const listed = (centre: Mm) =>
-      listedKeys(listBlanks([prepared], fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre), DEFAULT_SETTINGS));
-    expect(listed(onFloor)).toEqual([keyOf(mRegular)]);
-    expect(listed(mm(onFloor + SIXTEENTH_MM))).toEqual([]);
+    const list = (centre: Mm) =>
+      listBlanks([prepared], fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre), DEFAULT_SETTINGS);
+    expect(listedKeys(list(onFloor))).toEqual([keyOf(mRegular)]);
+    expect([...list(onFloor).fits, ...list(onFloor).wontFit][0].centerShortBy).toBeUndefined();
+    const thin = list(mm(onFloor + SIXTEENTH_MM));
+    expect(thin.fits).toEqual([]);
+    expect(thin.wontFit.map((v) => keyOf(v.prepared.record))).toEqual([keyOf(mRegular)]);
+    expect(thin.wontFit[0].centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
     const under = floorCheck(prepared, floorBoard(inchesToMm(70), mm(onFloor + SIXTEENTH_MM)), DEFAULT_SETTINGS);
     expect(under.passes).toBe(false);
     expect(under.lengthShortBy).toBeNull();
@@ -1078,14 +1110,18 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     expect(raised.centerShortBy).toBeCloseTo(SIXTEENTH_MM, 9);
 
     // The list reads the skin from the board it is handed: the same board with the thicker skin
-    // hides M-Regular, and lists nothing the default skin does not.
+    // greys M-Regular as too thin (quick 261015-ve9, D-07), and the length floor alone decides what
+    // is listed, so both skins list the same blanks.
     const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(70), centre);
     const thickCtx: BoardFitContext = { ...ctx, board: { ...ctx.board, deckSkin: thickerSkin } };
-    const withDefault = listedKeys(listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS));
-    const withThicker = listedKeys(listBlanks(PREPARED_ALL, thickCtx, DEFAULT_SETTINGS));
-    expect(withDefault).toContain(keyOf(mRegular));
-    expect(withThicker).not.toContain(keyOf(mRegular));
-    for (const key of withThicker) expect(withDefault).toContain(key);
+    const withDefault = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+    const withThicker = listBlanks(PREPARED_ALL, thickCtx, DEFAULT_SETTINGS);
+    const tooThin = (list: BlankListResult) =>
+      list.wontFit.filter((v) => v.centerShortBy !== undefined).map((v) => keyOf(v.prepared.record));
+    expect(tooThin(withDefault)).not.toContain(keyOf(mRegular));
+    expect(tooThin(withThicker)).toContain(keyOf(mRegular));
+    expect([...listedKeys(withThicker)].sort()).toEqual([...listedKeys(withDefault)].sort());
+    for (const key of tooThin(withDefault)) expect(tooThin(withThicker)).toContain(key);
   });
 
   it("D-10: a deeper Planer Max Depth raises the centre floor by exactly as much", () => {
@@ -1153,15 +1189,31 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     }
   });
 
-  it("D-06: a WON'T FIT blank passed both floors and is judged at its nearly-fits placement", () => {
+  it("D-06: a WON'T FIT blank passed both floors and is judged at its nearly-fits placement — or is too thin at its centre, read centred (261015-ve9)", () => {
     let wontFit = 0;
+    let tooThin = 0;
     for (const { ctx } of sweepContexts()) {
       const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
       for (const verdict of result.wontFit) {
-        wontFit++;
         const { prepared } = verdict;
         const L = ctx.board.length;
-        expect(floorCheck(prepared, ctx.board, DEFAULT_SETTINGS).passes).toBe(true);
+        const floor = floorCheck(prepared, ctx.board, DEFAULT_SETTINGS);
+        expect(floor.lengthShortBy).toBeNull();
+        if (verdict.centerShortBy !== undefined) {
+          // Too thin at the centre (D-07, P-1): never searched, read centred, the centre shortfall.
+          tooThin++;
+          expect(verdict.centerShortBy).toBe(floor.centerShortBy);
+          expect(verdict).toEqual({
+            prepared,
+            fits: false,
+            placement: 0,
+            worst: { kind: "thin", station: L / 2, amount: floor.centerShortBy },
+            centerShortBy: floor.centerShortBy,
+          });
+          continue;
+        }
+        wontFit++;
+        expect(floor.passes).toBe(true);
         expect(verdict.fits).toBe(false);
         expect(verdict.worst.amount).toBeGreaterThan(FIT_EPSILON_MM);
         expect(verdict.worst.station).toBeGreaterThanOrEqual(0);
@@ -1188,6 +1240,7 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       }
     }
     expect(wontFit).toBeGreaterThan(0);
+    expect(tooThin).toBeGreaterThan(0);
   });
 
   it("orders both groups by length, shortest first, ties by name", () => {
@@ -1227,10 +1280,12 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     expect(elapsed).toBeLessThan(250);
   });
 
-  it("judgeBlank reads the same verdict listBlanks does", () => {
+  it("judgeBlank reads the same verdict listBlanks does (for every blank listBlanks searches)", () => {
     const ctx = defaultContext(70, 2.5);
     const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
-    for (const verdict of [...result.wontFit, ...result.fits].slice(0, 20)) {
+    // A blank too thin at its centre is listed without a search (P-1), so judgeBlank is not its reading.
+    const searched = [...result.wontFit, ...result.fits].filter((v) => v.centerShortBy === undefined);
+    for (const verdict of searched.slice(0, 20)) {
       expect(judgeBlank(verdict.prepared, ctx, DEFAULT_SETTINGS)).toEqual(verdict);
     }
   });
@@ -1242,20 +1297,27 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
     expect(extremes.thickestCenter).toBe(Math.max(...pickable.map((p) => p.centerThicknessMm)));
   });
 
-  describe("an empty list says which floor emptied it", () => {
+  describe("an empty list says the length floor emptied it; a list of only too-thin blanks says why (261015-ve9)", () => {
     const extremes = catalogueExtremes(PREPARED_ALL);
 
-    it("null whenever something is listed", () => {
-      expect(listBlanks(PREPARED_ALL, defaultContext(72, 2.5), DEFAULT_SETTINGS).emptyReason).toBeNull();
+    it("null whenever something is listed, and no too-thin reason when a listed blank is thick enough", () => {
+      const result = listBlanks(PREPARED_ALL, defaultContext(72, 2.5), DEFAULT_SETTINGS);
+      expect(result.emptyReason).toBeNull();
+      expect(result.tooThinReason).toBeNull();
     });
 
-    it("thickness — a centre above every blank's centre less the Deck Skin and one planer pass", () => {
+    it("thickness — a centre above every blank's centre less the Deck Skin and one planer pass lists every long-enough blank greyed", () => {
       const centre = mm(extremes.thickestCenter - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
       const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(72), centre);
       const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
       expect(result.fits).toEqual([]);
-      expect(result.wontFit).toEqual([]);
-      expect(result.emptyReason).toBe("thickness");
+      const longEnough = PREPARED_ALL.filter(
+        (p) => isPickable(p.record) && floorCheck(p, ctx.board, DEFAULT_SETTINGS).lengthShortBy === null,
+      );
+      expect(result.wontFit).toHaveLength(longEnough.length);
+      for (const verdict of result.wontFit) expect(verdict.centerShortBy).toBeDefined();
+      expect(result.emptyReason).toBeNull();
+      expect(result.tooThinReason).toBe("thickness");
     });
 
     it("length — a board longer than every blank less Extra Length", () => {
@@ -1268,9 +1330,22 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       expect(result.fits).toEqual([]);
       expect(result.wontFit).toEqual([]);
       expect(result.emptyReason).toBe("length");
+      expect(result.tooThinReason).toBeNull();
     });
 
-    it("both — each floor alone leaves blanks, but no blank passes both", () => {
+    it("length wins even when the centre floor fails too — nothing is listed, so no too-thin reason", () => {
+      const centre = mm(extremes.thickestCenter - DEFAULT_CENTRE_FLOOR + SIXTEENTH_MM);
+      const ctx = fitContext(DEFAULT_BOARD_SPEC.outline, inchesToMm(72), centre);
+      const settings: FitSettings = {
+        ...DEFAULT_SETTINGS,
+        extraLength: mm(extremes.longest - ctx.board.length + inchesToMm(1)),
+      };
+      const result = listBlanks(PREPARED_ALL, ctx, settings);
+      expect(result.emptyReason).toBe("length");
+      expect(result.tooThinReason).toBeNull();
+    });
+
+    it("both — each floor alone leaves blanks, but no blank passes both: the long one is listed greyed", () => {
       // The catalogue's longest blank is also among its thickest, so "both" needs a pair of real
       // blanks where the longer one is the thinner: floors set so only the long one is long enough
       // and only the thick one is thick enough.
@@ -1295,8 +1370,122 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       };
       const result = listBlanks([long, thick], ctx, settings);
       expect(result.fits).toEqual([]);
-      expect(result.wontFit).toEqual([]);
-      expect(result.emptyReason).toBe("both");
+      expect(result.wontFit.map((v) => keyOf(v.prepared.record))).toEqual([keyOf(long.record)]);
+      expect(result.wontFit[0].centerShortBy).toBeDefined();
+      expect(result.emptyReason).toBeNull();
+      expect(result.tooThinReason).toBe("both");
+    });
+  });
+
+  describe("the default 6'0\" board at its own centre (261015-ve9, D-07)", () => {
+    const outline = DEFAULT_BOARD_SPEC.outline;
+    const ctx = fitContext(outline, outline.length, DEFAULT_BOARD_SPEC.foil.center);
+
+    it("lists every blank passing the length floor; the too-thin ones are exactly those failing the centre floor", () => {
+      const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+      const pickable = PREPARED_ALL.filter((p) => isPickable(p.record));
+      const floors = pickable.map((p) => floorCheck(p, ctx.board, DEFAULT_SETTINGS));
+      const longEnough = floors.filter((f) => f.lengthShortBy === null).length;
+      const thinOnly = floors.filter((f) => f.lengthShortBy === null && f.centerShortBy !== null).length;
+      expect(result.fits.length + result.wontFit.length).toBe(longEnough);
+      expect(result.wontFit.filter((v) => v.centerShortBy !== undefined)).toHaveLength(thinOnly);
+      for (const verdict of result.fits) {
+        expect(floorCheck(verdict.prepared, ctx.board, DEFAULT_SETTINGS).passes).toBe(true);
+        expect(verdict.centerShortBy).toBeUndefined();
+      }
+    });
+
+    it("a blank failing the length floor is never listed, whatever its centre", () => {
+      const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+      const listed = new Set(listedKeys(result));
+      for (const p of PREPARED_ALL) {
+        if (floorCheck(p, ctx.board, DEFAULT_SETTINGS).lengthShortBy !== null) {
+          expect(listed.has(keyOf(p.record))).toBe(false);
+        }
+      }
+    });
+
+    it("too-thin verdicts sort with the other WON'T FIT verdicts, by length then name — the default board and every preset", () => {
+      let mixed = 0;
+      for (const { ctx: board } of sweepContexts()) {
+        const result = listBlanks(PREPARED_ALL, board, DEFAULT_SETTINGS);
+        const thin = result.wontFit.some((v) => v.centerShortBy !== undefined);
+        const searched = result.wontFit.some((v) => v.centerShortBy === undefined);
+        if (thin && searched) mixed++;
+        for (let i = 1; i < result.wontFit.length; i++) {
+          const a = result.wontFit[i - 1].prepared;
+          const b = result.wontFit[i].prepared;
+          expect(a.lengthMm).toBeLessThanOrEqual(b.lengthMm);
+          if (a.lengthMm === b.lengthMm) expect(a.record.name <= b.record.name).toBe(true);
+        }
+      }
+      expect(mixed).toBeGreaterThan(0);
+    });
+
+    it("nearestFit never offers a too-thin blank", () => {
+      const thick = mm(DEFAULT_BOARD_SPEC.foil.center + inchesToMm(1));
+      const thickCtx = fitContext(outline, outline.length, thick);
+      const list = listBlanks(PREPARED_ALL, thickCtx, DEFAULT_SETTINGS);
+      const thin = new Set(list.wontFit.filter((v) => v.centerShortBy !== undefined).map((v) => keyOf(v.prepared.record)));
+      expect(thin.size).toBeGreaterThan(0);
+      for (const current of [...list.fits.slice(0, 5), ...list.wontFit.slice(0, 5)]) {
+        const offer = nearestFit(current.prepared.record, list.fits, thick);
+        if (offer) expect(thin.has(keyOf(offer.prepared.record))).toBe(false);
+        // Handing in the whole list by mistake still never offers a too-thin blank.
+        const anyOffer = nearestFit(current.prepared.record, [...list.fits, ...list.wontFit], thick);
+        if (anyOffer) expect(thin.has(keyOf(anyOffer.prepared.record))).toBe(false);
+      }
+    });
+  });
+
+  describe("longEnoughByMaker and blankTipRockers (261015-ve9)", () => {
+    it("counts, per maker, the pickable blanks passing the length floor — and they sum to what is listed", () => {
+      const outline = DEFAULT_BOARD_SPEC.outline;
+      const ctx = fitContext(outline, outline.length, DEFAULT_BOARD_SPEC.foil.center);
+      const counts = longEnoughByMaker(PREPARED_ALL, ctx.board.length, DEFAULT_SETTINGS.extraLength);
+      for (const [vendor, count] of counts) {
+        const expected = PREPARED_ALL.filter(
+          (p) =>
+            p.record.vendor === vendor &&
+            isPickable(p.record) &&
+            lengthShortBy(p, ctx.board.length, DEFAULT_SETTINGS.extraLength) === null,
+        ).length;
+        expect(count).toBe(expected);
+      }
+      expect(counts.size).toBeGreaterThan(1);
+      const result = listBlanks(PREPARED_ALL, ctx, DEFAULT_SETTINGS);
+      const sum = [...counts.values()].reduce((a, b) => a + b, 0);
+      expect(sum).toBe(result.fits.length + result.wontFit.length);
+    });
+
+    it("lengthShortBy is floorCheck's length half", () => {
+      for (const p of PREPARED_ALL.slice(0, 40)) {
+        for (const lengthIn of [60, 72, 90]) {
+          const board = floorBoard(inchesToMm(lengthIn), inchesToMm(2.5));
+          expect(lengthShortBy(p, board.length, DEFAULT_SETTINGS.extraLength)).toBe(
+            floorCheck(p, board, DEFAULT_SETTINGS).lengthShortBy,
+          );
+        }
+      }
+    });
+
+    it("blankTipRockers reads the levelled bottom at each tip — the printed N0 / T0 less the curve's minimum", () => {
+      let printed = 0;
+      for (const p of PREPARED_ALL) {
+        const tips = blankTipRockers(p);
+        expect(tips.nose).toBe(p.rocker.sample(p.lengthMm));
+        expect(tips.tail).toBe(p.rocker.sample(0));
+        expect(tips.nose).toBeGreaterThanOrEqual(-1e-9);
+        expect(tips.tail).toBeGreaterThanOrEqual(-1e-9);
+        const n0 = p.record.stations.find((s) => s.label === "N0")?.rockerMm ?? null;
+        const t0 = p.record.stations.find((s) => s.label === "T0")?.rockerMm ?? null;
+        if (n0 !== null) {
+          printed++;
+          expect(tips.nose).toBeCloseTo(n0 - p.rocker.minimum, 9);
+        }
+        if (t0 !== null) expect(tips.tail).toBeCloseTo(t0 - p.rocker.minimum, 9);
+      }
+      expect(printed).toBeGreaterThan(100);
     });
   });
 });
