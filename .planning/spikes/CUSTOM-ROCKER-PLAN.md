@@ -144,9 +144,12 @@ deploy that reads it.
    custom blank later never moves a board already saved on it (the catalogue-correction rule). The sidebar shows
    only the result (the BLANK button's rocker line). A shaper never types the notation — the app writes it. Sketch
    016's A (a ROCKER section), B (rows on the BLANK card) and C (a typed field) stay as the alternatives seen.
-3. **The drawing — decided (the founder, 2026-10-16, rounds three and eight):** the natural rocker dashed behind the
-   bent blank, a short mark across the bottom where each bend starts (the Thinning Starts mark's grammar), and **the
-   deviation from natural drawn as US Blanks' catalogue draws it (September 2026, page 11): the blank's outline, deck
+3. **The drawing — decided (the founder, 2026-10-16, rounds three, eight, eleven and twelve):** on the ROCKER page's
+   VIEWER a blank with a custom rocker draws **as any blank — the bent blank alone**, no natural dashed line, no bend
+   marks, nothing coloured ("once a blank has a custom rocker that's all that needs to show"). Inside the Customize
+   Rocker popup only, as a live aid while adjusting: the natural rocker dashed behind the bent blank, a short mark
+   across the bottom where each bend starts (the Thinning Starts mark's grammar), and **the deviation from natural
+   drawn as US Blanks' catalogue draws it (September 2026, page 11): the blank's outline, deck
    and bottom, in red over the first adjustment's span and in blue over the second's, stacked on the first**, with the
    note's figures in the same colours where the note is shown large (the popup's header). **The coloured lines live
    only in the Customize Rocker popup** (the founder, round eleven): once the change is saved and the shaper is back

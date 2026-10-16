@@ -155,6 +155,10 @@ the regular parts of the app."* — *"The red and blue line are just so you coul
 doing to the actual curve of the blank."* So the overlay is a live aid inside the popup only; the VIEWER afterwards
 shows the bent blank with the natural rocker dashed behind it, nothing coloured.
 
+**Round twelve (the founder, 2026-10-16):** *"On the rocker page, I don't need the dashed natural curve in the
+background. Once a blank has a custom rocker that's all that needs to show."* So the page's VIEWER draws a custom blank
+as any blank — the bent foam alone, no dashed natural, no bend marks; those live in the popup with the colours.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

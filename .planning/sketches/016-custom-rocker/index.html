@@ -403,9 +403,9 @@ function mainArt(device, g, opts = {}) {
   if (showBoard) { const [x1, y1] = P(0, 0), [x2, y2] = P(g.L, 0); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
   else { const low = Math.min(...g.blankBottom.map((p) => p[1])); const [x1, y1] = P(g.start, low), [x2, y2] = P(g.start + g.bl.lengthIn, low); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
   out += `<path d="${blankOutline}" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/>`;
-  if (custom) out += `<path d="${natural}" fill="none" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="5 4"/>`;
+  if (custom && overlay) out += `<path d="${natural}" fill="none" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="5 4"/>`;
   // bend marks: a short dashed line across the blank where each bend starts, the thinning marks' own grammar
-  for (const pv of g.pivots) { const s = pv.x + g.start; const i = Math.round(((s - g.blankBottom[0][0]) / (g.blankBottom[g.blankBottom.length - 1][0] - g.blankBottom[0][0])) * (g.blankBottom.length - 1)); const p = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i))]; const [x1, y1] = P(s, p[1] - 0.9), [x2, y2] = P(s, p[1] + p[2] + 0.9); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="3 2"/>`; }
+  for (const pv of overlay ? g.pivots : []) { const s = pv.x + g.start; const i = Math.round(((s - g.blankBottom[0][0]) / (g.blankBottom[g.blankBottom.length - 1][0] - g.blankBottom[0][0])) * (g.blankBottom.length - 1)); const p = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i))]; const [x1, y1] = P(s, p[1] - 0.9), [x2, y2] = P(s, p[1] + p[2] + 0.9); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="3 2"/>`; }
   // the deviation from natural the way the makers draw it (Millennium's catalogue, "Rockers"): the first adjustment's
   // curve in red, the second — stacked on the first — in blue, each from where its bend starts to the tip
   if (custom && overlay) {
@@ -453,7 +453,7 @@ function mainArt(device, g, opts = {}) {
   else if (!upright) { const [cx] = P(g.L / 2, 0); out += `<text x="${cx}" y="${16}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text>`; }
   else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
   // the key, only when a custom rocker is set
-  if (custom && !upright) {
+  if (custom && overlay && !upright) {
     const hasSecond = r.nose.length > 1 && r.nose[1].a || r.tail.length > 1 && r.tail[1].a;
     const kx = 8, ky = H - 6;
     out += `<g font-size="8" fill="var(--color-text-muted)"><line x1="${kx}" y1="${ky}" x2="${kx + 18}" y2="${ky}" stroke="var(--blank-line)" stroke-dasharray="5 4"/><text x="${kx + 22}" y="${ky + 3}">natural rocker</text>${overlay ? `<line x1="${kx + 84}" y1="${ky}" x2="${kx + 102}" y2="${ky}" stroke="var(--adj-1)" stroke-width="1.6"/><text x="${kx + 106}" y="${ky + 3}">first</text>${hasSecond ? `<line x1="${kx + 130}" y1="${ky}" x2="${kx + 148}" y2="${ky}" stroke="var(--adj-2)" stroke-width="1.6"/><text x="${kx + 152}" y="${ky + 3}">second, on the first</text>` : ""}` : ""}</g>`;
@@ -772,7 +772,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <h3>Saving it as a blank (the founder, 2026-10-16)</h3>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>Round eight (the founder, 2026-10-16)</h3>
-<p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (round eleven): once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank with the natural rocker dashed behind it and nothing coloured.</p>
+<p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (rounds eleven and twelve), the natural dashed line and the bend marks too: once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank alone, as any blank.</p>
 <h3>Round nine (the founder, 2026-10-16)</h3>
 <p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone, with its bottom plane and its tip figures (natural → as ordered), as the catalogue draws it; on, the board sits in it with the five stations as the page draws them.</p>
 <h3>The maths</h3>
