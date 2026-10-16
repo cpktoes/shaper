@@ -17,6 +17,10 @@ import {
 } from "@/lib/geometry/template";
 import { formatCalibrationMark, formatDim, stationLabel } from "@/lib/geometry/measure-display";
 import { inchesToMm, litres, mm } from "@/lib/geometry/units";
+import type { UnitsSystem } from "@/lib/geometry/units";
+import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
+import { wingFigures } from "@/lib/geometry/wing-figures";
+import { placedWings, wingRadiusTop, type Wing } from "@/lib/geometry/wings";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
   buildTemplatePdf,
@@ -1186,6 +1190,111 @@ describe("templateScaleSquarePlacement / scaleSquareRect", () => {
         const { placement } = templateScaleSquarePlacement(options);
         expect(placement.position, `${paper} ${id}`).toBe(expectedInterior[paper].has(id) ? "interior" : "corner");
       }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Quick 261015-sei (2026-10-15): a wing's mark line and label, and its lines in the name box.
+// Added below the frozen tests (D4).
+
+/** The founder's test board (F1): the Fish with two wings — wing 1 locked to the front fins at 7 1/2",
+ * wing 2 by hand at 4 1/2" — and everything the export dialog hands the two full-size prints. */
+function wingedFishPrint(system: UnitsSystem = "imperial", paper: "letter" | "a4" = "letter") {
+  const preset = BOARD_PRESETS.find((p) => p.id === "fish")!;
+  const depth = inchesToMm(3 / 16);
+  const wings: Wing[] = [
+    {
+      station: inchesToMm(7.5),
+      depth,
+      run: inchesToMm(1 / 4),
+      radius: mm(0),
+      lock: "front-trailing",
+      finOffset: mm(0),
+    },
+    {
+      station: inchesToMm(4.5),
+      depth,
+      run: inchesToMm(1 / 2),
+      radius: wingRadiusTop({ depth, run: inchesToMm(1 / 2) }, "imperial"),
+      lock: null,
+      finOffset: mm(0),
+    },
+  ];
+  const outline = { ...preset.outline, wings };
+  const geometry = buildOutline(outline);
+  const placed = placedWings(outline.wings, geometry);
+  const figures = wingFigures(placed, { front: inchesToMm(7.5), rear: null }, system);
+  const layout = computeTemplateLayout(geometry, paper);
+  const marks = computeTemplateMarks(geometry, placed);
+  const dims = {
+    length: outline.length,
+    widePointWidth: outline.widePointWidth,
+    centerThickness: preset.rails.center.boardThickness,
+    noseWidth12in: geometry.noseWidthAt12in,
+    tailWidth12in: geometry.tailWidthAt12in,
+    widePointOffset: outline.widePointOffset,
+    volumeLitres: litres(34),
+    wings: figures,
+  };
+  return { preset, outline, geometry, placed, figures, layout, marks, dims, paper, system };
+}
+
+describe("a wing's mark line and label (quick 261015-sei)", () => {
+  it("reads a wing's label as its distance from the tail, in both systems", () => {
+    for (const [system, expected] of [
+      ["imperial", 'Wing 1 — 7 1/2" from tail'],
+      ["metric", "Wing 1 — 19.1 cm from tail"],
+    ] as const) {
+      const { layout, marks, geometry } = wingedFishPrint(system);
+      const placement = markPlacements(layout, marks, geometry, system).find((p) => p.mark === "wing1")!;
+      expect(templateMarkLabelText(placement, system)).toBe(expected);
+      expect(templateMarkDimensionText(placement, system)).toBe(expected.slice("Wing 1 — ".length));
+    }
+  });
+
+  it("leaves every non-wing mark's dimension text reading the board's full width", () => {
+    const { layout, marks, geometry } = wingedFishPrint();
+    for (const p of markPlacements(layout, marks, geometry).filter((q) => q.mark !== "wing1" && q.mark !== "wing2")) {
+      expect(templateMarkDimensionText(p, "imperial")).toBe(formatDim(mm(p.halfWidthExtent * 2), "imperial"));
+    }
+  });
+
+  it("never prints the Midlength's wing on its Tail 12 inch label, on either paper", () => {
+    const midlength = BOARD_PRESETS.find((p) => p.id === "midlength")!;
+    const geometry = buildOutline(midlength.outline);
+    for (const paper of ["letter", "a4"] as const) {
+      const layout = computeTemplateLayout(geometry, paper);
+      for (const delta of [0, inchesToMm(1 / 8), -inchesToMm(1 / 8)]) {
+        const station = mm(MEASURE_STATION_MM + delta);
+        const placements = markPlacements(layout, computeTemplateMarks(geometry, [{ station }]), geometry);
+        const wing = placements.find((p) => p.mark === "wing1")!;
+        const tail = placements.find((p) => p.mark === "tailTwelve" && p.pageIndex === wing.pageIndex)!;
+        const doc = new jsPDF({ unit: "mm", format: paper });
+        const page = layout.pages[wing.pageIndex];
+        const wingRect = markLabelRect(doc, page, layout.margin, wing, "imperial");
+        const tailRect = markLabelRect(doc, page, layout.margin, tail, "imperial");
+        expect(rectsOverlap(wingRect, tailRect), `${paper} ${delta}`).toBe(false);
+      }
+    }
+  });
+
+  it("builds on Letter and A4 with a distance label for each wing in the file's own text", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      const print = wingedFishPrint("imperial", paper);
+      const doc = buildTemplatePdf({
+        layout: print.layout,
+        marks: print.marks,
+        geometry: print.geometry,
+        paper,
+        boardName: print.preset.name,
+        dims: print.dims,
+        system: "imperial",
+      });
+      expect(doc.getNumberOfPages()).toBe(print.layout.pages.length);
+      const text = String(doc.output());
+      expect(text).toContain('7 1/2" from tail');
+      expect(text).toContain('4 1/2" from tail');
     }
   });
 });

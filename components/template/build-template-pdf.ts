@@ -18,11 +18,13 @@ import {
   PAPER_MM,
   computeTailClosure,
   howToBoxPlacement,
+  isWingMark,
   markLineSegments,
   markPlacements,
   nameBlockPlacement,
   scaleSquarePlacement,
   tailClosureSegments,
+  wingMarkDistanceText,
   type HowToBoxPlacement,
   type NameBlockPlacement,
   type PaperSize,
@@ -348,13 +350,18 @@ function drawScaleSquare(
  * figure) — routed through `formatDim`, never `formatMark`. `system` is required, not defaulted:
  * this is the builder side of the channel, where the compiler is the guarantee every call site
  * states which system it is printing for. Exported for testability without reading the rendered
- * page (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension"). */
+ * page (post-checkpoint fix, defect 2: "the station lines don't have a printed dimension").
+ *
+ * A wing's mark (quick 261015-sei, D2) is the exception: its figure is its distance from the tail,
+ * `7 1/2" from tail` (Metric `19.1 cm from tail`), so the shaper can mark it on the foam. */
 export function templateMarkDimensionText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
+  if (isWingMark(placement.mark)) return wingMarkDistanceText(placement.station, system);
   return formatDim(mm(placement.halfWidthExtent * 2), system);
 }
 
 /** The mark's name plus its dimension, e.g. `Nose 12" — 15 3/4"` (Imperial) or
- * `Nose 30.5 cm — 40.0 cm` (Metric) — the combined text drawn on one line when there's room. */
+ * `Nose 30.5 cm — 40.0 cm` (Metric) — the combined text drawn on one line when there's room. A wing
+ * reads `Wing 1 — 7 1/2" from tail`. */
 export function templateMarkLabelText(placement: TemplateMarkPlacement, system: UnitsSystem): string {
   return `${placement.label} — ${templateMarkDimensionText(placement, system)}`;
 }

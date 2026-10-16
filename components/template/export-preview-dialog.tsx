@@ -166,6 +166,9 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   // about a wing (quick 261015-sei, 2026-10-15, P8 — the founder: "Same as WINGS card").
   const placed = useMemo(() => placedWings(outline.wings ?? [], outlineGeometry), [outline.wings, outlineGeometry]);
   const wings = useMemo(() => wingFigures(placed, wingFinEdges, system), [placed, wingFinEdges, system]);
+  // The marks both full-size prints draw — the station marks, plus one dashed line at each wing's
+  // station (quick 261015-sei, D2). A board with no wings gets exactly the marks it always did.
+  const marks = useMemo(() => computeTemplateMarks(outlineGeometry, placed), [outlineGeometry, placed]);
   const pageCount = layout.pages.length;
   const stripPageCount = stripLayout.pages.length;
 
@@ -205,7 +208,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
         } else if (artifact === "strip") {
           downloadStripPdf({
             layout: stripLayout,
-            marks: computeTemplateMarks(outlineGeometry),
+            marks,
             geometry: outlineGeometry,
             paper: paperSize,
             boardName,
@@ -215,7 +218,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
         } else {
           downloadTemplatePdf({
             layout,
-            marks: computeTemplateMarks(outlineGeometry),
+            marks,
             geometry: outlineGeometry,
             paper: paperSize,
             boardName,
