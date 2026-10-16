@@ -215,7 +215,7 @@
   .card .hd { display: flex; align-items: baseline; gap: 8px; padding-right: 30px; }
   .card .nm { font-size: 15px; font-weight: 700; }
   .card.greyed .nm { color: var(--color-text-muted); font-weight: 600; }
-  .card .vol { margin-left: auto; font-size: 12px; color: var(--color-text-muted); white-space: nowrap; }
+  .card .vol { margin-left: auto; font-size: 12px; color: var(--color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .card .mk { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); margin-top: -3px; }
   .card .art svg { width: 100%; height: auto; display: block; }
   .card .art { aspect-ratio: 3.1; display: flex; align-items: center; }
@@ -666,9 +666,9 @@ function cardHTML(v, device, r, one) {
     <tr><td>Width</td>${cols.map((c) => `<td>${cell(c, "w")}</td>`).join("")}</tr>
     <tr><td>Thick</td>${cols.map((c) => `<td>${cell(c, "t")}</td>`).join("")}</tr>
     <tr><td>Rocker</td>${cols.map((c) => `<td>${cell(c, "r")}</td>`).join("")}</tr></table>`;
-  const line = compact ? `<div class="line">${len} <i>·</i> ${cw} × ${ct} <i>center ·</i> ${b[T("noseR")]} <i>nose</i></div>` : `<div class="line">${len} <i>long ·</i> ${b[T("noseR")]} <i>nose rocker ·</i> ${b[T("tailR")]} <i>tail</i></div>`;
+  const line = compact ? `<div class="line">${cw} × ${ct} <i>center ·</i> ${b[T("noseR")]} <i>nose rocker</i></div>` : "";
   return `<div class="${cls}" data-act="pick" data-v="${v}" data-id="${esc(b.id)}" role="button" tabindex="0">
-    <div class="hd"><span class="nm">${esc(b.name)}</span>${b.vol ? `<span class="vol">${b.vol}</span>` : ""}</div>
+    <div class="hd"><span class="nm">${esc(b.name)}</span><span class="vol">${len}${b.vol ? ` · ${b.vol}` : ""}</span></div>
     <div class="mk">${esc(b.vendor)}</div>
     <div class="art${one ? " one" : ""}">${art("flat", b, { one, place })}</div>
     ${line}${table}${why}${here}${star}</div>`;

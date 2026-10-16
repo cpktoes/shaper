@@ -41,6 +41,11 @@ Theme and units follow the apps setting."*
 - **Show my board** is an on/off switch in the filter bar (beside Flat / Upright on a computer, in the chip row on a
   phone), **on by default** (the founder, minutes later: "show my board default = on."): your board's outline dashed
   on every blank where the app would place it.
+- **No line of text under the drawing** (the founder: "The line under the side view seems unnecessary. Just move the
+  actual length up to the top to the left of the volume. All the dims are below it already."): each card's header reads
+  the name, then the blank's length and its volume (`6'2"A … 6'2 3/4" · 55.1 L`); the printed station table sits right
+  under the drawing. Upright cards keep their Length row under the maker's name (the founder: "on the upright view, the
+  length can still stay under the mfg name like before.").
 - **Theme and units follow the app's own settings** — the popup has no switches of its own for them.
 - **Stars**: saved on the shaper's account when signed in (a new nullable column on `user_preferences`, a list of
   blanks by maker and name, migrated on production before the deploy that reads it); in the browser alone when signed
