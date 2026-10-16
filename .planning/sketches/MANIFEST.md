@@ -209,7 +209,9 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
    the center — no longer hidden); a search, the four makers (the Settings → Blank Makers setting itself), a length
    range, a nose-rocker range, ★ Starred only, a sort (length by default), and the Flat / Upright and Show my board
    switches (Show my board on by default — "show my board default = on."). Picking a blank closes the window and loads it; on a phone the window fills the screen. Theme and units
-   follow the app's settings. Stars live on the shaper's account when signed in (a nullable `user_preferences` column,
+   follow the app's settings. A blank's nose and tail rocker are the catalogue's printed figures everywhere (the founder,
+   2026-10-16: "yes, catalogue's printed number everywhere"). Built in quick 261015-ve9 (part 1, stars in the browser).
+   Stars live on the shaper's account when signed in (a nullable `user_preferences` column,
    migrated on production before the deploy), in the browser when signed out, joined on signing in.
 
 ## Open Questions
