@@ -343,10 +343,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       const label = (await maker.getAttribute("data-maker-chip")) ?? "a maker chip";
       expect(await heightOf(maker, label), label).toBeGreaterThanOrEqual(44);
     }
-    const drawn = dialog.getByRole("group", { name: "How blanks are drawn" });
-    for (const name of ["Flat", "Upright"]) {
-      expect(await heightOf(drawn.getByRole("button", { name }), name), name).toBeGreaterThanOrEqual(44);
-    }
+    const turn = dialog.locator("[data-drawn-toggle]");
+    expect(await heightOf(turn, "the Flat / Upright turn button"), "the Flat / Upright turn button").toBeGreaterThanOrEqual(44);
     for (const name of ["Show my board", /^Length: /, /^Nose rocker: /, "Starred only"]) {
       const button = dialog.getByRole("button", { name });
       await button.scrollIntoViewIfNeeded();

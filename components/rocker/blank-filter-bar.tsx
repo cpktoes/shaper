@@ -18,10 +18,10 @@
  *
  * Its three shapes (D-01) are CSS only, chosen by width and height and never by the pointer
  * (CLAUDE.md "Layout"):
- * - A computer: two lines. The search, Flat / Upright in words and Show my board; then the makers,
- *   Length, Nose rocker, Starred only and Sort, wrapping.
- * - An upright phone (below the 820 width line, `max-shell:`): the search beside Flat / Upright as two
- *   icons, over ONE sideways-scrolling chip row that also carries Show my board.
+ * - A computer: two lines. The search, the Flat / Upright turn button (TEMPLATE's rotate glyph) and
+ *   Show my board; then the makers, Length, Nose rocker, Starred only and Sort, wrapping.
+ * - An upright phone (below the 820 width line, `max-shell:`): the search beside the turn button, over
+ *   ONE sideways-scrolling chip row that also carries Show my board.
  * - A phone held sideways (`[@media(max-height:500px)]`): everything in one sideways-scrolling row.
  * A finger gets 44-dot touch boxes on every chip and switch (`coarse:`), a mouse the usual size.
  * The range drawer sits under the bar, outside any sideways scroller.
@@ -32,11 +32,12 @@
  */
 
 import { useId } from "react";
-import { ChevronDownIcon, RectangleHorizontalIcon, RectangleVerticalIcon, SearchIcon, StarIcon } from "lucide-react";
+import { ChevronDownIcon, SearchIcon, StarIcon } from "lucide-react";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { sliderValue } from "@/components/design/slider-row";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { RotateBoardIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import type { BlankPickerView } from "@/lib/blank-picker-view-preference";
 import { isLastShownMaker } from "@/lib/blank-makers-preference";
 import { KNOWN_BLANK_VENDORS } from "@/lib/blanks/vendors";
@@ -79,34 +80,27 @@ export interface BlankFilterBarProps {
   system: UnitsSystem;
 }
 
-/** Flat / Upright: two pressed-or-not buttons, words on a computer, icons on a phone (D-01, D-02). */
-function DrawnSwitch({ drawn, onChange }: { drawn: BlankPickerView["drawn"]; onChange: (d: BlankPickerView["drawn"]) => void }) {
-  const options = [
-    { id: "flat" as const, label: "Flat", Icon: RectangleHorizontalIcon },
-    { id: "upright" as const, label: "Upright", Icon: RectangleVerticalIcon },
-  ];
+/**
+ * Flat or upright: ONE button carrying TEMPLATE's own turn-the-board glyph (`RotateBoardIcon`, the
+ * founder 2026-10-16: "change the horizontal and vertical buttons to our simple horizontal/vertical
+ * toggle surfboard icon from the template page"). Like TEMPLATE's Rotate button it is one action, not
+ * a pressed-or-not toggle: each press turns every card between lying flat and standing upright, and
+ * its name says what the next press does. It wears the viewer toolbar's own button
+ * (`ViewerToolbarButton`), grown to a 44-dot box on a coarse pointer.
+ */
+function DrawnToggle({ drawn, onChange }: { drawn: BlankPickerView["drawn"]; onChange: (d: BlankPickerView["drawn"]) => void }) {
+  const upright = drawn === "upright";
+  const label = upright ? "Lay the blanks flat" : "Stand the blanks upright";
   return (
-    <div role="group" aria-label="How blanks are drawn" className="flex shrink-0 items-center gap-1">
-      {options.map(({ id, label, Icon }) => {
-        const on = drawn === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            data-lock-exempt
-            aria-pressed={on}
-            aria-label={label}
-            onClick={() => onChange(id)}
-            className={cn(CHIP_CLASS, "justify-center px-2.5 coarse:min-w-11", on ? CHIP_ON : CHIP_OFF)}
-          >
-            <Icon aria-hidden className="size-4" />
-            <span aria-hidden className={`max-shell:sr-only [@media(max-height:500px)]:sr-only`}>
-              {label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <ViewerToolbarButton
+      data-lock-exempt
+      data-drawn-toggle={drawn}
+      label={label}
+      onClick={() => onChange(upright ? "flat" : "upright")}
+      className="coarse:size-11 coarse:justify-center"
+    >
+      <RotateBoardIcon className="size-6" />
+    </ViewerToolbarButton>
   );
 }
 
@@ -249,7 +243,7 @@ export function BlankFilterBar({
               className="pl-8"
             />
           </div>
-          <DrawnSwitch drawn={view.drawn} onChange={onDrawnChange} />
+          <DrawnToggle drawn={view.drawn} onChange={onDrawnChange} />
           <ShowBoardChip on={view.showBoard} onChange={onShowBoardChange} className={`max-shell:hidden [@media(max-height:500px)]:hidden`} />
         </div>
 

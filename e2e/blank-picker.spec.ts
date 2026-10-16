@@ -26,7 +26,7 @@ import { appSettingsDialog, openAppSettings } from "./helpers/settings";
  *
  * Plan 02 adds the filter bar's proofs: stars kept in the browser and the ★ STARRED group, a tampered
  * star list opening cleanly, the maker chips being Settings → Blank Makers, the length and nose-rocker
- * ranges, Starred only, the four sorts, Flat / Upright and Show my board remembered across a reload,
+ * ranges, Starred only, the four sorts, the Flat / Upright turn button and Show my board remembered across a reload,
  * the bar's shape on an upright phone and on a phone held sideways (with the one-line card there),
  * and Metric range chips.
  *
@@ -451,12 +451,13 @@ test.describe("PICK A BLANK — the filter bar on a computer (D-07, D-12)", () =
     if (firstWithout !== -1) expect(volumes.slice(firstWithout).every((v) => v === null)).toBe(true);
   });
 
-  test("Upright stands every card up with its facts beside it, remembered across a reload; Flat brings the table back", async ({ page }) => {
+  test("the turn button stands every card up with its facts beside it, remembered across a reload; turned back, the table returns", async ({ page }) => {
     await openRocker(page);
     let dialog = await openBlankPicker(page);
-    const drawn = dialog.getByRole("group", { name: "How blanks are drawn" });
-    await expect(drawn.getByRole("button", { name: "Flat" })).toHaveAttribute("aria-pressed", "true");
-    await drawn.getByRole("button", { name: "Upright" }).click();
+    // One button with TEMPLATE's rotate glyph (fast 166): its name says what the next press does.
+    await expect(dialog.locator("[data-drawn-toggle]")).toHaveAttribute("data-drawn-toggle", "flat");
+    await expect(dialog.locator("[data-drawn-toggle] svg")).toHaveCount(1);
+    await dialog.getByRole("button", { name: "Stand the blanks upright" }).click();
     await expect(dialog.locator('li[data-blank-card][data-drawn="flat"]')).toHaveCount(0);
     const card = blankCards(dialog).first();
     await expect(card).toHaveAttribute("data-drawn", "upright");
@@ -467,7 +468,7 @@ test.describe("PICK A BLANK — the filter bar on a computer (D-07, D-12)", () =
 
     dialog = await reloadAndReopen(page);
     await expect(blankCards(dialog).first()).toHaveAttribute("data-drawn", "upright");
-    await dialog.getByRole("group", { name: "How blanks are drawn" }).getByRole("button", { name: "Flat" }).click();
+    await dialog.getByRole("button", { name: "Lay the blanks flat" }).click();
     await expect(dialog.locator('li[data-blank-card][data-drawn="upright"]')).toHaveCount(0);
     await expect(firstFittingCard(page).locator("[data-station-table]")).toBeVisible();
   });
@@ -516,20 +517,18 @@ test.describe("PICK A BLANK — the filter bar on an upright phone (D-01)", () =
     await dismissChrome(page);
   });
 
-  test("Flat and Upright are two icons beside the search, over one sideways-scrolling chip row that holds Show my board", async ({
+  test("the Flat / Upright turn button sits beside the search, over one sideways-scrolling chip row that holds Show my board", async ({
     page,
   }) => {
     await openRocker(page);
     const dialog = await openBlankPicker(page);
     const search = await dialog.getByRole("searchbox", { name: "Search blanks" }).boundingBox();
-    for (const name of ["Flat", "Upright"]) {
-      const button = dialog.getByRole("group", { name: "How blanks are drawn" }).getByRole("button", { name });
-      await expect(button).toBeVisible();
-      const box = await button.boundingBox();
-      // Beside the search, on its row — and an icon only, its word kept for a screen reader.
-      expect(Math.abs(box!.y + box!.height / 2 - (search!.y + search!.height / 2))).toBeLessThanOrEqual(8);
-      expect(box!.x).toBeGreaterThan(search!.x + search!.width - 1);
-    }
+    const button = dialog.getByRole("button", { name: "Stand the blanks upright" });
+    await expect(button).toBeVisible();
+    const box = await button.boundingBox();
+    // Beside the search, on its row — the rotate glyph only, its name kept for a screen reader.
+    expect(Math.abs(box!.y + box!.height / 2 - (search!.y + search!.height / 2))).toBeLessThanOrEqual(8);
+    expect(box!.x).toBeGreaterThan(search!.x + search!.width - 1);
     const show = chip(dialog, "Show my board");
     await expect(show).toHaveCount(1);
     await expect(show).toBeVisible();
