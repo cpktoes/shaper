@@ -25,7 +25,8 @@
  *
  * The list is judged ONCE here (`useBlankList`) and handed to both the button's counts and the popup,
  * so opening the popup never re-judges the catalogue. The popup's open state and its search are held
- * here, so a search survives closing and reopening during the visit. Nothing here ever clears the pick
+ * here, so the search, the ranges, Starred only and the sort survive closing and reopening during the
+ * visit (D-13). Nothing here ever clears the pick
  * on its own — only the shaper's own tap on Remove This Blank or on another blank does (D-08).
  *
  * Every number goes through `lib/geometry/measure-display.ts` by way of the sentences in
@@ -48,11 +49,12 @@ import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blank
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes } from "@/lib/geometry/blank-fit";
+import { EMPTY_BROWSE_FILTERS, type BlankBrowseFilters, type BlankSort, type RangeKind } from "@/lib/geometry/blank-browse";
 import { blankRowMeta, blankRowVolume, emptyListMessage, pickBlankSummary } from "@/lib/geometry/blank-reasons";
 import { cn } from "@/lib/utils";
 import { BlankThumbnail } from "./blank-card";
 import { BlankFlag } from "./blank-flag";
-import { BlankPickerDialog } from "./blank-picker-dialog";
+import { BlankPickerDialog, type BlankBrowseState } from "./blank-picker-dialog";
 import { useBlankList, useCenterFloorRules } from "./use-blank-list";
 
 /** The 11px/700 "↺ Reset" text-link idiom (`rail-controls.tsx`), grown to 44px on a touch pointer. */
@@ -133,8 +135,8 @@ interface HostProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   buttonRef: RefObject<HTMLButtonElement | null>;
-  query: string;
-  setQuery: (query: string) => void;
+  /** The popup's filters, sort and open range drawer — view state for the visit (D-13). */
+  browse: BlankBrowseState;
   onChangeFitRules: () => void;
 }
 
@@ -157,7 +159,7 @@ function UnavailableDialog({ open, setOpen, buttonRef }: Pick<HostProps, "open" 
 
 /** Reads the streamed catalogue (suspends until it arrives) and judges the list ONCE, for the button
  * and the popup together. */
-function BlankPickerHost({ catalog, open, setOpen, buttonRef, query, setQuery, onChangeFitRules }: HostProps) {
+function BlankPickerHost({ catalog, open, setOpen, buttonRef, browse, onChangeFitRules }: HostProps) {
   const result = use(catalog);
   if (result.status === "unavailable") {
     return (
@@ -179,8 +181,7 @@ function BlankPickerHost({ catalog, open, setOpen, buttonRef, query, setQuery, o
       open={open}
       setOpen={setOpen}
       buttonRef={buttonRef}
-      query={query}
-      setQuery={setQuery}
+      browse={browse}
       onChangeFitRules={onChangeFitRules}
     />
   );
@@ -191,8 +192,7 @@ function JudgedPicker({
   open,
   setOpen,
   buttonRef,
-  query,
-  setQuery,
+  browse,
   onChangeFitRules,
 }: Omit<HostProps, "catalog"> & { records: readonly BlankRecord[] }) {
   const { system } = useUnits();
@@ -223,8 +223,7 @@ function JudgedPicker({
         onOpenChange={setOpen}
         buttonRef={buttonRef}
         state={state}
-        query={query}
-        onQueryChange={setQuery}
+        browse={browse}
         onChangeFitRules={onChangeFitRules}
       />
     </>
@@ -249,10 +248,14 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
   const { hidden } = useBlankMakers();
   const { openAppSettings } = useAppSettings();
   const locked = useControlsLocked();
-  /** The popup — view state, never saved. Held here so it and the search survive the catalogue's
-   * Suspense boundary. */
+  /** The popup — view state, never saved. Held here so it, the search, the ranges, Starred only and
+   * the sort survive the catalogue's Suspense boundary and closing and reopening the popup while
+   * ROCKER is open (D-13: only Flat / Upright and Show my board outlast the visit). */
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<BlankBrowseFilters>(EMPTY_BROWSE_FILTERS);
+  const [sort, setSort] = useState<BlankSort>("length");
+  const [openRange, setOpenRange] = useState<RangeKind | null>(null);
+  const browse: BlankBrowseState = { filters, setFilters, sort, setSort, openRange, setOpenRange };
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const makersNote = blankMakersNote(hidden);
 
@@ -272,8 +275,7 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
           open={open}
           setOpen={setOpen}
           buttonRef={buttonRef}
-          query={query}
-          setQuery={setQuery}
+          browse={browse}
           onChangeFitRules={changeFitRules}
         />
       </Suspense>

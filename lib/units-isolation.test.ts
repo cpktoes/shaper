@@ -157,7 +157,9 @@ function importsDisplayBoundary(source: string): boolean {
     /from\s+["']\.\/measure-display["']/.test(source) ||
     /@\/lib\/geometry\/blank-reasons/.test(source) ||
     // Quick 261015-ve9: a blank card's words and numbers, printed through the boundary (tested below).
-    /@\/lib\/geometry\/blank-card-text/.test(source)
+    /@\/lib\/geometry\/blank-card-text/.test(source) ||
+    // Quick 261015-ve9 plan 02: the blank popup's range chips and sliders (tested below).
+    /@\/lib\/geometry\/blank-browse/.test(source)
   );
 }
 
@@ -385,6 +387,9 @@ describe("the design screens read every measurement through the display boundary
     // through the boundary.
     { file: "components/rocker/blank-picker-dialog.tsx", converted: true },
     { file: "components/rocker/blank-card.tsx", converted: true },
+    // Quick 261015-ve9 plan 02: the popup's filter bar. Its range chips, slider words and slider
+    // steps all come from `blank-browse.ts`, which prints and steps through the boundary.
+    { file: "components/rocker/blank-filter-bar.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
@@ -466,6 +471,15 @@ describe("the design screens read every measurement through the display boundary
     expect(/from\s+["']\.\/measure-display["']/.test(source)).toBe(true);
     for (const banned of BANNED_DISPLAY_FORMATTERS) {
       expect(source, `lib/geometry/blank-card-text.ts calls ${banned}`).not.toContain(banned);
+    }
+  });
+
+  it("the blank popup's browse rules print and step every range through the display boundary (quick 261015-ve9)", () => {
+    const source = readStripped("lib/geometry/blank-browse.ts");
+    expect(/from\s+["']\.\/measure-display["']/.test(source)).toBe(true);
+    expect(source).toContain("measureSlider(");
+    for (const banned of BANNED_DISPLAY_FORMATTERS) {
+      expect(source, `lib/geometry/blank-browse.ts calls ${banned}`).not.toContain(banned);
     }
   });
 

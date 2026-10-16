@@ -11,6 +11,7 @@ import { UnitsProvider } from "@/components/units-provider";
 import { PrintInstructionsProvider } from "@/components/print-instructions-provider";
 import { FitDefaultsProvider } from "@/components/fit-defaults-provider";
 import { BlankMakersProvider } from "@/components/blank-makers-provider";
+import { StarredBlanksProvider } from "@/components/starred-blanks-provider";
 import { AppSettingsProvider } from "@/components/app-settings-provider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { resolveUnitsHandoff } from "@/lib/units-server";
@@ -140,18 +141,22 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   screen — and a brand-new board's tips — can read the shaper's defaults. */}
               <FitDefaultsProvider handoff={fitDefaultsHandoff}>
                 <BlankMakersProvider handoff={blankMakersHandoff}>
-                  <ThemeProvider>
-                    {/* Inside all four settings providers, so the one App Default Settings pop-up
-                        it renders can read units, fit and tip defaults, blank makers and theme. */}
-                    <AppSettingsProvider>
-                      <Provider>
-                        <div className="flex min-h-0 flex-1 flex-col">
-                          <SiteNav />
-                          {children}
-                        </div>
-                      </Provider>
-                    </AppSettingsProvider>
-                  </ThemeProvider>
+                  {/* The blanks starred in ROCKER's blank popup (quick 261015-ve9, D-06), beside
+                      the makers so part 2 only adds its account hand-off prop here. */}
+                  <StarredBlanksProvider>
+                    <ThemeProvider>
+                      {/* Inside all four settings providers, so the one App Default Settings pop-up
+                          it renders can read units, fit and tip defaults, blank makers and theme. */}
+                      <AppSettingsProvider>
+                        <Provider>
+                          <div className="flex min-h-0 flex-1 flex-col">
+                            <SiteNav />
+                            {children}
+                          </div>
+                        </Provider>
+                      </AppSettingsProvider>
+                    </ThemeProvider>
+                  </StarredBlanksProvider>
                 </BlankMakersProvider>
               </FitDefaultsProvider>
             </PrintInstructionsProvider>
