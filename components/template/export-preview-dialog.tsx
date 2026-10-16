@@ -41,7 +41,7 @@
  * (`aria-expanded:...`) without this component threading its open state back out.
  */
 
-import { useMemo, useRef, useState, type ReactElement } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import {
   Dialog,
   DialogClose,
@@ -67,6 +67,7 @@ import {
   computeTemplateLayout,
   computeTemplateMarks,
   type PaperSize,
+  type StripLayout,
   type TemplateLayout,
 } from "@/lib/geometry/template";
 import { cn } from "@/lib/utils";
@@ -139,6 +140,61 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
   return { cellWidth, cellHeight: cellWidth * paperAspect };
 }
 
+/** The Paper Saver's preview (fast task, 2026-10-15, the founder: "add a preview of the paper layout
+ * like the full sized template has"): its landscape pages in one column, each set across by the
+ * same share of a page as the real sheet slides sideways to follow the rail, so the column wanders
+ * down the board the way the printed strip does. */
+interface StripDiagramSizing {
+  cellWidth: number;
+  cellHeight: number;
+  /** Each page's left edge, in CSS pixels from the column's leftmost page. */
+  offsets: number[];
+  width: number;
+}
+
+/** One pixels-per-millimetre scale for the whole column — the pages' own landscape size and their
+ * slides read at the same scale — fitted inside the same pixel budget as the Full Sized Template's
+ * grid, with the same cell-width floor and ceiling. */
+function computeStripDiagramSizing(layout: StripLayout): StripDiagramSizing {
+  const paperDims = PAPER_MM[layout.paper];
+  const pageWidthMm = paperDims.height; // landscape: the long edge runs across the board
+  const pageHeightMm = paperDims.width;
+  const slides = layout.pages.map((page) => page.halfWidthRange[0]);
+  const minSlide = Math.min(...slides);
+  const spreadMm = Math.max(...slides) - minSlide;
+  const n = layout.pages.length;
+
+  const widthBound = DIAGRAM_MAX_WIDTH_PX / (spreadMm + pageWidthMm);
+  const heightBound = (DIAGRAM_MAX_HEIGHT_PX - (n - 1) * DIAGRAM_GAP_PX) / (n * pageHeightMm);
+  const pxPerMm =
+    Math.min(DIAGRAM_MAX_CELL_WIDTH_PX, Math.max(DIAGRAM_MIN_CELL_WIDTH_PX, Math.min(widthBound, heightBound) * pageWidthMm)) /
+    pageWidthMm;
+
+  return {
+    cellWidth: pageWidthMm * pxPerMm,
+    cellHeight: pageHeightMm * pxPerMm,
+    offsets: slides.map((slide) => (slide - minSlide) * pxPerMm),
+    width: (spreadMm + pageWidthMm) * pxPerMm,
+  };
+}
+
+/** One numbered page in a preview — page 1 (the nose) filled with the accent, the rest outlined. */
+function PreviewPage({ index, style }: { index: number; style?: CSSProperties }) {
+  return (
+    <div
+      style={style}
+      className={cn(
+        "flex items-center justify-center rounded-sm border text-[10px] font-medium leading-none",
+        index === 0
+          ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
+          : "border-surf-line bg-surf-panel text-surf-ink-muted",
+      )}
+    >
+      {index + 1}
+    </div>
+  );
+}
+
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres, wingFinEdges } =
     useDesign();
@@ -167,6 +223,12 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const layout = useMemo(() => computeTemplateLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
   const stripLayout = useMemo(() => computeStripLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
   const diagram = useMemo(() => computeDiagramSizing(layout), [layout]);
+  const stripDiagram = useMemo(() => computeStripDiagramSizing(stripLayout), [stripLayout]);
+  // The Overview Sheet is always one portrait page — the same cell a one-page Full Sized Template gets.
+  const overviewCell = useMemo(
+    () => computeDiagramSizing({ ...layout, rows: 1, columns: 1 }),
+    [layout],
+  );
   // The wings the board draws and their printed figures, worked out once and handed to all three
   // printouts so the Overview Sheet, the Full Sized Template and the Paper Saver can never disagree
   // about a wing (quick 261015-sei, 2026-10-15, P8 — the founder: "Same as WINGS card").
@@ -313,17 +375,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
                   }}
                 >
                   {layout.pages.map((page) => (
-                    <div
-                      key={page.index}
-                      className={cn(
-                        "flex items-center justify-center rounded-sm border text-[10px] font-medium leading-none",
-                        page.index === 0
-                          ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
-                          : "border-surf-line bg-surf-panel text-surf-ink-muted",
-                      )}
-                    >
-                      {page.index + 1}
-                    </div>
+                    <PreviewPage key={page.index} index={page.index} />
                   ))}
                 </div>
               </div>
@@ -333,14 +385,47 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
               </p>
             </>
           ) : artifact === "strip" ? (
-            <p className="text-sm text-surf-ink-muted">
-              {stripPageCount} page{stripPageCount === 1 ? "" : "s"} instead of {pageCount} — the curve only, one
-              page at a time.
-            </p>
+            <>
+              <div className="flex justify-center">
+                <div
+                  role="img"
+                  aria-label={`${stripPageCount} sideways page${
+                    stripPageCount === 1 ? "" : "s"
+                  } in one column, each moved across to follow the rail, nose at page 1`}
+                  className="flex flex-col"
+                  style={{ width: stripDiagram.width, gap: DIAGRAM_GAP_PX }}
+                >
+                  {stripLayout.pages.map((page, i) => (
+                    <PreviewPage
+                      key={page.index}
+                      index={page.index}
+                      style={{
+                        width: stripDiagram.cellWidth,
+                        height: stripDiagram.cellHeight,
+                        marginLeft: stripDiagram.offsets[i],
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-sm text-surf-ink-muted">
+                {stripPageCount} page{stripPageCount === 1 ? "" : "s"} instead of {pageCount} — the curve only, one
+                page at a time.
+              </p>
+            </>
           ) : (
-            <p className="text-sm text-surf-ink-muted">
-              1 page — all the numbers needed to recreate this board.
-            </p>
+            <>
+              <div className="flex justify-center">
+                <div role="img" aria-label="1 page">
+                  <PreviewPage index={0} style={{ width: overviewCell.cellWidth, height: overviewCell.cellHeight }} />
+                </div>
+              </div>
+
+              <p className="text-sm text-surf-ink-muted">
+                1 page — all the numbers needed to recreate this board.
+              </p>
+            </>
           )}
 
           {error && (
