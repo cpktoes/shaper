@@ -21,77 +21,62 @@ export const WINDOW_GROWS_PAST_IN = 24;
 export const WINDOW_ROOM_IN = 3;
 
 /**
- * The close-up's frame, in its own viewBox units — the sketch's numbers. `padTop` leaves the
- * toolbar's row clear (D6); `gutterLeft` holds the WING chips and the station dimensions;
- * `railRight` holds the read-outs.
+ * The close-up's frame, in its own viewBox units (quick 261015-my3, 2026-10-15, D6). One frame
+ * replaces the full and compact pair. The founder: "I don't think we need any dims on the right.
+ * Lets put all the wing data in the data cards on the left … This should allow the wing view to be
+ * as large as possible." So nothing is drawn to the right of the board, the left gutter holds only
+ * the cards, and the pads are cut to what is left:
  *
- * `railRight` is 268, not the sketch's 240 (quick 261015-hz7, 2026-10-15, D7, F10): on the founder's
- * walk at 1024 × 768 the full frame drew "Ahead of wing 1" and "Ahead of wing 2" 8.3 and 10.5 px past
- * its right edge, their last letters cut off — 20 side room + 240 − 124 value offset left the
- * read-outs 136 units. At 268 they get 164, the compact frame's own 164, which at the pinned floor
- * (0.66) is 108.2 px against the longest label's 103.55 px ("Ahead of wing 2", letter-spaced).
- * Measured over the five boards plus 60" and 120" boards, every full frame keeps at least 4.7 px
- * beyond that label. The founder's walk now draws compact at 1024 × 768; at 1280 × 800 the default
- * board's window grows from 882 to 910 units wide (fit 0.912 → 0.884).
+ * - `padTop` 8 — the toolbar's row no longer has its own pad; the corner rule in `closeUpFrame`
+ *   moves the board down only when the toolbar and the zoom row would sit over it.
+ * - `padBottom` 16, or `padBottomTailBlock` 32 when the board has a tail block, whose width is
+ *   written on one line under the tail (D3, F6: 19.6 px at the pinned 14 px, 29.7 units at the
+ *   0.66 floor).
+ * - `sideRoom` 20 each side of the board; no right rail.
+ * - `chipInset` 14 between the gutter's left edge and the cards' left edges, `cardMargin` 8 between
+ *   the cards' right edges and the board's side room.
+ * - `cornerClearPx` 4 — the screen pixels kept between the toolbar corner and the board.
+ *
+ * Retired with the old pair: the 56-unit toolbar pad, the 268-unit read-out rail and its value
+ * offset, the station dimensions at the far left, the depth and run dimensions (D2).
  */
 export const CLOSE_UP = {
   height: 620,
-  padTop: 56,
+  padTop: 8,
   padBottom: 16,
-  gutterLeft: 214,
-  railRight: 268,
+  padBottomTailBlock: 32,
   sideRoom: 20,
   chipInset: 14,
-  valueOffset: 124,
-  extensionReach: 50,
-  stationDimX0: 22,
-  stationDimStep: 30,
-  depthDimDrop: 18,
-  runDimMinUnits: 10,
+  cardMargin: 8,
+  cornerClearPx: 4,
 } as const;
 
 /**
- * The compact frame (plan 02, 2026-10-15, P13; sketch 014's own compact numbers, its chip gutter
- * widened): a shorter top pad, narrower gutters, the read-outs closer in, and no station
- * dimensions. Drawn whenever the full frame would fit its box below the pinned-callout floor — a
- * phone either way up, or a narrow computer window — so the chips and read-outs keep their pinned
- * size and stay inside the drawing.
- *
- * The left gutter is 180, not the sketch's 150: at the pinned floor the app's WING chip is 157.6
- * units wide (`pinnedCalloutSizes(MIN_PINNED_FIT_SCALE).chipW`), so 150 put its left edge at −21.6,
- * clipped (measured F27); 14 inset + 158 + 8 to spare is 180.
- *
- * Two of the plan's numbers moved when the phones were run (2026-10-15): the right rail is 240, not
- * 190 — at the pinned floor the read-out "AHEAD OF WING 1", letter-spaced, ran 37–39 units past 190
- * on an upright phone and at 1024 × 768 — and the bottom pad is 24, not 16, because the tail block's
- * name line, drawn a name's height under its station, ran 2.2 dots below the drawing on a phone held
- * sideways. The full frame's rail grew to 268 later the same day (quick 261015-hz7, D7); the compact
- * frame keeps its own 240, which with its 96 value offset already gives the read-outs 164 units.
+ * The close-up's data card, in screen pixels at the pinned callout size (D4): 120 wide, a 32 px head
+ * (the chip's own name-over-value), then 16 px rows and a 6 px foot. The width holds every common
+ * value at the full 14 px and the Metric `TAIL @ 30.5 cm` name (F2); only rare extremes are set
+ * smaller (F3: the radius can reach 64").
  */
-export const CLOSE_UP_COMPACT = {
-  ...CLOSE_UP,
-  padTop: 16,
-  padBottom: 24,
-  gutterLeft: 180,
-  railRight: 240,
-  valueOffset: 96,
-} as const;
+export const WING_CARD_PX = { width: 120, head: 32, row: 16, foot: 6, inset: 6, labelGap: 6 } as const;
 
-/**
- * Whether the close-up draws its compact frame (P13): when the FULL frame, fitted into the svg's
- * box, would sit below the pinned-callout floor `minFit` (pass `MIN_PINNED_FIT_SCALE` — this file
- * never imports React, and that constant lives beside the callout components). It reads the full
- * frame's width, a fixed number for a given window, never the frame it chooses, so the choice can
- * never feed back into itself (the VIEWER's T-VOT-04 rule). An unmeasured box (0 × 0, before the
- * first layout) keeps the full frame.
- *
- * A pure function despite its name (the plan's interface): it is the drawing fitting itself, like
- * RAILS' plot fit, never a layout choice — width still picks the layout, pointer the sizing.
- */
-export function useCompactFrame(boxWidth: number, boxHeight: number, fullWidth: number, minFit: number): boolean {
-  if (!(boxWidth > 0) || !(boxHeight > 0) || !(fullWidth > 0)) return false;
-  return Math.min(boxWidth / fullWidth, boxHeight / CLOSE_UP.height) < minFit;
+/** The rows' labels at 11 px bold, 0.12em letter-spaced, as measured in Chromium (F2). */
+export const WING_CARD_LABEL_PX = { RUN: 27.62, RADIUS: 49.66, OFFSET: 50.55 } as const;
+
+/** A card's height in screen pixels: the head alone (the TAIL @ 12" card, a chip's own 32), or the
+ * head, a row per value and the foot — 70 unlocked (RUN, RADIUS), 86 locked (and OFFSET). */
+export function wingCardHeightPx(rows: number): number {
+  return rows > 0 ? WING_CARD_PX.head + WING_CARD_PX.row * rows + WING_CARD_PX.foot : WING_CARD_PX.head;
 }
+
+/**
+ * The toolbar's corner, in screen pixels from the svg box's top-right (F4): on a fine pointer the
+ * WINGS toolbar's two buttons (74 wide, 34 tall) with the zoom row under them (168 wide, down to
+ * 74); on a coarse pointer the toolbar alone, the zoom row being hidden at 1x on a touch screen.
+ */
+export const CLOSE_UP_CORNER_PX = {
+  fine: { width: 168, height: 74 },
+  coarse: { width: 74, height: 34 },
+} as const;
 
 /**
  * The stretch of the board the close-up shows, from the tail: the last 26" (or the whole board,
@@ -135,26 +120,96 @@ export interface CloseUpFrame {
   toY: (stationIn: number) => number;
   /** A half-width in inches (negative for the left rail) to its x. */
   toX: (halfWidthIn: number) => number;
-  /** Where every read-out's value text begins — the one right rail. */
-  valueX: number;
-  /** Where the faint extension lines stop. */
-  extensionEndX: number;
-  /** Every WING chip's right edge. */
+  /** Every card's right edge. */
   chipRightX: number;
-  /** The i-th wing's station dimension, at the far left. */
-  stationDimX: (i: number) => number;
+  /** The room above the board — 8, or more where the toolbar corner would sit over it. */
+  padTop: number;
+  /** The room under the tail — 16, or 32 with the tail block's words. */
+  padBottom: number;
+  /** The left gutter the cards live in, sized to the card at this frame's fit. */
+  gutterLeft: number;
+  /** The fit the svg's box gives this frame (`meet`), or 0 for an unmeasured box. */
+  fit: number;
 }
 
-/** The sketch's `closeUpSvg` frame: the window fills the height below the toolbar's row; the
- * width is the board's widest half-width each side of the stringer plus the two gutters. `compact`
- * builds it from `CLOSE_UP_COMPACT` instead (P13). */
-export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, compact = false): CloseUpFrame {
-  const c = compact ? CLOSE_UP_COMPACT : CLOSE_UP;
+export interface CloseUpFrameOptions {
+  /** The board has a tail block, whose width is written under the tail (D3). */
+  tailBlock: boolean;
+  /** The svg's laid-out box in CSS pixels; absent or 0 × 0 before the first measure. */
+  box?: { width: number; height: number };
+  /** The toolbar's corner block in CSS pixels (`CLOSE_UP_CORNER_PX`), from the box's top-right. */
+  corner?: { width: number; height: number };
+  /** The pinned-callout floor (`MIN_PINNED_FIT_SCALE` — this file never imports React). */
+  minFit: number;
+}
+
+/**
+ * The close-up's one frame (quick 261015-my3, 2026-10-15, D6) — "as large as possible", in the
+ * founder's words. The window fills the height; the width is the cards' gutter, the board's widest
+ * half-width each side of the stringer and 20 units of side room each side.
+ *
+ * **The gutter is sized to the card at the fit, in two passes, never circularly.** A card is 120 px
+ * on screen, so in units it is `120 / fit` — wider the smaller the drawing. Pass 1 builds the frame
+ * with the gutter at the pinned floor (`14 + 120 / minFit + 8`, about 203.8) and reads its fit for
+ * the box; pass 2 sizes the gutter to the card at that fit, which can only make the frame narrower,
+ * so the final fit is never below pass 1's and a card drawn at the final fit is never wider than its
+ * gutter. Both passes read only fixed inputs (the window, the box), so nothing feeds back.
+ *
+ * **The toolbar corner.** The toolbar sits flush at the box's top-right with the zoom row under it
+ * on a mouse (F4). When the room right of the board is narrower than that block (plus 4 px), the
+ * board's top moves down below it — `padTop` becomes the block's height in units — and the frame is
+ * rebuilt, narrower again, so its fit only rises.
+ *
+ * **The board hugs the gutter.** When the frame is bound by the box's height, it is widened to the
+ * box's own shape with all the spare width on the RIGHT, under the toolbar and the zoom row, rather
+ * than centred — the same size of board, and the toolbar's corner left free with no top pad in most
+ * computer windows. Centred, the 1280 × 800 26" windows needed a 79-unit top pad and grew only
+ * 3.9–6.4%; hugging, they grow 17.7–21.6% (F5: 18.2–18.8 → 22.1 px per inch). The svg keeps
+ * `xMidYMid meet`, which the shared zoom's maths assumes.
+ *
+ * An unmeasured box builds pass 1 alone, with no corner rule.
+ */
+export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, opts: CloseUpFrameOptions): CloseUpFrame {
+  const c = CLOSE_UP;
   const span = Math.max(hiIn - loIn, 1e-6);
-  const u = (c.height - c.padTop - c.padBottom) / span;
-  const cx = c.gutterLeft + widestIn * u + c.sideRoom;
-  const width = Math.ceil(cx + widestIn * u + c.sideRoom + c.railRight);
-  const toY = (s: number) => c.height - c.padBottom - (s - loIn) * u;
+  const padBottom = opts.tailBlock ? c.padBottomTailBlock : c.padBottom;
+  const gutterAt = (fit: number) => c.chipInset + WING_CARD_PX.width / Math.max(fit, opts.minFit) + c.cardMargin;
+  const unitsPerInch = (padTop: number) => (c.height - padTop - padBottom) / span;
+  const frameWidth = (gutter: number, u: number) => gutter + 2 * widestIn * u + 2 * c.sideRoom;
+  const box = opts.box;
+  const measured = box !== undefined && box.width > 0 && box.height > 0;
+  const fitOf = (w: number) => (measured ? Math.min(box.width / w, box.height / c.height) : 0);
+
+  let padTop: number = c.padTop;
+  let gutter = gutterAt(0);
+  let u = unitsPerInch(padTop);
+  let w = frameWidth(gutter, u);
+  let fit = fitOf(w);
+  if (measured) {
+    // Pass 2: the gutter sized to the card at pass 1's fit — narrower, so the fit only rises.
+    gutter = gutterAt(fit);
+    w = frameWidth(gutter, u);
+    fit = fitOf(w);
+    // The toolbar corner: the board's top moves below it only when the board would reach under it.
+    const corner = opts.corner;
+    if (corner) {
+      const roomRight = box.width - (w - c.sideRoom) * fit;
+      if (roomRight < corner.width + c.cornerClearPx) {
+        padTop = Math.max(c.padTop, (corner.height + c.cornerClearPx) / fit);
+        u = unitsPerInch(padTop);
+        w = frameWidth(gutter, u);
+        fit = fitOf(w);
+      }
+    }
+  }
+  // The board at the left, the spare on the right (the "hug"), cut to two decimals for the viewBox
+  // string — down, never up, so the fit can only rise (by a hair) and every rule above still holds;
+  // the hundredth of a unit comes off the 20 units of side room.
+  const width = Math.floor((measured ? Math.max(w, box.width / fit) : w) * 100) / 100;
+  if (measured) fit = fitOf(width);
+
+  const cx = gutter + widestIn * u + c.sideRoom;
+  const toY = (s: number) => c.height - padBottom - (s - loIn) * u;
   const toX = (hw: number) => cx + hw * u;
   return {
     width,
@@ -163,10 +218,11 @@ export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, compa
     cx,
     toY,
     toX,
-    valueX: toX(widestIn) + c.valueOffset,
-    extensionEndX: toX(widestIn) + c.extensionReach,
-    chipRightX: c.gutterLeft - c.chipInset,
-    stationDimX: (i: number) => c.stationDimX0 + c.stationDimStep * i,
+    chipRightX: gutter - c.chipInset,
+    padTop,
+    padBottom,
+    gutterLeft: gutter,
+    fit,
   };
 }
 

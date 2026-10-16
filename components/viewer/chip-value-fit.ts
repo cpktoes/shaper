@@ -40,6 +40,10 @@ export const CHIP_VALUE_EM: Readonly<Record<string, number>> = {
   ".": 0.335,
   c: 0.59,
   m: 0.913,
+  // Quick 261015-my3 (2026-10-15, F2): the signs of a wing's OFFSET from its fin (`+1/4"`,
+  // `-1/2"` — an ASCII hyphen, as `formatSignedMark` prints it), measured the same way in Chromium.
+  "+": 0.658,
+  "-": 0.446,
 };
 
 /** A character the table does not know, in em — wider than any it does. */
@@ -68,4 +72,17 @@ export function chipValueFontSize(value: string, sizes: Pick<CalloutSizes, "valu
   if (!(em > 0)) return sizes.value;
   const room = sizes.chipW * (1 - (2 * CHIP_VALUE_INSET_PX) / PINNED_CHIP_PX);
   return Math.min(sizes.value, room / em);
+}
+
+/**
+ * The font size a value draws at to sit inside `roomPx` (quick 261015-my3, 2026-10-15, D4): `maxPx`,
+ * unless its estimated width passes the room, and then the size that just fits. The WINGS close-up's
+ * data cards fit each row's value (RUN, RADIUS, OFFSET) to the room its label leaves — the radius
+ * can reach 64" on a 2"-run, 1/16"-deep wing (F3), so a long value is set smaller rather than run
+ * out of its card. Any unit, as long as `maxPx` and `roomPx` share it.
+ */
+export function fitTextSize(value: string, maxPx: number, roomPx: number): number {
+  const em = chipValueEm(value);
+  if (!(em > 0) || !(roomPx > 0)) return maxPx;
+  return Math.min(maxPx, roomPx / em);
 }

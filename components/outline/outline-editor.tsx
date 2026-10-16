@@ -352,6 +352,9 @@ export function OutlineEditor() {
               showFins={showFins}
               wideView={wideView}
               onToggleWideView={handleToggleWideView}
+              // Quick 261015-my3 (D1): the way the VIEWER draws the board, so the close-up's lines
+              // match the VIEWER's own on-screen weight, upright or turned.
+              viewerOrientation={boardOrientation}
             />
           ) : (
             viewerContent

@@ -70,21 +70,57 @@ line is the warning.
 
 **Grab points follow the viewer's Show construction setting** (the toolbar's target button or the Settings tick), as
 the VIEWER's own drag points do: two per wing, drawn like the app's drag targets (a ring with a dot). The outer one
-slides the wing along the curve (or sets the fin offset when locked); the inner one hangs 22 units below the inner
-corner on the depth dimension's own line and sets the depth (in and out) and the run (along). **The view holds still
-while a grab point is held.**
+slides the wing along the curve (or sets the fin offset when locked); the inner one hangs 22 px below the inner
+corner (where the depth dimension's line was until quick 261015-my3) and sets the depth (in and out) and the run
+(along). **The view holds still while a grab point is held**, at any zoom.
 
-**Callouts on the close-up** keep the drafting grammar: WING chips in the left gutter with a leader to the outer
-corner (named `WING 1 · FIN` when locked, in the fin colour); the station from the tail as a vertical dimension at
-the far left; the depth as a short two-tick dimension in clear air just tail-ward of the inner corner, its value
-outside the ticks; the run as a vertical dimension beyond the extension lines; and on the right rail the widths
-ahead of and behind each wing with Tail @ 12" and the tail block, pushed apart when they would touch, an L-shaped
-leader keeping each at its true station. Nothing crosses the board but faint lines.
+**Callouts on the close-up — every wing number in its card on the left, nothing on the right** (quick 261015-my3,
+2026-10-15; the founder: "I don't think we need any dims on the right. Lets put all the wing data in the data cards
+on the left (add a Run and Radius value to each card and an offset from fin when locked to the fin too). Tail block
+can be written directly under the tail itself … This should allow the wing view to be as large as possible", then
+"the tail @ 12" data can also be on the left. Nothing on the right" and "we also don't need the off tail callouts
+since that info is now in the cards"):
+- **A data card per wing** in the left gutter, 120 px wide on screen, with a leader to the outer corner (an L when
+  spread, keeping the true station). Its head is a chip's own — the name (`WING 1`, or `WING 1 · FIN` in the fin
+  colour when locked) over `‹depth› @ ‹position›` — then a hairline and 16 px rows: `RUN`, `RADIUS` (the radius
+  actually drawn) and, only when locked, `OFFSET` from the fin's trailing edge (`+1/4"`, `0"`, `-1/2"`). Position is
+  a dim (cm in Metric), the rest are marks (whole mm). A long value is set just small enough to keep 4 px inside each
+  side of the card — the radius can reach 64" on a 2"-run, 1/16"-deep wing.
+- **A `TAIL @ 12"` card** (`TAIL @ 30.5 cm` in Metric), the head alone, with a level leader to the board's left edge
+  at the 12" station, spread with the wing cards in station order, every card inside the drawing.
+- **The tail block's width written under the tail** on one line, `TAIL BLOCK 4"`, centred on the stringer; a pin or
+  round tail has none, so nothing is written.
+- **Nothing on the right** — no read-out rail, no depth or run dimension, no Center or Nose @ 12" read-out — and no
+  station dimensions beside the cards. This departs from the grammar's "outputs on one right rail" for THIS view only;
+  the VIEWER keeps its rail. Nothing crosses the board but faint lines.
+
+**One frame, as large as it can be** (quick 261015-my3, D6): the left gutter is sized to the card at the drawing's own
+fit, in two passes that never feed back (pass 1 at the pinned floor, pass 2 at pass 1's fit); pads are 8 on top and
+16 below (32 with the tail block's words); the board **hugs the gutter**, with all the spare width on the right under
+the toolbar and the zoom row; and only when the board would reach under that corner does its top move down below it.
+At 1280 × 800 the 26" window went from about 18.2–18.8 to 22.1 px per inch, at 1024 × 768 from about 13.7–14.2 to
+about 18, and on an upright phone by about 27%; a phone held sideways is height-bound and draws the same size (the
+zoom is the way in there). The full and compact frame pair is retired.
+
+**Lines at the VIEWER's weight** (the founder: "The thickness of the lines need to match the template viewer"): every
+line weight on the close-up rides one unit, the VIEWER's own fit for the same box over the close-up's — read in the
+orientation the VIEWER is drawn in, so turned on a phone held sideways — so the board line, fin marks, stringer, 12"
+station, widepoint line, leaders and card edges draw at exactly the VIEWER's screen width. The dashed no-wings curve
+takes the VIEWER's ghost weight (1.25).
+
+**Zoom, like the VIEWER** ("wings tab also needs zoom capabilities like the viewer"): the shared zoom, with its own
+level per tab (each tab starts at 1x, nothing saved), the zoom row under the toolbar, one finger on a grab point and
+two fingers to pinch, and above 1x the VIEWER's grid behind the board counted from the tail tip and the stringer.
+
+*History:* the close-up first drew the station from the tail as a vertical dimension at the far left, the depth as
+a two-tick dimension by the inner corner, the run as a vertical dimension beyond the extension lines, and the widths
+ahead of and behind each wing with Tail @ 12" and the tail block on a right rail (sketch 014 B, then a 268-unit rail
+in quick 261015-hz7); all of it moved into the cards or went in quick 261015-my3.
 
 **Every label fits** (quick 261015-hz7, 2026-10-15, after the founder's walk at 1024 × 768):
-- The close-up's full frame has a **268-unit right rail** (was 240), so the longest read-out, "Ahead of wing 2", fits
-  at the pinned floor with room to spare; read-outs and chips are also kept inside the drawing top and bottom (a
-  stinger with wing 2 just behind it used to push "Center" off the top).
+- (Superseded by quick 261015-my3's cards.) The close-up's full frame had a 268-unit right rail so the longest
+  read-out fitted at the pinned floor; read-outs and chips were also kept inside the drawing top and bottom (a
+  stinger with wing 2 just behind it used to push "Center" off the top) — the cards keep that rule.
 - A **long wing value is set a little smaller to sit inside its chip** (`1/4" @ 30 9/16"` ran 108.7 px in a 104 px
   chip); the chip keeps its width and its place on the gutter rail, and every other chip is unchanged.
 - On the VIEWER, **every chip keeps the WIDEPOINT / WP OFFSET pair's own gap from every neighbour**. Upright, the

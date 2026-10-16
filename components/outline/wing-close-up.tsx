@@ -2,22 +2,23 @@
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  CalloutChip,
+  CALLOUT_PX,
   CalloutSizeProvider,
-  DimensionLine,
   MIN_PINNED_FIT_SCALE,
-  OutputRail,
   ViewerOrientationProvider,
+  ViewerZoomUnitProvider,
   pinnedCalloutSizes,
   useSvgClientSize,
-  useSvgFitScale,
+  type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
-import { zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { useViewerZoom, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { parseViewBox, scaleDash } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { useUnits } from "@/components/units-provider";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
-import { formatDim, formatMark, stationLabel } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, formatSignedMark, stationLabel } from "@/lib/geometry/measure-display";
 import {
   OUTLINE_DRAG_HIT_COARSE_PX,
   OUTLINE_DRAG_HIT_PX,
@@ -33,6 +34,7 @@ import { inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 import { wingFinEdges } from "@/lib/geometry/wing-lock";
 import {
   NO_FIN_EDGES,
+  effectiveWingRadius,
   placedWings,
   wingLockEdge,
   wingReadouts,
@@ -40,48 +42,86 @@ import {
   type Wing,
   type WingFinEdges,
 } from "@/lib/geometry/wings";
-import { DRAG_TARGET_CORE_PX, DRAG_TARGET_OUTER_PX, DRAG_TARGET_RING_PX } from "./outline-viewer";
 import {
-  CLOSE_UP,
+  DRAG_TARGET_CORE_PX,
+  DRAG_TARGET_OUTER_PX,
+  DRAG_TARGET_RING_PX,
+  GHOST_STROKE_WIDTH,
+  outlineViewBoxSize,
+} from "./outline-viewer";
+import { WingDataCard, type WingDataCardRow } from "./wing-data-card";
+import {
+  CLOSE_UP_CORNER_PX,
   closeUpFrame,
   spreadApart,
-  useCompactFrame,
   widestHalfWidthIn,
+  wingCardHeightPx,
   wingWindow,
 } from "./wing-view-layout";
 
 /**
- * The WINGS tab's drawing: the last 26" of the tail, about two and a half times closer than the
- * VIEWER, with each wing's step and its dimensions (quick 261014-wii, 2026-10-14, D3, D6, P4; sketch
- * 014 B's `closeUpSvg` is the spec, its pictures beside it the look). A sibling of `OutlineViewer`,
- * not a prop on it: it shares the callout primitives (`CalloutChip`, `OutputRail`, `DimensionLine`,
- * the pinned callout sizes) and the drafting grammar — nothing inside the board but faint lines,
- * input chips in the left gutter, outputs on one right rail, read-outs pushed apart with an L leader
- * keeping the true station, the toolbar's corner kept clear (the frame's `padTop`).
+ * The WINGS tab's drawing: the last 26" of the tail, close up, with each wing's step (quick
+ * 261014-wii, 2026-10-14, D3, D6, P4; sketch 014 B's `closeUpSvg` is the spec, its pictures beside
+ * it the look). A sibling of `OutlineViewer`, not a prop on it: it shares the callout primitives
+ * (the card surface, the pinned callout sizes) and the drafting grammar — nothing inside the board
+ * but faint lines, cards in the left gutter with a leader to what they name, cards pushed apart with
+ * an L leader keeping the true station.
  *
- * Always drawn tail-down: the window is near-square, so turning it buys nothing. No zoom: the
- * sketch's WINGS toolbar has only the construction and wide-view buttons. Its frame maths is pure in
- * `wing-view-layout.ts`.
+ * **Every wing number in its card on the left, nothing on the right** (quick 261015-my3, 2026-10-15,
+ * D2–D5). The founder: "I don't think we need any dims on the right. Lets put all the wing data in
+ * the data cards on the left (add a Run and Radius value to each card and an offset from fin when
+ * locked to the fin too). Tail block can be written directly under the tail itself … This should
+ * allow the wing view to be as large as possible." And after: "the tail @ 12" data can also be on
+ * the left. Nothing on the right." So each wing's card reads its depth and position, then RUN,
+ * RADIUS (the one drawn) and, locked, OFFSET from its fin; the tail's width at 12" is a card of its
+ * own; the tail block's width is written on one line under the tail; and the read-out rail, the
+ * depth and run dimensions and the station dimensions at the far left are gone — "we also don't need
+ * the off tail callouts since that info is now in the cards." This departs from the drawing grammar's
+ * "outputs on one right rail" for THIS view only; the VIEWER keeps its rail.
+ *
+ * **One frame, as large as the panel allows** (D6): `closeUpFrame` sizes the gutter to the card at
+ * the drawing's own fit, keeps the board's top clear of the toolbar corner, and when bound by height
+ * hands all the spare width to the right, under the toolbar. It reads the svg's box and the pointer —
+ * the drawing fitting itself, never a layout choice, so CLAUDE.md's three switches stay separate.
+ *
+ * **Lines at the VIEWER's weight** (D1) — the founder: "The thickness of the lines need to match the
+ * template viewer." The VIEWER draws its board at 2 of its own units, so on screen at 2 × its fit;
+ * the close-up's fit differs, so the same "2" landed thinner (1.23 px against the VIEWER's 1.82 at
+ * 1024 × 768, F1). Every raw size here is multiplied by one weight unit, `(viewerFit / fit) / zoom`:
+ * the VIEWER's own fit for the same box (its frame from `outlineViewBoxSize`, in the orientation the
+ * VIEWER is drawn in — turned on a phone held sideways), over the close-up's. So the board line, the
+ * fin marks, the stringer, the 12" station, the widepoint line, the dashed no-wings curve (at the
+ * VIEWER's ghost weight), the leaders and the card hairlines draw exactly as wide as the VIEWER's, at
+ * any zoom. Until both fits are measured the unit is exactly 1, so the first render matches the
+ * server's. The grab points keep their own screen-pixel sizes, as before.
+ *
+ * **Zoom, like the VIEWER** (D7) — "wings tab also needs zoom capabilities like the viewer." Through
+ * the one shared zoom (`zoom-viewport.tsx`, quick 261007-fnz): the wheel and a trackpad pinch zoom
+ * toward the pointer, two fingers pinch and pan while one finger stays on a grab point (`touch:
+ * "viewer"`, TEMPLATE's own rule), a drag on empty canvas pans above 1x, the zoom row's buttons and a
+ * double-click go back to 1x, and above 1x the VIEWER's grid shows behind the board, counted from the
+ * tail tip and the stringer (the orchestrator's ruling, 2026-10-15 — "zoom like the viewer" includes
+ * its grid). The window's own growth past 24" sets the base frame; the zoom works inside it. Words,
+ * cards and grab points keep their screen size at any zoom. Nothing about the zoom is saved; the
+ * WINGS panel holds its own level, so each tab starts at 1x.
+ *
+ * Always drawn tail-down: the window is near-square, so turning it buys nothing.
  *
  * The grab points (plan 02, 2026-10-15, D5, P11): with Show construction on and an
  * `onWingsChange` handler, each wing draws two points exactly as the VIEWER draws its drag targets
- * — the outer one at the step's outer corner, the inner one hung 22 dots below the inner corner on
- * the depth dimension's line. A press picks one with `nearestWingDragTarget` (one delegated handler
- * on the svg, as the VIEWER's), every move solves with `solveWingDrag`, and the whole new wings list
- * goes up. **The window holds still from press to lift**: in the sketch's own check, a window that
- * re-framed mid-drag carried the wing 4 1/2" from a 1" pull, so the window in force at the press is
- * kept in state until the pointer lifts, and only then does the window rule apply again.
- *
- * On a phone, either way up, and in a computer window too narrow for the full frame, the close-up
- * draws its COMPACT frame (P13): chosen by the drawing's own room — the full frame's fit against
- * the pinned-callout floor — never by width or pointer, so CLAUDE.md's three switches stay
- * separate. The compact frame draws no station dimensions. A finger gets the coarse hit radius,
- * and the svg is `touch-none select-none`, so a thumb on a grab point drags the wing rather than
- * scrolling the page (P14).
+ * — the outer one at the step's outer corner, the inner one hung 22 dots below the inner corner. A
+ * press picks one with `nearestWingDragTarget` (one delegated handler on the svg, as the VIEWER's),
+ * every move solves with `solveWingDrag`, and the whole new wings list goes up. **The window holds
+ * still from press to lift**: in the sketch's own check, a window that re-framed mid-drag carried
+ * the wing 4 1/2" from a 1" pull, so the window in force at the press is kept in state until the
+ * pointer lifts, and only then does the window rule apply again. A finger gets the coarse hit
+ * radius, and the svg is `touch-none select-none`, so a thumb on a grab point drags the wing rather
+ * than scrolling the page (P14).
  *
  * Every number a shaper reads goes through `measure-display.ts` (CLAUDE.md Rule 2, D9): a wing's
- * position and every width is a DIM (`formatDim`), its depth and run are MARKS (`formatMark`). The
- * drawing itself works in inches of board, like `OutlineViewer`'s.
+ * position and every width is a DIM (`formatDim`), its depth, run, radius and offset are MARKS
+ * (`formatMark`, `formatSignedMark`). The drawing itself works in inches of board, like
+ * `OutlineViewer`'s.
  */
 export interface WingCloseUpProps {
   /** The board's outline with its wings applied. */
@@ -100,18 +140,20 @@ export interface WingCloseUpProps {
   onWingsChange?: (wings: Wing[]) => void;
   /** The fins' trailing edges as the store places them, for a locked wing's offset drag (D1). */
   edges?: WingFinEdges;
+  /** Which way the VIEWER tab draws the board (`boardOrientation` in `outline-editor.tsx`), so the
+   * close-up's lines match the VIEWER's own on-screen weight (quick 261015-my3, D1). */
+  viewerOrientation: ViewerOrientation;
 }
 
 /** The hair either side of a corner the sketch reads widths at (1e-6"). */
 const HAIR_MM = inchesToMm(1e-6);
 /** How far past the left rail a locked wing's fin-edge line reaches, in drawing units. */
 const FIN_EDGE_LINE_REACH = 34;
-/** Room left between two read-outs, in multiples of one read-out's two text lines (the sketch's 40 at 17 + 12). */
-const READOUT_GAP_FACTOR = 1.4;
-/** Room left between two WING chips (the sketch's 6). */
+/** Room left between two cards (the sketch's 6). */
 const CHIP_GAP = 6;
-/** A station dimension's value sits midway when the span is taller than this, else above it. */
-const STATION_DIM_MIDWAY_MIN = 26;
+/** The tail block's words: the gap under the tail and a capital's height, in screen px (D3, F6). */
+const TAIL_BLOCK_WORDS_GAP_PX = 4;
+const CAP_HEIGHT_EM = 0.73;
 
 /** A polyline through the outline's points in the window, with the window's own cut at `hi`. */
 function windowPoints(g: OutlineGeometry, loIn: number, hiIn: number, fromStationIn: number): [number, number][] {
@@ -138,6 +180,7 @@ export function WingCloseUp({
   window: frozenWindow,
   onWingsChange,
   edges: storeEdges = NO_FIN_EDGES,
+  viewerOrientation,
 }: WingCloseUpProps) {
   const { system } = useUnits();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -152,30 +195,66 @@ export function WingCloseUp({
   const loIn = mmToInches(win.lo);
   const hiIn = mmToInches(win.hi);
   const widest = widestHalfWidthIn(hasWings ? [geometry.points, baseGeometry.points] : [geometry.points], loIn, hiIn);
-  // P13: the full frame's width is fixed for a given window, so reading it to choose never loops.
-  const box = useSvgClientSize(svgRef);
-  const fullFrame = closeUpFrame(loIn, hiIn, widest);
-  const compact = useCompactFrame(box.width, box.height, fullFrame.width, MIN_PINNED_FIT_SCALE);
-  const frame = compact ? closeUpFrame(loIn, hiIn, widest, true) : fullFrame;
-  const { toX, toY } = frame;
   const coarsePointer = useCoarsePointer();
-  const fit = useSvgFitScale(svgRef, frame.width, frame.height);
-  const sizes = pinnedCalloutSizes(fit);
+  // D6: the one frame, from the window and the svg's own box — never from the frame it builds.
+  const box = useSvgClientSize(svgRef);
+  const frame = closeUpFrame(loIn, hiIn, widest, {
+    tailBlock: !geometry.tailBlockPinned,
+    box,
+    corner: coarsePointer ? CLOSE_UP_CORNER_PX.coarse : CLOSE_UP_CORNER_PX.fine,
+    minFit: MIN_PINNED_FIT_SCALE,
+  });
+  const { toX, toY } = frame;
+  /** Screen px per drawing unit at 1x: the frame's own `meet` fit for the box, 1 until it is measured. */
+  const fit = frame.fit > 0 ? frame.fit : 1;
 
-  // The grab points (D5, P11). Screen-pixel sizes are divided by the live fit, so a point keeps its
-  // screen size in every window, as the VIEWER's do; the drop and the hit radius are converted to
-  // board millimetres at the same scale before the pure solve sees them.
+  // D7: the shared zoom, inside the frame's own base viewBox. One finger stays the close-up's own at
+  // every zoom (a press on a grab point drags it, never pans); two fingers are the zoom's, and a
+  // pinch that lands mid-drag ends the drag where it is.
+  const baseViewBox = `0 0 ${frame.width} ${frame.height}`;
+  const baseRect = parseViewBox(baseViewBox);
+  const {
+    zoom,
+    zoomUnit,
+    viewBox: shownViewBox,
+    view,
+    svgProps: zoomSvgProps,
+    isPinching,
+  } = useViewerZoom(svgRef, baseViewBox, {
+    touch: "viewer",
+    canPanFrom: () => !dragRef.current,
+    onPinchStart: () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      setHeldWindow(null);
+    },
+  });
+  /** Screen px per drawing unit as drawn now: the fit, times the zoom — every pinned size reads it. */
+  const shownFit = fit * zoom;
+  const sizes = pinnedCalloutSizes(shownFit);
+  /** Drawing units per screen pixel at the pinned callout size — the cards' and words' unit. */
+  const pxUnit = sizes.value / CALLOUT_PX.value;
+  // D1: the VIEWER's own fit for this same box, in the orientation the VIEWER is drawn in; every raw
+  // line weight below rides `weightUnit`, so it lands at the VIEWER's own screen width at any zoom.
+  const viewerFrame = outlineViewBoxSize(geometry, viewerOrientation);
+  const viewerFit = box.width > 0 && box.height > 0 ? Math.min(box.width / viewerFrame.width, box.height / viewerFrame.height) : 0;
+  const weightUnit = viewerFit > 0 && frame.fit > 0 ? (viewerFit / frame.fit) * zoomUnit : zoomUnit;
+
+  // The grab points (D5, P11). Screen-pixel sizes are divided by the shown fit, so a point keeps its
+  // screen size in every window and at any zoom, as the VIEWER's do; the drop and the hit radius are
+  // converted to board millimetres at the same scale before the pure solve sees them.
   const allWings = outline.wings ?? [];
   const grabbing = showConstruction && onWingsChange !== undefined;
-  const handleUnit = fit > 0 ? 1 / fit : 1;
+  const handleUnit = shownFit > 0 ? 1 / shownFit : 1;
   const unitsToMm = (units: number) => inchesToMm(units / frame.unitsPerInch);
   const dropMm = unitsToMm(WING_GRAB_DROP_PX * handleUnit);
   const hitRadiusUnits = (coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX) * handleUnit;
   const hitRadiusMm = unitsToMm(hitRadiusUnits);
   const grabPoints = grabbing ? wingDragPoints(geometry, allWings, dropMm) : [];
 
-  /** A pointer's board position: the root svg's own matrix (the close-up is never turned or zoomed),
-   * then the frame's `toX`/`toY` run backwards. */
+  /** A pointer's board position: the root svg's own matrix — the zoom moves the svg's viewBox itself,
+   * so that matrix is already the zoomed one (the VIEWER reads its content group only because that
+   * group is turned; the close-up never is) — then the frame's `toX`/`toY` run backwards. */
   function toBoardPoint(event: ReactPointerEvent<SVGSVGElement>): OutlineDragPoint | null {
     const ctm = svgRef.current?.getScreenCTM();
     if (!ctm) return null;
@@ -214,6 +293,29 @@ export function WingCloseUp({
     }
     // The window rule applies again from here: a wing carried past 24" now grows the window.
     setHeldWindow(null);
+  }
+
+  // The pointer, shared with the zoom (D7), as the VIEWER's: the close-up's own press runs first, in
+  // the capture phase, so a press on a grab point drags it at any zoom and the zoom then sees the
+  // drag and never pans (`canPanFrom`); any other press reaches the zoom, which pans above 1x and does
+  // nothing at 1x. Move, lift and cancel go to the drag while one is live and on to the zoom's
+  // otherwise. While two fingers are down the close-up ignores the pointer.
+  function onSvgPress(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    handlePointerDown(event);
+  }
+  function onSvgPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    if (dragRef.current) {
+      handlePointerMove(event);
+      return;
+    }
+    zoomSvgProps.onPointerMove?.(event);
+  }
+  function onSvgPointerEnd(event: ReactPointerEvent<SVGSVGElement>, cancelled: boolean) {
+    handlePointerEnd(event);
+    if (cancelled) zoomSvgProps.onPointerCancel?.(event);
+    else zoomSvgProps.onPointerUp?.(event);
   }
 
   const lengthIn = mmToInches(geometry.length);
@@ -257,118 +359,108 @@ export function WingCloseUp({
 
   // The fins' trailing edges, for a locked wing's fin-edge line (front for wing 1, rear for wing 2).
   const edges = wingFinEdges(finMarks);
-
-  // 6-7. Per wing: its read-outs, and the right rail they join.
   const readouts = wingReadouts(geometry, wings);
-  const outputs: { sIn: number; edgeX: number; value: string; station: string }[] = [];
-  if (inWindow(tail12In)) {
-    outputs.push({
-      sIn: tail12In,
-      edgeX: toX(mmToInches(sampleOutline(geometry, MEASURE_STATION_MM))),
-      value: formatDim(geometry.tailWidthAt12in, system),
-      station: `Tail @ ${stationLabel(system)}`,
-    });
-  }
-  if (!geometry.tailBlockPinned && inWindow(podIn)) {
-    outputs.push({
-      sIn: podIn,
-      edgeX: toX(mmToInches(geometry.halfTailBlockWidth)),
-      value: formatDim(mm(geometry.halfTailBlockWidth * 2), system),
-      station: "Tail block",
-    });
-  }
-  if (inWindow(centreIn) && hiIn > 30) {
-    outputs.push({
-      sIn: centreIn,
-      edgeX: toX(hwAt(centreIn)),
-      value: formatDim(mm(2 * inchesToMm(hwAt(centreIn))), system),
-      station: "Center",
-    });
-  }
-  if (inWindow(nose12In)) {
-    outputs.push({
-      sIn: nose12In,
-      edgeX: toX(mmToInches(sampleOutline(geometry, inchesToMm(nose12In)))),
-      value: formatDim(geometry.noseWidthAt12in, system),
-      station: `Nose @ ${stationLabel(system)}`,
-    });
-  }
-  readouts.forEach((r, i) => {
-    outputs.push({
-      sIn: mmToInches(r.stepStart),
-      edgeX: toX(mmToInches(r.widthAhead) / 2),
-      value: formatDim(r.widthAhead, system),
-      station: `Ahead of wing ${i + 1}`,
-    });
-    outputs.push({
-      sIn: mmToInches(r.inner),
-      edgeX: toX(mmToInches(r.widthBehind) / 2),
-      value: formatDim(r.widthBehind, system),
-      station: `Behind wing ${i + 1}`,
-    });
-  });
-  // D7 (quick 261015-hz7): kept inside the drawing — a read-out's value line sits above its y and its
-  // name line below, so the bounds leave a value's height at the top and a name's at the bottom.
-  const outputYs = spreadApart(
-    outputs.map((o) => ({ y: toY(o.sIn), half: 0 })),
-    READOUT_GAP_FACTOR * (sizes.value + sizes.name),
-    [],
-    { top: sizes.value + 4, bottom: frame.height - sizes.name - 4 },
-  );
 
-  // 8. The left gutter: a chip per wing.
-  const chips = wings.map((w, i) => {
+  // 6. The left gutter (D4, D5): a data card per wing holding every number of it, and the tail's
+  // width at 12" — spread apart in station order, each whole inside the drawing.
+  const cards: {
+    key: string;
+    y: number;
+    name: string;
+    nameColor?: string;
+    value: string;
+    rows: WingDataCardRow[];
+    leaderToX: number;
+  }[] = wings.map((w, i) => {
     // `WING n · FIN` only for a lock its slot holds with its fins present (D1).
     const locked = wingLockEdge(w, i, edges) !== null;
+    const rows: WingDataCardRow[] = [
+      { key: "run", label: "RUN", value: formatMark(w.run, system) },
+      // The radius actually drawn — never more than fits.
+      { key: "radius", label: "RADIUS", value: formatMark(effectiveWingRadius(w), system) },
+    ];
+    if (locked) rows.push({ key: "offset", label: "OFFSET", value: formatSignedMark(w.finOffset, system) });
     return {
-      key: i,
+      key: `wing-${i}`,
       y: toY(mmToInches(w.station)),
       name: locked ? `WING ${i + 1} · FIN` : `WING ${i + 1}`,
       nameColor: locked ? "var(--color-surf-accent-ink)" : undefined,
       value: `${formatMark(w.depth, system)} @ ${formatDim(w.station, system)}`,
+      rows,
       leaderToX: toX(-mmToInches(wingedHalfWidthAt(geometry, wings, mm(w.station + HAIR_MM)))),
     };
   });
-  const chipYs = spreadApart(
-    chips.map((c) => ({ y: c.y, half: 0 })),
-    sizes.chipH + CHIP_GAP,
+  if (inWindow(tail12In)) {
+    cards.push({
+      key: "tail-12",
+      y: toY(tail12In),
+      name: `TAIL @ ${stationLabel(system)}`,
+      value: formatDim(geometry.tailWidthAt12in, system),
+      rows: [],
+      leaderToX: toX(-mmToInches(sampleOutline(geometry, MEASURE_STATION_MM))),
+    });
+  }
+  const cardYs = spreadApart(
+    cards.map((c) => ({ y: c.y, half: (wingCardHeightPx(c.rows.length) * pxUnit) / 2 })),
+    CHIP_GAP,
     [],
-    // D7: every chip whole inside the drawing, 2 units clear of each edge.
-    { top: sizes.chipH / 2 + 2, bottom: frame.height - sizes.chipH / 2 - 2 },
+    // Every card whole inside the drawing, 2 units clear of each edge.
+    { top: 2, bottom: frame.height - 2 },
   );
+
+  // 7. The tail block's width, written under the tail on one line (D3); a pin or round tail has none.
+  const tailBlockWords = geometry.tailBlockPinned ? null : formatDim(mm(geometry.halfTailBlockWidth * 2), system);
 
   return (
     <CalloutSizeProvider value={sizes}>
       <ViewerOrientationProvider value="vertical">
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${frame.width} ${frame.height}`}
+          viewBox={shownViewBox}
           preserveAspectRatio="xMidYMid meet"
           // P14, as TEMPLATE's VIEWER svg: `touch-none` so a thumb drag shapes the wing instead of
           // scrolling the page, `select-none` and the callout suppression against iOS's long press.
           className="absolute inset-0 block h-full w-full select-none touch-none"
-          style={{ WebkitTouchCallout: "none" }}
+          // The shared zoom's own handlers first, then the close-up's, which take over move, lift
+          // and cancel and hand on to the zoom's whatever the close-up does not use (D7).
+          {...zoomSvgProps}
+          style={{ WebkitTouchCallout: "none", ...zoomSvgProps.style }}
           data-wing-close-up
-          data-frame={compact ? "compact" : "full"}
           data-window-lo-in={loIn.toFixed(3)}
           data-window-hi-in={hiIn.toFixed(3)}
           data-units-per-inch={frame.unitsPerInch.toFixed(4)}
+          data-pad-top={frame.padTop.toFixed(2)}
           data-held={heldWindow ? "true" : undefined}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerEnd}
+          onPointerDownCapture={onSvgPress}
+          onPointerMove={onSvgPointerMove}
+          onPointerUp={(event) => onSvgPointerEnd(event, false)}
+          onPointerCancel={(event) => onSvgPointerEnd(event, true)}
           role="img"
           aria-label="The tail close up, with each wing's step"
         >
+          <ViewerZoomUnitProvider value={weightUnit}>
+          {/* The grid (D7, the orchestrator's ruling): drawn first, so it sits behind the board; only
+              above 1x, so nothing at 1x changes. Counted from the tail tip along the board and from
+              the stringer across it, as the VIEWER's. */}
+          {baseRect && (
+            <ZoomGrid
+              zoom={zoom}
+              fitScale={fit}
+              unitsPerInch={frame.unitsPerInch}
+              anchor={{ x: frame.cx, y: toY(0) }}
+              bounds={baseRect}
+              visible={view}
+              system={system}
+            />
+          )}
           {hasWings && (
             <path
               data-wing-base-outline
               d={outlineFillPath(baseGeometry)}
               fill="none"
               stroke="var(--outline-ghost)"
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
+              strokeWidth={GHOST_STROKE_WIDTH * weightUnit}
+              strokeDasharray={scaleDash("4 3", weightUnit)}
             />
           )}
           <path d={outlineFillPath(geometry)} fill="var(--outline-board-fill)" stroke="none" />
@@ -377,18 +469,20 @@ export function WingCloseUp({
             d={`${right} ${left} ${tailClose}`}
             fill="none"
             stroke="var(--outline-ink)"
-            strokeWidth={2}
+            strokeWidth={2 * weightUnit}
             strokeLinejoin="round"
           />
 
           {/* Interior: faint lines only, never text (D6). */}
           <line
+            data-wing-stringer
             x1={frame.cx}
             y1={toY(hiIn) - 6}
             x2={frame.cx}
             y2={toY(loIn) + 6}
             stroke="var(--outline-station-line)"
-            strokeDasharray={zoomDashToken("--outline-stringer-dash", 1)}
+            strokeWidth={weightUnit}
+            strokeDasharray={zoomDashToken("--outline-stringer-dash", weightUnit)}
           />
           {stationLines.map(({ sIn, dash }) => (
             <line
@@ -398,7 +492,8 @@ export function WingCloseUp({
               x2={toX(hwAt(sIn))}
               y2={toY(sIn)}
               stroke="var(--outline-station-line)"
-              strokeDasharray={zoomDashToken(dash, 1)}
+              strokeWidth={weightUnit}
+              strokeDasharray={zoomDashToken(dash, weightUnit)}
             />
           ))}
           {inWindow(wpIn) && (
@@ -409,10 +504,11 @@ export function WingCloseUp({
                 x2={toX(cwIn)}
                 y2={toY(wpIn)}
                 stroke="var(--outline-widepoint-line)"
-                strokeDasharray={zoomDashToken("--outline-widepoint-dash", 1)}
+                strokeWidth={weightUnit}
+                strokeDasharray={zoomDashToken("--outline-widepoint-dash", weightUnit)}
               />
-              <circle cx={toX(-cwIn)} cy={toY(wpIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
-              <circle cx={toX(cwIn)} cy={toY(wpIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
+              <circle cx={toX(-cwIn)} cy={toY(wpIn)} r={2.6 * weightUnit} fill="var(--outline-widepoint-knot)" />
+              <circle cx={toX(cwIn)} cy={toY(wpIn)} r={2.6 * weightUnit} fill="var(--outline-widepoint-knot)" />
             </>
           )}
 
@@ -450,19 +546,20 @@ export function WingCloseUp({
                 <circle
                   cx={toX(mmToInches(r.widthAhead) / 2)}
                   cy={toY(mmToInches(r.stepStart))}
-                  r={3.5}
+                  r={3.5 * weightUnit}
                   fill="var(--outline-construction)"
                 />
                 <circle
                   cx={toX(mmToInches(r.widthBehind) / 2)}
                   cy={toY(mmToInches(r.inner))}
-                  r={3.5}
+                  r={3.5 * weightUnit}
                   fill="var(--outline-construction)"
                 />
               </g>
             ))}
 
-          {/* 5. With Show fins: the fins where FINS puts them, marks only, no dims (D4). */}
+          {/* 5. With Show fins: the fins where FINS puts them, marks only, no dims (D4) — and a locked
+              wing's fin-edge line, out past the left rail toward its card. */}
           {showFins &&
             finMarks.map((m, i) => {
               const x1 = toX(mmToInches(m.lateral));
@@ -471,128 +568,66 @@ export function WingCloseUp({
               const y2 = toY(mmToInches(m.leadingOffTail));
               return (
                 <g key={i} data-fin-mark>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--color-surf-accent-ink)" strokeWidth={2} />
-                  <circle cx={x1} cy={y1} r={3.5} fill="var(--outline-ink)" />
-                  <circle cx={x2} cy={y2} r={3.5} fill="var(--outline-ink)" />
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--color-surf-accent-ink)" strokeWidth={2 * weightUnit} />
+                  <circle cx={x1} cy={y1} r={3.5 * weightUnit} fill="var(--outline-ink)" />
+                  <circle cx={x2} cy={y2} r={3.5 * weightUnit} fill="var(--outline-ink)" />
                 </g>
               );
             })}
+          {showFins &&
+            wings.map((w, i) => {
+              const finEdge = wingLockEdge(w, i, edges);
+              if (finEdge === null) return null;
+              const aheadIn = mmToInches(readouts[i].widthAhead) / 2;
+              return (
+                <line
+                  key={i}
+                  data-wing-fin-edge={i + 1}
+                  x1={toX(0)}
+                  y1={toY(mmToInches(finEdge))}
+                  x2={toX(-aheadIn) - FIN_EDGE_LINE_REACH}
+                  y2={toY(mmToInches(finEdge))}
+                  stroke="var(--color-surf-accent-ink)"
+                  strokeWidth={weightUnit}
+                  strokeDasharray={scaleDash("2 3", weightUnit)}
+                />
+              );
+            })}
 
-          {/* 6. Per wing: the faint extension lines, the depth, the run, and a locked wing's fin edge. */}
-          {wings.map((w, i) => {
-            const r = readouts[i];
-            const aheadIn = mmToInches(r.widthAhead) / 2;
-            const behindIn = mmToInches(r.widthBehind) / 2;
-            const stepStartIn = mmToInches(r.stepStart);
-            const innerIn = mmToInches(r.inner);
-            const yd = toY(innerIn) + CLOSE_UP.depthDimDrop;
-            const xAhead = toX(aheadIn);
-            const xBehind = toX(behindIn);
-            const stationIn = mmToInches(w.station);
-            const runY0 = toY(stationIn);
-            const runY1 = toY(stationIn - mmToInches(w.run));
-            const runX = frame.extensionEndX + 2;
-            const finEdge = wingLockEdge(w, i, edges);
-            return (
-              <g key={i} data-wing-dims={i + 1}>
-                <line x1={xAhead} y1={toY(stepStartIn)} x2={xAhead} y2={yd + 5} stroke="var(--outline-station-line)" />
-                <line x1={xBehind} y1={toY(innerIn)} x2={xBehind} y2={yd + 5} stroke="var(--outline-station-line)" />
-                <g data-wing-depth-dim={i + 1}>
-                  <DimensionLine
-                    x1={Math.min(xAhead, xBehind)}
-                    y1={yd}
-                    x2={Math.max(xAhead, xBehind)}
-                    y2={yd}
-                    value={formatMark(w.depth, system)}
-                    labelX={Math.max(xAhead, xBehind) + 8}
-                    labelY={yd + sizes.dim * 0.32}
-                    labelAnchor="start"
-                  />
-                </g>
-                {w.run > 0 && runY1 - runY0 >= CLOSE_UP.runDimMinUnits && (
-                  <g data-wing-run-dim={i + 1}>
-                    <DimensionLine
-                      x1={runX}
-                      y1={runY0}
-                      x2={runX}
-                      y2={runY1}
-                      value={formatMark(w.run, system)}
-                      labelX={runX + 7}
-                      labelY={(runY0 + runY1) / 2 + sizes.dim * 0.32}
-                      labelAnchor="start"
-                    />
-                  </g>
-                )}
-                {finEdge !== null && showFins && (
-                  <line
-                    data-wing-fin-edge={i + 1}
-                    x1={toX(0)}
-                    y1={toY(mmToInches(finEdge))}
-                    x2={toX(-aheadIn) - FIN_EDGE_LINE_REACH}
-                    y2={toY(mmToInches(finEdge))}
-                    stroke="var(--color-surf-accent-ink)"
-                    strokeDasharray="2 3"
-                  />
-                )}
-              </g>
-            );
-          })}
-
-          {/* 7. The right rail: every read-out at one x, pushed apart when two would touch. */}
-          {outputs.map((o, i) => (
-            <OutputRail
-              key={o.station}
-              valueX={frame.valueX}
-              edgeX={o.edgeX}
-              y={toY(o.sIn)}
-              readoutY={outputYs[i]}
-              value={o.value}
-              station={o.station}
-            />
-          ))}
-
-          {/* 8. The left gutter: a chip per wing, its leader kept on the wing's own station. */}
-          {chips.map((c, i) => (
-            <CalloutChip
+          {/* 6. The left gutter: the cards, each leader kept on its own station. */}
+          {cards.map((c, i) => (
+            <WingDataCard
               key={c.key}
               x={frame.chipRightX}
-              y={chipYs[i]}
+              y={cardYs[i]}
               name={c.name}
-              value={c.value}
               nameColor={c.nameColor}
+              value={c.value}
+              rows={c.rows}
               leaderToX={c.leaderToX}
               leaderAtY={c.y}
-              // D8: a long wing value is set small enough to sit inside its chip.
-              fitValue
             />
           ))}
 
-          {/* 9. Each wing's station from the tail, at the far left — on the full frame only; the
-              compact frame has no room beside its chip column (F20, P13). */}
-          {!compact &&
-            loIn <= 0 &&
-            wings.map((w, i) => {
-              const x = frame.stationDimX(i);
-              const top = toY(mmToInches(w.station));
-              const bottom = toY(0);
-              const midway = bottom - top > STATION_DIM_MIDWAY_MIN;
-              return (
-                <g key={i} data-wing-station-dim={i + 1}>
-                  <DimensionLine
-                    x1={x}
-                    y1={top}
-                    x2={x}
-                    y2={bottom}
-                    value={formatDim(w.station, system)}
-                    labelX={x + 7}
-                    labelY={midway ? (top + bottom) / 2 + sizes.dim * 0.32 : top - 5}
-                    labelAnchor="start"
-                  />
-                </g>
-              );
-            })}
+          {/* 7. The tail block's width under the tail, centred on the stringer (D3). */}
+          {tailBlockWords !== null && (
+            <text
+              data-tail-block-words
+              x={frame.cx}
+              y={toY(0) + (TAIL_BLOCK_WORDS_GAP_PX + CAP_HEIGHT_EM * CALLOUT_PX.value) * pxUnit}
+              textAnchor="middle"
+              style={{ fontFamily: "var(--font-body)", fontWeight: 700, whiteSpace: "pre" }}
+            >
+              <tspan style={{ fontSize: sizes.name, letterSpacing: "0.12em" }} fill="var(--outline-callout-label)">
+                TAIL BLOCK
+              </tspan>
+              <tspan style={{ fontSize: sizes.value }} fill="var(--outline-ink)">
+                {` ${tailBlockWords}`}
+              </tspan>
+            </text>
+          )}
 
-          {/* 10. The grab areas, last so they sit above everything they cover. No press handler of
+          {/* 8. The grab areas, last so they sit above everything they cover. No press handler of
               their own — the svg's one delegated handler picks (as the VIEWER's); these are the
               cursor and the `data-wing-grab` test hook. */}
           {grabPoints.map((p) => (
@@ -608,6 +643,7 @@ export function WingCloseUp({
               style={{ WebkitTouchCallout: "none" }}
             />
           ))}
+          </ViewerZoomUnitProvider>
         </svg>
       </ViewerOrientationProvider>
     </CalloutSizeProvider>
