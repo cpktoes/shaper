@@ -2623,7 +2623,10 @@ describe("wing marks on the full-size prints (quick 261015-sei)", () => {
       }
     });
 
-    it("sweeps every wing position on every preset and paper: wing labels stay a full threshold from every other label", () => {
+    // Both sweeps walk every 1/16" of wing position on every preset and paper, which runs close to
+    // vitest's 5 s default on a busy machine (the Paper Saver one timed out at 5.07 s in the
+    // pre-push gate, 2026-10-15) — the same 30 s room the repo's other heavy sweeps get.
+    it("sweeps every wing position on every preset and paper: wing labels stay a full threshold from every other label", { timeout: 30_000 }, () => {
       let cases = 0;
       for (const preset of BOARD_PRESETS) {
         const geometry = buildOutline(preset.outline);
@@ -2657,7 +2660,7 @@ describe("wing marks on the full-size prints (quick 261015-sei)", () => {
       expect(cases).toBeGreaterThan(10_000);
     });
 
-    it("sweeps the Paper Saver: no wing row within 6 mm of another row, and every row on its page", () => {
+    it("sweeps the Paper Saver: no wing row within 6 mm of another row, and every row on its page", { timeout: 30_000 }, () => {
       let cases = 0;
       for (const preset of BOARD_PRESETS) {
         const geometry = buildOutline(preset.outline);
