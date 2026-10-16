@@ -24,11 +24,14 @@ import {
   type StripMarkSegment,
   type StripPage,
   type StripRegistrationLine,
+  type TailClosureSegment,
   type TemplateMarks,
+  computeTailClosure,
   stripFurniture,
   stripLabelRows,
   stripMarkSegments,
   stripRegistrationLines,
+  tailClosureSegments,
 } from "@/lib/geometry/template";
 import { formatCalibrationMark } from "@/lib/geometry/measure-display";
 import { inchesToMm, type UnitsSystem } from "@/lib/geometry/units";
@@ -202,9 +205,11 @@ function drawRegistrationLines(
 }
 
 /** The working-mark ticks on this page, in the tiled template's own grammar — widepoint dotted,
- * every other station mark dashed, the tail block solid at the outline's own weight. */
+ * every other station mark dashed. The tail block is not a tick: its straight line at one station
+ * printed a swallow or a diamond like a squash (fast task, 2026-10-15), so `drawTailClosure` draws
+ * the real cut instead, and the tail block keeps only its label. */
 function drawMarkTicks(doc: jsPDF, page: StripPage, margin: number, segments: StripMarkSegment[]): void {
-  const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
+  const pageSegments = segments.filter((segment) => segment.pageIndex === page.index && segment.mark !== "tailBlock");
   if (pageSegments.length === 0) return;
 
   doc.setDrawColor(0);
@@ -213,10 +218,7 @@ function drawMarkTicks(doc: jsPDF, page: StripPage, margin: number, segments: St
     const xStart = halfWidthToX(segment.halfWidthRange[0], page, margin);
     const xEnd = halfWidthToX(segment.halfWidthRange[1], page, margin);
 
-    if (segment.mark === "tailBlock") {
-      doc.setLineWidth(MARK_TAILBLOCK_LINE_WEIGHT_MM);
-      doc.setLineDashPattern([], 0);
-    } else if (segment.mark === "widepoint") {
+    if (segment.mark === "widepoint") {
       doc.setLineWidth(MARK_TICK_LINE_WEIGHT_MM);
       doc.setLineDashPattern(MARK_WIDEPOINT_DASH_PATTERN, 0);
     } else {
@@ -225,6 +227,27 @@ function drawMarkTicks(doc: jsPDF, page: StripPage, margin: number, segments: St
     }
     doc.line(xStart, y, xEnd, y);
     doc.setLineDashPattern([], 0);
+  }
+}
+
+/** The tail's true closing edge on this page — the cut from the rail corner to the stringer that
+ * `computeTailClosure` / `tailClosureSegments` give the Full Sized Template too, so a swallow's
+ * notch and a diamond's point print as they are cut (fast task, 2026-10-15, the founder: "paper
+ * save didn't pick up the swallow tail"). Solid, at the outline's own weight: a real cut edge. */
+function drawTailClosure(doc: jsPDF, page: StripPage, margin: number, segments: TailClosureSegment[]): void {
+  const pageSegments = segments.filter((segment) => segment.pageIndex === page.index);
+  if (pageSegments.length === 0) return;
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(MARK_TAILBLOCK_LINE_WEIGHT_MM);
+  doc.setLineDashPattern([], 0);
+  for (const segment of pageSegments) {
+    doc.line(
+      halfWidthToX(segment.from.halfWidth, page, margin),
+      stationToY(segment.from.station, page, margin),
+      halfWidthToX(segment.to.halfWidth, page, margin),
+      stationToY(segment.to.station, page, margin),
+    );
   }
 }
 
@@ -355,6 +378,8 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
   const lines = stripRegistrationLines(layout, geometry, system);
   const segments = stripMarkSegments(layout, marks, geometry, system);
   const rows = stripLabelRows(layout, marks, geometry, system);
+  const tailClosure = computeTailClosure(geometry);
+  const tailClosureSeg = tailClosure ? tailClosureSegments(layout, tailClosure) : [];
   const { scaleSquare, nameBlock } = computeStripFurniture(doc, layout, marks, geometry, dims, system);
 
   layout.pages.forEach((page, i) => {
@@ -364,6 +389,7 @@ export function buildStripPdf(options: BuildStripPdfOptions): jsPDF {
     drawStringer(doc, page, margin);
     drawRegistrationLines(doc, page, margin, lines);
     drawMarkTicks(doc, page, margin, segments);
+    drawTailClosure(doc, page, margin, tailClosureSeg);
     drawLabelRows(doc, page, margin, rows);
     drawPageNumber(doc, page, margin);
 

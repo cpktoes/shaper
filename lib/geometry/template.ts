@@ -572,8 +572,15 @@ function clipSegmentToPageRect(
  * crosses gets its own clipped segment, so a wide tail block's corner (more than one column out
  * from the stringer) still draws its full closing cut across every sheet it touches, the same way
  * `markLineSegments` already does for the other working marks.
+ *
+ * Reads only each page's index and its two ranges, so the Paper Saver's `StripLayout` is handed
+ * in exactly as the tiled `TemplateLayout` is (fast task, 2026-10-15, the founder: "paper save
+ * didn't pick up the swallow tail" — the strip still drew a straight tick across the tail).
  */
-export function tailClosureSegments(layout: TemplateLayout, closure: TailClosure): TailClosureSegment[] {
+export function tailClosureSegments(
+  layout: { pages: readonly Pick<TemplatePage, "index" | "stationRange" | "halfWidthRange">[] },
+  closure: TailClosure,
+): TailClosureSegment[] {
   const segments: TailClosureSegment[] = [];
   for (const page of layout.pages) {
     const clipped = clipSegmentToPageRect(closure.corner, closure.tip, page.stationRange, page.halfWidthRange);

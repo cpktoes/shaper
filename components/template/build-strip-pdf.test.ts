@@ -6,11 +6,13 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   PAPER_MM,
   computeStripLayout,
+  computeTailClosure,
   computeTemplateMarks,
   markLabels,
   stripLabelRows,
   stripMarkSegments,
   stripRegistrationLines,
+  tailClosureSegments,
   type PaperSize,
   type StripLayout,
 } from "@/lib/geometry/template";
@@ -394,5 +396,65 @@ describe("the name block's printed text comes from the shared build-template-pdf
     const longName = "The Founder's Extremely Long And Descriptive Board Name That Goes On And On For Testing";
     const result = templateNameBlockText(longName, 68, doc);
     expect(result.endsWith("…")).toBe(true);
+  });
+});
+
+describe("the tail is drawn as it is cut (fast task, 2026-10-15: \"paper save didn't pick up the swallow tail\")", () => {
+  /** Every `line` call the strip makes, with the page it lands on — recorded through jsPDF's own
+   * plugin hook (a plugin method replaces the built-in on every new document) and removed after. */
+  function recordLines(options: BuildStripPdfOptions): { page: number; x1: number; y1: number; x2: number; y2: number }[] {
+    const calls: { page: number; x1: number; y1: number; x2: number; y2: number }[] = [];
+    const api = jsPDF.API as unknown as Record<string, unknown>;
+    api.line = function (this: jsPDF & { __private__: { line: (...a: number[]) => jsPDF } }, x1: number, y1: number, x2: number, y2: number) {
+      calls.push({ page: this.getCurrentPageInfo().pageNumber - 1, x1, y1, x2, y2 });
+      return this.__private__.line(x1, y1, x2, y2);
+    };
+    try {
+      buildStripPdf(options);
+    } finally {
+      delete api.line;
+    }
+    return calls;
+  }
+
+  it.each(PAPERS)("a swallow (the Fish, %s) prints its notch from the rail corner to the stringer, and no straight line across the tail", (paper) => {
+    const options = buildOptionsFor(BOARD_PRESETS[1], paper); // fish — swallow
+    const { layout, geometry, marks } = options;
+    expect(geometry.centreCloseStation).toBeGreaterThan(0);
+    const closure = computeTailClosure(geometry)!;
+    const expected = tailClosureSegments(layout, closure);
+    expect(expected.length).toBeGreaterThan(0);
+
+    const calls = recordLines(options);
+    const x = (hw: number, pageIndex: number) => layout.margin + (hw - layout.pages[pageIndex].halfWidthRange[0]);
+    const y = (station: number, pageIndex: number) => layout.margin + (layout.pages[pageIndex].stationRange[1] - station);
+    const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+
+    for (const segment of expected) {
+      const p = segment.pageIndex;
+      const drawn = calls.some(
+        (c) =>
+          c.page === p &&
+          near(c.x1, x(segment.from.halfWidth, p)) &&
+          near(c.y1, y(segment.from.station, p)) &&
+          near(c.x2, x(segment.to.halfWidth, p)) &&
+          near(c.y2, y(segment.to.station, p)),
+      );
+      expect(drawn).toBe(true);
+    }
+
+    // The notch reaches the stringer at its own depth, ahead of the corner.
+    expect(expected.some((s) => s.to.halfWidth === 0 && near(s.to.station, geometry.centreCloseStation))).toBe(true);
+
+    // The old straight tick — stringer to curve at the tail block's own station — is gone.
+    const tailStation = marks.tailBlock!;
+    const oldTick = calls.some((c) => near(c.y1, c.y2) && near(c.y1, y(tailStation, c.page)) && near(c.x1, x(0, c.page)));
+    expect(oldTick).toBe(false);
+  });
+
+  it("the tail block's label still prints", () => {
+    const options = buildOptionsFor(BOARD_PRESETS[1]);
+    const rows = stripLabelRows(options.layout, options.marks, options.geometry, options.system);
+    expect(rows.some((row) => row.text.startsWith("Tail Block — "))).toBe(true);
   });
 });
