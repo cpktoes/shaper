@@ -151,7 +151,9 @@ deploy that reads it.
    note's figures in the same colours where the note is shown large (the popup's header). Two colour tokens per
    theme, chosen to read on Slate and Daylight (the sketch's `--adj-1` / `--adj-2`; the app's `globals.css` gets its
    own, like sketch 012's compare blue). The five board stations read the custom figures as they do today; "Show
-   measuring points" unchanged. No tip close-ups.
+   measuring points" unchanged. No tip close-ups. **The popup's drawing has a Show my board switch, off by default**
+   (the founder, round nine): the blank alone on its bottom plane with its tip figures, natural → as ordered; on, the
+   board in the blank with the five stations.
 4. **The name and the DATASHEET — decided (the founder, 2026-10-16, sketch 016 round three):** every blank is named
    the same way, the name then its rocker on its own line, `Natural` included (`9'4"B` / `Natural`; `9'4"B` /
    `-1/4"N18" +1/8"T36" +1/8"T18"`), on the BLANK button, the picker's cards, the viewer's caption, the DATASHEET's

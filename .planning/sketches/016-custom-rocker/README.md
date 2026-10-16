@@ -134,6 +134,12 @@ second's, the formula's figures in the same colours. The sketch now draws exactl
 popup's header colouring the note the same way; two colour tokens per theme (`--adj-1`, `--adj-2`) chosen to read on
 Slate and Daylight.
 
+**Round nine (the founder, 2026-10-16):** *"We definitely need a show board toggle, I think it's very useful to see
+only the blank at times. Let's make the default to not show the board."* The popup's drawing has a **Show my board**
+switch, off by default: the blank alone on its bottom plane, its nose and tail figures (natural → as ordered) on the
+rails, the red and blue adjustments over it; switched on, the board sits in the blank with the five stations as the
+page draws them.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

@@ -242,7 +242,9 @@
   .rart { flex: 1 1 58%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-canvas); padding: 6px; min-height: 260px; }
   .device.phone .rart { flex: none; height: 300px; min-height: 0; order: -1; }
   .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; }
-  .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; }
+  .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text); cursor: pointer; white-space: nowrap; } .sw input { accent-color: var(--color-accent-ink); width: 16px; height: 16px; }
+  .device.phone .sw, .device.side .sw { min-height: 32px; }
   .rrows { flex: 0 0 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-right: 6px; }
   .rrows > * { flex-shrink: 0; }
   .device.phone .rrows { flex: 1; min-height: 0; padding-right: 0; }
@@ -296,7 +298,7 @@ const PRESETS = [
   ['-1 1/2"N', { nose: [{ a: -1.5, f: null }], tail: [] }],
   ['-2"T (reverse)', { nose: [], tail: [{ a: -2, f: null }] }],
 ];
-const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
+const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, showBoard: false, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
 if (window.__publish) DEFAULTS.theme = "auto";
 let state = JSON.parse(JSON.stringify(DEFAULTS));
 let barOpen = false;
@@ -378,7 +380,8 @@ function geometry(r = state.rocker) {
 
 /* ---------- drawing ---------- */
 const NS = "http://www.w3.org/2000/svg";
-function mainArt(device, g) {
+function mainArt(device, g, opts = {}) {
+  const showBoard = opts.board !== false;
   const upright = device === "phone";
   const W = upright ? 386 : device === "side" ? 530 : 880, H = upright ? 330 : device === "side" ? 220 : 420;
   const r = state.rocker, custom = !isNatural(r);
@@ -396,8 +399,9 @@ function mainArt(device, g) {
   const boardOutline = path(g.boardRocker, (p) => p[1]) + path([...g.boardRocker].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L") + "Z";
   const natural = custom ? path(g.d.blankPts, (p) => p[1]) : "";
   let out = `<svg class="mainart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="${NS}" font-family="Inter, system-ui, sans-serif">`;
-  // baseline across the board's own length, dashed, faint (the app's own)
-  { const [x1, y1] = P(0, 0), [x2, y2] = P(g.L, 0); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
+  // baseline: the board's own flat when the board is drawn; the blank's bottom plane when it is not
+  if (showBoard) { const [x1, y1] = P(0, 0), [x2, y2] = P(g.L, 0); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
+  else { const low = Math.min(...g.blankBottom.map((p) => p[1])); const [x1, y1] = P(g.start, low), [x2, y2] = P(g.start + g.bl.lengthIn, low); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
   out += `<path d="${blankOutline}" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/>`;
   if (custom) out += `<path d="${natural}" fill="none" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="5 4"/>`;
   // bend marks: a short dashed line across the blank where each bend starts, the thinning marks' own grammar
@@ -416,9 +420,22 @@ function mainArt(device, g) {
       if (second && second.a) { const pv = (second.f === null ? g.bl.centreFromTailIn : end === "nose" ? g.bl.lengthIn - second.f : second.f) + g.start; const pts = seg(g.blankBottom, pv, tipS(end)); if (pts.length > 1) out += outline(pts, "var(--adj-2)"); }
     }
   }
-  out += `<path d="${boardOutline}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
+  if (!showBoard) {
+    // the blank alone: its tip figures, natural → as ordered, on the rails
+    for (const end of ["nose", "tail"]) {
+      const x = end === "nose" ? g.bl.lengthIn : 0, sTip = x + g.start;
+      const nat = g.natAt(x), cus = g.blankLev(x);
+      const i = g.blankBottom.findIndex((p) => p[0] >= sTip - 0.01); const p0 = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i < 0 ? g.blankBottom.length - 1 : i))];
+      const [tx, ty] = P(sTip, p0[1]);
+      const anchor = upright ? "end" : "middle", lx = upright ? 70 : tx, ly = upright ? ty : H - 30;
+      if (!upright) out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly - 14}" stroke="var(--line-faint)"/>`; else out += `<line x1="${tx}" y1="${ty}" x2="${lx + 6}" y2="${ty}" stroke="var(--line-faint)"/>`;
+      out += `<text x="${lx}" y="${ly + (upright ? 1 : 0)}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(mark(cus))}</text><text x="${lx}" y="${ly + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(custom ? `${end} tip · natural ${mark(nat)}` : `${end} tip`)}</text>`;
+    }
+    if (!upright) out += `<text x="${P(g.start + g.bl.lengthIn / 2, 0)[0]}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BOTTOM PLANE</text>`;
+  }
+  if (showBoard) out += `<path d="${boardOutline}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
   // the five stations: thickness chips on one rail, rocker readings on the other (the app's grammar)
-  for (const st of g.d.stations) {
+  for (const st of showBoard ? g.d.stations : []) {
     const th = g.d.foilIn[st.key], rk = g.stationRocker[st.key];
     const [bx, by] = P(st.sIn, rk), [dx, dy] = P(st.sIn, rk + th);
     const name = STATION_NAMES[st.key]();
@@ -432,12 +449,13 @@ function mainArt(device, g) {
       out += `<line x1="${dx}" y1="${dy}" x2="${railR - 6}" y2="${dy}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${railR - 4}" y="${dy - 14}" width="66" height="28" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${railR + 29}" y="${dy - 3}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${railR + 29}" y="${dy + 9}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(mark(th))}</text>`;
     }
   }
-  if (!upright) { const [cx] = P(g.L / 2, 0); out += `<text x="${cx}" y="${16}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text>`; }
+  if (!showBoard) {}
+  else if (!upright) { const [cx] = P(g.L / 2, 0); out += `<text x="${cx}" y="${16}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text>`; }
   else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
   // the key, only when a custom rocker is set
-  if (custom) {
+  if (custom && !upright) {
     const hasSecond = r.nose.length > 1 && r.nose[1].a || r.tail.length > 1 && r.tail[1].a;
-    const kx = 8, ky = upright ? H - 4 : H - 6;
+    const kx = 8, ky = H - 6;
     out += `<g font-size="8" fill="var(--color-text-muted)"><line x1="${kx}" y1="${ky}" x2="${kx + 18}" y2="${ky}" stroke="var(--blank-line)" stroke-dasharray="5 4"/><text x="${kx + 22}" y="${ky + 3}">natural</text><line x1="${kx + 58}" y1="${ky}" x2="${kx + 76}" y2="${ky}" stroke="var(--adj-1)" stroke-width="1.6"/><text x="${kx + 80}" y="${ky + 3}">first</text>${hasSecond ? `<line x1="${kx + 104}" y1="${ky}" x2="${kx + 122}" y2="${ky}" stroke="var(--adj-2)" stroke-width="1.6"/><text x="${kx + 126}" y="${ky + 3}">second, on the first</text>` : ""}</g>`;
   }
   return out + `</svg>`;
@@ -714,7 +732,7 @@ function picker(device, g) {
 function rockerPopup(device, g) {
   const r = state.draft, b = B().blank, note = noteOf(r), gd = geometry(r);
   const editing = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === noteOf(state.rocker) ? state.saved[state.savedIdx] : null;
-  const art = mainArt(device === "phone" ? "phone" : "side", gd);
+  const art = mainArt(device === "phone" ? "phone" : "side", gd, { board: state.showBoard });
   return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
     <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${note ? "Natural → " + colouredNote(r) : "Natural"}</span><button class="x" data-act="popcancel">✕</button></div>
     <div class="rbody">
@@ -722,7 +740,7 @@ function rockerPopup(device, g) {
         <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
         <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
       </div>
-      <div class="rart">${art}<div class="rcap">Natural dashed · the first change red · the second change blue, on top of the first · a mark where each bend starts</div></div>
+      <div class="rart">${art}<div class="rcap"><span>Natural dashed · the first change red · the second change blue, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
     </div>
     <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Use and edit current blank</button>` : ""}${note ? `<button class="btn primary" data-act="popsavenew">Use and save as a new blank</button>` : `<button class="btn primary" data-act="popuse">Use the natural rocker</button>`}</div>
   </div></div>`;
@@ -755,6 +773,8 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>Round eight (the founder, 2026-10-16)</h3>
 <p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike.</p>
+<h3>Round nine (the founder, 2026-10-16)</h3>
+<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone, with its bottom plane and its tip figures (natural → as ordered), as the catalogue draws it; on, the board sits in it with the five stations as the page draws them.</p>
 <h3>The maths</h3>
 <p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
 <h3>Not drawn</h3>
@@ -833,6 +853,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("input", (e) => {
   const t = e.target; const act = t.dataset && t.dataset.act; if (!act) return;
+  if (act === "showboard") { state.showBoard = t.checked; render(); return; }
   if (act === "amt") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.a = M() ? Math.round(+t.value * 25.4) / 25.4 : Math.round(+t.value * 16) / 16; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
   else if (act === "from") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end, i = +t.dataset.i; const c = changeAtIn(r, end, i); const rg = fromRange(end, i, r); const v = Math.round(+t.value); c.f = rg.centreAt !== null && v >= rg.centreAt ? null : Math.max(rg.min, Math.min(rg.max, v)); if (i === 0 && r[end][1]) { const s2 = r[end][1], rg2 = fromRange(end, 1, r); if (s2.f === null || s2.f > rg2.max) s2.f = rg2.max; } c.a = Math.max(floorOf(end, i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
   else if (act === "text") { state.text = t.value; const p = parseNote(t.value); if (p) state.rocker = p; render(); }
