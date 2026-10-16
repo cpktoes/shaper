@@ -172,6 +172,11 @@ as chips on one rail and the rocker as ordered on the other at the blank's five 
 read anchored outward and the 12" stations' inward so neighbours never meet. On a computer the popup's drawing takes
 the page's own width. With the board on, the surfboard's values read as the page draws them.
 
+**Round fifteen (the founder, 2026-10-16):** *"The pop-up viewer window should look like the blank selector window.
+The whole background does not need to be the sand color — match the aesthetic to the rest of the site."* The popup's
+drawing now sits like one of the picker's cards — the page background with a faint border — on the dialog's own
+surface, instead of a canvas-coloured panel.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the
