@@ -195,7 +195,7 @@ test.describe("PICK A BLANK — picking, on every device", () => {
     await dismissChrome(page);
   });
 
-  test("picking a card closes the popup, the button shows the blank and Change Blank, and the card reads On your board now", async ({ page }) => {
+  test("picking a card closes the popup, the button shows the blank and Change Blank, and the card reads Currently selected", async ({ page }) => {
     await openRocker(page);
     const name = await pickFirstFittingBlank(page);
     await expect(pickedCard(page)).toContainText(name);
@@ -204,6 +204,7 @@ test.describe("PICK A BLANK — picking, on every device", () => {
     const onBoard = blankCards(dialog).filter({ has: page.locator("[data-on-board]") });
     await expect(onBoard).toHaveCount(1);
     await expect(onBoard.locator("[data-blank-name]")).toHaveText(name);
+    await expect(onBoard.locator("[data-on-board]")).toHaveText(/Currently selected/i);
   });
 });
 

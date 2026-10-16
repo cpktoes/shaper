@@ -9,7 +9,7 @@
  * below it already."): the name on the left of the header and the blank's length · litres on the
  * right; the maker; the drawing; and directly under it the printed station table. A greyed card (the
  * blank won't fit) mutes its name and gives the reason in warning ink — never faded with opacity. The
- * board's own blank carries an accent border and "On your board now".
+ * board's own blank carries an accent border and "Currently selected" (the founder, 2026-10-16).
  *
  * The drawing (D-03, D-04, D-14) is `blankCardArt`'s points turned into paths, nothing else: the
  * blank from above over its rocker from the side, true to proportion and filling its box, and the
@@ -285,7 +285,7 @@ export function BlankCard({
   const maker = <div className="-mt-1 text-[11px] font-bold tracking-[0.08em] text-surf-ink-muted uppercase">{record.vendor}</div>;
   const onBoardMark = onBoard && (
     <div data-on-board className="text-[10px] font-extrabold tracking-architectural text-surf-accent-ink uppercase">
-      On your board now
+      Currently selected
     </div>
   );
   const reasonLine = greyed && (
