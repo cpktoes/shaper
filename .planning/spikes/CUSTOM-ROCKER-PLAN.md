@@ -132,7 +132,9 @@ deploy that reads it.
 2. **How the shaper sets it — decided (the founder, 2026-10-16, sketch 016 rounds five and six):** one button
    **right under the blank card** in the BLANK section — **Customize Rocker ›**, reading **Edit Custom Rocker ›**
    once the board's blank carries one — opens a large popup (the PICK A BLANK dialog's own size; the founder: "a
-   similar effect as the Add Wings button"). **The popup looks like the PICK A BLANK window** (the founder, round fifteen: the dialog's own surface, the drawing
+   similar effect as the Add Wings button"). **The popup's drawing has the page's zoom** (the founder, round sixteen: the viewer's own zoom viewport — buttons,
+   wheel, drag, pinch — with strokes and type held at screen size by its zoom unit). **The popup looks like the PICK A
+   BLANK window** (the founder, round fifteen: the dialog's own surface, the drawing
    in a card like the picker's — the page background with a faint border — never a canvas-coloured panel). **It is
    laid out like the ROCKER page itself:** the controls on
    the left and scrolling, the drawing beside them; on an upright phone the drawing pinned on top and the controls

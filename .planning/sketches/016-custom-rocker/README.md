@@ -177,6 +177,12 @@ The whole background does not need to be the sand color — match the aesthetic 
 drawing now sits like one of the picker's cards — the page background with a faint border — on the dialog's own
 surface, instead of a canvas-coloured panel.
 
+**Round sixteen (the founder, 2026-10-16):** *"Make sure the zoom feature works on this pop-up."* The popup's drawing
+has the page's zoom: − / 1x / + at its top-right (1x, 1.5x, 2x, 3x, 4x), the wheel zooms about the pointer, a drag
+pans, 1x resets; strokes, dashes and type keep their screen size, as the viewer's own zoom unit does. Driven headless
+(`zoom-drive.cjs` in the archive): the buttons, the wheel over the nose and a drag each move the viewBox, and 1x puts it
+back. Pinch-to-zoom on a phone is the build's: the page's zoom viewport already has it.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

@@ -241,7 +241,10 @@
   .device.phone .rbody { flex-direction: column; padding: 8px 12px; gap: 8px; }
   .rart { flex: 1 1 58%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); padding: 6px; min-height: 260px; }
   .device.phone .rart { flex: none; height: 300px; min-height: 0; order: -1; }
-  .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; }
+  .rart { position: relative; } .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .ztools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 2; }
+  .zb { width: 30px; height: 30px; border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font-size: 15px; cursor: pointer; } .zb.zl { width: auto; padding: 0 8px; font-size: 12px; } .zb[disabled] { opacity: .35; cursor: default; }
+  .device.phone .zb, .device.side .zb { width: 36px; height: 36px; }
   .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
   .sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text); cursor: pointer; white-space: nowrap; } .sw input { accent-color: var(--color-accent-ink); width: 16px; height: 16px; }
   .device.phone .sw, .device.side .sw { min-height: 32px; }
@@ -298,7 +301,7 @@ const PRESETS = [
   ['-1 1/2"N', { nose: [{ a: -1.5, f: null }], tail: [] }],
   ['-2"T (reverse)', { nose: [], tail: [{ a: -2, f: null }] }],
 ];
-const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, showBoard: false, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
+const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, showBoard: false, zoom: 1, pan: { x: 0, y: 0 }, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
 if (window.__publish) DEFAULTS.theme = "auto";
 let state = JSON.parse(JSON.stringify(DEFAULTS));
 let barOpen = false;
@@ -741,11 +744,28 @@ function picker(device, g) {
       <div class="grp-label">Fits this board · 194</div><div class="grid">${cards[cards.length - 1]}<div class="card ghost">… and the other 193 blanks long enough for this board, as today</div></div>
     </div></div></div>`;
 }
+/** The page's zoom on the popup's drawing (the founder, round sixteen): the viewBox closes in around the pan centre at
+ * 1x–4x, while strokes, dashes and type keep their screen size — the viewer's own zoom unit. */
+const ZOOMS = [1, 1.5, 2, 3, 4];
+function zoomed(svg, zoom, pan) {
+  const m = svg.match(/viewBox="0 0 (\d+) (\d+)"/); if (!m || zoom === 1) return svg;
+  const W = +m[1], H = +m[2], w = W / zoom, h = H / zoom;
+  const x = Math.max(0, Math.min(W - w, W / 2 - w / 2 + pan.x)), y = Math.max(0, Math.min(H - h, H / 2 - h / 2 + pan.y));
+  const u = 1 / zoom;
+  return svg.replace(/viewBox="0 0 \d+ \d+"/, `viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}"`)
+    .replace(/font-size="([\d.]+)"/g, (_, v) => `font-size="${(+v * u).toFixed(2)}"`)
+    .replace(/stroke-width="([\d.]+)"/g, (_, v) => `stroke-width="${(+v * u).toFixed(2)}"`)
+    .replace(/stroke-dasharray="([\d. ]+)"/g, (_, v) => `stroke-dasharray="${v.split(" ").map((d) => (+d * u).toFixed(2)).join(" ")}"`);
+}
+function zoomTools() {
+  const i = ZOOMS.indexOf(state.zoom);
+  return `<div class="ztools"><button class="zb" data-act="zoomout" aria-label="Zoom out"${i <= 0 ? " disabled" : ""}>−</button><button class="zb zl" data-act="zoomfit" aria-label="Back to 1x">${state.zoom}x</button><button class="zb" data-act="zoomin" aria-label="Zoom in"${i >= ZOOMS.length - 1 ? " disabled" : ""}>+</button></div>`;
+}
 /** The CUSTOMIZE ROCKER popup: the drawing on top, the rows beneath (side by side on a computer), the note, and what to do with it. */
 function rockerPopup(device, g) {
   const r = state.draft, b = B().blank, note = noteOf(r), gd = geometry(r);
   const editing = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === noteOf(state.rocker) ? state.saved[state.savedIdx] : null;
-  const art = mainArt(device === "phone" ? "phone" : device === "side" ? "side" : "computer", gd, { board: state.showBoard, overlay: true });
+  const art = zoomed(mainArt(device === "phone" ? "phone" : device === "side" ? "side" : "computer", gd, { board: state.showBoard, overlay: true }), state.zoom, state.pan);
   return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
     <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${note ? "Natural → " + colouredNote(r) : "Natural"}</span><button class="x" data-act="popcancel">✕</button></div>
     <div class="rbody">
@@ -753,7 +773,7 @@ function rockerPopup(device, g) {
         <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
         <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
       </div>
-      <div class="rart">${art}<div class="rcap"><span>Natural dashed · <span style="color:var(--adj-1)">the first change red</span> · <span style="color:var(--adj-2)">the second change blue</span>, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
+      <div class="rart" data-zoomable>${zoomTools()}${art}<div class="rcap"><span>Natural dashed · <span style="color:var(--adj-1)">the first change red</span> · <span style="color:var(--adj-2)">the second change blue</span>, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
     </div>
     <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Use and edit current blank</button>` : ""}${note ? `<button class="btn primary" data-act="popsavenew">Use and save as a new blank</button>` : `<button class="btn primary" data-act="popuse">Use the natural rocker</button>`}</div>
   </div></div>`;
@@ -788,6 +808,8 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (rounds eleven and twelve), the natural dashed line and the bend marks too: once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank alone, as any blank.</p>
 <h3>Round nine (the founder, 2026-10-16)</h3>
 <p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone on its bottom plane with all its dimensions at its own five stations — the blank's printed thickness as chips on one rail, the rocker as ordered on the other (the tail tip, 12" in, the centre's zero reference, 12" in, the nose tip), the natural figure small beneath where it differs (rounds thirteen and fourteen); on, the board sits in it and the surfboard's values read instead, as the page draws them.</p>
+<h3>Round sixteen (the founder, 2026-10-16)</h3>
+<p>The page's zoom works on the popup's drawing: − / 1x / + at its top-right (1x to 4x), the wheel zooms about the pointer, a drag pans; strokes, dashes and type keep their screen size as the viewer's own zoom unit does. Pinch-to-zoom on a phone is the build's (the page's zoom viewport already has it).</p>
 <h3>The maths</h3>
 <p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
 <h3>Not drawn</h3>
@@ -856,7 +878,8 @@ document.addEventListener("click", (e) => {
   else if (act === "add") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end; const rg = fromRange(end, 1, { ...r, [end]: [r[end][0], { a: 0, f: null }] }); r[end].push({ a: 0.125, f: Math.min(18, rg.max) }); state.text = noteOf(state.rocker); render(); }
   else if (act === "rm") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].splice(+t.dataset.i, 1); state.text = noteOf(state.rocker); render(); }
   else if (act === "adv") { state.advOpen = !state.advOpen; render(); }
-  else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; render(); }
+  else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; state.zoom = 1; state.pan = { x: 0, y: 0 }; render(); }
+  else if (act === "zoomin" || act === "zoomout" || act === "zoomfit") { const i = ZOOMS.indexOf(state.zoom); if (act === "zoomfit") { state.zoom = 1; state.pan = { x: 0, y: 0 }; } else { state.zoom = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + (act === "zoomin" ? 1 : -1)))]; } render(); }
   else if (act === "popcancel") { state.popup = false; state.draft = null; render(); }
   else if (act === "popuse") { state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
   else if (act === "popsavenew") { const note = noteOf(state.draft); if (note) { const dup = state.saved.findIndex((sv) => sv.board === state.board && sv.note === note); if (dup >= 0) state.savedIdx = dup; else { state.saved.push({ board: state.board, note, rocker: JSON.parse(JSON.stringify(state.draft)) }); state.savedIdx = state.saved.length - 1; } } state.rocker = state.draft; state.text = note; state.popup = false; state.draft = null; render(); }
@@ -873,6 +896,25 @@ document.addEventListener("input", (e) => {
 });
 /** A slider drag re-renders everything but keeps the slider under the thumb. */
 function renderLive(slider) { const act = slider.dataset.act, end = slider.dataset.end, i = slider.dataset.i, v = slider.value; render(); const again = document.querySelector(`input[data-act="${act}"][data-end="${end}"][data-i="${i}"]`); if (again) { again.value = v; again.focus(); } }
+/** Wheel zooms about the pointer; a drag pans. Pan is kept in the drawing's own units, so it survives a re-render. */
+function svgScale(svg) { const r = svg.getBoundingClientRect(); const vb = svg.viewBox.baseVal; return Math.min(r.width / vb.width, r.height / vb.height); }
+document.addEventListener("wheel", (e) => {
+  const svg = e.target.closest && e.target.closest("[data-zoomable] svg.mainart"); if (!svg) return;
+  e.preventDefault();
+  const i = ZOOMS.indexOf(state.zoom), next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + (e.deltaY < 0 ? 1 : -1)))];
+  if (next === state.zoom) return;
+  // keep the point under the pointer where it is
+  const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, k = svgScale(svg);
+  const px = vb.x + (e.clientX - r.left - (r.width - vb.width * k) / 2) / k, py = vb.y + (e.clientY - r.top - (r.height - vb.height * k) / 2) / k;
+  const W0 = vb.width * state.zoom, H0 = vb.height * state.zoom;
+  const cx = W0 / 2 + state.pan.x, cy = H0 / 2 + state.pan.y;
+  const f = state.zoom / next;
+  state.pan = { x: px + (cx - px) * f - W0 / 2, y: py + (cy - py) * f - H0 / 2 }; state.zoom = next; render();
+}, { passive: false });
+let drag = null;
+document.addEventListener("pointerdown", (e) => { const svg = e.target.closest && e.target.closest("[data-zoomable] svg.mainart"); if (!svg || state.zoom === 1) return; drag = { x: e.clientX, y: e.clientY, pan: { ...state.pan }, k: svgScale(svg) }; svg.setPointerCapture && svg.setPointerCapture(e.pointerId); });
+document.addEventListener("pointermove", (e) => { if (!drag) return; state.pan = { x: drag.pan.x - (e.clientX - drag.x) / drag.k, y: drag.pan.y - (e.clientY - drag.y) / drag.k }; const svg = document.querySelector("[data-zoomable] svg.mainart"); if (svg) { const m = zoomed(`viewBox="0 0 ${svg.viewBox.baseVal.width * state.zoom} ${svg.viewBox.baseVal.height * state.zoom}"`, state.zoom, state.pan).match(/viewBox="([^"]+)"/); if (m) svg.setAttribute("viewBox", m[1]); } });
+document.addEventListener("pointerup", () => { if (drag) { drag = null; render(); } });
 window.addEventListener("resize", render);
 render();
 </script>
