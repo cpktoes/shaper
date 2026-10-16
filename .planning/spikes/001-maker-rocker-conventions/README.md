@@ -42,8 +42,14 @@ written, how rocker is measured, and any charges or limits.
 
 ### US Blanks (catalogue `US-Blanks-Catalog-Letter-Size-June-2025-v2-1.pdf`, plus usblanks.com)
 
-- **The PDF starts at catalogue page 13**, so the front pages (where ordering rules would live) are not in it. The rules
-  below come from usblanks.com.
+- **The June 2025 PDF starts at catalogue page 13**, so the front pages are not in it; the rules below came from
+  usblanks.com. **The September 2026 catalogue** (128 pages, the founder's link of 2026-10-16:
+  `usblanks.com/wp-content/uploads/2026/09/US-Blanks-Catalog-Letter-Size-September-2026.pdf`) prints them on pages
+  10–11, "Rocker Selection": the same text as the website, and three drawings of the 6'4"EA — `+1/2"N, +1/8"T` from
+  the deck centre, `+1/2"N18" +1/8"T12"` from points, and `+1/2"N18" +1/2"N12" +1/8"T12"` from multiple locations
+  ("an additional 1/2" in the last 12" of the Nose", a "Flipped Tip") — the adjusted outline, deck and bottom, drawn
+  in **red** over the first adjustment's span and **blue** over the second's, the formula's figures in the same
+  colours. That page is the reference for how the app draws a custom rocker (sketch 016, round eight).
 - **Natural rocker** is printed on every blank page as rise at the nose tip and the tail tip, e.g. `5 5/16"N 1 3/4"T`
   (6'8"A). The drawing's rocker column prints no figure at the centre, so the centre is 0. All ten listings checked
   match the catalogue's N0/T0 to within 1/64", except the two thick X versions (below).

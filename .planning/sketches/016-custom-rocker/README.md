@@ -126,6 +126,14 @@ the centre); a second change's Bend starts slider stops one inch nearer the tip 
 pushes the second in front of it. The stacking is the even bend's own sum, checked on the sketch's build: natural nose
 tip 4 3/4", `+1/2"N +1/2"N18"` → 5 3/4", exactly 1" more.
 
+**Round eight (the founder, 2026-10-16):** *"Just like the US Blanks catalog let's show the deviation from natural
+as a red outline for the first adjustment and a blue that will show up in all of our themes as the second adjustment.
+Refer to page 11 of the catalogue."* The September 2026 catalogue's page 11 ("Rocker Selection cont'd") draws the
+6'4"EA three ways, the adjusted outline — deck and bottom — red over the first adjustment's span and blue over the
+second's, the formula's figures in the same colours. The sketch now draws exactly that over the bent blank, with the
+popup's header colouring the note the same way; two colour tokens per theme (`--adj-1`, `--adj-2`) chosen to read on
+Slate and Daylight.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

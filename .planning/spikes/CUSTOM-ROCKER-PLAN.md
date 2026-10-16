@@ -144,9 +144,14 @@ deploy that reads it.
    custom blank later never moves a board already saved on it (the catalogue-correction rule). The sidebar shows
    only the result (the BLANK button's rocker line). A shaper never types the notation — the app writes it. Sketch
    016's A (a ROCKER section), B (rows on the BLANK card) and C (a typed field) stay as the alternatives seen.
-3. **The drawing:** custom solid in the blank's line, natural dashed behind it, a short mark across the bottom where
-   each bend starts (the Thinning Starts mark's grammar), the five board stations reading the custom figures as they
-   do today; "Show measuring points" unchanged. **Decided (sketch 016 round three): no tip close-ups.**
+3. **The drawing — decided (the founder, 2026-10-16, rounds three and eight):** the natural rocker dashed behind the
+   bent blank, a short mark across the bottom where each bend starts (the Thinning Starts mark's grammar), and **the
+   deviation from natural drawn as US Blanks' catalogue draws it (September 2026, page 11): the blank's outline, deck
+   and bottom, in red over the first adjustment's span and in blue over the second's, stacked on the first**, with the
+   note's figures in the same colours where the note is shown large (the popup's header). Two colour tokens per
+   theme, chosen to read on Slate and Daylight (the sketch's `--adj-1` / `--adj-2`; the app's `globals.css` gets its
+   own, like sketch 012's compare blue). The five board stations read the custom figures as they do today; "Show
+   measuring points" unchanged. No tip close-ups.
 4. **The name and the DATASHEET — decided (the founder, 2026-10-16, sketch 016 round three):** every blank is named
    the same way, the name then its rocker on its own line, `Natural` included (`9'4"B` / `Natural`; `9'4"B` /
    `-1/4"N18" +1/8"T36" +1/8"T18"`), on the BLANK button, the picker's cards, the viewer's caption, the DATASHEET's
