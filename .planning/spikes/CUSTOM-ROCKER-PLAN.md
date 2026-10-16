@@ -126,13 +126,16 @@ deploy that reads it.
    tables) and named rockers come in a second task once the makers' lists are fetched and proofread. Named rockers
    with no published figures (Hawaii, TM Flat, Frye, Classic) and "another blank's curve" wait for figures — though
    `94B B/C` on a 9'3"Y is computable later from our own catalogue, matched at the centre.
-2. **How the shaper sets it:** the ROCKER sidebar section returns with a blank picked, as *the blank's rocker as
-   ordered*. Two rows, NOSE and TAIL, each an amount stepper (1/16", the app's wing and fine-tune idiom) and a
-   "from" chooser (Centre · 6" · 12" · 18" · 24" · 36" · …), a "+ add another change" for the rare stacked case, and
-   the live note on the section line with "↺ Natural". A shaper never types the notation — the app writes it. The
-   alternatives the sketch should show beside it: a single text field in the notation (fast for a shaper who already
-   has the maker's code, error-prone for everyone else), and a pick-list with "Custom…" at the end (the second task's
-   shape).
+2. **How the shaper sets it — decided (the founder, 2026-10-16, sketch 016 round five):** an **ADVANCED** section at
+   the foot of the ROCKER sidebar, as FINS has (`DisclosureHeading`, closed by default), holding one button —
+   **Customize Rocker ›**, reading **Edit Custom Rocker ›** once the board's blank carries one — that opens a large
+   popup (the PICK A BLANK dialog's own size; the founder: "a similar effect as the Add Wings button"). In the popup:
+   the drawing (natural dashed, the blank as ordered solid, a mark at each bend), NOSE and TAIL rows — an amount
+   slider in 1/16" (1 mm in Metric) with a value box, "Bend starts" (the centre, or 6" · 12" · 18" · 24" · 30" · 36" ·
+   48" in from that tip), "+ Add a second change" per end — the note, and the footer: Cancel · Save as a new blank ·
+   Use on this board, plus Save changes to this blank when the board uses a saved custom blank. The sidebar itself
+   shows only the result (the BLANK button's rocker line). A shaper never types the notation — the app writes it.
+   Sketch 016's A (a ROCKER section), B (rows on the BLANK card) and C (a typed field) stay as the alternatives seen.
 3. **The drawing:** custom solid in the blank's line, natural dashed behind it, a short mark across the bottom where
    each bend starts (the Thinning Starts mark's grammar), the five board stations reading the custom figures as they
    do today; "Show measuring points" unchanged. **Decided (sketch 016 round three): no tip close-ups.**
@@ -149,9 +152,18 @@ deploy that reads it.
    drawn, tabled or stepped follows Imperial/Metric (marks in whole mm; the stepper steps 1 mm in Metric and the
    note rounds to the nearest 1/16"). This is the one place the app would show an inch figure to a Metric shaper;
    the alternative is a metric note (`+13 mm N 46 cm`) no maker reads.
-6. **A tip taken below the blank's low point is allowed** (a reverse rocker, which US Blanks stocks), drawn as is,
-   re-levelled; one muted line says the tail now sits below the centre.
-7. **Switching blanks clears the custom rocker**; Remove This Blank keeps the board's figures (today's rule).
+6. **No rocker value goes negative — decided (the founder, 2026-10-16):** "a negative rocker where the nose or tail
+   would be below the centerpoint is not a realistic board." Each slider stops at the floor that keeps every part of
+   the bent blank at or above the centre's height (the geometry gives `floorOf(end, change, others)`: the largest
+   lowering such that natural + the other changes stays ≥ 0 wherever the bend has any share). So the blank's low
+   point never moves and **nothing re-levels** — spike 002's "low moved" cases are all outside the floor. The upper
+   bound stays +2" (the founder recalls the makers limiting changes to about ±2"; US Blanks' listings top out at
+   +1 1/2" and −1 5/8").
+7. **Switching to a different blank clears the custom rocker and starts from natural — decided** (the founder,
+   2026-10-16). Remove This Blank keeps the board's figures (today's rule).
+8. **The phone's screen tile — decided:** the rocker text joins `On a 9'4"B` on every horizontal screen (a computer,
+   a phone held sideways); on an upright phone only if it does not shrink the tile's board drawing — a check at
+   build time, with "off" as the fallback.
 8. **Process:** sketch 016 first (`/gsd-sketch`), published for the founder's phone with pictures; then one quick task
    with a BRIEF (the 261015-ve9 pattern), three plans, after the picker lands on `main`:
    - **01 geometry and storage** — `custom-rocker.ts`, the golden, the reader over the 282 lines, `BoardBlank.rocker`,

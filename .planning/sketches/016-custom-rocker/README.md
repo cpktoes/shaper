@@ -86,6 +86,25 @@ Open Change blank › in the sketch to see the popup (`pictures/a-computer-picke
 the dimensions since that is the appended name line of the blank."* So the two rows read **Natural Rocker** and
 **Custom Rocker** (NAT is an accepted short form), and the adjustment is written once, on the name line.
 
+**Round five (the founder, 2026-10-16) — the control is settled as a new variant, D:**
+- *"I also think we should add an advanced menu just like we have on other pages that hides the custom blank controls
+  until you open the advanced menu and click [the] Customize Rocker button, which has a similar effect as the Add
+  Wings button — in fact, let's make the custom rocker controls in a big popup window. When using a blank with
+  customized rocker the button changes to Edit Custom Rocker where the pop-up would then allow further alteration and
+  the ability to save it — [as an] edit, or create [a] new blank."* So **D**: an ADVANCED section at the foot of the
+  sidebar (FINS' own `DisclosureHeading`, closed by default) with one button, **Customize Rocker ›** / **Edit Custom
+  Rocker ›**, opening a popup the size of PICK A BLANK: the drawing on top (upright on a phone), NOSE and TAIL rows,
+  ↺ Natural rocker, and a footer of Cancel · Save as a new blank · Use on this board, plus Save changes to this blank
+  when the board uses a saved custom blank. The sidebar shows only the result; A, B and C stay as the alternatives seen.
+- *"When switching to a different blank, yes, we should clear custom rocker and start from natural."*
+- *"We don't want any rocker values to go negative. A negative rocker where the nose or tail would be below the
+  centerpoint is not a realistic board."* Each slider now stops at the floor that keeps every part of the blank at or
+  above the centre's height (its left hint says "Floor — the tip would drop below the centre" when it's there), and
+  the −2"T reverse preset lands on that floor instead. The founder recalls the makers limiting changes to about ±2";
+  +2" stays the top.
+- The phone's screen tile: the rocker text on every horizontal screen; on an upright phone only if it doesn't shrink
+  the tile's board drawing.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

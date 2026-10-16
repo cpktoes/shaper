@@ -28,6 +28,12 @@ sketch go to a Fable session.
 - **A custom blank can be saved for later as a blank of the shaper's own, beside the maker's natural one, and is
   starred the moment it is saved** (the founder, 2026-10-16). The one database change in the first build: an additive
   `user_blanks` table, migrated on production before the deploy.
+- **The control is an ADVANCED section with a Customize Rocker / Edit Custom Rocker button opening a large popup**
+  (sketch 016 D, the founder, 2026-10-16), with Cancel · Save as a new blank · Use on this board, plus Save changes to
+  this blank for a saved custom blank.
+- **No rocker value goes negative:** each change stops at the floor that keeps the blank at or above its centre's
+  height; nothing re-levels. **Switching to a different blank clears the custom rocker.** Every blank is named
+  the name then its rocker on its own line, `Natural` included; tables show Natural Rocker over Custom Rocker.
 
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
 decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the

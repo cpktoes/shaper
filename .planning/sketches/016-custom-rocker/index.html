@@ -226,6 +226,32 @@
   .card .asord { font-size: 10.5px; color: var(--color-text-muted); }
   .card .pickbtn { align-self: flex-start; margin-top: 2px; }
 
+  /* variant D: the ADVANCED section and the CUSTOMIZE ROCKER popup */
+  .sect[data-act="adv"] { cursor: pointer; }
+  .advbody { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; }
+  .advval { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .advbtn { align-self: flex-start; border: 1px solid var(--color-line); border-radius: 8px; background: transparent; color: var(--color-text); padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; cursor: pointer; }
+  .advbtn:hover { background: var(--color-well); }
+  .device.phone .advbtn, .device.side .advbtn { min-height: 44px; }
+  .rdlg { max-width: 1100px; }
+  .rbody { flex: 1; min-height: 0; overflow-y: auto; display: flex; gap: 18px; padding: 12px 18px; }
+  .device.phone .rbody { flex-direction: column; padding: 8px 12px; gap: 8px; }
+  .rart { flex: 1 1 58%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-canvas); padding: 6px; min-height: 260px; }
+  .device.phone .rart { min-height: 300px; }
+  .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; }
+  .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; }
+  .rrows { flex: 0 0 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .device.phone .rrows { flex: none; }
+  .device.side .rbody { padding: 6px 10px; gap: 10px; } .device.side .rrows { flex: 0 0 300px; }
+  .rfoot { flex: none; display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
+  .rfoot .sp { flex: 1; }
+  .btn { border: 1px solid var(--color-line); border-radius: 8px; background: transparent; color: var(--color-text); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--color-primary); color: var(--color-on-primary); border-color: transparent; }
+  .btn.ghost { border-color: transparent; color: var(--color-text-muted); }
+  .btn[disabled] { opacity: .4; cursor: default; }
+  .device.phone .btn, .device.side .btn { min-height: 44px; }
+  .device.phone .rfoot { padding: 8px 12px; }
+
   /* sketch tools */
   #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .75; display: flex; flex-direction: column; gap: 6px; }
   #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
@@ -250,6 +276,7 @@ const PALETTES = {
 };
 const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
 const VARIANTS = [
+  { id: "d", label: "D: Advanced › Customize Rocker, a popup — the founder's direction", short: "D · Popup", winner: true },
   { id: "a", label: "A: The ROCKER section, two rows", short: "A · Section" },
   { id: "b", label: "B: Inside the BLANK card", short: "B · On the card" },
   { id: "c", label: "C: One field in the notation", short: "C · Typed" },
@@ -265,7 +292,7 @@ const PRESETS = [
   ['-1 1/2"N', { nose: [{ a: -1.5, f: null }], tail: [] }],
   ['-2"T (reverse)', { nose: [], tail: [{ a: -2, f: null }] }],
 ];
-const DEFAULTS = { variant: "a", device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
+const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
 if (window.__publish) DEFAULTS.theme = "auto";
 let state = JSON.parse(JSON.stringify(DEFAULTS));
 let barOpen = false;
@@ -307,6 +334,22 @@ function delta(x, r = state.rocker) {
   for (const c of r.nose) { const p = c.f === null ? C : L - c.f; if (x > p) s += c.a * ((x - p) / (L - p)) ** 2; }
   for (const c of r.tail) { const p = c.f === null ? C : c.f; if (x < p) s += c.a * ((p - x) / p) ** 2; }
   return s;
+}
+/** The lowest a change may go so the bent curve never dips below the centre's height — "a negative rocker … is not a realistic board" (the founder, 2026-10-16). Rounded down to the slider's step. */
+function floorOf(end, i, r) {
+  const d = B(), bl = d.blank, L = bl.lengthIn, C = bl.centreFromTailIn;
+  const others = { nose: r.nose.filter((_, j) => !(end === "nose" && j === i)), tail: r.tail.filter((_, j) => !(end === "tail" && j === i)) };
+  const c = r[end][i] || { a: 0, f: null };
+  const pv = c.f === null ? C : end === "nose" ? L - c.f : c.f;
+  let worst = Infinity;
+  for (const [x, y] of d.nat) {
+    const u = end === "nose" ? (x > pv ? (x - pv) / (L - pv) : 0) : (x < pv ? (pv - x) / pv : 0);
+    if (u < 0.02) continue;
+    const have = y + delta(x, others);
+    worst = Math.min(worst, have / (u * u));
+  }
+  const step = M() ? 1 / 25.4 : 1 / 16;
+  return Math.max(-2, -Math.floor(worst / step) * step);
 }
 /** Everything the drawing and the sheet read, worked out once per render. */
 function geometry(r = state.rocker) {
@@ -420,19 +463,21 @@ function thumbOld(g) {
 }
 
 /* ---------- the sidebar ---------- */
-function sliderRow(end, i, c, device) {
-  const minI = -2, maxI = 2, stepI = M() ? 1 / 25.4 : 1 / 16;
-  const v = c.a;
+function sliderRow(end, i, c, device, r = state.rocker) {
+  const maxI = 2, stepI = M() ? 1 / 25.4 : 1 / 16;
+  const minI = floorOf(end, i, r);
+  const v = Math.max(minI, c.a);
+  const atFloor = v <= minI + 1e-9 && minI > -2 + 1e-9;
   return `<div class="chg">
     <div class="lblrow"><span>${i ? "Second change" : "Change"}${i ? ` <button class="link muted" data-act="rm" data-end="${end}" data-i="${i}">Remove</button>` : ""}</span><span class="valbox">${esc(signedMark(v))}</span></div>
     <input class="rng" type="range" min="${minI}" max="${maxI}" step="${stepI}" value="${v}" data-act="amt" data-end="${end}" data-i="${i}">
-    <div class="hints"><span>Less rocker</span><span>More rocker</span></div>
+    <div class="hints"><span>${atFloor ? "Floor — the tip would drop below the centre" : "Less rocker"}</span><span>More rocker</span></div>
     <div class="fromrow"><span>Bend starts</span><select class="sel" data-act="from" data-end="${end}" data-i="${i}">${FROMS.filter((f) => f === null || f < B().blank.centreFromTailIn - 1).map((f) => `<option value="${f === null ? "c" : f}"${c.f === f ? " selected" : ""}>${f === null ? "At the centre" : (M() ? `${Math.round(f * 2.54)} cm` : `${f}"`) + " in from the " + end}</option>`).join("")}</select></div>
   </div>`;
 }
-function endBlock(end, device) {
-  const list = state.rocker[end];
-  const rows = list.length ? list.map((c, i) => sliderRow(end, i, c, device)).join("") : sliderRow(end, 0, { a: 0, f: null }, device);
+function endBlock(end, device, r = state.rocker) {
+  const list = r[end];
+  const rows = list.length ? list.map((c, i) => sliderRow(end, i, c, device, r)).join("") : sliderRow(end, 0, { a: 0, f: null }, device, r);
   const canAdd = list.length < 2 && list.length >= 1 && list[0].a;
   return `<div class="endblk"><div class="endhd"><span>${end}</span></div>${rows}${canAdd ? `<button class="link" data-act="add" data-end="${end}">+ Add a second ${end} change</button>` : ""}</div>`;
 }
@@ -478,6 +523,17 @@ function blankButton(v, device, g) {
   if (v !== "b") return btn;
   return `<div class="bcard">${btn}<div class="rockrow"><span class="lab">Rocker</span>${note ? "" : `<span class="val">Natural</span>`}<button class="link" data-act="btoggle">${state.bOpen ? "Done" : note ? "Change ›" : "Set a custom rocker ›"}</button></div>${note ? `<div class="rockval">${esc(note)}</div>` : ""}${state.bOpen ? `<div class="inrows">${rockerRows(device)}</div>` : ""}</div>`;
 }
+/** Variant D: an ADVANCED section at the foot of the sidebar, as FINS has, holding the one button that opens the popup. */
+function advancedSection(device) {
+  const note = noteOf(state.rocker), b = B().blank;
+  const savedNow = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === note ? state.saved[state.savedIdx] : null;
+  return `<div class="sect${state.advOpen ? "" : " closed"}" data-act="adv">Advanced</div>
+  ${state.advOpen ? `<div class="advbody">
+    <div class="lblrow"><span>Rocker</span><span class="advval">${esc(note || "Natural")}</span></div>
+    <button class="advbtn" data-act="customize">${note ? "Edit Custom Rocker ›" : "Customize Rocker ›"}</button>
+    <p class="note fine">${note ? (savedNow ? `This board uses your saved blank <b>${esc(b.name)} ${esc(note)}</b>. Edit it, or save the edit as a new blank.` : `A custom rocker on this board only. Save it as a blank to pick it again later.`) : `Bend the blank's natural rocker the way the maker would — nose and tail, from the centre or from a point — and save it as a blank of your own.`}</p>
+  </div>` : ""}`;
+}
 function sidebar(v, device, g) {
   const d = B();
   return `<aside class="sidebar" data-scroll="side-${v}-${device}">
@@ -500,6 +556,7 @@ function sidebar(v, device, g) {
     <div class="fake-range"><i style="left:20%"></i></div>
     ${v === "a" ? rockerSectionA(device) : v === "c" ? rockerSectionC(device) : ""}
     <div class="sect closed">Thickness</div>
+    ${v === "d" ? advancedSection(device) : ""}
     ${device === "computer" ? "" : `<div class="stepnav"><span>← Template</span><span>Rails →</span></div>`}
   </aside>`;
 }
@@ -602,10 +659,27 @@ function picker(device, g) {
       <div class="grp-label">Fits this board · 194</div><div class="grid">${cards[cards.length - 1]}<div class="card ghost">… and the other 193 blanks long enough for this board, as today</div></div>
     </div></div></div>`;
 }
+/** The CUSTOMIZE ROCKER popup: the drawing on top, the rows beneath (side by side on a computer), the note, and what to do with it. */
+function rockerPopup(device, g) {
+  const r = state.draft, b = B().blank, note = noteOf(r), gd = geometry(r);
+  const editing = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === noteOf(state.rocker) ? state.saved[state.savedIdx] : null;
+  const art = mainArt(device === "phone" ? "phone" : "side", gd);
+  return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
+    <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${esc(note ? "Natural → " + note : "Natural")}</span><button class="x" data-act="popcancel">✕</button></div>
+    <div class="rbody" data-scroll="rpop">
+      <div class="rart">${art}<div class="rcap">Natural dashed · the blank as ordered solid · a mark where each bend starts</div></div>
+      <div class="rrows">${endBlock("nose", device, r)}${endBlock("tail", device, r)}
+        <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
+        <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
+      </div>
+    </div>
+    <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Save changes to this blank</button>` : ""}<button class="btn" data-act="popsavenew"${note ? "" : " disabled"}>Save as a new blank</button><button class="btn primary" data-act="popuse">Use on this board</button></div>
+  </div></div>`;
+}
 function page(v, device) {
   const g = geometry();
   const shell = device === "phone" ? `<div class="shell">${mainCol(v, device, g)}${sidebar(v, device, g)}</div>` : `<div class="shell">${sidebar(v, device, g)}${mainCol(v, device, g)}</div>`;
-  const popup = state.picker ? picker(device, g) : "";
+  const popup = state.picker ? picker(device, g) : v === "d" && state.popup && state.draft ? rockerPopup(device, g) : "";
   return `<div class="device ${device}" data-v="${v}">${topbar(device)}${shell}${popup}</div>`;
 }
 
@@ -616,7 +690,7 @@ const INTRO0 = {
   c: `<b>C — one field, typed the way the maker writes it.</b> The app reads it back in words as you type and says when it can't. Fast when you have the maker's code in front of you.`,
   all: `All three at once. Slide, type, switch boards and presets from the bar above; each variant draws the same blank from the same figures.`,
 };
-const INTRO = { ...INTRO0, a: INTRO0.a + ` <b>Save this blank for later</b> under the rows puts the custom blank in the shaper's own blank list, starred, beside the maker's natural one — open Change blank › to see it as a card.` };
+const INTRO = { ...INTRO0, d: `<b>D — the founder's direction (2026-10-16): an ADVANCED section at the foot of the sidebar, as FINS has</b>, holding one button — <b>Customize Rocker ›</b>, or <b>Edit Custom Rocker ›</b> once the board's blank has one — that opens a large popup: the drawing on top, NOSE and TAIL rows beneath, then Cancel · Save as a new blank · Use on this board (and Save changes to this blank when the board uses a saved custom blank). No slider goes below the floor that keeps the blank above its centre's height. The BLANK button's rocker line shows the result; nothing else in the sidebar changes.`, a: INTRO0.a + ` <b>Save this blank for later</b> under the rows puts the custom blank in the shaper's own blank list, starred, beside the maker's natural one — open Change blank › to see it as a card.` };
 const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <p>A board on a blank can carry the blank's rocker <b>as ordered</b>: the natural rocker, or the natural rocker bent by so much at the nose and the tail, each bend starting at the centre or a point in from that tip. The note is written the US Blanks way (the founder, 2026-10-16: "descriptive even for other mfgs") and stays in inches in Metric, because it's the maker's order code.</p>
 <h3>What to look for</h3>
@@ -624,6 +698,8 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <li>Does the natural dashed line read as a reference, not a second blank? Are the bend marks enough without words?</li>
 
 <li>Decided (rounds three and four): the rocker text sits on its own line under the name, <b>Natural</b> included, everywhere the blank is named; a custom blank's table shows a <b>Natural Rocker</b> row and a <b>Custom Rocker</b> row — the adjustment itself is on the name line only.</li></ul>
+<h3>Round five (the founder, 2026-10-16)</h3>
+<p>The control is <b>D</b>: an Advanced menu like the other pages', with a Customize Rocker button that opens a big popup (as Add Wings does), reading Edit Custom Rocker once the board's blank has one; the popup allows further alteration and saving — an edit to the saved blank, or a new blank. Switching to a different blank clears the custom rocker and starts from natural. No rocker value may go negative: a nose or tail below the centre point is not a realistic board, so each slider stops at the floor that keeps the blank above its centre. The screen tile's rocker text: on every horizontal screen; on an upright phone only if it doesn't shrink the tile's board.</p>
 <h3>Saving it as a blank (the founder, 2026-10-16)</h3>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>The maths</h3>
@@ -657,7 +733,7 @@ function render() {
   const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null;
   const caret = active === "text" ? document.activeElement.selectionStart : null;
   applyTheme(); renderChrome();
-  if (onPhone() && state.variant === "all") state.variant = "a";
+  if (onPhone() && state.variant === "all") state.variant = "d";
   document.body.classList.toggle("on-phone", onPhone());
   const stage = document.getElementById("stage"), avail = Math.max(320, stage.clientWidth - 32);
   if (state.variant === "all") {
@@ -672,7 +748,8 @@ function render() {
   if (active === "text") { const el = document.querySelector('[data-act="text"]'); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
   save();
 }
-function changeAt(end, i) { const list = state.rocker[end]; while (list.length <= i) list.push({ a: 0, f: null }); return list[i]; }
+function changeAt(end, i) { return changeAtIn(state.rocker, end, i); }
+function changeAtIn(r, end, i) { const list = r[end]; while (list.length <= i) list.push({ a: 0, f: null }); return list[i]; }
 function tidy() { for (const end of ["nose", "tail"]) state.rocker[end] = state.rocker[end].filter((c, i) => c.a || i === 0 && state.rocker[end].length > 1 ? true : c.a !== 0 || false); state.text = noteOf(state.rocker); }
 document.addEventListener("click", (e) => {
   const t = e.target.closest("[data-set],[data-act],#notes-btn,#bar-btn,#tools-toggle");
@@ -689,15 +766,22 @@ document.addEventListener("click", (e) => {
   else if (act === "unsave") { const note = noteOf(state.rocker); state.saved = state.saved.filter((sv) => !(sv.board === state.board && sv.note === note)); render(); }
   else if (act === "browse") { state.picker = true; render(); }
   else if (act === "closepicker") { state.picker = false; render(); }
-  else if (act === "pick") { const sv = state.saved[+t.dataset.i]; state.rocker = sv ? JSON.parse(JSON.stringify(sv.rocker)) : { nose: [], tail: [] }; state.text = noteOf(state.rocker); state.picker = false; render(); }
-  else if (act === "add") { state.rocker[t.dataset.end].push({ a: 0.125, f: 18 }); state.text = noteOf(state.rocker); render(); }
-  else if (act === "rm") { state.rocker[t.dataset.end].splice(+t.dataset.i, 1); state.text = noteOf(state.rocker); render(); }
+  else if (act === "pick") { const sv = state.saved[+t.dataset.i]; state.savedIdx = sv ? +t.dataset.i : null; state.rocker = sv ? JSON.parse(JSON.stringify(sv.rocker)) : { nose: [], tail: [] }; state.text = noteOf(state.rocker); state.picker = false; render(); }
+  else if (act === "add") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].push({ a: 0.125, f: 18 }); state.text = noteOf(state.rocker); render(); }
+  else if (act === "rm") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].splice(+t.dataset.i, 1); state.text = noteOf(state.rocker); render(); }
+  else if (act === "adv") { state.advOpen = !state.advOpen; render(); }
+  else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; render(); }
+  else if (act === "popcancel") { state.popup = false; state.draft = null; render(); }
+  else if (act === "popuse") { state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
+  else if (act === "popsavenew") { const note = noteOf(state.draft); if (note) { state.saved.push({ board: state.board, note, rocker: JSON.parse(JSON.stringify(state.draft)) }); state.savedIdx = state.saved.length - 1; } state.rocker = state.draft; state.text = note; state.popup = false; state.draft = null; render(); }
+  else if (act === "popsaveedit") { const sv = state.saved[state.savedIdx]; if (sv) { sv.note = noteOf(state.draft); sv.rocker = JSON.parse(JSON.stringify(state.draft)); } state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
+  else if (act === "popnatural") { state.draft = { nose: [], tail: [] }; render(); }
   else if (act === "btoggle") { state.bOpen = !state.bOpen; render(); }
 });
 document.addEventListener("input", (e) => {
   const t = e.target; const act = t.dataset && t.dataset.act; if (!act) return;
-  if (act === "amt") { const c = changeAt(t.dataset.end, +t.dataset.i); c.a = M() ? Math.round(+t.value * 25.4) / 25.4 : Math.round(+t.value * 16) / 16; state.text = noteOf(state.rocker); renderLive(t); }
-  else if (act === "from") { const c = changeAt(t.dataset.end, +t.dataset.i); c.f = t.value === "c" ? null : +t.value; state.text = noteOf(state.rocker); render(); }
+  if (act === "amt") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.a = M() ? Math.round(+t.value * 25.4) / 25.4 : Math.round(+t.value * 16) / 16; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
+  else if (act === "from") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.f = t.value === "c" ? null : +t.value; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); render(); }
   else if (act === "text") { state.text = t.value; const p = parseNote(t.value); if (p) state.rocker = p; render(); }
 });
 /** A slider drag re-renders everything but keeps the slider under the thumb. */
