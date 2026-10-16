@@ -2,7 +2,9 @@
 
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
+import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import { WingCloseUp } from "./wing-close-up";
 
@@ -19,8 +21,13 @@ import { WingCloseUp } from "./wing-close-up";
  *
  * The toolbar has only the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
  * VIEWER's: Show/Hide construction lines (the wings' grab points follow it, D5) and wide view.
- * The close-up has no zoom and is never turned (P4). The handlers are the editor's, so the two tabs
- * share one construction setting and one wide view.
+ * The close-up is never turned (P4). The handlers are the editor's, so the two tabs share one
+ * construction setting and one wide view.
+ *
+ * Zoom, like the VIEWER (quick 261015-my3, 2026-10-15, D7) — the founder: "wings tab also needs zoom
+ * capabilities like the viewer." The panel holds its own `ViewerZoomProvider` (a provider renders no
+ * element, so the layout is untouched), and the zoom row sits under the toolbar's icons exactly as on
+ * the VIEWER. The panel unmounts when the tab changes, so each tab starts at 1x; nothing is saved.
  */
 export interface WingsPanelProps {
   outline: OutlineSpec;
@@ -29,6 +36,8 @@ export interface WingsPanelProps {
   showFins: boolean;
   wideView: boolean;
   onToggleWideView: () => void;
+  /** Which way the VIEWER tab draws the board, so the close-up's lines match its weight (D1). */
+  viewerOrientation: ViewerOrientation;
 }
 
 export function WingsPanel({
@@ -38,12 +47,14 @@ export function WingsPanel({
   showFins,
   wideView,
   onToggleWideView,
+  viewerOrientation,
 }: WingsPanelProps) {
   const { outlineGeometry, baseOutlineGeometry, finPlacement, updateOutline, locked: boardLocked, wingFinEdges } =
     useDesign();
 
   return (
     <div className="relative flex min-h-0 flex-1">
+      <ViewerZoomProvider>
       <ViewerToolbar>
         <ViewerToolbarButton
           onClick={onToggleConstruction}
@@ -63,6 +74,8 @@ export function WingsPanel({
           {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
         </ViewerToolbarButton>
       </ViewerToolbar>
+      {/* The zoom level and its buttons, in their own row under the icons (D7). */}
+      <ViewerZoomControl />
 
       <div className="relative h-full min-h-0 w-full min-w-0">
         <WingCloseUp
@@ -77,8 +90,10 @@ export function WingsPanel({
           // guard backs it.
           onWingsChange={boardLocked ? undefined : (wings) => updateOutline({ wings })}
           edges={wingFinEdges}
+          viewerOrientation={viewerOrientation}
         />
       </div>
+      </ViewerZoomProvider>
     </div>
   );
 }

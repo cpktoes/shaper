@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// `outline-viewer.tsx` (for `outlineViewBoxSize`) reads `useUnits()` -> the real "use server"
+// units-preference action -> the database client at import time. Stubbed as rail-callouts.test.ts
+// does; this file only needs the VIEWER's pure frame size, never a render.
+vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
+
 import { MIN_PINNED_FIT_SCALE } from "@/components/viewer/callout-primitives";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
+import { outlineViewBoxSize } from "./outline-viewer";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import { NO_FIN_EDGES, nextWing, outlineWithoutWings } from "@/lib/geometry/wings";
 import {
@@ -304,5 +311,25 @@ describe("spreadApart — read-outs pushed apart (down only to clear a block's n
     );
     expect(out[0] + 10).toBeLessThanOrEqual(450);
     expect(out[1]).toBeLessThan(out[0]);
+  });
+});
+
+describe("outlineViewBoxSize — the VIEWER's own frame, which the close-up's line weights read (quick 261015-my3, D1, D8, F1)", () => {
+  it("the default board upright is 514 x 638", () => {
+    const g = buildOutline(DEFAULT_BOARD_SPEC.outline);
+    expect(outlineViewBoxSize(g, "vertical")).toEqual({ width: 514, height: 638 });
+  });
+
+  it("the Fish, wide enough to widen the frame, is 533.3 x 638 upright", () => {
+    const fish = BOARD_PRESETS.find((p) => p.id === "fish")!;
+    const size = outlineViewBoxSize(buildOutline(fish.outline), "vertical");
+    expect(size.width).toBeCloseTo(533.3, 1);
+    expect(size.height).toBe(638);
+  });
+
+  it("the default board turned is 729.6 x 367.35 (F1's 367.4, to one decimal)", () => {
+    const size = outlineViewBoxSize(buildOutline(DEFAULT_BOARD_SPEC.outline), "horizontal");
+    expect(size.width).toBeCloseTo(729.6, 1);
+    expect(size.height).toBeCloseTo(367.35, 2);
   });
 });

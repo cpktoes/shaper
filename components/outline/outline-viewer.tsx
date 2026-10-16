@@ -139,8 +139,9 @@ const STRINGER_OVERHANG = 8;
 /** The last-edit ghost's stroke width (P-6, quick 260930-lia) — thinner than the live outline's 2,
  * heavier than the 1-unit station lines, so it reads as a real shape rather than a stray guide
  * line. Scales with the drawing exactly like the live line, since both are drawn in the same SVG
- * user-unit space. */
-const GHOST_STROKE_WIDTH = 1.25;
+ * user-unit space. Exported for the WINGS close-up's dashed no-wings curve, drawn at the same weight
+ * (quick 261015-my3, D1). */
+export const GHOST_STROKE_WIDTH = 1.25;
 
 /**
  * Ceiling on a callout's rendered size, in SVG user units — the largest a chip or the output
@@ -303,6 +304,84 @@ export function outlineViewMetrics(geometry: OutlineGeometry, hideCallouts = fal
     tailPy: VIEW_H - PAD_Y,
     tipPy: PAD_Y,
   };
+}
+
+/**
+ * The drawing's frame numbers, upright and turned — the arithmetic `OutlineViewer` builds its
+ * viewBox strings from, moved here unchanged (quick 261015-my3, 2026-10-15, D8) so the WINGS
+ * close-up can read the VIEWER's own frame size and draw its lines at the VIEWER's weight. The
+ * component calls this and builds every string from the same numbers it always did, so each viewBox
+ * is character-identical.
+ */
+function outlineFrameNumbers(geometry: OutlineGeometry, hideCallouts: boolean, fixedFrame: boolean) {
+  const { centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(geometry, hideCallouts);
+  const pxX = (halfWidthIn: number) => centerlineX + halfWidthIn * scale;
+  // The widepoint's half-width, read exactly as the component reads it (`xAtStationIn(wpYIn)`).
+  const wpHalfWidthIn = mmToInches(
+    sampleOutline(geometry, inchesToMm(mmToInches(geometry.widePointStation))),
+  );
+
+  // The fixed frame, centred on the stringer. Constant for every board, by construction.
+  const fixedMinX = centerlineX - FIXED_FRAME_HALF_W;
+  const fixedWidth = 2 * FIXED_FRAME_HALF_W;
+
+  const baseMinX = hideCallouts ? (fixedFrame ? fixedMinX : 0) : frame.minX;
+  const baseMinY = hideCallouts ? 0 : frame.minY;
+  const baseW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
+  const baseH = hideCallouts ? VIEW_H : frame.height;
+
+  // The horizontal viewBox: the group below draws `rotate(-90)`, which maps (x, y) -> (y, -x), so
+  // canonical y is the rotated LONG axis (along the board) and canonical x is the rotated SHORT
+  // axis, negated (across it). Both axes below are fitted to what is actually drawn, not
+  // transposed from the vertical frame.
+  //
+  // Why the ends are padded asymmetrically, and only partly. The frame already reaches past the
+  // board at both ends — `tipPy - baseMinY` at the nose, `baseMinY + baseH - tailPy` at the tail
+  // — so only the shortfall against `HORIZONTAL_CHIP_REACH` needs adding. Paying the full
+  // half-chip at both ends (the previous constant) bought margin the frame already had. Zero
+  // under `hideCallouts`, which draws no chips to clip.
+  const noseEndPad = hideCallouts
+    ? 0
+    : Math.max(0, HORIZONTAL_CHIP_REACH - (tipPy - baseMinY));
+  const tailEndPad = hideCallouts
+    ? 0
+    : Math.max(0, HORIZONTAL_CHIP_REACH - (baseMinY + baseH - tailPy));
+
+  // Why the short axis is built from the rails, not the vertical frame's width. The vertical
+  // frame's width holds a chip gutter and an output rail side by side; rotated, those two stack
+  // across the short axis far more compactly, so carrying the vertical width over leaves roughly
+  // 195 units of empty air. `frame.chipRightX` and `frame.outputValueX` already carry this
+  // board's overflow (a wide board pushes both rails outward), so building the short axis from
+  // them widens the rotated frame correctly with no second overflow term.
+  //
+  // What the Math.min / Math.max are for: a guard, not a live input. At these constants the two
+  // rails bound the board by 139 and 77 units, so they never bind today. They exist so a future
+  // rail change cannot silently start clipping the drawing.
+  const crossMinX = hideCallouts
+    ? baseMinX
+    : Math.min(frame.chipRightX - HORIZONTAL_CHIP_RAIL_REACH, pxX(-wpHalfWidthIn));
+  const crossMaxX = hideCallouts
+    ? baseMinX + baseW
+    : Math.max(frame.outputValueX + HORIZONTAL_OUTPUT_REACH, pxX(wpHalfWidthIn));
+
+  const horizW = baseH + noseEndPad + tailEndPad;
+  const horizH = crossMaxX - crossMinX;
+  return { fixedMinX, fixedWidth, baseMinX, baseMinY, baseW, baseH, noseEndPad, tailEndPad, crossMaxX, horizW, horizH };
+}
+
+/**
+ * The VIEWER's own frame size in its drawing units, upright or turned (quick 261015-my3, 2026-10-15,
+ * D8) — the pinned frame TEMPLATE's VIEWER tab draws (callouts shown, no `fixedFrame`). The WINGS
+ * close-up fits this into its own box to find the VIEWER's fit, and so draws every line at exactly
+ * the VIEWER's on-screen weight (D1): "The thickness of the lines need to match the template
+ * viewer."
+ */
+export function outlineViewBoxSize(
+  geometry: OutlineGeometry,
+  orientation: ViewerOrientation,
+): { width: number; height: number } {
+  const n = outlineFrameNumbers(geometry, false, false);
+  return orientation === "horizontal" ? { width: n.horizW, height: n.horizH } : { width: n.baseW, height: n.baseH };
 }
 
 export function OutlineViewer({
@@ -702,9 +781,10 @@ export function OutlineViewer({
   const halfTailBlockWidthIn = mmToInches(geometry.halfTailBlockWidth);
   const tailBlockValue = `${formatDim(mm(geometry.halfTailBlockWidth * 2), system)} wide`;
 
-  // The fixed frame, centred on the stringer. Constant for every board, by construction.
-  const fixedMinX = centerlineX - FIXED_FRAME_HALF_W;
-  const fixedWidth = 2 * FIXED_FRAME_HALF_W;
+  // The frame's numbers, upright and turned: one pure definition (`outlineFrameNumbers` above, quick
+  // 261015-my3, D8), which the WINGS close-up reads too through `outlineViewBoxSize`.
+  const { fixedMinX, fixedWidth, baseMinY, baseW, baseH, noseEndPad, tailEndPad, crossMaxX, horizW, horizH } =
+    outlineFrameNumbers(geometry, hideCallouts, fixedFrame);
 
   // The canonical (vertical) viewBox, kept character-for-character the expression it always
   // was — renamed, not rewritten, so the default path's viewBox string cannot drift.
@@ -714,47 +794,7 @@ export function OutlineViewer({
       : `0 0 ${VIEW_W} ${VIEW_H}`
     : `${frame.minX} ${frame.minY} ${frame.width} ${frame.height}`;
 
-  const baseMinX = hideCallouts ? (fixedFrame ? fixedMinX : 0) : frame.minX;
-  const baseMinY = hideCallouts ? 0 : frame.minY;
-  const baseW = hideCallouts ? (fixedFrame ? fixedWidth : VIEW_W) : frame.width;
-  const baseH = hideCallouts ? VIEW_H : frame.height;
-
-  // The horizontal viewBox: the group below draws `rotate(-90)`, which maps (x, y) -> (y, -x), so
-  // canonical y is the rotated LONG axis (along the board) and canonical x is the rotated SHORT
-  // axis, negated (across it). Both axes below are fitted to what is actually drawn, not
-  // transposed from the vertical frame.
-  //
-  // Why the ends are padded asymmetrically, and only partly. The frame already reaches past the
-  // board at both ends — `tipPy - baseMinY` at the nose, `baseMinY + baseH - tailPy` at the tail
-  // — so only the shortfall against `HORIZONTAL_CHIP_REACH` needs adding. Paying the full
-  // half-chip at both ends (the previous constant) bought margin the frame already had. Zero
-  // under `hideCallouts`, which draws no chips to clip.
-  const noseEndPad = hideCallouts
-    ? 0
-    : Math.max(0, HORIZONTAL_CHIP_REACH - (tipPy - baseMinY));
-  const tailEndPad = hideCallouts
-    ? 0
-    : Math.max(0, HORIZONTAL_CHIP_REACH - (baseMinY + baseH - tailPy));
-
-  // Why the short axis is built from the rails, not the vertical frame's width. The vertical
-  // frame's width holds a chip gutter and an output rail side by side; rotated, those two stack
-  // across the short axis far more compactly, so carrying the vertical width over leaves roughly
-  // 195 units of empty air. `frame.chipRightX` and `frame.outputValueX` already carry this
-  // board's overflow (a wide board pushes both rails outward), so building the short axis from
-  // them widens the rotated frame correctly with no second overflow term.
-  //
-  // What the Math.min / Math.max are for: a guard, not a live input. At these constants the two
-  // rails bound the board by 139 and 77 units, so they never bind today. They exist so a future
-  // rail change cannot silently start clipping the drawing.
-  const crossMinX = hideCallouts
-    ? baseMinX
-    : Math.min(frame.chipRightX - HORIZONTAL_CHIP_RAIL_REACH, pxX(-wpHalfWidthIn));
-  const crossMaxX = hideCallouts
-    ? baseMinX + baseW
-    : Math.max(frame.outputValueX + HORIZONTAL_OUTPUT_REACH, pxX(wpHalfWidthIn));
-
-  const horizW = baseH + noseEndPad + tailEndPad;
-  const horizH = crossMaxX - crossMinX;
+  // The horizontal viewBox (`outlineFrameNumbers` explains its two axes and its end pads).
   const horizontalViewBox =
     `${(baseMinY - noseEndPad).toFixed(2)} ${(-crossMaxX).toFixed(2)}` +
     ` ${horizW.toFixed(2)} ${horizH.toFixed(2)}`;

@@ -6,11 +6,15 @@ import {
   CalloutSizeProvider,
   MIN_PINNED_FIT_SCALE,
   ViewerOrientationProvider,
+  ViewerZoomUnitProvider,
   pinnedCalloutSizes,
   useSvgClientSize,
+  type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
-import { zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { useViewerZoom, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { parseViewBox, scaleDash } from "@/components/viewer/zoom-math";
+import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { useUnits } from "@/components/units-provider";
 import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
@@ -38,7 +42,13 @@ import {
   type Wing,
   type WingFinEdges,
 } from "@/lib/geometry/wings";
-import { DRAG_TARGET_CORE_PX, DRAG_TARGET_OUTER_PX, DRAG_TARGET_RING_PX } from "./outline-viewer";
+import {
+  DRAG_TARGET_CORE_PX,
+  DRAG_TARGET_OUTER_PX,
+  DRAG_TARGET_RING_PX,
+  GHOST_STROKE_WIDTH,
+  outlineViewBoxSize,
+} from "./outline-viewer";
 import { WingDataCard, type WingDataCardRow } from "./wing-data-card";
 import {
   CLOSE_UP_CORNER_PX,
@@ -73,6 +83,27 @@ import {
  * the drawing's own fit, keeps the board's top clear of the toolbar corner, and when bound by height
  * hands all the spare width to the right, under the toolbar. It reads the svg's box and the pointer —
  * the drawing fitting itself, never a layout choice, so CLAUDE.md's three switches stay separate.
+ *
+ * **Lines at the VIEWER's weight** (D1) — the founder: "The thickness of the lines need to match the
+ * template viewer." The VIEWER draws its board at 2 of its own units, so on screen at 2 × its fit;
+ * the close-up's fit differs, so the same "2" landed thinner (1.23 px against the VIEWER's 1.82 at
+ * 1024 × 768, F1). Every raw size here is multiplied by one weight unit, `(viewerFit / fit) / zoom`:
+ * the VIEWER's own fit for the same box (its frame from `outlineViewBoxSize`, in the orientation the
+ * VIEWER is drawn in — turned on a phone held sideways), over the close-up's. So the board line, the
+ * fin marks, the stringer, the 12" station, the widepoint line, the dashed no-wings curve (at the
+ * VIEWER's ghost weight), the leaders and the card hairlines draw exactly as wide as the VIEWER's, at
+ * any zoom. Until both fits are measured the unit is exactly 1, so the first render matches the
+ * server's. The grab points keep their own screen-pixel sizes, as before.
+ *
+ * **Zoom, like the VIEWER** (D7) — "wings tab also needs zoom capabilities like the viewer." Through
+ * the one shared zoom (`zoom-viewport.tsx`, quick 261007-fnz): the wheel and a trackpad pinch zoom
+ * toward the pointer, two fingers pinch and pan while one finger stays on a grab point (`touch:
+ * "viewer"`, TEMPLATE's own rule), a drag on empty canvas pans above 1x, the zoom row's buttons and a
+ * double-click go back to 1x, and above 1x the VIEWER's grid shows behind the board, counted from the
+ * tail tip and the stringer (the orchestrator's ruling, 2026-10-15 — "zoom like the viewer" includes
+ * its grid). The window's own growth past 24" sets the base frame; the zoom works inside it. Words,
+ * cards and grab points keep their screen size at any zoom. Nothing about the zoom is saved; the
+ * WINGS panel holds its own level, so each tab starts at 1x.
  *
  * Always drawn tail-down: the window is near-square, so turning it buys nothing.
  *
@@ -109,6 +140,9 @@ export interface WingCloseUpProps {
   onWingsChange?: (wings: Wing[]) => void;
   /** The fins' trailing edges as the store places them, for a locked wing's offset drag (D1). */
   edges?: WingFinEdges;
+  /** Which way the VIEWER tab draws the board (`boardOrientation` in `outline-editor.tsx`), so the
+   * close-up's lines match the VIEWER's own on-screen weight (quick 261015-my3, D1). */
+  viewerOrientation: ViewerOrientation;
 }
 
 /** The hair either side of a corner the sketch reads widths at (1e-6"). */
@@ -146,6 +180,7 @@ export function WingCloseUp({
   window: frozenWindow,
   onWingsChange,
   edges: storeEdges = NO_FIN_EDGES,
+  viewerOrientation,
 }: WingCloseUpProps) {
   const { system } = useUnits();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -170,26 +205,56 @@ export function WingCloseUp({
     minFit: MIN_PINNED_FIT_SCALE,
   });
   const { toX, toY } = frame;
-  /** Screen px per drawing unit: the frame's own `meet` fit for the box, 1 until it is measured. */
+  /** Screen px per drawing unit at 1x: the frame's own `meet` fit for the box, 1 until it is measured. */
   const fit = frame.fit > 0 ? frame.fit : 1;
-  const sizes = pinnedCalloutSizes(fit);
+
+  // D7: the shared zoom, inside the frame's own base viewBox. One finger stays the close-up's own at
+  // every zoom (a press on a grab point drags it, never pans); two fingers are the zoom's, and a
+  // pinch that lands mid-drag ends the drag where it is.
+  const baseViewBox = `0 0 ${frame.width} ${frame.height}`;
+  const baseRect = parseViewBox(baseViewBox);
+  const {
+    zoom,
+    zoomUnit,
+    viewBox: shownViewBox,
+    view,
+    svgProps: zoomSvgProps,
+    isPinching,
+  } = useViewerZoom(svgRef, baseViewBox, {
+    touch: "viewer",
+    canPanFrom: () => !dragRef.current,
+    onPinchStart: () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      setHeldWindow(null);
+    },
+  });
+  /** Screen px per drawing unit as drawn now: the fit, times the zoom — every pinned size reads it. */
+  const shownFit = fit * zoom;
+  const sizes = pinnedCalloutSizes(shownFit);
   /** Drawing units per screen pixel at the pinned callout size — the cards' and words' unit. */
   const pxUnit = sizes.value / CALLOUT_PX.value;
+  // D1: the VIEWER's own fit for this same box, in the orientation the VIEWER is drawn in; every raw
+  // line weight below rides `weightUnit`, so it lands at the VIEWER's own screen width at any zoom.
+  const viewerFrame = outlineViewBoxSize(geometry, viewerOrientation);
+  const viewerFit = box.width > 0 && box.height > 0 ? Math.min(box.width / viewerFrame.width, box.height / viewerFrame.height) : 0;
+  const weightUnit = viewerFit > 0 && frame.fit > 0 ? (viewerFit / frame.fit) * zoomUnit : zoomUnit;
 
-  // The grab points (D5, P11). Screen-pixel sizes are divided by the live fit, so a point keeps its
-  // screen size in every window, as the VIEWER's do; the drop and the hit radius are converted to
-  // board millimetres at the same scale before the pure solve sees them.
+  // The grab points (D5, P11). Screen-pixel sizes are divided by the shown fit, so a point keeps its
+  // screen size in every window and at any zoom, as the VIEWER's do; the drop and the hit radius are
+  // converted to board millimetres at the same scale before the pure solve sees them.
   const allWings = outline.wings ?? [];
   const grabbing = showConstruction && onWingsChange !== undefined;
-  const handleUnit = fit > 0 ? 1 / fit : 1;
+  const handleUnit = shownFit > 0 ? 1 / shownFit : 1;
   const unitsToMm = (units: number) => inchesToMm(units / frame.unitsPerInch);
   const dropMm = unitsToMm(WING_GRAB_DROP_PX * handleUnit);
   const hitRadiusUnits = (coarsePointer ? OUTLINE_DRAG_HIT_COARSE_PX : OUTLINE_DRAG_HIT_PX) * handleUnit;
   const hitRadiusMm = unitsToMm(hitRadiusUnits);
   const grabPoints = grabbing ? wingDragPoints(geometry, allWings, dropMm) : [];
 
-  /** A pointer's board position: the root svg's own matrix (the close-up is never turned or zoomed),
-   * then the frame's `toX`/`toY` run backwards. */
+  /** A pointer's board position: the root svg's own matrix — the zoom moves the svg's viewBox itself,
+   * so that matrix is already the zoomed one (the VIEWER reads its content group only because that
+   * group is turned; the close-up never is) — then the frame's `toX`/`toY` run backwards. */
   function toBoardPoint(event: ReactPointerEvent<SVGSVGElement>): OutlineDragPoint | null {
     const ctm = svgRef.current?.getScreenCTM();
     if (!ctm) return null;
@@ -228,6 +293,29 @@ export function WingCloseUp({
     }
     // The window rule applies again from here: a wing carried past 24" now grows the window.
     setHeldWindow(null);
+  }
+
+  // The pointer, shared with the zoom (D7), as the VIEWER's: the close-up's own press runs first, in
+  // the capture phase, so a press on a grab point drags it at any zoom and the zoom then sees the
+  // drag and never pans (`canPanFrom`); any other press reaches the zoom, which pans above 1x and does
+  // nothing at 1x. Move, lift and cancel go to the drag while one is live and on to the zoom's
+  // otherwise. While two fingers are down the close-up ignores the pointer.
+  function onSvgPress(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    handlePointerDown(event);
+  }
+  function onSvgPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    if (isPinching()) return;
+    if (dragRef.current) {
+      handlePointerMove(event);
+      return;
+    }
+    zoomSvgProps.onPointerMove?.(event);
+  }
+  function onSvgPointerEnd(event: ReactPointerEvent<SVGSVGElement>, cancelled: boolean) {
+    handlePointerEnd(event);
+    if (cancelled) zoomSvgProps.onPointerCancel?.(event);
+    else zoomSvgProps.onPointerUp?.(event);
   }
 
   const lengthIn = mmToInches(geometry.length);
@@ -328,33 +416,51 @@ export function WingCloseUp({
       <ViewerOrientationProvider value="vertical">
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${frame.width} ${frame.height}`}
+          viewBox={shownViewBox}
           preserveAspectRatio="xMidYMid meet"
           // P14, as TEMPLATE's VIEWER svg: `touch-none` so a thumb drag shapes the wing instead of
           // scrolling the page, `select-none` and the callout suppression against iOS's long press.
           className="absolute inset-0 block h-full w-full select-none touch-none"
-          style={{ WebkitTouchCallout: "none" }}
+          // The shared zoom's own handlers first, then the close-up's, which take over move, lift
+          // and cancel and hand on to the zoom's whatever the close-up does not use (D7).
+          {...zoomSvgProps}
+          style={{ WebkitTouchCallout: "none", ...zoomSvgProps.style }}
           data-wing-close-up
           data-window-lo-in={loIn.toFixed(3)}
           data-window-hi-in={hiIn.toFixed(3)}
           data-units-per-inch={frame.unitsPerInch.toFixed(4)}
           data-pad-top={frame.padTop.toFixed(2)}
           data-held={heldWindow ? "true" : undefined}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerEnd}
+          onPointerDownCapture={onSvgPress}
+          onPointerMove={onSvgPointerMove}
+          onPointerUp={(event) => onSvgPointerEnd(event, false)}
+          onPointerCancel={(event) => onSvgPointerEnd(event, true)}
           role="img"
           aria-label="The tail close up, with each wing's step"
         >
+          <ViewerZoomUnitProvider value={weightUnit}>
+          {/* The grid (D7, the orchestrator's ruling): drawn first, so it sits behind the board; only
+              above 1x, so nothing at 1x changes. Counted from the tail tip along the board and from
+              the stringer across it, as the VIEWER's. */}
+          {baseRect && (
+            <ZoomGrid
+              zoom={zoom}
+              fitScale={fit}
+              unitsPerInch={frame.unitsPerInch}
+              anchor={{ x: frame.cx, y: toY(0) }}
+              bounds={baseRect}
+              visible={view}
+              system={system}
+            />
+          )}
           {hasWings && (
             <path
               data-wing-base-outline
               d={outlineFillPath(baseGeometry)}
               fill="none"
               stroke="var(--outline-ghost)"
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
+              strokeWidth={GHOST_STROKE_WIDTH * weightUnit}
+              strokeDasharray={scaleDash("4 3", weightUnit)}
             />
           )}
           <path d={outlineFillPath(geometry)} fill="var(--outline-board-fill)" stroke="none" />
@@ -363,7 +469,7 @@ export function WingCloseUp({
             d={`${right} ${left} ${tailClose}`}
             fill="none"
             stroke="var(--outline-ink)"
-            strokeWidth={2}
+            strokeWidth={2 * weightUnit}
             strokeLinejoin="round"
           />
 
@@ -375,7 +481,8 @@ export function WingCloseUp({
             x2={frame.cx}
             y2={toY(loIn) + 6}
             stroke="var(--outline-station-line)"
-            strokeDasharray={zoomDashToken("--outline-stringer-dash", 1)}
+            strokeWidth={weightUnit}
+            strokeDasharray={zoomDashToken("--outline-stringer-dash", weightUnit)}
           />
           {stationLines.map(({ sIn, dash }) => (
             <line
@@ -385,7 +492,8 @@ export function WingCloseUp({
               x2={toX(hwAt(sIn))}
               y2={toY(sIn)}
               stroke="var(--outline-station-line)"
-              strokeDasharray={zoomDashToken(dash, 1)}
+              strokeWidth={weightUnit}
+              strokeDasharray={zoomDashToken(dash, weightUnit)}
             />
           ))}
           {inWindow(wpIn) && (
@@ -396,10 +504,11 @@ export function WingCloseUp({
                 x2={toX(cwIn)}
                 y2={toY(wpIn)}
                 stroke="var(--outline-widepoint-line)"
-                strokeDasharray={zoomDashToken("--outline-widepoint-dash", 1)}
+                strokeWidth={weightUnit}
+                strokeDasharray={zoomDashToken("--outline-widepoint-dash", weightUnit)}
               />
-              <circle cx={toX(-cwIn)} cy={toY(wpIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
-              <circle cx={toX(cwIn)} cy={toY(wpIn)} r={2.6} fill="var(--outline-widepoint-knot)" />
+              <circle cx={toX(-cwIn)} cy={toY(wpIn)} r={2.6 * weightUnit} fill="var(--outline-widepoint-knot)" />
+              <circle cx={toX(cwIn)} cy={toY(wpIn)} r={2.6 * weightUnit} fill="var(--outline-widepoint-knot)" />
             </>
           )}
 
@@ -437,13 +546,13 @@ export function WingCloseUp({
                 <circle
                   cx={toX(mmToInches(r.widthAhead) / 2)}
                   cy={toY(mmToInches(r.stepStart))}
-                  r={3.5}
+                  r={3.5 * weightUnit}
                   fill="var(--outline-construction)"
                 />
                 <circle
                   cx={toX(mmToInches(r.widthBehind) / 2)}
                   cy={toY(mmToInches(r.inner))}
-                  r={3.5}
+                  r={3.5 * weightUnit}
                   fill="var(--outline-construction)"
                 />
               </g>
@@ -459,9 +568,9 @@ export function WingCloseUp({
               const y2 = toY(mmToInches(m.leadingOffTail));
               return (
                 <g key={i} data-fin-mark>
-                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--color-surf-accent-ink)" strokeWidth={2} />
-                  <circle cx={x1} cy={y1} r={3.5} fill="var(--outline-ink)" />
-                  <circle cx={x2} cy={y2} r={3.5} fill="var(--outline-ink)" />
+                  <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--color-surf-accent-ink)" strokeWidth={2 * weightUnit} />
+                  <circle cx={x1} cy={y1} r={3.5 * weightUnit} fill="var(--outline-ink)" />
+                  <circle cx={x2} cy={y2} r={3.5 * weightUnit} fill="var(--outline-ink)" />
                 </g>
               );
             })}
@@ -479,7 +588,8 @@ export function WingCloseUp({
                   x2={toX(-aheadIn) - FIN_EDGE_LINE_REACH}
                   y2={toY(mmToInches(finEdge))}
                   stroke="var(--color-surf-accent-ink)"
-                  strokeDasharray="2 3"
+                  strokeWidth={weightUnit}
+                  strokeDasharray={scaleDash("2 3", weightUnit)}
                 />
               );
             })}
@@ -533,6 +643,7 @@ export function WingCloseUp({
               style={{ WebkitTouchCallout: "none" }}
             />
           ))}
+          </ViewerZoomUnitProvider>
         </svg>
       </ViewerOrientationProvider>
     </CalloutSizeProvider>
