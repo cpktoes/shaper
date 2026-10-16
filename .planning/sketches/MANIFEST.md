@@ -73,6 +73,17 @@ tab; and smoothing is "more of a radius rounder on the wing's outer and inner po
 stringer appearance". Round two draws three ways the view scales (jump to the whole board, grow the window, follow the
 wing) with the corner radius and the grab points as a toggle.
 
+### Picking a blank by sight (sketch 015, 2026-10-15)
+
+The founder wants to pick a foam blank on ROCKER by seeing it — outline from above, rocker from the side, at true
+proportion, with its name and printed dims — and to star blanks so starred ones always come first; undecided "whether
+that's a tab like wings, or a popup window." Mid-sketch the founder added a third option (today's list with a tiny
+drawing on every row), asked that the tab and the popup "read very similar to a blanks catalog page with dims and all",
+with the blank "horizontal rather than upright (maybe upright on the phone only?)", and pasted an earlier spec (a blank
+button with a thumbnail; every blank long enough listed, too-thin and won't-fit ones greyed with the reason; sorted by
+length; filters for maker, length range and nose rocker range; picking closes the popup; a full-screen sheet on a
+phone). The sketch draws all three placements on all 219 real blanks with the app's own curves and fit verdicts.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -98,6 +109,7 @@ wing) with the corner radius and the grab points as a toggle.
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
 | 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
+| 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | — (with the founder) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
 
 ## Decisions These Lock In
 
@@ -188,6 +200,12 @@ wing) with the corner radius and the grab points as a toggle.
    largest round that fits; the return from FINS lands on VIEWER. Built in quick 261014-wii.
 
 ## Open Questions
+
+- Blank picker (015): which placement — A tab, B popup, C list with drawings? Flat or upright on a phone? And **where
+  stars are saved**: recommended, signed in, a new nullable column on `user_preferences` (a list of blanks, by maker and
+  name — the Blank Makers setting's pattern), migrated on production before the deploy that reads it; signed out, the
+  browser alone, like Imperial/Metric; on signing in, the browser's stars join the account's. Nothing is built or
+  migrated until the founder answers.
 
 - Phone chrome (007/008): ~~does a phone held sideways keep its screens list in ☰ or switch to the tiles
   too?~~ Answered: tiles too (the founder, 2026-10-03, "use on all screens that condense the top bar into a
