@@ -2,7 +2,7 @@
 sketch: 016
 name: custom-rocker
 question: "With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker — nose and tail changes in the US Blanks notation, up to two per end — and how do the drawing, the blank's name and the DATASHEET show it?"
-winner: null
+winner: "D"
 tags: [rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation, us-blanks]
 ---
 
@@ -182,6 +182,8 @@ has the page's zoom: − / 1x / + at its top-right (1x, 1.5x, 2x, 3x, 4x), the w
 pans, 1x resets; strokes, dashes and type keep their screen size, as the viewer's own zoom unit does. Driven headless
 (`zoom-drive.cjs` in the archive): the buttons, the wheel over the nose and a drag each move the viewBox, and 1x puts it
 back. Pinch-to-zoom on a phone is the build's: the page's zoom viewport already has it.
+
+**Decided (the founder, 2026-10-16, after round sixteen): "This now looks perfect. Let's build it." D is the winner.**
 
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change

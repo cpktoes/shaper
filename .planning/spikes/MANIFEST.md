@@ -45,9 +45,8 @@ sketch go to a Fable session.
   dimensions at its five stations (printed thickness; rocker as ordered with the centre as the zero reference); on,
   the surfboard's values.
 
-**Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
-decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the
-name on the blank and the DATASHEET), then a quick task with a BRIEF once quick 261015-ve9 is on `main`.
+**Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md`; sketch 016 D
+decided by the founder 2026-10-16 ("This now looks perfect. Let's build it."). Building as a quick task with a BRIEF.
 
 ## Spikes
 
