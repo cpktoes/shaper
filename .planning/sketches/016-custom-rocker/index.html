@@ -421,17 +421,25 @@ function mainArt(device, g, opts = {}) {
     }
   }
   if (!showBoard) {
-    // the blank alone: its tip figures, natural → as ordered, on the rails
-    for (const end of ["nose", "tail"]) {
-      const x = end === "nose" ? g.bl.lengthIn : 0, sTip = x + g.start;
-      const nat = g.natAt(x), cus = g.blankLev(x);
-      const i = g.blankBottom.findIndex((p) => p[0] >= sTip - 0.01); const p0 = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i < 0 ? g.blankBottom.length - 1 : i))];
-      const [tx, ty] = P(sTip, p0[1]);
-      const anchor = upright ? "end" : "middle", lx = upright ? 70 : tx, ly = upright ? ty : H - 30;
-      if (!upright) out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly - 14}" stroke="var(--line-faint)"/>`; else out += `<line x1="${tx}" y1="${ty}" x2="${lx + 6}" y2="${ty}" stroke="var(--line-faint)"/>`;
-      out += `<text x="${lx}" y="${ly + (upright ? 1 : 0)}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(mark(cus))}</text><text x="${lx}" y="${ly + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(custom ? `${end} tip · natural ${mark(nat)}` : `${end} tip`)}</text>`;
+    // the blank alone: its own five stations — tail tip, 12" in, the centre's zero reference, 12" in, nose tip —
+    // reading the rocker as ordered, with the natural figure small beneath (the founder, round thirteen)
+    const Lb = g.bl.lengthIn, C = g.bl.centreFromTailIn;
+    const stations = [[0, "Tail Tip"], [12, `Tail @ ${M() ? "30.5 cm" : '12"'}`], [C, "Center"], [Lb - 12, `Nose @ ${M() ? "30.5 cm" : '12"'}`], [Lb, "Nose Tip"]];
+    for (const [x, name] of stations) {
+      const sx = x + g.start, nat = g.natAt(x), cus = g.blankLev(x), isCentre = x === C;
+      const i = g.blankBottom.findIndex((p) => p[0] >= sx - 0.01); const p0 = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i < 0 ? g.blankBottom.length - 1 : i))];
+      // lying flat: the tips read on the top rail (free with no board drawn), the centre and the 12" stations below
+      const isTip = x === 0 || x === Lb, top = !upright && isTip;
+      const [tx, ty] = P(sx, top ? p0[1] + p0[2] : p0[1]);
+      const anchor = upright ? "end" : "middle", lx = upright ? 70 : tx, ly = upright ? ty : top ? 30 : H - 30;
+      if (upright) out += `<line x1="${tx}" y1="${ty}" x2="${lx + 6}" y2="${ty}" stroke="var(--line-faint)"/>`;
+      else if (top) out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly + 14}" stroke="var(--line-faint)"/>`;
+      else out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly - 14}" stroke="var(--line-faint)"/>`;
+      const value = isCentre ? (M() ? "0 mm" : '0"') : mark(cus);
+      const sub = isCentre ? `${name} · zero` : custom && Math.abs(cus - nat) > 1e-9 ? `${name} · natural ${mark(nat)}` : name;
+      out += `<text x="${lx}" y="${ly + (upright ? 1 : 0)}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(value)}</text><text x="${lx}" y="${ly + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(sub)}</text>`;
     }
-    if (!upright) out += `<text x="${P(g.start + g.bl.lengthIn / 2, 0)[0]}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BOTTOM PLANE</text>`;
+    if (!upright) out += `<text x="${W - 8}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="end" fill="var(--color-text-muted)">BOTTOM PLANE · AS ORDERED</text>`;
   }
   if (showBoard) out += `<path d="${boardOutline}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
   // the five stations: thickness chips on one rail, rocker readings on the other (the app's grammar)
@@ -774,7 +782,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <h3>Round eight (the founder, 2026-10-16)</h3>
 <p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (rounds eleven and twelve), the natural dashed line and the bend marks too: once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank alone, as any blank.</p>
 <h3>Round nine (the founder, 2026-10-16)</h3>
-<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone, with its bottom plane and its tip figures (natural → as ordered), as the catalogue draws it; on, the board sits in it with the five stations as the page draws them.</p>
+<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone on its bottom plane with its own five stations — the tail tip, 12" in, the centre's zero reference, 12" in, the nose tip — reading the rocker as ordered, the natural figure small beneath where it differs (round thirteen); on, the board sits in it with the board's five stations as the page draws them.</p>
 <h3>The maths</h3>
 <p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
 <h3>Not drawn</h3>

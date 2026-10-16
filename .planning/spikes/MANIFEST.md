@@ -41,7 +41,8 @@ sketch go to a Fable session.
   over the first adjustment's span, blue over the second's, in colours that read on every theme — **inside the
   Customize Rocker popup only**, with the natural dashed line and the bend marks, a live aid while adjusting; the
   page's VIEWER draws a custom blank as any blank, the bent foam alone. **The
-  popup's drawing has a Show my board switch, off by default** — the blank alone unless switched on.
+  popup's drawing has a Show my board switch, off by default** — the blank alone unless switched on, reading its
+  five stations (centre = the zero reference, the 12" stations and the tips) as ordered.
 
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
 decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the

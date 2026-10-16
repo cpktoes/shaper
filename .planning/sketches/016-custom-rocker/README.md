@@ -159,6 +159,12 @@ shows the bent blank with the natural rocker dashed behind it, nothing coloured.
 background. Once a blank has a custom rocker that's all that needs to show."* So the page's VIEWER draws a custom blank
 as any blank — the bent foam alone, no dashed natural, no bend marks; those live in the popup with the colours.
 
+**Round thirteen (the founder, 2026-10-16):** *"Let's also show the zero reference point at center as well as the 12
+inch station dimensions. The dimensions shown on the pop-up should be the customized rocker values."* The popup's
+blank-only drawing now reads the blank's own five stations on the rocker rail — tail tip, 12" in, the centre's zero
+reference, 12" in, nose tip — as ordered, the natural figure small beneath where it differs; with Show my board on, the
+board's stations read as the page draws them.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the
