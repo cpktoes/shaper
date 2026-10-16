@@ -156,8 +156,12 @@ function RangeEnd({
           {formatRangeValue(value, kind, system)}
         </span>
       </div>
+      {/* The app's own slider look (`slider-accent` in globals.css): an outlined track, the accent
+          fill and dot — without it the track vanished into the drawer's well colour, and a slider
+          set to its lowest end read as a lone button (the founder, 2026-10-16). */}
       <Slider
         data-lock-exempt
+        className="slider-accent"
         value={slider.value}
         min={slider.min}
         max={slider.max}
