@@ -316,7 +316,7 @@ const DRAWN = [["flat", "Lying flat"], ["phoneUp", "Upright on a phone only"], [
 const SCALES = [["fill", "Each blank fills its card"], ["one", "One scale for all"]];
 const DEFAULT_STARS = ["US Blanks|6'2\"A", "Arctic Foam|6'2\" F", "Millennium Foam|6'3\"S"].filter((id) => BY[id]);
 const DEFAULTS = {
-  variant: "b", device: "computer", drawn: "flat", board: "fish", units: "imperial", theme: "slate", scale: "fill", ghost: false,
+  variant: "b", device: "computer", drawn: "flat", board: "fish", units: "imperial", theme: "slate", scale: "fill", ghost: true,
   stars: DEFAULT_STARS,
   ui: { a: { tab: "blanks" }, b: { tab: "viewer", open: true }, c: { tab: "viewer", expanded: false, listOpen: true } },
   f: { q: "", hidden: [], len: null, nose: null, starOnly: false, sort: "length", open: null },
@@ -326,8 +326,8 @@ if (state.drawn !== "upright") state.drawn = "flat"; // round one's "upright on 
 state.scale = "fill"; // the founder's pick: each blank fills its card
 let scrollToBlank = true;
 let barOpen = false;
-try { const saved = JSON.parse(localStorage.getItem("sketch015") || "{}"); state = { ...state, ...saved, ui: { ...state.ui, ...(saved.ui || {}) }, f: { ...state.f, ...(saved.f || {}), open: null } }; } catch (e) {}
-function save() { try { localStorage.setItem("sketch015", JSON.stringify(state)); } catch (e) {} }
+try { const saved = JSON.parse(localStorage.getItem("sketch015-r2") || "{}"); state = { ...state, ...saved, ui: { ...state.ui, ...(saved.ui || {}) }, f: { ...state.f, ...(saved.f || {}), open: null } }; } catch (e) {}
+function save() { try { localStorage.setItem("sketch015-r2", JSON.stringify(state)); } catch (e) {} }
 
 /* ---------- small helpers ---------- */
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -863,13 +863,13 @@ let rt = 0; window.addEventListener("resize", () => { clearTimeout(rt); rt = set
 
 const INTRO = {
   a: `<b>A — a BLANKS tab beside VIEWER and DATASHEET</b>, like TEMPLATE's WINGS tab. The sidebar's BLANK section becomes one button showing the blank on your board (its name and a thumbnail); it opens the tab. The tab is a catalogue page: every blank long enough for your board, starred ones first, drawn to scale with the maker's printed dims. Picking one puts it on your board and takes you back to VIEWER. Star a blank with the ☆ in its corner.`,
-  b: `<b>B — a popup window ★ the founder's pick (2026-10-15)</b>, opened from the blank button in the sidebar. Blanks lie flat by default on every device, each filling its card; the filter bar's Flat / Upright and Show my board switches change the view. Theme and units follow the app's own settings.`,
+  b: `<b>B — a popup window ★ the founder's pick (2026-10-15)</b>, opened from the blank button in the sidebar. Blanks lie flat by default on every device, each filling its card, with your board drawn on each; the filter bar's Flat / Upright and Show my board switches change the view. Theme and units follow the app's own settings.`,
   b0: `<b>B — a popup window</b> opened from the same blank button in the sidebar. The window is the same catalogue page, as big as the screen allows — on a phone it fills the screen. Picking a blank closes the window and loads it; ✕, Esc or a click outside closes it without changing anything. Star a blank with the ☆ in its corner.`,
   c: `<b>C — today's list, with drawings</b> (the founder's third option). The sidebar list stays as it is today — search, Fits / Won't fit, Show all — and each row gains a tiny drawing of the blank's outline and rocker and its nose and tail rocker. Starred blanks come first.`,
   all: `<b>All three side by side</b>, at the device picked in the bar above, each shrunk to fit. They still work: open B's window, switch A to its BLANKS tab, star a blank in one and see it starred in the others.`,
 };
 const NOTES = `<h2>Decided (the founder, 2026-10-15)</h2>
-<p><b>B, the popup.</b> Blanks lie flat by default on every device, each filling its card; a <b>Flat / Upright</b> switch and a <b>Show my board</b> on/off switch sit in the filter bar. Theme and units follow the app's own settings. <b>Stars</b> are saved on the shaper's account when signed in, in the browser when signed out, and the two join on signing in.</p>
+<p><b>B, the popup.</b> Blanks lie flat by default on every device, each filling its card; a <b>Flat / Upright</b> switch and a <b>Show my board</b> on/off switch (on by default) sit in the filter bar. Theme and units follow the app's own settings. <b>Stars</b> are saved on the shaper's account when signed in, in the browser when signed out, and the two join on signing in.</p>
 <h2>What this sketch asked</h2>
 <p>Where should a <b>visual blank picker</b> live on ROCKER — <b>A</b> a BLANKS tab beside VIEWER (like WINGS), <b>B</b> a popup window opened from the blank, or <b>C</b> today's list with a tiny drawing on every row? And on a phone, should the blanks lie flat or stand upright?</p>
 <h3>Every blank is real</h3>

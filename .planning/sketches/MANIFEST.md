@@ -109,7 +109,7 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
 | 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
-| 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | **B — A popup window** (flat by default, Flat / Upright and Show my board in the filter bar, each blank fills its card) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
+| 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | **B — A popup window** (flat by default, Flat / Upright and Show my board — on by default — in the filter bar, each blank fills its card) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
 
 ## Decisions These Lock In
 
@@ -208,7 +208,7 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
    first, then Fits this board, then Won't fit this board greyed with the reason (too wide somewhere, or too thin at
    the center — no longer hidden); a search, the four makers (the Settings → Blank Makers setting itself), a length
    range, a nose-rocker range, ★ Starred only, a sort (length by default), and the Flat / Upright and Show my board
-   switches. Picking a blank closes the window and loads it; on a phone the window fills the screen. Theme and units
+   switches (Show my board on by default — "show my board default = on."). Picking a blank closes the window and loads it; on a phone the window fills the screen. Theme and units
    follow the app's settings. Stars live on the shaper's account when signed in (a nullable `user_preferences` column,
    migrated on production before the deploy), in the browser when signed out, joined on signing in.
 

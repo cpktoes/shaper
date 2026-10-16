@@ -39,7 +39,8 @@ Theme and units follow the apps setting."*
   beside the search with its words; on a phone two icons beside the search).
 - **Each blank fills its card** (true proportion, never stretched). The one-scale option is dropped.
 - **Show my board** is an on/off switch in the filter bar (beside Flat / Upright on a computer, in the chip row on a
-  phone), off by default: your board's outline dashed on every blank where the app would place it.
+  phone), **on by default** (the founder, minutes later: "show my board default = on."): your board's outline dashed
+  on every blank where the app would place it.
 - **Theme and units follow the app's own settings** — the popup has no switches of its own for them.
 - **Stars**: saved on the shaper's account when signed in (a new nullable column on `user_preferences`, a list of
   blanks by maker and name, migrated on production before the deploy that reads it); in the browser alone when signed
