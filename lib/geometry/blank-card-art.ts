@@ -37,11 +37,23 @@ export interface CardBox {
   height: number;
   pad: number;
   gap: number;
+  /**
+   * Fill the box along the blank's length and let the box's other side follow the blank (fast 162,
+   * the founder 2026-10-16: "make the blanks fill the card width like the sketch"): the blank is
+   * scaled to the box's length-wise room alone, and the drawing's box comes back with its
+   * across-the-blank size set by the blank's own proportions — a short wide blank's drawing grows a
+   * little taller instead of the blank shrinking. Absent, the blank is fitted inside the fixed box.
+   */
+  fillAlong?: boolean;
 }
 
 /** A card's drawing lying flat (D-02's default): about 3.1:1, one art unit about one CSS pixel on a
  * 320-px card. */
 export const FLAT_CARD_BOX: CardBox = { width: 320, height: 103, pad: 4, gap: 8 };
+
+/** A card's drawing lying flat as the popup draws it: FLAT_CARD_BOX's width and padding, the blank
+ * filling the card's width, the height following the blank (fast 162). */
+export const FLAT_CARD_FILL_BOX: CardBox = { ...FLAT_CARD_BOX, fillAlong: true };
 
 /** A card's drawing standing upright, nose up (plan 02's Upright switch). */
 export const UPRIGHT_CARD_BOX: CardBox = { width: 96, height: 200, pad: 3, gap: 6 };
@@ -127,11 +139,14 @@ export function blankCardArt(prepared: PreparedBlank, pose: CardPose, box: CardB
 
   const alongRoom = (pose === "flat" ? box.width : box.height) - 2 * box.pad;
   const acrossRoom = (pose === "flat" ? box.height : box.width) - 2 * box.pad - box.gap;
-  const scale = Math.min(alongRoom / L, across > 0 ? acrossRoom / across : Infinity);
+  const scale = box.fillAlong ? alongRoom / L : Math.min(alongRoom / L, across > 0 ? acrossRoom / across : Infinity);
+  // Filling along the length, the drawing's box takes its other side from the blank (fast 162).
+  const acrossSize = across * scale + box.gap + 2 * box.pad;
+  const drawn: CardBox = !box.fillAlong ? box : pose === "flat" ? { ...box, height: acrossSize } : { ...box, width: acrossSize };
 
   // Centre the blank's length along the box and the stack (outline, gap, side view) across it.
-  const alongStart = ((pose === "flat" ? box.width : box.height) - L * scale) / 2;
-  const acrossStart = ((pose === "flat" ? box.height : box.width) - (across * scale + box.gap)) / 2;
+  const alongStart = ((pose === "flat" ? drawn.width : drawn.height) - L * scale) / 2;
+  const acrossStart = ((pose === "flat" ? drawn.height : drawn.width) - (across * scale + box.gap)) / 2;
   const stringerAt = acrossStart + hmax * scale;
   // The flat surface: below the lower rail by the gap and the tallest deck (flat), or just past the
   // widest rail by the gap (upright, the side view growing away from the outline).
@@ -170,7 +185,7 @@ export function blankCardArt(prepared: PreparedBlank, pose: CardPose, box: CardB
 
   return {
     pose,
-    box,
+    box: drawn,
     lengthMm: L,
     scale,
     origin,

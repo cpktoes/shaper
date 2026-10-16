@@ -35,7 +35,7 @@ import type { BlankRecord } from "@/lib/geometry/blank";
 import {
   blankCardArt,
   boardOnBlankArt,
-  FLAT_CARD_BOX,
+  FLAT_CARD_FILL_BOX,
   THUMB_BOX,
   UPRIGHT_CARD_BOX,
   type ArtPoint,
@@ -61,7 +61,7 @@ export function cachedCardArt(prepared: PreparedBlank, pose: CardPose, box: Card
     byKey = new Map();
     artCache.set(prepared, byKey);
   }
-  const key = `${pose}:${box.width}x${box.height}`;
+  const key = `${pose}:${box.width}x${box.height}${box.fillAlong ? ":fill" : ""}`;
   let art = byKey.get(key);
   if (!art) {
     art = blankCardArt(prepared, pose, box);
@@ -272,7 +272,7 @@ export function BlankCard({
   const { prepared, placement } = verdict;
   const greyed = reason !== null;
   const upright = view.drawn === "upright";
-  const art = upright ? cachedCardArt(prepared, "upright", UPRIGHT_CARD_BOX) : cachedCardArt(prepared, "flat", FLAT_CARD_BOX);
+  const art = upright ? cachedCardArt(prepared, "upright", UPRIGHT_CARD_BOX) : cachedCardArt(prepared, "flat", FLAT_CARD_FILL_BOX);
   const ghost = useMemo(
     () => (view.showBoard ? boardOnBlankArt(art, board, placement) : null),
     [art, board, placement, view.showBoard],
@@ -348,7 +348,8 @@ export function BlankCard({
           </div>
           {maker}
           {onBoardMark}
-          <div className="flex aspect-[320/103] items-center">
+          {/* The blank fills the card's width; its own proportions set the drawing's height (fast 162). */}
+          <div>
             <BlankArt art={art} ghost={ghost} />
           </div>
           <div className="[@media(max-height:500px)]:hidden">

@@ -7,6 +7,7 @@ import {
   blankCardArt,
   boardOnBlankArt,
   FLAT_CARD_BOX,
+  FLAT_CARD_FILL_BOX,
   THUMB_BOX,
   UPRIGHT_CARD_BOX,
   type ArtPoint,
@@ -248,6 +249,49 @@ describe("boardOnBlankArt — the shaper's board on the blank (D-04)", () => {
       const b = rel(thumb, thumb.outline[i]);
       expect(b.x).toBeCloseTo(a.x, 6);
       expect(b.y).toBeCloseTo(a.y, 6);
+    });
+  });
+});
+
+describe("blankCardArt — filling the card's width (fast 162, the founder 2026-10-16)", () => {
+  // "make the blanks fill the card width like the sketch": every blank spans the box's width less its
+  // padding, and the drawing's height follows the blank's own proportions — still one scale both ways.
+  const LONGEST = PICKABLE.reduce((a, b) => (b.lengthMm > a.lengthMm ? b : a));
+  const STUBBIEST = PICKABLE.reduce((a, b) => (b.lengthMm / widestHalf(b) < a.lengthMm / widestHalf(a) ? b : a));
+
+  it("spans the full width less the padding, on every pickable blank", () => {
+    for (const p of PICKABLE) {
+      const art = blankCardArt(p, "flat", FLAT_CARD_FILL_BOX);
+      const xs = art.outline.map((q) => q.x);
+      expect(Math.min(...xs)).toBeCloseTo(FLAT_CARD_FILL_BOX.pad, 6);
+      expect(Math.max(...xs)).toBeCloseTo(FLAT_CARD_FILL_BOX.width - FLAT_CARD_FILL_BOX.pad, 6);
+      expect(art.scale).toBeCloseTo((FLAT_CARD_FILL_BOX.width - 2 * FLAT_CARD_FILL_BOX.pad) / p.lengthMm, 12);
+      expect(art.box.width).toBe(FLAT_CARD_FILL_BOX.width);
+    }
+  });
+
+  it("gives the drawing the blank's own height, everything inside it with the padding kept", () => {
+    for (const p of [LONGEST, STUBBIEST, ROUND_NOSE, SQUARE_NOSE]) {
+      const art = blankCardArt(p, "flat", FLAT_CARD_FILL_BOX);
+      const ys = allPoints(art).map((q) => q.y);
+      expect(Math.min(...ys)).toBeGreaterThanOrEqual(FLAT_CARD_FILL_BOX.pad - EPS);
+      expect(Math.max(...ys)).toBeLessThanOrEqual(art.box.height - FLAT_CARD_FILL_BOX.pad + EPS);
+      expect(Math.min(...art.outline.map((q) => q.y))).toBeCloseTo(FLAT_CARD_FILL_BOX.pad, 6);
+    }
+  });
+
+  it("a short wide blank's drawing grows taller than the fixed box, a long one's shorter", () => {
+    expect(blankCardArt(STUBBIEST, "flat", FLAT_CARD_FILL_BOX).box.height).toBeGreaterThan(FLAT_CARD_BOX.height);
+    expect(blankCardArt(LONGEST, "flat", FLAT_CARD_FILL_BOX).box.height).toBeLessThan(FLAT_CARD_BOX.height);
+  });
+
+  it("draws the same shapes as the fixed box, only at its own scale", () => {
+    const fixed = blankCardArt(STUBBIEST, "flat", FLAT_CARD_BOX);
+    const fill = blankCardArt(STUBBIEST, "flat", FLAT_CARD_FILL_BOX);
+    const rel = (art: BlankCardArt, q: ArtPoint) => ({ x: (q.x - art.origin.x) / art.scale, y: (q.y - art.origin.y) / art.scale });
+    fixed.outline.forEach((q, i) => {
+      expect(rel(fill, fill.outline[i]).x).toBeCloseTo(rel(fixed, q).x, 6);
+      expect(rel(fill, fill.outline[i]).y).toBeCloseTo(rel(fixed, q).y, 6);
     });
   });
 });
