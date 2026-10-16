@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PRESET_BLANKS } from "@/lib/blanks/preset-blanks";
 import { DEFAULT_BLANK_CUT, type BlankRecord } from "./blank";
 import { placementRange, prepareBlank, type BoardOnBlankInput } from "./blank-fit";
-import { buildBlankTopView, TIP_SEGMENT_SAMPLES } from "./blank-top-view";
+import { blankOutlineStations, buildBlankTopView, TIP_SEGMENT_SAMPLES } from "./blank-top-view";
 import { DEFAULT_BOARD_SPEC } from "./board";
 import { buildBlankProfile, type BlankSideView } from "./board-profile";
 import { DEFAULT_FOIL_SPEC } from "./foil";
@@ -312,5 +312,38 @@ describe("buildBlankTopView — corrupt input stays drawable (T-qfm-02, quick 26
       expect(view.blankOutline[0].station).toBeCloseTo(real.start, 9);
       expect(view.blankOutline[view.blankOutline.length - 1].station).toBeCloseTo(real.end, 9);
     }
+  });
+});
+
+describe("blankOutlineStations — where a blank's outline is sampled (extracted for the blank cards, quick 261015-ve9)", () => {
+  // A real 0-wide-nose blank, in its own frame (0 = its tail tip), as the PICK A BLANK cards sample it.
+  const record = SP_7_4;
+  const printed = record.stations.filter((s) => s.widthMm !== null).map((s) => s.fromTailMm);
+  const steps = 48;
+  const stations = blankOutlineStations(printed, 0, record.lengthMm, steps);
+  const has = (s: number) => stations.some((x) => Math.abs(x - s) <= 1e-6);
+
+  it("the blank's nose is printed 0 wide", () => {
+    expect(record.stations.find((s) => s.label === "N0")?.widthMm).toBe(0);
+  });
+
+  it("holds both ends, the even grid and every printed width station", () => {
+    expect(stations[0]).toBe(0);
+    expect(stations[stations.length - 1]).toBe(record.lengthMm);
+    for (let i = 0; i <= steps; i++) expect(has((record.lengthMm * i) / steps)).toBe(true);
+    for (const s of printed) expect(has(s)).toBe(true);
+  });
+
+  it("puts TIP_SEGMENT_SAMPLES − 1 stations strictly inside each tip's last printed segment", () => {
+    const [t0, t1] = [printed[0], printed[1]];
+    const [n1, n0] = [printed[printed.length - 2], printed[printed.length - 1]];
+    const insideTail = stations.filter((s) => s > t0 + 1e-9 && s < t1 - 1e-9);
+    const insideNose = stations.filter((s) => s > n1 + 1e-9 && s < n0 - 1e-9);
+    expect(insideTail.length).toBeGreaterThanOrEqual(TIP_SEGMENT_SAMPLES - 1);
+    expect(insideNose.length).toBeGreaterThanOrEqual(TIP_SEGMENT_SAMPLES - 1);
+  });
+
+  it("is sorted, with no two stations the same", () => {
+    for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeGreaterThan(1e-6);
   });
 });

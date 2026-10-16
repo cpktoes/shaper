@@ -117,6 +117,45 @@ function halfWidthOf(fullWidth: number): Mm {
   return mm(Number.isFinite(half) && half > 0 ? half : 0);
 }
 
+/**
+ * Where a blank's outline is sampled, in whatever frame `start`/`end` are given in (the board's for
+ * the ROCKER top view, the blank's own for the PICK A BLANK cards — quick 261015-ve9): `steps` even
+ * steps from `start` to `end`, every printed width station (`start + fromTail`, so the outline passes
+ * exactly through each printed number), and `TIP_SEGMENT_SAMPLES − 1` more inside each tip's last
+ * printed segment, evenly in the square root of the distance from that tip (D6), so a round nose is
+ * followed right to the stringer. Sorted, with stations closer than `SAME_STATION_MM` kept once.
+ * `printedFromTail` is the printed width stations' distances from the blank's tail tip, tail first.
+ */
+export function blankOutlineStations(
+  printedFromTail: readonly number[],
+  start: number,
+  end: number,
+  steps: number,
+): number[] {
+  const candidates: number[] = [];
+  for (let i = 0; i <= steps; i++) candidates.push(i === steps ? end : start + ((end - start) * i) / steps);
+  for (const fromTail of printedFromTail) candidates.push(start + fromTail);
+  if (printedFromTail.length >= 2) {
+    // The last printed segment at each tip, closer together toward the tip (D6): the round nose is a
+    // parabola from the tip, so even steps in √(distance from the tip) follow it closely.
+    const tail = printedFromTail[0];
+    const tailReach = printedFromTail[1] - tail;
+    const nose = printedFromTail[printedFromTail.length - 1];
+    const noseReach = nose - printedFromTail[printedFromTail.length - 2];
+    for (let i = 1; i < TIP_SEGMENT_SAMPLES; i++) {
+      const d = (i / TIP_SEGMENT_SAMPLES) ** 2;
+      candidates.push(start + tail + d * tailReach);
+      candidates.push(start + nose - d * noseReach);
+    }
+  }
+  candidates.sort((a, b) => a - b);
+  const stations: number[] = [];
+  for (const s of candidates) {
+    if (stations.length === 0 || s - stations[stations.length - 1] > SAME_STATION_MM) stations.push(s);
+  }
+  return stations;
+}
+
 /** The blank and the board seen from above (quick 261006-qfm). */
 export function buildBlankTopView({ blank, geometry, length, samples }: BlankTopViewInput): BlankTopView {
   const boardOutline: TopViewBoardPoint[] = silhouette(geometry).map(({ station, w }) => ({
@@ -142,27 +181,12 @@ export function buildBlankTopView({ blank, geometry, length, samples }: BlankTop
   const widthAt = (s: number) => halfWidthOf(onBlank.blankWidthAt(mm(s)));
 
   const printed = record.stations.filter((station) => station.widthMm !== null);
-  const candidates: number[] = [];
-  for (let i = 0; i <= steps; i++) candidates.push(i === steps ? end : start + ((end - start) * i) / steps);
-  for (const station of printed) candidates.push(start + station.fromTailMm);
-  if (printed.length >= 2) {
-    // The last printed segment at each tip, closer together toward the tip (D6): the round nose is a
-    // parabola from the tip, so even steps in √(distance from the tip) follow it closely.
-    const tail = printed[0].fromTailMm;
-    const tailReach = printed[1].fromTailMm - tail;
-    const nose = printed[printed.length - 1].fromTailMm;
-    const noseReach = nose - printed[printed.length - 2].fromTailMm;
-    for (let i = 1; i < TIP_SEGMENT_SAMPLES; i++) {
-      const d = (i / TIP_SEGMENT_SAMPLES) ** 2;
-      candidates.push(start + tail + d * tailReach);
-      candidates.push(start + nose - d * noseReach);
-    }
-  }
-  candidates.sort((a, b) => a - b);
-  const stations: number[] = [];
-  for (const s of candidates) {
-    if (stations.length === 0 || s - stations[stations.length - 1] > SAME_STATION_MM) stations.push(s);
-  }
+  const stations = blankOutlineStations(
+    printed.map((station) => station.fromTailMm),
+    start,
+    end,
+    steps,
+  );
 
   const blankOutline: TopViewSample[] = stations.map((s) => ({ station: mm(s), halfWidth: widthAt(s) }));
 
