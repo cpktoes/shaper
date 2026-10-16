@@ -3,6 +3,10 @@ import { buildOutline } from "@/lib/geometry/outline";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { formatInchesFraction, inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
+import jsPDF from "jspdf";
+import { wingFigures } from "@/lib/geometry/wing-figures";
+import { placedWings, wingRadiusTop, type Wing } from "@/lib/geometry/wings";
+import { wrapTextToWidth } from "@/components/template/build-template-pdf";
 import {
   buildOverviewPdf,
   overviewFileName,
@@ -439,5 +443,109 @@ describe("overviewFileName", () => {
 
   it("falls back for a name that slugifies to nothing", () => {
     expect(overviewFileName("***")).toBe("board-overview.pdf");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Quick 261015-sei (2026-10-15): the Overview Sheet lists each wing. Added below the frozen tests.
+
+/** The founder's test board (F1): the Fish with two wings — wing 1 locked to the front fins at 7 1/2",
+ * wing 2 placed by hand at 4 1/2". Fin edges `{ front: 7 1/2", rear: null }`. */
+function wingedFish(system: UnitsSystem) {
+  const preset = BOARD_PRESETS.find((p) => p.id === "fish");
+  if (!preset) throw new Error("no Fish preset");
+  const depth = inchesToMm(3 / 16);
+  const wing1: Wing = {
+    station: inchesToMm(7.5),
+    depth,
+    run: inchesToMm(1 / 4),
+    radius: mm(0),
+    lock: "front-trailing",
+    finOffset: mm(0),
+  };
+  const wing2: Wing = {
+    station: inchesToMm(4.5),
+    depth,
+    run: inchesToMm(1 / 2),
+    radius: wingRadiusTop({ depth, run: inchesToMm(1 / 2) }, "imperial"),
+    lock: null,
+    finOffset: mm(0),
+  };
+  const outline = { ...preset.outline, wings: [wing1, wing2] };
+  const geometry = buildOutline(outline);
+  const figures = wingFigures(placedWings(outline.wings, geometry), { front: inchesToMm(7.5), rear: null }, system);
+  return { preset, outline, geometry, figures };
+}
+
+const NB = "  ";
+
+describe("the Overview Sheet lists each wing (quick 261015-sei)", () => {
+  it("prints today's list when no wings are handed over, for every preset", () => {
+    for (const preset of BOARD_PRESETS) {
+      const geometry = buildOutline(preset.outline);
+      for (const system of ["imperial", "metric"] as const) {
+        const today = overviewSpecLines(preset.outline, geometry, system);
+        expect(overviewSpecLines(preset.outline, geometry, system, [])).toEqual(today);
+        expect(today.some((l) => l.startsWith("Wing "))).toBe(false);
+      }
+    }
+  });
+
+  it("puts the wing lines between Swallow Depth and Tail Angle, the card's rows one per line", () => {
+    const { outline, geometry, figures } = wingedFish("imperial");
+    const lines = overviewSpecLines(outline, geometry, "imperial", figures);
+    const from = lines.findIndex((l) => l.startsWith("Swallow Depth:"));
+    const to = lines.findIndex((l) => l.startsWith("Tail Angle:"));
+    expect(from).toBeGreaterThan(-1);
+    expect(lines.slice(from + 1, to)).toEqual([
+      'Wing 1 · Fin: 3/16" @ 7 1/2"',
+      `${NB}Run: 1/4"`,
+      `${NB}Radius: 0"`,
+      `${NB}Offset: 0"`,
+      'Wing 2: 3/16" @ 4 1/2"',
+      `${NB}Run: 1/2"`,
+      `${NB}Radius: ${figures[1].radius}`,
+    ]);
+  });
+
+  it("reads the position in centimetres and the rest in whole millimetres on Metric", () => {
+    const { outline, geometry, figures } = wingedFish("metric");
+    const lines = overviewSpecLines(outline, geometry, "metric", figures);
+    expect(lines).toContain("Wing 1 · Fin: 5 mm @ 19.1 cm");
+    expect(lines).toContain(`${NB}Run: 6 mm`);
+    expect(lines).toContain("Wing 2: 5 mm @ 11.4 cm");
+  });
+
+  it("follows a diamond tail's Diamond Depth line", () => {
+    const { outline, figures } = wingedFish("imperial");
+    const diamond = { ...outline, tail: { kind: "diamond" as const, endWidth: inchesToMm(10), depth: inchesToMm(3) } };
+    const lines = overviewSpecLines(diamond, buildOutline(diamond), "imperial", figures);
+    const from = lines.findIndex((l) => l.startsWith("Diamond Depth:"));
+    expect(from).toBeGreaterThan(-1);
+    expect(lines[from + 1]).toBe('Wing 1 · Fin: 3/16" @ 7 1/2"');
+    expect(lines.findIndex((l) => l.startsWith("Tail Angle:"))).toBe(from + 8);
+  });
+
+  it("keeps every wing line whole in the 60 mm courier column, indent intact", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      const { outline, geometry, figures } = wingedFish(system);
+      const doc = new jsPDF({ unit: "mm", format: "letter" });
+      doc.setFont("courier", "normal");
+      doc.setFontSize(9);
+      const wingLines = overviewSpecLines(outline, geometry, system, figures).filter(
+        (l) => l.startsWith("Wing ") || l.startsWith(NB),
+      );
+      expect(wingLines.length).toBe(7);
+      for (const line of wingLines) expect(wrapTextToWidth(line, 60, doc)).toEqual([line]);
+    }
+  });
+
+  it("builds one page whose own text carries the wing lines", () => {
+    const { preset, outline, geometry, figures } = wingedFish("imperial");
+    const doc = buildOverviewPdf({ geometry, outline, paper: "letter", boardName: preset.name, system: "imperial", wings: figures });
+    expect(doc.getNumberOfPages()).toBe(1);
+    const text = String(doc.output());
+    expect(text).toContain('Wing 2: 3/16" @ 4 1/2"');
+    expect(text).toContain('Run: 1/4"');
   });
 });

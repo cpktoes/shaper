@@ -50,6 +50,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
+import { wingFigures } from "@/lib/geometry/wing-figures";
+import { placedWings } from "@/lib/geometry/wings";
 import { useUnits } from "@/components/units-provider";
 import { downloadOverviewPdf } from "@/components/template/build-overview-pdf";
 import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
@@ -132,7 +134,8 @@ function computeDiagramSizing(layout: TemplateLayout): DiagramSizing {
 }
 
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
-  const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres } = useDesign();
+  const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres, wingFinEdges } =
+    useDesign();
   const { system } = useUnits();
   const [open, setOpen] = useState(false);
   const [artifact, setArtifact] = useState<ExportArtifact>("full");
@@ -158,6 +161,11 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const layout = useMemo(() => computeTemplateLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
   const stripLayout = useMemo(() => computeStripLayout(outlineGeometry, paperSize), [outlineGeometry, paperSize]);
   const diagram = useMemo(() => computeDiagramSizing(layout), [layout]);
+  // The wings the board draws and their printed figures, worked out once and handed to all three
+  // printouts so the Overview Sheet, the Full Sized Template and the Paper Saver can never disagree
+  // about a wing (quick 261015-sei, 2026-10-15, P8 — the founder: "Same as WINGS card").
+  const placed = useMemo(() => placedWings(outline.wings ?? [], outlineGeometry), [outline.wings, outlineGeometry]);
+  const wings = useMemo(() => wingFigures(placed, wingFinEdges, system), [placed, wingFinEdges, system]);
   const pageCount = layout.pages.length;
   const stripPageCount = stripLayout.pages.length;
 
@@ -192,6 +200,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             paper: paperSize,
             boardName,
             system,
+            wings,
           });
         } else if (artifact === "strip") {
           downloadStripPdf({
