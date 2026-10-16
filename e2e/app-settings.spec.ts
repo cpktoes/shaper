@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { blankPicker, openBlankPicker, openRocker } from "./helpers/blank-picker";
 import { appSettingsDialog, appSettingsRow, openAppSettings, openSettingsMenu, settled } from "./helpers/settings";
 
 /**
@@ -239,9 +240,14 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
     await field.click();
     await field.fill("5");
     await field.press("Enter");
-    const empty = page.locator("[data-blank-list-empty]");
-    await expect(empty).toBeVisible();
-    await empty.getByRole("button", { name: "Change Fit Rules" }).click();
+    // Every Arctic blank is listed, greyed — none is thick enough at a 5" center — so the popup shows
+    // the "No blank is thick enough" message above the cards (quick 261015-ve9, P-3). Its Change Fit
+    // Rules closes the popup first, then opens App Default Settings.
+    const picker = await openBlankPicker(page);
+    const thin = picker.locator("[data-blank-list-thin]");
+    await expect(thin).toBeVisible();
+    await thin.getByRole("button", { name: "Change Fit Rules" }).click();
+    await expect(blankPicker(page)).toBeHidden();
 
     const opened = appSettingsDialog(page);
     await expect(opened).toBeVisible();
@@ -377,15 +383,3 @@ function liveColour(page: Page, name: string) {
   return colourOf(page, name, true);
 }
 
-/** ROCKER, once its streamed blank list has arrived and React owns it (blank-makers.spec.ts). */
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(page.getByRole("list", { name: "Blanks" })).toBeVisible({ timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}

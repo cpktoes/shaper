@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * 09-04's own proof, mirroring the dismiss-the-banner helper e2e/phone-layout.spec.ts and
@@ -628,24 +629,16 @@ test.describe("ROCKER DATASHEET on a phone — the same sideways-scrolling box (
   // Plan 11-12 (D-16, 11-UI-SPEC §11): with a blank picked the DATASHEET grows to ten rows in four
   // blocks (Phase 12 D-06 split the old Foam Off row into FOAM OFF's Deck and Bottom), and its row
   // names are sticky — scrolled all the way to the Tail Tip column, a shaper can still read which
-  // row is Bottom, the sheet's last. Picks "the first row under FITS THIS BOARD", whatever the
+  // row is Bottom, the sheet's last. Picks "the first card under FITS THIS BOARD", whatever the
   // catalogue calls it.
   test("the ROCKER DATASHEET with a blank still scrolls sideways at 360px, and its row names stay in view", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 700 });
-    await page.goto("/design/rocker");
-    const list = page.getByRole("list", { name: "Blanks" });
-    await expect(list).toBeVisible({ timeout: 30_000 });
-    // The streamed list is live only once React owns it — a tap before then is lost.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
-    const firstFit = list.locator('li[data-group="fits"] button').first();
-    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
-    await firstFit.click();
-    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+    // The streamed BLANK button is live only once React owns it — a tap before then is lost; the
+    // pick goes through the PICK A BLANK popup (quick 261015-ve9).
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
 
     await page.getByRole("tab", { name: "DATASHEET" }).click();
     const tableBox = page.locator("main .overflow-x-auto").first();

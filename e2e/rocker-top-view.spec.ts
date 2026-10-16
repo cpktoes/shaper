@@ -1,4 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * The browser proof for ROCKER's top view (quick 261006-qfm): the picked blank seen from above,
@@ -23,7 +24,7 @@ import { devices, expect, test, type Locator, type Page } from "@playwright/test
  *   VIEWER.
  *
  * Every describe title carries "261006-qfm". No blank name or catalogue number is typed here: the
- * tests pick "the first row under FITS THIS BOARD", exactly as `rocker-blanks.spec.ts` does.
+ * tests pick "the first card under FITS THIS BOARD" through `helpers/blank-picker.ts` (quick 261015-ve9).
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -38,45 +39,6 @@ async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
-}
-
-/** The list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** The picked-blank card (state C). */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered and becomes live only once React hydrates it — a tap
-  // before then is lost — so wait until React owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-/** Picks the first fitting blank and returns its name as the page shows it. */
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const name = (await row.locator("[data-blank-name]").innerText()).trim();
-  expect(name.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(pickedCard(page)).toContainText(name);
-  return name;
 }
 
 /** A `SliderRow`'s slider, found by the start of its label line. */

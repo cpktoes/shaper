@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
+import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-15 (quick 261015-ve9) — ROCKER only, `rocker-desktop.png`, for picking a blank
+ * from a popup of drawn blanks (sketch 015 B): the BLANK section is now one "Pick a Blank" button
+ * with its count line ("196 blanks long enough for this board, 194 fit") and BROWSE BLANKS ›, where
+ * the list intro, the search box and the first rows used to be, so the sections under it (BOARD ON
+ * BLANK, ROCKER) move up into view. Old and new were compared by eye before committing: the top bar,
+ * the CENTER THICKNESS section, the BLANK heading and the whole drawing side are unchanged; only the
+ * sidebar from the BLANK heading down moved. TEMPLATE, RAILS, VOLUME and FINS were not re-recorded.
+ * ROCKER went from 9e8879e5… to 950cf2d2… (SHA-256). The new PNG was rendered by the webpack dev
+ * server (`IS_WEBPACK_TEST=1`, port 3181) in the 261015-ve9 worktree on this Mac; if the
+ * orchestrator's Turbopack run from the main checkout disagrees, it may re-record ROCKER once there.
+ *
  * RE-RECORDED 2026-10-10 (quick task 261010-km7) — all five, on the founder's standing go ("push all
  * when live"), for the founder's new logo: "shaperassistant.com" replaces SHAPER ASSISTANT at the
  * left of the top bar. Compared old against new before committing: exactly 1851 changed pixels on
@@ -125,22 +137,12 @@ test.describe("desktop baseline screenshots", () => {
   });
 
   test("ROCKER (/design/rocker)", async ({ page }) => {
-    await page.goto("/design/rocker");
+    // The BLANK button streams in after the page (Phase 11): wait for it with the catalogue judged,
+    // and for React to own it, so the picture is the screen a shaper sees once it has loaded — never
+    // the "Loading blanks…" line, and never a hydration mismatch's red "1 Issue" badge from the
+    // screenshot touching the page before the boundary hydrated (quick 261015-ve9: `openRocker`).
+    await openRocker(page);
     await expect(page.locator("svg").first()).toBeVisible();
-    // The blank list streams in after the page (Phase 11): wait for it, so the picture is the
-    // screen a shaper sees once it has loaded, never the "Loading blanks…" line.
-    await expect(page.getByRole("list", { name: "Blanks" })).toBeVisible({ timeout: 30_000 });
-    // ...and wait for React to take over the list and the search box before the screenshot. The
-    // screenshot hides the text caret by touching the page; done before the list's boundary has
-    // hydrated, React sees server HTML it didn't write, reports a hydration mismatch, and the dev
-    // server's red "1 Issue" badge lands in the picture (seen in this plan's first recording).
-    await page.waitForFunction(() => {
-      const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-      return (
-        owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-        owned(document.querySelector('input[aria-label="Search blanks"]'))
-      );
-    });
     await expect(page).toHaveScreenshot("rocker-desktop.png");
   });
 

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * TEST-01's automated proof that a real touch drag moves the board (PHON-04): the touchscreen
@@ -727,24 +728,15 @@ const HIDE_TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
 
 /**
  * Opens ROCKER with the sign-in banner and toolbar tip already dismissed (so neither shifts
- * anything under a thumb), waits for the streamed blank list and for React to own its first row
- * (a tap before hydration is lost — the same wait `openRocker` in e2e/rocker-blanks.spec.ts makes),
- * then taps the first blank under FITS THIS BOARD and waits for the board to sit centred in it.
+ * anything under a thumb), waits for the streamed BLANK button and for React to own it (a tap before
+ * hydration is lost — `openRocker` in e2e/helpers/blank-picker.ts), then picks the first blank under
+ * FITS THIS BOARD from the PICK A BLANK popup and waits for the board to sit centred in it.
  */
 async function openRockerWithFirstFittingBlank(page: Page) {
   await page.addInitScript((key) => window.sessionStorage.setItem(key, "true"), SIGN_IN_BANNER_DISMISSAL_KEY);
   await page.addInitScript((key) => window.localStorage.setItem(key, "true"), HIDE_TOOLBAR_TIP_DISMISSAL_KEY);
-  await page.goto("/design/rocker");
-  const list = page.getByRole("list", { name: "Blanks" });
-  await expect(list).toBeVisible({ timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
-    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-  });
-  const firstFit = list.locator('li[data-group="fits"] button').first();
-  const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
-  await firstFit.click();
-  await expect(page.locator("[data-picked-blank]")).toContainText(name);
+  await openRocker(page);
+  await pickFirstFittingBlank(page);
   await expect(page.getByText("Placement — centered")).toBeVisible();
 }
 
