@@ -454,7 +454,7 @@ test.describe("PICK A BLANK — the filter bar on a computer (D-07, D-12)", () =
   test("the turn button stands every card up with its facts beside it, remembered across a reload; turned back, the table returns", async ({ page }) => {
     await openRocker(page);
     let dialog = await openBlankPicker(page);
-    // One button with TEMPLATE's rotate glyph (fast 166): its name says what the next press does.
+    // One button with TEMPLATE's rotate glyph (fast 167): its name says what the next press does.
     await expect(dialog.locator("[data-drawn-toggle]")).toHaveAttribute("data-drawn-toggle", "flat");
     await expect(dialog.locator("[data-drawn-toggle] svg")).toHaveCount(1);
     await dialog.getByRole("button", { name: "Stand the blanks upright" }).click();

@@ -538,7 +538,7 @@ export function emptyListMessage(
  * bottom pass. Reworded in quick 261015-ve9 (P-2, 2026-10-15): "Shortest first" and "each has room at
  * the center" stopped being true once too-thin blanks are listed greyed and plan 02 adds other sorts.
  * Its last sentence names where those blanks sit — at the end, under WON'T FIT THIS BOARD — rather
- * than calling them "greyed" (the founder, 2026-10-16, fast 165).
+ * than calling them "greyed" (the founder, 2026-10-16, fast 166).
  */
 export function listIntro(rules: CenterFloorRules, system: UnitsSystem): string {
   return (

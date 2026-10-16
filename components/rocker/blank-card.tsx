@@ -348,7 +348,7 @@ export function BlankCard({
           </div>
           {maker}
           {onBoardMark}
-          {/* The blank fills the card's width; its own proportions set the drawing's height (fast 162). */}
+          {/* The blank fills the card's width; its own proportions set the drawing's height (fast 163). */}
           <div>
             <BlankArt art={art} ghost={ghost} />
           </div>

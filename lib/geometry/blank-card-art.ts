@@ -38,7 +38,7 @@ export interface CardBox {
   pad: number;
   gap: number;
   /**
-   * Fill the box along the blank's length and let the box's other side follow the blank (fast 162,
+   * Fill the box along the blank's length and let the box's other side follow the blank (fast 163,
    * the founder 2026-10-16: "make the blanks fill the card width like the sketch"): the blank is
    * scaled to the box's length-wise room alone, and the drawing's box comes back with its
    * across-the-blank size set by the blank's own proportions — a short wide blank's drawing grows a
@@ -52,7 +52,7 @@ export interface CardBox {
 export const FLAT_CARD_BOX: CardBox = { width: 320, height: 103, pad: 4, gap: 8 };
 
 /** A card's drawing lying flat as the popup draws it: FLAT_CARD_BOX's width and padding, the blank
- * filling the card's width, the height following the blank (fast 162). */
+ * filling the card's width, the height following the blank (fast 163). */
 export const FLAT_CARD_FILL_BOX: CardBox = { ...FLAT_CARD_BOX, fillAlong: true };
 
 /** A card's drawing standing upright, nose up (plan 02's Upright switch). */
@@ -140,7 +140,7 @@ export function blankCardArt(prepared: PreparedBlank, pose: CardPose, box: CardB
   const alongRoom = (pose === "flat" ? box.width : box.height) - 2 * box.pad;
   const acrossRoom = (pose === "flat" ? box.height : box.width) - 2 * box.pad - box.gap;
   const scale = box.fillAlong ? alongRoom / L : Math.min(alongRoom / L, across > 0 ? acrossRoom / across : Infinity);
-  // Filling along the length, the drawing's box takes its other side from the blank (fast 162).
+  // Filling along the length, the drawing's box takes its other side from the blank (fast 163).
   const acrossSize = across * scale + box.gap + 2 * box.pad;
   const drawn: CardBox = !box.fillAlong ? box : pose === "flat" ? { ...box, height: acrossSize } : { ...box, width: acrossSize };
 

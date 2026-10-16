@@ -253,7 +253,7 @@ describe("boardOnBlankArt — the shaper's board on the blank (D-04)", () => {
   });
 });
 
-describe("blankCardArt — filling the card's width (fast 162, the founder 2026-10-16)", () => {
+describe("blankCardArt — filling the card's width (fast 163, the founder 2026-10-16)", () => {
   // "make the blanks fill the card width like the sketch": every blank spans the box's width less its
   // padding, and the drawing's height follows the blank's own proportions — still one scale both ways.
   const LONGEST = PICKABLE.reduce((a, b) => (b.lengthMm > a.lengthMm ? b : a));
