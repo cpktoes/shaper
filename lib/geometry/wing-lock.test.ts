@@ -375,3 +375,174 @@ describe("a wing's corner radius never moves a fin or a locked wing (quick 26101
     }
   });
 });
+
+// ---------------------------------------------------------------------------------------------
+// The radius sweeps (quick 261015-u8y, Task 2): every fin setup, every radius on the 1/16" grid.
+// ---------------------------------------------------------------------------------------------
+
+/** The fins exactly as the design store places them: stations resolved, the board sharpened for the
+ * fins (`outlineForFins`), the 12" width and the tail read off the sharpened outline. */
+function finsAsTheScreenReads(outline: OutlineSpec, fins: FinPlacementSpec, importTemplate = true) {
+  const resolved = resolveWingStations(outline, fins, importTemplate).outline;
+  const finOutline = outlineForFins(resolved);
+  const g = buildOutline(finOutline);
+  const effective = deriveEffectiveFins(fins, importTemplate, finOutline, g);
+  const placement = computeFinPlacement(effective, importTemplate ? importedFinTailFromOutline(g) : null);
+  return { stations: (resolved.wings ?? []).map((w) => w.station), tailWidth12: effective.tailWidth12, placement };
+}
+
+/** The same on the rounded outline itself — what the fins read before this change. Used only to
+ * prove each sweep is not vacuous: the rounded read really does differ from radius 0. */
+function finsOnTheRoundedOutline(outline: OutlineSpec, fins: FinPlacementSpec, importTemplate = true) {
+  const resolved = resolveWingStations(outline, fins, importTemplate).outline;
+  const g = buildOutline(resolved);
+  const effective = deriveEffectiveFins(fins, importTemplate, resolved, g);
+  return computeFinPlacement(effective, importTemplate ? importedFinTailFromOutline(g) : null);
+}
+
+interface SweepBoard {
+  name: string;
+  outline: OutlineSpec;
+  fins: FinPlacementSpec;
+  /** The wings with their radius at 0; the sweep sets each radius itself. */
+  wings: Wing[];
+}
+
+const SWEEP_GRID_MM = inchesToMm(1 / 16);
+
+/** The board with each wing's radius set; the rest of every wing untouched. */
+function withRadii(board: SweepBoard, radii: readonly number[]): OutlineSpec {
+  return { ...board.outline, wings: board.wings.map((w, i) => ({ ...w, radius: mm(radii[i]) })) };
+}
+
+/** Every radius a wing's slider offers on the Imperial grid: 0, 1/16", … up to `wingRadiusTop`. */
+function radiusSteps(w: Wing): number[] {
+  const steps = Math.round(wingRadiusTop(w, "imperial") / SWEEP_GRID_MM);
+  return Array.from({ length: steps + 1 }, (_, k) => k * SWEEP_GRID_MM);
+}
+
+/** Every combination of the wings' radii (one list for a single wing, the product for two). */
+function radiusCombinations(board: SweepBoard): number[][] {
+  return board.wings.reduce<number[][]>(
+    (combos, w) => combos.flatMap((c) => radiusSteps(w).map((r) => [...c, r])),
+    [[]],
+  );
+}
+
+/** The two wings "+ Add a wing" makes on a board, from the fins it has with no wings (radius 0 on both). */
+function addedWings(outline: OutlineSpec, fins: FinPlacementSpec, count: 1 | 2): Wing[] {
+  const edges = edgesOf(outline, fins);
+  const g = buildOutline(outline);
+  const first = nextWing([], edges, g, "imperial");
+  const wings = count === 1 ? [first] : [first, nextWing([first], edges, g, "imperial")];
+  return wings.map((w) => ({ ...w, radius: mm(0) }));
+}
+
+const FISH = BOARD_PRESETS.find((p) => p.id === "fish")!;
+const THRUSTER_FINS: FinPlacementSpec = DEFAULT_FIN_PLACEMENT_SPEC;
+const MID_FINS: FinPlacementSpec = MIDLENGTH.fins;
+const MID_MCKEE: FinPlacementSpec = { ...MIDLENGTH.fins, quadRearModel: "mckeeSB" };
+const DEFAULT_MCKEE_QUAD: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "quad", quadRearModel: "mckeeSB" };
+const DEFAULT_BASIC_QUAD: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "quad", quadRearModel: "basicOffRail" };
+const SHORTBOARD_2PLUS1: FinPlacementSpec = { ...SHORTBOARD.fins, finSetup: "2plus1" };
+const SHORTBOARD_MCKEE_QUAD: FinPlacementSpec = { ...SHORTBOARD.fins, finSetup: "quad", quadRearModel: "mckeeSB" };
+
+const midWings = addedWings(MIDLENGTH.outline, MID_FINS, 2);
+const unlocked = (wings: Wing[]): Wing[] => wings.map((w) => ({ ...w, lock: null, finOffset: mm(0) }));
+
+const SWEEP_BOARDS: SweepBoard[] = [
+  { name: "Mid-length (Basic off-rail quad), nextWing's two wings", outline: MIDLENGTH.outline, fins: MID_FINS, wings: midWings },
+  {
+    name: "Mid-length, both wings 3/8 deep with a 1/2 run (the founder's my3 shape)",
+    outline: MIDLENGTH.outline,
+    fins: MID_FINS,
+    wings: midWings.map((w) => ({ ...w, depth: inchesToMm(3 / 8), run: inchesToMm(1 / 2) })),
+  },
+  { name: "Mid-length outline, McKee SB quad", outline: MIDLENGTH.outline, fins: MID_MCKEE, wings: addedWings(MIDLENGTH.outline, MID_MCKEE, 2) },
+  { name: "default board, McKee SB quad", outline: DEFAULT_BOARD_SPEC.outline, fins: DEFAULT_MCKEE_QUAD, wings: addedWings(DEFAULT_BOARD_SPEC.outline, DEFAULT_MCKEE_QUAD, 2) },
+  { name: "default board, Basic off-rail quad", outline: DEFAULT_BOARD_SPEC.outline, fins: DEFAULT_BASIC_QUAD, wings: addedWings(DEFAULT_BOARD_SPEC.outline, DEFAULT_BASIC_QUAD, 2) },
+  { name: "default thruster, wing 2 by hand", outline: DEFAULT_BOARD_SPEC.outline, fins: THRUSTER_FINS, wings: addedWings(DEFAULT_BOARD_SPEC.outline, THRUSTER_FINS, 2) },
+  { name: "Fish (twin), one wing", outline: FISH.outline, fins: FISH.fins, wings: addedWings(FISH.outline, FISH.fins, 1) },
+  { name: "Shortboard as a 2+1, one wing", outline: SHORTBOARD.outline, fins: SHORTBOARD_2PLUS1, wings: addedWings(SHORTBOARD.outline, SHORTBOARD_2PLUS1, 1) },
+  {
+    name: "narrow squash McKee SB quad (the lock's feedback loop)",
+    outline: NARROW,
+    fins: DEFAULT_MCKEE_QUAD,
+    wings: [wingWith(12.5, 3 / 16, 1 / 4, 0, "front-trailing", 1), wingWith(5.6, 3 / 16, 1 / 2, 0, "rear-trailing", 0)],
+  },
+  { name: "Mid-length with both wings unlocked at the same stations", outline: MIDLENGTH.outline, fins: MID_FINS, wings: unlocked(midWings) },
+  {
+    name: "Shortboard McKee SB quad, one hand-placed wing whose fade covers the 12 inch station",
+    outline: SHORTBOARD.outline,
+    fins: SHORTBOARD_MCKEE_QUAD,
+    wings: [wingWith(20, 3 / 8, 1 / 2, 0, null, 0)],
+  },
+];
+
+describe("every fin setup: a corner radius never moves a fin; position, depth and run still do (quick 261015-u8y, D2, D3)", () => {
+  it("there are eleven boards in the sweep", () => {
+    expect(SWEEP_BOARDS).toHaveLength(11);
+  });
+
+  it.each(SWEEP_BOARDS)("radius sweep: $name", (board) => {
+    const sharp = finsAsTheScreenReads(withRadii(board, board.wings.map(() => 0)), board.fins);
+    const combos = radiusCombinations(board);
+    expect(combos.length).toBeGreaterThan(1);
+    for (const radii of combos) {
+      const read = finsAsTheScreenReads(withRadii(board, radii), board.fins);
+      expect(read.placement).toEqual(sharp.placement);
+      expect(read.tailWidth12).toBe(sharp.tailWidth12);
+      expect(read.stations).toEqual(sharp.stations);
+    }
+    // Not vacuous: read off the rounded outline itself, the wings' top radii really do move a fin.
+    const tops = board.wings.map((w) => wingRadiusTop(w, "imperial"));
+    const rounded = finsOnTheRoundedOutline(withRadii(board, tops), board.fins);
+    const flat = finsOnTheRoundedOutline(withRadii(board, board.wings.map(() => 0)), board.fins);
+    expect(rounded.marks).not.toEqual(flat.marks);
+  });
+
+  describe("the Mid-length's rear-locked wing 2 (offset +1 inch): position, depth and run still move the rear fins", () => {
+    const base = (): Wing[] => [midWings[0], { ...midWings[1], finOffset: inchesToMm(1) }];
+    const rearMarks = (wings: Wing[]) =>
+      finsAsTheScreenReads({ ...MIDLENGTH.outline, wings }, MID_FINS).placement.marks.filter((m) => m.role === "rear");
+    const sharpBase = rearMarks(base());
+
+    it("depth 3/16 to 1/4, run 1/2 to 3/4 and offset +1 to +1 1/4 each move them (F2)", () => {
+      const [first, second] = base();
+      expect(rearMarks([first, { ...second, depth: inchesToMm(1 / 4) }])).not.toEqual(sharpBase);
+      expect(rearMarks([first, { ...second, run: inchesToMm(3 / 4) }])).not.toEqual(sharpBase);
+      expect(rearMarks([first, { ...second, finOffset: inchesToMm(1.25) }])).not.toEqual(sharpBase);
+    });
+
+    it("radius 0 and the top radius place them identically", () => {
+      const [first, second] = base();
+      const top = wingRadiusTop(second, "imperial");
+      expect(rearMarks([first, { ...second, radius: top }])).toEqual(rearMarks([first, { ...second, radius: mm(0) }]));
+    });
+  });
+
+  it("a wing exactly at the rear fins' trailing edge: its position moves the fins, its depth and run do not (F2)", () => {
+    // The founder: "It's the wing position that does." A sharp step takes nothing at its outer
+    // corner, which is 261014-wii D8's own behaviour: a wing AT the fin's trailing edge leaves the
+    // trailing mark on the wider rail.
+    const board = SWEEP_BOARDS[9];
+    const [first, second] = board.wings;
+    const rearMarks = (w2: Wing) =>
+      finsAsTheScreenReads({ ...board.outline, wings: [first, w2] }, board.fins).placement.marks.filter((m) => m.role === "rear");
+    const home = rearMarks(second);
+    expect(rearMarks({ ...second, station: mm(second.station + inchesToMm(1 / 4)) })).not.toEqual(home);
+    expect(rearMarks({ ...second, depth: inchesToMm(1 / 4) })).toEqual(home);
+    expect(rearMarks({ ...second, run: inchesToMm(3 / 4) })).toEqual(home);
+  });
+
+  it("no wings: the fins are placed exactly as they were, from the very same outline object (D3)", () => {
+    const boards = [
+      { outline: DEFAULT_BOARD_SPEC.outline, fins: DEFAULT_FIN_PLACEMENT_SPEC },
+      ...BOARD_PRESETS.map((p) => ({ outline: p.outline, fins: p.fins })),
+    ];
+    for (const { outline, fins } of boards) {
+      expect(outlineForFins(outline)).toBe(outline);
+      expect(finsAsTheScreenReads(outline, fins).placement).toEqual(placeFins(outline, fins));
+    }
+  });
+});
