@@ -386,14 +386,15 @@ function mainArt(device, g, opts = {}) {
   const W = upright ? 386 : device === "side" ? 530 : 880, H = upright ? 330 : device === "side" ? 220 : 420;
   const r = g.r || state.rocker, custom = !isNatural(r);
   const lo = Math.min(0, g.start), hi = Math.max(g.L, g.start + g.bl.lengthIn), span = hi - lo;
-  const along = upright ? H - 36 : W - 110, k = along / span;
+  const margin = overlay && !upright ? 120 : 55;
+  const along = upright ? H - 36 : W - 2 * margin, k = along / span;
   // the board's height axis at the same scale (true proportion, as the app draws it)
   const maxUp = Math.max(...g.blankBottom.map((p) => p[1] + p[2]), ...g.boardRocker.map((p) => p[1] + p[2])) + 0.2;
   const minDn = Math.min(0, ...g.blankBottom.map((p) => p[1]), ...g.boardRocker.map((p) => p[1])) - 0.2;
   const mid = upright ? W / 2 : H / 2 + 10;
   const X = upright ? (s) => mid - ((maxUp + minDn) / 2) * k : null;
   // horizontal: x along, y up.  upright: y along (nose at the top), x = height (deck to the right? the app draws deck to the right of the bottom)
-  const P = upright ? (s, h) => [mid + (h - (maxUp + minDn) / 2) * k, H - 14 - (s - lo) * k] : (s, h) => [55 + (s - lo) * k, mid - (h - (maxUp + minDn) / 2) * k];
+  const P = upright ? (s, h) => [mid + (h - (maxUp + minDn) / 2) * k, H - 14 - (s - lo) * k] : (s, h) => [margin + (s - lo) * k, mid - (h - (maxUp + minDn) / 2) * k];
   const path = (pts, f) => pts.map((p, i) => { const [x, y] = P(p[0], f(p)); return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`; }).join("");
   const blankOutline = path(g.blankBottom, (p) => p[1]) + path([...g.blankBottom].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L") + "Z";
   const boardOutline = path(g.boardRocker, (p) => p[1]) + path([...g.boardRocker].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L") + "Z";
@@ -421,25 +422,34 @@ function mainArt(device, g, opts = {}) {
     }
   }
   if (!showBoard) {
-    // the blank alone: its own five stations — tail tip, 12" in, the centre's zero reference, 12" in, nose tip —
-    // reading the rocker as ordered, with the natural figure small beneath (the founder, round thirteen)
+    // the blank alone: all its dimensions at its own five stations — the blank's printed thickness as chips on one
+    // rail, the rocker as ordered on the other, the centre's zero reference included (the founder, rounds 13–14)
     const Lb = g.bl.lengthIn, C = g.bl.centreFromTailIn;
-    const stations = [[0, "Tail Tip"], [12, `Tail @ ${M() ? "30.5 cm" : '12"'}`], [C, "Center"], [Lb - 12, `Nose @ ${M() ? "30.5 cm" : '12"'}`], [Lb, "Nose Tip"]];
-    for (const [x, name] of stations) {
-      const sx = x + g.start, nat = g.natAt(x), cus = g.blankLev(x), isCentre = x === C;
+    const thick = (label) => { const st = g.bl.stations.find((x) => x.label === label); return st && st.thickIn !== null ? st.thickIn : null; };
+    const stations = [[0, "Tail Tip", "T0", "out-"], [12, `Tail @ ${M() ? "30.5 cm" : '12"'}`, "T12", "in+"], [C, "Center", "C", "mid"], [Lb - 12, `Nose @ ${M() ? "30.5 cm" : '12"'}`, "N12", "in-"], [Lb, "Nose Tip", "N0", "out+"]];
+    for (const [x, name, label, side] of stations) {
+      const sx = x + g.start, nat = g.natAt(x), cus = g.blankLev(x), isCentre = x === C, th = thick(label);
       const i = g.blankBottom.findIndex((p) => p[0] >= sx - 0.01); const p0 = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i < 0 ? g.blankBottom.length - 1 : i))];
-      // lying flat: the tips read on the top rail (free with no board drawn), the centre and the 12" stations below
-      const isTip = x === 0 || x === Lb, top = !upright && isTip;
-      const [tx, ty] = P(sx, top ? p0[1] + p0[2] : p0[1]);
-      const anchor = upright ? "end" : "middle", lx = upright ? 70 : tx, ly = upright ? ty : top ? 30 : H - 30;
-      if (upright) out += `<line x1="${tx}" y1="${ty}" x2="${lx + 6}" y2="${ty}" stroke="var(--line-faint)"/>`;
-      else if (top) out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly + 14}" stroke="var(--line-faint)"/>`;
-      else out += `<line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ly - 14}" stroke="var(--line-faint)"/>`;
+      const [bx, by] = P(sx, p0[1]), [dx, dy] = P(sx, p0[1] + p0[2]);
       const value = isCentre ? (M() ? "0 mm" : '0"') : mark(cus);
       const sub = isCentre ? `${name} · zero` : custom && Math.abs(cus - nat) > 1e-9 ? `${name} · natural ${mark(nat)}` : name;
-      out += `<text x="${lx}" y="${ly + (upright ? 1 : 0)}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(value)}</text><text x="${lx}" y="${ly + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(sub)}</text>`;
+      const thickText = th === null ? "—" : mark(th);
+      if (!upright) {
+        // lying flat: the tips' rocker reads anchored outward and the 12" stations' inward, so neighbours never meet
+        const railT = 34, railR = H - 30;
+        const anchor = side === "out-" ? "end" : side === "out+" ? "start" : side === "in+" ? "start" : side === "in-" ? "end" : "middle";
+        const lx = side === "out-" ? bx - 4 : side === "out+" ? bx + 4 : side === "in+" ? bx + 4 : side === "in-" ? bx - 4 : bx;
+        const cx = side === "out-" ? dx - 14 : side === "out+" ? dx + 14 : dx;
+        out += `<line x1="${dx}" y1="${dy}" x2="${cx}" y2="${railT + 18}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${cx - 27}" y="${railT - 12}" width="54" height="30" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${cx}" y="${railT - 1}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${cx}" y="${railT + 11}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(thickText)}</text>`;
+        out += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${railR - 14}" stroke="var(--line-faint)" stroke-width="1"/><text x="${lx}" y="${railR}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(value)}</text><text x="${lx}" y="${railR + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(sub)}</text>`;
+      } else {
+        const railL = 70, railR = W - 70;
+        out += `<line x1="${bx}" y1="${by}" x2="${railL + 6}" y2="${by}" stroke="var(--line-faint)" stroke-width="1"/><text x="${railL}" y="${by + 1}" font-size="11" font-weight="700" text-anchor="end" fill="var(--color-text)">${esc(value)}</text><text x="${railL}" y="${by + 11}" font-size="7.5" text-anchor="end" fill="var(--color-text-muted)">${esc(sub)}</text>`;
+        out += `<line x1="${dx}" y1="${dy}" x2="${railR - 6}" y2="${dy}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${railR - 4}" y="${dy - 14}" width="66" height="28" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${railR + 29}" y="${dy - 3}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${railR + 29}" y="${dy + 9}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(thickText)}</text>`;
+      }
     }
-    if (!upright) out += `<text x="${W - 8}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="end" fill="var(--color-text-muted)">BOTTOM PLANE · AS ORDERED</text>`;
+    if (!upright) { const [cx] = P(g.start + Lb / 2, 0); out += `<text x="${cx}" y="16" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BLANK THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BLANK ROCKER · AS ORDERED</text>`; }
+    else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
   }
   if (showBoard) out += `<path d="${boardOutline}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
   // the five stations: thickness chips on one rail, rocker readings on the other (the app's grammar)
@@ -461,11 +471,6 @@ function mainArt(device, g, opts = {}) {
   else if (!upright) { const [cx] = P(g.L / 2, 0); out += `<text x="${cx}" y="${16}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text>`; }
   else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
   // the key, only when a custom rocker is set
-  if (custom && overlay && !upright) {
-    const hasSecond = r.nose.length > 1 && r.nose[1].a || r.tail.length > 1 && r.tail[1].a;
-    const kx = 8, ky = H - 6;
-    out += `<g font-size="8" fill="var(--color-text-muted)"><line x1="${kx}" y1="${ky}" x2="${kx + 18}" y2="${ky}" stroke="var(--blank-line)" stroke-dasharray="5 4"/><text x="${kx + 22}" y="${ky + 3}">natural rocker</text>${overlay ? `<line x1="${kx + 84}" y1="${ky}" x2="${kx + 102}" y2="${ky}" stroke="var(--adj-1)" stroke-width="1.6"/><text x="${kx + 106}" y="${ky + 3}">first</text>${hasSecond ? `<line x1="${kx + 130}" y1="${ky}" x2="${kx + 148}" y2="${ky}" stroke="var(--adj-2)" stroke-width="1.6"/><text x="${kx + 152}" y="${ky + 3}">second, on the first</text>` : ""}` : ""}</g>`;
-  }
   return out + `</svg>`;
 }
 /** A tip close-up: the last `win` inches of one end, at a scale that fills the box, natural dashed against custom. */
@@ -740,7 +745,7 @@ function picker(device, g) {
 function rockerPopup(device, g) {
   const r = state.draft, b = B().blank, note = noteOf(r), gd = geometry(r);
   const editing = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === noteOf(state.rocker) ? state.saved[state.savedIdx] : null;
-  const art = mainArt(device === "phone" ? "phone" : "side", gd, { board: state.showBoard, overlay: true });
+  const art = mainArt(device === "phone" ? "phone" : device === "side" ? "side" : "computer", gd, { board: state.showBoard, overlay: true });
   return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
     <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${note ? "Natural → " + colouredNote(r) : "Natural"}</span><button class="x" data-act="popcancel">✕</button></div>
     <div class="rbody">
@@ -748,7 +753,7 @@ function rockerPopup(device, g) {
         <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
         <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
       </div>
-      <div class="rart">${art}<div class="rcap"><span>Natural dashed · the first change red · the second change blue, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
+      <div class="rart">${art}<div class="rcap"><span>Natural dashed · <span style="color:var(--adj-1)">the first change red</span> · <span style="color:var(--adj-2)">the second change blue</span>, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
     </div>
     <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Use and edit current blank</button>` : ""}${note ? `<button class="btn primary" data-act="popsavenew">Use and save as a new blank</button>` : `<button class="btn primary" data-act="popuse">Use the natural rocker</button>`}</div>
   </div></div>`;
@@ -782,7 +787,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <h3>Round eight (the founder, 2026-10-16)</h3>
 <p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (rounds eleven and twelve), the natural dashed line and the bend marks too: once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank alone, as any blank.</p>
 <h3>Round nine (the founder, 2026-10-16)</h3>
-<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone on its bottom plane with its own five stations — the tail tip, 12" in, the centre's zero reference, 12" in, the nose tip — reading the rocker as ordered, the natural figure small beneath where it differs (round thirteen); on, the board sits in it with the board's five stations as the page draws them.</p>
+<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone on its bottom plane with all its dimensions at its own five stations — the blank's printed thickness as chips on one rail, the rocker as ordered on the other (the tail tip, 12" in, the centre's zero reference, 12" in, the nose tip), the natural figure small beneath where it differs (rounds thirteen and fourteen); on, the board sits in it and the surfboard's values read instead, as the page draws them.</p>
 <h3>The maths</h3>
 <p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
 <h3>Not drawn</h3>

@@ -157,11 +157,14 @@ deploy that reads it.
    theme, chosen to read on Slate and Daylight (the sketch's `--adj-1` / `--adj-2`; the app's `globals.css` gets its
    own, like sketch 012's compare blue). The five board stations read the custom figures as they do today; "Show
    measuring points" unchanged. No tip close-ups. **The popup's drawing has a Show my board switch, off by default**
-   (the founder, round nine): the blank alone on its bottom plane **with its own five stations — the tail tip, 12"
-   in, the centre's zero reference, 12" in, the nose tip — reading the rocker as ordered**, the natural figure small
-   beneath where it differs (the founder, round thirteen: "show the zero reference point at center as well as the 12
-   inch station dimensions. The dimensions shown on the pop-up should be the customized rocker values"); on, the
-   board in the blank with the board's five stations as the page draws them.
+   (the founder, round nine): the blank alone on its bottom plane **with all its dimensions at its own five stations —
+   the blank's printed thickness as chips on one rail, the rocker as ordered on the other (the tail tip, 12" in, the
+   centre's zero reference, 12" in, the nose tip)**, the natural figure small beneath where it differs (the founder,
+   rounds thirteen and fourteen: "show the zero reference point at center as well as the 12 inch station dimensions.
+   The dimensions shown on the pop-up should be the customized rocker values"; "show all the dimensions, including
+   thickness for the blank when show my board is turned off; when show my board is turned on display the
+   surfboard's values rather than the blank's"); on, the board in the blank with the surfboard's five stations as the
+   page draws them.
 4. **The name and the DATASHEET — decided (the founder, 2026-10-16, sketch 016 round three):** every blank is named
    the same way, the name then its rocker on its own line, `Natural` included (`9'4"B` / `Natural`; `9'4"B` /
    `-1/4"N18" +1/8"T36" +1/8"T18"`), on the BLANK button, the picker's cards, the viewer's caption, the DATASHEET's

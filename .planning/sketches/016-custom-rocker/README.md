@@ -165,6 +165,13 @@ blank-only drawing now reads the blank's own five stations on the rocker rail �
 reference, 12" in, nose tip — as ordered, the natural figure small beneath where it differs; with Show my board on, the
 board's stations read as the page draws them.
 
+**Round fourteen (the founder, 2026-10-16):** *"On the customize rocker pop-up, show all the dimensions, including
+thickness for the blank, when show my board is turned off; when show my board is turned on, display the surfboard's
+values rather than the blank's."* With the board off the popup's drawing now carries the blank's printed thickness
+as chips on one rail and the rocker as ordered on the other at the blank's five stations; the tips' rocker figures
+read anchored outward and the 12" stations' inward so neighbours never meet. On a computer the popup's drawing takes
+the page's own width. With the board on, the surfboard's values read as the page draws them.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the
