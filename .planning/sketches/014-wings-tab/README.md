@@ -29,8 +29,10 @@ So the page is today's TEMPLATE screen with one tab added beside VIEWER — **AD
 FINS page puts them. While it is open the sidebar holds only the wing controls (round one's A, confirmed: "A, sidebar
 swaps"; the in-tab column B is gone, and no board length or other template control appears). Position now runs from
 6" to the board's centre. **Smoothing is a corner radius**: it rounds the wing's outer and inner corners, up to the
-largest radius whose two rounds still fit on the step, so the run alone decides how long the step is along the
-stringer — a square 3/8" step rounds up to 3/16", a 1" run allows nearly 3". The question left is **how the close-up
+largest radius whose two rounds still fit on the step — a square 3/8" step rounds up to 3/16", a 1" run allows nearly
+3". (Corrected 2026-10-15: the run is not the whole length of the step. The rounds reach a tangent length
+`t = R·tan(θ/2)` beyond each end of the run, so a rounded step starts `t` nose-ward of the wing's position and settles
+`t` past its inner corner. The fins ignore that rounding — they read the step sharp.) The question left is **how the close-up
 scales once a wing passes 24"**, and, as a toggle, whether the wing is grabbed on the drawing (round one's C).
 
 ## How to View
