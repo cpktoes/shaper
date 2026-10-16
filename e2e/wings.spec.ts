@@ -208,6 +208,16 @@ test.describe("wings on the TEMPLATE page", () => {
     // Larger: the Mid-length's 26" window at more than 21.5 px per inch (F5: 22.09).
     expect(await pixelsPerInch(page)).toBeGreaterThan(21.5);
 
+    // Centred (the founder, 2026-10-15: "Keep the board centered in the viewer window"): at 1280 x 800
+    // the stringer is the middle of the drawing's box, to within two pixels, at the same size.
+    const centring = await closeUp.evaluate((el) => {
+      const svg = el.closest("svg") ?? el.querySelector("svg") ?? el;
+      const box = (svg as Element).getBoundingClientRect();
+      const stringer = el.querySelector("[data-wing-stringer]")!.getBoundingClientRect();
+      return { stringerX: stringer.left + stringer.width / 2, middle: box.left + box.width / 2 };
+    });
+    expect(Math.abs(centring.stringerX - centring.middle), JSON.stringify(centring)).toBeLessThanOrEqual(2);
+
     // The default board's squash tail: its tail block's width written under the tail, the VIEWER's
     // own TAIL BLOCK number.
     await page.goto("/design/outline");

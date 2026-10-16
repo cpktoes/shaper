@@ -160,12 +160,16 @@ export interface CloseUpFrameOptions {
  * board's top moves down below it — `padTop` becomes the block's height in units — and the frame is
  * rebuilt, narrower again, so its fit only rises.
  *
- * **The board hugs the gutter.** When the frame is bound by the box's height, it is widened to the
- * box's own shape with all the spare width on the RIGHT, under the toolbar and the zoom row, rather
- * than centred — the same size of board, and the toolbar's corner left free with no top pad in most
- * computer windows. Centred, the 1280 × 800 26" windows needed a 79-unit top pad and grew only
- * 3.9–6.4%; hugging, they grow 17.7–21.6% (F5: 18.2–18.8 → 22.1 px per inch). The svg keeps
- * `xMidYMid meet`, which the shared zoom's maths assumes.
+ * **The board sits at the centre of the window wherever there is room** (the founder, 2026-10-15, on
+ * seeing the board hug its cards: "Keep the board centered in the viewer window"). The size is the
+ * hug's — the cards' gutter, the board and its side room, widened to the box's own shape when the
+ * box is the taller — and the stringer then moves to the frame's middle, the cards following to sit
+ * just left of the board. Where the window has no spare width (a phone, a narrow window) the board
+ * stays as near the middle as the cards allow, rather than shrinking: strict centring, measured,
+ * drew a 1024 × 768 window at 12.6 px per inch against the hug's 18.1 (and the old close-up's 13.7),
+ * and upright phones at 9.9 against 12.4. Nor does centring push a board under the toolbar's corner
+ * when its top has no pad. The svg keeps `xMidYMid meet`, which the shared zoom's maths assumes, and
+ * always spans the box's width, so the frame's middle is the window's middle on screen.
  *
  * An unmeasured box builds pass 1 alone, with no corner rule.
  */
@@ -202,13 +206,26 @@ export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, opts:
       }
     }
   }
-  // The board at the left, the spare on the right (the "hug"), cut to two decimals for the viewBox
-  // string — down, never up, so the fit can only rise (by a hair) and every rule above still holds;
-  // the hundredth of a unit comes off the 20 units of side room.
+  // The frame widened to the box's shape when the box is the taller one, cut to two decimals for the
+  // viewBox string — down, never up, so the fit can only rise (by a hair) and every rule above still
+  // holds; the hundredth of a unit comes off the side room.
   const width = Math.floor((measured ? Math.max(w, box.width / fit) : w) * 100) / 100;
   if (measured) fit = fitOf(width);
 
-  const cx = gutter + widestIn * u + c.sideRoom;
+  // The stringer: at the frame's middle wherever the window has the room, else as near it as the cards
+  // allow — never left of the hug's place (the cards need their gutter), and never so far right that
+  // a board drawn with no top pad would reach under the toolbar's corner. The board's size is the
+  // hug's in every window; only where it sits changes.
+  const half = widestIn * u + c.sideRoom;
+  const cxHug = gutter + half;
+  let cxMax = width / 2;
+  if (measured && opts.corner && padTop === c.padTop) {
+    // The same test the corner rule above makes: the board's own right edge (not its side room) clear
+    // of the toolbar's block.
+    cxMax = Math.min(cxMax, (box.width - opts.corner.width - c.cornerClearPx) / fit - widestIn * u);
+  }
+  const cx = Math.max(cxHug, cxMax);
+  const gutterEdge = cx - half;
   const toY = (s: number) => c.height - padBottom - (s - loIn) * u;
   const toX = (hw: number) => cx + hw * u;
   return {
@@ -218,10 +235,10 @@ export function closeUpFrame(loIn: number, hiIn: number, widestIn: number, opts:
     cx,
     toY,
     toX,
-    chipRightX: gutter - c.chipInset,
+    chipRightX: gutterEdge - c.chipInset,
     padTop,
     padBottom,
-    gutterLeft: gutter,
+    gutterLeft: gutterEdge,
     fit,
   };
 }

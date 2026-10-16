@@ -97,11 +97,13 @@ describe("closeUpFrame — the one frame, as large as it can be (quick 261015-my
     expect(widest).toBeCloseTo(9.2, 2);
   });
 
-  it("1280 x 800 (box 804 x 614, a mouse): the gutter fits the card, the board hugs it, no top pad", () => {
+  it("1280 x 800 (box 804 x 614, a mouse): the board at the window's middle, the cards just left of it, no top pad", () => {
     const { loIn, hiIn, widest } = defaultWindow();
     const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 804, height: 614 }, corner: fine, minFit: MIN_FIT });
-    expect(f.gutterLeft).toBeCloseTo(143.2, 0);
-    expect(Math.abs(f.gutterLeft - 143.2)).toBeLessThanOrEqual(0.5);
+    // Centred (the founder, 2026-10-15): the stringer is the frame's middle, and the cards' gutter is
+    // what lies left of the board — wider than the card needs (the hug's 143.2).
+    expect(Math.abs(f.cx - f.width / 2)).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(f.gutterLeft - 180.7)).toBeLessThanOrEqual(0.5);
     expect(Math.abs(f.fit - 0.99)).toBeLessThanOrEqual(0.002);
     expect(Math.abs(pxPerInch(f) - 22.09)).toBeLessThanOrEqual(0.05);
     expect(Math.abs(f.width - 811.9)).toBeLessThanOrEqual(1);
@@ -131,11 +133,40 @@ describe("closeUpFrame — the one frame, as large as it can be (quick 261015-my
     expect(Math.abs(pxPerInch(f) - 12.44)).toBeLessThanOrEqual(0.1);
   });
 
-  it("a sideways iPhone (box 482 x 293): bound by its height, no top pad, the same size as before (10.54 px per inch)", () => {
+  it("a sideways iPhone (box 482 x 293): bound by its height, no top pad, the same size as before (10.54 px per inch), centred", () => {
     const { loIn, hiIn, widest } = defaultWindow();
     const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 482, height: 293 }, corner: coarse, minFit: MIN_FIT });
     expect(f.padTop).toBe(8);
     expect(Math.abs(pxPerInch(f) - 10.54)).toBeLessThanOrEqual(0.05);
+    expect(Math.abs(f.cx - f.width / 2)).toBeLessThanOrEqual(0.01);
+  });
+
+  it("a wide window (box 1150 x 720, the founder's): the board centred at the hug's size, the cards beside it", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const box = { width: 1150, height: 720 };
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box, corner: fine, minFit: MIN_FIT });
+    expect(Math.abs(f.cx - f.width / 2)).toBeLessThanOrEqual(0.01);
+    expect(Math.abs(pxPerInch(f) - 25.91)).toBeLessThanOrEqual(0.05);
+    expect(f.padTop).toBe(8);
+    // The cards sit just left of the board's side room, not at the frame's left edge.
+    expect(f.chipRightX).toBeCloseTo(f.toX(-widest) - CLOSE_UP.sideRoom - CLOSE_UP.chipInset, 9);
+  });
+
+  it("where the window has no spare width (1024 x 768, an upright iPhone) the board keeps its size and sits as near the middle as its cards allow", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    for (const [box, corner, ppi] of [
+      [{ width: 548, height: 582 }, fine, 18.06],
+      [{ width: 380, height: 389 }, coarse, 12.45],
+    ] as const) {
+      const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box, corner, minFit: MIN_FIT });
+      expect(Math.abs(pxPerInch(f) - ppi)).toBeLessThanOrEqual(0.1);
+      // Right of the middle, because at the middle the cards would not fit: they would cross their
+      // 8-unit margin at the frame's left edge.
+      expect(f.cx).toBeGreaterThan(f.width / 2);
+      const cardLeft = f.chipRightX - WING_CARD_PX.width / Math.max(f.fit, MIN_FIT);
+      expect(cardLeft).toBeGreaterThanOrEqual(CLOSE_UP.cardMargin - 1e-6);
+      expect(cardLeft - (f.cx - f.width / 2)).toBeLessThan(CLOSE_UP.cardMargin);
+    }
   });
 
   it("the bottom pad is 16 with no tail block and 32 with one (the words under the tail, D3)", () => {
@@ -203,6 +234,16 @@ describe("closeUpFrame — the one frame, as large as it can be (quick 261015-my
     // (The width is cut to two decimals, down, so at most a hundredth comes off the side room.)
     expect(f.toX(widest) + CLOSE_UP.sideRoom).toBeLessThanOrEqual(f.width + 0.01);
     expect(f.toX(-widest) - CLOSE_UP.sideRoom).toBeCloseTo(f.gutterLeft, 9);
+    // Centred where there is room: the stringer is the middle, or right of it only by what the
+    // cards need, or left of it only by what keeps an unpadded board clear of the toolbar corner.
+    const cardLeft = f.chipRightX - WING_CARD_PX.width / Math.max(f.fit, MIN_FIT);
+    const centred = Math.abs(f.cx - f.width / 2) <= 0.01;
+    const heldByCards = f.cx > f.width / 2 && cardLeft - (f.cx - f.width / 2) < CLOSE_UP.cardMargin;
+    const heldByCorner =
+      f.cx < f.width / 2 &&
+      f.padTop === CLOSE_UP.padTop &&
+      Math.abs(box.width - f.toX(widest) * f.fit - (box.corner.width + CLOSE_UP.cornerClearPx)) <= 1e-6;
+    expect(centred || heldByCards || heldByCorner).toBe(true);
   });
 });
 
