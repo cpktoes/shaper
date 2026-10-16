@@ -270,15 +270,13 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     // Every visible `Use …` card button, fitting or greyed.
     const rows = blankCards(dialog).getByRole("button", { name: /^Use / });
     await expect(rows.first()).toBeVisible();
-    let checkedRows = 0;
-    for (const row of await rows.all()) {
-      if (!(await row.isVisible())) continue;
-      const box = await row.boundingBox();
-      if (!box) throw new Error("blank card is missing a bounding box");
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      checkedRows += 1;
-    }
-    expect(checkedRows).toBeGreaterThan(0);
+    // Measured in one pass in the page (quick 261015-ve9 plan 02): one round trip per card, for every
+    // blank in the catalogue, ran this test past its 30-second limit on WebKit.
+    const heights = await rows.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => r.height),
+    );
+    expect(heights.length).toBeGreaterThan(0);
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
     await closeBlankPicker(page);
 
     // Pick the first blank that fits: the button now shows it, with Remove This Blank beneath.
@@ -321,6 +319,43 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       checkedCells += 1;
     }
     expect(checkedCells).toBeGreaterThan(0);
+  });
+
+  // Quick 261015-ve9 plan 02 (D-08): the PICK A BLANK popup's filter bar and a card's star — every
+  // chip, switch, star and the ✕ is a 44-dot touch box for a finger.
+  test("ROCKER: the blank popup's star, maker chips, switches, range chips, Starred only, Sort and ✕ are finger-sized", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    const dialog = await openBlankPicker(page);
+    const heightOf = async (locator: ReturnType<Page["locator"]>, what: string) => {
+      await expect(locator, `${what} is not on screen`).toBeVisible();
+      const box = await locator.boundingBox();
+      if (!box) throw new Error(`${what} is missing a bounding box`);
+      return box.height;
+    };
+    const star = blankCards(dialog).first().locator("[data-star]");
+    expect(await heightOf(star, "a card's star")).toBeGreaterThanOrEqual(44);
+    expect((await star.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+    const makers = dialog.locator("[data-maker-chip]");
+    await expect(makers).toHaveCount(4);
+    for (const maker of await makers.all()) {
+      const label = (await maker.getAttribute("data-maker-chip")) ?? "a maker chip";
+      expect(await heightOf(maker, label), label).toBeGreaterThanOrEqual(44);
+    }
+    const drawn = dialog.getByRole("group", { name: "How blanks are drawn" });
+    for (const name of ["Flat", "Upright"]) {
+      expect(await heightOf(drawn.getByRole("button", { name }), name), name).toBeGreaterThanOrEqual(44);
+    }
+    for (const name of ["Show my board", /^Length: /, /^Nose rocker: /, "Starred only"]) {
+      const button = dialog.getByRole("button", { name });
+      await button.scrollIntoViewIfNeeded();
+      expect(await heightOf(button, String(name)), String(name)).toBeGreaterThanOrEqual(44);
+    }
+    const sort = dialog.getByRole("combobox", { name: "Sort" });
+    await sort.scrollIntoViewIfNeeded();
+    expect(await heightOf(sort, "the Sort control")).toBeGreaterThanOrEqual(44);
+    expect(await heightOf(dialog.getByRole("button", { name: "Close" }), "the popup's ✕")).toBeGreaterThanOrEqual(44);
   });
 
   // Phase 14 (14-UI-SPEC §12): the two Thinning Starts rows, once a blank is picked — both Automatic

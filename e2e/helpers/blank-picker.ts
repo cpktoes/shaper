@@ -23,7 +23,7 @@ export function blankPicker(page: Page): Locator {
 }
 
 /** The cards in the popup, in one group or both. */
-export function blankCards(dialog: Locator, group?: "fits" | "wontFit"): Locator {
+export function blankCards(dialog: Locator, group?: "starred" | "fits" | "wontFit"): Locator {
   return dialog.locator(group ? `li[data-blank-card][data-group="${group}"]` : "li[data-blank-card]");
 }
 
@@ -105,4 +105,38 @@ export async function pickBlankNamed(page: Page, vendor: string, name: string): 
 export async function closeBlankPicker(page: Page): Promise<void> {
   await page.keyboard.press("Escape");
   await expect(blankPicker(page)).toBeHidden();
+}
+
+/** A card's star (quick 261015-ve9, D-06) — named `Star …` or `Unstar …`, so found by its marker. */
+export function starButton(card: Locator): Locator {
+  return card.locator("[data-star]");
+}
+
+/** A visible button in the popup by its accessible name (a switch, a range chip, Starred only). */
+export function chip(dialog: Locator, name: string | RegExp): Locator {
+  return dialog.getByRole("button", { name });
+}
+
+/** A maker chip in the popup's filter bar — the same setting as Settings → Blank Makers (D-12). */
+export function makerChip(dialog: Locator, vendor: string): Locator {
+  return dialog.locator(`[data-maker-chip=${JSON.stringify(vendor)}]`);
+}
+
+/**
+ * A `data-*` number off every card in the popup, in the order they are drawn (one group, or all).
+ * An empty attribute (a blank whose catalogue prints no volume) reads as null.
+ */
+export async function cardNumbers(
+  dialog: Locator,
+  attr: string,
+  group?: "starred" | "fits" | "wontFit",
+): Promise<(number | null)[]> {
+  return blankCards(dialog, group).evaluateAll(
+    (els, name) =>
+      els.map((el) => {
+        const raw = el.getAttribute(name);
+        return raw === null || raw === "" ? null : Number(raw);
+      }),
+    attr,
+  );
 }
