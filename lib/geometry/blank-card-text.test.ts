@@ -113,6 +113,21 @@ describe("uprightFacts — the upright card's facts (D-10)", () => {
     }
   });
 
+  it.each(UNITS_SYSTEMS)("the Rocker row quotes the same printed N0 / T0 the table's Rocker row prints — %s", (system) => {
+    // The founder overruled P-6 on 2026-10-16: printed figures everywhere.
+    let checked = 0;
+    for (const p of [FULL, NO_TWELVES]) {
+      const printed = printedBlankStations(p.record);
+      if (printed.noseTip.rocker === null || printed.tailTip.rocker === null) continue;
+      checked++;
+      const mark = (v: Mm) => formatMark(v, system);
+      expect(uprightFacts(p, system)[2].value).toBe(
+        `${mark(printed.noseTip.rocker)} nose · ${mark(printed.tailTip.rocker)} tail`,
+      );
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
   it("dashes the 12\" widths of a blank that prints none", () => {
     expect(uprightFacts(NO_TWELVES, "imperial")[3].value).toBe(`${NO_FIGURE} nose · ${NO_FIGURE} tail`);
   });

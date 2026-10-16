@@ -19,24 +19,33 @@
  * as React text only (T-11-32).
  *
  * The whole card is picked by one transparent button laid over it (its last child), so the table
- * stays a real table and plan 02's star can sit above it. A locked board can browse but not pick
- * (D-08): the button is disabled and the card takes the lock's 60% look.
+ * stays a real table and the star can sit above it. A locked board can browse but not pick (D-08):
+ * the button is disabled and the card takes the lock's 60% look — but the star stays live.
+ *
+ * Plan 02 (2026-10-15) added the star in the top-right corner (D-06), the UPRIGHT card (D-10: the
+ * blank nose-up with its rocker beside it, and beside that Length, Center, Rocker and the 12" widths),
+ * the short-screen line that replaces the flat card's table on a phone held sideways (D-11), and the
+ * Show my board switch, which draws or leaves out the dashed board (D-04).
  */
 
 import { useMemo } from "react";
+import { StarIcon } from "lucide-react";
+import type { BlankPickerView } from "@/lib/blank-picker-view-preference";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import {
   blankCardArt,
   boardOnBlankArt,
   FLAT_CARD_BOX,
   THUMB_BOX,
+  UPRIGHT_CARD_BOX,
   type ArtPoint,
   type BlankCardArt,
   type CardBox,
   type CardPose,
 } from "@/lib/geometry/blank-card-art";
-import { cardFigures, stationTable } from "@/lib/geometry/blank-card-text";
+import { cardFigures, compactLine, stationTable, uprightFacts } from "@/lib/geometry/blank-card-text";
 import { blankTipRockers, type BlankVerdict, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import { blankRowVolume } from "@/lib/geometry/blank-reasons";
 import { polylinePath } from "@/lib/geometry/screen-tiles";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
@@ -77,13 +86,24 @@ function line([a, b]: [ArtPoint, ArtPoint]) {
  * (`[data-board-ghost]`, board fill, `4 3`), the side view (foam shade, ink edge) and the flat
  * surface under it. The thumbnail (`thumb`) draws only the outline and the side view.
  */
-export function BlankArt({ art, ghost, thumb = false }: { art: BlankCardArt; ghost?: readonly ArtPoint[] | null; thumb?: boolean }) {
+export function BlankArt({
+  art,
+  ghost,
+  thumb = false,
+  className = "block h-auto w-full",
+}: {
+  art: BlankCardArt;
+  ghost?: readonly ArtPoint[] | null;
+  thumb?: boolean;
+  /** How big it draws: the full width of a flat card, or a fixed height beside an upright card's words. */
+  className?: string;
+}) {
   const { box } = art;
   return (
     <svg
       aria-hidden
       viewBox={`0 0 ${box.width} ${box.height}`}
-      className="block h-auto w-full"
+      className={className}
       data-blank-art
     >
       <path d={polylinePath(art.outline, true)} fill="var(--outline-foam-shade)" stroke="var(--outline-ink)" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />
@@ -162,79 +182,196 @@ function StationTable({ record, system }: { record: BlankRecord; system: UnitsSy
   );
 }
 
+/**
+ * The ☆ in a card's top-right corner (D-06). It sits above the card's stretched pick button, so
+ * starring never picks, and outside the lock's faded wrapper, so it stays live on a locked board.
+ * Starred: a filled star in ink; not starred: an empty star in muted ink — no new colour. Its name
+ * carries the maker, since two makers can print the same name (P-7).
+ */
+function StarButton({
+  record,
+  starred,
+  onChange,
+}: {
+  record: Pick<BlankRecord, "vendor" | "name">;
+  starred: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-lock-exempt
+      data-star
+      aria-pressed={starred}
+      aria-label={`${starred ? "Unstar" : "Star"} ${record.vendor} ${record.name}`}
+      onClick={() => onChange(!starred)}
+      className="focus-ring-accent absolute top-1 right-1 z-10 flex size-7 cursor-pointer items-center justify-center rounded-md hover:bg-surf-well coarse:size-11"
+    >
+      <StarIcon
+        aria-hidden
+        className={cn("size-4", starred ? "fill-current text-surf-ink" : "text-surf-ink-muted")}
+      />
+    </button>
+  );
+}
+
 export interface BlankCardProps {
   verdict: BlankVerdict;
   /** The catalogue's own record — what `pickBlank` stores, and what the card's words read. */
   record: BlankRecord;
-  group: "fits" | "wontFit";
+  /** The heading the card sits under: ★ STARRED, FITS or WON'T FIT. */
+  group: "starred" | "fits" | "wontFit";
   /** Why the blank won't fit (`blankReason`), null for a blank that fits. */
   reason: string | null;
   /** Is this the board's own blank? */
   onBoard: boolean;
-  /** The shaper's board, dashed on the blank (D-04) — null draws the blank alone. */
-  board: CardBoard | null;
+  /** The shaper's board, dashed on the blank when Show my board is on (D-04). */
+  board: CardBoard;
   locked: boolean;
   system: UnitsSystem;
+  /** Flat or Upright, and Show my board (D-02, D-04) — read once by the popup, not per card. */
+  view: BlankPickerView;
+  starred: boolean;
+  onStarChange: (on: boolean) => void;
   onPick: () => void;
 }
 
-/** One blank's flat card (D-09). */
-export function BlankCard({ verdict, record, group, reason, onBoard, board, locked, system, onPick }: BlankCardProps) {
+/** The muted label and ink value of one of the upright card's facts (D-10). */
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-xs leading-snug">
+      <span className="text-surf-ink-muted">{label}</span> <span className="text-surf-ink tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * One blank's card: FLAT (D-09) or UPRIGHT (D-10).
+ *
+ * Flat: the name with its length · litres on the right, the maker, the drawing, then the station
+ * table. On a short screen (`[@media(max-height:500px)]`, a phone held sideways) the table gives way to
+ * one line, `{center} center · {nose rocker} nose` (D-11); the header keeps the length.
+ *
+ * Upright: the blank nose-up with its rocker beside it, and beside the drawing the name and litres,
+ * the maker, then Length, Center width × thickness, Rocker nose · tail and the 12" widths — no table.
+ */
+export function BlankCard({
+  verdict,
+  record,
+  group,
+  reason,
+  onBoard,
+  board,
+  locked,
+  system,
+  view,
+  starred,
+  onStarChange,
+  onPick,
+}: BlankCardProps) {
   const { prepared, placement } = verdict;
   const greyed = reason !== null;
-  const art = cachedCardArt(prepared, "flat", FLAT_CARD_BOX);
-  const ghost = useMemo(() => (board ? boardOnBlankArt(art, board, placement) : null), [art, board, placement]);
+  const upright = view.drawn === "upright";
+  const art = upright ? cachedCardArt(prepared, "upright", UPRIGHT_CARD_BOX) : cachedCardArt(prepared, "flat", FLAT_CARD_BOX);
+  const ghost = useMemo(
+    () => (view.showBoard ? boardOnBlankArt(art, board, placement) : null),
+    [art, board, placement, view.showBoard],
+  );
   const accessibleName = `Use ${record.vendor} ${record.name}${greyed ? `, doesn't fit: ${reason}` : ""}`;
+  const nameClass = cn(
+    "min-w-0 flex-1 text-[15px] leading-tight",
+    greyed ? "font-semibold text-surf-ink-muted" : "font-bold text-surf-ink",
+  );
+  const maker = <div className="-mt-1 text-[11px] font-bold tracking-[0.08em] text-surf-ink-muted uppercase">{record.vendor}</div>;
+  const onBoardMark = onBoard && (
+    <div data-on-board className="text-[10px] font-extrabold tracking-architectural text-surf-accent-ink uppercase">
+      On your board now
+    </div>
+  );
+  const reasonLine = greyed && (
+    <div data-blank-reason className="text-xs leading-snug text-surf-warning-ink">
+      {reason}
+    </div>
+  );
+  const volume = blankRowVolume(record);
+
   return (
     <li
       data-blank-card
       data-group={group}
       data-vendor={record.vendor}
       data-name={record.name}
+      data-drawn={view.drawn}
       data-length-mm={prepared.lengthMm}
       data-nose-rocker-mm={blankTipRockers(prepared).nose}
+      data-center-mm={prepared.centerThicknessMm}
+      data-volume-l={record.volumeLitres ?? ""}
       className={cn(
-        "relative flex flex-col gap-1.5 rounded-[10px] border border-surf-line bg-surf-panel p-2.5",
-        "has-[>button:enabled:hover]:border-surf-ink-muted",
+        "relative rounded-[10px] border border-surf-line bg-surf-panel p-2.5",
+        "has-[>button[data-pick]:enabled:hover]:border-surf-ink-muted",
         onBoard && "border-surf-accent-ink bg-surf-well",
       )}
     >
-      <div className={cn("flex min-w-0 flex-col gap-1.5", locked && "opacity-60")}>
-        <div className="flex items-baseline gap-2">
-          <span
-            data-blank-name
-            className={cn(
-              "min-w-0 flex-1 text-[15px] leading-tight",
-              greyed ? "font-semibold text-surf-ink-muted" : "font-bold text-surf-ink",
-            )}
-          >
-            {record.name}
-          </span>
-          <span data-blank-figures className="shrink-0 text-xs whitespace-nowrap text-surf-ink-muted tabular-nums">
-            {cardFigures(record, system)}
-          </span>
-        </div>
-        <div className="-mt-1 text-[11px] font-bold tracking-[0.08em] text-surf-ink-muted uppercase">{record.vendor}</div>
-        {onBoard && (
-          <div
-            data-on-board
-            className="text-[10px] font-extrabold tracking-architectural text-surf-accent-ink uppercase"
-          >
-            On your board now
+      {upright ? (
+        <div className={cn("flex min-w-0 gap-3", locked && "opacity-60")}>
+          <div className="flex shrink-0 items-center">
+            <BlankArt art={art} ghost={ghost} className="h-[170px] w-auto" />
           </div>
-        )}
-        <div className="flex aspect-[320/103] items-center">
-          <BlankArt art={art} ghost={ghost} />
-        </div>
-        <StationTable record={record} system={system} />
-        {greyed && (
-          <div data-blank-reason className="text-xs leading-snug text-surf-warning-ink">
-            {reason}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5" data-upright-facts>
+            <div className="flex items-baseline gap-2 pr-7 coarse:pr-11">
+              <span data-blank-name className={nameClass}>
+                {record.name}
+              </span>
+              {volume !== null && (
+                <span data-blank-figures className="shrink-0 text-xs whitespace-nowrap text-surf-ink-muted tabular-nums">
+                  {volume}
+                </span>
+              )}
+            </div>
+            {maker}
+            {uprightFacts(prepared, system).map((fact) => (
+              <Fact key={fact.label} label={fact.label} value={fact.value} />
+            ))}
+            {reasonLine}
+            {onBoardMark}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className={cn("flex min-w-0 flex-col gap-1.5", locked && "opacity-60")}>
+          <div className="flex items-baseline gap-2 pr-7 coarse:pr-11">
+            <span data-blank-name className={nameClass}>
+              {record.name}
+            </span>
+            <span data-blank-figures className="shrink-0 text-xs whitespace-nowrap text-surf-ink-muted tabular-nums">
+              {cardFigures(record, system)}
+            </span>
+          </div>
+          {maker}
+          {onBoardMark}
+          <div className="flex aspect-[320/103] items-center">
+            <BlankArt art={art} ghost={ghost} />
+          </div>
+          <div className="[@media(max-height:500px)]:hidden">
+            <StationTable record={record} system={system} />
+          </div>
+          {/* The line may wrap only at its " · " — never inside a figure like 4 7/8". */}
+          <p data-compact-line className="hidden text-xs text-surf-ink-muted tabular-nums [@media(max-height:500px)]:block">
+            {compactLine(prepared, system)
+              .split(" · ")
+              .map((part, i) => (
+                <span key={i}>
+                  {i > 0 && " · "}
+                  <span className="whitespace-nowrap">{part}</span>
+                </span>
+              ))}
+          </p>
+          {reasonLine}
+        </div>
+      )}
+      <StarButton record={record} starred={starred} onChange={onStarChange} />
       <button
         type="button"
+        data-pick
         aria-label={accessibleName}
         disabled={locked}
         onClick={onPick}

@@ -14,8 +14,10 @@
  * centimetres to one decimal in Metric); thicknesses and rocker are marks (`formatMark`, whole
  * millimetres). The table's Metric headers follow the DATASHEET's own convention — the unit once in
  * the row label (`columnUnitSuffix`) and the 12" stations named through `stationLabel` (`N 30.5 cm`).
- * The rocker beside an upright card and in the compact line is the levelled curve's tip rocker
- * (`blankTipRockers`, P-6), the same number plan 02's nose-rocker filter and sort read.
+ * The rocker beside an upright card and in the compact line is the catalogue's printed N0 / T0 rocker
+ * — the very figure the station table's Rocker row prints — through `blankTipRockers`, the same number
+ * the nose-rocker filter and sort read (P-6, overruled by the founder 2026-10-16: printed figures
+ * everywhere; the levelled curve's tip stands in only where the catalogue prints no tip rocker).
  *
  * No formula of its own; pure — no React, browser or database import (CLAUDE.md Rule 1).
  */
@@ -87,7 +89,7 @@ export function stationTable(record: BlankRecord, system: UnitsSystem): StationT
 
 /**
  * The upright card's facts beside its drawing (D-10): Length; Center `{width} × {thickness}`; Rocker
- * `{nose} nose · {tail} tail` off the levelled curve (P-6); and the two 12" widths, labelled through
+ * `{nose} nose · {tail} tail` as the catalogue prints them (`blankTipRockers`); and the two 12" widths, labelled through
  * `stationLabel` (`12" widths`, `30.5 cm widths`). A "—" stands in for any printed figure missing.
  */
 export function uprightFacts(prepared: PreparedBlank, system: UnitsSystem): { label: string; value: string }[] {
@@ -108,7 +110,7 @@ export function uprightFacts(prepared: PreparedBlank, system: UnitsSystem): { la
 
 /**
  * The short-screen compact card's one line (D-11): `{center width} × {center thickness} center ·
- * {nose rocker} nose`, the nose rocker off the levelled curve (P-6).
+ * {nose rocker} nose`, the nose rocker as the catalogue prints it (`blankTipRockers`).
  */
 export function compactLine(prepared: PreparedBlank, system: UnitsSystem): string {
   const printed = printedBlankStations(prepared.record);

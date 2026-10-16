@@ -17,6 +17,7 @@ const LOCKABLE_FILES = [
   "components/rocker/blank-picker.tsx",
   "components/rocker/blank-picker-dialog.tsx",
   "components/rocker/blank-card.tsx",
+  "components/rocker/blank-filter-bar.tsx",
   "components/rocker/blank-flag.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
