@@ -156,7 +156,7 @@ export function isPickable(record: BlankRecord): boolean {
 
 /** A blank's longest identity string (vendor, name, catalogue slug). The longest in the seeded
  * catalogues is well under half this. */
-const BLANK_TEXT_MAX = 120;
+export const BLANK_TEXT_MAX = 120;
 /** A catalogue flag's longest text. The longest seeded flag is 262 characters. */
 const BLANK_FLAG_MAX = 400;
 /** A blank's most stations. The seeded catalogues print 5 to 15. */

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * The browser proof for zooming a drawing (quick 261007-fnz, 2026-10-07), shown first on ROCKER's
@@ -9,7 +10,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * in, and nothing is saved.
  *
  * What a shaper would see, test by test, is in each test's name. No blank name is typed here: the
- * tests pick "the first row under FITS THIS BOARD", exactly as `rocker-top-view.spec.ts` does.
+ * tests pick "the first card under FITS THIS BOARD" through `helpers/blank-picker.ts` (quick 261015-ve9).
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -22,32 +23,6 @@ async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
-}
-
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered and becomes live only once React hydrates it.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = blankList(page).locator('li[data-group="fits"] button').first();
-  const name = (await row.locator("[data-blank-name]").innerText()).trim();
-  expect(name.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(page.locator("[data-picked-blank]")).toContainText(name);
-  return name;
 }
 
 /** ROCKER's side view — the one drawing carrying the board's profile silhouette. */
@@ -257,6 +232,9 @@ test.describe("261007-fnz ROCKER zoom — computer", () => {
     const readings = async () => (await sideView(page).locator("text").allTextContents()).join("|");
     const before = await readings();
     const slider = page.getByText(/^Placement — /).locator("xpath=..").getByRole("slider");
+    // The BLANK button (quick 261015-ve9) stands a little taller than the old picked card, which can
+    // leave the slider just under the sidebar's fold on a 800-dot window: bring it into view first.
+    await slider.scrollIntoViewIfNeeded();
     const b = await slider.boundingBox();
     if (!b) throw new Error("no placement slider");
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);

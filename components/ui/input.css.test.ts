@@ -103,8 +103,9 @@ describe("Input (components/ui/input.tsx) — the shared field's two touch rules
       "components/setup/board-name-prompt.tsx",
       // Phase 11 (11-11), deliberately: the ROCKER blank list's search box. The UI-SPEC chose the
       // installed Input over a Command palette (no new dependency); it keeps Input's own 44px /
-      // 16px touch rules, which is what this file protects.
-      "components/rocker/blank-picker.tsx",
+      // 16px touch rules, which is what this file protects. Since quick 261015-ve9 the box lives in
+      // the PICK A BLANK popup's filter bar.
+      "components/rocker/blank-filter-bar.tsx",
       // Quick 260929-u1t, deliberately — the Contact form's email and name boxes keep Input's
       // 44px / 16px touch rules.
       "components/contact/contact-form.tsx",

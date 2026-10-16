@@ -1,4 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  blankPicker,
+  cardButton,
+  openBlankPicker,
+  openRocker,
+  pickBlankNamed,
+  pickedCard,
+  pickFirstFittingBlank,
+  waitForBlankButton,
+} from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
@@ -11,10 +21,10 @@ import { inchesToMm } from "../lib/geometry/units";
  * BOARD ON BLANK shows the board's own Deck Skin, the foam off the bottom at every station and the
  * planer passes at the center, all live, with nothing sent to the server.
  *
- * The helpers below are copies of `e2e/rocker-blanks.spec.ts`'s own (`dismissChrome`, `blankList`,
- * `firstFittingRow`, `pickedCard`, `openRocker` with its hydration wait, `pickFirstFittingBlank`,
- * `sliderUnder`, `undoOnce` at the foot of the file) — spec files do not import each other, the repo's existing per-spec
- * helper pattern. Like that spec, this one has no database: the list reads the committed catalogue
+ * The helpers below are copies of `e2e/rocker-blanks.spec.ts`'s own (`dismissChrome`, `sliderUnder`,
+ * `undoOnce` at the foot of the file) — spec files do not import each other, the repo's existing per-spec
+ * helper pattern; opening ROCKER and picking a blank go through `helpers/blank-picker.ts` (quick
+ * 261015-ve9). Like that spec, this one has no database: the list reads the committed catalogue
  * CSVs (`SHAPER_BLANKS_SOURCE=seed-csv`), and no blank name, depth or pass count is ever typed here —
  * each test reads a value off the page, moves a control, and checks the value changed.
  */
@@ -31,44 +41,9 @@ async function dismissChrome(page: Page) {
   }, TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
-/** The list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** The picked-blank card (state C). */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered, inside its own Suspense boundary, and becomes live only
-  // once React hydrates that boundary. A keystroke or tap before then is lost, so wait until React
-  // owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-/** Picks the first fitting blank and returns its name as the page shows it. */
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const name = (await row.locator("[data-blank-name]").innerText()).trim();
-  expect(name.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(pickedCard(page)).toContainText(name);
-  return name;
+/** The first card under FITS THIS BOARD that is not the board's own blank. */
+function otherFittingCard(page: Page): Locator {
+  return blankPicker(page).locator('li[data-blank-card][data-group="fits"]:not(:has([data-on-board]))').first();
 }
 
 /** A `SliderRow`'s slider, found by the start of its label line. */
@@ -222,12 +197,13 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(deckSkinLabel(page)).not.toHaveText(labelAtPick);
     const ownSkin = await deckSkinLabel(page).innerText();
 
-    await page.getByRole("button", { name: "Change Blank" }).click();
-    // The first fitting row that is not the board's blank already.
-    const other = blankList(page).locator('li[data-group="fits"] button[aria-pressed="false"]').first();
+    // Change Blank opens the popup; the first fitting card that is not the board's blank already.
+    await openBlankPicker(page);
+    const other = otherFittingCard(page);
     const otherName = (await other.locator("[data-blank-name]").innerText()).trim();
     expect(otherName).not.toBe(first);
-    await other.click();
+    await cardButton(other).click();
+    await expect(blankPicker(page)).toBeHidden();
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
 
     await expect(deckSkinLabel(page)).toHaveText(ownSkin);
@@ -435,18 +411,6 @@ function stationOf(label: string): string {
   return match[1];
 }
 
-/** Waits for the streamed blank list to arrive and be owned by React, without navigating. */
-async function waitForLiveBlankList(page: Page) {
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
 /** Picks Imperial or Metric in App Default Settings, then closes it with Done — an in-session
  * switch, nothing reloaded. */
 async function chooseUnits(page: Page, label: "Imperial" | "Metric") {
@@ -581,12 +545,9 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
 
     // ROCKER, client-side, so the board in progress comes along.
     await goToScreen(page, "ROCKER");
-    await waitForLiveBlankList(page);
+    await waitForBlankButton(page);
 
-    await page.getByRole("searchbox", { name: "Search blanks" }).fill(`Arctic Foam 10'9"`);
-    const arctic = blankList(page).getByRole("button", { name: /^Use Arctic Foam 10'9" LB\b/ });
-    await expect(arctic).toHaveCount(1);
-    await arctic.click();
+    await pickBlankNamed(page, "Arctic Foam", `10'9" LB`);
     await expect(pickedCard(page)).toContainText(`10'9" LB`);
 
     // Slid to the tail end.
@@ -731,11 +692,13 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     await expect(startLabel(page, "nose")).not.toHaveText(labelAtPick);
     const handSet = await startLabel(page, "nose").innerText();
 
-    await page.getByRole("button", { name: "Change Blank" }).click();
-    const other = blankList(page).locator('li[data-group="fits"] button[aria-pressed="false"]').first();
+    // Change Blank opens the popup; the first fitting card that is not the board's blank already.
+    await openBlankPicker(page);
+    const other = otherFittingCard(page);
     const otherName = (await other.locator("[data-blank-name]").innerText()).trim();
     expect(otherName).not.toBe(first);
-    await other.click();
+    await cardButton(other).click();
+    await expect(blankPicker(page)).toBeHidden();
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(otherName);
 
     await expect(startLabel(page, "nose")).toHaveText(handSet);
