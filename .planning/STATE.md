@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-16 — fast 165: the blank popup's intro says where blanks that don't fit sit; on branch claude/elastic-joliot-3e9625 with quick 261015-ve9, awaiting the founder's review, not merged, not pushed
+Last activity: 2026-10-16 — fast 166: the blank popup's Flat / Upright pair becomes TEMPLATE's turn-the-board button; on branch claude/elastic-joliot-3e9625 with quick 261015-ve9, approved by the founder for merge and push
 
 ## Performance Metrics
 
@@ -388,6 +388,7 @@ Recent decisions affecting current work:
 | 163 | The blank popup's Length and Nose rocker range sliders take the app's own slider look — an outlined track with the accent fill and dot — so a slider set to its lowest end no longer reads as a button (the founder, 2026-10-16). On branch claude/elastic-joliot-3e9625 with quick 261015-ve9 | 2026-10-16 | 01196674 | fast (no directory) |
 | 164 | The blank popup marks the board's own blank "Currently selected" instead of "On your board now" (the founder, 2026-10-16). On branch claude/elastic-joliot-3e9625 with quick 261015-ve9 | 2026-10-16 | aae1803d | fast (no directory) |
 | 165 | The blank popup's intro: "Blanks that don't fit come last, under Won't fit this board, with the reason under each." instead of "Greyed blanks don't fit — the line under each says why." — the founder keeps the separate section at the end (2026-10-16). On branch claude/elastic-joliot-3e9625 with quick 261015-ve9 | 2026-10-16 | 6e0014c3 | fast (no directory) |
+| 166 | The blank popup's Flat and Upright buttons become one button with TEMPLATE's turn-the-board icon: a press stands the blanks upright, the next lays them flat (the founder, 2026-10-16). On branch claude/elastic-joliot-3e9625 with quick 261015-ve9 | 2026-10-16 | 01a3b375 | fast (no directory) |
 
 ## Deferred Items
 
