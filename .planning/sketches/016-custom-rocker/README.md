@@ -68,6 +68,21 @@ BLANK popup under ★ STARRED with "Saved by you", its station table reading the
 on the foam; the natural 9'4"B stays listed under FITS THIS BOARD. "✓ Saved in your blanks · Remove" takes it out again.
 Open Change blank › in the sketch to see the popup (`pictures/a-computer-picker-saved.png`, `a-phone-picker-saved.png`).
 
+**Round three (the founder, 2026-10-16):**
+- *"Let's write natural after the blank name just like we would when defining a custom rocker, this seems way more
+  consistent and let the customer know that the values are natural."* So every blank is named the same way: the name,
+  then its rocker — `9'4"B` / `Natural`, or `9'4"B` / `-1/4"N18" +1/8"T36" +1/8"T18"` — on the BLANK button, the
+  picker's cards, the viewer's caption (`Your board on US Blanks 9'4"B Natural`), the DATASHEET's group label and the
+  order form (`US Blanks 9'4"B Natural — centered`).
+- *"I don't think the close-ups are necessary."* Gone.
+- *"Let's put the rocker text on its own line, including natural for the natural rocker."* Done everywhere above.
+- *"A custom rocker card should show the natural rocker and below it the new values on another line. I don't wanna
+  waste space on the title, but the user clearly needs to know which one is which. I think we could write the word
+  natural, or NAT for natural and then the word rocker or the actual value with [the] adjustment."* So a card's table
+  (and the DATASHEET's BLANK block) has a **Rocker NAT** row with the catalogue's figures and, on a custom blank, a
+  second row labelled with the adjustment itself (`-1/4"N18" +1/8"T36" +1/8"T18"`) holding the ordered figures.
+  The title line stays the blank's name alone.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

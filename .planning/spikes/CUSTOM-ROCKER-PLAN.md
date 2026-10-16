@@ -135,10 +135,14 @@ deploy that reads it.
    shape).
 3. **The drawing:** custom solid in the blank's line, natural dashed behind it, a short mark across the bottom where
    each bend starts (the Thinning Starts mark's grammar), the five board stations reading the custom figures as they
-   do today; "Show measuring points" unchanged.
-4. **The DATASHEET:** the BLANK group label carries the note; the Rocker row reads the **custom** figures at the
-   catalogue's five stations (N0 and T0 exact, the three inner ones off the bent curve), with the printed natural
-   figures as a muted second line beneath each; the footnote says so.
+   do today; "Show measuring points" unchanged. **Decided (sketch 016 round three): no tip close-ups.**
+4. **The name and the DATASHEET — decided (the founder, 2026-10-16, sketch 016 round three):** every blank is named
+   the same way, the name then its rocker on its own line, `Natural` included (`9'4"B` / `Natural`; `9'4"B` /
+   `-1/4"N18" +1/8"T36" +1/8"T18"`), on the BLANK button, the picker's cards, the viewer's caption, the DATASHEET's
+   group label and the order form (`US Blanks 9'4"B Natural — centered`). A blank's station table — a picker card and
+   the DATASHEET's BLANK block — has a **Rocker NAT** row with the catalogue's printed figures and, on a custom blank,
+   a second row labelled with the adjustment holding the ordered figures (nose and tail tips exact). The screen tile
+   (`On a 9'4"B`) is the one place the rocker text is left off for room — to confirm.
 5. **The note in Metric stays in inches** — it is the maker's order code, like the blank's name — while every figure
    drawn, tabled or stepped follows Imperial/Metric (marks in whole mm; the stepper steps 1 mm in Metric and the
    note rounds to the nearest 1/16"). This is the one place the app would show an inch figure to a Metric shaper;
