@@ -25,6 +25,7 @@ import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stati
 import { mm, squareMmToSquareInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { wingPrintName, type WingFigures } from "@/lib/geometry/wing-figures";
 import { wrapTextToWidth } from "@/components/template/build-template-pdf";
+import { printPdf } from "@/components/template/print-pdf";
 
 export interface BuildOverviewPdfOptions {
   geometry: OutlineGeometry;
@@ -465,10 +466,10 @@ export function overviewFileName(boardName: string): string {
   return slug.length > 0 ? `${slug}-overview.pdf` : "board-overview.pdf";
 }
 
-/** Builds the document then saves it under the browser's normal download flow — mirrors
- * `downloadTemplatePdf`'s own one call site, so the export dialog's Download button calls exactly
- * one function regardless of which artifact the shaper picked. */
-export function downloadOverviewPdf(options: BuildOverviewPdfOptions): void {
-  const doc = buildOverviewPdf(options);
-  doc.save(overviewFileName(options.boardName));
+/** Builds the document then prints it (`print-pdf.ts`; fast task, 2026-10-15, the founder: "print
+ * the output rather than force a download") — mirrors `printTemplatePdf`'s own one call site, so the
+ * print window's Print button calls exactly one function regardless of which artifact the shaper
+ * picked. `tab` is the one `openPrintTab` opened for a finger, or `null`. */
+export function printOverviewPdf(options: BuildOverviewPdfOptions, tab: Window | null): void {
+  printPdf(buildOverviewPdf(options), overviewFileName(options.boardName), tab);
 }

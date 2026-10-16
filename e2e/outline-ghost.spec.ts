@@ -182,7 +182,7 @@ test.describe("the ghost button", () => {
     await expect(page.getByRole("button", { name: /ghost of the last edit/ })).toHaveCount(0);
   });
 
-  test("desktop: after one edit the ghost button appears last in the toolbar row, with Export Template and Rotate unmoved", async ({
+  test("desktop: after one edit the ghost button appears last in the toolbar row, with Print Template and Rotate unmoved", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop button-layout assertion");
@@ -190,7 +190,7 @@ test.describe("the ghost button", () => {
     await page.goto("/design/outline");
     await page.getByRole("button", { name: "Show construction lines" }).click();
 
-    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const exportButton = page.getByRole("button", { name: "Print Template" });
     const rotateButton = page.getByRole("button", { name: "Rotate the board to horizontal" });
     const exportBoxBefore = await exportButton.boundingBox();
     const rotateBoxBefore = await rotateButton.boundingBox();
@@ -226,7 +226,7 @@ test.describe("the ghost button", () => {
     const gap = previousBox.x - (ghostBox.x + ghostBox.width);
     expect(Math.abs(gap - 6)).toBeLessThanOrEqual(1);
 
-    // Export Template and Rotate have not moved.
+    // Print Template and Rotate have not moved.
     const exportBoxAfter = await exportButton.boundingBox();
     const rotateBoxAfter = await rotateButton.boundingBox();
     if (!exportBoxAfter || !rotateBoxAfter) throw new Error("toolbar button missing a bounding box");
@@ -318,15 +318,15 @@ test.describe("the ghost button", () => {
     await expect(ghostButtonAfterReload).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("iphone: a slider nudge reveals the ghost button, which hides and shows the ghost, with Export Template unmoved", async ({
+  test("iphone: a slider nudge reveals the ghost button, which hides and shows the ghost, with Print Template unmoved", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "one-armed-nudge path, iPhone project only");
 
     await page.goto("/design/outline");
-    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const exportButton = page.getByRole("button", { name: "Print Template" });
     const exportBoxBefore = await exportButton.boundingBox();
-    if (!exportBoxBefore) throw new Error("Export Template has no bounding box");
+    if (!exportBoxBefore) throw new Error("Print Template has no bounding box");
 
     const noseAngleLabel = page.getByText(/^Nose Angle — /);
     await expect(noseAngleLabel).toBeVisible();
@@ -344,7 +344,7 @@ test.describe("the ghost button", () => {
     await expect(visibleButtons.last()).toHaveAttribute("aria-label", "Hide the ghost of the last edit");
 
     const exportBoxAfter = await exportButton.boundingBox();
-    if (!exportBoxAfter) throw new Error("Export Template has no bounding box after the edit");
+    if (!exportBoxAfter) throw new Error("Print Template has no bounding box after the edit");
     expect(Math.abs(exportBoxAfter.x - exportBoxBefore.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(exportBoxAfter.y - exportBoxBefore.y)).toBeLessThanOrEqual(1);
 
@@ -357,15 +357,15 @@ test.describe("the ghost button", () => {
     await expect(page.getByRole("button", { name: "Hide the ghost of the last edit" })).toBeVisible();
   });
 
-  test("android: a touch drag reveals the ghost button, which hides and shows the ghost, with Export Template unmoved", async ({
+  test("android: a touch drag reveals the ghost button, which hides and shows the ghost, with Print Template unmoved", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "CDP touch dispatch is Chromium-only");
 
     await page.goto("/design/outline");
-    const exportButton = page.getByRole("button", { name: "Export Template" });
+    const exportButton = page.getByRole("button", { name: "Print Template" });
     const exportBoxBefore = await exportButton.boundingBox();
-    if (!exportBoxBefore) throw new Error("Export Template has no bounding box");
+    if (!exportBoxBefore) throw new Error("Print Template has no bounding box");
 
     // The construction overlay is already on for a touch screen (D-02).
     const widepoint = page.locator('[data-drag-target="widepoint"]');
@@ -388,7 +388,7 @@ test.describe("the ghost button", () => {
     await expect(ghostButton).toHaveAttribute("aria-pressed", "true");
 
     const exportBoxAfter = await exportButton.boundingBox();
-    if (!exportBoxAfter) throw new Error("Export Template has no bounding box after the drag");
+    if (!exportBoxAfter) throw new Error("Print Template has no bounding box after the drag");
     expect(Math.abs(exportBoxAfter.x - exportBoxBefore.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(exportBoxAfter.y - exportBoxBefore.y)).toBeLessThanOrEqual(1);
 

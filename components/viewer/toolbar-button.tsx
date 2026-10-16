@@ -5,7 +5,7 @@
  * the TEMPLATE screen (`components/outline/outline-editor.tsx`), the ROCKER screen
  * (`components/rocker/rocker-editor.tsx`) and the RAILS screen
  * (`components/rails/rail-band-editor.tsx`), each holding a handful of icon buttons (Rotate,
- * Construction Lines, Wide view, Export Template, or on RAILS, View Full Sized). ROCKER's row also
+ * Construction Lines, Wide view, Print Template, or on RAILS, View Full Sized). ROCKER's row also
  * holds the blank-from-above toggle on a computer (quick 261006-qfm, `BlankTopViewIcon` below).
  *
  * The three screens used to hand-mirror this button: the same border/radius/padding class
@@ -93,7 +93,7 @@ export interface ViewerToolbarButtonProps
   // site still passing one is a hard TypeScript error rather than a silently ignored attribute.
   /**
    * Whether this button is a toggle, and whether it is currently on. Omit this prop entirely for
-   * a one-shot action (Export Template, Rotate) — this component only sets `aria-pressed` when
+   * a one-shot action (Print Template, Rotate) — this component only sets `aria-pressed` when
    * `pressed` is actually supplied, so a one-shot button never carries a pressed attribute at
    * all. Setting it to `false` (rather than omitting it) still marks the button as a toggle that
    * happens to be off right now; only leaving the prop out means "this isn't a toggle."

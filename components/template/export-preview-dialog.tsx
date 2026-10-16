@@ -1,10 +1,14 @@
 "use client";
 
 /**
- * The preview-first export dialog (D-04): an artifact picker (Overview Sheet vs. Full Sized Template)
- * over shared paper-size/preview chrome, before any PDF bytes exist, then builds the file only
- * when "Download PDF" is pressed. Shared by both entry points (Template screen toolbar, Summary
- * screen action row, D-03) via the `trigger` prop, so there is exactly one dialog implementation.
+ * The preview-first print window (D-04): an artifact picker (Overview Sheet vs. Full Sized Template)
+ * over shared paper-size/preview chrome, before any PDF bytes exist, then builds the PDF only
+ * when "Print" is pressed and hands it to the browser's print window (fast task, 2026-10-15, the
+ * founder: "print the output rather than force a download. The user can save to PDF if they want.
+ * But everything else on the app prints rather than downloads" — `print-pdf.ts`). It was the
+ * "Export Template" window with a "Download PDF" button until then. Shared by both entry points
+ * (Template screen toolbar, Summary screen action row, D-03) via the `trigger` prop, so there is
+ * exactly one dialog implementation.
  *
  * Post-checkpoint addition (03-04): originally this dialog only ever built the full, true-size
  * tiled template. Modeled on the user's own iShaper reference screenshot, it now opens on an
@@ -13,7 +17,7 @@
  * template, `build-template-pdf.ts`, unchanged) — so a shaper who just wants the numbers doesn't
  * have to tape sixteen pages together to get them. Full Sized Template stays the default selection: the
  * dialog's pre-existing behavior regresses for nobody who doesn't touch the new picker. "One
- * capability, one name" (D-03) still holds for the Download button itself — one accent-filled
+ * capability, one name" (D-03) still holds for the Print button itself — one accent-filled
  * action regardless of which artifact is selected, per the UI spec's accent reservation.
  *
  * Quick task 260902-cj5 added a third card, "Paper Saver" (`build-strip-pdf.ts`): the same board
@@ -22,7 +26,7 @@
  * Full Sized Template is STILL the dialog's default selection — nothing about picking Paper Saver ever
  * runs unless a shaper actively selects that card. The picker's own layout went from a two-up
  * grid to one stacked column (three cards no longer fit two-up without wrapping their titles),
- * and the dialog gained a max-height + scroll so the taller picker can never push the Download
+ * and the dialog gained a max-height + scroll so the taller picker can never push the Print
  * button off a laptop-height screen.
  *
  * Reads `useDesign()` itself rather than taking design props — the Summary screen and the
@@ -53,9 +57,10 @@ import { useDesign } from "@/components/design/design-store";
 import { wingFigures } from "@/lib/geometry/wing-figures";
 import { placedWings } from "@/lib/geometry/wings";
 import { useUnits } from "@/components/units-provider";
-import { downloadOverviewPdf } from "@/components/template/build-overview-pdf";
-import { downloadTemplatePdf } from "@/components/template/build-template-pdf";
-import { downloadStripPdf } from "@/components/template/build-strip-pdf";
+import { printOverviewPdf } from "@/components/template/build-overview-pdf";
+import { printTemplatePdf } from "@/components/template/build-template-pdf";
+import { printStripPdf } from "@/components/template/build-strip-pdf";
+import { openPrintTab } from "@/components/template/print-pdf";
 import {
   PAPER_MM,
   computeStripLayout,
@@ -65,6 +70,7 @@ import {
   type TemplateLayout,
 } from "@/lib/geometry/template";
 import { cn } from "@/lib/utils";
+import { PrinterIcon } from "lucide-react";
 
 /** Which printable artifact the dialog is currently building — "full" is the default so the
  * dialog's pre-existing single-artifact behavior stays the path of least surprise. */
@@ -91,7 +97,7 @@ const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: strin
   },
 ];
 
-/** Selected state is an accent BORDER, not the accent FILL the Download PDF button carries — the
+/** Selected state is an accent BORDER, not the accent FILL the Print button carries — the
  * UI spec reserves solid accent fill for that one button and the tile diagram's nose-page badge,
  * so the picker's own selected state uses the same border+ring treatment
  * `preset-card.tsx`/`board-rack-card.tsx` already use for their own hover/focus states, just
@@ -142,7 +148,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   const [paperSize, setPaperSize] = useState<PaperSize>("letter");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(false);
-  // Synchronous guard against a second Download press landing before React has committed the
+  // Synchronous guard against a second Print press landing before React has committed the
   // disabled-button re-render — `generating` state alone can't prevent that, since both clicks
   // could fire inside the same event-loop turn.
   const generatingRef = useRef(false);
@@ -189,27 +195,31 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
     wings,
   };
 
-  function handleDownload() {
+  function handlePrint() {
     if (generatingRef.current) return;
     generatingRef.current = true;
     setGenerating(true);
     setError(false);
-    // Deferred one tick so "Preparing PDF…" actually paints before the synchronous jsPDF work
+    // On a finger the PDF opens in a new tab to print from, and that tab has to open inside the tap
+    // itself or the browser blocks it — so it opens now, empty, and is filled once the PDF is built.
+    // On a mouse or trackpad nothing opens (`print-pdf.ts`).
+    const tab = openPrintTab();
+    // Deferred one tick so "Preparing…" actually paints before the synchronous jsPDF work
     // runs — a large multi-page board's drawing work is not guaranteed to be instant, and the
-    // whole point of the label swap is a visible state between the press and the download.
+    // whole point of the label swap is a visible state between the press and the print window.
     window.setTimeout(() => {
       try {
         if (artifact === "overview") {
-          downloadOverviewPdf({
+          printOverviewPdf({
             geometry: outlineGeometry,
             outline,
             paper: paperSize,
             boardName,
             system,
             wings,
-          });
+          }, tab);
         } else if (artifact === "strip") {
-          downloadStripPdf({
+          printStripPdf({
             layout: stripLayout,
             marks,
             geometry: outlineGeometry,
@@ -217,9 +227,9 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             boardName,
             dims,
             system,
-          });
+          }, tab);
         } else {
-          downloadTemplatePdf({
+          printTemplatePdf({
             layout,
             marks,
             geometry: outlineGeometry,
@@ -227,12 +237,13 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             boardName,
             dims,
             system,
-          });
+          }, tab);
         }
         generatingRef.current = false;
         setGenerating(false);
         setOpen(false);
       } catch {
+        tab?.close();
         generatingRef.current = false;
         setGenerating(false);
         setError(true);
@@ -245,8 +256,8 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
       <DialogTrigger render={trigger} />
       <DialogContent className="max-h-[85dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-surf-ink">Export Template</DialogTitle>
-          <DialogDescription>Choose what to print, then download.</DialogDescription>
+          <DialogTitle className="text-surf-ink">Print Template</DialogTitle>
+          <DialogDescription>Choose what to print. To keep a file, pick Save as PDF in the print window.</DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
@@ -333,7 +344,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
           )}
 
           {error && (
-            <p className="text-sm text-destructive">{"Couldn't build the PDF — try again."}</p>
+            <p className="text-sm text-destructive">{"Couldn't get the pages ready to print — try again."}</p>
           )}
         </div>
 
@@ -341,11 +352,12 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
           <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
           <Button
             type="button"
-            onClick={handleDownload}
+            onClick={handlePrint}
             disabled={generating}
             className="border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85"
           >
-            {generating ? "Preparing PDF…" : "Download PDF"}
+            <PrinterIcon aria-hidden="true" />
+            {generating ? "Preparing…" : "Print"}
           </Button>
         </DialogFooter>
       </DialogContent>

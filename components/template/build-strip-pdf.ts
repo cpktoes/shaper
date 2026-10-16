@@ -43,6 +43,7 @@ import {
   type BuildTemplatePdfOptions,
   type TemplateFurnitureRect,
 } from "@/components/template/build-template-pdf";
+import { printPdf } from "@/components/template/print-pdf";
 
 /** Every input `buildStripPdf` needs, fixed complete now — `dims` is the SAME seven-value shape
  * `BuildTemplatePdfOptions.dims` carries, so the export dialog builds one object and hands it to
@@ -483,9 +484,8 @@ export function stripFileName(boardName: string): string {
   return slug.length > 0 ? `${slug}-paper-saver.pdf` : "board-paper-saver.pdf";
 }
 
-/** Builds the document then saves it under the browser's normal download flow — mirrors
- * `downloadTemplatePdf`/`downloadOverviewPdf`'s own one call site. */
-export function downloadStripPdf(options: BuildStripPdfOptions): void {
-  const doc = buildStripPdf(options);
-  doc.save(stripFileName(options.boardName));
+/** Builds the document then prints it (`print-pdf.ts`) — mirrors
+ * `printTemplatePdf`/`printOverviewPdf`'s own one call site. */
+export function printStripPdf(options: BuildStripPdfOptions, tab: Window | null): void {
+  printPdf(buildStripPdf(options), stripFileName(options.boardName), tab);
 }

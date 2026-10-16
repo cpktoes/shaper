@@ -106,12 +106,12 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
     await dismissSignInBanner(page);
   });
 
-  test("TEMPLATE (/design/outline): two icons pack into the corner, Export Template in it", async ({ page }) => {
+  test("TEMPLATE (/design/outline): two icons pack into the corner, Print Template in it", async ({ page }) => {
     await page.goto("/design/outline");
 
     const { rowBox, buttons } = await measureToolbar(page);
     expect(buttons.length).toBe(2);
-    expect(buttons[0].name).toBe("Export Template");
+    expect(buttons[0].name).toBe("Print Template");
     assertCornerFlush(rowBox, buttons[0]);
     assertRowWidthMatchesVisibleButtons(rowBox, buttons);
     assertButtonsContiguous(buttons);
@@ -163,7 +163,7 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     await dismissSignInBanner(page);
   });
 
-  test("TEMPLATE (/design/outline): three icons pack into the corner, Export Template in it", async ({
+  test("TEMPLATE (/design/outline): three icons pack into the corner, Print Template in it", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -187,7 +187,7 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     // stays on the desktop side of the shell switch and still has a sidebar to hide — this is D-10
     // on real iPhone hardware.
     expect(buttons.length).toBe(3);
-    expect(buttons[0].name).toBe("Export Template");
+    expect(buttons[0].name).toBe("Print Template");
     assertCornerFlush(rowBox, buttons[0]);
   });
 });

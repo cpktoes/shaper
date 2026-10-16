@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DownloadIcon, GhostIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { GhostIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PrinterIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
@@ -196,8 +196,8 @@ export function OutlineEditor() {
             // carries no `pressed` prop at all. It is the row's corner item whenever Rotate is
             // hidden (quick task 260909-hd9): `ViewerToolbar`'s `flex-row-reverse` packs it
             // there automatically, no position of its own required.
-            <ViewerToolbarButton label="Export Template">
-              <DownloadIcon className="size-6" />
+            <ViewerToolbarButton label="Print Template">
+              <PrinterIcon className="size-6" />
             </ViewerToolbarButton>
           }
         />

@@ -974,13 +974,14 @@ export function OrderForm() {
           Print Order Form
         </Button>
         {/* One capability, one name, regardless of entry point (D-03) — same label as the
-            Template screen's own toolbar button. Neutral variant, not the accent-filled
-            treatment Print Order Form carries: the UI spec reserves accent for the dialog's own
-            Download PDF button. */}
+            Template screen's own toolbar button ("Print Template" since fast task 2026-10-15, when
+            the window began printing rather than downloading). Neutral variant, not the
+            accent-filled treatment Print Order Form carries: the UI spec reserves accent for the
+            dialog's own Print button. */}
         <ExportPreviewDialog
           trigger={
             <Button type="button" variant="outline" data-lock-exempt>
-              Export Template
+              Print Template
             </Button>
           }
         />

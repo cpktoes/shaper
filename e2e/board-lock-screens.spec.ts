@@ -417,7 +417,7 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     expect(await boardName.inputValue()).toBe(nameBefore);
     // Printing and exporting are viewing: they stay live.
     await expect(page.getByRole("button", { name: "Print Order Form" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Export Template" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Print Template" })).toBeEnabled();
 
     const look = () =>
       finSystem.evaluate((el) => {
@@ -579,9 +579,11 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
   const printCount = (page: Page) =>
     page.evaluate((key) => (window as unknown as Record<string, number>)[key] ?? 0, PRINT_COUNT_KEY);
 
-  /** Opens the export window from `trigger`, picks each of the three artifacts, switches A4 and Letter,
-   * and downloads a PDF for each (the download event is the proof). */
-  async function exportEveryArtifact(page: Page, trigger: Locator) {
+  /** Opens the print window from `trigger`, picks each of the three artifacts, switches A4 and Letter,
+   * and prints each (fast task, 2026-10-15 — the window prints, it no longer downloads): on a computer
+   * the PDF loads into the page's own print frame, on an iPhone it opens in a new tab to print from,
+   * and on Android — which cannot show a PDF in a tab — it downloads. */
+  async function printEveryArtifact(page: Page, trigger: Locator, project: string) {
     const dialog = page.getByRole("dialog", { name: /export|print|template/i }).first();
     const cards: [string, RegExp][] = [
       ["Overview Sheet", /^Overview Sheet/],
@@ -601,32 +603,48 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
         await paperButton.click();
         await expect(paperButton).toHaveAttribute("aria-pressed", "true");
       }
-      const download = dialog.getByRole("button", { name: "Download PDF" });
-      await expect(download).toBeEnabled();
-      const [file] = await Promise.all([page.waitForEvent("download"), download.click()]);
-      expect(file.suggestedFilename(), `${card} downloads a PDF`).toMatch(/\.pdf$/i);
-      // The window closes itself once the file is made.
+      const print = dialog.getByRole("button", { name: "Print", exact: true });
+      await expect(print).toBeEnabled();
+      if (project === "android") {
+        // Android cannot show a PDF in a tab, so there it downloads and prints from the phone's viewer.
+        const [file] = await Promise.all([page.waitForEvent("download"), print.click()]);
+        expect(file.suggestedFilename(), `${card} downloads its PDF on Android`).toMatch(/\.pdf$/i);
+      } else if (project === "desktop") {
+        await print.click();
+        const frame = page.locator("iframe[data-print-pdf]");
+        await expect(frame).toHaveCount(1);
+        const head = await frame.evaluate(async (el) => {
+          const bytes = await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer();
+          return new TextDecoder().decode(bytes.slice(0, 5));
+        });
+        expect(head, `${card} prints a PDF`).toBe("%PDF-");
+      } else {
+        const [tab] = await Promise.all([page.waitForEvent("popup"), print.click()]);
+        await expect.poll(() => tab.url(), { message: `${card} opens its PDF in a tab to print` }).toMatch(/^blob:/);
+        await tab.close();
+      }
+      // The window closes itself once the pages are ready.
       await expect(page.getByRole("dialog")).toHaveCount(0);
     }
   }
 
-  test("x-template. TEMPLATE's export window opens, all three artifacts and both papers pick, every one downloads a PDF, and nothing saves or changes", async ({
+  test("x-template. TEMPLATE's print window opens, all three artifacts and both papers pick, every one prints, and nothing saves or changes", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const saves = await watchPrintsAndSaves(page);
     await openLockedBoard(page, 1);
     saves.length = 0;
     const controls = page.locator("[data-design-controls-scroll]");
     const before = await controls.innerText();
-    const trigger = page.getByRole("button", { name: "Export Template" });
+    const trigger = page.getByRole("button", { name: "Print Template" });
     await expect(trigger).toBeEnabled();
-    await exportEveryArtifact(page, trigger);
+    await printEveryArtifact(page, trigger, testInfo.project.name);
     expect(await controls.innerText()).toBe(before);
     expect(saves, "export must never send a save").toEqual([]);
     await expect(unlockButton(page)).toHaveCount(1);
   });
 
-  test("x-summary. SUMMARY's Export Template downloads, Print Order Form prints, the whole printed form is in full ink, and nothing saves or changes", async ({
+  test("x-summary. SUMMARY's Print Template prints, Print Order Form prints, the whole printed form is in full ink, and nothing saves or changes", async ({
     page,
   }, testInfo) => {
     const saves = await watchPrintsAndSaves(page);
@@ -637,7 +655,7 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     await expect(form).toBeVisible();
     const before = await form.innerText();
 
-    await exportEveryArtifact(page, page.getByRole("button", { name: "Export Template" }));
+    await printEveryArtifact(page, page.getByRole("button", { name: "Print Template" }), testInfo.project.name);
 
     expect(saves, "export must never send a save").toEqual([]);
 

@@ -594,10 +594,10 @@ describe("no production call site is silently imperial by omission (T-07-06)", (
   /**
    * The single entry point the chosen system reaches the print path through — `useUnits()` in
    * `export-preview-dialog.tsx`, read exactly once, its `system` field handed into all three
-   * `Build*PdfOptions` objects. Two entry points (or one that forgot a download call) would mean a
+   * `Build*PdfOptions` objects. Two entry points (or one that forgot a print call) would mean a
    * shaper's choice could reach one artifact and not another.
    */
-  it("export-preview-dialog.tsx reads useUnits() exactly once and hands system into every download call", () => {
+  it("export-preview-dialog.tsx reads useUnits() exactly once and hands system into every print call", () => {
     const source = readStripped("components/template/export-preview-dialog.tsx");
     const hook = ["use", "Units"].join("");
     const useUnitsCalls = source.match(new RegExp(`\\b${hook}\\(\\)`, "g")) ?? [];
@@ -607,8 +607,8 @@ describe("no production call site is silently imperial by omission (T-07-06)", (
         "the chosen system enters the print path",
     ).toBe(1);
 
-    const downloadCalls = ["downloadOverviewPdf", "downloadStripPdf", "downloadTemplatePdf"];
-    for (const fn of downloadCalls) {
+    const printCalls = ["printOverviewPdf", "printStripPdf", "printTemplatePdf"];
+    for (const fn of printCalls) {
       const call = extractFirstCall(source, fn);
       expect(call, `expected a ${fn}(...) call in export-preview-dialog.tsx`).not.toBeNull();
       expect(

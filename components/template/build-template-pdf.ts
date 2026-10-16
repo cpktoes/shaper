@@ -40,6 +40,7 @@ import {
 } from "@/lib/geometry/template";
 import { inchesToMm, mm, type Litres, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { wingPrintName, type WingFigures } from "@/lib/geometry/wing-figures";
+import { printPdf } from "@/components/template/print-pdf";
 import {
   formatCalibrationMark,
   formatDim,
@@ -1147,9 +1148,9 @@ export function templateFileName(boardName: string): string {
   return slug.length > 0 ? `${slug}-template.pdf` : "board-template.pdf";
 }
 
-/** Builds the document then saves it under the browser's normal download flow — the one call
- * site every consumer (this plan's toolbar button, plan 04's preview dialog) uses. */
-export function downloadTemplatePdf(options: BuildTemplatePdfOptions): void {
-  const doc = buildTemplatePdf(options);
-  doc.save(templateFileName(options.boardName));
+/** Builds the document then prints it (`print-pdf.ts`; fast task, 2026-10-15, the founder: "print
+ * the output rather than force a download ... the user can save to PDF if they want") — the one call
+ * site the print window uses. `tab` is the one `openPrintTab` opened for a finger, or `null`. */
+export function printTemplatePdf(options: BuildTemplatePdfOptions, tab: Window | null): void {
+  printPdf(buildTemplatePdf(options), templateFileName(options.boardName), tab);
 }

@@ -82,7 +82,7 @@ export function RailBandEditor() {
   });
   const [activePage, setActivePage] = useState<RailPage>("viewer");
   // Holds the "View Full Sized" dialog's open state locally, the same way outline-editor.tsx's
-  // Export Template dialog is opened from this screen's own toolbar rather than the dialog owning
+  // Print Template dialog is opened from this screen's own toolbar rather than the dialog owning
   // its own trigger (RAIL-04, D-12).
   const [viewFullSizedOpen, setViewFullSizedOpen] = useState(false);
   // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
