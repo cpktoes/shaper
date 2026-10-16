@@ -184,6 +184,14 @@
   .chip.sel { padding-right: 6px; }
   .chip select { border: 0; background: transparent; color: var(--color-text); font: 600 12px var(--font-sans); cursor: pointer; }
   .chip select option { background: var(--color-surface); color: var(--color-text); }
+  .vseg { display: inline-flex; flex: none; border: 1px solid var(--color-line); border-radius: 999px; overflow: hidden; height: 30px; }
+  .vseg button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--color-text-muted); padding: 0 11px; font: 600 12px var(--font-sans); cursor: pointer; }
+  .vseg button + button { border-left: 1px solid var(--color-line); }
+  .vseg button.on { background: var(--color-primary); color: var(--color-on-primary); }
+  .vseg svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  .device.phone .vseg, .device.side .vseg { height: 40px; border-radius: 8px; }
+  .device.phone .vseg button, .device.side .vseg button { font-size: 0; gap: 0; padding: 0 12px; }
+  .device.phone .vseg svg, .device.side .vseg svg { width: 18px; height: 18px; }
   .fsep { width: 1px; height: 20px; background: var(--color-border); flex: none; }
   .drawer { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-well); font-size: 12px; }
   .drawer .rng { flex: 1 1 220px; display: flex; flex-direction: column; gap: 2px; }
@@ -299,7 +307,7 @@ const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "
 
 const VARIANTS = [
   { id: "a", label: "A: A BLANKS tab beside VIEWER", short: "A · Tab" },
-  { id: "b", label: "B: A popup window", short: "B · Popup" },
+  { id: "b", label: "B: A popup window ★ the founder's pick", short: "B ★ Popup", winner: true },
   { id: "c", label: "C: Today's list, with drawings", short: "C · List" },
   { id: "all", label: "All three side by side" },
 ];
@@ -308,12 +316,14 @@ const DRAWN = [["flat", "Lying flat"], ["phoneUp", "Upright on a phone only"], [
 const SCALES = [["fill", "Each blank fills its card"], ["one", "One scale for all"]];
 const DEFAULT_STARS = ["US Blanks|6'2\"A", "Arctic Foam|6'2\" F", "Millennium Foam|6'3\"S"].filter((id) => BY[id]);
 const DEFAULTS = {
-  variant: "b", device: "computer", drawn: "phoneUp", board: "fish", units: "imperial", theme: "slate", scale: "fill", ghost: false,
+  variant: "b", device: "computer", drawn: "flat", board: "fish", units: "imperial", theme: "slate", scale: "fill", ghost: false,
   stars: DEFAULT_STARS,
   ui: { a: { tab: "blanks" }, b: { tab: "viewer", open: true }, c: { tab: "viewer", expanded: false, listOpen: true } },
   f: { q: "", hidden: [], len: null, nose: null, starOnly: false, sort: "length", open: null },
 };
 let state = JSON.parse(JSON.stringify(DEFAULTS));
+if (state.drawn !== "upright") state.drawn = "flat"; // round one's "upright on a phone only" is gone
+state.scale = "fill"; // the founder's pick: each blank fills its card
 let scrollToBlank = true;
 let barOpen = false;
 try { const saved = JSON.parse(localStorage.getItem("sketch015") || "{}"); state = { ...state, ...saved, ui: { ...state.ui, ...(saved.ui || {}) }, f: { ...state.f, ...(saved.f || {}), open: null } }; } catch (e) {}
@@ -521,7 +531,7 @@ function topbar(device) {
     return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><nav class="topnav"><span>Template</span><span class="on">Rocker</span><span>Rails</span><span>Volume</span><span>Fins</span><span>Summary</span><i class="sep"></i><span>⌂</span><span>⚙</span><i class="sep"></i></nav><button class="save">Save</button><span style="font-size:14px;color:var(--color-text-muted)">Sign in</span></div>`;
   return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><button class="save">Save</button><span class="ham">☰</span></div>`;
 }
-function uprightHere(device) { return state.drawn === "upright" || (state.drawn === "phoneUp" && device === "phone"); }
+function uprightHere(device) { return state.drawn === "upright"; }
 
 function blankButton(v, device) {
   const pid = pickOf(v), b = pid ? BY[pid] : null;
@@ -606,10 +616,13 @@ function filterBar(v, device, rowsAll) {
       <button class="link" data-act="rngreset" data-k="${k}">Any ${k === "len" ? "length" : "nose rocker"}</button>
     </div>`;
   }
+  const view = `<span class="vseg" role="group" aria-label="How blanks are drawn"><button class="${state.drawn === "flat" ? "on" : ""}" data-set="drawn" data-val="flat" aria-pressed="${state.drawn === "flat"}"><svg viewBox="0 0 24 24"><rect x="2" y="8" width="20" height="8" rx="4"/></svg>Flat</button><button class="${state.drawn === "upright" ? "on" : ""}" data-set="drawn" data-val="upright" aria-pressed="${state.drawn === "upright"}"><svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="20" rx="4"/></svg>Upright</button></span>`;
+  const mine = `<button class="chip${state.ghost ? " on" : ""}" data-set="ghost" data-val="${!state.ghost}" aria-pressed="${state.ghost}">Show my board: ${state.ghost ? "On" : "Off"}</button>`;
+  const roomy = device === "computer";
   const sortSel = `<label class="chip sel set">Sort <select data-act="sort">${Object.entries(SORTS).map(([id, [l]]) => `<option value="${id}"${f.sort === id ? " selected" : ""}>${l}</option>`).join("")}</select></label>`;
   return `<div class="fbar">
-    <div class="fline"><label class="search">${SEARCH_ICON}<input type="search" data-act="q" placeholder="Search — e.g. Marko, 6'2, EPS" value="${esc(f.q)}" aria-label="Search blanks"></label><span class="count" data-count="${v}"></span></div>
-    <div class="fline chips">${device === "side" ? `<label class="search">${SEARCH_ICON}<input type="search" data-act="q" placeholder="Search blanks" value="${esc(f.q)}" aria-label="Search blanks"></label>` : ""}${chips}<i class="fsep"></i>
+    <div class="fline"><label class="search">${SEARCH_ICON}<input type="search" data-act="q" placeholder="Search — e.g. Marko, 6'2, EPS" value="${esc(f.q)}" aria-label="Search blanks"></label>${roomy ? view + mine : view}<span class="count" data-count="${v}"></span></div>
+    <div class="fline chips">${device === "side" ? `<label class="search">${SEARCH_ICON}<input type="search" data-act="q" placeholder="Search blanks" value="${esc(f.q)}" aria-label="Search blanks"></label>${view}` : ""}${chips}<i class="fsep"></i>${roomy ? "" : mine}
       <button class="chip${lenSet ? " set" : ""}${f.open === "len" ? " open" : ""}" data-act="fopen" data-k="len">Length: ${lenTxt} ▾</button>
       <button class="chip${noseSet ? " set" : ""}${f.open === "nose" ? " open" : ""}" data-act="fopen" data-k="nose">Nose rocker: ${noseTxt} ▾</button>
       <button class="chip${f.starOnly ? " on" : ""}" data-act="staronly">★ Starred only</button>
@@ -713,14 +726,12 @@ function renderChrome() {
   const ph = onPhone();
   nav.innerHTML = ph
     ? `${VARIANTS.filter((v) => v.id !== "all").map((v) => `<button class="variant-tab${state.variant === v.id ? " active" : ""}" data-set="variant" data-val="${v.id}">${v.short}</button>`).join("")}<button class="variant-tab notes-btn" id="bar-btn">Options</button><button class="variant-tab" id="notes-btn">Notes</button><div id="notes-panel">${NOTES}</div>`
-    : `<span class="sketch-id">015 · Picking a blank by sight</span>${VARIANTS.map((v) => `<button class="variant-tab${state.variant === v.id ? " active" : ""}" data-set="variant" data-val="${v.id}">${v.label}</button>`).join("")}<button class="variant-tab notes-btn" id="notes-btn">Notes</button><div id="notes-panel">${NOTES}</div>`;
+    : `<span class="sketch-id">015 · Picking a blank by sight</span>${VARIANTS.map((v) => `<button class="variant-tab${state.variant === v.id ? " active" : ""}${v.winner ? " winner" : ""}" data-set="variant" data-val="${v.id}">${v.label}</button>`).join("")}<button class="variant-tab notes-btn" id="notes-btn">Notes</button><div id="notes-panel">${NOTES}</div>`;
   document.getElementById("sketch-bar").classList.toggle("closed", ph && !barOpen);
   document.getElementById("sketch-bar").innerHTML = `
     ${onPhone() ? `<span class="grp">Turn the phone to try it sideways</span>` : `<span class="grp">Device ${seg("d", "device", DEVICES)}</span>`}
-    <span class="grp">Blanks drawn ${seg("dr", "drawn", DRAWN)}</span>
-    <span class="grp">Scale ${seg("sc", "scale", SCALES)}</span>
     <span class="grp">Your board ${seg("bd", "board", DATA.boards.map((b) => [b.id, b.id === "default" ? "Untitled 6'0\"" : b.name]))}</span>
-    <span class="grp">Show my board on each blank ${seg("gh", "ghost", [[false, "Off"], [true, "On"]])}</span>
+
     ${onPhone() ? `<span class="grp">Theme ${seg("th2", "theme", [["slate", "Slate"], ["daylight", "Daylight"], ...(window.__publish ? [["auto", "Follow phone"]] : [])])}</span><span class="grp">Units ${seg("un2", "units", [["imperial", "Imperial"], ["metric", "Metric"]])}</span><span class="grp">Stars <span class="seg"><button data-act="clearstars">Clear stars</button><button data-act="resetstars">Star three</button></span></span>` : ""}`;
   document.getElementById("t-theme").innerHTML = seg("th", "theme", [["slate", "Slate"], ["daylight", "Daylight"], ...(window.__publish ? [["auto", "Follow phone"]] : [])]);
   document.getElementById("t-units").innerHTML = seg("un", "units", [["imperial", "Imperial"], ["metric", "Metric"]]);
@@ -852,11 +863,14 @@ let rt = 0; window.addEventListener("resize", () => { clearTimeout(rt); rt = set
 
 const INTRO = {
   a: `<b>A — a BLANKS tab beside VIEWER and DATASHEET</b>, like TEMPLATE's WINGS tab. The sidebar's BLANK section becomes one button showing the blank on your board (its name and a thumbnail); it opens the tab. The tab is a catalogue page: every blank long enough for your board, starred ones first, drawn to scale with the maker's printed dims. Picking one puts it on your board and takes you back to VIEWER. Star a blank with the ☆ in its corner.`,
-  b: `<b>B — a popup window</b> opened from the same blank button in the sidebar. The window is the same catalogue page, as big as the screen allows — on a phone it fills the screen. Picking a blank closes the window and loads it; ✕, Esc or a click outside closes it without changing anything. Star a blank with the ☆ in its corner.`,
+  b: `<b>B — a popup window ★ the founder's pick (2026-10-15)</b>, opened from the blank button in the sidebar. Blanks lie flat by default on every device, each filling its card; the filter bar's Flat / Upright and Show my board switches change the view. Theme and units follow the app's own settings.`,
+  b0: `<b>B — a popup window</b> opened from the same blank button in the sidebar. The window is the same catalogue page, as big as the screen allows — on a phone it fills the screen. Picking a blank closes the window and loads it; ✕, Esc or a click outside closes it without changing anything. Star a blank with the ☆ in its corner.`,
   c: `<b>C — today's list, with drawings</b> (the founder's third option). The sidebar list stays as it is today — search, Fits / Won't fit, Show all — and each row gains a tiny drawing of the blank's outline and rocker and its nose and tail rocker. Starred blanks come first.`,
   all: `<b>All three side by side</b>, at the device picked in the bar above, each shrunk to fit. They still work: open B's window, switch A to its BLANKS tab, star a blank in one and see it starred in the others.`,
 };
-const NOTES = `<h2>What this sketch asks</h2>
+const NOTES = `<h2>Decided (the founder, 2026-10-15)</h2>
+<p><b>B, the popup.</b> Blanks lie flat by default on every device, each filling its card; a <b>Flat / Upright</b> switch and a <b>Show my board</b> on/off switch sit in the filter bar. Theme and units follow the app's own settings. <b>Stars</b> are saved on the shaper's account when signed in, in the browser when signed out, and the two join on signing in.</p>
+<h2>What this sketch asked</h2>
 <p>Where should a <b>visual blank picker</b> live on ROCKER — <b>A</b> a BLANKS tab beside VIEWER (like WINGS), <b>B</b> a popup window opened from the blank, or <b>C</b> today's list with a tiny drawing on every row? And on a phone, should the blanks lie flat or stand upright?</p>
 <h3>Every blank is real</h3>
 <p>All 219 pickable blanks from the four makers' catalogues, drawn with the app's own curves (the same ones ROCKER draws with, round noses included), at true proportion — nothing stretched. Which blanks are listed, and why a greyed one won't fit, come from the app's own fit check for the board picked in the bar (the Fish shows all three kinds: fits, too wide somewhere, too thin at the center).</p>
@@ -865,17 +879,16 @@ const NOTES = `<h2>What this sketch asks</h2>
 <li><b>Stars.</b> ☆ on any blank stars it; starred blanks always come first, in their own group, whatever the sort. "★ Starred only" narrows to them.</li>
 <li><b>Too-thin blanks are listed, greyed, with why</b> (your earlier spec). Today they're hidden. Only blanks too short for the board are left out.</li>
 <li><b>Filters</b> (A and B): the four makers (the same tick boxes as Settings → Blank Makers — at least one stays ticked), a length range, a nose-rocker range, and a sort: length (the default), nose rocker, center thickness or volume.</li>
-<li><b>Show my board on each blank</b> (the bar): your board's outline drawn dashed on every blank, where the app would place it.</li>
+<li><b>Show my board</b> (the filter bar): your board's outline drawn dashed on every blank, where the app would place it.</li>
 </ul>
 <h3>Things to try</h3>
 <ul>
 <li>Switch Device between Computer, Phone upright and Phone sideways on each of A, B and C.</li>
-<li>"Blanks drawn": lying flat (a catalogue page), upright on a phone only, or upright everywhere (your earlier spec's small upright drawing beside the numbers).</li>
-<li>"Scale": each blank filling its card shows its shape best; one scale for all lets you compare lengths and rockers card to card, like the Board Rack.</li>
+<li>Flat / Upright (the filter bar): lying flat is a catalogue page; upright is your earlier spec's small upright drawing beside the numbers.</li>
 <li>Pick the Longboard: far fewer blanks are long enough, and more are greyed.</li>
 </ul>
 <h3>On your phone</h3>
-<p>The mock-up fills the screen and follows how you hold the phone: upright shows the upright phone, turned sideways shows the sideways one. Options holds every switch: how blanks are drawn, the scale, the board, the theme, units and stars.</p>
+<p>The mock-up fills the screen and follows how you hold the phone: upright shows the upright phone, turned sideways shows the sideways one. Options holds the board, theme, units and stars; Flat / Upright and Show my board are in the popup's filter bar.</p>
 <h3>Not part of the question</h3>
 <p>The VIEWER and DATASHEET are stand-ins. The VIEWER draws your board on the picked blank roughly, just so a pick visibly lands.</p>`;
 

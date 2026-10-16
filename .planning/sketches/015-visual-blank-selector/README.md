@@ -2,7 +2,7 @@
 sketch: 015
 name: visual-blank-selector
 question: "Where should a picker that shows each blank — outline from above, rocker from the side, printed dims — live on ROCKER: a BLANKS tab, a popup window, or today's list with a drawing on every row? And should the blanks lie flat or stand upright on a phone?"
-winner: null
+winner: "B"
 tags: [rocker, blank, picker, catalogue, favourites, tabs, popup, phone, filters]
 ---
 
@@ -27,6 +27,27 @@ sorted by length, with filters for vendor, length range and nose rocker range; p
 blank; on a phone a full-screen sheet, one column. (The other chat's "add this to the rocker prompt under PAGE ORDER"
 refers to nothing in this project — no such prompt exists here.)
 
+## Decided (the founder, 2026-10-15)
+
+*"B Popup, stars follow your recommendation, default laying flat on all devices but give a vertical/horizontal toggle in
+the filter. Scaling so each blank fills its card. Show my board on each blank should be an off/on toggle in the filter.
+Theme and units follow the apps setting."*
+
+- **B, the popup window** ★, opened from the blank button (name, maker, dims and a thumbnail) in the sidebar's BLANK
+  section; on a phone it fills the screen.
+- **Blanks lie flat by default on every device.** A **Flat / Upright** switch sits in the filter bar (on a computer
+  beside the search with its words; on a phone two icons beside the search).
+- **Each blank fills its card** (true proportion, never stretched). The one-scale option is dropped.
+- **Show my board** is an on/off switch in the filter bar (beside Flat / Upright on a computer, in the chip row on a
+  phone), off by default: your board's outline dashed on every blank where the app would place it.
+- **Theme and units follow the app's own settings** — the popup has no switches of its own for them.
+- **Stars**: saved on the shaper's account when signed in (a new nullable column on `user_preferences`, a list of
+  blanks by maker and name, migrated on production before the deploy that reads it); in the browser alone when signed
+  out, like Imperial/Metric; on signing in, the browser's stars join the account's. Starring never changes a board.
+
+Round two of the sketch shows exactly this; round one's switches (upright on a phone only, one scale for all) are gone
+from the page, and round one's page is kept in `sketch-source.tar.gz` as `template-round1.html`.
+
 ## How to View
 open .planning/sketches/015-visual-blank-selector/index.html
 
@@ -37,7 +58,7 @@ phone the mock-up fills the screen and follows how the phone is held (upright or
 - **A: A BLANKS tab beside VIEWER** — like TEMPLATE's WINGS tab. The sidebar's BLANK section becomes one button (the
   blank's name, maker, dims and a thumbnail) that opens the tab; the tab is the catalogue page. Picking a blank puts it
   on the board and returns to VIEWER.
-- **B: A popup window** — the same button opens a window holding the same catalogue page, as large as the screen allows;
+- **B: A popup window ★ (the founder's pick)** — the same button opens a window holding the same catalogue page, as large as the screen allows;
   on a phone it fills the screen. Picking closes it and loads the blank; ✕, Esc or a click outside closes it unchanged.
 - **C: Today's list, with drawings** — the sidebar list as it is today (intro, search, Fits / Won't fit, Show all), each
   row with a small thumbnail of the outline over the rocker and its nose and tail rocker. Starred blanks first.
