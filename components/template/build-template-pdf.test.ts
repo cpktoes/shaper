@@ -29,6 +29,7 @@ import {
   nameBlockContent,
   rectContains,
   rectsOverlap,
+  scaleSquareCaptionLines,
   scaleSquareCaptionText,
   templateHowToBoxPlacement,
   templateHowToLines,
@@ -39,6 +40,7 @@ import {
   templateNameBlockText,
   templatePageZeroBoxRect,
   templatePageZeroFurnitureRects,
+  templateScaleSquareCaptionRects,
   templateScaleSquarePlacement,
   wrapTextToWidth,
 } from "./build-template-pdf";
@@ -1427,5 +1429,69 @@ describe("the name box lists each wing (quick 261015-sei)", () => {
         });
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Fast task (2026-10-15): the scale square's caption stays inside the page box. In Metric the one-
+// line caption (67.7mm at 9pt) ran past the 50.8mm square's sides — past the page box's right
+// border, over the Longboard's outline on Letter, over the stringer where A4 moves its square
+// inside the outline. Added below the frozen tests.
+
+describe("scale-square caption stays inside the page box (fast task, 2026-10-15)", () => {
+  const squareMm = inchesToMm(2);
+
+  for (const paper of ["letter", "a4"] as const) {
+    for (const system of ["imperial", "metric"] as const) {
+      it.each(ALL_HOWTO_BOX_CASES)(
+        `$id (${paper}, ${system}): every caption line lies inside the page box and inside the square's own reserved footprint, below the square`,
+        ({ build }) => {
+          const options = { ...build(paper), system };
+          const box = templatePageZeroBoxRect(options.layout);
+          const square = templatePageZeroFurnitureRects(options).find((r) => r.name === "scale-square")!;
+          const lines = templateScaleSquareCaptionRects(options);
+
+          expect(lines.length).toBeGreaterThan(0);
+          for (const line of lines) {
+            expect(rectContains(box, line), `${line.name} inside the page box`).toBe(true);
+            // The footprint is the space the square's placement already proves clear of the curve,
+            // the stringer and the how-to box — inside it, the caption is too.
+            expect(rectContains(square, line), `${line.name} inside the square's footprint`).toBe(true);
+            expect(line.y).toBeGreaterThanOrEqual(square.y + squareMm);
+          }
+        },
+      );
+    }
+  }
+
+  it.each(["imperial", "metric"] as const)(
+    "%s: every printed line, measured with jsPDF's getTextWidth at its own size, is no wider than the square, and the lines read the whole caption",
+    (system) => {
+      const doc = new jsPDF({ unit: "mm" });
+      const caption = scaleSquareCaptionText(system);
+      const lines = scaleSquareCaptionLines(caption, squareMm, doc);
+      for (const line of lines) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(line.fontSizePt);
+        expect(doc.getTextWidth(line.text)).toBeLessThanOrEqual(squareMm);
+        expect(line.widthMm).toBe(doc.getTextWidth(line.text));
+      }
+      expect(lines.map((line) => line.text).join(" — ")).toBe(caption);
+    },
+  );
+
+  it("Imperial still prints on one 9pt line; Metric, too wide for the square on one line, breaks at its dash onto two", () => {
+    const doc = new jsPDF({ unit: "mm" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    expect(doc.getTextWidth(scaleSquareCaptionText("imperial"))).toBeLessThanOrEqual(squareMm);
+    expect(doc.getTextWidth(scaleSquareCaptionText("metric"))).toBeGreaterThan(squareMm);
+
+    const imperial = scaleSquareCaptionLines(scaleSquareCaptionText("imperial"), squareMm, doc);
+    expect(imperial.map((line) => [line.text, line.fontSizePt])).toEqual([[scaleSquareCaptionText("imperial"), 9]]);
+
+    const metric = scaleSquareCaptionLines(scaleSquareCaptionText("metric"), squareMm, doc);
+    expect(metric.map((line) => line.text)).toEqual(["50.8 mm x 50.8 mm", "measure before taping"]);
+    expect(metric[1].baselineMm).toBeGreaterThan(metric[0].baselineMm);
   });
 });
