@@ -165,7 +165,57 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.keyboard.press("End");
     // The default board's top is its widepoint, 35 1/2" (its centre is 36"), so the window reaches 35 1/2" + 3".
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "38.500");
-    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toBeVisible();
+    // Quick 261015-my3 (D4): the wing's numbers are in its card on the left, nothing on the right.
+    await expect(closeUp.locator('[data-callout-chip="WING 1"]')).toContainText('@ 35 1/2"');
+    await expect(closeUp.locator("[data-output-rail]")).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // Quick 261015-my3 (2026-10-15): the close-up as large as it can be — every wing number in its
+  // card on the left, the tail's width at 12" a card there too, nothing on the right, the tail
+  // block's width written under the tail (D2–D6). The tracer.
+  // ---------------------------------------------------------------------------------------------
+
+  test("desktop: the close-up draws every wing number in its card on the left, nothing on the right, and the board larger", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openPreset(page, "Mid-length");
+    await addWingsOnTab(page);
+    await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
+    await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
+
+    const closeUp = page.locator("[data-wing-close-up]");
+    await expect(closeUp.locator("[data-output-rail]")).toHaveCount(0);
+    await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
+
+    // Wing 1, locked to the front fins: its position and depth, then RUN, RADIUS and OFFSET.
+    const card1 = closeUp.locator('[data-callout-chip="WING 1 · FIN"]');
+    await expect(card1).toContainText('@ 12"');
+    await expect(card1.locator('[data-wing-card-row="run"]')).toContainText("RUN");
+    await expect(card1.locator('[data-wing-card-row="radius"]')).toContainText("RADIUS");
+    await expect(card1.locator('[data-wing-card-row="offset"]')).toContainText("OFFSET");
+    // Wing 2 follows its own lock: on the Mid-length quad "+ Add wing 2" locks it to the rear fins.
+    const card2 = closeUp.locator('[data-callout-chip="WING 2 · FIN"]');
+    await expect(card2.locator('[data-wing-card-row="offset"]')).toHaveText(/OFFSET\s*0"/);
+    // The tail's width at 12" is a card of its own.
+    await expect(closeUp.locator('[data-callout-chip="TAIL @ 12\\""]')).toBeVisible();
+    // The Mid-length's round tail has no tail block, so nothing is written under it.
+    await expect(closeUp.locator("[data-tail-block-words]")).toHaveCount(0);
+
+    // Larger: the Mid-length's 26" window at more than 21.5 px per inch (F5: 22.09).
+    expect(await pixelsPerInch(page)).toBeGreaterThan(21.5);
+
+    // The default board's squash tail: its tail block's width written under the tail, the VIEWER's
+    // own TAIL BLOCK number.
+    await page.goto("/design/outline");
+    const viewerTailBlock = await page.locator('[data-callout-chip="TAIL BLOCK"]').first().textContent();
+    const width = (viewerTailBlock ?? "").replace(/^TAIL BLOCK/, "").replace(/ wide$/, "").trim();
+    expect(width).toBe('4"');
+    await page.getByRole("tab", { name: "ADD WINGS" }).click();
+    await expect(closeUp.locator("[data-tail-block-words]")).toHaveText(`TAIL BLOCK ${width}`);
   });
 
   // -------------------------------------------------------------------------------------------
@@ -434,14 +484,14 @@ test.describe("wings on the TEMPLATE page", () => {
   // Plan 02, Task 2 (P13): a narrow computer window, Metric, and FINS drawing the wing.
   // ---------------------------------------------------------------------------------------------
 
-  test("desktop: at 1024 x 768 the close-up draws its compact frame, with no station dimensions", async ({
+  test("desktop: at 1024 x 768 the close-up draws whole, with no station dimensions", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 
     await page.setViewportSize({ width: 1024, height: 768 });
     await addFirstWing(page);
-    await expectCloseUpWhole(page, "compact");
+    await expectCloseUpWhole(page);
   });
 
   test("desktop: in Metric the wing reads its position and widths in centimetres and its depth in millimetres, and a drag lands on a whole millimetre", async ({
@@ -464,10 +514,15 @@ test.describe("wings on the TEMPLATE page", () => {
     // F21, in Metric: the position is a dim (centimetres), the depth a mark (whole millimetres).
     const closeUp = page.locator("[data-wing-close-up]");
     // Quick 261015-hz7 (D5, F8): the first wing is 3/16" deep — 5 mm.
-    await expect(closeUp.locator('[data-callout-chip^="WING 1"]')).toContainText("5 mm @ 27.9 cm");
-    await expect(closeUp.locator('[data-output-rail="Ahead of wing 1"]')).toContainText("36.2 cm");
-    await expect(closeUp.locator('[data-output-rail="Behind wing 1"]')).toContainText("35.0 cm");
-    await expect(closeUp.locator('[data-output-rail^="Tail @"]')).toContainText("37.4 cm");
+    const card = closeUp.locator('[data-callout-chip^="WING 1"]');
+    await expect(card).toContainText("5 mm @ 27.9 cm");
+    // Quick 261015-my3 (D4, D5): the run, the radius and the offset are marks, in whole millimetres;
+    // the tail's width at 12" is a dim, its card named for the station in centimetres.
+    await expect(card.locator('[data-wing-card-row="run"]')).toHaveText(/RUN\s*6 mm/);
+    await expect(card.locator('[data-wing-card-row="radius"]')).toHaveText(/RADIUS\s*0 mm/);
+    await expect(card.locator('[data-wing-card-row="offset"]')).toHaveText(/OFFSET\s*0 mm/);
+    await expect(closeUp.locator('[data-callout-chip="TAIL @ 30.5 cm"]')).toContainText("37.4 cm");
+    await expect(closeUp.locator("[data-output-rail]")).toHaveCount(0);
     await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 5 mm");
 
     // A drag of the inner point lands the stored depth on a whole millimetre.
@@ -520,22 +575,23 @@ async function addFirstWingOnPhone(page: Page) {
 }
 
 /**
- * The close-up drawn whole (quick 261015-hz7, D7, D8): every chip and read-out inside the drawing on
- * all four sides, and every chip's two lines of text inside its own box, side to side. With `frame`
- * it also checks which frame drew — the compact one has no station dimension. Nothing is wider than
- * the window. Every miss is collected before failing, so one run names them all.
+ * The close-up drawn whole (quick 261015-hz7, D7, D8; quick 261015-my3, D2–D6): every card and the
+ * tail block's words inside the drawing on all four sides, every card's text inside its own box,
+ * side to side, and nothing on the right — no read-out rail, no station dimension. Nothing is wider
+ * than the window. Every miss is collected before failing, so one run names them all.
  */
-async function expectCloseUpWhole(page: Page, frame?: "compact" | "full") {
+async function expectCloseUpWhole(page: Page) {
   const closeUp = page.locator("[data-wing-close-up]");
-  if (frame) await expect(closeUp).toHaveAttribute("data-frame", frame);
   await expect(closeUp.locator("[data-callout-chip]").first()).toBeVisible();
-  if (frame === "compact") await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
+  // Quick 261015-my3 (D2): nothing on the right and no station dimensions, at any window.
+  await expect(closeUp.locator("[data-output-rail]")).toHaveCount(0);
+  await expect(closeUp.locator("[data-wing-station-dim]")).toHaveCount(0);
   const misses = await closeUp.evaluate((svg) => {
     const out: string[] = [];
     const s = svg.getBoundingClientRect();
-    for (const part of svg.querySelectorAll("[data-callout-chip], [data-output-rail]")) {
+    for (const part of svg.querySelectorAll("[data-callout-chip], [data-tail-block-words]")) {
       const box = part.getBoundingClientRect();
-      const name = part.getAttribute("data-callout-chip") ?? part.getAttribute("data-output-rail");
+      const name = part.getAttribute("data-callout-chip") ?? (part.hasAttribute("data-tail-block-words") ? "TAIL BLOCK words" : "?");
       const past = { left: s.left - box.left, top: s.top - box.top, right: box.right - s.right, bottom: box.bottom - s.bottom };
       for (const [side, by] of Object.entries(past)) if (by > 0.5) out.push(`${name} past the ${side} by ${by.toFixed(1)} px`);
     }
@@ -619,7 +675,7 @@ async function expectPhoneWingsLayout(page: Page) {
   const drawing = await closeUp.boundingBox();
   const stack = await controls.boundingBox();
   if (!drawing || !stack) throw new Error("the close-up or the controls have no box");
-  await expectCloseUpWhole(page, "compact");
+  await expectCloseUpWhole(page);
   return { drawing, stack };
 }
 
@@ -629,7 +685,7 @@ test.describe("wings on a phone held upright (plan 02)", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the close-up draws compact and whole above the wing controls", async ({ page }) => {
+  test("the close-up draws whole above the wing controls", async ({ page }) => {
     await addFirstWingOnPhone(page);
     const { drawing, stack } = await expectPhoneWingsLayout(page);
     expect(drawing.y + drawing.height).toBeLessThanOrEqual(stack.y + 1);
@@ -677,7 +733,7 @@ void iphoneLandscapeEmulatorViewport;
 const realSidewaysIphone = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
 
 /** Sideways: the desktop shell by width, the phone's compact top bar by height (CLAUDE.md
- * "Layout"), and the close-up compact and whole beside the wing controls. */
+ * "Layout"), and the close-up whole beside the wing controls. */
 async function expectSidewaysWings(page: Page) {
   await addFirstWingOnPhone(page);
   await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
@@ -691,7 +747,7 @@ test.describe("wings on a Pixel 7 held sideways (plan 02)", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the close-up draws compact and whole, under the phone's compact top bar", async ({ page }) => {
+  test("the close-up draws whole, under the phone's compact top bar", async ({ page }) => {
     await expectSidewaysWings(page);
   });
 });
@@ -703,7 +759,7 @@ test.describe("wings on a real iPhone held sideways (plan 02)", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the close-up draws compact and whole, under the phone's compact top bar", async ({ page }) => {
+  test("the close-up draws whole, under the phone's compact top bar", async ({ page }) => {
     await expectSidewaysWings(page);
   });
 });

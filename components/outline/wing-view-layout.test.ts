@@ -1,23 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { MIN_PINNED_FIT_SCALE, pinnedCalloutSizes } from "@/components/viewer/callout-primitives";
-import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
+import { MIN_PINNED_FIT_SCALE } from "@/components/viewer/callout-primitives";
+import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
+import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import { NO_FIN_EDGES, nextWing, outlineWithoutWings } from "@/lib/geometry/wings";
 import {
   CLOSE_UP,
-  CLOSE_UP_COMPACT,
+  CLOSE_UP_CORNER_PX,
   TAIL_WINDOW_IN,
   WINDOW_ROOM_IN,
+  WING_CARD_LABEL_PX,
+  WING_CARD_PX,
   closeUpFrame,
   spreadApart,
-  useCompactFrame,
   widestHalfWidthIn,
+  wingCardHeightPx,
   wingWindow,
 } from "./wing-view-layout";
 
-// The WINGS tab's view maths (quick 261014-wii, 2026-10-14, P4). The frame's expected numbers are
-// derived from the sketch's own constants, never typed.
+// The WINGS tab's view maths (quick 261014-wii, 2026-10-14, P4; the one frame, quick 261015-my3,
+// 2026-10-15, D6). The frame's expected numbers are F5's, measured in a real browser at plan time.
 
 describe("wingWindow — the last 26 inches, growing once a wing passes 24 (sketch 014 B)", () => {
   const length = DEFAULT_BOARD_SPEC.outline.length;
@@ -42,33 +45,174 @@ describe("wingWindow — the last 26 inches, growing once a wing passes 24 (sket
   });
 });
 
-describe("closeUpFrame — the sketch's closeUpSvg arithmetic", () => {
-  it("frames the default board's one-wing window from the sketch's constants", () => {
-    const outline = DEFAULT_BOARD_SPEC.outline;
-    const wing = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
-    const winged = buildOutline({ ...outline, wings: [wing] });
-    const base = buildOutline(outlineWithoutWings(outline));
-    const { lo, hi } = wingWindow(outline.length, [wing.station]);
-    const loIn = mmToInches(lo);
-    const hiIn = mmToInches(hi);
-    const widest = widestHalfWidthIn([winged.points, base.points], loIn, hiIn);
-    const frame = closeUpFrame(loIn, hiIn, widest);
 
-    const u = (CLOSE_UP.height - CLOSE_UP.padTop - CLOSE_UP.padBottom) / (hiIn - loIn);
-    const cx = CLOSE_UP.gutterLeft + widest * u + CLOSE_UP.sideRoom;
-    expect(frame.unitsPerInch).toBeCloseTo(u, 12);
-    expect(frame.cx).toBeCloseTo(cx, 9);
-    expect(frame.width).toBe(Math.ceil(cx + widest * u + CLOSE_UP.sideRoom + CLOSE_UP.railRight));
-    expect(frame.valueX).toBeCloseTo(cx + widest * u + CLOSE_UP.valueOffset, 9);
-    expect(frame.extensionEndX).toBeCloseTo(cx + widest * u + CLOSE_UP.extensionReach, 9);
-    expect(frame.chipRightX).toBe(CLOSE_UP.gutterLeft - CLOSE_UP.chipInset);
-    expect(frame.toY(loIn)).toBe(CLOSE_UP.height - CLOSE_UP.padBottom);
-    expect(frame.toY(hiIn)).toBeCloseTo(CLOSE_UP.padTop, 9);
-    expect(frame.stationDimX(1) - frame.stationDimX(0)).toBe(CLOSE_UP.stationDimStep);
-    // The widest half-width in the window is the widest of the drawn curve there.
-    expect(widest).toBeGreaterThan(mmToInches(winged.halfTailBlockWidth));
+/** A board's two-wing window as the close-up frames it: the wings the sidebar's "+ Add a wing" and
+ * "+ Add wing 2" make, or, `grownTo` given, wing 1 carried to that station so the window grows. */
+function boardWindow(outline: OutlineSpec, grownTo?: number) {
+  const g0 = buildOutline(outlineWithoutWings(outline));
+  const w1 = nextWing([], NO_FIN_EDGES, g0, "imperial");
+  const w2 = nextWing([w1], NO_FIN_EDGES, buildOutline({ ...outline, wings: [w1] }), "imperial");
+  const wings = grownTo === undefined ? [w1, w2] : [{ ...w1, station: inchesToMm(grownTo) }, w2];
+  const winged = buildOutline({ ...outline, wings });
+  const { lo, hi } = wingWindow(outline.length, wings.map((w) => w.station));
+  const loIn = mmToInches(lo);
+  const hiIn = mmToInches(hi);
+  return {
+    loIn,
+    hiIn,
+    widest: widestHalfWidthIn([winged.points, g0.points], loIn, hiIn),
+    tailBlock: !winged.tailBlockPinned,
+  };
+}
+
+/** The default board's one-wing window (widest 9.20"), with its tail block. */
+function defaultWindow() {
+  const outline = DEFAULT_BOARD_SPEC.outline;
+  const wing = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
+  const winged = buildOutline({ ...outline, wings: [wing] });
+  const base = buildOutline(outlineWithoutWings(outline));
+  const { lo, hi } = wingWindow(outline.length, [wing.station]);
+  const loIn = mmToInches(lo);
+  const hiIn = mmToInches(hi);
+  return { loIn, hiIn, widest: widestHalfWidthIn([winged.points, base.points], loIn, hiIn) };
+}
+
+const MIN_FIT = MIN_PINNED_FIT_SCALE;
+const fine = CLOSE_UP_CORNER_PX.fine;
+const coarse = CLOSE_UP_CORNER_PX.coarse;
+const pxPerInch = (f: { unitsPerInch: number; fit: number }) => f.unitsPerInch * f.fit;
+
+describe("closeUpFrame — the one frame, as large as it can be (quick 261015-my3, D6, F5)", () => {
+  it("the default board's 26-inch window is 9.20 inches at its widest", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    expect(loIn).toBe(0);
+    expect(hiIn).toBe(26);
+    expect(widest).toBeCloseTo(9.2, 2);
+  });
+
+  it("1280 x 800 (box 804 x 614, a mouse): the gutter fits the card, the board hugs it, no top pad", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 804, height: 614 }, corner: fine, minFit: MIN_FIT });
+    expect(f.gutterLeft).toBeCloseTo(143.2, 0);
+    expect(Math.abs(f.gutterLeft - 143.2)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(f.fit - 0.99)).toBeLessThanOrEqual(0.002);
+    expect(Math.abs(pxPerInch(f) - 22.09)).toBeLessThanOrEqual(0.05);
+    expect(Math.abs(f.width - 811.9)).toBeLessThanOrEqual(1);
+    expect(f.padTop).toBe(8);
+    expect(f.padBottom).toBe(32);
+    expect(f.chipRightX).toBeCloseTo(f.gutterLeft - CLOSE_UP.chipInset, 9);
+    expect(f.toY(hiIn)).toBeCloseTo(8, 9);
+    expect(f.toY(loIn)).toBe(CLOSE_UP.height - 32);
+  });
+
+  it("1024 x 768 (box 548 x 582, a mouse): the corner rule moves the board's top below the toolbar and zoom row", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 548, height: 582 }, corner: fine, minFit: MIN_FIT });
+    expect(f.padTop).toBeGreaterThanOrEqual(87);
+    expect(f.padTop).toBeLessThanOrEqual(89);
+    expect(Math.abs(f.fit - 0.939)).toBeLessThanOrEqual(0.002);
+    expect(Math.abs(pxPerInch(f) - 18.06)).toBeLessThanOrEqual(0.1);
+    expect(f.padTop * f.fit).toBeGreaterThanOrEqual(fine.height + CLOSE_UP.cornerClearPx);
+  });
+
+  it("an upright iPhone (box 380 x 389, a finger): the gutter at the floor, the board's top below the toolbar", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 380, height: 389 }, corner: coarse, minFit: MIN_FIT });
+    expect(Math.abs(f.gutterLeft - 203.8)).toBeLessThanOrEqual(0.5);
+    expect(f.padTop).toBeGreaterThanOrEqual(64);
+    expect(f.padTop).toBeLessThanOrEqual(66);
+    expect(Math.abs(pxPerInch(f) - 12.44)).toBeLessThanOrEqual(0.1);
+  });
+
+  it("a sideways iPhone (box 482 x 293): bound by its height, no top pad, the same size as before (10.54 px per inch)", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 482, height: 293 }, corner: coarse, minFit: MIN_FIT });
+    expect(f.padTop).toBe(8);
+    expect(Math.abs(pxPerInch(f) - 10.54)).toBeLessThanOrEqual(0.05);
+  });
+
+  it("the bottom pad is 16 with no tail block and 32 with one (the words under the tail, D3)", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const box = { width: 804, height: 614 };
+    expect(closeUpFrame(loIn, hiIn, widest, { tailBlock: false, box, corner: fine, minFit: MIN_FIT }).padBottom).toBe(16);
+    expect(closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box, corner: fine, minFit: MIN_FIT }).padBottom).toBe(32);
+    const noBlock = closeUpFrame(loIn, hiIn, widest, { tailBlock: false, box, corner: fine, minFit: MIN_FIT });
+    expect(noBlock.toY(loIn)).toBe(CLOSE_UP.height - 16);
+  });
+
+  it("an unmeasured box (0 x 0) builds pass 1 alone: no top pad, the gutter at the floor", () => {
+    const { loIn, hiIn, widest } = defaultWindow();
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 0, height: 0 }, corner: fine, minFit: MIN_FIT });
+    const floor = CLOSE_UP.chipInset + WING_CARD_PX.width / MIN_FIT + CLOSE_UP.cardMargin;
+    expect(f.padTop).toBe(8);
+    expect(f.gutterLeft).toBeCloseTo(floor, 9);
+    expect(f.fit).toBe(0);
+    const u = (CLOSE_UP.height - 8 - 32) / (hiIn - loIn);
+    expect(f.unitsPerInch).toBeCloseTo(u, 12);
+    expect(f.width).toBeCloseTo(floor + 2 * widest * u + 2 * CLOSE_UP.sideRoom, 1);
+    expect(closeUpFrame(loIn, hiIn, widest, { tailBlock: true, minFit: MIN_FIT }).gutterLeft).toBeCloseTo(floor, 9);
+  });
+
+  // The five boards' windows (26" and grown) over the six boxes of F1, each with its own corner.
+  const BOARDS: [string, OutlineSpec][] = [
+    ["default", DEFAULT_BOARD_SPEC.outline],
+    ...BOARD_PRESETS.map((p) => [p.name, p.outline] as [string, OutlineSpec]),
+  ];
+  const BOXES = [
+    { name: "1280 x 800", width: 804, height: 614, corner: fine },
+    { name: "1024 x 768", width: 548, height: 582, corner: fine },
+    { name: "iPhone upright", width: 380, height: 389, corner: coarse },
+    { name: "Pixel upright", width: 402, height: 505, corner: coarse },
+    { name: "Pixel sideways", width: 492, height: 263, corner: coarse },
+    { name: "iPhone sideways", width: 482, height: 293, corner: coarse },
+  ];
+  const CASES = BOARDS.flatMap(([name, outline]) =>
+    [undefined, 34, 50].flatMap((grownTo) =>
+      BOXES.map((box) => ({ label: `${name}, ${grownTo === undefined ? "26-inch window" : `wing at ${grownTo}"`}, ${box.name}`, outline, grownTo, box })),
+    ),
+  );
+
+  it.each(CASES)("$label: never below pass 1, the card inside its gutter, the board clear of the corner, nothing wider than the box", ({ outline, grownTo, box }) => {
+    const { loIn, hiIn, widest, tailBlock } = boardWindow(outline, grownTo);
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock, box, corner: box.corner, minFit: MIN_FIT });
+    // Pass 1 by hand: the gutter at the floor, no top pad.
+    const padBottom = tailBlock ? CLOSE_UP.padBottomTailBlock : CLOSE_UP.padBottom;
+    const u1 = (CLOSE_UP.height - CLOSE_UP.padTop - padBottom) / (hiIn - loIn);
+    const w1 = CLOSE_UP.chipInset + WING_CARD_PX.width / MIN_FIT + CLOSE_UP.cardMargin + 2 * widest * u1 + 2 * CLOSE_UP.sideRoom;
+    const fit1 = Math.min(box.width / w1, box.height / CLOSE_UP.height);
+    expect(f.fit).toBeGreaterThanOrEqual(fit1 - 1e-4);
+    // The card, 120 px at the final fit (floored), inside its gutter with the inset and margin.
+    expect(WING_CARD_PX.width / Math.max(f.fit, MIN_FIT)).toBeLessThanOrEqual(f.gutterLeft - CLOSE_UP.chipInset - CLOSE_UP.cardMargin + 1e-9);
+    // Whenever the corner rule fired, the board's top sits below the corner block.
+    if (f.padTop > CLOSE_UP.padTop) {
+      expect(f.padTop * f.fit).toBeGreaterThanOrEqual(box.corner.height + CLOSE_UP.cornerClearPx - 1e-6);
+    } else {
+      const boardRight = f.toX(widest) * f.fit;
+      expect(box.width - boardRight).toBeGreaterThanOrEqual(box.corner.width + CLOSE_UP.cornerClearPx - 1e-6);
+    }
+    // The frame is the box's own shape or narrower, and the board is inside it.
+    expect(f.width * f.fit).toBeLessThanOrEqual(box.width + 0.01);
+    expect(CLOSE_UP.height * f.fit).toBeLessThanOrEqual(box.height + 0.01);
+    // (The width is cut to two decimals, down, so at most a hundredth comes off the side room.)
+    expect(f.toX(widest) + CLOSE_UP.sideRoom).toBeLessThanOrEqual(f.width + 0.01);
+    expect(f.toX(-widest) - CLOSE_UP.sideRoom).toBeCloseTo(f.gutterLeft, 9);
   });
 });
+
+describe("the close-up's data cards (D4)", () => {
+  it("a card's height: the head alone, or the head, a row per value and the foot", () => {
+    expect(wingCardHeightPx(0)).toBe(32);
+    expect(wingCardHeightPx(2)).toBe(70);
+    expect(wingCardHeightPx(3)).toBe(86);
+  });
+
+  it("the card is 120 px wide, and the longest row label leaves room for its value", () => {
+    expect(WING_CARD_PX.width).toBe(120);
+    const room = WING_CARD_PX.width - 2 * WING_CARD_PX.inset - WING_CARD_PX.labelGap - WING_CARD_LABEL_PX.OFFSET;
+    expect(room).toBeGreaterThan(48);
+  });
+});
+
 
 describe("spreadApart — read-outs pushed apart (down only to clear a block's near side or to stay inside the drawing)", () => {
   it("leaves labels that do not clash where they are", () => {
@@ -160,89 +304,5 @@ describe("spreadApart — read-outs pushed apart (down only to clear a block's n
     );
     expect(out[0] + 10).toBeLessThanOrEqual(450);
     expect(out[1]).toBeLessThan(out[0]);
-  });
-});
-
-describe("the close-up's right rail holds the longest read-out at the pinned floor (D7, F9, F10)", () => {
-  // "Ahead of wing 2" at 11 px, letter-spaced 0.1em, measures 103.55 px (F9): 104 rounded up.
-  const LONGEST_READOUT_PX = 104;
-  it.each([
-    ["full", CLOSE_UP],
-    ["compact", CLOSE_UP_COMPACT],
-  ] as const)("the %s frame", (_name, c) => {
-    expect(c.sideRoom + c.railRight - c.valueOffset).toBeGreaterThanOrEqual(LONGEST_READOUT_PX / MIN_PINNED_FIT_SCALE);
-  });
-
-  it("the full frame's rail is 268 and the compact keeps its own 240", () => {
-    expect(CLOSE_UP.railRight).toBe(268);
-    expect(CLOSE_UP_COMPACT.railRight).toBe(240);
-  });
-});
-
-describe("the compact frame — the close-up fitting itself on a phone and a narrow window (plan 02, P13)", () => {
-  /** The default board's one-wing window, as the close-up frames it (F27). */
-  function defaultWindow() {
-    const outline = DEFAULT_BOARD_SPEC.outline;
-    const wing = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
-    const winged = buildOutline({ ...outline, wings: [wing] });
-    const base = buildOutline(outlineWithoutWings(outline));
-    const { lo, hi } = wingWindow(outline.length, [wing.station]);
-    const loIn = mmToInches(lo);
-    const hiIn = mmToInches(hi);
-    return { loIn, hiIn, widest: widestHalfWidthIn([winged.points, base.points], loIn, hiIn) };
-  }
-
-  // TEMPLATE's drawing boxes with the tab strip tabbed (plan 01, F22), measured at plan time (F27).
-  const BOXES = [
-    { name: "iPhone upright (390 x 844)", w: 380, h: 508.0, compact: true },
-    { name: "Pixel upright (412 x 915)", w: 402, h: 554.9, compact: true },
-    { name: "iPhone sideways (844 x 390)", w: 482, h: 293, compact: true },
-    { name: "Pixel sideways (863 x 360)", w: 491.5, h: 263, compact: true },
-    { name: "computer 1024 x 768", w: 548, h: 582, compact: true },
-    { name: "computer 1280 x 800", w: 804, h: 614, compact: false },
-  ];
-
-  it.each(BOXES)("$name: compact is $compact", ({ w, h, compact }) => {
-    const { loIn, hiIn, widest } = defaultWindow();
-    const full = closeUpFrame(loIn, hiIn, widest);
-    expect(useCompactFrame(w, h, full.width, MIN_PINNED_FIT_SCALE)).toBe(compact);
-  });
-
-  it("an unmeasured box keeps the full frame", () => {
-    expect(useCompactFrame(0, 0, 882, MIN_PINNED_FIT_SCALE)).toBe(false);
-  });
-
-  it("is decided by the full frame's fit against the floor, nothing else", () => {
-    const { loIn, hiIn, widest } = defaultWindow();
-    const full = closeUpFrame(loIn, hiIn, widest);
-    const atFloor = full.width * MIN_PINNED_FIT_SCALE;
-    const roomy = 10000;
-    expect(useCompactFrame(atFloor + 1, roomy, full.width, MIN_PINNED_FIT_SCALE)).toBe(false);
-    expect(useCompactFrame(atFloor - 1, roomy, full.width, MIN_PINNED_FIT_SCALE)).toBe(true);
-    expect(useCompactFrame(roomy, CLOSE_UP.height * MIN_PINNED_FIT_SCALE - 1, full.width, MIN_PINNED_FIT_SCALE)).toBe(true);
-  });
-
-  it("closeUpFrame(..., true) is built from the compact constants", () => {
-    const { loIn, hiIn, widest } = defaultWindow();
-    const frame = closeUpFrame(loIn, hiIn, widest, true);
-    const c = CLOSE_UP_COMPACT;
-    const u = (c.height - c.padTop - c.padBottom) / (hiIn - loIn);
-    const cx = c.gutterLeft + widest * u + c.sideRoom;
-    expect(frame.unitsPerInch).toBeCloseTo(u, 12);
-    expect(frame.width).toBe(Math.ceil(cx + widest * u + c.sideRoom + c.railRight));
-    expect(frame.valueX).toBeCloseTo(cx + widest * u + c.valueOffset, 9);
-    expect(frame.chipRightX).toBe(c.gutterLeft - c.chipInset);
-    expect(frame.toY(hiIn)).toBeCloseTo(c.padTop, 9);
-    // Narrower than the full frame, and every inch drawn bigger.
-    const full = closeUpFrame(loIn, hiIn, widest);
-    expect(frame.width).toBeLessThan(full.width);
-    expect(frame.unitsPerInch).toBeGreaterThan(full.unitsPerInch);
-  });
-
-  it("its chip column holds a WING chip at the pinned floor, left edge inside the drawing", () => {
-    const { loIn, hiIn, widest } = defaultWindow();
-    const frame = closeUpFrame(loIn, hiIn, widest, true);
-    const { chipW } = pinnedCalloutSizes(MIN_PINNED_FIT_SCALE);
-    expect(frame.chipRightX - chipW).toBeGreaterThanOrEqual(0);
   });
 });
