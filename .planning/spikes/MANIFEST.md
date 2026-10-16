@@ -15,10 +15,15 @@ sketch go to a Fable session.
 - Geometry stays pure and tested in `lib/geometry/` (Rule 1). A saved-data change follows CLAUDE.md's Database rule:
   additive migrations run on production before the deploy.
 - Explain everything to the founder in shaper's terms.
+- **The US Blanks notation is the app-wide way of writing a custom rocker, on every maker's blank** (the founder,
+  2026-10-16: "descriptive even for other mfgs"): nose first, then tail, signed inches, a figure after N or T for where
+  the bend starts, none for the centre.
+- A custom rocker is a step after the blank's natural curve (like wings and the round nose), re-levelled on its true
+  low point; it changes the board's rocker, never the fit.
 
-**Status:** spikes 001–002 VALIDATED. The decisions waiting on the founder are listed at the end of
-`002-custom-rocker-bend/README.md`. Next is `/gsd-sketch` (VIEWER custom-over-natural, the name and figures on the
-blank, the 015 B picker with a Rocker row).
+**Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The
+decisions waiting on the founder are its §6. Next is `/gsd-sketch` 016 (the sidebar control, the VIEWER overlay, the
+name on the blank and the DATASHEET), then a quick task with a BRIEF once quick 261015-ve9 is on `main`.
 
 ## Spikes
 

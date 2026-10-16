@@ -87,7 +87,13 @@ real examples (height ×4, figures natural → custom).
 
    So the app needs a second kind of custom rocker, **figures at the stations**, for Arctic's library and for any
    maker figures a shaper types in.
-7. **Marko's off-centre low point.** A +1"N from centre on the 10'2" M raised its nose tip by exactly 1", with no dip.
+7. **Stress on every pickable blank** (`stress.mts`, added later the same day): large changes on all 219 blanks.
+   A −2"T from the centre moves the low point on 69 blanks and takes the tail below the old low on 62 — a reverse-
+   rocker tail, which US Blanks stocks (`Reverse Rocker`). A −1"T18" shows "dips" of at most 0.12 mm, the flat between
+   the old and new low, not a bump. A +2"N +2"T moves the low point on 5 (the flat-bottomed 8'9"Y family). So the
+   build must find the bent curve's TRUE low point by a dense scan and re-level there — the printed knots alone are
+   not enough once a change is large.
+8. **Marko's off-centre low point.** A +1"N from centre on the 10'2" M raised its nose tip by exactly 1", with no dip.
    The app reads that blank's lowest printed station (the centre, 0.21" as printed) as 0, so "from centre" behaves.
 
 ## Results
