@@ -126,16 +126,21 @@ deploy that reads it.
    tables) and named rockers come in a second task once the makers' lists are fetched and proofread. Named rockers
    with no published figures (Hawaii, TM Flat, Frye, Classic) and "another blank's curve" wait for figures — though
    `94B B/C` on a 9'3"Y is computable later from our own catalogue, matched at the centre.
-2. **How the shaper sets it — decided (the founder, 2026-10-16, sketch 016 round five):** an **ADVANCED** section at
-   the foot of the ROCKER sidebar, as FINS has (`DisclosureHeading`, closed by default), holding one button —
-   **Customize Rocker ›**, reading **Edit Custom Rocker ›** once the board's blank carries one — that opens a large
-   popup (the PICK A BLANK dialog's own size; the founder: "a similar effect as the Add Wings button"). In the popup:
-   the drawing (natural dashed, the blank as ordered solid, a mark at each bend), NOSE and TAIL rows — an amount
-   slider in 1/16" (1 mm in Metric) with a value box, "Bend starts" (the centre, or 6" · 12" · 18" · 24" · 30" · 36" ·
-   48" in from that tip), "+ Add a second change" per end — the note, and the footer: Cancel · Save as a new blank ·
-   Use on this board, plus Save changes to this blank when the board uses a saved custom blank. The sidebar itself
-   shows only the result (the BLANK button's rocker line). A shaper never types the notation — the app writes it.
-   Sketch 016's A (a ROCKER section), B (rows on the BLANK card) and C (a typed field) stay as the alternatives seen.
+2. **How the shaper sets it — decided (the founder, 2026-10-16, sketch 016 rounds five and six):** one button
+   **right under the blank card** in the BLANK section — **Customize Rocker ›**, reading **Edit Custom Rocker ›**
+   once the board's blank carries one — opens a large popup (the PICK A BLANK dialog's own size; the founder: "a
+   similar effect as the Add Wings button"). **The popup is laid out like the ROCKER page itself:** the controls on
+   the left and scrolling, the drawing beside them; on an upright phone the drawing pinned on top and the controls
+   scrolling in the space beneath it, exactly as the page does. In it: the drawing (natural dashed, the blank as
+   ordered solid, a mark at each bend), NOSE and TAIL rows — an amount slider in 1/16" (1 mm in Metric) with a value
+   box, "Bend starts" (the centre, or 6" · 12" · 18" · 24" · 30" · 36" · 48" in from that tip), "+ Add a second
+   change" per end — ↺ Natural rocker, the note, and the footer: **Cancel · Use and save as a new blank**, plus
+   **Use and edit current blank** only when the board already uses one of the shaper's custom blanks. So **every
+   custom rocker in use is a saved blank** — there is no "this board only" custom rocker; a draft put back to
+   natural simply uses the natural blank. A board keeps its own copy of the blank as always, so editing a saved
+   custom blank later never moves a board already saved on it (the catalogue-correction rule). The sidebar shows
+   only the result (the BLANK button's rocker line). A shaper never types the notation — the app writes it. Sketch
+   016's A (a ROCKER section), B (rows on the BLANK card) and C (a typed field) stay as the alternatives seen.
 3. **The drawing:** custom solid in the blank's line, natural dashed behind it, a short mark across the bottom where
    each bend starts (the Thinning Starts mark's grammar), the five board stations reading the custom figures as they
    do today; "Show measuring points" unchanged. **Decided (sketch 016 round three): no tip close-ups.**

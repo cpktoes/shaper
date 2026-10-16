@@ -28,9 +28,10 @@ sketch go to a Fable session.
 - **A custom blank can be saved for later as a blank of the shaper's own, beside the maker's natural one, and is
   starred the moment it is saved** (the founder, 2026-10-16). The one database change in the first build: an additive
   `user_blanks` table, migrated on production before the deploy.
-- **The control is an ADVANCED section with a Customize Rocker / Edit Custom Rocker button opening a large popup**
-  (sketch 016 D, the founder, 2026-10-16), with Cancel · Save as a new blank · Use on this board, plus Save changes to
-  this blank for a saved custom blank.
+- **The control is a Customize Rocker / Edit Custom Rocker button right under the blank card, opening a large popup
+  laid out like the ROCKER page** (sketch 016 D, the founder, 2026-10-16: rows left and scrolling, the drawing beside
+  them; on a phone the drawing pinned on top), with Cancel · Use and save as a new blank, plus Use and edit current
+  blank only when the board already uses a custom blank. Every custom rocker in use is a saved blank.
 - **No rocker value goes negative:** each change stops at the floor that keeps the blank at or above its centre's
   height; nothing re-levels. **Switching to a different blank clears the custom rocker.** Every blank is named
   the name then its rocker on its own line, `Natural` included; tables show Natural Rocker over Custom Rocker.

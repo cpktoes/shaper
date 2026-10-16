@@ -234,14 +234,17 @@
   .advbtn:hover { background: var(--color-well); }
   .device.phone .advbtn, .device.side .advbtn { min-height: 44px; }
   .rdlg { max-width: 1100px; }
-  .rbody { flex: 1; min-height: 0; overflow-y: auto; display: flex; gap: 18px; padding: 12px 18px; }
+  /* the popup is laid out like the ROCKER page itself: controls left and scrolling, the drawing beside them;
+     on an upright phone the drawing is pinned on top and the controls scroll in the space beneath */
+  .rbody { flex: 1; min-height: 0; display: flex; gap: 18px; padding: 12px 18px; }
   .device.phone .rbody { flex-direction: column; padding: 8px 12px; gap: 8px; }
   .rart { flex: 1 1 58%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-canvas); padding: 6px; min-height: 260px; }
-  .device.phone .rart { min-height: 300px; }
+  .device.phone .rart { flex: none; height: 300px; min-height: 0; order: -1; }
   .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; }
   .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; }
-  .rrows { flex: 0 0 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-  .device.phone .rrows { flex: none; }
+  .rrows { flex: 0 0 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-right: 6px; }
+  .rrows > * { flex-shrink: 0; }
+  .device.phone .rrows { flex: 1; min-height: 0; padding-right: 0; }
   .device.side .rbody { padding: 6px 10px; gap: 10px; } .device.side .rrows { flex: 0 0 300px; }
   .rfoot { flex: none; display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
   .rfoot .sp { flex: 1; }
@@ -276,7 +279,7 @@ const PALETTES = {
 };
 const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
 const VARIANTS = [
-  { id: "d", label: "D: Advanced › Customize Rocker, a popup — the founder's direction", short: "D · Popup", winner: true },
+  { id: "d", label: "D: Customize Rocker under the blank card, a popup — the founder's direction", short: "D · Popup", winner: true },
   { id: "a", label: "A: The ROCKER section, two rows", short: "A · Section" },
   { id: "b", label: "B: Inside the BLANK card", short: "B · On the card" },
   { id: "c", label: "C: One field in the notation", short: "C · Typed" },
@@ -523,7 +526,11 @@ function blankButton(v, device, g) {
   if (v !== "b") return btn;
   return `<div class="bcard">${btn}<div class="rockrow"><span class="lab">Rocker</span>${note ? "" : `<span class="val">Natural</span>`}<button class="link" data-act="btoggle">${state.bOpen ? "Done" : note ? "Change ›" : "Set a custom rocker ›"}</button></div>${note ? `<div class="rockval">${esc(note)}</div>` : ""}${state.bOpen ? `<div class="inrows">${rockerRows(device)}</div>` : ""}</div>`;
 }
-/** Variant D: an ADVANCED section at the foot of the sidebar, as FINS has, holding the one button that opens the popup. */
+/** Variant D (round six): the one button sits right under the blank card. */
+function customizeButton() {
+  const note = noteOf(state.rocker);
+  return `<button class="advbtn" data-act="customize">${note ? "Edit Custom Rocker ›" : "Customize Rocker ›"}</button>`;
+}
 function advancedSection(device) {
   const note = noteOf(state.rocker), b = B().blank;
   const savedNow = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === note ? state.saved[state.savedIdx] : null;
@@ -546,6 +553,7 @@ function sidebar(v, device, g) {
     <p class="note fine">The board's one center thickness — Rails and Volume read it too.</p>
     <div class="sect">Blank</div>
     ${blankButton(v, device, g)}
+    ${v === "d" ? customizeButton() : ""}
     <div class="links"><button class="link muted" data-act="noop">Remove This Blank</button></div>
     <p class="note fine">Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut.</p>
     <div class="sect">Board on blank</div>
@@ -556,7 +564,6 @@ function sidebar(v, device, g) {
     <div class="fake-range"><i style="left:20%"></i></div>
     ${v === "a" ? rockerSectionA(device) : v === "c" ? rockerSectionC(device) : ""}
     <div class="sect closed">Thickness</div>
-    ${v === "d" ? advancedSection(device) : ""}
     ${device === "computer" ? "" : `<div class="stepnav"><span>← Template</span><span>Rails →</span></div>`}
   </aside>`;
 }
@@ -666,14 +673,14 @@ function rockerPopup(device, g) {
   const art = mainArt(device === "phone" ? "phone" : "side", gd);
   return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
     <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${esc(note ? "Natural → " + note : "Natural")}</span><button class="x" data-act="popcancel">✕</button></div>
-    <div class="rbody" data-scroll="rpop">
-      <div class="rart">${art}<div class="rcap">Natural dashed · the blank as ordered solid · a mark where each bend starts</div></div>
-      <div class="rrows">${endBlock("nose", device, r)}${endBlock("tail", device, r)}
+    <div class="rbody">
+      <div class="rrows" data-scroll="rpop">${endBlock("nose", device, r)}${endBlock("tail", device, r)}
         <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
         <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
       </div>
+      <div class="rart">${art}<div class="rcap">Natural dashed · the blank as ordered solid · a mark where each bend starts</div></div>
     </div>
-    <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Save changes to this blank</button>` : ""}<button class="btn" data-act="popsavenew"${note ? "" : " disabled"}>Save as a new blank</button><button class="btn primary" data-act="popuse">Use on this board</button></div>
+    <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Use and edit current blank</button>` : ""}${note ? `<button class="btn primary" data-act="popsavenew">Use and save as a new blank</button>` : `<button class="btn primary" data-act="popuse">Use the natural rocker</button>`}</div>
   </div></div>`;
 }
 function page(v, device) {
@@ -690,7 +697,7 @@ const INTRO0 = {
   c: `<b>C — one field, typed the way the maker writes it.</b> The app reads it back in words as you type and says when it can't. Fast when you have the maker's code in front of you.`,
   all: `All three at once. Slide, type, switch boards and presets from the bar above; each variant draws the same blank from the same figures.`,
 };
-const INTRO = { ...INTRO0, d: `<b>D — the founder's direction (2026-10-16): an ADVANCED section at the foot of the sidebar, as FINS has</b>, holding one button — <b>Customize Rocker ›</b>, or <b>Edit Custom Rocker ›</b> once the board's blank has one — that opens a large popup: the drawing on top, NOSE and TAIL rows beneath, then Cancel · Save as a new blank · Use on this board (and Save changes to this blank when the board uses a saved custom blank). No slider goes below the floor that keeps the blank above its centre's height. The BLANK button's rocker line shows the result; nothing else in the sidebar changes.`, a: INTRO0.a + ` <b>Save this blank for later</b> under the rows puts the custom blank in the shaper's own blank list, starred, beside the maker's natural one — open Change blank › to see it as a card.` };
+const INTRO = { ...INTRO0, d: `<b>D — the founder's direction (2026-10-16, round six): one button right under the blank card</b> — <b>Customize Rocker ›</b>, or <b>Edit Custom Rocker ›</b> once the board's blank has one — opens a large popup laid out like the ROCKER page itself: the NOSE and TAIL rows on the left, the drawing beside them; on a phone the drawing stays put on top and the rows scroll beneath it. Its footer: Cancel, then <b>Use and save as a new blank</b> — plus <b>Use and edit current blank</b> only when the board already uses one of your custom blanks. Every custom rocker in use is one of your saved blanks. No slider goes below the floor that keeps the blank above its centre's height.`, a: INTRO0.a + ` <b>Save this blank for later</b> under the rows puts the custom blank in the shaper's own blank list, starred, beside the maker's natural one — open Change blank › to see it as a card.` };
 const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <p>A board on a blank can carry the blank's rocker <b>as ordered</b>: the natural rocker, or the natural rocker bent by so much at the nose and the tail, each bend starting at the centre or a point in from that tip. The note is written the US Blanks way (the founder, 2026-10-16: "descriptive even for other mfgs") and stays in inches in Metric, because it's the maker's order code.</p>
 <h3>What to look for</h3>
@@ -699,7 +706,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 
 <li>Decided (rounds three and four): the rocker text sits on its own line under the name, <b>Natural</b> included, everywhere the blank is named; a custom blank's table shows a <b>Natural Rocker</b> row and a <b>Custom Rocker</b> row — the adjustment itself is on the name line only.</li></ul>
 <h3>Round five (the founder, 2026-10-16)</h3>
-<p>The control is <b>D</b>: an Advanced menu like the other pages', with a Customize Rocker button that opens a big popup (as Add Wings does), reading Edit Custom Rocker once the board's blank has one; the popup allows further alteration and saving — an edit to the saved blank, or a new blank. Switching to a different blank clears the custom rocker and starts from natural. No rocker value may go negative: a nose or tail below the centre point is not a realistic board, so each slider stops at the floor that keeps the blank above its centre. The screen tile's rocker text: on every horizontal screen; on an upright phone only if it doesn't shrink the tile's board.</p>
+<p>The control is <b>D</b>: a Customize Rocker button right under the blank card (round six moved it there from an Advanced menu), reading Edit Custom Rocker once the board's blank has one; it opens a big popup laid out like the ROCKER page — controls left, drawing right; on a phone the drawing pinned on top and the controls scrolling under it — whose footer offers Use and save as a new blank, plus Use and edit current blank only when the board already uses a custom blank. Switching to a different blank clears the custom rocker and starts from natural. No rocker value may go negative: a nose or tail below the centre point is not a realistic board, so each slider stops at the floor that keeps the blank above its centre. The screen tile's rocker text: on every horizontal screen; on an upright phone only if it doesn't shrink the tile's board.</p>
 <h3>Saving it as a blank (the founder, 2026-10-16)</h3>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>The maths</h3>
@@ -773,7 +780,7 @@ document.addEventListener("click", (e) => {
   else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; render(); }
   else if (act === "popcancel") { state.popup = false; state.draft = null; render(); }
   else if (act === "popuse") { state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
-  else if (act === "popsavenew") { const note = noteOf(state.draft); if (note) { state.saved.push({ board: state.board, note, rocker: JSON.parse(JSON.stringify(state.draft)) }); state.savedIdx = state.saved.length - 1; } state.rocker = state.draft; state.text = note; state.popup = false; state.draft = null; render(); }
+  else if (act === "popsavenew") { const note = noteOf(state.draft); if (note) { const dup = state.saved.findIndex((sv) => sv.board === state.board && sv.note === note); if (dup >= 0) state.savedIdx = dup; else { state.saved.push({ board: state.board, note, rocker: JSON.parse(JSON.stringify(state.draft)) }); state.savedIdx = state.saved.length - 1; } } state.rocker = state.draft; state.text = note; state.popup = false; state.draft = null; render(); }
   else if (act === "popsaveedit") { const sv = state.saved[state.savedIdx]; if (sv) { sv.note = noteOf(state.draft); sv.rocker = JSON.parse(JSON.stringify(state.draft)); } state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
   else if (act === "popnatural") { state.draft = { nose: [], tail: [] }; render(); }
   else if (act === "btoggle") { state.bOpen = !state.bOpen; render(); }

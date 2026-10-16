@@ -105,6 +105,17 @@ the dimensions since that is the appended name line of the blank."* So the two r
 - The phone's screen tile: the rocker text on every horizontal screen; on an upright phone only if it doesn't shrink
   the tile's board drawing.
 
+**Round six (the founder, 2026-10-16):** *"Move the customize rocker button underneath the choose blank card. On the
+pop-up, the options should be use and save as a new blank, or use and edit current blank. The second option should
+only be shown if editing an already customized rocker; if the rocker started as natural, only the 'use and save as a
+new blank' should show. The controls panel should be on the left, and scroll independently of a fixed viewer window on
+a phone. The viewer window should remain fixed and the controls scroll in the space underneath it just like the
+standard rocker page."* All applied: no ADVANCED section — the button sits right under the blank card; the popup is
+laid out like the ROCKER page (rows left and scrolling, drawing right; on an upright phone the drawing pinned on top,
+the rows scrolling beneath); the footer is Cancel · **Use and save as a new blank**, with **Use and edit current blank**
+only when the board already uses one of the shaper's custom blanks. So every custom rocker in use is a saved blank; a
+draft put back to natural offers "Use the natural rocker".
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the
