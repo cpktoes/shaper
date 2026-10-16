@@ -537,13 +537,15 @@ export function emptyListMessage(
  * that skin is none (Phase 13 item 4b, FD-6/FD-8), the room-at-the-center clause names only the
  * bottom pass. Reworded in quick 261015-ve9 (P-2, 2026-10-15): "Shortest first" and "each has room at
  * the center" stopped being true once too-thin blanks are listed greyed and plan 02 adds other sorts.
+ * Its last sentence names where those blanks sit — at the end, under WON'T FIT THIS BOARD — rather
+ * than calling them "greyed" (the founder, 2026-10-16, fast 165).
  */
 export function listIntro(rules: CenterFloorRules, system: UnitsSystem): string {
   return (
     `Every blank listed is at least ${formatMark(rules.extraLength, system)} longer than your board. ` +
     `A blank fits when it leaves room at the center for a ${skinAndPass(rules, system)} ` +
     `and your board sits inside it from tip to tip. ` +
-    `Greyed blanks don't fit — the line under each says why.`
+    `Blanks that don't fit come last, under Won't fit this board, with the reason under each.`
   );
 }
 

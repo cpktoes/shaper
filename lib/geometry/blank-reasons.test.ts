@@ -926,16 +926,16 @@ describe("listIntro — the line at the top of the popup, live from the rules th
   it.each(RULE_CASES)("quotes the extra length, the deck skin and the bottom pass — $label, $system", ({ rules, system }) => {
     const f = (value: Mm) => formatMark(value, system);
     expect(listIntro(rules, system)).toBe(
-      `Every blank listed is at least ${f(rules.extraLength)} longer than your board. A blank fits when it leaves room at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
+      `Every blank listed is at least ${f(rules.extraLength)} longer than your board. A blank fits when it leaves room at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass and your board sits inside it from tip to tip. Blanks that don't fit come last, under Won't fit this board, with the reason under each.`,
     );
   });
 
   it("reads the P-2 wording out of the box", () => {
     expect(listIntro(DEFAULT_RULES, "imperial")).toBe(
-      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" deck skin and a 1/8" bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
+      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" deck skin and a 1/8" bottom pass and your board sits inside it from tip to tip. Blanks that don't fit come last, under Won't fit this board, with the reason under each.`,
     );
     expect(listIntro(DEFAULT_RULES, "metric")).toBe(
-      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm deck skin and a 3 mm bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.",
+      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm deck skin and a 3 mm bottom pass and your board sits inside it from tip to tip. Blanks that don't fit come last, under Won't fit this board, with the reason under each.",
     );
   });
 
@@ -993,10 +993,10 @@ describe("the centre floor with no deck skin (Phase 13 item 4b)", () => {
 
   it("listIntro reads the verbatim zero sentence, in both systems", () => {
     expect(listIntro(NO_SKIN_RULES, "imperial")).toBe(
-      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
+      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" bottom pass and your board sits inside it from tip to tip. Blanks that don't fit come last, under Won't fit this board, with the reason under each.`,
     );
     expect(listIntro(NO_SKIN_RULES, "metric")).toBe(
-      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.",
+      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm bottom pass and your board sits inside it from tip to tip. Blanks that don't fit come last, under Won't fit this board, with the reason under each.",
     );
   });
 
