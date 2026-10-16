@@ -296,7 +296,7 @@ const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, saved
 if (window.__publish) DEFAULTS.theme = "auto";
 let state = JSON.parse(JSON.stringify(DEFAULTS));
 let barOpen = false;
-try { const s = JSON.parse(localStorage.getItem("sketch016") || "null"); if (s && s.rocker) state = { ...state, ...s }; } catch (e) {}
+try { const s = JSON.parse(localStorage.getItem("sketch016") || "null"); if (s && s.rocker) { state = { ...state, ...s }; if (!("popup" in s)) state.variant = "d"; state.popup = false; state.draft = null; } } catch (e) {}
 function save() { try { localStorage.setItem("sketch016", JSON.stringify(state)); } catch (e) {} }
 
 /* ---------- units and words ---------- */
