@@ -5,9 +5,13 @@ import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preferen
 import { DEFAULT_BLANK_CUT, type BlankRecord, type BlankShortfall, type RunsOutCause } from "./blank";
 import { MIN_FOIL_THICKNESS_MM, boardOnBlank, fitAt, placementRange, prepareBlank } from "./blank-fit";
 import {
+  blankReason,
   blankRowMeta,
   blankRowVolume,
   boardLine,
+  pickBlankSummary,
+  pickerBoardLine,
+  pickerCounts,
   type CenterFloorRules,
   deckSkinHint,
   emptyListMessage,
@@ -918,11 +922,20 @@ describe("emptyListMessage — E1, E2, E3", () => {
   });
 });
 
-describe("listIntro — the line above the list, live from the rules the list is judged by", () => {
+describe("listIntro — the line at the top of the popup, live from the rules the list is judged by (P-2)", () => {
   it.each(RULE_CASES)("quotes the extra length, the deck skin and the bottom pass — $label, $system", ({ rules, system }) => {
     const f = (value: Mm) => formatMark(value, system);
     expect(listIntro(rules, system)).toBe(
-      `Shortest first. Each is at least ${f(rules.extraLength)} longer than your board, with room at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass. Greyed blanks don't fit somewhere — the line under each says where.`,
+      `Every blank listed is at least ${f(rules.extraLength)} longer than your board. A blank fits when it leaves room at the center for a ${f(rules.deckSkin)} deck skin and a ${f(rules.planerMaxDepth)} bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
+    );
+  });
+
+  it("reads the P-2 wording out of the box", () => {
+    expect(listIntro(DEFAULT_RULES, "imperial")).toBe(
+      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" deck skin and a 1/8" bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
+    );
+    expect(listIntro(DEFAULT_RULES, "metric")).toBe(
+      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm deck skin and a 3 mm bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.",
     );
   });
 
@@ -980,10 +993,10 @@ describe("the centre floor with no deck skin (Phase 13 item 4b)", () => {
 
   it("listIntro reads the verbatim zero sentence, in both systems", () => {
     expect(listIntro(NO_SKIN_RULES, "imperial")).toBe(
-      `Shortest first. Each is at least 2" longer than your board, with room at the center for a 1/8" bottom pass. Greyed blanks don't fit somewhere — the line under each says where.`,
+      `Every blank listed is at least 2" longer than your board. A blank fits when it leaves room at the center for a 1/8" bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.`,
     );
     expect(listIntro(NO_SKIN_RULES, "metric")).toBe(
-      "Shortest first. Each is at least 51 mm longer than your board, with room at the center for a 3 mm bottom pass. Greyed blanks don't fit somewhere — the line under each says where.",
+      "Every blank listed is at least 51 mm longer than your board. A blank fits when it leaves room at the center for a 3 mm bottom pass and your board sits inside it from tip to tip. Greyed blanks don't fit — the line under each says why.",
     );
   });
 
@@ -1143,5 +1156,71 @@ describe("the catalogs a sentence names, when a shaper has switched blank makers
     expect(nothingFitsSentence("the US Blanks catalog")).toBe(
       "No blank in the US Blanks catalog fits this board right now.",
     );
+  });
+});
+
+// The PICK A BLANK popup's words (quick 261015-ve9, D-01, D-07, P-4).
+describe("blankReason — why a greyed card won't fit (D-07, D-09)", () => {
+  const board = { ...BOARD };
+  it.each(UNITS_SYSTEMS)("a fitting verdict has no reason, in %s", (system) => {
+    expect(blankReason({ fits: true, worst: shortfall("thin", L / 2, -1) }, board, DEFAULT_RULES, system)).toBeNull();
+  });
+
+  it.each(RULE_CASES)("a too-thin blank reads the fit flag's F4 sentence word for word — $label, $system", ({ rules, system }) => {
+    const by = inchesToMm(1 / 16);
+    const verdict = { fits: false, worst: shortfall("thin", L / 2, by), centerShortBy: by };
+    expect(blankReason(verdict, board, rules, system)).toBe(floorShortfallMessage("center", by, rules, system));
+  });
+
+  it("the too-thin sentence quotes the flag's own example out of the box", () => {
+    const by = inchesToMm(1 / 16);
+    const verdict = { fits: false, worst: shortfall("thin", L / 2, by), centerShortBy: by };
+    expect(blankReason(verdict, board, DEFAULT_RULES, "imperial")).toBe(
+      `It's 1/16" too thin at the center — there isn't room for your 1/8" deck skin and a 1/8" bottom pass.`,
+    );
+  });
+
+  it.each(UNITS_SYSTEMS)("any other WON'T FIT verdict reads the bare reason line, in %s", (system) => {
+    for (const worst of [
+      shortfall("wide", inchesToMm(30), inchesToMm(1 / 8)),
+      shortfall("thin", inchesToMm(60), inchesToMm(1 / 4)),
+      shortfall("runsOut", inchesToMm(70), inchesToMm(1 / 16), "thinCenter"),
+    ]) {
+      expect(blankReason({ fits: false, worst }, board, DEFAULT_RULES, system)).toBe(formatShortfall(worst, board, system));
+    }
+  });
+});
+
+describe("pickBlankSummary — the blank button's line with no blank picked (D-01)", () => {
+  it("counts blanks and fits, one and many", () => {
+    expect(pickBlankSummary(196, 194)).toBe("196 blanks long enough for this board, 194 fit");
+    expect(pickBlankSummary(1, 1)).toBe("1 blank long enough for this board, 1 fits");
+    expect(pickBlankSummary(196, 1)).toBe("196 blanks long enough for this board, 1 fits");
+    expect(pickBlankSummary(5, 0)).toBe("5 blanks long enough for this board, 0 fit");
+  });
+});
+
+describe("pickerBoardLine and pickerCounts — the popup's header (D-01, P-4)", () => {
+  const length = inchesToMm(72);
+  const width = inchesToMm(19.5);
+  const centre = inchesToMm(2.5);
+
+  it("reads the board's three dims in each system, the unit once in Metric", () => {
+    expect(pickerBoardLine(length, width, centre, "imperial")).toBe(`for your 6'0" × 19 1/2" × 2 1/2" board`);
+    expect(pickerBoardLine(length, width, centre, "metric")).toBe("for your 182.9 × 49.5 × 6.4 cm board");
+  });
+
+  it("composes through the display boundary", () => {
+    expect(pickerBoardLine(length, width, centre, "imperial")).toBe(
+      `for your ${formatLength(length, "imperial")} × ${formatDim(width, "imperial")} × ${formatDim(centre, "imperial")} board`,
+    );
+    expect(pickerBoardLine(length, width, centre, "metric")).toBe(
+      `for your ${formatDimBare(length, "metric")} × ${formatDimBare(width, "metric")} × ${formatDimBare(centre, "metric")} cm board`,
+    );
+  });
+
+  it("counts what shows, what is long enough and what fits", () => {
+    expect(pickerCounts(196, 196, 194)).toBe("196 of 196 blanks · 194 fit");
+    expect(pickerCounts(12, 196, 1)).toBe("12 of 196 blanks · 1 fit");
   });
 });

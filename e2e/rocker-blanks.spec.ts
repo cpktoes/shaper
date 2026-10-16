@@ -1,4 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  blankCards,
+  blankPicker,
+  firstFittingCard,
+  openBlankPicker,
+  openRocker,
+  pickedCard,
+  pickFirstFittingBlank,
+} from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { BLANK_CATALOG_NOTE } from "../lib/blanks/vendors";
@@ -11,8 +20,9 @@ import { BLANK_CATALOG_NOTE } from "../lib/blanks/vendors";
  * This suite has no database: `playwright.config.ts` sets `SHAPER_BLANKS_SOURCE=seed-csv` for its
  * own dev server, so the list reads the committed catalogue CSVs through the same tested reader the
  * database seed uses (11-05). No expected blank name or catalogue number is ever typed here — the
- * tests pick "the first row under FITS THIS BOARD" and read its name off the page, and compare the
- * offer to the offer line's own text.
+ * tests pick "the first card under FITS THIS BOARD" and read its name off the page, and compare the
+ * offer to the offer line's own text. Since quick 261015-ve9 every pick goes through the PICK A BLANK
+ * popup, by way of `helpers/blank-picker.ts`.
  *
  * The sign-in banner and the toolbar tip are dismissed before navigation, as in
  * `touch-sizing.spec.ts`, so neither shifts anything under a tap.
@@ -28,46 +38,6 @@ async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
-}
-
-/** The list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** The picked-blank card (state C). */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered, inside its own Suspense boundary, and becomes live only
-  // once React hydrates that boundary. A keystroke or tap before then is lost (WebKit showed it: a
-  // search typed too early came back empty), so wait until React owns the first row and the box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-/** Picks the first fitting blank and returns its name as the page shows it. */
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const name = (await row.locator("[data-blank-name]").innerText()).trim();
-  expect(name.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(pickedCard(page)).toContainText(name);
-  return name;
 }
 
 test.describe("ROCKER — a real blank from the list", () => {
@@ -117,26 +87,27 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(page.locator("[data-thinning-mark]")).toHaveCount(0);
   });
 
-  test("the search narrows the list, says when nothing matches, and Clear Search brings it back", async ({ page }) => {
+  test("the popup's search narrows the cards, says when nothing matches, and Clear Search brings them back", async ({ page }) => {
     await openRocker(page);
-    const search = page.getByRole("searchbox", { name: "Search blanks" });
+    const dialog = await openBlankPicker(page);
+    const search = dialog.getByRole("searchbox", { name: "Search blanks" });
 
     await search.fill("Marko");
-    const rows = blankList(page).locator("li[data-group] button");
-    // Polled: the list is already on screen before the keystrokes land, so wait for the filter.
+    const cards = blankCards(dialog).getByRole("button", { name: /^Use / });
+    // Polled: the cards are already on screen before the keystrokes land, so wait for the filter.
     await expect
       .poll(async () => {
-        const labels = await rows.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
+        const labels = await cards.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
         return labels.length > 0 && labels.every((label) => label.includes("Marko"));
       })
       .toBe(true);
 
     await search.fill("zzz");
-    await expect(page.getByText('No blanks match "zzz".')).toBeVisible();
-    await expect(blankList(page)).toHaveCount(0);
-    await page.getByRole("button", { name: "Clear Search" }).click();
+    await expect(dialog.getByText('No blanks match "zzz".')).toBeVisible();
+    await expect(blankCards(dialog)).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Clear Search" }).click();
     await expect(search).toHaveValue("");
-    await expect(firstFittingRow(page)).toBeVisible();
+    await expect(firstFittingCard(page)).toBeVisible();
   });
 
   test("a pick that stops fitting stays picked, with a flag and the closest blank that does fit", async ({ page }) => {
@@ -176,21 +147,26 @@ test.describe("ROCKER — a real blank from the list", () => {
     page,
   }) => {
     await openRocker(page);
-    const intro = page.getByText(/^Shortest first\./);
+    // The intro opens the PICK A BLANK popup (quick 261015-ve9, P-2).
+    let dialog = await openBlankPicker(page);
+    const intro = dialog.getByText(/^Every blank listed is at least/);
     await expect(intro).toContainText("deck skin");
     await expect(intro).toContainText("bottom pass");
+    await page.keyboard.press("Escape");
+    await expect(blankPicker(page)).toBeHidden();
 
     // D-01: a board with no blank follows the live account default, and the list's words quote
     // the skin its verdicts use — so changing the default re-words the intro at once.
-    const dialog = await openAppSettings(page);
-    const skin = dialog.getByRole("textbox", { name: "Deck Skin", exact: true });
+    const settings = await openAppSettings(page);
+    const skin = settings.getByRole("textbox", { name: "Deck Skin", exact: true });
     await skin.fill("1/2");
     await skin.press("Enter");
     await expect(skin).toHaveValue('1/2"');
-    await dialog.getByRole("button", { name: "Done" }).click();
-    await expect(dialog).toBeHidden();
+    await settings.getByRole("button", { name: "Done" }).click();
+    await expect(settings).toBeHidden();
 
-    await expect(intro).toContainText('1/2" deck skin');
+    dialog = await openBlankPicker(page);
+    await expect(dialog.getByText(/^Every blank listed is at least/)).toContainText('1/2" deck skin');
   });
 
   test("the founder's catalog note ends the picker once, with no blank and with one picked (quick 261006-fom)", async ({

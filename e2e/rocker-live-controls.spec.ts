@@ -1,4 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { blankPicker, closeBlankPicker, openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * The browser proof that ROCKER's sidebar follows the tab in view (quick 261006-v20, 2026-10-06).
@@ -20,9 +21,9 @@ import { devices, expect, test, type Locator, type Page } from "@playwright/test
  *
  * A control is inert when `el.closest("[inert]")` is not null; every check runs both ways (a live control
  * has NO inert ancestor). Every control that may be inert is found by a CSS or text locator, never a role
- * query. `dismissChrome`, `blankList`, `firstFittingRow`, `pickedCard`, `openRocker`,
- * `pickFirstFittingBlank` and the two sideways device constants are copied from
- * `e2e/rocker-top-view.spec.ts` (quick 261006-qfm). Every describe title carries "261006-v20".
+ * query. `dismissChrome` and the two sideways device constants are copied from
+ * `e2e/rocker-top-view.spec.ts` (quick 261006-qfm); opening ROCKER and picking a blank go through
+ * `helpers/blank-picker.ts` (quick 261015-ve9). Every describe title carries "261006-v20".
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -35,45 +36,6 @@ async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
-}
-
-/** The list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** The picked-blank card (state C). */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered and becomes live only once React hydrates it — a tap
-  // before then is lost — so wait until React owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-/** Picks the first fitting blank and returns its name as the page shows it. */
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const name = (await row.locator("[data-blank-name]").innerText()).trim();
-  expect(name.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(pickedCard(page)).toContainText(name);
-  return name;
 }
 
 // The real sideways iPhone width (844 CSS px), built the way `rocker-top-view.spec.ts` does —
@@ -261,7 +223,7 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     await tab(page, "DATASHEET").click();
     await expect(tab(page, "DATASHEET")).toHaveAttribute("aria-selected", "true");
 
-    await expectInert(page.locator('aside input[aria-label="Search blanks"]'), "the blank search box");
+    await expectInert(sidebarButton(page, "Pick a Blank"), "the Pick a Blank button");
     const rockerSliders = sectionOf(page, ROCKER_HEADING).locator('[data-slot="slider-thumb"] input[type="range"]');
     await expect(rockerSliders).toHaveCount(4);
     for (let i = 0; i < 4; i += 1) {
@@ -319,10 +281,10 @@ async function expectTabRule(page: Page) {
   await expectInert(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
   await expectInert(sliderInput(aside, /^Deck Skin — /), "Deck Skin");
   await expectInert(page.locator('aside [aria-label="Tip Style"]'), "Tip Style");
-  // Proof the blank picker really works on TOP VIEW: Change Blank opens the list, Keep This Blank closes it.
+  // Proof the blank picker really works on TOP VIEW: the blank button opens the popup, Escape closes it.
   await sidebarButton(page, "Change Blank").click();
-  await expect(sidebarButton(page, "Keep This Blank")).toBeVisible();
-  await sidebarButton(page, "Keep This Blank").click();
+  await expect(blankPicker(page)).toBeVisible();
+  await closeBlankPicker(page);
   await expect(sidebarButton(page, "Change Blank")).toBeVisible();
 
   await tab(page, "DATASHEET").click();

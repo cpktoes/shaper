@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { blankPicker, cardButton, firstFittingCard, openBlankPicker, openRocker, pickedCard } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -22,7 +23,7 @@ import { inchesToMm, mm } from "../lib/geometry/units";
  *
  * Like `rocker-blanks.spec.ts`, this runs signed out with no database: `playwright.config.ts` sets
  * `SHAPER_BLANKS_SOURCE=seed-csv` for its own dev server, so ROCKER's list reads the committed
- * catalogue CSVs. No blank name is ever typed here — the expected name is read off ROCKER's row
+ * catalogue CSVs. No blank name is ever typed here — the expected name is read off ROCKER's card
  * before it's picked.
  *
  * The Summary's design lives in memory and resets on a full page load, so the picked blank has to
@@ -44,49 +45,22 @@ async function dismissChrome(page: Page) {
   }, TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
-/** ROCKER's list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** ROCKER's picked-blank card. */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered and becomes live only once React hydrates it; a tap before
-  // then is lost. Wait until React owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
 /** The slider sitting under a label — ROCKER's Placement slider shares a parent with its
  * `Placement — ...` caption. */
 function sliderUnder(page: Page, label: RegExp): Locator {
   return page.getByText(label).locator("xpath=..").getByRole("slider");
 }
 
-/** Pick the first blank under FITS THIS BOARD and return `vendor name`, read off the row's
- * accessible name (`Use <vendor> <name>`) before the tap. */
+/** Pick the first blank under FITS THIS BOARD in the PICK A BLANK popup and return `vendor name`,
+ * read off the card's accessible name (`Use <vendor> <name>`) before the tap (quick 261015-ve9). */
 async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const ariaLabel = (await row.getAttribute("aria-label")) ?? "";
+  await openBlankPicker(page);
+  const button = cardButton(firstFittingCard(page));
+  const ariaLabel = (await button.getAttribute("aria-label")) ?? "";
   const expected = ariaLabel.replace(/^Use /, "").replace(/, doesn't fit: .*$/, "");
   expect(expected.length).toBeGreaterThan(0);
-  await row.click();
+  await button.click();
+  await expect(blankPicker(page)).toBeHidden();
   await expect(pickedCard(page)).toBeVisible();
   return expected;
 }
