@@ -33,7 +33,9 @@ sketch go to a Fable session.
   them; on a phone the drawing pinned on top), with Cancel · Use and save as a new blank, plus Use and edit current
   blank only when the board already uses a custom blank. Every custom rocker in use is a saved blank.
 - **No rocker value goes negative:** each change stops at the floor that keeps the blank at or above its centre's
-  height; nothing re-levels. **Switching to a different blank clears the custom rocker.** Every blank is named
+  height; nothing re-levels. **Two changes on one end stack** (the first in full, the second on top), and the second
+  must start nearer the tip than the first; Bend starts is a slider in 1" steps beside the rocker slider. **Switching
+  to a different blank clears the custom rocker.** Every blank is named
   the name then its rocker on its own line, `Natural` included; tables show Natural Rocker over Custom Rocker.
 
 **Status:** spikes 001–002 VALIDATED; the deep dive and build plan are in `CUSTOM-ROCKER-PLAN.md` (2026-10-16). The

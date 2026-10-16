@@ -116,6 +116,16 @@ the rows scrolling beneath); the footer is Cancel · **Use and save as a new bla
 only when the board already uses one of the shaper's custom blanks. So every custom rocker in use is a saved blank; a
 draft put back to natural offers "Use the natural rocker".
 
+**Round seven (the founder, 2026-10-16):** *"When adding two nose rocker adjustments, the first one must be further
+away from the nose than the second one, so limit the second one accordingly. The math should be such that the first
+curve is fully applied then the second is applied in addition to the first, meaning if we add a half inch nose rocker
+from center and a half inch nose rocker from 18 inches, the total height above natural at the tip should be 1 inch.
+Rather than a drop-down, converted to a slider in 1 inch increments; the rocker and the position sliders can be on the
+same row."* Applied: each change is one row of two sliders — Rocker (1/16") and Bend starts (1" steps, from 3" in to
+the centre); a second change's Bend starts slider stops one inch nearer the tip than the first's, and moving the first
+pushes the second in front of it. The stacking is the even bend's own sum, checked on the sketch's build: natural nose
+tip 4 3/4", `+1/2"N +1/2"N18"` → 5 3/4", exactly 1" more.
+
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change
 that moves the blank's low point re-levels there, as the app levels every blank; the sketch says so in a line under the

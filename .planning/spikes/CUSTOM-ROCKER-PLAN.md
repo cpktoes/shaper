@@ -111,9 +111,12 @@ export function blankDisplayName(copy, spec?): string;       // `9'4"B -1/4"N18"
 - Expected numbers come from a golden written by a script from the spike's own code (`spike-source.tar.gz` →
   `custom-rocker-spike.mts`), as sketch 012's `curves.js` became the round nose's reference. The 282-line listing is
   the reader's test set, verbatim.
-- Ranges (recommended): each amount −2" to +2" in 1/16" steps; a bend point from 3" in to one inch short of the
-  centre, in 1" steps, or the centre; at most two changes per end (US Blanks' listings stack at most three, and two
-  covers 350 of 352).
+- Ranges: each amount −2" to +2" in 1/16" steps (the floor of §6.6 applies); a bend point from 3" in to the centre
+  in whole inches, on a **slider in 1" steps beside the rocker slider** (the founder, 2026-10-16, round seven); at
+  most two changes per end (US Blanks' listings stack at most three, and two covers 350 of 352). **A second change on
+  an end must start nearer the tip than the first, and its slider is limited to that.** **Two changes stack:** the
+  first is applied in full and the second on top of it, so `+1/2"N +1/2"N18"` lifts the nose tip 1" above natural
+  (the founder's own example; the even bend's sum does exactly this — checked on the sketch's build: 1.000").
 
 **Database:** none for the board's rocker (it lives in the saved snapshot). Only later, optional steps touch the
 database, and both are additive: a nullable column (or table) for the makers' published rocker lists, and a nullable

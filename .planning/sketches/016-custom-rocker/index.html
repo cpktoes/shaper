@@ -115,6 +115,7 @@
   .chg { display: flex; flex-direction: column; gap: 2px; }
   .chg + .chg { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--color-border); }
   .fromrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
+  .pair { display: flex; gap: 12px; } .pair .half { flex: 1; min-width: 0; } .pair .sub { font-size: 12px; color: var(--color-text-muted); } .pair .valbox { min-width: 0; padding: 2px 7px; font-size: 12px; white-space: nowrap; }
   .fromrow select { margin-left: auto; }
   .notein { width: 100%; border: 1px solid var(--color-line); border-radius: 6px; background: transparent; color: var(--color-text); padding: 7px 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
   .notein.bad { border-color: var(--color-warning-ink); }
@@ -466,16 +467,36 @@ function thumbOld(g) {
 }
 
 /* ---------- the sidebar ---------- */
+/** Where a change's bend may start: whole inches from 3" in to the centre; a second change must start nearer the tip than the first (the founder, 2026-10-16). */
+function fromRange(end, i, r) {
+  const C = Math.floor(B().blank.centreFromTailIn);
+  const first = r[end][0];
+  const top = i === 0 ? C : Math.min(C - 1, (first && first.f !== null ? first.f : C) - 1);
+  return { min: 3, max: Math.max(3, top), centreAt: i === 0 ? C : null };
+}
+function fromValue(end, i, c, r) { const rg = fromRange(end, i, r); return c.f === null ? (rg.centreAt ?? rg.max) : Math.max(rg.min, Math.min(rg.max, c.f)); }
+function fromWordsOf(end, i, c, r) { const rg = fromRange(end, i, r); const v = fromValue(end, i, c, r); return rg.centreAt !== null && v >= rg.centreAt ? "At the centre" : (M() ? `${Math.round(v * 2.54)} cm` : `${v}"`) + " in"; }
 function sliderRow(end, i, c, device, r = state.rocker) {
   const maxI = 2, stepI = M() ? 1 / 25.4 : 1 / 16;
   const minI = floorOf(end, i, r);
   const v = Math.max(minI, c.a);
   const atFloor = v <= minI + 1e-9 && minI > -2 + 1e-9;
+  const rg = fromRange(end, i, r), fv = fromValue(end, i, c, r);
   return `<div class="chg">
-    <div class="lblrow"><span>${i ? "Second change" : "Change"}${i ? ` <button class="link muted" data-act="rm" data-end="${end}" data-i="${i}">Remove</button>` : ""}</span><span class="valbox">${esc(signedMark(v))}</span></div>
-    <input class="rng" type="range" min="${minI}" max="${maxI}" step="${stepI}" value="${v}" data-act="amt" data-end="${end}" data-i="${i}">
-    <div class="hints"><span>${atFloor ? "Floor — the tip would drop below the centre" : "Less rocker"}</span><span>More rocker</span></div>
-    <div class="fromrow"><span>Bend starts</span><select class="sel" data-act="from" data-end="${end}" data-i="${i}">${FROMS.filter((f) => f === null || f < B().blank.centreFromTailIn - 1).map((f) => `<option value="${f === null ? "c" : f}"${c.f === f ? " selected" : ""}>${f === null ? "At the centre" : (M() ? `${Math.round(f * 2.54)} cm` : `${f}"`) + " in from the " + end}</option>`).join("")}</select></div>
+    <div class="lblrow"><span>${i ? "Second change" : "Change"}${i ? ` <button class="link muted" data-act="rm" data-end="${end}" data-i="${i}">Remove</button>` : ""}</span></div>
+    <div class="pair">
+      <div class="half">
+        <div class="lblrow"><span class="sub">Rocker</span><span class="valbox">${esc(signedMark(v))}</span></div>
+        <input class="rng" type="range" min="${minI}" max="${maxI}" step="${stepI}" value="${v}" data-act="amt" data-end="${end}" data-i="${i}">
+        <div class="hints"><span>${atFloor ? "Floor" : "Less"}</span><span>More</span></div>
+      </div>
+      <div class="half">
+        <div class="lblrow"><span class="sub">Bend starts</span><span class="valbox">${esc(fromWordsOf(end, i, c, r))}</span></div>
+        <input class="rng" type="range" min="${rg.min}" max="${rg.max}" step="1" value="${fv}" data-act="from" data-end="${end}" data-i="${i}">
+        <div class="hints"><span>Near the ${end}</span><span>${i === 0 ? "At the centre" : "Nearer the centre"}</span></div>
+      </div>
+    </div>
+    ${atFloor ? `<div class="note fine warn">At the floor: any lower and the ${end} would drop below the centre.</div>` : ""}
   </div>`;
 }
 function endBlock(end, device, r = state.rocker) {
@@ -710,7 +731,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <h3>Saving it as a blank (the founder, 2026-10-16)</h3>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>The maths</h3>
-<p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
+<p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
 <h3>Not drawn</h3>
 <p>The TOP VIEW inset, the toolbar's real buttons, the fit flag, the picker popup — all as today.</p>`;
 function applyTheme() { const root = document.documentElement.style; if (!PALETTES[state.theme]) { for (const k of Object.keys(PALETTES.slate)) root.removeProperty(k); root.removeProperty("color-scheme"); for (const [k, v] of Object.entries(COMMON_VARS)) root.setProperty(k, v); return; } for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[state.theme] })) root.setProperty(k, v); root.setProperty("color-scheme", state.theme === "slate" ? "dark" : "light"); }
@@ -774,7 +795,7 @@ document.addEventListener("click", (e) => {
   else if (act === "browse") { state.picker = true; render(); }
   else if (act === "closepicker") { state.picker = false; render(); }
   else if (act === "pick") { const sv = state.saved[+t.dataset.i]; state.savedIdx = sv ? +t.dataset.i : null; state.rocker = sv ? JSON.parse(JSON.stringify(sv.rocker)) : { nose: [], tail: [] }; state.text = noteOf(state.rocker); state.picker = false; render(); }
-  else if (act === "add") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].push({ a: 0.125, f: 18 }); state.text = noteOf(state.rocker); render(); }
+  else if (act === "add") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end; const rg = fromRange(end, 1, { ...r, [end]: [r[end][0], { a: 0, f: null }] }); r[end].push({ a: 0.125, f: Math.min(18, rg.max) }); state.text = noteOf(state.rocker); render(); }
   else if (act === "rm") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].splice(+t.dataset.i, 1); state.text = noteOf(state.rocker); render(); }
   else if (act === "adv") { state.advOpen = !state.advOpen; render(); }
   else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; render(); }
@@ -788,11 +809,11 @@ document.addEventListener("click", (e) => {
 document.addEventListener("input", (e) => {
   const t = e.target; const act = t.dataset && t.dataset.act; if (!act) return;
   if (act === "amt") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.a = M() ? Math.round(+t.value * 25.4) / 25.4 : Math.round(+t.value * 16) / 16; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
-  else if (act === "from") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.f = t.value === "c" ? null : +t.value; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); render(); }
+  else if (act === "from") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end, i = +t.dataset.i; const c = changeAtIn(r, end, i); const rg = fromRange(end, i, r); const v = Math.round(+t.value); c.f = rg.centreAt !== null && v >= rg.centreAt ? null : Math.max(rg.min, Math.min(rg.max, v)); if (i === 0 && r[end][1]) { const s2 = r[end][1], rg2 = fromRange(end, 1, r); if (s2.f === null || s2.f > rg2.max) s2.f = rg2.max; } c.a = Math.max(floorOf(end, i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
   else if (act === "text") { state.text = t.value; const p = parseNote(t.value); if (p) state.rocker = p; render(); }
 });
 /** A slider drag re-renders everything but keeps the slider under the thumb. */
-function renderLive(slider) { const end = slider.dataset.end, i = slider.dataset.i, v = slider.value; render(); const again = document.querySelector(`input[data-act="amt"][data-end="${end}"][data-i="${i}"]`); if (again) { again.value = v; again.focus(); } }
+function renderLive(slider) { const act = slider.dataset.act, end = slider.dataset.end, i = slider.dataset.i, v = slider.value; render(); const again = document.querySelector(`input[data-act="${act}"][data-end="${end}"][data-i="${i}"]`); if (again) { again.value = v; again.focus(); } }
 window.addEventListener("resize", render);
 render();
 </script>
