@@ -39,6 +39,7 @@ import {
   templatePageBoxes,
 } from "@/lib/geometry/template";
 import { inchesToMm, mm, type Litres, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { wingPrintName, type WingFigures } from "@/lib/geometry/wing-figures";
 import {
   formatCalibrationMark,
   formatDim,
@@ -80,6 +81,11 @@ export interface BuildTemplatePdfOptions {
     /** Signed offset of the widepoint from mid-length — positive toward the nose. */
     widePointOffset: Mm;
     volumeLitres: Litres;
+    /** On a winged board, each wing's figures as its card on the WINGS close-up reads them
+     * (quick 261015-sei, D1, D2) — listed in the name box under the dims row, one paragraph per
+     * wing. Absent or empty on a board without wings, so the box prints exactly as before (D4).
+     * The Paper Saver shares this type. */
+    wings?: readonly WingFigures[];
   };
 }
 
@@ -130,6 +136,8 @@ const NAME_BOX_DIMS_FONT_SIZE_PT = 8;
 const NAME_BOX_DIMS_LINE_HEIGHT_MM = 4.2;
 /** The dims row's own text width budget, inside the box's border and padding. */
 const NAME_BOX_DIMS_WIDTH_LIMIT_MM = NAME_BOX_WIDTH_MM - 2 * NAME_BOX_PADDING_MM;
+/** What sits between two figures on the dims row — and on a wing's line (quick 261015-sei, P3). */
+const NAME_BOX_DIMS_SEPARATOR = "  ·  ";
 
 /** The five working marks (D-06 base four, plus Tail Block) — solid black, told apart by dash
  * pattern alone so they survive a monochrome printer. */
@@ -729,7 +737,51 @@ export function templateNameBlockDimsText(dims: BuildTemplatePdfOptions["dims"],
     `Tail ${formatDimBare(dims.tailWidth12in, system)}`,
     `Thickness ${formatDim(dims.centerThickness, system)}`,
     `Volume ${dims.volumeLitres.toFixed(1)} L`,
-  ].join("  ·  ");
+  ].join(NAME_BOX_DIMS_SEPARATOR);
+}
+
+/** One wing's figures as the name box prints them (quick 261015-sei, P1, P3): the head
+ * `Wing 1 · Fin: 3/16" @ 7 1/2"`, then `Run`, `Radius` and — only for a wing locked to a fin —
+ * `Offset`, in the dims row's own label-space-value grammar. Each value keeps its own unit: a wing
+ * line mixes a centimetre position with millimetre marks in Metric, so CLAUDE.md Rule 2's "a unit
+ * is carried once per line" (the all-centimetre dims row's rule) does not apply to it. Exported for
+ * testability. */
+export function templateNameBlockWingItems(wing: WingFigures): string[] {
+  const items = [`${wingPrintName(wing)}: ${wing.depthAtPosition}`, `Run ${wing.run}`, `Radius ${wing.radius}`];
+  if (wing.offset !== null) items.push(`Offset ${wing.offset}`);
+  return items;
+}
+
+/** Wraps a list of figures to `maxWidthMm`, breaking ONLY between figures (quick 261015-sei, P3):
+ * greedy — each next item joins the line with `separator` while the joined line still measures
+ * within the limit at `doc`'s current font (jsPDF `getTextWidth`, never a character count), else it
+ * starts a new line. Word wrapping (`wrapTextToWidth`) would part a number from its unit
+ * (`Radius 37` / `mm`), which a shaper could misread. An item wider than the limit on its own — far
+ * wider than any real wing figure — falls back to `wrapTextToWidth` for that item. Exported for
+ * testability. */
+export function wrapItemsToWidth(items: readonly string[], separator: string, maxWidthMm: number, doc: jsPDF): string[] {
+  const lines: string[] = [];
+  let current = "";
+  const flush = () => {
+    if (current.length > 0) lines.push(current);
+    current = "";
+  };
+  for (const item of items) {
+    if (doc.getTextWidth(item) > maxWidthMm) {
+      flush();
+      lines.push(...wrapTextToWidth(item, maxWidthMm, doc));
+      continue;
+    }
+    const candidate = current.length > 0 ? `${current}${separator}${item}` : item;
+    if (current.length > 0 && doc.getTextWidth(candidate) > maxWidthMm) {
+      flush();
+      current = item;
+    } else {
+      current = candidate;
+    }
+  }
+  flush();
+  return lines;
 }
 
 /** The name block's dims row, wrapped to the box's own inner width, plus the box's total height
@@ -744,6 +796,14 @@ export function nameBlockContent(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(NAME_BOX_DIMS_FONT_SIZE_PT);
   const dimsLines = wrapTextToWidth(templateNameBlockDimsText(dims, system), NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc);
+  // Each wing follows the dims row as its own paragraph (quick 261015-sei, D2, P3), at the same font
+  // and pitch, so the box height and every furniture computation that reads it see the extra lines
+  // with no further change. A board with no wings adds none (D4).
+  for (const wing of dims.wings ?? []) {
+    dimsLines.push(
+      ...wrapItemsToWidth(templateNameBlockWingItems(wing), NAME_BOX_DIMS_SEPARATOR, NAME_BOX_DIMS_WIDTH_LIMIT_MM, doc),
+    );
+  }
   const height =
     NAME_BOX_NAME_LINE_HEIGHT_MM +
     NAME_BOX_DIMS_TOP_GAP_MM +

@@ -19,7 +19,8 @@ import { formatCalibrationMark, formatDim, stationLabel } from "@/lib/geometry/m
 import { inchesToMm, litres, mm } from "@/lib/geometry/units";
 import type { UnitsSystem } from "@/lib/geometry/units";
 import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
-import { wingFigures } from "@/lib/geometry/wing-figures";
+import { wingFigures, type WingFigures } from "@/lib/geometry/wing-figures";
+import { templateNameBlockWingItems, wrapItemsToWidth } from "./build-template-pdf";
 import { placedWings, wingRadiusTop, type Wing } from "@/lib/geometry/wings";
 import {
   HOWTO_BOX_TEXT_WIDTH_LIMIT_MM,
@@ -1295,6 +1296,136 @@ describe("a wing's mark line and label (quick 261015-sei)", () => {
       const text = String(doc.output());
       expect(text).toContain('7 1/2" from tail');
       expect(text).toContain('4 1/2" from tail');
+    }
+  });
+});
+
+/** Two wings at F4's worst figures, typed as display strings — a layout test only (the longest
+ * strings a wing's card can read). */
+const WORST_WING_FIGURES: Record<"imperial" | "metric", WingFigures[]> = {
+  imperial: [
+    { number: 1, locked: true, station: mm(0), depthAtPosition: '15/16" @ 33 15/16"', run: '1 15/16"', radius: '64 1/16"', offset: '-2 15/16"' },
+    { number: 2, locked: true, station: mm(0), depthAtPosition: '15/16" @ 33 15/16"', run: '1 15/16"', radius: '64 1/16"', offset: '-2 15/16"' },
+  ],
+  metric: [
+    { number: 1, locked: true, station: mm(0), depthAtPosition: "25 mm @ 137.2 cm", run: "51 mm", radius: "1626 mm", offset: "-76 mm" },
+    { number: 2, locked: true, station: mm(0), depthAtPosition: "25 mm @ 137.2 cm", run: "51 mm", radius: "1626 mm", offset: "-76 mm" },
+  ],
+};
+
+describe("the name box lists each wing (quick 261015-sei)", () => {
+  const SYSTEMS = ["imperial", "metric"] as const;
+
+  function nameDoc() {
+    return new jsPDF({ unit: "mm" });
+  }
+
+  it("lists a wing's figures in the card's order, with Offset only for a locked wing", () => {
+    const { figures } = wingedFishPrint("imperial");
+    expect(templateNameBlockWingItems(figures[0])).toEqual(['Wing 1 · Fin: 3/16" @ 7 1/2"', 'Run 1/4"', 'Radius 0"', 'Offset 0"']);
+    const byHand = templateNameBlockWingItems(figures[1]);
+    expect(byHand).toHaveLength(3);
+    expect(byHand[0]).toBe('Wing 2: 3/16" @ 4 1/2"');
+    expect(byHand.join(" ")).not.toContain("Offset");
+  });
+
+  describe("wrapItemsToWidth", () => {
+    const SEP = "  ·  ";
+
+    it("breaks only between figures, keeps their order, and never runs past the limit", () => {
+      const doc = nameDoc();
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      for (const system of SYSTEMS) {
+        for (const wing of [...wingedFishPrint(system).figures, ...WORST_WING_FIGURES[system]]) {
+          const items = templateNameBlockWingItems(wing);
+          for (const limit of [60, 68, 120]) {
+            const lines = wrapItemsToWidth(items, SEP, limit, doc);
+            expect(lines.join(SEP).split(SEP)).toEqual(items);
+            for (const line of lines) {
+              // A line wider than the limit can only be a single item that is itself too wide.
+              if (doc.getTextWidth(line) > limit) expect(line.split(SEP)).toHaveLength(1);
+            }
+          }
+        }
+      }
+    });
+
+    it("sets the Metric Fish's first wing on exactly two lines at the box's width", () => {
+      const doc = nameDoc();
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      const [wing1] = wingedFishPrint("metric").figures;
+      expect(wrapItemsToWidth(templateNameBlockWingItems(wing1), SEP, 68, doc)).toEqual([
+        "Wing 1 · Fin: 5 mm @ 19.1 cm  ·  Run 6 mm",
+        "Radius 0 mm  ·  Offset 0 mm",
+      ]);
+    });
+
+    it("sends a single item wider than the limit through word wrapping", () => {
+      const doc = nameDoc();
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      const lines = wrapItemsToWidth(["Run 1/4\"", "Wing with a very long name that cannot possibly fit"], SEP, 30, doc);
+      expect(lines[0]).toBe('Run 1/4"');
+      expect(lines.length).toBeGreaterThan(2);
+    });
+  });
+
+  describe("nameBlockContent", () => {
+    it("is exactly today's with no wings key or an empty one", () => {
+      const { dims } = wingedFishPrint();
+      const { wings, ...plain } = dims;
+      void wings;
+      for (const system of SYSTEMS) {
+        const today = nameBlockContent(nameDoc(), plain, system);
+        expect(nameBlockContent(nameDoc(), { ...plain, wings: [] }, system)).toEqual(today);
+      }
+    });
+
+    it("follows the dims row with each wing's lines and grows the box by 4.2 mm a line", () => {
+      for (const [system, added] of [["imperial", 3], ["metric", 4]] as const) {
+        const { dims } = wingedFishPrint(system);
+        const { wings, ...plain } = dims;
+        void wings;
+        const today = nameBlockContent(nameDoc(), plain, system);
+        const withWings = nameBlockContent(nameDoc(), dims, system);
+        expect(withWings.dimsLines.slice(0, today.dimsLines.length)).toEqual(today.dimsLines);
+        expect(withWings.dimsLines.length - today.dimsLines.length).toBe(added);
+        expect(withWings.height - today.height).toBeCloseTo(added * 4.2, 9);
+      }
+    });
+  });
+
+  describe("page 1's furniture still fits on every preset, paper and system", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      for (const system of SYSTEMS) {
+        it.each(BOARD_PRESETS)(`$id (${paper}, ${system}): nothing overlaps, everything is in the alignment box, the name box clears the curve`, (preset) => {
+          for (const wings of [wingedFishPrint(system).figures, WORST_WING_FIGURES[system]]) {
+            const base = buildOptionsFor(preset, paper);
+            const options = { ...base, system, dims: { ...base.dims, wings } };
+            const rects = templatePageZeroFurnitureRects(options);
+            const boxRect = templatePageZeroBoxRect(options.layout);
+            for (let i = 0; i < rects.length; i++) {
+              expect(rectContains(boxRect, rects[i]), `${rects[i].name} inside box`).toBe(true);
+              for (let j = i + 1; j < rects.length; j++) {
+                expect(rectsOverlap(rects[i], rects[j]), `${rects[i].name} vs ${rects[j].name}`).toBe(false);
+              }
+            }
+
+            const { height } = nameBlockContent(nameDoc(), options.dims, system);
+            const placement = nameBlockPlacement(options.layout, options.geometry, NAME_BOX_WIDTH_MM, height, NAME_BOX_CLEARANCE_MM);
+            expect(placement.pageIndex).toBe(0);
+            const bottomStation = placement.topStation - height;
+            const blockRightEdge = placement.halfWidthStart + NAME_BOX_WIDTH_MM;
+            let minHalfWidth: number = sampleOutline(options.geometry, mm(placement.topStation));
+            for (let station = bottomStation; station <= placement.topStation; station += 1) {
+              minHalfWidth = Math.min(minHalfWidth, sampleOutline(options.geometry, mm(station)));
+            }
+            expect(minHalfWidth - blockRightEdge).toBeGreaterThanOrEqual(NAME_BOX_CLEARANCE_MM - 1e-6);
+          }
+        });
+      }
     }
   });
 });

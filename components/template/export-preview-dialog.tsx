@@ -184,6 +184,9 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
     tailWidth12in: outlineGeometry.tailWidthAt12in,
     widePointOffset: outline.widePointOffset,
     volumeLitres: quotedVolumeLitres,
+    // Each wing's numbers, listed in the name box under the dims row (quick 261015-sei, D2) — the
+    // same array the Overview Sheet prints (P8).
+    wings,
   };
 
   function handleDownload() {
