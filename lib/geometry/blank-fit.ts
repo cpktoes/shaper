@@ -809,13 +809,25 @@ export function longEnoughByMaker(
 }
 
 /**
- * The blank's bottom rocker at its nose and tail tips, read off the levelled curve (its lowest point
- * reads 0) — the one "nose rocker" number the blank cards, the nose-rocker filter and the sort share
- * (quick 261015-ve9, P-6). Where the catalogue's lowest printed rocker is not 0 this differs from the
- * printed N0 / T0 by that lowest value; the station table still prints the catalogue's own figure.
+ * The blank's nose and tail rocker as a card quotes them — the one "nose rocker" number the upright
+ * card's Rocker row, the short-screen line, the nose-rocker filter and the nose-rocker sort all share
+ * (quick 261015-ve9).
+ *
+ * The catalogue's own PRINTED N0 and T0 rocker win, exactly as the card's station table prints them
+ * in its Rocker row (the founder overruled P-6 on 2026-10-16: "catalogue's printed number
+ * everywhere"). On a few Marko Foam blanks whose lowest printed rocker is not 0 — the 10'2" M prints
+ * C 3/16" — the printed tip reads higher than the levelled curve's tip, and the printed figure is the
+ * one a shaper checks against the page.
+ *
+ * Only where the catalogue printed no rocker at a tip (no N0 / T0 station, or an empty cell) does
+ * that tip fall back to the levelled curve's own tip, whose lowest point reads 0. A printed 0 stays 0.
  */
 export function blankTipRockers(prepared: PreparedBlank): { nose: Mm; tail: Mm } {
-  return { nose: mm(prepared.rocker.sample(prepared.lengthMm)), tail: mm(prepared.rocker.sample(0)) };
+  const printedAt = (label: string): number | null =>
+    prepared.record.stations.find((s) => s.label === label)?.rockerMm ?? null;
+  const nose = printedAt("N0") ?? prepared.rocker.sample(prepared.lengthMm);
+  const tail = printedAt("T0") ?? prepared.rocker.sample(0);
+  return { nose: mm(nose), tail: mm(tail) };
 }
 
 /**

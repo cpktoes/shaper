@@ -49,7 +49,7 @@ import {
   type PreparedBlank,
 } from "./blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
-import { buildBlankProfile } from "./board-profile";
+import { buildBlankProfile, printedBlankStations } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
@@ -1469,23 +1469,68 @@ describe("judging the catalogue (D-04, D-06, D-07)", () => {
       }
     });
 
-    it("blankTipRockers reads the levelled bottom at each tip — the printed N0 / T0 less the curve's minimum", () => {
+    // The founder overruled P-6 on 2026-10-16: a card quotes the catalogue's printed N0 / T0 rocker,
+    // the same figure its station table's Rocker row prints, and only falls back to the levelled
+    // curve's tip where the catalogue printed no rocker at that tip.
+    it("blankTipRockers reads the catalogue's printed N0 / T0 rocker, exactly as the station table prints it", () => {
       let printed = 0;
       for (const p of PREPARED_ALL) {
         const tips = blankTipRockers(p);
-        expect(tips.nose).toBe(p.rocker.sample(p.lengthMm));
-        expect(tips.tail).toBe(p.rocker.sample(0));
+        const table = printedBlankStations(p.record);
+        const raw = findBlank(p.record.vendor, p.record.name);
+        const rawN0 = raw.stations.find((s) => s.label === "N0")?.rockerMm ?? null;
+        const rawT0 = raw.stations.find((s) => s.label === "T0")?.rockerMm ?? null;
+        if (table.noseTip.rocker !== null) {
+          printed++;
+          expect(tips.nose).toBe(table.noseTip.rocker);
+          expect(tips.nose).toBe(rawN0);
+        } else {
+          expect(tips.nose).toBe(p.rocker.sample(p.lengthMm));
+        }
+        if (table.tailTip.rocker !== null) {
+          expect(tips.tail).toBe(table.tailTip.rocker);
+          expect(tips.tail).toBe(rawT0);
+        } else {
+          expect(tips.tail).toBe(p.rocker.sample(0));
+        }
         expect(tips.nose).toBeGreaterThanOrEqual(-1e-9);
         expect(tips.tail).toBeGreaterThanOrEqual(-1e-9);
-        const n0 = p.record.stations.find((s) => s.label === "N0")?.rockerMm ?? null;
-        const t0 = p.record.stations.find((s) => s.label === "T0")?.rockerMm ?? null;
-        if (n0 !== null) {
-          printed++;
-          expect(tips.nose).toBeCloseTo(n0 - p.rocker.minimum, 9);
-        }
-        if (t0 !== null) expect(tips.tail).toBeCloseTo(t0 - p.rocker.minimum, 9);
       }
       expect(printed).toBeGreaterThan(100);
+    });
+
+    it(`Marko 10'2" M: the printed N0 wins over the levelled nose, which sits lower by the printed C rocker`, () => {
+      const p = prepareBlank(findBlank(MARKO_VENDOR, `10'2" M`));
+      const table = printedBlankStations(p.record);
+      const tips = blankTipRockers(p);
+      const levelledNose = p.rocker.sample(p.lengthMm);
+      // The catalogue's lowest printed rocker here is not 0 (C prints above the bottom), so the two
+      // numbers differ — the case that tells the printed figure from the levelled one.
+      expect(table.center.rocker).not.toBeNull();
+      expect(table.center.rocker!).toBeGreaterThan(0);
+      expect(tips.nose).toBe(table.noseTip.rocker);
+      expect(Math.abs(tips.nose - levelledNose)).toBeGreaterThan(1);
+      expect(tips.nose).toBeGreaterThan(levelledNose);
+    });
+
+    it("a tip the catalogue prints no rocker for falls back to the levelled curve's tip", () => {
+      const p = PREPARED_ALL.find((b) => b.record.stations.some((s) => s.label === "N0" && s.rockerMm !== null))!;
+      const stripped = {
+        ...p,
+        record: {
+          ...p.record,
+          stations: p.record.stations.map((s) => (s.label === "N0" || s.label === "T0" ? { ...s, rockerMm: null } : s)),
+        },
+      };
+      const tips = blankTipRockers(stripped);
+      expect(tips.nose).toBe(p.rocker.sample(p.lengthMm));
+      expect(tips.tail).toBe(p.rocker.sample(0));
+      // A printed 0 stays 0 rather than falling through to the curve.
+      const zeroed = {
+        ...p,
+        record: { ...p.record, stations: p.record.stations.map((s) => (s.label === "T0" ? { ...s, rockerMm: mm(0) } : s)) },
+      };
+      expect(blankTipRockers(zeroed).tail).toBe(0);
     });
   });
 });
