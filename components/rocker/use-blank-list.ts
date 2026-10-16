@@ -5,7 +5,9 @@
  *
  * The page streams the pickable catalogue once per visit; this hook fits every blank once
  * (`prepareBlank`, memoised on the catalogue itself) and judges the whole list (`listBlanks`)
- * against the board. The verdicts depend on the board's length and outline, its centre thickness,
+ * against the board. Since quick 261015-ve9 the BLANK button and the PICK A BLANK popup share ONE
+ * call of it (`blank-picker.tsx`), so opening the popup never re-judges the catalogue; it also hands
+ * back the whole prepared catalogue (`allPrepared`) for the popup's counts. The verdicts depend on the board's length and outline, its centre thickness,
  * its two tips, the two 12" fine-tunes, each tip's Thinning Start (Phase 14), how it is cut from the blank (Deck Skin, Tip Style,
  * fine-tune surface — Phase 12) and the shaper's three fit rules — and on NOTHING else.
  *
@@ -85,6 +87,12 @@ function prepareCatalogue(records: readonly BlankRecord[]): PreparedCatalogue {
 export interface BlankListState extends Omit<PreparedCatalogue, "prepared"> {
   /** The prepared blanks from the makers the shaper shows — every one when all are ticked. */
   prepared: readonly PreparedBlank[];
+  /**
+   * The whole prepared catalogue, every maker, before the makers filter — what the PICK A BLANK
+   * popup counts "of {m} blanks" over, and plan 02's maker chips count per maker (quick 261015-ve9,
+   * P-4). Never judged: only `prepared` is.
+   */
+  allPrepared: readonly PreparedBlank[];
   /** Both groups, shortest first, and why the list is empty when it is. */
   list: BlankListResult;
   /** Everything about the board a verdict depends on — never the placement. */
@@ -198,5 +206,5 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
     [outline.length, outlineGeometry.widePointStation, foil.center],
   );
 
-  return { prepared: shown, recordOf: catalogue.recordOf, list, ctx, board };
+  return { prepared: shown, allPrepared: catalogue.prepared, recordOf: catalogue.recordOf, list, ctx, board };
 }

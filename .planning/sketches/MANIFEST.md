@@ -73,6 +73,17 @@ tab; and smoothing is "more of a radius rounder on the wing's outer and inner po
 stringer appearance". Round two draws three ways the view scales (jump to the whole board, grow the window, follow the
 wing) with the corner radius and the grab points as a toggle.
 
+### Picking a blank by sight (sketch 015, 2026-10-15)
+
+The founder wants to pick a foam blank on ROCKER by seeing it — outline from above, rocker from the side, at true
+proportion, with its name and printed dims — and to star blanks so starred ones always come first; undecided "whether
+that's a tab like wings, or a popup window." Mid-sketch the founder added a third option (today's list with a tiny
+drawing on every row), asked that the tab and the popup "read very similar to a blanks catalog page with dims and all",
+with the blank "horizontal rather than upright (maybe upright on the phone only?)", and pasted an earlier spec (a blank
+button with a thumbnail; every blank long enough listed, too-thin and won't-fit ones greyed with the reason; sorted by
+length; filters for maker, length range and nose rocker range; picking closes the popup; a full-screen sheet on a
+phone). The sketch draws all three placements on all 219 real blanks with the app's own curves and fit verdicts.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -98,6 +109,7 @@ wing) with the corner radius and the grab points as a toggle.
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
 | 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
+| 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | **B — A popup window** (flat by default, Flat / Upright and Show my board — on by default — in the filter bar, each blank fills its card) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
 
 ## Decisions These Lock In
 
@@ -187,7 +199,24 @@ wing) with the corner radius and the grab points as a toggle.
    rail break point; the popup opens every time a board goes from no wings to one; the radius slider stops at the
    largest round that fits; the return from FINS lands on VIEWER. Built in quick 261014-wii.
 
+18. **A blank is picked by sight, in a popup window** (sketch 015 B; the founder, 2026-10-15: "B Popup, stars follow your
+   recommendation, default laying flat on all devices but give a vertical/horizontal toggle in the filter. Scaling so
+   each blank fills its card. Show my board on each blank should be an off/on toggle in the filter. Theme and units
+   follow the apps setting."). The sidebar's BLANK section becomes one button — the blank's name, maker, dims and a
+   thumbnail — that opens a window holding a catalogue page of every blank long enough for the board: each blank lying
+   flat (outline over rocker, true proportion, filling its card) with the maker's printed station table; ★ Starred
+   first, then Fits this board, then Won't fit this board greyed with the reason (too wide somewhere, or too thin at
+   the center — no longer hidden); a search, the four makers (the Settings → Blank Makers setting itself), a length
+   range, a nose-rocker range, ★ Starred only, a sort (length by default), and the Flat / Upright and Show my board
+   switches (Show my board on by default — "show my board default = on."). Picking a blank closes the window and loads it; on a phone the window fills the screen. Theme and units
+   follow the app's settings. A blank's nose and tail rocker are the catalogue's printed figures everywhere (the founder,
+   2026-10-16: "yes, catalogue's printed number everywhere"). Built in quick 261015-ve9 (part 1, stars in the browser).
+   Stars live on the shaper's account when signed in (a nullable `user_preferences` column,
+   migrated on production before the deploy), in the browser when signed out, joined on signing in.
+
 ## Open Questions
+
+- Blank picker (015): ~~which placement, flat or upright, where stars are saved?~~ Answered 2026-10-15 — decision 18.
 
 - Phone chrome (007/008): ~~does a phone held sideways keep its screens list in ☰ or switch to the tiles
   too?~~ Answered: tiles too (the founder, 2026-10-03, "use on all screens that condense the top bar into a

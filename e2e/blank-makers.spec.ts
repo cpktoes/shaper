@@ -2,6 +2,16 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { BLANK_MAKERS_COOKIE_NAME, BLANK_MAKERS_STORAGE_KEY } from "../lib/blank-makers-preference";
 import { KNOWN_BLANK_VENDORS, catalogsPhrase } from "../lib/blanks/vendors";
 import { nothingFitsSentence } from "../lib/geometry/blank-reasons";
+import {
+  blankCards,
+  blankPicker,
+  cardButton,
+  closeBlankPicker,
+  firstFittingCard,
+  openBlankPicker,
+  openRocker,
+  pickedCard,
+} from "./helpers/blank-picker";
 import { openAppSettings } from "./helpers/settings";
 
 /**
@@ -146,37 +156,7 @@ test.describe("Blank Makers — the tick toggles in App Default Settings", () =>
   });
 });
 
-/* -- the ROCKER list (copied from e2e/rocker-blanks.spec.ts, its hydration wait included) --- */
-
-/** The list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** The picked-blank card (state C). */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered, inside its own Suspense boundary, and becomes live only
-  // once React hydrates that boundary. A keystroke or tap before then is lost, so wait until React
-  // owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
+/* -- the ROCKER blank popup: opened and picked through e2e/helpers/blank-picker.ts (quick 261015-ve9) -- */
 
 /** The page's first control: the board's one centre thickness, typed. */
 async function typeCenterThickness(page: Page, value: string) {
@@ -196,15 +176,22 @@ async function untickMaker(page: Page, vendor: string) {
   await expect(group).toBeHidden();
 }
 
-/** Shows every row ("Show all N blanks", when the list is still showing its first few) and reads
- * each row's accessible name. */
+/** Opens the PICK A BLANK popup, reads every card's accessible name (every card renders — there is
+ * no "Show all"), and closes it again. */
 async function allRowLabels(page: Page): Promise<string[]> {
-  const showAll = page.getByRole("button", { name: /^Show all \d+ blanks$/ });
-  if (await showAll.isVisible()) await showAll.click();
-  await expect(page.getByRole("button", { name: "Show Fewer" })).toBeVisible();
-  return blankList(page)
-    .locator("li[data-group] button")
+  const dialog = await openBlankPicker(page);
+  const labels = await blankCards(dialog)
+    .getByRole("button", { name: /^Use / })
     .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label") ?? ""));
+  await closeBlankPicker(page);
+  return labels;
+}
+
+/** Opens the popup, searches `query`, and returns the popup still open. */
+async function searchBlanks(page: Page, query: string): Promise<Locator> {
+  const dialog = await openBlankPicker(page);
+  await dialog.getByRole("searchbox", { name: "Search blanks" }).fill(query);
+  return dialog;
 }
 
 test.describe("Blank Makers — the ROCKER blank list", () => {
@@ -220,10 +207,10 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     const before = await allRowLabels(page);
     expect(before.some((label) => label.includes("Arctic Foam"))).toBe(true);
 
-    const search = page.getByRole("searchbox", { name: "Search blanks" });
-    await search.fill("Arctic");
-    await expect(blankList(page).locator("li[data-group] button").first()).toBeVisible();
-    await search.fill("");
+    let dialog = await searchBlanks(page, "Arctic");
+    await expect(blankCards(dialog).first()).toBeVisible();
+    await dialog.getByRole("searchbox", { name: "Search blanks" }).fill("");
+    await closeBlankPicker(page);
 
     await untickMaker(page, "Arctic Foam");
     await expect(note).toHaveText("Showing US Blanks, Marko Foam and Millennium Foam only — change in Settings");
@@ -234,9 +221,12 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     expect(after.some((label) => label.includes("Marko Foam"))).toBe(true);
     expect(after.length).toBeLessThan(before.length);
 
-    await search.fill("Arctic");
-    await expect(page.getByText('No blanks match "Arctic".')).toBeVisible();
-    await search.fill("");
+    dialog = await openBlankPicker(page);
+    // The search survives closing the popup during the visit; set it afresh either way.
+    await dialog.getByRole("searchbox", { name: "Search blanks" }).fill("Arctic");
+    await expect(dialog.getByText('No blanks match "Arctic".')).toBeVisible();
+    await dialog.getByRole("searchbox", { name: "Search blanks" }).fill("");
+    await closeBlankPicker(page);
 
     await untickMaker(page, "Marko Foam");
     await expect(note).toHaveText("Showing US Blanks and Millennium Foam only — change in Settings");
@@ -256,12 +246,14 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     page,
   }) => {
     await openRocker(page);
-    const row = firstFittingRow(page);
-    const label = (await row.getAttribute("aria-label")) ?? "";
+    await openBlankPicker(page);
+    const card = firstFittingCard(page);
+    const label = (await cardButton(card).getAttribute("aria-label")) ?? "";
     const vendor = KNOWN_BLANK_VENDORS.find((known) => label.startsWith(`Use ${known} `));
     expect(vendor, label).toBeDefined();
-    const name = (await row.locator("[data-blank-name]").innerText()).trim();
-    await row.click();
+    const name = (await card.locator("[data-blank-name]").innerText()).trim();
+    await cardButton(card).click();
+    await expect(blankPicker(page)).toBeHidden();
     await expect(pickedCard(page)).toContainText(name);
 
     await untickMaker(page, vendor!);
@@ -284,9 +276,8 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
       await expect(flag).toContainText(nothingFits);
     }
 
-    await page.getByRole("button", { name: "Change Blank" }).click();
-    const search = page.getByRole("searchbox", { name: "Search blanks" });
-    await search.fill(vendor!);
-    await expect(page.getByText(`No blanks match "${vendor}".`)).toBeVisible();
+    // Change Blank opens the popup; the unticked maker's blanks are not in it.
+    const dialog = await searchBlanks(page, vendor!);
+    await expect(dialog.getByText(`No blanks match "${vendor}".`)).toBeVisible();
   });
 });

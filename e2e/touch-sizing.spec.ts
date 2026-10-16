@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { blankButton, blankCards, closeBlankPicker, openBlankPicker, openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 import { openPhoneMenu } from "./helpers/screens";
 
 /**
@@ -234,21 +235,16 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     }
   });
 
-  // Plan 11-12 (11-UI-SPEC §15): the ROCKER controls that only exist once a blank is in play — every
-  // blank row, every text link (they grow their row, not their glyph, on a touch pointer) and the
-  // DATASHEET's typed cells. Names are read off the page, never typed in: the first row under FITS
-  // THIS BOARD is picked, whatever the catalogue calls it.
-  test("ROCKER: every blank row, every text link and every DATASHEET typed cell is finger-sized", async ({
+  // Plan 11-12 (11-UI-SPEC §15): the ROCKER controls that only exist once a blank is in play — the
+  // BLANK button, the PICK A BLANK popup's search, ✕ and every card (quick 261015-ve9), every text link
+  // (they grow their row, not their glyph, on a touch pointer) and the DATASHEET's typed cells. Names
+  // are read off the page, never typed in: the first card under FITS THIS BOARD is picked, whatever
+  // the catalogue calls it.
+  test("ROCKER: the blank button, every blank card, every text link and every DATASHEET typed cell is finger-sized", async ({
     page,
   }) => {
-    await page.goto("/design/rocker");
-    const list = page.getByRole("list", { name: "Blanks" });
-    await expect(list).toBeVisible({ timeout: 30_000 });
-    // The streamed list is live only once React owns it — a tap before then is lost.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
+    // The streamed BLANK button is live only once React owns it — a tap before then is lost.
+    await openRocker(page);
 
     const heightOf = async (locator: ReturnType<Page["locator"]>, what: string) => {
       await expect(locator, `${what} is not on screen`).toBeVisible();
@@ -257,28 +253,35 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       return box.height;
     };
 
-    // "Show all {n} blanks", and once opened, "Show Fewer".
-    const showAll = page.getByRole("button", { name: /^Show all \d+ blanks$/ });
-    expect(await heightOf(showAll, "Show all")).toBeGreaterThanOrEqual(44);
-    await showAll.click();
-    expect(await heightOf(page.getByRole("button", { name: "Show Fewer" }), "Show Fewer")).toBeGreaterThanOrEqual(44);
+    // The BLANK button (quick 261015-ve9), with no blank yet.
+    expect(await heightOf(blankButton(page), "the Pick a Blank button")).toBeGreaterThanOrEqual(44);
 
-    // Clear Search, shown only when nothing matches.
-    const search = page.getByRole("searchbox", { name: "Search blanks" });
+    // The PICK A BLANK popup: its search box, its ✕, and Clear Search, shown only when nothing matches.
+    const dialog = await openBlankPicker(page);
+    const search = dialog.getByRole("searchbox", { name: "Search blanks" });
+    expect(await heightOf(search, "the popup's search box")).toBeGreaterThanOrEqual(44);
+    expect(await heightOf(dialog.getByRole("button", { name: "Close" }), "the popup's ✕")).toBeGreaterThanOrEqual(44);
     await search.fill("zzz");
-    const clear = page.getByRole("button", { name: "Clear Search" });
+    const clear = dialog.getByRole("button", { name: "Clear Search" });
     expect(await heightOf(clear, "Clear Search")).toBeGreaterThanOrEqual(44);
     await clear.click();
     await expect(search).toHaveValue("");
 
-    // Pick the first blank that fits, then open Change Blank so the list shows under the picked card.
-    const firstFit = list.locator('li[data-group="fits"] button').first();
-    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
-    await firstFit.click();
-    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+    // Every visible `Use …` card button, fitting or greyed.
+    const rows = blankCards(dialog).getByRole("button", { name: /^Use / });
+    await expect(rows.first()).toBeVisible();
+    // Measured in one pass in the page (quick 261015-ve9 plan 02): one round trip per card, for every
+    // blank in the catalogue, ran this test past its 30-second limit on WebKit.
+    const heights = await rows.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0).map((r) => r.height),
+    );
+    expect(heights.length).toBeGreaterThan(0);
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(44);
+    await closeBlankPicker(page);
 
-    const change = page.getByRole("button", { name: "Change Blank" });
-    expect(await heightOf(change, "Change Blank")).toBeGreaterThanOrEqual(44);
+    // Pick the first blank that fits: the button now shows it, with Remove This Blank beneath.
+    await pickFirstFittingBlank(page);
+    expect(await heightOf(blankButton(page), "the Change Blank button")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "Remove This Blank" }), "Remove This Blank")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
     // Phase 12: THICKNESS's two quiet pairs, Tip Style and Fine-tune off — every pill finger-sized.
@@ -290,21 +293,6 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
         expect(await heightOf(pill, `${group}: ${label}`), `${group}: ${label} pill height`).toBeGreaterThanOrEqual(44);
       }
     }
-    await change.click();
-    expect(await heightOf(page.getByRole("button", { name: "Keep This Blank" }), "Keep This Blank")).toBeGreaterThanOrEqual(44);
-
-    // Every visible `Use …` row, fitting or greyed.
-    const rows = page.getByRole("list", { name: "Blanks" }).getByRole("button", { name: /^Use / });
-    await expect(rows.first()).toBeVisible();
-    let checkedRows = 0;
-    for (const row of await rows.all()) {
-      if (!(await row.isVisible())) continue;
-      const box = await row.boundingBox();
-      if (!box) throw new Error("blank row is missing a bounding box");
-      expect(box.height).toBeGreaterThanOrEqual(44);
-      checkedRows += 1;
-    }
-    expect(checkedRows).toBeGreaterThan(0);
 
     // With a blank picked, every visible slider — placement and the two 12" fine-tunes among them.
     let checkedThumbs = 0;
@@ -333,6 +321,41 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     expect(checkedCells).toBeGreaterThan(0);
   });
 
+  // Quick 261015-ve9 plan 02 (D-08): the PICK A BLANK popup's filter bar and a card's star — every
+  // chip, switch, star and the ✕ is a 44-dot touch box for a finger.
+  test("ROCKER: the blank popup's star, maker chips, switches, range chips, Starred only, Sort and ✕ are finger-sized", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    const dialog = await openBlankPicker(page);
+    const heightOf = async (locator: ReturnType<Page["locator"]>, what: string) => {
+      await expect(locator, `${what} is not on screen`).toBeVisible();
+      const box = await locator.boundingBox();
+      if (!box) throw new Error(`${what} is missing a bounding box`);
+      return box.height;
+    };
+    const star = blankCards(dialog).first().locator("[data-star]");
+    expect(await heightOf(star, "a card's star")).toBeGreaterThanOrEqual(44);
+    expect((await star.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+    const makers = dialog.locator("[data-maker-chip]");
+    await expect(makers).toHaveCount(4);
+    for (const maker of await makers.all()) {
+      const label = (await maker.getAttribute("data-maker-chip")) ?? "a maker chip";
+      expect(await heightOf(maker, label), label).toBeGreaterThanOrEqual(44);
+    }
+    const turn = dialog.locator("[data-drawn-toggle]");
+    expect(await heightOf(turn, "the Flat / Upright turn button"), "the Flat / Upright turn button").toBeGreaterThanOrEqual(44);
+    for (const name of ["Show my board", /^Length: /, /^Nose rocker: /, "Starred only"]) {
+      const button = dialog.getByRole("button", { name });
+      await button.scrollIntoViewIfNeeded();
+      expect(await heightOf(button, String(name)), String(name)).toBeGreaterThanOrEqual(44);
+    }
+    const sort = dialog.getByRole("combobox", { name: "Sort" });
+    await sort.scrollIntoViewIfNeeded();
+    expect(await heightOf(sort, "the Sort control")).toBeGreaterThanOrEqual(44);
+    expect(await heightOf(dialog.getByRole("button", { name: "Close" }), "the popup's ✕")).toBeGreaterThanOrEqual(44);
+  });
+
   // Phase 14 (14-UI-SPEC §12): the two Thinning Starts rows, once a blank is picked — both Automatic
   // buttons a finger's height, both thumbs' rings 44x44, and with a start set by hand to the centre
   // end (the thumb at the far right, right above the button) the button's own centre is still the
@@ -340,17 +363,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
   test("ROCKER: both Automatic buttons and both Thinning Starts thumbs are finger-sized, and the thumb never covers the button", async ({
     page,
   }) => {
-    await page.goto("/design/rocker");
-    const list = page.getByRole("list", { name: "Blanks" });
-    await expect(list).toBeVisible({ timeout: 30_000 });
-    await page.waitForFunction(() => {
-      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
-    const firstFit = list.locator('li[data-group="fits"] button').first();
-    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
-    await firstFit.click();
-    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
 
     const row = (tip: "Nose" | "Tail") => page.getByText(new RegExp(`^${tip} Thinning Starts — `)).locator("xpath=..");
     const button = (tip: "nose" | "tail") =>

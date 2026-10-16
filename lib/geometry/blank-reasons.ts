@@ -532,16 +532,74 @@ export function emptyListMessage(
 }
 
 /**
- * The line above the list, live from the rules the list is judged by (D-04, D-10). With no blank
- * picked, the Deck Skin it quotes is the account default (12-UI-SPEC §11). When that skin is none
- * (Phase 13 item 4b, FD-6/FD-8), the room-at-the-center clause names only the bottom pass.
+ * The line at the top of the PICK A BLANK popup, live from the rules the list is judged by (D-04,
+ * D-10). With no blank picked, the Deck Skin it quotes is the account default (12-UI-SPEC §11). When
+ * that skin is none (Phase 13 item 4b, FD-6/FD-8), the room-at-the-center clause names only the
+ * bottom pass. Reworded in quick 261015-ve9 (P-2, 2026-10-15): "Shortest first" and "each has room at
+ * the center" stopped being true once too-thin blanks are listed greyed and plan 02 adds other sorts.
+ * Its last sentence names where those blanks sit — at the end, under WON'T FIT THIS BOARD — rather
+ * than calling them "greyed" (the founder, 2026-10-16, fast 165).
  */
 export function listIntro(rules: CenterFloorRules, system: UnitsSystem): string {
   return (
-    `Shortest first. Each is at least ${formatMark(rules.extraLength, system)} longer than your board, ` +
-    `with room at the center for a ${skinAndPass(rules, system)}. ` +
-    `Greyed blanks don't fit somewhere — the line under each says where.`
+    `Every blank listed is at least ${formatMark(rules.extraLength, system)} longer than your board. ` +
+    `A blank fits when it leaves room at the center for a ${skinAndPass(rules, system)} ` +
+    `and your board sits inside it from tip to tip. ` +
+    `Blanks that don't fit come last, under Won't fit this board, with the reason under each.`
   );
+}
+
+/**
+ * Why a listed blank won't fit, for its greyed card in the PICK A BLANK popup (quick 261015-ve9,
+ * D-07, D-09): null for a blank that fits. A blank too thin at its centre reads the fit flag's own
+ * F4 sentence word for word, full stop included (`floorShortfallMessage`); any other WON'T FIT
+ * blank reads `formatShortfall`'s line, bare, as the list row always did.
+ */
+export function blankReason(
+  verdict: { fits: boolean; worst: BlankShortfall; centerShortBy?: Mm },
+  board: { length: Mm; widePointStation: Mm; centerThickness: Mm },
+  rules: CenterFloorRules,
+  system: UnitsSystem,
+): string | null {
+  if (verdict.fits) return null;
+  if (verdict.centerShortBy !== undefined) {
+    return floorShortfallMessage("center", verdict.centerShortBy, rules, system);
+  }
+  return formatShortfall(verdict.worst, board, system);
+}
+
+/**
+ * The ROCKER blank button's line with no blank picked (quick 261015-ve9, D-01): `196 blanks long
+ * enough for this board, 194 fit` — the blanks listed for the makers ticked in Settings, and how
+ * many of them fit. One blank reads `1 blank`; one fitting reads `1 fits`.
+ */
+export function pickBlankSummary(listed: number, fitting: number): string {
+  const blanks = listed === 1 ? "blank" : "blanks";
+  const fit = fitting === 1 ? "fits" : "fit";
+  return `${listed} ${blanks} long enough for this board, ${fitting} ${fit}`;
+}
+
+/**
+ * The first half of the PICK A BLANK popup's header line (quick 261015-ve9, D-01): `for your 6'0" ×
+ * 19 1/2" × 2 1/2" board`, and in Metric `for your 182.9 × 49.5 × 6.4 cm board` — the board's
+ * length, widest width and headline centre thickness, all three dims (CLAUDE.md Rule 2), the unit
+ * carried once at the end of the run in Metric. Imperial reads the length through `formatLength`
+ * (feet and inches), as the board's length reads everywhere.
+ */
+export function pickerBoardLine(length: Mm, width: Mm, centre: Mm, system: UnitsSystem): string {
+  if (system === "metric") {
+    return `for your ${formatDimBare(length, system)} × ${formatDimBare(width, system)} × ${formatDimBare(centre, system)} cm board`;
+  }
+  return `for your ${formatLength(length, system)} × ${formatDim(width, system)} × ${formatDim(centre, system)} board`;
+}
+
+/**
+ * The second half of the popup's header line (quick 261015-ve9, P-4): `{n} of {m} blanks · {k} fit`
+ * — n cards showing, m blanks long enough for this board across every maker, k fitting cards among
+ * the n showing.
+ */
+export function pickerCounts(showing: number, longEnough: number, fitting: number): string {
+  return `${showing} of ${longEnough} blanks · ${fitting} fit`;
 }
 
 /**

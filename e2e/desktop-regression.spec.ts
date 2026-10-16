@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 
 /**
  * PHON-05's standing automated proof: a real mouse drag on the TEMPLATE widepoint still reaches the
@@ -110,19 +111,10 @@ test.describe("desktop mouse drag regression", () => {
   }) => {
     await page.addInitScript(() => window.sessionStorage.setItem("shaper-sign-in-banner-dismissed", "true"));
     await page.addInitScript(() => window.localStorage.setItem("shaper-toolbar-tip-dismissed", "true"));
-    await page.goto("/design/rocker");
-
-    // The streamed blank list, once React owns its first row (a click before hydration is lost).
-    const list = page.getByRole("list", { name: "Blanks" });
-    await expect(list).toBeVisible({ timeout: 30_000 });
-    await page.waitForFunction(() => {
-      const el = document.querySelector('ul[aria-label="Blanks"] li[data-group="fits"] button');
-      return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    });
-    const firstFit = list.locator('li[data-group="fits"] button').first();
-    const name = (await firstFit.locator("[data-blank-name]").innerText()).trim();
-    await firstFit.click();
-    await expect(page.locator("[data-picked-blank]")).toContainText(name);
+    // The streamed BLANK button, once React owns it (a click before hydration is lost); the first
+    // fitting blank picked from the PICK A BLANK popup (quick 261015-ve9).
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
     await expect(page.getByText("Placement — centered")).toBeVisible();
 
     const noseTip = page.locator('[data-readouts] [data-readout-row="noseTip"]');

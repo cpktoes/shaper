@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { readdirSync, readFileSync } from "node:fs";
 import { inflateSync } from "node:zlib";
@@ -48,9 +49,9 @@ import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem }
  * proves it is two lines broken before `nose` with the PLANING box still inside its own space.
  *
  * Every helper below is COPIED from another spec rather than imported, per this repo's own
- * convention that each spec carries its own: `dismissChrome`, `blankList`, `firstFittingRow`,
- * `pickedCard`, `openRocker`, `pickFirstFittingBlank`, `goToSummary` and the CSV-reading pattern
- * are `e2e/summary-blank.spec.ts`'s own; `EXPECTED_SHEET_WIDTH_DOTS`, `EXPECTED_SHEET_HEIGHT_DOTS`,
+ * convention that each spec carries its own: `dismissChrome`, `goToSummary` and the CSV-reading pattern
+ * are `e2e/summary-blank.spec.ts`'s own (opening ROCKER and picking a blank go through
+ * `helpers/blank-picker.ts` since quick 261015-ve9); `EXPECTED_SHEET_WIDTH_DOTS`, `EXPECTED_SHEET_HEIGHT_DOTS`,
  * `SHEET_TOLERANCE_DOTS`, `EXPECTED_SCALE`, `SCALE_TOLERANCE`, `PageGeometry`,
  * `findNextStreamKeyword`, `extractPageGeometries` and `assertPageIsCorrect` are
  * `e2e/summary-print-size.spec.ts`'s own, kept verbatim with their doc comments; `forceTouchSheet`
@@ -68,47 +69,6 @@ async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
-}
-
-/** ROCKER's list, once the streamed catalogue has arrived and been judged. */
-function blankList(page: Page): Locator {
-  return page.getByRole("list", { name: "Blanks" });
-}
-
-/** The first blank under FITS THIS BOARD. */
-function firstFittingRow(page: Page): Locator {
-  return blankList(page).locator('li[data-group="fits"] button').first();
-}
-
-/** ROCKER's picked-blank card. */
-function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
-}
-
-async function openRocker(page: Page) {
-  await page.goto("/design/rocker");
-  await expect(blankList(page)).toBeVisible({ timeout: 30_000 });
-  // The list streams in server-rendered and becomes live only once React hydrates it; a tap before
-  // then is lost. Wait until React owns the first row and the search box.
-  await page.waitForFunction(() => {
-    const owned = (el: Element | null) => !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
-    return (
-      owned(document.querySelector('ul[aria-label="Blanks"] button')) &&
-      owned(document.querySelector('input[aria-label="Search blanks"]'))
-    );
-  });
-}
-
-/** Pick the first blank under FITS THIS BOARD and return `vendor name`, read off the row's
- * accessible name (`Use <vendor> <name>`) before the tap. */
-async function pickFirstFittingBlank(page: Page): Promise<string> {
-  const row = firstFittingRow(page);
-  const ariaLabel = (await row.getAttribute("aria-label")) ?? "";
-  const expected = ariaLabel.replace(/^Use /, "").replace(/, doesn't fit: .*$/, "");
-  expect(expected.length).toBeGreaterThan(0);
-  await row.click();
-  await expect(pickedCard(page)).toBeVisible();
-  return expected;
 }
 
 /** Walk to SUMMARY by the app's own link — a full page load would reset the design in memory. */

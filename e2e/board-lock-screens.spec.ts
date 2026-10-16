@@ -4,6 +4,7 @@ import { RACK_COPY } from "../components/setup/rack-config";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { blankCards, openBlankPicker, starButton, waitForBlankButton } from "./helpers/blank-picker";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { appSettingsDialog, appSettingsRow, openSettingsMenu } from "./helpers/settings";
@@ -302,6 +303,31 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expect(controls.getByRole("button", { name: "Remove This Blank" })).toHaveCount(0);
     await pressUnlock(page);
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(3);
+  });
+
+  // Quick 261015-ve9 plan 02 (D-08): on a locked board the blank popup still opens, searches, filters
+  // and stars — none of that changes the board — but no card can be picked.
+  test("s-rocker-picker. the blank popup opens on a locked board: no card can be picked, but a star and the search still work", async ({
+    page,
+  }) => {
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "ROCKER");
+    await waitForBlankButton(page);
+    const dialog = await openBlankPicker(page);
+    const picks = blankCards(dialog).getByRole("button", { name: /^Use / });
+    expect(await picks.count()).toBeGreaterThan(0);
+    expect(await picks.evaluateAll((els) => els.filter((el) => !(el as HTMLButtonElement).disabled).length)).toBe(0);
+    const card = blankCards(dialog, "fits").first();
+    const star = starButton(card);
+    await expect(star).toBeEnabled();
+    const before = await star.getAttribute("aria-pressed");
+    await star.click();
+    // The card moves under ★ STARRED once starred, so read the star back from the starred group.
+    await expect(starButton(blankCards(dialog, "starred").first())).toHaveAttribute(
+      "aria-pressed",
+      before === "true" ? "false" : "true",
+    );
+    await expect(dialog.getByRole("searchbox", { name: "Search blanks" })).toBeEnabled();
   });
 
   test("s-rails. RAILS is greyed, a section still opens and closes, the print tick still toggles, and Unlock brings it back", async ({
