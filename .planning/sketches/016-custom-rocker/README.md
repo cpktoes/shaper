@@ -79,9 +79,12 @@ Open Change blank › in the sketch to see the popup (`pictures/a-computer-picke
 - *"A custom rocker card should show the natural rocker and below it the new values on another line. I don't wanna
   waste space on the title, but the user clearly needs to know which one is which. I think we could write the word
   natural, or NAT for natural and then the word rocker or the actual value with [the] adjustment."* So a card's table
-  (and the DATASHEET's BLANK block) has a **Rocker NAT** row with the catalogue's figures and, on a custom blank, a
-  second row labelled with the adjustment itself (`-1/4"N18" +1/8"T36" +1/8"T18"`) holding the ordered figures.
-  The title line stays the blank's name alone.
+  (and the DATASHEET's BLANK block) has a natural row with the catalogue's figures and, on a custom blank, a second
+  row holding the ordered figures. The title line stays the blank's name alone.
+
+**Round four (the founder, 2026-10-16):** *"The data table name can be Custom Rocker. There's no need to repeat all of
+the dimensions since that is the appended name line of the blank."* So the two rows read **Natural Rocker** and
+**Custom Rocker** (NAT is an accepted short form), and the adjustment is written once, on the name line.
 
 The maths is spike 002's even bend on the app's own curves: the two boards' natural side profiles were dumped by the
 app's own code (`designSideProfile`, `prepareBlank`), and each change adds *amount × u²* past its bend point. A change

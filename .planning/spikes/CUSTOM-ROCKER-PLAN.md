@@ -140,8 +140,10 @@ deploy that reads it.
    the same way, the name then its rocker on its own line, `Natural` included (`9'4"B` / `Natural`; `9'4"B` /
    `-1/4"N18" +1/8"T36" +1/8"T18"`), on the BLANK button, the picker's cards, the viewer's caption, the DATASHEET's
    group label and the order form (`US Blanks 9'4"B Natural — centered`). A blank's station table — a picker card and
-   the DATASHEET's BLANK block — has a **Rocker NAT** row with the catalogue's printed figures and, on a custom blank,
-   a second row labelled with the adjustment holding the ordered figures (nose and tail tips exact). The screen tile
+   the DATASHEET's BLANK block — has a **Natural Rocker** row with the catalogue's printed figures and, on a custom
+   blank, a **Custom Rocker** row holding the ordered figures (nose and tail tips exact). The adjustment itself is
+   written once, on the name line (the founder, round four: "There's no need to repeat all of the dimensions since
+   that is the appended name line of the blank"; "NAT" for Natural is an accepted short form). The screen tile
    (`On a 9'4"B`) is the one place the rocker text is left off for room — to confirm.
 5. **The note in Metric stays in inches** — it is the maker's order code, like the blank's name — while every figure
    drawn, tabled or stepped follows Imperial/Metric (marks in whole mm; the stepper steps 1 mm in Metric and the

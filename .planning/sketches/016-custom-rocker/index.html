@@ -519,8 +519,8 @@ function datasheet(device, g) {
     <table>
       <tr><th></th>${labels.map((l) => `<th>${l}</th>`).join("")}</tr>
       <tr class="grp"><td colspan="6">Blank — ${esc(b.vendor)} ${esc(b.name)} <span class="cat">(catalog's N0 · N12 · C · T12 · T0)</span><span class="rn2">${esc(note || "Natural")}</span></td></tr>
-      ${row(`Rocker NAT${unit}`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(st.rockerIn); }), false)}
-      ${custom ? row(`<span class="rnlab">${esc(note)}</span>`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(g.blankLev(st.xIn)); }), true) : ""}
+      ${row(`Natural Rocker${unit}`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(st.rockerIn); }), false)}
+      ${custom ? row(`Custom Rocker${unit}`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(g.blankLev(st.xIn)); }), true) : ""}
       ${row(`Thickness${unit}`, cols.map((k) => pr(b.printed[k].thickness, mark)), false)}
       ${row(`Width${M() ? " (cm)" : ""}`, cols.map((k) => pr(b.printed[k].width, dim)), false)}
       <tr class="grp"><td colspan="6">Your board</td></tr>
@@ -532,7 +532,7 @@ function datasheet(device, g) {
     </table>
     <div class="foot">
       <span>From the ${esc(b.vendor)} catalog, page ${esc(String(b.pdfPage || ""))}. Station names are the catalog's own — N0 and T0 are the nose and tail tips, N12 and T12 are 12 inches in from them, and C is the center.</span>
-      ${custom ? `<span>NAT is the catalog page's rocker; the <b>${esc(note)}</b> row is the blank as ordered, read at the same stations, nose and tail tips exact.${g.lowMoved ? " The low point moved, so every figure reads from the new low point." : ""}</span>` : `<span>NAT is the catalog page's natural rocker.</span>`}
+      ${custom ? `<span>Natural Rocker is the catalog page's; Custom Rocker is the blank as ordered (<b>${esc(note)}</b>), read at the same stations, nose and tail tips exact.${g.lowMoved ? " The low point moved, so every figure reads from the new low point." : ""}</span>` : `<span>Natural Rocker is the catalog page's.</span>`}
     </div>
     <div class="order"><b>On the order form</b><span>Blank: ${esc(b.vendor)} ${esc(b.name)} ${esc(note || "Natural")} — centered</span></div>
   </div>`;
@@ -581,9 +581,9 @@ function blankCard(r, opts) {
     <table class="st"><tr><th></th>${hdr.map((h) => `<th>${h}</th>`).join("")}</tr>
       <tr><td>Width</td>${cols.map((k) => `<td>${pr(b.printed[k].width, dim)}</td>`).join("")}</tr>
       <tr><td>Thick</td>${cols.map((k) => `<td>${pr(b.printed[k].thickness, mark)}</td>`).join("")}</tr>
-      <tr><td>Rocker NAT</td>${cols.map((k) => { const x = st(k); return `<td>${!x || x.rockerIn === null ? "—" : mark(x.rockerIn)}</td>`; }).join("")}</tr>
-      ${custom ? `<tr class="ord"><td><span class="rnlab">${esc(note)}</span></td>${rocker.map((c) => `<td>${c}</td>`).join("")}</tr>` : ""}</table>
-    ${custom ? `<div class="asord">The second row is the rocker as you ordered it — check it on the foam.</div>` : ""}
+      <tr><td>Natural Rocker</td>${cols.map((k) => { const x = st(k); return `<td>${!x || x.rockerIn === null ? "—" : mark(x.rockerIn)}</td>`; }).join("")}</tr>
+      ${custom ? `<tr class="ord"><td>Custom Rocker</td>${rocker.map((c) => `<td>${c}</td>`).join("")}</tr>` : ""}</table>
+    ${custom ? `<div class="asord">Custom Rocker is the blank as you ordered it — check it on the foam.</div>` : ""}
     <button class="link pickbtn" data-act="pick" data-i="${opts.i}">${opts.picked ? "Keep this blank" : "Use this blank"}</button>
   </div>`;
 }
@@ -623,7 +623,7 @@ const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
 <ul><li>Can you set a listed rocker — say <b>-1/4"N18" +1/8"T36" +1/8"T18"</b> — in under a minute, on a phone?</li>
 <li>Does the natural dashed line read as a reference, not a second blank? Are the bend marks enough without words?</li>
 
-<li>Decided (round three): the rocker text sits on its own line under the name, <b>Natural</b> included, everywhere the blank is named; a custom blank's table shows the <b>Rocker NAT</b> row and, under it, a row labelled with the adjustment holding the ordered figures.</li></ul>
+<li>Decided (rounds three and four): the rocker text sits on its own line under the name, <b>Natural</b> included, everywhere the blank is named; a custom blank's table shows a <b>Natural Rocker</b> row and a <b>Custom Rocker</b> row — the adjustment itself is on the name line only.</li></ul>
 <h3>Saving it as a blank (the founder, 2026-10-16)</h3>
 <p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
 <h3>The maths</h3>
