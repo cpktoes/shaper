@@ -98,6 +98,7 @@ wing) with the corner radius and the grab points as a toggle.
 | 012 | blank-round-nose | When a blank prints its nose tip 0 wide, how should its outline reach the tip on ROCKER's top view? | **C — Parabola from the tip** (nothing to set) | viewer, rocker, top-view, blank, geometry |
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
 | 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
+| 016 | custom-rocker | With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker (nose and tail changes in the US Blanks notation, up to two per end), and how do the drawing, the name and the DATASHEET show it? | — (round one, 2026-10-16) | rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation |
 
 ## Decisions These Lock In
 
@@ -188,6 +189,11 @@ wing) with the corner radius and the grab points as a toggle.
    largest round that fits; the return from FINS lands on VIEWER. Built in quick 261014-wii.
 
 ## Open Questions
+
+- Custom rocker (016, 2026-10-16): A, B or C for the control; the tip close-ups; the note on its own line or run on
+  as one name; the DATASHEET's BLANK Rocker row (custom with natural beneath, two rows, or a footnote). Decided so far
+  (the founder, 2026-10-16): the US Blanks notation app-wide, typed changes first, the note in inches in Metric,
+  steppers with room for a two-point change. Research: `.planning/spikes/CUSTOM-ROCKER-PLAN.md`.
 
 - Phone chrome (007/008): ~~does a phone held sideways keep its screens list in ☰ or switch to the tiles
   too?~~ Answered: tiles too (the founder, 2026-10-03, "use on all screens that condense the top bar into a
