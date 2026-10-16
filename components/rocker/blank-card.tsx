@@ -67,8 +67,6 @@ export interface CardBoard {
   silhouette: readonly { station: number; w: number }[];
 }
 
-const STROKE = { vectorEffect: "non-scaling-stroke" as const, strokeWidth: 1, strokeLinejoin: "round" as const };
-
 function line([a, b]: [ArtPoint, ArtPoint]) {
   return { x1: a.x, y1: a.y, x2: b.x, y2: b.y };
 }
@@ -88,11 +86,11 @@ export function BlankArt({ art, ghost, thumb = false }: { art: BlankCardArt; gho
       className="block h-auto w-full"
       data-blank-art
     >
-      <path d={polylinePath(art.outline, true)} fill="var(--outline-foam-shade)" stroke="var(--outline-ink)" {...STROKE} />
+      <path d={polylinePath(art.outline, true)} fill="var(--outline-foam-shade)" stroke="var(--outline-ink)" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />
       {!thumb && (
         <>
-          <line {...line(art.stringer)} stroke="var(--outline-station-line)" strokeDasharray="16 4 4 4" {...STROKE} />
-          <line {...line(art.centreMark)} stroke="var(--outline-station-line)" strokeDasharray="5 4" {...STROKE} />
+          <line {...line(art.stringer)} stroke="var(--outline-station-line)" strokeDasharray="16 4 4 4" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />
+          <line {...line(art.centreMark)} stroke="var(--outline-station-line)" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />
           {art.widthDots.map((dot, i) => (
             <circle key={i} cx={dot.x} cy={dot.y} r={1.5} fill="var(--outline-blank-line)" />
           ))}
@@ -103,13 +101,13 @@ export function BlankArt({ art, ghost, thumb = false }: { art: BlankCardArt; gho
               fill="var(--outline-board-fill)"
               stroke="var(--outline-ink)"
               strokeDasharray="4 3"
-              {...STROKE}
+              vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round"
             />
           )}
         </>
       )}
-      <path d={polylinePath(art.side, true)} fill="var(--outline-foam-shade)" stroke="var(--outline-ink)" {...STROKE} />
-      {!thumb && <line {...line(art.baseline)} stroke="var(--surf-line-faint)" {...STROKE} />}
+      <path d={polylinePath(art.side, true)} fill="var(--outline-foam-shade)" stroke="var(--outline-ink)" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />
+      {!thumb && <line {...line(art.baseline)} stroke="var(--surf-line-faint)" vectorEffect="non-scaling-stroke" strokeWidth={1} strokeLinejoin="round" />}
     </svg>
   );
 }
