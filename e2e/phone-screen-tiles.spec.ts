@@ -349,6 +349,9 @@ async function customRockerOnBoard(page: Page): Promise<string> {
  * the line is there or not, so the drawing never shrinks for it.
  */
 async function rockerLineKeepsPictures(page: Page, label: string) {
+  // A preset, the Customize Rocker popup and three trips through the ☰ sheet: more than one 30-second
+  // budget on a loaded machine, so this walk gets the suite's slow allowance.
+  test.slow();
   await openPreset(page, "Longboard");
   await openPhoneMenu(page);
   const rocker = screenTile(page, "ROCKER");
