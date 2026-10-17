@@ -281,6 +281,13 @@
   --ramp-daylight-on-warning: #1f2a3b;
   --ramp-daylight-warning-ink: #ac3811;
   --ramp-daylight-fill: #d9f2ed;
+  /* The Customize Rocker popup's two adjustment colours (quick 261016-mkb, P-16): US Blanks'
+     catalogue page 11 draws a blank's first rocker change red and its second blue. The sketch's
+     light pair. WCAG contrast, measured 2026-10-16: on the ground and panel 5.62 (red) / 5.74
+     (blue), on the canvas and well 4.10 / 4.18, over the blank's foam shade 3.97 / 4.05 on the
+     ground (the popup's card) and 3.02 / 3.08 on the canvas — every one at least 3:1 for a line. */
+  --ramp-daylight-rocker-adjust-1: #c62828;
+  --ramp-daylight-rocker-adjust-2: #1d5fd6;
 
   /* -- Chalk (light) --------------------------------------------------
      Daylight's paper with an ocean-blue accent standing in for the sage. The two light themes
@@ -308,6 +315,10 @@
   --ramp-chalk-on-warning: #1f2a3b;
   --ramp-chalk-warning-ink: #ac3811;
   --ramp-chalk-fill: #d8ebf2;
+  /* The Customize Rocker adjustment colours (P-16): Daylight's pair on Daylight's own neutrals —
+     the same contrast, 3.02 to 5.74. */
+  --ramp-chalk-rocker-adjust-1: #c62828;
+  --ramp-chalk-rocker-adjust-2: #1d5fd6;
 
   /* -- Slate (dark) --------------------------------------------------
      The conventional dark: near-white text on a cool near-black, and still the only theme
@@ -335,6 +346,11 @@
   --ramp-slate-on-warning: #111111;
   --ramp-slate-warning-ink: #ff9670;
   --ramp-slate-fill: #1a2732;
+  /* The Customize Rocker adjustment colours (P-16): the sketch's dark pair. WCAG contrast, measured
+     2026-10-16: on the ground and panel 5.80 (red) / 6.49 (blue), on the canvas 5.31 / 5.94, on the
+     well 5.21 / 5.83, over the foam shade 3.71 / 4.15 on the ground and 3.38 / 3.78 on the canvas. */
+  --ramp-slate-rocker-adjust-1: #f0625f;
+  --ramp-slate-rocker-adjust-2: #4f9cf5;
 
   /* -- Phosphor (dark) --------------------------------------------------
      CRT terminal, fully monochrome: every role including the warning is a green, so nothing
@@ -362,6 +378,11 @@
   --ramp-phosphor-on-warning: #050805;
   --ramp-phosphor-warning-ink: #a6ffa6;
   --ramp-phosphor-fill: #142414;
+  /* The Customize Rocker adjustment colours (P-16): Slate's pair. WCAG contrast, measured 2026-10-16:
+     on the ground, panel and well 6.34 (red) / 7.10 (blue), on the canvas 5.12 / 5.73, over the foam
+     shade 4.67 / 5.23 on the ground and 3.55 / 3.98 on the canvas. Never the warning green. */
+  --ramp-phosphor-rocker-adjust-1: #f0625f;
+  --ramp-phosphor-rocker-adjust-2: #4f9cf5;
 }
 
 /* ---------------------------------------------------------------------------
@@ -409,6 +430,8 @@
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
   --surf-board-fill: var(--ramp-daylight-fill);
   --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
+  --surf-rocker-adjust-1: var(--ramp-daylight-rocker-adjust-1);
+  --surf-rocker-adjust-2: var(--ramp-daylight-rocker-adjust-2);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -437,6 +460,8 @@
     --surf-warning-ink: var(--ramp-slate-warning-ink);
     --surf-board-fill: var(--ramp-slate-fill);
     --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
+    --surf-rocker-adjust-1: var(--ramp-slate-rocker-adjust-1);
+    --surf-rocker-adjust-2: var(--ramp-slate-rocker-adjust-2);
   }
 }
 
@@ -465,6 +490,8 @@
   --surf-warning-ink: var(--ramp-daylight-warning-ink);
   --surf-board-fill: var(--ramp-daylight-fill);
   --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
+  --surf-rocker-adjust-1: var(--ramp-daylight-rocker-adjust-1);
+  --surf-rocker-adjust-2: var(--ramp-daylight-rocker-adjust-2);
 }
 
 /* Chalk — explicit. */
@@ -492,6 +519,8 @@
   --surf-warning-ink: var(--ramp-chalk-warning-ink);
   --surf-board-fill: var(--ramp-chalk-fill);
   --surf-print-shade: color-mix(in srgb, var(--ramp-chalk-accent) 20%, #fff);
+  --surf-rocker-adjust-1: var(--ramp-chalk-rocker-adjust-1);
+  --surf-rocker-adjust-2: var(--ramp-chalk-rocker-adjust-2);
 }
 
 /* Slate — explicit. */
@@ -519,6 +548,8 @@
   --surf-warning-ink: var(--ramp-slate-warning-ink);
   --surf-board-fill: var(--ramp-slate-fill);
   --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
+  --surf-rocker-adjust-1: var(--ramp-slate-rocker-adjust-1);
+  --surf-rocker-adjust-2: var(--ramp-slate-rocker-adjust-2);
 }
 
 /* Phosphor — explicit. */
@@ -546,6 +577,8 @@
   --surf-warning-ink: var(--ramp-phosphor-warning-ink);
   --surf-board-fill: var(--ramp-phosphor-fill);
   --surf-print-shade: color-mix(in srgb, var(--ramp-phosphor-accent) 20%, #fff);
+  --surf-rocker-adjust-1: var(--ramp-phosphor-rocker-adjust-1);
+  --surf-rocker-adjust-2: var(--ramp-phosphor-rocker-adjust-2);
 }
 
 /* ---------------------------------------------------------------------------
@@ -638,6 +671,10 @@
   --color-surf-warning: var(--surf-warning);
   --color-surf-on-warning: var(--surf-on-warning);
   --color-surf-warning-ink: var(--surf-warning-ink);
+  /* The Customize Rocker popup's two adjustment colours (quick 261016-mkb, P-16), so the header's
+     note can colour its changes with `text-rocker-adjust-1` / `text-rocker-adjust-2`. */
+  --color-rocker-adjust-1: var(--surf-rocker-adjust-1);
+  --color-rocker-adjust-2: var(--surf-rocker-adjust-2);
 
   /* next/font loads Inter in app/layout.tsx and exposes it as --font-inter on <html>.
      Display and body are the same face by choice: the source config specified Space
@@ -813,6 +850,12 @@
      shade left showing is the foam to come off. */
   --outline-blank-line: color-mix(in srgb, var(--surf-ink-muted) 60%, transparent); /* the blank's side silhouette — solid, 1px */
   --outline-foam-shade: color-mix(in srgb, var(--surf-ink-muted) 24%, transparent); /* the foam to come off */
+  /* The Customize Rocker popup's deviation from the natural rocker (quick 261016-mkb, D-07, P-16),
+     drawn as US Blanks' catalogue page 11 draws it: the blank's outline red over its first change's
+     span and blue over the second's. The popup's drawing only — the ROCKER page draws a custom blank
+     as any blank, nothing coloured (D-08) — and never the warning colour. */
+  --rocker-adjust-1: var(--surf-rocker-adjust-1);
+  --rocker-adjust-2: var(--surf-rocker-adjust-2);
   --outline-ink: var(--surf-ink);
   /* TEMPLATE's last-edit ghost (P-6, quick 260930-lia): the outline as it was one edit ago, drawn
      faintly behind the live board. Muted ink, not the accent — the accent means "you can grab
