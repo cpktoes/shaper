@@ -1,5 +1,5 @@
 {
-  "id": "8d8a5ae3-88f5-4cba-9536-c19dd825216a",
+  "id": "1b3b5ccd-0d24-4fa0-af2a-6dc818ea1a90",
   "prevId": "5d951c4a-4cc8-4c01-8476-6aa6cd148bea",
   "version": "7",
   "dialect": "postgresql",
@@ -182,74 +182,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_blanks": {
-      "name": "user_blanks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "clerk_user_id": {
-          "name": "clerk_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "copy": {
-          "name": "copy",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rocker": {
-          "name": "rocker",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "user_blanks_clerk_user_id_idx": {
-          "name": "user_blanks_clerk_user_id_idx",
-          "columns": [
-            {
-              "expression": "clerk_user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user_preferences": {
       "name": "user_preferences",
       "schema": "",
@@ -322,6 +254,12 @@
         },
         "rack_order": {
           "name": "rack_order",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "starred_blanks": {
+          "name": "starred_blanks",
           "type": "text",
           "primaryKey": false,
           "notNull": false

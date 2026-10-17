@@ -4,7 +4,9 @@
  * `deck_skin_mm` (double precision) and `tip_style` (text), migration 0006 (Phase 12 D-01, D-03,
  * D-04), and `hidden_blank_makers` (text), migration 0007 (quick task 260926-wmf: the blank makers a
  * shaper switched off in the gear menu), and `rack_order` (text), migration 0009 (Phase 15 D-03: the
- * shaper's own order of their saved boards on the Board Rack). It also reports the state of the retired
+ * shaper's own order of their saved boards on the Board Rack), and `starred_blanks` (text), migration
+ * 0011 (quick task 261016-usz: the blanks a shaper starred in ROCKER's PICK A BLANK popup, kept on
+ * their account so the stars follow them to any device). It also reports the state of the retired
  * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19). It
  * also checks that `models` holds `locked` (boolean), migration 0010 (quick task 261008-lsy: whether
  * the shaper has locked a saved board so it can't be changed by accident). And it checks that the
@@ -21,7 +23,7 @@
  * when it applied nothing, so that line proves nothing on its own. This script asks the database.
  *
  * It writes nothing. It prints exactly four lines:
- *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text, rack_order text (5 of 5 columns); extra_center_thickness_mm absent (expected absent)
+ *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text, rack_order text, starred_blanks text (6 of 6 columns); extra_center_thickness_mm absent (expected absent)
  *   models: locked boolean (1 of 1 columns)
  *   user_blanks: id uuid, clerk_user_id text, copy jsonb, rocker jsonb, created_at timestamp with time zone, updated_at timestamp with time zone (6 of 6 columns)
  *   drizzle migrations recorded: <n>
@@ -30,7 +32,7 @@
  * `absent (expected present)`. Line 2 reads `models: locked missing (0 of 1 columns)` when the column
  * is not there. Line 3 reads `missing` in place of any `user_blanks` column it did not find, and
  * `user_blanks missing (0 of 6 columns)` when the table is not there at all. Exits 1 when fewer than
- * 5 of the 5 columns match their types, when `locked` is not a boolean, when fewer than 6 of the 6
+ * 6 of the 6 columns match their types, when `locked` is not a boolean, when fewer than 6 of the 6
  * `user_blanks` columns match theirs, or when the retired column's actual state differs from the
  * expected one. Only column names, their types
  * and a count are ever printed — never the connection string, never row data. When the check itself
@@ -76,8 +78,18 @@
  *     npm run db:migrate:prod
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
  *
+ *   production — quick task 261016-usz (starred blanks on the shaper's account), the founder only,
+ *   from the checkout that carries migration 0011 and the Vercel link (the main checkout). Adding
+ *   `user_preferences.starred_blanks` is ADDITIVE, so it runs BEFORE the push (CLAUDE.md Database —
+ *   every insert into user_preferences names every column, so code that knew the column before
+ *   production had it would break every account setting's save): check first (expected
+ *   `starred_blanks missing (5 of 6 columns)`, exit 1), then migrate, then check again (expected
+ *   `starred_blanks text (6 of 6 columns)`, exit 0, one more migration recorded). The same three
+ *   commands as above.
+ *
  *   production — quick 261016-mkb (saved blanks with a custom rocker), the founder only, from the
- *   main checkout, at go-live (plan 03). Adding the `user_blanks` table is ADDITIVE, so it runs BEFORE
+ *   main checkout, at go-live (plan 03), AFTER 261016-usz's column above — the table is migration 0012, numbered
+ *   behind that task's 0011. Adding the `user_blanks` table is ADDITIVE, so it runs BEFORE
  *   the push (CLAUDE.md Database): check first (expected `user_blanks missing (0 of 6 columns)`,
  *   exit 1), then migrate, then check again (expected `user_blanks: id uuid, … (6 of 6 columns)`,
  *   exit 0, one more migration recorded). The same three commands as the go-lives above:
@@ -95,7 +107,10 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-/** The Phase 12 columns, then quick task 260926-wmf's, then Phase 15's, and the type each must have. */
+/**
+ * The Phase 12 columns, then quick task 260926-wmf's, then Phase 15's, then quick task 261016-usz's,
+ * and the type each must have.
+ */
 const NEW_COLUMNS = [
   { name: "planer_max_depth_mm", type: "double precision" },
   { name: "deck_skin_mm", type: "double precision" },
@@ -103,6 +118,8 @@ const NEW_COLUMNS = [
   { name: "hidden_blank_makers", type: "text" },
   // Phase 15 D-03, migration 0009: the shaper's own order of their saved boards.
   { name: "rack_order", type: "text" },
+  // Quick task 261016-usz, migration 0011: the blanks a shaper starred in ROCKER's PICK A BLANK popup.
+  { name: "starred_blanks", type: "text" },
 ] as const;
 
 /**
@@ -158,7 +175,7 @@ async function main(): Promise<void> {
     select column_name, data_type
     from information_schema.columns
     where table_name = 'user_preferences'
-      and column_name in ('planer_max_depth_mm', 'deck_skin_mm', 'tip_style', 'hidden_blank_makers', 'rack_order', 'extra_center_thickness_mm')
+      and column_name in ('planer_max_depth_mm', 'deck_skin_mm', 'tip_style', 'hidden_blank_makers', 'rack_order', 'starred_blanks', 'extra_center_thickness_mm')
   `);
   const found = new Map<string, string>();
   for (const row of columnResult.rows as Array<{ column_name: string; data_type: string }>) {

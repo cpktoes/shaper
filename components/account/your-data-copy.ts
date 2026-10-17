@@ -30,7 +30,7 @@ export const YOUR_DATA_COPY = Object.freeze({
     confirmHeading: "Delete your account for good?",
     consequences: Object.freeze([
       "Every saved board on your account is deleted. Use Export my designs above first if you want a copy.",
-      "Your settings are deleted: units, fit and tip defaults, blank makers and your rack order.",
+      "Your settings are deleted: units, fit and tip defaults, blank makers, starred blanks and your rack order.",
       "Your account is closed and you're signed out.",
       "There's no undo. We can't bring any of it back.",
     ]),

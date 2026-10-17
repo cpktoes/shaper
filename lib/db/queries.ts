@@ -20,6 +20,7 @@ import {
 } from "@/lib/fit-defaults-preference";
 import { parseHiddenBlankMakersColumn } from "@/lib/blank-makers-preference";
 import { parseRackOrderColumn } from "@/lib/models/rack-order";
+import { parseStarredBlanksText, type StarredBlank } from "@/lib/starred-blanks-preference";
 import type { BlankVendor } from "@/lib/blanks/vendors";
 import type { UnitsSystem } from "@/lib/geometry/units";
 
@@ -161,4 +162,25 @@ export async function readRackOrder(clerkId: string): Promise<string[] | null> {
     .from(userPreferences)
     .where(eq(userPreferences.clerkUserId, clerkId));
   return parseRackOrderColumn(row?.rackOrder ?? null);
+}
+
+/**
+ * The blanks a shaper starred in ROCKER's PICK A BLANK popup (quick task 261016-usz, D-03), as
+ * `[maker, name]` pairs in starring order. The column's JSON text is run through
+ * `parseStarredBlanksText`'s allow-list, so a missing row, a null column (never starred on this
+ * account) or malformed text all read as no stars, and a drifted value keeps only well-formed pairs.
+ * A failed read is NOT turned into "no stars" here — it throws, and `lib/starred-blanks-server.ts`
+ * reports it as unreadable (P-3).
+ *
+ * Selects exactly this one column and nothing else, so the reads above never ask for it and this
+ * one never asks for theirs.
+ *
+ * Read-only contract, same register as `listModels`: one `select`, no counters, no last-seen
+ * stamp, no write of any kind.
+ */
+export async function readStarredBlanksPreference(clerkId: string): Promise<StarredBlank[]> {
+  const [row] = await db.select({ starredBlanks: userPreferences.starredBlanks })
+    .from(userPreferences)
+    .where(eq(userPreferences.clerkUserId, clerkId));
+  return parseStarredBlanksText(row?.starredBlanks ?? null);
 }
