@@ -549,6 +549,33 @@ test.describe("wings on the TEMPLATE page", () => {
     expect(Number.isInteger(stored)).toBe(true);
   });
 
+  test("desktop: the WINGS tab's toggle shows the whole board with every dimension card, keeps the wing controls, and goes back to the tail", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+    await addFirstWing(page);
+    const sidebar = page.locator("aside");
+    const lengthCard = page.locator('[data-callout-chip="LENGTH"]');
+    await expect(lengthCard).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Show the whole board" }).click();
+    await expect(lengthCard).toBeVisible();
+    for (const card of ["WIDEPOINT", "TAIL BLOCK"]) {
+      await expect(page.locator(`[data-callout-chip="${card}"]`)).toBeVisible();
+    }
+    // Still the WINGS tab, with the wing controls in the sidebar.
+    await expect(page.getByRole("tab", { name: "WINGS · 1" })).toHaveAttribute("aria-selected", "true");
+    await expect(sidebar.getByText("Wings", { exact: true })).toBeVisible();
+
+    // The choice holds across a trip to the VIEWER tab and back.
+    await page.getByRole("tab", { name: "VIEWER" }).click();
+    await page.getByRole("tab", { name: "WINGS · 1" }).click();
+    await expect(lengthCard).toBeVisible();
+
+    await page.getByRole("button", { name: "Show the tail close-up" }).click();
+    await expect(lengthCard).toHaveCount(0);
+  });
+
   test("desktop: FINS draws the tail with the wing's step in it", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 

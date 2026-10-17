@@ -83,6 +83,9 @@ export function OutlineEditor() {
    * setting survives a trip to FINS and back, which remounts this screen. */
   const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
   const showFins = showFinsOverride ?? wingCount > 0;
+  /** The WINGS tab's whole-board view instead of the tail close-up (fast task, 2026-10-17) — view
+   * state, never saved, kept here so it holds across trips to the VIEWER tab and back. */
+  const [wingsWholeBoard, setWingsWholeBoard] = useState(false);
   /** The "Dial in your wing placement" pop-up (D4), opened by the first wing. */
   const [dialInOpen, setDialInOpen] = useState(false);
   const templateTabs = [
@@ -355,6 +358,8 @@ export function OutlineEditor() {
               // Quick 261015-my3 (D1): the way the VIEWER draws the board, so the close-up's lines
               // match the VIEWER's own on-screen weight, upright or turned.
               viewerOrientation={boardOrientation}
+              wholeBoard={wingsWholeBoard}
+              onToggleWholeBoard={() => setWingsWholeBoard((v) => !v)}
             />
           ) : (
             viewerContent

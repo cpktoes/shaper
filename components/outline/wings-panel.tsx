@@ -1,11 +1,12 @@
 "use client";
 
-import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { LocateFixedIcon, Maximize2Icon, Minimize2Icon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import type { OutlineSpec } from "@/lib/geometry/board";
+import { OutlineViewer } from "./outline-viewer";
 import { WingCloseUp } from "./wing-close-up";
 
 /**
@@ -19,8 +20,9 @@ import { WingCloseUp } from "./wing-close-up";
  * (on a phone, in the stacked controls under the drawing) is the way in, and the "Dial in your wing
  * placement" pop-up still opens every time a board goes from no wings to one.
  *
- * The toolbar has only the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
- * VIEWER's: Show/Hide construction lines (the wings' grab points follow it, D5) and wide view.
+ * The toolbar has the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
+ * VIEWER's: Show/Hide construction lines (the wings' grab points follow it, D5) and wide view — and,
+ * since 2026-10-17, the whole-board toggle described at the end of this comment.
  * The close-up is never turned (P4). The handlers are the editor's, so the two tabs share one
  * construction setting and one wide view.
  *
@@ -28,6 +30,15 @@ import { WingCloseUp } from "./wing-close-up";
  * capabilities like the viewer." The panel holds its own `ViewerZoomProvider` (a provider renders no
  * element, so the layout is untouched), and the zoom row sits under the toolbar's icons exactly as on
  * the VIEWER. The panel unmounts when the tab changes, so each tab starts at 1x; nothing is saved.
+ *
+ * The whole board, without leaving the tab (fast task, 2026-10-17) — the founder: "the wings tab
+ * needs a toggle button to see the full board or zoomed in tail section. It kinda sucks to keep going
+ * back and forth. On the full board view ... all the dim cards should display." A third toolbar
+ * button swaps the close-up for the VIEWER's own drawing of the whole board — every dimension card
+ * (LENGTH, the widths, WP OFFSET, TAIL BLOCK, the wings' own chips) drawn as the VIEWER draws them —
+ * while the sidebar keeps the wing controls, so a wing can be tuned with the whole board in view.
+ * The choice is the editor's, so it holds across trips to the VIEWER tab and back; never saved. Each
+ * view starts at 1x (the zoom provider is keyed on it).
  */
 export interface WingsPanelProps {
   outline: OutlineSpec;
@@ -36,8 +47,12 @@ export interface WingsPanelProps {
   showFins: boolean;
   wideView: boolean;
   onToggleWideView: () => void;
-  /** Which way the VIEWER tab draws the board, so the close-up's lines match its weight (D1). */
+  /** Which way the VIEWER tab draws the board, so the close-up's lines match its weight (D1) — and
+   * which way the whole-board view draws it. */
   viewerOrientation: ViewerOrientation;
+  /** True while the tab shows the whole board instead of the tail close-up. */
+  wholeBoard: boolean;
+  onToggleWholeBoard: () => void;
 }
 
 export function WingsPanel({
@@ -48,13 +63,15 @@ export function WingsPanel({
   wideView,
   onToggleWideView,
   viewerOrientation,
+  wholeBoard,
+  onToggleWholeBoard,
 }: WingsPanelProps) {
   const { outlineGeometry, baseOutlineGeometry, finPlacement, updateOutline, locked: boardLocked, wingFinEdges } =
     useDesign();
 
   return (
     <div className="relative flex min-h-0 flex-1">
-      <ViewerZoomProvider>
+      <ViewerZoomProvider key={wholeBoard ? "whole-board" : "tail"}>
       <ViewerToolbar>
         <ViewerToolbarButton
           onClick={onToggleConstruction}
@@ -73,11 +90,32 @@ export function WingsPanel({
         >
           {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
         </ViewerToolbarButton>
+        <ViewerToolbarButton
+          onClick={onToggleWholeBoard}
+          pressed={wholeBoard}
+          label={wholeBoard ? "Show the tail close-up" : "Show the whole board"}
+          title={wholeBoard ? "Tail close-up" : "Whole board"}
+        >
+          {wholeBoard ? <Minimize2Icon className="size-6" /> : <Maximize2Icon className="size-6" />}
+        </ViewerToolbarButton>
       </ViewerToolbar>
       {/* The zoom level and its buttons, in their own row under the icons (D7). */}
       <ViewerZoomControl />
 
       <div className="relative h-full min-h-0 w-full min-w-0">
+        {wholeBoard ? (
+          <OutlineViewer
+            geometry={outlineGeometry}
+            outline={outline}
+            showConstruction={showConstruction}
+            // As the VIEWER: a locked board has no grab points (quick 261008-lsy).
+            onOutlineDrag={boardLocked ? undefined : updateOutline}
+            finMarks={finPlacement.marks}
+            hideFinMarks={!showFins}
+            pinCalloutText
+            orientation={viewerOrientation}
+          />
+        ) : (
         <WingCloseUp
           geometry={outlineGeometry}
           baseGeometry={baseOutlineGeometry}
@@ -92,6 +130,7 @@ export function WingsPanel({
           edges={wingFinEdges}
           viewerOrientation={viewerOrientation}
         />
+        )}
       </div>
       </ViewerZoomProvider>
     </div>
