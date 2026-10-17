@@ -396,8 +396,11 @@ export function BlankCard({
   const displayName = blankDisplayName(record, rocker);
   const accessibleName = `Use ${record.vendor} ${displayName}${greyed ? `, doesn't fit: ${reason}` : ""}`;
   const starName = saved ? displayName : record.name;
+  // The name keeps its own width and the figures beside it drop to the next line when a narrow card
+  // (a phone held sideways) has no room for both — never drawn over each other (quick 261016-mkb,
+  // found in plan 03's Pixel 7 picture); a name wider than the card wraps inside it.
   const nameClass = cn(
-    "min-w-0 flex-1 text-[15px] leading-tight",
+    "max-w-full min-w-0 flex-[1_0_auto] text-[15px] leading-tight",
     greyed ? "font-semibold text-surf-ink-muted" : "font-bold text-surf-ink",
   );
   // The blank's rocker on its own line under its name, on every card (D-02, P-22): `Natural` on a
@@ -457,7 +460,7 @@ export function BlankCard({
             <BlankArt art={art} ghost={ghost} className="h-[170px] w-auto" />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1.5" data-upright-facts>
-            <div className="flex items-baseline gap-2 pr-7 coarse:pr-11">
+            <div className="flex flex-wrap items-baseline gap-x-2 pr-7 coarse:pr-11">
               <span data-blank-name className={nameClass}>
                 {record.name}
               </span>
@@ -478,7 +481,7 @@ export function BlankCard({
         </div>
       ) : (
         <div className={cn("flex min-w-0 flex-col gap-1.5", locked && "opacity-60")}>
-          <div className="flex items-baseline gap-2 pr-7 coarse:pr-11">
+          <div className="flex flex-wrap items-baseline gap-x-2 pr-7 coarse:pr-11">
             <span data-blank-name className={nameClass}>
               {record.name}
             </span>
