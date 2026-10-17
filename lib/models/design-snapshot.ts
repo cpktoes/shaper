@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Seven rules govern this file:
+ * Eight rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -88,6 +88,17 @@
  *    centre or the widepoint are left exactly as stored and corrected when the board is drawn
  *    (`clampWingStations`, D2, D3). The version stays 5: the reader before this rule rejects
  *    `"rear-trailing"` in its strict enum, which reads that board as no wings rather than failing.
+ * 8. A blank may carry its rocker as ordered from the maker (quick 261016-mkb, 2026-10-16, D-01) —
+ *    `rocker`, a list of changes in US Blanks' terms (`blankRockerSpecSchema`); absent means the
+ *    natural rocker, which is every board saved before it. The version stays 5, for rule 6's reason:
+ *    the reader before this rule drops an unknown blank key (`boardBlankSchema` is a plain
+ *    `z.object`), so a rollback opens a custom-rocker board on the natural rocker rather than
+ *    failing. Strict per change — an end that is `"nose"` or `"tail"`, an amount within ±2", a bend
+ *    point inside 0 to `BLANK_THINNING_START_MAX_MM`, at most four changes and two per end — but
+ *    forgiving as a whole: anything malformed reads as natural and the board still opens, with the
+ *    key removed. A valid spec is read through `normalizeSpec`, so the board shows the spec the app
+ *    would have written; a natural one leaves no key at all. No database change is needed — the
+ *    saved board is one JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -98,7 +109,13 @@
 import { z } from "zod";
 import { blankRecordShapeSchema, isPickable } from "@/lib/blanks/catalog";
 import { DEFAULT_BLANK_CUT, type BlankRecord, type BoardBlank, type TipStyle } from "@/lib/geometry/blank";
-import { prepareBlank } from "@/lib/geometry/blank-fit";
+import {
+  MAX_CHANGES_PER_END,
+  ROCKER_CHANGE_MAX_MM,
+  normalizeSpec,
+  prepareBoardBlank,
+  type BlankRockerSpec,
+} from "@/lib/geometry/custom-rocker";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
@@ -236,9 +253,35 @@ const THINNING_START_KEYS = ["noseThinningStart", "tailThinningStart"] as const;
  * nose; the catalogue read holds every row to the same rule), and one the blank list could have
  * offered (`isPickable`). */
 // The cast is the same deliberate brand bridge as rule 1: every field was just validated.
-const blankRecordSchema = blankRecordShapeSchema.refine((record) => isPickable(record as BlankRecord), {
+// Exported for the shaper's saved blanks (quick 261016-mkb), which keep a blank's copy the same way.
+export const blankRecordSchema = blankRecordShapeSchema.refine((record) => isPickable(record as BlankRecord), {
   message: "this blank is missing a thickness the board's foil needs (not pickable)",
 });
+
+/**
+ * A blank's rocker as ordered (rule 8, quick 261016-mkb): at most four changes and at most two per
+ * end, each an end, an amount within ±2" and, optionally, where its bend starts in from that tip.
+ * Strict here; `boardBlankSchema` reads it forgivingly, so a malformed spec reads as natural.
+ */
+export const blankRockerSpecSchema = z
+  .object({
+    changes: z
+      .array(
+        z.object({
+          end: z.enum(["nose", "tail"]),
+          amount: z.number().min(-ROCKER_CHANGE_MAX_MM).max(ROCKER_CHANGE_MAX_MM),
+          fromTip: z.number().min(0).max(BLANK_THINNING_START_MAX_MM).optional(),
+        }),
+      )
+      .max(MAX_CHANGES_PER_END * 2),
+  })
+  .refine(
+    (spec) =>
+      (["nose", "tail"] as const).every(
+        (end) => spec.changes.filter((change) => change.end === end).length <= MAX_CHANGES_PER_END,
+      ),
+    { message: "a blank's rocker carries at most two changes per end" },
+  );
 
 /** A board's blank (D-01): its catalogue copy, where the board sits on it (positive toward the
  * nose, D-08), the two 12" fine-tunes (D-11) and — from version 5 — how the board is cut from it
@@ -258,6 +301,9 @@ export const boardBlankSchema = z
     // Independent of the cut — the refine below does not count them.
     noseThinningStart: z.number().min(0).max(BLANK_THINNING_START_MAX_MM).optional().catch(undefined),
     tailThinningStart: z.number().min(0).max(BLANK_THINNING_START_MAX_MM).optional().catch(undefined),
+    // Rule 8 (quick 261016-mkb): the blank's rocker as ordered. Strict per change, forgiving as a
+    // whole — malformed reads as natural and never rejects the board. Not counted by the cut refine.
+    rocker: blankRockerSpecSchema.optional().catch(undefined),
   })
   .refine(
     (blank) => {
@@ -442,6 +488,23 @@ function withoutAutomaticStarts<T extends object>(blank: T): T {
 }
 
 /**
+ * A parsed blank's rocker read by rule 8: a key that read as malformed (`undefined`) is removed; a
+ * valid spec becomes the spec the app would have written (`normalizeSpec`, at the blank's own
+ * length), and a natural one is removed too — so a board on its natural rocker is identical, key for
+ * key, to one saved before custom rockers. Returns a new object; the parsed value is never written to.
+ */
+function withReadRocker<T extends object>(blank: T): T {
+  if (!("rocker" in blank)) return blank;
+  const copy = { ...blank } as Record<string, unknown>;
+  const spec = copy.rocker as BlankRockerSpec | undefined;
+  const lengthMm = (copy.copy as { lengthMm: Mm }).lengthMm;
+  const normal = spec === undefined ? undefined : normalizeSpec(spec as BlankRockerSpec, lengthMm);
+  if (!normal || normal.changes.length === 0) delete copy.rocker;
+  else copy.rocker = normal;
+  return copy as T;
+}
+
+/**
  * A parsed outline with a `wings` key that read as malformed (`undefined`) removed (rule 7).
  * Returns a new object only when there is something to remove.
  */
@@ -497,7 +560,9 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
   // range is dropped, so the board reopens hand-set rather than crashing every screen that lays
   // it on its blank (the blank maths is only built for boards in that range).
   const kept = (
-    design.blank && isBoardLengthInRange(outline.length) ? withoutAutomaticStarts(design.blank) : null
+    design.blank && isBoardLengthInRange(outline.length)
+      ? withReadRocker(withoutAutomaticStarts(design.blank))
+      : null
   ) as BoardBlank | null;
 
   // Rule 5: a blank with no cut is a Phase 11 blank — carry it over so its five station
@@ -506,7 +571,7 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
   let blank = kept;
   if (kept && kept.tipStyle === undefined) {
     const carried = carryPhase11Blank(
-      prepareBlank(kept.copy),
+      prepareBoardBlank(kept),
       {
         length: outline.length,
         centerThickness: foil.center,

@@ -53,6 +53,7 @@ import { presetBlank, presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
 import { boardOnBlank, fitAt, prepareBlank } from "@/lib/geometry/blank-fit";
+import { prepareBoardBlank } from "@/lib/geometry/custom-rocker";
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { buildBoardProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import { summarizeDesign } from "@/lib/geometry/design";
@@ -293,7 +294,7 @@ async function main() {
       rocker: fields.rocker,
       foil: fields.foil,
       blank: {
-        prepared: prepareBlank(fields.blank.copy),
+        prepared: prepareBoardBlank(fields.blank),
         placement: fields.blank.placement,
         nose12Offset: fields.blank.nose12Offset,
         tail12Offset: fields.blank.tail12Offset,

@@ -45,6 +45,7 @@ import {
   type RunsOutCause,
   type TipStyle,
 } from "./blank";
+import type { BlankRockerSpec } from "./custom-rocker";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
@@ -128,6 +129,13 @@ export interface PreparedBlank {
    * is the square-root fall through the printed widths, and every printed width reads exactly.
    */
   width: PreparedPchip;
+  /**
+   * Set only by `withCustomRocker` (quick 261016-mkb, 2026-10-16) on a blank bent to the rocker a
+   * board ordered from the maker: the normalised spec it was bent by, and the blank's natural rocker
+   * (levelled) from before the bend. `rocker` above is then the bent one. Absent on every catalogue
+   * blank and on every board's blank with a natural rocker.
+   */
+  custom?: { spec: BlankRockerSpec; natural: LevelledCurve };
 }
 
 /**

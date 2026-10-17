@@ -20,6 +20,8 @@ import {
   deriveQuotedVolumeLitres,
   deriveRailValues,
   deriveTemplateValues,
+  designSideProfile,
+  LIVE_DESIGN_RULES,
   summarizeDesign,
   summarizeDesignWith,
   type DesignSummaryFields,
@@ -616,4 +618,33 @@ describe("computeVolume method disclosure (transparency prohibition)", () => {
       expect(importingOff.importingTemplate).toBe(false);
     },
   );
+});
+
+// Quick 261016-mkb (2026-10-16): a board's blank may carry its rocker as ordered from the maker. The
+// rack, the summary and every report prepare it through the one helper, and bending a blank never
+// changes its thickness or width — so the five thicknesses and the litres stay exactly the natural
+// board's while the nose tip lifts.
+describe("a blank's custom rocker reaches the side profile and leaves the fit alone (quick 261016-mkb)", () => {
+  const preset = BOARD_PRESETS.find((p) => p.id === "longboard")!;
+  const naturalFields: DesignSummaryFields = {
+    ...presetDesignFields(preset),
+    railsImportFoilThickness: true,
+    volume: DEFAULT_VOLUME_SPEC,
+  };
+  const bentFields: DesignSummaryFields = {
+    ...naturalFields,
+    blank: { ...naturalFields.blank!, rocker: { changes: [{ end: "nose", amount: inchesToMm(1 / 2) }] } },
+  };
+
+  it("the five thicknesses are the natural board's exactly; the nose tip lifts and the tail tip stays", () => {
+    const natural = designSideProfile(naturalFields, LIVE_DESIGN_RULES);
+    const bent = designSideProfile(bentFields, LIVE_DESIGN_RULES);
+    expect(bent.effectiveFoil).toEqual(natural.effectiveFoil);
+    expect(bent.stationRocker.noseTip).toBeGreaterThan(natural.stationRocker.noseTip);
+    expect(bent.stationRocker.tailTip).toBe(natural.stationRocker.tailTip);
+  });
+
+  it("summarizeDesign gives the natural board's litres", () => {
+    expect(summarizeDesign(bentFields).volumeLitres).toBe(summarizeDesign(naturalFields).volumeLitres);
+  });
 });

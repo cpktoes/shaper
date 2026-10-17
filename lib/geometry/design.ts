@@ -18,6 +18,7 @@ import type { BlankRecord, BoardBlank } from "./blank";
 import { prepareBlank, thinningStartsOf, type PreparedBlank, type TipRule } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
+import { prepareBoardBlank } from "./custom-rocker";
 import type { FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
@@ -234,7 +235,8 @@ export const LIVE_DESIGN_RULES: DesignRules = { prepare: prepareBlank, handSetCu
 /**
  * The one recipe for a saved board's side profile — the rocker and the deck — moved here verbatim
  * from `summarizeDesignWith` (an extraction, not a rewrite). For a board in a blank it reads the
- * board's OWN copy of that blank through `rules.prepare`, the board's own cut (Deck Skin, Tip Style,
+ * board's OWN copy of that blank through `rules.prepare`, bent by the rocker the board ordered
+ * (`prepareBoardBlank`, quick 261016-mkb), the board's own cut (Deck Skin, Tip Style,
  * fine-tune surface) and its own stored Thinning Starts; for a hand-set board, its five typed
  * stations. Never the catalogue (Phase 15 SPEC constraint 3), so a later catalogue correction can
  * never move a saved board's picture on the rack, and the rack's side view and the card's litres
@@ -251,7 +253,8 @@ export function designSideProfile(
     foil: fields.foil,
     blank: blank
       ? {
-          prepared: rules.prepare(blank.copy),
+          // The board's own copy, bent by the rocker it ordered (quick 261016-mkb) — the one helper.
+          prepared: prepareBoardBlank(blank, rules.prepare),
           placement: blank.placement,
           nose12Offset: blank.nose12Offset,
           tail12Offset: blank.tail12Offset,
