@@ -1,11 +1,18 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
 import {
   blankRockerLine,
+  catalogueCards,
+  closeBlankPicker,
   customizeRockerButton,
   customRockerDialog,
+  openBlankPicker,
   openCustomizeRocker,
   openRocker,
+  pickBlankNamed,
+  pickedCard,
   pickFirstFittingBlank,
+  pickSavedBlank,
+  savedCards,
 } from "./helpers/blank-picker";
 
 /**
@@ -294,6 +301,55 @@ test.describe("Customize Rocker on a computer", () => {
     // One undo brings the custom rocker back.
     await page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" }).click();
     await expect(blankRockerLine(page)).toHaveText('+3/4"N');
+  });
+
+  test("a saved blank is a card in Pick a Blank beside the maker's natural one, and picking it puts its rocker back (D-09, D-10)", async ({ page }) => {
+    await openRocker(page);
+    const name = await pickFirstFittingBlank(page);
+    const dialog = await openCustomizeRocker(page);
+    await noseHalfInch(page, dialog);
+    await dialog.getByRole("button", { name: "Use and save as a new blank" }).click();
+    await expect(customRockerDialog(page)).toBeHidden();
+    await expect(blankRockerLine(page)).toHaveText('+1/2"N');
+
+    // Take the blank off the board, then find the saved one in the popup.
+    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await expect(pickedCard(page)).toHaveCount(0);
+    let picker = await openBlankPicker(page);
+    const saved = savedCards(picker);
+    await expect(saved).toHaveCount(1);
+    await expect(saved).toHaveAttribute("data-group", "starred");
+    await expect(saved.locator("[data-blank-name]")).toHaveText(name);
+    await expect(saved.locator("[data-blank-card-rocker]")).toHaveText('+1/2"N');
+    await expect(saved.locator("[data-saved-blank]")).toHaveText("Saved by you");
+    const vendor = (await saved.getAttribute("data-vendor"))!;
+    // The maker's natural blank is still listed, and not starred.
+    const natural = catalogueCards(picker).and(
+      picker.locator(`li[data-vendor=${JSON.stringify(vendor)}][data-name=${JSON.stringify(name)}]`),
+    );
+    await expect(natural).toHaveCount(1);
+    await expect(natural).not.toHaveAttribute("data-group", "starred");
+    await closeBlankPicker(page);
+
+    // Picking the saved card puts its copy AND its rocker on the board.
+    await pickSavedBlank(page, vendor, `${name} +1/2"N`);
+    await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
+    await expect(blankRockerLine(page)).toHaveText('+1/2"N');
+    await expect(customizeRockerButton(page)).toContainText("Edit Custom Rocker");
+
+    // Only the saved card is marked as the board's.
+    picker = await openBlankPicker(page);
+    await expect(picker.locator("[data-on-board]")).toHaveCount(1);
+    await expect(savedCards(picker).locator("[data-on-board]")).toHaveCount(1);
+    await closeBlankPicker(page);
+
+    // Picking the maker's natural card is a plain pick: the custom rocker clears (D-10).
+    await pickBlankNamed(page, vendor, name);
+    await expect(blankRockerLine(page)).toHaveText("Natural");
+    await expect(customizeRockerButton(page)).toContainText("Customize Rocker");
+    picker = await openBlankPicker(page);
+    await expect(catalogueCards(picker).locator("[data-on-board]")).toHaveCount(1);
+    await expect(savedCards(picker).locator("[data-on-board]")).toHaveCount(0);
   });
 
   test("on the page itself a custom blank draws as any blank — the overlay lives in the popup only (D-07, D-08)", async ({ page }) => {

@@ -167,3 +167,30 @@ export async function openCustomizeRocker(page: Page): Promise<Locator> {
 export function blankRockerLine(page: Page): Locator {
   return page.locator("[data-blank-rocker]");
 }
+
+/** The shaper's saved blanks' cards in the popup — each marked Saved by you (quick 261016-mkb, D-09). */
+export function savedCards(dialog: Locator): Locator {
+  return dialog.locator("li[data-blank-card]:has([data-saved-blank])");
+}
+
+/** The makers' own cards in the popup — every card that is not one of the shaper's saved blanks. */
+export function catalogueCards(dialog: Locator): Locator {
+  return dialog.locator("li[data-blank-card]:not(:has([data-saved-blank]))");
+}
+
+/**
+ * Opens the popup, searches the saved blank's whole name and picks it: its button reads
+ * `Use {vendor} {name} {note}` (plus `, doesn't fit: …` on a greyed card), `displayName` being the
+ * name and the note on one line — `9'4"B +1/2"N`.
+ */
+export async function pickSavedBlank(page: Page, vendor: string, displayName: string): Promise<void> {
+  const dialog = await openBlankPicker(page);
+  await dialog.getByRole("searchbox", { name: "Search blanks" }).fill(`${vendor} ${displayName}`);
+  const label = `Use ${vendor} ${displayName}`;
+  const button = savedCards(dialog).locator(
+    `button[data-pick][aria-label=${JSON.stringify(label)}], button[data-pick][aria-label^=${JSON.stringify(`${label},`)}]`,
+  );
+  await expect(button).toHaveCount(1);
+  await button.click();
+  await expect(dialog).toBeHidden();
+}

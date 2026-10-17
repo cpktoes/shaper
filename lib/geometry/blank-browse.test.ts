@@ -14,14 +14,23 @@ import {
   rangeBounds,
   rangeChipText,
   rangeSlider,
+  savedBrowseRows,
   sortBrowseRows,
   withRangeEnd,
   type BlankSort,
   type BrowseRow,
   type MmRange,
+  type SavedBrowseEntry,
 } from "./blank-browse";
 import { blankTipRockers, FLOOR_EPSILON_MM, listBlanks, prepareBlank, type BoardFitContext, type PreparedBlank } from "./blank-fit";
 import { matchesBlankSearch } from "./blank-reasons";
+import {
+  blankDisplayName,
+  blankStarIdentity,
+  orderedTipRockers,
+  withCustomRocker,
+  type BlankRockerSpec,
+} from "./custom-rocker";
 import { DEFAULT_BOARD_SPEC } from "./board";
 import { formatLength, formatMark } from "./measure-display";
 import { buildOutline, sampleOutline } from "./outline";
@@ -101,6 +110,9 @@ describe("browseRows", () => {
       expect(row.noseRocker).toBe(blankTipRockers(verdict.prepared).nose);
       expect(row.centerThickness).toBe(verdict.prepared.centerThicknessMm);
       expect(row.volume).toBe(verdict.prepared.record.volumeLitres);
+      // A catalogue row is named by its name alone, and carries no saved blank (quick 261016-mkb).
+      expect(row.displayName).toBe(row.record.name);
+      expect(row.saved).toBeUndefined();
     });
     expect(ROWS.filter((r) => r.starred)).toHaveLength(2);
   });
@@ -350,5 +362,129 @@ describe("browseFiltersActive", () => {
     expect(browseFiltersActive({ ...EMPTY_BROWSE_FILTERS, length: range })).toBe(true);
     expect(browseFiltersActive({ ...EMPTY_BROWSE_FILTERS, noseRocker: range })).toBe(true);
     expect(browseFiltersActive({ ...EMPTY_BROWSE_FILTERS, starredOnly: true })).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// The shaper's saved blanks as rows (quick 261016-mkb plan 03, D-09, P-19). Each saved blank is a
+// real catalogue record bent by a rocker spec built with `inchesToMm` — never a typed figure.
+// ---------------------------------------------------------------------------------------------
+
+const FIT_SETTINGS = toFitSettings(DEFAULT_FIT_DEFAULTS);
+const NOSE_UP: BlankRockerSpec = { changes: [{ end: "nose", amount: inchesToMm(1 / 2) }] };
+const TAIL_DOWN_18: BlankRockerSpec = { changes: [{ end: "tail", amount: inchesToMm(-1 / 8), fromTip: inchesToMm(18) }] };
+
+/** Two saved blanks on the first fitting blank (its nose up, its tail down), one on the first that won't fit. */
+const SAVED: SavedBrowseEntry[] = [
+  { id: "a", copy: LIST.fits[0].prepared.record, rocker: NOSE_UP },
+  { id: "b", copy: LIST.fits[0].prepared.record, rocker: TAIL_DOWN_18 },
+  { id: "c", copy: LIST.wontFit[0].prepared.record, rocker: NOSE_UP },
+];
+const SAVED_PREPARED = SAVED.map((entry) => withCustomRocker(prepareBlank(entry.copy), entry.rocker));
+const SAVED_ENTRY_OF = new Map<PreparedBlank, SavedBrowseEntry>(SAVED_PREPARED.map((p, i) => [p, SAVED[i]]));
+const SAVED_LIST = listBlanks(SAVED_PREPARED, defaultContext(), FIT_SETTINGS);
+/** Only the first saved blank (its nose up) is starred, by its note-bearing identity. */
+const SAVED_STARS = new Set<string>([blankStarIdentity(SAVED[0].copy, SAVED[0].rocker).join("|")]);
+const isSavedStarred = (vendor: string, name: string) => SAVED_STARS.has(`${vendor}|${name}`);
+const SAVED_ROWS = savedBrowseRows(SAVED_LIST, SAVED_ENTRY_OF, isSavedStarred);
+
+const sameBlank = (a: BrowseRow, b: { vendor: string; name: string }) => a.record.vendor === b.vendor && a.record.name === b.name;
+
+describe("savedBrowseRows (quick 261016-mkb, D-09)", () => {
+  it("is one row per listed saved blank, carrying its id and rocker, its copy, its one-line name and its tip as ordered", () => {
+    expect(SAVED_ROWS).toHaveLength(SAVED.length);
+    const verdicts = [...SAVED_LIST.fits, ...SAVED_LIST.wontFit];
+    SAVED_ROWS.forEach((row, i) => {
+      const verdict = verdicts[i];
+      const entry = SAVED_ENTRY_OF.get(verdict.prepared)!;
+      expect(row.verdict).toBe(verdict);
+      expect(row.record).toBe(entry.copy);
+      expect(row.saved).toEqual({ id: entry.id, rocker: entry.rocker });
+      expect(row.displayName).toBe(blankDisplayName(entry.copy, entry.rocker));
+      expect(row.displayName).not.toBe(entry.copy.name);
+      expect(row.noseRocker).toBe(orderedTipRockers(verdict.prepared).nose);
+      expect(row.lengthMm).toBe(verdict.prepared.lengthMm);
+      expect(row.centerThickness).toBe(verdict.prepared.centerThicknessMm);
+      expect(row.volume).toBe(entry.copy.volumeLitres);
+      expect(row.starred).toBe(isSavedStarred(...blankStarIdentity(entry.copy, entry.rocker)));
+    });
+    // A nose-up blank's nose rocker is the printed tip plus the bend — half an inch over its natural twin's.
+    const noseUp = SAVED_ROWS.find((r) => r.saved?.id === "a")!;
+    const twin = ROWS.find((r) => sameBlank(r, noseUp.record))!;
+    expect(noseUp.noseRocker - twin.noseRocker).toBeCloseTo(inchesToMm(1 / 2), 9);
+    // The natural twin's star does not star a saved blank, nor the other way round.
+    expect(SAVED_ROWS.filter((r) => r.starred).map((r) => r.saved?.id)).toEqual(["a"]);
+  });
+
+  it("judges a saved blank exactly as its natural base — bending changes no thickness or width (P-19)", () => {
+    for (const saved of [...SAVED_LIST.fits, ...SAVED_LIST.wontFit]) {
+      const entry = SAVED_ENTRY_OF.get(saved.prepared)!;
+      const natural = [...LIST.fits, ...LIST.wontFit].find(
+        (v) => v.prepared.record.vendor === entry.copy.vendor && v.prepared.record.name === entry.copy.name,
+      )!;
+      expect(saved.fits).toBe(natural.fits);
+      expect(saved.placement).toBe(natural.placement);
+      expect(saved.worst).toEqual(natural.worst);
+    }
+  });
+
+  it("leaves out a saved blank the lookup doesn't hold", () => {
+    const stray = new Map(SAVED_ENTRY_OF);
+    stray.delete(SAVED_PREPARED[1]);
+    expect(savedBrowseRows(SAVED_LIST, stray, isSavedStarred).map((r) => r.saved?.id)).toEqual(
+      SAVED_ROWS.filter((r) => r.saved?.id !== "b").map((r) => r.saved?.id),
+    );
+  });
+});
+
+describe("saved blanks beside the catalogue (quick 261016-mkb)", () => {
+  const ALL = [...ROWS.map((r) => ({ ...r, starred: false })), ...SAVED_ROWS];
+
+  it("a starred saved row shows under ★ STARRED only; an unstarred one under its own verdict group; the natural one stays", () => {
+    const groups = groupBrowseRows(ALL, "length");
+    const holding = (id: string) => groups.filter((g) => g.rows.some((r) => r.saved?.id === id)).map((g) => g.key);
+    expect(holding("a")).toEqual(["starred"]);
+    expect(holding("b")).toEqual([SAVED_ROWS.find((r) => r.saved?.id === "b")!.fits ? "fits" : "wontFit"]);
+    expect(holding("c")).toEqual(["wontFit"]);
+    const fits = groups.find((g) => g.key === "fits")!.rows;
+    expect(fits.some((r) => !r.saved && sameBlank(r, SAVED[0].copy))).toBe(true);
+  });
+
+  it("a natural row sorts before its saved twins, the display name the final tie-break", () => {
+    const base = SAVED[0].copy;
+    for (const sort of ["length", "centerThickness", "volume"] as const) {
+      const family = sortBrowseRows(ALL, sort).filter((r) => sameBlank(r, base));
+      const twins = SAVED_ROWS.filter((r) => sameBlank(r, base)).sort((x, y) => (x.displayName < y.displayName ? -1 : 1));
+      expect(family.map((r) => r.saved?.id ?? "natural")).toEqual(["natural", ...twins.map((r) => r.saved!.id)]);
+    }
+  });
+
+  it("the search finds a saved blank by its whole name, note included, and the natural one by its name", () => {
+    const row = SAVED_ROWS.find((r) => r.saved?.id === "b")!;
+    const whole = `${row.record.vendor} ${row.displayName}`;
+    const got = filterBrowseRows(ALL, { ...EMPTY_BROWSE_FILTERS, query: whole });
+    expect(got.map((r) => r.saved?.id ?? "natural")).toEqual(["b"]);
+    // The note alone finds it too; curly quotes fold as everywhere else.
+    const note = row.displayName.slice(row.record.name.length + 1);
+    expect(filterBrowseRows(ALL, { ...EMPTY_BROWSE_FILTERS, query: note }).map((r) => r.saved?.id)).toContain("b");
+    const curly = filterBrowseRows(ALL, { ...EMPTY_BROWSE_FILTERS, query: whole.replace(/"/g, "”").replace(/'/g, "’") });
+    expect(curly.map((r) => r.saved?.id)).toEqual(["b"]);
+    // The name alone finds the natural blank and every saved one on it.
+    const byName = filterBrowseRows(ALL, { ...EMPTY_BROWSE_FILTERS, query: `${row.record.vendor} ${row.record.name}` });
+    expect(byName.some((r) => !r.saved)).toBe(true);
+    expect(byName.filter((r) => r.saved).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("the nose-rocker filter and sort read a saved blank's tip as ordered", () => {
+    const row = SAVED_ROWS.find((r) => r.saved?.id === "a")!;
+    const got = filterBrowseRows(ALL, { ...EMPTY_BROWSE_FILTERS, noseRocker: { from: row.noseRocker, to: row.noseRocker } });
+    expect(got.some((r) => r.saved?.id === "a")).toBe(true);
+    // Its natural twin's tip is half an inch lower, outside that one-figure range.
+    expect(got.some((r) => !r.saved && sameBlank(r, row.record))).toBe(false);
+    // Sorted by nose rocker, the nose-up saved blank comes after its natural twin.
+    const order = sortBrowseRows(ALL, "noseRocker");
+    const at = order.findIndex((r) => r.saved?.id === "a");
+    const twinAt = order.findIndex((r) => !r.saved && sameBlank(r, row.record));
+    expect(at).toBeGreaterThan(twinAt);
   });
 });

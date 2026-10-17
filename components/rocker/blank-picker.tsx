@@ -43,7 +43,7 @@ import { useDesign } from "@/components/design/design-store";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useAppSettings } from "@/components/app-settings-provider";
-import { SavedBlanksProvider } from "@/components/saved-blanks-provider";
+import { SavedBlanksProvider, useSavedBlanks } from "@/components/saved-blanks-provider";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
 import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
@@ -215,7 +215,10 @@ function JudgedPicker({
   const { outline, foil } = useDesign();
   const { hidden } = useBlankMakers();
   const rules = useCenterFloorRules();
-  const state = useBlankList(records);
+  // The shaper's saved blanks are judged beside the catalogue for the popup's cards (quick 261016-mkb,
+  // D-09); the button's count line below still reads the catalogue's list alone (P-19).
+  const { blanks: savedBlanks } = useSavedBlanks();
+  const state = useBlankList(records, savedBlanks);
   const { list, prepared } = state;
   // With no blank picked the button's line counts the makers ticked in Settings (P-4); with every
   // blank too short it reads E1's heading, the popup's own empty message.

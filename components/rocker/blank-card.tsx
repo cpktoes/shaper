@@ -26,6 +26,11 @@
  * blank nose-up with its rocker beside it, and beside that Length, Center, Rocker and the 12" widths),
  * the short-screen line that replaces the flat card's table on a phone held sideways (D-11), and the
  * Show my board switch, which draws or leaves out the dashed board (D-04).
+ *
+ * Quick 261016-mkb plan 03 (2026-10-16) adds the shaper's saved blanks as cards (D-09): a saved card
+ * says `Saved by you` beside its maker (`[data-saved-blank]`), its note sits on a line under its name
+ * (`[data-blank-card-rocker]`), and its pick button names the whole blank — `Use {maker} {name}
+ * {note}` — and carries its saved id. Its drawing and its numbers are the bent copy's.
  */
 
 import { useMemo } from "react";
@@ -44,8 +49,9 @@ import {
   type CardPose,
 } from "@/lib/geometry/blank-card-art";
 import { cardFigures, compactLine, stationTable, uprightFacts } from "@/lib/geometry/blank-card-text";
-import { blankTipRockers, type BlankVerdict, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import type { BlankVerdict, PreparedBlank } from "@/lib/geometry/blank-fit";
 import { blankRowVolume } from "@/lib/geometry/blank-reasons";
+import { blankDisplayLines, blankDisplayName, orderedTipRockers, type BlankRockerSpec } from "@/lib/geometry/custom-rocker";
 import { polylinePath } from "@/lib/geometry/screen-tiles";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
@@ -189,11 +195,14 @@ function StationTable({ record, system }: { record: BlankRecord; system: UnitsSy
  * carries the maker, since two makers can print the same name (P-7).
  */
 function StarButton({
-  record,
+  vendor,
+  name,
   starred,
   onChange,
 }: {
-  record: Pick<BlankRecord, "vendor" | "name">;
+  vendor: string;
+  /** The blank's name — with its note on a saved blank (quick 261016-mkb). */
+  name: string;
   starred: boolean;
   onChange: (on: boolean) => void;
 }) {
@@ -203,7 +212,7 @@ function StarButton({
       data-lock-exempt
       data-star
       aria-pressed={starred}
-      aria-label={`${starred ? "Unstar" : "Star"} ${record.vendor} ${record.name}`}
+      aria-label={`${starred ? "Unstar" : "Star"} ${vendor} ${name}`}
       onClick={() => onChange(!starred)}
       className="focus-ring-accent absolute top-1 right-1 z-10 flex size-7 cursor-pointer items-center justify-center rounded-md hover:bg-surf-well coarse:size-11"
     >
@@ -219,6 +228,8 @@ export interface BlankCardProps {
   verdict: BlankVerdict;
   /** The catalogue's own record — what `pickBlank` stores, and what the card's words read. */
   record: BlankRecord;
+  /** Set on one of the shaper's saved blanks: its id and its rocker as ordered (quick 261016-mkb). */
+  saved: { id: string; rocker: BlankRockerSpec } | null;
   /** The heading the card sits under: ★ STARRED, FITS or WON'T FIT. */
   group: "starred" | "fits" | "wontFit";
   /** Why the blank won't fit (`blankReason`), null for a blank that fits. */
@@ -258,6 +269,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 export function BlankCard({
   verdict,
   record,
+  saved,
   group,
   reason,
   onBoard,
@@ -277,12 +289,34 @@ export function BlankCard({
     () => (view.showBoard ? boardOnBlankArt(art, board, placement) : null),
     [art, board, placement, view.showBoard],
   );
-  const accessibleName = `Use ${record.vendor} ${record.name}${greyed ? `, doesn't fit: ${reason}` : ""}`;
+  const rocker = saved?.rocker;
+  // The pick button names the whole blank a saved card puts on the board — its note included.
+  const pickName = saved ? blankDisplayName(record, rocker) : record.name;
+  const accessibleName = `Use ${record.vendor} ${pickName}${greyed ? `, doesn't fit: ${reason}` : ""}`;
   const nameClass = cn(
     "min-w-0 flex-1 text-[15px] leading-tight",
     greyed ? "font-semibold text-surf-ink-muted" : "font-bold text-surf-ink",
   );
-  const maker = <div className="-mt-1 text-[11px] font-bold tracking-[0.08em] text-surf-ink-muted uppercase">{record.vendor}</div>;
+  // The blank's rocker on its own line under its name (D-02): the note on a saved blank.
+  const rockerLine = saved && (
+    <div
+      data-blank-card-rocker
+      className={cn("-mt-1 text-xs leading-tight tabular-nums", greyed ? "text-surf-ink-muted" : "text-surf-ink")}
+    >
+      {blankDisplayLines(record, rocker)[1]}
+    </div>
+  );
+  const maker = (
+    <div className="-mt-1 text-[11px] font-bold tracking-[0.08em] text-surf-ink-muted uppercase">
+      {record.vendor}
+      {saved && (
+        <>
+          {" · "}
+          <span data-saved-blank>Saved by you</span>
+        </>
+      )}
+    </div>
+  );
   const onBoardMark = onBoard && (
     <div data-on-board className="text-[10px] font-extrabold tracking-architectural text-surf-accent-ink uppercase">
       Currently selected
@@ -301,9 +335,10 @@ export function BlankCard({
       data-group={group}
       data-vendor={record.vendor}
       data-name={record.name}
+      data-saved-id={saved?.id}
       data-drawn={view.drawn}
       data-length-mm={prepared.lengthMm}
-      data-nose-rocker-mm={blankTipRockers(prepared).nose}
+      data-nose-rocker-mm={orderedTipRockers(prepared).nose}
       data-center-mm={prepared.centerThicknessMm}
       data-volume-l={record.volumeLitres ?? ""}
       className={cn(
@@ -328,6 +363,7 @@ export function BlankCard({
                 </span>
               )}
             </div>
+            {rockerLine}
             {maker}
             {uprightFacts(prepared, system).map((fact) => (
               <Fact key={fact.label} label={fact.label} value={fact.value} />
@@ -346,6 +382,7 @@ export function BlankCard({
               {cardFigures(record, system)}
             </span>
           </div>
+          {rockerLine}
           {maker}
           {onBoardMark}
           {/* The blank fills the card's width; its own proportions set the drawing's height (fast 163). */}
@@ -369,10 +406,11 @@ export function BlankCard({
           {reasonLine}
         </div>
       )}
-      <StarButton record={record} starred={starred} onChange={onStarChange} />
+      <StarButton vendor={record.vendor} name={pickName} starred={starred} onChange={onStarChange} />
       <button
         type="button"
         data-pick
+        data-saved-id={saved?.id}
         aria-label={accessibleName}
         disabled={locked}
         onClick={onPick}

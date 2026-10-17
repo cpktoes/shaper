@@ -28,6 +28,15 @@
  * `pickBlank(record, verdict.placement)` — and closes the popup. On a locked board the popup still
  * opens, searches, filters, sorts and stars, but no card can be picked. Theme and units follow the app
  * (D-05): the popup has no control of its own for either.
+ *
+ * The shaper's saved blanks (quick 261016-mkb plan 03, D-09, D-10, 2026-10-16) are cards here too,
+ * beside the maker's natural blank, which stays listed: judged once with the catalogue
+ * (`use-blank-list.ts`), turned into rows by `savedBrowseRows`, then filtered, sorted and grouped with
+ * every other card. Picking a saved card puts its copy AND its rocker on the board —
+ * `pickBlank(copy, placement, rocker)`; picking a maker's card is the plain pick it always was, which
+ * clears a custom rocker (D-10). "Currently selected" matches maker, name and rocker, so only one card
+ * is ever marked as the board's. A saved card's star is its note-bearing identity
+ * (`blankStarIdentity`); the header's "of {m} blanks" counts the saved blanks long enough for the board.
  */
 
 import { useMemo, useRef, useState, type RefObject } from "react";
@@ -49,6 +58,7 @@ import {
   filterBrowseRows,
   groupBrowseRows,
   rangeBounds,
+  savedBrowseRows,
   type BlankBrowseFilters,
   type BlankSort,
   type BrowseGroupKey,
@@ -58,6 +68,7 @@ import {
 } from "@/lib/geometry/blank-browse";
 import { catalogueExtremes, longEnoughByMaker } from "@/lib/geometry/blank-fit";
 import { blankReason, emptyListMessage, listIntro, pickerBoardLine, pickerCounts } from "@/lib/geometry/blank-reasons";
+import { blankStarIdentity, sameRockerSpec, type BlankRockerSpec } from "@/lib/geometry/custom-rocker";
 import { silhouette } from "@/lib/geometry/screen-tiles";
 import { cn } from "@/lib/utils";
 import { BlankCard, type CardBoard } from "./blank-card";
@@ -103,9 +114,21 @@ function groupLabel(key: BrowseGroupKey, count: number): string {
   return `WON'T FIT THIS BOARD · ${count}`;
 }
 
-/** Is this card the board's own blank? Matched by vendor and name — the board carries a copy. */
-function isSameBlank(a: Pick<BlankRecord, "vendor" | "name">, b: Pick<BlankRecord, "vendor" | "name"> | null) {
-  return b !== null && a.vendor === b.vendor && a.name === b.name;
+/** Is this card the board's own blank? Matched by vendor, name AND rocker — the board carries a copy,
+ * and a saved blank shares its maker and name with its natural twin (quick 261016-mkb), so only one
+ * card is ever marked. */
+function isSameBlank(row: BrowseRow, board: { copy: Pick<BlankRecord, "vendor" | "name">; rocker?: BlankRockerSpec } | null) {
+  return (
+    board !== null &&
+    row.record.vendor === board.copy.vendor &&
+    row.record.name === board.copy.name &&
+    sameRockerSpec(row.saved?.rocker, board.rocker)
+  );
+}
+
+/** A card's React key: a maker's blank by maker and name, a saved blank by its own id. */
+function rowKey(row: BrowseRow): string {
+  return row.saved ? `saved|${row.saved.id}` : `${row.record.vendor}|${row.record.name}`;
 }
 
 /** The popup's view state for the visit (D-13), held by `blank-picker.tsx`. */
@@ -140,7 +163,7 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
   const { view, setDrawn, setShowBoard } = useBlankPickerView();
   const rules = useCenterFloorRules();
   const locked = useControlsLocked();
-  const { list, board, prepared, allPrepared, recordOf } = state;
+  const { list, board, prepared, allPrepared, recordOf, saved } = state;
   const { filters, setFilters, sort, setSort, openRange, setOpenRange } = browse;
   // Change Fit Rules closes the popup FIRST and opens App Default Settings only once it has gone —
   // two modal dialogs are never open at once — and that close hands focus to Settings, not back to
@@ -172,9 +195,26 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
     () => longEnoughByMaker(allPrepared, outline.length, settings.extraLength),
     [allPrepared, outline.length, settings.extraLength],
   );
-  const longEnough = useMemo(() => [...makerCounts.values()].reduce((a, b) => a + b, 0), [makerCounts]);
+  // The shaper's saved blanks long enough for the board join m (quick 261016-mkb), every maker
+  // counted, as the catalogue's are; the maker chips keep counting the makers' own blanks.
+  const savedLongEnough = useMemo(
+    () =>
+      [...longEnoughByMaker([...saved.entryOf.keys()], outline.length, settings.extraLength).values()].reduce(
+        (a, b) => a + b,
+        0,
+      ),
+    [saved.entryOf, outline.length, settings.extraLength],
+  );
+  const longEnough = useMemo(
+    () => [...makerCounts.values()].reduce((a, b) => a + b, 0) + savedLongEnough,
+    [makerCounts, savedLongEnough],
+  );
 
-  const rows = useMemo(() => browseRows(list, recordOf, isStarred), [list, recordOf, isStarred]);
+  // The makers' blanks, then the shaper's saved ones (quick 261016-mkb) — one list of cards.
+  const rows = useMemo(
+    () => [...browseRows(list, recordOf, isStarred), ...savedBrowseRows(saved.list, saved.entryOf, isStarred)],
+    [list, recordOf, isStarred, saved],
+  );
   // The filters narrow the cards already judged — they never re-run a verdict.
   const shown = useMemo(() => filterBrowseRows(rows, filters), [rows, filters]);
   const groups = useMemo(() => groupBrowseRows(shown, sort), [shown, sort]);
@@ -213,10 +253,17 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
   const searchOnly =
     filters.query.trim() !== "" && !browseFiltersActive({ ...filters, query: "" });
 
+  // A saved card puts its copy and its rocker on the board; a maker's card is a plain pick, which
+  // clears any custom rocker (quick 261016-mkb, D-09, D-10).
   const pick = (row: BrowseRow) => {
-    pickBlank(row.record, row.verdict.placement);
+    if (row.saved) pickBlank(row.record, row.verdict.placement, row.saved.rocker);
+    else pickBlank(row.record, row.verdict.placement);
     onOpenChange(false);
   };
+
+  // A maker's blank is starred by maker and name, a saved one by its name with its note (D-09).
+  const starIdentity = (row: BrowseRow): [string, string] =>
+    row.saved ? blankStarIdentity(row.record, row.saved.rocker) : [row.record.vendor, row.record.name];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={openChangeComplete}>
@@ -329,18 +376,19 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
                 <ul data-blank-group={group.key} aria-label={label} className={cn("grid gap-2.5", GRID_CLASS[view.drawn])}>
                   {group.rows.map((row) => (
                     <BlankCard
-                      key={`${row.record.vendor}|${row.record.name}`}
+                      key={rowKey(row)}
                       verdict={row.verdict}
                       record={row.record}
+                      saved={row.saved ?? null}
                       group={group.key}
                       reason={blankReason(row.verdict, board, rules, system)}
-                      onBoard={isSameBlank(row.record, blank?.copy ?? null)}
+                      onBoard={isSameBlank(row, blank)}
                       board={cardBoard}
                       locked={locked}
                       system={system}
                       view={view}
                       starred={row.starred}
-                      onStarChange={(on) => setStarred(row.record.vendor, row.record.name, on)}
+                      onStarChange={(on) => setStarred(...starIdentity(row), on)}
                       onPick={() => pick(row)}
                     />
                   ))}
