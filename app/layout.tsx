@@ -18,6 +18,7 @@ import { resolveUnitsHandoff } from "@/lib/units-server";
 import { resolvePrintRailInstructionsHandoff } from "@/lib/print-instructions-server";
 import { resolveFitDefaultsHandoff } from "@/lib/fit-defaults-server";
 import { resolveBlankMakersHandoff } from "@/lib/blank-makers-server";
+import { resolveStarredBlanksHandoff } from "@/lib/starred-blanks-server";
 import { PRIVACY_ROUTE } from "@/lib/privacy/copy";
 import { TERMS_ROUTE } from "@/lib/legal/documents";
 
@@ -63,20 +64,22 @@ export const viewport: Viewport = {
  * `app/page.tsx` already renders dynamically today for the same reason (its own `auth()` +
  * model-list read).
  *
- * Four handoffs are resolved this way — units, the print-instructions tick, the shaper's fit and
- * tip defaults (D-09), and which blank makers they have switched off (quick task 260926-wmf) —
- * awaited together in one `Promise.all` rather than one after the other, so each extra one costs no
+ * Five handoffs are resolved this way — units, the print-instructions tick, the shaper's fit and
+ * tip defaults (D-09), which blank makers they have switched off (quick task 260926-wmf), and the
+ * account's list of starred blanks (quick task 261016-usz) — awaited together in one `Promise.all` rather than one after the other, so each extra one costs no
  * extra wait; the fit-defaults provider mounts above the design store so a brand-new board's tips
  * can come from it (D-09/D-19), and the blank makers provider sits just inside it so the nav's gear
  * menu, the phone menu and the ROCKER blank list can all read it.
  */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [unitsHandoff, printInstructionsHandoff, fitDefaultsHandoff, blankMakersHandoff] = await Promise.all([
-    resolveUnitsHandoff(),
-    resolvePrintRailInstructionsHandoff(),
-    resolveFitDefaultsHandoff(),
-    resolveBlankMakersHandoff(),
-  ]);
+  const [unitsHandoff, printInstructionsHandoff, fitDefaultsHandoff, blankMakersHandoff, starredBlanksHandoff] =
+    await Promise.all([
+      resolveUnitsHandoff(),
+      resolvePrintRailInstructionsHandoff(),
+      resolveFitDefaultsHandoff(),
+      resolveBlankMakersHandoff(),
+      resolveStarredBlanksHandoff(),
+    ]);
   return (
     // ClerkProvider is the outermost app-level provider — it owns nothing about the theme or
     // the board, only the signed-in/signed-out session every screen can read via `useUser()`.
@@ -142,8 +145,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <FitDefaultsProvider handoff={fitDefaultsHandoff}>
                 <BlankMakersProvider handoff={blankMakersHandoff}>
                   {/* The blanks starred in ROCKER's blank popup (quick 261015-ve9, D-06), beside
-                      the makers so part 2 only adds its account hand-off prop here. */}
-                  <StarredBlanksProvider>
+                      the makers. Signed in, they are the account's stars and follow the shaper to
+                      any device (quick 261016-usz, D-03); signed out, this browser's. */}
+                  <StarredBlanksProvider handoff={starredBlanksHandoff}>
                     <ThemeProvider>
                       {/* Inside all four settings providers, so the one App Default Settings pop-up
                           it renders can read units, fit and tip defaults, blank makers and theme. */}

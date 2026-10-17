@@ -18,6 +18,8 @@ const PRINT_INSTRUCTIONS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/print-instr
 const FIT_DEFAULTS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/fit-defaults.ts");
 const BLANK_MAKERS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/blank-makers.ts");
 const RACK_ORDER_ACTIONS_PATH = join(REPO_ROOT, "app/actions/rack-order.ts");
+// Quick 261016-usz (2026-10-16): the shaper's starred blanks, saved on their account.
+const STARRED_BLANKS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/starred-blanks.ts");
 const ACCOUNT_ACTIONS_PATH = join(REPO_ROOT, "app/actions/account.ts");
 const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
 const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
@@ -71,10 +73,11 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const fitDefaultsActionsSource = stripComments(readFileSync(FIT_DEFAULTS_ACTIONS_PATH, "utf8"));
   const blankMakersActionsSource = stripComments(readFileSync(BLANK_MAKERS_ACTIONS_PATH, "utf8"));
   const rackOrderActionsSource = stripComments(readFileSync(RACK_ORDER_ACTIONS_PATH, "utf8"));
+  const starredBlanksActionsSource = stripComments(readFileSync(STARRED_BLANKS_ACTIONS_PATH, "utf8"));
   // Quick 261006-g4u (2026-10-06, D-07): the Your data page's Export and Delete actions.
   const accountActionsSource = stripComments(readFileSync(ACCOUNT_ACTIONS_PATH, "utf8"));
 
-  it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts, app/actions/fit-defaults.ts, app/actions/blank-makers.ts and app/actions/rack-order.ts awaits auth() before any database call", () => {
+  it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts, app/actions/fit-defaults.ts, app/actions/blank-makers.ts, app/actions/rack-order.ts and app/actions/starred-blanks.ts awaits auth() before any database call", () => {
     const fns = [
       ...exportedAsyncFunctions(actionsSource),
       ...exportedAsyncFunctions(unitsActionsSource),
@@ -82,6 +85,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedAsyncFunctions(fitDefaultsActionsSource),
       ...exportedAsyncFunctions(blankMakersActionsSource),
       ...exportedAsyncFunctions(rackOrderActionsSource),
+      ...exportedAsyncFunctions(starredBlanksActionsSource),
       ...exportedAsyncFunctions(accountActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
@@ -98,7 +102,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     }
   });
 
-  it("no exported function signature accepts a caller-supplied owner parameter", () => {
+  it("no exported function signature (including app/actions/starred-blanks.ts's) accepts a caller-supplied owner parameter", () => {
     const signatures = [
       ...exportedFunctionSignatures(actionsSource),
       ...exportedFunctionSignatures(queriesSource),
@@ -107,6 +111,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(fitDefaultsActionsSource),
       ...exportedFunctionSignatures(blankMakersActionsSource),
       ...exportedFunctionSignatures(rackOrderActionsSource),
+      ...exportedFunctionSignatures(starredBlanksActionsSource),
       ...exportedFunctionSignatures(accountActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
@@ -153,6 +158,12 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["saveRackOrder"]);
   });
 
+  it("app/actions/starred-blanks.ts exports exactly the expected action and no others", () => {
+    // Mirrors the assertion above for app/actions/rack-order.ts (quick 261016-usz, D-06).
+    const fns = exportedAsyncFunctions(starredBlanksActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["saveStarredBlanksPreference"]);
+  });
+
   it("app/actions/account.ts exports exactly the expected actions and no others", () => {
     // Mirrors the assertion above for app/actions/rack-order.ts (quick 261006-g4u, D-07): the Your
     // data page's Export my designs and Delete my account.
@@ -169,6 +180,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ["app/actions/fit-defaults.ts", fitDefaultsActionsSource],
       ["app/actions/blank-makers.ts", blankMakersActionsSource],
       ["app/actions/rack-order.ts", rackOrderActionsSource],
+      ["app/actions/starred-blanks.ts", starredBlanksActionsSource],
       ["app/actions/account.ts", accountActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between

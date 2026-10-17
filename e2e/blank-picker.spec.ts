@@ -35,6 +35,8 @@ import { appSettingsDialog, openAppSettings } from "./helpers/settings";
  */
 
 const STARRED_BLANKS_KEY = "shaper-starred-blanks";
+/** The stars made while signed out that wait to join an account at the next sign-in (quick 261016-usz, P-1). */
+const STARRED_BLANKS_TO_JOIN_KEY = "shaper-starred-blanks-to-join";
 const PICKER_VIEW_KEY = "shaper-blank-picker-view";
 
 /** The number at the end of a group heading, e.g. `FITS THIS BOARD · 194` → 194. */
@@ -349,6 +351,37 @@ test.describe("PICK A BLANK — stars (D-06)", () => {
     await expect(dialog.locator('ul[data-blank-group="starred"]')).toHaveCount(0);
     await expect(blankCards(dialog, "fits").first()).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test("signed out, a star waits in this browser to join an account at the next sign-in, and nothing is sent to the server (quick 261016-usz)", async ({
+    page,
+  }) => {
+    await openRocker(page);
+    const dialog = await openBlankPicker(page);
+    const first = firstFittingCard(page);
+    const vendor = (await first.getAttribute("data-vendor"))!;
+    const name = (await first.getAttribute("data-name"))!;
+    const card = dialog.locator(`li[data-blank-card][data-vendor=${JSON.stringify(vendor)}][data-name=${JSON.stringify(name)}]`);
+
+    // Every Server Action call carries a `next-action` header; signed out, starring makes none (D-02).
+    const actionCalls: string[] = [];
+    page.on("request", (request) => {
+      if (request.headers()["next-action"] !== undefined) actionCalls.push(request.url());
+    });
+
+    await starButton(card).click();
+    await expect(starButton(card)).toHaveAttribute("aria-pressed", "true");
+    const waitingAfterStar = await page.evaluate((key) => localStorage.getItem(key), STARRED_BLANKS_TO_JOIN_KEY);
+    expect(JSON.parse(waitingAfterStar!)).toEqual([[vendor, name]]);
+
+    await starButton(card).click();
+    await expect(starButton(card)).toHaveAttribute("aria-pressed", "false");
+    const waitingAfterUnstar = await page.evaluate((key) => localStorage.getItem(key), STARRED_BLANKS_TO_JOIN_KEY);
+    expect(JSON.parse(waitingAfterUnstar!)).toEqual([]);
+
+    // A save would leave the moment a tap is made; give one a moment to show before counting.
+    await page.waitForTimeout(500);
+    expect(actionCalls).toEqual([]);
   });
 });
 

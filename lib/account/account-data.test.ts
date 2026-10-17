@@ -52,6 +52,8 @@ const preferencesRow: UserPreferenceRow = {
   tipStyle: null,
   hiddenBlankMakers: '["Arctic Foam"]',
   rackOrder: '["22222222-2222-4222-8222-222222222222","11111111-1111-4111-8111-111111111111"]',
+  // Quick 261016-usz: the shaper's starred blanks, made-up [maker, name] pairs.
+  starredBlanks: '[["Maker A","One"],["Maker B","Two"]]',
   createdAt: new Date("2026-09-01T10:05:00.000Z"),
   updatedAt: new Date("2026-10-03T07:00:00.000Z"),
 };
@@ -90,6 +92,7 @@ describe("buildDesignsExport (D-02)", () => {
     expect(result.settings!.rackOrder).toBe(preferencesRow.rackOrder);
     expect(typeof result.settings!.rackOrder).toBe("string");
     expect(result.settings!.hiddenBlankMakers).toBe('["Arctic Foam"]');
+    expect(result.settings!.starredBlanks).toBe('[["Maker A","One"],["Maker B","Two"]]');
     expect(result.settings!.printRailInstructions).toBeNull();
     expect(result.settings!.widthMarginMm).toBeNull();
     expect(result.settings!.extraLengthMm).toBe(30);
