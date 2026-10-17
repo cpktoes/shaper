@@ -134,7 +134,8 @@ test.describe("ROCKER — a real blank from the list", () => {
     await flag.getByRole("button", { name: "Switch to This Blank" }).click();
     const switchedTo = (await pickedCard(page).locator("[data-blank-name]").innerText()).trim();
     expect(switchedTo).not.toBe(name);
-    expect(offerText).toContain(` ${switchedTo}, `);
+    // The offer names a maker's blank with its rocker, Natural (quick 261016-mkb, D-02, P-23).
+    expect(offerText).toContain(` ${switchedTo} Natural, `);
     await expect(page.locator("[data-blank-flag]")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Remove This Blank" }).click();

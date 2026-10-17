@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { blankTipRockers, prepareBlank, type PreparedBlank } from "./blank-fit";
-import { cardFigures, compactLine, NO_FIGURE, stationTable, uprightFacts } from "./blank-card-text";
+import { cardFigures, cardNaturalRockerLabel, compactLine, NO_FIGURE, stationTable, uprightFacts } from "./blank-card-text";
 import { blankRowVolume } from "./blank-reasons";
 import { printedBlankStations } from "./board-profile";
+import { customPrintedStations, orderedTipRockers, withCustomRocker, type BlankRockerSpec } from "./custom-rocker";
+import { customRockerRowLabel, naturalRockerRowLabel } from "./custom-rocker-text";
 import {
   formatDim,
   formatDimBare,
@@ -13,7 +15,7 @@ import {
   formatMarkBare,
   stationLabel,
 } from "./measure-display";
-import { UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
+import { inchesToMm, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
 
 // Every word and number on a blank's card (quick 261015-ve9, D-09 to D-11, D-15). Every expected
 // string is composed here from the app's own formatters over a real seeded record — never a
@@ -140,6 +142,69 @@ describe("compactLine — the short-screen card's one line (D-11)", () => {
       expect(compactLine(p, system)).toBe(
         `${dash(printed.center.width, (x) => formatDim(x, system))} × ${dash(printed.center.thickness, (x) => formatMark(x, system))} center · ${formatMark(blankTipRockers(p).nose, system)} nose`,
       );
+    }
+  });
+});
+
+// A saved blank's card (quick 261016-mkb plan 03, D-03): its rocker as ordered. Specs are built with
+// `inchesToMm`; every expected figure comes from the app's own functions.
+const NOSE_UP_TAIL_DOWN: BlankRockerSpec = {
+  changes: [
+    { end: "nose", amount: inchesToMm(1 / 4), fromTip: inchesToMm(18) },
+    { end: "tail", amount: inchesToMm(-1 / 8) },
+  ],
+};
+
+describe("a saved blank's card — its rocker as ordered (quick 261016-mkb, D-03)", () => {
+  it.each(UNITS_SYSTEMS)("no rocker, or a natural one, leaves the table exactly as today — %s", (system) => {
+    for (const p of [FULL, NO_TWELVES]) {
+      expect(stationTable(p.record, system, undefined)).toEqual(stationTable(p.record, system));
+      expect(stationTable(p.record, system, { changes: [] })).toEqual(stationTable(p.record, system));
+    }
+  });
+
+  it("the card's natural row is the DATASHEET's label in the founder's short form, NAT (P-20)", () => {
+    expect(cardNaturalRockerLabel("imperial")).toBe("NAT Rocker");
+    expect(cardNaturalRockerLabel("metric")).toBe("NAT Rocker (mm)");
+    for (const system of UNITS_SYSTEMS) {
+      expect(cardNaturalRockerLabel(system)).toBe(naturalRockerRowLabel(system).replace("Natural", "NAT"));
+    }
+  });
+
+  it.each(UNITS_SYSTEMS)("reads Width, Thick, then NAT Rocker over Custom Rocker — %s", (system) => {
+    for (const p of [FULL, NO_TWELVES]) {
+      const printed = printedBlankStations(p.record);
+      const ordered = customPrintedStations(p.record, NOSE_UP_TAIL_DOWN);
+      const keys = ["noseTip", "nose12", "center", "tail12", "tailTip"] as const;
+      const table = stationTable(p.record, system, NOSE_UP_TAIL_DOWN);
+      const plain = stationTable(p.record, system);
+      expect(table.headers).toEqual(plain.headers);
+      expect(table.rows.map((r) => r.label)).toEqual([
+        plain.rows[0].label,
+        plain.rows[1].label,
+        cardNaturalRockerLabel(system),
+        customRockerRowLabel(system),
+      ]);
+      expect(table.rows.slice(0, 3)).toEqual([plain.rows[0], plain.rows[1], { ...plain.rows[2], label: cardNaturalRockerLabel(system) }]);
+      expect(table.rows[3].cells).toEqual(keys.map((k) => dash(ordered[k].rocker, (x) => formatMarkBare(x, system))));
+      // The bend shows at the tips: the nose up, the tail down.
+      if (printed.noseTip.rocker !== null) expect(ordered.noseTip.rocker!).toBeGreaterThan(printed.noseTip.rocker);
+      if (printed.tailTip.rocker !== null) expect(ordered.tailTip.rocker!).toBeLessThan(printed.tailTip.rocker);
+    }
+  });
+
+  it.each(UNITS_SYSTEMS)("the upright facts and the compact line read the tips as ordered — %s", (system) => {
+    for (const p of [FULL, NO_TWELVES]) {
+      const bent = withCustomRocker(p, NOSE_UP_TAIL_DOWN);
+      const tips = orderedTipRockers(bent);
+      const mark = (v: Mm) => formatMark(v, system);
+      expect(uprightFacts(bent, system, NOSE_UP_TAIL_DOWN)[2].value).toBe(`${mark(tips.nose)} nose · ${mark(tips.tail)} tail`);
+      // Handed the natural blank and the rocker, it bends it to read the same figures.
+      expect(uprightFacts(p, system, NOSE_UP_TAIL_DOWN)).toEqual(uprightFacts(bent, system, NOSE_UP_TAIL_DOWN));
+      expect(compactLine(bent, system, NOSE_UP_TAIL_DOWN).endsWith(` · ${mark(tips.nose)} nose`)).toBe(true);
+      // Without a rocker, exactly as today.
+      expect(uprightFacts(p, system)).toEqual(uprightFacts(p, system, undefined));
+      expect(compactLine(p, system)).toBe(compactLine(p, system, { changes: [] }));
     }
   });
 });

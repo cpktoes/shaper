@@ -27,13 +27,15 @@
  * the short-screen line that replaces the flat card's table on a phone held sideways (D-11), and the
  * Show my board switch, which draws or leaves out the dashed board (D-04).
  *
- * Quick 261016-mkb plan 03 (2026-10-16) adds the shaper's saved blanks as cards (D-09): a saved card
- * says `Saved by you` beside its maker (`[data-saved-blank]`), its note sits on a line under its name
- * (`[data-blank-card-rocker]`), and its pick button names the whole blank — `Use {maker} {name}
- * {note}` — and carries its saved id. Its drawing and its numbers are the bent copy's.
+ * Quick 261016-mkb plan 03 (2026-10-16) names every blank with its rocker (D-02, P-22): a line under
+ * the name on every card, in every layout (`[data-blank-card-rocker]`) — `Natural` on a maker's blank,
+ * the note as ordered on one of the shaper's saved blanks — and the pick button names the whole blank,
+ * `Use {maker} {name} Natural` or `Use {maker} {name} {note}`. A saved card (D-09) says `Saved by you`
+ * beside its maker (`[data-saved-blank]`), draws and quotes its bent copy, reads Natural Rocker over
+ * Custom Rocker in its table (D-03, P-20) and has a Remove that asks once (P-21).
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { StarIcon } from "lucide-react";
 import type { BlankPickerView } from "@/lib/blank-picker-view-preference";
 import type { BlankRecord } from "@/lib/geometry/blank";
@@ -149,8 +151,18 @@ export function BlankThumbnail({ prepared }: { prepared: PreparedBlank }) {
 }
 
 /** The printed station table under a flat card's drawing (D-09), the sketch's `.st` rules. */
-function StationTable({ record, system }: { record: BlankRecord; system: UnitsSystem }) {
-  const table = stationTable(record, system);
+function StationTable({
+  record,
+  rocker,
+  system,
+}: {
+  record: BlankRecord;
+  /** A saved blank's rocker: the table then reads Natural Rocker over Custom Rocker (D-03). */
+  rocker: BlankRockerSpec | undefined;
+  system: UnitsSystem;
+}) {
+  const table = stationTable(record, system, rocker);
+  const custom = table.rows.length > 3;
   return (
     <table data-station-table className="w-full border-collapse text-[10.5px] text-surf-ink-muted tabular-nums">
       <thead>
@@ -168,11 +180,18 @@ function StationTable({ record, system }: { record: BlankRecord; system: UnitsSy
         </tr>
       </thead>
       <tbody>
-        {table.rows.map((row) => (
-          <tr key={row.label}>
+        {table.rows.map((row, r) => (
+          <tr key={row.label} data-station-row={r}>
             <th
               scope="row"
-              className="py-px pr-0.5 text-left text-[9px] font-extrabold tracking-[0.08em] whitespace-nowrap uppercase"
+              className={cn(
+                "py-px pr-0.5 text-left text-[9px] font-extrabold uppercase",
+                // A saved blank's two rocker rows wrap inside their label cell, a little tighter
+                // set, so the table is never wider than a maker's on a 290-dot card (P-20, measured:
+                // CUSTOM at the usual spacing set 3 dots wider than ROCKER); every other label stays
+                // on one line at the usual spacing.
+                custom && r >= 2 ? "leading-tight tracking-[0.02em]" : "tracking-[0.08em] whitespace-nowrap",
+              )}
             >
               {row.label}
             </th>
@@ -224,6 +243,84 @@ function StarButton({
   );
 }
 
+/** The 11px/700 text-link idiom, grown to a 44-dot row on a touch pointer. Older Safari: the button
+ * says `inline-flex items-center` itself. */
+const REMOVE_LINK_CLASS =
+  "focus-ring-accent inline-flex cursor-pointer items-center text-[11px] font-bold coarse:min-h-11";
+
+/**
+ * A saved card's Remove (quick 261016-mkb, D-09, P-21): it asks once — `Remove this saved blank?` ·
+ * Remove · Keep — because removing a signed-in shaper's saved blank deletes their account row. It
+ * changes the shaper's list, never the board (a board already using the blank keeps its own copy),
+ * so it stays live on a locked board, like the star, and sits above the card's pick button.
+ */
+function RemoveSaved({
+  name,
+  onRemove,
+}: {
+  /** The whole blank, maker and note included — what a screen reader hears it remove. */
+  name: string;
+  onRemove: () => Promise<{ ok: true } | { ok: false; message: string }>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const remove = async () => {
+    setBusy(true);
+    const result = await onRemove();
+    setBusy(false);
+    if (!result.ok) setMessage(result.message);
+  };
+  return (
+    <div data-remove-saved-row className="relative z-10 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+      {confirming ? (
+        <>
+          <span className="text-xs text-surf-ink">Remove this saved blank?</span>
+          <button
+            type="button"
+            data-lock-exempt
+            data-remove-saved-confirm
+            aria-label={`Remove ${name} from your saved blanks`}
+            disabled={busy}
+            onClick={remove}
+            className={cn(REMOVE_LINK_CLASS, "text-surf-warning-ink disabled:cursor-default")}
+          >
+            Remove
+          </button>
+          <button
+            type="button"
+            data-lock-exempt
+            data-remove-saved-keep
+            onClick={() => {
+              setConfirming(false);
+              setMessage(null);
+            }}
+            className={cn(REMOVE_LINK_CLASS, "text-surf-accent-ink")}
+          >
+            Keep
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          data-lock-exempt
+          data-remove-saved
+          aria-label={`Remove ${name}`}
+          onClick={() => setConfirming(true)}
+          className={cn(REMOVE_LINK_CLASS, "text-surf-ink-muted hover:text-surf-ink")}
+        >
+          Remove
+        </button>
+      )}
+      {message !== null && (
+        <span data-remove-saved-message className="basis-full text-xs text-surf-warning-ink">
+          {message}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export interface BlankCardProps {
   verdict: BlankVerdict;
   /** The catalogue's own record — what `pickBlank` stores, and what the card's words read. */
@@ -245,6 +342,8 @@ export interface BlankCardProps {
   starred: boolean;
   onStarChange: (on: boolean) => void;
   onPick: () => void;
+  /** Takes a saved blank (and its star) out of the shaper's list — saved cards only (D-09). */
+  onRemove?: () => Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
 /** The muted label and ink value of one of the upright card's facts (D-10). */
@@ -280,6 +379,7 @@ export function BlankCard({
   starred,
   onStarChange,
   onPick,
+  onRemove,
 }: BlankCardProps) {
   const { prepared, placement } = verdict;
   const greyed = reason !== null;
@@ -290,15 +390,19 @@ export function BlankCard({
     [art, board, placement, view.showBoard],
   );
   const rocker = saved?.rocker;
-  // The pick button names the whole blank a saved card puts on the board — its note included.
-  const pickName = saved ? blankDisplayName(record, rocker) : record.name;
-  const accessibleName = `Use ${record.vendor} ${pickName}${greyed ? `, doesn't fit: ${reason}` : ""}`;
+  // The pick button names the whole blank it puts on the board, its rocker included — `Natural` on a
+  // maker's blank, the note on a saved one (D-02) — so a natural card's name is never the start of a
+  // saved twin's. The star keeps a maker's blank's name as it always was (its identity is unchanged).
+  const displayName = blankDisplayName(record, rocker);
+  const accessibleName = `Use ${record.vendor} ${displayName}${greyed ? `, doesn't fit: ${reason}` : ""}`;
+  const starName = saved ? displayName : record.name;
   const nameClass = cn(
     "min-w-0 flex-1 text-[15px] leading-tight",
     greyed ? "font-semibold text-surf-ink-muted" : "font-bold text-surf-ink",
   );
-  // The blank's rocker on its own line under its name (D-02): the note on a saved blank.
-  const rockerLine = saved && (
+  // The blank's rocker on its own line under its name, on every card (D-02, P-22): `Natural` on a
+  // maker's blank, the note on a saved one.
+  const rockerLine = (
     <div
       data-blank-card-rocker
       className={cn("-mt-1 text-xs leading-tight tabular-nums", greyed ? "text-surf-ink-muted" : "text-surf-ink")}
@@ -365,7 +469,7 @@ export function BlankCard({
             </div>
             {rockerLine}
             {maker}
-            {uprightFacts(prepared, system).map((fact) => (
+            {uprightFacts(prepared, system, rocker).map((fact) => (
               <Fact key={fact.label} label={fact.label} value={fact.value} />
             ))}
             {reasonLine}
@@ -390,11 +494,11 @@ export function BlankCard({
             <BlankArt art={art} ghost={ghost} />
           </div>
           <div className="[@media(max-height:500px)]:hidden">
-            <StationTable record={record} system={system} />
+            <StationTable record={record} rocker={rocker} system={system} />
           </div>
           {/* The line may wrap only at its " · " — never inside a figure like 4 7/8". */}
           <p data-compact-line className="hidden text-xs text-surf-ink-muted tabular-nums [@media(max-height:500px)]:block">
-            {compactLine(prepared, system)
+            {compactLine(prepared, system, rocker)
               .split(" · ")
               .map((part, i) => (
                 <span key={i}>
@@ -406,7 +510,9 @@ export function BlankCard({
           {reasonLine}
         </div>
       )}
-      <StarButton vendor={record.vendor} name={pickName} starred={starred} onChange={onStarChange} />
+      {/* Outside the lock's faded wrapper, like the star, so it stays live on a locked board. */}
+      {saved && onRemove && <RemoveSaved name={`${record.vendor} ${displayName}`} onRemove={onRemove} />}
+      <StarButton vendor={record.vendor} name={starName} starred={starred} onChange={onStarChange} />
       <button
         type="button"
         data-pick

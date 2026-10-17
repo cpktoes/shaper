@@ -26,6 +26,12 @@
  * same active test the desktop row uses. Tapping another tile moves with `router.push` — a client-side
  * move that keeps an unsaved board and its undo history — and tapping the current one just closes the
  * menu.
+ *
+ * ROCKER's tile gains a second line when the board sits in a blank (quick 261016-mkb, D-11, P-4,
+ * 2026-10-16): the blank's rocker, `Natural` or the note as ordered, under `On a 9'4"B`, and its name
+ * says it (`ROCKER — On a 9'4"B Natural`). It shows on every layout, an upright phone included,
+ * because the picture is a fixed 46-dot box and the sheet scrolls inside itself, so a second line can
+ * only make the top row of tiles taller, never the drawing smaller — a browser test measures it.
  */
 
 import { useMemo } from "react";
@@ -44,6 +50,7 @@ import {
   railsTileArt,
   rockerTileArt,
   screenTileLines,
+  screenTileRocker,
   summaryTileArt,
   type ScreenTileKind,
 } from "@/lib/geometry/screen-tiles";
@@ -83,8 +90,10 @@ function useTilePictures() {
     () => screenTileLines({ outline, blank, finSetup: effectiveFins.finSetup, system }),
     [outline, blank, effectiveFins.finSetup, system],
   );
+  // ROCKER's second line: the blank's rocker — `Natural` or the note (quick 261016-mkb, D-11).
+  const rockerLine = useMemo(() => screenTileRocker(blank), [blank]);
   const litres = formatTileLitres(quotedVolumeLitres);
-  return { template, rocker, rails, fins, summary, lines, litres };
+  return { template, rocker, rails, fins, summary, lines, rockerLine, litres };
 }
 
 type TilePictures = ReturnType<typeof useTilePictures>;
@@ -228,7 +237,12 @@ export function ScreenTiles({ screens }: { screens: readonly NavLink[] }) {
         const kind = TILE_KIND[link.href];
         const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
         const line = pictures.lines[kind];
-        const name = kind === "volume" ? `${link.label} — ${pictures.litres} L ${line}` : `${link.label} — ${line}`;
+        // ROCKER's tile carries the blank's rocker as a second line, and says it (D-11).
+        const second = kind === "rocker" ? pictures.rockerLine : null;
+        const name =
+          kind === "volume"
+            ? `${link.label} — ${pictures.litres} L ${line}`
+            : `${link.label} — ${line}${second !== null ? ` ${second}` : ""}`;
         return (
           <Menu.Item
             key={link.href}
@@ -249,6 +263,11 @@ export function ScreenTiles({ screens }: { screens: readonly NavLink[] }) {
             <TilePicture kind={kind} pictures={pictures} />
             <span className="text-[11px] font-extrabold tracking-architectural">{link.label}</span>
             <span data-tile-line className="line-clamp-2 text-center text-[11px] leading-tight text-surf-ink-muted">{line}</span>
+            {second !== null && (
+              <span data-tile-rocker className="line-clamp-2 text-center text-[11px] leading-tight text-surf-ink-muted">
+                {second}
+              </span>
+            )}
           </Menu.Item>
         );
       })}

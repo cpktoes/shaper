@@ -50,6 +50,7 @@ import {
   stationLabel,
 } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
+import { blankDisplayName } from "./custom-rocker";
 import { MEASURE_STATION_MM } from "./outline";
 import { THINNING_START_MIN_MM, thinningStartRange, type TipFlag } from "./tip-taper";
 import {
@@ -1026,8 +1027,10 @@ describe("a blank's row and the offer line", () => {
     expect(blankRowMeta(mRegular, system)).toBe(
       `${mRegular.vendor} · ${formatLength(mRegular.lengthMm, system)} · ${formatMark(centre, system)} center`,
     );
+    // The offer names a maker's blank the way every blank is named — its rocker, Natural, after its
+    // name (quick 261016-mkb, D-02, P-23).
     expect(offerLine(mRegular, system)).toBe(
-      `Closest blank that fits: ${mRegular.vendor} ${mRegular.name}, ${formatLength(mRegular.lengthMm, system)}`,
+      `Closest blank that fits: ${blankDisplayName(mRegular, undefined, { vendor: true })}, ${formatLength(mRegular.lengthMm, system)}`,
     );
   });
 
@@ -1040,7 +1043,7 @@ describe("a blank's row and the offer line", () => {
   });
 
   it("keeps the catalogue's own name text, straight quotes and all", () => {
-    expect(offerLine(mRegular, "imperial")).toBe(`Closest blank that fits: Marko Foam 6'0" M-Regular, 6'0 1/16"`);
+    expect(offerLine(mRegular, "imperial")).toBe(`Closest blank that fits: Marko Foam 6'0" M-Regular Natural, 6'0 1/16"`);
   });
 });
 

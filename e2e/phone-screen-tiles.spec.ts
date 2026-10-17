@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { blankRockerLine, customRockerDialog, openCustomizeRocker, waitForBlankButton } from "./helpers/blank-picker";
 import {
   SCREENS,
   expectNoScreensNavigation,
@@ -311,6 +312,101 @@ test.describe("every tile reads the current board", () => {
       await page.goto(route);
       await expectNoScreensNavigation(page);
       await expectSixTilesInMenu(page, null);
+    });
+  }
+});
+
+/** Every tile's picture height, in dots, read off the open sheet. */
+async function pictureHeights(page: Page): Promise<number[]> {
+  return page.locator("[data-screen-tile] [data-tile-picture]").evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().height),
+  );
+}
+
+/** Gives the open board's blank a three-change custom rocker through the Customize Rocker popup:
+ * `+1/2"N +1/8"N18" +1/4"T` — long enough to wrap in a tile. Returns the BLANK button's note. */
+async function customRockerOnBoard(page: Page): Promise<string> {
+  await goToScreen(page, "ROCKER");
+  await waitForBlankButton(page);
+  const dialog = await openCustomizeRocker(page);
+  const press = async (name: string, key: string, times: number) => {
+    await dialog.getByRole("slider", { exact: true, name }).focus();
+    for (let i = 0; i < times; i++) await page.keyboard.press(key);
+  };
+  await press("Nose rocker change", "ArrowRight", 8);
+  await dialog.getByRole("button", { name: "+ Add a second nose change" }).click();
+  await press("Tail rocker change", "ArrowRight", 4);
+  await dialog.getByRole("button", { name: "Use and save as a new blank" }).click();
+  await expect(customRockerDialog(page)).toBeHidden();
+  const note = (await blankRockerLine(page).innerText()).trim();
+  expect(note).toMatch(/"N .*"T/);
+  return note;
+}
+
+/**
+ * ROCKER's second line (quick 261016-mkb, D-11, P-4): the blank's rocker under `On a …`, on an
+ * upright phone and a phone held sideways — and every tile's picture keeps its full 46 dots whether
+ * the line is there or not, so the drawing never shrinks for it.
+ */
+async function rockerLineKeepsPictures(page: Page, label: string) {
+  await openPreset(page, "Longboard");
+  await openPhoneMenu(page);
+  const rocker = screenTile(page, "ROCKER");
+  await expect(rocker.locator("[data-tile-rocker]")).toHaveText("Natural");
+  await expect(rocker).toHaveAttribute("aria-label", `ROCKER — On a 9'4"B Natural`);
+  const natural = await pictureHeights(page);
+  const naturalTile = (await rocker.boundingBox())!;
+  await page.keyboard.press("Escape");
+
+  const note = await customRockerOnBoard(page);
+  await openPhoneMenu(page);
+  await expect(rocker.locator("[data-tile-rocker]")).toHaveText(note);
+  await expect(rocker).toHaveAttribute("aria-label", `ROCKER — On a 9'4"B ${note}`);
+  const custom = await pictureHeights(page);
+  const customTile = (await rocker.boundingBox())!;
+  const lines = await rocker.locator("[data-tile-rocker]").evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+  await page.keyboard.press("Escape");
+
+  await goToScreen(page, "ROCKER");
+  await page.getByRole("button", { name: "Remove This Blank" }).click();
+  await expect(page.getByText("Hand-set until you pick a blank").first()).toBeVisible();
+  await openPhoneMenu(page);
+  await expect(rocker.locator("[data-tile-rocker]")).toHaveCount(0);
+  const none = await pictureHeights(page);
+  const noneTile = (await rocker.boundingBox())!;
+
+  for (const heights of [natural, custom, none]) {
+    expect(heights).toHaveLength(6);
+    for (const h of heights) expect(Math.abs(h - 46)).toBeLessThanOrEqual(1);
+  }
+  console.log(
+    `[mkb P-4] ${label}: pictures natural ${natural.map((h) => h.toFixed(1)).join("/")}, ` +
+      `custom ${custom.map((h) => h.toFixed(1)).join("/")}, none ${none.map((h) => h.toFixed(1)).join("/")}; ` +
+      `ROCKER tile ${Math.round(noneTile.width)}x${Math.round(noneTile.height)} with no blank, ` +
+      `${Math.round(naturalTile.width)}x${Math.round(naturalTile.height)} Natural, ` +
+      `${Math.round(customTile.width)}x${Math.round(customTile.height)} with "${note}" (${lines} line${lines === 1 ? "" : "s"})`,
+  );
+}
+
+test.describe("ROCKER's tile names the blank's rocker, and no picture shrinks for it (quick 261016-mkb, P-4)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the tiles live in the phone's ☰ sheet");
+    await dismissChrome(page);
+  });
+
+  test("upright: Natural, then the note, and every picture 46 dots tall with or without the line", async ({ page }, testInfo) => {
+    await rockerLineKeepsPictures(page, `${testInfo.project.name} upright ${page.viewportSize()!.width}x${page.viewportSize()!.height}`);
+  });
+
+  const sideways = [
+    { project: "android", width: 863, height: 360 },
+    { project: "iphone", width: 844, height: 390 },
+  ];
+  for (const size of sideways) {
+    test(`sideways ${size.width}x${size.height}: the same line, every picture 46 dots tall`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== size.project, `measured on the ${size.project} project`);
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await rockerLineKeepsPictures(page, `${size.project} sideways ${size.width}x${size.height}`);
     });
   }
 });

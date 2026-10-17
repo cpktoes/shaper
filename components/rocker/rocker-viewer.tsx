@@ -113,6 +113,7 @@ import { parseViewBox, rectInContentFrame, scaleDash } from "@/components/viewer
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import type { RockerOverlayLines } from "@/lib/geometry/custom-rocker-art";
+import { blankDisplayName, rockerSpecOf } from "@/lib/geometry/custom-rocker";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
@@ -850,8 +851,17 @@ export function RockerViewer({
 
   // With a blank, the name also says where the two marks sit, in words (UI-SPEC Copywriting), so a
   // screen reader hears what the marks show; the distances read through 14-11's formatter.
+  // The blank named with its rocker, as everywhere a blank is named (quick 261016-mkb, D-02, P-23).
+  // Its maker and name still reach only this plain attribute (T-11-21).
+  const blankName = blank
+    ? blankDisplayName(
+        { vendor: blank.record.vendor, name: blank.record.name },
+        rockerSpecOf(blank.onBlank.prepared),
+        { vendor: true },
+      )
+    : "";
   const ariaLabel = blank
-    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off the deck and the bottom shaded, and ${thinningMarksSentence(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system)}`
+    ? `Side profile of the board inside the ${blankName} blank, with the foam to come off the deck and the bottom shaded, and ${thinningMarksSentence(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system)}`
     : "Side profile of the board, showing the rocker line and deck thickness";
 
   return (

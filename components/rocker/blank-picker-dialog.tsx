@@ -45,6 +45,7 @@ import { useDesign } from "@/components/design/design-store";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
+import { useSavedBlanks } from "@/components/saved-blanks-provider";
 import { useStarredBlanks } from "@/components/starred-blanks-provider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -160,6 +161,7 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
   const { settings } = useFitDefaults();
   const { hidden } = useBlankMakers();
   const { isStarred, setStarred } = useStarredBlanks();
+  const { removeBlank } = useSavedBlanks();
   const { view, setDrawn, setShowBoard } = useBlankPickerView();
   const rules = useCenterFloorRules();
   const locked = useControlsLocked();
@@ -264,6 +266,15 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
   // A maker's blank is starred by maker and name, a saved one by its name with its note (D-09).
   const starIdentity = (row: BrowseRow): [string, string] =>
     row.saved ? blankStarIdentity(row.record, row.saved.rocker) : [row.record.vendor, row.record.name];
+
+  // Remove on a saved card (D-09, P-21): the blank leaves the shaper's list and takes its star with
+  // it. It never touches the board — a board already using it keeps its own copy and rocker.
+  const removeSaved = async (row: BrowseRow) => {
+    if (!row.saved) return { ok: true as const };
+    const result = await removeBlank(row.saved.id);
+    if (result.ok) setStarred(...starIdentity(row), false);
+    return result;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={openChangeComplete}>
@@ -390,6 +401,7 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
                       starred={row.starred}
                       onStarChange={(on) => setStarred(...starIdentity(row), on)}
                       onPick={() => pick(row)}
+                      onRemove={row.saved ? () => removeSaved(row) : undefined}
                     />
                   ))}
                 </ul>

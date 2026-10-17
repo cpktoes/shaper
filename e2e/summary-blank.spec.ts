@@ -1,5 +1,15 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { blankPicker, cardButton, firstFittingCard, openBlankPicker, openRocker, pickedCard } from "./helpers/blank-picker";
+import {
+  blankPicker,
+  blankRockerLine,
+  cardButton,
+  customRockerDialog,
+  firstFittingCard,
+  openBlankPicker,
+  openCustomizeRocker,
+  openRocker,
+  pickedCard,
+} from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,6 +17,7 @@ import { parseCsv } from "../lib/blanks/csv";
 import { placementRange } from "../lib/geometry/blank-fit";
 import { formatPlacement, placementSlider } from "../lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
+import { blankDisplayName, formatRockerNote } from "../lib/geometry/custom-rocker";
 import { inchesToMm, mm } from "../lib/geometry/units";
 
 /**
@@ -17,7 +28,8 @@ import { inchesToMm, mm } from "../lib/geometry/units";
  * - The board has no blank (a fresh board, or one whose blank was removed on ROCKER): an empty
  *   ruled line the shop writes the blank on by hand.
  * - The board was designed on a blank picked on ROCKER: that blank prints there, read-only, as
- *   vendor then name — the same words ROCKER's own list names it by — then where the board's
+ *   vendor, name and rocker — `Natural`, or the note as ordered (quick 261016-mkb, D-02), read here
+ *   off ROCKER's own BLANK button so the two are proved to agree — then where the board's
  *   centre sits on the blank, in ROCKER's own words (quick 260927-0fq): `— centered` at the
  *   starting spot, or `— center 1/16" toward nose` and the like once the board has been slid.
  *
@@ -51,18 +63,28 @@ function sliderUnder(page: Page, label: RegExp): Locator {
   return page.getByText(label).locator("xpath=..").getByRole("slider");
 }
 
-/** Pick the first blank under FITS THIS BOARD in the PICK A BLANK popup and return `vendor name`,
- * read off the card's accessible name (`Use <vendor> <name>`) before the tap (quick 261015-ve9). */
+/** Pick the first blank under FITS THIS BOARD in the PICK A BLANK popup and return its maker. */
 async function pickFirstFittingBlank(page: Page): Promise<string> {
   await openBlankPicker(page);
-  const button = cardButton(firstFittingCard(page));
-  const ariaLabel = (await button.getAttribute("aria-label")) ?? "";
-  const expected = ariaLabel.replace(/^Use /, "").replace(/, doesn't fit: .*$/, "");
-  expect(expected.length).toBeGreaterThan(0);
-  await button.click();
+  const card = firstFittingCard(page);
+  const vendor = (await card.getAttribute("data-vendor")) ?? "";
+  expect(vendor.length).toBeGreaterThan(0);
+  await cardButton(card).click();
   await expect(blankPicker(page)).toBeHidden();
   await expect(pickedCard(page)).toBeVisible();
-  return expected;
+  return vendor;
+}
+
+/**
+ * The blank as ROCKER names it right now — `vendor name rocker` — read off the BLANK button's name
+ * and rocker lines (quick 261016-mkb, D-02), so the order form is proved to agree with ROCKER.
+ */
+async function rockerBlankName(page: Page, vendor: string): Promise<string> {
+  const name = (await pickedCard(page).locator("[data-blank-name]").innerText()).trim();
+  const rocker = (await blankRockerLine(page).innerText()).trim();
+  expect(name.length).toBeGreaterThan(0);
+  expect(rocker.length).toBeGreaterThan(0);
+  return `${vendor} ${name} ${rocker}`;
 }
 
 /** Walk to SUMMARY by the app's own link — a full page load would reset the design in memory. */
@@ -90,7 +112,9 @@ function readCatalogue(): { names: string[]; longestBlankIn: number } {
     for (const row of rows) {
       const vendor = (row[vendorCol] ?? "").trim();
       const name = (row[nameCol] ?? "").trim();
-      if (vendor && name) names.add(`${vendor} ${name}`);
+      // Named as the order form names a natural blank — its rocker, `Natural`, after its name
+      // (quick 261016-mkb, D-02).
+      if (vendor && name) names.add(blankDisplayName({ vendor, name }, undefined, { vendor: true }));
       const length = Number.parseFloat(row[lengthCol] ?? "");
       if (Number.isFinite(length)) longestBlankIn = Math.max(longestBlankIn, length);
     }
@@ -138,11 +162,32 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
     await expect(blankFieldValue(page)).toHaveText(/^\s*$/);
   });
 
-  test("a blank picked on ROCKER prints on the order form as vendor, name, then — centered", async ({ page }) => {
+  test("a blank picked on ROCKER prints on the order form as vendor, name, Natural, then — centered", async ({ page }) => {
     await openRocker(page);
-    const expected = await pickFirstFittingBlank(page);
+    const vendor = await pickFirstFittingBlank(page);
+    await expect(blankRockerLine(page)).toHaveText("Natural");
+    const expected = await rockerBlankName(page, vendor);
     // A freshly picked blank puts the board's centre at the blank's centre, and ROCKER says so.
     await expect(page.getByText("Placement — centered", { exact: true })).toBeVisible();
+
+    await goToSummary(page);
+    await expect(blankFieldValue(page)).toHaveText(`${expected} — centered`);
+  });
+
+  test("a blank with a custom rocker prints its note where Natural would be, as ROCKER names it (D-02)", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the Customize Rocker popup's own phone layouts are proved in rocker-custom.spec.ts");
+    await openRocker(page);
+    const vendor = await pickFirstFittingBlank(page);
+    const dialog = await openCustomizeRocker(page);
+    const thumb = dialog.getByRole("slider", { exact: true, name: "Nose rocker change" });
+    await thumb.focus();
+    for (let i = 0; i < 8; i++) await page.keyboard.press("ArrowRight");
+    await expect(thumb).toHaveAttribute("aria-valuetext", '+1/2"');
+    await dialog.getByRole("button", { name: "Use and save as a new blank" }).click();
+    await expect(customRockerDialog(page)).toBeHidden();
+    await expect(blankRockerLine(page)).toHaveText('+1/2"N');
+    const expected = await rockerBlankName(page, vendor);
+    expect(expected.endsWith(' +1/2"N')).toBe(true);
 
     await goToSummary(page);
     await expect(blankFieldValue(page)).toHaveText(`${expected} — centered`);
@@ -156,7 +201,7 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
         await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
       }
       await openRocker(page);
-      const expected = await pickFirstFittingBlank(page);
+      const expected = await rockerBlankName(page, await pickFirstFittingBlank(page));
 
       // One step toward the nose — the slider's left end is the nose. No placement is typed here:
       // the words are read off ROCKER's own label and must reach the Summary unchanged.
@@ -253,5 +298,90 @@ test.describe("Summary — the Shaper Use Only box's Blank field", () => {
     // A failure names every blank that would print with a "…" instead of its full name and note.
     expect(onScreen.clipped).toEqual([]);
     expect(onPaper.clipped).toEqual([]);
+  });
+
+  test("a custom rocker's note in the Blank field: the room it has, measured on screen and on paper (quick 261016-mkb)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "measures the printed sheet; one engine is enough");
+    const { names, longestBlankIn } = readCatalogue();
+    const notes = everyPlacementNote(longestBlankIn);
+    // Every catalogue name without its `Natural`, so a note can take its place.
+    const bases = names.map((n) => n.replace(/ Natural$/, ""));
+    expect(bases.every((b, i) => b !== names[i])).toBe(true);
+    // The founder's own example, and the widest note the popup can write: two changes on each end,
+    // each the widest amount the slider reaches, bending from two-digit inches.
+    const inch = (n: number) => inchesToMm(n);
+    const founders = formatRockerNote({
+      changes: [
+        { end: "nose", amount: inch(-1 / 4), fromTip: inch(18) },
+        { end: "tail", amount: inch(1 / 8), fromTip: inch(36) },
+        { end: "tail", amount: inch(1 / 8), fromTip: inch(18) },
+      ],
+    });
+    expect(founders).toBe(`-1/4"N18" +1/8"T36" +1/8"T18"`);
+    const widest = formatRockerNote({
+      changes: [
+        { end: "nose", amount: inch(-1 - 15 / 16), fromTip: inch(44) },
+        { end: "nose", amount: inch(-1 - 15 / 16), fromTip: inch(43) },
+        { end: "tail", amount: inch(-1 - 15 / 16), fromTip: inch(44) },
+        { end: "tail", amount: inch(-1 - 15 / 16), fromTip: inch(43) },
+      ],
+    });
+
+    await page.goto("/design/summary");
+    const value = blankFieldValue(page);
+    await expect(value).toHaveCount(1);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const clippedWith = (lines: string[]) =>
+      value.evaluate((span, all) => {
+        const out = all.filter((text) => {
+          span.textContent = text;
+          return span.scrollWidth > span.clientWidth;
+        });
+        span.textContent = " ";
+        return out;
+      }, lines);
+
+    /** The widest placement note by its real drawn width, as the test above finds it. */
+    const widestPlacementNote = () =>
+      value.evaluate((span, suffixes) => {
+        const range = document.createRange();
+        let widestNote = "";
+        let widestPx = -1;
+        for (const note of suffixes) {
+          span.textContent = note;
+          range.selectNodeContents(span);
+          const px = range.getBoundingClientRect().width;
+          if (px > widestPx) {
+            widestPx = px;
+            widestNote = note;
+          }
+        }
+        span.textContent = " ";
+        return widestNote;
+      }, notes);
+
+    const centred = (note: string) => bases.map((b) => `${b} ${note} — centered`);
+    const results: Record<string, number> = {};
+    for (const media of ["screen", "print"] as const) {
+      await page.emulateMedia({ media });
+      const far = await widestPlacementNote();
+      results[`${media}: founder's note, centered`] = (await clippedWith(centred(founders))).length;
+      results[`${media}: founder's note, widest placement`] = (
+        await clippedWith(bases.map((b) => `${b} ${founders}${far}`))
+      ).length;
+      results[`${media}: widest note, centered`] = (await clippedWith(centred(widest))).length;
+    }
+    await page.emulateMedia({ media: "screen" });
+    const report = `custom-note lines cut off (of ${bases.length} blanks): ${JSON.stringify(results)}; widest note "${widest}"`;
+    console.log(report);
+    await testInfo.attach("custom rocker note room", { body: report, contentType: "text/plain" });
+    // The founder's own note with the board centred prints whole on every blank, on screen and on paper.
+    // A longer note, or the same note once the board is slid along a long-named blank, can run past
+    // the line and end in "…" — measured and reported here for the founder's decision (plan 03's
+    // SUMMARY), not asserted, because widening or wrapping the shop's line is a sheet layout change.
+    expect(results["screen: founder's note, centered"]).toBe(0);
+    expect(results["print: founder's note, centered"]).toBe(0);
   });
 });

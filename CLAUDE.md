@@ -138,7 +138,7 @@ there's no such thing as "per-board units."
 design screens, and everything that comes out of a printer — the Summary order form, the Overview
 Sheet, the Full Sized Template and the Paper Saver — all read in the system the shaper picked.
 
-Two printed-page specifics are worth recording here, because both look like mistakes until you
+Three printed-page specifics are worth recording here, because all three look like mistakes until you
 know why:
 
 - The printed scale-check square stays exactly two inches in both systems, and only its caption
@@ -151,6 +151,13 @@ know why:
   end (`Length 188.0 · Nose 40.0 · ... Thickness 6.7 cm · Volume 34.0 L`), while the order form's
   seven bordered cells each take their own (`188.0 cm`, `40.0 cm`, ...) — the same list of numbers,
   formatted two different ways, on purpose.
+- A blank's custom rocker note (`-1/4"N18" +1/8"T36"`) is always written in inches, in Metric too —
+  on the BLANK button, the Pick a Blank cards, the DATASHEET, the phone's ROCKER tile and the order
+  form's blank line (`US Blanks 9'4"B -1/4"N18" — centered`) — because it is the maker's order code,
+  like the blank's name itself (the founder, 2026-10-16, quick 261016-mkb). `formatRockerNote` in
+  `lib/geometry/custom-rocker.ts` is the one place an inch figure is shown to a Metric shaper; every
+  custom-rocker figure that is drawn, tabled or slid follows the chosen system like any other (the
+  amounts as marks, where a bend starts as a dim).
 
 ## Layout
 

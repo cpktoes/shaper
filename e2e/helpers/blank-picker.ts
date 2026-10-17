@@ -67,7 +67,8 @@ export function firstFittingCard(page: Page): Locator {
   return blankCards(blankPicker(page), "fits").first();
 }
 
-/** A card's pick button — the transparent button laid over the whole card, named `Use {vendor} {name}…`. */
+/** A card's pick button — the transparent button laid over the whole card, named `Use {vendor} {name}
+ * {rocker}…` (`Natural`, or a saved blank's note). */
 export function cardButton(card: Locator): Locator {
   return card.getByRole("button", { name: /^Use / });
 }
@@ -84,14 +85,16 @@ export async function pickFirstFittingBlank(page: Page): Promise<string> {
   return name;
 }
 
-/** Opens the popup, searches `{vendor} {name}` and picks the blank whose button starts `Use {vendor} {name}`. */
+/** Opens the popup, searches `{vendor} {name}` and picks the maker's natural blank — its button reads
+ * `Use {vendor} {name} Natural` (quick 261016-mkb, D-02). */
 export async function pickBlankNamed(page: Page, vendor: string, name: string): Promise<void> {
   const dialog = await openBlankPicker(page);
   await dialog.getByRole("searchbox", { name: "Search blanks" }).fill(`${vendor} ${name}`);
-  // The label is `Use {vendor} {name}`, plus `, doesn't fit: …` on a greyed card — so match it
-  // exactly or up to that comma, never a longer name that merely starts the same. JSON.stringify gives
-  // a quoted CSS string with any inch mark in the name escaped.
-  const label = `Use ${vendor} ${name}`;
+  // The label is `Use {vendor} {name} Natural`, plus `, doesn't fit: …` on a greyed card — so match
+  // it exactly or up to that comma, never a longer name that merely starts the same, and never a
+  // saved twin (`Use {vendor} {name} +1/2"N`). JSON.stringify gives a quoted CSS string with any inch
+  // mark in the name escaped.
+  const label = `Use ${vendor} ${name} Natural`;
   const button = dialog.locator(
     `li[data-blank-card] button[aria-label=${JSON.stringify(label)}], ` +
       `li[data-blank-card] button[aria-label^=${JSON.stringify(`${label},`)}]`,
