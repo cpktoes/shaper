@@ -16,7 +16,7 @@ import { useUnits } from "@/components/units-provider";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
-import { inchesToMm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
 import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
@@ -54,9 +54,8 @@ export function VolumeControls({
 }: VolumeControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
-  const lengthIn = mmToInches(effectiveVolume.length);
-  const lengthFeet = Math.floor(lengthIn / 12);
-  const lengthInches = Math.round(lengthIn - lengthFeet * 12);
+  // Rounded to whole inches before the split, so an 8'0" board never reads 7'12" (wholeFeetAndInches).
+  const { feet: lengthFeet, inches: lengthInches } = wholeFeetAndInches(effectiveVolume.length);
   const setLengthIn = (totalIn: number) =>
     onChange({
       length: inchesToMm(clampFinite(totalIn, BOARD_LENGTH_RANGE_IN.min, BOARD_LENGTH_RANGE_IN.max)),

@@ -335,6 +335,20 @@ export function roundToSixteenthInch(value: Mm): Mm {
 }
 
 /**
+ * The whole feet and whole inches a Board Length's two pickers show (TEMPLATE, FINS and VOLUME) —
+ * rounded to the nearest whole inch FIRST, then split, so the inches are always 0–11. Splitting
+ * first and rounding the inches afterwards printed an 8'0" board as `7'12"` (fast task, 2026-10-17,
+ * the founder: "I just built a 8'0" board and the slider value says that, but the drop down selector
+ * says 7'12"") — an 8'0" board comes back from millimetres as 95.99999...", whose feet floor to 7 and
+ * whose leftover 11.99999" rounds to 12. The same rule `formatFeetInches` follows for its sixteenths.
+ */
+export function wholeFeetAndInches(value: Mm): { feet: number; inches: number } {
+  const totalInches = Math.round(mmToInches(value));
+  const feet = Math.floor(totalInches / 12);
+  return { feet, inches: totalInches - feet * 12 };
+}
+
+/**
  * Formats a millimetre value as feet-and-inches, e.g. `6'0"`. Rounds the
  * inch value to the nearest 1/16 FIRST, then splits feet/inches — this is
  * what prevents float drift from the millimetre round-trip (1828.8mm)

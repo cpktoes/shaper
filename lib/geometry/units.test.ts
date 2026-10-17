@@ -9,6 +9,7 @@ import {
   cubicMmToLitres,
   formatCentimetres,
   formatFeetInches,
+  wholeFeetAndInches,
   formatInchesFraction,
   formatSignedInchesFraction,
   formatTenthMm,
@@ -115,6 +116,27 @@ describe("units boundary", () => {
 
     it("honours a denominator argument", () => {
       expect(formatSignedInchesFraction(inchesToMm(0.03125), 32)).toBe('+1/32"');
+    });
+  });
+
+  describe("wholeFeetAndInches (fast task, 2026-10-17: an 8'0\" board read 7'12\" in the length pickers)", () => {
+    it("an 8'0\" board reads 8 feet 0 inches, not 7 feet 12", () => {
+      expect(wholeFeetAndInches(inchesToMm(96))).toEqual({ feet: 8, inches: 0 });
+    });
+
+    it("every whole-inch length from 4' to 12' comes back as the feet and inches it was set to", () => {
+      for (let total = 48; total <= 144; total++) {
+        const { feet, inches } = wholeFeetAndInches(inchesToMm(total));
+        expect(feet * 12 + inches, `${total}"`).toBe(total);
+        expect(inches, `${total}"`).toBeGreaterThanOrEqual(0);
+        expect(inches, `${total}"`).toBeLessThanOrEqual(11);
+      }
+    });
+
+    it("a length between whole inches reads the nearest whole inch, and never 12 inches", () => {
+      expect(wholeFeetAndInches(inchesToMm(95.6))).toEqual({ feet: 8, inches: 0 });
+      expect(wholeFeetAndInches(inchesToMm(95.4))).toEqual({ feet: 7, inches: 11 });
+      expect(wholeFeetAndInches(inchesToMm(72.49))).toEqual({ feet: 6, inches: 0 });
     });
   });
 

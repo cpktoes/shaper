@@ -29,7 +29,7 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { inchesToMm, mm, mmToInches, roundToWholeMm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { inchesToMm, mm, roundToWholeMm, wholeFeetAndInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import {
   formatDim,
   formatLength,
@@ -181,9 +181,8 @@ export function FinControls({
   const dim = locked ? " opacity-40" : "";
   const [editingRearOffTail, setEditingRearOffTail] = useState(false);
 
-  const lengthIn = mmToInches(spec.boardLength);
-  const lengthFeet = Math.floor(lengthIn / 12);
-  const lengthInches = Math.round(lengthIn - lengthFeet * 12);
+  // Rounded to whole inches before the split, so an 8'0" board never reads 7'12" (wholeFeetAndInches).
+  const { feet: lengthFeet, inches: lengthInches } = wholeFeetAndInches(spec.boardLength);
   const setLengthIn = (totalIn: number) => onChange({ boardLength: inchesToMm(clampFinite(totalIn, 48, 144)) });
   const boardLength = measureSlider(spec.boardLength, { min: 48, max: 144 }, 1, 10, system);
   // The typed field's own bounds are in ITS domain (centimetres in Metric, D-08) — never the

@@ -23,6 +23,7 @@ import {
   mm,
   type Mm,
   mmToInches,
+  wholeFeetAndInches,
 } from "@/lib/geometry/units";
 import {
   formatDim,
@@ -112,9 +113,8 @@ export function OutlineControls({
 }: OutlineControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
-  const lengthIn = mmToInches(outline.length);
-  const lengthFeet = Math.floor(lengthIn / 12);
-  const lengthInches = Math.round(lengthIn - lengthFeet * 12);
+  // Rounded to whole inches before the split, so an 8'0" board never reads 7'12" (wholeFeetAndInches).
+  const { feet: lengthFeet, inches: lengthInches } = wholeFeetAndInches(outline.length);
 
   const setLengthIn = (totalIn: number) => {
     onChange({
