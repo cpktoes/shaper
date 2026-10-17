@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-17 — quick 261016-mkb: custom rocker — a blank's rocker as ordered, saved as the shaper's own starred blank (three plans, sketch 016 D) — merged to main and pushed on the founder's go after their production migration 0012
+Last activity: 2026-10-17 — fast task 170: the tail Bend starts slider flipped to run centre → tail (after quick 261016-mkb, custom rocker, went live and the founder's signed-in check passed)
 
 ## Performance Metrics
 
@@ -395,6 +395,7 @@ Recent decisions affecting current work:
 | 169 | WINGS tab: a toolbar button swaps the tail close-up for the whole board, drawn as the VIEWER draws it with every dimension card (LENGTH, WIDEPOINT, WP OFFSET, TAIL BLOCK, the wing chips, the 12" widths), while the sidebar keeps the wing controls; the choice holds across a trip to VIEWER and back. Live with fast 168 on the founder's word ("push the wings toggle too after it all passes"). The founder's request, 2026-10-17 | 2026-10-17 | daa1049 | fast (no directory) |
 | 261016-usz | Stars on the shaper's account (sketch 015 B, part 2 of 2; the founder, 2026-10-16): signed in, starred blanks are saved on the account and follow the shaper to any device; signed out, the browser keeps them; stars made while signed out join the account at the next sign-in, and a star removed on one device stays removed on the others; another shaper's synced stars never leak into a second account on the same browser. New nullable `user_preferences.starred_blanks` (migration 0011, additive — production migrated before the push); the Your data page names starred blanks | 2026-10-16 | 346a5a56 | [261016-usz-stars-on-the-shaper-s-account-starred-bl](./quick/261016-usz-stars-on-the-shaper-s-account-starred-bl/) |
 | 261016-mkb | Custom rocker (sketch 016 D; the founder, 2026-10-16: "This now looks perfect. Let's build it."): a blank's rocker as ordered from the maker, written the US Blanks way, set in a Customize Rocker popup with a live red/blue drawing, every blank named with its rocker, and each custom rocker kept as the shaper's own starred blank in Pick a Blank (migration 0012, `user_blanks`, on production before the push) | 2026-10-17 | 029da65e | [261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere](./quick/261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere/) |
+| 170 | The Customize Rocker popup's tail Bend starts slider runs centre to tail, left to right, the way the drawing lies — thumb right pushes the bend toward the tail (the founder, 2026-10-17, after their signed-in check of quick 261016-mkb passed) | 2026-10-17 | 07e12c59 | fast (no directory) |
 
 ## Deferred Items
 
