@@ -1,25 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
+import { starKey } from "@/lib/starred-blanks-preference";
+import golden from "./__fixtures__/custom-rocker-golden.json";
 import type { BlankRecord } from "./blank";
-import { prepareBlank, prepareBlankPchip, type PreparedBlank } from "./blank-fit";
-import { CATALOG_STATION_LABELS } from "./board-profile";
+import { blankTipRockers, prepareBlank, prepareBlankPchip, type PreparedBlank } from "./blank-fit";
+import { CATALOG_STATION_LABELS, printedBlankStations } from "./board-profile";
 import {
   bendAt,
   bendPoint,
+  bendStartRange,
+  blankDisplayLines,
+  blankDisplayName,
+  blankStarIdentity,
+  customPrintedStations,
+  draftFloor,
+  draftFromSpec,
+  floorOf,
+  formatRockerNote,
   isNaturalSpec,
   naturalOf,
+  NATURAL_DRAFT,
   normalizeSpec,
+  orderedTipRockers,
+  parseRockerNote,
   prepareBoardBlank,
+  rockerNoteParts,
   rockerSpecOf,
+  ROCKER_KNOT_STEP_MM,
   sameRockerSpec,
+  specFromDraft,
   withCustomRocker,
+  withDraftAmount,
+  withDraftBendStart,
+  withoutChange,
+  withSecondChange,
   ROCKER_CHANGE_MAX_MM,
   type BlankRockerSpec,
   type RockerChange,
+  type RockerDraft,
 } from "./custom-rocker";
 import { pchipMinimum } from "./pchip";
 import { BOARD_PRESETS } from "./presets";
-import { inchesToMm, mm } from "./units";
+import { inchesToMm, mm, mmToInches } from "./units";
 
 /** The blank a preset opens in — the Longboard in the US Blanks 9'4"B, the Shortboard in the 6'3"RP. */
 function presetCopy(id: string): BlankRecord {
@@ -304,5 +326,332 @@ describe("withCustomRocker — the blank bent the maker's way", () => {
     expect(bent.rocker.minimum).toBeLessThan(natural.rocker.minimum);
     expect(bent.rocker.minimum).toBe(bent.rocker.curve.sample(0));
     expect(bent.rocker.sample(0)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Task 2 — proven against the sketch's own code (lib/geometry/__fixtures__/custom-rocker-golden.json,
+// written by scripts/extract-sketch016-custom-rocker-golden.mjs from reference/sketches/016-…).
+// ---------------------------------------------------------------------------------------------
+
+/** A spec in the sketch's form: inches, `f` whole inches in from the tip or null for the centre. */
+interface SketchChange {
+  a: number;
+  f: number | null;
+}
+interface SketchSpec {
+  nose: SketchChange[];
+  tail: SketchChange[];
+}
+
+/** The sketch's spec as the app's: nose then tail, each through `inchesToMm`. */
+function fromSketch(s: SketchSpec): BlankRockerSpec {
+  const one = (end: "nose" | "tail", c: SketchChange): RockerChange =>
+    c.f === null ? { end, amount: inchesToMm(c.a) } : { end, amount: inchesToMm(c.a), fromTip: inchesToMm(c.f) };
+  return { changes: [...s.nose.map((c) => one("nose", c)), ...s.tail.map((c) => one("tail", c))] };
+}
+
+const GOLDEN_COPY: Record<string, BlankRecord> = { longboard: LONG, shortboard: SHORT };
+const GOLDEN_PREPARED: Record<string, PreparedBlank> = {
+  longboard: prepareBlank(LONG),
+  shortboard: prepareBlank(SHORT),
+};
+const IMPERIAL_STEP = inchesToMm(1 / 16);
+const METRIC_STEP = mm(1);
+type GoldenCase = (typeof golden.cases)[number];
+const CASE_ROWS: [string, GoldenCase][] = golden.cases.map((c) => [`${c.board} ${c.label}`, c]);
+
+describe("the golden itself", () => {
+  it("was written from the two blanks the sketch was drawn on, which these tests read", () => {
+    expect(golden.units).toBe("inches");
+    expect(golden.cases).toHaveLength(24);
+    expect(golden.listing).toHaveLength(282);
+    for (const board of golden.boards) {
+      const copy = GOLDEN_COPY[board.id];
+      expect([board.vendor, board.name]).toEqual([copy.vendor, copy.name]);
+      expect(board.lengthIn).toBe(mmToInches(copy.lengthMm));
+    }
+  });
+});
+
+describe("bendAt and formatRockerNote agree with the sketch's delta and noteOf", () => {
+  it.each(CASE_ROWS)("%s", (_, c) => {
+    const copy = GOLDEN_COPY[c.board];
+    const s = fromSketch(c.spec as SketchSpec);
+    for (const point of [...c.stations, ...c.samples]) {
+      const app = mmToInches(mm(bendAt(s, copy.lengthMm, inchesToMm(point.xIn))));
+      expect(Math.abs(app - point.delta)).toBeLessThan(1e-9);
+    }
+    expect(c.stations).toHaveLength(5);
+    expect(c.samples).toHaveLength(41);
+    expect(formatRockerNote(s)).toBe(c.note);
+  });
+});
+
+describe("floorOf agrees with the sketch's floorOf (D-06, P-1)", () => {
+  it.each(CASE_ROWS)("%s", (_, c) => {
+    const prepared = GOLDEN_PREPARED[c.board];
+    const s = fromSketch(c.spec as SketchSpec);
+    const noseCount = (c.spec as SketchSpec).nose.length;
+    for (const f of c.floors) {
+      const at = f.end === "nose" ? f.index : noseCount + f.index;
+      const others = { changes: s.changes.filter((_, i) => i !== at) };
+      for (const [stepMm, stepIn, sketchFloor] of [
+        [IMPERIAL_STEP, mmToInches(IMPERIAL_STEP), f.imperial],
+        [METRIC_STEP, mmToInches(METRIC_STEP), f.metric],
+      ] as const) {
+        const app = floorOf(prepared, s.changes[at], others, stepMm);
+        // The same number of slider steps, exactly; and the same length to float noise.
+        expect(Math.round(app / stepMm)).toBe(Math.round(sketchFloor / stepIn));
+        expect(mmToInches(app)).toBeCloseTo(sketchFloor, 9);
+      }
+    }
+  });
+
+  it("counts 76 floors across both boards, both systems", () => {
+    expect(golden.cases.reduce((n, c) => n + c.floors.length * 2, 0)).toBe(76);
+  });
+
+  it('-2"T on the Shortboard\'s blank lands on its floor, above -2"; on the Longboard\'s it reaches -2"', () => {
+    const short = golden.cases.find((c) => c.board === "shortboard" && c.label === '-2"T')!;
+    const long = golden.cases.find((c) => c.board === "longboard" && c.label === '-2"T')!;
+    expect(short.floors[0].imperial).toBeGreaterThan(-2);
+    expect(long.floors[0].imperial).toBe(-2);
+    const tailOnly = { end: "tail" as const, amount: inchesToMm(-2) };
+    expect(mmToInches(floorOf(GOLDEN_PREPARED.shortboard, tailOnly, { changes: [] }, IMPERIAL_STEP))).toBeCloseTo(
+      short.floors[0].imperial,
+      9,
+    );
+    expect(floorOf(GOLDEN_PREPARED.longboard, tailOnly, { changes: [] }, IMPERIAL_STEP)).toBe(-ROCKER_CHANGE_MAX_MM);
+  });
+
+  it.each(CASE_ROWS)("%s: at its floor the bent blank never dips below its low point; one step lower, it does", (_, c) => {
+    const prepared = GOLDEN_PREPARED[c.board];
+    const L = prepared.lengthMm;
+    const s = fromSketch(c.spec as SketchSpec);
+    const xs: number[] = [];
+    for (let k = 0; k * ROCKER_KNOT_STEP_MM < L; k++) xs.push(k * ROCKER_KNOT_STEP_MM);
+    xs.push(L, ...prepared.record.stations.map((st) => st.fromTailMm));
+    const lowest = (spec: BlankRockerSpec) => Math.min(...xs.map((x) => prepared.rocker.sample(x) + bendAt(spec, L, x)));
+    s.changes.forEach((change, at) => {
+      const others = { changes: s.changes.filter((_, i) => i !== at) };
+      const floor = floorOf(prepared, change, others, IMPERIAL_STEP);
+      const atFloor = { changes: s.changes.map((ch, i) => (i === at ? { ...ch, amount: floor } : ch)) };
+      // At its floor no point of the bent blank reads below the low point; one step lower, the worst one does.
+      expect(lowest(atFloor)).toBeGreaterThanOrEqual(-1e-6);
+      if (floor > -ROCKER_CHANGE_MAX_MM + 1e-9) {
+        const lower = { changes: s.changes.map((ch, i) => (i === at ? { ...ch, amount: mm(floor - IMPERIAL_STEP) } : ch)) };
+        expect(lowest(lower)).toBeLessThan(0);
+      }
+    });
+  });
+});
+
+describe("parseRockerNote — the note read back (P-10)", () => {
+  it("agrees with the sketch's reader on all 282 listing lines: 237 read, 45 refused", () => {
+    let read = 0;
+    for (const entry of golden.listing) {
+      const app = parseRockerNote(entry.body);
+      if (entry.parsed === null) {
+        expect(app, entry.line).toBeNull();
+        continue;
+      }
+      read++;
+      const want = fromSketch(entry.parsed as SketchSpec);
+      expect(app, entry.line).not.toBeNull();
+      expect(app!.changes.length, entry.line).toBe(want.changes.length);
+      app!.changes.forEach((change, i) => {
+        expect(change.end, entry.line).toBe(want.changes[i].end);
+        expect(change.amount, entry.line).toBeCloseTo(want.changes[i].amount, 9);
+        expect(change.fromTip, entry.line).toBe(want.changes[i].fromTip);
+      });
+    }
+    expect(read).toBe(237);
+  });
+
+  it("round-trips every golden case's note", () => {
+    for (const c of golden.cases) {
+      const s = fromSketch(c.spec as SketchSpec);
+      expect(sameRockerSpec(parseRockerNote(formatRockerNote(s)), s), c.label).toBe(true);
+    }
+  });
+
+  it("round-trips every amount from -2\" to +2\" by 1/16\" on both ends, with and without a bend point", () => {
+    for (let k = -32; k <= 32; k++) {
+      for (const end of ["nose", "tail"] as const) {
+        for (const fromTipIn of [undefined, 18]) {
+          const change: RockerChange =
+            fromTipIn === undefined
+              ? { end, amount: inchesToMm(k / 16) }
+              : { end, amount: inchesToMm(k / 16), fromTip: inchesToMm(fromTipIn) };
+          const s = spec(change);
+          expect(sameRockerSpec(parseRockerNote(formatRockerNote(s)), s), `${k}/16 ${end} ${fromTipIn}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("reads the bare words for natural, and refuses what is not a plain change", () => {
+    for (const text of ["Natural", "NAT", "nat", "", "  "]) expect(parseRockerNote(text), text).toEqual({ changes: [] });
+    for (const text of ["Hawaii", "94B B/C", 'TM Flat +3/4"T24"', '-1/8"N12" -1/8"N6" -1/4"N3"']) {
+      expect(parseRockerNote(text), text).toBeNull();
+    }
+  });
+});
+
+describe("the figures as ordered (D-03)", () => {
+  const keys = Object.keys(CATALOG_STATION_LABELS) as (keyof typeof CATALOG_STATION_LABELS)[];
+
+  it.each(CASE_ROWS)("%s: printed + bend at each printed station, thickness and width untouched", (_, c) => {
+    const copy = GOLDEN_COPY[c.board];
+    const s = normalizeSpec(fromSketch(c.spec as SketchSpec), copy.lengthMm);
+    const printed = printedBlankStations(copy);
+    const ordered = customPrintedStations(copy, s);
+    for (const key of keys) {
+      const station = copy.stations.find((st) => st.label === CATALOG_STATION_LABELS[key])!;
+      expect(ordered[key].thickness).toBe(printed[key].thickness);
+      expect(ordered[key].width).toBe(printed[key].width);
+      expect(ordered[key].rocker).toBe(
+        printed[key].rocker === null ? null : printed[key].rocker! + bendAt(s, copy.lengthMm, station.fromTailMm),
+      );
+    }
+    if (isNaturalSpec(s)) expect(ordered).toEqual(printed);
+  });
+
+  it("a printed dash stays a dash", () => {
+    const copy: BlankRecord = {
+      ...LONG,
+      stations: LONG.stations.map((st) => (st.label === "N12" ? { ...st, rockerMm: null } : st)),
+    };
+    const ordered = customPrintedStations(copy, spec(nose(0.5)));
+    expect(ordered.nose12.rocker).toBeNull();
+    expect(ordered.noseTip.rocker).not.toBeNull();
+  });
+
+  it.each(BLANKS)("%s: orderedTipRockers is the printed tips for a natural blank and the tips as ordered for a bent one", (_, copy) => {
+    const natural = prepareBlank(copy);
+    expect(orderedTipRockers(natural)).toEqual(blankTipRockers(natural));
+    const s = spec(nose(0.5), nose(0.5, 18), tail(-0.25, 18));
+    const bent = withCustomRocker(natural, s);
+    const ordered = customPrintedStations(copy, rockerSpecOf(bent));
+    expect(orderedTipRockers(bent)).toEqual({ nose: ordered.noseTip.rocker, tail: ordered.tailTip.rocker });
+  });
+});
+
+describe("the note's parts and the blank's two-line name (D-02)", () => {
+  it.each(CASE_ROWS)("%s: the parts join to the note, first changes order 1 and second order 2", (_, c) => {
+    const s = fromSketch(c.spec as SketchSpec);
+    const parts = rockerNoteParts(s);
+    expect(parts.map((p) => p.text).join(" ")).toBe(formatRockerNote(s));
+    for (const end of ["nose", "tail"] as const) {
+      expect(parts.filter((p) => p.end === end).map((p) => p.order)).toEqual(
+        (c.spec as SketchSpec)[end].map((_, i) => (i === 0 ? 1 : 2)),
+      );
+    }
+  });
+
+  it("writes the founder's example", () => {
+    expect(formatRockerNote(spec(nose(-0.25, 18), tail(0.125, 36), tail(0.125, 18)))).toBe('-1/4"N18" +1/8"T36" +1/8"T18"');
+    expect(formatRockerNote(undefined)).toBe("");
+  });
+
+  it("names a blank on two lines, on one, with its maker, and as a star", () => {
+    const s = spec(nose(-0.25, 18), tail(0.125, 36));
+    expect(blankDisplayLines(LONG)).toEqual([LONG.name, "Natural"]);
+    expect(blankDisplayLines(LONG, s)).toEqual([LONG.name, formatRockerNote(s)]);
+    expect(blankDisplayName(LONG)).toBe(`${LONG.name} Natural`);
+    expect(blankDisplayName(LONG, s)).toBe(`${LONG.name} ${formatRockerNote(s)}`);
+    expect(blankDisplayName(LONG, undefined, { vendor: true })).toBe(`${LONG.vendor} ${LONG.name} Natural`);
+    expect(blankDisplayName(LONG, s, { vendor: true })).toBe(`${LONG.vendor} ${LONG.name} ${formatRockerNote(s)}`);
+    expect(blankStarIdentity(LONG)).toEqual([LONG.vendor, LONG.name]);
+    expect(blankStarIdentity(LONG, spec())).toEqual([LONG.vendor, LONG.name]);
+    expect(blankStarIdentity(LONG, s)).toEqual([LONG.vendor, blankDisplayName(LONG, s)]);
+    expect(starKey(...blankStarIdentity(LONG))).toBe(starKey(LONG.vendor, LONG.name));
+  });
+});
+
+describe("the popup's draft rules (D-05, P-9)", () => {
+  const prepared = GOLDEN_PREPARED.longboard;
+  const L = prepared.lengthMm;
+  const centreIn = Math.floor(mmToInches(mm(L / 2)) + 1e-9);
+
+  it("a natural spec drafts as one zero row per end at the centre", () => {
+    expect(draftFromSpec(undefined, L)).toEqual(NATURAL_DRAFT);
+    expect(draftFromSpec(spec(), L)).toEqual(NATURAL_DRAFT);
+  });
+
+  it.each(CASE_ROWS)("%s: draft and back is the same spec", (_, c) => {
+    const copy = GOLDEN_COPY[c.board];
+    const s = fromSketch(c.spec as SketchSpec);
+    expect(sameRockerSpec(specFromDraft(draftFromSpec(s, copy.lengthMm), copy.lengthMm), s, copy.lengthMm)).toBe(true);
+  });
+
+  it("bendStartRange: a first row runs 3\" to the centre, a second 3\" to one inch nearer the tip than the first", () => {
+    const one: RockerDraft = { nose: [{ amount: inchesToMm(0.5), fromTipIn: 24 }], tail: NATURAL_DRAFT.tail };
+    expect(bendStartRange(L, one, "nose", 0)).toEqual({ min: 3, max: centreIn, centreAt: centreIn });
+    const two: RockerDraft = { ...one, nose: [...one.nose, { amount: inchesToMm(0.25), fromTipIn: 12 }] };
+    expect(bendStartRange(L, two, "nose", 0)).toEqual({ min: 4, max: centreIn, centreAt: centreIn });
+    expect(bendStartRange(L, two, "nose", 1)).toEqual({ min: 3, max: 23, centreAt: null });
+    const fromCentre: RockerDraft = { ...two, nose: [{ amount: inchesToMm(0.5), fromTipIn: null }, two.nose[1]] };
+    expect(bendStartRange(L, fromCentre, "nose", 1)).toEqual({ min: 3, max: centreIn - 1, centreAt: null });
+  });
+
+  it("withDraftAmount never goes below the row's floor nor above +2\"", () => {
+    const short = GOLDEN_PREPARED.shortboard;
+    const down = withDraftAmount(short, NATURAL_DRAFT, "tail", 0, inchesToMm(-2), IMPERIAL_STEP);
+    expect(down.tail[0].amount).toBe(draftFloor(short, down, "tail", 0, IMPERIAL_STEP));
+    expect(down.tail[0].amount).toBeGreaterThan(-ROCKER_CHANGE_MAX_MM);
+    const up = withDraftAmount(short, NATURAL_DRAFT, "nose", 0, inchesToMm(3), IMPERIAL_STEP);
+    expect(up.nose[0].amount).toBe(ROCKER_CHANGE_MAX_MM);
+    const mid = withDraftAmount(short, NATURAL_DRAFT, "nose", 0, inchesToMm(0.5), IMPERIAL_STEP);
+    expect(mid.nose[0].amount).toBe(inchesToMm(0.5));
+    expect(NATURAL_DRAFT.nose[0].amount).toBe(0);
+  });
+
+  it("withDraftBendStart on a first row pushes a second row ahead of it and re-clamps every amount", () => {
+    const draft: RockerDraft = {
+      nose: [
+        { amount: inchesToMm(0.5), fromTipIn: 24 },
+        { amount: inchesToMm(0.25), fromTipIn: 18 },
+      ],
+      tail: NATURAL_DRAFT.tail,
+    };
+    const moved = withDraftBendStart(prepared, draft, "nose", 0, 12, IMPERIAL_STEP);
+    expect(moved.nose[0].fromTipIn).toBe(12);
+    expect(moved.nose[1].fromTipIn).toBe(11);
+    const toCentre = withDraftBendStart(prepared, draft, "nose", 0, centreIn + 5, IMPERIAL_STEP);
+    expect(toCentre.nose[0].fromTipIn).toBeNull();
+    expect(toCentre.nose[1].fromTipIn).toBe(18);
+    const tooNear = withDraftBendStart(prepared, draft, "nose", 1, 30, IMPERIAL_STEP);
+    expect(tooNear.nose[1].fromTipIn).toBe(23);
+    // A lowered tail that sat at its floor from the centre is re-clamped when its bend moves.
+    const short = GOLDEN_PREPARED.shortboard;
+    const low = withDraftAmount(short, NATURAL_DRAFT, "tail", 0, inchesToMm(-2), IMPERIAL_STEP);
+    const lowMoved = withDraftBendStart(short, low, "tail", 0, 12, IMPERIAL_STEP);
+    for (const end of ["nose", "tail"] as const) {
+      lowMoved[end].forEach((row, i) => expect(row.amount).toBeGreaterThanOrEqual(draftFloor(short, lowMoved, end, i, IMPERIAL_STEP)));
+    }
+  });
+
+  it("withSecondChange adds +1/8\" from 18\" in, or the nearest allowed point, and moves a first row at 3\" to 4\" (P-9)", () => {
+    const fromCentre = withSecondChange(prepared, NATURAL_DRAFT, "nose", IMPERIAL_STEP);
+    expect(fromCentre.nose).toEqual([
+      { amount: 0, fromTipIn: null },
+      { amount: inchesToMm(1 / 8), fromTipIn: 18 },
+    ]);
+    const near: RockerDraft = { nose: NATURAL_DRAFT.nose, tail: [{ amount: inchesToMm(0.25), fromTipIn: 12 }] };
+    expect(withSecondChange(prepared, near, "tail", IMPERIAL_STEP).tail[1]).toEqual({ amount: inchesToMm(1 / 8), fromTipIn: 11 });
+    const atThree: RockerDraft = { nose: [{ amount: inchesToMm(0.25), fromTipIn: 3 }], tail: NATURAL_DRAFT.tail };
+    const added = withSecondChange(prepared, atThree, "nose", IMPERIAL_STEP);
+    expect(added.nose.map((row) => row.fromTipIn)).toEqual([4, 3]);
+    expect(withSecondChange(prepared, added, "nose", IMPERIAL_STEP)).toBe(added);
+  });
+
+  it("withoutChange removes a row and never leaves an end with none", () => {
+    const two = withSecondChange(prepared, NATURAL_DRAFT, "tail", IMPERIAL_STEP);
+    const one = withoutChange(prepared, two, "tail", 0, IMPERIAL_STEP);
+    expect(one.tail).toEqual([{ amount: inchesToMm(1 / 8), fromTipIn: 18 }]);
+    const none = withoutChange(prepared, one, "tail", 0, IMPERIAL_STEP);
+    expect(none.tail).toEqual([{ amount: 0, fromTipIn: null }]);
   });
 });

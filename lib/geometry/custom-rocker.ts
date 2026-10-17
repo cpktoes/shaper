@@ -26,9 +26,11 @@
  * place an inch figure is shown to a Metric shaper, by the founder's decision (D-01).
  */
 import type { BlankRecord, BoardBlank } from "./blank";
-import { levelCurve, prepareBlank, type PreparedBlank } from "./blank-fit";
+import { blankTipRockers, levelCurve, prepareBlank, type PreparedBlank } from "./blank-fit";
+import { CATALOG_STATION_LABELS, printedBlankStations, type PrintedBlankValues } from "./board-profile";
+import type { FoilStationKey } from "./foil";
 import { preparePchip } from "./pchip";
-import { type Mm, inchesToMm, mm, mmToInches } from "./units";
+import { type Mm, formatSignedInchesFraction, inchesToMm, mm, mmToInches } from "./units";
 
 /** One change to the blank's natural rocker, in the makers' own terms (D-01). */
 export interface RockerChange {
@@ -279,4 +281,383 @@ export function prepareBoardBlank(
   prepare: (record: BlankRecord) => PreparedBlank = prepareBlank,
 ): PreparedBlank {
   return withCustomRocker(prepare(blank.copy), blank.rocker);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The floor (D-06)
+// ---------------------------------------------------------------------------------------------
+
+/** The floor's scan: every 1/16" along the blank, its nose tip, and every station the catalogue printed. */
+function floorScanPoints(prepared: PreparedBlank): number[] {
+  const L = prepared.lengthMm;
+  const xs: number[] = [];
+  for (let k = 0; k * ROCKER_KNOT_STEP_MM < L; k++) xs.push(k * ROCKER_KNOT_STEP_MM);
+  xs.push(L);
+  for (const station of prepared.record.stations) {
+    if (station.fromTailMm >= 0 && station.fromTailMm <= L) xs.push(station.fromTailMm);
+  }
+  return xs;
+}
+
+/**
+ * The lowest `change` may go — "A negative rocker where the nose or tail would be below the
+ * centerpoint is not a realistic board" (the founder, 2026-10-16, D-06). With every other change in
+ * `others` applied, the natural rocker plus those changes must stay at or above the blank's low point
+ * wherever this change has a share of at least `ROCKER_FLOOR_SHARE`: the floor is the largest lowering
+ * that keeps it there, `−min(have / u²)` over the scan, rounded down to the slider's step (`stepMm`:
+ * 1/16" in Imperial, 1 mm in Metric — P-1), never below −2" and never above +2". The sketch's
+ * `floorOf`, run on the app's own natural curve.
+ */
+export function floorOf(prepared: PreparedBlank, change: RockerChange, others: BlankRockerSpec, stepMm: Mm): Mm {
+  const base = naturalOf(prepared);
+  const L = base.lengthMm;
+  let worst = Infinity;
+  for (const x of floorScanPoints(base)) {
+    const u = shareAt(change, L, x);
+    if (u < ROCKER_FLOOR_SHARE) continue;
+    const have = base.rocker.sample(x) + bendAt(others, L, x);
+    worst = Math.min(worst, have / (u * u));
+  }
+  const floor = -Math.floor(worst / stepMm) * stepMm;
+  return mm(Math.min(ROCKER_CHANGE_MAX_MM, Math.max(-ROCKER_CHANGE_MAX_MM, floor)));
+}
+
+// ---------------------------------------------------------------------------------------------
+// The popup's draft (D-05, P-9) — plan 02 wires these to the Customize Rocker rows
+// ---------------------------------------------------------------------------------------------
+
+/** One change row in the popup: its amount, and where its bend starts in whole inches in from its tip. */
+export interface DraftChange {
+  amount: Mm;
+  /** Whole inches in from the tip; null = the centre (a first row only). */
+  fromTipIn: number | null;
+}
+
+/** The popup's rows: one or two per end, the first nearer the centre. */
+export interface RockerDraft {
+  nose: DraftChange[];
+  tail: DraftChange[];
+}
+
+/** The draft of a natural blank: one zero row per end, bending from the centre. */
+export const NATURAL_DRAFT: RockerDraft = {
+  nose: [{ amount: mm(0), fromTipIn: null }],
+  tail: [{ amount: mm(0), fromTipIn: null }],
+};
+
+/** A new second change: +1/8" from 18" in, or the nearest point a second change may sit (P-9). */
+const SECOND_CHANGE_AMOUNT_IN = 1 / 8;
+const SECOND_CHANGE_FROM_TIP_IN = 18;
+
+type End = "nose" | "tail";
+
+function rowChange(end: End, row: DraftChange): RockerChange {
+  return row.fromTipIn === null
+    ? { end, amount: row.amount }
+    : { end, amount: row.amount, fromTip: inchesToMm(row.fromTipIn) };
+}
+
+function copyDraft(draft: RockerDraft): RockerDraft {
+  return { nose: draft.nose.map((row) => ({ ...row })), tail: draft.tail.map((row) => ({ ...row })) };
+}
+
+/** The popup's rows for a spec: its changes, normalised; an end with none gets one zero row at the centre. */
+export function draftFromSpec(spec: BlankRockerSpec | undefined, lengthMm: Mm): RockerDraft {
+  const s = normalizeSpec(spec, lengthMm);
+  const rows = (end: End): DraftChange[] => {
+    const own = s.changes
+      .filter((change) => change.end === end)
+      .map((change) => ({
+        amount: change.amount,
+        fromTipIn: change.fromTip === undefined ? null : Math.round(mmToInches(change.fromTip)),
+      }));
+    return own.length > 0 ? own : [{ amount: mm(0), fromTipIn: null }];
+  };
+  return { nose: rows("nose"), tail: rows("tail") };
+}
+
+/** The spec the popup's rows describe: zero rows dropped, then `normalizeSpec`. */
+export function specFromDraft(draft: RockerDraft, lengthMm: Mm): BlankRockerSpec {
+  const changes: RockerChange[] = [];
+  for (const end of ["nose", "tail"] as const) {
+    for (const row of draft[end]) if (Math.abs(row.amount) >= ZERO_AMOUNT_MM) changes.push(rowChange(end, row));
+  }
+  return normalizeSpec({ changes }, lengthMm);
+}
+
+/**
+ * Where a row's Bend starts slider may sit, in whole inches in from its tip (D-05, P-9). A first row
+ * runs from 3" to the centre's whole inch (`centreAt` — reaching it means "the centre"), from 4"
+ * while its end has a second change so the second always has 3" to sit at. A second row runs from 3"
+ * to one inch nearer the tip than the first; it never sits at the centre (`centreAt` null).
+ */
+export function bendStartRange(
+  lengthMm: Mm,
+  draft: RockerDraft,
+  end: End,
+  index: number,
+): { min: number; max: number; centreAt: number | null } {
+  const centreIn = centreWholeInches(lengthMm);
+  if (index === 0) {
+    const min = draft[end].length > 1 ? ROCKER_BEND_MIN_FROM_TIP_IN + 1 : ROCKER_BEND_MIN_FROM_TIP_IN;
+    return { min, max: centreIn, centreAt: centreIn };
+  }
+  const firstIn = draft[end][0].fromTipIn ?? centreIn;
+  return { min: ROCKER_BEND_MIN_FROM_TIP_IN, max: Math.min(centreIn - 1, firstIn - 1), centreAt: null };
+}
+
+/** The floor of one row with every other row of the draft applied (`floorOf`). */
+export function draftFloor(prepared: PreparedBlank, draft: RockerDraft, end: End, index: number, stepMm: Mm): Mm {
+  const others: RockerChange[] = [];
+  for (const e of ["nose", "tail"] as const) {
+    draft[e].forEach((row, i) => {
+      if (!(e === end && i === index)) others.push(rowChange(e, row));
+    });
+  }
+  return floorOf(prepared, rowChange(end, draft[end][index]), { changes: others }, stepMm);
+}
+
+/** Every row's amount held between its floor and +2" — first row then second, nose then tail. */
+function clampDraftAmounts(prepared: PreparedBlank, draft: RockerDraft, stepMm: Mm): RockerDraft {
+  const out = copyDraft(draft);
+  for (const end of ["nose", "tail"] as const) {
+    out[end].forEach((row, index) => {
+      const floor = draftFloor(prepared, out, end, index, stepMm);
+      row.amount = mm(Math.max(floor, Math.min(ROCKER_CHANGE_MAX_MM, row.amount)));
+    });
+  }
+  return out;
+}
+
+/** One row's Rocker slider moved: never below its floor nor above +2"; every other row re-clamped. */
+export function withDraftAmount(
+  prepared: PreparedBlank,
+  draft: RockerDraft,
+  end: End,
+  index: number,
+  amount: Mm,
+  stepMm: Mm,
+): RockerDraft {
+  const out = copyDraft(draft);
+  out[end][index].amount = amount;
+  const floor = draftFloor(prepared, out, end, index, stepMm);
+  out[end][index].amount = mm(Math.max(floor, Math.min(ROCKER_CHANGE_MAX_MM, amount)));
+  return clampDraftAmounts(prepared, out, stepMm);
+}
+
+/**
+ * One row's Bend starts slider moved, held inside `bendStartRange` (a first row at its centre end
+ * reads the centre). Moving a first row pushes an existing second row to at least one inch nearer the
+ * tip (D-05: "moving the first pushes the second ahead of it"); every amount is then re-clamped to its
+ * floor, because a bend that moves changes what every row may reach.
+ */
+export function withDraftBendStart(
+  prepared: PreparedBlank,
+  draft: RockerDraft,
+  end: End,
+  index: number,
+  fromTipIn: number,
+  stepMm: Mm,
+): RockerDraft {
+  const L = prepared.lengthMm;
+  const out = copyDraft(draft);
+  const range = bendStartRange(L, out, end, index);
+  const whole = Math.max(range.min, Math.min(range.max, Math.round(fromTipIn)));
+  out[end][index].fromTipIn = range.centreAt !== null && whole >= range.centreAt ? null : whole;
+  if (index === 0 && out[end].length > 1) {
+    const second = out[end][1];
+    const cap = bendStartRange(L, out, end, 1).max;
+    if (second.fromTipIn === null || second.fromTipIn > cap) second.fromTipIn = Math.max(ROCKER_BEND_MIN_FROM_TIP_IN, cap);
+  }
+  return clampDraftAmounts(prepared, out, stepMm);
+}
+
+/**
+ * "+ Add a second nose/tail change": a second row at +1/8" from 18" in, or the nearest point a second
+ * change may sit; a first row at 3" moves to 4" so the second has 3" (P-9). An end that already has
+ * two rows is returned unchanged.
+ */
+export function withSecondChange(prepared: PreparedBlank, draft: RockerDraft, end: End, stepMm: Mm): RockerDraft {
+  if (draft[end].length >= MAX_CHANGES_PER_END) return draft;
+  const out = copyDraft(draft);
+  const first = out[end][0];
+  if (first.fromTipIn !== null && first.fromTipIn <= ROCKER_BEND_MIN_FROM_TIP_IN) {
+    first.fromTipIn = ROCKER_BEND_MIN_FROM_TIP_IN + 1;
+  }
+  out[end].push({ amount: inchesToMm(SECOND_CHANGE_AMOUNT_IN), fromTipIn: SECOND_CHANGE_FROM_TIP_IN });
+  const range = bendStartRange(prepared.lengthMm, out, end, 1);
+  out[end][1].fromTipIn = Math.max(range.min, Math.min(range.max, SECOND_CHANGE_FROM_TIP_IN));
+  return clampDraftAmounts(prepared, out, stepMm);
+}
+
+/** A row's Remove: the row goes; an end never has fewer than one row (a zero row at the centre). */
+export function withoutChange(
+  prepared: PreparedBlank,
+  draft: RockerDraft,
+  end: End,
+  index: number,
+  stepMm: Mm,
+): RockerDraft {
+  const out = copyDraft(draft);
+  out[end].splice(index, 1);
+  if (out[end].length === 0) out[end].push({ amount: mm(0), fromTipIn: null });
+  return clampDraftAmounts(prepared, out, stepMm);
+}
+
+// ---------------------------------------------------------------------------------------------
+// The figures as ordered (D-03)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The blank's five catalogue stations (N0, N12, C, T12, T0) as ordered (D-03): the printed figures,
+ * each printed rocker raised by the bend at that station — exact, a printed dash still a dash.
+ * Thickness and width are the printed ones, untouched. A natural spec gives `printedBlankStations`.
+ */
+export function customPrintedStations(
+  copy: BlankRecord,
+  spec?: BlankRockerSpec | null,
+): Record<FoilStationKey, PrintedBlankValues> {
+  const printed = printedBlankStations(copy);
+  const s = normalizeSpec(spec ?? undefined, copy.lengthMm);
+  if (isNaturalSpec(s)) return printed;
+  const out = {} as Record<FoilStationKey, PrintedBlankValues>;
+  for (const key of Object.keys(CATALOG_STATION_LABELS) as FoilStationKey[]) {
+    const station = copy.stations.find((st) => st.label === CATALOG_STATION_LABELS[key]);
+    const values = printed[key];
+    out[key] = {
+      ...values,
+      rocker:
+        values.rocker === null || !station ? values.rocker : mm(values.rocker + bendAt(s, copy.lengthMm, station.fromTailMm)),
+    };
+  }
+  return out;
+}
+
+/**
+ * The nose and tail rocker every quoted figure, filter and sort shares — ve9's "the printed figure
+ * everywhere", as ordered: for a bent blank the printed N0 / T0 plus the bend, falling back to the
+ * bent levelled curve's tip where nothing is printed; a natural blank is `blankTipRockers` itself.
+ */
+export function orderedTipRockers(prepared: PreparedBlank): { nose: Mm; tail: Mm } {
+  const spec = rockerSpecOf(prepared);
+  if (!spec) return blankTipRockers(prepared);
+  const stations = customPrintedStations(prepared.record, spec);
+  return {
+    nose: stations.noseTip.rocker ?? mm(prepared.rocker.sample(prepared.lengthMm)),
+    tail: stations.tailTip.rocker ?? mm(prepared.rocker.sample(0)),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The note, written and read the US Blanks way (D-01, D-02, P-1, P-10)
+// ---------------------------------------------------------------------------------------------
+
+/** One change as the note writes it, for plan 02's coloured header (first changes red, second blue). */
+export interface RockerNotePart {
+  text: string;
+  end: End;
+  order: 1 | 2;
+}
+
+/**
+ * The note's parts, nose first then tail, each end in its written order: the amount as a signed
+ * 1/16" fraction, `N` or `T`, and the bend point in whole inches when it is not the centre. A change
+ * whose amount rounds to 0" is not written.
+ */
+export function rockerNoteParts(spec?: BlankRockerSpec | null): RockerNotePart[] {
+  if (!spec) return [];
+  const parts: RockerNotePart[] = [];
+  for (const end of ["nose", "tail"] as const) {
+    let order = 0;
+    for (const change of spec.changes) {
+      if (change.end !== end) continue;
+      const amount = formatSignedInchesFraction(change.amount, 16);
+      if (amount === '0"') continue;
+      order++;
+      const at = change.fromTip === undefined ? "" : `${Math.round(mmToInches(change.fromTip))}"`;
+      parts.push({ text: `${amount}${end === "nose" ? "N" : "T"}${at}`, end, order: order === 1 ? 1 : 2 });
+    }
+  }
+  return parts;
+}
+
+/**
+ * The blank's rocker as US Blanks writes it — `-1/4"N18" +1/8"T36" +1/8"T18"`; `""` for natural.
+ * Always in inches, in Metric too: it is the maker's order code, like the blank's name (D-01) — the
+ * one place an inch figure is shown to a Metric shaper. An amount is rounded to the nearest 1/16"
+ * (P-1), so a Metric amount reads within half a sixteenth (0.79 mm) of the stored figure.
+ */
+export function formatRockerNote(spec?: BlankRockerSpec | null): string {
+  return rockerNoteParts(spec)
+    .map((part) => part.text)
+    .join(" ");
+}
+
+/** One change in a note — the sketch's own pattern (template.html `parseNote`). */
+const NOTE_CHANGE = /([+-])\s*(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*"?\s*([NT])(?:\s*(\d+)\s*"?)?/gi;
+
+/** A note's amount in inches: a whole number, a fraction, or a whole number and a fraction. */
+function noteAmountIn(text: string): number {
+  if (!text.includes("/")) return Number(text);
+  return text
+    .split(/\s+/)
+    .reduce((sum, part) => sum + (part.includes("/") ? Number(part.split("/")[0]) / Number(part.split("/")[1]) : Number(part)), 0);
+}
+
+/**
+ * Reads a note back (P-10). `""`, `Natural` and `NAT` (any case) read as the natural rocker. Otherwise
+ * the note is read only when every character but spaces is a change in the sketch's own pattern, there
+ * is at least one change, and no end has more than two — anything else (a named rocker, "another
+ * blank's curve", a natural line with figures) is `null`. Nose changes come first, each end in the
+ * order written; amounts and bend points through `inchesToMm`. Not normalised: the reader reports what
+ * the note says.
+ */
+export function parseRockerNote(text: string): BlankRockerSpec | null {
+  const t = text.trim();
+  if (t === "" || /^(natural|nat)$/i.test(t)) return { changes: [] };
+  if (t.replace(NOTE_CHANGE, "").trim() !== "") return null;
+  const ends: Record<End, RockerChange[]> = { nose: [], tail: [] };
+  for (const m of t.matchAll(NOTE_CHANGE)) {
+    const end: End = m[3].toUpperCase() === "N" ? "nose" : "tail";
+    const amount = inchesToMm((m[1] === "-" ? -1 : 1) * noteAmountIn(m[2]));
+    ends[end].push(m[4] === undefined ? { end, amount } : { end, amount, fromTip: inchesToMm(Number(m[4])) });
+  }
+  if (ends.nose.length + ends.tail.length === 0) return null;
+  if (ends.nose.length > MAX_CHANGES_PER_END || ends.tail.length > MAX_CHANGES_PER_END) return null;
+  return { changes: [...ends.nose, ...ends.tail] };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The blank's name (D-02)
+// ---------------------------------------------------------------------------------------------
+
+type BlankIdentity = Pick<BlankRecord, "vendor" | "name">;
+
+/** The blank's two lines: its name, then its rocker — `Natural` written out, or the note (D-02). */
+export function blankDisplayLines(copy: BlankIdentity, spec?: BlankRockerSpec | null): [string, string] {
+  const note = formatRockerNote(spec);
+  return [copy.name, note === "" ? "Natural" : note];
+}
+
+/**
+ * The blank's name on one line — `9'4"B Natural`, `9'4"B -1/4"N18"` — and with the maker for the
+ * order form (`{ vendor: true }`: `US Blanks 9'4"B Natural`).
+ */
+export function blankDisplayName(
+  copy: BlankIdentity,
+  spec?: BlankRockerSpec | null,
+  options: { vendor?: boolean } = {},
+): string {
+  const line = blankDisplayLines(copy, spec).join(" ");
+  return options.vendor ? `${copy.vendor} ${line}` : line;
+}
+
+/**
+ * The blank's identity for a star: a natural blank's is `[maker, name]` exactly, so every existing
+ * star keeps working; a blank with a custom rocker's is `[maker, its one-line name]`, note included
+ * (the brief's "Storage" section).
+ */
+export function blankStarIdentity(copy: BlankIdentity, spec?: BlankRockerSpec | null): [string, string] {
+  if (formatRockerNote(spec) === "") return [copy.vendor, copy.name];
+  return [copy.vendor, blankDisplayName(copy, spec)];
 }
