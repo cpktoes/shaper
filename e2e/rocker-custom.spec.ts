@@ -193,6 +193,38 @@ test.describe("Customize Rocker on a computer", () => {
     expect(await stored(page, STARRED_BLANKS_KEY)).toEqual([[vendor, `${name} +1/2"N`]]);
   });
 
+  test("a tail Bend starts slider runs centre to tail, left to right, the way the drawing lies (fast task 170)", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const dialog = await openCustomizeRocker(page);
+
+    // A +1/8" tail change from the centre, so the bend has a mark to watch.
+    await pressUntil(page, dialog.getByRole("slider", { exact: true, name: "Tail rocker change" }), "ArrowRight", '+1/8"');
+    const tailBend = dialog.getByRole("slider", { exact: true, name: "Tail bend starts" });
+    const tailRow = dialog.locator("[data-custom-rocker-change='tail-1']");
+    // At the centre the thumb sits at the LEFT end, under the "At the centre" hint; "Near the tail" is on the right.
+    await expect(tailBend).toHaveAttribute("aria-valuetext", "At the centre");
+    expect(await tailBend.getAttribute("aria-valuenow")).toBe(await tailBend.getAttribute("min"));
+    await expect(tailRow).toContainText("At the centre");
+    await expect(tailRow).toContainText("Near the tail");
+    const noseRow = dialog.locator("[data-custom-rocker-change='nose-1']");
+    await expect(noseRow).toContainText("Near the nose");
+
+    // Pushing the thumb right moves the bend toward the tail: fewer inches in, and the mark further right.
+    await tailBend.focus();
+    await page.keyboard.press("ArrowRight");
+    const mark = dialog.locator('[data-rocker-overlay="bend-mark"]').first();
+    await expect(mark).toHaveCount(1);
+    const first = inches((await tailRow.locator("[data-slider-value-box]").nth(1).innerText()).replace(/ in$/, ""));
+    const firstX = (await settledBox(mark)).x;
+    await page.keyboard.press("ArrowRight");
+    await expect(async () => {
+      const now = inches((await tailRow.locator("[data-slider-value-box]").nth(1).innerText()).replace(/ in$/, ""));
+      expect(now).toBe(first - 1);
+      expect((await mark.boundingBox())!.x).toBeGreaterThan(firstX);
+    }).toPass({ timeout: 5_000 });
+  });
+
   test("the popup's size and layout, a second change that stacks, the floor, the colours, Show my board and the zoom", async ({ page }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);

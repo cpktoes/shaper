@@ -38,6 +38,8 @@ import {
   amountHints,
   BEND_SLIDER_LABEL,
   bendSliderName,
+  bendSliderPosition,
+  bendStartFromSlider,
   bendStartHints,
   bendStartText,
   CUSTOM_ROCKER_FIT_LINE,
@@ -95,7 +97,7 @@ export function CustomRockerRows({ prepared, draft, onDraftChange, system }: Cus
     const [lessHint, moreHint] = amountHints(atFloor);
     const range = bendStartRange(L, draft, end, index);
     const bendValue = row.fromTipIn ?? range.centreAt ?? range.max;
-    const [nearHint, farHint] = bendStartHints(end, index);
+    const [leftHint, rightHint] = bendStartHints(end, index);
     const amountText = rockerAmountText(row.amount, system);
     const bendText = bendStartText(row.fromTipIn, system);
     return (
@@ -135,20 +137,25 @@ export function CustomRockerRows({ prepared, draft, onDraftChange, system }: Cus
             rightHint={moreHint}
             onValueChange={(v) => onDraftChange(withDraftAmount(prepared, draft, end, index, amount.toMm(v), stepMm))}
           />
+          {/* The thumb runs the way the drawing lies (fast task 170): a tail slider is mirrored over its
+              range, so pushing it right pushes the bend toward the tail on the right of the drawing;
+              `bendStartFromSlider` turns the thumb back into inches in from the tip. */}
           <SliderRow
             className="min-w-0 flex-[3_1_0%]"
             label={BEND_SLIDER_LABEL}
             valueBox={bendText}
-            value={bendValue}
+            value={bendSliderPosition(end, range, bendValue)}
             min={range.min}
             max={range.max}
             step={1}
             disabled={locked}
             sliderLabel={bendSliderName(end, index)}
             sliderValueText={bendText}
-            leftHint={nearHint}
-            rightHint={farHint}
-            onValueChange={(v) => onDraftChange(withDraftBendStart(prepared, draft, end, index, v, stepMm))}
+            leftHint={leftHint}
+            rightHint={rightHint}
+            onValueChange={(v) =>
+              onDraftChange(withDraftBendStart(prepared, draft, end, index, bendStartFromSlider(end, range, v), stepMm))
+            }
           />
         </div>
       </div>

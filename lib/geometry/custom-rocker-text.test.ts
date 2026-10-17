@@ -7,6 +7,8 @@ import {
   addSecondChangeLabel,
   amountHints,
   bendSliderName,
+  bendSliderPosition,
+  bendStartFromSlider,
   bendStartHints,
   bendStartText,
   CUSTOM_ROCKER_FIT_LINE,
@@ -76,9 +78,29 @@ describe("the rows (D-05, D-06)", () => {
     expect(amountHints(false)).toEqual(["Less", "More"]);
   });
 
-  it("the bend hints run from the tip to the centre", () => {
+  it("the bend hints run the way the drawing lies: nose left to centre, centre to tail right (fast task 170)", () => {
     expect(bendStartHints("nose", 0)).toEqual(["Near the nose", "At the centre"]);
-    expect(bendStartHints("tail", 1)).toEqual(["Near the tail", "Nearer the centre"]);
+    expect(bendStartHints("nose", 1)).toEqual(["Near the nose", "Nearer the centre"]);
+    expect(bendStartHints("tail", 0)).toEqual(["At the centre", "Near the tail"]);
+    expect(bendStartHints("tail", 1)).toEqual(["Nearer the centre", "Near the tail"]);
+  });
+
+  it("a tail Bend starts thumb is mirrored over its range, a nose thumb is not, and both read back exactly (fast task 170)", () => {
+    const range = { min: 3, max: 56 };
+    // Nose: the thumb IS the figure.
+    expect(bendSliderPosition("nose", range, 18)).toBe(18);
+    expect(bendStartFromSlider("nose", range, 18)).toBe(18);
+    // Tail: the left end (min) is the centre, the right end (max) is 3" in from the tail.
+    expect(bendSliderPosition("tail", range, 56)).toBe(3);
+    expect(bendSliderPosition("tail", range, 3)).toBe(56);
+    expect(bendSliderPosition("tail", range, 36)).toBe(23);
+    for (const fromTip of [3, 4, 18, 36, 55, 56]) {
+      expect(bendStartFromSlider("tail", range, bendSliderPosition("tail", range, fromTip))).toBe(fromTip);
+    }
+    // A second change's narrower range mirrors over its own ends.
+    const second = { min: 3, max: 17 };
+    expect(bendSliderPosition("tail", second, 17)).toBe(3);
+    expect(bendStartFromSlider("tail", second, 3)).toBe(17);
   });
 
   it("names every slider for a screen reader", () => {

@@ -63,10 +63,41 @@ export function amountHints(atFloor: boolean): [string, string] {
   return [atFloor ? FLOOR_HINT : "Less", "More"];
 }
 
-/** The two ends of a Bend starts slider's hint line: the tip, then the centre (a first change) or
- * nearer the centre (a second, which never reaches it). */
+/**
+ * The two ends of a Bend starts slider's hint line, in the order the slider runs (fast task 170, the
+ * founder, 2026-10-17: "left pulls the line to the centre, right to the tail"). The slider runs the
+ * way the drawing lies: the nose is drawn on the left, so a nose change's slider runs Near the nose →
+ * At the centre and the thumb moves the bend mark the way it moves itself; the tail is drawn on the
+ * right, so its slider runs At the centre → Near the tail — a thumb pushed right pushes the bend
+ * toward the tail. A second change never reaches the centre, so its centre end reads Nearer the
+ * centre. The stored figure is inches in from the tip either way (`bendSliderPosition`).
+ */
 export function bendStartHints(end: End, index: number): [string, string] {
-  return [`Near the ${END_WORD[end]}`, index === 0 ? "At the centre" : "Nearer the centre"];
+  const tip = `Near the ${END_WORD[end]}`;
+  const centre = index === 0 ? "At the centre" : "Nearer the centre";
+  return end === "nose" ? [tip, centre] : [centre, tip];
+}
+
+/** A Bend starts slider's range, in whole inches in from the tip, as `bendStartRange` gives it. */
+export interface BendSliderRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * Where the thumb sits for a change that starts `fromTipIn` inches in from its tip. A nose slider
+ * reads the figure as it is; a tail slider is mirrored over its range, so the thumb at the left end
+ * means the centre (the range's top) and at the right end the tip (its bottom) — see
+ * `bendStartHints`. `bendStartFromSlider` reads a thumb position back; the two are inverses.
+ */
+export function bendSliderPosition(end: End, range: BendSliderRange, fromTipIn: number): number {
+  return end === "nose" ? fromTipIn : range.min + range.max - fromTipIn;
+}
+
+/** The inches in from the tip that a Bend starts thumb at `position` stands for (the inverse of
+ * `bendSliderPosition`, and the same map, because a mirror is its own inverse). */
+export function bendStartFromSlider(end: End, range: BendSliderRange, position: number): number {
+  return bendSliderPosition(end, range, position);
 }
 
 /** The link that adds a maker's two-point adjustment (D-05). */
