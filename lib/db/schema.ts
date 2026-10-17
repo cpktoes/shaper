@@ -33,7 +33,9 @@
  * columns it needs — so the existing units and print reads never ask for a column that a
  * not-yet-migrated database doesn't have. Quick task 260926-wmf adds one more nullable text column,
  * `hidden_blank_makers`: the blank makers a shaper has switched off, read through
- * `lib/blank-makers-preference.ts`'s allow-list.
+ * `lib/blank-makers-preference.ts`'s allow-list. Quick task 261016-usz adds another, `starred_blanks`:
+ * the blanks a shaper starred in ROCKER's PICK A BLANK popup, read through
+ * `lib/starred-blanks-preference.ts`'s allow-list.
  *
  * `blanks` (Phase 11) holds the four vendor foam-blank catalogues — one row per blank, public
  * catalogue data that belongs to no shaper, so it has no owner column at all and is read through
@@ -104,6 +106,11 @@ export const userPreferences = pgTable("user_preferences", {
   // board ids (saved boards only). Null = not arranged yet, which is today's automatic order. Read
   // through lib/models/rack-order.ts's allow-list, so a drifted value reads as not arranged.
   rackOrder: text("rack_order"),
+  // Quick task 261016-usz (2026-10-16): the blanks a shaper starred in ROCKER's PICK A BLANK popup, as
+  // JSON text of `[maker, name]` pairs in the order they were starred. Null = never starred on this
+  // account. Read through lib/starred-blanks-preference.ts's allow-list, so a drifted value keeps only
+  // well-formed pairs and malformed text reads as no stars.
+  starredBlanks: text("starred_blanks"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
