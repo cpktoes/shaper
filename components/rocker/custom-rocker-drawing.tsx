@@ -28,7 +28,7 @@ import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-
 import type { PreparedBlank } from "@/lib/geometry/blank-fit";
 import type { BlankRockerSpec } from "@/lib/geometry/custom-rocker";
 import { boardFrameOverlay } from "@/lib/geometry/custom-rocker-art";
-import { OVERLAY_KEY, SHOW_BOARD_LABEL } from "@/lib/geometry/custom-rocker-text";
+import { drawingHeading, OVERLAY_KEY, SHOW_BOARD_LABEL } from "@/lib/geometry/custom-rocker-text";
 import { designSideProfile, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
 import { cn } from "@/lib/utils";
 import { CHIP_CLASS, CHIP_OFF, CHIP_ON } from "./blank-filter-bar";
@@ -77,6 +77,15 @@ export function CustomRockerDrawing({ bent, draftSpec, showBoard, onShowBoardCha
             in (a pinch does the zooming), so the drawing keeps the band — the pointer decides whether
             the control draws, exactly as it does for the page's own (CLAUDE.md "Layout"). */}
         <div className="relative flex min-h-0 flex-1 flex-col">
+          {/* Whose figures the drawing carries (fast task 171). With a mouse it sits in the zoom
+              control's band, top-left; on a touch screen that band is gone, so it takes a line of
+              its own above the drawing. */}
+          <p
+            data-custom-rocker-heading
+            className="absolute top-0 left-0 z-10 text-[10px] font-extrabold tracking-architectural text-surf-ink-muted uppercase coarse:static coarse:mb-1"
+          >
+            {drawingHeading(showBoard)}
+          </p>
           <div className="relative mt-10 min-h-0 flex-1 coarse:mt-0">
             {profile ? (
               <RockerViewer

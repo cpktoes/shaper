@@ -10,6 +10,7 @@ import {
   bendSliderPosition,
   bendStartFromSlider,
   bendStartHints,
+  drawingHeading,
   bendStartText,
   CUSTOM_ROCKER_FIT_LINE,
   customizeButtonLabel,
@@ -83,6 +84,11 @@ describe("the rows (D-05, D-06)", () => {
     expect(bendStartHints("nose", 1)).toEqual(["Near the nose", "Nearer the centre"]);
     expect(bendStartHints("tail", 0)).toEqual(["At the centre", "Near the tail"]);
     expect(bendStartHints("tail", 1)).toEqual(["Nearer the centre", "Near the tail"]);
+  });
+
+  it("the drawing's heading says whose figures it carries (fast task 171)", () => {
+    expect(drawingHeading(false)).toBe("Blank Dimensions");
+    expect(drawingHeading(true)).toBe("Your Board's Dimensions");
   });
 
   it("a tail Bend starts thumb is mirrored over its range, a nose thumb is not, and both read back exactly (fast task 170)", () => {

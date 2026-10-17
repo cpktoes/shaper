@@ -129,6 +129,15 @@ export const OVERLAY_KEY: readonly { text: string; tone?: 1 | 2 }[] = [
 /** The Show my board switch's name. */
 export const SHOW_BOARD_LABEL = "Show my board";
 
+/**
+ * The heading over the popup's drawing, saying whose figures it carries (fast task 171, the founder,
+ * 2026-10-17: "give that template a header … to make it clear"): the blank's own with Show my board
+ * off, the surfboard's with it on (D-07).
+ */
+export function drawingHeading(showBoard: boolean): string {
+  return showBoard ? "Your Board's Dimensions" : "Blank Dimensions";
+}
+
 /** The footer's words (D-09). */
 export const FOOTER_WORDS = {
   cancel: "Cancel",

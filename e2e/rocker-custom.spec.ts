@@ -241,8 +241,9 @@ test.describe("Customize Rocker on a computer", () => {
     const card = (await dialog.locator("[data-custom-rocker-drawing]").boundingBox())!;
     expect(rows.x + rows.width).toBeLessThanOrEqual(card.x + 1);
 
-    // Show my board starts Off: the blank alone, its five readings.
+    // Show my board starts Off: the blank alone, its five readings, under its own heading (fast task 171).
     await expect(dialog.locator("[data-show-board]")).toHaveText("Show my board: Off");
+    await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions");
     await expect(dialog.locator("[data-blank-alone] [data-blank-alone-reading]")).toHaveCount(5);
 
     // +1/2"N, then a second nose change at +1/2" from 18" in: the nose tip rises exactly 1" (D-05).
@@ -291,6 +292,7 @@ test.describe("Customize Rocker on a computer", () => {
     // Show my board On: the board in the bent blank.
     await dialog.locator("[data-show-board]").click();
     await expect(dialog.locator("[data-show-board]")).toHaveText("Show my board: On");
+    await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Your Board's Dimensions");
     await expect(dialog.locator('[data-custom-rocker-drawing] [data-board-silhouette="profile"]')).toBeVisible();
 
     // The page's zoom works on the popup's drawing; 1x puts it back.
