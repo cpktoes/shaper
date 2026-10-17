@@ -97,6 +97,7 @@ import {
 } from "@/lib/geometry/measure-display";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { formatPlacement } from "@/lib/geometry/blank-reasons";
+import { blankDisplayName, rockerSpecOf } from "@/lib/geometry/custom-rocker";
 
 /**
  * The page-2 identification strip's own length figure (D-06's rule): a bare centimetre number on
@@ -276,8 +277,11 @@ export function OrderForm() {
     FIN_SETUPS.find((s) => s.value === effectiveFins.finSetup)?.label ?? effectiveFins.finSetup;
 
   // The blank the board was designed on, named the way ROCKER names it — vendor, then the blank's
-  // own name — then where the board's centre sits on it, so the shop can lay the board on the
-  // blank from the sheet alone. The name is read from the board's own copy of the blank, so the
+  // own name, then its rocker: `Natural`, or the note as ordered from the maker (quick 261016-mkb,
+  // D-02: `US Blanks 9'4"B Natural — centered`). ROCKER and the order form name the blank through the
+  // one helper, `blankDisplayName`, so the two can never disagree; the rocker is the one the side
+  // profile was bent by. Then where the board's centre sits on it, so the shop can lay the board on
+  // the blank from the sheet alone. The name is read from the board's own copy of the blank, so the
   // shop's record names the blank these numbers were cut from even if the catalogue is corrected
   // later. The placement is the side profile's, pulled inside the blank on read — the number
   // ROCKER's Placement label shows — and is worded by the same `formatPlacement`, so the Summary
@@ -287,7 +291,7 @@ export function OrderForm() {
   const blankPlacementWords = blankView ? formatPlacement(blankView.placement, system) : undefined;
   const blankLabel =
     blank && blankView
-      ? `${blank.copy.vendor} ${blank.copy.name} — ${
+      ? `${blankDisplayName(blank.copy, rockerSpecOf(blankView.onBlank.prepared), { vendor: true })} — ${
           blankPlacementWords === "centered" ? "centered" : `center ${blankPlacementWords}`
         }`
       : undefined;

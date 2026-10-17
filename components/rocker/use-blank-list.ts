@@ -23,6 +23,14 @@
  * never re-judges the list and never touches the network. Only the picked blank's own flag is
  * re-checked on a slider move, and that is one sample of one prepared blank (`blank-flag.tsx`).
  *
+ * The shaper's saved blanks (quick 261016-mkb plan 03, D-09, P-19, 2026-10-16) are judged here too,
+ * beside the catalogue and never mixed into it: each saved entry is prepared ONCE — its copy fitted
+ * and bent by its own rocker (`withCustomRocker`), held in a WeakMap on the entry itself — has the
+ * same makers filter applied, and is judged by `listBlanks` with the same board and fit rules, so a
+ * saved blank too short for the board is not listed, exactly like a maker's. The catalogue's own
+ * `list` is untouched by them, so the flag's offer and the button's count line never change (P-19),
+ * and with no saved blanks nothing new is judged.
+ *
  * A hook, not a component: no markup, no copy. The math is all `lib/geometry/blank-fit.ts`.
  */
 
@@ -42,8 +50,10 @@ import {
   type PreparedBlank,
 } from "@/lib/geometry/blank-fit";
 import type { CenterFloorRules } from "@/lib/geometry/blank-reasons";
+import { withCustomRocker } from "@/lib/geometry/custom-rocker";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { mm, type Mm } from "@/lib/geometry/units";
+import type { SavedBlank } from "@/lib/saved-blanks-preference";
 
 /** The catalogue fitted once: every pickable blank prepared, and the record each came from. */
 interface PreparedCatalogue {
@@ -84,6 +94,38 @@ function prepareCatalogue(records: readonly BlankRecord[]): PreparedCatalogue {
   return result;
 }
 
+/**
+ * Each saved blank prepared once, keyed on the saved entry itself (quick 261016-mkb, T-mkb-13): the
+ * browser list re-reads its entries only when storage changes, and the account list only when the
+ * shaper saves or removes one, so a surviving entry keeps its prepared blank. `null` records an
+ * entry that can't be drawn, so it is tried once, not on every render.
+ */
+const savedPreparedCache = new WeakMap<SavedBlank, PreparedBlank | null>();
+
+function prepareSaved(entry: SavedBlank): PreparedBlank | null {
+  const cached = savedPreparedCache.get(entry);
+  if (cached !== undefined) return cached;
+  let blank: PreparedBlank | null = null;
+  if (isPickable(entry.copy)) {
+    // As for the catalogue (WR-04): a saved blank that throws costs only its own card.
+    try {
+      blank = withCustomRocker(prepareBlank(entry.copy), entry.rocker);
+    } catch (error) {
+      console.warn(`Shaper: skipped a saved blank that can't be drawn: ${entry.copy.vendor} ${entry.copy.name}`, error);
+    }
+  }
+  savedPreparedCache.set(entry, blank);
+  return blank;
+}
+
+/** The shaper's saved blanks, judged (quick 261016-mkb, D-09). */
+export interface SavedBlankListState {
+  /** Both groups, judged by the catalogue's own rule on each saved blank's bent copy. */
+  list: BlankListResult;
+  /** The saved entry each judged blank came from — its id, copy and rocker. */
+  entryOf: Map<PreparedBlank, SavedBlank>;
+}
+
 export interface BlankListState extends Omit<PreparedCatalogue, "prepared"> {
   /** The prepared blanks from the makers the shaper shows — every one when all are ticked. */
   prepared: readonly PreparedBlank[];
@@ -99,7 +141,11 @@ export interface BlankListState extends Omit<PreparedCatalogue, "prepared"> {
   ctx: BoardFitContext;
   /** The board as the reason lines name places along it, and its centre (the D-18 sentence quotes it). */
   board: { length: Mm; widePointStation: Mm; centerThickness: Mm };
+  /** The shaper's saved blanks, judged beside the catalogue — never inside `list` (quick 261016-mkb). */
+  saved: SavedBlankListState;
 }
+
+const NO_SAVED_BLANKS: readonly SavedBlank[] = [];
 
 /**
  * How the board is cut from its blank, as the verdicts judge it (Phase 12 D-01, D-04, D-13): the
@@ -130,7 +176,10 @@ export function useCenterFloorRules(): CenterFloorRules {
   return useMemo(() => ({ extraLength, planerMaxDepth, deckSkin }), [extraLength, planerMaxDepth, deckSkin]);
 }
 
-export function useBlankList(records: readonly BlankRecord[]): BlankListState {
+export function useBlankList(
+  records: readonly BlankRecord[],
+  savedBlanks: readonly SavedBlank[] = NO_SAVED_BLANKS,
+): BlankListState {
   const { outline, outlineGeometry, foil, blank } = useDesign();
   const { settings } = useFitDefaults();
   const { deckSkin, tipStyle, fineTuneSurface } = useBoardCut();
@@ -197,6 +246,31 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
     [shown, ctx, extraLength, planerMaxDepth, widthMargin],
   );
 
+  // The shaper's saved blanks (quick 261016-mkb, P-19): prepared once each, the same makers filter,
+  // judged with the same board and rules — and never mixed into `list` above.
+  const savedEntryOf = useMemo(() => {
+    const entryOf = new Map<PreparedBlank, SavedBlank>();
+    for (const entry of savedBlanks) {
+      const blank = prepareSaved(entry);
+      if (blank) entryOf.set(blank, entry);
+    }
+    return entryOf;
+  }, [savedBlanks]);
+  const savedShown = useMemo(
+    () => filterShownBlanks([...savedEntryOf.keys()], hidden, (blank) => blank.record.vendor),
+    [savedEntryOf, hidden],
+  );
+  const saved = useMemo<SavedBlankListState>(
+    () => ({
+      list:
+        savedShown.length === 0
+          ? { fits: [], wontFit: [], emptyReason: "length", tooThinReason: null }
+          : listBlanks(savedShown, ctx, { extraLength, planerMaxDepth, widthMargin }),
+      entryOf: savedEntryOf,
+    }),
+    [savedShown, savedEntryOf, ctx, extraLength, planerMaxDepth, widthMargin],
+  );
+
   const board = useMemo(
     () => ({
       length: outline.length,
@@ -206,5 +280,5 @@ export function useBlankList(records: readonly BlankRecord[]): BlankListState {
     [outline.length, outlineGeometry.widePointStation, foil.center],
   );
 
-  return { prepared: shown, allPrepared: catalogue.prepared, recordOf: catalogue.recordOf, list, ctx, board };
+  return { prepared: shown, allPrepared: catalogue.prepared, recordOf: catalogue.recordOf, list, ctx, board, saved };
 }

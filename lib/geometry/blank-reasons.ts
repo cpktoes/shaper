@@ -16,6 +16,7 @@
  */
 import type { BlankRecord, BlankShortfall, RunsOutCause, TipStyle } from "./blank";
 import { MIN_FOIL_THICKNESS_MM } from "./blank-fit";
+import { blankDisplayName } from "./custom-rocker";
 import {
   formatDim,
   formatDimBare,
@@ -653,7 +654,11 @@ export function boardLine(length: Mm, width: Mm, system: UnitsSystem): string {
   return `Length and width from TEMPLATE: ${lengthText} × ${formatDim(width, system)}`;
 }
 
-/** The offer beside a flag: `Closest blank that fits: {vendor} {name}, {length}`. */
+/**
+ * The offer beside a flag: `Closest blank that fits: {vendor} {name} Natural, {length}`. The offer
+ * is always a maker's natural blank — switching blanks clears a custom rocker (D-10) — so it is named
+ * the way every blank is named, its rocker after its name (quick 261016-mkb, D-02, P-23).
+ */
 export function offerLine(record: Pick<BlankRecord, "vendor" | "name" | "lengthMm">, system: UnitsSystem): string {
-  return `Closest blank that fits: ${record.vendor} ${record.name}, ${formatLength(record.lengthMm, system)}`;
+  return `Closest blank that fits: ${blankDisplayName(record, undefined, { vendor: true })}, ${formatLength(record.lengthMm, system)}`;
 }
