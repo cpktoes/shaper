@@ -248,6 +248,9 @@ const BOXES = [
   { name: "computer", width: 790, height: 540, orientation: "horizontal" as const },
   { name: "Pixel 7 sideways", width: 520, height: 200, orientation: "horizontal" as const },
   { name: "iPhone upright", width: 366, height: 240, orientation: "vertical" as const },
+  // The box measured on the built popup (2026-10-16): the drawing pinned at 45% of an iPhone 14's
+  // height, less the card's padding and its key line — smaller than the plan's estimate.
+  { name: "iPhone upright, as built", width: 350, height: 180, orientation: "vertical" as const },
 ];
 
 const LAYOUT_SPECS: [string, BlankRockerSpec | undefined][] = [
@@ -364,6 +367,16 @@ describe("the blank-alone layout, on every pickable blank in three boxes", () =>
             expect(st.chip.leader.curve.y).toBeCloseTo(deck.y, 9);
             expect(st.reading.leader.curve.x).toBeCloseTo(bottom.x, 9);
             expect(st.reading.leader.curve.y).toBeCloseTo(bottom.y, 9);
+            // And starts on its own label's edge, whichever way the label slid along its rail.
+            for (const label of [st.chip, st.reading]) {
+              const { rail } = label.leader;
+              const b = label.box;
+              const e = 1e-6;
+              expect(rail.x >= b.x - e && rail.x <= b.x + b.width + e && rail.y >= b.y - e && rail.y <= b.y + b.height + e, `${where}: ${st.key} leader`).toBe(true);
+              const onEdge =
+                Math.abs(rail.x - b.x) < e || Math.abs(rail.x - b.x - b.width) < e || Math.abs(rail.y - b.y) < e || Math.abs(rail.y - b.y - b.height) < e;
+              expect(onEdge, `${where}: ${st.key} leader edge`).toBe(true);
+            }
           });
         }
       }

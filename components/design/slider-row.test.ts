@@ -281,3 +281,42 @@ describe("SliderRow's sliderLabel and sliderValueText (WR-01)", () => {
     }
   });
 });
+
+/**
+ * The Customize Rocker popup's value box (quick 261016-mkb, sketch 016's `.valbox`): the label on the
+ * left and the value in a small bordered read-out on the right of the label line. Additive — a row
+ * that does not pass it renders exactly as it always has.
+ */
+describe("SliderRow's valueBox (quick 261016-mkb)", () => {
+  const base = { label: "Rocker", value: 0, min: -1, max: 2, step: 0.0625, onValueChange: () => {} };
+  const withoutIds = (html: string) => html.replace(/ id="[^"]*"/g, "");
+
+  it("puts the label left and the value in a bordered box right", () => {
+    const html = renderToStaticMarkup(createElement(SliderRow, { ...base, valueBox: '+1/2"', displayValue: "ignored" }));
+    expect(html).toContain('<span class="min-w-0 truncate">Rocker</span>');
+    expect(html).toMatch(/<span data-slider-value-box="[^"]*" class="[^"]*rounded border border-surf-line[^"]*tabular-nums[^"]*">\+1\/2&quot;<\/span>/);
+    // The box replaces `label — value`.
+    expect(html).not.toContain("Rocker — ");
+  });
+
+  it("a row without it renders exactly as before, and the same as one passing it as undefined", () => {
+    for (const props of [
+      base,
+      { ...base, displayValue: '12"' },
+      { ...base, leftHint: "Less", rightHint: "More", note: "A note", density: "tight" as const },
+    ]) {
+      const html = renderToStaticMarkup(createElement(SliderRow, props));
+      expect(html).not.toContain("data-slider-value-box");
+      const explicit = renderToStaticMarkup(createElement(SliderRow, { ...props, valueBox: undefined }));
+      expect(withoutIds(explicit)).toBe(withoutIds(html));
+    }
+    expect(renderToStaticMarkup(createElement(SliderRow, { ...base, displayValue: '12"' }))).toContain('Rocker — 12&quot;');
+  });
+
+  it("a left hint may be a marked node", () => {
+    const html = renderToStaticMarkup(
+      createElement(SliderRow, { ...base, leftHint: createElement("span", { "data-floor": "" }, "Floor"), rightHint: "More" }),
+    );
+    expect(html).toContain('<span><span data-floor="">Floor</span></span><span>More</span>');
+  });
+});

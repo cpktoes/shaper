@@ -22,6 +22,8 @@ const LOCKABLE_FILES = [
   // Quick 261016-mkb: the Customize Rocker button and its popup.
   "components/rocker/customize-rocker.tsx",
   "components/rocker/customize-rocker-dialog.tsx",
+  "components/rocker/custom-rocker-rows.tsx",
+  "components/rocker/custom-rocker-drawing.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",

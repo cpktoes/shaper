@@ -341,6 +341,9 @@ export interface BlankAloneLayoutInput {
  * stations inward, the centre both ways. In blank coordinates: +1 toward the nose, −1 toward the tail. */
 const REACH: Record<FoilStationKey, -1 | 0 | 1> = { tailTip: -1, tail12: 1, center: 0, nose12: -1, noseTip: 1 };
 
+/** The least air between two labels on one rail, in CSS pixels. */
+const RAIL_GAP = 4;
+
 export const RAIL_TITLES = {
   flatChips: "BLANK THICKNESS",
   flatReadings: "BLANK ROCKER · AS ORDERED",
@@ -447,37 +450,85 @@ export function blankAloneLayout(input: BlankAloneLayoutInput): BlankAloneLayout
     title(RAIL_TITLES.uprightChips, width - B.pad - maxChipW / 2, B.pad + B.titlePx);
   }
 
-  /** The label box's start along the screen axis that runs along the blank, given the station's
-   * screen position there and its extent. Flat: nose left, so "toward the nose" is screen-left;
-   * upright: nose up, so it is screen-up — the same sign either way. */
+  /** Where a label would like to start along its rail (flat: x; upright: y), given its station's
+   * screen position there and its extent: the tips' reach OUTWARD, the 12" stations' INWARD, the
+   * centre's both ways (D-07). Flat the nose is screen-left and upright it is screen-up, so "toward the
+   * nose" is the smaller screen coordinate either way. */
   const placeAlong = (key: FoilStationKey, at: number, extent: number) => {
     const reach = REACH[key];
     if (reach === 0) return at - extent / 2;
     return reach === 1 ? at - extent : at;
   };
+  const railMin = vertical ? B.pad + titleH : B.pad;
+  const railMax = vertical ? height - B.pad : width - B.pad;
 
-  const layoutStations: BlankAloneStationLayout[] = stations.map((st) => {
+  /**
+   * One rail's labels, kept `RAIL_GAP` apart and inside the rail: each starts where it would like to,
+   * then a sweep each way pushes apart any that would meet. On a roomy drawing nothing moves; on a
+   * short blank in a small box (a phone held upright) the 12" and centre labels slide apart along the
+   * rail, and their leaders slant to the stations they measure.
+   */
+  const sweep = (wanted: { start: number; extent: number }[]): number[] => {
+    const order = wanted.map((_, i) => i).sort((i, j) => wanted[i].start - wanted[j].start);
+    const starts = wanted.map((w) => w.start);
+    for (let k = 0; k < order.length; k++) {
+      const i = order[k];
+      const least = k === 0 ? railMin : starts[order[k - 1]] + wanted[order[k - 1]].extent + RAIL_GAP;
+      starts[i] = Math.max(starts[i], least);
+    }
+    for (let k = order.length - 1; k >= 0; k--) {
+      const i = order[k];
+      const most = k === order.length - 1 ? railMax : starts[order[k + 1]] - RAIL_GAP;
+      starts[i] = Math.min(starts[i], most - wanted[i].extent);
+    }
+    return starts;
+  };
+  const clamp = (v: number, low: number, high: number) => Math.min(high, Math.max(low, v));
+
+  const at = stations.map((st) => {
+    const p = point(st.x, st.deck);
+    return vertical ? p.y : p.x;
+  });
+  const startsFor = (pick: (m: Measured) => { w: number; h: number }) =>
+    sweep(
+      stations.map((st, i) => {
+        const m = pick(size(st.key));
+        const extent = vertical ? m.h : m.w;
+        return { start: placeAlong(st.key, at[i], extent), extent };
+      }),
+    );
+  const chipStarts = startsFor((m) => m.chip);
+  const readingStarts = startsFor((m) => m.reading);
+
+  const layoutStations: BlankAloneStationLayout[] = stations.map((st, i) => {
     const m = size(st.key);
     const deckPt = point(st.x, st.deck);
     const bottomPt = point(st.x, st.bottom);
+    const chipBox: LayoutBox = vertical
+      ? { x: chipRail, y: chipStarts[i], width: m.chip.w, height: m.chip.h }
+      : { x: chipStarts[i], y: chipRail - m.chip.h, width: m.chip.w, height: m.chip.h };
+    const chipMid = chipBox.x + chipBox.width / 2;
+    const chip: LayoutLabel = {
+      box: chipBox,
+      leader: {
+        rail: vertical
+          ? { x: chipRail, y: clamp(at[i], chipBox.y, chipBox.y + chipBox.height) }
+          : { x: clamp(at[i], chipBox.x, chipBox.x + chipBox.width), y: chipRail },
+        curve: deckPt,
+      },
+      texts: [
+        { text: st.chip.name, x: chipMid, y: chipBox.y + chipBox.height / 2 - 4, size: B.namePx, weight: 400, anchor: "middle", role: "name" },
+        { text: st.chip.value, x: chipMid, y: chipBox.y + chipBox.height - 5, size: B.valuePx, weight: 700, anchor: "middle", role: "value" },
+      ],
+    };
     if (!vertical) {
-      const sx = deckPt.x;
-      // The chip: on the top rail, its bottom edge on the rail.
-      const chipBox = { x: placeAlong(st.key, sx, m.chip.w), y: chipRail - m.chip.h, width: m.chip.w, height: m.chip.h };
-      const chipMid = chipBox.x + chipBox.width / 2;
-      const chip: LayoutLabel = {
-        box: chipBox,
-        leader: { rail: { x: sx, y: chipRail }, curve: deckPt },
-        texts: [
-          { text: st.chip.name, x: chipMid, y: chipBox.y + chipBox.height / 2 - 4, size: B.namePx, weight: 400, anchor: "middle", role: "name" },
-          { text: st.chip.value, x: chipMid, y: chipBox.y + chipBox.height - 5, size: B.valuePx, weight: 700, anchor: "middle", role: "value" },
-        ],
-      };
-      // The reading: under the bottom rail, its text set against the leader.
-      const readBox = { x: placeAlong(st.key, sx, m.reading.w), y: readingRail, width: m.reading.w, height: m.reading.h };
+      // The reading: under the bottom rail, its text set against the side its leader leaves from.
+      const readBox: LayoutBox = { x: readingStarts[i], y: readingRail, width: m.reading.w, height: m.reading.h };
+      const sx = clamp(at[i], readBox.x, readBox.x + readBox.width);
       const reach = REACH[st.key];
       const anchor: LayoutText["anchor"] = reach === 0 ? "middle" : reach === 1 ? "end" : "start";
-      const tx = reach === 0 ? sx : reach === 1 ? sx - B.textInset : sx + B.textInset;
+      const tx =
+        reach === 0 ? readBox.x + readBox.width / 2 : reach === 1 ? readBox.x + readBox.width - B.textInset : readBox.x + B.textInset;
       const lines: LayoutText[] = [
         { text: st.reading.value, x: tx, y: readingRail + B.valuePx, size: B.valuePx, weight: 700, anchor, role: "value" },
         { text: st.reading.name, x: tx, y: readingRail + B.valuePx + B.gap + B.namePx, size: B.namePx, weight: 400, anchor, role: "name" },
@@ -499,18 +550,8 @@ export function blankAloneLayout(input: BlankAloneLayoutInput): BlankAloneLayout
         reading: { box: readBox, leader: { rail: { x: sx, y: readingRail }, curve: bottomPt }, texts: lines },
       };
     }
-    const sy = deckPt.y;
-    const chipBox = { x: chipRail, y: placeAlong(st.key, sy, m.chip.h), width: m.chip.w, height: m.chip.h };
-    const chipMid = chipBox.x + chipBox.width / 2;
-    const chip: LayoutLabel = {
-      box: chipBox,
-      leader: { rail: { x: chipRail, y: sy }, curve: deckPt },
-      texts: [
-        { text: st.chip.name, x: chipMid, y: chipBox.y + chipBox.height / 2 - 4, size: B.namePx, weight: 400, anchor: "middle", role: "name" },
-        { text: st.chip.value, x: chipMid, y: chipBox.y + chipBox.height - 5, size: B.valuePx, weight: 700, anchor: "middle", role: "value" },
-      ],
-    };
-    const readBox = { x: readingRail - m.reading.w, y: placeAlong(st.key, sy, m.reading.h), width: m.reading.w, height: m.reading.h };
+    const readBox: LayoutBox = { x: readingRail - m.reading.w, y: readingStarts[i], width: m.reading.w, height: m.reading.h };
+    const sy = clamp(at[i], readBox.y, readBox.y + readBox.height);
     const tx = readingRail - B.textInset;
     const natW = st.reading.natural ? estimateTextWidth(st.reading.natural, B.namePx, 400) : 0;
     const line1Y = readBox.y + B.valuePx;
