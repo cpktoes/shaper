@@ -59,6 +59,8 @@ import {
 import { sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { blankDisplayLines, customPrintedStations, formatRockerNote, isNaturalSpec, rockerSpecOf } from "@/lib/geometry/custom-rocker";
+import { customRockerFootnote, customRockerRowLabel, naturalRockerRowLabel } from "@/lib/geometry/custom-rocker-text";
 
 interface RockerDatasheetProps {
   /** The store's one side profile — every read-only number on the sheet comes from here. */
@@ -107,8 +109,8 @@ function Row({
   className?: string;
   /** Marks the THINNING STARTS row, for the browser tests. */
   "data-datasheet-thinning"?: boolean;
-  /** Marks a BLANK row, for the browser tests. */
-  "data-datasheet-blank-row"?: "rocker" | "thickness" | "width";
+  /** Marks a BLANK row, for the browser tests (`customRocker`: a custom blank's rocker as ordered). */
+  "data-datasheet-blank-row"?: "rocker" | "customRocker" | "thickness" | "width";
   /** Marks the YOUR BOARD Rocker row, for the browser tests. */
   "data-datasheet-board-row"?: "rocker";
   /** Marks a FOAM OFF row, for the browser tests. */
@@ -154,6 +156,11 @@ export function RockerDatasheet({
   // The one definition of where the five stations sit — the profile's own, never re-derived.
   const stationMm = Object.fromEntries(profile.stations.map((p) => [p.key, p.station])) as Record<FoilStationKey, Mm>;
   const blank = profile.blank;
+  // The rocker the blank was bent by (quick 261016-mkb) — the very spec the side profile was built
+  // from, so the sheet can never name one rocker and tabulate another.
+  const spec = blank ? rockerSpecOf(blank.onBlank.prepared) : undefined;
+  const custom = !isNaturalSpec(spec);
+  const ordered = blank && custom ? customPrintedStations(blank.record, spec) : null;
 
   const markSuffix = columnUnitSuffix("mark", system);
   const dimSuffix = columnUnitSuffix("dim", system);
@@ -273,13 +280,33 @@ export function RockerDatasheet({
           {blank ? (
             <>
               <GroupLabel>
-                {`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}
-                {/* Which stations the rows are, in the catalogue's own spelling — not capitalised. */}
-                <span className="normal-case">{` (catalog's ${stations.map((s) => CATALOG_STATION_LABELS[s.key]).join(" · ")})`}</span>
+                <span data-datasheet-blank-name className="block">
+                  {`BLANK — ${blank.record.vendor} ${blank.record.name}`.toUpperCase()}
+                  {/* Which stations the rows are, in the catalogue's own spelling — not capitalised. */}
+                  <span className="normal-case">{` (catalog's ${stations.map((s) => CATALOG_STATION_LABELS[s.key]).join(" · ")})`}</span>
+                </span>
+                {/* The blank's rocker on its own line (quick 261016-mkb, D-02): `Natural`, or the note
+                    as ordered — the maker's order code, never uppercased, in inches in both systems. */}
+                <span data-datasheet-blank-rocker className="block normal-case tracking-normal font-bold">
+                  {blankDisplayLines(blank.record, spec)[1]}
+                </span>
               </GroupLabel>
-              <Row label={`Rocker${markSuffix}`} typed={false} data-datasheet-blank-row="rocker">
-                {stations.map((s) => printedCell(s.key, blank.printed[s.key].rocker, formatMarkBare))}
-              </Row>
+              {ordered ? (
+                <>
+                  {/* A custom blank (D-03): the catalogue's printed rocker, then the rocker as ordered
+                      — printed plus the bend, tips exact — the adjustment written once, on the name line. */}
+                  <Row label={naturalRockerRowLabel(system)} typed={false} data-datasheet-blank-row="rocker">
+                    {stations.map((s) => printedCell(s.key, blank.printed[s.key].rocker, formatMarkBare))}
+                  </Row>
+                  <Row label={customRockerRowLabel(system)} typed={false} data-datasheet-blank-row="customRocker">
+                    {stations.map((s) => printedCell(s.key, ordered[s.key].rocker, formatMarkBare))}
+                  </Row>
+                </>
+              ) : (
+                <Row label={`Rocker${markSuffix}`} typed={false} data-datasheet-blank-row="rocker">
+                  {stations.map((s) => printedCell(s.key, blank.printed[s.key].rocker, formatMarkBare))}
+                </Row>
+              )}
               <Row label={`Thickness${markSuffix}`} typed={false} data-datasheet-blank-row="thickness">
                 {stations.map((s) => printedCell(s.key, blank.printed[s.key].thickness, formatMarkBare))}
               </Row>
@@ -375,6 +402,7 @@ export function RockerDatasheet({
               "The Foam Off rows are read off the blank right under your board's own five stations, so when your board is shorter than its blank or slid along it, they aren't simply the Blank numbers less Your Board's."
             }
           </p>
+          {custom && <p data-datasheet-custom-rocker-note>{customRockerFootnote(formatRockerNote(spec))}</p>}
           {hasDash && (
             <p data-datasheet-dash-note>{"A dash (—) means the catalog prints no number there."}</p>
           )}

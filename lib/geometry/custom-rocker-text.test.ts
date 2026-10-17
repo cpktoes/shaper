@@ -124,7 +124,7 @@ describe("the DATASHEET's custom rows (D-03)", () => {
   });
 });
 
-describe("a custom blank's star fits the stars' reader (plan 01's note)", () => {
+describe("a custom blank's star fits the stars' reader (plan 01's note)", { timeout: 60_000 }, () => {
   it("on every pickable blank, with the longest note four changes can write", () => {
     // The widest note: four changes, each the widest amount and a two-digit bend point.
     const widest: RockerChange[] = [

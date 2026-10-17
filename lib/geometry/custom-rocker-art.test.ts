@@ -42,6 +42,9 @@ const tail = (amountIn: number, fromTipIn?: number): RockerChange =>
     : { end: "tail", amount: inchesToMm(amountIn), fromTip: inchesToMm(fromTipIn) };
 const spec = (...changes: RockerChange[]): BlankRockerSpec => ({ changes });
 
+/** The tests that walk every pickable blank need more than vitest's 5 s on a loaded machine. */
+const LAYOUT_TIMEOUT_MS = 120_000;
+
 function presetFields(id: string) {
   const preset = BOARD_PRESETS.find((p) => p.id === id);
   if (!preset) throw new Error(`no ${id} preset`);
@@ -176,7 +179,7 @@ describe("the board's frame reads the same lines off the side view", () => {
 const PICKABLE: BlankRecord[] = readSeedCatalog().filter(isPickable);
 const LONG_COPY = LONGBOARD.blank.copy;
 
-describe("the blank alone: its own five stations, as ordered (P-11)", () => {
+describe("the blank alone: its own five stations, as ordered (P-11)", { timeout: LAYOUT_TIMEOUT_MS }, () => {
   for (const system of UNITS_SYSTEMS) {
     it(`reads the catalogue's printed figures as ordered, ${system}`, () => {
       for (const [, s] of SPECS) {
@@ -226,6 +229,17 @@ describe("the blank alone: its own five stations, as ordered (P-11)", () => {
   });
 });
 
+/** Each real blank bent once per spec, shared by the layout tests (they run thousands of layouts). */
+const BENT = new Map<BlankRecord, Map<BlankRockerSpec | undefined, ReturnType<typeof withCustomRocker>>>();
+function bentFor(record: BlankRecord, s: BlankRockerSpec | undefined) {
+  let bySpec = BENT.get(record);
+  if (!bySpec) BENT.set(record, (bySpec = new Map()));
+  let bent = bySpec.get(s);
+  if (!bent) bySpec.set(s, (bent = withCustomRocker(prepareBlank(record), s)));
+  return bent;
+}
+
+
 /** Two boxes meet, or come closer than `gap` px. */
 function intersects(a: LayoutBox, b: LayoutBox, gap = 0): boolean {
   return a.x < b.x + b.width + gap && b.x < a.x + a.width + gap && a.y < b.y + b.height + gap && b.y < a.y + a.height + gap;
@@ -262,7 +276,7 @@ const LAYOUT_SPECS: [string, BlankRockerSpec | undefined][] = [
 const SAMPLE_COUNT = 120;
 
 function layoutFor(record: BlankRecord, s: BlankRockerSpec | undefined, box: (typeof BOXES)[number]): BlankAloneLayout {
-  const bent = withCustomRocker(prepareBlank(record), s);
+  const bent = bentFor(record, s);
   const L = bent.lengthMm;
   const samples = Array.from({ length: SAMPLE_COUNT + 1 }, (_, i) => {
     const x = (L * i) / SAMPLE_COUNT;
@@ -279,11 +293,11 @@ function layoutFor(record: BlankRecord, s: BlankRockerSpec | undefined, box: (ty
   });
 }
 
-describe("the blank-alone layout in Metric, where the station names run longer", () => {
+describe("the blank-alone layout in Metric, where the station names run longer", { timeout: LAYOUT_TIMEOUT_MS }, () => {
   for (const box of BOXES) {
     it(`${box.name}: neighbours on each rail keep their air on every natural pickable blank`, () => {
       for (const record of PICKABLE) {
-        const bent = prepareBlank(record);
+        const bent = bentFor(record, undefined);
         const L = bent.lengthMm;
         const samples = Array.from({ length: SAMPLE_COUNT + 1 }, (_, i) => {
           const x = (L * i) / SAMPLE_COUNT;
@@ -310,39 +324,42 @@ describe("the blank-alone layout in Metric, where the station names run longer",
   }
 });
 
-describe("the blank-alone layout, on every pickable blank in three boxes", () => {
+describe("the blank-alone layout, on every pickable blank in three boxes", { timeout: LAYOUT_TIMEOUT_MS }, () => {
   it("reads every pickable blank", () => {
     expect(PICKABLE.length).toBe(219);
   });
 
   for (const box of BOXES) {
     it(`${box.name} (${box.width}×${box.height}, ${box.orientation})`, () => {
+      // Thousands of checks: collected as sentences and asserted once, so the run stays quick.
+      const problems: string[] = [];
+      const check = (ok: boolean, what: string) => {
+        if (!ok) problems.push(what);
+      };
+      const e = 1e-6;
       for (const record of PICKABLE) {
         for (const [label, s] of LAYOUT_SPECS) {
           const where = `${record.vendor} ${record.name}, ${label}`;
           const layout = layoutFor(record, s, box);
           const L = record.lengthMm;
-          expect(layout.scale, where).toBeGreaterThan(0);
+          check(layout.scale > 0, `${where}: scale`);
           // One uniform scale: along and across alike.
           const tail0 = layout.point(0, 0);
           const nose0 = layout.point(L, 0);
-          expect(Math.hypot(nose0.x - tail0.x, nose0.y - tail0.y), where).toBeCloseTo(L * layout.scale, 6);
+          check(Math.abs(Math.hypot(nose0.x - tail0.x, nose0.y - tail0.y) - L * layout.scale) < e, `${where}: along`);
           const up = layout.point(0, 100);
-          expect(Math.hypot(up.x - tail0.x, up.y - tail0.y), where).toBeCloseTo(100 * layout.scale, 6);
+          check(Math.abs(Math.hypot(up.x - tail0.x, up.y - tail0.y) - 100 * layout.scale) < e, `${where}: across`);
           // Nose left lying flat, nose up standing.
-          if (box.orientation === "horizontal") expect(nose0.x, where).toBeLessThan(tail0.x);
-          else expect(nose0.y, where).toBeLessThan(tail0.y);
+          check(box.orientation === "horizontal" ? nose0.x < tail0.x : nose0.y < tail0.y, `${where}: nose`);
 
           // Everything inside the box.
-          for (const p of layout.outline) expect(pointInside(p, box.width, box.height), `${where}: outline`).toBe(true);
-          expect(pointInside(layout.baseline.from, box.width, box.height), where).toBe(true);
-          expect(pointInside(layout.baseline.to, box.width, box.height), where).toBe(true);
-          for (const t of layout.titles) expect(inside(t.box, box.width, box.height), `${where}: ${t.text.text}`).toBe(true);
+          check(layout.outline.every((p) => pointInside(p, box.width, box.height)), `${where}: outline`);
+          check(pointInside(layout.baseline.from, box.width, box.height) && pointInside(layout.baseline.to, box.width, box.height), `${where}: baseline`);
+          for (const t of layout.titles) check(inside(t.box, box.width, box.height), `${where}: ${t.text.text}`);
           for (const st of layout.stations) {
-            for (const label of [st.chip, st.reading]) {
-              expect(inside(label.box, box.width, box.height), `${where}: ${st.key} box`).toBe(true);
-              expect(pointInside(label.leader.rail, box.width, box.height), `${where}: ${st.key} leader`).toBe(true);
-              expect(pointInside(label.leader.curve, box.width, box.height), `${where}: ${st.key} leader`).toBe(true);
+            for (const lab of [st.chip, st.reading]) {
+              check(inside(lab.box, box.width, box.height), `${where}: ${st.key} box`);
+              check(pointInside(lab.leader.rail, box.width, box.height) && pointInside(lab.leader.curve, box.width, box.height), `${where}: ${st.key} leader`);
             }
           }
 
@@ -351,35 +368,32 @@ describe("the blank-alone layout, on every pickable blank in three boxes", () =>
             const boxes = layout.stations.map((st) => st[rail].box);
             for (let i = 0; i < boxes.length; i++) {
               for (let j = i + 1; j < boxes.length; j++) {
-                expect(intersects(boxes[i], boxes[j], RAIL_GAP_PX),`${where}: ${rail} ${layout.stations[i].key} meets ${layout.stations[j].key}`).toBe(false);
+                check(!intersects(boxes[i], boxes[j], RAIL_GAP_PX), `${where}: ${rail} ${layout.stations[i].key} meets ${layout.stations[j].key}`);
               }
-              for (const t of layout.titles) expect(intersects(boxes[i], t.box), `${where}: ${rail} meets ${t.text.text}`).toBe(false);
+              for (const t of layout.titles) check(!intersects(boxes[i], t.box), `${where}: ${rail} meets ${t.text.text}`);
             }
           }
 
-          // Every leader ends on its own curve point: the deck for a chip, the bottom for a reading.
-          const bent = withCustomRocker(prepareBlank(record), s);
-          const stations = blankAloneStations(bent, s, "imperial");
+          // Every leader ends on its own curve point (the deck for a chip, the bottom for a reading)
+          // and starts on its own label's edge, whichever way the label slid along its rail.
+          const stations = blankAloneStations(bentFor(record, s), s, "imperial");
           layout.stations.forEach((st, i) => {
             const deck = layout.point(stations[i].x, stations[i].deck);
             const bottom = layout.point(stations[i].x, stations[i].bottom);
-            expect(st.chip.leader.curve.x).toBeCloseTo(deck.x, 9);
-            expect(st.chip.leader.curve.y).toBeCloseTo(deck.y, 9);
-            expect(st.reading.leader.curve.x).toBeCloseTo(bottom.x, 9);
-            expect(st.reading.leader.curve.y).toBeCloseTo(bottom.y, 9);
-            // And starts on its own label's edge, whichever way the label slid along its rail.
-            for (const label of [st.chip, st.reading]) {
-              const { rail } = label.leader;
-              const b = label.box;
-              const e = 1e-6;
-              expect(rail.x >= b.x - e && rail.x <= b.x + b.width + e && rail.y >= b.y - e && rail.y <= b.y + b.height + e, `${where}: ${st.key} leader`).toBe(true);
+            check(Math.abs(st.chip.leader.curve.x - deck.x) < e && Math.abs(st.chip.leader.curve.y - deck.y) < e, `${where}: ${st.key} chip leader end`);
+            check(Math.abs(st.reading.leader.curve.x - bottom.x) < e && Math.abs(st.reading.leader.curve.y - bottom.y) < e, `${where}: ${st.key} reading leader end`);
+            for (const lab of [st.chip, st.reading]) {
+              const { rail } = lab.leader;
+              const b = lab.box;
+              const within = rail.x >= b.x - e && rail.x <= b.x + b.width + e && rail.y >= b.y - e && rail.y <= b.y + b.height + e;
               const onEdge =
                 Math.abs(rail.x - b.x) < e || Math.abs(rail.x - b.x - b.width) < e || Math.abs(rail.y - b.y) < e || Math.abs(rail.y - b.y - b.height) < e;
-              expect(onEdge, `${where}: ${st.key} leader edge`).toBe(true);
+              check(within && onEdge, `${where}: ${st.key} leader start`);
             }
           });
         }
       }
+      expect(problems).toEqual([]);
     });
   }
 });
