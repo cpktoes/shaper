@@ -7,6 +7,7 @@
  * Every length is millimetres (CLAUDE.md Rule 2) — the catalogues print inches, and they are
  * converted once, at the units boundary, when the CSV is read.
  */
+import type { BlankRockerSpec } from "./custom-rocker";
 import { inchesToMm, type Litres, type Mm } from "./units";
 
 /**
@@ -114,6 +115,13 @@ export interface BoardBlank {
    * button. Not part of `BlankCut`, and not counted by the cut's "all three or none" rule.
    */
   tailThinningStart?: Mm;
+  /**
+   * The blank's rocker as ordered from the maker (quick 261016-mkb, D-01, 2026-10-16) — changes to
+   * its natural rocker in US Blanks' notation, millimetres. Absent means the natural rocker, which is
+   * every board saved before 2026-10-16. Set only by `setBlankRocker` and by picking a saved blank of
+   * the shaper's own; a plain pick of another blank clears it (D-10). Not part of `BlankCut`.
+   */
+  rocker?: BlankRockerSpec;
 }
 
 /** The shaper's fit settings (the third account preference, D-09). */

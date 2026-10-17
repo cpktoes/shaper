@@ -91,10 +91,14 @@ describe("design-store.tsx — the blank rides in every hand-written field list 
 });
 
 describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 5)", () => {
-  it("the blank is prepared once per blank copy, inside a useMemo (R14)", () => {
-    const start = SOURCE.search(/const preparedBlank\b[^=]*=\s*useMemo\(/);
-    expect(start).toBeGreaterThanOrEqual(0);
-    expect(balancedFrom(SOURCE, SOURCE.indexOf("useMemo(", start))).toContain("prepareBlank(");
+  it("the blank is prepared once per blank copy and rocker, inside a useMemo, through the one helper (R14, quick 261016-mkb)", () => {
+    const { object, deps } = memo("preparedBlank");
+    expect(object).toContain("prepareBoardBlank(");
+    expect(object).not.toMatch(/\bprepareBlank\(/);
+    expect(object).toMatch(/rocker:\s*blankRocker\b/);
+    expect(deps).toMatch(/\bblankCopy\b/);
+    expect(deps).toMatch(/\bblankRocker\b/);
+    expect(SOURCE).toMatch(/const blankRocker = state\.blank\?\.rocker;/);
   });
 
   it("the side profile is built once, with buildBoardProfile, inside a useMemo", () => {
@@ -127,6 +131,7 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     "resetFineTune",
     "setThinningStart",
     "setThinningStartAutomatic",
+    "setBlankRocker",
     "applyPreset",
     "applyModel",
   ]);
@@ -143,9 +148,29 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
       "resetFineTune",
       "setThinningStart",
       "setThinningStartAutomatic",
+      "setBlankRocker",
     ]) {
       expect(handler(name), name).toMatch(/\bblank:/);
     }
+  });
+
+  it("setBlankRocker starts with the lock check, writes one undo step and never an empty one (quick 261016-mkb)", () => {
+    const body = handler("setBlankRocker");
+    const afterArrow = body.slice(body.indexOf("=>") + 2).replace(/^\s*\{\s*/, "");
+    expect(afterArrow).toMatch(/^if \(lockedRef\.current\) return;/);
+    expect(body).toMatch(/sameRockerSpec\(next,\s*state\.blank\.rocker\)\)\s*return;/);
+    expect(body).toContain("noteEdit(null)");
+    expect(body).toMatch(/normalizeSpec\(spec,\s*state\.blank\.copy\.lengthMm\)/);
+    expect(body).toMatch(/delete blank\.rocker/);
+  });
+
+  it("pickBlank takes the rocker only from its own argument — a plain pick writes none (D-10)", () => {
+    const body = handler("pickBlank");
+    expect(body).toMatch(/const pickBlank = \(record: BlankRecord, placement: Mm, rocker\?: BlankRockerSpec\)/);
+    expect(body).toMatch(/normalizeSpec\(rocker,\s*record\.lengthMm\)/);
+    expect(body).toMatch(/\{\s*rocker:\s*ordered\s*\}/);
+    expect(body).not.toMatch(/prev\.blank\??\.rocker/);
+    expect(body).not.toMatch(/\.\.\.prev\.blank\b/);
   });
 
   it("no other state-setting handler assigns `blank:` — not the foil, outline, rocker, rails, fins, volume or a setting", () => {
@@ -325,6 +350,7 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
     "resetFineTune",
     "setThinningStart",
     "setThinningStartAutomatic",
+    "setBlankRocker",
     "removeBlank",
     "toggleImportTemplateDimensions",
     "toggleImportRailThickness",

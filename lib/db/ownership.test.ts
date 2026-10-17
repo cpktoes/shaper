@@ -19,6 +19,7 @@ const FIT_DEFAULTS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/fit-defaults.ts")
 const BLANK_MAKERS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/blank-makers.ts");
 const RACK_ORDER_ACTIONS_PATH = join(REPO_ROOT, "app/actions/rack-order.ts");
 const ACCOUNT_ACTIONS_PATH = join(REPO_ROOT, "app/actions/account.ts");
+const USER_BLANKS_ACTIONS_PATH = join(REPO_ROOT, "app/actions/user-blanks.ts");
 const BLANKS_READ_PATH = join(REPO_ROOT, "lib/db/blanks.ts");
 const SCHEMA_PATH = join(REPO_ROOT, "lib/db/schema.ts");
 
@@ -73,6 +74,8 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
   const rackOrderActionsSource = stripComments(readFileSync(RACK_ORDER_ACTIONS_PATH, "utf8"));
   // Quick 261006-g4u (2026-10-06, D-07): the Your data page's Export and Delete actions.
   const accountActionsSource = stripComments(readFileSync(ACCOUNT_ACTIONS_PATH, "utf8"));
+  // Quick 261016-mkb (2026-10-16, D-09): a shaper's saved blanks — read, save, update, remove.
+  const userBlanksActionsSource = stripComments(readFileSync(USER_BLANKS_ACTIONS_PATH, "utf8"));
 
   it("every exported async function in app/design/actions.ts, app/actions/units.ts, app/actions/print-instructions.ts, app/actions/fit-defaults.ts, app/actions/blank-makers.ts and app/actions/rack-order.ts awaits auth() before any database call", () => {
     const fns = [
@@ -83,6 +86,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedAsyncFunctions(blankMakersActionsSource),
       ...exportedAsyncFunctions(rackOrderActionsSource),
       ...exportedAsyncFunctions(accountActionsSource),
+      ...exportedAsyncFunctions(userBlanksActionsSource),
     ];
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) {
@@ -108,6 +112,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ...exportedFunctionSignatures(blankMakersActionsSource),
       ...exportedFunctionSignatures(rackOrderActionsSource),
       ...exportedFunctionSignatures(accountActionsSource),
+      ...exportedFunctionSignatures(userBlanksActionsSource),
     ];
     expect(signatures.length).toBeGreaterThan(0);
     const offenders = signatures.filter((fn) => /userId|ownerId|clerkUserId/.test(fn.params));
@@ -160,6 +165,22 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
     expect(fns).toEqual(["deleteMyAccount", "exportMyDesigns"]);
   });
 
+  it("app/actions/user-blanks.ts exports exactly the expected actions and no others", () => {
+    // Mirrors the assertion above for app/actions/account.ts (quick 261016-mkb, D-09): a shaper's
+    // saved blanks — the list read, a save, an edit in place and a removal.
+    const fns = exportedAsyncFunctions(userBlanksActionsSource).map((fn) => fn.name).sort();
+    expect(fns).toEqual(["listSavedBlanks", "removeUserBlank", "saveUserBlank", "updateUserBlank"]);
+  });
+
+  it("app/actions/user-blanks.ts constrains every update and delete on BOTH the row id and the owner", () => {
+    for (const verb of ["update", "delete"]) {
+      const start = userBlanksActionsSource.search(new RegExp(`\\bdb\\.${verb}\\s*\\(`));
+      expect(start, `no db.${verb} in app/actions/user-blanks.ts`).toBeGreaterThanOrEqual(0);
+      const statement = userBlanksActionsSource.slice(start, userBlanksActionsSource.indexOf(";", start));
+      expect(statement).toMatch(/and\(\s*eq\(\s*userBlanks\.id\s*,[^)]*\),\s*eq\(\s*userBlanks\.clerkUserId\s*,\s*userId\s*\)\s*\)/);
+    }
+  });
+
   it("every Drizzle statement touching an owned table constrains on the owning-user column", () => {
     for (const [label, source] of [
       ["app/design/actions.ts", actionsSource],
@@ -170,6 +191,7 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
       ["app/actions/blank-makers.ts", blankMakersActionsSource],
       ["app/actions/rack-order.ts", rackOrderActionsSource],
       ["app/actions/account.ts", accountActionsSource],
+      ["app/actions/user-blanks.ts", userBlanksActionsSource],
     ] as const) {
       // Split on each db.<verb>( call so every statement is inspected against the text between
       // it and the NEXT db call (or end of source) — the statement's own where/values clause.

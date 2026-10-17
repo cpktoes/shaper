@@ -49,8 +49,9 @@ export async function exportMyDesigns(): Promise<ExportMyDesignsResult> {
  * 1. Who is asking comes from the sign-in session alone. Signed out, nothing happens.
  * 2. The typed word is checked again here, so a request that skipped the page's confirmation
  *    removes nothing (`not-confirmed`).
- * 3. The shaper's saved boards and settings leave the database in ONE all-or-nothing batch
- *    (`deleteAccountData`, the same delete Clerk's user.deleted message runs). If it fails it
+ * 3. The shaper's saved boards, settings and saved blanks (quick 261016-mkb) leave the database in
+ *    ONE all-or-nothing batch (`deleteAccountData`, the same delete Clerk's user.deleted message
+ *    runs). If it fails it
  *    rejects with nothing removed, and the page says so.
  * 4. Only then is the account closed in Clerk. Data goes first so this action itself guarantees
  *    the rows are gone, even where Clerk's message can never arrive (the local dev server). If

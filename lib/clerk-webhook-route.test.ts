@@ -24,6 +24,8 @@ const ROUTE_USER_ID = "user_test_route";
 const PINNED_MODELS_SQL = 'delete from "models" where "models"."clerk_user_id" = $1 returning "id"';
 const PINNED_PREFS_SQL =
   'delete from "user_preferences" where "user_preferences"."clerk_user_id" = $1 returning "clerk_user_id"';
+// Quick 261016-mkb: the shaper's saved blanks go with the account, in the same batch.
+const PINNED_SAVED_BLANKS_SQL = 'delete from "user_blanks" where "user_blanks"."clerk_user_id" = $1 returning "id"';
 
 let signingKey: Buffer;
 let signingSecret: string;
@@ -117,17 +119,18 @@ function signedRequest(body: string, key: Buffer = signingKey): Request {
 }
 
 describe("POST /api/webhooks/clerk (the real route)", () => {
-  it("R1. a correctly signed user.deleted reaches the database through two owner-scoped deletes", async () => {
-    batchSpy.mockResolvedValue([[{ id: "a" }], [{ clerkUserId: ROUTE_USER_ID }]]);
+  it("R1. a correctly signed user.deleted reaches the database through three owner-scoped deletes", async () => {
+    batchSpy.mockResolvedValue([[{ id: "a" }], [{ clerkUserId: ROUTE_USER_ID }], [{ id: "b" }, { id: "c" }]]);
     const response = await POST(signedRequest(userDeletedBody(ROUTE_USER_ID)));
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("Deleted: saved boards 1, settings rows 1");
+    expect(await response.text()).toBe("Deleted: saved boards 1, settings rows 1, saved blanks 2");
     expect(batchSpy).toHaveBeenCalledTimes(1);
     const statements = batchSpy.mock.calls[0][0] as { toSQL: () => { sql: string; params: unknown[] } }[];
-    expect(statements).toHaveLength(2);
+    expect(statements).toHaveLength(3);
     expect(statements[0].toSQL()).toEqual({ sql: PINNED_MODELS_SQL, params: [ROUTE_USER_ID] });
     expect(statements[1].toSQL()).toEqual({ sql: PINNED_PREFS_SQL, params: [ROUTE_USER_ID] });
+    expect(statements[2].toSQL()).toEqual({ sql: PINNED_SAVED_BLANKS_SQL, params: [ROUTE_USER_ID] });
   });
 
   it("R2. a correctly signed session.created is ignored; batch is never called", async () => {

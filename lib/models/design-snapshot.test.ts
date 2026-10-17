@@ -8,6 +8,7 @@ import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { buildBoardProfile } from "@/lib/geometry/board-profile";
 import { formatMark } from "@/lib/geometry/measure-display";
+import { normalizeSpec, type BlankRockerSpec, type RockerChange } from "@/lib/geometry/custom-rocker";
 import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import { summarizeDesign } from "@/lib/geometry/design";
 import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
@@ -29,6 +30,7 @@ import {
   BLANK_DECK_SKIN_MAX_MM,
   DESIGN_SNAPSHOT_VERSION,
   SNAPSHOT_BOARD_LENGTH_MM,
+  blankRockerSpecSchema,
   boardBlankSchema,
   hasPhase11Blank,
   isBoardLengthInRange,
@@ -811,5 +813,73 @@ describe("wings ride on the outline, read forgivingly as a whole (rule 7, quick 
   it("a board whose locks all fit opens with the very same wing objects' values and no new keys", () => {
     const parsed = parseSnapshot(withWings([oneWing, rearWing]));
     expect(Object.keys(parsed.outline.wings![0]).sort()).toEqual(Object.keys(oneWing).sort());
+  });
+});
+
+describe("a blank's rocker as ordered rides on the blank, read forgivingly as a whole (rule 8, quick 261016-mkb)", () => {
+  const nose = (amountIn: number, fromTipIn?: number): RockerChange =>
+    fromTipIn === undefined
+      ? { end: "nose", amount: inchesToMm(amountIn) }
+      : { end: "nose", amount: inchesToMm(amountIn), fromTip: inchesToMm(fromTipIn) };
+  const tail = (amountIn: number, fromTipIn?: number): RockerChange =>
+    fromTipIn === undefined
+      ? { end: "tail", amount: inchesToMm(amountIn) }
+      : { end: "tail", amount: inchesToMm(amountIn), fromTip: inchesToMm(fromTipIn) };
+
+  /** A saved board with a blank carrying `rocker` exactly as written, over the wire as JSON. */
+  function withRocker(rocker: unknown) {
+    const wire = wireWithBlank();
+    wire.design.blank.rocker = rocker;
+    return JSON.parse(JSON.stringify(wire));
+  }
+
+  it("the version stays 5", () => {
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+  });
+
+  it("a board saved with a valid spec reopens with that spec, normalised", () => {
+    const valid: BlankRockerSpec = { changes: [tail(0.125, 18), nose(-0.25, 18.3), tail(0.125, 30)] };
+    const parsed = parseSnapshot(withRocker(valid));
+    expect(parsed.blank!.rocker).toEqual(normalizeSpec(valid, MARKO.lengthMm));
+    expect(parsed.blank!.rocker).toEqual({ changes: [nose(-0.25, 18), tail(0.125, 30), tail(0.125, 18)] });
+    const again = roundTrip(parsed);
+    expect(again.blank!.rocker).toEqual(parsed.blank!.rocker);
+  });
+
+  it("a board saved without one reopens with no rocker key at all", () => {
+    const parsed = parseSnapshot(JSON.parse(JSON.stringify(wireWithBlank())));
+    expect("rocker" in parsed.blank!).toBe(false);
+    expect(parsed.blank).toEqual(parseSnapshot(withRocker(undefined)).blank);
+  });
+
+  it.each([
+    ["not an object", '+1/2"N'],
+    ["a list, not an object", [nose(0.5)]],
+    ["changes not a list", { changes: { end: "nose", amount: 10 } }],
+    ["an unknown end", { changes: [{ end: "middle", amount: 10 }] }],
+    ['an amount past +2"', { changes: [nose(2.0625)] }],
+    ['an amount past -2"', { changes: [tail(-2.0625)] }],
+    ["an amount that is not a number", { changes: [{ end: "nose", amount: "12" }] }],
+    ["more than four changes", { changes: [nose(0.5), nose(0.25, 12), tail(0.5), tail(0.25, 12), tail(0.125, 6)] }],
+    ["three on one end", { changes: [nose(0.5), nose(0.25, 12), nose(0.125, 6)] }],
+    ["a negative bend point", { changes: [{ end: "nose", amount: 10, fromTip: -1 }] }],
+  ])("a malformed spec (%s) reopens the board on its natural rocker, everything else intact", (_, rocker) => {
+    const plain = parseSnapshot(JSON.parse(JSON.stringify(wireWithBlank())));
+    const parsed = parseSnapshot(withRocker(rocker));
+    expect("rocker" in parsed.blank!).toBe(false);
+    expect(parsed).toEqual(plain);
+  });
+
+  it("a natural spec — no changes, or only zero amounts — reopens with no rocker key", () => {
+    for (const rocker of [{ changes: [] }, { changes: [nose(0), tail(0, 18)] }]) {
+      const parsed = parseSnapshot(withRocker(rocker));
+      expect("rocker" in parsed.blank!).toBe(false);
+    }
+  });
+
+  it("the strict schema itself refuses three changes on one end and accepts two; the board schema never rejects for it", () => {
+    expect(blankRockerSpecSchema.safeParse({ changes: [nose(0.5), nose(0.25, 12), nose(0.125, 6)] }).success).toBe(false);
+    expect(blankRockerSpecSchema.safeParse({ changes: [nose(0.5), nose(0.25, 12)] }).success).toBe(true);
+    expect(boardBlankSchema.safeParse({ ...boardBlank(), rocker: "bent" }).success).toBe(true);
   });
 });

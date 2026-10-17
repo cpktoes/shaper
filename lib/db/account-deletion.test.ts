@@ -17,8 +17,8 @@ import * as schema from "./schema";
 const testDb = drizzle(neon("postgresql://nobody:nothing@localhost/none"), { schema });
 
 describe("accountDeletionStatements", () => {
-  it("9. renders exactly the two pinned SQL strings, in order, each parameterised on the id", () => {
-    const [modelsDelete, prefsDelete] = accountDeletionStatements(testDb, "user_test");
+  it("9. renders exactly the three pinned SQL strings, in order, each parameterised on the id", () => {
+    const [modelsDelete, prefsDelete, blanksDelete] = accountDeletionStatements(testDb, "user_test");
 
     expect(modelsDelete.toSQL()).toEqual({
       sql: 'delete from "models" where "models"."clerk_user_id" = $1 returning "id"',
@@ -26,6 +26,11 @@ describe("accountDeletionStatements", () => {
     });
     expect(prefsDelete.toSQL()).toEqual({
       sql: 'delete from "user_preferences" where "user_preferences"."clerk_user_id" = $1 returning "clerk_user_id"',
+      params: ["user_test"],
+    });
+    // Quick 261016-mkb: the shaper's saved blanks go with the account.
+    expect(blanksDelete.toSQL()).toEqual({
+      sql: 'delete from "user_blanks" where "user_blanks"."clerk_user_id" = $1 returning "id"',
       params: ["user_test"],
     });
   });
@@ -42,6 +47,7 @@ describe("accountDeletionStatements", () => {
 
     expect(tablesWithOwner, "add the new owner-scoped table to accountDeletionStatements in lib/db/account-deletion.ts").toEqual([
       "models",
+      "user_blanks",
       "user_preferences",
     ]);
 
@@ -54,27 +60,27 @@ describe("accountDeletionStatements", () => {
 });
 
 describe("deleteAccountData", () => {
-  it("11. resolves { boards, settings } from the two returned row arrays, batch called once with two statements", async () => {
+  it("11. resolves { boards, settings, savedBlanks } from the three returned row arrays, batch called once with three statements", async () => {
     const batchSpy = vi
       .spyOn(testDb, "batch")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mockResolvedValue([[{ id: "a" }, { id: "b" }], [{ clerkUserId: "user_test" }]] as any);
+      .mockResolvedValue([[{ id: "a" }, { id: "b" }], [{ clerkUserId: "user_test" }], [{ id: "c" }, { id: "d" }, { id: "e" }]] as any);
 
     const result = await deleteAccountData(testDb, "user_test");
 
-    expect(result).toEqual({ boards: 2, settings: 1 });
+    expect(result).toEqual({ boards: 2, settings: 1, savedBlanks: 3 });
     expect(batchSpy).toHaveBeenCalledTimes(1);
-    expect(batchSpy.mock.calls[0][0]).toHaveLength(2);
+    expect(batchSpy.mock.calls[0][0]).toHaveLength(3);
     batchSpy.mockRestore();
   });
 
-  it("12. an empty repeat delivery resolves { boards: 0, settings: 0 }", async () => {
+  it("12. an empty repeat delivery resolves { boards: 0, settings: 0, savedBlanks: 0 }", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const batchSpy = vi.spyOn(testDb, "batch").mockResolvedValue([[], []] as any);
+    const batchSpy = vi.spyOn(testDb, "batch").mockResolvedValue([[], [], []] as any);
 
     const result = await deleteAccountData(testDb, "user_test");
 
-    expect(result).toEqual({ boards: 0, settings: 0 });
+    expect(result).toEqual({ boards: 0, settings: 0, savedBlanks: 0 });
     batchSpy.mockRestore();
   });
 
@@ -94,15 +100,15 @@ describe("deleteAccountData", () => {
     const batchSpy = vi
       .spyOn(testDb, "batch")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mockResolvedValueOnce([[{ id: "a" }, { id: "b" }], [{ clerkUserId: "user_test" }]] as any)
+      .mockResolvedValueOnce([[{ id: "a" }, { id: "b" }], [{ clerkUserId: "user_test" }], [{ id: "c" }]] as any)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mockResolvedValueOnce([[], []] as any);
+      .mockResolvedValueOnce([[], [], []] as any);
 
     const first = await deleteAccountData(testDb, "user_test");
     const second = await deleteAccountData(testDb, "user_test");
 
-    expect(first).toEqual({ boards: 2, settings: 1 });
-    expect(second).toEqual({ boards: 0, settings: 0 });
+    expect(first).toEqual({ boards: 2, settings: 1, savedBlanks: 1 });
+    expect(second).toEqual({ boards: 0, settings: 0, savedBlanks: 0 });
     expect(batchSpy).toHaveBeenCalledTimes(2);
     batchSpy.mockRestore();
   });
