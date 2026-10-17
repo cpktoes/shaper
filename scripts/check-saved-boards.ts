@@ -130,9 +130,10 @@ async function main(): Promise<void> {
     FIT_EPSILON_MM,
     MIN_FOIL_THICKNESS_MM,
     nearestFittingPlacement,
-    prepareBlank,
     thinningStartsOf,
   } = await import("../lib/geometry/blank-fit");
+  // The board's own blank, bent by any rocker it ordered (quick 261016-mkb) — the one helper.
+  const { prepareBoardBlank } = await import("../lib/geometry/custom-rocker");
   const { phase11TwelveInch } = await import("../lib/geometry/phase11-foil");
   const { buildOutline, sampleOutline } = await import("../lib/geometry/outline");
   const { formatMark } = await import("../lib/geometry/measure-display");
@@ -252,7 +253,7 @@ async function main(): Promise<void> {
       }
       const length = parsed.outline.length;
       const { foil } = parsed;
-      const prepared = prepareBlank(carried.copy);
+      const prepared = prepareBoardBlank(carried);
 
       // What Phase 11 showed at the five stations, worked out from the stored board.
       const phase11Board = {

@@ -277,6 +277,8 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expectGreyedScreen(page, controls);
     // The board carries a blank, so the blank controls are on screen, and greyed with the rest.
     await expect(controls.getByRole("button", { name: "Remove This Blank" })).toBeDisabled();
+    // Customize Rocker changes the board, so it is off too (quick 261016-mkb).
+    await expect(controls.locator("[data-customize-rocker]")).toBeDisabled();
 
     // The tabs are viewing: they switch. On DATASHEET every typed cell is disabled too.
     await page.getByRole("tab", { name: "DATASHEET", exact: true }).click();
@@ -291,6 +293,7 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await pressUnlock(page);
     await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel })).toHaveCount(0);
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(3);
+    await expect(controls.locator("[data-customize-rocker]")).toBeEnabled();
     await page.getByRole("tab", { name: "DATASHEET", exact: true }).click();
     await expect.poll(() => typed.evaluateAll((els) => els.filter((e) => !(e as HTMLInputElement).disabled).length)).toBeGreaterThan(2);
   });

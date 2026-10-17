@@ -159,7 +159,10 @@ function importsDisplayBoundary(source: string): boolean {
     // Quick 261015-ve9: a blank card's words and numbers, printed through the boundary (tested below).
     /@\/lib\/geometry\/blank-card-text/.test(source) ||
     // Quick 261015-ve9 plan 02: the blank popup's range chips and sliders (tested below).
-    /@\/lib\/geometry\/blank-browse/.test(source)
+    /@\/lib\/geometry\/blank-browse/.test(source) ||
+    // Quick 261016-mkb: the Customize Rocker popup's words and its drawing's figures (tested below).
+    /@\/lib\/geometry\/custom-rocker-text/.test(source) ||
+    /@\/lib\/geometry\/custom-rocker-art/.test(source)
   );
 }
 
@@ -390,6 +393,12 @@ describe("the design screens read every measurement through the display boundary
     // Quick 261015-ve9 plan 02: the popup's filter bar. Its range chips, slider words and slider
     // steps all come from `blank-browse.ts`, which prints and steps through the boundary.
     { file: "components/rocker/blank-filter-bar.tsx", converted: true },
+    // Quick 261016-mkb: the Customize Rocker popup, its rows and its blank-alone drawing. The rows'
+    // sliders step through `measureSlider`; every word and figure prints through
+    // `custom-rocker-text.ts` or `custom-rocker-art.ts`, which print through the boundary (tested below).
+    { file: "components/rocker/customize-rocker-dialog.tsx", converted: true },
+    { file: "components/rocker/custom-rocker-rows.tsx", converted: true },
+    { file: "components/rocker/custom-rocker-blank-view.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [
@@ -480,6 +489,16 @@ describe("the design screens read every measurement through the display boundary
     expect(source).toContain("measureSlider(");
     for (const banned of BANNED_DISPLAY_FORMATTERS) {
       expect(source, `lib/geometry/blank-browse.ts calls ${banned}`).not.toContain(banned);
+    }
+  });
+
+  it("the Customize Rocker popup's words and drawing print every number through the display boundary (quick 261016-mkb)", () => {
+    for (const file of ["lib/geometry/custom-rocker-text.ts", "lib/geometry/custom-rocker-art.ts"]) {
+      const source = readStripped(file);
+      expect(/from\s+["']\.\/measure-display["']/.test(source), file).toBe(true);
+      for (const banned of BANNED_DISPLAY_FORMATTERS) {
+        expect(source, `${file} calls ${banned}`).not.toContain(banned);
+      }
     }
   });
 

@@ -1,0 +1,922 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sketch 016 — Custom rocker on ROCKER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--color-page); color: var(--color-text); font-family: var(--font-sans); min-height: 100vh; }
+  button, input, select { font-family: inherit; }
+
+  /* ---------- sketch chrome (not part of the design) ---------- */
+  #chrome { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9998; }
+  #variant-nav { display: flex; gap: 6px; align-items: center; padding: 8px 16px; background: #0d0f14; border-bottom: 1px solid #262a33; font: 13px/1.2 system-ui, sans-serif; color: #cfd5de; flex-wrap: wrap; position: relative; }
+  #variant-nav .sketch-id { font-weight: 700; margin-right: 8px; color: #fff; }
+  .variant-tab { background: #1b1f27; color: #cfd5de; border: 1px solid #2c313b; border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  .variant-tab:hover { border-color: #4b5361; color: #fff; }
+  .variant-tab.active { background: #234f66; border-color: #3490bc; color: #fff; }
+  .variant-tab.winner { border-color: #c9a227; }
+  .notes-btn { margin-left: auto; }
+  #sketch-bar { display: flex; gap: 10px 14px; align-items: center; flex-wrap: wrap; padding: 7px 16px; background: #14171d; border-bottom: 1px solid #262a33; font: 12px/1.3 system-ui, sans-serif; color: #aeb5c0; }
+  .grp { display: flex; align-items: center; gap: 6px; }
+  .seg { display: inline-flex; border: 1px solid #2f343e; border-radius: 6px; overflow: hidden; flex-wrap: wrap; }
+  .seg button { background: transparent; color: #aeb5c0; border: 0; padding: 4px 8px; font: 12px system-ui, sans-serif; cursor: pointer; }
+  .seg button + button { border-left: 1px solid #2f343e; }
+  .seg button:hover { color: #fff; background: #222731; }
+  .seg button.on { background: #234f66; color: #fff; }
+  #notes-panel { display: none; position: absolute; right: 12px; top: calc(100% + 6px); width: min(520px, calc(100vw - 24px)); max-height: 72vh; overflow-y: auto; background: #12151b; color: #dfe3ea; border: 1px solid #2c313b; border-radius: 10px; box-shadow: 0 18px 40px rgba(0,0,0,.5); padding: 14px 16px; font: 13.5px/1.5 system-ui, sans-serif; }
+  #notes-panel.open { display: block; }
+  #notes-panel h2 { font-size: 14px; margin: 0 0 6px; color: #fff; }
+  #notes-panel h3 { font-size: 12px; margin: 12px 0 4px; letter-spacing: .05em; color: #fff; text-transform: uppercase; }
+  #notes-panel p, #notes-panel ul { margin: 0 0 8px; color: #aeb5c0; }
+  #notes-panel ul { padding-left: 18px; }
+  #notes-panel b { color: #dfe3ea; }
+  #stage { padding: 16px 16px 80px; }
+  .intro { max-width: 1280px; margin: 0 auto 12px; font: 14px/1.5 system-ui, sans-serif; color: var(--color-text-muted); }
+  .intro b { color: var(--color-text); font-weight: 600; }
+  .compare { display: flex; gap: 18px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+  .compare figure { margin: 0; }
+  .compare figcaption { font: 600 13px system-ui, sans-serif; color: var(--color-text); margin: 0 0 6px; }
+  .scaler { position: relative; }
+  .scaler > .device { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+  body.on-phone #stage { padding: 0; }
+  body.on-phone .intro { display: none; }
+  body.on-phone #variant-nav { padding: 6px 12px; gap: 5px; flex-wrap: nowrap; }
+  body.on-phone #sketch-bar { padding: 6px 12px; }
+  body.on-phone #sketch-bar.closed { display: none; }
+  body.on-phone .variant-tab { padding: 6px 8px; }
+  body.on-phone .device { border-radius: 0; border: 0; box-shadow: none; }
+
+  /* ---------- the design: the app's own tokens ---------- */
+  :root {
+    --foam: color-mix(in srgb, var(--color-text-muted) 24%, transparent);
+    --blank-line: color-mix(in srgb, var(--color-text-muted) 60%, transparent);
+    --station: color-mix(in srgb, var(--color-text-muted) 36%, transparent);
+    --line-faint: color-mix(in srgb, var(--color-line) 40%, transparent);
+  }
+  .device { margin: 0 auto; background: var(--color-bg); color: var(--color-text); border: 1px solid #000; box-shadow: 0 18px 50px rgba(0,0,0,.45); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+  .device.computer { width: 1280px; height: 900px; border-radius: 10px; }
+  .device.phone { width: 390px; height: 664px; border-radius: 30px; }
+  .device.side { width: 844px; height: 340px; border-radius: 26px; }
+
+  /* top bars */
+  .topbar { height: 64px; flex: none; display: flex; align-items: center; padding: 0 28px; gap: 18px; border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
+  .device.phone .topbar, .device.side .topbar { height: 48px; padding: 0 14px; gap: 10px; }
+  .wordmark { font-size: 21px; letter-spacing: -0.02em; white-space: nowrap; }
+  .wordmark b { font-weight: 800; }
+  .wordmark small { font-size: 9px; margin-left: 1px; color: var(--color-text-muted); }
+  .topnav { margin-left: auto; display: flex; gap: 20px; align-items: center; font-size: 11.5px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); }
+  .topnav span.on { color: var(--color-text); border-bottom: 2px solid var(--color-text); padding-bottom: 2px; }
+  .topnav .sep { width: 1px; height: 18px; background: var(--color-border); }
+  .save { background: var(--color-primary); color: var(--color-on-primary); border: 0; border-radius: 8px; padding: 8px 16px; font-weight: 600; font-size: 14px; }
+  .device.phone .save, .device.side .save { margin-left: auto; padding: 9px 16px; }
+  .ham { font-size: 22px; color: var(--color-text-muted); padding-left: 10px; border-left: 1px solid var(--color-border); }
+
+  /* the shell */
+  .shell { flex: 1; min-height: 0; display: flex; }
+  .device.phone .shell { flex-direction: column; }
+  .sidebar { width: 340px; flex: none; padding: 20px 30px 24px; overflow-y: auto; background: var(--color-surface); border-right: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 10px; }
+  .device.side .sidebar { width: 300px; padding: 10px 18px 24px; gap: 8px; }
+  .device.phone .sidebar { width: auto; flex: 1; border-right: 0; padding: 12px 16px 30px; border-top: 1px solid var(--color-border); }
+  .sidebar > * { flex-shrink: 0; }
+  .sidebar h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .sidebar .sub { margin: -4px 0 0; font-size: 13px; line-height: 1.4; color: var(--color-text-muted); }
+  .sidebar .boardline { font-size: 12px; color: var(--color-text-muted); }
+  .sect { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--color-line); font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .sect::after { content: "▾"; font-size: 11px; color: var(--color-text-muted); }
+  .sect.closed::after { content: "▸"; }
+  .sect .sv { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; color: var(--color-text-muted); text-align: right; } .device.side .sect .sv, .device.phone .sect .sv { font-size: 11px; }
+  .sect .sv.set { color: var(--color-text); }
+  .lblrow { display: flex; justify-content: space-between; align-items: center; font-size: 13px; gap: 8px; }
+  .valbox { border: 1px solid var(--color-line); border-radius: 6px; padding: 3px 10px; font-size: 13px; min-width: 64px; text-align: right; }
+  .fake-range { height: 4px; border-radius: 2px; background: var(--color-line); position: relative; margin: 8px 0 4px; }
+  .fake-range i { position: absolute; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-accent-ink); }
+  .hints { display: flex; justify-content: space-between; font-size: 10px; color: var(--color-text-muted); }
+  .note { font-size: 12px; line-height: 1.45; color: var(--color-text-muted); }
+  .note.fine { font-size: 11px; }
+  .note.warn { color: var(--color-warning-ink); }
+  .link { background: none; border: 0; padding: 0; color: var(--color-accent-ink); font-size: 11px; font-weight: 700; cursor: pointer; text-align: left; }
+  .link.muted { color: var(--color-text-muted); }
+  .links { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stepnav { display: flex; gap: 10px; margin-top: 12px; }
+  .stepnav span { flex: 1; text-align: center; border: 1px solid var(--color-line); border-radius: 8px; padding: 10px 0; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  input[type=range].rng { width: 100%; accent-color: var(--color-accent-ink); margin: 6px 0 2px; display: block; }
+  .device.phone input[type=range].rng, .device.side input[type=range].rng { height: 28px; }
+  select.sel { border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font-size: 12px; padding: 3px 6px; }
+  .device.phone select.sel, .device.side select.sel { min-height: 36px; font-size: 14px; }
+  .endblk { display: flex; flex-direction: column; gap: 4px; padding: 6px 0 2px; }
+  .endblk + .endblk { border-top: 1px solid var(--color-border); margin-top: 4px; }
+  .endhd { font-size: 11px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); display: flex; justify-content: space-between; align-items: center; }
+  .chg { display: flex; flex-direction: column; gap: 2px; }
+  .chg + .chg { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--color-border); }
+  .fromrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-muted); }
+  .pair { display: flex; gap: 12px; } .pair .half { flex: 1; min-width: 0; } .pair .sub { font-size: 12px; color: var(--color-text-muted); } .pair .valbox { min-width: 0; padding: 2px 7px; font-size: 12px; white-space: nowrap; }
+  .fromrow select { margin-left: auto; }
+  .notein { width: 100%; border: 1px solid var(--color-line); border-radius: 6px; background: transparent; color: var(--color-text); padding: 7px 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .notein.bad { border-color: var(--color-warning-ink); }
+  .readback { font-size: 12px; color: var(--color-text-muted); line-height: 1.45; }
+  .readback b { color: var(--color-text); font-weight: 600; }
+
+  /* the blank button */
+  .blankbtn { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 1px solid var(--color-line); border-left: 2px solid var(--color-accent-ink); border-radius: 6px; background: var(--color-well); color: var(--color-text); padding: 8px 10px 8px 8px; cursor: pointer; }
+  .blankbtn:hover { filter: brightness(1.08); }
+  .blankbtn .thumb { width: 92px; flex: none; }
+  .blankbtn .thumb svg { width: 100%; height: auto; display: block; }
+  .blankbtn .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .blankbtn .nm { font-size: 14px; font-weight: 600; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .blankbtn .rn { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--color-text); }
+  .blankbtn .nm .vol { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--color-text-muted); }
+  .blankbtn .meta { font-size: 12px; color: var(--color-text-muted); }
+  .blankbtn .go { font-size: 11px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-accent-ink); margin-top: 3px; }
+  .bcard { border: 1px solid var(--color-line); border-left: 2px solid var(--color-accent-ink); border-radius: 6px; background: var(--color-well); }
+  .bcard .blankbtn { border: 0; background: transparent; }
+  .bcard .rockrow { display: flex; align-items: center; gap: 8px; padding: 6px 10px 8px 10px; border-top: 1px solid var(--color-border); font-size: 12px; }
+  .bcard .rockrow .lab { color: var(--color-text-muted); }
+  .bcard .rockrow .val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .bcard .rockrow .link { margin-left: auto; }
+  .bcard .rockval { padding: 0 10px 8px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: -4px; }
+  .bcard .inrows { padding: 2px 10px 8px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 4px; }
+
+  /* drawing column */
+  .main { flex: 1; min-width: 0; padding: 12px; background: var(--color-canvas); display: flex; flex-direction: column; }
+  .device.phone .main { flex: none; height: 372px; padding: 2px; }
+  .device.side .main { padding: 4px; }
+  .tabs { display: flex; gap: 4px; align-items: flex-end; flex: none; }
+  .tab { border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; padding: 6px 16px; font-size: 11.5px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); background: transparent; cursor: pointer; }
+  .tab.on { border-color: var(--color-line); background: var(--color-surface); color: var(--color-text); }
+  .device.phone .tab, .device.side .tab { padding: 3px 7px; font-size: 10.5px; letter-spacing: .1em; }
+  .tabs .name { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--color-text-muted); padding: 0 8px 6px; white-space: nowrap; }
+  .device.phone .tabs .name, .device.side .tabs .name { font-size: 11px; padding-bottom: 3px; }
+  .panel { flex: 1; min-height: 0; border: 1px solid var(--color-line); border-radius: 0 10px 10px 10px; margin-top: -1px; background: var(--color-surface); padding: 10px; display: flex; flex-direction: column; position: relative; }
+  .device.phone .panel, .device.side .panel { padding: 2px; }
+  .drawing { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .mainwrap { flex: 1; min-height: 0; position: relative; } .mainwrap > svg.mainart { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .closeups { flex: none; display: flex; gap: 10px; padding: 0 6px 6px; }
+  .closeups figure { margin: 0; flex: 1; min-width: 0; border: 1px solid var(--color-border); border-radius: 8px; padding: 4px 6px 2px; background: var(--color-bg); }
+  .closeups figcaption { font-size: 10px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); display: flex; justify-content: space-between; }
+  .closeups svg { width: 100%; height: 150px; display: block; overflow: hidden; }
+  .device.phone .closeups { display: none; }
+  .vcap { flex: none; padding: 2px 8px 0; font-size: 11px; color: var(--color-text-muted); }
+  .device.phone .vcap { display: none; }
+  .tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; } .device.phone .tools { display: none; }
+  .tools span { width: 28px; height: 28px; border: 1px solid var(--color-line); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: var(--color-text-muted); background: var(--color-surface); }
+
+  /* the datasheet */
+  .sheet { flex: 1; min-height: 0; overflow: auto; padding: 8px 10px 14px; font-size: 12.5px; }
+  .sheet .lead { color: var(--color-text-muted); margin: 0 0 8px; font-size: 12px; }
+  .sheet table { border-collapse: collapse; min-width: 540px; width: 100%; }
+  .sheet th { text-align: right; font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-architectural); text-transform: uppercase; padding: 4px 6px 6px; border-bottom: 2px solid var(--color-border); }
+  .sheet th:first-child { text-align: left; }
+  .sheet td { text-align: right; padding: 5px 6px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; vertical-align: top; }
+  .sheet td:first-child { text-align: left; }
+  .sheet td.ink { color: var(--color-text); }
+  .sheet td .nat { display: block; font-size: 10px; color: var(--color-text-muted); opacity: .8; }
+  .sheet tr.grp td { white-space: normal; padding: 10px 6px 4px; font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text); }
+  .sheet tr.grp td .rn { font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 11px; }
+  .sheet tr.grp td .cat { font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 10px; color: var(--color-text-muted); }
+  .sheet tr.grp td .rn2 { display: block; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .sheet td .rnlab { font-size: 11px; font-weight: 600; color: var(--color-text); white-space: normal; display: inline-block; max-width: 150px; font-variant-numeric: tabular-nums; }
+  .sheet .foot { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--color-text-muted); }
+  .sheet .order { margin-top: 12px; border: 1px solid var(--color-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .sheet .order b { display: block; font-size: 10px; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 4px; }
+  .sheet .order span { font-variant-numeric: tabular-nums; }
+  .device.phone .sheet { font-size: 11.5px; }
+
+  /* the PICK A BLANK popup, as sketch 015 B drew it, with a saved blank among the cards */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 20; }
+  .dialog { width: calc(100% - 64px); max-width: 1180px; height: calc(100% - 64px); background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+  .device.phone .dialog, .device.side .dialog { width: 100%; height: 100%; border-radius: 0; border: 0; }
+  .cat-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px 10px; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; }
+  .cat-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; }
+  .cat-head .for { font-size: 12px; color: var(--color-text-muted); }
+  .cat-head .x { margin-left: auto; width: 36px; height: 36px; border: 1px solid var(--color-line); border-radius: 8px; background: transparent; color: var(--color-text); font-size: 18px; cursor: pointer; flex: none; }
+  .device.phone .cat-head { padding: 6px 8px 6px 14px; } .device.phone .cat-head .for { width: 100%; order: 3; }
+  .fbar { flex: none; padding: 10px 14px 8px; border-bottom: 1px solid var(--color-border); }
+  .fline { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .device.phone .fline, .device.side .fline { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .chip { flex: none; height: 30px; border: 1px solid var(--color-line); border-radius: 999px; background: transparent; color: var(--color-text-muted); padding: 0 11px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .chip span { font-weight: 400; opacity: .8; }
+  .chip.on { background: var(--color-primary); color: var(--color-on-primary); border-color: transparent; }
+  .chip.set { color: var(--color-text); border-color: var(--color-text-muted); }
+  .cat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 14px 24px; }
+  .device.phone .cat-scroll, .device.side .cat-scroll { padding: 2px 8px 24px; }
+  .grp-label { padding: 12px 2px 6px; font-size: 10px; font-weight: 800; letter-spacing: var(--tracking-architectural); text-transform: uppercase; color: var(--color-text-muted); }
+  .grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .device.phone .grid { grid-template-columns: 1fr; gap: 8px; }
+  .card { position: relative; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); padding: 9px 10px 8px; display: flex; flex-direction: column; gap: 5px; text-align: left; font-size: 12px; }
+  .card.picked { border-color: var(--color-accent-ink); box-shadow: inset 2px 0 0 var(--color-accent-ink); background: var(--color-well); }
+  .card.ghost { justify-content: center; color: var(--color-text-muted); border-style: dashed; min-height: 120px; }
+  .card .hd { display: flex; align-items: baseline; gap: 8px; }
+  .card .hd .nm { font-size: 14px; font-weight: 600; }
+  .card .rnline { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: -3px; }
+  .card table.st tr.ord td { color: var(--color-text); }
+  .card table.st td .rnlab { white-space: normal; display: inline-block; max-width: 92px; line-height: 1.2; }
+  .card .hd .fig { margin-left: auto; color: var(--color-text-muted); white-space: nowrap; }
+  .card .hd .star { color: var(--color-text-muted); } .card .hd .star.on { color: var(--color-accent-ink); }
+  .card .mk { font-size: 11px; color: var(--color-text-muted); }
+  .card .yours { color: var(--color-accent-ink); font-weight: 700; } .card .onb { color: var(--color-accent-ink); font-weight: 700; }
+  .card table.st { border-collapse: collapse; width: 100%; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .card table.st th { font-weight: 700; color: var(--color-text-muted); text-align: right; padding: 2px 3px; font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+  .card table.st td { text-align: right; padding: 2px 3px; color: var(--color-text-muted); border-top: 1px solid var(--color-border); }
+  .card table.st td:first-child, .card table.st th:first-child { text-align: left; }
+  .card .asord { font-size: 10.5px; color: var(--color-text-muted); }
+  .card .pickbtn { align-self: flex-start; margin-top: 2px; }
+
+  /* variant D: the ADVANCED section and the CUSTOMIZE ROCKER popup */
+  .sect[data-act="adv"] { cursor: pointer; }
+  .advbody { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; }
+  .advval { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .advbtn { align-self: flex-start; border: 1px solid var(--color-line); border-radius: 8px; background: transparent; color: var(--color-text); padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: var(--tracking-architectural); text-transform: uppercase; cursor: pointer; }
+  .advbtn:hover { background: var(--color-well); }
+  .device.phone .advbtn, .device.side .advbtn { min-height: 44px; }
+  .rdlg { max-width: 1100px; }
+  /* the popup is laid out like the ROCKER page itself: controls left and scrolling, the drawing beside them;
+     on an upright phone the drawing is pinned on top and the controls scroll in the space beneath */
+  .rbody { flex: 1; min-height: 0; display: flex; gap: 18px; padding: 12px 18px; }
+  .device.phone .rbody { flex-direction: column; padding: 8px 12px; gap: 8px; }
+  .rart { flex: 1 1 58%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-bg); padding: 6px; min-height: 260px; }
+  .device.phone .rart { flex: none; height: 300px; min-height: 0; order: -1; }
+  .rart { position: relative; } .rart svg.mainart { position: static; flex: 1; min-height: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .ztools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; z-index: 2; }
+  .zb { width: 30px; height: 30px; border: 1px solid var(--color-line); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font-size: 15px; cursor: pointer; } .zb.zl { width: auto; padding: 0 8px; font-size: 12px; } .zb[disabled] { opacity: .35; cursor: default; }
+  .device.phone .zb, .device.side .zb { width: 36px; height: 36px; }
+  .rcap { flex: none; font-size: 11px; color: var(--color-text-muted); padding: 4px 6px 0; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text); cursor: pointer; white-space: nowrap; } .sw input { accent-color: var(--color-accent-ink); width: 16px; height: 16px; }
+  .device.phone .sw, .device.side .sw { min-height: 32px; }
+  .rrows { flex: 0 0 340px; min-width: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-right: 6px; }
+  .rrows > * { flex-shrink: 0; }
+  .device.phone .rrows { flex: 1; min-height: 0; padding-right: 0; }
+  .device.side .rbody { padding: 6px 10px; gap: 10px; } .device.side .rrows { flex: 0 0 300px; }
+  .rfoot { flex: none; display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--color-border); flex-wrap: wrap; }
+  .rfoot .sp { flex: 1; }
+  .btn { border: 1px solid var(--color-line); border-radius: 8px; background: transparent; color: var(--color-text); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--color-primary); color: var(--color-on-primary); border-color: transparent; }
+  .btn.ghost { border-color: transparent; color: var(--color-text-muted); }
+  .btn[disabled] { opacity: .4; cursor: default; }
+  .device.phone .btn, .device.side .btn { min-height: 44px; }
+  .device.phone .rfoot { padding: 8px 12px; }
+
+  /* sketch tools */
+  #sketch-tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font: 12px system-ui, sans-serif; background: rgba(0,0,0,0.82); color: #fff; padding: 6px 8px; border-radius: 8px; opacity: .75; display: flex; flex-direction: column; gap: 6px; }
+  #sketch-tools:hover, #sketch-tools.open { opacity: 1; }
+  #sketch-tools:not(.open) .row { display: none; }
+  #tools-toggle { align-self: flex-end; }
+  #sketch-tools .row { display: flex; gap: 4px; align-items: center; }
+  #sketch-tools .row > span:first-child { width: 70px; color: #aeb5c0; }
+  #sketch-tools button, #tools-toggle { font: 11px system-ui, sans-serif; background: #22262e; color: #fff; border: 1px solid #3a404b; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+  #sketch-tools button.on { background: #234f66; border-color: #3490bc; }
+  body.on-phone #sketch-tools { display: none; }
+</style>
+</head>
+<body>
+<div id="chrome"><div id="variant-nav"></div><div id="sketch-bar"></div></div>
+<div id="stage"></div>
+<div id="sketch-tools"><button id="tools-toggle">⚙ Sketch</button><div class="row"><span>Theme</span><span id="t-theme"></span></div><div class="row"><span>Units</span><span id="t-units"></span></div></div>
+<script>
+const DATA = {"longboard":{"preset":"Longboard","boardLengthIn":108,"widthIn":22.5,"centerIn":2.9999999999999996,"blank":{"vendor":"US Blanks","name":"9'4\"B","pdfPage":61,"lengthIn":111.5,"volumeL":96.7,"startIn":-1.750000000000002,"endIn":109.74999999999999,"placementIn":0,"centreFromTailIn":55.75,"stations":[{"label":"T0","xIn":0,"rockerIn":3.5,"thickIn":1.4999999999999998,"widthIn":7.5},{"label":"T6","xIn":5.999999999999999,"rockerIn":2.74,"thickIn":1.752,"widthIn":13.252},{"label":"T12","xIn":11.999999999999998,"rockerIn":2.126,"thickIn":2.126,"widthIn":16.311},{"label":"T18","xIn":18,"rockerIn":1.563,"thickIn":2.374,"widthIn":18.563},{"label":"T24","xIn":23.999999999999996,"rockerIn":1.094,"thickIn":2.6259999999999994,"widthIn":20.251999999999995},{"label":"T36","xIn":36,"rockerIn":0.43700000000000006,"thickIn":2.9999999999999996,"widthIn":22.625999999999998},{"label":"T48","xIn":47.99999999999999,"rockerIn":0.094,"thickIn":3.252,"widthIn":24.126},{"label":"C","xIn":55.75,"rockerIn":0,"thickIn":3.311,"widthIn":24.874},{"label":"N48","xIn":63.5,"rockerIn":0.063,"thickIn":3.252,"widthIn":25.063},{"label":"N36","xIn":75.5,"rockerIn":0.43700000000000006,"thickIn":2.9999999999999996,"widthIn":24.811},{"label":"N24","xIn":87.5,"rockerIn":1.189,"thickIn":2.6259999999999994,"widthIn":23.437},{"label":"N18","xIn":93.50000000000001,"rockerIn":1.752,"thickIn":2.374,"widthIn":22.189},{"label":"N12","xIn":99.5,"rockerIn":2.5,"thickIn":2,"widthIn":20.311},{"label":"N6","xIn":105.5,"rockerIn":3.5,"thickIn":1.685,"widthIn":17},{"label":"N0","xIn":111.5,"rockerIn":4.752,"thickIn":1.311,"widthIn":0}],"printed":{"noseTip":{"rocker":120.70079999999999,"thickness":33.2994,"width":0},"nose12":{"rocker":63.5,"thickness":50.8,"width":515.8994},"center":{"rocker":0,"thickness":84.09939999999999,"width":631.7995999999999},"tail12":{"rocker":54.00039999999999,"thickness":54.00039999999999,"width":414.2994},"tailTip":{"rocker":88.89999999999999,"thickness":38.099999999999994,"width":190.5}}},"stations":[{"key":"tailTip","sIn":0},{"key":"tail12","sIn":11.999999999999998},{"key":"center","sIn":54},{"key":"nose12","sIn":95.99999999999999},{"key":"noseTip","sIn":108}],"stationRockerIn":{"tailTip":3.6353253997982957,"tail12":1.9547951131176187,"center":0,"nose12":2.259153843111519,"noseTip":4.5992813411953595},"foilIn":{"tailTip":0.875,"tail12":1.8943996448667182,"center":2.9999999999999996,"nose12":1.7986048140272453,"noseTip":0.875},"foamOffDeckIn":{"tailTip":0.125,"tail12":0.125,"center":0.125,"nose12":0.125,"noseTip":0.125},"foamOffBottomIn":{"tailTip":0.5595175529705906,"tail12":0.1860000000000001,"center":0.1860000000000001,"nose12":0.1860000000000001,"noseTip":0.4266305365411365},"tips":{"nose":95.99999999999999,"tail":11.999999999999998},"board":[[0,3.6353253997982957,0.875],[0.54,3.5177074342618684,0.9431554732162086],[1.08,3.4046466047267425,1.009211025984513],[1.6199999999999999,3.2960191524099027,1.0731666583049133],[2.16,3.1917022786150255,1.1350223701774091],[2.7,3.0915744467061983,1.1947781616020008],[3.2399999999999998,2.99551566152009,1.252434032578688],[3.78,2.9034077262165736,1.3079899831074713],[4.32,2.8151686669198015,1.36144601318835],[4.86,2.7329860753660533,1.4128021228213248],[5.4,2.6575074163079444,1.462058312006395],[5.9399999999999995,2.5877493199644626,1.5092145807435609],[6.4799999999999995,2.5227601759827527,1.5542709290328227],[7.0200000000000005,2.461624858362306,1.5972273568741804],[7.56,2.4034680719157966,1.6380838642676334],[8.100000000000001,2.3474563202665495,1.6768404512131823],[8.64,2.2927984953826734,1.713497117710827],[9.18,2.238745088647815,1.7480538637605676],[9.72,2.184586023468567,1.780510689362404],[10.26,2.12964741055387,1.8108675945163357],[10.8,2.074374928977086,1.8391245792223636],[11.34,2.019851410706434,1.8652816434804869],[11.879999999999999,1.966466108281267,1.8893387872907057],[12.420000000000002,1.9142143205648852,1.9116737721257442],[12.959999999999999,1.8624794396240638,1.9332609276763593],[13.5,1.8113276227459496,1.9543770937351408],[14.040000000000001,1.7608489282072421,1.9752608586039069],[14.58,1.711128593403094,1.996141415417226],[15.12,1.6622470356339187,2.0172384560839083],[15.659999999999998,1.614279873298738,2.038761805097817],[16.200000000000003,1.567297967495056,2.0609107932180186],[16.74,1.5211821901303582,2.0836854248245107],[17.28,1.475719793949127,2.1068091455438105],[17.819999999999997,1.4309485409384919,2.1301497508387657],[18.36,1.3869057371173799,2.153581699404731],[18.900000000000002,1.343626334451018,2.176984886945738],[19.44,1.3011429385964963,2.2002448620140744],[19.98,1.2594858216839928,2.223252976647389],[20.52,1.2186829401336337,2.245906471803329],[21.06,1.178759957508016,2.2681084975916876],[21.6,1.139740272400375,2.28976806830409],[22.14,1.1016450513583955,2.310799952241194],[22.68,1.064420614863095,2.3311964428073417],[23.220000000000002,1.0279229214808685,2.351090109993281],[23.759999999999998,0.9921463155026821,2.370516719485369],[24.299999999999997,0.9570895442437561,2.389506597221188],[24.840000000000003,0.92275112883919,2.4080886149168204],[25.38,0.8891293657446478,2.4262902142340304],[25.919999999999998,0.8562223282929644,2.4441374267394944],[26.46,0.8240278683066745,2.461654889656073],[27,0.7925436177664684,2.4788658574061233],[27.54,0.761766990535564,2.4957922089468614],[28.080000000000002,0.7316951841400056,2.5124544508977698],[28.619999999999997,0.7023251816048861,2.5288717164600363],[29.16,0.6736537533464887,2.5450617601280547],[29.700000000000003,0.6456774591203575,2.5610409481929572],[30.24,0.6183926500252822,2.576824245038194],[30.78,0.5917954705632131,2.592425195227158],[31.319999999999997,0.5658818607550967,2.6078559013828535],[31.86,0.540647558312632,2.6231269978596092],[32.400000000000006,0.5160881008659514,2.6382476202068306],[32.94,0.4921988282472266,2.6532253704248063],[33.48,0.46897488483019184,2.6680662780125455],[34.019999999999996,0.44641122192559624,2.6827747568076727],[34.56,0.42455830680518436,2.697331787359686],[35.1,0.4036308398515166,2.711639006166454],[35.63999999999999,0.38358292561205354,2.725682038464154],[36.18,0.36434104143528057,2.7394580119586],[36.72,0.3458368999497348,2.7529636644850104],[37.260000000000005,0.3280072757915868,2.766195338516391],[37.800000000000004,0.3107938618460923,2.7791489754551537],[38.339999999999996,0.2941431550028984,2.791820109707998],[38.88,0.27800637142521517,2.804203862544035],[39.42,0.2623393913328471,2.816294935736154],[39.96,0.24710273329908616,2.828087604985648],[40.50000000000001,0.2322615580614672,2.83957571313008],[41.04,0.2177857018463836,2.850752663134401],[41.580000000000005,0.2036497392075638,2.8616114108653155],[42.12,0.18983307537841224,2.872144457648893],[42.66,0.17632006813820783,2.882343842611435],[43.2,0.16310017919216654,2.89220113480358],[43.739999999999995,0.15016815506536507,2.901707425107664],[44.28,0.13752423751052412,2.9108533179283307],[44.82,0.12517440342965597,2.9196289226663823],[45.36,0.11313063430957071,2.9280238449758875],[45.9,0.10141121517124584,2.9360271778045304],[46.440000000000005,0.09001970062085005,2.9436345332693423],[46.98,0.07878851603570963,2.950903909135973],[47.519999999999996,0.06783133264397691,2.9578097215961847],[48.06,0.05732875862745379,2.964303926456984],[48.599999999999994,0.04744071569232301,2.970343292175952],[49.14,0.03830441903843009,2.9758896243812205],[49.68000000000001,0.03003278778490661,2.9809099569610806],[50.22,0.02271328585213038,2.98537670972323],[50.76,0.016407193300025012,2.989267812623655],[51.29999999999999,0.011149308122698452,2.9925667965651503],[51.839999999999996,0.006948078499420029,2.995262850765473],[52.379999999999995,0.0037861655019365437,2.997350846695134],[52.92,0.0016214362581264833,2.9988313285848256],[53.46,0.00038838757199382505,2.9997104705024866],[54,0,2.9999999999999996],[54.53999999999999,0.00035985952155575954,2.9997104705024866],[55.08,0.0014030132570699012,2.9988313285848256],[55.62,0.0030829166042240013,2.997350846695134],[56.160000000000004,0.005363367617420623,2.995262850765473],[56.7,0.008218014698925072,2.9925667965651503],[57.239999999999995,0.011629944817118962,2.989267812623655],[57.779999999999994,0.015591352251865856,2.98537670972323],[58.32,0.02010328786698758,2.98090995696108],[58.86,0.025175488909852974,2.9758896243812205],[59.400000000000006,0.030826289338078443,2.970343292175952],[59.93999999999999,0.03708261067333911,2.964303926456984],[60.48,0.043980033382293476,2.9578097215961847],[61.019999999999996,0.051562948784617174,2.950903909135973],[61.56,0.05988479148815089,2.943634533269342],[62.1,0.06897293409387559,2.9360271778045304],[62.63999999999999,0.07874483423182234,2.9280238449758875],[63.18,0.08919673250562511,2.9196289226663823],[63.72,0.10033377366564768,2.9108533179283307],[64.26,0.11216093489327983,2.901707425107664],[64.80000000000001,0.12468302444292238,2.89220113480358],[65.33999999999999,0.137904680316691,2.882343842611435],[65.88,0.15183036897183813,2.872144457648893],[66.42,0.16646438406088793,2.8616114108653146],[66.96,0.18181084520449192,2.850752663134401],[67.5,0.19787369679700098,2.83957571313008],[68.03999999999999,0.214656706844752,2.828087604985648],[68.58,0.23216346583707634,2.816294935736154],[69.12,0.2503973856500185,2.804203862544035],[69.66000000000001,0.2693616984827779,2.791820109707998],[70.2,0.28905945582686454,2.7791489754551533],[70.74,0.3094935274679728,2.76619533851639],[71.27999999999999,0.3306666005205718,2.7529636644850104],[71.82,0.3525811784952128,2.739458011958599],[72.36,0.3752395803985525,2.725682038464154],[72.9,0.39864393986609625,2.711639006166454],[73.44,0.422796204327654,2.697331787359686],[73.98,0.44769471522003834,2.682774756807673],[74.52000000000001,0.47331503951220816,2.6680662780125455],[75.06,0.49965858390382,2.6532253704248063],[75.60000000000001,0.526734095900195,2.6382476202068306],[76.13999999999999,0.5545511482194514,2.6231269978596092],[76.67999999999999,0.5831201404856837,2.6078559013828535],[77.22,0.6124523015168235,2.592425195227158],[77.76,0.642559692207201,2.576824245038194],[78.3,0.6734552090047988,2.5610409481929572],[78.84,0.7051525879831956,2.5450617601280547],[79.38,0.7376664095082051,2.5288717164600363],[79.92,0.771012103499208,2.5124544508977698],[80.46000000000001,0.8052059552851788,2.4957922089468614],[81.00000000000001,0.8402651120553982,2.478865857406122],[81.54,0.8762075899048671,2.461654889656073],[82.08,0.9130522814744171,2.4441374267394944],[82.61999999999999,0.9508189641854944,2.426290214234031],[83.16000000000001,0.9895283090696647,2.4080886149168204],[83.7,1.029201890192784,2.3895065972211875],[84.24,1.069862194673879,2.370516719485369],[84.78,1.1115326332987265,2.35109010999328],[85.32,1.154237551728097,2.3311964428073426],[85.86000000000001,1.1980009748336828,2.3108146537879546],[86.4,1.2428118238849342,2.290241328803522],[86.94,1.2886899920600783,2.2695557341701393],[87.47999999999999,1.3356781960946285,2.2486615092558218],[88.02000000000001,1.3838213308590293,2.2274564047688137],[88.56,1.4331665017900548,2.205832307958545],[89.1,1.4837630605882592,2.1836751951366753],[89.64,1.535662644181458,2.1608650115182377],[90.17999999999999,1.5889192169542985,2.137275478382853],[90.72,1.64358911624384,2.1127738275560537],[91.26,1.6997311011012233,2.0872204632106786],[91.8,1.7574056451813256,2.060463518056019],[92.33999999999999,1.8165700939881066,2.031757072329385],[92.88000000000001,1.877204705976147,2.0008739894528538],[93.42,1.939362680822929,1.9681543287752914],[93.96,2.0030993150060312,1.9339618047979357],[94.5,2.0684720426934033,1.8986861188883353],[95.03999999999999,2.1355404788363197,1.862744429778051],[95.58,2.204366464465082,1.8265819628440743],[96.12,2.275043626656982,1.7906422457044386],[96.66,2.3485711050070948,1.7544923182974446],[97.19999999999999,2.4258529401722218,1.7178214218742134],[97.73999999999998,2.507506734957746,1.6806295564347469],[98.28,2.593663597998597,1.6429167219790421],[98.82,2.683840914611318,1.6046829185071032],[99.36000000000001,2.777778961567476,1.5659281460189265],[99.89999999999999,2.8752000962375486,1.5266524045145162],[100.44,2.975809366928083,1.4868556939938675],[100.98,3.079295052187797,1.4465380144569835],[101.52,3.1853289992592506,1.4056993659038635],[102.06,3.293566761675939,1.364339748334506],[102.59999999999998,3.4036475360048795,1.322459161748915],[103.14,3.5151938977347488,1.2800576061470854],[103.67999999999999,3.627811336309385,1.2371350815290207],[104.22000000000001,3.7417050952972057,1.1936915878947185],[104.75999999999999,3.8577085063726475,1.1497271252441832],[105.3,3.9758518050073284,1.1052416935774088],[105.84,4.096152668206924,1.0602352928943997],[106.38,4.218628661770161,1.0147079231951541],[106.92,4.343297236787143,0.9686595844796713],[107.45999999999998,4.470175726167059,0.9220902767479552],[108,4.5992813411953595,0.875]],"blankPts":[[-1.750000000000002,3.3139999999999996,4.813999999999999],[-1.192500000000002,3.236598926521759,4.753878415675791],[-0.635000000000002,3.1606234533285447,4.69680179861345],[-0.07750000000000191,3.086061691555233,4.642633105782126],[0.4799999999999978,3.0129015745460626,4.591235125083912],[1.0374999999999974,2.9411308639621856,4.542470913147331],[1.594999999999998,2.870737155965825,4.496204205801144],[2.1524999999999976,2.801707887481022,4.45229980122847],[2.7099999999999973,2.734030342530992,4.41062391580122],[3.2674999999999974,2.6676916586520623,4.3710445125948505],[3.824999999999997,2.6026788333842235,4.333431602583431],[4.382499999999998,2.5389987118891573,4.29777896489933],[4.939999999999998,2.4770561648595364,4.266636941175033],[5.497499999999998,2.4168223283832826,4.24024515070633],[6.054999999999997,2.358048656351191,4.2175268628089615],[6.612499999999997,2.3004968651819424,4.197442495531415],[7.169999999999997,2.2439386543046056,4.178994839332927],[7.7274999999999965,2.1881555167670195,4.161232611586383],[8.284999999999997,2.1329386399700954,4.14325234190613],[8.842499999999996,2.078088896528005,4.124198588300676],[9.399999999999995,2.023416925254269,4.103262484150304],[9.957499999999996,1.9687433022737473,4.079678616009574],[10.514999999999997,1.9139400827360515,4.052951416514325],[11.072499999999998,1.8592233027065312,4.024329017817324],[11.629999999999997,1.804752569386853,3.994478173426263],[12.187499999999996,1.7506451266355776,3.9638178146676837],[12.744999999999997,1.6970129177687516,3.932749029091102],[13.302499999999995,1.643962503986192,3.9016559061189726],[13.859999999999996,1.591595007507951,3.870906092415759],[14.417499999999993,1.5400060794209651,3.840851056976127],[14.974999999999996,1.4892858922358896,3.8118260659322627],[15.532499999999995,1.4395191571541108,3.7841498670803015],[16.089999999999996,1.3907851660449435,3.758124084125881],[16.647499999999997,1.3430362208780489,3.733791810889388],[17.204999999999995,1.2959935612215203,3.7105751953206463],[17.762499999999996,1.249681831792037,3.688339736631787],[18.319999999999997,1.2041424025348721,3.6669879466964406],[18.877499999999994,1.1594139684923066,3.6464258080114904],[19.43499999999999,1.11553255835509,3.626563042307614],[19.992499999999996,1.0725315491115477,3.6073133063040834],[20.549999999999994,1.0304416867943378,3.588594314607828],[21.107499999999995,0.9892911133248415,3.570327889756749],[21.664999999999996,0.9491053994552149,3.5524399394073054],[22.222499999999993,0.9099075838080755,3.534860360666354],[22.779999999999994,0.871607329854843,3.517524454110894],[23.337499999999995,0.8340768556722231,3.5004327390258236],[23.894999999999996,0.7973146920971409,3.483618672165475],[24.452499999999993,0.7613194023454648,3.467113811111961],[25.009999999999998,0.7260892930979534,3.4509478120769024],[25.567499999999992,0.6916224162778547,3.4351484587105285],[26.124999999999993,0.6579165708962037,3.419741685883084],[26.682499999999997,0.6249693049648549,3.4047515984385655],[27.239999999999995,0.5927779174772201,3.39020048492078],[27.797499999999992,0.561339460456725,3.3761088262717194],[28.354999999999993,0.5306507410729844,3.3624952995022643],[28.912499999999994,0.5007083238256959,3.3493767763352027],[29.46999999999999,0.47150853279624355,3.336768316820576],[30.027499999999996,0.4430474539670248,3.32468315792334],[30.58499999999999,0.41532093760849187,3.3131326970833563],[31.14249999999999,0.38832460073390745,3.3021264707476954],[31.699999999999996,0.36205382962182203,3.291672127875274],[32.25749999999999,0.3365037824062645,3.281775398413799],[32.81499999999999,0.31166939173464847,3.272440056749046],[33.37249999999999,0.2875453674933989,3.263667880126452],[33.92999999999999,0.2641261996012918,3.2554586020450347],[34.4875,0.24143919611801548,3.2478301303107853],[35.044999999999995,0.21972082883523086,3.2409146570649834],[35.60249999999999,0.1989482809604781,3.234663702535058],[36.15999999999999,0.1790401424668191,3.2289927324250973],[36.717499999999994,0.1599209662463414,3.2238227328599915],[37.275,0.14152106303848283,3.2190799988862526],[37.83249999999999,0.12377633209655776,3.2146959584485657],[38.38999999999999,0.10662812759248402,3.2106070318420854],[38.94749999999999,0.09002316075971746,3.2067545266404713],[39.50499999999999,0.07391343777438276,3.2030845680996567],[40.0625,0.05825623337461052,3.19954806503736],[40.61999999999998,0.043014100218077854,3.1961007111883393],[41.177499999999995,0.02815491397774557,3.192703022035375],[41.73499999999999,0.013651954175806051,3.189320407116],[42.29249999999999,-0.0005159792441730857,3.185923277804969],[42.84999999999999,-0.014364413606899587,3.182487190572461],[43.407499999999985,-0.027903015456805486,3.1789930257180217],[43.964999999999996,-0.04113536677129331,3.175427201580253],[44.522499999999994,-0.05405870543577955,3.1717819242222296],[45.07999999999999,-0.06666362998053767,3.168055472592662],[45.63749999999999,-0.07893376857933472,3.164252519162799],[46.194999999999986,-0.09084541230986955,3.1603844860390597],[46.7525,-0.10250213101656386,3.15638059940926],[47.309999999999995,-0.11395205911030962,3.15221843994006],[47.86749999999999,-0.12498992709785807,3.1480489692927125],[48.42499999999999,-0.13543100696006938,3.1440073408003015],[48.98249999999999,-0.1451155994571607,3.1402093145980112],[49.53999999999999,-0.15391107031525703,3.136749458905068],[50.09749999999998,-0.1617133651752904,3.133699832063651],[50.654999999999994,-0.16844800330425044,3.131109145334775],[51.21249999999999,-0.17407055006878056,3.129002406451153],[51.769999999999996,-0.17856656817112646,3.127381043927023],[52.32749999999999,-0.18195104764743145,3.1262235121249575],[52.884999999999984,-0.1842673146283823,3.1254863770796377],[53.442499999999995,-0.18558541886220345,3.125105883078608],[53.99999999999999,-0.1860000000000001,3.1249999999999996],[54.55749999999999,-0.18561676821208367,3.125074533728728],[55.114999999999995,-0.1845069599322856,3.125246731775735],[55.672499999999985,-0.18272123121057235,3.1254533285618167],[56.22999999999999,-0.18029852615135175,3.1256490859467987],[56.787499999999994,-0.17726664668319397,3.1258063098367397],[57.34499999999999,-0.17364272481863352,3.125914423820392],[57.902499999999996,-0.1694335974040527,3.125979599834889],[58.45999999999999,-0.1646360833596474,3.1260244458606774],[59.01749999999999,-0.1592371634094727,3.126087750645699],[59.57499999999999,-0.15321406230157208,3.126224285458799],[60.13249999999999,-0.14653423351818626,3.1265046628723843],[60.68999999999999,-0.1391552464760447,3.127015252574325],[61.24749999999999,-0.13102457621673783,3.127858154209086],[61.80499999999999,-0.12208010653266027,3.1291497918162694],[62.36249999999999,-0.11236143998000714,3.1308248477621263],[62.91999999999998,-0.10192087510426934,3.132798227468931],[63.47749999999999,-0.09075265939690032,3.1350879702611087],[64.03499999999998,-0.07885122996266519,3.137711338388881],[64.59249999999999,-0.06621121513028748,3.1406848260445397],[65.14999999999999,-0.05282743602348145,3.144024168155879],[65.70749999999998,-0.03869490809236766,3.147744348956775],[66.26499999999999,-0.023808842605268516,3.1518596103349257],[66.82249999999999,-0.008164648100892435,3.1563834599567366],[67.37999999999998,0.008242068199105002,3.1613286791693667],[67.9375,0.025415499017171966,3.1667073306799214],[68.49499999999998,0.04335963568652973,3.172530766011804],[69.0525,0.06207826685746209,3.1788096327382163],[69.60999999999999,0.08157497724321373,3.1855538814928157],[70.16749999999999,0.10185314640551514,3.1927727727575235],[70.725,0.12291594757971774,3.2004748834274883],[71.28249999999998,0.1447663465395459,3.2086681131531964],[71.83999999999999,0.1674071005014729,3.2173596904597517],[72.3975,0.19084075706870185,3.226556178643282],[72.95499999999998,0.21506965321477678,3.2362634814445292],[73.51249999999999,0.24009591430679955,3.2464868484995693],[74.06999999999998,0.2659148921014411,3.2572472945451847],[74.6275,0.29250143291295705,3.26862394554601],[75.18499999999999,0.31986061962101986,3.280631284635417],[75.74249999999999,0.34800227341541745,3.2932738894229523],[76.3,0.37693715337664374,3.306555451630096],[76.85749999999999,0.4066769586345564,3.320478828648345],[77.41499999999998,0.4372343312471523,3.335046090722017],[77.9725,0.468622859799447,3.3502585637557627],[78.52999999999999,0.5008570837224673,3.3661168677468],[79.08749999999999,0.5339524983323596,3.3826209508418676],[79.64499999999998,0.5679255605896043,3.3997701190188843],[80.20249999999999,0.6027936955783426,3.4175630613933383],[80.75999999999998,0.6385753037058141,3.4359978711493744],[81.31749999999997,0.6752897686219123,3.455072062095624],[81.875,0.7129574658588386,3.4747825808457193],[82.4325,0.751599772190871,3.495125814623545],[82.98999999999997,0.7912390757142599,3.51609759469321],[83.5475,0.8318987866472208,3.537693195413717],[84.105,0.8736033488500221,3.559907328918357],[84.6625,0.9163782520652246,3.582734135418825],[85.22,0.960250044877997,3.606167169134049],[85.77749999999999,1.0052462683474725,3.6301999747935954],[86.335,1.0513622427205942,3.655084090959025],[86.89249999999998,1.098610522331698,3.680992748535567],[87.44999999999999,1.1470378654728464,3.7078673506714863],[88.00749999999998,1.1966935019235427,3.7356450747069516],[88.56499999999998,1.2476291707141371,3.764258945612415],[89.12249999999999,1.2998991618440956,3.793637825374064],[89.67999999999998,1.3535603619551113,3.8237063183263453],[90.23749999999998,1.4086723039590647,3.8543845924315554],[90.79499999999997,1.4652972206208335,3.8855881165065003],[91.35249999999998,1.5235001020959527,3.9172273133962348],[91.90999999999997,1.5833409393752507,3.9491491715360176],[92.46749999999997,1.6447520755330691,3.9804013265278626],[93.02499999999998,1.7077434083886354,4.010997273672928],[93.58250000000001,1.7723740576571414,4.041376637053306],[94.13999999999997,1.8387055374174213,4.072009105632249],[94.6975,1.9068018048071764,4.103396929182291],[95.255,1.9767293113853497,4.136076374037702],[95.8125,2.0485570571618474,4.170618138671319],[96.36999999999999,2.122356647294439,4.207626729095701],[96.9275,2.198202351452927,4.247738794088634],[97.485,2.2761711658505686,4.29162042024301],[98.04249999999999,2.356393351692342,4.339828104849469],[98.6,2.439172477558113,4.391955461542517],[99.15749999999998,2.524496577246077,4.447650959484493],[99.71499999999999,2.61230037265752,4.506616746900854],[100.27249999999998,2.7025115051795368,4.568535016646009],[100.82999999999998,2.7950503035645,4.63306872327257],[101.38749999999997,2.8898295789723183,4.6998620568867855],[101.94499999999998,2.986754447175454,4.768540673790128],[102.50249999999998,3.08572217792673,4.838711683907078],[103.05999999999997,3.1866220714898863,4.909963394999023],[103.61749999999998,3.2893353623329387,4.981864813664395],[104.17499999999997,3.3939082769933675,5.054465956945199],[104.73249999999997,3.5006954852626313,5.128728008415333],[105.29,3.609736203205657,5.204714645344302],[105.8475,3.7210541526166914,5.282445323779944],[106.405,3.834672895290063,5.361939373505773],[106.96249999999996,3.9506158277823604,5.443215993933789],[107.51999999999997,4.068906176220382,5.526294250032985],[108.07749999999996,4.189566991154655,5.611193068293388],[108.63499999999999,4.312621142458693,5.697931232725741],[109.1925,4.438091314273864,5.786527380896754],[109.74999999999999,4.565999999999996,5.876999999999997]],"nat":[[0,3.5],[0.5575,3.4225989265217587],[1.115,3.3466234533285446],[1.6724999999999999,3.2720616915552334],[2.23,3.1989015745460625],[2.7875,3.127130863962186],[3.3449999999999998,3.0567371559658247],[3.9025000000000003,2.9877078874810223],[4.46,2.920030342530992],[5.0175,2.8536916586520626],[5.575,2.7886788333842247],[6.1325,2.7249987118891577],[6.6899999999999995,2.663056164859537],[7.2475,2.602822328383283],[7.805000000000001,2.544048656351192],[8.3625,2.4864968651819424],[8.92,2.429938654304606],[9.477500000000001,2.3741555167670194],[10.035,2.318938639970095],[10.592500000000001,2.2640888965280053],[11.15,2.2094169252542692],[11.7075,2.1547433022737468],[12.265,2.0999400827360515],[12.8225,2.0452233027065314],[13.379999999999999,1.9907525693868529],[13.9375,1.9366451266355775],[14.495,1.8830129177687518],[15.052499999999998,1.8299625039861922],[15.610000000000001,1.777595007507951],[16.1675,1.726006079420965],[16.725,1.6752858922358895],[17.2825,1.6255191571541108],[17.84,1.5767851660449441],[18.3975,1.5290362208780484],[18.955000000000002,1.48199356122152],[19.512500000000003,1.4356818317920366],[20.07,1.3901424025348719],[20.6275,1.3454139684923059],[21.185000000000002,1.3015325583550892],[21.7425,1.2585315491115474],[22.3,1.2164416867943375],[22.857499999999998,1.1752911133248416],[23.415,1.1351053994552154],[23.972500000000004,1.0959075838080747],[24.53,1.0576073298548432],[25.0875,1.0200768556722233],[25.645,0.983314692097141],[26.202499999999997,0.947319402345465],[26.759999999999998,0.9120892930979535],[27.317500000000003,0.8776224162778545],[27.875,0.8439165708962035],[28.432500000000005,0.8109693049648551],[28.99,0.7787779174772202],[29.5475,0.7473394604567248],[30.104999999999997,0.7166507410729845],[30.6625,0.6867083238256957],[31.220000000000002,0.6575085327962432],[31.777499999999996,0.6290474539670249],[32.335,0.6013209376084917],[32.8925,0.5743246007339072],[33.45,0.5480538296218221],[34.00750000000001,0.5225037824062642],[34.565,0.4976693917346482],[35.1225,0.4735453674933983],[35.68,0.45012619960129174],[36.237500000000004,0.4274391961180154],[36.795,0.40572082883523064],[37.3525,0.38494828096047806],[37.910000000000004,0.36504014246681893],[38.4675,0.34592096624634144],[39.025000000000006,0.32752106303848294],[39.5825,0.3097763320965574],[40.14,0.2926281275924839],[40.697500000000005,0.2760231607597173],[41.255,0.2599134377743825],[41.8125,0.24425623337461064],[42.370000000000005,0.2290141002180775],[42.927499999999995,0.2141549139777457],[43.485,0.19965195417580592],[44.042500000000004,0.1854840207558268],[44.6,0.17163558639310034],[45.157500000000006,0.1580969845431942],[45.714999999999996,0.14486463322870682],[46.2725,0.13194129456422024],[46.83,0.11933637001946235],[47.3875,0.10706623142066518],[47.94500000000001,0.09515458769013024],[48.5025,0.08349786898343627],[49.06,0.07204794088969034],[49.6175,0.06101007290214185],[50.175,0.050568993039930565],[50.73250000000001,0.0408844005428391],[51.29,0.032088929684743105],[51.847500000000004,0.02428663482470951],[52.404999999999994,0.01755199669574968],[52.9625,0.011929449931219478],[53.519999999999996,0.007433431828873671],[54.07750000000001,0.004048952352568641],[54.635000000000005,0.0017326853716177542],[55.192499999999995,0.0004145811377966679],[55.75,0],[56.3075,0.000383231787916453],[56.86500000000001,0.001493040067714545],[57.42250000000001,0.003278768789427833],[57.98,0.005701473848648368],[58.5375,0.008733353316806178],[59.095,0.01235727518136666],[59.65250000000001,0.016566402595947473],[60.209999999999994,0.021363916640352795],[60.7675,0.026762836590527424],[61.325,0.03278593769842815],[61.8825,0.03946576648181395],[62.440000000000005,0.046844753523955715],[62.997499999999995,0.05497542378326246],[63.55499999999999,0.06391989346733987],[64.1125,0.07363856001999318],[64.67,0.08407912489573112],[65.2275,0.09524734060310013],[65.785,0.1071487700373351],[66.3425,0.11978878486971288],[66.9,0.13317256397651892],[67.4575,0.14730509190763288],[68.01500000000001,0.16219115739473208],[68.5725,0.17783535189910796],[69.13,0.19424206819910536],[69.6875,0.21141549901717233],[70.245,0.22935963568653056],[70.80250000000001,0.24807826685746273],[71.36,0.26757497724321405],[71.9175,0.28785314640551574],[72.47500000000001,0.30891594757971813],[73.0325,0.33076634653954684],[73.59,0.35340710050147367],[74.1475,0.37684075706870246],[74.705,0.4010696532147772],[75.2625,0.42609591430679994],[75.82000000000001,0.45191489210144214],[76.37750000000001,0.478501432912958],[76.935,0.5058606196210205],[77.49249999999999,0.5340022734154182],[78.05000000000001,0.5629371533766443],[78.6075,0.5926769586345574],[79.165,0.6232343312471538],[79.7225,0.6546228597994475],[80.28,0.6868570837224678],[80.8375,0.7199524983323607],[81.39500000000001,0.7539255605896056],[81.9525,0.788793695578344],[82.51,0.8245753037058169],[83.0675,0.861289768621915],[83.625,0.8989574658588386],[84.18249999999999,0.9375997721908711],[84.74000000000001,0.9772390757142638],[85.29750000000001,1.0178987866472227],[85.85499999999999,1.0596033488500223],[86.41250000000001,1.102378252065226],[86.97,1.1462500448779986],[87.5275,1.191246268347474],[88.08500000000001,1.237362242720596],[88.6425,1.2846105223316993],[89.2,1.333037865472849],[89.7575,1.3826935019235447],[90.31500000000001,1.4336291707141406],[90.87250000000002,1.485899161844099],[91.42999999999999,1.539560361955113],[91.98750000000001,1.594672303959068],[92.545,1.6512972206208367],[93.1025,1.7095001020959566],[93.66,1.7693409393752553],[94.2175,1.8307520755330726],[94.775,1.89374340838864],[95.3325,1.9583740576571416],[95.89000000000001,2.024705537417428],[96.44749999999999,2.0928018048071766],[97.005,2.16272931138535],[97.56250000000001,2.23455705716185],[98.12,2.308356647294441],[98.67750000000001,2.3842023514529287],[99.235,2.4621711658505716],[99.7925,2.5423933516923456],[100.35,2.6251724775581167],[100.9075,2.7104965772460803],[101.46500000000002,2.7983003726575273],[102.0225,2.888511505179539],[102.58,2.9810503035645026],[103.13750000000002,3.075829578972323],[103.69500000000001,3.17275444717546],[104.25249999999998,3.271722177926734],[104.80999999999999,3.3726220714898894],[105.3675,3.4753353623329466],[105.925,3.5799082769933728],[106.4825,3.686695485262637],[107.03999999999999,3.7957362032056574],[107.5975,3.9070541526166913],[108.15500000000002,4.020672895290065],[108.7125,4.136615827782372],[109.27000000000001,4.254906176220395],[109.82749999999999,4.375566991154664],[110.38499999999999,4.498621142458693],[110.94250000000001,4.624091314273867],[111.5,4.752]]},"shortboard":{"preset":"Shortboard","boardLengthIn":74,"widthIn":18.75,"centerIn":2.25,"blank":{"vendor":"US Blanks","name":"6'3\"RP","pdfPage":11,"lengthIn":76.126,"volumeL":51.5,"startIn":-1.0630000000000026,"endIn":75.063,"placementIn":0,"centreFromTailIn":38.063,"stations":[{"label":"T0","xIn":0,"rockerIn":1.811,"thickIn":1.252,"widthIn":11.5},{"label":"T6","xIn":5.999999999999999,"rockerIn":1.311,"thickIn":1.594,"widthIn":15.437},{"label":"T12","xIn":11.999999999999998,"rockerIn":0.8740000000000001,"thickIn":2,"widthIn":18.063},{"label":"T18","xIn":18,"rockerIn":0.5,"thickIn":2.252,"widthIn":20},{"label":"T24","xIn":23.999999999999996,"rockerIn":0.252,"thickIn":2.469,"widthIn":21.252},{"label":"C","xIn":38.063,"rockerIn":0,"thickIn":2.752,"widthIn":22.625999999999998},{"label":"N24","xIn":52.126,"rockerIn":0.252,"thickIn":2.654,"widthIn":21.811},{"label":"N18","xIn":58.12599999999999,"rockerIn":0.689,"thickIn":2.374,"widthIn":20.311},{"label":"N12","xIn":64.126,"rockerIn":1.374,"thickIn":2.016,"widthIn":17.626},{"label":"N6","xIn":70.126,"rockerIn":2.563,"thickIn":1.563,"widthIn":13.252},{"label":"N0","xIn":76.126,"rockerIn":4.252,"thickIn":1.189,"widthIn":5.5}],"printed":{"noseTip":{"rocker":108.00079999999998,"thickness":30.2006,"width":139.7},"nose12":{"rocker":34.8996,"thickness":51.206399999999995,"width":447.7004},"center":{"rocker":0,"thickness":69.90079999999999,"width":574.7004},"tail12":{"rocker":22.1996,"thickness":50.8,"width":458.80019999999996},"tailTip":{"rocker":45.999399999999994,"thickness":31.8008,"width":292.09999999999997}}},"stations":[{"key":"tailTip","sIn":0},{"key":"tail12","sIn":11.999999999999998},{"key":"center","sIn":37},{"key":"nose12","sIn":62},{"key":"noseTip","sIn":74}],"stationRockerIn":{"tailTip":1.5844002938162487,"tail12":0.801597996843432,"center":0,"nose12":1.2249354394140046,"noseTip":4.219307909624243},"foilIn":{"tailTip":0.9375,"tail12":1.5503288620373141,"center":2.25,"nose12":1.5838792616959236,"noseTip":0.4375},"foamOffDeckIn":{"tailTip":0.125,"tail12":0.125,"center":0.125,"nose12":0.125,"noseTip":0.125},"foamOffBottomIn":{"tailTip":0.24307648325269524,"tail12":0.3769999999999998,"center":0.3769999999999998,"nose12":0.3769999999999998,"noseTip":0.6839279896207396},"tips":{"nose":62,"tail":11.999999999999998},"board":[[0,1.5844002938162487,0.9375],[0.37,1.5515427930956902,0.9580741930106589],[0.74,1.5194345463810093,0.978541576824493],[1.1099999999999999,1.4880496111759907,0.9989021514415027],[1.48,1.4573621996553843,1.019155916861688],[1.85,1.427346711374443,1.0393028730850484],[2.2199999999999998,1.3979777649564178,1.0593430201115845],[2.5900000000000003,1.3692302287579643,1.0792763579412963],[2.96,1.341079250512491,1.0991028865741832],[3.33,1.3135002859514429,1.1188226060102457],[3.7,1.286469126403513,1.1384355162494835],[4.069999999999999,1.259961925371782,1.1579416172918966],[4.4399999999999995,1.233955224088802,1.1773409091374856],[4.81,1.2084259760496043,1.19663339178625],[5.180000000000001,1.1836293218961944,1.2158190652381895],[5.55,1.160374610118338,1.2348979294933047],[5.92,1.1384990443743097,1.2538699845515953],[6.29,1.117766219705789,1.2727352304130615],[6.66,1.0979474320307978,1.291493667077703],[7.030000000000001,1.078822506850245,1.3101452945455203],[7.4,1.0601804719215402,1.3286901128165123],[7.7700000000000005,1.0418200738992582,1.3471281218906803],[8.139999999999999,1.0235501389428732,1.3654593217680235],[8.51,1.005189777291539,1.3836837124485424],[8.879999999999999,0.9865684318059518,1.4018012939322366],[9.25,0.9675257704772451,1.4198120662191065],[9.62,0.9479114229029694,1.4377160293091515],[9.99,0.9275845607301163,1.4555131832023724],[10.360000000000001,0.9064133220652092,1.4732035278987685],[10.73,0.8842740798514547,1.49078706339834],[11.1,0.8610819091916537,1.508263789701087],[11.469999999999999,0.8370622140172836,1.5256337068070092],[11.84,0.8124129721170471,1.5428968147161073],[12.209999999999999,0.7873739113305344,1.5599682409035454],[12.58,0.7624525519500512,1.5764883676239367],[12.950000000000001,0.7377626656499365,1.5924844953179567],[13.32,0.7133628583969084,1.608032367790249],[13.690000000000001,0.6893083707512025,1.6232044657488638],[14.060000000000002,0.6656510457944832,1.6380701184702355],[14.43,0.6424393147061336,1.6526955835681132],[14.8,0.6197181999879185,1.6671440948664276],[15.17,0.5975293363370284,1.6814758783761097],[15.540000000000001,0.5759110091674907,1.6957481363758486],[15.910000000000002,0.5548982107799653,1.7100149995968004],[16.279999999999998,0.53452271417991,1.7243274475112367],[16.650000000000002,0.5148131645441225,1.7387331967251431],[17.02,0.4957929719980393,1.7532659576152088],[17.39,0.477409400150491,1.767678862476259],[17.759999999999998,0.4596000240926815,1.7818700409972776],[18.13,0.4423245138492139,1.795861457489893],[18.5,0.4255447910609081,1.809673759068966],[18.869999999999997,0.409224972976582,1.823326270222281],[19.24,0.3933313248477106,1.836836982275045],[19.61,0.3778322207259665,1.850222537749189],[19.98,0.362698112663638,1.8634982096174775],[20.35,0.3479015083169287,1.8766778754524238],[20.720000000000002,0.33341695695213436,1.8897739864700074],[21.090000000000003,0.31922104385470035,1.9027975314682026],[21.46,0.3052923931411584,1.9157579956603081],[21.830000000000002,0.29161167897394236,1.9286633144030831],[22.2,0.2781616451790837,1.9415198218196927],[22.569999999999997,0.2649271332667868,1.9543321943174525],[22.939999999999998,0.2518951223523833,1.9671033949390146],[23.31,0.2391110479975302,1.9799173489998154],[23.68,0.22662881166276574,1.9928187689337302],[24.05,0.21445218802170998,2.005755948229111],[24.419999999999998,0.20258481867732267,2.018678807949188],[24.79,0.19103021134052972,2.031539057718868],[25.16,0.1797917390448294,2.0442903457462953],[25.53,0.16887263939687308,2.0568883978791894],[25.900000000000002,0.1582760138630228,2.069291145695954],[26.270000000000003,0.14800482709188698,2.0814588436315526],[26.64,0.13806190627283169,2.0933541751381615],[27.01,0.12844994053046863,2.1049423478805878],[27.380000000000003,0.11917148035512132,2.116191177966465],[27.750000000000004,0.11022893706926597,2.1270711632112125],[28.120000000000005,0.1016245823299509,2.1375555454377726],[28.49,0.09336054766719178,2.147620361811117],[28.86,0.08543882405834331,2.15724448520752],[29.23,0.07786126153844912,2.1664096536186106],[29.6,0.07062956884656699,2.1751004885901883],[29.970000000000002,0.06374531310807134,2.183304502695818],[30.34,0.05720991955293259,2.191012096045185],[30.71,0.051024671269973,2.198216541827235],[31.080000000000002,0.04519070899709991,2.2049139608880726],[31.450000000000003,0.03970903094751488,2.211103285343639],[31.820000000000004,0.03458049267190011,2.2167862112271575],[32.19,0.029805806956581537,2.2219671401713517],[32.559999999999995,0.02538554375766858,2.2266531101254334],[32.93,0.0213201301711709,2.2308537151068624],[33.300000000000004,0.017609850439091815,2.2345810139878775],[33.67,0.014254845991498098,2.237849428316801],[34.04,0.011255115524567224,2.2406756291741066],[34.41,0.008610515114610586,2.2430784130632717],[34.78,0.006320758368074476,2.245078566836385],[35.15,0.00438541660751675,2.2466987216545387],[35.519999999999996,0.0028039190935611096,2.247963195982987],[35.89,0.0015755532828275497,2.2488978276210703],[36.26,0.0006994651218400143,2.2495297947669206],[36.63,0.0001746593769104772,2.2498874261169313],[37,0,2.25],[37.37,0.00017225739993061604,2.249896734715092],[37.739999999999995,0.0006808186578244114,2.2496030442881896],[38.11,0.001514524238698169,2.2491409207922164],[38.48,0.0026637252978477604,2.248529619661926],[38.85,0.004120246925829638,2.247785838868095],[39.22,0.005877355007729197,2.2469238859203835],[39.589999999999996,0.00792972669671617,2.2459558326988676],[39.96,0.010273424501886641,2.244891658114229],[40.330000000000005,0.012905873990392407,2.2437393785966204],[40.7,0.015825845103856647,2.2425051664131987],[41.07,0.019033437089076885,2.24119345581432],[41.440000000000005,0.022530067043015422,2.2398070370084033],[41.81,0.026318462072075003,2.238347137965467],[42.18000000000001,0.030402655065663045,2.236813494049326],[42.550000000000004,0.03478798408404193,2.2352044054784597],[42.92,0.03948109536046705,2.2335167826155486],[43.28999999999999,0.04448994991760974,2.2317461790856723],[43.660000000000004,0.04982383379827036,2.2298868127231826],[44.03000000000001,0.05549337191037444,2.2279315743472403],[44.4,0.061510545486259165,2.2258720243660166],[44.769999999999996,0.06788871315624419,2.2236983772095678],[45.13999999999999,0.07464263563649216,2.2213994735913714],[45.51,0.08178850403115227,2.2189627405985357],[45.879999999999995,0.08934397174879379,2.2163741396106715],[46.25,0.0973281900331271,2.2136181020474326],[46.62,0.1057618471080073,2.2106774529447284],[46.989999999999995,0.11466721093672902,2.207533322359594],[47.36,0.12406817559560807,2.204165044603737],[47.73,0.1339903112618458,2.2005500453057487],[48.1,0.14446091781568446,2.196663716301981],[48.47,0.15550908205684819,2.1924792783560907],[48.839999999999996,0.16716573853527184,2.187967631707255],[49.21,0.17946373399611334,2.18309719444705],[49.58,0.19243789543905634,2.1778337287249983],[49.95,0.2061251017919014,2.172140154782784],[50.32,0.22056435919843662,2.165976352817137],[50.69,0.23579687992060275,2.159298952671379],[51.06,0.2518661648549443,2.1520611113556454],[51.43,0.26907892365912145,2.143801836326136],[51.800000000000004,0.28772410493558165,2.1340718077185383],[52.17,0.3078020103277977,2.1228639212704685],[52.540000000000006,0.3293050542642109,2.1101819266919817],[52.910000000000004,0.3522167224279379,2.096045796138625],[53.28,0.37651063006599317,2.080496355659094],[53.650000000000006,0.402149697996034,2.0635991517437344],[54.02,0.4290854463106096,2.045447552973904],[54.39000000000001,0.45725740577894225,2.026165086772169],[54.760000000000005,0.48659264694621907,2.0059070112533606],[55.13,0.5170054269304097,1.98486112217647],[55.50000000000001,0.548396953916588,1.9632477949974074],[55.870000000000005,0.580655269348785,1.9413192620225925],[56.24000000000001,0.6136552478193603,1.9193581246634028],[56.61000000000001,0.647258714655879,1.8976751007914734],[56.98,0.6813146812055181,1.8766060071948403],[57.35000000000001,0.7157667080403897,1.8561284642199771],[57.72,0.7508024707002033,1.8355651603480585],[58.09000000000001,0.7864887734798288,1.8148813831792263],[58.46,0.822892614665075,1.7940667221099589],[58.83,0.860088174056307,1.773106629515857],[59.2,0.8981567784937352,1.7519825735351067],[59.57,0.9371869061194585,1.7306721737661772],[59.940000000000005,0.9772742293762361,1.709149319879758],[60.31,1.018521696742977,1.6873842731449449],[60.68,1.0610396532069737,1.66534375086966],[61.050000000000004,1.104945999472876,1.6429909937553095],[61.42,1.1503663899083683,1.6202858161656934],[61.790000000000006,1.1974344692266092,1.597184639310145],[62.160000000000004,1.246315320010854,1.5736173352354448],[62.529999999999994,1.2973263448910974,1.5493666578166967],[62.900000000000006,1.3506158630320972,1.524389981087794],[63.27,1.4062887896167653,1.498687305048741],[63.64000000000001,1.4644017442494561,1.472258629699535],[64.01,1.5250007525359617,1.4451039550401772],[64.38,1.58813279637545,1.4172232810706684],[64.75000000000001,1.6538435810022674,1.388616607791005],[65.11999999999999,1.7221771915546686,1.3592839352011916],[65.49000000000001,1.7931757347818091,1.3292252633012243],[65.86,1.8668789658888312,1.298440592091106],[66.22999999999999,1.9433239005202367,1.2669299215708358],[66.60000000000001,2.0225444118813747,1.2346932517404117],[66.97,2.1045708129981233,1.201730582599838],[67.34,2.1894294241148144,1.1680419141491092],[67.71,2.277142125230265,1.133627246388231],[68.08,2.3677258937720693,1.0984865793171996],[68.45,2.4611923274090235,1.0626199129360143],[68.82,2.5575471520017565,1.0260272472446799],[69.19000000000001,2.656782616576062,0.9887085822431902],[69.56,2.758822978156444,0.9506639179315515],[69.92999999999999,2.86369037341105,0.9118932543097594],[70.3,2.9714378119706444,0.8723965913778141],[70.67,3.0821188434580207,0.832173929135718],[71.03999999999999,3.1957875172242525,0.7912252675834694],[71.41,3.31249834029978,0.7495506067210679],[71.78,3.432306233560314,0.7071499465485152],[72.15,3.55526648610762,0.6640232870658092],[72.52,3.681434707865114,0.620170628272952],[72.88999999999999,3.810866780388335,0.5755919701699428],[73.26,3.943618805890205,0.5302873127567804],[73.63,4.07974705448118,0.4842566560334668],[74,4.219307909624243,0.4375]],"blankPts":[[-1.0630000000000026,1.4340000000000004,2.6860000000000004],[-0.6823700000000025,1.4006272009564078,2.6713263218952497],[-0.30174000000000256,1.3674633719057998,2.6574111962582956],[0.07888999999999752,1.3345118182167883,2.6442261062305685],[0.45951999999999743,1.3017758376551989,2.6317425988778473],[0.8401499999999973,1.2692587202593861,2.6199323261748946],[1.2207799999999975,1.2369637482160736,2.6087670847786786],[1.6014099999999973,1.2048941957367347,2.598218854590211],[1.9820399999999974,1.1730533289345038,2.5882598361049713],[2.362669999999997,1.1414444057016249,2.5788624865519405],[2.743299999999997,1.1100706755874339,2.5699995548212327],[3.123929999999997,1.0789353796768735,2.561644115180326],[3.504559999999998,1.0480417504695465,2.5537695997788985],[3.8851899999999975,1.017393011759297,2.5463498299422573],[4.265819999999997,0.9869923785143366,2.5393590462533773],[4.646449999999997,0.9568430567578932,2.5327719374235342],[5.027079999999997,0.9269499470345123,2.5266027603348107],[5.407709999999997,0.8973537685215743,2.5217147284223733],[5.788339999999996,0.868061946341724,2.5182713908733723],[6.168969999999998,0.8390632673862406,2.5160125435907923],[6.549599999999996,0.810347111393915,2.514686233089378],[6.930229999999998,0.7819034536986352,2.514049772671616],[7.310859999999997,0.7537228686147552,2.513870573666612],[7.691489999999997,0.7257965334602491,2.5139267917318735],[8.072119999999998,0.6981162332176541,2.5140077882180014],[8.452749999999996,0.670674365832796,2.5139144065962746],[8.833379999999996,0.643463948151299,2.5134590639491448],[9.214009999999996,0.6164786224928859,2.5124656575236295],[9.594639999999997,0.5897126638634558,2.5107692863476108],[9.975269999999997,0.5631609878049565,2.5082157879090343],[10.355899999999997,0.5368191588830341,2.5046610898980126],[10.736529999999995,0.5106833998124732,2.4999703770118313],[11.117159999999998,0.4847214858845086,2.494055881602795],[11.497789999999998,0.45876562241021607,2.487164768793885],[11.878419999999998,0.43285343789284214,2.4795069127792018],[12.259049999999998,0.40705902135345284,2.4712502208399347],[12.639679999999995,0.38145290840733276,2.4625548282023413],[13.020309999999995,0.3561019857154507,2.4535732370459216],[13.400939999999999,0.3310694163535579,2.4444504386246084],[13.781569999999995,0.3064145860989167,2.4353240185009906],[14.162199999999995,0.28219307063465465,2.4263242448935483],[14.542829999999999,0.2584566236717544,2.417574140136925],[14.923459999999999,0.2352531859886734,2.4091895352552166],[15.304089999999997,0.2126269153885907,2.4012791076482904],[15.684719999999997,0.19061823757428553,2.3939444018911185],[16.06535,0.1692639179406481,2.387279833646148],[16.445979999999995,0.14859715428481973,2.3813726766886876],[16.826609999999995,0.12864769043396004,2.3763030330453203],[17.20724,0.10941552784013861,2.3720043242188336],[17.587869999999995,0.09081642730582407,2.36811065510332],[17.968499999999995,0.07280187595578837,2.36457948281691],[18.349129999999995,0.055329320740894465,2.3613913795023844],[18.729759999999995,0.03835869393382512,2.358527924628122],[19.110389999999995,0.0218523541942198,2.3559716363977086],[19.491019999999995,0.005775037593274694,2.3537059070681132],[19.871649999999995,-0.009906181402195626,2.351714942176427],[20.252279999999995,-0.02522191898623505,2.349983703675155],[20.632909999999995,-0.04020050111076029,2.3484978569760813],[21.013539999999995,-0.054867972623113534,2.347243721902683],[21.39417,-0.0692480964441536,2.346208227551115],[21.7748,-0.08336234278688391,2.345378871059751],[22.15543,-0.09722986841561988,2.3447436802872867],[22.536059999999992,-0.11086748594569379,2.3442911803994053],[22.91669,-0.12428962318369802,2.344010364364002],[23.29732,-0.1374558111882641,2.3440206533536965],[23.67795,-0.15030286851535582,2.344444274037049],[24.05858,-0.16282652298617997,2.3452294481312848],[24.43921,-0.1750228113162603,2.3463256362383835],[24.81984,-0.18688792019621944,2.347684156031009],[25.20047,-0.19841818719511115,2.3492583537210607],[25.5811,-0.20961010162110982,2.3510037625743974],[25.96173,-0.22046030533955913,2.352878248471728],[26.342359999999992,-0.23096559354838025,2.354842142515678],[26.722989999999992,-0.24112291551083795,2.3568583606840185],[27.103619999999992,-0.2509293752456657,2.3588925105290737],[27.48425,-0.26038223217454964,2.3609129849232917],[27.86488,-0.26947890172697087,2.3628910428509884],[28.24551,-0.2782169559024075,2.3648008772462625],[28.626139999999996,-0.28659412378989446,2.36661966987708],[29.006769999999996,-0.29460829204494277,2.368327633275525],[29.387399999999996,-0.3022575053238165,2.36990803971423],[29.768029999999996,-0.30953996667517003,2.3713472372289637],[30.14866,-0.31645403788904297,2.3726346526874007],[30.52929,-0.3229982398032138,2.3737627819040554],[30.90992,-0.32917125256691326,2.3747271668013847],[31.290549999999996,-0.3349719158618953,2.375526359617067],[31.671179999999996,-0.3403992290808679,2.3761618741574453],[32.051809999999996,-0.3454523514632814,2.3766381240971413],[32.43243999999999,-0.3501306021884769,2.376962348324846],[32.813069999999996,-0.35443346042619234,2.37714452333527],[33.1937,-0.3583605653444281,2.3771972626672757],[33.574329999999996,-0.36191171607467093,2.377135703388167],[33.95495999999999,-0.365086871634477,2.3769773796241607],[34.335589999999996,-0.36788615080741305,2.3767420831370223],[34.71621999999999,-0.3703098319803571,2.3764517109468697],[35.096849999999996,-0.3723583529381575,2.3761301000011548],[35.47748,-0.37403231061565073,2.375802848889808],[35.85811,-0.3753324608070377,2.375497126606555],[36.23873999999999,-0.3762597178326199,2.3752414683564074],[36.619369999999996,-0.376815154162893,2.375065558409315],[36.99999999999999,-0.3769999999999998,2.375],[37.38063,-0.3768177669321631,2.3750730750473044],[37.76125999999999,-0.37627998260519413,2.375300873180334],[38.14188999999999,-0.3753987248476452,2.375695128020036],[38.52251999999999,-0.3741843820006283,2.3762662094978477],[38.90315,-0.37264569496576994,2.3770232872348678],[39.28377999999999,-0.3707897949693539,2.3779744837788397],[39.66440999999999,-0.3686222370426537,2.3791270176989454],[40.04503999999999,-0.3661470292184512,2.380487336538421],[40.42566999999999,-0.36336665744374635,2.382061239624972],[40.8063,-0.3602821062086522,2.3838539907390155],[41.18693,-0.356892874891481,2.38587042063973],[41.56755999999999,-0.3531969898200169,2.3881150194489162],[41.94818999999999,-0.34919101204897723,2.390592018892676],[42.32882,-0.3448700408536628,2.393305464400901],[42.70945,-0.34022771293979653,2.3962592770645776],[43.09007999999999,-0.3352561973695489,2.399457305450903],[43.47070999999999,-0.3299461862037537,2.4029033672762146],[43.85134,-0.3242868808603105,2.4066012809367354],[44.23197,-0.3182659741887779,2.41055488689713],[44.61259999999999,-0.311869628261151,2.4147680589368754],[44.99322999999999,-0.3050824478788315,2.4192447052544455],[45.37386,-0.2978874497957831,2.4239887594293057],[45.75449,-0.29026602765787785,2.4290041612417257],[46.13511999999999,-0.2821979126584276,2.4342948273504037],[46.515750000000004,-0.27366112990990626,2.439864611827902],[46.89638,-0.26463195053186106,2.445717256553899],[47.27701,-0.25508483945500826,2.4518563314662534],[47.657639999999994,-0.24499239894152192,2.4582851646698787],[48.03826999999999,-0.234325307821507,2.4650067624034393],[48.4189,-0.22305225644566393,2.47202371886385],[48.79953,-0.21113987735414075,2.479338115888595],[49.180159999999994,-0.19855267166157034,2.486951412495861],[49.56078999999999,-0.18525293115830155,2.494864324282478],[49.94142,-0.1712006561278131,2.5030766926796804],[50.32205,-0.15635346888032242,2.511587344066674],[50.702679999999994,-0.14066652300257432,2.520393938742024],[51.083310000000004,-0.12409159101730609,2.5294923507918186],[51.46394,-0.10627048749715437,2.538700246072539],[51.84457,-0.08693314673866487,2.547866902983203],[52.225199999999994,-0.06608011944083972,2.556985062007297],[52.60582999999999,-0.04372091834676103,2.5660513915396095],[52.98646,-0.01987522052782265,2.575071384149095],[53.36709,0.0054260698323015805,2.5840634857499305],[53.747719999999994,0.03213989815397299,2.593062457680753],[54.12834999999999,0.06021027567816308,2.6021219716920774],[54.50897999999999,0.08956763518330348,2.6113164378419014],[54.88961,0.12012832620240771,2.620742065299493],[55.270239999999994,0.151794249740458,2.630517156057356],[55.65086999999999,0.18445263249207391,2.6407816315513903],[56.0315,0.2179759405594424,2.6516957921892224],[56.41213,0.25222193267051596,2.663438309786726],[56.792759999999994,0.2870338528974969,2.6762034529127288],[57.17338999999999,0.3222549814467671,2.6901582799468824],[57.55402,0.35800889598308283,2.7048130769697134],[57.93465,0.39442198639460185,2.720003005048726],[58.315279999999994,0.4315637749299467,2.735788266163277],[58.69590999999999,0.46951185646018884,2.7522324238551916],[59.07653999999999,0.5083518406614942,2.769402529422188],[59.45717,0.5481773401102426,2.7873692737729914],[59.837799999999994,0.5890900042906189,2.806207164944133],[60.21842999999999,0.6311995995146944,2.825994731278427],[60.59905999999999,0.6746241347549743,2.8468147502651373],[60.979689999999984,0.7194900333894219,2.868754503041829],[61.360319999999994,0.7659323508589675,2.8919060545578983],[61.74094999999999,0.8140950382374782,2.916366559399785],[62.12158,0.8641312517142323,2.942238593277885],[62.50221,0.9162037079888362,2.9696305101751244],[62.882839999999995,0.9704850855786473,2.998656825157232],[63.26346999999999,1.0271821056054713,3.029432426995468],[63.64409999999999,1.086528608623974,3.0620212419811574],[64.02473,1.148521175157046,3.096473248020889],[64.40536,1.2131211691457118,3.1328395603236157],[64.78599,1.2802813710022738,3.1711698491199565],[65.16662,1.349945478969457,3.2115119430525927],[65.54724999999998,1.4220476603773826,3.2539114149517845],[65.92788,1.4965121527983656,3.2984111499960242],[66.30851,1.573252915099509,3.3450508962578005],[66.68914000000001,1.652173328393157,3.3938667976345096],[67.06977,1.7331659468851128,3.4448909091644637],[67.4504,1.8161122986207303,3.4981506947280603],[67.83103,1.9008827361287846,3.553668507134053],[68.21166,1.9873363369631751,3.6114610505909512],[68.59229,2.075320854142452,3.6715388255635566],[68.97292,2.1646727164871375,3.7339055560146086],[69.35355,2.2554904125204924,3.798523299615643],[69.73418,2.348335735025493,3.8653374238479308],[70.11480999999998,2.4432536599839128,3.9344013791145853],[70.49544,2.5402647163262504,4.005773166657357],[70.87607,2.6393893400435258,4.079511370197769],[71.2567,2.740647871726485,4.155675108490657],[71.63732999999999,2.8440605541209854,4.234323985761826],[72.01796,2.949647529699595,4.315518040029869],[72.39859,3.0574288382493835,4.399317689312127],[72.77922000000001,3.1674244144759856,4.4857836757148535],[73.15985,3.279654085623774,4.57497700740744],[73.54048,3.394137569112342,4.666958898480893],[73.92111,3.510894470189113,4.761790706690381],[74.30174,3.6299442795982197,4.859533869081998],[74.68237,3.751306371265547,4.960249835503631],[75.063,3.8749999999999973,5.063999999999999]],"nat":[[0,1.811],[0.38063,1.7776272009564076],[0.76126,1.7444633719057996],[1.14189,1.7115118182167879],[1.52252,1.6787758376551987],[1.9031500000000001,1.646258720259385],[2.28378,1.6139637482160734],[2.6644100000000006,1.5818941957367345],[3.04504,1.5500533289345035],[3.4256700000000007,1.5184444057016244],[3.8063000000000002,1.4870706755874337],[4.18693,1.4559353796768735],[4.56756,1.4250417504695463],[4.948189999999999,1.3943930117592969],[5.328820000000001,1.3639923785143362],[5.709450000000001,1.333843056757893],[6.09008,1.3039499470345122],[6.47071,1.2743537685215742],[6.851340000000001,1.2450619463417238],[7.2319700000000005,1.2160632673862404],[7.6126000000000005,1.1873471113939147],[7.9932300000000005,1.1589034536986351],[8.37386,1.130722868614755],[8.754490000000002,1.102796533460249],[9.13512,1.0751162332176538],[9.51575,1.0476743658327958],[9.896379999999999,1.020463948151299],[10.277009999999999,0.9934786224928857],[10.657640000000002,0.9667126638634556],[11.03827,0.9401609878049563],[11.418900000000002,0.9138191588830336],[11.79953,0.887683399812473],[12.18016,0.8617214858845084],[12.560790000000003,0.8357656224102156],[12.94142,0.8098534378928419],[13.32205,0.7840590213534526],[13.702680000000003,0.7584529084073323],[14.08331,0.7331019857154503],[14.463940000000001,0.7080694163535577],[14.844570000000003,0.6834145860989165],[15.225200000000001,0.6591930706346542],[15.605830000000001,0.6354566236717542],[15.986460000000001,0.6122531859886732],[16.36709,0.5896269153885902],[16.74772,0.567618237574285],[17.12835,0.5462639179406479],[17.508980000000005,0.5255971542848193],[17.88961,0.5056476904339596],[18.27024,0.48641552784013836],[18.650870000000005,0.4678164273058236],[19.0315,0.44980187595578786],[19.41213,0.4323293207408942],[19.792759999999998,0.4153586939338249],[20.173390000000005,0.3988523541942192],[20.554019999999998,0.38277503759327447],[20.93465,0.36709381859780416],[21.315280000000005,0.3517780810137645],[21.69591,0.3367994988892395],[22.07654,0.32213202737688623],[22.457170000000005,0.3077519035558461],[22.837800000000005,0.2936376572131156],[23.21843,0.2797701315843799],[23.59906,0.2661325140543059],[23.979690000000005,0.2527103768163015],[24.36032,0.23954418881173567],[24.74095,0.22669713148464396],[25.121580000000005,0.21417347701381972],[25.50221,0.20197718868373948],[25.88284,0.19011207980378034],[26.26347,0.17858181280488863],[26.6441,0.16738989837888996],[27.024730000000005,0.1565396946604405],[27.405360000000005,0.14603440645161928],[27.78599,0.13587708448916166],[28.16662,0.12607062475433392],[28.547250000000002,0.11661776782545012],[28.927880000000002,0.10752109827302893],[29.308510000000002,0.09878304409759227],[29.689140000000005,0.09040587621010507],[30.069770000000005,0.08239170795505683],[30.450400000000002,0.0747424946761832],[30.831030000000002,0.06746003332482964],[31.211660000000002,0.060545962110956836],[31.592290000000002,0.05400176019678597],[31.972920000000002,0.047828747433086544],[32.353550000000006,0.04202808413810435],[32.73418,0.036600770919131824],[33.11481,0.031547648536718285],[33.49544,0.02686939781152283],[33.87607,0.022566539573807408],[34.2567,0.018639434655571687],[34.637330000000006,0.015088283925328759],[35.01796000000001,0.011913128365522717],[35.398590000000006,0.009113849192586688],[35.77922,0.006690168019642607],[36.159850000000006,0.004641647061842223],[36.54048,0.0029676893843490967],[36.921110000000006,0.001667539192962063],[37.30174000000001,0.0007402821673798195],[37.682370000000006,0.0001848458371067348],[38.063,0],[38.443630000000006,0.00018223306783668092],[38.82426,0.0007200173948056986],[39.204890000000006,0.001601275152354624],[39.585519999999995,0.002815617999371476],[39.966150000000006,0.004354305034229922],[40.34678000000001,0.006210205030645918],[40.727410000000006,0.008377762957346213],[41.108039999999995,0.010852970781548586],[41.488670000000006,0.01363334255625357],[41.8693,0.01671789379134764],[42.249930000000006,0.020107125108518843],[42.63056000000001,0.023803010179983097],[43.011190000000006,0.02780898795102274],[43.39182,0.03212995914633697],[43.772450000000006,0.03677228706020334],[44.15308,0.041743802630450966],[44.533710000000006,0.04705381379624638],[44.91434000000001,0.0527131191396894],[45.294970000000006,0.05873402581122205],[45.67560000000001,0.06513037173884909],[46.056230000000006,0.07191755212116863],[46.43686,0.07911255020421673],[46.81749000000001,0.08673397234212209],[47.19812,0.09480208734157239],[47.57875000000001,0.10333887009009352],[47.95938000000001,0.11236804946813894],[48.34001000000001,0.12191516054499173],[48.72064,0.13200760105847825],[49.10127000000001,0.1426746921784932],[49.4819,0.15394774355433588],[49.86253000000001,0.16586012264585945],[50.24316000000001,0.17844732833842988],[50.62379000000001,0.19174706884169887],[51.00442,0.20579934387218668],[51.38505000000001,0.2206465311196778],[51.76568,0.2363334769974259],[52.14631000000001,0.2529084089826937],[52.52694,0.2707295125028454],[52.90757,0.2900668532613349],[53.2882,0.31091988055916053],[53.66883,0.33327908165323944],[54.04946000000001,0.3571247794721777],[54.43009000000001,0.38242606983230193],[54.81072000000001,0.4091398981539742],[55.19135000000001,0.4372102756781643],[55.57198,0.4665676351833046],[55.95261000000001,0.49712832620240827],[56.33324,0.5287942497404585],[56.71387000000001,0.5614526324920754],[57.094500000000004,0.5949759405594421],[57.47513,0.6292219326705157],[57.855760000000004,0.6640338528974978],[58.23639,0.699254981446768],[58.617020000000004,0.7350088959830826],[58.99765000000001,0.7714219863946029],[59.37828000000001,0.8085637749299485],[59.75891000000001,0.8465118564601906],[60.13954000000001,0.8853518406614966],[60.52017000000001,0.925177340110243],[60.900800000000004,0.9660900042906193],[61.28143000000001,1.008199599514696],[61.662060000000004,1.0516241347549762],[62.04269000000001,1.096490033389425],[62.423320000000004,1.1429323508589684],[62.80395,1.191095038237479],[63.184580000000004,1.241131251714232],[63.56521,1.293203707988836],[63.945840000000004,1.3474850855786482],[64.32647000000001,1.4041821056054742],[64.70710000000001,1.463528608623978],[65.08773000000001,1.5255211751570472],[65.46836,1.5901211691457127],[65.84899000000001,1.6572813710022765],[66.22962,1.7269454789694603],[66.61025000000001,1.7990476603773877],[66.99088,1.873512152798368],[67.37151,1.9502529150995112],[67.75214,2.029173328393157],[68.13277,2.1101659468851124],[68.5134,2.193112298620732],[68.89403,2.2778827361287863],[69.27466000000001,2.364336336963182],[69.65529000000001,2.4523208541424544],[70.03592000000002,2.5416727164871413],[70.41655000000002,2.6324904125204966],[70.79718000000001,2.725335735025498],[71.17781000000001,2.82025365998392],[71.55844,2.9172647163262537],[71.93907000000002,3.0163893400435287],[72.31970000000001,3.117647871726491],[72.70033,3.22106055412099],[73.08096,3.326647529699596],[73.46159,3.4344288382493877],[73.84222000000001,3.5444244144759853],[74.22285,3.656654085623774],[74.60348000000002,3.7711375691123457],[74.98411000000002,3.88789447018912],[75.36474000000001,4.006944279598225],[75.74537000000001,4.12830637126555],[76.126,4.252]]}};
+const PALETTES = {
+  slate: { "--color-bg": "#12141a", "--color-surface": "#12141a", "--color-canvas": "#1a1d25", "--color-well": "#1b1f26", "--color-border": "#333842", "--color-line": "#6a707c", "--color-text": "#f2f4f7", "--color-text-muted": "#a1a8b4", "--color-primary": "#18526d", "--color-on-primary": "#f2f4f7", "--color-accent-ink": "#3490bc", "--color-board": "#1a2732", "--color-warning-ink": "#ff9670", "--color-page": "#0b0c10", "--adj-1": "#f0625f", "--adj-2": "#4f9cf5" },
+  daylight: { "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-canvas": "#dfdcd3", "--color-well": "#efece5", "--color-border": "#c9c2ad", "--color-line": "#897c58", "--color-text": "#1f2a3b", "--color-text-muted": "#566171", "--color-primary": "#8ec1b8", "--color-on-primary": "#1f2a3b", "--color-accent-ink": "#1f6f68", "--color-board": "#f6f3ea", "--color-warning-ink": "#a8470f", "--color-page": "#cfcabd", "--adj-1": "#c62828", "--adj-2": "#1d5fd6" },
+};
+const COMMON_VARS = { "--font-sans": '"Inter", Roboto, system-ui, sans-serif', "--tracking-architectural": "0.15em" };
+const VARIANTS = [
+  { id: "d", label: "D: Customize Rocker under the blank card, a popup — the founder's direction", short: "D · Popup", winner: true },
+  { id: "a", label: "A: The ROCKER section, two rows", short: "A · Section" },
+  { id: "b", label: "B: Inside the BLANK card", short: "B · On the card" },
+  { id: "c", label: "C: One field in the notation", short: "C · Typed" },
+  { id: "all", label: "All three side by side" },
+];
+const DEVICES = [["computer", "Computer"], ["phone", "Phone upright"], ["side", "Phone sideways"]];
+const FROMS = [null, 6, 12, 18, 24, 30, 36, 48];
+const PRESETS = [
+  ["Natural", { nose: [], tail: [] }],
+  ['-1/2"N24" +1/2"T24"', { nose: [{ a: -0.5, f: 24 }], tail: [{ a: 0.5, f: 24 }] }],
+  ['-1/4"N18" +1/8"T36" +1/8"T18"', { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] }],
+  ['+1/2"T', { nose: [], tail: [{ a: 0.5, f: null }] }],
+  ['-1 1/2"N', { nose: [{ a: -1.5, f: null }], tail: [] }],
+  ['-2"T (reverse)', { nose: [], tail: [{ a: -2, f: null }] }],
+];
+const DEFAULTS = { variant: "d", advOpen: true, popup: false, draft: null, savedIdx: null, showBoard: false, zoom: 1, pan: { x: 0, y: 0 }, device: "computer", board: "longboard", units: "imperial", theme: "slate", closeups: true, tab: "viewer", bOpen: true, saved: [], picker: false, text: '-1/4"N18" +1/8"T36" +1/8"T18"', rocker: { nose: [{ a: -0.25, f: 18 }], tail: [{ a: 0.125, f: 36 }, { a: 0.125, f: 18 }] } };
+if (window.__publish) DEFAULTS.theme = "auto";
+let state = JSON.parse(JSON.stringify(DEFAULTS));
+let barOpen = false;
+try { const s = JSON.parse(localStorage.getItem("sketch016") || "null"); if (s && s.rocker) { state = { ...state, ...s }; if (!("popup" in s)) state.variant = "d"; state.popup = false; state.draft = null; } } catch (e) {}
+function save() { try { localStorage.setItem("sketch016", JSON.stringify(state)); } catch (e) {} }
+
+/* ---------- units and words ---------- */
+const M = () => state.units === "metric";
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+function fracIn(x, den = 16) { const t = Math.round(Math.abs(x) * den); const w = Math.floor(t / den); let n = t % den, d = den; while (n && n % 2 === 0) { n /= 2; d /= 2; } const s = x < 0 && t ? "-" : ""; if (!n) return `${s}${w}"`; return `${s}${w ? w + " " : ""}${n}/${d}"`; }
+function signedIn(x) { const t = Math.round(x * 16) / 16; if (!t) return '0"'; return (t > 0 ? "+" : "") + fracIn(t); }
+const mark = (x) => (M() ? `${Math.round(x * 25.4)} mm` : fracIn(x));
+const signedMark = (x) => { if (M()) { const v = Math.round(x * 25.4); return v ? (v > 0 ? "+" : "") + v + " mm" : "0 mm"; } return signedIn(x); };
+const dim = (x) => (M() ? `${(x * 2.54).toFixed(1)} cm` : fracIn(x));
+const lengthWords = (x) => (M() ? `${(x * 2.54).toFixed(1)} cm` : `${Math.floor(x / 12)}'${fracIn(x % 12).replace(/^0"$/, '0"')}`);
+const fromWords = (f) => (f === null ? "the centre" : M() ? `${Math.round(f * 2.54)} cm in` : `${f}" in`);
+/** The note, US Blanks' way: nose first, then tail; a figure after N or T only when the bend starts away from the centre. Inches always. */
+function noteOf(r) {
+  const part = (c, E) => (c.a ? `${signedIn(c.a)}${E}${c.f !== null ? `${c.f}"` : ""}` : "");
+  return [...r.nose.map((c) => part(c, "N")), ...r.tail.map((c) => part(c, "T"))].filter(Boolean).join(" ");
+}
+const isNatural = (r) => !noteOf(r);
+/** The note with its first changes in red and its second changes in blue, as US Blanks' catalogue prints the formula. */
+function colouredNote(r) {
+  const part = (c, E, i) => (c.a ? `<span style="color:var(--adj-${i ? 2 : 1})">${esc(`${signedIn(c.a)}${E}${c.f !== null ? `${c.f}"` : ""}`)}</span>` : "");
+  return [...r.nose.map((c, i) => part(c, "N", i)), ...r.tail.map((c, i) => part(c, "T", i))].filter(Boolean).join(" ");
+}
+/** Reads the notation back (variant C). Returns null on anything it can't read. */
+function parseNote(text) {
+  const t = text.trim(); if (!t) return { nose: [], tail: [] };
+  const re = /([+-])\s*(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*"?\s*([NT])(?:\s*(\d+)\s*"?)?/gi;
+  const r = { nose: [], tail: [] }; let m, consumed = 0;
+  while ((m = re.exec(t))) { consumed += m[0].length; const amt = m[2].includes("/") ? m[2].split(/\s+/).reduce((s, p) => s + (p.includes("/") ? p.split("/")[0] / p.split("/")[1] : +p), 0) : +m[2]; const c = { a: (m[1] === "-" ? -1 : 1) * amt, f: m[4] === undefined ? null : +m[4] }; (m[3].toUpperCase() === "N" ? r.nose : r.tail).push(c); }
+  if (consumed < t.replace(/\s+/g, "").length * 0.8 || (!r.nose.length && !r.tail.length)) return null;
+  if (r.nose.length > 2 || r.tail.length > 2) return null;
+  return r;
+}
+
+/* ---------- the maths: the even bend on the app's own natural curve ---------- */
+const B = () => DATA[state.board];
+const STATION_NAMES = { noseTip: () => "Nose Tip", nose12: () => `Nose @ ${M() ? "30.5 cm" : '12"'}`, center: () => "Center", tail12: () => `Tail @ ${M() ? "30.5 cm" : '12"'}`, tailTip: () => "Tail Tip" };
+function delta(x, r = state.rocker) {
+  const b = B().blank, L = b.lengthIn, C = b.centreFromTailIn; let s = 0;
+  for (const c of r.nose) { const p = c.f === null ? C : L - c.f; if (x > p) s += c.a * ((x - p) / (L - p)) ** 2; }
+  for (const c of r.tail) { const p = c.f === null ? C : c.f; if (x < p) s += c.a * ((p - x) / p) ** 2; }
+  return s;
+}
+/** The lowest a change may go so the bent curve never dips below the centre's height — "a negative rocker … is not a realistic board" (the founder, 2026-10-16). Rounded down to the slider's step. */
+function floorOf(end, i, r) {
+  const d = B(), bl = d.blank, L = bl.lengthIn, C = bl.centreFromTailIn;
+  const others = { nose: r.nose.filter((_, j) => !(end === "nose" && j === i)), tail: r.tail.filter((_, j) => !(end === "tail" && j === i)) };
+  const c = r[end][i] || { a: 0, f: null };
+  const pv = c.f === null ? C : end === "nose" ? L - c.f : c.f;
+  let worst = Infinity;
+  for (const [x, y] of d.nat) {
+    const u = end === "nose" ? (x > pv ? (x - pv) / (L - pv) : 0) : (x < pv ? (pv - x) / pv : 0);
+    if (u < 0.02) continue;
+    const have = y + delta(x, others);
+    worst = Math.min(worst, have / (u * u));
+  }
+  const step = M() ? 1 / 25.4 : 1 / 16;
+  return Math.max(-2, -Math.floor(worst / step) * step);
+}
+/** Everything the drawing and the sheet read, worked out once per render. */
+function geometry(r = state.rocker) {
+  const d = B(), bl = d.blank, L = d.boardLengthIn, start = bl.startIn;
+  const u = (s) => s - start;
+  let shift = Infinity; for (const [s, rk] of d.board) shift = Math.min(shift, rk + delta(u(s), r));
+  const boardRocker = d.board.map(([s, rk, th]) => [s, rk + delta(u(s), r) - shift, th]);
+  const blankBottom = d.blankPts.map(([s, bo, de]) => [s, bo + delta(u(s), r) - shift, de - bo]);
+  let lev = Infinity; for (const [x, y] of d.nat) lev = Math.min(lev, y + delta(x, r));
+  const blankLev = (x) => { const i = Math.min(d.nat.length - 1, Math.max(0, Math.round((x / bl.lengthIn) * (d.nat.length - 1)))); return d.nat[i][1] + delta(x, r) - lev; };
+  const natAt = (x) => { const i = Math.min(d.nat.length - 1, Math.max(0, Math.round((x / bl.lengthIn) * (d.nat.length - 1)))); return d.nat[i][1]; };
+  const stationRocker = {}; for (const st of d.stations) { const i = Math.round((st.sIn / L) * (d.board.length - 1)); stationRocker[st.key] = boardRocker[i][1]; }
+  const pivots = [...r.nose.filter((c) => c.a).map((c) => ({ end: "nose", c, x: c.f === null ? bl.centreFromTailIn : bl.lengthIn - c.f })), ...r.tail.filter((c) => c.a).map((c) => ({ end: "tail", c, x: c.f === null ? bl.centreFromTailIn : c.f }))];
+  const lowMoved = Math.abs(lev) > 1e-6;
+  return { r, d, bl, L, start, u, shift, boardRocker, blankBottom, blankLev, natAt, stationRocker, pivots, lowMoved, lev };
+}
+
+/* ---------- drawing ---------- */
+const NS = "http://www.w3.org/2000/svg";
+function mainArt(device, g, opts = {}) {
+  const showBoard = opts.board !== false, overlay = opts.overlay === true;
+  const upright = device === "phone";
+  const W = upright ? 386 : device === "side" ? 530 : 880, H = upright ? 330 : device === "side" ? 220 : 420;
+  const r = g.r || state.rocker, custom = !isNatural(r);
+  const lo = Math.min(0, g.start), hi = Math.max(g.L, g.start + g.bl.lengthIn), span = hi - lo;
+  const margin = overlay && !upright ? 120 : 55;
+  const along = upright ? H - 36 : W - 2 * margin, k = along / span;
+  // the board's height axis at the same scale (true proportion, as the app draws it)
+  const maxUp = Math.max(...g.blankBottom.map((p) => p[1] + p[2]), ...g.boardRocker.map((p) => p[1] + p[2])) + 0.2;
+  const minDn = Math.min(0, ...g.blankBottom.map((p) => p[1]), ...g.boardRocker.map((p) => p[1])) - 0.2;
+  const mid = upright ? W / 2 : H / 2 + 10;
+  const X = upright ? (s) => mid - ((maxUp + minDn) / 2) * k : null;
+  // horizontal: x along, y up.  upright: y along (nose at the top), x = height (deck to the right? the app draws deck to the right of the bottom)
+  const P = upright ? (s, h) => [mid + (h - (maxUp + minDn) / 2) * k, H - 14 - (s - lo) * k] : (s, h) => [margin + (s - lo) * k, mid - (h - (maxUp + minDn) / 2) * k];
+  const path = (pts, f) => pts.map((p, i) => { const [x, y] = P(p[0], f(p)); return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`; }).join("");
+  const blankOutline = path(g.blankBottom, (p) => p[1]) + path([...g.blankBottom].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L") + "Z";
+  const boardOutline = path(g.boardRocker, (p) => p[1]) + path([...g.boardRocker].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L") + "Z";
+  const natural = custom ? path(g.d.blankPts, (p) => p[1]) : "";
+  let out = `<svg class="mainart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="${NS}" font-family="Inter, system-ui, sans-serif">`;
+  // baseline: the board's own flat when the board is drawn; the blank's bottom plane when it is not
+  if (showBoard) { const [x1, y1] = P(0, 0), [x2, y2] = P(g.L, 0); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
+  else { const low = Math.min(...g.blankBottom.map((p) => p[1])); const [x1, y1] = P(g.start, low), [x2, y2] = P(g.start + g.bl.lengthIn, low); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--station)" stroke-width="1" stroke-dasharray="4 3"/>`; }
+  out += `<path d="${blankOutline}" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/>`;
+  if (custom && overlay) out += `<path d="${natural}" fill="none" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="5 4"/>`;
+  // bend marks: a short dashed line across the blank where each bend starts, the thinning marks' own grammar
+  for (const pv of overlay ? g.pivots : []) { const s = pv.x + g.start; const i = Math.round(((s - g.blankBottom[0][0]) / (g.blankBottom[g.blankBottom.length - 1][0] - g.blankBottom[0][0])) * (g.blankBottom.length - 1)); const p = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i))]; const [x1, y1] = P(s, p[1] - 0.9), [x2, y2] = P(s, p[1] + p[2] + 0.9); out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--blank-line)" stroke-width="1" stroke-dasharray="3 2"/>`; }
+  // the deviation from natural the way the makers draw it (Millennium's catalogue, "Rockers"): the first adjustment's
+  // curve in red, the second — stacked on the first — in blue, each from where its bend starts to the tip
+  if (custom && overlay) {
+    const r1 = { nose: r.nose.slice(0, 1).filter((c) => c.a), tail: r.tail.slice(0, 1).filter((c) => c.a) };
+    const g1 = geometry(r1);
+    const seg = (pts, s0, s1) => pts.filter((p) => p[0] >= Math.min(s0, s1) - 0.01 && p[0] <= Math.max(s0, s1) + 0.01);
+    const tipS = (end) => (end === "nose" ? g.start + g.bl.lengthIn : g.start);
+    for (const end of ["nose", "tail"]) {
+      const first = r[end][0], second = r[end][1];
+      const outline = (pts, colour) => `<path d="${path(pts, (p) => p[1])}" fill="none" stroke="${colour}" stroke-width="1.6"/><path d="${path(pts, (p) => p[1] + p[2])}" fill="none" stroke="${colour}" stroke-width="1.6"/>`;
+      if (first && first.a) { const pv = (first.f === null ? g.bl.centreFromTailIn : end === "nose" ? g.bl.lengthIn - first.f : first.f) + g.start; const pts = seg(g1.blankBottom, pv, tipS(end)); if (pts.length > 1) out += outline(pts, "var(--adj-1)"); }
+      if (second && second.a) { const pv = (second.f === null ? g.bl.centreFromTailIn : end === "nose" ? g.bl.lengthIn - second.f : second.f) + g.start; const pts = seg(g.blankBottom, pv, tipS(end)); if (pts.length > 1) out += outline(pts, "var(--adj-2)"); }
+    }
+  }
+  if (!showBoard) {
+    // the blank alone: all its dimensions at its own five stations — the blank's printed thickness as chips on one
+    // rail, the rocker as ordered on the other, the centre's zero reference included (the founder, rounds 13–14)
+    const Lb = g.bl.lengthIn, C = g.bl.centreFromTailIn;
+    const thick = (label) => { const st = g.bl.stations.find((x) => x.label === label); return st && st.thickIn !== null ? st.thickIn : null; };
+    const stations = [[0, "Tail Tip", "T0", "out-"], [12, `Tail @ ${M() ? "30.5 cm" : '12"'}`, "T12", "in+"], [C, "Center", "C", "mid"], [Lb - 12, `Nose @ ${M() ? "30.5 cm" : '12"'}`, "N12", "in-"], [Lb, "Nose Tip", "N0", "out+"]];
+    for (const [x, name, label, side] of stations) {
+      const sx = x + g.start, nat = g.natAt(x), cus = g.blankLev(x), isCentre = x === C, th = thick(label);
+      const i = g.blankBottom.findIndex((p) => p[0] >= sx - 0.01); const p0 = g.blankBottom[Math.max(0, Math.min(g.blankBottom.length - 1, i < 0 ? g.blankBottom.length - 1 : i))];
+      const [bx, by] = P(sx, p0[1]), [dx, dy] = P(sx, p0[1] + p0[2]);
+      const value = isCentre ? (M() ? "0 mm" : '0"') : mark(cus);
+      const sub = isCentre ? `${name} · zero` : custom && Math.abs(cus - nat) > 1e-9 ? `${name} · natural ${mark(nat)}` : name;
+      const thickText = th === null ? "—" : mark(th);
+      if (!upright) {
+        // lying flat: the tips' rocker reads anchored outward and the 12" stations' inward, so neighbours never meet
+        const railT = 34, railR = H - 30;
+        const anchor = side === "out-" ? "end" : side === "out+" ? "start" : side === "in+" ? "start" : side === "in-" ? "end" : "middle";
+        const lx = side === "out-" ? bx - 4 : side === "out+" ? bx + 4 : side === "in+" ? bx + 4 : side === "in-" ? bx - 4 : bx;
+        const cx = side === "out-" ? dx - 14 : side === "out+" ? dx + 14 : dx;
+        out += `<line x1="${dx}" y1="${dy}" x2="${cx}" y2="${railT + 18}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${cx - 27}" y="${railT - 12}" width="54" height="30" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${cx}" y="${railT - 1}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${cx}" y="${railT + 11}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(thickText)}</text>`;
+        out += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${railR - 14}" stroke="var(--line-faint)" stroke-width="1"/><text x="${lx}" y="${railR}" font-size="10" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(value)}</text><text x="${lx}" y="${railR + 10}" font-size="7" text-anchor="${anchor}" fill="var(--color-text-muted)">${esc(sub)}</text>`;
+      } else {
+        const railL = 70, railR = W - 70;
+        out += `<line x1="${bx}" y1="${by}" x2="${railL + 6}" y2="${by}" stroke="var(--line-faint)" stroke-width="1"/><text x="${railL}" y="${by + 1}" font-size="11" font-weight="700" text-anchor="end" fill="var(--color-text)">${esc(value)}</text><text x="${railL}" y="${by + 11}" font-size="7.5" text-anchor="end" fill="var(--color-text-muted)">${esc(sub)}</text>`;
+        out += `<line x1="${dx}" y1="${dy}" x2="${railR - 6}" y2="${dy}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${railR - 4}" y="${dy - 14}" width="66" height="28" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${railR + 29}" y="${dy - 3}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${railR + 29}" y="${dy + 9}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(thickText)}</text>`;
+      }
+    }
+    if (!upright) { const [cx] = P(g.start + Lb / 2, 0); out += `<text x="${cx}" y="16" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BLANK THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">BLANK ROCKER · AS ORDERED</text>`; }
+    else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
+  }
+  if (showBoard) out += `<path d="${boardOutline}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
+  // the five stations: thickness chips on one rail, rocker readings on the other (the app's grammar)
+  for (const st of showBoard ? g.d.stations : []) {
+    const th = g.d.foilIn[st.key], rk = g.stationRocker[st.key];
+    const [bx, by] = P(st.sIn, rk), [dx, dy] = P(st.sIn, rk + th);
+    const name = STATION_NAMES[st.key]();
+    if (!upright) {
+      const railT = 34, railR = H - 30;
+      out += `<line x1="${dx}" y1="${dy}" x2="${dx}" y2="${railT + 18}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${dx - 27}" y="${railT - 12}" width="54" height="30" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${dx}" y="${railT - 1}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${dx}" y="${railT + 11}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(mark(th))}</text>`;
+      out += `<line x1="${bx}" y1="${by}" x2="${bx}" y2="${railR - 14}" stroke="var(--line-faint)" stroke-width="1"/><text x="${bx}" y="${railR}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${st.key === "center" ? "—" : esc(mark(rk))}</text><text x="${bx}" y="${railR + 10}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text>`;
+    } else {
+      const railL = 70, railR = W - 70;
+      out += `<line x1="${bx}" y1="${by}" x2="${railL + 6}" y2="${by}" stroke="var(--line-faint)" stroke-width="1"/><text x="${railL}" y="${by + 1}" font-size="11" font-weight="700" text-anchor="end" fill="var(--color-text)">${st.key === "center" ? "—" : esc(mark(rk))}</text><text x="${railL}" y="${by + 11}" font-size="7.5" text-anchor="end" fill="var(--color-text-muted)">${esc(name)}</text>`;
+      out += `<line x1="${dx}" y1="${dy}" x2="${railR - 6}" y2="${dy}" stroke="var(--line-faint)" stroke-width="1"/><rect x="${railR - 4}" y="${dy - 14}" width="66" height="28" rx="3" fill="var(--color-well)" stroke="var(--color-border)"/><text x="${railR + 29}" y="${dy - 3}" font-size="7" text-anchor="middle" fill="var(--color-text-muted)">${esc(name)}</text><text x="${railR + 29}" y="${dy + 9}" font-size="10" font-weight="700" text-anchor="middle" fill="var(--color-text)">${esc(mark(th))}</text>`;
+    }
+  }
+  if (!showBoard) {}
+  else if (!upright) { const [cx] = P(g.L / 2, 0); out += `<text x="${cx}" y="${16}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text><text x="${cx}" y="${H - 6}" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text>`; }
+  else { out += `<text x="40" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">ROCKER</text><text x="${W - 40}" y="12" font-size="8" letter-spacing="1.2" text-anchor="middle" fill="var(--color-text-muted)">THICKNESS</text>`; }
+  // the key, only when a custom rocker is set
+  return out + `</svg>`;
+}
+/** A tip close-up: the last `win` inches of one end, at a scale that fills the box, natural dashed against custom. */
+function closeup(end, g) {
+  const r = g.r || state.rocker, custom = !isNatural(r);
+  const W = 620, H = 150, win = Math.min(36, g.bl.lengthIn / 3), L = g.L;
+  const s0 = end === "nose" ? Math.max(g.start + g.bl.lengthIn, L) - win : Math.min(g.start, 0), s1 = s0 + win;
+  const inWin = (pts) => pts.filter((p) => p[0] >= s0 - 0.01 && p[0] <= s1 + 0.01);
+  const bb = inWin(g.blankBottom), bo = inWin(g.boardRocker), nb = inWin(g.d.blankPts);
+  const ys = [...bb.map((p) => p[1]), ...bb.map((p) => p[1] + p[2]), ...bo.map((p) => p[1]), ...bo.map((p) => p[1] + p[2]), ...nb.map((p) => p[1])];
+  const lo = Math.min(...ys) - 0.3, hi = Math.max(...ys) + 0.3;
+  const k = Math.min((W - 110) / win, (H - 36) / (hi - lo));
+  const P = (s, h) => [end === "nose" ? 20 + (s - s0) * k : W - 20 - (s1 - s) * k, H - 22 - (h - lo) * k];
+  const path = (pts, f) => pts.map((p, i) => { const [x, y] = P(p[0], f(p)); return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`; }).join("");
+  let out = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="${NS}" font-family="Inter, system-ui, sans-serif">`;
+  if (bb.length > 1) out += `<path d="${path(bb, (p) => p[1]) + path([...bb].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L")}" fill="var(--foam)" stroke="var(--blank-line)"/>`;
+  if (custom && nb.length > 1) out += `<path d="${path(nb, (p) => p[1])}" fill="none" stroke="var(--blank-line)" stroke-dasharray="5 4"/>`;
+  for (const pv of g.pivots) { const s = pv.x + g.start; if (s < s0 || s > s1 || pv.end !== end) continue; const [x, yb] = P(s, lo + 0.1), [, yt] = P(s, hi - 0.1); const lx2 = Math.max(44, Math.min(W - 44, x)); out += `<line x1="${x}" y1="${yb}" x2="${x}" y2="${yt}" stroke="var(--blank-line)" stroke-dasharray="3 2"/><text x="${lx2}" y="${H - 6}" font-size="9" text-anchor="middle" fill="var(--color-text-muted)">bend from ${esc(fromWords(pv.c.f))}</text>`; }
+  if (bo.length > 1) out += `<path d="${path(bo, (p) => p[1]) + path([...bo].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L")}" fill="var(--color-board)" stroke="var(--color-text)" stroke-width="1.5"/>`;
+  // the tip figures: blank's natural → custom at its tip station, and the board's own tip
+  const tipX = end === "nose" ? g.bl.lengthIn : 0, tipS = tipX + g.start;
+  const natTip = g.natAt(tipX), cusTip = g.blankLev(tipX);
+  const anchor = end === "nose" ? "end" : "start", lx = end === "nose" ? W - 8 : 8;
+  out += `<text x="${lx}" y="14" font-size="11" font-weight="700" text-anchor="${anchor}" fill="var(--color-text)">${esc(custom ? `${mark(natTip)} → ${mark(cusTip)}` : mark(natTip))}</text><text x="${lx}" y="25" font-size="8" text-anchor="${anchor}" fill="var(--color-text-muted)">blank ${end} tip${custom ? ", natural → as ordered" : ""}</text>`;
+  return out + `</svg>`;
+}
+function thumb(g) {
+  // outline from above over the rocker from the side, the real button's own picture
+  const b = g.bl, W = 92, H = 30, L = b.lengthIn, k = (W - 4) / L;
+  const widths = b.stations.filter((s) => s.widthIn !== null).map((s) => [s.xIn, s.widthIn / 2]);
+  const hw = (x) => { let i = 0; while (i < widths.length - 2 && widths[i + 1][0] < x) i++; const [x0, y0] = widths[i], [x1, y1] = widths[i + 1]; const t = Math.max(0, Math.min(1, (x - x0) / (x1 - x0 || 1))); const tt = t * t * (3 - 2 * t); return y0 + (y1 - y0) * tt; };
+  const maxHw = Math.max(...widths.map((w) => w[1])), ky = 11 / maxHw;
+  let top = "", bot = "";
+  for (let i = 0; i <= 40; i++) { const x = (L * i) / 40, w = hw(x) * ky; top += `${i ? "L" : "M"}${(2 + x * k).toFixed(1)},${(12 - w).toFixed(1)}`; bot = `L${(2 + x * k).toFixed(1)},${(12 + w).toFixed(1)}` + bot; }
+  const pts = g.blankBottom.filter((p) => p[0] >= g.start && p[0] <= g.start + L);
+  const minDn = Math.min(...pts.map((p) => p[1])), maxUp = Math.max(...pts.map((p) => p[1] + p[2])), ks = Math.min(k, 6 / Math.max(0.1, maxUp - minDn));
+  const side = pts.map((p, i) => `${i ? "L" : "M"}${(2 + (p[0] - g.start) * k).toFixed(1)},${(H - 2 - (p[1] - minDn) * ks).toFixed(1)}`).join("") + [...pts].reverse().map((p) => `L${(2 + (p[0] - g.start) * k).toFixed(1)},${(H - 2 - (p[1] + p[2] - minDn) * ks).toFixed(1)}`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="${NS}"><path d="${top}${bot}Z" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/><path d="${side}Z" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/></svg>`;
+}
+function thumbOld(g) {
+  const pts = g.blankBottom, W = 92, H = 26;
+  const lo = pts[0][0], hi = pts[pts.length - 1][0], k = (W - 4) / (hi - lo);
+  const maxUp = Math.max(...pts.map((p) => p[1] + p[2])), minDn = Math.min(...pts.map((p) => p[1]));
+  const ky = Math.min(k, (H - 4) / (maxUp - minDn));
+  const P = (s, h) => [2 + (s - lo) * k, H - 2 - (h - minDn) * ky];
+  const path = (f, arr) => arr.map((p, i) => { const [x, y] = P(p[0], f(p)); return `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`; }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="${NS}"><path d="${path((p) => p[1], pts) + path((p) => p[1] + p[2], [...pts].reverse()).replace(/^M/, "L")}Z" fill="var(--foam)" stroke="var(--blank-line)" stroke-width="1"/></svg>`;
+}
+
+/* ---------- the sidebar ---------- */
+/** Where a change's bend may start: whole inches from 3" in to the centre; a second change must start nearer the tip than the first (the founder, 2026-10-16). */
+function fromRange(end, i, r) {
+  const C = Math.floor(B().blank.centreFromTailIn);
+  const first = r[end][0];
+  const top = i === 0 ? C : Math.min(C - 1, (first && first.f !== null ? first.f : C) - 1);
+  return { min: 3, max: Math.max(3, top), centreAt: i === 0 ? C : null };
+}
+function fromValue(end, i, c, r) { const rg = fromRange(end, i, r); return c.f === null ? (rg.centreAt ?? rg.max) : Math.max(rg.min, Math.min(rg.max, c.f)); }
+function fromWordsOf(end, i, c, r) { const rg = fromRange(end, i, r); const v = fromValue(end, i, c, r); return rg.centreAt !== null && v >= rg.centreAt ? "At the centre" : (M() ? `${Math.round(v * 2.54)} cm` : `${v}"`) + " in"; }
+function sliderRow(end, i, c, device, r = state.rocker) {
+  const maxI = 2, stepI = M() ? 1 / 25.4 : 1 / 16;
+  const minI = floorOf(end, i, r);
+  const v = Math.max(minI, c.a);
+  const atFloor = v <= minI + 1e-9 && minI > -2 + 1e-9;
+  const rg = fromRange(end, i, r), fv = fromValue(end, i, c, r);
+  return `<div class="chg">
+    <div class="lblrow"><span>${i ? "Second change" : "Change"}${i ? ` <button class="link muted" data-act="rm" data-end="${end}" data-i="${i}">Remove</button>` : ""}</span></div>
+    <div class="pair">
+      <div class="half">
+        <div class="lblrow"><span class="sub">Rocker</span><span class="valbox">${esc(signedMark(v))}</span></div>
+        <input class="rng" type="range" min="${minI}" max="${maxI}" step="${stepI}" value="${v}" data-act="amt" data-end="${end}" data-i="${i}">
+        <div class="hints"><span>${atFloor ? "Floor" : "Less"}</span><span>More</span></div>
+      </div>
+      <div class="half">
+        <div class="lblrow"><span class="sub">Bend starts</span><span class="valbox">${esc(fromWordsOf(end, i, c, r))}</span></div>
+        <input class="rng" type="range" min="${rg.min}" max="${rg.max}" step="1" value="${fv}" data-act="from" data-end="${end}" data-i="${i}">
+        <div class="hints"><span>Near the ${end}</span><span>${i === 0 ? "At the centre" : "Nearer the centre"}</span></div>
+      </div>
+    </div>
+    ${atFloor ? `<div class="note fine warn">At the floor: any lower and the ${end} would drop below the centre.</div>` : ""}
+  </div>`;
+}
+function endBlock(end, device, r = state.rocker) {
+  const list = r[end];
+  const rows = list.length ? list.map((c, i) => sliderRow(end, i, c, device, r)).join("") : sliderRow(end, 0, { a: 0, f: null }, device, r);
+  const canAdd = list.length < 2 && list.length >= 1 && list[0].a;
+  return `<div class="endblk"><div class="endhd"><span>${end}</span></div>${rows}${canAdd ? `<button class="link" data-act="add" data-end="${end}">+ Add a second ${end} change</button>` : ""}</div>`;
+}
+function rockerRows(device) {
+  return `${endBlock("nose", device)}${endBlock("tail", device)}
+  ${saveLine()}
+  ${rockerFoot()}`;
+}
+/** "Save this blank": the custom rocker becomes a blank of the shaper's own, beside the maker's natural one (the founder, 2026-10-16). */
+function savedHere() { const note = noteOf(state.rocker); return state.saved.find((sv) => sv.board === state.board && sv.note === note) || null; }
+function saveLine() {
+  const note = noteOf(state.rocker), b = B().blank;
+  if (!note) return `<div class="links"><button class="link muted" data-act="natural">↺ Natural rocker</button></div>`;
+  const sv = savedHere();
+  return `<div class="links"><button class="link muted" data-act="natural">↺ Natural rocker</button><button class="link" data-act="${sv ? "unsave" : "save"}">${sv ? "✓ Saved in your blanks · Remove" : "Save this blank for later"}</button></div>
+  ${sv ? `<p class="note fine"><b>${esc(b.vendor)} ${esc(b.name)} ${esc(note)}</b> is in your blank list now — starred, so it sits at the top — beside the natural ${esc(b.name)}. Pick it for any board from the PICK A BLANK popup.</p>` : ""}`;
+}
+function rockerFoot() {
+  const g = geometry();
+  const bits = [`The note is what you give ${esc(B().blank.vendor)}; every figure here follows your units.`];
+  if (g.lowMoved) bits.push(`<span class="warn">The blank's low point has moved: figures now read from the new low point.</span>`);
+  return `<p class="note fine">${bits.join(" ")}</p>`;
+}
+function rockerSectionA(device) {
+  const note = noteOf(state.rocker);
+  return `<div class="sect">Rocker <span class="sv${note ? " set" : ""}">${esc(note || "Natural")}</span></div>
+  <p class="note">The blank's rocker as you'll order it. <b>Natural</b> is the catalogue page's curve; a change bends it from the centre, or from a point in from that tip.</p>
+  ${rockerRows(device)}`;
+}
+function rockerSectionC(device) {
+  const parsed = parseNote(state.text), bad = parsed === null;
+  const words = (r) => [...r.nose.map((c) => `Nose <b>${esc(signedMark(c.a))}</b> from ${esc(fromWords(c.f))}`), ...r.tail.map((c) => `Tail <b>${esc(signedMark(c.a))}</b> from ${esc(fromWords(c.f))}`)].join(" · ") || "Natural rocker";
+  return `<div class="sect">Rocker <span class="sv${!bad && !isNatural(parsed) ? " set" : ""}">${esc(bad ? "—" : noteOf(parsed) || "Natural")}</span></div>
+  <p class="note">Type the rocker the way ${esc(B().blank.vendor)} writes it: nose first, then tail; a figure after N or T for where the bend starts.</p>
+  <input class="notein${bad ? " bad" : ""}" type="text" value="${esc(state.text)}" placeholder='e.g. -1/2"N24" +1/4"T' data-act="text" spellcheck="false" autocapitalize="characters">
+  <div class="readback">${bad ? `<span class="note warn">Couldn't read that — try <b>-1/2"N24" +1/4"T</b>.</span>` : words(parsed)}</div>
+  <div class="links"><button class="link muted" data-act="natural">↺ Natural rocker</button></div>
+  ${rockerFoot()}`;
+}
+function blankButton(v, device, g) {
+  const b = B().blank, note = noteOf(state.rocker);
+  const btn = `<button class="blankbtn" data-act="browse"><span class="thumb">${thumb(g)}</span><span class="tx"><span class="nm"><span>${esc(b.name)}</span>${b.volumeL ? `<span class="vol">${b.volumeL.toFixed(1)} L</span>` : ""}</span><span class="rn">${esc(note || "Natural")}</span><span class="meta">${esc(b.vendor)} · ${esc(lengthWords(b.lengthIn))} · ${esc(dim(b.printed.center.width / 25.4))} × ${esc(mark(b.printed.center.thickness / 25.4))} center</span><span class="go">Change blank ›</span></span></button>`;
+  if (v !== "b") return btn;
+  return `<div class="bcard">${btn}<div class="rockrow"><span class="lab">Rocker</span>${note ? "" : `<span class="val">Natural</span>`}<button class="link" data-act="btoggle">${state.bOpen ? "Done" : note ? "Change ›" : "Set a custom rocker ›"}</button></div>${note ? `<div class="rockval">${esc(note)}</div>` : ""}${state.bOpen ? `<div class="inrows">${rockerRows(device)}</div>` : ""}</div>`;
+}
+/** Variant D (round six): the one button sits right under the blank card. */
+function customizeButton() {
+  const note = noteOf(state.rocker);
+  return `<button class="advbtn" data-act="customize">${note ? "Edit Custom Rocker ›" : "Customize Rocker ›"}</button>`;
+}
+function advancedSection(device) {
+  const note = noteOf(state.rocker), b = B().blank;
+  const savedNow = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === note ? state.saved[state.savedIdx] : null;
+  return `<div class="sect${state.advOpen ? "" : " closed"}" data-act="adv">Advanced</div>
+  ${state.advOpen ? `<div class="advbody">
+    <div class="lblrow"><span>Rocker</span><span class="advval">${esc(note || "Natural")}</span></div>
+    <button class="advbtn" data-act="customize">${note ? "Edit Custom Rocker ›" : "Customize Rocker ›"}</button>
+    <p class="note fine">${note ? (savedNow ? `This board uses your saved blank <b>${esc(b.name)} ${esc(note)}</b>. Edit it, or save the edit as a new blank.` : `A custom rocker on this board only. Save it as a blank to pick it again later.`) : `Bend the blank's natural rocker the way the maker would — nose and tail, from the centre or from a point — and save it as a blank of your own.`}</p>
+  </div>` : ""}`;
+}
+function sidebar(v, device, g) {
+  const d = B();
+  return `<aside class="sidebar" data-scroll="side-${v}-${device}">
+    <h1>Rocker &amp; Foil</h1>
+    <p class="sub">Pick a real blank, slide your board along it, and read the rocker and foil off the foam.</p>
+    <div class="boardline">Length and width from TEMPLATE: ${esc(lengthWords(d.boardLengthIn))} × ${esc(dim(d.widthIn))}</div>
+    <div class="sect">Center thickness</div>
+    <div class="lblrow"><span>Center Thickness</span><span class="valbox">${esc(mark(d.centerIn))}</span></div>
+    <div class="fake-range"><i style="left:46%"></i></div>
+    <p class="note fine">The board's one center thickness — Rails and Volume read it too.</p>
+    <div class="sect">Blank</div>
+    ${blankButton(v, device, g)}
+    ${v === "d" ? customizeButton() : ""}
+    <div class="links"><button class="link muted" data-act="noop">Remove This Blank</button></div>
+    <p class="note fine">Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut.</p>
+    <div class="sect">Board on blank</div>
+    <div class="lblrow"><span>Placement — centered</span></div>
+    <div class="fake-range"><i style="left:48%"></i></div>
+    <div class="hints"><span>Toward the nose</span><span>Toward the tail</span></div>
+    <div class="lblrow" style="margin-top:6px"><span>Deck Skin — ${esc(mark(0.125))}</span></div>
+    <div class="fake-range"><i style="left:20%"></i></div>
+    ${v === "a" ? rockerSectionA(device) : v === "c" ? rockerSectionC(device) : ""}
+    <div class="sect closed">Thickness</div>
+    ${device === "computer" ? "" : `<div class="stepnav"><span>← Template</span><span>Rails →</span></div>`}
+  </aside>`;
+}
+
+/* ---------- the drawing column ---------- */
+function datasheet(device, g) {
+  const d = B(), b = d.blank, note = noteOf(state.rocker), custom = !!note;
+  const cols = ["noseTip", "nose12", "center", "tail12", "tailTip"], labels = ["Nose Tip", `Nose @ ${M() ? "30.5 cm" : '12"'}`, "Center", `Tail @ ${M() ? "30.5 cm" : '12"'}`, "Tail Tip"];
+  const catLabel = { noseTip: "N0", nose12: "N12", center: "C", tail12: "T12", tailTip: "T0" };
+  const stationOf = (key) => b.stations.find((s) => s.label === catLabel[key]);
+  const pr = (v, f) => (v === null || v === undefined ? "—" : f(v / 25.4));
+  const unit = M() ? " (mm)" : "";
+  const row = (label, cells, ink) => `<tr><td${ink ? ' class="ink"' : ""}>${label}</td>${cells.map((c) => `<td${ink ? ' class="ink"' : ""}>${c}</td>`).join("")}</tr>`;
+  const blankRocker = cols.map((key) => { const st = stationOf(key); if (!st || st.rockerIn === null) return "—"; if (!custom) return mark(st.rockerIn); const c = g.blankLev(st.xIn); return `${esc(mark(c))}<span class="nat">natural ${esc(mark(st.rockerIn))}</span>`; });
+  return `<div class="sheet" data-scroll="sheet">
+    <p class="lead">Your blank's own numbers, as its catalog prints them — and as ordered — then your board's at its five stations.</p>
+    <table>
+      <tr><th></th>${labels.map((l) => `<th>${l}</th>`).join("")}</tr>
+      <tr class="grp"><td colspan="6">Blank — ${esc(b.vendor)} ${esc(b.name)} <span class="cat">(catalog's N0 · N12 · C · T12 · T0)</span><span class="rn2">${esc(note || "Natural")}</span></td></tr>
+      ${row(`Natural Rocker${unit}`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(st.rockerIn); }), false)}
+      ${custom ? row(`Custom Rocker${unit}`, cols.map((key) => { const st = stationOf(key); return !st || st.rockerIn === null ? "—" : mark(g.blankLev(st.xIn)); }), true) : ""}
+      ${row(`Thickness${unit}`, cols.map((k) => pr(b.printed[k].thickness, mark)), false)}
+      ${row(`Width${M() ? " (cm)" : ""}`, cols.map((k) => pr(b.printed[k].width, dim)), false)}
+      <tr class="grp"><td colspan="6">Your board</td></tr>
+      ${row(`Rocker${unit}`, cols.map((k) => (k === "center" ? "0" + (M() ? "" : '"') : mark(g.stationRocker[k]))), false)}
+      ${row(`Thickness${unit}`, cols.map((k) => mark(d.foilIn[k])), true)}
+      <tr class="grp"><td colspan="6">Foam off</td></tr>
+      ${row("Deck", cols.map((k) => mark(d.foamOffDeckIn[k])), false)}
+      ${row("Bottom", cols.map((k) => mark(d.foamOffBottomIn[k])), false)}
+    </table>
+    <div class="foot">
+      <span>From the ${esc(b.vendor)} catalog, page ${esc(String(b.pdfPage || ""))}. Station names are the catalog's own — N0 and T0 are the nose and tail tips, N12 and T12 are 12 inches in from them, and C is the center.</span>
+      ${custom ? `<span>Natural Rocker is the catalog page's; Custom Rocker is the blank as ordered (<b>${esc(note)}</b>), read at the same stations, nose and tail tips exact.${g.lowMoved ? " The low point moved, so every figure reads from the new low point." : ""}</span>` : `<span>Natural Rocker is the catalog page's.</span>`}
+    </div>
+    <div class="order"><b>On the order form</b><span>Blank: ${esc(b.vendor)} ${esc(b.name)} ${esc(note || "Natural")} — centered</span></div>
+  </div>`;
+}
+function mainCol(v, device, g) {
+  const small = device !== "computer";
+  const tabs = small ? [["viewer", "Viewer"], ["top", "Top view"], ["datasheet", "Datasheet"]] : [["viewer", "Viewer"], ["datasheet", "Datasheet"]];
+  if (!tabs.some((t) => t[0] === state.tab)) state.tab = "viewer";
+  const strip = `<div class="tabs">${tabs.map(([id, l]) => `<button class="tab${state.tab === id ? " on" : ""}" data-act="tab" data-tab="${id}">${l}</button>`).join("")}<span class="name">${esc(B().preset)}</span></div>`;
+  let body;
+  const note = noteOf(state.rocker);
+  if (state.tab === "viewer") body = `<div class="drawing"><div class="mainwrap">${mainArt(device, g)}</div><div class="vcap">Your board on ${esc(B().blank.vendor)} ${esc(B().blank.name)} ${esc(note || "Natural")}</div><div class="tools"><span>⊙</span><span>⟲</span><span>1x</span></div></div>`;
+  else if (state.tab === "top") body = `<div class="drawing" style="align-items:center;justify-content:center"><p class="note" style="margin:auto;text-align:center;max-width:220px">TOP VIEW, as today.</p></div>`;
+  else body = datasheet(device, g);
+  return `<section class="main">${strip}<div class="panel">${body}</div></section>`;
+}
+function topbar(device) {
+  if (device === "computer") return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><nav class="topnav"><span>Template</span><span class="on">Rocker</span><span>Rails</span><span>Volume</span><span>Fins</span><span>Summary</span><i class="sep"></i><span>⌂</span><span>⚙</span><i class="sep"></i></nav><button class="save">Save</button></div>`;
+  return `<div class="topbar"><span class="wordmark"><b>shaper</b>assistant<small>.com</small></span><button class="save">Save</button><span class="ham">☰</span></div>`;
+}
+/** A card's picture: the outline from above over the rocker from the side, as the real picker draws it. */
+function cardArt(r) {
+  const g = geometry(r), b = g.bl, L = b.lengthIn, W = 300, k = (W - 8) / L;
+  const widths = b.stations.filter((s) => s.widthIn !== null).map((s) => [s.xIn, s.widthIn / 2]);
+  const hw = (x) => { let i = 0; while (i < widths.length - 2 && widths[i + 1][0] < x) i++; const [x0, y0] = widths[i], [x1, y1] = widths[i + 1]; const t = Math.max(0, Math.min(1, (x - x0) / (x1 - x0 || 1))); const tt = t * t * (3 - 2 * t); return y0 + (y1 - y0) * tt; };
+  const maxHw = Math.max(...widths.map((w) => w[1])), ky = Math.min(k, 30 / maxHw);
+  let top = "", bot = "";
+  for (let i = 0; i <= 60; i++) { const x = (L * i) / 60, w = hw(x) * ky; top += `${i ? "L" : "M"}${(4 + x * k).toFixed(1)},${(34 - w).toFixed(1)}`; bot = `L${(4 + x * k).toFixed(1)},${(34 + w).toFixed(1)}` + bot; }
+  const pts = g.blankBottom.filter((p) => p[0] >= g.start && p[0] <= g.start + L), nat = g.d.blankPts.filter((p) => p[0] >= g.start && p[0] <= g.start + L);
+  const minDn = Math.min(...pts.map((p) => p[1]), ...nat.map((p) => p[1])), maxUp = Math.max(...pts.map((p) => p[1] + p[2])), ks = Math.min(k, 26 / Math.max(0.1, maxUp - minDn));
+  const side = (arr, f) => arr.map((p, i) => `${i ? "L" : "M"}${(4 + (p[0] - g.start) * k).toFixed(1)},${(100 - (f(p) - minDn) * ks).toFixed(1)}`).join("");
+  const custom = !isNatural(r);
+  return `<svg viewBox="0 0 ${W} 104" xmlns="${NS}" style="width:100%;height:auto;display:block"><path d="${top}${bot}Z" fill="var(--foam)" stroke="var(--blank-line)"/><path d="${side(pts, (p) => p[1])}${side([...pts].reverse(), (p) => p[1] + p[2]).replace(/^M/, "L")}Z" fill="var(--foam)" stroke="var(--blank-line)"/>${custom ? `<path d="${side(nat, (p) => p[1])}" fill="none" stroke="var(--blank-line)" stroke-dasharray="5 4"/>` : ""}</svg>`;
+}
+function blankCard(r, opts) {
+  const g = geometry(r), b = g.bl, note = noteOf(r), custom = !!note;
+  const cols = ["noseTip", "nose12", "center", "tail12", "tailTip"], catLabel = { noseTip: "N0", nose12: "N12", center: "C", tail12: "T12", tailTip: "T0" };
+  const st = (k) => b.stations.find((x) => x.label === catLabel[k]);
+  const pr = (v, f) => (v === null || v === undefined ? "—" : f(v / 25.4));
+  const rocker = cols.map((k) => { const x = st(k); if (!x || x.rockerIn === null) return "—"; return mark(custom ? g.blankLev(x.xIn) : x.rockerIn); });
+  const hdr = ["Nose", `N ${M() ? "30.5 cm" : '12"'}`, "Center", `T ${M() ? "30.5 cm" : '12"'}`, "Tail"];
+  return `<div class="card${opts.picked ? " picked" : ""}">
+    <div class="hd"><span class="nm">${esc(b.name)}</span><span class="fig">${esc(lengthWords(b.lengthIn))}${b.volumeL ? ` · ${b.volumeL.toFixed(1)} L` : ""}</span><span class="star${custom ? " on" : ""}">${custom ? "★" : "☆"}</span></div>
+    <div class="rnline">${esc(note || "Natural")}</div><div class="mk">${esc(b.vendor)}${custom ? ` · <span class="yours">Saved by you</span>` : ""}${opts.picked ? ` · <span class="onb">On your board now</span>` : ""}</div>
+    ${cardArt(r)}
+    <table class="st"><tr><th></th>${hdr.map((h) => `<th>${h}</th>`).join("")}</tr>
+      <tr><td>Width</td>${cols.map((k) => `<td>${pr(b.printed[k].width, dim)}</td>`).join("")}</tr>
+      <tr><td>Thick</td>${cols.map((k) => `<td>${pr(b.printed[k].thickness, mark)}</td>`).join("")}</tr>
+      <tr><td>Natural Rocker</td>${cols.map((k) => { const x = st(k); return `<td>${!x || x.rockerIn === null ? "—" : mark(x.rockerIn)}</td>`; }).join("")}</tr>
+      ${custom ? `<tr class="ord"><td>Custom Rocker</td>${rocker.map((c) => `<td>${c}</td>`).join("")}</tr>` : ""}</table>
+    ${custom ? `<div class="asord">Custom Rocker is the blank as you ordered it — check it on the foam.</div>` : ""}
+    <button class="link pickbtn" data-act="pick" data-i="${opts.i}">${opts.picked ? "Keep this blank" : "Use this blank"}</button>
+  </div>`;
+}
+function picker(device, g) {
+  const d = B(), b = d.blank, cur = noteOf(state.rocker);
+  const mine = state.saved.map((sv, i) => ({ sv, i })).filter((x) => x.sv.board === state.board);
+  const cards = [
+    ...mine.map(({ sv, i }) => blankCard(sv.rocker, { i, picked: sv.note === cur })),
+    blankCard({ nose: [], tail: [] }, { i: -1, picked: !cur }),
+  ];
+  return `<div class="scrim" data-act="closepicker"><div class="dialog" role="dialog" aria-label="Pick a blank" data-act="noop">
+    <div class="cat-head"><h2>Pick a blank</h2><span class="for">for your ${esc(lengthWords(d.boardLengthIn))} × ${esc(dim(d.widthIn))} × ${esc(mark(d.centerIn))} board · ${196 + mine.length} of ${219 + mine.length} blanks · ${194 + mine.length} fit</span><button class="x" data-act="closepicker">✕</button></div>
+    <div class="fbar"><div class="fline"><span class="chip on">US Blanks <span>${101 + mine.length}</span></span><span class="chip on">Arctic Foam <span>33</span></span><span class="chip on">Marko Foam <span>24</span></span><span class="chip on">Millennium Foam <span>61</span></span><span class="chip">Length: any</span><span class="chip">Nose rocker: any</span><span class="chip">★ Starred only</span><span class="chip sel">Sort: Length</span></div></div>
+    <div class="cat-scroll" data-scroll="picker">
+      ${mine.length ? `<div class="grp-label">★ Starred · ${mine.length}</div><div class="grid">${cards.slice(0, mine.length).join("")}</div>` : ""}
+      <div class="grp-label">Fits this board · 194</div><div class="grid">${cards[cards.length - 1]}<div class="card ghost">… and the other 193 blanks long enough for this board, as today</div></div>
+    </div></div></div>`;
+}
+/** The page's zoom on the popup's drawing (the founder, round sixteen): the viewBox closes in around the pan centre at
+ * 1x–4x, while strokes, dashes and type keep their screen size — the viewer's own zoom unit. */
+const ZOOMS = [1, 1.5, 2, 3, 4];
+function zoomed(svg, zoom, pan) {
+  const m = svg.match(/viewBox="0 0 (\d+) (\d+)"/); if (!m || zoom === 1) return svg;
+  const W = +m[1], H = +m[2], w = W / zoom, h = H / zoom;
+  const x = Math.max(0, Math.min(W - w, W / 2 - w / 2 + pan.x)), y = Math.max(0, Math.min(H - h, H / 2 - h / 2 + pan.y));
+  const u = 1 / zoom;
+  return svg.replace(/viewBox="0 0 \d+ \d+"/, `viewBox="${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}"`)
+    .replace(/font-size="([\d.]+)"/g, (_, v) => `font-size="${(+v * u).toFixed(2)}"`)
+    .replace(/stroke-width="([\d.]+)"/g, (_, v) => `stroke-width="${(+v * u).toFixed(2)}"`)
+    .replace(/stroke-dasharray="([\d. ]+)"/g, (_, v) => `stroke-dasharray="${v.split(" ").map((d) => (+d * u).toFixed(2)).join(" ")}"`);
+}
+function zoomTools() {
+  const i = ZOOMS.indexOf(state.zoom);
+  return `<div class="ztools"><button class="zb" data-act="zoomout" aria-label="Zoom out"${i <= 0 ? " disabled" : ""}>−</button><button class="zb zl" data-act="zoomfit" aria-label="Back to 1x">${state.zoom}x</button><button class="zb" data-act="zoomin" aria-label="Zoom in"${i >= ZOOMS.length - 1 ? " disabled" : ""}>+</button></div>`;
+}
+/** The CUSTOMIZE ROCKER popup: the drawing on top, the rows beneath (side by side on a computer), the note, and what to do with it. */
+function rockerPopup(device, g) {
+  const r = state.draft, b = B().blank, note = noteOf(r), gd = geometry(r);
+  const editing = state.savedIdx !== null && state.saved[state.savedIdx] && state.saved[state.savedIdx].note === noteOf(state.rocker) ? state.saved[state.savedIdx] : null;
+  const art = zoomed(mainArt(device === "phone" ? "phone" : device === "side" ? "side" : "computer", gd, { board: state.showBoard, overlay: true }), state.zoom, state.pan);
+  return `<div class="scrim" data-act="popcancel"><div class="dialog rdlg" role="dialog" aria-label="Customize rocker" data-act="noop">
+    <div class="cat-head"><h2>Customize rocker</h2><span class="for">${esc(b.vendor)} ${esc(b.name)} · ${note ? "Natural → " + colouredNote(r) : "Natural"}</span><button class="x" data-act="popcancel">✕</button></div>
+    <div class="rbody">
+      <div class="rrows" data-scroll="rpop">${endBlock("nose", device, r)}${endBlock("tail", device, r)}
+        <div class="links"><button class="link muted" data-act="popnatural">↺ Natural rocker</button></div>
+        <p class="note fine">Each change moves that tip by exactly its amount; the floor keeps every part of the blank above the centre's height. The note is what you give ${esc(b.vendor)}.</p>
+      </div>
+      <div class="rart" data-zoomable>${zoomTools()}${art}<div class="rcap"><span>Natural dashed · <span style="color:var(--adj-1)">the first change red</span> · <span style="color:var(--adj-2)">the second change blue</span>, on top of the first</span><label class="sw"><input type="checkbox" data-act="showboard"${state.showBoard ? " checked" : ""}> Show my board</label></div></div>
+    </div>
+    <div class="rfoot"><button class="btn ghost" data-act="popcancel">Cancel</button><span class="sp"></span>${editing ? `<button class="btn" data-act="popsaveedit">Use and edit current blank</button>` : ""}${note ? `<button class="btn primary" data-act="popsavenew">Use and save as a new blank</button>` : `<button class="btn primary" data-act="popuse">Use the natural rocker</button>`}</div>
+  </div></div>`;
+}
+function page(v, device) {
+  const g = geometry();
+  const shell = device === "phone" ? `<div class="shell">${mainCol(v, device, g)}${sidebar(v, device, g)}</div>` : `<div class="shell">${sidebar(v, device, g)}${mainCol(v, device, g)}</div>`;
+  const popup = state.picker ? picker(device, g) : v === "d" && state.popup && state.draft ? rockerPopup(device, g) : "";
+  return `<div class="device ${device}" data-v="${v}">${topbar(device)}${shell}${popup}</div>`;
+}
+
+/* ---------- the sketch shell ---------- */
+const INTRO0 = {
+  a: `<b>A — the ROCKER section comes back with a blank picked</b>, as the blank's rocker as ordered: a NOSE block and a TAIL block, each a slider in 1/16" (1 mm in Metric) with where the bend starts beneath it, and a second change on either end when a maker's rocker has one. The note on the section line is what you give the maker. The drawing shows the natural rocker dashed behind the bent blank, with a mark where each bend starts. (The tip close-ups of round one are gone — the founder: not necessary.)`,
+  b: `<b>B — the same rows live inside the BLANK card</b>, under the blank's name, behind a "Set a custom rocker ›" line — everything about the blank in one place, nothing new in the sidebar's list of sections.`,
+  c: `<b>C — one field, typed the way the maker writes it.</b> The app reads it back in words as you type and says when it can't. Fast when you have the maker's code in front of you.`,
+  all: `All three at once. Slide, type, switch boards and presets from the bar above; each variant draws the same blank from the same figures.`,
+};
+const INTRO = { ...INTRO0, d: `<b>D — the founder's direction (2026-10-16, round six): one button right under the blank card</b> — <b>Customize Rocker ›</b>, or <b>Edit Custom Rocker ›</b> once the board's blank has one — opens a large popup laid out like the ROCKER page itself: the NOSE and TAIL rows on the left, the drawing beside them; on a phone the drawing stays put on top and the rows scroll beneath it. Its footer: Cancel, then <b>Use and save as a new blank</b> — plus <b>Use and edit current blank</b> only when the board already uses one of your custom blanks. Every custom rocker in use is one of your saved blanks. No slider goes below the floor that keeps the blank above its centre's height.`, a: INTRO0.a + ` <b>Save this blank for later</b> under the rows puts the custom blank in the shaper's own blank list, starred, beside the maker's natural one — open Change blank › to see it as a card.` };
+const NOTES = `<h2>Sketch 016 — Custom rocker on ROCKER</h2>
+<p>A board on a blank can carry the blank's rocker <b>as ordered</b>: the natural rocker, or the natural rocker bent by so much at the nose and the tail, each bend starting at the centre or a point in from that tip. The note is written the US Blanks way (the founder, 2026-10-16: "descriptive even for other mfgs") and stays in inches in Metric, because it's the maker's order code.</p>
+<h3>What to look for</h3>
+<ul><li>Can you set a listed rocker — say <b>-1/4"N18" +1/8"T36" +1/8"T18"</b> — in under a minute, on a phone?</li>
+<li>Does the natural dashed line read as a reference, not a second blank? Are the bend marks enough without words?</li>
+
+<li>Decided (rounds three and four): the rocker text sits on its own line under the name, <b>Natural</b> included, everywhere the blank is named; a custom blank's table shows a <b>Natural Rocker</b> row and a <b>Custom Rocker</b> row — the adjustment itself is on the name line only.</li></ul>
+<h3>Round five (the founder, 2026-10-16)</h3>
+<p>The control is <b>D</b>: a Customize Rocker button right under the blank card (round six moved it there from an Advanced menu), reading Edit Custom Rocker once the board's blank has one; it opens a big popup laid out like the ROCKER page — controls left, drawing right; on a phone the drawing pinned on top and the controls scrolling under it — whose footer offers Use and save as a new blank, plus Use and edit current blank only when the board already uses a custom blank. Switching to a different blank clears the custom rocker and starts from natural. No rocker value may go negative: a nose or tail below the centre point is not a realistic board, so each slider stops at the floor that keeps the blank above its centre. The screen tile's rocker text: on every horizontal screen; on an upright phone only if it doesn't shrink the tile's board.</p>
+<h3>Saving it as a blank (the founder, 2026-10-16)</h3>
+<p>"Save this blank for later" keeps the custom rocker as a blank of the shaper's own — <b>US Blanks 9'4"B -1/4"N18" +1/8"T36" +1/8"T18"</b> — in the PICK A BLANK popup — <b>starred the moment it is saved</b>, so it sits at the top under ★ STARRED (the founder: "which should always be starred when saved") — with the natural 9'4"B still listed. Its station table reads the rocker as ordered. Signed in it is saved on the account; signed out, in this browser.</p>
+<h3>Round eight (the founder, 2026-10-16)</h3>
+<p>The deviation from natural is drawn the way US Blanks' catalogue draws it (September 2026, page 11, "Rocker Selection cont'd"): the blank's outline — bottom and deck — in red over the first adjustment's span and in blue over the second's, stacked on the first; the formula's figures take the same colours. Colours chosen to read on Slate and Daylight alike. <b>Only inside the Customize Rocker popup</b> (rounds eleven and twelve), the natural dashed line and the bend marks too: once the change is saved and the shaper is back on the page, the VIEWER shows the bent blank alone, as any blank.</p>
+<h3>Round nine (the founder, 2026-10-16)</h3>
+<p>The popup's drawing has a <b>Show my board</b> switch, off by default: the blank alone on its bottom plane with all its dimensions at its own five stations — the blank's printed thickness as chips on one rail, the rocker as ordered on the other (the tail tip, 12" in, the centre's zero reference, 12" in, the nose tip), the natural figure small beneath where it differs (rounds thirteen and fourteen); on, the board sits in it and the surfboard's values read instead, as the page draws them.</p>
+<h3>Round sixteen (the founder, 2026-10-16)</h3>
+<p>The page's zoom works on the popup's drawing: − / 1x / + at its top-right (1x to 4x), the wheel zooms about the pointer, a drag pans; strokes, dashes and type keep their screen size as the viewer's own zoom unit does. Pinch-to-zoom on a phone is the build's (the page's zoom viewport already has it).</p>
+<h3>The maths</h3>
+<p>Each change adds <i>amount × u²</i> to the natural curve, <i>u</i> running from 0 at the bend point to 1 at the tip — the even bend from spike 002, applied to the app's own curve for the blank (dumped by the app's own code, nothing re-drawn). Two changes on one end stack: the first is applied in full, the second on top of it, so +1/2"N from the centre plus +1/2"N18" lifts the nose tip 1" above natural (the founder, round seven); the second must start nearer the tip than the first, and its slider is limited to that. Bend starts is a slider in 1" steps beside the rocker slider. A change big enough to move the blank's low point re-levels on the new low, as the app levels every blank. The fit never changes.</p>
+<h3>Not drawn</h3>
+<p>The TOP VIEW inset, the toolbar's real buttons, the fit flag, the picker popup — all as today.</p>`;
+function applyTheme() { const root = document.documentElement.style; if (!PALETTES[state.theme]) { for (const k of Object.keys(PALETTES.slate)) root.removeProperty(k); root.removeProperty("color-scheme"); for (const [k, v] of Object.entries(COMMON_VARS)) root.setProperty(k, v); return; } for (const [k, v] of Object.entries({ ...COMMON_VARS, ...PALETTES[state.theme] })) root.setProperty(k, v); root.setProperty("color-scheme", state.theme === "slate" ? "dark" : "light"); }
+const THEMES = () => [["slate", "Slate"], ["daylight", "Daylight"], ...(window.__publish ? [["auto", "Follow phone"]] : [])];
+const onPhone = () => Math.min(window.innerWidth, window.innerHeight) < 500;
+const phoneDevice = () => (window.innerWidth > window.innerHeight ? "side" : "phone");
+function seg(key, opts) { return `<span class="seg">${opts.map(([val, l]) => `<button class="${String(state[key]) === String(val) ? "on" : ""}" data-set="${key}" data-val="${val}">${l}</button>`).join("")}</span>`; }
+function presetSeg() { const cur = noteOf(state.rocker); return `<span class="seg">${PRESETS.map(([l, r], i) => `<button class="${noteOf(r) === cur ? "on" : ""}" data-act="preset" data-i="${i}">${esc(l)}</button>`).join("")}</span>`; }
+function renderChrome() {
+  const nav = document.getElementById("variant-nav"), ph = onPhone();
+  nav.innerHTML = ph
+    ? `${VARIANTS.filter((v) => v.id !== "all").map((v) => `<button class="variant-tab${state.variant === v.id ? " active" : ""}" data-set="variant" data-val="${v.id}">${v.short}</button>`).join("")}<button class="variant-tab notes-btn" id="bar-btn">Options</button><button class="variant-tab" id="notes-btn">Notes</button><div id="notes-panel">${NOTES}</div>`
+    : `<span class="sketch-id">016 · Custom rocker</span>${VARIANTS.map((v) => `<button class="variant-tab${state.variant === v.id ? " active" : ""}${v.winner ? " winner" : ""}" data-set="variant" data-val="${v.id}">${v.label}</button>`).join("")}<button class="variant-tab notes-btn" id="notes-btn">Notes</button><div id="notes-panel">${NOTES}</div>`;
+  const bar = document.getElementById("sketch-bar");
+  bar.classList.toggle("closed", ph && !barOpen);
+  bar.innerHTML = `${ph ? `<span class="grp">Turn the phone to try it sideways</span>` : `<span class="grp">Device ${seg("device", DEVICES)}</span>`}
+    <span class="grp">Board ${seg("board", [["longboard", "Longboard in the 9'4\"B"], ["shortboard", "Shortboard in the 6'3\"RP"]])}</span>
+    <span class="grp">Rocker ${presetSeg()}</span>
+    ${ph ? `<span class="grp">Theme ${seg("theme", THEMES())}</span><span class="grp">Units ${seg("units", [["imperial", "Imperial"], ["metric", "Metric"]])}</span>` : ""}`;
+  document.getElementById("t-theme").innerHTML = seg("theme", THEMES());
+  document.getElementById("t-units").innerHTML = seg("units", [["imperial", "Imperial"], ["metric", "Metric"]]);
+}
+const DEV_SIZE = { computer: [1280, 900], phone: [390, 664], side: [844, 340] };
+function fitDevice(html, device, maxW) { const [w, h] = DEV_SIZE[device]; const k = Math.min(1, maxW / w); if (k >= 0.999) return html; return `<div class="scaler" style="width:${(w * k).toFixed(0)}px;height:${(h * k).toFixed(0)}px;margin:0 auto">${html.replace('class="device', `style="transform:scale(${k.toFixed(4)})" class="device`)}</div>`; }
+function render() {
+  const scrolls = {}; document.querySelectorAll("[data-scroll]").forEach((el) => (scrolls[el.dataset.scroll] = el.scrollTop));
+  const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null;
+  const caret = active === "text" ? document.activeElement.selectionStart : null;
+  applyTheme(); renderChrome();
+  if (onPhone() && state.variant === "all") state.variant = "d";
+  document.body.classList.toggle("on-phone", onPhone());
+  const stage = document.getElementById("stage"), avail = Math.max(320, stage.clientWidth - 32);
+  if (state.variant === "all") {
+    const [w] = DEV_SIZE[state.device]; const each = state.device === "computer" ? Math.min(w, (avail - 18) / 2) : Math.min(w, (avail - 36) / 3);
+    stage.innerHTML = `<div class="intro">${INTRO.all}</div><div class="compare">${["a", "b", "c"].map((v) => `<figure><figcaption>${VARIANTS.find((x) => x.id === v).label}</figcaption>${fitDevice(page(v, state.device), state.device, each)}</figure>`).join("")}</div>`;
+  } else if (onPhone()) {
+    stage.innerHTML = page(state.variant, phoneDevice());
+    const dev = stage.querySelector(".device"), chromeH = document.getElementById("chrome").offsetHeight;
+    const rootCs = getComputedStyle(document.documentElement), padY = (parseFloat(rootCs.paddingTop) || 0) + (parseFloat(rootCs.paddingBottom) || 0); dev.style.width = "100%"; dev.style.height = window.innerHeight - padY - chromeH + "px";
+  } else stage.innerHTML = `<div class="intro">${INTRO[state.variant]}</div>${fitDevice(page(state.variant, state.device), state.device, avail)}`;
+  document.querySelectorAll("[data-scroll]").forEach((el) => { if (scrolls[el.dataset.scroll] != null) el.scrollTop = scrolls[el.dataset.scroll]; });
+  if (active === "text") { const el = document.querySelector('[data-act="text"]'); if (el) { el.focus(); try { el.setSelectionRange(caret, caret); } catch (e) {} } }
+  save();
+}
+function changeAt(end, i) { return changeAtIn(state.rocker, end, i); }
+function changeAtIn(r, end, i) { const list = r[end]; while (list.length <= i) list.push({ a: 0, f: null }); return list[i]; }
+function tidy() { for (const end of ["nose", "tail"]) state.rocker[end] = state.rocker[end].filter((c, i) => c.a || i === 0 && state.rocker[end].length > 1 ? true : c.a !== 0 || false); state.text = noteOf(state.rocker); }
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-set],[data-act],#notes-btn,#bar-btn,#tools-toggle");
+  if (!t) { document.getElementById("notes-panel")?.classList.remove("open"); return; }
+  if (t.id === "bar-btn") { barOpen = !barOpen; render(); return; }
+  if (t.id === "notes-btn") { document.getElementById("notes-panel").classList.toggle("open"); return; }
+  if (t.id === "tools-toggle") { document.getElementById("sketch-tools").classList.toggle("open"); return; }
+  if (t.dataset.set) { let v = t.dataset.val; if (v === "true") v = true; if (v === "false") v = false; state[t.dataset.set] = v; if (t.dataset.set === "board") { state.rocker = JSON.parse(JSON.stringify(PRESETS[2][1])); state.text = noteOf(state.rocker); } render(); return; }
+  const act = t.dataset.act;
+  if (act === "tab") { state.tab = t.dataset.tab; render(); }
+  else if (act === "preset") { state.rocker = JSON.parse(JSON.stringify(PRESETS[+t.dataset.i][1])); state.text = noteOf(state.rocker); render(); }
+  else if (act === "natural") { state.rocker = { nose: [], tail: [] }; state.text = ""; render(); }
+  else if (act === "save") { state.saved.push({ board: state.board, note: noteOf(state.rocker), rocker: JSON.parse(JSON.stringify(state.rocker)) }); render(); }
+  else if (act === "unsave") { const note = noteOf(state.rocker); state.saved = state.saved.filter((sv) => !(sv.board === state.board && sv.note === note)); render(); }
+  else if (act === "browse") { state.picker = true; render(); }
+  else if (act === "closepicker") { state.picker = false; render(); }
+  else if (act === "pick") { const sv = state.saved[+t.dataset.i]; state.savedIdx = sv ? +t.dataset.i : null; state.rocker = sv ? JSON.parse(JSON.stringify(sv.rocker)) : { nose: [], tail: [] }; state.text = noteOf(state.rocker); state.picker = false; render(); }
+  else if (act === "add") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end; const rg = fromRange(end, 1, { ...r, [end]: [r[end][0], { a: 0, f: null }] }); r[end].push({ a: 0.125, f: Math.min(18, rg.max) }); state.text = noteOf(state.rocker); render(); }
+  else if (act === "rm") { const r = t.closest(".dialog") ? state.draft : state.rocker; r[t.dataset.end].splice(+t.dataset.i, 1); state.text = noteOf(state.rocker); render(); }
+  else if (act === "adv") { state.advOpen = !state.advOpen; render(); }
+  else if (act === "customize") { state.draft = JSON.parse(JSON.stringify(state.rocker)); state.popup = true; state.zoom = 1; state.pan = { x: 0, y: 0 }; render(); }
+  else if (act === "zoomin" || act === "zoomout" || act === "zoomfit") { const i = ZOOMS.indexOf(state.zoom); if (act === "zoomfit") { state.zoom = 1; state.pan = { x: 0, y: 0 }; } else { state.zoom = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + (act === "zoomin" ? 1 : -1)))]; } render(); }
+  else if (act === "popcancel") { state.popup = false; state.draft = null; render(); }
+  else if (act === "popuse") { state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
+  else if (act === "popsavenew") { const note = noteOf(state.draft); if (note) { const dup = state.saved.findIndex((sv) => sv.board === state.board && sv.note === note); if (dup >= 0) state.savedIdx = dup; else { state.saved.push({ board: state.board, note, rocker: JSON.parse(JSON.stringify(state.draft)) }); state.savedIdx = state.saved.length - 1; } } state.rocker = state.draft; state.text = note; state.popup = false; state.draft = null; render(); }
+  else if (act === "popsaveedit") { const sv = state.saved[state.savedIdx]; if (sv) { sv.note = noteOf(state.draft); sv.rocker = JSON.parse(JSON.stringify(state.draft)); } state.rocker = state.draft; state.text = noteOf(state.rocker); state.popup = false; state.draft = null; render(); }
+  else if (act === "popnatural") { state.draft = { nose: [], tail: [] }; render(); }
+  else if (act === "btoggle") { state.bOpen = !state.bOpen; render(); }
+});
+document.addEventListener("input", (e) => {
+  const t = e.target; const act = t.dataset && t.dataset.act; if (!act) return;
+  if (act === "showboard") { state.showBoard = t.checked; render(); return; }
+  if (act === "amt") { const r = t.closest(".dialog") ? state.draft : state.rocker; const c = changeAtIn(r, t.dataset.end, +t.dataset.i); c.a = M() ? Math.round(+t.value * 25.4) / 25.4 : Math.round(+t.value * 16) / 16; c.a = Math.max(floorOf(t.dataset.end, +t.dataset.i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
+  else if (act === "from") { const r = t.closest(".dialog") ? state.draft : state.rocker; const end = t.dataset.end, i = +t.dataset.i; const c = changeAtIn(r, end, i); const rg = fromRange(end, i, r); const v = Math.round(+t.value); c.f = rg.centreAt !== null && v >= rg.centreAt ? null : Math.max(rg.min, Math.min(rg.max, v)); if (i === 0 && r[end][1]) { const s2 = r[end][1], rg2 = fromRange(end, 1, r); if (s2.f === null || s2.f > rg2.max) s2.f = rg2.max; } c.a = Math.max(floorOf(end, i, r), c.a); state.text = noteOf(state.rocker); renderLive(t); }
+  else if (act === "text") { state.text = t.value; const p = parseNote(t.value); if (p) state.rocker = p; render(); }
+});
+/** A slider drag re-renders everything but keeps the slider under the thumb. */
+function renderLive(slider) { const act = slider.dataset.act, end = slider.dataset.end, i = slider.dataset.i, v = slider.value; render(); const again = document.querySelector(`input[data-act="${act}"][data-end="${end}"][data-i="${i}"]`); if (again) { again.value = v; again.focus(); } }
+/** Wheel zooms about the pointer; a drag pans. Pan is kept in the drawing's own units, so it survives a re-render. */
+function svgScale(svg) { const r = svg.getBoundingClientRect(); const vb = svg.viewBox.baseVal; return Math.min(r.width / vb.width, r.height / vb.height); }
+document.addEventListener("wheel", (e) => {
+  const svg = e.target.closest && e.target.closest("[data-zoomable] svg.mainart"); if (!svg) return;
+  e.preventDefault();
+  const i = ZOOMS.indexOf(state.zoom), next = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, i + (e.deltaY < 0 ? 1 : -1)))];
+  if (next === state.zoom) return;
+  // keep the point under the pointer where it is
+  const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, k = svgScale(svg);
+  const px = vb.x + (e.clientX - r.left - (r.width - vb.width * k) / 2) / k, py = vb.y + (e.clientY - r.top - (r.height - vb.height * k) / 2) / k;
+  const W0 = vb.width * state.zoom, H0 = vb.height * state.zoom;
+  const cx = W0 / 2 + state.pan.x, cy = H0 / 2 + state.pan.y;
+  const f = state.zoom / next;
+  state.pan = { x: px + (cx - px) * f - W0 / 2, y: py + (cy - py) * f - H0 / 2 }; state.zoom = next; render();
+}, { passive: false });
+let drag = null;
+document.addEventListener("pointerdown", (e) => { const svg = e.target.closest && e.target.closest("[data-zoomable] svg.mainart"); if (!svg || state.zoom === 1) return; drag = { x: e.clientX, y: e.clientY, pan: { ...state.pan }, k: svgScale(svg) }; svg.setPointerCapture && svg.setPointerCapture(e.pointerId); });
+document.addEventListener("pointermove", (e) => { if (!drag) return; state.pan = { x: drag.pan.x - (e.clientX - drag.x) / drag.k, y: drag.pan.y - (e.clientY - drag.y) / drag.k }; const svg = document.querySelector("[data-zoomable] svg.mainart"); if (svg) { const m = zoomed(`viewBox="0 0 ${svg.viewBox.baseVal.width * state.zoom} ${svg.viewBox.baseVal.height * state.zoom}"`, state.zoom, state.pan).match(/viewBox="([^"]+)"/); if (m) svg.setAttribute("viewBox", m[1]); } });
+document.addEventListener("pointerup", () => { if (drag) { drag = null; render(); } });
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

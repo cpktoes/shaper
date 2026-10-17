@@ -13,7 +13,9 @@
  * imports, so every picture can be checked against the presets in isolation.
  */
 
+import type { BlankRecord } from "./blank";
 import type { OutlineSpec, Point2D } from "./board";
+import { blankDisplayLines, type BlankRockerSpec } from "./custom-rocker";
 import type { BoardSideProfile } from "./board-profile";
 import { FIN_SETUPS, type FinMark, type FinSetup } from "./fins";
 import type { OutlineGeometry } from "./outline";
@@ -269,4 +271,15 @@ export function screenTileLines(input: {
     fins: finLabel,
     summary: "Order form",
   };
+}
+
+/**
+ * ROCKER's second line (quick 261016-mkb, D-11, P-4): the blank's rocker under `On a 9'4"B` —
+ * `Natural`, or the note as ordered from the maker — the very words the BLANK button's rocker line
+ * reads (`blankDisplayLines`). Null with no blank (a hand-set board has no second line).
+ */
+export function screenTileRocker(
+  blank: { copy: Pick<BlankRecord, "vendor" | "name">; rocker?: BlankRockerSpec } | null,
+): string | null {
+  return blank ? blankDisplayLines(blank.copy, blank.rocker)[1] : null;
 }

@@ -20,11 +20,13 @@ import {
   railsTileArt,
   rockerTileArt,
   screenTileLines,
+  screenTileRocker,
   summaryTileArt,
   viewBoxOf,
 } from "./screen-tiles";
+import { blankDisplayLines, formatRockerNote, type BlankRockerSpec } from "./custom-rocker";
 import { presetSummary } from "./summary-line";
-import { mm } from "./units";
+import { inchesToMm, mm } from "./units";
 
 /**
  * Each preset's board exactly as the design store builds it once the preset is opened
@@ -397,5 +399,26 @@ describe("screenTileLines — the line under each tile's name", () => {
     const metric = screenTileLines({ outline: fields.outline, blank: fields.blank, finSetup, system: "metric" });
     expect(metric.template).toMatch(/^\d+\.\d × \d+\.\d cm$/);
     expect({ ...metric, template: "" }).toEqual({ ...imperial, template: "" });
+  });
+});
+
+describe("screenTileRocker — ROCKER's second line (quick 261016-mkb, D-11)", () => {
+  it("is null with no blank, Natural on a maker's blank, the note on a custom one — the BLANK button's own words", () => {
+    const { fields, finSetup } = shortboard;
+    expect(screenTileRocker(null)).toBeNull();
+    expect(screenTileRocker(fields.blank)).toBe("Natural");
+    expect(screenTileRocker({ ...fields.blank, rocker: { changes: [] } })).toBe("Natural");
+    const rocker: BlankRockerSpec = {
+      changes: [
+        { end: "nose", amount: inchesToMm(-1 / 4), fromTip: inchesToMm(18) },
+        { end: "tail", amount: inchesToMm(1 / 8), fromTip: inchesToMm(36) },
+      ],
+    };
+    const custom = { ...fields.blank, rocker };
+    expect(screenTileRocker(custom)).toBe(blankDisplayLines(custom.copy, rocker)[1]);
+    expect(screenTileRocker(custom)).toBe(formatRockerNote(rocker));
+    // The first line is unchanged by a custom rocker.
+    const lines = screenTileLines({ outline: fields.outline, blank: custom, finSetup, system: "imperial" });
+    expect(lines.rocker).toBe(`On a ${fields.blank.copy.name}`);
   });
 });

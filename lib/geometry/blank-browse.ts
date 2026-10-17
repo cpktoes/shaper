@@ -22,6 +22,16 @@
  *   1/8" or 1 mm for nose rocker — so the shortest and longest blank are always reachable. A blank's
  *   length is a length (`formatLength`); its rocker is a mark (`formatMark`) (CLAUDE.md Rule 2).
  *
+ * - The shaper's saved blanks (quick 261016-mkb plan 03, D-09 — the founder, 2026-10-16: "it should
+ *   not replace the natural rocker blank, but essentially add a new blank to our catalogue"): each
+ *   is a row of its own (`savedBrowseRows`) beside the maker's natural blank, which stays listed. It
+ *   carries its saved id and rocker, its one-line name (`9'4"B -1/4"N18"`, `blankDisplayName`) and
+ *   its nose rocker AS ORDERED (`orderedTipRockers`: the printed tip plus the bend), so the search,
+ *   the nose-rocker range and the sort all read the blank the shaper would get. It is starred by its
+ *   note-bearing identity (`blankStarIdentity`), so the natural twin's star never stars it. A
+ *   catalogue row's display name is its name alone. A natural row sorts before its saved twins, then
+ *   the display name breaks the tie, so the order never depends on the input.
+ *
  * Pure — no React, browser or database import (CLAUDE.md Rule 1). Every conversion goes through
  * `units.ts` and every label through `measure-display.ts`.
  */
@@ -29,6 +39,7 @@
 import type { BlankRecord } from "./blank";
 import { blankTipRockers, FLOOR_EPSILON_MM, type BlankVerdict, type PreparedBlank } from "./blank-fit";
 import { matchesBlankSearch } from "./blank-reasons";
+import { blankDisplayName, blankStarIdentity, orderedTipRockers, type BlankRockerSpec } from "./custom-rocker";
 import { formatLength, formatMark, measureSlider, type MeasureSliderView } from "./measure-display";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
@@ -82,11 +93,28 @@ export interface BrowseRow {
   centerThickness: Mm;
   /** The printed volume in litres, or null where the catalogue prints none. */
   volume: number | null;
+  /**
+   * What the search reads and the sort's last tie-break: the name alone for a maker's blank, the
+   * one-line name with its note for a saved one (`9'4"B -1/4"N18"`, quick 261016-mkb).
+   */
+  displayName: string;
+  /** Set only on one of the shaper's saved blanks: which one, and the rocker a pick puts on the board (D-09). */
+  saved?: { id: string; rocker: BlankRockerSpec };
 }
+
+/** One of the shaper's saved blanks as the rows read it — the shape of `SavedBlank`, kept structural so
+ * this file never imports the browser list's module. */
+export interface SavedBrowseEntry {
+  id: string;
+  copy: BlankRecord;
+  rocker: BlankRockerSpec;
+}
+
+type JudgedList = { fits: readonly BlankVerdict[]; wontFit: readonly BlankVerdict[] };
 
 /** The rows for a judged list: FITS then WON'T FIT, each in the list's own order. */
 export function browseRows(
-  list: { fits: readonly BlankVerdict[]; wontFit: readonly BlankVerdict[] },
+  list: JudgedList,
   recordOf: ReadonlyMap<PreparedBlank, BlankRecord>,
   isStarred: (vendor: string, name: string) => boolean,
 ): BrowseRow[] {
@@ -102,8 +130,41 @@ export function browseRows(
       noseRocker: blankTipRockers(prepared).nose,
       centerThickness: prepared.centerThicknessMm,
       volume: record.volumeLitres,
+      displayName: record.name,
     };
   });
+}
+
+/**
+ * The rows for the shaper's saved blanks, judged by the catalogue's own rule (`listBlanks`) on their
+ * bent copies (quick 261016-mkb, D-09, P-19): FITS then WON'T FIT, each in the list's own order. A
+ * verdict whose prepared blank the lookup doesn't hold is left out. Bending changes no thickness or
+ * width, so a saved blank's verdict is always its natural base's.
+ */
+export function savedBrowseRows(
+  list: JudgedList,
+  entryOf: ReadonlyMap<PreparedBlank, SavedBrowseEntry>,
+  isStarred: (vendor: string, name: string) => boolean,
+): BrowseRow[] {
+  const rows: BrowseRow[] = [];
+  for (const verdict of [...list.fits, ...list.wontFit]) {
+    const { prepared } = verdict;
+    const entry = entryOf.get(prepared);
+    if (!entry) continue;
+    rows.push({
+      verdict,
+      record: entry.copy,
+      fits: verdict.fits,
+      starred: isStarred(...blankStarIdentity(entry.copy, entry.rocker)),
+      lengthMm: prepared.lengthMm,
+      noseRocker: orderedTipRockers(prepared).nose,
+      centerThickness: prepared.centerThicknessMm,
+      volume: entry.copy.volumeLitres,
+      displayName: blankDisplayName(entry.copy, entry.rocker),
+      saved: { id: entry.id, rocker: entry.rocker },
+    });
+  }
+  return rows;
 }
 
 /** Is `value` inside the range, both ends included, with the floors' own slack? */
@@ -116,18 +177,23 @@ function inRange(value: number, range: MmRange | null): boolean {
 export function filterBrowseRows(rows: readonly BrowseRow[], filters: BlankBrowseFilters): BrowseRow[] {
   return rows.filter(
     (row) =>
-      matchesBlankSearch(row.record, filters.query) &&
+      // A saved blank is found by its whole name, note included (quick 261016-mkb).
+      matchesBlankSearch({ vendor: row.record.vendor, name: row.displayName }, filters.query) &&
       inRange(row.lengthMm, filters.length) &&
       inRange(row.noseRocker, filters.noseRocker) &&
       (!filters.starredOnly || row.starred),
   );
 }
 
-/** Shortest first; the same length by name, then maker — the list's own order (`listBlanks`). */
+/** Shortest first; the same length by name, then maker — the list's own order (`listBlanks`); then a
+ * maker's natural blank before the shaper's saved twins of it, and the display name last (quick
+ * 261016-mkb). */
 function byLengthThenName(a: BrowseRow, b: BrowseRow): number {
   if (a.lengthMm !== b.lengthMm) return a.lengthMm - b.lengthMm;
   if (a.record.name !== b.record.name) return a.record.name < b.record.name ? -1 : 1;
   if (a.record.vendor !== b.record.vendor) return a.record.vendor < b.record.vendor ? -1 : 1;
+  if (!a.saved !== !b.saved) return a.saved ? 1 : -1;
+  if (a.displayName !== b.displayName) return a.displayName < b.displayName ? -1 : 1;
   return 0;
 }
 

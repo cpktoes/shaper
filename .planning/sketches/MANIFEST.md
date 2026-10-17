@@ -110,6 +110,7 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
 | 013 | wings-on-the-outline | How does a wing read on the TEMPLATE outline, and what happens to the tail behind it? | **A — Tail re-drawn to your block** (depth fades to nothing at the tail pod; two wings stack) | viewer, template, outline, wings, fins, geometry, controls |
 | 014 | wings-tab | With wings on a WINGS tab of the TEMPLATE page, where do the wing controls live, and how does the view scale for a stinger? | **B — The window grows with the wing** (sidebar swaps to the wing controls; grab points with Show construction) | template, wings, tabs, controls, sidebar, phone, interaction |
 | 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | **B — A popup window** (flat by default, Flat / Upright and Show my board — on by default — in the filter bar, each blank fills its card) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
+| 016 | custom-rocker | With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker (nose and tail changes in the US Blanks notation, up to two per end), and how do the drawing, the name and the DATASHEET show it? | **D — Customize Rocker under the blank card, a popup** (the founder, 2026-10-16 after sixteen rounds: "This now looks perfect. Let's build it.") | rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation |
 
 ## Decisions These Lock In
 
@@ -214,9 +215,30 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
    Stars live on the shaper's account when signed in (a nullable `user_preferences` column,
    migrated on production before the deploy), in the browser when signed out, joined on signing in.
 
+19. **A blank's rocker as ordered — the custom rocker** (sketch 016 D; the founder, 2026-10-16, after sixteen rounds:
+   "This now looks perfect. Let's build it."). Written the US Blanks way (`-1/4"N18" +1/8"T36" +1/8"T18"`), in inches
+   in both systems; every blank named the name then its rocker on its own line, `Natural` included; tables show
+   Natural Rocker over Custom Rocker. One button right under the blank card — Customize Rocker › / Edit Custom
+   Rocker › — opens a popup styled like PICK A BLANK and laid out like the ROCKER page (rows left and scrolling,
+   the drawing in a card beside them; on a phone the drawing pinned on top, the rows beneath): NOSE and TAIL, each a
+   Rocker slider (1/16", 1 mm) beside a Bend starts slider (1" steps, 3" in to the centre), a second change per end
+   that must start nearer the tip and stacks on the first; no change below the floor that keeps the blank above its
+   centre; the drawing with Show my board off by default (the blank's thickness and rocker as ordered at its five
+   stations, the centre as the zero reference) or on (the surfboard's values), the natural rocker dashed, a mark at
+   each bend, the first adjustment's outline red and the second's blue (US Blanks' catalogue page 11), the page's
+   zoom; Cancel · Use and save as a new blank · Use and edit current blank. Every custom rocker in use is a saved
+   blank of the shaper's own, starred on save, listed beside the natural one and picked like any blank; switching
+   blanks clears it. On the page itself the bent blank draws as any blank. Research and build plan:
+   `.planning/spikes/CUSTOM-ROCKER-PLAN.md`.
+
 ## Open Questions
 
 - Blank picker (015): ~~which placement, flat or upright, where stars are saved?~~ Answered 2026-10-15 — decision 18.
+
+- Custom rocker (016, 2026-10-16): A, B or C for the control; the tip close-ups; the note on its own line or run on
+  as one name; the DATASHEET's BLANK Rocker row (custom with natural beneath, two rows, or a footnote). Decided so far
+  (the founder, 2026-10-16): the US Blanks notation app-wide, typed changes first, the note in inches in Metric,
+  steppers with room for a two-point change; a custom blank can be saved for later as the shaper's own blank, beside the natural one, starred on save (round two); the rocker text on its own line under every blank's name, `Natural` included, no tip close-ups, and a Natural Rocker row over a Custom Rocker row, the adjustment written once on the name line (rounds three and four). The control is D (rounds five and six): a Customize Rocker / Edit Custom Rocker button right under the blank card opening a large popup laid out like the ROCKER page (rows left, drawing right; drawing pinned on a phone), with Cancel · Use and save as a new blank (and Use and edit current blank when the board already uses a custom blank) — every custom rocker in use is a saved blank; no rocker value below the centre; switching blanks clears the custom rocker; Bend starts is a 1"-step slider beside the rocker slider, a second change starts nearer the tip than the first, and two changes stack (round seven); the deviation from natural drawn as US Blanks' catalogue page 11 draws it, the outline red over the first adjustment and blue over the second (round eight); a Show my board switch on the popup's drawing, off by default (round nine); the red and blue lines, the natural dashed line and the bend marks live only in the popup, a live aid while adjusting — the page's VIEWER draws a custom blank as any blank (rounds eleven and twelve); the popup's blank drawing reads all the blank's dimensions at its five stations — printed thickness, rocker as ordered, the centre as the zero reference — and the surfboard's values once Show my board is on (rounds thirteen and fourteen); the popup styled like the PICK A BLANK window, its drawing a card on the dialog's surface (round fifteen) with the page's zoom on it (round sixteen). **Decided 2026-10-16 — building.** Research: `.planning/spikes/CUSTOM-ROCKER-PLAN.md`.
 
 - Phone chrome (007/008): ~~does a phone held sideways keep its screens list in ☰ or switch to the tiles
   too?~~ Answered: tiles too (the founder, 2026-10-03, "use on all screens that condense the top bar into a

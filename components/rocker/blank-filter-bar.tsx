@@ -55,13 +55,14 @@ import {
 import type { UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 
-/** A filter chip: a pill, grown to a 44-dot touch box on a finger. */
-const CHIP_CLASS =
+/** A filter chip: a pill, grown to a 44-dot touch box on a finger. Exported, with the two looks
+ * below, for the Customize Rocker popup's Show my board chip (quick 261016-mkb). */
+export const CHIP_CLASS =
   "focus-ring-accent inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold whitespace-nowrap coarse:min-h-11";
 /** Pressed: TwoOptionToggle's own active look. */
-const CHIP_ON = "border-surf-on-accent bg-surf-accent text-surf-on-accent";
+export const CHIP_ON = "border-surf-on-accent bg-surf-accent text-surf-on-accent";
 /** Not pressed. */
-const CHIP_OFF = "border-surf-line bg-surf-sidebar text-surf-ink";
+export const CHIP_OFF = "border-surf-line bg-surf-sidebar text-surf-ink";
 
 export interface BlankFilterBarProps {
   filters: BlankBrowseFilters;

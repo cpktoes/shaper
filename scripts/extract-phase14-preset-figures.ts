@@ -27,7 +27,8 @@
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
-import { prepareBlank, thinningStartsOf } from "@/lib/geometry/blank-fit";
+import { thinningStartsOf } from "@/lib/geometry/blank-fit";
+import { prepareBoardBlank } from "@/lib/geometry/custom-rocker";
 import { buildBoardProfile } from "@/lib/geometry/board-profile";
 import type { FoilStationKey } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -68,7 +69,7 @@ function main() {
       rocker: fields.rocker,
       foil: fields.foil,
       blank: {
-        prepared: prepareBlank(fields.blank.copy),
+        prepared: prepareBoardBlank(fields.blank),
         placement: fields.blank.placement,
         nose12Offset: fields.blank.nose12Offset,
         tail12Offset: fields.blank.tail12Offset,

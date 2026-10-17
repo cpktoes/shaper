@@ -19,6 +19,7 @@
 import { fitAt, prepareBlank, prepareBlankPchip, thinningStartsOf } from "./blank-fit";
 import type { FitSettings } from "./blank";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
+import { prepareBoardBlank } from "./custom-rocker";
 import { summarizeDesignWith, type DesignRules, type DesignSummaryFields } from "./design";
 import type { FoilStationKey } from "./foil";
 import { buildOutline, sampleOutline } from "./outline";
@@ -81,7 +82,7 @@ export function boardProfileWith(fields: DesignSummaryFields, rules: DesignRules
     foil: fields.foil,
     blank: blank
       ? {
-          prepared: rules.prepare(blank.copy),
+          prepared: prepareBoardBlank(blank, rules.prepare),
           placement: blank.placement,
           nose12Offset: blank.nose12Offset,
           tail12Offset: blank.tail12Offset,

@@ -67,7 +67,8 @@ export function firstFittingCard(page: Page): Locator {
   return blankCards(blankPicker(page), "fits").first();
 }
 
-/** A card's pick button — the transparent button laid over the whole card, named `Use {vendor} {name}…`. */
+/** A card's pick button — the transparent button laid over the whole card, named `Use {vendor} {name}
+ * {rocker}…` (`Natural`, or a saved blank's note). */
 export function cardButton(card: Locator): Locator {
   return card.getByRole("button", { name: /^Use / });
 }
@@ -84,14 +85,16 @@ export async function pickFirstFittingBlank(page: Page): Promise<string> {
   return name;
 }
 
-/** Opens the popup, searches `{vendor} {name}` and picks the blank whose button starts `Use {vendor} {name}`. */
+/** Opens the popup, searches `{vendor} {name}` and picks the maker's natural blank — its button reads
+ * `Use {vendor} {name} Natural` (quick 261016-mkb, D-02). */
 export async function pickBlankNamed(page: Page, vendor: string, name: string): Promise<void> {
   const dialog = await openBlankPicker(page);
   await dialog.getByRole("searchbox", { name: "Search blanks" }).fill(`${vendor} ${name}`);
-  // The label is `Use {vendor} {name}`, plus `, doesn't fit: …` on a greyed card — so match it
-  // exactly or up to that comma, never a longer name that merely starts the same. JSON.stringify gives
-  // a quoted CSS string with any inch mark in the name escaped.
-  const label = `Use ${vendor} ${name}`;
+  // The label is `Use {vendor} {name} Natural`, plus `, doesn't fit: …` on a greyed card — so match
+  // it exactly or up to that comma, never a longer name that merely starts the same, and never a
+  // saved twin (`Use {vendor} {name} +1/2"N`). JSON.stringify gives a quoted CSS string with any inch
+  // mark in the name escaped.
+  const label = `Use ${vendor} ${name} Natural`;
   const button = dialog.locator(
     `li[data-blank-card] button[aria-label=${JSON.stringify(label)}], ` +
       `li[data-blank-card] button[aria-label^=${JSON.stringify(`${label},`)}]`,
@@ -139,4 +142,58 @@ export async function cardNumbers(
       }),
     attr,
   );
+}
+
+/** ROCKER's Customize Rocker button, right under the BLANK button (quick 261016-mkb, D-04). */
+export function customizeRockerButton(page: Page): Locator {
+  return page.locator("[data-customize-rocker]");
+}
+
+/** The CUSTOMIZE ROCKER popup, under either of its titles. */
+export function customRockerDialog(page: Page): Locator {
+  return page.getByRole("dialog", { name: /^(Customize|Edit Custom) Rocker$/i });
+}
+
+/** Taps Customize Rocker (or Edit Custom Rocker) and waits for its popup. Returns the popup. */
+export async function openCustomizeRocker(page: Page): Promise<Locator> {
+  const dialog = customRockerDialog(page);
+  // A popup still animating shut is not open; wait for it to go before tapping again.
+  await expect(page.locator("[data-customize-rocker-dialog][data-closed]")).toHaveCount(0);
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await customizeRockerButton(page).click();
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  return dialog;
+}
+
+/** The BLANK button's rocker line — `Natural`, or the note as ordered (D-02). */
+export function blankRockerLine(page: Page): Locator {
+  return page.locator("[data-blank-rocker]");
+}
+
+/** The shaper's saved blanks' cards in the popup — each marked Saved by you (quick 261016-mkb, D-09). */
+export function savedCards(dialog: Locator): Locator {
+  return dialog.locator("li[data-blank-card]:has([data-saved-blank])");
+}
+
+/** The makers' own cards in the popup — every card that is not one of the shaper's saved blanks. */
+export function catalogueCards(dialog: Locator): Locator {
+  return dialog.locator("li[data-blank-card]:not(:has([data-saved-blank]))");
+}
+
+/**
+ * Opens the popup, searches the saved blank's whole name and picks it: its button reads
+ * `Use {vendor} {name} {note}` (plus `, doesn't fit: …` on a greyed card), `displayName` being the
+ * name and the note on one line — `9'4"B +1/2"N`.
+ */
+export async function pickSavedBlank(page: Page, vendor: string, displayName: string): Promise<void> {
+  const dialog = await openBlankPicker(page);
+  await dialog.getByRole("searchbox", { name: "Search blanks" }).fill(`${vendor} ${displayName}`);
+  const label = `Use ${vendor} ${displayName}`;
+  const button = savedCards(dialog).locator(
+    `button[data-pick][aria-label=${JSON.stringify(label)}], button[data-pick][aria-label^=${JSON.stringify(`${label},`)}]`,
+  );
+  await expect(button).toHaveCount(1);
+  await button.click();
+  await expect(dialog).toBeHidden();
 }

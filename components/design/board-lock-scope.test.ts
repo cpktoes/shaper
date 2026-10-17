@@ -19,6 +19,11 @@ const LOCKABLE_FILES = [
   "components/rocker/blank-card.tsx",
   "components/rocker/blank-filter-bar.tsx",
   "components/rocker/blank-flag.tsx",
+  // Quick 261016-mkb: the Customize Rocker button and its popup.
+  "components/rocker/customize-rocker.tsx",
+  "components/rocker/customize-rocker-dialog.tsx",
+  "components/rocker/custom-rocker-rows.tsx",
+  "components/rocker/custom-rocker-drawing.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",
@@ -122,6 +127,23 @@ describe("board-lock-scope — the control inventory", () => {
   it("the SUMMARY Board Name field is read-only while locked", () => {
     const source = stripComments(read("components/summary/order-form.tsx"));
     expect(source).toMatch(/label="Board Name"[^>]*readOnly=\{locked\}/);
+  });
+
+  it("a blank card's pick is tied to the lock, while its star and a saved blank's Remove are not (quick 261016-mkb)", () => {
+    // Remove and the star change the shaper's list, never the board (D-09, ve9's D-08), so a locked
+    // board can still tidy its saved blanks; picking a card changes the board, so it stays locked.
+    const tags = interactiveTags("components/rocker/blank-card.tsx");
+    // The marker exactly — `data-remove-saved` must not also match `data-remove-saved-confirm`.
+    const named = (marker: string) => tags.filter(({ tag }) => new RegExp(`\\b${marker}(?![\\w-])`).test(tag));
+    for (const marker of ["data-star", "data-remove-saved", "data-remove-saved-confirm", "data-remove-saved-keep"]) {
+      const found = named(marker);
+      expect(found.length, marker).toBe(1);
+      expect(found[0].tag, marker).toMatch(/\bdata-lock-exempt\b/);
+    }
+    const pick = named("data-pick");
+    expect(pick).toHaveLength(1);
+    expect(pick[0].tag).not.toMatch(/\bdata-lock-exempt\b/);
+    expect(disabledExpression(pick[0].tag)).toBe("locked");
   });
 
   it("the design layout wraps every screen in the lock scope", () => {

@@ -40,9 +40,14 @@
  * by hand is stored as `noseThinningStart` / `tailThinningStart`, and a tip on Automatic stores no
  * key at all, so a board sent back to Automatic equals one that never had a start. Switching blanks
  * keeps a hand-set start; a first pick starts both tips on Automatic; ↺ Reset Fine-Tune never
- * touches them. The ten blank moves are `pickBlank`, `setPlacement`, `setDeckSkin`, `setTipStyle`,
+ * touches them. The eleven blank moves are `pickBlank`, `setPlacement`, `setDeckSkin`, `setTipStyle`,
  * `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `setThinningStart`,
- * `setThinningStartAutomatic` and `removeBlank`.
+ * `setThinningStartAutomatic`, `setBlankRocker` and `removeBlank`.
+ *
+ * The blank's rocker as ordered from the maker rides on the blank too (quick 261016-mkb, 2026-10-16,
+ * D-01): `rocker`, absent on the natural rocker. `setBlankRocker` sets or clears it; picking a saved
+ * blank of the shaper's own brings its rocker; a plain pick of another blank starts from natural
+ * (D-10). The blank is prepared through `prepareBoardBlank`, so the bent rocker reaches every screen.
  */
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -67,7 +72,14 @@ import {
   type FineTuneSurface,
   type TipStyle,
 } from "@/lib/geometry/blank";
-import { prepareBlank, thinningStartsOf, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import { thinningStartsOf, type PreparedBlank } from "@/lib/geometry/blank-fit";
+import {
+  isNaturalSpec,
+  normalizeSpec,
+  prepareBoardBlank,
+  sameRockerSpec,
+  type BlankRockerSpec,
+} from "@/lib/geometry/custom-rocker";
 import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
@@ -174,9 +186,9 @@ interface DesignState {
    * save never stores a reference to its own row. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
-   * `updateRocker`, `updateFoil`, the ten blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
+   * `updateRocker`, `updateFoil`, the eleven blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
    * `setTipStyle`, `setFineTuneSurface`, `setFineTune`, `resetFineTune`, `setThinningStart`,
-   * `setThinningStartAutomatic`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
+   * `setThinningStartAutomatic`, `setBlankRocker`, `removeBlank`), `updateRailSection`, `toggleTailHardEdge`, `updateFins`,
    * `updateVolume`, `setFinsImportTemplate`, `toggleRailsImportFoilThickness`, `setBoardName`,
    * `setFinSystem`, the two VOLUME import toggles or `markSaved` — never derived by
    * comparing state against its default — a user who drags a slider back to its default value
@@ -323,8 +335,10 @@ interface DesignContextValue {
    * own cut — its Deck Skin, Tip Style and fine-tune surface (Phase 12, D-01, D-04, D-13); a first
    * pick starts the fine-tunes at 0 and bakes in the live Deck Skin and Tip Style from Fit & Tip
    * Defaults (picking a blank counts as an edit, D-01), with fine-tunes on the Deck. A switch keeps
-   * a Thinning Start set by hand; a first pick starts both tips on Automatic (Phase 14). One undo step. */
-  pickBlank: (record: BlankRecord, placement: Mm) => void;
+   * a Thinning Start set by hand; a first pick starts both tips on Automatic (Phase 14). One undo step.
+   * `rocker` is the blank's rocker as ordered, given only when the shaper picks a saved blank of their
+   * own (quick 261016-mkb); a plain pick carries none, so switching blanks starts from natural (D-10). */
+  pickBlank: (record: BlankRecord, placement: Mm, rocker?: BlankRockerSpec) => void;
   /** Slides the board along its blank. Stored as given and clamped on read by the side profile,
    * never written back; a drag of the slider coalesces into one undo step like every slider. A no-op
    * with no blank picked. */
@@ -365,6 +379,12 @@ interface DesignContextValue {
    * so the board equals one that never had a start. One undo step per tap; a no-op with no blank
    * picked or when that tip is already on Automatic (no empty undo step). */
   setThinningStartAutomatic: (end: TipEnd) => void;
+  /** Sets the board's blank's rocker as ordered from the maker (quick 261016-mkb, D-01), or puts it
+   * back on the natural rocker with `undefined` (or a spec that changes nothing). Stored normalised,
+   * at the blank's own length. One undo step; a no-op with no blank picked, while the board is
+   * locked, or when the spec is the one the blank already carries (no empty undo step). The
+   * Customize Rocker popup (plan 02) is its only caller. */
+  setBlankRocker: (spec: BlankRockerSpec | undefined) => void;
   /** "Remove This Blank" (D-02, UI-SPEC §7): goes back to the hand-set rocker, seeding its four
    * stations and the foil's two 12" thicknesses from the CURRENT side profile so the drawing does
    * not jump. One undo step brings the blank back. */
@@ -451,8 +471,9 @@ interface DesignContextValue {
    * edit behind it; `null` on a board nobody has edited yet, or once Undo has walked all the way
    * back to the start. */
   outlineGhostGeometry: OutlineGeometry | null;
-  /** The board's blank fitted once (`prepareBlank`) — every curve prepared a single time per blank
-   * copy (R14), so sliding or fine-tuning never refits the catalogue's stations. Null with no blank. */
+  /** The board's blank fitted once (`prepareBoardBlank`) — every curve prepared a single time per
+   * blank copy and rocker (R14), so sliding or fine-tuning never refits the catalogue's stations.
+   * Bent to the rocker the board ordered, if any (quick 261016-mkb). Null with no blank. */
   preparedBlank: PreparedBlank | null;
   /** THE side profile (Pattern 5): the board's rocker, thickness and deck, its five station
    * numbers, and — with a blank — the blank's own silhouette, foam to come off and numbers under
@@ -898,11 +919,16 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [outlineGhost, state.fins, state.finsImportTemplate],
   );
 
-  // The blank is fitted ONCE per blank copy (R14): keyed on the copy's own identity, which only
-  // changes when a different blank is picked (or a board is opened) — sliding the placement or
-  // fine-tuning a 12" station reuses the same prepared curves.
+  // The blank is fitted ONCE per blank copy and rocker (R14): keyed on the copy's own identity,
+  // which only changes when a different blank is picked (or a board is opened), and on the rocker the
+  // board ordered (quick 261016-mkb), which only changes when the shaper sets it — sliding the
+  // placement or fine-tuning a 12" station reuses the same prepared curves.
   const blankCopy = state.blank?.copy ?? null;
-  const preparedBlank = useMemo(() => (blankCopy ? prepareBlank(blankCopy) : null), [blankCopy]);
+  const blankRocker = state.blank?.rocker;
+  const preparedBlank = useMemo(
+    () => (blankCopy ? prepareBoardBlank({ copy: blankCopy, rocker: blankRocker }) : null),
+    [blankCopy, blankRocker],
+  );
 
   // THE side profile (Pattern 5) — see the file header. Placement is clamped on read inside the
   // profile, never written back into state.
@@ -1049,8 +1075,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // dirty, like every mutator above, so undo, autosave and the replace-board prompt all see them.
 
   // A discrete choice, not a slider — noteEdit(null), so each pick is its own undo step.
-  const pickBlank = (record: BlankRecord, placement: Mm) => {
+  // The rocker comes only from the argument — a saved blank of the shaper's own brings its rocker as
+  // ordered; a plain pick brings none, so switching blanks starts from natural (D-10).
+  const pickBlank = (record: BlankRecord, placement: Mm, rocker?: BlankRockerSpec) => {
     if (lockedRef.current) return;
+    const ordered = rocker && !isNaturalSpec(rocker) ? normalizeSpec(rocker, record.lengthMm) : undefined;
     noteEdit(null);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
@@ -1068,6 +1097,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         // Switching blanks keeps a Thinning Start set by hand; a first pick has none, so both tips
         // start on Automatic (Phase 14, UI-SPEC §11).
         ...thinningStartsOf(prev.blank),
+        ...(ordered && ordered.changes.length > 0 ? { rocker: ordered } : {}),
       },
       boardStarted: true,
       dirty: true,
@@ -1176,6 +1206,26 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       if (!prev.blank) return current;
       const blank: BoardBlank = { ...prev.blank };
       delete blank[key];
+      return { ...prev, blank, boardStarted: true, dirty: true };
+    });
+  };
+
+  // A discrete choice (quick 261016-mkb, D-01) — noteEdit(null), so each use of the Customize Rocker
+  // popup is one undo step. Stored normalised at the blank's own length; a natural spec REMOVES the
+  // key from a fresh copy of the blank, so the board equals one that never had a custom rocker. The
+  // same spec again writes nothing and leaves no empty undo step.
+  const setBlankRocker = (spec: BlankRockerSpec | undefined) => {
+    if (lockedRef.current) return;
+    if (!state.blank) return;
+    const next = spec && !isNaturalSpec(spec) ? normalizeSpec(spec, state.blank.copy.lengthMm) : undefined;
+    if (sameRockerSpec(next, state.blank.rocker)) return;
+    noteEdit(null);
+    setState((current) => {
+      const prev = startedFrom(current, liveTipsRef.current);
+      if (!prev.blank) return current;
+      const blank: BoardBlank = { ...prev.blank };
+      if (next && next.changes.length > 0) blank.rocker = next;
+      else delete blank.rocker;
       return { ...prev, blank, boardStarted: true, dirty: true };
     });
   };
@@ -1523,6 +1573,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     resetFineTune,
     setThinningStart,
     setThinningStartAutomatic,
+    setBlankRocker,
     removeBlank,
     applyPreset,
     applyModel,

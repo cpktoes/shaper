@@ -43,18 +43,22 @@ import { useDesign } from "@/components/design/design-store";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useBlankMakers } from "@/components/blank-makers-provider";
 import { useAppSettings } from "@/components/app-settings-provider";
+import { SavedBlanksProvider, useSavedBlanks } from "@/components/saved-blanks-provider";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
 import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes } from "@/lib/geometry/blank-fit";
+import { blankDisplayLines, isNaturalSpec } from "@/lib/geometry/custom-rocker";
+import type { SavedBlanksAccount } from "@/lib/saved-blanks-preference";
 import { EMPTY_BROWSE_FILTERS, type BlankBrowseFilters, type BlankSort, type RangeKind } from "@/lib/geometry/blank-browse";
 import { blankRowMeta, blankRowVolume, emptyListMessage, pickBlankSummary } from "@/lib/geometry/blank-reasons";
 import { cn } from "@/lib/utils";
 import { BlankThumbnail } from "./blank-card";
 import { BlankFlag } from "./blank-flag";
 import { BlankPickerDialog, type BlankBrowseState } from "./blank-picker-dialog";
+import { CustomizeRockerButton, CustomizeRockerSection } from "./customize-rocker";
 import { useBlankList, useCenterFloorRules } from "./use-blank-list";
 
 /** The 11px/700 "↺ Reset" text-link idiom (`rail-controls.tsx`), grown to 44px on a touch pointer. */
@@ -109,6 +113,12 @@ function BlankButton({ buttonRef, line, ready, canOpen, onOpen }: BlankButtonPro
               </span>
               {volume !== null && <span className="shrink-0 text-xs text-surf-ink-muted">{volume}</span>}
             </span>
+            {/* The blank's rocker on its own line (quick 261016-mkb, D-02): `Natural` written out, or
+                the note as ordered from the maker — in inches in both systems (D-01). The name line
+                above keeps the name alone, as every browser test reads it. */}
+            <span data-blank-rocker className="text-xs leading-tight text-surf-ink tabular-nums">
+              {blankDisplayLines(blank.copy, blank.rocker)[1]}
+            </span>
             <span className="text-xs text-surf-ink-muted">{blankRowMeta(blank.copy, system)}</span>
             <span className={GO_CLASS}>
               Change Blank <span aria-hidden>›</span>
@@ -132,6 +142,8 @@ function BlankButton({ buttonRef, line, ready, canOpen, onOpen }: BlankButtonPro
 
 interface HostProps {
   catalog: Promise<BlankCatalogResult>;
+  /** The shaper's own saved blanks (quick 261016-mkb), streamed beside the catalogue. */
+  savedBlanks: Promise<SavedBlanksAccount>;
   open: boolean;
   setOpen: (open: boolean) => void;
   buttonRef: RefObject<HTMLButtonElement | null>;
@@ -157,33 +169,37 @@ function UnavailableDialog({ open, setOpen, buttonRef }: Pick<HostProps, "open" 
   );
 }
 
-/** Reads the streamed catalogue (suspends until it arrives) and judges the list ONCE, for the button
- * and the popup together. */
-function BlankPickerHost({ catalog, open, setOpen, buttonRef, browse, onChangeFitRules }: HostProps) {
+/** Reads the streamed catalogue and the shaper's saved blanks (suspends until both arrive) and judges
+ * the list ONCE, for the button and the popup together. Since quick 261016-mkb the Customize Rocker
+ * button sits right under the BLANK button (D-04), inside the saved blanks' provider with it. */
+function BlankPickerHost({ catalog, savedBlanks, open, setOpen, buttonRef, browse, onChangeFitRules }: HostProps) {
   const result = use(catalog);
-  if (result.status === "unavailable") {
-    return (
-      <>
-        <BlankButton
-          buttonRef={buttonRef}
-          line="The blank catalog didn't load."
-          ready
-          canOpen
-          onOpen={() => setOpen(true)}
-        />
-        <UnavailableDialog open={open} setOpen={setOpen} buttonRef={buttonRef} />
-      </>
-    );
-  }
+  const saved = use(savedBlanks);
   return (
-    <JudgedPicker
-      records={result.blanks}
-      open={open}
-      setOpen={setOpen}
-      buttonRef={buttonRef}
-      browse={browse}
-      onChangeFitRules={onChangeFitRules}
-    />
+    <SavedBlanksProvider account={saved}>
+      {result.status === "unavailable" ? (
+        <>
+          <BlankButton
+            buttonRef={buttonRef}
+            line="The blank catalog didn't load."
+            ready
+            canOpen
+            onOpen={() => setOpen(true)}
+          />
+          <UnavailableDialog open={open} setOpen={setOpen} buttonRef={buttonRef} />
+        </>
+      ) : (
+        <JudgedPicker
+          records={result.blanks}
+          open={open}
+          setOpen={setOpen}
+          buttonRef={buttonRef}
+          browse={browse}
+          onChangeFitRules={onChangeFitRules}
+        />
+      )}
+      <CustomizeRockerSection />
+    </SavedBlanksProvider>
   );
 }
 
@@ -194,12 +210,15 @@ function JudgedPicker({
   buttonRef,
   browse,
   onChangeFitRules,
-}: Omit<HostProps, "catalog"> & { records: readonly BlankRecord[] }) {
+}: Omit<HostProps, "catalog" | "savedBlanks"> & { records: readonly BlankRecord[] }) {
   const { system } = useUnits();
   const { outline, foil } = useDesign();
   const { hidden } = useBlankMakers();
   const rules = useCenterFloorRules();
-  const state = useBlankList(records);
+  // The shaper's saved blanks are judged beside the catalogue for the popup's cards (quick 261016-mkb,
+  // D-09); the button's count line below still reads the catalogue's list alone (P-19).
+  const { blanks: savedBlanks } = useSavedBlanks();
+  const state = useBlankList(records, savedBlanks);
   const { list, prepared } = state;
   // With no blank picked the button's line counts the makers ticked in Settings (P-4); with every
   // blank too short it reads E1's heading, the popup's own empty message.
@@ -243,7 +262,13 @@ function BlankCatalogNote() {
   );
 }
 
-export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> }) {
+export function BlankPicker({
+  catalog,
+  savedBlanks,
+}: {
+  catalog: Promise<BlankCatalogResult>;
+  savedBlanks: Promise<SavedBlanksAccount>;
+}) {
   const { blank, removeBlank } = useDesign();
   const { hidden } = useBlankMakers();
   const { openAppSettings } = useAppSettings();
@@ -267,11 +292,16 @@ export function BlankPicker({ catalog }: { catalog: Promise<BlankCatalogResult> 
     <div className="flex flex-col gap-2">
       <Suspense
         fallback={
-          <BlankButton buttonRef={buttonRef} line="Loading blanks…" ready={false} canOpen={false} onOpen={() => {}} />
+          <>
+            <BlankButton buttonRef={buttonRef} line="Loading blanks…" ready={false} canOpen={false} onOpen={() => {}} />
+            {/* The same Customize Rocker button, not yet live, so the sidebar never jumps. */}
+            {blank && <CustomizeRockerButton custom={!isNaturalSpec(blank.rocker)} waiting />}
+          </>
         }
       >
         <BlankPickerHost
           catalog={catalog}
+          savedBlanks={savedBlanks}
           open={open}
           setOpen={setOpen}
           buttonRef={buttonRef}

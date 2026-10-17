@@ -37,6 +37,12 @@
  * and no warning colour appears here. The Summary order form never passes a blank, so its compact
  * box draws the board alone, with no thinning mark, as before.
  *
+ * The Customize Rocker popup (quick 261016-mkb, 2026-10-16, P-3) draws its Show my board view with
+ * this same viewer, handing it the DRAFT's side profile and one more thing nobody else passes: an
+ * `overlay` — the natural rocker dashed, a mark where each bend starts, and each change's span in
+ * its colour (`RockerOverlayLayer`, D-07). The ROCKER page and the order form never pass one, so a
+ * custom blank on the page draws as any blank does — the bent foam alone, nothing coloured (D-08).
+ *
  * Nothing on the drawing is draggable any more (D-14). The three-knot Bezier that the old tip
  * handles, construction lines and drag readout card used to steer is no longer a live rocker, so
  * all of that retired with it; shaping happens in the sidebar. What the toolbar's
@@ -106,6 +112,8 @@ import { ScreenSizeGroup, useViewerZoom } from "@/components/viewer/zoom-viewpor
 import { parseViewBox, rectInContentFrame, scaleDash } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
+import type { RockerOverlayLines } from "@/lib/geometry/custom-rocker-art";
+import { blankDisplayName, rockerSpecOf } from "@/lib/geometry/custom-rocker";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
 import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
@@ -195,6 +203,14 @@ export interface RockerViewerProps {
    * and an unfilled profile keeps the compact readings' leaders legible against paper.
    */
   boardFill?: boolean;
+  /**
+   * The Customize Rocker popup's live aid (quick 261016-mkb, D-07), in the board's frame
+   * (`boardFrameOverlay`): the blank's natural rocker dashed, a mark where each bend starts, and the
+   * first change's span red, the second's blue. ONLY the popup passes it, built from the same draft
+   * spec as the `profile` it draws (P-3); the ROCKER page and the order form never do, so they draw
+   * exactly what they always drew (D-08).
+   */
+  overlay?: RockerOverlayLines;
 }
 
 /**
@@ -478,6 +494,90 @@ function CompactReading({
   );
 }
 
+/**
+ * The Customize Rocker popup's overlay (quick 261016-mkb, D-07, P-14), drawn by this viewer when the
+ * popup hands it one and by the popup's blank-alone drawing (`custom-rocker-blank-view.tsx`) — one
+ * drawing of the same lines, so the two views never disagree. `project` turns a point of the overlay
+ * (millimetres along the frame and up) into the drawing's own units. Every element carries
+ * `data-rocker-overlay` so a browser test can prove where it is, and where it is not (the page).
+ *
+ * The natural rocker is the blank's line colour, dashed (`5 4`, the stations' dash — a reference
+ * line, never a second blank); each span's bottom and deck in the change's own colour, the second
+ * change after the first so blue sits on red where they stack; each bend mark in the Thinning Starts
+ * mark's grammar, pushed `overshoot` past the bottom and the deck. Strokes and dashes keep their
+ * screen size through `zoomUnit`.
+ */
+export function RockerOverlayLayer({
+  overlay,
+  project,
+  zoomUnit,
+  overshoot,
+}: {
+  overlay: RockerOverlayLines;
+  project: (s: number, h: number) => { x: number; y: number };
+  zoomUnit: number;
+  overshoot: number;
+}) {
+  const line = (pts: { s: number; h: number }[]) =>
+    pts
+      .map((p) => {
+        const q = project(p.s, p.h);
+        return `${q.x.toFixed(2)},${q.y.toFixed(2)}`;
+      })
+      .join(" ");
+  const spans = [...overlay.spans].sort((a, b) => a.order - b.order);
+  return (
+    <g pointerEvents="none">
+      {overlay.natural.length > 1 && (
+        <polyline
+          data-rocker-overlay="natural"
+          points={line(overlay.natural)}
+          fill="none"
+          stroke="var(--outline-blank-line)"
+          strokeWidth={zoomUnit}
+          strokeDasharray={scaleDash("5 4", zoomUnit)}
+        />
+      )}
+      {spans.map((span) => (
+        <g key={`${span.end}-${span.order}`} data-rocker-overlay={`span-${span.order}`} data-rocker-overlay-end={span.end}>
+          {[span.bottom, span.deck].map((pts, i) => (
+            <polyline
+              key={i}
+              points={line(pts)}
+              fill="none"
+              stroke={span.order === 1 ? "var(--rocker-adjust-1)" : "var(--rocker-adjust-2)"}
+              strokeWidth={1.6 * zoomUnit}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
+        </g>
+      ))}
+      {overlay.bendMarks.map((mark) => {
+        const bottom = project(mark.s, mark.bottom);
+        const deck = project(mark.s, mark.deck);
+        // Along the line from the bottom to the deck, pushed `overshoot` past each end.
+        const len = Math.hypot(deck.x - bottom.x, deck.y - bottom.y) || 1;
+        const ux = (deck.x - bottom.x) / len;
+        const uy = (deck.y - bottom.y) / len;
+        return (
+          <line
+            key={mark.s}
+            data-rocker-overlay="bend-mark"
+            x1={bottom.x - ux * overshoot}
+            y1={bottom.y - uy * overshoot}
+            x2={deck.x + ux * overshoot}
+            y2={deck.y + uy * overshoot}
+            stroke="var(--outline-blank-line)"
+            strokeWidth={zoomUnit}
+            strokeDasharray={scaleDash(THINNING_MARK_DASH, zoomUnit)}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
 /** A closed silhouette path: the bottom curve in the order given, then the deck curve back the
  * other way, then an implicit closing edge — the deck-over-bottom construction (D-01). */
 function closedProfilePath(bottom: { x: number; y: number }[], deck: { x: number; y: number }[]): string {
@@ -500,6 +600,7 @@ export function RockerViewer({
   showMeasuringPoints = false,
   fitToBoard = false,
   boardFill = true,
+  overlay,
 }: RockerViewerProps) {
   const { system } = useUnits();
   const vertical = orientation === "vertical";
@@ -750,8 +851,17 @@ export function RockerViewer({
 
   // With a blank, the name also says where the two marks sit, in words (UI-SPEC Copywriting), so a
   // screen reader hears what the marks show; the distances read through 14-11's formatter.
+  // The blank named with its rocker, as everywhere a blank is named (quick 261016-mkb, D-02, P-23).
+  // Its maker and name still reach only this plain attribute (T-11-21).
+  const blankName = blank
+    ? blankDisplayName(
+        { vendor: blank.record.vendor, name: blank.record.name },
+        rockerSpecOf(blank.onBlank.prepared),
+        { vendor: true },
+      )
+    : "";
   const ariaLabel = blank
-    ? `Side profile of the board inside the ${blank.record.vendor} ${blank.record.name} blank, with the foam to come off the deck and the bottom shaded, and ${thinningMarksSentence(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system)}`
+    ? `Side profile of the board inside the ${blankName} blank, with the foam to come off the deck and the bottom shaded, and ${thinningMarksSentence(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system)}`
     : "Side profile of the board, showing the rocker line and deck thickness";
 
   return (
@@ -826,6 +936,16 @@ export function RockerViewer({
             stroke="var(--outline-blank-line)"
             strokeWidth={BLANK_LINE_PX * handleUnit}
             strokeLinejoin="round"
+          />
+        )}
+        {/* The Customize Rocker popup's overlay (quick 261016-mkb, D-07) — after the blank, before
+            the board, so the board stays the subject on top. Only the popup passes one (D-08). */}
+        {overlay && (
+          <RockerOverlayLayer
+            overlay={overlay}
+            project={(s, h) => ({ x: pxX(mmToInches(mm(s))), y: pxY(mmToInches(mm(h))) })}
+            zoomUnit={zoomUnit}
+            overshoot={THINNING_MARK_OVERSHOOT}
           />
         )}
         <path

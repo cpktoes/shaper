@@ -9,7 +9,9 @@
  * their account so the stars follow them to any device). It also reports the state of the retired
  * `extra_center_thickness_mm` column — dropped by migration 0008 (quick task 260927-qrn, D-19). It
  * also checks that `models` holds `locked` (boolean), migration 0010 (quick task 261008-lsy: whether
- * the shaper has locked a saved board so it can't be changed by accident).
+ * the shaper has locked a saved board so it can't be changed by accident). And it checks that the
+ * `user_blanks` table exists with its six columns, migration 0011 (quick 261016-mkb: the blanks a
+ * shaper saves as their own, each a catalogue blank with its rocker as ordered from the maker).
  *
  * By default the retired column is expected ABSENT: from migration 0008 on, "gone" is the normal
  * state everywhere the check runs. Pass `--before-drop` for the one case where PRESENT is expected
@@ -20,15 +22,19 @@
  * Why a separate check at all: `drizzle-kit migrate` prints "migrations applied successfully" even
  * when it applied nothing, so that line proves nothing on its own. This script asks the database.
  *
- * It writes nothing. It prints exactly three lines:
+ * It writes nothing. It prints exactly four lines:
  *   user_preferences: planer_max_depth_mm double precision, deck_skin_mm double precision, tip_style text, hidden_blank_makers text, rack_order text, starred_blanks text (6 of 6 columns); extra_center_thickness_mm absent (expected absent)
  *   models: locked boolean (1 of 1 columns)
+ *   user_blanks: id uuid, clerk_user_id text, copy jsonb, rocker jsonb, created_at timestamp with time zone, updated_at timestamp with time zone (6 of 6 columns)
  *   drizzle migrations recorded: <n>
  * with `missing` in place of any column it did not find, and the retired column's line-1 ending one
  * of `present (expected present)`, `absent (expected absent)`, `present (expected absent)` or
  * `absent (expected present)`. Line 2 reads `models: locked missing (0 of 1 columns)` when the column
- * is not there. Exits 1 when fewer than 6 of the 6 columns match their types, when `locked` is not a
- * boolean, or when the retired column's actual state differs from the expected one. Only column names, their types
+ * is not there. Line 3 reads `missing` in place of any `user_blanks` column it did not find, and
+ * `user_blanks missing (0 of 6 columns)` when the table is not there at all. Exits 1 when fewer than
+ * 6 of the 6 columns match their types, when `locked` is not a boolean, when fewer than 6 of the 6
+ * `user_blanks` columns match theirs, or when the retired column's actual state differs from the
+ * expected one. Only column names, their types
  * and a count are ever printed — never the connection string, never row data. When the check itself
  * fails (the database can't be reached, say) it prints one fixed sentence with the error's kind and
  * code only — never the driver's message, which can name the database host — unless `--verbose` is
@@ -79,7 +85,14 @@
  *   production had it would break every account setting's save): check first (expected
  *   `starred_blanks missing (5 of 6 columns)`, exit 1), then migrate, then check again (expected
  *   `starred_blanks text (6 of 6 columns)`, exit 0, one more migration recorded). The same three
- *   commands as above:
+ *   commands as above.
+ *
+ *   production — quick 261016-mkb (saved blanks with a custom rocker), the founder only, from the
+ *   main checkout, at go-live (plan 03), AFTER 261016-usz's column above — the table is migration 0012, numbered
+ *   behind that task's 0011. Adding the `user_blanks` table is ADDITIVE, so it runs BEFORE
+ *   the push (CLAUDE.md Database): check first (expected `user_blanks missing (0 of 6 columns)`,
+ *   exit 1), then migrate, then check again (expected `user_blanks: id uuid, … (6 of 6 columns)`,
+ *   exit 0, one more migration recorded). The same three commands as the go-lives above:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
  *     npm run db:migrate:prod
  *     bash -c 'trap "rm -f .env.production.pull" EXIT INT TERM; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-preference-columns.ts'
@@ -115,6 +128,16 @@ const NEW_COLUMNS = [
  */
 const RETIRED_COLUMN = "extra_center_thickness_mm";
 
+/** Quick 261016-mkb, migration 0011: the shaper's saved blanks, every column and its type. */
+const USER_BLANKS_COLUMNS = [
+  { name: "id", type: "uuid" },
+  { name: "clerk_user_id", type: "text" },
+  { name: "copy", type: "jsonb" },
+  { name: "rocker", type: "jsonb" },
+  { name: "created_at", type: "timestamp with time zone" },
+  { name: "updated_at", type: "timestamp with time zone" },
+] as const;
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   for (const arg of args) {
@@ -147,7 +170,7 @@ async function main(): Promise<void> {
   const { FIT_EPSILON_MM, MIN_FOIL_THICKNESS_MM } = await import("../lib/geometry/blank-fit");
   const { formatMark } = await import("../lib/geometry/measure-display");
 
-  // Read-only: two selects, nothing else.
+  // Read-only: selects only, nothing else.
   const columnResult = await db.execute(sql`
     select column_name, data_type
     from information_schema.columns
@@ -167,6 +190,17 @@ async function main(): Promise<void> {
   const lockedType = (lockedResult.rows[0] as { data_type?: unknown } | undefined)?.data_type;
   const lockedPresent = lockedType === "boolean";
 
+  const userBlanksResult = await db.execute(sql`
+    select column_name, data_type
+    from information_schema.columns
+    where table_name = 'user_blanks'
+  `);
+  const userBlanksFound = new Map<string, string>();
+  for (const row of userBlanksResult.rows as Array<{ column_name: string; data_type: string }>) {
+    userBlanksFound.set(String(row.column_name), String(row.data_type));
+  }
+  const userBlanksPresent = USER_BLANKS_COLUMNS.filter(({ name, type }) => userBlanksFound.get(name) === type).length;
+
   const countResult = await db.execute(sql`select count(*) as n from drizzle.__drizzle_migrations`);
   const recorded = String((countResult.rows[0] as { n: unknown } | undefined)?.n ?? "?");
 
@@ -182,6 +216,12 @@ async function main(): Promise<void> {
   );
   console.log(
     `models: locked ${lockedPresent ? "boolean" : "missing"} (${lockedPresent ? 1 : 0} of 1 columns)`,
+  );
+  console.log(
+    userBlanksFound.size === 0
+      ? `user_blanks missing (0 of ${USER_BLANKS_COLUMNS.length} columns)`
+      : `user_blanks: ${USER_BLANKS_COLUMNS.map(({ name }) => `${name} ${userBlanksFound.get(name) ?? "missing"}`).join(", ")} ` +
+          `(${userBlanksPresent} of ${USER_BLANKS_COLUMNS.length} columns)`,
   );
   console.log(`drizzle migrations recorded: ${recorded}`);
 
@@ -205,7 +245,12 @@ async function main(): Promise<void> {
     );
   }
 
-  if (present !== NEW_COLUMNS.length || !lockedPresent || retiredPresent !== expectPresent) {
+  if (
+    present !== NEW_COLUMNS.length ||
+    !lockedPresent ||
+    userBlanksPresent !== USER_BLANKS_COLUMNS.length ||
+    retiredPresent !== expectPresent
+  ) {
     process.exitCode = 1;
   }
 }

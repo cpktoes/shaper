@@ -4,9 +4,11 @@ import type { SignUpNoticeOutcome, SignUpUser } from "./contact/sign-up-notice";
 /**
  * Phase 13 item 11a (the founder's choice, 2026-09-30): Clerk calls the route that wires this
  * core when a shaper deletes their own account from Manage account, or the founder deletes it
- * from Clerk's dashboard. This file is the pure-ish middle of that path — no import from Clerk's
- * runtime, the database, `process.env` or `console`, so every behavior below is provable with
- * injected fakes (lib/clerk-webhook.test.ts) before anything touches a real request.
+ * from Clerk's dashboard. What goes: the shaper's saved boards, their settings row and (quick
+ * 261016-mkb, 2026-10-16) their saved blanks, in one batch. This file is the pure-ish middle of
+ * that path — no import from Clerk's runtime, the database, `process.env` or `console`, so every
+ * behavior below is provable with injected fakes (lib/clerk-webhook.test.ts) before anything
+ * touches a real request.
  *
  * The route is open to the internet on purpose (D-01 — nothing in this app is gated by sign-in,
  * and Clerk's own server is never signed in). Clerk's signature, verified by the deps.verify
@@ -34,7 +36,8 @@ import type { SignUpNoticeOutcome, SignUpUser } from "./contact/sign-up-notice";
  * identifying.
  */
 
-export type AccountDataDeleted = { boards: number; settings: number };
+/** What deleting an account removed: saved boards, the settings row, and (quick 261016-mkb) saved blanks. */
+export type AccountDataDeleted = { boards: number; settings: number; savedBlanks: number };
 
 export type ClerkWebhookLogLevel = "info" | "warn" | "error";
 
@@ -113,12 +116,15 @@ export async function handleClerkEvent(event: WebhookEvent, deps: ClerkWebhookDe
   }
 
   try {
-    const { boards, settings } = await deps.deleteAccountData(clerkUserId);
+    const { boards, settings, savedBlanks } = await deps.deleteAccountData(clerkUserId);
     deps.log(
       "info",
-      `Clerk webhook: user.deleted — deleted saved boards ${boards}, settings rows ${settings}`,
+      `Clerk webhook: user.deleted — deleted saved boards ${boards}, settings rows ${settings}, saved blanks ${savedBlanks}`,
     );
-    return textResponse(`Deleted: saved boards ${boards}, settings rows ${settings}`, 200);
+    return textResponse(
+      `Deleted: saved boards ${boards}, settings rows ${settings}, saved blanks ${savedBlanks}`,
+      200,
+    );
   } catch {
     // Never log the caught error or its message — see header (Drizzle's message carries the id).
     deps.log("error", "Clerk webhook: the delete failed; answering 500 so Clerk retries");

@@ -39,6 +39,7 @@ import { useViewerZoom, type ViewerZoom } from "@/components/viewer/zoom-viewpor
 import { parseViewBox, rectInContentFrame } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import type { BlankTopView } from "@/lib/geometry/blank-top-view";
+import { blankDisplayName, rockerSpecOf } from "@/lib/geometry/custom-rocker";
 import type { BlankSideView } from "@/lib/geometry/board-profile";
 import { stationLabel } from "@/lib/geometry/measure-display";
 import { mmToInches, type Mm } from "@/lib/geometry/units";
@@ -207,7 +208,9 @@ export interface RockerTopViewProps {
 function topViewName(blank: BlankSideView | undefined, system: ReturnType<typeof useUnits>["system"]): string {
   if (!blank) return "The board's outline seen from above";
   const marks = system === "metric" ? `${stationLabel("metric")} marks` : "12-inch marks";
-  return `The board's outline seen from above, on the ${blank.record.vendor} ${blank.record.name} blank, with its stringer, centre mark and ${marks}`;
+  // The blank named with its rocker, as everywhere a blank is named (quick 261016-mkb, D-02, P-23).
+  const named = blankDisplayName(blank.record, rockerSpecOf(blank.onBlank.prepared), { vendor: true });
+  return `The board's outline seen from above, on the ${named} blank, with its stringer, centre mark and ${marks}`;
 }
 
 /**
