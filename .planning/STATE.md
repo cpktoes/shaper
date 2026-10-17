@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-16 — quick 261015-ve9 and fast 163–167: ROCKER picks a blank by sight from a popup of drawn catalogue cards (stars kept in the browser; part 2 adds the account) — merged to main and pushed on the founder's go
+Last activity: 2026-10-16 — quick 261016-usz: starred blanks follow a signed-in shaper to any device (migration 0011 on production before the push)
 
 ## Performance Metrics
 
@@ -391,6 +391,7 @@ Recent decisions affecting current work:
 | 165 | The blank popup marks the board's own blank "Currently selected" instead of "On your board now" (the founder, 2026-10-16). With quick 261015-ve9 | 2026-10-16 | aae1803d | fast (no directory) |
 | 166 | The blank popup's intro: "Blanks that don't fit come last, under Won't fit this board, with the reason under each." instead of "Greyed blanks don't fit — the line under each says why." — the founder keeps the separate section at the end (2026-10-16). With quick 261015-ve9 | 2026-10-16 | 6e0014c3 | fast (no directory) |
 | 167 | The blank popup's Flat and Upright buttons become one button with TEMPLATE's turn-the-board icon: a press stands the blanks upright, the next lays them flat (the founder, 2026-10-16). With quick 261015-ve9 | 2026-10-16 | 01a3b375 | fast (no directory) |
+| 261016-usz | Stars on the shaper's account (sketch 015 B, part 2 of 2; the founder, 2026-10-16): signed in, starred blanks are saved on the account and follow the shaper to any device; signed out, the browser keeps them; stars made while signed out join the account at the next sign-in, and a star removed on one device stays removed on the others; another shaper's synced stars never leak into a second account on the same browser. New nullable `user_preferences.starred_blanks` (migration 0011, additive — production migrated before the push); the Your data page names starred blanks | 2026-10-16 | 346a5a56 | [261016-usz-stars-on-the-shaper-s-account-starred-bl](./quick/261016-usz-stars-on-the-shaper-s-account-starred-bl/) |
 
 ## Deferred Items
 
