@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-16 — quick 261016-usz: starred blanks follow a signed-in shaper to any device (migration 0011 on production before the push)
+Last activity: 2026-10-17 — fast 168: an 8'0" board's length pickers read 8' 0", not 7' 12"; on main, not pushed
 
 ## Performance Metrics
 
@@ -391,6 +391,7 @@ Recent decisions affecting current work:
 | 165 | The blank popup marks the board's own blank "Currently selected" instead of "On your board now" (the founder, 2026-10-16). With quick 261015-ve9 | 2026-10-16 | aae1803d | fast (no directory) |
 | 166 | The blank popup's intro: "Blanks that don't fit come last, under Won't fit this board, with the reason under each." instead of "Greyed blanks don't fit — the line under each says why." — the founder keeps the separate section at the end (2026-10-16). With quick 261015-ve9 | 2026-10-16 | 6e0014c3 | fast (no directory) |
 | 167 | The blank popup's Flat and Upright buttons become one button with TEMPLATE's turn-the-board icon: a press stands the blanks upright, the next lays them flat (the founder, 2026-10-16). With quick 261015-ve9 | 2026-10-16 | 01a3b375 | fast (no directory) |
+| 168 | Board Length's feet and inches pickers (TEMPLATE, FINS, VOLUME) read an 8'0" board as 8' 0" — they showed 7' 12" because the length was split into feet before the inches were rounded (95.99999" after the millimetre round trip); now rounded to the nearest whole inch first (`wholeFeetAndInches` in units.ts), so the inches are always 0–11. The same happened at 4'0" and on any length a hair under a whole foot. The founder's report, 2026-10-17 | 2026-10-17 | 9943a012 | fast (no directory) |
 | 261016-usz | Stars on the shaper's account (sketch 015 B, part 2 of 2; the founder, 2026-10-16): signed in, starred blanks are saved on the account and follow the shaper to any device; signed out, the browser keeps them; stars made while signed out join the account at the next sign-in, and a star removed on one device stays removed on the others; another shaper's synced stars never leak into a second account on the same browser. New nullable `user_preferences.starred_blanks` (migration 0011, additive — production migrated before the push); the Your data page names starred blanks | 2026-10-16 | 346a5a56 | [261016-usz-stars-on-the-shaper-s-account-starred-bl](./quick/261016-usz-stars-on-the-shaper-s-account-starred-bl/) |
 
 ## Deferred Items
