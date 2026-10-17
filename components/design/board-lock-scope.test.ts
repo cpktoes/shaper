@@ -19,6 +19,9 @@ const LOCKABLE_FILES = [
   "components/rocker/blank-card.tsx",
   "components/rocker/blank-filter-bar.tsx",
   "components/rocker/blank-flag.tsx",
+  // Quick 261016-mkb: the Customize Rocker button and its popup.
+  "components/rocker/customize-rocker.tsx",
+  "components/rocker/customize-rocker-dialog.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",

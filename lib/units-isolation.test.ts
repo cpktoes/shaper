@@ -390,6 +390,9 @@ describe("the design screens read every measurement through the display boundary
     // Quick 261015-ve9 plan 02: the popup's filter bar. Its range chips, slider words and slider
     // steps all come from `blank-browse.ts`, which prints and steps through the boundary.
     { file: "components/rocker/blank-filter-bar.tsx", converted: true },
+    // Quick 261016-mkb: the Customize Rocker popup. Its sliders step through `measureSlider` and
+    // every figure prints through the boundary or `custom-rocker-text.ts`, which does too.
+    { file: "components/rocker/customize-rocker-dialog.tsx", converted: true },
   ];
 
   const OUT_OF_SCOPE_UNITS_FILES: { file: string; reason: string }[] = [

@@ -68,6 +68,7 @@ import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { Slider } from "@/components/ui/slider";
 import { useUnits } from "@/components/units-provider";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
+import type { SavedBlanksAccount } from "@/lib/saved-blanks-preference";
 import type { BoardBlank, FineTuneSurface, TipStyle } from "@/lib/geometry/blank";
 import type { BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
@@ -126,6 +127,8 @@ interface RockerControlsProps {
   tab: RockerTab;
   /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
   blanks: Promise<BlankCatalogResult>;
+  /** The shaper's own saved blanks (quick 261016-mkb, D-09), streamed beside the catalogue. */
+  savedBlanks: Promise<SavedBlanksAccount>;
   /** The board's hand-set rocker (D-14) — four typed stations, the centre always 0. */
   rocker: FiveStationRocker;
   foil: FoilSpec;
@@ -310,6 +313,7 @@ function ThinningStartRow({
 export function RockerControls({
   tab,
   blanks,
+  savedBlanks,
   rocker,
   foil,
   blank,
@@ -386,7 +390,7 @@ export function RockerControls({
           </SectionHeading>
           {sectionOpen.blank && (
             <div className="pt-3">
-              <BlankPicker catalog={blanks} />
+              <BlankPicker catalog={blanks} savedBlanks={savedBlanks} />
             </div>
           )}
         </div>

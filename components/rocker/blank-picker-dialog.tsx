@@ -73,13 +73,20 @@ const TEXT_LINK_CLASS =
   "focus-ring-accent cursor-pointer text-left text-[11px] font-bold coarse:flex coarse:min-h-11 coarse:items-center";
 
 /** Both phone layouts — an upright phone (width) and a phone held sideways (height) — fill the screen
- * and pad clear of the notch and the home bar. Two switches, written out once each, never a pointer. */
-const FULL_SCREEN_CLASS = cn(
+ * and pad clear of the notch and the home bar. Two switches, written out once each, never a pointer.
+ * Exported for the Customize Rocker popup (quick 261016-mkb, D-04: "styled like PICK A BLANK"), so the
+ * two popups share one size rule rather than two copies of it. */
+export const FULL_SCREEN_CLASS = cn(
   "max-shell:inset-0 max-shell:max-w-none max-shell:rounded-none max-shell:ring-0",
   "max-shell:pt-[env(safe-area-inset-top)] max-shell:pr-[env(safe-area-inset-right)] max-shell:pb-[env(safe-area-inset-bottom)] max-shell:pl-[env(safe-area-inset-left)]",
   "[@media(max-height:500px)]:inset-0 [@media(max-height:500px)]:max-w-none [@media(max-height:500px)]:rounded-none [@media(max-height:500px)]:ring-0",
   "[@media(max-height:500px)]:pt-[env(safe-area-inset-top)] [@media(max-height:500px)]:pr-[env(safe-area-inset-right)] [@media(max-height:500px)]:pb-[env(safe-area-inset-bottom)] [@media(max-height:500px)]:pl-[env(safe-area-inset-left)]",
 );
+
+/** The popup's own size and surface on a computer — 32 px in from every edge of the window, never
+ * wider than 1180, centred — shared with the Customize Rocker popup (quick 261016-mkb, D-04). */
+export const LARGE_DIALOG_CLASS =
+  "inset-8 mx-auto flex w-auto max-w-[1180px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-surf-line-faint bg-surf-panel p-0 text-surf-ink sm:max-w-[1180px]";
 
 /** The card grid's columns: a flat card wants about 290 px (190 px for the one-line card on a phone
  * held sideways), an upright card about 300 px (260 px on a short screen). */
@@ -217,10 +224,7 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
         data-blank-picker
         showCloseButton={false}
         finalFocus={returnFocus ? buttonRef : false}
-        className={cn(
-          "inset-8 mx-auto flex w-auto max-w-[1180px] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden border-surf-line-faint bg-surf-panel p-0 text-surf-ink sm:max-w-[1180px]",
-          FULL_SCREEN_CLASS,
-        )}
+        className={cn(LARGE_DIALOG_CLASS, FULL_SCREEN_CLASS)}
       >
         <div className="flex items-start gap-3 border-b border-surf-line-faint px-4 py-3 max-shell:px-3 max-shell:py-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2">
           {/* DOM-first, so it is what takes focus on open — no phone keyboard pops up for the search. */}
