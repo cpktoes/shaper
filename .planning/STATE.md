@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-17 — fast task 170: the tail Bend starts slider flipped to run centre → tail (after quick 261016-mkb, custom rocker, went live and the founder's signed-in check passed)
+Last activity: 2026-10-17 — fast task 171: a heading over the Customize Rocker drawing (Blank Dimensions / Your Board's Dimensions); the founder also asked for the Show-my-board-off drawing to match the on view — a quick task to open
 
 ## Performance Metrics
 
@@ -396,6 +396,7 @@ Recent decisions affecting current work:
 | 261016-usz | Stars on the shaper's account (sketch 015 B, part 2 of 2; the founder, 2026-10-16): signed in, starred blanks are saved on the account and follow the shaper to any device; signed out, the browser keeps them; stars made while signed out join the account at the next sign-in, and a star removed on one device stays removed on the others; another shaper's synced stars never leak into a second account on the same browser. New nullable `user_preferences.starred_blanks` (migration 0011, additive — production migrated before the push); the Your data page names starred blanks | 2026-10-16 | 346a5a56 | [261016-usz-stars-on-the-shaper-s-account-starred-bl](./quick/261016-usz-stars-on-the-shaper-s-account-starred-bl/) |
 | 261016-mkb | Custom rocker (sketch 016 D; the founder, 2026-10-16: "This now looks perfect. Let's build it."): a blank's rocker as ordered from the maker, written the US Blanks way, set in a Customize Rocker popup with a live red/blue drawing, every blank named with its rocker, and each custom rocker kept as the shaper's own starred blank in Pick a Blank (migration 0012, `user_blanks`, on production before the push) | 2026-10-17 | 029da65e | [261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere](./quick/261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere/) |
 | 170 | The Customize Rocker popup's tail Bend starts slider runs centre to tail, left to right, the way the drawing lies — thumb right pushes the bend toward the tail (the founder, 2026-10-17, after their signed-in check of quick 261016-mkb passed) | 2026-10-17 | 07e12c59 | fast (no directory) |
+| 171 | The Customize Rocker popup's drawing gets a heading saying whose figures it carries: Blank Dimensions with Show my board off, Your Board's Dimensions with it on (the founder, 2026-10-17) | 2026-10-17 | 39ef96bc | fast (no directory) |
 
 ## Deferred Items
 
