@@ -140,3 +140,30 @@ export async function cardNumbers(
     attr,
   );
 }
+
+/** ROCKER's Customize Rocker button, right under the BLANK button (quick 261016-mkb, D-04). */
+export function customizeRockerButton(page: Page): Locator {
+  return page.locator("[data-customize-rocker]");
+}
+
+/** The CUSTOMIZE ROCKER popup, under either of its titles. */
+export function customRockerDialog(page: Page): Locator {
+  return page.getByRole("dialog", { name: /^(Customize|Edit Custom) Rocker$/i });
+}
+
+/** Taps Customize Rocker (or Edit Custom Rocker) and waits for its popup. Returns the popup. */
+export async function openCustomizeRocker(page: Page): Promise<Locator> {
+  const dialog = customRockerDialog(page);
+  // A popup still animating shut is not open; wait for it to go before tapping again.
+  await expect(page.locator("[data-customize-rocker-dialog][data-closed]")).toHaveCount(0);
+  await expect(async () => {
+    if (!(await dialog.isVisible())) await customizeRockerButton(page).click();
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  return dialog;
+}
+
+/** The BLANK button's rocker line — `Natural`, or the note as ordered (D-02). */
+export function blankRockerLine(page: Page): Locator {
+  return page.locator("[data-blank-rocker]");
+}

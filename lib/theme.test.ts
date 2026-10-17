@@ -93,6 +93,38 @@ describe("theme registry", () => {
       expect(css).toMatch(/--radius:\s*[\d.]+rem/);
     });
 
+    /**
+     * The Customize Rocker popup's two adjustment colours (quick 261016-mkb, P-16) are contract roles
+     * like any other: every theme carries both ramps, and every block that assigns a theme — the bare
+     * default, the OS-dark default and the four explicit ones — assigns both roles from its own ramp.
+     */
+    it("every theme has both rocker-adjust ramps and every theme block assigns both roles", () => {
+      for (const t of THEMES) {
+        for (const n of [1, 2]) {
+          expect(css, `--ramp-${t.id}-rocker-adjust-${n} missing`).toMatch(new RegExp(`--ramp-${t.id}-rocker-adjust-${n}:\\s*#[0-9a-fA-F]{6};`));
+        }
+      }
+      /** The block that starts at `marker`, up to its closing brace. */
+      const block = (marker: string) => {
+        const at = css.indexOf(marker);
+        expect(at, marker).toBeGreaterThanOrEqual(0);
+        return css.slice(at, css.indexOf("}", at));
+      };
+      const blocks: [string, string][] = [
+        ["/* DEFAULT LIGHT", DEFAULT_LIGHT_THEME],
+        ["/* DEFAULT DARK", DEFAULT_DARK_THEME],
+        ...THEMES.map((t): [string, string] => [`:root.theme-${t.id} {`, t.id]),
+      ];
+      for (const [marker, id] of blocks) {
+        const body = block(marker);
+        for (const n of [1, 2]) {
+          expect(body, `${marker} --surf-rocker-adjust-${n}`).toContain(`--surf-rocker-adjust-${n}: var(--ramp-${id}-rocker-adjust-${n});`);
+        }
+      }
+      expect(css).toContain("--color-rocker-adjust-1: var(--surf-rocker-adjust-1);");
+      expect(css).toContain("--color-rocker-adjust-2: var(--surf-rocker-adjust-2);");
+    });
+
     it("has no theme block for an id the registry does not know", () => {
       const inCss = [...css.matchAll(/:root\.theme-([a-z0-9-]+)\s*\{/g)].map((m) => m[1]);
       expect(inCss.sort()).toEqual(THEMES.map((t) => t.id).sort());

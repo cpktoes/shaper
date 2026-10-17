@@ -41,8 +41,9 @@ export interface SliderRowProps {
   onValueChange: (value: number) => void;
   /** Dims the whole row and disables the slider underneath it. */
   disabled?: boolean;
-  /** The two-ended hint line under the track. Rendered only when at least one is present. */
-  leftHint?: string;
+  /** The two-ended hint line under the track. Rendered only when at least one is present. The left
+   * one may be a node, so a caller can mark it (the Customize Rocker floor hint, quick 261016-mkb). */
+  leftHint?: ReactNode;
   rightHint?: string;
   /**
    * A control drawn at the right end of the hint line, in place of `rightHint` — Phase 14's
@@ -75,6 +76,12 @@ export interface SliderRowProps {
    * renders exactly as before.
    */
   sliderValueText?: string;
+  /**
+   * The value in a small bordered read-out at the right end of the label line, instead of
+   * `label — displayValue` — the Customize Rocker popup's rows (quick 261016-mkb, sketch 016's
+   * `.valbox`). Absent, the row renders exactly as before.
+   */
+  valueBox?: string;
 }
 
 export function SliderRow({
@@ -94,6 +101,7 @@ export function SliderRow({
   density = "default",
   sliderLabel,
   sliderValueText,
+  valueBox,
 }: SliderRowProps) {
   // A locked board greys every row on a design screen (the scope is false anywhere else).
   const locked = useControlsLocked();
@@ -102,14 +110,28 @@ export function SliderRow({
   const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
   return (
     <div className={cn(className, disabled && "opacity-40")}>
-      <div
-        className={cn(
-          "text-sm text-surf-ink-muted font-normal",
-          density === "tight" ? "mb-1.5" : "mb-2",
-        )}
-      >
-        {displayValue !== undefined ? `${label} — ${displayValue}` : label}
-      </div>
+      {valueBox !== undefined ? (
+        <div
+          className={cn(
+            "flex items-center justify-between gap-2 text-sm text-surf-ink-muted font-normal",
+            density === "tight" ? "mb-1.5" : "mb-2",
+          )}
+        >
+          <span className="min-w-0 truncate">{label}</span>
+          <span data-slider-value-box className="shrink-0 rounded border border-surf-line px-1.5 text-xs tabular-nums text-surf-ink">
+            {valueBox}
+          </span>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "text-sm text-surf-ink-muted font-normal",
+            density === "tight" ? "mb-1.5" : "mb-2",
+          )}
+        >
+          {displayValue !== undefined ? `${label} — ${displayValue}` : label}
+        </div>
+      )}
       <Slider
         value={value}
         min={min}

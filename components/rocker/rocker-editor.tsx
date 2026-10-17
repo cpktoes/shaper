@@ -72,6 +72,7 @@
 
 import { useMemo, useState } from "react";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
+import type { SavedBlanksAccount } from "@/lib/saved-blanks-preference";
 import { LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
@@ -111,7 +112,14 @@ const ROCKER_TABS_SMALL_SCREEN: readonly PanelTab<RockerTab>[] = [
   { id: "datasheet", label: "DATASHEET" },
 ];
 
-export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }) {
+export function RockerEditor({
+  blanks,
+  savedBlanks,
+}: {
+  blanks: Promise<BlankCatalogResult>;
+  /** The shaper's own saved blanks (quick 261016-mkb), streamed beside the catalogue. */
+  savedBlanks: Promise<SavedBlanksAccount>;
+}) {
   const {
     rocker,
     updateRocker,
@@ -272,6 +280,7 @@ export function RockerEditor({ blanks }: { blanks: Promise<BlankCatalogResult> }
           <RockerControls
             tab={activeTab}
             blanks={blanks}
+            savedBlanks={savedBlanks}
             rocker={rocker}
             foil={foil}
             blank={blank}
