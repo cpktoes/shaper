@@ -46,7 +46,7 @@ function makeDeps(overrides: Partial<ClerkWebhookDeps> = {}): {
     event_attributes: { http_request: { client_ip: "", user_agent: "" } },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   })) as any;
-  const deleteAccountData = vi.fn(async (): Promise<AccountDataDeleted> => ({ boards: 2, settings: 1 }));
+  const deleteAccountData = vi.fn(async (): Promise<AccountDataDeleted> => ({ boards: 2, settings: 1, savedBlanks: 3 }));
   const notifySignUp = vi.fn(async (): Promise<SignUpNoticeOutcome> => "sent");
   const deps: ClerkWebhookDeps = {
     signingSecretSet: true,
@@ -108,7 +108,7 @@ describe("handleClerkWebhook", () => {
     expect(deleteAccountData).toHaveBeenCalledTimes(1);
     expect(deleteAccountData).toHaveBeenCalledWith(USER_ID);
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("Deleted: saved boards 2, settings rows 1");
+    expect(await response.text()).toBe("Deleted: saved boards 2, settings rows 1, saved blanks 3");
     const infoLines = logs.filter((l) => l.level === "info");
     expect(infoLines).toHaveLength(1);
     expect(infoLines[0].line).toContain("user.deleted");
@@ -117,11 +117,11 @@ describe("handleClerkWebhook", () => {
   });
 
   it("4. a repeat delivery resolving zero counts is still 200 and idempotent", async () => {
-    const { deps } = makeDeps({ deleteAccountData: vi.fn(async () => ({ boards: 0, settings: 0 })) });
+    const { deps } = makeDeps({ deleteAccountData: vi.fn(async () => ({ boards: 0, settings: 0, savedBlanks: 0 })) });
     const response = await handleClerkWebhook(fakeRequest(), deps);
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("Deleted: saved boards 0, settings rows 0");
+    expect(await response.text()).toBe("Deleted: saved boards 0, settings rows 0, saved blanks 0");
   });
 
   it.each([

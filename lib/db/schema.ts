@@ -47,9 +47,19 @@
  * columns (`t12`, `n6`, …) impossible — blanks carry anywhere from 5 to 15 stations. Unique on
  * (vendor, name) so the seed can upsert. Filled by `scripts/seed-blanks.ts` from the committed CSVs
  * under `db/seed/blanks/`.
+ *
+ * `userBlanks` (quick 261016-mkb, 2026-10-16) holds the blanks a shaper has saved as their own: a
+ * catalogue blank with its rocker as ordered from the maker. The founder's decision: "it should not
+ * replace the natural rocker blank, but essentially add a new blank to our catalogue". One row per
+ * saved blank, keyed like `models` (uuid id, indexed `clerk_user_id`): the base blank's catalogue
+ * rows BY VALUE in `copy`, exactly as a board keeps its blank (D-01), and the rocker as ordered in
+ * `rocker`. Private to the shaper — never the makers' `blanks` table, which stays the printed
+ * figures. Every read goes through `lib/saved-blanks-preference.ts`'s strict reader; every write
+ * through `app/actions/user-blanks.ts`, scoped to the session's own id.
  */
 
-import type { BlankStation } from "@/lib/geometry/blank";
+import type { BlankRecord, BlankStation } from "@/lib/geometry/blank";
+import type { BlankRockerSpec } from "@/lib/geometry/custom-rocker";
 import {
   boolean,
   doublePrecision,
@@ -129,3 +139,20 @@ export const blanks = pgTable(
 );
 
 export type BlankRow = typeof blanks.$inferSelect;
+
+export const userBlanks = pgTable(
+  "user_blanks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    // The base blank's catalogue rows by value, as a board keeps its blank (D-01).
+    copy: jsonb("copy").$type<BlankRecord>().notNull(),
+    // The rocker as ordered from the maker (D-01) — never natural: a saved blank always carries one.
+    rocker: jsonb("rocker").$type<BlankRockerSpec>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("user_blanks_clerk_user_id_idx").on(table.clerkUserId)],
+);
+
+export type UserBlankRow = typeof userBlanks.$inferSelect;
