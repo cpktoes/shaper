@@ -4,6 +4,11 @@
  * The Volume Estimator sidebar, ported from reference/project/Volume.dc.html lines 24-104.
  * Reuses the aside layout, the section-heading and slider-row styling from
  * components/rails/rail-controls.tsx wholesale.
+ *
+ * Quick 261017-vdh (BRIEF 3): an INPUTS section with ONE box, "Import Designed Board". Ticked (the
+ * default), one line says which board was imported and that the rail shapes come from RAILS, and the
+ * four hand controls (Board Length, Board Width, Center Thickness, Board Type) are not on the page.
+ * Unticked, they show — the quick estimate.
  */
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +23,7 @@ import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { formatWholeFeet, formatWholeInches, inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
 import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
+import { volumeImportedLine } from "@/lib/geometry/volume-imported-line";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -31,10 +37,11 @@ function clampFinite(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function PrimaryInputsHeading() {
+/** The sidebar's ruled section heading — the look FINS' and TEMPLATE's headings wear (quick 261017-vdh). */
+function InputsHeading() {
   return (
-    <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-      <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Primary Inputs</div>
+    <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+      Inputs
     </div>
   );
 }
@@ -43,16 +50,14 @@ interface VolumeControlsProps {
   effectiveVolume: VolumeSpec;
   volumeResult: VolumeResult;
   onChange: (patch: Partial<VolumeSpec>) => void;
-  onToggleImportTemplateDimensions: () => void;
-  onToggleImportRailThickness: () => void;
+  onToggleImportDesignedBoard: () => void;
 }
 
 export function VolumeControls({
   effectiveVolume,
   volumeResult,
   onChange,
-  onToggleImportTemplateDimensions,
-  onToggleImportRailThickness,
+  onToggleImportDesignedBoard,
 }: VolumeControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -76,10 +81,15 @@ export function VolumeControls({
     system,
   );
 
+  // ONE box (quick 261017-vdh, BRIEF 3b-3d). It shows only when the board's real outline AND its real
+  // rail data are both available (always, in the app today); otherwise there is no box and the four
+  // hand controls are simply the page. While ticked they are not on the page at all and one line says
+  // what was imported; unticked they show, for the quick estimate.
   const { templateAvailable, railAvailable, importingTemplate, importingRailThickness } = volumeResult;
-  const dimensionsDisabled = importingTemplate;
-  const dimensionsOpacity = locked || importingTemplate ? 0.4 : 1;
-  const thicknessDisabled = importingRailThickness;
+  const canImport = templateAvailable && railAvailable;
+  const importing = importingTemplate && importingRailThickness;
+  // A locked board shows its numbers greyed and untouchable, exactly as every other screen does.
+  const controlsOpacity = locked ? 0.4 : 1;
 
   return (
     // No `h-full` here, on purpose: the column's own height used to be the whole sidebar's, which was
@@ -94,141 +104,142 @@ export function VolumeControls({
         </div>
       </div>
 
-      <PrimaryInputsHeading />
-
-      {/* D-13's method switch, in plain English: on measures the board's real drawn shape (the
-          accurate cross-section litres, everywhere the app quotes volume); off is this screen's
-          own standalone quick estimate from a board type and its factor tables. */}
-      {templateAvailable && (
-        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal${locked ? " opacity-40" : ""}`}>
-          <Checkbox
-            disabled={locked}
-            checked={effectiveVolume.importTemplateDimensions}
-            onCheckedChange={() => onToggleImportTemplateDimensions()}
-          />
-          Measure This Board&apos;s Real Shape (off = quick estimate from board type)
-        </label>
-      )}
-
-      {railAvailable && (
-        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-xs text-surf-ink-muted font-normal${locked ? " opacity-40" : ""}`}>
-          <Checkbox
-            checked={effectiveVolume.importRailThickness}
-            onCheckedChange={() => onToggleImportRailThickness()}
-            disabled={locked || !effectiveVolume.importTemplateDimensions}
-          />
-          Use This Board&apos;s Real Rail &amp; Thickness Data
-        </label>
-      )}
-
-      {/* Board Length keeps its own hand-rolled markup: a label row, then either the feet/inches
-          Select combo (Imperial) or one typed centimetre field (Metric, D-08), then the slider —
-          a shape SliderRow's fixed label-then-track layout has no slot for either way. Named in
-          slider-row.test.ts's allowlist alongside its TEMPLATE and FINS counterparts, which share
-          this exact shape. */}
-      <div style={{ opacity: dimensionsOpacity }}>
-        <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
-          Board Length — {formatLength(effectiveVolume.length, system)}
-        </div>
-        <div className="mb-2 flex gap-2">
-          {system === "imperial" ? (
-            <>
-              <Select
-                items={FEET_ITEMS}
-                value={lengthFeet}
-                onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-                disabled={locked || dimensionsDisabled}
-              >
-                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FEET_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                items={INCHES_ITEMS}
-                value={lengthInches}
-                onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-                disabled={locked || dimensionsDisabled}
-              >
-                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INCHES_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
-          ) : (
-            <MeasureField
-              value={effectiveVolume.length}
-              onCommit={(next) => onChange({ length: next })}
-              label="Board Length"
-              family="length"
-              min={boardLengthFieldBounds.min}
-              max={boardLengthFieldBounds.max}
-              system={system}
-              disabled={locked || dimensionsDisabled}
+      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the line that
+          says which board was imported. */}
+      <div className="flex flex-col gap-1.5">
+        <InputsHeading />
+        {canImport && (
+          // D-13's method switch, in plain English: on measures the board's real drawn shape and
+          // rails (the accurate cross-section litres, everywhere the app quotes volume); off is this
+          // screen's own standalone quick estimate from a board type and its factor tables.
+          <label
+            className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal${locked ? " opacity-40" : ""}`}
+          >
+            <Checkbox
+              disabled={locked}
+              checked={effectiveVolume.importTemplateDimensions}
+              onCheckedChange={() => onToggleImportDesignedBoard()}
             />
-          )}
-        </div>
-        <Slider
-          value={boardLength.value}
-          min={boardLength.min}
-          max={boardLength.max}
-          step={boardLength.step}
-          disabled={locked || dimensionsDisabled}
-          onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
-          className="slider-accent"
-        />
+            Import Designed Board
+          </label>
+        )}
+        {canImport && importing && (
+          <div className="text-xs text-surf-ink-muted font-normal">
+            {volumeImportedLine(effectiveVolume.length, effectiveVolume.width, effectiveVolume.centerThickness, system)}
+          </div>
+        )}
       </div>
 
-      <SliderRow
-        density="tight"
-        label={`Board Width — ${formatDim(effectiveVolume.width, system)}`}
-        value={boardWidth.value}
-        min={boardWidth.min}
-        max={boardWidth.max}
-        step={boardWidth.step}
-        disabled={locked || dimensionsDisabled}
-        onValueChange={(v) => onChange({ width: boardWidth.toMm(v) })}
-      />
+      {!importing && (
+        <>
+          {/* Board Length keeps its own hand-rolled markup: a label row, then either the feet/inches
+              Select combo (Imperial) or one typed centimetre field (Metric, D-08), then the slider —
+              a shape SliderRow's fixed label-then-track layout has no slot for either way. Named in
+              slider-row.test.ts's allowlist alongside its TEMPLATE and FINS counterparts, which share
+              this exact shape. */}
+          <div style={{ opacity: controlsOpacity }}>
+            <div className="mb-1.5 text-sm text-surf-ink-muted font-normal">
+              Board Length — {formatLength(effectiveVolume.length, system)}
+            </div>
+            <div className="mb-2 flex gap-2">
+              {system === "imperial" ? (
+                <>
+                  <Select
+                    items={FEET_ITEMS}
+                    value={lengthFeet}
+                    onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+                    disabled={locked}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FEET_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    items={INCHES_ITEMS}
+                    value={lengthInches}
+                    onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+                    disabled={locked}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INCHES_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <MeasureField
+                  value={effectiveVolume.length}
+                  onCommit={(next) => onChange({ length: next })}
+                  label="Board Length"
+                  family="length"
+                  min={boardLengthFieldBounds.min}
+                  max={boardLengthFieldBounds.max}
+                  system={system}
+                  disabled={locked}
+                />
+              )}
+            </div>
+            <Slider
+              value={boardLength.value}
+              min={boardLength.min}
+              max={boardLength.max}
+              step={boardLength.step}
+              disabled={locked}
+              onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
+              className="slider-accent"
+            />
+          </div>
 
-      <SliderRow
-        density="tight"
-        label={`Center Thickness — ${formatDim(effectiveVolume.centerThickness, system)}`}
-        value={centerThickness.value}
-        min={centerThickness.min}
-        max={centerThickness.max}
-        step={centerThickness.step}
-        disabled={thicknessDisabled}
-        onValueChange={(v) => onChange({ centerThickness: centerThickness.toMm(v) })}
-      />
+          <SliderRow
+            density="tight"
+            label={`Board Width — ${formatDim(effectiveVolume.width, system)}`}
+            value={boardWidth.value}
+            min={boardWidth.min}
+            max={boardWidth.max}
+            step={boardWidth.step}
+            disabled={locked}
+            onValueChange={(v) => onChange({ width: boardWidth.toMm(v) })}
+          />
 
-      {!importingRailThickness && (
-        <SliderRow
-          density="tight"
-          label="Board Type"
-          value={effectiveVolume.boardTypeIndex}
-          min={0}
-          max={BOARD_TYPE_STEP_COUNT - 1}
-          step={1}
-          disabled={thicknessDisabled}
-          onValueChange={(v) =>
-            onChange({ boardTypeIndex: clampFinite(v, 0, BOARD_TYPE_STEP_COUNT - 1) })
-          }
-          leftHint="Performance"
-          rightHint="Beefy"
-        />
+          <SliderRow
+            density="tight"
+            label={`Center Thickness — ${formatDim(effectiveVolume.centerThickness, system)}`}
+            value={centerThickness.value}
+            min={centerThickness.min}
+            max={centerThickness.max}
+            step={centerThickness.step}
+            disabled={locked}
+            onValueChange={(v) => onChange({ centerThickness: centerThickness.toMm(v) })}
+          />
+
+          <SliderRow
+            density="tight"
+            label="Board Type"
+            value={effectiveVolume.boardTypeIndex}
+            min={0}
+            max={BOARD_TYPE_STEP_COUNT - 1}
+            step={1}
+            disabled={locked}
+            onValueChange={(v) =>
+              onChange({ boardTypeIndex: clampFinite(v, 0, BOARD_TYPE_STEP_COUNT - 1) })
+            }
+            leftHint="Performance"
+            rightHint="Beefy"
+          />
+        </>
       )}
     </div>
   );

@@ -44,6 +44,20 @@ async function setMetricUnits(page: Page) {
   }, UNITS_STORAGE_KEY);
 }
 
+/** Quick 261017-vdh: VOLUME's four hand controls (and FINS' board length, tail width and tail shape)
+ * are not on the page while "Import Designed Board" is ticked, which it is by default. Untick it —
+ * once React owns the box, so the tap reaches the app and not the server-rendered markup — to bring
+ * the quick estimate's controls back. */
+async function untickImportDesignedBoard(page: Page) {
+  const box = page.getByRole("checkbox", { name: "Import Designed Board" });
+  await expect(box).toBeVisible();
+  await expect
+    .poll(() => box.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+  await box.click();
+  await expect(box).toHaveAttribute("aria-checked", "false");
+}
+
 /** A slider thumb's touch target is invisible: `size-3` (12px) is the dot a shaper sees, and
  * `after:-inset-2`/`coarse:after:-inset-4` is a pseudo-element nobody can select directly. This
  * reads the pseudo-element's own computed `inset` (equal on all four sides, since the class is
@@ -94,6 +108,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
   for (const path of ["/design/outline", "/design/volume", "/design/rocker"] as const) {
     test(`${path}: every visible slider thumb's tap target is at least 44x44`, async ({ page }) => {
       await page.goto(path);
+      // VOLUME's sliders only show for the quick estimate (quick 261017-vdh).
+      if (path === "/design/volume") await untickImportDesignedBoard(page);
       const thumbs = page.locator('[data-slot="slider-thumb"]');
       await expect(thumbs.first()).toBeVisible();
 
@@ -112,6 +128,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       page,
     }) => {
       await page.goto(path);
+      // VOLUME's typed Board Length field only shows for the quick estimate (quick 261017-vdh).
+      if (path === "/design/volume") await untickImportDesignedBoard(page);
       const fields = page.locator('[data-slot="input"]');
       await expect(fields.first()).toBeVisible();
 
@@ -179,6 +197,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
 
   test("focusing a typed measure field never zooms the page", async ({ page }) => {
     await page.goto("/design/volume");
+    // The typed Board Length field is part of the quick estimate (quick 261017-vdh).
+    await untickImportDesignedBoard(page);
     const field = page.locator('[data-slot="input"]').first();
     await expect(field).toBeVisible();
     await field.focus();
