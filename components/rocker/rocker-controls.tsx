@@ -375,9 +375,6 @@ export function RockerControls({
                 onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
                 className="slider-accent"
               />
-              <div className="mt-2 text-xs text-surf-ink-muted font-normal">
-                The board&apos;s one center thickness — Rails and Volume read it too.
-              </div>
             </div>
           )}
         </div>

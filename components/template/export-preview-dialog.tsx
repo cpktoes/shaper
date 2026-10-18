@@ -66,6 +66,7 @@ import {
   computeStripLayout,
   computeTemplateLayout,
   computeTemplateMarks,
+  paperSaverCaption,
   type PaperSize,
   type StripLayout,
   type TemplateLayout,
@@ -80,23 +81,25 @@ type ExportArtifact = "overview" | "full" | "strip";
 /** The picker's own three cards — stacked one per row (quick task 260902-cj5: a two-up grid
  * shredded "Paper Saver" onto two lines and squeezed every description at three columns). Never
  * "segments" for the strip's own name — it is a continuous strip, not cut-apart pieces. */
-const ARTIFACT_CARDS: { value: ExportArtifact; title: string; description: string }[] = [
-  {
-    value: "overview",
-    title: "Overview Sheet",
-    description: "Every input value and the outline, one page.",
-  },
-  {
-    value: "full",
-    title: "Full Sized Template",
-    description: "True-size, full-length half board template.",
-  },
-  {
-    value: "strip",
-    title: "Full Sized Template - Paper Saver",
-    description: 'True-size, full-length landscape print. Great for boards ≤20.5" Wide.',
-  },
-];
+function artifactCards(system: Parameters<typeof paperSaverCaption>[0]): { value: ExportArtifact; title: string; description: string }[] {
+  return [
+    {
+      value: "overview",
+      title: "Overview Sheet",
+      description: "Every input value and the outline, one page.",
+    },
+    {
+      value: "full",
+      title: "Full Sized Template",
+      description: "True-size, full-length half board template.",
+    },
+    {
+      value: "strip",
+      title: "Full Sized Template - Paper Saver",
+      description: paperSaverCaption(system),
+    },
+  ];
+}
 
 /** Selected state is an accent BORDER, not the accent FILL the Print button carries — the
  * UI spec reserves solid accent fill for that one button and the tile diagram's nose-page badge,
@@ -324,7 +327,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
 
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-2" role="group" aria-label="What to print">
-            {ARTIFACT_CARDS.map((card) => (
+            {artifactCards(system).map((card) => (
               <button
                 key={card.value}
                 type="button"

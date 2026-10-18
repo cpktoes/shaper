@@ -91,7 +91,7 @@ export function WingControls({
   const wings = outline.wings ?? [];
   // D3: the top is the centre or the widepoint, whichever is nearer the tail; the hint names which.
   const top = wingPositionTop(geometry);
-  const topHint = `${top < geometry.length / 2 ? "Widepoint" : "Centre"} ${formatDim(top, system)}`;
+  const topHint = `${top < geometry.length / 2 ? "Widepoint" : "Center"} ${formatDim(top, system)}`;
   // D2: where wing 2 may sit at most, and the gap behind wing 1 — explanations, so muted ink, never
   // the warning ink (that is for warnings only).
   const order = wingOrderState(wings, geometry);
@@ -251,7 +251,7 @@ export function WingControls({
               />
               <SliderRow
                 className="flex-1"
-                label="Run along the stringer"
+                label="Vertical run"
                 displayValue={formatMark(wing.run, system)}
                 value={run.value}
                 min={run.min}
@@ -260,7 +260,7 @@ export function WingControls({
                 onValueChange={(v) => withShape({ run: run.toMm(v) })}
                 leftHint="Square"
                 rightHint={formatMark(inchesToMm(WING_RUN_RANGE_IN.max), system)}
-                sliderLabel={`Wing ${n} run along the stringer`}
+                sliderLabel={`Wing ${n} vertical run`}
               />
             </div>
             {/* D4: the founder's scaling rule, full width under the Depth and Run row, in the warning

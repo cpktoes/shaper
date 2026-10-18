@@ -39,8 +39,8 @@ export function FinModelInfo() {
 
       <InfoBlock heading="Single Model">
         Single fin box placement comes from an established fixed range rather than a length
-        equation — the default value is in a common working range (4 1/2&quot; to 6&quot;) and can fine
-        tuned by the forward/aft slider in the advanced menu, rather than solved for.
+        equation — the default value is in a common working range (4 1/2&quot; to 6&quot;) and
+        can be fine-tuned by the forward/aft slider in the advanced menu, rather than solved for.
       </InfoBlock>
 
       <InfoBlock heading="Twin Models">

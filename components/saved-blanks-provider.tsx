@@ -27,6 +27,9 @@ import type { BlankRecord } from "@/lib/geometry/blank";
 import type { BlankRockerSpec } from "@/lib/geometry/custom-rocker";
 import {
   parseSavedBlanksText,
+  removeBlankFailureMessage,
+  SAVE_CONNECTION_MESSAGE,
+  SAVE_SIGNED_OUT_MESSAGE,
   SAVED_BLANKS_FULL_MESSAGE,
   SAVED_BLANKS_STORAGE_KEY,
   savedBlankIdentity,
@@ -100,14 +103,11 @@ function newId(): string {
  * sentence the shaper reads. */
 export type SavedBlankWrite = { ok: true; blank: SavedBlank; created: boolean } | { ok: false; message: string };
 
-const SIGNED_OUT_MESSAGE = "Sign in again to save blanks to your account.";
-const CONNECTION_MESSAGE = "Couldn't save the blank — check your connection and try again.";
-
 /** An account refusal, in words. */
 function refusalMessage(result: Extract<SaveUserBlankResult, { ok: false }>): string {
   if (result.reason === "full") return SAVED_BLANKS_FULL_MESSAGE;
-  if (result.reason === "signed-out") return SIGNED_OUT_MESSAGE;
-  return CONNECTION_MESSAGE;
+  if (result.reason === "signed-out") return SAVE_SIGNED_OUT_MESSAGE;
+  return SAVE_CONNECTION_MESSAGE;
 }
 
 export interface SavedBlanksContextValue {
@@ -168,7 +168,7 @@ export function SavedBlanksProvider({ account, children }: { account: SavedBlank
         setAccountBlanks((list) => [...list, result.blank]);
         return { ok: true, blank: result.blank, created: true };
       } catch {
-        return { ok: false, message: CONNECTION_MESSAGE };
+        return { ok: false, message: SAVE_CONNECTION_MESSAGE };
       }
     },
     [signedIn, accountBlanks],
@@ -201,7 +201,7 @@ export function SavedBlanksProvider({ account, children }: { account: SavedBlank
         setAccountBlanks((list) => list.map((saved) => (saved.id === id ? result.blank : saved)));
         return { ok: true, blank: result.blank, created: false };
       } catch {
-        return { ok: false, message: CONNECTION_MESSAGE };
+        return { ok: false, message: SAVE_CONNECTION_MESSAGE };
       }
     },
     [signedIn, saveBlank],
@@ -220,11 +220,11 @@ export function SavedBlanksProvider({ account, children }: { account: SavedBlank
       }
       try {
         const result = await removeUserBlank(id);
-        if (!result.ok) return { ok: false, message: result.reason === "signed-out" ? SIGNED_OUT_MESSAGE : CONNECTION_MESSAGE };
+        if (!result.ok) return { ok: false, message: removeBlankFailureMessage(result) };
         setAccountBlanks((list) => list.filter((saved) => saved.id !== id));
         return { ok: true };
       } catch {
-        return { ok: false, message: CONNECTION_MESSAGE };
+        return { ok: false, message: removeBlankFailureMessage(null) };
       }
     },
     [signedIn],

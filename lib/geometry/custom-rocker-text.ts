@@ -48,17 +48,17 @@ export function rockerAmountText(amount: Mm, system: UnitsSystem): string {
 }
 
 /**
- * Where a change's bend starts, in its value box (P-2): `At the centre`, or the whole inches in from
+ * Where a change's bend starts, in its value box (P-2): `At the center`, or the whole inches in from
  * the tip as a dim — `18" in`, or in Metric `45.7 cm in` (the slider still moves in whole inches,
  * because the bend point is part of the maker's order code).
  */
 export function bendStartText(fromTipIn: number | null, system: UnitsSystem): string {
-  if (fromTipIn === null) return "At the centre";
+  if (fromTipIn === null) return "At the center";
   return `${formatThinningStart(inchesToMm(fromTipIn), system)} in`;
 }
 
 /** The hint under a Rocker slider when it sits on its floor (D-06). */
-export const FLOOR_HINT = "Floor — the tip would drop below the centre";
+export const FLOOR_HINT = "Floor — the tip would drop below the center";
 
 /** The two ends of a Rocker slider's hint line; the left one says so when the slider is on its floor. */
 export function amountHints(atFloor: boolean): [string, string] {
@@ -67,16 +67,16 @@ export function amountHints(atFloor: boolean): [string, string] {
 
 /**
  * The two ends of a Bend starts slider's hint line, in the order the slider runs (fast task 170, the
- * founder, 2026-10-17: "left pulls the line to the centre, right to the tail"). The slider runs the
+ * founder, 2026-10-17: "left pulls the line to the center, right to the tail"). The slider runs the
  * way the drawing lies: the nose is drawn on the left, so a nose change's slider runs Near the nose →
- * At the centre and the thumb moves the bend mark the way it moves itself; the tail is drawn on the
- * right, so its slider runs At the centre → Near the tail — a thumb pushed right pushes the bend
- * toward the tail. A second change never reaches the centre, so its centre end reads Nearer the
- * centre. The stored figure is inches in from the tip either way (`bendSliderPosition`).
+ * At the center and the thumb moves the bend mark the way it moves itself; the tail is drawn on the
+ * right, so its slider runs At the center → Near the tail — a thumb pushed right pushes the bend
+ * toward the tail. A second change never reaches the center, so its center end reads Nearer the
+ * center. The stored figure is inches in from the tip either way (`bendSliderPosition`).
  */
 export function bendStartHints(end: End, index: number): [string, string] {
   const tip = `Near the ${END_WORD[end]}`;
-  const centre = index === 0 ? "At the centre" : "Nearer the centre";
+  const centre = index === 0 ? "At the center" : "Nearer the center";
   return end === "nose" ? [tip, centre] : [centre, tip];
 }
 
@@ -89,7 +89,7 @@ export interface BendSliderRange {
 /**
  * Where the thumb sits for a change that starts `fromTipIn` inches in from its tip. A nose slider
  * reads the figure as it is; a tail slider is mirrored over its range, so the thumb at the left end
- * means the centre (the range's top) and at the right end the tip (its bottom) — see
+ * means the center (the range's top) and at the right end the tip (its bottom) — see
  * `bendStartHints`. `bendStartFromSlider` reads a thumb position back; the two are inverses.
  */
 export function bendSliderPosition(end: End, range: BendSliderRange, fromTipIn: number): number {

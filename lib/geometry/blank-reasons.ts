@@ -644,14 +644,14 @@ export function blankRowVolume(record: Pick<BlankRecord, "volumeLitres">): strin
 }
 
 /**
- * The line under the ROCKER subtitle: `Length and width from TEMPLATE: 5'10" × 19 1/2"`, and in
+ * The line under the ROCKER subtitle: `TEMPLATE details are imported: 5'10" × 19 1/2"`, and in
  * Metric `… 177.8 × 49.5 cm` — the unit carried once, at the end of the line (the house rule for
  * running text). The length reads through `formatLength` (the same formatter a blank's length reads
  * through, so the two compare directly), the width through `formatDim`.
  */
 export function boardLine(length: Mm, width: Mm, system: UnitsSystem): string {
   const lengthText = system === "metric" ? formatDimBare(length, system) : formatLength(length, system);
-  return `Length and width from TEMPLATE: ${lengthText} × ${formatDim(width, system)}`;
+  return `TEMPLATE details are imported: ${lengthText} × ${formatDim(width, system)}`;
 }
 
 /**

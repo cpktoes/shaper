@@ -120,7 +120,7 @@ export function CustomRockerRows({ prepared, draft, onDraftChange, system }: Cus
           )}
         </div>
         <div className="flex gap-3">
-          {/* Two to three: Bend starts carries the longer value box ("At the centre"), so it takes the
+          {/* Two to three: Bend starts carries the longer value box ("At the center"), so it takes the
               wider share and its label never cuts off on the computer's 340-wide column. */}
           <SliderRow
             className="min-w-0 flex-[2_1_0%]"

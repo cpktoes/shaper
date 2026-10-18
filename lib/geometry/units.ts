@@ -348,6 +348,16 @@ export function wholeFeetAndInches(value: Mm): { feet: number; inches: number } 
   return { feet, inches: totalInches - feet * 12 };
 }
 
+/** A whole number of feet as a Board Length picker shows it, `6'`. The pickers are Imperial-only. */
+export function formatWholeFeet(feet: number): string {
+  return `${feet}'`;
+}
+
+/** A whole number of inches as a Board Length picker shows it, `0"`. The pickers are Imperial-only. */
+export function formatWholeInches(inches: number): string {
+  return `${inches}"`;
+}
+
 /**
  * Formats a millimetre value as feet-and-inches, e.g. `6'0"`. Rounds the
  * inch value to the nearest 1/16 FIRST, then splits feet/inches — this is

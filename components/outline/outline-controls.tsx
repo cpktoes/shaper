@@ -19,6 +19,8 @@ import {
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
   degrees,
+  formatWholeFeet,
+  formatWholeInches,
   inchesToMm,
   mm,
   type Mm,
@@ -26,6 +28,7 @@ import {
   wholeFeetAndInches,
 } from "@/lib/geometry/units";
 import {
+  diamondDepthClampNote,
   formatDim,
   formatLength,
   formatMark,
@@ -40,6 +43,11 @@ import { useUnits } from "@/components/units-provider";
 import { TailShapeIcon, type IconTailShape } from "./tail-shape-icon";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
+
+/** The two Board Length boxes' choices. One list feeds both the open list and the closed box, so
+ * the box reads 6' and 0" the same way the list does (quick 261017-sru). */
+const FEET_ITEMS = [5, 6, 7, 8, 9, 10].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
+const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
 
 interface OutlineControlsProps {
   outline: OutlineSpec;
@@ -163,6 +171,7 @@ export function OutlineControls({
               {system === "imperial" ? (
                 <>
                   <Select
+                    items={FEET_ITEMS}
                     value={lengthFeet}
                     disabled={locked}
                     onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
@@ -171,14 +180,15 @@ export function OutlineControls({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[5, 6, 7, 8, 9, 10].map((f) => (
-                        <SelectItem key={f} value={f}>
-                          {f}&apos;
+                      {FEET_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Select
+                    items={INCHES_ITEMS}
                     value={lengthInches}
                     disabled={locked}
                     onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
@@ -187,9 +197,9 @@ export function OutlineControls({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i).map((i) => (
-                        <SelectItem key={i} value={i}>
-                          {i}&quot;
+                      {INCHES_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -268,6 +278,8 @@ export function OutlineControls({
               max={width.max}
               step={width.step}
               onValueChange={(v) => onChange({ widePointWidth: width.toMm(v) })}
+              leftHint="Thin"
+              rightHint="Thick"
             />
           );
         })()}
@@ -411,7 +423,7 @@ export function OutlineControls({
                   onChange({ tail: { ...outline.tail, crotchDepth: depth.toMm(v) } });
                 }
               }}
-              note={diamondDepthClamped ? 'Clamped to 2" less than Tail Block' : undefined}
+              note={diamondDepthClamped ? diamondDepthClampNote(system) : undefined}
             />
           );
         })()}

@@ -268,7 +268,7 @@ export function RockerEditor({
               Rocker &amp; Foil
             </div>
             <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
-              Pick a real blank, slide your board along it, and read the rocker and foil off the foam.
+              Set thickness, pick a blank, and dial in rocker and foil.
             </div>
             <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">
               {boardLine(outline.length, outline.widePointWidth, system)}

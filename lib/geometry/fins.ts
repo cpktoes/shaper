@@ -55,6 +55,19 @@ import { formatDim, formatDimBare, formatMarkBare } from "./measure-display";
 import { type Mm, inchesToMm, mm, mmToInches, type MeasureFamily, type UnitsSystem } from "./units";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS, type ToeAimTableRowKey } from "./toe-aim-tables";
 
+/** What the twin pair is called wherever it is named: the key, the DATA group and the FINS Advanced
+ * heading. */
+const TWIN_PAIR_NAME = "Main Twins";
+
+/**
+ * The heading over the forward fins block on FINS Advanced. A Twin's template carries no forward
+ * section label of its own (the prototype's fixtures pin that as empty), so the twin pair's name
+ * completes the heading; every other setup uses the label its result carries.
+ */
+export function forwardFinsHeading(finSetup: FinSetup, forwardSectionLabel: string): string {
+  return `Forward Fins — ${finSetup === "twin" ? TWIN_PAIR_NAME : forwardSectionLabel}`;
+}
+
 export type FinSetup = "single" | "twin" | "thruster" | "2plus1" | "quad";
 export type ThrusterFrontModel = "proportional" | "basic" | "mckeeSB" | "mckeeGun";
 export type QuadRearModel = "basic" | "basicOffRail" | "mckeeSB" | "mckeeLB";
@@ -963,7 +976,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   }
   if (hasForwardSection) {
     legend.push({
-      label: isTwoPlusOne ? "Side Bites" : isTwin ? "Main Twins" : "Front",
+      label: isTwoPlusOne ? "Side Bites" : isTwin ? TWIN_PAIR_NAME : "Front",
       baseLength: adv.baseLenForward,
       dash: "8 4",
     });
@@ -999,7 +1012,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     });
   }
   if (hasForwardSection) {
-    const label = isTwoPlusOne ? "Front Fins (Side Bites)" : isTwin ? "Front Fins (Main Twins)" : "Front Fins";
+    const label = isTwoPlusOne ? "Front Fins (Side Bites)" : isTwin ? `Front Fins (${TWIN_PAIR_NAME})` : "Front Fins";
     const offTail = isTwoPlusOne ? sideFinal : isTwin ? mainOffTail : frontFinal;
     const offRail = isTwoPlusOne ? activeSideOffRail : isTwin ? mainOffRail : frontOffRail;
     sections.push({
@@ -1183,6 +1196,14 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
  */
 export function finRoundingGrain(system: UnitsSystem): string {
   return system === "metric" ? "millimetre" : '1/16"';
+}
+
+/**
+ * The italic aside beside the DATA tab's Full Spread row, naming the grain the numbers round to in
+ * the shaper's own system: `1/16"` in Imperial, `millimetre` in Metric.
+ */
+export function fullSpreadRoundingAside(system: UnitsSystem): string {
+  return `(*Full spread may be >2x due to ${finRoundingGrain(system)} rounding)`;
 }
 
 /**

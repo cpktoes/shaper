@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-17 — fast task 172: RAILS' View Full Sized popup widened to fit the true-size rail on a computer
+Last activity: 2026-10-17 — fast task 174: ROCKER's subtitle, imported-details line and Center Thickness note, from the founder's copy-edit canvas
 
 ## Performance Metrics
 
@@ -398,6 +398,9 @@ Recent decisions affecting current work:
 | 170 | The Customize Rocker popup's tail Bend starts slider runs centre to tail, left to right, the way the drawing lies — thumb right pushes the bend toward the tail (the founder, 2026-10-17, after their signed-in check of quick 261016-mkb passed) | 2026-10-17 | 07e12c59 | fast (no directory) |
 | 171 | The Customize Rocker popup's drawing gets a heading saying whose figures it carries: Blank Dimensions with Show my board off, Your Board's Dimensions with it on (the founder, 2026-10-17) | 2026-10-17 | 39ef96bc | fast (no directory) |
 | 172 | RAILS' View Full Sized popup sizes itself to the true-size rail on a computer (8.69 in = 835 px; it was capped at 768 and scrolled sideways), capped at 95vw; phones unchanged (the founder, 2026-10-17: "Tail full size popup needs to be wider") | 2026-10-17 | cc1b49c9 | fast (no directory) |
+| 261017-sru | Eight small wording faults on the design screens, found while building the copy-edit canvas: "center" spelled one way everywhere (Customize Rocker, the wing position hint, the printed template's center mark); FINS MODEL INFO reads "can be fine-tuned"; the RAILS footnote reads "how rail shapes affect"; a Twin's Advanced heading reads "Forward Fins — Main Twins"; one name per rail mark ("Rail Mark 1", "Deck Mark 1", "Deck Mark 3", "Rail Tuck 1") and "Toe-In" on the FINS sliders; the diamond-tail clamp note, the Paper Saver's width and the Full Spread note read in Metric for a Metric shaper; a failed Remove on a saved blank says remove, not save; and the closed Board Length boxes on TEMPLATE, VOLUME and FINS read 6' and 0" like their lists | 2026-10-17 | 67925da0 | [261017-sru-fix-eight-small-wording-faults-on-the-de](./quick/261017-sru-fix-eight-small-wording-faults-on-the-de/) |
+| 173 | TEMPLATE, from the founder's copy-edit canvas: the Width slider gets Thin / Thick hints under its ends, and the wing's "Run along the stringer" slider is called "Vertical run"; TEMPLATE desktop picture re-taken; the wing test's first visit to FINS waits up to 60 s for the dev server to build it | 2026-10-17 | 24152e2c | fast (no directory) |
+| 174 | ROCKER, from the founder's copy-edit canvas: subtitle "Set thickness, pick a blank, and dial in rocker and foil.", the line under it reads "TEMPLATE details are imported:", and the Center Thickness note is gone; ROCKER desktop picture re-taken | 2026-10-17 | 5802d3d7 | fast (no directory) |
 
 ## Deferred Items
 
