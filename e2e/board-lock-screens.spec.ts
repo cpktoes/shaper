@@ -266,12 +266,21 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     const controls = page.locator("[data-design-controls-scroll]");
     await expectGreyedScreen(page, controls);
 
-    // Viewing still works: Show Construction ticks, and the drawing has no grab points.
-    const construction = controls.getByRole("checkbox", { name: /Show Drag Points/ });
-    await expect(construction).not.toHaveAttribute("data-disabled", /.*/);
-    const before = await construction.getAttribute("aria-checked");
-    await construction.click();
-    await expect(construction).not.toHaveAttribute("aria-checked", before ?? "");
+    // Viewing still works through the drawing's toolbar (quick 261018-e6w, R4): the drag-points and
+    // fin-placement buttons only change what is drawn, so a locked board keeps both usable — and the
+    // drawing has no grab points either way.
+    const dragPoints = page.getByRole("button", { name: "Hide drag points" });
+    await expect(dragPoints).toBeEnabled();
+    await expect(dragPoints).toHaveAttribute("aria-pressed", "true");
+    await dragPoints.click();
+    const dragPointsOff = page.getByRole("button", { name: "Show drag points" });
+    await expect(dragPointsOff).toHaveAttribute("aria-pressed", "false");
+    await dragPointsOff.click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
+    const finPlacement = page.getByRole("button", { name: "Show fin placement" });
+    await expect(finPlacement).toBeEnabled();
+    await finPlacement.click();
+    await expect(page.getByRole("button", { name: "Hide fin placement" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("[data-drag-target]")).toHaveCount(0);
 
     await pressUnlock(page);

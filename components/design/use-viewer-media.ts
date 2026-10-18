@@ -5,13 +5,13 @@
  * `components/auth/sign-in-banner.tsx` already uses for its own browser-only read: a subscribe
  * function, a client snapshot, and a fixed server snapshot, so the server render stays
  * deterministic and the client corrects itself on the very next render after hydration — no
- * hydration-mismatch warning, at the cost of the on-by-default construction overlay or the
- * board's orientation potentially settling one frame after hydration on a touch device (the board
- * itself is never late).
+ * hydration-mismatch warning, at the cost of the board's orientation potentially settling one
+ * frame after hydration on a touch device (the board itself is never late). (TEMPLATE's drag points
+ * no longer read the pointer: since 2026-10-18, quick 261018-e6w, they start on for everyone.)
  *
  * This is the ONE sanctioned use of a JavaScript media query in this phase, and only this one: it
- * drives React *state* — which way the board faces, whether the construction overlay starts on —
- * that cannot be expressed as a CSS variant. The stacked-versus-desktop LAYOUT switch stays
+ * drives React *state* — which way the board faces, how big a control draws, which Board Rack the
+ * home page shows — that cannot be expressed as a CSS variant. The stacked-versus-desktop LAYOUT switch stays
  * CSS-only — the `max-shell`/`shell` custom variants declared directly in `app/globals.css`, a
  * single width test (D-10, 10-SWEEP-2.md, 2026-09-11: the shaper's own decision, reverting a
  * width-and-height version 10-05 tried and withdrew) — and this standing rule is unchanged by any
@@ -72,9 +72,10 @@ const SHORT_SCREEN_QUERY = "(max-height: 500px)";
 
 /**
  * True on a touch (coarse) pointer device — never for a desktop mouse, at any viewport width.
- * Server snapshot: `false`, matching desktop's own off-by-default behaviour so a shaper never
- * sees the construction overlay or touch sizing flash on before settling to whichever the real
- * pointer type turns out to be.
+ * Server snapshot: `false`, matching a computer's behaviour so a shaper never sees touch sizing
+ * flash on before settling to whichever the real pointer type turns out to be. The pointer still
+ * decides the board's orientation, touch sizing and the Board Rack; it no longer decides TEMPLATE's
+ * drag points, which start on for everyone since 2026-10-18.
  */
 export function useCoarsePointer(): boolean {
   return useMediaQueryMatch(COARSE_POINTER_QUERY, false);

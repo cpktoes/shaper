@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { GhostIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PrinterIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
@@ -36,6 +36,24 @@ type TemplateTab = "viewer" | "wings";
  */
 let finPlacementShownThisVisit = false;
 
+function subscribeNever() {
+  return () => {};
+}
+
+/**
+ * False in the server's HTML and on the very first client render, true from the next render on —
+ * "the page has woken up". A `useSyncExternalStore` with a subscription that never fires: React
+ * hydrates with the server snapshot, then re-renders at once with the client one. Used to bring
+ * the drag points on one render after hydration (see the D-02 block in `OutlineEditor`).
+ */
+function useAfterHydration(): boolean {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+}
+
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
  * instead of owning it locally — this screen is one of four views onto a single board design.
@@ -61,14 +79,13 @@ export function OutlineEditor() {
    * button writes to and what a fine pointer displays unchanged (D-10); on a coarse pointer
    * `boardOrientation` below ignores it entirely in favour of the device's own orientation. */
   const [orientation, setOrientation] = useState<ViewerOrientation>("vertical");
-  /** D-02's construction-overlay default, as an explicit override rather than the overlay's own
-   * on/off flag: `null` means "no explicit choice yet, use the pointer-driven default";
+  /** The drag points' default, as an explicit override rather than the overlay's own on/off flag:
+   * `null` means "no explicit choice yet, use the default (on, once the page has woken up)";
    * `true`/`false` means the shaper (or wide view, below) has said so directly. Reading
-   * `showConstruction` as `constructionOverride ?? coarsePointer` — a plain computed value, never
+   * `showConstruction` as `constructionOverride ?? afterHydration` — a plain computed value, never
    * its own piece of state a render-time or effect setState call would have to keep in sync — is
-   * what lets a touch device start with the overlay on without ever calling setState outside an
-   * event handler (this codebase's lint config rejects both; a render-time setState caused a real
-   * bug in plan 02-05). */
+   * what lets the overlay start on without ever calling setState outside an event handler (this
+   * codebase's lint config rejects both; a render-time setState caused a real bug in plan 02-05). */
   const [constructionOverride, setConstructionOverride] = useState<boolean | null>(null);
   /** Wide view hides the `aside` below so `main` gets the full window width. Also local view
    * state, not design data, deliberately not persisted — a reload always comes back with the
@@ -134,12 +151,17 @@ export function OutlineEditor() {
       : "horizontal"
     : orientation;
 
-  // D-02: the construction overlay — the five drag targets, their guide chords and knot dots —
-  // starts ON for a touch device instead of desktop's off-by-default-behind-the-toggle, and stays
-  // whatever the shaper last chose once they have tapped the toggle at least once. Because the
-  // server cannot know the pointer type, `coarsePointer` (and so `showConstruction`) may flip on
-  // one render after hydration — the board itself is never late.
-  const showConstruction = constructionOverride ?? coarsePointer;
+  // D-02: the drag points — the five drag targets, their guide chords and knot dots — start ON on
+  // every device (the founder, 2026-10-18: "Default = on (shaded)"; until then they were on only
+  // for a touch pointer and a computer kept them behind the toggle). Once the shaper presses the
+  // drawing's button they stay whatever it last said: screen state, never saved, and — unlike fin
+  // placement — not carried across screens, so coming back to TEMPLATE shows them again. They come
+  // on one render after hydration, never in the server's HTML, because a WebKit browser (every
+  // iPhone and Mac Safari) computes a drag point's position a hair differently from the server in
+  // the last digit and React would report a hydration mismatch (measured 2026-10-18). The board
+  // itself is never late.
+  const afterHydration = useAfterHydration();
+  const showConstruction = constructionOverride ?? afterHydration;
 
   function handleToggleConstruction() {
     setConstructionOverride(!showConstruction);

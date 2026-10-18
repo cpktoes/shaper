@@ -240,8 +240,8 @@ test.describe("phone orientation and the construction overlay default", () => {
     // D-05/D-11: on a phone, turning the phone does the rotate button's job.
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeHidden();
 
-    // D-02: the construction overlay (and so its drag targets) is on by default on a touch
-    // device — present the moment the screen opens, before any tap.
+    // D-02: the construction overlay (and so its drag targets) is on by default on every device
+    // (a computer too since quick 261018-e6w) — present the moment the screen opens, before any tap.
     const dragTargets = page.locator("[data-drag-target]");
     await expect(dragTargets.first()).toBeVisible();
     expect(await dragTargets.count()).toBeGreaterThan(0);
@@ -460,13 +460,14 @@ test.describe("phone controls — every slider sits in its own section", () => {
     const widthLabel = page.getByText(/^Width — /);
     await expect(widthLabel).toBeVisible();
 
-    // It sits ABOVE the Settings checkbox at the bottom of the sidebar — proof it is back in its
-    // own section instead of pushed to the end of the list.
-    const settingsRow = page.getByText("Show Drag Points");
+    // It sits ABOVE the Tail Angle row, down near the bottom of the sidebar (the Settings block that
+    // used to end it went in quick 261018-e6w) — proof it is back in its own section instead of pushed to
+    // the end of the list.
+    const tailAngleRow = page.getByText(/^Tail Angle — /);
     const widthBox = await widthLabel.boundingBox();
-    const settingsBox = await settingsRow.boundingBox();
-    if (!widthBox || !settingsBox) throw new Error("missing bounding box");
-    expect(widthBox.y).toBeLessThan(settingsBox.y);
+    const tailAngleBox = await tailAngleRow.boundingBox();
+    if (!widthBox || !tailAngleBox) throw new Error("missing bounding box");
+    expect(widthBox.y).toBeLessThan(tailAngleBox.y);
 
     await page.goto("/design/rocker");
 
@@ -524,20 +525,19 @@ test.describe("desktop shell — unchanged", () => {
     await expect(page.locator("[data-screen-tile]")).toHaveCount(0);
   });
 
-  test("the rotate button is visible and the drag targets stay hidden until the construction toggle is pressed", async ({
-    page,
-  }) => {
+  test("the rotate button is visible and the drag targets show from the start", async ({ page }) => {
     await page.goto("/design/outline");
 
-    // PHON-05: desktop's rotate button and off-by-default overlay are exactly what they are
-    // today — unaffected by this plan's touch-only defaults.
+    // PHON-05: desktop's rotate button is exactly what it is today. The computer's overlay used to
+    // start off behind the toggle; it starts on now, by the founder's call of 2026-10-18 (quick
+    // 261018-e6w), the same as a phone's.
     await expect(page.getByRole("button", { name: /^Rotate the board/ })).toBeVisible();
 
     const dragTargets = page.locator("[data-drag-target]");
-    expect(await dragTargets.count()).toBe(0);
-
-    await page.getByRole("button", { name: "Show drag points" }).click();
     await expect(dragTargets.first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Hide drag points" }).click();
+    await expect(dragTargets).toHaveCount(0);
   });
 
   // 260909-h3g: the guard on this change's central promise — pointer, not width, is what was

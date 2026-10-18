@@ -80,7 +80,10 @@ export function WingsPanel({
         <ViewerToolbarButton
           onClick={onToggleConstruction}
           pressed={showConstruction}
-          label={showConstruction ? "Hide drag points" : "Show drag points"}
+          // The "(the wing's too)" note the WINGS sidebar's tick box carried (the founder's own
+          // words, quick 261017-vdh) lives on the button now that the tick box is gone (R3): here
+          // the drag points include the wings' grab points. The tooltip follows the label.
+          label={showConstruction ? "Hide drag points (the wing's too)" : "Show drag points (the wing's too)"}
         >
           <LocateFixedIcon className="size-6" />
         </ViewerToolbarButton>

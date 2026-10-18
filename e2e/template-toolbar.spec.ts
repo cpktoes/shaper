@@ -137,6 +137,94 @@ test.describe("TEMPLATE's fin-placement toolbar button", () => {
     await expect(show).toHaveAttribute("aria-pressed", "false");
   });
 
+  test("desktop: the drag points start on; Wide View forces them on and puts the shaper's choice back", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.goto("/design/outline");
+    // On from the start (the founder, 2026-10-18), one render after the page wakes up.
+    const hide = page.getByRole("button", { name: "Hide drag points" });
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-drag-target]")).toHaveCount(5);
+
+    // Off by the shaper's own press ...
+    await hide.click();
+    await expect(page.getByRole("button", { name: "Show drag points" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("[data-drag-target]")).toHaveCount(0);
+
+    // ... Wide View forces them on ...
+    await page.getByRole("button", { name: "Hide the sidebar for a wider view" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-drag-target]")).toHaveCount(5);
+
+    // ... and leaving it puts the shaper's choice (off) back.
+    await page.getByRole("button", { name: "Show the sidebar" }).click();
+    await expect(page.getByRole("button", { name: "Show drag points" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("[data-drag-target]")).toHaveCount(0);
+  });
+
+  test("desktop: on the WINGS tab the drag-points button names the wing's grab points too", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop project only");
+
+    await page.goto("/design/outline");
+    await addFirstWing(page);
+    const button = page.getByRole("button", { name: "Hide drag points (the wing's too)" });
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("iphone: TEMPLATE wakes up with the drag points on and no hydration warning (WebKit)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "WebKit's own rounding of a drag point's position");
+
+    const hydrationMessages: string[] = [];
+    page.on("console", (message) => {
+      if (/hydrat/i.test(message.text())) hydrationMessages.push(message.text());
+    });
+    page.on("pageerror", (error) => {
+      if (/hydrat/i.test(error.message)) hydrationMessages.push(error.message);
+    });
+
+    await page.goto("/design/outline");
+    await expect(page.locator("[data-drag-target]").first()).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(hydrationMessages).toEqual([]);
+  });
+
+  test("desktop and iphone: neither sidebar has a Settings heading or the two old tick boxes; the WINGS fin note sits 20px under the block before it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "android", "desktop and iphone cover the computer and the stacked phone layout");
+
+    const oldBoxes = page.getByRole("checkbox", { name: /Show Drag Points|Show fin placement/ });
+    const settingsHeading = page.getByText("Settings", { exact: true });
+
+    await page.goto("/design/outline");
+    await expect(page.getByText("Template Builder")).toBeVisible();
+    await expect(oldBoxes).toHaveCount(0);
+    await expect(settingsHeading).toHaveCount(0);
+
+    await addFirstWing(page);
+    await expect(page.getByRole("tab", { name: "WINGS · 1" })).toBeVisible();
+    await expect(oldBoxes).toHaveCount(0);
+    await expect(settingsHeading).toHaveCount(0);
+
+    // Nothing else moved: the removed block's own gap (gap-5, 20px) now sits between the Add-wing
+    // block and the fin note, which is the sidebar's last paragraph.
+    const note = page.locator("[data-wing-fin-note]");
+    await expect(note).toBeVisible();
+    const gap = await note.evaluate((el) => {
+      const previous = el.previousElementSibling;
+      if (!previous) return null;
+      return el.getBoundingClientRect().top - previous.getBoundingClientRect().bottom;
+    });
+    expect(gap).not.toBeNull();
+    expect(Math.abs((gap ?? 0) - 20)).toBeLessThanOrEqual(1);
+  });
+
   test("phones: the VIEWER toolbar reads Print Template, the drag-points button, then Show fin placement; the WINGS toolbar reads the drag-points button, whole board, then fin placement", async ({
     page,
   }, testInfo) => {
