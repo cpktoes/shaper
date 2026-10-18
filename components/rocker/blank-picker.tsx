@@ -17,17 +17,19 @@
  * - With a blank: a small drawing of the board's own blank (outline over rocker), its name and
  *   litres, its maker · length · center line, and CHANGE BLANK ›. Drawn from the board's own copy,
  *   so it is there the moment the board loads, even when the catalogue is not. Beneath it, exactly as
- *   before: the fit flag (`blank-flag.tsx`) and Remove This Blank with its sentence.
+ *   before: the fit flag (`blank-flag.tsx`) and Remove This Blank, which opens a confirm popup
+ *   (`remove-blank-dialog.tsx`, quick 261018-ejc) carrying the sentence that used to sit under it.
  * - With none: PICK A BLANK, a line like "196 blanks long enough for this board, 194 fit" (the makers
  *   ticked in Settings), and BROWSE BLANKS ›.
- * Under it, only when a maker is unticked in Settings, the "Showing … only" note (P-5); and last, in
- * every state, the founder's catalog note.
+ * Under it, only when a maker is unticked in Settings, the "Showing … only" note (P-5). The founder's
+ * catalog note no longer sits here: it is at the foot of the DATASHEET and of the PICK A BLANK popup
+ * (quick 261018-ejc).
  *
  * The list is judged ONCE here (`useBlankList`) and handed to both the button's counts and the popup,
  * so opening the popup never re-judges the catalogue. The popup's open state and its search are held
  * here, so the search, the ranges, Starred only and the sort survive closing and reopening during the
  * visit (D-13). Nothing here ever clears the pick
- * on its own — only the shaper's own tap on Remove This Blank or on another blank does (D-08).
+ * on its own — only the shaper's own tap on Remove Blank in that popup, or on another blank, does (D-08).
  *
  * Every number goes through `lib/geometry/measure-display.ts` by way of the sentences in
  * `lib/geometry/blank-reasons.ts` (CLAUDE.md Rule 2). Catalogue text is rendered as React text only
@@ -46,7 +48,7 @@ import { useAppSettings } from "@/components/app-settings-provider";
 import { SavedBlanksProvider, useSavedBlanks } from "@/components/saved-blanks-provider";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
-import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
+import { blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes } from "@/lib/geometry/blank-fit";
@@ -57,6 +59,7 @@ import { blankRowMeta, blankRowVolume, emptyListMessage, pickBlankSummary } from
 import { cn } from "@/lib/utils";
 import { BlankThumbnail } from "./blank-card";
 import { BlankFlag } from "./blank-flag";
+import { RemoveBlankDialog } from "./remove-blank-dialog";
 import { BlankPickerDialog, type BlankBrowseState } from "./blank-picker-dialog";
 import { CustomizeRockerButton, CustomizeRockerSection } from "./customize-rocker";
 import { useBlankList, useCenterFloorRules } from "./use-blank-list";
@@ -249,19 +252,6 @@ function JudgedPicker({
   );
 }
 
-/**
- * The founder's catalog note (quick 261006-fom, D-05, P-5): shown ONCE, at the very end of the
- * picker, in every state, because a picked blank's numbers come from the same catalogs. Small muted
- * type, the footer's size.
- */
-function BlankCatalogNote() {
-  return (
-    <p data-blank-catalog-note className="text-[11px] leading-snug text-surf-ink-muted">
-      {BLANK_CATALOG_NOTE}
-    </p>
-  );
-}
-
 export function BlankPicker({
   catalog,
   savedBlanks,
@@ -282,7 +272,18 @@ export function BlankPicker({
   const [openRange, setOpenRange] = useState<RangeKind | null>(null);
   const browse: BlankBrowseState = { filters, setFilters, sort, setSort, openRange, setOpenRange };
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  // Remove This Blank asks first (quick 261018-ejc): the confirm popup's open state, the link that
+  // opens it, and whether it closed because the blank was removed.
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const removeLinkRef = useRef<HTMLButtonElement | null>(null);
+  const removedRef = useRef(false);
   const makersNote = blankMakersNote(hidden);
+
+  // Where focus goes when the confirm popup closes: back on the Remove This Blank link, or — once the
+  // blank is gone and the link with it — on the BLANK button, which now reads Pick a Blank.
+  function removeFinalFocus() {
+    return removedRef.current ? buttonRef.current : removeLinkRef.current;
+  }
 
   // Change Fit Rules (E1, P-3): the popup closes itself first and calls this once it has gone —
   // two modal dialogs must never be open at once.
@@ -315,19 +316,32 @@ export function BlankPicker({
           <BlankFlag catalog={catalog} />
           <div className="flex flex-wrap gap-2">
             <button
+              ref={removeLinkRef}
               type="button"
               disabled={locked}
-              onClick={removeBlank}
+              onClick={() => {
+                removedRef.current = false;
+                setRemoveOpen(true);
+              }}
               className={cn(TEXT_LINK_CLASS, "text-surf-ink-muted disabled:cursor-default disabled:opacity-40")}
             >
               Remove This Blank
             </button>
           </div>
-          <div className={cn("text-xs text-surf-ink-muted", locked && "opacity-40")}>
-            Removing it keeps the rocker and foil at the five stations and re-draws the curve through them, for you to set by hand.
-          </div>
         </>
       )}
+
+      {/* Outside the blank-only block, so the removal can never unmount it mid-close. */}
+      <RemoveBlankDialog
+        open={removeOpen}
+        onOpenChange={setRemoveOpen}
+        onConfirm={() => {
+          removedRef.current = true;
+          removeBlank();
+          setRemoveOpen(false);
+        }}
+        finalFocus={removeFinalFocus}
+      />
 
       {/* Only when a maker is unticked in the settings menu (P-5) — with all ticked nothing is drawn. */}
       {makersNote !== null && (
@@ -335,7 +349,6 @@ export function BlankPicker({
           {makersNote}
         </div>
       )}
-      <BlankCatalogNote />
     </div>
   );
 }

@@ -6,7 +6,7 @@
  * the placement slider and blank picker live."
  *
  * - VIEWER: everything, exactly as before.
- * - DATASHEET: Center Thickness (INPUTS' typed box and slider) and the two tip thicknesses — the Rocker &
+ * - DATASHEET: Center Thickness (INPUTS' slider) and the two tip thicknesses — the Rocker &
  *   Foil grid's Tip thickness cells with no blank, Foil's Nose Tip and Tail Tip rows with one. The
  *   DATASHEET table's own typed cells are not the sidebar and keep working.
  * - TOP VIEW (small screens only — the tab exists only there): the whole BLANK section and the Placement
@@ -32,7 +32,7 @@ export type RockerTab = "viewer" | "datasheet" | "topView";
 
 /** One flag per group of sidebar controls: true means live, false means dimmed and inert. */
 export interface RockerLiveControls {
-  /** INPUTS' Center Thickness: its typed box and slider (the INPUTS heading and TEMPLATE line are text). */
+  /** INPUTS' Center Thickness slider (the INPUTS heading and TEMPLATE line are text). */
   center: boolean;
   /** The whole BLANK section: heading, search, list, Show all, Change / Keep, Remove, Switch to This Blank. */
   blank: boolean;

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { blankPicker, openBlankPicker, openRocker } from "./helpers/blank-picker";
+import { blankPicker, centerThicknessSlider, openBlankPicker, openRocker } from "./helpers/blank-picker";
 import { appSettingsDialog, appSettingsRow, openAppSettings, openSettingsMenu, settled } from "./helpers/settings";
 
 /**
@@ -236,10 +236,14 @@ test.describe("App Default Settings — one row in the menu, one pop-up", () => 
     await expect(dialog).toBeHidden();
 
     await expect(page.locator("[data-blank-makers-note]")).toHaveText("Showing Arctic Foam only — change in Settings");
-    const field = page.getByRole("textbox", { name: "Center Thickness" });
-    await field.click();
-    await field.fill("5");
-    await field.press("Enter");
+    // Center Thickness is a slider only (quick 261018-ejc): End is its top, the 5" the box was given.
+    const centerSlider = centerThicknessSlider(page);
+    await expect
+      .poll(() => centerSlider.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+      .toBe(true);
+    await centerSlider.focus();
+    await page.keyboard.press("End");
+    await expect(page.locator("[data-rocker-inputs]")).toContainText('Center Thickness — 5"');
     // Every Arctic blank is listed, greyed — none is thick enough at a 5" center — so the popup shows
     // the "No blank is thick enough" message above the cards (quick 261015-ve9, P-3). Its Change Fit
     // Rules closes the popup first, then opens App Default Settings.

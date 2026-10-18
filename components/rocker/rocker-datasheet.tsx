@@ -28,7 +28,8 @@
  *   tip's thinning starts, in from that tip, under the NOSE TIP and TAIL TIP columns (the middle three
  *   empty), read off the profile's resolved starts and never in warning ink. Under the table: the
  *   catalogue footnote, the Foam Off footnote, a dash footnote when any BLANK cell is a dash, and
- *   one line per catalogue flag on the blank, verbatim.
+ *   one line per catalogue flag on the blank, verbatim; and last, in both states, the makers'
+ * catalogue note (moved from the sidebar, quick 261018-ejc).
  *
  * Typed cells are the app's one typed measurement control, `MeasureField`, in bare mode (D-12),
  * with its bounds taken from the matching slider's `measureSlider` range through `typedFieldBounds`
@@ -45,6 +46,7 @@
 import type { ReactNode } from "react";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
+import { BLANK_CATALOG_NOTE } from "@/lib/blanks/vendors";
 import { formatThinningStartBare } from "@/lib/geometry/blank-reasons";
 import { CATALOG_STATION_LABELS, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, type FoilStationKey } from "@/lib/geometry/foil";
@@ -272,8 +274,11 @@ export function RockerDatasheet({
           same width as the fade, so the fade lands on that room and never dims the TAIL TIP
           column — on a computer, where nothing scrolls, and on a phone scrolled to the end —
           while mid-scroll it still covers whatever runs on past the edge (fast task, 2026-10-03).
-          The minimum width grew by the same 24px, so a phone's columns keep their 540px. */}
-      <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
+          The minimum width grew by the same 24px, so a phone's columns keep their 540px. `shrink-0`:
+          the sheet is a scrolling column, and a scroller as a flex child may otherwise be squeezed to
+          nothing when the content under it (the catalogue note, quick 261018-ejc) makes the column
+          overflow — the column scrolls instead. */}
+      <div className="shrink-0 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
         <div className="min-w-[564px] pr-[24px]">
           {header}
 
@@ -411,6 +416,11 @@ export function RockerDatasheet({
           ))}
         </div>
       )}
+
+      {/* The makers' catalogue note, last in both states (quick 261018-ejc; moved from the sidebar). */}
+      <p data-blank-catalog-note className="text-[11px] leading-snug text-surf-ink-muted">
+        {BLANK_CATALOG_NOTE}
+      </p>
     </div>
   );
 }

@@ -20,8 +20,8 @@
 export const KNOWN_BLANK_VENDORS = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"] as const;
 
 /**
- * The note at the end of ROCKER's blank picker (the founder's own sentence, 2026-10-06, quick
- * 261006-fom, D-05): where the numbers come from, that real blanks vary, and whose trademarks the
+ * The note at the foot of ROCKER's DATASHEET and of the PICK A BLANK popup (moved from the sidebar,
+ * quick 261018-ejc; the founder's own sentence, 2026-10-06, quick 261006-fom, D-05): where the numbers come from, that real blanks vary, and whose trademarks the
  * makers' names are. Deliberately the same whatever makers a shaper has switched off in Settings —
  * it is a notice about whose catalogs and trademarks these are, not a list of what is shown — and
  * the test checks it names every maker above, so a fifth maker fails it until the founder's note

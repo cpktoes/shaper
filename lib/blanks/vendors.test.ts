@@ -100,7 +100,7 @@ describe("catalogsPhrase", () => {
   });
 });
 
-describe("the catalog note under ROCKER's blank picker (quick 261006-fom, D-05)", () => {
+describe("the catalog note at the foot of ROCKER's DATASHEET and the Pick a Blank popup (quick 261006-fom, D-05; moved by quick 261018-ejc)", () => {
   it("is the founder's sentence, exactly", () => {
     expect(BLANK_CATALOG_NOTE).toBe(
       "Blank dimensions are from manufacturers' published catalogs and may vary in production. Verify before you cut. US Blanks, Arctic Foam, Marko Foam and Millennium Foam are trademarks of their owners.",

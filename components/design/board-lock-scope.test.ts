@@ -24,6 +24,8 @@ const LOCKABLE_FILES = [
   "components/rocker/customize-rocker-dialog.tsx",
   "components/rocker/custom-rocker-rows.tsx",
   "components/rocker/custom-rocker-drawing.tsx",
+  // Quick 261018-ejc: the Remove This Blank popup — its Cancel is view-only, its Remove Blank tied to the lock.
+  "components/rocker/remove-blank-dialog.tsx",
   "components/rails/rail-controls.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",

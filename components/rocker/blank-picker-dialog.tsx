@@ -15,7 +15,8 @@
  * is thick enough, the old E2 / E3 message ABOVE the greyed cards (P-3); then ★ STARRED (when any
  * starred blank shows, whatever the sort — D-06), FITS THIS BOARD and WON'T FIT THIS BOARD. A starred
  * blank shows only under ★ STARRED, greyed with its reason when it doesn't fit (P-10). A greyed card's
- * reason is the fit flag's own sentence (`blankReason`).
+ * reason is the fit flag's own sentence (`blankReason`). Last, at the foot of the list in every state,
+ * the makers' catalogue note (the founder, 2026-10-18, quick 261018-ejc).
  *
  * The rows are built, filtered, sorted and grouped by the pure functions in
  * `lib/geometry/blank-browse.ts`, never here, and never re-judged: the list itself is judged ONCE, by
@@ -50,7 +51,7 @@ import { useStarredBlanks } from "@/components/starred-blanks-provider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
-import { catalogsPhrase } from "@/lib/blanks/vendors";
+import { BLANK_CATALOG_NOTE, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import {
   browseFiltersActive,
@@ -408,6 +409,13 @@ export function BlankPickerDialog({ open, onOpenChange, buttonRef, state, browse
               </section>
             );
           })}
+
+          {/* The makers' catalogue note, last in every state of the list (quick 261018-ejc, the founder
+              2026-10-18). Appended to the scroll, it only lengthens it: the ✕, the filter bar and the
+              card grid keep their place and width on every screen. */}
+          <p data-blank-catalog-note className="text-[11px] leading-snug text-surf-ink-muted">
+            {BLANK_CATALOG_NOTE}
+          </p>
         </div>
       </DialogContent>
     </Dialog>

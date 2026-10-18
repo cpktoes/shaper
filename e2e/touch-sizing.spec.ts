@@ -101,10 +101,11 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     await setMetricUnits(page);
   });
 
-  // ROCKER joined this loop in plan 11-12 (Phase 11): its Center Thickness box, the blank search
-  // box and every slider it shows with no blank picked. It has no checkbox rows, so that one check
-  // is generated for TEMPLATE and VOLUME only; the blank list, the text links and the DATASHEET's
-  // typed cells are measured in the ROCKER-only test further down, once a blank is picked.
+  // ROCKER joined this loop in plan 11-12 (Phase 11): its sliders (Center Thickness included) and
+  // buttons with no blank picked. It has no checkbox rows and, since quick 261018-ejc, no typed field
+  // in its sidebar, so those two checks are generated for TEMPLATE and VOLUME only; the blank list, the
+  // text links and the DATASHEET's typed cells are measured in the ROCKER-only test further down, once a
+  // blank is picked.
   for (const path of ["/design/outline", "/design/volume", "/design/rocker"] as const) {
     test(`${path}: every visible slider thumb's tap target is at least 44x44`, async ({ page }) => {
       await page.goto(path);
@@ -124,29 +125,33 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       expect(checked).toBeGreaterThan(0);
     });
 
-    test(`${path}: every visible typed measure field is at least 44px tall with 16px text`, async ({
-      page,
-    }) => {
-      await page.goto(path);
-      // VOLUME's typed Board Length field only shows for the quick estimate (quick 261017-vdh).
-      if (path === "/design/volume") await untickImportDesignedBoard(page);
-      const fields = page.locator('[data-slot="input"]');
-      await expect(fields.first()).toBeVisible();
+    // ROCKER has no typed field in its sidebar any more (quick 261018-ejc): its only typed fields are the
+    // DATASHEET's cells, which the ROCKER-only test further down measures at 44px and 16px.
+    if (path !== "/design/rocker") {
+      test(`${path}: every visible typed measure field is at least 44px tall with 16px text`, async ({
+        page,
+      }) => {
+        await page.goto(path);
+        // VOLUME's typed Board Length field only shows for the quick estimate (quick 261017-vdh).
+        if (path === "/design/volume") await untickImportDesignedBoard(page);
+        const fields = page.locator('[data-slot="input"]');
+        await expect(fields.first()).toBeVisible();
 
-      let checked = 0;
-      for (const field of await fields.all()) {
-        if (!(await field.isVisible())) continue;
-        const box = await field.boundingBox();
-        if (!box) throw new Error("measure field is missing a bounding box");
-        expect(box.height).toBeGreaterThanOrEqual(44);
-        const fontSize = await field.evaluate((el) => getComputedStyle(el).fontSize);
-        // Exact string comparison (RESEARCH.md's own wording): a 15.5px field must fail, not
-        // round into a pass.
-        expect(fontSize).toBe("16px");
-        checked += 1;
-      }
-      expect(checked).toBeGreaterThan(0);
-    });
+        let checked = 0;
+        for (const field of await fields.all()) {
+          if (!(await field.isVisible())) continue;
+          const box = await field.boundingBox();
+          if (!box) throw new Error("measure field is missing a bounding box");
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          const fontSize = await field.evaluate((el) => getComputedStyle(el).fontSize);
+          // Exact string comparison (RESEARCH.md's own wording): a 15.5px field must fail, not
+          // round into a pass.
+          expect(fontSize).toBe("16px");
+          checked += 1;
+        }
+        expect(checked).toBeGreaterThan(0);
+      });
+    }
 
     test(`${path}: every visible default/icon button is at least 44x44`, async ({ page }) => {
       await page.goto(path);

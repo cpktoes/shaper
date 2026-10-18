@@ -10,10 +10,12 @@
  * INPUTS is not collapsible and has no tick box: ROCKER always uses the template, so it just says
  * which (the `TEMPLATE details are imported: …` line, `boardLine()`, moved here from under the
  * subtitle) and holds Center Thickness (R1, D-12), the board's ONE centre thickness, the same stored
- * `foil.center` RAILS and VOLUME read — a typed field on the label line and a slider, the Board Length
- * hand-rolled shape compacted to one line (the one raw `<Slider>` here, named in `slider-row.test.ts`'s
- * allowlist). Changing it re-judges the blank list and re-checks the picked blank; it never clears the
- * pick. The heading and the line are text and never dim; only the Center Thickness row is `Live`.
+ * `foil.center` RAILS and VOLUME read — one `SliderRow` with its value in its label (`Center Thickness —
+ * 2 1/2"`), no typed box (quick 261018-ejc, the founder 2026-10-18: "doesn't need a type in box, just the
+ * slider"). An exact centre is typed in the DATASHEET table's Center cell, so ROCKER needs no entry in
+ * `slider-row.test.ts`'s allowlist. Changing it re-judges the blank list and re-checks the picked blank;
+ * it never clears the pick. The heading and the line are text and never dim; only the Center Thickness
+ * row is `Live`.
  *
  * BLANK (`blank-picker.tsx`) and BOARD ON BLANK (`board-on-blank.tsx`) read the store themselves.
  *
@@ -72,9 +74,7 @@
  */
 
 import { type ReactNode } from "react";
-import { MeasureField } from "@/components/design/measure-field";
-import { SliderRow, sliderValue } from "@/components/design/slider-row";
-import { Slider } from "@/components/ui/slider";
+import { SliderRow } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { SavedBlanksAccount } from "@/lib/saved-blanks-preference";
@@ -86,7 +86,6 @@ import {
   formatSignedMark,
   measureSlider,
   stationLabel,
-  typedFieldBounds,
 } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import {
@@ -408,8 +407,6 @@ export function RockerControls({
   const tail12ThicknessSlider = measureSlider(foil.tail12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   const tailTipThicknessSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   const centerSlider = measureSlider(foil.center, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
-  // The typed field's bounds in ITS own domain (whole millimetres in Metric, inches in Imperial).
-  const centerFieldBounds = typedFieldBounds(centerSlider, "mark", system);
   const view = blank ? sideProfile.blank : null;
   const live = liveControls(tab);
   const noTweak = !blank || (blank.nose12Offset === 0 && blank.tail12Offset === 0);
@@ -424,31 +421,16 @@ export function RockerControls({
         <div className="flex flex-col gap-3 pt-3">
           <div className="text-xs text-surf-ink-muted font-normal">{keepFiguresTogether(templateLine)}</div>
           <Live on={live.center}>
-            <div className={cn(locked && "opacity-40")}>
-              {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
-                  the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-sm text-surf-ink-muted font-normal">Center Thickness</span>
-                <MeasureField
-                  value={foil.center}
-                  onCommit={(next) => onChangeFoil({ center: next })}
-                  label="Center Thickness"
-                  family="mark"
-                  min={centerFieldBounds.min}
-                  max={centerFieldBounds.max}
-                  system={system}
-                />
-              </div>
-              <Slider
-                value={centerSlider.value}
-                min={centerSlider.min}
-                max={centerSlider.max}
-                step={centerSlider.step}
-                disabled={locked}
-                onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(sliderValue(v)) })}
-                className="slider-accent"
-              />
-            </div>
+            <SliderRow
+              label={`Center Thickness — ${formatMark(foil.center, system)}`}
+              value={centerSlider.value}
+              min={centerSlider.min}
+              max={centerSlider.max}
+              step={centerSlider.step}
+              sliderLabel="Center Thickness"
+              sliderValueText={formatMark(foil.center, system)}
+              onValueChange={(v) => onChangeFoil({ center: centerSlider.toMm(v) })}
+            />
           </Live>
         </div>
       </div>

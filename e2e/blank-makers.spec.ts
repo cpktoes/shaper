@@ -8,6 +8,7 @@ import {
   cardButton,
   closeBlankPicker,
   firstFittingCard,
+  nudgeCenterThickness,
   openBlankPicker,
   openRocker,
   pickedCard,
@@ -158,14 +159,6 @@ test.describe("Blank Makers — the tick toggles in App Default Settings", () =>
 
 /* -- the ROCKER blank popup: opened and picked through e2e/helpers/blank-picker.ts (quick 261015-ve9) -- */
 
-/** The page's first control: the board's one centre thickness, typed. */
-async function typeCenterThickness(page: Page, value: string) {
-  const field = page.getByRole("textbox", { name: "Center Thickness" });
-  await field.click();
-  await field.fill(value);
-  await field.press("Enter");
-}
-
 /** Opens App Default Settings, unticks one maker, and closes it with Done before the list is touched. */
 async function untickMaker(page: Page, vendor: string) {
   const group = await openBlankMakers(page);
@@ -200,6 +193,8 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
   });
 
   test("unticking a maker leaves its blanks out of the ROCKER list and says so", async ({ page }) => {
+    // Opens the full popup four times: on the iPhone profile under a busy machine that is ~30 s.
+    test.slow();
     await openRocker(page);
     const note = page.locator("[data-blank-makers-note]");
     await expect(note).toHaveCount(0);
@@ -261,7 +256,7 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
     await expect(pickedCard(page)).toContainText(vendor!);
 
-    await typeCenterThickness(page, "3 1/2");
+    await nudgeCenterThickness(page, 16, '3 1/2"');
     const flag = page.locator("[data-blank-flag]");
     await expect(flag).toContainText("This blank doesn't fit your board");
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
