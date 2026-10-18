@@ -30,10 +30,11 @@ import { inchesToMm, mm, type Mm } from "./units";
 
 // The tips step (Phase 14 D-01, D-03, D-14, D-27) proven on the stress set the research built —
 // every pickable blank, a board 2" shorter, four centres, slid to either end and centred — and again
-// on the boards the app can actually build. Every comparison is between the live steady taper and
-// today's 12" S-blend computed in this same test (`tipRule: "blend"`), against the tip settings and
-// the floor each board carries. The exception list is computed from the catalogue's own printed
-// thicknesses, never typed. 1/64", 1e-9 mm and FIT_EPSILON_MM are tolerances, not measured figures.
+// on the boards the app can actually build. Every check reads the live steady taper against the tip
+// settings and the floor each board carries (the comparisons with Phase 12's 12" blend were retired
+// with it after the Oct 10 showing, quick 261018-dvu). The exception list is computed from the
+// catalogue's own printed thicknesses, never typed. 1/64", 1e-9 mm and FIT_EPSILON_MM are
+// tolerances, not measured figures.
 
 const CATALOG = readSeedCatalog();
 const ALL = buildStressSet(CATALOG, prepareBlank);
@@ -110,16 +111,13 @@ function stepRiseAlong(onBlank: BoardOnBlank, walk: readonly number[]): number {
   return rise;
 }
 
-/** One stress board, measured once under the live rule (Automatic) and under today's 12" blend. */
+/** One stress board, measured once under the live rule (Automatic). */
 interface Measured {
   entry: StressCase;
   /** Where a sample is thinner than that half's own tip setting, or null. */
   thinnerThanTip: string | null;
   /** Where a sample is under the 1/4" floor, or null. */
   underFloor: string | null;
-  /** Where the steady board pokes out of the blank and the blend board does not, or null. */
-  newlyPokes: string | null;
-  fitsBlend: boolean;
   fitsSteady: boolean;
   /** The largest rise walking from the centre to either tip (Automatic). */
   rise: number;
@@ -138,12 +136,10 @@ function measureAll(): Measured[] {
     const { prepared, board, placement } = entry;
     const L = board.length;
     const steady = boardOnBlank(prepared, board, placement);
-    const blend = boardOnBlank(prepared, { ...board, tipRule: "blend" }, placement);
     const samples = samplesOf(L);
 
     let thinnerThanTip: string | null = null;
     let underFloor: string | null = null;
-    let newlyPokes: string | null = null;
     for (const s of samples) {
       const t = steady.thicknessAt(s);
       if (thinnerThanTip === null) {
@@ -151,10 +147,6 @@ function measureAll(): Measured[] {
         if (s >= L / 2 && t < board.noseTip - EXACT_MM) thinnerThanTip = `${t} < nose tip ${board.noseTip} at ${s}`;
       }
       if (underFloor === null && t < MIN_FOIL_THICKNESS_MM - EXACT_MM) underFloor = `${t} at ${s}`;
-      const poke = (onBlank: BoardOnBlank) => Math.max(-onBlank.deckOffAt(s), -onBlank.bottomOffAt(s));
-      if (newlyPokes === null && poke(steady) > FIT_EPSILON_MM && !(poke(blend) > FIT_EPSILON_MM)) {
-        newlyPokes = `${poke(steady)} at ${s} (blend ${poke(blend)})`;
-      }
     }
 
     const tailWalk = samples.filter((s) => s <= L / 2).reverse();
@@ -178,8 +170,6 @@ function measureAll(): Measured[] {
       entry,
       thinnerThanTip,
       underFloor,
-      newlyPokes,
-      fitsBlend: judge(blend),
       fitsSteady: judge(steady),
       rise,
       riseFromThickest,
@@ -200,31 +190,8 @@ function listed(items: readonly string[]): string[] {
   return items.length > 20 ? [...items.slice(0, 20), `... and ${items.length - 20} more`] : [...items];
 }
 
-describe('acceptance 4: a start at 12" gives the same five numbers as before the tips step', () => {
-  for (const { name, cases } of SETS) {
-    it(`${name}: both starts set by hand at 12" read the blend's five thicknesses and five rocker numbers exactly`, () => {
-      expect(cases.length).toBeGreaterThan(0);
-      const moved: string[] = [];
-      for (const { prepared, board, placement, label } of cases) {
-        const at12 = boardOnBlank(
-          prepared,
-          { ...board, noseThinningStart: MEASURE_STATION_MM, tailThinningStart: MEASURE_STATION_MM },
-          placement,
-        );
-        const blend = boardOnBlank(prepared, { ...board, tipRule: "blend" }, placement);
-        expect([at12.tips.tail.fromTip, at12.tips.nose.fromTip]).toEqual([MEASURE_STATION_MM, MEASURE_STATION_MM]);
-        for (const { key, station } of rockerStationPositions(board.length)) {
-          if (!Object.is(at12.thicknessAt(station), blend.thicknessAt(station))) moved.push(`${label} thickness ${key}`);
-          if (!Object.is(at12.rockerAt(station), blend.rockerAt(station))) moved.push(`${label} rocker ${key}`);
-        }
-      }
-      expect(listed(moved)).toEqual([]);
-    }, SLOW);
-  }
-});
-
 describe(
-  "acceptance 3: on Automatic no board is thinner than its tip, none under the floor, none newly poking or refused, and none humps except blanks printed that way (D-14, D-27)",
+  "acceptance 3: on Automatic no board is thinner than its tip, none under the floor, and none humps except blanks printed that way (D-14, D-27)",
   () => {
     for (const { name, cases } of SETS) {
       it(`${name}: no board is thinner anywhere than its own tip setting, and none is under the 1/4" floor`, () => {
@@ -232,12 +199,6 @@ describe(
         expect(results.length).toBe(cases.length);
         expect(listed(results.filter((m) => m.thinnerThanTip).map((m) => `${m.entry.label}: ${m.thinnerThanTip}`))).toEqual([]);
         expect(listed(results.filter((m) => m.underFloor).map((m) => `${m.entry.label}: ${m.underFloor}`))).toEqual([]);
-      }, SLOW);
-
-      it(`${name}: no board newly pokes out of its blank, and no board that fits under the blend is refused`, () => {
-        const results = measuredFor(cases);
-        expect(listed(results.filter((m) => m.newlyPokes).map((m) => `${m.entry.label}: ${m.newlyPokes}`))).toEqual([]);
-        expect(listed(results.filter((m) => m.fitsBlend && !m.fitsSteady).map((m) => m.entry.label))).toEqual([]);
       }, SLOW);
 
       it(`${name}: a board gets thicker toward a tip only on a blank whose thickest printed station is not its centre`, ({
@@ -269,8 +230,8 @@ describe(
             `${results.filter((m) => m.tailStart !== m.noseStart).length}; ` +
             `rise over 1/64": ${humps.length} (${humpBlanks.join(", ")}), at or under: ${results.length - humps.length}; ` +
             `largest rise ${Math.max(...results.map((m) => m.rise)) / inchesToMm(1)}"; ` +
-            `fit under the blend ${results.filter((m) => m.fitsBlend).length}, under the steady taper ` +
-            `${results.filter((m) => m.fitsSteady).length}; boards whose printed thickness falls steadily ${steadyBlanks.length}`,
+            `fit under the steady taper ${results.filter((m) => m.fitsSteady).length}; ` +
+            `boards whose printed thickness falls steadily ${steadyBlanks.length}`,
         );
       }, SLOW);
     }

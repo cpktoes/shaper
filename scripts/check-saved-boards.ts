@@ -34,28 +34,6 @@
  * opens; k counts a board any of whose five stored foil values sits under the floor; t counts, of
  * those, the ones whose nose or tail tip does. Never changes the exit code.
  *
- * `--curves-report` (Phase 14 D-18, read-only, counts and maxima only): after the lines above, how
- * far every saved board's numbers move when its curves are drawn the new way. Each board that opens
- * is worked out twice through `lib/geometry/before-after.ts` — under the curves the site drew before
- * Phase 14 and under the live ones — and the moves are summed in two groups, boards in a blank and
- * hand-set boards: how many were compared, the largest move of any of the ten station numbers (five
- * thicknesses, five rocker numbers), how many move more than 1/16" and more than 1/32", the median
- * and largest litres change in percent and how many move more than 1%, and how many "fits" verdicts
- * go from fits to refused and from refused to fits. Phase 11 boards are left to the five-thicknesses
- * line above. It never prints a board, a board name, a user id or the connection string, and never
- * changes the exit code; a board the comparison cannot work out is counted, never described.
- *
- * `--tips-report` (Phase 14 D-18, read-only, counts and maxima only): the same comparison for the
- * second go-live, how each tip is thinned. Each board that opens is worked out twice — under the
- * rules live after the first go-live (the new curves with today's 12" blend at the tips,
- * `RULES_BEFORE_TIPS`) and under the live ones (the steady taper from each tip's Thinning Start,
- * `RULES_LIVE`) — with every board's own stored starts. It prints the same summary lines for boards
- * in a blank and for hand-set boards, plus two tips lines for the boards in a blank: how many have a
- * tip whose thinning starts further in than 12", and the largest rise of a 12" thickness. Phase 11
- * boards are left to the five-thicknesses line above. Like the curves report it never prints a
- * board, a board name, a user id or the connection string, and never changes the exit code. Both
- * flags may be given together.
- *
  * `--rack-report` (Phase 15 D-13, read-only, counts and board ids only): the founder's check before
  * the Board Rack goes live that the rack can draw every board saved on the site. Every account's
  * boards are run through exactly what the home page runs for that shaper (`rackReport` in
@@ -86,10 +64,6 @@
  *   production — the founder only (plan 12-10). The production env is pulled to a temporary file and
  *   deleted on exit:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --thin-tips'
- *   production, the curves report — the founder only (plan 14-07), the same temporary-file recipe:
- *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --curves-report'
- *   production, the tips report — the founder only (plan 14-18), the same temporary-file recipe:
- *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --tips-report'
  *   production, the rack report — the founder only (plan 15-13), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rack-report'
  *
@@ -140,16 +114,6 @@ async function main(): Promise<void> {
   const { mm, UNITS_SYSTEMS } = await import("../lib/geometry/units");
   const { DEFAULT_FIT_DEFAULTS, carryOverTipStyle, toFitSettings } = await import("../lib/fit-defaults-preference");
   const { readFitDefaultsPreference } = await import("../lib/db/queries");
-  const {
-    boardFigures,
-    compareFigures,
-    movesReportLines,
-    RULES_BEFORE_CURVES,
-    RULES_BEFORE_TIPS,
-    RULES_LIVE,
-    summarizeMoves,
-    tipsReportLines,
-  } = await import("../lib/geometry/before-after");
   const { accountsNeedingTipStyle, rackReport } = await import("../lib/models/rack-report");
 
   type Mm = import("../lib/geometry/units").Mm;
@@ -161,8 +125,6 @@ async function main(): Promise<void> {
   const STATION_KEYS: readonly FoilStationKey[] = ["tailTip", "tail12", "center", "nose12", "noseTip"];
   const fitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
   const thinTipsFlag = process.argv.includes("--thin-tips");
-  const curvesReportFlag = process.argv.includes("--curves-report");
-  const tipsReportFlag = process.argv.includes("--tips-report");
   const rackReportFlag = process.argv.includes("--rack-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
@@ -180,13 +142,6 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
-  type BoardMove = import("../lib/geometry/before-after").BoardMove;
-  const blankMoves: BoardMove[] = [];
-  const handSetMoves: BoardMove[] = [];
-  let notCompared = 0;
-  const tipsBlankMoves: BoardMove[] = [];
-  const tipsHandSetMoves: BoardMove[] = [];
-  let tipsNotCompared = 0;
 
   for (const row of rows) {
     const version = (row.snapshot as { version?: unknown } | null)?.version;
@@ -213,32 +168,6 @@ async function main(): Promise<void> {
       if (parsed.foil.noseTip < floor || parsed.foil.tailTip < floor) thinTipBoards++;
     }
 
-    // --curves-report (Phase 14 D-18): counts only, never affects the exit code. Phase 11 boards
-    // are the five-thicknesses line's job, not this report's.
-    if (curvesReportFlag && !phase11) {
-      try {
-        const move = compareFigures(
-          boardFigures(parsed, RULES_BEFORE_CURVES, fitSettings),
-          boardFigures(parsed, RULES_LIVE, fitSettings),
-        );
-        (parsed.blank ? blankMoves : handSetMoves).push(move);
-      } catch {
-        notCompared++;
-      }
-    }
-    // --tips-report (Phase 14 D-18): the same, from the 12" blend to the steady taper. `boardFigures`
-    // reads each board's own stored Thinning Starts. Counts only, never affects the exit code.
-    if (tipsReportFlag && !phase11) {
-      try {
-        const move = compareFigures(
-          boardFigures(parsed, RULES_BEFORE_TIPS, fitSettings),
-          boardFigures(parsed, RULES_LIVE, fitSettings),
-        );
-        (parsed.blank ? tipsBlankMoves : tipsHandSetMoves).push(move);
-      } catch {
-        tipsNotCompared++;
-      }
-    }
     if (!phase11) continue;
 
     try {
@@ -331,31 +260,6 @@ async function main(): Promise<void> {
       `saved boards with a thickness under ${formatMark(MIN_FOIL_THICKNESS_MM, "imperial")}: ${thinBoards} of ${opened} ` +
         `(a tip under it: ${thinTipBoards})`,
     );
-  }
-  if (curvesReportFlag) {
-    for (const line of movesReportLines("Boards in a blank, today's curves → the new curves", summarizeMoves(blankMoves))) {
-      console.log(line);
-    }
-    for (const line of movesReportLines("Hand-set boards, today's curves → the new curves", summarizeMoves(handSetMoves))) {
-      console.log(line);
-    }
-    console.log("Phase 11 boards are covered by the five-thicknesses line above, not counted here");
-    if (notCompared > 0) console.log(`boards the curves report could not compare: ${notCompared}`);
-  }
-  if (tipsReportFlag) {
-    const tipsBlank = summarizeMoves(tipsBlankMoves);
-    for (const line of movesReportLines("Boards in a blank, the 12\" blend → the steady taper", tipsBlank)) {
-      console.log(line);
-    }
-    for (const line of tipsReportLines(tipsBlank)) console.log(line);
-    for (const line of movesReportLines(
-      "Hand-set boards, the 12\" blend → the steady taper",
-      summarizeMoves(tipsHandSetMoves),
-    )) {
-      console.log(line);
-    }
-    console.log("Phase 11 boards are covered by the five-thicknesses line above, not counted here");
-    if (tipsNotCompared > 0) console.log(`boards the tips report could not compare: ${tipsNotCompared}`);
   }
 
   // --rack-report (Phase 15 D-13): the home page's own path, account by account, with each account's

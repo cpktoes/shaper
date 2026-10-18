@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
-import { buildStressSet, STRESS_FIT_SETTINGS } from "./__fixtures__/phase14-stress-set";
 import { type BlankStation } from "./blank";
-import { boardOnBlank, fitAt, prepareBlank, prepareBlankPchip } from "./blank-fit";
+import { prepareBlank } from "./blank-fit";
 import { pchipMinimum, type PreparedPchip } from "./pchip";
 
 // The curves step (Phase 14 D-13, D-27, D-28) proven through the app's OWN blank preparation —
 // `prepareBlank`, the one function every screen, the list, the flag and the cards use. Every expected
-// value is the catalogue's own printed figure, read through the tested reader, or today's rule run in
-// the same test (`prepareBlankPchip`) — never typed here (CLAUDE.md Rule 1).
+// value is the catalogue's own printed figure, read through the tested reader — never typed here
+// (CLAUDE.md Rule 1). The check that no stress board went from fitting to refused at the curves step
+// compared against the curve the site drew before Phase 14, and was retired with it after the Oct 10
+// showing (quick 261018-dvu).
 
 const CATALOG = readSeedCatalog();
 const PICKABLE = CATALOG.filter(isPickable);
@@ -82,53 +83,5 @@ describe("the curves step through the app's own blank preparation (acceptance 1 
       );
       expect(lowest, label).toBe(0);
     }
-  });
-});
-
-describe("no stress board flips from fitting to refused at the curves step (R5)", () => {
-  // Every pickable blank's stress boards, judged twice: just over the default five seconds on a busy
-  // machine, so it gets its own limit rather than tipping over under load (2026-10-14).
-  it("every stress board that fits on today's curves also fits on the new ones", { timeout: 30_000 }, ({ annotate }) => {
-    const frozen = buildStressSet(CATALOG, prepareBlankPchip);
-    const live = buildStressSet(CATALOG, prepareBlank);
-    // The same boards in the same order: which boards make the set does not depend on the curves.
-    expect(live.map((entry) => entry.label)).toEqual(frozen.map((entry) => entry.label));
-    expect(frozen.length).toBeGreaterThan(0);
-
-    // This test is about the curves step, whose tip rule was the 12" blend: both sides keep it, so
-    // it compares today's curves with the new curves and nothing else.
-    const judge = (entry: (typeof frozen)[number]) =>
-      fitAt(
-        boardOnBlank(entry.prepared, { ...entry.board, tipRule: "blend" }, entry.placement),
-        entry.halfWidthAt,
-        entry.widePointStation,
-        STRESS_FIT_SETTINGS,
-      );
-
-    const refused: string[] = [];
-    const freedByKind = new Map<string, number>();
-    const freed: string[] = [];
-    let fitToday = 0;
-    for (let i = 0; i < frozen.length; i++) {
-      const before = judge(frozen[i]);
-      const after = judge(live[i]);
-      if (before.fits) {
-        fitToday++;
-        if (!after.fits) refused.push(`${frozen[i].label} (${after.worst.kind})`);
-      } else if (after.fits) {
-        freed.push(frozen[i].label);
-        freedByKind.set(before.worst.kind, (freedByKind.get(before.worst.kind) ?? 0) + 1);
-      }
-    }
-    expect(refused).toEqual([]);
-
-    // Counted for the record, never asserted as a typed number: the boards the new width and
-    // thickness free (refused on today's curves, fitting on the new), by today's worst shortfall.
-    const kinds = [...freedByKind].map(([kind, count]) => `${kind} ${count}`).join(", ");
-    annotate(
-      `stress boards: ${frozen.length}; fit today: ${fitToday}; freed by the new curves: ${freed.length}` +
-        (kinds ? ` (today's worst: ${kinds})` : "") +
-        (freed.length ? `: ${freed.slice(0, 20).join("; ")}${freed.length > 20 ? "; ..." : ""}` : ""),
-    );
   });
 });
