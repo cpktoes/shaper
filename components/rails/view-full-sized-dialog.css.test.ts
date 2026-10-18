@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  *
  * Those source-contract tests only prove the class NAMES the dialog carries — they cannot prove
  * Tailwind actually turns an arbitrary variant chain like
- * `max-shell:supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:hidden` into
+ * `max-shell:supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:block` into
  * real, nested `@media`/`@supports` rules. A broken arbitrary variant (a typo in the bracket
  * syntax, an unsupported nesting order, a future Tailwind release that changes how `supports-[...]`
  * is parsed) would compile to NOTHING — no rule, no warning — and this is the only test in the
@@ -39,9 +39,11 @@ async function compileCandidates(candidates: string[]): Promise<string> {
 }
 
 describe("view-full-sized-dialog.tsx — compiled CSS proof of the Home-Screen note gating (gap-closure WR-01)", () => {
-  it("compiles the max-shell + iOS-supports + display-mode chain to nested at-rules with display:none/display:block", async () => {
+  it("compiles the max-shell + iOS-supports + display-mode chain to nested at-rules with display:block", async () => {
+    // The one chain the dialog still carries: the Home-Screen note's `:block` (quick 261017-vdh —
+    // the Print button, the Fit-to-page note and the phone line used to carry `:hidden` chains of
+    // their own; the founder found printing works from his phone, so nothing is hidden there now).
     const css = await compileCandidates([
-      "max-shell:supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:hidden",
       "max-shell:supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:block",
     ]);
 
@@ -63,31 +65,7 @@ describe("view-full-sized-dialog.tsx — compiled CSS proof of the Home-Screen n
       /@media\s*\(display-mode:\s*standalone\)/,
     );
 
-    // Both declarations a broken variant chain would silently drop.
-    expect(css, "no display: none declaration found").toMatch(/display:\s*none/);
+    // The declaration a broken variant chain would silently drop.
     expect(css, "no display: block declaration found").toMatch(/display:\s*block/);
-  });
-
-  it("compiles the bare (no max-shell) chain to the same supports+display-mode pair with no width condition", async () => {
-    // A fresh compiler/candidate set, isolated from the max-shell case above — this is the plain
-    // `<span>` wrapping the D-13 "tap Print" clause, which is already inside a phone-only `<p>` and
-    // so carries no width variant of its own.
-    const css = await compileCandidates([
-      "supports-[-webkit-touch-callout:none]:[@media(display-mode:standalone)]:hidden",
-    ]);
-
-    expect(css, "no @supports (-webkit-touch-callout: none) rule found").toMatch(
-      /@supports\s*\(-webkit-touch-callout:\s*none\)/,
-    );
-    expect(css, "no @media (display-mode: standalone) rule found").toMatch(
-      /@media\s*\(display-mode:\s*standalone\)/,
-    );
-    expect(css, "no display: none declaration found").toMatch(/display:\s*none/);
-
-    // The bare candidate's own compiled output carries no width condition at all — proving the
-    // width gating is opt-in per call site, not baked into the iOS/display-mode pairing itself.
-    expect(css, "the bare (no max-shell) candidate still carries a width condition").not.toMatch(
-      /@media\s*\(width\s*<\s*820px\)/,
-    );
   });
 });

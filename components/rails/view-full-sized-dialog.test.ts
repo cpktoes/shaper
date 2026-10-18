@@ -240,11 +240,17 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     expect(source, "does not carry data-print-hide on the banner").toMatch(/data-print-hide/);
   });
 
-  it("carries the exact Home-Screen note sentence for a phone with no working Print button (G-09-6)", () => {
+  it("carries the exact softened Home-Screen note sentence (G-09-6, softened by the founder 2026-10-17)", () => {
     const source = readStripped(DIALOG_PATH);
     expect(source).toContain(
-      "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+      "Printing may not be available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
     );
+    expect(source, "the old, flatly-worded sentence is back").not.toContain("Printing isn't available");
+  });
+
+  it("carries the phone line as one plain sentence, in full (the founder, 2026-10-17)", () => {
+    const source = readStripped(DIALOG_PATH);
+    expect(source).toContain("Shown smaller than actual size — tap Print for the full-sized rail.");
   });
 
   it("detects the Home-Screen launch context in CSS only, never in JavaScript (G-09-6)", () => {
@@ -269,22 +275,52 @@ describe("view-full-sized-dialog.tsx (RAIL-04, D-12–D-16)", () => {
     ).toMatch(/max-shell:supports-\[-webkit-touch-callout:none\]:\[@media\(display-mode:standalone\)\]:/);
   });
 
-  it("every display-mode:standalone condition carries the -webkit-touch-callout iOS guard (gap-closure CR-01)", () => {
+  it("the one display-mode:standalone condition left is the note's own, and it carries the -webkit-touch-callout iOS guard (gap-closure CR-01)", () => {
     // -webkit-touch-callout is implemented only by iOS/iPadOS WebKit — never by desktop Safari,
     // Chromium or Firefox — so `supports-[-webkit-touch-callout:none]:` is the CSS-only signal
-    // that keeps the Home-Screen print swap scoped to the one platform with the defect
+    // that keeps the Home-Screen note scoped to the one platform that had the defect
     // (.planning/debug/phone-print-button-does-nothing.md). A standalone condition missing this
-    // guard would hide a working Print button on a desktop Chrome/Edge "installed app" window or
-    // an Android Home-Screen launch, both of which also report display-mode:standalone but print
-    // fine — so this asserts every occurrence carries the guard, not just that one does.
+    // guard would show the warning on a desktop Chrome/Edge "installed app" window or an Android
+    // Home-Screen launch, both of which also report display-mode:standalone and print fine — so
+    // this asserts every occurrence carries the guard. Since quick 261017-vdh (the founder found
+    // printing works from his phone) nothing is hidden in that context any more, so the note is
+    // the only occurrence: the Print button, the Fit-to-page note and the phone line show everywhere.
     const source = readStripped(DIALOG_PATH);
     const standaloneOccurrences = source.match(/\[@media\(display-mode:standalone\)\]:/g) ?? [];
     const guardedOccurrences =
       source.match(/supports-\[-webkit-touch-callout:none\]:\[@media\(display-mode:standalone\)\]:/g) ?? [];
-    expect(standaloneOccurrences.length, "no display-mode:standalone occurrences found").toBeGreaterThanOrEqual(4);
+    expect(standaloneOccurrences.length, "expected exactly the Home-Screen note's own occurrence").toBe(1);
     expect(
       guardedOccurrences.length,
       `only ${guardedOccurrences.length} of ${standaloneOccurrences.length} display-mode:standalone occurrences carry the -webkit-touch-callout guard`,
     ).toBe(standaloneOccurrences.length);
+  });
+
+  it("hides nothing in the Home-Screen app: the Print button, the Fit-to-page note and the phone line carry no display-mode:standalone", () => {
+    const source = readStripped(DIALOG_PATH);
+    // The Print button's whole opening tag, from `<Button` to the `>` that ends it (the onClick
+    // arrow's `=>` is skipped).
+    const buttonStart = source.indexOf("onClick={() => window.print()}");
+    expect(buttonStart, "no Print button found").toBeGreaterThanOrEqual(0);
+    const buttonTagStart = source.lastIndexOf("<Button", buttonStart);
+    const buttonTagEnd = source.indexOf(">\n", buttonStart);
+    expect(source.slice(buttonTagStart, buttonTagEnd), "the Print button is gated on the Home-Screen app").not.toContain(
+      "display-mode:standalone",
+    );
+    // The Fit-to-page note's <p>.
+    const fitStart = source.indexOf("turn off 'Fit to page'");
+    expect(fitStart, "no Fit-to-page note found").toBeGreaterThanOrEqual(0);
+    const fitTagStart = source.lastIndexOf("<p", fitStart);
+    expect(source.slice(fitTagStart, fitStart), "the Fit-to-page note is gated on the Home-Screen app").not.toContain(
+      "display-mode:standalone",
+    );
+    // The phone line and the text just before it (its <p> and any span in it).
+    const phoneStart = source.indexOf("Shown smaller than actual size");
+    expect(phoneStart, "no phone line found").toBeGreaterThanOrEqual(0);
+    const phoneTagStart = source.lastIndexOf("<p", phoneStart);
+    const phoneEnd = source.indexOf("</p>", phoneStart);
+    expect(source.slice(phoneTagStart, phoneEnd), "the phone line is gated on the Home-Screen app").not.toContain(
+      "display-mode:standalone",
+    );
   });
 });
