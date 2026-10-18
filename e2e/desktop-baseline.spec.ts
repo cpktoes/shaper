@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-18 (quick 261018-e6w) — TEMPLATE only, `outline-desktop-desktop-darwin.png`:
+ * the drag points now show from the start (the five rings and their guide lines on the board, and
+ * the drag-points button shaded), a fin-placement button with the new surfboard-fin icon joins the
+ * drawing's toolbar, and the sidebar's Settings block is gone (it sat below the fold of this picture,
+ * so the picture itself shows only the first two changes). Old and new were compared by eye before re-recording: nothing
+ * else moved. ROCKER, RAILS, VOLUME and FINS were not re-recorded. Rendered by the webpack dev
+ * server (`IS_WEBPACK_TEST=1`, port 3162) on this Mac.
+ *
  * RE-RECORDED 2026-10-18 (quick 261017-vdh) — all five, for the founder's side-panel redesign from
  * the copy-edit canvas: an INPUTS section at the top of ROCKER, RAILS, VOLUME and FINS (one import
  * box where a screen imports, and a "… details are imported: …" line in place of the controls it
