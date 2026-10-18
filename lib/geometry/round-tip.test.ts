@@ -14,7 +14,6 @@ import {
   boardOnBlank,
   fitAt,
   prepareBlank,
-  prepareBlankPchip,
   type BoardOnBlankInput,
 } from "./blank-fit";
 import { buildBlankTopView } from "./blank-top-view";
@@ -22,7 +21,6 @@ import { DEFAULT_BOARD_SPEC } from "./board";
 import { buildBlankProfile } from "./board-profile";
 import { DEFAULT_FOIL_SPEC } from "./foil";
 import { buildOutline } from "./outline";
-import { preparePchip } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
 import { roundZeroTips } from "./round-tip";
 import { inchesToMm, mm, type Mm } from "./units";
@@ -261,16 +259,6 @@ describe("roundZeroTips — width only (D3)", () => {
       expect(prepared.rocker.curve.sample(x)).toBe(rockerToday.sample(x));
     }
   });
-
-  it("leaves the pchip rule, kept by name for old boards, exactly as it was", () => {
-    const pchip = prepareBlankPchip(SP_7_4);
-    const direct = preparePchip(widthKnots(SP_7_4));
-    for (const slope of pchip.width.slopes) expect(Number.isFinite(slope)).toBe(true);
-    for (let i = 0; i <= 400; i++) {
-      const x = (SP_7_4.lengthMm * i) / 400;
-      expect(pchip.width.sample(x)).toBe(direct.sample(x));
-    }
-  });
 });
 
 describe("roundZeroTips — both tips (D4)", () => {
@@ -361,7 +349,7 @@ function todayWidth(record: BlankRecord) {
 
 /**
  * The live width curve: `prepareBlank`'s for a pickable blank; for the few records `prepareBlank`
- * refuses (no centre thickness), the same composition `prepareBlankWith` makes.
+ * refuses (no centre thickness), the same composition `prepareBlank` makes.
  */
 function liveWidth(record: BlankRecord) {
   return isPickable(record) ? prepareBlank(record).width : roundZeroTips(todayWidth(record));

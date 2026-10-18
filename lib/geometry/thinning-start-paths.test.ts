@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
-import { boardFigures, RULES_LIVE } from "./before-after";
+import { boardFigures } from "./before-after";
 import type { BoardBlank } from "./blank";
 import { boardOnBlank, prepareBlank, thinningStartsOf } from "./blank-fit";
 import { buildBoardProfile } from "./board-profile";
-import { summarizeDesign, type DesignSummaryFields } from "./design";
+import { LIVE_DESIGN_RULES, summarizeDesign, type DesignSummaryFields } from "./design";
 import type { FoilStationKey } from "./foil";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_FALLBACK_ROCKER, rockerStationPositions } from "./rocker";
@@ -87,7 +87,7 @@ describe("a start set by hand gives the same board through every path (Pitfall 5
       });
 
       // (c) The figures the cards and the reports read.
-      const figures = boardFigures(fields, RULES_LIVE, SETTINGS);
+      const figures = boardFigures(fields, LIVE_DESIGN_RULES, SETTINGS);
 
       for (const { key, station } of rockerStationPositions(length)) {
         const thickness = mm(onBlank.thicknessAt(station));
@@ -99,7 +99,7 @@ describe("a start set by hand gives the same board through every path (Pitfall 5
       }
 
       // The hand-set starts really change the board: a 12" number moves, and so do the litres.
-      const automatic = boardFigures(presetWith(preset, {}), RULES_LIVE, SETTINGS);
+      const automatic = boardFigures(presetWith(preset, {}), LIVE_DESIGN_RULES, SETTINGS);
       expect(KEYS.some((key) => automatic.thicknessMm[key] !== figures.thicknessMm[key])).toBe(true);
       expect(summarizeDesign(fields).volumeLitres).not.toBe(summarizeDesign(presetWith(preset, {})).volumeLitres);
       expect(summarizeDesign(fields).volumeLitres).toBe(figures.litres);

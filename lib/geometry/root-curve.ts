@@ -45,14 +45,6 @@ import { preparePchip, type PreparedPchip, type SplinePoint } from "./pchip";
 export type RootKind = "rise" | "fall";
 
 /**
- * Which rule draws a curve between printed stations: `"root"`, the square-root rule in this file
- * (the live rule from Phase 14 on), or `"pchip"`, today's pchip straight through the printed values,
- * kept callable by name so the boards recorded before Phase 14 can still be redrawn as they were
- * (D-25).
- */
-export type CurveRule = "root" | "pchip";
-
-/**
  * Fits the square-root curve through `points` once (see the file header). The knot arrays are
  * copied, so changing the caller's points afterwards changes nothing this curve returns.
  *

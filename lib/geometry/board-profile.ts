@@ -35,12 +35,10 @@ import {
   type BoardOnBlank,
   type BoardOnBlankInput,
   type PreparedBlank,
-  type TipRule,
 } from "./blank-fit";
 import { type FoilSpec, type FoilStationKey, foilStationPoints } from "./foil";
-import { preparePchip } from "./pchip";
 import { type FiveStationRocker, ROCKER_LIFT_RANGE_IN, fallbackRockerPoints, rockerStationPositions } from "./rocker";
-import { type CurveRule, prepareRootCurve } from "./root-curve";
+import { prepareRootCurve } from "./root-curve";
 import type { TipView } from "./tip-taper";
 import { type Mm, inchesToMm, mm } from "./units";
 
@@ -171,28 +169,10 @@ function stationRecord<T>(
  * the centre's 0, and a rise never reads below its lowest station, so the lowest point is exactly 0.
  */
 export function buildFallbackProfile(rocker: FiveStationRocker, foil: FoilSpec, length: Mm): BoardSideProfile {
-  return fallbackProfileWith(rocker, foil, length, "root");
-}
-
-/**
- * `buildFallbackProfile` under a chosen curve rule: `"root"` is the live rule; `"pchip"` is the
- * curve every hand-set board was drawn with before Phase 14, kept by name for the reports and
- * pictures only (D-25).
- */
-function fallbackProfileWith(
-  rocker: FiveStationRocker,
-  foil: FoilSpec,
-  length: Mm,
-  curve: CurveRule,
-): BoardSideProfile {
   const rockerPoints = fallbackRockerPoints(rocker, length);
-  const rockerCurve = levelCurve(
-    curve === "pchip" ? preparePchip(rockerPoints) : prepareRootCurve(rockerPoints, "rise"),
-    0,
-    length,
-  );
+  const rockerCurve = levelCurve(prepareRootCurve(rockerPoints, "rise"), 0, length);
   const foilPoints = foilStationPoints(foil, length).map((point) => ({ x: point.station, y: point.thickness }));
-  const foilCurve = curve === "pchip" ? preparePchip(foilPoints) : prepareRootCurve(foilPoints, "fall");
+  const foilCurve = prepareRootCurve(foilPoints, "fall");
   const rockerAt = (s: Mm) => mm(rockerCurve.sample(s));
   const thicknessAt = (s: Mm) => mm(foilCurve.sample(s));
 
@@ -337,11 +317,6 @@ export interface BoardProfileInput {
     tipStyle: TipStyle;
     fineTuneSurface: FineTuneSurface;
     /**
-     * Which tip rule cuts the tips (`BoardOnBlankInput.tipRule`): absent is the live steady taper;
-     * `"blend"` is the 12" S-blend kept by name for the reports and the pin only (D-25).
-     */
-    tipRule?: TipRule;
-    /**
      * The board's own stored Thinning Starts (Phase 14 D-24), in mm in from each tip. Absent is
      * Automatic. They reach `boardOnBlank` through `thinningStartsOf`, the one helper every place
      * that builds a board from its stored blank uses, so no path can drop them.
@@ -349,13 +324,6 @@ export interface BoardProfileInput {
     noseThinningStart?: Mm;
     tailThinningStart?: Mm;
   } | null;
-  /**
-   * Which rule draws a board with no blank between its five stations. Absent is the live
-   * square-root rule (Phase 14 D-13); `"pchip"` is the curve hand-set boards were drawn with before
-   * Phase 14, kept by name only for the reports and pictures (D-25) and removed after the showing.
-   * Ignored when a blank is picked.
-   */
-  handSetCurve?: CurveRule;
 }
 
 /**
@@ -366,7 +334,7 @@ export interface BoardProfileInput {
  */
 export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
   const { length, rocker, foil, blank } = input;
-  if (!blank) return fallbackProfileWith(rocker, foil, length, input.handSetCurve ?? "root");
+  if (!blank) return buildFallbackProfile(rocker, foil, length);
   return buildBlankProfile(
     blank.prepared,
     {
@@ -379,7 +347,6 @@ export function buildBoardProfile(input: BoardProfileInput): BoardSideProfile {
       deckSkin: blank.deckSkin,
       tipStyle: blank.tipStyle,
       fineTuneSurface: blank.fineTuneSurface,
-      ...(blank.tipRule === undefined ? {} : { tipRule: blank.tipRule }),
       ...thinningStartsOf(blank),
     },
     blank.placement,

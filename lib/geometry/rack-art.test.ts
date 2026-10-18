@@ -157,7 +157,6 @@ describe("Edge: a hand-set board with no blank", () => {
       rocker: HAND_SET_FIELDS.rocker,
       foil: HAND_SET_FIELDS.foil,
       blank: null,
-      handSetCurve: LIVE_DESIGN_RULES.handSetCurve,
     });
     HAND_SET.art.stations.forEach((st) => {
       expect(st.rocker).toBeCloseTo(direct.rockerAt(st.station), 9);

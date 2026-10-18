@@ -1,10 +1,9 @@
 /**
  * A board laid on a real foam blank (Phase 11): the blank's own rocker, thickness and width
  * drawn through its printed stations with the square-root rule (Phase 14 D-13, `root-curve.ts`,
- * today's pchip inside it), the rocker levelled so its low point reads zero, the board's rocker and
+ * pchip inside it), the rocker levelled so its low point reads zero, the board's rocker and
  * foil read off the blank at any placement, and the check that the board fits inside the foam.
- * Today's rule — pchip straight through the printed values — survives only as `prepareBlankPchip`.
- * On the live rule the width's 0-wide tips are round, not pointed (sketch 012 C, `round-tip.ts`,
+ * The width's 0-wide tips are round, not pointed (sketch 012 C, `round-tip.ts`,
  * quick 261007-c3h): inside the last printed station before such a tip the width is a parabola from
  * the tip, so the drawing and the fit check both see the foam a real round nose has.
  *
@@ -20,8 +19,7 @@
  * thinned last, off the bottom (Pin deck) or off the deck (Bottom). From Phase 14 (D-01) each tip runs
  * down steadily from its own Thinning Starts point — 12" unless the board cannot run down steadily from
  * there, or wherever the shaper set it (`tip-taper.ts`) — along one smooth curve to the tip setting.
- * Phase 12's S-shaped ease over the last 12" survives only by name (`tipRule: "blend"`) for the
- * before-and-after reports (D-25). Phase 11 scaled the blank's thickness by one ratio instead; that
+ * Phase 11 scaled the blank's thickness by one ratio instead; that
  * formula survives only in `phase11-foil.ts`, to carry Phase 11's saved boards across.
  *
  * Judging the catalogue (11-03): the two floors (D-04), the best-placement search that decides
@@ -50,9 +48,9 @@ import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { MEASURE_STATION_MM } from "./outline";
 import { pchipMinimum, preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
-import { prepareRootCurve, type CurveRule, type RootKind } from "./root-curve";
+import { prepareRootCurve, type RootKind } from "./root-curve";
 import { roundZeroTips } from "./round-tip";
-import { thinningStartRange, tipView, type PlanerCut, type TipView } from "./tip-taper";
+import { tipView, type PlanerCut, type TipView } from "./tip-taper";
 import { inchesToMm, mm, type Mm } from "./units";
 
 /** How far the board's tips stay inside the blank's tips at either end of the slider (D-08). */
@@ -65,13 +63,6 @@ export const BLANK_PLACEMENT_BUFFER_MM = inchesToMm(0.5);
  * continuously at its tip), so a quarter inch is fine enough.
  */
 export const FIT_SAMPLE_STEP_MM = inchesToMm(0.25);
-
-/**
- * The stretch Phase 12's S-shaped ease ran over — tip to the 12" station (D-17). Since Phase 14 it
- * is used only by `tipRule: "blend"` (today's rule, kept by name for the reports, D-25); it is also
- * the same distance as the 12" station Phase 11's conversion reads.
- */
-export const TIP_EASE_WINDOW_MM = MEASURE_STATION_MM;
 
 /**
  * The least foam a board may be anywhere, tips included (Phase 12 D-18, raised to 1/4" by the
@@ -140,14 +131,12 @@ export interface PreparedBlank {
 
 /**
  * The curve through one attribute's OWN non-empty stations — an empty cell is not a knot (R10) —
- * drawn by `rule`: `"pchip"` is today's pchip straight through the printed values, `"root"` the
- * square-root rule running the way `kind` says (a bottom rises from its lowest station, a thickness
- * or width falls from its highest).
+ * drawn with the square-root rule running the way `kind` says (a bottom rises from its lowest
+ * station, a thickness or width falls from its highest).
  */
 function attributeCurve(
   stations: readonly BlankStation[],
   pick: (station: BlankStation) => Mm | null,
-  rule: CurveRule,
   kind: RootKind,
 ): PreparedPchip {
   const points: { x: number; y: number }[] = [];
@@ -155,18 +144,21 @@ function attributeCurve(
     const value = pick(station);
     if (value !== null) points.push({ x: station.fromTailMm, y: value });
   }
-  return rule === "pchip" ? preparePchip(points) : prepareRootCurve(points, kind);
+  return prepareRootCurve(points, kind);
 }
 
 /**
- * Fits a blank once (R14) on one rule: one curve per attribute over that attribute's own stations,
- * the rocker levelled over the whole blank. The record is copied first, so changing it afterwards
- * changes nothing the prepared blank returns.
+ * Fits a blank once (R14) — the one preparation every screen, the blank list, the flag, the rack
+ * and preset cards and the saved-boards check use (Phase 14 D-13): one curve per attribute over
+ * that attribute's own stations, the bottom drawn with the square-root rise from its lowest
+ * station, the thickness and width with the square-root fall from their highest, every printed
+ * station read exactly, and the rocker levelled over the whole blank. The record is copied first,
+ * so changing it afterwards changes nothing the prepared blank returns.
  *
  * Throws if the blank has no thickness at its `C` station — such a blank is not pickable
  * (`isPickable`), because the list's centre floor reads that printed centre (D-04).
  */
-function prepareBlankWith(record: BlankRecord, rule: CurveRule): PreparedBlank {
+export function prepareBlank(record: BlankRecord): PreparedBlank {
   const copy: BlankRecord = {
     ...record,
     stations: record.stations.map((station) => ({ ...station })),
@@ -175,43 +167,17 @@ function prepareBlankWith(record: BlankRecord, rule: CurveRule): PreparedBlank {
   if (!centre || centre.thicknessMm === null) {
     throw new Error(`${copy.vendor} ${copy.name} has no thickness at its centre station`);
   }
-  const rockerCurve = attributeCurve(copy.stations, (station) => station.rockerMm, rule, "rise");
-  const widthCurve = attributeCurve(copy.stations, (station) => station.widthMm, rule, "fall");
+  const rockerCurve = attributeCurve(copy.stations, (station) => station.rockerMm, "rise");
+  const widthCurve = attributeCurve(copy.stations, (station) => station.widthMm, "fall");
   return {
     record: copy,
     lengthMm: copy.lengthMm,
     centerThicknessMm: centre.thicknessMm,
     rocker: levelCurve(rockerCurve, 0, copy.lengthMm),
-    thickness: attributeCurve(copy.stations, (station) => station.thicknessMm, rule, "fall"),
-    // A tip printed 0 wide is drawn round on the live rule only (D3): the "pchip" rule stays as it
-    // was, for the boards recorded before Phase 14.
-    width: rule === "root" ? roundZeroTips(widthCurve) : widthCurve,
+    thickness: attributeCurve(copy.stations, (station) => station.thicknessMm, "fall"),
+    // A tip printed 0 wide is drawn round (D3).
+    width: roundZeroTips(widthCurve),
   };
-}
-
-/**
- * Fits a blank on the live rule — the one every screen, the blank list, the flag, the rack and
- * preset cards and the saved-boards check use (Phase 14 D-13): the bottom drawn with the
- * square-root rise from its lowest station, the thickness and width with the square-root fall from
- * their highest, every printed station read exactly.
- *
- * Throws if the blank has no thickness at its `C` station (see `prepareBlankWith`).
- */
-export function prepareBlank(record: BlankRecord): PreparedBlank {
-  return prepareBlankWith(record, "root");
-}
-
-/**
- * Fits a blank on today's rule — pchip straight through the printed values — kept callable by NAME
- * only for the Phase 11 conversion, the pin's own test, the saved-boards reports and the
- * before-and-after pictures (Phase 14 D-25). It is a separate function rather than a second argument
- * on `prepareBlank` because `.map(prepareBlank)` would pass the index as that argument (Pitfall 4).
- * Removed after the showing.
- *
- * Throws if the blank has no thickness at its `C` station (see `prepareBlankWith`).
- */
-export function prepareBlankPchip(record: BlankRecord): PreparedBlank {
-  return prepareBlankWith(record, "pchip");
 }
 
 /**
@@ -267,20 +233,7 @@ export interface BoardOnBlankInput {
   noseThinningStart?: Mm;
   /** Where the tail's thinning starts, in mm in from the tail tip — as `noseThinningStart`. */
   tailThinningStart?: Mm;
-  /**
-   * Which tip rule cuts the tips. Absent is `"steady"`, the live rule (D-01). `"blend"` is Phase 12's
-   * S-shaped ease over the last 12", kept by name only for the pin, the before-side rule sets and the
-   * reports (D-25), and removed after the showing; it ignores both Thinning Starts.
-   */
-  tipRule?: TipRule;
 }
-
-/**
- * How a board's tips are thinned: `"steady"` runs each tip down steadily from its own Thinning
- * Starts point (Phase 14 D-01, the live rule); `"blend"` is Phase 12's S-shaped ease over the last
- * 12" at each end, kept by name for the reports only (D-25).
- */
-export type TipRule = "steady" | "blend";
 
 /**
  * A blank's two stored Thinning Starts, ready to spread into a `BoardOnBlankInput`: only the starts
@@ -354,8 +307,6 @@ export interface BoardOnBlank {
   automaticThicknessAt(s: number): number;
   /** Each tip's Thinning Starts point resolved (`tip-taper.ts` `tipView`). */
   tips: { nose: TipView; tail: TipView };
-  /** The tip rule the board was cut with. */
-  tipRule: TipRule;
   /** The board's final thickness: derived plus the 12" fine-tunes (D-11), on either surface. */
   thicknessAt(s: number): number;
   /**
@@ -368,12 +319,6 @@ export interface BoardOnBlank {
    * fine-tune on the Bottom. Below zero means the board's bottom drops below the blank's there.
    */
   bottomOffAt(s: number): number;
-}
-
-/** 0 at w = 0, 1 at w = 1, flat at both ends — so the tip ease joins the 12" station with no kink. */
-function smoothstep(w: number): number {
-  const t = Math.min(1, Math.max(0, w));
-  return t * t * (3 - 2 * t);
 }
 
 /**
@@ -393,8 +338,7 @@ function smoothstep(w: number): number {
  *   blank — Automatic unless the board stores a start. Inside the start the thickness is the steady
  *   taper down to the tip setting, which it reads exactly at the tip; at and inward of the start it is
  *   the planer cut untouched. The thinning (planer cut less taper) comes off the bottom under Pin deck
- *   (lifting the tip rocker) or the deck under Bottom (D-05, D-16). Under `tipRule: "blend"` the old
- *   S-shaped ease over the last 12" is used instead, line for line as Phase 12 wrote it (D-25).
+ *   (lifting the tip rocker) or the deck under Bottom (D-05, D-16).
  * - Fine-tunes (D-11, D-13): a signed offset through a three-knot pchip hump per half — 0 at the
  *   tip, the offset at the 12" station, 0 at the centre — added to the thickness and taken off the
  *   surface the board chose. On the Deck the rocker never moves. On the Bottom the bottom drops by
@@ -441,87 +385,38 @@ export function boardOnBlank(
   const drop = underCentre - board.centerThickness;
   const unthinned = (s: number) => blankThicknessAt(s) - drop;
 
-  const rule: TipRule = board.tipRule ?? "steady";
-  let tipThinningAt: (s: number) => number;
-  let derivedThicknessAt: (s: number) => number;
-  let automaticThicknessAt: (s: number) => number;
-  let tips: { nose: TipView; tail: TipView };
-
-  if (rule === "steady") {
-    // The planer cut seen from each tip (D-23): `d` mm in from that tip, its slope the blank's own
-    // thickness slope there (the drop is one constant), flipped at the nose because d runs the
-    // other way. Where the board runs off the blank only the slope reads 0; the planer cut there
-    // reads the blank's 0 thickness less the drop, `0 − drop`, a negative thickness.
-    const blankSlopeAt = (s: number) => {
-      const x = u(s);
-      return onFoam(x) ? prepared.thickness.slopeAt(x) : 0;
+  // The planer cut seen from each tip (D-23): `d` mm in from that tip, its slope the blank's own
+  // thickness slope there (the drop is one constant), flipped at the nose because d runs the
+  // other way. Where the board runs off the blank only the slope reads 0; the planer cut there
+  // reads the blank's 0 thickness less the drop, `0 − drop`, a negative thickness.
+  const blankSlopeAt = (s: number) => {
+    const x = u(s);
+    return onFoam(x) ? prepared.thickness.slopeAt(x) : 0;
+  };
+  const tailCut: PlanerCut = { at: (d) => unthinned(d), slopeAt: (d) => blankSlopeAt(d) };
+  const noseCut: PlanerCut = { at: (d) => unthinned(L - d), slopeAt: (d) => -blankSlopeAt(L - d) };
+  const resolve = (tailStored: number | undefined, noseStored: number | undefined) => {
+    const tail = tipView({ cut: tailCut, tip: board.tailTip, length: L, stored: tailStored, end: "tail" });
+    const nose = tipView({ cut: noseCut, tip: board.noseTip, length: L, stored: noseStored, end: "nose" });
+    // Inside a tip's start the taper; at and inward of both starts the planer cut itself, read
+    // through the same `unthinned` so nothing there moves by a bit.
+    const thickness = (s: number) => {
+      if (s < tail.view.fromTip) return tail.taper(s);
+      if (s > L - nose.view.fromTip) return nose.taper(L - s);
+      return unthinned(s);
     };
-    const tailCut: PlanerCut = { at: (d) => unthinned(d), slopeAt: (d) => blankSlopeAt(d) };
-    const noseCut: PlanerCut = { at: (d) => unthinned(L - d), slopeAt: (d) => -blankSlopeAt(L - d) };
-    const resolve = (tailStored: number | undefined, noseStored: number | undefined) => {
-      const tail = tipView({ cut: tailCut, tip: board.tailTip, length: L, stored: tailStored, end: "tail" });
-      const nose = tipView({ cut: noseCut, tip: board.noseTip, length: L, stored: noseStored, end: "nose" });
-      // Inside a tip's start the taper; at and inward of both starts the planer cut itself, read
-      // through the same `unthinned` so nothing there moves by a bit.
-      const thickness = (s: number) => {
-        if (s < tail.view.fromTip) return tail.taper(s);
-        if (s > L - nose.view.fromTip) return nose.taper(L - s);
-        return unthinned(s);
-      };
-      return { tail, nose, thickness };
-    };
+    return { tail, nose, thickness };
+  };
 
-    const live = resolve(board.tailThinningStart, board.noseThinningStart);
-    tips = { tail: live.tail.view, nose: live.nose.view };
-    derivedThicknessAt = live.thickness;
-    tipThinningAt = (s) => {
-      if (s < live.tail.view.fromTip || s > L - live.nose.view.fromTip) return unthinned(s) - live.thickness(s);
-      return 0;
-    };
-    automaticThicknessAt =
-      live.tail.view.automatic && live.nose.view.automatic ? live.thickness : resolve(undefined, undefined).thickness;
-  } else {
-    // Phase 12's S-shaped ease over the last 12", line for line (D-25): kept by name for the pin,
-    // the before-side rule sets and the reports only.
-    const W = TIP_EASE_WINDOW_MM;
-    const tailUn = unthinned(0);
-    const noseUn = unthinned(L);
-
-    tipThinningAt = (s: number) => {
-      let thinning = 0;
-      if (s < W) thinning += (tailUn - board.tailTip) * smoothstep(1 - s / W);
-      if (s > L - W) thinning += (noseUn - board.noseTip) * smoothstep(1 - (L - s) / W);
-      return thinning;
-    };
-
-    derivedThicknessAt = (s: number) => {
-      let value = unthinned(s);
-      // Written as unthinned − unthinnedAtTip·w + tip·w so that at the tip (w = 1) the first two
-      // terms cancel exactly and the tip reads its setting to the last bit.
-      if (s < W) {
-        const w = smoothstep(1 - s / W);
-        value = value - tailUn * w + board.tailTip * w;
-      }
-      if (s > L - W) {
-        const w = smoothstep(1 - (L - s) / W);
-        value = value - noseUn * w + board.noseTip * w;
-      }
-      return value;
-    };
-    automaticThicknessAt = derivedThicknessAt;
-
-    const blendView = (end: "nose" | "tail"): TipView => ({
-      fromTip: W,
-      station: end === "tail" ? W : mm(L - W),
-      automatic: true,
-      automaticStart: W,
-      automaticFound: true,
-      range: thinningStartRange(L),
-      reachesStation: false,
-      flag: null,
-    });
-    tips = { tail: blendView("tail"), nose: blendView("nose") };
-  }
+  const live = resolve(board.tailThinningStart, board.noseThinningStart);
+  const tips = { tail: live.tail.view, nose: live.nose.view };
+  const derivedThicknessAt = live.thickness;
+  const tipThinningAt = (s: number) => {
+    if (s < live.tail.view.fromTip || s > L - live.nose.view.fromTip) return unthinned(s) - live.thickness(s);
+    return 0;
+  };
+  const automaticThicknessAt =
+    live.tail.view.automatic && live.nose.view.automatic ? live.thickness : resolve(undefined, undefined).thickness;
 
   const tailHump = preparePchip([
     { x: 0, y: 0 },
@@ -577,7 +472,6 @@ export function boardOnBlank(
     derivedThicknessAt,
     automaticThicknessAt,
     tips,
-    tipRule: rule,
     thicknessAt: (s) => derivedThicknessAt(s) + offsetAt(s),
     deckOffAt: (s) => cut.deckSkin + (pinDeck ? 0 : tipThinningAt(s)) - (onDeck ? offsetAt(s) : 0),
     bottomOffAt: (s) => centerGap + (pinDeck ? tipThinningAt(s) : 0) - (onDeck ? 0 : offsetAt(s)),
@@ -914,8 +808,8 @@ function fitterFor(prepared: PreparedBlank, ctx: BoardFitContext, settings: FitS
  * It is conservative in one corner (Phase 14): Tip Style Bottom, a Deck tweak over the skin, and that
  * tip's start set by hand further in than 12". There the taper takes extra foam off the deck at the
  * 12" station, so some placements could fit, and this still refuses the board everywhere — because
- * searching every placement in that corner costs about 30 s per change in Node. Recorded for the
- * founder to decide after the showing, in the pending todo for retiring today's curve and 12" blend.
+ * searching every placement in that corner costs about 30 s per change in Node. The founder decided on
+ * 2026-10-18 to keep this quick refusal: a little cautious in that rare Tip Style Bottom corner, but instant.
  * Its answer never depends on the starts: it reads only the surface, the two tweaks and the skin.
  */
 export function tweakExceedsDeckSkin(board: BoardOnBlankInput): boolean {

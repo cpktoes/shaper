@@ -144,7 +144,7 @@ describe("the first board a visitor sees, on the square-root rule (Phase 14 D-13
     expect(deckMismatches).toEqual([]);
   });
 
-  it("is the square-root rise and fall between the stations, not today's curve", () => {
+  it("is the square-root rise and fall between the stations", () => {
     const rise = prepareRootCurve(
       rockerStationPositions(length).map(({ key, station }) => ({
         x: station,
@@ -160,15 +160,6 @@ describe("the first board a visitor sees, on the square-root rule (Phase 14 D-13
       (s) => profile.rockerAt(s) !== rise.sample(s) || profile.thicknessAt(s) !== fall.sample(s),
     );
     expect(mismatches).toEqual([]);
-    const pchip = buildBoardProfile({
-      length,
-      rocker: DEFAULT_FALLBACK_ROCKER,
-      foil: DEFAULT_FOIL_SPEC,
-      blank: null,
-      handSetCurve: "pchip",
-    });
-    const moved = sweep(length, 72).filter((s) => pchip.thicknessAt(s) !== profile.thicknessAt(s));
-    expect(moved.length).toBeGreaterThan(0);
   });
 });
 
