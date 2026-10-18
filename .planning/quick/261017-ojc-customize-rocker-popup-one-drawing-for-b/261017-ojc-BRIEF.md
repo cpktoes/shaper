@@ -56,6 +56,21 @@ Written by the orchestrator for the planner, 2026-10-17. Everything under "Decid
    the choice is remembered (localStorage like the picker's Flat/Upright) or is view state for the visit is the
    planner's call, recorded as a P-item; a browser test proves the foam grows (its drawn length in CSS px, with
    and without the dimensions) on an upright phone and a sideways one.
+8. **The switches are toolbar icons, not chips** (the founder, 2026-10-17, a minute later: *"Rather than the show
+   my board and dims chips. lets make icons in the upper right like the other pages have."*). Show my board and
+   Dimensions become icon buttons in the drawing card's upper right, in the page's own toolbar grammar —
+   `components/viewer/toolbar-button.tsx`'s `ViewerToolbarButton` (an icon as its child, `label` as its
+   accessible name and tooltip, `pressed` for a toggle, which paints `aria-pressed` in the accent exactly as the
+   ROCKER page's measuring-points and construction buttons do; 44-dot boxes on a coarse pointer) — floating over
+   the drawing's top-right corner the way `rocker-editor.tsx`'s VIEWER toolbar floats (its `relative` box at
+   :312–:320; `LocateFixedIcon` / `PanelLeftOpenIcon` from lucide there), with the zoom control under them as on
+   the page (`ViewerZoomControl placement="under-toolbar"`, today's `"corner"` goes). The Dimensions icon appears
+   only where ruling 7 gives it (a phone's two layouts); Show my board everywhere. Icons from lucide-react,
+   chosen by the planner (a surfboard-shaped glyph is not in lucide — the page's own `RotateBoardIcon` in
+   `toolbar-button.tsx` is the precedent for drawing one, if a ready icon reads wrong); the two labels keep
+   today's words (`Show my board`, `Dimensions`). The `data-show-board` hook the spec reads moves to the icon
+   button (its text assertion becomes an `aria-pressed` assertion); the key line under the drawing stays, alone
+   on its line now that no chip sits beside it. The heading (ruling 4) stays top-left.
 
 ## What to build
 
