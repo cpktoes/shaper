@@ -2,7 +2,7 @@
 sketch: 017
 name: imported-dims
 question: "How should the INPUTS block show the dimensions a screen imports, so they are noticeable and read cleanly — one line or one line each, in a card, in the accent colour?"
-winner: null
+winner: "C"
 tags: [sidebar, inputs, imported, rocker, rails, fins, volume, typography, phone]
 ---
 
@@ -46,3 +46,10 @@ going away. Figures are the default 6'0" board's real ones, read off the dev ser
 - Metric: a × series carries its unit once (`182.9 × 48.3 cm`), a figure standing alone carries its own (`182.9 cm`)
   — CLAUDE.md Rule 2's "once per line of running text" rule.
 - The wording "From TEMPLATE" / "From ROCKER & FOIL" replaces "… details are imported:" in A–D; open for the founder too.
+
+## Winner
+
+**C — Readout card, figures in ink** (the founder, 2026-10-18: *"Go with C readout card, figures in accent = off"*).
+On every screen that imports, the dimensions sit in a small card like Pick a Blank's: a caption in the accent ink
+(`FROM TEMPLATE`, `FROM ROCKER & FOIL`), then each figure large in the ink colour with its name in small capitals under
+it; VOLUME adds a ruled foot line, "Rail shapes from RAILS". Built in quick 261018-fg1.
