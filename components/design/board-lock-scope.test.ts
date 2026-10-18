@@ -32,8 +32,22 @@ const LOCKABLE_FILES = [
 
 /** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and
  * its own `<button>` is checked here like any other. The elements that can be pressed, ticked, dragged or typed into. `SelectTrigger`, `SelectItem` and
- * `SliderRow` are different names and never match: only a Select's Root and a raw Slider do. */
-const INTERACTIVE = ["button", "Button", "Checkbox", "Select", "Slider", "TwoOptionToggle", "input", "Input", "select"];
+ * `SliderRow` are different names and never match: only a Select's Root and a raw Slider do.
+ * `ViewerToolbarButton` joined the list in quick 261017-ojc (2026-10-17): the Customize Rocker drawing's
+ * icons (Show my board, Dimensions) and the filter bar's Flat/Upright button each carry `data-lock-exempt`,
+ * so an icon added to a lockable file without the marker fails here. */
+const INTERACTIVE = [
+  "button",
+  "Button",
+  "Checkbox",
+  "Select",
+  "Slider",
+  "TwoOptionToggle",
+  "ViewerToolbarButton",
+  "input",
+  "Input",
+  "select",
+];
 
 function stripComments(source: string): string {
   return source

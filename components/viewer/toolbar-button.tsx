@@ -211,3 +211,24 @@ export function BlankTopViewIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/**
+ * The glyph on the Customize Rocker popup's Show my board toggle (quick 261017-ojc, P-11, 2026-10-17 —
+ * the founder: "lets make icons in the upper right like the other pages have"). lucide has no
+ * surfboard, so it is drawn here beside the page's other two: a blank seen from the side, both ends
+ * lifting like a rockered blank, with the board inside it as a filled lens — what pressing it draws.
+ * It is the ONE glyph for both states; the button's pressed fill says which.
+ */
+export function BoardInBlankIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M1.5 10.5C5 9 8 8.8 12 8.8S19 9 22.5 10C21 12.5 17 14.8 12 14.8S4 13 1.5 10.5Z"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
+      <path d="M4.3 11.2C7 10.5 9 10.4 12 10.4S17.5 10.6 20.2 10.9C18.5 12.3 16 13.3 12 13.3S6.2 12.4 4.3 11.2Z" fill="currentColor" />
+    </svg>
+  );
+}

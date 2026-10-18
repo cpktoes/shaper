@@ -530,7 +530,7 @@ export function zoomDashToken(token: `--${string}`, zoomUnit: number): string {
  * P-3: on a touch screen only, an invisible 44 × 44 touch box centred on a 34-px button — the
  * idea `tabbed-panel.tsx` gives its tabs.
  */
-const COARSE_TOUCH_BOX =
+export const COARSE_TOUCH_BOX =
   "coarse:relative coarse:after:absolute coarse:after:-inset-[5px] coarse:after:content-['']";
 
 /**
