@@ -30,7 +30,16 @@ import {
   type ThrusterFrontModel,
   type TwinTemplate,
 } from "@/lib/geometry/fins";
-import { inchesToMm, mm, roundToWholeMm, wholeFeetAndInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import {
+  formatWholeFeet,
+  formatWholeInches,
+  inchesToMm,
+  mm,
+  roundToWholeMm,
+  wholeFeetAndInches,
+  type Mm,
+  type UnitsSystem,
+} from "@/lib/geometry/units";
 import {
   formatDim,
   formatLength,
@@ -57,6 +66,11 @@ const FIN_SETUP_ORDER: FinSetupKind[] = ["single", "twin", "thruster", "2plus1",
 
 // Fin Base Length runs 2 1/2" to 10 1/2" — the top raised from 7 1/2" on the founder's word (fast task 156,
 // 2026-10-08) so a big keel or a longboard's single fin can be set on the slider.
+/** The two Board Length boxes' choices. One list feeds both the open list and the closed box, so
+ * the box reads 6' and 0" the same way the list does (quick 261017-sru). */
+const FEET_ITEMS = [4, 5, 6, 7, 8, 9, 10, 11, 12].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
+const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
+
 const BASE_LEN_BOUNDS = { min: 2.5, max: 10.5, step: 0.125 };
 const POS_BOUNDS = { min: -1.5, max: 1.5, step: 1 / 16 };
 const TOE_BOUNDS = { min: 0, max: 0.5, step: 1 / 16 };
@@ -277,6 +291,7 @@ export function FinControls({
           {system === "imperial" ? (
             <>
               <Select
+                items={FEET_ITEMS}
                 value={lengthFeet}
                 onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
                 disabled={locked || importTemplate}
@@ -285,14 +300,15 @@ export function FinControls({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}&apos;
+                  {FEET_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select
+                items={INCHES_ITEMS}
                 value={lengthInches}
                 onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
                 disabled={locked || importTemplate}
@@ -301,9 +317,9 @@ export function FinControls({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => i).map((i) => (
-                    <SelectItem key={i} value={i}>
-                      {i}&quot;
+                  {INCHES_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

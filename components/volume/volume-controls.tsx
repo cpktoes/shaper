@@ -16,13 +16,15 @@ import { useUnits } from "@/components/units-provider";
 import type { VolumeResult, VolumeSpec } from "@/lib/geometry/volume";
 import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
-import { inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
+import { formatWholeFeet, formatWholeInches, inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
 import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
-const FEET_OPTIONS = [4, 5, 6, 7, 8, 9, 10];
-const INCHES_OPTIONS = Array.from({ length: 12 }, (_, i) => i);
+/** The two Board Length boxes' choices. One list feeds both the open list and the closed box, so
+ * the box reads 6' and 0" the same way the list does (quick 261017-sru). */
+const FEET_ITEMS = [4, 5, 6, 7, 8, 9, 10].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
+const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
 
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -132,6 +134,7 @@ export function VolumeControls({
           {system === "imperial" ? (
             <>
               <Select
+                items={FEET_ITEMS}
                 value={lengthFeet}
                 onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
                 disabled={locked || dimensionsDisabled}
@@ -140,14 +143,15 @@ export function VolumeControls({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FEET_OPTIONS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f}&apos;
+                  {FEET_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select
+                items={INCHES_ITEMS}
                 value={lengthInches}
                 onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
                 disabled={locked || dimensionsDisabled}
@@ -156,9 +160,9 @@ export function VolumeControls({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {INCHES_OPTIONS.map((i) => (
-                    <SelectItem key={i} value={i}>
-                      {i}&quot;
+                  {INCHES_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -12,6 +12,8 @@ import {
   wholeFeetAndInches,
   formatInchesFraction,
   formatSignedInchesFraction,
+  formatWholeFeet,
+  formatWholeInches,
   formatTenthMm,
   formatWholeMm,
   inchesToMm,
@@ -137,6 +139,24 @@ describe("units boundary", () => {
       expect(wholeFeetAndInches(inchesToMm(95.6))).toEqual({ feet: 8, inches: 0 });
       expect(wholeFeetAndInches(inchesToMm(95.4))).toEqual({ feet: 7, inches: 11 });
       expect(wholeFeetAndInches(inchesToMm(72.49))).toEqual({ feet: 6, inches: 0 });
+    });
+  });
+
+  describe("formatWholeFeet and formatWholeInches (quick 261017-sru: the closed Board Length boxes)", () => {
+    it("a box reads its whole number with the foot or inch mark", () => {
+      expect(formatWholeFeet(6)).toBe("6'");
+      expect(formatWholeInches(0)).toBe('0"');
+      expect(formatWholeInches(11)).toBe('11"');
+    });
+
+    it("the two boxes together always read like the Board Length label above them", () => {
+      for (let feet = 4; feet <= 12; feet++) {
+        for (let inches = 0; inches <= 11; inches++) {
+          expect(formatWholeFeet(feet) + formatWholeInches(inches), `${feet}'${inches}"`).toBe(
+            formatFeetInches(inchesToMm(feet * 12 + inches)),
+          );
+        }
+      }
     });
   });
 
