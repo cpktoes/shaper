@@ -42,6 +42,20 @@ Written by the orchestrator for the planner, 2026-10-17. Everything under "Decid
    popup's layout (rows left, drawing right; on an upright phone the drawing pinned on top, turned nose-up, the
    rows beneath; a sideways phone the desktop shell on a short screen); the board lock; Cancel changes nothing.
 6. **Pictures before the merge, nothing pushed without the founder's go** (the orchestrator's steps).
+7. **A Dimensions toggle on a phone** (the founder, 2026-10-17, while this was being planned: *"lets also add a
+   toggle to turn off dimensions when on a phone (so the user can see the board in a larger view). This toggle
+   will need to maximize the board/blank size in the available viewspace."*). On a phone the popup's drawing is
+   small (pinned at ~299 tall upright, ~222 tall sideways), so a second chip beside Show my board — **Dimensions:
+   On / Off**, the same chip style — hides every card, stacked figure, rail title and tick line and lets the foam
+   (and the board, when on) **fill the drawing's box**: the frame fitted to the blank's length across the box's
+   width (its height when the drawing stands nose-up), with only the gutter a stroke needs. The natural dashed
+   line, the bend marks and the red/blue changes stay (they are the live aid); the zoom still works. Default
+   **On** — today's view. Which screens get the chip is decided by CLAUDE.md's switches, never the pointer: the
+   stacked-and-pinned layout below the shell width (`max-shell`) and a short screen (`[@media(max-height:500px)]`,
+   a phone held sideways) — the two places the drawing is small; a computer keeps its room and no chip. Whether
+   the choice is remembered (localStorage like the picker's Flat/Upright) or is view state for the visit is the
+   planner's call, recorded as a P-item; a browser test proves the foam grows (its drawn length in CSS px, with
+   and without the dimensions) on an upright phone and a sideways one.
 
 ## What to build
 
