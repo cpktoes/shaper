@@ -7,6 +7,7 @@ import {
   effectiveQuadRearModel,
   finRoundingGrain,
   finRoundingNote,
+  fullSpreadRoundingAside,
   forwardFinsHeading,
   importedFinTailFromOutline,
   isQuadRearModelAvailable,
@@ -595,6 +596,13 @@ describe("finRoundingNote — the fin notes' rounding line in the shaper's own u
     expect(finRoundingGrain("metric")).toBe("millimetre");
     expect(finRoundingGrain("imperial")).not.toMatch(/cm/);
     expect(finRoundingGrain("metric")).not.toMatch(/cm/);
+  });
+
+  it("fullSpreadRoundingAside names the same grain, per system, inside the Full Spread aside", () => {
+    expect(fullSpreadRoundingAside("imperial")).toBe('(*Full spread may be >2x due to 1/16" rounding)');
+    expect(fullSpreadRoundingAside("metric")).toBe("(*Full spread may be >2x due to millimetre rounding)");
+    expect(fullSpreadRoundingAside("imperial")).toContain(finRoundingGrain("imperial"));
+    expect(fullSpreadRoundingAside("metric")).toContain(finRoundingGrain("metric"));
   });
 
   it("every golden fixture's notes carry no rounding line and no 0.1 cm aside — the display layer appends it, not the geometry", () => {

@@ -45,7 +45,7 @@ import {
 } from "./template";
 import { formatMark, stationLabel } from "./measure-display";
 import { formatDim } from "./measure-display";
-import { isWingMark, markLabel, wingMarkDistanceText } from "./template";
+import { PAPER_SAVER_SUITS_WIDTH_IN, isWingMark, markLabel, paperSaverCaption, wingMarkDistanceText } from "./template";
 import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -2722,5 +2722,16 @@ describe("wing marks on the full-size prints (quick 261015-sei)", () => {
       }
       expect(cases).toBeGreaterThan(5_000);
     });
+  });
+});
+
+describe("paperSaverCaption — the Paper Saver card names the width it suits in the shaper's system (quick 261017-sru)", () => {
+  it("Imperial keeps the founder's figure as he wrote it, with a lower-case wide", () => {
+    expect(paperSaverCaption("imperial")).toBe('True-size, full-length landscape print. Great for boards ≤20.5" wide.');
+  });
+
+  it("Metric reads the same width as a dim in centimetres", () => {
+    expect(paperSaverCaption("metric")).toBe("True-size, full-length landscape print. Great for boards ≤52.1 cm wide.");
+    expect(paperSaverCaption("metric")).toContain(formatDim(inchesToMm(PAPER_SAVER_SUITS_WIDTH_IN), "metric"));
   });
 });

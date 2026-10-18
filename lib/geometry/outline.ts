@@ -35,7 +35,8 @@ import { applyWings } from "./wings";
 
 const MARGIN_MM = inchesToMm(16);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
-const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);
+/** The room a diamond tail's point keeps from the tail block. */
+export const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);
 /** The shaper's standard 12" measuring station, from either end. The one definition of this
  * physical quantity in the codebase — `lib/geometry/template.ts` imports it rather than
  * re-deriving its own `inchesToMm(12)`, so the two never drift apart (CLAUDE.md Rule 1). */

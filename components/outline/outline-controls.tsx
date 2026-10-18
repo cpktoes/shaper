@@ -26,6 +26,7 @@ import {
   wholeFeetAndInches,
 } from "@/lib/geometry/units";
 import {
+  diamondDepthClampNote,
   formatDim,
   formatLength,
   formatMark,
@@ -411,7 +412,7 @@ export function OutlineControls({
                   onChange({ tail: { ...outline.tail, crotchDepth: depth.toMm(v) } });
                 }
               }}
-              note={diamondDepthClamped ? 'Clamped to 2" less than Tail Block' : undefined}
+              note={diamondDepthClamped ? diamondDepthClampNote(system) : undefined}
             />
           );
         })()}

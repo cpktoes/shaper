@@ -1161,6 +1161,23 @@ export function scaleSquarePlacement(
  * whether the stringer lands on it, from one shared expression. */
 export const STRIP_RAIL_INSET_MM = inchesToMm(0.5);
 
+/** The widest board, in inches, the Paper Saver card says it suits. The founder's own caption figure
+ * (commit e5e707a7, 2026-09-02) — a rule of thumb, not page arithmetic. */
+export const PAPER_SAVER_SUITS_WIDTH_IN = 20.5;
+
+/**
+ * The Paper Saver card's one-line description in the Print Template popup, with the width it suits in
+ * the shaper's own system. Imperial keeps the founder's figure as he wrote it, `20.5"` (the house
+ * fraction formatter would print `20 1/2"`); Metric is the same width as a dim, `52.1 cm`.
+ */
+export function paperSaverCaption(system: UnitsSystem): string {
+  const width =
+    system === "metric"
+      ? formatDim(inchesToMm(PAPER_SAVER_SUITS_WIDTH_IN), system)
+      : `${PAPER_SAVER_SUITS_WIDTH_IN}"`;
+  return `True-size, full-length landscape print. Great for boards ≤${width} wide.`;
+}
+
 /** Minimum station distance kept between any two printed label rows on one strip page — below
  * this, two rows of text read as one smear rather than two legible lines. Named the same way
  * `MARK_LABEL_COLLISION_THRESHOLD_MM` above already is: a print-legibility constant that belongs
