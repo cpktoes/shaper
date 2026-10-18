@@ -13,6 +13,7 @@ import {
   pickedCard,
   pickFirstFittingBlank,
   pickSavedBlank,
+  removeThisBlank,
   savedCards,
 } from "./helpers/blank-picker";
 
@@ -500,7 +501,7 @@ test.describe("Customize Rocker on a computer", () => {
     await expect(blankRockerLine(page)).toHaveText('+1/2"N');
 
     // Take the blank off the board, then find the saved one in the popup.
-    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await removeThisBlank(page);
     await expect(pickedCard(page)).toHaveCount(0);
     let picker = await openBlankPicker(page);
     const saved = savedCards(picker);

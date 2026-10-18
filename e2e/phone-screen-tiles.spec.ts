@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { blankRockerLine, customRockerDialog, openCustomizeRocker, waitForBlankButton } from "./helpers/blank-picker";
+import {
+  blankRockerLine,
+  customRockerDialog,
+  openCustomizeRocker,
+  removeThisBlank,
+  waitForBlankButton,
+} from "./helpers/blank-picker";
 import {
   SCREENS,
   expectNoScreensNavigation,
@@ -278,7 +284,7 @@ test.describe("every tile reads the current board", () => {
   test("with the blank removed, ROCKER's tile reads Hand-set and draws only the board", async ({ page }) => {
     await openPreset(page);
     await goToScreen(page, "ROCKER");
-    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await removeThisBlank(page);
     await expect(page.getByText("Hand-set until you pick a blank").first()).toBeVisible();
     await openPhoneMenu(page);
     expect(await tileLine(screenTile(page, "ROCKER"))).toBe("Hand-set");
@@ -371,7 +377,7 @@ async function rockerLineKeepsPictures(page: Page, label: string) {
   await page.keyboard.press("Escape");
 
   await goToScreen(page, "ROCKER");
-  await page.getByRole("button", { name: "Remove This Blank" }).click();
+  await removeThisBlank(page);
   await expect(page.getByText("Hand-set until you pick a blank").first()).toBeVisible();
   await openPhoneMenu(page);
   await expect(rocker.locator("[data-tile-rocker]")).toHaveCount(0);

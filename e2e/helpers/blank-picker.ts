@@ -188,6 +188,24 @@ export async function nudgeCenterThickness(page: Page, sixteenths: number, expec
   await expect(page.locator("[data-rocker-inputs]")).toContainText(`Center Thickness — ${expected}`);
 }
 
+/** The confirm popup Remove This Blank opens (quick 261018-ejc). */
+export function removeBlankDialog(page: Page): Locator {
+  return page.getByRole("dialog", { name: "Remove this blank?" });
+}
+
+/**
+ * Removes the picked blank the way a shaper now does: taps Remove This Blank, waits for the confirm
+ * popup, taps its Remove Blank, and waits for the popup to go and the blank with it.
+ */
+export async function removeThisBlank(page: Page): Promise<void> {
+  const dialog = removeBlankDialog(page);
+  await page.getByRole("button", { name: "Remove This Blank", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Remove Blank", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(pickedCard(page)).toHaveCount(0);
+}
+
 /** The BLANK button's rocker line — `Natural`, or the note as ordered (D-02). */
 export function blankRockerLine(page: Page): Locator {
   return page.locator("[data-blank-rocker]");

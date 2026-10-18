@@ -7,6 +7,7 @@ import {
   pickBlankNamed,
   pickedCard,
   pickFirstFittingBlank,
+  removeThisBlank,
   waitForBlankButton,
 } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
@@ -176,7 +177,7 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(deckSkinLabel(page)).not.toHaveText(labelAtPick);
     const ownSkin = await deckSkinLabel(page).innerText();
 
-    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await removeThisBlank(page);
     await expect(pickedCard(page)).toHaveCount(0);
     await expect(deckSkinLabel(page)).toHaveCount(0);
 

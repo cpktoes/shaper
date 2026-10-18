@@ -9,6 +9,7 @@ import {
   openRocker,
   pickedCard,
   pickFirstFittingBlank,
+  removeThisBlank,
 } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
@@ -140,7 +141,7 @@ test.describe("ROCKER — a real blank from the list", () => {
     expect(offerText).toContain(` ${switchedTo} Natural, `);
     await expect(page.locator("[data-blank-flag]")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await removeThisBlank(page);
     await expect(page.getByText("Hand-set until you pick a blank").first()).toBeVisible();
     await expect(page.locator("[data-blank-silhouette]")).toHaveCount(0);
     await expect(pickedCard(page)).toHaveCount(0);
@@ -560,7 +561,7 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await nose12Row.getByRole("slider").press("ArrowRight");
     await expect(nose12Row).toContainText('Tweak +1/16"');
 
-    await page.getByRole("button", { name: "Remove This Blank" }).click();
+    await removeThisBlank(page);
     await expect(pickedCard(page)).toHaveCount(0);
     await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
 
