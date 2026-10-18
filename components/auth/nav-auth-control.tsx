@@ -21,7 +21,15 @@ import { YOUR_DATA_COPY } from "@/components/account/your-data-copy";
 import { YourDataPage } from "@/components/account/your-data-page";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 
-export function NavAuthControl() {
+/**
+ * `onSignIn` (quick fix, 2026-10-18): when given, the signed-out "Sign in" button calls it and this control
+ * renders no dialog of its own — the caller opens the sign-in dialog OUTSIDE its own tree. The phone ☰ menu
+ * needs this: a dialog rendered inside the menu sits inside the menu in React's tree, so every key typed in
+ * Clerk's email box bubbled up to the menu's own keyboard handling (its type-to-find), which swallowed it —
+ * a phone could open the sign-in box from ☰ but not type in it. The computer's top bar is not in a menu
+ * and passes nothing.
+ */
+export function NavAuthControl({ onSignIn }: { onSignIn?: () => void } = {}) {
   const { isLoaded, isSignedIn } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -89,12 +97,12 @@ export function NavAuthControl() {
           row around it grows to 44px, and only under a touch pointer. */}
       <button
         type="button"
-        onClick={() => setDialogOpen(true)}
+        onClick={() => (onSignIn ? onSignIn() : setDialogOpen(true))}
         className="text-sm text-surf-ink-muted transition-colors outline-none coarse:flex coarse:min-h-11 coarse:items-center hover:text-surf-ink focus-visible:text-surf-accent-ink"
       >
         Sign in
       </button>
-      <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {!onSignIn && <SignInDialog open={dialogOpen} onOpenChange={setDialogOpen} />}
     </>
   );
 }
