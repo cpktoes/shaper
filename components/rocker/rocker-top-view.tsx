@@ -210,7 +210,7 @@ function topViewName(blank: BlankSideView | undefined, system: ReturnType<typeof
   const marks = system === "metric" ? `${stationLabel("metric")} marks` : "12-inch marks";
   // The blank named with its rocker, as everywhere a blank is named (quick 261016-mkb, D-02, P-23).
   const named = blankDisplayName(blank.record, rockerSpecOf(blank.onBlank.prepared), { vendor: true });
-  return `The board's outline seen from above, on the ${named} blank, with its stringer, centre mark and ${marks}`;
+  return `The board's outline seen from above, on the ${named} blank, with its stringer, center mark and ${marks}`;
 }
 
 /**

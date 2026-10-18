@@ -32,7 +32,7 @@ const SAVED_BLANKS_KEY = "shaper-saved-blanks";
 const STARRED_BLANKS_KEY = "shaper-starred-blanks";
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
-const FLOOR_HINT = "Floor — the tip would drop below the centre";
+const FLOOR_HINT = "Floor — the tip would drop below the center";
 
 async function dismissChrome(page: Page) {
   await page.addInitScript((key) => {
@@ -193,19 +193,19 @@ test.describe("Customize Rocker on a computer", () => {
     expect(await stored(page, STARRED_BLANKS_KEY)).toEqual([[vendor, `${name} +1/2"N`]]);
   });
 
-  test("a tail Bend starts slider runs centre to tail, left to right, the way the drawing lies (fast task 170)", async ({ page }) => {
+  test("a tail Bend starts slider runs center to tail, left to right, the way the drawing lies (fast task 170)", async ({ page }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
     const dialog = await openCustomizeRocker(page);
 
-    // A +1/8" tail change from the centre, so the bend has a mark to watch.
+    // A +1/8" tail change from the center, so the bend has a mark to watch.
     await pressUntil(page, dialog.getByRole("slider", { exact: true, name: "Tail rocker change" }), "ArrowRight", '+1/8"');
     const tailBend = dialog.getByRole("slider", { exact: true, name: "Tail bend starts" });
     const tailRow = dialog.locator("[data-custom-rocker-change='tail-1']");
-    // At the centre the thumb sits at the LEFT end, under the "At the centre" hint; "Near the tail" is on the right.
-    await expect(tailBend).toHaveAttribute("aria-valuetext", "At the centre");
+    // At the center the thumb sits at the LEFT end, under the "At the center" hint; "Near the tail" is on the right.
+    await expect(tailBend).toHaveAttribute("aria-valuetext", "At the center");
     expect(await tailBend.getAttribute("aria-valuenow")).toBe(await tailBend.getAttribute("min"));
-    await expect(tailRow).toContainText("At the centre");
+    await expect(tailRow).toContainText("At the center");
     await expect(tailRow).toContainText("Near the tail");
     const noseRow = dialog.locator("[data-custom-rocker-change='nose-1']");
     await expect(noseRow).toContainText("Near the nose");

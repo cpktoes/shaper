@@ -38,6 +38,14 @@ export const SAVED_BLANKS_MAX = 100;
 /** What a shaper reads when a save would make a 101st saved blank (P-5). */
 export const SAVED_BLANKS_FULL_MESSAGE = `You have ${SAVED_BLANKS_MAX} saved blanks — remove one in Pick a Blank to save another.`;
 
+/** The four sentences a failed account write can show a shaper: saving or updating a blank, and
+ * removing one. A lapsed sign-in and a dropped connection each have their own, worded for the thing
+ * the shaper just tried. */
+export const SAVE_SIGNED_OUT_MESSAGE = "Sign in again to save blanks to your account.";
+export const SAVE_CONNECTION_MESSAGE = "Couldn't save the blank — check your connection and try again.";
+export const REMOVE_SIGNED_OUT_MESSAGE = "Sign in again to remove blanks from your account.";
+export const REMOVE_CONNECTION_MESSAGE = "Couldn't remove the blank — check your connection and try again.";
+
 /** The longest id the browser list keeps (an account row's id is a 36-character uuid). */
 const SAVED_BLANK_ID_MAX = 64;
 
@@ -62,6 +70,12 @@ export type SaveUserBlankResult =
 
 /** What a remove answers. */
 export type RemoveUserBlankResult = { ok: true } | { ok: false; reason: "signed-out" | "invalid" };
+
+/** The sentence a failed Remove shows. A lapsed sign-in says so; anything else, and a request that
+ * threw before the account answered (`null`), is the connection sentence. */
+export function removeBlankFailureMessage(failure: Extract<RemoveUserBlankResult, { ok: false }> | null): string {
+  return failure?.reason === "signed-out" ? REMOVE_SIGNED_OUT_MESSAGE : REMOVE_CONNECTION_MESSAGE;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

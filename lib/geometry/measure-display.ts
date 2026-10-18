@@ -19,7 +19,7 @@
  * can be verified in isolation, exactly like every other module under `lib/geometry/`.
  */
 
-import { MEASURE_STATION_MM } from "./outline";
+import { DIAMOND_BLOCK_MARGIN_MM, MEASURE_STATION_MM } from "./outline";
 import {
   centimetresToMm,
   cubicInchesToCubicMm,
@@ -209,6 +209,14 @@ export function formatCubicVolume(volumeCubicInches: number, system: UnitsSystem
  */
 export function stationLabel(system: UnitsSystem): string {
   return system === "metric" ? `${formatCentimetres(MEASURE_STATION_MM)} cm` : `12"`;
+}
+
+/**
+ * The note under a diamond tail's Depth slider when the board's own tail block has cut it short. The
+ * room kept is a mark, like the Depth label it sits under: Imperial reads `2"`, Metric `51 mm`.
+ */
+export function diamondDepthClampNote(system: UnitsSystem): string {
+  return `Clamped to ${formatMark(DIAMOND_BLOCK_MARGIN_MM, system)} less than Tail Block`;
 }
 
 /**

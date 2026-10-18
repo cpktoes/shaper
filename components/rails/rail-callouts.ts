@@ -22,10 +22,10 @@
  *
  * (a) Corner Cut's anchor moved from the prototype's `(-cornerCutDeck, railMark1)` to its own
  * segment's apex end `(0, cornerCutRail)`, and its side from −1 to 1. At the prototype's anchor,
- * "Corner Cut" and "Rail Mk1" printed on one line about 20px apart either side of the apex and
+ * "Corner Cut" and "Rail Mark 1" printed on one line about 20px apart either side of the apex and
  * read as one run of text — the shaper's own report. Corner Cut's apex end is 3.5px below Rail
- * Mk1 on the real example rail, so it genuinely IS an apex-column mark, and its name now stacks
- * in that column under Rail Mk1, in the marks' own top-to-bottom order. This is a layout change
+ * Mark 1 on the real example rail, so it genuinely IS an apex-column mark, and its name now stacks
+ * in that column under Rail Mark 1, in the marks' own top-to-bottom order. This is a layout change
  * only: `buildSegmentDefsInches` still draws the cornerCut segment between exactly the same two
  * endpoints it always has.
  *
@@ -109,9 +109,9 @@ export interface RailCallout {
  * by `buildRailCallouts` when `hasTuck2` is false). Exported so a name/side/order assertion never
  * needs a full geometry fixture to check against.
  *
- * Corner Cut must come immediately after Rail Mk1: the two anchors start 3.5px apart on the real
+ * Corner Cut must come immediately after Rail Mark 1: the two anchors start 3.5px apart on the real
  * example rail, and the de-overlap pass's stable sort falls back to input order, so this array
- * position is what fixes Corner Cut under Rail Mk1 rather than over it.
+ * position is what fixes Corner Cut under Rail Mark 1 rather than over it.
  *
  * `dy` (viewBox units, optional) now has three jobs, not one: a negative lift off a drawn line
  * (Deck 3, Deck 1, `-RAIL_CALLOUT_EDGE_LIFT`), a negative lift off the two tuck lines that cross at
@@ -121,7 +121,7 @@ export interface RailCallout {
 export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: RailCalloutSide; dy?: number }[] = [
   { key: "apex", name: "Apex", side: 1 },
   { key: "domedTaper", name: "Domed Taper", side: 1 },
-  { key: "railMk1", name: "Rail Mk1", side: 1 },
+  { key: "railMk1", name: "Rail Mark 1", side: 1 },
   { key: "cornerCut", name: "Corner Cut", side: 1 },
   { key: "deck3", name: "Deck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "deck2", name: "Deck 2", side: -1 },
@@ -187,7 +187,7 @@ export function buildRailCallouts(
     railMk1: { x: 0, y: mmToInches(r.railMark1) },
     // Corner Cut's anchor is its own segment's apex end (0, cornerCutRail) — the `cornerCut`
     // segment's own p1 in buildSegmentDefsInches (rail-bands.ts) — not the deck end and not
-    // Rail Mk1's height. `?? r.railMark1` covers the `removeCornerCut` case where `cornerCutRail`
+    // Rail Mark 1's height. `?? r.railMark1` covers the `removeCornerCut` case where `cornerCutRail`
     // is null and no cornerCut segment is drawn at all, reproducing exactly where the name sat
     // before this anchor moved.
     cornerCut: { x: 0, y: mmToInches(r.cornerCutRail ?? r.railMark1) },

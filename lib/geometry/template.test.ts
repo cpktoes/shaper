@@ -45,7 +45,7 @@ import {
 } from "./template";
 import { formatMark, stationLabel } from "./measure-display";
 import { formatDim } from "./measure-display";
-import { isWingMark, markLabel, wingMarkDistanceText } from "./template";
+import { PAPER_SAVER_SUITS_WIDTH_IN, isWingMark, markLabel, paperSaverCaption, wingMarkDistanceText } from "./template";
 import { degrees, formatInchesFraction, inchesToMm, mm } from "./units";
 
 const PAPERS: PaperSize[] = ["letter", "a4"];
@@ -81,6 +81,10 @@ function overlapLength(aRange: [number, number], bRange: [number, number]): numb
  * this recapture is a name-block move, not a tile-grid regression riding along under a
  * rubber-stamped digest. See `design_decision` §1 of that task's plan for the full ruling: split
  * the proof from the pin, then recapture, never overwrite on trust.
+ *
+ * **Dated amendment (2026-10-17, quick 261017-sru):** the printed center mark moved to the American
+ * spelling on purpose; the pin hashes it by its old name (`digestByTheOldCenterName`) so it still
+ * proves every other byte is unchanged. The digests themselves were not touched.
  */
 /** The page boxes exactly as `templatePageBoxes` built them BEFORE fast task 157 (2026-10-08): each
  * border line a FULL overlap in from the printable edge, which put neighbouring pages' lines 1/2"
@@ -124,6 +128,22 @@ function expectBoxesMovedByHalfTheOverlap(layout: TemplateLayout) {
   });
 }
 
+/** The sha256 (first 16 hex characters) of a frozen pin's combined output, with the printed center
+ * mark named by its OLD spelling (quick 261017-sru, 2026-10-17). The mark moved to the American
+ * spelling on purpose, so the three characterisation pins below hash it by the name it had when
+ * their digests were captured, which keeps them proving every OTHER byte is unchanged. It is
+ * digested by the old rule the same way `boxesByThePreFastTask157Rule` digests the old page boxes
+ * (fast task 157). It first asserts the real data holds the new name and none of the old, so the
+ * mapping can never go vacuous or hide a real change. */
+function digestByTheOldCenterName(combined: unknown): string {
+  const json = JSON.stringify(combined);
+  const newName = '"Cen' + "ter";
+  const oldName = '"Cen' + "tre";
+  expect(json).toContain(newName);
+  expect(json).not.toContain(oldName);
+  return createHash("sha256").update(json.split(newName).join(oldName)).digest("hex").slice(0, 16);
+}
+
 describe("existing tile-grid output is unchanged by the strip work (characterisation pin, quick task 260902-cj5 — frozen, never edit)", () => {
   const EXPECTED_TILE_GRID_DIGESTS: Record<string, string> = {
     "shortboard-letter": "3cbffdc1fc29fa49",
@@ -161,7 +181,7 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
         closureSegments,
         namePlacement,
       };
-      const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+      const digest = digestByTheOldCenterName(combined);
 
       const key = `${preset.id}-${paper}`;
       expect(digest).toBe(EXPECTED_TILE_GRID_DIGESTS[key]);
@@ -194,6 +214,10 @@ describe("existing tile-grid output is unchanged by the strip work (characterisa
  * to CLAUDE.md Rule 1's "never hand-transcribe an expected number." Rule 1's prohibition governs
  * geometry FORMULA values, whose authority is the prototype's own fixtures; it was never meant to
  * forbid the one kind of number that only exists as "whatever the unmodified code produced."
+ *
+ * **Dated amendment (2026-10-17, quick 261017-sru):** the printed center mark moved to the American
+ * spelling on purpose; the pin hashes it by its old name (`digestByTheOldCenterName`) so it still
+ * proves every other byte is unchanged. The digests themselves were not touched.
  */
 describe(
   "existing seven-of-eight tile-grid functions are unchanged by the two-sided clearance work (characterisation pin, quick task 260903-18d, Task 1 — frozen, never edit)",
@@ -234,7 +258,7 @@ describe(
           closure,
           closureSegments,
         };
-        const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+        const digest = digestByTheOldCenterName(combined);
 
         const key = `${preset.id}-${paper}`;
         expect(digest).toBe(EXPECTED_SEVEN_FUNCTION_DIGESTS[key]);
@@ -266,6 +290,10 @@ describe(
  * paper survive the signature change intact and are what proves the founder's ruling — "the 2in
  * box is good" — held after the name block moved. These two numbers are the founder's locked
  * constraint, not an implementation detail: they must never change as a result of this task.
+ *
+ * **Dated amendment (2026-10-17, quick 261017-sru):** the printed center mark moved to the American
+ * spelling on purpose; the pin hashes it by its old name (`digestByTheOldCenterName`) so it still
+ * proves every other byte is unchanged. The digests themselves were not touched.
  */
 describe("Paper Saver strip output is unchanged by the name-block move (characterisation pin, quick task 260902-kon — frozen, never edit)", () => {
   const STRIP_FURNITURE_SIZES = {
@@ -317,7 +345,7 @@ describe("Paper Saver strip output is unchanged by the name-block move (characte
       const rows = stripLabelRows(layout, marks, geometry);
 
       const combined = { pages, lines, segments, rows };
-      const digest = createHash("sha256").update(JSON.stringify(combined)).digest("hex").slice(0, 16);
+      const digest = digestByTheOldCenterName(combined);
 
       const key = `${preset.id}-${paper}`;
       expect(digest).toBe(EXPECTED_STRIP_DIGESTS[key]);
@@ -354,7 +382,7 @@ describe("markLabels / markPlacements read the chosen units system (07-01 D-04)"
     expect(markLabels("imperial")).toEqual({
       noseTwelve: 'Nose 12"',
       tailTwelve: 'Tail 12"',
-      center: "Centre",
+      center: "Center",
       widepoint: "Wide point",
       tailBlock: "Tail Block",
     });
@@ -364,7 +392,7 @@ describe("markLabels / markPlacements read the chosen units system (07-01 D-04)"
     const labels = markLabels("metric");
     expect(labels.noseTwelve).toBe(`Nose ${stationLabel("metric")}`);
     expect(labels.tailTwelve).toBe(`Tail ${stationLabel("metric")}`);
-    expect(labels.center).toBe("Centre");
+    expect(labels.center).toBe("Center");
     expect(labels.widepoint).toBe("Wide point");
     expect(labels.tailBlock).toBe("Tail Block");
   });
@@ -559,7 +587,7 @@ describe("markPlacements", () => {
         expect(widepoint).toBeDefined();
         expect(center!.labelOffsetMm).toBe(0);
         expect(widepoint!.labelOffsetMm).toBe(0);
-        expect(center!.label).toBe("Centre");
+        expect(center!.label).toBe("Center");
         expect(widepoint!.label).toBe("Wide point");
       });
 
@@ -1449,7 +1477,7 @@ describe("stripLabelRows", () => {
     expect(registrationRow.baselineStation).toBeCloseTo(expectedRegistrationBaseline, 6);
 
     const centerRow = rows.find(
-      (row) => row.kind === "mark" && row.pageIndex === targetLine.pageIndex && row.text.startsWith("Centre"),
+      (row) => row.kind === "mark" && row.pageIndex === targetLine.pageIndex && row.text.startsWith("Center"),
     );
     expect(centerRow).toBeDefined();
 
@@ -2573,7 +2601,7 @@ describe("wing marks on the full-size prints (quick 261015-sei)", () => {
     expect(metric?.label).toBe("Wing 1 — 19.1 cm from tail");
     // Every other mark still reads its width.
     const center = stripMarkSegments(strip, marks, fishGeometry).find((s) => s.mark === "center");
-    expect(center?.label).toBe(`Centre — ${formatDim(mm(center!.halfWidthExtent * 2), "imperial")}`);
+    expect(center?.label).toBe(`Center — ${formatDim(mm(center!.halfWidthExtent * 2), "imperial")}`);
   });
 
   describe("a wing label never prints on another label (P5)", () => {
@@ -2694,5 +2722,16 @@ describe("wing marks on the full-size prints (quick 261015-sei)", () => {
       }
       expect(cases).toBeGreaterThan(5_000);
     });
+  });
+});
+
+describe("paperSaverCaption — the Paper Saver card names the width it suits in the shaper's system (quick 261017-sru)", () => {
+  it("Imperial keeps the founder's figure as he wrote it, with a lower-case wide", () => {
+    expect(paperSaverCaption("imperial")).toBe('True-size, full-length landscape print. Great for boards ≤20.5" wide.');
+  });
+
+  it("Metric reads the same width as a dim in centimetres", () => {
+    expect(paperSaverCaption("metric")).toBe("True-size, full-length landscape print. Great for boards ≤52.1 cm wide.");
+    expect(paperSaverCaption("metric")).toContain(formatDim(inchesToMm(PAPER_SAVER_SUITS_WIDTH_IN), "metric"));
   });
 });

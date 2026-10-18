@@ -5,12 +5,17 @@ import { blankStarIdentity, normalizeSpec, type BlankRockerSpec } from "./geomet
 import { BOARD_PRESETS } from "./geometry/presets";
 import { inchesToMm } from "./geometry/units";
 import {
+  REMOVE_CONNECTION_MESSAGE,
+  REMOVE_SIGNED_OUT_MESSAGE,
+  SAVE_CONNECTION_MESSAGE,
+  SAVE_SIGNED_OUT_MESSAGE,
   SAVED_BLANKS_FULL_MESSAGE,
   SAVED_BLANKS_MAX,
   SAVED_BLANKS_STORAGE_KEY,
   parseSavedBlankInput,
   parseSavedBlanks,
   parseSavedBlanksText,
+  removeBlankFailureMessage,
   savedBlankFromRow,
   savedBlankIdentity,
   savedBlanksJson,
@@ -40,6 +45,28 @@ describe("the browser list's constants (P-5)", () => {
     expect(SAVED_BLANKS_STORAGE_KEY).toBe("shaper-saved-blanks");
     expect(SAVED_BLANKS_MAX).toBe(100);
     expect(SAVED_BLANKS_FULL_MESSAGE).toBe("You have 100 saved blanks — remove one in Pick a Blank to save another.");
+  });
+});
+
+describe("the failed-write sentences (quick 261017-sru)", () => {
+  it("the two save sentences read exactly as they always have", () => {
+    expect(SAVE_SIGNED_OUT_MESSAGE).toBe("Sign in again to save blanks to your account.");
+    expect(SAVE_CONNECTION_MESSAGE).toBe("Couldn't save the blank — check your connection and try again.");
+  });
+
+  it("the two remove sentences say remove, not save", () => {
+    expect(REMOVE_SIGNED_OUT_MESSAGE).toBe("Sign in again to remove blanks from your account.");
+    expect(REMOVE_CONNECTION_MESSAGE).toBe("Couldn't remove the blank — check your connection and try again.");
+  });
+
+  it("a failed Remove reads the sign-in sentence when the sign-in lapsed, the connection sentence otherwise", () => {
+    expect(removeBlankFailureMessage({ ok: false, reason: "signed-out" })).toBe(
+      "Sign in again to remove blanks from your account.",
+    );
+    expect(removeBlankFailureMessage({ ok: false, reason: "invalid" })).toBe(
+      "Couldn't remove the blank — check your connection and try again.",
+    );
+    expect(removeBlankFailureMessage(null)).toBe("Couldn't remove the blank — check your connection and try again.");
   });
 });
 

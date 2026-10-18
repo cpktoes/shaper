@@ -65,7 +65,7 @@ describe("RAIL_CALLOUT_ANCHORS", () => {
     expect(RAIL_CALLOUT_ANCHORS.map((a) => a.name)).toEqual([
       "Apex",
       "Domed Taper",
-      "Rail Mk1",
+      "Rail Mark 1",
       "Corner Cut",
       "Deck 3",
       "Deck 2",
@@ -103,7 +103,7 @@ describe("buildRailCallouts", () => {
     expect(callouts.map((c) => c.name)).toEqual([
       "Apex",
       "Domed Taper",
-      "Rail Mk1",
+      "Rail Mark 1",
       "Corner Cut",
       "Deck 3",
       "Deck 2",
@@ -115,8 +115,8 @@ describe("buildRailCallouts", () => {
     ]);
   });
 
-  it("carries side 1 on Apex, Domed Taper, Rail Mk1, Corner Cut and Tuck 1; side -1 on Deck 3, Deck 2, Deck 1 and Bottom Tuck 2; and side 0 on Bottom Tuck 1 and Bottom Tuck 3", () => {
-    const sideOneNames = new Set(["Apex", "Domed Taper", "Rail Mk1", "Corner Cut", "Tuck 1"]);
+  it("carries side 1 on Apex, Domed Taper, Rail Mark 1, Corner Cut and Tuck 1; side -1 on Deck 3, Deck 2, Deck 1 and Bottom Tuck 2; and side 0 on Bottom Tuck 1 and Bottom Tuck 3", () => {
+    const sideOneNames = new Set(["Apex", "Domed Taper", "Rail Mark 1", "Corner Cut", "Tuck 1"]);
     const sideZeroNames = new Set(["Bottom Tuck 1", "Bottom Tuck 3"]);
     for (const c of callouts) {
       if (sideOneNames.has(c.name)) {
@@ -173,7 +173,7 @@ describe("buildRailCallouts", () => {
   it("leaves the three unmoved marks exactly on their own geometry with no lift applied", () => {
     const r = output.result;
     const apex = callouts.find((c) => c.name === "Apex")!;
-    const railMk1 = callouts.find((c) => c.name === "Rail Mk1")!;
+    const railMk1 = callouts.find((c) => c.name === "Rail Mark 1")!;
     const tuck1 = callouts.find((c) => c.name === "Tuck 1")!;
 
     expect(apex.y).toBeCloseTo(mmToInches(r.apexCenter), 9);
@@ -367,14 +367,14 @@ describe("deOverlapCallouts", () => {
     }
   });
 
-  it("(f) after the de-overlap pass, the apex column reads Rail Mk1, then Corner Cut, then Apex, then Tuck 1, in ascending y with every adjacent gap at least RAIL_CALLOUT_MIN_GAP", () => {
+  it("(f) after the de-overlap pass, the apex column reads Rail Mark 1, then Corner Cut, then Apex, then Tuck 1, in ascending y with every adjacent gap at least RAIL_CALLOUT_MIN_GAP", () => {
     const output = buildExampleOutput(false);
     const projection = railPlotProjection(output, output.bounds.xAxisMin);
     const raw = buildRailCallouts(output, output.thicknessEff, projection);
     const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
     const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
 
-    const apexColumnOrder = ["Rail Mk1", "Corner Cut", "Apex", "Tuck 1"];
+    const apexColumnOrder = ["Rail Mark 1", "Corner Cut", "Apex", "Tuck 1"];
     const byName = new Map(result.map((c) => [c.name, c]));
     const ordered = apexColumnOrder.map((name) => byName.get(name)!);
     for (let i = 1; i < ordered.length; i++) {
@@ -428,21 +428,23 @@ describe("deOverlapCallouts", () => {
     }
   });
 
-  it("(j) every callout's estimated text box lies inside the padded bounds", () => {
-    const output = buildExampleOutput(false);
-    const paddedBounds = computeRailPlotBounds(output, output.bounds.xAxisMin, { calloutRoom: true });
-    const projection = railPlotProjection(output, output.bounds.xAxisMin);
-    const raw = buildRailCallouts(output, output.thicknessEff, projection);
-    const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
-    const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
+  it("(j) every callout's estimated text box lies inside the padded bounds, Flat and Domed", () => {
+    for (const domed of [false, true]) {
+      const output = buildExampleOutput(domed);
+      const paddedBounds = computeRailPlotBounds(output, output.bounds.xAxisMin, { calloutRoom: true });
+      const projection = railPlotProjection(output, output.bounds.xAxisMin);
+      const raw = buildRailCallouts(output, output.thicknessEff, projection);
+      const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
+      const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
 
-    for (const c of result) {
-      const [lo, hi] = calloutTextExtent(c);
-      expect(lo).toBeGreaterThanOrEqual(0);
-      expect(hi).toBeLessThanOrEqual(paddedBounds.width);
-      // Half a row gap as a conservative stand-in for a line's half-height, rather than inventing
-      // a new constant.
-      expect(c.y + RAIL_CALLOUT_MIN_GAP / 2).toBeLessThanOrEqual(paddedBounds.height);
+      for (const c of result) {
+        const [lo, hi] = calloutTextExtent(c);
+        expect(lo).toBeGreaterThanOrEqual(0);
+        expect(hi).toBeLessThanOrEqual(paddedBounds.width);
+        // Half a row gap as a conservative stand-in for a line's half-height, rather than inventing
+        // a new constant.
+        expect(c.y + RAIL_CALLOUT_MIN_GAP / 2).toBeLessThanOrEqual(paddedBounds.height);
+      }
     }
   });
 });

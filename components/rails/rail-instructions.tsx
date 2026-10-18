@@ -178,7 +178,7 @@ export function RailInstructions() {
 
       <div className="flex-none rounded-lg border border-surf-line-faint p-4 text-xs text-surf-ink-muted italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping consistent surfboard
-        rails. It&rsquo;s recommended to understand how rail shapes affects surfboard performance, and how these
+        rails. It&rsquo;s recommended to understand how rail shapes affect surfboard performance, and how these
         marks can result in producing your desired outcome.
       </div>
     </div>

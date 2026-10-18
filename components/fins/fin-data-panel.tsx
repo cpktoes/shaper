@@ -7,7 +7,7 @@
  */
 
 import { useUnits } from "@/components/units-provider";
-import type { FinPlacementResult, FinTailShape } from "@/lib/geometry/fins";
+import { fullSpreadRoundingAside, type FinPlacementResult, type FinTailShape } from "@/lib/geometry/fins";
 import { formatDim, formatLength, formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import type { Mm } from "@/lib/geometry/units";
 
@@ -72,7 +72,7 @@ export function FinDataPanel({ result, boardLength, tailWidth12, finSetup, tailS
               {grp.fullSpread !== null && grp.fullSpreadFamily !== null && (
                 <div className="ml-[22px] flex justify-between py-1.5 text-sm">
                   <span className="text-surf-ink-muted">
-                    Full Spread <em>(*Full spread may be &gt;2x due to 1/16&quot; rounding)</em>
+                    Full Spread <em>{fullSpreadRoundingAside(system)}</em>
                   </span>
                   <span className="font-bold">
                     {grp.fullSpreadFamily === "dim" ? formatDim(grp.fullSpread, system) : formatMark(grp.fullSpread, system)}

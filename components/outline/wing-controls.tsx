@@ -91,7 +91,7 @@ export function WingControls({
   const wings = outline.wings ?? [];
   // D3: the top is the centre or the widepoint, whichever is nearer the tail; the hint names which.
   const top = wingPositionTop(geometry);
-  const topHint = `${top < geometry.length / 2 ? "Widepoint" : "Centre"} ${formatDim(top, system)}`;
+  const topHint = `${top < geometry.length / 2 ? "Widepoint" : "Center"} ${formatDim(top, system)}`;
   // D2: where wing 2 may sit at most, and the gap behind wing 1 — explanations, so muted ink, never
   // the warning ink (that is for warnings only).
   const order = wingOrderState(wings, geometry);

@@ -33,14 +33,14 @@ const SWEEP_WIDTHS = [560, 618, 680, 733, 760, 812, 900];
  * copied rather than imported, since this file drives the browser through the rendered page
  * rather than through the module graph. */
 const RAIL_LINE_KEY_LABELS = [
-  "Deck Marks 1",
+  "Deck Mark 1",
   "Deck Band 1",
-  "Deck Marks 3",
+  "Deck Mark 3",
   "Deck Band 2",
   "Deck Mark 3 Center (full board)",
-  "Rail Marks 1",
+  "Rail Mark 1",
   "Rail Band 1",
-  "Rail Tucks 1",
+  "Rail Tuck 1",
   "Tuck blend to hard tail",
 ];
 
@@ -63,10 +63,11 @@ async function enableRailBandInstructions(page: Page) {
 
 /** Finds one of the nine mirrored ticks under the print buttons by its own label text — the row
  * that also carries the "Include Rail Band Instructions" toggle, so the label text itself is what
- * disambiguates one line's tick from the others (every one of the nine labels is a distinct
- * string, none a substring of another). */
+ * disambiguates one line's tick from the others. The whole label must match, not a part of it:
+ * "Deck Mark 3" is the start of "Deck Mark 3 Center (full board)", and a part-match would find both. */
 function lineTickCheckbox(page: Page, label: string) {
-  return page.locator("[data-print-hide] label", { hasText: label }).locator('[data-slot="checkbox"]');
+  const wholeLabel = new RegExp("^\\s*" + label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$");
+  return page.locator("[data-print-hide] label", { hasText: wholeLabel }).locator('[data-slot="checkbox"]');
 }
 
 /** Sets every one of the nine mirrored ticks to `ticked`, in SCREEN media — the control row
@@ -246,9 +247,9 @@ test.describe("Summary order form — rail plan/side line key (260910-jfp)", () 
     const nineEntries = await readKeyEntries(page);
     expect(nineEntries).toEqual(RAIL_LINE_KEY_LABELS);
 
-    await untickLines(page, ["Deck Marks 3", "Rail Marks 1"]);
+    await untickLines(page, ["Deck Mark 3", "Rail Mark 1"]);
     const sevenEntries = await readKeyEntries(page);
-    expect(sevenEntries).toEqual(RAIL_LINE_KEY_LABELS.filter((l) => l !== "Deck Marks 3" && l !== "Rail Marks 1"));
+    expect(sevenEntries).toEqual(RAIL_LINE_KEY_LABELS.filter((l) => l !== "Deck Mark 3" && l !== "Rail Mark 1"));
 
     await setAllLineTicks(page, false);
     const zeroEntries = await readKeyEntries(page);

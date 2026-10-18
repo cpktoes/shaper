@@ -149,7 +149,7 @@ test.describe("ROCKER on a computer: a mini display of the blank from above (qui
     await expectLineDrawn(parts.stringer);
     await expectThreeMarks(inset(page));
     await expect(inset(page).getByRole("img")).toHaveAccessibleName(
-      /^The board's outline seen from above, on the .+ blank, with its stringer, centre mark and 12-inch marks$/,
+      /^The board's outline seen from above, on the .+ blank, with its stringer, center mark and 12-inch marks$/,
     );
 
     const plate = await box(inset(page));

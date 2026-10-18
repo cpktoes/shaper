@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
-import { MEASURE_STATION_MM } from "./outline";
+import { DIAMOND_BLOCK_MARGIN_MM, MEASURE_STATION_MM } from "./outline";
 import {
   commitTypedMeasure,
   formatArea,
@@ -18,6 +18,7 @@ import {
   measureSlider,
   planerPasses,
   stationLabel,
+  diamondDepthClampNote,
   columnUnitSuffix,
   typedFieldBounds,
 } from "./measure-display";
@@ -217,6 +218,17 @@ describe("stationLabel", () => {
   it("metric is the honest conversion off MEASURE_STATION_MM, never a hand-typed 30 cm (D-03)", () => {
     expect(stationLabel("metric")).toBe(`${formatCentimetres(MEASURE_STATION_MM)} cm`);
     expect(stationLabel("metric")).toBe("30.5 cm");
+  });
+});
+
+describe("diamondDepthClampNote (quick 261017-sru)", () => {
+  it("imperial reads exactly the sentence it always has", () => {
+    expect(diamondDepthClampNote("imperial")).toBe('Clamped to 2" less than Tail Block');
+  });
+
+  it("metric reads the same room as a whole-millimetre mark", () => {
+    expect(diamondDepthClampNote("metric")).toBe("Clamped to 51 mm less than Tail Block");
+    expect(diamondDepthClampNote("metric")).toBe(`Clamped to ${formatMark(DIAMOND_BLOCK_MARGIN_MM, "metric")} less than Tail Block`);
   });
 });
 
