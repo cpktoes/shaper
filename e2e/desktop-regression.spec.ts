@@ -43,7 +43,7 @@ test.describe("desktop mouse drag regression", () => {
 
     // The construction overlay is off by default on desktop (PHON-05) — turn it on through its
     // own toolbar button, found by the exact accessible label outline-editor.tsx gives it.
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
 
     // The widepoint's own drag solve (lib/geometry/outline-drag.ts's "widepoint" case) reads
     // only the station (along-the-board) component of the drag and discards the cross-board

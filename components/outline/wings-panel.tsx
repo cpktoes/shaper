@@ -21,7 +21,7 @@ import { WingCloseUp } from "./wing-close-up";
  * placement" pop-up still opens every time a board goes from no wings to one.
  *
  * The toolbar has the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
- * VIEWER's: Show/Hide construction lines (the wings' grab points follow it, D5) and wide view — and,
+ * VIEWER's: Show/Hide drag points (the wings' grab points follow it, D5) and wide view — and,
  * since 2026-10-17, the whole-board toggle described at the end of this comment.
  * The close-up is never turned (P4). The handlers are the editor's, so the two tabs share one
  * construction setting and one wide view.
@@ -76,7 +76,7 @@ export function WingsPanel({
         <ViewerToolbarButton
           onClick={onToggleConstruction}
           pressed={showConstruction}
-          label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+          label={showConstruction ? "Hide drag points" : "Show drag points"}
         >
           <LocateFixedIcon className="size-6" />
         </ViewerToolbarButton>

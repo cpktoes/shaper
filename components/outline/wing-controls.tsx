@@ -307,8 +307,8 @@ export function WingControls({
       )}
 
       <TemplateSettings
-        // P16: on the WINGS tab the construction setting also shows each wing's grab points.
-        constructionNote="(the wing's grab points too)"
+        // P16: on the WINGS tab Show Drag Points also shows each wing's grab points.
+        constructionNote="(the wing's too)"
         showConstruction={showConstruction}
         onToggleConstruction={onToggleConstruction}
         showFins={showFins}

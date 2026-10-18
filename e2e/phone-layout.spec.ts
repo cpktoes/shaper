@@ -462,7 +462,7 @@ test.describe("phone controls — every slider sits in its own section", () => {
 
     // It sits ABOVE the Settings checkbox at the bottom of the sidebar — proof it is back in its
     // own section instead of pushed to the end of the list.
-    const settingsRow = page.getByText("View Construction Lines");
+    const settingsRow = page.getByText("Show Drag Points");
     const widthBox = await widthLabel.boundingBox();
     const settingsBox = await settingsRow.boundingBox();
     if (!widthBox || !settingsBox) throw new Error("missing bounding box");
@@ -471,11 +471,13 @@ test.describe("phone controls — every slider sits in its own section", () => {
     await page.goto("/design/rocker");
 
     await expect(page.getByRole("button", { name: "Fine adjust" })).toHaveCount(0);
-    // The hand-set rocker's Nose Tip row (Phase 11, D-14), looked for inside the ROCKER section
-    // alone — the THICKNESS section below has a Nose Tip row of its own, which must not be what
-    // satisfies this. The section is the heading button's own parent.
-    const rockerSection = page.getByRole("button", { name: /^Rocker\s*[▾▸]$/ }).locator("xpath=..");
-    await expect(rockerSection.getByText(/^Nose Tip — /)).toBeVisible();
+    // The hand-set rocker's first slider (Phase 11, D-14), found through the section's own intro
+    // line ("Hand-set until you pick a blank.") so it holds whatever the section is headed or laid
+    // out as: today the ROCKER section's four lift rows, after quick 261017-vdh plan 02 the one
+    // "Rocker & Foil" grid. Plan 02 keeps the intro and the grid in one wrapper with the nose tip
+    // rocker first; this spec is owned by plan 01.
+    const handSetSection = page.getByText(/^Hand-set until you pick a blank/).first().locator("xpath=..");
+    await expect(handSetSection.locator('[data-slot="slider-thumb"]').first()).toBeVisible();
   });
 });
 
@@ -534,7 +536,7 @@ test.describe("desktop shell — unchanged", () => {
     const dragTargets = page.locator("[data-drag-target]");
     expect(await dragTargets.count()).toBe(0);
 
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     await expect(dragTargets.first()).toBeVisible();
   });
 

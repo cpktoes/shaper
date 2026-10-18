@@ -254,7 +254,7 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expectGreyedScreen(page, controls);
 
     // Viewing still works: Show Construction ticks, and the drawing has no grab points.
-    const construction = controls.getByRole("checkbox", { name: /View Construction Lines/ });
+    const construction = controls.getByRole("checkbox", { name: /Show Drag Points/ });
     await expect(construction).not.toHaveAttribute("data-disabled", /.*/);
     const before = await construction.getAttribute("aria-checked");
     await construction.click();

@@ -146,7 +146,7 @@ export function OutlineControls({
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Template Builder</div>
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
-          Design and print full sized surfboard templates
+          Design and print full sized templates
         </div>
       </div>
 
@@ -468,8 +468,8 @@ export function OutlineControls({
 }
 
 export interface TemplateSettingsProps {
-  /** A short note after "View Construction Lines" — the WINGS sidebar's "(the wing's grab points
-   * too)" (quick 261014-wii, P16); the Template Builder passes none. */
+  /** A short note after "Show Drag Points" — the WINGS sidebar's "(the wing's too)" (quick
+   * 261014-wii, P16; reworded quick 261017-vdh); the Template Builder passes none. */
   constructionNote?: string;
   showConstruction: boolean;
   onToggleConstruction: () => void;
@@ -479,8 +479,8 @@ export interface TemplateSettingsProps {
 
 /**
  * TEMPLATE's Settings block, shared by the Template Builder and the WINGS sidebar (quick 261014-wii,
- * P10) so the two never drift: View Construction Lines, and Show fins (D4) — the fins where FINS
- * puts them, marks only, no dims. Both are screen settings, never saved, and both stay usable on a
+ * P10) so the two never drift: Show Drag Points, and Show fin placement (D4) — the fins where FINS
+ * puts them, marks only, no dims (reworded quick 261017-vdh). Both are screen settings, never saved, and both stay usable on a
  * locked board (`data-lock-exempt`), since neither changes the board.
  */
 export function TemplateSettings({
@@ -497,12 +497,12 @@ export function TemplateSettings({
       </div>
       <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
         <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
-        View Construction Lines
+        Show Drag Points
         {constructionNote && <span className="text-xs">{constructionNote}</span>}
       </label>
       <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
         <Checkbox data-lock-exempt checked={showFins} onCheckedChange={() => onToggleShowFins()} />
-        Show fins <span className="text-xs">(marks only, no dims)</span>
+        Show fin placement
       </label>
     </div>
   );

@@ -81,14 +81,14 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(dialog).toHaveCount(0);
   }
 
-  test("desktop: the first wing switches Show fins on and asks you to dial it in against FINS", async ({
+  test("desktop: the first wing switches Show fin placement on and asks you to dial it in against FINS", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 
     await addFirstWing(page);
     const sidebar = page.locator("aside");
-    await expect(sidebar.getByRole("checkbox", { name: /Show fins/ })).toBeChecked();
+    await expect(sidebar.getByRole("checkbox", { name: /Show fin placement/ })).toBeChecked();
     await expect(page.locator("[data-wing-close-up] [data-fin-mark]").first()).toBeVisible();
 
     await page.getByRole("tab", { name: "VIEWER" }).click();
@@ -413,9 +413,9 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
     const grabs = page.locator("[data-wing-close-up] [data-wing-grab]");
     await expect(grabs).toHaveCount(0);
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     await expect(grabs).toHaveCount(4);
-    await expect(page.locator("aside")).toContainText("View Construction Lines(the wing's grab points too)");
+    await expect(page.locator("aside")).toContainText("Show Drag Points(the wing's too)");
 
     const position = wingRow(page, 2, "Position from tail");
     const before = inchesOf(await position.textContent());
@@ -437,7 +437,7 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
     // Quick 261015-hz7 (D2): wing 1 is the forward wing — unlock it and carry IT up the board.
     await page.locator("aside").getByRole("checkbox", { name: "Lock to front fin" }).click();
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const closeUp = page.locator("[data-wing-close-up]");
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
 
@@ -468,7 +468,7 @@ test.describe("wings on the TEMPLATE page", () => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 
     await addFirstWing(page);
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const depth = wingRow(page, 1, "Depth");
     const run = wingRow(page, 1, "Vertical run");
     const depthBefore = inchesOf(await depth.textContent());
@@ -538,7 +538,7 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 5 mm");
 
     // A drag of the inner point lands the stored depth on a whole millimetre.
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const ppi = await pixelsPerInch(page);
     const start = await grabCentre(page, 1, "inner");
     await page.mouse.move(start.x, start.y);
