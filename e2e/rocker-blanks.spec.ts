@@ -1,7 +1,8 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { devices, expect, test, type Locator, type Page } from "@playwright/test";
 import {
   blankCards,
   blankPicker,
+  closeBlankPicker,
   firstFittingCard,
   nudgeCenterThickness,
   openBlankPicker,
@@ -171,19 +172,92 @@ test.describe("ROCKER — a real blank from the list", () => {
     await expect(dialog.getByText(/^Every blank listed is at least/)).toContainText('1/2" deck skin');
   });
 
-  test("the founder's catalog note ends the picker once, with no blank and with one picked (quick 261006-fom)", async ({
+  test("the founder's catalog note sits at the foot of the DATASHEET and of the Pick a Blank popup, with no blank and with one picked, and nowhere in the sidebar (quick 261018-ejc)", async ({
+    page,
+  }) => {
+    // Two rounds of popup, tabs and a pick: a phone on a busy dev server nears the 30 s limit.
+    test.slow();
+    await openRocker(page);
+    await expectCatalogNotePlaces(page);
+
+    await pickFirstFittingBlank(page);
+    await expectCatalogNotePlaces(page);
+  });
+});
+
+const sidewaysIphone = (() => {
+  const { defaultBrowserType, viewport, ...rest } = devices["iPhone 14 landscape"];
+  void defaultBrowserType;
+  void viewport;
+  return { ...rest, viewport: { width: 844, height: 340 } };
+})();
+
+test.describe("the founder's catalog note on a phone held sideways (quick 261018-ejc)", () => {
+  // The page Safari leaves on a real iPhone on its side: 844 x 340.
+  test.use({ ...sidewaysIphone });
+
+  test.beforeEach(async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own device (a sideways iPhone)");
+  });
+
+  test("the founder's catalog note at the foot of the Pick a Blank popup on a phone held sideways (quick 261018-ejc)", async ({
     page,
   }) => {
     await openRocker(page);
-    const note = page.locator("[data-blank-catalog-note]");
-    await expect(note).toHaveCount(1);
-    await expect(note).toHaveText(BLANK_CATALOG_NOTE);
-
-    await pickFirstFittingBlank(page);
-    await expect(note).toHaveCount(1);
-    await expect(note).toHaveText(BLANK_CATALOG_NOTE);
+    await expectPopupNote(page);
   });
 });
+
+/**
+ * With the popup open: exactly one note in it, word for word, the LAST child of the scrolling list
+ * and below the last card group; scrolled to the end, the note and the ✕ lie wholly inside the window.
+ */
+async function expectPopupNote(page: Page) {
+  const dialog = await openBlankPicker(page);
+  const note = dialog.locator("[data-blank-catalog-note]");
+  await expect(note).toHaveCount(1);
+  await expect(note).toHaveText(BLANK_CATALOG_NOTE);
+  const scroll = dialog.locator("[data-blank-picker-scroll]");
+  expect(await scroll.evaluate((el) => el.lastElementChild?.hasAttribute("data-blank-catalog-note"))).toBe(true);
+
+  await scroll.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const view = page.viewportSize();
+  if (!view) throw new Error("no viewport");
+  const noteBox = await note.boundingBox();
+  const lastGroup = await dialog.locator("[data-blank-group]").last().boundingBox();
+  const closeBox = await dialog.getByRole("button", { name: "Close", exact: true }).boundingBox();
+  if (!noteBox || !lastGroup || !closeBox) throw new Error("a box is missing");
+  // Under the last grid, never beside it.
+  expect(noteBox.y).toBeGreaterThanOrEqual(lastGroup.y + lastGroup.height - 0.5);
+  for (const box of [noteBox, closeBox]) {
+    expect(box.x).toBeGreaterThanOrEqual(-0.5);
+    expect(box.y).toBeGreaterThanOrEqual(-0.5);
+    expect(box.x + box.width).toBeLessThanOrEqual(view.width + 0.5);
+    expect(box.y + box.height).toBeLessThanOrEqual(view.height + 0.5);
+  }
+  await closeBlankPicker(page);
+}
+
+/** The note's two homes and its absence from the sidebar, in whatever state the board is in. */
+async function expectCatalogNotePlaces(page: Page) {
+  // Never in the sidebar, on VIEWER or on DATASHEET; on VIEWER with the popup shut it is nowhere.
+  await expect(page.locator("aside [data-blank-catalog-note]")).toHaveCount(0);
+  await expect(page.locator("[data-blank-catalog-note]")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: "DATASHEET", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "DATASHEET", exact: true })).toHaveAttribute("aria-selected", "true");
+  const note = page.locator("main [data-blank-catalog-note]");
+  await expect(note).toHaveCount(1);
+  await expect(note).toHaveText(BLANK_CATALOG_NOTE);
+  await expect(page.locator("aside [data-blank-catalog-note]")).toHaveCount(0);
+  expect(await note.evaluate((el) => el.nextElementSibling)).toBeNull();
+  await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "VIEWER", exact: true })).toHaveAttribute("aria-selected", "true");
+
+  await expectPopupNote(page);
+}
 
 /**
  * Raises the board's one centre thickness from the default 2 1/2" to 3 1/2" — thicker than the

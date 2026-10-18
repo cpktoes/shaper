@@ -20,8 +20,9 @@
  *   before: the fit flag (`blank-flag.tsx`) and Remove This Blank with its sentence.
  * - With none: PICK A BLANK, a line like "196 blanks long enough for this board, 194 fit" (the makers
  *   ticked in Settings), and BROWSE BLANKS ›.
- * Under it, only when a maker is unticked in Settings, the "Showing … only" note (P-5); and last, in
- * every state, the founder's catalog note.
+ * Under it, only when a maker is unticked in Settings, the "Showing … only" note (P-5). The founder's
+ * catalog note no longer sits here: it is at the foot of the DATASHEET and of the PICK A BLANK popup
+ * (quick 261018-ejc).
  *
  * The list is judged ONCE here (`useBlankList`) and handed to both the button's counts and the popup,
  * so opening the popup never re-judges the catalogue. The popup's open state and its search are held
@@ -46,7 +47,7 @@ import { useAppSettings } from "@/components/app-settings-provider";
 import { SavedBlanksProvider, useSavedBlanks } from "@/components/saved-blanks-provider";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
-import { BLANK_CATALOG_NOTE, blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
+import { blankMakersNote, catalogsPhrase } from "@/lib/blanks/vendors";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { catalogueExtremes } from "@/lib/geometry/blank-fit";
@@ -249,19 +250,6 @@ function JudgedPicker({
   );
 }
 
-/**
- * The founder's catalog note (quick 261006-fom, D-05, P-5): shown ONCE, at the very end of the
- * picker, in every state, because a picked blank's numbers come from the same catalogs. Small muted
- * type, the footer's size.
- */
-function BlankCatalogNote() {
-  return (
-    <p data-blank-catalog-note className="text-[11px] leading-snug text-surf-ink-muted">
-      {BLANK_CATALOG_NOTE}
-    </p>
-  );
-}
-
 export function BlankPicker({
   catalog,
   savedBlanks,
@@ -335,7 +323,6 @@ export function BlankPicker({
           {makersNote}
         </div>
       )}
-      <BlankCatalogNote />
     </div>
   );
 }
