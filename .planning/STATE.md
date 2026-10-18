@@ -174,7 +174,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-11 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10. The retire-today's-curve todo was closed by quick 261018-dvu on 2026-10-18. The custom-rocker todo of 2026-09-28 was closed by quick 261016-mkb, live 2026-10-17, and the founder's follow-up on its popup's off view was built as quick 261017-ojc the same day):
+12 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10. The retire-today's-curve todo was closed by quick 261018-dvu on 2026-10-18. The custom-rocker todo of 2026-09-28 was closed by quick 261016-mkb, live 2026-10-17, and the founder's follow-up on its popup's off view was built as quick 261017-ojc the same day):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
@@ -187,6 +187,7 @@ Recent decisions affecting current work:
 - [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
 - [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
 - [minor/geometry] Add an off-rail fine tuner for the fins (the founder, 2026-10-08; today the front and side fins take the template's off-rail with no adjustment, only the quad rears have an Off-Rail slider) — `.planning/todos/pending/2026-10-08-add-an-off-rail-fine-tuner-for-the-fins.md`
+- [minor/ui] Clear the TEMPLATE toolbar off the readings on a sideways phone (found planning quick 261018-e6w; the founder, 2026-10-18: "Note it for later") — `.planning/todos/pending/2026-10-18-clear-the-template-toolbar-off-the-sideways-phone-readings.md`
 
 ### Blockers/Concerns
 
