@@ -3,7 +3,8 @@ import golden from "./__fixtures__/phase11-foil-golden.json";
 import pinnedBlanks from "./__fixtures__/phase11-foil-golden-blanks.json";
 import { phase11GoldenBlank } from "./__fixtures__/phase11-golden-blank";
 import { DEFAULT_BLANK_CUT, type BlankRecord, type TipStyle } from "./blank";
-import { boardOnBlank, prepareBlank, TIP_EASE_WINDOW_MM } from "./blank-fit";
+import { boardOnBlank, prepareBlank } from "./blank-fit";
+import { MEASURE_STATION_MM } from "./outline";
 import { carryPhase11Blank, phase11TwelveInch, type Phase11Board } from "./phase11-foil";
 import { mm } from "./units";
 
@@ -73,7 +74,7 @@ describe("Phase 11's 12\" formula, kept for the carry-over (D-14)", () => {
 });
 
 describe("carrying a Phase 11 board across to the new cut (D-07, D-14)", () => {
-  const W = TIP_EASE_WINDOW_MM;
+  const W = MEASURE_STATION_MM;
   const tipStyles: TipStyle[] = ["pinDeck", "bottom"];
 
   it("sets each 12\" fine-tune to Phase 11's 12\" thickness less the new cut's, with the default skin, the given Tip Style and fine-tunes on the Deck", () => {

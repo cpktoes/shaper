@@ -17,16 +17,10 @@
  *
  * No React/browser/database import — pure geometry (CLAUDE.md Rule 1). Every length is millimetres.
  */
-import { DEFAULT_BLANK_CUT, type BlankCut, type TipStyle } from "./blank";
-import {
-  blankStationOf,
-  boardOnBlank,
-  clampPlacement,
-  FIT_EPSILON_MM,
-  prepareBlankPchip,
-  TIP_EASE_WINDOW_MM,
-  type PreparedBlank,
-} from "./blank-fit";
+import { DEFAULT_BLANK_CUT, type BlankCut, type BlankRecord, type TipStyle } from "./blank";
+import { blankStationOf, boardOnBlank, clampPlacement, FIT_EPSILON_MM, type PreparedBlank } from "./blank-fit";
+import { MEASURE_STATION_MM } from "./outline";
+import { preparePchip, type PreparedPchip } from "./pchip";
 import { mm, type Mm } from "./units";
 
 /** The board settings Phase 11's foil read: its length, target centre, two tips and two tweaks. */
@@ -40,6 +34,21 @@ export interface Phase11Board {
 }
 
 /**
+ * The blank's thickness as Phase 11 drew it: pchip straight through the record's own printed
+ * thicknesses, an empty cell not a knot — exactly the thickness curve the site prepared every blank
+ * with before Phase 14. That preparation was retired from `blank-fit.ts` after the Oct 10 showing
+ * (quick 261018-dvu); this private copy of its thickness half is all a Phase 11 board's conversion
+ * reads, so a Phase 11 board converts exactly as it always has. Nothing else may call it.
+ */
+function phase11Thickness(record: BlankRecord): PreparedPchip {
+  const points: { x: number; y: number }[] = [];
+  for (const station of record.stations) {
+    if (station.thicknessMm !== null) points.push({ x: station.fromTailMm, y: station.thicknessMm });
+  }
+  return preparePchip(points);
+}
+
+/**
  * The thickness Phase 11 showed at one 12" station, fine-tune included — exactly what tag v1.3's
  * `boardOnBlank(...).thicknessAt` returned there.
  *
@@ -48,9 +57,9 @@ export interface Phase11Board {
  * after the fine-tune was added — which is why the tip setting appears in two nested `max`es.
  * Where the board runs past the blank the blank's thickness reads 0, as it did in Phase 11.
  *
- * Phase 11's number is read on today's curve whatever the live rule is (Phase 14 D-25, SPEC
- * constraint 5): the blank is prepared again here with `prepareBlankPchip`, from the record the
- * caller's blank was fitted to, so editing the live rule in `prepareBlank` cannot move a Phase 11
+ * Phase 11's number is read on Phase 11's own curve whatever the live rule is (Phase 14 SPEC
+ * constraint 5): the blank's thickness is drawn again here by `phase11Thickness`, from the record
+ * the caller's blank was fitted to, so editing the live rule in `prepareBlank` cannot move a Phase 11
  * board's number.
  */
 export function phase11TwelveInch(
@@ -59,17 +68,17 @@ export function phase11TwelveInch(
   placement: Mm,
   station: "tail12" | "nose12",
 ): Mm {
-  const frozen = prepareBlankPchip(prepared.record);
+  const thickness = phase11Thickness(prepared.record);
   const L = board.length;
-  const Lb = frozen.lengthMm;
+  const Lb = prepared.record.lengthMm;
   const p = clampPlacement(placement, Lb, L);
   const blankThicknessAt = (s: number) => {
     const u = blankStationOf(mm(s), p, L, Lb);
-    return u >= -FIT_EPSILON_MM && u <= Lb + FIT_EPSILON_MM ? frozen.thickness.sample(u) : 0;
+    return u >= -FIT_EPSILON_MM && u <= Lb + FIT_EPSILON_MM ? thickness.sample(u) : 0;
   };
   const underCentre = blankThicknessAt(L / 2);
   const ratio = underCentre > 0 ? board.centerThickness / underCentre : 0;
-  const s = station === "tail12" ? TIP_EASE_WINDOW_MM : L - TIP_EASE_WINDOW_MM;
+  const s = station === "tail12" ? MEASURE_STATION_MM : L - MEASURE_STATION_MM;
   const tip = station === "tail12" ? board.tailTip : board.noseTip;
   const offset = station === "tail12" ? board.tail12Offset : board.nose12Offset;
   return mm(Math.max(Math.max(ratio * blankThicknessAt(s), tip) + offset, tip));
@@ -114,10 +123,10 @@ export function carryPhase11Blank(
   return {
     ...cut,
     nose12Offset: mm(
-      phase11TwelveInch(prepared, board, placement, "nose12") - untuned.derivedThicknessAt(L - TIP_EASE_WINDOW_MM),
+      phase11TwelveInch(prepared, board, placement, "nose12") - untuned.derivedThicknessAt(L - MEASURE_STATION_MM),
     ),
     tail12Offset: mm(
-      phase11TwelveInch(prepared, board, placement, "tail12") - untuned.derivedThicknessAt(TIP_EASE_WINDOW_MM),
+      phase11TwelveInch(prepared, board, placement, "tail12") - untuned.derivedThicknessAt(MEASURE_STATION_MM),
     ),
   };
 }

@@ -37,9 +37,7 @@ import {
   nearestFittingPlacement,
   placementRange,
   prepareBlank,
-  prepareBlankPchip,
   runsOutCause,
-  TIP_EASE_WINDOW_MM,
   tweakExceedsDeckSkin,
   type BlankListResult,
   type BlankVerdict,
@@ -53,7 +51,7 @@ import { buildBlankProfile, printedBlankStations } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { buildOutline, MEASURE_STATION_MM, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { type PreparedPchip } from "./pchip";
+import { preparePchip, type PreparedPchip } from "./pchip";
 import { rockerStationPositions } from "./rocker";
 import { prepareRootCurve, type RootKind } from "./root-curve";
 import {
@@ -346,13 +344,19 @@ describe("the phase's named geometry tests (R7)", () => {
     // Phase 11's own rocker, recorded from tag v1.3 before this phase touched the maths — on each
     // case's blank as the catalogue held it then (the pinned fixture), since a saved Phase 11 board
     // carries its blank by value and a later catalogue correction must not disturb it. That golden is
-    // Phase 11's PCHIP rocker, so its blank is prepared on today's rule by name (Phase 14 D-25); the
-    // assertion above, and named tests (a)–(e)'s others, run on the live rule.
+    // Phase 11's PCHIP rocker, so its blank's bottom is drawn here the way Phase 11 drew it — pchip
+    // straight through the printed rocker, levelled over the whole blank (the preparation the site
+    // used before Phase 14, retired from blank-fit.ts in quick 261018-dvu). Only the bottom is
+    // swapped: under Bottom with no fine-tune the board's rocker reads nothing else. The assertion
+    // above, and named tests (a)–(e)'s others, run on the live rule.
     for (const entry of golden.cases) {
       const record = phase11GoldenBlank(entry.vendor, entry.name);
       const length = mm(entry.boardLengthMm);
+      const knots = record.stations
+        .filter((station) => station.rockerMm !== null)
+        .map((station) => ({ x: station.fromTailMm as number, y: station.rockerMm as number }));
       const onBlank = boardOnBlank(
-        prepareBlankPchip(record),
+        { ...prepareBlank(record), rocker: levelCurve(preparePchip(knots), 0, record.lengthMm) },
         {
           length,
           centerThickness: mm(entry.centerThicknessMm),
@@ -587,7 +591,7 @@ describe("the board's foil, cut from the blank (D-05, D-09, D-13, D-16)", () => 
   const centre = inchesToMm(2.5);
   const board = defaultBoard(blank, L, centre);
   const { min, max } = placementRange(blank.lengthMm, L);
-  const W = TIP_EASE_WINDOW_MM;
+  const W = MEASURE_STATION_MM;
   const outline = (onBlank: BoardOnBlank) => narrowerBy(onBlank, inchesToMm(2));
 
   it("puts both tips exactly on their settings and the centre on the target at every placement, under either Tip Style", () => {
@@ -1856,7 +1860,7 @@ describe("the runs-out reason names its cause (Phase 13 item 4)", () => {
       const L = blank.lengthMm - inchesToMm(2);
       const base = { ...defaultBoard(blank, L, inchesToMm(2.5)), fineTuneSurface };
       const untweaked = boardOnBlank(prepared, base, mm(0));
-      const station = L - TIP_EASE_WINDOW_MM;
+      const station = L - MEASURE_STATION_MM;
       const nose12Offset = mm(MIN_FOIL_THICKNESS_MM - SIXTEENTH_MM - untweaked.derivedThicknessAt(station));
       const board = { ...base, nose12Offset };
       const onBlank = boardOnBlank(prepared, board, mm(0));

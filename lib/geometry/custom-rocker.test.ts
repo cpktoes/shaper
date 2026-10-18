@@ -3,7 +3,7 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { starKey } from "@/lib/starred-blanks-preference";
 import golden from "./__fixtures__/custom-rocker-golden.json";
 import type { BlankRecord } from "./blank";
-import { blankTipRockers, prepareBlank, prepareBlankPchip, type PreparedBlank } from "./blank-fit";
+import { blankTipRockers, prepareBlank, type PreparedBlank } from "./blank-fit";
 import { CATALOG_STATION_LABELS, printedBlankStations } from "./board-profile";
 import {
   bendAt,
@@ -296,12 +296,19 @@ describe("withCustomRocker — the blank bent the maker's way", () => {
       const viaHelper = prepareBoardBlank({ copy, rocker: s });
       const byHand = withCustomRocker(prepareBlank(copy), s);
       const plain = prepareBoardBlank({ copy });
-      const before = prepareBoardBlank({ copy, rocker: s }, prepareBlankPchip);
-      const beforeByHand = withCustomRocker(prepareBlankPchip(copy), s);
+      // Any other preparation passed in is the one bent — here the same blank with its printed
+      // rocker halved, so the two preparations differ.
+      const halved = (record: BlankRecord) =>
+        prepareBlank({
+          ...record,
+          stations: record.stations.map((st) => ({ ...st, rockerMm: st.rockerMm === null ? null : mm(st.rockerMm / 2) })),
+        });
+      const other = prepareBoardBlank({ copy, rocker: s }, halved);
+      const otherByHand = withCustomRocker(halved(copy), s);
       for (const x of points(L)) {
         expect(viaHelper.rocker.sample(x)).toBe(byHand.rocker.sample(x));
         expect(plain.rocker.sample(x)).toBe(natural.rocker.sample(x));
-        expect(before.rocker.sample(x)).toBe(beforeByHand.rocker.sample(x));
+        expect(other.rocker.sample(x)).toBe(otherByHand.rocker.sample(x));
       }
       expect(plain.custom).toBeUndefined();
     });
