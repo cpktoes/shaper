@@ -245,8 +245,11 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
   test("a 12\" fine-tune reads From blank and Tweak, and Reset Fine-Tune brings back No tweak", async ({ page }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
-    // With a blank picked the hand-set ROCKER section steps aside (the rocker comes off the blank).
-    await expect(page.getByRole("button", { name: /^Rocker\s*[▾▸]$/ })).toHaveCount(0);
+    // With a blank picked the hand-set rocker steps aside (the rocker comes off the blank): its
+    // intro line, "Hand-set until you pick a blank", is gone. Found through that line rather than
+    // the section's heading, so it holds whatever the hand-set section is headed (ROCKER today,
+    // "Rocker & Foil" after quick 261017-vdh plan 02).
+    await expect(page.getByText(/^Hand-set until you pick a blank/)).toHaveCount(0);
 
     const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
     await expect(nose12Row).toContainText("From blank ");
@@ -272,14 +275,11 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await goToScreen(page, "RAILS");
     // The first visit builds the page on the test's dev server, which can take longer than 5 s.
     await expect(page).toHaveURL(/\/design\/rails/, { timeout: 30_000 });
-    // On an upright phone RAILS shows one rail at a time and only that rail's controls under it
-    // (quick 261005-big), so the centre's Board Thickness sits behind the CENTER tab there; a
-    // computer shows every rail's controls and has no such tab. The controls' title is drawn with
-    // the tab row, so waiting for it first means the tab's visibility is read on the finished screen.
+    // RAILS' Inputs line (quick 261017-vdh) names the centre thickness it imported, in the shared
+    // controls that show on every layout — no CENTER tab step is needed. (While the import is
+    // ticked, the Board Thickness slider itself is hidden.)
     await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
-    const centerTab = page.locator('[data-rail-plot-row="phone"]').getByRole("tab", { name: "CENTER" });
-    if (await centerTab.isVisible()) await centerTab.click();
-    await expect(page.getByText('Board Thickness — 2 3/4"')).toBeVisible();
+    await expect(page.getByText(/^Thickness details are imported: .+ · 2 3\/4" center · /)).toBeVisible();
   });
 });
 

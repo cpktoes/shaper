@@ -678,7 +678,7 @@ test.describe("261007-fnz TEMPLATE zoom — computer", () => {
   test("tracer: TEMPLATE zooms and a drag point still drags", async ({ page }) => {
     await dismissChrome(page);
     await openTemplate(page);
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const svg = templateSvg(page);
     await expect(zoomLevel(page)).toHaveText("1x");
     const atOne = await dragPoint(page, "widepoint");
@@ -714,7 +714,7 @@ test.describe("261007-fnz TEMPLATE zoom — computer", () => {
   test("a drag away from every drag point pans at 3x and changes no slider; at 1x it changes nothing", async ({ page }) => {
     await dismissChrome(page);
     await openTemplate(page);
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const svg = templateSvg(page);
     const box = await svg.boundingBox();
     if (!box) throw new Error("no TEMPLATE box");
@@ -748,7 +748,7 @@ test.describe("261007-fnz TEMPLATE zoom — computer", () => {
     test(`lines, dots, chips and words keep their screen size at 6x (${orientation})`, async ({ page }) => {
       await dismissChrome(page);
       await openTemplate(page);
-      await page.getByRole("button", { name: "Show construction lines" }).click();
+      await page.getByRole("button", { name: "Show drag points" }).click();
       if (orientation === "turned flat") {
         await page.getByRole("button", { name: "Rotate the board to horizontal" }).click();
       }
@@ -1492,7 +1492,7 @@ test.describe("261015-my3 WINGS zoom — computer", () => {
   }) => {
     await dismissChrome(page);
     await openWings(page);
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     await expect(zoomLevel(page)).toHaveText("1x");
     await page.waitForTimeout(300);
     const atOne = await wingsScreenSizes(page);
@@ -1523,7 +1523,7 @@ test.describe("261015-my3 WINGS zoom — computer", () => {
     await openWings(page);
     // Wing 1, unlocked, so its outer point slides it along the rail.
     await page.getByRole("checkbox", { name: "Lock to front fin" }).click();
-    await page.getByRole("button", { name: "Show construction lines" }).click();
+    await page.getByRole("button", { name: "Show drag points" }).click();
     const svg = wingsSvg(page);
     const grab = page.locator('[data-wing-grab="outer"][data-wing="1"]');
     const at0 = await grab.boundingBox();

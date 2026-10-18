@@ -38,7 +38,7 @@ export const PREVIEW_CAPTURE = {
   presetName: "Shortboard",
   buttons: [
     "Rotate the board to horizontal",
-    "Show construction lines",
+    "Show drag points",
     "Hide the sidebar for a wider view",
   ],
   settleMs: {
@@ -72,7 +72,7 @@ export const PREVIEW_CROP_SELECTORS = [
 export const PREVIEW_CROP_MARGIN_PX = 16;
 
 /**
- * Hides the viewer's own floating toolbar row (Rotate, Construction Lines, Wide view, Export
+ * Hides the viewer's own floating toolbar row (Rotate, Drag Points, Wide view, Export
  * Template) before the clipped screenshot (Task 4). That row is pinned absolutely over the
  * drawing's own top-right corner (`ViewerToolbar` in `components/viewer/toolbar-button.tsx`), so
  * it can fall inside the crop rectangle even though it is never one of `PREVIEW_CROP_SELECTORS`'

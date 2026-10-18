@@ -78,7 +78,7 @@ export function OutlineEditor() {
   const { system } = useUnits();
   const wings = outline.wings ?? [];
   const wingCount = wings.length;
-  /** Show fins (quick 261014-wii, D4, P6): screen state like Show construction, never saved. `null`
+  /** Show fin placement (quick 261014-wii, D4, P6): screen state like Show construction, never saved. `null`
    * means the shaper has not chosen, and then the fins show while the board has a wing — so the
    * setting survives a trip to FINS and back, which remounts this screen. */
   const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
@@ -98,7 +98,7 @@ export function OutlineEditor() {
   function handleAddWing() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
     updateOutline({ wings: [...wings, nextWing(wings, wingFinEdges, outlineGeometry, system)] });
-    // D4, P6, D7: the first wing switches Show fins on and asks the shaper to dial it in against
+    // D4, P6, D7: the first wing switches Show fin placement on and asks the shaper to dial it in against
     // FINS — every time the board goes from no wings to one, as sketched.
     if (wingCount === 0) {
       setShowFinsOverride(true);
@@ -207,7 +207,7 @@ export function OutlineEditor() {
         <ViewerToolbarButton
           onClick={handleToggleConstruction}
           pressed={showConstruction}
-          label={showConstruction ? "Hide construction lines" : "Show construction lines"}
+          label={showConstruction ? "Hide drag points" : "Show drag points"}
           // Icon is LocateFixedIcon, not a ruler: it echoes the draggable control point drawn on
           // the construction overlay itself (components/outline/outline-viewer.tsx's drag
           // targets — a ring with a filled centre dot, plus tick marks reads closest to
@@ -274,7 +274,7 @@ export function OutlineEditor() {
               // handlers when this is omitted (quick 261008-lsy). The store's guard backs it.
               onOutlineDrag={locked ? undefined : updateOutline}
               finMarks={finPlacement.marks}
-              // D4: Show fins puts the fin marks on the VIEWER too — marks only, no dims.
+              // D4: Show fin placement puts the fin marks on the VIEWER too — marks only, no dims.
               hideFinMarks={!showFins}
               pinCalloutText
               orientation={boardOrientation}
