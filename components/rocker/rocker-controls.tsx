@@ -1,27 +1,33 @@
 "use client";
 
 /**
- * The ROCKER sidebar, top to bottom in the brief's order (Phase 11, 11-UI-SPEC "The sidebar, top to
- * bottom"): CENTER THICKNESS → BLANK → BOARD ON BLANK → ROCKER (only with no blank) → THICKNESS.
- * Every group is the same collapsible `SectionHeading` `rail-controls.tsx` uses, all open on
- * arrival; the open/closed map is view state owned by `rocker-editor.tsx`, never saved.
+ * The ROCKER sidebar, top to bottom (Phase 11, 11-UI-SPEC "The sidebar, top to bottom", reordered by
+ * the founder's canvas, quick 261017-vdh, 2026-10-17): INPUTS → BLANK → BOARD ON BLANK → Rocker & Foil
+ * (only with no blank) or Foil (with one). BLANK, BOARD ON BLANK and the last section are the same
+ * collapsible `SectionHeading` `rail-controls.tsx` uses, all open on arrival; the open/closed map is
+ * view state owned by `rocker-editor.tsx`, never saved.
  *
- * CENTER THICKNESS (R1, D-12) is the page's first control: the board's ONE centre thickness, the
- * same stored `foil.center` RAILS and VOLUME read — a typed field on the label line and a slider,
- * the Board Length hand-rolled shape compacted to one line (the one raw `<Slider>` here, named in
- * `slider-row.test.ts`'s allowlist). Changing it re-judges the blank list and re-checks the picked
- * blank; it never clears the pick.
+ * INPUTS is not collapsible and has no tick box: ROCKER always uses the template, so it just says
+ * which (the `TEMPLATE details are imported: …` line, `boardLine()`, moved here from under the
+ * subtitle) and holds Center Thickness (R1, D-12), the board's ONE centre thickness, the same stored
+ * `foil.center` RAILS and VOLUME read — a typed field on the label line and a slider, the Board Length
+ * hand-rolled shape compacted to one line (the one raw `<Slider>` here, named in `slider-row.test.ts`'s
+ * allowlist). Changing it re-judges the blank list and re-checks the picked blank; it never clears the
+ * pick. The heading and the line are text and never dim; only the Center Thickness row is `Live`.
  *
  * BLANK (`blank-picker.tsx`) and BOARD ON BLANK (`board-on-blank.tsx`) read the store themselves.
  *
- * ROCKER (D-14) is the hand-set fallback a board carries until a blank is picked: four plain
- * sliders — Nose Tip, Nose @ 12", Tail @ 12", Tail Tip — over `ROCKER_LIFT_RANGE_IN`. The centre is
- * always 0 (the flat the rocker is measured up from) and is not a control. The founder chose four
- * typed stations knowing a hand-typed 12" value can put a kink back into the curve there (D-14); do
- * not bring the Angle/Smoothness/Flatness shape controls back without asking. With a blank picked
- * the rocker comes off the blank, so this section is not shown at all.
+ * Rocker & Foil (D-14), with no blank, is the hand-set fallback a board carries until a blank is
+ * picked: ONE section holding a small table — a ROCKER column and a THICKNESS column, a NOSE group
+ * (Tip, then @ 12") and a TAIL group (@ 12", then Tip), nose to tail along the board — each cell a value
+ * box over its own `SliderRow`. The rocker cells run over `ROCKER_LIFT_RANGE_IN`; the centre is always
+ * 0 (the flat the rocker is measured up from) and is not a control. The founder chose four typed
+ * stations knowing a hand-typed 12" value can put a kink back into the curve there (D-14); do not bring
+ * the Angle/Smoothness/Flatness shape controls back without asking. With a blank picked the rocker
+ * comes off the blank, so the grid is not shown at all.
  *
- * THICKNESS, nose to tail. The two tips are absolute in both states and stored on the board (D-10).
+ * Foil (the old THICKNESS section, renamed when a blank is picked), nose to tail. The two tips are
+ * absolute in both states and stored on the board (D-10).
  * With no blank the two 12" stations are absolute too. With a blank picked they are the blank's own
  * thickness there less the deck skin and the centre gap (Phase 12, 12-UI-SPEC §5) plus the shaper's
  * signed fine-tune (D-11): the label shows the
@@ -53,13 +59,16 @@
  * on screen from the moment the page opens, on a phone the same as on a desktop.
  *
  * Quick 261006-v20 (2026-10-06): the sidebar follows the tab in view (D-01). On VIEWER every control
- * is live, as before; on DATASHEET only Center Thickness and THICKNESS's Nose Tip and Tail Tip; on TOP
- * VIEW (small screens only) only the BLANK section and BOARD ON BLANK's Placement. Every other group
- * stays exactly where it is, dimmed and inert, never hidden (D-02), through the one `Live` wrapper
- * (`live.tsx`). Which group is live on which tab is the pure table in `rocker-live-controls.ts`, read
- * once per render as `live`. A section that is wholly not live has its heading wrapped too; where only
- * part of a section is (THICKNESS on DATASHEET, BOARD ON BLANK on either tab) the heading stays live
- * and each row gets its own wrapper, so the column's `gap-3.5` stays exactly where it is (D-11).
+ * is live, as before; on DATASHEET only Center Thickness and the two tip thicknesses (the grid's two Tip
+ * thickness cells with no blank, Foil's Nose Tip and Tail Tip with one); on TOP VIEW (small screens
+ * only) only the BLANK section and BOARD ON BLANK's Placement. Every other group stays exactly where it
+ * is, dimmed and inert, never hidden (D-02), through the one `Live` wrapper (`live.tsx`). Which group is
+ * live on which tab is the pure table in `rocker-live-controls.ts`, read once per render as `live`. A
+ * section that is wholly not live has its heading wrapped too; where only part of a section is (Rocker &
+ * Foil and Foil on DATASHEET, BOARD ON BLANK on either tab) the heading stays live and each row or cell
+ * gets its own wrapper, so the column's `gap-3.5` stays exactly where it is (D-11). The Rocker & Foil
+ * heading is live while `live.rocker || live.thicknessHeading` — worked out at the call site, so the
+ * pure table and its test keep their ten keys.
  */
 
 import { type ReactNode } from "react";
@@ -101,7 +110,7 @@ import { BoardOnBlankSection } from "./board-on-blank";
 import { Live } from "./live";
 import { liveControls, type RockerTab } from "./rocker-live-controls";
 
-export type RockerControlsSectionKey = "center" | "blank" | "boardOnBlank" | "rocker" | "thickness";
+export type RockerControlsSectionKey = "blank" | "boardOnBlank" | "rockerAndFoil" | "foil";
 
 /** The 12" fine-tune's reach either way from the blank-derived thickness, in inches (±6 mm metric,
  * rounded inward by `measureSlider`) — `(researcher's choice — founder may overrule)` (UI-SPEC §5). */
@@ -125,6 +134,9 @@ const FINE_TUNE_SURFACE_HINT: Record<FineTuneSurface, string> = {
 interface RockerControlsProps {
   /** The tab in view — the editor's derived `activeTab`, never the requested one (quick 261006-v20). */
   tab: RockerTab;
+  /** The INPUTS section's line, `TEMPLATE details are imported: 6'0" × 19"` — `boardLine()`, moved here
+   * from under the subtitle. Text only: no tick box on ROCKER, the page always uses the template. */
+  templateLine: string;
   /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
   blanks: Promise<BlankCatalogResult>;
   /** The shaper's own saved blanks (quick 261016-mkb, D-09), streamed beside the catalogue. */
@@ -312,6 +324,7 @@ function ThinningStartRow({
 
 export function RockerControls({
   tab,
+  templateLine,
   blanks,
   savedBlanks,
   rocker,
@@ -345,13 +358,14 @@ export function RockerControls({
 
   return (
     <div className="flex flex-col gap-5">
-      <Live on={live.center}>
-        <div>
-          <SectionHeading open={sectionOpen.center} onToggle={() => onToggleSectionOpen("center")}>
-            Center Thickness
-          </SectionHeading>
-          {sectionOpen.center && (
-            <div className={cn("pt-3", locked && "opacity-40")}>
+      <div data-rocker-inputs>
+        <div className="mt-1.5 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">
+          Inputs
+        </div>
+        <div className="flex flex-col gap-3 pt-3">
+          <div className="text-xs text-surf-ink-muted font-normal">{templateLine}</div>
+          <Live on={live.center}>
+            <div className={cn(locked && "opacity-40")}>
               {/* The Board Length hand-rolled shape compacted to one line: label and typed field on
                   the label line, the slider beneath — allow-listed in slider-row.test.ts. */}
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -376,9 +390,9 @@ export function RockerControls({
                 className="slider-accent"
               />
             </div>
-          )}
+          </Live>
         </div>
-      </Live>
+      </div>
 
       <Live on={live.blank}>
         <div>
@@ -407,10 +421,10 @@ export function RockerControls({
       {!blank && (
         <Live on={live.rocker}>
           <div>
-            <SectionHeading open={sectionOpen.rocker} onToggle={() => onToggleSectionOpen("rocker")}>
+            <SectionHeading open={sectionOpen.rockerAndFoil} onToggle={() => onToggleSectionOpen("rockerAndFoil")}>
               Rocker
             </SectionHeading>
-            {sectionOpen.rocker && (
+            {sectionOpen.rockerAndFoil && (
               <div className="flex flex-col gap-3.5 pt-3">
                 <div className="text-xs text-surf-ink-muted font-normal">
                   Hand-set until you pick a blank — measured up from a flat surface with the board
@@ -460,10 +474,10 @@ export function RockerControls({
 
       <Live on={live.thicknessHeading}>
         <div>
-          <SectionHeading open={sectionOpen.thickness} onToggle={() => onToggleSectionOpen("thickness")}>
+          <SectionHeading open={sectionOpen.foil} onToggle={() => onToggleSectionOpen("foil")}>
             Thickness
           </SectionHeading>
-          {sectionOpen.thickness && (
+          {sectionOpen.foil && (
             <div className="flex flex-col gap-3.5 pt-3">
               <div className="text-xs text-surf-ink-muted font-normal">
                 {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}

@@ -141,11 +141,10 @@ export function RockerEditor({
   // the same object RAILS and VOLUME read — built from the board's blank when one is picked and
   // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
-    center: true,
     blank: true,
     boardOnBlank: true,
-    rocker: true,
-    thickness: true,
+    rockerAndFoil: true,
+    foil: true,
   });
   /** View state, like Template's own `orientation`/`showConstruction` — not design data, never
    * persisted. Per D-03 this screen's default is horizontal (nose left), the OPPOSITE of the
@@ -270,15 +269,13 @@ export function RockerEditor({
             <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">
               Set thickness, pick a blank, and dial in rocker and foil.
             </div>
-            <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">
-              {boardLine(outline.length, outline.widePointWidth, system)}
-            </div>
           </div>
 
           {/* The sidebar follows the tab actually on screen, so a window that loses TOP VIEW lands on
               VIEWER with every control live again (quick 261006-v20). */}
           <RockerControls
             tab={activeTab}
+            templateLine={boardLine(outline.length, outline.widePointWidth, system)}
             blanks={blanks}
             savedBlanks={savedBlanks}
             rocker={rocker}
