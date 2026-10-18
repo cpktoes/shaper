@@ -11,19 +11,17 @@ import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
  * D-04: the rocker DATASHEET, the rails DATA table and the fins data panel keep every column and
  * scroll sideways inside their own box, never the page. PHON-05: none of it moves a desktop pixel.
  *
- * The Home-Screen web-app print note (G-09-6) is gated in CSS only, on an iOS-only
- * `@supports (-webkit-touch-callout: none)` guard alongside `display-mode: standalone` (gap-closure
- * CR-01) — see the comment in view-full-sized-dialog.tsx. This file used to carry an
- * android/CDP-only case that emulated `display-mode: standalone` via
- * `Emulation.setEmulatedMedia`, but that Chromium build never honours a display-mode override, so
- * the case always skipped itself, and with the iOS guard in place no Chromium build (this
- * project's `android`, or any future one) can ever render the note at all — a permanently skipping
- * test is noise, not a limitation, so it was removed. The Home-Screen appearance is instead proved
- * by view-full-sized-dialog.test.ts's compiled-CSS contract test (WR-01: it compiles the real
- * class chain through the app's own Tailwind pipeline and asserts the emitted `@supports` +
- * `@media (display-mode: standalone)` nesting) and by the on-device UAT check
- * (.planning/debug/phone-print-button-does-nothing.md) — an e2e cannot exercise a real iOS
- * Home-Screen launch at all.
+ * The Home-Screen web-app print note (G-09-6, softened 2026-10-17) is gated in CSS only, on an
+ * iOS-only `@supports (-webkit-touch-callout: none)` guard alongside `display-mode: standalone`
+ * (gap-closure CR-01) — see the comment in view-full-sized-dialog.tsx. Since quick 261017-vdh
+ * (the founder found printing works from his phone) that note only warns "Printing may not be
+ * available" and hides nothing else: the Print button, the Fit-to-page note and the phone line show
+ * in the Home-Screen app too. No Chromium build (this project's `android`, or any future one) can
+ * render the note, and an e2e cannot exercise a real iOS Home-Screen launch at all, so the
+ * Home-Screen appearance is proved by view-full-sized-dialog.test.ts's source-contract tests and
+ * its compiled-CSS companion (WR-01: it compiles the real class chain through the app's own
+ * Tailwind pipeline and asserts the emitted `@supports` + `@media (display-mode: standalone)`
+ * nesting), and by the on-device UAT check (.planning/debug/phone-print-button-does-nothing.md).
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -424,7 +422,7 @@ test.describe("RAILS on a phone — one rail at a time, nothing scrolling sidewa
     await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
     await expect(
       page.getByText(
-        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+        "Printing may not be available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
       ),
     ).not.toBeVisible();
 
@@ -581,8 +579,9 @@ test.describe("RAILS held sideways — the controls stay put, same bucket as a d
     await expect(main).toBeVisible();
     await settledDrawingColumn(page);
 
-    // Close Tail from the controls beside the drawing — the same tap a shaper makes.
-    await page.locator("aside button", { hasText: /^tail\b/i }).first().click();
+    // Close Tail from the controls beside the drawing — the same tap a shaper makes (its View box,
+    // quick 261017-vdh; it was the heading's arrow).
+    await page.locator("aside").getByRole("checkbox", { name: "View Tail Rail" }).click();
     await page.waitForFunction(
       () => document.querySelectorAll('[data-rail-plot-row="desktop"] > *').length === 2,
     );
@@ -716,7 +715,7 @@ test.describe("RAILS on a desktop — unchanged (PHON-05)", () => {
     await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
     await expect(
       page.getByText(
-        "Printing isn't available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
+        "Printing may not be available from the Home-Screen app — open this page in Safari to print the full-sized rail.",
       ),
     ).not.toBeVisible();
   });
@@ -793,11 +792,17 @@ test.describe("RAILS DATA — the sideways fade never covers the Tail column", (
 const RAIL_NAMES = ["Nose", "Center", "Tail"] as const;
 type RailName = (typeof RAIL_NAMES)[number];
 
-/** The fold heading of one rail's control group inside the controls column (`aside`): a button whose
- * name is the rail's title plus the little ▾/▸ glyph. `getByRole` leaves out anything display:none,
- * so a count of 0 also proves a screen reader no longer reaches a hidden group (D-01). */
-function railGroupHeading(page: Page, rail: RailName) {
-  return page.locator("aside").getByRole("button", { name: new RegExp(`^${rail} Rail`) });
+/** One rail's whole control group inside the controls column (`aside`) — the `data-rail-group`
+ * marker is a pixel-inert test hook on the group's root. */
+function railGroup(page: Page, rail: RailName) {
+  return page.locator(`aside [data-rail-group="${rail.toLowerCase()}"]`);
+}
+
+/** The "View {Rail} Rail" tick box at the right end of a rail's heading (quick 261017-vdh — it took
+ * the place of the old ▾/▸ heading button). `getByRole` leaves out anything display:none, so a
+ * count of 0 also proves a screen reader no longer reaches a hidden group (D-01). */
+function railViewBox(page: Page, rail: RailName) {
+  return page.locator("aside").getByRole("checkbox", { name: `View ${rail} Rail` });
 }
 
 /** The heading's text span — it stays in the page's markup while its group is hidden, so a hidden
@@ -806,22 +811,28 @@ function railGroupTitle(page: Page, rail: RailName) {
   return page.locator("aside").getByText(`${rail} Rail`, { exact: true });
 }
 
-/** Only `shown`'s group is visible; the other two are in the markup but display:none. */
+/** Only `shown`'s group is visible (its title and its first slider); the other two are in the
+ * markup but display:none, so none of their sliders is in the accessibility tree. */
 async function expectOnlyRailGroup(page: Page, shown: RailName) {
   for (const rail of RAIL_NAMES) {
     if (rail === shown) {
-      await expect(railGroupHeading(page, rail), `${rail} Rail's group should show`).toBeVisible();
+      await expect(railGroupTitle(page, rail), `${rail} Rail's group should show`).toBeVisible();
+      await expect(railGroup(page, rail).getByRole("slider").first(), `${rail} Rail's controls show`).toBeVisible();
     } else {
       await expect(railGroupTitle(page, rail), `${rail} Rail's title stays in the page`).toBeAttached();
       await expect(railGroupTitle(page, rail), `${rail} Rail's group should be hidden`).toBeHidden();
-      await expect(railGroupHeading(page, rail), `${rail} Rail's heading is out of the accessibility tree`).toHaveCount(0);
+      await expect(
+        railGroup(page, rail).getByRole("slider"),
+        `${rail} Rail's sliders are out of the accessibility tree`,
+      ).toHaveCount(0);
     }
   }
 }
 
+/** Every rail's group shows, each with its View box. */
 async function expectAllRailGroups(page: Page) {
   for (const rail of RAIL_NAMES) {
-    await expect(railGroupHeading(page, rail), `${rail} Rail's group should show`).toBeVisible();
+    await expect(railViewBox(page, rail), `${rail} Rail's group should show`).toBeVisible();
   }
 }
 
@@ -829,9 +840,9 @@ async function expectAllRailGroups(page: Page) {
 async function expectSharedRailControls(page: Page) {
   const aside = page.locator("aside");
   await expect(aside.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
-  await expect(aside.getByText("Rail band calculator for shaping consistent rails")).toBeVisible();
-  await expect(aside.getByText("Use Board's Rocker & Foil Thickness")).toBeVisible();
-  await expect(aside.getByText(/^(Thickness comes from the ROCKER screen|You're typing your own thickness)/)).toBeVisible();
+  await expect(aside.getByText("Design and shape consistent rails")).toBeVisible();
+  await expect(aside.getByText("Import Rocker & Foil Values")).toBeVisible();
+  await expect(aside.getByText(/^Thickness details are imported: /)).toBeVisible();
   await expect(aside.getByText("Include Rail Band Instructions in Print")).toBeVisible();
   await expect(aside.getByText("Adds a third reference page")).toBeVisible();
   const stepNav = aside.locator("[data-step-nav]");

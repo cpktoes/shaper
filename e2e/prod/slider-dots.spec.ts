@@ -91,7 +91,9 @@ test.describe("every slider dot is positioned the moment the page loads (product
 
   // Quick 261005-big (D-06): on an upright phone the Center and Tail rails' controls load display:none
   // under the NOSE tab — exactly the case the slider remount guard exists for. Each rail group has
-  // four sliders (Thickness, Deck Profile, Family, Ratio) with Advanced closed.
+  // three sliders (Deck Profile, Family, Ratio) with Advanced closed and "Import Rocker & Foil
+  // Values" ticked, its default: the thickness slider is hidden while the import is on (quick
+  // 261017-vdh).
   test("RAILS on an upright phone: every dot in the rail that comes into view is drawn — NOSE, CENTER, TAIL and back (261005-big)", async ({
     page,
   }, testInfo) => {
@@ -112,7 +114,7 @@ test.describe("every slider dot is positioned the moment the page loads (product
             const drawn = dots.every(
               (d) => d.position !== null && d.position >= 0 && d.position <= 100 && !d.hidden,
             );
-            return dots.length === 4 && drawn;
+            return dots.length === 3 && drawn;
           },
           { message: `every dot in the ${tab} rail's group should be drawn in place` },
         )

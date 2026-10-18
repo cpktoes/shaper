@@ -230,11 +230,24 @@ async function rangeInputsDisabled(page: Page): Promise<{ total: number; live: n
 const pressUnlock = (page: Page) =>
   page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true }).click();
 
-/** Waits until the screen has drawn its sliders, then checks the generic rules on the controls column. */
-async function expectGreyedScreen(page: Page, scope: Locator) {
-  await expect(page.locator('input[type="range"]').first()).toBeAttached();
+/**
+ * Waits until the screen has drawn its sliders, then checks the generic rules on the controls column.
+ *
+ * `mayHaveNoSliders`: quick 261017-vdh plan 03 HIDES VOLUME's sliders (and FINS' Board Length, Tail
+ * Width and Tail Shape) while "Import Designed Board" is ticked, its default — so a screen may show
+ * only a tick box and its line. Then this waits for the first tick box instead of a slider, does not
+ * require a slider to exist, and still requires every slider that IS there to be disabled and no
+ * board-changing control to be live.
+ */
+async function expectGreyedScreen(page: Page, scope: Locator, options: { mayHaveNoSliders?: boolean } = {}) {
+  const { mayHaveNoSliders = false } = options;
+  await expect(
+    mayHaveNoSliders
+      ? scope.locator('input[type="range"], [data-slot="checkbox"]').first()
+      : page.locator('input[type="range"]').first(),
+  ).toBeAttached();
   const ranges = await rangeInputsDisabled(page);
-  expect(ranges.total).toBeGreaterThan(0);
+  if (!mayHaveNoSliders) expect(ranges.total).toBeGreaterThan(0);
   await expect
     .poll(async () => (await rangeInputsDisabled(page)).live, { message: "range inputs still live on a locked board" })
     .toBe(0);
@@ -347,8 +360,11 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expectGreyedScreen(page, controls);
     const rangesOpen = (await rangeInputsDisabled(page)).total;
 
-    // Closing a whole section is viewing: it works, and it takes its sliders with it.
-    await controls.getByRole("button", { name: /Nose/ }).first().click();
+    // Closing a whole section is viewing: it works, and it takes its sliders with it. The rail's
+    // View box does it (quick 261017-vdh; it replaced the heading's arrow). Center, not Nose: Nose
+    // is the upright layout's default pick, and its controls stay in the page — display:none —
+    // for that layout, so unticking it would not change how many sliders are in the page.
+    await controls.getByRole("checkbox", { name: "View Center Rail" }).click();
     await expect.poll(async () => (await rangeInputsDisabled(page)).total).toBeLessThan(rangesOpen);
 
     // The print tick is not a board change.
@@ -395,7 +411,8 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     }
 
     const controls = page.locator("[data-design-controls-scroll]");
-    await expectGreyedScreen(page, controls);
+    // Plan 03 (quick 261017-vdh) hides Board Length, Tail Width @ 12" and Tail Shape while "Import
+    // Designed Board" is ticked, so FINS' only sliders are in Advanced: open it before the first look.
     await controls.getByRole("button", { name: "Advanced" }).first().click();
     await expectGreyedScreen(page, controls);
 
@@ -420,7 +437,9 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await openLockedBoard(page, 1);
     await goToScreen(page, "VOLUME");
     const controls = page.locator("[data-design-controls-scroll]");
-    await expectGreyedScreen(page, controls);
+    // Plan 03 (quick 261017-vdh): with "Import Designed Board" ticked VOLUME shows only the tick box
+    // and its line, no sliders.
+    await expectGreyedScreen(page, controls, { mayHaveNoSliders: true });
     await pressUnlock(page);
     await expectControlsBack(controls);
   });
@@ -562,10 +581,21 @@ test.describe("a locked board reads as greyed, label and all, on every screen (f
         await openLockedBoard(page, n);
         if (screen !== "TEMPLATE") await goToScreen(page, screen);
         const controls = page.locator("[data-design-controls-scroll]");
-        await expect(page.locator('input[type="range"]').first()).toBeAttached();
+        // Plan 03 (quick 261017-vdh) hides VOLUME's sliders, and FINS' sliders outside Advanced, while
+        // the board is imported (its default): VOLUME waits for its tick box, FINS opens Advanced
+        // BEFORE the first look (a second click would close it again).
+        if (screen === "FINS") {
+          await expect(controls.getByRole("button", { name: /^Advanced/ }).first()).toBeVisible();
+          await openAdvanced(controls);
+        }
+        await expect(
+          screen === "VOLUME"
+            ? controls.locator('[data-slot="checkbox"]').first()
+            : page.locator('input[type="range"]').first(),
+        ).toBeAttached();
         await expectGreyedLook(controls, `${screen}, board ${n}`);
         if (process.env.LOOK_SHOTS) await page.screenshot({ path: `${process.env.LOOK_SHOTS}/${screen}-${n}-${testInfo.project.name}.png` });
-        if (screen === "RAILS" || screen === "FINS") {
+        if (screen === "RAILS") {
           await openAdvanced(controls);
           await expectGreyedLook(controls, `${screen} Advanced, board ${n}`);
         }
