@@ -90,6 +90,53 @@ function figure(dialog: Locator, rail: "card" | "rocker", key: string, fig: stri
   return dialog.locator(`[data-blank-view-${rail}="${key}"] [data-figure="${fig}"] [data-figure-value]`);
 }
 
+type Box = { x: number; y: number; width: number; height: number };
+
+/** Every card, stack and title in the popup's drawing, with its box (quick 261017-ojc). */
+async function labelBoxes(dialog: Locator): Promise<{ name: string; box: Box }[]> {
+  const out: { name: string; box: Box }[] = [];
+  for (const sel of ["[data-blank-view-card]", "[data-blank-view-rocker]", "[data-blank-view-title]"]) {
+    for (const el of await dialog.locator(sel).all()) {
+      const box = await el.boundingBox();
+      if (box) out.push({ name: `${sel} ${(await el.getAttribute(sel.slice(1, -1))) ?? ""}`, box });
+    }
+  }
+  return out;
+}
+
+/** Two boxes overlap. */
+function meets(a: Box, b: Box): boolean {
+  return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** No two of the drawing's labels meet. */
+async function expectLabelsApart(dialog: Locator) {
+  const boxes = await labelBoxes(dialog);
+  expect(boxes.length).toBeGreaterThan(0);
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      expect(meets(boxes[i].box, boxes[j].box), `${boxes[i].name} meets ${boxes[j].name}`).toBe(false);
+    }
+  }
+}
+
+/** The foam's drawn length on screen: its width lying flat, its height standing nose-up. */
+async function foamLength(dialog: Locator, orientation: "flat" | "standing"): Promise<number> {
+  const box = (await dialog.locator("[data-blank-silhouette]").boundingBox())!;
+  return orientation === "flat" ? box.width : box.height;
+}
+
+/** A toolbar icon's touch size: its laid-out box (never scaled by the popup's opening animation) plus
+ * the invisible touch box round it (P-11). */
+async function touchSize(button: Locator): Promise<{ width: number; height: number }> {
+  return button.evaluate((el) => {
+    const b = el as HTMLElement;
+    const after = getComputedStyle(b, "::after");
+    const grow = after.content === "none" || after.position !== "absolute" ? 0 : -parseFloat(after.left || "0");
+    return { width: b.offsetWidth + 2 * grow, height: b.offsetHeight + 2 * grow };
+  });
+}
+
 /** Presses a key on a slider thumb until its spoken value reads `want` (at most `max` presses). */
 async function pressUntil(page: Page, thumb: Locator, key: string, want: string, max = 64) {
   await thumb.focus();
@@ -250,9 +297,32 @@ test.describe("Customize Rocker on a computer", () => {
     await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions");
     await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"]')).toHaveCount(1);
     await expect(dialog.locator("[data-blank-view] [data-blank-view-rocker]")).toHaveCount(5);
+    // Board off (D-02, D-03, P-4, P-5): five cards, each its station's name over one untagged figure;
+    // five stacks, each the printed rocker (NAT) alone on a natural draft.
+    const cards = dialog.locator("[data-blank-view-card]");
+    await expect(cards).toHaveCount(5);
+    for (const card of await cards.all()) {
+      await expect(card.locator('[data-figure="blank"] [data-figure-value]')).toHaveCount(1);
+      await expect(card.locator("[data-figure-tag]")).toHaveCount(0);
+      await expect(card.locator("text")).toHaveCount(2);
+      expect((await card.locator("text").first().textContent())!.length).toBeGreaterThan(0);
+    }
+    for (const stack of await dialog.locator("[data-blank-view-rocker]").all()) {
+      await expect(stack.locator('[data-figure="nat"]')).toHaveCount(1);
+      await expect(stack.locator('[data-figure="custom"]')).toHaveCount(0);
+    }
+    await expect(dialog.locator('[data-blank-view-title="thickness"]')).toHaveText("Thickness");
+    await expect(dialog.locator('[data-blank-view-title="rocker"]')).toHaveText("Rocker");
+    // A computer gets no Dimensions icon: the drawing has its room (D-07).
+    await expect(dialog.locator("[data-show-dimensions]")).toBeHidden();
 
     // +1/2"N, then a second nose change at +1/2" from 18" in: the nose tip rises exactly 1" (D-05).
     await noseHalfInch(page, dialog);
+    // Once any change is set, every stack reads NAT and CUSTOM, even where they agree (P-4).
+    for (const stack of await dialog.locator("[data-blank-view-rocker]").all()) {
+      await expect(stack.locator('[data-figure="nat"]')).toHaveCount(1);
+      await expect(stack.locator('[data-figure="custom"]')).toHaveCount(1);
+    }
     await dialog.getByRole("button", { name: "+ Add a second nose change" }).click();
     const secondAmount = dialog.getByRole("slider", { exact: true, name: "Second nose rocker change" });
     await pressUntil(page, secondAmount, "ArrowRight", '+1/2"');
@@ -300,6 +370,38 @@ test.describe("Customize Rocker on a computer", () => {
     await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions & Your Board");
     await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"]')).toHaveCount(1);
     await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"] [data-board-silhouette="profile"]')).toBeVisible();
+    // Each card carries BLANK and BOARD, each stack a BOARD figure (P-2, P-3, P-5).
+    for (const card of await dialog.locator("[data-blank-view-card]").all()) {
+      await expect(card.locator('[data-figure="blank"] [data-figure-tag]')).toHaveText("BLANK");
+      await expect(card.locator('[data-figure="board"] [data-figure-tag]')).toHaveText("BOARD");
+    }
+    for (const stack of await dialog.locator("[data-blank-view-rocker]").all()) {
+      await expect(stack.locator('[data-figure="board"] [data-figure-tag]')).toHaveText("BOARD");
+    }
+
+    // Nothing meets (D-01, P-8): no two labels, nothing outside the drawing, nothing under the heading,
+    // the icons or the zoom control, and every card's texts inside its frame.
+    await expectLabelsApart(dialog);
+    const svgBox = (await dialog.locator("[data-blank-view]").boundingBox())!;
+    console.log(`[ojc boxes] computer svg ${svgBox.width.toFixed(1)}×${svgBox.height.toFixed(1)}`);
+    const chrome = [
+      (await dialog.locator("[data-custom-rocker-drawing] [data-viewer-toolbar]").boundingBox())!,
+      (await dialog.locator("[data-custom-rocker-drawing] [data-viewer-zoom]").boundingBox())!,
+      (await dialog.locator("[data-custom-rocker-heading]").boundingBox())!,
+    ];
+    for (const { name, box: b } of await labelBoxes(dialog)) {
+      expect(b.x >= svgBox.x - 0.5 && b.y >= svgBox.y - 0.5, name).toBe(true);
+      expect(b.x + b.width <= svgBox.x + svgBox.width + 0.5 && b.y + b.height <= svgBox.y + svgBox.height + 0.5, name).toBe(true);
+      for (const c of chrome) expect(meets(b, c), `${name} under the drawing's band`).toBe(false);
+    }
+    for (const card of await dialog.locator("[data-blank-view-card]").all()) {
+      const frame = (await card.locator("rect").boundingBox())!;
+      for (const text of await card.locator("text").all()) {
+        const t = (await text.boundingBox())!;
+        expect(t.x >= frame.x - 0.5 && t.x + t.width <= frame.x + frame.width + 0.5, `${await text.textContent()} across`).toBe(true);
+        expect(t.y >= frame.y - 0.5 && t.y + t.height <= frame.y + frame.height + 0.5, `${await text.textContent()} down`).toBe(true);
+      }
+    }
 
     // The page's zoom works on the popup's drawing; 1x puts it back.
     const drawing = dialog.locator('[data-custom-rocker-drawing] svg[role="img"]');
@@ -518,6 +620,11 @@ test.describe("Customize Rocker in Metric", () => {
     await expect(dialog.getByRole("slider", { exact: true, name: "Second nose bend starts" })).toHaveAttribute("aria-valuetext", /^\d+\.\d cm in$/);
     await expect(dialog.locator("[data-customize-rocker-note]")).toContainText('"N');
     await expect(dialog.locator("[data-customize-rocker-note]")).toContainText('+1/2"N');
+    // The drawing's figures are marks: whole millimetres, or a dash (CLAUDE.md Rule 2).
+    await dialog.locator("[data-show-board]").click();
+    const values = await dialog.locator("[data-blank-view] [data-figure-value]").allTextContents();
+    expect(values.length).toBeGreaterThan(10);
+    for (const v of values) expect(v).toMatch(/^-?\d+ mm$|^—$/);
   });
 
   test("a saved card's table reads its rows in millimetres and fits a 290-dot card; its note stays in inches (D-01, D-03, P-20)", async ({ page }) => {
@@ -539,6 +646,27 @@ test.describe("Customize Rocker in Metric", () => {
       "Custom Rocker (mm)",
     ]);
     await expectTableFits290(saved, picker, "metric");
+  });
+});
+
+test.describe("Customize Rocker in a narrow browser window", () => {
+  test.use({ viewport: { width: 760, height: 800 } });
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer's own window, made narrow");
+    await dismissChrome(page);
+  });
+
+  test("the Dimensions icon shows by width, not by the pointer, and clears the figures (D-07)", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const dialog = await openCustomizeRocker(page);
+    const dimensions = dialog.locator("[data-show-dimensions]");
+    await expect(dimensions).toBeVisible();
+    await expect(dimensions).toHaveAttribute("aria-pressed", "true");
+    await expect(dialog.locator("[data-blank-view-card]")).toHaveCount(5);
+    await dimensions.click();
+    await expect(dimensions).toHaveAttribute("aria-pressed", "false");
+    await expect(dialog.locator("[data-blank-view-card]")).toHaveCount(0);
   });
 });
 
@@ -586,6 +714,40 @@ test.describe("Customize Rocker on an upright phone", () => {
       expect(b.height).toBeGreaterThanOrEqual(44);
     }
   });
+
+  test("the drawing stands nose-up with its figures apart, and Dimensions off lets the foam fill it (D-07, P-6, P-10)", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    const dialog = await openCustomizeRocker(page);
+    const dimensions = dialog.locator("[data-show-dimensions]");
+    await expect(dimensions).toBeVisible();
+    await expect(dimensions).toHaveAttribute("aria-pressed", "true");
+    // Both icons are 44-dot touch boxes (P-11).
+    for (const icon of [dialog.locator("[data-show-board]"), dimensions]) {
+      const t = await touchSize(icon);
+      expect(t.width).toBeGreaterThanOrEqual(44);
+      expect(t.height).toBeGreaterThanOrEqual(44);
+    }
+    await noseHalfInch(page, dialog);
+    await dialog.locator("[data-show-board]").click();
+    await expect(dialog.locator('[data-blank-view-rocker] [data-figure="board"]')).toHaveCount(5);
+    await expectLabelsApart(dialog);
+    // Standing, the cards carry no station names (P-6): their figures only.
+    for (const card of await dialog.locator("[data-blank-view-card]").all()) await expect(card.locator("text")).toHaveCount(2);
+    const svgBox = (await dialog.locator("[data-blank-view]").boundingBox())!;
+    const before = await foamLength(dialog, "standing");
+
+    await dimensions.click();
+    await expect(dimensions).toHaveAttribute("aria-pressed", "false");
+    await expect(dialog.locator("[data-blank-view-card]")).toHaveCount(0);
+    await expect(dialog.locator("[data-blank-view-rocker]")).toHaveCount(0);
+    await expect(dialog.locator("[data-blank-view-title]")).toHaveCount(0);
+    await expect(dialog.locator('[data-rocker-overlay="natural"]')).toHaveCount(1);
+    await expect(dialog.locator('[data-board-silhouette="profile"]')).toBeVisible();
+    const after = await foamLength(dialog, "standing");
+    console.log(`[ojc P-10] upright phone ${page.viewportSize()!.width}×${page.viewportSize()!.height}: svg ${svgBox.width.toFixed(1)}×${svgBox.height.toFixed(1)}, foam ${before.toFixed(1)} → ${after.toFixed(1)} px long`);
+    expect(after).toBeGreaterThanOrEqual(1.2 * before);
+  });
 });
 
 // The real sideways iPhone (844 × 390, measured on hardware) and Pixel 7, built the way
@@ -615,16 +777,34 @@ async function sidewaysChecks(page: Page) {
   const readings = dialog.locator("[data-blank-view-rocker]");
   await expect(readings).toHaveCount(5);
   await expect(dialog.locator('[data-blank-view-rocker] [data-figure="custom"]')).toHaveCount(5);
-  const boxes = [];
-  for (const reading of await readings.all()) boxes.push((await reading.boundingBox())!);
-  for (let i = 0; i < boxes.length; i++) {
-    for (let j = i + 1; j < boxes.length; j++) {
-      const a = boxes[i];
-      const b = boxes[j];
-      const meet = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-      expect(meet, `reading ${i} meets reading ${j}`).toBe(false);
-    }
+  await expectLabelsApart(dialog);
+  // The board on: still apart, and the drawing column scrolls to the last stack and the Rocker title
+  // rather than clipping them (P-9).
+  await dialog.locator("[data-show-board]").click();
+  await expect(dialog.locator('[data-blank-view-rocker] [data-figure="board"]')).toHaveCount(5);
+  await expectLabelsApart(dialog);
+  const svgBox = (await dialog.locator("[data-blank-view]").boundingBox())!;
+  const column = dialog.locator("[data-customize-rocker-drawing-column]");
+  await column.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+  await page.waitForTimeout(200);
+  const cardBox = (await dialog.locator("[data-custom-rocker-drawing]").boundingBox())!;
+  const lastStack = (await readings.last().boundingBox())!;
+  const rockerTitle = (await dialog.locator('[data-blank-view-title="rocker"]').boundingBox())!;
+  for (const b of [lastStack, rockerTitle]) {
+    expect(b.y >= cardBox.y - 0.5 && b.y + b.height <= cardBox.y + cardBox.height + 0.5).toBe(true);
   }
+  const columnBox = (await column.boundingBox())!;
+  expect(rockerTitle.y + rockerTitle.height).toBeLessThanOrEqual(columnBox.y + columnBox.height + 0.5);
+  await column.evaluate((el) => el.scrollTo({ top: 0 }));
+  // Dimensions off: the foam grows to fill the drawing (D-07, P-10).
+  const dimensions = dialog.locator("[data-show-dimensions]");
+  await expect(dimensions).toBeVisible();
+  const before = await foamLength(dialog, "flat");
+  await dimensions.click();
+  await expect(dialog.locator("[data-blank-view-card]")).toHaveCount(0);
+  const after = await foamLength(dialog, "flat");
+  console.log(`[ojc P-10] sideways ${page.viewportSize()!.width}×${page.viewportSize()!.height}: svg ${svgBox.width.toFixed(1)}×${svgBox.height.toFixed(1)}, foam ${before.toFixed(1)} → ${after.toFixed(1)} px long`);
+  expect(after).toBeGreaterThanOrEqual(1.2 * before);
 }
 
 test.describe("Customize Rocker on a real sideways iPhone (844 × 390)", () => {
