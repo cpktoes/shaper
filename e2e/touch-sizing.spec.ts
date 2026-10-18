@@ -231,6 +231,8 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     page,
   }) => {
     await page.goto("/design/fins");
+    // The tail-shape buttons are hidden while the designed board is imported (quick 261017-vdh).
+    await untickImportDesignedBoard(page);
     const labels = ["Pin", "Round", "Diamond", "Squash", "Swallow", "Single Fin", "Twin", "Thruster", "2+1", "Quad"];
     for (const label of labels) {
       const button = page.getByRole("button", { name: label, exact: true });
@@ -470,6 +472,8 @@ test.describe("touch sizing — desktop stays exactly today's smaller sizes", ()
     expect(pinBox.height).toBe(59.5);
 
     await page.goto("/design/fins");
+    // The tail-shape buttons are hidden while the designed board is imported (quick 261017-vdh).
+    await untickImportDesignedBoard(page);
     const finsPinButton = page.getByRole("button", { name: "Pin", exact: true });
     await expect(finsPinButton).toBeVisible();
     const finsPinBox = await finsPinButton.boundingBox();

@@ -138,13 +138,15 @@ test.describe("keyboard focus is visible on sliders and hand-rolled buttons", ()
       .toContain(ringColor);
   });
 
-  test("FINS: the Pin tail-shape button paints the same ring, proving the shared class reached FINS too", async ({
+  // Quick 261017-vdh: FINS' tail-shape buttons are hidden while the designed board is imported (the
+  // default), so this walks to a Fin Setup button instead — same hand-rolled class, always on screen.
+  test("FINS: the Single Fin setup button paints the same ring, proving the shared class reached FINS too", async ({
     page,
   }) => {
     await page.goto("/design/fins");
     const ringColor = await ringColorRgb(page);
 
-    await tabUntil(page, "button", "Pin", 'the "Pin" button');
+    await tabUntil(page, "button", "Single Fin", 'the "Single Fin" button');
     await expect
       .poll(() =>
         page.evaluate(() => {

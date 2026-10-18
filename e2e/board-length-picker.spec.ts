@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * Quick 261017-sru: the two Board Length boxes on TEMPLATE, VOLUME and FINS read the way their open
@@ -6,6 +6,20 @@ import { expect, test } from "@playwright/test";
  * `0"`. Desktop project only (the boxes are the same on a phone, and the desktop baselines are what
  * pin the picture).
  */
+
+/** Quick 261017-vdh: VOLUME's four hand controls (and FINS' board length, tail width and tail shape)
+ * are not on the page while "Import Designed Board" is ticked, which it is by default. Untick it —
+ * once React owns the box, so the tap reaches the app and not the server-rendered markup — to bring
+ * the quick estimate's controls back. */
+async function untickImportDesignedBoard(page: Page) {
+  const box = page.getByRole("checkbox", { name: "Import Designed Board" });
+  await expect(box).toBeVisible();
+  await expect
+    .poll(() => box.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+  await box.click();
+  await expect(box).toHaveAttribute("aria-checked", "false");
+}
 
 test.describe("Board Length boxes", () => {
   test.beforeEach(async ({}, testInfo) => {
@@ -19,6 +33,8 @@ test.describe("Board Length boxes", () => {
   ] as const) {
     test(`${screen}: the closed boxes read 6' and 0" for a 6'0" board`, async ({ page }) => {
       await page.goto(path);
+      // VOLUME and FINS hide Board Length while the designed board is imported; TEMPLATE has no such box.
+      if (screen !== "TEMPLATE") await untickImportDesignedBoard(page);
       await expect(page.getByText(`Board Length — 6'0"`)).toBeVisible();
 
       // The only select boxes on these screens are the two Board Length boxes. Each box also draws a
