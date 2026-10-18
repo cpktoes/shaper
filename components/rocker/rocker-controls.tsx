@@ -213,6 +213,60 @@ function ThicknessRow({
   );
 }
 
+/** The Rocker & Foil grid's column headings, group headings and row labels (the founder's canvas, quick
+ * 261017-vdh). The caller adds `opacity-40` on a locked board, like every label beside a locked control. */
+const GRID_HEAD =
+  "text-[10px] font-display font-extrabold uppercase tracking-architectural text-surf-ink-muted";
+const GRID_GROUP =
+  "col-span-3 mt-1 border-b border-surf-line-faint pb-1 text-[10px] font-display font-extrabold uppercase tracking-architectural text-surf-ink";
+const GRID_ROW_LABEL = "pb-px text-xs text-surf-ink-muted";
+
+type GridSlider = ReturnType<typeof measureSlider>;
+
+/**
+ * One cell of the Rocker & Foil grid: the value in a bordered box over its own slider (`SliderRow`'s
+ * `valueBox`, the Customize Rocker popup's look, with no label of its own). `SliderRow` reads the board
+ * lock itself; the cell's own `Live` wrapper makes it inert on a tab where it is not live. `cell` is the
+ * test hook (`{nose|tail}-{tip|12}-{rocker|thickness}`), `name` the slider's screen-reader name.
+ */
+function HandSetCell({
+  cell,
+  live,
+  name,
+  value,
+  slider,
+  system,
+  onChange,
+}: {
+  cell: string;
+  live: boolean;
+  name: string;
+  value: Mm;
+  slider: GridSlider;
+  system: UnitsSystem;
+  onChange: (next: Mm) => void;
+}) {
+  const text = formatMark(value, system);
+  return (
+    <Live on={live}>
+      <div data-hand-set-cell={cell} className="min-w-0">
+        <SliderRow
+          label=""
+          valueBox={text}
+          density="tight"
+          value={slider.value}
+          min={slider.min}
+          max={slider.max}
+          step={slider.step}
+          sliderLabel={name}
+          sliderValueText={text}
+          onValueChange={(v) => onChange(slider.toMm(v))}
+        />
+      </div>
+    </Live>
+  );
+}
+
 /** A 12" station with a blank picked: the final thickness in the label, the tweak on the slider. */
 function FineTuneRow({
   label,
@@ -348,6 +402,10 @@ export function RockerControls({
   const rockerNose12Slider = measureSlider(rocker.nose12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const rockerTail12Slider = measureSlider(rocker.tail12, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
   const rockerTailTipSlider = measureSlider(rocker.tailTip, ROCKER_LIFT_RANGE_IN, ROCKER_LIFT_RANGE_IN.step, 1, system);
+  const noseTipThicknessSlider = measureSlider(foil.noseTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const nose12ThicknessSlider = measureSlider(foil.nose12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const tail12ThicknessSlider = measureSlider(foil.tail12, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
+  const tailTipThicknessSlider = measureSlider(foil.tailTip, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   const centerSlider = measureSlider(foil.center, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   // The typed field's bounds in ITS own domain (whole millimetres in Metric, inches in Imperial).
   const centerFieldBounds = typedFieldBounds(centerSlider, "mark", system);
@@ -419,81 +477,127 @@ export function RockerControls({
       </div>
 
       {!blank && (
-        <Live on={live.rocker}>
+        <Live on={live.rocker || live.thicknessHeading}>
           <div>
             <SectionHeading open={sectionOpen.rockerAndFoil} onToggle={() => onToggleSectionOpen("rockerAndFoil")}>
-              Rocker
+              Rocker &amp; Foil
             </SectionHeading>
             {sectionOpen.rockerAndFoil && (
+              // The intro and the grid share ONE wrapper, the nose tip rocker the first slider in it —
+              // phone-layout.spec.ts finds this section through the intro line's parent.
               <div className="flex flex-col gap-3.5 pt-3">
-                <div className="text-xs text-surf-ink-muted font-normal">
-                  Hand-set until you pick a blank — measured up from a flat surface with the board
-                  bottom-down.
+                <div className="text-xs text-surf-ink-muted font-normal">Hand-set until you pick a blank.</div>
+
+                <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)] items-end gap-x-4 gap-y-2">
+                  <div />
+                  <div className={cn(GRID_HEAD, locked && "opacity-40")}>Rocker</div>
+                  <div className={cn(GRID_HEAD, locked && "opacity-40")}>Thickness</div>
+
+                  <div className={cn(GRID_GROUP, locked && "opacity-40")}>Nose</div>
+                  <div className={cn(GRID_ROW_LABEL, locked && "opacity-40")}>Tip</div>
+                  <HandSetCell
+                    cell="nose-tip-rocker"
+                    live={live.rocker}
+                    name="Nose tip rocker"
+                    value={rocker.noseTip}
+                    slider={rockerNoseTipSlider}
+                    system={system}
+                    onChange={(next) => onChangeRocker({ noseTip: next })}
+                  />
+                  <HandSetCell
+                    cell="nose-tip-thickness"
+                    live={live.tipThickness}
+                    name="Nose tip thickness"
+                    value={foil.noseTip}
+                    slider={noseTipThicknessSlider}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ noseTip: next })}
+                  />
+                  <div className={cn(GRID_ROW_LABEL, locked && "opacity-40")}>@ {station}</div>
+                  <HandSetCell
+                    cell="nose-12-rocker"
+                    live={live.rocker}
+                    name={`Nose ${station} rocker`}
+                    value={rocker.nose12}
+                    slider={rockerNose12Slider}
+                    system={system}
+                    onChange={(next) => onChangeRocker({ nose12: next })}
+                  />
+                  <HandSetCell
+                    cell="nose-12-thickness"
+                    live={live.fineTune}
+                    name={`Nose ${station} thickness`}
+                    value={foil.nose12}
+                    slider={nose12ThicknessSlider}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ nose12: next })}
+                  />
+
+                  <div className={cn(GRID_GROUP, locked && "opacity-40")}>Tail</div>
+                  <div className={cn(GRID_ROW_LABEL, locked && "opacity-40")}>@ {station}</div>
+                  <HandSetCell
+                    cell="tail-12-rocker"
+                    live={live.rocker}
+                    name={`Tail ${station} rocker`}
+                    value={rocker.tail12}
+                    slider={rockerTail12Slider}
+                    system={system}
+                    onChange={(next) => onChangeRocker({ tail12: next })}
+                  />
+                  <HandSetCell
+                    cell="tail-12-thickness"
+                    live={live.fineTune}
+                    name={`Tail ${station} thickness`}
+                    value={foil.tail12}
+                    slider={tail12ThicknessSlider}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ tail12: next })}
+                  />
+                  <div className={cn(GRID_ROW_LABEL, locked && "opacity-40")}>Tip</div>
+                  <HandSetCell
+                    cell="tail-tip-rocker"
+                    live={live.rocker}
+                    name="Tail tip rocker"
+                    value={rocker.tailTip}
+                    slider={rockerTailTipSlider}
+                    system={system}
+                    onChange={(next) => onChangeRocker({ tailTip: next })}
+                  />
+                  <HandSetCell
+                    cell="tail-tip-thickness"
+                    live={live.tipThickness}
+                    name="Tail tip thickness"
+                    value={foil.tailTip}
+                    slider={tailTipThicknessSlider}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ tailTip: next })}
+                  />
                 </div>
-
-                <SliderRow
-                  label={`Nose Tip — ${formatMark(rocker.noseTip, system)}`}
-                  value={rockerNoseTipSlider.value}
-                  min={rockerNoseTipSlider.min}
-                  max={rockerNoseTipSlider.max}
-                  step={rockerNoseTipSlider.step}
-                  onValueChange={(v) => onChangeRocker({ noseTip: rockerNoseTipSlider.toMm(v) })}
-                />
-
-                <SliderRow
-                  label={`Nose @ ${station} — ${formatMark(rocker.nose12, system)}`}
-                  value={rockerNose12Slider.value}
-                  min={rockerNose12Slider.min}
-                  max={rockerNose12Slider.max}
-                  step={rockerNose12Slider.step}
-                  onValueChange={(v) => onChangeRocker({ nose12: rockerNose12Slider.toMm(v) })}
-                />
-
-                <SliderRow
-                  label={`Tail @ ${station} — ${formatMark(rocker.tail12, system)}`}
-                  value={rockerTail12Slider.value}
-                  min={rockerTail12Slider.min}
-                  max={rockerTail12Slider.max}
-                  step={rockerTail12Slider.step}
-                  onValueChange={(v) => onChangeRocker({ tail12: rockerTail12Slider.toMm(v) })}
-                />
-
-                <SliderRow
-                  label={`Tail Tip — ${formatMark(rocker.tailTip, system)}`}
-                  value={rockerTailTipSlider.value}
-                  min={rockerTailTipSlider.min}
-                  max={rockerTailTipSlider.max}
-                  step={rockerTailTipSlider.step}
-                  onValueChange={(v) => onChangeRocker({ tailTip: rockerTailTipSlider.toMm(v) })}
-                />
               </div>
             )}
           </div>
         </Live>
       )}
 
-      <Live on={live.thicknessHeading}>
-        <div>
-          <SectionHeading open={sectionOpen.foil} onToggle={() => onToggleSectionOpen("foil")}>
-            Thickness
-          </SectionHeading>
-          {sectionOpen.foil && (
-            <div className="flex flex-col gap-3.5 pt-3">
-              <div className="text-xs text-surf-ink-muted font-normal">
-                {blank ? thicknessIntroWithBlank(system) : "Hand-set until you pick a blank."}
-              </div>
+      {blank && view && (
+        <Live on={live.thicknessHeading}>
+          <div>
+            <SectionHeading open={sectionOpen.foil} onToggle={() => onToggleSectionOpen("foil")}>
+              Foil
+            </SectionHeading>
+            {sectionOpen.foil && (
+              <div className="flex flex-col gap-3.5 pt-3">
+                <div className="text-xs text-surf-ink-muted font-normal">{thicknessIntroWithBlank(system)}</div>
 
-              <Live on={live.tipThickness}>
-                <ThicknessRow
-                  label="Nose Tip"
-                  value={foil.noseTip}
-                  system={system}
-                  onChange={(next) => onChangeFoil({ noseTip: next })}
-                />
-              </Live>
+                <Live on={live.tipThickness}>
+                  <ThicknessRow
+                    label="Nose Tip"
+                    value={foil.noseTip}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ noseTip: next })}
+                  />
+                </Live>
 
-              {blank && view ? (
-                <>
                   <Live on={live.fineTune}>
                     <FineTuneRow
                       label={`Nose @ ${station}`}
@@ -534,110 +638,90 @@ export function RockerControls({
                       </div>
                     </div>
                   </Live>
-                </>
-              ) : (
-                <>
-                  <Live on={live.fineTune}>
-                    <ThicknessRow
-                      label={`Nose @ ${station}`}
-                      value={foil.nose12}
-                      system={system}
-                      onChange={(next) => onChangeFoil({ nose12: next })}
-                    />
-                  </Live>
-                  <Live on={live.fineTune}>
-                    <ThicknessRow
-                      label={`Tail @ ${station}`}
-                      value={foil.tail12}
-                      system={system}
-                      onChange={(next) => onChangeFoil({ tail12: next })}
-                    />
-                  </Live>
-                </>
-              )}
 
-              <Live on={live.tipThickness}>
-                <ThicknessRow
-                  label="Tail Tip"
-                  value={foil.tailTip}
-                  system={system}
-                  onChange={(next) => onChangeFoil({ tailTip: next })}
-                />
-              </Live>
-
-              {blank && (
-                // Stays in place when there is nothing to reset — dimmed and inert, so the rows
-                // above never shift. No confirmation: undo brings the tweaks back. Its `self-start`
-                // keeps working inside the `flex flex-col` wrapper (quick 261006-v20, D-10).
-                <Live on={live.fineTune}>
-                  <button
-                    type="button"
-                    disabled={locked}
-                    aria-disabled={noTweak ? "true" : undefined}
-                    tabIndex={noTweak ? -1 : undefined}
-                    onClick={() => {
-                      if (!noTweak) onResetFineTune();
-                    }}
-                    className={cn(
-                      "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
-                      noTweak && "pointer-events-none opacity-40",
-                    )}
-                  >
-                    ↺ Reset Fine-Tune
-                  </button>
+                <Live on={live.tipThickness}>
+                  <ThicknessRow
+                    label="Tail Tip"
+                    value={foil.tailTip}
+                    system={system}
+                    onChange={(next) => onChangeFoil({ tailTip: next })}
+                  />
                 </Live>
-              )}
 
-              {view && (
-                // At its natural width — "those who want it will find it" (§4); only the two Thinning
-                // Starts rows come after it (Phase 14, D-10).
-                <Live on={live.tipStyle}>
-                  <div className="flex flex-col">
-                    <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>Tip Style</div>
-                    <TwoOptionToggle
-                      options={["pinDeck", "bottom"] as const}
-                      labels={["Pin deck", "Bottom"] as const}
-                      value={view.cut.tipStyle}
-                      onChange={onTipStyle}
+                {blank && (
+                  // Stays in place when there is nothing to reset — dimmed and inert, so the rows
+                  // above never shift. No confirmation: undo brings the tweaks back. Its `self-start`
+                  // keeps working inside the `flex flex-col` wrapper (quick 261006-v20, D-10).
+                  <Live on={live.fineTune}>
+                    <button
+                      type="button"
                       disabled={locked}
-                      ariaLabel="Tip Style"
-                      className="self-start"
-                    />
-                    <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
-                  </div>
-                </Live>
-              )}
+                      aria-disabled={noTweak ? "true" : undefined}
+                      tabIndex={noTweak ? -1 : undefined}
+                      onClick={() => {
+                        if (!noTweak) onResetFineTune();
+                      }}
+                      className={cn(
+                        "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
+                        noTweak && "pointer-events-none opacity-40",
+                      )}
+                    >
+                      ↺ Reset Fine-Tune
+                    </button>
+                  </Live>
+                )}
 
-              {view && (
-                // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
-                // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
-                <>
-                  <Live on={live.thinning}>
-                    <ThinningStartRow
-                      end="nose"
-                      tip={view.tips.nose}
-                      tipSetting={foil.noseTip}
-                      system={system}
-                      onChange={onThinningStart}
-                      onAutomatic={onThinningStartAutomatic}
-                    />
+                {view && (
+                  // At its natural width — "those who want it will find it" (§4); only the two Thinning
+                  // Starts rows come after it (Phase 14, D-10).
+                  <Live on={live.tipStyle}>
+                    <div className="flex flex-col">
+                      <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>Tip Style</div>
+                      <TwoOptionToggle
+                        options={["pinDeck", "bottom"] as const}
+                        labels={["Pin deck", "Bottom"] as const}
+                        value={view.cut.tipStyle}
+                        onChange={onTipStyle}
+                        disabled={locked}
+                        ariaLabel="Tip Style"
+                        className="self-start"
+                      />
+                      <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>{TIP_STYLE_HINT[view.cut.tipStyle]}</div>
+                    </div>
                   </Live>
-                  <Live on={live.thinning}>
-                    <ThinningStartRow
-                      end="tail"
-                      tip={view.tips.tail}
-                      tipSetting={foil.tailTip}
-                      system={system}
-                      onChange={onThinningStart}
-                      onAutomatic={onThinningStartAutomatic}
-                    />
-                  </Live>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </Live>
+                )}
+
+                {view && (
+                  // Close THICKNESS, nose then tail (D-10): which surface (Tip Style), then where each tip's
+                  // thinning starts. Shown only with a blank picked — hidden, not disabled (D-09).
+                  <>
+                    <Live on={live.thinning}>
+                      <ThinningStartRow
+                        end="nose"
+                        tip={view.tips.nose}
+                        tipSetting={foil.noseTip}
+                        system={system}
+                        onChange={onThinningStart}
+                        onAutomatic={onThinningStartAutomatic}
+                      />
+                    </Live>
+                    <Live on={live.thinning}>
+                      <ThinningStartRow
+                        end="tail"
+                        tip={view.tips.tail}
+                        tipSetting={foil.tailTip}
+                        system={system}
+                        onChange={onThinningStart}
+                        onAutomatic={onThinningStartAutomatic}
+                      />
+                    </Live>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </Live>
+      )}
     </div>
   );
 }
