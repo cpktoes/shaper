@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-17 — fast task 171: a heading over the Customize Rocker drawing (Blank Dimensions / Your Board's Dimensions); the founder also asked for the Show-my-board-off drawing to match the on view — a quick task to open
+Last activity: 2026-10-17 — fast task 172: RAILS' View Full Sized popup widened to fit the true-size rail on a computer
 
 ## Performance Metrics
 
@@ -397,6 +397,7 @@ Recent decisions affecting current work:
 | 261016-mkb | Custom rocker (sketch 016 D; the founder, 2026-10-16: "This now looks perfect. Let's build it."): a blank's rocker as ordered from the maker, written the US Blanks way, set in a Customize Rocker popup with a live red/blue drawing, every blank named with its rocker, and each custom rocker kept as the shaper's own starred blank in Pick a Blank (migration 0012, `user_blanks`, on production before the push) | 2026-10-17 | 029da65e | [261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere](./quick/261016-mkb-custom-rocker-a-blank-s-rocker-as-ordere/) |
 | 170 | The Customize Rocker popup's tail Bend starts slider runs centre to tail, left to right, the way the drawing lies — thumb right pushes the bend toward the tail (the founder, 2026-10-17, after their signed-in check of quick 261016-mkb passed) | 2026-10-17 | 07e12c59 | fast (no directory) |
 | 171 | The Customize Rocker popup's drawing gets a heading saying whose figures it carries: Blank Dimensions with Show my board off, Your Board's Dimensions with it on (the founder, 2026-10-17) | 2026-10-17 | 39ef96bc | fast (no directory) |
+| 172 | RAILS' View Full Sized popup sizes itself to the true-size rail on a computer (8.69 in = 835 px; it was capped at 768 and scrolled sideways), capped at 95vw; phones unchanged (the founder, 2026-10-17: "Tail full size popup needs to be wider") | 2026-10-17 | cc1b49c9 | fast (no directory) |
 
 ## Deferred Items
 
