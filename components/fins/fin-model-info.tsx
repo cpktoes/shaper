@@ -9,12 +9,16 @@ import { finRoundingGrain } from "@/lib/geometry/fins";
  * text a shaper reads, not paraphrased or shortened. The one departure from that verbatim copy is
  * the Convention paragraph's rounding sentence, which now reads `finRoundingGrain(system)` so the
  * claim matches the numbers FINS actually prints in each system (Phase 13 item 8b, quick 260928-vpi).
+ *
+ * Quick 261017-vdh (BRIEF 4c): the tab wears the side panel's own heading pattern — the title at the
+ * sidebar title size, its note right under it with no heavy rule, and every block heading in the
+ * sidebar's ruled section-heading look. Wording unchanged.
  */
 
 function InfoBlock({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
-    <div className="mb-4.5">
-      <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{heading}</div>
+    <div className="mb-6">
+      <div className="mt-1.5 mb-3 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">{heading}</div>
       <div className="text-sm leading-relaxed">{children}</div>
     </div>
   );
@@ -24,8 +28,8 @@ export function FinModelInfo() {
   const { system } = useUnits();
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-10 text-surf-ink">
-      <div className="mb-6 text-xl font-display text-surf-ink uppercase tracking-architectural font-extrabold">Model Info</div>
-      <div className="mb-5 border-b-2 border-surf-line-faint pb-4 text-sm text-surf-ink-muted">
+      <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">Model Info</div>
+      <div className="mt-0.5 mb-6 text-sm text-surf-ink-muted">
         Reference note on where each model&apos;s placement guidance comes from.
       </div>
 
@@ -89,7 +93,7 @@ export function FinModelInfo() {
       </InfoBlock>
 
       <div>
-        <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">Quad Rear Models</div>
+        <div className="mt-1.5 mb-3 border-b border-surf-line-faint pb-2 text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Quad Rear Models</div>
         <div className="text-sm leading-relaxed">
           <div className="mb-2">
             <strong>Basic: Spread</strong> — Uses the front Basic Model as input. Rears are placed

@@ -6,6 +6,7 @@ import { useUnits } from "@/components/units-provider";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { toeAimTableFor } from "@/lib/geometry/fins";
+import { finsImportedLine } from "@/lib/geometry/fins-imported-line";
 import { buildFinsPresetSource } from "@/lib/geometry/preset-source";
 import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
@@ -52,6 +53,8 @@ export function FinPlacementEditor() {
     effectiveFins: spec,
     updateFins,
     finPlacement: result,
+    outline,
+    outlineGeometry,
     finImportedTail,
     finTailOutline,
     finsImportTemplate,
@@ -76,6 +79,21 @@ export function FinPlacementEditor() {
     window.setTimeout(() => setJustCopiedPreset(false), 1500);
   }
 
+  // While the designed board is imported, the line under the box lists what FINS is taking from
+  // TEMPLATE (quick 261017-vdh, BRIEF 4a): `spec` is already the imported values, the tail's block and
+  // depth come from the board's own outline (the diamond's depth as drawn, clamped).
+  const importedLine = finsImportTemplate
+    ? finsImportedLine(
+        {
+          length: spec.boardLength,
+          tailWidth12: spec.tailWidth12,
+          tail: outline.tail,
+          diamondDepth: outlineGeometry.effectiveDiamondDepth,
+        },
+        system,
+      )
+    : null;
+
   const toeTableView = useMemo(
     () => toeAimTableFor(spec.boardLength, spec.tailWidth12, system),
     [spec.boardLength, spec.tailWidth12, system],
@@ -97,6 +115,7 @@ export function FinPlacementEditor() {
           onOpenToeTable={() => setToeTableOpen(true)}
           importTemplate={finsImportTemplate}
           onToggleImportTemplate={() => setFinsImportTemplate(!finsImportTemplate)}
+          importedLine={importedLine}
         />
       }
       canvas={

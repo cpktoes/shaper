@@ -164,6 +164,20 @@ describe("design-store.tsx — nothing but the shaper's own pick or removal chan
     expect(body).toMatch(/delete blank\.rocker/);
   });
 
+  it("toggleImportDesignedBoard is VOLUME's one box: lock check, one undo step, both flags together (quick 261017-vdh)", () => {
+    const body = handler("toggleImportDesignedBoard");
+    const afterArrow = body.slice(body.indexOf("=>") + 2).replace(/^\s*\{\s*/, "");
+    expect(afterArrow).toMatch(/^if \(lockedRef\.current\) return;/);
+    expect(body).toContain("noteEdit(null)");
+    expect(body).toMatch(/importTemplateDimensions:\s*true,\s*importRailThickness:\s*true/);
+    expect(body).toMatch(/importTemplateDimensions:\s*false,\s*importRailThickness:\s*false/);
+    expect(body).toMatch(/length:\s*effectiveVolume\.length/);
+    expect(body).toMatch(/width:\s*effectiveVolume\.width/);
+    expect(body).toMatch(/centerThickness:\s*effectiveVolume\.centerThickness/);
+    expect(SOURCE).not.toContain("toggleImportTemplateDimensions");
+    expect(SOURCE).not.toContain("toggleImportRailThickness");
+  });
+
   it("pickBlank takes the rocker only from its own argument — a plain pick writes none (D-10)", () => {
     const body = handler("pickBlank");
     expect(body).toMatch(/const pickBlank = \(record: BlankRecord, placement: Mm, rocker\?: BlankRockerSpec\)/);
@@ -352,8 +366,7 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
     "setThinningStartAutomatic",
     "setBlankRocker",
     "removeBlank",
-    "toggleImportTemplateDimensions",
-    "toggleImportRailThickness",
+    "toggleImportDesignedBoard",
     "markSaved",
   ];
 

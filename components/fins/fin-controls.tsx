@@ -4,6 +4,11 @@
  * The Fin Setup & Placement sidebar. Ported from reference/project/Fins.dc.html lines 100-370
  * (sidebar markup) and the advanced-control bounds in `renderVals` (lines 977-982). Reuses the
  * section-heading and slider-row styling from components/rails/rail-controls.tsx wholesale.
+ *
+ * Quick 261017-vdh (BRIEF 4): the INPUTS section is a ruled heading, one box `Import Designed Board`
+ * and — while it is ticked — a single line saying which board was imported; Board Length, Tail
+ * Width @ 12" and Tail Shape are then not on the page (unticked they show, FINS keeping its own
+ * stored values). ADVANCED reads nose to tail: the forward fins, the rear fins, then the center fin.
  */
 
 import { useState } from "react";
@@ -174,6 +179,9 @@ interface FinControlsProps {
    * design (Fins.dc.html's `importTemplate`). */
   importTemplate: boolean;
   onToggleImportTemplate: () => void;
+  /** The "TEMPLATE details are imported: …" line shown under the box while it is ticked
+   * (`finsImportedLine`), else null. */
+  importedLine: string | null;
 }
 
 export function FinControls({
@@ -189,6 +197,7 @@ export function FinControls({
   onOpenToeTable,
   importTemplate,
   onToggleImportTemplate,
+  importedLine,
 }: FinControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -266,12 +275,17 @@ export function FinControls({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2.5 border-b border-outline-sidebar-divider pb-1.5">
-        <div className="text-xs font-display text-surf-ink uppercase tracking-architectural font-extrabold">Inputs</div>
-        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 whitespace-nowrap text-xs text-surf-ink-muted font-normal${dim}`}>
+      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the line that
+          says which board was imported. */}
+      <div className="flex flex-col gap-1.5">
+        <SectionHeading>Inputs</SectionHeading>
+        <label className={`flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal${dim}`}>
           <Checkbox disabled={locked} checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
-          Import Template Values
+          Import Designed Board
         </label>
+        {importTemplate && importedLine && (
+          <div className="text-xs text-surf-ink-muted font-normal">{importedLine}</div>
+        )}
       </div>
 
       {/* Board Length and Tail Width @ 12" (below) both keep their own hand-rolled markup rather
@@ -279,121 +293,122 @@ export function FinControls({
           feet/inches Select combo in Imperial, one typed centimetre field in Metric (D-08) —
           matching its TEMPLATE and VOLUME counterparts, named in slider-row.test.ts's allowlist.
           Tail Width @ 12" would fit the row on its own, but it shares this exact 0.45 opacity
-          dimming with Board Length under the same importTemplate toggle; migrating only one would
-          leave two adjacent sliders dimming to visibly different shades (SliderRow's own disabled
-          state dims to Tailwind's 0.4, not 0.45), so both stay hand-rolled together and are named
-          in the allowlist too. */}
-      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
-        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
-          Board Length — {formatLength(spec.boardLength, system)}
-        </div>
-        <div className="mb-2 flex gap-2">
-          {system === "imperial" ? (
-            <>
-              <Select
-                items={FEET_ITEMS}
-                value={lengthFeet}
-                onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
-                disabled={locked || importTemplate}
-              >
-                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FEET_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                items={INCHES_ITEMS}
-                value={lengthInches}
-                onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
-                disabled={locked || importTemplate}
-              >
-                <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INCHES_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </>
-          ) : (
-            <MeasureField
-              value={spec.boardLength}
-              onCommit={(next) => onChange({ boardLength: next })}
-              label="Board Length"
-              family="length"
-              min={boardLengthFieldBounds.min}
-              max={boardLengthFieldBounds.max}
-              system={system}
-              disabled={locked || importTemplate}
-            />
-          )}
-        </div>
-        <Slider
-          value={boardLength.value}
-          min={boardLength.min}
-          max={boardLength.max}
-          step={boardLength.step}
-          disabled={locked || importTemplate}
-          onValueChange={(v) => onChange({ boardLength: boardLength.toMm(sliderValue(v)) })}
-          className="slider-accent"
-        />
-      </div>
-
-      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
-        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
-          {`Tail Width @ ${stationLabel(system)} — ${formatDim(spec.tailWidth12, system)}`}
-        </div>
-        <Slider
-          value={tailWidth12Slider.value}
-          min={tailWidth12Slider.min}
-          max={tailWidth12Slider.max}
-          step={tailWidth12Slider.step}
-          disabled={locked || importTemplate}
-          onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
-          className="slider-accent"
-        />
-      </div>
-
-      <div style={{ opacity: locked || importTemplate ? 0.45 : 1 }}>
-        <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
-          Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
-        </div>
-        {/* 09-REVIEW.md WR-02: hand-rolled <button>s, not PillButton or the shared Button
-            component, so coarse:min-h-11 is added by hand -- same pointer-keyed rule, no effect
-            on a mouse at any width. */}
-        <div
-          className="mt-2 mb-6 grid grid-cols-5 gap-2.5"
-          style={{ pointerEvents: importTemplate ? "none" : "auto" }}
-        >
-          {TAIL_SHAPES.map((shape) => (
-            <button
-              key={shape}
-              type="button"
+          dimming with Board Length on a locked board; migrating only one would leave two adjacent
+          sliders dimming to visibly different shades (SliderRow's own disabled state dims to
+          Tailwind's 0.4, not 0.45), so both stay hand-rolled together and are named in the
+          allowlist too. While the designed board is imported all three controls are off the page. */}
+      {!importTemplate && (
+        <>
+          <div style={{ opacity: locked ? 0.45 : 1 }}>
+            <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
+              Board Length — {formatLength(spec.boardLength, system)}
+            </div>
+            <div className="mb-2 flex gap-2">
+              {system === "imperial" ? (
+                <>
+                  <Select
+                    items={FEET_ITEMS}
+                    value={lengthFeet}
+                    onValueChange={(v) => setLengthIn((v as number) * 12 + lengthInches)}
+                    disabled={locked}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FEET_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    items={INCHES_ITEMS}
+                    value={lengthInches}
+                    onValueChange={(v) => setLengthIn(lengthFeet * 12 + (v as number))}
+                    disabled={locked}
+                  >
+                    <SelectTrigger className="flex-1 border-outline-sidebar-input-border bg-outline-sidebar-input-bg text-outline-sidebar-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INCHES_ITEMS.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <MeasureField
+                  value={spec.boardLength}
+                  onCommit={(next) => onChange({ boardLength: next })}
+                  label="Board Length"
+                  family="length"
+                  min={boardLengthFieldBounds.min}
+                  max={boardLengthFieldBounds.max}
+                  system={system}
+                  disabled={locked}
+                />
+              )}
+            </div>
+            <Slider
+              value={boardLength.value}
+              min={boardLength.min}
+              max={boardLength.max}
+              step={boardLength.step}
               disabled={locked}
-              onClick={() => onChange({ tailShape: shape as FinTailShape })}
-              className={
-                "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 disabled:cursor-default disabled:opacity-40 " +
-                (spec.tailShape === shape
-                  ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
-                  : "border-surf-line bg-surf-sidebar text-surf-ink")
-              }
-            >
-              <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
-              <span className="text-[10px] font-bold">{TAIL_SHAPE_LABEL[shape]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+              onValueChange={(v) => onChange({ boardLength: boardLength.toMm(sliderValue(v)) })}
+              className="slider-accent"
+            />
+          </div>
+
+          <div style={{ opacity: locked ? 0.45 : 1 }}>
+            <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
+              {`Tail Width @ ${stationLabel(system)} — ${formatDim(spec.tailWidth12, system)}`}
+            </div>
+            <Slider
+              value={tailWidth12Slider.value}
+              min={tailWidth12Slider.min}
+              max={tailWidth12Slider.max}
+              step={tailWidth12Slider.step}
+              disabled={locked}
+              onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
+              className="slider-accent"
+            />
+          </div>
+
+          <div style={{ opacity: locked ? 0.45 : 1 }}>
+            <div className={`mb-1.5 text-sm text-surf-ink-muted font-normal${dim}`}>
+              Tail Shape — {TAIL_SHAPE_LABEL[spec.tailShape as IconTailShape]}
+            </div>
+            {/* 09-REVIEW.md WR-02: hand-rolled <button>s, not PillButton or the shared Button
+                component, so coarse:min-h-11 is added by hand -- same pointer-keyed rule, no effect
+                on a mouse at any width. */}
+            <div className="mt-2 mb-6 grid grid-cols-5 gap-2.5">
+              {TAIL_SHAPES.map((shape) => (
+                <button
+                  key={shape}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => onChange({ tailShape: shape as FinTailShape })}
+                  className={
+                    "focus-ring-accent flex cursor-pointer flex-col items-center gap-0.5 rounded-lg border px-0.5 py-2 coarse:min-h-11 disabled:cursor-default disabled:opacity-40 " +
+                    (spec.tailShape === shape
+                      ? "border-surf-on-accent bg-surf-accent text-surf-on-accent"
+                      : "border-surf-line bg-surf-sidebar text-surf-ink")
+                  }
+                >
+                  <TailShapeIcon shape={shape} active={spec.tailShape === shape} />
+                  <span className="text-[10px] font-bold">{TAIL_SHAPE_LABEL[shape]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <SectionHeading>Fin Selection</SectionHeading>
 
@@ -505,36 +520,8 @@ export function FinControls({
         </DisclosureHeading>
         {advancedOpen && (
           <div className="mt-3.5 flex flex-col gap-4.5 pl-3">
-            {flags.hasCenterSection && (
-              <div>
-                <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
-                <div className="mb-2.5">
-                  <SliderRow
-                    density="tight"
-                    label={baseLengthLabel(flags.centerBaseLenFieldLabel, spec.advanced.baseLenCenter, spec.advanced.baseLenCenterOverridden, system)}
-                    value={baseLenCenterSlider.value}
-                    min={baseLenCenterSlider.min}
-                    max={baseLenCenterSlider.max}
-                    step={baseLenCenterSlider.step}
-                    onValueChange={(v) => updateAdvanced({ baseLenCenter: baseLenCenterSlider.toMm(v), baseLenCenterOverridden: true })}
-                  />
-                </div>
-                <SliderRow
-                  density="tight"
-                  label={`Aft/Forward position — ${formatMark(resolved.centerOffTail, system)}`}
-                  value={centerPositionSlider.value}
-                  min={centerPositionSlider.min}
-                  max={centerPositionSlider.max}
-                  step={centerPositionSlider.step}
-                  onValueChange={(v) => updateAdvanced({ centerPositionOffset: centerPositionSlider.toMm(v) })}
-                  leftHint="Drivey (near tail)"
-                  rightHint="Loose (far from tail)"
-                />
-              </div>
-            )}
-
             {flags.hasForwardSection && (
-              <div className="border-t border-outline-sidebar-divider pt-4">
+              <div>
                 <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                   {forwardFinsHeading(spec.finSetup, flags.forwardSectionLabel)}
                 </div>
@@ -590,7 +577,7 @@ export function FinControls({
             )}
 
             {flags.hasRearSection && (
-              <div className="border-t border-outline-sidebar-divider pt-4">
+              <div className={flags.hasForwardSection ? "border-t border-outline-sidebar-divider pt-4" : undefined}>
                 <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
                   Rear Fins — {flags.rearSectionLabel}
                 </div>
@@ -707,6 +694,34 @@ export function FinControls({
                     View precise McKee toe-in aim tables ⤢
                   </button>
                 )}
+              </div>
+            )}
+
+            {flags.hasCenterSection && (
+              <div className={flags.hasForwardSection || flags.hasRearSection ? "border-t border-outline-sidebar-divider pt-4" : undefined}>
+                <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">{flags.centerSectionLabel}</div>
+                <div className="mb-2.5">
+                  <SliderRow
+                    density="tight"
+                    label={baseLengthLabel(flags.centerBaseLenFieldLabel, spec.advanced.baseLenCenter, spec.advanced.baseLenCenterOverridden, system)}
+                    value={baseLenCenterSlider.value}
+                    min={baseLenCenterSlider.min}
+                    max={baseLenCenterSlider.max}
+                    step={baseLenCenterSlider.step}
+                    onValueChange={(v) => updateAdvanced({ baseLenCenter: baseLenCenterSlider.toMm(v), baseLenCenterOverridden: true })}
+                  />
+                </div>
+                <SliderRow
+                  density="tight"
+                  label={`Aft/Forward position — ${formatMark(resolved.centerOffTail, system)}`}
+                  value={centerPositionSlider.value}
+                  min={centerPositionSlider.min}
+                  max={centerPositionSlider.max}
+                  step={centerPositionSlider.step}
+                  onValueChange={(v) => updateAdvanced({ centerPositionOffset: centerPositionSlider.toMm(v) })}
+                  leftHint="Drivey (near tail)"
+                  rightHint="Loose (far from tail)"
+                />
               </div>
             )}
 

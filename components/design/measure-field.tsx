@@ -58,8 +58,8 @@ export interface MeasureFieldProps {
    * value with its own unit. */
   bare?: boolean;
   /** Passed straight to the underlying `Input`, matching the Select/Slider `disabled` prop a
-   * caller's Imperial branch already sets when a value is driven from elsewhere (e.g. the VOLUME
-   * screen's "Measure This Board's Real Shape" import toggle) — a typed value under a value the
+   * caller's Imperial branch already sets when a value is not the shaper's to change (a locked board, or a
+   * value driven from elsewhere) — a typed value under a value the
    * shaper can't otherwise touch would be a correctness gap, not a cosmetic one. */
   disabled?: boolean;
 }

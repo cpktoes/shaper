@@ -445,14 +445,13 @@ interface DesignContextValue {
    * still on its way returns that same save instead of writing a second board. Rejects when the save
    * fails — the caller's dialog shows its own error. */
   saveForFirstTime: (name: string) => Promise<void>;
-  /** Toggling off also forces `importRailThickness` off and copies the currently effective
-   * length/width into the stored manual fields; toggling on needs no copy (the derived override
-   * takes over). Ported from Volume.dc.html's `onToggleImportTemplateDimensions`. */
-  toggleImportTemplateDimensions: () => void;
-  /** No-op while template import is off; toggling off copies the currently effective centre
-   * thickness into the stored manual field. Ported from Volume.dc.html's
-   * `onToggleImportRailThickness`. */
-  toggleImportRailThickness: () => void;
+  /** VOLUME's one box, "Import Designed Board" (quick 261017-vdh, BRIEF 3b). Ticking it writes both
+   * stored import flags on (the real outline AND the real rail and thickness data); unticking writes
+   * both off and copies the currently effective length, width and centre thickness into the stored
+   * manual fields, so the quick estimate starts from this board's own numbers. One undo step either
+   * way. A board saved with the retired in-between flags reads through `deriveEffectiveVolume`, which
+   * folds the rail flag into the template flag — nothing is migrated. */
+  toggleImportDesignedBoard: () => void;
 
   // Derived values.
   /** The board's outline, wings and all (quick 261014-wii, D1). */
@@ -1262,11 +1261,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [volumeResult, crossSectionVolume],
   );
 
-  // The prototype's own handoff semantics (Volume.dc.html lines 412-437) — the one place derived
-  // values must be written back into stored state.
+  // The prototype's own handoff semantics (Volume.dc.html lines 412-437), now behind ONE box
+  // (quick 261017-vdh) — the one place derived values must be written back into stored state.
   // A discrete switch — see toggleTailHardEdge's comment (above, near the other RAILS/FINS
   // toggles) for why noteEdit(null).
-  const toggleImportTemplateDimensions = () => {
+  const toggleImportDesignedBoard = () => {
     if (lockedRef.current) return;
     noteEdit(null);
     setState((current) => {
@@ -1275,7 +1274,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       if (next) {
         return {
           ...prev,
-          volume: { ...prev.volume, importTemplateDimensions: true },
+          volume: { ...prev.volume, importTemplateDimensions: true, importRailThickness: true },
           boardStarted: true,
           dirty: true,
         };
@@ -1288,36 +1287,6 @@ export function DesignProvider({ children }: { children: ReactNode }) {
           importRailThickness: false,
           length: effectiveVolume.length,
           width: effectiveVolume.width,
-        },
-        boardStarted: true,
-        dirty: true,
-      };
-    });
-  };
-
-  // A discrete switch — see toggleTailHardEdge's comment above for why noteEdit(null). Called
-  // AFTER the early-return guard below, so a no-op call (template import already off) records
-  // nothing.
-  const toggleImportRailThickness = () => {
-    if (lockedRef.current) return;
-    if (!state.volume.importTemplateDimensions) return;
-    noteEdit(null);
-    setState((current) => {
-      const prev = startedFrom(current, liveTipsRef.current);
-      const next = !prev.volume.importRailThickness;
-      if (next) {
-        return {
-          ...prev,
-          volume: { ...prev.volume, importRailThickness: true },
-          boardStarted: true,
-          dirty: true,
-        };
-      }
-      return {
-        ...prev,
-        volume: {
-          ...prev.volume,
-          importRailThickness: false,
           centerThickness: effectiveVolume.centerThickness,
         },
         boardStarted: true,
@@ -1588,8 +1557,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setModelId,
     markSaved,
     saveForFirstTime,
-    toggleImportTemplateDimensions,
-    toggleImportRailThickness,
+    toggleImportDesignedBoard,
     outlineGeometry,
     baseOutlineGeometry,
     wingFinEdges,

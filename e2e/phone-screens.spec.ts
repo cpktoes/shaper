@@ -18,6 +18,20 @@ const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 // bounding-box assertion in this file.
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
 
+/** Quick 261017-vdh: VOLUME's four hand controls (and FINS' board length, tail width and tail shape)
+ * are not on the page while "Import Designed Board" is ticked, which it is by default. Untick it —
+ * once React owns the box, so the tap reaches the app and not the server-rendered markup — to bring
+ * the quick estimate's controls back. */
+async function untickImportDesignedBoard(page: Page) {
+  const box = page.getByRole("checkbox", { name: "Import Designed Board" });
+  await expect(box).toBeVisible();
+  await expect
+    .poll(() => box.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+  await box.click();
+  await expect(box).toHaveAttribute("aria-checked", "false");
+}
+
 /** Matches 09-02's own test file's approach: dismiss the sign-in banner via sessionStorage,
  * set before navigation, so its own height never confuses a layout assertion. */
 async function dismissSignInBanner(page: Page) {
@@ -109,6 +123,9 @@ test.describe("VOLUME on a phone — one plain scrolling column, nothing pinned"
     page,
   }) => {
     await page.goto("/design/volume");
+    // With the designed board imported the column can fit a tall phone; the quick estimate's four
+    // controls make it a page that must scroll, which is what this test measures (quick 261017-vdh).
+    await untickImportDesignedBoard(page);
 
     const card = page.locator("main");
     const controls = page.locator("aside");

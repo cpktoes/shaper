@@ -242,29 +242,58 @@ describe("deriveEffectiveVolume", () => {
   );
 
   it.each(BOARD_PRESETS)(
-    "$id: importTemplateDimensions on takes length/width from the template, and centerThickness from rail values only when importRailThickness is also on",
+    "$id: importTemplateDimensions on takes length/width from the template and centerThickness from the rails, whatever the stored importRailThickness (one box, quick 261017-vdh)",
     (preset) => {
       const geometry = buildOutline(preset.outline);
       const templateValues = deriveTemplateValues(preset.outline, geometry);
       const railValues = deriveRailValues(computeRailBands(preset.rails));
 
-      const withoutRailThickness = deriveEffectiveVolume(
-        { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: false },
-        templateValues,
-        railValues,
-      );
-      expect(withoutRailThickness.length).toBe(templateValues.length);
-      expect(withoutRailThickness.width).toBe(templateValues.widePointWidth);
-      expect(withoutRailThickness.centerThickness).toBe(DEFAULT_VOLUME_SPEC.centerThickness);
+      for (const importRailThickness of [false, true]) {
+        const effective = deriveEffectiveVolume(
+          { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness },
+          templateValues,
+          railValues,
+        );
+        expect(effective.length).toBe(templateValues.length);
+        expect(effective.width).toBe(templateValues.widePointWidth);
+        expect(effective.centerThickness).toBe(railValues.centerThickness);
+        expect(effective.importRailThickness).toBe(true);
+      }
+    },
+  );
 
-      const withRailThickness = deriveEffectiveVolume(
-        { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: true },
-        templateValues,
-        railValues,
-      );
-      expect(withRailThickness.length).toBe(templateValues.length);
-      expect(withRailThickness.width).toBe(templateValues.widePointWidth);
-      expect(withRailThickness.centerThickness).toBe(railValues.centerThickness);
+  it.each(BOARD_PRESETS)(
+    "$id: a board saved in the retired in-between state computes as importing rail data too",
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const templateValues = deriveTemplateValues(preset.outline, geometry);
+      const railValues = deriveRailValues(computeRailBands(preset.rails));
+      const inBetween = { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: false };
+
+      const result = computeVolume(deriveEffectiveVolume(inBetween, templateValues, railValues), templateValues, railValues);
+      expect(result.importingTemplate).toBe(true);
+      expect(result.importingRailThickness).toBe(true);
+    },
+  );
+
+  it.each(BOARD_PRESETS)(
+    "$id: summarizeDesign quotes the same litres for the in-between board as for the same board with both flags on",
+    (preset) => {
+      const base = {
+        outline: preset.outline,
+        rails: preset.rails,
+        foil: DEFAULT_FOIL_SPEC,
+        railsImportFoilThickness: false,
+      };
+      const inBetween = summarizeDesign({
+        ...base,
+        volume: { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: false },
+      });
+      const bothOn = summarizeDesign({
+        ...base,
+        volume: { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: true },
+      });
+      expect(inBetween.volumeLitres).toBe(bothOn.volumeLitres);
     },
   );
 });

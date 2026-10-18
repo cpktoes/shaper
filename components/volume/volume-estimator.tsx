@@ -29,8 +29,7 @@ export function VolumeEstimator() {
     volumeResult,
     quotedVolumeLitres,
     updateVolume,
-    toggleImportTemplateDimensions,
-    toggleImportRailThickness,
+    toggleImportDesignedBoard,
   } = useDesign();
   const { system } = useUnits();
 
@@ -41,8 +40,7 @@ export function VolumeEstimator() {
           effectiveVolume={effectiveVolume}
           volumeResult={volumeResult}
           onChange={updateVolume}
-          onToggleImportTemplateDimensions={toggleImportTemplateDimensions}
-          onToggleImportRailThickness={toggleImportRailThickness}
+          onToggleImportDesignedBoard={toggleImportDesignedBoard}
         />
       }
       canvas={
