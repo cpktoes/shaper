@@ -43,12 +43,13 @@
  * 260926-wmf). Arrow keys, Escape and a tap outside behave as in any menu here.
  */
 
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import { Menu } from "@base-ui/react/menu";
 import { HouseIcon, MenuIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { AppSettingsMenuItem, ContactMenuItem } from "@/components/settings-menu";
 import { NavAuthControl } from "@/components/auth/nav-auth-control";
+import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { ShareMenuItem } from "@/components/share-menu-item";
 import { ScreenTiles } from "@/components/design/screen-tiles";
 import type { NavLink } from "@/components/site-nav";
@@ -63,8 +64,11 @@ export function PhoneMenu({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   return (
-    <Menu.Root>
+    <>
+    <Menu.Root open={menuOpen} onOpenChange={setMenuOpen}>
       <Menu.Trigger
         // Icon-only, so it needs an accessible name — there is no visible text to borrow.
         aria-label="Menu"
@@ -119,11 +123,20 @@ export function PhoneMenu({
                 divider row does the same job, matching the popup's own line token. */}
             <div aria-hidden className="mx-2 my-1.5 border-t border-surf-line-faint" />
             <div data-phone-menu-account className="flex items-center px-2 py-1.5">
-              <NavAuthControl />
+              {/* "Sign in" closes the menu and opens the dialog below, outside the menu, so the menu's
+                  keyboard handling never sees what is typed into Clerk's email box (quick fix, 2026-10-18). */}
+              <NavAuthControl
+                onSignIn={() => {
+                  setMenuOpen(false);
+                  setSignInOpen(true);
+                }}
+              />
             </div>
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
+    <SignInDialog open={signInOpen} onOpenChange={setSignInOpen} />
+    </>
   );
 }
