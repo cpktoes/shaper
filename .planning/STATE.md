@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-17 — quick 261017-ojc: the Customize Rocker popup's drawing, one grammar for both states, with the phone's Dimensions toggle and corner icons — built, awaiting the founder's go to push
+Last activity: 2026-10-18 — quick 261017-vdh: side panels redesigned from the founder's copy-edit canvas (INPUTS sections, RAILS View boxes, ROCKER's Rocker & Foil table)
 
 ## Performance Metrics
 
@@ -401,6 +401,7 @@ Recent decisions affecting current work:
 | 173 | TEMPLATE, from the founder's copy-edit canvas: the Width slider gets Thin / Thick hints under its ends, and the wing's "Run along the stringer" slider is called "Vertical run"; TEMPLATE desktop picture re-taken; the wing test's first visit to FINS waits up to 60 s for the dev server to build it | 2026-10-17 | 24152e2c | fast (no directory) |
 | 174 | ROCKER, from the founder's copy-edit canvas: subtitle "Set thickness, pick a blank, and dial in rocker and foil.", the line under it reads "TEMPLATE details are imported:", and the Center Thickness note is gone; ROCKER desktop picture re-taken | 2026-10-17 | 5802d3d7 | fast (no directory) |
 | 261017-ojc | The Customize Rocker popup draws one picture in both states (the founder, 2026-10-17: "I prefer the on view. Can we make the off view match it?"): the blank's thickness on cards above the foam with the board's beside it when the board is on, Natural / Custom / Board rocker stacked under the blank's five stations, Show my board and a phone-only Dimensions toggle as corner icons, the heading Blank Dimensions & Your Board | 2026-10-17 | 82d26733 | [261017-ojc-customize-rocker-popup-one-drawing-for-b](./quick/261017-ojc-customize-rocker-popup-one-drawing-for-b/) |
+| 261017-vdh | Side panels redesigned from the founder's copy-edit canvas (2026-10-17): an INPUTS section at the top of ROCKER, RAILS, VOLUME and FINS — one import box where a screen imports (RAILS "Import Rocker & Foil Values", VOLUME and FINS "Import Designed Board", VOLUME's two boxes now one) and a "… details are imported: …" line in place of the controls it now hides; RAILS' View box on each rail heading; ROCKER's hand-set rocker and thickness in one Rocker & Foil table (Foil with a blank picked); FINS' Advanced reads nose to tail and MODEL INFO wears the app's headings; TEMPLATE's Show Drag Points and Show fin placement; the RAILS full-sized popup shows Print in the iPhone Home-Screen app with a softened note; each figure in an imported line kept on one line | 2026-10-18 | dbeaf0ad | [261017-vdh-side-panels-redesigned-from-the-founder-](./quick/261017-vdh-side-panels-redesigned-from-the-founder-/) |
 
 ## Deferred Items
 
