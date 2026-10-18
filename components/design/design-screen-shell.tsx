@@ -122,14 +122,18 @@ export function DesignScreenShell({
   // the Redo button with nothing below it to scroll it clear, so the button could not be tapped.
   // Since quick 261003-q2c the last row was the Back and Next pair; since quick 261006-fom (D-03) it
   // is the site footer under that pair — the copyright line with its Terms and Privacy links — and
-  // the arithmetic is the same: whatever is last, it ends 68px plus the inset up.
+  // the arithmetic is the same: whatever is last, it ends 69px plus the inset up.
   //
   // The numbers since quick 261003-q2f, which removed the old bottom tab bar: this scroller now runs
   // to the window's bottom edge, and the pair (`phone-undo-bar.tsx`) sits 16px plus the home-bar
   // inset above that edge, 44px tall on a touch screen — so its top is 60px plus the inset up. The
-  // last row must end 68px plus the inset up, 8px of daylight: the scroller's 16px of bottom padding
-  // plus this block's 52px plus the inset (`calc(3.25rem+env(safe-area-inset-bottom))`). (It was
-  // 48px when the pair sat 12px above the old 56px tab bar.) VOLUME's simpler sidebar and the
+  // last row must end 69px plus the inset up, 9px of daylight: the scroller's 16px of bottom padding
+  // plus this block's 53px plus the inset (`calc(3.3125rem+env(safe-area-inset-bottom))`). (It was
+  // 48px when the pair sat 12px above the old 56px tab bar, and 52px — 8px of daylight — until
+  // 2026-10-18: a browser scrolls in whole dots, so a column whose height ends in a fraction of a dot
+  // stops up to one dot short of its end, and the imported-dimensions card's large figures left
+  // ROCKER and RAILS 7.2 dots clear on a production build. The ninth dot keeps the gap at 8 or more
+  // whatever the fraction.) VOLUME's simpler sidebar and the
   // Summary's order form carry the same room their own way and move together with this one.
   //
   // The room is an empty `::after` block at the end of the scrolling content, NOT more bottom
@@ -147,7 +151,7 @@ export function DesignScreenShell({
   // floats, which is why no dev-server test could ever see the fault;
   // `e2e/prod/phone-controls-clear-undo.spec.ts` proves the room on a production build.
   const controlsScrollClassName =
-    "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4 max-shell:after:block max-shell:after:h-[calc(3.25rem+env(safe-area-inset-bottom))] max-shell:after:content-['']";
+    "min-h-0 flex-1 overflow-y-auto p-10 max-shell:p-4 max-shell:after:block max-shell:after:h-[calc(3.3125rem+env(safe-area-inset-bottom))] max-shell:after:content-['']";
 
   // 10-SWEEP-2.md: a phone held SIDEWAYS (about 844x390 on a real iPhone) clears 820px and lands
   // in this desktop branch (D-10), where a real desktop window was always tall enough that nobody
@@ -258,14 +262,14 @@ export function DesignScreenShell({
               // The site footer, the last thing in VOLUME's controls, right after the Back and Next
               // pair (quick 261006-fom, D-03 — it used to be the pair itself, and the room below
               // moved from the pair onto the footer unchanged). The aside's own 40px of padding plus
-              // the footer's 28px of bottom padding and the home-bar inset
-              // (`max-shell:pb-[calc(1.75rem+...)]`) give 68px plus the inset under it — the same end
+              // the footer's 29px of bottom padding and the home-bar inset
+              // (`max-shell:pb-[calc(1.8125rem+...)]`) give 69px plus the inset under it — the same end
               // the other screens' scroller padding and end block give (above), so on an upright
-              // phone it scrolls 8px clear of the floating Undo/Redo pair in the window's corner
+              // phone it scrolls 9px clear of the floating Undo/Redo pair in the window's corner
               // (quick 261003-q2f; it was 24px when the pair sat above the old bottom tab bar). Any
               // change to the pair's phone position must move this number together with that block.
             }
-            <SiteFooter className="max-shell:pb-[calc(1.75rem+env(safe-area-inset-bottom))]" />
+            <SiteFooter className="max-shell:pb-[calc(1.8125rem+env(safe-area-inset-bottom))]" />
           </>
         ) : (
           <>

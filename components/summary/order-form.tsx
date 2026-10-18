@@ -1028,11 +1028,11 @@ export function OrderForm() {
         // paper either. `max-w-80` is the widest the controls column's content ever gets on a computer
         // (the 400px sidebar less its 40px padding each side) and this page centres its children, so on
         // a computer both sit centred under the print buttons rather than stretching across the window;
-        // on a phone they take nearly the full width. `max-shell:pb-[calc(2.25rem+...)]` — moved from
-        // Back onto the footer unchanged when the footer became the last row — adds 36px plus the
-        // home-bar inset to the page's own 32px of bottom padding: 68px plus the inset under the footer
+        // on a phone they take nearly the full width. `max-shell:pb-[calc(2.3125rem+...)]` — moved from
+        // Back onto the footer unchanged when the footer became the last row — adds 37px plus the
+        // home-bar inset to the page's own 32px of bottom padding: 69px plus the inset under the footer
         // on an upright phone, the same room the other screens' controls end with, so the last row
-        // scrolls 8px clear of the floating Undo/Redo pair, which sits 16px plus the inset up from the
+        // scrolls 9px clear of the floating Undo/Redo pair, which sits 16px plus the inset up from the
         // window's bottom corner since quick 261003-q2f removed the old bottom tab bar (this was 32px
         // when the pair sat above that bar). The room is padding on this child, never more on the
         // scroller itself (WebKit reads a scroller whose own padding outgrows its window as fully
@@ -1040,7 +1040,7 @@ export function OrderForm() {
         // with the design shell's end room.
       }
       <StepNav className="w-full max-w-80" />
-      <SiteFooter className="w-full max-w-80 max-shell:pb-[calc(2.25rem+env(safe-area-inset-bottom))]" />
+      <SiteFooter className="w-full max-w-80 max-shell:pb-[calc(2.3125rem+env(safe-area-inset-bottom))]" />
     </div>
   );
 }
