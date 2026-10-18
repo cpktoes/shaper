@@ -223,12 +223,12 @@ export function BoardInBlankIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
       <path
-        d="M1.8 8.2C6 10.4 9 11 12 11S18 10.6 22.2 9.2L22.2 12.6C18 14.6 15 15.2 12 15.2S6 14.4 1.8 11.6Z"
+        d="M1.5 10.5C5 9 8 8.8 12 8.8S19 9 22.5 10C21 12.5 17 14.8 12 14.8S4 13 1.5 10.5Z"
         stroke="currentColor"
-        strokeWidth={1.25}
+        strokeWidth={1.5}
         strokeLinejoin="round"
       />
-      <path d="M4 10.5C7 12.1 9.4 12.4 12 12.4S17 12.2 20 10.9C17.4 13.1 15 13.9 12 13.9S6.6 12.9 4 10.5Z" fill="currentColor" />
+      <path d="M4.3 11.2C7 10.5 9 10.4 12 10.4S17.5 10.6 20.2 10.9C18.5 12.3 16 13.3 12 13.3S6.2 12.4 4.3 11.2Z" fill="currentColor" />
     </svg>
   );
 }
