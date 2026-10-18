@@ -13,7 +13,7 @@ describe("keepFiguresTogether — a figure never splits across two lines", () =>
   });
 
   it("leaves every other space alone, so the line still wraps between words", () => {
-    const line = `TEMPLATE details are imported: 6'0" · 14 3/4" tail @ 12" · Squash tail`;
+    const line = `From TEMPLATE: 6'0" · 14 3/4" tail @ 12" · Squash tail`;
     const kept = keepFiguresTogether(line);
     expect(kept.replaceAll(NBSP, " ")).toBe(line);
     expect(kept.split(NBSP)).toHaveLength(2);

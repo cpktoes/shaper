@@ -1,12 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { expectReadout, importedReadout } from "./helpers/imported-readout";
 
 /**
  * The browser proof of ROCKER's side panel as the founder's copy-edit canvas drew it (quick 261017-vdh,
  * plan 02, 2026-10-17):
  *
  * - INPUTS is the first section, under the title and subtitle: a ruled, non-collapsible heading, the
- *   `TEMPLATE details are imported: …` line (moved up from under the subtitle) and the Center Thickness
+ *   `From TEMPLATE` readout card (sketch 017 C, quick 261018-fg1: the template's length and width in
+ *   large figures with their names under them) and the Center Thickness
  *   slider, its value in its label. The separate CENTER THICKNESS section is gone.
  * - With no blank picked, the old ROCKER and THICKNESS sections are ONE `Rocker & Foil` section: the intro
  *   `Hand-set until you pick a blank.` and a grid — a ROCKER and a THICKNESS column, a NOSE group (Tip, then
@@ -68,7 +70,13 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     // INPUTS: the heading, the TEMPLATE line, Center Thickness — and nothing of the old sections.
     const inputs = page.locator("[data-rocker-inputs]");
     await expect(inputs.getByText("Inputs", { exact: true })).toBeVisible();
-    await expect(inputs.getByText('TEMPLATE details are imported: 6\'0" × 19"', { exact: true })).toBeVisible();
+    const card = importedReadout(inputs, "From TEMPLATE");
+    await expect(card).toBeVisible();
+    await expectReadout(card, [
+      ["Length", `6'0"`],
+      ["Width", `19"`],
+    ]);
+    await expect(inputs.getByText(/are imported/)).toHaveCount(0);
     await expect(inputs.getByText('Center Thickness — 2 1/2"', { exact: true })).toBeVisible();
     await expect(inputs.getByRole("textbox")).toHaveCount(0);
     await expect(sliderNamed(page, "Center Thickness")).toHaveCount(1);
@@ -135,14 +143,15 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     await expect(page.locator("[data-hand-set-cell]")).toHaveCount(GRID_CELLS.length);
   });
 
-  test("in Metric the line, the station and the boxes read in centimetres and whole millimetres", async ({ page }) => {
+  test("in Metric the card, the station and the boxes read in centimetres and whole millimetres", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     const side = aside(page);
 
-    await expect(
-      page.locator("[data-rocker-inputs]").getByText("TEMPLATE details are imported: 182.9 × 48.3 cm", { exact: true }),
-    ).toBeVisible();
+    await expectReadout(importedReadout(page.locator("[data-rocker-inputs]"), "From TEMPLATE"), [
+      ["Length", "182.9 cm"],
+      ["Width", "48.3 cm"],
+    ]);
     await expect(page.locator("[data-rocker-inputs]").getByText("Center Thickness — 64 mm", { exact: true })).toBeVisible();
     await expect(side.getByText("@ 30.5 cm", { exact: true })).toHaveCount(2);
     await expect(cellBox(page, "nose-tip-rocker")).toHaveText("114 mm");

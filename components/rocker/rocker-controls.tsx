@@ -8,8 +8,8 @@
  * view state owned by `rocker-editor.tsx`, never saved.
  *
  * INPUTS is not collapsible and has no tick box: ROCKER always uses the template, so it just says
- * which (the `TEMPLATE details are imported: …` line, `boardLine()`, moved here from under the
- * subtitle) and holds Center Thickness (R1, D-12), the board's ONE centre thickness, the same stored
+ * which (a readout card, "From TEMPLATE": the template's length and width in large figures, quick
+ * 261018-fg1, sketch 017 C, built by `rockerImportedReadout()` and drawn by `ImportedReadoutCard`) and holds Center Thickness (R1, D-12), the board's ONE centre thickness, the same stored
  * `foil.center` RAILS and VOLUME read — one `SliderRow` with its value in its label (`Center Thickness —
  * 2 1/2"`), no typed box (quick 261018-ejc, the founder 2026-10-18: "doesn't need a type in box, just the
  * slider"). An exact centre is typed in the DATASHEET table's Center cell, so ROCKER needs no entry in
@@ -108,7 +108,8 @@ import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { BoardOnBlankSection } from "./board-on-blank";
 import { Live } from "./live";
 import { liveControls, type RockerTab } from "./rocker-live-controls";
-import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
+import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
+import type { ImportedReadout } from "@/lib/geometry/imported-readout";
 
 export type RockerControlsSectionKey = "blank" | "boardOnBlank" | "rockerAndFoil" | "foil";
 
@@ -134,9 +135,10 @@ const FINE_TUNE_SURFACE_HINT: Record<FineTuneSurface, string> = {
 interface RockerControlsProps {
   /** The tab in view — the editor's derived `activeTab`, never the requested one (quick 261006-v20). */
   tab: RockerTab;
-  /** The INPUTS section's line, `TEMPLATE details are imported: 6'0" × 19"` — `boardLine()`, moved here
-   * from under the subtitle. Text only: no tick box on ROCKER, the page always uses the template. */
-  templateLine: string;
+  /** The INPUTS section's card, "From TEMPLATE": the template's length and width as a readout (quick
+   * 261018-fg1, sketch 017 C), built by `rockerImportedReadout()`. Information only: no tick box on
+   * ROCKER, the page always uses the template. */
+  templateReadout: ImportedReadout;
   /** The pickable catalogue, streamed from the page and never awaited there (Pattern 8). */
   blanks: Promise<BlankCatalogResult>;
   /** The shaper's own saved blanks (quick 261016-mkb, D-09), streamed beside the catalogue. */
@@ -378,7 +380,7 @@ function ThinningStartRow({
 
 export function RockerControls({
   tab,
-  templateLine,
+  templateReadout,
   blanks,
   savedBlanks,
   rocker,
@@ -419,7 +421,7 @@ export function RockerControls({
           Inputs
         </div>
         <div className="flex flex-col gap-3 pt-3">
-          <div className="text-xs text-surf-ink-muted font-normal">{keepFiguresTogether(templateLine)}</div>
+          <ImportedReadoutCard readout={templateReadout} />
           <Live on={live.center}>
             <SliderRow
               label={`Center Thickness — ${formatMark(foil.center, system)}`}

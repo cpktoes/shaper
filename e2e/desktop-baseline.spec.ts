@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-18 (quick 261018-fg1) — ROCKER, RAILS, VOLUME and FINS, for the imported
+ * dimensions as a readout card (sketch 017 C, the founder's "Go with C readout card, figures in
+ * accent = off"): each sidebar's one-line INPUTS sentence became a small card (an accent caption,
+ * then each figure large in ink with its name under it), so the controls under it move down by the
+ * card's extra height. Old and new were compared against each other before re-recording: only the
+ * sidebar from the INPUTS block down moved; the drawing side and the top bar are unchanged. TEMPLATE
+ * was not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3164) on this
+ * Mac. SHA-256 (first 8 characters), old to new: ROCKER df77b72a to 8b058472, RAILS 5766a6d9 to
+ * 45bdc74a, VOLUME 17b3a6c9 to d9915b11, FINS 11b3b466 to da13a38a.
+ *
  * RE-RECORDED 2026-10-18 (quick 261018-e6w) — TEMPLATE only, `outline-desktop-desktop-darwin.png`:
  * the drag points now show from the start (the five rings and their guide lines on the board, and
  * the drag-points button shaded), a fin-placement button with the new surfboard-fin icon joins the

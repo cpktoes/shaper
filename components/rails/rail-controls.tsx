@@ -12,8 +12,8 @@ import {
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
 import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
-import { railsImportedLine } from "@/lib/geometry/rails-imported-line";
-import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
+import { railsImportedReadout } from "@/lib/geometry/imported-readout";
+import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
@@ -23,7 +23,7 @@ import { usePrintRailInstructions } from "@/components/print-instructions-provid
 
 interface RailControlsProps {
   /** The effective spec (D-09) — `boardThickness` on each section already reflects the foil's
-   * value while `railsImportFoilThickness` is on, so the Inputs line and the bands it feeds always
+   * value while `railsImportFoilThickness` is on, so the Inputs card and the bands it feeds always
    * agree with the same number. */
   spec: RailBandSpec;
   bands: Record<RailSectionKey, RailSectionOutput>;
@@ -133,7 +133,7 @@ interface RailSectionControlsProps {
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
   /** While imported (D-09/D-10), the thickness slider is HIDDEN, not greyed (quick 261017-vdh): the
-   * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs line
+   * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs card
    * instead. Every other control on the section is untouched. */
   thicknessImported: boolean;
   system: UnitsSystem;
@@ -438,8 +438,11 @@ export function RailControls({
       </div>
 
       {/* INPUTS (quick 261017-vdh, the founder's canvas): one tick box imports the three thicknesses
-          from ROCKER's foil. Ticked, one line names what came in and the thickness sliders are gone
-          (hidden, not greyed); unticked, no line and each rail's own slider is back. */}
+          from ROCKER's foil. Ticked, a readout card names what came in (quick 261018-fg1, sketch 017 C:
+          nose, centre and tail thickness in large figures) and the thickness sliders are gone (hidden,
+          not greyed); unticked, no card and each rail's own slider is back. The card sits just outside
+          the tick box's greyed wrapper, so a locked board never greys it: it is information, not a
+          control. */}
       <div>
         <div className={RULED_HEADING}>Inputs</div>
         <div className={cn("pt-2", locked && "opacity-40")}>
@@ -451,12 +454,18 @@ export function RailControls({
             />
             Import Rocker &amp; Foil Values
           </label>
-          {railsImportFoilThickness && (
-            <div className="mt-1 text-xs text-surf-ink-muted font-normal">
-              {keepFiguresTogether(railsImportedLine(spec.nose.boardThickness, spec.center.boardThickness, spec.tail.boardThickness, system))}
-            </div>
-          )}
         </div>
+        {railsImportFoilThickness && (
+          <ImportedReadoutCard
+            className="mt-2"
+            readout={railsImportedReadout(
+              spec.nose.boardThickness,
+              spec.center.boardThickness,
+              spec.tail.boardThickness,
+              system,
+            )}
+          />
+        )}
       </div>
 
       <RailSectionControls

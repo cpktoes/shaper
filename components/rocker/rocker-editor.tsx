@@ -89,7 +89,7 @@ import {
 } from "@/components/viewer/toolbar-button";
 import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
-import { boardLine } from "@/lib/geometry/blank-reasons";
+import { rockerImportedReadout } from "@/lib/geometry/imported-readout";
 import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
@@ -275,7 +275,7 @@ export function RockerEditor({
               VIEWER with every control live again (quick 261006-v20). */}
           <RockerControls
             tab={activeTab}
-            templateLine={boardLine(outline.length, outline.widePointWidth, system)}
+            templateReadout={rockerImportedReadout(outline.length, outline.widePointWidth, system)}
             blanks={blanks}
             savedBlanks={savedBlanks}
             rocker={rocker}

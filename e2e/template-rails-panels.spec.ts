@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectReadout, importedReadout } from "./helpers/imported-readout";
 
 /**
  * Browser proof for quick 261017-vdh plan 01 — the founder's copy-edit canvas, 2026-10-17:
  *
  *   - TEMPLATE's wording: the shorter subtitle, no Settings block (its two tick boxes became the
  *     drawing's toolbar buttons, quick 261018-e6w), and the drawing's `Hide drag points` button.
- *   - RAILS' INPUTS section (one tick box importing ROCKER's thicknesses, with its one line) and the
+ *   - RAILS' INPUTS section (one tick box importing ROCKER's thicknesses, with its readout card) and the
  *     View tick box on each rail, on a computer and on an upright phone.
  *
  * The sign-in banner and the toolbar tip are dismissed before navigation, as in the sibling specs,
@@ -68,8 +69,17 @@ test.describe("TEMPLATE — the side panel's new wording", () => {
 // 1.56") were measured with the real formatters when the plan was written.
 // ---------------------------------------------------------------------------------------------
 
-const IMPERIAL_LINE = `Thickness details are imported: 1 5/16" nose @ 12" · 2 1/2" center · 1 9/16" tail @ 12"`;
-const METRIC_LINE = "Thickness details are imported: 33 mm nose @ 30.5 cm · 64 mm center · 40 mm tail @ 30.5 cm";
+const IMPERIAL_PAIRS: [string, string][] = [
+  [`Nose @ 12"`, `1 5/16"`],
+  ["Center", `2 1/2"`],
+  [`Tail @ 12"`, `1 9/16"`],
+];
+const METRIC_PAIRS: [string, string][] = [
+  ["Nose @ 30.5 cm", "33 mm"],
+  ["Center", "64 mm"],
+  ["Tail @ 30.5 cm", "40 mm"],
+];
+const READOUT_CAPTION = "From ROCKER & FOIL";
 
 type Rail = "nose" | "center" | "tail";
 const group = (page: Page, rail: Rail) => page.locator(`aside [data-rail-group="${rail}"]`);
@@ -84,13 +94,13 @@ async function setChecked(box: Locator, checked: boolean) {
   await expect(box).toHaveAttribute("aria-checked", String(checked));
 }
 
-test.describe("RAILS on a computer — Inputs, the import line and the View boxes", () => {
+test.describe("RAILS on a computer — Inputs, the import card and the View boxes", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the computer layout's sidebar");
     await dismissChrome(page);
   });
 
-  test("the subtitle, the Inputs heading and the import box with its line, and no thickness sliders", async ({
+  test("the subtitle, the Inputs heading and the import box with its card, and no thickness sliders", async ({
     page,
   }) => {
     await page.goto("/design/rails");
@@ -100,7 +110,7 @@ test.describe("RAILS on a computer — Inputs, the import line and the View boxe
     const importBox = aside.getByRole("checkbox", { name: "Import Rocker & Foil Values" });
     await expect(importBox).toBeVisible();
     await expect(importBox).toHaveAttribute("aria-checked", "true");
-    await expect(aside.getByText(IMPERIAL_LINE, { exact: true })).toBeVisible();
+    await expectReadout(importedReadout(aside, READOUT_CAPTION), IMPERIAL_PAIRS);
     // The two old help sentences and the old box's wording are gone.
     await expect(aside.getByText(/Thickness comes from the ROCKER screen/)).toHaveCount(0);
     await expect(aside.getByText(/You're typing your own thickness/)).toHaveCount(0);
@@ -110,28 +120,28 @@ test.describe("RAILS on a computer — Inputs, the import line and the View boxe
     await expect(aside.getByText(/^Board Thickness — /)).toHaveCount(0);
   });
 
-  test("unticking the import brings back each rail's own thickness slider and drops the line; ticking again undoes it", async ({
+  test("unticking the import brings back each rail's own thickness slider and drops the card; ticking again undoes it", async ({
     page,
   }) => {
     await page.goto("/design/rails");
     const aside = page.locator("aside");
     const importBox = aside.getByRole("checkbox", { name: "Import Rocker & Foil Values" });
     await setChecked(importBox, false);
-    await expect(aside.getByText(IMPERIAL_LINE, { exact: true })).toHaveCount(0);
+    await expect(importedReadout(aside, READOUT_CAPTION)).toHaveCount(0);
     // The toggle is a plain flip: RAILS' own stored thicknesses show, nothing was copied.
     await expect(group(page, "nose").getByText(`Thickness @12" — 1 5/16"`, { exact: true })).toBeVisible();
     await expect(group(page, "center").getByText(`Board Thickness — 2 1/2"`, { exact: true })).toBeVisible();
     await expect(group(page, "tail").getByText(`Thickness @12" — 1 9/16"`, { exact: true })).toBeVisible();
 
     await setChecked(importBox, true);
-    await expect(aside.getByText(IMPERIAL_LINE, { exact: true })).toBeVisible();
+    await expectReadout(importedReadout(aside, READOUT_CAPTION), IMPERIAL_PAIRS);
     await expect(aside.getByText(/^(Thickness @12"|Board Thickness) — /)).toHaveCount(0);
   });
 
-  test("Metric reads the same line in whole millimetres, the station in centimetres", async ({ page }) => {
+  test("Metric reads the same card in whole millimetres, the station in centimetres", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await page.goto("/design/rails");
-    await expect(page.locator("aside").getByText(METRIC_LINE, { exact: true })).toBeVisible();
+    await expectReadout(importedReadout(page.locator("aside"), READOUT_CAPTION), METRIC_PAIRS);
   });
 
   test("each rail has a View box, ticked; unticking Center takes its controls, its plot and its DATA column away", async ({
