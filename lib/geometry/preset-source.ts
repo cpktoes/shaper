@@ -194,6 +194,8 @@ function buildFinAdvancedSource(spec: FinAdvancedSpec, indent: string): string {
     `${pad}quadRearOffRailOverride: ${quadRearOffRailOverride},`,
     `${pad}quadRearOffTailOverride: ${quadRearOffTailOverride},`,
     `${pad}quadRearOffTailOverridden: ${spec.quadRearOffTailOverridden},`,
+    `${pad}forwardOffRailNudge: inchesToMm(${formatPresetInches(spec.forwardOffRailNudge)}),`,
+    `${pad}rearOffRailNudge: inchesToMm(${formatPresetInches(spec.rearOffRailNudge)}),`,
     `${indent}}`,
   ].join("\n");
 }

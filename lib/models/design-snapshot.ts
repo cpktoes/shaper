@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Eight rules govern this file:
+ * Nine rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -99,6 +99,16 @@
  *    key removed. A valid spec is read through `normalizeSpec`, so the board shows the spec the app
  *    would have written; a natural one leaves no key at all. No database change is needed — the
  *    saved board is one JSON column.
+ * 9. The FINS Off-Rail tuner stores two nudges in a board's fin settings, `forwardOffRailNudge` and
+ *    `rearOffRailNudge` (quick 261018-dw6, 2026-10-18, D-01) — each a signed distance from where the
+ *    fin setup's own template puts the pair. Absent means 0, which is every board saved before them,
+ *    so an old board opens with its fins exactly where they were. The version stays 5, for rule 6's
+ *    reason: the reader before this rule drops unknown keys (`finAdvancedSpecSchema` is a plain
+ *    `z.object`), so a rollback opens a nudged board with its fins on the template rather than
+ *    failing. Read forgivingly — anything that is not a finite number reads 0 and never rejects the
+ *    board. No bound is applied here: the engine holds any stored value inside each pair's tuner
+ *    window (D-02 for the front and side fins, D-02b for the stringer-placed quad rears), so no
+ *    crafted value can push a fin off the board. No database change is needed.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -357,6 +367,9 @@ const finAdvancedSpecSchema = z.object({
   quadRearOffRailOverride: z.number().nullable(),
   quadRearOffTailOverride: z.number().nullable(),
   quadRearOffTailOverridden: z.boolean(),
+  // Rule 9: absent or broken reads 0 (the template), never rejects the board.
+  forwardOffRailNudge: z.number().catch(0),
+  rearOffRailNudge: z.number().catch(0),
 });
 
 const finPlacementSpecSchema = z.object({

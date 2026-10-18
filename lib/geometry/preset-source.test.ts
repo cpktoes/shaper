@@ -191,6 +191,8 @@ describe("preset source blocks", () => {
         rearPositionOffset: inchesToMm(-0.3125),
         quadRearOffRailOverride: inchesToMm(1.1875),
         quadRearOffTailOverride: inchesToMm(5.0625),
+        forwardOffRailNudge: inchesToMm(-0.125),
+        rearOffRailNudge: inchesToMm(0.0625),
       },
     };
 
@@ -201,6 +203,8 @@ describe("preset source blocks", () => {
     expect(pasteBlock(buildRailsPresetSource(rails))).toStrictEqual({ rails });
     expect(pasteBlock(buildFinsPresetSource(fins))).toStrictEqual({ fins });
     expect(buildFinsPresetSource(fins)).toContain("quadRearOffRailOverride: inchesToMm(1.1875),");
+    expect(buildFinsPresetSource(fins)).toContain("forwardOffRailNudge: inchesToMm(-0.125),");
+    expect(buildFinsPresetSource(fins)).toContain("rearOffRailNudge: inchesToMm(0.0625),");
     expect(buildRailsPresetSource(rails)).toContain("cornerCutOffsetOverride: inchesToMm(0.09375),");
   });
 });
