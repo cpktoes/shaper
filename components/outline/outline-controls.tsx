@@ -278,6 +278,8 @@ export function OutlineControls({
               max={width.max}
               step={width.step}
               onValueChange={(v) => onChange({ widePointWidth: width.toMm(v) })}
+              leftHint="Thin"
+              rightHint="Thick"
             />
           );
         })()}

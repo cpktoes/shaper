@@ -251,7 +251,7 @@ export function WingControls({
               />
               <SliderRow
                 className="flex-1"
-                label="Run along the stringer"
+                label="Vertical run"
                 displayValue={formatMark(wing.run, system)}
                 value={run.value}
                 min={run.min}
@@ -260,7 +260,7 @@ export function WingControls({
                 onValueChange={(v) => withShape({ run: run.toMm(v) })}
                 leftHint="Square"
                 rightHint={formatMark(inchesToMm(WING_RUN_RANGE_IN.max), system)}
-                sliderLabel={`Wing ${n} run along the stringer`}
+                sliderLabel={`Wing ${n} vertical run`}
               />
             </div>
             {/* D4: the founder's scaling rule, full width under the Depth and Run row, in the warning

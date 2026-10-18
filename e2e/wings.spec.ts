@@ -107,7 +107,9 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(page.getByRole("tab", { name: "ADD WINGS" })).toBeVisible();
     await sidebar.getByRole("button", { name: "+ Add a wing" }).click();
     await page.getByRole("dialog").getByRole("link", { name: "Open FINS" }).click();
-    await expect(page).toHaveURL(/\/design\/fins$/);
+    // This is the suite's first visit to FINS, so the dev server compiles that screen on the click;
+    // under load that ran past the default 5 s twice on 2026-10-17 (fast 173), and passed in 39 s.
+    await expect(page).toHaveURL(/\/design\/fins$/, { timeout: 60_000 });
   });
 
   test("desktop: the WINGS sidebar holds only the wing controls", async ({ page }, testInfo) => {
@@ -332,7 +334,7 @@ test.describe("wings on the TEMPLATE page", () => {
     // F8: wing 1 at its front fins less 3" (9") with a 2" run puts wing 2's limit at 5".
     await page.getByRole("slider", { name: "Wing 1 offset from the fin" }).focus();
     await page.keyboard.press("Home");
-    await page.getByRole("slider", { name: "Wing 1 run along the stringer" }).focus();
+    await page.getByRole("slider", { name: "Wing 1 vertical run" }).focus();
     await page.keyboard.press("End");
     await expect(wingRow(page, 1, "Position from tail")).toHaveText('Position from tail — 9"');
     await expect(sidebar.locator("[data-wing-held-note]")).toHaveText(
@@ -468,7 +470,7 @@ test.describe("wings on the TEMPLATE page", () => {
     await addFirstWing(page);
     await page.getByRole("button", { name: "Show construction lines" }).click();
     const depth = wingRow(page, 1, "Depth");
-    const run = wingRow(page, 1, "Run along the stringer");
+    const run = wingRow(page, 1, "Vertical run");
     const depthBefore = inchesOf(await depth.textContent());
     const runBefore = inchesOf(await run.textContent());
     const ppi = await pixelsPerInch(page);
@@ -1134,7 +1136,7 @@ async function expectWidestCardRowsFit(page: Page) {
   await expect(card.locator('[data-wing-card-row="offset"]')).toHaveCount(0);
   for (const [slider, key] of [
     ["Wing 1 depth", "Home"],
-    ["Wing 1 run along the stringer", "End"],
+    ["Wing 1 vertical run", "End"],
     ["Wing 1 corner radius", "End"],
   ] as const) {
     await page.getByRole("slider", { name: slider }).focus();
@@ -1150,7 +1152,7 @@ async function expectWidestCardRowsFit(page: Page) {
   // (Metric's run tops out at 50 mm, so the Imperial run is set to its own 2" again.)
   for (const [slider, key] of [
     ["Wing 1 depth", "Home"],
-    ["Wing 1 run along the stringer", "End"],
+    ["Wing 1 vertical run", "End"],
     ["Wing 1 corner radius", "End"],
   ] as const) {
     await page.getByRole("slider", { name: slider }).focus();
@@ -1224,7 +1226,7 @@ test.describe("every wing label fits on a computer (quick 261015-hz7)", () => {
     await setWingRow(page, 2, "Position from tail", 'Position from tail — 5 15/16"');
     for (const wing of [1, 2]) {
       await setWingRow(page, wing, "Depth", 'Depth — 3/8"');
-      await setWingRow(page, wing, "Run along the stringer", 'Run along the stringer — 1/2"');
+      await setWingRow(page, wing, "Vertical run", 'Vertical run — 1/2"');
       await page.getByRole("slider", { name: `Wing ${wing} corner radius` }).focus();
       await page.keyboard.press("End");
     }

@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-17 (quick 261017-sru, then fast task 173) — TEMPLATE, VOLUME and FINS for the
+ * closed Board Length boxes, which now read 6' and 0" like their lists instead of a bare 6 and 0
+ * (261017-sru; VOLUME and FINS changed only in that box row). TEMPLATE once more for the founder's
+ * canvas edit: the Width slider gains "Thin" / "Thick" hints under it, so the sidebar below the
+ * Widepoint row moves down by one hint line (fast 173). ROCKER and RAILS were not re-recorded. Both
+ * rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3134) on this Mac.
+ *
  * RE-RECORDED 2026-10-15 (quick 261015-ve9) — ROCKER only, `rocker-desktop.png`, for picking a blank
  * from a popup of drawn blanks (sketch 015 B): the BLANK section is now one "Pick a Blank" button
  * with its count line ("196 blanks long enough for this board, 194 fit") and BROWSE BLANKS ›, where
