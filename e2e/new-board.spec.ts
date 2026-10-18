@@ -52,14 +52,14 @@ async function setNoseTipDefault(page: Page, value: string) {
   await expect(dialog).toBeHidden();
 }
 
-/** The ROCKER sidebar's THICKNESS section (its heading button's parent). */
-function thicknessSection(page: Page): Locator {
-  return page.getByRole("button", { name: /^Thickness\s*[▾▸]$/ }).locator("xpath=..");
+/** One cell of the ROCKER sidebar's Rocker & Foil grid (no blank picked), by its test hook. */
+function gridCell(page: Page, cell: string): Locator {
+  return page.locator(`[data-hand-set-cell="${cell}"]`);
 }
 
-/** The real `<input type="range">` inside a slider row's thumb — what takes keyboard focus. */
-function thumbInputFor(label: Locator): Locator {
-  return label.locator("xpath=..").locator('[data-slot="slider-thumb"] input[type="range"]');
+/** The real `<input type="range">` inside a cell's slider thumb — what takes keyboard focus. */
+function thumbInputIn(cell: Locator): Locator {
+  return cell.locator('[data-slot="slider-thumb"] input[type="range"]');
 }
 
 /** From the setup screen: start the Longboard preset, go client-side to ROCKER, open the DATASHEET.
@@ -86,18 +86,21 @@ test.describe("a new board", () => {
     page,
   }) => {
     await page.goto("/design/rocker");
-    const thickness = thicknessSection(page);
-    const noseTip = thickness.getByText(/^Nose Tip — /);
-    const tailTip = thickness.getByText(/^Tail Tip — /);
-    await expect(noseTip).toHaveText(`Nose Tip — ${formatMark(DEFAULT_FOIL_SPEC.noseTip, "imperial")}`);
+    // The Rocker & Foil grid's two Tip thickness value boxes (quick 261017-vdh; they were the
+    // THICKNESS section's `Nose Tip — …` and `Tail Tip — …` label lines).
+    const noseTipCell = gridCell(page, "nose-tip-thickness");
+    const tailTipCell = gridCell(page, "tail-tip-thickness");
+    const noseTip = noseTipCell.locator("[data-slider-value-box]");
+    const tailTip = tailTipCell.locator("[data-slider-value-box]");
+    await expect(noseTip).toHaveText(formatMark(DEFAULT_FOIL_SPEC.noseTip, "imperial"));
 
     // Nobody has touched this board: a new Nose Tip default shows on it straight away.
     await setNoseTipDefault(page, "3/8");
-    await expect(noseTip).toHaveText('Nose Tip — 3/8"');
+    await expect(noseTip).toHaveText('3/8"');
 
     // The first edit — one keyboard step of the Tail Tip thickness slider — starts the board.
     const tailBefore = await tailTip.textContent();
-    await thumbInputFor(tailTip).focus();
+    await thumbInputIn(tailTipCell).focus();
     await page.keyboard.press("ArrowRight");
     await expect(tailTip).not.toHaveText(tailBefore ?? "");
 
@@ -105,7 +108,7 @@ test.describe("a new board", () => {
     // the board's own 3/8" nor the out-of-the-box 1/2", so typing it is plainly a new choice
     // rather than a return to the default.
     await setNoseTipDefault(page, "3/4");
-    await expect(noseTip).toHaveText('Nose Tip — 3/8"');
+    await expect(noseTip).toHaveText('3/8"');
   });
 
   test("a preset opens sitting in its blank: the drawing shows the blank and the DATASHEET lists it (D-03)", async ({
