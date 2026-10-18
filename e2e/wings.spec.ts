@@ -88,7 +88,9 @@ test.describe("wings on the TEMPLATE page", () => {
 
     await addFirstWing(page);
     const sidebar = page.locator("aside");
-    await expect(sidebar.getByRole("checkbox", { name: /Show fin placement/ })).toBeChecked();
+    // Quick 261018-e6w: fin placement is the WINGS toolbar's button now, not a sidebar tick box. (The
+    // pop-up is closed again by addFirstWing, so the page is back in the accessibility tree.)
+    await expect(page.getByRole("button", { name: "Hide fin placement" })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("[data-wing-close-up] [data-fin-mark]").first()).toBeVisible();
 
     await page.getByRole("tab", { name: "VIEWER" }).click();
@@ -412,10 +414,13 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
     await expect(page.getByRole("tab", { name: "WINGS · 2" })).toBeVisible();
     const grabs = page.locator("[data-wing-close-up] [data-wing-grab]");
-    await expect(grabs).toHaveCount(0);
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    // The drag points are on from the start (quick 261018-e6w), the wings' grab points with them; the
+    // WINGS toolbar's button carries the "(the wing's too)" note the sidebar's tick box used to.
     await expect(grabs).toHaveCount(4);
-    await expect(page.locator("aside")).toContainText("Show Drag Points(the wing's too)");
+    await page.getByRole("button", { name: "Hide drag points (the wing's too)" }).click();
+    await expect(grabs).toHaveCount(0);
+    await page.getByRole("button", { name: "Show drag points (the wing's too)" }).click();
+    await expect(grabs).toHaveCount(4);
 
     const position = wingRow(page, 2, "Position from tail");
     const before = inchesOf(await position.textContent());
@@ -437,7 +442,7 @@ test.describe("wings on the TEMPLATE page", () => {
     await page.locator("aside").getByRole("button", { name: "+ Add wing 2" }).click();
     // Quick 261015-hz7 (D2): wing 1 is the forward wing — unlock it and carry IT up the board.
     await page.locator("aside").getByRole("checkbox", { name: "Lock to front fin" }).click();
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const closeUp = page.locator("[data-wing-close-up]");
     await expect(closeUp).toHaveAttribute("data-window-hi-in", "26.000");
 
@@ -468,7 +473,7 @@ test.describe("wings on the TEMPLATE page", () => {
     test.skip(testInfo.project.name !== "desktop", "desktop project only");
 
     await addFirstWing(page);
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const depth = wingRow(page, 1, "Depth");
     const run = wingRow(page, 1, "Vertical run");
     const depthBefore = inchesOf(await depth.textContent());
@@ -538,7 +543,8 @@ test.describe("wings on the TEMPLATE page", () => {
     await expect(wingRow(page, 1, "Depth")).toHaveText("Depth — 5 mm");
 
     // A drag of the inner point lands the stored depth on a whole millimetre.
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
+    await waitForGrabToSettle(page, 1, "inner");
     const ppi = await pixelsPerInch(page);
     const start = await grabCentre(page, 1, "inner");
     await page.mouse.move(start.x, start.y);
@@ -1002,6 +1008,26 @@ async function expectPixelsPerInchAtLeast(page: Page, floor: number) {
   await page.waitForTimeout(200);
   const ppi = await pixelsPerInch(page);
   expect(ppi, `${ppi.toFixed(2)} px per inch, floor ${floor}`).toBeGreaterThanOrEqual(floor);
+}
+
+/** Waits until a grab point has stopped moving (two reads a quarter second apart agree). The drag
+ * points used to be switched on by a click that gave the close-up time to finish fitting itself;
+ * with them on from the start (quick 261018-e6w) a test that grabs at once can catch the frame
+ * still settling after the pop-up closes and press where the point no longer is. */
+async function waitForGrabToSettle(page: Page, wing: number, point: "outer" | "inner") {
+  let previous = "";
+  await expect
+    .poll(
+      async () => {
+        const c = await grabCentre(page, wing, point);
+        const now = `${c.x.toFixed(1)},${c.y.toFixed(1)}`;
+        const steady = now === previous;
+        previous = now;
+        return steady;
+      },
+      { intervals: [250] },
+    )
+    .toBe(true);
 }
 
 /** A grab point's centre on screen. */

@@ -45,12 +45,12 @@ function thumbInputFor(label: Locator): Locator {
   return rowFor(label).locator('[data-slot="slider-thumb"] input[type="range"]');
 }
 
-/** The construction overlay (and its five drag targets) is already on for a touch screen (D-02),
- * so only desktop needs its own toolbar button pressed before a widepoint drag is possible. */
-async function ensureConstructionOverlay(page: Page, projectName: string) {
-  if (projectName === "desktop") {
-    await page.getByRole("button", { name: "Show drag points" }).click();
-  }
+/** The construction overlay (and its five drag targets) is on from the start on every device (D-02;
+ * on a computer too since quick 261018-e6w, the founder's call of 2026-10-18), one render after the
+ * page wakes up — so this waits for the drag-points button to read pressed instead of pressing it. */
+async function ensureConstructionOverlay(page: Page, _projectName: string) {
+  void _projectName;
+  await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 }
 
 /**
@@ -114,7 +114,7 @@ test.describe("TEMPLATE's last-edit ghost", () => {
     test.skip(testInfo.project.name !== "desktop", "mouse-drag path, desktop project only");
 
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 
     const offsetLabel = page.getByText(/^Offset — /);
     await expect(offsetLabel).toBeVisible();
@@ -188,7 +188,7 @@ test.describe("the ghost button", () => {
     test.skip(testInfo.project.name !== "desktop", "desktop button-layout assertion");
 
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 
     const exportButton = page.getByRole("button", { name: "Print Template" });
     const rotateButton = page.getByRole("button", { name: "Rotate the board to horizontal" });
@@ -240,7 +240,7 @@ test.describe("the ghost button", () => {
     test.skip(testInfo.project.name !== "desktop", "desktop toggle assertion");
 
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 
     const widepoint = page.locator('[data-drag-target="widepoint"]');
     await expect(widepoint).toBeVisible();
@@ -282,7 +282,7 @@ test.describe("the ghost button", () => {
     test.skip(testInfo.project.name !== "desktop", "desktop reload assertion");
 
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 
     const widepoint = page.locator('[data-drag-target="widepoint"]');
     await expect(widepoint).toBeVisible();
@@ -301,7 +301,7 @@ test.describe("the ghost button", () => {
     await expect(page.getByRole("button", { name: "Show the ghost of the last edit" })).toBeVisible();
 
     await page.reload();
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const widepoint2 = page.locator('[data-drag-target="widepoint"]');
     await expect(widepoint2).toBeVisible();
     const box2 = await widepoint2.boundingBox();
@@ -539,7 +539,7 @@ test.describe("the ghost rule — one edit ago, undo/redo and rotation (desktop)
 
     // A fresh board, one drag, one Undo: back to nothing to compare against.
     await page.reload();
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const widepoint = page.locator('[data-drag-target="widepoint"]');
     await expect(widepoint).toBeVisible();
     const box = await widepoint.boundingBox();
@@ -561,7 +561,7 @@ test.describe("the ghost rule — one edit ago, undo/redo and rotation (desktop)
     page,
   }) => {
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const widepoint = page.locator('[data-drag-target="widepoint"]');
     await expect(widepoint).toBeVisible();
     const box = await widepoint.boundingBox();

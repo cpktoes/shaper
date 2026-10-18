@@ -133,12 +133,18 @@ describe("closeUpFrame — the one frame, as large as it can be (quick 261015-my
     expect(Math.abs(pxPerInch(f) - 12.44)).toBeLessThanOrEqual(0.1);
   });
 
-  it("a sideways iPhone (box 482 x 293): bound by its height, no top pad, the same size as before (10.54 px per inch), centred", () => {
+  it("a sideways iPhone (box 482 x 293): bound by its height, the same size (10.54 px per inch), shifted left just enough to clear the four-button touch toolbar", () => {
     const { loIn, hiIn, widest } = defaultWindow();
-    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box: { width: 482, height: 293 }, corner: coarse, minFit: MIN_FIT });
+    const box = { width: 482, height: 293 };
+    const f = closeUpFrame(loIn, hiIn, widest, { tailBlock: true, box, corner: coarse, minFit: MIN_FIT });
     expect(f.padTop).toBe(8);
     expect(Math.abs(pxPerInch(f) - 10.54)).toBeLessThanOrEqual(0.05);
-    expect(Math.abs(f.cx - f.width / 2)).toBeLessThanOrEqual(0.01);
+    // Quick 261018-e6w: the touch corner is now 154 wide (the fin-placement button joined the
+    // toolbar), so the board no longer sits in the middle — it leaves the corner's width plus the
+    // clearance on its right, and its stringer is left of the frame's middle.
+    const boardRight = f.toX(widest) * f.fit;
+    expect(box.width - boardRight).toBeGreaterThanOrEqual(coarse.width + CLOSE_UP.cornerClearPx - 1e-6);
+    expect(f.cx).toBeLessThan(f.width / 2);
   });
 
   it("a wide window (box 1150 x 720, the founder's): the board centred at the hug's size, the cards beside it", () => {

@@ -70,12 +70,15 @@ export function wingCardHeightPx(rows: number): number {
 
 /**
  * The toolbar's corner, in screen pixels from the svg box's top-right (F4): on a fine pointer the
- * WINGS toolbar's two buttons (74 wide, 34 tall) with the zoom row under them (168 wide, down to
- * 74); on a coarse pointer the toolbar alone, the zoom row being hidden at 1x on a touch screen.
+ * WINGS toolbar's four buttons (154 wide, 34 tall) with the zoom row under them (168 wide, the
+ * wider, down to 74); on a coarse pointer the toolbar alone — four buttons on a phone held sideways
+ * (drag points, wide view, whole board, fin placement: 154), three upright (114), where the board
+ * already drops below the corner — so the widest touch row is the one kept clear. The zoom row is
+ * hidden at 1x on a touch screen.
  */
 export const CLOSE_UP_CORNER_PX = {
   fine: { width: 168, height: 74 },
-  coarse: { width: 74, height: 34 },
+  coarse: { width: 154, height: 34 },
 } as const;
 
 /**

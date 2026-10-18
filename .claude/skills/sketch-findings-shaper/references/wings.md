@@ -56,7 +56,7 @@ applied and their chips (`WING 1 · 3/8" @ 11"`) and no wing control anywhere.
 bare tail with no wing and **no card over it**; the sidebar's "+ Add a wing" (on a phone, in the stacked controls
 under the drawing) is the way in.
 
-**Adding the first wing** switches on a **Show fins** setting under TEMPLATE's Settings (marks only, no dims) and
+**Adding the first wing** switches on TEMPLATE's fin-placement toolbar button (marks only, no dims) and
 opens a popup: *"Dial in your wing placement. Edit fin placement on the fins page, then return to the template to
 fine tune the wing."* with Open FINS / Got it — every time a board goes from no wings to one.
 
@@ -70,7 +70,7 @@ the fin position jumps in based on the new narrower tail curve when the apex is 
 centre fin is never checked. The close-up does not mark it (the drawing keeps nothing but faint lines); the sidebar
 line is the warning.
 
-**Grab points follow the viewer's Show construction setting** (the toolbar's target button or the Settings tick), as
+**Grab points follow the viewer's Show construction setting** (the toolbar's target button, on by default since 2026-10-18), as
 the VIEWER's own drag points do: two per wing, drawn like the app's drag targets (a ring with a dot). The outer one
 slides the wing along the curve (or sets the fin offset when locked); the inner one hangs 22 px below the inner
 corner (where the depth dimension's line was until quick 261015-my3) and sets the depth (in and out) and the run

@@ -106,12 +106,15 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
     await dismissSignInBanner(page);
   });
 
-  test("TEMPLATE (/design/outline): two icons pack into the corner, Print Template in it", async ({ page }) => {
+  test("TEMPLATE (/design/outline): three icons pack into the corner, Print Template in it", async ({ page }) => {
     await page.goto("/design/outline");
 
     const { rowBox, buttons } = await measureToolbar(page);
-    expect(buttons.length).toBe(2);
+    // Print Template, the drag-points button, and (quick 261018-e6w) the fin-placement button.
+    expect(buttons.length).toBe(3);
     expect(buttons[0].name).toBe("Print Template");
+    expect(buttons[1].name).toMatch(/drag points$/);
+    expect(buttons[2].name).toBe("Show fin placement");
     assertCornerFlush(rowBox, buttons[0]);
     assertRowWidthMatchesVisibleButtons(rowBox, buttons);
     assertButtonsContiguous(buttons);
@@ -163,7 +166,7 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     await dismissSignInBanner(page);
   });
 
-  test("TEMPLATE (/design/outline): three icons pack into the corner, Print Template in it", async ({
+  test("TEMPLATE (/design/outline): four icons pack into the corner, Print Template in it", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -186,7 +189,8 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     // Rotate is gone on a touch screen at any width; Wide view survives because the viewport
     // stays on the desktop side of the shell switch and still has a sidebar to hide — this is D-10
     // on real iPhone hardware.
-    expect(buttons.length).toBe(3);
+    // Print Template, drag points, Wide View, and (quick 261018-e6w) fin placement.
+    expect(buttons.length).toBe(4);
     expect(buttons[0].name).toBe("Print Template");
     assertCornerFlush(rowBox, buttons[0]);
   });
@@ -199,7 +203,8 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
   });
 
   const DESKTOP_CASES = [
-    { path: "/design/outline", label: "TEMPLATE", expectedCount: 4 },
+    // Rotate, Print Template, drag points, Wide View and (quick 261018-e6w) fin placement.
+    { path: "/design/outline", label: "TEMPLATE", expectedCount: 5 },
     // Quick 261006-qfm added the blank-from-above toggle as ROCKER's fourth, DOM-last button, so it
     // sits 120px in on the same 40px step; the phone describe is unchanged, because the button is
     // hidden below 820.

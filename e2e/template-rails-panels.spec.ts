@@ -3,8 +3,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 /**
  * Browser proof for quick 261017-vdh plan 01 — the founder's copy-edit canvas, 2026-10-17:
  *
- *   - TEMPLATE's wording: the shorter subtitle, the Settings tick boxes `Show Drag Points` and
- *     `Show fin placement` (no "marks only" note), and the drawing's `Show drag points` button.
+ *   - TEMPLATE's wording: the shorter subtitle, no Settings block (its two tick boxes became the
+ *     drawing's toolbar buttons, quick 261018-e6w), and the drawing's `Hide drag points` button.
  *   - RAILS' INPUTS section (one tick box importing ROCKER's thicknesses, with its one line) and the
  *     View tick box on each rail, on a computer and on an upright phone.
  *
@@ -31,27 +31,34 @@ test.describe("TEMPLATE — the side panel's new wording", () => {
     await page.goto("/design/outline");
   });
 
-  test("the subtitle is shorter and the Settings read Show Drag Points and Show fin placement", async ({
-    page,
-  }) => {
+  test("the subtitle is shorter and the sidebar has no Settings block", async ({ page }) => {
     const aside = page.locator("aside");
     await expect(aside.getByText("Design and print full sized templates", { exact: true })).toBeVisible();
-    await expect(aside.getByRole("checkbox", { name: "Show Drag Points" })).toBeVisible();
-    await expect(aside.getByRole("checkbox", { name: "Show fin placement" })).toBeVisible();
+    // Quick 261018-e6w: the two tick boxes and their heading are gone — the drawing's toolbar
+    // buttons do the job. "Settings" as a heading is matched as the exact text, so the top bar's
+    // "App Default Settings" never counts.
+    await expect(aside.getByRole("checkbox", { name: "Show Drag Points" })).toHaveCount(0);
+    await expect(aside.getByRole("checkbox", { name: "Show fin placement" })).toHaveCount(0);
+    await expect(aside.getByText("Settings", { exact: true })).toHaveCount(0);
     await expect(aside.getByText("marks only")).toHaveCount(0);
     await expect(aside.getByText("Construction Lines")).toHaveCount(0);
   });
 
-  test("the drawing's button reads Show drag points, then Hide drag points once pressed", async ({ page }) => {
-    const show = page.getByRole("button", { name: "Show drag points" });
-    await expect(show).toBeVisible();
-    await expect(show).toHaveAttribute("aria-pressed", "false");
-    await show.click();
+  test("the drawing's button reads Hide drag points from the start, then Show drag points once pressed", async ({
+    page,
+  }) => {
+    // Quick 261018-e6w (the founder, 2026-10-18): the drag points start on, so the button starts shaded.
     const hide = page.getByRole("button", { name: "Hide drag points" });
     await expect(hide).toBeVisible();
     await expect(hide).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-drag-target]").first()).toBeVisible();
     await hide.click();
-    await expect(page.getByRole("button", { name: "Show drag points" })).toHaveAttribute("aria-pressed", "false");
+    const show = page.getByRole("button", { name: "Show drag points" });
+    await expect(show).toBeVisible();
+    await expect(show).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator("[data-drag-target]")).toHaveCount(0);
+    await show.click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
   });
 });
 

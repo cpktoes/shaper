@@ -1,6 +1,5 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -53,10 +52,6 @@ interface OutlineControlsProps {
   outline: OutlineSpec;
   geometry: OutlineGeometry;
   onChange: (patch: Partial<OutlineSpec>) => void;
-  showConstruction: boolean;
-  onToggleConstruction: () => void;
-  showFins: boolean;
-  onToggleShowFins: () => void;
 }
 
 function clampFinite(value: number, min: number, max: number): number {
@@ -114,10 +109,6 @@ export function OutlineControls({
   outline,
   geometry,
   onChange,
-  showConstruction,
-  onToggleConstruction,
-  showFins,
-  onToggleShowFins,
 }: OutlineControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -456,54 +447,6 @@ export function OutlineControls({
           rightHint="Full"
         />
       </div>
-
-      <TemplateSettings
-        showConstruction={showConstruction}
-        onToggleConstruction={onToggleConstruction}
-        showFins={showFins}
-        onToggleShowFins={onToggleShowFins}
-      />
-    </div>
-  );
-}
-
-export interface TemplateSettingsProps {
-  /** A short note after "Show Drag Points" — the WINGS sidebar's "(the wing's too)" (quick
-   * 261014-wii, P16; reworded quick 261017-vdh); the Template Builder passes none. */
-  constructionNote?: string;
-  showConstruction: boolean;
-  onToggleConstruction: () => void;
-  showFins: boolean;
-  onToggleShowFins: () => void;
-}
-
-/**
- * TEMPLATE's Settings block, shared by the Template Builder and the WINGS sidebar (quick 261014-wii,
- * P10) so the two never drift: Show Drag Points, and Show fin placement (D4) — the fins where FINS
- * puts them, marks only, no dims (reworded quick 261017-vdh). Both are screen settings, never saved, and both stay usable on a
- * locked board (`data-lock-exempt`), since neither changes the board.
- */
-export function TemplateSettings({
-  constructionNote,
-  showConstruction,
-  onToggleConstruction,
-  showFins,
-  onToggleShowFins,
-}: TemplateSettingsProps) {
-  return (
-    <div className="mt-auto border-t border-outline-sidebar-divider pt-3">
-      <div className="mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-        Settings
-      </div>
-      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-        <Checkbox data-lock-exempt checked={showConstruction} onCheckedChange={() => onToggleConstruction()} />
-        Show Drag Points
-        {constructionNote && <span className="text-xs">{constructionNote}</span>}
-      </label>
-      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-        <Checkbox data-lock-exempt checked={showFins} onCheckedChange={() => onToggleShowFins()} />
-        Show fin placement
-      </label>
     </div>
   );
 }

@@ -95,7 +95,7 @@ test.describe("undo/redo — taking a design change back", () => {
     test.skip(testInfo.project.name !== "desktop", "mouse-drag path, desktop project only");
 
     await page.goto("/design/outline");
-    await page.getByRole("button", { name: "Show drag points" }).click();
+    await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
 
     const offsetLabel = page.getByText(/^Offset — /);
     await expect(offsetLabel).toBeVisible();

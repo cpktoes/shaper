@@ -32,13 +32,15 @@ import {
   type Wing,
   type WingFinEdges,
 } from "@/lib/geometry/wings";
-import { SectionHeading, TemplateSettings } from "./outline-controls";
+import { SectionHeading } from "./outline-controls";
 
 /**
  * The WINGS tab's sidebar (quick 261014-wii, 2026-10-14, D2, D3, D8, D9, P8; sketch 014 B, "A,
  * sidebar swaps"). While the WINGS tab is open the sidebar holds ONLY these controls, in the
- * Template Builder's own dress — the same title block, ruled section headings, slider rows and
- * Settings block as `outline-controls.tsx` — and no board length or other template control.
+ * Template Builder's own dress — the same title block, ruled section headings and slider rows as
+ * `outline-controls.tsx` — and no board length or other template control. Since 2026-10-18 (quick
+ * 261018-e6w) the drag points and fin placement are the drawing's toolbar buttons, not tick boxes
+ * down here.
  *
  * Per wing: its position from the tail (a DIM — centimetres to one decimal in Metric, the Thinning
  * Start precedent), its slot's lock with an offset from the fin, its depth and its run along the
@@ -68,10 +70,6 @@ export interface WingControlsProps {
   finEdges: WingFinEdges;
   /** FINS' own marks, for the fin-box warning (D4). */
   finMarks: readonly FinMark[];
-  showConstruction: boolean;
-  onToggleConstruction: () => void;
-  showFins: boolean;
-  onToggleShowFins: () => void;
 }
 
 export function WingControls({
@@ -81,10 +79,6 @@ export function WingControls({
   geometry,
   finEdges,
   finMarks,
-  showConstruction,
-  onToggleConstruction,
-  showFins,
-  onToggleShowFins,
 }: WingControlsProps) {
   const { system } = useUnits();
   const boardLocked = useControlsLocked();
@@ -305,15 +299,6 @@ export function WingControls({
           )}
         </div>
       )}
-
-      <TemplateSettings
-        // P16: on the WINGS tab Show Drag Points also shows each wing's grab points.
-        constructionNote="(the wing's too)"
-        showConstruction={showConstruction}
-        onToggleConstruction={onToggleConstruction}
-        showFins={showFins}
-        onToggleShowFins={onToggleShowFins}
-      />
 
       <p className="text-xs text-surf-ink-muted font-normal" data-wing-fin-note>
         {finEdges.front !== null
