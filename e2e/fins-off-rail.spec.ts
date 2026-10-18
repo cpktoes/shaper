@@ -16,6 +16,7 @@ import { inchesToMm } from "../lib/geometry/units";
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
+const UNITS_STORAGE_KEY = "shaper-units";
 
 async function dismissSignInBanner(page: Page) {
   await page.addInitScript((key) => {
@@ -24,6 +25,12 @@ async function dismissSignInBanner(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, "true");
   }, TOOLBAR_TIP_DISMISSAL_KEY);
+}
+
+async function setMetricUnits(page: Page) {
+  await page.addInitScript((key) => {
+    window.localStorage.setItem(key, "metric");
+  }, UNITS_STORAGE_KEY);
 }
 
 /** Opens FINS' ADVANCED fold (a plain disclosure button), once React owns it. */
@@ -50,7 +57,7 @@ async function topY(locator: Locator): Promise<number> {
 /** The Off-Rail label lines in the controls, nose to tail: the forward tuner first, then (on a quad)
  * the rear Off-Rail row. */
 function offRailLabels(page: Page): Locator {
-  return page.getByText(/^Off-Rail — /);
+  return page.getByText(/^Off-Rail — /).filter({ visible: true });
 }
 
 /** The DATA tab's row with this exact name: its bold value, as a shaper reads it. */
@@ -242,6 +249,110 @@ test.describe("FINS Off-Rail tuner on a computer — a quad's rear pair", () => 
     await expect(rearSlider(page)).toHaveCount(0);
     const rearBlock = page.getByText(/^Rear Fins — /).locator("xpath=..");
     await expect(rearBlock.getByText(/^Off-Rail — /)).toHaveCount(1);
+  });
+});
+
+/** A single real finger tap via a CDP touch session (copied from e2e/slider-touch.spec.ts): touchStart,
+ * a short pause, touchEnd. Only Playwright's Chromium exposes this. */
+async function touchTap(page: Page, point: { x: number; y: number }) {
+  const client = await page.context().newCDPSession(page);
+  await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: point.x, y: point.y }] });
+  await page.waitForTimeout(50);
+  await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+/** The slider bar a label sits over, scrolled into view and measured live (never a fixed coordinate). */
+async function barBox(label: Locator) {
+  const bar = label.locator("xpath=..").locator('[data-slot="slider-track"]');
+  await bar.scrollIntoViewIfNeeded();
+  const box = await bar.boundingBox();
+  if (!box) throw new Error("slider bar is missing a bounding box");
+  return box;
+}
+
+test.describe("FINS Off-Rail tuner on a phone held upright", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone layouts only");
+    await dismissSignInBanner(page);
+  });
+
+  test("the forward row reads the template and the keys move it in 1/16\" steps", async ({ page }) => {
+    await page.goto("/design/fins");
+    await openAdvanced(page);
+    const label = offRailLabels(page);
+    await expect(label).toHaveCount(1);
+    await expect(label).toHaveText(`Off-Rail — ${IMPERIAL_BASE}`);
+
+    const slider = forwardSlider(page);
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await slider.press("ArrowRight");
+    await expect(label).toHaveText('Off-Rail — 1 5/16"');
+  });
+
+  test("a real finger on the very start of the bar sets the closest-to-rail figure", async ({ page }, testInfo) => {
+    // Playwright's WebKit has no touch drag at all, the same reason e2e/slider-touch.spec.ts gives:
+    // the founder's own iPhone is the closing evidence for that engine.
+    test.skip(testInfo.project.name !== "android", "real touch input is only available on the android (Chromium) project");
+    await page.goto("/design/fins");
+    await openAdvanced(page);
+    const label = offRailLabels(page);
+    await expect(label).toHaveText(`Off-Rail — ${IMPERIAL_BASE}`);
+    const bar = await barBox(label);
+    await touchTap(page, { x: bar.x + bar.width * 0.01, y: bar.y + bar.height / 2 });
+    await expect(label).toHaveText('Off-Rail — 7/8"');
+  });
+});
+
+test.describe("FINS Off-Rail tuner in millimetres", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissSignInBanner(page);
+    await setMetricUnits(page);
+  });
+
+  test("the front pair reads whole millimetres: 30 mm, 32 mm after two steps, 22 mm and 51 mm at the ends", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "desktop and android only; the iPhone runs the same code path as android here");
+    await page.goto("/design/fins");
+    await openAdvanced(page);
+    const label = offRailLabels(page);
+    await expect(label).toHaveText("Off-Rail — 30 mm");
+
+    const slider = forwardSlider(page);
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await slider.press("ArrowRight");
+    await expect(label).toHaveText("Off-Rail — 32 mm");
+    if (testInfo.project.name === "desktop") {
+      await openDataTab(page);
+      await expect(dataValue(page, "Off-Rail")).toHaveText("32 mm");
+      await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+    }
+    await slider.press("Home");
+    await expect(label).toHaveText("Off-Rail — 22 mm");
+    await slider.press("End");
+    await expect(label).toHaveText("Off-Rail — 51 mm");
+    expect(await label.textContent()).not.toContain(".");
+  });
+
+  test("a quad's rear pair: 56 mm, then 55 mm, 44 mm and 69 mm, whole millimetres all the way", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop only");
+    await page.goto("/design/fins");
+    await pickFinSetup(page, "Quad");
+    await openAdvanced(page);
+    const rearLabel = offRailLabels(page).nth(1);
+    await expect(rearLabel).toHaveText("Off-Rail — 56 mm");
+
+    const slider = rearSlider(page);
+    await slider.focus();
+    await slider.press("ArrowLeft");
+    await expect(rearLabel).toHaveText("Off-Rail — 55 mm");
+    await slider.press("Home");
+    await expect(rearLabel).toHaveText("Off-Rail — 44 mm");
+    await slider.press("End");
+    await expect(rearLabel).toHaveText("Off-Rail — 69 mm");
+    for (const text of await offRailLabels(page).allTextContents()) expect(text).not.toContain(".");
   });
 });
 
