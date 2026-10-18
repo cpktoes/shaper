@@ -15,6 +15,7 @@ import {
   offRailTunerRangeIn,
   offRailTunerWindow,
   resetAdvanced,
+  tailHalfWidthAt,
   toeAimTableFor,
   type FinAdvancedSpec,
   type FinPlacementSpec,
@@ -971,39 +972,38 @@ describe("with both nudges at zero nothing about the fins changes (D-01)", () =>
   const TWINS: TwinTemplate[] = ["upright", "keel", "trailer"];
 
   it("the fins sit exactly on their template across every setup, model, tail shape and size", () => {
+    // Each setup is run only with the models it actually reads, so no combination repeats.
+    const variants: Partial<FinPlacementSpec>[] = [
+      { finSetup: "single" },
+      { finSetup: "2plus1" },
+      ...MODELS.map((frontModel) => ({ finSetup: "thruster" as const, frontModel })),
+      ...TWINS.map((twinTemplate) => ({ finSetup: "twin" as const, twinTemplate })),
+      ...QUADS.map((quadRearModel) => ({ finSetup: "quad" as const, quadRearModel })),
+    ];
+    expect(SETUPS.length).toBe(5);
     let seen = 0;
-    for (const finSetup of SETUPS) {
-      for (const frontModel of MODELS) {
-        for (const quadRearModel of QUADS) {
-          for (const twinTemplate of TWINS) {
-            for (const tailShape of SHAPES) {
-              for (const L of [60, 72, 96, 120]) {
-                for (const W of [11, 13, 15]) {
-                  const spec: FinPlacementSpec = {
-                    ...DEFAULT_FIN_PLACEMENT_SPEC,
-                    finSetup,
-                    frontModel,
-                    quadRearModel,
-                    twinTemplate,
-                    tailShape,
-                    boardLength: inchesToMm(L),
-                    tailWidth12: inchesToMm(W),
-                  };
-                  const r = computeFinPlacement(spec);
-                  expect(r.resolved.forwardOffRail).toBe(r.resolved.forwardOffRailTemplate);
-                  expect(r.resolved.forwardOffRailNudge).toBe(0);
-                  expect(r.resolved.rearOffRail).toBe(r.resolved.rearOffRailTemplate);
-                  expect(r.resolved.rearOffRailNudge).toBe(0);
-                  expect(r.isModified).toBe(false);
-                  seen++;
-                }
-              }
-            }
+    for (const variant of variants) {
+      for (const tailShape of SHAPES) {
+        for (const L of [60, 72, 96, 120]) {
+          for (const W of [11, 13, 15]) {
+            const r = computeFinPlacement({
+              ...DEFAULT_FIN_PLACEMENT_SPEC,
+              ...variant,
+              tailShape,
+              boardLength: inchesToMm(L),
+              tailWidth12: inchesToMm(W),
+            });
+            expect(r.resolved.forwardOffRail).toBe(r.resolved.forwardOffRailTemplate);
+            expect(r.resolved.forwardOffRailNudge).toBe(0);
+            expect(r.resolved.rearOffRail).toBe(r.resolved.rearOffRailTemplate);
+            expect(r.resolved.rearOffRailNudge).toBe(0);
+            expect(r.isModified).toBe(false);
+            seen++;
           }
         }
       }
     }
-    expect(seen).toBeGreaterThan(5000);
+    expect(seen).toBe(variants.length * 5 * 4 * 3);
   });
 
   it("and with a preset's own drawn tail imported", () => {
@@ -1115,5 +1115,231 @@ describe("the Off-Rail slider's range (offRailTunerRangeIn through measureSlider
     const r = offRailTunerRangeIn(inchesToMm(1.1875), "forward", "imperial");
     expectCloseIn(r.min, -0.3125);
     expectCloseIn(r.max, 0.8125);
+  });
+});
+
+describe("the rear Off-Rail tuner moves a quad's stringer-placed rear fins together (D-03b, D-02b)", () => {
+  const REACH = 0.5;
+  const STRINGER_MODELS: QuadRearModel[] = ["basic", "mckeeSB", "mckeeLB"];
+  type Result = ReturnType<typeof computeFinPlacement>;
+  const rears = (r: Result) => r.marks.filter((m) => m.role === "rear");
+  const offStringerRow = (r: Result) =>
+    r.sections.find((s) => s.label === "Rear Fins")!.groups[0].rows.find((row) => row.label === "Off-Stringer (1/2 Spread)")!;
+  const fullSpread = (r: Result) => r.sections.find((s) => s.label === "Rear Fins")!.groups[0].fullSpread!;
+
+  for (const preset of BOARD_PRESETS) {
+    for (const quadRearModel of STRINGER_MODELS) {
+      describe(`${preset.name} with its drawn tail imported, quad ${quadRearModel}`, () => {
+        const { spec: presetSpec, tail } = importedPresetBoard(preset);
+        const spec: FinPlacementSpec = withAdvanced(
+          { ...presetSpec, finSetup: "quad", quadRearModel },
+          { rearOffRailNudge: mm(0), rearToeOverride: null },
+        );
+        const place = (nudgeIn: number) =>
+          computeFinPlacement(withAdvanced(spec, { rearOffRailNudge: inchesToMm(nudgeIn) }), tail);
+        const zero = place(0);
+
+        it("is a stringer-placed model with the tuner on", () => {
+          expect(zero.flags.showRearOffRailTuner).toBe(true);
+          expect(zero.flags.isBasicOffRail).toBe(false);
+        });
+
+        it("the distance from the rail is the real rail at the rear fins' own position minus the half spread", () => {
+          const rail = mmToInches(tailHalfWidthAt(spec.tailShape, spec.tailWidth12, zero.resolved.rearOffTail, tail));
+          expectCloseIn(mmToInches(zero.resolved.rearOffRail), rail - mmToInches(zero.resolved.rearHalfSpread));
+          expect(zero.resolved.rearOffRail).toBe(zero.resolved.rearOffRailTemplate);
+          expect(zero.resolved.rearOffRailNudge).toBe(0);
+        });
+
+        it("1/2\" in from the template brings the half spread 1/2\" smaller, everywhere it is shown", () => {
+          const moved = place(REACH);
+          expectCloseIn(mmToInches(moved.resolved.rearOffRail), mmToInches(zero.resolved.rearOffRail) + REACH);
+          expectCloseIn(mmToInches(moved.resolved.rearHalfSpread), mmToInches(zero.resolved.rearHalfSpread) - REACH);
+          const half = mmToInches(moved.resolved.rearHalfSpread);
+          expect(rears(moved).length).toBe(2);
+          for (const mark of rears(moved)) {
+            expectCloseIn(Math.abs(mmToInches(mark.lateral)), half);
+            expectCloseIn(mmToInches(mark.lateralValue as Mm), half);
+            expect(mark.lateralKind).toBe("stringer");
+          }
+          expectCloseIn(mmToInches(offStringerRow(moved).value), half);
+          expectCloseIn(mmToInches(fullSpread(moved)), 2 * half);
+          // The real rail still reads true at the new position.
+          const rail = mmToInches(tailHalfWidthAt(spec.tailShape, spec.tailWidth12, moved.resolved.rearOffTail, tail));
+          expectCloseIn(mmToInches(moved.resolved.rearOffRail), rail - half);
+          expect(moved.isModified).toBe(true);
+          expect(moved.resolved.rearOffTail).toBe(zero.resolved.rearOffTail);
+        });
+
+        it("1/2\" out toward the rail does the reverse", () => {
+          const moved = place(-REACH);
+          expectCloseIn(mmToInches(moved.resolved.rearHalfSpread), mmToInches(zero.resolved.rearHalfSpread) + REACH);
+        });
+
+        it("is held 1/2\" either way from the template", () => {
+          const far = place(1);
+          const near = place(-1);
+          expectCloseIn(mmToInches(far.resolved.rearOffRail), mmToInches(zero.resolved.rearOffRail) + REACH);
+          expectCloseIn(mmToInches(near.resolved.rearOffRail), mmToInches(zero.resolved.rearOffRail) - REACH);
+          expectCloseIn(mmToInches(far.resolved.rearOffRailNudge), REACH);
+          expectCloseIn(mmToInches(near.resolved.rearOffRailNudge), -REACH);
+        });
+      });
+    }
+  }
+
+  it("the Shortboard's McKee SB/Gun rears go from about 2.17\" in to about 1.67\"", () => {
+    const preset = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
+    const { spec, tail } = importedPresetBoard(preset);
+    const quad = withAdvanced({ ...spec, finSetup: "quad", quadRearModel: "mckeeSB" }, { rearOffRailNudge: mm(0) });
+    const before = computeFinPlacement(quad, tail).resolved.rearOffRail;
+    const after = computeFinPlacement(withAdvanced(quad, { rearOffRailNudge: inchesToMm(-0.5) }), tail).resolved.rearOffRail;
+    expectCloseIn(mmToInches(before), 2.17, 0.01);
+    expectCloseIn(mmToInches(after), 1.67, 0.01);
+  });
+
+  it("McKee Longboard stored on a 7'6\" board falls back to McKee SB/Gun and is still tunable", () => {
+    const board: FinPlacementSpec = {
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "quad",
+      quadRearModel: "mckeeLB",
+      boardLength: inchesToMm(90),
+    };
+    const zero = computeFinPlacement(board);
+    const moved = computeFinPlacement(withAdvanced(board, { rearOffRailNudge: inchesToMm(0.25) }));
+    expect(zero.flags.showRearOffRailTuner).toBe(true);
+    expectCloseIn(mmToInches(moved.resolved.rearHalfSpread), mmToInches(zero.resolved.rearHalfSpread) - 0.25);
+  });
+
+  /** Finds a standalone board whose rear template falls in a range, searching rather than pasting
+   * approximations. */
+  function findBoard(model: QuadRearModel, inRange: (t: number) => boolean): FinPlacementSpec {
+    for (let L = 48; L <= 144; L += 6) {
+      for (let W = 10; W <= 18; W += 0.5) {
+        const spec: FinPlacementSpec = {
+          ...DEFAULT_FIN_PLACEMENT_SPEC,
+          finSetup: "quad",
+          quadRearModel: model,
+          tailShape: "pin",
+          boardLength: inchesToMm(L),
+          tailWidth12: inchesToMm(W),
+        };
+        if (inRange(mmToInches(computeFinPlacement(spec).resolved.rearOffRailTemplate))) return spec;
+      }
+    }
+    throw new Error("no board found in range");
+  }
+
+  it("never closer than 7/8\" to the rail: a template between 7/8\" and 1 3/8\" is cut short at 7/8\"", () => {
+    for (const model of ["basic", "mckeeSB"] as QuadRearModel[]) {
+      const spec = findBoard(model, (t) => t > 0.9 && t < 1.3);
+      const t = mmToInches(computeFinPlacement(spec).resolved.rearOffRailTemplate);
+      const near = computeFinPlacement(withAdvanced(spec, { rearOffRailNudge: inchesToMm(-1) }));
+      const far = computeFinPlacement(withAdvanced(spec, { rearOffRailNudge: inchesToMm(1) }));
+      expectCloseIn(mmToInches(near.resolved.rearOffRail), 0.875);
+      expectCloseIn(mmToInches(far.resolved.rearOffRail), t + 0.5);
+    }
+  });
+
+  it("a template under 7/8\" still rests exactly on itself, cannot go closer to the rail, and can move in", () => {
+    const spec = findBoard("mckeeSB", (t) => t < 0.8);
+    const zero = computeFinPlacement(spec);
+    expect(zero.resolved.rearOffRail).toBe(zero.resolved.rearOffRailTemplate);
+    const held = computeFinPlacement(withAdvanced(spec, { rearOffRailNudge: inchesToMm(-0.25) }));
+    expect(held.resolved.rearHalfSpread).toBe(zero.resolved.rearHalfSpread);
+    expect(held.resolved.rearOffRailNudge).toBe(0);
+    expect(held.isModified).toBe(false);
+    const moved = computeFinPlacement(withAdvanced(spec, { rearOffRailNudge: inchesToMm(0.25) }));
+    expectCloseIn(mmToInches(moved.resolved.rearHalfSpread), mmToInches(zero.resolved.rearHalfSpread) - 0.25);
+  });
+
+  describe("the McKee aimed toe follows the moved spread, and a toe set by hand never changes", () => {
+    for (const [model, behind] of [
+      ["mckeeSB", 12],
+      ["mckeeLB", 18],
+    ] as const) {
+      const L = model === "mckeeLB" ? 108 : 72;
+      const board: FinPlacementSpec = {
+        ...DEFAULT_FIN_PLACEMENT_SPEC,
+        finSetup: "quad",
+        quadRearModel: model,
+        boardLength: inchesToMm(L),
+      };
+
+      it(`${model}: the toe is the nose-aim formula on the moved half spread`, () => {
+        const zero = computeFinPlacement(board);
+        const moved = computeFinPlacement(withAdvanced(board, { rearOffRailNudge: inchesToMm(0.5) }));
+        const base = mmToInches(board.advanced.baseLenRear);
+        const half = mmToInches(moved.resolved.rearHalfSpread);
+        expectCloseIn(mmToInches(moved.resolved.rearToe), base * Math.sin(Math.atan(half / (L - behind))));
+        expect(moved.resolved.rearToe).toBeLessThan(zero.resolved.rearToe);
+        for (const mark of rears(moved)) expect(mark.toe).toBe(moved.resolved.rearToe);
+      });
+
+      it(`${model}: a toe set by hand is the toe at any nudge`, () => {
+        const hand = withAdvanced(board, { rearToeOverride: inchesToMm(0.125) });
+        for (const nudge of [-0.5, 0, 0.5]) {
+          const r = computeFinPlacement(withAdvanced(hand, { rearOffRailNudge: inchesToMm(nudge) }));
+          expectCloseIn(mmToInches(r.resolved.rearToe), 0.125);
+        }
+      });
+    }
+  });
+
+  describe("Basic - Off-Rail keeps its own slider and takes no tuner", () => {
+    const board: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "quad", quadRearModel: "basicOffRail" };
+
+    it("a stored rear nudge of 1\" either way changes nothing", () => {
+      const zero = computeFinPlacement(board);
+      for (const nudge of [-1, 1]) {
+        const r = computeFinPlacement(withAdvanced(board, { rearOffRailNudge: inchesToMm(nudge) }));
+        expect(r.marks).toEqual(zero.marks);
+        expect(r.sections).toEqual(zero.sections);
+        expect(r.resolved).toEqual(zero.resolved);
+        expect(r.isModified).toBe(zero.isModified);
+      }
+      expect(zero.flags.showRearOffRailTuner).toBe(false);
+      expect(zero.flags.showRearOffRailSlider).toBe(true);
+    });
+
+    it("its own off-rail still holds 1\" to 2\"", () => {
+      const r = computeFinPlacement(withAdvanced(board, { quadRearOffRailOverride: inchesToMm(0.5) }));
+      expectCloseIn(mmToInches(r.resolved.quadRearOffRail), 1);
+      expectCloseIn(mmToInches(r.resolved.rearOffRail), 1);
+    });
+  });
+
+  it("the rear tuner is on for quad basic, mckeeSB and mckeeLB and off for basicOffRail and every other setup", () => {
+    for (const quadRearModel of ["basic", "mckeeSB", "mckeeLB", "basicOffRail"] as QuadRearModel[]) {
+      const r = computeFinPlacement({
+        ...DEFAULT_FIN_PLACEMENT_SPEC,
+        finSetup: "quad",
+        quadRearModel,
+        boardLength: inchesToMm(100),
+      });
+      expect(r.flags.showRearOffRailTuner).toBe(quadRearModel !== "basicOffRail");
+    }
+    for (const finSetup of ["single", "twin", "thruster", "2plus1"] as FinSetup[]) {
+      const r = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup });
+      expect(r.flags.showRearOffRailTuner).toBe(false);
+      expect(r.resolved.rearOffRail).toBe(0);
+    }
+  });
+
+  it("the default board's rear fins (its own drawn tail imported) sit 2 3/16\" from the rail with the half spread 3 1/8\"", () => {
+    const outline = DEFAULT_BOARD_SPEC.outline;
+    const g = buildOutline(outline);
+    const r = computeFinPlacement(
+      {
+        ...DEFAULT_FIN_PLACEMENT_SPEC,
+        finSetup: "quad",
+        boardLength: outline.length,
+        tailWidth12: g.tailWidthAt12in,
+        tailShape: outline.tail.kind,
+      },
+      importedFinTailFromOutline(g),
+    );
+    expect(formatMark(r.resolved.rearOffRail, "imperial")).toBe('2 3/16"');
+    expect(formatMark(r.resolved.rearHalfSpread, "imperial")).toBe('3 1/8"');
   });
 });

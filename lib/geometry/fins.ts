@@ -864,11 +864,31 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   const rearBase = quadModels[spec.quadRearModel].rear ?? 0;
   const rearFinal = rearBase + (isQuad ? adv.rearPositionOffset : 0);
   const quadRearOffRailValue = clampOffRail(adv.quadRearOffRailOverride ?? 1.25);
-  // spread is a HALF spread: for basicOffRail it comes from half width minus off-rail; for
+  // spreadTemplate is a HALF spread: for basicOffRail it comes from half width minus off-rail; for
   // every other model it is the model's own full spread divided by two.
-  const spread = isBasicOffRail
+  const spreadTemplate = isBasicOffRail
     ? effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, rearFinal) - quadRearOffRailValue
     : (quadModels[spec.quadRearModel].spread ?? 0) / 2;
+  // OFF-RAIL TUNER, rear pair (deviation 8, D-03b, D-02b). On a quad whose rears are placed from the
+  // stringer (Basic - Spread, McKee SB/Gun, McKee Longboard) the shaper may move both rears in or out
+  // from the rail. Moving IN from the rail by some amount shrinks the half spread by exactly that
+  // amount; the rears may reach 1/2" either way from where the template puts them and never sit
+  // closer than 7/8" to the rail (a template already under that is itself the lower end). The
+  // McKee aimed toe below is computed from the moved spread on purpose: it aims the fin at a point
+  // near the nose, so rears that sit closer together need less toe to keep aiming at the same
+  // point. A toe the shaper set by hand still wins. Basic - Off-Rail keeps its own slider, so its
+  // nudge is ignored.
+  const rearTunable = isQuad && !isBasicOffRail;
+  const rearOffRailTemplate = !isQuad
+    ? 0
+    : isBasicOffRail
+      ? quadRearOffRailValue
+      : effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, rearFinal) - spreadTemplate;
+  const rearNudgeIn = Number.isFinite(adv.rearOffRailNudge) ? adv.rearOffRailNudge : 0;
+  const rearOffRailFinal = rearTunable
+    ? holdOffRailInches(rearOffRailTemplate + rearNudgeIn, rearOffRailTemplate, "rear")
+    : rearOffRailTemplate;
+  const spread = spreadTemplate - (rearOffRailFinal - rearOffRailTemplate);
 
   // ---- Twin (§6) ----
   const mainOffTailBase = spec.twinTemplate === "keel" ? 6.25 : spec.twinTemplate === "trailer" ? 10 : 7.5;
@@ -1097,7 +1117,8 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     adv.quadRearOffTailOverridden ||
     // The Off-Rail tuner counts as a change only when it actually moves the fins off the template,
     // not merely when a non-zero value is stored.
-    forwardOffRailFinal !== forwardOffRailTemplate;
+    forwardOffRailFinal !== forwardOffRailTemplate ||
+    rearOffRailFinal !== rearOffRailTemplate;
 
   const frontModelLabel = THRUSTER_FRONT_MODELS.find((o) => o.value === spec.frontModel)!.label;
   const modelHeader = isThruster
@@ -1289,14 +1310,6 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     notesItems.push(`Pintail shape adds 3⁄16" to the quad rear off-tail across all rear models, per the standard pintail correction.`);
   }
 
-  // The rear pair's distance from the rail at its own position: the half width there minus the half
-  // spread (Basic - Off-Rail: its own slider's figure). Zero off a quad.
-  const rearOffRailTemplate = !isQuad
-    ? 0
-    : isBasicOffRail
-      ? quadRearOffRailValue
-      : effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, rearFinal) - spread;
-
   const flags: FinPlacementFlags = {
     hasCenterSection,
     hasForwardSection,
@@ -1309,7 +1322,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     showRearOffRailSlider: isBasicOffRail,
     showRearOffTailOverride: isBasicOffRail,
     showForwardOffRailTuner: hasForwardSection,
-    showRearOffRailTuner: false,
+    showRearOffRailTuner: rearTunable,
     centerSectionLabel,
     forwardSectionLabel,
     rearSectionLabel,
@@ -1342,8 +1355,8 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
       forwardOffRail: forwardOffRailFinal,
       forwardOffRailNudge: forwardOffRailFinal - forwardOffRailTemplate,
       rearOffRailTemplate,
-      rearOffRail: rearOffRailTemplate,
-      rearOffRailNudge: 0,
+      rearOffRail: rearOffRailFinal,
+      rearOffRailNudge: rearOffRailFinal - rearOffRailTemplate,
     },
     flags,
   };

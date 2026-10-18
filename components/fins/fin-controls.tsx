@@ -260,6 +260,13 @@ export function FinControls({
     1,
     system,
   );
+  const rearOffRailSlider = measureSlider(
+    resolved.rearOffRailNudge,
+    offRailTunerRangeIn(resolved.rearOffRailTemplate, "rear", system),
+    OFF_RAIL_TUNER_STEP_IN,
+    1,
+    system,
+  );
   const quadRearOffRailSlider = measureSlider(resolved.quadRearOffRail, OFF_RAIL_BOUNDS, OFF_RAIL_BOUNDS.step, 1, system);
   const quadRearOffTailSlider = measureSlider(
     resolved.quadRearOffTailBase,
@@ -699,6 +706,23 @@ export function FinControls({
                       onValueChange={(v) =>
                         updateAdvanced({ quadRearOffRailOverride: quadRearOffRailSlider.toMm(v) })
                       }
+                    />
+                  </div>
+                )}
+                {flags.showRearOffRailTuner && (
+                  <div className="mb-2.5">
+                    <SliderRow
+                      density="tight"
+                      label={`Off-Rail — ${formatMark(resolved.rearOffRail, system)}`}
+                      value={rearOffRailSlider.value}
+                      min={rearOffRailSlider.min}
+                      max={rearOffRailSlider.max}
+                      step={rearOffRailSlider.step}
+                      onValueChange={(v) => updateAdvanced({ rearOffRailNudge: rearOffRailSlider.toMm(v) })}
+                      leftHint="Closer to rail"
+                      rightHint="Closer to stringer"
+                      sliderLabel="Rear fins off-rail"
+                      sliderValueText={formatMark(resolved.rearOffRail, system)}
                     />
                   </div>
                 )}

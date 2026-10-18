@@ -166,6 +166,85 @@ test.describe("FINS Off-Rail tuner on a computer — the front pair", () => {
   });
 });
 
+/** The slider's thumb centre and its track, so a test can say where along the track the dot rests. */
+async function thumbFraction(label: Locator): Promise<number> {
+  const row = label.locator("xpath=..");
+  const track = await row.locator('[data-slot="slider-track"]').boundingBox();
+  const thumb = await row.locator('[data-slot="slider-thumb"]').boundingBox();
+  if (!track || !thumb) throw new Error("slider track or thumb has no bounding box");
+  return (thumb.x + thumb.width / 2 - track.x) / track.width;
+}
+
+function rearSlider(page: Page): Locator {
+  return page.getByRole("slider", { name: "Rear fins off-rail" }).filter({ visible: true });
+}
+
+test.describe("FINS Off-Rail tuner on a computer — a quad's rear pair", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "desktop-only structure and wording proof");
+    await dismissSignInBanner(page);
+  });
+
+  test("moves both rears together, the spread on DATA follows, and Reset puts them back", async ({ page }) => {
+    await page.goto("/design/fins");
+    await pickFinSetup(page, "Quad");
+    await openAdvanced(page);
+
+    const rearLabel = offRailLabels(page).nth(1);
+    await expect(offRailLabels(page)).toHaveCount(2);
+    await expect(rearLabel).toHaveText('Off-Rail — 2 3/16"');
+    // 1/2" either way, so the dot rests in the middle of its track.
+    expect(Math.abs((await thumbFraction(rearLabel)) - 0.5)).toBeLessThan(0.03);
+
+    await openDataTab(page);
+    const halfSpread = dataValue(page, "Off-Stringer (1/2 Spread)");
+    const full = page
+      .locator("div.justify-between")
+      .filter({ hasText: /^Full Spread/ })
+      .locator("span.font-bold");
+    const startHalf = await halfSpread.textContent();
+    const startFull = await full.textContent();
+    await expect(page.getByText("· Modified")).toHaveCount(0);
+
+    const slider = rearSlider(page);
+    await slider.focus();
+    await slider.press("ArrowLeft");
+    await expect(rearLabel).toHaveText('Off-Rail — 2 1/8"');
+    await slider.press("Home");
+    await expect(rearLabel).toHaveText('Off-Rail — 1 11/16"');
+    // Closer to the rail: the two rears are further apart.
+    const outHalf = await halfSpread.textContent();
+    const outFull = await full.textContent();
+    expect(outHalf).not.toBe(startHalf);
+    expect(outFull).not.toBe(startFull);
+    await expect(page.getByText("· Modified")).toBeVisible();
+
+    await slider.press("End");
+    await expect(rearLabel).toHaveText('Off-Rail — 2 11/16"');
+    const inHalf = await halfSpread.textContent();
+    expect(inHalf).not.toBe(startHalf);
+    expect(inHalf).not.toBe(outHalf);
+
+    await page.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(rearLabel).toHaveText('Off-Rail — 2 3/16"');
+    await expect(halfSpread).toHaveText(startHalf ?? "");
+    await expect(full).toHaveText(startFull ?? "");
+    await expect(page.getByText("· Modified")).toHaveCount(0);
+  });
+
+  test("Basic - Off-Rail keeps its one existing slider and gets no second control", async ({ page }) => {
+    await page.goto("/design/fins");
+    await pickFinSetup(page, "Quad");
+    await openAdvanced(page);
+    await expect(rearSlider(page)).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Basic - Off-Rail", exact: true }).click();
+    await expect(rearSlider(page)).toHaveCount(0);
+    const rearBlock = page.getByText(/^Rear Fins — /).locator("xpath=..");
+    await expect(rearBlock.getByText(/^Off-Rail — /)).toHaveCount(1);
+  });
+});
+
 // Kept so the expected strings above and below are built from the app's own formatter where a figure
 // comes from a calculation rather than from the founder's list.
 test("the app's own formatter agrees with the strings this spec types", () => {
