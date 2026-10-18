@@ -81,11 +81,13 @@ async function settledBox(locator: Locator) {
   return box!;
 }
 
-/** One reading's texts in the blank-alone drawing: value first, then the name, then any NAT figure. */
-async function readingTexts(dialog: Locator, key: string): Promise<{ value: string; natural: string | null }> {
-  const texts = await dialog.locator(`[data-blank-alone-reading="${key}"] text`).allTextContents();
-  const natural = texts.find((t) => t.startsWith("NAT ")) ?? null;
-  return { value: texts[0], natural: natural ? natural.slice(4) : null };
+/**
+ * One figure's value in the popup's drawing (quick 261017-ojc): `rail` is `card` (thickness, above the
+ * foam) or `rocker` (the stack under it), `key` the station, `fig` which figure — `nat`, `custom`,
+ * `board` or `blank`.
+ */
+function figure(dialog: Locator, rail: "card" | "rocker", key: string, fig: string): Locator {
+  return dialog.locator(`[data-blank-view-${rail}="${key}"] [data-figure="${fig}"] [data-figure-value]`);
 }
 
 /** Presses a key on a slider thumb until its spoken value reads `want` (at most `max` presses). */
@@ -247,7 +249,7 @@ test.describe("Customize Rocker on a computer", () => {
     await expect(showBoard).toHaveAttribute("aria-pressed", "false");
     await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions");
     await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"]')).toHaveCount(1);
-    await expect(dialog.locator("[data-blank-alone] [data-blank-alone-reading]")).toHaveCount(5);
+    await expect(dialog.locator("[data-blank-view] [data-blank-view-rocker]")).toHaveCount(5);
 
     // +1/2"N, then a second nose change at +1/2" from 18" in: the nose tip rises exactly 1" (D-05).
     await noseHalfInch(page, dialog);
@@ -258,9 +260,9 @@ test.describe("Customize Rocker on a computer", () => {
     const secondBend = dialog.getByRole("slider", { exact: true, name: "Second nose bend starts" });
     await pressUntil(page, secondBend, "ArrowLeft", '18" in');
     await expect(async () => {
-      const tip = await readingTexts(dialog, "noseTip");
-      expect(tip.natural).not.toBeNull();
-      expect(inches(tip.value) - inches(tip.natural!)).toBeCloseTo(1, 9);
+      const nat = await figure(dialog, "rocker", "noseTip", "nat").textContent();
+      const custom = await figure(dialog, "rocker", "noseTip", "custom").textContent();
+      expect(inches(custom!) - inches(nat!)).toBeCloseTo(1, 9);
     }).toPass({ timeout: 5_000 });
     await expect(dialog.locator("[data-customize-rocker-note]")).toContainText('+1/2"N +1/2"N18"');
 
@@ -608,10 +610,11 @@ async function sidewaysChecks(page: Page) {
   const rows = (await dialog.locator("[data-customize-rocker-rows]").boundingBox())!;
   const card = (await dialog.locator("[data-custom-rocker-drawing]").boundingBox())!;
   expect(rows.x + rows.width).toBeLessThanOrEqual(card.x + 1);
-  // A change, so the readings carry their NAT figures too.
+  // A change, so the stacks carry their CUSTOM figures too.
   await noseHalfInch(page, dialog);
-  const readings = dialog.locator("[data-blank-alone-reading]");
+  const readings = dialog.locator("[data-blank-view-rocker]");
   await expect(readings).toHaveCount(5);
+  await expect(dialog.locator('[data-blank-view-rocker] [data-figure="custom"]')).toHaveCount(5);
   const boxes = [];
   for (const reading of await readings.all()) boxes.push((await reading.boundingBox())!);
   for (let i = 0; i < boxes.length; i++) {

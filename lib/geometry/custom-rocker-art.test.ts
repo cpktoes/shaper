@@ -15,8 +15,6 @@ import {
   type RockerChange,
 } from "./custom-rocker";
 import {
-  blankAloneLayout,
-  blankAloneStations,
   blankFrameOverlay,
   BLANK_VIEW,
   blankViewLayout,
@@ -24,7 +22,6 @@ import {
   boardInBlankFrame,
   NO_FIGURE,
   textWidthPx,
-  type BlankAloneLayout,
   type BlankViewStation,
   type LayoutBox,
 } from "./custom-rocker-art";
@@ -240,58 +237,6 @@ describe("the board inside the blank, in the blank's own frame (quick 261017-ojc
 });
 
 const PICKABLE: BlankRecord[] = readSeedCatalog().filter(isPickable);
-const LONG_COPY = LONGBOARD.blank.copy;
-
-describe("the blank alone: its own five stations, as ordered (P-11)", { timeout: LAYOUT_TIMEOUT_MS }, () => {
-  for (const system of UNITS_SYSTEMS) {
-    it(`reads the catalogue's printed figures as ordered, ${system}`, () => {
-      for (const [, s] of SPECS) {
-        const bent = bentOf(LONG_COPY, s);
-        const stations = blankAloneStations(bent, s, system);
-        const L = LONG_COPY.lengthMm;
-        expect(stations.map((st) => st.key)).toEqual(["tailTip", "tail12", "center", "nose12", "noseTip"]);
-        expect(stations.map((st) => st.x)).toEqual([0, inchesToMm(12), L / 2, L - inchesToMm(12), L]);
-        const ordered = customPrintedStations(LONG_COPY, s);
-        const printed = printedBlankStations(LONG_COPY);
-        const show = (v: number | null) => (v === null ? NO_FIGURE : formatMark(mm(v), system));
-        for (const st of stations) {
-          expect(st.reading.value).toBe(show(ordered[st.key].rocker));
-          expect(st.chip.value).toBe(show(printed[st.key].thickness));
-          const nat = show(printed[st.key].rocker);
-          expect(st.reading.natural).toBe(printed[st.key].rocker !== null && nat !== st.reading.value ? `NAT ${nat}` : null);
-          expect(st.bottom).toBeCloseTo(bent.rocker.sample(st.x), 9);
-          expect(st.deck).toBeCloseTo(st.bottom + bent.thickness.sample(st.x), 9);
-        }
-        expect(stations[1].chip.name).toBe(`Tail @ ${stationLabel(system)}`);
-        expect(stations[3].chip.name).toBe(`Nose @ ${stationLabel(system)}`);
-      }
-    });
-  }
-
-  it('the centre is "Center · zero" when its figure prints 0, "Center" otherwise', () => {
-    let zero = 0;
-    let other = 0;
-    for (const record of PICKABLE) {
-      const prepared = prepareBlank(record);
-      const centre = blankAloneStations(prepared, undefined, "imperial")[2];
-      if (centre.reading.value === formatMark(mm(0), "imperial")) {
-        expect(centre.reading.name).toBe("Center · zero");
-        zero++;
-      } else {
-        expect(centre.reading.name).toBe("Center");
-        other++;
-      }
-    }
-    expect(zero).toBeGreaterThan(0);
-    expect(other).toBeGreaterThan(0);
-  });
-
-  it("a natural spec reads the printed figures with no NAT figure anywhere", () => {
-    const stations = blankAloneStations(prepareBlank(LONG_COPY), undefined, "imperial");
-    expect(stations.every((st) => st.reading.natural === null)).toBe(true);
-  });
-});
-
 /** Each real blank bent once per spec, shared by the layout tests (they run thousands of layouts). */
 const BENT = new Map<BlankRecord, Map<BlankRockerSpec | undefined, ReturnType<typeof withCustomRocker>>>();
 function bentFor(record: BlankRecord, s: BlankRockerSpec | undefined) {
@@ -308,7 +253,7 @@ function intersects(a: LayoutBox, b: LayoutBox, gap = 0): boolean {
   return a.x < b.x + b.width + gap && b.x < a.x + a.width + gap && a.y < b.y + b.height + gap && b.y < a.y + a.height + gap;
 }
 
-/** Neighbours on a rail keep at least this much air between them. */
+/** Two labels keep at least this much air between them. */
 const RAIL_GAP_PX = 2;
 
 function inside(box: LayoutBox, w: number, h: number): boolean {
@@ -321,15 +266,6 @@ function pointInside(p: { x: number; y: number }, w: number, h: number): boolean
   return p.x >= -e && p.y >= -e && p.x <= w + e && p.y <= h + e;
 }
 
-const BOXES = [
-  { name: "computer", width: 790, height: 540, orientation: "horizontal" as const },
-  { name: "Pixel 7 sideways", width: 520, height: 200, orientation: "horizontal" as const },
-  { name: "iPhone upright", width: 366, height: 240, orientation: "vertical" as const },
-  // The box measured on the built popup (2026-10-16): the drawing pinned at 45% of an iPhone 14's
-  // height, less the card's padding and its key line — smaller than the plan's estimate.
-  { name: "iPhone upright, as built", width: 350, height: 180, orientation: "vertical" as const },
-];
-
 const LAYOUT_SPECS: [string, BlankRockerSpec | undefined][] = [
   ["natural", undefined],
   ['+2"N +2"T', spec(nose(2), tail(2))],
@@ -337,129 +273,6 @@ const LAYOUT_SPECS: [string, BlankRockerSpec | undefined][] = [
 ];
 
 const SAMPLE_COUNT = 120;
-
-function layoutFor(record: BlankRecord, s: BlankRockerSpec | undefined, box: (typeof BOXES)[number]): BlankAloneLayout {
-  const bent = bentFor(record, s);
-  const L = bent.lengthMm;
-  const samples = Array.from({ length: SAMPLE_COUNT + 1 }, (_, i) => {
-    const x = (L * i) / SAMPLE_COUNT;
-    const bottom = bent.rocker.sample(x);
-    return { x, bottom, deck: bottom + bent.thickness.sample(x) };
-  });
-  return blankAloneLayout({
-    width: box.width,
-    height: box.height,
-    orientation: box.orientation,
-    lengthMm: L,
-    samples,
-    stations: blankAloneStations(bent, s, "imperial"),
-  });
-}
-
-describe("the blank-alone layout in Metric, where the station names run longer", { timeout: LAYOUT_TIMEOUT_MS }, () => {
-  for (const box of BOXES) {
-    it(`${box.name}: neighbours on each rail keep their air on every natural pickable blank`, () => {
-      for (const record of PICKABLE) {
-        const bent = bentFor(record, undefined);
-        const L = bent.lengthMm;
-        const samples = Array.from({ length: SAMPLE_COUNT + 1 }, (_, i) => {
-          const x = (L * i) / SAMPLE_COUNT;
-          const bottom = bent.rocker.sample(x);
-          return { x, bottom, deck: bottom + bent.thickness.sample(x) };
-        });
-        const layout = blankAloneLayout({
-          width: box.width,
-          height: box.height,
-          orientation: box.orientation,
-          lengthMm: L,
-          samples,
-          stations: blankAloneStations(bent, undefined, "metric"),
-        });
-        for (const rail of ["chip", "reading"] as const) {
-          const boxes = layout.stations.map((st) => st[rail].box);
-          for (let i = 0; i + 1 < boxes.length; i++) {
-            expect(intersects(boxes[i], boxes[i + 1], RAIL_GAP_PX), `${record.vendor} ${record.name}: ${rail} ${i}`).toBe(false);
-            expect(inside(boxes[i], box.width, box.height)).toBe(true);
-          }
-        }
-      }
-    });
-  }
-});
-
-describe("the blank-alone layout, on every pickable blank in three boxes", { timeout: LAYOUT_TIMEOUT_MS }, () => {
-  it("reads every pickable blank", () => {
-    expect(PICKABLE.length).toBe(219);
-  });
-
-  for (const box of BOXES) {
-    it(`${box.name} (${box.width}×${box.height}, ${box.orientation})`, () => {
-      // Thousands of checks: collected as sentences and asserted once, so the run stays quick.
-      const problems: string[] = [];
-      const check = (ok: boolean, what: string) => {
-        if (!ok) problems.push(what);
-      };
-      const e = 1e-6;
-      for (const record of PICKABLE) {
-        for (const [label, s] of LAYOUT_SPECS) {
-          const where = `${record.vendor} ${record.name}, ${label}`;
-          const layout = layoutFor(record, s, box);
-          const L = record.lengthMm;
-          check(layout.scale > 0, `${where}: scale`);
-          // One uniform scale: along and across alike.
-          const tail0 = layout.point(0, 0);
-          const nose0 = layout.point(L, 0);
-          check(Math.abs(Math.hypot(nose0.x - tail0.x, nose0.y - tail0.y) - L * layout.scale) < e, `${where}: along`);
-          const up = layout.point(0, 100);
-          check(Math.abs(Math.hypot(up.x - tail0.x, up.y - tail0.y) - 100 * layout.scale) < e, `${where}: across`);
-          // Nose left lying flat, nose up standing.
-          check(box.orientation === "horizontal" ? nose0.x < tail0.x : nose0.y < tail0.y, `${where}: nose`);
-
-          // Everything inside the box.
-          check(layout.outline.every((p) => pointInside(p, box.width, box.height)), `${where}: outline`);
-          check(pointInside(layout.baseline.from, box.width, box.height) && pointInside(layout.baseline.to, box.width, box.height), `${where}: baseline`);
-          for (const t of layout.titles) check(inside(t.box, box.width, box.height), `${where}: ${t.text.text}`);
-          for (const st of layout.stations) {
-            for (const lab of [st.chip, st.reading]) {
-              check(inside(lab.box, box.width, box.height), `${where}: ${st.key} box`);
-              check(pointInside(lab.leader.rail, box.width, box.height) && pointInside(lab.leader.curve, box.width, box.height), `${where}: ${st.key} leader`);
-            }
-          }
-
-          // On each rail, no two label boxes meet; no label meets a title.
-          for (const rail of ["chip", "reading"] as const) {
-            const boxes = layout.stations.map((st) => st[rail].box);
-            for (let i = 0; i < boxes.length; i++) {
-              for (let j = i + 1; j < boxes.length; j++) {
-                check(!intersects(boxes[i], boxes[j], RAIL_GAP_PX), `${where}: ${rail} ${layout.stations[i].key} meets ${layout.stations[j].key}`);
-              }
-              for (const t of layout.titles) check(!intersects(boxes[i], t.box), `${where}: ${rail} meets ${t.text.text}`);
-            }
-          }
-
-          // Every leader ends on its own curve point (the deck for a chip, the bottom for a reading)
-          // and starts on its own label's edge, whichever way the label slid along its rail.
-          const stations = blankAloneStations(bentFor(record, s), s, "imperial");
-          layout.stations.forEach((st, i) => {
-            const deck = layout.point(stations[i].x, stations[i].deck);
-            const bottom = layout.point(stations[i].x, stations[i].bottom);
-            check(Math.abs(st.chip.leader.curve.x - deck.x) < e && Math.abs(st.chip.leader.curve.y - deck.y) < e, `${where}: ${st.key} chip leader end`);
-            check(Math.abs(st.reading.leader.curve.x - bottom.x) < e && Math.abs(st.reading.leader.curve.y - bottom.y) < e, `${where}: ${st.key} reading leader end`);
-            for (const lab of [st.chip, st.reading]) {
-              const { rail } = lab.leader;
-              const b = lab.box;
-              const within = rail.x >= b.x - e && rail.x <= b.x + b.width + e && rail.y >= b.y - e && rail.y <= b.y + b.height + e;
-              const onEdge =
-                Math.abs(rail.x - b.x) < e || Math.abs(rail.x - b.x - b.width) < e || Math.abs(rail.y - b.y) < e || Math.abs(rail.y - b.y - b.height) < e;
-              check(within && onEdge, `${where}: ${st.key} leader start`);
-            }
-          });
-        }
-      }
-      expect(problems).toEqual([]);
-    });
-  }
-});
 
 // ---------------------------------------------------------------------------------------------
 // The one drawing (quick 261017-ojc, 2026-10-17)
@@ -696,6 +509,24 @@ describe("the one drawing's layout, on every pickable blank in every popup size 
             check(box.orientation === "horizontal" ? nose0.x < tail0.x : nose0.y < tail0.y, `${where}: nose`);
             // The height: the box's, or at least it on a short screen (P-9).
             check(box.scroll ? layout.height >= box.height - e : Math.abs(layout.height - box.height) < e, `${where}: height`);
+            // What the box is asked to grow to never reads the box's own height, so a box grown to it
+            // lays out the same and shrinks back when less is needed (P-9).
+            check(layout.neededHeight <= layout.height + e, `${where}: needed height`);
+            if (box.scroll && layout.neededHeight > box.height) {
+              const grown = blankViewLayout({
+                width: box.width,
+                height: Math.round(layout.neededHeight),
+                orientation: box.orientation,
+                lengthMm: L,
+                blank: c.blank,
+                board: withBoard ? c.board.outline : null,
+                overlay: c.overlay,
+                stations,
+                dimensions: true,
+                scroll: true,
+              });
+              check(Math.abs(grown.neededHeight - layout.neededHeight) < e && grown.labelScale === layout.labelScale, `${where}: grown box`);
+            }
             // The label scale: 1 on a computer, never under 0.8 (P-8).
             if (box.name === "computer" || box.name === "narrow browser window") check(layout.labelScale === 1, `${where}: label scale ${layout.labelScale}`);
             check(layout.labelScale >= 0.8, `${where}: label scale ${layout.labelScale}`);

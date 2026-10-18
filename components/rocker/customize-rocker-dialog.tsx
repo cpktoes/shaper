@@ -103,6 +103,9 @@ function CustomizeRockerBody({ onClose }: { onClose: () => void }) {
   const locked = useControlsLocked();
   const [draft, setDraft] = useState<RockerDraft>(() => (blank ? draftFromSpec(blank.rocker, blank.copy.lengthMm) : NATURAL_DRAFT));
   const [showBoard, setShowBoard] = useState(false);
+  // The phone's Dimensions switch (quick 261017-ojc, D-07, P-10): On every time the popup opens, like
+  // Show my board is Off — this body is keyed on each opening, so neither is remembered.
+  const [dimensions, setDimensions] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -210,7 +213,14 @@ function CustomizeRockerBody({ onClose }: { onClose: () => void }) {
           data-customize-rocker-drawing-column
           className="flex min-h-0 min-w-0 flex-1 flex-col max-shell:order-first max-shell:h-[45dvh] max-shell:flex-none [@media(max-height:500px)]:overflow-y-auto"
         >
-          <CustomRockerDrawing bent={bent} draftSpec={draftSpec} showBoard={showBoard} onShowBoardChange={setShowBoard} />
+          <CustomRockerDrawing
+            bent={bent}
+            draftSpec={draftSpec}
+            showBoard={showBoard}
+            onShowBoardChange={setShowBoard}
+            dimensions={dimensions}
+            onDimensionsChange={setDimensions}
+          />
         </div>
       </div>
 
