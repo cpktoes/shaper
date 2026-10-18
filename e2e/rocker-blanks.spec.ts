@@ -277,9 +277,10 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await expect(page).toHaveURL(/\/design\/rails/, { timeout: 30_000 });
     // RAILS' Inputs line (quick 261017-vdh) names the centre thickness it imported, in the shared
     // controls that show on every layout — no CENTER tab step is needed. (While the import is
-    // ticked, the Board Thickness slider itself is hidden.)
+    // ticked, the Board Thickness slider itself is hidden.) The space inside `2 3/4"` is a
+    // non-breaking one on screen (keepFiguresTogether), and a pattern sees the raw text — hence `\s`.
     await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Thickness details are imported: .+ · 2 3\/4" center · /)).toBeVisible();
+    await expect(page.getByText(/^Thickness details are imported: .+ · 2\s3\/4" center · /)).toBeVisible();
   });
 });
 
