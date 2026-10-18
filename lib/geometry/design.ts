@@ -93,8 +93,15 @@ export function deriveRailValues(railBands: RailBandsOutput): VolumeRailValues {
 
 /**
  * Same shape as `design-store.tsx`'s `effectiveVolume` memo — the derived-value equivalent of the
- * prototype's `syncFromTemplate`: `volume` with length/width/centerThickness overridden per the
- * import toggles, produced without an effect that writes back into state.
+ * prototype's `syncFromTemplate`: `volume` with length/width/centerThickness overridden by the
+ * import, produced without an effect that writes back into state.
+ *
+ * VOLUME has ONE box, "Import Designed Board" (quick 261017-vdh, BRIEF 3b/3d): ticked means the real
+ * outline AND the real rail and thickness data are both used. The stored `importTemplateDimensions`
+ * flag IS the box, and `importRailThickness` follows it — so a board saved in the retired in-between
+ * state (real outline, board-type thickness) simply opens ticked, with no migration. Its quoted litres
+ * do not move: `deriveQuotedVolumeLitres` reads only the template flag, so the cross-section figure
+ * every screen and print shows is the same either way; only the VOLUME card's working rows differ.
  */
 export function deriveEffectiveVolume(
   volume: VolumeSpec,
@@ -102,12 +109,12 @@ export function deriveEffectiveVolume(
   railValues: VolumeRailValues,
 ): VolumeSpec {
   if (!volume.importTemplateDimensions) return volume;
-  const centerThickness = volume.importRailThickness ? railValues.centerThickness : volume.centerThickness;
   return {
     ...volume,
     length: templateValues.length,
     width: templateValues.widePointWidth,
-    centerThickness,
+    centerThickness: railValues.centerThickness,
+    importRailThickness: true,
   };
 }
 
