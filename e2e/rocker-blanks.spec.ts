@@ -11,6 +11,7 @@ import {
   pickFirstFittingBlank,
   removeThisBlank,
 } from "./helpers/blank-picker";
+import { importedReadout, readoutValue } from "./helpers/imported-readout";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { BLANK_CATALOG_NOTE } from "../lib/blanks/vendors";
@@ -341,12 +342,12 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await goToScreen(page, "RAILS");
     // The first visit builds the page on the test's dev server, which can take longer than 5 s.
     await expect(page).toHaveURL(/\/design\/rails/, { timeout: 30_000 });
-    // RAILS' Inputs line (quick 261017-vdh) names the centre thickness it imported, in the shared
-    // controls that show on every layout — no CENTER tab step is needed. (While the import is
-    // ticked, the Board Thickness slider itself is hidden.) The space inside `2 3/4"` is a
-    // non-breaking one on screen (keepFiguresTogether), and a pattern sees the raw text — hence `\s`.
+    // RAILS' Inputs card (quick 261017-vdh, a readout card since quick 261018-fg1) names the centre
+    // thickness it imported — its Center figure — in the shared controls that show on every layout,
+    // so no CENTER tab step is needed. (While the import is ticked, the Board Thickness slider itself
+    // is hidden.)
     await expect(page.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Thickness details are imported: .+ · 2\s3\/4" center · /)).toBeVisible();
+    await expect(readoutValue(importedReadout(page, "From ROCKER & FOIL"), "center")).toHaveText('2 3/4"');
   });
 });
 

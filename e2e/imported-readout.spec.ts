@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { importedReadout } from "./helpers/imported-readout";
+import { goToScreen } from "./helpers/screens";
+import { openRocker } from "./helpers/blank-picker";
 
 /**
  * Quick 261018-fg1 — the imported dimensions as a readout card (sketch 017 C). The founder,
@@ -161,6 +163,73 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     expectComputerLook(await readoutFacts(card), 3, 1);
     await expect(card.locator("[data-readout-foot]")).toBeVisible();
     await expect(card.locator("[data-readout-foot]")).toHaveText("Rail shapes from RAILS");
+  });
+
+  test("ROCKER: the From TEMPLATE card — two columns, one row", async ({ page }) => {
+    await openRocker(page);
+    const card = importedReadout(page.locator("[data-rocker-inputs]"), "From TEMPLATE");
+    await expect(card).toBeVisible();
+    expectComputerLook(await readoutFacts(card), 2, 1);
+    await expect(card.locator("[data-readout-foot]")).toHaveCount(0);
+  });
+
+  test("RAILS: the From ROCKER & FOIL card — three columns, one row", async ({ page }) => {
+    await page.goto("/design/rails");
+    const card = importedReadout(page.locator("aside"), "From ROCKER & FOIL");
+    await expect(card).toBeVisible();
+    expectComputerLook(await readoutFacts(card), 3, 1);
+  });
+
+  test("FINS: the From TEMPLATE card — a squash tail's four figures sit two by two", async ({ page }) => {
+    await page.goto("/design/fins");
+    const card = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(card).toBeVisible();
+    await expect(card.locator("dd")).toHaveCount(4);
+    expectComputerLook(await readoutFacts(card), 2, 2);
+  });
+
+  test("FINS with a swallow tail: five readouts, three columns over two rows, nothing spills", async ({ page }) => {
+    await page.goto("/design/outline");
+    // Picked client-side and carried to FINS client-side: a page load would lose the board.
+    await page.getByRole("button", { name: "swallow", exact: true }).click();
+    await goToScreen(page, "FINS");
+    const card = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(card).toBeVisible();
+    await expect(card.locator("dd")).toHaveCount(5);
+    expectComputerLook(await readoutFacts(card), 3, 2);
+  });
+
+  test("an 820-wide computer window in Metric: nothing spills on any screen", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 800 });
+    await setMetricUnits(page);
+    const screens: { path: string; caption: string; scope: string; columns: number; rows: number }[] = [
+      { path: "/design/rocker", caption: "From TEMPLATE", scope: "[data-rocker-inputs]", columns: 2, rows: 1 },
+      { path: "/design/rails", caption: "From ROCKER & FOIL", scope: "aside", columns: 3, rows: 1 },
+      { path: "/design/volume", caption: "From TEMPLATE", scope: "aside", columns: 3, rows: 1 },
+      { path: "/design/fins", caption: "From TEMPLATE", scope: "aside", columns: 2, rows: 2 },
+    ];
+    for (const screen of screens) {
+      await page.goto(screen.path);
+      const card = importedReadout(page.locator(screen.scope), screen.caption);
+      await expect(card, screen.path).toBeVisible();
+      const facts = await readoutFacts(card);
+      expect(facts.spills, `${screen.path} figures crossing the card's edge`).toEqual([]);
+      expect(facts.dlOverflow, `${screen.path} list overflow`).toBeLessThanOrEqual(0);
+      expect(facts.columns, `${screen.path} columns`).toBe(screen.columns);
+      expect(facts.rows, `${screen.path} rows`).toBe(screen.rows);
+    }
+
+    // FINS with a swallow tail, carried client-side from TEMPLATE.
+    await page.goto("/design/outline");
+    await page.getByRole("button", { name: "swallow", exact: true }).click();
+    await goToScreen(page, "FINS");
+    const swallow = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(swallow.locator("dd")).toHaveCount(5);
+    const facts = await readoutFacts(swallow);
+    expect(facts.spills, "FINS swallow figures crossing the card's edge").toEqual([]);
+    expect(facts.dlOverflow).toBeLessThanOrEqual(0);
+    expect(facts.columns).toBe(3);
+    expect(facts.rows).toBe(2);
   });
 
   test("VOLUME in Metric: every figure still fits inside its card", async ({ page }) => {

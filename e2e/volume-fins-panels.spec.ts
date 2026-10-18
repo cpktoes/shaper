@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
-import { expectReadout, importedReadout } from "./helpers/imported-readout";
+import { expectReadout, importedReadout, readoutValue } from "./helpers/imported-readout";
 
 /**
  * Quick 261017-vdh, plan 03 — the VOLUME and FINS side panels as the founder drew them. Desktop only:
@@ -10,7 +10,7 @@ import { expectReadout, importedReadout } from "./helpers/imported-readout";
  * ticked (the default) a readout card (sketch 017 C, quick 261018-fg1) says what was imported and the four hand controls are not on the page;
  * unticked they come back for the quick estimate, and one Undo ticks the box again.
  *
- * FINS: `Import Designed Board` with its line, the three replaced controls hidden while it is ticked,
+ * FINS: `Import Designed Board` with its readout card (quick 261018-fg1), the three replaced controls hidden while it is ticked,
  * ADVANCED running nose to tail (front fins, rear fins, centre fin, Reset), and MODEL INFO wearing the
  * side panel's own headings.
  *
@@ -160,7 +160,7 @@ test.describe("FINS' Inputs — Import Designed Board", () => {
     await dismissSignInBanner(page);
   });
 
-  test("Inputs, the box ticked by default, the imported line, and none of the three controls it replaces", async ({
+  test("Inputs, the box ticked by default, the imported card, and none of the three controls it replaces", async ({
     page,
   }) => {
     await page.goto("/design/fins");
@@ -170,18 +170,23 @@ test.describe("FINS' Inputs — Import Designed Board", () => {
     const box = await importBox(page);
     await expect(box).toHaveAttribute("aria-checked", "true");
     await expect(aside.getByText("Import Template Values")).toHaveCount(0);
-    await expect(
-      aside.getByText(`TEMPLATE details are imported: 6'0" · 14 3/4" tail @ 12" · Squash tail · 4" tail block`),
-    ).toBeVisible();
+    const card = importedReadout(aside, "From TEMPLATE");
+    await expect(card).toBeVisible();
+    await expectReadout(card, [
+      ["Length", `6'0"`],
+      [`Tail @ 12"`, `14 3/4"`],
+      ["Tail", "Squash"],
+      ["Tail block", `4"`],
+    ]);
 
     await expect(aside.getByText(/Board Length —/)).toHaveCount(0);
     await expect(aside.getByText(/Tail Width @/)).toHaveCount(0);
     await expect(aside.getByText(/Tail Shape —/)).toHaveCount(0);
 
-    // Unticked: the line goes and FINS' own stored values show, as they always have.
+    // Unticked: the card goes and FINS' own stored values show, as they always have.
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "false");
-    await expect(aside.getByText(/TEMPLATE details are imported/)).toHaveCount(0);
+    await expect(importedReadout(aside, "From TEMPLATE")).toHaveCount(0);
     await expect(aside.getByText(`Board Length — 6'0"`)).toBeVisible();
     await expect(aside.getByText(`Tail Width @ 12" — 13"`)).toBeVisible();
     await expect(aside.getByText("Tail Shape — Squash")).toBeVisible();
@@ -191,13 +196,12 @@ test.describe("FINS' Inputs — Import Designed Board", () => {
     await setMetricUnits(page);
     await page.goto("/design/fins");
     await importBox(page);
-    await expect(
-      page
-        .locator("aside")
-        .getByText(
-          "TEMPLATE details are imported: 182.9 cm · 37.4 cm tail @ 30.5 cm · Squash tail · 10.2 cm tail block",
-        ),
-    ).toBeVisible();
+    await expectReadout(importedReadout(page.locator("aside"), "From TEMPLATE"), [
+      ["Length", "182.9 cm"],
+      ["Tail @ 30.5 cm", "37.4 cm"],
+      ["Tail", "Squash"],
+      ["Tail block", "10.2 cm"],
+    ]);
   });
 
   test("the tail block and depth follow the tail TEMPLATE picked — diamond, swallow, pin", async ({ page }) => {
@@ -205,19 +209,26 @@ test.describe("FINS' Inputs — Import Designed Board", () => {
     // Picked client-side and carried to FINS client-side: a page load would lose the board.
     await page.getByRole("button", { name: "diamond", exact: true }).click();
     await goToScreen(page, "FINS");
-    await expect(page.locator("aside").getByText(/Diamond tail · 10" tail block · 3" deep$/)).toBeVisible();
+    const diamond = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(readoutValue(diamond, "tail")).toHaveText("Diamond");
+    await expect(readoutValue(diamond, "tailBlock")).toHaveText(`10"`);
+    await expect(readoutValue(diamond, "depth")).toHaveText(`3"`);
 
     await goToScreen(page, "TEMPLATE");
     await page.getByRole("button", { name: "swallow", exact: true }).click();
     await goToScreen(page, "FINS");
-    await expect(page.locator("aside").getByText(/Swallow tail · 8" tail block · 3" deep$/)).toBeVisible();
+    const swallow = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(readoutValue(swallow, "tail")).toHaveText("Swallow");
+    await expect(readoutValue(swallow, "tailBlock")).toHaveText(`8"`);
+    await expect(readoutValue(swallow, "depth")).toHaveText(`3"`);
 
     await goToScreen(page, "TEMPLATE");
     await page.getByRole("button", { name: "pin", exact: true }).click();
     await goToScreen(page, "FINS");
-    const line = page.locator("aside").getByText(/TEMPLATE details are imported/);
-    await expect(line).toHaveText(/Pin tail$/);
-    await expect(line).not.toContainText("tail block");
+    const pin = importedReadout(page.locator("aside"), "From TEMPLATE");
+    await expect(pin.locator("dt")).toHaveText(["Length", `Tail @ 12"`, "Tail"]);
+    await expect(readoutValue(pin, "tail")).toHaveText("Pin");
+    await expect(pin.locator("dt")).toHaveCount(3);
   });
 });
 

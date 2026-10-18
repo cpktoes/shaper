@@ -6,7 +6,7 @@
  * section-heading and slider-row styling from components/rails/rail-controls.tsx wholesale.
  *
  * Quick 261017-vdh (BRIEF 4): the INPUTS section is a ruled heading, one box `Import Designed Board`
- * and — while it is ticked — a single line saying which board was imported; Board Length, Tail
+ * and — while it is ticked — a readout card (quick 261018-fg1, sketch 017 C) saying which board was imported; Board Length, Tail
  * Width @ 12" and Tail Shape are then not on the page (unticked they show, FINS keeping its own
  * stored values). ADVANCED reads nose to tail: the forward fins, the rear fins, then the center fin.
  */
@@ -60,7 +60,8 @@ import { MeasureField } from "@/components/design/measure-field";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useUnits } from "@/components/units-provider";
 import { FinSetupIcon, type FinSetupKind } from "./fin-setup-icon";
-import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
+import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
+import type { ImportedReadout } from "@/lib/geometry/imported-readout";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
 const TAIL_SHAPE_LABEL: Record<IconTailShape, string> = {
@@ -182,9 +183,9 @@ interface FinControlsProps {
    * design (Fins.dc.html's `importTemplate`). */
   importTemplate: boolean;
   onToggleImportTemplate: () => void;
-  /** The "TEMPLATE details are imported: …" line shown under the box while it is ticked
-   * (`finsImportedLine`), else null. */
-  importedLine: string | null;
+  /** The "From TEMPLATE" readout card shown under the box while it is ticked
+   * (`finsImportedReadout`), else null. */
+  importedReadout: ImportedReadout | null;
 }
 
 export function FinControls({
@@ -200,7 +201,7 @@ export function FinControls({
   onOpenToeTable,
   importTemplate,
   onToggleImportTemplate,
-  importedLine,
+  importedReadout,
 }: FinControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -294,7 +295,7 @@ export function FinControls({
         </div>
       </div>
 
-      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the line that
+      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the card that
           says which board was imported. */}
       <div className="flex flex-col gap-1.5">
         <SectionHeading>Inputs</SectionHeading>
@@ -302,9 +303,7 @@ export function FinControls({
           <Checkbox disabled={locked} checked={importTemplate} onCheckedChange={() => onToggleImportTemplate()} />
           Import Designed Board
         </label>
-        {importTemplate && importedLine && (
-          <div className="text-xs text-surf-ink-muted font-normal">{keepFiguresTogether(importedLine)}</div>
-        )}
+        {importTemplate && importedReadout && <ImportedReadoutCard readout={importedReadout} className="mt-0.5" />}
       </div>
 
       {/* Board Length and Tail Width @ 12" (below) both keep their own hand-rolled markup rather

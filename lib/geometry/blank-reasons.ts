@@ -644,17 +644,6 @@ export function blankRowVolume(record: Pick<BlankRecord, "volumeLitres">): strin
 }
 
 /**
- * The line in ROCKER's INPUTS section: `TEMPLATE details are imported: 5'10" × 19 1/2"`, and in
- * Metric `… 177.8 × 49.5 cm` — the unit carried once, at the end of the line (the house rule for
- * running text). The length reads through `formatLength` (the same formatter a blank's length reads
- * through, so the two compare directly), the width through `formatDim`.
- */
-export function boardLine(length: Mm, width: Mm, system: UnitsSystem): string {
-  const lengthText = system === "metric" ? formatDimBare(length, system) : formatLength(length, system);
-  return `TEMPLATE details are imported: ${lengthText} × ${formatDim(width, system)}`;
-}
-
-/**
  * The offer beside a flag: `Closest blank that fits: {vendor} {name} Natural, {length}`. The offer
  * is always a maker's natural blank — switching blanks clears a custom rocker (D-10) — so it is named
  * the way every blank is named, its rocker after its name (quick 261016-mkb, D-02, P-23).

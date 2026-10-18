@@ -19,7 +19,8 @@
  *
  * Why the name comes first in the markup: it is a `dl` of name/value pairs inside a group named by
  * the caption, so a screen reader hears `Length, 6'0"`, name first. `flex-col-reverse` then draws
- * the figure above its name.
+ * the figure above its name. `justify-end` in a reversed column means "to the top", so when a name
+ * wraps to two lines in a narrow sidebar the figures in its row still line up along their tops.
  *
  * Phone padding is tighter (8px top and bottom, 10px sides — "phone real estate is expensive") under
  * BOTH switches that mean a phone: the `max-shell` width rule (an upright phone) and the inline
@@ -54,7 +55,7 @@ export function ImportedReadoutCard({ readout, className = "" }: { readout: Impo
       </div>
       <dl className={`mt-2 grid gap-x-2.5 gap-y-2 ${COLUMN_CLASS[columns]}`}>
         {readout.items.map((item) => (
-          <div key={item.key} data-readout={item.key} className="flex flex-col-reverse">
+          <div key={item.key} data-readout={item.key} className="flex flex-col-reverse justify-end">
             <dt className="mt-0.5 text-[10px] leading-tight font-bold uppercase tracking-[0.12em] text-surf-ink-muted">
               {keepFiguresTogether(item.label)}
             </dt>

@@ -8,7 +8,6 @@ import {
   blankReason,
   blankRowMeta,
   blankRowVolume,
-  boardLine,
   pickBlankSummary,
   pickerBoardLine,
   pickerCounts,
@@ -1103,28 +1102,6 @@ describe("blankRowVolume — the volume at the end of a row's first line", () =>
 
   it("is null when the catalogue prints no volume, so nothing takes its place", () => {
     expect(blankRowVolume({ volumeLitres: null })).toBeNull();
-  });
-});
-
-describe("boardLine — the board's size in ROCKER's INPUTS section", () => {
-  it("reads the UI-SPEC's own example in both systems (metric carries its unit once, at the end)", () => {
-    expect(boardLine(inchesToMm(70), inchesToMm(19.5), "imperial")).toBe(
-      `TEMPLATE details are imported: 5'10" × 19 1/2"`,
-    );
-    expect(boardLine(inchesToMm(70), inchesToMm(19.5), "metric")).toBe(
-      "TEMPLATE details are imported: 177.8 × 49.5 cm",
-    );
-  });
-
-  it("uses the board-length and width formatters, never its own numbers", () => {
-    const length = inchesToMm(74.25);
-    const width = inchesToMm(20.375);
-    expect(boardLine(length, width, "imperial")).toBe(
-      `TEMPLATE details are imported: ${formatLength(length, "imperial")} × ${formatDim(width, "imperial")}`,
-    );
-    expect(boardLine(length, width, "metric")).toBe(
-      `TEMPLATE details are imported: ${formatLength(length, "metric").replace(/ cm$/, "")} × ${formatDim(width, "metric")}`,
-    );
   });
 });
 

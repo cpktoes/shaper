@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { importedReadout } from "./helpers/imported-readout";
 
 /**
  * 09-04's own proof, mirroring the dismiss-the-banner helper e2e/phone-layout.spec.ts and
@@ -842,7 +843,7 @@ async function expectSharedRailControls(page: Page) {
   await expect(aside.getByText("Rail Band Calculator", { exact: true })).toBeVisible();
   await expect(aside.getByText("Design and shape consistent rails")).toBeVisible();
   await expect(aside.getByText("Import Rocker & Foil Values")).toBeVisible();
-  await expect(aside.getByText(/^Thickness details are imported: /)).toBeVisible();
+  await expect(importedReadout(aside, "From ROCKER & FOIL")).toBeVisible();
   await expect(aside.getByText("Include Rail Band Instructions in Print")).toBeVisible();
   await expect(aside.getByText("Adds a third reference page")).toBeVisible();
   const stepNav = aside.locator("[data-step-nav]");
