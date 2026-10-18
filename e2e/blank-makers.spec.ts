@@ -193,6 +193,8 @@ test.describe("Blank Makers — the ROCKER blank list", () => {
   });
 
   test("unticking a maker leaves its blanks out of the ROCKER list and says so", async ({ page }) => {
+    // Opens the full popup four times: on the iPhone profile under a busy machine that is ~30 s.
+    test.slow();
     await openRocker(page);
     const note = page.locator("[data-blank-makers-note]");
     await expect(note).toHaveCount(0);
