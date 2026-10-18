@@ -6,6 +6,7 @@ import type { ViewerOrientation } from "@/components/viewer/callout-primitives";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { ViewerZoomControl, ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import type { OutlineSpec } from "@/lib/geometry/board";
+import { FinPlacementIcon } from "./fin-placement-icon";
 import { OutlineViewer } from "./outline-viewer";
 import { WingCloseUp } from "./wing-close-up";
 
@@ -22,7 +23,8 @@ import { WingCloseUp } from "./wing-close-up";
  *
  * The toolbar has the two buttons sketch 014's WINGS toolbar has, drawn exactly like the
  * VIEWER's: Show/Hide drag points (the wings' grab points follow it, D5) and wide view — and,
- * since 2026-10-17, the whole-board toggle described at the end of this comment.
+ * since 2026-10-17, the whole-board toggle described at the end of this comment, and, since
+ * 2026-10-18 (quick 261018-e6w), Show/Hide fin placement (the same state as the VIEWER's).
  * The close-up is never turned (P4). The handlers are the editor's, so the two tabs share one
  * construction setting and one wide view.
  *
@@ -45,6 +47,7 @@ export interface WingsPanelProps {
   showConstruction: boolean;
   onToggleConstruction: () => void;
   showFins: boolean;
+  onToggleShowFins: () => void;
   wideView: boolean;
   onToggleWideView: () => void;
   /** Which way the VIEWER tab draws the board, so the close-up's lines match its weight (D1) — and
@@ -60,6 +63,7 @@ export function WingsPanel({
   showConstruction,
   onToggleConstruction,
   showFins,
+  onToggleShowFins,
   wideView,
   onToggleWideView,
   viewerOrientation,
@@ -97,6 +101,15 @@ export function WingsPanel({
           title={wholeBoard ? "Tail close-up" : "Whole board"}
         >
           {wholeBoard ? <Minimize2Icon className="size-6" /> : <Maximize2Icon className="size-6" />}
+        </ViewerToolbarButton>
+        <ViewerToolbarButton
+          onClick={onToggleShowFins}
+          pressed={showFins}
+          label={showFins ? "Hide fin placement" : "Show fin placement"}
+          // Quick 261018-e6w (R2): the same state as the VIEWER's fin-placement button, appended last
+          // so nothing that exists moves. It only changes what is drawn, so a locked board keeps it.
+        >
+          <FinPlacementIcon className="size-6" />
         </ViewerToolbarButton>
       </ViewerToolbar>
       {/* The zoom level and its buttons, in their own row under the icons (D7). */}

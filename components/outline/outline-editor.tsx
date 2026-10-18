@@ -15,6 +15,7 @@ import { OutlineControls } from "./outline-controls";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { OutlineViewer } from "./outline-viewer";
+import { FinPlacementIcon } from "./fin-placement-icon";
 import { WingControls } from "./wing-controls";
 import { WingsPanel } from "./wings-panel";
 import { WingDialInDialog } from "./wing-dial-in-dialog";
@@ -23,6 +24,17 @@ import { nextWing } from "@/lib/geometry/wings";
 
 /** TEMPLATE's two tabs (quick 261014-wii, D3): the whole board, and the tail close up with its wings. */
 type TemplateTab = "viewer" | "wings";
+
+/**
+ * Whether fin placement (the FINS marks drawn on TEMPLATE's board) is showing, remembered for the
+ * visit. Off when TEMPLATE first opens (the founder, 2026-10-18: "Default = off"); kept while the
+ * shaper moves between the six screens — which is what keeps D4's "Dial in your wing placement →
+ * Open FINS → back" round trip showing the fins the first wing switched on, since leaving TEMPLATE
+ * unmounts this screen and loses its state; forgotten on a reload. Screen state, never saved. The
+ * server never writes it (only click handlers do, below), so the server's HTML always says off and
+ * hydration matches.
+ */
+let finPlacementShownThisVisit = false;
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -78,11 +90,14 @@ export function OutlineEditor() {
   const { system } = useUnits();
   const wings = outline.wings ?? [];
   const wingCount = wings.length;
-  /** Show fin placement (quick 261014-wii, D4, P6): screen state like Show construction, never saved. `null`
-   * means the shaper has not chosen, and then the fins show while the board has a wing — so the
-   * setting survives a trip to FINS and back, which remounts this screen. */
-  const [showFinsOverride, setShowFinsOverride] = useState<boolean | null>(null);
-  const showFins = showFinsOverride ?? wingCount > 0;
+  /** Show fin placement (quick 261014-wii, D4, P6; a toolbar button since quick 261018-e6w): screen
+   * state like Show construction, never saved. Starts off, and is carried across screens for the
+   * visit by `finPlacementShownThisVisit` above. */
+  const [showFins, setShowFinsState] = useState(finPlacementShownThisVisit);
+  function setShowFins(next: boolean) {
+    finPlacementShownThisVisit = next;
+    setShowFinsState(next);
+  }
   /** The WINGS tab's whole-board view instead of the tail close-up (fast task, 2026-10-17) — view
    * state, never saved, kept here so it holds across trips to the VIEWER tab and back. */
   const [wingsWholeBoard, setWingsWholeBoard] = useState(false);
@@ -99,9 +114,10 @@ export function OutlineEditor() {
     // The first wing locks to the front fin's trailing edge when the fin setup has one (D8).
     updateOutline({ wings: [...wings, nextWing(wings, wingFinEdges, outlineGeometry, system)] });
     // D4, P6, D7: the first wing switches Show fin placement on and asks the shaper to dial it in against
-    // FINS — every time the board goes from no wings to one, as sketched.
+    // FINS — every time the board goes from no wings to one, as sketched. This is a response to
+    // adding a wing, not a default: the founder confirmed it stays (2026-10-18, R2).
     if (wingCount === 0) {
-      setShowFinsOverride(true);
+      setShowFins(true);
       setDialInOpen(true);
     }
   }
@@ -234,15 +250,27 @@ export function OutlineEditor() {
         >
           {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
         </ViewerToolbarButton>
+        <ViewerToolbarButton
+          onClick={() => setShowFins(!showFins)}
+          pressed={showFins}
+          label={showFins ? "Hide fin placement" : "Show fin placement"}
+          // Quick 261018-e6w (R2): fin placement became a toolbar button, off until pressed (or until
+          // the board's first wing switches it on). APPENDED after the buttons above, so nothing that
+          // exists moves; the ghost below stays last (P-3); and on an upright phone it lands 80 px in
+          // from the corner on both tabs, so switching tabs never moves it under the thumb. It draws
+          // at every width and pointer, and it only changes what is drawn, never the board, so a
+          // locked board keeps it usable (R4).
+        >
+          <FinPlacementIcon className="size-6" />
+        </ViewerToolbarButton>
         {outlineGhostGeometry !== null && (
           // Appended LAST (P-3): `ViewerToolbar`'s `flex-row-reverse` growth rule means the last
           // child in the JSX lands at the row's FAR LEFT, so every button above keeps the exact
           // slot it has always had — nothing moves when this one shows up. It exists only once
           // there is a ghost to hide (`outlineGhostGeometry !== null`), the same "nothing new
           // appears until there is something to act on" rule the phone undo bar already follows
-          // in this app — so a freshly opened board's toolbar is byte-for-byte what it is today,
-          // and `e2e/viewer-toolbar.spec.ts` (which measures a freshly loaded screen) needs no
-          // change. It draws at 34px like its neighbours (P-7) and at every width and pointer
+          // in this app — so a freshly opened board's toolbar holds the buttons above and
+          // nothing more (the fin-placement button joined them in quick 261018-e6w). It draws at 34px like its neighbours (P-7) and at every width and pointer
           // type, unlike Rotate/Wide View above: the ghost is as useful on a phone as on a mouse.
           <ViewerToolbarButton
             onClick={() => setShowGhost((v) => !v)}
@@ -302,7 +330,7 @@ export function OutlineEditor() {
             showConstruction={showConstruction}
             onToggleConstruction={handleToggleConstruction}
             showFins={showFins}
-            onToggleShowFins={() => setShowFinsOverride(!showFins)}
+            onToggleShowFins={() => setShowFins(!showFins)}
           />
         ) : (
           <OutlineControls
@@ -312,7 +340,7 @@ export function OutlineEditor() {
             showConstruction={showConstruction}
             onToggleConstruction={handleToggleConstruction}
             showFins={showFins}
-            onToggleShowFins={() => setShowFinsOverride(!showFins)}
+            onToggleShowFins={() => setShowFins(!showFins)}
           />
         )
       }
@@ -353,6 +381,7 @@ export function OutlineEditor() {
               showConstruction={showConstruction}
               onToggleConstruction={handleToggleConstruction}
               showFins={showFins}
+              onToggleShowFins={() => setShowFins(!showFins)}
               wideView={wideView}
               onToggleWideView={handleToggleWideView}
               // Quick 261015-my3 (D1): the way the VIEWER draws the board, so the close-up's lines
