@@ -58,6 +58,7 @@ import { MeasureField } from "@/components/design/measure-field";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useUnits } from "@/components/units-provider";
 import { FinSetupIcon, type FinSetupKind } from "./fin-setup-icon";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 
 const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
 const TAIL_SHAPE_LABEL: Record<IconTailShape, string> = {
@@ -284,7 +285,7 @@ export function FinControls({
           Import Designed Board
         </label>
         {importTemplate && importedLine && (
-          <div className="text-xs text-surf-ink-muted font-normal">{importedLine}</div>
+          <div className="text-xs text-surf-ink-muted font-normal">{keepFiguresTogether(importedLine)}</div>
         )}
       </div>
 

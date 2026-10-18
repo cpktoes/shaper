@@ -163,11 +163,16 @@ test.describe("Back and Next walk the whole board", () => {
       // the controls spill out underneath the pair — found on FINS and VOLUME.)
       const overlap = await page.evaluate(() => {
         const nav = document.querySelector<HTMLElement>("[data-step-nav]");
-        const aside = nav?.closest("aside");
-        if (!nav || !aside) return Number.NaN;
+        // The screen's own controls are the ones in the scroller the pair lives in. The dev-only
+        // "Copy preset values" row sits outside it, below, and never reaches production — on FINS,
+        // once the imported board hid three controls (quick 261017-vdh), the column got short enough
+        // for the pair to sit above that row, which the old whole-sidebar sweep read as a spill.
+        // VOLUME has no inner scroller, so its aside is the root.
+        const root = nav?.closest("[data-design-controls-scroll]") ?? nav?.closest("aside");
+        if (!nav || !root) return Number.NaN;
         const navTop = nav.getBoundingClientRect().top;
         let lowest = -Infinity;
-        for (const el of Array.from(aside.querySelectorAll<HTMLElement>("*"))) {
+        for (const el of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
           if (nav.contains(el)) continue;
           // The site footer is meant to follow Back + Next (D-03, quick 261006-fom).
           if (el.closest("[data-site-footer]")) continue;

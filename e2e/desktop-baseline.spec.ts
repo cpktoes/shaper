@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-18 (quick 261017-vdh) — all five, for the founder's side-panel redesign from
+ * the copy-edit canvas: an INPUTS section at the top of ROCKER, RAILS, VOLUME and FINS (one import
+ * box where a screen imports, and a "… details are imported: …" line in place of the controls it
+ * now hides), RAILS' View box on each rail heading, ROCKER's hand-set Rocker & Foil table, FINS'
+ * Advanced reading nose to tail, and TEMPLATE's Show Drag Points / Show fin placement wording. Each
+ * plan compared old against new before re-recording: only the side panels moved. Rendered by the
+ * webpack dev server (`IS_WEBPACK_TEST=1`, ports 3161–3163) in the plans' worktrees; RAILS and
+ * TEMPLATE were shot after hydration settled (an early shot catches the unfitted server render).
+ *
  * RE-RECORDED 2026-10-17 (quick 261017-sru, then fast task 173) — TEMPLATE, VOLUME and FINS for the
  * closed Board Length boxes, which now read 6' and 0" like their lists instead of a bare 6 and 0
  * (261017-sru; VOLUME and FINS changed only in that box row). TEMPLATE once more for the founder's

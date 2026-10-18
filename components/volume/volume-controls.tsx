@@ -24,6 +24,7 @@ import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { formatWholeFeet, formatWholeInches, inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
 import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
 import { volumeImportedLine } from "@/lib/geometry/volume-imported-line";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -125,7 +126,7 @@ export function VolumeControls({
         )}
         {canImport && importing && (
           <div className="text-xs text-surf-ink-muted font-normal">
-            {volumeImportedLine(effectiveVolume.length, effectiveVolume.width, effectiveVolume.centerThickness, system)}
+            {keepFiguresTogether(volumeImportedLine(effectiveVolume.length, effectiveVolume.width, effectiveVolume.centerThickness, system))}
           </div>
         )}
       </div>

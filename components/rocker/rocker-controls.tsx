@@ -109,6 +109,7 @@ import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { BoardOnBlankSection } from "./board-on-blank";
 import { Live } from "./live";
 import { liveControls, type RockerTab } from "./rocker-live-controls";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 
 export type RockerControlsSectionKey = "blank" | "boardOnBlank" | "rockerAndFoil" | "foil";
 
@@ -421,7 +422,7 @@ export function RockerControls({
           Inputs
         </div>
         <div className="flex flex-col gap-3 pt-3">
-          <div className="text-xs text-surf-ink-muted font-normal">{templateLine}</div>
+          <div className="text-xs text-surf-ink-muted font-normal">{keepFiguresTogether(templateLine)}</div>
           <Live on={live.center}>
             <div className={cn(locked && "opacity-40")}>
               {/* The Board Length hand-rolled shape compacted to one line: label and typed field on

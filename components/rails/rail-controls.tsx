@@ -13,6 +13,7 @@ import {
 } from "@/lib/geometry/rail-bands";
 import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { railsImportedLine } from "@/lib/geometry/rails-imported-line";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
@@ -452,7 +453,7 @@ export function RailControls({
           </label>
           {railsImportFoilThickness && (
             <div className="mt-1 text-xs text-surf-ink-muted font-normal">
-              {railsImportedLine(spec.nose.boardThickness, spec.center.boardThickness, spec.tail.boardThickness, system)}
+              {keepFiguresTogether(railsImportedLine(spec.nose.boardThickness, spec.center.boardThickness, spec.tail.boardThickness, system))}
             </div>
           )}
         </div>
