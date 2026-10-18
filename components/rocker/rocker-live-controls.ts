@@ -6,8 +6,9 @@
  * the placement slider and blank picker live."
  *
  * - VIEWER: everything, exactly as before.
- * - DATASHEET: Center Thickness (its typed box and slider) and the THICKNESS section's Nose Tip and Tail
- *   Tip rows. The DATASHEET table's own typed cells are not the sidebar and keep working.
+ * - DATASHEET: Center Thickness (INPUTS' typed box and slider) and the two tip thicknesses — the Rocker &
+ *   Foil grid's Tip thickness cells with no blank, Foil's Nose Tip and Tail Tip rows with one. The
+ *   DATASHEET table's own typed cells are not the sidebar and keep working.
  * - TOP VIEW (small screens only — the tab exists only there): the whole BLANK section and the Placement
  *   slider.
  * The same rule holds wherever the tabs exist: a computer, an upright phone, a phone held sideways.
@@ -21,7 +22,7 @@
  * It imports nothing, so it can be unit-tested in isolation (`rocker-live-controls.test.ts`).
  *
  * The planner's reading, for the founder to overrule (D-12): with no blank picked, the DATASHEET table
- * types all five thicknesses, but the sidebar's two hand-set Nose @ 12" / Tail @ 12" rows share the
+ * types all five thicknesses, but the sidebar's two hand-set @ 12" thickness cells share the
  * `fineTune` flag with the blank's 12" fine-tunes and are dimmed on DATASHEET, because the founder said
  * "only make live the 3 thickness values". Changing that is one value in the DATASHEET table below.
  */
@@ -31,7 +32,7 @@ export type RockerTab = "viewer" | "datasheet" | "topView";
 
 /** One flag per group of sidebar controls: true means live, false means dimmed and inert. */
 export interface RockerLiveControls {
-  /** The CENTER THICKNESS section: its heading, typed box and slider. */
+  /** INPUTS' Center Thickness: its typed box and slider (the INPUTS heading and TEMPLATE line are text). */
   center: boolean;
   /** The whole BLANK section: heading, search, list, Show all, Change / Keep, Remove, Switch to This Blank. */
   blank: boolean;
@@ -39,18 +40,20 @@ export interface RockerLiveControls {
   placement: boolean;
   /** BOARD ON BLANK's Deck Skin slider; the readouts and planer passes are text and never dim. */
   deckSkin: boolean;
-  /** The hand-set ROCKER section (shown only with no blank): its heading and four lifts. */
+  /** The ROCKER column of the Rocker & Foil grid (shown only with no blank): its four lift cells. */
   rocker: boolean;
-  /** THICKNESS's Nose Tip and Tail Tip rows. */
+  /** The two Tip thicknesses: the grid's Tip thickness cells with no blank, Foil's Nose Tip and Tail Tip
+   * rows with a blank. */
   tipThickness: boolean;
-  /** THICKNESS's 12" stations in both states — the two fine-tunes and the Fine-tune off pair with a blank,
-   * the two hand-set Nose @ 12" / Tail @ 12" rows without one — and ↺ Reset Fine-Tune (D-12). */
+  /** The two 12" thicknesses in both states — the grid's two @ 12" thickness cells with no blank; the two
+   * fine-tunes, the Fine-tune off pair and ↺ Reset Fine-Tune with a blank (D-12). */
   fineTune: boolean;
-  /** THICKNESS's Tip Style pair (blank only). */
+  /** Foil's Tip Style pair (blank only). */
   tipStyle: boolean;
-  /** THICKNESS's two Thinning Starts rows (blank only). */
+  /** Foil's two Thinning Starts rows (blank only). */
   thinning: boolean;
-  /** Derived: the THICKNESS heading and intro line, live whenever any of the section's rows is (D-13). */
+  /** Derived: the Foil heading and intro line (with no blank, the Rocker & Foil heading is live while this
+   * or `rocker` is), live whenever any of the section's rows is (D-13). */
   thicknessHeading: boolean;
 }
 
