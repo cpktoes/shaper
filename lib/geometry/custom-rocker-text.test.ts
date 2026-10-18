@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { BLANK_TEXT_MAX, isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { formatThinningStart } from "./blank-reasons";
-import { blankStarIdentity, type RockerChange } from "./custom-rocker";
+import { RAIL_LABEL_TEXTS } from "@/components/rocker/rocker-view-frame";
+import { blankDisplayName, blankStarIdentity, type RockerChange } from "./custom-rocker";
 import {
   addSecondChangeLabel,
   amountHints,
@@ -12,12 +13,16 @@ import {
   bendStartHints,
   drawingHeading,
   bendStartText,
+  BLANK_VIEW_TITLES,
+  blankViewName,
   CUSTOM_ROCKER_FIT_LINE,
   customizeButtonLabel,
   customizeTitle,
   customRockerFootnote,
   customRockerRowLabel,
+  DIMENSIONS_LABEL,
   endHeading,
+  FIGURE_TAGS,
   FLOOR_HINT,
   FOOTER_WORDS,
   NATURAL_ROCKER_LABEL,
@@ -168,5 +173,32 @@ describe("a custom blank's star fits the stars' reader (plan 01's note)", { time
       expect(vendor.length, record.name).toBeLessThanOrEqual(BLANK_TEXT_MAX);
       expect(name.length, record.name).toBeLessThanOrEqual(BLANK_TEXT_MAX);
     }
+  });
+});
+
+describe("the one drawing's words (quick 261017-ojc)", () => {
+  it("tags every line with what it is (D-02, D-03, P-5)", () => {
+    expect(FIGURE_TAGS).toEqual({ nat: "NAT", custom: "CUSTOM", board: "BOARD", blank: "BLANK" });
+  });
+
+  it("titles the two rails with the page viewer's own words (P-7)", () => {
+    expect(BLANK_VIEW_TITLES.thickness).toBe(RAIL_LABEL_TEXTS.deck);
+    expect(BLANK_VIEW_TITLES.rocker).toBe(RAIL_LABEL_TEXTS.bottom);
+  });
+
+  it("names the phone's Dimensions icon (D-07)", () => {
+    expect(DIMENSIONS_LABEL).toBe("Dimensions");
+  });
+
+  it("names the drawing: the blank with its rocker, and the board inside it when shown", () => {
+    const copy = readSeedCatalog().filter(isPickable)[0];
+    const s = { changes: [{ end: "nose" as const, amount: inchesToMm(0.5) }] };
+    const off = blankViewName(copy, s, false);
+    const on = blankViewName(copy, s, true);
+    expect(off).toContain(blankDisplayName(copy, s, { vendor: true }));
+    expect(off).not.toContain("board");
+    expect(on.startsWith(off)).toBe(true);
+    expect(on).toContain("your board drawn inside it");
+    expect(blankViewName(copy, undefined, false)).toContain(blankDisplayName(copy, undefined, { vendor: true }));
   });
 });

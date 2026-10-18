@@ -7,7 +7,9 @@
  * both systems (D-01; written by `custom-rocker.ts`).
  */
 
+import type { BlankRecord } from "./blank";
 import { formatThinningStart } from "./blank-reasons";
+import { blankDisplayName, type BlankRockerSpec } from "./custom-rocker";
 import { columnUnitSuffix, formatSignedMark } from "./measure-display";
 import { inchesToMm, type Mm, type UnitsSystem } from "./units";
 
@@ -137,6 +139,39 @@ export const SHOW_BOARD_LABEL = "Show my board";
  */
 export function drawingHeading(showBoard: boolean): string {
   return showBoard ? "Blank Dimensions & Your Board" : "Blank Dimensions";
+}
+
+// ---------------------------------------------------------------------------------------------
+// The one drawing (quick 261017-ojc, 2026-10-17)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What each line on the drawing says it is (D-02, D-03, P-5), in the chip's small type: under the
+ * foam the catalogue's printed rocker (NAT), the rocker as ordered (CUSTOM — the DATASHEET's Custom
+ * Rocker row) and the board's own (BOARD); above it, with the board shown, the blank's thickness and
+ * the board's (BLANK, BOARD).
+ */
+export const FIGURE_TAGS = { nat: "NAT", custom: "CUSTOM", board: "BOARD", blank: "BLANK" } as const;
+
+/** The drawing's two titles — the page viewer's own words (P-7): Thickness over the cards, Rocker
+ * under the stacks. */
+export const BLANK_VIEW_TITLES = { thickness: "Thickness", rocker: "Rocker" } as const;
+
+/** The phone's second icon (D-07): it clears the figures so the foam fills the drawing. */
+export const DIMENSIONS_LABEL = "Dimensions";
+
+/**
+ * The drawing's accessible name: the blank with its rocker, what the figures are, and — with Show my
+ * board on — that the board is drawn inside it. The maker and name reach the page only as this plain
+ * attribute (T-ojc-01).
+ */
+export function blankViewName(
+  copy: Pick<BlankRecord, "vendor" | "name">,
+  spec: BlankRockerSpec | null | undefined,
+  showBoard: boolean,
+): string {
+  const blank = `Side view of the ${blankDisplayName(copy, spec, { vendor: true })} blank, with its thickness above it and its rocker under it at its five stations`;
+  return showBoard ? `${blank}, and your board drawn inside it with its own thickness and rocker` : blank;
 }
 
 /** The footer's words (D-09). */
