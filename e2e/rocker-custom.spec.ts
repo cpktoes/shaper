@@ -241,9 +241,12 @@ test.describe("Customize Rocker on a computer", () => {
     const card = (await dialog.locator("[data-custom-rocker-drawing]").boundingBox())!;
     expect(rows.x + rows.width).toBeLessThanOrEqual(card.x + 1);
 
-    // Show my board starts Off: the blank alone, its five readings, under its own heading (fast task 171).
-    await expect(dialog.locator("[data-show-board]")).toHaveText("Show my board: Off");
+    // Show my board starts Off — an icon in the drawing's upper right (quick 261017-ojc, D-08) — and the
+    // card holds ONE drawing, the blank's, under its own heading (fast task 171; D-04).
+    const showBoard = dialog.locator("[data-show-board]");
+    await expect(showBoard).toHaveAttribute("aria-pressed", "false");
     await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions");
+    await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"]')).toHaveCount(1);
     await expect(dialog.locator("[data-blank-alone] [data-blank-alone-reading]")).toHaveCount(5);
 
     // +1/2"N, then a second nose change at +1/2" from 18" in: the nose tip rises exactly 1" (D-05).
@@ -289,11 +292,12 @@ test.describe("Customize Rocker on a computer", () => {
     expect(await tailAmount.getAttribute("aria-valuenow")).toBe(await tailAmount.getAttribute("min"));
     await expect(dialog.locator("[data-rocker-floor-hint]")).toHaveText(FLOOR_HINT);
 
-    // Show my board On: the board in the bent blank.
-    await dialog.locator("[data-show-board]").click();
-    await expect(dialog.locator("[data-show-board]")).toHaveText("Show my board: On");
-    await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Your Board's Dimensions");
-    await expect(dialog.locator('[data-custom-rocker-drawing] [data-board-silhouette="profile"]')).toBeVisible();
+    // Show my board On: the board inside the SAME drawing of the bent blank (D-01), never a second one.
+    await showBoard.click();
+    await expect(showBoard).toHaveAttribute("aria-pressed", "true");
+    await expect(dialog.locator("[data-custom-rocker-heading]")).toHaveText("Blank Dimensions & Your Board");
+    await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"]')).toHaveCount(1);
+    await expect(dialog.locator('[data-custom-rocker-drawing] svg[role="img"] [data-board-silhouette="profile"]')).toBeVisible();
 
     // The page's zoom works on the popup's drawing; 1x puts it back.
     const drawing = dialog.locator('[data-custom-rocker-drawing] svg[role="img"]');

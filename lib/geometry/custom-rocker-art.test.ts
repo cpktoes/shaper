@@ -3,7 +3,7 @@ import { isPickable } from "@/lib/blanks/catalog";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import type { BlankRecord } from "./blank";
-import { prepareBlank } from "./blank-fit";
+import { placementRange, prepareBlank } from "./blank-fit";
 import { printedBlankStations } from "./board-profile";
 import {
   bendAt,
@@ -18,7 +18,7 @@ import {
   blankAloneLayout,
   blankAloneStations,
   blankFrameOverlay,
-  boardFrameOverlay,
+  boardInBlankFrame,
   NO_FIGURE,
   type BlankAloneLayout,
   type LayoutBox,
@@ -145,35 +145,91 @@ describe("the overlay is drawn from ONE spec — the curve's own (the founder's 
   });
 });
 
-describe("the board's frame reads the same lines off the side view", () => {
-  for (const [label, s] of SPECS) {
-    it(`${label}: shifted by the blank's start, read off the side view's own bottom and deck`, () => {
-      const profile = designSideProfile({ ...LONGBOARD, blank: { ...LONGBOARD.blank, rocker: s } }, LIVE_DESIGN_RULES);
-      const view = profile.blank!;
-      const board = boardFrameOverlay(s, view);
-      const own = blankFrameOverlay(s, view.onBlank.prepared);
-      const L = view.record.lengthMm;
-      // 41 stations along the blank, each read both ways.
-      for (let i = 0; i <= 40; i++) {
-        const x = (L * i) / 40;
-        const k = own.natural.findIndex((pt) => Math.abs(pt.s - x) < 1e-6);
-        if (k < 0) continue;
-        expect(board.natural[k].s).toBeCloseTo(x + view.start, 9);
-        expect(board.natural[k].h).toBeCloseTo(view.bottomAt(mm(x + view.start)) - bendAt(normalizeSpec(s, L), L, x), 6);
-      }
-      expect(board.spans.map((sp) => [sp.end, sp.order, sp.bottom.length])).toEqual(
-        own.spans.map((sp) => [sp.end, sp.order, sp.bottom.length]),
-      );
-      board.spans.forEach((span, j) => {
-        span.bottom.forEach((pt, k) => {
-          expect(pt.s).toBeCloseTo(own.spans[j].bottom[k].s + view.start, 9);
-          const deck = span.deck[k].h - pt.h;
-          expect(deck).toBeCloseTo(view.deckAt(mm(pt.s)) - view.bottomAt(mm(pt.s)), 6);
-        });
+describe("the board inside the blank, in the blank's own frame (quick 261017-ojc, P-3)", () => {
+  const fieldsWith = (s: BlankRockerSpec | undefined, extra: Partial<typeof LONGBOARD.blank> = {}) => ({
+    ...LONGBOARD,
+    blank: { ...LONGBOARD.blank, ...extra, rocker: s ?? { changes: [] } },
+  });
+  const range = placementRange(LONGBOARD.blank.copy.lengthMm, LONGBOARD.outline.length);
+  const variants: [string, Partial<typeof LONGBOARD.blank>][] = [
+    ["as the preset opens", {}],
+    ["Pin deck tips", { tipStyle: "pinDeck" }],
+    ["Bottom tips", { tipStyle: "bottom" }],
+    ["a Bottom fine-tune", { nose12Offset: inchesToMm(0.25), tail12Offset: inchesToMm(-0.125), fineTuneSurface: "bottom" }],
+    ["placed off centre", { placement: mm(range.max / 2) }],
+  ];
+  const specs: [string, BlankRockerSpec | undefined][] = [["natural", undefined], ...SPECS];
+
+  for (const [label, s] of specs) {
+    for (const [how, extra] of variants) {
+      it(`${label}, ${how}: one shift carries the board's heights into the blank's frame`, () => {
+        const profile = designSideProfile(fieldsWith(s, extra), LIVE_DESIGN_RULES);
+        const view = profile.blank!;
+        const board = boardInBlankFrame(profile)!;
+        const L = profile.length;
+        // The same shift at 41 even stations along the board: the blank's own bent bottom there less
+        // the side view's blank bottom (in the board's frame).
+        for (let i = 0; i <= 40; i++) {
+          const sBoard = (L * i) / 40;
+          const here = view.onBlank.prepared.rocker.sample(sBoard - view.start) - view.bottomAt(mm(sBoard));
+          expect(Math.abs(here - board.shift), `${label} ${how} at ${i}/40`).toBeLessThan(1e-9);
+        }
+        // The outline and the stations are the profile's own heights, shifted, x from the blank's tail tip.
+        expect(board.outline[0].x).toBeCloseTo(-view.start, 9);
+        expect(board.outline[board.outline.length - 1].x).toBeCloseTo(L - view.start, 9);
+        for (const st of board.stations) {
+          const sBoard = mm(st.x + view.start);
+          expect(st.bottom).toBeCloseTo(profile.rockerAt(sBoard) + board.shift, 9);
+          expect(st.deck).toBeCloseTo(profile.deckAt(sBoard) + board.shift, 9);
+          expect(st.thickness).toBe(profile.effectiveFoil[st.key]);
+        }
       });
-      expect(board.bendMarks.map((m) => m.s)).toEqual(own.bendMarks.map((m) => m.s + view.start));
+    }
+
+    it(`${label}: the drawn bent blank and the board's blank are one curve`, () => {
+      const profile = designSideProfile(fieldsWith(s), LIVE_DESIGN_RULES);
+      const view = profile.blank!;
+      const copy = LONGBOARD.blank.copy;
+      const bent = withCustomRocker(prepareBlank(copy), s);
+      for (let i = 0; i <= 40; i++) {
+        const x = (copy.lengthMm * i) / 40;
+        expect(Math.abs(view.onBlank.prepared.rocker.sample(x) - bent.rocker.sample(x))).toBeLessThan(1e-9);
+      }
+    });
+
+    it(`${label}: with no fine-tune the board's bottom sits the centre gap above the blank's (what P-3 keeps out of BOARD)`, () => {
+      const profile = designSideProfile(fieldsWith(s), LIVE_DESIGN_RULES);
+      const view = profile.blank!;
+      const board = boardInBlankFrame(profile)!;
+      expect(Math.abs(board.shift - (view.centerGap + view.onBlank.cropMinimum))).toBeLessThan(1e-9);
     });
   }
+
+  it("the board's rocker reads as the page reads it, and nothing past the board's tips", () => {
+    for (const preset of BOARD_PRESETS) {
+      const fields = presetDesignFields(preset);
+      if (!fields.blank) continue;
+      const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+      const view = profile.blank!;
+      const board = boardInBlankFrame(profile)!;
+      const L = profile.length;
+      // The board stops short of both blank tips on every preset that opens in a blank.
+      expect(view.start, preset.id).toBeLessThan(0);
+      expect(view.end, preset.id).toBeGreaterThan(L);
+      expect(board.rockerAt(0), preset.id).toBeNull();
+      expect(board.rockerAt(view.record.lengthMm), preset.id).toBeNull();
+      expect(board.rockerAt(L / 2 - view.start)!, preset.id).toBeCloseTo(profile.stationRocker.center, 9);
+      for (let i = 0; i <= 20; i++) {
+        const sBoard = (L * i) / 20;
+        expect(board.rockerAt(sBoard - view.start)!, preset.id).toBeCloseTo(profile.rockerAt(mm(sBoard)), 9);
+      }
+    }
+  });
+
+  it("a hand-set board has no blank to sit in", () => {
+    const profile = designSideProfile({ ...LONGBOARD, blank: null }, LIVE_DESIGN_RULES);
+    expect(boardInBlankFrame(profile)).toBeNull();
+  });
 });
 
 const PICKABLE: BlankRecord[] = readSeedCatalog().filter(isPickable);

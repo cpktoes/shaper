@@ -14,9 +14,10 @@
  *    is the drawn bottom less the whole bend, so it coincides with the drawn bottom wherever no change
  *    has a share; the blue (second) span is the drawn outline itself; the red (first) span is the
  *    drawn outline less the second change's bend on that end (P-14) — between a first and a second
- *    bend point red and the outline are one line. `rockerOverlay` is the one core; the blank's own
- *    frame (`blankFrameOverlay`, Show my board off) and the board's frame (`boardFrameOverlay`, Show
- *    my board on) only feed it a different curve and a different shift along the board.
+ *    bend point red and the outline are one line. `rockerOverlay` is the one core and
+ *    `blankFrameOverlay` feeds it the bent blank; since quick 261017-ojc the popup draws one picture
+ *    in the blank's own frame in both states (the board, when shown, carried into it by
+ *    `boardInBlankFrame`), so there is no second frame to feed.
  *
  * 2. THE BLANK ALONE (P-3, P-11) — with Show my board off the popup draws the blank itself with ALL
  *    its dimensions at its own five stations (D-07): its printed thickness as chips on one rail, its
@@ -32,7 +33,7 @@
  */
 
 import type { PreparedBlank } from "./blank-fit";
-import type { BlankSideView } from "./board-profile";
+import type { BoardSideProfile } from "./board-profile";
 import { printedBlankStations } from "./board-profile";
 import { bendAt, bendPoint, customPrintedStations, isNaturalSpec, normalizeSpec, type BlankRockerSpec, type RockerChange } from "./custom-rocker";
 import type { FoilStationKey } from "./foil";
@@ -162,16 +163,73 @@ export function blankFrameOverlay(spec: BlankRockerSpec | undefined, bent: Prepa
   );
 }
 
-/** The overlay in the board's frame (`s` from the board's tail tip), read off the side view's own
- * blank bottom and deck — the drawing the popup shows with Show my board on. */
-export function boardFrameOverlay(spec: BlankRockerSpec | undefined, view: BlankSideView): RockerOverlayLines {
-  const at = (x: number) => mm(x + view.start);
-  return rockerOverlay(
-    spec,
-    view.record.lengthMm,
-    { bottomAt: (x) => view.bottomAt(at(x)), thicknessAt: (x) => view.deckAt(at(x)) - view.bottomAt(at(x)) },
-    (x) => x + view.start,
-  );
+/**
+ * The board inside the blank, in the blank's own frame (quick 261017-ojc, D-01, P-3, 2026-10-17): with
+ * Show my board on, the popup draws the board inside the SAME picture of the bent blank rather than
+ * switching to the page's own viewer, so the board is carried into the blank's frame — `x` from the
+ * blank's tail tip, heights above the bent blank's low point (the drawing's bottom plane).
+ *
+ * `shift` is the one constant that carries a height in the board's frame (zero at the board's own low
+ * point) into the blank's frame. It is constant along the board because the board's bottom and the
+ * blank's bottom are both the blank's curve less a constant — the crop's re-level, the centre gap, a
+ * Bottom fine-tune's re-level; Pin deck's tip thinning appears in both and cancels (the test proves it).
+ *
+ * `rockerAt(x)` is the board's rocker at blank position `x` read the way the page reads it — the
+ * board on a flat table, its own low point zero — or null where the board does not reach. Never the
+ * board's bottom height above the blank's plane (P-3): that would add the foam planed off the bottom
+ * everywhere, and the BOARD figure would read the centre gap at a centre where the board's rocker is 0.
+ *
+ * Null for a hand-set board (no blank to draw it in).
+ */
+export interface BoardInBlank {
+  /** Board-frame height + `shift` = blank-frame height. */
+  shift: number;
+  /** Where the board's tail tip sits along the blank (negative when the board runs past the blank). */
+  start: number;
+  /** The board's own length. */
+  length: number;
+  /** The board's outline in the blank's frame, tail to nose: its bottom and its deck. */
+  outline: { x: number; bottom: number; deck: number }[];
+  /** The board's own five stations in the blank's frame, with its thickness there (the page's figures). */
+  stations: { key: FoilStationKey; x: number; bottom: number; deck: number; thickness: Mm }[];
+  /** The board's rocker at blank position `x`, as the page reads it, or null off the board. */
+  rockerAt(x: number): Mm | null;
+}
+
+/** Points along the board's outline (both ends exact). */
+const BOARD_OUTLINE_STEPS = 120;
+/** A blank position this close past either end of the board still reads the board's tip. */
+const BOARD_REACH_SLACK_MM = 1e-6;
+
+export function boardInBlankFrame(profile: BoardSideProfile): BoardInBlank | null {
+  const view = profile.blank;
+  if (!view) return null;
+  const L = profile.length;
+  const start = view.start;
+  const shift = view.onBlank.prepared.rocker.sample(L / 2 - start) - view.bottomAt(mm(L / 2));
+  const outline = Array.from({ length: BOARD_OUTLINE_STEPS + 1 }, (_, i) => {
+    const s = mm(i === BOARD_OUTLINE_STEPS ? L : (L * i) / BOARD_OUTLINE_STEPS);
+    return { x: s - start, bottom: profile.rockerAt(s) + shift, deck: profile.deckAt(s) + shift };
+  });
+  const stations = profile.stations.map(({ key, station }) => ({
+    key,
+    x: station - start,
+    bottom: profile.rockerAt(station) + shift,
+    deck: profile.deckAt(station) + shift,
+    thickness: profile.effectiveFoil[key],
+  }));
+  return {
+    shift,
+    start,
+    length: L,
+    outline,
+    stations,
+    rockerAt(x) {
+      const s = x + start;
+      if (s < -BOARD_REACH_SLACK_MM || s > L + BOARD_REACH_SLACK_MM) return null;
+      return profile.rockerAt(mm(Math.min(L, Math.max(0, s))));
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------------------------

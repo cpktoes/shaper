@@ -131,11 +131,12 @@ export const SHOW_BOARD_LABEL = "Show my board";
 
 /**
  * The heading over the popup's drawing, saying whose figures it carries (fast task 171, the founder,
- * 2026-10-17: "give that template a header … to make it clear"): the blank's own with Show my board
- * off, the surfboard's with it on (D-07).
+ * 2026-10-17: "give that template a header … to make it clear"). Quick 261017-ojc (D-04): the drawing
+ * is one picture of the blank in both states, so the heading always names the blank and adds the
+ * board when it is drawn inside it — "&", not a dot (the founder's words).
  */
 export function drawingHeading(showBoard: boolean): string {
-  return showBoard ? "Your Board's Dimensions" : "Blank Dimensions";
+  return showBoard ? "Blank Dimensions & Your Board" : "Blank Dimensions";
 }
 
 /** The footer's words (D-09). */

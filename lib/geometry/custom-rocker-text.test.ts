@@ -86,9 +86,9 @@ describe("the rows (D-05, D-06)", () => {
     expect(bendStartHints("tail", 1)).toEqual(["Nearer the centre", "Near the tail"]);
   });
 
-  it("the drawing's heading says whose figures it carries (fast task 171)", () => {
+  it("the drawing's heading says whose figures it carries (fast task 171; quick 261017-ojc, D-04)", () => {
     expect(drawingHeading(false)).toBe("Blank Dimensions");
-    expect(drawingHeading(true)).toBe("Your Board's Dimensions");
+    expect(drawingHeading(true)).toBe("Blank Dimensions & Your Board");
   });
 
   it("a tail Bend starts thumb is mirrored over its range, a nose thumb is not, and both read back exactly (fast task 170)", () => {
