@@ -165,6 +165,9 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     });
 
     if (path === "/design/rocker") continue;
+    // TEMPLATE has no tick boxes since quick 261018-e6w: its only two were the Settings rows, now the
+    // drawing's toolbar buttons (the WINGS tab's Lock rows are out of this loop's scope).
+    if (path === "/design/outline") continue;
 
     test(`${path}: every visible checkbox row is at least 44px tall`, async ({ page }) => {
       await page.goto(path);

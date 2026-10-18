@@ -349,21 +349,9 @@ export function OutlineEditor() {
             geometry={outlineGeometry}
             finEdges={wingFinEdges}
             finMarks={finPlacement.marks}
-            showConstruction={showConstruction}
-            onToggleConstruction={handleToggleConstruction}
-            showFins={showFins}
-            onToggleShowFins={() => setShowFins(!showFins)}
           />
         ) : (
-          <OutlineControls
-            outline={outline}
-            geometry={outlineGeometry}
-            onChange={updateOutline}
-            showConstruction={showConstruction}
-            onToggleConstruction={handleToggleConstruction}
-            showFins={showFins}
-            onToggleShowFins={() => setShowFins(!showFins)}
-          />
+          <OutlineControls outline={outline} geometry={outlineGeometry} onChange={updateOutline} />
         )
       }
       canvas={
