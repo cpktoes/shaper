@@ -3,6 +3,7 @@ import {
   blankCards,
   blankPicker,
   firstFittingCard,
+  nudgeCenterThickness,
   openBlankPicker,
   openRocker,
   pickedCard,
@@ -184,22 +185,13 @@ test.describe("ROCKER — a real blank from the list", () => {
   });
 });
 
-/** The page's first control: the board's one centre thickness, typed. */
-async function typeCenterThickness(page: Page, value: string) {
-  const field = page.getByRole("textbox", { name: "Center Thickness" });
-  await field.click();
-  await field.fill(value);
-  await field.press("Enter");
-}
-
 /**
  * Raises the board's one centre thickness from the default 2 1/2" to 3 1/2" — thicker than the
  * shortest fitting blank can carry with room for the default deck skin and one bottom pass, so that
  * pick stops fitting.
  */
 async function raiseCenterThickness(page: Page) {
-  await typeCenterThickness(page, "3 1/2");
-  await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('3 1/2"');
+  await nudgeCenterThickness(page, 16, '3 1/2"');
 }
 
 /** A `SliderRow`'s slider, found by the start of its label line. */
@@ -267,10 +259,9 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await expect(reset).toHaveAttribute("aria-disabled", "true");
   });
 
-  test("Center Thickness is the board's one centre — RAILS reads the typed value", async ({ page }) => {
+  test("Center Thickness is the board's one centre — RAILS reads the slider's value", async ({ page }) => {
     await openRocker(page);
-    await typeCenterThickness(page, "2 3/4");
-    await expect(page.getByRole("textbox", { name: "Center Thickness" })).toHaveValue('2 3/4"');
+    await nudgeCenterThickness(page, 4, '2 3/4"');
 
     await goToScreen(page, "RAILS");
     // The first visit builds the page on the test's dev server, which can take longer than 5 s.

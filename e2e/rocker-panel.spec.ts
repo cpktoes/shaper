@@ -7,7 +7,7 @@ import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
  *
  * - INPUTS is the first section, under the title and subtitle: a ruled, non-collapsible heading, the
  *   `TEMPLATE details are imported: …` line (moved up from under the subtitle) and the Center Thickness
- *   box and slider. The separate CENTER THICKNESS section is gone.
+ *   slider, its value in its label. The separate CENTER THICKNESS section is gone.
  * - With no blank picked, the old ROCKER and THICKNESS sections are ONE `Rocker & Foil` section: the intro
  *   `Hand-set until you pick a blank.` and a grid — a ROCKER and a THICKNESS column, a NOSE group (Tip, then
  *   @ 12") and a TAIL group (@ 12", then Tip) — each cell a value box over its own named slider.
@@ -69,7 +69,9 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     const inputs = page.locator("[data-rocker-inputs]");
     await expect(inputs.getByText("Inputs", { exact: true })).toBeVisible();
     await expect(inputs.getByText('TEMPLATE details are imported: 6\'0" × 19"', { exact: true })).toBeVisible();
-    await expect(inputs.getByRole("textbox", { name: "Center Thickness", exact: true })).toBeVisible();
+    await expect(inputs.getByText('Center Thickness — 2 1/2"', { exact: true })).toBeVisible();
+    await expect(inputs.getByRole("textbox")).toHaveCount(0);
+    await expect(sliderNamed(page, "Center Thickness")).toHaveCount(1);
     await expect(inputs.locator('[data-slot="slider-thumb"] input[type="range"]')).toHaveCount(1);
     await expect(side.getByRole("button", { name: /^Center Thickness/ })).toHaveCount(0);
     await expect(side.getByRole("button", { name: /^Rocker\s*[▾▸]$/ })).toHaveCount(0);
@@ -141,6 +143,7 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     await expect(
       page.locator("[data-rocker-inputs]").getByText("TEMPLATE details are imported: 182.9 × 48.3 cm", { exact: true }),
     ).toBeVisible();
+    await expect(page.locator("[data-rocker-inputs]").getByText("Center Thickness — 64 mm", { exact: true })).toBeVisible();
     await expect(side.getByText("@ 30.5 cm", { exact: true })).toHaveCount(2);
     await expect(cellBox(page, "nose-tip-rocker")).toHaveText("114 mm");
     await expect(cellBox(page, "nose-tip-thickness")).toHaveText("13 mm");

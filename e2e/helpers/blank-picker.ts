@@ -166,6 +166,28 @@ export async function openCustomizeRocker(page: Page): Promise<Locator> {
   return dialog;
 }
 
+/** ROCKER's Center Thickness slider (the one INPUTS holds; there is no typed box any more, quick 261018-ejc). */
+export function centerThicknessSlider(page: Page): Locator {
+  return page.locator("[data-rocker-inputs]").getByRole("slider", { name: "Center Thickness", exact: true });
+}
+
+/**
+ * Nudges Center Thickness with the keyboard once React owns the slider, then expects INPUTS to read
+ * `Center Thickness — {expected}`. One ArrowRight press is one 1/16" step in Imperial (ArrowLeft for a
+ * negative count), so the board's default 2 1/2" reads 2 3/4" after four presses.
+ */
+export async function nudgeCenterThickness(page: Page, sixteenths: number, expected: string): Promise<void> {
+  const slider = centerThicknessSlider(page);
+  await expect(slider).toBeVisible();
+  await expect
+    .poll(() => slider.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+  await slider.focus();
+  const key = sixteenths < 0 ? "ArrowLeft" : "ArrowRight";
+  for (let i = 0; i < Math.abs(sixteenths); i += 1) await page.keyboard.press(key);
+  await expect(page.locator("[data-rocker-inputs]")).toContainText(`Center Thickness — ${expected}`);
+}
+
 /** The BLANK button's rocker line — `Natural`, or the note as ordered (D-02). */
 export function blankRockerLine(page: Page): Locator {
   return page.locator("[data-blank-rocker]");
