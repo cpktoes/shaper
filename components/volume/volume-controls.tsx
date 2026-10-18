@@ -6,8 +6,9 @@
  * components/rails/rail-controls.tsx wholesale.
  *
  * Quick 261017-vdh (BRIEF 3): an INPUTS section with ONE box, "Import Designed Board". Ticked (the
- * default), one line says which board was imported and that the rail shapes come from RAILS, and the
- * four hand controls (Board Length, Board Width, Center Thickness, Board Type) are not on the page.
+ * default), a card says which board was imported (quick 261018-fg1, sketch 017 C: the length, width and
+ * centre thickness in large figures under "From TEMPLATE", a foot line saying the rail shapes come from
+ * RAILS), and the four hand controls (Board Length, Board Width, Center Thickness, Board Type) are not on the page.
  * Unticked, they show — the quick estimate.
  */
 
@@ -23,8 +24,8 @@ import { BOARD_TYPE_STEP_COUNT } from "@/lib/geometry/volume";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { formatWholeFeet, formatWholeInches, inchesToMm, wholeFeetAndInches } from "@/lib/geometry/units";
 import { formatDim, formatLength, measureSlider, typedFieldBounds } from "@/lib/geometry/measure-display";
-import { volumeImportedLine } from "@/lib/geometry/volume-imported-line";
-import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
+import { volumeImportedReadout } from "@/lib/geometry/imported-readout";
+import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 
 const WIDTH_BOUNDS = { min: 16, max: 24, step: 0.125 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 0.0625 };
@@ -105,7 +106,7 @@ export function VolumeControls({
         </div>
       </div>
 
-      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the line that
+      {/* The INPUTS block: the ruled heading, the one box under it and — while ticked — the card that
           says which board was imported. */}
       <div className="flex flex-col gap-1.5">
         <InputsHeading />
@@ -125,9 +126,15 @@ export function VolumeControls({
           </label>
         )}
         {canImport && importing && (
-          <div className="text-xs text-surf-ink-muted font-normal">
-            {keepFiguresTogether(volumeImportedLine(effectiveVolume.length, effectiveVolume.width, effectiveVolume.centerThickness, system))}
-          </div>
+          <ImportedReadoutCard
+            className="mt-0.5"
+            readout={volumeImportedReadout(
+              effectiveVolume.length,
+              effectiveVolume.width,
+              effectiveVolume.centerThickness,
+              system,
+            )}
+          />
         )}
       </div>
 

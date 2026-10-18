@@ -483,6 +483,14 @@ describe("the design screens read every measurement through the display boundary
     }
   });
 
+  it("the INPUTS readout prints every figure through the display boundary (quick 261018-fg1)", () => {
+    const source = readStripped("lib/geometry/imported-readout.ts");
+    expect(/from\s+["']\.\/measure-display["']/.test(source)).toBe(true);
+    for (const banned of BANNED_DISPLAY_FORMATTERS) {
+      expect(source, `lib/geometry/imported-readout.ts calls ${banned}`).not.toContain(banned);
+    }
+  });
+
   it("the blank popup's browse rules print and step every range through the display boundary (quick 261015-ve9)", () => {
     const source = readStripped("lib/geometry/blank-browse.ts");
     expect(/from\s+["']\.\/measure-display["']/.test(source)).toBe(true);

@@ -1,12 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { goToScreen } from "./helpers/screens";
+import { expectReadout, importedReadout } from "./helpers/imported-readout";
 
 /**
  * Quick 261017-vdh, plan 03 — the VOLUME and FINS side panels as the founder drew them. Desktop only:
  * the wording and the order are the same on a phone, and the desktop pictures pin the look.
  *
  * VOLUME: the heading reads `Inputs`; ONE box, `Import Designed Board`, in place of the two old ones;
- * ticked (the default) one line says what was imported and the four hand controls are not on the page;
+ * ticked (the default) a readout card (sketch 017 C, quick 261018-fg1) says what was imported and the four hand controls are not on the page;
  * unticked they come back for the quick estimate, and one Undo ticks the box again.
  *
  * FINS: `Import Designed Board` with its line, the three replaced controls hidden while it is ticked,
@@ -52,7 +53,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
     await dismissSignInBanner(page);
   });
 
-  test("Inputs, one box ticked by default, the imported line, and none of the four hand controls", async ({
+  test("Inputs, one box ticked by default, the imported card, and none of the four hand controls", async ({
     page,
   }) => {
     await page.goto("/design/volume");
@@ -67,9 +68,14 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
     await expect(aside.getByText(/Measure This Board/)).toHaveCount(0);
     await expect(aside.getByText(/Real Rail/)).toHaveCount(0);
 
-    await expect(
-      aside.getByText(`Board details are imported: 6'0" × 19" × 2 1/2", and the rail shapes from RAILS.`),
-    ).toBeVisible();
+    const card = importedReadout(aside, "From TEMPLATE");
+    await expect(card).toBeVisible();
+    await expectReadout(card, [
+      ["Length", `6'0"`],
+      ["Width", `19"`],
+      ["Thickness", `2 1/2"`],
+    ]);
+    await expect(card.locator("[data-readout-foot]")).toHaveText("Rail shapes from RAILS");
 
     await expect(aside.getByText(/Board Length —/)).toHaveCount(0);
     await expect(aside.getByText(/Board Width —/)).toHaveCount(0);
@@ -86,31 +92,33 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
 
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "false");
-    await expect(aside.getByText(/Board details are imported/)).toHaveCount(0);
+    await expect(importedReadout(aside, "From TEMPLATE")).toHaveCount(0);
     await expect(aside.getByText(`Board Length — 6'0"`)).toBeVisible();
     await expect(aside.getByText(`Board Width — 19"`)).toBeVisible();
     await expect(aside.getByText(`Center Thickness — 2 1/2"`)).toBeVisible();
     await expect(aside.getByText("Board Type")).toBeVisible();
     await expect(page.getByText("From the board-type factor tables (quick estimate).")).toBeVisible();
 
-    // One tick, one undo step: a single Undo puts the box and the line back.
+    // One tick, one undo step: a single Undo puts the box and the card back.
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(box).toHaveAttribute("aria-checked", "true");
-    await expect(
-      aside.getByText(`Board details are imported: 6'0" × 19" × 2 1/2", and the rail shapes from RAILS.`),
-    ).toBeVisible();
+    await expectReadout(importedReadout(aside, "From TEMPLATE"), [
+      ["Length", `6'0"`],
+      ["Width", `19"`],
+      ["Thickness", `2 1/2"`],
+    ]);
     await expect(aside.getByText(/Board Length —/)).toHaveCount(0);
   });
 
-  test("Metric: the line carries its unit once, at the end", async ({ page }) => {
+  test("Metric: every figure carries its own unit", async ({ page }) => {
     await setMetricUnits(page);
     await page.goto("/design/volume");
     await importBox(page);
-    await expect(
-      page
-        .locator("aside")
-        .getByText("Board details are imported: 182.9 × 48.3 × 6.4 cm, and the rail shapes from RAILS."),
-    ).toBeVisible();
+    await expectReadout(importedReadout(page.locator("aside"), "From TEMPLATE"), [
+      ["Length", "182.9 cm"],
+      ["Width", "48.3 cm"],
+      ["Thickness", "6.4 cm"],
+    ]);
   });
 });
 
