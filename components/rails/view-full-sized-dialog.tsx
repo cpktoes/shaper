@@ -131,7 +131,14 @@ export function ViewFullSizedDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         data-view-full-sized-dialog
-        className="max-w-[95vw] sm:max-w-3xl max-h-[90dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink"
+        /* Wide enough for the true-size drawing (fast task 172, the founder, 2026-10-17: "needs to be
+         * wider"): every rail section's plot is 8.69 in wide — 835 CSS px, chrome included — and the
+         * old `sm:max-w-3xl` (768 px) cut it off behind a sideways scroll. In the desktop shell the
+         * dialog now sizes itself to its drawing (`w-auto`, about 870 px with its padding), capped at
+         * 95vw so a narrow window still scrolls rather than clips; below the shell width the plot is
+         * fitted to the dialog anyway (`max-shell:!w-full` on the box), so the dialog stays full-width
+         * there and nothing on a phone moves. */
+        className="max-w-[95vw] shell:w-auto shell:max-w-[95vw] max-h-[90dvh] overflow-y-auto border-surf-line-faint bg-surf-panel text-surf-ink"
       >
         {/* A page shaped to fit the drawing without shrinking it (G-08-5). The true-size rail
          * can run 8.69in wide for the default board — wider than portrait Letter or A4's
