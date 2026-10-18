@@ -18,6 +18,7 @@ import {
   TWIN_TEMPLATES,
   defaultCenterBaseLength,
   effectiveQuadRearModel,
+  forwardFinsHeading,
   isQuadRearModelAvailable,
   resetAdvanced,
   type FinAdvancedSpec,
@@ -519,7 +520,7 @@ export function FinControls({
             {flags.hasForwardSection && (
               <div className="border-t border-outline-sidebar-divider pt-4">
                 <div className="mb-2.5 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
-                  Forward Fins — {flags.forwardSectionLabel}
+                  {forwardFinsHeading(spec.finSetup, flags.forwardSectionLabel)}
                 </div>
                 <div className="mb-2.5">
                   <SliderRow
@@ -550,7 +551,7 @@ export function FinControls({
                 </div>
                 <SliderRow
                   density="tight"
-                  label={`Toe-in — ${formatMark(resolved.forwardToe, system)}`}
+                  label={`Toe-In — ${formatMark(resolved.forwardToe, system)}`}
                   value={forwardToeSlider.value}
                   min={forwardToeSlider.min}
                   max={forwardToeSlider.max}
@@ -671,7 +672,7 @@ export function FinControls({
                 )}
                 <SliderRow
                   density="tight"
-                  label={`Toe-in — ${formatMark(resolved.rearToe, system)}`}
+                  label={`Toe-In — ${formatMark(resolved.rearToe, system)}`}
                   value={rearToeSlider.value}
                   min={rearToeSlider.min}
                   max={rearToeSlider.max}

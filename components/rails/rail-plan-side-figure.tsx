@@ -91,14 +91,14 @@ export function RailLegendSwatch({ color }: { color: string }) {
  * D-01/D-02's "all nine start ticked" is the shared `RailLegendProvider`'s own seed
  * (`rail-legend-provider.tsx`), not this list. */
 export const RAIL_REFERENCE_LEGEND: RailReferenceLegendEntry[] = [
-  { key: "deckMark1", label: "Deck Marks 1", color: REF_GROUP_SCREEN_COLORS.deckMark1 },
+  { key: "deckMark1", label: "Deck Mark 1", color: REF_GROUP_SCREEN_COLORS.deckMark1 },
   { key: "deckBand1", label: "Deck Band 1", color: REF_GROUP_SCREEN_COLORS.deckBand1 },
-  { key: "deckMark3", label: "Deck Marks 3", color: REF_GROUP_SCREEN_COLORS.deckMark3 },
+  { key: "deckMark3", label: "Deck Mark 3", color: REF_GROUP_SCREEN_COLORS.deckMark3 },
   { key: "deckBand2", label: "Deck Band 2", color: REF_GROUP_SCREEN_COLORS.deckBand2 },
   { key: "deckMark3Full", label: "Deck Mark 3 Center (full board)", color: REF_GROUP_SCREEN_COLORS.deckMark3Full },
-  { key: "railMark1", label: "Rail Marks 1", color: REF_GROUP_SCREEN_COLORS.railMark1 },
+  { key: "railMark1", label: "Rail Mark 1", color: REF_GROUP_SCREEN_COLORS.railMark1 },
   { key: "railBand1", label: "Rail Band 1", color: REF_GROUP_SCREEN_COLORS.railBand1 },
-  { key: "railTuck1", label: "Rail Tucks 1", color: REF_GROUP_SCREEN_COLORS.railTuck1 },
+  { key: "railTuck1", label: "Rail Tuck 1", color: REF_GROUP_SCREEN_COLORS.railTuck1 },
   { key: "tuckBlend", label: "Tuck blend to hard tail", color: REF_GROUP_SCREEN_COLORS.tuckBlend },
 ];
 

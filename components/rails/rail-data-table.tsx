@@ -151,7 +151,7 @@ export function RailDataTable({ sections, compact = false }: RailDataTableProps)
       </div>
       <div className="max-w-prose text-xs leading-relaxed text-surf-ink-muted italic">
         This rail band calculator is intended to provide a quantitative aspect to shaping
-        consistent surfboard rails. It&apos;s recommended to understand how rail shapes affects
+        consistent surfboard rails. It&apos;s recommended to understand how rail shapes affect
         surfboard performance, and how these marks can result in producing your desired outcome.
       </div>
     </div>

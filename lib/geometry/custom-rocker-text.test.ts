@@ -61,8 +61,8 @@ describe("the rows (D-05, D-06)", () => {
       }
     });
 
-    it(`where a bend starts reads as a dim with "in", or At the centre, ${system}`, () => {
-      expect(bendStartText(null, system)).toBe("At the centre");
+    it(`where a bend starts reads as a dim with "in", or At the center, ${system}`, () => {
+      expect(bendStartText(null, system)).toBe("At the center");
       expect(bendStartText(18, system)).toBe(`${formatThinningStart(inchesToMm(18), system)} in`);
     });
   }
@@ -74,16 +74,16 @@ describe("the rows (D-05, D-06)", () => {
   });
 
   it("the floor hint is the founder's sentence, only when on the floor", () => {
-    expect(FLOOR_HINT).toBe("Floor — the tip would drop below the centre");
+    expect(FLOOR_HINT).toBe("Floor — the tip would drop below the center");
     expect(amountHints(true)).toEqual([FLOOR_HINT, "More"]);
     expect(amountHints(false)).toEqual(["Less", "More"]);
   });
 
-  it("the bend hints run the way the drawing lies: nose left to centre, centre to tail right (fast task 170)", () => {
-    expect(bendStartHints("nose", 0)).toEqual(["Near the nose", "At the centre"]);
-    expect(bendStartHints("nose", 1)).toEqual(["Near the nose", "Nearer the centre"]);
-    expect(bendStartHints("tail", 0)).toEqual(["At the centre", "Near the tail"]);
-    expect(bendStartHints("tail", 1)).toEqual(["Nearer the centre", "Near the tail"]);
+  it("the bend hints run the way the drawing lies: nose left to center, center to tail right (fast task 170)", () => {
+    expect(bendStartHints("nose", 0)).toEqual(["Near the nose", "At the center"]);
+    expect(bendStartHints("nose", 1)).toEqual(["Near the nose", "Nearer the center"]);
+    expect(bendStartHints("tail", 0)).toEqual(["At the center", "Near the tail"]);
+    expect(bendStartHints("tail", 1)).toEqual(["Nearer the center", "Near the tail"]);
   });
 
   it("the drawing's heading says whose figures it carries (fast task 171)", () => {
@@ -96,7 +96,7 @@ describe("the rows (D-05, D-06)", () => {
     // Nose: the thumb IS the figure.
     expect(bendSliderPosition("nose", range, 18)).toBe(18);
     expect(bendStartFromSlider("nose", range, 18)).toBe(18);
-    // Tail: the left end (min) is the centre, the right end (max) is 3" in from the tail.
+    // Tail: the left end (min) is the center, the right end (max) is 3" in from the tail.
     expect(bendSliderPosition("tail", range, 56)).toBe(3);
     expect(bendSliderPosition("tail", range, 3)).toBe(56);
     expect(bendSliderPosition("tail", range, 36)).toBe(23);

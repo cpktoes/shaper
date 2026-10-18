@@ -234,7 +234,7 @@ export function markLabels(system: UnitsSystem): Record<StationMarkName, string>
   return {
     noseTwelve: `Nose ${stationLabel(system)}`,
     tailTwelve: `Tail ${stationLabel(system)}`,
-    center: "Centre",
+    center: "Center",
     widepoint: "Wide point",
     tailBlock: "Tail Block",
   };

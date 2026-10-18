@@ -699,7 +699,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         </g>
       ))}
       {callouts?.map((c) => {
-        // side 1 (Apex, Domed Taper, Rail Mk1, Corner Cut, Tuck 1) sits near the apex (x=0, the
+        // side 1 (Apex, Domed Taper, Rail Mark 1, Corner Cut, Tuck 1) sits near the apex (x=0, the
         // drawing's rightmost structure) and reads rightward from its own point; side -1 (every
         // deck/bottom-tuck-2 mark, further left) reads leftward, back toward the plot's own left
         // margin; side 0 (Bottom Tuck 1, Bottom Tuck 3) reads centred BELOW the x-axis, joined to

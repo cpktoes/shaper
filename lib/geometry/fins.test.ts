@@ -7,6 +7,7 @@ import {
   effectiveQuadRearModel,
   finRoundingGrain,
   finRoundingNote,
+  forwardFinsHeading,
   importedFinTailFromOutline,
   isQuadRearModelAvailable,
   resetAdvanced,
@@ -720,5 +721,31 @@ describe("fins listen to the real rail beside them — wings (quick 261014-wii, 
   it("with Import Template off a wing changes nothing — the standalone calculator never sees it", () => {
     const winged: OutlineSpec = { ...OUTLINE, wings: [wingAt(front.offTail + inchesToMm(1))] };
     expect(place(winged, FINS, false).marks).toEqual(place(OUTLINE, FINS, false).marks);
+  });
+});
+
+describe("forwardFinsHeading — FINS Advanced names the Twin's block (quick 261017-sru)", () => {
+  const twinTemplates: TwinTemplate[] = ["upright", "keel", "trailer"];
+
+  it.each(twinTemplates)("a Twin (%s template) heads its block Forward Fins — Main Twins, though its section label is empty", (twinTemplate) => {
+    const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "twin", twinTemplate });
+    expect(result.flags.forwardSectionLabel).toBe("");
+    expect(forwardFinsHeading("twin", result.flags.forwardSectionLabel)).toBe("Forward Fins — Main Twins");
+  });
+
+  it("the Twin's heading names the pair exactly as the twin result's own key and DATA group do", () => {
+    const result = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "twin", twinTemplate: "upright" });
+    const keyLabels = result.legend.map((l) => l.label);
+    expect(keyLabels).toContain("Main Twins");
+    expect(forwardFinsHeading("twin", "").endsWith("— Main Twins")).toBe(true);
+    expect(result.sections.some((section) => section.label === "Front Fins (Main Twins)")).toBe(true);
+  });
+
+  it("Thruster, Quad and 2+1 read exactly as before", () => {
+    const heading = (finSetup: FinSetup) =>
+      forwardFinsHeading(finSetup, computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup }).flags.forwardSectionLabel);
+    expect(heading("thruster")).toBe("Forward Fins — Front Pair");
+    expect(heading("quad")).toBe("Forward Fins — Front Pair");
+    expect(heading("2plus1")).toBe("Forward Fins — Side Bites");
   });
 });
