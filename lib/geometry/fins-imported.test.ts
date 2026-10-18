@@ -90,6 +90,9 @@ function toSpec(state: GoldenState): FinPlacementSpec {
     quadRearOffRailOverride: optIn(state.quadRearOffRailOverride),
     quadRearOffTailOverride: optIn(state.quadRearOffTailOverride),
     quadRearOffTailOverridden: state.quadRearOffTailOverridden,
+    // The prototype has no off-rail tuner, so no golden state carries one: both sit at zero.
+    forwardOffRailNudge: mm(0),
+    rearOffRailNudge: mm(0),
   };
   return {
     boardLength: inchesToMm(state.lengthIn),

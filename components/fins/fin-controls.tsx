@@ -18,6 +18,7 @@ import { Slider } from "@/components/ui/slider";
 import { TailShapeIcon, type IconTailShape } from "@/components/outline/tail-shape-icon";
 import {
   FIN_SETUPS,
+  OFF_RAIL_TUNER_STEP_IN,
   QUAD_REAR_MODELS,
   THRUSTER_FRONT_MODELS,
   TWIN_TEMPLATES,
@@ -25,6 +26,7 @@ import {
   effectiveQuadRearModel,
   forwardFinsHeading,
   isQuadRearModelAvailable,
+  offRailTunerRangeIn,
   resetAdvanced,
   type FinAdvancedSpec,
   type FinPlacementResult,
@@ -243,12 +245,21 @@ export function FinControls({
   // call per control, feeding both its onValueChange and (for the placement labels below) the
   // resolved distance the label prints. A position slider's own domain is a signed offset from a
   // model default, while its label prints the resulting distance up from the tail — a different
-  // value from the one the track holds, and the two must not be conflated.
+  // value from the one the track holds, and the two must not be conflated. The Off-Rail tuners are
+  // built the same way: the track holds the held nudge, the label prints the distance the fins end up
+  // from the rail, and the track's two ends are the tuner window (offRailTunerRangeIn).
   const centerPositionSlider = measureSlider(spec.advanced.centerPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
   const forwardPositionSlider = measureSlider(spec.advanced.forwardPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
   const rearPositionSlider = measureSlider(spec.advanced.rearPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
   const forwardToeSlider = measureSlider(resolved.forwardToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
   const rearToeSlider = measureSlider(resolved.rearToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
+  const forwardOffRailSlider = measureSlider(
+    resolved.forwardOffRailNudge,
+    offRailTunerRangeIn(resolved.forwardOffRailTemplate, "forward", system),
+    OFF_RAIL_TUNER_STEP_IN,
+    1,
+    system,
+  );
   const quadRearOffRailSlider = measureSlider(resolved.quadRearOffRail, OFF_RAIL_BOUNDS, OFF_RAIL_BOUNDS.step, 1, system);
   const quadRearOffTailSlider = measureSlider(
     resolved.quadRearOffTailBase,
@@ -543,7 +554,7 @@ export function FinControls({
                     label={`Aft/Forward position — ${formatMark(
                       spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail,
                       system,
-                    )} (off-rail unchanged)`}
+                    )}`}
                     value={forwardPositionSlider.value}
                     min={forwardPositionSlider.min}
                     max={forwardPositionSlider.max}
@@ -553,6 +564,23 @@ export function FinControls({
                     rightHint="Loose (fwd)"
                   />
                 </div>
+                {flags.showForwardOffRailTuner && (
+                  <div className="mb-2.5">
+                    <SliderRow
+                      density="tight"
+                      label={`Off-Rail — ${formatMark(resolved.forwardOffRail, system)}`}
+                      value={forwardOffRailSlider.value}
+                      min={forwardOffRailSlider.min}
+                      max={forwardOffRailSlider.max}
+                      step={forwardOffRailSlider.step}
+                      onValueChange={(v) => updateAdvanced({ forwardOffRailNudge: forwardOffRailSlider.toMm(v) })}
+                      leftHint="Closer to rail"
+                      rightHint="Closer to stringer"
+                      sliderLabel="Forward fins off-rail"
+                      sliderValueText={formatMark(resolved.forwardOffRail, system)}
+                    />
+                  </div>
+                )}
                 <SliderRow
                   density="tight"
                   label={`Toe-In — ${formatMark(resolved.forwardToe, system)}`}
@@ -649,7 +677,7 @@ export function FinControls({
                 <div className="mb-2.5">
                   <SliderRow
                     density="tight"
-                    label={`Aft/Forward position — ${formatMark(resolved.pairOffTail, system)} (off-rail unchanged)`}
+                    label={`Aft/Forward position — ${formatMark(resolved.pairOffTail, system)}`}
                     value={rearPositionSlider.value}
                     min={rearPositionSlider.min}
                     max={rearPositionSlider.max}

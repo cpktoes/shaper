@@ -47,6 +47,13 @@
  *    millimetres, not inches: the inch round-trip loses eight foot by one part in ten thousand
  *    million (`mmToInches(inchesToMm(96))` is `95.99999999999999`), which would wrongly refuse a
  *    board a shaper set to exactly 8'0".
+ * 8. OFF-RAIL TUNER (quick 261018-dw6, the founder 2026-10-18, D-01..D-03 with D-02b). A product
+ *    rule with no counterpart in the prototype: a shaper may nudge the forward pair (and a quad's
+ *    stringer-placed rear pair) in toward the stringer or out toward the rail from where the
+ *    template puts it. The nudge is a stored offset (`forwardOffRailNudge`, `rearOffRailNudge`),
+ *    held inside a window around the template (`offRailTunerWindow`), and every reader of an
+ *    off-rail figure takes the held result. At zero every figure is the prototype's own — the
+ *    golden suites pass untouched.
  */
 
 import type { Point2D } from "./board";
@@ -93,6 +100,15 @@ export interface FinAdvancedSpec {
   quadRearOffRailOverride: Mm | null;
   quadRearOffTailOverride: Mm | null;
   quadRearOffTailOverridden: boolean;
+  /** The Off-Rail tuner's nudge for the front and side fins (quick 261018-dw6, D-01): a signed
+   * offset from the template's own off-rail figure. Positive = further from the rail, toward the
+   * stringer; 0 = the template exactly. The result is held inside the pair's tuner window
+   * (`offRailTunerWindow`, D-02) so no stored value can push a fin off the board. */
+  forwardOffRailNudge: Mm;
+  /** The same nudge for a quad's rear fins placed from the stringer (D-03b): positive = further
+   * from the rail, which brings the two rears closer together by the same amount. Held inside the
+   * rear window (D-02b). Ignored on Basic - Off-Rail, which keeps its own slider. */
+  rearOffRailNudge: Mm;
 }
 
 /** The single place a fin screen's sidebar writes to. */
@@ -133,6 +149,8 @@ export const DEFAULT_FIN_PLACEMENT_SPEC: FinPlacementSpec = {
     quadRearOffRailOverride: null,
     quadRearOffTailOverride: null,
     quadRearOffTailOverridden: false,
+    forwardOffRailNudge: mm(0),
+    rearOffRailNudge: mm(0),
   },
 };
 
@@ -224,6 +242,19 @@ export interface FinPlacementResolved {
   quadRearOffRail: Mm;
   quadRearOffTailBase: Mm;
   rearHalfSpread: Mm;
+  /** The forward (front, twin or side) pair's off-rail as the template places it, before the tuner. */
+  forwardOffRailTemplate: Mm;
+  /** Where the forward pair actually sits from the rail: the template plus the held nudge. */
+  forwardOffRail: Mm;
+  /** The nudge actually applied, after the hold — what the tuner slider's thumb reads. */
+  forwardOffRailNudge: Mm;
+  /** The rear pair's distance from the rail at its own position, as the template places it. Zero
+   * off a quad. */
+  rearOffRailTemplate: Mm;
+  /** Where the rear pair actually sits from the rail (Basic - Off-Rail: its own slider's figure). */
+  rearOffRail: Mm;
+  /** The rear nudge actually applied, after the hold (D-02b). Zero on Basic - Off-Rail. */
+  rearOffRailNudge: Mm;
 }
 
 export interface FinPlacementFlags {
@@ -237,6 +268,11 @@ export interface FinPlacementFlags {
   showRearToeTableLink: boolean;
   showRearOffRailSlider: boolean;
   showRearOffTailOverride: boolean;
+  /** Whether FINS Advanced offers the Off-Rail tuner on the forward pair (D-03a). */
+  showForwardOffRailTuner: boolean;
+  /** Whether Rear Fins offers the Off-Rail tuner (D-03b): a quad with rears placed from the
+   * stringer. Basic - Off-Rail keeps its own slider instead, so the two never show together. */
+  showRearOffRailTuner: boolean;
   centerSectionLabel: string;
   forwardSectionLabel: string;
   rearSectionLabel: string;
@@ -309,6 +345,88 @@ export function isQuadRearModelAvailable(model: QuadRearModel, boardLength: Mm):
  */
 export function effectiveQuadRearModel(model: QuadRearModel, boardLength: Mm): QuadRearModel {
   return isQuadRearModelAvailable(model, boardLength) ? model : "mckeeSB";
+}
+
+// ---- The Off-Rail tuner (quick 261018-dw6, the founder 2026-10-18, D-01..D-03 with D-02b) --------
+
+/** The front and side fins' tuner window, in inches from the rail (D-02): never closer than 7/8" and
+ * never further than 2". (`clampOffRail`, 1" to 2", is the Basic - Off-Rail rears' own slider and is
+ * not this.) */
+export const OFF_RAIL_TUNER_WINDOW_IN = { min: 0.875, max: 2 } as const;
+
+/** How far a stringer-placed quad rear pair may move either way from its template (D-02b). */
+export const OFF_RAIL_TUNER_REAR_REACH_IN = 0.5;
+
+/** The tuner slider's Imperial step: a sixteenth of an inch, the grain fin numbers print to. */
+export const OFF_RAIL_TUNER_STEP_IN = 1 / 16;
+
+/** Which pair a tuner moves: the front, twin or side fins, or a quad's stringer-placed rears. */
+export type OffRailTunerPair = "forward" | "rear";
+
+/**
+ * The window a tuner holds its pair inside, for a template distance `t` from the rail, in inches.
+ * Both windows always contain `t`, so a nudge of zero is always reachable and never moves a board.
+ *
+ * - forward (D-02): 7/8" to 2", stretched just far enough to include `t` on a template outside it.
+ * - rear (D-02b): 1/2" either way from `t`, never closer than 7/8" to the rail — the founder's
+ *   amendment of 2026-10-18. The stringer-placed rears sit 2" to 3.8" from the rail on every preset,
+ *   so a fixed 2" ceiling would only have let them move OUT toward the rail, never closer together.
+ *   When `t` itself is under 7/8" the window starts at `t`.
+ */
+function offRailWindowInches(t: number, pair: OffRailTunerPair): { lo: number; hi: number } {
+  if (pair === "forward") {
+    return { lo: Math.min(OFF_RAIL_TUNER_WINDOW_IN.min, t), hi: Math.max(OFF_RAIL_TUNER_WINDOW_IN.max, t) };
+  }
+  return {
+    lo: Math.min(t, Math.max(OFF_RAIL_TUNER_WINDOW_IN.min, t - OFF_RAIL_TUNER_REAR_REACH_IN)),
+    hi: t + OFF_RAIL_TUNER_REAR_REACH_IN,
+  };
+}
+
+/** Holds a pair's off-rail inside its window. Written so a zero nudge (`value === t`) comes back as
+ * `t` bit for bit, which is what keeps every board exactly where it was at rest. */
+function holdOffRailInches(value: number, t: number, pair: OffRailTunerPair): number {
+  const { lo, hi } = offRailWindowInches(t, pair);
+  return Math.max(lo, Math.min(hi, value));
+}
+
+/** The window a tuner holds its pair inside, in millimetres from the rail (D-02, D-02b). */
+export function offRailTunerWindow(templateOffRail: Mm, pair: OffRailTunerPair): { min: Mm; max: Mm } {
+  const { lo, hi } = offRailWindowInches(mmToInches(templateOffRail), pair);
+  return { min: inchesToMm(lo), max: inchesToMm(hi) };
+}
+
+/**
+ * The Off-Rail tuner slider's range, in the inch domain `measureSlider` takes: how far the NUDGE
+ * may run each way from zero, so that the slider's two ends are the window's two ends.
+ *
+ * ROUNDED OUTWARD to the slider's own grid — a sixteenth in Imperial, a whole millimetre in Metric.
+ * Base UI snaps from the slider's minimum (`roundValueToStep` rounds `(value - min) / step`), so zero
+ * is reachable only when the minimum is a whole number of steps; outward rounding gives that, and it
+ * makes both ends of the window reachable too. The engine's hold absorbs the last part-step. Metric
+ * rounds in whole millimetres and hands them back as inches, which `measureSlider`'s own inward
+ * rounding then lands on exactly. `wingPositionRangeForSlot` is the precedent for a range that comes
+ * from geometry in inches.
+ */
+export function offRailTunerRangeIn(
+  templateOffRail: Mm,
+  pair: OffRailTunerPair,
+  system: UnitsSystem,
+): { min: number; max: number } {
+  const t = mmToInches(templateOffRail);
+  const { lo, hi } = offRailWindowInches(t, pair);
+  const GUARD = 1e-9;
+  let min: number;
+  let max: number;
+  if (system === "metric") {
+    min = mmToInches(mm(Math.floor(inchesToMm(lo - t) + GUARD)));
+    max = mmToInches(mm(Math.ceil(inchesToMm(hi - t) - GUARD)));
+  } else {
+    min = Math.floor((lo - t) / OFF_RAIL_TUNER_STEP_IN + GUARD) * OFF_RAIL_TUNER_STEP_IN;
+    max = Math.ceil((hi - t) / OFF_RAIL_TUNER_STEP_IN - GUARD) * OFF_RAIL_TUNER_STEP_IN;
+  }
+  // Adding zero turns a -0 into a plain 0 (a window end sitting exactly on the template).
+  return { min: min + 0, max: max + 0 };
 }
 
 export const TWIN_TEMPLATES: { value: TwinTemplate; label: string }[] = [
@@ -574,6 +692,8 @@ interface FinPlacementSpecInches {
     quadRearOffRailOverride: number | null;
     quadRearOffTailOverride: number | null;
     quadRearOffTailOverridden: boolean;
+    forwardOffRailNudge: number;
+    rearOffRailNudge: number;
   };
 }
 
@@ -619,6 +739,12 @@ interface FinPlacementResultInches {
     quadRearOffRail: number;
     quadRearOffTailBase: number;
     rearHalfSpread: number;
+    forwardOffRailTemplate: number;
+    forwardOffRail: number;
+    forwardOffRailNudge: number;
+    rearOffRailTemplate: number;
+    rearOffRail: number;
+    rearOffRailNudge: number;
   };
   flags: FinPlacementFlags;
 }
@@ -704,7 +830,24 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
 
   const isBasicOffRail = spec.quadRearModel === "basicOffRail";
   const activeThrusterModel = thrusterFrontModels[spec.frontModel];
-  const frontOffRail = isThruster ? activeThrusterModel.offRail : (quadModels[spec.quadRearModel].offRail ?? 1.1875);
+  const frontOffRailTemplate = isThruster
+    ? activeThrusterModel.offRail
+    : (quadModels[spec.quadRearModel].offRail ?? 1.1875);
+  // OFF-RAIL TUNER (deviation 8): the forward pair's off-rail is the template's own figure plus the
+  // shaper's nudge, held inside the pair's window. The twin and 2+1 side figures are the prototype's
+  // §6 and §7 constants, stated here once so every reader below takes the tuned figure.
+  const mainOffRailTemplate = 1.25;
+  const sideOffRailTemplate = 1.25;
+  const forwardOffRailTemplate = isTwin
+    ? mainOffRailTemplate
+    : isTwoPlusOne
+      ? sideOffRailTemplate
+      : frontOffRailTemplate;
+  const forwardNudgeIn = Number.isFinite(adv.forwardOffRailNudge) ? adv.forwardOffRailNudge : 0;
+  const forwardOffRailFinal = hasForwardSection
+    ? holdOffRailInches(forwardOffRailTemplate + forwardNudgeIn, forwardOffRailTemplate, "forward")
+    : forwardOffRailTemplate;
+  const frontOffRail = isThruster || isQuad ? forwardOffRailFinal : frontOffRailTemplate;
   const frontBase = isThruster ? activeThrusterModel.front : (quadModels[spec.quadRearModel].front ?? frontMcKeeSB);
   // Load-bearing order (Fins.dc.html line 1052): basicOffRail's rear must be derived AFTER
   // frontBase resolves, since it depends on the Basic model's own front.
@@ -730,7 +873,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   // ---- Twin (§6) ----
   const mainOffTailBase = spec.twinTemplate === "keel" ? 6.25 : spec.twinTemplate === "trailer" ? 10 : 7.5;
   const mainOffTail = mainOffTailBase + (isTwin ? adv.forwardPositionOffset : 0);
-  const mainOffRail = 1.25;
+  const mainOffRail = isTwin ? forwardOffRailFinal : mainOffRailTemplate;
   const twinToeFixed = spec.twinTemplate === "keel" ? 0.125 : 0.1875;
   const trailerOffTail = 4.0;
 
@@ -748,7 +891,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   // ---- 2+1 side bites (§7) ----
   const sideBase = L / 48 + 13.5;
   const sideFinal = sideBase + (isTwoPlusOne ? adv.forwardPositionOffset : 0);
-  const activeSideOffRail = 1.25;
+  const activeSideOffRail = isTwoPlusOne ? forwardOffRailFinal : sideOffRailTemplate;
   const sideToeFixedDefault = 0.1875;
 
   const pairFinalOffTail = isQuad ? rearFinal : isTwoPlusOne ? sideFinal : frontFinal;
@@ -951,7 +1094,10 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     adv.forwardToeOverride !== null ||
     adv.rearPositionOffset !== 0 ||
     adv.rearToeOverride !== null ||
-    adv.quadRearOffTailOverridden;
+    adv.quadRearOffTailOverridden ||
+    // The Off-Rail tuner counts as a change only when it actually moves the fins off the template,
+    // not merely when a non-zero value is stored.
+    forwardOffRailFinal !== forwardOffRailTemplate;
 
   const frontModelLabel = THRUSTER_FRONT_MODELS.find((o) => o.value === spec.frontModel)!.label;
   const modelHeader = isThruster
@@ -1143,6 +1289,14 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     notesItems.push(`Pintail shape adds 3⁄16" to the quad rear off-tail across all rear models, per the standard pintail correction.`);
   }
 
+  // The rear pair's distance from the rail at its own position: the half width there minus the half
+  // spread (Basic - Off-Rail: its own slider's figure). Zero off a quad.
+  const rearOffRailTemplate = !isQuad
+    ? 0
+    : isBasicOffRail
+      ? quadRearOffRailValue
+      : effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, rearFinal) - spread;
+
   const flags: FinPlacementFlags = {
     hasCenterSection,
     hasForwardSection,
@@ -1154,6 +1308,8 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
     showRearToeTableLink,
     showRearOffRailSlider: isBasicOffRail,
     showRearOffTailOverride: isBasicOffRail,
+    showForwardOffRailTuner: hasForwardSection,
+    showRearOffRailTuner: false,
     centerSectionLabel,
     forwardSectionLabel,
     rearSectionLabel,
@@ -1182,6 +1338,12 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
       quadRearOffRail: quadRearOffRailValue,
       quadRearOffTailBase: rearBase,
       rearHalfSpread: spread,
+      forwardOffRailTemplate,
+      forwardOffRail: forwardOffRailFinal,
+      forwardOffRailNudge: forwardOffRailFinal - forwardOffRailTemplate,
+      rearOffRailTemplate,
+      rearOffRail: rearOffRailTemplate,
+      rearOffRailNudge: 0,
     },
     flags,
   };
@@ -1315,6 +1477,8 @@ export function resetAdvanced(setup: FinSetup): FinAdvancedSpec {
     quadRearOffRailOverride: null,
     quadRearOffTailOverride: null,
     quadRearOffTailOverridden: false,
+    forwardOffRailNudge: mm(0),
+    rearOffRailNudge: mm(0),
   };
 }
 
@@ -1405,6 +1569,8 @@ export function computeFinPlacement(
       quadRearOffTailOverride:
         spec.advanced.quadRearOffTailOverride !== null ? mmToInches(spec.advanced.quadRearOffTailOverride) : null,
       quadRearOffTailOverridden: spec.advanced.quadRearOffTailOverridden,
+      forwardOffRailNudge: mmToInches(spec.advanced.forwardOffRailNudge),
+      rearOffRailNudge: mmToInches(spec.advanced.rearOffRailNudge),
     },
   };
 
@@ -1454,6 +1620,12 @@ export function computeFinPlacement(
       quadRearOffRail: inchesToMm(core.resolved.quadRearOffRail),
       quadRearOffTailBase: inchesToMm(core.resolved.quadRearOffTailBase),
       rearHalfSpread: inchesToMm(core.resolved.rearHalfSpread),
+      forwardOffRailTemplate: inchesToMm(core.resolved.forwardOffRailTemplate),
+      forwardOffRail: inchesToMm(core.resolved.forwardOffRail),
+      forwardOffRailNudge: inchesToMm(core.resolved.forwardOffRailNudge),
+      rearOffRailTemplate: inchesToMm(core.resolved.rearOffRailTemplate),
+      rearOffRail: inchesToMm(core.resolved.rearOffRail),
+      rearOffRailNudge: inchesToMm(core.resolved.rearOffRailNudge),
     },
     flags: core.flags,
   };

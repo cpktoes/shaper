@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   MIN_MCKEE_LONGBOARD_QUAD_LENGTH,
+  OFF_RAIL_TUNER_STEP_IN,
   computeFinPlacement,
   defaultCenterBaseLength,
   effectiveQuadRearModel,
@@ -11,6 +12,8 @@ import {
   forwardFinsHeading,
   importedFinTailFromOutline,
   isQuadRearModelAvailable,
+  offRailTunerRangeIn,
+  offRailTunerWindow,
   resetAdvanced,
   toeAimTableFor,
   type FinAdvancedSpec,
@@ -22,12 +25,13 @@ import {
   type TwinTemplate,
 } from "./fins";
 import { formatInchesFraction, inchesToMm, mm, type Mm, mmToInches, parseImperial, parseMetric } from "./units";
-import { formatDim, formatDimBare, formatMark, formatMarkBare } from "./measure-display";
+import { formatDim, formatDimBare, formatMark, formatMarkBare, measureSlider } from "./measure-display";
 import { TOE_AIM_TABLE, TOE_AIM_TABLE_COLUMNS } from "./toe-aim-tables";
 import golden from "./__fixtures__/prototype-fins-golden.json";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { deriveEffectiveFins } from "./design";
 import { buildOutline } from "./outline";
+import { BOARD_PRESETS } from "./presets";
 import { wingFootprint, wingStepShare, type Wing } from "./wings";
 
 const TOLERANCE_IN = 1e-9;
@@ -84,6 +88,9 @@ function toSpec(state: GoldenState): FinPlacementSpec {
     quadRearOffRailOverride: optIn(state.quadRearOffRailOverride),
     quadRearOffTailOverride: optIn(state.quadRearOffTailOverride),
     quadRearOffTailOverridden: state.quadRearOffTailOverridden,
+    // The prototype has no off-rail tuner, so no golden state carries one: both sit at zero.
+    forwardOffRailNudge: mm(0),
+    rearOffRailNudge: mm(0),
   };
   return {
     boardLength: inchesToMm(state.lengthIn),
@@ -755,5 +762,358 @@ describe("forwardFinsHeading — FINS Advanced names the Twin's block (quick 261
     expect(heading("thruster")).toBe("Forward Fins — Front Pair");
     expect(heading("quad")).toBe("Forward Fins — Front Pair");
     expect(heading("2plus1")).toBe("Forward Fins — Side Bites");
+  });
+});
+
+// ============================================================================================
+// The Off-Rail fine tuner (quick 261018-dw6, the founder 2026-10-18, D-01..D-03 with D-02b)
+// ============================================================================================
+
+/** The same spec with some advanced fields changed. */
+function withAdvanced(spec: FinPlacementSpec, patch: Partial<FinAdvancedSpec>): FinPlacementSpec {
+  return { ...spec, advanced: { ...spec.advanced, ...patch } };
+}
+
+/** Every setup that has a forward or side pair, each model and template of it. */
+function forwardPairSetups(): { name: string; spec: FinPlacementSpec }[] {
+  const base = DEFAULT_FIN_PLACEMENT_SPEC;
+  const out: { name: string; spec: FinPlacementSpec }[] = [];
+  for (const frontModel of ["proportional", "basic", "mckeeSB", "mckeeGun"] as ThrusterFrontModel[]) {
+    out.push({ name: `thruster ${frontModel}`, spec: { ...base, finSetup: "thruster", frontModel } });
+  }
+  for (const twinTemplate of ["upright", "keel", "trailer"] as TwinTemplate[]) {
+    out.push({ name: `twin ${twinTemplate}`, spec: { ...base, finSetup: "twin", twinTemplate } });
+  }
+  out.push({ name: "2+1", spec: { ...base, finSetup: "2plus1" } });
+  for (const quadRearModel of ["basic", "basicOffRail", "mckeeSB", "mckeeLB"] as QuadRearModel[]) {
+    const boardLength = inchesToMm(quadRearModel === "mckeeLB" ? 100 : 72);
+    out.push({ name: `quad ${quadRearModel}`, spec: { ...base, finSetup: "quad", quadRearModel, boardLength } });
+  }
+  out.push({
+    name: "quad mckeeSB on a pin tail",
+    spec: { ...base, finSetup: "quad", quadRearModel: "mckeeSB", tailShape: "pin" },
+  });
+  return out;
+}
+
+/** A preset's board as FINS reads it with Import Designed Board ticked (what deriveEffectiveFins does,
+ * written out here so this suite leans on no other module's wiring). */
+function importedPresetBoard(preset: (typeof BOARD_PRESETS)[number]) {
+  const g = buildOutline(preset.outline);
+  const spec: FinPlacementSpec = {
+    ...preset.fins,
+    boardLength: preset.outline.length,
+    tailWidth12: g.tailWidthAt12in,
+    tailShape: preset.outline.tail.kind,
+  };
+  return { spec, tail: importedFinTailFromOutline(g) };
+}
+
+describe("the Off-Rail tuner's window (D-02 for the front and side fins, D-02b for the stringer-placed quad rears)", () => {
+  const win = (t: number, pair: "forward" | "rear") => {
+    const w = offRailTunerWindow(inchesToMm(t), pair);
+    return { min: mmToInches(w.min), max: mmToInches(w.max) };
+  };
+
+  it("front and side fins: a template inside 7/8\"-2\" gives exactly 7/8\" and 2\"", () => {
+    for (const t of [1.125, 1.1875, 1.25, 1.3125]) {
+      const w = win(t, "forward");
+      expectCloseIn(w.min, 0.875);
+      expectCloseIn(w.max, 2);
+    }
+  });
+
+  it("front and side fins: a template past either end stretches the window to hold it", () => {
+    expectCloseIn(win(2.5, "forward").max, 2.5);
+    expectCloseIn(win(2.5, "forward").min, 0.875);
+    expectCloseIn(win(0.6, "forward").min, 0.6);
+    expectCloseIn(win(0.6, "forward").max, 2);
+  });
+
+  it("rear fins: 1/2\" either way from the template (2.17\" gives 1.67\" to 2.67\")", () => {
+    const w = win(2.17, "rear");
+    expectCloseIn(w.min, 1.67);
+    expectCloseIn(w.max, 2.67);
+  });
+
+  it("rear fins: never closer than 7/8\" to the rail — 1.0\" gives 7/8\" to 1 1/2\"", () => {
+    const w = win(1.0, "rear");
+    expectCloseIn(w.min, 0.875);
+    expectCloseIn(w.max, 1.5);
+  });
+
+  it("rear fins: a template under 7/8\" is itself the lower end (0.62\" gives 0.62\" to 1.12\")", () => {
+    const w = win(0.62, "rear");
+    expectCloseIn(w.min, 0.62);
+    expectCloseIn(w.max, 1.12);
+  });
+
+  it("rear fins: exactly 7/8\" gives 7/8\" to 1 3/8\"; -1/2\" gives -1/2\" to 0", () => {
+    const a = win(0.875, "rear");
+    expectCloseIn(a.min, 0.875);
+    expectCloseIn(a.max, 1.375);
+    const b = win(-0.5, "rear");
+    expectCloseIn(b.min, -0.5);
+    expectCloseIn(b.max, 0);
+  });
+
+  it("both windows always contain the template, whatever it is", () => {
+    for (let t = -1; t <= 6; t += 0.0375) {
+      for (const pair of ["forward", "rear"] as const) {
+        const w = win(t, pair);
+        expect(w.min).toBeLessThanOrEqual(t + 1e-9);
+        expect(w.max).toBeGreaterThanOrEqual(t - 1e-9);
+      }
+    }
+  });
+});
+
+describe("the forward Off-Rail tuner moves the front, twin and side fins (D-01, D-03a)", () => {
+  const EIGHTH = inchesToMm(0.125);
+  type Result = ReturnType<typeof computeFinPlacement>;
+  const front = (r: Result) => r.marks.filter((m) => m.role === "front");
+  const offRailRow = (r: Result) =>
+    r.sections.find((s) => s.label.startsWith("Front Fins"))!.groups[0].rows.find((row) => row.label === "Off-Rail")!;
+
+  for (const { name, spec } of forwardPairSetups()) {
+    describe(name, () => {
+      const zero = computeFinPlacement(spec);
+
+      it("at zero the fins sit on the template", () => {
+        expect(zero.resolved.forwardOffRail).toBe(zero.resolved.forwardOffRailTemplate);
+        expect(zero.resolved.forwardOffRailNudge).toBe(0);
+        expect(zero.isModified).toBe(false);
+      });
+
+      it("a nudge of +1/8\" puts the fins 1/8\" further from the rail, everywhere it is shown", () => {
+        const moved = computeFinPlacement(withAdvanced(spec, { forwardOffRailNudge: EIGHTH }));
+        expectCloseIn(
+          mmToInches(moved.resolved.forwardOffRail),
+          mmToInches(moved.resolved.forwardOffRailTemplate) + 0.125,
+        );
+        expectCloseIn(mmToInches(moved.resolved.forwardOffRailNudge), 0.125);
+        expectCloseIn(mmToInches(offRailRow(moved).value), mmToInches(moved.resolved.forwardOffRail));
+        expect(front(moved).length).toBe(front(zero).length);
+        front(moved).forEach((mark, i) => {
+          const was = front(zero)[i];
+          expectCloseIn(mmToInches(mark.lateralValue as Mm), mmToInches(moved.resolved.forwardOffRail));
+          expectCloseIn(Math.abs(mmToInches(was.lateral)) - Math.abs(mmToInches(mark.lateral)), 0.125);
+          expect(mark.offTail).toBe(was.offTail);
+          expect(mark.toe).toBe(was.toe);
+          expect(mark.baseLength).toBe(was.baseLength);
+        });
+        expect(moved.isModified).toBe(true);
+      });
+
+      it("a nudge of -1/8\" puts them 1/8\" closer to the rail", () => {
+        const moved = computeFinPlacement(withAdvanced(spec, { forwardOffRailNudge: mm(-EIGHTH) }));
+        front(moved).forEach((mark, i) => {
+          const was = front(zero)[i];
+          expectCloseIn(Math.abs(mmToInches(was.lateral)) - Math.abs(mmToInches(mark.lateral)), -0.125);
+        });
+      });
+
+      it("is held at 7/8\" and 2\" from the rail however far it is pushed", () => {
+        const closer = computeFinPlacement(withAdvanced(spec, { forwardOffRailNudge: inchesToMm(-2) }));
+        const further = computeFinPlacement(withAdvanced(spec, { forwardOffRailNudge: inchesToMm(2) }));
+        expectCloseIn(mmToInches(closer.resolved.forwardOffRail), 0.875);
+        expectCloseIn(mmToInches(further.resolved.forwardOffRail), 2);
+        expectCloseIn(
+          mmToInches(closer.resolved.forwardOffRailNudge),
+          0.875 - mmToInches(closer.resolved.forwardOffRailTemplate),
+        );
+        expectCloseIn(
+          mmToInches(further.resolved.forwardOffRailNudge),
+          2 - mmToInches(further.resolved.forwardOffRailTemplate),
+        );
+      });
+
+      it("a crazy stored value never breaks the board", () => {
+        const wild = computeFinPlacement(withAdvanced(spec, { forwardOffRailNudge: mm(1e12) }));
+        expectCloseIn(mmToInches(wild.resolved.forwardOffRail), 2);
+      });
+
+      it("shows the tuner", () => {
+        expect(zero.flags.showForwardOffRailTuner).toBe(true);
+      });
+    });
+  }
+
+  it("a single fin has no forward pair, so no tuner and no effect", () => {
+    const single: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "single" };
+    const zero = computeFinPlacement(single);
+    const nudged = computeFinPlacement(withAdvanced(single, { forwardOffRailNudge: inchesToMm(0.5) }));
+    expect(zero.flags.showForwardOffRailTuner).toBe(false);
+    expect(nudged.marks).toEqual(zero.marks);
+    expect(nudged.isModified).toBe(false);
+  });
+
+  it("the template figures are the ones the models state (thruster 1 1/8\" and 1 3/16\", twin and 2+1 1 1/4\")", () => {
+    const at = (patch: Partial<FinPlacementSpec>) =>
+      mmToInches(computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, ...patch }).resolved.forwardOffRailTemplate);
+    expectCloseIn(at({ frontModel: "proportional" }), 1.125);
+    expectCloseIn(at({ frontModel: "basic" }), 1.1875);
+    expectCloseIn(at({ frontModel: "mckeeGun" }), 1.125);
+    expectCloseIn(at({ finSetup: "twin" }), 1.25);
+    expectCloseIn(at({ finSetup: "twin", twinTemplate: "keel" }), 1.25);
+    expectCloseIn(at({ finSetup: "2plus1" }), 1.25);
+    expectCloseIn(at({ finSetup: "quad", quadRearModel: "mckeeSB" }), 1.1875);
+    expectCloseIn(at({ finSetup: "quad", quadRearModel: "mckeeSB", tailShape: "pin" }), 1.125);
+    expectCloseIn(at({ finSetup: "quad", quadRearModel: "mckeeLB", boardLength: inchesToMm(100) }), 1.3125);
+  });
+});
+
+describe("with both nudges at zero nothing about the fins changes (D-01)", () => {
+  const SETUPS: FinSetup[] = ["single", "twin", "thruster", "2plus1", "quad"];
+  const SHAPES: FinTailShape[] = ["pin", "round", "diamond", "squash", "swallow"];
+  const MODELS: ThrusterFrontModel[] = ["proportional", "basic", "mckeeSB", "mckeeGun"];
+  const QUADS: QuadRearModel[] = ["basic", "basicOffRail", "mckeeSB", "mckeeLB"];
+  const TWINS: TwinTemplate[] = ["upright", "keel", "trailer"];
+
+  it("the fins sit exactly on their template across every setup, model, tail shape and size", () => {
+    let seen = 0;
+    for (const finSetup of SETUPS) {
+      for (const frontModel of MODELS) {
+        for (const quadRearModel of QUADS) {
+          for (const twinTemplate of TWINS) {
+            for (const tailShape of SHAPES) {
+              for (const L of [60, 72, 96, 120]) {
+                for (const W of [11, 13, 15]) {
+                  const spec: FinPlacementSpec = {
+                    ...DEFAULT_FIN_PLACEMENT_SPEC,
+                    finSetup,
+                    frontModel,
+                    quadRearModel,
+                    twinTemplate,
+                    tailShape,
+                    boardLength: inchesToMm(L),
+                    tailWidth12: inchesToMm(W),
+                  };
+                  const r = computeFinPlacement(spec);
+                  expect(r.resolved.forwardOffRail).toBe(r.resolved.forwardOffRailTemplate);
+                  expect(r.resolved.forwardOffRailNudge).toBe(0);
+                  expect(r.resolved.rearOffRail).toBe(r.resolved.rearOffRailTemplate);
+                  expect(r.resolved.rearOffRailNudge).toBe(0);
+                  expect(r.isModified).toBe(false);
+                  seen++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(5000);
+  });
+
+  it("and with a preset's own drawn tail imported", () => {
+    for (const preset of BOARD_PRESETS) {
+      const { spec, tail } = importedPresetBoard(preset);
+      for (const finSetup of SETUPS) {
+        const r = computeFinPlacement({ ...spec, finSetup }, tail);
+        expect(r.resolved.forwardOffRail).toBe(r.resolved.forwardOffRailTemplate);
+        expect(r.resolved.forwardOffRailNudge).toBe(0);
+        // (A preset's captured offsets may already mark it Modified; the tuner at zero adds nothing.)
+        expect(computeFinPlacement({ ...spec, finSetup }, tail).isModified).toBe(
+          spec.advanced.forwardPositionOffset !== 0 ||
+            spec.advanced.rearPositionOffset !== 0 ||
+            spec.advanced.centerPositionOffset !== 0 ||
+            spec.advanced.forwardToeOverride !== null ||
+            spec.advanced.rearToeOverride !== null ||
+            spec.advanced.quadRearOffTailOverridden ||
+            spec.advanced.baseLenForwardOverridden ||
+            spec.advanced.baseLenRearOverridden ||
+            spec.advanced.baseLenCenterOverridden,
+        );
+      }
+    }
+  });
+
+  it("every default carries both nudges at zero: the default spec, every reset and every preset", () => {
+    expect(DEFAULT_FIN_PLACEMENT_SPEC.advanced.forwardOffRailNudge).toBe(0);
+    expect(DEFAULT_FIN_PLACEMENT_SPEC.advanced.rearOffRailNudge).toBe(0);
+    for (const setup of SETUPS) {
+      expect(resetAdvanced(setup).forwardOffRailNudge).toBe(0);
+      expect(resetAdvanced(setup).rearOffRailNudge).toBe(0);
+    }
+    for (const preset of BOARD_PRESETS) {
+      expect(preset.fins.advanced.forwardOffRailNudge).toBe(0);
+      expect(preset.fins.advanced.rearOffRailNudge).toBe(0);
+    }
+  });
+
+  it("the tuner is offered on every setup that has a forward pair, and only those", () => {
+    for (const finSetup of SETUPS) {
+      const r = computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup });
+      expect(r.flags.showForwardOffRailTuner).toBe(finSetup !== "single");
+    }
+  });
+});
+
+describe("the Off-Rail slider's range (offRailTunerRangeIn through measureSlider)", () => {
+  const SYSTEMS = ["imperial", "metric"] as const;
+  const CASES: { pair: "forward" | "rear"; t: number }[] = [
+    ...[1.125, 1.1875, 1.25, 1.3125, 0.62, 2.5].map((t) => ({ pair: "forward" as const, t })),
+    ...[0.62, 1.0, 2.2135, 3.78].map((t) => ({ pair: "rear" as const, t })),
+  ];
+  /** What the engine does with a nudge: hold the result inside the pair's window. */
+  const held = (t: number, nudge: Mm, pair: "forward" | "rear") => {
+    const w = offRailTunerWindow(inchesToMm(t), pair);
+    return Math.max(mmToInches(w.min), Math.min(mmToInches(w.max), t + mmToInches(nudge)));
+  };
+  const viewFor = (t: number, pair: "forward" | "rear", system: "imperial" | "metric") =>
+    measureSlider(mm(0), offRailTunerRangeIn(inchesToMm(t), pair, system), OFF_RAIL_TUNER_STEP_IN, 1, system);
+
+  for (const system of SYSTEMS) {
+    for (const { pair, t } of CASES) {
+      it(`${system}, ${pair} pair, template ${t}": zero sits on a step and both ends reach the window`, () => {
+        const view = viewFor(t, pair, system);
+        const stepsToZero = (0 - view.min) / view.step;
+        expect(Math.abs(Math.round(stepsToZero) - stepsToZero)).toBeLessThan(1e-9);
+        const stepsAcross = (view.max - view.min) / view.step;
+        expect(Math.abs(Math.round(stepsAcross) - stepsAcross)).toBeLessThan(1e-9);
+        const w = offRailTunerWindow(inchesToMm(t), pair);
+        expectCloseIn(held(t, view.toMm(view.min), pair), mmToInches(w.min));
+        expectCloseIn(held(t, view.toMm(view.max), pair), mmToInches(w.max));
+        if (system === "metric") {
+          for (let v = view.min; v <= view.max; v += view.step) {
+            expect(Number.isInteger(view.toMm(v))).toBe(true);
+          }
+        }
+      });
+    }
+
+    it(`${system}: the front window's ends print as the founder's figures`, () => {
+      const view = viewFor(1.1875, "forward", system);
+      const lo = formatMark(inchesToMm(held(1.1875, view.toMm(view.min), "forward")), system);
+      const hi = formatMark(inchesToMm(held(1.1875, view.toMm(view.max), "forward")), system);
+      expect(lo).toBe(system === "imperial" ? '7/8"' : "22 mm");
+      expect(hi).toBe(system === "imperial" ? '2"' : "51 mm");
+    });
+
+    it(`${system}: the rear window's ends on the default board's 2.2135" print as measured at plan time`, () => {
+      const view = viewFor(2.2135, "rear", system);
+      const lo = formatMark(inchesToMm(held(2.2135, view.toMm(view.min), "rear")), system);
+      const hi = formatMark(inchesToMm(held(2.2135, view.toMm(view.max), "rear")), system);
+      expect(lo).toBe(system === "imperial" ? '1 11/16"' : "44 mm");
+      expect(hi).toBe(system === "imperial" ? '2 11/16"' : "69 mm");
+    });
+  }
+
+  it("Metric: one step from zero prints the template's whole-millimetre figure plus one", () => {
+    for (const { pair, t } of CASES) {
+      const view = viewFor(t, pair, "metric");
+      expect(view.step).toBe(1);
+      // A template past the window's top (2.5" on the front pair) has no room to step toward the stringer.
+      if (view.max < 1) continue;
+      const up = Math.round(inchesToMm(held(t, view.toMm(1), pair)));
+      expect(up).toBe(Math.round(inchesToMm(t)) + 1);
+    }
+  });
+
+  it("Imperial: the range is a whole number of sixteenths, 7/8\" to 2\" on a 1 3/16\" template", () => {
+    const r = offRailTunerRangeIn(inchesToMm(1.1875), "forward", "imperial");
+    expectCloseIn(r.min, -0.3125);
+    expectCloseIn(r.max, 0.8125);
   });
 });
