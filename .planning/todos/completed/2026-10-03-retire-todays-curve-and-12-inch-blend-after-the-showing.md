@@ -73,3 +73,10 @@ in a rare corner, or to search, which is exact but slow there.
 The old curve, the hand-set pchip option and the 12" blend are gone from the code. Phase 11 boards
 and saved boards still open to exactly the numbers they open to today. And the founder's decision on
 the deck-tweak corner is written down here, and built if it needs building.
+
+## Decision on the deck-tweak corner (the founder, 2026-10-18)
+
+**Keep the quick refusal.** When a board's 12" Deck fine-tune is bigger than its Deck Skin, the blank
+list goes on saying at once that no blank fits, in the rare Tip Style Bottom corner too. It is a little
+cautious there (113 fits among 4,218 probe boards), but the screen stays instant instead of pausing
+about 30 seconds per change. Nothing to build: `tweakExceedsDeckSkin` stays as it is.

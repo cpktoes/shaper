@@ -15,6 +15,8 @@ one-page sheet `.planning/phases/14-realistic-surfboard-flow/arctic-blank-tape-c
 compare each reading with what the app's new square-root curve draws between the blank's five printed
 stations (`npx --no-install tsx --tsconfig ./tsconfig.json scripts/phase14-before-after.ts --step curves
 --samples <folder>` writes the curve samples; the ROCKER DATASHEET shows the blank's numbers too).
+Since quick 261018-dvu (2026-10-18) the old curve is gone, so the script prints the live curve only and the
+sample CSV's columns are `station_in,rocker_in,thickness_in,deck_in` (no before/after pairs).
 
 Record the result here: the blank, the date, the largest difference and where along the blank it falls.
 A real Marko Foam blank would be a second check.
