@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { devices, expect, test, type Locator, type Page } from "@playwright/test";
 import { importedReadout } from "./helpers/imported-readout";
 import { goToScreen } from "./helpers/screens";
 import { openRocker } from "./helpers/blank-picker";
@@ -239,5 +239,115 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     await expect(card).toBeVisible();
     await expect(card.locator("dd")).toHaveText(["182.9 cm", "48.3 cm", "6.4 cm"]);
     expectComputerLook(await readoutFacts(card), 3, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------
+// Phones. The card's padding is 8px top and bottom and 10px at the sides under BOTH phone switches —
+// the width rule (an upright phone) and the short-screen height rule (a phone held sideways) — and it
+// must never let a figure cross its edge. Each walk logs the card's measured height so the numbers can
+// be quoted (the founder's rule: phone real estate is expensive).
+// ---------------------------------------------------------------------------------------------------
+
+// A real sideways iPhone: Playwright's own `iPhone 14 landscape` reports an emulator's 750 x 340, so
+// the viewport is swapped for the page Safari actually leaves on hardware, 844 x 340 (built the way
+// rocker-live-controls.spec.ts builds it).
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphone = { ...iphoneLandscapeRest, viewport: { width: 844, height: 340 } };
+
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7Landscape } = devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+
+/** Tallest a phone card may stand: the measured heights are 74-117; this leaves room for a label that wraps. */
+const MAX_PHONE_CARD_HEIGHT = 125;
+
+/**
+ * Walks ROCKER, RAILS, VOLUME and FINS on whatever phone the test runs as: the card is on the page,
+ * wears the phone padding, has nothing crossing its edge, stands at most 125 dots tall — and its
+ * height is logged.
+ */
+async function walkPhoneScreens(page: Page, device: string) {
+  const screens = [
+    { name: "ROCKER", path: "/design/rocker", caption: "From TEMPLATE", scope: "[data-rocker-inputs]" },
+    { name: "RAILS", path: "/design/rails", caption: "From ROCKER & FOIL", scope: "aside" },
+    { name: "VOLUME", path: "/design/volume", caption: "From TEMPLATE", scope: "aside" },
+    { name: "FINS", path: "/design/fins", caption: "From TEMPLATE", scope: "aside" },
+  ];
+  for (const screen of screens) {
+    if (screen.name === "ROCKER") await openRocker(page);
+    // WebKit can still be finishing the last page's own navigation when the next goto starts ("interrupted
+    // by another navigation"), so a goto that was cut off is simply tried again.
+    else await expect(async () => void (await page.goto(screen.path))).toPass({ timeout: 60_000 });
+    const card = importedReadout(page.locator(screen.scope), screen.caption);
+    await expect(card, `${device} ${screen.name}`).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    const facts = await readoutFacts(card);
+    console.log(`readout height: ${device} ${screen.name} ${facts.height}px`);
+    expect(facts.paddingLeft, `${device} ${screen.name} phone padding`).toBe(10);
+    expect(facts.spills, `${device} ${screen.name} figures crossing the card's edge`).toEqual([]);
+    expect(facts.dlOverflow).toBeLessThanOrEqual(0);
+    expect(facts.height, `${device} ${screen.name} height`).toBeLessThanOrEqual(MAX_PHONE_CARD_HEIGHT);
+  }
+}
+
+test.describe("the imported dimensions as a readout card — on an upright phone (quick 261018-fg1)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone projects, at their own viewports");
+    await dismissChrome(page);
+  });
+
+  test("ROCKER, RAILS, VOLUME and FINS: tight padding, nothing crossing the card, heights logged", async ({
+    page,
+  }, testInfo) => {
+    await walkPhoneScreens(page, `upright ${testInfo.project.name}`);
+  });
+});
+
+test.describe("the imported dimensions as a readout card — on an iPhone held sideways, 844 x 340 (quick 261018-fg1)", () => {
+  test.use({ ...realSidewaysIphone });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own device (a real sideways iPhone)");
+    await dismissChrome(page);
+  });
+
+  test("ROCKER, RAILS, VOLUME and FINS: tight padding, nothing crossing the card, heights logged", async ({
+    page,
+  }) => {
+    await walkPhoneScreens(page, "sideways iPhone 844x340");
+  });
+
+  test("RAILS in Metric: the 30.5 cm labels fit and nothing spills", async ({ page }) => {
+    await setMetricUnits(page);
+    await page.goto("/design/rails");
+    const card = importedReadout(page.locator("aside"), "From ROCKER & FOIL");
+    await expect(card).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
+    await expect(card.locator("dt")).toHaveText(["Nose @ 30.5 cm", "Center", "Tail @ 30.5 cm"]);
+    const facts = await readoutFacts(card);
+    console.log(`readout height: sideways iPhone 844x340 RAILS (Metric) ${facts.height}px`);
+    expect(facts.spills).toEqual([]);
+    expect(facts.dlOverflow).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("the imported dimensions as a readout card — on a Pixel 7 held sideways (quick 261018-fg1)", () => {
+  test.use({ ...pixel7Landscape });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await dismissChrome(page);
+  });
+
+  test("ROCKER, RAILS, VOLUME and FINS: tight padding, nothing crossing the card, heights logged", async ({
+    page,
+  }) => {
+    await walkPhoneScreens(page, "sideways Pixel 7");
   });
 });
