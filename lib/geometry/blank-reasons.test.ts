@@ -1109,10 +1109,10 @@ describe("blankRowVolume — the volume at the end of a row's first line", () =>
 describe("boardLine — the board's size under the ROCKER subtitle", () => {
   it("reads the UI-SPEC's own example in both systems (metric carries its unit once, at the end)", () => {
     expect(boardLine(inchesToMm(70), inchesToMm(19.5), "imperial")).toBe(
-      `Length and width from TEMPLATE: 5'10" × 19 1/2"`,
+      `TEMPLATE details are imported: 5'10" × 19 1/2"`,
     );
     expect(boardLine(inchesToMm(70), inchesToMm(19.5), "metric")).toBe(
-      "Length and width from TEMPLATE: 177.8 × 49.5 cm",
+      "TEMPLATE details are imported: 177.8 × 49.5 cm",
     );
   });
 
@@ -1120,10 +1120,10 @@ describe("boardLine — the board's size under the ROCKER subtitle", () => {
     const length = inchesToMm(74.25);
     const width = inchesToMm(20.375);
     expect(boardLine(length, width, "imperial")).toBe(
-      `Length and width from TEMPLATE: ${formatLength(length, "imperial")} × ${formatDim(width, "imperial")}`,
+      `TEMPLATE details are imported: ${formatLength(length, "imperial")} × ${formatDim(width, "imperial")}`,
     );
     expect(boardLine(length, width, "metric")).toBe(
-      `Length and width from TEMPLATE: ${formatLength(length, "metric").replace(/ cm$/, "")} × ${formatDim(width, "metric")}`,
+      `TEMPLATE details are imported: ${formatLength(length, "metric").replace(/ cm$/, "")} × ${formatDim(width, "metric")}`,
     );
   });
 });
