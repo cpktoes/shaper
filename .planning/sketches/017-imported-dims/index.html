@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 017 — Imported dimensions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* The app's own palettes, copied from app/globals.css's --ramp-daylight-* and --ramp-slate-* on 2026-10-18. */
+:root, body.daylight {
+  --ground: #ffffff; --panel: #ffffff; --canvas: #dfdcd3; --well: #dfdcd3;
+  --ink: #1f2a3b; --muted: #566171; --line: #897c58; --faint: #897c58;
+  --accent: #8ec1b8; --on-accent: #1f2a3b; --accent-ink: #48605c; --fill: #d9f2ed;
+  color-scheme: light;
+}
+body.slate {
+  --ground: #12141a; --panel: #12141a; --canvas: #1a1d25; --well: #1b1f26;
+  --ink: #f2f4f7; --muted: #a1a8b4; --line: #6a707c; --faint: #333842;
+  --accent: #18526d; --on-accent: #f2f4f7; --accent-ink: #3490bc; --fill: #1a2732;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Inter, Roboto, system-ui, sans-serif; }
+
+/* ---- sketch chrome (not part of the design) ---- */
+#bar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  padding: 8px 16px; background: #0d0f14; color: #cfd5de; font: 13px/1.2 system-ui, sans-serif; border-bottom: 1px solid #262a33; }
+#bar b { color: #fff; margin-right: 4px; }
+.grp { display: inline-flex; gap: 4px; align-items: center; }
+.grp > span { color: #8a93a3; margin-right: 2px; }
+#bar button { font: inherit; color: #cfd5de; background: #1b1f28; border: 1px solid #333a47; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+#bar button.on { background: #3490bc; border-color: #3490bc; color: #fff; }
+#note { padding: 10px 16px 0; font: 13px/1.45 system-ui, sans-serif; color: var(--muted); max-width: 1400px; }
+#stage { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px 16px 40px; align-items: flex-start; }
+.mock { width: calc(var(--sidebar-w, 320px) + 42px); }
+.cap { font: 600 12px/1.3 system-ui, sans-serif; color: var(--muted); margin: 0 0 6px 2px; letter-spacing: .02em; }
+.cap em { font-style: normal; font-weight: 400; opacity: .8; }
+
+/* ---- the app's sidebar, as drawn today ---- */
+.sidebar { background: var(--panel); border: 1px solid var(--faint); border-radius: 6px; padding: 22px 20px 26px; }
+.title { font-size: 18px; line-height: 1.2; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; color: var(--ink); }
+.sub { margin-top: 2px; font-size: 14px; color: var(--muted); }
+.heading { margin-top: 22px; padding-bottom: 8px; border-bottom: 1px solid var(--faint); font-size: 12px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .15em; color: var(--ink); display: flex; justify-content: space-between; align-items: center; }
+.heading .view { font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.inputs { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; }
+.check { display: flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); cursor: pointer; user-select: none; }
+.box { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--line); display: inline-grid; place-items: center; flex: none; }
+.box.on { background: var(--accent); border-color: var(--accent); }
+.box.on::after { content: ""; width: 8px; height: 4px; border-left: 2px solid var(--on-accent); border-bottom: 2px solid var(--on-accent); transform: rotate(-45deg) translate(1px, -1px); }
+.handctl { font-size: 12px; color: var(--muted); font-style: italic; opacity: .8; }
+.label { font-size: 14px; color: var(--muted); }
+.field { min-width: 96px; text-align: right; font-size: 14px; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; }
+.track { position: relative; height: 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--canvas); margin-top: 10px; }
+.track i { position: absolute; left: 0; top: -1px; bottom: -1px; width: 47%; background: var(--accent); border-radius: 4px; border: 1px solid var(--line); }
+.track b { position: absolute; left: calc(47% - 8px); top: -5px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 1px solid var(--ink); }
+.row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.card { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+.card .t { font-size: 15px; font-weight: 600; color: var(--ink); }
+.card .s { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.card .l { font-size: 12px; font-weight: 800; letter-spacing: .15em; color: var(--accent-ink); margin-top: 8px; }
+.pills { display: flex; gap: 6px; margin-top: 8px; }
+.pills span { flex: 1; height: 54px; border: 1px solid var(--line); border-radius: 9px; display: grid; place-items: end center; padding-bottom: 5px; font-size: 10px; font-weight: 700; color: var(--ink); }
+.pills span.on { background: var(--accent); }
+.nav { display: flex; gap: 10px; margin-top: 14px; }
+.nav span { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; font-size: 15px; color: var(--ink); }
+.nav span.next { flex: 1.25; background: var(--accent); border-color: var(--ink); }
+.sizeline { margin-top: 6px; font: 11px system-ui, sans-serif; color: var(--muted); opacity: .85; }
+
+/* figures: ink by default, the accent ink when "Figures in accent" is on */
+.v { color: var(--ink); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.accent-figs .v { color: var(--accent-ink); }
+.nb { white-space: nowrap; }
+
+/* ---- Today ---- */
+.imp-today { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.imp-today .v { color: inherit; font-weight: 400; }
+
+/* ---- A: one clear line ---- */
+.imp-a { font-size: 14px; color: var(--muted); line-height: 1.5; }
+.imp-a .src { color: var(--muted); }
+
+/* ---- B: own lines ---- */
+.imp-b .src { font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin: 2px 0 4px; }
+.imp-b .r { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; padding: 3px 0; border-bottom: 1px dashed color-mix(in srgb, var(--faint) 55%, transparent); }
+.imp-b .r:last-child { border-bottom: 0; }
+.imp-b .r .k { color: var(--muted); }
+.imp-b .foot { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* ---- C: readout card ---- */
+.imp-c { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 11px; margin-top: 2px; }
+.imp-c .src { font-size: 10px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--accent-ink); }
+.imp-c .grid { display: grid; gap: 8px 10px; margin-top: 8px; }
+.imp-c .cell .v { display: block; font-size: 18px; line-height: 1.15; }
+.imp-c .cell .k { display: block; margin-top: 2px; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.imp-c .foot { font-size: 12px; color: var(--muted); margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--faint); }
+
+/* ---- D: chips ---- */
+.imp-d .src { font-size: 14px; color: var(--muted); margin-bottom: 5px; }
+.imp-d .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.imp-d .chip { background: var(--fill); border-radius: 999px; padding: 3px 10px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+body.slate .imp-d .chip { box-shadow: inset 0 0 0 1px var(--faint); }
+.imp-d .foot { font-size: 12px; color: var(--muted); margin-top: 5px; }
+</style>
+</head>
+<body class="daylight">
+<div id="bar"></div>
+<div id="note"></div>
+<div id="stage"></div>
+
+<script>
+// ---------------------------------------------------------------------------------------------
+// The real figures on the default 6'0" board (live dev server, 2026-10-18), in both systems.
+// Units follow CLAUDE.md Rule 2: dims in cm to one decimal, marks (foil thicknesses) in whole mm,
+// a unit once per run of text, and a value standing in its own box carries its own.
+// ---------------------------------------------------------------------------------------------
+const SCREENS = {
+  rocker: {
+    title: "Rocker & Foil", sub: "Set thickness, pick a blank, and dial in rocker and foil.", check: null, source: "TEMPLATE",
+    items: [
+      { k: "Length", imp: `6'0"`, met: "182.9", u: "cm" },
+      { k: "Width", imp: `19"`, met: "48.3", u: "cm" },
+    ],
+    joiner: "×",
+    today: { imp: `TEMPLATE details are imported: 6'0" × 19"`, met: `TEMPLATE details are imported: 182.9 × 48.3 cm` },
+  },
+  rails: {
+    title: "Rail Band Calculator", sub: "Design and shape consistent rails", check: "Import Rocker & Foil Values", source: "ROCKER & FOIL",
+    items: [
+      { k: "Nose @ 12\"", kMet: "Nose @ 30.5 cm", imp: `1 5/16"`, met: "33", u: "mm", tail: "nose @ STATION" },
+      { k: "Center", imp: `2 1/2"`, met: "64", u: "mm", tail: "center" },
+      { k: "Tail @ 12\"", kMet: "Tail @ 30.5 cm", imp: `1 9/16"`, met: "40", u: "mm", tail: "tail @ STATION" },
+    ],
+    joiner: "·",
+    today: { imp: `Thickness details are imported: 1 5/16" nose @ 12" · 2 1/2" center · 1 9/16" tail @ 12"`,
+             met: `Thickness details are imported: 33 mm nose @ 30.5 cm · 64 mm center · 40 mm tail @ 30.5 cm` },
+  },
+  fins: {
+    title: "Fin Setup & Placement", sub: "Quantitative reference · trailing-edge convention", check: "Import Designed Board", source: "TEMPLATE",
+    items: [
+      { k: "Length", imp: `6'0"`, met: "182.9", u: "cm", tail: "" },
+      { k: "Tail @ 12\"", kMet: "Tail @ 30.5 cm", imp: `14 3/4"`, met: "37.5", u: "cm", tail: "tail @ STATION" },
+      { k: "Tail", imp: "Squash", met: "Squash", u: "", tail: "tail", word: true },
+      { k: "Tail block", imp: `4"`, met: "10.2", u: "cm", tail: "tail block" },
+    ],
+    joiner: "·",
+    today: { imp: `TEMPLATE details are imported: 6'0" · 14 3/4" tail @ 12" · Squash tail · 4" tail block`,
+             met: `TEMPLATE details are imported: 182.9 cm · 37.5 cm tail @ 30.5 cm · Squash tail · 10.2 cm tail block` },
+  },
+  volume: {
+    title: "Volume Estimator", sub: "Approximate volume of a designed board", check: "Import Designed Board", source: "TEMPLATE",
+    items: [
+      { k: "Length", imp: `6'0"`, met: "182.9", u: "cm" },
+      { k: "Width", imp: `19"`, met: "48.3", u: "cm" },
+      { k: "Thickness", imp: `2 1/2"`, met: "6.4", u: "cm" },
+    ],
+    joiner: "×",
+    foot: "Rail shapes from RAILS",
+    today: { imp: `Board details are imported: 6'0" × 19" × 2 1/2", and the rail shapes from RAILS.`,
+             met: `Board details are imported: 182.9 × 48.3 × 6.4 cm, and the rail shapes from RAILS.` },
+  },
+};
+
+const VARIANTS = [
+  ["today", "Today"],
+  ["a", "A · One clear line"],
+  ["b", "B · Own lines"],
+  ["c", "C · Readout card"],
+  ["d", "D · Chips"],
+  ["side", "⇆ Side by side"],
+];
+const NOTES = {
+  today: "Today: 12 px muted text — smaller than the tick box above it and every label below it, and every figure runs together in one sentence.",
+  a: "A — the same one sentence, but at the sidebar's own 14 px, with each figure in the ink's semibold weight so the numbers stand out from the words. Shortest change; keeps today's height or close to it.",
+  b: "B — each figure on its own line, label left and figure right, like a spec sheet. Easiest to read at a glance; one line per figure (2–4 lines).",
+  c: "C — a small card like the Pick a Blank card, with the figures as a readout: each figure large with its name under it. The most noticeable; adds a box to every screen.",
+  d: "D — each figure in its own tinted chip that wraps across the line. Noticeable without a box; the chips use the board-fill tint already used on the drawings.",
+  side: "One screen, every option next to each other, with the height each one takes (phone room matters — \"phone real estate is expensive\").",
+};
+
+const state = { variant: "side", theme: "daylight", units: "imperial", accent: false, screen: "rails", width: "computer" };
+try { Object.assign(state, JSON.parse(localStorage.getItem("sketch017") || "{}")); } catch {}
+const imported = { rocker: true, rails: true, fins: true, volume: true };
+
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const met = () => state.units === "metric";
+const station = () => (met() ? "30.5 cm" : `12"`);
+const fig = (it, withUnit = true) => (met() ? (it.word ? it.met : withUnit && it.u ? `${it.met} ${it.u}` : it.met) : it.imp);
+const key = (it) => (met() && it.kMet ? it.kMet : it.k);
+const V = (s) => `<span class="v">${esc(s)}</span>`;
+
+function sentence(s) {
+  // The figures of one screen as running text, each figure wrapped so it can be lit up.
+  if (s.joiner === "×") {
+    // A × series carries its unit once, at the end, in Metric (Rule 2).
+    const parts = s.items.map((it, i) => V(met() ? it.met + (i === s.items.length - 1 ? " " + it.u : "") : it.imp));
+    return parts.join(" × ");
+  }
+  return s.items
+    .map((it) => {
+      const t = (it.tail || "").replace("STATION", station());
+      return `<span class="nb">${V(fig(it))}${t ? " " + esc(t) : ""}</span>`;
+    })
+    .join(" · ");
+}
+
+function importedBlock(id, variant) {
+  const s = SCREENS[id];
+  const src = `From ${s.source}`;
+  if (variant === "today") return `<div class="imp-today">${esc(met() ? s.today.met : s.today.imp)}</div>`;
+  if (variant === "a")
+    return `<div class="imp-a"><span class="src">${esc(src)}:</span> ${sentence(s)}${s.foot ? `<span class="src">, rail shapes from RAILS</span>` : ""}</div>`;
+  if (variant === "b")
+    return `<div class="imp-b"><div class="src">${esc(src)}</div>${s.items
+      .map((it) => `<div class="r"><span class="k">${esc(key(it))}</span>${V(fig(it))}</div>`)
+      .join("")}${s.foot ? `<div class="foot">${esc(s.foot)}</div>` : ""}</div>`;
+  if (variant === "c") {
+    const cols = s.items.length === 4 ? 2 : s.items.length;
+    return `<div class="imp-c"><div class="src">${esc(src)}</div><div class="grid" style="grid-template-columns:repeat(${cols},1fr)">${s.items
+      .map((it) => `<div class="cell">${V(fig(it))}<span class="k">${esc(key(it))}</span></div>`)
+      .join("")}</div>${s.foot ? `<div class="foot">${esc(s.foot)}</div>` : ""}</div>`;
+  }
+  if (variant === "d")
+    return `<div class="imp-d"><div class="src">${esc(src)}</div><div class="chips">${s.items
+      .map((it) => `<span class="chip">${V(fig(it))} ${esc(key(it).toLowerCase())}</span>`)
+      .join("")}</div>${s.foot ? `<div class="foot">${esc(s.foot)}</div>` : ""}</div>`;
+  return "";
+}
+
+function afterInputs(id) {
+  if (id === "rocker")
+    return `<div class="row"><span class="label">Center Thickness</span><span class="field">${met() ? "64 mm" : `2 1/2"`}</span></div>
+      <div class="track"><i></i><b></b></div>
+      <div class="heading">Blank <span class="view">▾</span></div>
+      <div class="card"><div class="t">Pick a Blank</div><div class="s">196 blanks long enough for this board, 194 fit</div><div class="l">BROWSE BLANKS ›</div></div>`;
+  if (id === "rails")
+    return `<div class="heading">Nose Rail <span class="view"><span class="box on"></span>View</span></div>
+      <div class="row"><span class="label">Deck Profile — ${met() ? "33 mm" : `1 5/16"`} (Tapered Thickness)</span></div>
+      <div class="track"><i style="width:4%"></i><b style="left:-4px"></b></div>`;
+  if (id === "fins")
+    return `<div class="heading">Fin Selection</div><div class="row"><span class="label">Fin Setup</span></div>
+      <div class="pills"><span>Single</span><span>Twin</span><span class="on">Thruster</span><span>2+1</span><span>Quad</span></div>`;
+  return `<div class="nav"><span>← Rails</span><span class="next">Fins →</span></div>`;
+}
+
+function sidebar(id, variant) {
+  const s = SCREENS[id];
+  const on = imported[id];
+  const box = s.check
+    ? `<label class="check" data-toggle="${id}"><span class="box ${on ? "on" : ""}"></span>${esc(s.check)}</label>`
+    : "";
+  const block = on ? `<div class="impwrap">${importedBlock(id, variant)}</div>` : `<div class="handctl">The hand controls come back here.</div>`;
+  return `<div class="sidebar"><div class="title">${esc(s.title)}</div><div class="sub">${esc(s.sub)}</div>
+    <div class="heading">Inputs</div><div class="inputs">${box}${block}</div>${afterInputs(id)}</div>`;
+}
+
+function seg(name, opts) {
+  return opts.map(([v, l]) => `<button data-set="${name}" data-val="${v}" class="${String(state[name]) === String(v) ? "on" : ""}">${l}</button>`).join("");
+}
+
+function render() {
+  try { localStorage.setItem("sketch017", JSON.stringify(state)); } catch {}
+  document.body.className = `${state.theme}${state.accent ? " accent-figs" : ""}`;
+  document.body.style.setProperty("--sidebar-w", state.width === "phone" ? "358px" : "320px");
+  const bar = document.getElementById("bar");
+  bar.innerHTML = `<b>017 Imported dimensions</b>
+    <span class="grp">${seg("variant", VARIANTS)}</span>
+    ${state.variant === "side" ? `<span class="grp"><span>Screen</span>${seg("screen", [["rocker", "ROCKER"], ["rails", "RAILS"], ["fins", "FINS"], ["volume", "VOLUME"]])}</span>` : ""}
+    <span class="grp"><span>Figures in accent</span>${seg("accent", [[false, "Off"], [true, "On"]])}</span>
+    <span class="grp"><span>Theme</span>${seg("theme", [["daylight", "Daylight"], ["slate", "Slate"]])}</span>
+    <span class="grp"><span>Units</span>${seg("units", [["imperial", "Imperial"], ["metric", "Metric"]])}</span>
+    <span class="grp"><span>Width</span>${seg("width", [["computer", "Computer"], ["phone", "Phone"]])}</span>`;
+  document.getElementById("note").textContent = NOTES[state.variant];
+  const stage = document.getElementById("stage");
+  if (state.variant === "side") {
+    stage.innerHTML = VARIANTS.filter(([v]) => v !== "side")
+      .map(([v, l]) => `<div class="mock"><div class="cap">${esc(l)}</div>${sidebar(state.screen, v)}<div class="sizeline" data-size></div></div>`)
+      .join("");
+  } else {
+    stage.innerHTML = Object.keys(SCREENS)
+      .map((id) => `<div class="mock"><div class="cap">${id.toUpperCase()} <em>· ${esc(VARIANTS.find(([v]) => v === state.variant)[1])}</em></div>${sidebar(id, state.variant)}<div class="sizeline" data-size></div></div>`)
+      .join("");
+  }
+  // The height each imported block takes, so the phone's room can be weighed.
+  stage.querySelectorAll(".mock").forEach((m) => {
+    const w = m.querySelector(".impwrap");
+    m.querySelector("[data-size]").textContent = w ? `Imported block: ${Math.round(w.getBoundingClientRect().height)} px tall` : "";
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-set]");
+  if (b) {
+    const v = b.dataset.val;
+    state[b.dataset.set] = v === "true" ? true : v === "false" ? false : v;
+    render();
+    return;
+  }
+  const t = e.target.closest("[data-toggle]");
+  if (t) { imported[t.dataset.toggle] = !imported[t.dataset.toggle]; render(); }
+});
+document.fonts && document.fonts.ready.then(render);
+render();
+</script>
+</body>
+</html>
