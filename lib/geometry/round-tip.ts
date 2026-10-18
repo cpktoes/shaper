@@ -56,10 +56,10 @@
  * returns an infinity. Inside a rounded segment `slopeAt` is the parabola's own derivative with
  * respect to x, signed for the curve's direction; past either end it is 0, as it always was.
  *
- * Width only (D3). `prepareBlankWith` wraps the blank's WIDTH curve under the live "root" rule and
- * nothing else: not its thickness, not its rocker, not a hand-set board's foil (which also uses
- * the "fall" rule, `fallbackProfileWith`), and not `prepareRootCurve` itself, which stays exactly
- * as Phase 14 shipped it. The "pchip" rule, kept by name for old boards, is untouched.
+ * Width only (D3). `prepareBlank` wraps the blank's WIDTH curve and nothing else: not its
+ * thickness, not its rocker, not a hand-set board's foil (which also uses the "fall" rule,
+ * `buildFallbackProfile`), and not `prepareRootCurve` itself, which stays exactly as Phase 14
+ * shipped it.
  *
  * No React/browser/database import — pure geometry, tested in round-tip.test.ts (CLAUDE.md Rule 1).
  */

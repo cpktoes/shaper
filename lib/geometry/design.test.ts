@@ -100,7 +100,7 @@ describe("summarizeDesign", () => {
     ];
     expect(boards).toHaveLength(BOARD_PRESETS.length + 1);
     for (const fields of boards) {
-      expect(summarizeDesign(fields)).toEqual(summarizeDesignWith(fields, { prepare: prepareBlank, handSetCurve: "root" }));
+      expect(summarizeDesign(fields)).toEqual(summarizeDesignWith(fields, { prepare: prepareBlank }));
     }
   });
 });

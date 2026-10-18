@@ -15,7 +15,7 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
-import { prepareBlank, thinningStartsOf, type PreparedBlank, type TipRule } from "./blank-fit";
+import { prepareBlank, thinningStartsOf, type PreparedBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { prepareBoardBlank } from "./custom-rocker";
@@ -24,7 +24,6 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, sampleOutline } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
-import type { CurveRule } from "./root-curve";
 import {
   computeCrossSectionVolume,
   computeVolume,
@@ -214,30 +213,22 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
 }
 
 /**
- * Which rules a board's figures are worked out under: how a blank's catalogue rows become its
- * curves, and which curve draws a board with no blank between its five stations. Every screen uses
- * the live ones (`summarizeDesign`); the reports and pictures may ask for the rules the site used
- * before Phase 14, kept by name (D-25), so a "before" figure comes from this same pipeline and never
- * from a second calculation.
+ * How a board's figures are worked out: how a blank's catalogue rows become the curves the board is
+ * cut from. Every screen uses the live preparation (`LIVE_DESIGN_RULES`). A hand-set board is always
+ * drawn with the square-root rule and every tip with the steady taper — the curve and the 12" blend
+ * the site used before Phase 14 were retired after the Oct 10 showing (quick 261018-dvu).
  */
 export interface DesignRules {
   /** Prepares a blank's own copy of its catalogue rows into the curves the board is cut from. */
   prepare: (record: BlankRecord) => PreparedBlank;
-  /** Which rule draws a board with no blank (`BoardProfileInput.handSetCurve`). */
-  handSetCurve: CurveRule;
-  /**
-   * Which tip rule cuts a board in a blank (`BoardOnBlankInput.tipRule`). Absent is the live steady
-   * taper (Phase 14 D-01); `"blend"` is the 12" S-blend the site used before, kept by name (D-25).
-   */
-  tipRule?: TipRule;
 }
 
 /**
  * The rules every screen uses (Phase 14 D-13): a blank's own catalogue rows prepared by
- * `prepareBlank`, a hand-set board drawn with the square-root rule, and the live steady tip taper.
- * `summarizeDesign` and the Board Rack (Phase 15) both read these, so the two never drift.
+ * `prepareBlank`. `summarizeDesign` and the Board Rack (Phase 15) both read these, so the two never
+ * drift.
  */
-export const LIVE_DESIGN_RULES: DesignRules = { prepare: prepareBlank, handSetCurve: "root" };
+export const LIVE_DESIGN_RULES: DesignRules = { prepare: prepareBlank };
 
 /**
  * The one recipe for a saved board's side profile — the rocker and the deck — moved here verbatim
@@ -268,18 +259,15 @@ export function designSideProfile(
           deckSkin: blank.deckSkin,
           tipStyle: blank.tipStyle,
           fineTuneSurface: blank.fineTuneSurface,
-          tipRule: rules.tipRule,
           // The board's own stored Thinning Starts (Phase 14 D-24), through the one helper.
           ...thinningStartsOf(blank),
         }
       : null,
-    handSetCurve: rules.handSetCurve,
   });
 }
 
 /**
- * `summarizeDesign`'s whole pipeline (see its comment) with the blank preparation and the hand-set
- * curve passed in — the one way to work out a board's figures under a chosen set of rules.
+ * `summarizeDesign`'s whole pipeline (see its comment) with the blank preparation passed in.
  */
 export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRules): DesignSummary {
   const outlineGeometry = buildOutline(fields.outline);

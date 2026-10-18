@@ -23,8 +23,8 @@
  *   change that — so the flag names the fixes on ROCKER and offers ↺ Reset Fine-Tune, never
  *   Change Fit Rules. That quick refusal stays exact on Automatic and under Tip Style Pin deck, and is
  *   conservative in one corner (Phase 14): Tip Style Bottom with that tip's Thinning Start set by
- *   hand further in than 12", where some placements could fit and it still refuses — recorded in
- *   the pending todo for retiring today's curve and 12" blend.
+ *   hand further in than 12", where some placements could fit and it still refuses — the founder
+ *   decided on 2026-10-18 to keep it: a little cautious in that rare corner, but instant.
  *
  * Every check reads the board's own Thinning Starts (Phase 14) — a start set by hand, or Automatic,
  * which the fit check picks for this blank at each placement — so the flag never disagrees with the
