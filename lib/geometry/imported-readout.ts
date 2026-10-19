@@ -152,10 +152,31 @@ export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system:
   };
 }
 
+/** How many columns a card draws its figures in. */
+export type ImportedReadoutColumns = 1 | 2 | 3;
+
 /**
- * How many columns a card's figures sit in: 2 for two, 3 for three, 2 x 2 for four, and 3 then 2 for
- * five (the rows wrap, so five in three columns is a row of three over a row of two).
+ * How many columns a card's figures are designed to sit in: 2 for two, 3 for three, 2 x 2 for four,
+ * and 3 then 2 for five (the rows wrap, so five in three columns is a row of three over a row of two).
  */
 export function importedReadoutColumns(count: number): 2 | 3 {
   return count === 2 || count === 4 ? 2 : 3;
+}
+
+/**
+ * How many columns a card can actually draw: the designed count when its figures fit side by side,
+ * otherwise one fewer, down to a single column (fast task 178, 2026-10-18). In the narrowest computer
+ * sidebar — an 820-dot window, where the card's list is 233 dots wide — VOLUME's three Metric figures
+ * and their names (`182.9 cm`, `48.3 cm`, and THICKNESS under `6.4 cm`) need 243 dots in three
+ * content-sized columns, so the third ran 10 dots into the card's padding; two columns, the third
+ * figure under the first, fit. `overflowsAt(columns)` says whether the list overflows at that count —
+ * the card measures that in the browser, this only decides — and is never asked about fewer than two.
+ */
+export function importedReadoutColumnsThatFit(
+  designed: 2 | 3,
+  overflowsAt: (columns: ImportedReadoutColumns) => boolean,
+): ImportedReadoutColumns {
+  let columns: ImportedReadoutColumns = designed;
+  while (columns > 1 && overflowsAt(columns)) columns = columns === 3 ? 2 : 1;
+  return columns;
 }

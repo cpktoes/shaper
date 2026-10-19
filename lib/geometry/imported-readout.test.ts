@@ -3,6 +3,7 @@ import type { TailShape } from "./board";
 import {
   finsImportedReadout,
   importedReadoutColumns,
+  importedReadoutColumnsThatFit,
   railsImportedReadout,
   rockerImportedReadout,
   volumeImportedReadout,
@@ -288,5 +289,29 @@ describe("importedReadoutColumns — the column rule", () => {
     expect(importedReadoutColumns(3)).toBe(3);
     expect(importedReadoutColumns(4)).toBe(2);
     expect(importedReadoutColumns(5)).toBe(3);
+  });
+});
+
+describe("importedReadoutColumnsThatFit — one column fewer while the figures overflow", () => {
+  it("keeps the designed count when the figures fit", () => {
+    expect(importedReadoutColumnsThatFit(3, () => false)).toBe(3);
+    expect(importedReadoutColumnsThatFit(2, () => false)).toBe(2);
+  });
+
+  it("drops three columns to two when three overflow and two fit (VOLUME at 820 wide in Metric)", () => {
+    const asked: number[] = [];
+    const columns = importedReadoutColumnsThatFit(3, (count) => {
+      asked.push(count);
+      return count === 3;
+    });
+    expect(columns).toBe(2);
+    expect(asked).toEqual([3, 2]);
+  });
+
+  it("goes down to a single column when two overflow too, and never asks about fewer", () => {
+    const asked: number[] = [];
+    expect(importedReadoutColumnsThatFit(3, (count) => (asked.push(count), true))).toBe(1);
+    expect(asked).toEqual([3, 2]);
+    expect(importedReadoutColumnsThatFit(2, () => true)).toBe(1);
   });
 });

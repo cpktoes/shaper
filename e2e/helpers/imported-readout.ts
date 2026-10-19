@@ -27,6 +27,23 @@ export async function expectReadout(card: Locator, pairs: [label: string, value:
   await expect(card.locator("dd")).toHaveText(pairs.map(([, value]) => value));
 }
 
+/**
+ * Waits until the card has had its chance to fit its columns: React owns it (hydrated), the page's
+ * fonts are in, and two frames have drawn. The card tries its designed column count and draws one
+ * fewer when the figures overflow (VOLUME at 820 wide in Metric — fast task 178), which only happens
+ * client-side, so a card read straight after it appears could still be the server's.
+ */
+export async function settledReadout(card: Locator): Promise<void> {
+  await expect
+    .poll(() => card.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
+    .toBe(true);
+  await card.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+  });
+}
+
 /** The figure (the `dd`) of one readout, by its machine key (`length`, `width`, `tailBlock`, `depth`, ...). */
 export function readoutValue(card: Locator, key: string): Locator {
   return card.locator(`[data-readout="${key}"] dd`);

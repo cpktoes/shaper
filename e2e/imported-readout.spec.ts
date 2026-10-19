@@ -1,5 +1,5 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
-import { importedReadout } from "./helpers/imported-readout";
+import { importedReadout, settledReadout } from "./helpers/imported-readout";
 import { goToScreen } from "./helpers/screens";
 import { openRocker } from "./helpers/blank-picker";
 
@@ -16,7 +16,9 @@ import { openRocker } from "./helpers/blank-picker";
  * - "on a computer": the look (accent caption, ink figures, sizes, border, corners, padding), the
  *   column count and row count per screen, a swallow tail's five figures in three columns over two
  *   rows, and that nothing crosses the card's edge at 1280 wide or at the narrowest desktop shell, 820
- *   wide, in Metric (where the 30.5 cm labels and the cm figures are widest).
+ *   wide, in Metric (where the 30.5 cm labels and the cm figures are widest) — where VOLUME's three
+ *   figures, which cannot sit side by side in a 233-dot list, go two then one at the same 18px and
+ *   come back to three columns when the window widens (fast task 178).
  * - the phone describes: the same card on an upright iPhone 14 and Pixel 7 and on both phones held
  *   sideways has the tighter 10px phone padding, nothing crossing its edge, and a measured height
  *   (logged, so the numbers can be quoted).
@@ -205,13 +207,15 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     const screens: { path: string; caption: string; scope: string; columns: number; rows: number }[] = [
       { path: "/design/rocker", caption: "From TEMPLATE", scope: "[data-rocker-inputs]", columns: 2, rows: 1 },
       { path: "/design/rails", caption: "From ROCKER & FOIL", scope: "aside", columns: 3, rows: 1 },
-      { path: "/design/volume", caption: "From TEMPLATE and ROCKER & FOIL", scope: "aside", columns: 3, rows: 1 },
+      // VOLUME's three Metric figures need 243 dots side by side and the list is 233: two then one.
+      { path: "/design/volume", caption: "From TEMPLATE and ROCKER & FOIL", scope: "aside", columns: 2, rows: 2 },
       { path: "/design/fins", caption: "From TEMPLATE", scope: "aside", columns: 2, rows: 2 },
     ];
     for (const screen of screens) {
       await page.goto(screen.path);
       const card = importedReadout(page.locator(screen.scope), screen.caption);
       await expect(card, screen.path).toBeVisible();
+      await settledReadout(card);
       const facts = await readoutFacts(card);
       expect(facts.spills, `${screen.path} figures crossing the card's edge`).toEqual([]);
       expect(facts.dlOverflow, `${screen.path} list overflow`).toBeLessThanOrEqual(0);
@@ -225,11 +229,39 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     await goToScreen(page, "FINS");
     const swallow = importedReadout(page.locator("aside"), "From TEMPLATE");
     await expect(swallow.locator("dd")).toHaveCount(5);
+    await settledReadout(swallow);
     const facts = await readoutFacts(swallow);
     expect(facts.spills, "FINS swallow figures crossing the card's edge").toEqual([]);
     expect(facts.dlOverflow).toBeLessThanOrEqual(0);
     expect(facts.columns).toBe(3);
     expect(facts.rows).toBe(2);
+  });
+
+  test("VOLUME at 820 wide in Metric: the third figure drops under the first two, then widens back to three", async ({
+    page,
+  }) => {
+    // Three content-sized columns need 243 dots here and the list is 233: the card draws two columns,
+    // the figures no smaller, nothing crossing its edge; at 1280 the three columns come back.
+    await page.setViewportSize({ width: 820, height: 800 });
+    await setMetricUnits(page);
+    await page.goto("/design/volume");
+    const card = importedReadout(page.locator("aside"), "From TEMPLATE and ROCKER & FOIL");
+    await expect(card).toBeVisible();
+    await settledReadout(card);
+    const narrow = await readoutFacts(card);
+    expect(narrow.columns).toBe(2);
+    expect(narrow.rows).toBe(2);
+    expect(narrow.dlOverflow).toBeLessThanOrEqual(0);
+    expect(narrow.spills).toEqual([]);
+    expect(narrow.figureFontSize).toBe(18);
+    await expect(card.locator("dd")).toHaveText(["182.9 cm", "48.3 cm", "6.4 cm"]);
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect.poll(async () => (await readoutFacts(card)).columns).toBe(3);
+    const wide = await readoutFacts(card);
+    expect(wide.rows).toBe(1);
+    expect(wide.dlOverflow).toBeLessThanOrEqual(0);
+    expect(wide.spills).toEqual([]);
   });
 
   test("VOLUME in Metric: every figure still fits inside its card", async ({ page }) => {
