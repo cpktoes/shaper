@@ -12,8 +12,10 @@ import {
   openBoardCopyJson,
   parseOpenBoardCopy,
   readOpenBoardCopy,
+  reconcileOpenBoardOwner,
   writeOpenBoardCopy,
   type OpenBoardBookkeeping,
+  type OpenBoardRow,
 } from "./open-board";
 
 /** The Fish, sitting in its own blank, exactly as "Start Shaping" opens it — built from the app's
@@ -232,5 +234,44 @@ describe("the open board's copy — storage", () => {
     expect(storage.setItemCalls).toBe(1);
     flushOpenBoardCopy(pending);
     expect(storage.setItemCalls).toBe(1);
+  });
+});
+
+describe("the owner rule — a kept saved board stays linked only for its own account", () => {
+  const ROW: OpenBoardRow = { modelId: "m-1", ownerId: "user_a", locked: true };
+
+  it("while the account is not known yet (still loading), the row is kept as it is", () => {
+    expect(reconcileOpenBoardOwner(ROW, undefined)).toEqual(ROW);
+  });
+
+  it("signed out, the row is kept: a sign-out alone never loses a saved board's link", () => {
+    expect(reconcileOpenBoardOwner(ROW, null)).toEqual(ROW);
+  });
+
+  it("the same account keeps the row", () => {
+    expect(reconcileOpenBoardOwner(ROW, "user_a")).toEqual(ROW);
+  });
+
+  it("a different account drops the row and its lock: the board stays open, unsaved", () => {
+    expect(reconcileOpenBoardOwner(ROW, "user_b")).toEqual({ modelId: null, ownerId: null, locked: false });
+  });
+
+  it("a saved board with no known owner belongs to whoever is signed in", () => {
+    const unowned: OpenBoardRow = { modelId: "m-1", ownerId: null, locked: true };
+    expect(reconcileOpenBoardOwner(unowned, "user_a")).toEqual({ modelId: "m-1", ownerId: "user_a", locked: true });
+    expect(reconcileOpenBoardOwner(unowned, undefined)).toEqual(unowned);
+    expect(reconcileOpenBoardOwner(unowned, null)).toEqual(unowned);
+  });
+
+  it("a board with no saved row has no owner, its lock as given, whoever is signed in", () => {
+    for (const userId of [undefined, null, "user_a", "user_b"]) {
+      for (const locked of [false, true]) {
+        expect(reconcileOpenBoardOwner({ modelId: null, ownerId: "user_a", locked }, userId)).toEqual({
+          modelId: null,
+          ownerId: null,
+          locked,
+        });
+      }
+    }
   });
 });

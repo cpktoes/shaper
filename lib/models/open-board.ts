@@ -24,6 +24,13 @@
  * the account it belongs to: a copy that names a saved board but no account comes back as an unsaved
  * board instead.
  *
+ * The owner rule (`reconcileOpenBoardOwner`): a saved board that comes back after a reload keeps
+ * saving to its own place in the rack for the same shaper — and an edit that had not saved yet is
+ * saved once the sign-in service confirms that shaper. A different account signed in on the same
+ * browser gets the board as an unsaved board instead. Signing out alone never loses the link. This
+ * is safe either way, because the server only ever writes a saved board for the account that owns
+ * it; the rule just stops the app from trying, and from showing a save that failed.
+ *
  * Nothing here is ever sent anywhere: the copy lives in this browser only. Every browser call sits
  * inside try/catch, with a page-memory copy for a browser that refuses storage (the same fallback
  * `components/saved-blanks-provider.tsx` keeps), so the module also runs in a node test with no
@@ -63,6 +70,13 @@ export interface OpenBoardBookkeeping {
 /** A copy read back: the board itself, and its bookkeeping. */
 export interface OpenBoardCopy extends OpenBoardBookkeeping {
   snapshot: DesignSnapshotFields;
+}
+
+/** The saved-board link the owner rule looks at: which saved board, whose, and its lock. */
+export interface OpenBoardRow {
+  modelId: string | null;
+  ownerId: string | null;
+  locked: boolean;
 }
 
 const idSchema = z.string().max(MAX_ID_LENGTH).nullable();
@@ -155,6 +169,33 @@ export function clearOpenBoardCopy(): void {
   } catch {
     // Storage refused: nothing stored to remove.
   }
+}
+
+/**
+ * The owner rule: given the saved-board link a board carries and the account signed in right now
+ * (`undefined` while the sign-in service is still loading, `null` signed out, an id signed in),
+ * the link the board should carry from now on.
+ *
+ * - Not known yet, or signed out: kept exactly as it is. A sign-out alone never loses a saved
+ *   board's link, so signing back in keeps saving to it.
+ * - The same account: kept.
+ * - A different account: the link and its lock are dropped, and the board stays open as an
+ *   unsaved board — a second shaper on the same browser never saves into the first one's board.
+ * - A saved board whose owner is not known yet, with someone signed in: that account becomes its
+ *   owner (a board is only ever saved, or opened from the rack, while signed in).
+ * - No saved board: no owner, whoever is signed in.
+ *
+ * Safe either way: the save on the server (`saveModel` in `app/design/actions.ts`) only ever writes
+ * a saved board when both its id and the signed-in account match, so nothing can reach another
+ * shaper's board whatever this says. This rule only stops the app from trying, and from showing a
+ * save that failed.
+ */
+export function reconcileOpenBoardOwner(row: OpenBoardRow, userId: string | null | undefined): OpenBoardRow {
+  if (row.modelId === null) return { modelId: null, ownerId: null, locked: row.locked };
+  if (typeof userId !== "string") return row;
+  if (row.ownerId === null) return { ...row, ownerId: userId };
+  if (row.ownerId === userId) return row;
+  return { modelId: null, ownerId: null, locked: false };
 }
 
 /** Writes a copy that is still waiting for its short wait, at once, and only once. */

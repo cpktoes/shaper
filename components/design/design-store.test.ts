@@ -474,3 +474,89 @@ describe("design-store.tsx — the board lock is the real guard (quick 261008-ls
     expect(body).toMatch(/lockedRef\.current = true/);
   });
 });
+
+describe("design-store.tsx — the open board is kept in the browser (quick 261019-ep5)", () => {
+  /** The whole `useEffect(…)` call that holds `token`. */
+  function effectHolding(token: string): string {
+    const at = SOURCE.indexOf(token);
+    expect(at, `${token} not found`).toBeGreaterThanOrEqual(0);
+    const start = SOURCE.lastIndexOf("useEffect(", at);
+    expect(start, `no useEffect before ${token}`).toBeGreaterThanOrEqual(0);
+    const call = balancedFrom(SOURCE, start);
+    expect(call, `${token} is not inside the nearest useEffect`).toContain(token);
+    return call;
+  }
+
+  it("the kept board is read once, in a microtask an effect queues, and restored the way a rack card opens one", () => {
+    expect(SOURCE.split("readOpenBoardCopy(").length - 1).toBe(1);
+    const body = effectHolding("readOpenBoardCopy(");
+    for (const piece of [
+      "queueMicrotask(",
+      "parseOpenBoardCopy(readOpenBoardCopy())",
+      "pendingEditKeyRef.current = undefined",
+      "setHistory(emptyHistory())",
+      "...DEFAULT_DESIGN_STATE",
+      "...copy.snapshot",
+      "modelId: copy.modelId",
+      "locked: copy.locked",
+      "dirty: copy.dirty",
+      "boardStarted: true",
+      "lockedRef.current = copy.locked",
+      "openBoardOwnerRef.current = copy.ownerId",
+    ]) {
+      expect(body, piece).toContain(piece);
+    }
+    // The restore is never an undo step.
+    expect(body).not.toContain("noteEdit(");
+    // And the board still starts as the stock board, so the server's page and the first drawing agree.
+    expect(SOURCE).toContain("useState<DesignState>(DEFAULT_DESIGN_STATE)");
+  });
+
+  it("the copy is written only for a started board, and follows every part of the board and its bookkeeping", () => {
+    const body = effectHolding("openBoardCopyJson(");
+    const guard = body.indexOf("if (!state.boardStarted) return;");
+    expect(guard).toBeGreaterThanOrEqual(0);
+    expect(guard).toBeLessThan(body.indexOf("openBoardCopyJson("));
+    expect(body).toContain("openBoardCopyJson(designSnapshotFields");
+    expect(body).toContain("OPEN_BOARD_WRITE_DEBOUNCE_MS");
+    const deps = body.slice(body.lastIndexOf("["));
+    for (const dep of ["state.boardStarted", "designSnapshotFields", "state.modelId", "state.locked", "state.dirty", "userId"]) {
+      expect(deps, dep).toContain(dep);
+    }
+  });
+
+  it("the waiting copy is written as the page goes away or is hidden", () => {
+    const body = effectHolding('addEventListener("pagehide"');
+    expect(body).toContain('window.addEventListener("pagehide"');
+    expect(body).toContain('window.removeEventListener("pagehide"');
+    expect(body).toContain('document.addEventListener("visibilitychange"');
+    expect(body).toContain('document.removeEventListener("visibilitychange"');
+    expect(body).toMatch(/document\.visibilityState === "hidden"/);
+    expect(body).toContain("flushOpenBoardCopy(openBoardPendingRef)");
+  });
+
+  it("a new preset or a board from the rack replaces the kept board at once", () => {
+    for (const name of ["applyPreset", "applyModel"]) {
+      const body = handler(name);
+      expect(body, name).toContain("clearOpenBoardCopy()");
+      expect(body, name).toContain("openBoardPendingRef.current = null");
+      expect(body, name).toContain("openBoardRestoredRef.current = true");
+    }
+    // A new board has no owner; a rack board belongs to the account signed in when it is opened —
+    // set there, because re-opening the board already open changes nothing the owner effect follows.
+    expect(handler("applyPreset")).toContain("openBoardOwnerRef.current = null");
+    expect(handler("applyModel")).toContain('openBoardOwnerRef.current = typeof userId === "string" ? userId : null');
+  });
+
+  it("the owner rule decides; its effect drops the row and the lock, and runs before the write", () => {
+    const body = effectHolding("reconcileOpenBoardOwner(");
+    expect(body).toMatch(/reconcileOpenBoardOwner\(\s*\{\s*modelId:\s*state\.modelId,\s*ownerId:\s*openBoardOwnerRef\.current,\s*locked:\s*state\.locked\s*\},\s*userId,?\s*\)/);
+    expect(body).toContain("lockedRef.current = false");
+    expect(body).toMatch(/modelId:\s*null,\s*locked:\s*false/);
+    expect(SOURCE.indexOf("reconcileOpenBoardOwner(")).toBeLessThan(SOURCE.indexOf("openBoardCopyJson("));
+  });
+
+  it("Clerk's account id is read for the owner rule", () => {
+    expect(SOURCE).toMatch(/const \{ isSignedIn, userId \} = useAuth\(\);/);
+  });
+});
