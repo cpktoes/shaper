@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { blankButton, blankCards, closeBlankPicker, openBlankPicker, openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { openFoilAdvanced } from "./helpers/rocker-sidebar";
 import { openPhoneMenu } from "./helpers/screens";
 
 /**
@@ -313,9 +314,13 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     await pickFirstFittingBlank(page);
     expect(await heightOf(blankButton(page), "the Change Blank button")).toBeGreaterThanOrEqual(44);
     expect(await heightOf(page.getByRole("button", { name: "Remove This Blank" }), "Remove This Blank")).toBeGreaterThanOrEqual(44);
+    // Reset Fine-Tune and the Fine tune from pair live in Foil's Advanced fold, closed when the screen opens
+    // (quick 261019-gqo) — opened here so they are on the page to be measured.
+    await openFoilAdvanced(page);
     expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
-    // Phase 12: THICKNESS's two quiet pairs, Tip Style and Fine-tune off — every pill finger-sized.
-    for (const group of ["Tip Style", "Fine-tune off"]) {
+    // Phase 12: FOIL's two quiet pairs, Pin tip to (it was Tip Style) and Fine tune from (it was Fine-tune off) —
+    // every pill finger-sized.
+    for (const group of ["Pin tip to", "Fine tune from"]) {
       const pills = page.getByRole("group", { name: group }).getByRole("button");
       await expect(pills).toHaveCount(2);
       for (const pill of await pills.all()) {

@@ -15,6 +15,11 @@ import { SCREENS, goToScreen } from "../helpers/screens";
  * comes alive once a start has been set by hand, and setting one is itself an edit, so the pair was
  * always there when the button was needed.
  *
+ * Since quick 261019-gqo (2026-10-19) the tail's Automatic button is no longer the very last control on ROCKER:
+ * the closed `Advanced` fold heading follows it. The assertions are unchanged, because the screen still ends
+ * with Back + Next and the site footer under every control (so nothing is ever the last row), and the button
+ * still has to scroll clear of the pair.
+ *
  * Why this lives under e2e/prod/ and runs against `next start`, never the dev server: in
  * development every design screen's controls end with the "Copy preset values" row (the shell's
  * `sidebarFooter`, dev only), which sits right where the pair floats — so on the dev server the
@@ -174,7 +179,7 @@ test.describe("on a phone, the last control always clears the floating Undo/Redo
     }
   });
 
-  test("ROCKER: the tail's Automatic button, the last control on the screen, takes a real tap", async ({ page }) => {
+  test("ROCKER: the tail's Automatic button, the last of the Thinning Starts controls above the closed Advanced fold, takes a real tap", async ({ page }) => {
     await openAPresetWithThePairShowing(page);
     await openScreen(page, SCREENS[1]);
     await setAStartByHand(page, "Tail");

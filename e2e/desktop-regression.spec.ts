@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { datasheetReadings, readDatasheetReadings, showTab } from "./helpers/rocker-sidebar";
 
 /**
  * PHON-05's standing automated proof: a real mouse drag on the TEMPLATE widepoint still reaches the
@@ -118,8 +119,9 @@ test.describe("desktop mouse drag regression", () => {
     await pickFirstFittingBlank(page);
     await expect(page.getByText("Placement — centered")).toBeVisible();
 
-    const noseTip = page.locator('[data-readouts] [data-readout-row="noseTip"]');
-    const noseTipBefore = await noseTip.innerText();
+    // The board's readings (rocker and foam off the bottom) are read off the DATASHEET (quick 261019-gqo: the
+    // station readouts left the sidebar) before the press, then the panel goes back to VIEWER for the drag.
+    const readingsBefore = await readDatasheetReadings(page);
 
     // The thumb's centre once it has held still for ten frames (picking a blank reflows the sidebar).
     const thumb = page.getByText(/^Placement — /).locator("xpath=..").locator('[data-slot="slider-thumb"]');
@@ -151,7 +153,7 @@ test.describe("desktop mouse drag regression", () => {
 
     // The slider's left end is the nose (R3), and the rocker numbers moved with the board.
     await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
-    await expect(noseTip).not.toHaveText(noseTipBefore);
-    await expect(page.locator("[data-readouts] [data-readout-row]")).toHaveCount(5);
+    await showTab(page, "DATASHEET");
+    await expect.poll(() => datasheetReadings(page)).not.toBe(readingsBefore);
   });
 });
