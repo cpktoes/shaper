@@ -31,6 +31,28 @@ import { cn } from "@/lib/utils";
 export interface PanelTab<T extends string> {
   id: T;
   label: string;
+  /**
+   * A shorter word drawn instead of `label` below the 820-dot line — the `max-shell` width switch that picks
+   * the layout also picks this (quick 261019-gqo, plan 02, D-11; the founder, 2026-10-19). Set, the tab holds
+   * both words in two spans (the full one `max-shell:hidden`, the short one `hidden max-shell:inline`) and
+   * carries `aria-label={label}`, so a screen reader and every test still find it by its full name.
+   * ROCKER uses it so VIEWER · TOP · PLANING · DATA, with the board's name beside them, fit across an upright
+   * phone: measured at plan time, the four full words need 376 dots against a 356-dot band at 360 wide, the
+   * short words 284. A computer and a phone held sideways keep the full words. Unset, the tab renders exactly
+   * the markup it always has.
+   */
+  shortLabel?: string;
+}
+
+/** A tab's words: just the label, or — with a short word — both, each shown at its own width. */
+function tabWords<T extends string>(tab: PanelTab<T>): ReactNode {
+  if (tab.shortLabel === undefined) return tab.label;
+  return (
+    <>
+      <span className="max-shell:hidden">{tab.label}</span>
+      <span className="hidden max-shell:inline">{tab.shortLabel}</span>
+    </>
+  );
 }
 
 export function TabbedPanel<T extends string>({
@@ -146,7 +168,7 @@ export function TabbedPanel<T extends string>({
         if (!interactive) {
           return (
             <span key={tab.id} className={className}>
-              {tab.label}
+              {tabWords(tab)}
             </span>
           );
         }
@@ -156,6 +178,7 @@ export function TabbedPanel<T extends string>({
             type="button"
             role="tab"
             aria-selected={on}
+            aria-label={tab.shortLabel === undefined ? undefined : tab.label}
             onClick={() => onSelect?.(tab.id)}
             className={cn(
               "cursor-pointer",
@@ -175,7 +198,7 @@ export function TabbedPanel<T extends string>({
                 "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-['']",
             )}
           >
-            {tab.label}
+            {tabWords(tab)}
           </button>
         );
       })}

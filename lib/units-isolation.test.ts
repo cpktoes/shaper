@@ -356,6 +356,7 @@ describe("the design screens read every measurement through the display boundary
     { file: "components/outline/wing-controls.tsx", converted: true },
     { file: "components/rocker/rocker-controls.tsx", converted: true },
     { file: "components/rocker/rocker-datasheet.tsx", converted: true },
+    { file: "components/rocker/rocker-planing.tsx", converted: true },
     { file: "components/rocker/rocker-viewer.tsx", converted: true },
     { file: "components/rails/rail-controls.tsx", converted: true },
     { file: "components/rails/rail-data-table.tsx", converted: true },

@@ -57,8 +57,23 @@ describe("liveControls (quick 261006-v20)", () => {
     });
   });
 
+  it('liveControls("planing") leaves every sidebar control live, exactly as VIEWER does (quick 261019-gqo, D-09)', () => {
+    expect(liveControls("planing")).toEqual({
+      center: true,
+      blank: true,
+      placement: true,
+      deckSkin: true,
+      rocker: true,
+      tipThickness: true,
+      fineTune: true,
+      tipStyle: true,
+      thinning: true,
+      thicknessHeading: true,
+    });
+  });
+
   it("the FOIL heading is live whenever any of its rows is live, on every tab (D-13, P-02: the tips left it)", () => {
-    const tabs: RockerTab[] = ["viewer", "datasheet", "topView"];
+    const tabs: RockerTab[] = ["viewer", "planing", "datasheet", "topView"];
     for (const tab of tabs) {
       const live = liveControls(tab);
       expect(live.thicknessHeading, tab).toBe(live.fineTune || live.tipStyle || live.thinning);

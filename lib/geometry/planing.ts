@@ -1,4 +1,11 @@
 /**
+ * Two tables of planing words. `planingStations` (quick 261019-gqo, plan 02) words ROCKER's own PLANING tab:
+ * five stations nose to tail, each with its rocker, the foam off the deck and off the bottom, and the full
+ * planer passes for each (whole passes plus what is left, `measure-display.ts`'s `wholePasses`). It carries
+ * the station readouts that left ROCKER's sidebar in plan 01, with OFF DECK added; its prints-as-zero rule
+ * is `unsignedZeroMark` below, the rule `board-on-blank.tsx`'s old readouts kept before they moved here.
+ * The rest of this header is about `planingTable`, the order form's table.
+ *
  * The order form's PLANING table (Phase 13 item 8, quick task 260928-r9h; reworked into a small
  * Deck/Bottom table by quick 260928-tst) — the words for a small table beside the Rail Bands table
  * on page 2, the Shaper Reference sheet. The founder asked for this on 2026-09-27 ("summary needs
@@ -36,7 +43,8 @@
  */
 import type { BlankCut } from "./blank";
 import { formatDeckSkin, formatThinningStart, formatThinningStartBare } from "./blank-reasons";
-import { formatMark, planerPasses } from "./measure-display";
+import type { FoilStationKey } from "./foil";
+import { formatMark, formatWholePasses, planerPasses, stationLabel, wholePasses } from "./measure-display";
 import type { TipView } from "./tip-taper";
 import { mm, type Mm, type UnitsSystem } from "./units";
 
@@ -164,4 +172,90 @@ export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: 
     footnote: `At the center, at ${formatMark(planerMaxDepth, system)} a pass — your Planer Max Depth.`,
     thinning: thinningLine(blank.tips.nose.fromTip, blank.tips.tail.fromTip, system),
   };
+}
+
+/** One printed foam figure on the PLANING tab: its text, and whether it reads in warning ink. */
+export interface PlaningFigure {
+  text: string;
+  /** True only for a figure below zero that does not print as zero — the board would poke out of the blank there. */
+  negative: boolean;
+}
+
+/** One station's line on ROCKER's PLANING tab, every string already worked out. */
+export interface PlaningStationRow {
+  key: FoilStationKey;
+  /** The station's name: `Nose Tip`, `Nose @ 12"` (Metric `Nose @ 30.5 cm`), `Center`, `Tail @ 12"`, `Tail Tip`. */
+  name: string;
+  /** The board's rocker at the station, as a mark. */
+  rocker: string;
+  /** The foam to come off the deck at the station. */
+  offDeck: PlaningFigure;
+  /** The foam to come off the bottom at the station. */
+  offBottom: PlaningFigure;
+  /** Full planer passes for the deck foam: `1`, or `2 + 1/16"` — whole passes plus what is left. */
+  deckPasses: string;
+  /** Full planer passes for the bottom foam. */
+  bottomPasses: string;
+}
+
+/** What `planingStations` needs off a board's side profile — `BoardSideProfile` satisfies this structurally. */
+export interface PlaningStationsInput {
+  stationRocker: Record<FoilStationKey, Mm>;
+  blank: {
+    foamOffDeck: Record<FoilStationKey, Mm>;
+    foamOffBottom: Record<FoilStationKey, Mm>;
+  } | null;
+}
+
+/** Nose to tail — the reading order of the DATASHEET's columns. */
+const STATION_ORDER: readonly FoilStationKey[] = ["noseTip", "nose12", "center", "tail12", "tailTip"];
+
+function stationName(key: FoilStationKey, system: UnitsSystem): string {
+  switch (key) {
+    case "noseTip":
+      return "Nose Tip";
+    case "nose12":
+      return `Nose @ ${stationLabel(system)}`;
+    case "center":
+      return "Center";
+    case "tail12":
+      return `Tail @ ${stationLabel(system)}`;
+    case "tailTip":
+      return "Tail Tip";
+  }
+}
+
+/** A foam figure as the tab prints it: the unsigned-zero mark, in warning only when a real minus prints. */
+function planingFigure(value: Mm, system: UnitsSystem): PlaningFigure {
+  const text = unsignedZeroMark(value, system);
+  return { text, negative: value < 0 && text !== formatMark(mm(0), system) };
+}
+
+/**
+ * The rows of ROCKER's PLANING tab (quick 261019-gqo, plan 02, D-07; the founder, 2026-10-19: "move the
+ * controls data table (passes) to a new PLANING tab and add a OFF DECK column too"): the board's five
+ * stations nose to tail, each with its rocker, the foam to come off the deck and off the bottom, and — under
+ * each foam figure — the full planer passes plus what is left (`formatWholePasses(wholePasses(...))`, D-04).
+ * Every figure is the side profile's own value read through the same boundary formatters the DATASHEET uses
+ * (`formatMark`, with `unsignedZeroMark`'s prints-as-zero rule); the passes are counted from the printed
+ * numbers at the shaper's own Planer Max Depth. Null with no blank picked — a hand-set board has no foam to
+ * plane — so the tab says to pick a blank first. No conversion factor and no second formula lives here
+ * (CLAUDE.md Rules 1 and 2).
+ */
+export function planingStations(
+  profile: PlaningStationsInput,
+  planerMaxDepth: Mm,
+  system: UnitsSystem,
+): PlaningStationRow[] | null {
+  const { blank } = profile;
+  if (blank === null) return null;
+  return STATION_ORDER.map((key) => ({
+    key,
+    name: stationName(key, system),
+    rocker: unsignedZeroMark(profile.stationRocker[key], system),
+    offDeck: planingFigure(blank.foamOffDeck[key], system),
+    offBottom: planingFigure(blank.foamOffBottom[key], system),
+    deckPasses: formatWholePasses(wholePasses(blank.foamOffDeck[key], planerMaxDepth, system), system),
+    bottomPasses: formatWholePasses(wholePasses(blank.foamOffBottom[key], planerMaxDepth, system), system),
+  }));
 }

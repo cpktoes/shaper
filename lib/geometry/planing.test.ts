@@ -5,10 +5,10 @@ import { prepareBlank, type BoardOnBlankInput } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import { formatDeckSkin, formatThinningStart, formatThinningStartBare } from "./blank-reasons";
 import { DEFAULT_FOIL_SPEC } from "./foil";
-import { formatMark, planerPasses } from "./measure-display";
-import { planingTable, thinningLine } from "./planing";
+import { formatMark, formatWholePasses, planerPasses, stationLabel, wholePasses } from "./measure-display";
+import { planingStations, planingTable, thinningLine } from "./planing";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
-import { inchesToMm, mm, type UnitsSystem } from "./units";
+import { inchesToMm, mm, type Mm, type UnitsSystem } from "./units";
 
 // Every blank figure below is read from the committed CSVs through the tested reader, and every
 // "wired" expectation is computed by the app's own helpers — never typed (CLAUDE.md Rule 1). The
@@ -40,6 +40,13 @@ function boardInput(overrides: Partial<BoardOnBlankInput> = {}): BoardOnBlankInp
 }
 
 const SYSTEMS: UnitsSystem[] = ["imperial", "metric"];
+
+/** `formatMark`, except a printed minus-zero reads the unsigned zero — the rule the PLANING tab keeps. */
+function unsignedMark(value: Mm, system: UnitsSystem): string {
+  const zero = formatMark(mm(0), system);
+  const printed = formatMark(value, system);
+  return printed === `-${zero}` ? zero : printed;
+}
 
 /** Both tips' thinning starting at the 12" station — the hand-built inputs below only need a shape. */
 const TIPS_AT_12 = { nose: { fromTip: inchesToMm(12) }, tail: { fromTip: inchesToMm(12) } };
@@ -245,5 +252,108 @@ describe("planingTable — the order form's PLANING table (quick 260928-tst)", (
     ]);
     expect(result.footnote).toBe("Pick a blank on ROCKER for the planing numbers.");
     expect(result.thinning).toBeNull();
+  });
+});
+
+// ROCKER's PLANING tab (quick 261019-gqo, plan 02): five stations nose to tail, each with the board's rocker,
+// the foam off the deck and off the bottom, and the whole planer passes for each. Every expected string below is
+// worked out here with the app's own formatters, never typed (CLAUDE.md Rule 1) — the Longboard's actual
+// figures are pinned cell by cell in the browser (e2e/rocker-planing.spec.ts).
+describe("planingStations — the PLANING tab's five rows (quick 261019-gqo, D-07)", () => {
+  const catalogueProfile = () => {
+    const prepared = prepareBlank(findBlank(MARKO_VENDOR, M_REGULAR));
+    return buildBlankProfile(prepared, boardInput(), mm(0));
+  };
+  const STATION_KEYS = ["noseTip", "nose12", "center", "tail12", "tailTip"] as const;
+  type Key = (typeof STATION_KEYS)[number];
+  /** A hand-built input, so the below-zero cases can be set exactly. */
+  function handInput(bottom: Record<Key, Mm>) {
+    const eighth = inchesToMm(1 / 8);
+    return {
+      stationRocker: { noseTip: mm(100), nose12: mm(50), center: mm(0), tail12: mm(40), tailTip: mm(80) },
+      blank: {
+        foamOffDeck: { noseTip: eighth, nose12: eighth, center: eighth, tail12: eighth, tailTip: eighth },
+        foamOffBottom: bottom,
+      },
+    };
+  }
+
+  it("a hand-set profile (no blank) has nothing to plane: null in both systems", () => {
+    const fallback = buildFallbackProfile(DEFAULT_FALLBACK_ROCKER, DEFAULT_FOIL_SPEC, BOARD_LENGTH);
+    for (const system of SYSTEMS) {
+      expect(planingStations(fallback, inchesToMm(1 / 8), system)).toBeNull();
+    }
+  });
+
+  it("a catalogue blank gives five rows nose to tail, named like the DATASHEET's columns", () => {
+    const profile = catalogueProfile();
+    for (const system of SYSTEMS) {
+      const rows = planingStations(profile, inchesToMm(1 / 8), system);
+      expect(rows).not.toBeNull();
+      expect(rows!.map((r) => r.key)).toEqual([...STATION_KEYS]);
+      expect(rows!.map((r) => r.name)).toEqual([
+        "Nose Tip",
+        `Nose @ ${stationLabel(system)}`,
+        "Center",
+        `Tail @ ${stationLabel(system)}`,
+        "Tail Tip",
+      ]);
+    }
+  });
+
+  it("every figure is the app's own mark of the profile's value, and every passes figure its own whole passes", () => {
+    const profile = catalogueProfile();
+    const depth = inchesToMm(1 / 8);
+    for (const system of SYSTEMS) {
+      const rows = planingStations(profile, depth, system)!;
+      for (const row of rows) {
+        const key = row.key;
+        expect(row.rocker).toBe(unsignedMark(profile.stationRocker[key], system));
+        expect(row.offDeck.text).toBe(unsignedMark(profile.blank!.foamOffDeck[key], system));
+        expect(row.offBottom.text).toBe(unsignedMark(profile.blank!.foamOffBottom[key], system));
+        expect(row.deckPasses).toBe(
+          formatWholePasses(wholePasses(profile.blank!.foamOffDeck[key], depth, system), system),
+        );
+        expect(row.bottomPasses).toBe(
+          formatWholePasses(wholePasses(profile.blank!.foamOffBottom[key], depth, system), system),
+        );
+      }
+    }
+  });
+
+  it("foam 1/16\" short of the blank at the tail tip reads -1/16\" (Metric -2 mm) in warning, with 0 passes", () => {
+    const input = handInput({
+      noseTip: inchesToMm(3 / 8),
+      nose12: inchesToMm(3 / 8),
+      center: inchesToMm(3 / 8),
+      tail12: inchesToMm(3 / 8),
+      tailTip: inchesToMm(-1 / 16),
+    });
+    const imperial = planingStations(input, inchesToMm(1 / 8), "imperial")!;
+    expect(imperial[4].offBottom).toEqual({ text: '-1/16"', negative: true });
+    expect(imperial[4].bottomPasses).toBe("0");
+    expect(imperial[0].offBottom.negative).toBe(false);
+    const metric = planingStations(input, inchesToMm(1 / 8), "metric")!;
+    expect(metric[4].offBottom).toEqual({ text: "-2 mm", negative: true });
+    expect(metric[4].bottomPasses).toBe("0");
+  });
+
+  it("a shortfall that prints as zero reads the unsigned zero, never -0, and is not in warning", () => {
+    const input = handInput({
+      noseTip: mm(-0.2),
+      nose12: mm(-0.2),
+      center: mm(-0.2),
+      tail12: mm(-0.2),
+      tailTip: mm(-0.2),
+    });
+    for (const system of SYSTEMS) {
+      const rows = planingStations(input, inchesToMm(1 / 8), system)!;
+      for (const row of rows) {
+        expect(row.offBottom).toEqual({ text: formatMark(mm(0), system), negative: false });
+        expect(row.bottomPasses).toBe("0");
+      }
+    }
+    expect(planingStations(input, inchesToMm(1 / 8), "imperial")![0].offBottom.text).toBe('0"');
+    expect(planingStations(input, inchesToMm(1 / 8), "metric")![0].offBottom.text).toBe("0 mm");
   });
 });
