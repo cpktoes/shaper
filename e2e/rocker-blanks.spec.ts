@@ -12,6 +12,7 @@ import {
   removeThisBlank,
 } from "./helpers/blank-picker";
 import { importedReadout, readoutValue } from "./helpers/imported-readout";
+import { datasheetReadings, openFoilAdvanced, readDatasheetReadings, showTab } from "./helpers/rocker-sidebar";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { BLANK_CATALOG_NOTE } from "../lib/blanks/vendors";
@@ -285,13 +286,13 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
   }) => {
     await openRocker(page);
     await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
-    await expect(page.locator("[data-readouts]")).toHaveCount(0);
 
     await pickFirstFittingBlank(page);
     await expect(page.getByText("Placement — centered")).toBeVisible();
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const noseTipBefore = await readouts.locator('[data-readout-row="noseTip"]').innerText();
+    // The board's readings (rocker and foam off the bottom, every station) come off the DATASHEET (quick
+    // 261019-gqo: the station readouts left the sidebar); the slide itself is made on VIEWER, where Placement
+    // is live.
+    const readingsBefore = await readDatasheetReadings(page);
 
     // R14: sliding the board samples the prepared fit in the browser — nothing goes to the server.
     const origin = new URL(page.url()).origin;
@@ -305,8 +306,9 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     await placement.press("ArrowLeft");
     await placement.press("ArrowLeft");
     await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
-    await expect(readouts.locator('[data-readout-row="noseTip"]')).not.toHaveText(noseTipBefore);
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
+    expect(requests).toBe(0);
+    await showTab(page, "DATASHEET");
+    await expect.poll(() => datasheetReadings(page)).not.toBe(readingsBefore);
     expect(requests).toBe(0);
   });
 
@@ -319,6 +321,8 @@ test.describe("ROCKER — centre, placement, live numbers and the 12\" fine-tune
     // "Rocker & Foil" after quick 261017-vdh plan 02).
     await expect(page.getByText(/^Hand-set until you pick a blank/)).toHaveCount(0);
 
+    // The 12" fine-tune sits in Foil's Advanced fold, closed when the screen opens (quick 261019-gqo).
+    await openFoilAdvanced(page);
     const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
     await expect(nose12Row).toContainText("From blank ");
     await expect(nose12Row).toContainText("No tweak");
@@ -557,6 +561,7 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await expect(placementLabel).toBeVisible();
     const placementText = await placementLabel.innerText();
 
+    await openFoilAdvanced(page);
     const nose12Row = page.getByText(/^Nose @ 12" — /).locator("xpath=..");
     await nose12Row.getByRole("slider").focus();
     await nose12Row.getByRole("slider").press("ArrowRight");
@@ -574,24 +579,26 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
     await expect(page.locator("[data-blank-silhouette]")).toBeVisible();
   });
 
-  test("in Metric the readouts, the placement label and the fine-tune read in whole millimetres", async ({ page }) => {
+  test("in Metric the full-passes line, the placement label and the fine-tune read in whole millimetres", async ({
+    page,
+  }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const readoutText = await readouts.innerText();
-    expect(readoutText).toContain("mm");
-    expect(readoutText).not.toContain('"');
+    // Quick 261019-gqo: the full-passes line stands in for the station readouts that left the sidebar.
+    const passesLine = page.locator("[data-full-passes]");
+    await expect(passesLine).toContainText("Full passes at the center — Deck ");
+    expect(await passesLine.innerText()).not.toContain('"');
 
     const placement = sliderUnder(page, /^Placement — /);
     await placement.focus();
     await placement.press("ArrowLeft");
     await expect(page.getByText(/^Placement — \d+ mm toward nose$/)).toBeVisible();
-    expect(await readouts.innerText()).not.toContain('"');
+    expect(await passesLine.innerText()).not.toContain('"');
 
     // The 12" fine-tune's hint reads in millimetres too.
+    await openFoilAdvanced(page);
     const nose12Row = page.getByText(/^Nose @ .+ — /).first().locator("xpath=..");
     await nose12Row.getByRole("slider").focus();
     await nose12Row.getByRole("slider").press("ArrowRight");

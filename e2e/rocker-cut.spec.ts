@@ -10,6 +10,7 @@ import {
   removeThisBlank,
   waitForBlankButton,
 } from "./helpers/blank-picker";
+import { boardRockerCells, openFoilAdvanced, readBoardRocker, showTab } from "./helpers/rocker-sidebar";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
@@ -18,14 +19,14 @@ import { formatLength, stationLabel } from "../lib/geometry/measure-display";
 import { inchesToMm } from "../lib/geometry/units";
 
 /**
- * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked,
- * BOARD ON BLANK shows the board's own Deck Skin, the foam off the bottom at every station and the
- * planer passes at the center, all live, with nothing sent to the server.
+ * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked, the
+ * BLANK section shows the board's own Deck Skin and, since quick 261019-gqo, one line of full planer
+ * passes at the center (whole passes plus what is left), all live, with nothing sent to the server.
  *
  * The helpers below are copies of `e2e/rocker-blanks.spec.ts`'s own (`dismissChrome`, `sliderUnder`,
  * `undoOnce` at the foot of the file) — spec files do not import each other, the repo's existing per-spec
  * helper pattern; opening ROCKER and picking a blank go through `helpers/blank-picker.ts` (quick
- * 261015-ve9). Like that spec, this one has no database: the list reads the committed catalogue
+ * 261015-ve9; Foil's closed Advanced fold opens through `helpers/rocker-sidebar.ts`, quick 261019-gqo). Like that spec, this one has no database: the list reads the committed catalogue
  * CSVs (`SHAPER_BLANKS_SOURCE=seed-csv`), and no blank name, depth or pass count is ever typed here —
  * each test reads a value off the page, moves a control, and checks the value changed.
  */
@@ -84,24 +85,21 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await dismissChrome(page);
   });
 
-  test("with a blank picked, BOARD ON BLANK shows Deck Skin, OFF BOTTOM and the planer passes, and a Deck Skin drag moves the center's foam off the bottom and the passes with no request", async ({
+  test("with a blank picked, the BLANK section shows Deck Skin and the full-passes line, and a Deck Skin drag moves the line with no request", async ({
     page,
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
     await expect(deckSkinLabel(page)).toBeVisible();
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.getByText("OFF BOTTOM", { exact: true })).toBeVisible();
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const passesLine = page.locator("[data-bottom-passes]");
+    // Quick 261019-gqo: the station readouts left the sidebar (they come back as the PLANING tab), and the
+    // one line under Deck Skin gives the full passes at the center.
+    const passesLine = page.locator("[data-full-passes]");
     await expect(passesLine).toBeVisible();
-    await expect(passesLine).toContainText("Planer passes at the center");
+    await expect(passesLine).toContainText("Full passes at the center");
     await expect(page.getByText(/ a pass — your Planer Max Depth\.$/)).toBeVisible();
 
     const skinBefore = await deckSkinLabel(page).innerText();
-    const centerRow = readouts.locator('[data-readout-row="center"]');
-    const centerBefore = await centerRow.innerText();
     const passesBefore = await passesLine.innerText();
 
     // R14: the skin is store state and the numbers come off the side profile the page already
@@ -124,36 +122,32 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await skin.press("ArrowRight");
 
     await expect(deckSkinLabel(page)).not.toHaveText(skinBefore);
-    await expect(centerRow).not.toHaveText(centerBefore);
     await expect(passesLine).not.toHaveText(passesBefore);
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
     // Never clears the pick.
     await expect(pickedCard(page)).toHaveCount(1);
     expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
   });
 
-  test("with no blank picked, there is no Deck Skin, no OFF BOTTOM and no planer passes line", async ({ page }) => {
+  test("with no blank picked, there is no Deck Skin and no full-passes line", async ({ page }) => {
     await openRocker(page);
     // D-12: hidden, not disabled — the sidebar is Phase 11's fallback column exactly.
     await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
     await expect(page.getByText(/^Deck Skin/)).toHaveCount(0);
-    await expect(page.locator("[data-readouts]")).toHaveCount(0);
+    await expect(page.locator("[data-full-passes]")).toHaveCount(0);
     await expect(page.getByText("OFF BOTTOM", { exact: true })).toHaveCount(0);
-    await expect(page.locator("[data-bottom-passes]")).toHaveCount(0);
     await expect(page.getByText(/ a pass — your Planer Max Depth\.$/)).toHaveCount(0);
   });
 
-  test("in Metric the Deck Skin, the OFF BOTTOM cells and the passes hint read whole millimetres", async ({ page }) => {
+  test("in Metric the Deck Skin, the full-passes line and its hint read whole millimetres", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
     await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const readoutText = await readouts.innerText();
-    expect(readoutText).toContain("mm");
-    expect(readoutText).not.toContain('"');
+    const passesLine = page.locator("[data-full-passes]");
+    await expect(passesLine).toContainText("Full passes at the center — Deck ");
+    await expect(passesLine).toContainText(" · Bottom ");
+    expect(await passesLine.innerText()).not.toContain('"');
     await expect(page.getByText(/^At \d+ mm a pass — your Planer Max Depth\.$/)).toBeVisible();
 
     // A drag keeps every one of them in millimetres.
@@ -161,8 +155,35 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await skin.focus();
     await skin.press("ArrowRight");
     await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
-    expect(await readouts.innerText()).not.toContain('"');
-    expect(await page.locator("[data-bottom-passes]").innerText()).not.toContain('"');
+    expect(await passesLine.innerText()).not.toContain('"');
+  });
+
+  test("the Longboard's full-passes line reads whole passes plus what is left, in both systems", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to pin the figures");
+    test.slow(); // the Longboard is started twice (Imperial, then Metric) in this one test
+    // The Longboard opens sitting in its blank (US Blanks 9'4"B); Deck Skin 1/8" and a center foam off the
+    // bottom of 3/16" at the 1/8" default Planer Max Depth — measured at plan time with the app's own functions.
+    async function openLongboard() {
+      await page.goto("/");
+      const longboard = page.getByRole("button").filter({ hasText: "Longboard" }).filter({ hasText: "Start Shaping" });
+      await expect(async () => {
+        await longboard.first().click();
+        await page.waitForURL("**/design/outline", { timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
+      await goToScreen(page, "ROCKER");
+    }
+
+    await openLongboard();
+    await expect(page.locator("[data-full-passes]")).toHaveText('Full passes at the center — Deck 1 · Bottom 1 + 1/16"');
+    await expect(page.getByText('At 1/8" a pass — your Planer Max Depth.', { exact: true })).toBeVisible();
+
+    // The same board in Metric: the chosen system is read when the page loads, so set it and start again.
+    await page.evaluate(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openLongboard();
+    await expect(page.locator("[data-full-passes]")).toHaveText("Full passes at the center — Deck 1 · Bottom 1 + 2 mm");
+    await expect(page.getByText("At 3 mm a pass — your Planer Max Depth.", { exact: true })).toBeVisible();
   });
 
   test("Remove This Blank, then one undo, brings the blank back with its own Deck Skin", async ({ page }, testInfo) => {
@@ -210,39 +231,43 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(deckSkinLabel(page)).toHaveText(ownSkin);
   });
 
-  test(`a Tip Style tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
+  test(`a Pin tip to tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
     page,
   }, testInfo) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
-    // A new board's Tip Style is the account default — Pin deck out of the box (D-04).
-    await expect(pillGroup(page, "Tip Style")).toBeVisible();
-    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    // A new board's tip is pinned to the deck — the account default, Pin deck out of the box (D-04).
+    await expect(pillGroup(page, "Pin tip to")).toBeVisible();
+    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tip to", "Bottom")).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByText(/^The deck stays put and the extra comes off the bottom/)).toBeVisible();
 
-    const readouts = page.locator("[data-readouts]");
-    const row = (key: string) => readouts.locator(`[data-readout-row="${key}"]`);
-    const noseTip = await row("noseTip").textContent();
-    const tailTip = await row("tailTip").textContent();
-    const nose12 = await row("nose12").textContent();
-    const tail12 = await row("tail12").textContent();
+    // The four rocker readings come from the DATASHEET's YOUR BOARD Rocker row (nose tip, nose 12", tail 12",
+    // tail tip), read there before and after; the tap itself is made on VIEWER, where the pair is live.
+    const four = (cells: string[]) => ({ noseTip: cells[0], nose12: cells[1], tail12: cells[3], tailTip: cells[4] });
+    const before = four(await readBoardRocker(page));
 
-    await pill(page, "Tip Style", "Bottom").click();
-    await expect(pill(page, "Tip Style", "Bottom")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "false");
+    await pill(page, "Pin tip to", "Bottom").click();
+    await expect(pill(page, "Pin tip to", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
 
     // Each tip re-derives from its tip to its Thinning Starts point (Phase 14, D-07): at least one tip
     // reads differently...
+    await showTab(page, "DATASHEET");
     await expect
-      .poll(async () => (await row("noseTip").textContent()) !== noseTip || (await row("tailTip").textContent()) !== tailTip)
+      .poll(async () => {
+        const cells = four((await boardRockerCells(page).allTextContents()).slice(1));
+        return cells.noseTip !== before.noseTip || cells.tailTip !== before.tailTip;
+      })
       .toBe(true);
     // ...and, on the first fitting blank, where both tips start on Automatic at the 12" station,
     // nothing at the 12" stations moves.
-    expect(await row("nose12").textContent()).toBe(nose12);
-    expect(await row("tail12").textContent()).toBe(tail12);
+    const after = four((await boardRockerCells(page).allTextContents()).slice(1));
+    expect(after.nose12).toBe(before.nose12);
+    expect(after.tail12).toBe(before.tail12);
+    await showTab(page, "VIEWER");
     // Under Bottom the Deck Skin's hint says the tips take more off the deck.
     await expect(page.getByText("Off the deck — more at the tips", { exact: true })).toBeVisible();
     // Never clears the pick.
@@ -250,23 +275,25 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
 
     // One undo step brings Pin deck back.
     await undoOnce(page, testInfo.project.name);
-    await expect(pill(page, "Tip Style", "Pin deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Off the deck at every station", { exact: true })).toBeVisible();
   });
 
-  test(`Fine-tune off starts on Deck, and on Bottom a 12" tweak re-levels the rocker instead of taking foam off the deck`, async ({
+  test(`Fine tune from starts on Deck, and on Bottom a 12" tweak re-levels the rocker instead of taking foam off the deck`, async ({
     page,
   }, testInfo) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
+    // The 12" fine-tune lives in Foil's Advanced fold, closed when the screen opens (quick 261019-gqo, D-06).
+    await openFoilAdvanced(page);
 
-    // THICKNESS says how the foil now comes off: each tip is thinned from its own Thinning Starts
+    // FOIL says how the foil now comes off: each tip is thinned from its own Thinning Starts
     // point (Phase 14, D-07) — the app's own sentence, built in Node, so no wording is typed twice.
     await expect(page.getByText(thicknessIntroWithBlank("imperial"), { exact: true })).toBeVisible();
 
     // A new board's 12" tweaks come off the deck (D-13).
-    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Fine-tune off", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    await expect(pill(page, "Fine tune from", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Fine tune from", "Bottom")).toHaveAttribute("aria-pressed", "false");
     await expect(page.getByText("Tweaks add or take foam on the deck; the rocker stays the blank's.", { exact: true })).toBeVisible();
 
     // Nudge Nose @ 12" four steps — a quarter inch, far more than one printed step. DOWN, not up:
@@ -286,14 +313,13 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
       page.getByText(`Off the deck — a 12" fine-tune changes it there; see the DATASHEET's Deck row`, { exact: true }),
     ).toBeVisible();
 
-    // The ROCKER column of the readouts (the second cell of each row).
-    const rockerCells = page.locator("[data-readouts] [data-readout-row] > :nth-child(2)");
-    await expect(rockerCells).toHaveCount(5);
-    const rockerBefore = await rockerCells.allTextContents();
+    // The board's rocker, read off the DATASHEET's YOUR BOARD Rocker row (label, then the five stations).
+    const rockerBefore = await readBoardRocker(page);
+    expect(rockerBefore).toHaveLength(5);
 
-    await pill(page, "Fine-tune off", "Bottom").click();
-    await expect(pill(page, "Fine-tune off", "Bottom")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "false");
+    await pill(page, "Fine tune from", "Bottom").click();
+    await expect(pill(page, "Fine tune from", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Fine tune from", "Deck")).toHaveAttribute("aria-pressed", "false");
     await expect(
       page.getByText("Tweaks move the bottom, so the rocker re-levels and its numbers can shift.", { exact: true }),
     ).toBeVisible();
@@ -303,14 +329,21 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     // The tweak's amount is the same, so the 12" thickness reads the same...
     await expect(nose12Label).toHaveText(tweakedLabel);
     // ...but it now comes off the bottom, so the rocker re-levels and at least one reading moves.
-    await expect.poll(async () => (await rockerCells.allTextContents()).join("|")).not.toBe(rockerBefore.join("|"));
+    await showTab(page, "DATASHEET");
+    await expect
+      .poll(async () => (await boardRockerCells(page).allTextContents()).slice(1).join("|"))
+      .not.toBe(rockerBefore.join("|"));
+    await showTab(page, "VIEWER");
     // Never clears the pick.
     await expect(pickedCard(page)).toHaveCount(1);
 
     // One undo step goes back to Deck, and the rocker with it.
     await undoOnce(page, testInfo.project.name);
-    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
-    await expect.poll(async () => (await rockerCells.allTextContents()).join("|")).toBe(rockerBefore.join("|"));
+    await expect(pill(page, "Fine tune from", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await showTab(page, "DATASHEET");
+    await expect
+      .poll(async () => (await boardRockerCells(page).allTextContents()).slice(1).join("|"))
+      .toBe(rockerBefore.join("|"));
   });
 
   test(`a 12" fine-tune on the Deck bigger than the Deck Skin says why nothing fits and offers Reset Fine-Tune, not Change Fit Rules`, async ({
@@ -318,7 +351,8 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
-    await expect(pill(page, "Fine-tune off", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await openFoilAdvanced(page);
+    await expect(pill(page, "Fine tune from", "Deck")).toHaveAttribute("aria-pressed", "true");
 
     // The board's own Deck Skin, read off its label.
     const skin = readInches(await deckSkinLabel(page).innerText());
@@ -357,14 +391,15 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pickedCard(page)).toHaveCount(1);
   });
 
-  test("with no blank there is no Tip Style and no Fine-tune off", async ({ page }) => {
+  test("with no blank there is no Pin tip to, no Fine tune from and no Advanced fold", async ({ page }) => {
     await openRocker(page);
-    // D-12: hidden, not disabled — THICKNESS is Phase 11's fallback column exactly.
+    // D-12: hidden, not disabled — Rocker & Foil is Phase 11's fallback column exactly.
     await expect(page.getByText("Hand-set until you pick a blank.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("group", { name: "Tip Style" })).toHaveCount(0);
-    await expect(page.getByRole("group", { name: "Fine-tune off" })).toHaveCount(0);
-    await expect(page.getByText("Tip Style", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Fine-tune off", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Pin tip to" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Fine tune from" })).toHaveCount(0);
+    await expect(page.getByText("Pin tip to", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Fine tune from", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Advanced\s*[▾▸]$/ })).toHaveCount(0);
     await expect(page.getByText(/^Deck and bottom follow your blank's/)).toHaveCount(0);
   });
 });
@@ -428,7 +463,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     await dismissChrome(page);
   });
 
-  test("a picked blank shows Nose then Tail Thinning Starts after Tip Style; with no blank neither row is there", async ({
+  test("a picked blank shows Nose then Tail Thinning Starts after Pin tip to; with no blank neither row is there", async ({
     page,
   }) => {
     await openRocker(page);
@@ -445,17 +480,18 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
       await expect(automaticButton(page, end)).toHaveAttribute("aria-disabled", "true");
     }
 
-    // D-10's order: Tip Style, then the nose, then the tail — the last three things in THICKNESS.
+    // D-10's order: Pin tip to (it was Tip Style), then the nose, then the tail, ahead of the Advanced fold.
     const top = async (locator: Locator) => {
       const box = await locator.boundingBox();
       if (!box) throw new Error("no bounding box");
       return box.y;
     };
-    const tipStyle = await top(pillGroup(page, "Tip Style"));
+    const tipStyle = await top(pillGroup(page, "Pin tip to"));
     const nose = await top(startLabel(page, "nose"));
     const tail = await top(startLabel(page, "tail"));
     expect(nose).toBeGreaterThan(tipStyle);
     expect(tail).toBeGreaterThan(nose);
+    expect(await top(page.getByRole("button", { name: /^Advanced\s*[▾▸]$/ }))).toBeGreaterThan(tail);
   });
 
   test("a nose drag sets its start by hand with no request, and one undo puts it back", async ({ page }, testInfo) => {
@@ -564,6 +600,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     const automaticDistance = distanceOf(automaticLabel);
     expect(readInches(automaticDistance)).toBeGreaterThan(12);
     // ...so the Tail @ 12" thickness belongs to the taper (D-07).
+    await openFoilAdvanced(page);
     const tail12Row = page.getByText(/^Tail @ 12" — /).locator("xpath=..");
     await expect(tail12Row.getByText(/^From the tip taper /)).toBeVisible();
     await expect(tooCloseLine(page, "tail")).toHaveCount(0);
@@ -606,6 +643,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
 
     // The sidebar's Nose @ fine-tune row (its label carries ` — ` and the thickness), not the
     // drawing's or the readouts' station names.
+    await openFoilAdvanced(page);
     const nose12 = page.getByText(/^Nose @ .+ — /);
     await expect(startHint(page, "nose")).toHaveText("Picked automatically");
     const metricStation = stationOf(await nose12.innerText());
@@ -662,6 +700,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     const handSet = await startLabel(page, "tail").innerText();
 
     // A 12" tweak — down a step, which keeps the board in its blank — so ↺ Reset Fine-Tune is live.
+    await openFoilAdvanced(page);
     const reset = page.getByRole("button", { name: "↺ Reset Fine-Tune", exact: true });
     await expect(reset).toHaveCount(1);
     await expect(reset).toHaveAttribute("aria-disabled", "true");

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { datasheetReadings, readDatasheetReadings, showTab } from "./helpers/rocker-sidebar";
 
 /**
  * TEST-01's automated proof that a real touch drag moves the board (PHON-04): the touchscreen
@@ -770,8 +771,9 @@ test.describe("touch on the ROCKER placement slider (android/CDP only)", () => {
     page,
   }) => {
     await openRockerWithFirstFittingBlank(page);
-    const noseTip = page.locator('[data-readouts] [data-readout-row="noseTip"]');
-    const noseTipBefore = await noseTip.innerText();
+    // The board's readings (rocker and foam off the bottom) are read off the DATASHEET (quick 261019-gqo: the
+    // station readouts left the sidebar) before the press; back on VIEWER the thumb's settle wait follows.
+    const readingsBefore = await readDatasheetReadings(page);
     const start = await settledPlacementThumbCentre(page);
 
     const requests: string[] = [];
@@ -794,7 +796,7 @@ test.describe("touch on the ROCKER placement slider (android/CDP only)", () => {
 
     // The left end is the nose (R3), and the rocker numbers moved with the board.
     await expect(page.getByText(/^Placement — .+ toward nose$/)).toBeVisible();
-    await expect(noseTip).not.toHaveText(noseTipBefore);
-    await expect(page.locator("[data-readouts] [data-readout-row]")).toHaveCount(5);
+    await showTab(page, "DATASHEET");
+    await expect.poll(() => datasheetReadings(page)).not.toBe(readingsBefore);
   });
 });

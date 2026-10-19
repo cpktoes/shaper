@@ -15,12 +15,14 @@ import {
   formatPasses,
   formatSignedDim,
   formatSignedMark,
+  formatWholePasses,
   measureSlider,
   planerPasses,
   stationLabel,
   diamondDepthClampNote,
   columnUnitSuffix,
   typedFieldBounds,
+  wholePasses,
 } from "./measure-display";
 import {
   MM_PER_CM,
@@ -920,5 +922,116 @@ describe("planerPasses / formatPasses — passes from the printed numbers (D-03,
     expect(formatPasses(1)).toBe("1 pass");
     expect(formatPasses(2)).toBe("2 passes");
     expect(formatPasses(12)).toBe("12 passes");
+  });
+});
+
+describe("wholePasses / formatWholePasses — full passes plus what is left (quick 261019-gqo, D-04)", () => {
+  /** Every depth from 0 to 1" in 1/64" steps. */
+  const DEPTHS: Mm[] = Array.from({ length: 65 }, (_, k) => inchesToMm(k / 64));
+  /** The Planer Max Depth range: 1/16", 1/8", 3/16", 1/4". */
+  const PASS_DEPTHS: Mm[] = [1, 2, 3, 4].map((sixteenths) => inchesToMm(sixteenths / 16));
+  const ONE_EIGHTH = inchesToMm(1 / 8);
+
+  /** What the screen prints for `value` (a mark), read back through the app's own parser. */
+  function printedBack(value: Mm, system: UnitsSystem): Mm {
+    const printed = formatMark(value, system);
+    const parsed = system === "metric" ? parseMetric(printed, "mm") : parseImperial(printed);
+    if (parsed === null) throw new Error(`the app could not read back its own printed '${printed}'`);
+    return parsed;
+  }
+
+  /** The division a shaper does by hand on the two printed numbers: whole passes and the foam left. */
+  function byHand(depth: Mm, passDepth: Mm, system: UnitsSystem): { whole: number; left: Mm } {
+    const d = printedBack(depth, system);
+    const p = printedBack(passDepth, system);
+    if (d <= 0 || p <= 0) return { whole: 0, left: mm(0) };
+    const whole = Math.floor(d / p + 1e-9);
+    return { whole, left: mm(d - whole * p) };
+  }
+
+  it("equals the hand division of the printed depth by the printed pass depth, for every depth and pass depth, in both systems", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const passDepth of PASS_DEPTHS) {
+        for (const depth of DEPTHS) {
+          const got = wholePasses(depth, passDepth, system);
+          const want = byHand(depth, passDepth, system);
+          const label = `${system}: ${formatMark(depth, system)} at ${formatMark(passDepth, system)} a pass`;
+          expect(got.whole, label).toBe(want.whole);
+          expect(formatMark(got.remainder, system), label).toBe(formatMark(want.left, system));
+        }
+      }
+    }
+  });
+
+  it("an exact division leaves nothing over and prints the whole number alone (3/8\" at 1/8\" in Imperial)", () => {
+    const passes = wholePasses(inchesToMm(3 / 8), ONE_EIGHTH, "imperial");
+    expect(passes.whole).toBe(3);
+    expect(passes.remainder).toBe(mm(0));
+    expect(formatWholePasses(passes, "imperial")).toBe("3");
+    // Metric: 3/8" prints 10 mm and 1/8" prints 3 mm — three whole passes and 1 mm left, honest to the printed numbers.
+    expect(formatWholePasses(wholePasses(inchesToMm(3 / 8), ONE_EIGHTH, "metric"), "metric")).toBe("3 + 1 mm");
+    expect(formatWholePasses(wholePasses(mm(9), mm(3), "metric"), "metric")).toBe("3");
+  });
+
+  it("prints a remainder after a plus: 5/16\" at 1/8\" is 2 + 1/16\", and 5 mm at 3 mm is 1 + 2 mm", () => {
+    const imperial = wholePasses(inchesToMm(5 / 16), ONE_EIGHTH, "imperial");
+    expect(imperial.whole).toBe(2);
+    expect(formatMark(imperial.remainder, "imperial")).toBe('1/16"');
+    expect(formatWholePasses(imperial, "imperial")).toBe('2 + 1/16"');
+
+    const metric = wholePasses(mm(5), mm(3), "metric");
+    expect(metric.whole).toBe(1);
+    expect(metric.remainder).toBe(mm(2));
+    expect(formatWholePasses(metric, "metric")).toBe("1 + 2 mm");
+  });
+
+  it("nothing to take off is 0 whole, nothing left, and prints 0 — zero, below zero, or a depth that prints as zero", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const depth of [mm(0), inchesToMm(-1 / 16), mm(-3), mm(0.2)]) {
+        const passes = wholePasses(depth, ONE_EIGHTH, system);
+        expect(passes.whole).toBe(0);
+        expect(passes.remainder).toBe(mm(0));
+        expect(formatWholePasses(passes, system)).toBe("0");
+      }
+    }
+  });
+
+  it("a pass depth that prints as zero gives 0 whole and nothing left", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const passes = wholePasses(inchesToMm(1 / 4), mm(0.1), system);
+      expect(passes.whole).toBe(0);
+      expect(passes.remainder).toBe(mm(0));
+      expect(formatWholePasses(passes, system)).toBe("0");
+    }
+  });
+
+  it("foam left but no whole pass: 1/16\" at 1/8\" prints 0 + 1/16\"", () => {
+    const passes = wholePasses(inchesToMm(1 / 16), ONE_EIGHTH, "imperial");
+    expect(passes.whole).toBe(0);
+    expect(formatWholePasses(passes, "imperial")).toBe('0 + 1/16"');
+    expect(formatWholePasses(wholePasses(mm(2), mm(3), "metric"), "metric")).toBe("0 + 2 mm");
+  });
+
+  it("a sliver that does not print does not count: a hair above 3/8\" is exactly 3 at 1/8\"", () => {
+    const hair = mm(inchesToMm(3 / 8) + 0.2);
+    expect(formatMark(hair, "imperial")).toBe('3/8"');
+    const passes = wholePasses(hair, ONE_EIGHTH, "imperial");
+    expect(passes.whole).toBe(3);
+    expect(formatWholePasses(passes, "imperial")).toBe("3");
+  });
+
+  it("agrees with planerPasses: whole, plus one if anything is left, is the rounded-up count", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const passDepth of PASS_DEPTHS) {
+        for (const depth of DEPTHS) {
+          const { whole, remainder } = wholePasses(depth, passDepth, system);
+          const left = formatMark(remainder, system) !== formatMark(mm(0), system);
+          expect(
+            whole + (left ? 1 : 0),
+            `${system}: ${formatMark(depth, system)} at ${formatMark(passDepth, system)}`,
+          ).toBe(planerPasses(depth, passDepth, system));
+        }
+      }
+    }
   });
 });

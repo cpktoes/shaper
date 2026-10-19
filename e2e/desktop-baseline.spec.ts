@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-19 (quick 261019-gqo, plan 01) — ROCKER only, `rocker-desktop.png`, for the founder's
+ * rearranged ROCKER & FOIL sidebar: INPUTS now holds Center Thickness, Nose Tip and Tail Tip (three sliders),
+ * Placement moved up into the BLANK section under the Pick a Blank card (the BOARD ON BLANK heading is gone),
+ * and the hand-set Rocker & Foil table lost its two tip-thickness cells. Old and new were compared by eye
+ * before re-recording: the top bar, the tab band and the whole drawing side are unchanged; only the sidebar
+ * from the INPUTS block down moved. TEMPLATE, RAILS, VOLUME and FINS passed unchanged and were not
+ * re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3171) in the plan's worktree on
+ * this Mac. SHA-256 (first 8 characters), old to new: ROCKER 8b058472 to c32b9086.
+ *
  * RE-RECORDED 2026-10-18 (quick 261018-fg1) — ROCKER, RAILS, VOLUME and FINS, for the imported
  * dimensions as a readout card (sketch 017 C, the founder's "Go with C readout card, figures in
  * accent = off"): each sidebar's one-line INPUTS sentence became a small card (an accent caption,

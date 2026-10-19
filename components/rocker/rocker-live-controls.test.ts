@@ -8,7 +8,8 @@ import { liveControls, type RockerTab } from "./rocker-live-controls";
  * tables are pinned exactly — all ten keys as full literals — so a new key or a flipped value fails
  * here before it can reach a shaper's screen. VIEWER is everything, as before (D-01); DATASHEET the
  * three thicknesses the table can also type (D-01, D-12, D-13); TOP VIEW the blank picker and
- * Placement (D-01).
+ * Placement (D-01). Quick 261019-gqo (P-02): the tips moved up to INPUTS, so the Foil heading is derived
+ * from the 12" fine-tunes, Pin tip to and Thinning Starts alone and is false on DATASHEET.
  */
 describe("liveControls (quick 261006-v20)", () => {
   it('liveControls("viewer") leaves every sidebar control live, exactly as before', () => {
@@ -37,7 +38,7 @@ describe("liveControls (quick 261006-v20)", () => {
       fineTune: false,
       tipStyle: false,
       thinning: false,
-      thicknessHeading: true,
+      thicknessHeading: false,
     });
   });
 
@@ -56,11 +57,11 @@ describe("liveControls (quick 261006-v20)", () => {
     });
   });
 
-  it("the THICKNESS heading is live whenever any of its rows is live, on every tab (D-13)", () => {
+  it("the FOIL heading is live whenever any of its rows is live, on every tab (D-13, P-02: the tips left it)", () => {
     const tabs: RockerTab[] = ["viewer", "datasheet", "topView"];
     for (const tab of tabs) {
       const live = liveControls(tab);
-      expect(live.thicknessHeading, tab).toBe(live.tipThickness || live.fineTune || live.tipStyle || live.thinning);
+      expect(live.thicknessHeading, tab).toBe(live.fineTune || live.tipStyle || live.thinning);
     }
   });
 

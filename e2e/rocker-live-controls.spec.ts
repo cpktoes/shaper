@@ -1,5 +1,6 @@
 import { devices, expect, test, type Locator, type Page } from "@playwright/test";
 import { blankPicker, closeBlankPicker, openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { openFoilAdvanced } from "./helpers/rocker-sidebar";
 
 /**
  * The browser proof that ROCKER's sidebar follows the tab in view (quick 261006-v20, 2026-10-06).
@@ -9,10 +10,12 @@ import { blankPicker, closeBlankPicker, openRocker, pickFirstFittingBlank } from
  * the placement slider and blank picker live."
  *
  * What this proves, by the plan's decisions:
- * - D-01: on DATASHEET only Center Thickness (its slider, in INPUTS) and the two tip thicknesses (Foil's
- *   Nose Tip and Tail Tip with a blank, the Rocker & Foil grid's two Tip thickness cells without one) stay
- *   live; on TOP VIEW only the BLANK section and Placement; on VIEWER everything — on a computer, both
- *   upright phones and both phones held sideways. The rule follows the tab actually on screen: a window
+ * - D-01: on DATASHEET only Center Thickness and the two tip thicknesses (all three INPUTS sliders since
+ *   quick 261019-gqo, 2026-10-19, with or without a blank) stay live; on TOP VIEW only the BLANK section and
+ *   Placement; on VIEWER everything — on a computer, both upright phones and both phones held sideways.
+ *   Since 261019-gqo the whole Foil section (with a blank) and the hand-set Rocker & Foil section (without
+ *   one) are dimmed on DATASHEET, headings included, because none of their rows is live there any more
+ *   (P-02); Foil's Advanced fold is opened on VIEWER before the tab is switched. The rule follows the tab actually on screen: a window
  *   widened while TOP VIEW is open lands on VIEWER with every control live again.
  * - D-02: a control that is not live is dimmed and inert, never hidden — nothing moves when the tab
  *   changes, and neither the keyboard nor the mouse can move an inert slider.
@@ -95,8 +98,11 @@ function sidebarButton(page: Page, words: string): Locator {
   return page.locator("aside button").filter({ hasText: words });
 }
 
-/** INPUTS' Center Thickness slider, by CSS, so an inert one is found too. */
-const CENTER_SLIDER = '[data-rocker-inputs] [data-slot="slider-thumb"] input[type="range"]';
+/** INPUTS' Center Thickness slider, found by its label inside INPUTS (three thickness sliders live there
+ * since quick 261019-gqo), by CSS, so an inert one is found too. */
+function centerThicknessSlider(page: Page): Locator {
+  return sliderInput(page.locator("[data-rocker-inputs]"), /^Center Thickness — /);
+}
 const ROCKER_AND_FOIL_HEADING = /^Rocker & Foil\s*[▾▸]$/;
 const FOIL_HEADING = /^Foil\s*[▾▸]$/;
 /** One cell of the no-blank Rocker & Foil grid, by its test hook — its slider thumb's range input. */
@@ -121,6 +127,9 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
+    // Foil's Advanced fold is closed on arrival; open it here, where Foil is live, so the pair, the two 12"
+    // fine-tunes and Reset Fine-Tune are on the page to be checked inert once the tab changes.
+    await openFoilAdvanced(page);
     const aside = sidebar(page);
     const tailTipLabel = aside.getByText(/^Tail Tip — /);
     const before = await tailTipLabel.boundingBox();
@@ -134,14 +143,15 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     await expectInert(sidebarButton(page, "Change Blank"), "Change Blank");
     await expectInert(sidebarButton(page, "Remove This Blank"), "Remove This Blank");
     await expectInert(sidebarButton(page, "↺ Reset Fine-Tune"), "Reset Fine-Tune");
-    await expectInert(page.locator('aside [aria-label="Tip Style"]'), "Tip Style");
-    await expectInert(page.locator('aside [aria-label="Fine-tune off"]'), "Fine-tune off");
+    await expectInert(page.locator('aside [aria-label="Pin tip to"]'), "Pin tip to");
+    await expectInert(page.locator('aside [aria-label="Fine tune from"]'), "Fine tune from");
     await expectInert(sliderInput(aside, /^Nose Thinning Starts — /), "Nose Thinning Starts");
 
-    await expectLive(page.locator(CENTER_SLIDER), "the Center Thickness slider");
+    await expectLive(centerThicknessSlider(page), "the Center Thickness slider");
     await expectLive(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
     await expectLive(sliderInput(aside, /^Tail Tip — /), "the Tail Tip slider");
-    await expectLive(page.locator("aside button").filter({ hasText: FOIL_HEADING }), "the Foil heading");
+    // P-02: the tips are INPUTS' sliders now, so no row of Foil is live here and its heading dims with it.
+    await expectInert(page.locator("aside button").filter({ hasText: FOIL_HEADING }), "the Foil heading");
 
     // D-02: dimmed, never hidden — nothing in the sidebar moves.
     const after = await tailTipLabel.boundingBox();
@@ -149,7 +159,7 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     expect(Math.abs(after!.y - before!.y)).toBeLessThanOrEqual(0.5);
 
     // The sidebar's Center Thickness still changes the table's Center cell: four 1/16" presses from 2 1/2".
-    const centerSlider = page.locator(CENTER_SLIDER);
+    const centerSlider = centerThicknessSlider(page);
     await centerSlider.focus();
     for (let i = 0; i < 4; i += 1) await page.keyboard.press("ArrowRight");
     const centerCell = page.getByRole("textbox", { name: "Thickness — Center", exact: true });
@@ -218,7 +228,7 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     await expect(placementLabel).toHaveText(/toward nose$/);
   });
 
-  test("with no blank, DATASHEET dims the blank list, the grid's rocker column and its two 12-inch thicknesses", async ({
+  test("with no blank, DATASHEET dims the blank list, the grid and its heading, and leaves INPUTS' three thicknesses live", async ({
     page,
   }) => {
     await openRocker(page);
@@ -226,23 +236,24 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     await expect(tab(page, "DATASHEET")).toHaveAttribute("aria-selected", "true");
 
     await expectInert(sidebarButton(page, "Pick a Blank"), "the Pick a Blank button");
-    // The grid's four rocker cells are inert; its two Tip thickness cells live; its two 12" ones inert.
+    // The grid's four rocker cells are inert, and so are its two 12" thickness cells; the tips are INPUTS'.
     await expect(
       page.locator('[data-hand-set-cell$="-rocker"] [data-slot="slider-thumb"] input[type="range"]'),
     ).toHaveCount(4);
     for (const cell of ["nose-tip-rocker", "nose-12-rocker", "tail-12-rocker", "tail-tip-rocker"]) {
       await expectInert(gridThumb(page, cell), `the ${cell} cell`);
     }
-    await expectLive(gridThumb(page, "nose-tip-thickness"), "the Nose tip thickness cell");
-    await expectLive(gridThumb(page, "tail-tip-thickness"), "the Tail tip thickness cell");
+    await expectLive(sliderInput(sidebar(page), /^Nose Tip — /), "INPUTS' Nose Tip slider");
+    await expectLive(sliderInput(sidebar(page), /^Tail Tip — /), "INPUTS' Tail Tip slider");
     await expectInert(gridThumb(page, "nose-12-thickness"), "the hand-set Nose @ 12\" thickness cell");
     await expectInert(gridThumb(page, "tail-12-thickness"), "the hand-set Tail @ 12\" thickness cell");
-    // The section's heading stays live (it is live whenever any cell is), and so does Center Thickness.
-    await expectLive(
+    // The section's heading dims with it (P-02: no cell of the section is live here any more); Center
+    // Thickness, in INPUTS, stays live.
+    await expectInert(
       page.locator("aside button").filter({ hasText: ROCKER_AND_FOIL_HEADING }),
       "the Rocker & Foil heading",
     );
-    await expectLive(page.locator(CENTER_SLIDER), "the Center Thickness slider");
+    await expectLive(centerThicknessSlider(page), "the Center Thickness slider");
 
     await tab(page, "VIEWER").click();
     await expect(sidebarInertCount(page)).toHaveCount(0);
@@ -261,7 +272,7 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
 
     await expectLive(sidebarButton(page, "Change Blank"), "Change Blank");
     await expectLive(sliderInput(aside, /^Placement — /), "Placement");
-    await expectInert(page.locator(CENTER_SLIDER), "the Center Thickness slider");
+    await expectInert(centerThicknessSlider(page), "the Center Thickness slider");
     await expectInert(sliderInput(aside, /^Deck Skin — /), "Deck Skin");
     await expectInert(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
 
@@ -285,10 +296,10 @@ async function expectTabRule(page: Page) {
   await expectLive(sliderInput(aside, /^Placement — /), "Placement");
   await expectLive(sidebarButton(page, "Change Blank"), "Change Blank");
   await expectLive(sidebarButton(page, "Remove This Blank"), "Remove This Blank");
-  await expectInert(page.locator(CENTER_SLIDER), "the Center Thickness slider");
+  await expectInert(centerThicknessSlider(page), "the Center Thickness slider");
   await expectInert(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
   await expectInert(sliderInput(aside, /^Deck Skin — /), "Deck Skin");
-  await expectInert(page.locator('aside [aria-label="Tip Style"]'), "Tip Style");
+  await expectInert(page.locator('aside [aria-label="Pin tip to"]'), "Pin tip to");
   // Proof the blank picker really works on TOP VIEW: the blank button opens the popup, Escape closes it.
   await sidebarButton(page, "Change Blank").click();
   await expect(blankPicker(page)).toBeVisible();
@@ -299,7 +310,7 @@ async function expectTabRule(page: Page) {
   await expect(tab(page, "DATASHEET")).toHaveAttribute("aria-selected", "true");
   await expectInert(sliderInput(aside, /^Placement — /), "Placement");
   await expectInert(sidebarButton(page, "Change Blank"), "Change Blank");
-  await expectLive(page.locator(CENTER_SLIDER), "the Center Thickness slider");
+  await expectLive(centerThicknessSlider(page), "the Center Thickness slider");
   await expectLive(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
   await expectLive(sliderInput(aside, /^Tail Tip — /), "the Tail Tip slider");
 
