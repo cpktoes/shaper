@@ -758,14 +758,17 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       const skinRaw = (await page.getByText(/^Deck Skin — /).textContent()) ?? "";
       const skin = skinRaw.replace(/^Deck Skin — /, "");
 
-      const offBottom = (
-        (await page.locator('[data-readouts] [data-readout-row="center"] > div').nth(2).textContent()) ?? ""
-      ).trim();
-
-      const passesText = ((await page.locator("[data-bottom-passes] span").last().textContent()) ?? "").trim();
-      const bottomPasses = passesText.replace(/ passes?$/, "");
-
+      // Quick 261019-gqo: the station readouts left the sidebar, so the center's foam off the bottom is read off
+      // the DATASHEET's FOAM OFF Bottom row (its Center cell, the 4th `div`: label, nose tip, nose 12", center) —
+      // the same side-profile number — and the bottom's passes are worked out from the printed numbers, exactly
+      // as the deck's are below.
       const depthRaw = (await page.getByText(/ a pass — your Planer Max Depth\.$/).textContent()) ?? "";
+      await page.getByRole("tab", { name: "DATASHEET" }).click();
+      const centerCell = (
+        (await page.locator('[data-datasheet-foam-off="bottom"] > div').nth(3).textContent()) ?? ""
+      ).trim();
+      const offBottom = system === "metric" ? `${centerCell} mm` : centerCell;
+
       const depthMatch = depthRaw.match(/^At (.+) a pass — your Planer Max Depth\.$/);
       expect(depthMatch, `ROCKER's depth line did not match the expected shape: "${depthRaw}"`).not.toBeNull();
       const depth = depthMatch![1];
@@ -779,6 +782,11 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       // The deck's pass count is worked the same way `planerPasses` works the bottom's — parsing
       // ROCKER's own printed Deck Skin and depth strings, never a typed number (CLAUDE.md Rule 1).
       const parse = (s: string): Mm | null => (system === "imperial" ? parseImperial(s) : parseMetric(s, "mm"));
+      const offBottomParsed = parse(offBottom);
+      expect(offBottomParsed, `could not parse Off Bottom @ Center "${offBottom}"`).not.toBeNull();
+      const depthForBottom = parse(depth);
+      expect(depthForBottom, `could not parse the depth "${depth}"`).not.toBeNull();
+      const bottomPasses = String(planerPasses(offBottomParsed!, depthForBottom!, system));
       let deckPasses: string;
       if (skin === "none") {
         deckPasses = "0";

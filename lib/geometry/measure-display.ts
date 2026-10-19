@@ -123,6 +123,49 @@ export function formatPasses(n: number): string {
   return n === 1 ? "1 pass" : `${n} passes`;
 }
 
+/** Whole planer passes plus the foam left over after them (quick 261019-gqo, D-04). */
+export interface WholePasses {
+  /** How many whole passes of the pass depth fit in the depth. */
+  whole: number;
+  /** What is left after those whole passes, as a mark — `mm(0)` when the division is exact. */
+  remainder: Mm;
+}
+
+/**
+ * The FULL planer passes it takes to remove `depth` of foam at `passDepth` a pass, and what is left
+ * over for one last, lighter pass (quick 261019-gqo, 2026-10-19; the founder, decision 4: "full
+ * passes means whole passes plus what is left over"). Where `planerPasses` rounds the count UP
+ * (a depth of 3/16" at 1/8" a pass is "2 passes"), this keeps the two parts apart: one whole pass
+ * and 1/16" left.
+ *
+ * Counted from the PRINTED numbers, exactly as `planerPasses` is: both values are first taken to
+ * the grid the chosen system prints (sixteenths of an inch, or whole millimetres), so a shaper who
+ * divides the printed depth by the printed pass depth by hand gets the same whole count and the
+ * same remainder the screen shows — and a sliver that does not print does not count. The
+ * remainder is turned back to millimetres through `inchesToMm` / `mm`, so no conversion constant
+ * is written here (CLAUDE.md Rule 2). A printed depth of zero or less, or a pass depth that prints
+ * as zero, is nothing to take off: 0 whole and a remainder of zero.
+ */
+export function wholePasses(depth: Mm, passDepth: Mm, system: UnitsSystem): WholePasses {
+  const d = printedSteps(depth, system);
+  const p = printedSteps(passDepth, system);
+  if (d <= 0 || p <= 0) return { whole: 0, remainder: mm(0) };
+  const whole = Math.floor(d / p);
+  const leftSteps = d - whole * p;
+  return { whole, remainder: system === "metric" ? mm(leftSteps) : inchesToMm(leftSteps / 16) };
+}
+
+/**
+ * The full-passes figure as a shaper reads it: the whole number alone when nothing is left over
+ * (`2`, `0`), otherwise the whole number, ` + `, and the foam left as a mark — `2 + 1/16"`,
+ * `0 + 1/16"`, and in Metric `2 + 2 mm`.
+ */
+export function formatWholePasses(passes: WholePasses, system: UnitsSystem): string {
+  return printedSteps(passes.remainder, system) > 0
+    ? `${passes.whole} + ${formatMark(passes.remainder, system)}`
+    : `${passes.whole}`;
+}
+
 /**
  * A signed dims-family value — imperial `+2 1/4"` / `-1 1/2"` / `0"`, metric `+5.1 cm` /
  * `-2.5 cm` / `0 cm` — for a measurement taken from a datum, where the direction is half the

@@ -35,9 +35,12 @@
  * thinning adds to it toward the tips, and a negative tip setting can take it below — D-16). The
  * DATASHEET's FOAM OFF · Deck row carries the per-station numbers.
  *
- * Under the grid, the planer passes at the center (D-03): the center's foam off the bottom divided
- * by the shaper's Planer Max Depth, rounded up — counted from the printed numbers, so a shaper who
- * divides them by hand gets the same count — with a hint naming the setting that decides it.
+ * Under the Deck Skin row, one line of full planer passes at the center (quick 261019-gqo, D-03,
+ * D-04): `Full passes at the center — Deck 1 · Bottom 1 + 1/16"` — the whole passes at the shaper's
+ * Planer Max Depth plus what is left over for a last, lighter pass, for the deck (the Deck Skin) and
+ * the bottom (the center's foam off the bottom). Counted from the printed numbers, so a shaper who
+ * divides them by hand gets the same answer; a hint under it names the setting that decides it.
+ * (The old line rounded the bottom's count up and left the deck out.)
  *
  * No blank (D-12): the slider is disabled at centre ("Placement — pick a blank first") and there is
  * no Deck Skin row, no readouts and no passes line — hidden, not disabled; the skin means nothing
@@ -50,7 +53,7 @@
  * Placement slider (in each of its three states) and the Deck Skin slider are live on the tab on screen
  * — Placement on VIEWER and TOP VIEW, Deck Skin on VIEWER only (`rocker-live-controls.ts`). A slider that
  * is not live stays where it is, dimmed and inert, inside the one `Live` wrapper (`live.tsx`). The
- * section's heading, the readouts grid, the planer-passes line and the Planer Max Depth note are text,
+ * section's heading, the readouts grid, the full-passes line and the Planer Max Depth note are text,
  * not controls, and stay undimmed on every tab (D-02). Both default to live, so a caller that passes
  * nothing gets the section exactly as before.
  */
@@ -63,7 +66,7 @@ import { FIT_DEFAULTS_RANGE_IN } from "@/lib/fit-defaults-preference";
 import { placementRange } from "@/lib/geometry/blank-fit";
 import { deckSkinHint, formatDeckSkin, formatPlacement, placementSlider } from "@/lib/geometry/blank-reasons";
 import type { FoilStationKey } from "@/lib/geometry/foil";
-import { formatMark, formatPasses, measureSlider, planerPasses, stationLabel } from "@/lib/geometry/measure-display";
+import { formatMark, formatWholePasses, measureSlider, stationLabel, wholePasses } from "@/lib/geometry/measure-display";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
 import { Live } from "./live";
@@ -133,7 +136,10 @@ export function BoardOnBlankSection({
   const range = placementRange(blank.copy.lengthMm, outline.length);
   const noRoom = range.max <= 0;
   const skinSlider = measureSlider(view.cut.deckSkin, DECK_SKIN_RANGE_IN, DECK_SKIN_RANGE_IN.step, 1, system);
-  const passes = planerPasses(view.centerGap, defaults.planerMaxDepth, system);
+  // The full passes at the center (quick 261019-gqo, D-03/D-04/P-05): the deck's foam is the board's Deck
+  // Skin, the bottom's is the center's foam off the bottom — the same two numbers the Summary reads.
+  const deckPasses = formatWholePasses(wholePasses(view.cut.deckSkin, defaults.planerMaxDepth, system), system);
+  const bottomPasses = formatWholePasses(wholePasses(view.centerGap, defaults.planerMaxDepth, system), system);
   // A 12" fine-tune taken off the Deck changes the foam off the deck at that station, so the skin
   // is no longer the same everywhere (WR-02).
   const deckTweaked = view.cut.fineTuneSurface === "deck" && (blank.nose12Offset !== 0 || blank.tail12Offset !== 0);
@@ -188,6 +194,21 @@ export function BoardOnBlankSection({
         </Live>
       </div>
 
+      <p data-full-passes className="mt-3 text-xs text-surf-ink-muted">
+        {"Full passes at the center — Deck "}
+        <span data-full-passes-deck className="font-semibold tabular-nums text-surf-ink">
+          {deckPasses}
+        </span>
+        {" · Bottom "}
+        <span data-full-passes-bottom className="font-semibold tabular-nums text-surf-ink">
+          {bottomPasses}
+        </span>
+      </p>
+
+      <p className="mt-0.5 text-xs text-surf-ink-muted">
+        {`At ${formatMark(defaults.planerMaxDepth, system)} a pass — your Planer Max Depth.`}
+      </p>
+
       <div data-readouts className="mt-3 grid grid-cols-[1fr_auto_auto] gap-x-3 gap-y-1">
         <div className={HEADER_CLASS}>STATION</div>
         <div className={cn(HEADER_CLASS, "text-right")}>ROCKER</div>
@@ -208,24 +229,6 @@ export function BoardOnBlankSection({
           );
         })}
       </div>
-
-      <div
-        data-bottom-passes
-        className="mt-2 flex items-baseline justify-between gap-2 border-t border-surf-line-faint pt-2"
-      >
-        <span className="text-xs text-surf-ink-muted">Planer passes at the center</span>
-        <span
-          className={cn(
-            "text-xs font-semibold tabular-nums",
-            passes === 0 ? "text-surf-ink-muted" : "text-surf-ink",
-          )}
-        >
-          {formatPasses(passes)}
-        </span>
-      </div>
-      <p className="mt-0.5 text-xs text-surf-ink-muted">
-        {`At ${formatMark(defaults.planerMaxDepth, system)} a pass — your Planer Max Depth.`}
-      </p>
     </div>
   );
 }

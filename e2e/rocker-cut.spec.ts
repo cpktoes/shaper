@@ -18,9 +18,9 @@ import { formatLength, stationLabel } from "../lib/geometry/measure-display";
 import { inchesToMm } from "../lib/geometry/units";
 
 /**
- * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked,
- * BOARD ON BLANK shows the board's own Deck Skin, the foam off the bottom at every station and the
- * planer passes at the center, all live, with nothing sent to the server.
+ * Phase 12's ROCKER cut, proven in real browsers (12-05; 12-08 extends it): with a blank picked, the
+ * BLANK section shows the board's own Deck Skin and, since quick 261019-gqo, one line of full planer
+ * passes at the center (whole passes plus what is left), all live, with nothing sent to the server.
  *
  * The helpers below are copies of `e2e/rocker-blanks.spec.ts`'s own (`dismissChrome`, `sliderUnder`,
  * `undoOnce` at the foot of the file) — spec files do not import each other, the repo's existing per-spec
@@ -84,24 +84,21 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await dismissChrome(page);
   });
 
-  test("with a blank picked, BOARD ON BLANK shows Deck Skin, OFF BOTTOM and the planer passes, and a Deck Skin drag moves the center's foam off the bottom and the passes with no request", async ({
+  test("with a blank picked, the BLANK section shows Deck Skin and the full-passes line, and a Deck Skin drag moves the line with no request", async ({
     page,
   }) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
     await expect(deckSkinLabel(page)).toBeVisible();
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.getByText("OFF BOTTOM", { exact: true })).toBeVisible();
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const passesLine = page.locator("[data-bottom-passes]");
+    // Quick 261019-gqo: the station readouts left the sidebar (they come back as the PLANING tab), and the
+    // one line under Deck Skin gives the full passes at the center.
+    const passesLine = page.locator("[data-full-passes]");
     await expect(passesLine).toBeVisible();
-    await expect(passesLine).toContainText("Planer passes at the center");
+    await expect(passesLine).toContainText("Full passes at the center");
     await expect(page.getByText(/ a pass — your Planer Max Depth\.$/)).toBeVisible();
 
     const skinBefore = await deckSkinLabel(page).innerText();
-    const centerRow = readouts.locator('[data-readout-row="center"]');
-    const centerBefore = await centerRow.innerText();
     const passesBefore = await passesLine.innerText();
 
     // R14: the skin is store state and the numbers come off the side profile the page already
@@ -124,36 +121,32 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await skin.press("ArrowRight");
 
     await expect(deckSkinLabel(page)).not.toHaveText(skinBefore);
-    await expect(centerRow).not.toHaveText(centerBefore);
     await expect(passesLine).not.toHaveText(passesBefore);
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
     // Never clears the pick.
     await expect(pickedCard(page)).toHaveCount(1);
     expect(requests, `requests during the drag: ${requests.join(", ")}`).toHaveLength(0);
   });
 
-  test("with no blank picked, there is no Deck Skin, no OFF BOTTOM and no planer passes line", async ({ page }) => {
+  test("with no blank picked, there is no Deck Skin and no full-passes line", async ({ page }) => {
     await openRocker(page);
     // D-12: hidden, not disabled — the sidebar is Phase 11's fallback column exactly.
     await expect(page.getByText("Placement — pick a blank first")).toBeVisible();
     await expect(page.getByText(/^Deck Skin/)).toHaveCount(0);
-    await expect(page.locator("[data-readouts]")).toHaveCount(0);
+    await expect(page.locator("[data-full-passes]")).toHaveCount(0);
     await expect(page.getByText("OFF BOTTOM", { exact: true })).toHaveCount(0);
-    await expect(page.locator("[data-bottom-passes]")).toHaveCount(0);
     await expect(page.getByText(/ a pass — your Planer Max Depth\.$/)).toHaveCount(0);
   });
 
-  test("in Metric the Deck Skin, the OFF BOTTOM cells and the passes hint read whole millimetres", async ({ page }) => {
+  test("in Metric the Deck Skin, the full-passes line and its hint read whole millimetres", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
     await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
-    const readouts = page.locator("[data-readouts]");
-    await expect(readouts.locator("[data-readout-row]")).toHaveCount(5);
-    const readoutText = await readouts.innerText();
-    expect(readoutText).toContain("mm");
-    expect(readoutText).not.toContain('"');
+    const passesLine = page.locator("[data-full-passes]");
+    await expect(passesLine).toContainText("Full passes at the center — Deck ");
+    await expect(passesLine).toContainText(" · Bottom ");
+    expect(await passesLine.innerText()).not.toContain('"');
     await expect(page.getByText(/^At \d+ mm a pass — your Planer Max Depth\.$/)).toBeVisible();
 
     // A drag keeps every one of them in millimetres.
@@ -161,8 +154,35 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await skin.focus();
     await skin.press("ArrowRight");
     await expect(deckSkinLabel(page)).toHaveText(/^Deck Skin — \d+ mm$/);
-    expect(await readouts.innerText()).not.toContain('"');
-    expect(await page.locator("[data-bottom-passes]").innerText()).not.toContain('"');
+    expect(await passesLine.innerText()).not.toContain('"');
+  });
+
+  test("the Longboard's full-passes line reads whole passes plus what is left, in both systems", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to pin the figures");
+    test.slow(); // the Longboard is started twice (Imperial, then Metric) in this one test
+    // The Longboard opens sitting in its blank (US Blanks 9'4"B); Deck Skin 1/8" and a center foam off the
+    // bottom of 3/16" at the 1/8" default Planer Max Depth — measured at plan time with the app's own functions.
+    async function openLongboard() {
+      await page.goto("/");
+      const longboard = page.getByRole("button").filter({ hasText: "Longboard" }).filter({ hasText: "Start Shaping" });
+      await expect(async () => {
+        await longboard.first().click();
+        await page.waitForURL("**/design/outline", { timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
+      await goToScreen(page, "ROCKER");
+    }
+
+    await openLongboard();
+    await expect(page.locator("[data-full-passes]")).toHaveText('Full passes at the center — Deck 1 · Bottom 1 + 1/16"');
+    await expect(page.getByText('At 1/8" a pass — your Planer Max Depth.', { exact: true })).toBeVisible();
+
+    // The same board in Metric: the chosen system is read when the page loads, so set it and start again.
+    await page.evaluate(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openLongboard();
+    await expect(page.locator("[data-full-passes]")).toHaveText("Full passes at the center — Deck 1 · Bottom 1 + 2 mm");
+    await expect(page.getByText("At 3 mm a pass — your Planer Max Depth.", { exact: true })).toBeVisible();
   });
 
   test("Remove This Blank, then one undo, brings the blank back with its own Deck Skin", async ({ page }, testInfo) => {
