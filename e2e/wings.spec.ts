@@ -1,4 +1,5 @@
 import { devices, expect, test, type Page } from "@playwright/test";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { openAppSettings } from "./helpers/settings";
 
 /**
@@ -223,7 +224,9 @@ test.describe("wings on the TEMPLATE page", () => {
     expect(Math.abs(centring.stringerX - centring.middle), JSON.stringify(centring)).toBeLessThanOrEqual(2);
 
     // The default board's squash tail: its tail block's width written under the tail, the VIEWER's
-    // own TAIL BLOCK number.
+    // own TAIL BLOCK number. This load must start the stock board, as it always did (quick 261019-ep5
+    // keeps the board in progress otherwise).
+    await forgetOpenBoardOnEveryLoad(page);
     await page.goto("/design/outline");
     const viewerTailBlock = await page.locator('[data-callout-chip="TAIL BLOCK"]').first().textContent();
     const width = (viewerTailBlock ?? "").replace(/^TAIL BLOCK/, "").replace(/ wide$/, "").trim();
@@ -1296,7 +1299,10 @@ test.describe("every wing label fits on a computer (quick 261015-hz7)", () => {
     await expect(closeUp.locator('[data-callout-chip="WING 1"] [data-wing-card-row="offset"]')).toHaveCount(0);
     await expect(closeUp.locator('[data-callout-chip="WING 1"] [data-wing-card-row]')).toHaveCount(2);
 
-    // The default thruster: wing 2 is placed by hand and has no OFFSET row.
+    // The default thruster: wing 2 is placed by hand and has no OFFSET row. A second preset in one
+    // test: the loads from here on start the stock board, as they always did (quick 261019-ep5 keeps
+    // the board in progress otherwise, and the home page would ask "Start a new design?").
+    await forgetOpenBoardOnEveryLoad(page);
     await page.goto("/");
     await page.evaluate(() => window.localStorage.setItem("shaper-units", "imperial"));
     await openPreset(page, "Shortboard");

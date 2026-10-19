@@ -23,3 +23,20 @@ export async function storedOpenBoard(page: Page): Promise<{
     }
   }, OPEN_BOARD_STORAGE_KEY);
 }
+
+/**
+ * Every load of this page from here on starts the stock board, the way every load did before quick
+ * 261019-ep5 — for a test that reloads on purpose to get a fresh board. Clearing the copy from the
+ * page itself is not enough: the page that is going away writes its waiting copy as it goes, after
+ * any such clear. This runs at the start of each new load instead, after the old page has gone and
+ * before the app reads the copy.
+ */
+export async function forgetOpenBoardOnEveryLoad(page: Page): Promise<void> {
+  await page.addInitScript((key) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Storage refused: there is no kept board to forget.
+    }
+  }, OPEN_BOARD_STORAGE_KEY);
+}

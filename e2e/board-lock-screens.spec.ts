@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { blankCards, openBlankPicker, starButton, waitForBlankButton } from "./helpers/blank-picker";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { appSettingsDialog, appSettingsRow, openSettingsMenu } from "./helpers/settings";
@@ -92,6 +93,9 @@ const unlockButton = (page: Page) =>
 async function openLockedBoard(page: Page, n = 1) {
   // A cold dev server can answer the very first client-side navigation with a full page load, which
   // forgets the open board; one more go from a fresh rack settles it (the server is warm by then).
+  // Every load must start the stock board, as it always did (quick 261019-ep5 keeps the board
+  // otherwise), or the fresh rack would carry the first go's board as a sixth, in-progress card.
+  await forgetOpenBoardOnEveryLoad(page);
   for (let attempt = 1; ; attempt++) {
     await startPracticeRack(page);
     await lockFromRack(page, n);
