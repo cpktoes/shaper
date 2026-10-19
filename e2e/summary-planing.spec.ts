@@ -8,7 +8,7 @@ import { parseCsv } from "../lib/blanks/csv";
 import { FIT_DEFAULTS_RANGE_IN } from "../lib/fit-defaults-preference";
 import { finRoundingNote } from "../lib/geometry/fins";
 import { FOIL_THICKNESS_RANGE_IN } from "../lib/geometry/foil";
-import { formatMarkBare, measureSlider, planerPasses } from "../lib/geometry/measure-display";
+import { formatMarkBare, formatWholePasses, measureSlider, wholePasses } from "../lib/geometry/measure-display";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { planingTable, thinningLine } from "../lib/geometry/planing";
 import { THINNING_START_MIN_MM, thinningStartRange } from "../lib/geometry/tip-taper";
@@ -748,7 +748,43 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       await expect(page.locator("[data-planing-thinning]")).toHaveCount(0);
     });
 
-    test(`with a blank picked, the PLANING table prints ROCKER's own foam off and passes, and the deck's passes worked the same way (${system})`, async ({
+    test(`the Longboard's printed PLANING table reads whole passes plus the rest (${system})`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to pin the figures");
+      test.slow(); // the Longboard preset starts from the setup screen, which can be slow on a cold dev server
+      // Quick 261019-gqo, plan 03 (D-12, the founder's "match it"): the Longboard opens sitting in its blank
+      // (US Blanks 9'4"B) with a Deck Skin of 1/8" and a center foam off the bottom of 3/16" at the 1/8"
+      // default Planer Max Depth. Measured at plan time with the app's own functions (M1).
+      await selectSystem(page, system);
+      await page.goto("/");
+      const longboard = page.getByRole("button").filter({ hasText: "Longboard" }).filter({ hasText: "Start Shaping" });
+      // A press that lands before React owns the button does nothing, so wait for the button to be React's first.
+      await longboard.first().evaluate(async (el) => {
+        for (let i = 0; i < 400 && !Object.keys(el).some((k) => k.startsWith("__reactFiber")); i++) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      });
+      await expect(async () => {
+        await longboard.first().click();
+        await page.waitForURL("**/design/outline", { timeout: 5_000 });
+      }).toPass({ timeout: 60_000 });
+      await goToSummary(page);
+
+      const planingCol = page.locator("[data-rail-bands-row]").locator(":scope > div").nth(0);
+      const cells = planingCol.locator("[data-planing-cell]");
+      await expect(cells).toHaveCount(4);
+      expect(await cells.allTextContents()).toEqual(
+        system === "imperial" ? ['1/8"', '3/16"', "1", '1 + 1/16"'] : ["3 mm", "5 mm", "1", "1 + 2 mm"],
+      );
+      await expect(planingCol.locator("[data-planing-footnote]")).toHaveText(
+        system === "imperial"
+          ? 'At the center, at 1/8" a pass — your Planer Max Depth.'
+          : "At the center, at 3 mm a pass — your Planer Max Depth.",
+      );
+    });
+
+    test(`with a blank picked, the PLANING table prints ROCKER's own foam off and the passes as whole passes plus the rest, the deck's worked the same way (${system})`, async ({
       page,
     }) => {
       await selectSystem(page, system);
@@ -779,14 +815,15 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
         expect(offBottom, `Off Bottom @ Center "${offBottom}" is not a Metric mark`).toMatch(/ mm$/);
       }
 
-      // The deck's pass count is worked the same way `planerPasses` works the bottom's — parsing
-      // ROCKER's own printed Deck Skin and depth strings, never a typed number (CLAUDE.md Rule 1).
+      // Both pass counts are worked the same way — whole passes plus what is left (D-04, D-12), through the app's
+      // own `wholePasses` / `formatWholePasses` — parsing ROCKER's own printed Deck Skin, Off Bottom and depth
+      // strings, never a typed number (CLAUDE.md Rule 1).
       const parse = (s: string): Mm | null => (system === "imperial" ? parseImperial(s) : parseMetric(s, "mm"));
       const offBottomParsed = parse(offBottom);
       expect(offBottomParsed, `could not parse Off Bottom @ Center "${offBottom}"`).not.toBeNull();
       const depthForBottom = parse(depth);
       expect(depthForBottom, `could not parse the depth "${depth}"`).not.toBeNull();
-      const bottomPasses = String(planerPasses(offBottomParsed!, depthForBottom!, system));
+      const bottomPasses = formatWholePasses(wholePasses(offBottomParsed!, depthForBottom!, system), system);
       let deckPasses: string;
       if (skin === "none") {
         deckPasses = "0";
@@ -795,7 +832,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
         const depthParsed = parse(depth);
         expect(skinParsed, `could not parse Deck Skin "${skin}"`).not.toBeNull();
         expect(depthParsed, `could not parse the depth "${depth}"`).not.toBeNull();
-        deckPasses = String(planerPasses(skinParsed!, depthParsed!, system));
+        deckPasses = formatWholePasses(wholePasses(skinParsed!, depthParsed!, system), system);
       }
 
       await goToSummary(page);
@@ -972,19 +1009,27 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       // list holds at least every sixteenth in that range; the footnote list holds exactly one
       // "at … a pass" per Planer Max Depth the control offers (four sixteenths in Imperial, five
       // whole millimetres in Metric); the deck passes list must include 0 (a none skin) and the most
-      // passes the deck can ever need (the widest skin at the finest pass depth).
+      // passes the deck can ever need (the widest skin at the finest pass depth), worded as whole passes
+      // plus the rest (`16` in Imperial, `12 + 1 mm` in Metric - quick 261019-gqo, plan 03, M3).
       expect(deckFoam.size, "Deck Foam Off candidates").toBeGreaterThanOrEqual(
         Math.round(FIT_DEFAULTS_RANGE_IN.deckSkin.max * 16) + 1,
       );
       expect(bottomFoam.size, "Bottom Foam Off candidates").toBeGreaterThan(20);
       expect(bottomPasses.size, "Bottom Passes candidates").toBeGreaterThan(20);
       expect(deckPasses.has("0"), "Deck Passes candidates should include 0 (a none skin)").toBe(true);
-      const maxDeckPasses = String(
-        planerPasses(inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max), passDepths[0], system),
+      const maxDeckPasses = formatWholePasses(
+        wholePasses(inchesToMm(FIT_DEFAULTS_RANGE_IN.deckSkin.max), passDepths[0], system),
+        system,
       );
       expect(
         deckPasses.has(maxDeckPasses),
         `Deck Passes candidates should include ${maxDeckPasses}, the most passes the deck can need`,
+      ).toBe(true);
+      // Quick 261019-gqo, plan 03: the bottom list must hold at least one "whole + rest" figure, so the sweep can
+      // never quietly lose the new, wider shape (D-12).
+      expect(
+        [...bottomPasses].some((cell) => cell.includes(" + ")),
+        "Bottom Passes candidates should include a whole-passes-plus-the-rest figure",
       ).toBe(true);
       expect(footnote.size, "footnote candidates").toBe(passDepths.length);
 

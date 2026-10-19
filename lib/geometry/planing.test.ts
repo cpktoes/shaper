@@ -5,7 +5,7 @@ import { prepareBlank, type BoardOnBlankInput } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import { formatDeckSkin, formatThinningStart, formatThinningStartBare } from "./blank-reasons";
 import { DEFAULT_FOIL_SPEC } from "./foil";
-import { formatMark, formatWholePasses, planerPasses, stationLabel, wholePasses } from "./measure-display";
+import { formatMark, formatWholePasses, stationLabel, wholePasses } from "./measure-display";
 import { planingStations, planingTable, thinningLine } from "./planing";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "./units";
@@ -129,14 +129,28 @@ describe("planingTable — the order form's PLANING table (quick 260928-tst)", (
     expect(result.footnote).toBe('At the center, at 1/8" a pass — your Planer Max Depth.');
   });
 
-  it("the same blank, Metric: 10 printed mm over 3 printed mm rounds up to 4 on the Bottom", () => {
+  it("the same blank, Metric: 10 printed mm over 3 printed mm is 3 whole passes and 1 mm left on the Bottom", () => {
     const input = { blank: { cut: { deckSkin: inchesToMm(1 / 8) }, centerGap: inchesToMm(3 / 8), tips: TIPS_AT_12 } };
     const result = planingTable(input, inchesToMm(1 / 8), "metric");
     expect(result.rows).toEqual([
       { label: "Foam Off", deck: "3 mm", bottom: "10 mm" },
-      { label: "Passes", deck: "1", bottom: "4" },
+      { label: "Passes", deck: "1", bottom: "3 + 1 mm" },
     ]);
     expect(result.footnote).toBe("At the center, at 3 mm a pass — your Planer Max Depth.");
+  });
+
+  it("the Longboard's figures (1/8\" skin, 3/16\" gap, 1/8\" a pass): whole passes plus what is left, in both systems", () => {
+    const input = { blank: { cut: { deckSkin: inchesToMm(1 / 8) }, centerGap: inchesToMm(3 / 16), tips: TIPS_AT_12 } };
+    const imperial = planingTable(input, inchesToMm(1 / 8), "imperial");
+    expect(imperial.rows).toEqual([
+      { label: "Foam Off", deck: '1/8"', bottom: '3/16"' },
+      { label: "Passes", deck: "1", bottom: '1 + 1/16"' },
+    ]);
+    const metric = planingTable(input, inchesToMm(1 / 8), "metric");
+    expect(metric.rows).toEqual([
+      { label: "Foam Off", deck: "3 mm", bottom: "5 mm" },
+      { label: "Passes", deck: "1", bottom: "1 + 2 mm" },
+    ]);
   });
 
   it("a deck skin of exactly zero prints \"none\" under Foam Off and 0 passes, in both systems", () => {
@@ -162,7 +176,7 @@ describe("planingTable — the order form's PLANING table (quick 260928-tst)", (
     const result = planingTable(input, mm(2), "metric");
     expect(result.rows).toEqual([
       { label: "Foam Off", deck: "25 mm", bottom: "30 mm" },
-      { label: "Passes", deck: "13", bottom: "15" },
+      { label: "Passes", deck: "12 + 1 mm", bottom: "15" },
     ]);
   });
 
@@ -225,13 +239,14 @@ describe("planingTable — the order form's PLANING table (quick 260928-tst)", (
         expect(expectedBottom).toBe(formatMark(view.foamOffBottom.center, system));
         expect(result.rows[0].bottom).toBe(expectedBottom);
 
-        // Passes deck equals planerPasses on both the deck skin and the DATASHEET's own FOAM OFF
-        // Deck cell at Center — the same number either way.
-        const expectedDeckPasses = String(planerPasses(view.cut.deckSkin, depth, system));
-        expect(expectedDeckPasses).toBe(String(planerPasses(view.foamOffDeck.center, depth, system)));
+        // Passes read whole passes plus what is left (D-12, the founder's "match it", 2026-10-19), through
+        // plan 01's helper — the deck skin equals the DATASHEET's own FOAM OFF Deck cell at Center, so
+        // the count is the same either way.
+        const expectedDeckPasses = formatWholePasses(wholePasses(view.cut.deckSkin, depth, system), system);
+        expect(expectedDeckPasses).toBe(formatWholePasses(wholePasses(view.foamOffDeck.center, depth, system), system));
         expect(result.rows[1].deck).toBe(expectedDeckPasses);
 
-        expect(result.rows[1].bottom).toBe(String(planerPasses(view.centerGap, depth, system)));
+        expect(result.rows[1].bottom).toBe(formatWholePasses(wholePasses(view.centerGap, depth, system), system));
 
         expect(result.footnote).toBe(`At the center, at ${formatMark(depth, system)} a pass — your Planer Max Depth.`);
 

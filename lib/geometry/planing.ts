@@ -23,13 +23,14 @@
  * Deck's Foam Off cell (`components/rocker/board-on-blank.tsx`'s own Deck Skin slider text),
  * `unsignedZeroMark`/`formatMark` for the Bottom's Foam Off cell (the same figure as
  * `BlankSideView.foamOffBottom.center`, the DATASHEET's FOAM OFF Bottom cell and ROCKER's own Center
- * OFF BOTTOM readout), and `planerPasses` for both Passes cells — the same count
- * `board-on-blank.tsx`'s own "Planer passes at the center" works from, printed here as a bare number
- * rather than "N passes". There is no second formula and no conversion factor here (CLAUDE.md Rules
- * 1 and 2): this module composes existing boundary formatters and nothing else.
+ * OFF BOTTOM readout), and `formatWholePasses(wholePasses(...))` for both Passes cells — the same
+ * count ROCKER's sidebar line and PLANING tab print: whole passes plus what is left (`2 + 1/16"`, `2`,
+ * `0`), changed from a bare rounded-up number by the founder's "match it" (2026-10-19, quick
+ * 261019-gqo, plan 03, D-12). There is no second formula and no conversion factor here (CLAUDE.md
+ * Rules 1 and 2): this module composes existing boundary formatters and nothing else.
  *
- * Passes are counted from the PRINTED depth and pass depth (`planerPasses`'s own documented rule),
- * so the same board can read one pass different in Imperial and Metric — exactly as ROCKER does.
+ * Passes are counted from the PRINTED depth and pass depth (`wholePasses`' own documented rule),
+ * so the same board can read a different count in Imperial and Metric — exactly as ROCKER does.
  *
  * With no blank picked there is nothing to derive a planing number from, so the same table prints
  * with a dash in every cell and the footnote says to pick a blank instead of an empty box that would
@@ -44,7 +45,7 @@
 import type { BlankCut } from "./blank";
 import { formatDeckSkin, formatThinningStart, formatThinningStartBare } from "./blank-reasons";
 import type { FoilStationKey } from "./foil";
-import { formatMark, formatWholePasses, planerPasses, stationLabel, wholePasses } from "./measure-display";
+import { formatMark, formatWholePasses, stationLabel, wholePasses } from "./measure-display";
 import type { TipView } from "./tip-taper";
 import { mm, type Mm, type UnitsSystem } from "./units";
 
@@ -125,8 +126,9 @@ export function thinningLine(noseFromTip: Mm, tailFromTip: Mm, system: UnitsSyst
  * - a zero prints `0`, never a dash — a dash is reserved for "no blank picked" (Decision 1);
  * - the pass depth lives in the footnote, not a row or the caption, because a footnote wraps freely
  *   and never widens the table (Decision 2);
- * - a pass count prints as a bare whole number, the rail table's own label-plus-value idiom
- *   (Decision 3);
+ * - a pass count prints as whole passes plus what is left (`1 + 1/16"`) — it began as a bare
+ *   rounded-up number, the rail table's own label-plus-value idiom (Decision 3), and became the
+ *   same wording ROCKER uses at the founder's "match it", 2026-10-19 (quick 261019-gqo, D-12);
  * - the row labels are the DATASHEET's own `Foam Off` and the PLANING caption's own `Passes`
  *   (Decision 4);
  * - Metric carries its unit on every Foam Off value, since each column mixes a depth row with a
@@ -139,7 +141,7 @@ export function thinningLine(noseFromTip: Mm, tailFromTip: Mm, system: UnitsSyst
  * columns even though the Deck figure does not vary along the board. There is no second formula and
  * no conversion factor here (CLAUDE.md Rules 1 and 2): every value is read straight off the side
  * profile's own `blank.cut.deckSkin` and `blank.centerGap` through the existing boundary formatters
- * and `planerPasses` — nothing here is a second reading of the same fact.
+ * and `wholePasses` — nothing here is a second reading of the same fact.
  */
 export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: UnitsSystem): PlaningTable {
   const { blank } = profile;
@@ -165,8 +167,8 @@ export function planingTable(profile: PlaningInput, planerMaxDepth: Mm, system: 
       },
       {
         label: LABEL_PASSES,
-        deck: String(planerPasses(blank.cut.deckSkin, planerMaxDepth, system)),
-        bottom: String(planerPasses(blank.centerGap, planerMaxDepth, system)),
+        deck: formatWholePasses(wholePasses(blank.cut.deckSkin, planerMaxDepth, system), system),
+        bottom: formatWholePasses(wholePasses(blank.centerGap, planerMaxDepth, system), system),
       },
     ],
     footnote: `At the center, at ${formatMark(planerMaxDepth, system)} a pass — your Planer Max Depth.`,
