@@ -187,7 +187,10 @@ a phone on its side, at 844-863 real dots, fits — controls beside the board be
 drawing stacked over controls with almost nothing left under them. So the switch reads width alone
 again, and a phone held sideways gets the desktop shell, same as a touch laptop at 1280px or an
 iPad held sideways. A narrow desktop browser window keeps the stacked layout by width alone, same
-as always — width is the one question, on any device. (An earlier version of this section quoted
+as always — width is the one question, on any device. The same 820-dot width line also shortens two of
+ROCKER's tab words: below it TOP VIEW reads TOP and DATASHEET reads DATA, so VIEWER · TOP · PLANING · DATA and
+the board's name fit across an upright phone, while every tab keeps its full name for screen readers (quick
+261019-gqo, the founder, 2026-10-19). (An earlier version of this section quoted
 750 dots for a sideways iPhone — that number came from a test tool's emulated device, never from
 real hardware. The corrected figures above, about 844 on an iPhone and about 863 on a Pixel 7, are
 measured, not emulated, and they survive this revert: what changed is the conclusion drawn from
