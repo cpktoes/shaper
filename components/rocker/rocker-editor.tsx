@@ -107,13 +107,20 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "datasheet", label: "DATASHEET" },
 ];
 /** On an upright phone, a phone held sideways, or a narrow or short window, the blank seen from
- * above has no room beside the side view, so it gets its own tab, between VIEWER and DATASHEET — the
- * two drawings first, then the table (the founder's order at their review, 2026-10-06; quick
- * 261006-qfm, D-04). Every browser test finds a tab by its name, never by its place. */
+ * above has no room beside the side view, so it gets its own tab, after VIEWER — the two drawings
+ * first (the founder's order at their review, 2026-10-06; quick 261006-qfm, D-04), then PLANING,
+ * then the table (quick 261019-gqo, plan 02, D-08: PLANING sits before DATASHEET).
+ *
+ * D-11 (the founder, 2026-10-19): below the 820-dot line only, TOP VIEW reads TOP and DATASHEET reads DATA,
+ * so VIEWER · TOP · PLANING · DATA and the board's name fit across an upright phone (the four full words
+ * need 376 dots, wider than a 360-dot phone's whole band). A phone held sideways is wider than the line and
+ * a short window is only short, so those keep the full words. The tabs keep their full names for screen
+ * readers and every browser test, which find a tab by its name, never by its place or its drawn word. */
 const ROCKER_TABS_SMALL_SCREEN: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
-  { id: "topView", label: "TOP VIEW" },
-  { id: "datasheet", label: "DATASHEET" },
+  { id: "topView", label: "TOP VIEW", shortLabel: "TOP" },
+  { id: "planing", label: "PLANING" },
+  { id: "datasheet", label: "DATASHEET", shortLabel: "DATA" },
 ];
 
 export function RockerEditor({

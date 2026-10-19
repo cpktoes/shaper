@@ -64,6 +64,56 @@ describe("TabbedPanel without a trailing slot", () => {
   });
 });
 
+/**
+ * A tab's optional short word (quick 261019-gqo, plan 02, D-11, P-17): below the 820-dot line ROCKER's TOP VIEW
+ * reads TOP and DATASHEET reads DATA so four tabs and the board's name fit across an upright phone. The full
+ * word is hidden at that width and the short one shown only there, both decided in CSS by the same `max-shell`
+ * width switch as every other narrow-screen rule; the tab keeps its full label as its accessible name.
+ */
+describe("TabbedPanel with a tab's short word", () => {
+  const SHORT = {
+    tabs: [
+      { id: "v", label: "VIEWER" },
+      { id: "t", label: "TOP VIEW", shortLabel: "TOP" },
+      { id: "d", label: "DATASHEET", shortLabel: "DATA" },
+    ],
+    active: "v",
+    onSelect: () => {},
+    compactOnPhone: "drawing",
+  };
+
+  it("draws both words, the full one hidden below the line and the short one shown only there", () => {
+    const html = render(SHORT);
+    expect(html).toContain('<span class="max-shell:hidden">TOP VIEW</span>');
+    expect(html).toContain('<span class="hidden max-shell:inline">TOP</span>');
+    expect(html).toContain('<span class="max-shell:hidden">DATASHEET</span>');
+    expect(html).toContain('<span class="hidden max-shell:inline">DATA</span>');
+  });
+
+  it("keeps the full label as the tab's accessible name, only on a tab that has a short word", () => {
+    const html = render(SHORT);
+    expect(html).toContain('aria-label="TOP VIEW"');
+    expect(html).toContain('aria-label="DATASHEET"');
+    expect(html.split("aria-label=").length - 1).toBe(2);
+    // VIEWER, with no short word, is today's bare markup.
+    expect(html).toMatch(/role="tab"[^>]*>VIEWER<\/button>/);
+  });
+
+  it("leaves a tab without a short word exactly as it was", () => {
+    expect(render({ ...SHAPE_B, tabs: SHORT.tabs.map(({ id, label }) => ({ id, label })) })).toBe(
+      render({
+        ...SHAPE_B,
+        tabs: [
+          { id: "v", label: "VIEWER" },
+          { id: "t", label: "TOP VIEW" },
+          { id: "d", label: "DATASHEET" },
+        ],
+      }),
+    );
+    expect(render(SHAPE_B)).not.toContain("max-shell:hidden");
+  });
+});
+
 describe("TabbedPanel with a trailing slot", () => {
   it("puts the tabs in their own row (the tab list) and the trailing item beside it", () => {
     const html = render({ ...SHAPE_B, trailing: () => createElement("button", null, "Fish") });

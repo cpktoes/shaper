@@ -1,5 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { openRocker } from "./helpers/blank-picker";
+import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { openFoilAdvanced } from "./helpers/rocker-sidebar";
 
@@ -21,9 +21,16 @@ import { openFoilAdvanced } from "./helpers/rocker-sidebar";
  *   the sidebar's line together with no request leaving the page (plan figure M2); the Advanced fold opens from
  *   PLANING, shows Fine tune from and the two 12" rows live, and closes again.
  *
- * `dismissChrome` is copied from `e2e/rocker-live-controls.spec.ts`; opening ROCKER and picking a blank go through
- * `helpers/blank-picker.ts`, starting the Longboard through the setup screen as `rocker-cut.spec.ts` does.
- * Every describe title carries "261019-gqo".
+ * - D-08, D-11, D-09 on a small screen (both upright phones, then the real sideways iPhone 844 x 390 and Pixel 7
+ *   landscape): the tabs named VIEWER, TOP VIEW, PLANING, DATASHEET sit left to right; upright, TOP VIEW's
+ *   drawn word is TOP and DATASHEET's DATA, sideways the full words (the tabs keep their full names for screen
+ *   readers either way, which is how every tab here is found); with the first fitting blank PLANING has five
+ *   stations of five non-empty cells, nothing scrolls sideways, the panel keeps its 8-dot reading margin, no
+ *   sidebar control is inert, and the Advanced fold opens and closes in the stacked controls.
+ *
+ * `dismissChrome` and the two sideways device constants are copied from `e2e/rocker-live-controls.spec.ts`;
+ * opening ROCKER and picking a blank go through `helpers/blank-picker.ts`, starting the Longboard through the
+ * setup screen as `rocker-cut.spec.ts` does. Every describe title carries "261019-gqo".
  */
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
@@ -70,7 +77,7 @@ async function openLongboardRocker(page: Page) {
   await expect(async () => {
     await longboard.first().click();
     await page.waitForURL("**/design/outline", { timeout: 2_000 });
-  }).toPass({ timeout: 20_000 });
+  }).toPass({ timeout: 60_000 }); // a cold dev server compiles the outline screen on this first click
   await goToScreen(page, "ROCKER");
 }
 
@@ -213,5 +220,121 @@ test.describe("ROCKER's PLANING tab on a computer (quick 261019-gqo)", () => {
     await aside.getByRole("button", { name: /^Advanced\s*[▾▸]$/ }).click();
     await expect(aside.getByRole("group", { name: "Fine tune from" })).toBeHidden();
     await expect(tab(page, "PLANING")).toHaveAttribute("aria-selected", "true");
+  });
+});
+
+// The real sideways iPhone width (844 CSS px), built the way `rocker-live-controls.spec.ts` does — Playwright's own
+// `iPhone 14 landscape` reports an emulator's 750 x 340, so its viewport is swapped for the 844 x 390 real hardware
+// reported.
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphone = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
+
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7Landscape } = devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+
+/** The tab's own drawn words — what a shaper reads. `innerText` leaves out a span the width switch hides. */
+async function drawnWords(page: Page, name: "VIEWER" | "TOP VIEW" | "PLANING" | "DATASHEET"): Promise<string> {
+  return (await tab(page, name).innerText()).trim();
+}
+
+/**
+ * Everything a small screen must show. `upright` is true below the 820-dot line (the short words TOP and DATA),
+ * false on a phone held sideways (the full words).
+ */
+async function expectPlaningOnSmallScreen(page: Page, upright: boolean) {
+  await openRocker(page);
+  // On a phone the tab strip settles only after hydration (see `phone-rails.spec.ts`'s note).
+  await expect(tab(page, "TOP VIEW")).toBeVisible({ timeout: 30_000 });
+  await pickFirstFittingBlank(page);
+
+  // The four tabs, left to right, in the founder's order.
+  const lefts: number[] = [];
+  for (const name of ["VIEWER", "TOP VIEW", "PLANING", "DATASHEET"] as const) {
+    const box = await tab(page, name).boundingBox();
+    expect(box, name).not.toBeNull();
+    lefts.push(box!.x);
+  }
+  expect(lefts[0]).toBeLessThan(lefts[1]);
+  expect(lefts[1]).toBeLessThan(lefts[2]);
+  expect(lefts[2]).toBeLessThan(lefts[3]);
+
+  // The drawn words: short upright, whole sideways.
+  await expect.poll(() => drawnWords(page, "TOP VIEW")).toBe(upright ? "TOP" : "TOP VIEW");
+  await expect.poll(() => drawnWords(page, "DATASHEET")).toBe(upright ? "DATA" : "DATASHEET");
+  expect(await drawnWords(page, "VIEWER")).toBe("VIEWER");
+  expect(await drawnWords(page, "PLANING")).toBe("PLANING");
+
+  await tab(page, "PLANING").click();
+  await expect(tab(page, "PLANING")).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("[data-rocker-planing-station]")).toHaveCount(5);
+  for (const station of STATIONS) {
+    for (const cell of CELLS) {
+      const text = ((await planingCell(page, station, cell).innerText()) ?? "").trim();
+      expect(text.length, `${station} ${cell}`).toBeGreaterThan(0);
+    }
+  }
+
+  // Nothing scrolls sideways: not the table, not the panel it sits in, not the page.
+  const table = page.locator("[data-rocker-planing]");
+  expect(await table.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  const panelFits = await page.locator("[data-viewer-panel] > div").first().evaluate((el) => el.scrollWidth <= el.clientWidth);
+  expect(panelFits).toBe(true);
+  const viewportWidth = page.viewportSize()!.width;
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewportWidth);
+
+  // The panel keeps the 8-dot reading margin, as DATASHEET does.
+  await expect(page.locator("[data-viewer-panel]")).toHaveCSS("padding-left", "8px");
+
+  // Every sidebar control is live, and the Advanced fold opens and closes in the stacked controls.
+  await expect(page.locator("aside [inert]")).toHaveCount(0);
+  await openFoilAdvanced(page);
+  const aside = page.locator("aside");
+  await expect(aside.getByRole("group", { name: "Fine tune from" })).toBeVisible();
+  await aside.getByRole("button", { name: /^Advanced\s*[▾▸]$/ }).click();
+  await expect(aside.getByRole("group", { name: "Fine tune from" })).toBeHidden();
+}
+
+test.describe("ROCKER's PLANING tab on an upright phone (quick 261019-gqo)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phone projects, at their own viewports");
+    await dismissChrome(page);
+  });
+
+  test("the tabs read VIEWER · TOP · PLANING · DATA, and PLANING shows five full rows with nothing scrolling sideways", async ({
+    page,
+  }) => {
+    await expectPlaningOnSmallScreen(page, true);
+  });
+});
+
+test.describe("ROCKER's PLANING tab on a phone held sideways (quick 261019-gqo) — iPhone", () => {
+  test.use({ ...realSidewaysIphone });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own device (a real sideways iPhone)");
+    await dismissChrome(page);
+  });
+
+  test("the tabs keep their full words, and PLANING shows five full rows", async ({ page }) => {
+    await expectPlaningOnSmallScreen(page, false);
+  });
+});
+
+test.describe("ROCKER's PLANING tab on a phone held sideways (quick 261019-gqo) — Pixel 7", () => {
+  test.use({ ...pixel7Landscape });
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await dismissChrome(page);
+  });
+
+  test("the tabs keep their full words, and PLANING shows five full rows", async ({ page }) => {
+    await expectPlaningOnSmallScreen(page, false);
   });
 });

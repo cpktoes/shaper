@@ -32,7 +32,7 @@ const NOTE_PASSES = "Passes are full passes; a figure after the + is the foam le
 const NOTE_BELOW_ZERO = "A figure below zero means the board would poke out of the blank there.";
 
 /** A column header: the DATASHEET's own 10-dot display type. */
-const HEADER_CELL = "text-right text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold";
+const HEADER_CELL = "pl-2 text-right text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold";
 /** The faint rule closing a station's second line (a station is a grid of its own two lines, so the rule rides its four cells). */
 const RULE = "border-b border-surf-line-faint";
 
@@ -40,7 +40,7 @@ function FoamFigure({ figure, cell }: { figure: PlaningFigure; cell: "offDeck" |
   return (
     <div
       data-rocker-planing-cell={cell}
-      className={`pt-1.5 text-right text-sm font-normal tabular-nums ${figure.negative ? "text-surf-warning-ink" : "text-surf-ink"}`}
+      className={`pl-2 pt-1.5 text-right text-sm font-normal tabular-nums ${figure.negative ? "text-surf-warning-ink" : "text-surf-ink"}`}
     >
       {figure.text}
     </div>
@@ -60,7 +60,7 @@ export function RockerPlaning({ profile }: { profile: BoardSideProfile }) {
       </div>
       {rows ? (
         <>
-          <div data-rocker-planing className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-2">
+          <div data-rocker-planing className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto_auto]">
             {/* The header row, over a 2-dot rule (the DATASHEET's own). */}
             <div className="border-b-2 border-surf-line-faint pb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold">
               Station
@@ -74,7 +74,7 @@ export function RockerPlaning({ profile }: { profile: BoardSideProfile }) {
                 <div className="min-w-0 pt-1.5 text-sm text-surf-ink-muted font-normal">{row.name}</div>
                 <div
                   data-rocker-planing-cell="rocker"
-                  className={`pt-1.5 text-right text-sm font-normal tabular-nums ${row.key === "center" ? "text-surf-ink-muted" : "text-surf-ink"}`}
+                  className={`pl-2 pt-1.5 text-right text-sm font-normal tabular-nums ${row.key === "center" ? "text-surf-ink-muted" : "text-surf-ink"}`}
                 >
                   {row.rocker}
                 </div>
@@ -82,16 +82,16 @@ export function RockerPlaning({ profile }: { profile: BoardSideProfile }) {
                 <FoamFigure figure={row.offBottom} cell="offBottom" />
                 {/* Second line: Passes under the name, then the deck and bottom passes under their foam figures. */}
                 <div className={`pb-1.5 text-xs text-surf-ink-muted font-normal ${RULE}`}>Passes</div>
-                <div className={RULE} />
+                <div className={`pl-2 ${RULE}`} />
                 <div
                   data-rocker-planing-cell="deckPasses"
-                  className={`pb-1.5 text-right text-xs tabular-nums text-surf-ink-muted font-normal ${RULE}`}
+                  className={`pl-2 pb-1.5 text-right text-xs tabular-nums text-surf-ink-muted font-normal ${RULE}`}
                 >
                   {row.deckPasses}
                 </div>
                 <div
                   data-rocker-planing-cell="bottomPasses"
-                  className={`pb-1.5 text-right text-xs tabular-nums text-surf-ink-muted font-normal ${RULE}`}
+                  className={`pl-2 pb-1.5 text-right text-xs tabular-nums text-surf-ink-muted font-normal ${RULE}`}
                 >
                   {row.bottomPasses}
                 </div>
