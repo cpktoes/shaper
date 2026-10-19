@@ -68,7 +68,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
     await expect(aside.getByText(/Measure This Board/)).toHaveCount(0);
     await expect(aside.getByText(/Real Rail/)).toHaveCount(0);
 
-    const card = importedReadout(aside, "From TEMPLATE");
+    const card = importedReadout(aside, "From TEMPLATE and ROCKER & FOIL");
     await expect(card).toBeVisible();
     await expectReadout(card, [
       ["Length", `6'0"`],
@@ -92,7 +92,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
 
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "false");
-    await expect(importedReadout(aside, "From TEMPLATE")).toHaveCount(0);
+    await expect(importedReadout(aside, "From TEMPLATE and ROCKER & FOIL")).toHaveCount(0);
     await expect(aside.getByText(`Board Length — 6'0"`)).toBeVisible();
     await expect(aside.getByText(`Board Width — 19"`)).toBeVisible();
     await expect(aside.getByText(`Center Thickness — 2 1/2"`)).toBeVisible();
@@ -102,7 +102,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
     // One tick, one undo step: a single Undo puts the box and the card back.
     await page.getByRole("button", { name: "Undo" }).click();
     await expect(box).toHaveAttribute("aria-checked", "true");
-    await expectReadout(importedReadout(aside, "From TEMPLATE"), [
+    await expectReadout(importedReadout(aside, "From TEMPLATE and ROCKER & FOIL"), [
       ["Length", `6'0"`],
       ["Width", `19"`],
       ["Thickness", `2 1/2"`],
@@ -114,7 +114,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
     await setMetricUnits(page);
     await page.goto("/design/volume");
     await importBox(page);
-    await expectReadout(importedReadout(page.locator("aside"), "From TEMPLATE"), [
+    await expectReadout(importedReadout(page.locator("aside"), "From TEMPLATE and ROCKER & FOIL"), [
       ["Length", "182.9 cm"],
       ["Width", "48.3 cm"],
       ["Thickness", "6.4 cm"],

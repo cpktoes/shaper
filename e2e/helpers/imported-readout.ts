@@ -2,7 +2,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * Quick 261018-fg1 — finding and reading the INPUTS readout card (sketch 017 C) on ROCKER, RAILS,
- * VOLUME and FINS. The card is a group named by its caption (`From TEMPLATE`, `From ROCKER & FOIL`)
+ * VOLUME and FINS. The card is a group named by its caption (`From TEMPLATE`, `From ROCKER & FOIL`,
+ * `From TEMPLATE and ROCKER & FOIL`)
  * holding a list of name/value pairs.
  */
 

@@ -220,7 +220,7 @@ describe("volumeImportedReadout — VOLUME's INPUTS card", () => {
 
   it("reads the default board in Imperial, with the ruled foot", () => {
     const r = volumeImportedReadout(length, width, centre, "imperial");
-    expect(r.caption).toBe("From TEMPLATE");
+    expect(r.caption).toBe("From TEMPLATE and ROCKER & FOIL");
     expect(pairs(r)).toEqual([
       ["Length", `6'0"`],
       ["Width", `19"`],

@@ -158,7 +158,7 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     page,
   }) => {
     await page.goto("/design/volume");
-    const card = importedReadout(page.locator("aside"), "From TEMPLATE");
+    const card = importedReadout(page.locator("aside"), "From TEMPLATE and ROCKER & FOIL");
     await expect(card).toBeVisible();
     expectComputerLook(await readoutFacts(card), 3, 1);
     await expect(card.locator("[data-readout-foot]")).toBeVisible();
@@ -205,7 +205,7 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     const screens: { path: string; caption: string; scope: string; columns: number; rows: number }[] = [
       { path: "/design/rocker", caption: "From TEMPLATE", scope: "[data-rocker-inputs]", columns: 2, rows: 1 },
       { path: "/design/rails", caption: "From ROCKER & FOIL", scope: "aside", columns: 3, rows: 1 },
-      { path: "/design/volume", caption: "From TEMPLATE", scope: "aside", columns: 3, rows: 1 },
+      { path: "/design/volume", caption: "From TEMPLATE and ROCKER & FOIL", scope: "aside", columns: 3, rows: 1 },
       { path: "/design/fins", caption: "From TEMPLATE", scope: "aside", columns: 2, rows: 2 },
     ];
     for (const screen of screens) {
@@ -235,7 +235,7 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
   test("VOLUME in Metric: every figure still fits inside its card", async ({ page }) => {
     await setMetricUnits(page);
     await page.goto("/design/volume");
-    const card = importedReadout(page.locator("aside"), "From TEMPLATE");
+    const card = importedReadout(page.locator("aside"), "From TEMPLATE and ROCKER & FOIL");
     await expect(card).toBeVisible();
     await expect(card.locator("dd")).toHaveText(["182.9 cm", "48.3 cm", "6.4 cm"]);
     expectComputerLook(await readoutFacts(card), 3, 1);
@@ -276,7 +276,7 @@ async function walkPhoneScreens(page: Page, device: string) {
   const screens = [
     { name: "ROCKER", path: "/design/rocker", caption: "From TEMPLATE", scope: "[data-rocker-inputs]" },
     { name: "RAILS", path: "/design/rails", caption: "From ROCKER & FOIL", scope: "aside" },
-    { name: "VOLUME", path: "/design/volume", caption: "From TEMPLATE", scope: "aside" },
+    { name: "VOLUME", path: "/design/volume", caption: "From TEMPLATE and ROCKER & FOIL", scope: "aside" },
     { name: "FINS", path: "/design/fins", caption: "From TEMPLATE", scope: "aside" },
   ];
   for (const screen of screens) {

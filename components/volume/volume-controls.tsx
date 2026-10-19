@@ -7,7 +7,7 @@
  *
  * Quick 261017-vdh (BRIEF 3): an INPUTS section with ONE box, "Import Designed Board". Ticked (the
  * default), a card says which board was imported (quick 261018-fg1, sketch 017 C: the length, width and
- * centre thickness in large figures under "From TEMPLATE", a foot line saying the rail shapes come from
+ * centre thickness in large figures under "From TEMPLATE and ROCKER & FOIL", a foot line saying the rail shapes come from
  * RAILS), and the four hand controls (Board Length, Board Width, Center Thickness, Board Type) are not on the page.
  * Unticked, they show — the quick estimate.
  */

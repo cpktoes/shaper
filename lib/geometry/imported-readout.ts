@@ -67,6 +67,10 @@ const TAIL_NAME: Record<TailShape["kind"], string> = {
 
 const FROM_TEMPLATE = "From TEMPLATE";
 const FROM_ROCKER_AND_FOIL = "From ROCKER & FOIL";
+/** VOLUME's caption names both screens it draws from: the length and width come from TEMPLATE, the
+ * centre thickness from ROCKER's foil (the founder, 2026-10-18: "imported from Template and Rocker
+ * & Foil"). */
+const FROM_TEMPLATE_AND_ROCKER_AND_FOIL = "From TEMPLATE and ROCKER & FOIL";
 
 /**
  * ROCKER: the template's length and width. `Length 6'0"`, `Width 19"`; Metric `182.9 cm`, `48.3 cm`.
@@ -132,13 +136,13 @@ export function finsImportedReadout(board: FinsImportedBoard, system: UnitsSyste
 }
 
 /**
- * VOLUME: the board the litres are measured from — length, width and centre thickness (all dims, so
- * Metric reads them in centimetres to one decimal) — with a foot line saying the rail shapes come
- * from RAILS.
+ * VOLUME: the board the litres are measured from — length and width (from TEMPLATE) and centre
+ * thickness (from ROCKER's foil), all dims, so Metric reads them in centimetres to one decimal —
+ * captioned with both screens, with a foot line saying the rail shapes come from RAILS.
  */
 export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system: UnitsSystem): ImportedReadout {
   return {
-    caption: FROM_TEMPLATE,
+    caption: FROM_TEMPLATE_AND_ROCKER_AND_FOIL,
     items: [
       { key: "length", label: "Length", value: formatLength(length, system) },
       { key: "width", label: "Width", value: formatDim(width, system) },
