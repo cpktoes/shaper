@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-18 — LIVE (85f3a146): quick 261018-dvu, -dw6, -e6w, -ejc, -fg1 and fast 175–176, after unit, tsc, lint, the full browser suite (1,245 passed; 3 slow-load flakes passed alone) and test:e2e:prod (18/18)
+Last activity: 2026-10-18 — LIVE (f691c831, 40 s after the push): fast 177 (VOLUME's card captioned From TEMPLATE and ROCKER & FOIL) and fast 178 (the imported-board card draws one column fewer when its figures cannot sit side by side — the 820-wide Metric overflow), after unit (5,930), lint, the full browser suite (1,238 passed; 10 ROCKER/blank-picker load flakes passed alone; VOLUME's desktop picture re-recorded for the caption) and test:e2e:prod (18/18)
 
 ## Performance Metrics
 
