@@ -123,6 +123,14 @@ import {
 import { type Litres, type Mm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import {
+  OPEN_BOARD_WRITE_DEBOUNCE_MS,
+  clearOpenBoardCopy,
+  flushOpenBoardCopy,
+  openBoardCopyJson,
+  parseOpenBoardCopy,
+  readOpenBoardCopy,
+} from "@/lib/models/open-board";
+import {
   canRedo,
   canUndo,
   emptyHistory,
@@ -580,6 +588,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     lockedRef.current = state.locked;
   }, [state.locked]);
 
+  // The open board kept in this browser (quick 261019-ep5, lib/models/open-board.ts). These three
+  // sit up here because applyPreset and applyModel below use them.
+  // The account the open saved board belongs to, or null when there is none (or it is not known yet).
+  const openBoardOwnerRef = useRef<string | null>(null);
+  // The newest copy of the board not yet written to the browser (it waits a moment after each change).
+  const openBoardPendingRef = useRef<string | null>(null);
+  // True once the one-time read-back after the page wakes has run, or a board was opened on purpose first.
+  const openBoardRestoredRef = useRef(false);
+
   // Phase 12 (D-01, D-04): the gear menu's Deck Skin and Tip Style, live, kept current the same
   // way. A board's FIRST pick bakes these into its blank; from then on the board keeps its own cut.
   const liveDeckSkin = fitDefaults.deckSkin;
@@ -732,6 +749,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setHistory(emptyHistory());
     // A new board is never locked (and its state comes from DEFAULT_DESIGN_STATE, locked: false).
     lockedRef.current = false;
+    // A new board replaces the one kept in the browser at once (quick 261019-ep5), so nothing stale
+    // can come back if the page dies before the next write, and the one-time read-back can never
+    // overwrite a board opened on purpose.
+    openBoardOwnerRef.current = null;
+    openBoardPendingRef.current = null;
+    openBoardRestoredRef.current = true;
+    clearOpenBoardCopy();
     setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
   };
 
@@ -748,6 +772,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pendingEditKeyRef.current = undefined;
     setHistory(emptyHistory());
     lockedRef.current = locked;
+    // Same as applyPreset: the board opened from the rack replaces the kept one at once (quick
+    // 261019-ep5). Its owner is learned on the next commit from the account signed in now.
+    openBoardOwnerRef.current = null;
+    openBoardPendingRef.current = null;
+    openBoardRestoredRef.current = true;
+    clearOpenBoardCopy();
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
@@ -1424,6 +1454,74 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
     if (decision === "save") performSave();
   };
+
+  // The board kept in this browser comes back once, just after the page wakes (quick 261019-ep5).
+  // It is read here, in an effect, never in useState's starting value or during render: the page
+  // the server sends and the browser's first drawing of it must agree, and the server cannot know
+  // what this browser kept (a whole board is far too big for the small cookie the preference
+  // providers use to tell it). So the stock board shows for a frame and the kept board replaces it.
+  // The work runs in a microtask the effect queues, for two reasons: this repo's lint forbids
+  // setting state straight from an effect's body, and in development React runs every mount effect
+  // twice — the first queued microtask brings the board back and sets the ref, the second sees the
+  // ref and does nothing (a timer cancelled by the cleanup would lose the only restore instead). The
+  // storage read happens inside the microtask, after any preset that was opened first had already
+  // cleared the copy. The board comes back the way a rack card opens one, with its own saved-board
+  // link, lock and unsaved-changes mark; the reader already checked it with the save reader, so
+  // nothing is read twice. No pending edit is set, so the undo history records nothing for it, and
+  // the history itself starts empty, as it does for any board that is opened.
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (openBoardRestoredRef.current) return;
+      openBoardRestoredRef.current = true;
+      const copy = parseOpenBoardCopy(readOpenBoardCopy());
+      if (!copy) return;
+      pendingEditKeyRef.current = undefined;
+      lockedRef.current = copy.locked;
+      openBoardOwnerRef.current = copy.ownerId;
+      setHistory(emptyHistory());
+      setState(() => ({
+        ...DEFAULT_DESIGN_STATE,
+        ...copy.snapshot,
+        modelId: copy.modelId,
+        locked: copy.locked,
+        dirty: copy.dirty,
+        boardStarted: true,
+      }));
+    });
+  }, []);
+
+  // Keeps the copy in this browser current (quick 261019-ep5): a moment after the last change to
+  // the board, its saved-board link, its lock or its unsaved-changes mark. A board nobody has
+  // started is never written — its foil tips follow the gear menu's live Tip defaults (D-19), and a
+  // copy would freeze them. A slider drag changes the board many times a second, so each change
+  // replaces the waiting copy and restarts the short wait; only the last one is written.
+  useEffect(() => {
+    if (!state.boardStarted) return;
+    openBoardPendingRef.current = openBoardCopyJson(designSnapshotFields, {
+      modelId: state.modelId,
+      ownerId: openBoardOwnerRef.current,
+      locked: state.locked,
+      dirty: state.dirty,
+    });
+    const timer = setTimeout(() => flushOpenBoardCopy(openBoardPendingRef), OPEN_BOARD_WRITE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [state.boardStarted, designSnapshotFields, state.modelId, state.locked, state.dirty]);
+
+  // A phone puts a tab in the background without warning, and a reload or a new address makes the
+  // page go away: either way, the copy still waiting for its short wait is written at once, so the
+  // last change (a name typed a moment ago) is never lost.
+  useEffect(() => {
+    const flush = () => flushOpenBoardCopy(openBoardPendingRef);
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, []);
 
   // The autosave effect (D-08): re-evaluates `decideAutosave` on every change to the snapshot
   // fields (via `designSnapshotFields`'s identity, which only changes when its contents do), on
