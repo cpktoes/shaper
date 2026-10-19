@@ -2,6 +2,13 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-10-19 (quick 261019-gqo, plan 02) — ROCKER only, `rocker-desktop.png`, for the new PLANING
+ * tab: the panel's tab strip now reads VIEWER, PLANING, DATASHEET on a computer. Old and new were compared
+ * before re-recording (421 pixels differ): only the tab strip gained a word; the sidebar, the drawing and the
+ * top bar are unchanged. TEMPLATE, RAILS, VOLUME and FINS passed unchanged and were not re-recorded. Rendered
+ * by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3172) in the plan's worktree on this Mac. SHA-256
+ * (first 8 characters), old to new: ROCKER c32b9086 to 849ae17b.
+ *
  * RE-RECORDED 2026-10-19 (quick 261019-gqo, plan 01) — ROCKER only, `rocker-desktop.png`, for the founder's
  * rearranged ROCKER & FOIL sidebar: INPUTS now holds Center Thickness, Nose Tip and Tail Tip (three sliders),
  * Placement moved up into the BLANK section under the Pick a Blank card (the BOARD ON BLANK heading is gone),

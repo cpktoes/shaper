@@ -6,6 +6,8 @@
  * the placement slider and blank picker live."
  *
  * - VIEWER: everything, exactly as before.
+ * - PLANING (quick 261019-gqo, plan 02, D-09): everything too, like VIEWER — slide the board along its blank
+ *   or change the Deck Skin and watch the planing numbers move. It takes the all-live branch below.
  * - DATASHEET: Center Thickness and the Nose Tip and Tail Tip sliders, all three in INPUTS (since quick
  *   261019-gqo, 2026-10-19, the tips live there in both states — they used to be the Rocker & Foil grid's
  *   Tip thickness cells with no blank and Foil's rows with one). The DATASHEET table's own typed cells
@@ -29,7 +31,7 @@
  */
 
 /** The ROCKER panel's tabs; TOP VIEW exists only on a small screen (quick 261006-qfm, D-04). */
-export type RockerTab = "viewer" | "datasheet" | "topView";
+export type RockerTab = "viewer" | "planing" | "datasheet" | "topView";
 
 /** One flag per group of sidebar controls: true means live, false means dimmed and inert. */
 export interface RockerLiveControls {

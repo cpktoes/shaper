@@ -34,7 +34,8 @@
  * 2026-09-14, when the same argument caught up with it: its three-decimal inch printer was wrong
  * in all four editors at once (a slider on 2 1/16" pasted as `inchesToMm(2.063)`), so the four
  * builders now share `lib/geometry/preset-source.ts`. `bare` removes the tab strip, and this
- * screen has two tabs (DATASHEET is unreachable while wide view is on) — safe because the button
+ * screen has three tabs on a computer — VIEWER, PLANING (quick 261019-gqo, plan 02) and DATASHEET, the last
+ * two unreachable while wide view is on — safe because the button
  * that turns wide view on lives inside the VIEWER tab's own toolbar and stays on screen in both
  * states, so the active tab is invariantly VIEWER whenever wide view is on, and one press always
  * brings the strip back.
@@ -94,12 +95,15 @@ import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
 import { RockerDatasheet } from "./rocker-datasheet";
+import { RockerPlaning } from "./rocker-planing";
 import type { RockerTab } from "./rocker-live-controls";
 import { RockerTopView, TOP_VIEW_SAMPLES, TopViewInset } from "./rocker-top-view";
 import { RockerViewer } from "./rocker-viewer";
 
+/** PLANING sits between VIEWER and DATASHEET (quick 261019-gqo, plan 02, D-08 — the founder's order, 2026-10-19). */
 const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
+  { id: "planing", label: "PLANING" },
   { id: "datasheet", label: "DATASHEET" },
 ];
 /** On an upright phone, a phone held sideways, or a narrow or short window, the blank seen from
@@ -302,7 +306,7 @@ export function RockerEditor({
           tabs={tabs}
           active={activeTab}
           onSelect={setRequestedTab}
-          compactOnPhone={activeTab === "datasheet" ? "text" : "drawing"}
+          compactOnPhone={activeTab === "datasheet" || activeTab === "planing" ? "text" : "drawing"}
           // Quick 261008-raw: the board's name at the band's right end.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
@@ -421,6 +425,10 @@ export function RockerEditor({
                 />
               </ViewerZoomProvider>
             </div>
+          ) : activeTab === "planing" ? (
+            // The PLANING tab (quick 261019-gqo, plan 02): the station-by-station planing numbers, with the
+            // foam off the deck and the planer passes at every station. Every sidebar control stays live here.
+            <RockerPlaning profile={sideProfile} />
           ) : (
             <RockerDatasheet
               profile={sideProfile}
