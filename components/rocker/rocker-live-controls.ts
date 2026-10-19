@@ -6,9 +6,10 @@
  * the placement slider and blank picker live."
  *
  * - VIEWER: everything, exactly as before.
- * - DATASHEET: Center Thickness (INPUTS' slider) and the two tip thicknesses — the Rocker &
- *   Foil grid's Tip thickness cells with no blank, Foil's Nose Tip and Tail Tip rows with one. The
- *   DATASHEET table's own typed cells are not the sidebar and keep working.
+ * - DATASHEET: Center Thickness and the Nose Tip and Tail Tip sliders, all three in INPUTS (since quick
+ *   261019-gqo, 2026-10-19, the tips live there in both states — they used to be the Rocker & Foil grid's
+ *   Tip thickness cells with no blank and Foil's rows with one). The DATASHEET table's own typed cells
+ *   are not the sidebar and keep working.
  * - TOP VIEW (small screens only — the tab exists only there): the whole BLANK section and the Placement
  *   slider.
  * The same rule holds wherever the tabs exist: a computer, an upright phone, a phone held sideways.
@@ -36,24 +37,25 @@ export interface RockerLiveControls {
   center: boolean;
   /** The whole BLANK section: heading, search, list, Show all, Change / Keep, Remove, Switch to This Blank. */
   blank: boolean;
-  /** BOARD ON BLANK's Placement slider (every one of its three states). */
+  /** The BLANK section's Placement slider (every one of its three states). */
   placement: boolean;
-  /** BOARD ON BLANK's Deck Skin slider; the readouts and planer passes are text and never dim. */
+  /** The BLANK section's Deck Skin slider; the full-passes line under it is text and never dims. */
   deckSkin: boolean;
   /** The ROCKER column of the Rocker & Foil grid (shown only with no blank): its four lift cells. */
   rocker: boolean;
-  /** The two Tip thicknesses: the grid's Tip thickness cells with no blank, Foil's Nose Tip and Tail Tip
-   * rows with a blank. */
+  /** INPUTS' Nose Tip and Tail Tip sliders, shown with or without a blank (quick 261019-gqo, D-01). */
   tipThickness: boolean;
-  /** The two 12" thicknesses in both states — the grid's two @ 12" thickness cells with no blank; the two
-   * fine-tunes, the Fine-tune off pair and ↺ Reset Fine-Tune with a blank (D-12). */
+  /** The two 12" thicknesses in both states — the grid's two @ 12" thickness cells with no blank; with a
+   * blank, the Advanced fold's Fine tune from pair, the two 12" fine-tunes and ↺ Reset Fine-Tune (D-12). */
   fineTune: boolean;
-  /** Foil's Tip Style pair (blank only). */
+  /** Foil's Pin tip to pair (blank only; it was Tip Style). */
   tipStyle: boolean;
   /** Foil's two Thinning Starts rows (blank only). */
   thinning: boolean;
   /** Derived: the Foil heading and intro line (with no blank, the Rocker & Foil heading is live while this
-   * or `rocker` is), live whenever any of the section's rows is (D-13). */
+   * or `rocker` is), live whenever any of the section's rows is (D-13). Since quick 261019-gqo (P-02) the
+   * tips are no longer in that section, so it is the 12" fine-tunes, Pin tip to and Thinning Starts only —
+   * which is why Foil and the hand-set heading now dim as a whole on DATASHEET. */
   thicknessHeading: boolean;
 }
 
@@ -98,6 +100,6 @@ export function liveControls(tab: RockerTab): RockerLiveControls {
           };
   return {
     ...groups,
-    thicknessHeading: groups.tipThickness || groups.fineTune || groups.tipStyle || groups.thinning,
+    thicknessHeading: groups.fineTune || groups.tipStyle || groups.thinning,
   };
 }

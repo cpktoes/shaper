@@ -429,14 +429,19 @@ export function thinningMarksSentence(noseFromTip: Mm, tailFromTip: Mm, system: 
 }
 
 /**
- * THICKNESS's opening line with a blank picked (UI-SPEC "Sidebar: THICKNESS", §10): true wherever the
+ * FOIL's opening line with a blank picked (UI-SPEC "Sidebar: THICKNESS", §10): true wherever the
  * starts are, replacing "the tips are thinned in the last 12"". The station reads through
  * `stationLabel` (`12"` / `30.5 cm`).
+ *
+ * Reworded in quick 261019-gqo (2026-10-19, P-01): the tip thicknesses moved up to INPUTS and the 12"
+ * fine-tune into the Advanced fold, so the old "Set the tips, and fine-tune the 12" stations if you need
+ * to." was no longer true where it sits. It keeps its opening words, which a no-blank check looks for.
  */
 export function thicknessIntroWithBlank(system: UnitsSystem): string {
   return (
-    `Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below. ` +
-    `Set the tips, and fine-tune the ${stationLabel(system)} stations if you need to.`
+    `Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below, ` +
+    `to the tip thickness set under Inputs. ` +
+    `Fine-tune the ${stationLabel(system)} stations under Advanced if you need to.`
   );
 }
 

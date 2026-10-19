@@ -142,9 +142,10 @@ export function RockerEditor({
   // from the four hand-set rocker stations when not (D-14). Nothing here builds a curve of its own.
   const [sectionOpen, setSectionOpen] = useState<Record<RockerControlsSectionKey, boolean>>({
     blank: true,
-    boardOnBlank: true,
     rockerAndFoil: true,
     foil: true,
+    // Foil's Advanced fold starts closed on every arrival, view state like the rest (quick 261019-gqo, D-06).
+    advanced: false,
   });
   /** View state, like Template's own `orientation`/`showConstruction` — not design data, never
    * persisted. Per D-03 this screen's default is horizontal (nose left), the OPPOSITE of the
