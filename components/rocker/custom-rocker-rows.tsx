@@ -139,9 +139,11 @@ export function CustomRockerRows({ prepared, draft, onDraftChange, system }: Cus
           />
           {/* The thumb runs the way the drawing lies (fast task 170): a tail slider is mirrored over its
               range, so pushing it right pushes the bend toward the tail on the right of the drawing;
-              `bendStartFromSlider` turns the thumb back into inches in from the tip. */}
+              `bendStartFromSlider` turns the thumb back into inches in from the tip. Its fill runs from
+              the thumb to the tail tip on the right (`.slider-fill-end`, globals.css), as Tail Thinning
+              Starts' does (the founder, 2026-10-19). */}
           <SliderRow
-            className="min-w-0 flex-[3_1_0%]"
+            className={cn("min-w-0 flex-[3_1_0%]", end === "tail" && "slider-fill-end")}
             label={BEND_SLIDER_LABEL}
             valueBox={bendText}
             value={bendSliderPosition(end, range, bendValue)}

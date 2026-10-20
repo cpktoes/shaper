@@ -1009,11 +1009,11 @@
 }
 
 /*
- * A slider whose fill belongs at its RIGHT-hand end. ROCKER's Tail Thinning Starts runs centre (left) to
- * tail tip (right), the way the board lies on the drawing (the founder, 2026-10-19), but Base UI always
- * fills from the left. So under `.slider-fill-end` the two colours swap: the track takes the accent and
- * the range the empty well, and the fill reads from the dot to the tip — the stretch being thinned, as on
- * the nose's slider.
+ * A slider whose fill belongs at its RIGHT-hand end. ROCKER's Tail Thinning Starts and the Customize
+ * Rocker popup's tail Bend starts both run centre (left) to tail tip (right), the way the board lies on
+ * the drawing (the founder, 2026-10-19), but Base UI always fills from the left. So under
+ * `.slider-fill-end` the two colours swap: the track takes the accent and the range the empty well, and
+ * the fill reads from the dot to the tip, as a nose slider's reads from its tip to the dot.
  */
 .slider-fill-end .slider-accent [data-slot="slider-track"] {
   background: var(--surf-accent);
