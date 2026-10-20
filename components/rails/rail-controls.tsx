@@ -110,13 +110,15 @@ function AdvancedHeading({
   );
 }
 
+/** The Ratio slider's marks under its track, each at its own place on the 30-70 range. No 70/30 at the right
+ * end: in a half-width column it ran into 60/40 and read "60/4070/30" (the founder, 2026-10-19: "drop the
+ * 70/30 marks"). */
 function RatioTickCaptions() {
   return (
     <div className="relative mt-0.5 h-3">
       <span className="absolute left-0 text-[9px] text-surf-ink-muted font-normal">30/70</span>
       <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">50/50</span>
       <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">60/40</span>
-      <span className="absolute right-0 text-[9px] text-surf-ink-muted font-normal">70/30</span>
     </div>
   );
 }
@@ -256,7 +258,10 @@ function RailSectionControls({
         </div>
 
         <div className={cn("min-w-0 flex-1", locked && "opacity-40")}>
-          <div className="mb-2 flex h-4 items-center justify-between leading-4">
+          {/* The same 20-dot heading line as Family's beside it (`min-h-5 leading-5`), so the two tracks sit
+              on one line whatever the Sym box measures (the founder, 2026-10-19: "the sliders themselves
+              should be on one plane") — it was 16 dots, which lifted Ratio's track 4 dots above Family's. */}
+          <div className="mb-2 flex h-5 items-center justify-between leading-5">
             <div className="text-sm text-surf-ink-muted font-normal">
               Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
             </div>
