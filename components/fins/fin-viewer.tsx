@@ -26,12 +26,14 @@
  */
 
 import { useMemo, useRef } from "react";
+import { RulerDimensionLineIcon } from "lucide-react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
 import type { Point2D } from "@/lib/geometry/board";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
+import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { scaleDash } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
@@ -414,6 +416,10 @@ interface FinViewerProps {
   tailShape: FinTailShape;
   tailWidth12: Mm;
   showCallouts: boolean;
+  /** Draws the icon row over the drawing's top-right corner with one toggle, Fin Placement Callouts,
+   * pressed while they show (the founder, 2026-10-19: moved here from the sidebar's Settings fold) —
+   * given by the FINS screen only. Absent (the Summary's card), no icon row is drawn. */
+  onToggleCallouts?: () => void;
   /** The real designed outline (from the shared design store), drawn behind the fin marks in
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
    * values. It is the DRAWN board, rounded wing corners included (quick 261015-u8y, D4: "keep the
@@ -444,6 +450,7 @@ export function FinViewer({
   tailShape,
   tailWidth12,
   showCallouts,
+  onToggleCallouts,
   outlineOverride,
   importedTail,
   compact = false,
@@ -778,9 +785,24 @@ export function FinViewer({
                 )),
               )}
         </svg>
-        {/* The zoom row (D8, R2): FINS has no icon row, so it sits in this box's top-right
-            corner; on a touch screen only once zoomed in (P3). Nothing outside a provider. */}
-        <ViewerZoomControl placement="corner" />
+        {/* The icon row (the FINS screen only): one toggle, the fin placement callouts, pressed while
+            they show — the accent fill ROCKER's own toggles use. */}
+        {onToggleCallouts && (
+          <ViewerToolbar>
+            <ViewerToolbarButton
+              onClick={onToggleCallouts}
+              pressed={showCallouts}
+              label={showCallouts ? "Hide fin placement callouts" : "Show fin placement callouts"}
+              title="Fin Placement Callouts"
+            >
+              <RulerDimensionLineIcon className="size-6" />
+            </ViewerToolbarButton>
+          </ViewerToolbar>
+        )}
+        {/* The zoom row (D8, R2): under the icon row on the FINS screen, in this box's top-right
+            corner where there is none; on a touch screen only once zoomed in (P3). Nothing outside
+            a provider. */}
+        <ViewerZoomControl placement={onToggleCallouts ? "under-toolbar" : "corner"} />
       </div>
       {!compact && (
         <div

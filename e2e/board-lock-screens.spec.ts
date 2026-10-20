@@ -437,11 +437,16 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await controls.getByRole("button", { name: /^Settings/ }).click();
-    const callouts = controls.getByRole("checkbox", { name: /Fin Placement Callouts/ });
-    const before = await callouts.getAttribute("aria-checked");
+    // The callouts' toggle is the drawing's own icon now (the founder, 2026-10-19), pressed while they
+    // show: on when the screen opens, and a tap still turns them off on a locked board.
+    const callouts = page.locator("[data-viewer-toolbar]").getByRole("button", { name: /fin placement callouts$/ });
+    await expect(callouts).toHaveAttribute("aria-pressed", "true");
+    await expect(callouts).toHaveAccessibleName("Hide fin placement callouts");
+    await expect(page.locator("[data-fin-plot] [data-fin-dim]").first()).toBeVisible();
     await callouts.click();
-    await expect(callouts).not.toHaveAttribute("aria-checked", before ?? "");
+    await expect(callouts).toHaveAttribute("aria-pressed", "false");
+    await expect(callouts).toHaveAccessibleName("Show fin placement callouts");
+    await expect(page.locator("[data-fin-plot] [data-fin-dim]")).toHaveCount(0);
 
     await pressUnlock(page);
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);

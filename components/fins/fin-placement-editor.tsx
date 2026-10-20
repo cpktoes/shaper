@@ -61,7 +61,8 @@ export function FinPlacementEditor() {
     setFinsImportTemplate,
   } = useDesign();
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The fin placement callouts, on when the screen opens — toggled by the drawing's own icon (the
+  // founder, 2026-10-19: moved there from the sidebar's Settings fold). View state, never saved.
   const [showCallouts, setShowCallouts] = useState(true);
   const [activeTab, setActiveTab] = useState<FinTab>("viewer");
   const [toeTableOpen, setToeTableOpen] = useState(false);
@@ -109,10 +110,6 @@ export function FinPlacementEditor() {
           onChange={updateFins}
           advancedOpen={advancedOpen}
           onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
-          settingsOpen={settingsOpen}
-          onToggleSettings={() => setSettingsOpen((v) => !v)}
-          showCallouts={showCallouts}
-          onToggleCallouts={() => setShowCallouts((v) => !v)}
           onOpenToeTable={() => setToeTableOpen(true)}
           importTemplate={finsImportTemplate}
           onToggleImportTemplate={() => setFinsImportTemplate(!finsImportTemplate)}
@@ -141,6 +138,7 @@ export function FinPlacementEditor() {
                   tailShape={spec.tailShape}
                   tailWidth12={spec.tailWidth12}
                   showCallouts={showCallouts}
+                  onToggleCallouts={() => setShowCallouts((v) => !v)}
                   outlineOverride={finTailOutline}
                   importedTail={finImportedTail}
                 />

@@ -174,10 +174,6 @@ interface FinControlsProps {
   onChange: (patch: Partial<FinPlacementSpec>) => void;
   advancedOpen: boolean;
   onToggleAdvanced: () => void;
-  settingsOpen: boolean;
-  onToggleSettings: () => void;
-  showCallouts: boolean;
-  onToggleCallouts: () => void;
   onOpenToeTable: () => void;
   /** Whether board length, tail width @12" and tail shape are driven by the outline screen's
    * design (Fins.dc.html's `importTemplate`). */
@@ -194,10 +190,6 @@ export function FinControls({
   onChange,
   advancedOpen,
   onToggleAdvanced,
-  settingsOpen,
-  onToggleSettings,
-  showCallouts,
-  onToggleCallouts,
   onOpenToeTable,
   importTemplate,
   onToggleImportTemplate,
@@ -785,20 +777,6 @@ export function FinControls({
             >
               ↺ Reset Advanced Settings
             </button>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-auto">
-        <DisclosureHeading open={settingsOpen} onToggle={onToggleSettings}>
-          Settings
-        </DisclosureHeading>
-        {settingsOpen && (
-          <div className="mt-3 pl-3">
-            <label className="mb-4 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-              <Checkbox data-lock-exempt checked={showCallouts} onCheckedChange={onToggleCallouts} />
-              Fin Placement Callouts
-            </label>
           </div>
         )}
       </div>
