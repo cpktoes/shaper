@@ -575,6 +575,9 @@ test.describe("ROCKER — the DATASHEET beside a blank, one undo after Remove, a
 
     await expect(pickedCard(page).locator("[data-blank-name]")).toHaveText(name);
     await expect(page.getByText(placementText, { exact: true })).toBeVisible();
+    // The blank came back carrying its +1/16" tweak, so FOIL's Advanced fold opens by itself - no tap before
+    // the row is read (quick 261019-gqo, plan 03, D-13).
+    await expect(page.getByRole("group", { name: "Fine tune from" })).toBeVisible();
     await expect(page.getByText(/^Nose @ 12" — /).locator("xpath=..")).toContainText('Tweak +1/16"');
     await expect(page.locator("[data-blank-silhouette]")).toBeVisible();
   });

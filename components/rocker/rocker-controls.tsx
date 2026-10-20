@@ -40,7 +40,7 @@
  * Tail Thinning Starts (Phase 14, D-09 to D-11 — each a `SliderRow` from 6" (left, the tip) to the board's
  * centre (right), the distance in force in its label, the state on the hint line's left and an Automatic
  * button on its right, and under it, only for a start set by hand that is too close to its tip, one
- * sentence in warning ink, D-05); then a fold titled `Advanced`, closed when the screen opens, holding
+ * sentence in warning ink, D-05); then a fold titled `Advanced`, closed unless the board carries a 12" tweak (`FoilSection`, D-13), holding
  * `Fine tune from` Deck / Bottom (D-13, 12-UI-SPEC §5a — which surface a 12" tweak moves), the Nose @ 12"
  * and Tail @ 12" fine-tunes, and ↺ Reset Fine-Tune. With a blank those two 12" stations are the blank's
  * own thickness there less the deck skin and the centre gap (12-UI-SPEC §5) plus the shaper's signed
@@ -68,13 +68,13 @@
  * worked out at the call site, so the pure table and its test keep their ten keys.
  */
 
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { SliderRow } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import type { BlankCatalogResult } from "@/lib/db/blanks";
 import type { SavedBlanksAccount } from "@/lib/saved-blanks-preference";
-import type { BoardBlank, FineTuneSurface, TipStyle } from "@/lib/geometry/blank";
-import type { BoardSideProfile } from "@/lib/geometry/board-profile";
+import { hasFineTune, type BoardBlank, type FineTuneSurface, type TipStyle } from "@/lib/geometry/blank";
+import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "@/lib/geometry/foil";
 import {
   formatMark,
@@ -106,9 +106,9 @@ import { liveControls, type RockerTab } from "./rocker-live-controls";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import type { ImportedReadout } from "@/lib/geometry/imported-readout";
 
-/** The sections that open and close: BLANK, the hand-set Rocker & Foil, Foil, and Foil's Advanced fold
- * (quick 261019-gqo — BOARD ON BLANK is gone). */
-export type RockerControlsSectionKey = "blank" | "rockerAndFoil" | "foil" | "advanced";
+/** The sections that open and close: BLANK, the hand-set Rocker & Foil and Foil (quick 261019-gqo — BOARD ON
+ * BLANK is gone). Foil's Advanced fold is not here: `FoilSection` owns it (plan 03, P-22). */
+export type RockerControlsSectionKey = "blank" | "rockerAndFoil" | "foil";
 
 /** The 12" fine-tune's reach either way from the blank-derived thickness, in inches (±6 mm metric,
  * rounded inward by `measureSlider`) — `(researcher's choice — founder may overrule)` (UI-SPEC §5). */
@@ -407,6 +407,195 @@ function ThinningStartRow({
   );
 }
 
+/**
+ * FOIL as its own component (quick 261019-gqo, plan 03, P-21): the heading, the intro, Pin tip to, the two
+ * Thinning Starts and the Advanced fold. It owns the fold's open state, and that is the whole reason it is a
+ * component.
+ *
+ * The founder (2026-10-19, D-13): "OPEN WHEN A TWEAK IS SET." In plain English: a board that arrives on ROCKER
+ * carrying a Nose or Tail @ 12" tweak shows Advanced open, so the tweak is never hidden; a board with no tweak
+ * shows it closed. The state is born with FOIL, read from the board at that moment only —
+ * `useState(() => hasFineTune(blank))` — and after that only the shaper's own tap on the Advanced heading moves
+ * it: setting a tweak, pressing ↺ Reset Fine-Tune, switching tabs, switching blanks (FOIL stays mounted and the
+ * tweaks carry over) and closing and reopening FOIL's own heading (which only hides the rows, never unmounts
+ * this component) all leave it alone.
+ *
+ * FOIL is mounted whenever the board on screen has a blank, so "as the board arrives" is exactly when it
+ * mounts: opened from the rack, a preset or another screen, FOIL mounts with that board; a reload starts from
+ * the stock board, which has no blank, so FOIL appears only once the shaper's own board is brought back and is
+ * born with that board; a first blank pick (tweaks start at 0) and an undo that brings a removed blank back
+ * both mount it afresh. No effect and no state set during render are needed (this repo's lint rejects both).
+ * The one gap, recorded on purpose: a board replaced wholesale while ROCKER stays on screen with a blank on
+ * both boards would keep the fold as it was — no path in the app does that today.
+ */
+function FoilSection({
+  blank,
+  view,
+  foil,
+  sideProfile,
+  live,
+  foilOpen,
+  onToggleFoil,
+  onFineTune,
+  onResetFineTune,
+  onTipStyle,
+  onFineTuneSurface,
+  onThinningStart,
+  onThinningStartAutomatic,
+}: {
+  blank: BoardBlank;
+  view: BlankSideView;
+  foil: FoilSpec;
+  sideProfile: BoardSideProfile;
+  live: ReturnType<typeof liveControls>;
+  foilOpen: boolean;
+  onToggleFoil: () => void;
+  onFineTune: RockerControlsProps["onFineTune"];
+  onResetFineTune: () => void;
+  onTipStyle: (tipStyle: TipStyle) => void;
+  onFineTuneSurface: (surface: FineTuneSurface) => void;
+  onThinningStart: (end: TipEnd, start: Mm) => void;
+  onThinningStartAutomatic: (end: TipEnd) => void;
+}) {
+  const { system } = useUnits();
+  const locked = useControlsLocked();
+  const [advancedOpen, setAdvancedOpen] = useState(() => hasFineTune(blank));
+  const noTweak = !hasFineTune(blank);
+  const station = stationLabel(system);
+
+  return (
+    <Live on={live.thicknessHeading}>
+      <div>
+        <SectionHeading open={foilOpen} onToggle={onToggleFoil}>
+          Foil
+        </SectionHeading>
+        {foilOpen && (
+          <div className="flex flex-col gap-3.5 pt-3">
+            <div className="text-xs text-surf-ink-muted font-normal">{thicknessIntroWithBlank(system)}</div>
+
+            {/* Which surface a tip is pinned to — today's Tip Style pair, relabelled (D-06). At its natural
+                width; only the two Thinning Starts rows and the Advanced fold come after it. */}
+            <Live on={live.tipStyle}>
+              <div className="flex flex-col">
+                <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>
+                  Pin tip to
+                </div>
+                <TwoOptionToggle
+                  options={["pinDeck", "bottom"] as const}
+                  labels={["Deck", "Bottom"] as const}
+                  value={view.cut.tipStyle}
+                  onChange={onTipStyle}
+                  disabled={locked}
+                  ariaLabel="Pin tip to"
+                  className="self-start"
+                />
+                <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
+                  {TIP_STYLE_HINT[view.cut.tipStyle]}
+                </div>
+              </div>
+            </Live>
+
+            {/* Where each tip's thinning starts, nose then tail (Phase 14, D-09 to D-11). */}
+            <Live on={live.thinning}>
+              <ThinningStartRow
+                end="nose"
+                tip={view.tips.nose}
+                tipSetting={foil.noseTip}
+                system={system}
+                onChange={onThinningStart}
+                onAutomatic={onThinningStartAutomatic}
+              />
+            </Live>
+            <Live on={live.thinning}>
+              <ThinningStartRow
+                end="tail"
+                tip={view.tips.tail}
+                tipSetting={foil.tailTip}
+                system={system}
+                onChange={onThinningStart}
+                onAutomatic={onThinningStartAutomatic}
+              />
+            </Live>
+
+            {/* The founder (2026-10-19): "Under a collapsed advanced section, lets add a Fine tune from
+                section" — closed unless a tweak is set (plan 03, D-13), the FINS Advanced fold's look (quick 261019-gqo, D-06). */}
+            <div>
+              <AdvancedHeading open={advancedOpen} onToggle={() => setAdvancedOpen((open) => !open)}>
+                Advanced
+              </AdvancedHeading>
+              {advancedOpen && (
+                <div className="mt-3.5 flex flex-col gap-3.5 pl-3">
+                  <Live on={live.fineTune}>
+                    <div className="flex flex-col">
+                      <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>
+                        Fine tune from
+                      </div>
+                      <TwoOptionToggle
+                        options={["deck", "bottom"] as const}
+                        labels={["Deck", "Bottom"] as const}
+                        value={view.cut.fineTuneSurface}
+                        onChange={onFineTuneSurface}
+                        disabled={locked}
+                        ariaLabel="Fine tune from"
+                        className="self-start"
+                      />
+                      <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
+                        {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
+                      </div>
+                    </div>
+                  </Live>
+                  <Live on={live.fineTune}>
+                    <FineTuneRow
+                      label={`Nose @ ${station}`}
+                      finalThickness={sideProfile.effectiveFoil.nose12}
+                      derived={view.derived12.nose12}
+                      reachesStation={view.tips.nose.reachesStation}
+                      offset={blank.nose12Offset}
+                      system={system}
+                      onChange={(next) => onFineTune({ nose12Offset: next })}
+                    />
+                  </Live>
+                  <Live on={live.fineTune}>
+                    <FineTuneRow
+                      label={`Tail @ ${station}`}
+                      finalThickness={sideProfile.effectiveFoil.tail12}
+                      derived={view.derived12.tail12}
+                      reachesStation={view.tips.tail.reachesStation}
+                      offset={blank.tail12Offset}
+                      system={system}
+                      onChange={(next) => onFineTune({ tail12Offset: next })}
+                    />
+                  </Live>
+                  {/* Stays in place when there is nothing to reset — dimmed and inert, so the rows
+                      above never shift. No confirmation: undo brings the tweaks back. Its `self-start`
+                      keeps working inside the `flex flex-col` wrapper (quick 261006-v20, D-10). */}
+                  <Live on={live.fineTune}>
+                    <button
+                      type="button"
+                      disabled={locked}
+                      aria-disabled={noTweak ? "true" : undefined}
+                      tabIndex={noTweak ? -1 : undefined}
+                      onClick={() => {
+                        if (!noTweak) onResetFineTune();
+                      }}
+                      className={cn(
+                        "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
+                        noTweak && "pointer-events-none opacity-40",
+                      )}
+                    >
+                      ↺ Reset Fine-Tune
+                    </button>
+                  </Live>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </Live>
+  );
+}
+
 export function RockerControls({
   tab,
   templateReadout,
@@ -438,7 +627,6 @@ export function RockerControls({
   const centerSlider = measureSlider(foil.center, FOIL_THICKNESS_RANGE_IN, FOIL_THICKNESS_RANGE_IN.step, 1, system);
   const view = blank ? sideProfile.blank : null;
   const live = liveControls(tab);
-  const noTweak = !blank || (blank.nose12Offset === 0 && blank.tail12Offset === 0);
   const station = stationLabel(system);
 
   return (
@@ -590,135 +778,21 @@ export function RockerControls({
       )}
 
       {blank && view && (
-        <Live on={live.thicknessHeading}>
-          <div>
-            <SectionHeading open={sectionOpen.foil} onToggle={() => onToggleSectionOpen("foil")}>
-              Foil
-            </SectionHeading>
-            {sectionOpen.foil && (
-              <div className="flex flex-col gap-3.5 pt-3">
-                <div className="text-xs text-surf-ink-muted font-normal">{thicknessIntroWithBlank(system)}</div>
-
-                {/* Which surface a tip is pinned to — today's Tip Style pair, relabelled (D-06). At its natural
-                    width; only the two Thinning Starts rows and the Advanced fold come after it. */}
-                <Live on={live.tipStyle}>
-                  <div className="flex flex-col">
-                    <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                      Pin tip to
-                    </div>
-                    <TwoOptionToggle
-                      options={["pinDeck", "bottom"] as const}
-                      labels={["Deck", "Bottom"] as const}
-                      value={view.cut.tipStyle}
-                      onChange={onTipStyle}
-                      disabled={locked}
-                      ariaLabel="Pin tip to"
-                      className="self-start"
-                    />
-                    <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                      {TIP_STYLE_HINT[view.cut.tipStyle]}
-                    </div>
-                  </div>
-                </Live>
-
-                {/* Where each tip's thinning starts, nose then tail (Phase 14, D-09 to D-11). */}
-                <Live on={live.thinning}>
-                  <ThinningStartRow
-                    end="nose"
-                    tip={view.tips.nose}
-                    tipSetting={foil.noseTip}
-                    system={system}
-                    onChange={onThinningStart}
-                    onAutomatic={onThinningStartAutomatic}
-                  />
-                </Live>
-                <Live on={live.thinning}>
-                  <ThinningStartRow
-                    end="tail"
-                    tip={view.tips.tail}
-                    tipSetting={foil.tailTip}
-                    system={system}
-                    onChange={onThinningStart}
-                    onAutomatic={onThinningStartAutomatic}
-                  />
-                </Live>
-
-                {/* The founder (2026-10-19): "Under a collapsed advanced section, lets add a Fine tune from
-                    section" — closed on arrival, the FINS Advanced fold's look (quick 261019-gqo, D-06). */}
-                <div>
-                  <AdvancedHeading open={sectionOpen.advanced} onToggle={() => onToggleSectionOpen("advanced")}>
-                    Advanced
-                  </AdvancedHeading>
-                  {sectionOpen.advanced && (
-                    <div className="mt-3.5 flex flex-col gap-3.5 pl-3">
-                      <Live on={live.fineTune}>
-                        <div className="flex flex-col">
-                          <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                            Fine tune from
-                          </div>
-                          <TwoOptionToggle
-                            options={["deck", "bottom"] as const}
-                            labels={["Deck", "Bottom"] as const}
-                            value={view.cut.fineTuneSurface}
-                            onChange={onFineTuneSurface}
-                            disabled={locked}
-                            ariaLabel="Fine tune from"
-                            className="self-start"
-                          />
-                          <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                            {FINE_TUNE_SURFACE_HINT[view.cut.fineTuneSurface]}
-                          </div>
-                        </div>
-                      </Live>
-                      <Live on={live.fineTune}>
-                        <FineTuneRow
-                          label={`Nose @ ${station}`}
-                          finalThickness={sideProfile.effectiveFoil.nose12}
-                          derived={view.derived12.nose12}
-                          reachesStation={view.tips.nose.reachesStation}
-                          offset={blank.nose12Offset}
-                          system={system}
-                          onChange={(next) => onFineTune({ nose12Offset: next })}
-                        />
-                      </Live>
-                      <Live on={live.fineTune}>
-                        <FineTuneRow
-                          label={`Tail @ ${station}`}
-                          finalThickness={sideProfile.effectiveFoil.tail12}
-                          derived={view.derived12.tail12}
-                          reachesStation={view.tips.tail.reachesStation}
-                          offset={blank.tail12Offset}
-                          system={system}
-                          onChange={(next) => onFineTune({ tail12Offset: next })}
-                        />
-                      </Live>
-                      {/* Stays in place when there is nothing to reset — dimmed and inert, so the rows
-                          above never shift. No confirmation: undo brings the tweaks back. Its `self-start`
-                          keeps working inside the `flex flex-col` wrapper (quick 261006-v20, D-10). */}
-                      <Live on={live.fineTune}>
-                        <button
-                          type="button"
-                          disabled={locked}
-                          aria-disabled={noTweak ? "true" : undefined}
-                          tabIndex={noTweak ? -1 : undefined}
-                          onClick={() => {
-                            if (!noTweak) onResetFineTune();
-                          }}
-                          className={cn(
-                            "focus-ring-accent cursor-pointer self-start text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40",
-                            noTweak && "pointer-events-none opacity-40",
-                          )}
-                        >
-                          ↺ Reset Fine-Tune
-                        </button>
-                      </Live>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </Live>
+        <FoilSection
+          blank={blank}
+          view={view}
+          foil={foil}
+          sideProfile={sideProfile}
+          live={live}
+          foilOpen={sectionOpen.foil}
+          onToggleFoil={() => onToggleSectionOpen("foil")}
+          onFineTune={onFineTune}
+          onResetFineTune={onResetFineTune}
+          onTipStyle={onTipStyle}
+          onFineTuneSurface={onFineTuneSurface}
+          onThinningStart={onThinningStart}
+          onThinningStartAutomatic={onThinningStartAutomatic}
+        />
       )}
     </div>
   );

@@ -155,8 +155,8 @@ export function RockerEditor({
     blank: true,
     rockerAndFoil: true,
     foil: true,
-    // Foil's Advanced fold starts closed on every arrival, view state like the rest (quick 261019-gqo, D-06).
-    advanced: false,
+    // Foil's Advanced fold is not here: `FoilSection` owns it, so it can start open when the board carries a
+    // 12" tweak (quick 261019-gqo, plan 03, D-13, P-22).
   });
   /** View state, like Template's own `orientation`/`showConstruction` — not design data, never
    * persisted. Per D-03 this screen's default is horizontal (nose left), the OPPOSITE of the

@@ -2,6 +2,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 import { expectReadout, importedReadout } from "./helpers/imported-readout";
 import { openFoilAdvanced } from "./helpers/rocker-sidebar";
+import { goToScreen } from "./helpers/screens";
+import { freshPracticeRack } from "./helpers/practice-rack";
+import { RACK_COPY } from "../components/setup/rack-config";
+import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 
 /**
  * The browser proof of ROCKER's side panel as the founder's copy-edit canvas drew it (quick 261017-vdh,
@@ -215,7 +219,8 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     await expect(pinGroup.getByRole("button", { name: "Deck", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(pinGroup.getByRole("button", { name: "Bottom", exact: true })).toHaveAttribute("aria-pressed", "false");
 
-    // Advanced is closed on arrival: no Fine tune from pair, no 12" fine-tune rows.
+    // Advanced is closed on arrival: no Fine tune from pair, no 12" fine-tune rows. It is closed because the
+    // first fitting blank carries no 12" tweak (D-13) - the fold opens by itself only on a board that does.
     const advanced = side.getByRole("button", { name: /^Advanced\s*[▾▸]$/ });
     await expect(advanced).toContainText("▸");
     await expect(side.getByRole("group", { name: "Fine tune from" })).toHaveCount(0);
@@ -269,5 +274,126 @@ test.describe("ROCKER's Rocker & Foil table on a phone (quick 261017-vdh)", () =
     }
     const overflow = await aside(page).evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
+  });
+});
+
+/**
+ * FOIL's Advanced fold opens by itself when the board on screen carries a Nose or Tail @ 12" tweak (quick
+ * 261019-gqo, plan 03, D-13 and P-21). The founder's words: "OPEN WHEN A TWEAK IS SET." A board with no tweak
+ * shows the fold closed; once the board has arrived, only the shaper's own tap moves it.
+ */
+const advancedHeading = (page: Page): Locator => aside(page).getByRole("button", { name: /^Advanced\s*[▾▸]$/ });
+const fineTuneGroup = (page: Page): Locator => aside(page).getByRole("group", { name: "Fine tune from" });
+const noseTweakRow = (page: Page): Locator => page.getByText(/^Nose @ 12" — /).locator("xpath=..");
+const foilHeading = (page: Page): Locator => aside(page).getByRole("button", { name: /^Foil\s*[▾▸]$/ });
+
+test.describe("the Advanced fold opens by itself when the board carries a 12\" tweak (quick 261019-gqo, plan 03)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  test("arriving with a tweak: the fold is open with the tweak in view; with none it is closed", async ({ page }) => {
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+
+    // The first fitting blank carries no 12" tweak, so the fold is closed (D-13).
+    await expect(advancedHeading(page)).toContainText("▸");
+    await expect(fineTuneGroup(page)).toHaveCount(0);
+
+    // Set a tweak (one step down on the nose), then close the fold with a tap.
+    await openFoilAdvanced(page);
+    const slider = noseTweakRow(page).getByRole("slider");
+    await slider.focus();
+    await slider.press("ArrowLeft");
+    await expect(noseTweakRow(page)).toContainText("Tweak");
+    await expect(noseTweakRow(page)).not.toContainText("No tweak");
+    await advancedHeading(page).click();
+    await expect(fineTuneGroup(page)).toHaveCount(0);
+
+    // The board leaves ROCKER and comes back through the app's own navigation: the tweak is on the board, so
+    // the fold opens by itself and the Nose @ 12" row shows it.
+    await goToScreen(page, "TEMPLATE");
+    await goToScreen(page, "ROCKER");
+    await expect(advancedHeading(page)).toContainText("▾");
+    await expect(fineTuneGroup(page)).toBeVisible();
+    await expect(noseTweakRow(page)).toContainText("Tweak");
+    await expect(noseTweakRow(page)).not.toContainText("No tweak");
+
+    // Clear the tweak, leave and come back: no tweak, so the fold is closed again.
+    await aside(page).getByRole("button", { name: "↺ Reset Fine-Tune" }).click();
+    await expect(noseTweakRow(page)).toContainText("No tweak");
+    await goToScreen(page, "TEMPLATE");
+    await goToScreen(page, "ROCKER");
+    await expect(advancedHeading(page)).toBeVisible();
+    await expect(advancedHeading(page)).toContainText("▸");
+    await expect(fineTuneGroup(page)).toHaveCount(0);
+  });
+
+  test("after the board arrives, only the shaper's tap opens or closes the fold", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the same rule on every layout; one computer pass is enough");
+    await openRocker(page);
+    await pickFirstFittingBlank(page);
+    await expect(advancedHeading(page)).toContainText("▸");
+
+    // The shaper opens it; setting a tweak does not close it, and Reset does not either.
+    await advancedHeading(page).click();
+    await expect(fineTuneGroup(page)).toBeVisible();
+    const slider = noseTweakRow(page).getByRole("slider");
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await expect(noseTweakRow(page)).toContainText('Tweak +1/16"');
+    await expect(fineTuneGroup(page)).toBeVisible();
+    await aside(page).getByRole("button", { name: "↺ Reset Fine-Tune" }).click();
+    await expect(noseTweakRow(page)).toContainText("No tweak");
+    await expect(fineTuneGroup(page)).toBeVisible();
+
+    // Switching to the DATASHEET and back changes nothing.
+    await page.getByRole("tab", { name: "DATASHEET" }).click();
+    await expect(page.getByRole("tab", { name: "DATASHEET" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "VIEWER" }).click();
+    await expect(page.getByRole("tab", { name: "VIEWER" })).toHaveAttribute("aria-selected", "true");
+    await expect(fineTuneGroup(page)).toBeVisible();
+
+    // Closing and reopening FOIL's own heading hides and shows the rows, and the fold keeps its state.
+    await foilHeading(page).click();
+    await expect(advancedHeading(page)).toHaveCount(0);
+    await foilHeading(page).click();
+    await expect(advancedHeading(page)).toContainText("▾");
+    await expect(fineTuneGroup(page)).toBeVisible();
+
+    // One tap closes it, another opens it.
+    await advancedHeading(page).click();
+    await expect(fineTuneGroup(page)).toHaveCount(0);
+    await advancedHeading(page).click();
+    await expect(fineTuneGroup(page)).toBeVisible();
+  });
+
+  // A saved board with a tweak, brought back by a page reload, waits for quick 261019-ep5 (the open board kept
+  // across a reload), which is not on this branch's base. Until then the closed case is proved from the practice
+  // rack: a rack board carries no tweak, so ROCKER opens with the fold closed. The reload proof (a stored board
+  // with a Nose @ 12" tweak of +1/16" opens on /design/rocker with the fold open) is to be added with ep5.
+  test("a board opened from the practice rack with no tweak shows the fold closed", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the same rule on every layout; one computer pass is enough");
+    await freshPracticeRack(page);
+    await page.goto(`${RACK_STAND_IN_ROUTE}?boards=5`);
+    await expect(page.locator("[data-rack-board]")).toHaveCount(5);
+    await expect(page.locator("[data-rack-art][data-turn]")).toHaveCount(5);
+
+    const name = standInRackRows(5)[0].name;
+    const open = page.getByRole("group", { name: RACK_COPY.captionGroup(name) }).getByRole("button", { name: RACK_COPY.open });
+    await expect(open).toBeVisible();
+    // A press that lands before React owns the button does nothing.
+    await open.evaluate(async (el) => {
+      for (let i = 0; i < 100 && !Object.keys(el).some((k) => k.startsWith("__reactFiber")); i++) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    });
+    await open.click();
+    await page.waitForURL("**/design/outline");
+    await goToScreen(page, "ROCKER");
+
+    await expect(advancedHeading(page)).toBeVisible();
+    await expect(advancedHeading(page)).toContainText("▸");
+    await expect(fineTuneGroup(page)).toHaveCount(0);
   });
 });
