@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-19 — Completed fast task 183: ROCKER's thickness cards sit just above the board, clear of the blank-from-above plate (221226ef); fast tasks 179–183 on main, nothing pushed, the founder gives the go-live
+Last activity: 2026-10-19 — Completed fast task 184: RAILS' Family and Ratio sliders level, Ratio's 70/30 mark dropped (3da4636b); fast tasks 179–184 on main, nothing pushed, the founder gives the go-live
 
 ## Performance Metrics
 
@@ -417,6 +417,7 @@ Recent decisions affecting current work:
 | 181 | FINS's Fin Placement Callouts switch moves from the sidebar's Settings fold (now gone) to an icon on the drawing (the founder, 2026-10-19: "move the fin placement callout from the settings menu to an icon in the viewer. Default = on (shaded)") — a ruler-with-dimension-line `ViewerToolbarButton`, pressed while the callouts show, with the zoom row under it as on ROCKER; still toggles on a locked board; the FINS and ROCKER desktop baselines re-recorded (ROCKER's for fast 179, 3a14cdb8); FINS, zoom, lock, phone and baseline browser tests 210 passed | 2026-10-19 | b3e44988 | fast (no directory) |
 | 182 | The Customize Rocker popup's tail Bend starts slider fills from the dot to the tail tip (`.slider-fill-end`, as Tail Thinning Starts, fast 180) — the founder, 2026-10-19: "colorbar from the right, empty from the left"; it already ran centre to tail since fast 170. Customize Rocker browser tests 16 passed + one load flake (Cancel/Esc/✕) that passed alone four times | 2026-10-19 | f2bd19c3 | fast (no directory) |
 | 183 | ROCKER's thickness cards hang `RAIL_GAP` above the drawing's real highest deck (board or blank) instead of the 14" worst-case reserve's top (new `rockerViewLayout` input `drawnDeckIn`; frame, scale and board position unchanged, the nose-up cross axis still reads the reserve) — the founder, 2026-10-19: "the top view of the blank collides with the thickness cards … they can get pulled in closer". Measured at nine window sizes, blank and no blank, nose-left and nose-up: 4 overlaps at 1280x600 and 1 at 1366x768 before, none after; card-to-board gap 58–197 → 10–39 dots. Five new layout unit tests; ROCKER desktop baseline re-recorded; ROCKER, zoom, phone and baseline browser tests 296 passed | 2026-10-19 | 221226ef | fast (no directory) |
+| 184 | RAILS' Family and Ratio sliders sit on one line — Ratio's Sym heading line was `h-4` beside Family's `min-h-5`, lifting its track 4 dots in every rail; now `h-5 leading-5`, measured 0 apart on a computer, a Pixel 7 and a touch iPad (the founder, 2026-10-19: "the sliders themselves should be on one plane") — and Ratio's 70/30 mark dropped, which ran into 60/40 ("drop the 70/30 marks"). The only hand-built slider pair; every other pair is `SliderRow` and already level. RAILS desktop baseline re-recorded; RAILS, touch-size and baseline browser tests 115 passed | 2026-10-19 | 3da4636b | fast (no directory) |
 
 ## Deferred Items
 
