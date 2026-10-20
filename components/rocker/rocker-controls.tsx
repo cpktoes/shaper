@@ -12,7 +12,8 @@
  * 261018-fg1, sketch 017 C, built by `rockerImportedReadout()` and drawn by `ImportedReadoutCard`) and
  * holds the board's three thicknesses you set yourself, with or without a blank (quick 261019-gqo, D-01):
  * Center Thickness (R1, D-12), the board's ONE centre thickness, the same stored `foil.center` RAILS and
- * VOLUME read, then Nose Tip and Tail Tip, the tips' absolute thicknesses stored on the board (D-10).
+ * VOLUME read, then Nose Tip and Tail Tip side by side on one line (the founder, 2026-10-19), the tips'
+ * absolute thicknesses stored on the board (D-10).
  * Each is one `SliderRow` with its value in its label (`Center Thickness — 2 1/2"`), no typed box (quick
  * 261018-ejc, the founder 2026-10-18: "doesn't need a type in box, just the slider"); an exact value is
  * typed in the DATASHEET table's cells, so ROCKER needs no entry in `slider-row.test.ts`'s allowlist.
@@ -650,25 +651,28 @@ export function RockerControls({
             />
           </Live>
           {/* The two tips join the centre here, with or without a blank (quick 261019-gqo, D-01) — the
-              founder: "Keep inputs, add Tip thickness sliders up here." */}
-          <Live on={live.tipThickness}>
-            <ThicknessRow
-              label="Nose Tip"
-              sliderLabel="Nose Tip Thickness"
-              value={foil.noseTip}
-              system={system}
-              onChange={(next) => onChangeFoil({ noseTip: next })}
-            />
-          </Live>
-          <Live on={live.tipThickness}>
-            <ThicknessRow
-              label="Tail Tip"
-              sliderLabel="Tail Tip Thickness"
-              value={foil.tailTip}
-              system={system}
-              onChange={(next) => onChangeFoil({ tailTip: next })}
-            />
-          </Live>
+              founder: "Keep inputs, add Tip thickness sliders up here." They share one line, nose on
+              the left (the founder, 2026-10-19): two equal columns, so each `Live` stays full width. */}
+          <div className="grid grid-cols-2 gap-4">
+            <Live on={live.tipThickness}>
+              <ThicknessRow
+                label="Nose Tip"
+                sliderLabel="Nose Tip Thickness"
+                value={foil.noseTip}
+                system={system}
+                onChange={(next) => onChangeFoil({ noseTip: next })}
+              />
+            </Live>
+            <Live on={live.tipThickness}>
+              <ThicknessRow
+                label="Tail Tip"
+                sliderLabel="Tail Tip Thickness"
+                value={foil.tailTip}
+                system={system}
+                onChange={(next) => onChangeFoil({ tailTip: next })}
+              />
+            </Live>
+          </div>
         </div>
       </div>
 

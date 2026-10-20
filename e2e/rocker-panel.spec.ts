@@ -190,11 +190,16 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
 
     // Top to bottom: the three INPUTS thicknesses, the Blank section (picker, Placement, Deck Skin, the
     // full-passes line), then Foil's heading, Pin tip to, the two starts and the Advanced fold heading.
+    // Nose Tip and Tail Tip share one line (the founder, 2026-10-19), nose on the left — so the order
+    // below steps through Nose Tip only, and Tail Tip is checked beside it.
     const foilHeading = side.getByRole("button", { name: /^Foil\s*[▾▸]$/ });
+    const noseTipBox = (await side.getByText(/^Nose Tip — /).boundingBox())!;
+    const tailTipBox = (await side.getByText(/^Tail Tip — /).boundingBox())!;
+    expect(Math.abs(tailTipBox.y - noseTipBox.y)).toBeLessThan(1);
+    expect(tailTipBox.x).toBeGreaterThan(noseTipBox.x + noseTipBox.width);
     const order = [
       side.getByText(/^Center Thickness — /),
       side.getByText(/^Nose Tip — /),
-      side.getByText(/^Tail Tip — /),
       page.locator("[data-blank-button]"),
       side.getByText(/^Placement — /),
       side.getByText(/^Deck Skin — /),
