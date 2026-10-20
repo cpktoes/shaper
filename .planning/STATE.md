@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-10-19 — Completed fast task 181: FINS's callouts switch is an icon on the drawing, on when the screen opens (b3e44988); nothing pushed, the founder gives the go-live
+Last activity: 2026-10-19 — Completed fast task 182: the Customize Rocker tail Bend starts slider fills from the dot to the tail tip (f2bd19c3); nothing pushed, the founder gives the go-live
 
 ## Performance Metrics
 
@@ -415,6 +415,7 @@ Recent decisions affecting current work:
 | 179 | ROCKER's Nose Tip and Tail Tip thickness sliders sit side by side on one line under Center Thickness in Inputs, nose on the left, each half the sidebar wide (the founder, 2026-10-19: "rocker tip inputs can be on one line" — "Nose must be on the left!"); the side-panel browser test checks they share a line with the nose first; the ROCKER, fit-defaults and phone-layout browser tests 170 passed | 2026-10-19 | de8ddd85 | fast (no directory) |
 | 180 | ROCKER's Foil with a blank (the founder, 2026-10-19): "Pin tip to" reads "Pin tips to", its hint shortened to the founder's wording and moved beside the Deck / Bottom buttons; Foil's opening sentence removed; Tail Thinning Starts runs centre (left) to tail tip (right) like the tail's marker on the drawing, its fill from the dot to the tip (`.slider-fill-end`) and its Automatic button at the centre end (new `SliderRow` `hintActionAtStart`) so a dot near the tip cannot cover it; the dashed thinning marks drawn in the board's ink at 1.5 dots. 12 files, past the fast limit — disclosed; unit tests 5,984 green, the ROCKER, touch-size and phone browser tests passed | 2026-10-19 | 2e90b575 | fast (no directory) |
 | 181 | FINS's Fin Placement Callouts switch moves from the sidebar's Settings fold (now gone) to an icon on the drawing (the founder, 2026-10-19: "move the fin placement callout from the settings menu to an icon in the viewer. Default = on (shaded)") — a ruler-with-dimension-line `ViewerToolbarButton`, pressed while the callouts show, with the zoom row under it as on ROCKER; still toggles on a locked board; the FINS and ROCKER desktop baselines re-recorded (ROCKER's for fast 179, 3a14cdb8); FINS, zoom, lock, phone and baseline browser tests 210 passed | 2026-10-19 | b3e44988 | fast (no directory) |
+| 182 | The Customize Rocker popup's tail Bend starts slider fills from the dot to the tail tip (`.slider-fill-end`, as Tail Thinning Starts, fast 180) — the founder, 2026-10-19: "colorbar from the right, empty from the left"; it already ran centre to tail since fast 170. Customize Rocker browser tests 16 passed + one load flake (Cancel/Esc/✕) that passed alone four times | 2026-10-19 | f2bd19c3 | fast (no directory) |
 
 ## Deferred Items
 
