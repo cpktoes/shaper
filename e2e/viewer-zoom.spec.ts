@@ -1643,7 +1643,8 @@ test.describe("261015-my3 WINGS zoom — computer", () => {
       const el = document.querySelector("[data-viewer-toolbar] button");
       return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
     });
-    // A reload starts a fresh board (signed out, nothing saved here), so the tab may read ADD WINGS.
+    // A reload now brings the same board back with its wing (the open board is kept in the browser,
+    // quick 261019-ep5), so the tab reads WINGS · 1, which /WINGS/ matches.
     await page.getByRole("tab", { name: /WINGS/ }).click();
     await expect(wingsSvg(page)).toBeVisible();
     await expect(zoomLevel(page)).toHaveText("1x");

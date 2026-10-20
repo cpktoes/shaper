@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
 /**
@@ -300,6 +301,8 @@ test.describe("the ghost button", () => {
     await ghostButton.click();
     await expect(page.getByRole("button", { name: "Show the ghost of the last edit" })).toBeVisible();
 
+    // The reload must start the stock board, as it always did (quick 261019-ep5 keeps the board otherwise).
+    await forgetOpenBoardOnEveryLoad(page);
     await page.reload();
     await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const widepoint2 = page.locator('[data-drag-target="widepoint"]');
@@ -538,6 +541,8 @@ test.describe("the ghost rule — one edit ago, undo/redo and rotation (desktop)
     await expect(page.locator("[data-outline-ghost]")).toHaveAttribute("d", d1 ?? "");
 
     // A fresh board, one drag, one Undo: back to nothing to compare against.
+    // The reload must start the stock board, as it always did (quick 261019-ep5 keeps the board otherwise).
+    await forgetOpenBoardOnEveryLoad(page);
     await page.reload();
     await expect(page.getByRole("button", { name: "Hide drag points" })).toHaveAttribute("aria-pressed", "true");
     const widepoint = page.locator('[data-drag-target="widepoint"]');

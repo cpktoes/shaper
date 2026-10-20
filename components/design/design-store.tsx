@@ -9,16 +9,33 @@
  * The store is also now the thing that knows which saved row the board belongs to (`modelId`)
  * and whether that row is behind what's on screen (`dirty`/`saveStatus`): once a board has a
  * `modelId`, it is durable in Postgres for its signed-in shaper and autosaves after every edit
- * (D-08). An anonymous or never-saved board still lives here only, and is gone on reload exactly
- * as it always was.
+ * (D-08). Every started board — saved or not — is also kept in this browser and comes back on the
+ * next load (see "The open board in the browser" below).
  *
  * Built on React context + `useState`/`useMemo` only — no reducer library, and every design-field
  * mutator sets state directly rather than through a synchronization effect that mirrors one piece
- * of state into another. `DesignProvider`'s autosave timer (below) is the one effect that does
- * write state, but it isn't that antipattern: it decides *when* to persist an already-computed
- * design, it never computes one. The prototype's `seed`/`seedVersion`/`applySeed`/`onSync`
+ * of state into another. Three effects in `DesignProvider` do write state, and none is that
+ * antipattern, because each answers something outside React rather than copying one piece of state
+ * into another: the autosave timer decides *when* to persist an already-computed design, it never
+ * computes one; the one-time read-back of the browser's copy of the open board answers the
+ * browser's own storage; and the owner rule's drop answers Clerk, the sign-in service, about which
+ * account is signed in. The prototype's `seed`/`seedVersion`/`applySeed`/`onSync`
  * message-passing machinery existed only because its screens were separate documents, and has no
  * analogue here.
+ *
+ * The open board in the browser (quick 261019-ep5). A reload, a phone refreshing a tab it had put
+ * in the background, a bookmark and every new deploy of the site all load the page afresh, and the
+ * board on screen used to be lost to each of them — the stock board, no blank, stock foil. So the
+ * board is now kept in this browser too, by `lib/models/open-board.ts` under the key
+ * `shaper-open-board`. What is kept: a save's own snapshot (`designSnapshotFields`), which saved
+ * board in the rack it is (`modelId`), whose account that saved board belongs to, its lock, and
+ * whether it has unsaved changes. What is not: the undo history and the Save button's status. The
+ * copy is written 250 ms after the last change, and again at once as the page goes away or is
+ * hidden; never for an untouched board (D-19, its tips follow the gear menu). It is read back once,
+ * just after the page wakes, and replaced at once when a preset or a rack board is opened. The
+ * owner rule: the same shaper keeps saving to the board's saved copy after a reload; a different
+ * account signed in on the same browser gets the board as an unsaved board. Nothing is sent
+ * anywhere — the copy never leaves the browser.
  *
  * The side profile (Phase 11, Pattern 5). The store builds ONE description of the board seen from
  * the side — `sideProfile`, from `buildBoardProfile` in `lib/geometry/board-profile.ts` — and every
@@ -123,6 +140,15 @@ import {
 import { type Litres, type Mm, mm } from "@/lib/geometry/units";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import {
+  OPEN_BOARD_WRITE_DEBOUNCE_MS,
+  clearOpenBoardCopy,
+  flushOpenBoardCopy,
+  openBoardCopyJson,
+  parseOpenBoardCopy,
+  readOpenBoardCopy,
+  reconcileOpenBoardOwner,
+} from "@/lib/models/open-board";
+import {
   canRedo,
   canUndo,
   emptyHistory,
@@ -161,10 +187,10 @@ interface DesignState {
    * untouched across any number of link flips and returns intact when the link goes off again —
    * see `toggleRailsImportFoilThickness` below for the reasoning behind that choice. */
   railsImportFoilThickness: boolean;
-  /** The first free-text field in the design — the Summary screen's Board Name box. Still
-   * in-memory only until a Save writes it out: an unsaved board is gone on reload exactly as
-   * before, but once `modelId` is set this value round-trips through `designSnapshotFields` on
-   * every save and comes back from `applyModel` on every reopen. */
+  /** The first free-text field in the design — the Summary screen's Board Name box. An unsaved
+   * board's name now comes back after a reload with the rest of the board (kept in the browser,
+   * quick 261019-ep5), and once `modelId` is set this value also round-trips through
+   * `designSnapshotFields` on every save and comes back from `applyModel` on every reopen. */
   boardName: string;
   /** Which fin box system the board is glassed for (FCS II, Futures, …). An ordering/glassing
    * choice, not a placement input — no calculated number depends on it — so it sits here as a
@@ -183,7 +209,9 @@ interface DesignState {
    * the board currently open in the editor is deleted from the rack (`board-rack.tsx`) — so the
    * next Save creates a fresh row instead of writing over one that no longer exists. This is
    * session bookkeeping, not board design, so it is deliberately absent from `designSnapshotFields` — a
-   * save never stores a reference to its own row. */
+   * save never stores a reference to its own row. It is kept in the browser's copy of the open board
+   * (quick 261019-ep5), so a reload keeps the board pointed at its row; it is dropped when a
+   * different account signs in. */
   modelId: string | null;
   /** Set true the first time any design-mutating action runs — `applyPreset`, `updateOutline`,
    * `updateRocker`, `updateFoil`, the eleven blank moves (`pickBlank`, `setPlacement`, `setDeckSkin`,
@@ -213,7 +241,9 @@ interface DesignState {
   /** Whether the open saved board is locked (quick 261008-lsy). Read from the board's row when it is
    * opened (`applyModel`), changed by the Board Rack's lock row and by the top bar's Unlock button.
    * Session bookkeeping like `modelId`: it is in neither `designSnapshotFields` nor the undo
-   * history, so a save never stores it and Undo never rolls it back. */
+   * history, so a save never stores it and Undo never rolls it back. It is kept in the browser's copy
+   * of the open board (quick 261019-ep5), so a locked board comes back locked after a reload; it is
+   * dropped with the row when a different account signs in. */
   locked: boolean;
 }
 
@@ -540,7 +570,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Clerk's own loading state reads as `isSignedIn === undefined`; treated as "not signed in"
   // here, same as `decideAutosave` treats any non-true value — there is nothing to autosave to
   // until Clerk has actually confirmed a session.
-  const { isSignedIn } = useAuth();
+  // `userId` is undefined while Clerk loads, null signed out and the account's id signed in — read
+  // only by the open board's owner rule below (quick 261019-ep5).
+  const { isSignedIn, userId } = useAuth();
   // Whether a saveModel call for this board is currently in flight — local to the provider
   // rather than a DesignState field, because no screen ever reads it directly; only the autosave
   // effect and performSave below need it, to satisfy decideAutosave's "never two concurrent
@@ -557,7 +589,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   // This session's undo/redo stacks (see lib/design-history.ts's own doc comment for the rules
   // themselves — this provider only supplies the WHEN). Session-only and per-board: never written
-  // to Postgres, and cleared by applyPreset/applyModel below whenever the board itself changes.
+  // to Postgres, never kept in the browser's copy of the open board either (quick 261019-ep5), and
+  // cleared by applyPreset/applyModel below whenever the board itself changes.
   const [history, setHistory] = useState<DesignHistory<DesignHistorySnapshot>>(emptyHistory);
 
   // D-19: the gear menu's tip defaults, live. While the board is unstarted its foil's two tips ARE
@@ -579,6 +612,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     lockedRef.current = state.locked;
   }, [state.locked]);
+
+  // The open board kept in this browser (quick 261019-ep5, lib/models/open-board.ts). These three
+  // sit up here because applyPreset and applyModel below use them.
+  // The account the open saved board belongs to, or null when there is none (or it is not known yet).
+  const openBoardOwnerRef = useRef<string | null>(null);
+  // The newest copy of the board not yet written to the browser (it waits a moment after each change).
+  const openBoardPendingRef = useRef<string | null>(null);
+  // True once the one-time read-back after the page wakes has run, or a board was opened on purpose first.
+  const openBoardRestoredRef = useRef(false);
 
   // Phase 12 (D-01, D-04): the gear menu's Deck Skin and Tip Style, live, kept current the same
   // way. A board's FIRST pick bakes these into its blank; from then on the board keeps its own cut.
@@ -732,6 +774,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setHistory(emptyHistory());
     // A new board is never locked (and its state comes from DEFAULT_DESIGN_STATE, locked: false).
     lockedRef.current = false;
+    // A new board replaces the one kept in the browser at once (quick 261019-ep5), so nothing stale
+    // can come back if the page dies before the next write, and the one-time read-back can never
+    // overwrite a board opened on purpose.
+    openBoardOwnerRef.current = null;
+    openBoardPendingRef.current = null;
+    openBoardRestoredRef.current = true;
+    clearOpenBoardCopy();
     setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
   };
 
@@ -748,6 +797,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pendingEditKeyRef.current = undefined;
     setHistory(emptyHistory());
     lockedRef.current = locked;
+    // Same as applyPreset: the board opened from the rack replaces the kept one at once (quick
+    // 261019-ep5). Its owner is the account signed in now (none on the signed-out practice rack) —
+    // set here rather than left to the owner effect, because re-opening the board already open
+    // changes no state that effect follows.
+    openBoardOwnerRef.current = typeof userId === "string" ? userId : null;
+    openBoardPendingRef.current = null;
+    openBoardRestoredRef.current = true;
+    clearOpenBoardCopy();
     setState(() => ({
       ...DEFAULT_DESIGN_STATE,
       outline: snapshot.outline,
@@ -1424,6 +1481,101 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
     if (decision === "save") performSave();
   };
+
+  // The board kept in this browser comes back once, just after the page wakes (quick 261019-ep5).
+  // It is read here, in an effect, never in useState's starting value or during render: the page
+  // the server sends and the browser's first drawing of it must agree, and the server cannot know
+  // what this browser kept (a whole board is far too big for the small cookie the preference
+  // providers use to tell it). So the stock board shows for a frame and the kept board replaces it.
+  // The work runs in a microtask the effect queues, for two reasons: this repo's lint forbids
+  // setting state straight from an effect's body, and in development React runs every mount effect
+  // twice — the first queued microtask brings the board back and sets the ref, the second sees the
+  // ref and does nothing (a timer cancelled by the cleanup would lose the only restore instead). The
+  // storage read happens inside the microtask, after any preset that was opened first had already
+  // cleared the copy. The board comes back the way a rack card opens one, with its own saved-board
+  // link, lock and unsaved-changes mark; the reader already checked it with the save reader, so
+  // nothing is read twice. No pending edit is set, so the undo history records nothing for it, and
+  // the history itself starts empty, as it does for any board that is opened.
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (openBoardRestoredRef.current) return;
+      openBoardRestoredRef.current = true;
+      const copy = parseOpenBoardCopy(readOpenBoardCopy());
+      if (!copy) return;
+      pendingEditKeyRef.current = undefined;
+      lockedRef.current = copy.locked;
+      openBoardOwnerRef.current = copy.ownerId;
+      setHistory(emptyHistory());
+      setState(() => ({
+        ...DEFAULT_DESIGN_STATE,
+        ...copy.snapshot,
+        modelId: copy.modelId,
+        locked: copy.locked,
+        dirty: copy.dirty,
+        boardStarted: true,
+      }));
+    });
+  }, []);
+
+  // Which account the open saved board belongs to (quick 261019-ep5). The pure owner rule in
+  // lib/models/open-board.ts decides; this effect only applies it. A board is only ever saved (or
+  // opened from the rack) while signed in, so a saved board whose owner is not known yet belongs to
+  // whoever is signed in. When a DIFFERENT account is signed in on this browser, the board stays on
+  // screen as an unsaved board: its link to the other shaper's saved board, and that board's lock,
+  // are dropped. An autosave timer the same commit may have started for the dropped link is cleared
+  // by the drop's own re-render (the autosave effect's cleanup), and the server would refuse it
+  // anyway. When the rack deletes the open board (`setModelId(null)`), the owner is forgotten too.
+  // Declared before the write below, because effects run in order and every write must carry the
+  // owner this one just settled.
+  useEffect(() => {
+    if (state.modelId === null) {
+      openBoardOwnerRef.current = null;
+      return;
+    }
+    const next = reconcileOpenBoardOwner(
+      { modelId: state.modelId, ownerId: openBoardOwnerRef.current, locked: state.locked },
+      userId,
+    );
+    openBoardOwnerRef.current = next.ownerId;
+    if (next.modelId !== null) return;
+    lockedRef.current = false;
+    setState((prev) => ({ ...prev, modelId: null, locked: false }));
+  }, [userId, state.modelId, state.locked]);
+
+  // Keeps the copy in this browser current (quick 261019-ep5): a moment after the last change to
+  // the board, its saved-board link, its lock or its unsaved-changes mark. A board nobody has
+  // started is never written — its foil tips follow the gear menu's live Tip defaults (D-19), and a
+  // copy would freeze them. A slider drag changes the board many times a second, so each change
+  // replaces the waiting copy and restarts the short wait; only the last one is written.
+  useEffect(() => {
+    if (!state.boardStarted) return;
+    openBoardPendingRef.current = openBoardCopyJson(designSnapshotFields, {
+      modelId: state.modelId,
+      ownerId: openBoardOwnerRef.current,
+      locked: state.locked,
+      dirty: state.dirty,
+    });
+    const timer = setTimeout(() => flushOpenBoardCopy(openBoardPendingRef), OPEN_BOARD_WRITE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // `userId` is listed so that every commit in which the owner effect above may have changed the
+    // owner also rewrites the copy with it (the owner lives in a ref, which no list can follow).
+  }, [state.boardStarted, designSnapshotFields, state.modelId, state.locked, state.dirty, userId]);
+
+  // A phone puts a tab in the background without warning, and a reload or a new address makes the
+  // page go away: either way, the copy still waiting for its short wait is written at once, so the
+  // last change (a name typed a moment ago) is never lost.
+  useEffect(() => {
+    const flush = () => flushOpenBoardCopy(openBoardPendingRef);
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", flushWhenHidden);
+    };
+  }, []);
 
   // The autosave effect (D-08): re-evaluates `decideAutosave` on every change to the snapshot
   // fields (via `designSnapshotFields`'s identity, which only changes when its contents do), on

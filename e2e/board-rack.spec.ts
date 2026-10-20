@@ -5,6 +5,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { openAppSettings } from "./helpers/settings";
 
@@ -232,6 +233,9 @@ test.describe("the Board Rack on a computer", () => {
     await expect(page.getByRole("button", { name: /Board actions/ })).toHaveCount(0);
     await expect(page.getByText(rackHeadingLine(1, "hover"), { exact: true })).toBeVisible();
 
+    // The saved board alone: this load must start the stock board, as it always did (quick
+    // 261019-ep5 keeps the board in progress otherwise).
+    await forgetOpenBoardOnEveryLoad(page);
     await openRack(page, `${RACK_STAND_IN_ROUTE}?boards=1`, 1);
     await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
     await expect(captionFor(page, board(1).name).getByRole("button", { name: RACK_COPY.open })).toBeVisible();
