@@ -1938,3 +1938,106 @@ describe("the top view's screen-pinned line weights and dashes (D-17, quick 2610
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// The deck cards pulled in to the board (the founder, 2026-10-19: "the cards are pretty far from
+// the board, I think they can get pulled in closer"). With `drawnDeckIn` the deck rail hangs
+// RAIL_GAP above the drawing's real highest deck instead of above the worst-case reserve's top —
+// only the deck rail and its title move; the frame, the scale and every other field stay put.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The three fields `drawnDeckIn` may move — the deck rail's two anchors and its title's. */
+const DECK_RAIL_FIELDS = ["deckTickEndY", "deckRailY", "deckLabelY"] as const;
+
+function withoutDeckRail(layout: ReturnType<typeof rockerViewLayout>) {
+  const rest: Record<string, unknown> = { ...layout };
+  for (const field of DECK_RAIL_FIELDS) delete rest[field];
+  return rest;
+}
+
+describe("rockerViewLayout — the deck cards hang off the drawing's real deck (drawnDeckIn)", () => {
+  it("hangs the deck rail RAIL_GAP above the real deck, and moves its title by the same amount — both orientations, with and without a blank", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const lengthIn of SPAN_LENGTHS_IN) {
+        for (const blankSpanIn of [undefined, ...SPANS]) {
+          const base = { lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails: "full" as const, blankSpanIn };
+          const before = rockerViewLayout(base);
+          const drawnDeckIn = 6.25;
+          const after = rockerViewLayout({ ...base, drawnDeckIn });
+          const realDeckTopY = before.baselineY - drawnDeckIn * before.scale;
+          expect(after.deckTickEndY).toBeCloseTo(realDeckTopY - RAIL_GAP, 9);
+          // Every board in the sweep reserves more than 6.25" of deck, so the rail comes DOWN toward
+          // the board, never up — and the rail and its title move together.
+          const moved = after.deckTickEndY - before.deckTickEndY;
+          expect(moved).toBeGreaterThan(0);
+          expect(after.deckRailY - before.deckRailY).toBeCloseTo(moved, 9);
+          expect(after.deckLabelY - before.deckLabelY).toBeCloseTo(moved, 9);
+        }
+      }
+    }
+  });
+
+  it("leaves the frame, the scale and every other field exactly as they are — nothing resizes as the board changes", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const fitToBoard of [true, false]) {
+        for (const lengthIn of SPAN_LENGTHS_IN) {
+          for (const blankSpanIn of [undefined, ...SPANS]) {
+            const base = { lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard, stationRails: "full" as const, blankSpanIn };
+            const before = withoutDeckRail(rockerViewLayout(base));
+            for (const drawnDeckIn of [0.5, 3, 6.25, 11]) {
+              expect(withoutDeckRail(rockerViewLayout({ ...base, drawnDeckIn }))).toEqual(before);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("never lifts the rail above where it always was: a deck at or over the reserve, or a corrupt value, changes nothing", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const blankSpanIn of [undefined, ...SPANS]) {
+        const base = { lengthIn: 72, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails: "full" as const, blankSpanIn };
+        const before = rockerViewLayout(base);
+        const reserveIn = blankSpanIn ? Math.max(MAX_DECK_IN, blankSpanIn.highestDeckIn) : MAX_DECK_IN;
+        for (const drawnDeckIn of [reserveIn, reserveIn + 4, 0, -3, Number.NaN, Number.POSITIVE_INFINITY]) {
+          expect(rockerViewLayout({ ...base, drawnDeckIn })).toEqual(before);
+        }
+      }
+    }
+  });
+
+  it("moves nothing on the card-less paths — the Summary order form's compact box and \"none\"", () => {
+    for (const orientation of ORIENTATIONS) {
+      for (const stationRails of ["compact", "none"] as const) {
+        for (const lengthIn of SPAN_LENGTHS_IN) {
+          const base = { lengthIn, maxDeckIn: MAX_DECK_IN, orientation, fitToBoard: true, stationRails };
+          expect(rockerViewLayout({ ...base, drawnDeckIn: 5 })).toEqual(rockerViewLayout(base));
+        }
+      }
+    }
+  });
+
+  it("keeps the deck cards and their title inside the frame at the pin ceiling, however low the real deck sits", () => {
+    for (const orientation of ORIENTATIONS) {
+      const ceiling = maxCardPinScale(orientation);
+      for (const lengthIn of SPAN_LENGTHS_IN) {
+        for (const drawnDeckIn of [0.5, 3, 6.25, 11]) {
+          const layout = rockerViewLayout({
+            lengthIn,
+            maxDeckIn: MAX_DECK_IN,
+            orientation,
+            fitToBoard: true,
+            stationRails: "full",
+            cardScale: ceiling,
+            drawnDeckIn,
+          });
+          // The rail stays on the deck side of the drawn deck, RAIL_GAP clear of it.
+          expect(layout.deckTickEndY).toBeLessThan(layout.baselineY - drawnDeckIn * layout.scale);
+          // Its far edge — where the title sits nose-left — never leaves the frame.
+          const farY = orientation === "horizontal" ? layout.deckLabelY : layout.deckRailY - layout.cardWidth / 2;
+          expectInsideFrame(layout, rendered(orientation, PAD_X, farY));
+        }
+      }
+    }
+  });
+});

@@ -568,6 +568,10 @@ export function RockerViewer({
   // CEILING (`maxCardPinScale`), never at the live card scale (`rocker-view-frame.ts`'s own
   // T-03J-02 note) — so this pass hands `useSvgFitScale` the exact same numbers the drawing pass
   // below will, whatever card scale that second pass resolves to.
+  // The highest the drawing's deck actually reaches — the board's, or the blank's when higher — so the
+  // deck cards hang just over it rather than over the worst-case reserve (`drawnDeckIn`, the founder,
+  // 2026-10-19). Only the cards move; the frame is the same either way.
+  const drawnDeckIn = Math.max(...samples.map((s) => s.deckIn), blankSpanIn?.highestDeckIn ?? 0);
   const framePass = rockerViewLayout({
     lengthIn,
     maxDeckIn,
@@ -575,6 +579,7 @@ export function RockerViewer({
     fitToBoard,
     stationRails: callouts,
     blankSpanIn,
+    drawnDeckIn,
   });
   const fitScale = useSvgFitScale(svgRef, framePass.width, framePass.height);
   // The card-pin scale (quick task 260830-03j): 1 (unpinned) whenever this call's own
@@ -594,6 +599,7 @@ export function RockerViewer({
     stationRails: callouts,
     cardScale,
     blankSpanIn,
+    drawnDeckIn,
   });
   const {
     scale,

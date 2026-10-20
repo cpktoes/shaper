@@ -116,6 +116,19 @@ export interface RockerViewLayoutInput {
     lowestBottomIn: number;
     highestDeckIn: number;
   };
+  /**
+   * The highest the drawing's deck actually reaches, in inches above the baseline — the board's own
+   * deck, or the blank's when it is higher (the founder, 2026-10-19: "the cards are pretty far from the
+   * board, I think they can get pulled in closer"). With it, in the `"full"` grammar the deck rail
+   * hangs `RAIL_GAP` above THAT line instead of above the worst-case reserve's top, so the deck cards
+   * and their title sit just over the board and clear of the blank-from-above plate that floats over
+   * the panel's top. Only the rail moves: the frame, the scale and every other field are exactly what
+   * they are without it, because the frame still reserves the worst case (`maxDeckIn`) — so nothing
+   * resizes as a shaper changes the board, the cards just ride its highest point. Held at or below the
+   * reserve's own top (a value above it, or a non-finite or non-positive one, leaves the rail where it
+   * always was). Absent — the Summary order form, which draws no cards — nothing changes.
+   */
+  drawnDeckIn?: number;
 }
 
 /** One compact-mode reading row's three anchors, in canonical (horizontal) coordinates — see
@@ -584,6 +597,7 @@ export function rockerViewLayout({
   stationRails,
   cardScale = 1,
   blankSpanIn,
+  drawnDeckIn,
 }: RockerViewLayoutInput): RockerViewLayout {
   // The blank's reach past the board, resolved once (Phase 11, D-15). Every term is exactly 0
   // without `blankSpanIn`, and each place one enters below is written so that 0 leaves the value
@@ -655,8 +669,16 @@ export function rockerViewLayout({
   const tickEndY = bottomY + BOTTOM_RAIL_GAP;
   const railY = effectiveHorizontal ? tickEndY : tickEndY + cardWidth / 2;
 
-  // Deck (thickness) rail — the mirror of the bottom rail on the board's other side.
-  const deckTickEndY = deckTopY - RAIL_GAP;
+  // Deck (thickness) rail — the mirror of the bottom rail on the board's other side. The FRAME reads the
+  // reserve's own line (`reserveDeckTickEndY`, the nose-up cross axis below), so it never resizes; the
+  // CARDS hang `RAIL_GAP` above the drawing's real highest deck when the caller gives it (`drawnDeckIn`),
+  // never above the reserve's top — the founder's "pulled in closer" (2026-10-19).
+  const reserveDeckTickEndY = deckTopY - RAIL_GAP;
+  const drawnDeckTopY =
+    showStationCards && drawnDeckIn !== undefined && Number.isFinite(drawnDeckIn) && drawnDeckIn > 0 && drawnDeckIn < deckReserveIn
+      ? baselineY - drawnDeckIn * scale
+      : deckTopY;
+  const deckTickEndY = drawnDeckTopY - RAIL_GAP;
   const deckRailY = effectiveHorizontal ? deckTickEndY - cardHeight : deckTickEndY - cardWidth / 2;
 
   // Centres each card on the station it names (planner_assumptions #4), shared by both rails.
@@ -736,7 +758,7 @@ export function rockerViewLayout({
       ? tickEndY + maxCardWidth + CARD_GUTTER + railLabelBandDepth(orientation)
       : bottomY + BARE_PAD;
     const crossNear = showStationCards
-      ? deckTickEndY - maxCardWidth - CARD_GUTTER - railLabelBandDepth(orientation)
+      ? reserveDeckTickEndY - maxCardWidth - CARD_GUTTER - railLabelBandDepth(orientation)
       : deckTopY - BARE_PAD;
     minX = -crossFar;
     width = crossFar - crossNear;
