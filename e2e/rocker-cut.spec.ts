@@ -13,6 +13,7 @@ import {
 import { boardRockerCells, openFoilAdvanced, readBoardRocker, showTab } from "./helpers/rocker-sidebar";
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { formatLength, stationLabel } from "../lib/geometry/measure-display";
@@ -180,6 +181,9 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(page.getByText('At 1/8" a pass — your Planer Max Depth.', { exact: true })).toBeVisible();
 
     // The same board in Metric: the chosen system is read when the page loads, so set it and start again.
+    // The first Longboard is kept in the browser now (quick 261019-ep5), so forget it first — otherwise the
+    // home page asks "Start a new design?" instead of opening the second one.
+    await forgetOpenBoardOnEveryLoad(page);
     await page.evaluate(() => window.localStorage.setItem("shaper-units", "metric"));
     await openLongboard();
     await expect(page.locator("[data-full-passes]")).toHaveText("Full passes at the center — Deck 1 · Bottom 1 + 2 mm");

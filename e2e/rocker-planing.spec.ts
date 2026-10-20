@@ -2,6 +2,7 @@ import { devices, expect, test, type Locator, type Page } from "@playwright/test
 import { openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
 import { goToScreen } from "./helpers/screens";
 import { openFoilAdvanced } from "./helpers/rocker-sidebar";
+import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 
 /**
  * The browser proof of ROCKER's PLANING tab (quick 261019-gqo, plan 02, 2026-10-19).
@@ -152,6 +153,9 @@ test.describe("ROCKER's PLANING tab on a computer (quick 261019-gqo)", () => {
     await expect(note).not.toContainText("poke out");
 
     // The same board in Metric: the chosen system is read when the page loads, so set it and start again.
+    // The first Longboard is kept in the browser now (quick 261019-ep5), so forget it first — otherwise the
+    // home page asks "Start a new design?" instead of opening the second one.
+    await forgetOpenBoardOnEveryLoad(page);
     await page.evaluate(() => window.localStorage.setItem("shaper-units", "metric"));
     await openLongboardRocker(page);
     await tab(page, "PLANING").click();
