@@ -20,7 +20,7 @@ import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-i
  *   `Hand-set until you pick a blank.` and a grid — a ROCKER and a THICKNESS column, a NOSE group (Tip, then
  *   @ 12") and a TAIL group (@ 12", then Tip) — each cell a value box over its own named slider; since
  *   261019-gqo the two Tip rows have a rocker cell only, six cells in all.
- * - With a blank picked, THICKNESS is simply `Foil`: the intro, `Pin tip to`, the two Thinning Starts and a
+ * - With a blank picked, THICKNESS is simply `Foil`: `Pin tips to` (no intro line), the two Thinning Starts and a
  *   closed `Advanced` fold holding `Fine tune from`, the two 12" fine-tunes and Reset Fine-Tune; Placement and
  *   Deck Skin sit in the Blank section; the grid is not there.
  *
@@ -171,7 +171,7 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     await expect(sliderNamed(page, "Tail 30.5 cm thickness")).toHaveCount(1);
   });
 
-  test("with a blank: Blank holds the picker, Placement, Deck Skin and the passes line; Foil is Pin tip to, the two starts and a closed Advanced fold", async ({
+  test("with a blank: Blank holds the picker, Placement, Deck Skin and the passes line; Foil is Pin tips to, the two starts and a closed Advanced fold", async ({
     page,
   }) => {
     await openRocker(page);
@@ -189,7 +189,7 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
     await expect(page.locator("[data-rocker-inputs]").getByText("Inputs", { exact: true })).toBeVisible();
 
     // Top to bottom: the three INPUTS thicknesses, the Blank section (picker, Placement, Deck Skin, the
-    // full-passes line), then Foil's heading, Pin tip to, the two starts and the Advanced fold heading.
+    // full-passes line), then Foil's heading, Pin tips to, the two starts and the Advanced fold heading.
     // Nose Tip and Tail Tip share one line (the founder, 2026-10-19), nose on the left — so the order
     // below steps through Nose Tip only, and Tail Tip is checked beside it.
     const foilHeading = side.getByRole("button", { name: /^Foil\s*[▾▸]$/ });
@@ -205,7 +205,7 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
       side.getByText(/^Deck Skin — /),
       page.locator("[data-full-passes]"),
       foilHeading,
-      side.getByText("Pin tip to", { exact: true }),
+      side.getByText("Pin tips to", { exact: true }),
       side.getByText(/^Nose Thinning Starts — /),
       side.getByText(/^Tail Thinning Starts — /),
       side.getByRole("button", { name: /^Advanced\s*[▾▸]$/ }),
@@ -219,8 +219,8 @@ test.describe("ROCKER's side panel on a computer (quick 261017-vdh)", () => {
       previous = box!.y;
     }
 
-    // Pin tip to: Deck is pressed on a new board.
-    const pinGroup = side.getByRole("group", { name: "Pin tip to" });
+    // Pin tips to: Deck is pressed on a new board.
+    const pinGroup = side.getByRole("group", { name: "Pin tips to" });
     await expect(pinGroup.getByRole("button", { name: "Deck", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(pinGroup.getByRole("button", { name: "Bottom", exact: true })).toHaveAttribute("aria-pressed", "false");
 

@@ -9,7 +9,7 @@ import { liveControls, type RockerTab } from "./rocker-live-controls";
  * here before it can reach a shaper's screen. VIEWER is everything, as before (D-01); DATASHEET the
  * three thicknesses the table can also type (D-01, D-12, D-13); TOP VIEW the blank picker and
  * Placement (D-01). Quick 261019-gqo (P-02): the tips moved up to INPUTS, so the Foil heading is derived
- * from the 12" fine-tunes, Pin tip to and Thinning Starts alone and is false on DATASHEET.
+ * from the 12" fine-tunes, Pin tips to and Thinning Starts alone and is false on DATASHEET.
  */
 describe("liveControls (quick 261006-v20)", () => {
   it('liveControls("viewer") leaves every sidebar control live, exactly as before', () => {

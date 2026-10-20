@@ -318,9 +318,9 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     // (quick 261019-gqo) — opened here so they are on the page to be measured.
     await openFoilAdvanced(page);
     expect(await heightOf(page.getByRole("button", { name: "↺ Reset Fine-Tune" }), "Reset Fine-Tune")).toBeGreaterThanOrEqual(44);
-    // Phase 12: FOIL's two quiet pairs, Pin tip to (it was Tip Style) and Fine tune from (it was Fine-tune off) —
+    // Phase 12: FOIL's two quiet pairs, Pin tips to (it was Tip Style) and Fine tune from (it was Fine-tune off) —
     // every pill finger-sized.
-    for (const group of ["Pin tip to", "Fine tune from"]) {
+    for (const group of ["Pin tips to", "Fine tune from"]) {
       const pills = page.getByRole("group", { name: group }).getByRole("button");
       await expect(pills).toHaveCount(2);
       for (const pill of await pills.all()) {

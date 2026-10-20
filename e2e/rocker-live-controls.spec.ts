@@ -143,7 +143,7 @@ test.describe("ROCKER on a computer: the sidebar follows the tab in view (quick 
     await expectInert(sidebarButton(page, "Change Blank"), "Change Blank");
     await expectInert(sidebarButton(page, "Remove This Blank"), "Remove This Blank");
     await expectInert(sidebarButton(page, "↺ Reset Fine-Tune"), "Reset Fine-Tune");
-    await expectInert(page.locator('aside [aria-label="Pin tip to"]'), "Pin tip to");
+    await expectInert(page.locator('aside [aria-label="Pin tips to"]'), "Pin tips to");
     await expectInert(page.locator('aside [aria-label="Fine tune from"]'), "Fine tune from");
     await expectInert(sliderInput(aside, /^Nose Thinning Starts — /), "Nose Thinning Starts");
 
@@ -299,7 +299,7 @@ async function expectTabRule(page: Page) {
   await expectInert(centerThicknessSlider(page), "the Center Thickness slider");
   await expectInert(sliderInput(aside, /^Nose Tip — /), "the Nose Tip slider");
   await expectInert(sliderInput(aside, /^Deck Skin — /), "Deck Skin");
-  await expectInert(page.locator('aside [aria-label="Pin tip to"]'), "Pin tip to");
+  await expectInert(page.locator('aside [aria-label="Pin tips to"]'), "Pin tips to");
   // Proof the blank picker really works on TOP VIEW: the blank button opens the popup, Escape closes it.
   await sidebarButton(page, "Change Blank").click();
   await expect(blankPicker(page)).toBeVisible();

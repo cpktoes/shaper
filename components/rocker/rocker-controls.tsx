@@ -34,13 +34,15 @@
  * the curve there (D-14); do not bring the Angle/Smoothness/Flatness shape controls back without asking.
  * With a blank picked the rocker comes off the blank, so the grid is not shown at all.
  *
- * Foil (renamed from THICKNESS when a blank is picked), top to bottom (D-06): an intro line; `Pin tip to`
+ * Foil (renamed from THICKNESS when a blank is picked), top to bottom (D-06): `Pin tips to`
  * Deck / Bottom (Phase 12, D-04 — it was Tip Style; a tap re-derives each tip from its tip to its
  * Thinning Starts point, Phase 14 D-07, and nothing inside that point moves), read from the side
- * profile's resolved cut (`view.cut`) with the selected option's hint under it; Nose Thinning Starts and
- * Tail Thinning Starts (Phase 14, D-09 to D-11 — each a `SliderRow` from 6" (left, the tip) to the board's
- * centre (right), the distance in force in its label, the state on the hint line's left and an Automatic
- * button on its right, and under it, only for a start set by hand that is too close to its tip, one
+ * profile's resolved cut (`view.cut`) with the selected option's short hint beside it (no intro line
+ * above it since the founder's 2026-10-19 trim); Nose Thinning Starts and
+ * Tail Thinning Starts (Phase 14, D-09 to D-11 — each a `SliderRow` from 6" to the board's centre, laid
+ * the way the board lies on the drawing: the nose's tip on the left, the tail's on the right; the
+ * distance in force in its label, the state on the hint line's tip end and an Automatic
+ * button on its centre end (so the nose's on the right, the tail's on the left), and under it, only for a start set by hand that is too close to its tip, one
  * sentence in warning ink, D-05); then a fold titled `Advanced`, closed unless the board carries a 12" tweak (`FoilSection`, D-13), holding
  * `Fine tune from` Deck / Bottom (D-13, 12-UI-SPEC §5a — which surface a 12" tweak moves), the Nose @ 12"
  * and Tail @ 12" fine-tunes, and ↺ Reset Fine-Tune. With a blank those two 12" stations are the blank's
@@ -88,7 +90,6 @@ import {
   automaticButtonLabel,
   fineTuneSourceHint,
   formatThinningStart,
-  thicknessIntroWithBlank,
   thinningStartHint,
   thinningStartLine,
   thinningStartRowLabel,
@@ -116,12 +117,11 @@ export type RockerControlsSectionKey = "blank" | "rockerAndFoil" | "foil";
 const FINE_TUNE_RANGE_IN = { min: -0.25, max: 0.25 } as const;
 const FINE_TUNE_STEP_IN = 0.0625;
 
-/** The Pin tip to hints, once Tip Style (12-UI-SPEC copy table, D-16: under Pin deck a tip that needs more foam than
- * the cut leaves makes the tip rocker fall rather than grow). */
+/** The Pin tips to hints, once Tip Style — short enough to sit beside the Deck / Bottom pair (the founder's
+ * wording, 2026-10-19: "so it fits to the right of the buttons instead of under"). */
 const TIP_STYLE_HINT: Record<TipStyle, string> = {
-  pinDeck:
-    "The deck stays put and the extra comes off the bottom, so the tip rocker grows — or falls, if the tip needs more foam than the cut leaves.",
-  bottom: "The bottom stays put and the extra comes off the deck, so the rocker stays the blank's own.",
+  pinDeck: "Rocker increases toward the tips, extra foam removed from the bottom.",
+  bottom: "Rocker follows the bottom exactly, extra thickness removed from the deck.",
 };
 
 /** The Fine tune from hints (12-UI-SPEC copy table, D-13). */
@@ -365,8 +365,10 @@ function AutomaticButton({ end, automatic, onPress }: { end: TipEnd; automatic: 
 
 /**
  * One tip's Thinning Starts row (Phase 14, D-09 to D-11, 14-UI-SPEC §1 and §4): the distance in force in
- * the label, the slider from 6" (left, the tip) to the board's centre (right), the state on the hint
- * line's left and the Automatic button on its right — and, only for a start set by hand that is too
+ * the label, the slider from 6" to the board's centre laid the way the board lies on the drawing (the nose's
+ * tip on the left, the tail's on the right — the founder, 2026-10-19), the state on the hint
+ * line's tip end and the Automatic button on its centre end, clear of a dot near the tip — and, only for
+ * a start set by hand that is too
  * close to its tip, one sentence in warning ink under it. Everything it shows comes from the side
  * profile's per-tip view through `lib/geometry/blank-reasons.ts`; it computes and converts nothing.
  * The slider itself carries its tip's name and speaks its value the way the label prints it, so a
@@ -389,19 +391,27 @@ function ThinningStartRow({
 }) {
   const slider = thinningStartSlider(tip, system);
   const line = thinningStartLine(end, tip, tipSetting, system);
+  // The tail's slider is mirrored so it runs the way the board lies on the drawing — the centre on the
+  // left, the tail tip on the right — and its dot moves the way the tail's marker does (the founder,
+  // 2026-10-19). The track's ends stay the same numbers; only which end is which flips.
+  const mirror = (v: number) => (end === "tail" ? slider.min + slider.max - v : v);
   return (
     <div>
       <SliderRow
+        // Base UI fills a track from its left end, so the tail swaps the track's two colours (`.slider-fill-end`,
+        // globals.css): the fill runs from the dot to the tail tip, the stretch being thinned, as the nose's does.
+        className={end === "tail" ? "slider-fill-end" : undefined}
         label={thinningStartRowLabel(end, tip, system)}
-        value={slider.value}
+        value={mirror(slider.value)}
         min={slider.min}
         max={slider.max}
         step={slider.step}
         leftHint={thinningStartHint(tip, system)}
         hintAction={<AutomaticButton end={end} automatic={tip.automatic} onPress={() => onAutomatic(end)} />}
+        hintActionAtStart={end === "tail"}
         sliderLabel={thinningStartSliderLabel(end)}
         sliderValueText={formatThinningStart(tip.fromTip, system)}
-        onValueChange={(v) => onChange(end, slider.toMm(v))}
+        onValueChange={(v) => onChange(end, slider.toMm(mirror(v)))}
       />
       {line && <p className="mt-2 text-xs text-surf-warning-ink">{line}</p>}
     </div>
@@ -409,7 +419,7 @@ function ThinningStartRow({
 }
 
 /**
- * FOIL as its own component (quick 261019-gqo, plan 03, P-21): the heading, the intro, Pin tip to, the two
+ * FOIL as its own component (quick 261019-gqo, plan 03, P-21): the heading, Pin tips to, the two
  * Thinning Starts and the Advanced fold. It owns the fold's open state, and that is the whole reason it is a
  * component.
  *
@@ -472,26 +482,27 @@ function FoilSection({
         </SectionHeading>
         {foilOpen && (
           <div className="flex flex-col gap-3.5 pt-3">
-            <div className="text-xs text-surf-ink-muted font-normal">{thicknessIntroWithBlank(system)}</div>
-
-            {/* Which surface a tip is pinned to — today's Tip Style pair, relabelled (D-06). At its natural
-                width; only the two Thinning Starts rows and the Advanced fold come after it. */}
+            {/* Which surface the tips are pinned to — today's Tip Style pair, relabelled (D-06). At its natural
+                width with its hint beside it (the founder, 2026-10-19); only the two Thinning Starts rows and the
+                Advanced fold come after it. Foil has no intro line any more (the founder removed it, same day). */}
             <Live on={live.tipStyle}>
               <div className="flex flex-col">
                 <div className={cn("mb-2 text-sm text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                  Pin tip to
+                  Pin tips to
                 </div>
-                <TwoOptionToggle
-                  options={["pinDeck", "bottom"] as const}
-                  labels={["Deck", "Bottom"] as const}
-                  value={view.cut.tipStyle}
-                  onChange={onTipStyle}
-                  disabled={locked}
-                  ariaLabel="Pin tip to"
-                  className="self-start"
-                />
-                <div className={cn("mt-2 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
-                  {TIP_STYLE_HINT[view.cut.tipStyle]}
+                <div className="flex items-center gap-3">
+                  <TwoOptionToggle
+                    options={["pinDeck", "bottom"] as const}
+                    labels={["Deck", "Bottom"] as const}
+                    value={view.cut.tipStyle}
+                    onChange={onTipStyle}
+                    disabled={locked}
+                    ariaLabel="Pin tips to"
+                    className="shrink-0"
+                  />
+                  <div className={cn("min-w-0 text-xs text-surf-ink-muted font-normal", locked && "opacity-40")}>
+                    {TIP_STYLE_HINT[view.cut.tipStyle]}
+                  </div>
                 </div>
               </div>
             </Live>

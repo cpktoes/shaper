@@ -50,13 +50,13 @@ export interface RockerLiveControls {
   /** The two 12" thicknesses in both states — the grid's two @ 12" thickness cells with no blank; with a
    * blank, the Advanced fold's Fine tune from pair, the two 12" fine-tunes and ↺ Reset Fine-Tune (D-12). */
   fineTune: boolean;
-  /** Foil's Pin tip to pair (blank only; it was Tip Style). */
+  /** Foil's Pin tips to pair (blank only; it was Tip Style). */
   tipStyle: boolean;
   /** Foil's two Thinning Starts rows (blank only). */
   thinning: boolean;
   /** Derived: the Foil heading and intro line (with no blank, the Rocker & Foil heading is live while this
    * or `rocker` is), live whenever any of the section's rows is (D-13). Since quick 261019-gqo (P-02) the
-   * tips are no longer in that section, so it is the 12" fine-tunes, Pin tip to and Thinning Starts only —
+   * tips are no longer in that section, so it is the 12" fine-tunes, Pin tips to and Thinning Starts only —
    * which is why Foil and the hand-set heading now dim as a whole on DATASHEET. */
   thicknessHeading: boolean;
 }

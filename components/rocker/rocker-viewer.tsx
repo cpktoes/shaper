@@ -31,7 +31,7 @@
  * (`rocker-view-frame.ts`'s `blankSpanIn` / `boardOffsetX`), so the board draws slightly smaller
  * inside it; the rails, cards and titles stay on the board's own five stations. One other thing is
  * added for a blank (Phase 14 D-12): in the `"full"` grammar, a short dashed line across the board
- * where each tip's thinning starts (`blank.tips.<end>.station`), in the blank's line colour, with no
+ * where each tip's thinning starts (`blank.tips.<end>.station`), in the board's own ink, with no
  * text — the drawing's accessible name says the two distances in words. Nothing more: a thickness
  * failure shows as the board poking through the blank's line, width failures are not drawn at all,
  * and no warning colour appears here. The Summary order form never passes a blank, so its compact
@@ -848,8 +848,10 @@ export function RockerViewer({
         />
         {/* The thinning marks (D-12), after the board and before the callouts so they cross the
             board's own fill and turn with it in both orientations. No text: the drawing's name and
-            the sidebar carry the words. Dashed and in the blank's line colour, darker than a
-            leader's, so where a mark meets a 12" leader the two still read as different lines. */}
+            the sidebar carry the words. Dashed in the board's own ink at 1.5 screen dots — darker and
+            heavier than the blank's line and a 12" leader, so the mark stands out across the board's
+            fill (the founder, 2026-10-19: "make the thinning starts marker more visible"), yet lighter
+            than the board's solid 2-dot outline. */}
         {thinningMarks.map((m) => (
           <line
             key={m.end}
@@ -858,8 +860,8 @@ export function RockerViewer({
             y1={m.bottomY}
             x2={m.x}
             y2={m.topY}
-            stroke="var(--outline-blank-line)"
-            strokeWidth={zoomUnit}
+            stroke="var(--outline-ink)"
+            strokeWidth={1.5 * zoomUnit}
             strokeDasharray={scaleDash(THINNING_MARK_DASH, zoomUnit)}
             fill="none"
           />

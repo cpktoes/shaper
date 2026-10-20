@@ -1009,6 +1009,21 @@
 }
 
 /*
+ * A slider whose fill belongs at its RIGHT-hand end. ROCKER's Tail Thinning Starts runs centre (left) to
+ * tail tip (right), the way the board lies on the drawing (the founder, 2026-10-19), but Base UI always
+ * fills from the left. So under `.slider-fill-end` the two colours swap: the track takes the accent and
+ * the range the empty well, and the fill reads from the dot to the tip — the stretch being thinned, as on
+ * the nose's slider.
+ */
+.slider-fill-end .slider-accent [data-slot="slider-track"] {
+  background: var(--surf-accent);
+}
+
+.slider-fill-end .slider-accent [data-slot="slider-range"] {
+  background: var(--muted);
+}
+
+/*
  * The slider thumb's keyboard focus ring.
  *
  * Base UI (1.7.0) renders the thumb as a DIV wrapping a visually-hidden `<input type="range">`,

@@ -429,23 +429,6 @@ export function thinningMarksSentence(noseFromTip: Mm, tailFromTip: Mm, system: 
 }
 
 /**
- * FOIL's opening line with a blank picked (UI-SPEC "Sidebar: THICKNESS", §10): true wherever the
- * starts are, replacing "the tips are thinned in the last 12"". The station reads through
- * `stationLabel` (`12"` / `30.5 cm`).
- *
- * Reworded in quick 261019-gqo (2026-10-19, P-01): the tip thicknesses moved up to INPUTS and the 12"
- * fine-tune into the Advanced fold, so the old "Set the tips, and fine-tune the 12" stations if you need
- * to." was no longer true where it sits. It keeps its opening words, which a no-blank check looks for.
- */
-export function thicknessIntroWithBlank(system: UnitsSystem): string {
-  return (
-    `Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below, ` +
-    `to the tip thickness set under Inputs. ` +
-    `Fine-tune the ${stationLabel(system)} stations under Advanced if you need to.`
-  );
-}
-
-/**
  * The three rules the list's floors and their sentences quote (Phase 12 D-10): Extra Length, and —
  * for the centre — the Deck Skin the verdicts use (the board's own, or the account default when no
  * blank is picked) plus one pass of the shaper's Planer Max Depth. Callers hand in the SAME numbers

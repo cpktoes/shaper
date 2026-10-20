@@ -30,7 +30,6 @@ import {
   offerLine,
   placementSlider,
   REASON_SNAP_MM,
-  thicknessIntroWithBlank,
   thinningMarksSentence,
   thinningStartHint,
   thinningStartLine,
@@ -799,22 +798,6 @@ describe("Thinning Starts — the sentences (D-05, D-07, D-21)", () => {
       expect(thinningMarksSentence(MEASURE_STATION_MM, inchesToMm(25.5), "metric")).toBe(
         "a dashed line across the board where each tip's thinning starts: 30.5 cm from the nose tip and 64.8 cm from the tail tip",
       );
-    });
-
-    it.each(UNITS_SYSTEMS)("in %s, the FOIL intro names the 12\" stations by their own label (quick 261019-gqo, P-01)", (system) => {
-      expect(thicknessIntroWithBlank(system)).toBe(
-        "Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below, " +
-          "to the tip thickness set under Inputs. " +
-          `Fine-tune the ${stationLabel(system)} stations under Advanced if you need to.`,
-      );
-    });
-
-    it("reads the reworded intro word for word", () => {
-      expect(thicknessIntroWithBlank("imperial")).toBe(
-        "Deck and bottom follow your blank's; each tip is thinned from its Thinning Starts point, below, " +
-          'to the tip thickness set under Inputs. Fine-tune the 12" stations under Advanced if you need to.',
-      );
-      expect(thicknessIntroWithBlank("metric")).toContain("Fine-tune the 30.5 cm stations under Advanced if you need to.");
     });
   });
 });

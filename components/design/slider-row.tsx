@@ -52,6 +52,13 @@ export interface SliderRowProps {
    * renders exactly as before.
    */
   hintAction?: ReactNode;
+  /**
+   * Draws `hintAction` at the LEFT end of the hint line and `leftHint` at the right — for a slider laid
+   * the other way round, ROCKER's Tail Thinning Starts (centre on the left, tail tip on the right, the
+   * founder, 2026-10-19), so its Automatic button sits at the centre end as the nose's does, clear of a
+   * dot near the tip. Absent, the row renders exactly as before.
+   */
+  hintActionAtStart?: boolean;
   /** The warning-coloured line under the hints. */
   note?: string;
   /** For the flex sizing the paired two-per-line layouts need; composed with the disabled
@@ -96,6 +103,7 @@ export function SliderRow({
   leftHint,
   rightHint,
   hintAction,
+  hintActionAtStart = false,
   note,
   className,
   density = "default",
@@ -150,8 +158,17 @@ export function SliderRow({
             hasAction && "items-center gap-2",
           )}
         >
-          <span>{leftHint}</span>
-          {hasAction ? hintAction : <span>{rightHint}</span>}
+          {hasAction && hintActionAtStart ? (
+            <>
+              {hintAction}
+              <span className="text-right">{leftHint}</span>
+            </>
+          ) : (
+            <>
+              <span>{leftHint}</span>
+              {hasAction ? hintAction : <span>{rightHint}</span>}
+            </>
+          )}
         </div>
       )}
       {note && <div className="mt-0.5 text-[10px] text-surf-warning-ink">{note}</div>}

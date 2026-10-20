@@ -14,7 +14,7 @@ import { boardRockerCells, openFoilAdvanced, readBoardRocker, showTab } from "./
 import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
-import { automaticButtonLabel, thicknessIntroWithBlank } from "../lib/geometry/blank-reasons";
+import { automaticButtonLabel } from "../lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { formatLength, stationLabel } from "../lib/geometry/measure-display";
 import { inchesToMm } from "../lib/geometry/units";
@@ -235,27 +235,27 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(deckSkinLabel(page)).toHaveText(ownSkin);
   });
 
-  test(`a Pin tip to tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
+  test(`a Pin tips to tap changes a tip's rocker reading and leaves both 12" readings exactly as they were`, async ({
     page,
   }, testInfo) => {
     await openRocker(page);
     await pickFirstFittingBlank(page);
 
     // A new board's tip is pinned to the deck — the account default, Pin deck out of the box (D-04).
-    await expect(pillGroup(page, "Pin tip to")).toBeVisible();
-    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Pin tip to", "Bottom")).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText(/^The deck stays put and the extra comes off the bottom/)).toBeVisible();
+    await expect(pillGroup(page, "Pin tips to")).toBeVisible();
+    await expect(pill(page, "Pin tips to", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tips to", "Bottom")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Rocker increases toward the tips, extra foam removed from the bottom.", { exact: true })).toBeVisible();
 
     // The four rocker readings come from the DATASHEET's YOUR BOARD Rocker row (nose tip, nose 12", tail 12",
     // tail tip), read there before and after; the tap itself is made on VIEWER, where the pair is live.
     const four = (cells: string[]) => ({ noseTip: cells[0], nose12: cells[1], tail12: cells[3], tailTip: cells[4] });
     const before = four(await readBoardRocker(page));
 
-    await pill(page, "Pin tip to", "Bottom").click();
-    await expect(pill(page, "Pin tip to", "Bottom")).toHaveAttribute("aria-pressed", "true");
-    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "false");
-    await expect(page.getByText(/^The bottom stays put and the extra comes off the deck/)).toBeVisible();
+    await pill(page, "Pin tips to", "Bottom").click();
+    await expect(pill(page, "Pin tips to", "Bottom")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tips to", "Deck")).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByText("Rocker follows the bottom exactly, extra thickness removed from the deck.", { exact: true })).toBeVisible();
 
     // Each tip re-derives from its tip to its Thinning Starts point (Phase 14, D-07): at least one tip
     // reads differently...
@@ -279,7 +279,7 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
 
     // One undo step brings Pin deck back.
     await undoOnce(page, testInfo.project.name);
-    await expect(pill(page, "Pin tip to", "Deck")).toHaveAttribute("aria-pressed", "true");
+    await expect(pill(page, "Pin tips to", "Deck")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Off the deck at every station", { exact: true })).toBeVisible();
   });
 
@@ -290,10 +290,6 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await pickFirstFittingBlank(page);
     // The 12" fine-tune lives in Foil's Advanced fold, closed when the screen opens (quick 261019-gqo, D-06).
     await openFoilAdvanced(page);
-
-    // FOIL says how the foil now comes off: each tip is thinned from its own Thinning Starts
-    // point (Phase 14, D-07) — the app's own sentence, built in Node, so no wording is typed twice.
-    await expect(page.getByText(thicknessIntroWithBlank("imperial"), { exact: true })).toBeVisible();
 
     // A new board's 12" tweaks come off the deck (D-13).
     await expect(pill(page, "Fine tune from", "Deck")).toHaveAttribute("aria-pressed", "true");
@@ -395,16 +391,16 @@ test.describe("ROCKER — the board's Deck Skin, the foam off the bottom and the
     await expect(pickedCard(page)).toHaveCount(1);
   });
 
-  test("with no blank there is no Pin tip to, no Fine tune from and no Advanced fold", async ({ page }) => {
+  test("with no blank there is no Pin tips to, no Fine tune from and no Advanced fold", async ({ page }) => {
     await openRocker(page);
     // D-12: hidden, not disabled — Rocker & Foil is Phase 11's fallback column exactly.
     await expect(page.getByText("Hand-set until you pick a blank.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("group", { name: "Pin tip to" })).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Pin tips to" })).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Fine tune from" })).toHaveCount(0);
-    await expect(page.getByText("Pin tip to", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Pin tips to", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Fine tune from", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Advanced\s*[▾▸]$/ })).toHaveCount(0);
-    await expect(page.getByText(/^Deck and bottom follow your blank's/)).toHaveCount(0);
+    await expect(page.getByText(/^Rocker (increases toward|follows the bottom)/)).toHaveCount(0);
   });
 });
 
@@ -467,7 +463,7 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     await dismissChrome(page);
   });
 
-  test("a picked blank shows Nose then Tail Thinning Starts after Pin tip to; with no blank neither row is there", async ({
+  test("a picked blank shows Nose then Tail Thinning Starts after Pin tips to; with no blank neither row is there", async ({
     page,
   }) => {
     await openRocker(page);
@@ -484,13 +480,13 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
       await expect(automaticButton(page, end)).toHaveAttribute("aria-disabled", "true");
     }
 
-    // D-10's order: Pin tip to (it was Tip Style), then the nose, then the tail, ahead of the Advanced fold.
+    // D-10's order: Pin tips to (it was Tip Style), then the nose, then the tail, ahead of the Advanced fold.
     const top = async (locator: Locator) => {
       const box = await locator.boundingBox();
       if (!box) throw new Error("no bounding box");
       return box.y;
     };
-    const tipStyle = await top(pillGroup(page, "Pin tip to"));
+    const tipStyle = await top(pillGroup(page, "Pin tips to"));
     const nose = await top(startLabel(page, "nose"));
     const tail = await top(startLabel(page, "tail"));
     expect(nose).toBeGreaterThan(tipStyle);
@@ -609,15 +605,19 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
     await expect(tail12Row.getByText(/^From the tip taper /)).toBeVisible();
     await expect(tooCloseLine(page, "tail")).toHaveCount(0);
 
-    // Set the tail's start by hand to 12": all the way to the tip, then a half inch at a time.
+    // Set the tail's start by hand to 12": all the way to the tip, then a half inch at a time. The tail's
+    // slider runs centre (left) to tip (right), the way the board lies on the drawing (the founder,
+    // 2026-10-19), so the tip is its End and a step in from the tip is ArrowLeft.
     const slider = startRow(page, "tail").getByRole("slider");
     await slider.focus();
-    await slider.press("Home");
+    await slider.press("End");
     await expect(automaticButton(page, "tail")).toHaveAttribute("aria-pressed", "false");
+    // The slider's right-hand end is the tail tip's: the start now sits closer to the tip than 12".
+    expect(readInches(distanceOf(await startLabel(page, "tail").innerText()))).toBeLessThan(12);
     const twelve = `Tail Thinning Starts — ${stationLabel("imperial")}`;
     for (let step = 0; step < 40 && (await startLabel(page, "tail").innerText()) !== twelve; step++) {
       const before = await startLabel(page, "tail").innerText();
-      await slider.press("ArrowRight");
+      await slider.press("ArrowLeft");
       await expect(startLabel(page, "tail")).not.toHaveText(before);
     }
     await expect(startLabel(page, "tail")).toHaveText(twelve);
