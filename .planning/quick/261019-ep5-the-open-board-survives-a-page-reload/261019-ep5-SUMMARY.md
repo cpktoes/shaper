@@ -160,6 +160,17 @@ Neither run is clean, and I want to be plain about why. While run 2 went, anothe
 
 **Not run here, the orchestrator's (ruling O-1):** `npm run build` and `npm run test:e2e:prod`. Both must run on the main checkout after the merge. A full suite on a quieter machine would also be worth a look before go-live, given how loaded this one was.
 
+## Gates on the main checkout after the merge (the orchestrator, 2026-10-19)
+
+The executor could only run the browser suite in its own worktree, on a machine another session was also loading. After the merge (d4cd08a4) the main checkout was quiet and its dev lock free, so every gate was run again there:
+
+- **Unit tests (`npm test`):** 155 files, 5,987 passed, 2 skipped (the same two long-standing PDF-builder skips).
+- **Lint (`npm run lint`):** clean.
+- **Production build and its specs (`npm run test:e2e:prod`):** the build passed; 18 passed, 3 skipped by design.
+- **The full browser suite (`npm run test:e2e`, port 3100, 52.9 min, one worker, nothing else running):** 1,274 passed, 1,088 skipped, 2 failed. Both failures were the SAME new case, in two tests the other task of the day (quick 261019-gqo, merged after this task forked) added to ROCKER: `rocker-cut.spec.ts` 161 and `rocker-planing.spec.ts` 136 start the Longboard twice in one test (Imperial, then Metric), and the second start now met "Start a new design?" because the first Longboard was kept in the browser. Fixed by the J1 rule — `forgetOpenBoardOnEveryLoad(page)` before the second start, nothing asserted changed — in commit af2a7378; both pass alone (23 passed in the two specs on the computer).
+
+So on the merged main checkout, every suite is green: the only two failures were tests that needed the fresh-board helper, and they have it now.
+
 ## Notes for the founder
 
 - **Vercel's Skew Protection** would separately stop the deploy reloads, but it is a paid-plan feature and wouldn't help with a phone's tab reload or a bookmark. This change covers all three causes.
