@@ -124,6 +124,16 @@ export interface BoardBlank {
   rocker?: BlankRockerSpec;
 }
 
+/**
+ * Whether a board carries a Nose or Tail @ 12" tweak (quick 261019-gqo, plan 03, P-18): either stored 12"
+ * offset is not exactly zero. The ONE test for "this board carries a tweak" — ROCKER's ↺ Reset Fine-Tune
+ * button reads it for whether it has anything to reset, and FOIL's Advanced fold reads it for whether to
+ * start open (D-13), so the fold opens by itself exactly when Reset has something to reset.
+ */
+export function hasFineTune(blank: Pick<BoardBlank, "nose12Offset" | "tail12Offset">): boolean {
+  return blank.nose12Offset !== 0 || blank.tail12Offset !== 0;
+}
+
 /** The shaper's fit settings (the third account preference, D-09). */
 export interface FitSettings {
   /** How much longer than the board a blank must be to be listed. */

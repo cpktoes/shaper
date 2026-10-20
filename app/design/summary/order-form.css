@@ -195,7 +195,14 @@
 
    On a phone sheet page 2's type follows the fit unit below (quick 260928-vpi, Phase 13 item 8b),
    so at 560 dots the PLANING table's own minimum drops under its 28% share and every rail row stays
-   one line — the two tables no longer compete for room the way they did before that fix. */
+   one line — the two tables no longer compete for room the way they did before that fix.
+
+   Since quick 261019-gqo (plan 03) the Passes row counts whole passes plus what is left (`20 + 3/16"`,
+   Metric `44 + 2 mm`), the same wording ROCKER uses, so the widest cell is wider than a bare `44`. The
+   widest-numbers test measures the real thing: on a computer print the column grows from 193.6 px to
+   201.1 px (Imperial) / 205.4 px (Metric) by this floor and the rail markings still stay one line; at
+   618 dots it stays 161.3 px, the 28% share still being enough, and every rail row is one line at
+   every width from 560 to 900 dots in both systems. */
 [data-order-form-root] .order-form-planing-col {
   flex: none;
   width: calc(100% * var(--order-form-planing));
