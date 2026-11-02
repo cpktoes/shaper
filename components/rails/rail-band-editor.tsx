@@ -53,6 +53,8 @@ export function RailBandEditor() {
     toggleRailsImportFoilThickness,
     updateRailSection,
     toggleTailHardEdge,
+    updateRailNudge,
+    resetRailAdvanced,
     railBands: bands,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
@@ -252,6 +254,8 @@ export function RailBandEditor() {
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
+            onChangeNudge={updateRailNudge}
+            onResetAdvanced={resetRailAdvanced}
             sectionOpen={sectionOpen}
             onToggleSectionOpen={toggleSectionOpen}
             advancedOpen={advancedOpen}

@@ -24,11 +24,15 @@ import {
   RAIL_DATA_LABEL_ORDER,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
+  RAIL_NUDGE_NAMES,
+  RAIL_NUDGE_STEP_IN,
   RAIL_RATIO_RANGE,
   RAIL_SCALE_RANGE,
   ZERO_RAIL_NUDGES,
   computeRailBands,
   computeRailSectionOutput,
+  deckProfileSliderStep,
+  defaultRailAdvanced,
   effectiveDeckPercent,
   mergeRailDataTable,
   railFamilyLabel,
@@ -642,5 +646,53 @@ describe("a section saved before the scale and nudges existed", () => {
     }
     expect(computeRailSectionOutput("nose", legacy("nose"), false).result.scale).toBe(DEFAULT_TIP_RAIL_SCALE);
     expect(ZERO_RAIL_NUDGES).toEqual(Object.fromEntries(RAIL_NUDGE_KEYS.map((k) => [k, mm(0)])));
+  });
+});
+
+describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
+  it("deckProfileSliderStep: both ends of the 75-100% slider stay exactly reachable at every thickness (R7, PC23)", () => {
+    // Every thickness the RAILS sliders and the foil can give: 1" to 3 1/2" by 1/16".
+    for (let sixteenths = 16; sixteenths <= 56; sixteenths += 1) {
+      const thicknessIn = sixteenths / 16;
+      const step = deckProfileSliderStep(thicknessIn);
+      const count = (100 - DECK_PERCENT_MIN) / step;
+      expect(Math.abs(count - Math.round(count)), `${thicknessIn}"`).toBeLessThan(1e-9);
+      expect(Math.round(count), `${thicknessIn}"`).toBeGreaterThanOrEqual(1);
+      expect(step, `${thicknessIn}"`).toBeGreaterThanOrEqual(0.01 - 1e-12);
+    }
+  });
+
+  it("deckProfileSliderStep: one step is about one 1/16\" of rail thickness, as the prototype's rule was", () => {
+    for (const thicknessIn of [1, 1.5, 2.5, 3.5]) {
+      const step = deckProfileSliderStep(thicknessIn);
+      const sixteenthAsPercent = (MIN_RAIL_MARK_IN / thicknessIn) * 100;
+      // Rounding the step count moves the step by at most half a step's worth over the 25-point span.
+      expect(Math.abs(step - sixteenthAsPercent)).toBeLessThanOrEqual(sixteenthAsPercent / 2);
+    }
+  });
+
+  it("defaultRailAdvanced: every nudge 0, Single Tuck off, the tips' scale 0.75 and the centre's 1 — a new board's own values (PC20)", () => {
+    for (const key of ["nose", "center", "tail"] as const) {
+      const advanced = defaultRailAdvanced(key);
+      expect(advanced.nudges).toEqual(ZERO_RAIL_NUDGES);
+      expect(advanced.singleTuck).toBe(false);
+      expect(advanced.scaleFromCenter).toBe(key === "center" ? 1 : DEFAULT_TIP_RAIL_SCALE);
+      expect(advanced.nudges).toEqual(DEFAULT_RAIL_BAND_SPEC[key].nudges);
+      expect(advanced.singleTuck).toBe(DEFAULT_RAIL_BAND_SPEC[key].singleTuck);
+      expect(advanced.scaleFromCenter).toBe(DEFAULT_RAIL_BAND_SPEC[key].scaleFromCenter);
+    }
+  });
+
+  it("RAIL_NUDGE_NAMES names every nudge with the DATA tab's own words", () => {
+    const dataLabels = Object.values(RAIL_DATA_LABEL_ORDER).flat();
+    expect(Object.keys(RAIL_NUDGE_NAMES).sort()).toEqual([...RAIL_NUDGE_KEYS].sort());
+    for (const key of RAIL_NUDGE_KEYS) {
+      expect(dataLabels, key).toContain(RAIL_NUDGE_NAMES[key]);
+    }
+    expect(new Set(Object.values(RAIL_NUDGE_NAMES)).size).toBe(RAIL_NUDGE_KEYS.length);
+  });
+
+  it("RAIL_NUDGE_STEP_IN is the app's 1/16\" step", () => {
+    expect(RAIL_NUDGE_STEP_IN).toBe(MIN_RAIL_MARK_IN);
   });
 });
