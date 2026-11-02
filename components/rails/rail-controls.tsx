@@ -313,7 +313,11 @@ function RailSectionControls({
       data-rail-group={sectionKey}
       className={hiddenOnPhone ? "flex flex-col gap-3.5 max-shell:hidden" : "flex flex-col gap-3.5"}
     >
-      <div className={RULED_HEADING}>
+      {/* The heading row — the rail's name and its View box — is view-only as a whole, so it is
+          marked `data-lock-exempt` too (quick 261102-gec): with the Corner Cut row gone, a tail with
+          Hard Edge on has nothing in Advanced but Reset, and the board lock's greyed-look sweep would
+          otherwise read this live heading as part of Reset's row. No pixel changes. */}
+      <div className={RULED_HEADING} data-lock-exempt>
         <span>{SECTION_TITLE[sectionKey]}</span>
         {/* The View box (quick 261017-vdh, the founder's canvas): the old ▾/▸ open/closed state,
             drawn as a tick box at the heading's right end. View-only, so a locked board keeps it
