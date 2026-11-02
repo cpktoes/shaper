@@ -16,6 +16,7 @@ import {
   CALLOUT_BOTTOM_PAD,
   CALLOUT_RIGHT_PAD,
   SCALE,
+  buildRailLegend,
   computeRailPlotBounds,
   buildRailPlotGrid,
   railPlotProjection,
@@ -365,5 +366,20 @@ describe("railPlotLeftLabelsFit", () => {
     expect(railPlotLeftLabelsFit(bare, 0.785)).toBe(false);
     expect(railPlotLeftLabelsFit(bare, 1.2)).toBe(true);
     expect(railPlotLeftLabelsFit(bare, 2.3)).toBe(true);
+  });
+});
+
+describe("buildRailLegend's finishedRail option (quick 261102-gec plan 02, PC22)", () => {
+  it("without it the key is unchanged; with it the same key plus one last entry, Finished Rail in ink", () => {
+    const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+    for (const output of [bands.nose, bands.center, bands.tail, computeRailBands({ ...DEFAULT_RAIL_BAND_SPEC, center: { ...DEFAULT_RAIL_BAND_SPEC.center, deckPercent: 80 } }).center]) {
+      const plain = buildRailLegend(output);
+      expect(buildRailLegend(output, { finishedRail: false })).toEqual(plain);
+      const withRail = buildRailLegend(output, { finishedRail: true });
+      expect(withRail.slice(0, -1)).toEqual(plain);
+      expect(withRail.length).toBe(plain.length + 1);
+      expect(withRail[withRail.length - 1]).toEqual({ label: "Finished Rail", color: "var(--color-surf-ink)" });
+      expect(plain.some((e) => e.label === "Finished Rail")).toBe(false);
+    }
   });
 });

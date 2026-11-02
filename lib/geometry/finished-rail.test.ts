@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Point2D } from "./board";
-import { finishedRail, finishedRailFromCuts, railCutFoam, type FinishedRail, type RailCutLine } from "./finished-rail";
+import { finishedRail, finishedRailFromCuts, finishedRailPath, railCutFoam, type FinishedRail, type RailCutLine } from "./finished-rail";
 import { ZERO_RAIL_NUDGES, computeRailSectionOutput, type RailFamily } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
 import { inchesToMm, mmToInches } from "./units";
@@ -215,4 +215,72 @@ describe("finishedRailFromCuts — the steps draw the samples", () => {
       }
     }
   }, 30_000);
+});
+
+describe("finishedRailPath — the drawn path (quick 261102-gec plan 02, PC22)", () => {
+  /** A plain affine map built from the case's own numbers: the left edge at 0, the deck at 0, y down —
+   * the shape a plot's own projection has. Nothing typed but the map's form. */
+  function projectionFor(rail: FinishedRail) {
+    const left = rail.chain[0].x;
+    const top = rail.chain[0].y;
+    const k = 1 / top;
+    return (p: Point2D) => ({ x: (p.x - left) * k, y: (top - p.y) * k });
+  }
+
+  /** Splits a path into its commands, each with its numbers. */
+  function commands(d: string): { op: string; nums: number[] }[] {
+    return [...d.matchAll(/([MLQZ])([^MLQZ]*)/g)].map((m) => ({
+      op: m[1],
+      nums: m[2].trim() === "" ? [] : m[2].trim().split(/\s+/).map(Number),
+    }));
+  }
+
+  it("starts with M at the projected start, then one L per line step and one Q per blend, in order, every point projected", () => {
+    for (const entry of [...workbook, ...cases.filter((_, i) => i % 50 === 0)]) {
+      for (const hardEdge of [false, true]) {
+        const rail = hardEdge ? finishedFor(entry, true, ["domed", "band1", "band2"]) : finishedFor(entry);
+        const project = projectionFor(rail);
+        const cmds = commands(finishedRailPath(rail, project));
+        expect(cmds[0].op).toBe("M");
+        const start = project(rail.start);
+        expect(cmds[0].nums).toEqual([start.x, start.y]);
+        expect(cmds.length).toBe(rail.steps.length + 1);
+        rail.steps.forEach((step, i) => {
+          const cmd = cmds[i + 1];
+          if (step.kind === "line") {
+            const to = project(step.to);
+            expect(cmd.op).toBe("L");
+            expect(cmd.nums).toEqual([to.x, to.y]);
+          } else {
+            const c = project(step.control);
+            const to = project(step.to);
+            expect(cmd.op).toBe("Q");
+            expect(cmd.nums).toEqual([c.x, c.y, to.x, to.y]);
+          }
+        });
+        expect(cmds.filter((c) => c.op === "Q").length).toBe(rail.steps.filter((s) => s.kind === "quad").length);
+        expect(cmds.filter((c) => c.op === "L").length).toBe(rail.steps.filter((s) => s.kind === "line").length);
+      }
+    }
+  });
+
+  it("closed: the same path plus Z, which closes along the drawing's left edge from the bottom's end to the deck's", () => {
+    for (const entry of workbook) {
+      const rail = finishedFor(entry);
+      const project = projectionFor(rail);
+      const open = finishedRailPath(rail, project);
+      const closed = finishedRailPath(rail, project, { closed: true });
+      expect(closed).toBe(`${open} Z`);
+      // The close runs from the chain's last point (on the bottom) to its first (on the deck), both on
+      // the left edge: one straight line up the drawing's edge.
+      const first = rail.chain[0];
+      const last = rail.chain[rail.chain.length - 1];
+      expect(Math.abs(last.x - first.x)).toBeLessThan(1e-9);
+      expect(Math.abs(last.y)).toBeLessThan(1e-9);
+      expect(first.y).toBeGreaterThan(last.y);
+      const lastStep = rail.steps[rail.steps.length - 1];
+      expect(lastStep.kind).toBe("line");
+      expect(lastStep.to).toEqual(last);
+    }
+  });
 });

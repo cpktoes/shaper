@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Maximize2Icon } from "lucide-react";
+import { Maximize2Icon, SplineIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
@@ -87,6 +87,12 @@ export function RailBandEditor() {
   // Print Template dialog is opened from this screen's own toolbar rather than the dialog owning
   // its own trigger (RAIL-04, D-12).
   const [viewFullSizedOpen, setViewFullSizedOpen] = useState(false);
+  // The Finished Rail switch (quick 261102-gec plan 02, R13, PC21, 2026-11-02): whether VIEWER's
+  // cross-sections and the View Full Sized dialog draw the finished rail — the shape the cuts leave,
+  // blended halfway into each band. View state only: it lives here, never in the design store, so it is
+  // never saved with the board and never an undo step, and it starts on each time the shaper comes to
+  // RAILS (the founder's brief: "only changes the view and isn't saved with the board").
+  const [showFinishedRail, setShowFinishedRail] = useState(true);
   // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
   // firstOpenSection rule the View Full Sized dialog already uses (Nose, unless a later section is
   // open and Nose is not) rather than re-deriving it — screen state only, never saved, never in
@@ -108,7 +114,8 @@ export function RailBandEditor() {
   const sharedXAxisMin: Mm =
     openSections.length > 0 ? mm(Math.min(...openSections.map((key) => bands[key].bounds.xAxisMin))) : mm(0);
 
-  const legend = openSections.length > 0 ? buildRailLegend(bands[openSections[0]]) : [];
+  const legend =
+    openSections.length > 0 ? buildRailLegend(bands[openSections[0]], { finishedRail: showFinishedRail }) : [];
 
   // Every open section's viewBox WIDTH is identical (computeRailPlotBounds derives it from
   // sharedXAxisMin alone, not per-section thickness) -- only viewBox HEIGHT differs. Rendering
@@ -306,6 +313,17 @@ export function RailBandEditor() {
         {activePage === "viewer" && (
           <div className="relative flex min-h-0 flex-1 flex-col [@media(max-height:500px)]:flex-none">
             <ViewerToolbar>
+              {/* First in the row (PC21), built exactly like FINS' callouts toggle (fast 181): pressed
+                  while the finished rail shows. A view switch, not a control, so a locked board keeps
+                  it live — it never touches the board. */}
+              <ViewerToolbarButton
+                onClick={() => setShowFinishedRail((on) => !on)}
+                pressed={showFinishedRail}
+                label={showFinishedRail ? "Hide finished rail" : "Show finished rail"}
+                title="Finished Rail"
+              >
+                <SplineIcon className="size-6" />
+              </ViewerToolbarButton>
               <ViewerToolbarButton label="View Full Sized" onClick={() => setViewFullSizedOpen(true)}>
                 <Maximize2Icon className="size-6" />
               </ViewerToolbarButton>
@@ -316,6 +334,7 @@ export function RailBandEditor() {
               bands={bands}
               sharedXAxisMin={sharedXAxisMin}
               sectionOpen={sectionOpen}
+              finishedRail={showFinishedRail}
             />
             <div
               ref={plotsContainerRef}
@@ -351,7 +370,12 @@ export function RailBandEditor() {
                   >
                     {SECTION_TITLE[key]}
                   </div>
-                  <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
+                  <RailSectionPlot
+                    sectionKey={key}
+                    output={bands[key]}
+                    xAxisMin={sharedXAxisMin}
+                    finishedRail={showFinishedRail}
+                  />
                 </RailPlotZoom>
               ))}
             </div>
@@ -455,7 +479,13 @@ export function RailBandEditor() {
                 key={phoneSection}
                 className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line px-0.5 pb-0.5 pt-[11px]"
               >
-                <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
+                <RailSectionPlot
+                  sectionKey={phoneSection}
+                  output={bands[phoneSection]}
+                  xAxisMin={sharedXAxisMin}
+                  fit="width"
+                  finishedRail={showFinishedRail}
+                />
               </RailPlotZoom>
             </div>
             {legend.length > 0 && (

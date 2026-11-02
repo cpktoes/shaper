@@ -90,6 +90,9 @@ export interface ViewFullSizedDialogProps {
   /** The sidebar's own open/collapsed record — read only to pick the dialog's default tab; a
    * collapsed section's rail is still drawn here, since its band data is always computed. */
   sectionOpen: Record<RailSectionKey, boolean>;
+  /** Draw the finished rail and its key entry (quick 261102-gec plan 02, R13): the VIEWER's Finished Rail
+   * switch, passed through so this view always matches the VIEWER it opened from. View state only. */
+  finishedRail?: boolean;
 }
 
 export function ViewFullSizedDialog({
@@ -98,6 +101,7 @@ export function ViewFullSizedDialog({
   bands,
   sharedXAxisMin,
   sectionOpen,
+  finishedRail = false,
 }: ViewFullSizedDialogProps) {
   const { system } = useUnits();
   const [activeSection, setActiveSection] = useState<RailSectionKey>(() => firstOpenSection(sectionOpen));
@@ -123,7 +127,7 @@ export function ViewFullSizedDialog({
   const plotWidthIn = bounds.width / SCALE;
   const plotHeightIn = bounds.height / SCALE;
   const checkBarWidthIn = mmToInches(CHECK_BAR_MM);
-  const legend = buildRailLegend(output);
+  const legend = buildRailLegend(output, { finishedRail });
 
   const tabs: PanelTab<RailSectionKey>[] = SECTION_ORDER.map((key) => ({ id: key, label: SECTION_TITLE[key] }));
 
@@ -263,7 +267,13 @@ export function ViewFullSizedDialog({
                 } as CSSProperties
               }
             >
-              <RailSectionPlot sectionKey={activeSection} output={output} xAxisMin={sharedXAxisMin} fit="width" />
+              <RailSectionPlot
+                sectionKey={activeSection}
+                output={output}
+                xAxisMin={sharedXAxisMin}
+                fit="width"
+                finishedRail={finishedRail}
+              />
             </div>
 
             {legend.length > 0 && (
