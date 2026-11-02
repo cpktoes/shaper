@@ -6,7 +6,12 @@ import { describe, expect, it, vi } from "vitest";
 // does, since this file only needs the pure colour map and layout functions, never a render.
 vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 
-import { buildRailSegments, computeRailSection, type RailSectionOutput } from "@/lib/geometry/rail-bands";
+import {
+  ZERO_RAIL_NUDGES,
+  buildRailSegments,
+  computeRailSection,
+  type RailSectionOutput,
+} from "@/lib/geometry/rail-bands";
 import { inchesToMm, mmToInches } from "@/lib/geometry/units";
 import {
   buildRailCallouts,
@@ -22,33 +27,31 @@ import {
 } from "./rail-callouts";
 import { CALLOUT_RIGHT_PAD, computeRailPlotBounds, railPlotProjection } from "./rail-section-plot";
 
-/** The same fixed example-rail inputs rail-instructions.tsx's ExampleRailFigure uses (D-20),
- * Flat state — real geometry so Deck 2's band1-interpolated y and Corner Cut's own apex-end y are
- * exercised with genuine values, not a hand-built stub. `singleTuck` builds the same section with
- * Bottom Tuck 1/2 removed, for the tests that need a rail with no second tuck line. */
+/** The same fixed example-rail inputs rail-instructions.tsx's ExampleRailFigure uses (D-20), on the
+ * founder's Chris Rails v2 rules (quick 261102-gec) — real geometry so Deck 2's band1-interpolated y
+ * and Bottom Tuck 2's own start on the Tuck 1 line are exercised with genuine values, not a
+ * hand-built stub. `singleTuck` builds the same section with Bottom Tuck 1/2 removed, for the tests
+ * that need a rail with no second tuck line. */
 function buildExampleOutput(domed: boolean, options?: { singleTuck?: boolean }): RailSectionOutput {
   const thicknessIn = domed ? 3 : 3.5;
   const thickness = inchesToMm(thicknessIn);
-  const domedBandBase = inchesToMm(6);
+  const boardThickness = inchesToMm(3.5);
   const result = computeRailSection({
     thickness,
+    boardThickness,
     ratioTopPercent: 60,
     family: 3,
-    domedBandBase,
     scale: 1,
-    cornerCutOffsetOverride: null,
-    removeCornerCut: false,
+    nudges: ZERO_RAIL_NUDGES,
     singleTuck: options?.singleTuck ?? false,
-    bottomTuck3Override: null,
     symmetrical: false,
     hardEdge: false,
   });
-  const opts = { boardThickness: inchesToMm(3.5), railThicknessVal: inchesToMm(3), domedBandBase };
-  const segments = buildRailSegments(result, thickness, domed, opts);
+  const segments = buildRailSegments(result);
   return {
     domed,
-    boardThickness: opts.boardThickness,
-    railThicknessClamped: opts.railThicknessVal,
+    boardThickness,
+    railThicknessClamped: inchesToMm(3),
     thicknessEff: thickness,
     result,
     profile: [],
@@ -61,12 +64,11 @@ function buildExampleOutput(domed: boolean, options?: { singleTuck?: boolean }):
 const identityProjection = { px: (x: number) => x, py: (y: number) => y };
 
 describe("RAIL_CALLOUT_ANCHORS", () => {
-  it("names eleven anchors in the new order", () => {
+  it("names ten anchors in the new order, with no Corner Cut (quick 261102-gec)", () => {
     expect(RAIL_CALLOUT_ANCHORS.map((a) => a.name)).toEqual([
       "Apex",
       "Domed Taper",
       "Rail Mark 1",
-      "Corner Cut",
       "Deck 3",
       "Deck 2",
       "Deck 1",
@@ -98,13 +100,12 @@ describe("buildRailCallouts", () => {
   const output = buildExampleOutput(false);
   const callouts = buildRailCallouts(output, output.thicknessEff, identityProjection);
 
-  it("returns eleven entries, in the new order", () => {
-    expect(callouts).toHaveLength(11);
+  it("returns ten entries, in the new order", () => {
+    expect(callouts).toHaveLength(10);
     expect(callouts.map((c) => c.name)).toEqual([
       "Apex",
       "Domed Taper",
       "Rail Mark 1",
-      "Corner Cut",
       "Deck 3",
       "Deck 2",
       "Deck 1",
@@ -115,8 +116,8 @@ describe("buildRailCallouts", () => {
     ]);
   });
 
-  it("carries side 1 on Apex, Domed Taper, Rail Mark 1, Corner Cut and Tuck 1; side -1 on Deck 3, Deck 2, Deck 1 and Bottom Tuck 2; and side 0 on Bottom Tuck 1 and Bottom Tuck 3", () => {
-    const sideOneNames = new Set(["Apex", "Domed Taper", "Rail Mark 1", "Corner Cut", "Tuck 1"]);
+  it("carries side 1 on Apex, Domed Taper, Rail Mark 1 and Tuck 1; side -1 on Deck 3, Deck 2, Deck 1 and Bottom Tuck 2; and side 0 on Bottom Tuck 1 and Bottom Tuck 3", () => {
+    const sideOneNames = new Set(["Apex", "Domed Taper", "Rail Mark 1", "Tuck 1"]);
     const sideZeroNames = new Set(["Bottom Tuck 1", "Bottom Tuck 3"]);
     for (const c of callouts) {
       if (sideOneNames.has(c.name)) {
@@ -136,23 +137,25 @@ describe("buildRailCallouts", () => {
     }
   });
 
-  it("also builds a consistent eleven entries for the Domed state", () => {
+  it("also builds a consistent ten entries for the Domed state", () => {
     const domedOutput = buildExampleOutput(true);
     const domedCallouts = buildRailCallouts(domedOutput, domedOutput.thicknessEff, identityProjection);
-    expect(domedCallouts).toHaveLength(11);
+    expect(domedCallouts).toHaveLength(10);
   });
 
-  it("Corner Cut's raw anchor is its own segment's apex end, (px(0), py(mmToInches(r.cornerCutRail)))", () => {
-    const r = output.result;
-    const cornerCut = callouts.find((c) => c.name === "Corner Cut")!;
-    expect(cornerCut.anchorX).toBeCloseTo(0, 9);
-    expect(cornerCut.anchorY).toBeCloseTo(mmToInches(r.cornerCutRail!), 9);
-    // No dy on Corner Cut, so its resting y is its raw anchor y.
-    expect(cornerCut.y).toBeCloseTo(mmToInches(r.cornerCutRail!), 9);
+  it("names no Corner Cut — the founder's Chris Rails v2 sheets have none (quick 261102-gec)", () => {
+    expect(callouts.map((c) => c.name)).not.toContain("Corner Cut");
+    expect(RAIL_CALLOUT_ANCHORS.map((a) => a.key)).not.toContain("cornerCut");
   });
 
-  it("lifts Deck 3/Deck 1 one lift above the section's own thickness, lifts Bottom Tuck 2 one lift above its own midpoint, and pushes Bottom Tuck 1/3 one offset below zero", () => {
-    const r = output.result;
+  it("Bottom Tuck 2's raw anchor is the tuck2 segment's own start, so the name follows the line it labels", () => {
+    const tuck2 = output.segments.find((s) => s.key === "tuck2")!;
+    const bottomTuck2 = callouts.find((c) => c.name === "Bottom Tuck 2")!;
+    expect(bottomTuck2.anchorX).toBeCloseTo(mmToInches(tuck2.p1.x), 9);
+    expect(bottomTuck2.anchorY).toBeCloseTo(mmToInches(tuck2.p1.y), 9);
+  });
+
+  it("lifts Deck 3/Deck 1 one lift above the section's own thickness, lifts Bottom Tuck 2 one lift above its own point on the Tuck 1 line, and pushes Bottom Tuck 1/3 one offset below zero", () => {
     const thicknessIn = mmToInches(output.thicknessEff);
     const deck3 = callouts.find((c) => c.name === "Deck 3")!;
     const deck1 = callouts.find((c) => c.name === "Deck 1")!;
@@ -165,7 +168,8 @@ describe("buildRailCallouts", () => {
     // below-axis push (the plot's y grows downward, so pushing further down adds).
     expect(deck3.y).toBeCloseTo(thicknessIn - RAIL_CALLOUT_EDGE_LIFT, 9);
     expect(deck1.y).toBeCloseTo(thicknessIn - RAIL_CALLOUT_EDGE_LIFT, 9);
-    expect(bottomTuck2.y).toBeCloseTo(mmToInches(r.railTuck1) / 2 - RAIL_CALLOUT_TUCK2_LIFT, 9);
+    const tuck2Start = output.segments.find((s) => s.key === "tuck2")!.p1;
+    expect(bottomTuck2.y).toBeCloseTo(mmToInches(tuck2Start.y) - RAIL_CALLOUT_TUCK2_LIFT, 9);
     expect(bottomTuck1.y).toBeCloseTo(0 + RAIL_CALLOUT_BELOW_AXIS_OFFSET, 9);
     expect(bottomTuck3.y).toBeCloseTo(0 + RAIL_CALLOUT_BELOW_AXIS_OFFSET, 9);
   });
@@ -181,13 +185,13 @@ describe("buildRailCallouts", () => {
     expect(tuck1.y).toBeCloseTo(mmToInches(r.railTuck1), 9);
   });
 
-  it("a single-tuck section yields ten callouts and no Bottom Tuck 2, while a normal section yields eleven and does contain it", () => {
+  it("a single-tuck section yields nine callouts and no Bottom Tuck 2, while a normal section yields ten and does contain it", () => {
     const singleTuckOutput = buildExampleOutput(false, { singleTuck: true });
     const singleTuckCallouts = buildRailCallouts(singleTuckOutput, singleTuckOutput.thicknessEff, identityProjection);
-    expect(singleTuckCallouts).toHaveLength(10);
+    expect(singleTuckCallouts).toHaveLength(9);
     expect(singleTuckCallouts.map((c) => c.name)).not.toContain("Bottom Tuck 2");
 
-    expect(callouts).toHaveLength(11);
+    expect(callouts).toHaveLength(10);
     expect(callouts.map((c) => c.name)).toContain("Bottom Tuck 2");
   });
 
@@ -272,7 +276,7 @@ describe("deOverlapCallouts", () => {
     const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
     const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
 
-    expect(result).toHaveLength(11);
+    expect(result).toHaveLength(10);
     for (const c of result) {
       if (c.side === 0) {
         expect(c.y).toBeGreaterThan(projection.py(0));
@@ -353,7 +357,7 @@ describe("deOverlapCallouts", () => {
     }
   });
 
-  it("(e) the apex column still stacks: the five side-1 callouts (all anchored at the same x) end up at least RAIL_CALLOUT_MIN_GAP apart from their nearest neighbour", () => {
+  it("(e) the apex column still stacks: the four side-1 callouts (all anchored at the same x) end up at least RAIL_CALLOUT_MIN_GAP apart from their nearest neighbour", () => {
     const output = buildExampleOutput(false);
     const projection = railPlotProjection(output, output.bounds.xAxisMin);
     const raw = buildRailCallouts(output, output.thicknessEff, projection);
@@ -361,20 +365,20 @@ describe("deOverlapCallouts", () => {
     const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
 
     const sideOne = result.filter((c) => c.side === 1).sort((a, b) => a.y - b.y);
-    expect(sideOne).toHaveLength(5);
+    expect(sideOne).toHaveLength(4);
     for (let i = 1; i < sideOne.length; i++) {
       expect(sideOne[i].y - sideOne[i - 1].y).toBeGreaterThanOrEqual(RAIL_CALLOUT_MIN_GAP - 1e-9);
     }
   });
 
-  it("(f) after the de-overlap pass, the apex column reads Rail Mark 1, then Corner Cut, then Apex, then Tuck 1, in ascending y with every adjacent gap at least RAIL_CALLOUT_MIN_GAP", () => {
+  it("(f) after the de-overlap pass, the apex column reads Rail Mark 1, then Apex, then Tuck 1, in ascending y with every adjacent gap at least RAIL_CALLOUT_MIN_GAP", () => {
     const output = buildExampleOutput(false);
     const projection = railPlotProjection(output, output.bounds.xAxisMin);
     const raw = buildRailCallouts(output, output.thicknessEff, projection);
     const maxY = projection.py(0) - RAIL_CALLOUT_AXIS_CLEARANCE;
     const result = deOverlapCallouts(raw, RAIL_CALLOUT_MIN_GAP, maxY);
 
-    const apexColumnOrder = ["Rail Mark 1", "Corner Cut", "Apex", "Tuck 1"];
+    const apexColumnOrder = ["Rail Mark 1", "Apex", "Tuck 1"];
     const byName = new Map(result.map((c) => [c.name, c]));
     const ordered = apexColumnOrder.map((name) => byName.get(name)!);
     for (let i = 1; i < ordered.length; i++) {
@@ -392,8 +396,9 @@ describe("deOverlapCallouts", () => {
 
     const rawBottomTuck2 = raw.find((c) => c.name === "Bottom Tuck 2")!;
     const resultBottomTuck2 = result.find((c) => c.name === "Bottom Tuck 2")!;
-    expect(rawBottomTuck2.anchorX).toBeCloseTo(projection.px(-mmToInches(output.result.bottomTuck2)), 9);
-    expect(rawBottomTuck2.anchorY).toBeCloseTo(projection.py(mmToInches(output.result.railTuck1) / 2), 9);
+    const tuck2Start = output.segments.find((s) => s.key === "tuck2")!.p1;
+    expect(rawBottomTuck2.anchorX).toBeCloseTo(projection.px(mmToInches(tuck2Start.x)), 9);
+    expect(rawBottomTuck2.anchorY).toBeCloseTo(projection.py(mmToInches(tuck2Start.y)), 9);
     expect(rawBottomTuck2.y).toBeCloseTo(rawBottomTuck2.anchorY! - RAIL_CALLOUT_TUCK2_LIFT, 9);
     expect(resultBottomTuck2.y).toBeCloseTo(rawBottomTuck2.anchorY! - RAIL_CALLOUT_TUCK2_LIFT, 9);
   });

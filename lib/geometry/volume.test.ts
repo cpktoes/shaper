@@ -20,6 +20,8 @@ import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
+  DEFAULT_TIP_RAIL_SCALE,
+  ZERO_RAIL_NUDGES,
   type RailBandSpec,
   type RailFamily,
   type RailSectionSpec,
@@ -511,9 +513,9 @@ describe("blank-datasheet validation (D-14)", () => {
   const blankHalfWidthAt = (station: Mm): Mm => mm(samplePchip(halfWidthPoints, station));
 
   // A blank is uncut foam with square-ish edges, so pick the fullest rail treatment the calculator
-  // can produce: full deck (deckPercent 100, undomed), no corner cut removed AND a single tuck
-  // (both maximise how much of the section stays full-height foam), swept across every family at
-  // the blank's own centre station.
+  // can produce: full deck (deckPercent 100, undomed) AND a single tuck (both maximise how much of
+  // the section stays full-height foam), swept across every family at the blank's own centre
+  // station. The legacy Corner Cut keys are carried but read by nothing (quick 261102-gec, PC2).
   function railsWithFamily(family: RailFamily): RailBandSpec {
     const section: RailSectionSpec = {
       boardThickness: blankFoil.center,
@@ -525,6 +527,8 @@ describe("blank-datasheet validation (D-14)", () => {
       removeCornerCut: true,
       singleTuck: true,
       bottomTuck3Override: null,
+      scaleFromCenter: DEFAULT_TIP_RAIL_SCALE,
+      nudges: ZERO_RAIL_NUDGES,
     };
     return { nose: section, center: section, tail: section, tailHardEdge: true };
   }
@@ -548,13 +552,14 @@ describe("blank-datasheet validation (D-14)", () => {
   }
 
   // Measured by running this suite: Family 1 produced the largest centre-station cross-section
-  // (deckPercent 100, removeCornerCut true, singleTuck true) at 53104.7 mm2 — the fullest of the
-  // five families, as expected since Family 1 is this calculator's boxiest rail profile. Using
-  // Family 1 for the whole board, the computed volume is 79.72 L against the datasheet's stated
-  // 77.17 L — a 3.30% deviation, comfortably inside the 10% bar. (Re-measured in Phase 14 plan
-  // 14-04, when the foil moved onto the square-root fall through its five stations, which carries
-  // more foam between them; it read about 2.2% over on pchip in Phase 11 plan 11-04, and 1.01% on
-  // the older Fritsch–Carlson sampler before that.) The remaining gap is exactly what the 10%
+  // (deckPercent 100, singleTuck true) at 51714.2 mm2 — the fullest of the five families, as
+  // expected since Family 1 is this calculator's boxiest rail profile. Using Family 1 for the whole
+  // board, the computed volume is 77.98 L against the datasheet's stated 77.17 L — a 1.05%
+  // deviation, comfortably inside the 10% bar. (Re-measured in quick 261102-gec, 2026-11-02, when
+  // the rails moved onto the founder's Chris Rails v2 sheets — its apex grows with the rail's own
+  // thickness and there is no Corner Cut; it read 3.30% over in Phase 14 plan 14-04, when the foil
+  // moved onto the square-root fall, about 2.2% on pchip in Phase 11 plan 11-04, and 1.01% on the
+  // older Fritsch–Carlson sampler before that.) The remaining gap is exactly what the 10%
   // tolerance exists for: the app's boxiest rail band is still a shaped rail rather than a blank's
   // true square edge, and the plan curve between the five quoted widths is a pchip curve rather
   // than the blank's true outline curve.

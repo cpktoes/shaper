@@ -75,9 +75,10 @@ export const CALLOUT_BOTTOM_PAD = 34;
 /**
  * Categorical colours for the rail-band plot. These are signal/data colours held
  * deliberately outside the brand palette — a band's colour identifies *which band it is*,
- * so it must not drift toward meaning "selected" or "warning". The six hues below stay
- * hardcoded for that reason, and all six clear the 3:1 graphical bar on both the light and
- * the dark ground (lowest is tuck1 at 3.44:1 in dark).
+ * so it must not drift toward meaning "selected" or "warning". The five data hues below stay
+ * hardcoded for that reason, and all five clear the 3:1 graphical bar on both the light and
+ * the dark ground (lowest is tuck1 at 3.44:1 in dark). The Corner Cut's hue went with the Corner
+ * Cut itself: the founder's Chris Rails v2 sheets have none (quick 261102-gec, 2026-11-02).
  *
  * The four structural keys are the exception, and are not categorical at all: hardEdge and
  * the three `*Conn` connectors draw the board's own edge, which is an *ink* role, not a data
@@ -89,7 +90,6 @@ export const RAIL_SEGMENT_COLORS: Record<RailSegmentKey, string> = {
   domedBand: "#6b8e4e",
   band1: "var(--color-surf-accent-ink)",
   band2: "#b5563a",
-  cornerCut: "#4d8a86",
   hardEdge: "var(--color-surf-ink)",
   tuck1: "#7d5ba6",
   tuck2: "#3a6ea5",
@@ -699,7 +699,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         </g>
       ))}
       {callouts?.map((c) => {
-        // side 1 (Apex, Domed Taper, Rail Mark 1, Corner Cut, Tuck 1) sits near the apex (x=0, the
+        // side 1 (Apex, Domed Taper, Rail Mark 1, Tuck 1) sits near the apex (x=0, the
         // drawing's rightmost structure) and reads rightward from its own point; side -1 (every
         // deck/bottom-tuck-2 mark, further left) reads leftward, back toward the plot's own left
         // margin; side 0 (Bottom Tuck 1, Bottom Tuck 3) reads centred BELOW the x-axis, joined to

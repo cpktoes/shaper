@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Point2D } from "./board";
-import { finishedRailFromCuts, railCutFoam, type FinishedRail, type RailCutLine } from "./finished-rail";
+import { finishedRail, finishedRailFromCuts, railCutFoam, type FinishedRail, type RailCutLine } from "./finished-rail";
+import { ZERO_RAIL_NUDGES, computeRailSectionOutput, type RailFamily } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
 import { inchesToMm, mmToInches } from "./units";
 
@@ -98,17 +99,56 @@ describe("finishedRailFromCuts — agreement with the reference page (R13 d)", (
   });
 });
 
+describe("finishedRail — end to end, from the app's own rail section (quick 261102-gec)", () => {
+  it("draws every recorded finished rail from the app's own marks, matching the page's samples within a millionth of an inch", () => {
+    for (const curve of golden.finished) {
+      const { T, deck, F, top, sym, scale } = curve.input;
+      const output = computeRailSectionOutput(
+        scale === 1 ? "center" : "nose",
+        {
+          boardThickness: inchesToMm(T),
+          deckPercent: deck,
+          family: F as RailFamily,
+          ratioTopPercent: top,
+          symmetrical: sym,
+          cornerCutOffsetOverride: null,
+          removeCornerCut: false,
+          singleTuck: false,
+          bottomTuck3Override: null,
+          scaleFromCenter: scale,
+          nudges: ZERO_RAIL_NUDGES,
+        },
+        false,
+      );
+      // The drawing's own left edge (rule 12) is the page's x0.
+      expect(Math.abs(mmToInches(output.bounds.xAxisMin) - curve.x0)).toBeLessThan(1e-9);
+      const rail = finishedRail(output, inchesToMm(curve.x0));
+      expect(rail.samples.length, curve.label).toBe(curve.points.length);
+      rail.samples.forEach((p, i) => {
+        const [x, y] = inches(p);
+        expect(Math.abs(x - curve.points[i][0]), `${curve.label} sample ${i} x`).toBeLessThan(1e-6);
+        expect(Math.abs(y - curve.points[i][1]), `${curve.label} sample ${i} y`).toBeLessThan(1e-6);
+      });
+    }
+  });
+});
+
 describe("finishedRailFromCuts — never outside a cut (R13 a)", () => {
   it("keeps every sample inside or on the foam the cuts leave, on the workbook's sets and every grid case", () => {
+    // About 170,000 samples: every one outside is collected and asserted once.
+    const outside: string[] = [];
     for (const entry of everyEntry) {
       const cuts = cutsFor(entry);
       const bt = inchesToMm(entry.sheet.bt);
       const x0 = inchesToMm(x0InchesFor(entry));
       const foam = railCutFoam(cuts, bt, x0).map(inches);
       const rail = finishedRailFromCuts(cuts, bt, x0, false);
-      for (const p of rail.samples) expect(insideFoam(foam, inches(p), 1e-9)).toBe(true);
+      rail.samples.forEach((p, i) => {
+        if (!insideFoam(foam, inches(p), 1e-9)) outside.push(`${JSON.stringify(entry.input)} sample ${i}`);
+      });
     }
-  });
+    expect(outside).toEqual([]);
+  }, 30_000);
 });
 
 describe("finishedRailFromCuts — meets the rail only at the Apex Center (R13 b)", () => {
@@ -174,5 +214,5 @@ describe("finishedRailFromCuts — the steps draw the samples", () => {
         expect(rail.start).toEqual(rail.chain[0]);
       }
     }
-  });
+  }, 30_000);
 });

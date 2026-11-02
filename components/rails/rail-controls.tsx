@@ -3,7 +3,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
-  MIN_BOTTOM_TUCK_SEPARATION_IN,
   railFamilyLabel,
   type RailBandSpec,
   type RailFamily,
@@ -14,7 +13,7 @@ import {
 import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { railsImportedReadout } from "@/lib/geometry/imported-readout";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
-import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
+import { mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import { cn } from "@/lib/utils";
@@ -48,11 +47,6 @@ interface RailControlsProps {
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
-const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
-// Corner Cut Offset's computed defaults (cornerCutRailOffsetForInches in lib/geometry/rail-bands.ts)
-// are 1/8, 3/32, 1/16, 1/32, and 0 — a 1/16 step can't represent the 3/32 or 1/32 defaults, so this
-// slider needs its own finer-grained, narrower-range bounds. TUCK_BOUNDS stays as-is for Bottom Tuck 3.
-const CORNER_CUT_BOUNDS = { min: 0, max: 0.25, step: 1 / 32 };
 
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
 
@@ -171,38 +165,14 @@ function RailSectionControls({
   const deckProfileSliderStep = deckProfileStep(boardThicknessIn);
   const deckProfileSliderValue = 166 - spec.deckPercent;
   const thicknessSlider = measureSlider(spec.boardThickness, thicknessBounds, thicknessBounds.step, 1, system);
-  const cornerCutOffsetMm = output.result.cornerCutOffset ?? mm(0);
-  const cornerCutSlider = measureSlider(cornerCutOffsetMm, CORNER_CUT_BOUNDS, CORNER_CUT_BOUNDS.step, 1, system);
-  const bottomTuck3DerivedIn = mmToInches(output.result.bottomTuck3Derived);
-  // Dynamic bounds (GSD-added, not a static constant like TUCK_BOUNDS): Bottom Tuck 3 must never
-  // be draggable at or below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/
-  // thickness) — the min enforces the same strict separation as the geometry-layer floor. The max
-  // tracks the un-overridden derived value (computed in lib/, not here) so a symmetrical 4" value
-  // is always reachable and never pinned below a static 1.5" max that can't represent it. This
-  // bound is always computed in inches, regardless of system — measureSlider derives the metric
-  // domain from it the same way it does for every static *_BOUNDS constant.
-  const bottomTuck3Bounds = {
-    min: mmToInches(output.result.bottomTuck1) + MIN_BOTTOM_TUCK_SEPARATION_IN,
-    max: Math.max(TUCK_BOUNDS.max, bottomTuck3DerivedIn),
-    step: TUCK_BOUNDS.step,
-  };
-  const bottomTuck3Slider = measureSlider(
-    output.result.bottomTuck3,
-    bottomTuck3Bounds,
-    bottomTuck3Bounds.step,
-    1,
-    system,
-  );
   const hardEdgeOn = isTail ? !!tailHardEdge : false;
   const thicknessLabel = sectionThicknessLabel(system)[sectionKey];
 
+  // Quick 261102-gec (PC12): the Corner Cut and the old Bottom Tuck 3 setting are gone with the
+  // prototype's rules, so Reset puts Single Tuck back off, as before; plan 02 widens it to the scale
+  // and the seven nudges. A saved board's old Corner Cut and Bottom Tuck 3 settings stay stored, unread.
   const resetAdvanced = () => {
-    onChange({
-      cornerCutOffsetOverride: null,
-      bottomTuck3Override: null,
-      removeCornerCut: false,
-      singleTuck: false,
-    });
+    onChange({ singleTuck: false });
   };
 
   // The group's controls, built once so the two places that may draw them (below) never drift.
@@ -305,63 +275,23 @@ function RailSectionControls({
         </AdvancedHeading>
         {advancedOpen && (
           <div className="flex flex-col gap-3 pl-3 pt-3">
-            {/* Corner Cut Offset and Bottom Tuck 3 (below) both keep their own hand-rolled
-                markup — each one's heading line carries its own checkbox (Remove / Use
-                Single Tuck) beside the label, which SliderRow's plain-string `label` prop has
-                no slot for. Both are named in slider-row.test.ts's allowlist. */}
-            <div className={locked ? "opacity-40" : undefined}>
-              <div className="mb-1.5 flex items-center justify-between">
-                <div className="text-sm text-surf-ink-muted font-normal">
-                  Corner Cut Offset — {formatMark(cornerCutOffsetMm, system)}
-                </div>
-                <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-                  <Checkbox
-                    disabled={locked}
-                    checked={spec.removeCornerCut}
-                    onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
-                  />
-                  Remove
-                </label>
-              </div>
-              <div className={spec.removeCornerCut ? "opacity-40" : undefined}>
-                <Slider
-                  value={cornerCutSlider.value}
-                  min={cornerCutSlider.min}
-                  max={cornerCutSlider.max}
-                  step={cornerCutSlider.step}
-                  disabled={locked || spec.removeCornerCut}
-                  onValueChange={(v) => onChange({ cornerCutOffsetOverride: cornerCutSlider.toMm(sliderValue(v)) })}
-                  className="slider-accent"
-                />
-              </div>
-              <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">0 = falls on Rail Mark 1</div>
-            </div>
-
+            {/* Use Single Tuck on a line of its own (quick 261102-gec, PC12): it used to share the
+                Bottom Tuck 3 slider's heading line, and that slider went with the prototype's rules.
+                Hidden on the tail while Hard Edge is on, exactly as that row was. */}
             {(!isTail || !hardEdgeOn) && (
-              <div className={locked ? "opacity-40" : undefined}>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <div className="text-sm text-surf-ink-muted font-normal">
-                    Bottom Tuck 3 — {formatMark(output.result.bottomTuck3, system)}
-                  </div>
-                  <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-                    <Checkbox
-                      disabled={locked}
-                      checked={spec.singleTuck}
-                      onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
-                    />
-                    Use Single Tuck
-                  </label>
-                </div>
-                <Slider
-                  value={bottomTuck3Slider.value}
-                  min={bottomTuck3Slider.min}
-                  max={bottomTuck3Slider.max}
-                  step={bottomTuck3Slider.step}
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal",
+                  locked && "opacity-40",
+                )}
+              >
+                <Checkbox
                   disabled={locked}
-                  onValueChange={(v) => onChange({ bottomTuck3Override: bottomTuck3Slider.toMm(sliderValue(v)) })}
-                  className="slider-accent"
+                  checked={spec.singleTuck}
+                  onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
                 />
-              </div>
+                Use Single Tuck
+              </label>
             )}
 
             <button

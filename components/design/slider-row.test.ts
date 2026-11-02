@@ -49,9 +49,9 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
   },
   {
     file: RAILS_PATH,
-    count: 4,
+    count: 2,
     reason:
-      "Family (three hint captions), Ratio (four hint captions plus a Sym checkbox), Corner Cut Offset and Bottom Tuck 3 (each with a checkbox sharing the label's heading line) all carry shapes SliderRow's plain-string label and two-hint layout can't hold.",
+      "Family (three hint captions) and Ratio (its hint captions plus a Sym checkbox) are the one hand-built, level pair, a shape SliderRow's plain-string label and two-hint layout can't hold. (Corner Cut Offset and Bottom Tuck 3 went with the prototype's rules, quick 261102-gec.)",
   },
   {
     file: FINS_PATH,

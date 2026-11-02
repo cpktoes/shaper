@@ -25,7 +25,7 @@
 import type { OutlineSpec } from "./board";
 import type { FinAdvancedSpec, FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
-import type { RailBandSpec, RailSectionSpec } from "./rail-bands";
+import { RAIL_NUDGE_KEYS, type RailBandSpec, type RailSectionSpec } from "./rail-bands";
 import { inchesToMm, mmToInches, type Mm } from "./units";
 
 /** The most decimal places `formatPresetInches` will print — its comment says why six. */
@@ -145,6 +145,12 @@ function buildRailSectionSource(spec: RailSectionSpec, indent: string): string {
     `${pad}removeCornerCut: ${spec.removeCornerCut},`,
     `${pad}singleTuck: ${spec.singleTuck},`,
     `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
+    // Quick 261102-gec (PC1): the Chris Rails v2 sheets' "Scaled from center by" and the seven nudges,
+    // one line per `RAIL_NUDGE_KEYS` entry so no nudge can be missed.
+    `${pad}scaleFromCenter: ${spec.scaleFromCenter},`,
+    `${pad}nudges: {`,
+    ...RAIL_NUDGE_KEYS.map((key) => `${pad}  ${key}: inchesToMm(${formatPresetInches(spec.nudges[key])}),`),
+    `${pad}},`,
     `${indent}}`,
   ].join("\n");
 }
