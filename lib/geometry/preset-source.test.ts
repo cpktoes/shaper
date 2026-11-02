@@ -179,6 +179,15 @@ describe("preset source blocks", () => {
         boardThickness: inchesToMm(1.3125),
         cornerCutOffsetOverride: inchesToMm(3 / 32),
         bottomTuck3Override: inchesToMm(0.6875),
+        // Quick 261102-gec: a non-default scale and awkward 1/16" nudges paste back exactly (the
+        // whole-millimetre nudges are the next test's).
+        scaleFromCenter: 0.55,
+        nudges: {
+          ...DEFAULT_RAIL_BAND_SPEC.nose.nudges,
+          apexThickness: inchesToMm(-3 / 16),
+          deckMark1: inchesToMm(7 / 16),
+          bottomTuck3: inchesToMm(1 / 16),
+        },
       },
     };
     const fins: FinPlacementSpec = {
@@ -206,6 +215,21 @@ describe("preset source blocks", () => {
     expect(buildFinsPresetSource(fins)).toContain("forwardOffRailNudge: inchesToMm(-0.125),");
     expect(buildFinsPresetSource(fins)).toContain("rearOffRailNudge: inchesToMm(0.0625),");
     expect(buildRailsPresetSource(rails)).toContain("cornerCutOffsetOverride: inchesToMm(0.09375),");
+    expect(buildRailsPresetSource(rails)).toContain("scaleFromCenter: 0.55,");
+    expect(buildRailsPresetSource(rails)).toContain("deckMark1: inchesToMm(0.4375),");
+  });
+
+  it("whole-millimetre nudges from a Metric slider paste back within 0.0000127 mm, every other field exactly (quick 261102-gec)", () => {
+    const metricNudges = { deckMark3: mm(-7), bottomTuck2: mm(3), deckMark2: mm(-12), bottomTuck1: mm(6) };
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, nudges: { ...DEFAULT_RAIL_BAND_SPEC.center.nudges, ...metricNudges } },
+    };
+    const pasted = (pasteBlock(buildRailsPresetSource(rails)) as { rails: RailBandSpec }).rails;
+    for (const [key, stored] of Object.entries(metricNudges) as [keyof typeof metricNudges, number][]) {
+      expect(Math.abs(pasted.center.nudges[key] - stored), key).toBeLessThan(0.0000127);
+    }
+    expect({ ...pasted, center: { ...pasted.center, nudges: rails.center.nudges } }).toStrictEqual(rails);
   });
 });
 

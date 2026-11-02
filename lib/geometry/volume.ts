@@ -39,12 +39,16 @@
 import type { Point2D } from "./board";
 import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
-  RAIL_SECTION_CONSTANTS,
+  DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_KEYS,
+  ZERO_RAIL_NUDGES,
   type ComputeRailSectionInput,
   type RailBandSpec,
+  type RailMarkNudges,
   type RailSectionKey,
   buildRailProfile,
   computeRailSection,
+  effectiveDeckPercent,
 } from "./rail-bands";
 import {
   type Litres,
@@ -462,7 +466,7 @@ export interface CrossSectionVolumeResult {
 
 /** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
  * the outer value constant beyond the outer two anchors — the shared shape every continuous
- * per-station field (`deckPercent`, `ratioTopPercent`, `scale`, `domedBandBase`) blends through. */
+ * per-station field (`deckPercent`, `ratioTopPercent`, the scale and each nudge) blends through. */
 function blendContinuous(
   station: number,
   tailStation: number,
@@ -525,13 +529,18 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * stations, rather than substituting one of the approved design's named boxy/medium/tapered
  * profiles. A station between the three rail-band anchors (tail 12", centre, nose 12") gets a
  * `RailSectionSpec`-shaped input built by blending those three known sections: the CONTINUOUS
- * fields (`deckPercent`, `ratioTopPercent`, and the per-section `scale`/`domedBandBase` from
- * `RAIL_SECTION_CONSTANTS`) are linearly interpolated across station and held constant outboard of
- * the outer two anchors; the DISCRETE fields (`family`, `symmetrical`, `removeCornerCut`,
- * `singleTuck`, `cornerCutOffsetOverride`, `bottomTuck3Override`) come from the nearest anchor
- * section wholesale, because a family index or a boolean cannot be interpolated. `tailHardEdge`
- * applies only at stations whose nearest anchor is the tail. This makes the integrated volume
- * truthful to the board actually drawn, station by station, rather than to a canned profile shape.
+ * fields — `deckPercent` (each anchor held at 75% or more first, R7), `ratioTopPercent`, the
+ * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
+ * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
+ * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
+ * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`) come from the
+ * nearest anchor section wholesale, because a family index or a boolean cannot be interpolated.
+ * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
+ * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
+ * follows the board's own thickness along its length. Volume reads the CUT, faceted rail (R5) — the
+ * profile is proven to enclose exactly the foam the cuts leave; the drawn finished rail is not
+ * integrated. This makes the integrated volume truthful to the board actually drawn, station by
+ * station, rather than to a canned profile shape.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   const { halfWidthAt, foil, rails, length } = input;
@@ -545,9 +554,12 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
   const centerStation = centerAnchor.station;
   const noseStation = noseAnchor.station;
 
-  const tailConst = RAIL_SECTION_CONSTANTS.tail;
-  const centerConst = RAIL_SECTION_CONSTANTS.center;
-  const noseConst = RAIL_SECTION_CONSTANTS.nose;
+  // A section saved before quick 261102-gec reads its defaults (design-snapshot rule 10).
+  const tailScale = rails.tail.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const noseScale = rails.nose.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const tailNudges = rails.tail.nudges ?? ZERO_RAIL_NUDGES;
+  const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
+  const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
 
   const h = length / SIMPSON_PANEL_COUNT;
   const stationAreas: number[] = [];
@@ -566,11 +578,11 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     const deckPercent = blendContinuous(
       station,
       tailStation,
-      rails.tail.deckPercent,
+      effectiveDeckPercent(rails.tail.deckPercent),
       centerStation,
-      rails.center.deckPercent,
+      effectiveDeckPercent(rails.center.deckPercent),
       noseStation,
-      rails.nose.deckPercent,
+      effectiveDeckPercent(rails.nose.deckPercent),
     );
     const ratioTopPercent = blendContinuous(
       station,
@@ -581,26 +593,23 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
       noseStation,
       rails.nose.ratioTopPercent,
     );
-    const scale = blendContinuous(
-      station,
-      tailStation,
-      tailConst.scale,
-      centerStation,
-      centerConst.scale,
-      noseStation,
-      noseConst.scale,
-    );
-    const domedBandBase = mm(
-      blendContinuous(
-        station,
-        tailStation,
-        tailConst.domedBandBase,
-        centerStation,
-        centerConst.domedBandBase,
-        noseStation,
-        noseConst.domedBandBase,
-      ),
-    );
+    const scale = blendContinuous(station, tailStation, tailScale, centerStation, 1, noseStation, noseScale);
+    const nudges = Object.fromEntries(
+      RAIL_NUDGE_KEYS.map((key) => [
+        key,
+        mm(
+          blendContinuous(
+            station,
+            tailStation,
+            tailNudges[key],
+            centerStation,
+            centerNudges[key],
+            noseStation,
+            noseNudges[key],
+          ),
+        ),
+      ]),
+    ) as RailMarkNudges;
 
     const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
     const nearestSpec = rails[nearestKey];
@@ -611,23 +620,17 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
     const sectionInput: ComputeRailSectionInput = {
       thickness: thicknessEff,
+      boardThickness: thickness,
       ratioTopPercent,
       family: nearestSpec.family,
-      domedBandBase,
       scale,
-      cornerCutOffsetOverride: nearestSpec.cornerCutOffsetOverride,
-      removeCornerCut: nearestSpec.removeCornerCut,
+      nudges,
       singleTuck: nearestSpec.singleTuck,
-      bottomTuck3Override: nearestSpec.bottomTuck3Override,
       symmetrical: nearestSpec.symmetrical,
       hardEdge: nearestKey === "tail" && rails.tailHardEdge,
     };
     const result = computeRailSection(sectionInput);
-    const profile = buildRailProfile(result, thicknessEff, domed, {
-      boardThickness: thickness,
-      railThicknessVal: railThicknessClamped,
-      domedBandBase,
-    });
+    const profile = buildRailProfile(result);
     const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
 
     stationAreas.push(stationArea(profilePairs, thickness, halfWidth));

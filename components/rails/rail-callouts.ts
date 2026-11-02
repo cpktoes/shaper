@@ -20,14 +20,9 @@
  * This file otherwise ports the prototype's own `buildPlot` anchor list (Rails.dc.html lines
  * 1093-1132), with four deliberate departures from it (quick task 260908-cme):
  *
- * (a) Corner Cut's anchor moved from the prototype's `(-cornerCutDeck, railMark1)` to its own
- * segment's apex end `(0, cornerCutRail)`, and its side from −1 to 1. At the prototype's anchor,
- * "Corner Cut" and "Rail Mark 1" printed on one line about 20px apart either side of the apex and
- * read as one run of text — the shaper's own report. Corner Cut's apex end is 3.5px below Rail
- * Mark 1 on the real example rail, so it genuinely IS an apex-column mark, and its name now stacks
- * in that column under Rail Mark 1, in the marks' own top-to-bottom order. This is a layout change
- * only: `buildSegmentDefsInches` still draws the cornerCut segment between exactly the same two
- * endpoints it always has.
+ * (a) Corner Cut used to carry a name here too, stacked under Rail Mark 1. The founder's Chris Rails
+ * v2 sheets have no Corner Cut (quick 261102-gec, 2026-11-02), so the mark, its name and its colour
+ * are gone.
  *
  * (b) Bottom Tuck 2 is a name the prototype's list never had, although the point and its own
  * coloured `tuck2` line have always been drawn — added here so no drawn mark on the teaching
@@ -104,14 +99,11 @@ export interface RailCallout {
   anchorY?: number;
 }
 
-/** The eleven marks' fixed identity — key, name and side never change with geometry, only their
- * `x`/`y` position does (ten on a rail with no second tuck line — Bottom Tuck 2 is filtered out
+/** The ten marks' fixed identity — key, name and side never change with geometry, only their
+ * `x`/`y` position does (nine on a rail with no second tuck line — Bottom Tuck 2 is filtered out
  * by `buildRailCallouts` when `hasTuck2` is false). Exported so a name/side/order assertion never
- * needs a full geometry fixture to check against.
- *
- * Corner Cut must come immediately after Rail Mark 1: the two anchors start 3.5px apart on the real
- * example rail, and the de-overlap pass's stable sort falls back to input order, so this array
- * position is what fixes Corner Cut under Rail Mark 1 rather than over it.
+ * needs a full geometry fixture to check against. The de-overlap pass's stable sort falls back to
+ * input order, so the apex column's names read in the marks' own top-to-bottom order.
  *
  * `dy` (viewBox units, optional) now has three jobs, not one: a negative lift off a drawn line
  * (Deck 3, Deck 1, `-RAIL_CALLOUT_EDGE_LIFT`), a negative lift off the two tuck lines that cross at
@@ -122,7 +114,6 @@ export const RAIL_CALLOUT_ANCHORS: readonly { key: string; name: string; side: R
   { key: "apex", name: "Apex", side: 1 },
   { key: "domedTaper", name: "Domed Taper", side: 1 },
   { key: "railMk1", name: "Rail Mark 1", side: 1 },
-  { key: "cornerCut", name: "Corner Cut", side: 1 },
   { key: "deck3", name: "Deck 3", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
   { key: "deck2", name: "Deck 2", side: -1 },
   { key: "deck1", name: "Deck 1", side: -1, dy: -RAIL_CALLOUT_EDGE_LIFT },
@@ -141,7 +132,7 @@ export interface RailCalloutProjection {
 }
 
 /**
- * Builds the eleven mark callouts for one rail section's output (ten on a rail with no second
+ * Builds the ten mark callouts for one rail section's output (nine on a rail with no second
  * tuck line — a single-tuck or hard-edged section has no Bottom Tuck 2 point to name).
  * `thickness` is the section's own effective thickness (`output.thicknessEff`) — the same value
  * `buildRailSegments` was called with — because Deck 1 and Deck 3 sit at that height, not at the
@@ -162,6 +153,7 @@ export function buildRailCallouts(
 
   const band1 = output.segments.find((s) => s.key === "band1");
   const domedBand = output.segments.find((s) => s.key === "domedBand");
+  const tuck2 = output.segments.find((s) => s.key === "tuck2");
 
   const deckMark1In = mmToInches(r.deckMark1);
   const deckMark2In = mmToInches(r.deckMark2);
@@ -185,21 +177,17 @@ export function buildRailCallouts(
     apex: { x: 0, y: mmToInches(r.apexCenter) },
     domedTaper: { x: 0, y: domedTaperYIn },
     railMk1: { x: 0, y: mmToInches(r.railMark1) },
-    // Corner Cut's anchor is its own segment's apex end (0, cornerCutRail) — the `cornerCut`
-    // segment's own p1 in buildSegmentDefsInches (rail-bands.ts) — not the deck end and not
-    // Rail Mark 1's height. `?? r.railMark1` covers the `removeCornerCut` case where `cornerCutRail`
-    // is null and no cornerCut segment is drawn at all, reproducing exactly where the name sat
-    // before this anchor moved.
-    cornerCut: { x: 0, y: mmToInches(r.cornerCutRail ?? r.railMark1) },
     deck3: { x: -mmToInches(r.deckMark3), y: thicknessIn },
     deck2: { x: -deckMark2In, y: deck2YIn },
     deck1: { x: -deckMark1In, y: thicknessIn },
     tuck1: { x: 0, y: mmToInches(r.railTuck1) },
     bottomTuck1: { x: -mmToInches(r.bottomTuck1), y: 0 },
-    // The `tuck2` segment's own p1 in buildSegmentDefsInches — read from that same expression
-    // rather than inventing a second way to locate the point, so the name and the line it labels
-    // can never drift apart.
-    bottomTuck2: { x: -mmToInches(r.bottomTuck2), y: mmToInches(r.railTuck1) / 2 },
+    // The `tuck2` segment's own start, read from the built segment rather than located a second way,
+    // so the name follows a nudged Bottom Tuck 2 along the Tuck 1 line (quick 261102-gec: Tuck 2
+    // starts ON Tuck 1's line at Bottom Tuck 2) and the name and the line it labels never drift apart.
+    bottomTuck2: tuck2
+      ? { x: mmToInches(tuck2.p1.x), y: mmToInches(tuck2.p1.y) }
+      : { x: -mmToInches(r.bottomTuck2), y: 0 },
     bottomTuck3: { x: -mmToInches(r.bottomTuck3), y: 0 },
   };
 
@@ -207,7 +195,6 @@ export function buildRailCallouts(
     apex: APEX_CENTER_COLOR,
     domedTaper: RAIL_SEGMENT_COLORS.domedBand,
     railMk1: RAIL_SEGMENT_COLORS.band1,
-    cornerCut: RAIL_SEGMENT_COLORS.cornerCut,
     deck3: RAIL_SEGMENT_COLORS.band1,
     deck2: RAIL_SEGMENT_COLORS.band1,
     deck1: RAIL_SEGMENT_COLORS.band1,
@@ -218,7 +205,7 @@ export function buildRailCallouts(
   };
 
   // Bottom Tuck 2 is emitted only when its own line is drawn (hasTuck2) — a single-tuck or
-  // hard-edged section simply produces no such callout, ten instead of eleven.
+  // hard-edged section simply produces no such callout, nine instead of ten.
   const anchors = RAIL_CALLOUT_ANCHORS.filter((a) => a.key !== "bottomTuck2" || hasTuck2);
 
   return anchors.map((anchor) => {

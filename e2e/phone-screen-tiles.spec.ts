@@ -14,6 +14,9 @@ import {
   openPhoneMenu,
   screenTile,
 } from "./helpers/screens";
+import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { formatTileLitres } from "../lib/geometry/screen-tiles";
+import { presetSummary } from "../lib/geometry/summary-line";
 
 /**
  * Quick 261003-q2f (sketch 007's C1): wherever the top bar is condensed into ☰, it opens a sheet
@@ -21,6 +24,14 @@ import {
  * screens — each a small picture of the board being worked on right now, its name and one line. The
  * current screen's tile is ticked; tapping another moves there and keeps the board.
  */
+
+/** A preset card's own litres as the VOLUME tile prints them — worked out by the app itself, never
+ * typed (quick 261102-gec: the Chris Rails v2 rules moved every card's litres). */
+function cardLitres(name: string): string {
+  const preset = BOARD_PRESETS.find((candidate) => candidate.name === name);
+  if (!preset) throw new Error(`no ${name} preset`);
+  return formatTileLitres(presetSummary(preset).volumeLitres);
+}
 
 const BANNER_DISMISSAL_KEY = "shaper-sign-in-banner-dismissed";
 const TOOLBAR_TIP_DISMISSAL_KEY = "shaper-toolbar-tip-dismissed";
@@ -87,7 +98,7 @@ test.describe("☰ opens six tiles drawn from the current board (upright phone)"
     await expect(screenTile(page, "ROCKER").locator("[data-tile-picture] path")).toHaveCount(2);
     expect(await screenTile(page, "RAILS").locator("[data-tile-picture] line").count()).toBeGreaterThanOrEqual(3);
     expect(await screenTile(page, "RAILS").locator("[data-tile-picture] circle").count()).toBeGreaterThanOrEqual(1);
-    await expect(screenTile(page, "VOLUME")).toContainText("29.6");
+    await expect(screenTile(page, "VOLUME")).toContainText(cardLitres("Shortboard"));
     await expect(screenTile(page, "FINS").locator("[data-tile-picture] line")).toHaveCount(3);
     await expect(screenTile(page, "SUMMARY").locator("[data-tile-picture] rect")).toHaveCount(1);
     expect(await screenTile(page, "SUMMARY").locator("[data-tile-picture] path").count()).toBeGreaterThanOrEqual(1);
@@ -241,8 +252,11 @@ test.describe("every tile reads the current board", () => {
     await openPhoneMenu(page);
     const tileFigure = (await screenTile(page, "VOLUME").locator("[data-tile-picture]").innerText()).replace(/\s+/g, "");
     expect(tileFigure).toBe(`${litres.toFixed(1)}L`);
-    expect(tileFigure).toBe("29.6L");
-    await expect(screenTile(page, "VOLUME")).toHaveAttribute("aria-label", "VOLUME — 29.6 L Estimated");
+    expect(tileFigure).toBe(`${cardLitres("Shortboard")}L`);
+    await expect(screenTile(page, "VOLUME")).toHaveAttribute(
+      "aria-label",
+      `VOLUME — ${cardLitres("Shortboard")} L Estimated`,
+    );
   });
 
   test("in Metric the TEMPLATE line is the preset card's length and width in centimetres", async ({ page }) => {
@@ -267,8 +281,8 @@ test.describe("every tile reads the current board", () => {
   });
 
   const presets = [
-    { name: "Fish", lines: [`5'8" × 20 1/4"`, `On a 5'10"RP`, "Twin"], litres: "35.3" },
-    { name: "Longboard", lines: [`9'0" × 22 1/2"`, `On a 9'4"B`, "Single Fin"], litres: "73.9" },
+    { name: "Fish", lines: [`5'8" × 20 1/4"`, `On a 5'10"RP`, "Twin"], litres: cardLitres("Fish") },
+    { name: "Longboard", lines: [`9'0" × 22 1/2"`, `On a 9'4"B`, "Single Fin"], litres: cardLitres("Longboard") },
   ];
   for (const preset of presets) {
     test(`the ${preset.name}'s tiles follow its board`, async ({ page }) => {

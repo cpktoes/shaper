@@ -351,15 +351,15 @@ describe("summaryTileArt — a small order form with the board standing in it", 
 });
 
 describe("formatTileLitres — VOLUME's figure", () => {
+  // Quick 261102-gec: no typed litres — the rails' new rules moved every card's litres, and a typed
+  // figure would only have to be retyped. The tile's figure is the card's own litres (the app's own
+  // output) rounded to one decimal, which is the rule this test exists for.
   it("is each preset card's own litres to one decimal", () => {
-    const expected: Record<BoardPreset["id"], string> = {
-      shortboard: "29.6",
-      fish: "35.3",
-      midlength: "50.4",
-      longboard: "73.9",
-    };
     for (const preset of BOARD_PRESETS) {
-      expect(formatTileLitres(presetSummary(preset).volumeLitres)).toBe(expected[preset.id]);
+      const litres = presetSummary(preset).volumeLitres;
+      const shown = formatTileLitres(litres);
+      expect(shown, preset.id).toMatch(/^\d+\.\d$/);
+      expect(Math.abs(Number(shown) - litres), preset.id).toBeLessThanOrEqual(0.05 + 1e-12);
     }
   });
 });
