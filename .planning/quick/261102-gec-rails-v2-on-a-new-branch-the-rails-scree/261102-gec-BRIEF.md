@@ -276,6 +276,21 @@ SendMessage after the look). The planner writes BOTH plans now; plan 02 may be r
 - **R15 — Phone**: every new slider is `SliderRow` (touch-sized), the Advanced menu works in the stacked phone layout, and
   the phone e2e tests run (`npm run test:e2e:phone` inside the worktree with `PW_PORT`).
 
+## 4b. The founder's answers to the planner's questions (2026-11-02, while plan 01 ran — locked)
+
+Asked by the orchestrator after reading both plans; each answer confirms the planner's choice, so plan 02 stands as
+written.
+
+- **Hard Edge stays under Ratio on the tail** (PC16), not in Advanced.
+- **The finished rail is a screen aid only**: drawn on the VIEWER and the full-size view, never on the printed order
+  form (PC21).
+- **Sym moves to its own line under the Ratio marks** (PC15), because "Ratio — 62.5/37.5" plus the Sym box no longer fit
+  the half-width column side by side.
+- **The guard rails stay** (PC4, PC5 and the 1/16" floors): at 80/20 with Family 1-3 on the default thicknesses Bottom
+  Tuck 1 and 2 read 1/16" and Bottom Tuck 3 reads 1/8".
+- Still owed, after plan 01's litres table: whether volume moves to the finished curve (R5) — the founder asked to see
+  the before-and-after litres first.
+
 ## 5. Pointers
 
 - The reference page's two blocks: `reference/sketches/018-chris-rails-v2.js` (F2). The page itself is an Artifact the
