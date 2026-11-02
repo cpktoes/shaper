@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 01, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for the founder's Chris Rails v2 rules: every rail's marks now come from their two new
+ * sheets and the Corner Cut is gone. Old and new were compared before re-recording. On RAILS only the three
+ * cross-sections, their dots and the key changed (no Corner Cut line or key entry, the dome band 2.4 x the
+ * thickness, the new marks); the sidebar and the top bar are unchanged. On VOLUME the default board reads
+ * 30.73 L instead of 30.51 L, and the Tail and Nose Cross-Section Thickness rows read 1 1/2" and 1 1/4" instead
+ * of 1 7/16" and 1 3/16" — each is that end's average thickness across its 12" cross-section, worked from the
+ * same rail profile the litres use, so all three moved for the one reason; nothing else on VOLUME moved.
+ * TEMPLATE, ROCKER and FINS passed unchanged and were not re-recorded. RAILS was rendered by the webpack dev
+ * server (`IS_WEBPACK_TEST=1`, port 3172) in the plan's worktree, VOLUME by the same server from the main
+ * checkout (port 3100), both on this Mac. SHA-256 (first 8 characters), old to new: RAILS 199a6b0a to
+ * f7bc899f, VOLUME c698ede0 to 8069a93a.
+ *
  * RE-RECORDED 2026-10-19 (quick 261019-gqo, plan 02) — ROCKER only, `rocker-desktop.png`, for the new PLANING
  * tab: the panel's tab strip now reads VIEWER, PLANING, DATASHEET on a computer. Old and new were compared
  * before re-recording (421 pixels differ): only the tab strip gained a word; the sidebar, the drawing and the
