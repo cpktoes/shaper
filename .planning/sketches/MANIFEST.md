@@ -84,6 +84,14 @@ button with a thumbnail; every blank long enough listed, too-thin and won't-fit 
 length; filters for maker, length range and nose rocker range; picking closes the popup; a full-screen sheet on a
 phone). The sketch draws all three placements on all 219 real blanks with the app's own curves and fit verdicts.
 
+### The finished rail (sketch 018, 2026-10-20)
+
+The founder: "what the rails plots would look like if we added a spline showing what the finished rail is intended to
+look like" — a super fast sketch. The curve is the cut section (the board's block with every band sliced off) with each
+corner blended by a parabola that touches every band at its middle: never outside a cut, a hard edge left sharp. Drawn on
+the app's own nose, center and tail sections with the RAILS sidebar live (the app's rail maths bundled in), three ways: an ink line over today's bands, the
+finished foam shaded, and the foam the blend takes off each band edge with its depth.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -112,6 +120,7 @@ phone). The sketch draws all three placements on all 219 real blanks with the ap
 | 015 | visual-blank-selector | Where does a picker that shows each blank live on ROCKER — a BLANKS tab, a popup window, or today's list with drawings — and do blanks lie flat or stand upright on a phone? | **B — A popup window** (flat by default, Flat / Upright and Show my board — on by default — in the filter bar, each blank fills its card) | rocker, blank, picker, catalogue, favourites, tabs, popup, phone |
 | 016 | custom-rocker | With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker (nose and tail changes in the US Blanks notation, up to two per end), and how do the drawing, the name and the DATASHEET show it? | **D — Customize Rocker under the blank card, a popup** (the founder, 2026-10-16 after sixteen rounds: "This now looks perfect. Let's build it.") | rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation |
 | 017 | imported-dims | How should the INPUTS block show the dimensions a screen imports, so they are noticeable and read cleanly — one line or one line each, in a card, in the accent colour? | **C — Readout card** (the founder, 2026-10-18: "Go with C readout card, figures in accent = off") | sidebar, inputs, imported, typography, phone |
+| 018 | finished-rail-curve | What would the RAILS cross-sections look like with a curve showing the finished rail — the shape left once the bands are blended — drawn over today's bands? | **Blended halfway** (the founder, 2026-11-02: every corner blended halfway into the bands either side of it, so it always meets the rail at the Apex Center — picked over One even round; built into the RAILS screen with the Chris Rails v2 sheets by quick 261102-gec on branch rails-v2) | rails, viewer, cross-section, geometry, finished-rail |
 
 ## Decisions These Lock In
 
