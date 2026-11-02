@@ -288,8 +288,9 @@ written.
   the half-width column side by side.
 - **The guard rails stay** (PC4, PC5 and the 1/16" floors): at 80/20 with Family 1-3 on the default thicknesses Bottom
   Tuck 1 and 2 read 1/16" and Bottom Tuck 3 reads 1/8".
-- Still owed, after plan 01's litres table: whether volume moves to the finished curve (R5) — the founder asked to see
-  the before-and-after litres first.
+- **Volume moves to the finished curve** (answered after plan 01's litres table, 2026-11-02: "Switch to the finished
+  curve"): plan 03, written by the planner the same day, wave 3 after plan 02 — one basis for every quoted litre,
+  the cut, faceted profile kept only as the base of the exact sum (plan 03's D-V1, PV1-PV7).
 
 ## 5. Pointers
 
