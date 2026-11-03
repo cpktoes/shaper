@@ -90,6 +90,7 @@ function specFor(input: GoldenInput, extra: Partial<RailSectionSpec> = {}): Rail
     cornerCutOffsetOverride: null,
     removeCornerCut: false,
     singleTuck: false,
+    sharpBottomEdge: false,
     bottomTuck3Override: null,
     scaleFromCenter: input.scale,
     nudges: ZERO_RAIL_NUDGES,
@@ -915,7 +916,7 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
     }
   });
 
-  it("defaultRailAdvanced: every nudge 0, Single Tuck off, the tips' scale at its default (1 since fast task 189) and the centre's 1 — a new board's own values (PC20)", () => {
+  it("defaultRailAdvanced: every nudge 0, Single Tuck off, Sharp Bottom Edge off (plan 05, R22), the tips' scale at its default (1 since fast task 189) and the centre's 1 — a new board's own values (PC20)", () => {
     for (const key of ["nose", "center", "tail"] as const) {
       const advanced = defaultRailAdvanced(key);
       expect(advanced.nudges).toEqual(ZERO_RAIL_NUDGES);
@@ -923,6 +924,8 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
       expect(advanced.scaleFromCenter).toBe(key === "center" ? 1 : DEFAULT_TIP_RAIL_SCALE);
       expect(advanced.nudges).toEqual(DEFAULT_RAIL_BAND_SPEC[key].nudges);
       expect(advanced.singleTuck).toBe(DEFAULT_RAIL_BAND_SPEC[key].singleTuck);
+      expect(advanced.sharpBottomEdge).toBe(false);
+      expect(advanced.sharpBottomEdge).toBe(DEFAULT_RAIL_BAND_SPEC[key].sharpBottomEdge);
       expect(advanced.scaleFromCenter).toBe(DEFAULT_RAIL_BAND_SPEC[key].scaleFromCenter);
     }
   });

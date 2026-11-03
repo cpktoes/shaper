@@ -133,6 +133,13 @@
  *    store keeps the rule as a shaper ticks either box; this reader keeps it for a board saved before the
  *    rule, or by hand: a tail stored with both opens with Hard Edge winning and Symmetrical off, nothing
  *    rewritten until the shaper saves. The other rails' Symmetrical is never touched. Version stays 5.
+ * 12. Each rail section carries `sharpBottomEdge`, the Sharp Bottom Edge box (quick 261102-gec plan 05,
+ *    R22, 2026-11-02 — the founder: "an advanced checkbox for leaving the bottom edge fairly sharp (follow
+ *    the angle at bottom tuck 3)"). Absent — every board saved before it — or anything that is not a
+ *    boolean reads off, so an old board opens exactly as it was and a crafted value never rejects the
+ *    board. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
+ *    drops the unknown key, so a board saved here with the box ticked still opens there, unticked. No
+ *    database change — rails live in the `snapshot` JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -389,6 +396,8 @@ const railSectionSpecSchema = (defaultScale: number) =>
     cornerCutOffsetOverride: z.number().nullable(),
     removeCornerCut: z.boolean(),
     singleTuck: z.boolean(),
+    // Rule 12 (plan 05, R22): the Sharp Bottom Edge box — absent or not a boolean reads off.
+    sharpBottomEdge: z.boolean().catch(false),
     bottomTuck3Override: z.number().nullable(),
     scaleFromCenter: z.number().catch(defaultScale),
     nudges: railMarkNudgesSchema,

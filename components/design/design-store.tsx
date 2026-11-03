@@ -896,8 +896,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   };
 
   // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
-  // R18) — the scale back to its default, Single Tuck off and, on the tail, Hard Edge back on (the
-  // founder's rule) — all in one setState, so it is ONE undo step. A discrete action like
+  // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Edge off (plan 05, R22: through
+  // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
+  // rule) — all in one setState, so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).
   const resetRailAdvanced = (key: RailSectionKey) => {
     if (lockedRef.current) return;

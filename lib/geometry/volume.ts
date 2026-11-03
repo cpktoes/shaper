@@ -574,8 +574,9 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
  * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
  * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
- * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`) come from the
- * nearest anchor section wholesale, because a family index or a boolean cannot be interpolated.
+ * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
+ * 261102-gec plan 05 `sharpBottomEdge`, R22/PC39) come from the nearest anchor section wholesale, because
+ * a family index or a boolean cannot be interpolated.
  * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
  * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
  * follows the board's own thickness along its length.
@@ -585,7 +586,9 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * the bands either side, the curve RAILS draws — not the raw band cuts. It is worked out exactly, not by
  * sampling the curve (PV1): the cut area comes from the faceted profile as before (proven to enclose
  * exactly the foam the cuts leave), and both rails' blend areas come off it (`railBlendArea` of
- * `sectionFinishedRail`, a third of each blended corner's triangle). The faceted profile survives only
+ * `sectionFinishedRail`, the cut's own area less Green's theorem on the finished curve — plan 05). Since
+ * plan 05 (R22/R23) that curve rolls off the deck by the founder's continuous one-curve rule and keeps its
+ * bottom edge sharp at Bottom Tuck 3 where the nearest rail's box asks for it. The faceted profile survives only
  * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
  * station, rather than to a canned profile shape.
  */
@@ -675,6 +678,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
       scale,
       nudges,
       singleTuck: nearestSpec.singleTuck,
+      sharpBottomEdge: nearestSpec.sharpBottomEdge,
       symmetrical: nearestSpec.symmetrical,
       hardEdge: nearestKey === "tail" && rails.tailHardEdge,
     };

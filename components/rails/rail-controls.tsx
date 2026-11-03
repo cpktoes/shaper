@@ -337,10 +337,10 @@ function RailSectionControls({
         {advancedOpen && (
           <div className="flex flex-col gap-3 pl-3 pt-3">
             {/* The fuller Advanced menu (quick 261102-gec plan 02, the founder's brief 2026-11-02), in
-                the order PC32 (plan 04) sets: the scale on the nose and tail; Apex Thickness, Deck Mark 1,
-                Deck Mark 3 and the Domed Deck Band right under it (R18, the founder: "I would like to add
-                an advanced slider for the domed deck mark though."); Use Single Tuck just above the slider
-                it hides; Bottom Tuck 1 and 3; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                the order PC32 (plan 04) set and PC40 (plan 05) extends: the scale on the nose and tail; Apex
+                Thickness, Deck Mark 1, Deck Mark 3 and the Domed Deck Band right under it (R18, the founder:
+                "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
+                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Edge (R22); Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
                 "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
@@ -389,8 +389,29 @@ function RailSectionControls({
             {showBottomTuck1 && nudgeRow("bottomTuck1")}
             {showTucks && nudgeRow("bottomTuck3")}
 
-            {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck off and,
-                on the tail, Hard Edge back on — one store action, so one undo step. */}
+            {/* Sharp Bottom Edge (quick 261102-gec plan 05, R22, PC40 — the founder, 2026-11-02: "an
+                advanced checkbox for leaving the bottom edge fairly sharp (follow the angle at bottom
+                tuck 3)"). Ticked, the finished rail keeps the corner at Bottom Tuck 3 as the cut leaves
+                it, so the box sits right after Bottom Tuck 3's slider. It hides with the tuck controls
+                on the tail while Hard Edge is on: a hard edge is already sharp at the bottom. */}
+            {showTucks && (
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal",
+                  locked && "opacity-40",
+                )}
+              >
+                <Checkbox
+                  disabled={locked}
+                  checked={spec.sharpBottomEdge}
+                  onCheckedChange={() => onChange({ sharpBottomEdge: !spec.sharpBottomEdge })}
+                />
+                Sharp Bottom Edge
+              </label>
+            )}
+
+            {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
+                Sharp Bottom Edge off (plan 05) and, on the tail, Hard Edge back on — one store action, so one undo step. */}
             <button
               type="button"
               disabled={locked}

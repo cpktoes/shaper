@@ -498,6 +498,42 @@ describe("computeCrossSectionVolume", () => {
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
   });
 
+  // Sharp Bottom Edge (quick 261102-gec plan 05, R22, PC39): each station takes the box from its nearest
+  // rail, as it takes Single Tuck, and keeps the foam that corner's blend used to take off. Every figure is
+  // the same board with the box off — never a typed area.
+  it("Sharp Bottom Edge ticked on the centre (and on a hard-edge tail) keeps foam only at the stations nearest the centre, and the litres rise", () => {
+    const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+    const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
+    const length = DEFAULT_BOARD_SPEC.outline.length;
+    const run = (rails: RailBandSpec) =>
+      computeCrossSectionVolume({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
+    expect(DEFAULT_RAIL_BAND_SPEC.tailHardEdge).toBe(true);
+    const off = run(DEFAULT_RAIL_BAND_SPEC);
+    const on = run({
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomEdge: true },
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomEdge: true },
+    });
+    // Which rail each station reads: the nearest of the three anchors (tail 12", centre, nose 12").
+    const anchors = foilStationPoints(DEFAULT_FOIL_SPEC, length);
+    const [tail, center, nose] = [anchors[1].station, anchors[2].station, anchors[3].station];
+    const h = length / SIMPSON_PANEL_COUNT;
+    const counted = { tail: 0, center: 0, nose: 0 };
+    off.stationBlendAreas.forEach((blendOff, i) => {
+      const s = i * h;
+      const [dT, dC, dN] = [Math.abs(s - tail), Math.abs(s - center), Math.abs(s - nose)];
+      const nearest = dT <= dC && dT <= dN ? "tail" : dC <= dN ? "center" : "nose";
+      if (blendOff === 0) return;
+      counted[nearest]++;
+      if (nearest === "center") expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
+      else expect(on.stationBlendAreas[i], `station ${i}`).toBe(blendOff);
+    });
+    expect(counted.tail).toBeGreaterThan(0);
+    expect(counted.center).toBeGreaterThan(0);
+    expect(counted.nose).toBeGreaterThan(0);
+    expect(on.volumeLitres).toBeGreaterThan(off.volumeLitres);
+  });
+
   it("scaling every foil station by two roughly doubles the result, and halving roughly halves it", () => {
     const halfWidthAt = defaultBoardHalfWidthAt();
     const base = computeCrossSectionVolume({
@@ -593,6 +629,7 @@ describe("blank-datasheet validation (D-14)", () => {
       cornerCutOffsetOverride: null,
       removeCornerCut: true,
       singleTuck: true,
+      sharpBottomEdge: false,
       bottomTuck3Override: null,
       scaleFromCenter: DEFAULT_TIP_RAIL_SCALE,
       nudges: ZERO_RAIL_NUDGES,
