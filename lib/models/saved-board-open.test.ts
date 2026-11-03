@@ -320,7 +320,13 @@ describe("a board saved with the Chris Rails v2 scale and nudges still opens on 
         nose: {
           ...fields.rails.nose,
           scaleFromCenter: 0.6,
-          nudges: { ...ZERO_RAIL_NUDGES, deckMark1: inchesToMm(1 / 8), bottomTuck3: inchesToMm(-1 / 16) },
+          // Plan 04 (R18): the Domed Deck Band nudge rides along too.
+          nudges: {
+            ...ZERO_RAIL_NUDGES,
+            deckMark1: inchesToMm(1 / 8),
+            domedDeckBand: inchesToMm(-1.5),
+            bottomTuck3: inchesToMm(-1 / 16),
+          },
         },
       },
     };

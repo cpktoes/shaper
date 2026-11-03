@@ -9,9 +9,9 @@ import {
   RAIL_NUDGE_STEP_IN,
   RAIL_RATIO_RANGE,
   RAIL_SCALE_RANGE,
-  ZERO_RAIL_NUDGES,
   deckProfileSliderStep,
   railFamilyLabel,
+  railNudgesOf,
   type RailBandSpec,
   type RailFamily,
   type RailNudgeKey,
@@ -183,14 +183,19 @@ function RailSectionControls({
   const thicknessSlider = measureSlider(spec.boardThickness, thicknessBounds, thicknessBounds.step, 1, system);
   const hardEdgeOn = isTail ? !!tailHardEdge : false;
   const thicknessLabel = sectionThicknessLabel(system)[sectionKey];
-  const nudges = spec.nudges ?? ZERO_RAIL_NUDGES;
+  // Exactly the six nudges, a missing one as 0 (plan 04, PC29), so a label never reads a nudge that is not
+  // a number — a board in memory from before the Domed Deck Band nudge has no dome key.
+  const nudges = railNudgesOf(spec.nudges);
   const scaleFromCenter = spec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
 
-  /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — ±1/2" for
-   * the deck marks, ±1/4" for the others, in 1/16" steps (whole millimetres in Metric) — while the label
-   * reads the mark it lands on and the nudge itself, e.g. "Deck Mark 1 — 2 5/8" (+1/8")", the FINS
-   * Off-Rail tuners' pattern. Apex Thickness adds ", trimmed to fit" while the apex had to shrink to fit
-   * on the rail (R4); that is information, so it never takes the warning colour. */
+  /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — ±2" for
+   * the Domed Deck Band (plan 04, R18, PC34), ±1/2" for the deck marks, ±1/4" for the others, in 1/16"
+   * steps (whole millimetres in Metric, -50 to +50 mm on the dome) — while the label reads the mark it
+   * lands on and the nudge itself, e.g. "Deck Mark 1 — 2 5/8" (+1/8")", the FINS Off-Rail tuners' pattern.
+   * Apex Thickness adds ", trimmed to fit" while the apex had to shrink to fit on the rail (R4); that is
+   * information, so it never takes the warning colour. The dome carries no such note when the rules hold
+   * it 1/16" past Deck Mark 3 (PC33): its label already reads the mark where it stops, as every floor's
+   * does. */
   const nudgeRow = (key: RailNudgeKey) => {
     const limit = RAIL_NUDGE_LIMIT_IN[key];
     const slider = measureSlider(nudges[key], { min: -limit, max: limit }, RAIL_NUDGE_STEP_IN, 1, system);
@@ -211,11 +216,11 @@ function RailSectionControls({
       />
     );
   };
-  // The tuck sliders follow Single Tuck and Hard Edge exactly as the rules do (R14): Single Tuck has no
-  // Tuck 2, so Bottom Tuck 1 and 2 hide; a Hard Edge tail has no tucks at all, so all three hide, and so
-  // does Use Single Tuck.
+  // The tuck sliders follow Single Tuck and Hard Edge exactly as the rules do (R14). Bottom Tuck 2 has no
+  // slider (plan 04, R17: always halfway), so Single Tuck hides only Bottom Tuck 1's; a Hard Edge tail has
+  // no tucks at all, so Use Single Tuck and both tuck sliders hide.
   const showTucks = !isTail || !hardEdgeOn;
-  const showTwoTuckRows = showTucks && !spec.singleTuck;
+  const showBottomTuck1 = showTucks && !spec.singleTuck;
 
   // The group's controls, built once so the two places that may draw them (below) never drift.
   const controls = (
@@ -328,8 +333,11 @@ function RailSectionControls({
         {advancedOpen && (
           <div className="flex flex-col gap-3 pl-3 pt-3">
             {/* The fuller Advanced menu (quick 261102-gec plan 02, the founder's brief 2026-11-02), in
-                the founder's order (PC17): the scale on the nose and tail, the four top marks' nudges,
-                Use Single Tuck just above the two sliders it hides, the three bottom tucks, Reset. */}
+                the order PC32 (plan 04) sets: the scale on the nose and tail; Apex Thickness, Deck Mark 1,
+                Deck Mark 3 and the Domed Deck Band right under it (R18, the founder: "I would like to add
+                an advanced slider for the domed deck mark though."); Use Single Tuck just above the slider
+                it hides; Bottom Tuck 1 and 3; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
               // number, not a measurement, so it reads two decimals and never goes through units.ts.
@@ -354,8 +362,8 @@ function RailSectionControls({
             )}
             {nudgeRow("apexThickness")}
             {nudgeRow("deckMark1")}
-            {nudgeRow("deckMark2")}
             {nudgeRow("deckMark3")}
+            {nudgeRow("domedDeckBand")}
 
             {/* Use Single Tuck on a line of its own (quick 261102-gec, PC12). Hidden on the tail while
                 Hard Edge is on, as it always was. */}
@@ -374,8 +382,7 @@ function RailSectionControls({
                 Use Single Tuck
               </label>
             )}
-            {showTwoTuckRows && nudgeRow("bottomTuck1")}
-            {showTwoTuckRows && nudgeRow("bottomTuck2")}
+            {showBottomTuck1 && nudgeRow("bottomTuck1")}
             {showTucks && nudgeRow("bottomTuck3")}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to 0.75, Single Tuck off and,

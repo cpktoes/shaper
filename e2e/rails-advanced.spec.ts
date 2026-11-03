@@ -7,9 +7,14 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
  * - Ratio runs 20/80 to 80/20 in halves, its readout fits the half-width column on one line and its
  *   three marks never touch (R8, PC14, PC15, measured M9).
  * - Deck Profile stops at 75% (R7, PC23).
- * - Each rail's Advanced menu: "Scaled from center by" on the nose and tail only, seven nudge sliders
+ * - Each rail's Advanced menu: "Scaled from center by" on the nose and tail only, six nudge sliders
  *   in the founder's order, Use Single Tuck and the tail's Hard Edge hiding the tuck sliders, and Reset
- *   putting it all back (R10, R14, PC17-PC20).
+ *   putting it all back (R10, R14, PC17-PC20). Plan 04 (R17, 2026-11-02) took the Deck Mark 2 and
+ *   Bottom Tuck 2 sliders away — "Always in the middle is great" — and added the Domed Deck Band's
+ *   under Deck Mark 3 (R18, PC32).
+ * - The Domed Deck Band slider (plan 04, R18): ±2" in 1/16" steps, and the dome never lands on Deck
+ *   Mark 3 — the founder's final ruling, "never let it equal Deck Mark 3" — even a moved one: it stops
+ *   1/16" past it.
  * - The Finished Rail switch on VIEWER: on by default, one finished-rail line per visible plot and
  *   "Finished Rail" in the key; it hides and shows both (R13, PC21, PC22).
  * - On a phone the new sliders take a finger (R15).
@@ -96,6 +101,19 @@ function nudgeThumb(page: Page, key: RailKey, name: string): Locator {
   return page.getByRole("slider", { name: `${RAIL_TITLE[key]} ${name} nudge`, exact: true });
 }
 
+/** The mark a nudge label reads ("Domed Deck Band — 4 9/16" (-2")" reads 4 9/16"), in sixteenths of an
+ * inch — read off the page's own text (a non-breaking space read as a space), never a typed mark. */
+async function markSixteenths(label: Locator): Promise<number> {
+  const text = ((await label.textContent()) ?? "").replace(/\u00a0/g, " ");
+  const mark = text.match(/ — (.+?)" \(/)?.[1];
+  if (!mark) throw new Error(`no mark in "${text}"`);
+  const inches = mark
+    .split(" ")
+    .map((part) => (part.includes("/") ? Number(part.split("/")[0]) / Number(part.split("/")[1]) : Number(part)))
+    .reduce((a, b) => a + b, 0);
+  return Math.round(inches * 16);
+}
+
 /** The slider inside the same row as a label line (SliderRow: the label is the row's first child). */
 function rowSlider(label: Locator): Locator {
   return label.locator("xpath=..").getByRole("slider");
@@ -135,7 +153,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await openRails(page);
   });
 
-  test("1. the Nose rail's Advanced lists the scale, seven nudges in the founder's order, Single Tuck and Reset; the Center rail's has no scale", async ({
+  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck and Reset; the Center rail's has no scale", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
@@ -144,11 +162,10 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
       /^Scaled from center by — 0\.75$/,
       /^Apex Thickness — .+ \(.+\)$/,
       /^Deck Mark 1 — .+ \(.+\)$/,
-      /^Deck Mark 2 — .+ \(.+\)$/,
       /^Deck Mark 3 — .+ \(.+\)$/,
+      /^Domed Deck Band — .+ \(.+\)$/,
       /^Use Single Tuck$/,
       /^Bottom Tuck 1 — .+ \(.+\)$/,
-      /^Bottom Tuck 2 — .+ \(.+\)$/,
       /^Bottom Tuck 3 — .+ \(.+\)$/,
       /Reset Advanced Settings$/,
     ];
@@ -160,6 +177,10 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     expect(centerRows.length).toBe(expected.length - 1);
     expected.slice(1).forEach((re, i) => expect(centerRows[i]).toMatch(re));
     expect(centerRows.some((r) => r.startsWith("Scaled from center by"))).toBe(false);
+    // Deck Mark 2 and Bottom Tuck 2 are always halfway (plan 04, R17): no slider of their own.
+    for (const rows of [noseRows, centerRows]) {
+      expect(rows.some((r) => r.startsWith("Deck Mark 2") || r.startsWith("Bottom Tuck 2"))).toBe(false);
+    }
   });
 
   test("2. one step on Deck Mark 1's nudge reads +1/16\" and moves that rail's Deck Mark 1 on the DATA tab", async ({
@@ -180,13 +201,14 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     expect(await nudgeLabel(nose, "Deck Mark 1").textContent()).toContain(`Deck Mark 1 — ${after} (`);
   });
 
-  test("3. Use Single Tuck hides Bottom Tuck 1 and 2, on the sidebar and the DATA tab; unticking brings them back", async ({
+  test("3. Use Single Tuck hides the Bottom Tuck 1 slider and empties Bottom Tuck 1 and 2 on the DATA tab; unticking brings them back", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
     const body = await openAdvanced(nose);
     await expect(nudgeLabel(nose, "Bottom Tuck 1")).toBeVisible();
-    await expect(nudgeLabel(nose, "Bottom Tuck 2")).toBeVisible();
+    // Bottom Tuck 2 has no slider at all (plan 04, R17: always halfway to Bottom Tuck 1).
+    await expect(nudgeLabel(nose, "Bottom Tuck 2")).toHaveCount(0);
     expect(await dataCell(page, "Bottom Tuck 1", "nose")).not.toBe("—");
     expect(await dataCell(page, "Bottom Tuck 2", "nose")).not.toBe("—");
 
@@ -197,6 +219,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await expect(nudgeLabel(nose, "Bottom Tuck 1")).toHaveCount(0);
     await expect(nudgeLabel(nose, "Bottom Tuck 2")).toHaveCount(0);
     await expect(nudgeLabel(nose, "Bottom Tuck 3")).toBeVisible();
+    await expect(nudgeLabel(nose, "Domed Deck Band")).toBeVisible();
     expect(await dataCell(page, "Bottom Tuck 1", "nose")).toBe("—");
     expect(await dataCell(page, "Bottom Tuck 2", "nose")).toBe("—");
 
@@ -204,11 +227,11 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await single.click();
     await expect(single).not.toBeChecked();
     await expect(nudgeLabel(nose, "Bottom Tuck 1")).toBeVisible();
-    await expect(nudgeLabel(nose, "Bottom Tuck 2")).toBeVisible();
+    await expect(nudgeLabel(nose, "Bottom Tuck 2")).toHaveCount(0);
     expect(await dataCell(page, "Bottom Tuck 1", "nose")).not.toBe("—");
   });
 
-  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck and the three bottom tucks; off, they show", async ({
+  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck and the Bottom Tuck 1 and 3 sliders while Deck Mark 3 and the Domed Deck Band show; off, they show", async ({
     page,
   }, testInfo) => {
     const tail = await showRail(page, testInfo, "tail");
@@ -220,13 +243,16 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
       await expect(nudgeLabel(tail, name)).toHaveCount(0);
     }
     await expect(nudgeLabel(tail, "Deck Mark 3")).toBeVisible();
+    await expect(nudgeLabel(tail, "Domed Deck Band")).toBeVisible();
 
     await hardEdge.click();
     await expect(hardEdge).not.toBeChecked();
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toBeVisible();
-    for (const name of ["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"]) {
+    for (const name of ["Bottom Tuck 1", "Bottom Tuck 3"]) {
       await expect(nudgeLabel(tail, name)).toBeVisible();
     }
+    await expect(nudgeLabel(tail, "Bottom Tuck 2")).toHaveCount(0);
+    await expect(nudgeLabel(tail, "Domed Deck Band")).toBeVisible();
   });
 
   test("5. Center at Boxy and 80/20 trims its apex to fit and says so; one step back reads 79.5/20.5", async ({
@@ -254,19 +280,27 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await expect(ratio.readout).toHaveText("Ratio — 20/80");
   });
 
-  test("6. Reset Advanced Settings puts the nudges and the scale back; on the tail it turns Hard Edge back on", async ({
+  test("6. Reset Advanced Settings puts the nudges — the Domed Deck Band's too — and the scale back; on the tail it turns Hard Edge back on", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
     const body = await openAdvanced(nose);
     const scale = nose.getByText(/^Scaled from center by — /);
-    const watched = [scale, nudgeLabel(nose, "Apex Thickness"), nudgeLabel(nose, "Deck Mark 1"), nudgeLabel(nose, "Bottom Tuck 3")];
+    const watched = [
+      scale,
+      nudgeLabel(nose, "Apex Thickness"),
+      nudgeLabel(nose, "Deck Mark 1"),
+      nudgeLabel(nose, "Domed Deck Band"),
+      nudgeLabel(nose, "Bottom Tuck 3"),
+    ];
     const before = await Promise.all(watched.map((l) => l.textContent()));
 
     await nudgeThumb(page, "nose", "Deck Mark 1").press("ArrowRight");
+    await nudgeThumb(page, "nose", "Domed Deck Band").press("ArrowRight");
     await nudgeThumb(page, "nose", "Bottom Tuck 3").press("ArrowRight");
     await rowSlider(scale).press("ArrowLeft");
     await expect(nudgeLabel(nose, "Deck Mark 1")).toHaveText(/\(\+1\/16"\)$/);
+    await expect(nudgeLabel(nose, "Domed Deck Band")).toHaveText(/\(\+1\/16"\)$/);
     await expect(nudgeLabel(nose, "Bottom Tuck 3")).toHaveText(/\(\+1\/16"\)$/);
     await expect(scale).not.toHaveText(before[0] ?? "");
 
@@ -457,5 +491,70 @@ test.describe("the Ghost Bands switch on VIEWER (fast task, 2026-11-02)", () => 
     await finishedRail.click();
     await expect(ghost).toBeEnabled();
     await expect.poll(async () => (await state()).every((p) => p.bands === "ghosted")).toBe(true);
+  });
+});
+
+test.describe("the Domed Deck Band slider (quick 261102-gec plan 04, R18)", () => {
+  test("12. the dome runs ±2\" in 1/16\" steps and never lands on Deck Mark 3 — it stops 1/16\" past it, even when Deck Mark 3 moves; the DATA tab follows it and Reset puts it back", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const center = await showRail(page, testInfo, "center");
+    const body = await openAdvanced(center);
+    const dome = nudgeLabel(center, "Domed Deck Band");
+    const deckMark3 = nudgeLabel(center, "Deck Mark 3");
+    const domeThumb = nudgeThumb(page, "center", "Domed Deck Band");
+    const ONE_SIXTEENTH = 1;
+    const TWO_INCHES = 32; // the founder's ±2" window, in sixteenths
+
+    // The window: the range input's own min and max (test 7's reading).
+    const slider = rowSlider(dome);
+    const bound = async (name: "min" | "max") =>
+      (await slider.getAttribute(name)) ?? (await slider.getAttribute(`aria-value${name}`));
+    expect(Number(await bound("min"))).toBe(-2);
+    expect(Number(await bound("max"))).toBe(2);
+
+    const first = await dome.textContent();
+    expect(first).toMatch(/\(0"\)$/);
+    const dome0 = await markSixteenths(dome);
+    const deckMark3Text = await deckMark3.textContent();
+    const deckMark3At0 = await markSixteenths(deckMark3);
+    expect(dome0).toBeGreaterThan(deckMark3At0 + ONE_SIXTEENTH);
+
+    await domeThumb.press("ArrowRight");
+    await expect(dome).toHaveText(/\(\+1\/16"\)$/);
+    expect(await markSixteenths(dome)).toBe(dome0 + ONE_SIXTEENTH);
+
+    await domeThumb.press("End");
+    await expect(dome).toHaveText(/\(\+2"\)$/);
+    expect(await markSixteenths(dome)).toBe(dome0 + TWO_INCHES);
+    await expect(deckMark3).toHaveText(deckMark3Text ?? "");
+
+    // At -2" the sheet's 2.4 x T would land inside Deck Mark 3: the dome is held one sixteenth past it.
+    await domeThumb.press("Home");
+    await expect(dome).toHaveText(/\(-2"\)$/);
+    const held = await markSixteenths(dome);
+    expect(held).toBe(deckMark3At0 + ONE_SIXTEENTH);
+    expect(held).not.toBe(deckMark3At0);
+    expect(held).toBeGreaterThan(dome0 - TWO_INCHES);
+
+    // Deck Mark 3 moved out to its end: the dome, still at -2", stays one sixteenth past the new mark.
+    await nudgeThumb(page, "center", "Deck Mark 3").press("End");
+    await expect(deckMark3).toHaveText(/\(\+1\/2"\)$/);
+    const deckMark3Moved = await markSixteenths(deckMark3);
+    expect(deckMark3Moved).toBeGreaterThan(deckMark3At0);
+    await expect(dome).toHaveText(/\(-2"\)$/);
+    expect(await markSixteenths(dome)).toBe(deckMark3Moved + ONE_SIXTEENTH);
+
+    // On a domed deck the DATA tab carries a Domed Deck Band row; its centre cell is the label's mark.
+    await rowSlider(center.getByText(/^Deck Profile — /)).press("End");
+    const labelMark = ((await dome.textContent()) ?? "").replace(/\u00a0/g, " ").match(/ — (.+?) \(/)?.[1];
+    expect(labelMark).toBeTruthy();
+    expect((await dataCell(page, "Domed Deck Band", "center")).replace(/\u00a0/g, " ")).toBe(labelMark);
+
+    await showRail(page, testInfo, "center");
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(dome).toHaveText(first ?? "");
+    await expect(deckMark3).toHaveText(deckMark3Text ?? "");
   });
 });

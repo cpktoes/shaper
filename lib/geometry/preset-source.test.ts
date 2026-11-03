@@ -186,6 +186,8 @@ describe("preset source blocks", () => {
           ...DEFAULT_RAIL_BAND_SPEC.nose.nudges,
           apexThickness: inchesToMm(-3 / 16),
           deckMark1: inchesToMm(7 / 16),
+          // Plan 04 (R18): the dome's ±2" window, one sixteenth inside its end.
+          domedDeckBand: inchesToMm(-31 / 16),
           bottomTuck3: inchesToMm(1 / 16),
         },
       },
@@ -217,10 +219,11 @@ describe("preset source blocks", () => {
     expect(buildRailsPresetSource(rails)).toContain("cornerCutOffsetOverride: inchesToMm(0.09375),");
     expect(buildRailsPresetSource(rails)).toContain("scaleFromCenter: 0.55,");
     expect(buildRailsPresetSource(rails)).toContain("deckMark1: inchesToMm(0.4375),");
+    expect(buildRailsPresetSource(rails)).toContain("domedDeckBand: inchesToMm(-1.9375),");
   });
 
   it("whole-millimetre nudges from a Metric slider paste back within 0.0000127 mm, every other field exactly (quick 261102-gec)", () => {
-    const metricNudges = { deckMark3: mm(-7), bottomTuck2: mm(3), deckMark2: mm(-12), bottomTuck1: mm(6) };
+    const metricNudges = { deckMark3: mm(-7), domedDeckBand: mm(-37), bottomTuck1: mm(6), apexThickness: mm(3) };
     const rails: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
       center: { ...DEFAULT_RAIL_BAND_SPEC.center, nudges: { ...DEFAULT_RAIL_BAND_SPEC.center.nudges, ...metricNudges } },
