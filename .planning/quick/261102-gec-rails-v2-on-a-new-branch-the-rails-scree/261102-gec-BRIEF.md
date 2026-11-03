@@ -345,12 +345,18 @@ The founder, on localhost:3005 with plan 02 live, in two messages:
   shaper saves). `RAIL_NUDGE_NAMES`, `RAIL_NUDGE_LIMIT_IN`, `ZERO_RAIL_NUDGES`, rule 10 of `design-snapshot.ts`
   ("seven" becomes six), the presets, the golden script and every test that counts or names the nudges follow.
 - **R18 — plan 04: a Domed Deck Band nudge.** A new key `domedDeckBand` in `RAIL_NUDGE_KEYS`: the dome mark = 2.4 × T
-  + its nudge, never scaled (the dome was never scaled), on every rail. **The founder's ruling (2026-11-02): "Let's
-  do + or - 2", but never closer than 1" to deck mark 3."** So the slider runs −2" to +2" in 1/16" (or 1 mm) steps
-  (`RAIL_NUDGE_LIMIT_IN.domedDeckBand` = 2 — the one nudge wider than ±1/2"), and the guard is a full inch, not the
-  1/16" the other marks keep: the dome mark is clamped to at least 1" beyond the (nudged) Deck Mark 3 after both
-  nudges are applied (the dome's own clamp, applied after Deck Mark 3 is settled, so a +1/2" Deck Mark 3 and a −2"
-  dome on a thin rail still leave the inch). Listed after Deck Mark 3 in the menu, label
+  + its nudge, never scaled (the dome was never scaled), on every rail. The founder's first ruling (2026-11-02):
+  "Let's do + or - 2", but never closer than 1" to deck mark 3." The planner then measured that a literal inch
+  reaches boards nobody nudged (the sheet's 2.4T sits under 1" past 1.8T·s on any rail thinner than 1 5/8" at full
+  scale — the un-nudged default nose at scale 1.00 would move, 119 golden cases, a few tip stations of every
+  preset's volume). Put to the founder, the **final ruling (2026-11-02): "I was afraid of that. Let's keep the ±2"
+  slider, but never let it equal Deck Mark 3."** So the slider runs −2" to +2" in 1/16" (or 1 mm) steps
+  (`RAIL_NUDGE_LIMIT_IN.domedDeckBand` = 2 — the one nudge wider than ±1/2"), and the guard is the house minimum:
+  the dome mark is clamped to at least 1/16" (`MIN_RAIL_MARK_IN`) beyond the (nudged) Deck Mark 3, applied after
+  Deck Mark 3 is settled — exactly the rule Bottom Tuck 3 keeps against Bottom Tuck 1. Because 2.4T − 1.8T·s is at
+  least 0.6T, the formula alone never comes within 1/16" of Deck Mark 3 on any real rail, so the guard can only ever
+  hold the slider: every un-nudged board draws exactly as the sheet says, no golden case changes, no preset's litres
+  move. Listed after Deck Mark 3 in the menu, label
   `Domed Deck Band — 5 3/8" (0")` in the house form (the founder did not object to either). Moving the dome moves
   where the deck line reaches full thickness, so Band 1's and Band 2's deck ends ride the new line (nothing else about
   the rules changes); the DATA tab's Domed Deck Band row, the callouts, the volume and the finished rail all read the
