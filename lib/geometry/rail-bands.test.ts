@@ -389,7 +389,14 @@ describe("the floors (R9, PC3-PC5) — no mark is ever nonsense, whatever the nu
 
 describe("held inputs (R7, PC6) — a stored value outside its window draws at the window's edge, and is never rewritten", () => {
   const nose = DEFAULT_RAIL_BAND_SPEC.nose;
-  const same = (a: RailSectionOutput, b: RailSectionOutput) => expect(a).toEqual(b);
+  // "The same drawing" to a hair, not bit for bit: a window's edge reached by clamping a stored 5" and
+  // the edge passed in directly can differ in the last digit, because an inch that is not exact in
+  // binary once it has been through millimetres (3/4" comes back as 0.7499999999999999, where 1/4",
+  // 1/2" and 2" come back exactly) — fast task 188, when Bottom Tuck 3's window grew to ±3/4". Every
+  // number is rounded to nine decimals (a millionth of a millimetre) before the two are compared.
+  const snap = (value: unknown) =>
+    JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === "number" ? Number(v.toFixed(9)) : v)));
+  const same = (a: RailSectionOutput, b: RailSectionOutput) => expect(snap(a)).toEqual(snap(b));
 
   it("Deck Profile 66 computes exactly as 75, and the spec passed in is not changed", () => {
     const spec: RailSectionSpec = { ...nose, deckPercent: 66 };
@@ -877,7 +884,9 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
     expect(RAIL_NUDGE_LIMIT_IN.domedDeckBand).toBe(2);
     expect(RAIL_NUDGE_LIMIT_IN.deckMark1).toBe(0.5);
     expect(RAIL_NUDGE_LIMIT_IN.deckMark3).toBe(0.5);
-    for (const k of ["apexThickness", "bottomTuck1", "bottomTuck3"] as const) expect(RAIL_NUDGE_LIMIT_IN[k]).toBe(0.25);
+    for (const k of ["apexThickness", "bottomTuck1"] as const) expect(RAIL_NUDGE_LIMIT_IN[k]).toBe(0.25);
+    // R19 (the founder, 2026-11-02): "bottom tuck 3 tweak should go to ±3/4"".
+    expect(RAIL_NUDGE_LIMIT_IN.bottomTuck3).toBe(0.75);
     expect(Object.keys(ZERO_RAIL_NUDGES)).toEqual([...RAIL_NUDGE_KEYS]);
     for (const key of ["nose", "center", "tail"] as const) {
       expect(Object.keys(defaultRailAdvanced(key).nudges)).toEqual([...RAIL_NUDGE_KEYS]);

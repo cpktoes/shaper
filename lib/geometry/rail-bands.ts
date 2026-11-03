@@ -94,14 +94,16 @@ export type RailNudgeKey = (typeof RAIL_NUDGE_KEYS)[number];
 export type RailMarkNudges = Record<RailNudgeKey, Mm>;
 
 /** How far each nudge may move its mark either way, in inches: the Domed Deck Band ±2" (R18, the founder:
- * "Let's keep the ±2" slider" — the one window wider than ±1/2"), the deck marks ±1/2", the others ±1/4". */
+ * "Let's keep the ±2" slider"), Bottom Tuck 3 ±3/4" (R19, the founder, 2026-11-02: "bottom tuck 3 tweak should
+ * go to ±3/4""), the deck marks ±1/2", Apex Thickness and Bottom Tuck 1 ±1/4". A −3/4" Bottom Tuck 3 still stops
+ * 1/16" beyond Bottom Tuck 1 (the floor in `computeRailSectionInches`), as any nudge of it always has. */
 export const RAIL_NUDGE_LIMIT_IN: Readonly<Record<RailNudgeKey, number>> = {
   apexThickness: 0.25,
   deckMark1: 0.5,
   deckMark3: 0.5,
   domedDeckBand: 2,
   bottomTuck1: 0.25,
-  bottomTuck3: 0.25,
+  bottomTuck3: 0.75,
 };
 
 /** Every nudge at 0 — every mark exactly on its formula. */

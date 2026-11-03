@@ -189,8 +189,9 @@ function RailSectionControls({
   const scaleFromCenter = spec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
 
   /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — ±2" for
-   * the Domed Deck Band (plan 04, R18, PC34), ±1/2" for the deck marks, ±1/4" for the others, in 1/16"
-   * steps (whole millimetres in Metric, -50 to +50 mm on the dome) — while the label reads the mark it
+   * the Domed Deck Band (plan 04, R18, PC34), ±3/4" for Bottom Tuck 3 (R19, fast task 188), ±1/2" for the
+   * deck marks, ±1/4" for Apex Thickness and Bottom Tuck 1, every window read from `RAIL_NUDGE_LIMIT_IN`, in
+   * 1/16" steps (whole millimetres in Metric, -50 to +50 mm on the dome) — while the label reads the mark it
    * lands on and the nudge itself, e.g. "Deck Mark 1 — 2 5/8" (+1/8")", the FINS Off-Rail tuners' pattern.
    * Apex Thickness adds ", trimmed to fit" while the apex had to shrink to fit on the rail (R4); that is
    * information, so it never takes the warning colour. The dome carries no such note when the rules hold

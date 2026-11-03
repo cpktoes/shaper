@@ -616,3 +616,24 @@ test.describe("the plot row keeps clear of the corner toolbar (fast task, 2026-1
     expect((await geometry()).zoomClearsToolbar).toBe(true);
   });
 });
+
+test.describe("Bottom Tuck 3's window (fast task 188, R19)", () => {
+  test("14. Bottom Tuck 3 runs ±3/4\" — the founder's window — and its label reads the nudge at each end", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const nose = await showRail(page, testInfo, "nose");
+    await openAdvanced(nose);
+    const label = nudgeLabel(nose, "Bottom Tuck 3");
+    const slider = rowSlider(label);
+    const bound = async (name: "min" | "max") =>
+      (await slider.getAttribute(name)) ?? (await slider.getAttribute(`aria-value${name}`));
+    expect(Number(await bound("min"))).toBe(-0.75);
+    expect(Number(await bound("max"))).toBe(0.75);
+    const thumb = nudgeThumb(page, "nose", "Bottom Tuck 3");
+    await thumb.press("End");
+    await expect(label).toHaveText(/\(\+3\/4"\)$/);
+    await thumb.press("Home");
+    await expect(label).toHaveText(/\(-3\/4"\)$/);
+  });
+});

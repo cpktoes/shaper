@@ -362,3 +362,7 @@ The founder, on localhost:3005 with plan 02 live, in two messages:
   the rules changes); the DATA tab's Domed Deck Band row, the callouts, the volume and the finished rail all read the
   result as they already do. Reset Advanced Settings puts it back to 0 with the rest. On a flat deck (t = T) the dome
   mark only moves its own green dot and the Domed Deck Band line's end — the deck line is flat either way.
+- **R19 — fast task 188 (2026-11-02), the founder: "bottom tuck 3 tweak should go to ±3/4"."** `RAIL_NUDGE_LIMIT_IN.bottomTuck3`
+  = 0.75 (was 0.25, the brief's "the others ±1/4""); the step stays 1/16" (1 mm in Metric), the floor stays — a −3/4"
+  Bottom Tuck 3 still stops 1/16" beyond Bottom Tuck 1. Nothing else moves: an un-nudged board is unchanged, and the
+  sidebar reads every window from that one map.
