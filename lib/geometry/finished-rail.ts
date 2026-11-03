@@ -10,8 +10,12 @@
  * the rail line at the Apex Center on a tucked rail, because the corners at Rail Mark 1 and Rail Tuck 1
  * each reach halfway along the wall between them.
  *
- * It is DRAWN only. Board volume stays on the cut, faceted rail (R5, `rail-bands.ts`'s profile); whether
- * litres should read this curve instead is the founder's call, not made here.
+ * It is what VOLUME counts (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the
+ * finished curve"), as well as what RAILS draws. Volume takes it exactly, not by sampling: `railBlendArea`
+ * is the foam the blends take off one rail, and a station's finished area is its cut area (the faceted
+ * profile `rail-bands.ts` builds, proven to enclose exactly the foam the cuts leave) less both rails'
+ * blend areas. `sectionFinishedRail` is the one way volume reaches a section's finished rail, so the
+ * quoted litres and VOLUME's working rows can never sit on different curves (PV2).
  *
  * INCH-DOMAIN CORE, Mm at the boundary, like `rail-bands.ts`: the private functions below are ported
  * statement for statement from the reference page's finish block (`reference/sketches/018-chris-rails-v2.js`,
@@ -32,7 +36,16 @@
  * Pure: no React, browser or database import (Rule 1).
  */
 import type { Point2D } from "./board";
-import type { RailSectionOutput, RailSegmentKey } from "./rail-bands";
+// A run-time import since plan 03 (`sectionFinishedRail`); `rail-bands.ts` imports nothing from this file,
+// so there is no cycle — keep it that way (V8).
+import {
+  type RailSectionOutput,
+  type RailSectionResult,
+  type RailSegment,
+  type RailSegmentKey,
+  buildRailSegments,
+  railPlotBounds,
+} from "./rail-bands";
 import { type Mm, inchesToMm, mm, mmToInches } from "./units";
 
 /** One drawing step of the finished rail, in millimetres; each starts where the previous one ended. */
@@ -221,10 +234,58 @@ export function finishedRailPath(
 /** The bands that take foam off; the dome joins them only when the deck is domed. */
 const CUT_KEYS: ReadonlySet<RailSegmentKey> = new Set<RailSegmentKey>(["band1", "band2", "tuck1", "tuck2"]);
 
+/** The cut lines of a section's drawn segments: the four bands, and the dome on a domed deck. */
+function cutsOf(segments: readonly RailSegment[], domed: boolean): RailCutLine[] {
+  return segments
+    .filter((s) => CUT_KEYS.has(s.key) || (s.key === "domedBand" && domed))
+    .map((s) => ({ p1: s.p1, p2: s.p2 }));
+}
+
 /** The finished rail of one computed rail section, drawn from the drawing's left edge `x0`. */
 export function finishedRail(output: RailSectionOutput, x0: Mm): FinishedRail {
-  const cuts = output.segments
-    .filter((s) => CUT_KEYS.has(s.key) || (s.key === "domedBand" && output.domed))
-    .map((s) => ({ p1: s.p1, p2: s.p2 }));
-  return finishedRailFromCuts(cuts, output.boardThickness, x0, output.result.hardEdge);
+  return finishedRailFromCuts(cutsOf(output.segments, output.domed), output.boardThickness, x0, output.result.hardEdge);
+}
+
+/**
+ * The finished rail of a bare section result — what volume counts at each of its 51 stations, which have
+ * no drawing output of their own (quick 261102-gec plan 03, D-V1). The cuts are chosen exactly as
+ * `finishedRail` chooses them, from `buildRailSegments(result)`; the left edge is the section's own plot
+ * edge, 2" beyond its Domed Deck Band (`railPlotBounds`, rule 12), so this is the very curve RAILS draws
+ * for that section (PV4 — measured: twice as far changes no blend area by more than 1.1e-13 mm² on the
+ * presets, because every blend is set by the bands, not by how far the flats run); the hard edge comes
+ * from the result.
+ */
+export function sectionFinishedRail(result: RailSectionResult, domed: boolean): FinishedRail {
+  return finishedRailFromCuts(
+    cutsOf(buildRailSegments(result), domed),
+    result.boardThickness,
+    railPlotBounds(result).xAxisMin,
+    result.hardEdge,
+  );
+}
+
+/**
+ * The foam the blends take off ONE rail, in square millimetres, exactly (quick 261102-gec plan 03, D-V1,
+ * PV1). Each blend swaps the two straight runs A→V→B of a cut corner for the parabola from A to B whose
+ * control point is the corner V. Those two runs are the parabola's own tangent lines at its ends, and the
+ * area between a parabola and its two end tangents is exactly one third of the triangle they make
+ * (Archimedes' quadrature of the parabola). So the foam a blend takes off is a third of triangle A-V-B,
+ * and one rail's blend area is the sum of those thirds over the finished rail's `quad` steps. The cut
+ * foam is a box cut by straight lines, so every corner is convex and every blend takes foam off. A hard
+ * edge's sharp bottom corner is a straight step and adds nothing (PV6). Proven against Green's theorem on
+ * the curve itself and against ever-finer sampling, which converges on this figure (`finished-rail.test.ts`).
+ */
+export function railBlendArea(rail: FinishedRail): number {
+  let area = 0;
+  let at = rail.start;
+  for (const step of rail.steps) {
+    if (step.kind === "quad") {
+      const v = step.control;
+      const b = step.to;
+      const triangle = Math.abs((v.x - at.x) * (b.y - at.y) - (v.y - at.y) * (b.x - at.x)) / 2;
+      area += triangle / 3;
+    }
+    at = step.to;
+  }
+  return area;
 }

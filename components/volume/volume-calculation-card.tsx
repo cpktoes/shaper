@@ -81,9 +81,10 @@ export function VolumeCalculationCard({
   const areaRowLabel = result.importingTemplate ? "Template Area" : "Board Area (estimated)";
   const areaSqInDisplay = `${formatArea(result.area, system)}${result.importingTemplate ? " (imported)" : ""}`;
   const weightedThicknessLabel = result.geomReady ? "Length-Weighted Effective Thickness" : "Weighted Thickness";
-  // D-13's method disclosure: which of the two figures quotedVolumeLitres actually is.
+  // D-13's method disclosure: which of the two figures quotedVolumeLitres actually is. "Finished" since
+  // quick 261102-gec plan 03 (the founder's D-V1, PV7): the cross-sections are the finished rail's.
   const methodLine = result.importingTemplate
-    ? "From the board's own cross-sections along its length."
+    ? "From the board's own finished cross-sections along its length."
     : "From the board-type factor tables (quick estimate).";
   const supportingLine = result.importingTemplate
     ? `${crossSectionStationCount} cross-sections integrated`

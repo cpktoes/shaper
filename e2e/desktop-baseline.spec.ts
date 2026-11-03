@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 03, branch rails-v2) — VOLUME only, `volume-desktop.png`, for the
+ * founder's D-V1 ("Switch to the finished curve"): litres now count the finished rail, the cut rail blended halfway
+ * into each band, instead of the raw band cuts. Old and new were compared before re-recording: on the default board
+ * the Estimated Volume reads 30.52 L instead of 30.73 L, the Center Cross-Section Thickness row reads 2 1/4" instead
+ * of 2 5/16" (it is worked from the same finished rail), and the method line reads "From the board's own finished
+ * cross-sections along its length."; the Tail, Nose and Length-Weighted rows (1 1/2", 1 1/4", 1 1/2"), the sidebar
+ * and the top bar are unchanged. TEMPLATE, ROCKER, RAILS and FINS passed unchanged and were not re-recorded.
+ * Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3174) in the plan's worktree on this Mac. SHA-256
+ * (first 8 characters), old to new: VOLUME 8069a93a to 2e4e1421.
+ *
  * RE-RECORDED 2026-11-02 (fast task 185, branch rails-v2) — RAILS only, `rails-desktop.png`, for the VIEWER toolbar
  * after the founder's look at plan 02: the Finished Rail button now wears a solid rail-silhouette glyph in place of
  * lucide's spline, and a new Ghost Bands button (a dashed cut chain with its mark dots) sits beside it, off by

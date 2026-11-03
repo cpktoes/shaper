@@ -8,7 +8,16 @@
  */
 import { describe, expect, it } from "vitest";
 import type { Point2D } from "./board";
-import { finishedRail, finishedRailFromCuts, finishedRailPath, railCutFoam, type FinishedRail, type RailCutLine } from "./finished-rail";
+import {
+  finishedRail,
+  finishedRailFromCuts,
+  finishedRailPath,
+  railBlendArea,
+  railCutFoam,
+  sectionFinishedRail,
+  type FinishedRail,
+  type RailCutLine,
+} from "./finished-rail";
 import { ZERO_RAIL_NUDGES, computeRailSectionOutput, type RailFamily } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
 import { inchesToMm, mmToInches } from "./units";
@@ -281,6 +290,155 @@ describe("finishedRailPath — the drawn path (quick 261102-gec plan 02, PC22)",
       const lastStep = rail.steps[rail.steps.length - 1];
       expect(lastStep.kind).toBe("line");
       expect(lastStep.to).toEqual(last);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Volume counts the finished rail (quick 261102-gec plan 03, the founder's D-V1 "Switch to the finished
+// curve", 2026-11-02). Every expected figure below is a relation — the cut foam's own shoelace, Green's
+// theorem over the finished rail's own steps, or the limit ever-finer sampling of those steps converges to
+// — never a typed area (Rule 1).
+// ---------------------------------------------------------------------------------------------
+
+/** The app's own section for a golden entry, built as `finishedRail`'s end-to-end test builds it, with a
+ * hard edge (on a tail) or Single Tuck on request. */
+function appSection(entry: GoldenEntry, opts: { hardEdge?: boolean; singleTuck?: boolean } = {}) {
+  const { T, deck, F, top, sym, scale } = entry.input;
+  return computeRailSectionOutput(
+    opts.hardEdge ? "tail" : scale === 1 ? "center" : "nose",
+    {
+      boardThickness: inchesToMm(T),
+      deckPercent: deck,
+      family: F as RailFamily,
+      ratioTopPercent: top,
+      symmetrical: sym,
+      cornerCutOffsetOverride: null,
+      removeCornerCut: false,
+      singleTuck: opts.singleTuck ?? false,
+      bottomTuck3Override: null,
+      scaleFromCenter: scale,
+      nudges: ZERO_RAIL_NUDGES,
+    },
+    opts.hardEdge ?? false,
+  );
+}
+
+const VARIANTS: readonly { hardEdge?: boolean; singleTuck?: boolean }[] = [{}, { hardEdge: true }, { singleTuck: true }];
+
+/** The cut lines a section's foam is clipped by — the four bands, and the dome on a domed deck. */
+function appCuts(output: ReturnType<typeof computeRailSectionOutput>): RailCutLine[] {
+  return output.segments
+    .filter((s) => ["band1", "band2", "tuck1", "tuck2"].includes(s.key) || (s.key === "domedBand" && output.domed))
+    .map((s) => ({ p1: s.p1, p2: s.p2 }));
+}
+
+/** A closed polygon's area by the shoelace. */
+function shoelace(pts: readonly Point2D[]): number {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = pts[(i + 1) % pts.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return Math.abs(a) / 2;
+}
+
+const cross = (a: Point2D, b: Point2D) => a.x * b.y - b.x * a.y;
+
+/** The finished rail's exact area by Green's theorem: each line x1·y2 − x2·y1 over 2, each parabola from
+ * P0 with control P1 to P2 (2·P0×P1 + 2·P1×P2 + P0×P2) / 6, closed along the drawing's left edge. */
+function greenArea(rail: FinishedRail): number {
+  let a = 0;
+  let at = rail.start;
+  for (const step of rail.steps) {
+    if (step.kind === "line") a += cross(at, step.to) / 2;
+    else a += (2 * cross(at, step.control) + 2 * cross(step.control, step.to) + cross(at, step.to)) / 6;
+    at = step.to;
+  }
+  a += cross(at, rail.start) / 2;
+  return Math.abs(a);
+}
+
+/** The finished rail as a polygon, every parabola cut into `n` straight pieces. */
+function resampled(rail: FinishedRail, n: number): Point2D[] {
+  const pts: Point2D[] = [rail.start];
+  let at = rail.start;
+  for (const step of rail.steps) {
+    if (step.kind === "line") pts.push(step.to);
+    else {
+      for (let k = 1; k <= n; k++) {
+        const [x, y] = quadAt(at, step.control, step.to, k / n);
+        pts.push({ x, y } as Point2D);
+      }
+    }
+    at = step.to;
+  }
+  return pts;
+}
+
+const variantLabel = (entry: GoldenEntry, variant: object) => JSON.stringify({ ...entry.input, ...variant });
+
+describe("railBlendArea — the foam the blends take off, exactly (quick 261102-gec plan 03, PV1)", () => {
+  it("cut foam minus the blend area is the finished rail's exact area by Green's theorem, on every golden case, hard edge and Single Tuck", () => {
+    let checked = 0;
+    for (const entry of everyEntry) {
+      for (const variant of VARIANTS) {
+        const output = appSection(entry, variant);
+        const cutArea = shoelace(railCutFoam(appCuts(output), output.boardThickness, output.bounds.xAxisMin));
+        const rail = sectionFinishedRail(output.result, output.domed);
+        const blend = railBlendArea(rail);
+        const label = variantLabel(entry, variant);
+        expect(blend, label).toBeGreaterThanOrEqual(0);
+        expect(blend, label).toBeLessThan(cutArea);
+        expect(Math.abs(cutArea - blend - greenArea(rail)), label).toBeLessThan(1e-6);
+        checked++;
+      }
+    }
+    expect(checked).toBe(everyEntry.length * VARIANTS.length);
+  });
+
+  it("ever-finer sampling of the parabolas converges on that exact area as 1/n² (at least tenfold from 64 to 256 pieces)", () => {
+    for (const entry of everyEntry) {
+      for (const variant of VARIANTS) {
+        const output = appSection(entry, variant);
+        const rail = sectionFinishedRail(output.result, output.domed);
+        const exact = greenArea(rail);
+        const err = (n: number) => Math.abs(shoelace(resampled(rail, n)) - exact);
+        const [e16, e64, e256] = [err(16), err(64), err(256)];
+        const label = variantLabel(entry, variant);
+        expect(e64, label).toBeLessThanOrEqual(e16 + 1e-9);
+        // Below a billionth of a square millimetre the difference is the arithmetic's own rounding, not
+        // the sampling, so the tenfold fall is only asked of a real error.
+        if (e64 > 1e-9) expect(e256 * 10, label).toBeLessThan(e64);
+      }
+    }
+  });
+
+  it("a hard edge's sharp bottom corner takes nothing off: no blend has the corner as its control (PV6)", () => {
+    for (const entry of everyEntry) {
+      const output = appSection(entry, { hardEdge: true });
+      const rail = sectionFinishedRail(output.result, output.domed);
+      for (const step of rail.steps) {
+        if (step.kind !== "quad") continue;
+        expect(Math.abs(step.control.x) < 1e-9 && Math.abs(step.control.y) < 1e-9, variantLabel(entry, { hardEdge: true })).toBe(
+          false,
+        );
+      }
+    }
+  });
+});
+
+describe("sectionFinishedRail — the very curve RAILS draws (quick 261102-gec plan 03, PV4)", () => {
+  it("has the same start and steps as finishedRail at the section's own plot edge, on every golden case, hard edge and Single Tuck", () => {
+    for (const entry of everyEntry) {
+      for (const variant of VARIANTS) {
+        const output = appSection(entry, variant);
+        const fromSection = sectionFinishedRail(output.result, output.domed);
+        const drawn = finishedRail(output, output.bounds.xAxisMin);
+        expect(fromSection.start, variantLabel(entry, variant)).toEqual(drawn.start);
+        expect(fromSection.steps, variantLabel(entry, variant)).toEqual(drawn.steps);
+      }
     }
   });
 });

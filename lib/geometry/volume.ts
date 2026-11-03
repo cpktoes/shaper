@@ -24,8 +24,13 @@
  *    editor, which now exists: `computeCrossSectionVolume` below is that Simpson path, validated
  *    against a published blank datasheet (CONTEXT.md D-14). `computeVolume`, the prototype's
  *    three-station rail-profile method below, survives deliberately as the Volume screen's
- *    standalone quick-estimator mode (CONTEXT.md D-13) — it is not replaced, and every one of its
- *    private inch-domain helpers is untouched by this addition.
+ *    standalone quick-estimator mode (CONTEXT.md D-13) — it is not replaced. Since quick 261102-gec
+ *    plan 03 (the founder's D-V1, 2026-11-02: "Switch to the finished curve") both paths count the
+ *    FINISHED rail — the cut rail blended halfway into every band, the curve RAILS draws — exactly,
+ *    through the cut area less the blends' thirds (`finished-rail.ts`'s `railBlendArea`):
+ *    `computeCrossSectionVolume` at each of its 51 stations, and this estimator's three Cross-Section
+ *    Thickness rows through the optional blend areas on `VolumeRailValues` (absent reads 0, the
+ *    prototype's own cut rail, so its golden cases are unchanged).
  * 4. PRESENTATION SPLIT. Returns numbers, never display strings; the caller formats through
  *    `formatInchesFraction`. Nothing here formats.
  * 5. STATE AND EVENT WIRING EXCLUDED. `syncFromTemplate`, the two checkbox handlers, `applySeed`/
@@ -37,6 +42,7 @@
  */
 
 import type { Point2D } from "./board";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
   DEFAULT_TIP_RAIL_SCALE,
@@ -128,6 +134,13 @@ export interface VolumeRailValues {
   noseProfile: Point2D[] | null;
   centerProfile: Point2D[] | null;
   tailProfile: Point2D[] | null;
+  /** The foam the finished rail's blends take off ONE rail of each section, in square millimetres
+   * (`railBlendArea`, quick 261102-gec plan 03, D-V1/PV5): each Cross-Section Thickness row counts the
+   * finished rail, as the quoted litres do. Absent reads 0 — the prototype had no finished rail, so its
+   * golden cases leave them out. `deriveRailValues` always fills them. */
+  noseBlendArea?: number;
+  centerBlendArea?: number;
+  tailBlendArea?: number;
 }
 
 /** Every value the volume screen's sidebar and calculation card read. */
@@ -179,6 +192,9 @@ interface VolumeRailValuesInches {
   noseProfileIn: [number, number][] | null;
   centerProfileIn: [number, number][] | null;
   tailProfileIn: [number, number][] | null;
+  noseBlendSqIn: number;
+  centerBlendSqIn: number;
+  tailBlendSqIn: number;
 }
 
 interface VolumeResultInches {
@@ -214,11 +230,18 @@ function shoelaceArea(pts: [number, number][]): number {
 // appending [-halfWidth, 0] to the rail profile — the flat run of full-thickness, un-tapered foam
 // from the profile's innermost point in to the stringer — then divides the shoelace area by the
 // half width to back out an equivalent uniform thickness. A zero half width returns zero rather
-// than dividing (Volume.dc.html lines 343-347).
-function stationEffThickness(profile: [number, number][], boardThickness: number, halfWidth: number): number {
+// than dividing (Volume.dc.html lines 343-347). `blendSqIn` is the foam the finished rail's blends take
+// off that one rail (quick 261102-gec plan 03, D-V1): it comes off the cut area before the division, so
+// the row reads the finished rail, exactly as the quoted litres do. 0 is the prototype's own cut rail.
+function stationEffThickness(
+  profile: [number, number][],
+  boardThickness: number,
+  halfWidth: number,
+  blendSqIn: number,
+): number {
   if (!halfWidth) return 0;
   const poly: [number, number][] = [[-halfWidth, boardThickness], ...profile, [-halfWidth, 0]];
-  return shoelaceArea(poly) / halfWidth;
+  return (shoelaceArea(poly) - blendSqIn) / halfWidth;
 }
 
 /** Statement-for-statement port of `renderVals`'s volume calculation (Volume.dc.html lines
@@ -281,13 +304,24 @@ function computeVolumeInches(
     const r = rail as VolumeRailValuesInches;
     // Tail from tailWidthAt12/2, centre from widePointWidth/2, nose from noseWidthAt12/2, each
     // paired with that station's own board thickness.
-    tailEffIn = stationEffThickness(r.tailProfileIn as [number, number][], r.tailThicknessIn, t.tailWidthAt12In / 2);
+    tailEffIn = stationEffThickness(
+      r.tailProfileIn as [number, number][],
+      r.tailThicknessIn,
+      t.tailWidthAt12In / 2,
+      r.tailBlendSqIn,
+    );
     centerEffIn = stationEffThickness(
       r.centerProfileIn as [number, number][],
       r.centerThicknessIn,
       t.widePointWidthIn / 2,
+      r.centerBlendSqIn,
     );
-    noseEffIn = stationEffThickness(r.noseProfileIn as [number, number][], r.noseThicknessIn, t.noseWidthAt12In / 2);
+    noseEffIn = stationEffThickness(
+      r.noseProfileIn as [number, number][],
+      r.noseThicknessIn,
+      t.noseWidthAt12In / 2,
+      r.noseBlendSqIn,
+    );
 
     const L = spec.lengthIn;
     // Tip thickness switches at exactly 84": under 84" uses 1/2", at/over 84" uses 3/8".
@@ -374,6 +408,9 @@ export function computeVolume(
         noseProfileIn: pointsToInches(rail.noseProfile),
         centerProfileIn: pointsToInches(rail.centerProfile),
         tailProfileIn: pointsToInches(rail.tailProfile),
+        noseBlendSqIn: (rail.noseBlendArea ?? 0) / SQMM_PER_SQIN,
+        centerBlendSqIn: (rail.centerBlendArea ?? 0) / SQMM_PER_SQIN,
+        tailBlendSqIn: (rail.tailBlendArea ?? 0) / SQMM_PER_SQIN,
       }
     : null;
 
@@ -462,6 +499,10 @@ export interface CrossSectionVolumeResult {
   volumeMm3: number;
   panelCount: number;
   stationAreas: number[];
+  /** The foam the finished rail's blends take off each station, both rails, in square millimetres
+   * (quick 261102-gec plan 03, PV5): `stationAreas[i] + stationBlendAreas[i]` is that station's cut area.
+   * Exposed for auditing, as `stationAreas` is. */
+  stationBlendAreas: number[];
 }
 
 /** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
@@ -537,9 +578,15 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * nearest anchor section wholesale, because a family index or a boolean cannot be interpolated.
  * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
  * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
- * follows the board's own thickness along its length. Volume reads the CUT, faceted rail (R5) — the
- * profile is proven to enclose exactly the foam the cuts leave; the drawn finished rail is not
- * integrated. This makes the integrated volume truthful to the board actually drawn, station by
+ * follows the board's own thickness along its length.
+ *
+ * FINISHED RAIL (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the finished
+ * curve"). Each station counts the finished rail — the cut rail with every corner blended halfway into
+ * the bands either side, the curve RAILS draws — not the raw band cuts. It is worked out exactly, not by
+ * sampling the curve (PV1): the cut area comes from the faceted profile as before (proven to enclose
+ * exactly the foam the cuts leave), and both rails' blend areas come off it (`railBlendArea` of
+ * `sectionFinishedRail`, a third of each blended corner's triangle). The faceted profile survives only
+ * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
  * station, rather than to a canned profile shape.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
@@ -563,6 +610,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
   const h = length / SIMPSON_PANEL_COUNT;
   const stationAreas: number[] = [];
+  const stationBlendAreas: number[] = [];
 
   for (let i = 0; i <= SIMPSON_PANEL_COUNT; i++) {
     const station = mm(i * h);
@@ -570,6 +618,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
     if (halfWidth === 0) {
       stationAreas.push(0);
+      stationBlendAreas.push(0);
       continue;
     }
 
@@ -633,7 +682,10 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     const profile = buildRailProfile(result);
     const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
 
-    stationAreas.push(stationArea(profilePairs, thickness, halfWidth));
+    // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
+    const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
+    stationAreas.push(stationArea(profilePairs, thickness, halfWidth) - blendBothRails);
+    stationBlendAreas.push(blendBothRails);
   }
 
   const volumeMm3 = simpsonIntegrate(stationAreas, h);
@@ -643,5 +695,6 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     volumeMm3,
     panelCount: SIMPSON_PANEL_COUNT,
     stationAreas,
+    stationBlendAreas,
   };
 }
