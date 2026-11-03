@@ -109,6 +109,22 @@ const LEGEND_HIDDEN_KEYS = new Set<RailSegmentKey>(["bottomConn", "railConn"]);
 export interface RailLegendEntry {
   label: string;
   color: string;
+  /** How the key draws this entry's swatch: a 9px dot (left out — every mark and band) or a short
+   * heavy line, for the one entry that names a curve rather than a mark, the finished rail (fast task
+   * 187, 2026-11-02 — the founder, after plan 02: its dot and Board Thickness's were the same ink dot). */
+  swatch?: "line";
+}
+
+/** The key's swatch for one entry, drawn the same on the VIEWER tab and in View Full Sized: a round
+ * dot in the entry's colour, or — `swatch: "line"` — a 14px line at the finished rail's own 3px
+ * weight, so the key says "this one is the curve" rather than showing two identical ink dots. */
+export function RailKeySwatch({ entry }: { entry: RailLegendEntry }) {
+  return (
+    <span
+      className={cn("inline-block flex-shrink-0 rounded-full", entry.swatch === "line" ? "h-[3px] w-[14px]" : "h-[9px] w-[9px]")}
+      style={{ background: entry.color }}
+    />
+  );
 }
 
 /** The finished rail's ink (quick 261102-gec plan 02, PC22): the board's own edge colour, like the hard
@@ -132,7 +148,7 @@ export function buildRailLegend(output: RailSectionOutput, options?: { finishedR
     legend.push({ label: seg.label, color: RAIL_SEGMENT_COLORS[seg.key] });
   }
   if (output.domed) legend.push({ label: "Tapered Rail Thickness", color: "#6b8e4e" });
-  if (options?.finishedRail) legend.push({ label: "Finished Rail", color: FINISHED_RAIL_COLOR });
+  if (options?.finishedRail) legend.push({ label: "Finished Rail", color: FINISHED_RAIL_COLOR, swatch: "line" });
   return legend;
 }
 

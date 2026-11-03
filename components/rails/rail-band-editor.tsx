@@ -14,7 +14,7 @@ import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
-import { RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { RailKeySwatch, RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 import { ViewFullSizedDialog, firstOpenSection } from "./view-full-sized-dialog";
 
 type RailPage = "viewer" | "data" | "instructions";
@@ -558,10 +558,7 @@ export function RailBandEditor() {
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2 max-shell:mt-1 [@media(max-height:500px)]:mt-1">
                 {legend.map((entry) => (
                   <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
-                    <span
-                      className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-                      style={{ background: entry.color }}
-                    />
+                    <RailKeySwatch entry={entry} />
                     {entry.label}
                   </span>
                 ))}

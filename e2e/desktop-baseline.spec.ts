@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (fast task 187, branch rails-v2) — RAILS only, `rails-desktop.png`, for the key: its
+ * "Finished Rail" entry now draws a 14px line at the curve's own 3px weight instead of a 9px ink dot (which was the
+ * same dot "Board Thickness" has), so the whole key row re-flows by a few dots. Old and new were compared before
+ * re-recording: the diff picture shows the key row only; the drawing, the toolbar, the sidebar and the top bar are
+ * unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed unchanged and were not re-recorded. Rendered by the webpack
+ * dev server (`IS_WEBPACK_TEST=1`, port 3191) in a scratch copy of this checkout on this Mac. SHA-256 (first 8
+ * characters), old to new: RAILS 70fe0531 to c4c6afc4.
+ *
  * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 03, branch rails-v2) — VOLUME only, `volume-desktop.png`, for the
  * founder's D-V1 ("Switch to the finished curve"): litres now count the finished rail, the cut rail blended halfway
  * into each band, instead of the raw band cuts. Old and new were compared before re-recording: on the default board

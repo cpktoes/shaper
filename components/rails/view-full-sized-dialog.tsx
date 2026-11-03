@@ -23,7 +23,7 @@ import { useUnits } from "@/components/units-provider";
 import { formatCalibrationMark } from "@/lib/geometry/measure-display";
 import type { RailBandsOutput, RailSectionKey } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
-import { RailSectionPlot, SCALE, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { RailKeySwatch, RailSectionPlot, SCALE, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 
 const SECTION_ORDER: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -286,10 +286,7 @@ export function ViewFullSizedDialog({
               <div className="flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
                 {legend.map((entry) => (
                   <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
-                    <span
-                      className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-                      style={{ background: entry.color }}
-                    />
+                    <RailKeySwatch entry={entry} />
                     {entry.label}
                   </span>
                 ))}

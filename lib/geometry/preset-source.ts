@@ -145,8 +145,10 @@ function buildRailSectionSource(spec: RailSectionSpec, indent: string): string {
     `${pad}removeCornerCut: ${spec.removeCornerCut},`,
     `${pad}singleTuck: ${spec.singleTuck},`,
     `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
-    // Quick 261102-gec (PC1): the Chris Rails v2 sheets' "Scaled from center by" and the seven nudges,
-    // one line per `RAIL_NUDGE_KEYS` entry so no nudge can be missed.
+    // Quick 261102-gec (PC1): the Chris Rails v2 sheets' "Scaled from center by" and the nudges — one
+    // line per `RAIL_NUDGE_KEYS` entry (six since plan 04 retired Deck Mark 2's and Bottom Tuck 2's and
+    // added the Domed Deck Band's), read from that list so no nudge can be missed and no count is
+    // restated here.
     `${pad}scaleFromCenter: ${spec.scaleFromCenter},`,
     `${pad}nudges: {`,
     ...RAIL_NUDGE_KEYS.map((key) => `${pad}  ${key}: inchesToMm(${formatPresetInches(spec.nudges[key])}),`),

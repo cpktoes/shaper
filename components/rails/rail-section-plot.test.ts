@@ -399,7 +399,9 @@ describe("buildRailLegend's finishedRail option (quick 261102-gec plan 02, PC22)
       const withRail = buildRailLegend(output, { finishedRail: true });
       expect(withRail.slice(0, -1)).toEqual(plain);
       expect(withRail.length).toBe(plain.length + 1);
-      expect(withRail[withRail.length - 1]).toEqual({ label: "Finished Rail", color: "var(--color-surf-ink)" });
+      // The one entry drawn as a line in the key, not a dot (fast task 187): it names the curve.
+      expect(withRail[withRail.length - 1]).toEqual({ label: "Finished Rail", color: "var(--color-surf-ink)", swatch: "line" });
+      expect(plain.every((e) => e.swatch === undefined)).toBe(true);
       expect(plain.some((e) => e.label === "Finished Rail")).toBe(false);
     }
   });
