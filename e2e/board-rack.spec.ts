@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { RACK_COPY, rackHeadingLine } from "../components/setup/rack-config";
+import { drawnSpan } from "../lib/geometry/rack-art";
 import { HOVER_MULTI_ROW_HEIGHT, HOVER_ROW_BAND, HOVER_ROW_TOP_ROOM, HOVER_SLOT } from "../lib/geometry/rack-layout";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
+import { rackBoardFigures, rackModelsFromRows } from "../lib/models/rack-models";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
@@ -88,10 +90,13 @@ async function readTurnsNextFrame(page: Page, keys: string[]) {
   );
 }
 
-/** How many points a board's drawn outline has. */
-async function vertexCount(page: Page, key: string) {
+/** How wide a board's drawn outline is for its height (its body path's own box). */
+async function drawnWidthForHeight(page: Page, key: string) {
   const d = (await boardArt(page, key).locator("path").first().getAttribute("d")) ?? "";
-  return (d.match(/[ML]/g) ?? []).length;
+  const numbers = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  const xs = numbers.filter((_, i) => i % 2 === 0);
+  const ys = numbers.filter((_, i) => i % 2 === 1);
+  return (Math.max(...xs) - Math.min(...xs)) / (Math.max(...ys) - Math.min(...ys));
 }
 
 /** Waits until no board is part-way through a turn (every drawing reads 0 or 90 degrees). */
@@ -193,8 +198,17 @@ test.describe("the Board Rack on a computer", () => {
 
   test("4. a turned board draws its whole outline and a resting board its side profile", async ({ page }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
-    expect(await vertexCount(page, board(1).id)).toBeGreaterThanOrEqual(300);
-    expect(await vertexCount(page, board(2).id)).toBeLessThanOrEqual(140);
+    await expect(boardArt(page, board(1).id)).toHaveAttribute("data-turn", "90");
+    await expect(boardArt(page, board(2).id)).toHaveAttribute("data-turn", "0");
+    // One rule draws every angle (quick 261103-drw), so the shapes say which view is drawn, not a
+    // count of points: turned, as wide for its length as its TEMPLATE outline; at rest, as its side view.
+    const [turned, resting] = rackModelsFromRows(STAND_INS.slice(0, 2)).map((model) => rackBoardFigures(model.snapshot).art);
+    const widestHalf = Math.max(...turned.silhouette.map(({ w }) => Math.abs(w)));
+    const outlineRatio = (2 * widestHalf) / turned.length;
+    const side = drawnSpan(resting, 0);
+    const sideRatio = (side.right - side.left) / resting.length;
+    expect(Math.abs((await drawnWidthForHeight(page, board(1).id)) / outlineRatio - 1)).toBeLessThan(0.01);
+    expect(Math.abs((await drawnWidthForHeight(page, board(2).id)) / sideRatio - 1)).toBeLessThan(0.01);
   });
 
   test("5. Open This Board opens the board, and coming back finds it turned and marked as the open one", async ({
