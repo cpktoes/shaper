@@ -435,6 +435,10 @@ interface DesignContextValue {
    * reopening restores the design exactly, and a merge would let the board being replaced leak
    * into the board being opened. */
   applyModel: (id: string, snapshot: DesignSnapshotFields, locked: boolean) => void;
+  /** Opens a board from a file (quick 261103-k8o, Open a board file… on the home page) as a NEW,
+   * unsaved board under the file's name: never saved, never locked, ready for Save like any new
+   * board. Wholesale replace, like `applyPreset`, with its resets. */
+  applyBoardFile: (snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
@@ -832,6 +836,26 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardStarted: true,
       locked,
     }));
+  };
+
+  // Quick 261103-k8o (2026-11-03, PC8): a board opened from a file — Open a board file… on the home
+  // page — is a NEW board, never a saved one under a made-up id: no saved home (`modelId: null`), never
+  // locked, started, and marked unsaved so Save puts it on the account through `saveForFirstTime`, like
+  // any new board. The file's board is spread over the defaults, the way the kept board's read-back is,
+  // so a field a saved board gains later can't be missed. It makes applyPreset's resets (the undo
+  // history and the kept browser copy, replaced at once) and applyModel's failure-count reset; the
+  // copy's own write then carries it as an unsaved board (lib/models/open-board.ts). Like applyPreset
+  // it starts a new board, so it never checks the lock, and the file's own tips are kept.
+  const applyBoardFile = (snapshot: DesignSnapshotFields) => {
+    consecutiveFailuresRef.current = 0;
+    pendingEditKeyRef.current = undefined;
+    setHistory(emptyHistory());
+    lockedRef.current = false;
+    openBoardOwnerRef.current = null;
+    openBoardPendingRef.current = null;
+    openBoardRestoredRef.current = true;
+    clearOpenBoardCopy();
+    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...snapshot, modelId: null, locked: false, boardStarted: true, dirty: true }));
   };
 
   const updateRailSection = (key: RailSectionKey, patch: Partial<RailSectionSpec>) => {
@@ -1772,6 +1796,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     removeBlank,
     applyPreset,
     applyModel,
+    applyBoardFile,
     updateRailSection,
     toggleTailHardEdge,
     updateRailNudge,

@@ -3,11 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BoardRack, type BoardRackEntry } from "@/components/setup/board-rack";
+import { OpenBoardFile } from "@/components/setup/open-board-file";
 import { PresetCard } from "@/components/setup/preset-card";
 import { ReplaceBoardDialog } from "@/components/setup/replace-board-dialog";
 import { SiteFooter } from "@/components/site-footer";
 import { useDesign } from "@/components/design/design-store";
 import { BOARD_PRESETS, type BoardPreset } from "@/lib/geometry/presets";
+import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 import type { RackModel } from "@/lib/models/rack-models";
 
 interface SetupScreenProps {
@@ -21,8 +23,12 @@ interface SetupScreenProps {
   rackOrder?: readonly string[] | null;
 }
 
-/** Either kind of thing D-07/D-10's shared confirm can be about to replace the board with. */
-type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "model"; model: RackModel };
+/** Each kind of thing D-07/D-10's shared confirm can be about to replace the board with — a preset, a
+ * saved board, or a board from a file (quick 261103-k8o). */
+type PendingReplacement =
+  | { kind: "preset"; preset: BoardPreset }
+  | { kind: "model"; model: RackModel }
+  | { kind: "file"; fields: DesignSnapshotFields };
 
 /**
  * The setup screen — `/`'s entire content (D-05/D-06). Reads `applyPreset`/`applyModel` and
@@ -35,9 +41,13 @@ type PendingReplacement = { kind: "preset"; preset: BoardPreset } | { kind: "mod
  * Dialog-open state and the pending replacement are plain `useState`, following the
  * `outline-editor.tsx` convention of view-only state staying local and never lifted into the
  * shared store (D-07/D-10's confirm gate is a view concern, not design data).
+ *
+ * Quick 261103-k8o (2026-11-03): Open a board file… sits under the preset cards. A readable board
+ * from a file opens straight away as a new, unsaved board (`applyBoardFile`) when nothing is in
+ * progress, and otherwise waits behind the same confirm, in its own words ("Open this board file?").
  */
 export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
-  const { applyPreset, applyModel, hasBoardInProgress, modelId } = useDesign();
+  const { applyPreset, applyModel, applyBoardFile, hasBoardInProgress, modelId } = useDesign();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState<PendingReplacement | null>(null);
@@ -88,11 +98,25 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
     setConfirmOpen(true);
   };
 
+  // A board from a file (quick 261103-k8o): already read and found openable by OpenBoardFile, so
+  // only the in-progress question is left.
+  const handleOpenFile = (fields: DesignSnapshotFields) => {
+    if (!hasBoardInProgress) {
+      applyBoardFile(fields);
+      goToEditor();
+      return;
+    }
+    setPending({ kind: "file", fields });
+    setConfirmOpen(true);
+  };
+
   const handleConfirm = () => {
     if (pending?.kind === "preset") {
       applyPreset(pending.preset);
     } else if (pending?.kind === "model") {
       applyModel(pending.model.id, pending.model.snapshot, pending.model.locked);
+    } else if (pending?.kind === "file") {
+      applyBoardFile(pending.fields);
     }
     setConfirmOpen(false);
     setPending(null);
@@ -147,6 +171,7 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
             <PresetCard key={preset.id} preset={preset} onSelect={handleSelectPreset} />
           ))}
         </div>
+        <OpenBoardFile onOpen={handleOpenFile} />
       </div>
       {/* The site footer (quick 261006-fom, D-02/D-03): the last thing in the home page's scroller,
           in the column's own width and side padding (including the short-screen gutter), so its
@@ -158,7 +183,7 @@ export function SetupScreen({ models, rackOrder = null }: SetupScreenProps) {
         open={confirmOpen}
         onOpenChange={handleCancel}
         onConfirm={handleConfirm}
-        mode={pending?.kind === "model" ? "open-saved" : "preset"}
+        mode={pending?.kind === "model" ? "open-saved" : pending?.kind === "file" ? "open-file" : "preset"}
       />
     </div>
   );
