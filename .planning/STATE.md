@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-11-03 — Fast task 192: the live site's rails archived as tag rails-v1 / branch archive/rails-v1 (36d701d8) and reference/rails-v1/ (7b8a17c4); rails-v2 carries quick 261102-gec's five plans and fast tasks 185–192, built and green; NOT merged to main, not pushed, not deployed until the founder says
+Last activity: 2026-11-03 — Go-live gate for Rails v2 green: every browser spec (1,310 passed, ten load flakes passed alone, one stale toolbar count fixed as fast 193 a97ffe33), the production-build specs (18), the unit suite, build; the archive (tag rails-v1, branch archive/rails-v1) pushed; rails-v2 merging into main on the founder's "push v2 to go live"
 
 ## Performance Metrics
 
@@ -427,6 +427,7 @@ Recent decisions affecting current work:
 | 190 | RAILS' Sym box reads "Symmetrical", and on the tail it and Hard Edge can never both be on — ticking either clears the other in the store, Reset turns Hard Edge on and Symmetrical off together, and rule 11 of the saved-board reader opens a tail saved with both as Hard Edge winning (nothing rewritten) — the founder, 2026-11-02: "tail sym and hard edge cannot both be selected. Change sym to Symmetrical" (R21). A new reader test, rails-advanced test 15 on three devices, RAILS baseline re-recorded (the word only) | 2026-11-02 | 8be34b10 | fast (no directory) |
 | 191 | RAILS' Sharp Bottom Edge box (plan 05) is called Sharp Bottom Tuck — label, stored key `sharpBottomTuck`, engine option, presets, reader rule 12, tests and comments, one name everywhere — the founder, 2026-11-03, merging plan 05: "lets call it a sharp bottom tuck". Whole unit suite, rails-advanced on three devices, desktop baselines unchanged | 2026-11-03 | 62344af2 | fast (no directory) |
 | 192 | An archival copy of the live site's rails before Rails v2 goes live — the founder, 2026-11-03: "an archival copy in case I want to revert at a later date". Git tag `rails-v1` and branch `archive/rails-v1` on main's tip 36d701d8 (the live site's exact code), plus `reference/rails-v1/`: byte-for-byte copies of the old `rail-bands.ts` and its tests under provenance headers (`@ts-nocheck`, never compiled, linted or run) and a README naming the old rules' sources still in the repo (the prototype's Rails.dc.html, the prototype golden and its script) and how a revert would go. Local only until the founder says to push | 2026-11-03 | 7b8a17c4 | fast (no directory) |
+| 193 | The viewer-toolbar browser spec expects RAILS' three corner buttons (Finished Rail, Ghost Bands, View Full Sized) on the same 40-px step — it had said one since before plan 02 and no plan's spec list included it; found by the go-live run of every spec (1,310 passed, 11 failed: ten load flakes that passed alone, and this). Passes on three devices | 2026-11-03 | a97ffe33 | fast (no directory) |
 
 ## Deferred Items
 
