@@ -1,0 +1,545 @@
+// @ts-nocheck
+/*
+ * REFERENCE COPY — never edited, never run.
+ *
+ * lib/geometry/rail-bands.test.ts exactly as of commit 36d701d8 on main (tag rails-v1): the old rules'
+ * expectations, kept beside the old rules. Copied byte for byte on 2026-11-03. See README.md.
+ */
+
+import { describe, expect, it } from "vitest";
+import {
+  buildRailDataGroups,
+  buildRailSegments,
+  computeRailBands,
+  computeRailSection,
+  DEFAULT_RAIL_BAND_SPEC,
+  mergeRailDataTable,
+  railPlotDots,
+  MIN_BOTTOM_TUCK_SEPARATION_IN,
+  railFamilyLabel,
+  type ComputeRailSectionInput,
+  type RailBandSpec,
+  type RailFamily,
+  type RailSectionKey,
+  type RailSectionSpec,
+} from "./rail-bands";
+import { type Mm, formatInchesFraction, inchesToMm, mmToInches, roundToSixteenthInch } from "./units";
+import golden from "./__fixtures__/prototype-rails-golden.json";
+import { BOARD_PRESETS } from "./presets";
+
+const TOLERANCE_IN = 1e-9;
+
+function expectCloseIn(actual: number, expected: number, tol: number = TOLERANCE_IN) {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tol);
+}
+
+interface GoldenState {
+  units: string;
+  centerDeckPercent: number;
+  centerBoardThickness: number;
+  centerFamily: number;
+  centerRatioTop: number;
+  centerSymmetrical: boolean;
+  noseDeckPercent: number;
+  noseFamily: number;
+  noseRatioTop: number;
+  noseSymmetrical: boolean;
+  tailDeckPercent: number;
+  tailFamily: number;
+  tailRatioTop: number;
+  tailSymmetrical: boolean;
+  noseThickness: number;
+  tailThickness: number;
+  noseCornerCutOffsetOverride: number | null;
+  centerCornerCutOffsetOverride: number | null;
+  tailCornerCutOffsetOverride: number | null;
+  noseRemoveCornerCut: boolean;
+  centerRemoveCornerCut: boolean;
+  tailRemoveCornerCut: boolean;
+  noseSingleTuck: boolean;
+  centerSingleTuck: boolean;
+  tailSingleTuck: boolean;
+  noseBottomTuck3Override: number | null;
+  centerBottomTuck3Override: number | null;
+  tailBottomTuck3Override: number | null;
+  tailHardEdge: boolean;
+}
+
+const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
+const SECTION_BOARD_THICKNESS_KEY: Record<RailSectionKey, keyof GoldenState> = {
+  nose: "noseThickness",
+  center: "centerBoardThickness",
+  tail: "tailThickness",
+};
+
+function toSectionSpec(state: GoldenState, section: RailSectionKey): RailSectionSpec {
+  const overrideKey = `${section}CornerCutOffsetOverride` as keyof GoldenState;
+  const tuck3Key = `${section}BottomTuck3Override` as keyof GoldenState;
+  const overrideVal = state[overrideKey] as number | null;
+  const tuck3Val = state[tuck3Key] as number | null;
+  return {
+    boardThickness: inchesToMm(state[SECTION_BOARD_THICKNESS_KEY[section]] as number),
+    deckPercent: state[`${section}DeckPercent` as keyof GoldenState] as number,
+    family: state[`${section}Family` as keyof GoldenState] as RailFamily,
+    ratioTopPercent: state[`${section}RatioTop` as keyof GoldenState] as number,
+    symmetrical: state[`${section}Symmetrical` as keyof GoldenState] as boolean,
+    cornerCutOffsetOverride: overrideVal === null ? null : inchesToMm(overrideVal),
+    removeCornerCut: state[`${section}RemoveCornerCut` as keyof GoldenState] as boolean,
+    singleTuck: state[`${section}SingleTuck` as keyof GoldenState] as boolean,
+    bottomTuck3Override: tuck3Val === null ? null : inchesToMm(tuck3Val),
+  };
+}
+
+function toRailBandSpec(state: GoldenState): RailBandSpec {
+  return {
+    nose: toSectionSpec(state, "nose"),
+    center: toSectionSpec(state, "center"),
+    tail: toSectionSpec(state, "tail"),
+    tailHardEdge: state.tailHardEdge,
+  };
+}
+
+const NUMERIC_RESULT_FIELDS = [
+  "thickness",
+  "apexLenRange",
+  "apexCenter",
+  "railMark1",
+  "railTuck1",
+  "domedDeckBand",
+  "deckMark1",
+  "deckMark2",
+  "deckMark3",
+  "bottomTuck1",
+  "bottomTuck2",
+  "bottomTuck3",
+] as const;
+const NULLABLE_RESULT_FIELDS = ["cornerCutRail", "cornerCutOffset", "cornerCutDeck"] as const;
+
+// "exampleRail" is the INSTRUCTIONS tab's own fixture entry (D-20) — a { flat, domed } pair, not
+// a { state, sections } scenario — and is pinned separately below, not iterated as a scenario here.
+const goldenEntries = Object.entries(golden).filter(([name]) => name !== "exampleRail") as [
+  string,
+  (typeof golden)[Exclude<keyof typeof golden, "exampleRail">],
+][];
+
+describe("computeRailBands golden parity", () => {
+  for (const [name, fixture] of goldenEntries) {
+    describe(`fixture: ${name}`, () => {
+      const spec = toRailBandSpec(fixture.state as GoldenState);
+      const bands = computeRailBands(spec);
+
+      for (const section of SECTION_KEYS) {
+        describe(`section: ${section}`, () => {
+          const goldenSection = fixture.sections[section];
+          const output = bands[section];
+
+          it("matches computeSection result fields", () => {
+            const rIn = goldenSection.result as Record<string, number | boolean | null | undefined>;
+            const r = output.result as unknown as Record<string, Mm | boolean | null>;
+
+            for (const field of NUMERIC_RESULT_FIELDS) {
+              expectCloseIn(mmToInches(r[field] as Mm), rIn[field] as number);
+            }
+            for (const field of NULLABLE_RESULT_FIELDS) {
+              const expectedNull = rIn[field] === null || rIn[field] === undefined;
+              if (expectedNull) {
+                expect(r[field]).toBeNull();
+              } else {
+                expect(r[field]).not.toBeNull();
+                expectCloseIn(mmToInches(r[field] as Mm), rIn[field] as number);
+              }
+            }
+            expect(output.result.hardEdge).toBe(!!rIn.hardEdge);
+            expect(output.result.removeCornerCut).toBe(!!rIn.removeCornerCut);
+            expect(output.result.singleTuck).toBe(!!rIn.singleTuck);
+          });
+
+          it("matches buildProfilePoints profile length, order and coordinates", () => {
+            const goldenProfile = goldenSection.profile as [number, number][];
+            expect(output.profile.length).toBe(goldenProfile.length);
+            output.profile.forEach((p, i) => {
+              expectCloseIn(mmToInches(p.x), goldenProfile[i][0]);
+              expectCloseIn(mmToInches(p.y), goldenProfile[i][1]);
+            });
+          });
+
+          it("matches buildSegmentDefs segment key sequence and endpoints", () => {
+            const goldenSegments = goldenSection.segments as {
+              key: string;
+              label: string;
+              p1: [number, number];
+              p2: [number, number];
+            }[];
+            expect(output.segments.map((s) => s.key)).toEqual(goldenSegments.map((s) => s.key));
+            expect(output.segments.map((s) => s.label)).toEqual(goldenSegments.map((s) => s.label));
+            output.segments.forEach((s, i) => {
+              const g = goldenSegments[i];
+              expectCloseIn(mmToInches(s.p1.x), g.p1[0]);
+              expectCloseIn(mmToInches(s.p1.y), g.p1[1]);
+              expectCloseIn(mmToInches(s.p2.x), g.p2[0]);
+              expectCloseIn(mmToInches(s.p2.y), g.p2[1]);
+            });
+          });
+
+          it("matches cardFromResult data groups label-for-label and value-for-value once formatted", () => {
+            const goldenCard = goldenSection.card as {
+              groups: { heading: string; rows: { label: string; value: string }[] }[];
+            };
+            expect(output.dataGroups.length).toBe(goldenCard.groups.length);
+            output.dataGroups.forEach((g, gi) => {
+              const gg = goldenCard.groups[gi];
+              expect(g.heading).toBe(gg.heading);
+              expect(g.rows.length).toBe(gg.rows.length);
+              g.rows.forEach((row, ri) => {
+                const goldenRow = gg.rows[ri];
+                expect(row.label).toBe(goldenRow.label);
+                const formatted =
+                  row.value === "hard-edge"
+                    ? "Hard Edge"
+                    : row.value === null
+                      ? "—"
+                      : formatInchesFraction(row.value, 16);
+                expect(formatted).toBe(goldenRow.value);
+              });
+            });
+          });
+        });
+      }
+    });
+  }
+});
+
+// The INSTRUCTIONS tab's example rail (D-20): a single section computed twice (Flat/Domed) from
+// the prototype's own fixed literal inputs, pinned against golden.exampleRail rather than one of
+// the eleven { state, sections } scenarios above — see scripts/extract-prototype-rails-golden.mjs.
+describe("computeRailSection example rail golden parity", () => {
+  const exampleRailGolden = golden.exampleRail as unknown as Record<
+    "flat" | "domed",
+    {
+      result: Record<string, number | boolean | null | undefined>;
+      segments: { key: string; label: string; p1: [number, number]; p2: [number, number] }[];
+    }
+  >;
+  const EXAMPLE_RAIL_STATES: { key: "flat" | "domed"; thicknessIn: number; domed: boolean }[] = [
+    { key: "flat", thicknessIn: 3.5, domed: false },
+    { key: "domed", thicknessIn: 3, domed: true },
+  ];
+
+  for (const { key, thicknessIn, domed } of EXAMPLE_RAIL_STATES) {
+    describe(`state: ${key}`, () => {
+      const input: ComputeRailSectionInput = {
+        thickness: inchesToMm(thicknessIn),
+        ratioTopPercent: 60,
+        family: 3,
+        domedBandBase: inchesToMm(6),
+        scale: 1,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+        symmetrical: false,
+        hardEdge: false,
+      };
+      const result = computeRailSection(input);
+      const goldenResult = exampleRailGolden[key].result;
+
+      it("matches computeSection result fields", () => {
+        const r = result as unknown as Record<string, Mm | boolean | null>;
+        for (const field of NUMERIC_RESULT_FIELDS) {
+          expectCloseIn(mmToInches(r[field] as Mm), goldenResult[field] as number);
+        }
+        for (const field of NULLABLE_RESULT_FIELDS) {
+          const expectedNull = goldenResult[field] === null || goldenResult[field] === undefined;
+          if (expectedNull) {
+            expect(r[field]).toBeNull();
+          } else {
+            expect(r[field]).not.toBeNull();
+            expectCloseIn(mmToInches(r[field] as Mm), goldenResult[field] as number);
+          }
+        }
+        expect(result.removeCornerCut).toBe(!!goldenResult.removeCornerCut);
+        expect(result.singleTuck).toBe(!!goldenResult.singleTuck);
+      });
+
+      it("matches buildSegmentDefs segment key sequence and endpoints", () => {
+        const opts = { boardThickness: inchesToMm(3.5), railThicknessVal: inchesToMm(3), domedBandBase: inchesToMm(6) };
+        const segments = buildRailSegments(result, inchesToMm(thicknessIn), domed, opts);
+        const goldenSegments = exampleRailGolden[key].segments;
+        expect(segments.map((s) => s.key)).toEqual(goldenSegments.map((s) => s.key));
+        expect(segments.map((s) => s.label)).toEqual(goldenSegments.map((s) => s.label));
+        segments.forEach((s, i) => {
+          const g = goldenSegments[i];
+          expectCloseIn(mmToInches(s.p1.x), g.p1[0]);
+          expectCloseIn(mmToInches(s.p1.y), g.p1[1]);
+          expectCloseIn(mmToInches(s.p2.x), g.p2[0]);
+          expectCloseIn(mmToInches(s.p2.y), g.p2[1]);
+        });
+      });
+    });
+  }
+});
+
+describe("computeRailSection null alignment", () => {
+  const base: ComputeRailSectionInput = {
+    thickness: inchesToMm(2.5),
+    ratioTopPercent: 60,
+    family: 3,
+    domedBandBase: inchesToMm(6),
+    scale: 1,
+    cornerCutOffsetOverride: null,
+    removeCornerCut: false,
+    singleTuck: false,
+    bottomTuck3Override: null,
+    symmetrical: false,
+    hardEdge: false,
+  };
+
+  it("leaves cornerCutRail/cornerCutOffset/cornerCutDeck as numbers when Remove is off", () => {
+    const r = computeRailSection(base);
+    expect(r.cornerCutRail).not.toBeNull();
+    expect(r.cornerCutOffset).not.toBeNull();
+    expect(r.cornerCutDeck).not.toBeNull();
+  });
+
+  it("nulls cornerCutRail/cornerCutOffset/cornerCutDeck together when Remove is on", () => {
+    const r = computeRailSection({ ...base, removeCornerCut: true });
+    expect(r.cornerCutRail).toBeNull();
+    expect(r.cornerCutOffset).toBeNull();
+    expect(r.cornerCutDeck).toBeNull();
+  });
+});
+
+describe("Bottom Tuck 3 override floor", () => {
+  // family=3, scale=1, ratioTopPercent=60, thickness=2.5in (same shape as the center section
+  // defaults). Derived values by hand: apexLenRange=0.75, apexCenter=1.0, railTuck1=0.625,
+  // bottomTuck1(non-sym)=0.3125, bottomTuck1(sym)=deckMark1=2.5, deckMark3=4.0. These match the
+  // measured repro in the todo (Bottom Tuck 1 = 2 1/2", Bottom Tuck 3 derived = 4" when symmetrical).
+  const baseInput: ComputeRailSectionInput = {
+    thickness: inchesToMm(2.5),
+    ratioTopPercent: 60,
+    family: 3,
+    domedBandBase: inchesToMm(6),
+    scale: 1,
+    cornerCutOffsetOverride: null,
+    removeCornerCut: false,
+    singleTuck: false,
+    bottomTuck3Override: null,
+    symmetrical: false,
+    hardEdge: false,
+  };
+
+  it("floors a symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 + MIN_BOTTOM_TUCK_SEPARATION_IN (strictly greater, never inverts or collapses)", () => {
+    // Reproduces the exact reported bug: Sym on, slider touched down to 1.5" (below the 2.5"
+    // Bottom Tuck 1), must floor to strictly above Bottom Tuck 1, not collapse onto it.
+    const r = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: inchesToMm(1.5) });
+    expectCloseIn(mmToInches(r.bottomTuck1), 2.5);
+    expectCloseIn(mmToInches(r.bottomTuck3), 2.5 + MIN_BOTTOM_TUCK_SEPARATION_IN);
+    expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
+  });
+
+  it("floors a non-symmetrical override below Bottom Tuck 1 to Bottom Tuck 1 + MIN_BOTTOM_TUCK_SEPARATION_IN", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: false, bottomTuck3Override: inchesToMm(0.1) });
+    expectCloseIn(mmToInches(r.bottomTuck1), 0.3125);
+    expectCloseIn(mmToInches(r.bottomTuck3), 0.3125 + MIN_BOTTOM_TUCK_SEPARATION_IN);
+    expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
+  });
+
+  it("passes a symmetrical override above the floor through unchanged", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: inchesToMm(3.0) });
+    expectCloseIn(mmToInches(r.bottomTuck3), 3.0);
+  });
+
+  it("passes a non-symmetrical override above the floor through unchanged", () => {
+    const r = computeRailSection({ ...baseInput, symmetrical: false, bottomTuck3Override: inchesToMm(0.5) });
+    expectCloseIn(mmToInches(r.bottomTuck3), 0.5);
+  });
+
+  it("still yields exactly 0 for hardEdge even with an override present, including bottomTuck3Derived", () => {
+    const symmetricalHardEdge = computeRailSection({
+      ...baseInput,
+      symmetrical: true,
+      hardEdge: true,
+      bottomTuck3Override: inchesToMm(5),
+    });
+    expect(symmetricalHardEdge.bottomTuck3).toBe(0);
+    expect(symmetricalHardEdge.bottomTuck3Derived).toBe(0);
+
+    const nonSymmetricalHardEdge = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      hardEdge: true,
+      bottomTuck3Override: inchesToMm(5),
+    });
+    expect(nonSymmetricalHardEdge.bottomTuck3).toBe(0);
+    expect(nonSymmetricalHardEdge.bottomTuck3Derived).toBe(0);
+  });
+
+  it("holds bottomTuck3 > bottomTuck1 strictly (or exactly 0 under hardEdge) for every section across every golden fixture", () => {
+    for (const [, fixture] of goldenEntries) {
+      const spec = toRailBandSpec(fixture.state as GoldenState);
+      const bands = computeRailBands(spec);
+      for (const section of SECTION_KEYS) {
+        const r = bands[section].result;
+        if (r.hardEdge) {
+          expect(r.bottomTuck3).toBe(0);
+        } else {
+          expect(r.bottomTuck3).toBeGreaterThan(r.bottomTuck1);
+        }
+      }
+    }
+  });
+
+  it("bottomTuck3Derived equals the un-overridden value in both modes, unaffected by an override's presence", () => {
+    const symmetricalNoOverride = computeRailSection({ ...baseInput, symmetrical: true, bottomTuck3Override: null });
+    const symmetricalWithOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: true,
+      bottomTuck3Override: inchesToMm(1.5),
+    });
+    expectCloseIn(mmToInches(symmetricalNoOverride.bottomTuck3Derived), 4.0);
+    expectCloseIn(mmToInches(symmetricalWithOverride.bottomTuck3Derived), 4.0);
+    // With no override, bottomTuck3 itself equals the derived value.
+    expectCloseIn(mmToInches(symmetricalNoOverride.bottomTuck3), mmToInches(symmetricalNoOverride.bottomTuck3Derived));
+
+    const nonSymmetricalNoOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      bottomTuck3Override: null,
+    });
+    const nonSymmetricalWithOverride = computeRailSection({
+      ...baseInput,
+      symmetrical: false,
+      bottomTuck3Override: inchesToMm(0.1),
+    });
+    expectCloseIn(mmToInches(nonSymmetricalNoOverride.bottomTuck3Derived), 0.625);
+    expectCloseIn(mmToInches(nonSymmetricalWithOverride.bottomTuck3Derived), 0.625);
+    expectCloseIn(
+      mmToInches(nonSymmetricalNoOverride.bottomTuck3),
+      mmToInches(nonSymmetricalNoOverride.bottomTuck3Derived),
+    );
+  });
+});
+
+describe("roundToSixteenthInch", () => {
+  it("snaps 2.5in x 80% to exactly 2in", () => {
+    const snapped = roundToSixteenthInch(inchesToMm(2.5 * 0.8));
+    expect(mmToInches(snapped)).toBeCloseTo(2, 9);
+  });
+
+  it("snaps 1.31in x 72% to the nearest sixteenth", () => {
+    const snapped = roundToSixteenthInch(inchesToMm(1.31 * 0.72));
+    expect(mmToInches(snapped)).toBeCloseTo(15 / 16, 9);
+  });
+});
+
+describe("railFamilyLabel", () => {
+  it("names all five families", () => {
+    expect(railFamilyLabel(1)).toBe("boxy");
+    expect(railFamilyLabel(2)).toBe("boxy/med");
+    expect(railFamilyLabel(3)).toBe("med");
+    expect(railFamilyLabel(4)).toBe("med/knifey");
+    expect(railFamilyLabel(5)).toBe("knifey");
+  });
+});
+
+describe("mergeRailDataTable", () => {
+  it("emits the canonical row order and fills absent cells with null (em dash) regardless of open sections", () => {
+    const defaultFixture = golden.default as (typeof golden)["default"];
+    const spec = toRailBandSpec(defaultFixture.state as GoldenState);
+    const bands = computeRailBands(spec);
+
+    // Tail defaults to Hard Edge on, so it lacks a "Rail Tuck 1" row and the Bottom Tuck 1/2 rows
+    // that nose (hard edge off) carries — mergeRailDataTable must still emit those canonical rows,
+    // with the tail's cell filled in as null.
+    const merged = mergeRailDataTable([
+      { key: "nose", dataGroups: bands.nose.dataGroups },
+      { key: "tail", dataGroups: bands.tail.dataGroups },
+    ]);
+
+    const railSide = merged.find((g) => g.heading === "Rail Side")!;
+    expect(railSide.rows.map((r) => r.label)).toEqual([
+      "Board Thickness",
+      "Tapered Rail Thickness",
+      "Apex Thickness",
+      "Apex Center",
+      "Rail Mark 1",
+      "Rail Tuck 1",
+      "Corner Cut (Rail)",
+    ]);
+    const railTuck1Row = railSide.rows.find((r) => r.label === "Rail Tuck 1")!;
+    expect(railTuck1Row.cells[0]).not.toBeNull(); // nose
+    expect(railTuck1Row.cells[1]).toBeNull(); // tail (hard edge — no row)
+
+    const bottom = merged.find((g) => g.heading === "Bottom")!;
+    expect(bottom.rows.map((r) => r.label)).toEqual(["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"]);
+    const bottomTuck1Row = bottom.rows.find((r) => r.label === "Bottom Tuck 1")!;
+    expect(bottomTuck1Row.cells[0]).not.toBeNull(); // nose
+    expect(bottomTuck1Row.cells[1]).toBeNull(); // tail (hard edge — no row)
+    const bottomTuck3Row = bottom.rows.find((r) => r.label === "Bottom Tuck 3")!;
+    expect(bottomTuck3Row.cells[0]).not.toBeNull(); // nose: a real value
+    expect(bottomTuck3Row.cells[1]).toBe("hard-edge"); // tail: the hard-edge sentinel
+  });
+});
+
+describe("buildRailDataGroups row inclusion", () => {
+  it("drops Board Thickness's flat label and includes it only when domed", () => {
+    const flat = buildRailDataGroups(
+      computeRailSection({
+        thickness: inchesToMm(2.5),
+        ratioTopPercent: 60,
+        family: 3,
+        domedBandBase: inchesToMm(6),
+        scale: 1,
+        cornerCutOffsetOverride: null,
+        removeCornerCut: false,
+        singleTuck: false,
+        bottomTuck3Override: null,
+        symmetrical: false,
+        hardEdge: false,
+      }),
+      { domed: false, boardThickness: inchesToMm(2.5) },
+    );
+    const railSide = flat.find((g) => g.heading === "Rail Side")!;
+    expect(railSide.rows[0].label).toBe("Board Thickness");
+    expect(railSide.rows.filter((r) => r.label === "Board Thickness").length).toBe(1);
+  });
+});
+
+describe("railPlotDots — which rail marks get a dot (the RAILS plot and the ☰ RAILS tile)", () => {
+  const sections = [
+    { name: "default", spec: DEFAULT_RAIL_BAND_SPEC },
+    ...BOARD_PRESETS.map((preset) => ({ name: preset.id, spec: preset.rails })),
+  ].flatMap(({ name, spec }) => {
+    const bands = computeRailBands(spec);
+    return (["nose", "center", "tail"] as const).map((key) => ({ label: `${name} ${key}`, output: bands[key] }));
+  });
+
+  for (const { label, output } of sections) {
+    it(`${label}: band ends in plot order, then the apex centre, then the dome's top`, () => {
+      const { segments, result, domed } = output;
+      const dots = railPlotDots(segments, result, domed);
+      const noDot = new Set(["boardConn", "bottomConn", "railConn", ...(result.hardEdge ? ["hardEdge"] : [])]);
+      const dotted = segments.filter((seg) => !noDot.has(seg.key));
+      const expected: { key: string; x: number; y: number }[] = [];
+      for (const seg of dotted) {
+        expected.push({ key: seg.key, x: seg.p1.x, y: seg.p1.y });
+        expected.push({ key: seg.key, x: seg.p2.x, y: seg.p2.y });
+      }
+      expected.push({ key: "apexCenter", x: 0, y: result.apexCenter });
+      const domedBand = segments.find((seg) => seg.key === "domedBand");
+      if (domed && domedBand) expected.push({ key: "domedBand", x: 0, y: domedBand.p1.y });
+      expect(dots).toEqual(expected);
+      expect(dots.some((dot) => dot.key === "boardConn" || dot.key === "bottomConn" || dot.key === "railConn")).toBe(false);
+      if (result.hardEdge) expect(dots.some((dot) => dot.key === "hardEdge")).toBe(false);
+      expect(dots.length).toBe(2 * dotted.length + 1 + (domed && domedBand ? 1 : 0));
+      expect(dots[2 * dotted.length]).toEqual({ key: "apexCenter", x: 0, y: result.apexCenter });
+    });
+  }
+
+  it("the tail of the default board has a hard edge, and it gets no dot", () => {
+    const tail = computeRailBands(DEFAULT_RAIL_BAND_SPEC).tail;
+    expect(tail.result.hardEdge).toBe(true);
+    expect(tail.segments.some((seg) => seg.key === "hardEdge")).toBe(true);
+    expect(railPlotDots(tail.segments, tail.result, tail.domed).some((dot) => dot.key === "hardEdge")).toBe(false);
+  });
+});
