@@ -470,13 +470,58 @@ export function simpsonIntegrate(samples: number[], h: number): number {
   return (h / 3) * sum;
 }
 
+/**
+ * The `SIMPSON_PANEL_COUNT + 1` stations the cross-sections are taken at, tail end to nose.
+ *
+ * With no tail cut — `cutStation` 0, or anything not strictly inside the board — these are today's
+ * even stations, `i x (length / SIMPSON_PANEL_COUNT)`, exactly. With one (a diamond's tail block or a
+ * swallow's crotch, `tailCutStation` in outline.ts) the corner itself is a station: the even panel
+ * count nearest the cut's share of the board, held to 2..48, spaced evenly from the tail end to the
+ * corner, and the rest spaced evenly from the corner to the nose. Both pieces have an even number of
+ * panels, so Simpson's rule runs over each, and the cut's straight edges are integrated exactly rather
+ * than straddled by a panel.
+ */
+export function crossSectionStations(length: Mm, cutStation: Mm): Mm[] {
+  const h = length / SIMPSON_PANEL_COUNT;
+  const stations: Mm[] = [];
+  if (!splitsAtCut(length, cutStation)) {
+    for (let i = 0; i <= SIMPSON_PANEL_COUNT; i++) stations.push(mm(i * h));
+    return stations;
+  }
+  const m = cutPanelCount(length, cutStation);
+  for (let i = 0; i < m; i++) stations.push(mm(i * (cutStation / m)));
+  stations.push(cutStation);
+  for (let i = 1; i < SIMPSON_PANEL_COUNT - m; i++) {
+    stations.push(mm(cutStation + i * ((length - cutStation) / (SIMPSON_PANEL_COUNT - m))));
+  }
+  stations.push(length);
+  return stations;
+}
+
+/** Whether a cut's corner lies strictly inside the board, so the stations split there. */
+function splitsAtCut(length: number, cutStation: number): boolean {
+  return Number.isFinite(cutStation) && cutStation > 0 && cutStation < length;
+}
+
+/** How many of the panels lie between the tail end and a cut's corner: the even count nearest the
+ * cut's share of the board, at least 2 and leaving at least 2 for the rest. */
+function cutPanelCount(length: number, cutStation: number): number {
+  const h = length / SIMPSON_PANEL_COUNT;
+  return Math.min(SIMPSON_PANEL_COUNT - 2, Math.max(2, 2 * Math.round(cutStation / (2 * h))));
+}
+
 /** Input to `computeCrossSectionVolume`. `halfWidthAt` is a half-width SAMPLER rather than an
- * `OutlineGeometry` directly: the app passes `(s) => sampleOutline(outlineGeometry, s)`, and the
- * blank-datasheet validation test below passes a monotone spline through a real blank's five
- * quoted widths instead. Taking a function rather than a concrete outline type is what makes that
- * validation possible at all, and it keeps this module from importing the outline builder. */
+ * `OutlineGeometry` directly: the app passes `crossSectionFoam(outlineGeometry)` from design.ts —
+ * the foam actually there on one side of the stringer, a swallow's notch left out and a diamond's V
+ * counted (outline.ts's `foamHalfWidth`) — and the blank-datasheet validation test below passes a
+ * monotone spline through a real blank's five quoted widths instead. Taking a function rather than a
+ * concrete outline type is what makes that validation possible at all, and it keeps this module from
+ * importing the outline builder. */
 export interface CrossSectionVolumeInput {
   halfWidthAt: (station: Mm) => Mm;
+  /** The tail cut's corner (outline.ts's `tailCutStation`), made a station so the cut is integrated
+   * exactly — see `crossSectionStations`. Absent or 0 is a tail with no cut: today's even stations. */
+  cutStation?: Mm;
   foil: FoilSpec;
   rails: RailBandSpec;
   length: Mm;
@@ -498,6 +543,8 @@ export interface CrossSectionVolumeResult {
   volumeLitres: Litres;
   volumeMm3: number;
   panelCount: number;
+  /** Where each of `stationAreas` was taken, tail end to nose (`crossSectionStations`). */
+  stations: Mm[];
   stationAreas: number[];
   /** The foam the finished rail's blends take off each station, both rails, in square millimetres
    * (quick 261102-gec plan 03, PV5): `stationAreas[i] + stationBlendAreas[i]` is that station's cut area.
@@ -591,6 +638,17 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * bottom edge sharp at Bottom Tuck 3 where the nearest rail's box asks for it. The faceted profile survives only
  * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
  * station, rather than to a canned profile shape.
+ *
+ * TAIL CUT (quick 261103-gcm, the founder, 2026-11-03: the litres count the tail the board is drawn
+ * with). `halfWidthAt` is the foam actually there, so a station inside a swallow's notch reads the foam
+ * on one side of the notch and a station inside a diamond's V reads the V's own width. A swallow's tail
+ * is two pieces, each with the notch's square wall on its inside and the rail on its outside — exactly
+ * the half-section this function already builds, at the piece's width — so the finished-rail basis above
+ * is untouched: the notch takes its wall's full thickness out of every station it reaches. The cut's
+ * corner (the diamond's tail block, the swallow's crotch) is itself a station (`cutStation`, see
+ * `crossSectionStations`), and Simpson runs over each side of it separately: the cut's edges are
+ * straight, so the plan area the stations integrate holds the whole V or notch exactly, rather than a
+ * panel straddling the corner's step.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   const { halfWidthAt, foil, rails, length } = input;
@@ -611,12 +669,12 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
   const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
   const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
 
-  const h = length / SIMPSON_PANEL_COUNT;
+  const cutStation = input.cutStation ?? mm(0);
+  const stations = crossSectionStations(length, cutStation);
   const stationAreas: number[] = [];
   const stationBlendAreas: number[] = [];
 
-  for (let i = 0; i <= SIMPSON_PANEL_COUNT; i++) {
-    const station = mm(i * h);
+  for (const station of stations) {
     const halfWidth = halfWidthAt(station);
 
     if (halfWidth === 0) {
@@ -692,12 +750,22 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     stationBlendAreas.push(blendBothRails);
   }
 
-  const volumeMm3 = simpsonIntegrate(stationAreas, h);
+  let volumeMm3: number;
+  if (splitsAtCut(length, cutStation)) {
+    // One Simpson run from the tail end to the corner, another from the corner to the nose.
+    const m = cutPanelCount(length, cutStation);
+    volumeMm3 =
+      simpsonIntegrate(stationAreas.slice(0, m + 1), cutStation / m) +
+      simpsonIntegrate(stationAreas.slice(m), (length - cutStation) / (SIMPSON_PANEL_COUNT - m));
+  } else {
+    volumeMm3 = simpsonIntegrate(stationAreas, length / SIMPSON_PANEL_COUNT);
+  }
 
   return {
     volumeLitres: cubicMmToLitres(volumeMm3),
     volumeMm3,
     panelCount: SIMPSON_PANEL_COUNT,
+    stations,
     stationAreas,
     stationBlendAreas,
   };

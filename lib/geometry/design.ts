@@ -23,11 +23,12 @@ import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import type { FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
-import { buildOutline, sampleOutline } from "./outline";
+import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
 import {
   computeCrossSectionVolume,
   computeVolume,
+  type CrossSectionVolumeInput,
   type CrossSectionVolumeResult,
   type VolumeRailValues,
   type VolumeResult,
@@ -68,10 +69,25 @@ export function deriveEffectiveFins(
   };
 }
 
-/** Same shape as `design-store.tsx`'s `templateValues` memo. */
+/**
+ * The foam the litres count, from the board's outline: the one rule every litres figure reads — VOLUME,
+ * the preset and rack cards, the phone's tile, the order form and the printed template (quick
+ * 261103-gcm). The width on one side of the stringer is the foam TEMPLATE draws (`foamHalfWidth`: a
+ * swallow's notch is air, a diamond's V is foam), and the tail cut's corner is a cross-section station
+ * (`tailCutStation`). Spread into `computeCrossSectionVolume`'s input.
+ */
+export function crossSectionFoam(geometry: OutlineGeometry): Pick<CrossSectionVolumeInput, "halfWidthAt" | "cutStation"> {
+  return {
+    halfWidthAt: (station) => foamHalfWidth(geometry, station),
+    cutStation: tailCutStation(geometry),
+  };
+}
+
+/** Same shape as `design-store.tsx`'s `templateValues` memo. The area is the outline TEMPLATE draws,
+ * tail cut included (`outlinePlanArea`, quick 261103-gcm) — VOLUME's Template Area row. */
 export function deriveTemplateValues(outline: OutlineSpec, geometry: OutlineGeometry): VolumeTemplateValues {
   return {
-    area: geometry.area,
+    area: outlinePlanArea(geometry),
     length: outline.length,
     widePointWidth: outline.widePointWidth,
     noseWidthAt12: geometry.noseWidthAt12in,
@@ -288,7 +304,7 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
   const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
   const crossSectionVolume = computeCrossSectionVolume({
-    halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
+    ...crossSectionFoam(outlineGeometry),
     foil: profile.effectiveFoil,
     thicknessAt: profile.thicknessAt,
     rails: effectiveRails,

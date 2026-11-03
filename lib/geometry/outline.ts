@@ -16,6 +16,17 @@
  * 3. DEAD CODE — the prototype's unused `HANDLE_FRAC = 0.33` is not ported.
  * 4. TAIL RULES are driven by the TailShape union instead of a string plus
  *    loose fields.
+ * 5. THE TAIL CUT, quick 261103-gcm (the founder, 2026-11-03: a board's litres
+ *    count the tail it is drawn with). `points`, `area` and `sampleOutline`
+ *    stay the prototype's own curve — its golden pins both — and TEMPLATE's
+ *    measuring lines, the fins and the blank fit read that curve, which is
+ *    right for them. But TEMPLATE draws the tail with closing edges
+ *    (`silhouette()` in screen-tiles.ts, closing on the stringer at
+ *    `centreCloseStation`): a diamond's V behind the tail block is foam the
+ *    curve leaves out, and a swallow's notch between its two points is air
+ *    the curve counts. `tailCutStation`, `foamHalfWidth` and
+ *    `outlinePlanArea` follow those closing edges; they are what the litres
+ *    and the Template Area count.
  *
  * WINGS (quick 261014-wii, 2026-10-14, D1) are not part of the curve. `buildOutline` builds the
  * curve above exactly as it always has (`buildCurveOutline`, byte for byte), then — only when the
@@ -162,6 +173,60 @@ function interpolateHalfWidth(points: OutlinePoint[], station: number): number {
  */
 export function sampleOutline(geometry: OutlineGeometry, station: Mm): Mm {
   return mm(interpolateHalfWidth(geometry.points, station));
+}
+
+/**
+ * Where the tail cut's corner sits (header note 5): a diamond's tail block, when the outline closes
+ * behind its first point; a swallow's crotch, when it closes ahead of it; 0 for a square, pin or round
+ * tail, which closes right at its first point and has no cut.
+ */
+export function tailCutStation(geometry: OutlineGeometry): Mm {
+  const first = geometry.points[0];
+  const close = geometry.centreCloseStation;
+  if (close < first.station) return first.station;
+  if (close > first.station) return close;
+  return mm(0);
+}
+
+/**
+ * The foam on one side of the stringer at a station, as TEMPLATE draws the tail (header note 5).
+ *
+ * - Inside a diamond's V (behind the tail block): the straight closing edge from the tip on the
+ *   stringer to the tail block's corner — 0 at or behind the tip. `sampleOutline` reads 0 here.
+ * - Inside a swallow's notch (ahead of the tail, behind the crotch): the drawn curve less the straight
+ *   notch edge, which runs from the full tail point at the tail end to nothing at the crotch, never
+ *   below 0. `sampleOutline` reads the full curve straight across the notch.
+ * - Everywhere else: `sampleOutline` itself, so every station clear of a cut is exactly the curve.
+ *
+ * Each ratio is worked out as the fraction first, then multiplied, so the cut's two ends land exactly.
+ */
+export function foamHalfWidth(geometry: OutlineGeometry, station: Mm): Mm {
+  const first = geometry.points[0];
+  const close = geometry.centreCloseStation;
+  if (close < first.station && station < first.station) {
+    if (station <= close) return mm(0);
+    return mm(first.halfWidth * ((station - close) / (first.station - close)));
+  }
+  if (close > first.station && station < close) {
+    const notchEdge = first.halfWidth * ((close - station) / (close - first.station));
+    return mm(Math.max(0, sampleOutline(geometry, station) - notchEdge));
+  }
+  return sampleOutline(geometry, station);
+}
+
+/**
+ * The area TEMPLATE draws, both sides, in square millimetres (header note 5): the curve's own `area`
+ * plus a diamond's V, or less a swallow's notch. Either is the triangle between the two closing edges
+ * and the outline's first point, `|first.station - centreCloseStation| x first.halfWidth` for both sides
+ * together. With no cut it is `area` itself.
+ */
+export function outlinePlanArea(geometry: OutlineGeometry): number {
+  const first = geometry.points[0];
+  const close = geometry.centreCloseStation;
+  const triangle = Math.abs(first.station - close) * first.halfWidth;
+  if (close < first.station) return geometry.area + triangle;
+  if (close > first.station) return geometry.area - triangle;
+  return geometry.area;
 }
 
 /**
