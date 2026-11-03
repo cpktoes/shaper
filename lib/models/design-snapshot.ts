@@ -109,7 +109,7 @@
  *    board. No bound is applied here: the engine holds any stored value inside each pair's tuner
  *    window (D-02 for the front and side fins, D-02b for the stringer-placed quad rears), so no
  *    crafted value can push a fin off the board. No database change is needed.
- * 10. Each rail section carries `scaleFromCenter` ("Scaled from center by") and `nudges` (seven
+ * 10. Each rail section carries `scaleFromCenter` ("Scaled from center by") and `nudges` (six
  *    plus-or-minus amounts, one per mark a shaper can tweak — `RAIL_NUDGE_KEYS`) for the founder's
  *    Chris Rails v2 sheets (quick 261102-gec, 2026-11-02, PC1). Absent means the section's default —
  *    0.75 on the nose and tail, 1 on the centre, every nudge 0 — which is every board saved before
@@ -121,6 +121,13 @@
  *    carried exactly as read (PC2), because that reader requires them: a board saved without them would
  *    not open on `main` or a rolled-back deployment. The v2 rules never read them (R12). No database
  *    change is needed.
+ *    Amended by plan 04 (quick 261102-gec, R17 and R18, 2026-11-02): SIX nudges now. Deck Mark 2 and
+ *    Bottom Tuck 2 lost theirs (the founder: "Always in the middle is great" — each is always half its
+ *    parent mark), so a stored `deckMark2` or `bottomTuck2` amount from a board saved before the ruling is
+ *    dropped on read (the nudges object strips unknown keys) and moves no mark. The Domed Deck Band gained
+ *    one (`domedDeckBand`, ±2", never onto Deck Mark 3 — the engine holds both), and a board saved without
+ *    it reads 0, so it opens exactly as it was. Nothing is rewritten until the shaper saves. The version
+ *    stays 5, for rule 6's reason; no database change — rails live in the `snapshot` JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -352,8 +359,10 @@ const foilSpecSchema = z.object({
   tailTip: z.number(),
 });
 
-/** Rule 10 (quick 261102-gec): the seven nudges, each read forgivingly as 0, the whole object as every
- * nudge 0 when it is absent or not an object. */
+/** Rule 10 (quick 261102-gec): the six nudges, each read forgivingly as 0, the whole object as every
+ * nudge 0 when it is absent or not an object. It walks `RAIL_NUDGE_KEYS`, so plan 04's change of keys
+ * (R17, R18) needed no edit here: the dome key is read with the rest, and the two retired keys, no longer
+ * on the list, are stripped as unknown. */
 const railMarkNudgesSchema = z
   .object(
     Object.fromEntries(RAIL_NUDGE_KEYS.map((key) => [key, z.number().catch(0)])) as Record<

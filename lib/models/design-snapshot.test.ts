@@ -18,6 +18,7 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   computeRailBands,
 } from "@/lib/geometry/rail-bands";
@@ -942,10 +943,22 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
         nose: {
           ...FIXTURES[0].rails.nose,
           scaleFromCenter: 0.55,
-          nudges: { ...ZERO_RAIL_NUDGES, deckMark3: inchesToMm(-3 / 16), bottomTuck2: mm(2) },
+          nudges: { ...ZERO_RAIL_NUDGES, deckMark3: inchesToMm(-3 / 16), domedDeckBand: mm(-37) },
         },
       },
     };
     expect(roundTrip(fields).rails).toEqual(fields.rails);
+  });
+
+  it("a section saved with the retired Deck Mark 2 and Bottom Tuck 2 amounts and no dome nudge opens with the six nudges, the dome at 0, and its marks unmoved (plan 04, R17, R18)", () => {
+    const stored = wire();
+    const { domedDeckBand: _dome, ...withoutDome } = ZERO_RAIL_NUDGES;
+    void _dome;
+    stored.design.rails.center.nudges = { ...withoutDome, deckMark2: inchesToMm(1 / 4), bottomTuck2: inchesToMm(-1 / 8) };
+    const opened = parseSnapshot(stored);
+    expect(Object.keys(opened.rails.center.nudges).sort()).toEqual([...RAIL_NUDGE_KEYS].sort());
+    expect(opened.rails.center.nudges).toEqual(ZERO_RAIL_NUDGES);
+    expect(opened.rails.center.nudges.domedDeckBand).toBe(0);
+    expect(computeRailBands(opened.rails)).toEqual(computeRailBands(FIXTURES[0].rails));
   });
 });

@@ -36,6 +36,8 @@ import {
   effectiveDeckPercent,
   mergeRailDataTable,
   railFamilyLabel,
+  railNudgesOf,
+  railPlotBounds,
   railPlotDots,
   type RailFamily,
   type RailMarkNudges,
@@ -45,6 +47,8 @@ import {
   type RailSectionSpec,
 } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
+import { FOIL_THICKNESS_RANGE_IN } from "./foil";
+import { measureSlider } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { type Mm, inchesToMm, mm, mmToInches, roundToSixteenthInch } from "./units";
 
@@ -262,10 +266,9 @@ describe("nudges (PC1, rule 8) — each mark moves by its own nudge, and its dep
       const own: [RailNudgeKey, keyof typeof base][] = [
         ["apexThickness", "apexLenRange"],
         ["deckMark1", "deckMark1"],
-        ["deckMark2", "deckMark2"],
         ["deckMark3", "deckMark3"],
+        ["domedDeckBand", "domedDeckBand"],
         ["bottomTuck1", "bottomTuck1"],
-        ["bottomTuck2", "bottomTuck2"],
         ["bottomTuck3", "bottomTuck3"],
       ];
       for (const [key, field] of own) {
@@ -294,16 +297,36 @@ describe("nudges (PC1, rule 8) — each mark moves by its own nudge, and its dep
     });
   }
 
-  it("a nudged Band 2 still starts on Band 1's line, and a nudged Tuck 2 on Tuck 1's line", () => {
+  // Plan 04 (R17, 2026-11-02): Deck Mark 2 and Bottom Tuck 2 have no nudge of their own — "Always in the
+  // middle is great". Each is exactly half its (nudged) parent mark, and Band 2 and Tuck 2 start on their
+  // parent band's midpoint.
+  it("Deck Mark 2 and Bottom Tuck 2 are always half the nudged Deck Mark 1 and Bottom Tuck 1, and Band 2 and Tuck 2 start at their band's midpoint", () => {
     for (const s of [STEP, -STEP]) {
-      const output = outputFor(center, { nudges: nudgesIn({ deckMark2: s, bottomTuck2: s }) });
+      const output = outputFor(center, { nudges: nudgesIn({ deckMark1: s, bottomTuck1: s }) });
+      const r = output.result;
+      expect(Math.abs(d(r.deckMark1, base.deckMark1) - s)).toBeLessThan(TOL_IN);
+      expect(Math.abs(d(r.bottomTuck1, base.bottomTuck1) - s)).toBeLessThan(TOL_IN);
+      expect(Math.abs(inch(r.deckMark2) - inch(r.deckMark1) / 2)).toBeLessThan(TOL_IN);
+      expect(Math.abs(inch(r.bottomTuck2) - inch(r.bottomTuck1) / 2)).toBeLessThan(TOL_IN);
       const seg = (k: string) => output.segments.find((x) => x.key === k)!;
       const onLine = (a: { x: Mm; y: Mm }, b: { x: Mm; y: Mm }, p: { x: Mm; y: Mm }) =>
         (inch(b.x) - inch(a.x)) * (inch(p.y) - inch(a.y)) - (inch(b.y) - inch(a.y)) * (inch(p.x) - inch(a.x));
       expect(Math.abs(onLine(seg("band1").p1, seg("band1").p2, seg("band2").p1))).toBeLessThan(TOL_IN);
       expect(Math.abs(onLine(seg("tuck1").p1, seg("tuck1").p2, seg("tuck2").p1))).toBeLessThan(TOL_IN);
-      expect(Math.abs(inch(seg("band2").p1.x) + inch(output.result.deckMark2))).toBeLessThan(TOL_IN);
-      expect(Math.abs(inch(seg("tuck2").p1.x) + inch(output.result.bottomTuck2))).toBeLessThan(TOL_IN);
+      expect(Math.abs(inch(seg("band2").p1.x) + inch(r.deckMark2))).toBeLessThan(TOL_IN);
+      expect(Math.abs(inch(seg("tuck2").p1.x) + inch(r.bottomTuck2))).toBeLessThan(TOL_IN);
+      // The page's own midpoints: half Band 1's rise and half Rail Tuck 1.
+      const band1 = seg("band1");
+      expect(Math.abs(inch(seg("band2").p1.y) - (inch(band1.p1.y) + inch(band1.p2.y)) / 2)).toBeLessThan(TOL_IN);
+      expect(Math.abs(inch(seg("tuck2").p1.y) - inch(r.railTuck1) / 2)).toBeLessThan(TOL_IN);
+    }
+  });
+
+  it("a board carrying retired Deck Mark 2 and Bottom Tuck 2 amounts draws exactly as one without them (R17)", () => {
+    for (const s of [STEP, -STEP, 0.25]) {
+      const plain = nudgesIn({ deckMark1: s });
+      const retired = { ...plain, deckMark2: inchesToMm(s), bottomTuck2: inchesToMm(-s) } as unknown as RailMarkNudges;
+      expect(outputFor(center, { nudges: retired })).toEqual(outputFor(center, { nudges: plain }));
     }
   });
 });
@@ -348,6 +371,9 @@ describe("the floors (R9, PC3-PC5) — no mark is ever nonsense, whatever the nu
                   if (bt1 >= 2 * MIN && inch(r.bottomTuck2) > bt1 - MIN + TOL_IN) misses.push(`${label}: Bottom Tuck 2 not 1/16" inside`);
                   if (inch(r.deckMark3) < dm1 + MIN - TOL_IN) misses.push(`${label}: Deck Mark 3 within 1/16" of Deck Mark 1`);
                   if (inch(r.bottomTuck3) < bt1 + MIN_BOTTOM_TUCK_SEPARATION_IN - TOL_IN) misses.push(`${label}: Bottom Tuck 3 separation`);
+                  // R18, the founder's final ruling: "never let it equal Deck Mark 3" — at least 1/16" past it.
+                  if (inch(r.domedDeckBand) < inch(r.deckMark3) + MIN - TOL_IN) misses.push(`${label}: Domed Deck Band within 1/16" of Deck Mark 3`);
+                  if (r.domedDeckBand === r.deckMark3) misses.push(`${label}: Domed Deck Band on Deck Mark 3`);
                   checked++;
                 }
               }
@@ -394,6 +420,8 @@ describe("held inputs (R7, PC6) — a stored value outside its window draws at t
 });
 
 describe("the scale (R10) — scales the apex, Deck Mark 1 and Deck Mark 3, never the dome", () => {
+  // The Domed Deck Band is never multiplied by the scale — neither its 2.4 x T nor its own nudge (plan 04,
+  // R18): the dome-nudge tests below move the nose's dome by the same inches as the centre's.
   it("on every guard-free golden pair, the marks at scale s are s times their value at scale 1", () => {
     let pairs = 0;
     const withoutScale = (input: GoldenInput) => JSON.stringify({ ...input, scale: 0 });
@@ -414,6 +442,200 @@ describe("the scale (R10) — scales the apex, Deck Mark 1 and Deck Mark 3, neve
     }
     expect(pairs).toBeGreaterThan(0);
   }, 30_000);
+});
+
+describe("the Domed Deck Band nudge (quick 261102-gec plan 04, R18) — ±2\", never onto Deck Mark 3", () => {
+  // The engine's own path for an un-nudged dome: 2.4 x T in inches, back to millimetres. The founder's
+  // figures are the only typed ones: 2.4, 1/16" (MIN_RAIL_MARK_IN) and the ±2" window.
+  const formulaDome = (spec: RailSectionSpec) => inchesToMm(2.4 * mmToInches(spec.boardThickness));
+  const ONE_INCH = 1;
+  const DOME_LIMIT = RAIL_NUDGE_LIMIT_IN.domedDeckBand;
+  const d = (a: Mm, b: Mm) => inch(a) - inch(b);
+
+  it("un-nudged, every golden entry's dome is exactly 2.4 x T — the guard never reaches the sheet's numbers (PC27, M15)", () => {
+    for (const entry of everyEntry) {
+      const spec = specFor(entry.input);
+      const r = computeRailSectionOutput(keyFor(entry.input), spec, false).result;
+      expect(r.domedDeckBand, JSON.stringify(entry.input)).toBe(formulaDome(spec));
+      expect(Math.abs(inch(r.domedDeckBand) - (entry.sheet.domeBand as number))).toBeLessThan(TOL_IN);
+    }
+  }, 30_000);
+
+  it("un-nudged at the thinnest section the app carries (the foil's 1/4\" floor), every scale step, both Ratio ends, Family 1 and 5: exactly 2.4 x T", () => {
+    const thinnest = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
+    const steps = Math.round((RAIL_SCALE_RANGE.max - RAIL_SCALE_RANGE.min) / RAIL_SCALE_RANGE.step);
+    let checked = 0;
+    for (let i = 0; i <= steps; i++) {
+      const scaleFromCenter = RAIL_SCALE_RANGE.min + i * RAIL_SCALE_RANGE.step;
+      for (const ratioTopPercent of [RAIL_RATIO_RANGE.min, RAIL_RATIO_RANGE.max]) {
+        for (const family of [1, 5] as RailFamily[]) {
+          for (const symmetrical of [false, true]) {
+            for (const deckPercent of [100, DECK_PERCENT_MIN]) {
+              const spec: RailSectionSpec = {
+                ...DEFAULT_RAIL_BAND_SPEC.nose,
+                boardThickness: thinnest,
+                scaleFromCenter,
+                ratioTopPercent,
+                family,
+                symmetrical,
+                deckPercent,
+              };
+              const r = computeRailSectionOutput("nose", spec, false).result;
+              expect(r.domedDeckBand, `s${scaleFromCenter} r${ratioTopPercent} F${family}`).toBe(formulaDome(spec));
+              expect(inch(r.domedDeckBand)).toBeGreaterThan(inch(r.deckMark3) + MIN);
+              checked++;
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBe((steps + 1) * 2 * 2 * 2 * 2);
+  });
+
+  it("+1\" moves the dome exactly 1\" on the first board's three rails and on every golden case, at any scale", () => {
+    for (const key of ["nose", "center", "tail"] as const) {
+      const spec = DEFAULT_RAIL_BAND_SPEC[key];
+      const a = computeRailSectionOutput(key, spec, false).result;
+      const b = computeRailSectionOutput(key, { ...spec, nudges: nudgesIn({ domedDeckBand: ONE_INCH }) }, false).result;
+      expect(Math.abs(d(b.domedDeckBand, a.domedDeckBand) - ONE_INCH), key).toBeLessThan(TOL_IN);
+    }
+    for (const entry of cases) {
+      const a = outputFor(entry.input).result;
+      const b = outputFor(entry.input, { nudges: nudgesIn({ domedDeckBand: ONE_INCH }) }).result;
+      expect(Math.abs(d(b.domedDeckBand, a.domedDeckBand) - ONE_INCH), JSON.stringify(entry.input)).toBeLessThan(TOL_IN);
+    }
+    // The nose's dome moves the same inches as the centre's, whatever the nose's scale.
+    for (const scaleFromCenter of [RAIL_SCALE_RANGE.min, DEFAULT_TIP_RAIL_SCALE, RAIL_SCALE_RANGE.max]) {
+      const spec = { ...DEFAULT_RAIL_BAND_SPEC.nose, scaleFromCenter };
+      const a = computeRailSectionOutput("nose", spec, false).result;
+      const b = computeRailSectionOutput("nose", { ...spec, nudges: nudgesIn({ domedDeckBand: ONE_INCH }) }, false).result;
+      expect(Math.abs(d(b.domedDeckBand, a.domedDeckBand) - ONE_INCH)).toBeLessThan(TOL_IN);
+    }
+  }, 30_000);
+
+  it("always equals max(2.4 x T + its nudge, Deck Mark 3 + 1/16\"), across the whole window and Deck Mark 3's", () => {
+    const sixteenths = Math.round(DOME_LIMIT / RAIL_NUDGE_STEP_IN);
+    for (const key of ["nose", "center", "tail"] as const) {
+      for (const dm3 of [-RAIL_NUDGE_LIMIT_IN.deckMark3, 0, RAIL_NUDGE_LIMIT_IN.deckMark3]) {
+        for (let i = -sixteenths; i <= sixteenths; i++) {
+          const dome = i * RAIL_NUDGE_STEP_IN;
+          const spec = { ...DEFAULT_RAIL_BAND_SPEC[key], nudges: nudgesIn({ deckMark3: dm3, domedDeckBand: dome }) };
+          const r = computeRailSectionOutput(key, spec, false).result;
+          const want = Math.max(2.4 * inch(r.boardThickness) + dome, inch(r.deckMark3) + MIN);
+          expect(Math.abs(inch(r.domedDeckBand) - want), `${key} dm3 ${dm3} dome ${dome}`).toBeLessThan(TOL_IN);
+          expect(r.domedDeckBand).not.toBe(r.deckMark3);
+        }
+      }
+    }
+  });
+
+  it("never onto Deck Mark 3: on the first board's centre, the dome at -2\" sits exactly 1/16\" past Deck Mark 3, wherever Deck Mark 3 is nudged", () => {
+    const spec = DEFAULT_RAIL_BAND_SPEC.center;
+    for (const dm3 of [-RAIL_NUDGE_LIMIT_IN.deckMark3, 0, RAIL_NUDGE_LIMIT_IN.deckMark3]) {
+      const r = computeRailSectionOutput(
+        "center",
+        { ...spec, nudges: nudgesIn({ deckMark3: dm3, domedDeckBand: -DOME_LIMIT }) },
+        false,
+      ).result;
+      // Held: the formula alone would land inside Deck Mark 3 + 1/16".
+      expect(2.4 * inch(r.boardThickness) - DOME_LIMIT).toBeLessThan(inch(r.deckMark3) + MIN);
+      expect(Math.abs(d(r.domedDeckBand, r.deckMark3) - MIN), `dm3 ${dm3}`).toBeLessThan(TOL_IN);
+      expect(r.domedDeckBand).toBeGreaterThan(r.deckMark3);
+    }
+  });
+
+  it("on a domed deck the deck line rides the moved dome: Band 1's and Band 2's deck ends drop onto it, at unchanged x", () => {
+    const spec = { ...DEFAULT_RAIL_BAND_SPEC.center, deckPercent: DECK_PERCENT_MIN };
+    const a = computeRailSectionOutput("center", spec, false);
+    const b = computeRailSectionOutput("center", { ...spec, nudges: nudgesIn({ domedDeckBand: ONE_INCH }) }, false);
+    expect(b.domed).toBe(true);
+    const r = b.result;
+    const t = inch(r.thickness);
+    const T = inch(r.boardThickness);
+    const deckY = (mark: Mm) => t + (T - t) * Math.min(1, inch(mark) / inch(r.domedDeckBand));
+    const seg = (o: RailSectionOutput, k: string) => o.segments.find((x) => x.key === k)!;
+    expect(Math.abs(inch(seg(b, "band1").p2.y) - deckY(r.deckMark1))).toBeLessThan(TOL_IN);
+    expect(Math.abs(inch(seg(b, "band2").p2.y) - deckY(r.deckMark3))).toBeLessThan(TOL_IN);
+    expect(seg(b, "band1").p2.y).toBeLessThan(seg(a, "band1").p2.y);
+    expect(seg(b, "band2").p2.y).toBeLessThan(seg(a, "band2").p2.y);
+    expect(seg(b, "band1").p2.x).toBe(seg(a, "band1").p2.x);
+    expect(seg(b, "band2").p2.x).toBe(seg(a, "band2").p2.x);
+  });
+
+  it("on a flat deck only the dome's own line end, the Board Thickness connector, the bottom connector's start and the drawing's left edge move", () => {
+    for (const nudge of [ONE_INCH, -RAIL_NUDGE_STEP_IN]) {
+      const spec = { ...DEFAULT_RAIL_BAND_SPEC.center, deckPercent: 100 };
+      const a = computeRailSectionOutput("center", spec, false);
+      const b = computeRailSectionOutput("center", { ...spec, nudges: nudgesIn({ domedDeckBand: nudge }) }, false);
+      expect(b.domed).toBe(false);
+      const seg = (o: RailSectionOutput, k: string) => o.segments.find((x) => x.key === k)!;
+      for (const k of ["band1", "band2", "tuck1", "tuck2", "railConn"]) expect(seg(b, k), k).toEqual(seg(a, k));
+      expect(b.dataGroups).toEqual(a.dataGroups);
+      const moved = (x: Mm, y: Mm) => Math.abs(inch(x) - inch(y) + nudge);
+      expect(moved(seg(b, "domedBand").p2.x, seg(a, "domedBand").p2.x)).toBeLessThan(TOL_IN);
+      expect(seg(b, "domedBand").p1).toEqual(seg(a, "domedBand").p1);
+      expect(moved(seg(b, "boardConn").p1.x, seg(a, "boardConn").p1.x)).toBeLessThan(TOL_IN);
+      expect(moved(seg(b, "boardConn").p2.x, seg(a, "boardConn").p2.x)).toBeLessThan(TOL_IN);
+      expect(moved(seg(b, "bottomConn").p1.x, seg(a, "bottomConn").p1.x)).toBeLessThan(TOL_IN);
+      expect(seg(b, "bottomConn").p2).toEqual(seg(a, "bottomConn").p2);
+      expect(moved(railPlotBounds(b.result).xAxisMin, railPlotBounds(a.result).xAxisMin)).toBeLessThan(TOL_IN);
+    }
+  });
+
+  it("the slider's window: ±2\" in 1/16\" steps in Imperial, whole millimetres inside ±2\" in Metric (PC34)", () => {
+    const window = { min: -DOME_LIMIT, max: DOME_LIMIT };
+    const metric = measureSlider(mm(0), window, RAIL_NUDGE_STEP_IN, 1, "metric");
+    expect(metric.min).toBe(-Math.floor(inchesToMm(DOME_LIMIT)));
+    expect(metric.max).toBe(Math.floor(inchesToMm(DOME_LIMIT)));
+    expect(metric.step).toBe(1);
+    const imperial = measureSlider(mm(0), window, RAIL_NUDGE_STEP_IN, 1, "imperial");
+    expect(imperial.min).toBe(-DOME_LIMIT);
+    expect(imperial.max).toBe(DOME_LIMIT);
+    expect(imperial.step).toBe(RAIL_NUDGE_STEP_IN);
+    // The engine's window is wider than Metric's whole millimetres, so a Metric end is never clamped.
+    const spec = DEFAULT_RAIL_BAND_SPEC.center;
+    const atMetricEnd = computeRailSectionOutput("center", { ...spec, nudges: { ...ZERO_RAIL_NUDGES, domedDeckBand: mm(metric.max) } }, false).result;
+    const base = computeRailSectionOutput("center", spec, false).result;
+    expect(Math.abs(atMetricEnd.domedDeckBand - base.domedDeckBand - metric.max)).toBeLessThan(1e-9);
+  });
+});
+
+describe("railNudgesOf (plan 04, PC29) — exactly the six keys, a missing or non-number nudge reading 0", () => {
+  it("keeps finite numbers exactly, reads missing, string, NaN and Infinity as 0, and drops the retired keys", () => {
+    const read = railNudgesOf({
+      apexThickness: 1.5875,
+      deckMark1: "3",
+      deckMark3: Number.NaN,
+      bottomTuck1: Number.POSITIVE_INFINITY,
+      bottomTuck3: -3.175,
+      deckMark2: 6.35,
+      bottomTuck2: -3.175,
+    });
+    expect(Object.keys(read)).toEqual([...RAIL_NUDGE_KEYS]);
+    expect(read.apexThickness).toBe(1.5875);
+    expect(read.bottomTuck3).toBe(-3.175);
+    expect(read.deckMark1).toBe(0);
+    expect(read.deckMark3).toBe(0);
+    expect(read.domedDeckBand).toBe(0);
+    expect(read.bottomTuck1).toBe(0);
+    expect("deckMark2" in read).toBe(false);
+    expect("bottomTuck2" in read).toBe(false);
+  });
+
+  it("reads nothing at all as every nudge 0", () => {
+    expect(railNudgesOf(undefined)).toEqual(ZERO_RAIL_NUDGES);
+    expect(railNudgesOf(null)).toEqual(ZERO_RAIL_NUDGES);
+    expect(railNudgesOf({})).toEqual(ZERO_RAIL_NUDGES);
+  });
+
+  it("a section whose nudges predate the dome key draws exactly as one with the dome at 0 (Fast Refresh's board in memory)", () => {
+    const spec = DEFAULT_RAIL_BAND_SPEC.center;
+    const { domedDeckBand: _dome, ...older } = ZERO_RAIL_NUDGES;
+    void _dome;
+    const out = computeRailSectionOutput("center", { ...spec, nudges: older as RailMarkNudges }, false);
+    expect(out).toEqual(computeRailSectionOutput("center", spec, false));
+    expect(Number.isFinite(out.result.domedDeckBand)).toBe(true);
+  });
 });
 
 describe("Single Tuck and Hard Edge (R14) — as before", () => {
@@ -650,6 +872,19 @@ describe("a section saved before the scale and nudges existed", () => {
 });
 
 describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
+  it("the six nudges in the Advanced menu's order, their windows, and every one 0 on a new board (plan 04, PC25)", () => {
+    expect([...RAIL_NUDGE_KEYS]).toEqual(["apexThickness", "deckMark1", "deckMark3", "domedDeckBand", "bottomTuck1", "bottomTuck3"]);
+    expect(RAIL_NUDGE_LIMIT_IN.domedDeckBand).toBe(2);
+    expect(RAIL_NUDGE_LIMIT_IN.deckMark1).toBe(0.5);
+    expect(RAIL_NUDGE_LIMIT_IN.deckMark3).toBe(0.5);
+    for (const k of ["apexThickness", "bottomTuck1", "bottomTuck3"] as const) expect(RAIL_NUDGE_LIMIT_IN[k]).toBe(0.25);
+    expect(Object.keys(ZERO_RAIL_NUDGES)).toEqual([...RAIL_NUDGE_KEYS]);
+    for (const key of ["nose", "center", "tail"] as const) {
+      expect(Object.keys(defaultRailAdvanced(key).nudges)).toEqual([...RAIL_NUDGE_KEYS]);
+      for (const k of RAIL_NUDGE_KEYS) expect(defaultRailAdvanced(key).nudges[k]).toBe(0);
+    }
+  });
+
   it("deckProfileSliderStep: both ends of the 75-100% slider stay exactly reachable at every thickness (R7, PC23)", () => {
     // Every thickness the RAILS sliders and the foil can give: 1" to 3 1/2" by 1/16".
     for (let sixteenths = 16; sixteenths <= 56; sixteenths += 1) {

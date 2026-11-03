@@ -15,10 +15,10 @@
  * - Apex Thickness (the sheet's "Apex Length") = (-0.125 x Family + 1.375) x t x 0.35 x s; the Apex Center
  *   sits at t x the bottom part of the Ratio, with Rail Mark 1 half the apex above it and Rail Tuck 1 half
  *   below.
- * - The Domed Deck Band is 2.4 x T and is never scaled; Deck Mark 1 = T x s, Deck Mark 2 half of it, Deck
- *   Mark 3 = 1.8 x T x s.
- * - Bottom Tuck 1 = Rail Tuck 1 x 0.577 (Fred's 30° tool), or Deck Mark 1 with Sym on; Bottom Tuck 2 half of
- *   it; Bottom Tuck 3 = Rail Tuck 1, or Deck Mark 3 with Sym on.
+ * - The Domed Deck Band is 2.4 x T and is never scaled; Deck Mark 1 = T x s, Deck Mark 2 always half of it,
+ *   Deck Mark 3 = 1.8 x T x s.
+ * - Bottom Tuck 1 = Rail Tuck 1 x 0.577 (Fred's 30° tool), or Deck Mark 1 with Sym on; Bottom Tuck 2 always
+ *   half of it; Bottom Tuck 3 = Rail Tuck 1, or Deck Mark 3 with Sym on.
  * - There is no Corner Cut, and no rounding inside the rules (marks show to the 1/16" or whole mm as
  *   usual).
  *
@@ -26,16 +26,20 @@
  * reference page leaves all of them out, so each is proven by a rule test rather than the golden):
  * - HELD INPUTS (R7, PC6). The engine reads Deck Profile as at least 75% (the sheet's minimum rail
  *   thickness), Ratio as 20-80, the scale as 0.50-1.00 (the centre always 1) and each nudge inside its
- *   window (±1/2" on the deck marks, ±1/4" on the others). A stored value is never rewritten.
- * - NUDGES (PC1). Each rail stores seven plus-or-minus amounts, one per mark the founder can tweak, all 0
- *   until plan 02 adds their sliders. A mark that depends on another reads that one's final value first
- *   and then adds its own nudge (rule 8).
+ *   window (±2" on the Domed Deck Band, ±1/2" on the deck marks, ±1/4" on the others). A stored value is
+ *   never rewritten.
+ * - NUDGES (PC1, amended by plan 04's PC25, R17 and R18, 2026-11-02). Each rail stores six plus-or-minus
+ *   amounts, one per mark the founder can tweak, all 0 on a new board: Apex Thickness, Deck Mark 1, Deck
+ *   Mark 3, the Domed Deck Band, Bottom Tuck 1 and Bottom Tuck 3. Deck Mark 2 and Bottom Tuck 2 have none:
+ *   the founder, "Always in the middle is great" — each is always half its (nudged) parent mark. A mark
+ *   that depends on another reads that one's final value first and then adds its own nudge (rule 8).
  * - THE APEX TRIM (R4, PC3). Where the apex would run off the rail — Family 1 at either end of the Ratio —
  *   Apex Thickness shrinks evenly about the Apex Center until Rail Tuck 1 sits 1/16" above the bottom and
  *   Rail Mark 1 1/16" below the deck, and the result says it was trimmed.
- * - THE FLOORS (R9, PC4, PC5). No mark under 1/16"; Deck Mark 2 inside Deck Mark 1 and Bottom Tuck 2 inside
- *   Bottom Tuck 1; Deck Mark 3 at least 1/16" beyond Deck Mark 1; Bottom Tuck 3 at least
- *   `MIN_BOTTOM_TUCK_SEPARATION_IN` beyond Bottom Tuck 1.
+ * - THE FLOORS (R9, PC4, PC5, PC26). No mark under 1/16"; Deck Mark 2 inside Deck Mark 1 and Bottom Tuck 2
+ *   inside Bottom Tuck 1; Deck Mark 3 at least 1/16" beyond Deck Mark 1; the Domed Deck Band at least 1/16"
+ *   beyond Deck Mark 3 (the founder's final ruling, R18: "never let it equal Deck Mark 3"); Bottom Tuck 3 at
+ *   least `MIN_BOTTOM_TUCK_SEPARATION_IN` beyond Bottom Tuck 1.
  * - SINGLE TUCK and the tail's HARD EDGE, exactly as before (R14).
  *
  * INCH-DOMAIN CORE. Nearly every constant here is an inch figure from the sheet, so the private functions
@@ -72,28 +76,31 @@ export const RAIL_SCALE_RANGE = { min: 0.5, max: 1, step: 0.05 } as const;
 /** The nose's and tail's "Scaled from center by" on a new board, and on a board saved before it existed. */
 export const DEFAULT_TIP_RAIL_SCALE = 0.75;
 
-/** The seven marks a shaper can nudge off its formula, in the founder's order (PC1) — the one list the
- * sliders, Reset, volume's blend, the saved-board reader and the "Copy preset values" printer all walk. */
+/** The six marks a shaper can nudge off its formula, in the Advanced menu's order (PC1, amended by quick
+ * 261102-gec plan 04's PC25, 2026-11-02) — the one list the sliders, Reset, volume's blend, the saved-board
+ * reader and the "Copy preset values" printer all walk. Deck Mark 2 and Bottom Tuck 2 left it (R17: "Deck
+ * mark 2 and Bottom Tuck 2 don't need sliders. Always in the middle is great.") and the Domed Deck Band
+ * joined it, right after Deck Mark 3 (R18: "I would like to add an advanced slider for the domed deck
+ * mark though."). */
 export const RAIL_NUDGE_KEYS = [
   "apexThickness",
   "deckMark1",
-  "deckMark2",
   "deckMark3",
+  "domedDeckBand",
   "bottomTuck1",
-  "bottomTuck2",
   "bottomTuck3",
 ] as const;
 export type RailNudgeKey = (typeof RAIL_NUDGE_KEYS)[number];
 export type RailMarkNudges = Record<RailNudgeKey, Mm>;
 
-/** How far each nudge may move its mark either way, in inches: the deck marks ±1/2", the others ±1/4". */
+/** How far each nudge may move its mark either way, in inches: the Domed Deck Band ±2" (R18, the founder:
+ * "Let's keep the ±2" slider" — the one window wider than ±1/2"), the deck marks ±1/2", the others ±1/4". */
 export const RAIL_NUDGE_LIMIT_IN: Readonly<Record<RailNudgeKey, number>> = {
   apexThickness: 0.25,
   deckMark1: 0.5,
-  deckMark2: 0.5,
   deckMark3: 0.5,
+  domedDeckBand: 2,
   bottomTuck1: 0.25,
-  bottomTuck2: 0.25,
   bottomTuck3: 0.25,
 };
 
@@ -101,22 +108,38 @@ export const RAIL_NUDGE_LIMIT_IN: Readonly<Record<RailNudgeKey, number>> = {
 export const ZERO_RAIL_NUDGES: RailMarkNudges = {
   apexThickness: mm(0),
   deckMark1: mm(0),
-  deckMark2: mm(0),
   deckMark3: mm(0),
+  domedDeckBand: mm(0),
   bottomTuck1: mm(0),
-  bottomTuck2: mm(0),
   bottomTuck3: mm(0),
 };
+
+/**
+ * A rail's nudges as exactly the six keys, in menu order (quick 261102-gec plan 04, PC29, 2026-11-02): a
+ * missing nudge, or one that is not a finite number, reads 0, and any other key — a Deck Mark 2 or Bottom
+ * Tuck 2 amount from a board saved before the founder's ruling, "Always in the middle is great" (R17) — is
+ * dropped. Saved boards already reach the app through the reader, which does the same; this covers a board
+ * that was in memory before the Domed Deck Band nudge existed (R18, "Let's keep the ±2" slider, but never
+ * let it equal Deck Mark 3."), so it never draws a mark that is not a number and never carries a retired
+ * amount into a save.
+ */
+export function railNudgesOf(nudges: Partial<Record<string, unknown>> | null | undefined): RailMarkNudges {
+  return Object.fromEntries(
+    RAIL_NUDGE_KEYS.map((k) => {
+      const v = nudges?.[k];
+      return [k, mm(typeof v === "number" && Number.isFinite(v) ? v : 0)];
+    }),
+  ) as RailMarkNudges;
+}
 
 /** Each nudge's name on the Advanced menu's sliders (quick 261102-gec plan 02, PC18, 2026-11-02) — the DATA
  * tab's own words for the mark it moves, so a shaper reads the same name in both places. */
 export const RAIL_NUDGE_NAMES: Readonly<Record<RailNudgeKey, string>> = {
   apexThickness: "Apex Thickness",
   deckMark1: "Deck Mark 1",
-  deckMark2: "Deck Mark 2",
   deckMark3: "Deck Mark 3",
+  domedDeckBand: "Domed Deck Band",
   bottomTuck1: "Bottom Tuck 1",
-  bottomTuck2: "Bottom Tuck 2",
   bottomTuck3: "Bottom Tuck 3",
 };
 
@@ -340,14 +363,21 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
   const apexTrimmed = wanted > room + APEX_TRIM_TOLERANCE_IN;
   const railMark1 = apexCenter + apexLenRange / 2; // C13: =C12+C11/2
   const railTuck1 = apexCenter - apexLenRange / 2; // C14: =C12-C11/2
-  const domedDeckBand = 2.4 * T; // C15: =2.4*C7 — the board thickness, never scaled
-  // Rule 6 (PC4): each deck mark reads its parent's final value, then adds its own nudge.
+  // Rule 6 (PC4, PC26): each deck mark reads its parent's final value, then adds its own nudge. Deck Mark 2
+  // has no nudge of its own (R17, "Always in the middle is great"): always half the (nudged) Deck Mark 1.
   const deckMark1 = Math.max(T * s + n.deckMark1, MIN); // C16: =(1*C7)*C3
-  const deckMark2 = Math.max(MIN, Math.min(deckMark1 / 2 + n.deckMark2, deckMark1 - MIN)); // C17: =C16/2
+  const deckMark2 = Math.max(MIN, Math.min(deckMark1 / 2, deckMark1 - MIN)); // C17: =C16/2
   const deckMark3 = Math.max(1.8 * T * s + n.deckMark3, deckMark1 + MIN); // C18: =(1.8*C7)*C3
-  // Rule 7 (R9, PC5, R14): Fred's 30° tool; Sym follows the (nudged) deck marks.
+  // C15: =2.4*C7 — the board thickness, never scaled — plus its own nudge (R18, ±2"), worked out after Deck
+  // Mark 3 is settled and held at least 1/16" beyond it: the founder's final ruling (2026-11-02), "Let's keep
+  // the ±2" slider, but never let it equal Deck Mark 3." The same rule Bottom Tuck 3 keeps against Bottom
+  // Tuck 1. Un-nudged it never holds anything (PC27): 2.4T - 1.8T x s is at least 0.6T, far more than 1/16"
+  // on any rail the app can carry, so every un-nudged dome is exactly 2.4 x T and only the slider is held.
+  const domedDeckBand = Math.max(2.4 * T + n.domedDeckBand, deckMark3 + MIN);
+  // Rule 7 (R9, PC5, R14): Fred's 30° tool; Sym follows the (nudged) deck marks. Bottom Tuck 2 has no nudge
+  // of its own (R17): always half the (nudged) Bottom Tuck 1.
   const bottomTuck1 = Math.max((input.symmetrical ? deckMark1 : railTuck1 * 0.577) + n.bottomTuck1, MIN); // C19
-  const bottomTuck2 = Math.max(MIN, Math.min(bottomTuck1 / 2 + n.bottomTuck2, bottomTuck1 - MIN)); // C20: =C19/2
+  const bottomTuck2 = Math.max(MIN, Math.min(bottomTuck1 / 2, bottomTuck1 - MIN)); // C20: =C19/2
   const bottomTuck3 = input.hardEdge // C21: =IF(C2,C18,C14)
     ? 0
     : Math.max(
@@ -424,9 +454,10 @@ interface RailSegmentInches {
 }
 
 // Rule 10: the drawn segments, following the sheets' chart series (the reference page's `segments`).
-// Band 2 starts ON Band 1's line at Deck Mark 2 and Tuck 2 ON Tuck 1's line at Bottom Tuck 2, so a
-// nudged Deck Mark 2 or Bottom Tuck 2 stays on its band (un-nudged, Tuck 2 starts at exactly half of
-// Rail Tuck 1, as the page draws it).
+// Band 2 starts ON Band 1's line at Deck Mark 2 and Tuck 2 ON Tuck 1's line at Bottom Tuck 2. Both are
+// always halfway (plan 04, R17), so Tuck 2 starts at exactly half of Rail Tuck 1, as the page draws it, and
+// Band 2 at Band 1's midpoint. The Domed Deck Band (nudged ±2" and held 1/16" past Deck Mark 3, R18) sets
+// the deck line, the dome line's far end, the Board Thickness connector and the drawing's left edge.
 function buildSegmentDefsInches(r: RailSectionResultInches): RailSegmentInches[] {
   const deckY = deckYFor(r);
   const band1Y = band1YFor(r, deckY);
@@ -562,7 +593,9 @@ export function computeRailSection(input: ComputeRailSectionInput): RailSectionR
     ratioTopPct: input.ratioTopPercent,
     family: input.family,
     scale: input.scale,
-    nudgesIn: Object.fromEntries(RAIL_NUDGE_KEYS.map((k) => [k, mmToInches(input.nudges[k])])) as Record<
+    nudgesIn: Object.fromEntries(
+      Object.entries(railNudgesOf(input.nudges)).map(([k, v]) => [k, mmToInches(v)]),
+    ) as Record<
       RailNudgeKey,
       number
     >,
@@ -717,7 +750,7 @@ export function computeRailSectionOutput(
     ratioTopPercent: sectionSpec.ratioTopPercent,
     family: sectionSpec.family,
     scale: key === "center" ? 1 : (sectionSpec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE),
-    nudges: sectionSpec.nudges ?? ZERO_RAIL_NUDGES,
+    nudges: railNudgesOf(sectionSpec.nudges),
     singleTuck: sectionSpec.singleTuck,
     symmetrical: sectionSpec.symmetrical,
     hardEdge,

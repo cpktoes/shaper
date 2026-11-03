@@ -354,8 +354,8 @@ function RailSectionControls({
             )}
             {nudgeRow("apexThickness")}
             {nudgeRow("deckMark1")}
-            {nudgeRow("deckMark2")}
             {nudgeRow("deckMark3")}
+            {nudgeRow("domedDeckBand")}
 
             {/* Use Single Tuck on a line of its own (quick 261102-gec, PC12). Hidden on the tail while
                 Hard Edge is on, as it always was. */}
@@ -375,7 +375,6 @@ function RailSectionControls({
               </label>
             )}
             {showTwoTuckRows && nudgeRow("bottomTuck1")}
-            {showTwoTuckRows && nudgeRow("bottomTuck2")}
             {showTucks && nudgeRow("bottomTuck3")}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to 0.75, Single Tuck off and,
