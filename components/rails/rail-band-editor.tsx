@@ -1,9 +1,9 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Maximize2Icon, SplineIcon } from "lucide-react";
+import { Maximize2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { FinishedRailIcon, GhostBandsIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { buildRailsPresetSource } from "@/lib/geometry/preset-source";
@@ -93,6 +93,14 @@ export function RailBandEditor() {
   // never saved with the board and never an undo step, and it starts on each time the shaper comes to
   // RAILS (the founder's brief: "only changes the view and isn't saved with the board").
   const [showFinishedRail, setShowFinishedRail] = useState(true);
+  // The Ghost Bands switch (fast task, 2026-11-02 — the founder, after plan 02's look: "add another icon
+  // that ghosts the bands so that the finished rail is clearly seen"): while the finished rail shows, the
+  // cut bands, their connectors and their mark dots fade to a ghost so the finished rail reads alone (the
+  // Apex Center dot keeps its strength — it is the one mark the finished rail is built to pass through).
+  // View state only, exactly like the Finished Rail switch above: never saved, never an undo step, off
+  // each time the shaper comes to RAILS. Its button is disabled while the finished rail is hidden, since
+  // with nothing to see through the bands to, ghosting them would only fade the drawing.
+  const [ghostBands, setGhostBands] = useState(false);
   // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
   // firstOpenSection rule the View Full Sized dialog already uses (Nose, unless a later section is
   // open and Nose is not) rather than re-deriving it — screen state only, never saved, never in
@@ -322,7 +330,19 @@ export function RailBandEditor() {
                 label={showFinishedRail ? "Hide finished rail" : "Show finished rail"}
                 title="Finished Rail"
               >
-                <SplineIcon className="size-6" />
+                <FinishedRailIcon className="size-6" />
+              </ViewerToolbarButton>
+              {/* Beside it, the Ghost Bands toggle (fast task, 2026-11-02): pressed while the bands are
+                  ghosted; disabled, not hidden, while the finished rail is off, so the row keeps its shape
+                  and the greyed button says why it is waiting. Another view switch — live on a locked board. */}
+              <ViewerToolbarButton
+                onClick={() => setGhostBands((on) => !on)}
+                pressed={ghostBands}
+                disabled={!showFinishedRail}
+                label={ghostBands ? "Show the bands fully" : "Ghost the bands"}
+                title="Ghost Bands"
+              >
+                <GhostBandsIcon className="size-6" />
               </ViewerToolbarButton>
               <ViewerToolbarButton label="View Full Sized" onClick={() => setViewFullSizedOpen(true)}>
                 <Maximize2Icon className="size-6" />
@@ -335,6 +355,7 @@ export function RailBandEditor() {
               sharedXAxisMin={sharedXAxisMin}
               sectionOpen={sectionOpen}
               finishedRail={showFinishedRail}
+              ghostBands={ghostBands}
             />
             <div
               ref={plotsContainerRef}
@@ -375,6 +396,7 @@ export function RailBandEditor() {
                     output={bands[key]}
                     xAxisMin={sharedXAxisMin}
                     finishedRail={showFinishedRail}
+                    ghostBands={ghostBands}
                   />
                 </RailPlotZoom>
               ))}
@@ -485,6 +507,7 @@ export function RailBandEditor() {
                   xAxisMin={sharedXAxisMin}
                   fit="width"
                   finishedRail={showFinishedRail}
+                  ghostBands={ghostBands}
                 />
               </RailPlotZoom>
             </div>

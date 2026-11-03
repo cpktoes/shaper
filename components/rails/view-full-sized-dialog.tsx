@@ -93,6 +93,10 @@ export interface ViewFullSizedDialogProps {
   /** Draw the finished rail and its key entry (quick 261102-gec plan 02, R13): the VIEWER's Finished Rail
    * switch, passed through so this view always matches the VIEWER it opened from. View state only. */
   finishedRail?: boolean;
+  /** Fade the cut bands under the finished rail (the VIEWER's Ghost Bands switch, fast task, 2026-11-02),
+   * passed through for the same reason as `finishedRail`: this view always matches the VIEWER it opened
+   * from. View state only. */
+  ghostBands?: boolean;
 }
 
 export function ViewFullSizedDialog({
@@ -102,6 +106,7 @@ export function ViewFullSizedDialog({
   sharedXAxisMin,
   sectionOpen,
   finishedRail = false,
+  ghostBands = false,
 }: ViewFullSizedDialogProps) {
   const { system } = useUnits();
   const [activeSection, setActiveSection] = useState<RailSectionKey>(() => firstOpenSection(sectionOpen));
@@ -273,6 +278,7 @@ export function ViewFullSizedDialog({
                 xAxisMin={sharedXAxisMin}
                 fit="width"
                 finishedRail={finishedRail}
+                ghostBands={ghostBands}
               />
             </div>
 

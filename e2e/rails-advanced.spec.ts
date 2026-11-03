@@ -13,6 +13,8 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
  * - The Finished Rail switch on VIEWER: on by default, one finished-rail line per visible plot and
  *   "Finished Rail" in the key; it hides and shows both (R13, PC21, PC22).
  * - On a phone the new sliders take a finger (R15).
+ * - The Ghost Bands switch beside it (fast task, 2026-11-02): off by default, it fades every band and
+ *   mark dot but the Apex Center's by one opacity, and it is disabled while the finished rail is hidden.
  *
  * Every expected reading is read off the page before the change and compared after it — never a typed
  * mark. The only typed figures are the founder's own windows and steps (20-80 by 0.5, 0.75, 75-100%,
@@ -393,5 +395,67 @@ test.describe("on a phone the new sliders take a finger (quick 261102-gec plan 0
     }
     await expect(label).not.toHaveText(before ?? "");
     await expect(label).toHaveText(/\(\+.+\)$/);
+  });
+});
+
+test.describe("the Ghost Bands switch on VIEWER (fast task, 2026-11-02)", () => {
+  test("11. Ghost Bands starts off, fades every band and mark dot but the Apex Center's by one opacity, and is disabled while the finished rail is hidden", async ({
+    page,
+  }) => {
+    await openRails(page);
+    const toolbar = page.locator("[data-viewer-toolbar]");
+    const finishedRail = toolbar.getByRole("button", { name: /finished rail$/ });
+    const ghost = toolbar.getByRole("button", { name: /the bands/ });
+    await expect(ghost).toBeEnabled();
+    await expect(ghost).toHaveAttribute("aria-pressed", "false");
+    await expect(ghost).toHaveAccessibleName("Ghost the bands");
+
+    // Per visible plot: the band group's state and opacity, and each mark dot's own opacity (null when
+    // it carries none — the attribute is left off entirely at full strength, so an unghosted plot is
+    // byte-for-byte the drawing it always was).
+    const state = () =>
+      page.evaluate(() => {
+        const plots = Array.from(document.querySelectorAll("[data-rail-plot-row] [data-rail-section-plot]")).filter(
+          (svg) => svg.getBoundingClientRect().width > 0,
+        );
+        return plots.map((svg) => {
+          const group = svg.querySelector("[data-rail-bands]");
+          return {
+            bands: group?.getAttribute("data-rail-bands") ?? null,
+            bandOpacity: group?.getAttribute("opacity") ?? null,
+            dotOpacities: Array.from(svg.querySelectorAll("circle")).map((c) => c.getAttribute("opacity")),
+          };
+        });
+      });
+    await expect.poll(async () => (await state()).length).toBeGreaterThan(0);
+    for (const plot of await state()) {
+      expect(plot.bands).toBe("full");
+      expect(plot.bandOpacity).toBeNull();
+      expect(plot.dotOpacities.every((o) => o === null)).toBe(true);
+    }
+
+    await ghost.click();
+    await expect(ghost).toHaveAttribute("aria-pressed", "true");
+    await expect(ghost).toHaveAccessibleName("Show the bands fully");
+    await expect.poll(async () => (await state()).every((p) => p.bands === "ghosted")).toBe(true);
+    for (const plot of await state()) {
+      // One ghost strength, strictly between invisible and full, shared by the band group and every
+      // faded dot — and exactly one dot per plot left at full strength: the Apex Center's.
+      const strength = Number(plot.bandOpacity);
+      expect(strength).toBeGreaterThan(0);
+      expect(strength).toBeLessThan(1);
+      const full = plot.dotOpacities.filter((o) => o === null);
+      expect(full).toHaveLength(1);
+      for (const o of plot.dotOpacities) if (o !== null) expect(Number(o)).toBe(strength);
+    }
+
+    // Hiding the finished rail disables the switch and brings the bands back at full strength; showing
+    // it again restores the ghost the shaper had set.
+    await finishedRail.click();
+    await expect(ghost).toBeDisabled();
+    await expect.poll(async () => (await state()).every((p) => p.bands === "full")).toBe(true);
+    await finishedRail.click();
+    await expect(ghost).toBeEnabled();
+    await expect.poll(async () => (await state()).every((p) => p.bands === "ghosted")).toBe(true);
   });
 });

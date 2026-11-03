@@ -73,7 +73,7 @@ const VIEWER_TOOLBAR_ROW_CLASS = "absolute top-0 right-0 z-10 flex flex-row-reve
  * `flex-none` is insurance so a narrow panel can never squeeze a button narrower than its icon.
  */
 const TOOLBAR_BUTTON_BASE =
-  "flex flex-none cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink";
+  "flex flex-none cursor-pointer items-center rounded-md border border-surf-line bg-surf-ground p-1 text-surf-ink-muted transition-colors outline-none hover:bg-surf-accent hover:text-surf-on-accent focus-visible:ring-2 focus-visible:ring-surf-accent-ink disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surf-ground disabled:hover:text-surf-ink-muted";
 
 /**
  * Add-on classes for a genuine on/off toggle: keeps the accent fill (and its paired on-accent
@@ -229,6 +229,56 @@ export function BoardInBlankIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
       <path d="M4.3 11.2C7 10.5 9 10.4 12 10.4S17.5 10.6 20.2 10.9C18.5 12.3 16 13.3 12 13.3S6.2 12.4 4.3 11.2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
+ * The glyph on RAILS' Finished Rail toggle (fast task, 2026-11-02 — the founder, after plan 02's look:
+ * "the finished rail icon should look more like a finished rail"). It pictures what the button draws: a
+ * finished rail cross-section the way the VIEWER draws it — the deck running in from the left, a full
+ * rounded apex a little below half height (a 60/40 rail), tucking under to the bottom, the board running
+ * off the left edge — as one solid, smooth silhouette, in place of lucide's generic spline. Solid and
+ * smooth on purpose: its neighbour `GhostBandsIcon` is dashed and angular, after the founder's first
+ * look found a pair drawn around the same curve "way too similar". One glyph for both states; the
+ * button's pressed fill says which.
+ */
+export function FinishedRailIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M1.5 6.5H9.5C16.5 6.5 21.5 9.2 21.5 12.6C21.5 15.6 18.3 17.5 13 17.5H1.5Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * The glyph on RAILS' Ghost Bands toggle (the same fast task — the founder: "another icon that ghosts
+ * the bands so that the finished rail is clearly seen"). It pictures what the button fades: the cut
+ * bands alone — the faceted chain a shaper actually cuts, deck mark to rail mark to tuck, with the
+ * mark dots at its corners — drawn dashed, the way a ghosted line reads. No smooth curve and no fill,
+ * so it cannot be mistaken for `FinishedRailIcon` beside it. One glyph for both states, like every
+ * toggle on this row.
+ */
+export function GhostBandsIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M1.5 6.5H16.5L21.5 10V15L18.5 17.5H1.5"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeDasharray="2.6 1.6"
+      />
+      <circle cx={16.5} cy={6.5} r={1.5} fill="currentColor" />
+      <circle cx={21.5} cy={10} r={1.5} fill="currentColor" />
+      <circle cx={21.5} cy={15} r={1.5} fill="currentColor" />
+      <circle cx={18.5} cy={17.5} r={1.5} fill="currentColor" />
     </svg>
   );
 }

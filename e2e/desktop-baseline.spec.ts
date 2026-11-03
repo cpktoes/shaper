@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (fast task 185, branch rails-v2) — RAILS only, `rails-desktop.png`, for the VIEWER toolbar
+ * after the founder's look at plan 02: the Finished Rail button now wears a solid rail-silhouette glyph in place of
+ * lucide's spline, and a new Ghost Bands button (a dashed cut chain with its mark dots) sits beside it, off by
+ * default. Old and new were compared before re-recording: the diff picture shows only the three toolbar buttons;
+ * the drawing, the key, the sidebar and the top bar are unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed
+ * unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3190) in a
+ * scratch copy of this checkout on this Mac (the founder's review server held the checkout's dev lock). SHA-256
+ * (first 8 characters), old to new: RAILS 8411efec to 70fe0531.
+ *
  * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 02, branch rails-v2) — RAILS only, `rails-desktop.png`, for the
  * finished rail and the fuller sidebar: every cross-section now draws the finished rail as a heavy ink line over
  * the bands with the board's fill under the grid, the VIEWER toolbar gained the curve button that hides it, the key

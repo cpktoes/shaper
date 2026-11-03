@@ -115,6 +115,12 @@ export interface RailLegendEntry {
  * edge and the connectors — it is the board's shape, not a band, so it takes no data hue. */
 export const FINISHED_RAIL_COLOR = "var(--color-surf-ink)";
 
+/** How faint the cut bands, their connectors and their mark dots draw under the VIEWER's Ghost Bands
+ * switch (fast task, 2026-11-02 — the founder: "ghosts the bands so that the finished rail is clearly
+ * seen"): one group opacity over the lot, so where two bands meet the join does not darken. Exported so
+ * the browser test can check the drawn value against it. */
+export const GHOST_BANDS_OPACITY = 0.3;
+
 /** Apex Center, then each segment's label except the two hidden connectors, then Tapered Rail
  * Thickness when the section is domed — built from whichever section's output is passed in. With
  * `finishedRail` (the VIEWER's Finished Rail switch on, quick 261102-gec plan 02), "Finished Rail" joins
@@ -151,6 +157,11 @@ interface RailSectionPlotProps {
    * printed order form, the INSTRUCTIONS example and the RAILS picture in the phone menu never show it
    * (the founder, 2026-11-02: a screen aid only). */
   finishedRail?: boolean;
+  /** With `finishedRail`, fade the cut bands, their connectors and their mark dots to
+   * `GHOST_BANDS_OPACITY` so the finished rail reads alone (the VIEWER's Ghost Bands switch, fast task,
+   * 2026-11-02). The Apex Center dot keeps its strength — the finished rail is built to pass through it.
+   * Without `finishedRail` it does nothing; left out (the default), the plot draws exactly as before. */
+  ghostBands?: boolean;
 }
 
 /**
@@ -488,7 +499,15 @@ export function RailPlotZoom({
   );
 }
 
-export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts, finishedRail: showFinishedRail = false }: RailSectionPlotProps) {
+export function RailSectionPlot({
+  sectionKey,
+  output,
+  xAxisMin,
+  fit = "width",
+  callouts,
+  finishedRail: showFinishedRail = false,
+  ghostBands = false,
+}: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
@@ -575,13 +594,16 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
   const projectMm = (p: Point2D) => ({ x: px(mmToInches(p.x)), y: py(mmToInches(p.y)) });
   const finishedFill = finished ? finishedRailPath(finished, projectMm, { closed: true }) : null;
   const finishedCurve = finished ? finishedRailPath(finished, projectMm) : null;
+  // The Ghost Bands switch only means something while the finished rail is drawn (see the prop's doc).
+  const ghosted = showFinishedRail && ghostBands;
 
   // Which marks get a dot, and in what order, is `railPlotDots`' one rule (lib/geometry/rail-bands.ts)
   // — the same rule the RAILS picture in the phone menu reads (quick 261003-q2f).
-  const dots: { cx: number; cy: number; color: string }[] = railPlotDots(segments, result, domed).map((dot) => ({
+  const dots: { cx: number; cy: number; color: string; apex: boolean }[] = railPlotDots(segments, result, domed).map((dot) => ({
     cx: px(mmToInches(dot.x)),
     cy: py(mmToInches(dot.y)),
     color: dot.key === "apexCenter" ? RAIL_APEX_CENTER_COLOR : RAIL_SEGMENT_COLORS[dot.key],
+    apex: dot.key === "apexCenter",
   }));
 
   // A tick's own little mark (the short perpendicular line below/beside the axis, distinct from
@@ -688,9 +710,14 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         <line key={`r${i}`} x1={rl.x1} y1={rl.y1} x2={rl.x2} y2={rl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
       ))}
       <line x1={apexLine.x1} y1={apexLine.y1} x2={apexLine.x2} y2={apexLine.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
-      {segmentLines.map((sg) => (
-        <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      ))}
+      {/* The cut bands and their connectors, as one group so Ghost Bands can fade the lot at once. With
+          no opacity attribute (the usual case) the group paints exactly the pixels the bare lines always
+          did; `data-rail-bands` is a hook for the browser tests, nothing styles it. */}
+      <g data-rail-bands={ghosted ? "ghosted" : "full"} opacity={ghosted ? GHOST_BANDS_OPACITY : undefined}>
+        {segmentLines.map((sg) => (
+          <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ))}
+      </g>
       {finishedCurve && (
         <path
           data-finished-rail
@@ -703,7 +730,16 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         />
       )}
       {dots.map((dt, i) => (
-        <circle key={`d${i}`} cx={dt.cx} cy={dt.cy} r={2.75 * zoomUnit} fill={dt.color} />
+        // Dots fade one by one rather than as a group so their draw order — and so which dot sits on top
+        // where two nearly meet — stays exactly as it always was; the Apex Center dot never fades.
+        <circle
+          key={`d${i}`}
+          cx={dt.cx}
+          cy={dt.cy}
+          r={2.75 * zoomUnit}
+          fill={dt.color}
+          opacity={ghosted && !dt.apex ? GHOST_BANDS_OPACITY : undefined}
+        />
       ))}
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
