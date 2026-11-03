@@ -18,7 +18,7 @@
 
 import jsPDF from "jspdf";
 import type { OutlineSpec } from "@/lib/geometry/board";
-import { MEASURE_STATION_MM, type OutlineGeometry, sampleOutline } from "@/lib/geometry/outline";
+import { MEASURE_STATION_MM, type OutlineGeometry, outlinePlanArea, sampleOutline } from "@/lib/geometry/outline";
 import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
@@ -154,11 +154,13 @@ export function overviewSpecLines(
   }
   lines.push(`Tail Angle: ${outline.tailAngle}°  ·  Fullness: ${outline.tailFullness}%`);
   lines.push(`Tail Width @${stationText} (calculated): ${formatDim(geometry.tailWidthAt12in, system)}`);
-  const areaFigure = formatArea(geometry.area, system);
+  // The outline as drawn, tail cut included (quick 261103-gcm): the same figure as VOLUME's Template Area.
+  const planArea = outlinePlanArea(geometry);
+  const areaFigure = formatArea(planArea, system);
   const areaLine =
     system === "metric"
       ? `Template Area: ${areaFigure}`
-      : `Template Area: ${areaFigure} (${(squareMmToSquareInches(geometry.area) / 144).toFixed(2)} sq ft)`;
+      : `Template Area: ${areaFigure} (${(squareMmToSquareInches(planArea) / 144).toFixed(2)} sq ft)`;
   lines.push(areaLine);
   return lines;
 }
