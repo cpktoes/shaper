@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-11-03 — Go-live gate for Rails v2 green: every browser spec (1,310 passed, ten load flakes passed alone, one stale toolbar count fixed as fast 193 a97ffe33), the production-build specs (18), the unit suite, build; the archive (tag rails-v1, branch archive/rails-v1) pushed; rails-v2 merging into main on the founder's "push v2 to go live"
+Last activity: 2026-11-03 — RAILS V2 IS LIVE: rails-v2 merged into main (dbcd65e7, a single revertable merge commit) and pushed on the founder's word after the full go-live gate; the live site served the new RAILS page 64 s later (09:18 PST). The old rails are archived as tag rails-v1 / branch archive/rails-v1 (on GitHub) and reference/rails-v1/. Branch rails-v2 is done; work continues on main
 
 ## Performance Metrics
 
