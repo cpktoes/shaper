@@ -558,3 +558,61 @@ test.describe("the Domed Deck Band slider (quick 261102-gec plan 04, R18)", () =
     await expect(deckMark3).toHaveText(deckMark3Text ?? "");
   });
 });
+
+test.describe("the plot row keeps clear of the corner toolbar (fast task, 2026-11-02)", () => {
+  test("13. a plot wide enough to reach the corner buttons drops its row below them, and no axis number is cut by the box's edge", async ({
+    page,
+  }, testInfo) => {
+    test.skip(isPhone(testInfo), "the computer's plot row — a phone draws one plot with no zoom row at 1x");
+    const row = page.locator('[data-rail-plot-row="desktop"]');
+    // The first plot's zoom row against the panel's corner toolbar, and the first plot's x-axis numbers
+    // (the only `text-anchor="middle"` text on a VIEWER plot) against the box's own left edge.
+    const geometry = () =>
+      page.evaluate(() => {
+        const box = (el: Element) => el.getBoundingClientRect();
+        const plotRow = document.querySelector('[data-rail-plot-row="desktop"]')!;
+        const toolbar = document.querySelector("[data-viewer-toolbar]")!;
+        const zoom = document.querySelector('[aria-label="Zoom"]')!;
+        const svg = plotRow.querySelector("[data-rail-section-plot]")!;
+        const numbers = Array.from(svg.querySelectorAll("text")).filter((t) => t.getAttribute("text-anchor") === "middle");
+        return {
+          drop: plotRow.getAttribute("data-rail-plot-drop"),
+          zoomClearsToolbar: box(zoom).right <= box(toolbar).left || box(zoom).top >= box(toolbar).bottom,
+          zoomBelowToolbar: box(zoom).top >= box(toolbar).bottom,
+          numbersInside: numbers.every((t) => box(t).left >= box(svg).left - 0.5),
+          numberCount: numbers.length,
+        };
+      });
+
+    // A wide window, the default board: the row sits where it always has, clear of the buttons.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openRails(page);
+    await expect(row).toHaveAttribute("data-rail-plot-fit", "measured");
+    let g = await geometry();
+    expect(g.drop).toBeNull();
+    expect(g.zoomClearsToolbar).toBe(true);
+    expect(g.numbersInside).toBe(true);
+    expect(g.numberCount).toBeGreaterThan(0);
+
+    // The centre's dome at +2": the plots grow until the zoom row would reach the buttons, so the whole
+    // row drops below them — and the whole inch now past the axis's end gets no number to be cut.
+    const center = await showRail(page, testInfo, "center");
+    const body = await openAdvanced(center);
+    await nudgeThumb(page, "center", "Domed Deck Band").press("End");
+    await expect(row).toHaveAttribute("data-rail-plot-drop", /^\d+$/);
+    await expect.poll(async () => (await geometry()).zoomBelowToolbar).toBe(true);
+    g = await geometry();
+    expect(g.zoomClearsToolbar).toBe(true);
+    expect(g.numbersInside).toBe(true);
+    expect(g.numberCount).toBeGreaterThan(0);
+
+    // The narrowest computer window, the board put back: the plots fill the column, so the row drops
+    // for every board there (the one place the overlap had always been).
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await page.setViewportSize({ width: 820, height: 800 });
+    await openRails(page);
+    await expect(row).toHaveAttribute("data-rail-plot-drop", /^\d+$/);
+    await expect.poll(async () => (await geometry()).zoomBelowToolbar).toBe(true);
+    expect((await geometry()).zoomClearsToolbar).toBe(true);
+  });
+});

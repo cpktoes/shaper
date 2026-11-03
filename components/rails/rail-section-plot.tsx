@@ -276,6 +276,17 @@ export function buildRailPlotGrid(
   const xAxisMinIn = bounds.minX + 0.15;
   const yAxisMaxIn = bounds.maxY - 0.15;
 
+  // A tick mark and its number are drawn only where the axis itself runs. `xGridMin` is the whole
+  // inch (or 10 mm) at or BEYOND the axis's left end, so the horizontal grid lines always reach the
+  // box's edge — but a tick at that position can sit past the end of the board's own bottom line,
+  // outside the axis, where its number is cut in half by the box's edge (first seen on a dome nudged
+  // to +2": the axis starts at -9 1/2" and a "10" showed as a fragment — fast task, 2026-11-02). The
+  // vertical grid line there still draws (it lands in the label margin or off the box, as it always
+  // has); only the tick and its number are left off. The small tolerance forgives a position that is
+  // the axis end itself up to floating-point noise, so a board whose axis starts exactly on a whole
+  // inch keeps that inch's tick, as every plot drawn today does.
+  const onTheAxis = (positionIn: number) => positionIn >= xAxisMinIn - 1e-9;
+
   if (system === "imperial") {
     const xGridMin = Math.max(-MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(xAxisMinIn)) ? Math.floor(xAxisMinIn) : 0);
     const yGridMax = Math.min(MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(yAxisMaxIn)) ? Math.floor(yAxisMaxIn) : 0);
@@ -287,7 +298,7 @@ export function buildRailPlotGrid(
       xGridPositions,
       yGridPositions,
       xGridMin,
-      xTicks: xGridPositions.map((i) => ({ value: i, label: `${Math.abs(i)}` })),
+      xTicks: xGridPositions.filter(onTheAxis).map((i) => ({ value: i, label: `${Math.abs(i)}` })),
       yTicks: yGridPositions.map((j) => ({ value: j, label: `${j}` })),
     };
   }
@@ -332,11 +343,15 @@ export function buildRailPlotGrid(
     xGridPositions: xPositionsMm.map((v) => mmToInches(mm(v))),
     yGridPositions: yPositionsMm.map((v) => mmToInches(mm(v))),
     xGridMin: mmToInches(mm(xGridMinMm)),
-    xTicks: xPositionsMm.map((v, idx) => {
-      if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
-      const bare = formatMarkBare(mm(Math.abs(v)), "metric");
-      return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
-    }),
+    // Labelled by index from the origin first (so `labelEvery` and the " mm" suffix count every
+    // step), then any tick past the axis's own end is left off — see `onTheAxis` above.
+    xTicks: xPositionsMm
+      .map((v, idx) => {
+        if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
+        const bare = formatMarkBare(mm(Math.abs(v)), "metric");
+        return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
+      })
+      .filter((tick) => onTheAxis(tick.value)),
     yTicks: yPositionsMm.map((v, idx) => {
       if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
       const bare = formatMarkBare(mm(Math.abs(v)), "metric");

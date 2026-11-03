@@ -47,6 +47,27 @@ describe("buildRailPlotGrid", () => {
   // own one-whole-inch step (`Math.floor` never moves a bound by more than its own step).
   const METRIC_STEP_IN = mmToInches(mm(10));
 
+  it("draws no tick past the axis's own end — an axis starting at a half inch keeps the grid line beyond it but not the number (fast task, 2026-11-02)", () => {
+    // A centre dome nudged to +2" starts the axis at -9 1/2". The grid still floors to -10 so the
+    // horizontal lines reach the box's edge, but no tick (and so no "10") sits past the axis's end.
+    const halfInch = { ...bounds, minX: -9.5 - 0.15 };
+    const grid = buildRailPlotGrid(halfInch, "imperial");
+    expect(grid.xGridMin).toBe(-10);
+    expect(grid.xGridPositions).toContain(-10);
+    expect(Math.min(...grid.xTicks.map((t) => t.value))).toBe(-9);
+    // Metric reads the same axis: the grid floors to the 10 mm step beyond it, the ticks stop at
+    // the last step on it.
+    const metric = buildRailPlotGrid(halfInch, "metric");
+    expect(metric.xGridMin).toBeCloseTo(mmToInches(mm(Math.floor(inchesToMm(-9.5) / 10) * 10)), 9);
+    expect(Math.min(...metric.xTicks.map((t) => t.value))).toBeCloseTo(mmToInches(mm(Math.ceil(inchesToMm(-9.5) / 10) * 10)), 9);
+    for (const tick of metric.xTicks) expect(tick.value).toBeGreaterThanOrEqual(-9.5 - 1e-9);
+    // An axis starting exactly on a whole inch keeps that inch's tick, as every plot drawn today
+    // does: its ticks are its grid positions, nothing dropped.
+    const whole = buildRailPlotGrid({ ...bounds, minX: -8 - 0.15 }, "imperial");
+    expect(whole.xTicks.map((t) => t.value)).toEqual(whole.xGridPositions);
+    expect(Math.min(...whole.xTicks.map((t) => t.value))).toBe(-8);
+  });
+
   it("imperial ticks are today's whole inches inside the bounds, one whole inch apart, no unit shown", () => {
     const grid = buildRailPlotGrid(bounds, "imperial");
 

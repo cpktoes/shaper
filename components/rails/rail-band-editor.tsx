@@ -156,6 +156,13 @@ export function RailBandEditor() {
   const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
   const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
   const [plotFitMeasured, setPlotFitMeasured] = useState(false);
+  // How far the plot row is pushed down to sit below the panel's corner toolbar (fast task,
+  // 2026-11-02). The first plot's zoom row sits at the right end of its title line, and that line is
+  // the panel's top line — the same one the corner toolbar (Finished Rail, Ghost Bands, View Full
+  // Sized) floats over. A plot wide enough to reach the corner runs its zoom row under those
+  // buttons: a dome nudged to +2" on a 1280-dot window, and every board on an 820-dot one, where the
+  // plots fill the column. 0 (the usual case) leaves the row exactly where it has always been.
+  const [plotRowDrop, setPlotRowDrop] = useState(0);
 
   // Solves for the single width every open plot renders at. Re-measures the actual title heights
   // and inter-section gap (rather than hardcoding them) so a font or spacing change can't silently
@@ -196,15 +203,40 @@ export function RailBandEditor() {
         return sum + titleEl.offsetHeight + marginBottom;
       }, rowGap * Math.max(0, openSections.length - 1));
 
-      const availablePlotH = containerHeight - chrome;
       const column = container.closest("main");
       const columnScrolls = !!column && /^(auto|scroll)$/.test(getComputedStyle(column).overflowY);
-      const widthFromHeight = !columnScrolls && availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+      // One solve, for a given amount of the container's height already spoken for above the plots.
       // Floor to a whole pixel and bias down (never up) -- offsetHeight measurements above already
       // round to the nearest pixel, so rounding the solved width up here could compound into a
       // sub-pixel stack overflow; rounding down cannot.
-      const solvedWidth = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
-      setPlotWidth(Number.isFinite(solvedWidth) && solvedWidth > 0 ? solvedWidth : Math.floor(Math.min(containerWidth, MAX_PLOT_W)));
+      const solveWidth = (takenAbove: number) => {
+        const availablePlotH = containerHeight - takenAbove - chrome;
+        const widthFromHeight = !columnScrolls && availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+        const solved = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
+        return Number.isFinite(solved) && solved > 0 ? solved : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
+      };
+
+      // Would the first plot's zoom row run under the panel's corner toolbar? (fast task, 2026-11-02;
+      // see `plotRowDrop`.) The row ends at the plot's own right edge, and the plots are centred in
+      // this container, so with the width the plots would take on their own, the row's right end is
+      // the container's centre plus half that width — measured against the toolbar's left edge, less
+      // the toolbar row's own gap, both read from the live elements rather than restated here. If it
+      // would, the whole plot row is pushed down by the toolbar's height (and that gap), and the
+      // width is solved again with that much less room — never the other way round, so the decision
+      // can never chase its own result. The toolbar is this container's sibling; with no toolbar
+      // (never the case on RAILS, but the code should not assume it) nothing moves.
+      const freeWidth = solveWidth(0);
+      const toolbar = container.parentElement?.querySelector<HTMLElement>(":scope > [data-viewer-toolbar]") ?? null;
+      let drop = 0;
+      if (toolbar) {
+        const gap = parseFloat(getComputedStyle(toolbar).columnGap || "0") || 0;
+        const containerBox = container.getBoundingClientRect();
+        const toolbarBox = toolbar.getBoundingClientRect();
+        const zoomRowRight = containerBox.left + (containerWidth + freeWidth) / 2;
+        if (zoomRowRight > toolbarBox.left - gap) drop = Math.ceil(toolbarBox.height + gap);
+      }
+      setPlotRowDrop(drop);
+      setPlotWidth(drop > 0 ? solveWidth(drop) : freeWidth);
       setPlotFitMeasured(true);
     };
 
@@ -371,6 +403,10 @@ export function RailBandEditor() {
               // measures anything), so its presence means "the browser measured this container",
               // not merely "this effect ran". Once true it stays true.
               data-rail-plot-fit={plotFitMeasured ? "measured" : undefined}
+              // The drop below the corner toolbar, when the first plot's zoom row would otherwise run
+              // under it (see `plotRowDrop`); `data-rail-plot-drop` is a hook for the browser tests.
+              data-rail-plot-drop={plotRowDrop > 0 ? plotRowDrop : undefined}
+              style={plotRowDrop > 0 ? { paddingTop: plotRowDrop } : undefined}
               className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden [@media(max-height:500px)]:flex-none"
             >
               {openSections.map((key) => (
@@ -412,6 +448,9 @@ export function RailBandEditor() {
                 like the plot row. */}
             <div
               data-rail-zoom-rows
+              // The same drop as the plot row (`plotRowDrop`), so the copy keeps landing each zoom row
+              // on its own title line when the row sits below the corner toolbar.
+              style={plotRowDrop > 0 ? { paddingTop: plotRowDrop } : undefined}
               className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 max-shell:hidden"
             >
               {openSections.map((key) => {
