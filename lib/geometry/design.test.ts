@@ -6,6 +6,7 @@ import { DEFAULT_BLANK_CUT, type BoardBlank } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { BOARD_PRESETS } from "./presets";
 import { presetSummary } from "./summary-line";
 import { buildOutline, sampleOutline } from "./outline";
@@ -221,6 +222,43 @@ describe("deriveRailValues", () => {
     expect(result.centerProfile).toBe(railBands.center.profile);
     expect(result.tailProfile).toBe(railBands.tail.profile);
   });
+
+  // One basis (quick 261102-gec plan 03, the founder's D-V1, PV2/PV5): VOLUME's working rows read the same
+  // finished rail the quoted litres do, through the same helper.
+  it.each(BOARD_PRESETS)("$id: carries each section's own finished-rail blend area (one rail)", (preset) => {
+    const railBands = computeRailBands(preset.rails);
+    const result = deriveRailValues(railBands);
+    for (const key of ["nose", "center", "tail"] as const) {
+      const expected = railBlendArea(sectionFinishedRail(railBands[key].result, railBands[key].domed));
+      expect(expected).toBeGreaterThan(0);
+      expect(result[`${key}BlendArea`]).toBe(expected);
+    }
+  });
+
+  it.each(BOARD_PRESETS)(
+    "$id: each Cross-Section Thickness row is lower than on the cut rail by exactly its blend area over the station's half width",
+    (preset) => {
+      const geometry = buildOutline(preset.outline);
+      const templateValues = deriveTemplateValues(preset.outline, geometry);
+      const railValues = deriveRailValues(computeRailBands(preset.rails));
+      const cutOnly = { ...railValues, noseBlendArea: 0, centerBlendArea: 0, tailBlendArea: 0 };
+      const spec = { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: true };
+      const finished = computeVolume(spec, templateValues, railValues);
+      const cut = computeVolume(spec, templateValues, cutOnly);
+      expect(finished.geomReady).toBe(true);
+      const rows = [
+        ["tail", finished.tailCrossSectionThickness, cut.tailCrossSectionThickness, templateValues.tailWidthAt12],
+        ["center", finished.centerCrossSectionThickness, cut.centerCrossSectionThickness, templateValues.widePointWidth],
+        ["nose", finished.noseCrossSectionThickness, cut.noseCrossSectionThickness, templateValues.noseWidthAt12],
+      ] as const;
+      for (const [key, finishedRow, cutRow, width] of rows) {
+        const drop = (railValues[`${key}BlendArea`] ?? 0) / (width / 2);
+        expect(drop).toBeGreaterThan(0);
+        expect(Math.abs((cutRow as number) - (finishedRow as number) - drop), key).toBeLessThan(1e-9);
+      }
+      expect(finished.volumeLitres).toBeLessThan(cut.volumeLitres);
+    },
+  );
 });
 
 describe("deriveEffectiveVolume", () => {
