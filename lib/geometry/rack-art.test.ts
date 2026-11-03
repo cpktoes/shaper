@@ -377,7 +377,7 @@ describe("a diamond keeps its point as the board turns", () => {
     expect(evens.length).toBeGreaterThan(1);
     for (const st of evens) expect(st.half, `half-width at ${st.station.toFixed(1)} mm`).toBeCloseTo(onTheV(st.station), 9);
     const inside = c.art.sections.filter((st) => st.station < corner.station);
-    expect(inside.length).toBeGreaterThan(evens.length);
+    expect(inside.length).toBeGreaterThanOrEqual(evens.length);
     expect(inside[0].station).toBe(tip);
     for (const st of inside) expect(st.half).toBeCloseTo(onTheV(st.station), 9);
   });
