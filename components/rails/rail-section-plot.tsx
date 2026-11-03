@@ -9,7 +9,9 @@
  * `callouts` prop below — the plot itself stays the single component every rail drawing shares.
  */
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import type { Point2D } from "@/lib/geometry/board";
+import { finishedRail, finishedRailPath } from "@/lib/geometry/finished-rail";
 import { createPortal } from "react-dom";
 import type { RailCallout } from "./rail-callouts";
 import { CALLOUT_CHAR_PX, CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
@@ -109,15 +111,22 @@ export interface RailLegendEntry {
   color: string;
 }
 
+/** The finished rail's ink (quick 261102-gec plan 02, PC22): the board's own edge colour, like the hard
+ * edge and the connectors — it is the board's shape, not a band, so it takes no data hue. */
+export const FINISHED_RAIL_COLOR = "var(--color-surf-ink)";
+
 /** Apex Center, then each segment's label except the two hidden connectors, then Tapered Rail
- * Thickness when the section is domed — built from whichever section's output is passed in. */
-export function buildRailLegend(output: RailSectionOutput): RailLegendEntry[] {
+ * Thickness when the section is domed — built from whichever section's output is passed in. With
+ * `finishedRail` (the VIEWER's Finished Rail switch on, quick 261102-gec plan 02), "Finished Rail" joins
+ * the key last, in ink. */
+export function buildRailLegend(output: RailSectionOutput, options?: { finishedRail?: boolean }): RailLegendEntry[] {
   const legend: RailLegendEntry[] = [{ label: "Apex Center", color: RAIL_APEX_CENTER_COLOR }];
   for (const seg of output.segments) {
     if (LEGEND_HIDDEN_KEYS.has(seg.key)) continue;
     legend.push({ label: seg.label, color: RAIL_SEGMENT_COLORS[seg.key] });
   }
   if (output.domed) legend.push({ label: "Tapered Rail Thickness", color: "#6b8e4e" });
+  if (options?.finishedRail) legend.push({ label: "Finished Rail", color: FINISHED_RAIL_COLOR });
   return legend;
 }
 
@@ -136,6 +145,12 @@ interface RailSectionPlotProps {
    * `./rail-callouts`. Absent (the default): the plot renders exactly as it always has — the
    * VIEWER tab's three plots are pixel-identical with no callouts. */
   callouts?: RailCallout[];
+  /** Draw the finished rail (quick 261102-gec plan 02, R13, PC22): the shape the cuts leave, blended
+   * halfway into each band. Only RAILS' VIEWER and the View Full Sized dialog pass it, under the VIEWER's
+   * Finished Rail switch; left out (the default), the plot draws the cut bands exactly as before — the
+   * printed order form, the INSTRUCTIONS example and the RAILS picture in the phone menu never show it
+   * (the founder, 2026-11-02: a screen aid only). */
+  finishedRail?: boolean;
 }
 
 /**
@@ -473,7 +488,7 @@ export function RailPlotZoom({
   );
 }
 
-export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
+export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts, finishedRail: showFinishedRail = false }: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
@@ -546,6 +561,20 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
     y2: py(mmToInches(seg.p2.y)),
     color: RAIL_SEGMENT_COLORS[seg.key],
   }));
+
+  // The finished rail (quick 261102-gec plan 02, R13, PC22, 2026-11-02) — the founder's brief: "a 3px ink
+  // line over the bands, filled with the app's board fill under the grid". Worked out from this plot's own
+  // left edge (`xAxisMin`, R13 "pass the same") and drawn through the same px/py the band lines use, so it
+  // lands exactly on them. Two paths: the closed shape, filled with the board's colour as the svg's FIRST
+  // child, so the zoom grid, the grid lines and the reference dashes all sit over it; and the curve itself,
+  // after the band lines and before the dots, so the mark dots stay on top.
+  const finished = useMemo(
+    () => (showFinishedRail ? finishedRail(output, xAxisMin) : null),
+    [showFinishedRail, output, xAxisMin],
+  );
+  const projectMm = (p: Point2D) => ({ x: px(mmToInches(p.x)), y: py(mmToInches(p.y)) });
+  const finishedFill = finished ? finishedRailPath(finished, projectMm, { closed: true }) : null;
+  const finishedCurve = finished ? finishedRailPath(finished, projectMm) : null;
 
   // Which marks get a dot, and in what order, is `railPlotDots`' one rule (lib/geometry/rail-bands.ts)
   // — the same rule the RAILS picture in the phone menu reads (quick 261003-q2f).
@@ -638,6 +667,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
       }}
       className="block"
     >
+      {finishedFill && <path d={finishedFill} fill="var(--color-surf-board-fill)" stroke="none" />}
       <ZoomGrid
         zoom={zoom}
         fitScale={fitScale}
@@ -661,6 +691,17 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
       {segmentLines.map((sg) => (
         <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       ))}
+      {finishedCurve && (
+        <path
+          data-finished-rail
+          d={finishedCurve}
+          fill="none"
+          stroke={FINISHED_RAIL_COLOR}
+          strokeWidth={3}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {dots.map((dt, i) => (
         <circle key={`d${i}`} cx={dt.cx} cy={dt.cy} r={2.75 * zoomUnit} fill={dt.color} />
       ))}

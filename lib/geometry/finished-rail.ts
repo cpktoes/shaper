@@ -196,6 +196,28 @@ export function finishedRailFromCuts(
   };
 }
 
+/** The finished rail as an SVG path (quick 261102-gec plan 02, PC22, 2026-11-02): `M` at the deck end, then
+ * one `L` per straight step and one `Q` per blend, each point passed through `project` — the drawing's own
+ * mapping from a section's millimetres to its coordinates, so the curve lands exactly on the drawn bands.
+ * `closed` adds the close along the drawing's left edge (from the bottom's end back up to the deck's), so
+ * the shape can be filled with the board's colour. The path is exact: the parabolas themselves, not samples. */
+export function finishedRailPath(
+  rail: FinishedRail,
+  project: (p: Point2D) => { x: number; y: number },
+  options: { closed?: boolean } = {},
+): string {
+  const pt = (p: Point2D) => {
+    const q = project(p);
+    return `${q.x} ${q.y}`;
+  };
+  const parts = [`M ${pt(rail.start)}`];
+  for (const step of rail.steps) {
+    parts.push(step.kind === "line" ? `L ${pt(step.to)}` : `Q ${pt(step.control)} ${pt(step.to)}`);
+  }
+  if (options.closed) parts.push("Z");
+  return parts.join(" ");
+}
+
 /** The bands that take foam off; the dome joins them only when the deck is domed. */
 const CUT_KEYS: ReadonlySet<RailSegmentKey> = new Set<RailSegmentKey>(["band1", "band2", "tuck1", "tuck2"]);
 

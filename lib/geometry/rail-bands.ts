@@ -108,6 +108,46 @@ export const ZERO_RAIL_NUDGES: RailMarkNudges = {
   bottomTuck3: mm(0),
 };
 
+/** Each nudge's name on the Advanced menu's sliders (quick 261102-gec plan 02, PC18, 2026-11-02) — the DATA
+ * tab's own words for the mark it moves, so a shaper reads the same name in both places. */
+export const RAIL_NUDGE_NAMES: Readonly<Record<RailNudgeKey, string>> = {
+  apexThickness: "Apex Thickness",
+  deckMark1: "Deck Mark 1",
+  deckMark2: "Deck Mark 2",
+  deckMark3: "Deck Mark 3",
+  bottomTuck1: "Bottom Tuck 1",
+  bottomTuck2: "Bottom Tuck 2",
+  bottomTuck3: "Bottom Tuck 3",
+};
+
+/** A nudge slider's step in inches (the founder's brief: "in 1/16" or 1 mm steps"; PC24). Metric steps a
+ * whole millimetre through `measureSlider`. */
+export const RAIL_NUDGE_STEP_IN = 1 / 16;
+
+/** What a rail's Advanced settings are on a new board (PC20): every nudge 0, Single Tuck off, and "Scaled
+ * from center by" 0.75 on the nose and tail, 1 on the centre. Reset Advanced Settings puts a rail back to
+ * exactly these (and the tail's Hard Edge back on, which lives on the whole spec, not the section). */
+export function defaultRailAdvanced(
+  key: RailSectionKey,
+): Pick<RailSectionSpec, "scaleFromCenter" | "nudges" | "singleTuck"> {
+  return {
+    scaleFromCenter: key === "center" ? 1 : DEFAULT_TIP_RAIL_SCALE,
+    nudges: ZERO_RAIL_NUDGES,
+    singleTuck: false,
+  };
+}
+
+/** The Deck Profile slider's step (R7, PC23), moved here from the sidebar so it can be tested: about one
+ * 1/16" of rail thickness per step (the prototype's `deckProfileFor` rule), rounded to a whole number of
+ * steps over the 75-100% range so both ends — Flat at 100% and the founder's 75% floor — stay exactly
+ * reachable at any thickness. It was over the old 66-100% range (34 points); the floor moved to 75%. */
+export function deckProfileSliderStep(thicknessIn: number): number {
+  const span = 100 - DECK_PERCENT_MIN;
+  const rawStep = Math.max(0.01, (0.0625 / thicknessIn) * 100);
+  const steps = Math.max(1, Math.round(span / rawStep));
+  return span / steps;
+}
+
 /** Parametric controls for one rail section — the single place a section's sidebar writes to.
  *
  * `cornerCutOffsetOverride`, `removeCornerCut` and `bottomTuck3Override` are LEGACY (PC2, R12): the v2

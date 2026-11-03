@@ -112,9 +112,12 @@ import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geome
 import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
   DEFAULT_RAIL_BAND_SPEC,
+  ZERO_RAIL_NUDGES,
   computeRailBands,
+  defaultRailAdvanced,
   type RailBandsOutput,
   type RailBandSpec,
+  type RailNudgeKey,
   type RailSectionKey,
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
@@ -433,6 +436,12 @@ interface DesignContextValue {
   applyModel: (id: string, snapshot: DesignSnapshotFields, locked: boolean) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
+  /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
+   * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
+  updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
+  /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to 0.75 on the nose and tail
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on — one undo step. */
+  resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
   setFinsImportTemplate: (next: boolean) => void;
@@ -843,6 +852,42 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
       rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
+  // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
+  // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
+  // slider is one step and a drag on the next is another.
+  const updateRailNudge = (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit(`rails:${key}:nudge:${nudgeKey}`);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: {
+        ...prev.rails,
+        [key]: { ...prev.rails[key], nudges: { ...(prev.rails[key].nudges ?? ZERO_RAIL_NUDGES), [nudgeKey]: value } },
+      },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // Reset Advanced Settings (PC20): every nudge back to 0, the scale back to its default, Single Tuck off
+  // and, on the tail, Hard Edge back on (the founder's rule) — all in one setState, so it is ONE undo
+  // step. A discrete action like toggleTailHardEdge, hence noteEdit(null).
+  const resetRailAdvanced = (key: RailSectionKey) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: {
+        ...prev.rails,
+        [key]: { ...prev.rails[key], ...defaultRailAdvanced(key) },
+        ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
+      },
       boardStarted: true,
       dirty: true,
     }));
@@ -1700,6 +1745,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyModel,
     updateRailSection,
     toggleTailHardEdge,
+    updateRailNudge,
+    resetRailAdvanced,
     updateFins,
     updateVolume,
     setFinsImportTemplate,
