@@ -22,7 +22,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
  *   mark dot but the Apex Center's by one opacity, and it is disabled while the finished rail is hidden.
  *
  * Every expected reading is read off the page before the change and compared after it — never a typed
- * mark. The only typed figures are the founder's own windows and steps (20-80 by 0.5, 0.75, 75-100%,
+ * mark. The only typed figures are the founder's own windows and steps (20-80 by 0.5, the tips' scale 1.00, 75-100%,
  * the 1/16" step).
  *
  * It works with whichever rail is in view: on a computer all three rails' controls sit in the
@@ -159,7 +159,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     const nose = await showRail(page, testInfo, "nose");
     const noseRows = await advancedRows(await openAdvanced(nose));
     const expected = [
-      /^Scaled from center by — 0\.75$/,
+      /^Scaled from center by — 1\.00$/,
       /^Apex Thickness — .+ \(.+\)$/,
       /^Deck Mark 1 — .+ \(.+\)$/,
       /^Deck Mark 3 — .+ \(.+\)$/,
@@ -306,7 +306,8 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
 
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
     for (let i = 0; i < watched.length; i++) await expect(watched[i]).toHaveText(before[i] ?? "");
-    await expect(scale).toHaveText("Scaled from center by — 0.75");
+    // 1.00 since fast task 189 (R20, the founder: "Go with 1.00 as the default").
+    await expect(scale).toHaveText("Scaled from center by — 1.00");
 
     const tail = await showRail(page, testInfo, "tail");
     const hardEdge = tail.getByRole("checkbox", { name: "Hard Edge" });

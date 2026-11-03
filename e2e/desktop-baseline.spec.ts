@@ -2,6 +2,17 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (fast task 189, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for "Scaled from center by" defaulting to 1.00 instead of the sheet's 0.75 (R20, the founder:
+ * "Go with 1.00 as the default"): the nose and tail cross-sections' bands now come from their own thickness with no
+ * further scaling, so their Apex Thickness, Deck Mark 1 and Deck Mark 3 sit further from the apex and the finished
+ * rail follows; the centre is untouched. On VOLUME the default board reads 30.33 L instead of 30.52 L and its Tail and
+ * Nose Cross-Section Thickness rows move with it. Old and new were compared before re-recording: on RAILS only the
+ * Nose and Tail plots changed; on VOLUME only the litres and the thickness rows. TEMPLATE, ROCKER and FINS passed
+ * unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3191) in a
+ * scratch copy of this checkout on this Mac. SHA-256 (first 8 characters), old to new: RAILS c4c6afc4 to c89c1def,
+ * VOLUME 2e4e1421 to ff9f48b1.
+ *
  * RE-RECORDED 2026-11-02 (fast task 187, branch rails-v2) — RAILS only, `rails-desktop.png`, for the key: its
  * "Finished Rail" entry now draws a 14px line at the curve's own 3px weight instead of a 9px ink dot (which was the
  * same dot "Board Thickness" has), so the whole key row re-flows by a few dots. Old and new were compared before

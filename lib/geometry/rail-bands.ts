@@ -11,7 +11,7 @@
  *
  * The sheet, in plain words (t = the thickness the sheet works from — the board thickness on a flat deck,
  * the tapered rail thickness, rounded to the 1/16", on a domed one; T = the board thickness; s = "Scaled
- * from center by", always 1 on the centre and 0.75 by default on the nose and tail):
+ * from center by", always 1 on the centre and, since fast task 189, 1 by default on the nose and tail too):
  * - Apex Thickness (the sheet's "Apex Length") = (-0.125 x Family + 1.375) x t x 0.35 x s; the Apex Center
  *   sits at t x the bottom part of the Ratio, with Rail Mark 1 half the apex above it and Rail Tuck 1 half
  *   below.
@@ -73,8 +73,15 @@ export const RAIL_RATIO_RANGE = { min: 20, max: 80, step: 0.5 } as const;
 /** "Scaled from center by" (R10): nose and tail only, 0.50 to 1.00 in 0.05 steps. */
 export const RAIL_SCALE_RANGE = { min: 0.5, max: 1, step: 0.05 } as const;
 
-/** The nose's and tail's "Scaled from center by" on a new board, and on a board saved before it existed. */
-export const DEFAULT_TIP_RAIL_SCALE = 0.75;
+/** The nose's and tail's "Scaled from center by" on a new board, and on a board saved before it existed.
+ * 1.00 since fast task 189 (R20, the founder, 2026-11-02: "Go with 1.00 as the default") — it was the sheet's
+ * 0.75 until the founder asked whether that multiplier was redundant beside marks that already follow the
+ * thickness at 12": it was. Greenlight's charts need their "75% at 12"" because their deck marks are fixed
+ * inches that do not know the tip is thinner; these marks read the tip's own thickness, which on an ordinary
+ * foil already puts them near 70% of the centre's, so 0.75 on top made the tips about half the centre's. At
+ * 1.00 the tips follow the foil alone, and the slider stays as a deliberate extra tightening — the only one
+ * a board with no foil would get. A board saved with 0.75 keeps it (the value is stored, not the default). */
+export const DEFAULT_TIP_RAIL_SCALE = 1;
 
 /** The six marks a shaper can nudge off its formula, in the Advanced menu's order (PC1, amended by quick
  * 261102-gec plan 04's PC25, 2026-11-02) — the one list the sliders, Reset, volume's blend, the saved-board
@@ -150,7 +157,7 @@ export const RAIL_NUDGE_NAMES: Readonly<Record<RailNudgeKey, string>> = {
 export const RAIL_NUDGE_STEP_IN = 1 / 16;
 
 /** What a rail's Advanced settings are on a new board (PC20): every nudge 0, Single Tuck off, and "Scaled
- * from center by" 0.75 on the nose and tail, 1 on the centre. Reset Advanced Settings puts a rail back to
+ * from center by" `DEFAULT_TIP_RAIL_SCALE` (1 since fast task 189) on the nose and tail, 1 on the centre. Reset Advanced Settings puts a rail back to
  * exactly these (and the tail's Hard Edge back on, which lives on the whole spec, not the section). */
 export function defaultRailAdvanced(
   key: RailSectionKey,
@@ -216,7 +223,7 @@ const DEFAULT_SECTION_COMMON = {
 };
 
 /** A new board's rails: today's values ("a new board starts with today's values", the founder), the tips
- * scaled 0.75 from the centre, every nudge 0. */
+ * at `DEFAULT_TIP_RAIL_SCALE` from the centre (1 since fast task 189), every nudge 0. */
 export const DEFAULT_RAIL_BAND_SPEC: RailBandSpec = {
   nose: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.31), scaleFromCenter: DEFAULT_TIP_RAIL_SCALE },
   center: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(2.5), scaleFromCenter: 1 },

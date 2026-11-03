@@ -898,7 +898,7 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
       design: { rails: Record<"nose" | "center" | "tail", WireSection> & { tailHardEdge: boolean } };
     };
 
-  it("a rail section saved before them opens with 0.75 on the nose and tail, 1 on the centre, and every nudge 0", () => {
+  it("a rail section saved before them opens with the tip default (1 since fast task 189) on the nose and tail, 1 on the centre, and every nudge 0", () => {
     const stored = wire();
     for (const key of ["nose", "center", "tail"] as const) {
       delete stored.design.rails[key].scaleFromCenter;

@@ -112,7 +112,7 @@
  * 10. Each rail section carries `scaleFromCenter` ("Scaled from center by") and `nudges` (six
  *    plus-or-minus amounts, one per mark a shaper can tweak — `RAIL_NUDGE_KEYS`) for the founder's
  *    Chris Rails v2 sheets (quick 261102-gec, 2026-11-02, PC1). Absent means the section's default —
- *    0.75 on the nose and tail, 1 on the centre, every nudge 0 — which is every board saved before
+ *    `DEFAULT_TIP_RAIL_SCALE` (1 since fast task 189; 0.75 before it) on the nose and tail, 1 on the centre, every nudge 0 — which is every board saved before
  *    them. Read forgivingly, rule 9's way: anything that is not a number reads its default and never
  *    rejects the board. No bound is applied here: the engine holds the scale, each nudge, the Ratio and
  *    Deck Profile inside their windows (PC6, R7), so no crafted value draws a nonsense rail. The version
@@ -372,7 +372,7 @@ const railMarkNudgesSchema = z
   )
   .catch(ZERO_RAIL_NUDGES);
 
-/** One rail section, built from its default "Scaled from center by" (rule 10): 0.75 on the nose and
+/** One rail section, built from its default "Scaled from center by" (rule 10): `DEFAULT_TIP_RAIL_SCALE` on the nose and
  * tail, 1 on the centre. The three legacy keys stay required and are carried as read (PC2). */
 const railSectionSpecSchema = (defaultScale: number) =>
   z.object({

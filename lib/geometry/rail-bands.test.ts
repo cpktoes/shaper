@@ -861,7 +861,7 @@ describe("railPlotDots — which rail marks get a dot (the RAILS plot and the �
 });
 
 describe("a section saved before the scale and nudges existed", () => {
-  it("reads the tip default 0.75, the centre's 1, and every nudge 0", () => {
+  it("reads the tip default (DEFAULT_TIP_RAIL_SCALE, 1 since fast task 189), the centre's 1, and every nudge 0", () => {
     const legacy = (key: RailSectionKey) => {
       const { scaleFromCenter: _s, nudges: _n, ...rest } = DEFAULT_RAIL_BAND_SPEC[key];
       void _s;
@@ -915,7 +915,7 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
     }
   });
 
-  it("defaultRailAdvanced: every nudge 0, Single Tuck off, the tips' scale 0.75 and the centre's 1 — a new board's own values (PC20)", () => {
+  it("defaultRailAdvanced: every nudge 0, Single Tuck off, the tips' scale at its default (1 since fast task 189) and the centre's 1 — a new board's own values (PC20)", () => {
     for (const key of ["nose", "center", "tail"] as const) {
       const advanced = defaultRailAdvanced(key);
       expect(advanced.nudges).toEqual(ZERO_RAIL_NUDGES);

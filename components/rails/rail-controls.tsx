@@ -386,7 +386,7 @@ function RailSectionControls({
             {showBottomTuck1 && nudgeRow("bottomTuck1")}
             {showTucks && nudgeRow("bottomTuck3")}
 
-            {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to 0.75, Single Tuck off and,
+            {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck off and,
                 on the tail, Hard Edge back on — one store action, so one undo step. */}
             <button
               type="button"

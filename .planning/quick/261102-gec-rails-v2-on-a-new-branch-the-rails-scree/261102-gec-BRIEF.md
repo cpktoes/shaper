@@ -366,3 +366,10 @@ The founder, on localhost:3005 with plan 02 live, in two messages:
   = 0.75 (was 0.25, the brief's "the others ±1/4""); the step stays 1/16" (1 mm in Metric), the floor stays — a −3/4"
   Bottom Tuck 3 still stops 1/16" beyond Bottom Tuck 1. Nothing else moves: an un-nudged board is unchanged, and the
   sidebar reads every window from that one map.
+- **R20 — fast task 189 (2026-11-02), the founder: "Go with 1.00 as the default."** Asked whether "Scaled from center by"
+  was redundant beside marks that already follow the thickness at 12" — compared with Greenlight's "75% at 12"" rule it
+  was: Greenlight's deck marks are fixed inches that do not know the tip is thinner, the v2 sheet's read the tip's own
+  thickness (0.69 of the centre's on the default board), so s = 0.75 on top made the tips about half the centre's where
+  Greenlight has 75%. `DEFAULT_TIP_RAIL_SCALE` = 1 (was 0.75) and every preset's nose and tail carry 1; the slider stays
+  (0.50–1.00, the one extra tightening a board with no foil would get); a board saved with 0.75 keeps it. The preset
+  litres record regenerated; RAILS and VOLUME reference pictures re-recorded.

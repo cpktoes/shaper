@@ -439,7 +439,7 @@ interface DesignContextValue {
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
-  /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to 0.75 on the nose and tail
+  /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
    * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on — one undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;

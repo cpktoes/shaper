@@ -251,7 +251,12 @@ test.describe("every tile reads the current board", () => {
     const litres = parseFloat(await figure.innerText());
     await openPhoneMenu(page);
     const tileFigure = (await screenTile(page, "VOLUME").locator("[data-tile-picture]").innerText()).replace(/\s+/g, "");
-    expect(tileFigure).toBe(`${litres.toFixed(1)}L`);
+    // The screen prints two decimals and the tile one, each rounded from the true litres — so the tile
+    // is the screen's figure to within half a hundredth, never the screen's two decimals rounded again
+    // (29.65 L on screen is 29.650… underneath and prints 29.7 on the tile, where rounding "29.65" a
+    // second time gives 29.6 — fast task 189, when the Shortboard landed exactly there).
+    expect(tileFigure).toMatch(/^\d+\.\dL$/);
+    expect(Math.abs(parseFloat(tileFigure) - litres)).toBeLessThanOrEqual(0.05 + 1e-9);
     expect(tileFigure).toBe(`${cardLitres("Shortboard")}L`);
     await expect(screenTile(page, "VOLUME")).toHaveAttribute(
       "aria-label",

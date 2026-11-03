@@ -203,7 +203,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -243,7 +243,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -329,7 +329,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -369,7 +369,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -458,7 +458,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -498,7 +498,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -586,7 +586,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
@@ -626,7 +626,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         removeCornerCut: false,
         singleTuck: false,
         bottomTuck3Override: null,
-        scaleFromCenter: 0.75,
+        scaleFromCenter: 1,
         nudges: {
           apexThickness: inchesToMm(0),
           deckMark1: inchesToMm(0),
