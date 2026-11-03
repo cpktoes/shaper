@@ -133,7 +133,7 @@
  *    store keeps the rule as a shaper ticks either box; this reader keeps it for a board saved before the
  *    rule, or by hand: a tail stored with both opens with Hard Edge winning and Symmetrical off, nothing
  *    rewritten until the shaper saves. The other rails' Symmetrical is never touched. Version stays 5.
- * 12. Each rail section carries `sharpBottomEdge`, the Sharp Bottom Edge box (quick 261102-gec plan 05,
+ * 12. Each rail section carries `sharpBottomTuck`, the Sharp Bottom Tuck box (quick 261102-gec plan 05,
  *    R22, 2026-11-02 — the founder: "an advanced checkbox for leaving the bottom edge fairly sharp (follow
  *    the angle at bottom tuck 3)"). Absent — every board saved before it — or anything that is not a
  *    boolean reads off, so an old board opens exactly as it was and a crafted value never rejects the
@@ -396,8 +396,8 @@ const railSectionSpecSchema = (defaultScale: number) =>
     cornerCutOffsetOverride: z.number().nullable(),
     removeCornerCut: z.boolean(),
     singleTuck: z.boolean(),
-    // Rule 12 (plan 05, R22): the Sharp Bottom Edge box — absent or not a boolean reads off.
-    sharpBottomEdge: z.boolean().catch(false),
+    // Rule 12 (plan 05, R22): the Sharp Bottom Tuck box — absent or not a boolean reads off.
+    sharpBottomTuck: z.boolean().catch(false),
     bottomTuck3Override: z.number().nullable(),
     scaleFromCenter: z.number().catch(defaultScale),
     nudges: railMarkNudgesSchema,

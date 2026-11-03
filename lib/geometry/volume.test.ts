@@ -498,10 +498,10 @@ describe("computeCrossSectionVolume", () => {
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
   });
 
-  // Sharp Bottom Edge (quick 261102-gec plan 05, R22, PC39): each station takes the box from its nearest
+  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39): each station takes the box from its nearest
   // rail, as it takes Single Tuck, and keeps the foam that corner's blend used to take off. Every figure is
   // the same board with the box off — never a typed area.
-  it("Sharp Bottom Edge ticked on the centre (and on a hard-edge tail) keeps foam only at the stations nearest the centre, and the litres rise", () => {
+  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam only at the stations nearest the centre, and the litres rise", () => {
     const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
     const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
     const length = DEFAULT_BOARD_SPEC.outline.length;
@@ -511,8 +511,8 @@ describe("computeCrossSectionVolume", () => {
     const off = run(DEFAULT_RAIL_BAND_SPEC);
     const on = run({
       ...DEFAULT_RAIL_BAND_SPEC,
-      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomEdge: true },
-      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomEdge: true },
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true },
     });
     // Which rail each station reads: the nearest of the three anchors (tail 12", centre, nose 12").
     const anchors = foilStationPoints(DEFAULT_FOIL_SPEC, length);
@@ -629,7 +629,7 @@ describe("blank-datasheet validation (D-14)", () => {
       cornerCutOffsetOverride: null,
       removeCornerCut: true,
       singleTuck: true,
-      sharpBottomEdge: false,
+      sharpBottomTuck: false,
       bottomTuck3Override: null,
       scaleFromCenter: DEFAULT_TIP_RAIL_SCALE,
       nudges: ZERO_RAIL_NUDGES,

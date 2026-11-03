@@ -990,27 +990,27 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
     expect(computeRailBands(opened.rails)).toEqual(computeRailBands(FIXTURES[0].rails));
   });
 
-  // Rule 12 (quick 261102-gec plan 05, R22): the Sharp Bottom Edge box.
-  it("a rail section saved without Sharp Bottom Edge, or with a string or a number in it, opens with the box off (rule 12)", () => {
+  // Rule 12 (quick 261102-gec plan 05, R22): the Sharp Bottom Tuck box.
+  it("a rail section saved without Sharp Bottom Tuck, or with a string or a number in it, opens with the box off (rule 12)", () => {
     const stored = wire();
-    delete stored.design.rails.nose.sharpBottomEdge;
-    stored.design.rails.center.sharpBottomEdge = "yes";
-    stored.design.rails.tail.sharpBottomEdge = 1;
+    delete stored.design.rails.nose.sharpBottomTuck;
+    stored.design.rails.center.sharpBottomTuck = "yes";
+    stored.design.rails.tail.sharpBottomTuck = 1;
     const opened = parseSnapshot(stored);
-    for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].sharpBottomEdge).toBe(false);
+    for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].sharpBottomTuck).toBe(false);
   });
 
-  it("a Sharp Bottom Edge ticked on this branch round-trips exactly (rule 12)", () => {
+  it("a Sharp Bottom Tuck ticked on this branch round-trips exactly (rule 12)", () => {
     const fields: DesignSnapshotFields = {
       ...FIXTURES[0],
       rails: {
         ...FIXTURES[0].rails,
-        center: { ...FIXTURES[0].rails.center, sharpBottomEdge: true },
+        center: { ...FIXTURES[0].rails.center, sharpBottomTuck: true },
       },
     };
     const back = roundTrip(fields).rails;
     expect(back).toEqual(fields.rails);
-    expect(back.center.sharpBottomEdge).toBe(true);
-    expect(back.nose.sharpBottomEdge).toBe(false);
+    expect(back.center.sharpBottomTuck).toBe(true);
+    expect(back.nose.sharpBottomTuck).toBe(false);
   });
 });

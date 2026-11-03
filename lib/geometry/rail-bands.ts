@@ -162,12 +162,12 @@ export const RAIL_NUDGE_STEP_IN = 1 / 16;
  * exactly these (and the tail's Hard Edge back on, which lives on the whole spec, not the section). */
 export function defaultRailAdvanced(
   key: RailSectionKey,
-): Pick<RailSectionSpec, "scaleFromCenter" | "nudges" | "singleTuck" | "sharpBottomEdge"> {
+): Pick<RailSectionSpec, "scaleFromCenter" | "nudges" | "singleTuck" | "sharpBottomTuck"> {
   return {
     scaleFromCenter: key === "center" ? 1 : DEFAULT_TIP_RAIL_SCALE,
     nudges: ZERO_RAIL_NUDGES,
     singleTuck: false,
-    sharpBottomEdge: false,
+    sharpBottomTuck: false,
   };
 }
 
@@ -197,11 +197,11 @@ export interface RailSectionSpec {
   cornerCutOffsetOverride: Mm | null;
   removeCornerCut: boolean;
   singleTuck: boolean;
-  /** Sharp Bottom Edge (quick 261102-gec plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for
+  /** Sharp Bottom Tuck (quick 261102-gec plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for
    * leaving the bottom edge fairly sharp (follow the angle at bottom tuck 3)"). On, the finished rail keeps
    * the corner at Bottom Tuck 3 as the cut leaves it instead of rolling it away; the cuts, the marks and the
    * DATA rows never change. Off on a new board and after Reset; a board saved without it reads off. */
-  sharpBottomEdge: boolean;
+  sharpBottomTuck: boolean;
   bottomTuck3Override: Mm | null;
   /** "Scaled from center by" (R10). Read as 1 on the centre whatever is stored. */
   scaleFromCenter: number;
@@ -225,7 +225,7 @@ const DEFAULT_SECTION_COMMON = {
   cornerCutOffsetOverride: null,
   removeCornerCut: false,
   singleTuck: false,
-  sharpBottomEdge: false,
+  sharpBottomTuck: false,
   bottomTuck3Override: null,
   nudges: ZERO_RAIL_NUDGES,
 };
@@ -261,7 +261,7 @@ export interface RailSectionResult {
   bottomTuck3: Mm;
   singleTuck: boolean;
   /** Carried for the finished rail (plan 05, R22): keep the Bottom Tuck 3 corner sharp. No mark reads it. */
-  sharpBottomEdge: boolean;
+  sharpBottomTuck: boolean;
 }
 
 export type RailSegmentKey =
@@ -339,7 +339,7 @@ interface RailSectionResultInches {
   bottomTuck2: number;
   bottomTuck3: number;
   singleTuck: boolean;
-  sharpBottomEdge: boolean;
+  sharpBottomTuck: boolean;
 }
 
 interface ComputeSectionInchesInput {
@@ -351,7 +351,7 @@ interface ComputeSectionInchesInput {
   nudgesIn: Record<RailNudgeKey, number>;
   symmetrical: boolean;
   singleTuck: boolean;
-  sharpBottomEdge: boolean;
+  sharpBottomTuck: boolean;
   hardEdge: boolean;
 }
 
@@ -423,7 +423,7 @@ function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResu
     bottomTuck2,
     bottomTuck3,
     singleTuck: input.singleTuck,
-    sharpBottomEdge: input.sharpBottomEdge,
+    sharpBottomTuck: input.sharpBottomTuck,
   };
 }
 
@@ -588,7 +588,7 @@ function resultToInches(r: RailSectionResult): RailSectionResultInches {
     bottomTuck2: mmToInches(r.bottomTuck2),
     bottomTuck3: mmToInches(r.bottomTuck3),
     singleTuck: r.singleTuck,
-    sharpBottomEdge: r.sharpBottomEdge,
+    sharpBottomTuck: r.sharpBottomTuck,
   };
 }
 
@@ -604,8 +604,8 @@ export interface ComputeRailSectionInput {
   scale: number;
   nudges: RailMarkNudges;
   singleTuck: boolean;
-  /** Sharp Bottom Edge (plan 05, R22): passed through to the result for the finished rail. */
-  sharpBottomEdge: boolean;
+  /** Sharp Bottom Tuck (plan 05, R22): passed through to the result for the finished rail. */
+  sharpBottomTuck: boolean;
   symmetrical: boolean;
   hardEdge: boolean;
 }
@@ -626,7 +626,7 @@ export function computeRailSection(input: ComputeRailSectionInput): RailSectionR
     >,
     symmetrical: input.symmetrical,
     singleTuck: input.singleTuck,
-    sharpBottomEdge: input.sharpBottomEdge,
+    sharpBottomTuck: input.sharpBottomTuck,
     hardEdge: input.hardEdge,
   });
   return {
@@ -647,7 +647,7 @@ export function computeRailSection(input: ComputeRailSectionInput): RailSectionR
     bottomTuck2: inchesToMm(rIn.bottomTuck2),
     bottomTuck3: inchesToMm(rIn.bottomTuck3),
     singleTuck: rIn.singleTuck,
-    sharpBottomEdge: rIn.sharpBottomEdge,
+    sharpBottomTuck: rIn.sharpBottomTuck,
   };
 }
 
@@ -780,7 +780,7 @@ export function computeRailSectionOutput(
     nudges: railNudgesOf(sectionSpec.nudges),
     singleTuck: sectionSpec.singleTuck,
     // A section held in memory from before plan 05 (Fast Refresh) has no box: it reads off (T-gec-20).
-    sharpBottomEdge: sectionSpec.sharpBottomEdge === true,
+    sharpBottomTuck: sectionSpec.sharpBottomTuck === true,
     symmetrical: sectionSpec.symmetrical,
     hardEdge,
   });

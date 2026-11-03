@@ -20,7 +20,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
  * - On a phone the new sliders take a finger (R15).
  * - The Ghost Bands switch beside it (fast task, 2026-11-02): off by default, it fades every band and
  *   mark dot but the Apex Center's by one opacity, and it is disabled while the finished rail is hidden.
- * - The Sharp Bottom Edge box (plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for leaving
+ * - The Sharp Bottom Tuck box (plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for leaving
  *   the bottom edge fairly sharp (follow the angle at bottom tuck 3)"): after Bottom Tuck 3 in every
  *   rail's Advanced menu, hidden with the tucks on a hard-edge tail, unticked by Reset. Ticked, the drawn
  *   finished rail keeps the Bottom Tuck 3 corner — one blend fewer — while the DATA tab never moves.
@@ -157,7 +157,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await openRails(page);
   });
 
-  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck, Sharp Bottom Edge after Bottom Tuck 3 and Reset; the Center rail's has no scale", async ({
+  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck, Sharp Bottom Tuck after Bottom Tuck 3 and Reset; the Center rail's has no scale", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
@@ -171,7 +171,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
       /^Use Single Tuck$/,
       /^Bottom Tuck 1 — .+ \(.+\)$/,
       /^Bottom Tuck 3 — .+ \(.+\)$/,
-      /^Sharp Bottom Edge$/,
+      /^Sharp Bottom Tuck$/,
       /Reset Advanced Settings$/,
     ];
     expect(noseRows.length).toBe(expected.length);
@@ -236,7 +236,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     expect(await dataCell(page, "Bottom Tuck 1", "nose")).not.toBe("—");
   });
 
-  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck, the Bottom Tuck 1 and 3 sliders and Sharp Bottom Edge while Deck Mark 3 and the Domed Deck Band show; off, they show", async ({
+  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck, the Bottom Tuck 1 and 3 sliders and Sharp Bottom Tuck while Deck Mark 3 and the Domed Deck Band show; off, they show", async ({
     page,
   }, testInfo) => {
     const tail = await showRail(page, testInfo, "tail");
@@ -245,7 +245,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     const body = await openAdvanced(tail);
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toHaveCount(0);
     // Plan 05 (R22): a hard edge is already sharp at the bottom, so its box hides with the tucks.
-    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Edge" })).toHaveCount(0);
+    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toHaveCount(0);
     for (const name of ["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"]) {
       await expect(nudgeLabel(tail, name)).toHaveCount(0);
     }
@@ -255,7 +255,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await hardEdge.click();
     await expect(hardEdge).not.toBeChecked();
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toBeVisible();
-    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Edge" })).toBeVisible();
+    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toBeVisible();
     for (const name of ["Bottom Tuck 1", "Bottom Tuck 3"]) {
       await expect(nudgeLabel(tail, name)).toBeVisible();
     }
@@ -288,13 +288,13 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await expect(ratio.readout).toHaveText("Ratio — 20/80");
   });
 
-  test("6. Reset Advanced Settings puts the nudges — the Domed Deck Band's too — and the scale back, unticks Sharp Bottom Edge; on the tail it turns Hard Edge back on", async ({
+  test("6. Reset Advanced Settings puts the nudges — the Domed Deck Band's too — and the scale back, unticks Sharp Bottom Tuck; on the tail it turns Hard Edge back on", async ({
     page,
   }, testInfo) => {
-    // Plan 05 (R22): the Center Rail's Sharp Bottom Edge ticked first; its Reset unticks it.
+    // Plan 05 (R22): the Center Rail's Sharp Bottom Tuck ticked first; its Reset unticks it.
     const center = await showRail(page, testInfo, "center");
     const centerBody = await openAdvanced(center);
-    const sharp = centerBody.getByRole("checkbox", { name: "Sharp Bottom Edge" });
+    const sharp = centerBody.getByRole("checkbox", { name: "Sharp Bottom Tuck" });
     await expect(sharp).not.toBeChecked();
     await sharp.click();
     await expect(sharp).toBeChecked();
@@ -709,14 +709,14 @@ async function centerFinishedRailD(page: Page): Promise<string> {
 /** How many blends a finished-rail path draws: its `Q` commands. */
 const blendCount = (d: string) => d.split(" Q ").length - 1;
 
-test.describe("the Sharp Bottom Edge box (quick 261102-gec plan 05, R22)", () => {
-  test("16. the Center Rail's Sharp Bottom Edge starts unticked; ticking it drops exactly one blend from the drawn finished rail and leaves the DATA tab alone; unticking and Reset restore the drawing exactly", async ({
+test.describe("the Sharp Bottom Tuck box (quick 261102-gec plan 05, R22)", () => {
+  test("16. the Center Rail's Sharp Bottom Tuck starts unticked; ticking it drops exactly one blend from the drawn finished rail and leaves the DATA tab alone; unticking and Reset restore the drawing exactly", async ({
     page,
   }, testInfo) => {
     await openRails(page);
     const center = await showRail(page, testInfo, "center");
     const body = await openAdvanced(center);
-    const box = body.getByRole("checkbox", { name: "Sharp Bottom Edge" });
+    const box = body.getByRole("checkbox", { name: "Sharp Bottom Tuck" });
     await expect(box).not.toBeChecked();
 
     // Every expected value is read off the page before the change.

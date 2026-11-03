@@ -575,7 +575,7 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
  * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
  * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
- * 261102-gec plan 05 `sharpBottomEdge`, R22/PC39) come from the nearest anchor section wholesale, because
+ * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
  * a family index or a boolean cannot be interpolated.
  * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
  * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
@@ -678,7 +678,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
       scale,
       nudges,
       singleTuck: nearestSpec.singleTuck,
-      sharpBottomEdge: nearestSpec.sharpBottomEdge,
+      sharpBottomTuck: nearestSpec.sharpBottomTuck,
       symmetrical: nearestSpec.symmetrical,
       hardEdge: nearestKey === "tail" && rails.tailHardEdge,
     };

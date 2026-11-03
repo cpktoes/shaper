@@ -222,15 +222,15 @@ describe("preset source blocks", () => {
     expect(buildRailsPresetSource(rails)).toContain("domedDeckBand: inchesToMm(-1.9375),");
   });
 
-  it("prints each rail's Sharp Bottom Edge right after Single Tuck, and a ticked box pastes back exactly (quick 261102-gec plan 05, R22)", () => {
+  it("prints each rail's Sharp Bottom Tuck right after Single Tuck, and a ticked box pastes back exactly (quick 261102-gec plan 05, R22)", () => {
     const rails: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
-      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomEdge: true },
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
     };
     const source = buildRailsPresetSource(rails);
     const lines = source.split("\n").map((l) => l.trim());
     const after = lines.flatMap((l, i) => (l.startsWith("singleTuck:") ? [lines[i + 1]] : []));
-    expect(after).toEqual(["sharpBottomEdge: false,", "sharpBottomEdge: true,", "sharpBottomEdge: false,"]);
+    expect(after).toEqual(["sharpBottomTuck: false,", "sharpBottomTuck: true,", "sharpBottomTuck: false,"]);
     expect(pasteBlock(source)).toStrictEqual({ rails });
   });
 

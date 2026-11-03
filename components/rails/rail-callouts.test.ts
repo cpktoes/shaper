@@ -44,7 +44,7 @@ function buildExampleOutput(domed: boolean, options?: { singleTuck?: boolean }):
     scale: 1,
     nudges: ZERO_RAIL_NUDGES,
     singleTuck: options?.singleTuck ?? false,
-    sharpBottomEdge: false,
+    sharpBottomTuck: false,
     symmetrical: false,
     hardEdge: false,
   });

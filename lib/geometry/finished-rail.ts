@@ -88,7 +88,7 @@ export type FinishedRailStep =
  * Edge box (R22). */
 export interface FinishedRailOptions {
   domedDeckBand?: Mm;
-  sharpBottomEdge?: boolean;
+  sharpBottomTuck?: boolean;
 }
 
 /** The finished rail of one cross-section, in millimetres. `start` is the deck end at the drawing's left
@@ -186,7 +186,7 @@ function cutChainInches(cuts: CutIn[], bt: number, X0: number): P[] {
 /** The halfway blend (the page's `blendRun` + `finishedCurve` at f = 0.5, with sketch 018's hard edge):
  * each corner rounded by a parabola that leaves each band at its middle; the deck and bottom flats take
  * the neighbouring band's reach. Plan 05: with a Domed Deck Band (`domeIn`, inches) the deck corner takes
- * PC35's rule (`deckCornerInches`) and the loop starts after it; with `sharpBottomEdge` the last corner,
+ * PC35's rule (`deckCornerInches`) and the loop starts after it; with `sharpBottomTuck` the last corner,
  * Bottom Tuck 3's, stays sharp (PC38). */
 function finishedCurveInches(
   cuts: CutIn[],
@@ -194,7 +194,7 @@ function finishedCurveInches(
   X0: number,
   hardEdge: boolean,
   domeIn: number | null = null,
-  sharpBottomEdge = false,
+  sharpBottomTuck = false,
 ) {
   const chain = cutChainInches(cuts, bt, X0);
   const n = chain.length - 1;
@@ -215,13 +215,13 @@ function finishedCurveInches(
     const lIn = dist(chain[i - 1], V);
     const lOut = dist(V, chain[i + 1]);
     // Sketch 018: a hard edge's bottom corner stays sharp (PC13: one straight step, one sample). Plan 05
-    // (R22, PC38): so does the last corner when Sharp Bottom Edge is ticked and it sits on the bottom away
+    // (R22, PC38): so does the last corner when Sharp Bottom Tuck is ticked and it sits on the bottom away
     // from the rail — Bottom Tuck 3's. The blend before it ends at the last tuck band's middle, so the
     // straight step runs down that band at its own angle; on a hard edge the last corner is (0, 0), sharp
     // already, so the box changes nothing there.
     const sharp =
       (hardEdge && Math.abs(V[0]) < 1e-6 && Math.abs(V[1]) < 1e-6) ||
-      (sharpBottomEdge && i === n - 1 && Math.abs(V[1]) < 1e-6 && V[0] < -1e-6);
+      (sharpBottomTuck && i === n - 1 && Math.abs(V[1]) < 1e-6 && V[0] < -1e-6);
     if (sharp || lIn < 1e-9 || lOut < 1e-9) {
       steps.push({ kind: "line", to: V });
       pts.push(V);
@@ -456,7 +456,7 @@ function stepToMm(s: StepIn): FinishedRailStep {
 /** The finished rail from a section's cut lines, its board thickness, the drawing's left edge and whether
  * its bottom corner is a hard edge. `options` (plan 05, PC36): the section's Domed Deck Band, which turns on
  * the founder's deck-corner rule (R23 — without it the deck corner blends halfway, the reference page's own
- * curve), and its Sharp Bottom Edge box (R22). */
+ * curve), and its Sharp Bottom Tuck box (R22). */
 export function finishedRailFromCuts(
   cuts: readonly RailCutLine[],
   boardThickness: Mm,
@@ -470,7 +470,7 @@ export function finishedRailFromCuts(
     mmToInches(x0),
     hardEdge,
     options.domedDeckBand === undefined ? null : mmToInches(options.domedDeckBand),
-    options.sharpBottomEdge === true,
+    options.sharpBottomTuck === true,
   );
   return {
     start: toMm(r.chain[0]),
@@ -516,10 +516,10 @@ function cutsOf(segments: readonly RailSegment[], domed: boolean): RailCutLine[]
 }
 
 /** A section's own options for its finished rail (plan 05, PC36): its Domed Deck Band, so the deck corner
- * takes the founder's rule (R23), and its Sharp Bottom Edge box (R22). */
+ * takes the founder's rule (R23), and its Sharp Bottom Tuck box (R22). */
 const optionsOf = (result: RailSectionResult): FinishedRailOptions => ({
   domedDeckBand: result.domedDeckBand,
-  sharpBottomEdge: result.sharpBottomEdge,
+  sharpBottomTuck: result.sharpBottomTuck,
 });
 
 /** The finished rail of one computed rail section, drawn from the drawing's left edge `x0`. */
@@ -540,7 +540,7 @@ export function finishedRail(output: RailSectionOutput, x0: Mm): FinishedRail {
  * edge, 2" beyond its Domed Deck Band (`railPlotBounds`, rule 12), so this is the very curve RAILS draws
  * for that section (PV4 — measured: twice as far changes no blend area by more than 1.1e-13 mm² on the
  * presets, because every blend is set by the bands, not by how far the flats run); the hard edge, the
- * Domed Deck Band and the Sharp Bottom Edge box come from the result (plan 05).
+ * Domed Deck Band and the Sharp Bottom Tuck box come from the result (plan 05).
  */
 export function sectionFinishedRail(result: RailSectionResult, domed: boolean): FinishedRail {
   return finishedRailFromCuts(
@@ -597,7 +597,7 @@ export function cubicBlendArea(p0: XY, p1: XY, p2: XY, p3: XY): number {
  * For a curve made only of parabolas (every curve before plan 05, and every corner but the deck's since)
  * this equals plan 03's rule, a third of each corner's triangle A-V-B (Archimedes' quadrature: the two cut
  * runs are the parabola's own tangents at its ends) — `finished-rail.test.ts` proves the two agree. A hard
- * edge's or a Sharp Bottom Edge's corner is a straight step and takes nothing off (PV6, R22). Proven against
+ * edge's or a Sharp Bottom Tuck's corner is a straight step and takes nothing off (PV6, R22). Proven against
  * the per-piece rule (a third per parabola, `cubicBlendArea` per cubic, over the polygon through every
  * control point) and against ever-finer sampling, which converges on this figure (M27).
  */

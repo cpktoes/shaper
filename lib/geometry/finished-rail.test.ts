@@ -1,6 +1,6 @@
 /**
  * The finished rail (quick 261102-gec, R13; the founder's pick of "Blended halfway" over "One even round",
- * 2026-11-02, sketch 018; plan 05's deck corner, R23, and Sharp Bottom Edge, R22).
+ * 2026-11-02, sketch 018; plan 05's deck corner, R23, and Sharp Bottom Tuck, R22).
  *
  * Every expected number here is the reference page's own (lib/geometry/__fixtures__/rails-v2-golden.json,
  * written by scripts/extract-rails-v2-golden.ts executing reference/sketches/018-chris-rails-v2.js), the
@@ -183,7 +183,7 @@ function specFor(input: GoldenEntry["input"], extra: Partial<RailSectionSpec> = 
     cornerCutOffsetOverride: null,
     removeCornerCut: false,
     singleTuck: false,
-    sharpBottomEdge: false,
+    sharpBottomTuck: false,
     bottomTuck3Override: null,
     scaleFromCenter: scale,
     nudges: ZERO_RAIL_NUDGES,
@@ -218,8 +218,8 @@ describe("finishedRail — end to end, from the app's own rail section (quick 26
   });
 });
 
-describe("finishedRailFromCuts — never outside a cut (R13 a), with the deck rule and the sharp bottom edge", () => {
-  it("keeps every sample inside or on the foam the cuts leave, on the workbook's sets and every grid case, plain and with Sharp Bottom Edge", () => {
+describe("finishedRailFromCuts — never outside a cut (R13 a), with the deck rule and the sharp bottom tuck", () => {
+  it("keeps every sample inside or on the foam the cuts leave, on the workbook's sets and every grid case, plain and with Sharp Bottom Tuck", () => {
     // About 340,000 samples: every one outside is collected and asserted once.
     const outside: string[] = [];
     for (const entry of everyEntry) {
@@ -227,20 +227,20 @@ describe("finishedRailFromCuts — never outside a cut (R13 a), with the deck ru
       const bt = inchesToMm(entry.sheet.bt);
       const x0 = inchesToMm(x0InchesFor(entry));
       const foam = railCutFoam(cuts, bt, x0).map(inches);
-      for (const sharpBottomEdge of [false, true]) {
-        const rail = finishedRailFromCuts(cuts, bt, x0, false, domeOf(entry, { sharpBottomEdge }));
+      for (const sharpBottomTuck of [false, true]) {
+        const rail = finishedRailFromCuts(cuts, bt, x0, false, domeOf(entry, { sharpBottomTuck }));
         rail.samples.forEach((p, i) => {
-          if (!insideFoam(foam, inches(p), 1e-9)) outside.push(`${JSON.stringify(entry.input)} sharp ${sharpBottomEdge} sample ${i}`);
+          if (!insideFoam(foam, inches(p), 1e-9)) outside.push(`${JSON.stringify(entry.input)} sharp ${sharpBottomTuck} sample ${i}`);
         });
       }
     }
     expect(outside).toEqual([]);
   }, 60_000);
 
-  it("and with Single Tuck (with and without Sharp Bottom Edge), from the app's own section", () => {
+  it("and with Single Tuck (with and without Sharp Bottom Tuck), from the app's own section", () => {
     const outside: string[] = [];
     for (const entry of everyEntry) {
-      for (const variant of [{ singleTuck: true }, { singleTuck: true, sharpBottomEdge: true }]) {
+      for (const variant of [{ singleTuck: true }, { singleTuck: true, sharpBottomTuck: true }]) {
         const output = appSection(entry, variant);
         const foam = railCutFoam(appCuts(output), output.boardThickness, output.bounds.xAxisMin).map(inches);
         const rail = sectionFinishedRail(output.result, output.domed);
@@ -254,11 +254,11 @@ describe("finishedRailFromCuts — never outside a cut (R13 a), with the deck ru
 });
 
 describe("finishedRailFromCuts — meets the rail only at the Apex Center (R13 b)", () => {
-  it("on every tucked case, plain, with Sharp Bottom Edge and with Single Tuck, the only samples on the rail line sit at that case's Apex Center", () => {
+  it("on every tucked case, plain, with Sharp Bottom Tuck and with Single Tuck, the only samples on the rail line sit at that case's Apex Center", () => {
     for (const entry of everyEntry) {
       const rails = [
         finishedFor(entry, false, undefined, domeOf(entry)),
-        finishedFor(entry, false, undefined, domeOf(entry, { sharpBottomEdge: true })),
+        finishedFor(entry, false, undefined, domeOf(entry, { sharpBottomTuck: true })),
         sectionFinishedRail(appSection(entry, { singleTuck: true }).result, appSection(entry, { singleTuck: true }).domed),
       ];
       for (const rail of rails) {
@@ -294,8 +294,8 @@ describe("finishedRailFromCuts — a hard edge keeps its corner sharp (R13 c; th
       const tail = rail.samples.slice(-2).map(inches);
       expect(tail[0][0]).toBe(0);
       expect(tail[0][1]).toBe(0);
-      // Sharp Bottom Edge changes nothing on a hard edge: its last corner is sharp already (PC38).
-      expect(finishedFor(entry, true, ["domed", "band1", "band2"], domeOf(entry, { sharpBottomEdge: true }))).toEqual(rail);
+      // Sharp Bottom Tuck changes nothing on a hard edge: its last corner is sharp already (PC38).
+      expect(finishedFor(entry, true, ["domed", "band1", "band2"], domeOf(entry, { sharpBottomTuck: true }))).toEqual(rail);
     }
   });
 });
@@ -327,7 +327,7 @@ describe("finishedRailFromCuts — the steps draw the samples", () => {
             ? finishedFor(entry, true, ["domed", "band1", "band2"], domeOf(entry))
             : variant === "page"
               ? finishedFor(entry)
-              : finishedFor(entry, false, undefined, domeOf(entry, { sharpBottomEdge: variant === "sharp" }));
+              : finishedFor(entry, false, undefined, domeOf(entry, { sharpBottomTuck: variant === "sharp" }));
         rail.steps.forEach((step, i) => {
           const next = rail.steps[i + 1];
           if (step.kind === "line" && (next === undefined || next.kind === "line")) {
@@ -814,19 +814,19 @@ describe("the knuckle is gone (plan 05, R23, M23-M25) — measured from the app'
 });
 
 // ---------------------------------------------------------------------------------------------
-// Sharp Bottom Edge (plan 05, R22, PC38 — the founder, 2026-11-02: "an advanced checkbox for leaving the
+// Sharp Bottom Tuck (plan 05, R22, PC38 — the founder, 2026-11-02: "an advanced checkbox for leaving the
 // bottom edge fairly sharp (follow the angle at bottom tuck 3)").
 // ---------------------------------------------------------------------------------------------
 
-describe("Sharp Bottom Edge — the corner at Bottom Tuck 3 stays as the cut leaves it (plan 05, R22, PC38)", () => {
+describe("Sharp Bottom Tuck — the corner at Bottom Tuck 3 stays as the cut leaves it (plan 05, R22, PC38)", () => {
   it("drops that corner's blend for a straight run down the last tuck band at its own angle, then along the bottom; the foam its third took off stays on", () => {
     for (const entry of everyEntry) {
       for (const singleTuck of [false, true]) {
         const plainOut = appSection(entry, { singleTuck });
-        const sharpOut = appSection(entry, { singleTuck, sharpBottomEdge: true });
+        const sharpOut = appSection(entry, { singleTuck, sharpBottomTuck: true });
         const plain = sectionFinishedRail(plainOut.result, plainOut.domed);
         const sharp = sectionFinishedRail(sharpOut.result, sharpOut.domed);
-        const label = variantLabel(entry, { singleTuck, sharpBottomEdge: true });
+        const label = variantLabel(entry, { singleTuck, sharpBottomTuck: true });
         const n = plain.steps.length;
         // Plain ends: … the last tuck band's blend to its middle M, a line to the Bottom Tuck 3 blend, the
         // blend whose control is the Bottom Tuck 3 corner, and the line along the bottom.
@@ -857,7 +857,7 @@ describe("Sharp Bottom Edge — the corner at Bottom Tuck 3 stays as the cut lea
       }
       // On a hard edge the last corner is the rail's own foot, sharp already: the box changes nothing.
       const hard = appSection(entry, { hardEdge: true });
-      const hardSharp = appSection(entry, { hardEdge: true, sharpBottomEdge: true });
+      const hardSharp = appSection(entry, { hardEdge: true, sharpBottomTuck: true });
       expect(sectionFinishedRail(hardSharp.result, hardSharp.domed)).toEqual(sectionFinishedRail(hard.result, hard.domed));
     }
   });
@@ -870,14 +870,14 @@ describe("Sharp Bottom Edge — the corner at Bottom Tuck 3 stays as the cut lea
 // — never a typed area (Rule 1).
 // ---------------------------------------------------------------------------------------------
 
-type Variant = { hardEdge?: boolean; singleTuck?: boolean; sharpBottomEdge?: boolean };
+type Variant = { hardEdge?: boolean; singleTuck?: boolean; sharpBottomTuck?: boolean };
 
 /** The app's own section for a golden entry, built as `finishedRail`'s end-to-end test builds it, with a
- * hard edge (on a tail), Single Tuck or Sharp Bottom Edge on request. */
+ * hard edge (on a tail), Single Tuck or Sharp Bottom Tuck on request. */
 function appSection(entry: GoldenEntry, opts: Variant = {}) {
   return computeRailSectionOutput(
     opts.hardEdge ? "tail" : entry.input.scale === 1 ? "center" : "nose",
-    specFor(entry.input, { singleTuck: opts.singleTuck ?? false, sharpBottomEdge: opts.sharpBottomEdge ?? false }),
+    specFor(entry.input, { singleTuck: opts.singleTuck ?? false, sharpBottomTuck: opts.sharpBottomTuck ?? false }),
     opts.hardEdge ?? false,
   );
 }
@@ -886,8 +886,8 @@ const VARIANTS: readonly Variant[] = [
   {},
   { hardEdge: true },
   { singleTuck: true },
-  { sharpBottomEdge: true },
-  { singleTuck: true, sharpBottomEdge: true },
+  { sharpBottomTuck: true },
+  { singleTuck: true, sharpBottomTuck: true },
 ];
 
 /** The cut lines a section's foam is clipped by — the four bands, and the dome on a domed deck. */

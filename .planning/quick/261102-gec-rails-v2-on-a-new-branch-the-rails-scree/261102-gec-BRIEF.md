@@ -426,3 +426,6 @@ The founder, on localhost:3005:
   `finished-rail.ts`. Noted, not in the plan: on a FLAT deck with the dome nudged right in to Deck Mark 3 the new
   curve is 2.5× tighter than today's there (31.5" → 12.6" on the Longboard's centre) — a case that had no knuckle;
   a one-line floor on how close the guide point may sit to Deck Mark 3 would remove it if the founder ever wants.
+- **R24 — fast task 191 (2026-11-03), the founder, merging plan 05: "Yes, merge it, but lets call it a sharp bottom
+  tuck."** R22's box is "Sharp Bottom Tuck" everywhere — label, stored key `sharpBottomTuck`, engine option, presets,
+  reader rule 12, tests. Plan 05 and its SUMMARY keep the name they were written under, as the record.

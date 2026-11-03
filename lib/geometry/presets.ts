@@ -202,7 +202,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -223,7 +223,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -244,7 +244,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -331,7 +331,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -352,7 +352,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -373,7 +373,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -463,7 +463,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -484,7 +484,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -505,7 +505,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -594,7 +594,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -615,7 +615,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {
@@ -636,7 +636,7 @@ export const BOARD_PRESETS: readonly BoardPreset[] = [
         cornerCutOffsetOverride: null,
         removeCornerCut: false,
         singleTuck: false,
-        sharpBottomEdge: false,
+        sharpBottomTuck: false,
         bottomTuck3Override: null,
         scaleFromCenter: 1,
         nudges: {

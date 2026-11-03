@@ -320,8 +320,8 @@ describe("a board saved with the Chris Rails v2 scale and nudges still opens on 
         nose: {
           ...fields.rails.nose,
           scaleFromCenter: 0.6,
-          // Plan 05 (R22, rule 12): the Sharp Bottom Edge box rides along ticked.
-          sharpBottomEdge: true,
+          // Plan 05 (R22, rule 12): the Sharp Bottom Tuck box rides along ticked.
+          sharpBottomTuck: true,
           // Plan 04 (R18): the Domed Deck Band nudge rides along too.
           nudges: {
             ...ZERO_RAIL_NUDGES,
@@ -341,7 +341,7 @@ describe("a board saved with the Chris Rails v2 scale and nudges still opens on 
     if (parsed.success) {
       expect("nudges" in parsed.data.nose).toBe(false);
       expect("scaleFromCenter" in parsed.data.nose).toBe(false);
-      expect("sharpBottomEdge" in parsed.data.nose).toBe(false);
+      expect("sharpBottomTuck" in parsed.data.nose).toBe(false);
       expect(parsed.data.nose.cornerCutOffsetOverride).toBe(SHORTBOARD.rails.nose.cornerCutOffsetOverride);
     }
   });

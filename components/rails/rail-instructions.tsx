@@ -69,7 +69,7 @@ export function ExampleRailFigure({ domed }: { domed: boolean }) {
       scale: 1,
       nudges: ZERO_RAIL_NUDGES,
       singleTuck: false,
-      sharpBottomEdge: false,
+      sharpBottomTuck: false,
       symmetrical: false,
       hardEdge: false,
     });
