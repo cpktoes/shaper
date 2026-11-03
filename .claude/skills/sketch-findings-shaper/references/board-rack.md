@@ -77,8 +77,19 @@ rail edge to the centre. The turning board's vertical words fade out, because it
 const xc  = ((r + d) / 2 - tMid) * Math.cos(θ);
 const ext = Math.sqrt(((d - r) / 2) ** 2 * Math.cos(θ) ** 2 + h ** 2 * Math.sin(θ) ** 2);
 // left edge = xc − ext, right edge = xc + ext; y = floorY − station·scale.
-// At θ ≥ ~89.5° draw the exact TEMPLATE silhouette instead (it carries the swallow notch).
+// ONE rule at every angle (quick 261103-drw — it replaced a switch to the TEMPLATE silhouette at
+// ~89.5°, which turned a swallow square and a diamond with a spike, then jumped): the drawn stations
+// are the 64-step ones PLUS the outline's own stations and the tail's closing station, so 90° IS the
+// TEMPLATE outline and every angle has the same points. h is read along geometry.points led by
+// (centreCloseStation, 0) when that stands behind them — a diamond's tip is a station, so its V turns
+// as a V (sampleOutline reads 0 inside the V). Any tail but a swallow closes at one point, (close, xc).
+// A swallow closes through its notch's inner edges: a = the notch edge (tail corner to crotch, straight),
+// b = (d − r)/2, ρ = min(1, a / h),  g = min(a·sinθ − b·√(1 − ρ²)·cosθ, ext)  — where the cut meets the
+// ellipse's lower arc. Points (s, xc ± g) up to the first station with g ≤ 0, the rest on the apex
+// (g's straight-line zero crossing): hidden edge-on (the far tip fills it), opening as it turns,
+// the TEMPLATE V at 90°.
 // Stringer (w = 0, t = deck): x = (d − tMid)·cosθ — on the rail edge at 0°, the centreline at 90°.
+// A swallow's stringer starts at the crotch: nothing is drawn across the open notch.
 // Half-extent of the whole picture (for spacing and the vertical words):
 //   sqrt((sideW/2·cosθ)² + (outW/2·sinθ)²), sideW = max(deck)·scale, outW = 2·max(h)·scale.
 ```
@@ -86,7 +97,7 @@ const ext = Math.sqrt(((d - r) / 2) ** 2 * Math.cos(θ) ** 2 + h ** 2 * Math.sin
 Sample about 64 stations (the sketches used 64; `screen-tiles.ts` uses 60 for the side profile). Every
 input already exists on the design store and on a saved board's snapshot: the side profile from
 `buildBoardProfile` (as `summarizeDesign` builds it, from the board's own copy of its blank), and the
-outline from `buildOutline` / `sampleOutline` / `geometry.points` (as `outlineTileArt` draws it).
+outline from `buildOutline` / `geometry.points` (as `outlineTileArt` draws it). Built: `lib/geometry/rack-art.ts`.
 
 ## CSS Patterns
 
