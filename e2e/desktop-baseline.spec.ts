@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 02, branch rails-v2) — RAILS only, `rails-desktop.png`, for the
+ * finished rail and the fuller sidebar: every cross-section now draws the finished rail as a heavy ink line over
+ * the bands with the board's fill under the grid, the VIEWER toolbar gained the curve button that hides it, the key
+ * gained "Finished Rail", Ratio's marks read 20/80, 50/50 and 80/20, and Sym moved onto its own line under them.
+ * Old and new were compared before re-recording: only those parts moved; the top bar, the tab band and the rest of
+ * the sidebar are unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed unchanged and were not re-recorded. Rendered
+ * by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3173) in the plan's worktree on this Mac. SHA-256 (first 8
+ * characters), old to new: RAILS f7bc899f to 8411efec.
+ *
  * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 01, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
  * `volume-desktop.png`, for the founder's Chris Rails v2 rules: every rail's marks now come from their two new
  * sheets and the Corner Cut is gone. Old and new were compared before re-recording. On RAILS only the three
