@@ -318,3 +318,41 @@ written.
 - Memory of what bites: `~/.claude/projects/-Users-kontoes-Code-shaper/memory/shaper-screen-rebuild-cadence.md` and
   `shaper-gsd-execute-phase-gotchas.md` (worktree node_modules, PW_PORT, one `next dev` per checkout, Playwright calls a
   straight SVG line hidden, a slider's thumb intercepts clicks on its hint line, NBSP vs Playwright regex).
+
+## 4c. The founder's rulings after plan 02's look (2026-11-02, with plan 02 merged at 1bac8b0e — locked)
+
+The founder, on localhost:3005 with plan 02 live, in two messages:
+
+> "I think the finished rail icon should look more like a finished rail. I also think we should add another icon that
+> ghosts the bands so that the finished rail is clearly seen."
+
+> "Deck mark 2 and Bottom Tuck 2 don't need sliders. Always in the middle is great. I would like to add an advanced
+> slider for the domed deck mark though."
+
+> "lets go with the ghost icon to hid the bands. These too look way to similar." (on the first pair of glyphs, seen
+> live — both drawn around the same curve)
+
+- **R16 — done as a fast task, not a plan (2026-11-02):** the Finished Rail button's glyph is a solid, smooth rail
+  silhouette (`FinishedRailIcon`, `components/viewer/toolbar-button.tsx`) and a second toggle beside it, Ghost Bands
+  (`GhostBandsIcon`: the cut chain dashed with its mark dots), fades the bands, their connectors and every mark dot but
+  the Apex Center's to `GHOST_BANDS_OPACITY` (0.3, `rail-section-plot.tsx`) while the finished rail shows; disabled
+  while it is hidden; view-only like the Finished Rail switch, passed into View Full Sized the same way. The shared
+  button class gained its `disabled:` look. `e2e/rails-advanced.spec.ts` test 11 proves it.
+- **R17 — plan 04 (this quick id): the Deck Mark 2 and Bottom Tuck 2 nudges go.** `RAIL_NUDGE_KEYS` loses `deckMark2`
+  and `bottomTuck2`; Deck Mark 2 is always half the (nudged) Deck Mark 1 and Bottom Tuck 2 always half the (nudged)
+  Bottom Tuck 1 — the sheet's own C17/C20, with no amount to add. Their sliders leave the Advanced menu; a board saved
+  on this branch with either amount opens with it ignored (Zod strips unknown keys; nothing is rewritten until the
+  shaper saves). `RAIL_NUDGE_NAMES`, `RAIL_NUDGE_LIMIT_IN`, `ZERO_RAIL_NUDGES`, rule 10 of `design-snapshot.ts`
+  ("seven" becomes six), the presets, the golden script and every test that counts or names the nudges follow.
+- **R18 — plan 04: a Domed Deck Band nudge.** A new key `domedDeckBand` in `RAIL_NUDGE_KEYS`: the dome mark = 2.4 × T
+  + its nudge, never scaled (the dome was never scaled), on every rail. **The founder's ruling (2026-11-02): "Let's
+  do + or - 2", but never closer than 1" to deck mark 3."** So the slider runs −2" to +2" in 1/16" (or 1 mm) steps
+  (`RAIL_NUDGE_LIMIT_IN.domedDeckBand` = 2 — the one nudge wider than ±1/2"), and the guard is a full inch, not the
+  1/16" the other marks keep: the dome mark is clamped to at least 1" beyond the (nudged) Deck Mark 3 after both
+  nudges are applied (the dome's own clamp, applied after Deck Mark 3 is settled, so a +1/2" Deck Mark 3 and a −2"
+  dome on a thin rail still leave the inch). Listed after Deck Mark 3 in the menu, label
+  `Domed Deck Band — 5 3/8" (0")` in the house form (the founder did not object to either). Moving the dome moves
+  where the deck line reaches full thickness, so Band 1's and Band 2's deck ends ride the new line (nothing else about
+  the rules changes); the DATA tab's Domed Deck Band row, the callouts, the volume and the finished rail all read the
+  result as they already do. Reset Advanced Settings puts it back to 0 with the rest. On a flat deck (t = T) the dome
+  mark only moves its own green dot and the Domed Deck Band line's end — the deck line is flat either way.
