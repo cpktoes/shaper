@@ -8,7 +8,7 @@
  * blank (D-11 — the whole `DesignState`, minus `modelId`, `boardStarted` and `dirty`, which are
  * session bookkeeping, not board design).
  *
- * Nine rules govern this file:
+ * Ten rules govern this file:
  *
  * 1. The branded `Mm`/`Degrees`/`Litres` types (lib/geometry/units.ts) are plain numbers at
  *    runtime, so every one of them is validated here as `z.number()` — never re-branded at the
@@ -109,6 +109,37 @@
  *    board. No bound is applied here: the engine holds any stored value inside each pair's tuner
  *    window (D-02 for the front and side fins, D-02b for the stringer-placed quad rears), so no
  *    crafted value can push a fin off the board. No database change is needed.
+ * 10. Each rail section carries `scaleFromCenter` ("Scaled from center by") and `nudges` (six
+ *    plus-or-minus amounts, one per mark a shaper can tweak — `RAIL_NUDGE_KEYS`) for the founder's
+ *    Chris Rails v2 sheets (quick 261102-gec, 2026-11-02, PC1). Absent means the section's default —
+ *    `DEFAULT_TIP_RAIL_SCALE` (1 since fast task 189; 0.75 before it) on the nose and tail, 1 on the centre, every nudge 0 — which is every board saved before
+ *    them. Read forgivingly, rule 9's way: anything that is not a number reads its default and never
+ *    rejects the board. No bound is applied here: the engine holds the scale, each nudge, the Ratio and
+ *    Deck Profile inside their windows (PC6, R7), so no crafted value draws a nonsense rail. The version
+ *    stays 5, for rule 6's reason: the reader before this rule drops unknown keys (M8). The three legacy
+ *    keys — `cornerCutOffsetOverride`, `removeCornerCut` and `bottomTuck3Override` — stay REQUIRED and are
+ *    carried exactly as read (PC2), because that reader requires them: a board saved without them would
+ *    not open on `main` or a rolled-back deployment. The v2 rules never read them (R12). No database
+ *    change is needed.
+ *    Amended by plan 04 (quick 261102-gec, R17 and R18, 2026-11-02): SIX nudges now. Deck Mark 2 and
+ *    Bottom Tuck 2 lost theirs (the founder: "Always in the middle is great" — each is always half its
+ *    parent mark), so a stored `deckMark2` or `bottomTuck2` amount from a board saved before the ruling is
+ *    dropped on read (the nudges object strips unknown keys) and moves no mark. The Domed Deck Band gained
+ *    one (`domedDeckBand`, ±2", never onto Deck Mark 3 — the engine holds both), and a board saved without
+ *    it reads 0, so it opens exactly as it was. Nothing is rewritten until the shaper saves. The version
+ *    stays 5, for rule 6's reason; no database change — rails live in the `snapshot` JSON column.
+ * 11. The tail's Symmetrical and Hard Edge can never both be on (fast task 190, R21, 2026-11-02 — the
+ *    founder: "tail sym and hard edge cannot both be selected"; a hard edge has no tucks to mirror). The
+ *    store keeps the rule as a shaper ticks either box; this reader keeps it for a board saved before the
+ *    rule, or by hand: a tail stored with both opens with Hard Edge winning and Symmetrical off, nothing
+ *    rewritten until the shaper saves. The other rails' Symmetrical is never touched. Version stays 5.
+ * 12. Each rail section carries `sharpBottomTuck`, the Sharp Bottom Tuck box (quick 261102-gec plan 05,
+ *    R22, 2026-11-02 — the founder: "an advanced checkbox for leaving the bottom edge fairly sharp (follow
+ *    the angle at bottom tuck 3)"). Absent — every board saved before it — or anything that is not a
+ *    boolean reads off, so an old board opens exactly as it was and a crafted value never rejects the
+ *    board. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
+ *    drops the unknown key, so a board saved here with the box ticked still opens there, unticked. No
+ *    database change — rails live in the `snapshot` JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -134,7 +165,14 @@ import {
 } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
-import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
+import {
+  DEFAULT_RAIL_BAND_SPEC,
+  DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_KEYS,
+  ZERO_RAIL_NUDGES,
+  type RailBandSpec,
+  type RailNudgeKey,
+} from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_ROCKER_SPEC,
   bezierToFiveStations,
@@ -333,24 +371,51 @@ const foilSpecSchema = z.object({
   tailTip: z.number(),
 });
 
-const railSectionSpecSchema = z.object({
-  boardThickness: z.number(),
-  deckPercent: z.number(),
-  family: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
-  ratioTopPercent: z.number(),
-  symmetrical: z.boolean(),
-  cornerCutOffsetOverride: z.number().nullable(),
-  removeCornerCut: z.boolean(),
-  singleTuck: z.boolean(),
-  bottomTuck3Override: z.number().nullable(),
-});
+/** Rule 10 (quick 261102-gec): the six nudges, each read forgivingly as 0, the whole object as every
+ * nudge 0 when it is absent or not an object. It walks `RAIL_NUDGE_KEYS`, so plan 04's change of keys
+ * (R17, R18) needed no edit here: the dome key is read with the rest, and the two retired keys, no longer
+ * on the list, are stripped as unknown. */
+const railMarkNudgesSchema = z
+  .object(
+    Object.fromEntries(RAIL_NUDGE_KEYS.map((key) => [key, z.number().catch(0)])) as Record<
+      RailNudgeKey,
+      z.ZodCatch<z.ZodNumber>
+    >,
+  )
+  .catch(ZERO_RAIL_NUDGES);
 
-const railBandSpecSchema = z.object({
-  nose: railSectionSpecSchema,
-  center: railSectionSpecSchema,
-  tail: railSectionSpecSchema,
-  tailHardEdge: z.boolean(),
-});
+/** One rail section, built from its default "Scaled from center by" (rule 10): `DEFAULT_TIP_RAIL_SCALE` on the nose and
+ * tail, 1 on the centre. The three legacy keys stay required and are carried as read (PC2). */
+const railSectionSpecSchema = (defaultScale: number) =>
+  z.object({
+    boardThickness: z.number(),
+    deckPercent: z.number(),
+    family: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+    ratioTopPercent: z.number(),
+    symmetrical: z.boolean(),
+    cornerCutOffsetOverride: z.number().nullable(),
+    removeCornerCut: z.boolean(),
+    singleTuck: z.boolean(),
+    // Rule 12 (plan 05, R22): the Sharp Bottom Tuck box — absent or not a boolean reads off.
+    sharpBottomTuck: z.boolean().catch(false),
+    bottomTuck3Override: z.number().nullable(),
+    scaleFromCenter: z.number().catch(defaultScale),
+    nudges: railMarkNudgesSchema,
+  });
+
+const railBandSpecSchema = z
+  .object({
+    nose: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
+    center: railSectionSpecSchema(1),
+    tail: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
+    tailHardEdge: z.boolean(),
+  })
+  // Rule 11 (fast task 190, R21): the tail's Symmetrical and Hard Edge can never both be on. A board
+  // saved with both (none of the presets; a board saved before the rule could) opens with Hard Edge
+  // winning and Symmetrical off — read that way, never rewritten until the shaper saves.
+  .transform((rails) =>
+    rails.tailHardEdge && rails.tail.symmetrical ? { ...rails, tail: { ...rails.tail, symmetrical: false } } : rails,
+  );
 
 const finAdvancedSpecSchema = z.object({
   baseLenForward: z.number(),

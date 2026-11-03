@@ -23,7 +23,7 @@ import { useUnits } from "@/components/units-provider";
 import { formatCalibrationMark } from "@/lib/geometry/measure-display";
 import type { RailBandsOutput, RailSectionKey } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mmToInches, type Mm } from "@/lib/geometry/units";
-import { RailSectionPlot, SCALE, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { RailKeySwatch, RailSectionPlot, SCALE, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 
 const SECTION_ORDER: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -90,6 +90,13 @@ export interface ViewFullSizedDialogProps {
   /** The sidebar's own open/collapsed record — read only to pick the dialog's default tab; a
    * collapsed section's rail is still drawn here, since its band data is always computed. */
   sectionOpen: Record<RailSectionKey, boolean>;
+  /** Draw the finished rail and its key entry (quick 261102-gec plan 02, R13): the VIEWER's Finished Rail
+   * switch, passed through so this view always matches the VIEWER it opened from. View state only. */
+  finishedRail?: boolean;
+  /** Fade the cut bands under the finished rail (the VIEWER's Ghost Bands switch, fast task, 2026-11-02),
+   * passed through for the same reason as `finishedRail`: this view always matches the VIEWER it opened
+   * from. View state only. */
+  ghostBands?: boolean;
 }
 
 export function ViewFullSizedDialog({
@@ -98,6 +105,8 @@ export function ViewFullSizedDialog({
   bands,
   sharedXAxisMin,
   sectionOpen,
+  finishedRail = false,
+  ghostBands = false,
 }: ViewFullSizedDialogProps) {
   const { system } = useUnits();
   const [activeSection, setActiveSection] = useState<RailSectionKey>(() => firstOpenSection(sectionOpen));
@@ -123,7 +132,7 @@ export function ViewFullSizedDialog({
   const plotWidthIn = bounds.width / SCALE;
   const plotHeightIn = bounds.height / SCALE;
   const checkBarWidthIn = mmToInches(CHECK_BAR_MM);
-  const legend = buildRailLegend(output);
+  const legend = buildRailLegend(output, { finishedRail });
 
   const tabs: PanelTab<RailSectionKey>[] = SECTION_ORDER.map((key) => ({ id: key, label: SECTION_TITLE[key] }));
 
@@ -263,17 +272,21 @@ export function ViewFullSizedDialog({
                 } as CSSProperties
               }
             >
-              <RailSectionPlot sectionKey={activeSection} output={output} xAxisMin={sharedXAxisMin} fit="width" />
+              <RailSectionPlot
+                sectionKey={activeSection}
+                output={output}
+                xAxisMin={sharedXAxisMin}
+                fit="width"
+                finishedRail={finishedRail}
+                ghostBands={ghostBands}
+              />
             </div>
 
             {legend.length > 0 && (
               <div className="flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2">
                 {legend.map((entry) => (
                   <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
-                    <span
-                      className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-                      style={{ background: entry.color }}
-                    />
+                    <RailKeySwatch entry={entry} />
                     {entry.label}
                   </span>
                 ))}

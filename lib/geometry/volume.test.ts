@@ -15,11 +15,14 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
+  DEFAULT_TIP_RAIL_SCALE,
+  ZERO_RAIL_NUDGES,
   type RailBandSpec,
   type RailFamily,
   type RailSectionSpec,
@@ -31,6 +34,24 @@ import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
 
 const SQMM_PER_SQIN = MM_PER_INCH * MM_PER_INCH;
+
+/** One rail's half cross-section closed at the stringer — the full-thickness point at minus the half
+ * width, the cut profile, the zero-height point at minus the half width — by the shoelace. A test-local
+ * re-implementation of volume.ts's private closing, so these tests do not depend on it being exported. */
+function closingPolygonArea(profile: readonly Point2D[], boardThickness: number, halfWidth: number): number {
+  const pts: [number, number][] = [
+    [-halfWidth, boardThickness],
+    ...profile.map((p): [number, number] => [p.x, p.y]),
+    [-halfWidth, 0],
+  ];
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % pts.length];
+    a += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(a) / 2;
+}
 
 interface GoldenState {
   lengthIn: number;
@@ -389,32 +410,19 @@ describe("computeCrossSectionVolume", () => {
     expect(result.volumeLitres).toBe(cubicMmToLitres(result.volumeMm3));
   });
 
-  it("agrees with the existing rail-band path at the centre station, within 1%", () => {
-    // Independent (test-local) re-implementation of volume.ts's private shoelaceArea, so this test
-    // does not depend on that helper being exported.
-    function polygonArea(pts: [number, number][]): number {
-      let a = 0;
-      for (let i = 0; i < pts.length; i++) {
-        const [x1, y1] = pts[i];
-        const [x2, y2] = pts[(i + 1) % pts.length];
-        a += x1 * y2 - x2 * y1;
-      }
-      return Math.abs(a) / 2;
-    }
-
+  // Volume counts the finished rail (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02): each
+  // station's area is the cut closing polygon less both rails' blends, worked out exactly (PV1). Before
+  // this, this test asked the centre station to sit "within 1%" of the cut profile; it now checks the
+  // exact relation instead, so it says what it checks.
+  it("the centre station is the cut rail-band section's closing polygon less both rails' exact blends (D-V1, PV1)", () => {
     const railBands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
-    const centerProfile = railBands.center.profile;
+    const center = railBands.center;
     const centerThickness = DEFAULT_FOIL_SPEC.center; // matches DEFAULT_RAIL_BAND_SPEC.center.boardThickness by construction
     const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
     const centerStation = mm(DEFAULT_BOARD_SPEC.outline.length / 2);
     const centerHalfWidth = sampleOutline(outlineGeometry, centerStation);
-
-    const closingPolygon: [number, number][] = [
-      [-centerHalfWidth, centerThickness],
-      ...centerProfile.map((p): [number, number] => [p.x, p.y]),
-      [-centerHalfWidth, 0],
-    ];
-    const expectedHalfArea = polygonArea(closingPolygon);
+    const cutHalfArea = closingPolygonArea(center.profile, centerThickness, centerHalfWidth);
+    const blendOneRail = railBlendArea(sectionFinishedRail(center.result, center.domed));
 
     const result = computeCrossSectionVolume({
       halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
@@ -423,10 +431,107 @@ describe("computeCrossSectionVolume", () => {
       length: DEFAULT_BOARD_SPEC.outline.length,
     });
     const centerIndex = SIMPSON_PANEL_COUNT / 2;
-    const newHalfArea = result.stationAreas[centerIndex] / 2;
 
-    const relativeDiff = Math.abs(newHalfArea - expectedHalfArea) / expectedHalfArea;
-    expect(relativeDiff).toBeLessThan(0.01);
+    expect(blendOneRail).toBeGreaterThan(0);
+    const relative = (a: number, b: number) => Math.abs(a - b) / b;
+    expect(relative(result.stationBlendAreas[centerIndex], 2 * blendOneRail)).toBeLessThan(1e-9);
+    expect(relative(result.stationAreas[centerIndex] + result.stationBlendAreas[centerIndex], 2 * cutHalfArea)).toBeLessThan(1e-9);
+    expect(relative(result.stationAreas[centerIndex], 2 * (cutHalfArea - blendOneRail))).toBeLessThan(1e-9);
+  });
+
+  it("on the first board a visitor sees, every station's blends are at least nothing and less than its cut area", () => {
+    const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+    const result = computeCrossSectionVolume({
+      halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+      foil: DEFAULT_FOIL_SPEC,
+      rails: DEFAULT_RAIL_BAND_SPEC,
+      length: DEFAULT_BOARD_SPEC.outline.length,
+    });
+    expect(result.stationBlendAreas).toHaveLength(result.stationAreas.length);
+    result.stationAreas.forEach((area, i) => {
+      const blend = result.stationBlendAreas[i];
+      expect(blend, `station ${i}`).toBeGreaterThanOrEqual(0);
+      if (area + blend > 0) expect(blend, `station ${i}`).toBeLessThan(area + blend);
+      else expect(blend, `station ${i}`).toBe(0);
+    });
+    // The Simpson sum of the cut areas is more foam than the finished one, by the blends' own sum.
+    const cut = simpsonIntegrate(
+      result.stationAreas.map((a, i) => a + result.stationBlendAreas[i]),
+      DEFAULT_BOARD_SPEC.outline.length / SIMPSON_PANEL_COUNT,
+    );
+    expect(cut).toBeGreaterThan(result.volumeMm3);
+  });
+
+  it("at every station of a board with one rail all along, the area is that rail's cut closing polygon less both rails' blends", () => {
+    // Every anchor the same section (the scale 1 everywhere, no hard edge) and one thickness all along, so
+    // every station's rail is exactly computeRailSectionOutput's for that section: the relation can be
+    // checked at all 51 stations without re-deriving the blending between anchors.
+    const section: RailSectionSpec = { ...DEFAULT_RAIL_BAND_SPEC.center, scaleFromCenter: 1 };
+    const rails: RailBandSpec = { nose: section, center: section, tail: section, tailHardEdge: false };
+    const output = computeRailBands(rails).center;
+    const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+    const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
+    const length = DEFAULT_BOARD_SPEC.outline.length;
+    const result = computeCrossSectionVolume({
+      halfWidthAt,
+      foil: DEFAULT_FOIL_SPEC,
+      rails,
+      length,
+      thicknessAt: () => section.boardThickness,
+    });
+    const blendOneRail = railBlendArea(sectionFinishedRail(output.result, output.domed));
+    expect(blendOneRail).toBeGreaterThan(0);
+    const h = length / SIMPSON_PANEL_COUNT;
+    let checked = 0;
+    result.stationAreas.forEach((area, i) => {
+      const halfWidth = halfWidthAt(mm(i * h));
+      if (halfWidth === 0) {
+        expect(area).toBe(0);
+        expect(result.stationBlendAreas[i]).toBe(0);
+        return;
+      }
+      const cut = 2 * closingPolygonArea(output.profile, section.boardThickness, halfWidth);
+      expect(Math.abs(result.stationBlendAreas[i] - 2 * blendOneRail), `station ${i}`).toBeLessThan(1e-9 * cut);
+      expect(Math.abs(area + result.stationBlendAreas[i] - cut), `station ${i}`).toBeLessThan(1e-9 * cut);
+      checked++;
+    });
+    expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
+  });
+
+  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39): each station takes the box from its nearest
+  // rail, as it takes Single Tuck, and keeps the foam that corner's blend used to take off. Every figure is
+  // the same board with the box off — never a typed area.
+  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam only at the stations nearest the centre, and the litres rise", () => {
+    const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+    const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
+    const length = DEFAULT_BOARD_SPEC.outline.length;
+    const run = (rails: RailBandSpec) =>
+      computeCrossSectionVolume({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
+    expect(DEFAULT_RAIL_BAND_SPEC.tailHardEdge).toBe(true);
+    const off = run(DEFAULT_RAIL_BAND_SPEC);
+    const on = run({
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true },
+    });
+    // Which rail each station reads: the nearest of the three anchors (tail 12", centre, nose 12").
+    const anchors = foilStationPoints(DEFAULT_FOIL_SPEC, length);
+    const [tail, center, nose] = [anchors[1].station, anchors[2].station, anchors[3].station];
+    const h = length / SIMPSON_PANEL_COUNT;
+    const counted = { tail: 0, center: 0, nose: 0 };
+    off.stationBlendAreas.forEach((blendOff, i) => {
+      const s = i * h;
+      const [dT, dC, dN] = [Math.abs(s - tail), Math.abs(s - center), Math.abs(s - nose)];
+      const nearest = dT <= dC && dT <= dN ? "tail" : dC <= dN ? "center" : "nose";
+      if (blendOff === 0) return;
+      counted[nearest]++;
+      if (nearest === "center") expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
+      else expect(on.stationBlendAreas[i], `station ${i}`).toBe(blendOff);
+    });
+    expect(counted.tail).toBeGreaterThan(0);
+    expect(counted.center).toBeGreaterThan(0);
+    expect(counted.nose).toBeGreaterThan(0);
+    expect(on.volumeLitres).toBeGreaterThan(off.volumeLitres);
   });
 
   it("scaling every foil station by two roughly doubles the result, and halving roughly halves it", () => {
@@ -511,9 +616,9 @@ describe("blank-datasheet validation (D-14)", () => {
   const blankHalfWidthAt = (station: Mm): Mm => mm(samplePchip(halfWidthPoints, station));
 
   // A blank is uncut foam with square-ish edges, so pick the fullest rail treatment the calculator
-  // can produce: full deck (deckPercent 100, undomed), no corner cut removed AND a single tuck
-  // (both maximise how much of the section stays full-height foam), swept across every family at
-  // the blank's own centre station.
+  // can produce: full deck (deckPercent 100, undomed) AND a single tuck (both maximise how much of
+  // the section stays full-height foam), swept across every family at the blank's own centre
+  // station. The legacy Corner Cut keys are carried but read by nothing (quick 261102-gec, PC2).
   function railsWithFamily(family: RailFamily): RailBandSpec {
     const section: RailSectionSpec = {
       boardThickness: blankFoil.center,
@@ -524,7 +629,10 @@ describe("blank-datasheet validation (D-14)", () => {
       cornerCutOffsetOverride: null,
       removeCornerCut: true,
       singleTuck: true,
+      sharpBottomTuck: false,
       bottomTuck3Override: null,
+      scaleFromCenter: DEFAULT_TIP_RAIL_SCALE,
+      nudges: ZERO_RAIL_NUDGES,
     };
     return { nose: section, center: section, tail: section, tailHardEdge: true };
   }
@@ -548,13 +656,16 @@ describe("blank-datasheet validation (D-14)", () => {
   }
 
   // Measured by running this suite: Family 1 produced the largest centre-station cross-section
-  // (deckPercent 100, removeCornerCut true, singleTuck true) at 53104.7 mm2 — the fullest of the
-  // five families, as expected since Family 1 is this calculator's boxiest rail profile. Using
-  // Family 1 for the whole board, the computed volume is 79.72 L against the datasheet's stated
-  // 77.17 L — a 3.30% deviation, comfortably inside the 10% bar. (Re-measured in Phase 14 plan
-  // 14-04, when the foil moved onto the square-root fall through its five stations, which carries
-  // more foam between them; it read about 2.2% over on pchip in Phase 11 plan 11-04, and 1.01% on
-  // the older Fritsch–Carlson sampler before that.) The remaining gap is exactly what the 10%
+  // (deckPercent 100, singleTuck true) at 51149.1 mm2 — the fullest of the five families, as
+  // expected since Family 1 is this calculator's boxiest rail profile. Using Family 1 for the whole
+  // board, the computed volume is 77.23 L against the datasheet's stated 77.17 L — a 0.07%
+  // deviation, comfortably inside the 10% bar. (Re-measured in quick 261102-gec plan 03, 2026-11-02,
+  // when volume moved onto the finished rail — the cuts blended halfway into every band, the founder's
+  // D-V1: it read 51714.2 mm2 and 77.98 L, 1.05% over, on the cut rail. Measured earlier the same day
+  // in plan 01, when the rails moved onto the founder's Chris Rails v2 sheets — its apex grows with the
+  // rail's own thickness and there is no Corner Cut; it read 3.30% over in Phase 14 plan 14-04, when the foil
+  // moved onto the square-root fall, about 2.2% on pchip in Phase 11 plan 11-04, and 1.01% on the
+  // older Fritsch–Carlson sampler before that.) The remaining gap is exactly what the 10%
   // tolerance exists for: the app's boxiest rail band is still a shaped rail rather than a blank's
   // true square edge, and the plan curve between the five quoted widths is a pchip curve rather
   // than the blank's true outline curve.

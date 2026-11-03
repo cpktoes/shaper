@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Maximize2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { FinishedRailIcon, GhostBandsIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { buildRailsPresetSource } from "@/lib/geometry/preset-source";
@@ -14,7 +14,7 @@ import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
-import { RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
+import { RailKeySwatch, RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 import { ViewFullSizedDialog, firstOpenSection } from "./view-full-sized-dialog";
 
 type RailPage = "viewer" | "data" | "instructions";
@@ -53,6 +53,8 @@ export function RailBandEditor() {
     toggleRailsImportFoilThickness,
     updateRailSection,
     toggleTailHardEdge,
+    updateRailNudge,
+    resetRailAdvanced,
     railBands: bands,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
@@ -85,6 +87,20 @@ export function RailBandEditor() {
   // Print Template dialog is opened from this screen's own toolbar rather than the dialog owning
   // its own trigger (RAIL-04, D-12).
   const [viewFullSizedOpen, setViewFullSizedOpen] = useState(false);
+  // The Finished Rail switch (quick 261102-gec plan 02, R13, PC21, 2026-11-02): whether VIEWER's
+  // cross-sections and the View Full Sized dialog draw the finished rail — the shape the cuts leave,
+  // blended halfway into each band. View state only: it lives here, never in the design store, so it is
+  // never saved with the board and never an undo step, and it starts on each time the shaper comes to
+  // RAILS (the founder's brief: "only changes the view and isn't saved with the board").
+  const [showFinishedRail, setShowFinishedRail] = useState(true);
+  // The Ghost Bands switch (fast task, 2026-11-02 — the founder, after plan 02's look: "add another icon
+  // that ghosts the bands so that the finished rail is clearly seen"): while the finished rail shows, the
+  // cut bands, their connectors and their mark dots fade to a ghost so the finished rail reads alone (the
+  // Apex Center dot keeps its strength — it is the one mark the finished rail is built to pass through).
+  // View state only, exactly like the Finished Rail switch above: never saved, never an undo step, off
+  // each time the shaper comes to RAILS. Its button is disabled while the finished rail is hidden, since
+  // with nothing to see through the bands to, ghosting them would only fade the drawing.
+  const [ghostBands, setGhostBands] = useState(false);
   // D-12: which rail the phone's NOSE/CENTER/TAIL switch shows. Seeded from the same
   // firstOpenSection rule the View Full Sized dialog already uses (Nose, unless a later section is
   // open and Nose is not) rather than re-deriving it — screen state only, never saved, never in
@@ -106,7 +122,8 @@ export function RailBandEditor() {
   const sharedXAxisMin: Mm =
     openSections.length > 0 ? mm(Math.min(...openSections.map((key) => bands[key].bounds.xAxisMin))) : mm(0);
 
-  const legend = openSections.length > 0 ? buildRailLegend(bands[openSections[0]]) : [];
+  const legend =
+    openSections.length > 0 ? buildRailLegend(bands[openSections[0]], { finishedRail: showFinishedRail }) : [];
 
   // Every open section's viewBox WIDTH is identical (computeRailPlotBounds derives it from
   // sharedXAxisMin alone, not per-section thickness) -- only viewBox HEIGHT differs. Rendering
@@ -139,6 +156,13 @@ export function RailBandEditor() {
   const titleRefs = useRef<Partial<Record<RailSectionKey, HTMLDivElement | null>>>({});
   const [plotWidth, setPlotWidth] = useState(MAX_PLOT_W);
   const [plotFitMeasured, setPlotFitMeasured] = useState(false);
+  // How far the plot row is pushed down to sit below the panel's corner toolbar (fast task,
+  // 2026-11-02). The first plot's zoom row sits at the right end of its title line, and that line is
+  // the panel's top line — the same one the corner toolbar (Finished Rail, Ghost Bands, View Full
+  // Sized) floats over. A plot wide enough to reach the corner runs its zoom row under those
+  // buttons: a dome nudged to +2" on a 1280-dot window, and every board on an 820-dot one, where the
+  // plots fill the column. 0 (the usual case) leaves the row exactly where it has always been.
+  const [plotRowDrop, setPlotRowDrop] = useState(0);
 
   // Solves for the single width every open plot renders at. Re-measures the actual title heights
   // and inter-section gap (rather than hardcoding them) so a font or spacing change can't silently
@@ -179,15 +203,40 @@ export function RailBandEditor() {
         return sum + titleEl.offsetHeight + marginBottom;
       }, rowGap * Math.max(0, openSections.length - 1));
 
-      const availablePlotH = containerHeight - chrome;
       const column = container.closest("main");
       const columnScrolls = !!column && /^(auto|scroll)$/.test(getComputedStyle(column).overflowY);
-      const widthFromHeight = !columnScrolls && availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+      // One solve, for a given amount of the container's height already spoken for above the plots.
       // Floor to a whole pixel and bias down (never up) -- offsetHeight measurements above already
       // round to the nearest pixel, so rounding the solved width up here could compound into a
       // sub-pixel stack overflow; rounding down cannot.
-      const solvedWidth = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
-      setPlotWidth(Number.isFinite(solvedWidth) && solvedWidth > 0 ? solvedWidth : Math.floor(Math.min(containerWidth, MAX_PLOT_W)));
+      const solveWidth = (takenAbove: number) => {
+        const availablePlotH = containerHeight - takenAbove - chrome;
+        const widthFromHeight = !columnScrolls && availablePlotH > 0 ? (availablePlotH * vbW) / sumOfVbH : 0;
+        const solved = widthFromHeight > 0 ? Math.floor(Math.min(containerWidth, MAX_PLOT_W, widthFromHeight)) : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
+        return Number.isFinite(solved) && solved > 0 ? solved : Math.floor(Math.min(containerWidth, MAX_PLOT_W));
+      };
+
+      // Would the first plot's zoom row run under the panel's corner toolbar? (fast task, 2026-11-02;
+      // see `plotRowDrop`.) The row ends at the plot's own right edge, and the plots are centred in
+      // this container, so with the width the plots would take on their own, the row's right end is
+      // the container's centre plus half that width — measured against the toolbar's left edge, less
+      // the toolbar row's own gap, both read from the live elements rather than restated here. If it
+      // would, the whole plot row is pushed down by the toolbar's height (and that gap), and the
+      // width is solved again with that much less room — never the other way round, so the decision
+      // can never chase its own result. The toolbar is this container's sibling; with no toolbar
+      // (never the case on RAILS, but the code should not assume it) nothing moves.
+      const freeWidth = solveWidth(0);
+      const toolbar = container.parentElement?.querySelector<HTMLElement>(":scope > [data-viewer-toolbar]") ?? null;
+      let drop = 0;
+      if (toolbar) {
+        const gap = parseFloat(getComputedStyle(toolbar).columnGap || "0") || 0;
+        const containerBox = container.getBoundingClientRect();
+        const toolbarBox = toolbar.getBoundingClientRect();
+        const zoomRowRight = containerBox.left + (containerWidth + freeWidth) / 2;
+        if (zoomRowRight > toolbarBox.left - gap) drop = Math.ceil(toolbarBox.height + gap);
+      }
+      setPlotRowDrop(drop);
+      setPlotWidth(drop > 0 ? solveWidth(drop) : freeWidth);
       setPlotFitMeasured(true);
     };
 
@@ -252,6 +301,8 @@ export function RailBandEditor() {
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
+            onChangeNudge={updateRailNudge}
+            onResetAdvanced={resetRailAdvanced}
             sectionOpen={sectionOpen}
             onToggleSectionOpen={toggleSectionOpen}
             advancedOpen={advancedOpen}
@@ -302,6 +353,29 @@ export function RailBandEditor() {
         {activePage === "viewer" && (
           <div className="relative flex min-h-0 flex-1 flex-col [@media(max-height:500px)]:flex-none">
             <ViewerToolbar>
+              {/* First in the row (PC21), built exactly like FINS' callouts toggle (fast 181): pressed
+                  while the finished rail shows. A view switch, not a control, so a locked board keeps
+                  it live — it never touches the board. */}
+              <ViewerToolbarButton
+                onClick={() => setShowFinishedRail((on) => !on)}
+                pressed={showFinishedRail}
+                label={showFinishedRail ? "Hide finished rail" : "Show finished rail"}
+                title="Finished Rail"
+              >
+                <FinishedRailIcon className="size-6" />
+              </ViewerToolbarButton>
+              {/* Beside it, the Ghost Bands toggle (fast task, 2026-11-02): pressed while the bands are
+                  ghosted; disabled, not hidden, while the finished rail is off, so the row keeps its shape
+                  and the greyed button says why it is waiting. Another view switch — live on a locked board. */}
+              <ViewerToolbarButton
+                onClick={() => setGhostBands((on) => !on)}
+                pressed={ghostBands}
+                disabled={!showFinishedRail}
+                label={ghostBands ? "Show the bands fully" : "Ghost the bands"}
+                title="Ghost Bands"
+              >
+                <GhostBandsIcon className="size-6" />
+              </ViewerToolbarButton>
               <ViewerToolbarButton label="View Full Sized" onClick={() => setViewFullSizedOpen(true)}>
                 <Maximize2Icon className="size-6" />
               </ViewerToolbarButton>
@@ -312,6 +386,8 @@ export function RailBandEditor() {
               bands={bands}
               sharedXAxisMin={sharedXAxisMin}
               sectionOpen={sectionOpen}
+              finishedRail={showFinishedRail}
+              ghostBands={ghostBands}
             />
             <div
               ref={plotsContainerRef}
@@ -327,6 +403,10 @@ export function RailBandEditor() {
               // measures anything), so its presence means "the browser measured this container",
               // not merely "this effect ran". Once true it stays true.
               data-rail-plot-fit={plotFitMeasured ? "measured" : undefined}
+              // The drop below the corner toolbar, when the first plot's zoom row would otherwise run
+              // under it (see `plotRowDrop`); `data-rail-plot-drop` is a hook for the browser tests.
+              data-rail-plot-drop={plotRowDrop > 0 ? plotRowDrop : undefined}
+              style={plotRowDrop > 0 ? { paddingTop: plotRowDrop } : undefined}
               className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 max-shell:hidden [@media(max-height:500px)]:flex-none"
             >
               {openSections.map((key) => (
@@ -347,7 +427,13 @@ export function RailBandEditor() {
                   >
                     {SECTION_TITLE[key]}
                   </div>
-                  <RailSectionPlot sectionKey={key} output={bands[key]} xAxisMin={sharedXAxisMin} />
+                  <RailSectionPlot
+                    sectionKey={key}
+                    output={bands[key]}
+                    xAxisMin={sharedXAxisMin}
+                    finishedRail={showFinishedRail}
+                    ghostBands={ghostBands}
+                  />
                 </RailPlotZoom>
               ))}
             </div>
@@ -362,6 +448,9 @@ export function RailBandEditor() {
                 like the plot row. */}
             <div
               data-rail-zoom-rows
+              // The same drop as the plot row (`plotRowDrop`), so the copy keeps landing each zoom row
+              // on its own title line when the row sits below the corner toolbar.
+              style={plotRowDrop > 0 ? { paddingTop: plotRowDrop } : undefined}
               className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 max-shell:hidden"
             >
               {openSections.map((key) => {
@@ -451,7 +540,14 @@ export function RailBandEditor() {
                 key={phoneSection}
                 className="-mt-px flex min-h-0 flex-1 flex-col items-center justify-center rounded-tr-lg rounded-b-lg border border-surf-line px-0.5 pb-0.5 pt-[11px]"
               >
-                <RailSectionPlot sectionKey={phoneSection} output={bands[phoneSection]} xAxisMin={sharedXAxisMin} fit="width" />
+                <RailSectionPlot
+                  sectionKey={phoneSection}
+                  output={bands[phoneSection]}
+                  xAxisMin={sharedXAxisMin}
+                  fit="width"
+                  finishedRail={showFinishedRail}
+                  ghostBands={ghostBands}
+                />
               </RailPlotZoom>
             </div>
             {legend.length > 0 && (
@@ -462,10 +558,7 @@ export function RailBandEditor() {
               <div className="mt-4 flex flex-none flex-wrap items-center justify-center gap-x-6 gap-y-2 max-shell:mt-1 [@media(max-height:500px)]:mt-1">
                 {legend.map((entry) => (
                   <span key={entry.label} className="flex items-center gap-1.5 text-[10px] text-surf-ink-muted">
-                    <span
-                      className="inline-block h-[9px] w-[9px] flex-shrink-0 rounded-full"
-                      style={{ background: entry.color }}
-                    />
+                    <RailKeySwatch entry={entry} />
                     {entry.label}
                   </span>
                 ))}

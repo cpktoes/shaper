@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import golden from "@/lib/geometry/__fixtures__/phase11-foil-golden.json";
 import { phase11GoldenBlank } from "@/lib/geometry/__fixtures__/phase11-golden-blank";
@@ -9,7 +10,7 @@ import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
+import { DEFAULT_RAIL_BAND_SPEC, ZERO_RAIL_NUDGES } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
@@ -283,5 +284,80 @@ describe("where the start is kept", () => {
     for (const name of migrations) {
       expect(read(join("drizzle", name)), name).not.toMatch(/thinning/i);
     }
+  });
+});
+
+// Quick 261102-gec (design-snapshot rule 10, PC2, M8): a board saved on the rails-v2 branch must still
+// open on `main` and on a rolled-back deployment. `main`'s reader requires the three legacy rail keys
+// and strips the two new ones, so this is its rail schema exactly as it stands at 36d701d8, copied
+// verbatim and frozen here — never imported, so a later change to this branch's reader cannot make
+// this test pass by accident.
+const MAIN_RAIL_SECTION_SPEC_SCHEMA_36D701D8 = z.object({
+  boardThickness: z.number(),
+  deckPercent: z.number(),
+  family: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  ratioTopPercent: z.number(),
+  symmetrical: z.boolean(),
+  cornerCutOffsetOverride: z.number().nullable(),
+  removeCornerCut: z.boolean(),
+  singleTuck: z.boolean(),
+  bottomTuck3Override: z.number().nullable(),
+});
+const MAIN_RAIL_BAND_SPEC_SCHEMA_36D701D8 = z.object({
+  nose: MAIN_RAIL_SECTION_SPEC_SCHEMA_36D701D8,
+  center: MAIN_RAIL_SECTION_SPEC_SCHEMA_36D701D8,
+  tail: MAIN_RAIL_SECTION_SPEC_SCHEMA_36D701D8,
+  tailHardEdge: z.boolean(),
+});
+
+describe("a board saved with the Chris Rails v2 scale and nudges still opens on main's reader (the rollback edge, quick 261102-gec)", () => {
+  const nudgedFields = (): DesignSnapshotFields => {
+    const fields = presetBoardFields();
+    return {
+      ...fields,
+      rails: {
+        ...fields.rails,
+        nose: {
+          ...fields.rails.nose,
+          scaleFromCenter: 0.6,
+          // Plan 05 (R22, rule 12): the Sharp Bottom Tuck box rides along ticked.
+          sharpBottomTuck: true,
+          // Plan 04 (R18): the Domed Deck Band nudge rides along too.
+          nudges: {
+            ...ZERO_RAIL_NUDGES,
+            deckMark1: inchesToMm(1 / 8),
+            domedDeckBand: inchesToMm(-1.5),
+            bottomTuck3: inchesToMm(-1 / 16),
+          },
+        },
+      },
+    };
+  };
+
+  it("its rails parse under main's own schema, the legacy keys present and the new ones dropped", () => {
+    const stored = asStored(buildSnapshot(nudgedFields()));
+    const parsed = MAIN_RAIL_BAND_SPEC_SCHEMA_36D701D8.safeParse(stored.design.rails);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("nudges" in parsed.data.nose).toBe(false);
+      expect("scaleFromCenter" in parsed.data.nose).toBe(false);
+      expect("sharpBottomTuck" in parsed.data.nose).toBe(false);
+      expect(parsed.data.nose.cornerCutOffsetOverride).toBe(SHORTBOARD.rails.nose.cornerCutOffsetOverride);
+    }
+  });
+
+  it("a section without the three legacy keys would NOT open there — which is why this branch keeps writing them", () => {
+    const stored = asStored(buildSnapshot(nudgedFields()));
+    const rails = stored.design.rails as Record<string, Record<string, unknown>>;
+    delete rails.nose.cornerCutOffsetOverride;
+    expect(MAIN_RAIL_BAND_SPEC_SCHEMA_36D701D8.safeParse(rails).success).toBe(false);
+  });
+
+  it("opening a deep-frozen nudged board writes nothing to it, and saving what was opened stores the same board", () => {
+    const frozen = deepFreeze(asStored(buildSnapshot(nudgedFields())));
+    const before = JSON.stringify(frozen);
+    expect(() => parseSnapshot(frozen)).not.toThrow();
+    expect(JSON.stringify(frozen)).toBe(before);
+    expect(buildSnapshot(parseSnapshot(frozen)).design).toEqual(frozen.design);
   });
 });

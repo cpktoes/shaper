@@ -49,9 +49,9 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
   },
   {
     file: RAILS_PATH,
-    count: 4,
+    count: 2,
     reason:
-      "Family (three hint captions), Ratio (four hint captions plus a Sym checkbox), Corner Cut Offset and Bottom Tuck 3 (each with a checkbox sharing the label's heading line) all carry shapes SliderRow's plain-string label and two-hint layout can't hold.",
+      "Family (three hint captions) and Ratio (three marks — 20/80, 50/50, 80/20 — placed where they fall on its track) are the one hand-built, level pair, a shape SliderRow's two-ended hint line can't hold. Every other RAILS slider, the Advanced menu's scale and six nudges included, is a SliderRow (quick 261102-gec plans 02 and 04).",
   },
   {
     file: FINS_PATH,

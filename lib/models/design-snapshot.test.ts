@@ -15,7 +15,13 @@ import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
+import {
+  DEFAULT_RAIL_BAND_SPEC,
+  DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_KEYS,
+  ZERO_RAIL_NUDGES,
+  computeRailBands,
+} from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_FALLBACK_ROCKER,
   DEFAULT_ROCKER_SPEC,
@@ -881,5 +887,130 @@ describe("a blank's rocker as ordered rides on the blank, read forgivingly as a 
     expect(blankRockerSpecSchema.safeParse({ changes: [nose(0.5), nose(0.25, 12), nose(0.125, 6)] }).success).toBe(false);
     expect(blankRockerSpecSchema.safeParse({ changes: [nose(0.5), nose(0.25, 12)] }).success).toBe(true);
     expect(boardBlankSchema.safeParse({ ...boardBlank(), rocker: "bent" }).success).toBe(true);
+  });
+});
+
+describe("each rail's scale and nudges ride on the rail section, read forgivingly (rule 10, quick 261102-gec)", () => {
+  type WireSection = Record<string, unknown> & { nudges?: unknown; scaleFromCenter?: unknown };
+  const wire = () =>
+    JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))) as {
+      version: number;
+      design: { rails: Record<"nose" | "center" | "tail", WireSection> & { tailHardEdge: boolean } };
+    };
+
+  it("a rail section saved before them opens with the tip default (1 since fast task 189) on the nose and tail, 1 on the centre, and every nudge 0", () => {
+    const stored = wire();
+    for (const key of ["nose", "center", "tail"] as const) {
+      delete stored.design.rails[key].scaleFromCenter;
+      delete stored.design.rails[key].nudges;
+    }
+    const opened = parseSnapshot(stored);
+    expect(opened.rails.nose.scaleFromCenter).toBe(DEFAULT_TIP_RAIL_SCALE);
+    expect(opened.rails.tail.scaleFromCenter).toBe(DEFAULT_TIP_RAIL_SCALE);
+    expect(opened.rails.center.scaleFromCenter).toBe(1);
+    for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].nudges).toEqual(ZERO_RAIL_NUDGES);
+  });
+
+  it("a tail saved with both Symmetrical and Hard Edge on opens with Hard Edge winning and Symmetrical off; either alone is kept (rule 11, fast task 190)", () => {
+    const both = wire();
+    both.design.rails.tail.symmetrical = true;
+    both.design.rails.tailHardEdge = true;
+    const opened = parseSnapshot(both);
+    expect(opened.rails.tailHardEdge).toBe(true);
+    expect(opened.rails.tail.symmetrical).toBe(false);
+    // The stored board is not touched by the reading.
+    expect(both.design.rails.tail.symmetrical).toBe(true);
+
+    const symmetricalOnly = wire();
+    symmetricalOnly.design.rails.tail.symmetrical = true;
+    symmetricalOnly.design.rails.tailHardEdge = false;
+    expect(parseSnapshot(symmetricalOnly).rails.tail.symmetrical).toBe(true);
+    expect(parseSnapshot(symmetricalOnly).rails.tailHardEdge).toBe(false);
+
+    const hardEdgeOnly = wire();
+    hardEdgeOnly.design.rails.tail.symmetrical = false;
+    hardEdgeOnly.design.rails.tailHardEdge = true;
+    expect(parseSnapshot(hardEdgeOnly).rails.tail.symmetrical).toBe(false);
+    expect(parseSnapshot(hardEdgeOnly).rails.tailHardEdge).toBe(true);
+    // The other rails' Symmetrical is never touched by the tail's rule.
+    const noseSym = wire();
+    noseSym.design.rails.nose.symmetrical = true;
+    noseSym.design.rails.tailHardEdge = true;
+    expect(parseSnapshot(noseSym).rails.nose.symmetrical).toBe(true);
+  });
+
+  it("a nudge or scale that is not a number reads its default and the board still opens", () => {
+    const stored = wire();
+    stored.design.rails.nose.nudges = { ...ZERO_RAIL_NUDGES, deckMark1: "lots", apexThickness: inchesToMm(1 / 16) };
+    stored.design.rails.center.nudges = "bent";
+    stored.design.rails.tail.scaleFromCenter = null;
+    const opened = parseSnapshot(stored);
+    expect(opened.rails.nose.nudges.deckMark1).toBe(0);
+    expect(opened.rails.nose.nudges.apexThickness).toBe(inchesToMm(1 / 16));
+    expect(opened.rails.center.nudges).toEqual(ZERO_RAIL_NUDGES);
+    expect(opened.rails.tail.scaleFromCenter).toBe(DEFAULT_TIP_RAIL_SCALE);
+  });
+
+  it("carries the three legacy keys exactly as stored — an old Bottom Tuck 3 setting included — and they change no mark", () => {
+    const stored = wire();
+    stored.design.rails.nose.cornerCutOffsetOverride = inchesToMm(3 / 32);
+    stored.design.rails.nose.removeCornerCut = true;
+    stored.design.rails.nose.bottomTuck3Override = inchesToMm(0.6875);
+    const opened = parseSnapshot(stored);
+    expect(opened.rails.nose.cornerCutOffsetOverride).toBe(inchesToMm(3 / 32));
+    expect(opened.rails.nose.removeCornerCut).toBe(true);
+    expect(opened.rails.nose.bottomTuck3Override).toBe(inchesToMm(0.6875));
+    expect(computeRailBands(opened.rails)).toEqual(computeRailBands(FIXTURES[0].rails));
+  });
+
+  it("a scale and nudges saved on this branch round-trip exactly", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: {
+        ...FIXTURES[0].rails,
+        nose: {
+          ...FIXTURES[0].rails.nose,
+          scaleFromCenter: 0.55,
+          nudges: { ...ZERO_RAIL_NUDGES, deckMark3: inchesToMm(-3 / 16), domedDeckBand: mm(-37) },
+        },
+      },
+    };
+    expect(roundTrip(fields).rails).toEqual(fields.rails);
+  });
+
+  it("a section saved with the retired Deck Mark 2 and Bottom Tuck 2 amounts and no dome nudge opens with the six nudges, the dome at 0, and its marks unmoved (plan 04, R17, R18)", () => {
+    const stored = wire();
+    const { domedDeckBand: _dome, ...withoutDome } = ZERO_RAIL_NUDGES;
+    void _dome;
+    stored.design.rails.center.nudges = { ...withoutDome, deckMark2: inchesToMm(1 / 4), bottomTuck2: inchesToMm(-1 / 8) };
+    const opened = parseSnapshot(stored);
+    expect(Object.keys(opened.rails.center.nudges).sort()).toEqual([...RAIL_NUDGE_KEYS].sort());
+    expect(opened.rails.center.nudges).toEqual(ZERO_RAIL_NUDGES);
+    expect(opened.rails.center.nudges.domedDeckBand).toBe(0);
+    expect(computeRailBands(opened.rails)).toEqual(computeRailBands(FIXTURES[0].rails));
+  });
+
+  // Rule 12 (quick 261102-gec plan 05, R22): the Sharp Bottom Tuck box.
+  it("a rail section saved without Sharp Bottom Tuck, or with a string or a number in it, opens with the box off (rule 12)", () => {
+    const stored = wire();
+    delete stored.design.rails.nose.sharpBottomTuck;
+    stored.design.rails.center.sharpBottomTuck = "yes";
+    stored.design.rails.tail.sharpBottomTuck = 1;
+    const opened = parseSnapshot(stored);
+    for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].sharpBottomTuck).toBe(false);
+  });
+
+  it("a Sharp Bottom Tuck ticked on this branch round-trips exactly (rule 12)", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: {
+        ...FIXTURES[0].rails,
+        center: { ...FIXTURES[0].rails.center, sharpBottomTuck: true },
+      },
+    };
+    const back = roundTrip(fields).rails;
+    expect(back).toEqual(fields.rails);
+    expect(back.center.sharpBottomTuck).toBe(true);
+    expect(back.nose.sharpBottomTuck).toBe(false);
   });
 });

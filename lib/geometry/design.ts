@@ -19,6 +19,7 @@ import { prepareBlank, thinningStartsOf, type PreparedBlank } from "./blank-fit"
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { prepareBoardBlank } from "./custom-rocker";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import type { FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
@@ -78,8 +79,13 @@ export function deriveTemplateValues(outline: OutlineSpec, geometry: OutlineGeom
   };
 }
 
-/** Same shape as `design-store.tsx`'s `railValues` memo. */
+/** Same shape as `design-store.tsx`'s `railValues` memo. The three blend areas carry each section's
+ * finished rail into VOLUME's working rows (quick 261102-gec plan 03, the founder's D-V1, PV2): one basis
+ * — the same `sectionFinishedRail` + `railBlendArea` the quoted litres read at every station of
+ * `computeCrossSectionVolume` — so a Cross-Section Thickness row and the Estimated Volume beside it can
+ * never sit on different curves. */
 export function deriveRailValues(railBands: RailBandsOutput): VolumeRailValues {
+  const blendArea = (section: RailBandsOutput["nose"]) => railBlendArea(sectionFinishedRail(section.result, section.domed));
   return {
     noseThickness: railBands.nose.boardThickness,
     centerThickness: railBands.center.boardThickness,
@@ -87,6 +93,9 @@ export function deriveRailValues(railBands: RailBandsOutput): VolumeRailValues {
     noseProfile: railBands.nose.profile,
     centerProfile: railBands.center.profile,
     tailProfile: railBands.tail.profile,
+    noseBlendArea: blendArea(railBands.nose),
+    centerBlendArea: blendArea(railBands.center),
+    tailBlendArea: blendArea(railBands.tail),
   };
 }
 

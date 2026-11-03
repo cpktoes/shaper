@@ -16,6 +16,7 @@ import {
   CALLOUT_BOTTOM_PAD,
   CALLOUT_RIGHT_PAD,
   SCALE,
+  buildRailLegend,
   computeRailPlotBounds,
   buildRailPlotGrid,
   railPlotProjection,
@@ -45,6 +46,27 @@ describe("buildRailPlotGrid", () => {
   // axis bound — the same floor-toward-outward behaviour the imperial grid already has with its
   // own one-whole-inch step (`Math.floor` never moves a bound by more than its own step).
   const METRIC_STEP_IN = mmToInches(mm(10));
+
+  it("draws no tick past the axis's own end — an axis starting at a half inch keeps the grid line beyond it but not the number (fast task, 2026-11-02)", () => {
+    // A centre dome nudged to +2" starts the axis at -9 1/2". The grid still floors to -10 so the
+    // horizontal lines reach the box's edge, but no tick (and so no "10") sits past the axis's end.
+    const halfInch = { ...bounds, minX: -9.5 - 0.15 };
+    const grid = buildRailPlotGrid(halfInch, "imperial");
+    expect(grid.xGridMin).toBe(-10);
+    expect(grid.xGridPositions).toContain(-10);
+    expect(Math.min(...grid.xTicks.map((t) => t.value))).toBe(-9);
+    // Metric reads the same axis: the grid floors to the 10 mm step beyond it, the ticks stop at
+    // the last step on it.
+    const metric = buildRailPlotGrid(halfInch, "metric");
+    expect(metric.xGridMin).toBeCloseTo(mmToInches(mm(Math.floor(inchesToMm(-9.5) / 10) * 10)), 9);
+    expect(Math.min(...metric.xTicks.map((t) => t.value))).toBeCloseTo(mmToInches(mm(Math.ceil(inchesToMm(-9.5) / 10) * 10)), 9);
+    for (const tick of metric.xTicks) expect(tick.value).toBeGreaterThanOrEqual(-9.5 - 1e-9);
+    // An axis starting exactly on a whole inch keeps that inch's tick, as every plot drawn today
+    // does: its ticks are its grid positions, nothing dropped.
+    const whole = buildRailPlotGrid({ ...bounds, minX: -8 - 0.15 }, "imperial");
+    expect(whole.xTicks.map((t) => t.value)).toEqual(whole.xGridPositions);
+    expect(Math.min(...whole.xTicks.map((t) => t.value))).toBe(-8);
+  });
 
   it("imperial ticks are today's whole inches inside the bounds, one whole inch apart, no unit shown", () => {
     const grid = buildRailPlotGrid(bounds, "imperial");
@@ -365,5 +387,22 @@ describe("railPlotLeftLabelsFit", () => {
     expect(railPlotLeftLabelsFit(bare, 0.785)).toBe(false);
     expect(railPlotLeftLabelsFit(bare, 1.2)).toBe(true);
     expect(railPlotLeftLabelsFit(bare, 2.3)).toBe(true);
+  });
+});
+
+describe("buildRailLegend's finishedRail option (quick 261102-gec plan 02, PC22)", () => {
+  it("without it the key is unchanged; with it the same key plus one last entry, Finished Rail in ink", () => {
+    const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+    for (const output of [bands.nose, bands.center, bands.tail, computeRailBands({ ...DEFAULT_RAIL_BAND_SPEC, center: { ...DEFAULT_RAIL_BAND_SPEC.center, deckPercent: 80 } }).center]) {
+      const plain = buildRailLegend(output);
+      expect(buildRailLegend(output, { finishedRail: false })).toEqual(plain);
+      const withRail = buildRailLegend(output, { finishedRail: true });
+      expect(withRail.slice(0, -1)).toEqual(plain);
+      expect(withRail.length).toBe(plain.length + 1);
+      // The one entry drawn as a line in the key, not a dot (fast task 187): it names the curve.
+      expect(withRail[withRail.length - 1]).toEqual({ label: "Finished Rail", color: "var(--color-surf-ink)", swatch: "line" });
+      expect(plain.every((e) => e.swatch === undefined)).toBe(true);
+      expect(plain.some((e) => e.label === "Finished Rail")).toBe(false);
+    }
   });
 });

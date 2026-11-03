@@ -209,7 +209,9 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
     // sits 120px in on the same 40px step; the phone describe is unchanged, because the button is
     // hidden below 820.
     { path: "/design/rocker", label: "ROCKER", expectedCount: 4 },
-    { path: "/design/rails", label: "RAILS", expectedCount: 1 },
+    // Rails v2 (quick 261102-gec plan 02 and fast task 185, 2026-11-02): the Finished Rail toggle took the
+    // corner, Ghost Bands sits beside it, and View Full Sized stepped to 80px — three on the same 40px step.
+    { path: "/design/rails", label: "RAILS", expectedCount: 3 },
   ] as const;
 
   for (const { path, label, expectedCount } of DESKTOP_CASES) {

@@ -1,30 +1,52 @@
 /**
- * Rail band geometry engine.
+ * Rail band geometry engine — the founder's "Chris Rails v2" sheets (quick 261102-gec, 2026-11-02).
  *
- * Ported statement-for-statement from the prototype's `computeSection`, `buildProfilePoints`,
- * `buildSegmentDefs` and `cardFromResult` (reference/project/Rails.dc.html lines 690-960), with
- * these deliberate changes and no others:
+ * Every rail's marks come from the founder's two v2 sheets, "Chris Center Rail v2" and "Chris Nose&Tail
+ * Rail v2" in Chris Rails v2.xlsx (Google Drive, the 10:03 save of 2026-11-02), as the reference page
+ * the founder signed off works them out: `reference/sketches/018-chris-rails-v2.js`, its `sheetV2` and
+ * `segments`, whose own numbers are this module's golden (`__fixtures__/rails-v2-golden.json`, written by
+ * `scripts/extract-rails-v2-golden.ts`). The prototype's rules (Rails.dc.html, with its Corner Cut and its
+ * per-section constants table) are retired on this branch; its golden stays only because the VOLUME
+ * estimator's own golden generator reads it (PC9).
  *
- * 1. INCH-DOMAIN CORE. Unlike outline.ts, where only four constants carried a unit, nearly
- *    every constant in these formulas is an inch measurement. Converting each one individually
- *    would multiply the chance of a silent transcription error in the exact code whose
- *    correctness is the product's Core Value. So this module keeps private inch-domain
- *    functions that are statement-for-statement ports of the prototype (`computeSectionInches`,
- *    `buildProfilePointsInches`, `buildSegmentDefsInches`, `buildRailDataGroupsInches`, and the
- *    four band helpers), each carrying the prototype's own spreadsheet-cell comments, and the
- *    exported functions convert Mm in and Mm out at the boundary. The public surface is
- *    millimetres only; the inch core is never exported.
- * 2. DEAD CODE. The prototype declares `railTuck1For` (line 695) and `cornerCutDeckFor` (line
- *    698) but `computeSection` never calls them — it derives Rail Tuck 1 from
- *    `apexCenter - apexLenRange / 2` and Corner Cut (Deck) from `railMark1 - cornerCutRail`.
- *    Neither helper is ported.
- * 3. HARD EDGE DEFAULTING. The prototype omits `hardEdge` on its nose and center
- *    `computeSection` calls, leaving it `undefined` and therefore falsy at every read. This
- *    port passes an explicit `false`, which is behaviourally identical.
- * 4. PRESENTATION SPLIT. `buildSegmentDefs` carries `color` and `dash` on each segment. Colours
- *    are a UI concern and every prototype dash is `'none'`, so the exported segment type
- *    carries `key`, `label`, `p1`, `p2` only; the plot component owns a colour map keyed by
- *    `key`.
+ * The sheet, in plain words (t = the thickness the sheet works from — the board thickness on a flat deck,
+ * the tapered rail thickness, rounded to the 1/16", on a domed one; T = the board thickness; s = "Scaled
+ * from center by", always 1 on the centre and, since fast task 189, 1 by default on the nose and tail too):
+ * - Apex Thickness (the sheet's "Apex Length") = (-0.125 x Family + 1.375) x t x 0.35 x s; the Apex Center
+ *   sits at t x the bottom part of the Ratio, with Rail Mark 1 half the apex above it and Rail Tuck 1 half
+ *   below.
+ * - The Domed Deck Band is 2.4 x T and is never scaled; Deck Mark 1 = T x s, Deck Mark 2 always half of it,
+ *   Deck Mark 3 = 1.8 x T x s.
+ * - Bottom Tuck 1 = Rail Tuck 1 x 0.577 (Fred's 30° tool), or Deck Mark 1 with Sym on; Bottom Tuck 2 always
+ *   half of it; Bottom Tuck 3 = Rail Tuck 1, or Deck Mark 3 with Sym on.
+ * - There is no Corner Cut, and no rounding inside the rules (marks show to the 1/16" or whole mm as
+ *   usual).
+ *
+ * What the app adds that the sheet does not (the plan's rules 1-13 and its planner's choices; the
+ * reference page leaves all of them out, so each is proven by a rule test rather than the golden):
+ * - HELD INPUTS (R7, PC6). The engine reads Deck Profile as at least 75% (the sheet's minimum rail
+ *   thickness), Ratio as 20-80, the scale as 0.50-1.00 (the centre always 1) and each nudge inside its
+ *   window (±2" on the Domed Deck Band, ±1/2" on the deck marks, ±1/4" on the others). A stored value is
+ *   never rewritten.
+ * - NUDGES (PC1, amended by plan 04's PC25, R17 and R18, 2026-11-02). Each rail stores six plus-or-minus
+ *   amounts, one per mark the founder can tweak, all 0 on a new board: Apex Thickness, Deck Mark 1, Deck
+ *   Mark 3, the Domed Deck Band, Bottom Tuck 1 and Bottom Tuck 3. Deck Mark 2 and Bottom Tuck 2 have none:
+ *   the founder, "Always in the middle is great" — each is always half its (nudged) parent mark. A mark
+ *   that depends on another reads that one's final value first and then adds its own nudge (rule 8).
+ * - THE APEX TRIM (R4, PC3). Where the apex would run off the rail — Family 1 at either end of the Ratio —
+ *   Apex Thickness shrinks evenly about the Apex Center until Rail Tuck 1 sits 1/16" above the bottom and
+ *   Rail Mark 1 1/16" below the deck, and the result says it was trimmed.
+ * - THE FLOORS (R9, PC4, PC5, PC26). No mark under 1/16"; Deck Mark 2 inside Deck Mark 1 and Bottom Tuck 2
+ *   inside Bottom Tuck 1; Deck Mark 3 at least 1/16" beyond Deck Mark 1; the Domed Deck Band at least 1/16"
+ *   beyond Deck Mark 3 (the founder's final ruling, R18: "never let it equal Deck Mark 3"); Bottom Tuck 3 at
+ *   least `MIN_BOTTOM_TUCK_SEPARATION_IN` beyond Bottom Tuck 1.
+ * - SINGLE TUCK and the tail's HARD EDGE, exactly as before (R14).
+ *
+ * INCH-DOMAIN CORE. Nearly every constant here is an inch figure from the sheet, so the private functions
+ * below work in inches with the sheet's own cell names in their comments (C5, C11-C21), and the exported
+ * functions convert Mm in and Mm out at the boundary. The public surface is millimetres only; the inch
+ * core is never exported. Colours are a UI concern: a drawn segment carries `key`, `label`, `p1`, `p2`
+ * only and the plot owns a colour map keyed by `key`.
  */
 
 import type { Point2D } from "./board";
@@ -33,13 +55,139 @@ import { type Mm, inchesToMm, mm, mmToInches, roundToSixteenthInch } from "./uni
 export type RailFamily = 1 | 2 | 3 | 4 | 5;
 export type RailSectionKey = "nose" | "center" | "tail";
 
-// GSD product decision (NOT a source-workbook formula): the minimum meaningful gap between
-// Bottom Tuck 3 and Bottom Tuck 1 when Bottom Tuck 3 is user-overridden. Tied to the app's 1/16"
-// fractional-inch display/slider granularity, so a strictly-greater floor is always representable
-// rather than an unexplainable floating-point epsilon.
+// GSD product decision (NOT a source-workbook formula): the minimum meaningful gap between Bottom Tuck
+// 3 and Bottom Tuck 1. Tied to the app's 1/16" fractional-inch display/slider granularity, so a
+// strictly-greater floor is always representable rather than an unexplainable floating-point epsilon.
 export const MIN_BOTTOM_TUCK_SEPARATION_IN = 1 / 16;
 
-/** Parametric controls for one rail section — the single place a section's sidebar writes to. */
+/** The smallest any rail mark may be, in inches (R9): the app's 1/16" step. */
+export const MIN_RAIL_MARK_IN = 1 / 16;
+
+/** The lowest Deck Profile the rules read (R7): the founder's sheet notes "Min Rail Thickness = Board
+ * thickness *.75". A board saved below it draws at 75% without its stored number changing. */
+export const DECK_PERCENT_MIN = 75;
+
+/** The Ratio's window and step (R8): 20/80 to 80/20 in halves, so 62.5/37.5 is reachable. */
+export const RAIL_RATIO_RANGE = { min: 20, max: 80, step: 0.5 } as const;
+
+/** "Scaled from center by" (R10): nose and tail only, 0.50 to 1.00 in 0.05 steps. */
+export const RAIL_SCALE_RANGE = { min: 0.5, max: 1, step: 0.05 } as const;
+
+/** The nose's and tail's "Scaled from center by" on a new board, and on a board saved before it existed.
+ * 1.00 since fast task 189 (R20, the founder, 2026-11-02: "Go with 1.00 as the default") — it was the sheet's
+ * 0.75 until the founder asked whether that multiplier was redundant beside marks that already follow the
+ * thickness at 12": it was. Greenlight's charts need their "75% at 12"" because their deck marks are fixed
+ * inches that do not know the tip is thinner; these marks read the tip's own thickness, which on an ordinary
+ * foil already puts them near 70% of the centre's, so 0.75 on top made the tips about half the centre's. At
+ * 1.00 the tips follow the foil alone, and the slider stays as a deliberate extra tightening — the only one
+ * a board with no foil would get. A board saved with 0.75 keeps it (the value is stored, not the default). */
+export const DEFAULT_TIP_RAIL_SCALE = 1;
+
+/** The six marks a shaper can nudge off its formula, in the Advanced menu's order (PC1, amended by quick
+ * 261102-gec plan 04's PC25, 2026-11-02) — the one list the sliders, Reset, volume's blend, the saved-board
+ * reader and the "Copy preset values" printer all walk. Deck Mark 2 and Bottom Tuck 2 left it (R17: "Deck
+ * mark 2 and Bottom Tuck 2 don't need sliders. Always in the middle is great.") and the Domed Deck Band
+ * joined it, right after Deck Mark 3 (R18: "I would like to add an advanced slider for the domed deck
+ * mark though."). */
+export const RAIL_NUDGE_KEYS = [
+  "apexThickness",
+  "deckMark1",
+  "deckMark3",
+  "domedDeckBand",
+  "bottomTuck1",
+  "bottomTuck3",
+] as const;
+export type RailNudgeKey = (typeof RAIL_NUDGE_KEYS)[number];
+export type RailMarkNudges = Record<RailNudgeKey, Mm>;
+
+/** How far each nudge may move its mark either way, in inches: the Domed Deck Band ±2" (R18, the founder:
+ * "Let's keep the ±2" slider"), Bottom Tuck 3 ±3/4" (R19, the founder, 2026-11-02: "bottom tuck 3 tweak should
+ * go to ±3/4""), the deck marks ±1/2", Apex Thickness and Bottom Tuck 1 ±1/4". A −3/4" Bottom Tuck 3 still stops
+ * 1/16" beyond Bottom Tuck 1 (the floor in `computeRailSectionInches`), as any nudge of it always has. */
+export const RAIL_NUDGE_LIMIT_IN: Readonly<Record<RailNudgeKey, number>> = {
+  apexThickness: 0.25,
+  deckMark1: 0.5,
+  deckMark3: 0.5,
+  domedDeckBand: 2,
+  bottomTuck1: 0.25,
+  bottomTuck3: 0.75,
+};
+
+/** Every nudge at 0 — every mark exactly on its formula. */
+export const ZERO_RAIL_NUDGES: RailMarkNudges = {
+  apexThickness: mm(0),
+  deckMark1: mm(0),
+  deckMark3: mm(0),
+  domedDeckBand: mm(0),
+  bottomTuck1: mm(0),
+  bottomTuck3: mm(0),
+};
+
+/**
+ * A rail's nudges as exactly the six keys, in menu order (quick 261102-gec plan 04, PC29, 2026-11-02): a
+ * missing nudge, or one that is not a finite number, reads 0, and any other key — a Deck Mark 2 or Bottom
+ * Tuck 2 amount from a board saved before the founder's ruling, "Always in the middle is great" (R17) — is
+ * dropped. Saved boards already reach the app through the reader, which does the same; this covers a board
+ * that was in memory before the Domed Deck Band nudge existed (R18, "Let's keep the ±2" slider, but never
+ * let it equal Deck Mark 3."), so it never draws a mark that is not a number and never carries a retired
+ * amount into a save.
+ */
+export function railNudgesOf(nudges: Partial<Record<string, unknown>> | null | undefined): RailMarkNudges {
+  return Object.fromEntries(
+    RAIL_NUDGE_KEYS.map((k) => {
+      const v = nudges?.[k];
+      return [k, mm(typeof v === "number" && Number.isFinite(v) ? v : 0)];
+    }),
+  ) as RailMarkNudges;
+}
+
+/** Each nudge's name on the Advanced menu's sliders (quick 261102-gec plan 02, PC18, 2026-11-02) — the DATA
+ * tab's own words for the mark it moves, so a shaper reads the same name in both places. */
+export const RAIL_NUDGE_NAMES: Readonly<Record<RailNudgeKey, string>> = {
+  apexThickness: "Apex Thickness",
+  deckMark1: "Deck Mark 1",
+  deckMark3: "Deck Mark 3",
+  domedDeckBand: "Domed Deck Band",
+  bottomTuck1: "Bottom Tuck 1",
+  bottomTuck3: "Bottom Tuck 3",
+};
+
+/** A nudge slider's step in inches (the founder's brief: "in 1/16" or 1 mm steps"; PC24). Metric steps a
+ * whole millimetre through `measureSlider`. */
+export const RAIL_NUDGE_STEP_IN = 1 / 16;
+
+/** What a rail's Advanced settings are on a new board (PC20): every nudge 0, Single Tuck off, Sharp Bottom
+ * Edge off (quick 261102-gec plan 05, R22/PC37), and "Scaled from center by" `DEFAULT_TIP_RAIL_SCALE` (1 since
+ * fast task 189) on the nose and tail, 1 on the centre. Reset Advanced Settings puts a rail back to
+ * exactly these (and the tail's Hard Edge back on, which lives on the whole spec, not the section). */
+export function defaultRailAdvanced(
+  key: RailSectionKey,
+): Pick<RailSectionSpec, "scaleFromCenter" | "nudges" | "singleTuck" | "sharpBottomTuck"> {
+  return {
+    scaleFromCenter: key === "center" ? 1 : DEFAULT_TIP_RAIL_SCALE,
+    nudges: ZERO_RAIL_NUDGES,
+    singleTuck: false,
+    sharpBottomTuck: false,
+  };
+}
+
+/** The Deck Profile slider's step (R7, PC23), moved here from the sidebar so it can be tested: about one
+ * 1/16" of rail thickness per step (the prototype's `deckProfileFor` rule), rounded to a whole number of
+ * steps over the 75-100% range so both ends — Flat at 100% and the founder's 75% floor — stay exactly
+ * reachable at any thickness. It was over the old 66-100% range (34 points); the floor moved to 75%. */
+export function deckProfileSliderStep(thicknessIn: number): number {
+  const span = 100 - DECK_PERCENT_MIN;
+  const rawStep = Math.max(0.01, (0.0625 / thicknessIn) * 100);
+  const steps = Math.max(1, Math.round(span / rawStep));
+  return span / steps;
+}
+
+/** Parametric controls for one rail section — the single place a section's sidebar writes to.
+ *
+ * `cornerCutOffsetOverride`, `removeCornerCut` and `bottomTuck3Override` are LEGACY (PC2, R12): the v2
+ * rules have no Corner Cut and work Bottom Tuck 3 out themselves, so nothing reads them. They stay in the
+ * stored board, carried exactly as read, because the saved-board reader on `main` still requires them —
+ * so a board saved on this branch still opens there and on a rolled-back deployment. */
 export interface RailSectionSpec {
   boardThickness: Mm;
   deckPercent: number;
@@ -49,7 +197,16 @@ export interface RailSectionSpec {
   cornerCutOffsetOverride: Mm | null;
   removeCornerCut: boolean;
   singleTuck: boolean;
+  /** Sharp Bottom Tuck (quick 261102-gec plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for
+   * leaving the bottom edge fairly sharp (follow the angle at bottom tuck 3)"). On, the finished rail keeps
+   * the corner at Bottom Tuck 3 as the cut leaves it instead of rolling it away; the cuts, the marks and the
+   * DATA rows never change. Off on a new board and after Reset; a board saved without it reads off. */
+  sharpBottomTuck: boolean;
   bottomTuck3Override: Mm | null;
+  /** "Scaled from center by" (R10). Read as 1 on the centre whatever is stored. */
+  scaleFromCenter: number;
+  /** How far each mark is nudged off its formula (PC1), in millimetres. */
+  nudges: RailMarkNudges;
 }
 
 /** The three rail sections plus the tail-only Hard Edge flag. */
@@ -60,13 +217,6 @@ export interface RailBandSpec {
   tailHardEdge: boolean;
 }
 
-/** `scale` and `domedBandBase` per section — ported verbatim from syncSnapshot's own call-site wiring. */
-export const RAIL_SECTION_CONSTANTS: Record<RailSectionKey, { scale: number; domedBandBase: Mm }> = {
-  nose: { scale: 0.75, domedBandBase: inchesToMm(4.5) },
-  center: { scale: 1, domedBandBase: inchesToMm(6) },
-  tail: { scale: 0.75, domedBandBase: inchesToMm(4.5) },
-};
-
 const DEFAULT_SECTION_COMMON = {
   deckPercent: 100,
   family: 3 as RailFamily,
@@ -75,49 +225,49 @@ const DEFAULT_SECTION_COMMON = {
   cornerCutOffsetOverride: null,
   removeCornerCut: false,
   singleTuck: false,
+  sharpBottomTuck: false,
   bottomTuck3Override: null,
+  nudges: ZERO_RAIL_NUDGES,
 };
 
-/** Ported from the prototype's state defaults (Rails.dc.html lines 507-527). */
+/** A new board's rails: today's values ("a new board starts with today's values", the founder), the tips
+ * at `DEFAULT_TIP_RAIL_SCALE` from the centre (1 since fast task 189), every nudge 0. */
 export const DEFAULT_RAIL_BAND_SPEC: RailBandSpec = {
-  nose: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.31) },
-  center: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(2.5) },
-  tail: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.56) },
+  nose: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.31), scaleFromCenter: DEFAULT_TIP_RAIL_SCALE },
+  center: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(2.5), scaleFromCenter: 1 },
+  tail: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.56), scaleFromCenter: DEFAULT_TIP_RAIL_SCALE },
   tailHardEdge: true,
 };
 
-/** Every field `computeSection` returns. `cornerCutRail`/`cornerCutOffset`/`cornerCutDeck` are
- * null exactly when the section's Corner Cut has been removed. */
+/** Every mark one rail section works out. `thickness` is t (the rail-side thickness), `boardThickness`
+ * T; `scale` the scale the rules used (held, the centre's 1); `apexTrimmed` true when the apex had to
+ * shrink to fit on the rail (R4). */
 export interface RailSectionResult {
   thickness: Mm;
+  boardThickness: Mm;
+  scale: number;
   apexLenRange: Mm;
+  apexTrimmed: boolean;
   apexCenter: Mm;
   railMark1: Mm;
   railTuck1: Mm;
-  cornerCutRail: Mm | null;
-  cornerCutOffset: Mm | null;
   domedDeckBand: Mm;
   deckMark1: Mm;
   deckMark2: Mm;
   deckMark3: Mm;
-  cornerCutDeck: Mm | null;
   hardEdge: boolean;
   bottomTuck1: Mm;
   bottomTuck2: Mm;
   bottomTuck3: Mm;
-  /** GSD-added (not part of the source workbook): the value bottomTuck3 would take with no
-   * override present, including the hardEdge rule. Lets the UI offer this as the Bottom Tuck 3
-   * slider's reachable max without recomputing symmetrical/hardEdge derivation logic itself. */
-  bottomTuck3Derived: Mm;
-  removeCornerCut: boolean;
   singleTuck: boolean;
+  /** Carried for the finished rail (plan 05, R22): keep the Bottom Tuck 3 corner sharp. No mark reads it. */
+  sharpBottomTuck: boolean;
 }
 
 export type RailSegmentKey =
   | "domedBand"
   | "band1"
   | "band2"
-  | "cornerCut"
   | "hardEdge"
   | "tuck1"
   | "tuck2"
@@ -125,7 +275,7 @@ export type RailSegmentKey =
   | "bottomConn"
   | "railConn";
 
-/** One drawn segment of the cross-section, colour/dash-free (see deviation 4 above). */
+/** One drawn segment of the cross-section, colour/dash-free (the plot owns the colours). */
 export interface RailSegment {
   key: RailSegmentKey;
   label: string;
@@ -148,47 +298,6 @@ export interface RailDataGroup {
   rows: RailDataRow[];
 }
 
-// ---------------------------------------------------------------------------------------------
-// Private inch-domain core — statement-for-statement ports of the prototype. Never exported.
-// ---------------------------------------------------------------------------------------------
-
-interface RailSectionResultInches {
-  thickness: number;
-  apexLenRange: number;
-  apexCenter: number;
-  railMark1: number;
-  railTuck1: number;
-  cornerCutRail: number | null;
-  cornerCutOffset: number | null;
-  domedDeckBand: number;
-  deckMark1: number;
-  deckMark2: number;
-  deckMark3: number;
-  cornerCutDeck: number | null;
-  hardEdge: boolean;
-  bottomTuck1: number;
-  bottomTuck2: number;
-  bottomTuck3: number;
-  bottomTuck3Derived: number;
-  removeCornerCut: boolean;
-  singleTuck: boolean;
-}
-
-// ---- Rail Bands equations, from "Chris's Rails" (Center / Nose & Tail) ----
-function apexLenRangeForInches(x: number): number {
-  return -0.125 * x + 1.125;
-}
-function cornerCutRailOffsetForInches(x: number): number {
-  const table: Record<number, number> = { 1: 0.125, 2: (0.125 + 0.0625) / 2, 3: 0.0625, 4: 0.0625 / 2, 5: 0 };
-  return table[Math.round(x)] ?? 0;
-}
-function deckMark1ForInches(x: number): number {
-  return 0.25 * x + 1.75;
-}
-function deckMark3ForInches(x: number): number {
-  return 0.25 * x + 3.25;
-}
-
 const RAIL_FAMILY_NAMES: Record<number, string> = {
   1: "boxy",
   2: "boxy/med",
@@ -202,119 +311,158 @@ export function railFamilyLabel(x: number): string {
   return RAIL_FAMILY_NAMES[Math.round(x)] ?? String(x);
 }
 
+/** The Deck Profile the rules read: a stored value held to 75-100% (R7). The stored value is never
+ * rewritten — only the slider writes it. */
+export function effectiveDeckPercent(deckPercent: number): number {
+  return Math.min(100, Math.max(DECK_PERCENT_MIN, deckPercent));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Private inch-domain core. Never exported.
+// ---------------------------------------------------------------------------------------------
+
+interface RailSectionResultInches {
+  thickness: number;
+  boardThickness: number;
+  scale: number;
+  apexLenRange: number;
+  apexTrimmed: boolean;
+  apexCenter: number;
+  railMark1: number;
+  railTuck1: number;
+  domedDeckBand: number;
+  deckMark1: number;
+  deckMark2: number;
+  deckMark3: number;
+  hardEdge: boolean;
+  bottomTuck1: number;
+  bottomTuck2: number;
+  bottomTuck3: number;
+  singleTuck: boolean;
+  sharpBottomTuck: boolean;
+}
+
 interface ComputeSectionInchesInput {
   thicknessIn: number;
+  boardThicknessIn: number;
   ratioTopPct: number;
   family: RailFamily;
-  domedBandBaseIn: number;
   scale: number;
-  cornerCutOffsetOverrideIn: number | null;
-  removeCornerCut: boolean;
-  singleTuck: boolean;
-  bottomTuck3OverrideIn: number | null;
+  nudgesIn: Record<RailNudgeKey, number>;
   symmetrical: boolean;
+  singleTuck: boolean;
+  sharpBottomTuck: boolean;
   hardEdge: boolean;
 }
 
-// Formulas below are transcribed from column C's live <f> cells in the source workbook (Chriss
-// Rails Center / Chriss Rails Nose&Tail). `scale` = the sheet's "Scaled from center by" constant
-// (1 for Center, 0.75 for Nose&Tail). Corner Cut (Rail) uses the user-supplied IFS offset table
-// off Rail Mark 1.
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** How far past the room the wanted apex must be before it counts as trimmed (rule 3): a billionth of an
+ * inch, so floating-point noise at the exact edge never reads as a trim. */
+const APEX_TRIM_TOLERANCE_IN = 1e-9;
+
+// The sheets' column C, cell for cell (the reference page's `sheetV2`), with the app's held inputs,
+// nudges, trim and floors (the plan's rules 1-8).
 function computeSectionInches(input: ComputeSectionInchesInput): RailSectionResultInches {
-  const bottomRatio = 1 - input.ratioTopPct / 100; // C5: =100%-C4
-  const apexLenRange = apexLenRangeForInches(input.family) * input.scale; // C13: =-0.125*C12+1.125 [*C3 for Nose&Tail]
-  const apexCenter = input.thicknessIn * bottomRatio; // C14: =C11*C5
-  const railMark1 = apexCenter + apexLenRange / 2; // C15: =C14+C13/2
-  const railTuck1 = apexCenter - apexLenRange / 2; // C16: =C14-C13/2
-  // Corner Cut offset: distance the mark falls BELOW Rail Mark 1 (0 = lands on Rail Mark 1 itself).
-  const cornerCutOffset = input.removeCornerCut
-    ? null
-    : (input.cornerCutOffsetOverrideIn ?? cornerCutRailOffsetForInches(input.family));
-  const cornerCutRail = input.removeCornerCut ? null : railMark1 - (cornerCutOffset as number);
-  const domedDeckBand = input.domedBandBaseIn; // C18: plain constant, always on (visibility is a display concern)
-  const deckMark1 = deckMark1ForInches(input.family) * input.scale; // C19: =(0.25*C12+1.75) [*C3 for Nose&Tail]
-  const deckMark2 = deckMark1 / 2; // C20: =C19/2
-  const deckMark3 = deckMark3ForInches(input.family) * input.scale; // C21: =0.25*C12+3.25 [*C3 for Nose&Tail]
-  const cornerCutDeck = input.removeCornerCut ? null : railMark1 - (cornerCutRail as number); // C22: =C15-C17
-  const bottomTuck1 = input.symmetrical ? deckMark1 : railTuck1 / 2; // C23: =IF(Symmetrical,C19,C16/2)
-  const bottomTuck2 = bottomTuck1 / 2; // C24: =C23/2
-  const bottomTuck3NoOverride = input.symmetrical ? deckMark3 : railTuck1; // C25 derivation itself
-  const bottomTuck3 = input.hardEdge // C25: =IF(Symmetrical,C21,C16)
+  const MIN = MIN_RAIL_MARK_IN;
+  const t = input.thicknessIn;
+  const T = input.boardThicknessIn;
+  // Rule 1: held inputs (PC6). The centre's scale of 1 is applied by the caller (R10).
+  const s = clamp(input.scale, RAIL_SCALE_RANGE.min, RAIL_SCALE_RANGE.max);
+  const ratioTop = clamp(input.ratioTopPct, RAIL_RATIO_RANGE.min, RAIL_RATIO_RANGE.max);
+  const n = Object.fromEntries(
+    RAIL_NUDGE_KEYS.map((k) => [k, clamp(input.nudgesIn[k], -RAIL_NUDGE_LIMIT_IN[k], RAIL_NUDGE_LIMIT_IN[k])]),
+  ) as Record<RailNudgeKey, number>;
+
+  const bottomRatio = 1 - ratioTop / 100; // C5: =100%-C4
+  const apexFormula = (-0.125 * input.family + 1.375) * t * 0.35 * s; // C11 (Nose & Tail: xC3)
+  const apexCenter = t * bottomRatio; // C12: =C9*C5
+  // Rule 3 (R4, PC3): the nudged apex, floored at 1/16", then trimmed to fit on the rail — the trim wins.
+  const wanted = Math.max(apexFormula + n.apexThickness, MIN);
+  const room = Math.max(0, Math.min(2 * (apexCenter - MIN), 2 * (t - MIN - apexCenter)));
+  const apexLenRange = Math.min(wanted, room);
+  const apexTrimmed = wanted > room + APEX_TRIM_TOLERANCE_IN;
+  const railMark1 = apexCenter + apexLenRange / 2; // C13: =C12+C11/2
+  const railTuck1 = apexCenter - apexLenRange / 2; // C14: =C12-C11/2
+  // Rule 6 (PC4, PC26): each deck mark reads its parent's final value, then adds its own nudge. Deck Mark 2
+  // has no nudge of its own (R17, "Always in the middle is great"): always half the (nudged) Deck Mark 1.
+  const deckMark1 = Math.max(T * s + n.deckMark1, MIN); // C16: =(1*C7)*C3
+  const deckMark2 = Math.max(MIN, Math.min(deckMark1 / 2, deckMark1 - MIN)); // C17: =C16/2
+  const deckMark3 = Math.max(1.8 * T * s + n.deckMark3, deckMark1 + MIN); // C18: =(1.8*C7)*C3
+  // C15: =2.4*C7 — the board thickness, never scaled — plus its own nudge (R18, ±2"), worked out after Deck
+  // Mark 3 is settled and held at least 1/16" beyond it: the founder's final ruling (2026-11-02), "Let's keep
+  // the ±2" slider, but never let it equal Deck Mark 3." The same rule Bottom Tuck 3 keeps against Bottom
+  // Tuck 1. Un-nudged it never holds anything (PC27): 2.4T - 1.8T x s is at least 0.6T, far more than 1/16"
+  // on any rail the app can carry, so every un-nudged dome is exactly 2.4 x T and only the slider is held.
+  const domedDeckBand = Math.max(2.4 * T + n.domedDeckBand, deckMark3 + MIN);
+  // Rule 7 (R9, PC5, R14): Fred's 30° tool; Sym follows the (nudged) deck marks. Bottom Tuck 2 has no nudge
+  // of its own (R17): always half the (nudged) Bottom Tuck 1.
+  const bottomTuck1 = Math.max((input.symmetrical ? deckMark1 : railTuck1 * 0.577) + n.bottomTuck1, MIN); // C19
+  const bottomTuck2 = Math.max(MIN, Math.min(bottomTuck1 / 2, bottomTuck1 - MIN)); // C20: =C19/2
+  const bottomTuck3 = input.hardEdge // C21: =IF(C2,C18,C14)
     ? 0
-    : input.bottomTuck3OverrideIn === null
-      ? bottomTuck3NoOverride
-      : // GSD-added guard (not part of the source workbook): floor a user-supplied override at
-        // Bottom Tuck 1 plus MIN_BOTTOM_TUCK_SEPARATION_IN so it can never sit at or below it and
-        // invert/collapse the bottom marks. The derived branch above already satisfies
-        // bottomTuck3 > bottomTuck1 by construction and is never floored — only the override is
-        // guarded.
-        Math.max(input.bottomTuck3OverrideIn, bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN);
-  // GSD-added (not part of the source workbook): the value bottomTuck3 would take with NO
-  // override, including the hardEdge rule — exposed so the UI can offer it as the slider's
-  // reachable max without recomputing symmetrical/hardEdge logic in the component.
-  const bottomTuck3Derived = input.hardEdge ? 0 : bottomTuck3NoOverride;
+    : Math.max(
+        (input.symmetrical ? deckMark3 : railTuck1) + n.bottomTuck3,
+        bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN,
+      );
   return {
-    thickness: input.thicknessIn,
+    thickness: t,
+    boardThickness: T,
+    scale: s,
     apexLenRange,
+    apexTrimmed,
     apexCenter,
     railMark1,
     railTuck1,
-    cornerCutRail,
-    cornerCutOffset,
     domedDeckBand,
     deckMark1,
     deckMark2,
     deckMark3,
-    cornerCutDeck,
     hardEdge: input.hardEdge,
     bottomTuck1,
     bottomTuck2,
     bottomTuck3,
-    bottomTuck3Derived,
-    removeCornerCut: !!input.removeCornerCut,
-    singleTuck: !!input.singleTuck,
+    singleTuck: input.singleTuck,
+    sharpBottomTuck: input.sharpBottomTuck,
   };
 }
 
-interface InchesProfileOpts {
-  boardThicknessIn?: number;
-  railThicknessValIn?: number;
-  domedBandBaseIn?: number;
+/** Rule 9: the deck line — t at the rail, T at the Domed Deck Band, flat beyond it. */
+function deckYFor(r: RailSectionResultInches): (x: number) => number {
+  const T = r.boardThickness;
+  const t = r.thickness;
+  return (x: number) => (T === t ? t : t + (T - t) * Math.min(1, Math.max(0, -x / r.domedDeckBand)));
 }
 
-// Ordered cross-section profile for volume/geometry math: the true point-to-point path of foam
-// removed by the rail bands at one station, from the innermost deck point (where the board is
-// still full/board thickness) over the rail apex to the innermost bottom point. x=0 is the rail
-// apex; x runs negative moving inboard toward the stringer; y is height off the bottom.
-function buildProfilePointsInches(
-  r: RailSectionResultInches,
-  thicknessIn: number,
-  domed: boolean,
-  opts: InchesProfileOpts,
-): [number, number][] {
-  const bt = domed ? (opts.boardThicknessIn ?? thicknessIn) : thicknessIn;
-  const rt = domed ? (opts.railThicknessValIn ?? thicknessIn) : thicknessIn;
-  const bandWidth = domed
-    ? r.domedDeckBand || opts.domedBandBaseIn || 1
-    : opts.domedBandBaseIn || Math.max(r.deckMark3, 1);
-  const domedY = (x: number) => (bt === rt ? thicknessIn : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth)));
-  const band1EndY = domedY(-r.deckMark1);
-  const band1Y = (x: number) => {
-    const t = r.deckMark1 > 0 ? -x / r.deckMark1 : 0;
-    return r.railMark1 + (band1EndY - r.railMark1) * t;
-  };
+/** Rail Band 1's line, from Rail Mark 1 on the rail to the deck at Deck Mark 1. */
+function band1YFor(r: RailSectionResultInches, deckY: (x: number) => number): (x: number) => number {
+  const endY = deckY(-r.deckMark1);
+  return (x: number) => r.railMark1 + (endY - r.railMark1) * (-x / r.deckMark1);
+}
+
+/** Rail Tuck 1's line, from Rail Tuck 1 on the rail to the bottom at Bottom Tuck 1. */
+function tuck1YFor(r: RailSectionResultInches): (x: number) => number {
+  return (x: number) => r.railTuck1 * (1 - -x / r.bottomTuck1);
+}
+
+// Rule 11: the cut, faceted cross-section volume integrates — from the deck at the Domed Deck Band
+// (PC8: on a flat deck too; there the start does not change the area) over the rail to the bottom.
+// x = 0 is the rail; x runs negative toward the stringer; y is height off the bottom.
+function buildProfilePointsInches(r: RailSectionResultInches): [number, number][] {
+  const deckY = deckYFor(r);
+  const band1Y = band1YFor(r, deckY);
   const pts: [number, number][] = [
-    [-bandWidth, bt],
-    [-r.deckMark3, domedY(-r.deckMark3)],
+    [-r.domedDeckBand, r.boardThickness],
+    [-r.deckMark3, deckY(-r.deckMark3)],
     [-r.deckMark2, band1Y(-r.deckMark2)],
-    [-r.deckMark1, domedY(-r.deckMark1)],
+    [-r.deckMark1, deckY(-r.deckMark1)],
     [0, r.railMark1],
     [0, r.railTuck1],
   ];
   if (r.hardEdge) pts.push([0, 0]);
   else if (r.singleTuck) pts.push([-r.bottomTuck3, 0]);
   else {
-    pts.push([-r.bottomTuck2, r.railTuck1 / 2]);
+    pts.push([-r.bottomTuck2, tuck1YFor(r)(-r.bottomTuck2)]);
     pts.push([-r.bottomTuck3, 0]);
   }
   return pts;
@@ -327,46 +475,25 @@ interface RailSegmentInches {
   p2: [number, number];
 }
 
-// ---- Rail band cross-section segments, following the sheet's chart segments ----
-function buildSegmentDefsInches(
-  r: RailSectionResultInches,
-  thicknessIn: number,
-  domed: boolean,
-  opts: InchesProfileOpts,
-): RailSegmentInches[] {
+// Rule 10: the drawn segments, following the sheets' chart series (the reference page's `segments`).
+// Band 2 starts ON Band 1's line at Deck Mark 2 and Tuck 2 ON Tuck 1's line at Bottom Tuck 2. Both are
+// always halfway (plan 04, R17), so Tuck 2 starts at exactly half of Rail Tuck 1, as the page draws it, and
+// Band 2 at Band 1's midpoint. The Domed Deck Band (nudged ±2" and held 1/16" past Deck Mark 3, R18) sets
+// the deck line, the dome line's far end, the Board Thickness connector and the drawing's left edge.
+function buildSegmentDefsInches(r: RailSectionResultInches): RailSegmentInches[] {
+  const deckY = deckYFor(r);
+  const band1Y = band1YFor(r, deckY);
+  const T = r.boardThickness;
   const segs: RailSegmentInches[] = [];
-  // Domed deck line: tapered rail thickness at the apex (x=0, right) sloping to full board
-  // thickness inboard (left).
-  const bt = domed ? (opts.boardThicknessIn ?? thicknessIn) : thicknessIn;
-  const rt = domed ? (opts.railThicknessValIn ?? thicknessIn) : thicknessIn;
-  const bandWidth = domed
-    ? r.domedDeckBand || opts.domedBandBaseIn || 1
-    : opts.domedBandBaseIn || Math.max(r.deckMark3, 1);
-  const domedY = (x: number) => (bt === rt ? thicknessIn : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth)));
-  segs.push({ key: "domedBand", label: "Domed Deck Band", p1: [0, rt], p2: [-bandWidth, bt] });
-  segs.push({ key: "band1", label: "Rail Band 1", p1: [0, r.railMark1], p2: [-r.deckMark1, domedY(-r.deckMark1)] });
-  // Deck Mark 2 must sit exactly on the Rail Band 1 line at its own X position.
-  const band1EndY = domedY(-r.deckMark1);
-  const band1Y = (x: number) => {
-    const t = r.deckMark1 > 0 ? -x / r.deckMark1 : 0;
-    return r.railMark1 + (band1EndY - r.railMark1) * t;
-  };
+  segs.push({ key: "domedBand", label: "Domed Deck Band", p1: [0, r.thickness], p2: [-r.domedDeckBand, T] });
+  segs.push({ key: "band1", label: "Rail Band 1", p1: [0, r.railMark1], p2: [-r.deckMark1, deckY(-r.deckMark1)] });
   segs.push({
     key: "band2",
     label: "Rail Band 2",
     p1: [-r.deckMark2, band1Y(-r.deckMark2)],
-    p2: [-r.deckMark3, domedY(-r.deckMark3)],
+    p2: [-r.deckMark3, deckY(-r.deckMark3)],
   });
-  // Corner Cut (Deck) also lands exactly on the Rail Band 1 line at its own X value.
-  if (!r.removeCornerCut) {
-    segs.push({
-      key: "cornerCut",
-      label: "Corner Cut",
-      p1: [0, r.cornerCutRail as number],
-      p2: [-(r.cornerCutDeck as number), band1Y(-(r.cornerCutDeck as number))],
-    });
-  }
-  const leftEdge = -(bandWidth + 2);
+  const leftEdge = -(r.domedDeckBand + 2);
   if (r.hardEdge) {
     segs.push({ key: "hardEdge", label: "Hard Edge", p1: [0, r.railTuck1], p2: [0, 0] });
   } else if (r.singleTuck) {
@@ -374,16 +501,15 @@ function buildSegmentDefsInches(
     segs.push({ key: "tuck1", label: "Rail Tuck 1", p1: [0, r.railTuck1], p2: [-r.bottomTuck3, 0] });
   } else {
     segs.push({ key: "tuck1", label: "Rail Tuck 1", p1: [0, r.railTuck1], p2: [-r.bottomTuck1, 0] });
-    // Bottom Tuck 2 always sits on the midpoint of the Rail Tuck 1 line (0,railTuck1)→(-bottomTuck1,0).
     segs.push({
       key: "tuck2",
       label: "Rail Tuck 2",
-      p1: [-r.bottomTuck2, r.railTuck1 / 2],
+      p1: [-r.bottomTuck2, tuck1YFor(r)(-r.bottomTuck2)],
       p2: [-r.bottomTuck3, 0],
     });
   }
   // Reference connectors, always drawn.
-  segs.push({ key: "boardConn", label: "Board Thickness", p1: [leftEdge, bt], p2: [-bandWidth, bt] });
+  segs.push({ key: "boardConn", label: "Board Thickness", p1: [leftEdge, T], p2: [-r.domedDeckBand, T] });
   segs.push({ key: "bottomConn", label: "Left Edge → Bottom Tuck 3", p1: [leftEdge, 0], p2: [-r.bottomTuck3, 0] });
   segs.push({ key: "railConn", label: "Rail Mark 1 → Tuck 1", p1: [0, r.railMark1], p2: [0, r.railTuck1] });
   return segs;
@@ -394,38 +520,35 @@ function inchesNearZero(valueIn: number): boolean {
   return Math.round(Math.abs(valueIn) * 16) / 16 < 1 / 16;
 }
 
-interface BuildRailDataGroupsInchesOpts {
-  domed: boolean;
-  boardThicknessIn: number;
-}
+type RailDataRowInches = { label: string; value: number | null | "hard-edge" };
 
+// Rule 13: the DATA rows, as before with both Corner Cut rows gone. Apex Thickness shows the trimmed
+// value (the "trimmed to fit" words live on plan 02's Advanced slider label — PC11).
 function buildRailDataGroupsInches(
   r: RailSectionResultInches,
-  opts: BuildRailDataGroupsInchesOpts,
-): { heading: RailDataHeading; rows: { label: string; value: number | null | "hard-edge" }[] }[] {
+  domed: boolean,
+): { heading: RailDataHeading; rows: RailDataRowInches[] }[] {
   const d = (v: number): number | null => (inchesNearZero(v) ? null : v);
 
-  const railRows: { label: string; value: number | null | "hard-edge" }[] = [];
-  if (opts.domed) railRows.push({ label: "Board Thickness", value: d(opts.boardThicknessIn) });
+  const railRows: RailDataRowInches[] = [];
+  if (domed) railRows.push({ label: "Board Thickness", value: d(r.boardThickness) });
   railRows.push(
-    { label: opts.domed ? "Tapered Rail Thickness" : "Board Thickness", value: d(r.thickness) },
+    { label: domed ? "Tapered Rail Thickness" : "Board Thickness", value: d(r.thickness) },
     { label: "Apex Thickness", value: d(r.apexLenRange) },
     { label: "Apex Center", value: d(r.apexCenter) },
     { label: "Rail Mark 1", value: d(r.railMark1) },
   );
   if (!r.hardEdge) railRows.push({ label: "Rail Tuck 1", value: d(r.railTuck1) });
-  if (!r.removeCornerCut) railRows.push({ label: "Corner Cut (Rail)", value: d(r.cornerCutRail as number) });
 
-  const deckRows: { label: string; value: number | null | "hard-edge" }[] = [];
-  if (opts.domed) deckRows.push({ label: "Domed Deck Band", value: d(r.domedDeckBand) });
+  const deckRows: RailDataRowInches[] = [];
+  if (domed) deckRows.push({ label: "Domed Deck Band", value: d(r.domedDeckBand) });
   deckRows.push(
     { label: "Deck Mark 1", value: d(r.deckMark1) },
     { label: "Deck Mark 2", value: d(r.deckMark2) },
     { label: "Deck Mark 3", value: d(r.deckMark3) },
   );
-  if (!r.removeCornerCut) deckRows.push({ label: "Corner Cut (Deck)", value: d(r.cornerCutDeck as number) });
 
-  const bottomRows: { label: string; value: number | null | "hard-edge" }[] = r.hardEdge
+  const bottomRows: RailDataRowInches[] = r.hardEdge
     ? [{ label: "Bottom Tuck 3", value: "hard-edge" }]
     : (r.singleTuck
         ? []
@@ -449,114 +572,96 @@ function buildRailDataGroupsInches(
 function resultToInches(r: RailSectionResult): RailSectionResultInches {
   return {
     thickness: mmToInches(r.thickness),
+    boardThickness: mmToInches(r.boardThickness),
+    scale: r.scale,
     apexLenRange: mmToInches(r.apexLenRange),
+    apexTrimmed: r.apexTrimmed,
     apexCenter: mmToInches(r.apexCenter),
     railMark1: mmToInches(r.railMark1),
     railTuck1: mmToInches(r.railTuck1),
-    cornerCutRail: r.cornerCutRail === null ? null : mmToInches(r.cornerCutRail),
-    cornerCutOffset: r.cornerCutOffset === null ? null : mmToInches(r.cornerCutOffset),
     domedDeckBand: mmToInches(r.domedDeckBand),
     deckMark1: mmToInches(r.deckMark1),
     deckMark2: mmToInches(r.deckMark2),
     deckMark3: mmToInches(r.deckMark3),
-    cornerCutDeck: r.cornerCutDeck === null ? null : mmToInches(r.cornerCutDeck),
     hardEdge: r.hardEdge,
     bottomTuck1: mmToInches(r.bottomTuck1),
     bottomTuck2: mmToInches(r.bottomTuck2),
     bottomTuck3: mmToInches(r.bottomTuck3),
-    bottomTuck3Derived: mmToInches(r.bottomTuck3Derived),
-    removeCornerCut: r.removeCornerCut,
     singleTuck: r.singleTuck,
+    sharpBottomTuck: r.sharpBottomTuck,
   };
 }
 
 export interface ComputeRailSectionInput {
+  /** t — the rail-side thickness: the board thickness on a flat deck, the 1/16"-rounded tapered rail
+   * thickness on a domed one. */
   thickness: Mm;
+  /** T — the board thickness. */
+  boardThickness: Mm;
   ratioTopPercent: number;
   family: RailFamily;
-  domedBandBase: Mm;
+  /** "Scaled from center by" — pass 1 for the centre (R10). */
   scale: number;
-  cornerCutOffsetOverride: Mm | null;
-  removeCornerCut: boolean;
+  nudges: RailMarkNudges;
   singleTuck: boolean;
-  bottomTuck3Override: Mm | null;
+  /** Sharp Bottom Tuck (plan 05, R22): passed through to the result for the finished rail. */
+  sharpBottomTuck: boolean;
   symmetrical: boolean;
   hardEdge: boolean;
 }
 
-/** Mm-boundary port of the prototype's `computeSection`. */
+/** One rail section's marks, worked out from the v2 sheets (rules 1-8). */
 export function computeRailSection(input: ComputeRailSectionInput): RailSectionResult {
   const rIn = computeSectionInches({
     thicknessIn: mmToInches(input.thickness),
+    boardThicknessIn: mmToInches(input.boardThickness),
     ratioTopPct: input.ratioTopPercent,
     family: input.family,
-    domedBandBaseIn: mmToInches(input.domedBandBase),
     scale: input.scale,
-    cornerCutOffsetOverrideIn:
-      input.cornerCutOffsetOverride === null ? null : mmToInches(input.cornerCutOffsetOverride),
-    removeCornerCut: input.removeCornerCut,
-    singleTuck: input.singleTuck,
-    bottomTuck3OverrideIn: input.bottomTuck3Override === null ? null : mmToInches(input.bottomTuck3Override),
+    nudgesIn: Object.fromEntries(
+      Object.entries(railNudgesOf(input.nudges)).map(([k, v]) => [k, mmToInches(v)]),
+    ) as Record<
+      RailNudgeKey,
+      number
+    >,
     symmetrical: input.symmetrical,
+    singleTuck: input.singleTuck,
+    sharpBottomTuck: input.sharpBottomTuck,
     hardEdge: input.hardEdge,
   });
   return {
     thickness: inchesToMm(rIn.thickness),
+    boardThickness: inchesToMm(rIn.boardThickness),
+    scale: rIn.scale,
     apexLenRange: inchesToMm(rIn.apexLenRange),
+    apexTrimmed: rIn.apexTrimmed,
     apexCenter: inchesToMm(rIn.apexCenter),
     railMark1: inchesToMm(rIn.railMark1),
     railTuck1: inchesToMm(rIn.railTuck1),
-    cornerCutRail: rIn.cornerCutRail === null ? null : inchesToMm(rIn.cornerCutRail),
-    cornerCutOffset: rIn.cornerCutOffset === null ? null : inchesToMm(rIn.cornerCutOffset),
     domedDeckBand: inchesToMm(rIn.domedDeckBand),
     deckMark1: inchesToMm(rIn.deckMark1),
     deckMark2: inchesToMm(rIn.deckMark2),
     deckMark3: inchesToMm(rIn.deckMark3),
-    cornerCutDeck: rIn.cornerCutDeck === null ? null : inchesToMm(rIn.cornerCutDeck),
     hardEdge: rIn.hardEdge,
     bottomTuck1: inchesToMm(rIn.bottomTuck1),
     bottomTuck2: inchesToMm(rIn.bottomTuck2),
     bottomTuck3: inchesToMm(rIn.bottomTuck3),
-    bottomTuck3Derived: inchesToMm(rIn.bottomTuck3Derived),
-    removeCornerCut: rIn.removeCornerCut,
     singleTuck: rIn.singleTuck,
+    sharpBottomTuck: rIn.sharpBottomTuck,
   };
 }
 
-export interface RailProfileOpts {
-  boardThickness?: Mm;
-  railThicknessVal?: Mm;
-  domedBandBase?: Mm;
+/** The cut, faceted cross-section as one continuous point path — what VOLUME integrates (rule 11, R5). */
+export function buildRailProfile(result: RailSectionResult): Point2D[] {
+  return buildProfilePointsInches(resultToInches(result)).map(([x, y]) => ({
+    x: mm(inchesToMm(x)),
+    y: mm(inchesToMm(y)),
+  }));
 }
 
-function toInchesOpts(opts: RailProfileOpts): InchesProfileOpts {
-  return {
-    boardThicknessIn: opts.boardThickness !== undefined ? mmToInches(opts.boardThickness) : undefined,
-    railThicknessValIn: opts.railThicknessVal !== undefined ? mmToInches(opts.railThicknessVal) : undefined,
-    domedBandBaseIn: opts.domedBandBase !== undefined ? mmToInches(opts.domedBandBase) : undefined,
-  };
-}
-
-/** The cross-section profile as one continuous point path — pinned now for Volume to consume later. */
-export function buildRailProfile(
-  result: RailSectionResult,
-  thickness: Mm,
-  domed: boolean,
-  opts: RailProfileOpts = {},
-): Point2D[] {
-  const ptsIn = buildProfilePointsInches(resultToInches(result), mmToInches(thickness), domed, toInchesOpts(opts));
-  return ptsIn.map(([x, y]) => ({ x: mm(inchesToMm(x)), y: mm(inchesToMm(y)) }));
-}
-
-/** The cross-section drawn as separate labeled segments (mirrors `buildRailProfile`'s points). */
-export function buildRailSegments(
-  result: RailSectionResult,
-  thickness: Mm,
-  domed: boolean,
-  opts: RailProfileOpts = {},
-): RailSegment[] {
-  const segsIn = buildSegmentDefsInches(resultToInches(result), mmToInches(thickness), domed, toInchesOpts(opts));
-  return segsIn.map((s) => ({
+/** The cross-section drawn as separate labeled segments (rule 10). */
+export function buildRailSegments(result: RailSectionResult): RailSegment[] {
+  return buildSegmentDefsInches(resultToInches(result)).map((s) => ({
     key: s.key,
     label: s.label,
     p1: { x: mm(inchesToMm(s.p1[0])), y: mm(inchesToMm(s.p1[1])) },
@@ -604,38 +709,27 @@ export function railPlotDots(
 }
 
 export interface RailPlotBoundsOpts {
-  domed: boolean;
-  thickness: Mm;
-  boardThickness?: Mm;
-  domedBandBase?: Mm;
   xAxisMinShared?: Mm;
 }
 
-/** Axis range for one section's plot, ported from `buildPlot`'s axis math only (no pixel math here). */
-export function railPlotBounds(result: RailSectionResult, opts: RailPlotBoundsOpts): { xAxisMin: Mm; yAxisMax: Mm } {
-  const thicknessIn = mmToInches(opts.thickness);
-  const blankThicknessIn = opts.domed ? (opts.boardThickness !== undefined ? mmToInches(opts.boardThickness) : thicknessIn) : thicknessIn;
-  const domedBandBaseIn = opts.domedBandBase !== undefined ? mmToInches(opts.domedBandBase) : undefined;
-  const bandWidthIn = opts.domed
-    ? mmToInches(result.domedDeckBand) || domedBandBaseIn || 1
-    : domedBandBaseIn || Math.max(mmToInches(result.deckMark3), 1);
-  const xAxisMinIn = Math.min(-(bandWidthIn + 2), opts.xAxisMinShared !== undefined ? mmToInches(opts.xAxisMinShared) : 0);
-  const yAxisMaxIn = blankThicknessIn + 0.25;
+/** Axis range for one section's plot (rule 12): 2" beyond the Domed Deck Band (or the shared minimum),
+ * and 1/4" above the board thickness. */
+export function railPlotBounds(result: RailSectionResult, opts: RailPlotBoundsOpts = {}): { xAxisMin: Mm; yAxisMax: Mm } {
+  const xAxisMinIn = Math.min(
+    -(mmToInches(result.domedDeckBand) + 2),
+    opts.xAxisMinShared !== undefined ? mmToInches(opts.xAxisMinShared) : 0,
+  );
+  const yAxisMaxIn = mmToInches(result.boardThickness) + 0.25;
   return { xAxisMin: mm(inchesToMm(xAxisMinIn)), yAxisMax: mm(inchesToMm(yAxisMaxIn)) };
 }
 
 export interface BuildRailDataGroupsOpts {
   domed: boolean;
-  boardThickness: Mm;
 }
 
-/** Mm-boundary port of `cardFromResult`'s group structure, with values as data rather than strings. */
+/** The DATA tab's rows for one section (rule 13), with values as data rather than strings. */
 export function buildRailDataGroups(result: RailSectionResult, opts: BuildRailDataGroupsOpts): RailDataGroup[] {
-  const groupsIn = buildRailDataGroupsInches(resultToInches(result), {
-    domed: opts.domed,
-    boardThicknessIn: mmToInches(opts.boardThickness),
-  });
-  return groupsIn.map((g) => ({
+  return buildRailDataGroupsInches(resultToInches(result), opts.domed).map((g) => ({
     heading: g.heading,
     rows: g.rows.map((row) => ({
       label: row.label,
@@ -662,80 +756,63 @@ export interface RailBandsOutput {
   tail: RailSectionOutput;
 }
 
-/** The `syncSnapshot` orchestration: taper-clamp each section, then compute its full output. */
-export function computeRailBands(spec: RailBandSpec): RailBandsOutput {
-  const build = (key: RailSectionKey, sectionSpec: RailSectionSpec, hardEdge: boolean): RailSectionOutput => {
-    const { scale, domedBandBase } = RAIL_SECTION_CONSTANTS[key];
-    const domed = sectionSpec.deckPercent < 100;
-    const railThicknessClamped = roundToSixteenthInch(
-      mm((sectionSpec.boardThickness * sectionSpec.deckPercent) / 100),
-    );
-    const thicknessEff = domed ? railThicknessClamped : sectionSpec.boardThickness;
-
-    const result = computeRailSection({
-      thickness: thicknessEff,
-      ratioTopPercent: sectionSpec.ratioTopPercent,
-      family: sectionSpec.family,
-      domedBandBase,
-      scale,
-      cornerCutOffsetOverride: sectionSpec.cornerCutOffsetOverride,
-      removeCornerCut: sectionSpec.removeCornerCut,
-      singleTuck: sectionSpec.singleTuck,
-      bottomTuck3Override: sectionSpec.bottomTuck3Override,
-      symmetrical: sectionSpec.symmetrical,
-      hardEdge,
-    });
-
-    const profileOpts: RailProfileOpts = {
-      boardThickness: sectionSpec.boardThickness,
-      railThicknessVal: railThicknessClamped,
-      domedBandBase,
-    };
-    const profile = buildRailProfile(result, thicknessEff, domed, profileOpts);
-    const segments = buildRailSegments(result, thicknessEff, domed, profileOpts);
-    const bounds = railPlotBounds(result, {
-      domed,
-      thickness: thicknessEff,
-      boardThickness: sectionSpec.boardThickness,
-      domedBandBase,
-    });
-    const dataGroups = buildRailDataGroups(result, { domed, boardThickness: sectionSpec.boardThickness });
-
-    return {
-      domed,
-      boardThickness: sectionSpec.boardThickness,
-      railThicknessClamped,
-      thicknessEff,
-      result,
-      profile,
-      segments,
-      bounds,
-      dataGroups,
-    };
-  };
-
+/**
+ * One rail section's full output — the one per-rail builder `computeRailBands` and the INSTRUCTIONS
+ * example both use. Deck Profile is held at 75% or more (R7) before the tapered rail thickness is
+ * rounded to the 1/16" (as the reference page's `thicknesses()` does with its `r16`); the centre's scale
+ * is always 1 (R10); a section saved before the scale and nudges existed reads their defaults.
+ */
+export function computeRailSectionOutput(
+  key: RailSectionKey,
+  sectionSpec: RailSectionSpec,
+  hardEdge: boolean,
+): RailSectionOutput {
+  const deckPercent = effectiveDeckPercent(sectionSpec.deckPercent);
+  const domed = deckPercent < 100;
+  const railThicknessClamped = roundToSixteenthInch(mm((sectionSpec.boardThickness * deckPercent) / 100));
+  const thicknessEff = domed ? railThicknessClamped : sectionSpec.boardThickness;
+  const result = computeRailSection({
+    thickness: thicknessEff,
+    boardThickness: sectionSpec.boardThickness,
+    ratioTopPercent: sectionSpec.ratioTopPercent,
+    family: sectionSpec.family,
+    scale: key === "center" ? 1 : (sectionSpec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE),
+    nudges: railNudgesOf(sectionSpec.nudges),
+    singleTuck: sectionSpec.singleTuck,
+    // A section held in memory from before plan 05 (Fast Refresh) has no box: it reads off (T-gec-20).
+    sharpBottomTuck: sectionSpec.sharpBottomTuck === true,
+    symmetrical: sectionSpec.symmetrical,
+    hardEdge,
+  });
   return {
-    nose: build("nose", spec.nose, false),
-    center: build("center", spec.center, false),
-    tail: build("tail", spec.tail, spec.tailHardEdge),
+    domed,
+    boardThickness: sectionSpec.boardThickness,
+    railThicknessClamped,
+    thicknessEff,
+    result,
+    profile: buildRailProfile(result),
+    segments: buildRailSegments(result),
+    bounds: railPlotBounds(result),
+    dataGroups: buildRailDataGroups(result, { domed }),
+  };
+}
+
+/** Every rail section's output: the nose and centre never have a hard edge; the tail's follows the flag. */
+export function computeRailBands(spec: RailBandSpec): RailBandsOutput {
+  return {
+    nose: computeRailSectionOutput("nose", spec.nose, false),
+    center: computeRailSectionOutput("center", spec.center, false),
+    tail: computeRailSectionOutput("tail", spec.tail, spec.tailHardEdge),
   };
 }
 
 export const RAIL_DATA_HEADINGS = ["Rail Side", "Deck Side", "Bottom"] as const;
 
-/** Fixed canonical row order per heading (matches `cardFromResult`'s own push order) — rows
- * never shuffle based on which sections are open or which flags are set. */
+/** Fixed canonical row order per heading — rows never shuffle based on which sections are open or
+ * which flags are set. The v2 sheets have no Corner Cut, so neither does the table. */
 export const RAIL_DATA_LABEL_ORDER: Record<RailDataHeading, string[]> = {
-  "Rail Side": [
-    "Board Thickness",
-    "Tapered Rail Thickness",
-    "Apex Thickness",
-    "Apex Center",
-    "Rail Mark 1",
-    "Rail Tuck 1",
-    "Corner Cut (Rail)",
-  ],
-  "Deck Side": ["Domed Deck Band", "Deck Mark 1", "Deck Mark 2", "Deck Mark 3", "Corner Cut (Deck)"],
+  "Rail Side": ["Board Thickness", "Tapered Rail Thickness", "Apex Thickness", "Apex Center", "Rail Mark 1", "Rail Tuck 1"],
+  "Deck Side": ["Domed Deck Band", "Deck Mark 1", "Deck Mark 2", "Deck Mark 3"],
   Bottom: ["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"],
 };
 

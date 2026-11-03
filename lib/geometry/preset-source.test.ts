@@ -179,6 +179,17 @@ describe("preset source blocks", () => {
         boardThickness: inchesToMm(1.3125),
         cornerCutOffsetOverride: inchesToMm(3 / 32),
         bottomTuck3Override: inchesToMm(0.6875),
+        // Quick 261102-gec: a non-default scale and awkward 1/16" nudges paste back exactly (the
+        // whole-millimetre nudges are the next test's).
+        scaleFromCenter: 0.55,
+        nudges: {
+          ...DEFAULT_RAIL_BAND_SPEC.nose.nudges,
+          apexThickness: inchesToMm(-3 / 16),
+          deckMark1: inchesToMm(7 / 16),
+          // Plan 04 (R18): the dome's ±2" window, one sixteenth inside its end.
+          domedDeckBand: inchesToMm(-31 / 16),
+          bottomTuck3: inchesToMm(1 / 16),
+        },
       },
     };
     const fins: FinPlacementSpec = {
@@ -206,6 +217,34 @@ describe("preset source blocks", () => {
     expect(buildFinsPresetSource(fins)).toContain("forwardOffRailNudge: inchesToMm(-0.125),");
     expect(buildFinsPresetSource(fins)).toContain("rearOffRailNudge: inchesToMm(0.0625),");
     expect(buildRailsPresetSource(rails)).toContain("cornerCutOffsetOverride: inchesToMm(0.09375),");
+    expect(buildRailsPresetSource(rails)).toContain("scaleFromCenter: 0.55,");
+    expect(buildRailsPresetSource(rails)).toContain("deckMark1: inchesToMm(0.4375),");
+    expect(buildRailsPresetSource(rails)).toContain("domedDeckBand: inchesToMm(-1.9375),");
+  });
+
+  it("prints each rail's Sharp Bottom Tuck right after Single Tuck, and a ticked box pastes back exactly (quick 261102-gec plan 05, R22)", () => {
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
+    };
+    const source = buildRailsPresetSource(rails);
+    const lines = source.split("\n").map((l) => l.trim());
+    const after = lines.flatMap((l, i) => (l.startsWith("singleTuck:") ? [lines[i + 1]] : []));
+    expect(after).toEqual(["sharpBottomTuck: false,", "sharpBottomTuck: true,", "sharpBottomTuck: false,"]);
+    expect(pasteBlock(source)).toStrictEqual({ rails });
+  });
+
+  it("whole-millimetre nudges from a Metric slider paste back within 0.0000127 mm, every other field exactly (quick 261102-gec)", () => {
+    const metricNudges = { deckMark3: mm(-7), domedDeckBand: mm(-37), bottomTuck1: mm(6), apexThickness: mm(3) };
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, nudges: { ...DEFAULT_RAIL_BAND_SPEC.center.nudges, ...metricNudges } },
+    };
+    const pasted = (pasteBlock(buildRailsPresetSource(rails)) as { rails: RailBandSpec }).rails;
+    for (const [key, stored] of Object.entries(metricNudges) as [keyof typeof metricNudges, number][]) {
+      expect(Math.abs(pasted.center.nudges[key] - stored), key).toBeLessThan(0.0000127);
+    }
+    expect({ ...pasted, center: { ...pasted.center, nudges: rails.center.nudges } }).toStrictEqual(rails);
   });
 });
 

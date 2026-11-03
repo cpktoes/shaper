@@ -3,18 +3,26 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import {
-  MIN_BOTTOM_TUCK_SEPARATION_IN,
+  DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_LIMIT_IN,
+  RAIL_NUDGE_NAMES,
+  RAIL_NUDGE_STEP_IN,
+  RAIL_RATIO_RANGE,
+  RAIL_SCALE_RANGE,
+  deckProfileSliderStep,
   railFamilyLabel,
+  railNudgesOf,
   type RailBandSpec,
   type RailFamily,
+  type RailNudgeKey,
   type RailSectionKey,
   type RailSectionOutput,
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
-import { formatMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
+import { formatMark, formatSignedMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
 import { railsImportedReadout } from "@/lib/geometry/imported-readout";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
-import { mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
+import { mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { SliderRow, sliderValue } from "@/components/design/slider-row";
 import { useUnits } from "@/components/units-provider";
 import { cn } from "@/lib/utils";
@@ -29,6 +37,10 @@ interface RailControlsProps {
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
+  /** One mark's nudge off its formula (quick 261102-gec plan 02, PC19) — its own undo step per mark. */
+  onChangeNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
+  /** Reset Advanced Settings for one rail (PC20) — one undo step. */
+  onResetAdvanced: (key: RailSectionKey) => void;
   /** Each rail's View box (quick 261017-vdh): the same open/closed state that used to be the
    * heading's ▾/▸ arrow. Unticked hides the rail's controls, its plot and its DATA table section. */
   sectionOpen: Record<RailSectionKey, boolean>;
@@ -48,11 +60,6 @@ interface RailControlsProps {
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
 const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
-const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
-// Corner Cut Offset's computed defaults (cornerCutRailOffsetForInches in lib/geometry/rail-bands.ts)
-// are 1/8, 3/32, 1/16, 1/32, and 0 — a 1/16 step can't represent the 3/32 or 1/32 defaults, so this
-// slider needs its own finer-grained, narrower-range bounds. TUCK_BOUNDS stays as-is for Bottom Tuck 3.
-const CORNER_CUT_BOUNDS = { min: 0, max: 0.25, step: 1 / 32 };
 
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
 
@@ -72,14 +79,6 @@ function sectionThicknessLabel(system: UnitsSystem): Record<RailSectionKey, stri
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
-}
-
-/** rawStep/steps/percentStep from the prototype's `deckProfileFor`, so both slider endpoints
- * (including 100% Flat) stay exactly reachable regardless of the section's own thickness. */
-function deckProfileStep(thicknessIn: number): number {
-  const rawStep = Math.max(0.01, (0.0625 / thicknessIn) * 100);
-  const steps = Math.max(1, Math.round(34 / rawStep));
-  return 34 / steps;
 }
 
 /** RAILS' ruled heading look (the founder's canvas, quick 261017-vdh): the INPUTS heading and each
@@ -110,15 +109,18 @@ function AdvancedHeading({
   );
 }
 
-/** The Ratio slider's marks under its track, each at its own place on the 30-70 range. No 70/30 at the right
- * end: in a half-width column it ran into 60/40 and read "60/4070/30" (the founder, 2026-10-19: "drop the
- * 70/30 marks"). */
+/** The Ratio slider's marks under its track on the 20-80 range (quick 261102-gec plan 02, R8, PC14,
+ * 2026-11-02): 20/80 at the left end, 50/50 in the middle and 80/20 at the right end. The old 60/40 mark is
+ * gone: on a 20-80 track it sits two-thirds along, and it runs into 50/50 whenever the column is under 154
+ * dots — every computer column and a 360-dot phone (measured in the app's Inter, the plan's M9). A right-end
+ * 80/20 clears 50/50 by 23 dots even in the narrowest column (the 820-dot window), so it reads cleanly where
+ * the old 70/30 did not (fast 184, the founder 2026-10-19: "drop the 70/30 marks"). */
 function RatioTickCaptions() {
   return (
     <div className="relative mt-0.5 h-3">
-      <span className="absolute left-0 text-[9px] text-surf-ink-muted font-normal">30/70</span>
-      <span className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">50/50</span>
-      <span className="absolute left-3/4 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">60/40</span>
+      <span data-ratio-mark className="absolute left-0 text-[9px] text-surf-ink-muted font-normal">20/80</span>
+      <span data-ratio-mark className="absolute left-1/2 -translate-x-1/2 text-[9px] text-surf-ink-muted font-normal">50/50</span>
+      <span data-ratio-mark className="absolute right-0 text-[9px] text-surf-ink-muted font-normal">80/20</span>
     </div>
   );
 }
@@ -128,6 +130,8 @@ interface RailSectionControlsProps {
   spec: RailSectionSpec;
   output: RailSectionOutput;
   onChange: (patch: Partial<RailSectionSpec>) => void;
+  onChangeNudge: (nudgeKey: RailNudgeKey, value: Mm) => void;
+  onResetAdvanced: () => void;
   open: boolean;
   onToggleOpen: () => void;
   advancedOpen: boolean;
@@ -151,6 +155,8 @@ function RailSectionControls({
   spec,
   output,
   onChange,
+  onChangeNudge,
+  onResetAdvanced,
   open,
   onToggleOpen,
   advancedOpen,
@@ -165,45 +171,57 @@ function RailSectionControls({
   const locked = useControlsLocked();
   const isTail = sectionKey === "tail";
   const thicknessBounds = sectionKey === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
-  // Inches-domain thickness stays around for deckProfileStep — the deck-profile step formula is a
-  // model-side snap (pinned by golden fixtures) and never becomes system-aware.
+  // Inches-domain thickness stays around for the Deck Profile step — the step formula is a model-side
+  // snap (`deckProfileSliderStep`, tested in rail-bands.test.ts) and never becomes system-aware.
   const boardThicknessIn = mmToInches(spec.boardThickness);
-  const deckProfileSliderStep = deckProfileStep(boardThicknessIn);
-  const deckProfileSliderValue = 166 - spec.deckPercent;
+  // Deck Profile stops at 75% (quick 261102-gec plan 02, R7, PC23): the slider still runs Flat on the
+  // left to Heavily Domed on the right, so it holds 175 - deckPercent over 75-100. A board saved below 75%
+  // shows its thumb at the right end and draws at 75% (the rules hold it there), and its saved number is
+  // only rewritten if the shaper moves this slider.
+  const deckSliderStep = deckProfileSliderStep(boardThicknessIn);
+  const deckProfileSliderValue = clampFinite(175 - spec.deckPercent, 75, 100);
   const thicknessSlider = measureSlider(spec.boardThickness, thicknessBounds, thicknessBounds.step, 1, system);
-  const cornerCutOffsetMm = output.result.cornerCutOffset ?? mm(0);
-  const cornerCutSlider = measureSlider(cornerCutOffsetMm, CORNER_CUT_BOUNDS, CORNER_CUT_BOUNDS.step, 1, system);
-  const bottomTuck3DerivedIn = mmToInches(output.result.bottomTuck3Derived);
-  // Dynamic bounds (GSD-added, not a static constant like TUCK_BOUNDS): Bottom Tuck 3 must never
-  // be draggable at or below Bottom Tuck 1 (which itself depends on symmetrical/family/scale/
-  // thickness) — the min enforces the same strict separation as the geometry-layer floor. The max
-  // tracks the un-overridden derived value (computed in lib/, not here) so a symmetrical 4" value
-  // is always reachable and never pinned below a static 1.5" max that can't represent it. This
-  // bound is always computed in inches, regardless of system — measureSlider derives the metric
-  // domain from it the same way it does for every static *_BOUNDS constant.
-  const bottomTuck3Bounds = {
-    min: mmToInches(output.result.bottomTuck1) + MIN_BOTTOM_TUCK_SEPARATION_IN,
-    max: Math.max(TUCK_BOUNDS.max, bottomTuck3DerivedIn),
-    step: TUCK_BOUNDS.step,
-  };
-  const bottomTuck3Slider = measureSlider(
-    output.result.bottomTuck3,
-    bottomTuck3Bounds,
-    bottomTuck3Bounds.step,
-    1,
-    system,
-  );
   const hardEdgeOn = isTail ? !!tailHardEdge : false;
   const thicknessLabel = sectionThicknessLabel(system)[sectionKey];
+  // Exactly the six nudges, a missing one as 0 (plan 04, PC29), so a label never reads a nudge that is not
+  // a number — a board in memory from before the Domed Deck Band nudge has no dome key.
+  const nudges = railNudgesOf(spec.nudges);
+  const scaleFromCenter = spec.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
 
-  const resetAdvanced = () => {
-    onChange({
-      cornerCutOffsetOverride: null,
-      bottomTuck3Override: null,
-      removeCornerCut: false,
-      singleTuck: false,
-    });
+  /** One nudge slider (quick 261102-gec plan 02, R15, PC18, PC24): the track holds the nudge — ±2" for
+   * the Domed Deck Band (plan 04, R18, PC34), ±3/4" for Bottom Tuck 3 (R19, fast task 188), ±1/2" for the
+   * deck marks, ±1/4" for Apex Thickness and Bottom Tuck 1, every window read from `RAIL_NUDGE_LIMIT_IN`, in
+   * 1/16" steps (whole millimetres in Metric, -50 to +50 mm on the dome) — while the label reads the mark it
+   * lands on and the nudge itself, e.g. "Deck Mark 1 — 2 5/8" (+1/8")", the FINS Off-Rail tuners' pattern.
+   * Apex Thickness adds ", trimmed to fit" while the apex had to shrink to fit on the rail (R4); that is
+   * information, so it never takes the warning colour. The dome carries no such note when the rules hold
+   * it 1/16" past Deck Mark 3 (PC33): its label already reads the mark where it stops, as every floor's
+   * does. */
+  const nudgeRow = (key: RailNudgeKey) => {
+    const limit = RAIL_NUDGE_LIMIT_IN[key];
+    const slider = measureSlider(nudges[key], { min: -limit, max: limit }, RAIL_NUDGE_STEP_IN, 1, system);
+    const mark = key === "apexThickness" ? output.result.apexLenRange : output.result[key];
+    const markText = formatMark(mark, system);
+    const trimmed = key === "apexThickness" && output.result.apexTrimmed ? ", trimmed to fit" : "";
+    return (
+      <SliderRow
+        key={key}
+        label={`${RAIL_NUDGE_NAMES[key]} — ${markText} (${formatSignedMark(nudges[key], system)})${trimmed}`}
+        value={slider.value}
+        min={slider.min}
+        max={slider.max}
+        step={slider.step}
+        onValueChange={(v) => onChangeNudge(key, slider.toMm(v))}
+        sliderLabel={`${SECTION_TITLE[sectionKey]} ${RAIL_NUDGE_NAMES[key]} nudge`}
+        sliderValueText={markText}
+      />
+    );
   };
+  // The tuck sliders follow Single Tuck and Hard Edge exactly as the rules do (R14). Bottom Tuck 2 has no
+  // slider (plan 04, R17: always halfway), so Single Tuck hides only Bottom Tuck 1's; a Hard Edge tail has
+  // no tucks at all, so Use Single Tuck and both tuck sliders hide.
+  const showTucks = !isTail || !hardEdgeOn;
+  const showBottomTuck1 = showTucks && !spec.singleTuck;
 
   // The group's controls, built once so the two places that may draw them (below) never drift.
   const controls = (
@@ -222,20 +240,19 @@ function RailSectionControls({
       <SliderRow
         label={`Deck Profile — ${formatMark(output.railThicknessClamped, system)} (Tapered Thickness)`}
         value={deckProfileSliderValue}
-        min={66}
+        min={75}
         max={100}
-        step={deckProfileSliderStep}
-        onValueChange={(v) => onChange({ deckPercent: clampFinite(166 - v, 66, 100) })}
+        step={deckSliderStep}
+        onValueChange={(v) => onChange({ deckPercent: clampFinite(175 - v, 75, 100) })}
         leftHint="Flat"
         rightHint="Heavily Domed"
       />
 
       {/* Family and Ratio (below) both keep their own hand-rolled markup. Family's hint row
           carries three captions (Boxy/Medium/Knifey) where SliderRow's fixed hint slot only
-          has room for two; Ratio's own hint row is the four-caption RatioTickCaptions plus a
-          Sym checkbox sharing its heading line, neither of which SliderRow's plain-string
-          label and two-hint layout can hold. Both are named in slider-row.test.ts's
-          allowlist. */}
+          has room for two; Ratio's own hint row is RatioTickCaptions' three marks (20/80, 50/50,
+          80/20), placed where they fall on the track, which SliderRow's two-ended hint line
+          can't hold. Both are named in slider-row.test.ts's allowlist. */}
       <div className="flex gap-3.5">
         <div className={cn("min-w-0 flex-1", locked && "opacity-40")}>
           <div className="mb-2 min-h-5 leading-5 text-sm text-surf-ink-muted font-normal">
@@ -261,35 +278,49 @@ function RailSectionControls({
           {/* The same 20-dot heading line as Family's beside it (`min-h-5 leading-5`), so the two tracks sit
               on one line whatever the Sym box measures (the founder, 2026-10-19: "the sliders themselves
               should be on one plane") — it was 16 dots, which lifted Ratio's track 4 dots above Family's. */}
-          <div className="mb-2 flex h-5 items-center justify-between leading-5">
-            <div className="text-sm text-surf-ink-muted font-normal">
+          {/* The heading line holds only the readout now (quick 261102-gec plan 02, PC15): "Ratio —
+              40.5/59.5" is 118.5 dots in Inter, and Sym beside it would need 51 more — 170 dots in a
+              half column that is 122.5 dots at an 820-dot window (the plan's M9). The readout alone
+              fits every column. */}
+          <div className="mb-2 flex h-5 items-center leading-5">
+            <div data-ratio-readout className="text-sm text-surf-ink-muted font-normal">
               Ratio — {spec.ratioTopPercent}/{100 - spec.ratioTopPercent}
             </div>
-            {/* 09-REVIEW.md IN-01: only the shared Button/Input/Slider primitives get their
-                coarse: touch sizing for free (Slider's own coarse:after:-inset-4 is why the
-                Family/Ratio sliders right beside this row need no explicit rule of their
-                own). This is a hand-rolled label row, not one of those primitives, so it
-                carries its own explicit coarse:min-h-11 -- see WR-02 for what happens to a
-                hand-rolled control that skips this. */}
-            <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-              <Checkbox
-                disabled={locked}
-                checked={spec.symmetrical}
-                onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
-              />
-              Sym
-            </label>
           </div>
+          {/* 20/80 to 80/20 in halves (R8), so 62.5/37.5 is reachable; snapped to the half so a
+              drag can never store a hair off it. */}
           <Slider
             value={spec.ratioTopPercent}
-            min={30}
-            max={70}
-            step={1}
+            min={RAIL_RATIO_RANGE.min}
+            max={RAIL_RATIO_RANGE.max}
+            step={RAIL_RATIO_RANGE.step}
             disabled={locked}
-            onValueChange={(v) => onChange({ ratioTopPercent: clampFinite(sliderValue(v), 30, 70) })}
+            onValueChange={(v) =>
+              onChange({
+                ratioTopPercent:
+                  Math.round(clampFinite(sliderValue(v), RAIL_RATIO_RANGE.min, RAIL_RATIO_RANGE.max) / RAIL_RATIO_RANGE.step) *
+                  RAIL_RATIO_RANGE.step,
+              })
+            }
             className="slider-accent"
           />
           <RatioTickCaptions />
+          {/* Symmetrical on a line of its own under the marks (PC15, the founder's answer 2026-11-02),
+              the same checkbox it always was, reading its full word since fast task 190 (R21, the
+              founder: "Change sym to Symmetrical"). On the tail it and Hard Edge can never both be on —
+              a hard edge has no tucks to mirror — so ticking either clears the other, in the store, where
+              every path through (the Reset too) keeps the rule. 09-REVIEW.md IN-01: only the shared
+              Button/Input/Slider primitives get their coarse: touch sizing for free, so this hand-rolled
+              label row carries its own explicit coarse:min-h-11 -- see WR-02 for what happens to a
+              hand-rolled control that skips this. */}
+          <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+            <Checkbox
+              disabled={locked}
+              checked={spec.symmetrical}
+              onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
+            />
+            Symmetrical
+          </label>
           {isTail && (
             <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
               <Checkbox disabled={locked} checked={hardEdgeOn} onCheckedChange={() => onToggleHardEdge?.()} />
@@ -305,69 +336,86 @@ function RailSectionControls({
         </AdvancedHeading>
         {advancedOpen && (
           <div className="flex flex-col gap-3 pl-3 pt-3">
-            {/* Corner Cut Offset and Bottom Tuck 3 (below) both keep their own hand-rolled
-                markup — each one's heading line carries its own checkbox (Remove / Use
-                Single Tuck) beside the label, which SliderRow's plain-string `label` prop has
-                no slot for. Both are named in slider-row.test.ts's allowlist. */}
-            <div className={locked ? "opacity-40" : undefined}>
-              <div className="mb-1.5 flex items-center justify-between">
-                <div className="text-sm text-surf-ink-muted font-normal">
-                  Corner Cut Offset — {formatMark(cornerCutOffsetMm, system)}
-                </div>
-                <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-                  <Checkbox
-                    disabled={locked}
-                    checked={spec.removeCornerCut}
-                    onCheckedChange={() => onChange({ removeCornerCut: !spec.removeCornerCut })}
-                  />
-                  Remove
-                </label>
-              </div>
-              <div className={spec.removeCornerCut ? "opacity-40" : undefined}>
-                <Slider
-                  value={cornerCutSlider.value}
-                  min={cornerCutSlider.min}
-                  max={cornerCutSlider.max}
-                  step={cornerCutSlider.step}
-                  disabled={locked || spec.removeCornerCut}
-                  onValueChange={(v) => onChange({ cornerCutOffsetOverride: cornerCutSlider.toMm(sliderValue(v)) })}
-                  className="slider-accent"
-                />
-              </div>
-              <div className="mt-0.5 text-xs text-surf-ink-muted font-normal">0 = falls on Rail Mark 1</div>
-            </div>
+            {/* The fuller Advanced menu (quick 261102-gec plan 02, the founder's brief 2026-11-02), in
+                the order PC32 (plan 04) set and PC40 (plan 05) extends: the scale on the nose and tail; Apex
+                Thickness, Deck Mark 1, Deck Mark 3 and the Domed Deck Band right under it (R18, the founder:
+                "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
+                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22); Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                "Always in the middle is great") — each is always halfway to its parent mark. */}
+            {sectionKey !== "center" && (
+              // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
+              // number, not a measurement, so it reads two decimals and never goes through units.ts.
+              <SliderRow
+                label={`Scaled from center by — ${scaleFromCenter.toFixed(2)}`}
+                value={scaleFromCenter}
+                min={RAIL_SCALE_RANGE.min}
+                max={RAIL_SCALE_RANGE.max}
+                step={RAIL_SCALE_RANGE.step}
+                onValueChange={(v) =>
+                  onChange({
+                    scaleFromCenter: clampFinite(
+                      Math.round(v / RAIL_SCALE_RANGE.step) / Math.round(1 / RAIL_SCALE_RANGE.step),
+                      RAIL_SCALE_RANGE.min,
+                      RAIL_SCALE_RANGE.max,
+                    ),
+                  })
+                }
+                sliderLabel={`${SECTION_TITLE[sectionKey]} scaled from center by`}
+                sliderValueText={scaleFromCenter.toFixed(2)}
+              />
+            )}
+            {nudgeRow("apexThickness")}
+            {nudgeRow("deckMark1")}
+            {nudgeRow("deckMark3")}
+            {nudgeRow("domedDeckBand")}
 
-            {(!isTail || !hardEdgeOn) && (
-              <div className={locked ? "opacity-40" : undefined}>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <div className="text-sm text-surf-ink-muted font-normal">
-                    Bottom Tuck 3 — {formatMark(output.result.bottomTuck3, system)}
-                  </div>
-                  <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
-                    <Checkbox
-                      disabled={locked}
-                      checked={spec.singleTuck}
-                      onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
-                    />
-                    Use Single Tuck
-                  </label>
-                </div>
-                <Slider
-                  value={bottomTuck3Slider.value}
-                  min={bottomTuck3Slider.min}
-                  max={bottomTuck3Slider.max}
-                  step={bottomTuck3Slider.step}
+            {/* Use Single Tuck on a line of its own (quick 261102-gec, PC12). Hidden on the tail while
+                Hard Edge is on, as it always was. */}
+            {showTucks && (
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal",
+                  locked && "opacity-40",
+                )}
+              >
+                <Checkbox
                   disabled={locked}
-                  onValueChange={(v) => onChange({ bottomTuck3Override: bottomTuck3Slider.toMm(sliderValue(v)) })}
-                  className="slider-accent"
+                  checked={spec.singleTuck}
+                  onCheckedChange={() => onChange({ singleTuck: !spec.singleTuck })}
                 />
-              </div>
+                Use Single Tuck
+              </label>
+            )}
+            {showBottomTuck1 && nudgeRow("bottomTuck1")}
+            {showTucks && nudgeRow("bottomTuck3")}
+
+            {/* Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC40 — the founder, 2026-11-02: "an
+                advanced checkbox for leaving the bottom edge fairly sharp (follow the angle at bottom
+                tuck 3)"). Ticked, the finished rail keeps the corner at Bottom Tuck 3 as the cut leaves
+                it, so the box sits right after Bottom Tuck 3's slider. It hides with the tuck controls
+                on the tail while Hard Edge is on: a hard edge is already sharp at the bottom. */}
+            {showTucks && (
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal",
+                  locked && "opacity-40",
+                )}
+              >
+                <Checkbox
+                  disabled={locked}
+                  checked={spec.sharpBottomTuck}
+                  onCheckedChange={() => onChange({ sharpBottomTuck: !spec.sharpBottomTuck })}
+                />
+                Sharp Bottom Tuck
+              </label>
             )}
 
+            {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
+                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on — one store action, so one undo step. */}
             <button
               type="button"
               disabled={locked}
-              onClick={resetAdvanced}
+              onClick={() => onResetAdvanced()}
               className="focus-ring-accent cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink disabled:cursor-default disabled:opacity-40"
             >
               ↺ Reset Advanced Settings
@@ -383,7 +431,11 @@ function RailSectionControls({
       data-rail-group={sectionKey}
       className={hiddenOnPhone ? "flex flex-col gap-3.5 max-shell:hidden" : "flex flex-col gap-3.5"}
     >
-      <div className={RULED_HEADING}>
+      {/* The heading row — the rail's name and its View box — is view-only as a whole, so it is
+          marked `data-lock-exempt` too (quick 261102-gec): with the Corner Cut row gone, a tail with
+          Hard Edge on has nothing in Advanced but Reset, and the board lock's greyed-look sweep would
+          otherwise read this live heading as part of Reset's row. No pixel changes. */}
+      <div className={RULED_HEADING} data-lock-exempt>
         <span>{SECTION_TITLE[sectionKey]}</span>
         {/* The View box (quick 261017-vdh, the founder's canvas): the old ▾/▸ open/closed state,
             drawn as a tick box at the heading's right end. View-only, so a locked board keeps it
@@ -422,6 +474,8 @@ export function RailControls({
   bands,
   onChangeSection,
   onToggleHardEdge,
+  onChangeNudge,
+  onResetAdvanced,
   sectionOpen,
   onToggleSectionOpen,
   advancedOpen,
@@ -478,6 +532,8 @@ export function RailControls({
         spec={spec.nose}
         output={bands.nose}
         onChange={(patch) => onChangeSection("nose", patch)}
+        onChangeNudge={(nudgeKey, value) => onChangeNudge("nose", nudgeKey, value)}
+        onResetAdvanced={() => onResetAdvanced("nose")}
         open={sectionOpen.nose}
         onToggleOpen={() => onToggleSectionOpen("nose")}
         advancedOpen={advancedOpen.nose}
@@ -493,6 +549,8 @@ export function RailControls({
         spec={spec.center}
         output={bands.center}
         onChange={(patch) => onChangeSection("center", patch)}
+        onChangeNudge={(nudgeKey, value) => onChangeNudge("center", nudgeKey, value)}
+        onResetAdvanced={() => onResetAdvanced("center")}
         open={sectionOpen.center}
         onToggleOpen={() => onToggleSectionOpen("center")}
         advancedOpen={advancedOpen.center}
@@ -508,6 +566,8 @@ export function RailControls({
         spec={spec.tail}
         output={bands.tail}
         onChange={(patch) => onChangeSection("tail", patch)}
+        onChangeNudge={(nudgeKey, value) => onChangeNudge("tail", nudgeKey, value)}
+        onResetAdvanced={() => onResetAdvanced("tail")}
         open={sectionOpen.tail}
         onToggleOpen={() => onToggleSectionOpen("tail")}
         advancedOpen={advancedOpen.tail}

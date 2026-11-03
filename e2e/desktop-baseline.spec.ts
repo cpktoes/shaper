@@ -2,6 +2,87 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 05, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for the founder's continuous (d) where the rail meets the deck (R23, "(d), with the
+ * hand-over made continuous first"): on the first board every rail's Domed Deck Band mark sits within half of Band 2
+ * of Deck Mark 3, so each finished rail now rolls off the deck in one smooth curve over both marks. On RAILS the three
+ * cross-sections' finished rails move by a fraction of a millimetre where they leave the deck, and nothing else
+ * moves; on VOLUME the Estimated Volume reads 30.29 L instead of 30.33 L, and the Cross-Section Thickness rows,
+ * the sidebar and the top bar are unchanged. Old and new were compared before re-recording, with the tolerance set
+ * to 0 because both moves sit inside the config's `maxDiffPixels: 100` (RAILS 3 pixels, VOLUME 37): the diff
+ * pictures light the deck ends of the three finished rails and the litres' last two digits, and nothing else.
+ * TEMPLATE, ROCKER and FINS passed unchanged and were not re-recorded. Rendered by the webpack dev server
+ * (`IS_WEBPACK_TEST=1`, port 3177) in the plan's worktree on this Mac. SHA-256 (first 8 characters), old to new:
+ * RAILS 68b1fe4e to e3ca0666, VOLUME ff9f48b1 to 14f11e4c.
+ *
+ * RE-RECORDED 2026-11-02 (fast task 190, branch rails-v2) — RAILS only, `rails-desktop.png`, for one word: the
+ * checkbox under each rail's Ratio reads "Symmetrical" instead of "Sym" (R21, the founder: "Change sym to
+ * Symmetrical"). Old and new were compared before re-recording: the diff picture lights the longer word's extra
+ * letters and nothing else; the drawing, the toolbar, the key and the top bar are unchanged. TEMPLATE, ROCKER, VOLUME
+ * and FINS passed unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port
+ * 3191) in a scratch copy of this checkout on this Mac. SHA-256 (first 8 characters), old to new: RAILS c89c1def to
+ * 68b1fe4e.
+ *
+ * RE-RECORDED 2026-11-02 (fast task 189, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for "Scaled from center by" defaulting to 1.00 instead of the sheet's 0.75 (R20, the founder:
+ * "Go with 1.00 as the default"): the nose and tail cross-sections' bands now come from their own thickness with no
+ * further scaling, so their Apex Thickness, Deck Mark 1 and Deck Mark 3 sit further from the apex and the finished
+ * rail follows; the centre is untouched. On VOLUME the default board reads 30.33 L instead of 30.52 L and its Tail and
+ * Nose Cross-Section Thickness rows move with it. Old and new were compared before re-recording: on RAILS only the
+ * Nose and Tail plots changed; on VOLUME only the litres and the thickness rows. TEMPLATE, ROCKER and FINS passed
+ * unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3191) in a
+ * scratch copy of this checkout on this Mac. SHA-256 (first 8 characters), old to new: RAILS c4c6afc4 to c89c1def,
+ * VOLUME 2e4e1421 to ff9f48b1.
+ *
+ * RE-RECORDED 2026-11-02 (fast task 187, branch rails-v2) — RAILS only, `rails-desktop.png`, for the key: its
+ * "Finished Rail" entry now draws a 14px line at the curve's own 3px weight instead of a 9px ink dot (which was the
+ * same dot "Board Thickness" has), so the whole key row re-flows by a few dots. Old and new were compared before
+ * re-recording: the diff picture shows the key row only; the drawing, the toolbar, the sidebar and the top bar are
+ * unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed unchanged and were not re-recorded. Rendered by the webpack
+ * dev server (`IS_WEBPACK_TEST=1`, port 3191) in a scratch copy of this checkout on this Mac. SHA-256 (first 8
+ * characters), old to new: RAILS 70fe0531 to c4c6afc4.
+ *
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 03, branch rails-v2) — VOLUME only, `volume-desktop.png`, for the
+ * founder's D-V1 ("Switch to the finished curve"): litres now count the finished rail, the cut rail blended halfway
+ * into each band, instead of the raw band cuts. Old and new were compared before re-recording: on the default board
+ * the Estimated Volume reads 30.52 L instead of 30.73 L, the Center Cross-Section Thickness row reads 2 1/4" instead
+ * of 2 5/16" (it is worked from the same finished rail), and the method line reads "From the board's own finished
+ * cross-sections along its length."; the Tail, Nose and Length-Weighted rows (1 1/2", 1 1/4", 1 1/2"), the sidebar
+ * and the top bar are unchanged. TEMPLATE, ROCKER, RAILS and FINS passed unchanged and were not re-recorded.
+ * Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3174) in the plan's worktree on this Mac. SHA-256
+ * (first 8 characters), old to new: VOLUME 8069a93a to 2e4e1421.
+ *
+ * RE-RECORDED 2026-11-02 (fast task 185, branch rails-v2) — RAILS only, `rails-desktop.png`, for the VIEWER toolbar
+ * after the founder's look at plan 02: the Finished Rail button now wears a solid rail-silhouette glyph in place of
+ * lucide's spline, and a new Ghost Bands button (a dashed cut chain with its mark dots) sits beside it, off by
+ * default. Old and new were compared before re-recording: the diff picture shows only the three toolbar buttons;
+ * the drawing, the key, the sidebar and the top bar are unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed
+ * unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3190) in a
+ * scratch copy of this checkout on this Mac (the founder's review server held the checkout's dev lock). SHA-256
+ * (first 8 characters), old to new: RAILS 8411efec to 70fe0531.
+ *
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 02, branch rails-v2) — RAILS only, `rails-desktop.png`, for the
+ * finished rail and the fuller sidebar: every cross-section now draws the finished rail as a heavy ink line over
+ * the bands with the board's fill under the grid, the VIEWER toolbar gained the curve button that hides it, the key
+ * gained "Finished Rail", Ratio's marks read 20/80, 50/50 and 80/20, and Sym moved onto its own line under them.
+ * Old and new were compared before re-recording: only those parts moved; the top bar, the tab band and the rest of
+ * the sidebar are unchanged. TEMPLATE, ROCKER, VOLUME and FINS passed unchanged and were not re-recorded. Rendered
+ * by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3173) in the plan's worktree on this Mac. SHA-256 (first 8
+ * characters), old to new: RAILS f7bc899f to 8411efec.
+ *
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 01, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for the founder's Chris Rails v2 rules: every rail's marks now come from their two new
+ * sheets and the Corner Cut is gone. Old and new were compared before re-recording. On RAILS only the three
+ * cross-sections, their dots and the key changed (no Corner Cut line or key entry, the dome band 2.4 x the
+ * thickness, the new marks); the sidebar and the top bar are unchanged. On VOLUME the default board reads
+ * 30.73 L instead of 30.51 L, and the Tail and Nose Cross-Section Thickness rows read 1 1/2" and 1 1/4" instead
+ * of 1 7/16" and 1 3/16" — each is that end's average thickness across its 12" cross-section, worked from the
+ * same rail profile the litres use, so all three moved for the one reason; nothing else on VOLUME moved.
+ * TEMPLATE, ROCKER and FINS passed unchanged and were not re-recorded. RAILS was rendered by the webpack dev
+ * server (`IS_WEBPACK_TEST=1`, port 3172) in the plan's worktree, VOLUME by the same server from the main
+ * checkout (port 3100), both on this Mac. SHA-256 (first 8 characters), old to new: RAILS 199a6b0a to
+ * f7bc899f, VOLUME c698ede0 to 8069a93a.
+ *
  * RE-RECORDED 2026-10-19 (quick 261019-gqo, plan 02) — ROCKER only, `rocker-desktop.png`, for the new PLANING
  * tab: the panel's tab strip now reads VIEWER, PLANING, DATASHEET on a computer. Old and new were compared
  * before re-recording (421 pixels differ): only the tab strip gained a word; the sidebar, the drawing and the

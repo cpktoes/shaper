@@ -24,8 +24,13 @@
  *    editor, which now exists: `computeCrossSectionVolume` below is that Simpson path, validated
  *    against a published blank datasheet (CONTEXT.md D-14). `computeVolume`, the prototype's
  *    three-station rail-profile method below, survives deliberately as the Volume screen's
- *    standalone quick-estimator mode (CONTEXT.md D-13) — it is not replaced, and every one of its
- *    private inch-domain helpers is untouched by this addition.
+ *    standalone quick-estimator mode (CONTEXT.md D-13) — it is not replaced. Since quick 261102-gec
+ *    plan 03 (the founder's D-V1, 2026-11-02: "Switch to the finished curve") both paths count the
+ *    FINISHED rail — the cut rail blended halfway into every band, the curve RAILS draws — exactly,
+ *    through the cut area less the blends' thirds (`finished-rail.ts`'s `railBlendArea`):
+ *    `computeCrossSectionVolume` at each of its 51 stations, and this estimator's three Cross-Section
+ *    Thickness rows through the optional blend areas on `VolumeRailValues` (absent reads 0, the
+ *    prototype's own cut rail, so its golden cases are unchanged).
  * 4. PRESENTATION SPLIT. Returns numbers, never display strings; the caller formats through
  *    `formatInchesFraction`. Nothing here formats.
  * 5. STATE AND EVENT WIRING EXCLUDED. `syncFromTemplate`, the two checkbox handlers, `applySeed`/
@@ -37,14 +42,19 @@
  */
 
 import type { Point2D } from "./board";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
-  RAIL_SECTION_CONSTANTS,
+  DEFAULT_TIP_RAIL_SCALE,
+  RAIL_NUDGE_KEYS,
+  ZERO_RAIL_NUDGES,
   type ComputeRailSectionInput,
   type RailBandSpec,
+  type RailMarkNudges,
   type RailSectionKey,
   buildRailProfile,
   computeRailSection,
+  effectiveDeckPercent,
 } from "./rail-bands";
 import {
   type Litres,
@@ -124,6 +134,13 @@ export interface VolumeRailValues {
   noseProfile: Point2D[] | null;
   centerProfile: Point2D[] | null;
   tailProfile: Point2D[] | null;
+  /** The foam the finished rail's blends take off ONE rail of each section, in square millimetres
+   * (`railBlendArea`, quick 261102-gec plan 03, D-V1/PV5): each Cross-Section Thickness row counts the
+   * finished rail, as the quoted litres do. Absent reads 0 — the prototype had no finished rail, so its
+   * golden cases leave them out. `deriveRailValues` always fills them. */
+  noseBlendArea?: number;
+  centerBlendArea?: number;
+  tailBlendArea?: number;
 }
 
 /** Every value the volume screen's sidebar and calculation card read. */
@@ -175,6 +192,9 @@ interface VolumeRailValuesInches {
   noseProfileIn: [number, number][] | null;
   centerProfileIn: [number, number][] | null;
   tailProfileIn: [number, number][] | null;
+  noseBlendSqIn: number;
+  centerBlendSqIn: number;
+  tailBlendSqIn: number;
 }
 
 interface VolumeResultInches {
@@ -210,11 +230,18 @@ function shoelaceArea(pts: [number, number][]): number {
 // appending [-halfWidth, 0] to the rail profile — the flat run of full-thickness, un-tapered foam
 // from the profile's innermost point in to the stringer — then divides the shoelace area by the
 // half width to back out an equivalent uniform thickness. A zero half width returns zero rather
-// than dividing (Volume.dc.html lines 343-347).
-function stationEffThickness(profile: [number, number][], boardThickness: number, halfWidth: number): number {
+// than dividing (Volume.dc.html lines 343-347). `blendSqIn` is the foam the finished rail's blends take
+// off that one rail (quick 261102-gec plan 03, D-V1): it comes off the cut area before the division, so
+// the row reads the finished rail, exactly as the quoted litres do. 0 is the prototype's own cut rail.
+function stationEffThickness(
+  profile: [number, number][],
+  boardThickness: number,
+  halfWidth: number,
+  blendSqIn: number,
+): number {
   if (!halfWidth) return 0;
   const poly: [number, number][] = [[-halfWidth, boardThickness], ...profile, [-halfWidth, 0]];
-  return shoelaceArea(poly) / halfWidth;
+  return (shoelaceArea(poly) - blendSqIn) / halfWidth;
 }
 
 /** Statement-for-statement port of `renderVals`'s volume calculation (Volume.dc.html lines
@@ -277,13 +304,24 @@ function computeVolumeInches(
     const r = rail as VolumeRailValuesInches;
     // Tail from tailWidthAt12/2, centre from widePointWidth/2, nose from noseWidthAt12/2, each
     // paired with that station's own board thickness.
-    tailEffIn = stationEffThickness(r.tailProfileIn as [number, number][], r.tailThicknessIn, t.tailWidthAt12In / 2);
+    tailEffIn = stationEffThickness(
+      r.tailProfileIn as [number, number][],
+      r.tailThicknessIn,
+      t.tailWidthAt12In / 2,
+      r.tailBlendSqIn,
+    );
     centerEffIn = stationEffThickness(
       r.centerProfileIn as [number, number][],
       r.centerThicknessIn,
       t.widePointWidthIn / 2,
+      r.centerBlendSqIn,
     );
-    noseEffIn = stationEffThickness(r.noseProfileIn as [number, number][], r.noseThicknessIn, t.noseWidthAt12In / 2);
+    noseEffIn = stationEffThickness(
+      r.noseProfileIn as [number, number][],
+      r.noseThicknessIn,
+      t.noseWidthAt12In / 2,
+      r.noseBlendSqIn,
+    );
 
     const L = spec.lengthIn;
     // Tip thickness switches at exactly 84": under 84" uses 1/2", at/over 84" uses 3/8".
@@ -370,6 +408,9 @@ export function computeVolume(
         noseProfileIn: pointsToInches(rail.noseProfile),
         centerProfileIn: pointsToInches(rail.centerProfile),
         tailProfileIn: pointsToInches(rail.tailProfile),
+        noseBlendSqIn: (rail.noseBlendArea ?? 0) / SQMM_PER_SQIN,
+        centerBlendSqIn: (rail.centerBlendArea ?? 0) / SQMM_PER_SQIN,
+        tailBlendSqIn: (rail.tailBlendArea ?? 0) / SQMM_PER_SQIN,
       }
     : null;
 
@@ -458,11 +499,15 @@ export interface CrossSectionVolumeResult {
   volumeMm3: number;
   panelCount: number;
   stationAreas: number[];
+  /** The foam the finished rail's blends take off each station, both rails, in square millimetres
+   * (quick 261102-gec plan 03, PV5): `stationAreas[i] + stationBlendAreas[i]` is that station's cut area.
+   * Exposed for auditing, as `stationAreas` is. */
+  stationBlendAreas: number[];
 }
 
 /** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
  * the outer value constant beyond the outer two anchors — the shared shape every continuous
- * per-station field (`deckPercent`, `ratioTopPercent`, `scale`, `domedBandBase`) blends through. */
+ * per-station field (`deckPercent`, `ratioTopPercent`, the scale and each nudge) blends through. */
 function blendContinuous(
   station: number,
   tailStation: number,
@@ -525,13 +570,27 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * stations, rather than substituting one of the approved design's named boxy/medium/tapered
  * profiles. A station between the three rail-band anchors (tail 12", centre, nose 12") gets a
  * `RailSectionSpec`-shaped input built by blending those three known sections: the CONTINUOUS
- * fields (`deckPercent`, `ratioTopPercent`, and the per-section `scale`/`domedBandBase` from
- * `RAIL_SECTION_CONSTANTS`) are linearly interpolated across station and held constant outboard of
- * the outer two anchors; the DISCRETE fields (`family`, `symmetrical`, `removeCornerCut`,
- * `singleTuck`, `cornerCutOffsetOverride`, `bottomTuck3Override`) come from the nearest anchor
- * section wholesale, because a family index or a boolean cannot be interpolated. `tailHardEdge`
- * applies only at stations whose nearest anchor is the tail. This makes the integrated volume
- * truthful to the board actually drawn, station by station, rather than to a canned profile shape.
+ * fields — `deckPercent` (each anchor held at 75% or more first, R7), `ratioTopPercent`, the
+ * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
+ * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
+ * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
+ * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
+ * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
+ * a family index or a boolean cannot be interpolated.
+ * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
+ * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
+ * follows the board's own thickness along its length.
+ *
+ * FINISHED RAIL (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the finished
+ * curve"). Each station counts the finished rail — the cut rail with every corner blended halfway into
+ * the bands either side, the curve RAILS draws — not the raw band cuts. It is worked out exactly, not by
+ * sampling the curve (PV1): the cut area comes from the faceted profile as before (proven to enclose
+ * exactly the foam the cuts leave), and both rails' blend areas come off it (`railBlendArea` of
+ * `sectionFinishedRail`, the cut's own area less Green's theorem on the finished curve — plan 05). Since
+ * plan 05 (R22/R23) that curve rolls off the deck by the founder's continuous one-curve rule and keeps its
+ * bottom edge sharp at Bottom Tuck 3 where the nearest rail's box asks for it. The faceted profile survives only
+ * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
+ * station, rather than to a canned profile shape.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   const { halfWidthAt, foil, rails, length } = input;
@@ -545,12 +604,16 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
   const centerStation = centerAnchor.station;
   const noseStation = noseAnchor.station;
 
-  const tailConst = RAIL_SECTION_CONSTANTS.tail;
-  const centerConst = RAIL_SECTION_CONSTANTS.center;
-  const noseConst = RAIL_SECTION_CONSTANTS.nose;
+  // A section saved before quick 261102-gec reads its defaults (design-snapshot rule 10).
+  const tailScale = rails.tail.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const noseScale = rails.nose.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const tailNudges = rails.tail.nudges ?? ZERO_RAIL_NUDGES;
+  const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
+  const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
 
   const h = length / SIMPSON_PANEL_COUNT;
   const stationAreas: number[] = [];
+  const stationBlendAreas: number[] = [];
 
   for (let i = 0; i <= SIMPSON_PANEL_COUNT; i++) {
     const station = mm(i * h);
@@ -558,6 +621,7 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
     if (halfWidth === 0) {
       stationAreas.push(0);
+      stationBlendAreas.push(0);
       continue;
     }
 
@@ -566,11 +630,11 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     const deckPercent = blendContinuous(
       station,
       tailStation,
-      rails.tail.deckPercent,
+      effectiveDeckPercent(rails.tail.deckPercent),
       centerStation,
-      rails.center.deckPercent,
+      effectiveDeckPercent(rails.center.deckPercent),
       noseStation,
-      rails.nose.deckPercent,
+      effectiveDeckPercent(rails.nose.deckPercent),
     );
     const ratioTopPercent = blendContinuous(
       station,
@@ -581,26 +645,23 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
       noseStation,
       rails.nose.ratioTopPercent,
     );
-    const scale = blendContinuous(
-      station,
-      tailStation,
-      tailConst.scale,
-      centerStation,
-      centerConst.scale,
-      noseStation,
-      noseConst.scale,
-    );
-    const domedBandBase = mm(
-      blendContinuous(
-        station,
-        tailStation,
-        tailConst.domedBandBase,
-        centerStation,
-        centerConst.domedBandBase,
-        noseStation,
-        noseConst.domedBandBase,
-      ),
-    );
+    const scale = blendContinuous(station, tailStation, tailScale, centerStation, 1, noseStation, noseScale);
+    const nudges = Object.fromEntries(
+      RAIL_NUDGE_KEYS.map((key) => [
+        key,
+        mm(
+          blendContinuous(
+            station,
+            tailStation,
+            tailNudges[key],
+            centerStation,
+            centerNudges[key],
+            noseStation,
+            noseNudges[key],
+          ),
+        ),
+      ]),
+    ) as RailMarkNudges;
 
     const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
     const nearestSpec = rails[nearestKey];
@@ -611,26 +672,24 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
     const sectionInput: ComputeRailSectionInput = {
       thickness: thicknessEff,
+      boardThickness: thickness,
       ratioTopPercent,
       family: nearestSpec.family,
-      domedBandBase,
       scale,
-      cornerCutOffsetOverride: nearestSpec.cornerCutOffsetOverride,
-      removeCornerCut: nearestSpec.removeCornerCut,
+      nudges,
       singleTuck: nearestSpec.singleTuck,
-      bottomTuck3Override: nearestSpec.bottomTuck3Override,
+      sharpBottomTuck: nearestSpec.sharpBottomTuck,
       symmetrical: nearestSpec.symmetrical,
       hardEdge: nearestKey === "tail" && rails.tailHardEdge,
     };
     const result = computeRailSection(sectionInput);
-    const profile = buildRailProfile(result, thicknessEff, domed, {
-      boardThickness: thickness,
-      railThicknessVal: railThicknessClamped,
-      domedBandBase,
-    });
+    const profile = buildRailProfile(result);
     const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
 
-    stationAreas.push(stationArea(profilePairs, thickness, halfWidth));
+    // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
+    const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
+    stationAreas.push(stationArea(profilePairs, thickness, halfWidth) - blendBothRails);
+    stationBlendAreas.push(blendBothRails);
   }
 
   const volumeMm3 = simpsonIntegrate(stationAreas, h);
@@ -640,5 +699,6 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
     volumeMm3,
     panelCount: SIMPSON_PANEL_COUNT,
     stationAreas,
+    stationBlendAreas,
   };
 }

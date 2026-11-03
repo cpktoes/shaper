@@ -9,7 +9,9 @@
  * `callouts` prop below — the plot itself stays the single component every rail drawing shares.
  */
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useRef, type CSSProperties, type ReactNode } from "react";
+import type { Point2D } from "@/lib/geometry/board";
+import { finishedRail, finishedRailPath } from "@/lib/geometry/finished-rail";
 import { createPortal } from "react-dom";
 import type { RailCallout } from "./rail-callouts";
 import { CALLOUT_CHAR_PX, CALLOUT_PX, DimensionTick, pinnedCalloutSizes, useSvgFitScale } from "@/components/viewer/callout-primitives";
@@ -75,9 +77,10 @@ export const CALLOUT_BOTTOM_PAD = 34;
 /**
  * Categorical colours for the rail-band plot. These are signal/data colours held
  * deliberately outside the brand palette — a band's colour identifies *which band it is*,
- * so it must not drift toward meaning "selected" or "warning". The six hues below stay
- * hardcoded for that reason, and all six clear the 3:1 graphical bar on both the light and
- * the dark ground (lowest is tuck1 at 3.44:1 in dark).
+ * so it must not drift toward meaning "selected" or "warning". The five data hues below stay
+ * hardcoded for that reason, and all five clear the 3:1 graphical bar on both the light and
+ * the dark ground (lowest is tuck1 at 3.44:1 in dark). The Corner Cut's hue went with the Corner
+ * Cut itself: the founder's Chris Rails v2 sheets have none (quick 261102-gec, 2026-11-02).
  *
  * The four structural keys are the exception, and are not categorical at all: hardEdge and
  * the three `*Conn` connectors draw the board's own edge, which is an *ink* role, not a data
@@ -89,7 +92,6 @@ export const RAIL_SEGMENT_COLORS: Record<RailSegmentKey, string> = {
   domedBand: "#6b8e4e",
   band1: "var(--color-surf-accent-ink)",
   band2: "#b5563a",
-  cornerCut: "#4d8a86",
   hardEdge: "var(--color-surf-ink)",
   tuck1: "#7d5ba6",
   tuck2: "#3a6ea5",
@@ -107,17 +109,46 @@ const LEGEND_HIDDEN_KEYS = new Set<RailSegmentKey>(["bottomConn", "railConn"]);
 export interface RailLegendEntry {
   label: string;
   color: string;
+  /** How the key draws this entry's swatch: a 9px dot (left out — every mark and band) or a short
+   * heavy line, for the one entry that names a curve rather than a mark, the finished rail (fast task
+   * 187, 2026-11-02 — the founder, after plan 02: its dot and Board Thickness's were the same ink dot). */
+  swatch?: "line";
 }
 
+/** The key's swatch for one entry, drawn the same on the VIEWER tab and in View Full Sized: a round
+ * dot in the entry's colour, or — `swatch: "line"` — a 14px line at the finished rail's own 3px
+ * weight, so the key says "this one is the curve" rather than showing two identical ink dots. */
+export function RailKeySwatch({ entry }: { entry: RailLegendEntry }) {
+  return (
+    <span
+      className={cn("inline-block flex-shrink-0 rounded-full", entry.swatch === "line" ? "h-[3px] w-[14px]" : "h-[9px] w-[9px]")}
+      style={{ background: entry.color }}
+    />
+  );
+}
+
+/** The finished rail's ink (quick 261102-gec plan 02, PC22): the board's own edge colour, like the hard
+ * edge and the connectors — it is the board's shape, not a band, so it takes no data hue. */
+export const FINISHED_RAIL_COLOR = "var(--color-surf-ink)";
+
+/** How faint the cut bands, their connectors and their mark dots draw under the VIEWER's Ghost Bands
+ * switch (fast task, 2026-11-02 — the founder: "ghosts the bands so that the finished rail is clearly
+ * seen"): one group opacity over the lot, so where two bands meet the join does not darken. Exported so
+ * the browser test can check the drawn value against it. */
+export const GHOST_BANDS_OPACITY = 0.3;
+
 /** Apex Center, then each segment's label except the two hidden connectors, then Tapered Rail
- * Thickness when the section is domed — built from whichever section's output is passed in. */
-export function buildRailLegend(output: RailSectionOutput): RailLegendEntry[] {
+ * Thickness when the section is domed — built from whichever section's output is passed in. With
+ * `finishedRail` (the VIEWER's Finished Rail switch on, quick 261102-gec plan 02), "Finished Rail" joins
+ * the key last, in ink. */
+export function buildRailLegend(output: RailSectionOutput, options?: { finishedRail?: boolean }): RailLegendEntry[] {
   const legend: RailLegendEntry[] = [{ label: "Apex Center", color: RAIL_APEX_CENTER_COLOR }];
   for (const seg of output.segments) {
     if (LEGEND_HIDDEN_KEYS.has(seg.key)) continue;
     legend.push({ label: seg.label, color: RAIL_SEGMENT_COLORS[seg.key] });
   }
   if (output.domed) legend.push({ label: "Tapered Rail Thickness", color: "#6b8e4e" });
+  if (options?.finishedRail) legend.push({ label: "Finished Rail", color: FINISHED_RAIL_COLOR, swatch: "line" });
   return legend;
 }
 
@@ -136,6 +167,17 @@ interface RailSectionPlotProps {
    * `./rail-callouts`. Absent (the default): the plot renders exactly as it always has — the
    * VIEWER tab's three plots are pixel-identical with no callouts. */
   callouts?: RailCallout[];
+  /** Draw the finished rail (quick 261102-gec plan 02, R13, PC22): the shape the cuts leave, blended
+   * halfway into each band. Only RAILS' VIEWER and the View Full Sized dialog pass it, under the VIEWER's
+   * Finished Rail switch; left out (the default), the plot draws the cut bands exactly as before — the
+   * printed order form, the INSTRUCTIONS example and the RAILS picture in the phone menu never show it
+   * (the founder, 2026-11-02: a screen aid only). */
+  finishedRail?: boolean;
+  /** With `finishedRail`, fade the cut bands, their connectors and their mark dots to
+   * `GHOST_BANDS_OPACITY` so the finished rail reads alone (the VIEWER's Ghost Bands switch, fast task,
+   * 2026-11-02). The Apex Center dot keeps its strength — the finished rail is built to pass through it.
+   * Without `finishedRail` it does nothing; left out (the default), the plot draws exactly as before. */
+  ghostBands?: boolean;
 }
 
 /**
@@ -250,6 +292,17 @@ export function buildRailPlotGrid(
   const xAxisMinIn = bounds.minX + 0.15;
   const yAxisMaxIn = bounds.maxY - 0.15;
 
+  // A tick mark and its number are drawn only where the axis itself runs. `xGridMin` is the whole
+  // inch (or 10 mm) at or BEYOND the axis's left end, so the horizontal grid lines always reach the
+  // box's edge — but a tick at that position can sit past the end of the board's own bottom line,
+  // outside the axis, where its number is cut in half by the box's edge (first seen on a dome nudged
+  // to +2": the axis starts at -9 1/2" and a "10" showed as a fragment — fast task, 2026-11-02). The
+  // vertical grid line there still draws (it lands in the label margin or off the box, as it always
+  // has); only the tick and its number are left off. The small tolerance forgives a position that is
+  // the axis end itself up to floating-point noise, so a board whose axis starts exactly on a whole
+  // inch keeps that inch's tick, as every plot drawn today does.
+  const onTheAxis = (positionIn: number) => positionIn >= xAxisMinIn - 1e-9;
+
   if (system === "imperial") {
     const xGridMin = Math.max(-MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(xAxisMinIn)) ? Math.floor(xAxisMinIn) : 0);
     const yGridMax = Math.min(MAX_GRID_EXTENT_IN, Number.isFinite(Math.floor(yAxisMaxIn)) ? Math.floor(yAxisMaxIn) : 0);
@@ -261,7 +314,7 @@ export function buildRailPlotGrid(
       xGridPositions,
       yGridPositions,
       xGridMin,
-      xTicks: xGridPositions.map((i) => ({ value: i, label: `${Math.abs(i)}` })),
+      xTicks: xGridPositions.filter(onTheAxis).map((i) => ({ value: i, label: `${Math.abs(i)}` })),
       yTicks: yGridPositions.map((j) => ({ value: j, label: `${j}` })),
     };
   }
@@ -306,11 +359,15 @@ export function buildRailPlotGrid(
     xGridPositions: xPositionsMm.map((v) => mmToInches(mm(v))),
     yGridPositions: yPositionsMm.map((v) => mmToInches(mm(v))),
     xGridMin: mmToInches(mm(xGridMinMm)),
-    xTicks: xPositionsMm.map((v, idx) => {
-      if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
-      const bare = formatMarkBare(mm(Math.abs(v)), "metric");
-      return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
-    }),
+    // Labelled by index from the origin first (so `labelEvery` and the " mm" suffix count every
+    // step), then any tick past the axis's own end is left off — see `onTheAxis` above.
+    xTicks: xPositionsMm
+      .map((v, idx) => {
+        if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
+        const bare = formatMarkBare(mm(Math.abs(v)), "metric");
+        return { value: mmToInches(mm(v)), label: v === firstNonZeroX ? `${bare} mm` : bare };
+      })
+      .filter((tick) => onTheAxis(tick.value)),
     yTicks: yPositionsMm.map((v, idx) => {
       if (!isLabelledStep(idx)) return { value: mmToInches(mm(v)), label: "" };
       const bare = formatMarkBare(mm(Math.abs(v)), "metric");
@@ -473,7 +530,15 @@ export function RailPlotZoom({
   );
 }
 
-export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", callouts }: RailSectionPlotProps) {
+export function RailSectionPlot({
+  sectionKey,
+  output,
+  xAxisMin,
+  fit = "width",
+  callouts,
+  finishedRail: showFinishedRail = false,
+  ghostBands = false,
+}: RailSectionPlotProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const { system } = useUnits();
   const { result, segments, domed, boardThickness, thicknessEff } = output;
@@ -547,12 +612,29 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
     color: RAIL_SEGMENT_COLORS[seg.key],
   }));
 
+  // The finished rail (quick 261102-gec plan 02, R13, PC22, 2026-11-02) — the founder's brief: "a 3px ink
+  // line over the bands, filled with the app's board fill under the grid". Worked out from this plot's own
+  // left edge (`xAxisMin`, R13 "pass the same") and drawn through the same px/py the band lines use, so it
+  // lands exactly on them. Two paths: the closed shape, filled with the board's colour as the svg's FIRST
+  // child, so the zoom grid, the grid lines and the reference dashes all sit over it; and the curve itself,
+  // after the band lines and before the dots, so the mark dots stay on top.
+  const finished = useMemo(
+    () => (showFinishedRail ? finishedRail(output, xAxisMin) : null),
+    [showFinishedRail, output, xAxisMin],
+  );
+  const projectMm = (p: Point2D) => ({ x: px(mmToInches(p.x)), y: py(mmToInches(p.y)) });
+  const finishedFill = finished ? finishedRailPath(finished, projectMm, { closed: true }) : null;
+  const finishedCurve = finished ? finishedRailPath(finished, projectMm) : null;
+  // The Ghost Bands switch only means something while the finished rail is drawn (see the prop's doc).
+  const ghosted = showFinishedRail && ghostBands;
+
   // Which marks get a dot, and in what order, is `railPlotDots`' one rule (lib/geometry/rail-bands.ts)
   // — the same rule the RAILS picture in the phone menu reads (quick 261003-q2f).
-  const dots: { cx: number; cy: number; color: string }[] = railPlotDots(segments, result, domed).map((dot) => ({
+  const dots: { cx: number; cy: number; color: string; apex: boolean }[] = railPlotDots(segments, result, domed).map((dot) => ({
     cx: px(mmToInches(dot.x)),
     cy: py(mmToInches(dot.y)),
     color: dot.key === "apexCenter" ? RAIL_APEX_CENTER_COLOR : RAIL_SEGMENT_COLORS[dot.key],
+    apex: dot.key === "apexCenter",
   }));
 
   // A tick's own little mark (the short perpendicular line below/beside the axis, distinct from
@@ -638,6 +720,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
       }}
       className="block"
     >
+      {finishedFill && <path d={finishedFill} fill="var(--color-surf-board-fill)" stroke="none" />}
       <ZoomGrid
         zoom={zoom}
         fitScale={fitScale}
@@ -658,11 +741,36 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         <line key={`r${i}`} x1={rl.x1} y1={rl.y1} x2={rl.x2} y2={rl.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
       ))}
       <line x1={apexLine.x1} y1={apexLine.y1} x2={apexLine.x2} y2={apexLine.y2} stroke="color-mix(in srgb, var(--color-surf-ink-muted) 30%, transparent)" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
-      {segmentLines.map((sg) => (
-        <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      ))}
+      {/* The cut bands and their connectors, as one group so Ghost Bands can fade the lot at once. With
+          no opacity attribute (the usual case) the group paints exactly the pixels the bare lines always
+          did; `data-rail-bands` is a hook for the browser tests, nothing styles it. */}
+      <g data-rail-bands={ghosted ? "ghosted" : "full"} opacity={ghosted ? GHOST_BANDS_OPACITY : undefined}>
+        {segmentLines.map((sg) => (
+          <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ))}
+      </g>
+      {finishedCurve && (
+        <path
+          data-finished-rail
+          d={finishedCurve}
+          fill="none"
+          stroke={FINISHED_RAIL_COLOR}
+          strokeWidth={3}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
       {dots.map((dt, i) => (
-        <circle key={`d${i}`} cx={dt.cx} cy={dt.cy} r={2.75 * zoomUnit} fill={dt.color} />
+        // Dots fade one by one rather than as a group so their draw order — and so which dot sits on top
+        // where two nearly meet — stays exactly as it always was; the Apex Center dot never fades.
+        <circle
+          key={`d${i}`}
+          cx={dt.cx}
+          cy={dt.cy}
+          r={2.75 * zoomUnit}
+          fill={dt.color}
+          opacity={ghosted && !dt.apex ? GHOST_BANDS_OPACITY : undefined}
+        />
       ))}
       {xTicks.map((tk, i) => (
         <g key={`xt${i}`}>
@@ -699,7 +807,7 @@ export function RailSectionPlot({ sectionKey, output, xAxisMin, fit = "width", c
         </g>
       ))}
       {callouts?.map((c) => {
-        // side 1 (Apex, Domed Taper, Rail Mark 1, Corner Cut, Tuck 1) sits near the apex (x=0, the
+        // side 1 (Apex, Domed Taper, Rail Mark 1, Tuck 1) sits near the apex (x=0, the
         // drawing's rightmost structure) and reads rightward from its own point; side -1 (every
         // deck/bottom-tuck-2 mark, further left) reads leftward, back toward the plot's own left
         // margin; side 0 (Bottom Tuck 1, Bottom Tuck 3) reads centred BELOW the x-axis, joined to

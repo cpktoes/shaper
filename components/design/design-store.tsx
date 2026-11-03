@@ -113,8 +113,11 @@ import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/ge
 import {
   DEFAULT_RAIL_BAND_SPEC,
   computeRailBands,
+  defaultRailAdvanced,
+  railNudgesOf,
   type RailBandsOutput,
   type RailBandSpec,
+  type RailNudgeKey,
   type RailSectionKey,
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
@@ -433,6 +436,12 @@ interface DesignContextValue {
   applyModel: (id: string, snapshot: DesignSnapshotFields, locked: boolean) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
+  /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
+   * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
+  updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
+  /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on — one undo step. */
+  resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
   setFinsImportTemplate: (next: boolean) => void;
@@ -829,7 +838,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     noteEdit(`rails:${key}:${patchKey(patch)}`);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
-      rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
+      rails: {
+        ...prev.rails,
+        [key]: { ...prev.rails[key], ...patch },
+        // The tail's Symmetrical and Hard Edge can never both be on (fast task 190, R21 — the founder:
+        // "tail sym and hard edge cannot both be selected"; a hard edge has no tucks to mirror): turning
+        // Symmetrical on turns Hard Edge off, in the same step.
+        ...(key === "tail" && patch.symmetrical === true ? { tailHardEdge: false } : {}),
+      },
       boardStarted: true,
       dirty: true,
     }));
@@ -840,9 +856,66 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const toggleTailHardEdge = () => {
     if (lockedRef.current) return;
     noteEdit(null);
+    setState((prev) => {
+      const on = !prev.rails.tailHardEdge;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        rails: {
+          ...prev.rails,
+          tailHardEdge: on,
+          // The other half of R21 (see updateRailSection): Hard Edge coming on turns the tail's
+          // Symmetrical off, in the same step.
+          ...(on && prev.rails.tail.symmetrical ? { tail: { ...prev.rails.tail, symmetrical: false } } : {}),
+        },
+        boardStarted: true,
+        dirty: true,
+      };
+    });
+  };
+
+  // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
+  // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
+  // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
+  // slider is one step and a drag on the next is another.
+  // The rail's nudges are rebuilt through `railNudgesOf` first (plan 04, PC29, 2026-11-02): exactly the six
+  // keys, a missing one as 0. So a board that was in memory before the Domed Deck Band nudge existed gains
+  // the dome key on its first nudge, and never carries a retired Deck Mark 2 or Bottom Tuck 2 amount (R17)
+  // into a save.
+  const updateRailNudge = (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit(`rails:${key}:nudge:${nudgeKey}`);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
-      rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
+      rails: {
+        ...prev.rails,
+        [key]: { ...prev.rails[key], nudges: { ...railNudgesOf(prev.rails[key].nudges), [nudgeKey]: value } },
+      },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
+  // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
+  // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
+  // rule) — all in one setState, so it is ONE undo step. A discrete action like
+  // toggleTailHardEdge, hence noteEdit(null).
+  const resetRailAdvanced = (key: RailSectionKey) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: {
+        ...prev.rails,
+        // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
+        // the one setting outside Advanced that Reset touches, because the two can never both be on.
+        [key]: {
+          ...prev.rails[key],
+          ...defaultRailAdvanced(key),
+          ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+        },
+        ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
+      },
       boardStarted: true,
       dirty: true,
     }));
@@ -1700,6 +1773,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyModel,
     updateRailSection,
     toggleTailHardEdge,
+    updateRailNudge,
+    resetRailAdvanced,
     updateFins,
     updateVolume,
     setFinsImportTemplate,

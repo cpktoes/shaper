@@ -19,6 +19,8 @@ import { useUnits } from "@/components/units-provider";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { formatMark } from "@/lib/geometry/measure-display";
 import {
+  ZERO_RAIL_NUDGES,
+  buildRailDataGroups,
   buildRailProfile,
   buildRailSegments,
   computeRailSection,
@@ -41,7 +43,8 @@ type FlatDomed = "flat" | "domed";
 // behaviour the prototype never executed (D-20, REQUIREMENTS.md Out of Scope).
 const EXAMPLE_RAIL_BOARD_THICKNESS_IN = 3.5;
 const EXAMPLE_RAIL_RAIL_THICKNESS_IN = 3;
-const EXAMPLE_RAIL_DOMED_BAND_BASE_IN = 6;
+// The old 6" Domed Deck Band constant is gone: on the founder's Chris Rails v2 sheets the band is
+// 2.4 x the board thickness (quick 261102-gec, 2026-11-02), worked out by the rules themselves.
 
 /** The example rail's own thickness for the given state (D-19's "stated example thickness") —
  * board thickness (3 1/2") when Flat, rail thickness (3") when Domed. Read through `formatMark`
@@ -54,39 +57,32 @@ export function exampleRailThickness(domed: boolean): Mm {
  * true) and renders it through the same `RailSectionPlot` every other rail section uses. */
 export function ExampleRailFigure({ domed }: { domed: boolean }) {
   const output: RailSectionOutput = useMemo(() => {
+    // t is the rail-side thickness (3" on the domed example, the 3 1/2" board on the flat one); T is
+    // always the 3 1/2" board. The centre's rules: scale 1, every nudge 0 (quick 261102-gec).
     const thickness = exampleRailThickness(domed);
-    const domedBandBase = inchesToMm(EXAMPLE_RAIL_DOMED_BAND_BASE_IN);
+    const boardThickness = inchesToMm(EXAMPLE_RAIL_BOARD_THICKNESS_IN);
     const result = computeRailSection({
       thickness,
+      boardThickness,
       ratioTopPercent: 60,
       family: 3,
-      domedBandBase,
       scale: 1,
-      cornerCutOffsetOverride: null,
-      removeCornerCut: false,
+      nudges: ZERO_RAIL_NUDGES,
       singleTuck: false,
-      bottomTuck3Override: null,
+      sharpBottomTuck: false,
       symmetrical: false,
       hardEdge: false,
     });
-    const opts = {
-      boardThickness: inchesToMm(EXAMPLE_RAIL_BOARD_THICKNESS_IN),
-      railThicknessVal: inchesToMm(EXAMPLE_RAIL_RAIL_THICKNESS_IN),
-      domedBandBase,
-    };
-    const profile = buildRailProfile(result, thickness, domed, opts);
-    const segments = buildRailSegments(result, thickness, domed, opts);
-    const bounds = railPlotBounds(result, { domed, thickness, ...opts });
     return {
       domed,
-      boardThickness: opts.boardThickness,
-      railThicknessClamped: opts.railThicknessVal,
+      boardThickness,
+      railThicknessClamped: inchesToMm(EXAMPLE_RAIL_RAIL_THICKNESS_IN),
       thicknessEff: thickness,
       result,
-      profile,
-      segments,
-      bounds,
-      dataGroups: [],
+      profile: buildRailProfile(result),
+      segments: buildRailSegments(result),
+      bounds: railPlotBounds(result),
+      dataGroups: buildRailDataGroups(result, { domed }),
     };
   }, [domed]);
 

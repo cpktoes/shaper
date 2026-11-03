@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketch 018 — Finished rail curve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* The app's own palettes, copied from sketch 017 (app/globals.css's --ramp-daylight-* and --ramp-slate-*). */
+:root, body.daylight {
+  --ground: #ffffff; --panel: #ffffff; --canvas: #dfdcd3;
+  --ink: #1f2a3b; --muted: #566171; --line: #897c58; --faint: #897c58;
+  --accent: #8ec1b8; --on-accent: #1f2a3b; --accent-ink: #48605c; --fill: #d9f2ed;
+  --blend: #d9822b;
+  color-scheme: light;
+}
+body.slate {
+  --ground: #12141a; --panel: #12141a; --canvas: #1a1d25;
+  --ink: #f2f4f7; --muted: #a1a8b4; --line: #6a707c; --faint: #333842;
+  --accent: #18526d; --on-accent: #f2f4f7; --accent-ink: #3490bc; --fill: #1a2732;
+  --blend: #e39a4f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--canvas); color: var(--ink); font-family: Inter, Roboto, system-ui, sans-serif; }
+
+/* ---- sketch chrome (not part of the design) ---- */
+#bar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+  padding: 8px 16px; background: #0d0f14; color: #cfd5de; font: 13px/1.2 system-ui, sans-serif; border-bottom: 1px solid #262a33; }
+#bar b { color: #fff; margin-right: 4px; }
+.grp { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.grp > span { color: #8a93a3; margin-right: 2px; }
+#bar button { font: inherit; color: #cfd5de; background: #1b1f28; border: 1px solid #333a47; border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+#bar button.on { background: #3490bc; border-color: #3490bc; color: #fff; }
+#bar input[type=range] { width: 110px; accent-color: #3490bc; }
+#blendVal { min-width: 34px; color: #fff; font-variant-numeric: tabular-nums; }
+#note { font: 12.5px/1.45 system-ui, sans-serif; color: var(--muted); padding: 0 2px 8px; }
+#note b { color: var(--ink); }
+
+/* ---- the desktop shell: sidebar beside the drawing ---- */
+#shell { display: flex; align-items: flex-start; gap: 0; }
+#side { width: 340px; flex: none; background: var(--panel); border-right: 1px solid var(--faint); padding: 22px 20px 40px; min-height: calc(100vh - 46px); }
+#canvas { flex: 1; min-width: 0; position: sticky; top: 46px; height: calc(100vh - 46px); padding: 14px 16px 16px; display: flex; flex-direction: column; }
+
+.title { font-size: 18px; line-height: 1.2; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; color: var(--ink); }
+.sub { margin-top: 2px; font-size: 14px; color: var(--muted); }
+.ruled { margin-top: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--faint); font-size: 12px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .15em; color: var(--ink); display: flex; justify-content: space-between; align-items: center; }
+.adv { margin-top: 4px; padding: 0 0 8px 12px; border-bottom: 1px solid var(--faint); font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .15em; color: var(--ink); display: flex; justify-content: space-between; cursor: pointer; user-select: none; }
+.group { display: flex; flex-direction: column; gap: 14px; padding-top: 12px; }
+.lbl { font-size: 14px; color: var(--muted); }
+.hints { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ratio-hints { position: relative; height: 12px; margin-top: 2px; font-size: 9px; color: var(--muted); }
+.ratio-hints span { position: absolute; }
+.cols { display: flex; gap: 14px; }
+.cols > div { flex: 1; min-width: 0; }
+.headline { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 20px; margin-bottom: 8px; white-space: nowrap; }
+.headline .lbl { overflow: hidden; text-overflow: ellipsis; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); cursor: pointer; user-select: none; }
+.check.small { font-size: 12px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.check input { appearance: none; width: 16px; height: 16px; margin: 0; border-radius: 4px; border: 1px solid var(--line); display: inline-grid; place-items: center; cursor: pointer; background: var(--panel); }
+.check input:checked { background: var(--accent); border-color: var(--accent); }
+.check input:checked::after { content: ""; width: 8px; height: 4px; border-left: 2px solid var(--on-accent); border-bottom: 2px solid var(--on-accent); transform: rotate(-45deg) translate(1px, -1px); }
+.resetadv { font-size: 11px; font-weight: 700; color: var(--accent-ink); cursor: pointer; background: none; border: 0; padding: 0; text-align: left; }
+.dim { opacity: .4; }
+.newbit { outline: 2px dashed color-mix(in srgb, var(--blend) 70%, transparent); outline-offset: 6px; border-radius: 4px; }
+.newtag { font-size: 10px; font-weight: 700; color: var(--blend); letter-spacing: .08em; text-transform: uppercase; margin-left: 6px; }
+
+/* the app's slider: accent fill, ink-ringed thumb */
+input.rng { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 4px; border: 1px solid var(--line); margin: 4px 0;
+  background: linear-gradient(to right, var(--accent) 0 var(--p, 50%), var(--canvas) var(--p, 50%) 100%); cursor: pointer; }
+input.rng::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 1px solid var(--ink); }
+input.rng::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 1px solid var(--ink); }
+input.rng:disabled { cursor: default; }
+
+/* ---- the RAILS viewer card ---- */
+.card { flex: 1; min-height: 0; background: var(--panel); border: 1px solid var(--faint); border-radius: 6px; padding: 12px 16px 12px; display: flex; flex-direction: column; }
+.tabs { display: flex; gap: 18px; font-size: 12px; font-weight: 800; letter-spacing: .15em; color: var(--muted); border-bottom: 1px solid var(--faint); padding-bottom: 8px; margin-bottom: 6px; flex: none; }
+.tabs .on { color: var(--ink); border-bottom: 2px solid var(--accent); padding-bottom: 6px; margin-bottom: -9px; }
+#plots { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.plot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.plot h3 .marks { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 8px; color: var(--muted); }
+.glnote { margin-top: 10px; padding: 8px 10px; border-radius: 6px; font-size: 12px; line-height: 1.4; color: var(--muted); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+#bar select { font: inherit; color: #cfd5de; background: #1b1f28; border: 1px solid #333a47; border-radius: 6px; padding: 3px 6px; }
+.plot h3 { margin: 4px 0 0; font-size: 11px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); flex: none; }
+.plot svg { flex: 1; min-height: 0; width: 100%; display: block; overflow: visible; }
+.legend { flex: none; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--faint) 40%, transparent); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dot { width: 8px; height: 8px; border-radius: 50%; }
+.legend i.fin { height: 4px; }
+.legend i.foam { height: 10px; width: 14px; border-radius: 2px; }
+.legend b { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body class="daylight">
+<div id="bar">
+  <b>018 Finished rail</b>
+  <span class="grp" id="gVariant"><span>Variant</span>
+    <button data-v="T">Today</button>
+    <button data-v="A" class="on">A: Curve over bands</button>
+    <button data-v="B">B: Finished foam</button>
+    <button data-v="C">C: Foam to blend off</button>
+  </span>
+  <span class="grp" id="gSrc"><span>Rail bands</span><button data-s="workbook" class="on">Your workbook</button><button data-s="gl">Sample chart</button><button data-s="glc">Greenlight charts</button><button data-s="two">Two settings</button></span>
+  <span class="grp" id="gTwo" style="display:none"><select id="twoPreset"></select></span>
+  <span class="grp" id="gGl" style="display:none"><select id="glRow"></select></span>
+  <span class="grp" id="gGlc" style="display:none"><span>Family steps</span><button data-f="all" class="on">Every chart value</button><button data-f="rail">Rail mark + tuck only</button></span>
+  <span class="grp" id="gOv" style="display:none"><button id="overlayBtn" class="on">Overlay workbook</button></span>
+  <span class="grp" id="gModel"><span>Blend style</span><button data-m="half" class="on">Blended halfway</button><button data-m="round">One even round</button></span>
+  <span class="grp" id="gBlend"><span>Blend</span><input id="blend" type="range" min="0" max="100" value="100"><span id="blendVal">100%</span></span>
+  <span class="grp" id="gTheme"><span>Theme</span><button data-t="daylight" class="on">Daylight</button><button data-t="slate">Slate</button></span>
+  <span class="grp" id="gUnits"><span>Units</span><button data-u="imperial" class="on">Imperial</button><button data-u="metric">Metric</button></span>
+  <span class="grp"><button id="resetAll">↺ Default rails</button></span>
+</div>
+
+<div id="shell">
+  <aside id="side">
+    <div class="title">Rail Band Calculator</div>
+    <div class="sub">Design and shape consistent rails</div>
+
+    <div class="ruled">Inputs</div>
+    <div style="padding-top:8px"><label class="check"><input type="checkbox" disabled>Import Rocker &amp; Foil Values</label></div>
+    <div style="padding-top:12px" class="newbit">
+      <label class="check"><input type="checkbox" id="showFinished" checked>Show Finished Rail<span class="newtag">new</span></label>
+    </div>
+    <div id="glNote" class="glnote" style="display:none"></div>
+
+    <div id="sections"></div>
+  </aside>
+
+  <main id="canvas">
+    <div id="note"></div>
+    <div class="card">
+      <div class="tabs"><span class="on">VIEWER</span><span>DATASHEET</span><span>INSTRUCTIONS</span></div>
+      <div id="plots"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+var RB = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // ../../../../private/tmp/claude-501/-Users-kontoes-Code-shaper/0891f0e0-5ca3-4aa3-a48e-5d780da9ab47/scratchpad/rails/entry.ts
+  var entry_exports = {};
+  __export(entry_exports, {
+    DEFAULT_RAIL_BAND_SPEC: () => DEFAULT_RAIL_BAND_SPEC,
+    MIN_BOTTOM_TUCK_SEPARATION_IN: () => MIN_BOTTOM_TUCK_SEPARATION_IN,
+    computeRailBands: () => computeRailBands,
+    formatInchesFraction: () => formatInchesFraction,
+    formatWholeMm: () => formatWholeMm,
+    inchesToMm: () => inchesToMm,
+    mmToInches: () => mmToInches,
+    railFamilyLabel: () => railFamilyLabel,
+    railPlotDots: () => railPlotDots
+  });
+
+  // lib/geometry/units.ts
+  var mm = (value) => value;
+  var MM_PER_INCH = 25.4;
+  function mmToInches(value) {
+    return value / MM_PER_INCH;
+  }
+  function inchesToMm(value) {
+    return mm(value * MM_PER_INCH);
+  }
+  function formatWholeMm(value) {
+    const nudge = value < 0 ? -1e-9 : 1e-9;
+    const rounded = Math.round(value + nudge);
+    return String(rounded);
+  }
+  function formatInchesFraction(value, denominator = 16) {
+    const inches = mmToInches(value);
+    const sign = inches < 0 ? "-" : "";
+    const nudge = inches < 0 ? -1e-9 : 1e-9;
+    const rounded = Math.abs(Math.round(inches * denominator + nudge) / denominator);
+    let whole = Math.floor(rounded + 1e-9);
+    let fracUnits = Math.round((rounded - whole) * denominator);
+    if (fracUnits === denominator) {
+      whole += 1;
+      fracUnits = 0;
+    }
+    if (fracUnits === 0) {
+      return `${sign}${whole}"`;
+    }
+    let num = fracUnits;
+    let den = denominator;
+    while (num % 2 === 0) {
+      num /= 2;
+      den /= 2;
+    }
+    return `${sign}${whole > 0 ? whole + " " : ""}${num}/${den}"`;
+  }
+  function roundToSixteenthInch(value) {
+    const inches = mmToInches(value);
+    return inchesToMm(Math.round(inches * 16) / 16);
+  }
+
+  // lib/geometry/rail-bands.ts
+  var MIN_BOTTOM_TUCK_SEPARATION_IN = 1 / 16;
+  var RAIL_SECTION_CONSTANTS = {
+    nose: { scale: 0.75, domedBandBase: inchesToMm(4.5) },
+    center: { scale: 1, domedBandBase: inchesToMm(6) },
+    tail: { scale: 0.75, domedBandBase: inchesToMm(4.5) }
+  };
+  var DEFAULT_SECTION_COMMON = {
+    deckPercent: 100,
+    family: 3,
+    ratioTopPercent: 60,
+    symmetrical: false,
+    cornerCutOffsetOverride: null,
+    removeCornerCut: false,
+    singleTuck: false,
+    bottomTuck3Override: null
+  };
+  var DEFAULT_RAIL_BAND_SPEC = {
+    nose: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.31) },
+    center: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(2.5) },
+    tail: { ...DEFAULT_SECTION_COMMON, boardThickness: inchesToMm(1.56) },
+    tailHardEdge: true
+  };
+  function apexLenRangeForInches(x) {
+    return -0.125 * x + 1.125;
+  }
+  function cornerCutRailOffsetForInches(x) {
+    const table = { 1: 0.125, 2: (0.125 + 0.0625) / 2, 3: 0.0625, 4: 0.0625 / 2, 5: 0 };
+    return table[Math.round(x)] ?? 0;
+  }
+  function deckMark1ForInches(x) {
+    return 0.25 * x + 1.75;
+  }
+  function deckMark3ForInches(x) {
+    return 0.25 * x + 3.25;
+  }
+  var RAIL_FAMILY_NAMES = {
+    1: "boxy",
+    2: "boxy/med",
+    3: "med",
+    4: "med/knifey",
+    5: "knifey"
+  };
+  function railFamilyLabel(x) {
+    return RAIL_FAMILY_NAMES[Math.round(x)] ?? String(x);
+  }
+  function computeSectionInches(input) {
+    const bottomRatio = 1 - input.ratioTopPct / 100;
+    const apexLenRange = apexLenRangeForInches(input.family) * input.scale;
+    const apexCenter = input.thicknessIn * bottomRatio;
+    const railMark1 = apexCenter + apexLenRange / 2;
+    const railTuck1 = apexCenter - apexLenRange / 2;
+    const cornerCutOffset = input.removeCornerCut ? null : input.cornerCutOffsetOverrideIn ?? cornerCutRailOffsetForInches(input.family);
+    const cornerCutRail = input.removeCornerCut ? null : railMark1 - cornerCutOffset;
+    const domedDeckBand = input.domedBandBaseIn;
+    const deckMark1 = deckMark1ForInches(input.family) * input.scale;
+    const deckMark2 = deckMark1 / 2;
+    const deckMark3 = deckMark3ForInches(input.family) * input.scale;
+    const cornerCutDeck = input.removeCornerCut ? null : railMark1 - cornerCutRail;
+    const bottomTuck1 = input.symmetrical ? deckMark1 : railTuck1 / 2;
+    const bottomTuck2 = bottomTuck1 / 2;
+    const bottomTuck3NoOverride = input.symmetrical ? deckMark3 : railTuck1;
+    const bottomTuck3 = input.hardEdge ? 0 : input.bottomTuck3OverrideIn === null ? bottomTuck3NoOverride : (
+      // GSD-added guard (not part of the source workbook): floor a user-supplied override at
+      // Bottom Tuck 1 plus MIN_BOTTOM_TUCK_SEPARATION_IN so it can never sit at or below it and
+      // invert/collapse the bottom marks. The derived branch above already satisfies
+      // bottomTuck3 > bottomTuck1 by construction and is never floored — only the override is
+      // guarded.
+      Math.max(input.bottomTuck3OverrideIn, bottomTuck1 + MIN_BOTTOM_TUCK_SEPARATION_IN)
+    );
+    const bottomTuck3Derived = input.hardEdge ? 0 : bottomTuck3NoOverride;
+    return {
+      thickness: input.thicknessIn,
+      apexLenRange,
+      apexCenter,
+      railMark1,
+      railTuck1,
+      cornerCutRail,
+      cornerCutOffset,
+      domedDeckBand,
+      deckMark1,
+      deckMark2,
+      deckMark3,
+      cornerCutDeck,
+      hardEdge: input.hardEdge,
+      bottomTuck1,
+      bottomTuck2,
+      bottomTuck3,
+      bottomTuck3Derived,
+      removeCornerCut: !!input.removeCornerCut,
+      singleTuck: !!input.singleTuck
+    };
+  }
+  function buildProfilePointsInches(r, thicknessIn, domed, opts) {
+    const bt = domed ? opts.boardThicknessIn ?? thicknessIn : thicknessIn;
+    const rt = domed ? opts.railThicknessValIn ?? thicknessIn : thicknessIn;
+    const bandWidth = domed ? r.domedDeckBand || opts.domedBandBaseIn || 1 : opts.domedBandBaseIn || Math.max(r.deckMark3, 1);
+    const domedY = (x) => bt === rt ? thicknessIn : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth));
+    const band1EndY = domedY(-r.deckMark1);
+    const band1Y = (x) => {
+      const t = r.deckMark1 > 0 ? -x / r.deckMark1 : 0;
+      return r.railMark1 + (band1EndY - r.railMark1) * t;
+    };
+    const pts = [
+      [-bandWidth, bt],
+      [-r.deckMark3, domedY(-r.deckMark3)],
+      [-r.deckMark2, band1Y(-r.deckMark2)],
+      [-r.deckMark1, domedY(-r.deckMark1)],
+      [0, r.railMark1],
+      [0, r.railTuck1]
+    ];
+    if (r.hardEdge) pts.push([0, 0]);
+    else if (r.singleTuck) pts.push([-r.bottomTuck3, 0]);
+    else {
+      pts.push([-r.bottomTuck2, r.railTuck1 / 2]);
+      pts.push([-r.bottomTuck3, 0]);
+    }
+    return pts;
+  }
+  function buildSegmentDefsInches(r, thicknessIn, domed, opts) {
+    const segs = [];
+    const bt = domed ? opts.boardThicknessIn ?? thicknessIn : thicknessIn;
+    const rt = domed ? opts.railThicknessValIn ?? thicknessIn : thicknessIn;
+    const bandWidth = domed ? r.domedDeckBand || opts.domedBandBaseIn || 1 : opts.domedBandBaseIn || Math.max(r.deckMark3, 1);
+    const domedY = (x) => bt === rt ? thicknessIn : rt + (bt - rt) * Math.min(1, Math.max(0, -x / bandWidth));
+    segs.push({ key: "domedBand", label: "Domed Deck Band", p1: [0, rt], p2: [-bandWidth, bt] });
+    segs.push({ key: "band1", label: "Rail Band 1", p1: [0, r.railMark1], p2: [-r.deckMark1, domedY(-r.deckMark1)] });
+    const band1EndY = domedY(-r.deckMark1);
+    const band1Y = (x) => {
+      const t = r.deckMark1 > 0 ? -x / r.deckMark1 : 0;
+      return r.railMark1 + (band1EndY - r.railMark1) * t;
+    };
+    segs.push({
+      key: "band2",
+      label: "Rail Band 2",
+      p1: [-r.deckMark2, band1Y(-r.deckMark2)],
+      p2: [-r.deckMark3, domedY(-r.deckMark3)]
+    });
+    if (!r.removeCornerCut) {
+      segs.push({
+        key: "cornerCut",
+        label: "Corner Cut",
+        p1: [0, r.cornerCutRail],
+        p2: [-r.cornerCutDeck, band1Y(-r.cornerCutDeck)]
+      });
+    }
+    const leftEdge = -(bandWidth + 2);
+    if (r.hardEdge) {
+      segs.push({ key: "hardEdge", label: "Hard Edge", p1: [0, r.railTuck1], p2: [0, 0] });
+    } else if (r.singleTuck) {
+      segs.push({ key: "tuck1", label: "Rail Tuck 1", p1: [0, r.railTuck1], p2: [-r.bottomTuck3, 0] });
+    } else {
+      segs.push({ key: "tuck1", label: "Rail Tuck 1", p1: [0, r.railTuck1], p2: [-r.bottomTuck1, 0] });
+      segs.push({
+        key: "tuck2",
+        label: "Rail Tuck 2",
+        p1: [-r.bottomTuck2, r.railTuck1 / 2],
+        p2: [-r.bottomTuck3, 0]
+      });
+    }
+    segs.push({ key: "boardConn", label: "Board Thickness", p1: [leftEdge, bt], p2: [-bandWidth, bt] });
+    segs.push({ key: "bottomConn", label: "Left Edge \u2192 Bottom Tuck 3", p1: [leftEdge, 0], p2: [-r.bottomTuck3, 0] });
+    segs.push({ key: "railConn", label: "Rail Mark 1 \u2192 Tuck 1", p1: [0, r.railMark1], p2: [0, r.railTuck1] });
+    return segs;
+  }
+  function inchesNearZero(valueIn) {
+    return Math.round(Math.abs(valueIn) * 16) / 16 < 1 / 16;
+  }
+  function buildRailDataGroupsInches(r, opts) {
+    const d = (v) => inchesNearZero(v) ? null : v;
+    const railRows = [];
+    if (opts.domed) railRows.push({ label: "Board Thickness", value: d(opts.boardThicknessIn) });
+    railRows.push(
+      { label: opts.domed ? "Tapered Rail Thickness" : "Board Thickness", value: d(r.thickness) },
+      { label: "Apex Thickness", value: d(r.apexLenRange) },
+      { label: "Apex Center", value: d(r.apexCenter) },
+      { label: "Rail Mark 1", value: d(r.railMark1) }
+    );
+    if (!r.hardEdge) railRows.push({ label: "Rail Tuck 1", value: d(r.railTuck1) });
+    if (!r.removeCornerCut) railRows.push({ label: "Corner Cut (Rail)", value: d(r.cornerCutRail) });
+    const deckRows = [];
+    if (opts.domed) deckRows.push({ label: "Domed Deck Band", value: d(r.domedDeckBand) });
+    deckRows.push(
+      { label: "Deck Mark 1", value: d(r.deckMark1) },
+      { label: "Deck Mark 2", value: d(r.deckMark2) },
+      { label: "Deck Mark 3", value: d(r.deckMark3) }
+    );
+    if (!r.removeCornerCut) deckRows.push({ label: "Corner Cut (Deck)", value: d(r.cornerCutDeck) });
+    const bottomRows = r.hardEdge ? [{ label: "Bottom Tuck 3", value: "hard-edge" }] : (r.singleTuck ? [] : [
+      { label: "Bottom Tuck 1", value: d(r.bottomTuck1) },
+      { label: "Bottom Tuck 2", value: d(r.bottomTuck2) }
+    ]).concat([{ label: "Bottom Tuck 3", value: d(r.bottomTuck3) }]);
+    return [
+      { heading: "Rail Side", rows: railRows },
+      { heading: "Deck Side", rows: deckRows },
+      { heading: "Bottom", rows: bottomRows }
+    ];
+  }
+  function resultToInches(r) {
+    return {
+      thickness: mmToInches(r.thickness),
+      apexLenRange: mmToInches(r.apexLenRange),
+      apexCenter: mmToInches(r.apexCenter),
+      railMark1: mmToInches(r.railMark1),
+      railTuck1: mmToInches(r.railTuck1),
+      cornerCutRail: r.cornerCutRail === null ? null : mmToInches(r.cornerCutRail),
+      cornerCutOffset: r.cornerCutOffset === null ? null : mmToInches(r.cornerCutOffset),
+      domedDeckBand: mmToInches(r.domedDeckBand),
+      deckMark1: mmToInches(r.deckMark1),
+      deckMark2: mmToInches(r.deckMark2),
+      deckMark3: mmToInches(r.deckMark3),
+      cornerCutDeck: r.cornerCutDeck === null ? null : mmToInches(r.cornerCutDeck),
+      hardEdge: r.hardEdge,
+      bottomTuck1: mmToInches(r.bottomTuck1),
+      bottomTuck2: mmToInches(r.bottomTuck2),
+      bottomTuck3: mmToInches(r.bottomTuck3),
+      bottomTuck3Derived: mmToInches(r.bottomTuck3Derived),
+      removeCornerCut: r.removeCornerCut,
+      singleTuck: r.singleTuck
+    };
+  }
+  function computeRailSection(input) {
+    const rIn = computeSectionInches({
+      thicknessIn: mmToInches(input.thickness),
+      ratioTopPct: input.ratioTopPercent,
+      family: input.family,
+      domedBandBaseIn: mmToInches(input.domedBandBase),
+      scale: input.scale,
+      cornerCutOffsetOverrideIn: input.cornerCutOffsetOverride === null ? null : mmToInches(input.cornerCutOffsetOverride),
+      removeCornerCut: input.removeCornerCut,
+      singleTuck: input.singleTuck,
+      bottomTuck3OverrideIn: input.bottomTuck3Override === null ? null : mmToInches(input.bottomTuck3Override),
+      symmetrical: input.symmetrical,
+      hardEdge: input.hardEdge
+    });
+    return {
+      thickness: inchesToMm(rIn.thickness),
+      apexLenRange: inchesToMm(rIn.apexLenRange),
+      apexCenter: inchesToMm(rIn.apexCenter),
+      railMark1: inchesToMm(rIn.railMark1),
+      railTuck1: inchesToMm(rIn.railTuck1),
+      cornerCutRail: rIn.cornerCutRail === null ? null : inchesToMm(rIn.cornerCutRail),
+      cornerCutOffset: rIn.cornerCutOffset === null ? null : inchesToMm(rIn.cornerCutOffset),
+      domedDeckBand: inchesToMm(rIn.domedDeckBand),
+      deckMark1: inchesToMm(rIn.deckMark1),
+      deckMark2: inchesToMm(rIn.deckMark2),
+      deckMark3: inchesToMm(rIn.deckMark3),
+      cornerCutDeck: rIn.cornerCutDeck === null ? null : inchesToMm(rIn.cornerCutDeck),
+      hardEdge: rIn.hardEdge,
+      bottomTuck1: inchesToMm(rIn.bottomTuck1),
+      bottomTuck2: inchesToMm(rIn.bottomTuck2),
+      bottomTuck3: inchesToMm(rIn.bottomTuck3),
+      bottomTuck3Derived: inchesToMm(rIn.bottomTuck3Derived),
+      removeCornerCut: rIn.removeCornerCut,
+      singleTuck: rIn.singleTuck
+    };
+  }
+  function toInchesOpts(opts) {
+    return {
+      boardThicknessIn: opts.boardThickness !== void 0 ? mmToInches(opts.boardThickness) : void 0,
+      railThicknessValIn: opts.railThicknessVal !== void 0 ? mmToInches(opts.railThicknessVal) : void 0,
+      domedBandBaseIn: opts.domedBandBase !== void 0 ? mmToInches(opts.domedBandBase) : void 0
+    };
+  }
+  function buildRailProfile(result, thickness, domed, opts = {}) {
+    const ptsIn = buildProfilePointsInches(resultToInches(result), mmToInches(thickness), domed, toInchesOpts(opts));
+    return ptsIn.map(([x, y]) => ({ x: mm(inchesToMm(x)), y: mm(inchesToMm(y)) }));
+  }
+  function buildRailSegments(result, thickness, domed, opts = {}) {
+    const segsIn = buildSegmentDefsInches(resultToInches(result), mmToInches(thickness), domed, toInchesOpts(opts));
+    return segsIn.map((s) => ({
+      key: s.key,
+      label: s.label,
+      p1: { x: mm(inchesToMm(s.p1[0])), y: mm(inchesToMm(s.p1[1])) },
+      p2: { x: mm(inchesToMm(s.p2[0])), y: mm(inchesToMm(s.p2[1])) }
+    }));
+  }
+  var NO_DOT_KEYS = /* @__PURE__ */ new Set(["boardConn", "bottomConn", "railConn"]);
+  function railPlotDots(segments, result, domed) {
+    const dots = [];
+    for (const seg of segments) {
+      if (NO_DOT_KEYS.has(seg.key)) continue;
+      if (result.hardEdge && seg.key === "hardEdge") continue;
+      dots.push({ key: seg.key, x: seg.p1.x, y: seg.p1.y });
+      dots.push({ key: seg.key, x: seg.p2.x, y: seg.p2.y });
+    }
+    dots.push({ key: "apexCenter", x: mm(0), y: result.apexCenter });
+    if (domed) {
+      const domedBand = segments.find((seg) => seg.key === "domedBand");
+      if (domedBand) dots.push({ key: "domedBand", x: mm(0), y: domedBand.p1.y });
+    }
+    return dots;
+  }
+  function railPlotBounds(result, opts) {
+    const thicknessIn = mmToInches(opts.thickness);
+    const blankThicknessIn = opts.domed ? opts.boardThickness !== void 0 ? mmToInches(opts.boardThickness) : thicknessIn : thicknessIn;
+    const domedBandBaseIn = opts.domedBandBase !== void 0 ? mmToInches(opts.domedBandBase) : void 0;
+    const bandWidthIn = opts.domed ? mmToInches(result.domedDeckBand) || domedBandBaseIn || 1 : domedBandBaseIn || Math.max(mmToInches(result.deckMark3), 1);
+    const xAxisMinIn = Math.min(-(bandWidthIn + 2), opts.xAxisMinShared !== void 0 ? mmToInches(opts.xAxisMinShared) : 0);
+    const yAxisMaxIn = blankThicknessIn + 0.25;
+    return { xAxisMin: mm(inchesToMm(xAxisMinIn)), yAxisMax: mm(inchesToMm(yAxisMaxIn)) };
+  }
+  function buildRailDataGroups(result, opts) {
+    const groupsIn = buildRailDataGroupsInches(resultToInches(result), {
+      domed: opts.domed,
+      boardThicknessIn: mmToInches(opts.boardThickness)
+    });
+    return groupsIn.map((g) => ({
+      heading: g.heading,
+      rows: g.rows.map((row) => ({
+        label: row.label,
+        value: row.value === null || row.value === "hard-edge" ? row.value : mm(inchesToMm(row.value))
+      }))
+    }));
+  }
+  function computeRailBands(spec) {
+    const build = (key, sectionSpec, hardEdge) => {
+      const { scale, domedBandBase } = RAIL_SECTION_CONSTANTS[key];
+      const domed = sectionSpec.deckPercent < 100;
+      const railThicknessClamped = roundToSixteenthInch(
+        mm(sectionSpec.boardThickness * sectionSpec.deckPercent / 100)
+      );
+      const thicknessEff = domed ? railThicknessClamped : sectionSpec.boardThickness;
+      const result = computeRailSection({
+        thickness: thicknessEff,
+        ratioTopPercent: sectionSpec.ratioTopPercent,
+        family: sectionSpec.family,
+        domedBandBase,
+        scale,
+        cornerCutOffsetOverride: sectionSpec.cornerCutOffsetOverride,
+        removeCornerCut: sectionSpec.removeCornerCut,
+        singleTuck: sectionSpec.singleTuck,
+        bottomTuck3Override: sectionSpec.bottomTuck3Override,
+        symmetrical: sectionSpec.symmetrical,
+        hardEdge
+      });
+      const profileOpts = {
+        boardThickness: sectionSpec.boardThickness,
+        railThicknessVal: railThicknessClamped,
+        domedBandBase
+      };
+      const profile = buildRailProfile(result, thicknessEff, domed, profileOpts);
+      const segments = buildRailSegments(result, thicknessEff, domed, profileOpts);
+      const bounds = railPlotBounds(result, {
+        domed,
+        thickness: thicknessEff,
+        boardThickness: sectionSpec.boardThickness,
+        domedBandBase
+      });
+      const dataGroups = buildRailDataGroups(result, { domed, boardThickness: sectionSpec.boardThickness });
+      return {
+        domed,
+        boardThickness: sectionSpec.boardThickness,
+        railThicknessClamped,
+        thicknessEff,
+        result,
+        profile,
+        segments,
+        bounds,
+        dataGroups
+      };
+    };
+    return {
+      nose: build("nose", spec.nose, false),
+      center: build("center", spec.center, false),
+      tail: build("tail", spec.tail, spec.tailHardEdge)
+    };
+  }
+  return __toCommonJS(entry_exports);
+})();
+
+</script>
+<script>
+// RB is the app's own lib/geometry/rail-bands.ts + units.ts, bundled with esbuild — every band, dot
+// and label below comes from computeRailBands exactly as the app computes it.
+const { computeRailBands, DEFAULT_RAIL_BAND_SPEC, railPlotDots, railFamilyLabel, MIN_BOTTOM_TUCK_SEPARATION_IN,
+  inchesToMm, mmToInches, formatInchesFraction, formatWholeMm } = RB;
+
+// The app's rail-band colours (components/rails/rail-section-plot.tsx RAIL_SEGMENT_COLORS).
+const COLORS = {
+  domedBand: "#6b8e4e", band1: "var(--accent-ink)", band2: "#b5563a", cornerCut: "#4d8a86",
+  hardEdge: "var(--ink)", tuck1: "#7d5ba6", tuck2: "#3a6ea5", band3: "#4d8a86", tuck3: "#4d8a86",
+  boardConn: "var(--ink)", bottomConn: "var(--ink)", railConn: "var(--ink)",
+};
+const APEX = "#a8425f";
+const SCALE = 56, LEFT_PAD = 22, AXIS_LABEL_PAD = 20;
+const CUT_KEYS = ["band1", "band2", "band3", "cornerCut", "tuck1", "tuck2", "tuck3"];
+
+// Greenlight Surf Co.'s "Sample Rail Band Dims" chart (for a 2 1/2" thick board), in inches, as the
+// founder pasted it (2026-10-31). Tuck is [up the rail, in on the bottom]: the chart's one figure goes
+// both ways (its definition: measured up from and in from the bottom corner). Egg (**) and Pinched (***)
+// take their footnotes' flat bottom band; True 50/50 (*) repeats the deck bands on the bottom.
+const GL_ROWS = {
+  thin:     { label: "Thin (modern)", tuck: [1 / 2, 1 / 2], rail: 1 + 1 / 8, deck: [2, 4] },
+  medium:   { label: "Medium (modern)", tuck: [3 / 4, 3 / 4], rail: 1.5, deck: [2, 4] },
+  full:     { label: "Full (modern)", tuck: [5 / 8, 5 / 8], rail: 1.5, deck: [1.5, 3] },
+  fullSoft: { label: "Full Soft", tuck: [3 / 4, 3 / 4], rail: 1 + 5 / 8, deck: [2, 4] },
+  boxy:     { label: "Boxy", tuck: [1 / 2, 1 / 2], rail: 1, deck: [2.5, 4] },
+  down:     { label: "Down Rail", tuck: [3 / 8, 3 / 8], rail: 7 / 8, deck: [1.75, 2 + 3 / 8, 3] },
+  fifty:    { label: "True 50/50", tuck: "mirror", rail: 1.5, deck: [3 / 4, 1 + 3 / 8, 2] },
+  egg:      { label: "Egg", tuck: [1 / 2, 7 / 8], rail: 1.25, deck: [1.25, 1.75] },
+  pinched:  { label: "Pinched", tuck: [5 / 8, 1], rail: 1 + 1 / 8, deck: [2, 3] },
+  angular:  { label: "“Angular” Down Rail", tuck: [3 / 8, 3 / 8], rail: 1, deck: [1 + 7 / 8] },
+};
+// The chart's thickness table is thickness ÷ 2 1/2" on every row (2 1/8" → 0.85, +0.05 per 1/8",
+// 3 1/4" → 1.3) except its last: 3 1/2" → 1.35, where the rule gives 1.4. 1.35 is exactly 3 3/8" ÷ 2 1/2",
+// so that row is most likely a 3 3/8" typo. The rule carries on past the table, nose and tail included.
+const glMultiplier = (T) => T / 2.5;
+const KEYS = ["nose", "center", "tail"];
+const TITLE = { nose: "Nose Rail", center: "Center Rail", tail: "Tail Rail" };
+const PLOT_TITLE = { nose: 'Nose @ 12"', center: "Center", tail: 'Tail @ 12"' };
+
+// rail-controls.tsx's bounds (inches)
+const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
+const CENTER_THICKNESS_BOUNDS = { min: 1.75, max: 3.5, step: 1 / 16 };
+const TUCK_BOUNDS = { min: 0, max: 1.5, step: 1 / 16 };
+const CORNER_CUT_BOUNDS = { min: 0, max: 0.25, step: 1 / 32 };
+function deckProfileStep(thicknessIn) {
+  const rawStep = Math.max(0.01, (0.0625 / thicknessIn) * 100);
+  const steps = Math.max(1, Math.round(34 / rawStep));
+  return 34 / steps;
+}
+
+const NOTES = {
+  T: "<b>Today.</b> The RAILS viewer as it draws now: the bands as straight cuts, no finished shape.",
+  A: "<b>A: Curve over the bands.</b> Today's plot untouched, with the finished rail on top as one heavier ink line.",
+  B: "<b>B: Finished foam.</b> The finished cross-section shaded as the board itself, outlined by the finished rail; the bands drawn thinner on top as the cuts that got it there.",
+  C: "<b>C: Foam to blend off.</b> Like A, plus the slivers of foam the blend takes off each band edge, shaded, with how deep each one is.",
+};
+
+const MODEL_NOTES = {
+  half: "<b>Blended halfway:</b> every corner blended halfway into the bands either side of it, so the curve touches each band at its middle.",
+  round: "<b>One even round:</b> around the apex the rail is rolled to one radius — the biggest circle that still touches the outline — so the same curve runs above and below the apex. The other corners are blended halfway. A tail hard edge has no round under it, so it's drawn halfway.",
+};
+
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const twoDefaults = () => Object.fromEntries(KEYS.map((k) => [k, { fam: 3, apex: 40 }]));
+const state = {
+  v: "A", blend: 1, model: "half", src: "workbook", glRow: "medium", overlay: true, glcSteps: "all", theme: "daylight", units: "imperial", showFinished: true,
+  spec: clone(DEFAULT_RAIL_BAND_SPEC),
+  open: { nose: true, center: true, tail: true },
+  adv: { nose: false, center: false, tail: false },
+  two: twoDefaults(),
+};
+let bands = computeRailBands(state.spec);
+
+const fmtMark = (mmVal) => (state.units === "metric" ? `${formatWholeMm(mmVal)} mm` : formatInchesFraction(mmVal));
+const IN = (mmVal) => mmToInches(mmVal);
+
+// ---- geometry: the shape the bands leave, then the finished rail through it ----
+
+function clip(poly, a, b, inside) {
+  const side = (p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  const s0 = Math.sign(side(inside));
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const P = poly[i], Q = poly[(i + 1) % poly.length];
+    const sp = side(P) * s0, sq = side(Q) * s0;
+    if (sp >= 0) out.push(P);
+    if ((sp >= 0) !== (sq >= 0)) {
+      const t = sp / (sp - sq);
+      out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]);
+    }
+  }
+  return out;
+}
+const near = (a, b) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
+
+// The cut section: the board's block with every band, the corner cut, the tucks and (domed) the
+// dome sliced off — the shape a shaper has after cutting the bands and before blending them.
+function cutChain(sec, xMin) {
+  const bt = sec.boardThickness;
+  let poly = [[xMin, 0], [0, 0], [0, bt], [xMin, bt]];
+  const inside = [xMin + 0.3, bt * 0.5];
+  for (const s of sec.segments) {
+    if (CUT_KEYS.includes(s.key) || (s.key === "domedBand" && sec.domed)) poly = clip(poly, s.p1, s.p2, inside);
+  }
+  poly = poly.filter((p, i) => !near(p, poly[(i + 1) % poly.length]));
+  const iTop = poly.findIndex((p) => Math.abs(p[0] - xMin) < 1e-6 && Math.abs(p[1] - bt) < 1e-6);
+  const rot = poly.slice(iTop).concat(poly.slice(0, iTop));
+  let chain = [rot[0]].concat(rot.slice(1).reverse());
+  chain = chain.filter((p, i) => {
+    if (i === 0 || i === chain.length - 1) return true;
+    const a = chain[i - 1], b = chain[i + 1];
+    const cr = (p[0] - a[0]) * (b[1] - p[1]) - (p[1] - a[1]) * (b[0] - p[0]);
+    return Math.abs(cr) > 1e-7;
+  });
+  return chain;
+}
+
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+const quad = (A, V, B, t) => [(1 - t) * (1 - t) * A[0] + 2 * (1 - t) * t * V[0] + t * t * B[0], (1 - t) * (1 - t) * A[1] + 2 * (1 - t) * t * V[1] + t * t * B[1]];
+
+// Halfway blend of an open run of corners: each corner rounded by a parabola that leaves each band
+// at `f` of its length from the corner (f = 0.5: the curve touches each band at exactly its middle).
+// `fullLen[i]` is edge i's whole length (an edge cut short by the even round keeps its whole length
+// for the halfway reach, capped at what's left of it); `flat[i]` marks the deck and bottom flats,
+// which take the neighbouring band's reach. A hard edge stays sharp. Appends to `out`.
+function blendRun(pts, fullLen, flat, f, hardEdge, P, out) {
+  const n = pts.length - 1;
+  for (let i = 1; i < n; i++) {
+    const V = pts[i];
+    const sharp = hardEdge && Math.abs(V[0]) < 1e-6 && Math.abs(V[1]) < 1e-6;
+    const lIn = dist(pts[i - 1], V), lOut = dist(V, pts[i + 1]);
+    if (lIn < 1e-9 || lOut < 1e-9) { out.d += ` L${P(V)}`; out.pts.push(V); continue; }
+    let dIn = Math.min(flat[i - 1] ? f * fullLen[i] : f * fullLen[i - 1], lIn);
+    let dOut = Math.min(flat[i] ? f * fullLen[i - 1] : f * fullLen[i], lOut);
+    if (sharp) dIn = dOut = 0;
+    const A = lerp(V, pts[i - 1], dIn / lIn), B = lerp(V, pts[i + 1], dOut / lOut);
+    out.d += ` L${P(A)} Q${P(V)} ${P(B)}`;
+    for (let s = 0; s <= 16; s++) out.pts.push(quad(A, V, B, s / 16));
+  }
+}
+
+// Every cut line as a half-plane n·p <= c, n pointing out of the foam.
+function halfPlanes(sec) {
+  const T = sec.boardThickness, inside = [sec.xAxisMin + 0.3, T / 2];
+  const hp = [];
+  for (const s of sec.segments) {
+    if (!(CUT_KEYS.includes(s.key) || (s.key === "domedBand" && sec.domed))) continue;
+    let n = [s.p2[1] - s.p1[1], -(s.p2[0] - s.p1[0])];
+    const L = Math.hypot(n[0], n[1]); n = [n[0] / L, n[1] / L];
+    let c = n[0] * s.p1[0] + n[1] * s.p1[1];
+    if (n[0] * inside[0] + n[1] * inside[1] > c) { n = [-n[0], -n[1]]; c = -c; }
+    hp.push({ n, c });
+  }
+  hp.push({ n: [0, 1], c: T }, { n: [0, -1], c: 0 });
+  return hp;
+}
+// Biggest circle that touches the rail line x = 0 at height yc and stays inside every cut.
+function maxRAt(hp, yc) {
+  let r = Infinity;
+  for (const { n, c } of hp) {
+    const k = 1 - n[0], rhs = c - n[1] * yc;
+    if (k > 1e-9) r = Math.min(r, rhs / k);
+    else if (rhs < 0) return -1;
+  }
+  return r;
+}
+// One even round: the biggest circle that still touches the outline (the rail line x = 0) — the
+// rail rolled to a single radius around the apex. Returns the circle and where it leaves the cut
+// section above and below the apex, or null when it can't be drawn (a hard edge has no round under it).
+function evenRound(sec, chain) {
+  const flatYs = chain.filter((p) => Math.abs(p[0]) < 1e-6).map((p) => p[1]);
+  if (flatYs.length < 2) return null;
+  const hp = halfPlanes(sec);
+  let lo = Math.min(...flatYs), hi = Math.max(...flatYs);
+  for (let it = 0; it < 200; it++) {
+    const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
+    if (maxRAt(hp, m1) < maxRAt(hp, m2)) lo = m1; else hi = m2;
+  }
+  const yc = (lo + hi) / 2, r = maxRAt(hp, yc);
+  if (!(r > 0) || !Number.isFinite(r)) return null;
+  const C = [-r, yc];
+  let kFlat = -1, up = null, low = null;
+  for (let k = 0; k < chain.length - 1; k++) {
+    const A = chain[k], B = chain[k + 1];
+    if (Math.abs(A[0]) < 1e-6 && Math.abs(B[0]) < 1e-6) { kFlat = k; continue; }
+    const dx = B[0] - A[0], dy = B[1] - A[1];
+    const t = ((C[0] - A[0]) * dx + (C[1] - A[1]) * dy) / (dx * dx + dy * dy);
+    if (t < -1e-6 || t > 1 + 1e-6) continue;
+    const F = lerp(A, B, Math.min(1, Math.max(0, t)));
+    if (Math.abs(dist(F, C) - r) > 1e-5) continue;
+    if (kFlat < 0) up = { k, F }; else if (!low) low = { k, F };
+  }
+  return up && low ? { C, r, yc, up, low } : null;
+}
+
+// The finished rail as an SVG path plus a sampled copy of it (for the shading, depths and apex).
+function finishedCurve(sec, P) {
+  const chain = cutChain(sec, sec.xAxisMin);
+  const n = chain.length - 1;
+  const lens = chain.slice(0, -1).map((p, i) => dist(p, chain[i + 1]));
+  const out = { d: `M${P(chain[0])}`, pts: [chain[0]], chain, fallback: false };
+  const round = state.model === "round" ? (sec.hardEdge ? null : evenRound(sec, chain)) : null;
+  if (state.model === "round" && !round) out.fallback = true;
+
+  if (!round) {
+    blendRun(chain, lens, lens.map((_, i) => i === 0 || i === n - 1), state.model === "round" ? 0.5 : state.blend * 0.5, sec.hardEdge, P, out);
+  } else {
+    const { C, r, up, low } = round;
+    // deck side: the chain up to the edge the round leaves from, then the round's top end
+    const left = chain.slice(0, up.k + 1).concat([up.F]);
+    blendRun(left, lens.slice(0, up.k + 1), left.slice(0, -1).map((_, j) => j === 0), 0.5, false, P, out);
+    out.d += ` L${P(up.F)}`; out.pts.push(up.F);
+    // the round itself, over the apex
+    const a1 = Math.atan2(up.F[1] - C[1], up.F[0] - C[0]), a2 = Math.atan2(low.F[1] - C[1], low.F[0] - C[0]);
+    let sweep = a1 - a2; while (sweep < 0) sweep += 2 * Math.PI;
+    out.d += ` A${(r * SCALE).toFixed(2)} ${(r * SCALE).toFixed(2)} 0 ${sweep > Math.PI ? 1 : 0} 1 ${P(low.F)}`;
+    for (let s = 1; s <= 48; s++) { const a = a1 - (sweep * s) / 48; out.pts.push([C[0] + r * Math.cos(a), C[1] + r * Math.sin(a)]); }
+    // bottom side: from the round's bottom end along the rest of the chain
+    const right = [low.F].concat(chain.slice(low.k + 1));
+    blendRun(right, lens.slice(low.k), right.slice(0, -1).map((_, j) => low.k + j === n - 1), 0.5, false, P, out);
+  }
+  out.d += ` L${P(chain[n])}`; out.pts.push(chain[n]);
+
+  // how deep the blend goes at each corner of the cut section, and which way is out
+  out.corners = [];
+  for (let i = 1; i < n; i++) {
+    const V = chain[i];
+    if (sec.hardEdge && Math.abs(V[0]) < 1e-6 && Math.abs(V[1]) < 1e-6) continue;
+    let best = Infinity, nearPt = null;
+    for (let j = 0; j < out.pts.length - 1; j++) {
+      const A = out.pts[j], B = out.pts[j + 1], dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy;
+      const t = L2 ? Math.min(1, Math.max(0, ((V[0] - A[0]) * dx + (V[1] - A[1]) * dy) / L2)) : 0;
+      const F = lerp(A, B, t), dd = dist(V, F);
+      if (dd < best) { best = dd; nearPt = F; }
+    }
+    out.corners.push({ V, M: nearPt, depth: best });
+  }
+  // the finished apex: where the round touches the outline, or the middle of wherever the halfway
+  // curve still runs along it; on a hard edge, how high the straight wall reaches instead
+  const onRail = out.pts.filter((p) => p[0] > -1e-5).map((p) => p[1]);
+  out.apexY = round ? round.yc : onRail.length ? (Math.min(...onRail) + Math.max(...onRail)) / 2 : null;
+  out.wallTop = sec.hardEdge && onRail.length ? Math.max(...onRail) : null;
+  return out;
+}
+
+// One section's output in inches, the shape the drawing works in (the app's own px/py do the same).
+function view(o) {
+  const pt = (p) => [IN(p.x), IN(p.y)];
+  return {
+    domed: o.domed, hardEdge: o.result.hardEdge, boardThickness: IN(o.boardThickness), apexCenter: IN(o.result.apexCenter),
+    xAxisMin: IN(o.bounds.xAxisMin), yAxisMax: IN(o.bounds.yAxisMax),
+    segments: o.segments.map((g) => ({ key: g.key, label: g.label, p1: pt(g.p1), p2: pt(g.p2) })),
+    dots: railPlotDots(o.segments, o.result, o.domed).map((d) => ({ key: d.key, x: IN(d.x), y: IN(d.y) })),
+  };
+}
+
+// Greenlight's rail band charts, from the founder's PDFs (2026-10-31), in inches:
+//  - Modern Medium Rail, Flat Deck, Round Tuck: midpoint thickness 2 1/2"–3 1/4" → Rail Mark 1 = T/2 + 1/8";
+//    Deck Mark 1 2 1/2", Deck Mark 2 the primary band's midpoint, Deck Mark 3 4 1/2", Corner Cut 1/4",
+//    one tuck 1/2" up × 1/2" in — every one of those the same on all four rows.
+//  - Modern Medium Rail, Domed Deck, Elliptical Tuck: true rail thickness 1 3/4"–2 1/2" → Rail Mark 1 = t/2 + 1/4";
+//    Deck Dome Mark 6", Deck Mark 1 2", Deck Mark 3 4 1/2", Corner Cut 1/4", Rail Tuck 1 1/4" up to Bottom Tuck 1
+//    3/4" in, then Rail Tuck 2 from 1/2" up (read here as meeting the first tuck band at its midpoint).
+//  - Both: 12" from nose and tail by the "75% formula" — Rail Mark 1 = thickness there × .75, Deck Marks 1 and 3
+//    and the Dome Mark × .75. The tucks and corner cut aren't given there; kept as at the midpoint.
+//  - Boxy Railbands (fish/egg) and Knifey Railbands (hi-performance): no thickness given, read as 2 1/2" boards.
+//    Boxy midpoint: rail mark 1 5/8", deck marks 2" and 4", tuck 3/8" × 3/8". Knifey midpoint: rail mark 1",
+//    deck marks 2" and 4", tuck 3/8" up × 3/8"–7/8" in (5/8" here); its nose tuck 3/16" up × 3/8"–1/2" in.
+//    Neither draws a corner cut. Their rail marks become an offset from T/2 so they follow thickness the way the
+//    Medium charts do; at 12" the same offset is carried through the 75% formula.
+const GLC_FAMILY = {
+  1: { name: "Boxy chart", off: 3 / 8, dm1: 2, dm3: 4, cc: 0, tuck: [3 / 8, 3 / 8], noseTuck: [3 / 8, 3 / 8] },
+  3: { name: "Modern Medium chart", off: 1 / 8, dm1: 2.5, dm3: 4.5, cc: 1 / 4, tuck: [1 / 2, 1 / 2], noseTuck: [1 / 2, 1 / 2] },
+  5: { name: "Knifey chart", off: -1 / 4, dm1: 2, dm3: 4, cc: 0, tuck: [3 / 8, 5 / 8], noseTuck: [3 / 16, 7 / 16] },
+};
+// Family 1, 3 and 5 are the three charts; 2 and 4 sit halfway. "Rail mark + tuck only" keeps the Medium chart's deck
+// marks and corner cut on every family, so only the rail mark and the tuck step.
+function glcParams(f, domed) {
+  const A = (n) => { const a = { ...GLC_FAMILY[n] }; if (domed) { a.off += 1 / 8; if (n === 3) a.dm1 = 2; } return a; };
+  const lo = f <= 3 ? 1 : 3, hi = f <= 3 ? 3 : 5, t = (f - lo) / 2;
+  const a = A(lo), b = A(hi), M = A(3);
+  const L = (x, y) => x + (y - x) * t, L2 = (x, y) => [L(x[0], y[0]), L(x[1], y[1])];
+  const p = { off: L(a.off, b.off), dm1: L(a.dm1, b.dm1), dm3: L(a.dm3, b.dm3), cc: L(a.cc, b.cc), tuck: L2(a.tuck, b.tuck), noseTuck: L2(a.noseTuck, b.noseTuck), offMed: M.off };
+  if (state.glcSteps === "rail") { p.dm1 = M.dm1; p.dm3 = M.dm3; p.cc = M.cc; }
+  p.elliptical = domed && f === 3;
+  p.name = f === 2 ? "halfway Boxy ↔ Medium" : f === 4 ? "halfway Medium ↔ Knifey" : GLC_FAMILY[f].name;
+  return p;
+}
+function glcSection(k) {
+  const o = bands[k], sp = state.spec[k];
+  const T = IN(sp.boardThickness), domed = sp.deckPercent < 100, t = domed ? IN(o.railThicknessClamped) : T;
+  const atMid = k === "center", p = glcParams(sp.family, domed);
+  const hardEdge = k === "tail" && state.spec.tailHardEdge;
+  const k75 = atMid ? 1 : 0.75;
+  const rm = atMid ? t / 2 + p.off : 0.75 * t + 0.75 * (p.off - p.offMed);
+  const dm1 = p.dm1 * k75, dm3 = p.dm3 * k75, dome = 6 * k75, cc = p.cc;
+  const deckY = (x) => (domed ? t + (T - t) * Math.min(1, Math.max(0, -x / dome)) : T);
+  const segs = [], dots = [];
+  const half = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const add = (key, label, p1, p2) => { segs.push({ key, label, p1, p2 }); dots.push({ key, x: p1[0], y: p1[1] }, { key, x: p2[0], y: p2[1] }); };
+  if (domed) add("domedBand", "Deck Dome", [0, t], [-dome, T]);
+  const P1 = [0, rm], D1 = [-dm1, deckY(-dm1)];
+  add("band1", "Primary Rail Band", P1, D1);
+  add("band2", "Secondary Rail Band", half(P1, D1), [-dm3, deckY(-dm3)]);
+  if (cc > 1e-6) add("cornerCut", "Corner Cut", [0, rm - cc], [-cc, rm + (D1[1] - rm) * (cc / dm1)]);
+  let tuckTop = 0, tuckIn = 0, tuckTxt;
+  if (hardEdge) tuckTxt = "hard edge, no tuck";
+  else if (p.elliptical) {
+    const A1 = [0, 1 / 4], B1 = [-3 / 4, 0];
+    add("tuck1", "Rail Tuck 1", A1, B1);
+    add("tuck2", "Rail Tuck 2", [0, 1 / 2], half(A1, B1));
+    tuckTop = 1 / 2; tuckIn = 3 / 4;
+    tuckTxt = `elliptical tuck ${fmtMark(inchesToMm(1 / 4))} × ${fmtMark(inchesToMm(3 / 4))}, then ${fmtMark(inchesToMm(1 / 2))} up`;
+  } else {
+    const tk = k === "nose" ? p.noseTuck : p.tuck;
+    add("tuck1", "Tuck", [0, tk[0]], [-tk[1], 0]);
+    tuckTop = tk[0]; tuckIn = tk[1];
+    tuckTxt = `tuck ${fmtMark(inchesToMm(tk[0]))} up × ${fmtMark(inchesToMm(tk[1]))} in`;
+  }
+  const left = -(Math.max(dm3, domed ? dome : 0) + 2);
+  segs.push({ key: "boardConn", label: "Blank", p1: [left, T], p2: [domed ? -dome : 0, T] });
+  segs.push({ key: "bottomConn", label: "Blank", p1: [left, 0], p2: [-tuckIn, 0] });
+  segs.push({ key: "railConn", label: "Vertical band", p1: [0, rm], p2: [0, tuckTop] });
+  if (hardEdge) segs.push({ key: "hardEdge", label: "Hard Edge", p1: [0, rm], p2: [0, 0] });
+  const middle = (rm + tuckTop) / 2;
+  dots.push({ key: "apexCenter", x: 0, y: middle });
+  const f = (x) => fmtMark(inchesToMm(x));
+  const marks = `rail mark ${f(rm)}${atMid ? "" : " (75% formula)"} · deck marks ${f(dm1)}, ${f(dm3)}${cc > 1e-6 ? ` · corner cut ${f(cc)}` : ""} · ${tuckTxt}`;
+  return { domed, hardEdge, boardThickness: T, apexCenter: middle, xAxisMin: left, yAxisMax: T + 0.25, segments: segs, dots,
+    glc: { name: `${p.name}${domed ? " · domed deck" : " · flat deck"}`, marks } };
+}
+
+// ---- Two settings (2026-11-01): Fullness and Apex set every band ----
+// Fitted to the founder's Greenlight Rails sheet on the "Greenlight Rails" page, where it redraws every flat-deck
+// type within about 1/16" on average (Pinched 1/8", whose long tuck a 45° tuck can't reach). The rule: a 5/8" flat on
+// the rail centred on the apex; the rail mark at its top; one tuck from its bottom, as far in as it is up; Deck Mark 1
+// wherever it keeps the asked-for foam; Deck Mark 2 twice as far in, the second band from the middle of the primary;
+// every figure × the rail's own thickness ÷ 2 1/2". Fullness is the share of the blank still there in the outer
+// 3" (× thickness ÷ 2 1/2") once the bands are cut, laid on the Family numbers: 1 keeps 86%, each step 5% less.
+const TWO_FLAT = 0.625, TWO_FULL = 86, TWO_STEP = 5;
+const twoKept = (f) => TWO_FULL - (f - 1) * TWO_STEP;
+const RATIO_HINTS = '<span style="left:0">30/70</span><span style="left:50%;transform:translateX(-50%)">50/50</span><span style="left:75%;transform:translateX(-50%)">60/40</span>';
+const TWO_APEX_HINTS = '<span style="left:0">20% down rail</span><span style="left:57.14%;transform:translateX(-50%)">40%</span><span style="right:0">55%</span>';
+const TWO_NOTE = '<b>Two settings:</b> each section\'s Fullness (the Family slider: 1 keeps 86% of the blank in the outer 3", each step 5% less) and Apex (the Ratio slider) set every band: a 5/8" flat on the rail centred on the apex, a 45° tuck from its bottom, Deck Mark 1 wherever it keeps that foam, Deck Mark 2 twice as far in, all × the rail\'s thickness ÷ 2 1/2". ';
+// Each type in the sheet at its own foam and apex (a 2 1/2" board), as the Greenlight Rails page measures them.
+const TWO_PRESETS = {
+  "Egg": { fam: 1.28, apex: 35 }, "True 50/50": { fam: 1.45, apex: 50 }, "Mod Full": { fam: 1.72, apex: 42.5 },
+  "Angular DR": { fam: 2.14, apex: 27.5 }, "Full Soft": { fam: 2.26, apex: 47.5 }, "Mod Med": { fam: 2.73, apex: 45 },
+  "Down Rail": { fam: 3.19, apex: 25 }, "Mod Med (flat, round)": { fam: 3.35, apex: 32.5 }, "Pinched": { fam: 3.62, apex: 35 },
+  "Mod Thin": { fam: 3.73, apex: 32.5 }, "Boxy (sheet)": { fam: 4.67, apex: 30 },
+};
+function twoSection(k) {
+  const o = bands[k], sp = state.spec[k], tw = state.two[k];
+  const T = IN(sp.boardThickness), domed = sp.deckPercent < 100, t = domed ? IN(o.railThicknessClamped) : T;
+  // a domed deck keeps the app's own dome (Deck Profile); the bands end on it
+  const db = domed ? view(o).segments.find((s) => s.key === "domedBand") : null;
+  const dome = db && -db.p2[0] > 1e-6 ? -db.p2[0] : 0;
+  const deckY = (x) => (dome ? t + (T - t) * Math.min(1, Math.max(0, -x / dome)) : T);
+  const hardEdge = k === "tail" && state.spec.tailHardEdge;
+  const s = t / 2.5, A = tw.apex / 100, V = twoKept(tw.fam);
+  const rm = Math.min(t - 1 / 32, A * t + (TWO_FLAT * s) / 2), u = Math.max(0, A * t - (TWO_FLAT * s) / 2);
+  const lines = (d1) => {
+    const P1 = [0, rm], E1 = [-d1, deckY(-d1)];
+    return { P1, E1, M: [(P1[0] + E1[0]) / 2, (P1[1] + E1[1]) / 2], E2: [-2 * d1, deckY(-2 * d1)] };
+  };
+  // foam kept in the outer 3" (scaled), with the tuck in place: a hard edge drops the tuck afterwards, so
+  // ticking it never moves the deck bands
+  const keptAt = (d1) => {
+    const L = lines(d1), w = 3 * s, n = 120;
+    const at = (p, q, x) => p[1] + ((x - p[0]) * (q[1] - p[1])) / (q[0] - p[0]);
+    let a = 0, blk = 0;
+    for (let i = 0; i < n; i++) {
+      const x = (-(i + 0.5) * w) / n;
+      const top = Math.min(deckY(x), at(L.P1, L.E1, x), at(L.M, L.E2, x));
+      const bot = u > 1e-6 ? Math.max(0, at([0, u], [-u, 0], x)) : 0;
+      a += Math.max(0, top - bot); blk += deckY(x);
+    }
+    return (a / blk) * 100;
+  };
+  let lo = 0.1 * s, hi = 10 * s;
+  for (let i = 0; i < 44; i++) { const m = (lo + hi) / 2; if (keptAt(m) > V) lo = m; else hi = m; }
+  const d1 = (lo + hi) / 2, L = lines(d1);
+
+  const segs = [], dots = [];
+  const add = (key, label, p1, p2) => { segs.push({ key, label, p1, p2 }); dots.push({ key, x: p1[0], y: p1[1] }, { key, x: p2[0], y: p2[1] }); };
+  if (dome) add("domedBand", "Deck Dome", [0, t], [-dome, T]);
+  add("band1", "Primary Rail Band", L.P1, L.E1);
+  add("band2", "Secondary Rail Band", L.M, L.E2);
+  const tuckTop = hardEdge ? 0 : u;
+  if (!hardEdge && u > 1e-6) add("tuck1", "Tuck", [0, u], [-u, 0]);
+  const left = -(Math.max(2 * d1, dome) + 2);
+  segs.push({ key: "boardConn", label: "Blank", p1: [left, T], p2: [dome ? -dome : 0, T] });
+  segs.push({ key: "bottomConn", label: "Blank", p1: [left, 0], p2: [-tuckTop, 0] });
+  segs.push({ key: "railConn", label: "Vertical band", p1: [0, rm], p2: [0, tuckTop] });
+  if (hardEdge) segs.push({ key: "hardEdge", label: "Hard Edge", p1: [0, rm], p2: [0, 0] });
+  const middle = (rm + tuckTop) / 2;
+  dots.push({ key: "apexCenter", x: 0, y: middle });
+  const f = (x) => fmtMark(inchesToMm(x));
+  const marks = `keeps ${Math.round(V)}% · apex ${f(A * t)} up · rail mark ${f(rm)} · deck marks ${f(d1)}, ${f(2 * d1)} · ${hardEdge ? "hard edge, no tuck" : `tuck ${f(u)} up × ${f(u)} in`}`;
+  return { domed: !!dome, hardEdge, boardThickness: T, railThickness: t, apexCenter: middle, xAxisMin: left, yAxisMax: T + 0.25, segments: segs, dots,
+    two: { name: `Fullness ${tw.fam.toFixed(1)} · Apex ${tw.apex}%${dome ? " · domed deck" : ""}`, marks } };
+}
+
+// One section drawn from Greenlight's chart at this rail's thickness (and the tail's Hard Edge).
+function glSection(k) {
+  const T = IN(state.spec[k].boardThickness), row = GL_ROWS[state.glRow], m = glMultiplier(T);
+  const hardEdge = k === "tail" && state.spec.tailHardEdge;
+  const rail = row.rail * m, deck = row.deck.map((d) => d * m);
+  const segs = [], dots = [];
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const add = (key, label, p1, p2) => { segs.push({ key, label, p1, p2 }); dots.push({ key, x: p1[0], y: p1[1] }, { key, x: p2[0], y: p2[1] }); };
+  // deck: the primary band from the rail mark to Deck Mark 1, then each next band from the middle of the last
+  const names = ["Primary Rail Band", "Secondary Rail Band", "Tertiary Rail Band"];
+  let prev = null;
+  deck.forEach((dm, i) => { const p1 = i === 0 ? [0, rail] : mid(prev.p1, prev.p2); prev = { p1, p2: [-dm, T] }; add(`band${i + 1}`, names[i], prev.p1, prev.p2); });
+  // bottom: the tuck as one flat band, the mirrored 50/50 bands, or nothing under a hard edge
+  let tuckTop = 0, tuck = null, bottomIn = 0;
+  if (hardEdge) {
+    tuckTop = 0;
+  } else if (row.tuck === "mirror") {
+    tuckTop = T - rail; prev = null;
+    deck.forEach((dm, i) => { const p1 = i === 0 ? [0, tuckTop] : mid(prev.p1, prev.p2); prev = { p1, p2: [-dm, 0] }; add(`tuck${i + 1}`, `Bottom ${names[i]}`, prev.p1, prev.p2); });
+    bottomIn = Math.max(...deck);
+  } else {
+    tuck = row.tuck.map((v) => v * m); tuckTop = tuck[0]; bottomIn = tuck[1];
+    add("tuck1", "Tuck", [0, tuck[0]], [-tuck[1], 0]);
+  }
+  const left = -(Math.max(...deck, bottomIn) + 2);
+  segs.push({ key: "boardConn", label: "Blank", p1: [left, T], p2: [0, T] });
+  segs.push({ key: "bottomConn", label: "Blank", p1: [left, 0], p2: [hardEdge ? 0 : -bottomIn, 0] });
+  segs.push({ key: "railConn", label: "Vertical band", p1: [0, rail], p2: [0, tuckTop] });
+  if (hardEdge) segs.push({ key: "hardEdge", label: "Hard Edge", p1: [0, rail], p2: [0, 0] });
+  const middle = (rail + tuckTop) / 2;
+  dots.push({ key: "apexCenter", x: 0, y: middle });
+  return { domed: false, hardEdge, boardThickness: T, apexCenter: middle, xAxisMin: left, yAxisMax: T + 0.25, segments: segs, dots,
+    gl: { m, row, rail, deck, tuck, mirror: row.tuck === "mirror", tuckTop } };
+}
+
+// ---- units ----
+function fmtDepth(inches) {
+  if (state.units === "metric") {
+    const m = Math.round(inches * 25.4);
+    return m >= 1 ? `${m}` : null;
+  }
+  const n = Math.round(inches * 32);
+  if (n < 1) return null;
+  let num = n, den = 32;
+  while (num % 2 === 0 && den > 1) { num /= 2; den /= 2; }
+  const whole = Math.floor(num / den), rem = num % den;
+  return (whole ? `${whole}${rem ? " " : ""}` : "") + (rem ? `${rem}/${den}` : "") + '"';
+}
+
+// How far the finished apex sits from the Apex Center: 1/64" steps, or whole mm.
+function fmtShift(inches) {
+  const dir = inches < 0 ? "low" : "high";
+  if (state.units === "metric") {
+    const m = Math.round(Math.abs(inches) * 25.4);
+    return m === 0 ? "on the Apex Center" : `${m} mm ${dir}`;
+  }
+  const n = Math.round(Math.abs(inches) * 64);
+  if (n === 0) return "on the Apex Center";
+  let num = n, den = 64;
+  while (num % 2 === 0 && den > 1) { num /= 2; den /= 2; }
+  return `${num}/${den}" ${dir}`;
+}
+
+function grid(xMinAxis, yMaxAxis) {
+  const xs = [], ys = [];
+  if (state.units === "imperial") {
+    for (let i = 0; i >= Math.floor(xMinAxis); i--) xs.push({ v: i, l: `${Math.abs(i)}` });
+    for (let j = 0; j <= Math.floor(yMaxAxis); j++) ys.push({ v: j, l: `${j}` });
+    return { xs, ys };
+  }
+  const xmm = Math.floor((xMinAxis * 25.4) / 10) * 10, ymm = Math.floor((yMaxAxis * 25.4) / 10) * 10;
+  for (let i = 0, k = 0; i >= xmm; i -= 10, k++) xs.push({ v: i / 25.4, l: k % 2 ? "" : `${Math.abs(i)}${k === 2 ? " mm" : ""}` });
+  for (let j = 0, k = 0; j <= ymm; j += 10, k++) ys.push({ v: j / 25.4, l: k % 2 ? "" : `${j}` });
+  return { xs, ys };
+}
+
+// ---- drawing ----
+function plotSvg(name, sec, xAxisMin, over) {
+  const minX = xAxisMin - 0.15, minY = -0.15, maxY = sec.yAxisMax + 0.15;
+  const W = (0.15 - minX) * SCALE + LEFT_PAD + (sec.gl || sec.glc || sec.two ? 230 : 150);
+  const H = (maxY - minY) * SCALE + AXIS_LABEL_PAD;
+  const px = (x) => (x - minX) * SCALE + LEFT_PAD;
+  const py = (y) => (maxY - y) * SCALE;
+  const P = (p) => `${px(p[0]).toFixed(2)},${py(p[1]).toFixed(2)}`;
+  const v = state.showFinished ? state.v : "T";
+  const parts = [];
+
+  const g = grid(xAxisMin, sec.yAxisMax);
+  const gx0 = g.xs[g.xs.length - 1].v;
+  for (const t of g.xs) parts.push(`<line x1="${px(t.v)}" y1="${py(0)}" x2="${px(t.v)}" y2="${py(g.ys[g.ys.length - 1].v)}" stroke="color-mix(in srgb, var(--muted) 12%, transparent)"/>`);
+  for (const t of g.ys) parts.push(`<line x1="${px(gx0)}" y1="${py(t.v)}" x2="${px(0)}" y2="${py(t.v)}" stroke="color-mix(in srgb, var(--muted) 12%, transparent)"/>`);
+  for (const t of g.xs) {
+    parts.push(`<line x1="${px(t.v)}" y1="${py(0)}" x2="${px(t.v)}" y2="${py(0) + 4}" stroke="var(--muted)"/>`);
+    if (t.l) parts.push(`<text x="${px(t.v)}" y="${py(0) + 15}" font-size="10" fill="var(--muted)" text-anchor="middle">${t.l}</text>`);
+  }
+  for (const t of g.ys) {
+    parts.push(`<line x1="${px(gx0)}" y1="${py(t.v)}" x2="${px(gx0) - 4}" y2="${py(t.v)}" stroke="var(--muted)"/>`);
+    if (t.l) parts.push(`<text x="${px(gx0) - 8}" y="${py(t.v) + 3.5}" font-size="10" fill="var(--muted)" text-anchor="end">${t.l}</text>`);
+  }
+  parts.push(`<line x1="${px(0)}" y1="${py(-0.1)}" x2="${px(0)}" y2="${py(sec.yAxisMax)}" stroke="color-mix(in srgb, var(--muted) 30%, transparent)" stroke-dasharray="2 3"/>`);
+
+  const fin = finishedCurve(sec, P);
+  const chain = fin.chain, d = fin.d;
+
+  // your workbook's bands, dashed, under Greenlight's
+  if (over) {
+    for (const s of over.segments) {
+      if (!(CUT_KEYS.includes(s.key) || (s.key === "domedBand" && over.domed) || s.key === "railConn")) continue;
+      parts.push(`<line x1="${px(s.p1[0])}" y1="${py(s.p1[1])}" x2="${px(s.p2[0])}" y2="${py(s.p2[1])}" stroke="var(--muted)" stroke-width="1.25" stroke-dasharray="4 3" opacity=".85"/>`);
+    }
+    parts.push(`<circle cx="${px(0)}" cy="${py(over.apexCenter)}" r="3.5" fill="none" stroke="${APEX}" stroke-width="1.5"/>`);
+  }
+
+  if (v === "B") parts.push(`<path d="${d} Z" fill="var(--fill)" stroke="none"/>`);
+  if (v === "C") {
+    // the foam between the cuts and the finished rail
+    const back = [...fin.pts].reverse();
+    parts.push(`<path d="M${chain.map(P).join(" L")} L${back.map(P).join(" L")} Z" fill="color-mix(in srgb, var(--blend) 45%, transparent)" stroke="none"/>`);
+  }
+
+  const thin = v === "B";
+  for (const s of sec.segments) {
+    parts.push(`<line x1="${px(s.p1[0])}" y1="${py(s.p1[1])}" x2="${px(s.p2[0])}" y2="${py(s.p2[1])}" stroke="${COLORS[s.key]}" stroke-width="${thin ? 1.25 : 2}" ${thin ? 'opacity=".75"' : ""}/>`);
+  }
+  if (v !== "T") {
+    parts.push(`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="${v === "B" ? 2.25 : 3}" stroke-linejoin="round" stroke-linecap="round" ${v !== "B" ? 'opacity=".9"' : ""}/>`);
+  }
+  for (const dt of sec.dots) {
+    const col = dt.key === "apexCenter" ? APEX : COLORS[dt.key];
+    parts.push(`<circle cx="${px(dt.x)}" cy="${py(dt.y)}" r="${thin ? 2.25 : 2.75}" fill="${col}"/>`);
+  }
+
+  // where the finished apex lands against the Apex Center
+  const placed = [];
+  if (v !== "T" && fin.apexY !== null) {
+    const ay = py(fin.wallTop !== null ? fin.wallTop : fin.apexY);
+    placed.push([px(0), ay]);
+    parts.push(`<line x1="${px(0) + 4}" y1="${ay}" x2="${px(0) + 14}" y2="${ay}" stroke="var(--ink)" stroke-width="1.5"/>`);
+    let txt, sub = null;
+    if (fin.wallTop !== null) txt = `hard edge: straight wall up to ${fmtMark(inchesToMm(fin.wallTop))}`;
+    else if (sec.gl || sec.glc || sec.two) {
+      txt = `apex ${fmtMark(inchesToMm(fin.apexY))} up (${Math.round((fin.apexY / (sec.railThickness ?? sec.boardThickness)) * 100)}% of thickness)`;
+      const sh = fmtShift(fin.apexY - sec.apexCenter);
+      sub = sh.startsWith("on") ? "on the vertical band's middle" : `${sh.replace(/ (low|high)$/, (m0, w) => (w === "low" ? " below" : " above"))} the vertical band's middle`;
+    } else txt = `apex ${fmtShift(fin.apexY - sec.apexCenter)}`;
+    if (fin.wallTop !== null) placed[0][1] = py(fin.wallTop);
+    parts.push(`<text x="${px(0) + 18}" y="${ay + 3.5}" font-size="10.5" font-weight="700" fill="var(--ink)" paint-order="stroke" stroke="var(--panel)" stroke-width="3">${txt}</text>`);
+    if (sub) parts.push(`<text x="${px(0) + 18}" y="${ay + 16}" font-size="9.5" fill="var(--muted)" paint-order="stroke" stroke="var(--panel)" stroke-width="3">${sub}</text>`);
+  }
+
+  if (v === "C") {
+    for (const c of [...fin.corners].sort((a, b) => b.depth - a.depth)) {
+      const label = fmtDepth(c.depth);
+      if (!label) continue;
+      if (placed.some((q) => Math.hypot(q[0] - px(c.V[0]), q[1] - py(c.V[1])) < 26)) continue;
+      placed.push([px(c.V[0]), py(c.V[1])]);
+      let ox = c.V[0] - c.M[0], oy = c.V[1] - c.M[1];
+      const L = Math.hypot(ox, oy) || 1; ox /= L; oy /= L;
+      const lx = px(c.V[0]) + ox * 14, ly = py(c.V[1]) - oy * 14;
+      const anchor = ox > 0.35 ? "start" : ox < -0.35 ? "end" : "middle";
+      parts.push(`<line x1="${px(c.V[0])}" y1="${py(c.V[1])}" x2="${px(c.V[0]) + ox * 9}" y2="${py(c.V[1]) - oy * 9}" stroke="var(--blend)" stroke-width="1"/>`);
+      parts.push(`<text x="${lx}" y="${ly + 3.5}" font-size="10.5" font-weight="600" fill="var(--ink)" text-anchor="${anchor}" paint-order="stroke" stroke="var(--panel)" stroke-width="3">${label}</text>`);
+    }
+  }
+
+  // flex by drawing height, so every plot lands at the same scale (the app's one SCALE for all three)
+  let head = name;
+  if (sec.gl) {
+    const g2 = sec.gl, f = (x) => fmtMark(inchesToMm(x));
+    const tuckTxt = sec.hardEdge ? "hard edge, no tuck" : g2.mirror ? `bottom bands mirror the deck (from ${f(g2.tuckTop)} up)` : `tuck ${f(g2.tuck[0])} up × ${f(g2.tuck[1])} in`;
+    head += ` — Greenlight ${g2.row.label} × ${g2.m.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")}<span class="marks">${tuckTxt} · rail mark ${f(g2.rail)} · deck marks ${g2.deck.map(f).join(", ")}</span>`;
+  }
+  if (sec.glc) head += ` — Greenlight charts · ${sec.glc.name}<span class="marks">${sec.glc.marks}</span>`;
+  if (sec.two) head += ` — Two settings · ${sec.two.name}<span class="marks">${sec.two.marks}</span>`;
+  return `<div class="plot" style="flex:${H.toFixed(1)} 1 0"><h3>${head}</h3><svg viewBox="0 0 ${W.toFixed(1)} ${H.toFixed(1)}" preserveAspectRatio="xMinYMid meet" font-family="Inter, system-ui, sans-serif">${parts.join("")}</svg></div>`;
+}
+
+function legend(sec) {
+  const items = [`<span><i class="dot" style="background:${APEX}"></i>${sec.gl || sec.glc || sec.two ? "Middle of the vertical band" : "Apex Center"}</span>`];
+  for (const s of sec.segments) {
+    if (s.key === "bottomConn" || s.key === "railConn") continue;
+    items.push(`<span><i style="background:${COLORS[s.key]}"></i>${s.label}</span>`);
+  }
+  if (sec.domed) items.push(`<span><i style="background:#6b8e4e"></i>Tapered Rail Thickness</span>`);
+  const v = state.showFinished ? state.v : "T";
+  if (v === "A" || v === "C") items.push(`<span><i class="fin" style="background:var(--ink)"></i><b>Finished Rail</b></span>`);
+  if (v === "B") items.push(`<span><i class="foam" style="background:var(--fill);border:2px solid var(--ink)"></i><b>Finished Rail</b></span>`);
+  if (v === "C") items.push(`<span><i class="foam" style="background:color-mix(in srgb, var(--blend) 45%, transparent)"></i><b>Blended off</b></span>`);
+  if ((sec.gl || sec.glc || sec.two) && state.overlay) items.push(`<span><i style="background:repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px)"></i>Your workbook's bands · <i class="dot" style="background:none;border:1.5px solid ${APEX}"></i>its Apex Center</span>`);
+  return items.join("");
+}
+
+function drawPlots() {
+  const views = {}, overs = {};
+  const gl = state.src === "gl", glc = state.src === "glc", two = state.src === "two";
+  for (const k of KEYS) {
+    views[k] = gl ? glSection(k) : glc ? glcSection(k) : two ? twoSection(k) : view(bands[k]);
+    overs[k] = (gl || glc || two) && state.overlay ? view(bands[k]) : null;
+  }
+  const open = KEYS.filter((k) => state.open[k]);
+  const xAxisMin = Math.min(...open.map((k) => Math.min(views[k].xAxisMin, overs[k] ? overs[k].xAxisMin : 0)), 0);
+  document.getElementById("plots").innerHTML = open.map((k) => plotSvg(PLOT_TITLE[k], views[k], xAxisMin, overs[k])).join("");
+  document.getElementById("legend").innerHTML = open.length ? legend(views[open[0]]) : "";
+  const v = state.showFinished ? state.v : "T";
+  document.getElementById("note").innerHTML = (gl ? `<b>Sample chart — ${GL_ROWS[state.glRow].label}:</b> every figure × thickness ÷ 2 1/2", band by band as the chart defines them. ` : "") +
+    (glc ? `<b>Greenlight charts:</b> Family 1 = the Boxy chart, 3 = the Modern Medium chart (flat or domed deck by Deck Profile), 5 = the Knifey chart, 2 and 4 halfway${state.glcSteps === "rail" ? " — only the rail mark and tuck step; deck marks and corner cut stay Medium's" : ""}. Centre at the midpoint; nose and tail at 12" by the 75% formula. ` : "") +
+    (two ? TWO_NOTE : "") + NOTES[v] + (v !== "T" ? " " + MODEL_NOTES[state.model] : "") +
+    (v !== "T" && state.model === "half" && state.blend < 1 ? ` <i>Blend at ${Math.round(state.blend * 100)}%: each band keeps a flat strip in its middle.</i>` : "");
+}
+
+// ---- the RAILS sidebar, live ----
+const ui = {};
+
+function slider(min, max, step, value, onInput) {
+  const el = document.createElement("input");
+  el.type = "range"; el.className = "rng";
+  setSlider(el, min, max, step, value);
+  el.addEventListener("input", () => onInput(Number(el.value)));
+  return el;
+}
+function setSlider(el, min, max, step, value) {
+  el.min = min; el.max = max; el.step = step; el.value = value;
+  const p = max > min ? ((Number(el.value) - min) / (max - min)) * 100 : 0;
+  el.style.setProperty("--p", `${p}%`);
+}
+function check(text, checked, onChange, cls = "check") {
+  const l = document.createElement("label"); l.className = cls;
+  const i = document.createElement("input"); i.type = "checkbox"; i.checked = checked;
+  i.addEventListener("change", () => onChange(i.checked));
+  l.append(i, document.createTextNode(text));
+  l.input = i;
+  return l;
+}
+const div = (cls, html) => { const d = document.createElement("div"); if (cls) d.className = cls; if (html !== undefined) d.innerHTML = html; return d; };
+
+function change(key, patch) {
+  Object.assign(state.spec[key], patch);
+  recompute();
+}
+function twoChange(key, patch) {
+  Object.assign(state.two[key], patch);
+  document.getElementById("twoPreset").value = "";
+  recompute();
+}
+function recompute() {
+  bands = computeRailBands(state.spec);
+  syncSidebar();
+  drawPlots();
+}
+
+function buildSection(key) {
+  const u = (ui[key] = {});
+  const wrap = div("");
+  const head = div("ruled");
+  head.append(document.createTextNode(TITLE[key]));
+  u.view = check("View", state.open[key], (c) => { state.open[key] = c; syncSidebar(); drawPlots(); }, "check small");
+  head.append(u.view);
+  wrap.append(head);
+
+  const g = (u.group = div("group"));
+  const tb = key === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
+
+  // Thickness
+  const th = div("");
+  u.thLbl = div("lbl");
+  u.th = slider(tb.min, tb.max, tb.step, IN(state.spec[key].boardThickness), (v) => change(key, { boardThickness: inchesToMm(v) }));
+  th.append(u.thLbl, u.th);
+  g.append(th);
+
+  // Deck Profile
+  const dp = div("");
+  u.dpLbl = div("lbl");
+  u.dp = slider(66, 100, 1, 166 - state.spec[key].deckPercent, (v) => change(key, { deckPercent: Math.min(100, Math.max(66, 166 - v)) }));
+  dp.append(u.dpLbl, u.dp, div("hints", "<span>Flat</span><span>Heavily Domed</span>"));
+  g.append(dp);
+
+  // Family | Ratio
+  const cols = div("cols");
+  const fam = div("");
+  u.famLbl = div("headline lbl");
+  u.fam = slider(1, 5, 1, state.spec[key].family, (v) => (state.src === "two" ? twoChange(key, { fam: v }) : change(key, { family: v })));
+  fam.append(u.famLbl, u.fam, div("hints", "<span>Boxy</span><span>Medium</span><span>Knifey</span>"));
+  const rat = div("");
+  const rh = div("headline");
+  u.ratLbl = div("lbl");
+  u.sym = check("Sym", state.spec[key].symmetrical, (c) => change(key, { symmetrical: c }));
+  rh.append(u.ratLbl, u.sym);
+  u.rat = slider(30, 70, 1, state.spec[key].ratioTopPercent, (v) => (state.src === "two" ? twoChange(key, { apex: v }) : change(key, { ratioTopPercent: v })));
+  const ratHints = div("ratio-hints", '<span style="left:0">30/70</span><span style="left:50%;transform:translateX(-50%)">50/50</span><span style="left:75%;transform:translateX(-50%)">60/40</span>');
+  rat.append(rh, u.rat, ratHints);
+  if (key === "tail") {
+    u.hard = check("Hard Edge", state.spec.tailHardEdge, (c) => { state.spec.tailHardEdge = c; recompute(); });
+    u.hard.style.marginTop = "8px";
+    rat.append(u.hard);
+  }
+  cols.append(fam, rat);
+  g.append(cols);
+
+  // Advanced
+  const advWrap = div("");
+  u.advHead = div("adv");
+  u.advHead.addEventListener("click", () => { state.adv[key] = !state.adv[key]; syncSidebar(); });
+  u.adv = div("group");
+  u.adv.style.paddingLeft = "12px";
+  const cc = div("");
+  const cch = div("headline");
+  u.ccLbl = div("lbl");
+  u.ccRemove = check("Remove", state.spec[key].removeCornerCut, (c) => change(key, { removeCornerCut: c }));
+  cch.append(u.ccLbl, u.ccRemove);
+  u.cc = slider(CORNER_CUT_BOUNDS.min, CORNER_CUT_BOUNDS.max, CORNER_CUT_BOUNDS.step, 0, (v) => change(key, { cornerCutOffsetOverride: inchesToMm(v) }));
+  cc.append(cch, u.cc, div("hints", "<span>0 = falls on Rail Mark 1</span>"));
+  u.bt = div("");
+  const bth = div("headline");
+  u.btLbl = div("lbl");
+  u.single = check("Use Single Tuck", state.spec[key].singleTuck, (c) => change(key, { singleTuck: c }));
+  bth.append(u.btLbl, u.single);
+  u.bt3 = slider(0, 1.5, TUCK_BOUNDS.step, 0, (v) => change(key, { bottomTuck3Override: inchesToMm(v) }));
+  u.bt.append(bth, u.bt3);
+  const reset = document.createElement("button");
+  reset.className = "resetadv"; reset.textContent = "↺ Reset Advanced Settings";
+  reset.addEventListener("click", () => change(key, { cornerCutOffsetOverride: null, bottomTuck3Override: null, removeCornerCut: false, singleTuck: false }));
+  u.adv.append(cc, u.bt, reset);
+  advWrap.append(u.advHead, u.adv);
+  g.append(advWrap);
+  // what Greenlight's chart doesn't use, greyed while it draws the bands
+  u.dimList = [dp, fam, rh, u.rat, ratHints, advWrap];
+  u.dimGlc = [rh, u.rat, ratHints, advWrap];
+  u.dimTwo = [advWrap];
+  u.ratHints = ratHints;
+
+  wrap.append(g);
+  return wrap;
+}
+
+function syncSidebar() {
+  for (const key of KEYS) {
+    const u = ui[key], s = state.spec[key], o = bands[key];
+    const tb = key === "center" ? CENTER_THICKNESS_BOUNDS : NT_THICKNESS_BOUNDS;
+    u.view.input.checked = state.open[key];
+    u.group.style.display = state.open[key] ? "" : "none";
+    const thName = key === "center" ? "Board Thickness" : state.units === "imperial" ? 'Thickness @12"' : "Thickness @ 30.5 cm";
+    u.thLbl.textContent = `${thName} — ${fmtMark(s.boardThickness)}`;
+    setSlider(u.th, tb.min, tb.max, tb.step, IN(s.boardThickness));
+    u.dpLbl.textContent = `Deck Profile — ${fmtMark(o.railThicknessClamped)} (Tapered Thickness)`;
+    setSlider(u.dp, 66, 100, deckProfileStep(IN(s.boardThickness)), 166 - s.deckPercent);
+    if (state.src === "two") {
+      const tw = state.two[key];
+      u.famLbl.textContent = `Fullness — ${tw.fam.toFixed(1)} (${Math.round(twoKept(tw.fam))}%)`;
+      setSlider(u.fam, 0.6, 5.4, 0.1, tw.fam);
+      u.ratLbl.textContent = `Apex — ${tw.apex}%`;
+      setSlider(u.rat, 20, 55, 0.5, tw.apex);
+      u.ratHints.innerHTML = TWO_APEX_HINTS;
+      u.sym.style.display = "none";
+    } else {
+      u.famLbl.textContent = `Family — ${railFamilyLabel(s.family)}`;
+      setSlider(u.fam, 1, 5, 1, s.family);
+      u.ratLbl.textContent = `Ratio — ${s.ratioTopPercent}/${100 - s.ratioTopPercent}`;
+      setSlider(u.rat, 30, 70, 1, s.ratioTopPercent);
+      u.ratHints.innerHTML = RATIO_HINTS;
+      u.sym.style.display = "";
+    }
+    u.sym.input.checked = s.symmetrical;
+    if (u.hard) u.hard.input.checked = state.spec.tailHardEdge;
+    const dim = state.src === "gl" ? u.dimList : state.src === "glc" ? u.dimGlc : state.src === "two" ? u.dimTwo : [];
+    for (const el of u.dimList) { const on = dim.includes(el); el.style.opacity = on ? ".3" : ""; el.style.pointerEvents = on ? "none" : ""; }
+
+    u.advHead.innerHTML = `<span>Advanced</span><span>${state.adv[key] ? "▾" : "▸"}</span>`;
+    u.adv.style.display = state.adv[key] ? "" : "none";
+    const ccOff = o.result.cornerCutOffset ?? 0;
+    u.ccLbl.textContent = `Corner Cut Offset — ${fmtMark(ccOff)}`;
+    u.ccRemove.input.checked = s.removeCornerCut;
+    setSlider(u.cc, CORNER_CUT_BOUNDS.min, CORNER_CUT_BOUNDS.max, CORNER_CUT_BOUNDS.step, IN(ccOff));
+    u.cc.disabled = s.removeCornerCut;
+    u.cc.parentElement.classList.toggle("dim", s.removeCornerCut);
+    const hard = key === "tail" && state.spec.tailHardEdge;
+    u.bt.style.display = hard ? "none" : "";
+    u.btLbl.textContent = `Bottom Tuck 3 — ${fmtMark(o.result.bottomTuck3)}`;
+    u.single.input.checked = s.singleTuck;
+    const btMin = IN(o.result.bottomTuck1) + MIN_BOTTOM_TUCK_SEPARATION_IN;
+    const btMax = Math.max(TUCK_BOUNDS.max, IN(o.result.bottomTuck3Derived));
+    setSlider(u.bt3, btMin, btMax, TUCK_BOUNDS.step, IN(o.result.bottomTuck3));
+  }
+}
+
+const sections = document.getElementById("sections");
+for (const k of KEYS) sections.append(buildSection(k));
+
+// ---- toolbar ----
+function wire(groupId, attr, apply) {
+  const grp = document.getElementById(groupId);
+  grp.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    grp.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    apply(b.dataset[attr]); syncSidebar(); drawPlots();
+  });
+}
+wire("gVariant", "v", (v) => (state.v = v));
+wire("gTheme", "t", (t) => { state.theme = t; document.body.className = t; });
+wire("gUnits", "u", (u) => (state.units = u));
+wire("gModel", "m", (m) => {
+  state.model = m;
+  // the even round is drawn fully rolled, so the Blend slider only moves the halfway blend
+  document.getElementById("blend").disabled = m === "round";
+  document.getElementById("gBlend").style.opacity = m === "round" ? ".4" : "";
+});
+document.getElementById("blend").addEventListener("input", (e) => {
+  state.blend = e.target.value / 100;
+  document.getElementById("blendVal").textContent = `${e.target.value}%`;
+  drawPlots();
+});
+const GL_NOTES = {
+  gl: "Sample chart: only each rail's thickness (and the tail's Hard Edge) apply. Every chart figure is multiplied by thickness ÷ 2 1/2\". Deck Profile, Family, Ratio and Advanced belong to your workbook and are greyed.",
+  two: "Two settings: Thickness, Deck Profile, Fullness (the Family slider), Apex (the Ratio slider) and the tail's Hard Edge drive the bands on each section. Sym and Advanced are greyed: the rule sets the tuck itself and draws no corner cut.",
+  glc: "Greenlight charts: Thickness, Deck Profile (flat or domed deck), Family (Boxy ↔ Knifey) and the tail's Hard Edge drive the bands. Ratio and Advanced belong to your workbook and are greyed — the charts set the rail mark, corner cut and tuck themselves.",
+};
+wire("gSrc", "s", (src) => {
+  state.src = src;
+  document.getElementById("gGl").style.display = src === "gl" ? "" : "none";
+  document.getElementById("gGlc").style.display = src === "glc" ? "" : "none";
+  document.getElementById("gTwo").style.display = src === "two" ? "" : "none";
+  document.getElementById("gOv").style.display = src !== "workbook" ? "" : "none";
+  const note = document.getElementById("glNote");
+  note.style.display = src !== "workbook" ? "" : "none";
+  note.textContent = GL_NOTES[src] || "";
+});
+wire("gGlc", "f", (f) => (state.glcSteps = f));
+const glRow = document.getElementById("glRow");
+for (const [key, row] of Object.entries(GL_ROWS)) glRow.add(new Option(`Greenlight: ${row.label}`, key, key === state.glRow, key === state.glRow));
+glRow.addEventListener("change", () => { state.glRow = glRow.value; drawPlots(); });
+const twoPreset = document.getElementById("twoPreset");
+twoPreset.add(new Option("Load a type from your sheet…", ""));
+for (const [name, p] of Object.entries(TWO_PRESETS)) twoPreset.add(new Option(`${name} — Fullness ${p.fam.toFixed(1)}, Apex ${p.apex}%`, name));
+twoPreset.addEventListener("change", () => { const p = TWO_PRESETS[twoPreset.value]; if (!p) return; for (const k of KEYS) state.two[k] = { ...p }; recompute(); });
+document.getElementById("overlayBtn").addEventListener("click", (e) => { state.overlay = !state.overlay; e.target.classList.toggle("on", state.overlay); drawPlots(); });
+document.getElementById("showFinished").addEventListener("change", (e) => { state.showFinished = e.target.checked; drawPlots(); });
+document.getElementById("resetAll").addEventListener("click", () => { state.spec = clone(DEFAULT_RAIL_BAND_SPEC); state.two = twoDefaults(); twoPreset.value = ""; recompute(); });
+recompute();
+</script>
+</body>
+</html>

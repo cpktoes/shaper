@@ -25,7 +25,7 @@
 import type { OutlineSpec } from "./board";
 import type { FinAdvancedSpec, FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
-import type { RailBandSpec, RailSectionSpec } from "./rail-bands";
+import { RAIL_NUDGE_KEYS, type RailBandSpec, type RailSectionSpec } from "./rail-bands";
 import { inchesToMm, mmToInches, type Mm } from "./units";
 
 /** The most decimal places `formatPresetInches` will print — its comment says why six. */
@@ -144,7 +144,18 @@ function buildRailSectionSource(spec: RailSectionSpec, indent: string): string {
     `${pad}cornerCutOffsetOverride: ${cornerCutOffsetOverride},`,
     `${pad}removeCornerCut: ${spec.removeCornerCut},`,
     `${pad}singleTuck: ${spec.singleTuck},`,
+    // Quick 261102-gec plan 05 (R22, PC37): the Sharp Bottom Tuck box, right after Single Tuck. A section
+    // held in memory from before the box existed prints `false`, as it reads.
+    `${pad}sharpBottomTuck: ${spec.sharpBottomTuck === true},`,
     `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
+    // Quick 261102-gec (PC1): the Chris Rails v2 sheets' "Scaled from center by" and the nudges — one
+    // line per `RAIL_NUDGE_KEYS` entry (six since plan 04 retired Deck Mark 2's and Bottom Tuck 2's and
+    // added the Domed Deck Band's), read from that list so no nudge can be missed and no count is
+    // restated here.
+    `${pad}scaleFromCenter: ${spec.scaleFromCenter},`,
+    `${pad}nudges: {`,
+    ...RAIL_NUDGE_KEYS.map((key) => `${pad}  ${key}: inchesToMm(${formatPresetInches(spec.nudges[key])}),`),
+    `${pad}},`,
     `${indent}}`,
   ].join("\n");
 }

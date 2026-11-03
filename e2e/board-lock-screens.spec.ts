@@ -386,6 +386,21 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await printTick.click();
     await expect(printTick).not.toHaveAttribute("aria-checked", before ?? "");
 
+    // The Finished Rail button (quick 261102-gec plan 02, PC21) only changes what is drawn, so — like
+    // FINS' callouts toggle — it still works on a locked board, with no Unlock: on when the screen
+    // opens, and a tap hides the finished rail and a second brings it back.
+    const finishedRail = page.locator("[data-viewer-toolbar]").getByRole("button", { name: /finished rail$/ });
+    await expect(finishedRail).toBeEnabled();
+    await expect(finishedRail).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-rail-plot-row] [data-finished-rail]").first()).toBeAttached();
+    await finishedRail.click();
+    await expect(finishedRail).toHaveAttribute("aria-pressed", "false");
+    await expect(finishedRail).toHaveAccessibleName("Show finished rail");
+    await expect(page.locator("[data-rail-plot-row] [data-finished-rail]")).toHaveCount(0);
+    await finishedRail.click();
+    await expect(finishedRail).toHaveAttribute("aria-pressed", "true");
+    await expect(unlockButton(page)).toHaveCount(1);
+
     await pressUnlock(page);
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
   });
