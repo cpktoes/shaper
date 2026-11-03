@@ -20,6 +20,10 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
  * - On a phone the new sliders take a finger (R15).
  * - The Ghost Bands switch beside it (fast task, 2026-11-02): off by default, it fades every band and
  *   mark dot but the Apex Center's by one opacity, and it is disabled while the finished rail is hidden.
+ * - The Sharp Bottom Edge box (plan 05, R22 — the founder, 2026-11-02: "an advanced checkbox for leaving
+ *   the bottom edge fairly sharp (follow the angle at bottom tuck 3)"): after Bottom Tuck 3 in every
+ *   rail's Advanced menu, hidden with the tucks on a hard-edge tail, unticked by Reset. Ticked, the drawn
+ *   finished rail keeps the Bottom Tuck 3 corner — one blend fewer — while the DATA tab never moves.
  *
  * Every expected reading is read off the page before the change and compared after it — never a typed
  * mark. The only typed figures are the founder's own windows and steps (20-80 by 0.5, the tips' scale 1.00, 75-100%,
@@ -153,7 +157,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await openRails(page);
   });
 
-  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck and Reset; the Center rail's has no scale", async ({
+  test("1. the Nose rail's Advanced lists the scale, six nudges in the founder's order with the Domed Deck Band under Deck Mark 3, Single Tuck, Sharp Bottom Edge after Bottom Tuck 3 and Reset; the Center rail's has no scale", async ({
     page,
   }, testInfo) => {
     const nose = await showRail(page, testInfo, "nose");
@@ -167,6 +171,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
       /^Use Single Tuck$/,
       /^Bottom Tuck 1 — .+ \(.+\)$/,
       /^Bottom Tuck 3 — .+ \(.+\)$/,
+      /^Sharp Bottom Edge$/,
       /Reset Advanced Settings$/,
     ];
     expect(noseRows.length).toBe(expected.length);
@@ -231,7 +236,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     expect(await dataCell(page, "Bottom Tuck 1", "nose")).not.toBe("—");
   });
 
-  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck and the Bottom Tuck 1 and 3 sliders while Deck Mark 3 and the Domed Deck Band show; off, they show", async ({
+  test("4. on the tail, Hard Edge (on by default) hides Use Single Tuck, the Bottom Tuck 1 and 3 sliders and Sharp Bottom Edge while Deck Mark 3 and the Domed Deck Band show; off, they show", async ({
     page,
   }, testInfo) => {
     const tail = await showRail(page, testInfo, "tail");
@@ -239,6 +244,8 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await expect(hardEdge).toBeChecked();
     const body = await openAdvanced(tail);
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toHaveCount(0);
+    // Plan 05 (R22): a hard edge is already sharp at the bottom, so its box hides with the tucks.
+    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Edge" })).toHaveCount(0);
     for (const name of ["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"]) {
       await expect(nudgeLabel(tail, name)).toHaveCount(0);
     }
@@ -248,6 +255,7 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await hardEdge.click();
     await expect(hardEdge).not.toBeChecked();
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toBeVisible();
+    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Edge" })).toBeVisible();
     for (const name of ["Bottom Tuck 1", "Bottom Tuck 3"]) {
       await expect(nudgeLabel(tail, name)).toBeVisible();
     }
@@ -280,9 +288,19 @@ test.describe("RAILS' fuller Advanced menu (quick 261102-gec plan 02)", () => {
     await expect(ratio.readout).toHaveText("Ratio — 20/80");
   });
 
-  test("6. Reset Advanced Settings puts the nudges — the Domed Deck Band's too — and the scale back; on the tail it turns Hard Edge back on", async ({
+  test("6. Reset Advanced Settings puts the nudges — the Domed Deck Band's too — and the scale back, unticks Sharp Bottom Edge; on the tail it turns Hard Edge back on", async ({
     page,
   }, testInfo) => {
+    // Plan 05 (R22): the Center Rail's Sharp Bottom Edge ticked first; its Reset unticks it.
+    const center = await showRail(page, testInfo, "center");
+    const centerBody = await openAdvanced(center);
+    const sharp = centerBody.getByRole("checkbox", { name: "Sharp Bottom Edge" });
+    await expect(sharp).not.toBeChecked();
+    await sharp.click();
+    await expect(sharp).toBeChecked();
+    await centerBody.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(sharp).not.toBeChecked();
+
     const nose = await showRail(page, testInfo, "nose");
     const body = await openAdvanced(nose);
     const scale = nose.getByText(/^Scaled from center by — /);
@@ -672,5 +690,77 @@ test.describe("Symmetrical, and the tail's rule with Hard Edge (fast task 190, R
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
     await expect(hardEdge).toBeChecked();
     await expect(symmetrical).not.toBeChecked();
+  });
+});
+
+/** The drawn finished rail of the Center plot in view on VIEWER — the computer's plot row or the phone's,
+ * whichever is showing — as its path's `d` (Playwright calls a straight SVG line hidden, so the path is
+ * read rather than asked whether it is visible). */
+async function centerFinishedRailD(page: Page): Promise<string> {
+  const handle = await page.waitForFunction(() => {
+    const paths = Array.from(
+      document.querySelectorAll('[data-rail-plot-row] [data-rail-section-plot="center"] [data-finished-rail]'),
+    ).filter((p) => (p.closest("svg")?.getBoundingClientRect().width ?? 0) > 0);
+    return paths.length === 1 ? paths[0].getAttribute("d") : null;
+  });
+  return (await handle.jsonValue()) as string;
+}
+
+/** How many blends a finished-rail path draws: its `Q` commands. */
+const blendCount = (d: string) => d.split(" Q ").length - 1;
+
+test.describe("the Sharp Bottom Edge box (quick 261102-gec plan 05, R22)", () => {
+  test("16. the Center Rail's Sharp Bottom Edge starts unticked; ticking it drops exactly one blend from the drawn finished rail and leaves the DATA tab alone; unticking and Reset restore the drawing exactly", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const center = await showRail(page, testInfo, "center");
+    const body = await openAdvanced(center);
+    const box = body.getByRole("checkbox", { name: "Sharp Bottom Edge" });
+    await expect(box).not.toBeChecked();
+
+    // Every expected value is read off the page before the change.
+    const tucks = ["Bottom Tuck 1", "Bottom Tuck 2", "Bottom Tuck 3"];
+    const dataBefore: string[] = [];
+    for (const row of tucks) dataBefore.push(await dataCell(page, row, "center"));
+    await showRail(page, testInfo, "center");
+    const first = await centerFinishedRailD(page);
+    expect(blendCount(first)).toBeGreaterThan(0);
+
+    await box.click();
+    await expect(box).toBeChecked();
+    await expect.poll(() => centerFinishedRailD(page)).not.toBe(first);
+    const sharp = await centerFinishedRailD(page);
+    expect(blendCount(sharp)).toBe(blendCount(first) - 1);
+    // The marks never move: the DATA tab reads exactly as before.
+    for (let i = 0; i < tucks.length; i++) expect(await dataCell(page, tucks[i], "center")).toBe(dataBefore[i]);
+    await showRail(page, testInfo, "center");
+
+    if (!isPhone(testInfo)) {
+      // View Full Sized draws through the same plot, so it shows the same blends. Scoped to the dialog: the
+      // plain locator matches twice while it is open.
+      await page.locator("[data-viewer-toolbar]").getByRole("button", { name: "View Full Sized" }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      const centerTab = dialog.getByRole("tab", { name: "Center" });
+      if ((await centerTab.getAttribute("aria-selected")) !== "true") await centerTab.click();
+      const full = dialog.locator('[data-rail-section-plot="center"] [data-finished-rail]');
+      await expect.poll(async () => blendCount((await full.getAttribute("d")) ?? "")).toBe(blendCount(sharp));
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+    }
+
+    // Unticking restores the first drawing exactly.
+    await box.click();
+    await expect(box).not.toBeChecked();
+    await expect.poll(() => centerFinishedRailD(page)).toBe(first);
+
+    // Ticked again, Reset Advanced Settings unticks it and restores the first drawing.
+    await box.click();
+    await expect(box).toBeChecked();
+    await expect.poll(() => centerFinishedRailD(page)).not.toBe(first);
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(box).not.toBeChecked();
+    await expect.poll(() => centerFinishedRailD(page)).toBe(first);
   });
 });
