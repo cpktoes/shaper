@@ -144,6 +144,9 @@ function buildRailSectionSource(spec: RailSectionSpec, indent: string): string {
     `${pad}cornerCutOffsetOverride: ${cornerCutOffsetOverride},`,
     `${pad}removeCornerCut: ${spec.removeCornerCut},`,
     `${pad}singleTuck: ${spec.singleTuck},`,
+    // Quick 261102-gec plan 05 (R22, PC37): the Sharp Bottom Edge box, right after Single Tuck. A section
+    // held in memory from before the box existed prints `false`, as it reads.
+    `${pad}sharpBottomEdge: ${spec.sharpBottomEdge === true},`,
     `${pad}bottomTuck3Override: ${bottomTuck3Override},`,
     // Quick 261102-gec (PC1): the Chris Rails v2 sheets' "Scaled from center by" and the nudges — one
     // line per `RAIL_NUDGE_KEYS` entry (six since plan 04 retired Deck Mark 2's and Bottom Tuck 2's and

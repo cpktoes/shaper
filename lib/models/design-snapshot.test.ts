@@ -989,4 +989,28 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
     expect(opened.rails.center.nudges.domedDeckBand).toBe(0);
     expect(computeRailBands(opened.rails)).toEqual(computeRailBands(FIXTURES[0].rails));
   });
+
+  // Rule 12 (quick 261102-gec plan 05, R22): the Sharp Bottom Edge box.
+  it("a rail section saved without Sharp Bottom Edge, or with a string or a number in it, opens with the box off (rule 12)", () => {
+    const stored = wire();
+    delete stored.design.rails.nose.sharpBottomEdge;
+    stored.design.rails.center.sharpBottomEdge = "yes";
+    stored.design.rails.tail.sharpBottomEdge = 1;
+    const opened = parseSnapshot(stored);
+    for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].sharpBottomEdge).toBe(false);
+  });
+
+  it("a Sharp Bottom Edge ticked on this branch round-trips exactly (rule 12)", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: {
+        ...FIXTURES[0].rails,
+        center: { ...FIXTURES[0].rails.center, sharpBottomEdge: true },
+      },
+    };
+    const back = roundTrip(fields).rails;
+    expect(back).toEqual(fields.rails);
+    expect(back.center.sharpBottomEdge).toBe(true);
+    expect(back.nose.sharpBottomEdge).toBe(false);
+  });
 });

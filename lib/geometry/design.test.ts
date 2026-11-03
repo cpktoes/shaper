@@ -156,6 +156,7 @@ describe("deriveEffectiveRails", () => {
           expect(result[key].cornerCutOffsetOverride).toBe(preset.rails[key].cornerCutOffsetOverride);
           expect(result[key].removeCornerCut).toBe(preset.rails[key].removeCornerCut);
           expect(result[key].singleTuck).toBe(preset.rails[key].singleTuck);
+          expect(result[key].sharpBottomEdge).toBe(preset.rails[key].sharpBottomEdge);
           expect(result[key].bottomTuck3Override).toBe(preset.rails[key].bottomTuck3Override);
         }
         expect(result.tailHardEdge).toBe(preset.rails.tailHardEdge);
