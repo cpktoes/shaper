@@ -39,6 +39,7 @@ import { deleteModel, duplicateModel, renameModel, setModelLocked } from "@/app/
 import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { useDesign } from "@/components/design/design-store";
 import { useCoarsePointer } from "@/components/design/use-viewer-media";
+import { downloadBoardFile } from "@/components/setup/board-file-download";
 import { DeleteConfirmDialog } from "@/components/setup/delete-confirm-dialog";
 import { HoverRack } from "@/components/setup/hover-rack";
 import { RackCaption } from "@/components/setup/rack-caption";
@@ -239,6 +240,23 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   };
 
   /**
+   * Save board as file… (quick 261103-k8o, 2026-11-03, PC5): the board exactly as its card shows it —
+   * the saved board — downloaded as one small file, to keep or to send to a friend. The download starts
+   * at once, inside the tap, with nothing awaited before it (unlike Duplicate, which waits for order
+   * saves): Safari, an iPhone's above all, refuses a download that starts after the tap has gone stale.
+   * A locked board saves too, since saving a copy changes nothing. Spoken when it works; a refusal from
+   * the browser is shown in the status pill.
+   */
+  const handleSaveAsFile = (model: RackModel) => {
+    try {
+      const fileName = downloadBoardFile(model.name, model.snapshot);
+      announce(RACK_COPY.savedAsFile(fileName), { visible: false });
+    } catch {
+      announce(RACK_COPY.saveAsFileFailed);
+    }
+  };
+
+  /**
    * The lock row of a board's ⋯ menu (quick 261008-lsy): locks the board if it is open to change,
    * unlocks it if it is locked. Any order save still on its way lands first, like Rename and
    * Duplicate. When the board is the one open in the editor, the editor learns of the new lock at
@@ -336,6 +354,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
         onOpen={() => openBoard(board)}
         onRename={model ? () => setRenamingModel(model) : undefined}
         onDuplicate={model ? () => void handleDuplicate(model) : undefined}
+        onSaveAsFile={model ? () => handleSaveAsFile(model) : undefined}
         onDelete={model ? () => setDeletingModel(model) : undefined}
         onToggleLock={model ? () => void handleToggleLock(model) : undefined}
         duplicateError={model ? (duplicateErrors[model.id] ?? null) : null}

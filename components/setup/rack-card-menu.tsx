@@ -12,6 +12,10 @@
  * exception is the lock row (quick 261008-lsy): a `Menu.CheckboxItem` between Duplicate and Delete,
  * reading "Lock board" and, ticked, "Board Locked" — a toggle, because a board is either locked or not.
  *
+ * Quick 261103-k8o (2026-11-03): Save board as file… sits straight after Duplicate, in plain ink, and
+ * works on a locked board too (saving a copy changes nothing). It downloads the one board as a small
+ * file, to keep or to send to a friend — `board-rack.tsx`'s `handleSaveAsFile`.
+ *
  * Phase 15 (the Move rows, D-12): given `moves`, the menu opens with `Move left` and `Move right`
  * above a divider, then today's three rows exactly as they were. A move that can't happen (the first
  * saved board's Move left, the last board's Move right) is dimmed and inert but keeps its place, so
@@ -50,6 +54,8 @@ interface RackCardMenuProps {
   boardName: string;
   onRename: () => void;
   onDuplicate: () => void;
+  /** Save board as file… was chosen (quick 261103-k8o). */
+  onSaveAsFile: () => void;
   onDelete: () => void;
   /** Whether this board is locked (quick 261008-lsy): the lock row is ticked and Delete is greyed
    * (Rename and Duplicate still work). */
@@ -67,6 +73,7 @@ export function RackCardMenu({
   boardName,
   onRename,
   onDuplicate,
+  onSaveAsFile,
   onDelete,
   locked,
   onToggleLock,
@@ -118,6 +125,9 @@ export function RackCardMenu({
             </Menu.Item>
             <Menu.Item onClick={onDuplicate} className={cn(ROW_CLASS, "text-surf-ink")}>
               Duplicate
+            </Menu.Item>
+            <Menu.Item onClick={onSaveAsFile} className={cn(ROW_CLASS, "text-surf-ink")}>
+              {RACK_COPY.saveAsFile}
             </Menu.Item>
             <Menu.CheckboxItem
               checked={locked}
