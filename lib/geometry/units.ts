@@ -223,8 +223,9 @@ export function parseMetric(input: string, fieldUnit: "cm" | "mm"): Mm | null {
 /**
  * Converts a design area from square millimetres to square inches — the only other place besides
  * `mmToInches` that turns `MM_PER_INCH` into a real device number, so the Overview Sheet's printed
- * "Template Area" can never drift from the same `area` field `lib/geometry/outline.ts` computes
- * for everything else (CLAUDE.md Rule 2: never reach for 25.4 anywhere else).
+ * "Template Area" can never drift from VOLUME's: both are `outlinePlanArea` in
+ * `lib/geometry/outline.ts`, the outline as TEMPLATE draws it, tail cut included (quick 261103-gcm)
+ * (CLAUDE.md Rule 2: never reach for 25.4 anywhere else).
  */
 export function squareMmToSquareInches(areaMm2: number): number {
   return areaMm2 / (MM_PER_INCH * MM_PER_INCH);

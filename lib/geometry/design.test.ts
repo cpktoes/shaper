@@ -9,13 +9,14 @@ import { buildBoardProfile } from "./board-profile";
 import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { BOARD_PRESETS } from "./presets";
 import { presetSummary } from "./summary-line";
-import { buildOutline, sampleOutline } from "./outline";
+import { buildOutline, outlinePlanArea } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
 import { inchesToMm, mm } from "./units";
 import {
+  crossSectionFoam,
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
@@ -199,11 +200,11 @@ describe("deriveEffectiveRails", () => {
 // mapping inside any one of them could be cancelled out by the composition and never noticed.
 
 describe("deriveTemplateValues", () => {
-  it.each(BOARD_PRESETS)("$id: maps the geometry's own area/width fields, not a recomputed copy", (preset) => {
+  it.each(BOARD_PRESETS)("$id: maps the drawn outline's area (tail cut included) and the geometry's own width fields, not a recomputed copy", (preset) => {
     const geometry = buildOutline(preset.outline);
     const result = deriveTemplateValues(preset.outline, geometry);
 
-    expect(result.area).toBe(geometry.area);
+    expect(result.area).toBe(outlinePlanArea(geometry));
     expect(result.length).toBe(preset.outline.length);
     expect(result.widePointWidth).toBe(preset.outline.widePointWidth);
     expect(result.noseWidthAt12).toBe(geometry.noseWidthAt12in);
@@ -380,7 +381,7 @@ describe("deriveQuotedVolumeLitres", () => {
       const effectiveVolume = deriveEffectiveVolume(DEFAULT_VOLUME_SPEC, templateValues, railValues);
       const estimator = computeVolume(effectiveVolume, templateValues, railValues);
       const crossSection = computeCrossSectionVolume({
-        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        ...crossSectionFoam(outlineGeometry),
         foil: DEFAULT_FOIL_SPEC,
         rails: preset.rails,
         length: preset.outline.length,
@@ -399,7 +400,7 @@ describe("deriveQuotedVolumeLitres", () => {
       const templateValues = deriveTemplateValues(preset.outline, outlineGeometry);
       const railValues = deriveRailValues(computeRailBands(preset.rails));
       const crossSection = computeCrossSectionVolume({
-        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        ...crossSectionFoam(outlineGeometry),
         foil: DEFAULT_FOIL_SPEC,
         rails: preset.rails,
         length: preset.outline.length,
@@ -432,7 +433,7 @@ describe("summarizeDesign volume disclosure (D-13) — a rack card and the Volum
     const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
     const estimator = computeVolume(effectiveVolume, templateValues, railValues);
     const crossSection = computeCrossSectionVolume({
-      halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+      ...crossSectionFoam(outlineGeometry),
       foil: fields.foil,
       rails: fields.rails,
       length: fields.outline.length,
@@ -549,7 +550,7 @@ describe("summarizeDesign for a board sitting in a blank (D-01, 11-10)", () => {
     const railValues = deriveRailValues(computeRailBands(effectiveRails));
     const estimator = computeVolume(deriveEffectiveVolume(fields.volume, templateValues, railValues), templateValues, railValues);
     const crossSection = computeCrossSectionVolume({
-      halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+      ...crossSectionFoam(outlineGeometry),
       foil: profile.effectiveFoil,
       thicknessAt: profile.thicknessAt,
       rails: effectiveRails,
@@ -648,7 +649,7 @@ describe("summarizeDesign for a board sitting in a blank (D-01, 11-10)", () => {
       const outlineGeometry = buildOutline(fields.outline);
       const effectiveRails = deriveEffectiveRails(fields.rails, fields.foil, true);
       const crossSection = computeCrossSectionVolume({
-        halfWidthAt: (s) => sampleOutline(outlineGeometry, s),
+        ...crossSectionFoam(outlineGeometry),
         foil: fields.foil,
         rails: effectiveRails,
         length: fields.outline.length,

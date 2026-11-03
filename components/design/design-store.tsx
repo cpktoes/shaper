@@ -77,7 +77,7 @@ import {
   type SaveStatus,
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
-import { buildOutline, sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import type { FiveStationRocker } from "@/lib/geometry/rocker";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
@@ -101,6 +101,7 @@ import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
+  crossSectionFoam,
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
@@ -1183,15 +1184,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [effectiveVolume, templateValues, railValues],
   );
 
-  // The accurate path (D-13): real cross-sections along the board's own length, using the same
-  // half-width sampler pattern `lib/geometry/design.ts`'s `summarizeDesign` builds, so a rack
-  // card's number and this screen's number can never drift apart. The thickness is the side
+  // The accurate path (D-13): real cross-sections along the board's own length, reading the same
+  // foam `lib/geometry/design.ts`'s `summarizeDesign` reads (`crossSectionFoam`: the tail as TEMPLATE
+  // draws it, quick 261103-gcm), so a rack card's number and this screen's number can never drift apart. The thickness is the side
   // profile's own dense curve (Pattern 5) — with a blank, the foil cut from the blank (its thickness
   // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
   const crossSectionVolume = useMemo(
     () =>
       computeCrossSectionVolume({
-        halfWidthAt: (station) => sampleOutline(outlineGeometry, station),
+        ...crossSectionFoam(outlineGeometry),
         foil: sideProfile.effectiveFoil,
         thicknessAt: sideProfile.thicknessAt,
         rails: effectiveRails,

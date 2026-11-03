@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOutline } from "@/lib/geometry/outline";
+import { buildOutline, outlinePlanArea } from "@/lib/geometry/outline";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { formatInchesFraction, inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
@@ -110,6 +110,8 @@ describe("overviewSpecLines", () => {
   });
 
   it("is byte-identical to the pre-Phase-7 Imperial output for every board preset", () => {
+    // The Template Area line reads the outline as drawn: since quick 261103-gcm the Fish's line counts
+    // its swallow notch as air, so it is the one preset whose area is below the curve's own `area`.
     for (const preset of BOARD_PRESETS) {
       const geometry = buildOutline(preset.outline);
       const lines = overviewSpecLines(preset.outline, geometry, "imperial");
@@ -120,9 +122,9 @@ describe("overviewSpecLines", () => {
       expect(lines[4]).toBe(`WP Offset: ${formatSignedDim(preset.outline.widePointOffset, "imperial")}`);
       expect(lines[7]).toBe(`Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), "imperial")}`);
       const areaLine = lines.find((l) => l.startsWith("Template Area:"));
-      const areaSqIn = squareMmToSquareInches(geometry.area);
+      const areaSqIn = squareMmToSquareInches(outlinePlanArea(geometry));
       expect(areaLine).toBe(
-        `Template Area: ${formatArea(geometry.area, "imperial")} (${(areaSqIn / 144).toFixed(2)} sq ft)`,
+        `Template Area: ${formatArea(outlinePlanArea(geometry), "imperial")} (${(areaSqIn / 144).toFixed(2)} sq ft)`,
       );
     }
   });
@@ -140,7 +142,7 @@ describe("overviewSpecLines", () => {
     expect(lines[7]).toBe(`Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), "metric")}`);
 
     const areaLine = lines.find((l) => l.startsWith("Template Area:"));
-    expect(areaLine).toBe(`Template Area: ${formatArea(geometry.area, "metric")}`);
+    expect(areaLine).toBe(`Template Area: ${formatArea(outlinePlanArea(geometry), "metric")}`);
     expect(areaLine).not.toContain("sq ft");
     expect(joined).not.toContain("sq in");
   });
