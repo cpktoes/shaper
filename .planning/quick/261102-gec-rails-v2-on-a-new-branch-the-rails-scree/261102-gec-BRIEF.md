@@ -410,3 +410,19 @@ The founder, on localhost:3005:
   at the Apex Center, and still be exact in volume (state the area rule for the new piece and prove it the way plan 03
   did). The founder picks from the pictures; the plan then carries ONE rule. Only the deck corner changes; the apex,
   tucks and bottom corners keep the halfway blend (or the sharp edge of R22).
+- **R23 — the founder's pick (2026-11-02): "(d), with the hand-over made continuous first."** The planner drew four
+  candidates on the Shortboard's tail (flat at 1.00; domed 90% with the dome at its formula and pulled to 1/16" past
+  Deck Mark 3 — the founder's worst case, "worst with domed and mark close to deck mark 3", seen at 1.00 as well, so
+  the old 0.75 scale was not the cause). Only (d) — one cubic over both corners, from the deck beyond the dome mark
+  over the dome mark and Deck Mark 3 to Band 2's middle — cures the close-marks case (0.01" → 4.1" radius) and the
+  flat tail's abrupt start (the bend now eases off the deck from nothing). The final rule, continuous: where the run
+  from Deck Mark 3 to the dome mark is shorter than half of Band 2 it is that one cubic; as the run grows it slides
+  steadily (weight w = (run − half Band 2)/half Band 2, clamped 0–1) into (b)'s matched blends on a domed deck or
+  today's blend on a flat one, complete once the run equals all of Band 2; every piece a parabola or a cubic with a
+  closed-form area, inside the cuts by construction, G1 at every weight. Sweep of 5,265 curves: the line never moves
+  more per 1/16" dome step than today's does (0.29 mm at worst), never outside a cut, the rail touched only at the
+  Apex Center. Costs the founder accepted: 0.04–0.16 L off every board (Shortboard 29.7 → 29.6, Mid-length 49.6 →
+  49.4, first board 30.33 → 30.29), both desktop reference pictures re-recorded, a `cubic` step kind in
+  `finished-rail.ts`. Noted, not in the plan: on a FLAT deck with the dome nudged right in to Deck Mark 3 the new
+  curve is 2.5× tighter than today's there (31.5" → 12.6" on the Longboard's centre) — a case that had no knuckle;
+  a one-line floor on how close the guide point may sit to Deck Mark 3 would remove it if the founder ever wants.
