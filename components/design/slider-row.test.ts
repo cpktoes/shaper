@@ -51,7 +51,7 @@ const ALLOWLIST: { file: string; count: number; reason: string }[] = [
     file: RAILS_PATH,
     count: 2,
     reason:
-      "Family (three hint captions) and Ratio (three marks — 20/80, 50/50, 80/20 — placed where they fall on its track) are the one hand-built, level pair, a shape SliderRow's two-ended hint line can't hold. Every other RAILS slider, the Advanced menu's scale and seven nudges included, is a SliderRow (quick 261102-gec plan 02).",
+      "Family (three hint captions) and Ratio (three marks — 20/80, 50/50, 80/20 — placed where they fall on its track) are the one hand-built, level pair, a shape SliderRow's two-ended hint line can't hold. Every other RAILS slider, the Advanced menu's scale and six nudges included, is a SliderRow (quick 261102-gec plans 02 and 04).",
   },
   {
     file: FINS_PATH,

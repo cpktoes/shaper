@@ -112,9 +112,9 @@ import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geome
 import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
   DEFAULT_RAIL_BAND_SPEC,
-  ZERO_RAIL_NUDGES,
   computeRailBands,
   defaultRailAdvanced,
+  railNudgesOf,
   type RailBandsOutput,
   type RailBandSpec,
   type RailNudgeKey,
@@ -861,6 +861,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
   // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
   // slider is one step and a drag on the next is another.
+  // The rail's nudges are rebuilt through `railNudgesOf` first (plan 04, PC29, 2026-11-02): exactly the six
+  // keys, a missing one as 0. So a board that was in memory before the Domed Deck Band nudge existed gains
+  // the dome key on its first nudge, and never carries a retired Deck Mark 2 or Bottom Tuck 2 amount (R17)
+  // into a save.
   const updateRailNudge = (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => {
     if (lockedRef.current) return;
     noteEdit(`rails:${key}:nudge:${nudgeKey}`);
@@ -868,16 +872,17 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       ...startedFrom(prev, liveTipsRef.current),
       rails: {
         ...prev.rails,
-        [key]: { ...prev.rails[key], nudges: { ...(prev.rails[key].nudges ?? ZERO_RAIL_NUDGES), [nudgeKey]: value } },
+        [key]: { ...prev.rails[key], nudges: { ...railNudgesOf(prev.rails[key].nudges), [nudgeKey]: value } },
       },
       boardStarted: true,
       dirty: true,
     }));
   };
 
-  // Reset Advanced Settings (PC20): every nudge back to 0, the scale back to its default, Single Tuck off
-  // and, on the tail, Hard Edge back on (the founder's rule) — all in one setState, so it is ONE undo
-  // step. A discrete action like toggleTailHardEdge, hence noteEdit(null).
+  // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
+  // R18) — the scale back to its default, Single Tuck off and, on the tail, Hard Edge back on (the
+  // founder's rule) — all in one setState, so it is ONE undo step. A discrete action like
+  // toggleTailHardEdge, hence noteEdit(null).
   const resetRailAdvanced = (key: RailSectionKey) => {
     if (lockedRef.current) return;
     noteEdit(null);
