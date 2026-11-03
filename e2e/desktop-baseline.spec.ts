@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 05, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
+ * `volume-desktop.png`, for the founder's continuous (d) where the rail meets the deck (R23, "(d), with the
+ * hand-over made continuous first"): on the first board every rail's Domed Deck Band mark sits within half of Band 2
+ * of Deck Mark 3, so each finished rail now rolls off the deck in one smooth curve over both marks. On RAILS the three
+ * cross-sections' finished rails move by a fraction of a millimetre where they leave the deck, and nothing else
+ * moves; on VOLUME the Estimated Volume reads 30.29 L instead of 30.33 L, and the Cross-Section Thickness rows,
+ * the sidebar and the top bar are unchanged. Old and new were compared before re-recording, with the tolerance set
+ * to 0 because both moves sit inside the config's `maxDiffPixels: 100` (RAILS 3 pixels, VOLUME 37): the diff
+ * pictures light the deck ends of the three finished rails and the litres' last two digits, and nothing else.
+ * TEMPLATE, ROCKER and FINS passed unchanged and were not re-recorded. Rendered by the webpack dev server
+ * (`IS_WEBPACK_TEST=1`, port 3177) in the plan's worktree on this Mac. SHA-256 (first 8 characters), old to new:
+ * RAILS 68b1fe4e to e3ca0666, VOLUME ff9f48b1 to 14f11e4c.
+ *
  * RE-RECORDED 2026-11-02 (fast task 190, branch rails-v2) — RAILS only, `rails-desktop.png`, for one word: the
  * checkbox under each rail's Ratio reads "Symmetrical" instead of "Sym" (R21, the founder: "Change sym to
  * Symmetrical"). Old and new were compared before re-recording: the diff picture lights the longer word's extra
