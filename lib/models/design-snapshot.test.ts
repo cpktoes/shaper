@@ -911,6 +911,34 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
     for (const key of ["nose", "center", "tail"] as const) expect(opened.rails[key].nudges).toEqual(ZERO_RAIL_NUDGES);
   });
 
+  it("a tail saved with both Symmetrical and Hard Edge on opens with Hard Edge winning and Symmetrical off; either alone is kept (rule 11, fast task 190)", () => {
+    const both = wire();
+    both.design.rails.tail.symmetrical = true;
+    both.design.rails.tailHardEdge = true;
+    const opened = parseSnapshot(both);
+    expect(opened.rails.tailHardEdge).toBe(true);
+    expect(opened.rails.tail.symmetrical).toBe(false);
+    // The stored board is not touched by the reading.
+    expect(both.design.rails.tail.symmetrical).toBe(true);
+
+    const symmetricalOnly = wire();
+    symmetricalOnly.design.rails.tail.symmetrical = true;
+    symmetricalOnly.design.rails.tailHardEdge = false;
+    expect(parseSnapshot(symmetricalOnly).rails.tail.symmetrical).toBe(true);
+    expect(parseSnapshot(symmetricalOnly).rails.tailHardEdge).toBe(false);
+
+    const hardEdgeOnly = wire();
+    hardEdgeOnly.design.rails.tail.symmetrical = false;
+    hardEdgeOnly.design.rails.tailHardEdge = true;
+    expect(parseSnapshot(hardEdgeOnly).rails.tail.symmetrical).toBe(false);
+    expect(parseSnapshot(hardEdgeOnly).rails.tailHardEdge).toBe(true);
+    // The other rails' Symmetrical is never touched by the tail's rule.
+    const noseSym = wire();
+    noseSym.design.rails.nose.symmetrical = true;
+    noseSym.design.rails.tailHardEdge = true;
+    expect(parseSnapshot(noseSym).rails.nose.symmetrical).toBe(true);
+  });
+
   it("a nudge or scale that is not a number reads its default and the board still opens", () => {
     const stored = wire();
     stored.design.rails.nose.nudges = { ...ZERO_RAIL_NUDGES, deckMark1: "lots", apexThickness: inchesToMm(1 / 16) };

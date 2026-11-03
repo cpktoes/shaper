@@ -838,7 +838,14 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     noteEdit(`rails:${key}:${patchKey(patch)}`);
     setState((prev) => ({
       ...startedFrom(prev, liveTipsRef.current),
-      rails: { ...prev.rails, [key]: { ...prev.rails[key], ...patch } },
+      rails: {
+        ...prev.rails,
+        [key]: { ...prev.rails[key], ...patch },
+        // The tail's Symmetrical and Hard Edge can never both be on (fast task 190, R21 — the founder:
+        // "tail sym and hard edge cannot both be selected"; a hard edge has no tucks to mirror): turning
+        // Symmetrical on turns Hard Edge off, in the same step.
+        ...(key === "tail" && patch.symmetrical === true ? { tailHardEdge: false } : {}),
+      },
       boardStarted: true,
       dirty: true,
     }));
@@ -849,12 +856,21 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const toggleTailHardEdge = () => {
     if (lockedRef.current) return;
     noteEdit(null);
-    setState((prev) => ({
-      ...startedFrom(prev, liveTipsRef.current),
-      rails: { ...prev.rails, tailHardEdge: !prev.rails.tailHardEdge },
-      boardStarted: true,
-      dirty: true,
-    }));
+    setState((prev) => {
+      const on = !prev.rails.tailHardEdge;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        rails: {
+          ...prev.rails,
+          tailHardEdge: on,
+          // The other half of R21 (see updateRailSection): Hard Edge coming on turns the tail's
+          // Symmetrical off, in the same step.
+          ...(on && prev.rails.tail.symmetrical ? { tail: { ...prev.rails.tail, symmetrical: false } } : {}),
+        },
+        boardStarted: true,
+        dirty: true,
+      };
+    });
   };
 
   // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
@@ -890,7 +906,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       ...startedFrom(prev, liveTipsRef.current),
       rails: {
         ...prev.rails,
-        [key]: { ...prev.rails[key], ...defaultRailAdvanced(key) },
+        // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
+        // the one setting outside Advanced that Reset touches, because the two can never both be on.
+        [key]: {
+          ...prev.rails[key],
+          ...defaultRailAdvanced(key),
+          ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+        },
         ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
       },
       boardStarted: true,

@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-02 (fast task 190, branch rails-v2) — RAILS only, `rails-desktop.png`, for one word: the
+ * checkbox under each rail's Ratio reads "Symmetrical" instead of "Sym" (R21, the founder: "Change sym to
+ * Symmetrical"). Old and new were compared before re-recording: the diff picture lights the longer word's extra
+ * letters and nothing else; the drawing, the toolbar, the key and the top bar are unchanged. TEMPLATE, ROCKER, VOLUME
+ * and FINS passed unchanged and were not re-recorded. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port
+ * 3191) in a scratch copy of this checkout on this Mac. SHA-256 (first 8 characters), old to new: RAILS c89c1def to
+ * 68b1fe4e.
+ *
  * RE-RECORDED 2026-11-02 (fast task 189, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
  * `volume-desktop.png`, for "Scaled from center by" defaulting to 1.00 instead of the sheet's 0.75 (R20, the founder:
  * "Go with 1.00 as the default"): the nose and tail cross-sections' bands now come from their own thickness with no

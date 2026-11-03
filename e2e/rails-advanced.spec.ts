@@ -638,3 +638,39 @@ test.describe("Bottom Tuck 3's window (fast task 188, R19)", () => {
     await expect(label).toHaveText(/\(-3\/4"\)$/);
   });
 });
+
+test.describe("Symmetrical, and the tail's rule with Hard Edge (fast task 190, R21)", () => {
+  test("15. every rail's box reads Symmetrical; on the tail ticking it turns Hard Edge off, ticking Hard Edge turns it off, and Reset turns Hard Edge on and it off", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    for (const key of ["nose", "center"] as const) {
+      const rail = await showRail(page, testInfo, key);
+      await expect(rail.getByRole("checkbox", { name: "Symmetrical" })).toBeVisible();
+      await expect(rail.getByRole("checkbox", { name: "Sym", exact: true })).toHaveCount(0);
+    }
+    const tail = await showRail(page, testInfo, "tail");
+    const symmetrical = tail.getByRole("checkbox", { name: "Symmetrical" });
+    const hardEdge = tail.getByRole("checkbox", { name: "Hard Edge" });
+    // A new board's tail: Hard Edge on, Symmetrical off.
+    await expect(hardEdge).toBeChecked();
+    await expect(symmetrical).not.toBeChecked();
+
+    await symmetrical.click();
+    await expect(symmetrical).toBeChecked();
+    await expect(hardEdge).not.toBeChecked();
+
+    await hardEdge.click();
+    await expect(hardEdge).toBeChecked();
+    await expect(symmetrical).not.toBeChecked();
+
+    // Symmetrical on again, then Reset Advanced Settings: Hard Edge back on, Symmetrical off with it.
+    await symmetrical.click();
+    await expect(symmetrical).toBeChecked();
+    await expect(hardEdge).not.toBeChecked();
+    const body = await openAdvanced(tail);
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(hardEdge).toBeChecked();
+    await expect(symmetrical).not.toBeChecked();
+  });
+});

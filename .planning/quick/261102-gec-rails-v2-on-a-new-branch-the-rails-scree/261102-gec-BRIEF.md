@@ -373,3 +373,40 @@ The founder, on localhost:3005 with plan 02 live, in two messages:
   Greenlight has 75%. `DEFAULT_TIP_RAIL_SCALE` = 1 (was 0.75) and every preset's nose and tail carry 1; the slider stays
   (0.50–1.00, the one extra tightening a board with no foil would get); a board saved with 0.75 keeps it. The preset
   litres record regenerated; RAILS and VOLUME reference pictures re-recorded.
+- **R21 — fast task 190 (2026-11-02), the founder: "tail sym and hard edge cannot both be selected. Change sym to
+  Symmetrical."** The box under every rail's Ratio reads "Symmetrical". On the tail, ticking Symmetrical turns Hard
+  Edge off and ticking Hard Edge turns Symmetrical off (the store, so every path keeps the rule); Reset Advanced
+  Settings turns Hard Edge back on and Symmetrical off with it, in its one step. Rule 11 of the saved-board reader: a
+  tail saved with both opens with Hard Edge winning and Symmetrical off, nothing rewritten. The Longboard preset is
+  Symmetrical with no hard edge; the other three are hard-edged and not symmetrical — none breaks the rule.
+
+## 4d. The founder's finished-rail rulings (2026-11-02, with plans 01–04 and fast 185–190 on rails-v2 — locked)
+
+The founder, on localhost:3005:
+
+> "two things for the finished rail, lets add an advanced checkbox for leaving the bottom edge fairly sharp (follow the
+> angle at bottom tuck 3), and the rail blending into the deck appears to have a bit of a knuckle. Can we smooth that
+> out, perhaps blending it better with regard to dome deck mark."
+
+- **R22 — plan 05: a "Sharp Bottom Edge" box in each rail's Advanced menu.** Stored per rail section like Single Tuck
+  (a boolean, default off, `.catch(false)` on read so every saved board opens; no database change — rails live in the
+  `snapshot` jsonb), reset by Reset Advanced Settings, hidden with the tuck controls while the tail's Hard Edge is on
+  (a hard edge is already sharp at the bottom). On: the finished rail does NOT blend the corner at Bottom Tuck 3 — it
+  comes down the last tuck band at that band's own angle and meets the bottom at Bottom Tuck 3 as the cut leaves it
+  (the "fairly sharp" edge the founder cuts on purpose), while every other corner blends halfway as today. Off: today's
+  curve, bit for bit. Volume follows the finished curve (plan 03), so the sharp edge keeps the foam the blend took off
+  at that corner — the exact area rule already in `railBlendArea` simply has one blend fewer. Readers: the VIEWER and
+  View Full Sized draw it; the DATA tab, INSTRUCTIONS, the order form and the phone-menu picture never show the finished
+  rail and are untouched.
+- **R23 — plan 05: smooth the knuckle where the rail meets the deck.** Today every corner is blended halfway into the
+  bands either side (sketch 018's "Blended halfway"), so at the Deck Mark 3 corner the parabola runs from the middle of
+  Band 2 to the middle of the deck run and the bend concentrates near the corner — the founder sees a knuckle. The
+  founder's steer: "blending it better with regard to dome deck mark" — let the deck-side blend reach toward the Domed
+  Deck Band mark rather than stopping halfway along the deck run. The planner measures and DRAWS the candidates before
+  the founder picks (the sketch-018 way, pictures first): at least (a) the deck-side half of that one blend extended to
+  the Domed Deck Band mark (a parabola from Band 2's midpoint to the dome mark, the deck tangent at the dome mark), and
+  (b) one smoother alternative of the planner's choosing (e.g. a cubic with matched tangents, or the blend's deck-side
+  reach as a share of the way to the dome mark). Every candidate must still never cross a cut, still meet the rail only
+  at the Apex Center, and still be exact in volume (state the area rule for the new piece and prove it the way plan 03
+  did). The founder picks from the pictures; the plan then carries ONE rule. Only the deck corner changes; the apex,
+  tucks and bottom corners keep the halfway blend (or the sharp edge of R22).

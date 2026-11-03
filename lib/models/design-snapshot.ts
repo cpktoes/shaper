@@ -128,6 +128,11 @@
  *    one (`domedDeckBand`, ±2", never onto Deck Mark 3 — the engine holds both), and a board saved without
  *    it reads 0, so it opens exactly as it was. Nothing is rewritten until the shaper saves. The version
  *    stays 5, for rule 6's reason; no database change — rails live in the `snapshot` JSON column.
+ * 11. The tail's Symmetrical and Hard Edge can never both be on (fast task 190, R21, 2026-11-02 — the
+ *    founder: "tail sym and hard edge cannot both be selected"; a hard edge has no tucks to mirror). The
+ *    store keeps the rule as a shaper ticks either box; this reader keeps it for a board saved before the
+ *    rule, or by hand: a tail stored with both opens with Hard Edge winning and Symmetrical off, nothing
+ *    rewritten until the shaper saves. The other rails' Symmetrical is never touched. Version stays 5.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -389,12 +394,19 @@ const railSectionSpecSchema = (defaultScale: number) =>
     nudges: railMarkNudgesSchema,
   });
 
-const railBandSpecSchema = z.object({
-  nose: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
-  center: railSectionSpecSchema(1),
-  tail: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
-  tailHardEdge: z.boolean(),
-});
+const railBandSpecSchema = z
+  .object({
+    nose: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
+    center: railSectionSpecSchema(1),
+    tail: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
+    tailHardEdge: z.boolean(),
+  })
+  // Rule 11 (fast task 190, R21): the tail's Symmetrical and Hard Edge can never both be on. A board
+  // saved with both (none of the presets; a board saved before the rule could) opens with Hard Edge
+  // winning and Symmetrical off — read that way, never rewritten until the shaper saves.
+  .transform((rails) =>
+    rails.tailHardEdge && rails.tail.symmetrical ? { ...rails, tail: { ...rails.tail, symmetrical: false } } : rails,
+  );
 
 const finAdvancedSpecSchema = z.object({
   baseLenForward: z.number(),

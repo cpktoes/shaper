@@ -305,18 +305,21 @@ function RailSectionControls({
             className="slider-accent"
           />
           <RatioTickCaptions />
-          {/* Sym on a line of its own under the marks (PC15, the founder's answer 2026-11-02), the same
-              checkbox it always was. 09-REVIEW.md IN-01: only the shared Button/Input/Slider
-              primitives get their coarse: touch sizing for free, so this hand-rolled label row
-              carries its own explicit coarse:min-h-11 -- see WR-02 for what happens to a hand-rolled
-              control that skips this. */}
+          {/* Symmetrical on a line of its own under the marks (PC15, the founder's answer 2026-11-02),
+              the same checkbox it always was, reading its full word since fast task 190 (R21, the
+              founder: "Change sym to Symmetrical"). On the tail it and Hard Edge can never both be on —
+              a hard edge has no tucks to mirror — so ticking either clears the other, in the store, where
+              every path through (the Reset too) keeps the rule. 09-REVIEW.md IN-01: only the shared
+              Button/Input/Slider primitives get their coarse: touch sizing for free, so this hand-rolled
+              label row carries its own explicit coarse:min-h-11 -- see WR-02 for what happens to a
+              hand-rolled control that skips this. */}
           <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
             <Checkbox
               disabled={locked}
               checked={spec.symmetrical}
               onCheckedChange={() => onChange({ symmetrical: !spec.symmetrical })}
             />
-            Sym
+            Symmetrical
           </label>
           {isTail && (
             <label className="mt-2 flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
