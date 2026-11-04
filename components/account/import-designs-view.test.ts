@@ -91,8 +91,8 @@ describe("ImportDesignsView — the preview, before anything is written", () => 
     expect(box).toBeDefined();
     expect(box).not.toMatch(/checked/);
     expect(words).toContain(IMPORT.copiesBox(9));
-    expect(buttonNamed(markup, IMPORT.importButton)).not.toMatch(/disabled/);
-    expect(buttonNamed(markup, IMPORT.cancel)).not.toMatch(/disabled/);
+    expect(buttonNamed(markup, IMPORT.importButton)).not.toMatch(/\sdisabled=""/);
+    expect(buttonNamed(markup, IMPORT.cancel)).not.toMatch(/\sdisabled=""/);
     expect(text(markup)).not.toContain(IMPORT.nothingToAdd);
   });
 
@@ -105,14 +105,14 @@ describe("ImportDesignsView — the preview, before anything is written", () => 
   it("with nothing to add and the box off, says so and Import can't be pressed", () => {
     const markup = render({ step: { kind: "preview", preview: { ...PREVIEW, addNames: [], alreadyThere: 12 } } });
     expect(text(markup)).toContain(IMPORT.nothingToAdd);
-    expect(buttonNamed(markup, IMPORT.importButton)).toMatch(/disabled/);
+    expect(buttonNamed(markup, IMPORT.importButton)).toMatch(/\sdisabled=""/);
   });
 
   it("with nothing to add but the box ticked, Import can be pressed", () => {
     const markup = render({
       step: { kind: "preview", preview: { ...PREVIEW, addNames: [], alreadyThere: 12, includeCopies: true } },
     });
-    expect(buttonNamed(markup, IMPORT.importButton)).not.toMatch(/disabled/);
+    expect(buttonNamed(markup, IMPORT.importButton)).not.toMatch(/\sdisabled=""/);
   });
 
   it("draws no copies box when nothing in the file is already on the account, and names what couldn't be read", () => {
@@ -128,8 +128,8 @@ describe("ImportDesignsView — importing and the status line", () => {
   it("shows the progress, and neither button can be pressed", () => {
     const markup = render({ step: { kind: "importing", preview: PREVIEW, done: 25, total: 40 } });
     expect(text(markup)).toContain(IMPORT.importing(25, 40));
-    expect(buttonNamed(markup, IMPORT.importing(25, 40))).toMatch(/disabled/);
-    expect(buttonNamed(markup, IMPORT.cancel)).toMatch(/disabled/);
+    expect(buttonNamed(markup, IMPORT.importing(25, 40))).toMatch(/\sdisabled=""/);
+    expect(buttonNamed(markup, IMPORT.cancel)).toMatch(/\sdisabled=""/);
   });
 
   it("draws a warning in the Daylight warning ink, and a plain line muted", () => {
