@@ -39,7 +39,7 @@ import { BOARD_LENGTH_RANGE_IN } from "./board";
 import { sectionFinishedRail } from "./finished-rail";
 import { foilStationPoints, sampleFoil } from "./foil";
 import { type OutlineGeometry, sampleOutline, tailCutStation } from "./outline";
-import { hardEdgeEndsAt, type RailSectionResult } from "./rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt, type RailSectionResult } from "./rail-bands";
 import { inchesToMm, mm, type Mm } from "./units";
 import { type BoardSection, type CrossSectionVolumeInput, boardSections, crossSectionStations } from "./volume";
 
@@ -126,7 +126,7 @@ function assertFinite(field: string, value: number, station: number): void {
 /**
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
  * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — while the
- * tail's hard edge is on — the fade's end, filled in so no two neighbours are more than
+ * tail's hard edge is on — where its fade begins and ends (D-30), filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -140,8 +140,10 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
     if (inside(s)) required.push(s);
   }
   if (rails.tailHardEdge) {
-    const endsAt = hardEdgeEndsAt(rails);
-    if (inside(endsAt)) required.push(endsAt);
+    // Both ends of the fade (D-30): where the blend begins and where the hard edge is gone.
+    for (const s of [hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length)]) {
+      if (inside(s)) required.push(s);
+    }
   }
   const kept: number[] = [];
   const keep = (s: number) => {

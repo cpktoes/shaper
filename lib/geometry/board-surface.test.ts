@@ -27,7 +27,7 @@ import {
 import { sectionFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
-import { hardEdgeEndsAt } from "./rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
 import { inchesToMm, mm } from "./units";
 import { boardSections, computeCrossSectionVolume, crossSectionStations } from "./volume";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
@@ -159,8 +159,54 @@ describe("where the surface takes its rings", () => {
       const wanted = [anchors[1].station, anchors[2].station, anchors[3].station];
       const cut = tailCutStation(input.geometry);
       if (cut > 0) wanted.push(cut);
-      if (input.sections.rails.tailHardEdge) wanted.push(hardEdgeEndsAt(input.sections.rails));
+      const { rails, length } = input.sections;
+      if (rails.tailHardEdge) wanted.push(hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
       for (const s of wanted) expect(stations).toContain(s);
+    });
+  }
+
+  it("a fade set off the grid (blends from 20 1/2\", ends at 33\") gets a ring exactly at its start and its end", () => {
+    const fields = boardOf("fish|asis|hard");
+    const set: DesignSummaryFields = {
+      ...fields,
+      rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(20.5), tailHardEdgeEndsAt: inchesToMm(33) },
+    };
+    const { input } = surfaceInputOf(set);
+    const { rails, length } = input.sections;
+    // The board's own readers keep both settings as set.
+    expect(hardEdgeBlendsFrom(rails, length)).toBe(inchesToMm(20.5));
+    expect(hardEdgeEndsAt(rails, length)).toBe(inchesToMm(33));
+    const surface = buildBoardSurface(input);
+    const stations = surface.rings.map((ring) => ring.station as number);
+    expect(stations).toContain(inchesToMm(20.5));
+    expect(stations).toContain(inchesToMm(33));
+    // Fully hard up to the start, fading between, gone at the end — as boardSections says.
+    const at = (s: number) => surface.rings[stations.indexOf(s)];
+    expect(at(inchesToMm(20.5)).sharpness).toBe(1);
+    expect(at(inchesToMm(33)).sharpness).toBe(boardSections(input.sections, [inchesToMm(33)])[0].sharpBottomTuck ? 1 : 0);
+    expect(surface.rings.some((ring) => ring.station > inchesToMm(20.5) && ring.station < inchesToMm(33) && ring.sharpness > 0 && ring.sharpness < 1)).toBe(true);
+    expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+    const litres = computeCrossSectionVolume(input.sections).volumeLitres;
+    const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
+    expect(gap).toBeLessThanOrEqual(0);
+    expect(gap).toBeGreaterThan(-0.0015);
+  });
+});
+
+describe("the surface reads boardSections element for element, at the fade's new defaults (D-30)", () => {
+  for (const { label, input, geometry, surface } of BUILT) {
+    it(`${label}: each ring is its boardSections section — station, width and hard weight`, () => {
+      const sections = boardSections(input.sections, surfaceStations(input));
+      expect(surface.rings.map((ring) => ring.station)).toEqual(sections.map((section) => section.station));
+      const crotch = isSwallow(geometry) ? geometry.centreCloseStation : -1;
+      surface.rings.forEach((ring, i) => {
+        const section = sections[i];
+        expect(ring.sharpness).toBe(Math.max(section.hardWeight, section.sharpBottomTuck ? 1 : 0));
+        if (section.halfWidth > 0 && ring.station >= crotch) {
+          const widest = Math.max(...ringPoints(surface.positions, ring).map((q) => q[1]));
+          expect(Math.abs(widest - section.halfWidth)).toBeLessThan(1e-9);
+        }
+      });
     });
   }
 });

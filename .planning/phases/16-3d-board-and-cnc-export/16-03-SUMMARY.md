@@ -227,6 +227,51 @@ vertices (identity tests on all 40 boards). No new network, auth or storage surf
 - FOUND commits: 0ce3b310 (Task 1), 78a6c73f (Task 2), 26f29b02 (pictures)
 - No scratch script under the repo or `.planning` (only the archive).
 
+## D-30 follow-up (2026-11-04)
+
+At the Wave 2 look the founder gave the hard edge's fade a start setting as well as an end (D-30, carried out by
+16-02 and merged here from `board-3d`, d7baafee). The fade now blends from "Hard Edge Blends From" (12"–30", 18"
+by default) to "Hard Edge Ends At" (L/6 + 18", which is 30" on a 6'0" and 36" on a 9'0"). The surface's sections
+already followed it through `boardSections`. Two changes were left for this plan:
+
+- **The two one-argument calls** now pass the board's length: `hardEdgeEndsAt(rails, length)` in
+  `surfaceStations` and in its test.
+- **A ring where the blend begins.** The start used to be the 12" station, which always had a ring. Now that it's
+  a setting, `surfaceStations` also places a ring at `hardEdgeBlendsFrom(rails, length)`. The stations are
+  otherwise unchanged (evenly spaced, at most ½").
+- **New tests.** A Fish set to blend from 20½" and end at 33" gets a ring exactly at both. It is fully hard at the
+  start, gone at the end, and closed and under VOLUME between them. And on all 40 boards, at the new defaults, each
+  ring is its `boardSections` section: the same station, the same width, the same hard weight.
+- **Counts.** The two test files pass 220 (208 + 12). `npm test`: 166 files, 7112 passed, 2 skipped. Three sweeps
+  (rack-stand-in, blank-fit, finished-rail) timed out under load; run alone, all 144 of their tests pass.
+  `tsc` is clean, and `lint` shows 0 errors.
+
+**The gap at the new defaults** (the same `gap-table.ts`, every board 0 mesh faults): the closest is −0.030% and the
+worst is **−0.146%** (longboard · swallow · hard). All 40 are still inside (−0.15%, 0], but only just. The tracer
+boards are fine: Shortboard 29.5968 L against VOLUME's 29.6128 L (−0.054%), Fish 34.6293 L against 34.6547 L
+(−0.073%). The soft boards don't move. Every hard-edged longboard roughly doubled, from about −0.06% to −0.13% to
+−0.146%.
+
+**Finding for the orchestrator and the founder: a long fade on a longboard breaks the 0.15% line.** Within a fade,
+the litres blend the two sections' AREAS by the weight (D-27, `boardSections`). The surface blends their POINTS
+(research §G), which holds a little less foam. On a shortboard, fish or mid-length that difference is tiny. On a
+longboard the hard-edged and the tucked rail differ a great deal (16-01's Longboard finding), and D-30's longer
+fade spreads it over many more stations. Measured with scratch `probe-long-fade.ts`:
+
+| Hard-edged boards | Fade at the defaults | Blends from 12", ends at the centre | Blends from 30", ends at the centre |
+|---|---:|---:|---:|
+| Shortboard, Fish, Mid-length (all five tails) | −0.051% to −0.078% | −0.060% to −0.087% | −0.044% to −0.078% |
+| Longboard (all five tails) | −0.130% to −0.146% | **−0.289% to −0.299%** | **−0.213% to −0.221%** |
+
+So a shaper who sets a longboard's fade to run to the centre gets a 3D board up to about 0.3% (about 0.22 L on
+74 L) under VOLUME. Still never over, but outside SPEC acceptance 3's tolerance. I didn't change the code or the
+tolerance. There are two ways to close it, and both are design calls outside this plan:
+(a) the litres count the pointwise blend's own area within the fade (a `volume.ts` change, which would move a
+hard-edged longboard's litres a little);
+(b) the surface keeps its pointwise blend and the SPEC's tolerance becomes "within 0.3% on a fade set to the
+centre".
+The 40-board test passes at the defaults and doesn't try the long settings.
+
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 2 checkpoint.
+Accepted as drawn by the founder at the Wave 2 look, 2026-11-04 ("Accepted"); the fade's design change at that look (D-30) reached the surface through boardSections, with the follow-up above.
