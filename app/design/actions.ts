@@ -15,6 +15,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { boardCopyName } from "@/lib/account/import-designs";
 import { db } from "@/lib/db/client";
 import { models, userPreferences } from "@/lib/db/schema";
 import { resolveCarryOverTipStyle } from "@/lib/fit-defaults-server";
@@ -248,7 +249,8 @@ export async function duplicateModel(modelId: string): Promise<DuplicateModelRes
   const design = parseSnapshot(source.snapshot, {
     tipStyle: hasPhase11Blank(source.snapshot) ? await resolveCarryOverTipStyle() : undefined,
   });
-  const copyName = `Copy of ${source.name}`;
+  // One copy-name rule with Import my designs' copies (quick 261103-k8o, PC18).
+  const copyName = boardCopyName(source.name);
   const envelope = buildSnapshot({ ...design, boardName: copyName });
 
   const [row] = await db.insert(models)

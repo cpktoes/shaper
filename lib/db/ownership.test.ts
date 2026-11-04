@@ -381,7 +381,9 @@ describe("Import my designs only adds (quick 261103-k8o)", () => {
     );
     expect(inserts.length).toBeGreaterThan(0);
     for (const insert of inserts) expect(insert.text).toMatch(/locked:\s*false/);
-    const keepingId = inserts.filter((insert) => /[{,]\s*id:/.test(insert.text.slice(insert.text.indexOf(".values("))));
+    // The values written, `.values({ … })` alone — never the `.returning({ id: … })` after it.
+    const valuesOf = (text: string) => text.slice(text.indexOf(".values("), text.indexOf("})", text.indexOf(".values(")));
+    const keepingId = inserts.filter((insert) => /[{,]\s*id:/.test(valuesOf(insert.text)));
     expect(keepingId).toHaveLength(1);
     expect(keepingId[0].text).toMatch(/\.onConflictDoNothing\(/);
   });
