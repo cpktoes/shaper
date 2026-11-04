@@ -4,8 +4,10 @@
  * The Back and Next pair that ends every design screen's controls — the founder's "almost wizard
  * like" (2026-10-03, sketch 008's pick B): once a shaper has finished with a screen's controls the
  * next step is right there under their thumb, so walking a board TEMPLATE, ROCKER, RAILS, VOLUME,
- * FINS, SUMMARY needs no menu. The top row (computer) and the menu's six screen tiles (phone, since
- * quick 261003-q2f removed the old bottom tab bar) stay for jumping around. TEMPLATE has only Next and SUMMARY only Back; each then fills its row.
+ * FINS, SUMMARY, 3D needs no menu. The top row (computer) and the menu's seven screen tiles (phone, since
+ * quick 261003-q2f removed the old bottom tab bar) stay for jumping around. TEMPLATE has only Next and
+ * 3D (the seventh screen since Phase 16) only Back, to Summary; each then fills its row. SUMMARY has
+ * both: Back to Fins and Next to 3D.
  *
  * They are real links (client-side moves), never a page reload: a board that has not been saved
  * lives only in the app's memory, and a full reload would throw it away.

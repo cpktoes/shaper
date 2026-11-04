@@ -21,9 +21,9 @@ export const metadata: Metadata = { title: NOT_FOUND_COPY.pageTitle };
  * address with this — including ones under `/design/` — with a 404 status and a `noindex` tag, so
  * a mistyped or old link never quietly serves a 200.
  *
- * Only Home screen and Contact are offered (P-1): the six design screens are already one tap away
+ * Only Home screen and Contact are offered (P-1): the seven design screens are already one tap away
  * on the same page (the desktop nav row on a tall window 820 dots and wider, the top bar's menu
- * and its six screen tiles everywhere else), so a second list of them here would only repeat
+ * and its seven screen tiles everywhere else), so a second list of them here would only repeat
  * what's already there.
  *
  * The page is its `<main>` alone: the old bottom tab bar it used to mount as its own last child was

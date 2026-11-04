@@ -2,7 +2,7 @@ import { devices, expect, test, type Page } from "@playwright/test";
 
 /**
  * Standing regression test for the top-nav overflow commit `5dae1f1` fixed and left unproven
- * (10-REVIEW.md WR-01). The desktop-style top row (wordmark + six screen links + settings + Save
+ * (10-REVIEW.md WR-01). The desktop-style top row (wordmark + seven screen links + settings + Save
  * + the account control) ran 51px past the viewport's right edge at 820px wide — a bug that had
  * shipped broken since before this phase — and widening the account control's tap target for
  * touch (D-05, `nav-auth-control.tsx`) pushed it another 7px over on a phone held sideways. The
@@ -12,6 +12,11 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * `e2e/phone-home.spec.ts`'s 819/820px case only measures the preset-card thumbnail's height; and
  * `e2e/phone-trip.spec.ts`'s `scrollWidth` check runs on the phone projects' own portrait
  * viewports, never at a landscape/desktop-shell width. This file is that missing test.
+ *
+ * Phase 16 added a seventh link, 3D, after SUMMARY. With the old gaps (16, 20 from 1024) that would
+ * have run 7 dots past the edge at 820 and wrapped `Sign in` at 1024, so the links' gap now steps
+ * `gap-3 lg:gap-4 xl:gap-5` — 12 dots below 1024, 16 to 1279, 20 from 1280 as before (UI-SPEC §11).
+ * Every check below is unchanged: the same row, one link longer, still has to fit.
  *
  * 820 to 870 is the band: 820px is where the fix's own commit message measured the first 51px
  * overflow, and 863px is a real Pixel 7 held sideways (10-SWEEP.md, 2026-09-11) — the touch case
