@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16 executing on branch board-3d: Waves 1–2 merged 2026-11-04 (16-01 the shared sections + fade; 16-02 Hard Edge Blends From / Ends At on RAILS + the saved-boards report; 16-03 the 3D surface maths) with the founder's D-30 (two settings, per-length default end) and D-31 (one rule inside the fade) carried out; LITRES_TIP = 6ff19b31; go-live 1's browser gate running on a copy; next Wave 3 — 16-06 the 3D screen tracer (installs three), 16-05 the CNC files, 16-04 go-live 1 with the founder"
+stopped_at: "Phase 16 executing on branch board-3d: Waves 1–3 merged 2026-11-04 (16-01…16-03, 16-05 the CNC files, 16-06 the 3D screen with the founder's lighting B and darker light-theme ground); D-30/D-31/D-32 recorded (16-15 briefed for after go-live 1); go-live 1 (16-04) in progress on LITRES_TIP 6ff19b31 — the founder's report read back, the browser gate's re-run finishing, his go awaited; next Wave 4 — 16-07 turning + the 3D panel's hard-edge sliders, 16-08 seven screens"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Phase 16 Wave 2 merged: the Hard Edge Blends From / Ends At sliders on RAILS, the 3D surface maths, and the litres counting exactly the foam the 3D board draws (D-30, D-31)"
+last_activity_desc: "Phase 16 Wave 3 merged: the CNC files and the 3D screen (lit by the side tubes, darker ground in the light themes); go-live 1 under way"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 45
-  completed_plans: 34
-  percent: 76
+  completed_plans: 36
+  percent: 80
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---

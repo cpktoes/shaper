@@ -475,6 +475,7 @@ const GROUPS = [
     ["ground","Window","App chrome — the nav and the body behind everything"],
     ["sidebar","Sidebar","The control column on every design screen"],
     ["canvas","Canvas","The drawing / working area beside it"],
+    ["3d-ground","3D ground","The ground behind the 3D board on the 3D screen (Phase 16, 16-06): darker than the canvas in the light themes so the white foam stands off it; the canvas colour in the dark themes"],
     ["tab-active","Active tab","The selected tab, which merges into the canvas"],
   ]},
   { name:"Surfaces", note:"things ON a region", tokens:[
@@ -504,22 +505,22 @@ const GROUPS = [
 
 const PUBLISHED = [
   { id:"daylight", label:"Daylight", mode:"light", note:"default light",
-    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","tab-active":"#ffffff",panel:"#ffffff",
+    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","3d-ground":"#9d9b95","tab-active":"#ffffff",panel:"#ffffff",
         well:"#dfdcd3",ink:"#1f2a3b","ink-muted":"#566171",line:"#897c58","line-faint":"#897c58",
         accent:"#8ec1b8","on-accent":"#1f2a3b","accent-ink":"#48605c",
         warning:"#ff5722","on-warning":"#1f2a3b","warning-ink":"#ac3811","board-fill":"#d9f2ed" } },
   { id:"chalk", label:"Chalk", mode:"light", note:"",
-    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","tab-active":"#ffffff",panel:"#ffffff",
+    v:{ ground:"#ffffff",sidebar:"#ffffff",canvas:"#dfdcd3","3d-ground":"#9d9b95","tab-active":"#ffffff",panel:"#ffffff",
         well:"#dfdcd3",ink:"#1f2a3b","ink-muted":"#566171",line:"#897c58","line-faint":"#897c58",
         accent:"#3490bc","on-accent":"#090e16","accent-ink":"#2b424c",
         warning:"#ff5722","on-warning":"#1f2a3b","warning-ink":"#ac3811","board-fill":"#d8ebf2" } },
   { id:"slate", label:"Slate", mode:"dark", note:"default dark",
-    v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#1a1d25","tab-active":"#12141a",panel:"#12141a",
+    v:{ ground:"#12141a",sidebar:"#12141a",canvas:"#1a1d25","3d-ground":"#1a1d25","tab-active":"#12141a",panel:"#12141a",
         well:"#1b1f26",ink:"#f2f4f7","ink-muted":"#a1a8b4",line:"#6a707c","line-faint":"#333842",
         accent:"#18526d","on-accent":"#f2f4f7","accent-ink":"#3490bc",
         warning:"#ff5722","on-warning":"#111111","warning-ink":"#ff9670","board-fill":"#1a2732" } },
   { id:"phosphor", label:"Phosphor", mode:"dark", note:"",
-    v:{ ground:"#050805",sidebar:"#050805",canvas:"#142414","tab-active":"#050805",panel:"#050805",
+    v:{ ground:"#050805",sidebar:"#050805",canvas:"#142414","3d-ground":"#142414","tab-active":"#050805",panel:"#050805",
         well:"#050805",ink:"#26d026","ink-muted":"#2ca62c",line:"#3e783e","line-faint":"#3e783e",
         accent:"#2ca62c","on-accent":"#050805","accent-ink":"#52ab52",
         warning:"#5eff5e","on-warning":"#050805","warning-ink":"#a6ffa6","board-fill":"#142414" } },
@@ -692,7 +693,7 @@ function renderAudit(){
 
 /** The 16 contract tokens, in globals.css order. `board-fill` is emitted separately by
     rampFor/blockFor because it is named `--ramp-<id>-fill`, not `--ramp-<id>-board-fill`. */
-const EXPORT_KEYS = ["ground","sidebar","canvas","tab-active","panel","well","ink","ink-muted",
+const EXPORT_KEYS = ["ground","sidebar","canvas","3d-ground","tab-active","panel","well","ink","ink-muted",
   "line","line-faint","accent","on-accent","accent-ink","warning","on-warning","warning-ink"];
 
 function rampFor(t){

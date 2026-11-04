@@ -329,3 +329,5 @@ None beyond the plan's threat model:
 ## Founder's look
 
 First look 2026-11-04: "The shadowing can be stronger. Maybe no overhead light just the side lights. Also the dark themes look good, the light themes may need a darker background to make the foam pop." Second look, from the candidates picture: "I like the look of B best with ground 2, even on the slate/dark background." Shipped: lighting B in every theme, ground #9d9b95 in Daylight and Chalk, the dark themes' own ground.
+
+Merged into `board-3d` as 5a653ffa after the founder's second pick; the Colour Bench's token list gained the 3D ground in the same tracking commit.
