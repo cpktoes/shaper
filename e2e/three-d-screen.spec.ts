@@ -9,6 +9,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
 import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { THEME_STORAGE_KEY } from "../lib/theme";
 import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canvas-pixels";
 import { storedOpenBoard } from "./helpers/open-board";
 
@@ -216,6 +217,20 @@ test.describe("the 3D screen", () => {
     await expect(canvas).toHaveAttribute("tabindex", "0");
     await expect(canvas).not.toHaveAttribute("aria-busy", "true");
     await expect(canvas.locator("canvas")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("10. in a dark theme the board is drawn on that theme's ground, not Daylight's", async ({ page }) => {
+    await page.addInitScript(([key, theme]) => window.localStorage.setItem(key, theme), [THEME_STORAGE_KEY, "slate"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const ground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-canvas").trim());
+    const { rgba, width } = await hostPixels(host);
+    // A pixel a little in from the top-left corner: the canvas's clear colour, clear of the rounded edge.
+    const at = 4 * (10 * width + 10);
+    const [r, g, b] = hexToRgb(ground);
+    expect(Math.abs(rgba[at] - r)).toBeLessThanOrEqual(2);
+    expect(Math.abs(rgba[at + 1] - g)).toBeLessThanOrEqual(2);
+    expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
   });
 
   test("9. moving Hard Edge Ends At on RAILS changes the 3D board (D-30: one value, read by both)", async ({ page }, testInfo) => {

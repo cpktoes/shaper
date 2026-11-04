@@ -135,12 +135,16 @@ export function ThreeDScreen() {
     const report = (state: CanvasState) => {
       if (live) setSceneState(state);
     };
-    const colours = readSceneColours();
-    coloursRef.current = colours;
     import("./board-scene")
       .then(({ mountBoardScene }) => {
         const board = boardRef.current;
         if (!live || !board) return;
+        // The theme's colours are read here, once the code has arrived, and never in the effect itself: on the
+        // first load this effect runs before the theme provider's own (a parent's effects run after its
+        // children's), while the page's theme class is briefly missing, so Slate and Phosphor read Daylight's
+        // ground and foam. By the time the import has resolved, every effect of that first pass has run.
+        const colours = readSceneColours();
+        coloursRef.current = colours;
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
         const fit = () => handle?.resize(host.clientWidth, host.clientHeight);
