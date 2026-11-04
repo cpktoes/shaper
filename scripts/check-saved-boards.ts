@@ -53,6 +53,19 @@
  * that opens in the check above is left out by the rack — a board that already does not open is
  * that check's failure, not this one's.
  *
+ * `--hard-edge-report` (Phase 16 D-20/D-30, the 14 D-18 report rule; read-only, board ids, settings and
+ * litres only): the founder's check before the hard edge's blend goes live that every saved board's litres
+ * move as the blend says. For each board with a hard-edged tail it prints the board's Hard Edge Blends From
+ * and Ends At as it reads them (in inches, `(default)` where it stores none of its own), then the litres
+ * before (the old switch, `HARD_EDGE_SWITCH`) and after (the live blend), worked out in
+ * lib/models/hard-edge-report.ts (`hardEdgeReportLines`):
+ *   hard-edge report: N saved boards; k open[, d did not open]; h with a hard-edged tail
+ *   <id>: blends from <from> · ends at <to> — <before> → <after> L (<move>)   one per hard-edged board,
+ *                                                                              the largest move first
+ *   largest move: <id>, <move> L                                              (or: largest move: none)
+ * A board that does not open is counted, never printed with data. It never prints a board name, a
+ * snapshot, a user id or the connection string, and it never changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -66,6 +79,8 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --thin-tips'
  *   production, the rack report — the founder only (plan 15-13), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rack-report'
+ *   production, the hard-edge report — the founder only (Phase 16's go-live), the same temporary-file recipe:
+ *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --hard-edge-report'
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -115,6 +130,8 @@ async function main(): Promise<void> {
   const { DEFAULT_FIT_DEFAULTS, carryOverTipStyle, toFitSettings } = await import("../lib/fit-defaults-preference");
   const { readFitDefaultsPreference } = await import("../lib/db/queries");
   const { accountsNeedingTipStyle, rackReport } = await import("../lib/models/rack-report");
+  const { hardEdgeReportLines } = await import("../lib/models/hard-edge-report");
+  type HardEdgeReportRow = import("../lib/models/hard-edge-report").HardEdgeReportRow;
 
   type Mm = import("../lib/geometry/units").Mm;
   type TipStyle = import("../lib/geometry/blank").TipStyle;
@@ -126,6 +143,7 @@ async function main(): Promise<void> {
   const fitSettings = toFitSettings(DEFAULT_FIT_DEFAULTS);
   const thinTipsFlag = process.argv.includes("--thin-tips");
   const rackReportFlag = process.argv.includes("--rack-report");
+  const hardEdgeReportFlag = process.argv.includes("--hard-edge-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
@@ -142,6 +160,8 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
+  // --hard-edge-report (Phase 16 D-20): each board's id and its opened fields (null when it did not open).
+  const hardEdgeRows: HardEdgeReportRow[] = [];
 
   for (const row of rows) {
     const version = (row.snapshot as { version?: unknown } | null)?.version;
@@ -159,8 +179,10 @@ async function main(): Promise<void> {
     } catch {
       notOpened.push(row.id);
       if (phase11) moved.push(row.id);
+      hardEdgeRows.push({ id: row.id, fields: null });
       continue;
     }
+    hardEdgeRows.push({ id: row.id, fields: parsed });
 
     // --thin-tips (Phase 13 item 4): counts only, never affects the exit code.
     if (STATION_KEYS.some((key) => parsed.foil[key] < floor)) {
@@ -290,6 +312,9 @@ async function main(): Promise<void> {
     const didNotOpen = new Set(notOpened);
     rackLeavesOutAnOpeningBoard = report.dropped.some((id) => !didNotOpen.has(id));
   }
+
+  // --hard-edge-report (Phase 16 D-20): ids and litres only; never changes the exit code.
+  if (hardEdgeReportFlag) for (const line of hardEdgeReportLines(hardEdgeRows)) console.log(line);
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);

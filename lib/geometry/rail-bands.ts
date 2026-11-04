@@ -216,31 +216,142 @@ export interface RailBandSpec {
   tail: RailSectionSpec;
   tailHardEdge: boolean;
   /**
-   * Where the tail's hard edge has faded into the tucked rail, measured from the tail tip (Phase 16,
-   * D-20): the edge is full at and behind the 12" station and eases to nothing by this distance. Absent
-   * on every board saved before Phase 16 and on every preset, which read `DEFAULT_HARD_EDGE_ENDS_AT_IN`;
-   * always read through `hardEdgeEndsAt`, which forgives a value outside `HARD_EDGE_ENDS_AT_RANGE_IN`.
+   * Hard Edge Blends From (Phase 16, D-30, the founder 2026-11-04): where the tail's hard edge starts
+   * blending into the tucked rail, measured from the tail tip — the edge is full at and behind it. Absent on
+   * every board saved before D-30 and on every preset, which read `DEFAULT_HARD_EDGE_BLENDS_FROM_IN` (18");
+   * always read through `hardEdgeBlendsFrom`, which forgives anything outside its window.
+   */
+  tailHardEdgeBlendsFrom?: Mm;
+  /**
+   * Hard Edge Ends At (Phase 16, D-20/D-30): where the rail has fully blended into the centre's tucked rail —
+   * the centre's Single Tuck and Sharp Bottom Tuck (D-27) — measured from the tail tip. Absent on every board
+   * saved before Phase 16 and on every preset, which read the board's own `defaultHardEdgeEndsAt` (L/3 − 18
+   * inches short of the centre: 30" on a 6'0"); always read
+   * through `hardEdgeEndsAt`, which keeps it at least `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past
+   * the board's centre.
    */
   tailHardEdgeEndsAt?: Mm;
 }
 
-/** The range and step, in inches, a tail's Hard Edge Ends At may be set to (D-20, UI-SPEC §17). */
-export const HARD_EDGE_ENDS_AT_RANGE_IN = { min: 14, max: 24, step: 0.5 } as const;
+/**
+ * The range and step, in inches, a tail's Hard Edge Blends From may be set to (D-30). It never goes below the
+ * 12" mark, so RAILS' tail plot at its own station is always a full hard edge; on a board too short for 30",
+ * its top is the centre less `HARD_EDGE_MIN_BLEND_IN`.
+ */
+export const HARD_EDGE_BLENDS_FROM_RANGE_IN = { min: 12, max: 30, step: 0.5 } as const;
 
-/** Where a tail's hard edge has faded out when the board says nothing else, in inches from the tail tip. */
-export const DEFAULT_HARD_EDGE_ENDS_AT_IN = 18;
+/** Where a tail's hard edge starts blending when the board says nothing else, in inches from the tail tip. */
+export const DEFAULT_HARD_EDGE_BLENDS_FROM_IN = 18;
+
+/** The least distance, in inches, between Hard Edge Blends From and Hard Edge Ends At (D-30). */
+export const HARD_EDGE_MIN_BLEND_IN = 2;
 
 /**
- * Where the tail's hard edge ends, read forgivingly (Phase 16, D-20; threat T-16-01): the stored
- * `tailHardEdgeEndsAt` when it is a finite number inside `HARD_EDGE_ENDS_AT_RANGE_IN`, and 18" otherwise —
- * so no stored value, crafted or corrupted, can put the fade's end on the 12" station or past the board.
+ * Hard Edge Ends At's step, in inches (D-20/D-30). Its bounds are not fixed numbers: it runs from
+ * Blends From + `HARD_EDGE_MIN_BLEND_IN` to the board's centre station ("all the way to the centre of the
+ * board", the founder), so they come from `hardEdgeWindows`.
  */
-export function hardEdgeEndsAt(rails: Pick<RailBandSpec, "tailHardEdgeEndsAt">): Mm {
+export const HARD_EDGE_ENDS_AT_RANGE_IN = { step: 0.5 } as const;
+
+/** The 18 in the founder's default-end rule, L/3 − 18 inches short of the centre (D-30). Its own number, not the
+ * default start's: "Two independent values." */
+export const DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN = 18;
+
+/**
+ * Where a tail's hard edge has fully blended into the centre's tucked rail when the board says nothing else, in
+ * millimetres from the tail tip (Phase 16, D-30). The founder's rule, in his words: "Default start = 18". Default
+ * end at = L/3 − 18. Two independent values." — and L/3 − 18 is "Inches short of the centre". So, with L the
+ * board's length in inches, the default end sits L/2 − (L/3 − 18) = L/6 + 18 inches from the tail, rounded to the
+ * nearest 1/2" (the slider's step): 30" on a 6'0", 29 1/2" on a 5'8", 30 1/2" on a 6'2", 32 1/2" on a 7'2" and 36"
+ * on a 9'0". It never reads the start (the two defaults are independent); `hardEdgeEndsAt` clamps it into
+ * [Blends From + 2", centre] like any value.
+ */
+export function defaultHardEdgeEndsAt(length: Mm): Mm {
+  const lengthIn = mmToInches(length);
+  const shortOfCentreIn = lengthIn / 3 - DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN;
+  const fromTailIn = lengthIn / 2 - shortOfCentreIn;
+  const { step } = HARD_EDGE_ENDS_AT_RANGE_IN;
+  return inchesToMm(Math.round(fromTailIn / step) * step);
+}
+
+/** A window in millimetres from the tail tip. */
+export interface HardEdgeWindow {
+  min: Mm;
+  max: Mm;
+}
+
+/** True when `stored` is a finite number inside `window`. */
+function storedInside(stored: unknown, window: HardEdgeWindow): stored is number {
+  return typeof stored === "number" && Number.isFinite(stored) && stored >= window.min && stored <= window.max;
+}
+
+function clampInto(value: number, window: HardEdgeWindow): Mm {
+  return mm(Math.min(window.max, Math.max(window.min, value)));
+}
+
+/** Where Blends From may sit on a board of this length: 12" to 30", and never closer than 2" to the centre. */
+function blendsFromWindow(length: Mm): HardEdgeWindow {
+  const min = inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min);
+  const top = Math.min(
+    inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max),
+    length / 2 - inchesToMm(HARD_EDGE_MIN_BLEND_IN),
+  );
+  return { min, max: mm(Math.max(min, top)) };
+}
+
+/** Where Ends At may sit once Blends From is known: at least 2" past it, and no further than the centre. */
+function endsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
+  const min = mm(blendsFrom + inchesToMm(HARD_EDGE_MIN_BLEND_IN));
+  return { min, max: mm(Math.max(min, length / 2)) };
+}
+
+/**
+ * Hard Edge Blends From, read forgivingly (Phase 16, D-30; threat T-16-01): the stored
+ * `tailHardEdgeBlendsFrom` when it is a finite number inside 12" to min(30", centre − 2"), and otherwise 18"
+ * clamped into that same window (so a short board's default still leaves room to blend before the centre).
+ * `length` is the board's length; its centre is half of it, the litres' own centre station.
+ */
+export function hardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom">, length: Mm): Mm {
+  const window = blendsFromWindow(length);
+  const stored = rails.tailHardEdgeBlendsFrom;
+  if (storedInside(stored, window)) return mm(stored);
+  return clampInto(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN), window);
+}
+
+/**
+ * Hard Edge Ends At — where the rail has fully blended into the centre's tucked rail — read forgivingly
+ * (Phase 16, D-20/D-30; threat T-16-01): Blends From is resolved first, then the stored `tailHardEdgeEndsAt`
+ * is kept when it is a finite number from Blends From + 2" to the board's centre, and otherwise the board's
+ * own default end (`defaultHardEdgeEndsAt`, L/3 − 18 inches short of the centre) is clamped into that window.
+ * So the two can never cross, and a crafted or stale pair always reads as a valid pair.
+ */
+export function hardEdgeEndsAt(
+  rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt">,
+  length: Mm,
+): Mm {
+  const window = endsAtWindow(hardEdgeBlendsFrom(rails, length), length);
   const stored = rails.tailHardEdgeEndsAt;
-  const min = inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min);
-  const max = inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max);
-  if (typeof stored === "number" && Number.isFinite(stored) && stored >= min && stored <= max) return mm(stored);
-  return inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
+  if (storedInside(stored, window)) return mm(stored);
+  return clampInto(defaultHardEdgeEndsAt(length), window);
+}
+
+/**
+ * Where the Hard Edge Blends From slider may go while Ends At sits at `endsAt` (D-30): 12" up to
+ * min(30", Ends At − 2", centre − 2"), so the start can never be dragged within 2" of the end. Pass the
+ * readers' values, which always sit inside their windows.
+ */
+export function hardEdgeBlendsFromWindow(endsAt: Mm, length: Mm): HardEdgeWindow {
+  const own = blendsFromWindow(length);
+  const top = Math.min(own.max, endsAt - inchesToMm(HARD_EDGE_MIN_BLEND_IN));
+  return { min: own.min, max: mm(Math.max(own.min, top)) };
+}
+
+/**
+ * Where the Hard Edge Ends At slider may go while Blends From sits at `blendsFrom` (D-30): from
+ * Blends From + 2" to the board's centre ("all the way to the centre of the board", the founder).
+ */
+export function hardEdgeEndsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
+  return endsAtWindow(blendsFrom, length);
 }
 
 const DEFAULT_SECTION_COMMON = {

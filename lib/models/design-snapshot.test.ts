@@ -16,11 +16,17 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
+  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
+  defaultHardEdgeEndsAt,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  HARD_EDGE_MIN_BLEND_IN,
   RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   computeRailBands,
+  hardEdgeBlendsFrom,
+  hardEdgeEndsAt,
 } from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_FALLBACK_ROCKER,
@@ -1012,5 +1018,100 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
     expect(back).toEqual(fields.rails);
     expect(back.center.sharpBottomTuck).toBe(true);
     expect(back.nose.sharpBottomTuck).toBe(false);
+  });
+});
+
+describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read forgivingly (rule 13, Phase 16 D-20/D-30)", () => {
+  const KEYS = ["tailHardEdgeBlendsFrom", "tailHardEdgeEndsAt"] as const;
+  const wire = () =>
+    JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))) as {
+      version: number;
+      design: { rails: Record<string, unknown> & { tailHardEdgeBlendsFrom?: unknown; tailHardEdgeEndsAt?: unknown } };
+    };
+  const length = FIXTURES[0].outline.length;
+
+  it("a board saved without either setting opens with no such keys and reads 18\" and 30\" (rule 13)", () => {
+    const stored = wire();
+    for (const key of KEYS) expect(key in stored.design.rails).toBe(false);
+    const opened = parseSnapshot(Object.freeze(stored));
+    for (const key of KEYS) {
+      expect(key in opened.rails).toBe(false);
+      expect(JSON.stringify(opened.rails)).not.toContain(key);
+    }
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultHardEdgeEndsAt(length));
+  });
+
+  it("a stored 20\"/26\" pair is kept exactly (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeBlendsFrom = inchesToMm(20);
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(26);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(26));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(20));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(26));
+  });
+
+  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 18\" (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(22);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect("tailHardEdgeBlendsFrom" in opened.rails).toBe(false);
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(22));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(22));
+  });
+
+  it("a value that could sit on no board — not a number, not finite, outside its outer bounds — opens with no key (rule 13)", () => {
+    const outside: Record<(typeof KEYS)[number], unknown[]> = {
+      tailHardEdgeBlendsFrom: [inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min - 1), inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max + 1)],
+      tailHardEdgeEndsAt: [
+        inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min + HARD_EDGE_MIN_BLEND_IN - 1),
+        inchesToMm(BOARD_LENGTH_RANGE_IN.max / 2 + 1),
+      ],
+    };
+    for (const key of KEYS) {
+      for (const value of ["x", Number.NaN, null, Number.POSITIVE_INFINITY, 1e9, -inchesToMm(18), { inches: 18 }, ...outside[key]]) {
+        const stored = wire();
+        stored.design.rails[key] = value;
+        const opened = parseSnapshot(Object.freeze(stored));
+        expect(key in opened.rails, `${key} ${String(value)}`).toBe(false);
+        expect(JSON.stringify(opened.rails)).not.toContain(key);
+        // The rest of the rails open exactly as saved — a bad value never rejects the board.
+        expect(opened.rails).toEqual(parseSnapshot(wire()).rails);
+      }
+    }
+  });
+
+  it("a pair that crosses is kept as stored but read as a valid pair by the readers, never rewritten (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeBlendsFrom = inchesToMm(26);
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(20);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.tailHardEdgeBlendsFrom).toBe(inchesToMm(26));
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(20));
+    const start = hardEdgeBlendsFrom(opened.rails, length);
+    const end = hardEdgeEndsAt(opened.rails, length);
+    expect(end - start).toBeGreaterThanOrEqual(inchesToMm(HARD_EDGE_MIN_BLEND_IN) - 1e-9);
+  });
+
+  it("a 20\"/26\" pair round-trips through buildSnapshot and parseSnapshot, version still 5 (rule 13)", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: {
+        ...FIXTURES[0].rails,
+        tailHardEdge: true,
+        tailHardEdgeBlendsFrom: inchesToMm(20),
+        tailHardEdgeEndsAt: inchesToMm(26),
+      },
+    };
+    const built = buildSnapshot(fields);
+    expect(built.version).toBe(5);
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+    const back = roundTrip(fields).rails;
+    expect(back).toEqual(fields.rails);
+    expect(back.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
+    expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(26));
   });
 });

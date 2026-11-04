@@ -53,9 +53,12 @@ export function RailBandEditor() {
     toggleRailsImportFoilThickness,
     updateRailSection,
     toggleTailHardEdge,
+    setTailHardEdgeBlendsFrom,
+    setTailHardEdgeEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     railBands: bands,
+    outline,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
@@ -301,6 +304,9 @@ export function RailBandEditor() {
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
+            onChangeHardEdgeBlendsFrom={setTailHardEdgeBlendsFrom}
+            onChangeHardEdgeEndsAt={setTailHardEdgeEndsAt}
+            boardLength={outline.length}
             onChangeNudge={updateRailNudge}
             onResetAdvanced={resetRailAdvanced}
             sectionOpen={sectionOpen}
