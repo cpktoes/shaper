@@ -27,9 +27,11 @@ import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
 import {
   computeCrossSectionVolume,
+  computeCrossSectionVolumeWith,
   computeVolume,
   type CrossSectionVolumeInput,
   type CrossSectionVolumeResult,
+  type HardEdgeRule,
   type VolumeRailValues,
   type VolumeResult,
   type VolumeSpec,
@@ -80,6 +82,27 @@ export function crossSectionFoam(geometry: OutlineGeometry): Pick<CrossSectionVo
   return {
     halfWidthAt: (station) => foamHalfWidth(geometry, station),
     cutStation: tailCutStation(geometry),
+  };
+}
+
+/**
+ * The one cross-section input every litres reader builds (Phase 16, D-05): the board's foam from its
+ * outline (`crossSectionFoam`), the foil and the dense thickness curve off its side profile, the rails the
+ * litres read (the effective rails — thicknesses imported from the foil when that box is ticked) and its
+ * length. The litres (`summarizeDesignWith`) and the 3D board read the same sections through it.
+ */
+export function designCrossSectionInput(
+  geometry: OutlineGeometry,
+  profile: BoardSideProfile,
+  rails: RailBandSpec,
+  length: Mm,
+): CrossSectionVolumeInput {
+  return {
+    ...crossSectionFoam(geometry),
+    foil: profile.effectiveFoil,
+    thicknessAt: profile.thicknessAt,
+    rails,
+    length,
   };
 }
 
@@ -246,6 +269,12 @@ export function summarizeDesign(fields: DesignSummaryFields): DesignSummary {
 export interface DesignRules {
   /** Prepares a blank's own copy of its catalogue rows into the curves the board is cut from. */
   prepare: (record: BlankRecord) => PreparedBlank;
+  /**
+   * How the tail's Hard Edge reaches each station of the litres (Phase 16, D-20/D-27). Absent means the
+   * live rule — the one every screen uses; the old pre-Phase-16 switch (`HARD_EDGE_SWITCH`) is named only
+   * by the pin test of today's litres and by the saved-boards report.
+   */
+  hardEdge?: HardEdgeRule;
 }
 
 /**
@@ -303,13 +332,11 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
   const railValues = deriveRailValues(railBands);
   const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
-  const crossSectionVolume = computeCrossSectionVolume({
-    ...crossSectionFoam(outlineGeometry),
-    foil: profile.effectiveFoil,
-    thicknessAt: profile.thicknessAt,
-    rails: effectiveRails,
-    length: fields.outline.length,
-  });
+  const crossSectionInput = designCrossSectionInput(outlineGeometry, profile, effectiveRails, fields.outline.length);
+  // No rule named is the live rule — the very function every screen's litres call.
+  const crossSectionVolume = rules.hardEdge
+    ? computeCrossSectionVolumeWith(crossSectionInput, rules.hardEdge)
+    : computeCrossSectionVolume(crossSectionInput);
   const quotedVolumeLitres = deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate);
 
   return {

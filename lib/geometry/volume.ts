@@ -52,6 +52,7 @@ import {
   type RailBandSpec,
   type RailMarkNudges,
   type RailSectionKey,
+  type RailSectionResult,
   buildRailProfile,
   computeRailSection,
   effectiveDeckPercent,
@@ -605,6 +606,201 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
 }
 
 /**
+ * One station's finished-rail cross-section, as the litres count it and the 3D board draws it (D-05).
+ * `result` is the station's rail section — the only one when `hardWeight` is 0 or 1, and the TUCKED one
+ * while the tail's hard edge fades (0 < `hardWeight` < 1), when `hardResult` is the hard-edged one beside
+ * it; `result` is null where the foam has no width. `sharpBottomTuck` is the flag the tucked section used.
+ * `area` is the full (both-rails) finished cross-section in square millimetres and `blendArea` the foam
+ * the finished rail's blends take off it, both rails — `stationAreas` and `stationBlendAreas` of
+ * `computeCrossSectionVolume`, element for element.
+ */
+export interface BoardSection {
+  station: Mm;
+  halfWidth: Mm;
+  thickness: Mm;
+  result: RailSectionResult | null;
+  hardResult?: RailSectionResult;
+  hardWeight: number;
+  domed: boolean;
+  sharpBottomTuck: boolean;
+  area: number;
+  blendArea: number;
+}
+
+/** The three rail-band anchors' stations, measured from the tail end: tail 12", centre, nose 12". */
+export interface RailAnchorStations {
+  tail: Mm;
+  center: Mm;
+  nose: Mm;
+}
+
+/**
+ * How the tail's Hard Edge reaches each station. `weight` is how much of the station is the hard-edged
+ * section (1 all hard, 0 all tucked, between a blend of the two sections' areas); `tuckSource` names the
+ * anchor whose Single Tuck and Sharp Bottom Tuck the tucked side reads, given the station's nearest anchor.
+ * The live functions never take a rule: an old rule is callable only by name (Phase 14 D-25's precedent).
+ */
+export interface HardEdgeRule {
+  weight(station: Mm, anchors: RailAnchorStations, rails: RailBandSpec): number;
+  tuckSource(nearest: RailSectionKey, rails: RailBandSpec): RailSectionKey;
+}
+
+/**
+ * The hard edge as it was before Phase 16: a switch — fully hard at every station whose nearest anchor is
+ * the tail 12" section (out to halfway to the centre) while the tail's Hard Edge is on, and not at all
+ * anywhere else; every tuck read from the nearest anchor. Named only by the pin test of today's litres and
+ * by the saved-boards report; no screen uses it.
+ */
+export const HARD_EDGE_SWITCH: HardEdgeRule = {
+  weight(station, anchors, rails) {
+    if (!rails.tailHardEdge) return 0;
+    return nearestAnchorSection(station, anchors.tail, anchors.center, anchors.nose) === "tail" ? 1 : 0;
+  },
+  tuckSource(nearest) {
+    return nearest;
+  },
+};
+
+/** The rule the live litres use. */
+const LIVE_HARD_EDGE_RULE: HardEdgeRule = HARD_EDGE_SWITCH;
+
+/**
+ * The cross-sections the litres integrate, one per station — the ONE section function the litres and the
+ * 3D board both read (D-05), with the hard edge reaching each station by `rule`. `stations` defaults to the
+ * litres' own (`crossSectionStations`); the 3D surface may pass its own. See `computeCrossSectionVolume` for
+ * how each section is built.
+ */
+export function boardSectionsWith(
+  input: CrossSectionVolumeInput,
+  rule: HardEdgeRule,
+  stations?: readonly Mm[],
+): BoardSection[] {
+  const { halfWidthAt, foil, rails, length } = input;
+  const thicknessAt = input.thicknessAt ?? ((station: Mm) => sampleFoil(foil, length, station));
+
+  const anchorPoints = foilStationPoints(foil, length);
+  const tailStation = anchorPoints[1].station; // tail12
+  const centerStation = anchorPoints[2].station; // center
+  const noseStation = anchorPoints[3].station; // nose12
+  const anchors: RailAnchorStations = { tail: tailStation, center: centerStation, nose: noseStation };
+
+  // A section saved before quick 261102-gec reads its defaults (design-snapshot rule 10).
+  const tailScale = rails.tail.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const noseScale = rails.nose.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
+  const tailNudges = rails.tail.nudges ?? ZERO_RAIL_NUDGES;
+  const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
+  const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
+
+  const at = stations ?? crossSectionStations(length, input.cutStation ?? mm(0));
+  const sections: BoardSection[] = [];
+
+  for (const station of at) {
+    const halfWidth = halfWidthAt(station);
+    const thickness = thicknessAt(station);
+
+    if (halfWidth === 0) {
+      sections.push({
+        station,
+        halfWidth,
+        thickness,
+        result: null,
+        hardWeight: 0,
+        domed: false,
+        sharpBottomTuck: false,
+        area: 0,
+        blendArea: 0,
+      });
+      continue;
+    }
+
+    const deckPercent = blendContinuous(
+      station,
+      tailStation,
+      effectiveDeckPercent(rails.tail.deckPercent),
+      centerStation,
+      effectiveDeckPercent(rails.center.deckPercent),
+      noseStation,
+      effectiveDeckPercent(rails.nose.deckPercent),
+    );
+    const ratioTopPercent = blendContinuous(
+      station,
+      tailStation,
+      rails.tail.ratioTopPercent,
+      centerStation,
+      rails.center.ratioTopPercent,
+      noseStation,
+      rails.nose.ratioTopPercent,
+    );
+    const scale = blendContinuous(station, tailStation, tailScale, centerStation, 1, noseStation, noseScale);
+    const nudges = Object.fromEntries(
+      RAIL_NUDGE_KEYS.map((key) => [
+        key,
+        mm(
+          blendContinuous(
+            station,
+            tailStation,
+            tailNudges[key],
+            centerStation,
+            centerNudges[key],
+            noseStation,
+            noseNudges[key],
+          ),
+        ),
+      ]),
+    ) as RailMarkNudges;
+
+    const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
+    const nearestSpec = rails[nearestKey];
+    const tuckSpec = rails[rule.tuckSource(nearestKey, rails)];
+    const hardWeight = rule.weight(station, anchors, rails);
+
+    const domed = deckPercent < 100;
+    const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
+    const thicknessEff = domed ? railThicknessClamped : thickness;
+
+    const sectionInput = (hardEdge: boolean): ComputeRailSectionInput => ({
+      thickness: thicknessEff,
+      boardThickness: thickness,
+      ratioTopPercent,
+      family: nearestSpec.family,
+      scale,
+      nudges,
+      singleTuck: tuckSpec.singleTuck,
+      sharpBottomTuck: tuckSpec.sharpBottomTuck,
+      symmetrical: nearestSpec.symmetrical,
+      hardEdge,
+    });
+    // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
+    const finished = (result: RailSectionResult) => {
+      const profile = buildRailProfile(result);
+      const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
+      const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
+      return { area: stationArea(profilePairs, thickness, halfWidth) - blendBothRails, blendArea: blendBothRails };
+    };
+
+    const result = computeRailSection(sectionInput(hardWeight === 1));
+    const { area, blendArea } = finished(result);
+    sections.push({
+      station,
+      halfWidth,
+      thickness,
+      result,
+      hardWeight,
+      domed,
+      sharpBottomTuck: tuckSpec.sharpBottomTuck,
+      area,
+      blendArea,
+    });
+  }
+  return sections;
+}
+
+/** `boardSectionsWith` under the live hard-edge rule: the sections every screen's litres and the 3D board read. */
+export function boardSections(input: CrossSectionVolumeInput, stations?: readonly Mm[]): BoardSection[] {
+  return boardSectionsWith(input, LIVE_HARD_EDGE_RULE, stations);
+}
+
+/**
  * Cross-section volume — the accurate path CONTEXT.md D-13 promises everywhere the app quotes
  * volume. Integrates `SIMPSON_PANEL_COUNT + 1` real cross-sections along the board's own length
  * with Simpson's rule and converts once through the exact `cubicMmToLitres`. Takes no rocker
@@ -649,106 +845,26 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * `crossSectionStations`), and Simpson runs over each side of it separately: the cut's edges are
  * straight, so the plan area the stations integrate holds the whole V or notch exactly, rather than a
  * panel straddling the corner's step.
+ *
+ * ONE SECTION FUNCTION (Phase 16, D-05). The station loop lives in `boardSections` (`boardSectionsWith` with
+ * the live hard-edge rule): this function integrates exactly the `area` of each section it returns, and the
+ * 3D board (16-03) draws the very same sections, so the litres and the surface can never disagree.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
-  const { halfWidthAt, foil, rails, length } = input;
-  const thicknessAt = input.thicknessAt ?? ((station: Mm) => sampleFoil(foil, length, station));
+  return computeCrossSectionVolumeWith(input, LIVE_HARD_EDGE_RULE);
+}
 
-  const anchors = foilStationPoints(foil, length);
-  const tailAnchor = anchors[1]; // tail12
-  const centerAnchor = anchors[2]; // center
-  const noseAnchor = anchors[3]; // nose12
-  const tailStation = tailAnchor.station;
-  const centerStation = centerAnchor.station;
-  const noseStation = noseAnchor.station;
-
-  // A section saved before quick 261102-gec reads its defaults (design-snapshot rule 10).
-  const tailScale = rails.tail.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
-  const noseScale = rails.nose.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
-  const tailNudges = rails.tail.nudges ?? ZERO_RAIL_NUDGES;
-  const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
-  const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
-
+/** `computeCrossSectionVolume` with the hard-edge rule named: Simpson over `boardSectionsWith(input, rule)`. */
+export function computeCrossSectionVolumeWith(
+  input: CrossSectionVolumeInput,
+  rule: HardEdgeRule,
+): CrossSectionVolumeResult {
+  const { length } = input;
   const cutStation = input.cutStation ?? mm(0);
-  const stations = crossSectionStations(length, cutStation);
-  const stationAreas: number[] = [];
-  const stationBlendAreas: number[] = [];
-
-  for (const station of stations) {
-    const halfWidth = halfWidthAt(station);
-
-    if (halfWidth === 0) {
-      stationAreas.push(0);
-      stationBlendAreas.push(0);
-      continue;
-    }
-
-    const thickness = thicknessAt(station);
-
-    const deckPercent = blendContinuous(
-      station,
-      tailStation,
-      effectiveDeckPercent(rails.tail.deckPercent),
-      centerStation,
-      effectiveDeckPercent(rails.center.deckPercent),
-      noseStation,
-      effectiveDeckPercent(rails.nose.deckPercent),
-    );
-    const ratioTopPercent = blendContinuous(
-      station,
-      tailStation,
-      rails.tail.ratioTopPercent,
-      centerStation,
-      rails.center.ratioTopPercent,
-      noseStation,
-      rails.nose.ratioTopPercent,
-    );
-    const scale = blendContinuous(station, tailStation, tailScale, centerStation, 1, noseStation, noseScale);
-    const nudges = Object.fromEntries(
-      RAIL_NUDGE_KEYS.map((key) => [
-        key,
-        mm(
-          blendContinuous(
-            station,
-            tailStation,
-            tailNudges[key],
-            centerStation,
-            centerNudges[key],
-            noseStation,
-            noseNudges[key],
-          ),
-        ),
-      ]),
-    ) as RailMarkNudges;
-
-    const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
-    const nearestSpec = rails[nearestKey];
-
-    const domed = deckPercent < 100;
-    const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
-    const thicknessEff = domed ? railThicknessClamped : thickness;
-
-    const sectionInput: ComputeRailSectionInput = {
-      thickness: thicknessEff,
-      boardThickness: thickness,
-      ratioTopPercent,
-      family: nearestSpec.family,
-      scale,
-      nudges,
-      singleTuck: nearestSpec.singleTuck,
-      sharpBottomTuck: nearestSpec.sharpBottomTuck,
-      symmetrical: nearestSpec.symmetrical,
-      hardEdge: nearestKey === "tail" && rails.tailHardEdge,
-    };
-    const result = computeRailSection(sectionInput);
-    const profile = buildRailProfile(result);
-    const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
-
-    // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
-    const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
-    stationAreas.push(stationArea(profilePairs, thickness, halfWidth) - blendBothRails);
-    stationBlendAreas.push(blendBothRails);
-  }
+  const sections = boardSectionsWith(input, rule);
+  const stations = sections.map((section) => section.station);
+  const stationAreas = sections.map((section) => section.area);
+  const stationBlendAreas = sections.map((section) => section.blendArea);
 
   let volumeMm3: number;
   if (splitsAtCut(length, cutStation)) {
