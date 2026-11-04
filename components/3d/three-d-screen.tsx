@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
@@ -11,7 +20,23 @@ import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
 import type { Vec3 } from "@/lib/geometry/board-surface";
-import { cameraAxes, dragTurn, framePointsOf, glideAt, quatMultiply, REST_TURN, type Quat } from "@/lib/geometry/view-3d";
+import { easeOut } from "@/lib/models/rack-gesture";
+import {
+  cameraAxes,
+  dragTurn,
+  frameAtOne,
+  framePointsOf,
+  glideAt,
+  keyTurn,
+  quatMultiply,
+  REST_TURN,
+  slerpShortest,
+  VIEW_TURN_MS,
+  VIEW_TURNS,
+  type Frame,
+  type Quat,
+  type ViewName,
+} from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
 import { ThreeDControls } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
@@ -127,6 +152,8 @@ export function ThreeDScreen() {
   const turnRef = useRef<Quat>(REST_TURN);
   /** The glide or view turn under way, if any: its animation frame. */
   const motionRef = useRef(0);
+  /** A view picked while the drawing was still loading: applied, framed at 1x, when the board appears (§9). */
+  const pendingFrameRef = useRef(false);
   // What the scene last reported. Each mount's cleanup puts it back to `loading`, and a mount that has gone can
   // no longer report, so a scene that comes back (after the board could not be built and then could again) never
   // shows an old mount's state.
@@ -164,8 +191,13 @@ export function ThreeDScreen() {
         coloursRef.current = colours;
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
-        // A turn made while the drawing was still loading is applied as the board appears (UI-SPEC §9).
-        if (turnRef.current !== REST_TURN) handle.setTurn(turnRef.current);
+        // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
+        // §9); a view is framed at 1x for its own turn, as its button would have.
+        if (pendingFrameRef.current) {
+          pendingFrameRef.current = false;
+          const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+          handle.setTurn(turnRef.current, frameAtOne(board.framePoints, turnRef.current, aspect));
+        } else if (turnRef.current !== REST_TURN) handle.setTurn(turnRef.current);
         const fit = () => handle?.resize(host.clientWidth, host.clientHeight);
         fit();
         observer = new ResizeObserver(fit);
@@ -284,6 +316,87 @@ export function ThreeDScreen() {
     motionRef.current = requestAnimationFrame(tick);
   };
 
+  // ------------------------------------------------------------------------------------------------------------
+  // The preset views, Reset View and the keys (16-07, UI-SPEC §3, §5, §13).
+  // ------------------------------------------------------------------------------------------------------------
+  /** What the hidden live region last said, and how many times — a new node each time, so a repeat is heard. */
+  const [spoken, setSpoken] = useState<{ text: string; count: number }>({ text: "", count: 0 });
+  const say = (text: string) => setSpoken((last) => ({ text, count: last.count + 1 }));
+  const descriptionId = useId();
+
+  /**
+   * Turns the board to `target` the short way round and re-frames it at 1x for that turn: over VIEW_TURN_MS with
+   * the rack's settle curve, or at once under reduced motion. Any glide or turn under way stops first. Picked
+   * while the drawing is still loading, the view is kept and applied when the board appears.
+   */
+  const turnTo = (target: Quat, instant = false) => {
+    stopMotion();
+    dragRef.current = null;
+    const scene = sceneRef.current;
+    const board = boardRef.current;
+    const host = hostRef.current;
+    if (!scene || !board || !host || sceneState !== "ready") {
+      turnRef.current = target;
+      if (host) host.dataset.turn = turnText(target);
+      pendingFrameRef.current = true;
+      return;
+    }
+    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+    const toFrame = frameAtOne(board.framePoints, target, aspect);
+    if (instant || reducedRef.current) {
+      turnRef.current = target;
+      host.dataset.turn = turnText(target);
+      scene.setTurn(target, toFrame);
+      return;
+    }
+    const fromTurn = turnRef.current;
+    const fromFrame = scene.frame();
+    const began = performance.now();
+    const between = (a: Frame, b: Frame, k: number): Frame => ({
+      distance: a.distance + (b.distance - a.distance) * k,
+      right: a.right + (b.right - a.right) * k,
+      up: a.up + (b.up - a.up) * k,
+    });
+    const tick = () => {
+      const t = (performance.now() - began) / VIEW_TURN_MS;
+      const done = t >= 1;
+      const k = easeOut(t);
+      const turn = done ? target : slerpShortest(fromTurn, target, k);
+      turnRef.current = turn;
+      host.dataset.turn = turnText(turn);
+      scene.setTurn(turn, done ? toFrame : between(fromFrame, toFrame, k));
+      motionRef.current = done ? 0 : requestAnimationFrame(tick);
+    };
+    motionRef.current = requestAnimationFrame(tick);
+  };
+
+  const onView = (name: ViewName) => {
+    turnTo(VIEW_TURNS[name]);
+    say(THREE_D_COPY.viewSpoken[name]);
+  };
+  const onReset = (instant = false) => {
+    turnTo(REST_TURN, instant);
+    say(THREE_D_COPY.resetSpoken);
+  };
+
+  /** The keys the canvas takes while it has focus (UI-SPEC §5): the arrows turn 15° at once, Home resets. Nothing
+   * else is taken, so Tab always leaves. (Shift with an arrow, plus, minus and 0 are 16-09's.) */
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || message) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const arrow = ({ ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" } as const)[
+      event.key as "ArrowLeft"
+    ];
+    if (arrow) {
+      event.preventDefault();
+      stopMotion();
+      applyTurn(keyTurn(turnRef.current, arrow));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      onReset(true);
+    }
+  };
+
   const state: CanvasState = built.ok ? sceneState : "cant-build";
   const message =
     state === "cant-build"
@@ -297,7 +410,9 @@ export function ThreeDScreen() {
 
   return (
     <DesignScreenShell
-      controls={<ThreeDControls />}
+      controls={
+        <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null} />
+      }
       canvas={
         <TabbedPanel
           tabs={[{ id: "board", label: THREE_D_COPY.tab }]}
@@ -319,7 +434,9 @@ export function ThreeDScreen() {
               role="application"
               aria-roledescription={THREE_D_COPY.canvasRole}
               aria-label={THREE_D_COPY.canvasName(name)}
+              aria-describedby={descriptionId}
               aria-busy={state === "loading" ? true : undefined}
+              onKeyDown={onKeyDown}
               onPointerDown={message ? undefined : onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={(event) => endDrag(event, true)}
@@ -328,6 +445,14 @@ export function ThreeDScreen() {
               className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
+            {/* For a screen reader (UI-SPEC §13): how to move the board, and — always in the page, empty until a
+                view is picked — which view it is now. Turning by hand is never announced. */}
+            <p id={descriptionId} className="sr-only">
+              {THREE_D_COPY.canvasDescription}
+            </p>
+            <div role="status" aria-live="polite" className="sr-only" data-three-d-spoken>
+              {spoken.text && <span key={spoken.count}>{spoken.text}</span>}
+            </div>
           </div>
         </TabbedPanel>
       }

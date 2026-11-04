@@ -1,5 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { THREE_D_COPY } from "../components/3d/three-d-copy";
+import { presetDesignFields } from "../lib/blanks/preset-blanks";
+import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { VIEW_NAMES, VIEW_TURNS, type Quat } from "../lib/geometry/view-3d";
+import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
+import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
+import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { countDifferent, decodePng } from "./helpers/canvas-pixels";
 
@@ -218,5 +225,143 @@ test.describe("turning the 3D board under reduced motion", () => {
     expect(await host.getAttribute("data-turn")).toBe(soon);
     await page.waitForTimeout(700);
     expect(await host.getAttribute("data-turn")).toBe(soon);
+  });
+});
+
+/** The same turn to `tol`, either way round: a quaternion and its negative turn a board identically. */
+function isTurn(got: number[], want: Quat, tol = 1e-3) {
+  const same = got.every((v, i) => Math.abs(v - want[i]) <= tol);
+  const opposite = got.every((v, i) => Math.abs(v + want[i]) <= tol);
+  return same || opposite;
+}
+
+function viewsGroup(page: Page) {
+  return page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true });
+}
+
+function viewButton(page: Page, label: string) {
+  return viewsGroup(page).getByRole("button", { name: label, exact: true });
+}
+
+/** What the hidden live region says. */
+function spoken(page: Page) {
+  return page.locator("[data-three-d-spoken]");
+}
+
+/** The default board, kept in this browser as a saved board of an account that is locked (a lock belongs to a saved
+ * board), as e2e/rails-advanced.spec.ts keeps one. */
+async function keepLockedBoard(page: Page) {
+  const preset = BOARD_PRESETS.find((p) => p.name === "Shortboard");
+  if (!preset) throw new Error("no Shortboard preset");
+  const fields: DesignSnapshotFields = {
+    ...presetDesignFields(preset),
+    volume: DEFAULT_VOLUME_SPEC,
+    finsImportTemplate: true,
+    railsImportFoilThickness: true,
+    boardName: "",
+    finSystem: "fcs2",
+  };
+  const raw = openBoardCopyJson(fields, {
+    modelId: "three-d-locked-board",
+    ownerId: "three-d-test-account",
+    locked: true,
+    dirty: false,
+  });
+  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
+}
+
+test.describe("the five views, Reset View and the keys", () => {
+  test("5. each view button turns the board to its view, and a screen reader hears which", async ({ page }) => {
+    // Ten view turns, each re-framed at 1x, on browsers that draw without a graphics card.
+    test.setTimeout(300_000);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    for (const name of VIEW_NAMES) {
+      await viewButton(page, THREE_D_COPY.views[name]).click();
+      await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS[name]), { timeout: 10_000 }).toBe(true);
+      await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
+      // Pressed again, it is already there: nothing moves.
+      const there = await host.getAttribute("data-turn");
+      await viewButton(page, THREE_D_COPY.views[name]).click();
+      await page.waitForTimeout(600);
+      expect(await host.getAttribute("data-turn")).toBe(there);
+      await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
+    }
+  });
+
+  test("6. Reset View brings back the first view", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await viewButton(page, THREE_D_COPY.views.bottom).click();
+    await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS.bottom), { timeout: 10_000 }).toBe(true);
+    await viewButton(page, THREE_D_COPY.resetView).click();
+    await expect.poll(async () => isTurn(await turnOf(host), [0, 0, 0, 1]), { timeout: 10_000 }).toBe(true);
+    await expect(spoken(page)).toHaveText(THREE_D_COPY.resetSpoken);
+  });
+
+  test("7. with the keyboard: the arrows turn the board without scrolling the page, Home resets, Tab leaves", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a keyboard is a computer's");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await host.focus();
+    const scrollBefore = await page.evaluate(() => [window.scrollY, document.scrollingElement?.scrollTop ?? 0]);
+    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowDown");
+    expect(isTurn(await turnOf(host), [0, 0, 0, 1])).toBe(false);
+    expect(await page.evaluate(() => [window.scrollY, document.scrollingElement?.scrollTop ?? 0])).toEqual(scrollBefore);
+    await page.keyboard.press("Home");
+    await expect.poll(async () => isTurn(await turnOf(host), [0, 0, 0, 1])).toBe(true);
+    await expect(spoken(page)).toHaveText(THREE_D_COPY.resetSpoken);
+    // One Tab stop: the next Tab leaves the canvas.
+    await expect(host).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(host).not.toBeFocused();
+    // The canvas is described by the hidden instructions.
+    const describedBy = await host.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    await expect(page.locator(`[id="${describedBy}"]`)).toHaveText(THREE_D_COPY.canvasDescription);
+  });
+
+  test("8. the view buttons are one-shot actions in a group named Views, one line each at the narrowest panel", async ({ page }, testInfo) => {
+    if (testInfo.project.name === "desktop") await page.setViewportSize({ width: 820, height: 800 });
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await expect(viewsGroup(page)).toBeVisible();
+    const buttons = viewsGroup(page).getByRole("button");
+    await expect(buttons).toHaveCount(6);
+    for (let i = 0; i < 6; i++) await expect(buttons.nth(i)).not.toHaveAttribute("aria-pressed", /.*/);
+    for (const label of [THREE_D_COPY.views.bottom, THREE_D_COPY.resetView]) {
+      const fits = await viewButton(page, label).evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+        return { lines: lines.size, overflow: el.scrollWidth > el.clientWidth };
+      });
+      expect(fits).toEqual({ lines: 1, overflow: false });
+    }
+  });
+
+  test("9. with no 3D drawing the view buttons have nothing to turn and are dimmed", async ({ page }) => {
+    await page.addInitScript(() => {
+      HTMLCanvasElement.prototype.getContext = function () {
+        return null;
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await page.goto("/design/3d");
+    await expect(boardHost(page)).toHaveAttribute("data-board-state", "no-webgl", { timeout: FIRST_FRAME_MS });
+    for (const label of [...VIEW_NAMES.map((n) => THREE_D_COPY.views[n]), THREE_D_COPY.resetView]) {
+      await expect(viewButton(page, label)).toBeDisabled();
+    }
+  });
+
+  test("10. a locked board can still be turned: the view buttons are never greyed by the lock", async ({ page }) => {
+    await keepLockedBoard(page);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    for (const label of [...VIEW_NAMES.map((n) => THREE_D_COPY.views[n]), THREE_D_COPY.resetView]) {
+      await expect(viewButton(page, label)).toBeEnabled();
+    }
+    await viewButton(page, THREE_D_COPY.views.side).click();
+    await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS.side), { timeout: 10_000 }).toBe(true);
   });
 });

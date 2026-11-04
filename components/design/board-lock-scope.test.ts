@@ -30,6 +30,8 @@ const LOCKABLE_FILES = [
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",
   "components/summary/order-form.tsx",
+  // Phase 16 (16-07): the 3D panel — its view buttons only change what is seen, so each is data-lock-exempt.
+  "components/3d/three-d-controls.tsx",
 ];
 
 /** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildBoardSurface, type Vec3 } from "./board-surface";
+import { boardOutlineLoop, boardProfileLines, buildBoardSurface, type Vec3 } from "./board-surface";
+import { silhouette } from "./screen-tiles";
+import { inchesToMm, type Mm } from "./units";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -17,6 +19,8 @@ import {
   GLIDE_MAX_SPEED,
   GLIDE_MS,
   glideAt,
+  KEY_TURN_DEG,
+  keyTurn,
   quatConjugate,
   quatFromAxisAngle,
   quatMultiply,
@@ -25,6 +29,10 @@ import {
   ROOM_CAMERA,
   roomCameraAxes,
   rotateVec,
+  slerpShortest,
+  turnAngle,
+  VIEW_NAMES,
+  VIEW_TURNS,
   type Frame,
   type Quat,
 } from "./view-3d";
@@ -292,5 +300,179 @@ describe("glideAt — a let-go board slows to rest", () => {
     const flick = glideAt([0, 1, 0], GLIDE_MS);
     expect(axisAngle(flick.turnSince).angle).toBeCloseTo((GLIDE_MAX_SPEED * GLIDE_MS) / 3, 12);
     expect(glideAt([0, 0, 0], 10)).toEqual({ turnSince: REST_TURN, done: true });
+  });
+});
+
+/** A board from the Phase 16 test set, built exactly as the 3D screen builds it, with its outline and side. */
+function testBoard(label: string) {
+  const board = phase16Boards().find((b) => b.label === label);
+  if (!board) throw new Error(`no ${label}`);
+  const geometry = buildOutline(board.fields.outline);
+  const profile = designSideProfile(board.fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(board.fields.rails, profile.effectiveFoil, board.fields.railsImportFoilThickness);
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, board.fields.outline.length),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  return { geometry, profile, surface, length: board.fields.outline.length };
+}
+
+/** A point as the camera sees it in a view: across the picture to the right, and up it (orthographic). */
+function seen(view: Quat, p: Vec3): [number, number] {
+  const { right, up } = cameraAxes();
+  const r = rotateVec(quatMultiply(view, BOARD_TO_ROOM), p);
+  const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  return [dot(r, right), dot(r, up)];
+}
+
+/** Every pair of (got, want) differs by one and the same shift, to `tol` millimetres. */
+function sameUpToShift(got: [number, number][], want: [number, number][], tol = 1e-9) {
+  expect(got.length).toBe(want.length);
+  expect(got.length).toBeGreaterThan(10);
+  const a = got[0][0] - want[0][0];
+  const b = got[0][1] - want[0][1];
+  let worst = 0;
+  for (let i = 0; i < got.length; i++) {
+    worst = Math.max(worst, Math.abs(got[i][0] - want[i][0] - a), Math.abs(got[i][1] - want[i][1] - b));
+  }
+  expect(worst).toBeLessThan(tol);
+}
+
+describe("VIEW_TURNS — the five preset views (UI-SPEC §3)", () => {
+  const { right, up, toCamera } = cameraAxes();
+  const face = (view: Quat, axis: Vec3) => rotateVec(quatMultiply(view, BOARD_TO_ROOM), axis);
+
+  it("each is a unit turn, and Reset View's first view is no turn at all", () => {
+    for (const name of VIEW_NAMES) unit(VIEW_TURNS[name]);
+    expect(REST_TURN).toEqual([0, 0, 0, 1]);
+    // Five different views.
+    for (const a of VIEW_NAMES) for (const b of VIEW_NAMES) if (a !== b) expect(turnAngle(VIEW_TURNS[a], VIEW_TURNS[b])).toBeGreaterThan(0.1);
+  });
+
+  it("Deck: the deck square to the camera, nose left", () => {
+    close(face(VIEW_TURNS.deck, [0, 0, 1]), toCamera);
+    close(face(VIEW_TURNS.deck, [1, 0, 0]), neg(right));
+  });
+
+  it("Bottom: the bottom square to the camera, nose left", () => {
+    close(face(VIEW_TURNS.bottom, [0, 0, -1]), toCamera);
+    close(face(VIEW_TURNS.bottom, [1, 0, 0]), neg(right));
+  });
+
+  it("Side: the near rail square on, deck up, nose left", () => {
+    close(face(VIEW_TURNS.side, [0, 1, 0]), toCamera);
+    close(face(VIEW_TURNS.side, [0, 0, 1]), up);
+    close(face(VIEW_TURNS.side, [1, 0, 0]), neg(right));
+  });
+
+  it("Nose and Tail: end on toward the camera, deck up", () => {
+    close(face(VIEW_TURNS.nose, [1, 0, 0]), toCamera);
+    close(face(VIEW_TURNS.nose, [0, 0, 1]), up);
+    close(face(VIEW_TURNS.tail, [-1, 0, 0]), toCamera);
+    close(face(VIEW_TURNS.tail, [0, 0, 1]), up);
+  });
+
+  for (const label of ["shortboard|asis|hard", "fish|asis|hard", "midlength|asis|hard", "longboard|asis|soft", "fish|swallow|hard"]) {
+    describe(label, () => {
+      const { geometry, profile, surface, length } = testBoard(label);
+
+      it("Deck shows TEMPLATE's outline lying nose-left, exactly, up to a shift", () => {
+        // TEMPLATE lying (screen-tiles' outlineTileArt): x = −station across, w down the picture.
+        const template = silhouette(geometry);
+        sameUpToShift(
+          template.map(({ station, w }) => {
+            const [x, y] = seen(VIEW_TURNS.deck, [station, w, 0]);
+            return [x, -y];
+          }),
+          template.map(({ station, w }) => [-station, w]),
+        );
+        // The drawn board's own outline, every vertex of it, the same way round.
+        const loop = boardOutlineLoop(surface);
+        sameUpToShift(
+          loop.map((p) => {
+            const [x, y] = seen(VIEW_TURNS.deck, p);
+            return [x, -y];
+          }),
+          loop.map((p) => [-p[0], p[1]]),
+        );
+      });
+
+      it("Side shows ROCKER's side view, nose left and deck up, exactly, up to a shift, between the 12\" stations", () => {
+        const from = inchesToMm(12);
+        const to = length - inchesToMm(12);
+        const { deck, bottom } = boardProfileLines(surface);
+        for (const [line, heightAt] of [
+          [deck, profile.deckAt],
+          [bottom, profile.rockerAt],
+        ] as const) {
+          const inside = line.filter((p) => p[0] >= from && p[0] <= to);
+          // As drawn: ROCKER's own picture is x = −station across and the height up (screen-tiles' sidePoints).
+          sameUpToShift(
+            inside.map((p) => seen(VIEW_TURNS.side, p)),
+            inside.map((p) => [-p[0], heightAt(p[0] as Mm)]),
+            1e-6,
+          );
+        }
+      });
+    });
+  }
+});
+
+const neg = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];
+
+describe("slerpShortest — a view is reached the short way round", () => {
+  const a = quatFromAxisAngle([0.3, 1, -0.2], 0.4);
+  const b = quatFromAxisAngle([-0.5, 0.2, 1], 2.1);
+
+  it("starts at a and ends at b", () => {
+    sameTurn(slerpShortest(a, b, 0), a);
+    sameTurn(slerpShortest(a, b, 1), b);
+  });
+
+  it("never takes the long way, even when b is written the other way round", () => {
+    const flipped: Quat = [-b[0], -b[1], -b[2], -b[3]];
+    const whole = turnAngle(a, b);
+    for (const target of [b, flipped]) {
+      const mid = slerpShortest(a, target, 0.5);
+      unit(mid);
+      expect(turnAngle(a, mid)).toBeCloseTo(whole / 2, 10);
+      expect(turnAngle(mid, b)).toBeCloseTo(whole / 2, 10);
+    }
+  });
+
+  it("every view from rest is at most half a turn away, and halfway there is half of it", () => {
+    for (const name of VIEW_NAMES) {
+      const whole = turnAngle(REST_TURN, VIEW_TURNS[name]);
+      expect(whole).toBeLessThanOrEqual(Math.PI + 1e-12);
+      expect(turnAngle(REST_TURN, slerpShortest(REST_TURN, VIEW_TURNS[name], 0.5))).toBeCloseTo(whole / 2, 10);
+    }
+  });
+});
+
+describe("keyTurn — the arrow keys", () => {
+  const { right, up } = cameraAxes();
+  const start = quatFromAxisAngle([1, 2, 3], 0.8);
+
+  it("→ is 15° about the picture's up-down axis, ← the same back; ↓ and ↑ about its left-right axis", () => {
+    const step = (key: "left" | "right" | "up" | "down") => axisAngle(quatMultiply(keyTurn(start, key), quatConjugate(start)));
+    const deg = (KEY_TURN_DEG * Math.PI) / 180;
+    for (const [key, axis] of [
+      ["right", up],
+      ["left", neg(up)],
+      ["down", right],
+      ["up", neg(right)],
+    ] as const) {
+      const { axis: got, angle } = step(key);
+      expect(angle).toBeCloseTo(deg, 12);
+      close(got, axis);
+    }
+    sameTurn(keyTurn(keyTurn(start, "right"), "left"), start);
+  });
+
+  it("four presses of → make 60°", () => {
+    let q: Quat = REST_TURN;
+    for (let i = 0; i < 4; i++) q = keyTurn(q, "right");
+    expect(turnAngle(REST_TURN, q)).toBeCloseTo((4 * KEY_TURN_DEG * Math.PI) / 180, 12);
   });
 });
