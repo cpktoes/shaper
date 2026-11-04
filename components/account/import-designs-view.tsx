@@ -94,7 +94,8 @@ export function ImportDesignsView({
       ) : (
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1 text-sm text-(--ramp-daylight-ink)">
-            <p className="font-medium break-all">{COPY.fromFile(preview.fileName)}</p>
+            {/* A long file name wraps where it can (a hyphen), and mid-word only when it has to. */}
+            <p className="font-medium break-words">{COPY.fromFile(preview.fileName)}</p>
             {/* With nothing to add, the line under the box says so in full instead. */}
             {nothingToAdd ? null : <p>{COPY.willAdd(preview.addNames.length, preview.addNames)}</p>}
             {preview.alreadyThere > 0 ? <p>{COPY.alreadyThere(preview.alreadyThere)}</p> : null}
