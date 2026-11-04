@@ -382,6 +382,7 @@ describe("screenTileLines — the line under each tile's name", () => {
         volume: "Estimated",
         fins: expected[preset.id].fins,
         summary: "Order form",
+        threeD: "Spin and export",
       });
     });
   }

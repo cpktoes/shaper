@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * The six screen tiles at the top of the phone menu (quick 261003-q2f, sketch 007's C1): TEMPLATE,
- * ROCKER, RAILS, VOLUME, FINS and SUMMARY, each a small picture of the board the shaper is working on
+ * The seven screen tiles at the top of the phone menu (quick 261003-q2f, sketch 007's C1): TEMPLATE,
+ * ROCKER, RAILS, VOLUME, FINS, SUMMARY and — since Phase 16 — 3D, each a small picture of the board the shaper is working on
  * right now, its name, and one line. The founder picked tiles (round 1: "ooh, I kinda like the screen
  * tiles") and asked for real pictures (round 2: "the icons need to look realistic (rocker cannot look
  * like a U). Can we use current board as the art?"), so every picture is that screen's own drawing of
@@ -11,14 +11,17 @@
  *
  * Every picture comes from `lib/geometry/screen-tiles.ts`, fed with the design store's own values —
  * the outline, the side profile, the centre rail section, the fin tail and placement, and the one
- * litres figure every screen quotes. Nothing is captured, cached or stored: this component renders
+ * litres figure every screen quotes. 3D's comes from `lib/geometry/three-d-tile-art.ts`: the board
+ * turned three-quarters (the Board Rack's own turn at 50 degrees, the 3D screen's first view), lying
+ * nose left with its stringer, or TEMPLATE's lying outline for a board whose turn can't be worked out. Nothing is captured, cached or stored: this component renders
  * only inside the open menu (Base UI unmounts a closed menu's content), so dragging a slider with the
  * menu shut never rebuilds a picture.
  *
- * Three across and two down on an upright phone; one row of six at the desktop-shell width — width
- * alone, CLAUDE.md's layout switch. At that width the menu button only ever shows on a short screen
- * (a tall window has the desktop row), so six across is only ever a phone held sideways, where the
- * pictures come out a little larger and leave room for the rows below.
+ * Four across and two down on an upright phone (TEMPLATE ROCKER RAILS VOLUME over FINS SUMMARY 3D);
+ * one row of seven at the desktop-shell width — width alone, CLAUDE.md's layout switch. At that width
+ * the menu button only ever shows on a short screen (a tall window has the desktop row), so seven
+ * across is only ever a phone held sideways, where the pictures come out a little larger and leave
+ * room for the rows below.
  *
  * Each tile is a real `Menu.Item` (arrow keys, Enter, tap) whose accessible name is its screen and its
  * line ("TEMPLATE — 6'2" × 18 3/4"", "VOLUME — 29.6 L Estimated"); the pictures themselves are hidden
@@ -54,6 +57,7 @@ import {
   summaryTileArt,
   type ScreenTileKind,
 } from "@/lib/geometry/screen-tiles";
+import { threeDTilePicture } from "@/lib/geometry/three-d-tile-art";
 
 /** Which picture each screen gets, keyed by its address — typed on the one screen list, so a new
  * screen fails to compile until it has a picture. */
@@ -64,6 +68,7 @@ const TILE_KIND: Record<NavLink["href"], ScreenTileKind> = {
   "/design/volume": "volume",
   "/design/fins": "fins",
   "/design/summary": "summary",
+  "/design/3d": "threeD",
 };
 
 const PICTURE_CLASS = "block h-[46px] w-full";
@@ -86,6 +91,8 @@ function useTilePictures() {
     [finTailOutline, effectiveFins.tailShape, effectiveFins.tailWidth12, finPlacement.marks],
   );
   const summary = useMemo(() => summaryTileArt(outlineGeometry), [outlineGeometry]);
+  // The rack's own turn at 50 degrees, or TEMPLATE's lying outline for a board it can't turn.
+  const threeD = useMemo(() => threeDTilePicture(sideProfile, outlineGeometry), [sideProfile, outlineGeometry]);
   const lines = useMemo(
     () => screenTileLines({ outline, blank, finSetup: effectiveFins.finSetup, system }),
     [outline, blank, effectiveFins.finSetup, system],
@@ -93,7 +100,7 @@ function useTilePictures() {
   // ROCKER's second line: the blank's rocker — `Natural` or the note (quick 261016-mkb, D-11).
   const rockerLine = useMemo(() => screenTileRocker(blank), [blank]);
   const litres = formatTileLitres(quotedVolumeLitres);
-  return { template, rocker, rails, fins, summary, lines, rockerLine, litres };
+  return { template, rocker, rails, fins, summary, threeD, lines, rockerLine, litres };
 }
 
 type TilePictures = ReturnType<typeof useTilePictures>;
@@ -223,6 +230,27 @@ function TilePicture({ kind, pictures }: { kind: ScreenTileKind; pictures: TileP
           ))}
         </svg>
       );
+    case "threeD":
+      return (
+        <svg aria-hidden data-tile-picture className={PICTURE_CLASS} viewBox={pictures.threeD.viewBox} preserveAspectRatio="xMidYMid meet">
+          <path
+            d={pictures.threeD.board}
+            fill="var(--outline-board-fill)"
+            stroke="var(--outline-ink)"
+            strokeWidth={1.4}
+            vectorEffect="non-scaling-stroke"
+          />
+          {pictures.threeD.kind === "turned" && (
+            <path
+              d={pictures.threeD.stringer}
+              fill="none"
+              stroke="var(--outline-blank-line)"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+      );
   }
 }
 
@@ -232,7 +260,7 @@ export function ScreenTiles({ screens }: { screens: readonly NavLink[] }) {
   const pictures = useTilePictures();
 
   return (
-    <Menu.Group aria-label="Screens" className="grid grid-cols-3 gap-2 shell:grid-cols-6">
+    <Menu.Group aria-label="Screens" className="grid grid-cols-4 gap-2 shell:grid-cols-7">
       {screens.map((link) => {
         const kind = TILE_KIND[link.href];
         const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);

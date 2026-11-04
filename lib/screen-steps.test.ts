@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { screenStepsAround, screenWord } from "./screen-steps";
 
-// A local copy of the six screens, in the order a board is shaped. The real list (NAV_LINKS in
+// A local copy of the seven screens, in the order a board is shaped. The real list (NAV_LINKS in
 // components/site-nav.tsx) cannot be imported here — it pulls Clerk and React client code into a
 // node unit test — so e2e/step-nav.spec.ts walks the real list in a browser instead.
 const SCREENS = [
@@ -11,6 +11,7 @@ const SCREENS = [
   { href: "/design/volume", label: "VOLUME" },
   { href: "/design/fins", label: "FINS" },
   { href: "/design/summary", label: "SUMMARY" },
+  { href: "/design/3d", label: "3D" },
 ] as const;
 
 describe("screenStepsAround", () => {
@@ -26,13 +27,20 @@ describe("screenStepsAround", () => {
     expect(steps.next).toBe(SCREENS[3]);
   });
 
-  it("SUMMARY, the last screen, has FINS before it and nothing after it — never wraps to TEMPLATE", () => {
+  it("SUMMARY has FINS before it and 3D after it", () => {
     const steps = screenStepsAround(SCREENS, "/design/summary");
     expect(steps.previous).toBe(SCREENS[4]);
+    expect(steps.next).toBe(SCREENS[6]);
+    expect(steps.next?.href).toBe("/design/3d");
+  });
+
+  it("3D, the last screen, has SUMMARY before it and nothing after it — never wraps to TEMPLATE", () => {
+    const steps = screenStepsAround(SCREENS, "/design/3d");
+    expect(steps.previous).toBe(SCREENS[5]);
     expect(steps.next).toBeNull();
   });
 
-  it("TEMPLATE never wraps back round to SUMMARY", () => {
+  it("TEMPLATE never wraps back round to 3D", () => {
     expect(screenStepsAround(SCREENS, "/design/outline").previous).toBeNull();
   });
 
@@ -58,7 +66,7 @@ describe("screenStepsAround", () => {
 });
 
 describe("screenWord", () => {
-  it("turns each of the six screens' capitals into the word a button reads", () => {
+  it("turns each of the seven screens' capitals into the word a button reads", () => {
     expect(SCREENS.map((screen) => screenWord(screen.label))).toEqual([
       "Template",
       "Rocker",
@@ -66,6 +74,12 @@ describe("screenWord", () => {
       "Volume",
       "Fins",
       "Summary",
+      "3D",
     ]);
+  });
+
+  it("shows a label that does not start with a letter exactly as written: 3D never reads 3d", () => {
+    expect(screenWord("3D")).toBe("3D");
+    expect(screenWord("ROCKER")).toBe("Rocker");
   });
 });
