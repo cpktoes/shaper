@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-11-03 — Quick 261103-k8o done: plan 02 merged on main (4abb7bfa), Import my designs with a preview on the Your data page; plan 01 (Save board as file… / Open a board file…) merged earlier (a4df2666). Main carries the Board Rack fix, the litres fix and both halves of the board-file work, all NOT yet pushed — the founder decides
+Last activity: 2026-11-03 — LIVE: main pushed (291152e8) on the founder's word after the full gate (6,777 unit tests, type check, lint, a production build, 18 production-build specs, 1,346 browser tests with 5 load timeouts that passed alone); the live site served the new version at 19:18 PST. Live now: the Board Rack's smooth swallow and diamond turn (261103-drw), litres that follow the tail (261103-gcm), Save board as file… / Open a board file… and Import my designs with a preview (261103-k8o). The founder checked both on the live site the same evening: export then import of a board on his own account worked, and his iPhone saved a board to Files and opened the file
 
 ## Performance Metrics
 
