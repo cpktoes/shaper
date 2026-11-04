@@ -77,6 +77,12 @@ export const RACK_COPY = {
   deleted: (name: string) => `Deleted ${name}.`,
   duplicateFailed: "Couldn't duplicate — try again.",
 
+  // Save board as file… on a saved board's ⋯ menu (quick 261103-k8o, PC5/PC11): the row, what is
+  // spoken once the file is on its way, and what shows if the browser refused it.
+  saveAsFile: "Save board as file…",
+  savedAsFile: (fileName: string) => `Saved as ${fileName}.`,
+  saveAsFileFailed: "Couldn't save this board as a file. Try again.",
+
   groupName: "Boards in your rack",
   hoverInstructions:
     "Use the left and right arrow keys to look along the rack, Enter to open the board, and Alt with an arrow key to move it one place.",

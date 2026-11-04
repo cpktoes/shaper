@@ -2,7 +2,8 @@
 
 /**
  * The caption under the Board Rack's turned board (Phase 15, UI-SPEC §4): the board's name, its
- * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Lock board, Delete —
+ * card line, when it was last touched, Open This Board and the ⋯ menu (Rename, Duplicate, Save board as file…
+ * — quick 261103-k8o — Lock board, Delete —
  * and, on the computer's rack, Move left / Move right above them, 15-11).
  * The unsaved board's caption is the tag `In progress — not saved`, its name, its card line and
  * Continue This Board, with no date and no ⋯ — as today's in-progress card. That tag is information,
@@ -34,6 +35,8 @@ interface RackCaptionProps {
   onOpen: () => void;
   onRename?: () => void;
   onDuplicate?: () => void;
+  /** Save board as file… was chosen from the ⋯ menu (quick 261103-k8o). */
+  onSaveAsFile?: () => void;
   onDelete?: () => void;
   /** The lock row of the ⋯ menu was chosen (quick 261008-lsy). */
   onToggleLock?: () => void;
@@ -60,6 +63,7 @@ export function RackCaption({
   onOpen,
   onRename = () => {},
   onDuplicate = () => {},
+  onSaveAsFile = () => {},
   onDelete = () => {},
   onToggleLock = () => {},
   duplicateError = null,
@@ -110,6 +114,7 @@ export function RackCaption({
             boardName={board.name}
             onRename={onRename}
             onDuplicate={onDuplicate}
+            onSaveAsFile={onSaveAsFile}
             onDelete={onDelete}
             locked={board.model?.locked ?? false}
             onToggleLock={onToggleLock}

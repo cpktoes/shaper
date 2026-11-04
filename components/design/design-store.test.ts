@@ -402,15 +402,15 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
   });
 
   it("no handler that sets state skips startedFrom except opening a preset or a saved board, the save bookkeeping and undo", () => {
-    const exempt = new Set(["applyPreset", "applyModel", "setModelId", "setOpenBoardLocked", "noteRenamed", "flushAutosave", "performSave", "undoEdit", "redoEdit"]);
+    const exempt = new Set(["applyPreset", "applyModel", "applyBoardFile", "setModelId", "setOpenBoardLocked", "noteRenamed", "flushAutosave", "performSave", "undoEdit", "redoEdit"]);
     for (const { name, body } of allHandlers()) {
       if (exempt.has(name)) continue;
       expect(body, `${name} edits the board without startedFrom`).toContain("startedFrom(");
     }
   });
 
-  it("opening a preset or a saved board sets its own tips, so neither calls startedFrom", () => {
-    for (const name of ["applyPreset", "applyModel"]) {
+  it("opening a preset, a saved board or a board file sets its own tips, so none calls startedFrom", () => {
+    for (const name of ["applyPreset", "applyModel", "applyBoardFile"]) {
       expect(handler(name), name).not.toContain("startedFrom(");
     }
   });
@@ -429,11 +429,12 @@ describe("design-store.tsx — an untouched new board follows the live tip defau
 });
 
 describe("design-store.tsx — the board lock is the real guard (quick 261008-lsy)", () => {
-  it("every handler that marks the board dirty, except applyPreset, starts with `if (lockedRef.current) return;`", () => {
+  it("every handler that marks the board dirty, except applyPreset and applyBoardFile, starts with `if (lockedRef.current) return;`", () => {
     const editors = allHandlers().filter(({ body }) => /\bdirty:\s*true\b/.test(body));
     expect(editors.length).toBeGreaterThan(20);
     for (const { name, body } of editors) {
-      if (name === "applyPreset") continue;
+      // Both start a NEW board (a board file: quick 261103-k8o), leaving the locked one untouched.
+      if (name === "applyPreset" || name === "applyBoardFile") continue;
       const afterArrow = body.slice(body.indexOf("=>") + 2);
       expect(afterArrow.replace(/^\s*\{\s*/, ""), `${name} does not start with the lock check`).toMatch(
         /^if \(lockedRef\.current\) return;/,
@@ -558,5 +559,39 @@ describe("design-store.tsx — the open board is kept in the browser (quick 2610
 
   it("Clerk's account id is read for the owner rule", () => {
     expect(SOURCE).toMatch(/const \{ isSignedIn, userId \} = useAuth\(\);/);
+  });
+});
+
+describe("design-store.tsx — a board opened from a file is a new, unsaved board (quick 261103-k8o, PC8)", () => {
+  it("applyBoardFile spreads the file's board over the defaults: never saved, never locked, started and unsaved", () => {
+    expect(handler("applyBoardFile")).toMatch(
+      /\.\.\.DEFAULT_DESIGN_STATE,\s*\.\.\.snapshot,\s*modelId:\s*null,\s*locked:\s*false,\s*boardStarted:\s*true,\s*dirty:\s*true/,
+    );
+  });
+
+  it("applyBoardFile makes applyPreset's resets and applyModel's failure-count reset", () => {
+    const body = handler("applyBoardFile");
+    for (const piece of [
+      "consecutiveFailuresRef.current = 0;",
+      "pendingEditKeyRef.current = undefined;",
+      "setHistory(emptyHistory());",
+      "lockedRef.current = false;",
+      "openBoardOwnerRef.current = null;",
+      "openBoardPendingRef.current = null;",
+      "openBoardRestoredRef.current = true;",
+      "clearOpenBoardCopy();",
+    ]) {
+      expect(body, piece).toContain(piece);
+    }
+  });
+
+  it("applyBoardFile never opens the file as a saved board with a made-up id", () => {
+    expect(handler("applyBoardFile")).not.toMatch(/\bapplyModel\b/);
+  });
+
+  it("applyBoardFile is on the context value", () => {
+    const start = SOURCE.search(/const value: DesignContextValue = \{/);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(balancedFrom(SOURCE, start + "const value: DesignContextValue =".length)).toMatch(/\n\s+applyBoardFile,/);
   });
 });

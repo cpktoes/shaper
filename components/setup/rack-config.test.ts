@@ -91,6 +91,12 @@ describe("every rack word, exactly as UI-SPEC § Copywriting has it", () => {
     expect(RACK_COPY.duplicateFailed).toBe("Couldn't duplicate — try again.");
   });
 
+  it("names Save board as file… and says what it did (quick 261103-k8o)", () => {
+    expect(RACK_COPY.saveAsFile).toBe("Save board as file…");
+    expect(RACK_COPY.savedAsFile("x.shaper-board.json")).toBe("Saved as x.shaper-board.json.");
+    expect(RACK_COPY.saveAsFileFailed).toBe("Couldn't save this board as a file. Try again.");
+  });
+
   it("gives screen readers the rack's words", () => {
     expect(RACK_COPY.groupName).toBe("Boards in your rack");
     expect(RACK_COPY.hoverInstructions).toBe(

@@ -628,7 +628,7 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
     await page.waitForURL("**/design/outline");
   });
 
-  test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Lock board, Delete — and each Move is dimmed where it can't move", async ({
+  test("m17. ⋯ on the turned board: Move left, Move right, a line, Rename, Duplicate, Save board as file…, Lock board, Delete — and each Move is dimmed where it can't move", async ({
     page,
   }) => {
     await openRack(page, RACK_STAND_IN_ROUTE, 15);
@@ -641,6 +641,8 @@ test.describe("the Board Rack on a computer — moving boards (15-11, sketch 010
       "separator:",
       "menuitem:Rename",
       "menuitem:Duplicate",
+      // Quick 261103-k8o: Save board as file… straight after Duplicate.
+      `menuitem:${RACK_COPY.saveAsFile}`,
       "menuitemcheckbox:Lock board",
       "menuitem:Delete",
     ]);

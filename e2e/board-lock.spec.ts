@@ -103,7 +103,7 @@ test.describe("the board lock on a computer (quick 261008-lsy)", () => {
     );
   });
 
-  test("t2. a locked board shows its padlock, greys Delete (Rename and Duplicate stay), and its controls refuse a change until Unlock", async ({
+  test("t2. a locked board shows its padlock, greys Delete (Rename and Duplicate stay, and Save board as file… stays), and its controls refuse a change until Unlock", async ({
     page,
   }) => {
     const first = board(1);
@@ -116,6 +116,8 @@ test.describe("the board lock on a computer (quick 261008-lsy)", () => {
     await expect(menu.getByRole("menuitem", { name: "Delete" })).toBeDisabled();
     await expect(menu.getByRole("menuitem", { name: "Rename" })).toBeEnabled();
     await expect(menu.getByRole("menuitem", { name: "Duplicate" })).toBeEnabled();
+    // Quick 261103-k8o: saving a locked board as a file changes nothing, so it stays.
+    await expect(menu.getByRole("menuitem", { name: RACK_COPY.saveAsFile })).toBeEnabled();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("menu")).toHaveCount(0);
 
