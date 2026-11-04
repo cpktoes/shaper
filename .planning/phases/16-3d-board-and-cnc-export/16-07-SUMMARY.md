@@ -259,4 +259,7 @@ None beyond the plan's threat model:
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 4 checkpoint.
+Presented by the orchestrator at the Wave 4 checkpoint, 2026-11-04, with the views picture. The founder: "Approved."
+Merged into `board-3d` as 6451fbdf. The orchestrator's rulings: the Hard Edge sliders grey on a locked board as RAILS'
+rows do (the executor's reading over ruling 6's wording — sliders change the board, the view buttons do not); the Tail
+view fix and the glide's in-page test are accepted.

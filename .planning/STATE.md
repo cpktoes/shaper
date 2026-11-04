@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16 executing on branch board-3d: Waves 1–3 merged 2026-11-04 (16-01…16-03, 16-05 the CNC files, 16-06 the 3D screen with the founder's lighting B and darker light-theme ground); D-30/D-31/D-32 recorded (16-15 briefed for after go-live 1); go-live 1 (16-04) in progress on LITRES_TIP 6ff19b31 — the founder's report read back, the browser gate's re-run finishing, his go awaited; next Wave 4 — 16-07 turning + the 3D panel's hard-edge sliders, 16-08 seven screens"
+stopped_at: "Phase 16 executing on branch board-3d: Waves 1–4 merged 2026-11-04 (…, 16-07 turning + views + the 3D panel's hard-edge sliders, 16-08 seven screens); go-live 1 (16-04) gated green on LITRES_TIP 6ff19b31 — the founder's go awaited; the six-count specs and five desktop pictures are red until 16-14 (Wave 5, next); D-32 → plan 16-15 after go-live 1"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Phase 16 Wave 3 merged: the CNC files and the 3D screen (lit by the side tubes, darker ground in the light themes); go-live 1 under way"
+last_activity_desc: "Phase 16 Wave 4 merged: the board turns with five views, the 3D panel shares the hard-edge sliders with RAILS, and 3D is the seventh screen; go-live 1 awaits the founder's go"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 45
-  completed_plans: 36
-  percent: 80
+  completed_plans: 38
+  percent: 84
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
