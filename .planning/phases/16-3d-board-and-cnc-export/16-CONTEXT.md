@@ -130,6 +130,11 @@ database change.
   only — depth and outline character stay; never the whole fin shrunk uniformly. No maker's foil or named template. The
   research (question M) proposes the generic outline, depth, rake and thickness per role; this supersedes the UI contract's
   "depth 1.0 × base, rake 0.25 × base" discretion call. — **Reversibility:** reversible — pure outlines in `lib/geometry/`.
+- **D-22:** **A single fin's depth is the board's length in feet, read as inches.** The founder, 2026-11-03: "For single
+  fins, let's use a fin size that equal the length of the board in feet, in inches (i.e. a 9ft board = 9" fin, an 7'6"
+  board = 7.5" fin)". Depth is the fin's height from base to tip, the way single fins are sold; computed from the stored
+  millimetre length through `units.ts`; the base stays true to FINS' base length for the single fin (D-21). The other
+  setups keep the generic depth per role the research proposes. — **Reversibility:** reversible — one pure rule.
 
 ### Carried forward
 - **D-17:** **No database change.** The 3D screen reads the board in the design store; the switches and the
