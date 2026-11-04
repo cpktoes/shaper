@@ -269,4 +269,16 @@ None. The 3D page's copy of the two sliders is a later plan's (16-06/16-07); it 
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 2 checkpoint (second look, after D-30).
+Two looks, both presented by the orchestrator on 2026-11-04.
+
+- **First look (one Hard Edge Ends At row):** answering 16-03's card at the same moment, the founder changed the design —
+  "The hard edge blend needs a blend sharp edge from AND a blend to. Currently the blend is happening over too short a
+  distance but that should be the user's choice." and "I'd like that control on both the rails and the 3-D pages and they
+  feed each other. Changing one changes the other." Settled on one card as D-30 (names Blends From / Ends At; the start
+  never below the 12" mark; the end at least 2" past the start, out to the board's centre; defaults 18" and, after his
+  second ruling, "L/3 − 18" inches short of the centre, "two independent values"). Carried out in this plan's commits
+  677482ca, a8d8e3b5, b5a065e9 and b6f53b9b.
+- **Second look (the two rows, the per-length default, the report printing both settings):** "Approved." Merged into
+  `board-3d` as b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149.
+
+**LITRES_TIP:** b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149
