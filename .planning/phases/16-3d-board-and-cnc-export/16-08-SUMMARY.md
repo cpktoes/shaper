@@ -194,4 +194,7 @@ unchanged (T-16-18).
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 4 checkpoint.
+Presented by the orchestrator at the Wave 4 checkpoint, 2026-11-04, with the seven-screens picture. The founder:
+"Approved, TEMPLATE tile fine as is" — the 360-wide TEMPLATE tile keeps its lettering (UI-SPEC open item 4 closed).
+Merged into `board-3d` as 73b544d6. The two deviations (the tile drawn with a true quarter turn; the testable fallback)
+were accepted by the orchestrator.
