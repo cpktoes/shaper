@@ -150,3 +150,20 @@ proposes, the founder decides at plan approval).
 
 Reading .s3d/.s3dx and .brd files; bottom contours; a glassed look switch; lights that follow the view; station
 lines as an aid; an idle auto-turn; fins in the STL; Export on SUMMARY; IGES or OBJ files.
+
+---
+
+## After the discussion: the hard edge, from the first mock-up (2026-11-03)
+
+The founder, on the mock-up picture: "The foam and lighting look right, but the board said it was the fish. But it's
+got a diamond tail in the render. Also, the bottom view shows a hard edge in the tail that should fade into the
+center tuck just in front of the fins (~16-20" from tail)." The diamond was the mock's error (fixed: a swallow is
+two pieces, D-05). The hard edge was a finding about the maths itself (a step at one point), put to him:
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Fixed: full to 12", gone by 18" | No new control; the litres take the same rule (recommended) | |
+| Ends just ahead of the fins | Fades out ~2" ahead of the front fins; the rail maths would read fin placement | |
+| A setting: "Hard edge ends at" | A slider on the tail's Advanced menu, 14"–24", default 18", saved with the board | ✓ |
+
+**User's choice:** the setting (over the recommendation) — D-20.
