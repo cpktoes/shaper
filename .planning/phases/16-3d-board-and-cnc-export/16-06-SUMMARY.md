@@ -15,7 +15,7 @@ provides:
   - "THREE_D_COPY (every word of the UI-SPEC's copywriting for this screen)"
   - "view-3d: Quat, quatMultiply, quatFromAxisAngle, rotateVec, quatNormalize, BOARD_TO_ROOM, REST_TURN, ROOM_CAMERA, FRAME_FILL, roomCameraAxes, Frame, frameAtOne, framePointsOf"
   - "CSS tokens --surf-foam, --surf-on-foam, --surf-3d-ground in all six token blocks; ramp values --ramp-<id>-3d-ground in all four ramps"
-  - "board-scene: RoomLighting, LIGHTING_CANDIDATES (firstLook, A, B, C), ROOM_LIGHTING (light → C, dark → firstLook); SceneColours.scheme"
+  - "board-scene: RoomLighting, LIGHTING_CANDIDATES (firstLook, A, B, C), ROOM_LIGHTING (B, every theme)"
   - "e2e helper canvas-pixels: decodePng, countUnlike, countDifferent, hexToRgb"
   - "DOM hooks: data-board-3d, data-board-state (loading | ready | lost | no-webgl | cant-build | didnt-load), data-frames, data-triangles, data-canvas-message, data-three-d-controls"
 affects: [16-07, 16-08, 16-09, 16-10, 16-11, 16-12]
@@ -28,7 +28,7 @@ tech-stack:
     - "The board turns under a fixed camera and fixed lights: the group's quaternion is turn × BOARD_TO_ROOM, its place in front of the camera is frameAtOne's"
     - "Render on demand, one requestAnimationFrame per change, frames counted on the host for the tests"
     - "Scene colours read from the page's tokens through a 1×1 2D canvas, so any CSS colour (color-mix included) becomes #rrggbb"
-    - "The lighting is picked by the theme's own color-scheme (light or dark); a dev-only window.__shaper3dLighting names a candidate for picture scripts, never read by a production build"
+    - "One lighting for every theme (ROOM_LIGHTING); a dev-only window.__shaper3dLighting names a candidate for picture scripts, never read by a production build"
 key-files:
   created:
     - app/design/3d/page.tsx
@@ -50,9 +50,9 @@ key-files:
     - package-lock.json
     - app/globals.css
 decisions:
-  - "First look: the overhead light at 0.2 of the key, not the contract's starting 0.45 (UI-SPEC open item 1). Second look (the founder: stronger shadowing, side lights only): the light themes take candidate C (near tube 1.0, far tube 0.45, overhead 0, fill 0.04, key 2.9, exposure 1); the dark themes keep the first look's 1.0 / 0.7 / 0.2 / 0.2"
-  - "Second look: the light themes draw the 3D board on a darker ground, --surf-3d-ground #aeaca5 (the canvas warm grey 22% darker); Slate and Phosphor keep their canvas colour. The canvas messages stay on --surf-canvas, because their muted line would fall to 2.76:1 on the darker ground"
-  - "No one-dot outline: on the darker ground the edge reads all round (in Chalk the far rail is 59–77 levels under the ground, the near rail 34–56 over it)"
+  - "First look: the overhead light at 0.2 of the key, not the contract's starting 0.45 (UI-SPEC open item 1). Shipped after the founder's second look: lighting B in every theme (rail tubes 1.0 / 0.7, overhead 0, fill 0.08, key 2.9, exposure 1)"
+  - "The light themes draw the 3D board on a darker ground, --surf-3d-ground #9d9b95 (the founder's ground 2, about 30% under the canvas grey); Slate and Phosphor keep their canvas colour. The canvas messages stay on --surf-canvas, because their muted line would fall to 2.26:1 on the darker ground"
+  - "No one-dot outline (the founder chose this look as it stands); the far edge is soft on ground 2 (4–27 levels under the ground), the near edge crisp (52–75 over)"
   - "The scene's colours are read when the drawing code arrives, not in the mount effect. On the first load the screen's effect runs before the theme provider's, while the theme class is briefly off the page"
   - "The canvas host carries a sixth state, lost (a drawing context gone for a moment), beside the plan's five; the board and view are kept and come back with the context"
   - "frameAtOne frames by the projected points themselves (a subsampled set plus each axis's extremes, framePointsOf), centring by bisection and refining the distance until the tighter direction is 0.85"
@@ -64,7 +64,7 @@ estimate:
 actuals:
   tokens: 19800
   tasks: 2
-  commits: 6
+  commits: 7
 ---
 
 # Phase 16 Plan 06: The 3D screen (the phase's tracer) Summary
@@ -73,49 +73,60 @@ A seventh design screen, at `/design/3d`, draws the board you designed as a soli
 shaping room's fixed lights, with a dark stringer down the middle, built from the very cross-sections VOLUME adds up
 for the litres. three.js is fetched on that screen alone.
 
-## Second look (2026-11-04): stronger shadows, side tubes only, a darker ground
+## What shipped after the founder's two looks (2026-11-04): lighting B everywhere, ground #9d9b95 in the light themes
 
-The founder at the first look: *"The shadowing can be stronger. Maybe no overhead light just the side lights. Also the
-dark themes look good, the light themes may need a darker background to make the foam pop."*
+- **First look:** *"The shadowing can be stronger. Maybe no overhead light just the side lights. Also the dark themes
+  look good, the light themes may need a darker background to make the foam pop."*
+- **From the candidates picture:** *"I like the look of B best with ground 2, even on the slate/dark background."*
+- **Then:** *"The darker themes also need the additional shadowing on the board."*
 
-- **In Daylight and Chalk the board is lit by the two low rail tubes alone.** The overhead is off, the fill is down
-  to almost nothing, and the far tube is softer. The deck's dome now shows a clear shadow side: about 15 levels
-  from its far half to its near half, against 5 at the first look. The rail's roll goes dark before it catches the
-  near tube.
-- **Behind the board those themes use a darker warm grey, `#aeaca5`**, 22% under the canvas grey the rest of the
-  app uses. The white foam stands off it, and both edges read all the way round with no outline. In Chalk the far
-  rail is 59–77 levels darker than the ground along the whole board, and the near rail 34–56 levels lighter.
-- **Slate and Phosphor are exactly as approved:** the same lights and ground, checked pixel for pixel (0 pixels
-  differ). The lights are shared by every theme, and C would have turned the dark themes' deck from near-white to a
-  mid grey, so a theme's own light-or-dark setting picks which lighting it gets.
-- **The "can't draw" messages stay on the lighter canvas grey.** On the darker ground their small second line would
-  be too faint to read comfortably (2.76:1 against the 4.5:1 the app holds text to).
-- **Pictures:**
-  - `pictures/16-06-lighting-and-ground-candidates.png`: every candidate on both grounds, plus Slate under each.
-  - `pictures/16-06-3d-screen-first-look.png`: re-shot under the new default.
+**Shipped:**
+- **Lighting B in every theme.** The two low rail tubes at 1.0 and 0.7 of the key, the overhead off, and the fill
+  down from 0.2 to 0.08 (key 2.9, exposure 1). There is no light-or-dark switch in the lighting any more:
+  `ROOM_LIGHTING` is `LIGHTING_CANDIDATES.B`. The table and the dev-only candidate hook stay, so a later picture
+  can try another setting without editing the app.
+- **The light themes' ground:** `--ramp-daylight-3d-ground` and `--ramp-chalk-3d-ground` are `#9d9b95`, about
+  30% under the canvas grey. Slate and Phosphor keep their own canvas colours (`#1a1d25`, `#142414`) as the 3D
+  ground. No other screen's ground changed.
+- **The dark themes get the stronger shadowing too.** Measured in the re-shot picture, the deck beside the stringer
+  reads about 124 in Slate and in Phosphor, against about 180 at the first look. The near rail still catches the
+  tube at about 224. The Slate frame is identical, pixel for pixel, to the candidates picture's B-in-Slate shot.
+- **The canvas messages stay on the lighter canvas grey.** On the darker ground their small second line would fall
+  to 2.26:1 against the app's 4.5:1 for text.
 
-The candidates (strengths are shares of one key level, 2.9; the Fish in Daylight, sampled down its middle):
+**The edge, as shipped (Daylight and Chalk, walked along the whole board at 1280 × 800):**
+- **The near (bottom) edge is crisp:** 52–75 levels lighter than the ground.
+- **The far (top) edge is soft:** 8–27 levels darker than the ground on the Fish, and as little as 4 at mid-board
+  on the Shortboard. It's visible by eye in the picture, but it's the weak edge of this choice.
+- **The outline is ready if wanted.** The contract's pre-committed fix, a one-dot outline in `--outline-ink` in the
+  two light themes only, is not added, because the founder chose this look as it stands.
+
+**The candidates considered** (strengths are shares of one key level, 2.9; the Fish in Daylight, sampled down its
+middle):
 
 | Candidate | Near tube / far tube / overhead / fill | Far edge vs ground 1 (#aeaca5) | vs ground 2 (#9d9b95) | Dome (far half → near half) | Stringer on deck | Slate deck by the stringer |
 |---|---|---|---|---|---|---|
 | First look | 1.0 / 0.7 / 0.2 / 0.2 | (on #dfdcd3: −29) | — | 184 → 189 | 114 on 185 | about 180 |
 | A | 1.0 / 0.7 / 0 / 0.2 | −5 (nearly lost) | +12 | 155 → 160 | 100 on 156 | — |
-| B | 1.0 / 0.7 / 0 / 0.08 | −29 | −12 | 128 → 135 | 87 on 130 | about 130 |
-| **C (shipped, light themes)** | 1.0 / 0.45 / 0 / 0.04 | **−64** | −50 | 107 → 122 | 77 on 112 | about 100 (so the dark themes keep the first look) |
+| **B (shipped, every theme, on ground 2)** | 1.0 / 0.7 / 0 / 0.08 | −29 | **−12** | 128 → 135 | 87 on 130 | about 124–130 |
+| C | 1.0 / 0.45 / 0 / 0.04 | −64 | −50 | 107 → 122 | 77 on 112 | about 100 |
 
-- **Ground 1 (`#aeaca5`) shipped over ground 2 (`#9d9b95`).** With C, ground 2 brightens the near-rail edge
-  further, but it brings the far edge closer to the ground (−50). Ground 1 balances the two edges (−64 and +56).
-- **There is no hemisphere or floor-bounce light in this room** (that was the mock-up's), so C lowers the far tube
-  instead, the other light on the shadow side.
-- **How the candidates were shot without editing the app between shots.** The settings sit in a named table
-  (`LIGHTING_CANDIDATES`), and on a development server a picture script can name one through
-  `window.__shaper3dLighting`. A production build never reads it.
+- **The interim step:** commit 31bcc2be shipped C on ground 1 for the light themes and kept the dark themes on the
+  first look's lighting. The founder's pick replaced it.
+- **No floor-bounce light:** this room has no hemisphere or floor-bounce light (that was the mock-up's), so C
+  lowered the far tube instead.
+- **The candidates were shot without editing the app between shots:** the named table (`LIGHTING_CANDIDATES`) plus a
+  development-only `window.__shaper3dLighting` a picture script can set. A production build never reads it.
 
-Tests for this change:
-- Browser case 2 now measures against `--surf-3d-ground`.
-- Case 3 checks a message sits on `--surf-canvas`.
-- New case 11 checks Daylight's board ground is the darker token.
-- Case 10, the Slate ground, still fails on the old colour-reading timing (148 levels off) and passes now.
+**Tests:**
+- `e2e/three-d-screen.spec.ts` reads every tone from the app's own tokens, so it follows the new values unchanged.
+  - Case 2 measures the drawn board against `--surf-3d-ground`.
+  - Case 3 checks a message sits on `--surf-canvas`.
+  - Case 11 checks Daylight's board ground is the 3D token and darker than the canvas.
+  - Case 10 (the Slate ground) still fails on the old colour-reading timing, 131 levels off under B, and passes now.
+- The spec on all three projects: 28 passed, 5 skipped by design.
+- `npm test`: 7190 passed. `rack-stand-in` and `blank-fit` timed out under load and pass alone (120/120).
+- tsc and lint: 0 errors.
 
 ## What changes for the founder (first look)
 
@@ -190,7 +201,8 @@ Daylight and Chalk share the warm-grey ground (#dfdcd3), so they look the same. 
 | 2 | Honest messages, StrictMode and lost contexts, phone sizing, screen-reader name, three kept on this route | da1f80af | components/3d/three-d-screen.tsx, components/3d/three-source.test.ts, e2e/three-d-screen.spec.ts, e2e/helpers/canvas-pixels.ts, e2e/prod/three-d.spec.ts |
 | 2 (fix) | Dark themes drew on Daylight's ground | 83c454f6 | components/3d/three-d-screen.tsx, e2e/three-d-screen.spec.ts |
 | 3 | The founder's first look (pictures) — checkpoint | 4d93a307 | pictures/16-06-3d-screen-first-look.png, pictures/16-06-pictures-source.tar.gz |
-| 3 (second look) | Stronger shadows, side tubes only, a darker ground in the light themes | 31bcc2be | app/globals.css, components/3d/board-scene.ts, components/3d/three-d-screen.tsx, e2e/three-d-screen.spec.ts, the three pictures |
+| 3 (second look) | Stronger shadows, side tubes only, a darker ground in the light themes (interim: C on ground 1) | 31bcc2be | app/globals.css, components/3d/board-scene.ts, components/3d/three-d-screen.tsx, e2e/three-d-screen.spec.ts, the three pictures |
+| 3 (final) | The founder's pick: lighting B in every theme, ground #9d9b95 in the light themes | the commit after ce0f7561 (see the report) | app/globals.css, components/3d/board-scene.ts, components/3d/three-d-screen.tsx, pictures/16-06-3d-screen-first-look.png, pictures/16-06-pictures-source.tar.gz, this SUMMARY |
 
 Tracer gate: after Task 1, `e2e/three-d-screen.spec.ts` case 1 passed on the desktop project. It was re-run after
 the lighting change and passed again (`ready`, at least one frame, triangles > 0, the page title) before any Task 2
@@ -316,7 +328,4 @@ None beyond the plan's threat model:
 
 ## Founder's look
 
-- **First look (2026-11-04), changes asked:** *"The shadowing can be stronger. Maybe no overhead light just the side
-  lights. Also the dark themes look good, the light themes may need a darker background to make the foam pop."*
-  Carried out in 31bcc2be.
-- **Second look: Pending** — presented by the orchestrator.
+First look 2026-11-04: "The shadowing can be stronger. Maybe no overhead light just the side lights. Also the dark themes look good, the light themes may need a darker background to make the foam pop." Second look, from the candidates picture: "I like the look of B best with ground 2, even on the slate/dark background." Shipped: lighting B in every theme, ground #9d9b95 in Daylight and Chalk, the dark themes' own ground.

@@ -37,8 +37,7 @@ import { THREE_D_COPY } from "./three-d-copy";
 
 type CanvasState = "loading" | BoardSceneState | "cant-build" | "didnt-load";
 
-/** The theme's colours as `#rrggbb` (any CSS colour a token holds, `color-mix` included), and whether it is a light
- * or a dark theme — read once. */
+/** The theme's colours as `#rrggbb` (any CSS colour a token holds, `color-mix` included), read once. */
 function readSceneColours(): SceneColours {
   const style = getComputedStyle(document.documentElement);
   const probe = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
@@ -53,13 +52,11 @@ function readSceneColours(): SceneColours {
     return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
   };
   return {
-    canvas: resolve("--surf-3d-ground", "#aeaca5"),
+    canvas: resolve("--surf-3d-ground", "#9d9b95"),
     foam: resolve("--surf-foam", "#ffffff"),
     onFoam: resolve("--surf-on-foam", "#1f2a3b"),
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
-    // Every theme block sets exactly one `color-scheme`; a theme that ever said "light dark" would count as dark.
-    scheme: style.colorScheme.trim() === "light" ? "light" : "dark",
   };
 }
 

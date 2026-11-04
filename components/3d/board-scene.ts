@@ -62,8 +62,6 @@ export interface SceneColours {
   inkMuted: string;
   /** The blank's outline (16-11): `--outline-blank-line`. */
   blankLine: string;
-  /** Whether the theme is a light or a dark one (its `color-scheme`): it picks the room's lighting. */
-  scheme: "light" | "dark";
 }
 
 /** Everything the scene needs to draw one board. */
@@ -105,7 +103,7 @@ const CAMERA_STANDOFF_MM = 4000;
  * every tube.
  *
  * The named settings are the candidates shot for the founder (16-06, the first look and the second). `ROOM_LIGHTING`
- * says which one each kind of theme uses. On a development server only, a picture script may pick another by name through
+ * is the one every theme uses. On a development server only, a picture script may pick another by name through
  * `window.__shaper3dLighting`, so candidates can be shot without editing the app; a production build never reads it.
  */
 export interface RoomLighting {
@@ -129,26 +127,22 @@ export const LIGHTING_CANDIDATES = {
 } as const satisfies Record<string, RoomLighting>;
 
 /**
- * The lighting each kind of theme uses (the founder's second look, 2026-11-04: "The shadowing can be stronger.
- * Maybe no overhead light just the side lights." and "the dark themes look good"). The light themes take C, the rail
- * tubes alone with the least fill, on their darker 3D ground. The dark themes keep the first look's lighting
- * exactly, because C would have turned their deck from a near-white to a mid grey.
+ * The lighting the screen uses, in every theme: B, the two rail tubes with the overhead off and the fill lowered.
+ * The founder at the first look: "The shadowing can be stronger. Maybe no overhead light just the side lights."; and
+ * from the candidates picture: "I like the look of B best with ground 2, even on the slate/dark background."
  */
-export const ROOM_LIGHTING: Readonly<Record<SceneColours["scheme"], RoomLighting>> = {
-  light: LIGHTING_CANDIDATES.C,
-  dark: LIGHTING_CANDIDATES.firstLook,
-};
+export const ROOM_LIGHTING: RoomLighting = LIGHTING_CANDIDATES.B;
 
 /** The tubes' colours: neutral white near 5000 K for the rail tubes, a little warmer overhead (UI-SPEC §3). */
 const LIGHT_COLOURS = { rail: "#fff4e8", overhead: "#ffeedd", fill: "#ffffff" } as const;
 
-/** The lighting in force for a theme: `ROOM_LIGHTING`'s, or on a development server a candidate a picture script named. */
-function lightingInForce(scheme: SceneColours["scheme"]): RoomLighting {
-  if (process.env.NODE_ENV === "production") return ROOM_LIGHTING[scheme];
+/** The lighting in force: `ROOM_LIGHTING`, or on a development server a candidate a picture script named. */
+function lightingInForce(): RoomLighting {
+  if (process.env.NODE_ENV === "production") return ROOM_LIGHTING;
   const name = (globalThis as { __shaper3dLighting?: unknown }).__shaper3dLighting;
   return typeof name === "string" && name in LIGHTING_CANDIDATES
     ? LIGHTING_CANDIDATES[name as keyof typeof LIGHTING_CANDIDATES]
-    : ROOM_LIGHTING[scheme];
+    : ROOM_LIGHTING;
 }
 
 /** The rail lights' height above the deck's plane (UI-SPEC §3). */
@@ -224,7 +218,7 @@ export function mountBoardScene(
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = NeutralToneMapping;
-  const lighting = lightingInForce(input.colours.scheme);
+  const lighting = lightingInForce();
   renderer.toneMappingExposure = lighting.exposure;
 
   const scene = new Scene();

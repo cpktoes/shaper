@@ -256,7 +256,7 @@
   --ramp-daylight-ground: #ffffff;
   --ramp-daylight-sidebar: #ffffff;
   --ramp-daylight-canvas: #dfdcd3;
-  --ramp-daylight-3d-ground: #aeaca5; /* the 3D board's ground — the canvas warm grey, 22% darker, so the white foam stands off it */
+  --ramp-daylight-3d-ground: #9d9b95; /* the 3D board's ground — the canvas warm grey about 30% darker, so the white foam stands off it (the founder's pick, 2026-11-04) */
   --ramp-daylight-tab-active: #ffffff;
   --ramp-daylight-panel: #ffffff;
   --ramp-daylight-well: #dfdcd3;
@@ -298,7 +298,7 @@
   --ramp-chalk-ground: #ffffff;
   --ramp-chalk-sidebar: #ffffff;
   --ramp-chalk-canvas: #dfdcd3;
-  --ramp-chalk-3d-ground: #aeaca5; /* the 3D board's ground — the canvas warm grey, 22% darker, so the white foam stands off it */
+  --ramp-chalk-3d-ground: #9d9b95; /* the 3D board's ground — the canvas warm grey about 30% darker, so the white foam stands off it (the founder's pick, 2026-11-04) */
   --ramp-chalk-tab-active: #ffffff;
   --ramp-chalk-panel: #ffffff;
   --ramp-chalk-well: #dfdcd3;
