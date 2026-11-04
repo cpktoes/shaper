@@ -53,14 +53,16 @@
  * that opens in the check above is left out by the rack — a board that already does not open is
  * that check's failure, not this one's.
  *
- * `--hard-edge-report` (Phase 16 D-20, the 14 D-18 report rule; read-only, board ids and litres only):
- * the founder's check before the hard edge's fade goes live that every saved board's litres move as
- * the fade says. For each board with a hard-edged tail it prints the litres before (the old switch,
- * `HARD_EDGE_SWITCH`) and after (the live fade, reading the board's own Hard Edge Ends At), worked out
- * in lib/models/hard-edge-report.ts (`hardEdgeReportLines`):
+ * `--hard-edge-report` (Phase 16 D-20/D-30, the 14 D-18 report rule; read-only, board ids, settings and
+ * litres only): the founder's check before the hard edge's blend goes live that every saved board's litres
+ * move as the blend says. For each board with a hard-edged tail it prints the board's Hard Edge Blends From
+ * and Ends At as it reads them (in inches, `(default)` where it stores none of its own), then the litres
+ * before (the old switch, `HARD_EDGE_SWITCH`) and after (the live blend), worked out in
+ * lib/models/hard-edge-report.ts (`hardEdgeReportLines`):
  *   hard-edge report: N saved boards; k open[, d did not open]; h with a hard-edged tail
- *   <id>: <before> → <after> L (<move>)        one per hard-edged board, the largest move first
- *   largest move: <id>, <move> L               (or: largest move: none)
+ *   <id>: blends from <from> · ends at <to> — <before> → <after> L (<move>)   one per hard-edged board,
+ *                                                                              the largest move first
+ *   largest move: <id>, <move> L                                              (or: largest move: none)
  * A board that does not open is counted, never printed with data. It never prints a board name, a
  * snapshot, a user id or the connection string, and it never changes the exit code.
  *

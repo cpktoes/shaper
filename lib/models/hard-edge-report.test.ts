@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
+import { formatDim } from "@/lib/geometry/measure-display";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm } from "@/lib/geometry/units";
 import { HARD_EDGE_SWITCH } from "@/lib/geometry/volume";
@@ -67,19 +69,29 @@ describe("hardEdgeLitresMove", () => {
 describe("hardEdgeReportLines", () => {
   const rows = BOARDS.map(({ label, fields }) => ({ id: label, fields }));
 
-  it("prints the counts, then one line per hard-edged board sorted by the size of its move, then the largest", () => {
+  it("prints the counts, then one line per hard-edged board with both settings, sorted by the size of its move, then the largest", () => {
     const lines = hardEdgeReportLines(rows);
     const moves = HARD.map(({ label, fields }) => ({
       id: label,
       before: switchLitres(fields),
       after: summarizeDesign(fields).volumeLitres,
+      // No test board stores either setting, so both read the defaults.
+      from: formatDim(hardEdgeBlendsFrom(fields.rails, fields.outline.length), "imperial"),
+      to: formatDim(hardEdgeEndsAt(fields.rails, fields.outline.length), "imperial"),
     }));
-    const sorted = [...moves].sort((a, b) => Math.abs(b.after - b.before) - Math.abs(a.after - a.before));
+    const sorted = moves
+      .map((m, index) => ({ m, index }))
+      .sort((a, b) => Math.abs(b.m.after - b.m.before) - Math.abs(a.m.after - a.m.before) || a.index - b.index)
+      .map(({ m }) => m);
     const signed = (d: number) => `${d > 0 ? "+" : ""}${d.toFixed(4)}`;
 
     expect(lines[0]).toBe(`hard-edge report: ${BOARDS.length} saved boards; ${BOARDS.length} open; ${HARD.length} with a hard-edged tail`);
     expect(lines.slice(1, 1 + HARD.length)).toEqual(
-      sorted.map((m) => `${m.id}: ${m.before.toFixed(2)} → ${m.after.toFixed(2)} L (${signed(m.after - m.before)})`),
+      sorted.map(
+        (m) =>
+          `${m.id}: blends from ${m.from} (default) · ends at ${m.to} (default) — ` +
+          `${m.before.toFixed(2)} → ${m.after.toFixed(2)} L (${signed(m.after - m.before)})`,
+      ),
     );
     const largest = sorted[0];
     expect(lines[1 + HARD.length]).toBe(`largest move: ${largest.id}, ${signed(largest.after - largest.before)} L`);
@@ -99,9 +111,9 @@ describe("hardEdgeReportLines", () => {
     expect(lines).toEqual([`hard-edge report: ${SOFT.length} saved boards; ${SOFT.length} open; 0 with a hard-edged tail`, "largest move: none"]);
   });
 
-  it("on two frozen saved boards read through parseSnapshot, prints ids and litres only — never a board's name", () => {
+  it("on two frozen saved boards read through parseSnapshot, prints ids, settings and litres only — never a board's name", () => {
     const first = savedBoard(0);
-    const second = savedBoard(4, { tailHardEdgeEndsAt: inchesToMm(22) });
+    const second = savedBoard(4, { tailHardEdgeBlendsFrom: inchesToMm(16), tailHardEdgeEndsAt: inchesToMm(22) });
     expect(first.boardName).toBe(SECRET_NAME);
     const lines = hardEdgeReportLines([
       { id: "a1", fields: first },
@@ -114,9 +126,17 @@ describe("hardEdgeReportLines", () => {
     for (const [id, fields] of [["a1", first], ["b2", second]] as const) {
       const move = hardEdgeLitresMove(fields)!;
       expect(move.after).toBe(summarizeDesign(fields).volumeLitres);
-      expect(lines.some((line) => line.startsWith(`${id}: ${move.before.toFixed(2)} → ${move.after.toFixed(2)} L (`))).toBe(true);
+      const line = lines.find((l) => l.startsWith(`${id}: `));
+      expect(line).toContain(` — ${move.before.toFixed(2)} → ${move.after.toFixed(2)} L (`);
     }
-    // Every printed line is a count, an id with litres, or the largest move.
-    for (const line of lines.slice(1)) expect(line).toMatch(/^(a1|b2): \d+\.\d\d → \d+\.\d\d L \([+-]?\d+\.\d{4}\)$|^largest move: /);
+    // The board that stores its own pair prints it as stored; the other prints the defaults, marked.
+    const b2 = lines.find((l) => l.startsWith("b2: "))!;
+    expect(b2).toContain(`blends from ${formatDim(inchesToMm(16), "imperial")} · ends at ${formatDim(inchesToMm(22), "imperial")} — `);
+    const a1 = lines.find((l) => l.startsWith("a1: "))!;
+    expect(a1).toContain(" (default) · ends at ");
+    // Every printed line is a count, an id with its settings and litres, or the largest move.
+    for (const line of lines.slice(1)) {
+      expect(line).toMatch(/^(a1|b2): blends from .+ · ends at .+ — \d+\.\d\d → \d+\.\d\d L \([+-]?\d+\.\d{4}\)$|^largest move: /);
+    }
   });
 });

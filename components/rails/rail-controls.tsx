@@ -22,7 +22,12 @@ import {
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
 import { formatMark, formatSignedMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
-import { formatHardEdgeEndsAt, hardEdgeEndsAtSlider } from "@/lib/geometry/blank-reasons";
+import {
+  formatHardEdgeBlendsFrom,
+  formatHardEdgeEndsAt,
+  hardEdgeBlendsFromSlider,
+  hardEdgeEndsAtSlider,
+} from "@/lib/geometry/blank-reasons";
 import { railsImportedReadout } from "@/lib/geometry/imported-readout";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import { mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -40,7 +45,8 @@ interface RailControlsProps {
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
-  /** The tail's Hard Edge Ends At slider (Phase 16, D-20), in millimetres from the tail. */
+  /** The tail's Hard Edge Blends From and Ends At sliders (Phase 16, D-20/D-30), in millimetres from the tail. */
+  onChangeHardEdgeBlendsFrom: (value: Mm) => void;
   onChangeHardEdgeEndsAt: (value: Mm) => void;
   /** One mark's nudge off its formula (quick 261102-gec plan 02, PC19) — its own undo step per mark. */
   onChangeNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
@@ -151,6 +157,7 @@ interface RailSectionControlsProps {
   tailHardEdgeEndsAt?: Mm;
   /** The board's length: the two hard-edge settings' windows run to its centre (D-30). */
   boardLength: Mm;
+  onChangeHardEdgeBlendsFrom?: (value: Mm) => void;
   onChangeHardEdgeEndsAt?: (value: Mm) => void;
   /** While imported (D-09/D-10), the thickness slider is HIDDEN, not greyed (quick 261017-vdh): the
    * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs card
@@ -180,6 +187,7 @@ function RailSectionControls({
   tailHardEdgeBlendsFrom,
   tailHardEdgeEndsAt,
   boardLength,
+  onChangeHardEdgeBlendsFrom,
   onChangeHardEdgeEndsAt,
   thicknessImported,
   system,
@@ -241,28 +249,45 @@ function RailSectionControls({
   const showTucks = !isTail || !hardEdgeOn;
   const showBottomTuck1 = showTucks && !spec.singleTuck;
 
-  /** Hard Edge Ends At (Phase 16, D-20, the founder 2026-11-03; UI-SPEC §17): how far from the tail the hard
-   * edge has faded into the tucked rail, 14" to 24" in 1/2" steps (whole centimetres in Metric, stored as whole
-   * millimetres). Only on the tail and only while Hard Edge is on — the exact complement of the tuck rows, so it
-   * takes their place at the bottom of the menu. The distance is a dim, read through the one named formatter.
-   * No hint and no note: nothing on screen says the litres moved (D-18). */
-  const hardEdgeEndsAtRow = () => {
-    const length = boardLength;
+  /** The tail's two hard-edge rows (Phase 16, D-20 the founder 2026-11-03, D-30 2026-11-04; UI-SPEC §17), in
+   * this order: Hard Edge Blends From — the edge is full up to here (12" to 30") — then Hard Edge Ends At — the
+   * rail has fully blended into the centre's tucked rail by here (2" past Blends From, up to the board's centre).
+   * Each slider's range follows the other and the board's length, so the two can never be set within 2" of each
+   * other; 1/2" steps, whole centimetres in Metric, stored as whole millimetres. Only on the tail and only while
+   * Hard Edge is on — the exact complement of the tuck rows, so they take their place at the bottom of the menu.
+   * Both distances are dims, each read through its one named formatter. No hint and no note: nothing on screen
+   * says the litres moved (D-18). The 3D page draws the same two sliders over these same two values. */
+  const hardEdgeRows = () => {
     const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
-    const value = hardEdgeEndsAt(settings, length);
-    const slider = hardEdgeEndsAtSlider(value, hardEdgeBlendsFrom(settings, length), length, system);
-    const text = formatHardEdgeEndsAt(value, system);
+    const blendsFrom = hardEdgeBlendsFrom(settings, boardLength);
+    const endsAt = hardEdgeEndsAt(settings, boardLength);
+    const fromSlider = hardEdgeBlendsFromSlider(blendsFrom, endsAt, boardLength, system);
+    const endsSlider = hardEdgeEndsAtSlider(endsAt, blendsFrom, boardLength, system);
+    const fromText = formatHardEdgeBlendsFrom(blendsFrom, system);
+    const endsText = formatHardEdgeEndsAt(endsAt, system);
     return (
-      <SliderRow
-        label={`Hard Edge Ends At — ${text}`}
-        value={slider.value}
-        min={slider.min}
-        max={slider.max}
-        step={slider.step}
-        onValueChange={(v) => onChangeHardEdgeEndsAt?.(slider.toMm(v))}
-        sliderLabel="Tail Rail hard edge ends at"
-        sliderValueText={`${text} from the tail`}
-      />
+      <>
+        <SliderRow
+          label={`Hard Edge Blends From — ${fromText}`}
+          value={fromSlider.value}
+          min={fromSlider.min}
+          max={fromSlider.max}
+          step={fromSlider.step}
+          onValueChange={(v) => onChangeHardEdgeBlendsFrom?.(fromSlider.toMm(v))}
+          sliderLabel="Tail Rail hard edge blends from"
+          sliderValueText={`${fromText} from the tail`}
+        />
+        <SliderRow
+          label={`Hard Edge Ends At — ${endsText}`}
+          value={endsSlider.value}
+          min={endsSlider.min}
+          max={endsSlider.max}
+          step={endsSlider.step}
+          onValueChange={(v) => onChangeHardEdgeEndsAt?.(endsSlider.toMm(v))}
+          sliderLabel="Tail Rail hard edge ends at"
+          sliderValueText={`${endsText} from the tail`}
+        />
+      </>
     );
   };
 
@@ -384,7 +409,7 @@ function RailSectionControls({
                 Thickness, Deck Mark 1, Deck Mark 3 and the Domed Deck Band right under it (R18, the founder:
                 "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
                 just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22); on a hard-edged tail, in
-                the tuck rows' place, Hard Edge Ends At (Phase 16, D-20) last before Reset; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                the tuck rows' place, Hard Edge Blends From and Hard Edge Ends At (Phase 16, D-20/D-30) last before Reset; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
                 "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
@@ -454,13 +479,13 @@ function RailSectionControls({
               </label>
             )}
 
-            {/* Hard Edge Ends At (Phase 16, D-20): the tail's last slider while Hard Edge is on, directly above
-                Reset, in the place the tuck rows hold on a tucked tail (UI-SPEC §17). */}
-            {isTail && hardEdgeOn && hardEdgeEndsAtRow()}
+            {/* Hard Edge Blends From then Hard Edge Ends At (Phase 16, D-20/D-30): the tail's last two sliders while
+                Hard Edge is on, directly above Reset, in the place the tuck rows hold on a tucked tail (UI-SPEC §17). */}
+            {isTail && hardEdgeOn && hardEdgeRows()}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
-                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Hard Edge Ends At back to 18" (Phase 16) — one
-                store action, so one undo step. */}
+                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Hard Edge Blends From and Ends At back to 18"
+                and 30" (Phase 16) — one store action, so one undo step. */}
             <button
               type="button"
               disabled={locked}
@@ -523,6 +548,7 @@ export function RailControls({
   bands,
   onChangeSection,
   onToggleHardEdge,
+  onChangeHardEdgeBlendsFrom,
   onChangeHardEdgeEndsAt,
   onChangeNudge,
   onResetAdvanced,
@@ -629,6 +655,7 @@ export function RailControls({
         onToggleHardEdge={onToggleHardEdge}
         tailHardEdgeBlendsFrom={spec.tailHardEdgeBlendsFrom}
         tailHardEdgeEndsAt={spec.tailHardEdgeEndsAt}
+        onChangeHardEdgeBlendsFrom={onChangeHardEdgeBlendsFrom}
         onChangeHardEdgeEndsAt={onChangeHardEdgeEndsAt}
         thicknessImported={railsImportFoilThickness}
         system={system}

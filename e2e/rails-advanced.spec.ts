@@ -2,8 +2,10 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
-import { DEFAULT_RAIL_BAND_SPEC } from "../lib/geometry/rail-bands";
-import { inchesToMm } from "../lib/geometry/units";
+import { formatDim } from "../lib/geometry/measure-display";
+import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { DEFAULT_RAIL_BAND_SPEC, defaultHardEdgeEndsAt } from "../lib/geometry/rail-bands";
+import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
 import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
@@ -774,7 +776,16 @@ test.describe("the Sharp Bottom Tuck box (quick 261102-gec plan 05, R22)", () =>
   });
 });
 
-/** The tail's Hard Edge Ends At label line and its slider (Phase 16, D-20) — the slider found by its spoken name. */
+/** The tail's two hard-edge rows (Phase 16, D-20/D-30): each label line and slider, the slider found by its spoken
+ * name. */
+function blendsFromLabel(tail: Locator): Locator {
+  return tail.getByText(/^Hard Edge Blends From — /);
+}
+
+function blendsFromSlider(page: Page): Locator {
+  return page.getByRole("slider", { name: "Tail Rail hard edge blends from", exact: true });
+}
+
 function hardEdgeEndsAtLabel(tail: Locator): Locator {
   return tail.getByText(/^Hard Edge Ends At — /);
 }
@@ -783,83 +794,136 @@ function hardEdgeEndsAtSlider(page: Page): Locator {
   return page.getByRole("slider", { name: "Tail Rail hard edge ends at", exact: true });
 }
 
-/** VOLUME's Estimated Volume figure ("30.27 L"). */
+/** VOLUME's Estimated Volume figure ("30.29 L"). */
 function estimatedVolume(page: Page): Locator {
   return page.getByText("Estimated Volume", { exact: true }).first().locator("xpath=following-sibling::span[1]/span[1]");
 }
 
-/** The tail's stored Hard Edge Ends At in the board this browser keeps (quick 261019-ep5), or null. */
-async function keptHardEdgeEndsAt(page: Page): Promise<number | null> {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key);
-    if (raw === null) return null;
-    return (JSON.parse(raw).snapshot.design.rails.tailHardEdgeEndsAt as number | undefined) ?? null;
-  }, OPEN_BOARD_STORAGE_KEY);
+/** One of the tail's stored hard-edge settings in the board this browser keeps (quick 261019-ep5), or null. */
+async function keptHardEdge(page: Page, key: "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt"): Promise<number | null> {
+  return page.evaluate(
+    ([storageKey, field]) => {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw === null) return null;
+      return (JSON.parse(raw).snapshot.design.rails[field] as number | undefined) ?? null;
+    },
+    [OPEN_BOARD_STORAGE_KEY, key] as const,
+  );
 }
 
-test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
-  test("1. with the tail's Hard Edge on, Advanced ends with Hard Edge Ends At — 18\" above Reset; dragging it to 24\" moves VOLUME's litres and survives a reload", async ({
+/** A distance as RAILS reads it in Imperial, from the app's own formatter. */
+const inches = (value: number) => formatDim(inchesToMm(value), "imperial");
+
+// The stock 6'0" board: Blends From 18" and Ends At 30" (its own default end, L/3 − 18 inches short of the 36"
+// centre) when it says nothing. Every reading below is the app's own formatter on the founder's figures.
+const STOCK_LENGTH = DEFAULT_BOARD_SPEC.outline.length;
+const STOCK_END = formatDim(defaultHardEdgeEndsAt(STOCK_LENGTH), "imperial");
+const STOCK_CENTRE = formatDim(mm(STOCK_LENGTH / 2), "imperial");
+
+test.describe("Hard Edge Blends From and Ends At (Phase 16, D-20/D-30)", () => {
+  test("1. with the tail's Hard Edge on, Advanced ends Blends From — 18\", Ends At — 30\", Reset; moving either moves VOLUME's litres, and a reload keeps them", async ({
     page,
   }, testInfo) => {
-    // Two screen walks and a reload, each of which may wait on a cold dev server.
-    test.setTimeout(120_000);
+    // Three screen walks and a reload, each of which may wait on a cold dev server.
+    test.setTimeout(150_000);
     await openRails(page);
     let tail = await showRail(page, testInfo, "tail");
     await expect(tail.getByRole("checkbox", { name: "Hard Edge" })).toBeChecked();
     const rows = await advancedRows(await openAdvanced(tail));
-    expect(rows.at(-2)).toBe('Hard Edge Ends At — 18"');
+    expect(rows.at(-3)).toBe(`Hard Edge Blends From — ${inches(18)}`);
+    expect(rows.at(-2)).toBe(`Hard Edge Ends At — ${STOCK_END}`);
+    expect(STOCK_END).toBe(inches(30));
     expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
-    const litresBefore = await estimatedVolume(page).textContent();
+    const litresAtDefaults = await estimatedVolume(page).textContent();
 
+    // Ends At all the way to the centre.
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
     await hardEdgeEndsAtSlider(page).press("End");
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
-    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", '24" from the tail');
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_CENTRE}`);
+    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", `${STOCK_CENTRE} from the tail`);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
-    await expect(estimatedVolume(page)).not.toHaveText(litresBefore ?? "");
+    await expect(estimatedVolume(page)).not.toHaveText(litresAtDefaults ?? "");
+    const litresEndMoved = await estimatedVolume(page).textContent();
 
-    // The board this browser keeps holds 24" (in millimetres, through the app's own conversion) before the reload.
-    await expect.poll(() => keptHardEdgeEndsAt(page)).toBe(inchesToMm(24));
+    // Blends From down to the 12" mark.
+    await goToScreen(page, "RAILS");
+    tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await blendsFromSlider(page).press("Home");
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(12)}`);
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${inches(12)} from the tail`);
+
+    await goToScreen(page, "VOLUME");
+    await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
+    await expect(estimatedVolume(page)).not.toHaveText(litresEndMoved ?? "");
+
+    // The board this browser keeps holds both, in millimetres through the app's own conversion, before the reload.
+    await expect.poll(() => keptHardEdge(page, "tailHardEdgeEndsAt")).toBe(mm(STOCK_LENGTH / 2));
+    await expect.poll(() => keptHardEdge(page, "tailHardEdgeBlendsFrom")).toBe(inchesToMm(12));
     await page.reload();
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"', { timeout: 30_000 });
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_CENTRE}`, { timeout: 30_000 });
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(12)}`);
   });
 
-  test("2. with Hard Edge off the row is gone and the tuck rows are back; ticked on again it reads the value set before", async ({
+  test("2. with Hard Edge off both rows are gone and the tuck rows are back; ticked on again they read the values set before", async ({
     page,
   }, testInfo) => {
     await openRails(page);
     const tail = await showRail(page, testInfo, "tail");
     const hardEdge = tail.getByRole("checkbox", { name: "Hard Edge" });
     const body = await openAdvanced(tail);
+    await blendsFromSlider(page).press("Home");
     await hardEdgeEndsAtSlider(page).press("End");
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(12)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_CENTRE}`);
 
     await hardEdge.click();
     await expect(hardEdge).not.toBeChecked();
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveCount(0);
-    await expect(hardEdgeEndsAtSlider(page)).toHaveCount(0);
+    for (const gone of [blendsFromLabel(tail), hardEdgeEndsAtLabel(tail), blendsFromSlider(page), hardEdgeEndsAtSlider(page)]) {
+      await expect(gone).toHaveCount(0);
+    }
     await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toBeVisible();
     await expect(nudgeLabel(tail, "Bottom Tuck 3")).toBeVisible();
     await expect(body.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toBeVisible();
 
     await hardEdge.click();
     await expect(hardEdge).toBeChecked();
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
     const rows = await advancedRows(body);
-    expect(rows.at(-2)).toBe('Hard Edge Ends At — 24"');
+    expect(rows.at(-3)).toBe(`Hard Edge Blends From — ${inches(12)}`);
+    expect(rows.at(-2)).toBe(`Hard Edge Ends At — ${STOCK_CENTRE}`);
   });
 
-  test("3. Reset Advanced Settings puts it back to 18\" with the rest, and one Undo brings back 23 1/2\" and the other changes together", async ({
+  test("3. the two are coupled: Ends At stops 2\" past Blends From, and Blends From stops 2\" short of Ends At", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    // From the defaults (18" / 30"): the end as low as it goes is 2" past the start…
+    await hardEdgeEndsAtSlider(page).press("Home");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${inches(20)}`);
+    // …and the start then goes no higher than 2" short of that end.
+    await blendsFromSlider(page).press("End");
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(18)}`);
+    // With the end at the centre, the start's top is 30" (its own limit), and the end's floor follows it to 32".
+    await hardEdgeEndsAtSlider(page).press("End");
+    await blendsFromSlider(page).press("End");
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(30)}`);
+    await hardEdgeEndsAtSlider(page).press("Home");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${inches(32)}`);
+  });
+
+  test("4. Reset Advanced Settings puts both back to 18\" and the board's default end with the rest, and one Undo brings all of it back", async ({
     page,
   }, testInfo) => {
     await openRails(page);
@@ -870,71 +934,76 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     await nudgeThumb(page, "tail", "Deck Mark 1").press("ArrowRight");
     await expect(deckMark1).toHaveText(/\(\+1\/16"\)$/);
     const deckMark1Moved = await deckMark1.textContent();
+    await blendsFromSlider(page).press("Home");
     await hardEdgeEndsAtSlider(page).press("End");
     await hardEdgeEndsAtSlider(page).press("ArrowLeft");
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 23 1/2"');
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(12)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${inches(35.5)}`);
 
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(18)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_END}`);
     await expect(deckMark1).toHaveText(deckMark1Before ?? "");
-    // Reset deletes the stored value rather than writing 18" (a board without it reads 18").
-    await expect.poll(() => keptHardEdgeEndsAt(page)).toBeNull();
+    // Reset deletes both stored values rather than writing the defaults.
+    await expect.poll(() => keptHardEdge(page, "tailHardEdgeBlendsFrom")).toBeNull();
+    await expect.poll(() => keptHardEdge(page, "tailHardEdgeEndsAt")).toBeNull();
 
     const undo = page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" });
     await undo.click();
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 23 1/2"');
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(12)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${inches(35.5)}`);
     await expect(deckMark1).toHaveText(deckMark1Moved ?? "");
   });
 
-  test("4. in Metric the row reads 45.7 cm; a keyboard step lands on the whole-centimetre track and each step after moves it by 1.0 cm, stored as a whole millimetre", async ({
+  test("5. in Metric the rows read 45.7 cm and 76.2 cm; a keyboard step lands on the whole-centimetre track and each step after is 1.0 cm, stored as a whole millimetre", async ({
     page,
   }, testInfo) => {
     await page.addInitScript((key) => window.localStorage.setItem(key, "metric"), UNITS_STORAGE_KEY);
     await openRails(page);
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText("Hard Edge Ends At — 45.7 cm");
-    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", "45.7 cm from the tail");
+    const metric = (value: number) => formatDim(inchesToMm(value), "metric");
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${metric(18)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${metric(30)}`);
+    expect(metric(18)).toBe("45.7 cm");
+    expect(metric(30)).toBe("76.2 cm");
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${metric(18)} from the tail`);
 
-    // 18" is 45.72 cm, between two whole centimetres of the Metric track (whole centimetres, as every
-    // Metric slider in the app runs), so the first step lands on the track's next whole centimetre.
-    await hardEdgeEndsAtSlider(page).press("ArrowRight");
-    await expect(hardEdgeEndsAtLabel(tail)).not.toHaveText("Hard Edge Ends At — 45.7 cm");
-    const onTrack = centimetres(await hardEdgeEndsAtLabel(tail).textContent());
+    // 18" is 45.72 cm, between two whole centimetres of the Metric track, so the first step lands on the next one.
+    await blendsFromSlider(page).press("ArrowRight");
+    await expect(blendsFromLabel(tail)).not.toHaveText(`Hard Edge Blends From — ${metric(18)}`);
+    const onTrack = centimetres(await blendsFromLabel(tail).textContent());
     expect(Number.isInteger(onTrack)).toBe(true);
     expect(onTrack).toBeGreaterThan(45.7);
     expect(onTrack - 45.7).toBeLessThanOrEqual(1.3 + 1e-9);
-
-    // Each step after is one whole centimetre.
-    await hardEdgeEndsAtSlider(page).press("ArrowRight");
-    await expect(hardEdgeEndsAtLabel(tail)).not.toHaveText(`Hard Edge Ends At — ${onTrack.toFixed(1)} cm`);
-    const next = centimetres(await hardEdgeEndsAtLabel(tail).textContent());
+    await blendsFromSlider(page).press("ArrowRight");
+    await expect(blendsFromLabel(tail)).not.toHaveText(`Hard Edge Blends From — ${onTrack.toFixed(1)} cm`);
+    const next = centimetres(await blendsFromLabel(tail).textContent());
     expect(next - onTrack).toBeCloseTo(1.0, 5);
-    await expect.poll(() => keptHardEdgeEndsAt(page)).toBe(next * 10);
-    expect(Number.isInteger(await keptHardEdgeEndsAt(page))).toBe(true);
+    await expect.poll(() => keptHardEdge(page, "tailHardEdgeBlendsFrom")).toBe(next * 10);
+    expect(Number.isInteger(await keptHardEdge(page, "tailHardEdgeBlendsFrom"))).toBe(true);
   });
 
-  test("5. at an 820-wide window in Metric the longest label, Hard Edge Ends At — 45.7 cm, stays on one line", async ({
-    page,
-  }, testInfo) => {
+  test("6. at an 820-wide window in Metric both labels stay on one line", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the narrowest desktop Advanced column");
     await page.setViewportSize({ width: 820, height: 800 });
     await page.addInitScript((key) => window.localStorage.setItem(key, "metric"), UNITS_STORAGE_KEY);
     await openRails(page);
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    const label = hardEdgeEndsAtLabel(tail);
-    await expect(label).toHaveText("Hard Edge Ends At — 45.7 cm");
-    await label.scrollIntoViewIfNeeded();
-    const { height, lineHeight } = await label.evaluate((el) => ({
-      height: el.getBoundingClientRect().height,
-      lineHeight: parseFloat(getComputedStyle(el).lineHeight),
-    }));
-    expect(lineHeight).toBeGreaterThan(0);
-    expect(height).toBeLessThanOrEqual(lineHeight * 1.5);
+    for (const label of [blendsFromLabel(tail), hardEdgeEndsAtLabel(tail)]) {
+      await expect(label).toHaveText(/ cm$/);
+      await label.scrollIntoViewIfNeeded();
+      const { height, lineHeight } = await label.evaluate((el) => ({
+        height: el.getBoundingClientRect().height,
+        lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+      }));
+      expect(lineHeight).toBeGreaterThan(0);
+      expect(height).toBeLessThanOrEqual(lineHeight * 1.5);
+    }
   });
 
-  test("6. on a locked board the row is greyed and its slider disabled", async ({ page }, testInfo) => {
+  test("7. on a locked board both rows are greyed and their sliders disabled", async ({ page }, testInfo) => {
     await keepOpenBoard(page, stockBoardFields(), true);
     await openRails(page);
     await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true })).toHaveCount(1, {
@@ -942,13 +1011,18 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     });
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    const label = hardEdgeEndsAtLabel(tail);
-    await expect(label).toHaveText('Hard Edge Ends At — 18"');
-    await expect(label.locator("xpath=..")).toHaveClass(/opacity-40/);
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(18)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_END}`);
+    for (const label of [blendsFromLabel(tail), hardEdgeEndsAtLabel(tail)]) {
+      await expect(label.locator("xpath=..")).toHaveClass(/opacity-40/);
+    }
+    await expect(blendsFromSlider(page)).toBeDisabled();
     await expect(hardEdgeEndsAtSlider(page)).toBeDisabled();
   });
 
-  test("7. a board kept with a Hard Edge Ends At of 30\" (out of range) opens reading 18\"", async ({ page }, testInfo) => {
+  test("8. a board kept with a pair that crosses (26\" / 20\") opens reading 26\" and its default end, never a crossed pair", async ({
+    page,
+  }, testInfo) => {
     const fields = stockBoardFields();
     // The kept board's tail also carries a scale no new board has, so the test can see the kept board opened.
     await keepOpenBoard(
@@ -958,7 +1032,8 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
         rails: {
           ...fields.rails,
           tail: { ...fields.rails.tail, scaleFromCenter: 0.55 },
-          tailHardEdgeEndsAt: inchesToMm(30),
+          tailHardEdgeBlendsFrom: inchesToMm(26),
+          tailHardEdgeEndsAt: inchesToMm(20),
         },
       },
       false,
@@ -967,11 +1042,11 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
     await expect(tail.getByText(/^Scaled from center by — /)).toHaveText("Scaled from center by — 0.55", { timeout: 30_000 });
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
-    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", '18" from the tail');
+    await expect(blendsFromLabel(tail)).toHaveText(`Hard Edge Blends From — ${inches(26)}`);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_END}`);
   });
 
-  test("8. nothing on RAILS or VOLUME announces the move: the page text changes only in the label and the litres", async ({
+  test("9. nothing on RAILS or VOLUME announces the move: the page text changes only in the two labels and the litres", async ({
     page,
   }, testInfo) => {
     test.setTimeout(120_000);
@@ -985,14 +1060,16 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_END}`);
     const railsBefore = await pageLines(page);
+    // One setting only: moving both at once can leave the litres where they were (an earlier start takes off
+    // about what a later end keeps), and this case is about what the page says when the litres DO move.
     await hardEdgeEndsAtSlider(page).press("End");
-    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${STOCK_CENTRE}`);
     const railsAfter = await pageLines(page);
     const railsChanged = changedLines(railsBefore, railsAfter);
     expect(railsChanged.length).toBeGreaterThan(0);
-    for (const line of railsChanged) expect(line).toMatch(/^Hard Edge Ends At — (18|24)"$/);
+    for (const line of railsChanged) expect(line).toMatch(/^Hard Edge Ends At — [\d ./]+"$/);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
@@ -1001,6 +1078,33 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     expect(volumeChanged.length).toBeGreaterThan(0);
     // Only litres figures (and the cubic inches beside them) move; no new words appear.
     for (const line of volumeChanged) expect(line).toMatch(LITRES_LINE);
+  });
+
+  test("10. a preset that says nothing reads its own length's default end — the Shortboard — and Reset returns to it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the per-length default is maths, proven once in a browser");
+    const shortboard = BOARD_PRESETS.find((preset) => preset.id === "shortboard");
+    if (!shortboard) throw new Error("no Shortboard preset");
+    expect(shortboard.rails.tailHardEdge).toBe(true);
+    const ownEnd = formatDim(defaultHardEdgeEndsAt(shortboard.outline.length), "imperial");
+    expect(ownEnd).not.toBe(STOCK_END);
+
+    await dismissStrips(page);
+    await page.goto("/");
+    const card = page.getByRole("button").filter({ hasText: "Start Shaping" }).filter({ hasText: shortboard.name }).first();
+    await expect(async () => {
+      await card.click();
+      await expect(page).toHaveURL(/\/design\/outline$/, { timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    await goToScreen(page, "RAILS");
+    const tail = await showRail(page, testInfo, "tail");
+    const body = await openAdvanced(tail);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${ownEnd}`);
+    await hardEdgeEndsAtSlider(page).press("End");
+    await expect(hardEdgeEndsAtLabel(tail)).not.toHaveText(`Hard Edge Ends At — ${ownEnd}`);
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText(`Hard Edge Ends At — ${ownEnd}`);
   });
 });
 
