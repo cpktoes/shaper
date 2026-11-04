@@ -211,4 +211,6 @@ No new network, auth or storage surface.
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 3 checkpoint.
+Presented by the orchestrator at the Wave 3 checkpoint, 2026-11-04, with the picture of what is inside the Fish's zip.
+The founder: "16-05 looks good." Merged into `board-3d` as 89c74736. The deviations (the exported test helpers, the
+readers' extra fields, the shortened STL header name, the zip writer's limits) were accepted by the orchestrator.
