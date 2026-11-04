@@ -101,7 +101,7 @@ import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
-  crossSectionFoam,
+  designCrossSectionInput,
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
@@ -441,11 +441,16 @@ interface DesignContextValue {
   applyBoardFile: (snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
+  /** Sets where the tail's hard edge has faded into the tucked rail, in millimetres from the tail (Phase 16,
+   * D-20) — the Hard Edge Ends At slider on RAILS. One drag is one undo step. Never written when a board
+   * opens: a board without it reads 18" (`hardEdgeEndsAt`). */
+  setTailHardEdgeEndsAt: (value: Mm) => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
-   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on — one undo step. */
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Hard Edge Ends At back to 18"
+   * (`tailHardEdgeEndsAt` deleted, Phase 16 D-20) — one undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
@@ -898,6 +903,21 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // Hard Edge Ends At (Phase 16, D-20, the founder 2026-11-03): how far from the tail the hard edge has faded
+  // into the tucked rail. A slider, so its own noteEdit key folds one drag into one undo step, like a nudge.
+  // Only this slider writes it: ticking Hard Edge off, Symmetrical turning Hard Edge off and opening a board
+  // all leave it alone, so off-then-on shows the same value; only Reset Advanced Settings deletes it.
+  const setTailHardEdgeEndsAt = (value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit("rails:tail:hardEdgeEndsAt");
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: { ...prev.rails, tailHardEdgeEndsAt: value },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
   // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
   // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
@@ -1213,15 +1233,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // draws it, quick 261103-gcm), so a rack card's number and this screen's number can never drift apart. The thickness is the side
   // profile's own dense curve (Pattern 5) — with a blank, the foil cut from the blank (its thickness
   // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
+  // Built through `designCrossSectionInput`, the very helper `summarizeDesign` uses (Phase 16, D-05), so
+  // VOLUME, the cards and the coming 3D board all read one input.
   const crossSectionVolume = useMemo(
     () =>
-      computeCrossSectionVolume({
-        ...crossSectionFoam(outlineGeometry),
-        foil: sideProfile.effectiveFoil,
-        thicknessAt: sideProfile.thicknessAt,
-        rails: effectiveRails,
-        length: state.outline.length,
-      }),
+      computeCrossSectionVolume(
+        designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length),
+      ),
     [outlineGeometry, sideProfile, effectiveRails, state.outline.length],
   );
 
@@ -1799,6 +1817,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyBoardFile,
     updateRailSection,
     toggleTailHardEdge,
+    setTailHardEdgeEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     updateFins,

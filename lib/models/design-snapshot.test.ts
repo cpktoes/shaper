@@ -16,11 +16,14 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
+  DEFAULT_HARD_EDGE_ENDS_AT_IN,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
+  HARD_EDGE_ENDS_AT_RANGE_IN,
   RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   computeRailBands,
+  hardEdgeEndsAt,
 } from "@/lib/geometry/rail-bands";
 import {
   DEFAULT_FALLBACK_ROCKER,
@@ -1012,5 +1015,75 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
     expect(back).toEqual(fields.rails);
     expect(back.center.sharpBottomTuck).toBe(true);
     expect(back.nose.sharpBottomTuck).toBe(false);
+  });
+});
+
+describe("the tail's Hard Edge Ends At rides on the rails, read forgivingly (rule 13, Phase 16 D-20)", () => {
+  const wire = () =>
+    JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))) as {
+      version: number;
+      design: { rails: Record<string, unknown> & { tailHardEdgeEndsAt?: unknown } };
+    };
+
+  it("a board saved without Hard Edge Ends At opens with no such key and reads 18\" (rule 13)", () => {
+    const stored = wire();
+    expect("tailHardEdgeEndsAt" in stored.design.rails).toBe(false);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect("tailHardEdgeEndsAt" in opened.rails).toBe(false);
+    expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
+    expect(JSON.stringify(opened.rails)).not.toContain("tailHardEdgeEndsAt");
+  });
+
+  it("a Hard Edge Ends At of 20\" is kept exactly (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(20);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(20));
+    expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(20));
+  });
+
+  it("a Hard Edge Ends At that is not a number, not finite or outside 14\"-24\" opens with no stored value and reads 18\" (rule 13)", () => {
+    const garbage: unknown[] = [
+      "x",
+      Number.NaN,
+      null,
+      Number.POSITIVE_INFINITY,
+      1e9,
+      inchesToMm(10),
+      inchesToMm(30),
+      -inchesToMm(18),
+      { inches: 18 },
+    ];
+    for (const value of garbage) {
+      const stored = wire();
+      stored.design.rails.tailHardEdgeEndsAt = value;
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect("tailHardEdgeEndsAt" in opened.rails).toBe(false);
+      expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
+      expect(JSON.stringify(opened.rails)).not.toContain("tailHardEdgeEndsAt");
+      // The rest of the rails open exactly as saved — a bad value never rejects the board.
+      expect(opened.rails).toEqual(parseSnapshot(wire()).rails);
+    }
+  });
+
+  it("the ends of the range, 14\" and 24\", are kept (rule 13)", () => {
+    for (const inches of [HARD_EDGE_ENDS_AT_RANGE_IN.min, HARD_EDGE_ENDS_AT_RANGE_IN.max]) {
+      const stored = wire();
+      stored.design.rails.tailHardEdgeEndsAt = inchesToMm(inches);
+      expect(parseSnapshot(stored).rails.tailHardEdgeEndsAt).toBe(inchesToMm(inches));
+    }
+  });
+
+  it("a Hard Edge Ends At of 20\" round-trips through buildSnapshot and parseSnapshot, version still 5 (rule 13)", () => {
+    const fields: DesignSnapshotFields = {
+      ...FIXTURES[0],
+      rails: { ...FIXTURES[0].rails, tailHardEdge: true, tailHardEdgeEndsAt: inchesToMm(20) },
+    };
+    const built = buildSnapshot(fields);
+    expect(built.version).toBe(5);
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+    const back = roundTrip(fields).rails;
+    expect(back).toEqual(fields.rails);
+    expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(20));
   });
 });

@@ -1,4 +1,7 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { inchesToMm } from "../lib/geometry/units";
+import { OPEN_BOARD_STORAGE_KEY } from "../lib/models/open-board";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * Quick 261102-gec plan 02 (2026-11-02): the RAILS sidebar's fuller controls and the drawn finished
@@ -762,5 +765,66 @@ test.describe("the Sharp Bottom Tuck box (quick 261102-gec plan 05, R22)", () =>
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
     await expect(box).not.toBeChecked();
     await expect.poll(() => centerFinishedRailD(page)).toBe(first);
+  });
+});
+
+/** The tail's Hard Edge Ends At label line and its slider (Phase 16, D-20) — the slider found by its spoken name. */
+function hardEdgeEndsAtLabel(tail: Locator): Locator {
+  return tail.getByText(/^Hard Edge Ends At — /);
+}
+
+function hardEdgeEndsAtSlider(page: Page): Locator {
+  return page.getByRole("slider", { name: "Tail Rail hard edge ends at", exact: true });
+}
+
+/** VOLUME's Estimated Volume figure ("30.27 L"). */
+function estimatedVolume(page: Page): Locator {
+  return page.getByText("Estimated Volume", { exact: true }).first().locator("xpath=following-sibling::span[1]/span[1]");
+}
+
+/** The tail's stored Hard Edge Ends At in the board this browser keeps (quick 261019-ep5), or null. */
+async function keptHardEdgeEndsAt(page: Page): Promise<number | null> {
+  return page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return null;
+    return (JSON.parse(raw).snapshot.design.rails.tailHardEdgeEndsAt as number | undefined) ?? null;
+  }, OPEN_BOARD_STORAGE_KEY);
+}
+
+test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
+  test("1. with the tail's Hard Edge on, Advanced ends with Hard Edge Ends At — 18\" above Reset; dragging it to 24\" moves VOLUME's litres and survives a reload", async ({
+    page,
+  }, testInfo) => {
+    // Two screen walks and a reload, each of which may wait on a cold dev server.
+    test.setTimeout(120_000);
+    await openRails(page);
+    let tail = await showRail(page, testInfo, "tail");
+    await expect(tail.getByRole("checkbox", { name: "Hard Edge" })).toBeChecked();
+    const rows = await advancedRows(await openAdvanced(tail));
+    expect(rows.at(-2)).toBe('Hard Edge Ends At — 18"');
+    expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
+
+    await goToScreen(page, "VOLUME");
+    await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
+    const litresBefore = await estimatedVolume(page).textContent();
+
+    await goToScreen(page, "RAILS");
+    tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await hardEdgeEndsAtSlider(page).press("End");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", '24" from the tail');
+
+    await goToScreen(page, "VOLUME");
+    await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
+    await expect(estimatedVolume(page)).not.toHaveText(litresBefore ?? "");
+
+    // The board this browser keeps holds 24" (in millimetres, through the app's own conversion) before the reload.
+    await expect.poll(() => keptHardEdgeEndsAt(page)).toBe(inchesToMm(24));
+    await page.reload();
+    await goToScreen(page, "RAILS");
+    tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"', { timeout: 30_000 });
   });
 });

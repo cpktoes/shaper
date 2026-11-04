@@ -53,6 +53,7 @@ export function RailBandEditor() {
     toggleRailsImportFoilThickness,
     updateRailSection,
     toggleTailHardEdge,
+    setTailHardEdgeEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     railBands: bands,
@@ -301,6 +302,7 @@ export function RailBandEditor() {
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
+            onChangeHardEdgeEndsAt={setTailHardEdgeEndsAt}
             onChangeNudge={updateRailNudge}
             onResetAdvanced={resetRailAdvanced}
             sectionOpen={sectionOpen}

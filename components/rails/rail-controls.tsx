@@ -11,6 +11,7 @@ import {
   RAIL_SCALE_RANGE,
   deckProfileSliderStep,
   railFamilyLabel,
+  hardEdgeEndsAt,
   railNudgesOf,
   type RailBandSpec,
   type RailFamily,
@@ -20,6 +21,7 @@ import {
   type RailSectionSpec,
 } from "@/lib/geometry/rail-bands";
 import { formatMark, formatSignedMark, measureSlider, stationLabel } from "@/lib/geometry/measure-display";
+import { formatHardEdgeEndsAt, hardEdgeEndsAtSlider } from "@/lib/geometry/blank-reasons";
 import { railsImportedReadout } from "@/lib/geometry/imported-readout";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import { mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -37,6 +39,8 @@ interface RailControlsProps {
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
+  /** The tail's Hard Edge Ends At slider (Phase 16, D-20), in millimetres from the tail. */
+  onChangeHardEdgeEndsAt: (value: Mm) => void;
   /** One mark's nudge off its formula (quick 261102-gec plan 02, PC19) — its own undo step per mark. */
   onChangeNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20) — one undo step. */
@@ -138,6 +142,9 @@ interface RailSectionControlsProps {
   onToggleAdvancedOpen: () => void;
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
+  /** The tail's stored Hard Edge Ends At (Phase 16, D-20); absent reads 18" through `hardEdgeEndsAt`. */
+  tailHardEdgeEndsAt?: Mm;
+  onChangeHardEdgeEndsAt?: (value: Mm) => void;
   /** While imported (D-09/D-10), the thickness slider is HIDDEN, not greyed (quick 261017-vdh): the
    * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs card
    * instead. Every other control on the section is untouched. */
@@ -163,6 +170,8 @@ function RailSectionControls({
   onToggleAdvancedOpen,
   tailHardEdge,
   onToggleHardEdge,
+  tailHardEdgeEndsAt,
+  onChangeHardEdgeEndsAt,
   thicknessImported,
   system,
   hiddenOnPhone,
@@ -222,6 +231,29 @@ function RailSectionControls({
   // no tucks at all, so Use Single Tuck and both tuck sliders hide.
   const showTucks = !isTail || !hardEdgeOn;
   const showBottomTuck1 = showTucks && !spec.singleTuck;
+
+  /** Hard Edge Ends At (Phase 16, D-20, the founder 2026-11-03; UI-SPEC §17): how far from the tail the hard
+   * edge has faded into the tucked rail, 14" to 24" in 1/2" steps (whole centimetres in Metric, stored as whole
+   * millimetres). Only on the tail and only while Hard Edge is on — the exact complement of the tuck rows, so it
+   * takes their place at the bottom of the menu. The distance is a dim, read through the one named formatter.
+   * No hint and no note: nothing on screen says the litres moved (D-18). */
+  const hardEdgeEndsAtRow = () => {
+    const value = hardEdgeEndsAt({ tailHardEdgeEndsAt });
+    const slider = hardEdgeEndsAtSlider(value, system);
+    const text = formatHardEdgeEndsAt(value, system);
+    return (
+      <SliderRow
+        label={`Hard Edge Ends At — ${text}`}
+        value={slider.value}
+        min={slider.min}
+        max={slider.max}
+        step={slider.step}
+        onValueChange={(v) => onChangeHardEdgeEndsAt?.(slider.toMm(v))}
+        sliderLabel="Tail Rail hard edge ends at"
+        sliderValueText={`${text} from the tail`}
+      />
+    );
+  };
 
   // The group's controls, built once so the two places that may draw them (below) never drift.
   const controls = (
@@ -340,7 +372,8 @@ function RailSectionControls({
                 the order PC32 (plan 04) set and PC40 (plan 05) extends: the scale on the nose and tail; Apex
                 Thickness, Deck Mark 1, Deck Mark 3 and the Domed Deck Band right under it (R18, the founder:
                 "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
-                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22); Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22); on a hard-edged tail, in
+                the tuck rows' place, Hard Edge Ends At (Phase 16, D-20) last before Reset; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
                 "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
@@ -410,8 +443,13 @@ function RailSectionControls({
               </label>
             )}
 
+            {/* Hard Edge Ends At (Phase 16, D-20): the tail's last slider while Hard Edge is on, directly above
+                Reset, in the place the tuck rows hold on a tucked tail (UI-SPEC §17). */}
+            {isTail && hardEdgeOn && hardEdgeEndsAtRow()}
+
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
-                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on — one store action, so one undo step. */}
+                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Hard Edge Ends At back to 18" (Phase 16) — one
+                store action, so one undo step. */}
             <button
               type="button"
               disabled={locked}
@@ -474,6 +512,7 @@ export function RailControls({
   bands,
   onChangeSection,
   onToggleHardEdge,
+  onChangeHardEdgeEndsAt,
   onChangeNudge,
   onResetAdvanced,
   sectionOpen,
@@ -574,6 +613,8 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("tail")}
         tailHardEdge={spec.tailHardEdge}
         onToggleHardEdge={onToggleHardEdge}
+        tailHardEdgeEndsAt={spec.tailHardEdgeEndsAt}
+        onChangeHardEdgeEndsAt={onChangeHardEdgeEndsAt}
         thicknessImported={railsImportFoilThickness}
         system={system}
         hiddenOnPhone={phoneSection !== undefined && phoneSection !== "tail"}

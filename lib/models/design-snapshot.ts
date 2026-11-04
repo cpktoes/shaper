@@ -140,6 +140,14 @@
  *    board. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
  *    drops the unknown key, so a board saved here with the box ticked still opens there, unticked. No
  *    database change — rails live in the `snapshot` JSON column.
+ * 13. The rails carry `tailHardEdgeEndsAt`, the tail's Hard Edge Ends At (Phase 16, D-20, the founder
+ *    2026-11-03): how far from the tail, in millimetres, the hard edge has faded into the tucked rail.
+ *    Absent — every board saved before it — or anything that is not a finite number inside 14" to 24"
+ *    (`HARD_EDGE_ENDS_AT_RANGE_IN`) reads 18" (`hardEdgeEndsAt`), and the parsed rails then hold no such
+ *    key at all, so a crafted value never rejects the board and nothing is rewritten until the shaper
+ *    saves. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
+ *    drops the unknown key, so a board saved here opens there at 18". No database change — rails live in
+ *    the `snapshot` JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -168,6 +176,7 @@ import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
+  HARD_EDGE_ENDS_AT_RANGE_IN,
   RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   type RailBandSpec,
@@ -409,7 +418,19 @@ const railBandSpecSchema = z
     center: railSectionSpecSchema(1),
     tail: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
     tailHardEdge: z.boolean(),
+    // Rule 13 (Phase 16, D-20): optional and forgiving — anything not a number inside 14"-24" reads absent.
+    tailHardEdgeEndsAt: z
+      .number()
+      .min(inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min))
+      .max(inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max))
+      .optional()
+      .catch(undefined),
   })
+  // Rule 13: a value the reader refused leaves no key behind (not even an undefined one), so the parsed
+  // rails of a board without a usable value are exactly a board without the field.
+  .transform(({ tailHardEdgeEndsAt, ...rest }) =>
+    tailHardEdgeEndsAt === undefined ? rest : { ...rest, tailHardEdgeEndsAt: mm(tailHardEdgeEndsAt) },
+  )
   // Rule 11 (fast task 190, R21): the tail's Symmetrical and Hard Edge can never both be on. A board
   // saved with both (none of the presets; a board saved before the rule could) opens with Hard Edge
   // winning and Symmetrical off — read that way, never rewritten until the shaper saves.
