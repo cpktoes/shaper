@@ -37,7 +37,8 @@ import { THREE_D_COPY } from "./three-d-copy";
 
 type CanvasState = "loading" | BoardSceneState | "cant-build" | "didnt-load";
 
-/** The theme's colours as `#rrggbb` (any CSS colour a token holds, `color-mix` included), read once. */
+/** The theme's colours as `#rrggbb` (any CSS colour a token holds, `color-mix` included), and whether it is a light
+ * or a dark theme — read once. */
 function readSceneColours(): SceneColours {
   const style = getComputedStyle(document.documentElement);
   const probe = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
@@ -52,18 +53,21 @@ function readSceneColours(): SceneColours {
     return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
   };
   return {
-    canvas: resolve("--surf-canvas", "#dfdcd3"),
+    canvas: resolve("--surf-3d-ground", "#aeaca5"),
     foam: resolve("--surf-foam", "#ffffff"),
     onFoam: resolve("--surf-on-foam", "#1f2a3b"),
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
+    // Every theme block sets exactly one `color-scheme`; a theme that ever said "light dark" would count as dark.
+    scheme: style.colorScheme.trim() === "light" ? "light" : "dark",
   };
 }
 
 /** A message centred on the canvas: what happened, then what to do (UI-SPEC §8). */
 function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
   return (
-    // On the canvas's own ground, covering the host (and any canvas a lost context left behind), so the host keeps
+    // On the canvas's ground (`--surf-canvas`, not the darker ground behind the board: the muted second line needs
+    // the canvas's 4.58:1 — on the 3D ground it would fall to 2.76:1), covering the host (and any canvas a lost context left behind), so the host keeps
     // its spoken name while the message shows.
     <div
       className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-surf-canvas"
@@ -201,7 +205,7 @@ export function ThreeDScreen() {
               aria-roledescription={THREE_D_COPY.canvasRole}
               aria-label={THREE_D_COPY.canvasName(name)}
               aria-busy={state === "loading" ? true : undefined}
-              className="focus-ring-accent absolute inset-0 touch-none overflow-hidden rounded-md bg-surf-canvas"
+              className="focus-ring-accent absolute inset-0 touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)]"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
           </div>

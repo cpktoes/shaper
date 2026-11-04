@@ -256,6 +256,7 @@
   --ramp-daylight-ground: #ffffff;
   --ramp-daylight-sidebar: #ffffff;
   --ramp-daylight-canvas: #dfdcd3;
+  --ramp-daylight-3d-ground: #aeaca5; /* the 3D board's ground — the canvas warm grey, 22% darker, so the white foam stands off it */
   --ramp-daylight-tab-active: #ffffff;
   --ramp-daylight-panel: #ffffff;
   --ramp-daylight-well: #dfdcd3;
@@ -297,6 +298,7 @@
   --ramp-chalk-ground: #ffffff;
   --ramp-chalk-sidebar: #ffffff;
   --ramp-chalk-canvas: #dfdcd3;
+  --ramp-chalk-3d-ground: #aeaca5; /* the 3D board's ground — the canvas warm grey, 22% darker, so the white foam stands off it */
   --ramp-chalk-tab-active: #ffffff;
   --ramp-chalk-panel: #ffffff;
   --ramp-chalk-well: #dfdcd3;
@@ -328,6 +330,7 @@
   --ramp-slate-ground: #12141a;
   --ramp-slate-sidebar: #12141a;
   --ramp-slate-canvas: #1a1d25;
+  --ramp-slate-3d-ground: #1a1d25; /* the 3D board's ground — the same as the canvas: the dark themes already set the foam off */
   --ramp-slate-tab-active: #12141a;
   --ramp-slate-panel: #12141a;
   --ramp-slate-well: #1b1f26;
@@ -360,6 +363,7 @@
   --ramp-phosphor-ground: #050805;
   --ramp-phosphor-sidebar: #050805;
   --ramp-phosphor-canvas: #142414;
+  --ramp-phosphor-3d-ground: #142414; /* the 3D board's ground — the same as the canvas: the dark themes already set the foam off */
   --ramp-phosphor-tab-active: #050805;
   --ramp-phosphor-panel: #050805;
   --ramp-phosphor-well: #050805;
@@ -435,6 +439,8 @@
   /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
   --surf-foam: var(--ramp-daylight-ground);
   --surf-on-foam: var(--ramp-daylight-ink);
+  /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+  --surf-3d-ground: var(--ramp-daylight-3d-ground);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -468,6 +474,8 @@
     /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
     --surf-foam: var(--ramp-slate-ink);
     --surf-on-foam: var(--ramp-slate-ground);
+    /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+    --surf-3d-ground: var(--ramp-slate-3d-ground);
   }
 }
 
@@ -501,6 +509,8 @@
   /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
   --surf-foam: var(--ramp-daylight-ground);
   --surf-on-foam: var(--ramp-daylight-ink);
+  /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+  --surf-3d-ground: var(--ramp-daylight-3d-ground);
 }
 
 /* Chalk — explicit. */
@@ -533,6 +543,8 @@
   /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
   --surf-foam: var(--ramp-chalk-ground);
   --surf-on-foam: var(--ramp-chalk-ink);
+  /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+  --surf-3d-ground: var(--ramp-chalk-3d-ground);
 }
 
 /* Slate — explicit. */
@@ -565,6 +577,8 @@
   /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
   --surf-foam: var(--ramp-slate-ink);
   --surf-on-foam: var(--ramp-slate-ground);
+  /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+  --surf-3d-ground: var(--ramp-slate-3d-ground);
 }
 
 /* Phosphor — explicit. */
@@ -597,6 +611,8 @@
   /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
   --surf-foam: var(--ramp-slate-ink);
   --surf-on-foam: var(--ramp-phosphor-ground);
+  /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
+  --surf-3d-ground: var(--ramp-phosphor-3d-ground);
 }
 
 /* ---------------------------------------------------------------------------

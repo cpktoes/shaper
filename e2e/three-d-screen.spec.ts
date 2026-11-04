@@ -80,6 +80,21 @@ async function keepBoard(page: Page, presetName: string, lengthMm?: number) {
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
 }
 
+/** The ground the 3D board is drawn on: the theme's `--surf-3d-ground`. */
+async function threeDGround(page: Page) {
+  return page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-3d-ground").trim());
+}
+
+/** A pixel a little in from the canvas's top-left corner (its clear colour, clear of the rounded edge) is `hex`. */
+async function expectCornerIs(host: Locator, hex: string) {
+  const { rgba, width } = await hostPixels(host);
+  const at = 4 * (10 * width + 10);
+  const [r, g, b] = hexToRgb(hex);
+  expect(Math.abs(rgba[at] - r)).toBeLessThanOrEqual(2);
+  expect(Math.abs(rgba[at + 1] - g)).toBeLessThanOrEqual(2);
+  expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
+}
+
 /** The canvas host's picture, decoded. */
 async function hostPixels(host: Locator) {
   return decodePng(await host.screenshot());
@@ -106,7 +121,7 @@ test.describe("the 3D screen", () => {
   test("2. the board is really drawn: much of the canvas is unlike its ground", async ({ page }) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    const ground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-canvas").trim());
+    const ground = await threeDGround(page);
     const { rgba, width, height } = await hostPixels(host);
     const unlike = countUnlike(rgba, hexToRgb(ground), 6);
     expect(unlike / (width * height)).toBeGreaterThan(0.02);
@@ -121,6 +136,17 @@ test.describe("the 3D screen", () => {
     await page.goto("/design/3d");
     await expectMessage(page, THREE_D_COPY.browserCantDraw, "no-webgl");
     await expect(boardHost(page).locator("canvas")).toHaveCount(0);
+    // A message sits on the canvas's own ground, where its muted second line keeps the contract's contrast — not on
+    // the darker ground behind the board.
+    const [messageGround, canvasToken] = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.background = "var(--surf-canvas)";
+      document.body.appendChild(probe);
+      const token = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return [getComputedStyle(document.querySelector("[data-canvas-message]")!).backgroundColor, token];
+    });
+    expect(messageGround).toBe(canvasToken);
   });
 
   test("4. if the drawing code never arrives, the screen says it didn't load", async ({ page, context }) => {
@@ -223,14 +249,20 @@ test.describe("the 3D screen", () => {
     await page.addInitScript(([key, theme]) => window.localStorage.setItem(key, theme), [THEME_STORAGE_KEY, "slate"] as const);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    const ground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-canvas").trim());
-    const { rgba, width } = await hostPixels(host);
-    // A pixel a little in from the top-left corner: the canvas's clear colour, clear of the rounded edge.
-    const at = 4 * (10 * width + 10);
-    const [r, g, b] = hexToRgb(ground);
-    expect(Math.abs(rgba[at] - r)).toBeLessThanOrEqual(2);
-    expect(Math.abs(rgba[at + 1] - g)).toBeLessThanOrEqual(2);
-    expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
+    await expectCornerIs(host, await threeDGround(page));
+  });
+
+  test("11. in a light theme the board sits on the darker 3D ground, not the canvas's warm grey", async ({ page }) => {
+    await page.addInitScript(([key, theme]) => window.localStorage.setItem(key, theme), [THEME_STORAGE_KEY, "daylight"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const [ground, canvas] = await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return [style.getPropertyValue("--surf-3d-ground").trim(), style.getPropertyValue("--surf-canvas").trim()];
+    });
+    const sum = (hex: string) => hexToRgb(hex).reduce((a, b) => a + b, 0);
+    expect(sum(ground)).toBeLessThan(sum(canvas));
+    await expectCornerIs(host, ground);
   });
 
   test("9. moving Hard Edge Ends At on RAILS changes the 3D board (D-30: one value, read by both)", async ({ page }, testInfo) => {

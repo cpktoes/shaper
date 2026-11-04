@@ -52,7 +52,7 @@ import {
 
 /** The theme's colours the scene paints with, read from the page's tokens (any CSS colour three can parse). */
 export interface SceneColours {
-  /** The ground the canvas clears to: `--surf-canvas`. */
+  /** The ground the canvas clears to: `--surf-3d-ground` (darker than the canvas in the light themes). */
   canvas: string;
   /** Raw foam before the lights: `--surf-foam`. */
   foam: string;
@@ -62,6 +62,8 @@ export interface SceneColours {
   inkMuted: string;
   /** The blank's outline (16-11): `--outline-blank-line`. */
   blankLine: string;
+  /** Whether the theme is a light or a dark one (its `color-scheme`): it picks the room's lighting. */
+  scheme: "light" | "dark";
 }
 
 /** Everything the scene needs to draw one board. */
@@ -96,29 +98,61 @@ const STRINGER_LIFT_MM = 0.3;
 const CAMERA_STANDOFF_MM = 4000;
 
 /**
- * The lights' strengths (UI-SPEC §3: near rail 1.0, far rail 0.7, overhead 0.45, fill 0.2) times one key level,
- * and their colours. Three's lights are in physical units, so a white surface square to a light of strength π
- * shows its own colour; the key was set from pictures so the deck reads a tone under the light ground and the
- * near rail a tone over it.
+ * The room's lighting: each light's strength as a share of one key level, and the tone curve's exposure. Three's
+ * lights are in physical units, so a white surface square to a light of strength π shows its own colour. The
+ * contract's starting shares (UI-SPEC §3) were near rail 1.0, far rail 0.7, overhead 0.45 and fill 0.2. There is no
+ * hemisphere or floor-bounce light in this room; the fill is the only light that reaches a face turned away from
+ * every tube.
+ *
+ * The named settings are the candidates shot for the founder (16-06, the first look and the second). `ROOM_LIGHTING`
+ * says which one each kind of theme uses. On a development server only, a picture script may pick another by name through
+ * `window.__shaper3dLighting`, so candidates can be shot without editing the app; a production build never reads it.
  */
-const KEY = 2.9;
+export interface RoomLighting {
+  key: number;
+  nearRail: number;
+  farRail: number;
+  overhead: number;
+  fill: number;
+  exposure: number;
+}
+
+export const LIGHTING_CANDIDATES = {
+  /** The first look (2026-11-04): the overhead lowered from 0.45 to 0.2 so the far rail's edge read. */
+  firstLook: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0.2, fill: 0.2, exposure: 1 },
+  /** A: the overhead off — the two low rail tubes and the fill alone. */
+  A: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0, fill: 0.2, exposure: 1 },
+  /** B: A with the fill lowered, so the shadow side of the dome and the rail's roll go darker. */
+  B: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0, fill: 0.08, exposure: 1 },
+  /** C: B with the far tube lowered too (this room has no floor bounce to lower): the strongest shadowing. */
+  C: { key: 2.9, nearRail: 1.0, farRail: 0.45, overhead: 0, fill: 0.04, exposure: 1 },
+} as const satisfies Record<string, RoomLighting>;
+
 /**
- * The overhead light, lowered from the contract's starting 0.45 to 0.2 of the key after the first pictures
- * (UI-SPEC open item 1: "tune the overhead strength first"). At 0.45 the overhead lit the deck to the light
- * themes' ground tone, so the far rail's edge disappeared against it. At 0.2 the deck sits a tone under the
- * ground and the near rail a tone over it, as in the mock-up the founder called right.
+ * The lighting each kind of theme uses (the founder's second look, 2026-11-04: "The shadowing can be stronger.
+ * Maybe no overhead light just the side lights." and "the dark themes look good"). The light themes take C, the rail
+ * tubes alone with the least fill, on their darker 3D ground. The dark themes keep the first look's lighting
+ * exactly, because C would have turned their deck from a near-white to a mid grey.
  */
-const OVERHEAD = 0.2;
-const LIGHTS = {
-  nearRail: { strength: 1.0 * KEY, colour: "#fff4e8" },
-  farRail: { strength: 0.7 * KEY, colour: "#fff4e8" },
-  overhead: { strength: OVERHEAD * KEY, colour: "#ffeedd" },
-  fill: { strength: 0.2 * KEY, colour: "#ffffff" },
-} as const;
+export const ROOM_LIGHTING: Readonly<Record<SceneColours["scheme"], RoomLighting>> = {
+  light: LIGHTING_CANDIDATES.C,
+  dark: LIGHTING_CANDIDATES.firstLook,
+};
+
+/** The tubes' colours: neutral white near 5000 K for the rail tubes, a little warmer overhead (UI-SPEC §3). */
+const LIGHT_COLOURS = { rail: "#fff4e8", overhead: "#ffeedd", fill: "#ffffff" } as const;
+
+/** The lighting in force for a theme: `ROOM_LIGHTING`'s, or on a development server a candidate a picture script named. */
+function lightingInForce(scheme: SceneColours["scheme"]): RoomLighting {
+  if (process.env.NODE_ENV === "production") return ROOM_LIGHTING[scheme];
+  const name = (globalThis as { __shaper3dLighting?: unknown }).__shaper3dLighting;
+  return typeof name === "string" && name in LIGHTING_CANDIDATES
+    ? LIGHTING_CANDIDATES[name as keyof typeof LIGHTING_CANDIDATES]
+    : ROOM_LIGHTING[scheme];
+}
+
 /** The rail lights' height above the deck's plane (UI-SPEC §3). */
 const RAIL_LIGHT_ELEVATION_DEG = 8;
-/** Exposure for the neutral tone curve: the brightest lit foam lands just short of white, nothing glows. */
-const EXPOSURE = 1;
 
 const NOOP_HANDLE: BoardSceneHandle = {
   setBoard() {},
@@ -190,7 +224,8 @@ export function mountBoardScene(
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.toneMapping = NeutralToneMapping;
-  renderer.toneMappingExposure = EXPOSURE;
+  const lighting = lightingInForce(input.colours.scheme);
+  renderer.toneMappingExposure = lighting.exposure;
 
   const scene = new Scene();
   const axes = roomCameraAxes();
@@ -203,13 +238,13 @@ export function mountBoardScene(
   // The room's lights, placed once (D-10). A directional light shines from its position toward its target, the
   // room's centre. The near rail is the room's +Z side, the camera's side.
   const e = (RAIL_LIGHT_ELEVATION_DEG * Math.PI) / 180;
-  const nearRail = new DirectionalLight(LIGHTS.nearRail.colour, LIGHTS.nearRail.strength);
+  const nearRail = new DirectionalLight(LIGHT_COLOURS.rail, lighting.nearRail * lighting.key);
   nearRail.position.set(0, Math.sin(e), Math.cos(e));
-  const farRail = new DirectionalLight(LIGHTS.farRail.colour, LIGHTS.farRail.strength);
+  const farRail = new DirectionalLight(LIGHT_COLOURS.rail, lighting.farRail * lighting.key);
   farRail.position.set(0, Math.sin(e), -Math.cos(e));
-  const overhead = new DirectionalLight(LIGHTS.overhead.colour, LIGHTS.overhead.strength);
+  const overhead = new DirectionalLight(LIGHT_COLOURS.overhead, lighting.overhead * lighting.key);
   overhead.position.set(0, 1, 0);
-  const fill = new AmbientLight(LIGHTS.fill.colour, LIGHTS.fill.strength);
+  const fill = new AmbientLight(LIGHT_COLOURS.fill, lighting.fill * lighting.key);
   scene.add(nearRail, farRail, overhead, fill);
 
   // The board: `turned` carries the turn and the place in front of the camera; `centred` moves the surface so it
