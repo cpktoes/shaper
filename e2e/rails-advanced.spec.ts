@@ -1,6 +1,12 @@
 import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
+import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
+import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
+import { DEFAULT_RAIL_BAND_SPEC } from "../lib/geometry/rail-bands";
 import { inchesToMm } from "../lib/geometry/units";
-import { OPEN_BOARD_STORAGE_KEY } from "../lib/models/open-board";
+import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
+import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
+import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { goToScreen } from "./helpers/screens";
 
 /**
@@ -827,4 +833,238 @@ test.describe("Hard Edge Ends At (Phase 16, D-20)", () => {
     await openAdvanced(tail);
     await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"', { timeout: 30_000 });
   });
+
+  test("2. with Hard Edge off the row is gone and the tuck rows are back; ticked on again it reads the value set before", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    const hardEdge = tail.getByRole("checkbox", { name: "Hard Edge" });
+    const body = await openAdvanced(tail);
+    await hardEdgeEndsAtSlider(page).press("End");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+
+    await hardEdge.click();
+    await expect(hardEdge).not.toBeChecked();
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveCount(0);
+    await expect(hardEdgeEndsAtSlider(page)).toHaveCount(0);
+    await expect(body.getByRole("checkbox", { name: "Use Single Tuck" })).toBeVisible();
+    await expect(nudgeLabel(tail, "Bottom Tuck 3")).toBeVisible();
+    await expect(body.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toBeVisible();
+
+    await hardEdge.click();
+    await expect(hardEdge).toBeChecked();
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+    const rows = await advancedRows(body);
+    expect(rows.at(-2)).toBe('Hard Edge Ends At — 24"');
+  });
+
+  test("3. Reset Advanced Settings puts it back to 18\" with the rest, and one Undo brings back 23 1/2\" and the other changes together", async ({
+    page,
+  }, testInfo) => {
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    const body = await openAdvanced(tail);
+    const deckMark1 = nudgeLabel(tail, "Deck Mark 1");
+    const deckMark1Before = await deckMark1.textContent();
+    await nudgeThumb(page, "tail", "Deck Mark 1").press("ArrowRight");
+    await expect(deckMark1).toHaveText(/\(\+1\/16"\)$/);
+    const deckMark1Moved = await deckMark1.textContent();
+    await hardEdgeEndsAtSlider(page).press("End");
+    await hardEdgeEndsAtSlider(page).press("ArrowLeft");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 23 1/2"');
+
+    await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
+    await expect(deckMark1).toHaveText(deckMark1Before ?? "");
+    // Reset deletes the stored value rather than writing 18" (a board without it reads 18").
+    await expect.poll(() => keptHardEdgeEndsAt(page)).toBeNull();
+
+    const undo = page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" });
+    await undo.click();
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 23 1/2"');
+    await expect(deckMark1).toHaveText(deckMark1Moved ?? "");
+  });
+
+  test("4. in Metric the row reads 45.7 cm; a keyboard step lands on the whole-centimetre track and each step after moves it by 1.0 cm, stored as a whole millimetre", async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript((key) => window.localStorage.setItem(key, "metric"), UNITS_STORAGE_KEY);
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText("Hard Edge Ends At — 45.7 cm");
+    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", "45.7 cm from the tail");
+
+    // 18" is 45.72 cm, between two whole centimetres of the Metric track (whole centimetres, as every
+    // Metric slider in the app runs), so the first step lands on the track's next whole centimetre.
+    await hardEdgeEndsAtSlider(page).press("ArrowRight");
+    await expect(hardEdgeEndsAtLabel(tail)).not.toHaveText("Hard Edge Ends At — 45.7 cm");
+    const onTrack = centimetres(await hardEdgeEndsAtLabel(tail).textContent());
+    expect(Number.isInteger(onTrack)).toBe(true);
+    expect(onTrack).toBeGreaterThan(45.7);
+    expect(onTrack - 45.7).toBeLessThanOrEqual(1.3 + 1e-9);
+
+    // Each step after is one whole centimetre.
+    await hardEdgeEndsAtSlider(page).press("ArrowRight");
+    await expect(hardEdgeEndsAtLabel(tail)).not.toHaveText(`Hard Edge Ends At — ${onTrack.toFixed(1)} cm`);
+    const next = centimetres(await hardEdgeEndsAtLabel(tail).textContent());
+    expect(next - onTrack).toBeCloseTo(1.0, 5);
+    await expect.poll(() => keptHardEdgeEndsAt(page)).toBe(next * 10);
+    expect(Number.isInteger(await keptHardEdgeEndsAt(page))).toBe(true);
+  });
+
+  test("5. at an 820-wide window in Metric the longest label, Hard Edge Ends At — 45.7 cm, stays on one line", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the narrowest desktop Advanced column");
+    await page.setViewportSize({ width: 820, height: 800 });
+    await page.addInitScript((key) => window.localStorage.setItem(key, "metric"), UNITS_STORAGE_KEY);
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    const label = hardEdgeEndsAtLabel(tail);
+    await expect(label).toHaveText("Hard Edge Ends At — 45.7 cm");
+    await label.scrollIntoViewIfNeeded();
+    const { height, lineHeight } = await label.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      lineHeight: parseFloat(getComputedStyle(el).lineHeight),
+    }));
+    expect(lineHeight).toBeGreaterThan(0);
+    expect(height).toBeLessThanOrEqual(lineHeight * 1.5);
+  });
+
+  test("6. on a locked board the row is greyed and its slider disabled", async ({ page }, testInfo) => {
+    await keepOpenBoard(page, stockBoardFields(), true);
+    await openRails(page);
+    await expect(page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true })).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    const label = hardEdgeEndsAtLabel(tail);
+    await expect(label).toHaveText('Hard Edge Ends At — 18"');
+    await expect(label.locator("xpath=..")).toHaveClass(/opacity-40/);
+    await expect(hardEdgeEndsAtSlider(page)).toBeDisabled();
+  });
+
+  test("7. a board kept with a Hard Edge Ends At of 30\" (out of range) opens reading 18\"", async ({ page }, testInfo) => {
+    const fields = stockBoardFields();
+    // The kept board's tail also carries a scale no new board has, so the test can see the kept board opened.
+    await keepOpenBoard(
+      page,
+      {
+        ...fields,
+        rails: {
+          ...fields.rails,
+          tail: { ...fields.rails.tail, scaleFromCenter: 0.55 },
+          tailHardEdgeEndsAt: inchesToMm(30),
+        },
+      },
+      false,
+    );
+    await openRails(page);
+    const tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await expect(tail.getByText(/^Scaled from center by — /)).toHaveText("Scaled from center by — 0.55", { timeout: 30_000 });
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
+    await expect(hardEdgeEndsAtSlider(page)).toHaveAttribute("aria-valuetext", '18" from the tail');
+  });
+
+  test("8. nothing on RAILS or VOLUME announces the move: the page text changes only in the label and the litres", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    await openRails(page);
+    let tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await goToScreen(page, "VOLUME");
+    await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
+    const volumeBefore = await pageLines(page);
+
+    await goToScreen(page, "RAILS");
+    tail = await showRail(page, testInfo, "tail");
+    await openAdvanced(tail);
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 18"');
+    const railsBefore = await pageLines(page);
+    await hardEdgeEndsAtSlider(page).press("End");
+    await expect(hardEdgeEndsAtLabel(tail)).toHaveText('Hard Edge Ends At — 24"');
+    const railsAfter = await pageLines(page);
+    const railsChanged = changedLines(railsBefore, railsAfter);
+    expect(railsChanged.length).toBeGreaterThan(0);
+    for (const line of railsChanged) expect(line).toMatch(/^Hard Edge Ends At — (18|24)"$/);
+
+    await goToScreen(page, "VOLUME");
+    await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
+    const volumeAfter = await pageLines(page);
+    const volumeChanged = changedLines(volumeBefore, volumeAfter);
+    expect(volumeChanged.length).toBeGreaterThan(0);
+    // Only litres figures (and the cubic inches beside them) move; no new words appear.
+    for (const line of volumeChanged) expect(line).toMatch(LITRES_LINE);
+  });
 });
+
+const UNITS_STORAGE_KEY = "shaper-units";
+
+/** A label's centimetres ("Hard Edge Ends At — 46.7 cm" reads 46.7). */
+function centimetres(text: string | null): number {
+  const match = (text ?? "").replace(/ /g, " ").match(/ — ([\d.]+) cm$/);
+  if (!match) throw new Error(`no centimetres in "${text}"`);
+  return Number(match[1]);
+}
+
+/** The stock board a new visit opens, as the app's own defaults write it. */
+function stockBoardFields(): DesignSnapshotFields {
+  return {
+    outline: DEFAULT_BOARD_SPEC.outline,
+    rocker: DEFAULT_BOARD_SPEC.rocker,
+    foil: DEFAULT_BOARD_SPEC.foil,
+    rails: DEFAULT_RAIL_BAND_SPEC,
+    fins: DEFAULT_FIN_PLACEMENT_SPEC,
+    volume: DEFAULT_VOLUME_SPEC,
+    finsImportTemplate: true,
+    railsImportFoilThickness: true,
+    boardName: "",
+    finSystem: "fcs2",
+    blank: null,
+  };
+}
+
+/** Puts a kept board in this browser's storage before the page's first load, as an earlier visit would
+ * (`e2e/open-board-reload.spec.ts`'s `keepInBrowser`, through the app's own writer). Locked, it is kept as
+ * a saved board of an account — a lock belongs to a saved board — so it opens locked. */
+async function keepOpenBoard(page: Page, fields: DesignSnapshotFields, locked: boolean) {
+  const raw = openBoardCopyJson(
+    fields,
+    locked
+      ? { modelId: "hard-edge-locked-board", ownerId: "hard-edge-test-account", locked: true, dirty: false }
+      : { modelId: null, ownerId: null, locked: false, dirty: true },
+  );
+  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
+}
+
+/** The page's visible text, line by line, trimmed and with non-breaking spaces read as spaces — read once the
+ * phone's ☰ sheet that walked here has gone, so its tiles are never read as the page's own words. */
+async function pageLines(page: Page): Promise<string[]> {
+  await expect(page.locator('[role="menu"]')).toHaveCount(0);
+  const text = await page.evaluate(() => document.body.innerText);
+  return text
+    .replace(/ /g, " ")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
+
+/** The lines that are in one list and not in the other, both ways. */
+function changedLines(before: string[], after: string[]): string[] {
+  const count = (lines: string[]) => lines.reduce((m, l) => m.set(l, (m.get(l) ?? 0) + 1), new Map<string, number>());
+  const a = count(before);
+  const b = count(after);
+  const changed: string[] = [];
+  for (const [line, n] of a) if ((b.get(line) ?? 0) !== n) changed.push(line);
+  for (const [line, n] of b) if ((a.get(line) ?? 0) !== n) changed.push(line);
+  return changed;
+}
+
+/** A line that is only a litres figure, or a litres figure's supporting volume line. */
+const LITRES_LINE = /^[≈~]?\s*\d[\d,]*(\.\d+)?\s*(L|cu in|in³)?$/;

@@ -943,27 +943,35 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
   // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
   // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
-  // rule) — all in one setState, so it is ONE undo step. A discrete action like
+  // rule) and Hard Edge Ends At back to 18" by deleting `tailHardEdgeEndsAt` (Phase 16, D-20: a board
+  // without the field reads 18") — all in one setState, so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).
   const resetRailAdvanced = (key: RailSectionKey) => {
     if (lockedRef.current) return;
     noteEdit(null);
-    setState((prev) => ({
-      ...startedFrom(prev, liveTipsRef.current),
-      rails: {
-        ...prev.rails,
-        // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
-        // the one setting outside Advanced that Reset touches, because the two can never both be on.
-        [key]: {
-          ...prev.rails[key],
-          ...defaultRailAdvanced(key),
-          ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+    setState((prev) => {
+      // On the tail the rails are rebuilt without the key (destructured out, never set to undefined);
+      // the nose's and centre's Reset keep the rails exactly as they were.
+      const { tailHardEdgeEndsAt: _endsAt, ...railsWithoutEndsAt } = prev.rails;
+      void _endsAt;
+      const baseRails: RailBandSpec = key === "tail" ? railsWithoutEndsAt : prev.rails;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        rails: {
+          ...baseRails,
+          // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
+          // the one setting outside Advanced that Reset touches, because the two can never both be on.
+          [key]: {
+            ...prev.rails[key],
+            ...defaultRailAdvanced(key),
+            ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+          },
+          ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
         },
-        ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
-      },
-      boardStarted: true,
-      dirty: true,
-    }));
+        boardStarted: true,
+        dirty: true,
+      };
+    });
   };
 
   const updateFins = (patch: Partial<FinPlacementSpec>) => {
