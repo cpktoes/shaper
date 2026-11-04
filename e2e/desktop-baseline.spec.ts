@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-02, branch board-3d) — VOLUME only, `volume-desktop.png`, for the
+ * founder's D-30 (his words: "The hard edge blend needs a blend sharp edge from AND a blend to"): the default
+ * board's tail is hard-edged, and its hard edge now runs full to Hard Edge Blends From (18" when the board says
+ * nothing) and has fully blended into the centre's tucked rail by Hard Edge Ends At (30"), so its Estimated Volume
+ * reads 30.29 L instead of plan 16-01's 30.27 L (16-01 faded from the 12" station to 18"). Old and new were compared
+ * before re-recording: 649 pixels differ, every one inside the litres figure's own box (x 1160-1223, y 361-378);
+ * the Cross-Section Thickness rows, the sidebar and the top bar are unchanged, and nothing on the screen says the
+ * figure moved (D-18). TEMPLATE, ROCKER, RAILS and FINS passed unchanged and are byte-for-byte what they were.
+ * The new picture is byte-for-byte the one recorded before 16-01 (the old switch also read 30.29 L for this board).
+ * Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3202) in the plan's worktree on this Mac; the
+ * orchestrator confirms under the main checkout's Turbopack run after the merge and re-records there only if it
+ * disagrees. SHA-256 (first 8 characters): before 16-01 14f11e4c, after 16-01 ae36a4ba, after D-30 14f11e4c.
+ *
  * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 05, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
  * `volume-desktop.png`, for the founder's continuous (d) where the rail meets the deck (R23, "(d), with the
  * hand-over made continuous first"): on the first board every rail's Domed Deck Band mark sits within half of Band 2

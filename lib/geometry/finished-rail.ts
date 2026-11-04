@@ -617,3 +617,137 @@ export function railBlendArea(rail: FinishedRail): number {
   curve += crossXY(at, rail.start) / 2;
   return (cut - curve) * (Math.sign(cut) || 1);
 }
+
+// ---------------------------------------------------------------------------------------------
+// The finished rail as the 3D board draws it, and the hard edge's fade (Phase 16, D-05, D-31).
+
+/**
+ * How many points each run of a sampled half-section holds: the deck (the stringer to the rail's outermost
+ * point), the rail (to the bottom edge, the first point on the bottom) and the bottom (back to the stringer).
+ * The bottom edge always lands on the same index, so a hard edge's or a Sharp Bottom Tuck's corner is one row
+ * of the 3D board. One fineness for the screen, the files and the fade's litres (D-26, D-31).
+ */
+export const SECTION_POINTS = { deck: 48, rail: 32, bottom: 24 } as const;
+
+/** Points in one sampled half-section: the three runs, sharing their two joins. */
+export const HALF_SECTION_POINT_COUNT = SECTION_POINTS.deck + SECTION_POINTS.rail + SECTION_POINTS.bottom - 2;
+
+/** One rail's half of a cross-section, stringer on the deck round the rail to the stringer on the bottom:
+ * (distance across from the stringer, height above the bottom), in millimetres. */
+export type HalfSectionPoints = [number, number][];
+
+type P2 = [number, number];
+
+function dedupeRun(points: P2[]): P2[] {
+  const out: P2[] = [];
+  for (const p of points) {
+    const q = out[out.length - 1];
+    if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-9) out.push(p);
+  }
+  return out;
+}
+
+/** The part of the polyline at or outboard of the stringer, with the crossing points put in. */
+function clipAtStringer(points: P2[]): P2[] {
+  const out: P2[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const inP = p[0] >= -1e-9;
+    if (i > 0) {
+      const q = points[i - 1];
+      const inQ = q[0] >= -1e-9;
+      if (inP !== inQ) {
+        const t = -q[0] / (p[0] - q[0]);
+        out.push([0, q[1] + (p[1] - q[1]) * t]);
+      }
+    }
+    if (inP) out.push([Math.max(0, p[0]), p[1]]);
+  }
+  return dedupeRun(out);
+}
+
+/** `n` points evenly spaced by arc length along the polyline, its two ends exactly. */
+function resampleRun(points: P2[], n: number): P2[] {
+  const copies = () => Array.from({ length: n }, () => [points[0][0], points[0][1]] as P2);
+  if (points.length === 1) return copies();
+  const seg: number[] = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+    seg.push(d);
+    total += d;
+  }
+  if (total < 1e-12) return copies();
+  const out: P2[] = [];
+  let acc = 0;
+  let k = 1;
+  for (let j = 0; j < n; j++) {
+    const target = (total * j) / (n - 1);
+    while (k < points.length - 1 && acc + seg[k - 1] < target) {
+      acc += seg[k - 1];
+      k++;
+    }
+    const t = seg[k - 1] > 0 ? Math.min(1, Math.max(0, (target - acc) / seg[k - 1])) : 0;
+    out.push([
+      points[k - 1][0] + (points[k][0] - points[k - 1][0]) * t,
+      points[k - 1][1] + (points[k][1] - points[k - 1][1]) * t,
+    ]);
+  }
+  out[0] = [points[0][0], points[0][1]];
+  out[n - 1] = [points[points.length - 1][0], points[points.length - 1][1]];
+  return out;
+}
+
+/**
+ * A section's finished rail as the 3D board draws it (research Pattern 2): the rail at `halfWidth` from the
+ * stringer; carried flat along the deck at its first height and along the bottom at its last if it starts
+ * outboard of the stringer (exactly the closure the litres assume), and cut at the stringer if it starts
+ * inboard (never squeezed); then split into deck, rail and bottom runs and each resampled by arc length to
+ * `SECTION_POINTS` — `HALF_SECTION_POINT_COUNT` points, the bottom edge always on the same index.
+ */
+export function sampledFinishedRail(result: RailSectionResult, domed: boolean, halfWidth: number): HalfSectionPoints {
+  const rail = sectionFinishedRail(result, domed);
+  let points = dedupeRun(rail.samples.map((p) => [halfWidth + p.x, p.y] as P2));
+  if (points[0][0] > 0) points.unshift([0, points[0][1]]);
+  if (points[points.length - 1][0] > 0) points.push([0, points[points.length - 1][1]]);
+  points = clipAtStringer(points);
+  let apex = 0;
+  for (let i = 1; i < points.length; i++) if (points[i][0] > points[apex][0] + 1e-12) apex = i;
+  let edge = points.length - 1;
+  for (let i = apex; i < points.length; i++) {
+    if (points[i][1] <= 1e-9) {
+      edge = i;
+      break;
+    }
+  }
+  const deck = resampleRun(points.slice(0, apex + 1), SECTION_POINTS.deck);
+  const railRun = resampleRun(points.slice(apex, edge + 1), SECTION_POINTS.rail);
+  const bottom = resampleRun(points.slice(edge), SECTION_POINTS.bottom);
+  return deck.concat(railRun.slice(1), bottom.slice(1));
+}
+
+/**
+ * The hard edge's fade, point for point (D-20, D-27): the tucked and the hard-edged half-sections, sampled
+ * alike, blended by the hard weight — 1 all hard, 0 all tucked. Each point moves straight from its tucked
+ * place to its hard-edged one, so the edge fades along the rail with no rounded step. The ONE blend: the 3D
+ * board draws it and the litres count it (D-31).
+ */
+export function blendFinishedRails(tucked: HalfSectionPoints, hard: HalfSectionPoints, weight: number): HalfSectionPoints {
+  const blended = tucked.map((p, i) => [p[0] * (1 - weight) + hard[i][0] * weight, p[1] * (1 - weight) + hard[i][1] * weight] as P2);
+  // Both halves start and end exactly on the stringer; keep the blend there too.
+  blended[0][0] = 0;
+  blended[blended.length - 1][0] = 0;
+  return blended;
+}
+
+/** The foam a sampled half-section and its mirror enclose together, in square millimetres: the half closed
+ * along the stringer, both rails. */
+export function sampledSectionArea(half: HalfSectionPoints): number {
+  let sum = 0;
+  for (let i = 0; i < half.length; i++) {
+    const p = half[i];
+    const q = half[(i + 1) % half.length];
+    sum += p[0] * q[1] - q[0] * p[1];
+  }
+  return Math.abs(sum);
+}

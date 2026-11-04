@@ -42,7 +42,14 @@
  */
 
 import type { Point2D } from "./board";
-import { railBlendArea, sectionFinishedRail } from "./finished-rail";
+import {
+  type HalfSectionPoints,
+  blendFinishedRails,
+  railBlendArea,
+  sampledFinishedRail,
+  sampledSectionArea,
+  sectionFinishedRail,
+} from "./finished-rail";
 import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
   DEFAULT_TIP_RAIL_SCALE,
@@ -52,9 +59,12 @@ import {
   type RailBandSpec,
   type RailMarkNudges,
   type RailSectionKey,
+  type RailSectionResult,
   buildRailProfile,
   computeRailSection,
   effectiveDeckPercent,
+  hardEdgeBlendsFrom,
+  hardEdgeEndsAt,
 } from "./rail-bands";
 import {
   type Litres,
@@ -605,62 +615,141 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
 }
 
 /**
- * Cross-section volume — the accurate path CONTEXT.md D-13 promises everywhere the app quotes
- * volume. Integrates `SIMPSON_PANEL_COUNT + 1` real cross-sections along the board's own length
- * with Simpson's rule and converts once through the exact `cubicMmToLitres`. Takes no rocker
- * argument: lifting a cross-section off the flat does not change its area, so rocker structurally
- * cannot reach this calculation.
- *
- * BLENDING RULE (CONTEXT.md's Claude's Discretion — "whether cross-sections use the rail-band
- * module's real computed sections or the design doc's named rail profiles"): this function re-runs
- * the real rail-band formula (`computeRailSection` + `buildRailProfile`) at every one of the 51
- * stations, rather than substituting one of the approved design's named boxy/medium/tapered
- * profiles. A station between the three rail-band anchors (tail 12", centre, nose 12") gets a
- * `RailSectionSpec`-shaped input built by blending those three known sections: the CONTINUOUS
- * fields — `deckPercent` (each anchor held at 75% or more first, R7), `ratioTopPercent`, the
- * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
- * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
- * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
- * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
- * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
- * a family index or a boolean cannot be interpolated.
- * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
- * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
- * follows the board's own thickness along its length.
- *
- * FINISHED RAIL (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the finished
- * curve"). Each station counts the finished rail — the cut rail with every corner blended halfway into
- * the bands either side, the curve RAILS draws — not the raw band cuts. It is worked out exactly, not by
- * sampling the curve (PV1): the cut area comes from the faceted profile as before (proven to enclose
- * exactly the foam the cuts leave), and both rails' blend areas come off it (`railBlendArea` of
- * `sectionFinishedRail`, the cut's own area less Green's theorem on the finished curve — plan 05). Since
- * plan 05 (R22/R23) that curve rolls off the deck by the founder's continuous one-curve rule and keeps its
- * bottom edge sharp at Bottom Tuck 3 where the nearest rail's box asks for it. The faceted profile survives only
- * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
- * station, rather than to a canned profile shape.
- *
- * TAIL CUT (quick 261103-gcm, the founder, 2026-11-03: the litres count the tail the board is drawn
- * with). `halfWidthAt` is the foam actually there, so a station inside a swallow's notch reads the foam
- * on one side of the notch and a station inside a diamond's V reads the V's own width. A swallow's tail
- * is two pieces, each with the notch's square wall on its inside and the rail on its outside — exactly
- * the half-section this function already builds, at the piece's width — so the finished-rail basis above
- * is untouched: the notch takes its wall's full thickness out of every station it reaches. The cut's
- * corner (the diamond's tail block, the swallow's crotch) is itself a station (`cutStation`, see
- * `crossSectionStations`), and Simpson runs over each side of it separately: the cut's edges are
- * straight, so the plan area the stations integrate holds the whole V or notch exactly, rather than a
- * panel straddling the corner's step.
+ * One station's finished-rail cross-section, as the litres count it and the 3D board draws it (D-05).
+ * `result` is the station's rail section — the only one when `hardWeight` is 0 or 1, and the TUCKED one
+ * while the tail's hard edge fades (0 < `hardWeight` < 1); `result` is null where the foam has no width.
+ * While it fades, `blended` is the half-section the 3D board draws there — the tucked and the hard-edged
+ * finished rails sampled alike and blended point for point by the weight (`blendFinishedRails`, rail at
+ * `halfWidth`, stringer at 0) — and the litres count that very ring (D-31, `fadingSectionArea`).
+ * `sharpBottomTuck` is the flag the tucked section used. `area` is the full (both-rails) finished
+ * cross-section in square millimetres and `blendArea` the foam the finished rail's blends take off it, both
+ * rails — `stationAreas` and `stationBlendAreas` of `computeCrossSectionVolume`, element for element.
  */
-export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
+export interface BoardSection {
+  station: Mm;
+  halfWidth: Mm;
+  thickness: Mm;
+  result: RailSectionResult | null;
+  blended?: HalfSectionPoints;
+  hardWeight: number;
+  domed: boolean;
+  sharpBottomTuck: boolean;
+  area: number;
+  blendArea: number;
+}
+
+/**
+ * The litres' area at a station inside the hard edge's fade (D-31, the level variant): the foam the 3D board
+ * draws there, corrected by the same hair the drawn board loses to its straight segments everywhere else.
+ * Written as the two end sections' exact areas blended by the weight, plus how far the drawn (blended) ring's
+ * area stands from the two end rings' areas blended alike:
+ * `(1 − w)·exactTucked + w·exactHard + (ring(blended) − ((1 − w)·ring(tucked) + w·ring(hard)))` — which is
+ * `ring + (1 − w)·(exactTucked − ring(tucked)) + w·(exactHard − ring(hard))`. At w = 0 and w = 1 the blended
+ * ring IS the end ring and the correction is exactly 0, so the fade is level with the stations either side.
+ */
+export function fadingSectionArea(
+  exactTucked: number,
+  exactHard: number,
+  tuckedHalf: HalfSectionPoints,
+  hardHalf: HalfSectionPoints,
+  blended: HalfSectionPoints,
+  weight: number,
+): number {
+  const ringsBlended = (1 - weight) * sampledSectionArea(tuckedHalf) + weight * sampledSectionArea(hardHalf);
+  return (1 - weight) * exactTucked + weight * exactHard + (sampledSectionArea(blended) - ringsBlended);
+}
+
+/** The three rail-band anchors' stations, measured from the tail end: tail 12", centre, nose 12". */
+export interface RailAnchorStations {
+  tail: Mm;
+  center: Mm;
+  nose: Mm;
+}
+
+/**
+ * How the tail's Hard Edge reaches each station. `weight` is how much of the station is the hard-edged
+ * section (1 all hard, 0 all tucked, between a blend of the two sections, `fadingSectionArea`); `tuckSource` names the
+ * anchor whose Single Tuck and Sharp Bottom Tuck the tucked side reads, given the station's nearest anchor.
+ * `length` is the board's length (its centre is half of it), which the live rule's two settings are read
+ * against (D-30). The live functions never take a rule: an old rule is callable only by name (Phase 14 D-25's
+ * precedent).
+ */
+export interface HardEdgeRule {
+  weight(station: Mm, anchors: RailAnchorStations, rails: RailBandSpec, length: Mm): number;
+  tuckSource(nearest: RailSectionKey, rails: RailBandSpec): RailSectionKey;
+}
+
+/**
+ * The hard edge as it was before Phase 16: a switch — fully hard at every station whose nearest anchor is
+ * the tail 12" section (out to halfway to the centre) while the tail's Hard Edge is on, and not at all
+ * anywhere else; every tuck read from the nearest anchor. Named only by the pin test of today's litres and
+ * by the saved-boards report; no screen uses it.
+ */
+export const HARD_EDGE_SWITCH: HardEdgeRule = {
+  weight(station, anchors, rails) {
+    if (!rails.tailHardEdge) return 0;
+    return nearestAnchorSection(station, anchors.tail, anchors.center, anchors.nose) === "tail" ? 1 : 0;
+  },
+  tuckSource(nearest) {
+    return nearest;
+  },
+};
+
+/**
+ * How much of a station is the tail's hard edge, by the founder's fade (Phase 16, D-20/D-27/D-30): 1 at and
+ * behind `blendsFrom` (Hard Edge Blends From), 0 at and beyond `endsAt` (Hard Edge Ends At, where the rail has
+ * fully blended into the centre's tucked rail), and between them the smoothstep `1 − t²(3 − 2t)` with
+ * `t = (station − blendsFrom)/(endsAt − blendsFrom)` — level at both ends, so the litres kink at neither
+ * setting. Never rises along the board.
+ */
+export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): number {
+  if (station <= blendsFrom) return 1;
+  if (station >= endsAt) return 0;
+  const t = (station - blendsFrom) / (endsAt - blendsFrom);
+  return 1 - t * t * (3 - 2 * t);
+}
+
+/**
+ * The live hard edge (Phase 16, D-20/D-27/D-30, the founder): while the tail's Hard Edge is on it is full at
+ * and behind Hard Edge Blends From (`hardEdgeBlendsFrom`, 18" when the board says nothing) and fades by
+ * `tailHardEdgeWeight` until it is gone at Hard Edge Ends At (`hardEdgeEndsAt`, 30" when the board says
+ * nothing), where the rail is fully the centre's tucked rail; off, it is nowhere. Blends From never goes below
+ * the 12" mark, so the tail 12" station is always a full hard edge. The tucked side of every station nearest
+ * the tail reads the CENTRE's Single Tuck and Sharp Bottom Tuck — the tail's own are hidden on RAILS while
+ * Hard Edge is on, so a hidden box can never move the litres (research pitfall 8).
+ */
+export const HARD_EDGE_FADE: HardEdgeRule = {
+  weight(station, _anchors, rails, length) {
+    if (!rails.tailHardEdge) return 0;
+    return tailHardEdgeWeight(station, hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
+  },
+  tuckSource(nearest, rails) {
+    return rails.tailHardEdge && nearest === "tail" ? "center" : nearest;
+  },
+};
+
+/** The rule the live litres use. */
+const LIVE_HARD_EDGE_RULE: HardEdgeRule = HARD_EDGE_FADE;
+
+/**
+ * The cross-sections the litres integrate, one per station — the ONE section function the litres and the
+ * 3D board both read (D-05), with the hard edge reaching each station by `rule`. `stations` defaults to the
+ * litres' own (`crossSectionStations`); the 3D surface may pass its own. See `computeCrossSectionVolume` for
+ * how each section is built.
+ */
+export function boardSectionsWith(
+  input: CrossSectionVolumeInput,
+  rule: HardEdgeRule,
+  stations?: readonly Mm[],
+): BoardSection[] {
   const { halfWidthAt, foil, rails, length } = input;
   const thicknessAt = input.thicknessAt ?? ((station: Mm) => sampleFoil(foil, length, station));
 
-  const anchors = foilStationPoints(foil, length);
-  const tailAnchor = anchors[1]; // tail12
-  const centerAnchor = anchors[2]; // center
-  const noseAnchor = anchors[3]; // nose12
-  const tailStation = tailAnchor.station;
-  const centerStation = centerAnchor.station;
-  const noseStation = noseAnchor.station;
+  const anchorPoints = foilStationPoints(foil, length);
+  const tailStation = anchorPoints[1].station; // tail12
+  const centerStation = anchorPoints[2].station; // center
+  const noseStation = anchorPoints[3].station; // nose12
+  const anchors: RailAnchorStations = { tail: tailStation, center: centerStation, nose: noseStation };
 
   // A section saved before quick 261102-gec reads its defaults (design-snapshot rule 10).
   const tailScale = rails.tail.scaleFromCenter ?? DEFAULT_TIP_RAIL_SCALE;
@@ -669,21 +758,27 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
   const centerNudges = rails.center.nudges ?? ZERO_RAIL_NUDGES;
   const noseNudges = rails.nose.nudges ?? ZERO_RAIL_NUDGES;
 
-  const cutStation = input.cutStation ?? mm(0);
-  const stations = crossSectionStations(length, cutStation);
-  const stationAreas: number[] = [];
-  const stationBlendAreas: number[] = [];
+  const at = stations ?? crossSectionStations(length, input.cutStation ?? mm(0));
+  const sections: BoardSection[] = [];
 
-  for (const station of stations) {
+  for (const station of at) {
     const halfWidth = halfWidthAt(station);
+    const thickness = thicknessAt(station);
 
     if (halfWidth === 0) {
-      stationAreas.push(0);
-      stationBlendAreas.push(0);
+      sections.push({
+        station,
+        halfWidth,
+        thickness,
+        result: null,
+        hardWeight: 0,
+        domed: false,
+        sharpBottomTuck: false,
+        area: 0,
+        blendArea: 0,
+      });
       continue;
     }
-
-    const thickness = thicknessAt(station);
 
     const deckPercent = blendContinuous(
       station,
@@ -723,32 +818,158 @@ export function computeCrossSectionVolume(input: CrossSectionVolumeInput): Cross
 
     const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
     const nearestSpec = rails[nearestKey];
+    const tuckSpec = rails[rule.tuckSource(nearestKey, rails)];
+    const hardWeight = rule.weight(station, anchors, rails, length);
 
     const domed = deckPercent < 100;
     const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
     const thicknessEff = domed ? railThicknessClamped : thickness;
 
-    const sectionInput: ComputeRailSectionInput = {
+    const sectionInput = (hardEdge: boolean): ComputeRailSectionInput => ({
       thickness: thicknessEff,
       boardThickness: thickness,
       ratioTopPercent,
       family: nearestSpec.family,
       scale,
       nudges,
-      singleTuck: nearestSpec.singleTuck,
-      sharpBottomTuck: nearestSpec.sharpBottomTuck,
+      singleTuck: tuckSpec.singleTuck,
+      sharpBottomTuck: tuckSpec.sharpBottomTuck,
       symmetrical: nearestSpec.symmetrical,
-      hardEdge: nearestKey === "tail" && rails.tailHardEdge,
-    };
-    const result = computeRailSection(sectionInput);
-    const profile = buildRailProfile(result);
-    const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
-
+      hardEdge,
+    });
     // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
-    const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
-    stationAreas.push(stationArea(profilePairs, thickness, halfWidth) - blendBothRails);
-    stationBlendAreas.push(blendBothRails);
+    const finished = (result: RailSectionResult) => {
+      const profile = buildRailProfile(result);
+      const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
+      const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
+      return { area: stationArea(profilePairs, thickness, halfWidth) - blendBothRails, blendArea: blendBothRails };
+    };
+
+    if (hardWeight > 0 && hardWeight < 1) {
+      // The fade (D-31, level variant): both sections, sampled alike and blended point for point — the ring
+      // the 3D board draws (never shrunk tuck marks, which would leave a rounded edge, research §G) — and the
+      // litres count that ring, corrected by the end sections' own polygon shortfalls (`fadingSectionArea`).
+      const tucked = computeRailSection(sectionInput(false));
+      const hard = computeRailSection(sectionInput(true));
+      const tuckedArea = finished(tucked);
+      const hardArea = finished(hard);
+      const tuckedHalf = sampledFinishedRail(tucked, domed, halfWidth);
+      const hardHalf = sampledFinishedRail(hard, domed, halfWidth);
+      const blended = blendFinishedRails(tuckedHalf, hardHalf, hardWeight);
+      const area = fadingSectionArea(tuckedArea.area, hardArea.area, tuckedHalf, hardHalf, blended, hardWeight);
+      // The cut area (finished plus blends) has no ring of its own; it is the two cuts blended by the weight,
+      // so `area + blendArea` stays the station's cut area as everywhere else.
+      const cut = (1 - hardWeight) * (tuckedArea.area + tuckedArea.blendArea) + hardWeight * (hardArea.area + hardArea.blendArea);
+      sections.push({
+        station,
+        halfWidth,
+        thickness,
+        result: tucked,
+        blended,
+        hardWeight,
+        domed,
+        sharpBottomTuck: tuckSpec.sharpBottomTuck,
+        area,
+        blendArea: cut - area,
+      });
+      continue;
+    }
+
+    // All hard or all tucked: one section, the arithmetic exactly as before Phase 16.
+    const result = computeRailSection(sectionInput(hardWeight === 1));
+    const { area, blendArea } = finished(result);
+    sections.push({
+      station,
+      halfWidth,
+      thickness,
+      result,
+      hardWeight,
+      domed,
+      sharpBottomTuck: tuckSpec.sharpBottomTuck,
+      area,
+      blendArea,
+    });
   }
+  return sections;
+}
+
+/** `boardSectionsWith` under the live hard-edge rule: the sections every screen's litres and the 3D board read. */
+export function boardSections(input: CrossSectionVolumeInput, stations?: readonly Mm[]): BoardSection[] {
+  return boardSectionsWith(input, LIVE_HARD_EDGE_RULE, stations);
+}
+
+/**
+ * Cross-section volume — the accurate path CONTEXT.md D-13 promises everywhere the app quotes
+ * volume. Integrates `SIMPSON_PANEL_COUNT + 1` real cross-sections along the board's own length
+ * with Simpson's rule and converts once through the exact `cubicMmToLitres`. Takes no rocker
+ * argument: lifting a cross-section off the flat does not change its area, so rocker structurally
+ * cannot reach this calculation.
+ *
+ * BLENDING RULE (CONTEXT.md's Claude's Discretion — "whether cross-sections use the rail-band
+ * module's real computed sections or the design doc's named rail profiles"): this function re-runs
+ * the real rail-band formula (`computeRailSection` + `buildRailProfile`) at every one of the 51
+ * stations, rather than substituting one of the approved design's named boxy/medium/tapered
+ * profiles. A station between the three rail-band anchors (tail 12", centre, nose 12") gets a
+ * `RailSectionSpec`-shaped input built by blending those three known sections: the CONTINUOUS
+ * fields — `deckPercent` (each anchor held at 75% or more first, R7), `ratioTopPercent`, the
+ * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
+ * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
+ * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
+ * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
+ * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
+ * a family index or a boolean cannot be interpolated.
+ * `tailHardEdge` fades (Phase 16, D-20/D-27/D-30, `HARD_EDGE_FADE`): full at and behind Hard Edge Blends
+ * From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise), easing by smoothstep until it is gone at
+ * Hard Edge Ends At (`hardEdgeEndsAt`, 30" unless it says otherwise), where the rail is fully the centre's
+ * tucked rail; a fading station counts the foam the 3D board draws there — the hard-edged and the tucked
+ * finished rails blended point for point by that weight — corrected by the same hair the drawn board loses to
+ * its straight segments everywhere else (D-31, `fadingSectionArea`), and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
+ * Single Tuck and Sharp Bottom Tuck (the tail's are hidden on RAILS). Before Phase 16 it was a switch — on
+ * at every station whose nearest anchor is the tail (`HARD_EDGE_SWITCH`, kept by name). The board thickness at
+ * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
+ * follows the board's own thickness along its length.
+ *
+ * FINISHED RAIL (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the finished
+ * curve"). Each station counts the finished rail — the cut rail with every corner blended halfway into
+ * the bands either side, the curve RAILS draws — not the raw band cuts. It is worked out exactly, not by
+ * sampling the curve (PV1): the cut area comes from the faceted profile as before (proven to enclose
+ * exactly the foam the cuts leave), and both rails' blend areas come off it (`railBlendArea` of
+ * `sectionFinishedRail`, the cut's own area less Green's theorem on the finished curve — plan 05). Since
+ * plan 05 (R22/R23) that curve rolls off the deck by the founder's continuous one-curve rule and keeps its
+ * bottom edge sharp at Bottom Tuck 3 where the nearest rail's box asks for it. The faceted profile survives only
+ * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
+ * station, rather than to a canned profile shape.
+ *
+ * TAIL CUT (quick 261103-gcm, the founder, 2026-11-03: the litres count the tail the board is drawn
+ * with). `halfWidthAt` is the foam actually there, so a station inside a swallow's notch reads the foam
+ * on one side of the notch and a station inside a diamond's V reads the V's own width. A swallow's tail
+ * is two pieces, each with the notch's square wall on its inside and the rail on its outside — exactly
+ * the half-section this function already builds, at the piece's width — so the finished-rail basis above
+ * is untouched: the notch takes its wall's full thickness out of every station it reaches. The cut's
+ * corner (the diamond's tail block, the swallow's crotch) is itself a station (`cutStation`, see
+ * `crossSectionStations`), and Simpson runs over each side of it separately: the cut's edges are
+ * straight, so the plan area the stations integrate holds the whole V or notch exactly, rather than a
+ * panel straddling the corner's step.
+ *
+ * ONE SECTION FUNCTION (Phase 16, D-05). The station loop lives in `boardSections` (`boardSectionsWith` with
+ * the live hard-edge rule): this function integrates exactly the `area` of each section it returns, and the
+ * 3D board (16-03) draws the very same sections, so the litres and the surface can never disagree.
+ */
+export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
+  return computeCrossSectionVolumeWith(input, LIVE_HARD_EDGE_RULE);
+}
+
+/** `computeCrossSectionVolume` with the hard-edge rule named: Simpson over `boardSectionsWith(input, rule)`. */
+export function computeCrossSectionVolumeWith(
+  input: CrossSectionVolumeInput,
+  rule: HardEdgeRule,
+): CrossSectionVolumeResult {
+  const { length } = input;
+  const cutStation = input.cutStation ?? mm(0);
+  const sections = boardSectionsWith(input, rule);
+  const stations = sections.map((section) => section.station);
+  const stationAreas = sections.map((section) => section.area);
+  const stationBlendAreas = sections.map((section) => section.blendArea);
 
   let volumeMm3: number;
   if (splitsAtCut(length, cutStation)) {

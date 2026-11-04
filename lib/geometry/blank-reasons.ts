@@ -28,6 +28,13 @@ import {
   type MeasureSliderView,
 } from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
+import {
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  HARD_EDGE_ENDS_AT_RANGE_IN,
+  hardEdgeBlendsFromWindow,
+  hardEdgeEndsAtWindow,
+  type HardEdgeWindow,
+} from "./rail-bands";
 import type { TipEnd, TipView } from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
@@ -312,6 +319,52 @@ export function thinningStartSlider(
     max: onGridDown(mmToInches(view.range.max)),
   };
   return measureSlider(view.fromTip, rangeIn, stepIn, 10, system);
+}
+
+/**
+ * Where the tail's hard edge starts blending into the tucked rail, as a distance in from the tail tip
+ * (Phase 16, D-30): a dim, like a Thinning Start — read through `formatDim`, Imperial `18"`, Metric
+ * centimetres to one decimal, `45.7 cm`; never `formatMark`, never `457 mm`.
+ */
+export function formatHardEdgeBlendsFrom(value: Mm, system: UnitsSystem): string {
+  return formatDim(value, system);
+}
+
+/**
+ * Where the rail has fully blended into the centre's tucked rail, as a distance in from the tail tip
+ * (Phase 16, D-20/D-30, UI-SPEC §17): a dim, read through `formatDim`, Imperial `30"` / `23 1/2"`, Metric
+ * `76.2 cm`; never `formatMark`.
+ */
+export function formatHardEdgeEndsAt(value: Mm, system: UnitsSystem): string {
+  return formatDim(value, system);
+}
+
+/** A window in millimetres as an inch range rounded inward onto the 1/2" grid (never inverted). */
+function hardEdgeRangeIn(window: HardEdgeWindow): { min: number; max: number } {
+  const { step } = HARD_EDGE_ENDS_AT_RANGE_IN;
+  const min = Math.ceil(mmToInches(window.min) / step - 1e-9) * step;
+  const max = Math.floor(mmToInches(window.max) / step + 1e-9) * step;
+  return { min, max: Math.max(min, max) };
+}
+
+/**
+ * The Hard Edge Blends From slider (D-30): from 12" up to min(30", Ends At − 2", centre − 2")
+ * (`hardEdgeBlendsFromWindow`, so it follows Ends At and the board's length), rounded inward onto the 1/2"
+ * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider` — the component never converts a unit.
+ */
+export function hardEdgeBlendsFromSlider(value: Mm, endsAt: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
+  const rangeIn = hardEdgeRangeIn(hardEdgeBlendsFromWindow(endsAt, length));
+  return measureSlider(value, rangeIn, HARD_EDGE_BLENDS_FROM_RANGE_IN.step, 10, system);
+}
+
+/**
+ * The Hard Edge Ends At slider (D-20/D-30, UI-SPEC §17): from Blends From + 2" to the board's centre
+ * (`hardEdgeEndsAtWindow`, so it follows Blends From and the board's length), rounded inward onto the 1/2"
+ * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider`.
+ */
+export function hardEdgeEndsAtSlider(value: Mm, blendsFrom: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
+  const rangeIn = hardEdgeRangeIn(hardEdgeEndsAtWindow(blendsFrom, length));
+  return measureSlider(value, rangeIn, HARD_EDGE_ENDS_AT_RANGE_IN.step, 10, system);
 }
 
 /**

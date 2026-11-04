@@ -16,9 +16,13 @@ import {
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
+  hardEdgeBlendsFromSlider,
+  hardEdgeEndsAtSlider,
   automaticButtonLabel,
   fineTuneSourceHint,
   formatDeckSkin,
+  formatHardEdgeBlendsFrom,
+  formatHardEdgeEndsAt,
   formatPlacement,
   formatShortfall,
   formatThinningStart,
@@ -45,11 +49,13 @@ import {
   formatLength,
   formatMark,
   formatSignedMark,
+  measureSlider,
   stationLabel,
 } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
 import { blankDisplayName } from "./custom-rocker";
 import { MEASURE_STATION_MM } from "./outline";
+import { HARD_EDGE_BLENDS_FROM_RANGE_IN, HARD_EDGE_MIN_BLEND_IN } from "./rail-bands";
 import { THINNING_START_MIN_MM, thinningStartRange, type TipFlag } from "./tip-taper";
 import {
   inchesToMm,
@@ -1186,5 +1192,80 @@ describe("pickerBoardLine and pickerCounts — the popup's header (D-01, P-4)", 
   it("counts what shows, what is long enough and what fits", () => {
     expect(pickerCounts(196, 196, 194)).toBe("196 of 196 blanks · 194 fit");
     expect(pickerCounts(12, 196, 1)).toBe("12 of 196 blanks · 1 fit");
+  });
+});
+
+describe("Hard Edge Blends From and Ends At — dims, and their coupled sliders (Phase 16, D-20/D-30, UI-SPEC §17)", () => {
+  const systems = ["imperial", "metric"] as const;
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const centreIn = mmToInches(length) / 2;
+  const gapIn = HARD_EDGE_MIN_BLEND_IN;
+  const { min: startMinIn, max: startMaxIn, step } = HARD_EDGE_BLENDS_FROM_RANGE_IN;
+  const sameView = (view: ReturnType<typeof measureSlider>, expected: ReturnType<typeof measureSlider>) => {
+    expect({ ...view, toMm: undefined }).toEqual({ ...expected, toMm: undefined });
+    expect(view.toMm(view.value)).toBe(expected.toMm(expected.value));
+  };
+
+  it("both read through formatDim in both systems, never as a mark", () => {
+    for (const system of systems) {
+      for (const inches of [12, 18, 20.5, 23.5, 30, 36]) {
+        const value = inchesToMm(inches);
+        expect(formatHardEdgeBlendsFrom(value, system)).toBe(formatDim(value, system));
+        expect(formatHardEdgeEndsAt(value, system)).toBe(formatDim(value, system));
+      }
+    }
+    for (const format of [formatHardEdgeBlendsFrom, formatHardEdgeEndsAt]) {
+      expect(format(inchesToMm(18), "metric")).not.toBe(formatMark(inchesToMm(18), "metric"));
+      expect(format(inchesToMm(18), "metric")).toMatch(/ cm$/);
+    }
+  });
+
+  it("Blends From slides from 12\" to 2\" short of Ends At (never past 30\"), in 1/2\" steps, 10 mm in Metric", () => {
+    for (const system of systems) {
+      for (const [fromIn, toIn] of [
+        [18, 30],
+        [12, 20],
+        [20, 26],
+        [28, 34],
+      ]) {
+        const view = hardEdgeBlendsFromSlider(inchesToMm(fromIn), inchesToMm(toIn), length, system);
+        const max = Math.min(startMaxIn, toIn - gapIn, centreIn - gapIn);
+        sameView(view, measureSlider(inchesToMm(fromIn), { min: startMinIn, max }, step, 10, system));
+      }
+    }
+  });
+
+  it("Ends At slides from 2\" past Blends From to the board's centre, in 1/2\" steps, 10 mm in Metric", () => {
+    for (const system of systems) {
+      for (const [fromIn, toIn] of [
+        [18, 30],
+        [12, 14],
+        [20, 26],
+        [28, 36],
+      ]) {
+        const view = hardEdgeEndsAtSlider(inchesToMm(toIn), inchesToMm(fromIn), length, system);
+        sameView(view, measureSlider(inchesToMm(toIn), { min: fromIn + gapIn, max: centreIn }, step, 10, system));
+      }
+    }
+  });
+
+  it("the two ranges follow each other: wherever one stands, the other's range keeps 2\" between them", () => {
+    for (let fromIn = startMinIn; fromIn <= startMaxIn; fromIn += step) {
+      const ends = hardEdgeEndsAtSlider(inchesToMm(fromIn + gapIn), inchesToMm(fromIn), length, "imperial");
+      expect(ends.min).toBe(fromIn + gapIn);
+      expect(ends.max).toBe(centreIn);
+    }
+    for (let toIn = startMinIn + gapIn; toIn <= centreIn; toIn += step) {
+      const starts = hardEdgeBlendsFromSlider(inchesToMm(startMinIn), inchesToMm(toIn), length, "imperial");
+      expect(starts.max).toBeLessThanOrEqual(toIn - gapIn);
+      expect(starts.max).toBeLessThanOrEqual(startMaxIn);
+    }
+  });
+
+  it("an off-grid value (a Metric drag) rounds each range inward onto the 1/2\" grid", () => {
+    const start = mm(470); // 18.50…" after a Metric drag
+    const ends = hardEdgeEndsAtSlider(inchesToMm(30), start, length, "imperial");
+    expect(ends.min).toBe(Math.ceil((mmToInches(start) + gapIn) / step) * step);
+    expect(ends.min).toBeGreaterThanOrEqual(mmToInches(start) + gapIn);
   });
 });

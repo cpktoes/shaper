@@ -101,7 +101,7 @@ import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
-  crossSectionFoam,
+  designCrossSectionInput,
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
@@ -441,11 +441,21 @@ interface DesignContextValue {
   applyBoardFile: (snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   toggleTailHardEdge: () => void;
+  /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
+   * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
+   * is one undo step. Never written when a board opens: a board without it reads 18" (`hardEdgeBlendsFrom`). */
+  setTailHardEdgeBlendsFrom: (value: Mm) => void;
+  /** Sets where the rail has fully blended into the centre's tucked rail, in millimetres from the tail
+   * (Phase 16, D-20/D-30) — the Hard Edge Ends At slider. One drag is one undo step. Never written when a board
+   * opens: a board without it reads 30" (`hardEdgeEndsAt`). */
+  setTailHardEdgeEndsAt: (value: Mm) => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
-   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on — one undo step. */
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Hard Edge Blends From and Ends At
+   * back to 18" and 30" (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` deleted, Phase 16 D-20/D-30) — one
+   * undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
@@ -898,6 +908,35 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // The tail's two hard-edge settings (Phase 16, D-20 the founder 2026-11-03, D-30 2026-11-04): Hard Edge Blends
+  // From, where the edge starts blending, and Hard Edge Ends At, where the rail has fully blended into the
+  // centre's tucked rail. Sliders, so each has its own noteEdit key and one drag is one undo step, like a nudge.
+  // Only these sliders write them: ticking Hard Edge off, Symmetrical turning Hard Edge off and opening a board
+  // all leave them alone, so off-then-on shows the same values; only Reset Advanced Settings deletes them. The
+  // RAILS sliders' coupled ranges keep the pair 2" apart; the readers forgive a pair that is not. RAILS and the
+  // 3D page read and write these same two values, so moving either moves the other.
+  const setTailHardEdgeBlendsFrom = (value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit("rails:tail:hardEdgeBlendsFrom");
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: { ...prev.rails, tailHardEdgeBlendsFrom: value },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  const setTailHardEdgeEndsAt = (value: Mm) => {
+    if (lockedRef.current) return;
+    noteEdit("rails:tail:hardEdgeEndsAt");
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      rails: { ...prev.rails, tailHardEdgeEndsAt: value },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // One rail mark's nudge (quick 261102-gec plan 02, PC19, 2026-11-02). Its own action rather than
   // updateRailSection({ nudges }) because that would key every nudge slider "nudges" — a Deck Mark 1 drag
   // and a Bottom Tuck 3 drag folded into one undo step. Here each mark keeps its own key, so a drag on one
@@ -923,27 +962,37 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
   // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
   // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
-  // rule) — all in one setState, so it is ONE undo step. A discrete action like
+  // rule) and Hard Edge Blends From and Ends At back to 18" and 30" by deleting `tailHardEdgeBlendsFrom` and
+  // `tailHardEdgeEndsAt` (Phase 16, D-20/D-30: a board without them reads the defaults) — all in one setState,
+  // so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).
   const resetRailAdvanced = (key: RailSectionKey) => {
     if (lockedRef.current) return;
     noteEdit(null);
-    setState((prev) => ({
-      ...startedFrom(prev, liveTipsRef.current),
-      rails: {
-        ...prev.rails,
-        // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
-        // the one setting outside Advanced that Reset touches, because the two can never both be on.
-        [key]: {
-          ...prev.rails[key],
-          ...defaultRailAdvanced(key),
-          ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+    setState((prev) => {
+      // On the tail the rails are rebuilt without both keys (destructured out, never set to undefined);
+      // the nose's and centre's Reset keep the rails exactly as they were.
+      const { tailHardEdgeBlendsFrom: _from, tailHardEdgeEndsAt: _endsAt, ...railsWithoutBlend } = prev.rails;
+      void _from;
+      void _endsAt;
+      const baseRails: RailBandSpec = key === "tail" ? railsWithoutBlend : prev.rails;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        rails: {
+          ...baseRails,
+          // On the tail, Hard Edge comes back on, so Symmetrical goes off with it (R21, fast task 190) —
+          // the one setting outside Advanced that Reset touches, because the two can never both be on.
+          [key]: {
+            ...prev.rails[key],
+            ...defaultRailAdvanced(key),
+            ...(key === "tail" && DEFAULT_RAIL_BAND_SPEC.tailHardEdge ? { symmetrical: false } : {}),
+          },
+          ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
         },
-        ...(key === "tail" ? { tailHardEdge: DEFAULT_RAIL_BAND_SPEC.tailHardEdge } : {}),
-      },
-      boardStarted: true,
-      dirty: true,
-    }));
+        boardStarted: true,
+        dirty: true,
+      };
+    });
   };
 
   const updateFins = (patch: Partial<FinPlacementSpec>) => {
@@ -1213,15 +1262,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // draws it, quick 261103-gcm), so a rack card's number and this screen's number can never drift apart. The thickness is the side
   // profile's own dense curve (Pattern 5) — with a blank, the foil cut from the blank (its thickness
   // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
+  // Built through `designCrossSectionInput`, the very helper `summarizeDesign` uses (Phase 16, D-05), so
+  // VOLUME, the cards and the coming 3D board all read one input.
   const crossSectionVolume = useMemo(
     () =>
-      computeCrossSectionVolume({
-        ...crossSectionFoam(outlineGeometry),
-        foil: sideProfile.effectiveFoil,
-        thicknessAt: sideProfile.thicknessAt,
-        rails: effectiveRails,
-        length: state.outline.length,
-      }),
+      computeCrossSectionVolume(
+        designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length),
+      ),
     [outlineGeometry, sideProfile, effectiveRails, state.outline.length],
   );
 
@@ -1799,6 +1846,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyBoardFile,
     updateRailSection,
     toggleTailHardEdge,
+    setTailHardEdgeBlendsFrom,
+    setTailHardEdgeEndsAt,
     updateRailNudge,
     resetRailAdvanced,
     updateFins,

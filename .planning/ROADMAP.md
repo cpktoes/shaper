@@ -64,6 +64,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
+- [ ] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide — opened 2026-11-03 on branch `board-3d`
 
 ## Phase Details
 
@@ -311,6 +312,62 @@ Plans:
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no hand-typed expected number (Rule 1); every number through `units.ts` / `formatSummaryLine` (Rule 2); the rack kind read only from the pointer, never width (D-04); the unsaved board always first and never moved (R9); the order column is added on the development branch during the work and reaches production only inside 15-13 with the founder present, before the push (Database rule); the test-only `/test-rack` route 404s in production; no new package; nothing pushed without the founder's go and nothing after the Wednesday 2026-10-07 freeze.
 
+### Phase 16: 3D Board and CNC Export
+
+**Goal:** A shaper sees the board they designed as a solid, realistic surface they can spin and move in every direction, lit the way a shaping room is lit so every contour shows, on a 3D screen of its own; and takes that surface away as a file a CNC shaping program (Shape3D, AkuShaper) can read as a 3D guide — a wireframe (DXF) and/or XYZ text files for the outline, the profile and the slices. The surface is built from the same cross-sections the litres count (the finished rail at every station along the rocker), so what the shaper sees and exports is exactly what VOLUME counts. Reading Shape3D's and AkuShaper's own files (.s3d/.s3dx, .brd) is deliberately left for a later phase.
+**Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-28 and the approved 16-UI-SPEC.md)
+**Brief:** `phases/16-3d-board-and-cnc-export/16-SPEC.md` (R1–R12 from the founder's words of 2026-11-03), decisions D-01–D-28 in `16-CONTEXT.md`, the approved `16-UI-SPEC.md`, the measured `16-RESEARCH.md` and the mock-up `pictures/3d-board-mockup.png`
+**Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
+**Plans:** 1/14 plans executed — planned 2026-11-04 (14 plans in 10 waves, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
+
+Plans:
+
+**Wave 1**
+
+- [x] 16-01-PLAN.md — Pin today's litres for 40 test boards, share one section function between the litres and the coming 3D board (every figure identical), then fade the tail's hard edge from 12" to 18" in the litres (R2 R9 R11 R12)
+
+**Wave 2** *(blocked on Wave 1 completion; merge 16-02 before 16-03)*
+
+- [ ] 16-02-PLAN.md — The Hard Edge Ends At slider on RAILS (the tail's Advanced menu, 14"–24"), saved with the board, reset in one undo, and a read-only report of how every saved board's litres move (R9 R10 R11 R12)
+- [ ] 16-03-PLAN.md — The 3D board's surface as tested maths: the litres' own sections lofted into one closed shape within 0.15% of VOLUME, the swallow in two pieces, sharp edges kept sharp (R2 R3 R8 R12)
+
+**Wave 3** *(blocked on Wave 2 completion; 16-04 is a founder step; 16-06 first — it installs three, then `npm install` in the main checkout)*
+
+- [ ] 16-04-PLAN.md — Go-live 1, only if the founder chose two go-lives: the hard edge's fade and the slider go live on their own (R9 R11 R12)
+- [ ] 16-05-PLAN.md — The CNC files: one zip with a DXF wireframe, the outline, profile and slice text files and an STL, in millimetres in Shape3D's axes, each read back by its own reader (R7 R8 R12)
+- [ ] 16-06-PLAN.md — TRACER: the 3D screen at /design/3d draws the board lit under the shaping-room lights, with three.js on that route only and plain messages when it can't draw (R1 R2 R3 R10 R11 R12)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16-07-PLAN.md — Turn the board: drag with a glide, the five views and Reset View, the arrow keys; the camera and lights stay fixed (R4 R10 R12)
+- [ ] 16-08-PLAN.md — Seven screens in the app: 3D last in the top row, the seventh tile on the phone menu, SUMMARY's Next goes to 3D, the code and documents say seven (R1 R10 R11 R12)
+
+**Wave 5** *(blocked on Wave 4 completion; until it merges, the six-count specs and the five desktop pictures are expected to fail)*
+
+- [ ] 16-14-PLAN.md — The browser checks count seven screens, and the five desktop pictures are re-recorded for the top row only, on a looked-at diff (R1 R10 R12)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 16-09-PLAN.md — Zoom and slide: the shared zoom row, wheel, pinch, right-drag or two fingers, double-click back to 1x, Wide view (R4 R10 R12)
+
+**Wave 7** *(blocked on Wave 6)*
+
+- [ ] 16-10-PLAN.md — Fins on the board: generic outlines with true bases at their FINS placement, a single fin as deep as the board is long in feet, and the Fins switch (R3 R5 R10 R12)
+
+**Wave 8** *(blocked on Wave 7)*
+
+- [ ] 16-11-PLAN.md — The blank as a see-through ghost, Contour Stripes, colours that follow the theme, and the loading picture (R3 R5 R6 R10 R12)
+
+**Wave 9** *(blocked on Wave 8)*
+
+- [ ] 16-12-PLAN.md — Export for CNC… on the 3D panel: one tap, one zip, the Shape3D note, every state (no drawing, can't build, locked, signed out), plus the 3D screen's desktop picture (R7 R8 R10 R11 R12)
+
+**Wave 10** *(blocked on Wave 9; a founder step)*
+
+- [ ] 16-13-PLAN.md — Go-live: with two go-lives, first bring main's go-live-1 merge onto the branch; then the full gate, the founder's Shape3D test and device checks, one push on his go, a live check (R7 R8 R9 R11 R12)
+
+Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/export/`, no expected number typed — every figure from the pin, a script-made fixture or the app's own functions (Rule 1); every conversion through `units.ts`, the single fin's feet rule included, and the files in millimetres (Rule 2); `three@0.186.1` exact, imported only by `components/3d/board-scene.ts` and only through `import()`; one section function (`boardSections`) feeds the litres, the drawing and the STL; no database change, nothing announced, switches and view never saved; width / pointer / height stay the only three layout switches; each executor in its own worktree with its own PW_PORT (3201–3212), never touching port 3005; every plan ends with the founder's look at pictures; nothing pushed without his go.
+
 ---
 
 ## Progress
@@ -335,3 +392,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
+| 16. 3D Board and CNC Export | 1/14 | In Progress|  |

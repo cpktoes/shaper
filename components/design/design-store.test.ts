@@ -112,10 +112,20 @@ describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 
     expect(object).toMatch(/deriveEffectiveRails\(\s*state\.rails,\s*sideProfile\.effectiveFoil\b/);
   });
 
+  // Since Phase 16 (D-05) the store builds its litres input through `designCrossSectionInput`, the helper
+  // `summarizeDesign` uses, handing it the whole side profile; that helper reads the profile's own
+  // thickness curve and foil (its own source is checked below), so the rule still holds in one place.
   it("the cross-section volume integrates the side profile's own thickness curve", () => {
     const { object } = memo("crossSectionVolume");
-    expect(object).toMatch(/thicknessAt:\s*sideProfile\.thicknessAt\b/);
-    expect(object).toMatch(/foil:\s*sideProfile\.effectiveFoil\b/);
+    expect(object).toMatch(
+      /designCrossSectionInput\(\s*outlineGeometry,\s*sideProfile,\s*effectiveRails,\s*state\.outline\.length\s*\)/,
+    );
+    const designSource = stripComments(readFileSync(new URL("../../lib/geometry/design.ts", import.meta.url), "utf8"));
+    const helperStart = designSource.indexOf("export function designCrossSectionInput");
+    expect(helperStart).toBeGreaterThanOrEqual(0);
+    const helper = balancedFrom(designSource, designSource.indexOf("return {", helperStart));
+    expect(helper).toMatch(/thicknessAt:\s*profile\.thicknessAt\b/);
+    expect(helper).toMatch(/foil:\s*profile\.effectiveFoil\b/);
   });
 });
 

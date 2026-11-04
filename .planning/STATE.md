@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 15 (The Board Rack) COMPLETE 2026-10-06: live on www.shaperassistant.com since 08:45 PDT (main c417257, deployment shaper-fi967okof), verified (15-VERIFICATION.md passed, no gaps), the founder's walk 6/6 (15-UAT.md), one follow-up todo (Option/Alt + arrow on a pointed-at board, after the showing). Freeze: Wed 2026-10-07 evening; showing Sat 2026-10-10. Next: Phase 13's remaining items (the full 18-step rehearsal walk on the live site with the sheet, issue 3; the launch prep) and Phase 14's verification paperwork (no site change); then the v1.5 close."
-last_updated: "2026-10-06T18:00:12.531Z"
-last_activity: 2026-10-10
-last_activity_desc: Quick task 261010-km7: the founder's new logo in the top bar and on the order form, and the circle logo as the home-screen icon
+stopped_at: "Phase 16 executing on branch board-3d: Wave 1 (16-01, the shared section function and the hard edge's fade) merged 2026-11-04 as 8af9677b after the founder's look (Longboard finding accepted as designed, D-27 reading confirmed); next Wave 2 — 16-02 the Hard Edge Ends At slider + saved-boards report, 16-03 the 3D surface maths"
+last_updated: "2026-11-04T15:11:38.794Z"
+last_activity: 2026-11-04
+last_activity_desc: "Phase 16 Wave 1 merged: the litres read one section function and the tail's hard edge fades 12\" to 18\"; the founder approved the look"
 progress:
-  total_phases: 3
-  completed_phases: 1
-  total_plans: 44
-  completed_plans: 42
-  percent: 95
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 45
+  completed_plans: 32
+  percent: 71
 current_phase: 13
-current_phase_name: Ready for the Shapers
+current_phase_name: 3d-board-and-cnc-export
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 13 — Ready for the Shapers (the rehearsal walk on the live site, the Wednesday-evening freeze, the Oct 10 showing); Phase 15 complete and live
+**Current focus:** Phase 16 — 3d-board-and-cnc-export
 
 ## Current Position
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-11-03 — LIVE: main pushed (291152e8) on the founder's word after the full gate (6,777 unit tests, type check, lint, a production build, 18 production-build specs, 1,346 browser tests with 5 load timeouts that passed alone); the live site served the new version at 19:18 PST. Live now: the Board Rack's smooth swallow and diamond turn (261103-drw), litres that follow the tail (261103-gcm), Save board as file… / Open a board file… and Import my designs with a preview (261103-k8o). The founder checked both on the live site the same evening: export then import of a board on his own account worked, and his iPhone saved a board to Files and opened the file
+Status: Executing Phase 16
+Last activity: 2026-11-04 — Phase 16 execution started
 
 ## Performance Metrics
 
@@ -93,13 +93,13 @@ Last activity: 2026-11-03 — LIVE: main pushed (291152e8) on the founder's word
 ### Decisions
 
 **Phase 15 — The Board Rack (2026-10-05 → 10-06, live 10-06):**
+
 - The pointer picks the rack (D-04): a mouse gets the hover rack, a finger the swipe rack, at any width — behaviour, never layout.
 - D-11 ruled keep on the founder's iPad 9th gen and an Android phone: hold-and-drag ships; the ⋯ → Move fallback stays a switch that is never flipped.
 - A turning board opens room for its neighbours' words as well as its outline (an orchestrator fix after the tracer; SPEC R4), and the swipe rack's slot widens just enough on tall screens so a resting rack never needs room.
 - Every rack save refreshes the home page (`revalidatePath`) and the client keeps a newer move while a save travels — the code review's CR-01, the Back-button fix.
 - Additive database change first: the live `rack_order` column went in with the founder present (4 of 5 → 5 of 5 columns), then one push.
 - The phone caption's built height (~153 against the sketches' 118) and a carried board drawn under its neighbours for ~110 ms: accepted by the founder on devices.
-
 
 - [Phase 13 item 7, 2026-09-28]: Volume accepted on the founder's own check — the four presets (29.1 / 35.0 / 50.3 / 75.3 L on their US Blanks picks) are within 1/2–1 L of what each board should have; no real-board fixtures were added (optional guard offered)
 - [Phase 13 item 4, 2026-09-28]: The founder answered Phase 12's five questions. Q1 (the thin spot near a tip): raise the floor from 1/8" to 1/4" anywhere on the board, and the lowest tip setting to 1/4" ("no boards should have a 1/8" tip anyway"), and the real fix, curve rules that never hump, is its own phase after Oct 10 (todo 2026-09-28, major). Q2 (Phase 11 boards opening greyed until Reset Fine-Tune): accept. Q3 (the floor reason line): correct it with a proper rewording by cause. Q4 (saved Deck Skin 0–50 mm vs the slider's 1/16"–1/2"): open the control up — first to the full 0–50 mm, then capped by the founder at 0–1" ("no one needs to trim more than that"); saved boards keep accepting 0–50 mm. Q5 (a tab left open across the Phase 12 deploy): accept. The 1/4" floor refuses 15 of the 1,611 stress-test boards (6 before); the milder humps stay allowed until the curve-flow phase.
@@ -558,9 +558,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-06T03:52:11.678Z
-Stopped at: Phase 15 UI-SPEC approved 2026-10-05 (42/42 states resolved; D-16 ruled); research done; next: the plan (gsd-planner), then the founder approves it before any code
-Resume file: .planning/phases/15-the-board-rack/15-UI-SPEC.md
+Last session: 2026-11-04T05:53:14.613Z
+Stopped at: Phase 16 UI-SPEC approved
+Resume file: .planning/phases/16-3d-board-and-cnc-export/16-UI-SPEC.md
 Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps
