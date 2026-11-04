@@ -109,7 +109,8 @@ const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
  *
  * Perspective makes this a little non-linear, so it is solved, not guessed: for a given distance each direction
  * is centred by bisection (a point's place on the picture only grows as the board slides that way), and the
- * distance is refined until the tighter direction's half-extent is `fill`.
+ * distance is refined until the tighter direction's half-extent is `fill` — by quick rounds, or, for an end-on view
+ * whose near end sits close to the camera, by bisection too.
  */
 export function frameAtOne(points: readonly Vec3[], turn: Quat, aspect: number, fill: number = FRAME_FILL): Frame {
   if (points.length === 0 || !(aspect > 0) || !(fill > 0)) return { distance: 1, right: 0, up: 0 };
@@ -156,20 +157,38 @@ export function frameAtOne(points: readonly Vec3[], turn: Quat, aspect: number, 
     return { offset, half: (e.hi - e.lo) / 2 };
   };
 
-  // Start where an orthographic picture would put it, then refine: the half-extent goes almost exactly as one
-  // over the distance, so scaling the distance by half/fill converges in a few rounds.
-  let distance = 4 * radius;
-  let result = { distance, right: 0, up: 0 };
-  for (let round = 0; round < 40; round++) {
+  /** The frame at one distance, each direction centred, and the tighter direction's half-extent there. */
+  const at = (distance: number) => {
     const x = centre(a, tanH, distance);
     const y = centre(b, tanV, distance);
-    result = { distance, right: x.offset, up: y.offset };
-    const half = Math.max(x.half, y.half);
-    const next = Math.max(distance * (half / fill), radius * 1.0001);
-    if (Math.abs(next - distance) <= 1e-9 * distance) break;
+    return { frame: { distance, right: x.offset, up: y.offset }, half: Math.max(x.half, y.half) };
+  };
+
+  // Start where an orthographic picture would put it, then refine: while the board's depth is small beside the
+  // distance the half-extent goes almost exactly as one over the distance, so scaling the distance by half/fill
+  // converges in a few rounds.
+  let distance = 4 * radius;
+  for (let round = 0; round < 40; round++) {
+    const { frame, half } = at(distance);
+    const next = distance * (half / fill);
+    if (Math.abs(next - distance) <= 1e-9 * distance) return frame;
+    // An end-on view (16-07) breaks that rule: its near end comes close to the camera and grows far faster than
+    // one over the distance, so the rounds overshoot or ask for a place inside the board's own reach.
+    if (!(next > radius)) break;
     distance = next;
   }
-  return result;
+
+  // Then solve it for certain: the picture only shrinks as the board stands back, so bisect between its own reach
+  // (where its near end would touch the camera) and a distance where it already fits.
+  let lo = radius * (1 + 1e-6);
+  let hi = 4 * radius;
+  for (let k = 0; k < 60 && at(hi).half > fill; k++) hi *= 2;
+  for (let k = 0; k < 80 && hi - lo > 1e-10 * hi; k++) {
+    const mid = (lo + hi) / 2;
+    if (at(mid).half > fill) lo = mid;
+    else hi = mid;
+  }
+  return at(hi).frame;
 }
 
 /**

@@ -179,6 +179,31 @@ describe("frameAtOne", () => {
     expect(Math.abs(box.y0 + box.y1) / 2).toBeLessThan(1e-4);
     expect(frameAtOne(points, turn, 1.2, 0.5).distance).toBeGreaterThan(frame.distance);
   });
+
+  it("every preset view is framed the same way, end-on views too: the near end in front of the camera, never on it", () => {
+    // An end-on view puts half the board's length between its centre and the camera's side, and its near end is
+    // the widest thing in the picture (a wide tail end on): the board must stand back until that end fits.
+    for (const label of ["shortboard|asis|hard", "fish|swallow|hard"]) {
+      const { surface: s } = testBoard(label);
+      const { points: p } = framePointsOf(s.positions);
+      for (const view of [...VIEW_NAMES.map((n) => VIEW_TURNS[n]), REST_TURN]) {
+        for (const aspect of [1.3, 0.6]) {
+          const frame = frameAtOne(p, view, aspect);
+          const box = projectedBox(p, view, frame, aspect);
+          expect(Math.max((box.x1 - box.x0) / 2, (box.y1 - box.y0) / 2)).toBeCloseTo(0.85, 4);
+          expect(Math.abs(box.x0 + box.x1) / 2).toBeLessThan(1e-4);
+          expect(Math.abs(box.y0 + box.y1) / 2).toBeLessThan(1e-4);
+          const { forward } = roomCameraAxes();
+          const q = quatMultiply(view, BOARD_TO_ROOM);
+          const nearest = Math.min(...p.map((v) => {
+            const r = rotateVec(q, v);
+            return frame.distance + r[0] * forward[0] + r[1] * forward[1] + r[2] * forward[2];
+          }));
+          expect(nearest).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
 });
 
 /** The same turn: a quaternion and its negative turn a board identically. */

@@ -280,7 +280,8 @@ test.describe("the five views, Reset View and the keys", () => {
       await viewButton(page, THREE_D_COPY.views[name]).click();
       await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS[name]), { timeout: 10_000 }).toBe(true);
       await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
-      // Pressed again, it is already there: nothing moves.
+      // Pressed again once the turn has finished, it is already there: nothing moves.
+      await settled(host);
       const there = await host.getAttribute("data-turn");
       await viewButton(page, THREE_D_COPY.views[name]).click();
       await page.waitForTimeout(600);
