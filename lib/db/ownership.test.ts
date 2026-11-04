@@ -171,9 +171,10 @@ describe("ownership (D-11's counterpart: never trust client-supplied identity)",
 
   it("app/actions/account.ts exports exactly the expected actions and no others", () => {
     // Mirrors the assertion above for app/actions/rack-order.ts (quick 261006-g4u, D-07): the Your
-    // data page's Export my designs and Delete my account.
+    // data page's Export my designs and Delete my account — and, since quick 261103-k8o, Import my
+    // designs with the read of the shaper's own board ids its preview needs.
     const fns = exportedAsyncFunctions(accountActionsSource).map((fn) => fn.name).sort();
-    expect(fns).toEqual(["deleteMyAccount", "exportMyDesigns"]);
+    expect(fns).toEqual(["deleteMyAccount", "exportMyDesigns", "importMyDesigns", "listMyBoardIds"]);
   });
 
   it("app/actions/user-blanks.ts exports exactly the expected actions and no others", () => {
@@ -341,5 +342,55 @@ describe("the board lock (quick 261008-lsy)", () => {
     const update = statement(body("setModelLocked"), "update");
     expect(update).toMatch(/\.set\(\{\s*locked\s*\}\)/);
     expect(update).not.toMatch(/updatedAt|snapshot/);
+  });
+});
+
+/**
+ * Import my designs (quick 261103-k8o, plan 02, R3): an import only ever ADDS boards. Nothing on the
+ * account is ever overwritten or removed, a locked board included, so the action holds no update and
+ * no delete; every board it writes is unlocked; and an insert that carries the file's own board id
+ * does nothing on a clash, so another account's board with that id is never touched. The preview's
+ * read of the shaper's own ids is one select and nothing else.
+ */
+describe("Import my designs only adds (quick 261103-k8o)", () => {
+  const accountSource = stripComments(readFileSync(ACCOUNT_ACTIONS_PATH, "utf8"));
+  const body = (name: string) => {
+    const fn = exportedAsyncFunctions(accountSource).find((candidate) => candidate.name === name);
+    expect(fn, `${name} not found`).toBeDefined();
+    return fn!.body;
+  };
+  /** Every `db.<verb>(` statement in a body, each up to the next db call. */
+  const statements = (source: string) => {
+    const starts = [...source.matchAll(/\bdb\.(select|insert|update|delete)\s*\(/g)].map((m) => ({
+      verb: m[1],
+      start: m.index,
+    }));
+    return starts.map((call, i) => ({
+      verb: call.verb,
+      text: source.slice(call.start, i + 1 < starts.length ? starts[i + 1].start : source.length),
+    }));
+  };
+
+  it("importMyDesigns never updates or deletes anything", () => {
+    expect(body("importMyDesigns")).not.toMatch(/\bdb\.(update|delete)\s*\(/);
+  });
+
+  it("every board importMyDesigns writes is unlocked, and the write that keeps the file's id does nothing on a clash", () => {
+    const inserts = statements(body("importMyDesigns")).filter(
+      (statement) => statement.verb === "insert" && /db\.insert\(\s*models\s*\)/.test(statement.text),
+    );
+    expect(inserts.length).toBeGreaterThan(0);
+    for (const insert of inserts) expect(insert.text).toMatch(/locked:\s*false/);
+    // The values written, `.values({ … })` alone — never the `.returning({ id: … })` after it.
+    const valuesOf = (text: string) => text.slice(text.indexOf(".values("), text.indexOf("})", text.indexOf(".values(")));
+    const keepingId = inserts.filter((insert) => /[{,]\s*id:/.test(valuesOf(insert.text)));
+    expect(keepingId).toHaveLength(1);
+    expect(keepingId[0].text).toMatch(/\.onConflictDoNothing\(/);
+  });
+
+  it("listMyBoardIds reads with exactly one select and nothing else", () => {
+    const found = statements(body("listMyBoardIds"));
+    expect(found.map((statement) => statement.verb)).toEqual(["select"]);
+    expect(found[0].text).toMatch(/eq\(\s*models\.clerkUserId\s*,\s*userId\s*\)/);
   });
 });

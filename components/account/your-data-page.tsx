@@ -17,21 +17,28 @@
  * the page body would sit behind it or fight it for focus. Clerk's own Delete account, on the same
  * panel's Security page, confirms in place with a typed word too. The browser's built-in yes/no
  * prompt is never used.
+ *
+ * Quick 261103-k8o (2026-11-03, R1b, R3): Import my designs stands between Export and Delete
+ * (`import-designs-section.tsx`). It takes an Export my designs file back, says before anything is
+ * written what will be added and what is already on the account, and never changes a board already
+ * there. Everything happens in place on this page for the reason D-04 gives, and its file picker's
+ * hidden input lives inside this page's root, because Clerk's panel treats anything outside itself
+ * as out of reach while it is open.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { deleteMyAccount, exportMyDesigns } from "@/app/actions/account";
 import { designsExportFileName, isDeleteConfirmed } from "@/lib/account/account-data";
+import { ImportDesignsSection } from "@/components/account/import-designs-section";
+import { YOUR_DATA_CLASSES as CLASSES } from "@/components/account/your-data-classes";
 import { YOUR_DATA_COPY as COPY } from "@/components/account/your-data-copy";
 
-const SECTION_CLASS = "flex flex-col gap-2 border-t border-(--ramp-daylight-line) pt-4";
-const TITLE_CLASS = "text-sm font-semibold text-(--ramp-daylight-ink)";
-const BODY_CLASS = "text-sm text-(--ramp-daylight-ink-muted)";
-const BUTTON_BASE_CLASS =
-  "inline-flex min-h-9 items-center justify-center self-start rounded-md px-4 text-sm font-medium " +
-  "transition-colors outline-none focus-visible:ring-2 focus-visible:ring-(--ramp-daylight-accent-ink) " +
-  "focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 coarse:min-h-11";
+// The page's class strings, shared with Import my designs' section since quick 261103-k8o.
+const SECTION_CLASS = CLASSES.section;
+const TITLE_CLASS = CLASSES.title;
+const BODY_CLASS = CLASSES.body;
+const BUTTON_BASE_CLASS = CLASSES.buttonBase;
 
 type ExportStatus = { text: string } | null;
 type DeleteStatus = { text: string; tone: "plain" | "warning" } | null;
@@ -164,6 +171,8 @@ export function YourDataPage() {
           {exportStatus?.text ?? ""}
         </p>
       </section>
+
+      <ImportDesignsSection />
 
       <section className={SECTION_CLASS} aria-labelledby="your-data-delete-title">
         {confirming ? (
