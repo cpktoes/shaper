@@ -120,6 +120,17 @@ database change.
   placement, which it never has, in the spirit of Phase 4's "rails read no rocker"). — **Reversibility:**
   costly — a stored field on every hard-edged board from then on, and the litres of saved boards move once.
 
+- **D-21:** **The 3D fins are generic and basic, one outline per role, with a true base.** The founder, 2026-11-03,
+  during the planning research: "Also research fins that would be used in the 3D. Let's keep things as generic and
+  basic as possible (single fin centered in the 10 in box, appropriate twin style, thruster, and quad setup with
+  slightly smaller rear quads). Fin bases should be true and just scale the base, don't shrink the whole fin. All fins
+  should be super basic and generic." So: a single fin centred in the 10" box at FINS' placement; a keel-style twin for
+  the twin setup; the thruster's three alike; the quad's fronts like the thruster's sides and its rears with a slightly
+  smaller base. Each fin's base is exactly FINS' base length for that fin, and a smaller fin is made by scaling its base
+  only — depth and outline character stay; never the whole fin shrunk uniformly. No maker's foil or named template. The
+  research (question M) proposes the generic outline, depth, rake and thickness per role; this supersedes the UI contract's
+  "depth 1.0 × base, rake 0.25 × base" discretion call. — **Reversibility:** reversible — pure outlines in `lib/geometry/`.
+
 ### Carried forward
 - **D-17:** **No database change.** The 3D screen reads the board in the design store; the switches and the
   view are screen state, not saved; the export is built in the browser from that state. (The project's Database
