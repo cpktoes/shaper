@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-11-04T04:48:38.613Z"
+stopped_at: Phase 16 UI-SPEC approved
+last_updated: "2026-11-04T05:53:14.685Z"
 last_activity: 2026-11-03
 last_activity_desc: "LIVE: main pushed (291152e8) on the founder's word after the full gate (6,777 unit tests, type check, lint, a production build, 18 production-build specs, 1,346 browser tests with 5 load timeouts that passed alone); the live site served the new version at 19:18 PST. Live now: the Board Rack's smooth swallow and diamond turn (261103-drw), litres that follow the tail (261103-gcm), Save board as file… / Open a board file… and Import my designs with a preview (261103-k8o). The founder checked both on the live site the same evening: export then import of a board on his own account worked, and his iPhone saved a board to Files and opened the file"
 progress:
@@ -558,9 +558,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-04T04:48:38.471Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-3d-board-and-cnc-export/16-CONTEXT.md
+Last session: 2026-11-04T05:53:14.613Z
+Stopped at: Phase 16 UI-SPEC approved
+Resume file: .planning/phases/16-3d-board-and-cnc-export/16-UI-SPEC.md
 Next action: the next unticked item in 13-SPEC.md's Progress Log, as `/gsd-quick "Phase 13 item N: …"`, then stop for the founder's review
 
 ## Operator Next Steps
