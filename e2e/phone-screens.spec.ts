@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 
 /**
  * 09-03's own proof, extending 09-02's phone-shell test file's own pattern to the three screens
@@ -64,7 +64,7 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
 
       // No bottom tab bar since quick 261003-q2f: the menu's six tiles, this screen's ticked.
       await expectNoScreensNavigation(page);
-      await expectSixTilesInMenu(page, label);
+      await expectSevenTilesInMenu(page, label);
     });
   }
 });

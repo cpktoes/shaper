@@ -9,7 +9,7 @@ import {
 import {
   SCREENS,
   expectNoScreensNavigation,
-  expectSixTilesInMenu,
+  expectSevenTilesInMenu,
   goToScreen,
   openPhoneMenu,
   screenTile,
@@ -20,8 +20,8 @@ import { presetSummary } from "../lib/geometry/summary-line";
 
 /**
  * Quick 261003-q2f (sketch 007's C1): wherever the top bar is condensed into ☰, it opens a sheet
- * the window's width, hanging from the 48-dot bar, whose first six items are tiles of the six design
- * screens — each a small picture of the board being worked on right now, its name and one line. The
+ * the window's width, hanging from the 48-dot bar, whose first seven items are tiles of the seven design
+ * screens (3D joined them in Phase 16) — each a small picture of the board being worked on right now, its name and one line. The
  * current screen's tile is ticked; tapping another moves there and keeps the board.
  */
 
@@ -71,27 +71,44 @@ async function tileBoxes(page: Page) {
   return boxes;
 }
 
-test.describe("☰ opens six tiles drawn from the current board (upright phone)", () => {
+/** Upright, the seven tiles stand four over three (16-08's grid, D-03): the tops take two values —
+ * the first four tiles on one, the last three on the other — the first four stand at four different
+ * lefts, and the tiles of a row share one height. (The two rows need not match each other: the top
+ * row grows when ROCKER's tile carries the blank's rocker on a second line.) */
+function expectFourOverThree(boxes: Array<{ x: number; y: number; height: number }>) {
+  expect(boxes).toHaveLength(7);
+  const tops = boxes.map((b) => Math.round(b.y));
+  expect(new Set(tops).size).toBe(2);
+  expect(new Set(tops.slice(0, 4)).size).toBe(1);
+  expect(new Set(tops.slice(4)).size).toBe(1);
+  expect(tops[4]).toBeGreaterThan(tops[0]);
+  expect(new Set(boxes.slice(0, 4).map((b) => Math.round(b.x))).size).toBe(4);
+  for (const row of [boxes.slice(0, 4), boxes.slice(4)]) {
+    const heights = row.map((b) => b.height);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(1);
+  }
+}
+
+test.describe("☰ opens seven tiles drawn from the current board (upright phone)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "the tiles live in the phone's ☰ sheet");
     await dismissChrome(page);
   });
 
-  test("the Shortboard's six tiles: order, grid, pictures, lines, the tick, and a client-side move", async ({
+  test("the Shortboard's seven tiles: order, grid, pictures, lines, the tick, and a client-side move", async ({
     page,
   }) => {
     await openPreset(page);
     const sheet = await openPhoneMenu(page);
 
     const tiles = sheet.locator("[data-screen-tile]");
-    await expect(tiles).toHaveCount(6);
+    await expect(tiles).toHaveCount(7);
     const hrefs = await tiles.evaluateAll((els) => els.map((el) => el.getAttribute("data-screen-tile")));
     expect(hrefs).toEqual(SCREENS.map((s) => s.href));
 
-    // Three across, two down.
+    // Four across, two down: TEMPLATE ROCKER RAILS VOLUME over FINS SUMMARY 3D.
     const boxes = await tileBoxes(page);
-    expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBe(3);
-    expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(2);
+    expectFourOverThree(boxes);
 
     // Each picture is that screen's own drawing.
     await expect(screenTile(page, "TEMPLATE").locator("[data-tile-picture] path")).toHaveCount(1);
@@ -102,10 +119,11 @@ test.describe("☰ opens six tiles drawn from the current board (upright phone)"
     await expect(screenTile(page, "FINS").locator("[data-tile-picture] line")).toHaveCount(3);
     await expect(screenTile(page, "SUMMARY").locator("[data-tile-picture] rect")).toHaveCount(1);
     expect(await screenTile(page, "SUMMARY").locator("[data-tile-picture] path").count()).toBeGreaterThanOrEqual(1);
+    expect(await screenTile(page, "3D").locator("[data-tile-picture] path").count()).toBeGreaterThanOrEqual(1);
 
     const lines = [];
     for (const screen of SCREENS) lines.push(await tileLine(screenTile(page, screen.label)));
-    expect(lines).toEqual([`6'2" × 18 3/4"`, `On a 6'3"RP`, "Center rail", "Estimated", "Thruster", "Order form"]);
+    expect(lines).toEqual([`6'2" × 18 3/4"`, `On a 6'3"RP`, "Center rail", "Estimated", "Thruster", "Order form", "Spin and export"]);
 
     // TEMPLATE is the one ticked tile.
     const current = sheet.locator('[data-screen-tile][aria-current="page"]');
@@ -128,7 +146,7 @@ test.describe("☰ opens six tiles drawn from the current board (upright phone)"
   });
 });
 
-/** The sheet's own box and the six tiles', for the checks below and the SUMMARY's figures. */
+/** The sheet's own box and the seven tiles', for the checks below and the SUMMARY's figures. */
 async function sheetAndTiles(page: Page) {
   const sheet = await openPhoneMenu(page);
   const sheetBox = await sheet.boundingBox();
@@ -137,7 +155,7 @@ async function sheetAndTiles(page: Page) {
   return { sheet, sheetBox, bannerBox, tiles: await tileBoxes(page) };
 }
 
-test.describe("held sideways, the six tiles sit in one row of six (P-1)", () => {
+test.describe("held sideways, the seven tiles sit in one row of seven (P-1)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "a phone held sideways");
     await dismissChrome(page);
@@ -149,7 +167,7 @@ test.describe("held sideways, the six tiles sit in one row of six (P-1)", () => 
     { project: "iphone", width: 844, height: 340 },
   ];
   for (const size of sizes) {
-    test(`${size.width}x${size.height}: one row, each tile over 120 dots wide, all whole in a window-wide sheet under the bar`, async ({
+    test(`${size.width}x${size.height}: one row, each tile over 104 dots wide, all whole in a window-wide sheet under the bar`, async ({
       page,
     }, testInfo) => {
       test.skip(testInfo.project.name !== size.project, `measured on the ${size.project} project`);
@@ -169,7 +187,7 @@ test.describe("held sideways, the six tiles sit in one row of six (P-1)", () => 
 
       expect(new Set(tiles.map((t) => Math.round(t.y))).size).toBe(1);
       for (const tile of tiles) {
-        expect(tile.width).toBeGreaterThan(120);
+        expect(tile.width).toBeGreaterThan(104);
         expect(tile.y).toBeGreaterThanOrEqual(sheetBox.y - 1);
         expect(tile.y + tile.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height + 1);
         expect(tile.x + tile.width).toBeLessThanOrEqual(size.width + 1);
@@ -181,13 +199,13 @@ test.describe("held sideways, the six tiles sit in one row of six (P-1)", () => 
   }
 });
 
-test.describe("upright, three across and two down (P-1)", () => {
+test.describe("upright, four across and two down (P-1)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "an upright phone");
     await dismissChrome(page);
   });
 
-  test("the window-wide sheet under the bar holds a 3x2 grid of tiles at least 44 dots each way", async ({
+  test("the window-wide sheet under the bar holds a 4-over-3 grid of tiles at least 44 dots each way", async ({
     page,
   }, testInfo) => {
     await openPreset(page);
@@ -197,8 +215,7 @@ test.describe("upright, three across and two down (P-1)", () => {
     expect(Math.abs(sheetBox.x)).toBeLessThanOrEqual(0.5);
     expect(Math.abs(sheetBox.width - viewport.width)).toBeLessThanOrEqual(1);
     expect(Math.abs(sheetBox.y - (bannerBox.y + bannerBox.height))).toBeLessThanOrEqual(1);
-    expect(new Set(tiles.map((t) => Math.round(t.x))).size).toBe(3);
-    expect(new Set(tiles.map((t) => Math.round(t.y))).size).toBe(2);
+    expectFourOverThree(tiles);
     for (const tile of tiles) {
       expect(tile.width).toBeGreaterThanOrEqual(44);
       expect(tile.height).toBeGreaterThanOrEqual(44);
@@ -333,10 +350,10 @@ test.describe("every tile reads the current board", () => {
   });
 
   for (const route of ["/", "/contact", "/privacy"]) {
-    test(`${route}: ☰ shows the six tiles with none ticked`, async ({ page }) => {
+    test(`${route}: ☰ shows the seven tiles with none ticked`, async ({ page }) => {
       await page.goto(route);
       await expectNoScreensNavigation(page);
-      await expectSixTilesInMenu(page, null);
+      await expectSevenTilesInMenu(page, null);
     });
   }
 });
@@ -404,7 +421,7 @@ async function rockerLineKeepsPictures(page: Page, label: string) {
   const noneTile = (await rocker.boundingBox())!;
 
   for (const heights of [natural, custom, none]) {
-    expect(heights).toHaveLength(6);
+    expect(heights).toHaveLength(7);
     for (const h of heights) expect(Math.abs(h - 46)).toBeLessThanOrEqual(1);
   }
   console.log(
@@ -445,7 +462,7 @@ test.describe("a computer is unchanged (1280x800)", () => {
     await dismissChrome(page);
   });
 
-  test("the desktop row shows all six links, with no Menu button, no tiles and no Screens navigation", async ({
+  test("the desktop row shows all seven links, with no Menu button, no tiles and no Screens navigation", async ({
     page,
   }) => {
     await page.goto("/design/outline");

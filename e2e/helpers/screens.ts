@@ -1,12 +1,12 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
- * One way for every browser test to walk the six design screens (quick 261003-q2f). On a tall, wide
- * window that is the desktop row's own link; everywhere the top bar is condensed into ☰ (an upright
- * phone, a phone held sideways) it is ☰ and then that screen's tile. There is no bottom tab bar any
- * more.
+ * One way for every browser test to walk the seven design screens (quick 261003-q2f; 3D joined them
+ * in Phase 16). On a tall, wide window that is the desktop row's own link; everywhere the top bar is
+ * condensed into ☰ (an upright phone, a phone held sideways) it is ☰ and then that screen's tile.
+ * There is no bottom tab bar any more.
  *
- * The six screens are written out here rather than imported from `components/site-nav.tsx`'s
+ * The seven screens are written out here rather than imported from `components/site-nav.tsx`'s
  * `NAV_LINKS`: that file pulls the app's database client in through its Save button, which
  * Playwright's own Node process cannot load — and a test that read what it proves from the thing
  * itself could pass for the wrong reason.
@@ -18,6 +18,7 @@ export const SCREENS = [
   { href: "/design/volume", label: "VOLUME" },
   { href: "/design/fins", label: "FINS" },
   { href: "/design/summary", label: "SUMMARY" },
+  { href: "/design/3d", label: "3D" },
 ] as const;
 
 export type ScreenLabel = (typeof SCREENS)[number]["label"];
@@ -68,12 +69,12 @@ export async function expectNoScreensNavigation(page: Page): Promise<void> {
   await expect(page.getByRole("navigation", { name: "Screens", exact: true })).toHaveCount(0);
 }
 
-/** Opens ☰, checks it holds the six tiles in order with `current` ticked (or none ticked on a page
+/** Opens ☰, checks it holds the seven tiles in order with `current` ticked (or none ticked on a page
  * that is not a design screen), then closes it again with Escape. */
-export async function expectSixTilesInMenu(page: Page, current: ScreenLabel | null): Promise<void> {
+export async function expectSevenTilesInMenu(page: Page, current: ScreenLabel | null): Promise<void> {
   const sheet = await openPhoneMenu(page);
   const tiles = sheet.locator("[data-screen-tile]");
-  await expect(tiles).toHaveCount(6);
+  await expect(tiles).toHaveCount(7);
   expect(await tiles.evaluateAll((els) => els.map((el) => el.getAttribute("data-screen-tile")))).toEqual(
     SCREENS.map((s) => s.href),
   );

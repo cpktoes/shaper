@@ -4,7 +4,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { CONTACT_COPY, CONTACT_ROUTE } from "../lib/contact/message";
 import { ERROR_COPY, NOT_FOUND_COPY } from "../lib/error-pages/copy";
 import { FORCED_ERROR_MESSAGE, FORCED_ERROR_ROUTE } from "../lib/error-pages/forced-error";
-import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 
 /**
  * Quick 260930-fjm (Phase 13 item 12). Task 2 proves the not-found page's ways forward and the
@@ -56,7 +56,7 @@ async function expectShell(page: Page, projectName: string, screen: string): Pro
       expect(height).toBeGreaterThanOrEqual(44);
     }
 
-    await expectSixTilesInMenu(page, null);
+    await expectSevenTilesInMenu(page, null);
   } else {
     await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeHidden();

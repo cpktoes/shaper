@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SCREENS, expectNoScreensNavigation, expectSixTilesInMenu, goToScreen } from "./helpers/screens";
+import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu, goToScreen } from "./helpers/screens";
 
 /**
  * Phase 10 plan 04, Task 1 — the machine pass over PHON-10's whole trip, walked once by
@@ -68,7 +68,7 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     for (const screen of SCREENS) {
       await goToScreen(page, screen.label);
       await expect(page).toHaveURL(new RegExp(`${screen.href}$`));
-      await expectSixTilesInMenu(page, screen.label);
+      await expectSevenTilesInMenu(page, screen.label);
     }
 
     // We should now be on SUMMARY, the last screen.

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SCREENS, expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 
 /**
  * 260909-hq9's own proof: the founder reported the phone home screen ("Phone Homepage layout is
@@ -59,7 +59,7 @@ test.describe("phone home screen — no bottom tab bar here or after a board is 
     // The old bottom tab bar never rendered here (D-07), and since quick 261003-q2f it renders
     // nowhere; the six screens are in the top bar's menu, as tiles, with none ticked on this page.
     await expectNoScreensNavigation(page);
-    await expectSixTilesInMenu(page, null);
+    await expectSevenTilesInMenu(page, null);
 
     const firstPreset = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
     await firstPreset.click();
