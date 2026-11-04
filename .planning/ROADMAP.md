@@ -64,6 +64,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
+- [ ] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide — opened 2026-11-03 on branch `board-3d`
 
 ## Phase Details
 
@@ -310,6 +311,18 @@ Plans:
 - [x] 15-13-PLAN.md — Go-live: pictures, the read-only report, the production migration with the founder present, one push, a live check, then hand over the rehearsal walk (R10)
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no hand-typed expected number (Rule 1); every number through `units.ts` / `formatSummaryLine` (Rule 2); the rack kind read only from the pointer, never width (D-04); the unsaved board always first and never moved (R9); the order column is added on the development branch during the work and reaches production only inside 15-13 with the founder present, before the push (Database rule); the test-only `/test-rack` route 404s in production; no new package; nothing pushed without the founder's go and nothing after the Wednesday 2026-10-07 freeze.
+
+### Phase 16: 3D Board and CNC Export
+
+**Goal:** A shaper sees the board they designed as a solid, realistic surface they can spin and move in every direction, lit the way a shaping room is lit so every contour shows, on a 3D screen of its own; and takes that surface away as a file a CNC shaping program (Shape3D, AkuShaper) can read as a 3D guide — a wireframe (DXF) and/or XYZ text files for the outline, the profile and the slices. The surface is built from the same cross-sections the litres count (the finished rail at every station along the rocker), so what the shaper sees and exports is exactly what VOLUME counts. Reading Shape3D's and AkuShaper's own files (.s3d/.s3dx, .brd) is deliberately left for a later phase.
+**Requirements**: TBD (set in the discussion, 16-CONTEXT.md)
+**Brief:** to be written from the founder's words of 2026-11-03 (16-SPEC.md)
+**Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 16 to break down)
 
 ---
 
