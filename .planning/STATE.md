@@ -4,17 +4,17 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
 stopped_at: "Phase 16 (3D Board and CNC Export) PLANNED and APPROVED 2026-11-04 on branch board-3d: 14 plans in 10 waves, two go-lives (D-29: the fade and the slider first, the 3D screen second); next /gsd-execute-phase 16, starting with 16-01"
-last_updated: "2026-11-04T08:18:34.623Z"
+last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
 last_activity_desc: "Phase 16 planned: the 3D board and the CNC export, 14 plans in 10 waves on branch board-3d; the founder approves next"
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 58
-  completed_plans: 42
-  percent: 72
+  completed_phases: 2
+  total_plans: 45
+  completed_plans: 31
+  percent: 50
 current_phase: 13
-current_phase_name: Ready for the Shapers
+current_phase_name: 3d-board-and-cnc-export
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 16 — 3D Board and CNC Export, planned on branch board-3d; approved 2026-11-04 with two go-lives; next /gsd-execute-phase 16
+**Current focus:** Phase 16 — 3d-board-and-cnc-export
 
 ## Current Position
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Ready to execute
-Last activity: 2026-11-04 — Phase 16 (3D Board and CNC Export) PLANNED on branch board-3d: opened and discussed 2026-11-03 (D-01–D-22), the screen contract approved, the research measured in a sandbox and ruled on (D-23–D-28), 14 plans in 10 waves, the checker's second look passed. Approved by the founder 2026-11-04 with TWO go-lives (D-29). Next: /gsd-execute-phase 16, starting with 16-01. Main is live and clean; nothing on board-3d is pushed
+Status: Executing Phase 16
+Last activity: 2026-11-04 — Phase 16 execution started
 
 ## Performance Metrics
 
