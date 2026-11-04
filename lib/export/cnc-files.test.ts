@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { boardSlices, buildBoardSurface, meshCheck, type BoardSurface, type BoardSurfaceInput } from "../geometry/board-surface";
+import {
+  boardOutlineLoop,
+  boardProfileLines,
+  boardSlices,
+  buildBoardSurface,
+  meshCheck,
+  type BoardSurface,
+  type BoardSurfaceInput,
+} from "../geometry/board-surface";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -7,11 +15,15 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "../geometry/design";
-import { buildOutline } from "../geometry/outline";
+import { buildOutline, foamHalfWidth, tailCutStation } from "../geometry/outline";
+import { BOARD_PRESETS } from "../geometry/presets";
+import { crossSectionStations } from "../geometry/volume";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { boardFileName, boardFileStem, BOARD_FILE_EXTENSION } from "../models/board-file";
-import { cncFiles, cncZip } from "./cnc-files";
+import { CNC_LAYERS, cncFiles, cncZip, sliceFileName } from "./cnc-files";
+import { DXF_POLYLINE_3D, DXF_VERTEX_3D, readDxf } from "./dxf";
 import { readStl, stlHeader } from "./stl";
+import { formatMm, readXyz } from "./xyz";
 import { readZip } from "./zip";
 
 /**
@@ -143,5 +155,167 @@ describe("the export's names never leave the zip's top folder (T-16-10)", () => 
     const header = stlHeader(boardFileStem("x".repeat(300)));
     expect(header.length).toBeLessThanOrEqual(80);
     expect(header.endsWith(" mm")).toBe(true);
+  });
+});
+
+/** A point as the files write it, to three decimals — how a file's point is matched to a mesh vertex. */
+const fileKey = (p: readonly number[]) => `${formatMm(p[0])} ${formatMm(p[1])} ${formatMm(p[2])}`;
+
+/** Every vertex of a mesh, to the files' three decimals. */
+function vertexFileKeys(surface: BoardSurface): Set<string> {
+  const keys = new Set<string>();
+  const p = surface.positions;
+  for (let v = 0; v < p.length / 3; v++) keys.add(fileKey([p[3 * v], p[3 * v + 1], p[3 * v + 2]]));
+  return keys;
+}
+
+/** The heavy sweep's per-test allowance (the export plus every reader, on a shared machine). */
+const SWEEP_TIMEOUT_MS = 120_000;
+
+describe("the whole export, on every preset and every swallow of the 40-board set (D-14, D-24, D-26)", () => {
+  const sweep = BOARDS.filter((b) => /\|(asis|swallow)\|/.test(b.label));
+  const presetName = (label: string) => {
+    const preset = BOARD_PRESETS.find((p) => label.startsWith(`${p.id}|`));
+    if (!preset) throw new Error(`no preset for ${label}`);
+    return preset.name;
+  };
+
+  it.each(sweep.map((b) => [b.label, b] as const))(
+    "%s",
+    (_label, board) => {
+      const surface = surfaceOf(board.fields);
+      const name = presetName(board.label);
+      const stem = boardFileStem(name);
+      const zip = cncZip(surface, name);
+      const entries = readZip(zip.data);
+      const entry = (file: string) => {
+        const found = entries.find((e) => e.name === file);
+        if (!found) throw new Error(`no ${file} in ${zip.name}`);
+        return found;
+      };
+      const text = (file: string) => new TextDecoder().decode(entry(file).data);
+      const slices = boardSlices(surface);
+      const keys = vertexFileKeys(surface);
+
+      // The names are exactly D-14's set, in order, every CRC good.
+      expect(zip.name).toBe(`${stem}-3d.zip`);
+      expect(zip.sliceCount).toBe(slices.length);
+      expect(entries.map((e) => e.name)).toEqual([
+        `${stem}.dxf`,
+        `${stem}.stl`,
+        `${stem}-outline.txt`,
+        `${stem}-profile.txt`,
+        ...slices.map((_, i) => sliceFileName(stem, i, slices.length)),
+      ]);
+      expect(entries.filter((e) => /-slice-\d+\.txt$/.test(e.name)).length).toBe(zip.sliceCount);
+      for (const e of entries) expect(e.crcOk, e.name).toBe(true);
+
+      // Slice 01 is the first litres station with foam (on a swallow, not the tail tip).
+      const geometry = buildOutline(board.fields.outline);
+      const stations = crossSectionStations(board.fields.outline.length, tailCutStation(geometry));
+      const withFoam = stations.filter((station) => foamHalfWidth(geometry, station) > 0);
+      expect(slices.map((slice) => slice.station)).toEqual(withFoam);
+
+      // Every slice file is its slice: the same loops, on its station, every point a vertex of the mesh.
+      slices.forEach((slice, i) => {
+        const loops = readXyz(text(sliceFileName(stem, i, slices.length)));
+        expect(loops.length).toBe(slice.loops.length);
+        loops.forEach((loop, k) => {
+          expect(loop.length).toBe(slice.loops[k].length);
+          loop.forEach((p, j) => {
+            expect(fileKey(p)).toBe(fileKey(slice.loops[k][j]));
+            expect(keys.has(fileKey(p))).toBe(true);
+            expect(formatMm(p[0])).toBe(formatMm(slice.station));
+          });
+        });
+      });
+      // A swallow's slices inside the notch are two pieces; the first such slice is the tail's first.
+      if (board.fields.outline.tail.kind === "swallow") {
+        expect(slices[0].loops.length).toBe(2);
+        expect(slices[0].station).toBeGreaterThan(stations[0]);
+        expect(slices.some((slice) => slice.loops.length === 1)).toBe(true);
+      }
+
+      // The outline and the profile files: the mesh's own curves, the profile as deck then bottom.
+      const outline = boardOutlineLoop(surface);
+      const profile = boardProfileLines(surface);
+      const outlineBack = readXyz(text(`${stem}-outline.txt`));
+      expect(outlineBack.length).toBe(1);
+      expect(outlineBack[0].map(fileKey)).toEqual(outline.map(fileKey));
+      const profileBack = readXyz(text(`${stem}-profile.txt`));
+      expect(profileBack.length).toBe(2);
+      expect(profileBack[0].map(fileKey)).toEqual(profile.deck.map(fileKey));
+      expect(profileBack[1].map(fileKey)).toEqual(profile.bottom.map(fileKey));
+      for (const p of [...outlineBack[0], ...profileBack[0], ...profileBack[1]]) expect(keys.has(fileKey(p))).toBe(true);
+      // z up toward the deck: the deck line never under the bottom line, and well above it mid-board.
+      profile.deck.forEach((p, i) => expect(p[2]).toBeGreaterThanOrEqual(profile.bottom[i][2]));
+      const middle = Math.floor(profile.deck.length / 2);
+      expect(profile.deck[middle][2]).toBeGreaterThan(profile.bottom[middle][2]);
+
+      // The DXF: one OUTLINE (closed), one PROFILE-DECK and one PROFILE-BOTTOM (open), one SLICES per loop.
+      const dxf = readDxf(text(`${stem}.dxf`));
+      const onLayer = (layer: string) => dxf.polylines.filter((p) => p.layer === layer);
+      expect(onLayer(CNC_LAYERS.outline).length).toBe(1);
+      expect(onLayer(CNC_LAYERS.deck).length).toBe(1);
+      expect(onLayer(CNC_LAYERS.bottom).length).toBe(1);
+      expect(onLayer(CNC_LAYERS.slices).length).toBe(slices.reduce((n, slice) => n + slice.loops.length, 0));
+      expect(dxf.polylines.length).toBe(3 + onLayer(CNC_LAYERS.slices).length);
+      expect(onLayer(CNC_LAYERS.outline)[0].flags).toBe(DXF_POLYLINE_3D + 1);
+      expect(onLayer(CNC_LAYERS.deck)[0].flags).toBe(DXF_POLYLINE_3D);
+      expect(onLayer(CNC_LAYERS.bottom)[0].flags).toBe(DXF_POLYLINE_3D);
+      for (const p of onLayer(CNC_LAYERS.slices)) expect(p.flags).toBe(DXF_POLYLINE_3D + 1);
+      for (const p of dxf.polylines) for (const flag of p.vertexFlags) expect(flag).toBe(DXF_VERTEX_3D);
+      expect(onLayer(CNC_LAYERS.outline)[0].points.map(fileKey)).toEqual(outline.map(fileKey));
+      expect(onLayer(CNC_LAYERS.deck)[0].points.map(fileKey)).toEqual(profile.deck.map(fileKey));
+      expect(onLayer(CNC_LAYERS.bottom)[0].points.map(fileKey)).toEqual(profile.bottom.map(fileKey));
+      const dxfSlices = onLayer(CNC_LAYERS.slices);
+      let at = 0;
+      for (const slice of slices) {
+        for (const loop of slice.loops) {
+          expect(dxfSlices[at].points.map(fileKey)).toEqual(loop.map(fileKey));
+          at++;
+        }
+      }
+
+      // Shape3D's frame: the tail at x = 0, the nose at the board's length, z = 0 at the bottom's lowest point.
+      const stl = readStl(entry(`${stem}.stl`).data);
+      expect(stl.count).toBe(surface.triangleCount);
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minZ = Infinity;
+      for (const triangle of stl.triangles) {
+        for (const p of triangle) {
+          minX = Math.min(minX, p[0]);
+          maxX = Math.max(maxX, p[0]);
+          minZ = Math.min(minZ, p[2]);
+        }
+      }
+      expect(formatMm(minX)).toBe(formatMm(0));
+      expect(formatMm(maxX)).toBe(formatMm(surface.length));
+      expect(formatMm(minZ)).toBe(formatMm(Math.min(...profile.bottom.map((p) => p[2]))));
+      expect(formatMm(Math.min(...profile.bottom.map((p) => p[2])))).toBe(formatMm(0));
+    },
+    SWEEP_TIMEOUT_MS,
+  );
+});
+
+describe("slice file names (D-14)", () => {
+  it("count from the tail in two digits", () => {
+    expect(sliceFileName("Fish", 0, 50)).toBe("Fish-slice-01.txt");
+    expect(sliceFileName("Fish", 49, 50)).toBe("Fish-slice-50.txt");
+    expect(sliceFileName("Fish", 98, 99)).toBe("Fish-slice-99.txt");
+  });
+
+  it("run to three digits, every one of them, past 99 slices (a synthetic slice list)", () => {
+    const names = Array.from({ length: 120 }, (_, i) => sliceFileName("Long", i, 120));
+    expect(names[0]).toBe("Long-slice-001.txt");
+    expect(names[119]).toBe("Long-slice-120.txt");
+    expect(names.every((name) => /^Long-slice-\d{3}\.txt$/.test(name))).toBe(true);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("sort in board order as plain text", () => {
+    const names = Array.from({ length: 50 }, (_, i) => sliceFileName("Fish", i, 50));
+    expect([...names].sort()).toEqual(names);
   });
 });
