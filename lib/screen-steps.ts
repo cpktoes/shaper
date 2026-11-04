@@ -1,11 +1,12 @@
 /**
- * The order a board is shaped in — TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY — and the one
- * question the Back and Next buttons ask of it: "from this screen, which one comes before and which
- * one comes after?"
+ * The order a board is shaped in — TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY, 3D, the seven
+ * design screens — and the one question the Back and Next buttons ask of it: "from this screen, which
+ * one comes before and which one comes after?" SUMMARY's Next goes to 3D (Phase 16), the board seen
+ * as a solid, which is the end of the chain.
  *
  * The list of screens is passed in rather than written here, so the app's top row, the phone menu's
  * screen tiles and these buttons all keep reading the one copy (`NAV_LINKS` in `components/site-nav.tsx`) and can
- * never disagree about the order. It never wraps round: Back on TEMPLATE or Next on SUMMARY would
+ * never disagree about the order. It never wraps round: Back on TEMPLATE or Next on 3D would
  * have nowhere sensible to go, so those two ends simply have no button.
  *
  * Pure, with no React or Next import, so it can be tested on its own.
@@ -34,7 +35,11 @@ export function screenStepsAround<T extends ScreenLink>(
   return { previous: screens[index - 1] ?? null, next: screens[index + 1] ?? null };
 }
 
-/** A screen's capitals as the word a button reads: "ROCKER" becomes "Rocker". */
+/** A screen's capitals as the word a button reads: "ROCKER" becomes "Rocker". A label that does not
+ * start with a letter is shown exactly as written, so "3D" reads "3D", never "3d" (Phase 16 UI-SPEC). */
 export function screenWord(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+  const first = label.charAt(0);
+  // A letter is the one kind of character whose capital and small forms differ.
+  if (first.toUpperCase() === first.toLowerCase()) return label;
+  return first.toUpperCase() + label.slice(1).toLowerCase();
 }

@@ -25,7 +25,7 @@
  * row the desktop gear menu carries; it never hides.
  *
  * Since quick 261003-q2f (sketch 007's C1; the founder: "build it now, use on all screens that
- * condense the top bar into a menu") the popup is a SHEET whose first items are the six screen tiles
+ * condense the top bar into a menu") the popup is a SHEET whose first items are the seven screen tiles
  * (`components/design/screen-tiles.tsx`) — a small picture of the current board as each screen draws
  * it, the screen's name and one line — wherever this menu shows: an upright phone, and any short
  * screen such as a phone held sideways. The rows that were already here follow, unchanged. The same
@@ -95,7 +95,7 @@ export function PhoneMenu({
               the room below it, scrolling inside itself past that. The safe-area insets keep a real
               iPhone's notch and home bar off the tiles and rows; they are 0 everywhere else. */}
           <Menu.Popup className="max-h-(--available-height) w-(--anchor-width) overflow-y-auto overscroll-contain border-b border-surf-line-faint bg-surf-panel pt-3 pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] shadow-lg outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:slide-in-from-top-2 data-closed:animate-out data-closed:fade-out-0 data-closed:slide-out-to-top-2">
-            {/* The six screens as pictures of the current board, first wherever this menu shows. */}
+            {/* The seven screens as pictures of the current board, first wherever this menu shows. */}
             <ScreenTiles screens={screens} />
             {/* Ten dots of air, no divider, between the tiles and the rows. */}
             <div aria-hidden className="h-2.5" />

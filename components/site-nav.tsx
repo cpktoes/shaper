@@ -3,7 +3,7 @@
 /**
  * Top nav shared by the whole app (mounted once in app/layout.tsx), so a shaper can move between
  * the setup screen, the outline editor, the rail band calculator, the volume estimator, the fin
- * placement screen and the summary dashboard entirely via client-side navigation, never by
+ * placement screen, the summary dashboard and the 3D board entirely via client-side navigation, never by
  * editing the URL. An anonymous or never-saved board still lives only in the design store's
  * memory, so a hard navigation would drop it — but a saved board on a signed-in shaper's account
  * now survives one, since it autosaves to Postgres regardless of how the shaper moves between
@@ -23,10 +23,11 @@ import { SaveButton } from "@/components/design/save-button";
 import { PhoneTopBar } from "@/components/design/phone-top-bar";
 import { Wordmark } from "@/components/wordmark";
 
-/** The six design screens, in order — the one copy every reader shares, so the labels and order can
- * never drift: the desktop row below, the phone menu's six screen tiles (handed this same list as a
+/** The seven design screens, in order — the one copy every reader shares, so the labels and order can
+ * never drift: the desktop row below, the phone menu's seven screen tiles (handed this same list as a
  * prop by this file, see the `PhoneTopBar` mount below; quick 261003-q2f) and the Back and Next
- * pair at the end of each screen's controls (`step-nav.tsx`). */
+ * pair at the end of each screen's controls (`step-nav.tsx`). 3D (Phase 16) is the seventh, last
+ * after SUMMARY: the board seen as a solid once it is designed, and the CNC export. */
 export const NAV_LINKS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rocker", label: "ROCKER" },
@@ -34,6 +35,7 @@ export const NAV_LINKS = [
   { href: "/design/volume", label: "VOLUME" },
   { href: "/design/fins", label: "FINS" },
   { href: "/design/summary", label: "SUMMARY" },
+  { href: "/design/3d", label: "3D" },
 ] as const;
 
 /** One entry of NAV_LINKS, exported so `components/design/phone-menu.tsx` can type the `screens`
@@ -42,7 +44,7 @@ export type NavLink = (typeof NAV_LINKS)[number];
 
 /** Below the shell breakpoint, every page the app draws uses the phone's top bar — there is no
  * fixed list of addresses this applies to, because the not-found page can sit at any address
- * (P-2, quick 260930-fjm). Its menu opens the six screen tiles on every page, so no page needs a
+ * (P-2, quick 260930-fjm). Its menu opens the seven screen tiles on every page, so no page needs a
  * bar of its own (the old bottom tab bar each page used to mount was removed in quick
  * 261003-q2f). Before this change a mistyped address gave a phone the desktop link row squeezed
  * into its width, with no phone top bar at all (measured 2026-09-30, quick 260930-fjm).
@@ -86,7 +88,12 @@ export function SiteNav() {
         >
           <Wordmark className="block h-auto w-full" />
         </Link>
-        <div className="flex items-center gap-4 lg:gap-5">
+        {/* The gap between the links steps with the width — 12 dots below 1024, 16 from 1024, 20
+            from 1280 — so seven links, the chrome and `Sign in` fit at 820 without overflowing, and
+            from 900 `Sign in` stays on one line (Phase 16 UI-SPEC §11, measured with 3D added: with
+            the old 16 / 20 the row overflowed by 7 dots at 820 and `Sign in` wrapped at 1024).
+            From 1280 up the row is exactly as it was. */}
+        <div className="flex items-center gap-3 lg:gap-4 xl:gap-5">
           {NAV_LINKS.map((link) => {
             const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);
             return (
@@ -105,7 +112,7 @@ export function SiteNav() {
             );
           })}
           {/* Sits inside the same right-hand cluster as the screen links, separated by a rule
-              rather than by distance: it is chrome, not a sixth screen, so it should read as a
+              rather than by distance: it is chrome, not an eighth screen, so it should read as a
               different kind of thing without drifting away from the group. */}
           <span aria-hidden className="ml-1 h-4 w-px bg-surf-line-faint" />
           {/* A way home that isn't the logo, sitting beside the gear as the same kind of

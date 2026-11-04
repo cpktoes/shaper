@@ -1,5 +1,6 @@
 /**
- * The small pictures in the phone menu's six screen tiles (quick 261003-q2f, sketch 007's C1).
+ * The small pictures in the phone menu's screen tiles (quick 261003-q2f, sketch 007's C1), seven
+ * since Phase 16 added 3D.
  *
  * Each picture is a label-free copy of that screen's own drawing of the CURRENT board — TEMPLATE's
  * outline lying down, ROCKER's side profile in its blank, RAILS' centre section with its marks, FINS'
@@ -251,11 +252,11 @@ export function formatTileLitres(litres: Litres): string {
   return litres.toFixed(1);
 }
 
-export type ScreenTileKind = "template" | "rocker" | "rails" | "volume" | "fins" | "summary";
+export type ScreenTileKind = "template" | "rocker" | "rails" | "volume" | "fins" | "summary" | "threeD";
 
 /** The one line under each tile's name: TEMPLATE the length × width in the shaper's units, ROCKER
  * the blank the board sits in (or Hand-set), FINS the setup's name as the FINS screen's own picker
- * spells it. */
+ * spells it, 3D what the screen is for (Phase 16). */
 export function screenTileLines(input: {
   outline: Pick<OutlineSpec, "length" | "widePointWidth">;
   blank: { copy: { name: string } } | null;
@@ -270,6 +271,7 @@ export function screenTileLines(input: {
     volume: "Estimated",
     fins: finLabel,
     summary: "Order form",
+    threeD: "Spin and export",
   };
 }
 

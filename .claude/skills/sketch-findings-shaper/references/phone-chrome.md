@@ -5,17 +5,21 @@
 The founder's rule for phones: **"phone real estate is expensive, we need to save all of it."**
 
 1. **No bottom tab bar** (007 C1, live 2026-10-03). On an upright phone, and on any short screen that uses
-   the compact top bar, ☰ opens a sheet of **six screen tiles drawn from the current board**, the current
-   one ticked, above Home, Contact, Privacy, Units, Theme and the account. On a desktop-shell width the
-   tiles form one row of six, otherwise three by two (width alone).
+   the compact top bar, ☰ opens a sheet of **seven screen tiles drawn from the current board**, the current
+   one ticked, above Home, Contact, Privacy, Units, Theme and the account. On a desktop-shell width (a phone
+   held sideways) the tiles form one row of seven, otherwise four by two — Template, Rocker, Rails, Volume
+   over Fins, Summary, 3D (width alone). It was six, in one row or three by two, until 3D joined as the
+   seventh screen (Phase 16, D-03).
 2. **Each tile is that screen's own drawing of the board**, labels left out: Template's outline lying down,
    Rocker's side profile in its blank, the centre rail's band diagram, the Volume screen's **real** litres
-   (never a made-up number), the Fins tail and fins, and a small order form. They come straight from the
-   design store (`lib/geometry/screen-tiles.ts`), and nothing is captured or stored. True proportions
+   (never a made-up number), the Fins tail and fins, a small order form, and for 3D the board turned
+   three-quarters with its stringer (the Board Rack's own turn at 50°, the 3D screen's first view, line
+   "Spin and export"). They come straight from the design store (`lib/geometry/screen-tiles.ts`, and
+   `lib/geometry/three-d-tile-art.ts` for 3D), and nothing is captured or stored. True proportions
    always: "rocker cannot look like a U".
 3. **Every design screen ends with Back + Next** (008 B): "← previous" and "next →" side by side under the
-   last control, in the order Template, Rocker, Rails, Volume, Fins, Summary. The first screen has only
-   Next and the last only Back. ☰ is for jumping around; Back + Next is the usual walk ("almost wizard
+   last control, in the order Template, Rocker, Rails, Volume, Fins, Summary, 3D. The first screen has only
+   Next and the last, 3D, only Back; Summary's Next goes to 3D (Phase 16). ☰ is for jumping around; Back + Next is the usual walk ("almost wizard
    like").
 4. The 56 dots freed by the tab bar go to the controls (122 → 178 on an iPhone 14's 390 × 664 page). The
    Undo/Redo pair sits in the bottom-right corner.
