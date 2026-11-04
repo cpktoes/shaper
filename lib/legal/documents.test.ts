@@ -47,6 +47,16 @@ describe("legalOutline", () => {
     expect(outline.sections.at(-1)).toBe("11. Contact");
   });
 
+  it("says in section 6, Your choices, that a downloaded file can come back (quick 261103-k8o, the founder's ruling)", () => {
+    const policy = readDocument(LEGAL_DOCUMENTS.privacy.file);
+    const sentence = "You can put a downloaded file back onto your account with Import my designs.";
+    const section6 = policy.slice(policy.indexOf("## 6."), policy.indexOf("## 7."));
+    expect(section6.split(sentence)).toHaveLength(2);
+    expect(policy.split(sentence)).toHaveLength(2);
+    const exportLine = section6.split("\n").find((line) => line.startsWith("- **Export your designs:**"));
+    expect(exportLine?.endsWith(` ${sentence}`)).toBe(true);
+  });
+
   it("ignores a ### sub-heading and trims trailing spaces", () => {
     const outline = legalOutline("# Title  \n\n## One \n### Not a section\n## Two\n");
     expect(outline).toEqual({ title: "Title", sections: ["One", "Two"] });
