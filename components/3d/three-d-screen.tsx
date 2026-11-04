@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { useDesign } from "@/components/design/design-store";
+import { useReducedMotion } from "@/components/design/use-viewer-media";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
-import { framePointsOf } from "@/lib/geometry/view-3d";
+import type { Vec3 } from "@/lib/geometry/board-surface";
+import { cameraAxes, dragTurn, framePointsOf, glideAt, quatMultiply, REST_TURN, type Quat } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
 import { ThreeDControls } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
@@ -58,6 +60,14 @@ function readSceneColours(): SceneColours {
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
   };
+}
+
+/** How far back a release looks for the drag's speed: a board held still this long before letting go doesn't glide. */
+const GLIDE_SAMPLE_MS = 80;
+
+/** The turn as the host's `data-turn` reports it to the tests: four numbers to 1e-4. */
+function turnText(turn: Quat): string {
+  return turn.map((v) => (Math.round(v * 1e4) / 1e4 + 0).toFixed(4)).join(" ");
 }
 
 /** A message centred on the canvas: what happened, then what to do (UI-SPEC §8). */
@@ -111,6 +121,12 @@ export function ThreeDScreen() {
   const sceneRef = useRef<BoardSceneHandle | null>(null);
   const coloursRef = useRef<SceneColours | null>(null);
   const boardRef = useRef<Omit<BoardSceneInput, "colours"> | null>(null);
+  // The board's turn (16-07, UI-SPEC §5): plain numbers (lib/geometry/view-3d.ts) kept in a ref, never in React
+  // state (the rack's Pattern 7). Each change hands it to the scene, which turns the board's group alone and draws
+  // one frame — the camera and the lights never move (D-10). Nothing is remembered between visits (D-17).
+  const turnRef = useRef<Quat>(REST_TURN);
+  /** The glide or view turn under way, if any: its animation frame. */
+  const motionRef = useRef(0);
   // What the scene last reported. Each mount's cleanup puts it back to `loading`, and a mount that has gone can
   // no longer report, so a scene that comes back (after the board could not be built and then could again) never
   // shows an old mount's state.
@@ -148,6 +164,8 @@ export function ThreeDScreen() {
         coloursRef.current = colours;
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
+        // A turn made while the drawing was still loading is applied as the board appears (UI-SPEC §9).
+        if (turnRef.current !== REST_TURN) handle.setTurn(turnRef.current);
         const fit = () => handle?.resize(host.clientWidth, host.clientHeight);
         fit();
         observer = new ResizeObserver(fit);
@@ -165,6 +183,106 @@ export function ThreeDScreen() {
       setSceneState("loading");
     };
   }, [buildable]);
+
+  // ------------------------------------------------------------------------------------------------------------
+  // Turning the board by hand (16-07, UI-SPEC §5): a drag turns it like a ball under the hand, and letting go of a
+  // moving drag lets it glide to rest — never under reduced motion, and the board never turns by itself (D-13).
+  // ------------------------------------------------------------------------------------------------------------
+  const reducedMotion = useReducedMotion();
+  const reducedRef = useRef(reducedMotion);
+  useEffect(() => {
+    reducedRef.current = reducedMotion;
+  }, [reducedMotion]);
+  const dragRef = useRef<{ id: number; x: number; y: number; samples: { t: number; x: number; y: number }[] } | null>(
+    null,
+  );
+
+  const applyTurn = useCallback((turn: Quat) => {
+    turnRef.current = turn;
+    const host = hostRef.current;
+    if (host) host.dataset.turn = turnText(turn);
+    sceneRef.current?.setTurn(turn);
+  }, []);
+
+  const stopMotion = useCallback(() => {
+    if (motionRef.current) cancelAnimationFrame(motionRef.current);
+    motionRef.current = 0;
+  }, []);
+
+  // The host reports the turn from its first paint, and a motion under way stops when the screen goes.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (host) host.dataset.turn = turnText(turnRef.current);
+    return stopMotion;
+  }, [stopMotion]);
+
+  const shortSide = () => {
+    const host = hostRef.current;
+    return host ? Math.min(host.clientWidth, host.clientHeight) : 0;
+  };
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    // One primary pointer turns the board: the mouse's left button, one finger or a pen. (Two fingers, the right
+    // button and Shift are the slide and the pinch, 16-09's.)
+    if (!event.isPrimary || dragRef.current) return;
+    if (event.pointerType === "mouse" && (event.button !== 0 || event.shiftKey)) return;
+    stopMotion();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // A pointer the browser no longer counts as active can't be captured; the drag still works inside the canvas.
+    }
+    const point = { t: performance.now(), x: event.clientX, y: event.clientY };
+    dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, samples: [point] };
+    if (event.pointerType === "mouse") event.currentTarget.style.cursor = "grabbing";
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (dx === 0 && dy === 0) return;
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    const t = performance.now();
+    drag.samples.push({ t, x: event.clientX, y: event.clientY });
+    while (drag.samples.length > 2 && drag.samples[0].t < t - GLIDE_SAMPLE_MS) drag.samples.shift();
+    applyTurn(dragTurn(turnRef.current, dx, dy, shortSide()));
+  };
+
+  const endDrag = (event: PointerEvent<HTMLDivElement>, glide: boolean) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== event.pointerId) return;
+    dragRef.current = null;
+    const host = event.currentTarget;
+    host.style.cursor = "";
+    if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
+    // The glide (D-13): the drag's speed over its last moment keeps the board turning, slowing to rest over
+    // GLIDE_MS. Under reduced motion the board stops dead where it was let go.
+    if (!glide || reducedRef.current) return;
+    const now = performance.now();
+    const recent = drag.samples.filter((s) => s.t >= now - GLIDE_SAMPLE_MS);
+    const short = shortSide();
+    if (recent.length < 2 || !(short > 0)) return;
+    const first = recent[0];
+    const last = recent[recent.length - 1];
+    const k = Math.PI / short / Math.max(1, now - first.t);
+    const vx = (last.x - first.x) * k;
+    const vy = (last.y - first.y) * k;
+    if (vx === 0 && vy === 0) return;
+    // About the very axis `dragTurn` turns about: the picture's up for a sideways drag, its right for an up-down one.
+    const { right, up } = cameraAxes();
+    const velocity: Vec3 = [up[0] * vx + right[0] * vy, up[1] * vx + right[1] * vy, up[2] * vx + right[2] * vy];
+    const start = turnRef.current;
+    const began = performance.now();
+    const tick = () => {
+      const { turnSince, done } = glideAt(velocity, performance.now() - began);
+      applyTurn(quatMultiply(turnSince, start));
+      motionRef.current = done ? 0 : requestAnimationFrame(tick);
+    };
+    motionRef.current = requestAnimationFrame(tick);
+  };
 
   const state: CanvasState = built.ok ? sceneState : "cant-build";
   const message =
@@ -202,7 +320,12 @@ export function ThreeDScreen() {
               aria-roledescription={THREE_D_COPY.canvasRole}
               aria-label={THREE_D_COPY.canvasName(name)}
               aria-busy={state === "loading" ? true : undefined}
-              className="focus-ring-accent absolute inset-0 touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)]"
+              onPointerDown={message ? undefined : onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={(event) => endDrag(event, true)}
+              onPointerCancel={(event) => endDrag(event, false)}
+              onLostPointerCapture={(event) => endDrag(event, false)}
+              className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
           </div>

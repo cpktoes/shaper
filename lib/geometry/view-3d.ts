@@ -206,3 +206,169 @@ export function framePointsOf(positions: ArrayLike<number>, maxPoints = 6000): {
     .map((v) => [positions[3 * v] - centre[0], positions[3 * v + 1] - centre[1], positions[3 * v + 2] - centre[2]]);
   return { centre, points };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Turning the board (16-07, UI-SPEC §3 and §5). Every turn below is a turn in the ROOM, applied before the board's
+// own lie (`turn × BOARD_TO_ROOM`), and every one returns only the board's new turn: none of them takes, reads or
+// returns the camera or a light, so nothing but the board can ever move (D-10).
+// ---------------------------------------------------------------------------------------------------------------
+
+/** The camera's axes in the room: the picture's right, its up, and the way back toward the camera. */
+export function cameraAxes(): { right: Vec3; up: Vec3; toCamera: Vec3 } {
+  const { right, up, forward } = roomCameraAxes();
+  return { right, up, toCamera: [-forward[0], -forward[1], -forward[2]] };
+}
+
+/** The opposite turn of a unit quaternion. */
+export function quatConjugate(q: Quat): Quat {
+  return [-q[0], -q[1], -q[2], q[3]];
+}
+
+/** The turn that takes the three axes (1,0,0), (0,1,0), (0,0,1) onto `x`, `y`, `z` (a right-handed unit frame). */
+export function quatFromBasis(x: Vec3, y: Vec3, z: Vec3): Quat {
+  // The rotation matrix's columns are x, y, z; Shepperd's method divides by the largest of the four terms.
+  const [m00, m10, m20] = x;
+  const [m01, m11, m21] = y;
+  const [m02, m12, m22] = z;
+  const trace = m00 + m11 + m22;
+  let q: Quat;
+  if (trace > 0) {
+    const s = 2 * Math.sqrt(trace + 1);
+    q = [(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, s / 4];
+  } else if (m00 > m11 && m00 > m22) {
+    const s = 2 * Math.sqrt(1 + m00 - m11 - m22);
+    q = [s / 4, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s];
+  } else if (m11 > m22) {
+    const s = 2 * Math.sqrt(1 + m11 - m00 - m22);
+    q = [(m01 + m10) / s, s / 4, (m12 + m21) / s, (m02 - m20) / s];
+  } else {
+    const s = 2 * Math.sqrt(1 + m22 - m00 - m11);
+    q = [(m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s];
+  }
+  return quatNormalize(q);
+}
+
+/** The five preset views (D-13), in the panel's order. */
+export type ViewName = "deck" | "bottom" | "side" | "nose" | "tail";
+export const VIEW_NAMES: readonly ViewName[] = ["deck", "bottom", "side", "nose", "tail"];
+
+const neg = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];
+
+/**
+ * Where each view puts the board's own three axes (x toward the nose, y the near rail, z the deck) among the
+ * camera's (UI-SPEC §3's table): Deck — the deck square to the camera, nose left; Bottom — turned over along its
+ * length, nose left; Side — the near rail square on, deck up, nose left; Nose — the nose tip toward the camera, deck
+ * up; Tail — the tail toward the camera, deck up. The third axis of each follows from the other two (a right-handed
+ * frame), so a view can never mirror the board.
+ */
+function viewFrame(name: ViewName): [Vec3, Vec3, Vec3] {
+  const { right, up, toCamera } = cameraAxes();
+  switch (name) {
+    case "deck":
+      return [neg(right), neg(up), toCamera];
+    case "bottom":
+      return [neg(right), up, neg(toCamera)];
+    case "side":
+      return [neg(right), toCamera, up];
+    case "nose":
+      return [toCamera, right, up];
+    case "tail":
+      return [neg(toCamera), neg(right), up];
+  }
+}
+
+/** Each preset view as the board's turn in the room: the turn that, after the board's lie, gives that view. */
+export const VIEW_TURNS: Readonly<Record<ViewName, Quat>> = Object.fromEntries(
+  VIEW_NAMES.map((name) => {
+    const [x, y, z] = viewFrame(name);
+    return [name, quatNormalize(quatMultiply(quatFromBasis(x, y, z), quatConjugate(BOARD_TO_ROOM)))];
+  }),
+) as Record<ViewName, Quat>;
+
+/** How long a view button's turn takes (UI-SPEC §5), eased with the rack's settle curve; instant under reduced motion. */
+export const VIEW_TURN_MS = 400;
+
+/** How long a let-go board keeps turning before it comes to rest (D-13). */
+export const GLIDE_MS = 600;
+
+/** How far one arrow key turns the board (UI-SPEC §5). */
+export const KEY_TURN_DEG = 15;
+
+/**
+ * The board after a drag of (dx, dy) screen dots (y down, as a pointer reports it), like a ball under the hand: a
+ * sideways drag turns it about the picture's up-down axis, an up-down drag about its left-right axis, any mix about
+ * the axis square to the drag — and the length of the canvas's shorter side (`shortSide`) is half a turn. One turn
+ * about one axis, so dragging straight back undoes it exactly.
+ */
+export function dragTurn(turn: Quat, dx: number, dy: number, shortSide: number): Quat {
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0) || !(shortSide > 0) || !Number.isFinite(length)) return quatNormalize(turn);
+  const { right, up } = cameraAxes();
+  const axis: Vec3 = [up[0] * dx + right[0] * dy, up[1] * dx + right[1] * dy, up[2] * dx + right[2] * dy];
+  return quatNormalize(quatMultiply(quatFromAxisAngle(axis, (Math.PI * length) / shortSide), turn));
+}
+
+/** The board after one arrow key: 15° about the picture's up-down axis (← →) or its left-right axis (↑ ↓). */
+export function keyTurn(turn: Quat, key: "left" | "right" | "up" | "down"): Quat {
+  const { right, up } = cameraAxes();
+  const angle = (KEY_TURN_DEG * Math.PI) / 180;
+  const step =
+    key === "right"
+      ? quatFromAxisAngle(up, angle)
+      : key === "left"
+        ? quatFromAxisAngle(up, -angle)
+        : key === "down"
+          ? quatFromAxisAngle(right, angle)
+          : quatFromAxisAngle(right, -angle);
+  return quatNormalize(quatMultiply(step, turn));
+}
+
+/**
+ * The turn `t` of the way from `a` to `b` (0 to 1) along the shorter way round: a quaternion and its negative are
+ * the same turn, so `b` is negated when the two point apart, and the board never swings the long way to a view.
+ */
+export function slerpShortest(a: Quat, b: Quat, t: number): Quat {
+  let [bx, by, bz, bw] = b;
+  let cos = a[0] * bx + a[1] * by + a[2] * bz + a[3] * bw;
+  if (cos < 0) {
+    [bx, by, bz, bw] = [-bx, -by, -bz, -bw];
+    cos = -cos;
+  }
+  const k = Math.min(1, Math.max(0, Number.isFinite(t) ? t : 1));
+  let wa: number;
+  let wb: number;
+  if (cos > 1 - 1e-9) {
+    wa = 1 - k;
+    wb = k;
+  } else {
+    const angle = Math.acos(Math.min(1, cos));
+    const sin = Math.sin(angle);
+    wa = Math.sin((1 - k) * angle) / sin;
+    wb = Math.sin(k * angle) / sin;
+  }
+  return quatNormalize([wa * a[0] + wb * bx, wa * a[1] + wb * by, wa * a[2] + wb * bz, wa * a[3] + wb * bw]);
+}
+
+/** The angle between two turns, the shorter way round (radians, 0 to π). */
+export function turnAngle(a: Quat, b: Quat): number {
+  const cos = Math.abs(a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]);
+  return 2 * Math.acos(Math.min(1, cos));
+}
+
+/** The fastest a let-go board may spin (radians per millisecond), so a flick can never send it round and round. */
+export const GLIDE_MAX_SPEED = 0.01;
+
+/**
+ * How much further a let-go board has turned `elapsedMs` after release, from its turning speed then
+ * (`angularVelocity`: a room axis whose length is radians per millisecond). The speed falls smoothly to nothing at
+ * `GLIDE_MS` — as (1 − t/T)² — so the extra turn grows quickly, then settles, totalling a third of the speed times
+ * `GLIDE_MS`; `done` once it has stopped.
+ */
+export function glideAt(angularVelocity: Vec3, elapsedMs: number): { turnSince: Quat; done: boolean } {
+  const raw = Math.hypot(angularVelocity[0], angularVelocity[1], angularVelocity[2]);
+  if (!(raw > 0) || !Number.isFinite(raw)) return { turnSince: REST_TURN, done: true };
+  const speed = Math.min(raw, GLIDE_MAX_SPEED);
+  const t = Math.min(1, Math.max(0, Number.isFinite(elapsedMs) ? elapsedMs / GLIDE_MS : 1));
+  const angle = ((speed * GLIDE_MS) / 3) * (1 - (1 - t) ** 3);
+  return { turnSince: quatFromAxisAngle(angularVelocity, angle), done: !(elapsedMs < GLIDE_MS) };
+}
