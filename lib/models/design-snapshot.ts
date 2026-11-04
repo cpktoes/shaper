@@ -140,14 +140,18 @@
  *    board. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
  *    drops the unknown key, so a board saved here with the box ticked still opens there, unticked. No
  *    database change — rails live in the `snapshot` JSON column.
- * 13. The rails carry `tailHardEdgeEndsAt`, the tail's Hard Edge Ends At (Phase 16, D-20, the founder
- *    2026-11-03): how far from the tail, in millimetres, the hard edge has faded into the tucked rail.
- *    Absent — every board saved before it — or anything that is not a finite number inside 14" to 24"
- *    (`HARD_EDGE_ENDS_AT_RANGE_IN`) reads 18" (`hardEdgeEndsAt`), and the parsed rails then hold no such
- *    key at all, so a crafted value never rejects the board and nothing is rewritten until the shaper
- *    saves. The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment)
- *    drops the unknown key, so a board saved here opens there at 18". No database change — rails live in
- *    the `snapshot` JSON column.
+ * 13. The rails carry the tail's two hard-edge settings, each optional (Phase 16, D-20 the founder
+ *    2026-11-03, D-30 2026-11-04), both in millimetres from the tail tip: `tailHardEdgeBlendsFrom` (Hard
+ *    Edge Blends From, where the hard edge starts blending into the tucked rail) and `tailHardEdgeEndsAt`
+ *    (Hard Edge Ends At, where the rail has fully blended into the centre's tucked rail). Absent — every
+ *    board saved before them, and a board saved with only the first, single Ends At — reads 18" and 30"
+ *    through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. Anything that is not a finite number that could sit on
+ *    some board (Blends From 12"-30", Ends At 14" to the centre of the longest board) leaves no key at all,
+ *    so a crafted value never rejects the board; a value that fits some board but not this one, or a pair
+ *    that crosses, is forgiven by those readers on every read. Nothing is rewritten until the shaper saves.
+ *    The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment) drops the
+ *    unknown keys, so a board saved here opens there with its old hard edge. No database change — rails
+ *    live in the `snapshot` JSON column.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -176,7 +180,8 @@ import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
 import {
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
-  HARD_EDGE_ENDS_AT_RANGE_IN,
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  HARD_EDGE_MIN_BLEND_IN,
   RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   type RailBandSpec,
@@ -412,25 +417,45 @@ const railSectionSpecSchema = (defaultScale: number) =>
     nudges: railMarkNudgesSchema,
   });
 
+/**
+ * Rule 13's outer bounds, in millimetres from the tail tip (D-30): the widest either setting could ever be on a
+ * board the app draws. Blends From 12" to 30"; Ends At from 12" + 2" to the centre of the longest board
+ * (`BOARD_LENGTH_RANGE_IN.max`). Where each actually sits on a given board — and that the two never cross — is
+ * the readers' work (`hardEdgeBlendsFrom`, `hardEdgeEndsAt`), never this one's.
+ */
+const HARD_EDGE_BLENDS_FROM_MIN_MM = inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min);
+const HARD_EDGE_BLENDS_FROM_MAX_MM = inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max);
+const HARD_EDGE_ENDS_AT_MIN_MM = inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min + HARD_EDGE_MIN_BLEND_IN);
+const HARD_EDGE_ENDS_AT_MAX_MM = inchesToMm(BOARD_LENGTH_RANGE_IN.max / 2);
+
 const railBandSpecSchema = z
   .object({
     nose: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
     center: railSectionSpecSchema(1),
     tail: railSectionSpecSchema(DEFAULT_TIP_RAIL_SCALE),
     tailHardEdge: z.boolean(),
-    // Rule 13 (Phase 16, D-20): optional and forgiving — anything not a number inside 14"-24" reads absent.
+    // Rule 13 (Phase 16, D-20/D-30): optional and forgiving — anything that could sit on no board at all
+    // reads absent; a value that fits some board but not this one is forgiven by the readers.
+    tailHardEdgeBlendsFrom: z
+      .number()
+      .min(HARD_EDGE_BLENDS_FROM_MIN_MM)
+      .max(HARD_EDGE_BLENDS_FROM_MAX_MM)
+      .optional()
+      .catch(undefined),
     tailHardEdgeEndsAt: z
       .number()
-      .min(inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min))
-      .max(inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max))
+      .min(HARD_EDGE_ENDS_AT_MIN_MM)
+      .max(HARD_EDGE_ENDS_AT_MAX_MM)
       .optional()
       .catch(undefined),
   })
   // Rule 13: a value the reader refused leaves no key behind (not even an undefined one), so the parsed
   // rails of a board without a usable value are exactly a board without the field.
-  .transform(({ tailHardEdgeEndsAt, ...rest }) =>
-    tailHardEdgeEndsAt === undefined ? rest : { ...rest, tailHardEdgeEndsAt: mm(tailHardEdgeEndsAt) },
-  )
+  .transform(({ tailHardEdgeBlendsFrom, tailHardEdgeEndsAt, ...rest }) => ({
+    ...rest,
+    ...(tailHardEdgeBlendsFrom === undefined ? {} : { tailHardEdgeBlendsFrom: mm(tailHardEdgeBlendsFrom) }),
+    ...(tailHardEdgeEndsAt === undefined ? {} : { tailHardEdgeEndsAt: mm(tailHardEdgeEndsAt) }),
+  }))
   // Rule 11 (fast task 190, R21): the tail's Symmetrical and Hard Edge can never both be on. A board
   // saved with both (none of the presets; a board saved before the rule could) opens with Hard Edge
   // winning and Symmetrical off — read that way, never rewritten until the shaper saves.

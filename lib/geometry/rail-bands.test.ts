@@ -17,10 +17,16 @@ import { describe, expect, it } from "vitest";
 import { railCutFoam, type RailCutLine } from "./finished-rail";
 import {
   DECK_PERCENT_MIN,
+  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
   DEFAULT_HARD_EDGE_ENDS_AT_IN,
   DEFAULT_RAIL_BAND_SPEC,
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
   HARD_EDGE_ENDS_AT_RANGE_IN,
+  HARD_EDGE_MIN_BLEND_IN,
+  hardEdgeBlendsFrom,
+  hardEdgeBlendsFromWindow,
   hardEdgeEndsAt,
+  hardEdgeEndsAtWindow,
   DEFAULT_TIP_RAIL_SCALE,
   MIN_BOTTOM_TUCK_SEPARATION_IN,
   MIN_RAIL_MARK_IN,
@@ -50,6 +56,7 @@ import {
   type RailSectionSpec,
 } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC } from "./board";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { measureSlider } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
@@ -947,30 +954,117 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
   });
 });
 
-describe("hardEdgeEndsAt — where the tail's hard edge has faded out (Phase 16, D-20, T-16-01)", () => {
-  const fallback = inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
+describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail's hard edge blend (Phase 16, D-20/D-30, T-16-01)", () => {
+  // A 6'0" board (the default) and a short one whose 30" default sits past its centre.
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const centre = mm(length / 2);
+  const shortLength = inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2);
+  const shortCentre = mm(shortLength / 2);
+  const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
+  const start = inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN);
+  const end = inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
+  const GARBAGE: unknown[] = [Number.NaN, Infinity, -Infinity, 1e9, -inchesToMm(18), "18", null, { inches: 18 }];
 
-  it("a board that says nothing reads 18\"", () => {
-    expect(DEFAULT_HARD_EDGE_ENDS_AT_IN).toBe(18);
-    expect(hardEdgeEndsAt({})).toBe(fallback);
-    expect(hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC)).toBe(fallback);
+  it("a board that says nothing reads 18\" and 30\"", () => {
+    expect(DEFAULT_HARD_EDGE_BLENDS_FROM_IN).toBe(18);
+    expect(DEFAULT_HARD_EDGE_ENDS_AT_IN).toBe(30);
+    expect(HARD_EDGE_MIN_BLEND_IN).toBe(2);
+    expect(HARD_EDGE_BLENDS_FROM_RANGE_IN).toEqual({ min: 12, max: 30, step: 0.5 });
+    expect(HARD_EDGE_ENDS_AT_RANGE_IN.step).toBe(0.5);
+    expect(hardEdgeBlendsFrom({}, length)).toBe(start);
+    expect(hardEdgeEndsAt({}, length)).toBe(end);
+    expect(hardEdgeBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length)).toBe(start);
+    expect(hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC, length)).toBe(end);
   });
 
-  it("a stored value inside 14\"–24\" reads exactly as stored, both ends included", () => {
-    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(20) })).toBe(inchesToMm(20));
-    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min) })).toBe(inchesToMm(14));
-    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max) })).toBe(inchesToMm(24));
+  it("a stored 20\"/26\" pair reads exactly as stored, and so do the ends of each window", () => {
+    const pair = { tailHardEdgeBlendsFrom: inchesToMm(20), tailHardEdgeEndsAt: inchesToMm(26) };
+    expect(hardEdgeBlendsFrom(pair, length)).toBe(inchesToMm(20));
+    expect(hardEdgeEndsAt(pair, length)).toBe(inchesToMm(26));
+    // Blends From at 12" and Ends At 2" past it; Ends At all the way to the centre.
+    const low = { tailHardEdgeBlendsFrom: inchesToMm(12), tailHardEdgeEndsAt: mm(inchesToMm(12) + gap) };
+    expect(hardEdgeBlendsFrom(low, length)).toBe(inchesToMm(12));
+    expect(hardEdgeEndsAt(low, length)).toBe(mm(inchesToMm(12) + gap));
+    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: centre }, length)).toBe(centre);
+    expect(hardEdgeBlendsFrom({ tailHardEdgeBlendsFrom: inchesToMm(30) }, length)).toBe(inchesToMm(30));
   });
 
-  it("garbage, a value past the board and one outside the range all read 18\"", () => {
-    for (const stored of [Number.NaN, Infinity, -Infinity, 1e9, inchesToMm(10), inchesToMm(30), inchesToMm(-18)]) {
-      expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: mm(stored) }), String(stored)).toBe(fallback);
+  it("garbage, a start below 12\" or past 30\", and an end past the centre read the defaults", () => {
+    for (const stored of [...GARBAGE, inchesToMm(11.5), inchesToMm(30.5)]) {
+      const rails = { tailHardEdgeBlendsFrom: stored as Mm };
+      expect(hardEdgeBlendsFrom(rails, length), String(stored)).toBe(start);
+      expect(hardEdgeEndsAt(rails, length), String(stored)).toBe(end);
     }
-    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: "18" as unknown as Mm })).toBe(fallback);
+    for (const stored of [...GARBAGE, mm(centre + 1), inchesToMm(10)]) {
+      expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: stored as Mm }, length), String(stored)).toBe(end);
+    }
   });
 
-  it("no default and no preset carries the field", () => {
-    expect("tailHardEdgeEndsAt" in DEFAULT_RAIL_BAND_SPEC).toBe(false);
-    for (const preset of BOARD_PRESETS) expect("tailHardEdgeEndsAt" in preset.rails, preset.id).toBe(false);
+  it("a pair that crosses, or sits closer than 2\", resolves to a valid pair: the start kept, the end at 30\"", () => {
+    for (const [from, to] of [
+      [24, 20],
+      [22, 23],
+      [26, 26],
+    ]) {
+      const rails = { tailHardEdgeBlendsFrom: inchesToMm(from), tailHardEdgeEndsAt: inchesToMm(to) };
+      const s = hardEdgeBlendsFrom(rails, length);
+      const e = hardEdgeEndsAt(rails, length);
+      expect(s, `${from}/${to}`).toBe(inchesToMm(from));
+      expect(e, `${from}/${to}`).toBe(end);
+      expect(e - s).toBeGreaterThanOrEqual(gap - 1e-9);
+    }
+    // A start of 29" leaves no room for 30", so the end is clamped to start + 2".
+    const late = { tailHardEdgeBlendsFrom: inchesToMm(29), tailHardEdgeEndsAt: inchesToMm(20) };
+    expect(hardEdgeEndsAt(late, length)).toBe(mm(inchesToMm(29) + gap));
+  });
+
+  it("on a short board the 30\" default sits past the centre, so it is clamped to the centre; the start keeps 2\" of room", () => {
+    expect(end).toBeGreaterThan(shortCentre);
+    expect(hardEdgeEndsAt({}, shortLength)).toBe(shortCentre);
+    expect(hardEdgeBlendsFrom({}, shortLength)).toBe(mm(Math.min(start, shortCentre - gap)));
+    // A stored 30" start on that board is outside its window (centre − 2"), so it reads the clamped default.
+    expect(hardEdgeBlendsFrom({ tailHardEdgeBlendsFrom: inchesToMm(30) }, shortLength)).toBe(
+      mm(Math.min(start, shortCentre - gap)),
+    );
+  });
+
+  it("every resolved pair, over a sweep of stored values and lengths, is ordered and inside its windows", () => {
+    for (const len of [shortLength, length, inchesToMm(BOARD_LENGTH_RANGE_IN.max)]) {
+      const half = len / 2;
+      for (let a = 8; a <= 34; a += 1.5) {
+        for (let b = 8; b <= 64; b += 2.5) {
+          const rails = { tailHardEdgeBlendsFrom: inchesToMm(a), tailHardEdgeEndsAt: inchesToMm(b) };
+          const s = hardEdgeBlendsFrom(rails, len);
+          const e = hardEdgeEndsAt(rails, len);
+          expect(s).toBeGreaterThanOrEqual(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+          expect(s).toBeLessThanOrEqual(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max));
+          expect(e - s).toBeGreaterThanOrEqual(gap - 1e-9);
+          expect(e).toBeLessThanOrEqual(half + 1e-9);
+          // The slider windows hold the values they were read from.
+          const fromWindow = hardEdgeBlendsFromWindow(e, len);
+          const toWindow = hardEdgeEndsAtWindow(s, len);
+          expect(s).toBeGreaterThanOrEqual(fromWindow.min);
+          expect(s).toBeLessThanOrEqual(fromWindow.max + 1e-9);
+          expect(e).toBeGreaterThanOrEqual(toWindow.min - 1e-9);
+          expect(e).toBeLessThanOrEqual(toWindow.max + 1e-9);
+        }
+      }
+    }
+  });
+
+  it("the windows are coupled: the start stops 2\" short of the end, the end starts 2\" past the start and stops at the centre", () => {
+    expect(hardEdgeBlendsFromWindow(inchesToMm(26), length)).toEqual({
+      min: inchesToMm(12),
+      max: mm(inchesToMm(26) - gap),
+    });
+    expect(hardEdgeBlendsFromWindow(centre, length).max).toBe(inchesToMm(30));
+    expect(hardEdgeEndsAtWindow(inchesToMm(20), length)).toEqual({ min: mm(inchesToMm(20) + gap), max: centre });
+  });
+
+  it("no default and no preset carries either field", () => {
+    for (const key of ["tailHardEdgeBlendsFrom", "tailHardEdgeEndsAt"]) {
+      expect(key in DEFAULT_RAIL_BAND_SPEC).toBe(false);
+      for (const preset of BOARD_PRESETS) expect(key in preset.rails, preset.id).toBe(false);
+    }
   });
 });

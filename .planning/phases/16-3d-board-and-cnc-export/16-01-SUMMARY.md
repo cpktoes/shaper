@@ -227,3 +227,81 @@ Presented by the orchestrator at the Wave 1 checkpoint, 2026-11-04, with the bef
 
 The two deviations (the live rule called directly in `design.ts`; the exported `RailAnchorStations` type) were
 accepted by the orchestrator.
+
+## D-30 update (2026-11-04, plan 16-02)
+
+After looking at 16-02, the founder ruled D-30: "The hard edge blend needs a blend sharp edge from AND a blend to.
+Currently the blend is happening over too short a distance but that should be the user's choice." So the fade this
+plan built now has two settings instead of one.
+- **Hard Edge Blends From:** the edge is full up to here. 12" to 30", default 18".
+- **Hard Edge Ends At:** by here the rail has fully blended into the centre's tucked rail. At least 2" past Blends
+  From, up to the board's centre; default 30".
+
+The maths is in `lib/geometry/rail-bands.ts` (`hardEdgeBlendsFrom`, `hardEdgeEndsAt`) and `lib/geometry/volume.ts`
+(`HARD_EDGE_FADE`). The D-27 tuck source is unchanged. The pin still reports all 40 boards bit-identical under
+`HARD_EDGE_SWITCH`.
+
+The table below uses the same 40 boards as above. "Today" is the old switch, checked against the pin to every digit.
+"Old fade" is this plan's original 12"→18" fade, kept for reference. The live column is a board that says nothing,
+which now reads 18"→30". All figures come from the app's own functions, printed by 16-01's table printer adapted as
+`table40-d30.ts` (archived in `pictures/16-02-pictures-source.tar.gz`).
+
+| Board | Today (L) | Old fade 12"→18" (L) | D-30 default 18"→30" — live (L) | Move at the D-30 default (L) |
+|---|---:|---:|---:|---:|
+| shortboard · asis · hard | 29.6122 | 29.5903 | 29.6121 | -0.0001 |
+| shortboard · asis · soft | 29.5712 | 29.5712 | 29.5712 | 0 |
+| shortboard · swallow · hard | 30.6350 | 30.6135 | 30.6353 | 0.0003 |
+| shortboard · swallow · soft | 30.5947 | 30.5947 | 30.5947 | 0 |
+| shortboard · diamond · hard | 30.1810 | 30.1590 | 30.1808 | -0.0002 |
+| shortboard · diamond · soft | 30.1402 | 30.1402 | 30.1402 | 0 |
+| shortboard · pin · hard | 28.7721 | 28.7501 | 28.7719 | -0.0001 |
+| shortboard · pin · soft | 28.7313 | 28.7313 | 28.7313 | 0 |
+| shortboard · round · hard | 28.7721 | 28.7501 | 28.7719 | -0.0001 |
+| shortboard · round · soft | 28.7313 | 28.7313 | 28.7313 | 0 |
+| fish · asis · hard | 34.6507 | 34.6351 | 34.6554 | 0.0047 |
+| fish · asis · soft | 34.6190 | 34.6190 | 34.6190 | 0 |
+| fish · swallow · hard | 34.6507 | 34.6351 | 34.6554 | 0.0047 |
+| fish · swallow · soft | 34.6190 | 34.6190 | 34.6190 | 0 |
+| fish · diamond · hard | 34.0774 | 34.0614 | 34.0816 | 0.0043 |
+| fish · diamond · soft | 34.0453 | 34.0453 | 34.0453 | 0 |
+| fish · pin · hard | 31.8748 | 31.8592 | 31.8795 | 0.0047 |
+| fish · pin · soft | 31.8432 | 31.8432 | 31.8432 | 0 |
+| fish · round · hard | 31.8748 | 31.8592 | 31.8795 | 0.0047 |
+| fish · round · soft | 31.8432 | 31.8432 | 31.8432 | 0 |
+| midlength · asis · hard | 49.4062 | 49.3773 | 49.3981 | -0.0081 |
+| midlength · asis · soft | 49.3602 | 49.3602 | 49.3602 | 0 |
+| midlength · swallow · hard | 51.6643 | 51.6329 | 51.6543 | -0.0100 |
+| midlength · swallow · soft | 51.6155 | 51.6155 | 51.6155 | 0 |
+| midlength · diamond · hard | 50.9912 | 50.9595 | 50.9807 | -0.0105 |
+| midlength · diamond · soft | 50.9423 | 50.9423 | 50.9423 | 0 |
+| midlength · pin · hard | 49.4062 | 49.3773 | 49.3981 | -0.0081 |
+| midlength · pin · soft | 49.3602 | 49.3602 | 49.3602 | 0 |
+| midlength · round · hard | 49.4062 | 49.3773 | 49.3981 | -0.0081 |
+| midlength · round · soft | 49.3602 | 49.3602 | 49.3602 | 0 |
+| longboard · asis · hard | 75.0315 | 73.9612 | 74.4187 | -0.6128 |
+| longboard · asis · soft | 73.5743 | 73.5743 | 73.5743 | 0 |
+| longboard · swallow · hard | 75.5172 | 74.5224 | 74.9801 | -0.5371 |
+| longboard · swallow · soft | 74.1387 | 74.1387 | 74.1387 | 0 |
+| longboard · diamond · hard | 74.6523 | 73.6462 | 74.1034 | -0.5489 |
+| longboard · diamond · soft | 73.2621 | 73.2621 | 73.2621 | 0 |
+| longboard · pin · hard | 70.3914 | 69.3211 | 69.7786 | -0.6128 |
+| longboard · pin · soft | 68.9394 | 68.9394 | 68.9394 | 0 |
+| longboard · round · hard | 70.3914 | 69.3211 | 69.7786 | -0.6128 |
+| longboard · round · soft | 68.9394 | 68.9394 | 68.9394 | 0 |
+
+**What moved, and why:**
+- At the new defaults the hard edge stays full out to 18" and doesn't finish blending until 30". That keeps more hard
+  edge than the 12"→18" fade did. On the shortboard, fish and mid-length shapes the litres land within about a
+  hundredth of a litre of today's switch (the fish a touch above it, the mid-length a touch below).
+- The longboard rows still read less than today, but by about 0.54–0.61 L instead of 1.0–1.07 L. On a 9'0" board the
+  old switch kept the hard edge out to about 33", and 30" falls short of that. The new Ends At can be set as far as
+  the board's centre (54" on that board), so a shaper can now keep that much hard edge, or more.
+
+The preset cards and VOLUME move with it (`phase14-preset-figures.json` regenerated, three `litres` lines):
+- Shortboard 29.59 → 29.61 L (today's switch: 29.61)
+- Fish 34.64 → 34.66 L (today's: 34.65)
+- Mid-length 49.38 → 49.40 L (today's: 49.41)
+- Longboard: unchanged (its tail isn't hard-edged)
+
+The default board's VOLUME reads 30.29 L again, so `volume-desktop.png` was re-recorded. The new file is
+byte-for-byte the picture from before 16-01.

@@ -57,6 +57,7 @@ export function RailBandEditor() {
     updateRailNudge,
     resetRailAdvanced,
     railBands: bands,
+    outline,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
 
@@ -303,6 +304,7 @@ export function RailBandEditor() {
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}
             onChangeHardEdgeEndsAt={setTailHardEdgeEndsAt}
+            boardLength={outline.length}
             onChangeNudge={updateRailNudge}
             onResetAdvanced={resetRailAdvanced}
             sectionOpen={sectionOpen}

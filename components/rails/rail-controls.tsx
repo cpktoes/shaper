@@ -11,6 +11,7 @@ import {
   RAIL_SCALE_RANGE,
   deckProfileSliderStep,
   railFamilyLabel,
+  hardEdgeBlendsFrom,
   hardEdgeEndsAt,
   railNudgesOf,
   type RailBandSpec,
@@ -60,6 +61,8 @@ interface RailControlsProps {
    * are hidden below the shell breakpoint and untouched at or above it; left out (DATA,
    * INSTRUCTIONS), all three show. */
   phoneSection?: RailSectionKey;
+  /** The board's length, which the tail's hard-edge settings run against (to its centre, D-30). */
+  boardLength: Mm;
 }
 
 const NT_THICKNESS_BOUNDS = { min: 1, max: 2.5, step: 1 / 16 };
@@ -142,8 +145,12 @@ interface RailSectionControlsProps {
   onToggleAdvancedOpen: () => void;
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
-  /** The tail's stored Hard Edge Ends At (Phase 16, D-20); absent reads 18" through `hardEdgeEndsAt`. */
+  /** The tail's stored Hard Edge Blends From and Ends At (Phase 16, D-20/D-30); absent reads 18" and 30"
+   * through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. */
+  tailHardEdgeBlendsFrom?: Mm;
   tailHardEdgeEndsAt?: Mm;
+  /** The board's length: the two hard-edge settings' windows run to its centre (D-30). */
+  boardLength: Mm;
   onChangeHardEdgeEndsAt?: (value: Mm) => void;
   /** While imported (D-09/D-10), the thickness slider is HIDDEN, not greyed (quick 261017-vdh): the
    * foil-derived value already sitting in `spec.boardThickness` is named in RAILS' Inputs card
@@ -170,7 +177,9 @@ function RailSectionControls({
   onToggleAdvancedOpen,
   tailHardEdge,
   onToggleHardEdge,
+  tailHardEdgeBlendsFrom,
   tailHardEdgeEndsAt,
+  boardLength,
   onChangeHardEdgeEndsAt,
   thicknessImported,
   system,
@@ -238,8 +247,10 @@ function RailSectionControls({
    * takes their place at the bottom of the menu. The distance is a dim, read through the one named formatter.
    * No hint and no note: nothing on screen says the litres moved (D-18). */
   const hardEdgeEndsAtRow = () => {
-    const value = hardEdgeEndsAt({ tailHardEdgeEndsAt });
-    const slider = hardEdgeEndsAtSlider(value, system);
+    const length = boardLength;
+    const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
+    const value = hardEdgeEndsAt(settings, length);
+    const slider = hardEdgeEndsAtSlider(value, hardEdgeBlendsFrom(settings, length), length, system);
     const text = formatHardEdgeEndsAt(value, system);
     return (
       <SliderRow
@@ -522,6 +533,7 @@ export function RailControls({
   railsImportFoilThickness,
   onToggleRailsImportFoilThickness,
   phoneSection,
+  boardLength,
 }: RailControlsProps) {
   const { system } = useUnits();
   const locked = useControlsLocked();
@@ -579,6 +591,7 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("nose")}
         thicknessImported={railsImportFoilThickness}
         system={system}
+        boardLength={boardLength}
         hiddenOnPhone={phoneSection !== undefined && phoneSection !== "nose"}
         phonePicked={phoneSection === "nose"}
       />
@@ -596,6 +609,7 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("center")}
         thicknessImported={railsImportFoilThickness}
         system={system}
+        boardLength={boardLength}
         hiddenOnPhone={phoneSection !== undefined && phoneSection !== "center"}
         phonePicked={phoneSection === "center"}
       />
@@ -613,10 +627,12 @@ export function RailControls({
         onToggleAdvancedOpen={() => onToggleAdvancedOpen("tail")}
         tailHardEdge={spec.tailHardEdge}
         onToggleHardEdge={onToggleHardEdge}
+        tailHardEdgeBlendsFrom={spec.tailHardEdgeBlendsFrom}
         tailHardEdgeEndsAt={spec.tailHardEdgeEndsAt}
         onChangeHardEdgeEndsAt={onChangeHardEdgeEndsAt}
         thicknessImported={railsImportFoilThickness}
         system={system}
+        boardLength={boardLength}
         hiddenOnPhone={phoneSection !== undefined && phoneSection !== "tail"}
         phonePicked={phoneSection === "tail"}
       />

@@ -16,13 +16,16 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
+  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
   DEFAULT_HARD_EDGE_ENDS_AT_IN,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
-  HARD_EDGE_ENDS_AT_RANGE_IN,
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  HARD_EDGE_MIN_BLEND_IN,
   RAIL_NUDGE_KEYS,
   ZERO_RAIL_NUDGES,
   computeRailBands,
+  hardEdgeBlendsFrom,
   hardEdgeEndsAt,
 } from "@/lib/geometry/rail-bands";
 import {
@@ -1018,72 +1021,97 @@ describe("each rail's scale and nudges ride on the rail section, read forgivingl
   });
 });
 
-describe("the tail's Hard Edge Ends At rides on the rails, read forgivingly (rule 13, Phase 16 D-20)", () => {
+describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read forgivingly (rule 13, Phase 16 D-20/D-30)", () => {
+  const KEYS = ["tailHardEdgeBlendsFrom", "tailHardEdgeEndsAt"] as const;
   const wire = () =>
     JSON.parse(JSON.stringify(buildSnapshot(FIXTURES[0]))) as {
       version: number;
-      design: { rails: Record<string, unknown> & { tailHardEdgeEndsAt?: unknown } };
+      design: { rails: Record<string, unknown> & { tailHardEdgeBlendsFrom?: unknown; tailHardEdgeEndsAt?: unknown } };
     };
+  const length = FIXTURES[0].outline.length;
 
-  it("a board saved without Hard Edge Ends At opens with no such key and reads 18\" (rule 13)", () => {
+  it("a board saved without either setting opens with no such keys and reads 18\" and 30\" (rule 13)", () => {
     const stored = wire();
-    expect("tailHardEdgeEndsAt" in stored.design.rails).toBe(false);
+    for (const key of KEYS) expect(key in stored.design.rails).toBe(false);
     const opened = parseSnapshot(Object.freeze(stored));
-    expect("tailHardEdgeEndsAt" in opened.rails).toBe(false);
-    expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
-    expect(JSON.stringify(opened.rails)).not.toContain("tailHardEdgeEndsAt");
+    for (const key of KEYS) {
+      expect(key in opened.rails).toBe(false);
+      expect(JSON.stringify(opened.rails)).not.toContain(key);
+    }
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
   });
 
-  it("a Hard Edge Ends At of 20\" is kept exactly (rule 13)", () => {
+  it("a stored 20\"/26\" pair is kept exactly (rule 13)", () => {
     const stored = wire();
+    stored.design.rails.tailHardEdgeBlendsFrom = inchesToMm(20);
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(26);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(26));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(20));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(26));
+  });
+
+  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 18\" (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeEndsAt = inchesToMm(22);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect("tailHardEdgeBlendsFrom" in opened.rails).toBe(false);
+    expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(22));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(22));
+  });
+
+  it("a value that could sit on no board — not a number, not finite, outside its outer bounds — opens with no key (rule 13)", () => {
+    const outside: Record<(typeof KEYS)[number], unknown[]> = {
+      tailHardEdgeBlendsFrom: [inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min - 1), inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.max + 1)],
+      tailHardEdgeEndsAt: [
+        inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min + HARD_EDGE_MIN_BLEND_IN - 1),
+        inchesToMm(BOARD_LENGTH_RANGE_IN.max / 2 + 1),
+      ],
+    };
+    for (const key of KEYS) {
+      for (const value of ["x", Number.NaN, null, Number.POSITIVE_INFINITY, 1e9, -inchesToMm(18), { inches: 18 }, ...outside[key]]) {
+        const stored = wire();
+        stored.design.rails[key] = value;
+        const opened = parseSnapshot(Object.freeze(stored));
+        expect(key in opened.rails, `${key} ${String(value)}`).toBe(false);
+        expect(JSON.stringify(opened.rails)).not.toContain(key);
+        // The rest of the rails open exactly as saved — a bad value never rejects the board.
+        expect(opened.rails).toEqual(parseSnapshot(wire()).rails);
+      }
+    }
+  });
+
+  it("a pair that crosses is kept as stored but read as a valid pair by the readers, never rewritten (rule 13)", () => {
+    const stored = wire();
+    stored.design.rails.tailHardEdgeBlendsFrom = inchesToMm(26);
     stored.design.rails.tailHardEdgeEndsAt = inchesToMm(20);
     const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.rails.tailHardEdgeBlendsFrom).toBe(inchesToMm(26));
     expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(20));
-    expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(20));
+    const start = hardEdgeBlendsFrom(opened.rails, length);
+    const end = hardEdgeEndsAt(opened.rails, length);
+    expect(end - start).toBeGreaterThanOrEqual(inchesToMm(HARD_EDGE_MIN_BLEND_IN) - 1e-9);
   });
 
-  it("a Hard Edge Ends At that is not a number, not finite or outside 14\"-24\" opens with no stored value and reads 18\" (rule 13)", () => {
-    const garbage: unknown[] = [
-      "x",
-      Number.NaN,
-      null,
-      Number.POSITIVE_INFINITY,
-      1e9,
-      inchesToMm(10),
-      inchesToMm(30),
-      -inchesToMm(18),
-      { inches: 18 },
-    ];
-    for (const value of garbage) {
-      const stored = wire();
-      stored.design.rails.tailHardEdgeEndsAt = value;
-      const opened = parseSnapshot(Object.freeze(stored));
-      expect("tailHardEdgeEndsAt" in opened.rails).toBe(false);
-      expect(hardEdgeEndsAt(opened.rails)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
-      expect(JSON.stringify(opened.rails)).not.toContain("tailHardEdgeEndsAt");
-      // The rest of the rails open exactly as saved — a bad value never rejects the board.
-      expect(opened.rails).toEqual(parseSnapshot(wire()).rails);
-    }
-  });
-
-  it("the ends of the range, 14\" and 24\", are kept (rule 13)", () => {
-    for (const inches of [HARD_EDGE_ENDS_AT_RANGE_IN.min, HARD_EDGE_ENDS_AT_RANGE_IN.max]) {
-      const stored = wire();
-      stored.design.rails.tailHardEdgeEndsAt = inchesToMm(inches);
-      expect(parseSnapshot(stored).rails.tailHardEdgeEndsAt).toBe(inchesToMm(inches));
-    }
-  });
-
-  it("a Hard Edge Ends At of 20\" round-trips through buildSnapshot and parseSnapshot, version still 5 (rule 13)", () => {
+  it("a 20\"/26\" pair round-trips through buildSnapshot and parseSnapshot, version still 5 (rule 13)", () => {
     const fields: DesignSnapshotFields = {
       ...FIXTURES[0],
-      rails: { ...FIXTURES[0].rails, tailHardEdge: true, tailHardEdgeEndsAt: inchesToMm(20) },
+      rails: {
+        ...FIXTURES[0].rails,
+        tailHardEdge: true,
+        tailHardEdgeBlendsFrom: inchesToMm(20),
+        tailHardEdgeEndsAt: inchesToMm(26),
+      },
     };
     const built = buildSnapshot(fields);
     expect(built.version).toBe(5);
     expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
     const back = roundTrip(fields).rails;
     expect(back).toEqual(fields.rails);
-    expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(20));
+    expect(back.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
+    expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(26));
   });
 });

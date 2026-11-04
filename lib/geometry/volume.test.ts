@@ -26,7 +26,10 @@ import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
+  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
+  DEFAULT_HARD_EDGE_ENDS_AT_IN,
   DEFAULT_TIP_RAIL_SCALE,
+  hardEdgeBlendsFrom,
   hardEdgeEndsAt,
   ZERO_RAIL_NUDGES,
   type RailBandSpec,
@@ -524,11 +527,18 @@ describe("computeCrossSectionVolume", () => {
     const length = DEFAULT_BOARD_SPEC.outline.length;
     const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
     expect(DEFAULT_RAIL_BAND_SPEC.tailHardEdge).toBe(true);
-    const off = computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC));
-    const onRails: RailBandSpec = {
+    // A short blend, 14" to 18" (D-30), so some tail-nearest stations are past it and wholly tucked: at the
+    // defaults (18" to 30") a 6'0" board's blend reaches past halfway to the centre and leaves none.
+    const base: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
-      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
-      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true },
+      tailHardEdgeBlendsFrom: inchesToMm(14),
+      tailHardEdgeEndsAt: inchesToMm(18),
+    };
+    const off = computeCrossSectionVolume(input(base));
+    const onRails: RailBandSpec = {
+      ...base,
+      center: { ...base.center, sharpBottomTuck: true },
+      tail: { ...base.tail, sharpBottomTuck: true },
     };
     const on = computeCrossSectionVolume(input(onRails));
     const sections = boardSections(input(onRails));
@@ -816,15 +826,33 @@ describe("thicknessAt — one thickness curve for every board", () => {
   });
 });
 
-describe("D-20/D-27 the hard edge's fade", () => {
+describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", () => {
   // The default board (its tail hard-edged, every deck 100% so no rail thickness rounds to a 1/16" step),
   // integrated by the app's own functions. Nothing here types an area or a litres figure.
   const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
   const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
   const length = DEFAULT_BOARD_SPEC.outline.length;
   const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
-  const tail12 = foilStationPoints(DEFAULT_FOIL_SPEC, length)[1].station;
-  const endsAt = hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC);
+  const anchorPoints = foilStationPoints(DEFAULT_FOIL_SPEC, length);
+  const tail12 = anchorPoints[1].station;
+  const anchors = { tail: tail12, center: anchorPoints[2].station, nose: anchorPoints[3].station };
+  // The board says nothing, so these are the defaults (18" and 30") as the readers resolve them.
+  const blendsFrom = hardEdgeBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length);
+  const endsAt = hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC, length);
+
+  it("a board that says nothing blends from 18\" to 30\", both inside the board's tail half", () => {
+    expect(blendsFrom).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(endsAt).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
+    expect(blendsFrom).toBeGreaterThan(tail12);
+    expect(endsAt).toBeLessThan(anchors.center);
+  });
+
+  it("RAILS' tail station is always a full hard edge: Blends From never goes below the 12\" mark", () => {
+    for (const stored of [inchesToMm(12), inchesToMm(6), inchesToMm(20), undefined]) {
+      const rails = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeBlendsFrom: stored };
+      expect(HARD_EDGE_FADE.weight(tail12, anchors, rails, length), String(stored)).toBe(1);
+    }
+  });
 
   /** The cross-section input `summarizeDesign` builds for a stored board. */
   const designInput = (fields: DesignSummaryFields) => {
@@ -833,16 +861,17 @@ describe("D-20/D-27 the hard edge's fade", () => {
     return designCrossSectionInput(buildOutline(fields.outline), profile, rails, fields.outline.length);
   };
 
-  it("the weight is 1 at and behind the 12\" station, 0 at and beyond the set distance, a half midway, and never rises", () => {
-    expect(tailHardEdgeWeight(tail12, tail12, endsAt)).toBe(1);
-    expect(tailHardEdgeWeight(mm(tail12 - 1), tail12, endsAt)).toBe(1);
-    expect(tailHardEdgeWeight(mm(0), tail12, endsAt)).toBe(1);
-    expect(tailHardEdgeWeight(endsAt, tail12, endsAt)).toBe(0);
-    expect(tailHardEdgeWeight(mm(endsAt + 1), tail12, endsAt)).toBe(0);
-    expect(tailHardEdgeWeight(mm((tail12 + endsAt) / 2), tail12, endsAt)).toBeCloseTo(0.5, 12);
+  it("the weight is 1 at and behind Blends From, 0 at and beyond Ends At, a half midway, and never rises", () => {
+    expect(tailHardEdgeWeight(blendsFrom, blendsFrom, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(mm(blendsFrom - 1), blendsFrom, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(tail12, blendsFrom, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(mm(0), blendsFrom, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(endsAt, blendsFrom, endsAt)).toBe(0);
+    expect(tailHardEdgeWeight(mm(endsAt + 1), blendsFrom, endsAt)).toBe(0);
+    expect(tailHardEdgeWeight(mm((blendsFrom + endsAt) / 2), blendsFrom, endsAt)).toBeCloseTo(0.5, 12);
     let last = Infinity;
     for (let i = 0; i <= 400; i++) {
-      const w = tailHardEdgeWeight(mm((i / 400) * length), tail12, endsAt);
+      const w = tailHardEdgeWeight(mm((i / 400) * length), blendsFrom, endsAt);
       expect(w).toBeLessThanOrEqual(last);
       expect(w).toBeGreaterThanOrEqual(0);
       expect(w).toBeLessThanOrEqual(1);
@@ -850,17 +879,22 @@ describe("D-20/D-27 the hard edge's fade", () => {
     }
   });
 
-  it("the station area has no step at the 12\" station nor at the set distance", () => {
+  it("the station area has no step at Blends From nor at Ends At, at the defaults and at a set pair", () => {
     const step = 1e-4;
-    for (const [a, b] of [
-      [tail12, tail12 + step],
-      [endsAt - step, endsAt],
-    ] as const) {
-      const [left, right] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm(a), mm(b)]);
-      expect(Math.abs(left.area - right.area), `across ${a.toFixed(4)} mm`).toBeLessThan(1e-6 * left.area);
+    const pair = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeBlendsFrom: inchesToMm(14), tailHardEdgeEndsAt: inchesToMm(22) };
+    for (const rails of [DEFAULT_RAIL_BAND_SPEC, pair]) {
+      const from = hardEdgeBlendsFrom(rails, length);
+      const to = hardEdgeEndsAt(rails, length);
+      for (const [a, b] of [
+        [from, from + step],
+        [to - step, to],
+      ] as const) {
+        const [left, right] = boardSections(input(rails), [mm(a), mm(b)]);
+        expect(Math.abs(left.area - right.area), `across ${a.toFixed(4)} mm`).toBeLessThan(1e-6 * left.area);
+      }
     }
     // And the two sections the fade blends really do differ, so the test above means something.
-    const [mid] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm((tail12 + endsAt) / 2)]);
+    const [mid] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm((blendsFrom + endsAt) / 2)]);
     expect(mid.hardWeight).toBeCloseTo(0.5, 12);
     expect(mid.hardResult).toBeDefined();
     const [hardOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 1 }, [
@@ -914,25 +948,48 @@ describe("D-20/D-27 the hard edge's fade", () => {
     }
   });
 
-  it("moving the set distance from 14\" to 24\" raises every hard-edged board's litres, step by step", () => {
+  it("moving either setting further from the tail keeps more hard edge, so every hard-edged board's litres change step by step in one direction", () => {
     const hard = phase16Boards().filter((board) => board.fields.rails.tailHardEdge);
     expect(hard).toHaveLength(20);
-    const distances = [14, 16, 18, 20, 22, 24].map((inches) => inchesToMm(inches));
+    // Which way the litres go is the board's own (a hard edge holds more foam than a tucked rail on these
+    // boards, so they rise); the test only asks that each sweep moves one way, never back.
+    const litresWith = (fields: DesignSummaryFields, from: number, to: number) =>
+      summarizeDesign({
+        ...fields,
+        rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(from), tailHardEdgeEndsAt: inchesToMm(to) },
+      }).volumeLitres;
     for (const board of hard) {
-      let last = -Infinity;
-      for (const at of distances) {
-        const litres = summarizeDesign({
-          ...board.fields,
-          rails: { ...board.fields.rails, tailHardEdgeEndsAt: at },
-        }).volumeLitres;
-        expect(litres, `${board.label} at ${mmToInches(at)}"`).toBeGreaterThan(last);
-        last = litres;
+      const centreIn = mmToInches(board.fields.outline.length) / 2;
+      const endSweep = [20, 22, 24, 26, 28, 30].filter((to) => to <= centreIn).map((to) => litresWith(board.fields, 18, to));
+      const startSweep = [12, 14, 16, 18, 20, 22].map((from) => litresWith(board.fields, from, 24));
+      for (const [name, sweep] of [
+        ["Ends At 20\"→30\"", endSweep],
+        ["Blends From 12\"→22\"", startSweep],
+      ] as const) {
+        expect(sweep.length, board.label).toBeGreaterThan(2);
+        const rising = sweep[sweep.length - 1] > sweep[0];
+        for (let i = 1; i < sweep.length; i++) {
+          if (rising) expect(sweep[i], `${board.label} ${name} step ${i}`).toBeGreaterThan(sweep[i - 1]);
+          else expect(sweep[i], `${board.label} ${name} step ${i}`).toBeLessThan(sweep[i - 1]);
+        }
       }
     }
   });
 
-  it("a board that says nothing reads 18\", exactly as a board that says 18\"", () => {
-    const said = computeCrossSectionVolume(input({ ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeEndsAt: inchesToMm(18) }));
+  it("a board that says nothing reads exactly as a board that says 18\" and 30\"", () => {
+    const said = computeCrossSectionVolume(
+      input({
+        ...DEFAULT_RAIL_BAND_SPEC,
+        tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN),
+        tailHardEdgeEndsAt: inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN),
+      }),
+    );
     expect(computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC)).volumeLitres).toBe(said.volumeLitres);
+  });
+
+  it("a board carrying only the old single Ends At reads its Blends From as 18\"", () => {
+    const old = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeEndsAt: inchesToMm(24) };
+    const both = { ...old, tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN) };
+    expect(computeCrossSectionVolume(input(old)).volumeLitres).toBe(computeCrossSectionVolume(input(both)).volumeLitres);
   });
 });
