@@ -9,7 +9,7 @@
  * `e2e/prod/three-d.spec.ts` proves no other route loads it.
  *
  * The room (D-10): the camera is placed once, 50° above the floor on the shaper's side, and never moves; the four
- * lights are placed once and never move. Only the board's group turns (16-07 adds the turning), so a highlight
+ * lights are placed once and never move. Only the board's group turns (`setTurn`, 16-07), so a highlight
  * slides across the foam as the board turns rather than riding along with it. The group's orientation is
  * `turn × BOARD_TO_ROOM` and its place in front of the camera is `frameAtOne`'s (lib/geometry/view-3d.ts).
  *
@@ -80,9 +80,24 @@ export type BoardSceneState = "ready" | "lost" | "no-webgl";
 
 export interface BoardSceneHandle {
   setBoard(input: BoardSceneInput): void;
-  setTurn(turn: Quat): void;
+  /**
+   * Turns the board (16-07): the board's group only — the camera and the lights never move (D-10). With a
+   * `frame` the board is also placed there in front of the camera (a view button's re-framing at 1x); without
+   * one it keeps its place.
+   */
+  setTurn(turn: Quat, frame?: Frame): void;
+  /** Where the board sits in front of the camera now. */
+  frame(): Frame;
+  /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
+  roomReport(): RoomReport;
   resize(width: number, height: number): void;
   dispose(): void;
+}
+
+/** The camera's position and the four lights' positions in the room, each rounded to 1e-6. */
+export interface RoomReport {
+  camera: Vec3;
+  lights: Vec3[];
 }
 
 /** How long a lost drawing context may take to come back before the screen says it can't draw (UI-SPEC §8). */
@@ -151,6 +166,8 @@ const RAIL_LIGHT_ELEVATION_DEG = 8;
 const NOOP_HANDLE: BoardSceneHandle = {
   setBoard() {},
   setTurn() {},
+  frame: () => ({ distance: CAMERA_STANDOFF_MM, right: 0, up: 0 }),
+  roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
   dispose() {},
 };
@@ -260,8 +277,9 @@ export function mountBoardScene(
   let restoreTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
 
-  const placeBoard = () => {
-    frame = frameAtOne(current.framePoints, turn, size.width / size.height);
+  /** The board's group at `frame`, turned by `turn`: the only thing in the room that ever moves. */
+  const placeBoard = (reframe = true) => {
+    if (reframe) frame = frameAtOne(current.framePoints, turn, size.width / size.height);
     const q = quatMultiply(turn, BOARD_TO_ROOM);
     turned.quaternion.copy(new Quaternion(q[0], q[1], q[2], q[3]));
     turned.position
@@ -318,12 +336,24 @@ export function mountBoardScene(
     placeBoard();
   };
 
+  const round = (v: number) => Math.round(v * 1e6) / 1e6 + 0;
+  const roomReport = (): RoomReport => ({
+    camera: [round(camera.position.x), round(camera.position.y), round(camera.position.z)],
+    lights: [nearRail, farRail, overhead, fill].map((light) => [
+      round(light.position.x),
+      round(light.position.y),
+      round(light.position.z),
+    ]),
+  });
+
   const draw = () => {
     pending = 0;
     if (disposed || lost) return;
     renderer.render(scene, camera);
     frames += 1;
     host.dataset.frames = String(frames);
+    // Read back from the room's own objects after every frame, so a test can see they never moved.
+    host.dataset.room = JSON.stringify(roomReport());
     if (!reportedReady) {
       reportedReady = true;
       events.onState("ready");
@@ -362,6 +392,7 @@ export function mountBoardScene(
 
   renderer.setSize(size.width, size.height, false);
   build();
+  host.dataset.room = JSON.stringify(roomReport());
   schedule();
 
   return {
@@ -372,13 +403,15 @@ export function mountBoardScene(
       build();
       schedule();
     },
-    setTurn(next) {
+    setTurn(next, at) {
       if (disposed) return;
       turn = next;
-      const q = quatMultiply(turn, BOARD_TO_ROOM);
-      turned.quaternion.set(q[0], q[1], q[2], q[3]);
+      if (at) frame = at;
+      placeBoard(false);
       schedule();
     },
+    frame: () => frame,
+    roomReport,
     resize(width, height) {
       if (disposed || !(width > 0) || !(height > 0)) return;
       if (width === size.width && height === size.height) return;
