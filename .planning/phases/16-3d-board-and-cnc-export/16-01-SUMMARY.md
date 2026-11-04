@@ -214,4 +214,16 @@ reads 18" until then.
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 1 checkpoint; the D-27 reading awaits his answer.
+Presented by the orchestrator at the Wave 1 checkpoint, 2026-11-04, with the before-and-after VOLUME picture and the
+40-board table. The founder answered on one card:
+
+- **The Longboard finding:** "Accept as designed." A longboard with Hard Edge on reads about 1 L less because the fade
+  ends at 18" where the old switch ran the hard edge out to about 33"; D-20's range (14"–24", default 18") stands, the
+  Longboard preset ships with Hard Edge off, and the 16-02 read-only report before go-live 1 shows whether any saved
+  board is affected.
+- **The D-27 reading:** "Confirm." While Hard Edge is on, every tail-nearest station — in the fade and past it — takes
+  the centre's Single Tuck and Sharp Bottom Tuck, because RAILS hides the tail's own.
+- **16-01 as a whole:** "Approved." Merged into `board-3d` as 8af9677b.
+
+The two deviations (the live rule called directly in `design.ts`; the exported `RailAnchorStations` type) were
+accepted by the orchestrator.

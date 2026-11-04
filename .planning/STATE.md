@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16 (3D Board and CNC Export) PLANNED and APPROVED 2026-11-04 on branch board-3d: 14 plans in 10 waves, two go-lives (D-29: the fade and the slider first, the 3D screen second); next /gsd-execute-phase 16, starting with 16-01"
+stopped_at: "Phase 16 executing on branch board-3d: Wave 1 (16-01, the shared section function and the hard edge's fade) merged 2026-11-04 as 8af9677b after the founder's look (Longboard finding accepted as designed, D-27 reading confirmed); next Wave 2 — 16-02 the Hard Edge Ends At slider + saved-boards report, 16-03 the 3D surface maths"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Phase 16 planned: the 3D board and the CNC export, 14 plans in 10 waves on branch board-3d; the founder approves next"
+last_activity_desc: "Phase 16 Wave 1 merged: the litres read one section function and the tail's hard edge fades 12\" to 18\"; the founder approved the look"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 45
-  completed_plans: 31
-  percent: 50
+  completed_plans: 32
+  percent: 71
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
