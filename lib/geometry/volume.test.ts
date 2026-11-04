@@ -27,7 +27,7 @@ import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  DEFAULT_HARD_EDGE_ENDS_AT_IN,
+  defaultHardEdgeEndsAt,
   DEFAULT_TIP_RAIL_SCALE,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
@@ -842,7 +842,8 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
 
   it("a board that says nothing blends from 18\" to 30\", both inside the board's tail half", () => {
     expect(blendsFrom).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
-    expect(endsAt).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
+    expect(endsAt).toBe(defaultHardEdgeEndsAt(length));
+    expect(endsAt).toBe(inchesToMm(30));
     expect(blendsFrom).toBeGreaterThan(tail12);
     expect(endsAt).toBeLessThan(anchors.center);
   });
@@ -981,7 +982,7 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
       input({
         ...DEFAULT_RAIL_BAND_SPEC,
         tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN),
-        tailHardEdgeEndsAt: inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN),
+        tailHardEdgeEndsAt: defaultHardEdgeEndsAt(length),
       }),
     );
     expect(computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC)).volumeLitres).toBe(said.volumeLitres);

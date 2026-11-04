@@ -17,7 +17,7 @@ import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
   DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  DEFAULT_HARD_EDGE_ENDS_AT_IN,
+  defaultHardEdgeEndsAt,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
   HARD_EDGE_BLENDS_FROM_RANGE_IN,
@@ -1039,7 +1039,7 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
       expect(JSON.stringify(opened.rails)).not.toContain(key);
     }
     expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
-    expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultHardEdgeEndsAt(length));
   });
 
   it("a stored 20\"/26\" pair is kept exactly (rule 13)", () => {

@@ -18,8 +18,9 @@ import { railCutFoam, type RailCutLine } from "./finished-rail";
 import {
   DECK_PERCENT_MIN,
   DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  DEFAULT_HARD_EDGE_ENDS_AT_IN,
+  DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN,
   DEFAULT_RAIL_BAND_SPEC,
+  defaultHardEdgeEndsAt,
   HARD_EDGE_BLENDS_FROM_RANGE_IN,
   HARD_EDGE_ENDS_AT_RANGE_IN,
   HARD_EDGE_MIN_BLEND_IN,
@@ -955,19 +956,47 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
 });
 
 describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail's hard edge blend (Phase 16, D-20/D-30, T-16-01)", () => {
-  // A 6'0" board (the default) and a short one whose 30" default sits past its centre.
+  // A 6'0" board (the default) and a short one whose default end sits past its centre.
   const length = DEFAULT_BOARD_SPEC.outline.length;
   const centre = mm(length / 2);
   const shortLength = inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2);
   const shortCentre = mm(shortLength / 2);
   const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
   const start = inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN);
-  const end = inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
+  const end = defaultHardEdgeEndsAt(length);
   const GARBAGE: unknown[] = [Number.NaN, Infinity, -Infinity, 1e9, -inchesToMm(18), "18", null, { inches: 18 }];
 
-  it("a board that says nothing reads 18\" and 30\"", () => {
+  it("the default end is L/3 − 18 inches short of the centre, to the nearest 1/2\" — the founder's five lengths", () => {
+    expect(DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN).toBe(18);
+    // [feet, inches] → the default end in inches from the tail, as the founder's rule gives it.
+    for (const [feet, inches, endIn] of [
+      [6, 0, 30],
+      [5, 8, 29.5],
+      [6, 2, 30.5],
+      [7, 2, 32.5],
+      [9, 0, 36],
+    ] as const) {
+      const boardLength = inchesToMm(feet * 12 + inches);
+      expect(defaultHardEdgeEndsAt(boardLength), `${feet}'${inches}"`).toBe(inchesToMm(endIn));
+      // It reads the same as the rule itself: L/3 − 18 inches short of the centre.
+      const lengthIn = mmToInches(boardLength);
+      const rule = lengthIn / 2 - (lengthIn / 3 - DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN);
+      expect(Math.abs(mmToInches(defaultHardEdgeEndsAt(boardLength)) - rule)).toBeLessThanOrEqual(0.25 + 1e-9);
+      // And a board of that length that says nothing reads it (each is well inside its window).
+      expect(hardEdgeEndsAt({}, boardLength)).toBe(inchesToMm(endIn));
+    }
+    expect(length).toBe(inchesToMm(72));
+  });
+
+  it("the default end never reads the start: a stored start leaves the default end where it was", () => {
+    for (const from of [12, 16, 20, 24]) {
+      expect(hardEdgeEndsAt({ tailHardEdgeBlendsFrom: inchesToMm(from) }, length), `${from}"`).toBe(end);
+    }
+  });
+
+  it("a board that says nothing reads 18\" and its own default end (30\" on a 6'0\")", () => {
     expect(DEFAULT_HARD_EDGE_BLENDS_FROM_IN).toBe(18);
-    expect(DEFAULT_HARD_EDGE_ENDS_AT_IN).toBe(30);
+    expect(end).toBe(inchesToMm(30));
     expect(HARD_EDGE_MIN_BLEND_IN).toBe(2);
     expect(HARD_EDGE_BLENDS_FROM_RANGE_IN).toEqual({ min: 12, max: 30, step: 0.5 });
     expect(HARD_EDGE_ENDS_AT_RANGE_IN.step).toBe(0.5);
@@ -1000,7 +1029,7 @@ describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail's hard edge blend (
     }
   });
 
-  it("a pair that crosses, or sits closer than 2\", resolves to a valid pair: the start kept, the end at 30\"", () => {
+  it("a pair that crosses, or sits closer than 2\", resolves to a valid pair: the start kept, the end at the board's default", () => {
     for (const [from, to] of [
       [24, 20],
       [22, 23],
@@ -1013,13 +1042,13 @@ describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail's hard edge blend (
       expect(e, `${from}/${to}`).toBe(end);
       expect(e - s).toBeGreaterThanOrEqual(gap - 1e-9);
     }
-    // A start of 29" leaves no room for 30", so the end is clamped to start + 2".
+    // A start of 29" leaves no room for the 6'0" board's 30" default end, so the end is clamped to start + 2".
     const late = { tailHardEdgeBlendsFrom: inchesToMm(29), tailHardEdgeEndsAt: inchesToMm(20) };
     expect(hardEdgeEndsAt(late, length)).toBe(mm(inchesToMm(29) + gap));
   });
 
-  it("on a short board the 30\" default sits past the centre, so it is clamped to the centre; the start keeps 2\" of room", () => {
-    expect(end).toBeGreaterThan(shortCentre);
+  it("on a short board the default end sits past the centre, so it is clamped to the centre; the start keeps 2\" of room", () => {
+    expect(defaultHardEdgeEndsAt(shortLength)).toBeGreaterThan(shortCentre);
     expect(hardEdgeEndsAt({}, shortLength)).toBe(shortCentre);
     expect(hardEdgeBlendsFrom({}, shortLength)).toBe(mm(Math.min(start, shortCentre - gap)));
     // A stored 30" start on that board is outside its window (centre − 2"), so it reads the clamped default.
