@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-11-04T05:53:14.685Z"
-last_activity: 2026-11-03
-last_activity_desc: "LIVE: main pushed (291152e8) on the founder's word after the full gate (6,777 unit tests, type check, lint, a production build, 18 production-build specs, 1,346 browser tests with 5 load timeouts that passed alone); the live site served the new version at 19:18 PST. Live now: the Board Rack's smooth swallow and diamond turn (261103-drw), litres that follow the tail (261103-gcm), Save board as file… / Open a board file… and Import my designs with a preview (261103-k8o). The founder checked both on the live site the same evening: export then import of a board on his own account worked, and his iPhone saved a board to Files and opened the file"
+stopped_at: "Phase 16 (3D Board and CNC Export) PLANNED 2026-11-04 on branch board-3d: 14 plans in 10 waves, checker passed on the second look (two warnings fixed), decision coverage 28/28; the founder approves the plans and chooses one go-live or two, then /gsd-execute-phase 16"
+last_updated: "2026-11-04T08:18:34.623Z"
+last_activity: 2026-11-04
+last_activity_desc: "Phase 16 planned: the 3D board and the CNC export, 14 plans in 10 waves on branch board-3d; the founder approves next"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 44
+  total_plans: 58
   completed_plans: 42
-  percent: 95
+  percent: 72
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 13 — Ready for the Shapers (the rehearsal walk on the live site, the Wednesday-evening freeze, the Oct 10 showing); Phase 15 complete and live
+**Current focus:** Phase 16 — 3D Board and CNC Export, planned on branch board-3d; awaiting the founder's plan approval and go-live choice
 
 ## Current Position
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 15 complete and live; Phase 13's last items next
-Last activity: 2026-11-03 — LIVE: main pushed (291152e8) on the founder's word after the full gate (6,777 unit tests, type check, lint, a production build, 18 production-build specs, 1,346 browser tests with 5 load timeouts that passed alone); the live site served the new version at 19:18 PST. Live now: the Board Rack's smooth swallow and diamond turn (261103-drw), litres that follow the tail (261103-gcm), Save board as file… / Open a board file… and Import my designs with a preview (261103-k8o). The founder checked both on the live site the same evening: export then import of a board on his own account worked, and his iPhone saved a board to Files and opened the file
+Status: Ready to execute
+Last activity: 2026-11-04 — Phase 16 (3D Board and CNC Export) PLANNED on branch board-3d: opened and discussed 2026-11-03 (D-01–D-22), the screen contract approved, the research measured in a sandbox and ruled on (D-23–D-28), 14 plans in 10 waves, the checker's second look passed. Next: the founder approves the plans and chooses one go-live or two, then /gsd-execute-phase 16. Main is live and clean; nothing on board-3d is pushed
 
 ## Performance Metrics
 

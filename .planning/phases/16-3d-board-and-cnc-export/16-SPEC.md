@@ -101,7 +101,7 @@ view; station lines; an idle auto-turn; fins in the STL; an export button on SUM
 | Narrow stations near the tips (section wider than the foam) | R2, R4 | resolved | Cut at the stringer; deck below `deckAt` only within 12" of a tip (≤ 5.43 mm); Side-view relation test limited accordingly |
 | Mesh volume vs litres | R2, acc 3 | resolved | Gap −0.098% worst at the recommended fineness; tolerance (−0.15%, 0] |
 | Hard edge fade start (12") and end (set distance) | R9, acc 6 | resolved | Area blend, continuous; measured litres moves; RAILS' 12" plot unchanged |
-| Fade zone tuck settings hidden on RAILS | R9 | unresolved | K6 |
+| Fade zone tuck settings hidden on RAILS | R9 | resolved (explicit) | D-27: in the fade zone the tucked section reads the centre's Single Tuck and Sharp Bottom Tuck (the founder's "fade into the center tuck"); the plans apply them at every tail-nearest station while Hard Edge is on |
 | Hard Edge Ends At absent / garbage / out of range in a saved board | R9, acc 6 | resolved | Reads 18", nothing rewritten; version 5 |
 | Hard Edge off then on | R9 | resolved | Value kept |
 | Reset Advanced Settings | R9 | resolved | Deletes the field in the same undo step |
@@ -115,7 +115,7 @@ view; station lines; an idle auto-turn; fins in the STL; an export button on SUM
 | Fins: rear quads smaller | R5 | resolved | Base from FINS, depth 4.25" vs 4.5" |
 | Fins never claim a maker's template | R5 | resolved | One generic outline per role, no names |
 | Shape3D import of each file | R8 | unresolved | Founder's acceptance test in Shape3D's trial (§C) |
-| AkuShaper import | R7, D-15 | unresolved | K1 |
+| AkuShaper import | R7, D-15 | resolved (explicit) | D-23: the note names Shape3D only; AkuShaper returns once an import is proven in its trial |
 | Export time on a phone | R7 | resolved with assumption | 123–187 ms Node at 48/32/24 (61–102 ms at 24/16/12); fallback state exists; real-iPhone check |
 | WebKit's slower first draw in specs | R12, C6 | resolved | Timeouts with headroom |
 | Theme switch while open | R10 | resolved | Re-read tokens via `getComputedStyle` on class/scheme change |

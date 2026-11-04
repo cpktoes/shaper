@@ -1024,7 +1024,7 @@ _Kinds: interactive-control_
 | Error / failure | Dimmed while a canvas message shows (§8). | ✅ covered |
 | Long text | Five one-word labels (Deck, Bottom, Side, Nose, Tail) in a 3/2 grid sized at the 260-dot panel; no wrapping (§1). | ✅ covered |
 
-### E07 — Reset view
+### E07 — Reset View
 _Kinds: interactive-control_
 
 | State | How it resolves | |
@@ -1111,7 +1111,7 @@ _Kinds: static-content_
 | Overflow / truncation | The subtitle wraps within the panel at 260–340 dots (§1); the tab band truncates a long board name by its own rule (§16). | ✅ covered |
 | Long text | '3D Board' is fixed; the subtitle is one sentence; a long board name is truncated in the band as on every screen and spoken in full as the canvas's name (§16, §13). | ✅ covered |
 
-### E16 — RAILS' Hard edge ends at slider
+### E16 — RAILS' Hard Edge Ends At slider
 _Kinds: form, interactive-control_
 
 | State | How it resolves | |
