@@ -8,6 +8,7 @@ import {
   computeVolume,
   CUBIC_INCHES_PER_LITRE,
   HARD_EDGE_FADE,
+  fadingSectionArea,
   HARD_EDGE_SWITCH,
   tailHardEdgeWeight,
   simpsonIntegrate,
@@ -20,7 +21,7 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
-import { railBlendArea, sectionFinishedRail } from "./finished-rail";
+import { blendFinishedRails, railBlendArea, sampledFinishedRail, sampledSectionArea, sectionFinishedRail } from "./finished-rail";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
@@ -897,7 +898,7 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     // And the two sections the fade blends really do differ, so the test above means something.
     const [mid] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm((blendsFrom + endsAt) / 2)]);
     expect(mid.hardWeight).toBeCloseTo(0.5, 12);
-    expect(mid.hardResult).toBeDefined();
+    expect(mid.blended).toBeDefined();
     const [hardOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 1 }, [
       mid.station,
     ]);
@@ -905,11 +906,67 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
       mid.station,
     ]);
     expect(Math.abs(hardOnly.area - tuckedOnly.area)).toBeGreaterThan(1e-3 * mid.area);
-    // The fading station is the two areas blended by its weight — never shrunk tuck marks.
-    expect(mid.area).toBeCloseTo((1 - mid.hardWeight) * tuckedOnly.area + mid.hardWeight * hardOnly.area, 9);
+    // The fading station is the ring the 3D board draws — the two finished rails blended point for point, never
+    // shrunk tuck marks — corrected by the end rings' own shortfalls (D-31, level variant): close to, but not,
+    // the two areas blended.
+    const tuckedHalf = sampledFinishedRail(tuckedOnly.result!, mid.domed, mid.halfWidth);
+    const hardHalf = sampledFinishedRail(hardOnly.result!, mid.domed, mid.halfWidth);
+    expect(mid.blended).toEqual(blendFinishedRails(tuckedHalf, hardHalf, mid.hardWeight));
+    const w = mid.hardWeight;
+    const level =
+      sampledSectionArea(mid.blended!) +
+      (1 - w) * (tuckedOnly.area - sampledSectionArea(tuckedHalf)) +
+      w * (hardOnly.area - sampledSectionArea(hardHalf));
+    expect(Math.abs(mid.area - level) / mid.area).toBeLessThan(1e-9);
+    const areasBlended = (1 - w) * tuckedOnly.area + w * hardOnly.area;
+    expect(Math.abs(mid.area - areasBlended) / mid.area).toBeLessThan(1e-3);
     expect(mid.result?.hardEdge).toBe(false);
-    expect(mid.hardResult?.hardEdge).toBe(true);
+    expect(hardOnly.result?.hardEdge).toBe(true);
+    // The cut area stays the finished area plus its blends, the two cuts blended by the weight.
+    expect(mid.area + mid.blendArea).toBeCloseTo(
+      (1 - w) * (tuckedOnly.area + tuckedOnly.blendArea) + w * (hardOnly.area + hardOnly.blendArea),
+      6,
+    );
   });
+
+  it("the fade's correction vanishes exactly at weight 0 and weight 1, so its ends are the end sections' own areas", () => {
+    const station = mm((blendsFrom + endsAt) / 2);
+    const [hardOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 1 }, [station]);
+    const [tuckedOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 0 }, [station]);
+    const tuckedHalf = sampledFinishedRail(tuckedOnly.result!, tuckedOnly.domed, tuckedOnly.halfWidth);
+    const hardHalf = sampledFinishedRail(hardOnly.result!, hardOnly.domed, hardOnly.halfWidth);
+    for (const [w, end] of [
+      [0, tuckedOnly],
+      [1, hardOnly],
+    ] as const) {
+      const blended = blendFinishedRails(tuckedHalf, hardHalf, w);
+      expect(blended).toEqual(w === 0 ? tuckedHalf : hardHalf);
+      expect(fadingSectionArea(tuckedOnly.area, hardOnly.area, tuckedHalf, hardHalf, blended, w)).toBe(end.area);
+    }
+  });
+
+  it("on every hard-edged board of the forty, at the defaults, every fading station is the level-variant area (D-31)", () => {
+    let checked = 0;
+    for (const board of phase16Boards().filter((b) => b.fields.rails.tailHardEdge)) {
+      const boardInput = designInput(board.fields);
+      for (const section of boardSections(boardInput)) {
+        if (!(section.hardWeight > 0 && section.hardWeight < 1)) continue;
+        const at = (weight: number) =>
+          boardSectionsWith(boardInput, { ...HARD_EDGE_FADE, weight: () => weight }, [section.station])[0];
+        const [tucked, hard] = [at(0), at(1)];
+        const tuckedHalf = sampledFinishedRail(tucked.result!, tucked.domed, tucked.halfWidth);
+        const hardHalf = sampledFinishedRail(hard.result!, hard.domed, hard.halfWidth);
+        const w = section.hardWeight;
+        const expected =
+          sampledSectionArea(section.blended!) +
+          (1 - w) * (tucked.area - sampledSectionArea(tuckedHalf)) +
+          w * (hard.area - sampledSectionArea(hardHalf));
+        expect(Math.abs(section.area - expected) / section.area, `${board.label} at ${section.station}`).toBeLessThan(1e-9);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
+  }, 30_000);
 
   it("with Hard Edge off, the fade and the old switch build the same sections on every board", () => {
     const soft = phase16Boards().filter((board) => !board.fields.rails.tailHardEdge);

@@ -282,3 +282,51 @@ Two looks, both presented by the orchestrator on 2026-11-04.
   `board-3d` as b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149.
 
 **LITRES_TIP:** b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149
+
+## D-31 note (2026-11-04)
+
+After 16-03's look the founder chose one rule inside the hard edge's fade (D-31, the level variant, built in plan
+16-03): inside the fade the litres count the foam the 3D board draws, corrected by the same hair the drawn board
+loses to its straight segments everywhere else. Only stations inside the fade move; Hard Edge off, and every
+station at full hard edge or fully tucked, read exactly as before.
+
+| Preset (as its card opens) | Before Phase 16 | After D-30 | Now, D-31 |
+|---|---:|---:|---:|
+| Shortboard | 29.61 L | 29.61 L | 29.61 L (29.6099) |
+| Fish | 34.65 L | 34.65 L | 34.65 L (34.6514) |
+| Mid-length | 49.41 L | 49.40 L | 49.40 L (49.3974) |
+| Longboard (not hard-edged) | 72.35 L | 72.35 L | 72.35 L |
+
+The stock 6'0" board still reads 30.29 L, and VOLUME's reference picture did not change.
+
+The `--hard-edge-report` lines re-run on the 40 test boards (scratch `report40.ts` from this plan's archive, through
+`hardEdgeReportLines` — never a database; labels stand in for row ids), before = the old switch, after = D-31:
+
+```
+hard-edge report: 40 saved boards; 40 open; 20 with a hard-edged tail
+longboard|asis|hard: blends from 18" (default) · ends at 36" (default) — 75.03 → 74.54 L (-0.4954)
+longboard|pin|hard: blends from 18" (default) · ends at 36" (default) — 70.39 → 69.90 L (-0.4952)
+longboard|round|hard: blends from 18" (default) · ends at 36" (default) — 70.39 → 69.90 L (-0.4952)
+longboard|diamond|hard: blends from 18" (default) · ends at 36" (default) — 74.65 → 74.22 L (-0.4326)
+longboard|swallow|hard: blends from 18" (default) · ends at 36" (default) — 75.52 → 75.10 L (-0.4210)
+midlength|diamond|hard: blends from 18" (default) · ends at 32 1/2" (default) — 50.99 → 50.98 L (-0.0111)
+midlength|swallow|hard: blends from 18" (default) · ends at 32 1/2" (default) — 51.66 → 51.65 L (-0.0107)
+midlength|asis|hard: blends from 18" (default) · ends at 32 1/2" (default) — 49.41 → 49.40 L (-0.0088)
+midlength|pin|hard: blends from 18" (default) · ends at 32 1/2" (default) — 49.41 → 49.40 L (-0.0088)
+midlength|round|hard: blends from 18" (default) · ends at 32 1/2" (default) — 49.41 → 49.40 L (-0.0088)
+shortboard|diamond|hard: blends from 18" (default) · ends at 30 1/2" (default) — 30.18 → 30.18 L (-0.0024)
+shortboard|asis|hard: blends from 18" (default) · ends at 30 1/2" (default) — 29.61 → 29.61 L (-0.0024)
+shortboard|pin|hard: blends from 18" (default) · ends at 30 1/2" (default) — 28.77 → 28.77 L (-0.0023)
+shortboard|round|hard: blends from 18" (default) · ends at 30 1/2" (default) — 28.77 → 28.77 L (-0.0023)
+shortboard|swallow|hard: blends from 18" (default) · ends at 30 1/2" (default) — 30.64 → 30.63 L (-0.0019)
+fish|pin|hard: blends from 18" (default) · ends at 29 1/2" (default) — 31.87 → 31.88 L (+0.0007)
+fish|round|hard: blends from 18" (default) · ends at 29 1/2" (default) — 31.87 → 31.88 L (+0.0007)
+fish|asis|hard: blends from 18" (default) · ends at 29 1/2" (default) — 34.65 → 34.65 L (+0.0007)
+fish|swallow|hard: blends from 18" (default) · ends at 29 1/2" (default) — 34.65 → 34.65 L (+0.0007)
+fish|diamond|hard: blends from 18" (default) · ends at 29 1/2" (default) — 34.08 → 34.08 L (+0.0002)
+largest move: longboard|asis|hard, -0.4954 L
+```
+
+The longboards move a little further than under D-30's area blend (−0.42 to −0.50 L against −0.36 to −0.43 L): the
+point blend holds less foam than the area blend did, and the litres now count it.
+

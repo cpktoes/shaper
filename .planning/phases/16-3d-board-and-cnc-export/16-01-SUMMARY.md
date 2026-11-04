@@ -250,49 +250,53 @@ The table below uses the same 40 boards as above. "Today" is the old switch, che
 "Old fade" is this plan's original 12"→18" fade, kept for reference. The live column is a board that says nothing,
 which now reads 18" to its own default end. All figures come from the app's own functions, printed by 16-01's table
 printer adapted as `table40-d30.ts` (archived in `pictures/16-02-pictures-source.tar.gz`).
+The last column was added by plan 16-03 on 2026-11-04 for D-31 (level variant): inside the fade the litres now count
+the foam the 3D board draws, corrected by the same hair the drawn board loses to its straight segments everywhere
+else. It is the live figure for a board that says nothing (scratch `table40-d31.ts`, archived in
+`pictures/16-03-pictures-source.tar.gz`); the D-30 column is the same defaults under the earlier area blend.
 
-| Board | Length | Default end | Today (L) | Old fade 12"→18" (L) | D-30 default — live (L) | Move at the D-30 default (L) |
-|---|---:|---:|---:|---:|---:|---:|
-| shortboard · asis · hard | 74" | 30 1/2" | 29.6122 | 29.5903 | 29.6128 | 0.0006 |
-| shortboard · asis · soft | 74" | 30 1/2" | 29.5712 | 29.5712 | 29.5712 | 0 |
-| shortboard · swallow · hard | 74" | 30 1/2" | 30.6350 | 30.6135 | 30.6361 | 0.0010 |
-| shortboard · swallow · soft | 74" | 30 1/2" | 30.5947 | 30.5947 | 30.5947 | 0 |
-| shortboard · diamond · hard | 74" | 30 1/2" | 30.1810 | 30.1590 | 30.1815 | 0.0005 |
-| shortboard · diamond · soft | 74" | 30 1/2" | 30.1402 | 30.1402 | 30.1402 | 0 |
-| shortboard · pin · hard | 74" | 30 1/2" | 28.7721 | 28.7501 | 28.7727 | 0.0006 |
-| shortboard · pin · soft | 74" | 30 1/2" | 28.7313 | 28.7313 | 28.7313 | 0 |
-| shortboard · round · hard | 74" | 30 1/2" | 28.7721 | 28.7501 | 28.7727 | 0.0006 |
-| shortboard · round · soft | 74" | 30 1/2" | 28.7313 | 28.7313 | 28.7313 | 0 |
-| fish · asis · hard | 68" | 29 1/2" | 34.6507 | 34.6351 | 34.6547 | 0.0040 |
-| fish · asis · soft | 68" | 29 1/2" | 34.6190 | 34.6190 | 34.6190 | 0 |
-| fish · swallow · hard | 68" | 29 1/2" | 34.6507 | 34.6351 | 34.6547 | 0.0040 |
-| fish · swallow · soft | 68" | 29 1/2" | 34.6190 | 34.6190 | 34.6190 | 0 |
-| fish · diamond · hard | 68" | 29 1/2" | 34.0774 | 34.0614 | 34.0810 | 0.0036 |
-| fish · diamond · soft | 68" | 29 1/2" | 34.0453 | 34.0453 | 34.0453 | 0 |
-| fish · pin · hard | 68" | 29 1/2" | 31.8748 | 31.8592 | 31.8788 | 0.0041 |
-| fish · pin · soft | 68" | 29 1/2" | 31.8432 | 31.8432 | 31.8432 | 0 |
-| fish · round · hard | 68" | 29 1/2" | 31.8748 | 31.8592 | 31.8788 | 0.0041 |
-| fish · round · soft | 68" | 29 1/2" | 31.8432 | 31.8432 | 31.8432 | 0 |
-| midlength · asis · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 |
-| midlength · asis · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 |
-| midlength · swallow · hard | 86" | 32 1/2" | 51.6643 | 51.6329 | 51.6576 | -0.0067 |
-| midlength · swallow · soft | 86" | 32 1/2" | 51.6155 | 51.6155 | 51.6155 | 0 |
-| midlength · diamond · hard | 86" | 32 1/2" | 50.9912 | 50.9595 | 50.9840 | -0.0072 |
-| midlength · diamond · soft | 86" | 32 1/2" | 50.9423 | 50.9423 | 50.9423 | 0 |
-| midlength · pin · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 |
-| midlength · pin · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 |
-| midlength · round · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 |
-| midlength · round · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 |
-| longboard · asis · hard | 108" | 36" | 75.0315 | 73.9612 | 74.6008 | -0.4307 |
-| longboard · asis · soft | 108" | 36" | 73.5743 | 73.5743 | 73.5743 | 0 |
-| longboard · swallow · hard | 108" | 36" | 75.5172 | 74.5224 | 75.1609 | -0.3563 |
-| longboard · swallow · soft | 108" | 36" | 74.1387 | 74.1387 | 74.1387 | 0 |
-| longboard · diamond · hard | 108" | 36" | 74.6523 | 73.6462 | 74.2843 | -0.3680 |
-| longboard · diamond · soft | 108" | 36" | 73.2621 | 73.2621 | 73.2621 | 0 |
-| longboard · pin · hard | 108" | 36" | 70.3914 | 69.3211 | 69.9607 | -0.4307 |
-| longboard · pin · soft | 108" | 36" | 68.9394 | 68.9394 | 68.9394 | 0 |
-| longboard · round · hard | 108" | 36" | 70.3914 | 69.3211 | 69.9607 | -0.4307 |
-| longboard · round · soft | 108" | 36" | 68.9394 | 68.9394 | 68.9394 | 0 |
+| Board | Length | Default end | Today (L) | Old fade 12"→18" (L) | D-30 default, the two areas blended (L) | Move at the D-30 default (L) | D-31 (level variant) — live (L) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| shortboard · asis · hard | 74" | 30 1/2" | 29.6122 | 29.5903 | 29.6128 | 0.0006 | 29.6099 |
+| shortboard · asis · soft | 74" | 30 1/2" | 29.5712 | 29.5712 | 29.5712 | 0 | 29.5712 |
+| shortboard · swallow · hard | 74" | 30 1/2" | 30.6350 | 30.6135 | 30.6361 | 0.0010 | 30.6331 |
+| shortboard · swallow · soft | 74" | 30 1/2" | 30.5947 | 30.5947 | 30.5947 | 0 | 30.5947 |
+| shortboard · diamond · hard | 74" | 30 1/2" | 30.1810 | 30.1590 | 30.1815 | 0.0005 | 30.1786 |
+| shortboard · diamond · soft | 74" | 30 1/2" | 30.1402 | 30.1402 | 30.1402 | 0 | 30.1402 |
+| shortboard · pin · hard | 74" | 30 1/2" | 28.7721 | 28.7501 | 28.7727 | 0.0006 | 28.7697 |
+| shortboard · pin · soft | 74" | 30 1/2" | 28.7313 | 28.7313 | 28.7313 | 0 | 28.7313 |
+| shortboard · round · hard | 74" | 30 1/2" | 28.7721 | 28.7501 | 28.7727 | 0.0006 | 28.7697 |
+| shortboard · round · soft | 74" | 30 1/2" | 28.7313 | 28.7313 | 28.7313 | 0 | 28.7313 |
+| fish · asis · hard | 68" | 29 1/2" | 34.6507 | 34.6351 | 34.6547 | 0.0040 | 34.6514 |
+| fish · asis · soft | 68" | 29 1/2" | 34.6190 | 34.6190 | 34.6190 | 0 | 34.6190 |
+| fish · swallow · hard | 68" | 29 1/2" | 34.6507 | 34.6351 | 34.6547 | 0.0040 | 34.6514 |
+| fish · swallow · soft | 68" | 29 1/2" | 34.6190 | 34.6190 | 34.6190 | 0 | 34.6190 |
+| fish · diamond · hard | 68" | 29 1/2" | 34.0774 | 34.0614 | 34.0810 | 0.0036 | 34.0776 |
+| fish · diamond · soft | 68" | 29 1/2" | 34.0453 | 34.0453 | 34.0453 | 0 | 34.0453 |
+| fish · pin · hard | 68" | 29 1/2" | 31.8748 | 31.8592 | 31.8788 | 0.0041 | 31.8755 |
+| fish · pin · soft | 68" | 29 1/2" | 31.8432 | 31.8432 | 31.8432 | 0 | 31.8432 |
+| fish · round · hard | 68" | 29 1/2" | 31.8748 | 31.8592 | 31.8788 | 0.0041 | 31.8755 |
+| fish · round · soft | 68" | 29 1/2" | 31.8432 | 31.8432 | 31.8432 | 0 | 31.8432 |
+| midlength · asis · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 | 49.3974 |
+| midlength · asis · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 | 49.3602 |
+| midlength · swallow · hard | 86" | 32 1/2" | 51.6643 | 51.6329 | 51.6576 | -0.0067 | 51.6536 |
+| midlength · swallow · soft | 86" | 32 1/2" | 51.6155 | 51.6155 | 51.6155 | 0 | 51.6155 |
+| midlength · diamond · hard | 86" | 32 1/2" | 50.9912 | 50.9595 | 50.9840 | -0.0072 | 50.9800 |
+| midlength · diamond · soft | 86" | 32 1/2" | 50.9423 | 50.9423 | 50.9423 | 0 | 50.9423 |
+| midlength · pin · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 | 49.3974 |
+| midlength · pin · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 | 49.3602 |
+| midlength · round · hard | 86" | 32 1/2" | 49.4062 | 49.3773 | 49.4013 | -0.0049 | 49.3974 |
+| midlength · round · soft | 86" | 32 1/2" | 49.3602 | 49.3602 | 49.3602 | 0 | 49.3602 |
+| longboard · asis · hard | 108" | 36" | 75.0315 | 73.9612 | 74.6008 | -0.4307 | 74.5361 |
+| longboard · asis · soft | 108" | 36" | 73.5743 | 73.5743 | 73.5743 | 0 | 73.5743 |
+| longboard · swallow · hard | 108" | 36" | 75.5172 | 74.5224 | 75.1609 | -0.3563 | 75.0962 |
+| longboard · swallow · soft | 108" | 36" | 74.1387 | 74.1387 | 74.1387 | 0 | 74.1387 |
+| longboard · diamond · hard | 108" | 36" | 74.6523 | 73.6462 | 74.2843 | -0.3680 | 74.2196 |
+| longboard · diamond · soft | 108" | 36" | 73.2621 | 73.2621 | 73.2621 | 0 | 73.2621 |
+| longboard · pin · hard | 108" | 36" | 70.3914 | 69.3211 | 69.9607 | -0.4307 | 69.8961 |
+| longboard · pin · soft | 108" | 36" | 68.9394 | 68.9394 | 68.9394 | 0 | 68.9394 |
+| longboard · round · hard | 108" | 36" | 70.3914 | 69.3211 | 69.9607 | -0.4307 | 69.8961 |
+| longboard · round · soft | 108" | 36" | 68.9394 | 68.9394 | 68.9394 | 0 | 68.9394 |
 
 **What moved, and why:**
 - At the new defaults the hard edge stays full out to 18" and doesn't finish blending until each board's own default

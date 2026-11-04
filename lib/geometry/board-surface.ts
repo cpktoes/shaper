@@ -11,20 +11,18 @@
  *
  * How a station becomes a ring (research Pattern 2):
  *
- * 1. `sectionFinishedRail` on the station's own section gives the finished rail, from the deck end round
- *    the rail to the bottom end; x = 0 at the rail, negative toward the stringer, y up from the bottom.
- * 2. It is placed at the outline: the rail at `outer` — the drawn curve inside a swallow's notch, the
- *    section's own half-width everywhere else — and the piece's inside edge at `inner`: the notch's wall
- *    inside the notch, the stringer (0) everywhere else.
- * 3. If the curve starts outboard of `inner` it is carried flat along the deck at its first height and
- *    along the bottom at its last height, exactly the closure the litres assume (`stationArea`); then it
- *    is cut at `inner` — never squeezed to fit.
- * 4. It is split into deck (inside edge to the outermost point), rail (to the bottom edge, the first point
- *    on the bottom) and bottom runs, and each run resampled by arc length to a fixed count
- *    (`SURFACE_POINTS`), so the bottom edge — a hard edge's corner, a Sharp Bottom Tuck's corner — is
- *    always the same ring index. While the tail's hard edge fades, the tucked and the hard-edged halves are
- *    built alike and blended point for point by the section's hard weight (D-20/D-27).
- * 5. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
+ * 1. `sampledFinishedRail` (finished-rail.ts) gives the station's finished rail with its rail at the
+ *    section's half-width from the stringer: carried flat along the deck and the bottom if it starts
+ *    outboard of the stringer (exactly the closure the litres assume), cut at the stringer if it starts
+ *    inboard — never squeezed — and split into deck, rail and bottom runs, each resampled by arc length to
+ *    a fixed count (`SURFACE_POINTS`), so the bottom edge — a hard edge's corner, a Sharp Bottom Tuck's
+ *    corner — is always the same ring index.
+ * 2. While the tail's hard edge fades, the section itself carries the ring (`BoardSection.blended`): the
+ *    tucked and the hard-edged halves sampled alike and blended point for point by the hard weight
+ *    (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31). Nothing is blended here.
+ * 3. Inside a swallow's notch the half is moved out to stand on the notch's wall (`inner`): the rail lands
+ *    on the drawn curve (`outer`), the inside edge on the wall. Everywhere else `inner` is the stringer, 0.
+ * 4. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
  *    is one surface across the stringer.
  *
  * The tips (research Pattern 3): inside a swallow's notch each station is two pieces, each from the notch's
@@ -36,10 +34,10 @@
  */
 
 import { BOARD_LENGTH_RANGE_IN } from "./board";
-import { sectionFinishedRail } from "./finished-rail";
+import { HALF_SECTION_POINT_COUNT, SECTION_POINTS, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints, sampleFoil } from "./foil";
 import { type OutlineGeometry, sampleOutline, tailCutStation } from "./outline";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt, type RailSectionResult } from "./rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
 import { inchesToMm, mm, type Mm } from "./units";
 import { type BoardSection, type CrossSectionVolumeInput, boardSections, crossSectionStations } from "./volume";
 
@@ -55,10 +53,10 @@ export const SURFACE_STATION_STEP_IN = 0.5;
  * stand inside a swallow's notch wall between its bottom and deck corners. One fineness for the screen and
  * the files (D-26).
  */
-export const SURFACE_POINTS = { deck: 48, rail: 32, bottom: 24, wall: 4 } as const;
+export const SURFACE_POINTS = { ...SECTION_POINTS, wall: 4 } as const;
 
 /** Points in one half-section: the three runs, sharing their two joins. */
-const HALF_POINTS = SURFACE_POINTS.deck + SURFACE_POINTS.rail + SURFACE_POINTS.bottom - 2;
+const HALF_POINTS = HALF_SECTION_POINT_COUNT;
 /** The half-section's index of the bottom edge (the rail run's last point, the bottom run's first). */
 const BOTTOM_EDGE = SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2;
 
@@ -155,115 +153,20 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
   return kept.sort((a, b) => a - b).map(mm);
 }
 
-function dedupe(points: P2[]): P2[] {
-  const out: P2[] = [];
-  for (const p of points) {
-    const q = out[out.length - 1];
-    if (!q || Math.hypot(p[0] - q[0], p[1] - q[1]) > 1e-9) out.push(p);
-  }
-  return out;
-}
-
-/** The part of the polyline at or outboard of `inner`, with the crossing points put in. */
-function clipAt(points: P2[], inner: number): P2[] {
-  const out: P2[] = [];
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    const inP = p[0] >= inner - 1e-9;
-    if (i > 0) {
-      const q = points[i - 1];
-      const inQ = q[0] >= inner - 1e-9;
-      if (inP !== inQ) {
-        const t = (inner - q[0]) / (p[0] - q[0]);
-        out.push([inner, q[1] + (p[1] - q[1]) * t]);
-      }
-    }
-    if (inP) out.push([Math.max(inner, p[0]), p[1]]);
-  }
-  return dedupe(out);
-}
-
-/** `n` points evenly spaced by arc length along the polyline, its two ends exactly. */
-function resample(points: P2[], n: number): P2[] {
-  const copies = () => Array.from({ length: n }, () => [points[0][0], points[0][1]] as P2);
-  if (points.length === 1) return copies();
-  const seg: number[] = [];
-  let total = 0;
-  for (let i = 1; i < points.length; i++) {
-    const d = Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
-    seg.push(d);
-    total += d;
-  }
-  if (total < 1e-12) return copies();
-  const out: P2[] = [];
-  let acc = 0;
-  let k = 1;
-  for (let j = 0; j < n; j++) {
-    const target = (total * j) / (n - 1);
-    while (k < points.length - 1 && acc + seg[k - 1] < target) {
-      acc += seg[k - 1];
-      k++;
-    }
-    const t = seg[k - 1] > 0 ? Math.min(1, Math.max(0, (target - acc) / seg[k - 1])) : 0;
-    out.push([
-      points[k - 1][0] + (points[k][0] - points[k - 1][0]) * t,
-      points[k - 1][1] + (points[k][1] - points[k - 1][1]) * t,
-    ]);
-  }
-  out[0] = [points[0][0], points[0][1]];
-  out[n - 1] = [points[points.length - 1][0], points[points.length - 1][1]];
-  return out;
-}
-
 /**
- * One rail's half of a station, `HALF_POINTS` points from the inside edge on the deck, round the rail, to
- * the inside edge on the bottom: (distance across from the stringer, height above the bottom).
- */
-function halfSection(result: RailSectionResult, domed: boolean, outer: number, inner: number): P2[] {
-  const rail = sectionFinishedRail(result, domed);
-  let points = dedupe(rail.samples.map((p) => [outer + p.x, p.y] as P2));
-  if (points[0][0] > inner) points.unshift([inner, points[0][1]]);
-  if (points[points.length - 1][0] > inner) points.push([inner, points[points.length - 1][1]]);
-  points = clipAt(points, inner);
-  let apex = 0;
-  for (let i = 1; i < points.length; i++) if (points[i][0] > points[apex][0] + 1e-12) apex = i;
-  let edge = points.length - 1;
-  for (let i = apex; i < points.length; i++) {
-    if (points[i][1] <= 1e-9) {
-      edge = i;
-      break;
-    }
-  }
-  const deck = resample(points.slice(0, apex + 1), SURFACE_POINTS.deck);
-  const railRun = resample(points.slice(apex, edge + 1), SURFACE_POINTS.rail);
-  const bottom = resample(points.slice(edge), SURFACE_POINTS.bottom);
-  return deck.concat(railRun.slice(1), bottom.slice(1));
-}
-
-/**
- * One station's half-section as the surface lays it (`HALF_POINTS` points, inside edge on the deck round the
- * rail to the inside edge on the bottom; distance across from the stringer, height above the bottom): the
- * section's finished rail with its rail at `outer` and cut at `inner`, the fade's tucked and hard-edged
- * halves blended point for point by the hard weight. A section with no foam is one point at `outer`, half
- * its thickness up.
+ * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
+ * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
+ * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or inside the hard edge's fade the
+ * very ring the litres count (`BoardSection.blended`, D-31), moved out by `inner` so its inside edge stands on
+ * a swallow's notch wall (0 everywhere else). Nothing is sampled or blended here that the litres don't read.
+ * A section with no foam is one point at `outer`, half its thickness up.
  */
 export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
-  return blendedHalf(section, outer, inner);
-}
-
-function blendedHalf(section: BoardSection, outer: number, inner: number): P2[] {
   if (!section.result || section.halfWidth <= 0) {
     return Array.from({ length: HALF_POINTS }, () => [outer, section.thickness / 2] as P2);
   }
-  const tucked = halfSection(section.result, section.domed, outer, inner);
-  if (!section.hardResult) return tucked;
-  const hard = halfSection(section.hardResult, section.domed, outer, inner);
-  const w = section.hardWeight;
-  const blended = tucked.map((p, i) => [p[0] * (1 - w) + hard[i][0] * w, p[1] * (1 - w) + hard[i][1] * w] as P2);
-  // Both halves start and end exactly on the inside edge; keep the blend there too.
-  blended[0][0] = inner;
-  blended[HALF_POINTS - 1][0] = inner;
-  return blended;
+  const half = section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
+  return half.map(([y, h]) => [inner + y, h] as P2);
 }
 
 /** A position's key for welding the points of one ring that land on the same spot. */
@@ -315,7 +218,7 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     const inNotch = swallow && s < close;
     const outer = inNotch ? sampleOutline(geometry, s) : section.halfWidth;
     const inner = inNotch ? Math.max(0, outer - section.halfWidth) : 0;
-    const half = blendedHalf(section, outer, inner);
+    const half = placedHalfSection(section, outer, inner);
     const z0 = rockerAt(s);
     for (const [y, h] of half) {
       assertFinite("a surface point's distance across", y, s);

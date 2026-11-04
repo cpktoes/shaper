@@ -29,6 +29,7 @@ key-files:
     - .planning/phases/16-3d-board-and-cnc-export/pictures/16-03-pictures-source.tar.gz
   modified: []
 decisions:
+  - "D-31 (level variant): inside the hard edge's fade the litres count the ring the 3D board draws, corrected by the end rings' own polygon shortfalls blended by the weight (fadingSectionArea) — one blend (blendFinishedRails) read by both"
   - "Stations: the litres' own, both 12-inch stations, the centre, the tail cut and the fade's end, filled in by splitting the board evenly so no gap exceeds 1/2 inch (ceil(length / 1/2\")) — never a sliver panel at the nose"
   - "BoardSurface carries faceKinds (one SURFACE_FACE per triangle) so the screen knows rail, bottom, wall and cap faces apart without guessing"
   - "The outline loop closes a swallow's tail along the notch's inner edges to the crotch (TEMPLATE's silhouette), not straight across the open notch"
@@ -252,26 +253,120 @@ boards are fine: Shortboard 29.5968 L against VOLUME's 29.6128 L (−0.054%), Fi
 (−0.073%). The soft boards don't move. Every hard-edged longboard roughly doubled, from about −0.06% to −0.13% to
 −0.146%.
 
-**Finding for the orchestrator and the founder: a long fade on a longboard breaks the 0.15% line.** Within a fade,
-the litres blend the two sections' AREAS by the weight (D-27, `boardSections`). The surface blends their POINTS
-(research §G), which holds a little less foam. On a shortboard, fish or mid-length that difference is tiny. On a
-longboard the hard-edged and the tucked rail differ a great deal (16-01's Longboard finding), and D-30's longer
-fade spreads it over many more stations. Measured with scratch `probe-long-fade.ts`:
+**The finding this raised: under the old rule a long fade on a longboard broke the 0.15% line.** Within a fade
+the litres blended the two sections' AREAS, while the 3D board blends their POINTS, which holds a little less foam;
+on a longboard, with its long default fade, that put the board up to about 0.3% under VOLUME on a fade set to the
+centre. The founder chose one rule (D-31, below).
 
-| Hard-edged boards | Fade at the defaults | Blends from 12", ends at the centre | Blends from 30", ends at the centre |
+## D-31 (level variant) — inside the fade the litres count the foam the 3D board draws (2026-11-04)
+
+**In one sentence for the founder:** inside the hard edge's fade the litres now count the foam the 3D board draws,
+corrected by the same hair the drawn board loses to its straight segments everywhere else — so VOLUME, the 3D board
+and the STL describe one board, and the longboards no longer stand out.
+
+How it's built (one blend, read by both):
+- `lib/geometry/finished-rail.ts` now owns the 3D board's sampling and the fade's blend: `sampledFinishedRail`
+  (the finished rail at the section's half-width, carried flat or cut at the stringer, 48 / 32 / 24 points —
+  `SECTION_POINTS`, moved here unchanged from `board-surface.ts`), `blendFinishedRails` (the point-for-point blend
+  by the hard weight) and `sampledSectionArea` (the foam a sampled half and its mirror enclose).
+- `boardSectionsWith` (`volume.ts`), at a fading station: `blended` is that ring (replacing `hardResult`, which no
+  reader needs any more), and `area` is `fadingSectionArea` — the two end sections' exact areas blended by the weight,
+  plus how far the drawn ring's area stands from the two end rings' areas blended alike. That is the coordinator's
+  `ring + (1−w)·(exact_tucked − ring_tucked) + w·(exact_hard − ring_hard)`, written so the correction is exactly 0
+  at w = 0 and w = 1: the fade is level with the stations either side by construction, and every station at weight
+  0 or 1 is unchanged operation for operation (the 40-board pin under `HARD_EDGE_SWITCH` passes untouched).
+  `blendArea` keeps `area + blendArea` equal to the station's cut area: the two cuts blended by the weight, less
+  `area` (the cut has no drawn ring of its own).
+- `board-surface.ts` no longer samples or blends: it reads `BoardSection.blended` inside the fade and
+  `sampledFinishedRail` elsewhere, moved out onto a swallow's notch wall where there is one. Nothing is blended in
+  two places.
+
+Tests: `volume.test.ts` — the continuity at both ends of the fade at 1e-4 mm steps (unchanged, still under 1e-6
+relative); the midway station is the level-variant area to 1e-9 and its ring is `blendFinishedRails` of the two end
+rings; the correction vanishes exactly (`toBe`) at w = 0 and w = 1; and on every hard-edged board of the forty, every
+fading station is the level-variant area to 1e-9 relative. `board-surface.test.ts` — on every hard-edged board,
+every fading station's `area` equals the polygon area of the ring the mesh actually draws there, plus the end rings'
+blended shortfalls, to 1e-9 relative; the drawn ring IS `BoardSection.blended`; and the 0.15% rule now also runs on
+every hard-edged board at both long fades (40 more cases).
+
+**The gap, measured** (scratch `gap-table.ts` and `probe-long-fade.ts`, archived):
+- At the defaults, all 40 boards: worst -0.070% (midlength|swallow|hard); closest -0.030%. Every board 0 mesh faults.
+- At both long fades, every hard-edged board: from -0.035% (closest) to -0.070% (worst). The longboards
+  sit inside the shortboards', fishes' and mid-lengths' own band; a long fade no longer changes the gap.
+
+| Hard-edged board | At the defaults | Blends from 12", ends at the centre | Blends from 30", ends at the centre |
 |---|---:|---:|---:|
-| Shortboard, Fish, Mid-length (all five tails) | −0.051% to −0.078% | −0.060% to −0.087% | −0.044% to −0.078% |
-| Longboard (all five tails) | −0.130% to −0.146% | **−0.289% to −0.299%** | **−0.213% to −0.221%** |
+| shortboard · asis · hard | -0.044% | -0.044% | -0.044% |
+| shortboard · swallow · hard | -0.059% | -0.059% | -0.060% |
+| shortboard · diamond · hard | -0.052% | -0.052% | -0.052% |
+| shortboard · pin · hard | -0.045% | -0.045% | -0.045% |
+| shortboard · round · hard | -0.045% | -0.045% | -0.045% |
+| fish · asis · hard | -0.064% | -0.064% | -0.064% |
+| fish · swallow · hard | -0.064% | -0.064% | -0.064% |
+| fish · diamond · hard | -0.063% | -0.063% | -0.064% |
+| fish · pin · hard | -0.040% | -0.040% | -0.040% |
+| fish · round · hard | -0.040% | -0.040% | -0.040% |
+| midlength · asis · hard | -0.048% | -0.048% | -0.047% |
+| midlength · swallow · hard | -0.070% | -0.070% | -0.070% |
+| midlength · diamond · hard | -0.045% | -0.045% | -0.045% |
+| midlength · pin · hard | -0.048% | -0.048% | -0.047% |
+| midlength · round · hard | -0.048% | -0.048% | -0.047% |
+| longboard · asis · hard | -0.047% | -0.046% | -0.043% |
+| longboard · swallow · hard | -0.060% | -0.056% | -0.053% |
+| longboard · diamond · hard | -0.057% | -0.054% | -0.050% |
+| longboard · pin · hard | -0.038% | -0.038% | -0.035% |
+| longboard · round · hard | -0.038% | -0.038% | -0.035% |
 
-So a shaper who sets a longboard's fade to run to the centre gets a 3D board up to about 0.3% (about 0.22 L on
-74 L) under VOLUME. Still never over, but outside SPEC acceptance 3's tolerance. I didn't change the code or the
-tolerance. There are two ways to close it, and both are design calls outside this plan:
-(a) the litres count the pointwise blend's own area within the fade (a `volume.ts` change, which would move a
-hard-edged longboard's litres a little);
-(b) the surface keeps its pointwise blend and the SPEC's tolerance becomes "within 0.3% on a fade set to the
-centre".
-The 40-board test passes at the defaults and doesn't try the long settings.
+The 40 boards at the defaults under D-31:
+
+| Board | Mesh (L) | VOLUME (L) | Gap | Vertices | Triangles | Build ms | renderMesh ms | Mesh faults |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| shortboard · asis · hard | 29.5968 | 29.6099 | -0.044% | 39594 | 79184 | 52 | 31 | 0 |
+| shortboard · asis · soft | 29.5582 | 29.5712 | -0.044% | 39594 | 79184 | 42 | 51 | 0 |
+| shortboard · swallow · hard | 30.6149 | 30.6331 | -0.059% | 39457 | 78910 | 47 | 56 | 0 |
+| shortboard · swallow · soft | 30.5766 | 30.5947 | -0.059% | 39457 | 78910 | 58 | 66 | 0 |
+| shortboard · diamond · hard | 30.1630 | 30.1786 | -0.052% | 38988 | 77972 | 49 | 66 | 0 |
+| shortboard · diamond · soft | 30.1247 | 30.1402 | -0.051% | 38988 | 77972 | 41 | 23 | 0 |
+| shortboard · pin · hard | 28.7567 | 28.7697 | -0.045% | 39392 | 78780 | 108 | 34 | 0 |
+| shortboard · pin · soft | 28.7183 | 28.7313 | -0.045% | 39392 | 78780 | 56 | 25 | 0 |
+| shortboard · round · hard | 28.7567 | 28.7697 | -0.045% | 39392 | 78780 | 42 | 23 | 0 |
+| shortboard · round · soft | 28.7183 | 28.7313 | -0.045% | 39392 | 78780 | 45 | 35 | 0 |
+| fish · asis · hard | 34.6293 | 34.6514 | -0.064% | 37033 | 74062 | 56 | 17 | 0 |
+| fish · asis · soft | 34.5970 | 34.6190 | -0.064% | 37033 | 74062 | 38 | 17 | 0 |
+| fish · swallow · hard | 34.6293 | 34.6514 | -0.064% | 37033 | 74062 | 44 | 39 | 0 |
+| fish · swallow · soft | 34.5970 | 34.6190 | -0.064% | 37033 | 74062 | 45 | 18 | 0 |
+| fish · diamond · hard | 34.0560 | 34.0776 | -0.063% | 36564 | 73124 | 45 | 16 | 0 |
+| fish · diamond · soft | 34.0239 | 34.0453 | -0.063% | 36564 | 73124 | 48 | 22 | 0 |
+| fish · pin · hard | 31.8627 | 31.8755 | -0.040% | 36968 | 73932 | 40 | 17 | 0 |
+| fish · pin · soft | 31.8304 | 31.8432 | -0.040% | 36968 | 73932 | 38 | 21 | 0 |
+| fish · round · hard | 31.8627 | 31.8755 | -0.040% | 36968 | 73932 | 42 | 22 | 0 |
+| fish · round · soft | 31.8304 | 31.8432 | -0.040% | 36968 | 73932 | 39 | 17 | 0 |
+| midlength · asis · hard | 49.3738 | 49.3974 | -0.048% | 45452 | 90900 | 52 | 26 | 0 |
+| midlength · asis · soft | 49.3359 | 49.3602 | -0.049% | 45048 | 90092 | 43 | 19 | 0 |
+| midlength · swallow · hard | 51.6172 | 51.6536 | -0.070% | 45719 | 91434 | 56 | 22 | 0 |
+| midlength · swallow · soft | 51.5793 | 51.6155 | -0.070% | 45315 | 90626 | 43 | 24 | 0 |
+| midlength · diamond · hard | 50.9573 | 50.9800 | -0.045% | 45654 | 91304 | 45 | 20 | 0 |
+| midlength · diamond · soft | 50.9195 | 50.9423 | -0.045% | 45250 | 90496 | 42 | 25 | 0 |
+| midlength · pin · hard | 49.3738 | 49.3974 | -0.048% | 45452 | 90900 | 47 | 26 | 0 |
+| midlength · pin · soft | 49.3359 | 49.3602 | -0.049% | 45048 | 90092 | 42 | 19 | 0 |
+| midlength · round · hard | 49.3738 | 49.3974 | -0.048% | 45452 | 90900 | 44 | 21 | 0 |
+| midlength · round · soft | 49.3359 | 49.3602 | -0.049% | 45048 | 90092 | 41 | 24 | 0 |
+| longboard · asis · hard | 74.5014 | 74.5361 | -0.047% | 53330 | 106656 | 54 | 29 | 0 |
+| longboard · asis · soft | 73.5369 | 73.5743 | -0.051% | 53330 | 106656 | 48 | 22 | 0 |
+| longboard · swallow · hard | 75.0511 | 75.0962 | -0.060% | 53395 | 106786 | 53 | 27 | 0 |
+| longboard · swallow · soft | 74.0895 | 74.1387 | -0.066% | 53303 | 106602 | 52 | 29 | 0 |
+| longboard · diamond · hard | 74.1771 | 74.2196 | -0.057% | 51916 | 103828 | 51 | 25 | 0 |
+| longboard · diamond · soft | 73.2160 | 73.2621 | -0.063% | 51778 | 103552 | 51 | 21 | 0 |
+| longboard · pin · hard | 69.8695 | 69.8961 | -0.038% | 53128 | 106252 | 59 | 28 | 0 |
+| longboard · pin · soft | 68.9185 | 68.9394 | -0.030% | 52024 | 104044 | 45 | 22 | 0 |
+| longboard · round · hard | 69.8695 | 69.8961 | -0.038% | 53128 | 106252 | 48 | 22 | 0 |
+| longboard · round · soft | 68.9185 | 68.9394 | -0.030% | 52024 | 104044 | 50 | 100 | 0 |
+
+The preset cards (as they open, two decimals): Shortboard 29.61 L, Fish 34.65 L, Mid-length 49.40 L — the same as
+after D-30; the Longboard 72.35 L and the stock 6'0" board 30.29 L, unmoved. `phase14-preset-figures.json` changed
+in exactly its three hard-edged litres lines (29.61284 → 29.60987, 34.65472 → 34.65137, 49.40129 → 49.39740). The
+desktop baseline (webpack, port 3203) passed all five screens unchanged, so VOLUME was **not** re-recorded.
 
 ## Founder's look
 
-Accepted as drawn by the founder at the Wave 2 look, 2026-11-04 ("Accepted"); the fade's design change at that look (D-30) reached the surface through boardSections, with the follow-up above.
+Accepted as drawn at the Wave 2 look, 2026-11-04; the fade's design change (D-30) reached the surface through boardSections, and on the long-fade finding the founder chose one rule — the litres count exactly the foam the 3D board draws (D-31).
