@@ -215,6 +215,32 @@ export interface RailBandSpec {
   center: RailSectionSpec;
   tail: RailSectionSpec;
   tailHardEdge: boolean;
+  /**
+   * Where the tail's hard edge has faded into the tucked rail, measured from the tail tip (Phase 16,
+   * D-20): the edge is full at and behind the 12" station and eases to nothing by this distance. Absent
+   * on every board saved before Phase 16 and on every preset, which read `DEFAULT_HARD_EDGE_ENDS_AT_IN`;
+   * always read through `hardEdgeEndsAt`, which forgives a value outside `HARD_EDGE_ENDS_AT_RANGE_IN`.
+   */
+  tailHardEdgeEndsAt?: Mm;
+}
+
+/** The range and step, in inches, a tail's Hard Edge Ends At may be set to (D-20, UI-SPEC §17). */
+export const HARD_EDGE_ENDS_AT_RANGE_IN = { min: 14, max: 24, step: 0.5 } as const;
+
+/** Where a tail's hard edge has faded out when the board says nothing else, in inches from the tail tip. */
+export const DEFAULT_HARD_EDGE_ENDS_AT_IN = 18;
+
+/**
+ * Where the tail's hard edge ends, read forgivingly (Phase 16, D-20; threat T-16-01): the stored
+ * `tailHardEdgeEndsAt` when it is a finite number inside `HARD_EDGE_ENDS_AT_RANGE_IN`, and 18" otherwise —
+ * so no stored value, crafted or corrupted, can put the fade's end on the 12" station or past the board.
+ */
+export function hardEdgeEndsAt(rails: Pick<RailBandSpec, "tailHardEdgeEndsAt">): Mm {
+  const stored = rails.tailHardEdgeEndsAt;
+  const min = inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min);
+  const max = inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max);
+  if (typeof stored === "number" && Number.isFinite(stored) && stored >= min && stored <= max) return mm(stored);
+  return inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
 }
 
 const DEFAULT_SECTION_COMMON = {

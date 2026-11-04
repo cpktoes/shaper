@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC, type Point2D } from "./board";
 import { buildOutline, sampleOutline, MEASURE_STATION_MM } from "./outline";
 import {
+  boardSections,
+  boardSectionsWith,
   computeCrossSectionVolume,
   computeVolume,
   CUBIC_INCHES_PER_LITRE,
+  HARD_EDGE_FADE,
+  HARD_EDGE_SWITCH,
+  tailHardEdgeWeight,
   simpsonIntegrate,
   SIMPSON_PANEL_COUNT,
   type VolumeRailValues,
@@ -22,6 +27,7 @@ import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
+  hardEdgeEndsAt,
   ZERO_RAIL_NUDGES,
   type RailBandSpec,
   type RailFamily,
@@ -30,6 +36,15 @@ import {
 import { samplePchip, type SplinePoint } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
+import { phase16Boards } from "./__fixtures__/phase16-boards";
+import {
+  designCrossSectionInput,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+  summarizeDesign,
+  type DesignSummaryFields,
+} from "./design";
 import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
 
@@ -498,37 +513,52 @@ describe("computeCrossSectionVolume", () => {
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
   });
 
-  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39): each station takes the box from its nearest
-  // rail, as it takes Single Tuck, and keeps the foam that corner's blend used to take off. Every figure is
-  // the same board with the box off — never a typed area.
-  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam only at the stations nearest the centre, and the litres rise", () => {
+  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39) under the hard edge's fade (Phase 16, D-20/D-27): a
+  // station keeps the foam that corner's blend used to take off where its tucked side reads a ticked box. While
+  // Hard Edge is on, the tucked side of every tail-nearest station reads the CENTRE's box (the tail's is hidden on
+  // RAILS); the stations at and behind the 12" station are all hard edge and keep their blend. Every figure is the
+  // same board with the box off — never a typed area.
+  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam wherever the tucked side reads the centre, never where the edge is all hard, and the litres rise", () => {
     const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
     const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
     const length = DEFAULT_BOARD_SPEC.outline.length;
-    const run = (rails: RailBandSpec) =>
-      computeCrossSectionVolume({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
+    const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
     expect(DEFAULT_RAIL_BAND_SPEC.tailHardEdge).toBe(true);
-    const off = run(DEFAULT_RAIL_BAND_SPEC);
-    const on = run({
+    const off = computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC));
+    const onRails: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
       center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
       tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true },
-    });
+    };
+    const on = computeCrossSectionVolume(input(onRails));
+    const sections = boardSections(input(onRails));
     // Which rail each station reads: the nearest of the three anchors (tail 12", centre, nose 12").
     const anchors = foilStationPoints(DEFAULT_FOIL_SPEC, length);
     const [tail, center, nose] = [anchors[1].station, anchors[2].station, anchors[3].station];
-    const h = length / SIMPSON_PANEL_COUNT;
-    const counted = { tail: 0, center: 0, nose: 0 };
+    const counted = { allHard: 0, fading: 0, tailTucked: 0, center: 0, nose: 0 };
     off.stationBlendAreas.forEach((blendOff, i) => {
-      const s = i * h;
+      const s = off.stations[i];
       const [dT, dC, dN] = [Math.abs(s - tail), Math.abs(s - center), Math.abs(s - nose)];
       const nearest = dT <= dC && dT <= dN ? "tail" : dC <= dN ? "center" : "nose";
       if (blendOff === 0) return;
-      counted[nearest]++;
-      if (nearest === "center") expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
-      else expect(on.stationBlendAreas[i], `station ${i}`).toBe(blendOff);
+      const weight = sections[i].hardWeight;
+      if (weight === 1) {
+        counted.allHard++;
+        expect(on.stationBlendAreas[i], `station ${i} (all hard)`).toBe(blendOff);
+      } else if (nearest === "nose") {
+        counted.nose++;
+        expect(on.stationBlendAreas[i], `station ${i} (nose)`).toBe(blendOff);
+      } else {
+        if (nearest === "center") counted.center++;
+        else if (weight > 0) counted.fading++;
+        else counted.tailTucked++;
+        expect(sections[i].sharpBottomTuck, `station ${i} reads the centre's box`).toBe(true);
+        expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
+      }
     });
-    expect(counted.tail).toBeGreaterThan(0);
+    expect(counted.allHard).toBeGreaterThan(0);
+    expect(counted.fading).toBeGreaterThan(0);
+    expect(counted.tailTucked).toBeGreaterThan(0);
     expect(counted.center).toBeGreaterThan(0);
     expect(counted.nose).toBeGreaterThan(0);
     expect(on.volumeLitres).toBeGreaterThan(off.volumeLitres);
@@ -783,5 +813,126 @@ describe("thicknessAt — one thickness curve for every board", () => {
       return drawn !== resplinedThickness && area !== resplined.stationAreas[i];
     });
     expect(differing.length).toBeGreaterThan(0);
+  });
+});
+
+describe("D-20/D-27 the hard edge's fade", () => {
+  // The default board (its tail hard-edged, every deck 100% so no rail thickness rounds to a 1/16" step),
+  // integrated by the app's own functions. Nothing here types an area or a litres figure.
+  const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+  const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
+  const tail12 = foilStationPoints(DEFAULT_FOIL_SPEC, length)[1].station;
+  const endsAt = hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC);
+
+  /** The cross-section input `summarizeDesign` builds for a stored board. */
+  const designInput = (fields: DesignSummaryFields) => {
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(buildOutline(fields.outline), profile, rails, fields.outline.length);
+  };
+
+  it("the weight is 1 at and behind the 12\" station, 0 at and beyond the set distance, a half midway, and never rises", () => {
+    expect(tailHardEdgeWeight(tail12, tail12, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(mm(tail12 - 1), tail12, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(mm(0), tail12, endsAt)).toBe(1);
+    expect(tailHardEdgeWeight(endsAt, tail12, endsAt)).toBe(0);
+    expect(tailHardEdgeWeight(mm(endsAt + 1), tail12, endsAt)).toBe(0);
+    expect(tailHardEdgeWeight(mm((tail12 + endsAt) / 2), tail12, endsAt)).toBeCloseTo(0.5, 12);
+    let last = Infinity;
+    for (let i = 0; i <= 400; i++) {
+      const w = tailHardEdgeWeight(mm((i / 400) * length), tail12, endsAt);
+      expect(w).toBeLessThanOrEqual(last);
+      expect(w).toBeGreaterThanOrEqual(0);
+      expect(w).toBeLessThanOrEqual(1);
+      last = w;
+    }
+  });
+
+  it("the station area has no step at the 12\" station nor at the set distance", () => {
+    const step = 1e-4;
+    for (const [a, b] of [
+      [tail12, tail12 + step],
+      [endsAt - step, endsAt],
+    ] as const) {
+      const [left, right] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm(a), mm(b)]);
+      expect(Math.abs(left.area - right.area), `across ${a.toFixed(4)} mm`).toBeLessThan(1e-6 * left.area);
+    }
+    // And the two sections the fade blends really do differ, so the test above means something.
+    const [mid] = boardSections(input(DEFAULT_RAIL_BAND_SPEC), [mm((tail12 + endsAt) / 2)]);
+    expect(mid.hardWeight).toBeCloseTo(0.5, 12);
+    expect(mid.hardResult).toBeDefined();
+    const [hardOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 1 }, [
+      mid.station,
+    ]);
+    const [tuckedOnly] = boardSectionsWith(input(DEFAULT_RAIL_BAND_SPEC), { ...HARD_EDGE_FADE, weight: () => 0 }, [
+      mid.station,
+    ]);
+    expect(Math.abs(hardOnly.area - tuckedOnly.area)).toBeGreaterThan(1e-3 * mid.area);
+    // The fading station is the two areas blended by its weight — never shrunk tuck marks.
+    expect(mid.area).toBeCloseTo((1 - mid.hardWeight) * tuckedOnly.area + mid.hardWeight * hardOnly.area, 9);
+    expect(mid.result?.hardEdge).toBe(false);
+    expect(mid.hardResult?.hardEdge).toBe(true);
+  });
+
+  it("with Hard Edge off, the fade and the old switch build the same sections on every board", () => {
+    const soft = phase16Boards().filter((board) => !board.fields.rails.tailHardEdge);
+    expect(soft).toHaveLength(20);
+    for (const board of soft) {
+      const boardInput = designInput(board.fields);
+      const fade = boardSectionsWith(boardInput, HARD_EDGE_FADE);
+      const old = boardSectionsWith(boardInput, HARD_EDGE_SWITCH);
+      fade.forEach((section, i) => {
+        expect(Object.is(section.area, old[i].area), `${board.label} station ${i}`).toBe(true);
+      });
+    }
+  });
+
+  it("with Hard Edge on, the tail's hidden tucks move no litres; the centre's move the fading stations", () => {
+    const base = computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC));
+    const tailTicked = computeCrossSectionVolume(
+      input({
+        ...DEFAULT_RAIL_BAND_SPEC,
+        tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true, singleTuck: true },
+      }),
+    );
+    expect(tailTicked.volumeLitres).toBe(base.volumeLitres);
+    expect(tailTicked.stationAreas).toEqual(base.stationAreas);
+
+    const centerRails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true, singleTuck: true },
+    };
+    const centerTicked = boardSections(input(centerRails));
+    const baseSections = boardSections(input(DEFAULT_RAIL_BAND_SPEC));
+    const fading = baseSections.filter((section) => section.hardWeight > 0 && section.hardWeight < 1);
+    expect(fading.length).toBeGreaterThan(0);
+    for (const section of fading) {
+      const i = baseSections.indexOf(section);
+      expect(centerTicked[i].area, `station ${i}`).not.toBe(section.area);
+    }
+  });
+
+  it("moving the set distance from 14\" to 24\" raises every hard-edged board's litres, step by step", () => {
+    const hard = phase16Boards().filter((board) => board.fields.rails.tailHardEdge);
+    expect(hard).toHaveLength(20);
+    const distances = [14, 16, 18, 20, 22, 24].map((inches) => inchesToMm(inches));
+    for (const board of hard) {
+      let last = -Infinity;
+      for (const at of distances) {
+        const litres = summarizeDesign({
+          ...board.fields,
+          rails: { ...board.fields.rails, tailHardEdgeEndsAt: at },
+        }).volumeLitres;
+        expect(litres, `${board.label} at ${mmToInches(at)}"`).toBeGreaterThan(last);
+        last = litres;
+      }
+    }
+  });
+
+  it("a board that says nothing reads 18\", exactly as a board that says 18\"", () => {
+    const said = computeCrossSectionVolume(input({ ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeEndsAt: inchesToMm(18) }));
+    expect(computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC)).volumeLitres).toBe(said.volumeLitres);
   });
 });

@@ -56,6 +56,7 @@ import {
   buildRailProfile,
   computeRailSection,
   effectiveDeckPercent,
+  hardEdgeEndsAt,
 } from "./rail-bands";
 import {
   type Litres,
@@ -661,8 +662,37 @@ export const HARD_EDGE_SWITCH: HardEdgeRule = {
   },
 };
 
+/**
+ * How much of a station is the tail's hard edge, by the founder's fade (Phase 16, D-20/D-27): 1 at and
+ * behind the tail 12" station `tail12`, 0 at and beyond `endsAt`, and between them the smoothstep
+ * `1 − t²(3 − 2t)` with `t = (station − tail12)/(endsAt − tail12)` — level at both ends, so the litres
+ * neither kink at the 12" station nor at the set distance. Never rises along the board.
+ */
+export function tailHardEdgeWeight(station: Mm, tail12: Mm, endsAt: Mm): number {
+  if (station <= tail12) return 1;
+  if (station >= endsAt) return 0;
+  const t = (station - tail12) / (endsAt - tail12);
+  return 1 - t * t * (3 - 2 * t);
+}
+
+/**
+ * The live hard edge (Phase 16, D-20/D-27, the founder): while the tail's Hard Edge is on it is full at
+ * and behind the 12" station and fades by `tailHardEdgeWeight` to nothing at the board's set distance
+ * (`hardEdgeEndsAt`, 18" when the board says nothing); off, it is nowhere. The tucked side of every station
+ * nearest the tail then reads the CENTRE's Single Tuck and Sharp Bottom Tuck — the tail's own are hidden on
+ * RAILS while Hard Edge is on, so a hidden box can never move the litres (research pitfall 8).
+ */
+export const HARD_EDGE_FADE: HardEdgeRule = {
+  weight(station, anchors, rails) {
+    return rails.tailHardEdge ? tailHardEdgeWeight(station, anchors.tail, hardEdgeEndsAt(rails)) : 0;
+  },
+  tuckSource(nearest, rails) {
+    return rails.tailHardEdge && nearest === "tail" ? "center" : nearest;
+  },
+};
+
 /** The rule the live litres use. */
-const LIVE_HARD_EDGE_RULE: HardEdgeRule = HARD_EDGE_SWITCH;
+const LIVE_HARD_EDGE_RULE: HardEdgeRule = HARD_EDGE_FADE;
 
 /**
  * The cross-sections the litres integrate, one per station — the ONE section function the litres and the
@@ -778,6 +808,29 @@ export function boardSectionsWith(
       return { area: stationArea(profilePairs, thickness, halfWidth) - blendBothRails, blendArea: blendBothRails };
     };
 
+    if (hardWeight > 0 && hardWeight < 1) {
+      // The fade: both sections, their AREAS blended — never shrunk tuck marks, which would leave a
+      // rounded edge right after the 12" station (research §G).
+      const tucked = computeRailSection(sectionInput(false));
+      const hard = computeRailSection(sectionInput(true));
+      const tuckedArea = finished(tucked);
+      const hardArea = finished(hard);
+      sections.push({
+        station,
+        halfWidth,
+        thickness,
+        result: tucked,
+        hardResult: hard,
+        hardWeight,
+        domed,
+        sharpBottomTuck: tuckSpec.sharpBottomTuck,
+        area: (1 - hardWeight) * tuckedArea.area + hardWeight * hardArea.area,
+        blendArea: (1 - hardWeight) * tuckedArea.blendArea + hardWeight * hardArea.blendArea,
+      });
+      continue;
+    }
+
+    // All hard or all tucked: one section, the arithmetic exactly as before Phase 16.
     const result = computeRailSection(sectionInput(hardWeight === 1));
     const { area, blendArea } = finished(result);
     sections.push({
@@ -820,7 +873,12 @@ export function boardSections(input: CrossSectionVolumeInput, stations?: readonl
  * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
  * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
  * a family index or a boolean cannot be interpolated.
- * `tailHardEdge` applies only at stations whose nearest anchor is the tail. The board thickness at
+ * `tailHardEdge` fades (Phase 16, D-20/D-27, `HARD_EDGE_FADE`): full at and behind the tail 12" station,
+ * easing by smoothstep to nothing at the board's set distance (`hardEdgeEndsAt`, 18" unless it says
+ * otherwise); a fading station's area is the two sections' areas blended by that weight, the hard-edged and
+ * the tucked, and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
+ * Single Tuck and Sharp Bottom Tuck (the tail's are hidden on RAILS). Before Phase 16 it was a switch — on
+ * at every station whose nearest anchor is the tail (`HARD_EDGE_SWITCH`, kept by name). The board thickness at
  * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
  * follows the board's own thickness along its length.
  *
