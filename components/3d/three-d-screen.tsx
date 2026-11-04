@@ -38,7 +38,7 @@ import {
   type ViewName,
 } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls } from "./three-d-controls";
+import { ThreeDControls, ThreeDHardEdge } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 
 /**
@@ -411,7 +411,9 @@ export function ThreeDScreen() {
   return (
     <DesignScreenShell
       controls={
-        <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null} />
+        <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
+          <ThreeDHardEdge />
+        </ThreeDControls>
       }
       canvas={
         <TabbedPanel
