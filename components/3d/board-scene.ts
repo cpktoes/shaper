@@ -1,0 +1,375 @@
+/**
+ * The 3D screen's scene (Phase 16, UI-SPEC §3): the board, lit by the shaping room's fixed lights, drawn on a
+ * canvas this module makes for itself.
+ *
+ * THIS IS THE ONLY FILE IN THE APP THAT IMPORTS `three` (D-28, research Pattern 5 and Pitfall 5), and the 3D
+ * screen reaches it only through `import("./board-scene")`. That keeps three.js — about 130 KB compressed — in
+ * one chunk that only /design/3d ever fetches: no other screen, nothing in `lib/` and nothing the CNC export
+ * needs ever pulls it in. `components/3d/three-source.test.ts` fails if any other file imports it, and
+ * `e2e/prod/three-d.spec.ts` proves no other route loads it.
+ *
+ * The room (D-10): the camera is placed once, 50° above the floor on the shaper's side, and never moves; the four
+ * lights are placed once and never move. Only the board's group turns (16-07 adds the turning), so a highlight
+ * slides across the foam as the board turns rather than riding along with it. The group's orientation is
+ * `turn × BOARD_TO_ROOM` and its place in front of the camera is `frameAtOne`'s (lib/geometry/view-3d.ts).
+ *
+ * It draws on demand — one frame per change, no loop at rest — and counts its frames on the host's
+ * `data-frames`, which is how the browser tests know a board was actually drawn.
+ */
+
+import {
+  AmbientLight,
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  DirectionalLight,
+  DoubleSide,
+  Group,
+  Line,
+  LineBasicMaterial,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  NeutralToneMapping,
+  PerspectiveCamera,
+  Quaternion,
+  Scene,
+  Vector3,
+  WebGLRenderer,
+} from "three";
+import type { Vec3 } from "@/lib/geometry/board-surface";
+import type { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
+import {
+  BOARD_TO_ROOM,
+  frameAtOne,
+  quatMultiply,
+  REST_TURN,
+  ROOM_CAMERA,
+  roomCameraAxes,
+  type Frame,
+  type Quat,
+} from "@/lib/geometry/view-3d";
+
+/** The theme's colours the scene paints with, read from the page's tokens (any CSS colour three can parse). */
+export interface SceneColours {
+  /** The ground the canvas clears to: `--surf-canvas`. */
+  canvas: string;
+  /** Raw foam before the lights: `--surf-foam`. */
+  foam: string;
+  /** The stringer, painted on the foam: `--surf-on-foam`. */
+  onFoam: string;
+  /** Fins and the blank's veil (16-10, 16-11): `--surf-ink-muted`. */
+  inkMuted: string;
+  /** The blank's outline (16-11): `--outline-blank-line`. */
+  blankLine: string;
+}
+
+/** Everything the scene needs to draw one board. */
+export interface BoardSceneInput {
+  mesh: ReturnType<typeof renderMesh>;
+  stringer: ReturnType<typeof stringerLines>;
+  /** The board's points relative to `centre`, for framing at 1x (`framePointsOf`). */
+  framePoints: Vec3[];
+  /** The board's turning centre, in the surface's own axes. */
+  centre: Vec3;
+  colours: SceneColours;
+}
+
+/** What the scene tells the screen. `lost` is a drawing context gone for a moment; it may come back. */
+export type BoardSceneState = "ready" | "lost" | "no-webgl";
+
+export interface BoardSceneHandle {
+  setBoard(input: BoardSceneInput): void;
+  setTurn(turn: Quat): void;
+  resize(width: number, height: number): void;
+  dispose(): void;
+}
+
+/** How long a lost drawing context may take to come back before the screen says it can't draw (UI-SPEC §8). */
+export const CONTEXT_RESTORE_WAIT_MS = 5000;
+
+/** The stringer's width in millimetres (D-07), and how far it is lifted off the foam so it never sinks into it. */
+const STRINGER_WIDTH_MM = 3;
+const STRINGER_LIFT_MM = 0.3;
+
+/** Where the camera stands, in millimetres from the room's centre along its view axis. Never changes. */
+const CAMERA_STANDOFF_MM = 4000;
+
+/**
+ * The lights' strengths (UI-SPEC §3: near rail 1.0, far rail 0.7, overhead 0.45, fill 0.2) times one key level,
+ * and their colours. Three's lights are in physical units, so a white surface square to a light of strength π
+ * shows its own colour; the key was set from pictures so the deck reads a tone under the light ground and the
+ * near rail a tone over it.
+ */
+const KEY = 2.9;
+/**
+ * The overhead light, lowered from the contract's starting 0.45 to 0.2 of the key after the first pictures
+ * (UI-SPEC open item 1: "tune the overhead strength first"). At 0.45 the overhead lit the deck to the light
+ * themes' ground tone, so the far rail's edge disappeared against it. At 0.2 the deck sits a tone under the
+ * ground and the near rail a tone over it, as in the mock-up the founder called right.
+ */
+const OVERHEAD = 0.2;
+const LIGHTS = {
+  nearRail: { strength: 1.0 * KEY, colour: "#fff4e8" },
+  farRail: { strength: 0.7 * KEY, colour: "#fff4e8" },
+  overhead: { strength: OVERHEAD * KEY, colour: "#ffeedd" },
+  fill: { strength: 0.2 * KEY, colour: "#ffffff" },
+} as const;
+/** The rail lights' height above the deck's plane (UI-SPEC §3). */
+const RAIL_LIGHT_ELEVATION_DEG = 8;
+/** Exposure for the neutral tone curve: the brightest lit foam lands just short of white, nothing glows. */
+const EXPOSURE = 1;
+
+const NOOP_HANDLE: BoardSceneHandle = {
+  setBoard() {},
+  setTurn() {},
+  resize() {},
+  dispose() {},
+};
+
+/** One painted stringer line: a 3 mm ribbon lifted off the foam along the line's outward side. */
+function ribbon(points: readonly Vec3[], outward: 1 | -1): { ribbon: BufferGeometry; line: BufferGeometry } {
+  const n = points.length;
+  const strip = new Float32Array(n * 2 * 3);
+  const centre = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const a = points[Math.max(0, i - 1)];
+    const b = points[Math.min(n - 1, i + 1)];
+    // The line runs along the board's middle (y = 0), so its tangent lies in the x–z plane and its outward
+    // side is the tangent turned a quarter turn in that plane — up off the deck, down off the bottom, out
+    // round the tips.
+    const tx = b[0] - a[0];
+    const tz = b[2] - a[2];
+    const l = Math.hypot(tx, tz) || 1;
+    const nx = (-tz / l) * outward;
+    const nz = (tx / l) * outward;
+    const p = points[i];
+    const x = p[0] + nx * STRINGER_LIFT_MM;
+    const z = p[2] + nz * STRINGER_LIFT_MM;
+    strip.set([x, p[1] - STRINGER_WIDTH_MM / 2, z, x, p[1] + STRINGER_WIDTH_MM / 2, z], i * 6);
+    centre.set([x, p[1], z], i * 3);
+  }
+  const index: number[] = [];
+  for (let i = 0; i + 1 < n; i++) {
+    const a = 2 * i;
+    index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  const ribbonGeometry = new BufferGeometry();
+  ribbonGeometry.setAttribute("position", new BufferAttribute(strip, 3));
+  ribbonGeometry.setIndex(index);
+  const lineGeometry = new BufferGeometry();
+  lineGeometry.setAttribute("position", new BufferAttribute(centre, 3));
+  return { ribbon: ribbonGeometry, line: lineGeometry };
+}
+
+/**
+ * Makes the scene's canvas inside `host`, draws `input`'s board in the room, and returns the handle the screen
+ * drives it with. With no drawing context to be had it reports `no-webgl`, removes its canvas and returns a
+ * handle that does nothing. Each call makes its own canvas, so React's development double-mount never re-uses a
+ * canvas whose context was given up (research Pitfall 4).
+ */
+export function mountBoardScene(
+  host: HTMLElement,
+  input: BoardSceneInput,
+  events: { onState(state: BoardSceneState): void },
+): BoardSceneHandle {
+  const canvas = document.createElement("canvas");
+  canvas.setAttribute("aria-hidden", "true");
+  canvas.style.display = "block";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  host.appendChild(canvas);
+
+  let renderer: WebGLRenderer;
+  try {
+    renderer = new WebGLRenderer({ canvas, antialias: true });
+  } catch {
+    canvas.remove();
+    events.onState("no-webgl");
+    return NOOP_HANDLE;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.toneMapping = NeutralToneMapping;
+  renderer.toneMappingExposure = EXPOSURE;
+
+  const scene = new Scene();
+  const axes = roomCameraAxes();
+  const camera = new PerspectiveCamera(ROOM_CAMERA.fovDeg, 1, 1, 10);
+  const cameraAt = new Vector3(...axes.forward).multiplyScalar(-CAMERA_STANDOFF_MM);
+  camera.position.copy(cameraAt);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(0, 0, 0);
+
+  // The room's lights, placed once (D-10). A directional light shines from its position toward its target, the
+  // room's centre. The near rail is the room's +Z side, the camera's side.
+  const e = (RAIL_LIGHT_ELEVATION_DEG * Math.PI) / 180;
+  const nearRail = new DirectionalLight(LIGHTS.nearRail.colour, LIGHTS.nearRail.strength);
+  nearRail.position.set(0, Math.sin(e), Math.cos(e));
+  const farRail = new DirectionalLight(LIGHTS.farRail.colour, LIGHTS.farRail.strength);
+  farRail.position.set(0, Math.sin(e), -Math.cos(e));
+  const overhead = new DirectionalLight(LIGHTS.overhead.colour, LIGHTS.overhead.strength);
+  overhead.position.set(0, 1, 0);
+  const fill = new AmbientLight(LIGHTS.fill.colour, LIGHTS.fill.strength);
+  scene.add(nearRail, farRail, overhead, fill);
+
+  // The board: `turned` carries the turn and the place in front of the camera; `centred` moves the surface so it
+  // turns about its own middle.
+  const turned = new Group();
+  const centred = new Group();
+  turned.add(centred);
+  scene.add(turned);
+
+  let current = input;
+  let turn: Quat = REST_TURN;
+  let frame: Frame = { distance: CAMERA_STANDOFF_MM, right: 0, up: 0 };
+  let size = { width: Math.max(1, host.clientWidth), height: Math.max(1, host.clientHeight) };
+  let disposables: { dispose(): void }[] = [];
+  let pending = 0;
+  let frames = 0;
+  let lost = false;
+  let reportedReady = false;
+  let restoreTimer: ReturnType<typeof setTimeout> | null = null;
+  let disposed = false;
+
+  const placeBoard = () => {
+    frame = frameAtOne(current.framePoints, turn, size.width / size.height);
+    const q = quatMultiply(turn, BOARD_TO_ROOM);
+    turned.quaternion.copy(new Quaternion(q[0], q[1], q[2], q[3]));
+    turned.position
+      .copy(cameraAt)
+      .addScaledVector(new Vector3(...axes.forward), frame.distance)
+      .addScaledVector(new Vector3(...axes.right), frame.right)
+      .addScaledVector(new Vector3(...axes.up), frame.up);
+    // The board stays within its own reach of its centre whichever way it turns, so the depth range can hug it.
+    let reach = 1;
+    for (const p of current.framePoints) reach = Math.max(reach, Math.hypot(p[0], p[1], p[2]));
+    camera.near = Math.max(1, frame.distance - reach * 1.5);
+    camera.far = frame.distance + reach * 1.5;
+    camera.aspect = size.width / size.height;
+    camera.updateProjectionMatrix();
+  };
+
+  const build = () => {
+    for (const d of disposables) d.dispose();
+    disposables = [];
+    centred.clear();
+    const { mesh, stringer, centre, colours } = current;
+    renderer.setClearColor(new Color(colours.canvas), 1);
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new BufferAttribute(mesh.positions, 3));
+    geometry.setAttribute("normal", new BufferAttribute(mesh.normals, 3));
+    geometry.setIndex(new BufferAttribute(mesh.indices, 1));
+    const foam = new MeshStandardMaterial({ color: new Color(colours.foam), roughness: 0.92, metalness: 0 });
+    centred.add(new Mesh(geometry, foam));
+    disposables.push(geometry, foam);
+
+    // The stringer (D-07): a 3 mm ribbon so it has a real stringer's width up close, and a one-dot line on the
+    // same points so it is never thinner than a dot far away. Painted, so the lights don't shade it.
+    const paint = new MeshBasicMaterial({
+      color: new Color(colours.onFoam),
+      side: DoubleSide,
+      toneMapped: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -4,
+    });
+    const pen = new LineBasicMaterial({ color: new Color(colours.onFoam), toneMapped: false });
+    disposables.push(paint, pen);
+    for (const [points, outward] of [
+      [stringer.deck, 1],
+      [stringer.bottom, -1],
+    ] as const) {
+      if (points.length < 2) continue;
+      const g = ribbon(points, outward);
+      centred.add(new Mesh(g.ribbon, paint), new Line(g.line, pen));
+      disposables.push(g.ribbon, g.line);
+    }
+    centred.position.set(-centre[0], -centre[1], -centre[2]);
+    placeBoard();
+  };
+
+  const draw = () => {
+    pending = 0;
+    if (disposed || lost) return;
+    renderer.render(scene, camera);
+    frames += 1;
+    host.dataset.frames = String(frames);
+    if (!reportedReady) {
+      reportedReady = true;
+      events.onState("ready");
+    }
+  };
+  const schedule = () => {
+    if (pending || disposed || lost) return;
+    pending = requestAnimationFrame(draw);
+  };
+
+  // A drawing context can be taken away (a phone backgrounding the tab, a graphics driver resetting). Keep the
+  // board and the view, wait for it to come back, and only give up after CONTEXT_RESTORE_WAIT_MS. three's own
+  // listeners run first (it registered them when it was made): they stop it drawing, and on the way back they
+  // make a fresh context, which this rebuilds the board's buffers into.
+  const onLost = (event: Event) => {
+    event.preventDefault();
+    lost = true;
+    if (pending) cancelAnimationFrame(pending);
+    pending = 0;
+    events.onState("lost");
+    restoreTimer = setTimeout(() => {
+      restoreTimer = null;
+      if (lost && !disposed) events.onState("no-webgl");
+    }, CONTEXT_RESTORE_WAIT_MS);
+  };
+  const onRestored = () => {
+    if (restoreTimer) clearTimeout(restoreTimer);
+    restoreTimer = null;
+    lost = false;
+    build();
+    reportedReady = false;
+    schedule();
+  };
+  canvas.addEventListener("webglcontextlost", onLost);
+  canvas.addEventListener("webglcontextrestored", onRestored);
+
+  renderer.setSize(size.width, size.height, false);
+  build();
+  schedule();
+
+  return {
+    setBoard(next) {
+      if (disposed) return;
+      current = next;
+      if (lost) return;
+      build();
+      schedule();
+    },
+    setTurn(next) {
+      if (disposed) return;
+      turn = next;
+      const q = quatMultiply(turn, BOARD_TO_ROOM);
+      turned.quaternion.set(q[0], q[1], q[2], q[3]);
+      schedule();
+    },
+    resize(width, height) {
+      if (disposed || !(width > 0) || !(height > 0)) return;
+      if (width === size.width && height === size.height) return;
+      size = { width, height };
+      renderer.setSize(width, height, false);
+      placeBoard();
+      schedule();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      if (pending) cancelAnimationFrame(pending);
+      if (restoreTimer) clearTimeout(restoreTimer);
+      canvas.removeEventListener("webglcontextlost", onLost);
+      canvas.removeEventListener("webglcontextrestored", onRestored);
+      for (const d of disposables) d.dispose();
+      disposables = [];
+      renderer.dispose();
+      renderer.forceContextLoss();
+      canvas.remove();
+    },
+  };
+}

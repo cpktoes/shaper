@@ -432,6 +432,9 @@
   --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
   --surf-rocker-adjust-1: var(--ramp-daylight-rocker-adjust-1);
   --surf-rocker-adjust-2: var(--ramp-daylight-rocker-adjust-2);
+  /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+  --surf-foam: var(--ramp-daylight-ground);
+  --surf-on-foam: var(--ramp-daylight-ink);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -462,6 +465,9 @@
     --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
     --surf-rocker-adjust-1: var(--ramp-slate-rocker-adjust-1);
     --surf-rocker-adjust-2: var(--ramp-slate-rocker-adjust-2);
+    /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+    --surf-foam: var(--ramp-slate-ink);
+    --surf-on-foam: var(--ramp-slate-ground);
   }
 }
 
@@ -492,6 +498,9 @@
   --surf-print-shade: color-mix(in srgb, var(--ramp-daylight-accent) 20%, #fff);
   --surf-rocker-adjust-1: var(--ramp-daylight-rocker-adjust-1);
   --surf-rocker-adjust-2: var(--ramp-daylight-rocker-adjust-2);
+  /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+  --surf-foam: var(--ramp-daylight-ground);
+  --surf-on-foam: var(--ramp-daylight-ink);
 }
 
 /* Chalk — explicit. */
@@ -521,6 +530,9 @@
   --surf-print-shade: color-mix(in srgb, var(--ramp-chalk-accent) 20%, #fff);
   --surf-rocker-adjust-1: var(--ramp-chalk-rocker-adjust-1);
   --surf-rocker-adjust-2: var(--ramp-chalk-rocker-adjust-2);
+  /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+  --surf-foam: var(--ramp-chalk-ground);
+  --surf-on-foam: var(--ramp-chalk-ink);
 }
 
 /* Slate — explicit. */
@@ -550,6 +562,9 @@
   --surf-print-shade: color-mix(in srgb, var(--ramp-slate-accent) 20%, #fff);
   --surf-rocker-adjust-1: var(--ramp-slate-rocker-adjust-1);
   --surf-rocker-adjust-2: var(--ramp-slate-rocker-adjust-2);
+  /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+  --surf-foam: var(--ramp-slate-ink);
+  --surf-on-foam: var(--ramp-slate-ground);
 }
 
 /* Phosphor — explicit. */
@@ -579,6 +594,9 @@
   --surf-print-shade: color-mix(in srgb, var(--ramp-phosphor-accent) 20%, #fff);
   --surf-rocker-adjust-1: var(--ramp-phosphor-rocker-adjust-1);
   --surf-rocker-adjust-2: var(--ramp-phosphor-rocker-adjust-2);
+  /* The 3D board's raw foam and anything drawn on it (Phase 16, D-11): white in every theme, the founder's ruling. */
+  --surf-foam: var(--ramp-slate-ink);
+  --surf-on-foam: var(--ramp-phosphor-ground);
 }
 
 /* ---------------------------------------------------------------------------
