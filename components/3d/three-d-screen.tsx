@@ -63,7 +63,12 @@ function readSceneColours(): SceneColours {
 /** A message centred on the canvas: what happened, then what to do (UI-SPEC §8). */
 function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center" data-canvas-message>
+    // On the canvas's own ground, covering the host (and any canvas a lost context left behind), so the host keeps
+    // its spoken name while the message shows.
+    <div
+      className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-surf-canvas"
+      data-canvas-message
+    >
       <div className="flex max-w-[280px] flex-col gap-1 px-4 text-center">
         <p className="text-sm font-normal text-surf-ink">{line1}</p>
         <p className="text-xs font-normal text-surf-ink-muted">{line2}</p>
@@ -192,9 +197,7 @@ export function ThreeDScreen() {
               aria-roledescription={THREE_D_COPY.canvasRole}
               aria-label={THREE_D_COPY.canvasName(name)}
               aria-busy={state === "loading" ? true : undefined}
-              className={`focus-ring-accent absolute inset-0 touch-none overflow-hidden rounded-md bg-surf-canvas${
-                message ? " invisible" : ""
-              }`}
+              className="focus-ring-accent absolute inset-0 touch-none overflow-hidden rounded-md bg-surf-canvas"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
           </div>
