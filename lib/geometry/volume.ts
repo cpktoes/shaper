@@ -42,7 +42,14 @@
  */
 
 import type { Point2D } from "./board";
-import { railBlendArea, sectionFinishedRail } from "./finished-rail";
+import {
+  type HalfSectionPoints,
+  blendFinishedRails,
+  railBlendArea,
+  sampledFinishedRail,
+  sampledSectionArea,
+  sectionFinishedRail,
+} from "./finished-rail";
 import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
   DEFAULT_TIP_RAIL_SCALE,
@@ -610,23 +617,46 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
 /**
  * One station's finished-rail cross-section, as the litres count it and the 3D board draws it (D-05).
  * `result` is the station's rail section — the only one when `hardWeight` is 0 or 1, and the TUCKED one
- * while the tail's hard edge fades (0 < `hardWeight` < 1), when `hardResult` is the hard-edged one beside
- * it; `result` is null where the foam has no width. `sharpBottomTuck` is the flag the tucked section used.
- * `area` is the full (both-rails) finished cross-section in square millimetres and `blendArea` the foam
- * the finished rail's blends take off it, both rails — `stationAreas` and `stationBlendAreas` of
- * `computeCrossSectionVolume`, element for element.
+ * while the tail's hard edge fades (0 < `hardWeight` < 1); `result` is null where the foam has no width.
+ * While it fades, `blended` is the half-section the 3D board draws there — the tucked and the hard-edged
+ * finished rails sampled alike and blended point for point by the weight (`blendFinishedRails`, rail at
+ * `halfWidth`, stringer at 0) — and the litres count that very ring (D-31, `fadingSectionArea`).
+ * `sharpBottomTuck` is the flag the tucked section used. `area` is the full (both-rails) finished
+ * cross-section in square millimetres and `blendArea` the foam the finished rail's blends take off it, both
+ * rails — `stationAreas` and `stationBlendAreas` of `computeCrossSectionVolume`, element for element.
  */
 export interface BoardSection {
   station: Mm;
   halfWidth: Mm;
   thickness: Mm;
   result: RailSectionResult | null;
-  hardResult?: RailSectionResult;
+  blended?: HalfSectionPoints;
   hardWeight: number;
   domed: boolean;
   sharpBottomTuck: boolean;
   area: number;
   blendArea: number;
+}
+
+/**
+ * The litres' area at a station inside the hard edge's fade (D-31, the level variant): the foam the 3D board
+ * draws there, corrected by the same hair the drawn board loses to its straight segments everywhere else.
+ * Written as the two end sections' exact areas blended by the weight, plus how far the drawn (blended) ring's
+ * area stands from the two end rings' areas blended alike:
+ * `(1 − w)·exactTucked + w·exactHard + (ring(blended) − ((1 − w)·ring(tucked) + w·ring(hard)))` — which is
+ * `ring + (1 − w)·(exactTucked − ring(tucked)) + w·(exactHard − ring(hard))`. At w = 0 and w = 1 the blended
+ * ring IS the end ring and the correction is exactly 0, so the fade is level with the stations either side.
+ */
+export function fadingSectionArea(
+  exactTucked: number,
+  exactHard: number,
+  tuckedHalf: HalfSectionPoints,
+  hardHalf: HalfSectionPoints,
+  blended: HalfSectionPoints,
+  weight: number,
+): number {
+  const ringsBlended = (1 - weight) * sampledSectionArea(tuckedHalf) + weight * sampledSectionArea(hardHalf);
+  return (1 - weight) * exactTucked + weight * exactHard + (sampledSectionArea(blended) - ringsBlended);
 }
 
 /** The three rail-band anchors' stations, measured from the tail end: tail 12", centre, nose 12". */
@@ -638,7 +668,7 @@ export interface RailAnchorStations {
 
 /**
  * How the tail's Hard Edge reaches each station. `weight` is how much of the station is the hard-edged
- * section (1 all hard, 0 all tucked, between a blend of the two sections' areas); `tuckSource` names the
+ * section (1 all hard, 0 all tucked, between a blend of the two sections, `fadingSectionArea`); `tuckSource` names the
  * anchor whose Single Tuck and Sharp Bottom Tuck the tucked side reads, given the station's nearest anchor.
  * `length` is the board's length (its centre is half of it), which the live rule's two settings are read
  * against (D-30). The live functions never take a rule: an old rule is callable only by name (Phase 14 D-25's
@@ -816,23 +846,31 @@ export function boardSectionsWith(
     };
 
     if (hardWeight > 0 && hardWeight < 1) {
-      // The fade: both sections, their AREAS blended — never shrunk tuck marks, which would leave a
-      // rounded edge right after the 12" station (research §G).
+      // The fade (D-31, level variant): both sections, sampled alike and blended point for point — the ring
+      // the 3D board draws (never shrunk tuck marks, which would leave a rounded edge, research §G) — and the
+      // litres count that ring, corrected by the end sections' own polygon shortfalls (`fadingSectionArea`).
       const tucked = computeRailSection(sectionInput(false));
       const hard = computeRailSection(sectionInput(true));
       const tuckedArea = finished(tucked);
       const hardArea = finished(hard);
+      const tuckedHalf = sampledFinishedRail(tucked, domed, halfWidth);
+      const hardHalf = sampledFinishedRail(hard, domed, halfWidth);
+      const blended = blendFinishedRails(tuckedHalf, hardHalf, hardWeight);
+      const area = fadingSectionArea(tuckedArea.area, hardArea.area, tuckedHalf, hardHalf, blended, hardWeight);
+      // The cut area (finished plus blends) has no ring of its own; it is the two cuts blended by the weight,
+      // so `area + blendArea` stays the station's cut area as everywhere else.
+      const cut = (1 - hardWeight) * (tuckedArea.area + tuckedArea.blendArea) + hardWeight * (hardArea.area + hardArea.blendArea);
       sections.push({
         station,
         halfWidth,
         thickness,
         result: tucked,
-        hardResult: hard,
+        blended,
         hardWeight,
         domed,
         sharpBottomTuck: tuckSpec.sharpBottomTuck,
-        area: (1 - hardWeight) * tuckedArea.area + hardWeight * hardArea.area,
-        blendArea: (1 - hardWeight) * tuckedArea.blendArea + hardWeight * hardArea.blendArea,
+        area,
+        blendArea: cut - area,
       });
       continue;
     }
@@ -883,8 +921,9 @@ export function boardSections(input: CrossSectionVolumeInput, stations?: readonl
  * `tailHardEdge` fades (Phase 16, D-20/D-27/D-30, `HARD_EDGE_FADE`): full at and behind Hard Edge Blends
  * From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise), easing by smoothstep until it is gone at
  * Hard Edge Ends At (`hardEdgeEndsAt`, 30" unless it says otherwise), where the rail is fully the centre's
- * tucked rail; a fading station's area is the two sections' areas blended by that weight, the hard-edged and
- * the tucked, and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
+ * tucked rail; a fading station counts the foam the 3D board draws there — the hard-edged and the tucked
+ * finished rails blended point for point by that weight — corrected by the same hair the drawn board loses to
+ * its straight segments everywhere else (D-31, `fadingSectionArea`), and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
  * Single Tuck and Sharp Bottom Tuck (the tail's are hidden on RAILS). Before Phase 16 it was a switch — on
  * at every station whose nearest anchor is the tail (`HARD_EDGE_SWITCH`, kept by name). The board thickness at
  * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
