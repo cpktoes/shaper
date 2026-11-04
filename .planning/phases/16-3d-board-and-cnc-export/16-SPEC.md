@@ -32,13 +32,13 @@ each one rests on are in brackets.
    and Reset View; keyboard equivalents; no glide under reduced motion. [D-13]
 5. **R5 — Fins and the blank as switches.** Simple fins standing at their FINS placement (a Fins switch, on by default);
    the picked blank as a see-through ghost (a Blank switch, off by default, dimmed with its reason when no blank is
-   picked). [D-06, D-08]
+   picked). [D-06, D-08] *(Planning note 2026-11-03: the fins' outlines and figures are D-21, D-22 and D-25.)*
 6. **R6 — Contour stripes.** A Contour Stripes switch, off by default: bands of light that bend where the surface bends.
    [D-12]
 7. **R7 — Export for CNC.** *"we'll want to be able to export the data file … create a .dxf file from a surface or
    wireframe model."* One button on the 3D panel downloads one zip holding a DXF wireframe (outline, stringer profile,
    slices), the XYZ text set (outline, profile, one file per slice) and an STL of the drawn surface — the bare board only,
-   in millimetres, named from the board's name — with the note that Shape3D and AkuShaper read it as a guide. It works
+   in millimetres, named from the board's name — with the note that Shape3D reads it as a guide *(planning note 2026-11-03: Shape3D only — D-23; the slices are the litres' own stations — D-24)*. It works
    signed out and on a locked board. [D-14, D-15, D-16]
 8. **R8 — The files are what Shape3D takes.** The DXF, STL and text files open in Shape3D's import/scan option as a guide
    (DXF, STL or text, per its own page) in the axes and units it expects; research fixes the text files' columns and the
@@ -93,10 +93,52 @@ view; station lines; an idle auto-turn; fins in the STL; an export button on SUM
 
 | Category | Requirement | Status | Resolution / Reason |
 |----------|-------------|--------|---------------------|
-| (filled from the research's "Edge Coverage (for the SPEC)" table) | | | |
+| Swallow tail: two pieces from the notch wall to the rail | R2, acc 2 | resolved | Wall strips inside the notch, meeting at the crotch edge; closed on 40 boards; test that no triangle crosses \|y\| < inner inside the notch |
+| Swallow tail end: zero foam width at station 0 | R2, R7 | resolved | Ring welds to an edge/point; slice 01 is the first station with foam (Fish: 34.925 mm) |
+| Diamond tail: the V is foam, tip width 0 | R2 | resolved | `foamHalfWidth` V; no wall; tested on the 40-board set |
+| Squash tail: non-zero end | R2 | resolved | Fan cap at station 0 |
+| Pin / round tail and the nose tip | R2 | resolved | Zero-width rings weld; caps |
+| Narrow stations near the tips (section wider than the foam) | R2, R4 | resolved | Cut at the stringer; deck below `deckAt` only within 12" of a tip (≤ 5.43 mm); Side-view relation test limited accordingly |
+| Mesh volume vs litres | R2, acc 3 | resolved | Gap −0.098% worst at the recommended fineness; tolerance (−0.15%, 0] |
+| Hard edge fade start (12") and end (set distance) | R9, acc 6 | resolved | Area blend, continuous; measured litres moves; RAILS' 12" plot unchanged |
+| Fade zone tuck settings hidden on RAILS | R9 | unresolved | K6 |
+| Hard Edge Ends At absent / garbage / out of range in a saved board | R9, acc 6 | resolved | Reads 18", nothing rewritten; version 5 |
+| Hard Edge off then on | R9 | resolved | Value kept |
+| Reset Advanced Settings | R9 | resolved | Deletes the field in the same undo step |
+| Sharp Bottom Tuck / hard edge sharpness on screen | R3 | resolved | Topology-marked bottom-edge row with sharpness weight |
+| No WebGL / context lost / chunk fails | R10, acc 7 | resolved | Three messages; Export still works (writers outside the chunk) |
+| A board the builder can't build | R10 | resolved | Throws on non-finite / out-of-range; message; Export dimmed |
+| Locked board, signed out | R7, acc 4 | resolved | View-side controls; Export built from the store |
+| Long / odd board names in file names | R7 | resolved | Shared stem; `Untitled Board` fallback |
+| Board with no blank | R5 | resolved | Blank row dimmed with its hint |
+| Fins: single drawn from the box length | R5 | resolved | Single base = 0.70 × depth, centred in the 10.5" box (K4) |
+| Fins: rear quads smaller | R5 | resolved | Base from FINS, depth 4.25" vs 4.5" |
+| Fins never claim a maker's template | R5 | resolved | One generic outline per role, no names |
+| Shape3D import of each file | R8 | unresolved | Founder's acceptance test in Shape3D's trial (§C) |
+| AkuShaper import | R7, D-15 | unresolved | K1 |
+| Export time on a phone | R7 | resolved with assumption | 123–187 ms Node at 48/32/24 (61–102 ms at 24/16/12); fallback state exists; real-iPhone check |
+| WebKit's slower first draw in specs | R12, C6 | resolved | Timeouts with headroom |
+| Theme switch while open | R10 | resolved | Re-read tokens via `getComputedStyle` on class/scheme change |
 
 ## Prohibitions (for the SPEC)
 
 | Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
 |----------------------------------|-------------|--------|-----------------------|
-| (filled from the research's "Prohibitions (for the SPEC)" table) | | | |
+| The surface must NOT compute its own sections; it reads `boardSections` | R2, D-05 | resolved | Code review + the litres pin + the volume relation test |
+| `boardSections` must NOT change any litres figure (before D-20 lands) | R2 | resolved | 40/40 bit-identical; pinned fixture test |
+| A swallow must NOT be drawn as less foam from the stringer out | R2, D-05 | resolved | Notch test (no triangle across the notch) |
+| `three` must NOT be imported outside `components/3d/board-scene.ts`; never in `lib/` | C5, R7 | resolved | Source-grep unit test; prod spec: no scene chunk on other routes |
+| The writers must NOT need WebGL or the scene chunk | R7, acc 7 | resolved | Export spec with `getContext` stubbed to null |
+| The files must NOT include fins or the blank | D-16 | resolved | Unit test: STL triangle count equals the board mesh's |
+| The files must NOT be in any unit but millimetres; no `25.4` outside `units.ts` | C2, Rule 2 | resolved | Writers take mm; lint/grep |
+| The 3D fins must NOT claim to be, or copy, any maker's template or foil | R5, D-06 | resolved | One generic outline per role, parametrised only by base and role constants; no maker names in code or copy |
+| A fin must NOT be shrunk uniformly; only its base changes with FINS' value | R5 (founder) | resolved | fin-outline test: changing base leaves depth, tip offset and trailing edge unchanged |
+| The hard-edge fade must NOT step (no rounded edge at 12", no jump at the end) | R9 | resolved | Continuity tests across both ends |
+| Opening a saved board must NOT write `tailHardEdgeEndsAt` | R9, R11 | resolved | Parser test on frozen input |
+| No database or migration change | R11, D-17 | resolved | `drizzle/`, `lib/db/schema.ts` diff empty |
+| Nothing on screen may announce the 3D screen or the moved litres | R11, D-18 | resolved | e2e: no new notice text |
+| The camera must NOT move when the board turns; lights must NOT follow the view | R3, D-10 | resolved | Controller turns the model quaternion only; unit test on view-3d |
+| No glide under reduced motion; no auto-turn ever | R4, D-13 | resolved | e2e with `reducedMotion: "reduce"` |
+| No expected number typed from this research | C1 | resolved | Tests compute or read generated fixtures |
+| Nothing pushed, deployed or migrated without the founder's go | C8, R12 | resolved | Plan checkpoints |
+| No scratch scripts left in the repo or `.planning/` | environment | resolved | All scratch under the session scratchpad |

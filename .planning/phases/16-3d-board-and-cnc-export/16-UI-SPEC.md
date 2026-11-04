@@ -288,7 +288,7 @@ does not start with a letter is shown as written, and adds `3D` to its test (`li
 | Reset | `Reset View` | |
 | Section | `Export` (drawn `EXPORT`) | |
 | Primary button | `Export for CNC…` | |
-| Its note (D-15, verbatim) | `Shape3D and AkuShaper read this as a guide and fit their own curves to it.` | |
+| Its note (D-15, verbatim) | `Shape3D reads this as a guide and fits its own curves to it.` | |
 | Status line, done | `Downloaded {file}. The outline, the profile and {n} slices, in millimetres.` | `{file}` in ink, e.g. `Fish 5'10-3d.zip`; `{n}` from the writer, never typed |
 | Status line, working (only if the build is not done within the tap, §7) | `Making the files…` | |
 | Status line, failed | `Couldn't make the files — try again.` | Warning ink |
@@ -389,7 +389,7 @@ to trust.
   the tile's 4-dot padding and stops 2.6 dots inside the border. Nothing clips, and `e2e/phone-layout.spec.ts:126-150`'s
   "whole" check still passes (the span's own box is 72.8 wide). If the founder finds it cramped, the tile names drop to
   0.1em tracking in the four-across grid only (`TEMPLATE` 68.4) `(Claude's discretion — founder may overrule)`.
-- **The sideways tile spec's floor breaks:** `e2e/phone-screen-tiles.spec.ts:152` asserts every tile is over 120 dots
+- **The sideways tile spec's floor breaks:** `e2e/phone-screen-tiles.spec.ts:172` asserts every tile is over 120 dots
   wide sideways; seven tiles are 110.3 and 113.0. The floor becomes 104 (the harness has no safe-area insets; a real
   iPhone held sideways, with its ~47-dot insets, gives about 100).
 - **RAILS' view switches are toolbar buttons** (Finished Rail and Ghost Bands, `components/rails/rail-band-editor.tsx:359-378`),
@@ -456,8 +456,8 @@ VIEW ─────────────────────────
 
 EXPORT ───────────────────────────────────
 [█████████ Export for CNC… █████████]        ← accent fill, full width
-Shape3D and AkuShaper read this as a guide
-and fit their own curves to it.
+Shape3D reads this as a guide
+and fits its own curves to it.
 Downloaded Fish 5'10-3d.zip. The outline, …  ← status line (role=status)
 
 [ ← Summary                         ]        ← Step nav, Back alone fills its row (components/design/step-nav.tsx:48)
@@ -926,6 +926,20 @@ None of these changes a locked decision; each is a reading the founder can rever
 | D-02 "the page title" | ~~`3D — Shaper Assistant`~~ → `3D Board — Shaper Assistant` (ruled by the founder 2026-11-03: the descriptive title) | `3D — Shaper Assistant`, D-02 read literally |
 
 ---
+
+## Amended by the planning research and the founder's rulings (2026-11-03)
+
+- **The export note** reads `Shape3D reads this as a guide and fits its own curves to it.` everywhere above (D-23; it named AkuShaper before).
+- **The fins** (§3, question F): the "depth 1.0 × base, rake 0.25 × base, 0.06 × base thick" proportions are withdrawn. The fins are
+  D-21/D-22/D-25: one generic outline per role parametrised by its base; single depth = the board's length in feet as inches on a
+  0.70 × depth base centred in the box; twin 5.0" (keel or upright by the tip's place); thruster 4.5"; quad fronts 4.5", rears
+  4.25"; bases true to FINS; upright, no cant; 1/4" thick (3/8" a single). The Fins switch and its words are unchanged.
+- **Six-screen specs** (§15): the 120-dot floor is at `e2e/phone-screen-tiles.spec.ts:172`; also to update: `e2e/phone-sideways-top-bar.spec.ts`,
+  `phone-screen-tiles.spec.ts:407`, and every spec whose `SCREENS` loop (`e2e/helpers/screens.ts:14-21`) will now visit the WebGL screen
+  (research question I lists them).
+- **The renderer** is three.js alone behind `import()`, with our own controller (D-28); the contract's canvas rules are unchanged.
+- **The litres on VOLUME move on hard-edged tails** (D-27): cards Shortboard 29.61 → 29.59, Fish 34.65 → 34.64, Mid-length 49.41 → 49.38;
+  the VOLUME desktop reference picture moves by those digits as well as in the nav row.
 
 ## Open items for the planner
 
