@@ -81,8 +81,8 @@ database change.
 - **D-12:** **Contour stripes as a switch, off by default** — the zebra-stripe check CAD and car-body people
   use: bands of light across the surface that bend where the shape bends, so a bump or a flat spot shows at
   once. (Rejected: station lines; lighting alone.)
-- **D-13:** **Drag to spin in every direction; wheel or pinch to zoom; right-drag or two fingers to slide the
-  board across the screen; preset views Deck, Bottom, Side, Nose and Tail; Reset view.** On a touch screen the
+- **D-13:** **Drag to spin, wheel or pinch to zoom, right-drag or two fingers to slide, preset views and Reset view.** Drag to spin in every direction; wheel or pinch to zoom; right-drag or two fingers to slide the
+  board across the screen; preset views Deck, Bottom, Side, Nose and Tail; Reset view. On a touch screen the
   drawing's zoom buttons stay beside the pinch. No auto-turn when idle. Reduced motion: no glide after a drag,
   as the Board Rack does. (Rejected: spin and zoom only; a slow auto-turn.)
 
@@ -102,8 +102,8 @@ database change.
   switches say. A CNC cuts the blank; fins are boxed or glassed on later.
 
 ### Ruled after the discussion, from the mock-up (2026-11-03)
-- **D-20:** **A tail's hard edge ends where the shaper sets it — "Hard edge ends at", a new slider on the tail's
-  Advanced menu on RAILS.** The founder's finding on the first 3D mock-up: "the bottom view shows a hard edge in
+- **D-20:** **A tail's hard edge ends where the shaper sets it — a Hard Edge Ends At slider on the tail's Advanced menu on RAILS.** (Title Case on screen, the founder's ruling at the UI contract.)
+  The founder's finding on the first 3D mock-up: "the bottom view shows a hard edge in
   the tail that should fade into the center tuck just in front of the fins (~16-20" from tail)". Today the maths
   switches the hard edge on or off at one point, halfway between the 12" station and the centre (volume.ts's
   `nearestAnchorSection`), a step the RAILS screen never shows and the 3D board would. The rule: the edge runs

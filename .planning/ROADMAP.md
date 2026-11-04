@@ -315,7 +315,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no h
 ### Phase 16: 3D Board and CNC Export
 
 **Goal:** A shaper sees the board they designed as a solid, realistic surface they can spin and move in every direction, lit the way a shaping room is lit so every contour shows, on a 3D screen of its own; and takes that surface away as a file a CNC shaping program (Shape3D, AkuShaper) can read as a 3D guide — a wireframe (DXF) and/or XYZ text files for the outline, the profile and the slices. The surface is built from the same cross-sections the litres count (the finished rail at every station along the rocker), so what the shaper sees and exports is exactly what VOLUME counts. Reading Shape3D's and AkuShaper's own files (.s3d/.s3dx, .brd) is deliberately left for a later phase.
-**Requirements**: TBD (set in the discussion, 16-CONTEXT.md)
+**Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-20 and the approved 16-UI-SPEC.md)
 **Brief:** to be written from the founder's words of 2026-11-03 (16-SPEC.md)
 **Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
 **Plans:** 0 plans
