@@ -54,7 +54,7 @@ Your account and designs stay until you delete them or close your account. When 
 ## 6. Your choices
 
 - **See or correct your information:** from your account settings, or email us.
-- **Export your designs:** from the Service, where export is available, or email us.
+- **Export your designs:** from the Service, where export is available, or email us. You can put a downloaded file back onto your account with Import my designs.
 - **Delete your account:** from your account settings, or email us, and we'll confirm when it's done.
 - **Email:** unsubscribe from any marketing email with the link in the message. Account and legal notices are sent as long as you have an account.
 
