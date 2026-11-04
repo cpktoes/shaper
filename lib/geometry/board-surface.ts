@@ -238,7 +238,17 @@ function halfSection(result: RailSectionResult, domed: boolean, outer: number, i
   return deck.concat(railRun.slice(1), bottom.slice(1));
 }
 
-/** The station's half-section, the fade's two halves blended point for point by the hard weight. */
+/**
+ * One station's half-section as the surface lays it (`HALF_POINTS` points, inside edge on the deck round the
+ * rail to the inside edge on the bottom; distance across from the stringer, height above the bottom): the
+ * section's finished rail with its rail at `outer` and cut at `inner`, the fade's tucked and hard-edged
+ * halves blended point for point by the hard weight. A section with no foam is one point at `outer`, half
+ * its thickness up.
+ */
+export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
+  return blendedHalf(section, outer, inner);
+}
+
 function blendedHalf(section: BoardSection, outer: number, inner: number): P2[] {
   if (!section.result || section.halfWidth <= 0) {
     return Array.from({ length: HALF_POINTS }, () => [outer, section.thickness / 2] as P2);
@@ -532,4 +542,83 @@ export function meshCheck(mesh: { positions: ArrayLike<number>; indices: ArrayLi
   let misWoundEdges = 0;
   for (const count of directed.values()) if (count > 1) misWoundEdges++;
   return { openEdges, nonManifoldEdges, misWoundEdges, zeroAreaTriangles };
+}
+
+/** A vertex of the surface as a point. */
+function pointAt(positions: Float64Array, v: number): Vec3 {
+  return [positions[3 * v], positions[3 * v + 1], positions[3 * v + 2]];
+}
+
+/** The vertices of one piece of a ring, in loop order. */
+export function pieceVertices(piece: SurfaceRing["pieces"][number]): number[] {
+  return Array.from({ length: piece.count }, (_, k) => piece.first + k);
+}
+
+/**
+ * The vertex of `vertices` furthest along `axis` (1 across, 2 up) in the direction `sign`; between two
+ * level within a millionth of a millimetre, the one nearer the stringer, then the first in loop order.
+ */
+export function extremeVertex(positions: Float64Array, vertices: readonly number[], axis: 1 | 2, sign: 1 | -1): number {
+  let best = vertices[0];
+  for (const v of vertices) {
+    const d = sign * (positions[3 * v + axis] - positions[3 * best + axis]);
+    if (d > 1e-9) best = v;
+    else if (d > -1e-9 && Math.abs(positions[3 * v + 1]) < Math.abs(positions[3 * best + 1]) - 1e-9) best = v;
+  }
+  return best;
+}
+
+/** Drops a vertex that repeats the one before it (and, for a loop, a last one that repeats the first). */
+function withoutRepeats(vertices: number[], loop: boolean): number[] {
+  const out = vertices.filter((v, i) => i === 0 || v !== vertices[i - 1]);
+  if (loop) while (out.length > 1 && out[out.length - 1] === out[0]) out.pop();
+  return out;
+}
+
+/**
+ * The slices the CNC files carry (D-24): one per litres station with foam, tail to nose, each the closed
+ * loop of that station's ring — two loops inside a swallow's notch, the right piece first (research
+ * Pitfall 11). Every point is a vertex of the drawn mesh, the very numbers.
+ */
+export function boardSlices(surface: BoardSurface): { station: Mm; loops: Vec3[][] }[] {
+  return surface.rings
+    .filter((ring) => ring.isSlice && ring.pieces.some((piece) => piece.count > 1))
+    .map((ring) => ({
+      station: ring.station,
+      loops: ring.pieces.map((piece) => pieceVertices(piece).map((v) => pointAt(surface.positions, v))),
+    }));
+}
+
+/**
+ * The board's outline as the files carry it (R8, D-26), in TEMPLATE's silhouette order: each ring's widest
+ * point on the right rail, tail to nose, then on the left rail, nose to tail; on a swallow the notch's
+ * inside edges then close the tail — along the left piece's wall to the crotch and back along the right's.
+ * A closed loop: its last point joins its first. Every point is a vertex of the mesh.
+ */
+export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
+  const { positions, rings } = surface;
+  const all = (ring: SurfaceRing) => ring.pieces.flatMap(pieceVertices);
+  const right = rings.map((ring) => extremeVertex(positions, all(ring), 1, 1));
+  const left = rings.map((ring) => extremeVertex(positions, all(ring), 1, -1)).reverse();
+  const notch: number[] = [];
+  const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
+  if (lastNotch >= 0 && lastNotch + 1 < rings.length) {
+    // Each piece's loop starts at its deck corner on the wall.
+    for (let i = 0; i <= lastNotch; i++) notch.push(rings[i].pieces[1].first);
+    notch.push(rings[lastNotch + 1].pieces[0].first); // the crotch, on the stringer
+    for (let i = lastNotch; i >= 0; i--) notch.push(rings[i].pieces[0].first);
+  }
+  return withoutRepeats([...right, ...left, ...notch], true).map((v) => pointAt(positions, v));
+}
+
+/**
+ * The board's side profile as the files carry it (R8, D-26): each ring's highest point (the deck) and
+ * lowest point (the bottom), tail to nose — on the stringer outside a swallow's notch, on the right piece
+ * inside it. Every point is a vertex of the mesh.
+ */
+export function boardProfileLines(surface: BoardSurface): { deck: Vec3[]; bottom: Vec3[] } {
+  const { positions, rings } = surface;
+  const line = (sign: 1 | -1) =>
+    rings.map((ring) => pointAt(positions, extremeVertex(positions, pieceVertices(ring.pieces[0]), 2, sign)));
+  return { deck: line(1), bottom: line(-1) };
 }

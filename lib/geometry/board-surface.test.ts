@@ -1,15 +1,41 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildBoardSurface, enclosedVolumeMm3, meshCheck, surfaceStations, type BoardSurfaceInput } from "./board-surface";
-import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES, type DesignSummaryFields } from "./design";
+import {
+  boardOutlineLoop,
+  boardProfileLines,
+  boardSlices,
+  buildBoardSurface,
+  enclosedVolumeMm3,
+  meshCheck,
+  placedHalfSection,
+  SURFACE_FACE,
+  SURFACE_POINTS,
+  SURFACE_STATION_STEP_IN,
+  surfaceStations,
+  type BoardSurface,
+  type BoardSurfaceInput,
+  type SurfaceRing,
+} from "./board-surface";
+import {
+  designCrossSectionInput,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+  type DesignSummaryFields,
+} from "./design";
+import { sectionFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
-import { buildOutline, tailCutStation } from "./outline";
-import { computeCrossSectionVolume, crossSectionStations } from "./volume";
+import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
+import { hardEdgeEndsAt } from "./rail-bands";
+import { inchesToMm, mm } from "./units";
+import { boardSections, computeCrossSectionVolume, crossSectionStations } from "./volume";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 
 /**
  * The 3D board's surface (Phase 16, D-05): the litres' own sections lofted along the rocker. Every expected
- * figure here is the app's own — VOLUME's litres, the side profile's rocker and deck, the litres' stations —
- * never a typed number (Rule 1).
+ * figure here is the app's own — VOLUME's litres, the side profile's rocker and deck, the litres' stations,
+ * the outline's widths, or a vertex of the same mesh — never a typed number (Rule 1).
  */
 
 /** A board's surface input, built exactly as the litres build theirs, and its side profile. */
@@ -19,7 +45,7 @@ function surfaceInputOf(fields: DesignSummaryFields) {
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
   const sections = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
   const input: BoardSurfaceInput = { sections, geometry, rockerAt: profile.rockerAt };
-  return { input, profile };
+  return { input, profile, geometry };
 }
 
 /** A ring's vertices (every piece), as [x, y, z]. */
@@ -34,8 +60,38 @@ function ringPoints(positions: Float64Array, ring: { pieces: { first: number; co
   return out;
 }
 
+/** Every vertex of a mesh as an exact "x,y,z" key — a point is a vertex only if it is the very numbers. */
+function vertexKeys(surface: BoardSurface): Set<string> {
+  const keys = new Set<string>();
+  const p = surface.positions;
+  for (let v = 0; v < p.length / 3; v++) keys.add(`${p[3 * v]},${p[3 * v + 1]},${p[3 * v + 2]}`);
+  return keys;
+}
+const keyOf = (p: readonly number[]) => `${p[0]},${p[1]},${p[2]}`;
+
+/**
+ * Whether a station's section is drawn wider than the foam, so the surface cuts it at the stringer before
+ * its flat deck begins (research "Narrow tips", Pitfall 7): the finished rail's deck end lies inboard of the
+ * stringer, for the tucked or the hard-edged half.
+ */
+function cutAtStringer(input: BoardSurfaceInput, station: number): boolean {
+  const [section] = boardSections(input.sections, [mm(station)]);
+  return [section.result, section.hardResult].some(
+    (result) => result && -sectionFinishedRail(result, section.domed).samples[0].x > section.halfWidth,
+  );
+}
+
 const BOARDS = phase16Boards();
 const boardOf = (label: string) => BOARDS.find((board) => board.label === label)!.fields;
+
+/** Each of the forty boards built once, with what the tests compare it against. */
+const BUILT = BOARDS.map((board) => {
+  const { input, profile, geometry } = surfaceInputOf(board.fields);
+  const surface = buildBoardSurface(input);
+  return { label: board.label, fields: board.fields, input, profile, geometry, surface };
+});
+const isSwallow = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation > geometry.points[0].station;
+const isDiamond = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation < geometry.points[0].station;
 
 describe("the Shortboard as one closed surface from the litres' own sections (tracer)", () => {
   // The Shortboard as its card opens it: its own tail, Hard Edge on.
@@ -85,5 +141,245 @@ describe("the Shortboard as one closed surface from the litres' own sections (tr
       }
     }
     expect(checked).toBeGreaterThan(100);
+  });
+});
+
+describe("where the surface takes its rings", () => {
+  for (const { label, input } of BUILT.filter((b) => b.label.endsWith("|asis|hard") || b.label.includes("swallow"))) {
+    it(`${label}: never more than half an inch apart, with the 12-inch stations, the centre, the tail cut and the fade's end`, () => {
+      const stations = surfaceStations(input);
+      const step = inchesToMm(SURFACE_STATION_STEP_IN);
+      expect(stations[0]).toBe(0);
+      expect(stations[stations.length - 1]).toBe(input.sections.length);
+      for (let i = 1; i < stations.length; i++) {
+        expect(stations[i] - stations[i - 1]).toBeGreaterThan(1e-6);
+        expect(stations[i] - stations[i - 1]).toBeLessThanOrEqual(step + 1e-9);
+      }
+      const anchors = foilStationPoints(input.sections.foil, input.sections.length);
+      const wanted = [anchors[1].station, anchors[2].station, anchors[3].station];
+      const cut = tailCutStation(input.geometry);
+      if (cut > 0) wanted.push(cut);
+      if (input.sections.rails.tailHardEdge) wanted.push(hardEdgeEndsAt(input.sections.rails));
+      for (const s of wanted) expect(stations).toContain(s);
+    });
+  }
+});
+
+describe("all forty boards: closed, and a hair under VOLUME's litres (SPEC acceptance 3 and 5)", () => {
+  it("checks every one of the forty", () => {
+    expect(BUILT).toHaveLength(40);
+  });
+  for (const { label, input, surface } of BUILT) {
+    it(`${label}: watertight, consistently wound, no zero-area triangle; (mesh − litres)/litres in (−0.15%, 0]`, () => {
+      expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+      const litres = computeCrossSectionVolume(input.sections).volumeLitres;
+      const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
+      expect(gap).toBeLessThanOrEqual(0);
+      expect(gap).toBeGreaterThan(-0.0015);
+    });
+  }
+});
+
+describe("a swallow's tail: two pieces from the notch wall to the rail, meeting at the crotch (D-05)", () => {
+  const swallows = BUILT.filter((b) => isSwallow(b.geometry));
+  it("checks every swallow of the set", () => {
+    expect(swallows.length).toBe(BUILT.filter((b) => b.label.includes("swallow") || b.label.startsWith("fish|asis")).length);
+  });
+  for (const { label, geometry, surface } of swallows) {
+    it(`${label}: no triangle crosses the notch's inner edge, and the pieces join only along the crotch`, () => {
+      const crotch = geometry.centreCloseStation;
+      const innerAt = new Map<number, number>();
+      for (const ring of surface.rings) if (ring.station < crotch) innerAt.set(ring.station, ring.pieces[0].inner);
+      const p = surface.positions;
+      let checked = 0;
+      for (let t = 0; t < surface.triangleCount; t++) {
+        const vs = [0, 1, 2].map((e) => surface.indices[3 * t + e]);
+        const xs = vs.map((v) => p[3 * v]);
+        if (xs.some((x) => x > crotch)) continue;
+        const ys = vs.map((v) => p[3 * v + 1]);
+        // The two pieces never share a triangle.
+        expect(ys.some((y) => y > 1e-9) && ys.some((y) => y < -1e-9)).toBe(false);
+        if (xs.every((x) => x < crotch)) {
+          for (let e = 0; e < 3; e++) {
+            const inner = innerAt.get(xs[e]);
+            if (inner === undefined) continue; // a tip's flat cap
+            expect(Math.abs(ys[e])).toBeGreaterThanOrEqual(inner - 1e-9);
+          }
+          checked++;
+        }
+      }
+      expect(checked).toBeGreaterThan(0);
+      // Every stringer-plane vertex behind the crotch is at the crotch itself.
+      for (let v = 0; v < p.length / 3; v++) {
+        if (p[3 * v] < crotch + 1e-9 && Math.abs(p[3 * v + 1]) <= 1e-9) expect(p[3 * v]).toBe(crotch);
+      }
+      // Inside the notch every ring is two pieces, each with its wall; at the crotch, one.
+      for (const ring of surface.rings) {
+        if (ring.station < crotch) {
+          expect(ring.pieces).toHaveLength(2);
+          expect(ring.pieces[0].inner).toBeGreaterThan(0);
+        } else expect(ring.pieces).toHaveLength(1);
+      }
+      expect(Array.from(surface.faceKinds).filter((k) => k === SURFACE_FACE.wallRight).length).toBeGreaterThan(0);
+      // The tail end has no foam (foamHalfWidth is 0 there): each piece comes to a point.
+      expect(foamHalfWidth(geometry, mm(0))).toBe(0);
+      expect(surface.rings[0].pieces.map((piece) => piece.count)).toEqual([1, 1]);
+    });
+  }
+});
+
+describe("a diamond's V is foam, narrowing to nothing at its tip — no wall", () => {
+  const diamonds = BUILT.filter((b) => isDiamond(b.geometry));
+  it("checks every diamond of the set", () => {
+    expect(diamonds.length).toBe(BUILT.filter((b) => b.label.includes("diamond")).length);
+  });
+  for (const { label, geometry, surface } of diamonds) {
+    it(`${label}: the tip ring is one point and every ring in the V is as wide as foamHalfWidth`, () => {
+      expect(surface.rings[0].pieces).toEqual([{ first: surface.rings[0].pieces[0].first, count: 1, inner: 0 }]);
+      expect(surface.positions[3 * surface.rings[0].pieces[0].first + 1]).toBe(0);
+      let inV = 0;
+      for (const ring of surface.rings) {
+        expect(ring.pieces).toHaveLength(1);
+        if (ring.station > geometry.centreCloseStation && ring.station < geometry.points[0].station) {
+          const widest = Math.max(...ringPoints(surface.positions, ring).map((q) => q[1]));
+          expect(Math.abs(widest - foamHalfWidth(geometry, ring.station))).toBeLessThan(1e-9);
+          inV++;
+        }
+      }
+      expect(inV).toBeGreaterThan(0);
+      const kinds = new Set(surface.faceKinds);
+      expect(kinds.has(SURFACE_FACE.wallRight) || kinds.has(SURFACE_FACE.wallLeft)).toBe(false);
+    });
+  }
+});
+
+describe("the tips: a point where there is no foam, a flat cap where there is", () => {
+  for (const { label, geometry, surface } of BUILT) {
+    it(`${label}: the nose tip is one point; the tail end is a point or a capped end`, () => {
+      const last = surface.rings[surface.rings.length - 1];
+      expect(last.pieces.map((piece) => piece.count)).toEqual([1]);
+      const kinds = Array.from(surface.faceKinds);
+      const tailWidth = foamHalfWidth(geometry, mm(0));
+      if (tailWidth > 0) {
+        expect(surface.rings[0].pieces[0].count).toBeGreaterThan(2);
+        expect(kinds).toContain(SURFACE_FACE.capTail);
+      } else {
+        expect(surface.rings[0].pieces.every((piece) => piece.count === 1)).toBe(true);
+        expect(kinds).not.toContain(SURFACE_FACE.capTail);
+      }
+      expect(kinds).not.toContain(SURFACE_FACE.capNose);
+    });
+  }
+});
+
+describe("a board the builder can't build is refused, naming the value", () => {
+  const { input } = surfaceInputOf(boardOf("fish|asis|hard"));
+  it("refuses a thickness that is not a number", () => {
+    const bad: BoardSurfaceInput = { ...input, sections: { ...input.sections, thicknessAt: () => mm(Number.NaN) } };
+    expect(() => buildBoardSurface(bad)).toThrow(/thickness .* is not a finite number/);
+  });
+  it("refuses a rocker or a width that is not a number", () => {
+    expect(() => buildBoardSurface({ ...input, rockerAt: () => mm(Number.POSITIVE_INFINITY) })).toThrow(/rocker/);
+    const noWidth: BoardSurfaceInput = { ...input, sections: { ...input.sections, halfWidthAt: () => mm(Number.NaN) } };
+    expect(() => buildBoardSurface(noWidth)).toThrow(/width/);
+  });
+  it("refuses a length that is not a number, or outside 60\"–120\"", () => {
+    for (const length of [Number.NaN, inchesToMm(50), inchesToMm(130)]) {
+      const bad: BoardSurfaceInput = { ...input, sections: { ...input.sections, length: mm(length) } };
+      expect(() => buildBoardSurface(bad)).toThrow(/length/);
+    }
+  });
+});
+
+describe("the hard edge fades smoothly along the rail (D-20/D-27)", () => {
+  for (const label of ["shortboard|asis|hard", "fish|asis|hard", "longboard|pin|hard"]) {
+    it(`${label}: a fading ring lies point for point between its tucked and its hard-edged half`, () => {
+      const { input, surface } = BUILT.find((b) => b.label === label)!;
+      const fading = surface.rings.filter((ring) => ring.sharpness > 0 && ring.sharpness < 1);
+      expect(fading.length).toBeGreaterThan(5);
+      for (const ring of fading) {
+        const [section] = boardSections(input.sections, [ring.station]);
+        expect(section.hardResult).toBeDefined();
+        expect(ring.sharpness).toBe(section.hardWeight);
+        const tucked = placedHalfSection({ ...section, hardResult: undefined }, section.halfWidth, 0);
+        const hard = placedHalfSection({ ...section, result: section.hardResult!, hardResult: undefined }, section.halfWidth, 0);
+        const w = section.hardWeight;
+        // The ring's loop starts with the right half, stringer deck point first.
+        const right = ringPoints(surface.positions, ring).slice(0, tucked.length);
+        right.forEach(([, y, z], i) => {
+          const h = z - input.rockerAt(ring.station);
+          expect(Math.abs(y - ((1 - w) * tucked[i][0] + w * hard[i][0]))).toBeLessThan(1e-9);
+          expect(Math.abs(h - ((1 - w) * tucked[i][1] + w * hard[i][1]))).toBeLessThan(1e-9);
+        });
+      }
+    });
+  }
+});
+
+describe("the slices, the outline and the profile come straight off the mesh (R8, D-24, D-26)", () => {
+  for (const { label, input, geometry, profile, surface } of BUILT) {
+    it(`${label}: one slice per litres station with foam, every point a vertex; outline and profile vertices too`, () => {
+      const keys = vertexKeys(surface);
+      const slices = boardSlices(surface);
+      const withFoam = boardSections(input.sections).filter((section) => section.halfWidth > 0);
+      expect(slices.map((slice) => slice.station)).toEqual(withFoam.map((section) => section.station));
+      const crotch = isSwallow(geometry) ? geometry.centreCloseStation : -1;
+      for (const slice of slices) {
+        expect(slice.loops).toHaveLength(slice.station < crotch ? 2 : 1);
+        for (const loop of slice.loops) {
+          expect(loop.length).toBeGreaterThan(2);
+          for (const q of loop) expect(keys.has(keyOf(q))).toBe(true);
+        }
+      }
+
+      const outline = boardOutlineLoop(surface);
+      for (const q of outline) expect(keys.has(keyOf(q))).toBe(true);
+      // Clear of the tail cut, each rail's widest point is the outline's own half-width.
+      const clear = Math.max(geometry.points[0].station, geometry.centreCloseStation);
+      for (const q of outline) {
+        if (q[0] > clear) expect(Math.abs(Math.abs(q[1]) - sampleOutline(geometry, mm(q[0])))).toBeLessThan(1e-9);
+      }
+
+      const anchors = foilStationPoints(input.sections.foil, input.sections.length);
+      const { deck, bottom } = boardProfileLines(surface);
+      let exact = 0;
+      expect(deck).toHaveLength(surface.rings.length);
+      expect(bottom).toHaveLength(surface.rings.length);
+      surface.rings.forEach((ring: SurfaceRing, i) => {
+        for (const q of [deck[i], bottom[i]]) expect(keys.has(keyOf(q))).toBe(true);
+        const zs = ringPoints(surface.positions, ring).map((q) => q[2]);
+        expect(deck[i][2]).toBe(Math.max(...zs));
+        expect(bottom[i][2]).toBe(Math.min(...zs));
+        // Never above the side profile's deck, never below its rocker.
+        expect(deck[i][2]).toBeLessThanOrEqual(profile.deckAt(ring.station) + 1e-6);
+        expect(bottom[i][2]).toBeGreaterThanOrEqual(profile.rockerAt(ring.station) - 1e-6);
+        if (ring.station >= anchors[1].station && ring.station <= anchors[3].station) {
+          expect(Math.abs(bottom[i][2] - profile.rockerAt(ring.station))).toBeLessThan(1e-6);
+          expect(deck[i][1]).toBe(0);
+          expect(bottom[i][1]).toBe(0);
+          // Where the section's flat deck reaches the stringer uncut, the deck IS the side profile's.
+          if (!cutAtStringer(input, ring.station)) {
+            expect(Math.abs(deck[i][2] - profile.deckAt(ring.station))).toBeLessThan(1e-6);
+            exact++;
+          }
+        }
+      });
+      expect(exact).toBeGreaterThan(50);
+    });
+  }
+});
+
+describe("the surface file is pure arrangement (SPEC prohibitions, D-05, C5)", () => {
+  const source = readFileSync(join(__dirname, "board-surface.ts"), "utf8");
+  it("never makes a section of its own: it reads boardSections", () => {
+    expect(source).not.toMatch(/computeRailSection|buildRailProfile/);
+    expect(source).toMatch(/boardSections\(/);
+  });
+  it("imports no React, three or browser API", () => {
+    expect(source).not.toMatch(/from ["'](react|three)/);
+    expect(source).not.toMatch(/document\.|window\./);
+  });
+  it("draws at the one fineness for screen and files", () => {
+    expect(SURFACE_POINTS).toEqual({ deck: 48, rail: 32, bottom: 24, wall: 4 });
   });
 });
