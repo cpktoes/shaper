@@ -56,6 +56,7 @@ import {
   buildRailProfile,
   computeRailSection,
   effectiveDeckPercent,
+  hardEdgeBlendsFrom,
   hardEdgeEndsAt,
 } from "./rail-bands";
 import {
@@ -639,10 +640,12 @@ export interface RailAnchorStations {
  * How the tail's Hard Edge reaches each station. `weight` is how much of the station is the hard-edged
  * section (1 all hard, 0 all tucked, between a blend of the two sections' areas); `tuckSource` names the
  * anchor whose Single Tuck and Sharp Bottom Tuck the tucked side reads, given the station's nearest anchor.
- * The live functions never take a rule: an old rule is callable only by name (Phase 14 D-25's precedent).
+ * `length` is the board's length (its centre is half of it), which the live rule's two settings are read
+ * against (D-30). The live functions never take a rule: an old rule is callable only by name (Phase 14 D-25's
+ * precedent).
  */
 export interface HardEdgeRule {
-  weight(station: Mm, anchors: RailAnchorStations, rails: RailBandSpec): number;
+  weight(station: Mm, anchors: RailAnchorStations, rails: RailBandSpec, length: Mm): number;
   tuckSource(nearest: RailSectionKey, rails: RailBandSpec): RailSectionKey;
 }
 
@@ -663,28 +666,32 @@ export const HARD_EDGE_SWITCH: HardEdgeRule = {
 };
 
 /**
- * How much of a station is the tail's hard edge, by the founder's fade (Phase 16, D-20/D-27): 1 at and
- * behind the tail 12" station `tail12`, 0 at and beyond `endsAt`, and between them the smoothstep
- * `1 − t²(3 − 2t)` with `t = (station − tail12)/(endsAt − tail12)` — level at both ends, so the litres
- * neither kink at the 12" station nor at the set distance. Never rises along the board.
+ * How much of a station is the tail's hard edge, by the founder's fade (Phase 16, D-20/D-27/D-30): 1 at and
+ * behind `blendsFrom` (Hard Edge Blends From), 0 at and beyond `endsAt` (Hard Edge Ends At, where the rail has
+ * fully blended into the centre's tucked rail), and between them the smoothstep `1 − t²(3 − 2t)` with
+ * `t = (station − blendsFrom)/(endsAt − blendsFrom)` — level at both ends, so the litres kink at neither
+ * setting. Never rises along the board.
  */
-export function tailHardEdgeWeight(station: Mm, tail12: Mm, endsAt: Mm): number {
-  if (station <= tail12) return 1;
+export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): number {
+  if (station <= blendsFrom) return 1;
   if (station >= endsAt) return 0;
-  const t = (station - tail12) / (endsAt - tail12);
+  const t = (station - blendsFrom) / (endsAt - blendsFrom);
   return 1 - t * t * (3 - 2 * t);
 }
 
 /**
- * The live hard edge (Phase 16, D-20/D-27, the founder): while the tail's Hard Edge is on it is full at
- * and behind the 12" station and fades by `tailHardEdgeWeight` to nothing at the board's set distance
- * (`hardEdgeEndsAt`, 18" when the board says nothing); off, it is nowhere. The tucked side of every station
- * nearest the tail then reads the CENTRE's Single Tuck and Sharp Bottom Tuck — the tail's own are hidden on
- * RAILS while Hard Edge is on, so a hidden box can never move the litres (research pitfall 8).
+ * The live hard edge (Phase 16, D-20/D-27/D-30, the founder): while the tail's Hard Edge is on it is full at
+ * and behind Hard Edge Blends From (`hardEdgeBlendsFrom`, 18" when the board says nothing) and fades by
+ * `tailHardEdgeWeight` until it is gone at Hard Edge Ends At (`hardEdgeEndsAt`, 30" when the board says
+ * nothing), where the rail is fully the centre's tucked rail; off, it is nowhere. Blends From never goes below
+ * the 12" mark, so the tail 12" station is always a full hard edge. The tucked side of every station nearest
+ * the tail reads the CENTRE's Single Tuck and Sharp Bottom Tuck — the tail's own are hidden on RAILS while
+ * Hard Edge is on, so a hidden box can never move the litres (research pitfall 8).
  */
 export const HARD_EDGE_FADE: HardEdgeRule = {
-  weight(station, anchors, rails) {
-    return rails.tailHardEdge ? tailHardEdgeWeight(station, anchors.tail, hardEdgeEndsAt(rails)) : 0;
+  weight(station, _anchors, rails, length) {
+    if (!rails.tailHardEdge) return 0;
+    return tailHardEdgeWeight(station, hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
   },
   tuckSource(nearest, rails) {
     return rails.tailHardEdge && nearest === "tail" ? "center" : nearest;
@@ -782,7 +789,7 @@ export function boardSectionsWith(
     const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
     const nearestSpec = rails[nearestKey];
     const tuckSpec = rails[rule.tuckSource(nearestKey, rails)];
-    const hardWeight = rule.weight(station, anchors, rails);
+    const hardWeight = rule.weight(station, anchors, rails, length);
 
     const domed = deckPercent < 100;
     const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
@@ -873,9 +880,10 @@ export function boardSections(input: CrossSectionVolumeInput, stations?: readonl
  * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
  * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
  * a family index or a boolean cannot be interpolated.
- * `tailHardEdge` fades (Phase 16, D-20/D-27, `HARD_EDGE_FADE`): full at and behind the tail 12" station,
- * easing by smoothstep to nothing at the board's set distance (`hardEdgeEndsAt`, 18" unless it says
- * otherwise); a fading station's area is the two sections' areas blended by that weight, the hard-edged and
+ * `tailHardEdge` fades (Phase 16, D-20/D-27/D-30, `HARD_EDGE_FADE`): full at and behind Hard Edge Blends
+ * From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise), easing by smoothstep until it is gone at
+ * Hard Edge Ends At (`hardEdgeEndsAt`, 30" unless it says otherwise), where the rail is fully the centre's
+ * tucked rail; a fading station's area is the two sections' areas blended by that weight, the hard-edged and
  * the tucked, and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
  * Single Tuck and Sharp Bottom Tuck (the tail's are hidden on RAILS). Before Phase 16 it was a switch — on
  * at every station whose nearest anchor is the tail (`HARD_EDGE_SWITCH`, kept by name). The board thickness at
