@@ -35,12 +35,14 @@ after go-live 1 ships and runs in the wave after 16-14, shipping with go-live 2 
    point blend of the two (D-31). The continuous fields keep today's blend (orchestrator reading — flag it).
 2. The two tail rows show whenever the tail's rail differs from the centre's in a discrete box (or always — propose),
    renamed if "Hard Edge …" no longer fits (e.g. "Tail Rail Blends From / Ends At" — propose; Title Case).
-3. The nose: its own two rows on the nose's Advanced menu, measured from the nose tip, mirrored ranges and defaults
-   (12"–30", default 18"; end ≥ start + 2", ≤ the centre, default L/6 + 18) — stored as two more optional fields
-   (version stays 5, no database change); the nose has no hard edge.
+3. The nose: NO sliders (the founder: "We don't need slider controls."). The centre's rail character blends
+   automatically into the nose's over the whole centre-to-nose span, "as smooth as possible", most often from a larger
+   tuck at the centre to a smaller tuck at the nose, "and ultimately fades to almost nothing at about 2\" from the tip"
+   — the planner measures candidate rules (e.g. smoothstep over centre → nose 12" station, then the existing tip taper
+   to ~2" from the tip) in a scratch copy and brings pictures; nothing new is stored for the nose.
 4. The litres move once more on boards whose tail or nose tucks differ from the centre's; preset figures regenerated;
    the VOLUME picture re-recorded on a proven diff; the saved-boards report prints the nose's settings too.
-5. The 3D panel's sliders (16-07) follow: four rows, or the tail pair plus the nose pair.
+5. The 3D panel's sliders (16-07) stay the tail pair; the nose has none.
 
 ## Pictures for the founder's look
 
