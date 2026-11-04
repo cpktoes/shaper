@@ -28,6 +28,7 @@ import {
   type MeasureSliderView,
 } from "./measure-display";
 import { MEASURE_STATION_MM } from "./outline";
+import { HARD_EDGE_ENDS_AT_RANGE_IN } from "./rail-bands";
 import type { TipEnd, TipView } from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
 
@@ -312,6 +313,25 @@ export function thinningStartSlider(
     max: onGridDown(mmToInches(view.range.max)),
   };
   return measureSlider(view.fromTip, rangeIn, stepIn, 10, system);
+}
+
+/**
+ * Where the tail's hard edge has faded out, as a distance in from the tail tip (Phase 16, D-20, UI-SPEC
+ * §17): a dim, like a Thinning Start — read through `formatDim`, Imperial `18"` / `23 1/2"`, Metric
+ * centimetres to one decimal, `45.7 cm`; never `formatMark`, never `457 mm`.
+ */
+export function formatHardEdgeEndsAt(value: Mm, system: UnitsSystem): string {
+  return formatDim(value, system);
+}
+
+/**
+ * The Hard Edge Ends At slider (D-20, UI-SPEC §17): 14" to 24" from the tail tip
+ * (`HARD_EDGE_ENDS_AT_RANGE_IN`) in 1/2" steps, with a 10 mm Metric step, through `measureSlider` like
+ * every measure slider — so the component never converts a unit.
+ */
+export function hardEdgeEndsAtSlider(value: Mm, system: UnitsSystem): MeasureSliderView {
+  const { min, max, step } = HARD_EDGE_ENDS_AT_RANGE_IN;
+  return measureSlider(value, { min, max }, step, 10, system);
 }
 
 /**

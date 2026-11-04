@@ -2,6 +2,17 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-01, branch board-3d) — VOLUME only, `volume-desktop.png`, for the
+ * founder's hard-edge fade (D-20/D-27): the default board's tail is hard-edged, and its hard edge now runs full to
+ * the 12" station and fades out by 18" instead of switching off halfway to the centre, so its Estimated Volume reads
+ * 30.27 L instead of 30.29 L. Old and new were compared before re-recording: 649 pixels differ, every one inside
+ * the litres figure's own box (x 1160-1223, y 361-378); the Cross-Section Thickness rows, the sidebar and the top
+ * bar are unchanged, and nothing on the screen says the figure moved (D-18). TEMPLATE, ROCKER, RAILS and FINS
+ * passed unchanged and are byte-for-byte what they were. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3201) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run
+ * after the merge and re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: VOLUME
+ * 14f11e4c to ae36a4ba.
+ *
  * RE-RECORDED 2026-11-02 (quick 261102-gec, plan 05, branch rails-v2) — RAILS and VOLUME, `rails-desktop.png` and
  * `volume-desktop.png`, for the founder's continuous (d) where the rail meets the deck (R23, "(d), with the
  * hand-over made continuous first"): on the first board every rail's Domed Deck Band mark sits within half of Band 2

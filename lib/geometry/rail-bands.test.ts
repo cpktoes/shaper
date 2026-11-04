@@ -17,7 +17,10 @@ import { describe, expect, it } from "vitest";
 import { railCutFoam, type RailCutLine } from "./finished-rail";
 import {
   DECK_PERCENT_MIN,
+  DEFAULT_HARD_EDGE_ENDS_AT_IN,
   DEFAULT_RAIL_BAND_SPEC,
+  HARD_EDGE_ENDS_AT_RANGE_IN,
+  hardEdgeEndsAt,
   DEFAULT_TIP_RAIL_SCALE,
   MIN_BOTTOM_TUCK_SEPARATION_IN,
   MIN_RAIL_MARK_IN,
@@ -941,5 +944,33 @@ describe("the sidebar's helpers (quick 261102-gec plan 02, 2026-11-02)", () => {
 
   it("RAIL_NUDGE_STEP_IN is the app's 1/16\" step", () => {
     expect(RAIL_NUDGE_STEP_IN).toBe(MIN_RAIL_MARK_IN);
+  });
+});
+
+describe("hardEdgeEndsAt — where the tail's hard edge has faded out (Phase 16, D-20, T-16-01)", () => {
+  const fallback = inchesToMm(DEFAULT_HARD_EDGE_ENDS_AT_IN);
+
+  it("a board that says nothing reads 18\"", () => {
+    expect(DEFAULT_HARD_EDGE_ENDS_AT_IN).toBe(18);
+    expect(hardEdgeEndsAt({})).toBe(fallback);
+    expect(hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC)).toBe(fallback);
+  });
+
+  it("a stored value inside 14\"–24\" reads exactly as stored, both ends included", () => {
+    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(20) })).toBe(inchesToMm(20));
+    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.min) })).toBe(inchesToMm(14));
+    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: inchesToMm(HARD_EDGE_ENDS_AT_RANGE_IN.max) })).toBe(inchesToMm(24));
+  });
+
+  it("garbage, a value past the board and one outside the range all read 18\"", () => {
+    for (const stored of [Number.NaN, Infinity, -Infinity, 1e9, inchesToMm(10), inchesToMm(30), inchesToMm(-18)]) {
+      expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: mm(stored) }), String(stored)).toBe(fallback);
+    }
+    expect(hardEdgeEndsAt({ tailHardEdgeEndsAt: "18" as unknown as Mm })).toBe(fallback);
+  });
+
+  it("no default and no preset carries the field", () => {
+    expect("tailHardEdgeEndsAt" in DEFAULT_RAIL_BAND_SPEC).toBe(false);
+    for (const preset of BOARD_PRESETS) expect("tailHardEdgeEndsAt" in preset.rails, preset.id).toBe(false);
   });
 });

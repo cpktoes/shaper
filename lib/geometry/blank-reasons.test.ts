@@ -16,9 +16,11 @@ import {
   emptyListMessage,
   FLAG_HEADLINES,
   floorShortfallMessage,
+  hardEdgeEndsAtSlider,
   automaticButtonLabel,
   fineTuneSourceHint,
   formatDeckSkin,
+  formatHardEdgeEndsAt,
   formatPlacement,
   formatShortfall,
   formatThinningStart,
@@ -45,6 +47,7 @@ import {
   formatLength,
   formatMark,
   formatSignedMark,
+  measureSlider,
   stationLabel,
 } from "./measure-display";
 import { BOARD_PRESETS } from "./presets";
@@ -1186,5 +1189,32 @@ describe("pickerBoardLine and pickerCounts — the popup's header (D-01, P-4)", 
   it("counts what shows, what is long enough and what fits", () => {
     expect(pickerCounts(196, 196, 194)).toBe("196 of 196 blanks · 194 fit");
     expect(pickerCounts(12, 196, 1)).toBe("12 of 196 blanks · 1 fit");
+  });
+});
+
+describe("Hard Edge Ends At — a dim, and its slider (Phase 16, D-20, UI-SPEC §17)", () => {
+  const systems = ["imperial", "metric"] as const;
+
+  it("reads through formatDim in both systems, never as a mark", () => {
+    for (const system of systems) {
+      for (const inches of [14, 18, 20.5, 23.5, 24]) {
+        const value = inchesToMm(inches);
+        expect(formatHardEdgeEndsAt(value, system)).toBe(formatDim(value, system));
+      }
+    }
+    expect(formatHardEdgeEndsAt(inchesToMm(18), "metric")).not.toBe(formatMark(inchesToMm(18), "metric"));
+    expect(formatHardEdgeEndsAt(inchesToMm(18), "metric")).toMatch(/ cm$/);
+  });
+
+  it("slides 14\" to 24\" in 1/2\" steps, 10 mm in Metric, through measureSlider", () => {
+    for (const system of systems) {
+      for (const inches of [14, 18, 21.5, 24]) {
+        const value = inchesToMm(inches);
+        const view = hardEdgeEndsAtSlider(value, system);
+        const expected = measureSlider(value, { min: 14, max: 24 }, 0.5, 10, system);
+        expect({ ...view, toMm: undefined }).toEqual({ ...expected, toMm: undefined });
+        expect(view.toMm(view.value)).toBe(expected.toMm(expected.value));
+      }
+    }
   });
 });
