@@ -272,4 +272,8 @@ None beyond the plan's threat model. T-16-22 is mitigated:
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 7 checkpoint.
+Presented by the orchestrator at the Wave 7 checkpoint, 2026-11-04, with the fins picture. The founder: "Approved";
+the Upright + Trailer's centre and the quad's centre fin keep the thruster's outline ("Fine as is"); the fins stay
+plain dark fins under lighting B ("Keep them dark"); the panel keeps HARD EDGE, SHOW, VIEW ("Keep it"). Merged into
+`board-3d` as d43ab535. The reading calls (the root carried 1 mm up into the foam, the tip on the depth line, the
+bottom-view threshold) were accepted by the orchestrator.
