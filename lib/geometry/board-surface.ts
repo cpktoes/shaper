@@ -35,9 +35,11 @@
  * The tips (research Pattern 3, D-34): inside a swallow's notch each station is two pieces, each from the
  * notch's square wall out to the rail, the two walls meeting along one shared edge at the crotch; a diamond's V
  * is ordinary foam narrowing to nothing at its tip; a station with no foam is one edge from the bottom to the deck
- * at the outline's own point, so a tip is the side profile's own tip from the side and the outline's point from
+ * at the outline's own point, so a tip ends on the side profile from the side and on the outline's point from
  * above, with no cap and no slice (the founder: "Let's not do that little flip."); a tail end with width (a square
- * or squash tail) is closed with a flat cap.
+ * or squash tail) is closed with a flat cap. On every tail the rail is carried around the end (D-38): over the last
+ * inch the section's heights roll down (`tailRollDrop`), so the deck rolls over into the tail's edge, and rings crowd
+ * through the roll to draw it.
  *
  * Pure (CLAUDE.md Rule 1): no React, browser, database or `three` import.
  */
@@ -54,6 +56,7 @@ import {
   boardSections,
   crossSectionStations,
   railCharacterDifferences,
+  tailRollStations,
 } from "./volume";
 import { WING_HAIR_MM, wingShareSpan, wingStepShape } from "./wings";
 
@@ -132,6 +135,9 @@ type P2 = [number, number];
 /** Rings each way through the stretch a wing's two sides share (D-37), so its short ease isn't straddled. */
 const WING_SHARE_RINGS = 12;
 
+/** Rings through the tail's roll (D-38), enough that its curve reads as one curve. */
+const TAIL_ROLL_RINGS = 14;
+
 /** Stations closer than this are one station. */
 const SAME_STATION_MM = 1e-6;
 
@@ -147,7 +153,7 @@ function assertFinite(field: string, value: number, station: number): void {
  * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
  * ends (D-30), at each wing's own step (D-33: every point of the step, or a hair either side of a square step's one
  * station, which has two widths) and every twelfth of the way through the stretch the wing's two sides share (D-37)
- * — filled in so no two neighbours are more than
+ * and through the tail's roll (D-38) — filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -183,6 +189,7 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
       if (inside(s)) required.push(s);
     }
   }
+  required.push(...tailRollStations(TAIL_ROLL_RINGS).slice(1));
   const kept: number[] = [];
   const keep = (s: number) => {
     if (!kept.some((k) => Math.abs(k - s) < SAME_STATION_MM)) kept.push(s);
@@ -219,7 +226,7 @@ function tipEdge(outer: number, thickness: number): P2[] {
  * A section with no foam is the tip's own edge at `outer` (`tipEdge`).
  */
 export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
-  if (!section.result || section.halfWidth <= 0) return tipEdge(outer, section.thickness);
+  if (!section.result || section.halfWidth <= 0) return tipEdge(outer, section.thickness * (section.rollScale ?? 1));
   const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
   return half.map(([y, h]) => [inner + y, h] as P2);
 }

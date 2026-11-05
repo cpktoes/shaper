@@ -35,6 +35,8 @@ import {
   computeCrossSectionVolume,
   crossSectionStations,
   railCharacterDifferences,
+  TAIL_ROLL_RUN_IN,
+  tailRollDrop,
 } from "./volume";
 import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingShareSpan, wingStepShape } from "./wings";
 import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
@@ -480,16 +482,12 @@ function tipLine(surface: BoardSurface, ring: SurfaceRing, k: number) {
 }
 const degrees = (a: number, b: number, run: number) => (Math.abs(Math.atan2(a, run) - Math.atan2(b, run)) * 180) / Math.PI;
 
-describe("every tip ends on the side profile's own tip, with no flip (D-34)", () => {
+describe("the nose ends on the side profile's own tip, the tail's rail is carried around its end, and neither flips (D-34, D-38)", () => {
   const TIP_REACH = inchesToMm(2);
-  /** The rings within 2" of each tip, ordered toward the tip, each read along one of a swallow's two points. */
-  function tips({ surface, geometry }: (typeof BUILT_SURFACE)[number]) {
-    const near = surface.rings.filter((ring) => ring.station >= surface.length - TIP_REACH).reverse();
-    const tail = surface.rings.filter((ring) => ring.station <= TIP_REACH);
-    const lines = [near.map((ring) => tipLine(surface, ring, 0)).reverse(), tail.map((ring) => tipLine(surface, ring, 0))];
-    if (isSwallow(geometry)) lines.push(tail.map((ring) => tipLine(surface, ring, 1)));
-    return lines;
-  }
+  const ROLL_RUN = inchesToMm(TAIL_ROLL_RUN_IN);
+  /** The rings within 2" of the tail end, walking in from it, read along a piece (a swallow's second point is 1). */
+  const tailLine = ({ surface }: (typeof BUILT_SURFACE)[number], piece: number) =>
+    surface.rings.filter((ring) => ring.station <= TIP_REACH).map((ring) => tipLine(surface, ring, piece));
 
   it("checks every one of the 102", () => {
     expect(BUILT_SURFACE).toHaveLength(102);
@@ -498,19 +496,43 @@ describe("every tip ends on the side profile's own tip, with no flip (D-34)", ()
   for (const board of BUILT_SURFACE) {
     const { label, input, geometry, profile, surface } = board;
 
-    it(`${label}: over the last 2" into each tip the deck and the bottom lie on the side profile and turn with it`, () => {
-      for (const line of tips(board)) {
+    it(`${label}: over the last 2" into the nose the deck and the bottom lie on the side profile and turn with it`, () => {
+      const line = surface.rings.filter((ring) => ring.station >= surface.length - TIP_REACH).map((ring) => tipLine(surface, ring, 0));
+      for (const q of line) {
+        expect(Math.abs(q.deck - profile.deckAt(mm(q.station)))).toBeLessThan(0.01);
+        expect(Math.abs(q.bottom - profile.rockerAt(mm(q.station)))).toBeLessThan(0.01);
+      }
+      for (let i = 1; i < line.length; i++) {
+        const [a, b] = [line[i - 1], line[i]];
+        const run = b.station - a.station;
+        expect(degrees(b.deck - a.deck, profile.deckAt(mm(b.station)) - profile.deckAt(mm(a.station)), run)).toBeLessThan(0.1);
+        expect(degrees(b.bottom - a.bottom, profile.rockerAt(mm(b.station)) - profile.rockerAt(mm(a.station)), run)).toBeLessThan(0.1);
+      }
+    });
+
+    it(`${label}: the tail's deck rolls over along its ellipse with no corner, and the bottom stays on the rocker`, () => {
+      const tipThickness = profile.thicknessAt(mm(0));
+      const lines = [tailLine(board, 0), ...(isSwallow(geometry) ? [tailLine(board, 1)] : [])];
+      for (const line of lines) {
         for (const q of line) {
-          expect(Math.abs(q.deck - profile.deckAt(mm(q.station)))).toBeLessThan(0.01);
-          expect(Math.abs(q.bottom - profile.rockerAt(mm(q.station)))).toBeLessThan(0.01);
+          const deck = profile.deckAt(mm(q.station)) - tailRollDrop(mm(q.station), tipThickness);
+          expect(Math.abs(q.deck - deck)).toBeLessThan(0.01);
+          expect(Math.abs(q.bottom - profile.rockerAt(mm(q.station)))).toBeLessThan(1e-6);
         }
-        for (let i = 1; i < line.length; i++) {
-          const [a, b] = [line[i - 1], line[i]];
+        // Clear of the roll the deck turns with the side profile.
+        const clear = line.filter((q) => q.station >= ROLL_RUN);
+        for (let i = 1; i < clear.length; i++) {
+          const [a, b] = [clear[i - 1], clear[i]];
           const run = b.station - a.station;
-          const deckAlong = profile.deckAt(mm(b.station)) - profile.deckAt(mm(a.station));
-          const bottomAlong = profile.rockerAt(mm(b.station)) - profile.rockerAt(mm(a.station));
-          expect(degrees(b.deck - a.deck, deckAlong, Math.abs(run))).toBeLessThan(0.1);
-          expect(degrees(b.bottom - a.bottom, bottomAlong, Math.abs(run))).toBeLessThan(0.1);
+          expect(degrees(b.deck - a.deck, profile.deckAt(mm(b.station)) - profile.deckAt(mm(a.station)), run)).toBeLessThan(0.1);
+        }
+        // Through the roll the deck turns one way only, a little at a time: a curve, not a corner.
+        const rolled = line.filter((q) => q.station <= ROLL_RUN);
+        expect(rolled.length).toBeGreaterThan(10);
+        const slopes = rolled.slice(1).map((q, i) => Math.atan2(q.deck - rolled[i].deck, q.station - rolled[i].station));
+        for (let i = 1; i < slopes.length; i++) {
+          expect(slopes[i]).toBeLessThanOrEqual(slopes[i - 1] + 1e-6);
+          expect(((slopes[i - 1] - slopes[i]) * 180) / Math.PI).toBeLessThan(30);
         }
       }
     });
@@ -557,8 +579,9 @@ describe("every tip ends on the side profile's own tip, with no flip (D-34)", ()
       } else {
         expect(kinds).not.toContain(SURFACE_FACE.capTail);
         const tailEdge = ringPoints(surface.positions, surface.rings[0]);
+        const rolledTop = profile.deckAt(mm(0)) - tailRollDrop(mm(0), profile.thicknessAt(mm(0)));
         expect(Math.abs(Math.min(...tailEdge.map((q) => q[2])) - profile.rockerAt(mm(0)))).toBeLessThan(1e-9);
-        expect(Math.abs(Math.max(...tailEdge.map((q) => q[2])) - profile.deckAt(mm(0)))).toBeLessThan(1e-9);
+        expect(Math.abs(Math.max(...tailEdge.map((q) => q[2])) - rolledTop)).toBeLessThan(1e-9);
       }
     });
 
@@ -577,7 +600,7 @@ describe("every tip ends on the side profile's own tip, with no flip (D-34)", ()
         // The rail's first point: on the stringer at a pin, a round or a diamond's tip, on a swallow's point.
         expect(loop[0][0]).toBe(0);
         expect(loop[0][2]).toBeGreaterThan(profile.rockerAt(mm(0)));
-        expect(loop[0][2]).toBeLessThan(profile.deckAt(mm(0)));
+        expect(loop[0][2]).toBeLessThan(profile.deckAt(mm(0)) - tailRollDrop(mm(0), profile.thicknessAt(mm(0))));
       }
     });
 

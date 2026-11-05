@@ -14,8 +14,8 @@ import { buildOutline } from "./outline";
 import { boardSectionEnds, boardSections, RAIL_CHARACTER_FADE, type RailCharacterRule, SMOOTH_SURFACE_FADE } from "./volume";
 
 /**
- * Phase 16, D-34 and D-37 (plan 16-16): a wing's two sides share its step, and the surface runs into each tip
- * with no flip. The pin (`phase16-surface-litres-pin.json`, written by scripts/extract-phase16-surface-litres-pin.ts
+ * Phase 16, D-34, D-37 and D-38 (plan 16-16): a wing's two sides share its step, the surface runs into each tip
+ * with no flip, and the tail's rail is carried around its end. The pin (`phase16-surface-litres-pin.json`, written by scripts/extract-phase16-surface-litres-pin.ts
  * from the code as plan 16-15 left it, before `SMOOTH_SURFACE_FADE` existed) records 102 boards' litres to every
  * digit. Under plan 16-15's rule, named, every one must reproduce bit for bit; under the live rule, the boards
  * those two decisions don't reach must too. Nothing here types a figure.
@@ -42,8 +42,9 @@ function hasNarrowStation(board: (typeof BOARDS)[number]): boolean {
   });
 }
 
-/** The live rule with its wing behaviour set back, so a winged board's tips can be read alone. */
-const WING_RULE_OFF: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift" } };
+/** The live rule with only its tips' fit (D-34) left on: the wing rule and the tail's roll set back, so each can be
+ * told from the pin. */
+const TIPS_ONLY: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift", tail: "square" } };
 
 describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-37)", () => {
   it("the pin holds the 102 boards the set builds, and names its generator", () => {
@@ -60,29 +61,28 @@ describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-
     });
   }
 
-  for (const board of BOARDS.filter((b) => !hasWing(b))) {
+  for (const board of BOARDS) {
     const narrow = hasNarrowStation(board);
-    it(`${board.label}: no wing, and ${narrow ? "a tip narrower than its rail, so the live litres rise" : "room for its rail, so the live litres are the pinned litres to the last digit"}`, () => {
-      const litres = summarizeDesign(board.fields).volumeLitres;
+    it(`${board.label}: with only the tips' fit on, it ${narrow ? "reads above the pin, for a narrow tip" : "has room for its rail and reads the pin to the last digit"}`, () => {
+      const litres = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: TIPS_ONLY }).volumeLitres;
       if (narrow) expect(litres).toBeGreaterThan(Number(PIN.litres[board.label]));
       else expect(litres.toPrecision(17)).toBe(PIN.litres[board.label]);
     });
   }
 
-  it("some boards have room for their rails and some don't, or the two cases above prove nothing", () => {
-    const narrow = BOARDS.filter((b) => !hasWing(b)).map(hasNarrowStation);
+  for (const board of BOARDS) {
+    it(`${board.label}: the wing rule and the tail's roll move the live litres from there by a hair, and never by nothing`, () => {
+      const tips = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: TIPS_ONLY }).volumeLitres;
+      const live = summarizeDesign(board.fields).volumeLitres;
+      expect(live).not.toBe(tips);
+      expect(Math.abs(live - tips)).toBeLessThan(0.1);
+      if (!hasWing(board)) expect(live).toBeLessThan(tips);
+    });
+  }
+
+  it("some boards have room for their rails and some don't, or the cases above prove nothing", () => {
+    const narrow = BOARDS.map(hasNarrowStation);
     expect(narrow.filter(Boolean).length).toBeGreaterThan(0);
     expect(narrow.filter((n) => !n).length).toBeGreaterThan(0);
   });
-
-  for (const board of BOARDS.filter(hasWing)) {
-    it(`${board.label}: with the wing rule off it reads the pin, or above it for a narrow tip; the shared wing moves it a hair`, () => {
-      const off = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: WING_RULE_OFF }).volumeLitres;
-      if (hasNarrowStation(board)) expect(off).toBeGreaterThan(Number(PIN.litres[board.label]));
-      else expect(off.toPrecision(17)).toBe(PIN.litres[board.label]);
-      const live = summarizeDesign(board.fields).volumeLitres;
-      expect(live).not.toBe(off);
-      expect(Math.abs(live - off)).toBeLessThan(0.1);
-    });
-  }
 });

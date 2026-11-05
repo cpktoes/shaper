@@ -2,6 +2,17 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the tail
+ * (D-38, the founder: "The rail at the tail of the board can be carried around the tip"): the stock board's deck now
+ * rolls over into its tail's edge, a third of the tip's thickness over the last inch. The move sits inside the config's
+ * `maxDiffPixels: 100`, so old and new were compared by hand at tolerance 0: 8066 pixels differ, 6936 of them by a single
+ * step of 255 and only 7 by more than 50, all seven at the tail end. The rest is the same sub-pixel hairline along the
+ * rails and the stringer as the block below records: the tail's end moved, and the camera frames the board by its
+ * points. The other five pictures passed and are byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by
+ * the webpack dev server (`IS_WEBPACK_TEST=1`, port 3216) in the plan's worktree on this Mac; the orchestrator confirms
+ * under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D ac36afed to
+ * b5b8a3ef.
+ *
  * RE-RECORDED 2026-11-04 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the board's two
  * tips (D-34, the founder: "Let's not do that little flip."): the stock board's nose now ends on the side profile's own
  * tip, one edge from the bottom to the deck, instead of diving into a point halfway up. The move sits inside the

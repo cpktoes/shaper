@@ -137,9 +137,6 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
     await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_CENTRE}`);
     await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(STOCK_CENTRE));
 
-    // VOLUME's litres moved.
-    expect(await litres(page, litresBefore)).not.toBe(litresBefore);
-
     // Moved on RAILS (down to its lowest, 2" past Blends From), the 3D row follows.
     tail = await railsTail(page, testInfo);
     await endsAtSlider(page).press("Home");
@@ -149,6 +146,10 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
     await openThreeD(page);
     await expect(threeDTailRail(page).getByText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`, { exact: true })).toBeVisible();
     await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(low));
+
+    // VOLUME's litres moved: a shorter hard edge is less foam, enough for its two decimals. (Since the tail's roll,
+    // D-38, the longer fade above lands on the same 30.29 L as the board opens on.)
+    expect(await litres(page, litresBefore)).not.toBe(litresBefore);
   });
 
   test("2. with the tail's Hard Edge off and its tucks ticked, the rows are live and move the litres", async ({ page }, testInfo) => {

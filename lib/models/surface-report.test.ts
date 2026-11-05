@@ -3,18 +3,20 @@ import { phase16SurfaceBoards } from "@/lib/geometry/__fixtures__/phase16-boards
 import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
-import { RAIL_CHARACTER_FADE } from "@/lib/geometry/volume";
+import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE } from "@/lib/geometry/volume";
 import { buildSnapshot, parseSnapshot, type DesignSnapshotFields } from "./design-snapshot";
 import { surfaceLitresMove, surfaceReportLines } from "./surface-report";
 
 /**
- * The founder's read-only report of how a wing that moves only the rail and tips with no flip move every saved
- * board's litres (Phase 16, D-33, D-34, 14 D-18). Every expected figure is worked out here from the app's own
- * functions — plan 16-15's rule by name, the live rule by `summarizeDesign` — never typed.
+ * The founder's read-only report of what every saved board will read at go-live 2 (Phase 16, D-33 to D-38, 14 D-18).
+ * Every expected figure is worked out here from the app's own functions — go-live 1's rule and plan 16-15's by name,
+ * the live rule by `summarizeDesign` — never typed.
  */
 
 const BOARDS = phase16SurfaceBoards();
 const beforeLitres = (fields: (typeof BOARDS)[number]["fields"]) =>
+  summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: HARD_EDGE_FADE }).volumeLitres;
+const fadedLitres = (fields: (typeof BOARDS)[number]["fields"]) =>
   summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
 const afterLitres = (fields: (typeof BOARDS)[number]["fields"]) => summarizeDesign(fields).volumeLitres;
 
@@ -37,18 +39,14 @@ function savedBoard(label: string): DesignSnapshotFields {
 
 describe("surfaceLitresMove", () => {
   for (const board of BOARDS) {
-    it(`${board.label}: reads the two rules, and is null only where they agree`, () => {
-      const [before, after] = [beforeLitres(board.fields), afterLitres(board.fields)];
-      const move = surfaceLitresMove(board.fields);
-      if (before === after) expect(move).toBeNull();
-      else expect(move).toEqual({ before, after });
+    it(`${board.label}: reads what the site reads today, the fade alone, and go-live 2`, () => {
+      const [before, faded, after] = [beforeLitres(board.fields), fadedLitres(board.fields), afterLitres(board.fields)];
+      expect(surfaceLitresMove(board.fields)).toEqual({ before, faded, after });
     });
   }
 
-  it("some of the 102 move and some do not", () => {
-    const moved = BOARDS.filter((board) => surfaceLitresMove(board.fields));
-    expect(moved.length).toBeGreaterThan(28);
-    expect(moved.length).toBeLessThan(102);
+  it("every one of the 102 moves, because the tail's roll reaches every board", () => {
+    expect(BOARDS.filter((board) => surfaceLitresMove(board.fields))).toHaveLength(102);
   });
 });
 
@@ -76,22 +74,19 @@ describe("surfaceReportLines", () => {
       const count = board.fields.outline.wings?.length ?? 0;
       const wings = count === 0 ? "no wings" : count === 1 ? "1 wing" : "2 wings";
       const change = move.after - move.before;
+      const share = move.after - move.faded;
       expect(line).toBe(
         `${board.label}: ${wings} · ${board.fields.outline.tail.kind} tail — ` +
-          `${move.before.toFixed(2)} → ${move.after.toFixed(2)} L (${change > 0 ? "+" : ""}${change.toFixed(4)})`,
+          `${move.before.toFixed(2)} → ${move.after.toFixed(2)} L (${change > 0 ? "+" : ""}${change.toFixed(4)}, ` +
+          `this plan ${share > 0 ? "+" : ""}${share.toFixed(4)})`,
       );
       return Math.abs(change);
     });
     expect(sizes).toEqual([...sizes].sort((a, b) => b - a));
   });
 
-  it("says none when nothing moves, and an empty list is still a report", () => {
+  it("an empty list is still a report, and says none", () => {
     expect(surfaceReportLines([])).toEqual(["surface report: 0 saved boards; 0 open; 0 whose litres move", "largest move: none"]);
-    const still = BOARDS.find((board) => !surfaceLitresMove(board.fields))!;
-    expect(surfaceReportLines([{ id: "b1", fields: still.fields }])).toEqual([
-      "surface report: 1 saved boards; 1 open; 0 whose litres move",
-      "largest move: none",
-    ]);
   });
 
   it("counts a board that did not open, and prints nothing of it", () => {

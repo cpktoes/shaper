@@ -570,6 +570,9 @@ export interface CrossSectionVolumeResult {
    * (quick 261102-gec plan 03, PV5): `stationAreas[i] + stationBlendAreas[i]` is that station's cut area.
    * Exposed for auditing, as `stationAreas` is. */
   stationBlendAreas: number[];
+  /** The foam the tail's roll takes off the whole board, in cubic millimetres (D-38, `tailRollFoam`): already out of
+   * `volumeMm3`, and not in `stationAreas`. 0 under a rule with a square tail. */
+  tailRollMm3: number;
 }
 
 /** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
@@ -645,6 +648,10 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * wing (D-37), the section built on the deck's meeting line with its rail moved onto the outline (`wingStepHalf`).
  * The stepped outline stays `halfWidth`, so the drawn half's outermost point is TEMPLATE's outline; `result` and
  * `blended` are the section built on the meeting line.
+ *
+ * `rollScale` is the share of its height a station in the tail's last inch keeps (D-38, `tailRollScale`), absent
+ * clear of it; `drawn` is then already scaled by it. `area` stays the un-rolled section's, because the roll's foam is
+ * counted once, exactly, off the whole board (`tailRollFoam`).
  */
 export interface BoardSection {
   station: Mm;
@@ -653,6 +660,7 @@ export interface BoardSection {
   result: RailSectionResult | null;
   blended?: HalfSectionPoints;
   drawn?: HalfSectionPoints;
+  rollScale?: number;
   tipWeight: number;
   hardWeight: number;
   sharpness: number;
@@ -854,15 +862,52 @@ export interface RailCharacterRule {
  * whole section in with the outline behind a wing; `"share"` builds the stations either side of a wing on a deck
  * line the two sides share and moves only the rail onto the outline (D-37). `tips`: `"clip"` cuts a rail wider than its station off at the stringer, so the
  * stringer sinks under the side profile's deck near a tip; `"fit"` draws it into its room and the litres count
- * what is drawn (D-34).
+ * what is drawn (D-34). `tail`: `"square"` ends the deck at the tail's full thickness; `"roll"` carries the rail
+ * around the end, the deck rolling over into the tail's edge (D-38).
  */
 export interface SurfaceFit {
   wings: "shift" | "share";
   tips: "clip" | "fit";
+  tail: "square" | "roll";
 }
 
-/** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off. */
-export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip" };
+/** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off, and the
+ * deck runs square to the tail's end. */
+export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square" };
+
+/** How much of the tip's thickness the tail's roll takes off at the very end (D-38, the founder's pick). */
+export const TAIL_ROLL_SHARE = 1 / 3;
+/** How far in from the tail end the roll runs, in inches (D-38, the founder's pick). */
+export const TAIL_ROLL_RUN_IN = 1;
+/** The panels the litres integrate the roll's foam over (`tailRollFoam`). */
+const TAIL_ROLL_PANELS = 8;
+
+/**
+ * How far the deck has rolled down at a station in the tail's last inch (Phase 16, D-38, the founder: "The rail at the
+ * tail of the board can be carried around the tip, so there's usually a pretty mild rounding of the deck line for all
+ * tail types."), in millimetres: a quarter ellipse, `TAIL_ROLL_SHARE` of the tip's thickness tall and
+ * `TAIL_ROLL_RUN_IN` long, level with the deck where it starts and upright where it meets the tail's edge. 0 at
+ * and ahead of the end of the run.
+ */
+export function tailRollDrop(station: Mm, tipThickness: Mm): number {
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  if (station >= run) return 0;
+  const t = 1 - station / run;
+  return tipThickness * TAIL_ROLL_SHARE * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
+}
+
+/** The share of its height a station keeps under the tail's roll: 1 clear of it. Every height scales alike, so the
+ * bottom stays on the rocker and the rail keeps its shape. */
+export function tailRollScale(station: Mm, thickness: Mm, tipThickness: Mm): number {
+  return Math.max(0, 1 - tailRollDrop(station, tipThickness) / thickness);
+}
+
+/** `panels + 1` stations through the tail's roll, even in the ellipse's own angle, so they crowd where it turns
+ * fastest: the tail end first, the end of the run last. The 3D board's rings and the litres' count both take them. */
+export function tailRollStations(panels: number): Mm[] {
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  return Array.from({ length: panels + 1 }, (_, k) => mm(run * (1 - Math.cos((k / panels) * (Math.PI / 2)))));
+}
 
 /**
  * Either kind of section rule: the two old hard-edge rules (`HARD_EDGE_SWITCH`, `HARD_EDGE_FADE`, kept as
@@ -906,13 +951,14 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * The live rule (Phase 16, D-33, D-34 and D-37, the founder: "Wings should be steps in the outline. The Deck should
  * remain smooth across the wings location.", "Let's not do that little flip." and "they should share the blend"):
  * `RAIL_CHARACTER_FADE`'s own rail character, with the stations either side of a wing built on the deck line the
- * two sides share and only their rails moved onto the outline (`wingShareAt`, `wingStepHalf`), and a rail wider than
- * its station drawn into its room and counted (`fittedFinishedRail`). `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
+ * two sides share and only their rails moved onto the outline (`wingShareAt`, `wingStepHalf`), a rail wider than its
+ * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
+ * (`tailRollDrop`, D-38). `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
  * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
   at: RAIL_CHARACTER_FADE.at,
-  fit: { wings: "share", tips: "fit" },
+  fit: { wings: "share", tips: "fit", tail: "roll" },
 };
 
 /** The rule the live litres and the 3D board use. */
@@ -1014,6 +1060,7 @@ export function boardSectionsWith(
   const sections: BoardSection[] = [];
   // An old rule never reads a fit (Phase 14 D-25's precedent): it runs today's arithmetic, wings and all.
   const fit = "at" in rule ? (rule.fit ?? OLD_SURFACE_FIT) : OLD_SURFACE_FIT;
+  const tipThickness = thicknessAt(mm(0));
 
   for (const station of at) {
     const foam = halfWidthAt(station);
@@ -1023,12 +1070,16 @@ export function boardSectionsWith(
     const offLine = fit.wings === "share" && input.wingShareAt && foam > 0 ? input.wingShareAt(station) : 0;
     const move = foam + offLine > 0 ? offLine : 0;
     const room = move !== 0 ? mm(foam + move) : foam;
+    // In the tail's last inch the deck rolls over into the tail's edge (D-38); 1 everywhere else.
+    const keep = fit.tail === "roll" ? tailRollScale(station, thickness, tipThickness) : 1;
+    const rollField = keep < 1 ? { rollScale: keep } : {};
 
     if (room === 0) {
       sections.push({
         station,
         halfWidth: foam,
         thickness,
+        ...rollField,
         result: null,
         tipWeight: 0,
         hardWeight: 0,
@@ -1135,6 +1186,13 @@ export function boardSectionsWith(
       };
     };
 
+    // The tail's roll on a built section (D-38): whatever it draws, every height scaled, the bottom left alone.
+    const rolled = (built: BoardSection, half: HalfSectionPoints): BoardSection => {
+      if (keep === 1) return built;
+      const drawn = (built.drawn ?? half).map(([y, h]): [number, number] => [y, h * keep]);
+      return { ...built, ...rollField, drawn };
+    };
+
     if (tipWeight > 0 && tipWeight < 1) {
       // The blend (D-31, level variant; D-32): both sections, the base first, sampled alike and blended point
       // for point — the ring the 3D board draws (never shrunk tuck marks, which would leave a rounded edge,
@@ -1166,7 +1224,7 @@ export function boardSectionsWith(
         blendArea: cut - area,
       };
       const rollReach = mm((1 - tipWeight) * baseResult.deckMark2 + tipWeight * tipResult.deckMark2);
-      sections.push(move !== 0 ? movedOn(section, blended, rollReach) : section);
+      sections.push(rolled(move !== 0 ? movedOn(section, blended, rollReach) : section, blended));
       continue;
     }
 
@@ -1187,13 +1245,13 @@ export function boardSectionsWith(
       area: ended.area,
       blendArea: ended.blendArea,
     };
-    if (move === 0 && !ended.fits) {
+    if (move === 0 && !ended.fits && keep === 1) {
       sections.push(section);
       continue;
     }
     const { half, exact } = endHalf(result, ended);
     const counted = ended.fits ? { ...section, drawn: half, area: exact } : section;
-    sections.push(move !== 0 ? movedOn(counted, half, result.deckMark2) : counted);
+    sections.push(rolled(move !== 0 ? movedOn(counted, half, result.deckMark2) : counted, half));
   }
   return sections;
 }
@@ -1286,6 +1344,14 @@ export function boardSectionEnds(
  * end's exact area plus the fitted half's area less the cut-off half's, exactly 0 where the rail has room. The old
  * rules keep the cut, by name for the pins (`OLD_SURFACE_FIT`).
  *
+ * THE TAIL'S ROLL (Phase 16, D-38, the founder's pick: "Medium: 1/3 over 1""). The rail is carried around the tail's
+ * end: over the last inch every height of the section scales down along a quarter ellipse, a third of the tip's
+ * thickness at the end (`tailRollDrop`), so the deck rolls over into the tail's edge and the bottom stays on the
+ * rocker. The 51 stations are too far apart to see that: station 0 would stand for a whole first panel on a tail with
+ * width, and a tail that comes to a point has no station in the roll at all. So each section's `area` is left un-rolled
+ * and the roll's own foam comes off the whole board, integrated finely through the ellipse (`tailRollFoam`), so
+ * the litres count what the 3D board draws (D-31). The old rules keep the square end (`OLD_SURFACE_FIT`).
+ *
  * TAIL CUT (quick 261103-gcm, the founder, 2026-11-03: the litres count the tail the board is drawn
  * with). `halfWidthAt` is the foam actually there, so a station inside a swallow's notch reads the foam
  * on one side of the notch and a station inside a diamond's V reads the V's own width. A swallow's tail
@@ -1303,6 +1369,20 @@ export function boardSectionEnds(
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   return computeCrossSectionVolumeWith(input, LIVE_SECTION_RULE);
+}
+
+/**
+ * The foam the tail's roll takes off the whole board, in cubic millimetres (D-38): each station's area times the
+ * share of height it loses, Simpson-integrated through the run in the ellipse's own angle (`θ`, with
+ * `station = run (1 − cos θ)`), which keeps the integrand smooth where the ellipse stands upright at the tail end.
+ */
+export function tailRollFoam(input: CrossSectionVolumeInput, rule: SectionRule): number {
+  const stations = tailRollStations(TAIL_ROLL_PANELS);
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  const h = Math.PI / 2 / TAIL_ROLL_PANELS;
+  const sections = boardSectionsWith(input, rule, stations);
+  const lost = sections.map((section, k) => section.area * (1 - (section.rollScale ?? 1)) * run * Math.sin(k * h));
+  return simpsonIntegrate(lost, h);
 }
 
 /** `computeCrossSectionVolume` with the section rule named: Simpson over `boardSectionsWith(input, rule)`. */
@@ -1327,6 +1407,8 @@ export function computeCrossSectionVolumeWith(
   } else {
     volumeMm3 = simpsonIntegrate(stationAreas, length / SIMPSON_PANEL_COUNT);
   }
+  const tailRollMm3 = "at" in rule && rule.fit?.tail === "roll" ? tailRollFoam(input, rule) : 0;
+  if (tailRollMm3 !== 0) volumeMm3 -= tailRollMm3;
 
   return {
     volumeLitres: cubicMmToLitres(volumeMm3),
@@ -1335,5 +1417,6 @@ export function computeCrossSectionVolumeWith(
     stations,
     stationAreas,
     stationBlendAreas,
+    tailRollMm3,
   };
 }

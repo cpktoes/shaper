@@ -16,11 +16,18 @@ import {
   noseRailWeight,
   railCharacterDifferences,
   railCharacterOf,
+  computeCrossSectionVolumeWith,
   OLD_SURFACE_FIT,
   RAIL_CHARACTER_FADE,
   type RailCharacterRule,
   SMOOTH_SURFACE_FADE,
+  TAIL_ROLL_RUN_IN,
+  TAIL_ROLL_SHARE,
   tailHardEdgeWeight,
+  tailRollDrop,
+  tailRollFoam,
+  tailRollScale,
+  tailRollStations,
   simpsonIntegrate,
   SIMPSON_PANEL_COUNT,
   wingStepHalf,
@@ -1630,15 +1637,18 @@ describe("D-34 the rail fits into a narrow tip", () => {
         const before = old[i];
         const sampled = sampledFinishedRail(before.result!, before.domed, before.halfWidth);
         const fitted = fittedFinishedRail(before.result!, before.domed, before.halfWidth);
+        // The tail's roll draws a station's heights lower and leaves its area for the whole-board count (D-38).
+        const scaled = (half: typeof fitted) => half.map(([y, h]) => [y, h * (section.rollScale ?? 1)]);
         if (fitted === sampled || section.halfWidth >= railReach(section.result, section.domed)) {
           expect(Object.is(section.area, before.area)).toBe(true);
-          expect(section.drawn).toBeUndefined();
+          if (section.rollScale === undefined) expect(section.drawn).toBeUndefined();
+          else expect(section.drawn).toEqual(scaled(sampled));
         } else {
           const lift = sampledSectionArea(fitted) - sampledSectionArea(sampled);
           expect(lift).toBeGreaterThan(0);
           expect(section.area).toBe(before.area + lift);
           expect(section.blendArea).toBe(before.blendArea);
-          expect(section.drawn).toEqual(fitted);
+          expect(section.drawn).toEqual(scaled(fitted));
         }
       });
     }, 60_000);
@@ -1690,8 +1700,77 @@ describe("D-34 the rail fits into a narrow tip", () => {
   });
 
   it("OLD_SURFACE_FIT is what every rule before plan 16-16 does, and the live rule fits both", () => {
-    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip" });
+    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip", tail: "square" });
     expect(RAIL_CHARACTER_FADE.fit).toBeUndefined();
-    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit" });
+    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit", tail: "roll" });
+  });
+});
+
+describe("D-38 the tail's rail is carried around the end", () => {
+  const RUN = inchesToMm(TAIL_ROLL_RUN_IN);
+  const TIP = mm(20);
+  const boards = phase16SurfaceBoards().filter((board) => /\|(asis|pin|round|diamond|swallow)\|hard$|^wing\|.*\|one$/.test(board.label));
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  }
+
+  it("tailRollDrop is a quarter ellipse: the share of the tip at the end, nothing from the end of the run on", () => {
+    expect(tailRollDrop(mm(0), TIP)).toBeCloseTo(TIP * TAIL_ROLL_SHARE, 12);
+    expect(tailRollDrop(RUN, TIP)).toBe(0);
+    expect(tailRollDrop(mm(RUN + 5), TIP)).toBe(0);
+    // On the ellipse x² + y² = 1, walking in from the end.
+    for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      const y = 1 - tailRollDrop(mm(RUN * f), TIP) / (TIP * TAIL_ROLL_SHARE);
+      expect(y * y + (1 - f) * (1 - f)).toBeCloseTo(1, 10);
+    }
+  });
+
+  it("tailRollScale keeps every height's share, 1 clear of the roll", () => {
+    expect(tailRollScale(mm(0), TIP, TIP)).toBeCloseTo(1 - TAIL_ROLL_SHARE, 12);
+    expect(tailRollScale(RUN, mm(40), TIP)).toBe(1);
+  });
+
+  it("tailRollStations start at the tail end, stop at the end of the run, and crowd toward the end", () => {
+    const stations = tailRollStations(8);
+    expect(stations[0]).toBe(0);
+    expect(stations[8]).toBeCloseTo(RUN, 9);
+    for (let i = 1; i < 8; i++) expect(stations[i] - stations[i - 1]).toBeLessThan(stations[i + 1] - stations[i]);
+  });
+
+  for (const { label, fields } of boards) {
+    const input = inputOf(fields);
+    it(`${label}: the litres take off the roll's own foam, to within a part in twenty of a fine count`, () => {
+      const result = computeCrossSectionVolume(input);
+      const n = 2000;
+      const at = Array.from({ length: n + 1 }, (_, i) => mm((i * RUN) / n));
+      const lost = boardSections(input, at).map((section) => section.area * (1 - (section.rollScale ?? 1)));
+      const fine = simpsonIntegrate(lost, RUN / n);
+      expect(result.tailRollMm3).toBe(tailRollFoam(input, SMOOTH_SURFACE_FADE));
+      expect(result.tailRollMm3).toBeGreaterThan(0);
+      expect(Math.abs(result.tailRollMm3 - fine) / fine).toBeLessThan(0.05);
+    });
+
+    it(`${label}: a rolled station keeps its un-rolled area and draws its heights scaled, the bottom left alone`, () => {
+      const sections = boardSections(input, [mm(RUN / 3), mm(RUN / 2), mm(RUN + 1)]);
+      for (const section of sections.slice(0, 2)) {
+        expect(section.rollScale).toBeLessThan(1);
+        if (!section.result) continue;
+        const half = section.drawn!;
+        expect(Math.max(...half.map((p) => p[1]))).toBeCloseTo(section.thickness * section.rollScale!, 6);
+        expect(half[half.length - 1][1]).toBe(0);
+      }
+      expect(sections[2].rollScale).toBeUndefined();
+    });
+  }
+
+  it("the old rules keep the square end and count no roll", () => {
+    const input = inputOf(boards[0].fields);
+    for (const rule of [HARD_EDGE_SWITCH, HARD_EDGE_FADE, RAIL_CHARACTER_FADE]) {
+      expect(computeCrossSectionVolumeWith(input, rule).tailRollMm3).toBe(0);
+      expect(boardSectionsWith(input, rule, [mm(0)])[0].rollScale).toBeUndefined();
+    }
   });
 });

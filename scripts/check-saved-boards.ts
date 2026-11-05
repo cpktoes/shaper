@@ -81,14 +81,14 @@
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
  * a snapshot, a user id or the connection string, and it never changes the exit code.
  *
- * `--surface-report` (Phase 16 D-33 and D-34, the 14 D-18 report rule; read-only, board ids, wing counts, tail
- * kinds and litres only): the founder's check before go-live 2 that every saved board's litres move as D-33 and
- * D-34 say — behind a wing only the rail steps in now, so a winged board holds a little more foam, and a rail wider
- * than its station near a tip is drawn into its room and counted. For each board whose litres move it prints
- * the board's wing count and tail kind, then the litres before (`RAIL_CHARACTER_FADE`, the rule before both) and
- * after (the live rule), worked out in lib/models/surface-report.ts (`surfaceReportLines`):
+ * `--surface-report` (Phase 16 D-33 to D-38, the 14 D-18 report rule; read-only, board ids, wing counts, tail kinds
+ * and litres only): the founder's check before go-live 2 of what every saved board will read. It covers every
+ * board, because the tail's roll reaches them all, where --rail-character-report lists only the boards the whole
+ * rail's fade reaches. For each board it prints the wing count and tail kind, the litres the site reads today
+ * (`HARD_EDGE_FADE`) and will read (the live rule), the whole move, and this plan's share of it (against
+ * `RAIL_CHARACTER_FADE`), worked out in lib/models/surface-report.ts (`surfaceReportLines`):
  *   surface report: N saved boards; k open[, d did not open]; m whose litres move
- *   <id>: <no wings | 1 wing | 2 wings> · <tail kind> tail — <before> → <after> L (<move>)
+ *   <id>: <no wings | 1 wing | 2 wings> · <tail kind> tail — <before> → <after> L (<move>, this plan <share>)
  *                                                                              one per such board, the largest move first
  *   largest move: <id>, <move> L                                              (or: largest move: none)
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
@@ -358,7 +358,7 @@ async function main(): Promise<void> {
   // --rail-character-report (Phase 16 D-32): ids, settings and litres only; never changes the exit code.
   if (railCharacterReportFlag) for (const line of railCharacterReportLines(hardEdgeRows)) console.log(line);
 
-  // --surface-report (Phase 16 D-33, D-34): ids, wing counts, tail kinds and litres only; never changes the exit code.
+  // --surface-report (Phase 16 D-33 to D-38): ids, wing counts, tail kinds and litres only; never changes the exit code.
   if (surfaceReportFlag) for (const line of surfaceReportLines(hardEdgeRows)) console.log(line);
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
