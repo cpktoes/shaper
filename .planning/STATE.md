@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–10 merged on board-3d 2026-11-04 (…, 16-15 the whole rail character fades, the Tail Rail rows); 16-16 (D-33/D-34, wave 11) approved; 16-17 (D-35 toolbar icons + real fins, wave 12) planned, the founder's rulings being folded in; next Wave 11 — 16-16 the deck stays smooth across a wing, no tip flip; then 16-17, 16-13 go-live 2 (wave 13)"
+stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–10 merged on board-3d 2026-11-04 (…, 16-15 the whole rail character fades, the Tail Rail rows); 16-16 (D-33/D-34, wave 11) approved; 16-17 (D-35/D-36 toolbar icons + real fins, wave 12) planned with the founder's rulings folded in; next Wave 11 — 16-16 the deck stays smooth across a wing, no tip flip; then 16-17, 16-13 go-live 2 (wave 13)"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
 last_activity_desc: "Phase 16 Wave 10 merged: the tail's whole rail fades between Tail Rail Blends From and Ends At; the nose blends on its own"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 47
+  total_plans: 48
   completed_plans: 45
-  percent: 96
+  percent: 94
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
