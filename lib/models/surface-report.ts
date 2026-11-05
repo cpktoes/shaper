@@ -2,7 +2,8 @@
  * `scripts/check-saved-boards.ts --surface-report` (Phase 16, D-33 to D-38; the 14 D-18 report rule): the founder's
  * read-only check, before go-live 2, of what every real saved board will read when plan 16-16's surface goes live.
  * It covers EVERY saved board, because the tail's roll reaches them all: a wing's two sides share its step, a rail
- * wider than its station near a tip is drawn into its room, and the deck rolls over into the tail's edge. "Before" is
+ * wider than its station near a tip is drawn into its room, the deck rolls over into the tail's edge, a sharp edge
+ * opens into a round one along a blend, and a domed deck's rail is built from its thickness itself. "Before" is
  * what the live site reads today (`HARD_EDGE_FADE`, go-live 1's rule), "after" what it will read (the live rule), so
  * each line is the move he will see. The bracket gives this plan's share of that move, against `RAIL_CHARACTER_FADE`:
  * the rest is the whole rail's fade, which `--rail-character-report` lists with its reasons, for the boards it reaches.

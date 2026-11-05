@@ -44,7 +44,7 @@ function hasNarrowStation(board: (typeof BOARDS)[number]): boolean {
 
 /** The live rule with only its tips' fit (D-34) left on: the wing rule and the tail's roll set back, so each can be
  * told from the pin. */
-const TIPS_ONLY: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift", tail: "square", tuck: "corner" } };
+const TIPS_ONLY: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift", tail: "square", tuck: "corner", rail: "sixteenths" } };
 
 describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-37)", () => {
   it("the pin holds the 102 boards the set builds, and names its generator", () => {

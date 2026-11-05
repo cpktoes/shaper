@@ -866,18 +866,22 @@ export interface RailCharacterRule {
  * what is drawn (D-34). `tail`: `"square"` ends the deck at the tail's full thickness; `"roll"` carries the rail
  * around the end, the deck rolling over into the tail's edge (D-38). `tuck`: `"corner"` blends a sharp bottom edge
  * into a round one point for point, a corner in every slice, shrinking; `"open"` opens the corner into a radius
- * that grows along the blend (`openedFinishedRail`).
+ * that grows along the blend (`openedFinishedRail`). `rail`: on a domed deck, `"sixteenths"` builds each station's
+ * rail from its thickness rounded to the nearest 1/16", which steps along the board; `"exact"` builds it from the
+ * thickness itself, so the rail runs smooth. RAILS, DATA and the order form read `computeRailBands`, which keeps
+ * the rounding, whichever rule the sections read.
  */
 export interface SurfaceFit {
   wings: "shift" | "share";
   tips: "clip" | "fit";
   tail: "square" | "roll";
   tuck: "corner" | "open";
+  rail: "sixteenths" | "exact";
 }
 
-/** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off, and the
- * deck runs square to the tail's end. */
-export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square", tuck: "corner" };
+/** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off, the deck
+ * runs square to the tail's end, a sharp edge blends as a corner and a domed rail steps by sixteenths. */
+export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square", tuck: "corner", rail: "sixteenths" };
 
 /** How much of the tip's thickness the tail's roll takes off at the very end (D-38, the founder's pick). */
 export const TAIL_ROLL_SHARE = 1 / 3;
@@ -957,12 +961,13 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * `RAIL_CHARACTER_FADE`'s own rail character, with the stations either side of a wing built on the deck line the
  * two sides share and only their rails moved onto the outline (`wingShareAt`, `wingStepHalf`), a rail wider than its
  * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
- * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`). `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
+ * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`), and
+ * a domed deck's rail built from its thickness itself, not rounded to a sixteenth. `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
  * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
   at: RAIL_CHARACTER_FADE.at,
-  fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open" },
+  fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open", rail: "exact" },
 };
 
 /** The rule the live litres and the 3D board use. */
@@ -1143,8 +1148,8 @@ export function boardSectionsWith(
     const sharpness = sharedWeight(isSharp(base), isSharp(tip), tipWeight);
 
     const domed = deckPercent < 100;
-    const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
-    const thicknessEff = domed ? railThicknessClamped : thickness;
+    const railThickness = mm((thickness * deckPercent) / 100);
+    const thicknessEff = !domed ? thickness : fit.rail === "exact" ? railThickness : roundToSixteenthInch(railThickness);
 
     const sectionInput = (character: RailCharacter): ComputeRailSectionInput => ({
       thickness: thicknessEff,
@@ -1356,6 +1361,12 @@ export function boardSectionEnds(
  * profile's deck and bottom right into the tip, and the litres count the ring drawn, as D-31 does a blend: the
  * end's exact area plus the fitted half's area less the cut-off half's, exactly 0 where the rail has room. The old
  * rules keep the cut, by name for the pins (`OLD_SURFACE_FIT`).
+ *
+ * A DOMED DECK'S RAIL (the founder, 2026-11-05, of the Mid-length: "all wavy and I do not like it"). RAILS reads the
+ * rail-side thickness to the nearest 1/16", which is how a shaper marks it, but built station by station that rounding
+ * stepped the rail about 25 times along a domed board. So the live rule builds the sections, and with them the
+ * litres and the 3D board, from the thickness itself; the figures a shaper reads keep the rounding
+ * (`computeRailBands`). The old rules keep the steps, by name for the pins (`OLD_SURFACE_FIT`).
  *
  * A SHARP EDGE INTO A ROUND ONE (the founder, 2026-11-05: "make sure a sharp tuck can blend into a round tuck nicely").
  * Where a blend runs between a sharp bottom edge (a hard edge or a Sharp Bottom Tuck) and a round one, a point-for-point
