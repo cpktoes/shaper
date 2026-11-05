@@ -149,9 +149,9 @@ export interface OutlineGeometry {
   noseWidthAt12in: Mm;
   /**
    * The wings this outline was cut with, as placed (`placedWings`) — present only on a geometry `applyWings`
-   * cut, so a board without wings is today's object exactly. The litres and the 3D board read it to build each
-   * station behind a wing at the width without the wing (`wingTakeAt`, Phase 16, D-33); nothing that draws or
-   * measures the outline does.
+   * cut, so a board without wings is today's object exactly. The litres and the 3D board read it to build the
+   * stations either side of a wing on the deck's meeting line (`wingShareAt`, Phase 16, D-37); nothing that draws
+   * or measures the outline does.
    */
   wings?: readonly Wing[];
 }

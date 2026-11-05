@@ -11,10 +11,10 @@ import {
 } from "./design";
 import { railReach } from "./finished-rail";
 import { buildOutline } from "./outline";
-import { boardSectionEnds, boardSections, RAIL_CHARACTER_FADE } from "./volume";
+import { boardSectionEnds, boardSections, RAIL_CHARACTER_FADE, type RailCharacterRule, SMOOTH_SURFACE_FADE } from "./volume";
 
 /**
- * Phase 16, D-33 and D-34 (plan 16-16): a wing is a step in the outline only, and the surface runs into each tip
+ * Phase 16, D-34 and D-37 (plan 16-16): a wing's two sides share its step, and the surface runs into each tip
  * with no flip. The pin (`phase16-surface-litres-pin.json`, written by scripts/extract-phase16-surface-litres-pin.ts
  * from the code as plan 16-15 left it, before `SMOOTH_SURFACE_FADE` existed) records 102 boards' litres to every
  * digit. Under plan 16-15's rule, named, every one must reproduce bit for bit; under the live rule, the boards
@@ -42,7 +42,10 @@ function hasNarrowStation(board: (typeof BOARDS)[number]): boolean {
   });
 }
 
-describe("the 102 boards' litres, pinned before a wing stopped moving the deck (D-33, D-34)", () => {
+/** The live rule with its wing behaviour set back, so a winged board's tips can be read alone. */
+const WING_RULE_OFF: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift" } };
+
+describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-37)", () => {
   it("the pin holds the 102 boards the set builds, and names its generator", () => {
     expect(BOARDS).toHaveLength(102);
     expect(BOARDS.filter(hasWing)).toHaveLength(28);
@@ -73,8 +76,13 @@ describe("the 102 boards' litres, pinned before a wing stopped moving the deck (
   });
 
   for (const board of BOARDS.filter(hasWing)) {
-    it(`${board.label}: the deck stays where it was, so the live litres are above the pinned litres`, () => {
-      expect(summarizeDesign(board.fields).volumeLitres).toBeGreaterThan(Number(PIN.litres[board.label]));
+    it(`${board.label}: with the wing rule off it reads the pin, or above it for a narrow tip; the shared wing moves it a hair`, () => {
+      const off = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: WING_RULE_OFF }).volumeLitres;
+      if (hasNarrowStation(board)) expect(off).toBeGreaterThan(Number(PIN.litres[board.label]));
+      else expect(off.toPrecision(17)).toBe(PIN.litres[board.label]);
+      const live = summarizeDesign(board.fields).volumeLitres;
+      expect(live).not.toBe(off);
+      expect(Math.abs(live - off)).toBeLessThan(0.1);
     });
   }
 });

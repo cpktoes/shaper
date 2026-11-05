@@ -301,7 +301,7 @@ describe("the whole export, on every preset and every swallow of the 40-board se
   );
 });
 
-describe("the CNC files carry the step TEMPLATE draws (R8, D-33)", () => {
+describe("the CNC files carry the step TEMPLATE draws (R8, D-37)", () => {
   for (const label of ["wing|fish|square", "wing|shortboard|rounded"]) {
     it(
       label,

@@ -36,7 +36,7 @@ import {
   crossSectionStations,
   railCharacterDifferences,
 } from "./volume";
-import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingStepShape } from "./wings";
+import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingShareSpan, wingStepShape } from "./wings";
 import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
 import { stringerLines } from "./board-surface-render";
 
@@ -113,9 +113,9 @@ function built(board: { label: string; fields: DesignSummaryFields }) {
 const BUILT = BOARDS.map(built);
 /** All 74 (D-32): the forty, then the 34 whose rail character the second pin records. */
 const BUILT_LIVE = [...BUILT, ...phase16RailCharacterBoards().map(built)];
-/** The 28 winged boards (D-33). */
+/** The 28 winged boards (D-37). */
 const BUILT_WINGED = phase16WingBoards().map(built);
-/** All 102 (D-33, D-34): the 74, then the winged boards. */
+/** All 102 (D-34, D-37): the 74, then the winged boards. */
 const BUILT_SURFACE = [...BUILT_LIVE, ...BUILT_WINGED];
 const isSwallow = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation > geometry.points[0].station;
 const isDiamond = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation < geometry.points[0].station;
@@ -273,7 +273,7 @@ describe("all 74 boards: closed, and a hair under VOLUME's litres (SPEC acceptan
   }
 });
 
-describe("the 28 winged boards: the surface steps where TEMPLATE does and the deck runs through (D-33)", () => {
+describe("the 28 winged boards: the surface steps where TEMPLATE does and the deck runs through (D-37)", () => {
   const n = SURFACE_POINTS.deck + SURFACE_POINTS.rail + SURFACE_POINTS.bottom - 2;
 
   it("checks every one of the 28", () => {
@@ -287,7 +287,7 @@ describe("the 28 winged boards: the surface steps where TEMPLATE does and the de
       expect(Math.abs(enclosedVolumeMm3(surface) / 1e6 - litres) / litres).toBeLessThan(0.0015);
     });
 
-    it(`${label}: every ring behind a wing is its section's drawn half`, () => {
+    it(`${label}: every ring near a wing is its section's drawn half`, () => {
       const sections = boardSections(input.sections, surfaceStations(input));
       let drawn = 0;
       surface.rings.forEach((ring, i) => {
@@ -303,16 +303,20 @@ describe("the 28 winged boards: the surface steps where TEMPLATE does and the de
       expect(drawn).toBeGreaterThan(10);
     });
 
-    it(`${label}: rings stand at each step point, a hair either side of a square step's station, and nowhere else new`, () => {
+    it(`${label}: rings stand at each step point, a hair either side of a square step's station, through the shared stretch, and nowhere else new`, () => {
       const plain = surfaceInputOf({ ...fields, outline: outlineWithoutWings(fields.outline) }).input;
       const before = new Set<number>(surfaceStations(plain));
       const added = surfaceStations(input).filter((s) => !before.has(s));
       const stepPoints = geometry.wings!.flatMap((wing) => {
         const { points } = wingStepShape(wing);
-        return points.flatMap((point) => {
-          const square = points.some((other) => other.station === point.station && other.inward !== point.inward);
-          return square ? [point.station - WING_HAIR_MM, point.station + WING_HAIR_MM] : [point.station];
-        });
+        const { middle, reach } = wingShareSpan(wing);
+        const shared = Array.from({ length: 25 }, (_, k) => middle + ((k - 12) * reach) / 12);
+        return points
+          .flatMap((point) => {
+            const square = points.some((other) => other.station === point.station && other.inward !== point.inward);
+            return square ? [point.station - WING_HAIR_MM, point.station + WING_HAIR_MM] : [point.station];
+          })
+          .concat(shared);
       });
       const stations = surfaceStations(input);
       for (const s of stepPoints) expect(stations.some((t) => Math.abs(t - s) < 1e-6)).toBe(true);

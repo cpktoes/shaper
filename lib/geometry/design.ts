@@ -25,7 +25,7 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
-import { wingTakeAt } from "./wings";
+import { wingShareAt } from "./wings";
 import {
   computeCrossSectionVolume,
   computeCrossSectionVolumeWith,
@@ -77,20 +77,20 @@ export function deriveEffectiveFins(
  * the preset and rack cards, the phone's tile, the order form and the printed template (quick
  * 261103-gcm). The width on one side of the stringer is the foam TEMPLATE draws (`foamHalfWidth`: a
  * swallow's notch is air, a diamond's V is foam), and the tail cut's corner is a cross-section station
- * (`tailCutStation`). A winged outline also carries how much its wings take at each station (`wingTakeAt`,
- * Phase 16, D-33): the litres and the 3D board build a station behind a wing at the width without the wing, and
- * step only the rail in. A board without wings carries no such thing. Spread into
+ * (`tailCutStation`). A winged outline also carries how far it stands off the deck's meeting line at each station
+ * (`wingShareAt`, Phase 16, D-37): the litres and the 3D board build the stations either side of a wing on that
+ * line and move the rail onto the outline. A board without wings carries no such thing. Spread into
  * `computeCrossSectionVolume`'s input.
  */
 export function crossSectionFoam(
   geometry: OutlineGeometry,
-): Pick<CrossSectionVolumeInput, "halfWidthAt" | "cutStation" | "wingTakeAt"> {
+): Pick<CrossSectionVolumeInput, "halfWidthAt" | "cutStation" | "wingShareAt"> {
   const foam = {
     halfWidthAt: (station: Mm) => foamHalfWidth(geometry, station),
     cutStation: tailCutStation(geometry),
   };
   if (!geometry.wings || geometry.wings.length === 0) return foam;
-  return { ...foam, wingTakeAt: (station: Mm) => wingTakeAt(geometry, station) };
+  return { ...foam, wingShareAt: (station: Mm) => wingShareAt(geometry, station) };
 }
 
 /**

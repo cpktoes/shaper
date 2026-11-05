@@ -110,6 +110,8 @@ export const WING_STEP_IN = 1 / 16;
 /** ... and 1 mm steps in Metric (D2, D9). */
 export const WING_STEP_MM = 1;
 
+/** How far each way along the board the two sides of a wing share its step, in inches (D-37, the founder's pick). */
+export const WING_SHARE_REACH_IN = 3;
 /** A new wing's depth, in inches — the founder (2026-10-15): "drop the default wing to 3/16"" (D5). */
 export const WING_DEFAULT_DEPTH_IN = 3 / 16;
 /** Wing 2's apex sits at least this far behind wing 1's, in inches ... (D2) */
@@ -442,15 +444,18 @@ function prepare(wings: readonly Wing[]): PreparedWing[] {
   return out;
 }
 
+/** A wing's fade toward the tail at station `s`: 1 from its inner corner nose-ward, 0 at the tail pod. */
+function fadeAt(g: OutlineGeometry, p: PreparedWing, s: number): number {
+  return p.inner > g.tailPodStation ? clamp((s - g.tailPodStation) / (p.inner - g.tailPodStation), 0, 1) : 0;
+}
+
 /** Σ depth · share · fade at station `s` — what construction A takes off the curve there. */
 function takeAt(g: OutlineGeometry, prepared: readonly PreparedWing[], s: number): number {
   if (s <= g.tailPodStation) return 0;
   let take = 0;
   for (const p of prepared) {
     const share = shareFromShape(p.shape, p.depth, s);
-    const fade =
-      p.inner > g.tailPodStation ? clamp((s - g.tailPodStation) / (p.inner - g.tailPodStation), 0, 1) : 0;
-    take += p.depth * share * fade;
+    take += p.depth * share * fadeAt(g, p, s);
   }
   return take;
 }
@@ -459,11 +464,44 @@ function takeAt(g: OutlineGeometry, prepared: readonly PreparedWing[], s: number
  * How much the wings take off the curve the shaper drew at a station (construction A: depth × the step's
  * share × the fade to the tail pod) — exactly what `applyWings` takes off the outline's points. 0 on an outline
  * with no wings, ahead of every step, and at or behind the tail pod. The litres and the 3D board build each
- * station behind a wing at the width this gives back, so the deck stays where it was (Phase 16, D-33).
+ * station behind a wing on the deck's meeting line from this (`wingShareAt`, Phase 16, D-37).
  */
 export function wingTakeAt(geometry: OutlineGeometry, station: Mm): Mm {
   if (!geometry.wings || geometry.wings.length === 0) return mm(0);
   return mm(takeAt(geometry, prepare(geometry.wings), station));
+}
+
+/**
+ * Where a wing's shared blend stands along the board (Phase 16, D-37): the middle of its step, and how far the blend
+ * reaches each way from there — `WING_SHARE_REACH_IN`, never less than the step's own run.
+ */
+export function wingShareSpan(w: Pick<Wing, "station" | "run" | "depth" | "radius">): { middle: Mm; reach: Mm } {
+  const pts = wingStepShape(w).points;
+  const [start, inner] = [pts[0].station, pts[pts.length - 1].station];
+  return { middle: mm((start + inner) / 2), reach: mm(Math.max(inchesToMm(WING_SHARE_REACH_IN), start - inner)) };
+}
+
+/**
+ * How far the stepped outline stands inside (+) or outside (−) the wing's meeting line at a station (Phase 16, D-37,
+ * the founder: "they should share the blend"). The meeting line is the outline with its step eased along the board:
+ * from where the shared blend starts ahead of the wing, it gives up the wing's depth (times the wing's fade to the
+ * tail pod) by a smoothstep, half of it at the step's middle, all of it `WING_SHARE_REACH_IN` behind. A section is
+ * built on that line, so the deck is smooth across the wing, and its rail then moves onto the real outline: inward
+ * behind the wing, where the rail stands thicker than its own, and outward ahead of it, where it stands thinner.
+ * Exactly 0 clear of the blend both ways, at or behind the tail pod and on an outline with no wings.
+ */
+export function wingShareAt(geometry: OutlineGeometry, station: Mm): Mm {
+  if (!geometry.wings || geometry.wings.length === 0 || station <= geometry.tailPodStation) return mm(0);
+  let share = 0;
+  for (const p of prepare(geometry.wings)) {
+    const start = p.shape.points[0].station;
+    const middle = (start + p.inner) / 2;
+    const reach = Math.max(inchesToMm(WING_SHARE_REACH_IN), start - p.inner);
+    const t = clamp((middle + reach - station) / (2 * reach), 0, 1);
+    const given = t * t * (3 - 2 * t);
+    share += p.depth * fadeAt(geometry, p, station) * (shareFromShape(p.shape, p.depth, station) - given);
+  }
+  return mm(share);
 }
 
 function wingedFromPrepared(g: OutlineGeometry, prepared: readonly PreparedWing[], s: number): number {

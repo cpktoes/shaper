@@ -22,10 +22,11 @@
  *    nose's from the centre to the nose 12" mark, D-32), the section itself carries the ring
  *    (`BoardSection.blended`): the two end rails' halves sampled alike and blended point for point by the
  *    tip's weight (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31) — and how sharp
- *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here. Behind a wing (D-33) the
- *    section carries its ring too (`BoardSection.drawn`): the board without the wing with only its rail
- *    stepped in, so the deck and the flat bottom run smooth across the wing; and rings stand at each wing's own
- *    step (`surfaceStations`), so the outline steps where TEMPLATE does.
+ *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here. Near a wing (D-37) the
+ *    section carries its ring too (`BoardSection.drawn`): built on the deck line the two sides share with only
+ *    its rail moved onto the outline, so the deck and the flat bottom run smooth across the wing; and rings stand at
+ *    each wing's own step and through the shared stretch (`surfaceStations`), so the outline steps where TEMPLATE
+ *    does.
  * 3. Inside a swallow's notch the half is moved out to stand on the notch's wall (`inner`): the rail lands
  *    on the drawn curve (`outer`), the inside edge on the wall. Everywhere else `inner` is the stringer, 0.
  * 4. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
@@ -54,7 +55,7 @@ import {
   crossSectionStations,
   railCharacterDifferences,
 } from "./volume";
-import { WING_HAIR_MM, wingStepShape } from "./wings";
+import { WING_HAIR_MM, wingShareSpan, wingStepShape } from "./wings";
 
 /** A point of the surface, in millimetres, in Shape3D's axes (x along, y across, z up). */
 export type Vec3 = readonly [number, number, number];
@@ -128,6 +129,9 @@ export interface BoardSurface {
 
 type P2 = [number, number];
 
+/** Rings each way through the stretch a wing's two sides share (D-37), so its short ease isn't straddled. */
+const WING_SHARE_RINGS = 12;
+
 /** Stations closer than this are one station. */
 const SAME_STATION_MM = 1e-6;
 
@@ -141,8 +145,9 @@ function assertFinite(field: string, value: number, station: number): void {
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
  * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — whenever the
  * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
- * ends (D-30), and at each wing's own step (D-33: every point of the step, or a hair either side of a square
- * step's one station, which has two widths) — filled in so no two neighbours are more than
+ * ends (D-30), at each wing's own step (D-33: every point of the step, or a hair either side of a square step's one
+ * station, which has two widths) and every twelfth of the way through the stretch the wing's two sides share (D-37)
+ * — filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -172,6 +177,11 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
         if (inside(s)) required.push(s);
       }
     });
+    const { middle, reach } = wingShareSpan(wing);
+    for (let k = -WING_SHARE_RINGS; k <= WING_SHARE_RINGS; k++) {
+      const s = middle + (k * reach) / WING_SHARE_RINGS;
+      if (inside(s)) required.push(s);
+    }
   }
   const kept: number[] = [];
   const keep = (s: number) => {
@@ -203,7 +213,7 @@ function tipEdge(outer: number, thickness: number): P2[] {
  * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
  * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
  * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or the very ring the litres count
- * — behind a wing (`BoardSection.drawn`, D-33), inside a tip's blend (`BoardSection.blended`, D-31, D-32) — moved
+ * — near a wing (`BoardSection.drawn`, D-37), inside a tip's blend (`BoardSection.blended`, D-31, D-32) — moved
  * out by `inner` so its inside edge stands on a swallow's notch wall (0 everywhere else). Nothing is sampled or
  * blended here that the litres don't read.
  * A section with no foam is the tip's own edge at `outer` (`tipEdge`).

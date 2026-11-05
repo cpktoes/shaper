@@ -67,7 +67,7 @@ import {
   phase16SurfaceBoards,
   phase16WingBoards,
 } from "./__fixtures__/phase16-boards";
-import { outlineWithoutWings, wingFootprint, wingTakeAt } from "./wings";
+import { outlineWithoutWings, wingFootprint, wingShareAt, wingShareSpan, type Wing } from "./wings";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -1422,7 +1422,7 @@ describe("D-32 the whole rail character blends", () => {
   });
 });
 
-describe("D-33 a wing steps the outline only", () => {
+describe("D-37 a wing's two sides share the step, and the rail rolls straight up into the deck", () => {
   type Half = readonly (readonly [number, number])[];
   const BOTTOM_EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
   const deckRun = (half: Half) => half.slice(0, SECTION_POINTS.deck);
@@ -1440,20 +1440,6 @@ describe("D-33 a wing steps the outline only", () => {
     }
     return run[run.length - 1][1];
   }
-  /** The nearest a polyline comes to a point. */
-  function distanceTo(line: Half, p: readonly [number, number]): number {
-    let best = Infinity;
-    for (let i = 1; i < line.length; i++) {
-      const [ax, ay] = line[i - 1];
-      const [bx, by] = line[i];
-      const dx = bx - ax;
-      const dy = by - ay;
-      const len2 = dx * dx + dy * dy;
-      const t = len2 > 0 ? Math.min(1, Math.max(0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / len2)) : 0;
-      best = Math.min(best, Math.hypot(p[0] - (ax + t * dx), p[1] - (ay + t * dy)));
-    }
-    return best;
-  }
 
   function inputOf(fields: DesignSummaryFields) {
     const geometry = buildOutline(fields.outline);
@@ -1461,128 +1447,128 @@ describe("D-33 a wing steps the outline only", () => {
     const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
     return { geometry, input: designCrossSectionInput(geometry, profile, rails, fields.outline.length) };
   }
+  /** The live rule with its wing behaviour set back: the whole section shifts in with the outline. */
+  const SHIFT_WITH_LIVE_TIPS: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift" } };
 
-  /** Deck Mark 3 at a section: the one rail's, or the larger of a blend's two. */
-  function deckMark3Of(input: ReturnType<typeof inputOf>["input"], section: BoardSection): number {
-    if (!section.blended) return section.result!.deckMark3;
-    const { base, tip } = boardSectionEnds(input, section.station);
-    return Math.max(base.result!.deckMark3, tip.result!.deckMark3);
-  }
-
-  /** One winged board with its stations every 2 mm from each wing's inner corner to the tail, three ways. */
+  /** One winged board, with its stations every 2 mm through each wing's shared stretch, three ways. */
   const WINGED = phase16WingBoards().map((board) => {
     const { geometry, input } = inputOf(board.fields);
     const plain = inputOf({ ...board.fields, outline: outlineWithoutWings(board.fields.outline) }).input;
     const wings = geometry.wings!;
-    const inners = wings.map((wing) => wingFootprint(wing).inner as number);
     const stations: Mm[] = [];
-    for (let s = Math.max(...inners); s > 0; s -= 2) {
-      if (wingTakeAt(geometry, mm(s)) > 0) stations.push(mm(s));
+    for (const wing of wings) {
+      const { middle, reach } = wingShareSpan(wing);
+      for (let s = middle - reach; s <= middle + reach; s += 2) stations.push(mm(s));
     }
     const live = boardSections(input, stations);
-    const old = boardSectionsWith(input, RAIL_CHARACTER_FADE, stations);
+    const shifted = boardSectionsWith(input, SHIFT_WITH_LIVE_TIPS, stations);
     const without = boardSections(plain, stations);
-    return { ...board, geometry, input, plain, wings, inners, stations, live, old, without };
+    return { ...board, geometry, input, plain, wings, stations, live, shifted, without };
   });
-  const isDeep = (board: (typeof WINGED)[number]) => board.wings.some((wing) => wing.depth > inchesToMm(1 / 2));
-  /** The live rule with its wing behaviour set back: the whole section shifts in with the outline. */
-  const SHIFT_WITH_LIVE_TIPS: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { wings: "shift", tips: "fit" } };
+  /** The jump in the deck across a wing at one distance from the stringer, the board's own taper taken out. */
+  const ledgeAt = (rule: "live" | "shift", board: (typeof WINGED)[number], wing: Wing, y: (behindWidth: number) => number) => {
+    const { stepStart, inner } = wingFootprint(wing);
+    const stations = [mm(stepStart + 2), mm(inner - 2)];
+    const sections = rule === "live" ? boardSections(board.input, stations) : boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS, stations);
+    const [plainAhead, plainBehind] = boardSections(board.plain, stations);
+    const at = y(sections[1].halfWidth);
+    return (
+      heightAt(deckRun(halfOf(sections[0])), at) -
+      heightAt(deckRun(halfOf(sections[1])), at) -
+      (heightAt(deckRun(halfOf(plainAhead)), at) - heightAt(deckRun(halfOf(plainBehind)), at))
+    );
+  };
 
-  it("the 28 boards each reach the back of their wing", () => {
+  it("the 28 boards each reach through their wing", () => {
     expect(WINGED).toHaveLength(28);
-    for (const board of WINGED) expect(board.stations.length).toBeGreaterThan(10);
+    for (const board of WINGED) expect(board.stations.length).toBeGreaterThan(60);
   });
 
-  describe("wingStepHalf: the rail moved in, the deck left alone", () => {
+  describe("wingStepHalf: the rail moved onto the outline, the deck left on its line", () => {
     const rail = computeRailBands(DEFAULT_RAIL_BAND_SPEC).center.result;
-    const takes = [0.01, 0.5, inchesToMm(3 / 16), inchesToMm(3 / 8), inchesToMm(1 / 2), inchesToMm(1)];
-    const rooms = (take: number) => [1.6, 2, 3, 5, 12].map((k) => k * take).concat([100, 200, 300]);
+    const moves = [0.01, 0.5, inchesToMm(3 / 16), inchesToMm(3 / 8), inchesToMm(1 / 2), inchesToMm(1)];
+    const rooms = (move: number) => [1.6, 2, 3, 5, 12].map((k) => k * move).concat([100, 200, 300]);
 
-    for (const take of takes) {
-      it(`a take of ${take.toFixed(2)} mm, on rooms from 1.6 × the take to 300 mm`, () => {
-        for (const room of rooms(take)) {
-          const half = sampledFinishedRail(rail, true, room);
-          const stepped = wingStepHalf(half, room, take, rail.deckMark3);
-          const reach = Math.min(room, Math.max(rail.deckMark3, 2 * take));
-          expect(stepped[0]).toEqual(half[0]);
-          expect(stepped[stepped.length - 1]).toEqual(half[half.length - 1]);
-          expect(Math.abs(Math.max(...stepped.map((p) => p[0])) - (room - take))).toBeLessThan(1e-9);
-          expect(folds(deckRun(stepped), 1)).toBe(false);
-          expect(folds(bottomRun(stepped), -1)).toBe(false);
-          stepped.forEach((p, i) => {
-            expect(p[1]).toBe(half[i][1]);
-            if (1.5 * take < reach && room - half[i][0] >= reach) expect(p[0]).toBe(half[i][0]);
-          });
-        }
-      });
+    for (const size of moves) {
+      for (const move of [size, -size]) {
+        it(`a move of ${move.toFixed(2)} mm, on rooms from 1.6 × the move to 300 mm`, () => {
+          for (const room of rooms(size)) {
+            const half = sampledFinishedRail(rail, true, room);
+            const moved = wingStepHalf(half, room, move, rail.deckMark2);
+            const reach = Math.min(room, Math.max(rail.deckMark2, 2 * size));
+            expect(moved[0]).toEqual(half[0]);
+            expect(moved[moved.length - 1]).toEqual(half[half.length - 1]);
+            expect(Math.abs(Math.max(...moved.map((p) => p[0])) - (room - move))).toBeLessThan(1e-9);
+            expect(folds(deckRun(moved), 1)).toBe(false);
+            expect(folds(bottomRun(moved), -1)).toBe(false);
+            moved.forEach((p, i) => {
+              expect(p[1]).toBe(half[i][1]);
+              if (1.5 * size < reach && room - half[i][0] >= reach) expect(p[0]).toBe(half[i][0]);
+            });
+          }
+        });
+      }
     }
 
-    it("takes nothing with a take of 0", () => {
+    it("moves nothing with a move of 0", () => {
       const half = sampledFinishedRail(rail, true, 200);
-      expect(wingStepHalf(half, 200, 0, rail.deckMark3)).toEqual(half);
+      expect(wingStepHalf(half, 200, 0, rail.deckMark2)).toEqual(half);
     });
   });
 
   for (const board of WINGED) {
-    it(`${board.label}: behind the wing the deck inside Deck Mark 3 is the board without the wing, and today's stands off it`, () => {
-      board.stations.forEach((station, i) => {
-        const section = board.live[i];
-        const take = wingTakeAt(board.geometry, station);
-        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
-        const drawn = deckRun(halfOf(section));
-        const wingless = deckRun(halfOf(board.without[i]));
-        for (const [y, h] of drawn) {
-          if (y <= limit) expect(Math.abs(h - heightAt(wingless, y))).toBeLessThan(0.01);
+    it(`${board.label}: the deck runs smooth across the wing, where the whole section's shift left a ledge`, () => {
+      for (const wing of board.wings) {
+        for (const inches of [1, 2]) {
+          const y = (width: number) => width - inchesToMm(inches);
+          const shared = Math.abs(ledgeAt("live", board, wing, y));
+          const shifted = Math.abs(ledgeAt("shift", board, wing, y));
+          expect(shifted).toBeGreaterThan(0.1);
+          expect(shared).toBeLessThan(shifted / 2);
         }
-      });
-      for (const inner of board.inners) {
-        // Just behind the wing, the old rule's deck stands more than 0.1 mm off somewhere in the same range.
-        const i = board.stations.findIndex((s) => s < inner - 1);
-        const section = board.live[i];
-        const take = wingTakeAt(board.geometry, board.stations[i]);
-        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
-        const old = deckRun(halfOf(board.old[i]));
-        const wingless = deckRun(halfOf(board.without[i]));
-        const off = Math.max(...wingless.filter(([y]) => y <= limit).map(([y, h]) => Math.abs(h - heightAt(old, y))));
-        expect(off).toBeGreaterThan(0.1);
       }
     }, 60_000);
 
-    it(`${board.label}: the rail stands on the stepped outline, keeps its shape, and nothing folds`, () => {
-      const bound = isDeep(board) ? 2.5 : 0.75;
-      // Today's rail at each station (the wing shifting the whole section in), with the tips' fit as live (D-34).
-      const shifted = boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS, board.stations);
+    it(`${board.label}: behind the wing the rail stands thicker, ahead of it thinner, and they share the step`, () => {
+      let behind = 0;
+      let ahead = 0;
+      board.stations.forEach((station, i) => {
+        const share = wingShareAt(board.geometry, station);
+        // Clear of the blend's far ends, where the share is too small to read.
+        if (Math.abs(share) < 0.25) return;
+        const y = board.live[i].halfWidth - inchesToMm(1);
+        const drawn = heightAt(deckRun(halfOf(board.live[i])), y);
+        const own = heightAt(deckRun(halfOf(board.shifted[i])), y);
+        if (share > 0) {
+          expect(drawn).toBeGreaterThan(own);
+          behind++;
+        } else {
+          expect(drawn).toBeLessThan(own);
+          ahead++;
+        }
+      });
+      expect(behind).toBeGreaterThan(10);
+      expect(ahead).toBeGreaterThan(10);
+    }, 60_000);
+
+    it(`${board.label}: the rail stands on the stepped outline, the bottom stays flat, and nothing folds`, () => {
       board.stations.forEach((station, i) => {
         const section = board.live[i];
         const drawn = halfOf(section);
-        const old = halfOf(shifted[i]);
         expect(section.halfWidth).toBe(foamHalfWidthOf(board.geometry, station));
         expect(Math.abs(Math.max(...drawn.map((p) => p[0])) - section.halfWidth)).toBeLessThan(1e-9);
-        for (const p of drawn) {
-          if (p[0] >= section.halfWidth - 15) expect(distanceTo(old, p)).toBeLessThan(bound);
-        }
         expect(folds(deckRun(drawn), 1)).toBe(false);
         expect(folds(bottomRun(drawn), -1)).toBe(false);
+        for (const [, h] of bottomRun(drawn)) expect(h).toBeLessThan(1e-9);
       });
     }, 60_000);
 
-    it(`${board.label}: the flat bottom carries straight through out to Deck Mark 3`, () => {
-      board.stations.forEach((station, i) => {
-        const section = board.live[i];
-        const take = wingTakeAt(board.geometry, station);
-        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
-        for (const [y, h] of bottomRun(halfOf(section))) {
-          if (y <= limit) expect(h).toBe(0);
-        }
-      });
-    }, 60_000);
-
-    it(`${board.label}: a station the wings do not reach reads what it read with the wing rule off`, () => {
+    it(`${board.label}: a station the shared stretch does not reach reads what it read with the wing rule off`, () => {
       const live = boardSections(board.input);
       const shifted = boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS);
       let reached = 0;
       live.forEach((section, i) => {
-        if (wingTakeAt(board.geometry, section.station) > 0) {
+        if (wingShareAt(board.geometry, section.station) !== 0) {
           reached++;
           return;
         }
@@ -1595,27 +1581,7 @@ describe("D-33 a wing steps the outline only", () => {
     }, 60_000);
   }
 
-  describe("the tuck steps in with the rail", () => {
-    for (const board of WINGED.filter((b) => b.label.endsWith("|one-soft"))) {
-      it(`${board.label}: the tuck line moves in less than the take, and on a Symmetrical rail not at all`, () => {
-        const symmetrical = board.input.rails.tail.symmetrical && board.input.rails.center.symmetrical;
-        board.stations.forEach((station, i) => {
-          const take = wingTakeAt(board.geometry, station);
-          const moved = halfOf(board.without[i])[BOTTOM_EDGE][0] - halfOf(board.live[i])[BOTTOM_EDGE][0];
-          expect(moved).toBeGreaterThan(-0.05);
-          if (symmetrical) expect(moved).toBeLessThan(0.05);
-          else expect(moved).toBeLessThan(take);
-        });
-      }, 60_000);
-    }
-
-    it("the Longboard is the Symmetrical case, and the other three are not", () => {
-      const symmetrical = WINGED.filter((b) => b.label.endsWith("|one-soft")).map(
-        (b) => b.input.rails.tail.symmetrical && b.input.rails.center.symmetrical,
-      );
-      expect(symmetrical).toEqual([false, false, false, true]);
-    });
-
+  describe("the tuck moves with the rail", () => {
     for (const board of WINGED.filter((b) => b.label.endsWith("|one") && b.input.rails.tailHardEdge)) {
       it(`${board.label}: on a hard edge the corner is the rail itself, on the stepped outline`, () => {
         let hard = 0;
@@ -1627,6 +1593,17 @@ describe("D-33 a wing steps the outline only", () => {
         });
         expect(hard).toBeGreaterThan(10);
       });
+    }
+
+    for (const board of WINGED.filter((b) => b.label.endsWith("|one-soft") && !b.input.rails.center.symmetrical)) {
+      it(`${board.label}: a tuck narrower than the roll stays its own width from the rail, within the move`, () => {
+        board.stations.forEach((station, i) => {
+          const section = board.live[i];
+          const width = section.halfWidth - halfOf(section)[BOTTOM_EDGE][0];
+          const own = board.shifted[i].halfWidth - halfOf(board.shifted[i])[BOTTOM_EDGE][0];
+          expect(Math.abs(width - own)).toBeLessThanOrEqual(Math.abs(wingShareAt(board.geometry, station)) + 1e-6);
+        });
+      }, 60_000);
     }
   });
 });
@@ -1649,7 +1626,7 @@ describe("D-34 the rail fits into a narrow tip", () => {
       const live = boardSections(input);
       const old = boardSectionsWith(input, RAIL_CHARACTER_FADE);
       live.forEach((section, i) => {
-        if (!section.result || section.blended || wingTakeAt(geometry, section.station) > 0) return;
+        if (!section.result || section.blended || wingShareAt(geometry, section.station) !== 0) return;
         const before = old[i];
         const sampled = sampledFinishedRail(before.result!, before.domed, before.halfWidth);
         const fitted = fittedFinishedRail(before.result!, before.domed, before.halfWidth);
@@ -1715,6 +1692,6 @@ describe("D-34 the rail fits into a narrow tip", () => {
   it("OLD_SURFACE_FIT is what every rule before plan 16-16 does, and the live rule fits both", () => {
     expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip" });
     expect(RAIL_CHARACTER_FADE.fit).toBeUndefined();
-    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "hold-deck", tips: "fit" });
+    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit" });
   });
 });
