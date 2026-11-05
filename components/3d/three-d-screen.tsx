@@ -69,8 +69,9 @@ import {
   type ViewName,
 } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls, ThreeDHardEdge, ThreeDShow } from "./three-d-controls";
+import { ThreeDControls, ThreeDHardEdge, ThreeDShow, type ExportState } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
+import { exportForCnc } from "./export-cnc";
 
 /**
  * The 3D screen (Phase 16, R1–R3, UI-SPEC §1–§3, §8, §9, §13): the board the shaper designed, drawn as a lit solid
@@ -266,7 +267,7 @@ export function ThreeDScreen() {
         framePoints: points,
         centre,
       };
-      return { ok: true as const, board, triangles: surface.triangleCount };
+      return { ok: true as const, surface, board, triangles: surface.triangleCount };
     } catch (error) {
       return { ok: false as const, error };
     }
@@ -356,6 +357,23 @@ export function ThreeDScreen() {
   // shows an old mount's state.
   const [sceneState, setSceneState] = useState<CanvasState>("loading");
   const buildable = built.ok;
+
+  // Export for CNC… (16-12, D-14, D-16): the zip of the very surface drawn here, built and downloaded inside the tap
+  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank
+  // or Contour Stripes switches — and needs no 3D drawing. The done line stays until the next export or until the
+  // shaper leaves the screen (this state goes with the screen); a board that can't be built has nothing to export.
+  const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
+  const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
+  const onExport = () => {
+    if (!built.ok) return;
+    try {
+      const { fileName, sliceCount } = exportForCnc(built.surface, boardName);
+      setExportResult({ kind: "done", fileName, sliceCount });
+    } catch (error) {
+      console.error("The CNC files could not be made:", error);
+      setExportResult({ kind: "failed" });
+    }
+  };
 
   /** Hands the crop to the scene for the canvas's size now — a resized canvas keeps the same zoom and slide. */
   const pushCrop = useCallback(() => {
@@ -905,7 +923,13 @@ export function ThreeDScreen() {
     <DesignScreenShell
       wideView={wideView}
       controls={
-        <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
+        <ThreeDControls
+          onView={onView}
+          onReset={() => onReset()}
+          drawingUnavailable={message !== null}
+          exportState={exportState}
+          onExport={onExport}
+        >
           <ThreeDHardEdge />
           <ThreeDShow
             showFins={showFins}

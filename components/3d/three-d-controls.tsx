@@ -5,7 +5,7 @@ import { useDesign } from "@/components/design/design-store";
 import { SliderRow } from "@/components/design/slider-row";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Live } from "@/components/rocker/live";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import {
   formatHardEdgeBlendsFrom,
@@ -25,14 +25,16 @@ import { THREE_D_COPY } from "./three-d-copy";
  *
  * Between the title and VIEW sits the `children` slot: the tail's two Hard Edge sliders bound to RAILS' own values
  * (D-30, `ThreeDHardEdge`), then SHOW (`ThreeDShow`, 16-10: Fins; 16-11 adds Blank and Contour Stripes), directly
- * above VIEW as UI-SPEC §1 draws them. EXPORT (16-12) follows VIEW. Each block is a `flex flex-col gap-2` opening
- * with its ruled heading.
+ * above VIEW as UI-SPEC §1 draws them. EXPORT (16-12) follows VIEW, last on the panel. Each block is a
+ * `flex flex-col gap-2` opening with its ruled heading.
  */
 export function ThreeDControls({
   children,
   onView,
   onReset,
   drawingUnavailable,
+  exportState,
+  onExport,
 }: {
   children?: ReactNode;
   /** Turns the board to a preset view and re-frames it at 1x. */
@@ -41,6 +43,10 @@ export function ThreeDControls({
   onReset: () => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): the view buttons have nothing to turn. */
   drawingUnavailable: boolean;
+  /** What the export's status line says (UI-SPEC §7): nothing yet, the done line, the failed line, or why it waits. */
+  exportState: ExportState;
+  /** Builds and downloads the zip, inside the tap. */
+  onExport: () => void;
 }) {
   return (
     <div className="flex flex-col gap-5" data-three-d-controls>
@@ -52,9 +58,20 @@ export function ThreeDControls({
       </div>
       {children}
       <ViewSection onView={onView} onReset={onReset} disabled={drawingUnavailable} />
+      <ExportSection state={exportState} onExport={onExport} />
     </div>
   );
 }
+
+/**
+ * The export's state, as its status line reads it (UI-SPEC §7). There is no working state: the zip is built and
+ * downloaded inside the tap, so the line goes straight from empty to the done line.
+ */
+export type ExportState =
+  | { kind: "idle" }
+  | { kind: "done"; fileName: string; sliceCount: number }
+  | { kind: "failed" }
+  | { kind: "cant-build" };
 
 /** A ruled section heading, the sidebars' own (`fin-controls.tsx`'s `SectionHeading`). */
 export function ThreeDSectionHeading({ children }: { children: ReactNode }) {
@@ -234,4 +251,65 @@ function ViewSection({
       </div>
     </div>
   );
+}
+
+/**
+ * EXPORT (UI-SPEC §1, §7; D-14, D-15 as amended by D-23): the screen's one accent-filled button, the note naming the
+ * one program known to read the files, and a status line that is always in the page (empty until the first export)
+ * so a screen reader hears the result.
+ *
+ * The button is dimmed only when the board can't be built — there is no surface to write. It stays live with no 3D
+ * drawing (the files don't need it) and on a locked board (`data-lock-exempt`: exporting changes nothing, UI-SPEC §9).
+ * The done line names the file in ink and counts the slices from the writer, never a typed number.
+ */
+function ExportSection({ state, onExport }: { state: ExportState; onExport: () => void }) {
+  return (
+    <div className="flex flex-col gap-2" data-three-d-export>
+      <ThreeDSectionHeading>{THREE_D_COPY.exportHeading}</ThreeDSectionHeading>
+      <div>
+        <Button
+          type="button"
+          data-lock-exempt
+          disabled={state.kind === "cant-build"}
+          onClick={onExport}
+          className="w-full border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85"
+        >
+          {THREE_D_COPY.exportButton}
+        </Button>
+        <div className="mt-2 text-xs text-surf-ink-muted font-normal">{THREE_D_COPY.exportNote}</div>
+        <div
+          role="status"
+          aria-live="polite"
+          data-three-d-export-status={state.kind}
+          className={cn("mt-2 text-xs font-normal", state.kind === "failed" ? "text-surf-warning-ink" : "text-surf-ink-muted")}
+        >
+          <ExportStatus state={state} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The status line's words for each state; the done line is the copy's own, with the file's name alone in ink. */
+function ExportStatus({ state }: { state: ExportState }) {
+  switch (state.kind) {
+    case "idle":
+      return null;
+    case "failed":
+      return THREE_D_COPY.exportFailed;
+    case "cant-build":
+      return THREE_D_COPY.exportNothingYet;
+    case "done": {
+      // The copy's own done line, split where the file's name goes, so the sentence is never retyped here.
+      const marker = "\u0000";
+      const [before, after] = THREE_D_COPY.exportDone(marker, state.sliceCount).split(marker);
+      return (
+        <>
+          {before}
+          <span className="text-surf-ink">{state.fileName}</span>
+          {after}
+        </>
+      );
+    }
+  }
 }

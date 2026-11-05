@@ -2,6 +2,17 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * ADDED 2026-11-04 (Phase 16, plan 16-12, branch board-3d) — a sixth picture, `three-d-desktop.png`, the 3D screen
+ * (/design/3d) at 1280 × 800: the default board lit at its first view, and the panel's HARD EDGE, SHOW, VIEW and
+ * EXPORT sections with Export for CNC… and its note. The canvas is NOT masked (D-28): headless Chromium draws WebGL in
+ * software and puts down the same pixels every run (research §B), so the picture pins the board as well as the panel
+ * and the chrome. No WebKit canvas is ever pinned — this spec runs on the desktop project only. The shot waits for the
+ * scene's `ready` and for two frames with no new drawing, so the loading picture is never in it. The other five were
+ * re-run unchanged, byte for byte. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3212) in the plan's
+ * worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the merge. Re-record
+ * it only after inspecting the diff, from the main checkout, like its siblings. SHA-256 (first 8 characters): 3D
+ * fb4d7c90.
+ *
  * RE-RECORDED 2026-11-04 (Phase 16, plan 16-14, branch board-3d) — all five, nav row only: 16-08 added the seventh
  * screen, so the top row now ends TEMPLATE · ROCKER · RAILS · VOLUME · FINS · SUMMARY · 3D. At 1280 the six existing
  * links sit 40 dots further left to make room for `3D` and its gap (the gap between links is unchanged at this
@@ -323,5 +334,29 @@ test.describe("desktop baseline screenshots", () => {
     await page.goto("/design/fins");
     await expect(page.locator("svg").first()).toBeVisible();
     await expect(page).toHaveScreenshot("fins-desktop.png");
+  });
+
+  test("3D (/design/3d)", async ({ page }) => {
+    await page.goto("/design/3d");
+    // The lit board at its first view, the canvas unmasked (Chromium's software drawing is the same every run).
+    const host = page.locator("[data-board-3d]");
+    await expect(host).toHaveAttribute("data-board-state", "ready", { timeout: 30_000 });
+    // Settled: the scene has drawn and two looks a frame apart find no new frame.
+    await expect
+      .poll(
+        () =>
+          host.evaluate(
+            (el) =>
+              new Promise<boolean>((resolve) => {
+                const count = el.getAttribute("data-frames");
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => resolve(Number(count) > 0 && el.getAttribute("data-frames") === count)),
+                );
+              }),
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect(page).toHaveScreenshot("three-d-desktop.png");
   });
 });
