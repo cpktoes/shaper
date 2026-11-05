@@ -270,4 +270,9 @@ None beyond the plan's threat model:
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 6 checkpoint.
+Presented by the orchestrator at the Wave 6 checkpoint, 2026-11-04, with the zoom-and-slide picture. The founder:
+"Approved", and on the slide rule above 2x: "Keep the executor's rule" — up to 2x the board's centre stays in the
+window, above 2x the window may go anywhere over the board, so the tips can be looked at close up. Merged into
+`board-3d` as b158812d. The smaller calls (Back to 1x live after a slide, a view button / Reset View / Home also
+resetting zoom and slide) were accepted by the orchestrator; the Mac trackpad pinch in Safari is the founder's own check
+on his review server.

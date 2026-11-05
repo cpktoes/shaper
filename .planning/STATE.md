@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–5 merged on board-3d 2026-11-04 (…, 16-14 the suite counts seven screens, five desktop pictures re-recorded); plan 16-15 (D-32) written by the planner, approved with the founder's rulings, awaiting its docs merge; next Wave 6 — 16-09 zoom and slide; then 16-10 fins, 16-11 ghost/stripes, 16-12 export, 16-15, 16-13 go-live 2"
+stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–6 merged on board-3d 2026-11-04 (…, 16-09 zoom and slide); 16-15 planned and approved (wave 10); next Wave 7 — 16-10 fins; then 16-11, 16-12, 16-15, 16-13 go-live 2"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Phase 16 Wave 5 merged: the browser suite counts seven screens and the five desktop pictures are re-recorded; go-live 1 live"
+last_activity_desc: "Phase 16 Wave 6 merged: the 3D board zooms and slides, lit the same at every zoom"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 46
-  completed_plans: 40
-  percent: 87
+  completed_plans: 41
+  percent: 89
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
