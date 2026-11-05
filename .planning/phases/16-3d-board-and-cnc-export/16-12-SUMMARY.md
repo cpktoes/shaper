@@ -198,4 +198,9 @@ after the click.
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 9 checkpoint.
+Presented by the orchestrator at the Wave 9 checkpoint, 2026-11-04, with the export picture. The founder: "Approved."
+Merged into `board-3d` as ae659380. The locked-board reading (the HARD EDGE rows greyed, as 16-07 ruled; SHOW, VIEW
+and Export live) and the other deviations were accepted by the orchestrator. The sixth desktop picture could not be
+confirmed under Turbopack from the main checkout while the founder's review server held its dev lock; the webpack
+picture stands, as the five before it, and the branch gate's production specs were run after the merge. The founder
+tries the export on his review server and in Shape3D's trial at go-live 2.
