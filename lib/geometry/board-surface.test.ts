@@ -13,6 +13,10 @@ import {
   SURFACE_POINTS,
   SURFACE_STATION_STEP_IN,
   surfaceStations,
+  WIRE_LINE_SPACING_IN,
+  WIRE_RING_STEP_IN,
+  wireLines,
+  wireSegments,
   type BoardSurface,
   type BoardSurfaceInput,
   type SurfaceRing,
@@ -739,3 +743,179 @@ describe("the surface file is pure arrangement (SPEC prohibitions, D-05, C5)", (
     expect(SURFACE_POINTS).toEqual({ deck: 48, rail: 32, bottom: 24, wall: 4 });
   });
 });
+
+describe("the wire view's lines (D-42)", () => {
+  const shortboard = BUILT.find((b) => b.label === "shortboard|asis|soft")!;
+  const fish = BUILT.find((b) => b.label === "fish|asis|soft")!;
+  const nearly = (a: number, b: number, tol = 1e-9) => Math.abs(a - b) <= tol;
+
+  /** A preset's board re-cut to `lengthIn` × `widthIn`. */
+  function sized(lengthIn: number, widthIn: number) {
+    const fields = shortboard.fields;
+    const outline = { ...fields.outline, length: inchesToMm(lengthIn), widePointWidth: inchesToMm(widthIn) };
+    return buildBoardSurface(surfaceInputOf({ ...fields, outline }).input);
+  }
+
+  it("draws at the founder's density: a ring every 1 1/2\", a long line per whole inch of width", () => {
+    expect(WIRE_RING_STEP_IN).toBe(1.5);
+    expect(WIRE_LINE_SPACING_IN).toBe(1);
+  });
+
+  it("gives a 6'0\" × 20\" board 48 rings and 20 long lines on each face, and a 20 1/2\" board still 20", () => {
+    const wire = wireLines(sized(72, 20));
+    expect(wire.ringStations).toHaveLength(Math.floor(72 / WIRE_RING_STEP_IN));
+    expect(wire.deck).toHaveLength(20);
+    expect(wire.bottom).toHaveLength(20);
+    const half = wireLines(sized(72, 20.5));
+    expect(half.deck).toHaveLength(20);
+    expect(half.bottom).toHaveLength(20);
+  });
+
+  it("draws more on a longer or wider board", () => {
+    const wire = wireLines(sized(78, 21));
+    expect(wire.ringStations).toHaveLength(Math.floor(78 / WIRE_RING_STEP_IN));
+    expect(wire.deck).toHaveLength(21);
+    expect(wire.bottom).toHaveLength(21);
+  });
+
+  it("spaces the rings a step apart and keeps them on the board", () => {
+    const { ringStations } = wireLines(sized(72, 20));
+    ringStations.forEach((s, i) => {
+      if (i > 0) expect(s - ringStations[i - 1]).toBeCloseTo(inchesToMm(WIRE_RING_STEP_IN), 9);
+      expect(s).toBeGreaterThan(0);
+      expect(s).toBeLessThan(inchesToMm(72));
+    });
+    expect(ringStations[0]).toBeCloseTo(inchesToMm(72) - ringStations.at(-1)!, 9);
+  });
+
+  it("holds each long line at one share of the half-width at every ring, so the lines fan into each tip", () => {
+    const { surface } = shortboard;
+    const wire = wireLines(surface);
+    const p = surface.positions;
+    const lastRight = SURFACE_POINTS.deck - 1;
+    const apexAt = surface.rings.map((ring) => Math.abs(p[3 * ring.right[lastRight] + 1]));
+    const wide = surface.rings.findIndex((ring) => ring.station > surface.length / 2);
+    for (const face of [wire.deck, wire.bottom]) {
+      for (const line of face) {
+        expect(line).toHaveLength(surface.rings.length);
+        const share = line[wide][1] / apexAt[wide];
+        expect(Math.abs(share)).toBeLessThan(1);
+        line.forEach((point, r) => {
+          expect(point[0]).toBe(surface.rings[r].station);
+          if (apexAt[r] > 1) expect(nearly(point[1] / apexAt[r], share, 1e-9)).toBe(true);
+        });
+      }
+    }
+    // One inch apart where the board is widest, spread evenly about the stringer.
+    const across = wire.deck.map((line) => line[wide][1]).sort((a, b) => a - b);
+    across.forEach((y, i) => expect(nearly(y, -across[across.length - 1 - i], 1e-9)).toBe(true));
+  });
+
+  it("puts every end point on the surface, between its rings where a station falls between them", () => {
+    for (const { surface } of [shortboard, fish]) {
+      const wire = wireLines(surface);
+      const near = trianglesByStation(surface);
+      const points = [...wire.rings.flat(), ...wire.deck.flat(), ...wire.bottom.flat()];
+      for (let i = 0; i < points.length; i += 11) {
+        for (const v of points[i]) expect(Number.isFinite(v)).toBe(true);
+        expect(distanceToMesh(surface, near, points[i])).toBeLessThan(1e-6);
+      }
+    }
+  });
+
+  it("carries the outline loop the CNC file carries, whole, in addition to the counts", () => {
+    for (const { surface } of [shortboard, fish]) {
+      expect(wireLines(surface).outline).toEqual(boardOutlineLoop(surface));
+    }
+  });
+
+  it("gives a swallow's two pieces their own lines and their own ring loops", () => {
+    const { surface, geometry } = fish;
+    const wire = wireLines(surface);
+    const crotch = geometry.centreCloseStation;
+    const inNotch = wire.ringStations.filter((s) => s < crotch).length;
+    expect(inNotch).toBeGreaterThan(0);
+    expect(wire.rings).toHaveLength(wire.ringStations.length + inNotch);
+    const notched = surface.rings.findIndex((ring) => ring.pieces.length === 2 && ring.pieces[0].inner > 1);
+    const inner = surface.rings[notched].pieces[0].inner;
+    for (const line of [...wire.deck, ...wire.bottom]) {
+      // No line stands in the air between the two pieces.
+      expect(Math.abs(line[notched][1])).toBeGreaterThanOrEqual(inner - 1e-9);
+    }
+    const right = wire.deck.filter((line) => line[notched][1] > 0).length;
+    const left = wire.deck.filter((line) => line[notched][1] < 0).length;
+    expect(right).toBe(left);
+  });
+
+  it("draws the same segments from the same surface, each a pair of ends", () => {
+    const { surface } = shortboard;
+    const segments = wireSegments(wireLines(surface));
+    expect(wireSegments(wireLines(surface))).toEqual(segments);
+    expect(segments.length % 6).toBe(0);
+    expect(segments.every((v) => Number.isFinite(v))).toBe(true);
+    const wire = wireLines(surface);
+    const count =
+      wire.rings.reduce((sum, loop) => sum + loop.length, 0) +
+      [...wire.deck, ...wire.bottom].reduce((sum, line) => sum + line.length - 1, 0) +
+      wire.outline.length;
+    expect(segments.length).toBe(count * 6);
+  });
+});
+
+/** The surface's triangles grouped by the inch of the board they touch, so a point is only tested against its own. */
+function trianglesByStation(surface: BoardSurface): Map<number, number[]> {
+  const buckets = new Map<number, number[]>();
+  const inch = inchesToMm(1);
+  for (let t = 0; t < surface.triangleCount; t++) {
+    const xs = [0, 1, 2].map((e) => surface.positions[3 * surface.indices[3 * t + e]]);
+    for (let b = Math.floor(Math.min(...xs) / inch); b <= Math.floor(Math.max(...xs) / inch); b++) {
+      if (!buckets.has(b)) buckets.set(b, []);
+      buckets.get(b)!.push(t);
+    }
+  }
+  return buckets;
+}
+
+/** How far a point is from the nearest triangle of the surface. */
+function distanceToMesh(surface: BoardSurface, buckets: Map<number, number[]>, point: readonly number[]): number {
+  const corner = (v: number) => [0, 1, 2].map((k) => surface.positions[3 * v + k]);
+  let best = Infinity;
+  for (const t of buckets.get(Math.floor(point[0] / inchesToMm(1))) ?? []) {
+    const [a, b, c] = [0, 1, 2].map((e) => corner(surface.indices[3 * t + e]));
+    best = Math.min(best, distanceToTriangle(point, a, b, c));
+  }
+  return best;
+}
+
+/** The distance from `p` to the triangle a, b, c (the closest-point walk over its regions). */
+function distanceToTriangle(p: readonly number[], a: number[], b: number[], c: number[]): number {
+  const sub = (u: readonly number[], v: readonly number[]) => [u[0] - v[0], u[1] - v[1], u[2] - v[2]];
+  const dot = (u: number[], v: number[]) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const along = (from: number[], d: number[], k: number) => [from[0] + d[0] * k, from[1] + d[1] * k, from[2] + d[2] * k];
+  const ab = sub(b, a);
+  const ac = sub(c, a);
+  const ap = sub(p, a);
+  const d1 = dot(ab, ap);
+  const d2 = dot(ac, ap);
+  const bp = sub(p, b);
+  const d3 = dot(ab, bp);
+  const d4 = dot(ac, bp);
+  const cp = sub(p, c);
+  const d5 = dot(ab, cp);
+  const d6 = dot(ac, cp);
+  const vc = d1 * d4 - d3 * d2;
+  const vb = d5 * d2 - d1 * d6;
+  const va = d3 * d6 - d5 * d4;
+  let q: number[];
+  if (d1 <= 0 && d2 <= 0) q = a;
+  else if (d3 >= 0 && d4 <= d3) q = b;
+  else if (d6 >= 0 && d5 <= d6) q = c;
+  else if (vc <= 0 && d1 >= 0 && d3 <= 0) q = along(a, ab, d1 / (d1 - d3));
+  else if (vb <= 0 && d2 >= 0 && d6 <= 0) q = along(a, ac, d2 / (d2 - d6));
+  else if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) q = along(b, sub(c, b), (d4 - d3) / (d4 - d3 + (d5 - d6)));
+  else {
+    const denom = 1 / (va + vb + vc);
+    q = [0, 1, 2].map((k) => a[k] + ab[k] * vb * denom + ac[k] * vc * denom);
+  }
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+}

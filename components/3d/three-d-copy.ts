@@ -32,12 +32,6 @@ export const THREE_D_COPY = {
   tailRailBlendsFromSlider: "Tail Rail blends from",
   tailRailEndsAtSlider: "Tail Rail ends at",
   tailRailFromTheTail: (distance: string) => `${distance} from the tail`,
-  showHeading: "Show",
-  fins: "Fins",
-  blank: "Blank",
-  noBlankHint: "No blank on this board — pick one on ROCKER to see it here.",
-  contourStripes: "Contour Stripes",
-  contourStripesHint: "Bands of light that kink at a bump or a flat spot.",
   viewHeading: "View",
   viewsGroup: "Views",
   views: { deck: "Deck", bottom: "Bottom", side: "Side", nose: "Nose", tail: "Tail" },
@@ -51,6 +45,22 @@ export const THREE_D_COPY = {
   exportWorking: "Making the files…",
   exportFailed: "Couldn't make the files — try again.",
   exportNothingYet: "There's nothing to export until the board can be drawn.",
+
+  // The corner switches (D-35), each drawn as an icon over the canvas: these are their spoken names and tooltips.
+  /** The Fins switch. */
+  fins: "Fins",
+  /** The Blank switch. */
+  blank: "Blank",
+  /** The Blank switch's tooltip and spoken description on a hand-set board, where it is dimmed. */
+  noBlankHint: "No blank on this board — pick one on ROCKER to see it here.",
+  /** The Contour Stripes switch. */
+  contourStripes: "Contour Stripes",
+  /** The Contour Stripes switch's tooltip and spoken description. */
+  contourStripesTip: "Contour Stripes — bands of light that kink at a bump or a flat spot.",
+  /** The # switch (D-42). */
+  wireView: "Wire View",
+  /** The # switch's tooltip and spoken description. */
+  wireViewTip: "Wire View — the board drawn in very thin black lines across and along it.",
 
   // On the canvas: each message is two lines.
   browserCantDraw: {

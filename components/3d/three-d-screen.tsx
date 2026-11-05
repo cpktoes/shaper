@@ -16,7 +16,7 @@ import { BoardNameTab } from "@/components/design/board-name-tab";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { useDesign } from "@/components/design/design-store";
-import { useBelowShellWidth, useReducedMotion } from "@/components/design/use-viewer-media";
+import { useReducedMotion } from "@/components/design/use-viewer-media";
 import {
   AT_ONE_CROP,
   cropPinch,
@@ -40,7 +40,7 @@ import {
   type WheelAccumulator,
 } from "@/components/viewer/zoom-math";
 import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
-import { buildBoardSurface } from "@/lib/geometry/board-surface";
+import { buildBoardSurface, wireLines, wireSegments } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
 import { buildBlankGhost, type BlankGhost } from "@/lib/geometry/blank-ghost";
@@ -69,8 +69,9 @@ import {
   type ViewName,
 } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls, ThreeDShow, ThreeDTailRail, type ExportState } from "./three-d-controls";
+import { ThreeDControls, ThreeDTailRail, type ExportState } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
+import { ThreeDShowButtons } from "./three-d-show-buttons";
 import { exportForCnc } from "./export-cnc";
 
 /**
@@ -266,6 +267,7 @@ export function ThreeDScreen() {
         stringer: stringerLines(surface),
         framePoints: points,
         centre,
+        wire: wireSegments(wireLines(surface)),
       };
       return { ok: true as const, surface, board, triangles: surface.triangleCount };
     } catch (error) {
@@ -278,7 +280,7 @@ export function ThreeDScreen() {
   }, [built]);
 
   // The fins (16-10, D-06, D-21, D-25): FINS' own placement, each fin stood on the board's bottom with its generic
-  // outline. Shown unless the shaper unticks Fins — a view switch, never stored, never part of the board (D-17).
+  // outline. Shown unless the shaper switches Fins off — a view switch, never stored, never part of the board (D-17).
   const fins = useMemo(
     () =>
       placedFins(
@@ -298,7 +300,7 @@ export function ThreeDScreen() {
   const finsRef = useRef<{ fins: readonly PlacedFin[]; visible: boolean }>({ fins, visible: showFins });
 
   // The blank's ghost (16-11, D-08): the blank ROCKER draws — its top view built exactly as ROCKER builds it, and its
-  // side view's bottom and deck — as a see-through shell round the board. Off until the shaper ticks Blank; a hand-set
+  // side view's bottom and deck — as a see-through shell round the board. Off until the shaper presses Blank; a hand-set
   // board has none. A view switch only: never stored, never part of the board or the files (D-16, D-17).
   const ghost = useMemo(
     () =>
@@ -316,9 +318,13 @@ export function ThreeDScreen() {
   const [showBlank, setShowBlank] = useState(false);
   const ghostRef = useRef<{ ghost: BlankGhost | null; visible: boolean }>({ ghost, visible: showBlank });
 
-  // Contour Stripes (16-11, D-12): off until ticked; a view switch only, like the other two.
-  const [stripes, setStripes] = useState(false);
+  // Contour Stripes (16-11, D-12) and the wire view (D-42): each replaces the foam's shading, so the board has one look
+  // at a time. Off until pressed; a view switch only, like the other two.
+  const [look, setLook] = useState<"shaded" | "stripes" | "wire">("shaded");
+  const stripes = look === "stripes";
+  const wire = look === "wire";
   const stripesRef = useRef(stripes);
+  const wireRef = useRef(wire);
 
   // The loading picture (UI-SPEC §9): the 3D tile's turned board. A board whose turn can't be worked out has no
   // picture — the line alone.
@@ -351,7 +357,6 @@ export function ThreeDScreen() {
   // what the zoom row shows — the level, and whether there is anything for Back to 1x to undo.
   const cropRef = useRef<CropView>(AT_ONE_CROP);
   const [zoomRow, setZoomRow] = useState<{ zoom: number; atOne: boolean }>({ zoom: 1, atOne: true });
-  const belowShellWidth = useBelowShellWidth();
   // What the scene last reported. Each mount's cleanup puts it back to `loading`, and a mount that has gone can
   // no longer report, so a scene that comes back (after the board could not be built and then could again) never
   // shows an old mount's state.
@@ -359,8 +364,8 @@ export function ThreeDScreen() {
   const buildable = built.ok;
 
   // Export for CNC… (16-12, D-14, D-16): the zip of the very surface drawn here, built and downloaded inside the tap
-  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank
-  // or Contour Stripes switches — and needs no 3D drawing. The done line stays until the next export or until the
+  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank,
+  // Contour Stripes or Wire View switches — and needs no 3D drawing. The done line stays until the next export or until the
   // shaper leaves the screen (this state goes with the screen); a board that can't be built has nothing to export.
   const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
   const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
@@ -396,14 +401,14 @@ export function ThreeDScreen() {
     [pushCrop],
   );
 
-  // Hand the fins and the Fins tick to the scene that is drawing; a tick made while it loads applies when it arrives.
+  // Hand the fins and the Fins switch to the scene that is drawing; a press made while it loads applies when it arrives.
   // Nothing else changes: the turn, the frame and the crop stay as they are.
   useEffect(() => {
     finsRef.current = { fins, visible: showFins };
     sceneRef.current?.setFins(fins, showFins);
   }, [fins, showFins]);
 
-  // The same for the blank's ghost and the Blank tick.
+  // The same for the blank's ghost and the Blank switch.
   useEffect(() => {
     ghostRef.current = { ghost, visible: showBlank };
     sceneRef.current?.setGhost(ghost, showBlank);
@@ -414,6 +419,12 @@ export function ThreeDScreen() {
     stripesRef.current = stripes;
     sceneRef.current?.setStripes(stripes);
   }, [stripes]);
+
+  // And for the wire view.
+  useEffect(() => {
+    wireRef.current = wire;
+    sceneRef.current?.setWire(wire);
+  }, [wire]);
 
   // The colours follow the theme while the screen is open (UI-SPEC § Color, §16): a new theme class on the page, or the
   // computer's own light or dark setting changing under System, re-reads the theme's colours and repaints the scene in
@@ -471,6 +482,7 @@ export function ThreeDScreen() {
         handle.setFins(finsRef.current.fins, finsRef.current.visible);
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
+        handle.setWire(wireRef.current);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
         // §9); a view is framed at 1x for its own turn, as its button would have.
         if (pendingFrameRef.current) {
@@ -931,16 +943,6 @@ export function ThreeDScreen() {
           onExport={onExport}
         >
           <ThreeDTailRail />
-          <ThreeDShow
-            showFins={showFins}
-            onShowFins={setShowFins}
-            showBlank={showBlank}
-            onShowBlank={setShowBlank}
-            hasBlank={ghost !== null}
-            stripes={stripes}
-            onStripes={setStripes}
-            disabled={message !== null}
-          />
         </ThreeDControls>
       }
       canvas={
@@ -981,9 +983,10 @@ export function ThreeDScreen() {
             {/* Replaced by the lit board in the same render the scene reports it drawn: no fade (§9 step 4). */}
             {loading && <LoadingPicture art={loadingArt} slow={loadingSlow} />}
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
-            {/* The corner toolbar (UI-SPEC §4): Wide view alone — exactly TEMPLATE's button, on a computer and a
-                sideways phone only (a phone upright has no sidebar to hide), and there from the first paint. No
-                Rotate button (D-04). */}
+            {/* The corner toolbar (UI-SPEC §4, D-35), there from the first paint: on a computer and a sideways phone,
+                Wide view — exactly TEMPLATE's button — then the switches for what the picture includes; on an upright
+                phone, which has no sidebar to hide, those switches alone, packed into the corner. No Rotate button
+                (D-04). */}
             <ViewerToolbar>
               <ViewerToolbarButton
                 onClick={() => setWideView(!wideView)}
@@ -994,9 +997,21 @@ export function ThreeDScreen() {
               >
                 {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
               </ViewerToolbarButton>
+              <ThreeDShowButtons
+                showFins={showFins}
+                onShowFins={setShowFins}
+                showBlank={showBlank}
+                onShowBlank={setShowBlank}
+                hasBlank={ghost !== null}
+                stripes={stripes}
+                onStripes={(on) => setLook(on ? "stripes" : "shaded")}
+                wire={wire}
+                onWire={(on) => setLook(on ? "wire" : "shaded")}
+                disabled={message !== null}
+              />
             </ViewerToolbar>
-            {/* The zoom row every drawing has (UI-SPEC §4): under the corner toolbar at the shell's width, in the
-                corner below it, where there is no toolbar. */}
+            {/* The zoom row every drawing has (UI-SPEC §4): under the corner toolbar at every width, since the corner
+                always holds the switches (D-35). */}
             {zoomable && (
               <ViewerZoomRow
                 zoom={zoomRow.zoom}
@@ -1004,7 +1019,7 @@ export function ThreeDScreen() {
                 atOne={zoomRow.atOne}
                 onStep={onZoomStep}
                 onReset={backToOne}
-                placement={belowShellWidth ? "corner" : "under-toolbar"}
+                placement="under-toolbar"
               />
             )}
             {/* For a screen reader (UI-SPEC §13): how to move the board, and — always in the page, empty until a

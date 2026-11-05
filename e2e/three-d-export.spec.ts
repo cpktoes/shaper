@@ -200,27 +200,28 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expectNote(page);
   });
 
-  test("4. the files never change with the switches: Fins, Blank and Contour Stripes leave the zip byte for byte the same", async ({
+  test("4. the files never change with the switches: Fins, Blank, Contour Stripes and Wire View leave the zip byte for byte the same", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the switches' views are proven on every project in three-d-show; the bytes here");
     await keepBoard(page, "Fish");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    const tick = (name: string) => panel(page).getByRole("checkbox", { name, exact: true });
-    await expect(tick(THREE_D_COPY.fins)).toBeChecked();
-    await expect(tick(THREE_D_COPY.blank)).not.toBeChecked();
-    await expect(tick(THREE_D_COPY.contourStripes)).not.toBeChecked();
+    const corner = (name: string) => page.locator("[data-viewer-toolbar]").getByRole("button", { name, exact: true });
+    await expect(corner(THREE_D_COPY.fins)).toHaveAttribute("aria-pressed", "true");
+    await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "false");
+    await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
+    await expect(corner(THREE_D_COPY.wireView)).toHaveAttribute("aria-pressed", "false");
     const first = await exportZip(page);
     const firstBytes = await downloadedBytes(first);
 
     // Fins off, Blank on, Contour Stripes on: everything the picture can add or take away, flipped.
-    await tick(THREE_D_COPY.fins).click();
-    await tick(THREE_D_COPY.blank).click();
-    await tick(THREE_D_COPY.contourStripes).click();
-    await expect(tick(THREE_D_COPY.fins)).not.toBeChecked();
-    await expect(tick(THREE_D_COPY.blank)).toBeChecked();
-    await expect(tick(THREE_D_COPY.contourStripes)).toBeChecked();
+    await corner(THREE_D_COPY.fins).click();
+    await corner(THREE_D_COPY.blank).click();
+    await corner(THREE_D_COPY.contourStripes).click();
+    await expect(corner(THREE_D_COPY.fins)).toHaveAttribute("aria-pressed", "false");
+    await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "true");
+    await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "true");
     const second = await exportZip(page);
     const secondBytes = await downloadedBytes(second);
 
@@ -230,6 +231,13 @@ test.describe("Export for CNC… on the 3D screen", () => {
     );
     const { entries, stem } = await expectWholeZip(page, second, "");
     expect(stlOf(entries, stem).count).toBe(Number(await host.getAttribute("data-triangles")));
+
+    // Wire View takes over from Contour Stripes (D-42), and the zip is the same again.
+    await corner(THREE_D_COPY.wireView).click();
+    await expect(corner(THREE_D_COPY.wireView)).toHaveAttribute("aria-pressed", "true");
+    await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
+    const third = await downloadedBytes(await exportZip(page));
+    expect(Buffer.from(third).equals(Buffer.from(firstBytes)), "Wire View never reaches the zip").toBe(true);
   });
 
   test("5. a board with no name downloads Untitled Board-3d.zip", async ({ page }) => {

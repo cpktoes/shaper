@@ -30,6 +30,7 @@ import {
   Line,
   LineBasicMaterial,
   LineLoop,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -80,6 +81,8 @@ export interface BoardSceneInput {
   framePoints: Vec3[];
   /** The board's turning centre, in the surface's own axes. */
   centre: Vec3;
+  /** The wire view's lines (D-42): `wireSegments`, in the surface's own axes. */
+  wire: Float32Array;
   colours: SceneColours;
 }
 
@@ -120,6 +123,14 @@ export interface BoardSceneHandle {
    * stringer, the fins and the ghost draw as usual. One frame per call; the view is untouched.
    */
   setStripes(on: boolean): void;
+  /**
+   * The wire view (D-42): the foam drawn plain and unlit with the board's lines on it in pure black, near side only —
+   * the foam still hides what is behind it. Every line is one device pixel (the founder: "very thin black lines (very
+   * small stroke)"), so the picture is drawn at the screen's full density while this is on, and the stringer is one more
+   * thin line in place of its ribbon. It replaces Contour Stripes. The fins and the ghost draw as usual. One frame per
+   * call; the view is untouched.
+   */
+  setWire(on: boolean): void;
   /**
    * The theme's colours again (16-11): the ground, the foam, the stringer and stripes, the fins and the ghost repainted
    * in place — nothing is rebuilt and nothing moves, so the turn, the frame, the zoom and the slide stay as they are.
@@ -200,6 +211,17 @@ function lightingInForce(): RoomLighting {
 /** The rail lights' height above the deck's plane (UI-SPEC §3). */
 const RAIL_LIGHT_ELEVATION_DEG = 8;
 
+/** The wire view's ink: black on the foam whatever the theme (the founder, D-42). */
+const WIRE_INK = "#000000";
+/** The lit picture's density, drawing pixels per CSS dot: past this a phone spends more than the shading can show. */
+const LIT_DENSITY_LIMIT = 2;
+
+/** Drawing pixels per CSS dot. The wire view takes the screen's full density, so a line is one real pixel on any screen. */
+function drawingDensity(wire: boolean): number {
+  const screen = window.devicePixelRatio || 1;
+  return wire ? screen : Math.min(screen, LIT_DENSITY_LIMIT);
+}
+
 const NOOP_HANDLE: BoardSceneHandle = {
   setBoard() {},
   setTurn() {},
@@ -208,6 +230,7 @@ const NOOP_HANDLE: BoardSceneHandle = {
   setFins() {},
   setGhost() {},
   setStripes() {},
+  setWire() {},
   setColours() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
@@ -389,7 +412,7 @@ export function mountBoardScene(
     events.onState("no-webgl");
     return NOOP_HANDLE;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(drawingDensity(false));
   renderer.toneMapping = NeutralToneMapping;
   const lighting = lightingInForce();
   renderer.toneMappingExposure = lighting.exposure;
@@ -436,9 +459,13 @@ export function mountBoardScene(
   let ghost: BlankGhost | null = null;
   let ghostDisposables: { dispose(): void }[] = [];
   let stripes = false;
-  /** The foam and its two looks — lit by the room, or striped — so Contour Stripes swaps one for the other. */
+  let wire = false;
+  /** The foam and its three looks — lit by the room, striped, or plain under the wire view's lines. */
   let foamMesh: Mesh | null = null;
-  let foamMaterials: { lit: MeshStandardMaterial; striped: ShaderMaterial } | null = null;
+  let foamMaterials: { lit: MeshStandardMaterial; striped: ShaderMaterial; plain: MeshBasicMaterial } | null = null;
+  let wireMesh: LineSegments | null = null;
+  /** The stringer as the wire view changes it: its ribbon hidden, and its one-dot line in the wire's pen. */
+  let stringerDrawn: { ribbons: Mesh[]; lines: Line[]; pen: LineBasicMaterial; wirePen: LineBasicMaterial } | null = null;
   /** Every colour the scene paints with and the theme's token it comes from, so a theme change repaints in place. */
   type Tint = [Color, keyof SceneColours];
   let boardTints: Tint[] = [];
@@ -450,6 +477,18 @@ export function mountBoardScene(
   let reportedReady = false;
   let restoreTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
+
+  /** The foam's look for the switches as they stand, and the wire view's lines with it. */
+  const foamLook = () => {
+    if (foamMesh && foamMaterials) {
+      foamMesh.material = wire ? foamMaterials.plain : stripes ? foamMaterials.striped : foamMaterials.lit;
+    }
+    if (wireMesh) wireMesh.visible = wire;
+    if (stringerDrawn) {
+      for (const ribbon of stringerDrawn.ribbons) ribbon.visible = !wire;
+      for (const line of stringerDrawn.lines) line.material = wire ? stringerDrawn.wirePen : stringerDrawn.pen;
+    }
+  };
 
   /** The board's group at `frame`, turned by `turn`: the only thing in the room that ever moves. */
   const placeBoard = (reframe = true) => {
@@ -552,15 +591,33 @@ export function mountBoardScene(
       vertexShader: STRIPE_VERTEX,
       fragmentShader: STRIPE_FRAGMENT,
     });
-    foamMaterials = { lit: foam, striped };
-    foamMesh = new Mesh(geometry, stripes ? striped : foam);
+    // The wire view's foam: unlit, and set a hair back, so the lines lying on its skin draw and the far side's don't.
+    const plain = new MeshBasicMaterial({
+      color: new Color(colours.foam),
+      toneMapped: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 2,
+    });
+    foamMaterials = { lit: foam, striped, plain };
+    foamMesh = new Mesh(geometry, foam);
     centred.add(foamMesh);
-    disposables.push(geometry, foam, striped);
+    disposables.push(geometry, foam, striped, plain);
     boardTints = [
       [foam.color, "foam"],
       [striped.uniforms.foam.value as Color, "foam"],
       [striped.uniforms.onFoam.value as Color, "onFoam"],
+      [plain.color, "foam"],
     ];
+
+    // The wire view's lines (D-42): one set of lines, pure black in every theme and never tinted by one. A line in
+    // this drawing context is always one pixel of the drawing, so the stroke is set by the picture's density.
+    const wireGeometry = new BufferGeometry();
+    wireGeometry.setAttribute("position", new BufferAttribute(current.wire, 3));
+    const wirePen = new LineBasicMaterial({ color: new Color(WIRE_INK), toneMapped: false });
+    wireMesh = new LineSegments(wireGeometry, wirePen);
+    centred.add(wireMesh);
+    disposables.push(wireGeometry, wirePen);
 
     // The stringer (D-07): a 3 mm ribbon so it has a real stringer's width up close, and a one-dot line on the
     // same points so it is never thinner than a dot far away. Painted, so the lights don't shade it.
@@ -575,15 +632,21 @@ export function mountBoardScene(
     const pen = new LineBasicMaterial({ color: new Color(colours.onFoam), toneMapped: false });
     disposables.push(paint, pen);
     boardTints.push([paint.color, "onFoam"], [pen.color, "onFoam"]);
+    stringerDrawn = { ribbons: [], lines: [], pen, wirePen };
     for (const [points, outward] of [
       [stringer.deck, 1],
       [stringer.bottom, -1],
     ] as const) {
       if (points.length < 2) continue;
       const g = ribbon(points, outward);
-      centred.add(new Mesh(g.ribbon, paint), new Line(g.line, pen));
+      const drawnRibbon = new Mesh(g.ribbon, paint);
+      const drawnLine = new Line(g.line, pen);
+      centred.add(drawnRibbon, drawnLine);
+      stringerDrawn.ribbons.push(drawnRibbon);
+      stringerDrawn.lines.push(drawnLine);
       disposables.push(g.ribbon, g.line);
     }
+    foamLook();
     centred.add(finGroup, ghostGroup);
     buildFins();
     buildGhost();
@@ -685,7 +748,14 @@ export function mountBoardScene(
     setStripes(on) {
       if (disposed) return;
       stripes = on;
-      if (foamMesh && foamMaterials) foamMesh.material = on ? foamMaterials.striped : foamMaterials.lit;
+      foamLook();
+      schedule();
+    },
+    setWire(on) {
+      if (disposed) return;
+      wire = on;
+      foamLook();
+      if (!lost) renderer.setPixelRatio(drawingDensity(on));
       schedule();
     },
     setColours(colours) {
