@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { phase16LiveBoards } from "./__fixtures__/phase16-boards";
 import pin from "./__fixtures__/phase16-live-litres-pin.json";
-import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "./design";
-import { HARD_EDGE_FADE, railCharacterDifferences } from "./volume";
+import { LIVE_DESIGN_RULES, summarizeDesignWith } from "./design";
+import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE, railCharacterDifferences } from "./volume";
 
 /**
  * Phase 16, D-32 (plan 16-15): the tail's whole rail character fades and the centre's blends into the nose's.
  * The pin (`phase16-live-litres-pin.json`, written by scripts/extract-phase16-live-litres-pin.ts from the code
  * as go-live 1 shipped it, before `RAIL_CHARACTER_FADE` existed) records 74 boards' litres to every digit.
- * Under go-live 1's rule, named, every one must reproduce bit for bit; under the live rule, every board whose
- * tail differs from its centre in nothing but the Hard Edge and whose nose differs in nothing must too —
- * D-32 moves only what it names. Nothing here types a figure.
+ * Under go-live 1's rule, named, every one must reproduce bit for bit; under plan 16-15's rule, named (the live
+ * rule when it was written; plan 16-16's tips move some of these boards, Q3), every board whose tail differs from
+ * its centre in nothing but the Hard Edge and whose nose differs in nothing must too — D-32 moves only what it
+ * names. Nothing here types a figure.
  */
 
 const PIN = pin as { provenance: string; litres: Record<string, string> };
@@ -44,8 +45,9 @@ describe("the 74 boards' litres, pinned before the whole rail faded (D-32)", () 
   }
 
   for (const board of BOARDS.filter(nothingToFade)) {
-    it(`${board.label}: nothing to fade, so the live litres are the pinned litres to the last digit`, () => {
-      expect(summarizeDesign(board.fields).volumeLitres.toPrecision(17)).toBe(PIN.litres[board.label]);
+    it(`${board.label}: nothing to fade, so plan 16-15's rule, named, reads the pinned litres to the last digit`, () => {
+      const litres = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
+      expect(litres.toPrecision(17)).toBe(PIN.litres[board.label]);
     });
   }
 });

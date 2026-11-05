@@ -338,6 +338,32 @@ describe("the CNC files carry the step TEMPLATE draws (R8, D-33)", () => {
   }
 });
 
+describe("the tips in the files: a tip's edge is never a slice, and the outline ends on it (D-34)", () => {
+  for (const label of ["fish|asis|hard", "shortboard|pin|hard"]) {
+    it(
+      label,
+      () => {
+        const fields = boardFields(label);
+        const surface = surfaceOf(fields);
+        const geometry = buildOutline(fields.outline);
+        const { files, sliceCount } = cncFiles(surface, label);
+        const stations = crossSectionStations(fields.outline.length, tailCutStation(geometry));
+        expect(sliceCount).toBe(stations.filter((station) => foamHalfWidth(geometry, station) > 0).length);
+        expect(files.filter((file) => /-slice-\d+\.txt$/.test(file.name))).toHaveLength(sliceCount);
+        const outlineFile = files.find((file) => file.name.endsWith("-outline.txt"))!;
+        const outline = readXyz(new TextDecoder().decode(outlineFile.data))[0];
+        const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+        const tip = outline.filter((p) => formatMm(p[0]) === formatMm(surface.length));
+        expect(tip).toHaveLength(1);
+        expect(tip[0][1]).toBe(0);
+        expect(tip[0][2]).toBeGreaterThan(profile.rockerAt(surface.length));
+        expect(tip[0][2]).toBeLessThan(profile.deckAt(surface.length));
+      },
+      SWEEP_TIMEOUT_MS,
+    );
+  }
+});
+
 describe("slice file names (D-14)", () => {
   it("count from the tail in two digits", () => {
     expect(sliceFileName("Fish", 0, 50)).toBe("Fish-slice-01.txt");

@@ -711,6 +711,12 @@ export function sampledFinishedRail(result: RailSectionResult, domed: boolean, h
   if (points[0][0] > 0) points.unshift([0, points[0][1]]);
   if (points[points.length - 1][0] > 0) points.push([0, points[points.length - 1][1]]);
   points = clipAtStringer(points);
+  return resampledHalf(points);
+}
+
+/** A half laid out from the stringer on the deck round the rail to the stringer on the bottom, split into deck,
+ * rail and bottom runs and each resampled by arc length to `SECTION_POINTS`, the bottom edge on its usual index. */
+function resampledHalf(points: P2[]): HalfSectionPoints {
   let apex = 0;
   for (let i = 1; i < points.length; i++) if (points[i][0] > points[apex][0] + 1e-12) apex = i;
   let edge = points.length - 1;
@@ -724,6 +730,42 @@ export function sampledFinishedRail(result: RailSectionResult, domed: boolean, h
   const railRun = resampleRun(points.slice(apex, edge + 1), SECTION_POINTS.rail);
   const bottom = resampleRun(points.slice(edge), SECTION_POINTS.bottom);
   return deck.concat(railRun.slice(1), bottom.slice(1));
+}
+
+/**
+ * How far in from the rail a finished curve leaves the deck or the bottom: the furthest-in sample standing off
+ * both, every sample further in lying on the deck (at the board's thickness) or on the bottom (at 0). In
+ * millimetres, 0 when the whole curve lies flat.
+ */
+export function finishedRailReach(rail: FinishedRail, boardThickness: number): number {
+  let reach = 0;
+  for (const p of rail.samples) {
+    if (p.y < boardThickness - 1e-9 && p.y > 1e-9) reach = Math.max(reach, -p.x);
+  }
+  return reach;
+}
+
+/** A section's own reach (`finishedRailReach` of its finished rail): the width its rail needs to be drawn whole. */
+export function railReach(result: RailSectionResult, domed: boolean): Mm {
+  return mm(finishedRailReach(sectionFinishedRail(result, domed), result.boardThickness));
+}
+
+/**
+ * A section's finished rail fitted into a station narrower than the rail's own bands (Phase 16, D-34, the founder
+ * 2026-11-04: "the very tip of the nose and the tail (both tips on the swallow) have an unnecessary little
+ * flip/angle. Let's not do that little flip."). Where there is room (`halfWidth` at or beyond `railReach`) it is
+ * `sampledFinishedRail` itself, the very array. Narrower, the rail is drawn into its room instead of cut off at
+ * the stringer, so the stringer stays on the side profile's deck and bottom right into the tip: every sample at or
+ * outside the reach moves in by `halfWidth / reach` and every sample inside it lies on the stringer, then the
+ * same dedupe, split and resample. This supersedes research Pattern 2's "do not squeeze": that try opened edges
+ * by squeezing after the resample; this one moves every point before it.
+ */
+export function fittedFinishedRail(result: RailSectionResult, domed: boolean, halfWidth: number): HalfSectionPoints {
+  const rail = sectionFinishedRail(result, domed);
+  const reach = finishedRailReach(rail, result.boardThickness);
+  if (halfWidth >= reach) return sampledFinishedRail(result, domed, halfWidth);
+  const k = halfWidth / reach;
+  return resampledHalf(dedupeRun(rail.samples.map((p) => [-p.x <= reach ? Math.max(0, halfWidth + p.x * k) : 0, p.y] as P2)));
 }
 
 /**

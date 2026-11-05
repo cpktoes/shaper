@@ -24,7 +24,7 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "./design";
-import { sectionFinishedRail } from "./finished-rail";
+import { railReach, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
@@ -38,6 +38,7 @@ import {
 } from "./volume";
 import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingStepShape } from "./wings";
 import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import { stringerLines } from "./board-surface-render";
 
 /**
  * The 3D board's surface (Phase 16, D-05): the litres' own sections lofted along the rocker. Every expected
@@ -76,17 +77,6 @@ function vertexKeys(surface: BoardSurface): Set<string> {
 }
 const keyOf = (p: readonly number[]) => `${p[0]},${p[1]},${p[2]}`;
 
-/**
- * Whether a station's section is drawn wider than the foam, so the surface cuts it at the stringer before
- * its flat deck begins (research "Narrow tips", Pitfall 7): the finished rail's deck end lies inboard of the
- * stringer, for either end of the station's blend.
- */
-function cutAtStringer(input: BoardSurfaceInput, station: number): boolean {
-  return endSections(input, station).some(
-    (section) => section.result && -sectionFinishedRail(section.result, section.domed).samples[0].x > section.halfWidth,
-  );
-}
-
 /** A station's two end sections under the live rule (D-32) — the base alone and the tip alone. */
 function endSections(input: BoardSurfaceInput, station: number) {
   const { base, tip } = boardSectionEnds(input.sections, mm(station));
@@ -123,6 +113,10 @@ function built(board: { label: string; fields: DesignSummaryFields }) {
 const BUILT = BOARDS.map(built);
 /** All 74 (D-32): the forty, then the 34 whose rail character the second pin records. */
 const BUILT_LIVE = [...BUILT, ...phase16RailCharacterBoards().map(built)];
+/** The 28 winged boards (D-33). */
+const BUILT_WINGED = phase16WingBoards().map(built);
+/** All 102 (D-33, D-34): the 74, then the winged boards. */
+const BUILT_SURFACE = [...BUILT_LIVE, ...BUILT_WINGED];
 const isSwallow = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation > geometry.points[0].station;
 const isDiamond = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation < geometry.points[0].station;
 
@@ -280,7 +274,6 @@ describe("all 74 boards: closed, and a hair under VOLUME's litres (SPEC acceptan
 });
 
 describe("the 28 winged boards: the surface steps where TEMPLATE does and the deck runs through (D-33)", () => {
-  const BUILT_WINGED = phase16WingBoards().map(built);
   const n = SURFACE_POINTS.deck + SURFACE_POINTS.rail + SURFACE_POINTS.bottom - 2;
 
   it("checks every one of the 28", () => {
@@ -436,9 +429,14 @@ describe("a swallow's tail: two pieces from the notch wall to the rail, meeting 
         } else expect(ring.pieces).toHaveLength(1);
       }
       expect(Array.from(surface.faceKinds).filter((k) => k === SURFACE_FACE.wallRight).length).toBeGreaterThan(0);
-      // The tail end has no foam (foamHalfWidth is 0 there): each piece comes to a point.
+      // The tail end has no foam (foamHalfWidth is 0 there): each piece is one edge at the outline's own point,
+      // on the notch wall's heights, shared with the wall and with no cap (D-34).
       expect(foamHalfWidth(geometry, mm(0))).toBe(0);
-      expect(surface.rings[0].pieces.map((piece) => piece.count)).toEqual([1, 1]);
+      expect(surface.rings[0].pieces.map((piece) => piece.count)).toEqual([SURFACE_POINTS.wall + 2, SURFACE_POINTS.wall + 2]);
+      const point = sampleOutline(geometry, mm(0));
+      const [right, left] = surface.rings[0].pieces.map((piece) => ringPoints(surface.positions, { pieces: [piece] }));
+      for (const q of right) expect(q[1]).toBe(point);
+      for (const q of left) expect(q[1]).toBe(-point);
     });
   }
 });
@@ -449,9 +447,11 @@ describe("a diamond's V is foam, narrowing to nothing at its tip — no wall", (
     expect(diamonds.length).toBe(BUILT.filter((b) => b.label.includes("diamond")).length);
   });
   for (const { label, geometry, surface } of diamonds) {
-    it(`${label}: the tip ring is one point and every ring in the V is as wide as foamHalfWidth`, () => {
-      expect(surface.rings[0].pieces).toEqual([{ first: surface.rings[0].pieces[0].first, count: 1, inner: 0 }]);
-      expect(surface.positions[3 * surface.rings[0].pieces[0].first + 1]).toBe(0);
+    it(`${label}: the tip ring is one edge on the stringer and every ring in the V is as wide as foamHalfWidth`, () => {
+      expect(surface.rings[0].pieces).toEqual([
+        { first: surface.rings[0].pieces[0].first, count: SURFACE_POINTS.wall + 2, inner: 0 },
+      ]);
+      for (const q of ringPoints(surface.positions, surface.rings[0])) expect(q[1]).toBe(0);
       let inV = 0;
       for (const ring of surface.rings) {
         expect(ring.pieces).toHaveLength(1);
@@ -468,21 +468,127 @@ describe("a diamond's V is foam, narrowing to nothing at its tip — no wall", (
   }
 });
 
-describe("the tips: a point where there is no foam, a flat cap where there is", () => {
-  for (const { label, geometry, surface } of BUILT) {
-    it(`${label}: the nose tip is one point; the tail end is a point or a capped end`, () => {
-      const last = surface.rings[surface.rings.length - 1];
-      expect(last.pieces.map((piece) => piece.count)).toEqual([1]);
+/** The rail a board's tip reads, as (highest, lowest) of ring piece `k` (the last piece where a ring has fewer). */
+function tipLine(surface: BoardSurface, ring: SurfaceRing, k: number) {
+  const piece = ring.pieces[Math.min(k, ring.pieces.length - 1)];
+  const zs = ringPoints(surface.positions, { pieces: [piece] }).map((q) => q[2]);
+  return { station: ring.station as number, deck: Math.max(...zs), bottom: Math.min(...zs) };
+}
+const degrees = (a: number, b: number, run: number) => (Math.abs(Math.atan2(a, run) - Math.atan2(b, run)) * 180) / Math.PI;
+
+describe("every tip ends on the side profile's own tip, with no flip (D-34)", () => {
+  const TIP_REACH = inchesToMm(2);
+  /** The rings within 2" of each tip, ordered toward the tip, each read along one of a swallow's two points. */
+  function tips({ surface, geometry }: (typeof BUILT_SURFACE)[number]) {
+    const near = surface.rings.filter((ring) => ring.station >= surface.length - TIP_REACH).reverse();
+    const tail = surface.rings.filter((ring) => ring.station <= TIP_REACH);
+    const lines = [near.map((ring) => tipLine(surface, ring, 0)).reverse(), tail.map((ring) => tipLine(surface, ring, 0))];
+    if (isSwallow(geometry)) lines.push(tail.map((ring) => tipLine(surface, ring, 1)));
+    return lines;
+  }
+
+  it("checks every one of the 102", () => {
+    expect(BUILT_SURFACE).toHaveLength(102);
+  });
+
+  for (const board of BUILT_SURFACE) {
+    const { label, input, geometry, profile, surface } = board;
+
+    it(`${label}: over the last 2" into each tip the deck and the bottom lie on the side profile and turn with it`, () => {
+      for (const line of tips(board)) {
+        for (const q of line) {
+          expect(Math.abs(q.deck - profile.deckAt(mm(q.station)))).toBeLessThan(0.01);
+          expect(Math.abs(q.bottom - profile.rockerAt(mm(q.station)))).toBeLessThan(0.01);
+        }
+        for (let i = 1; i < line.length; i++) {
+          const [a, b] = [line[i - 1], line[i]];
+          const run = b.station - a.station;
+          const deckAlong = profile.deckAt(mm(b.station)) - profile.deckAt(mm(a.station));
+          const bottomAlong = profile.rockerAt(mm(b.station)) - profile.rockerAt(mm(a.station));
+          expect(degrees(b.deck - a.deck, deckAlong, Math.abs(run))).toBeLessThan(0.1);
+          expect(degrees(b.bottom - a.bottom, bottomAlong, Math.abs(run))).toBeLessThan(0.1);
+        }
+      }
+    });
+
+    it(`${label}: the check sees what it fixes — a cut rail sinks under the deck, and the old tip would dive`, () => {
+      const sections = boardSections(input.sections, surfaceStations(input));
+      const within = sections.filter(
+        (section) => section.station <= TIP_REACH || section.station >= surface.length - TIP_REACH,
+      );
+      let narrow = 0;
+      for (const section of within) {
+        if (!section.result || section.drawn === undefined) continue;
+        const reach = railReach(section.result, section.domed);
+        // Well inside the reach, not a hair under it.
+        if (section.halfWidth > 0.75 * reach) continue;
+        narrow++;
+        const cut = sampledFinishedRail(section.result, section.domed, section.halfWidth);
+        expect(section.thickness - cut[0][1]).toBeGreaterThan(0.1);
+      }
+      if (sections[sections.length - 1].halfWidth === 0) {
+        // The last panel into a tip with no width, had the tip stayed one point half its thickness up.
+        const [before, tip] = sections.slice(-2).map((section) => section.station as number);
+        const run = tip - before;
+        const old = profile.rockerAt(mm(tip)) + profile.thicknessAt(mm(tip)) / 2 - profile.deckAt(mm(before));
+        expect(degrees(old, profile.deckAt(mm(tip)) - profile.deckAt(mm(before)), run)).toBeGreaterThan(10);
+      }
+      if (label === "shortboard|asis|hard" || label === "fish|asis|hard") expect(narrow).toBeGreaterThan(0);
+    });
+
+    it(`${label}: a tip with no width is one edge with no cap, a tail end with width has its cap`, () => {
+      const nose = surface.rings[surface.rings.length - 1];
+      expect(nose.pieces.map((piece) => piece.count)).toEqual([SURFACE_POINTS.wall + 2]);
+      const edge = ringPoints(surface.positions, nose);
+      for (const q of edge) expect(q[1]).toBe(0);
+      const heights = edge.map((q) => q[2]);
+      expect(Math.abs(Math.min(...heights) - profile.rockerAt(nose.station))).toBeLessThan(1e-9);
+      expect(Math.abs(Math.max(...heights) - profile.deckAt(nose.station))).toBeLessThan(1e-9);
       const kinds = Array.from(surface.faceKinds);
+      expect(kinds).not.toContain(SURFACE_FACE.capNose);
       const tailWidth = foamHalfWidth(geometry, mm(0));
       if (tailWidth > 0) {
-        expect(surface.rings[0].pieces[0].count).toBeGreaterThan(2);
+        expect(new Set(ringPoints(surface.positions, surface.rings[0]).map((q) => q[1])).size).toBeGreaterThan(2);
         expect(kinds).toContain(SURFACE_FACE.capTail);
       } else {
-        expect(surface.rings[0].pieces.every((piece) => piece.count === 1)).toBe(true);
         expect(kinds).not.toContain(SURFACE_FACE.capTail);
+        const tailEdge = ringPoints(surface.positions, surface.rings[0]);
+        expect(Math.abs(Math.min(...tailEdge.map((q) => q[2])) - profile.rockerAt(mm(0)))).toBeLessThan(1e-9);
+        expect(Math.abs(Math.max(...tailEdge.map((q) => q[2])) - profile.deckAt(mm(0)))).toBeLessThan(1e-9);
       }
-      expect(kinds).not.toContain(SURFACE_FACE.capNose);
+    });
+
+    it(`${label}: watertight, one slice per litres station with foam, and the outline's tip between the tip's bottom and deck`, () => {
+      expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+      const withFoam = boardSections(input.sections).filter((section) => section.halfWidth > 0);
+      expect(boardSlices(surface).map((slice) => slice.station)).toEqual(withFoam.map((section) => section.station));
+      const loop = boardOutlineLoop(surface);
+      const noseTip = loop.filter((q) => q[0] === surface.length);
+      expect(noseTip).toHaveLength(1);
+      for (const q of noseTip) {
+        expect(q[2]).toBeGreaterThan(profile.rockerAt(surface.length));
+        expect(q[2]).toBeLessThan(profile.deckAt(surface.length));
+      }
+      if (foamHalfWidth(geometry, mm(0)) === 0) {
+        // The rail's first point: on the stringer at a pin, a round or a diamond's tip, on a swallow's point.
+        expect(loop[0][0]).toBe(0);
+        expect(loop[0][2]).toBeGreaterThan(profile.rockerAt(mm(0)));
+        expect(loop[0][2]).toBeLessThan(profile.deckAt(mm(0)));
+      }
+    });
+
+    it(`${label}: the stringer lines run up and down each tip's edge`, () => {
+      const { deck, bottom } = stringerLines(surface);
+      const last = surface.rings[surface.rings.length - 1];
+      const nose = ringPoints(surface.positions, last).map((q) => q[2]);
+      expect(deck[deck.length - 2][2]).toBe(Math.max(...nose));
+      expect(deck[deck.length - 1][2]).toBe(Math.min(...nose));
+      expect(bottom[bottom.length - 1][2]).toBe(Math.min(...nose));
+      if (isDiamond(geometry)) {
+        const tail = ringPoints(surface.positions, surface.rings[0]).map((q) => q[2]);
+        expect(deck[0][2]).toBe(Math.min(...tail));
+        expect(deck[1][2]).toBe(Math.max(...tail));
+      }
     });
   }
 });
@@ -566,7 +672,6 @@ describe("the slices, the outline and the profile come straight off the mesh (R8
 
       const anchors = foilStationPoints(input.sections.foil, input.sections.length);
       const { deck, bottom } = boardProfileLines(surface);
-      let exact = 0;
       expect(deck).toHaveLength(surface.rings.length);
       expect(bottom).toHaveLength(surface.rings.length);
       surface.rings.forEach((ring: SurfaceRing, i) => {
@@ -581,14 +686,11 @@ describe("the slices, the outline and the profile come straight off the mesh (R8
           expect(Math.abs(bottom[i][2] - profile.rockerAt(ring.station))).toBeLessThan(1e-6);
           expect(deck[i][1]).toBe(0);
           expect(bottom[i][1]).toBe(0);
-          // Where the section's flat deck reaches the stringer uncut, the deck IS the side profile's.
-          if (!cutAtStringer(input, ring.station)) {
-            expect(Math.abs(deck[i][2] - profile.deckAt(ring.station))).toBeLessThan(1e-6);
-            exact++;
-          }
+          // The deck IS the side profile's, at every ring (D-34: a rail is never cut off at the stringer now),
+          // to the fineness of the finished rail's own samples where a station has barely room for it.
+          expect(Math.abs(deck[i][2] - profile.deckAt(ring.station))).toBeLessThan(0.01);
         }
       });
-      expect(exact).toBeGreaterThan(50);
     });
   }
 });

@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import pin from "./__fixtures__/phase16-surface-litres-pin.json";
-import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "./design";
-import { RAIL_CHARACTER_FADE } from "./volume";
+import {
+  designCrossSectionInput,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+  summarizeDesign,
+  summarizeDesignWith,
+} from "./design";
+import { railReach } from "./finished-rail";
+import { buildOutline } from "./outline";
+import { boardSectionEnds, boardSections, RAIL_CHARACTER_FADE } from "./volume";
 
 /**
  * Phase 16, D-33 and D-34 (plan 16-16): a wing is a step in the outline only, and the surface runs into each tip
@@ -15,6 +24,23 @@ import { RAIL_CHARACTER_FADE } from "./volume";
 const PIN = pin as { provenance: string; litres: Record<string, string> };
 const BOARDS = phase16SurfaceBoards();
 const hasWing = (board: (typeof BOARDS)[number]) => (board.fields.outline.wings?.length ?? 0) > 0;
+
+/** Whether a board has a litres station narrower than a rail it reads there (either end of a blend): worked out
+ * from the rails themselves, never listed by hand. */
+function hasNarrowStation(board: (typeof BOARDS)[number]): boolean {
+  const { fields } = board;
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const input = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  return boardSections(input).some((section) => {
+    if (!section.result) return false;
+    const narrower = (end: typeof section) => end.halfWidth < railReach(end.result!, end.domed);
+    if (!section.blended) return narrower(section);
+    const { base, tip } = boardSectionEnds(input, section.station);
+    return narrower(base) || narrower(tip);
+  });
+}
 
 describe("the 102 boards' litres, pinned before a wing stopped moving the deck (D-33, D-34)", () => {
   it("the pin holds the 102 boards the set builds, and names its generator", () => {
@@ -32,10 +58,19 @@ describe("the 102 boards' litres, pinned before a wing stopped moving the deck (
   }
 
   for (const board of BOARDS.filter((b) => !hasWing(b))) {
-    it(`${board.label}: no wing, so the live litres are the pinned litres to the last digit`, () => {
-      expect(summarizeDesign(board.fields).volumeLitres.toPrecision(17)).toBe(PIN.litres[board.label]);
+    const narrow = hasNarrowStation(board);
+    it(`${board.label}: no wing, and ${narrow ? "a tip narrower than its rail, so the live litres rise" : "room for its rail, so the live litres are the pinned litres to the last digit"}`, () => {
+      const litres = summarizeDesign(board.fields).volumeLitres;
+      if (narrow) expect(litres).toBeGreaterThan(Number(PIN.litres[board.label]));
+      else expect(litres.toPrecision(17)).toBe(PIN.litres[board.label]);
     });
   }
+
+  it("some boards have room for their rails and some don't, or the two cases above prove nothing", () => {
+    const narrow = BOARDS.filter((b) => !hasWing(b)).map(hasNarrowStation);
+    expect(narrow.filter(Boolean).length).toBeGreaterThan(0);
+    expect(narrow.filter((n) => !n).length).toBeGreaterThan(0);
+  });
 
   for (const board of BOARDS.filter(hasWing)) {
     it(`${board.label}: the deck stays where it was, so the live litres are above the pinned litres`, () => {

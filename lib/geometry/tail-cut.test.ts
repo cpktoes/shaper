@@ -31,8 +31,10 @@ import { silhouette } from "./screen-tiles";
 import { cubicMmToLitres, inchesToMm, mm, type Mm } from "./units";
 import {
   computeCrossSectionVolume,
+  computeCrossSectionVolumeWith,
   crossSectionStations,
   DEFAULT_VOLUME_SPEC,
+  RAIL_CHARACTER_FADE,
   SIMPSON_PANEL_COUNT,
   simpsonIntegrate,
   type CrossSectionVolumeInput,
@@ -346,8 +348,13 @@ describe("the litres count the tail as drawn", () => {
     const g = buildOutline(fields.outline);
     const base = volumeBase(fields);
     const foam = crossSectionFoam(g);
-    const now = computeCrossSectionVolume({ ...base, ...foam });
-    const curve = computeCrossSectionVolume({ ...base, cutStation: foam.cutStation, halfWidthAt: (s) => sampleOutline(g, s) });
+    // Read under the rule before D-34, by name: since then a station narrower than its rail also counts the foam
+    // its fitted ring adds, so the plain wall arithmetic holds only where the rail is cut, as it was.
+    const now = computeCrossSectionVolumeWith({ ...base, ...foam }, RAIL_CHARACTER_FADE);
+    const curve = computeCrossSectionVolumeWith(
+      { ...base, cutStation: foam.cutStation, halfWidthAt: (s) => sampleOutline(g, s) },
+      RAIL_CHARACTER_FADE,
+    );
     expect(now.stations).toEqual(crossSectionStations(fields.outline.length, tailCutStation(g)));
     const m = now.stations.indexOf(tailCutStation(g));
     const thicknessAt = base.thicknessAt!;

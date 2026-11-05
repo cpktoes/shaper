@@ -16,6 +16,7 @@ import {
   noseRailWeight,
   railCharacterDifferences,
   railCharacterOf,
+  OLD_SURFACE_FIT,
   RAIL_CHARACTER_FADE,
   type RailCharacterRule,
   SMOOTH_SURFACE_FADE,
@@ -33,7 +34,9 @@ import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import {
   blendFinishedRails,
+  fittedFinishedRail,
   railBlendArea,
+  railReach,
   sampledFinishedRail,
   sampledSectionArea,
   SECTION_POINTS,
@@ -57,7 +60,13 @@ import {
 import { samplePchip, type SplinePoint } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
-import { PHASE16_TUCKED, phase16Boards, phase16LiveBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import {
+  PHASE16_TUCKED,
+  phase16Boards,
+  phase16LiveBoards,
+  phase16SurfaceBoards,
+  phase16WingBoards,
+} from "./__fixtures__/phase16-boards";
 import { outlineWithoutWings, wingFootprint, wingTakeAt } from "./wings";
 import {
   designCrossSectionInput,
@@ -530,7 +539,10 @@ describe("computeCrossSectionVolume", () => {
       }
       const cut = 2 * closingPolygonArea(output.profile, section.boardThickness, halfWidth);
       expect(Math.abs(result.stationBlendAreas[i] - 2 * blendOneRail), `station ${i}`).toBeLessThan(1e-9 * cut);
-      expect(Math.abs(area + result.stationBlendAreas[i] - cut), `station ${i}`).toBeLessThan(1e-9 * cut);
+      // Where the rail has room the fit lifts nothing; narrower, the foam the fitted ring adds (D-34).
+      const fitted = fittedFinishedRail(output.result, output.domed, halfWidth);
+      const lift = sampledSectionArea(fitted) - sampledSectionArea(sampledFinishedRail(output.result, output.domed, halfWidth));
+      expect(Math.abs(area + result.stationBlendAreas[i] - cut - lift), `station ${i}`).toBeLessThan(1e-9 * cut);
       checked++;
     });
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
@@ -1473,6 +1485,8 @@ describe("D-33 a wing steps the outline only", () => {
     return { ...board, geometry, input, plain, wings, inners, stations, live, old, without };
   });
   const isDeep = (board: (typeof WINGED)[number]) => board.wings.some((wing) => wing.depth > inchesToMm(1 / 2));
+  /** The live rule with its wing behaviour set back: the whole section shifts in with the outline. */
+  const SHIFT_WITH_LIVE_TIPS: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { wings: "shift", tips: "fit" } };
 
   it("the 28 boards each reach the back of their wing", () => {
     expect(WINGED).toHaveLength(28);
@@ -1536,10 +1550,12 @@ describe("D-33 a wing steps the outline only", () => {
 
     it(`${board.label}: the rail stands on the stepped outline, keeps its shape, and nothing folds`, () => {
       const bound = isDeep(board) ? 2.5 : 0.75;
+      // Today's rail at each station (the wing shifting the whole section in), with the tips' fit as live (D-34).
+      const shifted = boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS, board.stations);
       board.stations.forEach((station, i) => {
         const section = board.live[i];
         const drawn = halfOf(section);
-        const old = halfOf(board.old[i]);
+        const old = halfOf(shifted[i]);
         expect(section.halfWidth).toBe(foamHalfWidthOf(board.geometry, station));
         expect(Math.abs(Math.max(...drawn.map((p) => p[0])) - section.halfWidth)).toBeLessThan(1e-9);
         for (const p of drawn) {
@@ -1562,9 +1578,8 @@ describe("D-33 a wing steps the outline only", () => {
     }, 60_000);
 
     it(`${board.label}: a station the wings do not reach reads what it read with the wing rule off`, () => {
-      const shift: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit, wings: "shift" } };
       const live = boardSections(board.input);
-      const shifted = boardSectionsWith(board.input, shift);
+      const shifted = boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS);
       let reached = 0;
       live.forEach((section, i) => {
         if (wingTakeAt(board.geometry, section.station) > 0) {
@@ -1613,5 +1628,93 @@ describe("D-33 a wing steps the outline only", () => {
         expect(hard).toBeGreaterThan(10);
       });
     }
+  });
+});
+
+describe("D-34 the rail fits into a narrow tip", () => {
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return { geometry, input: designCrossSectionInput(geometry, profile, rails, fields.outline.length) };
+  }
+  const BOARDS = phase16SurfaceBoards().map((board) => ({ ...board, ...inputOf(board.fields) }));
+  /** An old-fit rule holding a station's tip weight, so each end of a blend can be read alone. */
+  const held = (tipWeight: number): RailCharacterRule => ({
+    at: (...args) => ({ ...RAIL_CHARACTER_FADE.at(...args), tipWeight }),
+  });
+
+  for (const { label, geometry, input } of BOARDS) {
+    it(`${label}: a station narrower than its rail counts the fitted ring; one with room counts what it always did`, () => {
+      const live = boardSections(input);
+      const old = boardSectionsWith(input, RAIL_CHARACTER_FADE);
+      live.forEach((section, i) => {
+        if (!section.result || section.blended || wingTakeAt(geometry, section.station) > 0) return;
+        const before = old[i];
+        const sampled = sampledFinishedRail(before.result!, before.domed, before.halfWidth);
+        const fitted = fittedFinishedRail(before.result!, before.domed, before.halfWidth);
+        if (fitted === sampled || section.halfWidth >= railReach(section.result, section.domed)) {
+          expect(Object.is(section.area, before.area)).toBe(true);
+          expect(section.drawn).toBeUndefined();
+        } else {
+          const lift = sampledSectionArea(fitted) - sampledSectionArea(sampled);
+          expect(lift).toBeGreaterThan(0);
+          expect(section.area).toBe(before.area + lift);
+          expect(section.blendArea).toBe(before.blendArea);
+          expect(section.drawn).toEqual(fitted);
+        }
+      });
+    }, 60_000);
+  }
+
+  it("a blend at a station narrower than its rails is the level variant on the fitted halves", () => {
+    // A board 40 mm wide all along: every station is narrow, and the nose and the tail differ from the centre.
+    const room = mm(20);
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      tailHardEdge: true,
+      nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, sharpBottomTuck: true },
+    };
+    const input = {
+      halfWidthAt: () => room,
+      foil: DEFAULT_FOIL_SPEC,
+      rails,
+      length: DEFAULT_BOARD_SPEC.outline.length,
+      thicknessAt: () => mm(60),
+    };
+    let blending = 0;
+    for (const section of boardSections(input)) {
+      if (!section.blended) continue;
+      blending++;
+      const w = section.tipWeight;
+      const [base] = boardSectionsWith(input, held(0), [section.station]);
+      const [tip] = boardSectionsWith(input, held(1), [section.station]);
+      const end = (at: BoardSection) => {
+        const sampled = sampledFinishedRail(at.result!, at.domed, room);
+        const fitted = fittedFinishedRail(at.result!, at.domed, room);
+        expect(fitted).not.toBe(sampled);
+        return { fitted, exact: at.area + (sampledSectionArea(fitted) - sampledSectionArea(sampled)) };
+      };
+      const [a, b] = [end(base), end(tip)];
+      const blended = blendFinishedRails(a.fitted, b.fitted, w);
+      expect(section.blended).toEqual(blended);
+      expect(section.drawn).toBeUndefined();
+      expect(section.area).toBe(fadingSectionArea(a.exact, b.exact, a.fitted, b.fitted, blended, w));
+    }
+    expect(blending).toBeGreaterThan(3);
+  });
+
+  it("the old rules never fit a thing: their sections carry no drawn half", () => {
+    for (const rule of [HARD_EDGE_SWITCH, HARD_EDGE_FADE, RAIL_CHARACTER_FADE]) {
+      for (const { input } of BOARDS.filter((board) => board.label.endsWith("|asis|hard") || board.label.endsWith("|one"))) {
+        for (const section of boardSectionsWith(input, rule)) expect(section.drawn).toBeUndefined();
+      }
+    }
+  });
+
+  it("OLD_SURFACE_FIT is what every rule before plan 16-16 does, and the live rule fits both", () => {
+    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip" });
+    expect(RAIL_CHARACTER_FADE.fit).toBeUndefined();
+    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "hold-deck", tips: "fit" });
   });
 });
