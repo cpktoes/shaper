@@ -85,11 +85,13 @@ async function picture(host: Locator) {
 }
 
 /** A preset, kept in this browser as the open board, so /design/3d opens on it (fins as the preset sets them). */
-async function keepPreset(page: Page, name: string) {
+async function keepPreset(page: Page, name: string, { handSet = false }: { handSet?: boolean } = {}) {
   const preset = BOARD_PRESETS.find((p) => p.name === name);
   if (!preset) throw new Error(`no ${name} preset`);
   const fields: DesignSnapshotFields = {
     ...presetDesignFields(preset),
+    // A hand-set board: the preset with its blank removed, as ROCKER's Remove This Blank leaves it (D-02).
+    ...(handSet ? { blank: null } : {}),
     volume: DEFAULT_VOLUME_SPEC,
     finsImportTemplate: true,
     railsImportFoilThickness: true,
@@ -123,6 +125,25 @@ async function finsDrawnHeight(page: Page, host: Locator): Promise<{ rows: numbe
 
 function finsBox(page: Page) {
   return page.getByRole("checkbox", { name: THREE_D_COPY.fins, exact: true });
+}
+
+function blankBox(page: Page) {
+  return page.getByRole("checkbox", { name: THREE_D_COPY.blank, exact: true });
+}
+
+/** The share of the canvas's pixels that differ between two pictures by more than `tolerance`. */
+function shareDifferent(a: { rgba: Uint8Array; width: number; height: number }, b: { rgba: Uint8Array }, tolerance = 2) {
+  return countDifferent(a.rgba, b.rgba, tolerance) / (a.width * a.height);
+}
+
+/** The same picture again: pixel for pixel on a computer, all but a few edge dots on the phones' emulated GPUs. */
+function expectSamePicture(
+  a: { rgba: Uint8Array; width: number; height: number },
+  b: { rgba: Uint8Array },
+  project: string,
+) {
+  if (project === "desktop") expect(countDifferent(a.rgba, b.rgba, 0)).toBe(0);
+  else expect(shareDifferent(a, b)).toBeLessThan(0.0005);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -186,5 +207,48 @@ test.describe("the 3D board's fins", () => {
     // single still stands taller on the canvas.
     expect(heights.Longboard.rows).toBeGreaterThan(heights.Shortboard.rows);
     expect(heights.Shortboard.rows).toBeGreaterThan(0);
+  });
+});
+
+test.describe("the 3D board's blank (plan 11, D-08)", () => {
+  test("3. on a board in a blank, Blank shows the blank as a see-through ghost round it and hides it again, the view kept", async ({
+    page,
+  }, testInfo) => {
+    // Every preset opens in a blank: the Fish, kept as the open board.
+    await keepPreset(page, "Fish");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await expect(blankBox(page)).not.toBeChecked();
+    await expect(blankBox(page)).toBeEnabled();
+    await expect(page.getByText(THREE_D_COPY.noBlankHint, { exact: true })).toHaveCount(0);
+
+    const turn = await host.getAttribute("data-turn");
+    const crop = await host.getAttribute("data-crop");
+    const before = await picture(host);
+
+    await blankBox(page).click();
+    await expect(blankBox(page)).toBeChecked();
+    const ghosted = await picture(host);
+    // The veil over the board and the blank's foam past its rails and tips.
+    expect(shareDifferent(before, ghosted)).toBeGreaterThan(0.005);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-crop")).toBe(crop);
+
+    await blankBox(page).click();
+    await expect(blankBox(page)).not.toBeChecked();
+    const again = await picture(host);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expectSamePicture(before, again, testInfo.project.name);
+  });
+
+  test("4. on a hand-set board, Blank is dimmed and can't be ticked, and says where to pick a blank", async ({ page }) => {
+    await keepPreset(page, "Fish", { handSet: true });
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await expect(blankBox(page)).toBeDisabled();
+    await expect(blankBox(page)).not.toBeChecked();
+    await expect(page.getByText(THREE_D_COPY.noBlankHint, { exact: true })).toBeVisible();
+    // Fins stays live on the same board.
+    await expect(finsBox(page)).toBeEnabled();
   });
 });

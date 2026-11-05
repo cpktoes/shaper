@@ -121,31 +121,59 @@ export function ThreeDHardEdge() {
 }
 
 /**
- * SHOW (UI-SPEC §1, §6): what the picture includes. Fins (D-06) is on by default and hides the fins when unticked. A
- * tick only changes what is seen — never the board, never saved, never undoable (D-17) — so a locked board keeps it
- * (marked lock-exempt, UI-SPEC §9), and the view stays exactly as it is. It is live while the drawing loads (a tick
- * made then applies when the board appears) and dimmed only while a canvas message shows.
+ * SHOW (UI-SPEC §1, §6): what the picture includes. Fins (D-06) is on by default and hides the fins when unticked.
+ * Blank (D-08) is off by default and shows the picked blank as a see-through ghost round the board; a hand-set board
+ * has no blank, so its row is dimmed and can't be ticked, with the reason under it at full strength.
+ *
+ * A tick only changes what is seen — never the board, never saved, never undoable (D-17), never the files (D-16) —
+ * so a locked board keeps it (marked lock-exempt, UI-SPEC §9), and the view stays exactly as it is. That is why this
+ * section takes its ticks from the screen and reads nothing from the board itself. It is live while the drawing
+ * loads (a tick made then applies when the board appears) and dimmed only while a canvas message shows.
  */
 export function ThreeDShow({
   showFins,
   onShowFins,
+  showBlank,
+  onShowBlank,
+  hasBlank,
   disabled,
 }: {
   showFins: boolean;
   onShowFins: (show: boolean) => void;
-  /** True while a canvas message shows instead of the board (UI-SPEC §8): there are no fins to show. */
+  showBlank: boolean;
+  onShowBlank: (show: boolean) => void;
+  /** Whether the board sits in a blank picked on ROCKER (`sideProfile.blank`); a hand-set board has none. */
+  hasBlank: boolean;
+  /** True while a canvas message shows instead of the board (UI-SPEC §8): there is nothing to show. */
   disabled: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
       <ThreeDSectionHeading>{THREE_D_COPY.showHeading}</ThreeDSectionHeading>
-      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+      <label className={TICK_ROW}>
         <Checkbox data-lock-exempt disabled={disabled} checked={showFins} onCheckedChange={(checked) => onShowFins(checked)} />
         {THREE_D_COPY.fins}
       </label>
+      <div>
+        <label className={cn(TICK_ROW, !hasBlank && "cursor-default opacity-40")}>
+          <Checkbox
+            data-lock-exempt
+            disabled={disabled || !hasBlank}
+            checked={hasBlank && showBlank}
+            onCheckedChange={(checked) => onShowBlank(checked)}
+          />
+          {THREE_D_COPY.blank}
+        </label>
+        {!hasBlank && <div className={TICK_HINT}>{THREE_D_COPY.noBlankHint}</div>}
+      </div>
     </div>
   );
 }
+
+/** A tick row: RAILS' own label row (UI-SPEC §1). */
+const TICK_ROW = "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal";
+/** A hint under its tick row, indented to the label's words (16 box + 6 gap), at full strength. */
+const TICK_HINT = "mt-1 pl-[22px] text-xs text-surf-ink-muted font-normal";
 
 /** Where each view button sits in the six-column grid (UI-SPEC §1): three to a row, then two, then Reset alone. */
 const VIEW_SPAN: Record<ViewName, string> = {

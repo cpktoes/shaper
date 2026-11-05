@@ -42,7 +42,10 @@ import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
+import { buildBlankGhost, type BlankGhost } from "@/lib/geometry/blank-ghost";
+import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { placedFins, type PlacedFin } from "@/lib/geometry/fin-outline";
+import { TOP_VIEW_SAMPLES } from "@/components/rocker/rocker-top-view";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { easeOut } from "@/lib/models/rack-gesture";
 import {
@@ -223,6 +226,25 @@ export function ThreeDScreen() {
   const [showFins, setShowFins] = useState(true);
   const finsRef = useRef<{ fins: readonly PlacedFin[]; visible: boolean }>({ fins, visible: showFins });
 
+  // The blank's ghost (16-11, D-08): the blank ROCKER draws — its top view built exactly as ROCKER builds it, and its
+  // side view's bottom and deck — as a see-through shell round the board. Off until the shaper ticks Blank; a hand-set
+  // board has none. A view switch only: never stored, never part of the board or the files (D-16, D-17).
+  const ghost = useMemo(
+    () =>
+      buildBlankGhost(
+        sideProfile.blank,
+        buildBlankTopView({
+          blank: sideProfile.blank,
+          geometry: outlineGeometry,
+          length: sideProfile.length,
+          samples: TOP_VIEW_SAMPLES,
+        }),
+      ),
+    [sideProfile.blank, outlineGeometry, sideProfile.length],
+  );
+  const [showBlank, setShowBlank] = useState(false);
+  const ghostRef = useRef<{ ghost: BlankGhost | null; visible: boolean }>({ ghost, visible: showBlank });
+
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<BoardSceneHandle | null>(null);
   const coloursRef = useRef<SceneColours | null>(null);
@@ -275,6 +297,12 @@ export function ThreeDScreen() {
     sceneRef.current?.setFins(fins, showFins);
   }, [fins, showFins]);
 
+  // The same for the blank's ghost and the Blank tick.
+  useEffect(() => {
+    ghostRef.current = { ghost, visible: showBlank };
+    sceneRef.current?.setGhost(ghost, showBlank);
+  }, [ghost, showBlank]);
+
   // Hand every new board to the scene that is drawing (the turn and the room are kept).
   useEffect(() => {
     boardRef.current = built.ok ? built.board : null;
@@ -307,6 +335,7 @@ export function ThreeDScreen() {
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
         handle.setFins(finsRef.current.fins, finsRef.current.visible);
+        handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
         // §9); a view is framed at 1x for its own turn, as its button would have.
         if (pendingFrameRef.current) {
@@ -751,7 +780,14 @@ export function ThreeDScreen() {
       controls={
         <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
           <ThreeDHardEdge />
-          <ThreeDShow showFins={showFins} onShowFins={setShowFins} disabled={message !== null} />
+          <ThreeDShow
+            showFins={showFins}
+            onShowFins={setShowFins}
+            showBlank={showBlank}
+            onShowBlank={setShowBlank}
+            hasBlank={ghost !== null}
+            disabled={message !== null}
+          />
         </ThreeDControls>
       }
       canvas={

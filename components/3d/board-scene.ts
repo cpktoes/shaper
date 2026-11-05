@@ -29,6 +29,7 @@ import {
   Group,
   Line,
   LineBasicMaterial,
+  LineLoop,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -41,6 +42,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
+import type { BlankGhost } from "@/lib/geometry/blank-ghost";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { FIN_ROOT_SINK, type PlacedFin } from "@/lib/geometry/fin-outline";
 import type { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
@@ -105,6 +107,12 @@ export interface BoardSceneHandle {
    * crop stay as they are. One frame per call.
    */
   setFins(fins: readonly PlacedFin[], visible: boolean): void;
+  /**
+   * The picked blank as a see-through ghost round the board (16-11, D-08): its glassy skin and its widest line, in the
+   * board's group so they turn with it, drawn only while `visible` (and never with no blank, `null`). Drawn after the
+   * board and writing no depth, so it never hides the board; the framing stays the board's. One frame per call.
+   */
+  setGhost(ghost: BlankGhost | null, visible: boolean): void;
   /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
   roomReport(): RoomReport;
   resize(width: number, height: number): void;
@@ -186,6 +194,7 @@ const NOOP_HANDLE: BoardSceneHandle = {
   frame: () => ({ distance: CAMERA_STANDOFF_MM, right: 0, up: 0 }),
   setCrop() {},
   setFins() {},
+  setGhost() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
   dispose() {},
@@ -230,6 +239,10 @@ function ribbon(points: readonly Vec3[], outward: 1 | -1): { ribbon: BufferGeome
 const FIN_EDGE_ROUND_SHARE = 0.35;
 /** A fin's surface: a little glossier than the raw foam, as a glassed fin beside foam is (UI-SPEC § Color). */
 const FIN_ROUGHNESS = 0.6;
+
+/** The blank's veil (UI-SPEC § Color): `--surf-ink-muted` at 18%, a little glossier than the foam so it reads as glass. */
+const GHOST_OPACITY = 0.18;
+const GHOST_ROUGHNESS = 0.35;
 
 /**
  * One fin's solid, in the board's own axes: its outline extruded to its thickness with rounded edges, centred on its
@@ -335,6 +348,9 @@ export function mountBoardScene(
   scene.add(turned);
   // The fins (16-10): in the board's own axes beside the foam, so they turn with it.
   const finGroup = new Group();
+  // The blank's ghost (16-11): likewise in the board's own axes, hidden until the Blank box is ticked.
+  const ghostGroup = new Group();
+  ghostGroup.visible = false;
 
   let current = input;
   let turn: Quat = REST_TURN;
@@ -343,6 +359,8 @@ export function mountBoardScene(
   let disposables: { dispose(): void }[] = [];
   let fins: readonly PlacedFin[] = [];
   let finDisposables: { dispose(): void }[] = [];
+  let ghost: BlankGhost | null = null;
+  let ghostDisposables: { dispose(): void }[] = [];
   let pending = 0;
   let frames = 0;
   let lost = false;
@@ -391,6 +409,38 @@ export function mountBoardScene(
     }
   };
 
+  /**
+   * The blank's ghost, made again from `ghost`: a lit, see-through skin drawn after the board (`renderOrder`) that
+   * writes no depth, so the board always shows through it; and its widest line, one dot wide, after that.
+   */
+  const buildGhost = () => {
+    for (const d of ghostDisposables) d.dispose();
+    ghostDisposables = [];
+    ghostGroup.clear();
+    if (!ghost) return;
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new BufferAttribute(ghost.positions, 3));
+    geometry.setAttribute("normal", new BufferAttribute(ghost.normals, 3));
+    geometry.setIndex(new BufferAttribute(ghost.indices, 1));
+    const veil = new MeshStandardMaterial({
+      color: new Color(current.colours.inkMuted),
+      roughness: GHOST_ROUGHNESS,
+      metalness: 0,
+      transparent: true,
+      opacity: GHOST_OPACITY,
+      depthWrite: false,
+    });
+    const skin = new Mesh(geometry, veil);
+    skin.renderOrder = 1;
+    const lineGeometry = new BufferGeometry();
+    lineGeometry.setAttribute("position", new BufferAttribute(Float32Array.from(ghost.outline.flat()), 3));
+    const pen = new LineBasicMaterial({ color: new Color(current.colours.blankLine), toneMapped: false });
+    const line = new LineLoop(lineGeometry, pen);
+    line.renderOrder = 2;
+    ghostGroup.add(skin, line);
+    ghostDisposables.push(geometry, veil, lineGeometry, pen);
+  };
+
   const build = () => {
     for (const d of disposables) d.dispose();
     disposables = [];
@@ -427,8 +477,9 @@ export function mountBoardScene(
       centred.add(new Mesh(g.ribbon, paint), new Line(g.line, pen));
       disposables.push(g.ribbon, g.line);
     }
-    centred.add(finGroup);
+    centred.add(finGroup, ghostGroup);
     buildFins();
+    buildGhost();
     centred.position.set(-centre[0], -centre[1], -centre[2]);
     placeBoard();
   };
@@ -524,6 +575,15 @@ export function mountBoardScene(
       finGroup.visible = visible;
       schedule();
     },
+    setGhost(next, visible) {
+      if (disposed) return;
+      if (next !== ghost) {
+        ghost = next;
+        if (!lost) buildGhost();
+      }
+      ghostGroup.visible = visible && ghost !== null;
+      schedule();
+    },
     roomReport,
     resize(width, height) {
       if (disposed || !(width > 0) || !(height > 0)) return;
@@ -540,9 +600,10 @@ export function mountBoardScene(
       if (restoreTimer) clearTimeout(restoreTimer);
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      for (const d of [...disposables, ...finDisposables]) d.dispose();
+      for (const d of [...disposables, ...finDisposables, ...ghostDisposables]) d.dispose();
       disposables = [];
       finDisposables = [];
+      ghostDisposables = [];
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
