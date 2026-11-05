@@ -15,10 +15,12 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "../geometry/design";
-import { buildOutline, foamHalfWidth, tailCutStation } from "../geometry/outline";
+import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "../geometry/outline";
 import { BOARD_PRESETS } from "../geometry/presets";
+import { mm } from "../geometry/units";
 import { crossSectionStations } from "../geometry/volume";
-import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
+import { curveHalfWidthAt, wingStepShape } from "../geometry/wings";
+import { phase16Boards, phase16WingBoards } from "../geometry/__fixtures__/phase16-boards";
 import { boardFileName, boardFileStem, BOARD_FILE_EXTENSION } from "../models/board-file";
 import { CNC_LAYERS, cncFiles, cncZip, sliceFileName } from "./cnc-files";
 import { DXF_POLYLINE_3D, DXF_VERTEX_3D, readDxf } from "./dxf";
@@ -297,6 +299,43 @@ describe("the whole export, on every preset and every swallow of the 40-board se
     },
     SWEEP_TIMEOUT_MS,
   );
+});
+
+describe("the CNC files carry the step TEMPLATE draws (R8, D-33)", () => {
+  for (const label of ["wing|fish|square", "wing|shortboard|rounded"]) {
+    it(
+      label,
+      () => {
+        const board = phase16WingBoards().find((b) => b.label === label)!;
+        const surface = surfaceOf(board.fields);
+        const geometry = buildOutline(board.fields.outline);
+        const { files, sliceCount } = cncFiles(surface, label);
+        const text = (suffix: string) =>
+          new TextDecoder().decode(files.find((file) => file.name.endsWith(suffix))!.data);
+
+        // A point of the outline file at each corner of the step; a square step's two a hair apart.
+        const outline = readXyz(text("-outline.txt"))[0].filter((p) => p[1] > 0);
+        for (const wing of geometry.wings!) {
+          for (const corner of wingStepShape(wing).points) {
+            const width = curveHalfWidthAt(geometry, mm(corner.station)) - corner.inward;
+            const near = outline.filter((p) => Math.abs(p[0] - corner.station) < 0.01);
+            expect(near.some((p) => Math.abs(p[1] - width) < 0.01)).toBe(true);
+          }
+        }
+
+        // The slices are the litres' own, each widest on TEMPLATE's outline.
+        const stations = crossSectionStations(board.fields.outline.length, tailCutStation(geometry));
+        const withFoam = stations.filter((station) => foamHalfWidth(geometry, station) > 0);
+        expect(sliceCount).toBe(withFoam.length);
+        boardSlices(surface).forEach((slice, i) => {
+          const loops = readXyz(text(sliceFileName(boardFileStem(label), i, sliceCount)));
+          const widest = Math.max(...loops.flat().map((p) => p[1]));
+          expect(Math.abs(widest - sampleOutline(geometry, slice.station))).toBeLessThan(0.01);
+        });
+      },
+      SWEEP_TIMEOUT_MS,
+    );
+  }
 });
 
 describe("slice file names (D-14)", () => {

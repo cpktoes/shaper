@@ -265,8 +265,9 @@ export function wingFinBoxDistance(depth: Mm): Mm {
 const TANGENT_FLOOR_MM = inchesToMm(1e-9);
 /** The sketch's `stepProfile` floor on a polyline piece's length along the board, 1e-12 inch. */
 const SHARE_FLOOR_MM = inchesToMm(1e-12);
-/** The hair either side of a corner (1e-6 inch), so a square step draws vertical. */
-const HAIR_MM = inchesToMm(1e-6);
+/** The hair either side of a corner (1e-6 inch), so a square step draws vertical. The 3D board puts its
+ * rings this far either side of a square step's one station (Phase 16, D-33). */
+export const WING_HAIR_MM = inchesToMm(1e-6);
 /** The 0.02" grid through each step. */
 const STEP_GRID_MM = inchesToMm(0.02);
 /** The sketch's arc count: one segment per 5° of turn, never fewer than six. */
@@ -454,6 +455,17 @@ function takeAt(g: OutlineGeometry, prepared: readonly PreparedWing[], s: number
   return take;
 }
 
+/**
+ * How much the wings take off the curve the shaper drew at a station (construction A: depth × the step's
+ * share × the fade to the tail pod) — exactly what `applyWings` takes off the outline's points. 0 on an outline
+ * with no wings, ahead of every step, and at or behind the tail pod. The litres and the 3D board build each
+ * station behind a wing at the width this gives back, so the deck stays where it was (Phase 16, D-33).
+ */
+export function wingTakeAt(geometry: OutlineGeometry, station: Mm): Mm {
+  if (!geometry.wings || geometry.wings.length === 0) return mm(0);
+  return mm(takeAt(geometry, prepare(geometry.wings), station));
+}
+
 function wingedFromPrepared(g: OutlineGeometry, prepared: readonly PreparedWing[], s: number): number {
   const base = curveHalfWidthAt(g, mm(s));
   if (s <= g.tailPodStation) return base;
@@ -499,7 +511,7 @@ function interpolateHalfWidth(points: readonly OutlinePoint[], station: number):
  * corner point, a hair either side of it so a square step draws vertical, and the 0.02" grid from
  * the inner corner to the step's start — sorted by station. The area and the two 12" widths are
  * worked out again with today's rules; the knots, handles, spans and everything else are the
- * base's, unchanged.
+ * base's, unchanged. The placed wings are recorded on the geometry (`wings`, Phase 16, D-33).
  */
 export function applyWings(base: OutlineGeometry, wings: readonly Wing[]): OutlineGeometry {
   const placed = placedWings(wings, base);
@@ -522,8 +534,8 @@ export function applyWings(base: OutlineGeometry, wings: readonly Wing[]): Outli
   for (const p of prepared) {
     for (const pt of p.shape.points) {
       addStation(pt.station);
-      addStation(pt.station - HAIR_MM);
-      addStation(pt.station + HAIR_MM);
+      addStation(pt.station - WING_HAIR_MM);
+      addStation(pt.station + WING_HAIR_MM);
     }
     const from = p.inner;
     const to = p.shape.points[0].station;
@@ -543,6 +555,7 @@ export function applyWings(base: OutlineGeometry, wings: readonly Wing[]): Outli
   const measure = inchesToMm(12);
   return {
     ...base,
+    wings: placed,
     points,
     area,
     tailWidthAt12in: mm(2 * interpolateHalfWidth(points, Math.min(measure, length))),
@@ -572,8 +585,8 @@ export function wingReadouts(g: OutlineGeometry, wings: readonly Wing[]): WingRe
       stepStart: f.stepStart,
       inner: f.inner,
       depth: w.depth,
-      widthAhead: mm(2 * wingedFromPrepared(g, prepared, f.stepStart + HAIR_MM)),
-      widthBehind: mm(2 * wingedFromPrepared(g, prepared, f.inner - HAIR_MM)),
+      widthAhead: mm(2 * wingedFromPrepared(g, prepared, f.stepStart + WING_HAIR_MM)),
+      widthBehind: mm(2 * wingedFromPrepared(g, prepared, f.inner - WING_HAIR_MM)),
     };
   });
 }

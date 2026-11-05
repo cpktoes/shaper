@@ -21,7 +21,10 @@
  *    nose's from the centre to the nose 12" mark, D-32), the section itself carries the ring
  *    (`BoardSection.blended`): the two end rails' halves sampled alike and blended point for point by the
  *    tip's weight (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31) — and how sharp
- *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here.
+ *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here. Behind a wing (D-33) the
+ *    section carries its ring too (`BoardSection.drawn`): the board without the wing with only its rail
+ *    stepped in, so the deck and the flat bottom run smooth across the wing; and rings stand at each wing's own
+ *    step (`surfaceStations`), so the outline steps where TEMPLATE does.
  * 3. Inside a swallow's notch the half is moved out to stand on the notch's wall (`inner`): the rail lands
  *    on the drawn curve (`outer`), the inside edge on the wall. Everywhere else `inner` is the stringer, 0.
  * 4. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
@@ -48,6 +51,7 @@ import {
   crossSectionStations,
   railCharacterDifferences,
 } from "./volume";
+import { WING_HAIR_MM, wingStepShape } from "./wings";
 
 /** A point of the surface, in millimetres, in Shape3D's axes (x along, y across, z up). */
 export type Vec3 = readonly [number, number, number];
@@ -134,7 +138,8 @@ function assertFinite(field: string, value: number, station: number): void {
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
  * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — whenever the
  * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
- * ends (D-30), filled in so no two neighbours are more than
+ * ends (D-30), and at each wing's own step (D-33: every point of the step, or a hair either side of a square
+ * step's one station, which has two widths) — filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -153,6 +158,18 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
       if (inside(s)) required.push(s);
     }
   }
+  for (const wing of input.geometry.wings ?? []) {
+    const { points } = wingStepShape(wing);
+    points.forEach((point, i) => {
+      // Two step points at one station with different depths: a square step, two widths at one spot.
+      const square = points.some(
+        (other, j) => j !== i && Math.abs(other.station - point.station) < SAME_STATION_MM && other.inward !== point.inward,
+      );
+      for (const s of square ? [point.station - WING_HAIR_MM, point.station + WING_HAIR_MM] : [point.station]) {
+        if (inside(s)) required.push(s);
+      }
+    });
+  }
   const kept: number[] = [];
   const keep = (s: number) => {
     if (!kept.some((k) => Math.abs(k - s) < SAME_STATION_MM)) kept.push(s);
@@ -166,16 +183,17 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
 /**
  * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
  * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
- * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or inside a tip's blend (D-32) the
- * very ring the litres count (`BoardSection.blended`, D-31), moved out by `inner` so its inside edge stands on
- * a swallow's notch wall (0 everywhere else). Nothing is sampled or blended here that the litres don't read.
+ * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or the very ring the litres count
+ * — behind a wing (`BoardSection.drawn`, D-33), inside a tip's blend (`BoardSection.blended`, D-31, D-32) — moved
+ * out by `inner` so its inside edge stands on a swallow's notch wall (0 everywhere else). Nothing is sampled or
+ * blended here that the litres don't read.
  * A section with no foam is one point at `outer`, half its thickness up.
  */
 export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
   if (!section.result || section.halfWidth <= 0) {
     return Array.from({ length: HALF_POINTS }, () => [outer, section.thickness / 2] as P2);
   }
-  const half = section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
+  const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
   return half.map(([y, h]) => [inner + y, h] as P2);
 }
 

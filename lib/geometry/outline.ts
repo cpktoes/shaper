@@ -42,7 +42,7 @@ import type {
   Point2D,
 } from "./board";
 import { type Degrees, type Mm, inchesToMm, mm } from "./units";
-import { applyWings } from "./wings";
+import { applyWings, type Wing } from "./wings";
 
 const MARGIN_MM = inchesToMm(16);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
@@ -147,6 +147,13 @@ export interface OutlineGeometry {
   tailWidthAt12in: Mm;
   /** Full (not half) width measured 12" in from the nose. */
   noseWidthAt12in: Mm;
+  /**
+   * The wings this outline was cut with, as placed (`placedWings`) — present only on a geometry `applyWings`
+   * cut, so a board without wings is today's object exactly. The litres and the 3D board read it to build each
+   * station behind a wing at the width without the wing (`wingTakeAt`, Phase 16, D-33); nothing that draws or
+   * measures the outline does.
+   */
+  wings?: readonly Wing[];
 }
 
 function interpolateHalfWidth(points: OutlinePoint[], station: number): number {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC, type Point2D } from "./board";
-import { buildOutline, sampleOutline, MEASURE_STATION_MM } from "./outline";
+import { buildOutline, foamHalfWidth as foamHalfWidthOf, sampleOutline, MEASURE_STATION_MM } from "./outline";
+import { placedHalfSection } from "./board-surface";
 import {
+  type BoardSection,
   boardSectionEnds,
   boardSections,
   boardSectionsWith,
@@ -15,9 +17,12 @@ import {
   railCharacterDifferences,
   railCharacterOf,
   RAIL_CHARACTER_FADE,
+  type RailCharacterRule,
+  SMOOTH_SURFACE_FADE,
   tailHardEdgeWeight,
   simpsonIntegrate,
   SIMPSON_PANEL_COUNT,
+  wingStepHalf,
   type VolumeRailValues,
   type VolumeSpec,
   type VolumeTemplateValues,
@@ -26,7 +31,14 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
-import { blendFinishedRails, railBlendArea, sampledFinishedRail, sampledSectionArea, sectionFinishedRail } from "./finished-rail";
+import {
+  blendFinishedRails,
+  railBlendArea,
+  sampledFinishedRail,
+  sampledSectionArea,
+  SECTION_POINTS,
+  sectionFinishedRail,
+} from "./finished-rail";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
@@ -45,7 +57,8 @@ import {
 import { samplePchip, type SplinePoint } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
-import { PHASE16_TUCKED, phase16Boards, phase16LiveBoards } from "./__fixtures__/phase16-boards";
+import { PHASE16_TUCKED, phase16Boards, phase16LiveBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import { outlineWithoutWings, wingFootprint, wingTakeAt } from "./wings";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -1394,5 +1407,211 @@ describe("D-32 the whole rail character blends", () => {
       if (board.label.startsWith("tucked|")) expect(any, board.label).toBe(true);
     }
     expect(Object.keys(PHASE16_TUCKED)).toHaveLength(6);
+  });
+});
+
+describe("D-33 a wing steps the outline only", () => {
+  type Half = readonly (readonly [number, number])[];
+  const BOTTOM_EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+  const deckRun = (half: Half) => half.slice(0, SECTION_POINTS.deck);
+  const bottomRun = (half: Half) => half.slice(BOTTOM_EDGE);
+  /** The drawn half of a section, as the 3D board lays it. */
+  const halfOf = (section: BoardSection): Half => placedHalfSection(section, section.halfWidth, 0);
+  /** Whether a run's distance across never turns back (`sign` 1 on the deck, walking out; −1 on the bottom). */
+  const folds = (run: Half, sign: 1 | -1) => run.some((p, i) => i > 0 && sign * (p[0] - run[i - 1][0]) < -1e-9);
+  /** A deck run's height at a distance across. */
+  function heightAt(run: Half, y: number): number {
+    for (let i = 1; i < run.length; i++) {
+      const [y0, h0] = run[i - 1];
+      const [y1, h1] = run[i];
+      if (y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : h1;
+    }
+    return run[run.length - 1][1];
+  }
+  /** The nearest a polyline comes to a point. */
+  function distanceTo(line: Half, p: readonly [number, number]): number {
+    let best = Infinity;
+    for (let i = 1; i < line.length; i++) {
+      const [ax, ay] = line[i - 1];
+      const [bx, by] = line[i];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? Math.min(1, Math.max(0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / len2)) : 0;
+      best = Math.min(best, Math.hypot(p[0] - (ax + t * dx), p[1] - (ay + t * dy)));
+    }
+    return best;
+  }
+
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return { geometry, input: designCrossSectionInput(geometry, profile, rails, fields.outline.length) };
+  }
+
+  /** Deck Mark 3 at a section: the one rail's, or the larger of a blend's two. */
+  function deckMark3Of(input: ReturnType<typeof inputOf>["input"], section: BoardSection): number {
+    if (!section.blended) return section.result!.deckMark3;
+    const { base, tip } = boardSectionEnds(input, section.station);
+    return Math.max(base.result!.deckMark3, tip.result!.deckMark3);
+  }
+
+  /** One winged board with its stations every 2 mm from each wing's inner corner to the tail, three ways. */
+  const WINGED = phase16WingBoards().map((board) => {
+    const { geometry, input } = inputOf(board.fields);
+    const plain = inputOf({ ...board.fields, outline: outlineWithoutWings(board.fields.outline) }).input;
+    const wings = geometry.wings!;
+    const inners = wings.map((wing) => wingFootprint(wing).inner as number);
+    const stations: Mm[] = [];
+    for (let s = Math.max(...inners); s > 0; s -= 2) {
+      if (wingTakeAt(geometry, mm(s)) > 0) stations.push(mm(s));
+    }
+    const live = boardSections(input, stations);
+    const old = boardSectionsWith(input, RAIL_CHARACTER_FADE, stations);
+    const without = boardSections(plain, stations);
+    return { ...board, geometry, input, plain, wings, inners, stations, live, old, without };
+  });
+  const isDeep = (board: (typeof WINGED)[number]) => board.wings.some((wing) => wing.depth > inchesToMm(1 / 2));
+
+  it("the 28 boards each reach the back of their wing", () => {
+    expect(WINGED).toHaveLength(28);
+    for (const board of WINGED) expect(board.stations.length).toBeGreaterThan(10);
+  });
+
+  describe("wingStepHalf: the rail moved in, the deck left alone", () => {
+    const rail = computeRailBands(DEFAULT_RAIL_BAND_SPEC).center.result;
+    const takes = [0.01, 0.5, inchesToMm(3 / 16), inchesToMm(3 / 8), inchesToMm(1 / 2), inchesToMm(1)];
+    const rooms = (take: number) => [1.6, 2, 3, 5, 12].map((k) => k * take).concat([100, 200, 300]);
+
+    for (const take of takes) {
+      it(`a take of ${take.toFixed(2)} mm, on rooms from 1.6 × the take to 300 mm`, () => {
+        for (const room of rooms(take)) {
+          const half = sampledFinishedRail(rail, true, room);
+          const stepped = wingStepHalf(half, room, take, rail.deckMark3);
+          const reach = Math.min(room, Math.max(rail.deckMark3, 2 * take));
+          expect(stepped[0]).toEqual(half[0]);
+          expect(stepped[stepped.length - 1]).toEqual(half[half.length - 1]);
+          expect(Math.abs(Math.max(...stepped.map((p) => p[0])) - (room - take))).toBeLessThan(1e-9);
+          expect(folds(deckRun(stepped), 1)).toBe(false);
+          expect(folds(bottomRun(stepped), -1)).toBe(false);
+          stepped.forEach((p, i) => {
+            expect(p[1]).toBe(half[i][1]);
+            if (1.5 * take < reach && room - half[i][0] >= reach) expect(p[0]).toBe(half[i][0]);
+          });
+        }
+      });
+    }
+
+    it("takes nothing with a take of 0", () => {
+      const half = sampledFinishedRail(rail, true, 200);
+      expect(wingStepHalf(half, 200, 0, rail.deckMark3)).toEqual(half);
+    });
+  });
+
+  for (const board of WINGED) {
+    it(`${board.label}: behind the wing the deck inside Deck Mark 3 is the board without the wing, and today's stands off it`, () => {
+      board.stations.forEach((station, i) => {
+        const section = board.live[i];
+        const take = wingTakeAt(board.geometry, station);
+        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
+        const drawn = deckRun(halfOf(section));
+        const wingless = deckRun(halfOf(board.without[i]));
+        for (const [y, h] of drawn) {
+          if (y <= limit) expect(Math.abs(h - heightAt(wingless, y))).toBeLessThan(0.01);
+        }
+      });
+      for (const inner of board.inners) {
+        // Just behind the wing, the old rule's deck stands more than 0.1 mm off somewhere in the same range.
+        const i = board.stations.findIndex((s) => s < inner - 1);
+        const section = board.live[i];
+        const take = wingTakeAt(board.geometry, board.stations[i]);
+        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
+        const old = deckRun(halfOf(board.old[i]));
+        const wingless = deckRun(halfOf(board.without[i]));
+        const off = Math.max(...wingless.filter(([y]) => y <= limit).map(([y, h]) => Math.abs(h - heightAt(old, y))));
+        expect(off).toBeGreaterThan(0.1);
+      }
+    }, 60_000);
+
+    it(`${board.label}: the rail stands on the stepped outline, keeps its shape, and nothing folds`, () => {
+      const bound = isDeep(board) ? 2.5 : 0.75;
+      board.stations.forEach((station, i) => {
+        const section = board.live[i];
+        const drawn = halfOf(section);
+        const old = halfOf(board.old[i]);
+        expect(section.halfWidth).toBe(foamHalfWidthOf(board.geometry, station));
+        expect(Math.abs(Math.max(...drawn.map((p) => p[0])) - section.halfWidth)).toBeLessThan(1e-9);
+        for (const p of drawn) {
+          if (p[0] >= section.halfWidth - 15) expect(distanceTo(old, p)).toBeLessThan(bound);
+        }
+        expect(folds(deckRun(drawn), 1)).toBe(false);
+        expect(folds(bottomRun(drawn), -1)).toBe(false);
+      });
+    }, 60_000);
+
+    it(`${board.label}: the flat bottom carries straight through out to Deck Mark 3`, () => {
+      board.stations.forEach((station, i) => {
+        const section = board.live[i];
+        const take = wingTakeAt(board.geometry, station);
+        const limit = section.halfWidth + take - deckMark3Of(board.input, section);
+        for (const [y, h] of bottomRun(halfOf(section))) {
+          if (y <= limit) expect(h).toBe(0);
+        }
+      });
+    }, 60_000);
+
+    it(`${board.label}: a station the wings do not reach reads what it read with the wing rule off`, () => {
+      const shift: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit, wings: "shift" } };
+      const live = boardSections(board.input);
+      const shifted = boardSectionsWith(board.input, shift);
+      let reached = 0;
+      live.forEach((section, i) => {
+        if (wingTakeAt(board.geometry, section.station) > 0) {
+          reached++;
+          return;
+        }
+        expect(Object.is(section.area, shifted[i].area)).toBe(true);
+        expect(Object.is(section.blendArea, shifted[i].blendArea)).toBe(true);
+        expect(section.drawn).toEqual(shifted[i].drawn);
+      });
+      expect(reached).toBeGreaterThan(0);
+      expect(reached).toBeLessThan(live.length);
+    }, 60_000);
+  }
+
+  describe("the tuck steps in with the rail", () => {
+    for (const board of WINGED.filter((b) => b.label.endsWith("|one-soft"))) {
+      it(`${board.label}: the tuck line moves in less than the take, and on a Symmetrical rail not at all`, () => {
+        const symmetrical = board.input.rails.tail.symmetrical && board.input.rails.center.symmetrical;
+        board.stations.forEach((station, i) => {
+          const take = wingTakeAt(board.geometry, station);
+          const moved = halfOf(board.without[i])[BOTTOM_EDGE][0] - halfOf(board.live[i])[BOTTOM_EDGE][0];
+          expect(moved).toBeGreaterThan(-0.05);
+          if (symmetrical) expect(moved).toBeLessThan(0.05);
+          else expect(moved).toBeLessThan(take);
+        });
+      }, 60_000);
+    }
+
+    it("the Longboard is the Symmetrical case, and the other three are not", () => {
+      const symmetrical = WINGED.filter((b) => b.label.endsWith("|one-soft")).map(
+        (b) => b.input.rails.tail.symmetrical && b.input.rails.center.symmetrical,
+      );
+      expect(symmetrical).toEqual([false, false, false, true]);
+    });
+
+    for (const board of WINGED.filter((b) => b.label.endsWith("|one") && b.input.rails.tailHardEdge)) {
+      it(`${board.label}: on a hard edge the corner is the rail itself, on the stepped outline`, () => {
+        let hard = 0;
+        board.stations.forEach((_, i) => {
+          const section = board.live[i];
+          if (section.hardWeight !== 1) return;
+          hard++;
+          expect(Math.abs(halfOf(section)[BOTTOM_EDGE][0] - section.halfWidth)).toBeLessThan(1e-9);
+        });
+        expect(hard).toBeGreaterThan(10);
+      });
+    }
   });
 });

@@ -36,7 +36,8 @@ import {
   crossSectionStations,
   railCharacterDifferences,
 } from "./volume";
-import { phase16Boards, phase16RailCharacterBoards } from "./__fixtures__/phase16-boards";
+import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingStepShape } from "./wings";
+import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
 
 /**
  * The 3D board's surface (Phase 16, D-05): the litres' own sections lofted along the rocker. Every expected
@@ -274,6 +275,75 @@ describe("all 74 boards: closed, and a hair under VOLUME's litres (SPEC acceptan
       const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
       expect(gap).toBeLessThanOrEqual(0);
       expect(gap).toBeGreaterThan(-0.0015);
+    });
+  }
+});
+
+describe("the 28 winged boards: the surface steps where TEMPLATE does and the deck runs through (D-33)", () => {
+  const BUILT_WINGED = phase16WingBoards().map(built);
+  const n = SURFACE_POINTS.deck + SURFACE_POINTS.rail + SURFACE_POINTS.bottom - 2;
+
+  it("checks every one of the 28", () => {
+    expect(BUILT_WINGED).toHaveLength(28);
+  });
+
+  for (const { label, fields, input, geometry, surface } of BUILT_WINGED) {
+    it(`${label}: watertight, and its volume within 0.15% of VOLUME's litres`, () => {
+      expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+      const litres = computeCrossSectionVolume(input.sections).volumeLitres;
+      expect(Math.abs(enclosedVolumeMm3(surface) / 1e6 - litres) / litres).toBeLessThan(0.0015);
+    });
+
+    it(`${label}: every ring behind a wing is its section's drawn half`, () => {
+      const sections = boardSections(input.sections, surfaceStations(input));
+      let drawn = 0;
+      surface.rings.forEach((ring, i) => {
+        const half = sections[i].drawn;
+        if (!half) return;
+        drawn++;
+        const right = ringPoints(surface.positions, { pieces: [ring.pieces[0]] }).slice(0, n);
+        right.forEach(([, y, z], j) => {
+          expect(Math.abs(y - (ring.pieces[0].inner + half[j][0]))).toBeLessThan(1e-9);
+          expect(Math.abs(z - input.rockerAt(ring.station) - half[j][1])).toBeLessThan(1e-9);
+        });
+      });
+      expect(drawn).toBeGreaterThan(10);
+    });
+
+    it(`${label}: rings stand at each step point, a hair either side of a square step's station, and nowhere else new`, () => {
+      const plain = surfaceInputOf({ ...fields, outline: outlineWithoutWings(fields.outline) }).input;
+      const before = new Set<number>(surfaceStations(plain));
+      const added = surfaceStations(input).filter((s) => !before.has(s));
+      const stepPoints = geometry.wings!.flatMap((wing) => {
+        const { points } = wingStepShape(wing);
+        return points.flatMap((point) => {
+          const square = points.some((other) => other.station === point.station && other.inward !== point.inward);
+          return square ? [point.station - WING_HAIR_MM, point.station + WING_HAIR_MM] : [point.station];
+        });
+      });
+      const stations = surfaceStations(input);
+      for (const s of stepPoints) expect(stations.some((t) => Math.abs(t - s) < 1e-6)).toBe(true);
+      for (const s of added) expect(stepPoints.some((t) => Math.abs(t - s) < 1e-6)).toBe(true);
+    });
+
+    it(`${label}: the 3D outline strays no more than 0.1 mm from TEMPLATE's around each wing`, () => {
+      const loop = boardOutlineLoop(surface);
+      const nose = loop.findIndex((q) => q[0] === surface.length);
+      const right = loop.slice(0, nose + 1);
+      for (const wing of geometry.wings!) {
+        const { inner, stepStart, shape } = wingFootprint(wing);
+        const square = shape.points.some((a, i) => shape.points.some((b, j) => i !== j && a.station === b.station && a.inward !== b.inward));
+        const from = inner - inchesToMm(1);
+        const to = stepStart + inchesToMm(1);
+        let k = 0;
+        for (let s = from; s <= to; s += 0.25) {
+          if (square && Math.abs(s - wing.station) < 0.001) continue;
+          while (right[k + 1][0] < s) k++;
+          const [a, b] = [right[k], right[k + 1]];
+          const y = a[1] + ((b[1] - a[1]) * (s - a[0])) / (b[0] - a[0]);
+          expect(Math.abs(y - sampleOutline(geometry, mm(s)))).toBeLessThan(0.1);
+        }
+      }
     });
   }
 });
