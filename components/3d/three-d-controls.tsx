@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { SliderRow } from "@/components/design/slider-row";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import {
@@ -22,10 +21,10 @@ import { THREE_D_COPY } from "./three-d-copy";
  * apart — the same outer column every design screen's sidebar uses (`fin-controls.tsx`, `rocker-editor.tsx`).
  * The shell adds Back and Next and the site footer after it.
  *
- * Between the title and VIEW sits the `children` slot: the tail rail's two sliders bound to RAILS' own values
- * (D-30/D-32, `ThreeDTailRail`), then SHOW (`ThreeDShow`, 16-10: Fins; 16-11 adds Blank and Contour Stripes), directly
- * above VIEW as UI-SPEC §1 draws them. EXPORT (16-12) follows VIEW, last on the panel. Each block is a
- * `flex flex-col gap-2` opening with its ruled heading.
+ * The panel reads the title, then the `children` slot — the tail rail's two sliders bound to RAILS' own values
+ * (D-30/D-32, `ThreeDTailRail`) — then VIEW, then EXPORT (16-12), last on the panel. Each block is a
+ * `flex flex-col gap-2` opening with its ruled heading. What the picture includes (Fins, Blank and Contour Stripes)
+ * lives in the canvas's corner, as icons beside Wide view (D-35, `three-d-show-buttons.tsx`).
  */
 export function ThreeDControls({
   children,
@@ -130,74 +129,6 @@ export function ThreeDTailRail() {
     </div>
   );
 }
-
-/**
- * SHOW (UI-SPEC §1, §6): what the picture includes. Fins (D-06) is on by default and hides the fins when unticked.
- * Blank (D-08) is off by default and shows the picked blank as a see-through ghost round the board; a hand-set board
- * has no blank, so its row is dimmed and can't be ticked, with the reason under it at full strength. Contour Stripes
- * (D-12) is off by default and swaps the foam's shading for bands of light, its hint always under it.
- *
- * A tick only changes what is seen — never the board, never saved, never undoable (D-17), never the files (D-16) —
- * so a locked board keeps it (marked lock-exempt, UI-SPEC §9), and the view stays exactly as it is. That is why this
- * section takes its ticks from the screen and reads nothing from the board itself. It is live while the drawing
- * loads (a tick made then applies when the board appears) and dimmed only while a canvas message shows.
- */
-export function ThreeDShow({
-  showFins,
-  onShowFins,
-  showBlank,
-  onShowBlank,
-  hasBlank,
-  stripes,
-  onStripes,
-  disabled,
-}: {
-  showFins: boolean;
-  onShowFins: (show: boolean) => void;
-  showBlank: boolean;
-  onShowBlank: (show: boolean) => void;
-  /** Whether the board sits in a blank picked on ROCKER (`sideProfile.blank`); a hand-set board has none. */
-  hasBlank: boolean;
-  /** Contour Stripes (D-12): bands of light in place of the shading. */
-  stripes: boolean;
-  onStripes: (on: boolean) => void;
-  /** True while a canvas message shows instead of the board (UI-SPEC §8): there is nothing to show. */
-  disabled: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <ThreeDSectionHeading>{THREE_D_COPY.showHeading}</ThreeDSectionHeading>
-      <label className={TICK_ROW}>
-        <Checkbox data-lock-exempt disabled={disabled} checked={showFins} onCheckedChange={(checked) => onShowFins(checked)} />
-        {THREE_D_COPY.fins}
-      </label>
-      <div>
-        <label className={cn(TICK_ROW, !hasBlank && "cursor-default opacity-40")}>
-          <Checkbox
-            data-lock-exempt
-            disabled={disabled || !hasBlank}
-            checked={hasBlank && showBlank}
-            onCheckedChange={(checked) => onShowBlank(checked)}
-          />
-          {THREE_D_COPY.blank}
-        </label>
-        {!hasBlank && <div className={TICK_HINT}>{THREE_D_COPY.noBlankHint}</div>}
-      </div>
-      <div>
-        <label className={TICK_ROW}>
-          <Checkbox data-lock-exempt disabled={disabled} checked={stripes} onCheckedChange={(checked) => onStripes(checked)} />
-          {THREE_D_COPY.contourStripes}
-        </label>
-        <div className={TICK_HINT}>{THREE_D_COPY.contourStripesHint}</div>
-      </div>
-    </div>
-  );
-}
-
-/** A tick row: RAILS' own label row (UI-SPEC §1). */
-const TICK_ROW = "flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal";
-/** A hint under its tick row, indented to the label's words (16 box + 6 gap), at full strength. */
-const TICK_HINT = "mt-1 pl-[22px] text-xs text-surf-ink-muted font-normal";
 
 /** Where each view button sits in the six-column grid (UI-SPEC §1): three to a row, then two, then Reset alone. */
 const VIEW_SPAN: Record<ViewName, string> = {

@@ -12,10 +12,10 @@ import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canv
 import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 
 /**
- * The 3D panel's SHOW section (Phase 16, plans 10 and 11, UI-SPEC §1, §3 "Fins", "The blank ghost", "Contour Stripes",
- * §6, §9, §16): the board's fins stand on its bottom at their FINS placement; the picked blank shows as a see-through
- * ghost round the board; Contour Stripes swaps the shading for bands fixed in the room; each tick keeps the view. The
- * scene follows the theme while the screen is open, and a quiet picture of the board stands in while it loads.
+ * The 3D corner's switches (Phase 16, plans 10, 11 and 17, UI-SPEC §1, §3 "Fins", "The blank ghost", "Contour Stripes",
+ * §6, §9, §16, D-35): the board's fins stand on its bottom at their FINS placement; the picked blank shows as a
+ * see-through ghost round the board; Contour Stripes swaps the shading for bands fixed in the room; each press keeps the
+ * view. The scene follows the theme while the screen is open, and a quiet picture of the board stands in while it loads.
  */
 
 /** WebKit draws its first frame more slowly on the suite's development server (about 5 s measured). */
@@ -43,6 +43,11 @@ async function waitForBoard(page: Page) {
   const host = boardHost(page);
   await expect(host).toHaveAttribute("data-board-state", "ready", { timeout: FIRST_FRAME_MS });
   await expect.poll(async () => frames(host), { timeout: FIRST_FRAME_MS }).toBeGreaterThanOrEqual(1);
+  // React owns the corner's buttons (they draw from the first paint, and a click before hydration is lost).
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-toolbar] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
   return host;
 }
 
@@ -81,10 +86,13 @@ async function showView(page: Page, host: Locator, name: ViewName) {
   await settled(host);
 }
 
+/** A canvas screenshot covers the corner: these keep a button's pressed fill out of every comparison. */
+const HIDE_THE_CORNER = "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }";
+
 /** The canvas as drawn now, once the scene has drawn every frame asked of it. */
 async function picture(host: Locator) {
   await settled(host);
-  return decodePng(await host.screenshot());
+  return decodePng(await host.screenshot({ style: HIDE_THE_CORNER }));
 }
 
 /** A preset, kept in this browser as the open board, so /design/3d opens on it (fins as the preset sets them). */
@@ -112,12 +120,12 @@ async function keepPreset(
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
 }
 
-/** How many rows of the canvas the fins cover: the rows that change when Fins is unticked, top to bottom. */
+/** How many rows of the canvas the fins cover: the rows that change when Fins is switched off, top to bottom. */
 async function finsDrawnHeight(page: Page, host: Locator): Promise<{ rows: number; canvas: number }> {
   const on = await picture(host);
-  await finsBox(page).click();
+  await finsSwitch(page).click();
   const off = await picture(host);
-  await finsBox(page).click();
+  await finsSwitch(page).click();
   let top = Infinity;
   let bottom = -Infinity;
   for (let y = 0; y < on.height; y++) {
@@ -133,17 +141,23 @@ async function finsDrawnHeight(page: Page, host: Locator): Promise<{ rows: numbe
   return { rows: bottom - top + 1, canvas: on.height };
 }
 
-function finsBox(page: Page) {
-  return page.getByRole("checkbox", { name: THREE_D_COPY.fins, exact: true });
+function cornerSwitch(page: Page, name: string) {
+  return page.locator("[data-viewer-toolbar]").getByRole("button", { name, exact: true });
 }
 
-function blankBox(page: Page) {
-  return page.getByRole("checkbox", { name: THREE_D_COPY.blank, exact: true });
+function finsSwitch(page: Page) {
+  return cornerSwitch(page, THREE_D_COPY.fins);
 }
 
-function stripesBox(page: Page) {
-  return page.getByRole("checkbox", { name: THREE_D_COPY.contourStripes, exact: true });
+function blankSwitch(page: Page) {
+  return cornerSwitch(page, THREE_D_COPY.blank);
 }
+
+function stripesSwitch(page: Page) {
+  return cornerSwitch(page, THREE_D_COPY.contourStripes);
+}
+
+const expectPressed = (button: Locator, pressed: boolean) => expect(button).toHaveAttribute("aria-pressed", String(pressed));
 
 /** A theme token's colour as the page holds it now (each of these is a plain `#rrggbb` ramp value). */
 async function tokenRgb(page: Page, name: string): Promise<[number, number, number]> {
@@ -193,21 +207,21 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("the 3D board's fins", () => {
-  test("1. the thruster's fins stand on the board, and the Fins box hides and shows them without moving the view", async ({
+  test("1. the thruster's fins stand on the board, and the Fins switch hides and shows them without moving the view", async ({
     page,
   }, testInfo) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    await expect(finsBox(page)).toBeChecked();
-    await expect(finsBox(page)).toBeEnabled();
+    await expectPressed(finsSwitch(page), true);
+    await expect(finsSwitch(page)).toBeEnabled();
 
     await showView(page, host, "bottom");
     const turn = await host.getAttribute("data-turn");
     const crop = await host.getAttribute("data-crop");
     const withFins = await picture(host);
 
-    await finsBox(page).click();
-    await expect(finsBox(page)).not.toBeChecked();
+    await finsSwitch(page).click();
+    await expectPressed(finsSwitch(page), false);
     const without = await picture(host);
     // Seen from straight below, each fin is edge-on — a thin dark line, about a thousandth of the canvas for the
     // three of them (the plan's 0.2% assumed more; measured 0.14% on a computer).
@@ -217,8 +231,8 @@ test.describe("the 3D board's fins", () => {
     expect(await host.getAttribute("data-turn")).toBe(turn);
     expect(await host.getAttribute("data-crop")).toBe(crop);
 
-    await finsBox(page).click();
-    await expect(finsBox(page)).toBeChecked();
+    await finsSwitch(page).click();
+    await expectPressed(finsSwitch(page), true);
     const again = await picture(host);
     expect(await host.getAttribute("data-turn")).toBe(turn);
     if (testInfo.project.name === "desktop") {
@@ -259,38 +273,47 @@ test.describe("the 3D board's blank (plan 11, D-08)", () => {
     await keepPreset(page, "Fish");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    await expect(blankBox(page)).not.toBeChecked();
-    await expect(blankBox(page)).toBeEnabled();
-    await expect(page.getByText(THREE_D_COPY.noBlankHint, { exact: true })).toHaveCount(0);
+    await expectPressed(blankSwitch(page), false);
+    await expect(blankSwitch(page)).not.toHaveAttribute("aria-disabled", "true");
+    await expect(blankSwitch(page)).not.toHaveAccessibleDescription(THREE_D_COPY.noBlankHint);
 
     const turn = await host.getAttribute("data-turn");
     const crop = await host.getAttribute("data-crop");
     const before = await picture(host);
 
-    await blankBox(page).click();
-    await expect(blankBox(page)).toBeChecked();
+    await blankSwitch(page).click();
+    await expectPressed(blankSwitch(page), true);
     const ghosted = await picture(host);
     // The veil over the board and the blank's foam past its rails and tips.
     expect(shareDifferent(before, ghosted)).toBeGreaterThan(0.005);
     expect(await host.getAttribute("data-turn")).toBe(turn);
     expect(await host.getAttribute("data-crop")).toBe(crop);
 
-    await blankBox(page).click();
-    await expect(blankBox(page)).not.toBeChecked();
+    await blankSwitch(page).click();
+    await expectPressed(blankSwitch(page), false);
     const again = await picture(host);
     expect(await host.getAttribute("data-turn")).toBe(turn);
     expectSamePicture(before, again, testInfo.project.name);
   });
 
-  test("4. on a hand-set board, Blank is dimmed and can't be ticked, and says where to pick a blank", async ({ page }) => {
+  test("4. on a hand-set board, Blank is dimmed, a press does nothing, and its tooltip says where to pick a blank", async ({
+    page,
+  }, testInfo) => {
     await keepPreset(page, "Fish", { handSet: true });
     await page.goto("/design/3d");
-    await waitForBoard(page);
-    await expect(blankBox(page)).toBeDisabled();
-    await expect(blankBox(page)).not.toBeChecked();
-    await expect(page.getByText(THREE_D_COPY.noBlankHint, { exact: true })).toBeVisible();
+    const host = await waitForBoard(page);
+    const blank = blankSwitch(page);
+    await expect(blank).toHaveAttribute("aria-disabled", "true");
+    await expectPressed(blank, false);
+    await expect(blank).toHaveAttribute("title", THREE_D_COPY.noBlankHint);
+    await expect(blank).toHaveAccessibleDescription(THREE_D_COPY.noBlankHint);
+
+    const before = await picture(host);
+    await blank.click({ force: true });
+    await expectPressed(blank, false);
+    expectSamePicture(before, await picture(host), testInfo.project.name);
     // Fins stays live on the same board.
-    await expect(finsBox(page)).toBeEnabled();
+    await expect(finsSwitch(page)).toBeEnabled();
   });
 });
 
@@ -301,10 +324,12 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     await keepPreset(page, "Fish");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    await expect(stripesBox(page)).not.toBeChecked();
-    await expect(stripesBox(page)).toBeEnabled();
-    // The hint is always shown, ticked or not.
-    await expect(page.getByText(THREE_D_COPY.contourStripesHint, { exact: true })).toBeVisible();
+    await expectPressed(stripesSwitch(page), false);
+    await expect(stripesSwitch(page)).toBeEnabled();
+    // What it does, in its tooltip and spoken description; the panel says nothing about it.
+    await expect(stripesSwitch(page)).toHaveAttribute("title", THREE_D_COPY.contourStripesTip);
+    await expect(stripesSwitch(page)).toHaveAccessibleDescription(THREE_D_COPY.contourStripesTip);
+    await expect(page.locator("[data-three-d-controls]").getByText("kink at a bump")).toHaveCount(0);
     const ground = await tokenRgb(page, "--surf-3d-ground");
     const dark = await tokenRgb(page, "--surf-on-foam");
 
@@ -312,14 +337,13 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     const before = shareOfBoardNear(shaded, ground, dark, 24);
     expect(before.board).toBeGreaterThan(0);
 
-    await stripesBox(page).click();
-    await expect(stripesBox(page)).toBeChecked();
+    await stripesSwitch(page).click();
+    await expectPressed(stripesSwitch(page), true);
     const turn = await host.getAttribute("data-turn");
     const striped = await picture(host);
     // Half the bands are the stringer's dark: far more of the board than the stringer alone (more than 10%).
     expect(shareOfBoardNear(striped, ground, dark, 24).share).toBeGreaterThan(0.1);
     expect(await host.getAttribute("data-turn")).toBe(turn);
-    await expect(page.getByText(THREE_D_COPY.contourStripesHint, { exact: true })).toBeVisible();
 
     // A little drag turns the board under the room's tubes: the bands move over it.
     const box = (await host.boundingBox())!;
@@ -331,9 +355,9 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     const turned = await picture(host);
     expect(shareDifferent(striped, turned)).toBeGreaterThan(0.01);
 
-    // Untick: the foam's own shading is back — the dark is the stringer's (and the fins') alone again.
-    await stripesBox(page).click();
-    await expect(stripesBox(page)).not.toBeChecked();
+    // Off: the foam's own shading is back — the dark is the stringer's (and the fins') alone again.
+    await stripesSwitch(page).click();
+    await expectPressed(stripesSwitch(page), false);
     const again = await picture(host);
     expect(shareOfBoardNear(again, ground, dark, 24).share).toBeLessThan(Math.max(0.05, before.share * 2));
   });
@@ -407,14 +431,81 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     await expect(host).not.toHaveAttribute("aria-busy", "true");
   });
 
-  test("8. a locked board keeps all three tick boxes, since they only change the picture", async ({ page }) => {
+  test("8. a locked board keeps all three switches, since they only change the picture", async ({ page }) => {
     await keepPreset(page, "Fish", { locked: true });
     await page.goto("/design/3d");
     await waitForBoard(page);
-    for (const box of [finsBox(page), blankBox(page), stripesBox(page)]) await expect(box).toBeEnabled();
-    await blankBox(page).click();
-    await expect(blankBox(page)).toBeChecked();
-    await stripesBox(page).click();
-    await expect(stripesBox(page)).toBeChecked();
+    for (const button of [finsSwitch(page), blankSwitch(page), stripesSwitch(page)]) {
+      await expect(button).toBeEnabled();
+      await expect(button).not.toHaveAttribute("aria-disabled", "true");
+    }
+    await blankSwitch(page).click();
+    await expectPressed(blankSwitch(page), true);
+    await stripesSwitch(page).click();
+    await expectPressed(stripesSwitch(page), true);
   });
+});
+
+test.describe("the corner over the board and the panel without SHOW (D-35)", () => {
+  test("9. the panel holds no tick box, and reads Tail Rail, View and Export", async ({ page }) => {
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    const panel = page.locator("[data-three-d-controls]");
+    await expect(panel.getByRole("checkbox")).toHaveCount(0);
+    const headings = [THREE_D_COPY.tailRailHeading, THREE_D_COPY.viewHeading, THREE_D_COPY.exportHeading];
+    const tops: number[] = [];
+    for (const heading of headings) {
+      const box = await panel.getByText(heading, { exact: true }).boundingBox();
+      tops.push(box!.y);
+    }
+    expect([...tops].sort((a, b) => a - b)).toEqual(tops);
+  });
+
+  /** No board dot under `rect` (in canvas dots), outside the canvas's rounded corner. */
+  async function boardDotsUnder(host: Locator, rect: { x: number; y: number; width: number; height: number }) {
+    await settled(host);
+    const pic = decodePng(await host.screenshot({ scale: "css", style: HIDE_THE_CORNER }));
+    const ground = groundDot(pic);
+    let dots = 0;
+    for (let y = Math.max(0, Math.floor(rect.y)); y < Math.min(pic.height, Math.ceil(rect.y + rect.height)); y++) {
+      for (let x = Math.max(0, Math.floor(rect.x)); x < Math.min(pic.width, Math.ceil(rect.x + rect.width)); x++) {
+        const inCorner = (x < 8 || x >= pic.width - 8) && (y < 8 || y >= pic.height - 8);
+        if (inCorner) continue;
+        const i = 4 * (y * pic.width + x);
+        if ([0, 1, 2].some((k) => Math.abs(pic.rgba[i + k] - ground[k]) > 12)) dots += 1;
+      }
+    }
+    return dots;
+  }
+
+  async function expectCornerClear(page: Page) {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const views: (ViewName | null)[] = [null, "deck", "bottom", "side", "nose", "tail"];
+    for (const view of views) {
+      if (view) await showView(page, host, view);
+      const canvas = (await host.boundingBox())!;
+      const row = (await page.locator("[data-viewer-toolbar]").boundingBox())!;
+      const zoom = await page.locator("[data-viewer-zoom]").boundingBox();
+      for (const box of zoom ? [row, zoom] : [row]) {
+        const rect = { x: box.x - canvas.x, y: box.y - canvas.y, width: box.width, height: box.height };
+        expect(await boardDotsUnder(host, rect), `${view ?? "first view"}: board dots under the corner`).toBe(0);
+      }
+    }
+  }
+
+  test("10. at 1x, in the first view and each of the five views, no board dot lies under the corner's rows", async ({ page }) => {
+    await expectCornerClear(page);
+  });
+
+  for (const [width, height, where] of [
+    [320, 568, "a 320-dot phone"],
+    [844, 390, "a sideways iPhone"],
+  ] as const) {
+    test(`10. the same on ${where}`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "iphone", "one phone at this size");
+      await page.setViewportSize({ width, height });
+      await expectCornerClear(page);
+    });
+  }
 });

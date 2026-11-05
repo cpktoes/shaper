@@ -480,7 +480,7 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     expect(await scroller.evaluate((el) => el.scrollTop)).toBe(panelScroll);
   });
 
-  test("6. an upright iPhone at 1x has nothing over the board: no zoom row, no Wide view", async ({ page }, testInfo) => {
+  test("6. an upright iPhone at 1x shows only the three switches over the board", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "the iPhone's own touch rule");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
@@ -488,13 +488,18 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     await expect(page.locator("[data-viewer-zoom]")).toHaveCount(1);
     await expect(zoomRow(page)).toBeHidden();
     await expect(page.getByRole("button", { name: "Hide the sidebar for a wider view" })).toBeHidden();
-    // No Rotate button on the 3D screen (D-04): turning the phone already turns the board.
-    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(0);
+    // No Rotate button on the 3D screen (D-04), since turning the phone already turns the board: Fins, Blank and
+    // Contour Stripes alone (D-35).
+    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(3);
+    const names = await page
+      .locator("[data-viewer-toolbar] button:visible")
+      .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
+    expect(names).toEqual([THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes]);
   });
 });
 
 test.describe("Wide view on the 3D screen", () => {
-  test("7. Wide view hides the sidebar and widens the canvas at the same zoom; it shows from 820 wide, and below it the zoom row takes the corner", async ({ page }, testInfo) => {
+  test("7. Wide view hides the sidebar and widens the canvas at the same zoom; it shows from 820 wide, and below it the zoom row stays under the icon row", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the computer's sidebar");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
@@ -532,7 +537,7 @@ test.describe("Wide view on the 3D screen", () => {
     const row820 = await zoomRow(page).boundingBox();
     expect(row820 && row820.y - at820.y).toBeGreaterThanOrEqual(38);
     await expect(zoomLevel(page)).toHaveText("2x");
-    // Below 820: no Wide view, and the zoom row takes the canvas's corner.
+    // Below 820: no Wide view, and the zoom row stays under the icons, which hold the corner at every width (D-35).
     await page.setViewportSize({ width: 800, height: 800 });
     await expect(wide).toBeHidden();
     await expect
@@ -541,7 +546,7 @@ test.describe("Wide view on the 3D screen", () => {
         const r = await zoomRow(page).boundingBox();
         return r ? Math.round(r.y - h.y) : null;
       })
-      .toBeLessThanOrEqual(2);
+      .toBeGreaterThanOrEqual(38);
     await expect(zoomLevel(page)).toHaveText("2x");
   });
 

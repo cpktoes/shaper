@@ -62,7 +62,7 @@ export function phase16FinCases(): Phase16FinCase[] {
         ...preset.fins,
         finSetup: setup,
         twinTemplate: twin ?? preset.fins.twinTemplate,
-        advanced: resetAdvanced(setup),
+        advanced: resetAdvanced(setup, twin ?? preset.fins.twinTemplate),
       }),
     ),
   ]);

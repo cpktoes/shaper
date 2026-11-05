@@ -864,6 +864,21 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     ).toBe(0);
     const before = await panel.innerText();
 
+    // The corner's switches (D-35): each only changes the picture, so each stays live, sends no save and leaves the
+    // panel as it was.
+    const corner = page.locator("[data-viewer-toolbar] button[data-three-d-show][data-lock-exempt]");
+    await expect(corner).toHaveCount(3);
+    for (const button of await corner.all()) {
+      await expect(button).toBeEnabled();
+      const was = (await button.getAttribute("aria-pressed")) ?? "";
+      await button.click();
+      await expect(button).not.toHaveAttribute("aria-pressed", was);
+      await button.click();
+      await expect(button).toHaveAttribute("aria-pressed", was);
+    }
+    expect(await panel.innerText()).toBe(before);
+    expect(saves, "a corner switch must never send a save").toEqual([]);
+
     const exportButton = panel.getByRole("button", { name: THREE_D_COPY.exportButton, exact: true });
     await expect(exportButton).toBeEnabled();
     const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);

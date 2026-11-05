@@ -5,8 +5,10 @@
  * the TEMPLATE screen (`components/outline/outline-editor.tsx`), the ROCKER screen
  * (`components/rocker/rocker-editor.tsx`) and the RAILS screen
  * (`components/rails/rail-band-editor.tsx`), each holding a handful of icon buttons (Rotate,
- * Construction Lines, Wide view, Print Template, or on RAILS, View Full Sized). ROCKER's row also
- * holds the blank-from-above toggle on a computer (quick 261006-qfm, `BlankTopViewIcon` below).
+ * Construction Lines, Wide view, Print Template, or on RAILS, View Full Sized) — and the 3D screen
+ * (`components/3d/three-d-screen.tsx`), whose row holds Wide view and the switches for what the
+ * picture includes. ROCKER's row also holds the blank-from-above toggle on a computer (quick
+ * 261006-qfm, `BlankTopViewIcon` below).
  *
  * The three screens used to hand-mirror this button: the same border/radius/padding class
  * string, the same absolute box treatment, the same hover-accent fill, and the same
@@ -208,6 +210,27 @@ export function BlankTopViewIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
       <path d="M1.5 12H22.5" stroke="currentColor" strokeWidth={1} strokeDasharray="3 1.5 1 1.5" />
+    </svg>
+  );
+}
+
+/**
+ * The glyph on the 3D screen's Contour Stripes switch (Phase 16, D-35 — the founder, 2026-11-04: "An icon
+ * too"). It pictures what the button draws: a board seen from above, nose left, with two bands of light
+ * running along it, each kinking once near the middle where the bands kink at a bump. It is the ONE glyph
+ * for both states; the button's pressed fill says which.
+ */
+export function ContourStripesIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path
+        d="M1.5 12C5.5 7.5 11 6 16.2 6 20 6 22.5 8.6 22.5 12 22.5 15.4 20 18 16.2 18 11 18 5.5 16.5 1.5 12Z"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
+      <path d="M6.5 10.2H11.2L12.8 8.8 14.4 10.2H20" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
+      <path d="M6.5 13.8H9.2L10.8 15.2 12.4 13.8H20" stroke="currentColor" strokeWidth={1.5} strokeLinejoin="round" />
     </svg>
   );
 }

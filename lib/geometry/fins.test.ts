@@ -3,8 +3,10 @@ import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   MIN_MCKEE_LONGBOARD_QUAD_LENGTH,
   OFF_RAIL_TUNER_STEP_IN,
+  TWIN_FORWARD_BASE_IN,
   computeFinPlacement,
   defaultCenterBaseLength,
+  defaultForwardBaseLength,
   effectiveQuadRearModel,
   finRoundingGrain,
   finRoundingNote,
@@ -17,6 +19,7 @@ import {
   resetAdvanced,
   tailHalfWidthAt,
   toeAimTableFor,
+  twinTemplateChange,
   type FinAdvancedSpec,
   type FinPlacementSpec,
   type FinSetup,
@@ -292,11 +295,94 @@ describe("defaultCenterBaseLength", () => {
   });
 });
 
+const TWIN_TEMPLATES: TwinTemplate[] = ["upright", "keel", "trailer"];
+const ALL_SETUPS: FinSetup[] = ["single", "twin", "thruster", "2plus1", "quad"];
+
+/** A twin on `template` after FINS' Reset, as the app makes one. */
+function twinAfterReset(template: TwinTemplate): FinPlacementSpec {
+  return { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: "twin", twinTemplate: template, advanced: resetAdvanced("twin", template) };
+}
+
+describe("a twin's forward base defaults per template (the founder, 2026-11-04, D-36)", () => {
+  it("is 5.5in upright and with a trailer, 6.5in keel, and 4.5in for every other setup on every template", () => {
+    expectCloseIn(mmToInches(defaultForwardBaseLength("twin", "upright")), 5.5);
+    expectCloseIn(mmToInches(defaultForwardBaseLength("twin", "trailer")), 5.5);
+    expectCloseIn(mmToInches(defaultForwardBaseLength("twin", "keel")), 6.5);
+    for (const setup of ALL_SETUPS.filter((s) => s !== "twin")) {
+      for (const template of TWIN_TEMPLATES) expectCloseIn(mmToInches(defaultForwardBaseLength(setup, template)), 4.5);
+    }
+  });
+
+  it("moves only the leading dot, by the base's own difference, and FINS calls that unmodified", () => {
+    for (const template of TWIN_TEMPLATES) {
+      const after = twinAfterReset(template);
+      const before: FinPlacementSpec = { ...after, advanced: { ...after.advanced, baseLenForward: inchesToMm(4.5) } };
+      const was = computeFinPlacement(before);
+      const now = computeFinPlacement(after);
+      expect(now.isModified).toBe(false);
+      expect(now.marks).toHaveLength(was.marks.length);
+      now.marks.forEach((mark, i) => {
+        const old = was.marks[i];
+        if (mark.role === "center") {
+          expect(mark).toEqual(old);
+          return;
+        }
+        const grew = defaultForwardBaseLength("twin", template) - inchesToMm(4.5);
+        expect(mark.baseLength).toBe(defaultForwardBaseLength("twin", template));
+        expectCloseIn(mark.leadingOffTail - old.leadingOffTail, grew, 1e-9);
+        expect(mark.offTail).toBe(old.offTail);
+        expect(mark.lateral).toBe(old.lateral);
+        expect(mark.leadingLateral).toBe(old.leadingLateral);
+        expect(mark.toe).toBe(old.toe);
+      });
+    }
+  });
+
+  it("leaves every preset's own fins as they are: the Fish still upright, 5.5in, overridden", () => {
+    const fish = BOARD_PRESETS.find((p) => p.id === "fish");
+    expect(fish?.fins.twinTemplate).toBe("upright");
+    expectCloseIn(mmToInches(fish?.fins.advanced.baseLenForward ?? mm(0)), TWIN_FORWARD_BASE_IN.upright);
+    expect(fish?.fins.advanced.baseLenForwardOverridden).toBe(true);
+    for (const p of BOARD_PRESETS.filter((b) => b.fins.finSetup !== "twin")) {
+      expect(p.fins.advanced.baseLenForward).not.toBe(defaultForwardBaseLength("twin", "keel"));
+    }
+  });
+});
+
+describe("twinTemplateChange", () => {
+  for (const from of TWIN_TEMPLATES) {
+    for (const to of TWIN_TEMPLATES) {
+      it(`from ${from} to ${to} with the base not set: the new template and its default, everything else kept`, () => {
+        const spec = twinAfterReset(from);
+        const patch = twinTemplateChange(spec, to);
+        expect(patch.twinTemplate).toBe(to);
+        expect(patch.advanced).toEqual({ ...spec.advanced, baseLenForward: defaultForwardBaseLength("twin", to) });
+      });
+    }
+  }
+
+  it("keeps a base the shaper set", () => {
+    const spec = twinAfterReset("upright");
+    const set: FinPlacementSpec = {
+      ...spec,
+      advanced: { ...spec.advanced, baseLenForward: inchesToMm(5), baseLenForwardOverridden: true },
+    };
+    expect(twinTemplateChange(set, "keel")).toEqual({ twinTemplate: "keel" });
+  });
+
+  it("changes only the template on any other setup", () => {
+    for (const setup of ALL_SETUPS.filter((s) => s !== "twin")) {
+      const spec: FinPlacementSpec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: setup, advanced: resetAdvanced(setup, "upright") };
+      expect(twinTemplateChange(spec, "keel")).toEqual({ twinTemplate: "keel" });
+    }
+  });
+});
+
 describe("resetAdvanced", () => {
-  const setups: FinSetup[] = ["single", "twin", "thruster", "2plus1", "quad"];
-  for (const setup of setups) {
-    it(`clears every override for ${setup}`, () => {
-      const advanced = resetAdvanced(setup);
+  const cases = ALL_SETUPS.flatMap((setup) => TWIN_TEMPLATES.map((template) => ({ setup, template })));
+  for (const { setup, template } of cases) {
+    it(`clears every override for ${setup} on ${template}`, () => {
+      const advanced = resetAdvanced(setup, template);
       expect(advanced.baseLenForwardOverridden).toBe(false);
       expect(advanced.baseLenRearOverridden).toBe(false);
       expect(advanced.baseLenCenterOverridden).toBe(false);
@@ -308,7 +394,7 @@ describe("resetAdvanced", () => {
       expectCloseIn(mmToInches(advanced.centerPositionOffset), 0);
       expectCloseIn(mmToInches(advanced.forwardPositionOffset), 0);
       expectCloseIn(mmToInches(advanced.rearPositionOffset), 0);
-      expectCloseIn(mmToInches(advanced.baseLenForward), 4.5);
+      expect(advanced.baseLenForward).toBe(defaultForwardBaseLength(setup, template));
       expectCloseIn(mmToInches(advanced.baseLenRear), 4.5);
       const expectedCenter = setup === "single" || setup === "2plus1" ? 10.5 : 4.5;
       expectCloseIn(mmToInches(advanced.baseLenCenter), expectedCenter);
@@ -1033,8 +1119,8 @@ describe("with both nudges at zero nothing about the fins changes (D-01)", () =>
     expect(DEFAULT_FIN_PLACEMENT_SPEC.advanced.forwardOffRailNudge).toBe(0);
     expect(DEFAULT_FIN_PLACEMENT_SPEC.advanced.rearOffRailNudge).toBe(0);
     for (const setup of SETUPS) {
-      expect(resetAdvanced(setup).forwardOffRailNudge).toBe(0);
-      expect(resetAdvanced(setup).rearOffRailNudge).toBe(0);
+      expect(resetAdvanced(setup, "upright").forwardOffRailNudge).toBe(0);
+      expect(resetAdvanced(setup, "upright").rearOffRailNudge).toBe(0);
     }
     for (const preset of BOARD_PRESETS) {
       expect(preset.fins.advanced.forwardOffRailNudge).toBe(0);

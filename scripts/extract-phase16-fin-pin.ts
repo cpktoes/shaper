@@ -17,6 +17,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { finMeasures, phase16FinCases } from "@/lib/geometry/__fixtures__/phase16-fin-cases";
 import * as finOutline from "@/lib/geometry/fin-outline";
+import { placedFins } from "@/lib/geometry/fin-outline";
 
 const OUTPUT = path.resolve(process.cwd(), "lib/geometry/__fixtures__/phase16-fin-pin.json");
 
@@ -29,7 +30,7 @@ function main() {
   }
   const fins: Record<string, unknown> = {};
   for (const { label, preset, spec, marks, rockerAt } of phase16FinCases()) {
-    const placed = finOutline.placedFins(marks, spec.finSetup, spec.twinTemplate, preset.outline.length, rockerAt);
+    const placed = placedFins(marks, spec.finSetup, spec.twinTemplate, preset.outline.length, rockerAt);
     if (placed.length !== marks.length) throw new Error(`${label}: a fin was left out`);
     placed.forEach((fin, i) => {
       fins[`${label}|${i}`] = {

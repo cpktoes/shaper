@@ -1473,10 +1473,26 @@ export function defaultCenterBaseLength(setup: FinSetup): Mm {
   return inchesToMm(setup === "single" || setup === "2plus1" ? 10.5 : 4.5);
 }
 
-/** Ported from `resetAdvancedPatch` (Fins.dc.html lines 739-751). */
-export function resetAdvanced(setup: FinSetup): FinAdvancedSpec {
+/**
+ * A twin's default forward base by its template, in inches (the founder, 2026-11-04, D-36: "Upright twins should
+ * default to 5.5. Keel should default to 6.5."). An Upright + Trailer takes 5.5" because its mains are upright twins.
+ * A keel's 6.5" is its whole footprint along the board, leading edge to heel. These are defaults only: a saved board's
+ * stored base never moves on its own.
+ */
+export const TWIN_FORWARD_BASE_IN: Record<TwinTemplate, number> = { upright: 5.5, keel: 6.5, trailer: 5.5 };
+
+/** The forward base a setup defaults to: a twin's by its template, 4.5" for every other setup. */
+export function defaultForwardBaseLength(setup: FinSetup, twinTemplate: TwinTemplate): Mm {
+  return inchesToMm(setup === "twin" ? TWIN_FORWARD_BASE_IN[twinTemplate] : 4.5);
+}
+
+/**
+ * Ported from `resetAdvancedPatch` (Fins.dc.html lines 739-751), but for a twin's forward base: that is the founder's
+ * ruling (`TWIN_FORWARD_BASE_IN`), not the prototype's.
+ */
+export function resetAdvanced(setup: FinSetup, twinTemplate: TwinTemplate): FinAdvancedSpec {
   return {
-    baseLenForward: inchesToMm(4.5),
+    baseLenForward: defaultForwardBaseLength(setup, twinTemplate),
     baseLenForwardOverridden: false,
     baseLenRear: inchesToMm(4.5),
     baseLenRearOverridden: false,
@@ -1493,6 +1509,16 @@ export function resetAdvanced(setup: FinSetup): FinAdvancedSpec {
     forwardOffRailNudge: mm(0),
     rearOffRailNudge: mm(0),
   };
+}
+
+/**
+ * What picking a twin template changes, as one patch so it is one undo: the template, and on a twin whose forward base
+ * the shaper hasn't set, the new template's default base. A base the shaper set is kept, and any other setup keeps its
+ * own.
+ */
+export function twinTemplateChange(spec: FinPlacementSpec, twinTemplate: TwinTemplate): Partial<FinPlacementSpec> {
+  if (spec.finSetup !== "twin" || spec.advanced.baseLenForwardOverridden) return { twinTemplate };
+  return { twinTemplate, advanced: { ...spec.advanced, baseLenForward: defaultForwardBaseLength("twin", twinTemplate) } };
 }
 
 /**

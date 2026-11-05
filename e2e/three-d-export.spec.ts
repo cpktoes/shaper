@@ -207,20 +207,20 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await keepBoard(page, "Fish");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    const tick = (name: string) => panel(page).getByRole("checkbox", { name, exact: true });
-    await expect(tick(THREE_D_COPY.fins)).toBeChecked();
-    await expect(tick(THREE_D_COPY.blank)).not.toBeChecked();
-    await expect(tick(THREE_D_COPY.contourStripes)).not.toBeChecked();
+    const corner = (name: string) => page.locator("[data-viewer-toolbar]").getByRole("button", { name, exact: true });
+    await expect(corner(THREE_D_COPY.fins)).toHaveAttribute("aria-pressed", "true");
+    await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "false");
+    await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
     const first = await exportZip(page);
     const firstBytes = await downloadedBytes(first);
 
     // Fins off, Blank on, Contour Stripes on: everything the picture can add or take away, flipped.
-    await tick(THREE_D_COPY.fins).click();
-    await tick(THREE_D_COPY.blank).click();
-    await tick(THREE_D_COPY.contourStripes).click();
-    await expect(tick(THREE_D_COPY.fins)).not.toBeChecked();
-    await expect(tick(THREE_D_COPY.blank)).toBeChecked();
-    await expect(tick(THREE_D_COPY.contourStripes)).toBeChecked();
+    await corner(THREE_D_COPY.fins).click();
+    await corner(THREE_D_COPY.blank).click();
+    await corner(THREE_D_COPY.contourStripes).click();
+    await expect(corner(THREE_D_COPY.fins)).toHaveAttribute("aria-pressed", "false");
+    await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "true");
+    await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "true");
     const second = await exportZip(page);
     const secondBytes = await downloadedBytes(second);
 
