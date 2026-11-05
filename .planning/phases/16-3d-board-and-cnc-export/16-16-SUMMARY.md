@@ -791,4 +791,4 @@ None beyond the plan's register: the report adds no write path and prints ids, w
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 11 checkpoint.
+Presented by the orchestrator at the Wave 11 checkpoint, over four rounds on 2026-11-05. First build: not approved; his red line on the wing slice and D-37, D-38, D-39. From the candidates' plates: "3\" each way", "Medium: 1/3 over 1\"", the fades "Keep them as they are". As built: "the short board and fish wings look good. The mId-lengh is all wavy and I do not like it. THe tails all look great. The sharp tuck looks good. And Wings should not get a corner radius." (D-41), and the rule that a board keeps its actual values and rounds only for display. Final look, with the Mid-length plate: "Approved." The standalone estimator's Cross-Section Thickness rows stay on the 1/16" for now: "File a to-do". Merged into `board-3d` as ee6ada77. The deviations, the two restated browser specs and the iPhone `look-rails` failure, which fails the same way before this plan, were accepted by the orchestrator; that failure gets its own look before go-live 2.
