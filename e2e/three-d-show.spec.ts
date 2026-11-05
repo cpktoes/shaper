@@ -8,11 +8,14 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
 import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
-import { countDifferent, decodePng } from "./helpers/canvas-pixels";
+import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canvas-pixels";
+import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 
 /**
- * The 3D panel's SHOW section (Phase 16, plan 10, UI-SPEC §1, §3 "Fins", §6): the board's fins stand on its bottom at
- * their FINS placement, and the Fins tick box hides and shows them without moving the view.
+ * The 3D panel's SHOW section (Phase 16, plans 10 and 11, UI-SPEC §1, §3 "Fins", "The blank ghost", "Contour Stripes",
+ * §6, §9, §16): the board's fins stand on its bottom at their FINS placement; the picked blank shows as a see-through
+ * ghost round the board; Contour Stripes swaps the shading for bands fixed in the room; each tick keeps the view. The
+ * scene follows the theme while the screen is open, and a quiet picture of the board stands in while it loads.
  */
 
 /** WebKit draws its first frame more slowly on the suite's development server (about 5 s measured). */
@@ -85,7 +88,11 @@ async function picture(host: Locator) {
 }
 
 /** A preset, kept in this browser as the open board, so /design/3d opens on it (fins as the preset sets them). */
-async function keepPreset(page: Page, name: string, { handSet = false }: { handSet?: boolean } = {}) {
+async function keepPreset(
+  page: Page,
+  name: string,
+  { handSet = false, locked = false }: { handSet?: boolean; locked?: boolean } = {},
+) {
   const preset = BOARD_PRESETS.find((p) => p.name === name);
   if (!preset) throw new Error(`no ${name} preset`);
   const fields: DesignSnapshotFields = {
@@ -98,7 +105,10 @@ async function keepPreset(page: Page, name: string, { handSet = false }: { handS
     boardName: "",
     finSystem: "fcs2",
   };
-  const raw = openBoardCopyJson(fields, { modelId: null, ownerId: null, locked: false, dirty: true });
+  // A lock belongs to a saved board of an account (e2e/three-d-view.spec.ts keeps one the same way).
+  const raw = locked
+    ? openBoardCopyJson(fields, { modelId: "three-d-locked-board", ownerId: "three-d-test-account", locked: true, dirty: false })
+    : openBoardCopyJson(fields, { modelId: null, ownerId: null, locked: false, dirty: true });
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
 }
 
@@ -129,6 +139,37 @@ function finsBox(page: Page) {
 
 function blankBox(page: Page) {
   return page.getByRole("checkbox", { name: THREE_D_COPY.blank, exact: true });
+}
+
+function stripesBox(page: Page) {
+  return page.getByRole("checkbox", { name: THREE_D_COPY.contourStripes, exact: true });
+}
+
+/** A theme token's colour as the page holds it now (each of these is a plain `#rrggbb` ramp value). */
+async function tokenRgb(page: Page, name: string): Promise<[number, number, number]> {
+  return hexToRgb(await page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name));
+}
+
+/** Of the board's pixels (everything not the ground), the share within `tolerance` of `rgb`. */
+function shareOfBoardNear(
+  pic: { rgba: Uint8Array; width: number; height: number },
+  ground: readonly [number, number, number],
+  rgb: readonly [number, number, number],
+  tolerance: number,
+) {
+  const board = countUnlike(pic.rgba, ground, 6);
+  const near = pic.width * pic.height - countUnlike(pic.rgba, rgb, tolerance);
+  return { board, share: board > 0 ? near / board : 0 };
+}
+
+/** The ground's colour on the canvas: a dot near its bottom-left corner, clear of the board and the corner buttons. */
+function groundDot(pic: { rgba: Uint8Array; width: number; height: number }): [number, number, number] {
+  const i = 4 * ((pic.height - 12) * pic.width + 12);
+  return [pic.rgba[i], pic.rgba[i + 1], pic.rgba[i + 2]];
+}
+
+function near(a: readonly number[], b: readonly number[], tolerance: number) {
+  return a.every((v, k) => Math.abs(v - b[k]) <= tolerance);
 }
 
 /** The share of the canvas's pixels that differ between two pictures by more than `tolerance`. */
@@ -250,5 +291,130 @@ test.describe("the 3D board's blank (plan 11, D-08)", () => {
     await expect(page.getByText(THREE_D_COPY.noBlankHint, { exact: true })).toBeVisible();
     // Fins stays live on the same board.
     await expect(finsBox(page)).toBeEnabled();
+  });
+});
+
+test.describe("Contour Stripes, the theme and the loading picture (plan 11)", () => {
+  test("5. Contour Stripes lays dark and light bands over the foam that slide as the board turns, and the shading comes back", async ({
+    page,
+  }) => {
+    await keepPreset(page, "Fish");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await expect(stripesBox(page)).not.toBeChecked();
+    await expect(stripesBox(page)).toBeEnabled();
+    // The hint is always shown, ticked or not.
+    await expect(page.getByText(THREE_D_COPY.contourStripesHint, { exact: true })).toBeVisible();
+    const ground = await tokenRgb(page, "--surf-3d-ground");
+    const dark = await tokenRgb(page, "--surf-on-foam");
+
+    const shaded = await picture(host);
+    const before = shareOfBoardNear(shaded, ground, dark, 24);
+    expect(before.board).toBeGreaterThan(0);
+
+    await stripesBox(page).click();
+    await expect(stripesBox(page)).toBeChecked();
+    const turn = await host.getAttribute("data-turn");
+    const striped = await picture(host);
+    // Half the bands are the stringer's dark: far more of the board than the stringer alone (more than 10%).
+    expect(shareOfBoardNear(striped, ground, dark, 24).share).toBeGreaterThan(0.1);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    await expect(page.getByText(THREE_D_COPY.contourStripesHint, { exact: true })).toBeVisible();
+
+    // A little drag turns the board under the room's tubes: the bands move over it.
+    const box = (await host.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    for (let i = 1; i <= 6; i++) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 6 * i);
+    await page.mouse.up();
+    await expect.poll(async () => host.getAttribute("data-turn")).not.toBe(turn);
+    const turned = await picture(host);
+    expect(shareDifferent(striped, turned)).toBeGreaterThan(0.01);
+
+    // Untick: the foam's own shading is back — the dark is the stringer's (and the fins') alone again.
+    await stripesBox(page).click();
+    await expect(stripesBox(page)).not.toBeChecked();
+    const again = await picture(host);
+    expect(shareOfBoardNear(again, ground, dark, 24).share).toBeLessThan(Math.max(0.05, before.share * 2));
+  });
+
+  test("6. switching the theme with the 3D board open repaints it at once, the view kept", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer switches the theme through App Default Settings");
+    await keepPreset(page, "Fish");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    // Turn it a little first, so "kept" means something.
+    await host.focus();
+    await page.keyboard.press("ArrowLeft");
+    await settled(host);
+    const turn = await host.getAttribute("data-turn");
+    const daylight = await picture(host);
+    expect(near(groundDot(daylight), await tokenRgb(page, "--surf-3d-ground"), 2)).toBe(true);
+
+    const dialog = await openAppSettings(page);
+    await dialog.locator('[data-theme-tile="slate"]').click();
+    await expect(page.locator("html")).toHaveClass(/(^|\s)theme-slate(\s|$)/);
+    await page.keyboard.press("Escape");
+    await expect(appSettingsDialog(page)).toBeHidden();
+
+    const slateGround = await tokenRgb(page, "--surf-3d-ground");
+    expect(near(slateGround, groundDot(daylight), 2)).toBe(false);
+    await expect.poll(async () => near(groundDot(await picture(host)), slateGround, 2), { timeout: 10_000 }).toBe(true);
+    // Repainted in place: the same board, the same turn, no reload of the drawing.
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-board-state")).toBe("ready");
+  });
+
+  test("7. while the drawing's code is on its way, the board's turned outline stands in, then the lit board replaces it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer holds the drawing's code back");
+    await keepPreset(page, "Fish");
+    // Learn which script carries the drawing: the one the screen fetches for its scene.
+    const scripts: string[] = [];
+    page.on("request", (request) => {
+      if (request.resourceType() === "script") scripts.push(request.url());
+    });
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    const scene = scripts.filter((url) => url.includes("board-scene"));
+    expect(scene.length).toBeGreaterThan(0);
+
+    // Hold it back for 2.5 s, and load the screen again.
+    for (const url of scene) {
+      await page.route(url, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await route.continue();
+      });
+    }
+    await page.reload();
+    const host = boardHost(page);
+    const loading = page.locator("[data-loading-picture]");
+    await expect(loading.locator("svg path")).toHaveCount(2);
+    await expect(host).toHaveAttribute("aria-busy", "true");
+    await expect(host).toHaveAttribute("data-board-state", "loading");
+    // The line comes a second later, under the picture.
+    await expect(page.getByText(THREE_D_COPY.gettingReady, { exact: true })).toBeVisible({ timeout: 5_000 });
+    const svg = (await loading.locator("svg").boundingBox())!;
+    const line = (await page.getByText(THREE_D_COPY.gettingReady, { exact: true }).boundingBox())!;
+    expect(line.y).toBeGreaterThan(svg.y + svg.height / 2);
+    expect(line.y + line.height).toBeLessThanOrEqual(svg.y + svg.height);
+
+    // Then the lit board, and the picture and its line are gone.
+    await waitForBoard(page);
+    await expect(loading).toHaveCount(0);
+    await expect(page.getByText(THREE_D_COPY.gettingReady, { exact: true })).toHaveCount(0);
+    await expect(host).not.toHaveAttribute("aria-busy", "true");
+  });
+
+  test("8. a locked board keeps all three tick boxes, since they only change the picture", async ({ page }) => {
+    await keepPreset(page, "Fish", { locked: true });
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    for (const box of [finsBox(page), blankBox(page), stripesBox(page)]) await expect(box).toBeEnabled();
+    await blankBox(page).click();
+    await expect(blankBox(page)).toBeChecked();
+    await stripesBox(page).click();
+    await expect(stripesBox(page)).toBeChecked();
   });
 });

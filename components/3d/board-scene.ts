@@ -38,6 +38,7 @@ import {
   PerspectiveCamera,
   Quaternion,
   Scene,
+  ShaderMaterial,
   Shape,
   Vector3,
   WebGLRenderer,
@@ -113,6 +114,17 @@ export interface BoardSceneHandle {
    * board and writing no depth, so it never hides the board; the framing stays the board's. One frame per call.
    */
   setGhost(ghost: BlankGhost | null, visible: boolean): void;
+  /**
+   * Contour Stripes (16-11, D-12): the foam's lit shading replaced by bands that are the reflections of a row of long
+   * tubes fixed overhead in the room, so they stay put as the board turns and bend where its shape bends. The
+   * stringer, the fins and the ghost draw as usual. One frame per call; the view is untouched.
+   */
+  setStripes(on: boolean): void;
+  /**
+   * The theme's colours again (16-11): the ground, the foam, the stringer and stripes, the fins and the ghost repainted
+   * in place — nothing is rebuilt and nothing moves, so the turn, the frame, the zoom and the slide stay as they are.
+   */
+  setColours(colours: SceneColours): void;
   /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
   roomReport(): RoomReport;
   resize(width: number, height: number): void;
@@ -195,6 +207,8 @@ const NOOP_HANDLE: BoardSceneHandle = {
   setCrop() {},
   setFins() {},
   setGhost() {},
+  setStripes() {},
+  setColours() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
   dispose() {},
@@ -239,6 +253,66 @@ function ribbon(points: readonly Vec3[], outward: 1 | -1): { ribbon: BufferGeome
 const FIN_EDGE_ROUND_SHARE = 0.35;
 /** A fin's surface: a little glossier than the raw foam, as a glassed fin beside foam is (UI-SPEC § Color). */
 const FIN_ROUGHNESS = 0.6;
+
+/**
+ * Contour Stripes' density (UI-SPEC §3): one dark-and-light pair for every this many degrees of surface slope. A surface
+ * tilted by an angle turns its reflection by twice that, so a pair spans twice this in the reflection's angle round the
+ * tubes. 12 divides 180, so the bands meet themselves exactly where the reflection points straight down. A start point,
+ * tuned from pictures.
+ */
+export const STRIPE_PAIR_SLOPE_DEG = 12;
+
+/**
+ * The density in force: `STRIPE_PAIR_SLOPE_DEG`, or on a development server a candidate a picture script named through
+ * `window.__shaper3dStripeSlopeDeg` (a whole divisor of 180, so the bands still meet where the reflection points
+ * straight down), as the lighting candidates are shot. A production build never reads it.
+ */
+function stripeSlopeInForce(): number {
+  if (process.env.NODE_ENV === "production") return STRIPE_PAIR_SLOPE_DEG;
+  const deg = (globalThis as { __shaper3dStripeSlopeDeg?: unknown }).__shaper3dStripeSlopeDeg;
+  return typeof deg === "number" && Number.isInteger(deg) && deg >= 3 && 180 % deg === 0 ? deg : STRIPE_PAIR_SLOPE_DEG;
+}
+
+/**
+ * The stripes' shader. For each fragment: the reflection of the line of sight about the surface's normal, in the room's
+ * own axes (the board's length lies along the room's x at rest, deck up along y); its angle round the x axis is which
+ * overhead tube it sees, so the band index is that angle over one pair's span. Unlit: the band is `onFoam` or `foam`,
+ * half and half, its edge softened over about one dot by the angle's own change across the dot (the derivative is taken
+ * of the reflection, never of the angle, so the wrap at straight down never shows as a seam). Where the bands crowd
+ * finer than a dot (looking along the tubes), they blend to their average rather than shimmer.
+ */
+const STRIPE_VERTEX = `
+varying vec3 vRoomNormal;
+varying vec3 vRoomPosition;
+void main() {
+  vec4 room = modelMatrix * vec4(position, 1.0);
+  vRoomPosition = room.xyz;
+  vRoomNormal = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * room;
+}
+`;
+const STRIPE_FRAGMENT = `
+uniform vec3 foam;
+uniform vec3 onFoam;
+uniform float pairSpan;
+varying vec3 vRoomNormal;
+varying vec3 vRoomPosition;
+void main() {
+  vec3 n = normalize(vRoomNormal);
+  vec3 sight = normalize(vRoomPosition - cameraPosition);
+  vec3 r = reflect(sight, n);
+  float across = max(r.y * r.y + r.z * r.z, 1e-6);
+  float t = atan(r.z, r.y) / pairSpan;
+  vec3 rx = dFdx(r);
+  vec3 ry = dFdy(r);
+  float w = (abs(r.y * rx.z - r.z * rx.y) + abs(r.y * ry.z - r.z * ry.y)) / across / pairSpan;
+  float s = abs(fract(t) - 0.5);
+  float light = clamp((s - 0.25) / max(w, 1e-4) + 0.5, 0.0, 1.0);
+  light = mix(light, 0.5, clamp(2.0 * w - 1.0, 0.0, 1.0));
+  gl_FragColor = vec4(mix(onFoam, foam, light), 1.0);
+  #include <colorspace_fragment>
+}
+`;
 
 /** The blank's veil (UI-SPEC § Color): `--surf-ink-muted` at 18%, a little glossier than the foam so it reads as glass. */
 const GHOST_OPACITY = 0.18;
@@ -361,6 +435,15 @@ export function mountBoardScene(
   let finDisposables: { dispose(): void }[] = [];
   let ghost: BlankGhost | null = null;
   let ghostDisposables: { dispose(): void }[] = [];
+  let stripes = false;
+  /** The foam and its two looks — lit by the room, or striped — so Contour Stripes swaps one for the other. */
+  let foamMesh: Mesh | null = null;
+  let foamMaterials: { lit: MeshStandardMaterial; striped: ShaderMaterial } | null = null;
+  /** Every colour the scene paints with and the theme's token it comes from, so a theme change repaints in place. */
+  type Tint = [Color, keyof SceneColours];
+  let boardTints: Tint[] = [];
+  let finTints: Tint[] = [];
+  let ghostTints: Tint[] = [];
   let pending = 0;
   let frames = 0;
   let lost = false;
@@ -391,6 +474,7 @@ export function mountBoardScene(
   const buildFins = () => {
     for (const d of finDisposables) d.dispose();
     finDisposables = [];
+    finTints = [];
     finGroup.clear();
     if (fins.length === 0) return;
     const material = new MeshStandardMaterial({
@@ -399,6 +483,7 @@ export function mountBoardScene(
       metalness: 0,
     });
     finDisposables.push(material);
+    finTints = [[material.color, "inkMuted"]];
     for (const fin of fins) {
       const { geometry, matrix } = finSolid(fin);
       const mesh = new Mesh(geometry, material);
@@ -416,6 +501,7 @@ export function mountBoardScene(
   const buildGhost = () => {
     for (const d of ghostDisposables) d.dispose();
     ghostDisposables = [];
+    ghostTints = [];
     ghostGroup.clear();
     if (!ghost) return;
     const geometry = new BufferGeometry();
@@ -439,6 +525,10 @@ export function mountBoardScene(
     line.renderOrder = 2;
     ghostGroup.add(skin, line);
     ghostDisposables.push(geometry, veil, lineGeometry, pen);
+    ghostTints = [
+      [veil.color, "inkMuted"],
+      [pen.color, "blankLine"],
+    ];
   };
 
   const build = () => {
@@ -453,8 +543,24 @@ export function mountBoardScene(
     geometry.setAttribute("normal", new BufferAttribute(mesh.normals, 3));
     geometry.setIndex(new BufferAttribute(mesh.indices, 1));
     const foam = new MeshStandardMaterial({ color: new Color(colours.foam), roughness: 0.92, metalness: 0 });
-    centred.add(new Mesh(geometry, foam));
-    disposables.push(geometry, foam);
+    const striped = new ShaderMaterial({
+      uniforms: {
+        foam: { value: new Color(colours.foam) },
+        onFoam: { value: new Color(colours.onFoam) },
+        pairSpan: { value: (2 * stripeSlopeInForce() * Math.PI) / 180 },
+      },
+      vertexShader: STRIPE_VERTEX,
+      fragmentShader: STRIPE_FRAGMENT,
+    });
+    foamMaterials = { lit: foam, striped };
+    foamMesh = new Mesh(geometry, stripes ? striped : foam);
+    centred.add(foamMesh);
+    disposables.push(geometry, foam, striped);
+    boardTints = [
+      [foam.color, "foam"],
+      [striped.uniforms.foam.value as Color, "foam"],
+      [striped.uniforms.onFoam.value as Color, "onFoam"],
+    ];
 
     // The stringer (D-07): a 3 mm ribbon so it has a real stringer's width up close, and a one-dot line on the
     // same points so it is never thinner than a dot far away. Painted, so the lights don't shade it.
@@ -468,6 +574,7 @@ export function mountBoardScene(
     });
     const pen = new LineBasicMaterial({ color: new Color(colours.onFoam), toneMapped: false });
     disposables.push(paint, pen);
+    boardTints.push([paint.color, "onFoam"], [pen.color, "onFoam"]);
     for (const [points, outward] of [
       [stringer.deck, 1],
       [stringer.bottom, -1],
@@ -573,6 +680,19 @@ export function mountBoardScene(
         if (!lost) buildFins();
       }
       finGroup.visible = visible;
+      schedule();
+    },
+    setStripes(on) {
+      if (disposed) return;
+      stripes = on;
+      if (foamMesh && foamMaterials) foamMesh.material = on ? foamMaterials.striped : foamMaterials.lit;
+      schedule();
+    },
+    setColours(colours) {
+      if (disposed) return;
+      current = { ...current, colours };
+      renderer.setClearColor(new Color(colours.canvas), 1);
+      for (const [color, token] of [...boardTints, ...finTints, ...ghostTints]) color.set(colours[token]);
       schedule();
     },
     setGhost(next, visible) {

@@ -123,7 +123,8 @@ export function ThreeDHardEdge() {
 /**
  * SHOW (UI-SPEC §1, §6): what the picture includes. Fins (D-06) is on by default and hides the fins when unticked.
  * Blank (D-08) is off by default and shows the picked blank as a see-through ghost round the board; a hand-set board
- * has no blank, so its row is dimmed and can't be ticked, with the reason under it at full strength.
+ * has no blank, so its row is dimmed and can't be ticked, with the reason under it at full strength. Contour Stripes
+ * (D-12) is off by default and swaps the foam's shading for bands of light, its hint always under it.
  *
  * A tick only changes what is seen — never the board, never saved, never undoable (D-17), never the files (D-16) —
  * so a locked board keeps it (marked lock-exempt, UI-SPEC §9), and the view stays exactly as it is. That is why this
@@ -136,6 +137,8 @@ export function ThreeDShow({
   showBlank,
   onShowBlank,
   hasBlank,
+  stripes,
+  onStripes,
   disabled,
 }: {
   showFins: boolean;
@@ -144,6 +147,9 @@ export function ThreeDShow({
   onShowBlank: (show: boolean) => void;
   /** Whether the board sits in a blank picked on ROCKER (`sideProfile.blank`); a hand-set board has none. */
   hasBlank: boolean;
+  /** Contour Stripes (D-12): bands of light in place of the shading. */
+  stripes: boolean;
+  onStripes: (on: boolean) => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): there is nothing to show. */
   disabled: boolean;
 }) {
@@ -165,6 +171,13 @@ export function ThreeDShow({
           {THREE_D_COPY.blank}
         </label>
         {!hasBlank && <div className={TICK_HINT}>{THREE_D_COPY.noBlankHint}</div>}
+      </div>
+      <div>
+        <label className={TICK_ROW}>
+          <Checkbox data-lock-exempt disabled={disabled} checked={stripes} onCheckedChange={(checked) => onStripes(checked)} />
+          {THREE_D_COPY.contourStripes}
+        </label>
+        <div className={TICK_HINT}>{THREE_D_COPY.contourStripesHint}</div>
       </div>
     </div>
   );
