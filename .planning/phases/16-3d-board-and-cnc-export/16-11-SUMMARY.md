@@ -267,4 +267,7 @@ None beyond the plan's threat model.
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 8 checkpoint.
+Presented by the orchestrator at the Wave 8 checkpoint, 2026-11-04, with the blank / stripes / themes picture. The
+founder: "Approved"; Contour Stripes stay at 12° per pair; the blank's veil stays at 18% ("Fine as is"). Merged into
+`board-3d` as a4c9efe0. The deviations (the loading line in full ink, the loading-frame helper in the tile-art module,
+the theme re-read on the 3D ground token, the dev-only density hook) were accepted by the orchestrator.

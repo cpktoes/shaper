@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–7 merged on board-3d 2026-11-04 (…, 16-10 fins); 16-15 (D-32) approved as wave 10; 16-16 (D-33 wings + D-34 tips) being planned for after it; next Wave 8 — 16-11 blank ghost / stripes / themes / loading picture; then 16-12 export, 16-15, 16-16, 16-13 go-live 2"
+stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–8 merged on board-3d 2026-11-04 (…, 16-11 blank ghost / stripes / themes / loading picture); 16-15 (D-32) and 16-16 (D-33 wings + D-34 tips) planned and approved as waves 10 and 11; next Wave 9 — 16-12 Export for CNC… and the 3D screen's desktop picture; then 16-15, 16-16, 16-13 go-live 2 (wave 12)"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Phase 16 Wave 7 merged: generic fins stand on the 3D board at their FINS placement, with a Fins box"
+last_activity_desc: "Phase 16 Wave 8 merged: the blank as a ghost, Contour Stripes, colours that follow the theme, the loading picture"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 47
-  completed_plans: 42
-  percent: 89
+  completed_plans: 43
+  percent: 91
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
