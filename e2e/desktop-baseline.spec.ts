@@ -2,6 +2,21 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-14, branch board-3d) — all five, nav row only: 16-08 added the seventh
+ * screen, so the top row now ends TEMPLATE · ROCKER · RAILS · VOLUME · FINS · SUMMARY · 3D. At 1280 the six existing
+ * links sit 40 dots further left to make room for `3D` and its gap (the gap between links is unchanged at this
+ * width). Old and new were compared pixel by pixel before re-recording, and the five diffs were looked at and
+ * composed into `.planning/phases/16-3d-board-and-cnc-export/pictures/16-14-desktop-pictures-diff.png`: on every
+ * screen each changed pixel sits inside the link row's own box (x 486-982, y 32-50) — TEMPLATE 3239, ROCKER 3247,
+ * RAILS 3248, VOLUME 3246, FINS 3222 pixels — and nothing below the row moved. The one exception is not movement:
+ * FINS' sidebar cards have 109 anti-aliased corner pixels that render one colour level apart from the old picture,
+ * the same on every render here (three re-records) — a shade no eye can see, at the cards' rounded corners, where
+ * the card itself did not move.
+ * VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3214) in the plan's
+ * worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the merge and
+ * re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: TEMPLATE 8605d28b to c3c675b2,
+ * ROCKER b989d40d to 407cbee1, RAILS e3ca0666 to b853ef2a, VOLUME 14f11e4c to d3377877, FINS 13cca29f to f915b9db.
+ *
  * RE-RECORDED 2026-11-04 (Phase 16, plan 16-02, branch board-3d) — VOLUME only, `volume-desktop.png`, for the
  * founder's D-30 (his words: "The hard edge blend needs a blend sharp edge from AND a blend to"): the default
  * board's tail is hard-edged, and its hard edge now runs full to Hard Edge Blends From (18" when the board says
