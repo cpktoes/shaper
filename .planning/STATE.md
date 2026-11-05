@@ -10,9 +10,9 @@ last_activity_desc: "Phase 16 Wave 5 merged: the browser suite counts seven scre
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 45
+  total_plans: 46
   completed_plans: 40
-  percent: 89
+  percent: 87
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
