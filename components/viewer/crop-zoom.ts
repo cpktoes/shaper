@@ -7,9 +7,13 @@
  *
  * It speaks the 2D viewers' zoom vocabulary (`zoom-math.ts`): the same 1x to 10x in half steps, the same
  * snapping, the same "the point under the pointer stays under it", and a pinch worked out from where it started.
- * One difference, which UI-SPEC §5 asks for: the board may be slid at 1x too. A 2D viewer's view never leaves its
- * drawing; here the slide is held only so the picture's centre — where the board's centre sits at its 1x framing —
- * stays inside the window, so the board can be moved aside but never lost.
+ * One difference, which UI-SPEC §5 asks for: the board may be slid at 1x too. How far it may go (`clamped`):
+ * - Up to 2x, the picture's centre — where the board's centre sits at its 1x framing — stays inside the window, so
+ *   the board can be moved aside but never lost (§5: "the board's centre can't leave the canvas").
+ * - From 2x on, the window stays inside the 1x picture, which is the 2D viewers' own rule ("the view never leaves
+ *   the drawing"): the nose and the tail can be zoomed right into, and the board is never lost either, since the 1x
+ *   picture is framed on it. Held to the centre alone, the tips could not be reached past 2x at all. The two rules
+ *   meet at exactly 2x, so the limit never jumps.
  *
  * The crop is kept as fractions of the picture (`CropView`), so a window that changes size (Wide view, a phone
  * turned) keeps the same zoom and the same slide on the new canvas. Pure: no React, no DOM, no three.
@@ -46,9 +50,18 @@ export function isAtOneCrop(view: CropView): boolean {
   return view.zoom <= MIN_ZOOM && view.cx === 0 && view.cy === 0;
 }
 
-/** Holds the picture's centre inside the crop: at zoom z the crop's centre may sit at most half a crop from it. */
+/**
+ * How far the crop's centre may sit from the picture's middle, as a share of the picture, at zoom z: half a crop
+ * (the picture's centre stays in the window), or the room left inside the picture (the window stays in the picture),
+ * whichever is further — the first up to 2x, the second from 2x on.
+ */
+export function cropLimit(zoom: number): number {
+  return Math.max(1 / (2 * zoom), 0.5 - 1 / (2 * zoom));
+}
+
+/** Holds the crop within `cropLimit` of the picture's middle on each axis. */
 function clamped(zoom: number, cx: number, cy: number): CropView {
-  const limit = 1 / (2 * zoom);
+  const limit = cropLimit(zoom);
   const hold = (v: number) => Math.min(Math.max(v, -limit), limit) + 0;
   return { zoom, cx: hold(cx), cy: hold(cy) };
 }
@@ -67,8 +80,7 @@ export function cropRect(view: CropView, width: number, height: number): CropRec
 
 /**
  * Zooms to `newZoom` (snapped to a half step in [1, maxZoom]) about the window point (px, py): the part of the
- * picture under it stays under it, unless that would carry the picture's centre out of the window, where the crop
- * stops. The same level, a non-finite input or an unmeasured window leaves the view exactly as it was.
+ * picture under it stays under it, unless that would carry the crop past `cropLimit`, where it stops. The same level, a non-finite input or an unmeasured window leaves the view exactly as it was.
  */
 export function cropZoomAt(
   view: CropView,
@@ -99,10 +111,37 @@ export function cropStep(view: CropView, width: number, height: number, steps: n
 
 /**
  * Slides the board by (dx, dy) window dots: it follows the pointer exactly, at any zoom including 1x, until the
- * picture's centre would leave the window, where it stops.
+ * crop reaches `cropLimit`, where it stops.
  */
 export function cropSlide(view: CropView, width: number, height: number, dx: number, dy: number): CropView {
   if (!measured(width, height) || !finite(dx, dy)) return view;
   return clamped(view.zoom, view.cx - dx / (view.zoom * width), view.cy - dy / (view.zoom * height));
 }
 
+/**
+ * Two fingers: the level follows the fingers' spread from where the pinch started (snapped, in [1, maxZoom]) and
+ * the picture point that was between them when they landed stays between them — so moving both slides. Always
+ * worked out from the pinch's start, never step by step, so nothing drifts. A starting distance under a dot is
+ * ignored.
+ */
+export function cropPinch(
+  start: CropView,
+  width: number,
+  height: number,
+  startMid: { x: number; y: number },
+  startDist: number,
+  mid: { x: number; y: number },
+  dist: number,
+  maxZoom = DEFAULT_MAX_ZOOM,
+): CropView {
+  if (!measured(width, height) || !(startDist >= 1) || !finite(startDist, dist, startMid.x, startMid.y, mid.x, mid.y)) {
+    return start;
+  }
+  const zoom = snapZoom((start.zoom * dist) / startDist, maxZoom);
+  const r = cropRect(start, width, height);
+  const picX = r.x + startMid.x / start.zoom;
+  const picY = r.y + startMid.y / start.zoom;
+  const centreX = picX - mid.x / zoom + width / (2 * zoom);
+  const centreY = picY - mid.y / zoom + height / (2 * zoom);
+  return clamped(zoom, (centreX - width / 2) / width, (centreY - height / 2) / height);
+}

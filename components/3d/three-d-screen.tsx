@@ -10,14 +10,34 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { useDesign } from "@/components/design/design-store";
 import { useBelowShellWidth, useReducedMotion } from "@/components/design/use-viewer-media";
-import { AT_ONE_CROP, cropRect, cropStep, cropZoomAt, isAtOneCrop, type CropView } from "@/components/viewer/crop-zoom";
+import {
+  AT_ONE_CROP,
+  cropPinch,
+  cropRect,
+  cropSlide,
+  cropStep,
+  cropZoomAt,
+  isAtOneCrop,
+  type CropView,
+} from "@/components/viewer/crop-zoom";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
-import { DEFAULT_MAX_ZOOM, normaliseWheelDelta, stepZoom, wheelStep, type WheelAccumulator } from "@/components/viewer/zoom-math";
+import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import {
+  DEFAULT_MAX_ZOOM,
+  DOUBLE_TAP_MS,
+  DOUBLE_TAP_SLOP_PX,
+  normaliseWheelDelta,
+  PINCH_WHEEL_RATE,
+  stepZoom,
+  wheelStep,
+  type WheelAccumulator,
+} from "@/components/viewer/zoom-math";
 import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
@@ -92,6 +112,36 @@ function readSceneColours(): SceneColours {
 
 /** How far back a release looks for the drag's speed: a board held still this long before letting go doesn't glide. */
 const GLIDE_SAMPLE_MS = 80;
+/** A tap is shorter than this, and travels less than `TAP_MAX_TRAVEL_PX` — the 2D viewers' own double-tap rule. */
+const TAP_MAX_MS = 250;
+const TAP_MAX_TRAVEL_PX = 10;
+/** A trackpad pinch's running level is re-read from the shown level after this much quiet (as the 2D viewers do). */
+const PINCH_WHEEL_RESYNC_MS = 300;
+/** Shift with an arrow key slides the board this share of the canvas (UI-SPEC §5). */
+const KEY_SLIDE_SHARE = 1 / 20;
+
+/** Safari's own pinch events (a Mac trackpad, and an iPhone's page pinch). Not in the DOM types. */
+interface SafariGestureEvent extends UIEvent {
+  scale: number;
+  clientX: number;
+  clientY: number;
+}
+
+/** A pointer's place on the canvas, in its own CSS dots from the top-left corner. */
+function canvasPoint(host: HTMLElement, clientX: number, clientY: number) {
+  const box = host.getBoundingClientRect();
+  return { x: clientX - box.left, y: clientY - box.top };
+}
+
+/** Captures a pointer to the canvas, so a drag keeps working outside it. A pointer the browser no longer counts as
+ * active can't be captured; the drag still works inside the canvas. */
+function capture(host: HTMLElement, pointerId: number) {
+  try {
+    host.setPointerCapture(pointerId);
+  } catch {
+    // See above.
+  }
+}
 
 /** The turn as the host's `data-turn` reports it to the tests: four numbers to 1e-4. */
 function turnText(turn: Quat): string {
@@ -281,10 +331,13 @@ export function ThreeDScreen() {
     motionRef.current = 0;
   }, []);
 
-  // The host reports the turn from its first paint, and a motion under way stops when the screen goes.
+  // The host reports the turn and the crop from its first paint, and a motion under way stops when the screen goes.
   useEffect(() => {
     const host = hostRef.current;
-    if (host) host.dataset.turn = turnText(turnRef.current);
+    if (host) {
+      host.dataset.turn = turnText(turnRef.current);
+      host.dataset.crop = cropText(cropRef.current);
+    }
     return stopMotion;
   }, [stopMotion]);
 
@@ -293,23 +346,95 @@ export function ThreeDScreen() {
     return host ? Math.min(host.clientWidth, host.clientHeight) : 0;
   };
 
+  /** What the hidden live region last said, and how many times — a new node each time, so a repeat is heard. */
+  const [spoken, setSpoken] = useState<{ text: string; count: number }>({ text: "", count: 0 });
+  const say = (text: string) => setSpoken((last) => ({ text, count: last.count + 1 }));
+  /** Back to 1x (the button, a double-click or double-tap, the 0 key): the zoom and the slide undone, the turn kept,
+   * and a screen reader hears it. At 1x already, nothing happens and nothing is said. */
+  const backToOne = () => {
+    if (isAtOneCrop(cropRef.current)) return;
+    applyCrop(AT_ONE_CROP);
+    say(THREE_D_COPY.oneXSpoken);
+  };
+
+  // Two fingers, a slide and a double-tap (16-09, UI-SPEC §5): touch points down on the canvas by pointer id, the
+  // pinch under way (worked out from its start), the mouse's slide, and the taps a double-tap is read from.
+  const touchesRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ start: CropView; mid: { x: number; y: number }; dist: number } | null>(null);
+  const slideRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const tapRef = useRef<{ t: number; x: number; y: number; far: boolean } | null>(null);
+  const lastTapRef = useRef<{ t: number; x: number; y: number } | null>(null);
+
+  /** The two fingers' midpoint and spread, from the first two touch points down. */
+  const fingers = () => {
+    const [a, b] = [...touchesRef.current.values()];
+    return { mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, dist: Math.hypot(b.x - a.x, b.y - a.y) };
+  };
+  const startPinch = () => {
+    pinchRef.current = { start: cropRef.current, ...fingers() };
+  };
+
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    // One primary pointer turns the board: the mouse's left button, one finger or a pen. (Two fingers, the right
-    // button and Shift are the slide and the pinch, 16-09's.)
+    const host = event.currentTarget;
+    if (event.pointerType === "touch") {
+      const p = canvasPoint(host, event.clientX, event.clientY);
+      touchesRef.current.set(event.pointerId, p);
+      capture(host, event.pointerId);
+      if (touchesRef.current.size === 2) {
+        // A second finger: the turn under way stops where it is, with no glide, and the two fingers zoom about their
+        // midpoint and slide (UI-SPEC §5). The board's turn is untouched; a twist does nothing.
+        dragRef.current = null;
+        stopMotion();
+        tapRef.current = null;
+        lastTapRef.current = null;
+        startPinch();
+        return;
+      }
+      if (touchesRef.current.size > 2) return;
+      tapRef.current = { t: event.timeStamp, x: p.x, y: p.y, far: false };
+    } else if (event.button === 1 || event.button === 2 || (event.button === 0 && event.shiftKey)) {
+      // Right-drag, middle-drag, or Shift with the left button (a one-button trackpad): slide the board.
+      if (slideRef.current || dragRef.current) return;
+      // A middle press would otherwise start the browser's own autoscroll.
+      if (event.button === 1) event.preventDefault();
+      stopMotion();
+      capture(host, event.pointerId);
+      slideRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      if (event.pointerType === "mouse") host.style.cursor = "move";
+      return;
+    }
+    // One primary pointer turns the board: the mouse's left button, one finger or a pen.
     if (!event.isPrimary || dragRef.current) return;
     if (event.pointerType === "mouse" && (event.button !== 0 || event.shiftKey)) return;
     stopMotion();
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // A pointer the browser no longer counts as active can't be captured; the drag still works inside the canvas.
-    }
+    capture(host, event.pointerId);
     const point = { t: performance.now(), x: event.clientX, y: event.clientY };
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, samples: [point] };
-    if (event.pointerType === "mouse") event.currentTarget.style.cursor = "grabbing";
+    if (event.pointerType === "mouse") host.style.cursor = "grabbing";
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const host = event.currentTarget;
+    if (event.pointerType === "touch" && touchesRef.current.has(event.pointerId)) {
+      const p = canvasPoint(host, event.clientX, event.clientY);
+      touchesRef.current.set(event.pointerId, p);
+      const tap = tapRef.current;
+      if (tap && Math.hypot(p.x - tap.x, p.y - tap.y) > TAP_MAX_TRAVEL_PX) tap.far = true;
+      const pinch = pinchRef.current;
+      if (pinch && touchesRef.current.size >= 2) {
+        const { mid, dist } = fingers();
+        applyCrop(cropPinch(pinch.start, host.clientWidth, host.clientHeight, pinch.mid, pinch.dist, mid, dist));
+        return;
+      }
+    }
+    const slide = slideRef.current;
+    if (slide && slide.id === event.pointerId) {
+      const dx = event.clientX - slide.x;
+      const dy = event.clientY - slide.y;
+      slideRef.current = { id: slide.id, x: event.clientX, y: event.clientY };
+      applyCrop(cropSlide(cropRef.current, host.clientWidth, host.clientHeight, dx, dy));
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     const dx = event.clientX - drag.x;
@@ -324,10 +449,38 @@ export function ThreeDScreen() {
   };
 
   const endDrag = (event: PointerEvent<HTMLDivElement>, glide: boolean) => {
+    const host = event.currentTarget;
+    if (event.pointerType === "touch" && touchesRef.current.delete(event.pointerId)) {
+      if (pinchRef.current) {
+        // A third finger lifted: carry on from the two still down. Down to one: the pinch ends, and that finger
+        // doesn't turn the board until a new touch starts.
+        if (touchesRef.current.size >= 2) startPinch();
+        else pinchRef.current = null;
+        return;
+      }
+      // A double-tap goes back to 1x: two short taps close together in time and place (the 2D viewers' rule).
+      const tap = tapRef.current;
+      tapRef.current = null;
+      if (glide && tap && !tap.far && event.timeStamp - tap.t < TAP_MAX_MS) {
+        const last = lastTapRef.current;
+        if (last && tap.t - last.t <= DOUBLE_TAP_MS && Math.hypot(tap.x - last.x, tap.y - last.y) <= DOUBLE_TAP_SLOP_PX) {
+          lastTapRef.current = null;
+          backToOne();
+        } else {
+          lastTapRef.current = { t: event.timeStamp, x: tap.x, y: tap.y };
+        }
+      }
+    }
+    const slide = slideRef.current;
+    if (slide && slide.id === event.pointerId) {
+      slideRef.current = null;
+      host.style.cursor = "";
+      if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     dragRef.current = null;
-    const host = event.currentTarget;
     host.style.cursor = "";
     if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId);
     // The glide (D-13): the drag's speed over its last moment keeps the board turning, slowing to rest over
@@ -359,9 +512,6 @@ export function ThreeDScreen() {
   // ------------------------------------------------------------------------------------------------------------
   // The preset views, Reset View and the keys (16-07, UI-SPEC §3, §5, §13).
   // ------------------------------------------------------------------------------------------------------------
-  /** What the hidden live region last said, and how many times — a new node each time, so a repeat is heard. */
-  const [spoken, setSpoken] = useState<{ text: string; count: number }>({ text: "", count: 0 });
-  const say = (text: string) => setSpoken((last) => ({ text, count: last.count + 1 }));
   const descriptionId = useId();
 
   /**
@@ -372,6 +522,8 @@ export function ThreeDScreen() {
   const turnTo = (target: Quat, instant = false) => {
     stopMotion();
     dragRef.current = null;
+    // A view fits the board back to 1x, centred (§3): the zoom and the slide are undone with it, at once.
+    applyCrop(AT_ONE_CROP);
     const scene = sceneRef.current;
     const board = boardRef.current;
     const host = hostRef.current;
@@ -419,14 +571,36 @@ export function ThreeDScreen() {
     say(THREE_D_COPY.resetSpoken);
   };
 
-  /** The keys the canvas takes while it has focus (UI-SPEC §5): the arrows turn 15° at once, Home resets. Nothing
-   * else is taken, so Tab always leaves. (Shift with an arrow, plus, minus and 0 are 16-09's.) */
+  /** The keys the canvas takes while it has focus (UI-SPEC §5), each at once: the arrows turn 15°, Shift with an
+   * arrow slides a twentieth of the canvas, plus (or =) and minus zoom one step, 0 goes back to 1x and Home resets.
+   * Nothing else is taken — no key with Ctrl, Alt or the command key, so the browser's own zoom keys still work —
+   * and Tab always leaves. */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget || message) return;
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const host = event.currentTarget;
+    if (event.key === "+" || event.key === "=" || event.key === "-" || event.key === "\u2212") {
+      event.preventDefault();
+      onZoomStep(event.key === "+" || event.key === "=" ? 1 : -1);
+      return;
+    }
+    if (event.key === "0") {
+      event.preventDefault();
+      backToOne();
+      return;
+    }
     const arrow = ({ ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" } as const)[
       event.key as "ArrowLeft"
     ];
+    if (arrow && event.shiftKey) {
+      event.preventDefault();
+      const w = host.clientWidth * KEY_SLIDE_SHARE;
+      const h = host.clientHeight * KEY_SLIDE_SHARE;
+      const [dx, dy] = { left: [-w, 0], right: [w, 0], up: [0, -h], down: [0, h] }[arrow];
+      applyCrop(cropSlide(cropRef.current, host.clientWidth, host.clientHeight, dx, dy));
+      return;
+    }
+    if (event.shiftKey) return;
     if (arrow) {
       event.preventDefault();
       stopMotion();
@@ -438,16 +612,13 @@ export function ThreeDScreen() {
   };
 
   // ------------------------------------------------------------------------------------------------------------
-  // Zooming (16-09, UI-SPEC §4–§5): the zoom row and the wheel, in the 2D viewers' half steps, 1x to 10x.
+  // Zooming (16-09, UI-SPEC §4–§5): the zoom row, the wheel, a trackpad pinch and the keys, in the 2D viewers' half
+  // steps, 1x to 10x; and Wide view, which hides the sidebar exactly as TEMPLATE's and ROCKER's does (§2, §4).
   // ------------------------------------------------------------------------------------------------------------
+  const [wideView, setWideView] = useState(false);
   const onZoomStep = (steps: number) => {
     const host = hostRef.current;
     if (host) applyCrop(cropStep(cropRef.current, host.clientWidth, host.clientHeight, steps));
-  };
-  const onBackToOne = () => {
-    if (isAtOneCrop(cropRef.current)) return;
-    applyCrop(AT_ONE_CROP);
-    say(THREE_D_COPY.oneXSpoken);
   };
 
   // The wheel: a native listener, not React's `onWheel`, which React attaches as passive and so can never stop the
@@ -458,22 +629,74 @@ export function ThreeDScreen() {
     const host = hostRef.current;
     if (!host) return;
     let wheelAcc: WheelAccumulator = { sum: 0, lastMs: Number.NEGATIVE_INFINITY };
+    let pinchWheel = { zoom: 1, lastMs: Number.NEGATIVE_INFINITY };
     const onWheel = (event: WheelEvent) => {
       if (!zoomableRef.current) return;
       event.preventDefault();
-      const box = host.getBoundingClientRect();
-      const px = event.clientX - box.left;
-      const py = event.clientY - box.top;
+      const { x, y } = canvasPoint(host, event.clientX, event.clientY);
       const delta = normaliseWheelDelta(event.deltaY, event.deltaMode, window.innerHeight);
-      const step = wheelStep(wheelAcc, delta, event.timeStamp);
-      wheelAcc = step.acc;
-      if (step.steps === 0) return;
       const current = cropRef.current;
-      const zoom = stepZoom(current.zoom, step.steps, DEFAULT_MAX_ZOOM);
-      applyCrop(cropZoomAt(current, host.clientWidth, host.clientHeight, zoom, px, py));
+      let zoom: number;
+      if (event.ctrlKey) {
+        // A trackpad pinch in Chrome and Firefox: in proportion to the pinch, snapped to the half steps.
+        if (event.timeStamp - pinchWheel.lastMs > PINCH_WHEEL_RESYNC_MS) pinchWheel = { zoom: current.zoom, lastMs: 0 };
+        const running = Math.min(Math.max(pinchWheel.zoom * Math.exp(-delta * PINCH_WHEEL_RATE), 1), DEFAULT_MAX_ZOOM);
+        pinchWheel = { zoom: running, lastMs: event.timeStamp };
+        zoom = running;
+      } else {
+        const step = wheelStep(wheelAcc, delta, event.timeStamp);
+        wheelAcc = step.acc;
+        if (step.steps === 0) return;
+        zoom = stepZoom(current.zoom, step.steps, DEFAULT_MAX_ZOOM);
+      }
+      applyCrop(cropZoomAt(current, host.clientWidth, host.clientHeight, zoom, x, y));
     };
-    host.addEventListener("wheel", onWheel, { passive: false });
-    return () => host.removeEventListener("wheel", onWheel);
+
+    // Safari's own pinch events: always cancelled, so an iPhone never pinch-zooms the page over the drawing; and on a
+    // Mac trackpad, where a pinch arrives as these rather than ctrl + wheel, they zoom toward the pinch. On a touch
+    // screen the fingers' own pointer events do the zooming, so these are ignored while a finger is down.
+    let gesture: { start: CropView } | null = null;
+    const onGestureStart = (event: Event) => {
+      event.preventDefault();
+      gesture = touchesRef.current.size > 0 || !zoomableRef.current ? null : { start: cropRef.current };
+    };
+    const onGestureChange = (event: Event) => {
+      event.preventDefault();
+      if (!gesture || touchesRef.current.size > 0) return;
+      const e = event as SafariGestureEvent;
+      const { x, y } = canvasPoint(host, e.clientX, e.clientY);
+      const zoom = gesture.start.zoom * e.scale;
+      applyCrop(cropZoomAt(cropRef.current, host.clientWidth, host.clientHeight, zoom, x, y));
+    };
+    const onGestureEnd = (event: Event) => {
+      event.preventDefault();
+      gesture = null;
+    };
+
+    // The canvas carries `touch-action: none`; these are the backstop, so no browser scrolls or zooms the page from
+    // a finger on the drawing.
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length >= 2 && event.cancelable) event.preventDefault();
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.cancelable) event.preventDefault();
+    };
+
+    const active = { passive: false } as const;
+    host.addEventListener("wheel", onWheel, active);
+    host.addEventListener("gesturestart", onGestureStart, active);
+    host.addEventListener("gesturechange", onGestureChange, active);
+    host.addEventListener("gestureend", onGestureEnd, active);
+    host.addEventListener("touchstart", onTouchStart, active);
+    host.addEventListener("touchmove", onTouchMove, active);
+    return () => {
+      host.removeEventListener("wheel", onWheel);
+      host.removeEventListener("gesturestart", onGestureStart);
+      host.removeEventListener("gesturechange", onGestureChange);
+      host.removeEventListener("gestureend", onGestureEnd);
+      host.removeEventListener("touchstart", onTouchStart);
+      host.removeEventListener("touchmove", onTouchMove);
+    };
   }, [applyCrop]);
 
   const state: CanvasState = built.ok ? sceneState : "cant-build";
@@ -494,6 +717,7 @@ export function ThreeDScreen() {
 
   return (
     <DesignScreenShell
+      wideView={wideView}
       controls={
         <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
           <ThreeDHardEdge />
@@ -501,6 +725,7 @@ export function ThreeDScreen() {
       }
       canvas={
         <TabbedPanel
+          bare={wideView}
           tabs={[{ id: "board", label: THREE_D_COPY.tab }]}
           active="board"
           compactOnPhone="drawing"
@@ -528,9 +753,26 @@ export function ThreeDScreen() {
               onPointerUp={(event) => endDrag(event, true)}
               onPointerCancel={(event) => endDrag(event, false)}
               onLostPointerCapture={(event) => endDrag(event, false)}
+              onDoubleClick={message ? undefined : backToOne}
+              // Right-drag slides the board, so the right-click menu (`contextmenu`) is kept off the drawing — only here.
+              onContextMenu={(event) => event.preventDefault()}
               className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
+            {/* The corner toolbar (UI-SPEC §4): Wide view alone — exactly TEMPLATE's button, on a computer and a
+                sideways phone only (a phone upright has no sidebar to hide), and there from the first paint. No
+                Rotate button (D-04). */}
+            <ViewerToolbar>
+              <ViewerToolbarButton
+                onClick={() => setWideView(!wideView)}
+                pressed={wideView}
+                label={wideView ? "Show the sidebar" : "Hide the sidebar for a wider view"}
+                title={wideView ? "Show the sidebar" : "Wide view"}
+                className="max-shell:hidden"
+              >
+                {wideView ? <PanelLeftOpenIcon className="size-6" /> : <PanelLeftCloseIcon className="size-6" />}
+              </ViewerToolbarButton>
+            </ViewerToolbar>
             {/* The zoom row every drawing has (UI-SPEC §4): under the corner toolbar at the shell's width, in the
                 corner below it, where there is no toolbar. */}
             {zoomable && (
@@ -539,7 +781,7 @@ export function ThreeDScreen() {
                 maxZoom={DEFAULT_MAX_ZOOM}
                 atOne={zoomRow.atOne}
                 onStep={onZoomStep}
-                onReset={onBackToOne}
+                onReset={backToOne}
                 placement={belowShellWidth ? "corner" : "under-toolbar"}
               />
             )}

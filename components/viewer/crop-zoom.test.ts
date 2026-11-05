@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AT_ONE_CROP, cropRect, cropSlide, cropStep, cropZoomAt, isAtOneCrop, type CropView } from "./crop-zoom";
+import { AT_ONE_CROP, cropLimit, cropPinch, cropRect, cropSlide, cropStep, cropZoomAt, isAtOneCrop, type CropView } from "./crop-zoom";
 
 const W = 804;
 const H = 615;
@@ -66,14 +66,39 @@ describe("cropZoomAt: zooming toward the pointer", () => {
     expect(cropZoomAt(AT_ONE_CROP, W, H, 6, W / 2, H / 2, 4).zoom).toBe(4);
   });
 
-  it("stops where the picture's centre would leave the window", () => {
-    // Zooming hard on the window's very corner would carry the centre out; it stops at the window's edge.
-    const next = cropZoomAt(AT_ONE_CROP, W, H, 10, 0, 0);
-    const c = centreOnWindow(next, W, H);
+  it("up to 2x keeps the board's centre in the window; from 2x keeps the window inside the 1x picture", () => {
+    // Zooming hard on the window's very corner: at 1.5x the board's centre stops on the window's edge…
+    const low = cropZoomAt(AT_ONE_CROP, W, H, 1.5, 0, 0);
+    const c = centreOnWindow(low, W, H);
     expect(c.x).toBeGreaterThanOrEqual(-1e-9);
     expect(c.x).toBeLessThanOrEqual(W + 1e-9);
     expect(c.y).toBeGreaterThanOrEqual(-1e-9);
     expect(c.y).toBeLessThanOrEqual(H + 1e-9);
+    // …and at 10x the window sits in the picture's very corner, as a 2D viewer's would.
+    const high = cropRect(cropZoomAt(AT_ONE_CROP, W, H, 10, 0, 0), W, H);
+    expect(high.x).toBeCloseTo(0, 9);
+    expect(high.y).toBeCloseTo(0, 9);
+  });
+
+  it("lets the nose and the tail be zoomed right into: at 4x the tail is still under the pointer", () => {
+    // A point near the window's right edge — where a tail sits at 1x — under the pointer, six notches in.
+    const px = W * 0.95;
+    const before = pictureAt(AT_ONE_CROP, W, H, px, H / 2);
+    let view = AT_ONE_CROP;
+    for (let i = 0; i < 6; i++) view = cropZoomAt(view, W, H, view.zoom + 0.5, px, H / 2);
+    expect(view.zoom).toBe(4);
+    const after = pictureAt(view, W, H, px, H / 2);
+    expect(after.x).toBeCloseTo(before.x, 9);
+    expect(after.y).toBeCloseTo(before.y, 9);
+  });
+
+  it("never lets the limit jump: the two rules meet at 2x", () => {
+    expect(cropLimit(1)).toBe(0.5);
+    expect(cropLimit(2)).toBe(0.25);
+    expect(cropLimit(2 - 1e-9)).toBeCloseTo(0.25, 6);
+    expect(cropLimit(2 + 1e-9)).toBeCloseTo(0.25, 6);
+    expect(cropLimit(4)).toBe(0.375);
+    expect(cropLimit(10)).toBe(0.45);
   });
 
   it("leaves the view as it was for a non-finite input or an unmeasured window (T-16-20)", () => {
@@ -121,8 +146,8 @@ describe("cropSlide: sliding the board across the window", () => {
     }
   });
 
-  it("stops with the board's centre on the window's edge, never past it", () => {
-    for (const zoom of [1, 4]) {
+  it("up to 2x stops with the board's centre on the window's edge, never past it", () => {
+    for (const zoom of [1, 1.5]) {
       const far = cropSlide({ zoom, cx: 0, cy: 0 }, W, H, 50_000, -50_000);
       const c = centreOnWindow(far, W, H);
       expect(c.x).toBeCloseTo(W, 9);
@@ -132,6 +157,13 @@ describe("cropSlide: sliding the board across the window", () => {
       expect(back.x).toBeCloseTo(W - 10, 9);
       expect(back.y).toBeCloseTo(10, 9);
     }
+  });
+
+  it("from 2x stops with the window at the 1x picture's edge", () => {
+    const far = cropRect(cropSlide({ zoom: 4, cx: 0, cy: 0 }, W, H, 50_000, -50_000), W, H);
+    // Sliding the board right and up brings the picture's left and bottom edges into the window's.
+    expect(far.x).toBeCloseTo(0, 9);
+    expect(far.y + far.height).toBeCloseTo(H, 9);
   });
 
   it("leaves the view as it was for a non-finite slide (T-16-20)", () => {
@@ -146,5 +178,59 @@ describe("isAtOneCrop", () => {
     expect(isAtOneCrop(AT_ONE_CROP)).toBe(true);
     expect(isAtOneCrop({ zoom: 1, cx: 0.1, cy: 0 })).toBe(false);
     expect(isAtOneCrop({ zoom: 1.5, cx: 0, cy: 0 })).toBe(false);
+  });
+});
+
+describe("cropPinch: two fingers", () => {
+  const mid = { x: 400, y: 300 };
+
+  it("keeps the picture point between the fingers between them", () => {
+    const start: CropView = { zoom: 1.5, cx: 0.02, cy: -0.01 };
+    const p0 = pictureAt(start, W, H, mid.x, mid.y);
+    const next = cropPinch(start, W, H, mid, 100, mid, 200);
+    const p1 = pictureAt(next, W, H, mid.x, mid.y);
+    expect(p1.x).toBeCloseTo(p0.x, 9);
+    expect(p1.y).toBeCloseTo(p0.y, 9);
+  });
+
+  it("spreading to twice the distance doubles the zoom, snapped to a half step", () => {
+    expect(cropPinch(AT_ONE_CROP, W, H, mid, 100, mid, 200).zoom).toBe(2);
+    expect(cropPinch({ zoom: 2, cx: 0, cy: 0 }, W, H, mid, 100, mid, 230).zoom).toBe(4.5);
+    expect(cropPinch(AT_ONE_CROP, W, H, mid, 100, mid, 5_000).zoom).toBe(10);
+    expect(cropPinch({ zoom: 3, cx: 0, cy: 0 }, W, H, mid, 100, mid, 10).zoom).toBe(1);
+  });
+
+  it("moving both fingers together slides the board with them", () => {
+    const start: CropView = { zoom: 2, cx: 0, cy: 0 };
+    const before = centreOnWindow(start, W, H);
+    const after = centreOnWindow(cropPinch(start, W, H, mid, 120, { x: mid.x + 30, y: mid.y - 12 }, 120), W, H);
+    expect(after.x - before.x).toBeCloseTo(30, 9);
+    expect(after.y - before.y).toBeCloseTo(-12, 9);
+  });
+
+  it("is worked out from the pinch's start, so the same fingers give the same view however they got there", () => {
+    const start: CropView = { zoom: 1, cx: 0, cy: 0 };
+    const direct = cropPinch(start, W, H, mid, 100, { x: 420, y: 310 }, 180);
+    // A detour through other spreads and places ends at the same view.
+    cropPinch(start, W, H, mid, 100, { x: 300, y: 100 }, 400);
+    expect(cropPinch(start, W, H, mid, 100, { x: 420, y: 310 }, 180)).toEqual(direct);
+  });
+
+  it("changes nothing for a starting distance under a dot, or a non-finite reading (T-16-20)", () => {
+    const start: CropView = { zoom: 2, cx: 0.05, cy: 0 };
+    expect(cropPinch(start, W, H, mid, 0.5, mid, 200)).toBe(start);
+    expect(cropPinch(start, W, H, mid, 100, mid, Number.NaN)).toBe(start);
+    expect(cropPinch(start, W, H, mid, 100, { x: Number.POSITIVE_INFINITY, y: 0 }, 200)).toBe(start);
+    expect(cropPinch(start, 0, H, mid, 100, mid, 200)).toBe(start);
+  });
+
+  it("never carries the window out of reach of the board", () => {
+    const next = cropPinch(AT_ONE_CROP, W, H, mid, 100, { x: -4_000, y: 9_000 }, 400);
+    expect(next.zoom).toBe(4);
+    const r = cropRect(next, W, H);
+    expect(r.x).toBeGreaterThanOrEqual(-1e-9);
+    expect(r.x + r.width).toBeLessThanOrEqual(W + 1e-9);
+    expect(r.y).toBeGreaterThanOrEqual(-1e-9);
+    expect(r.y + r.height).toBeLessThanOrEqual(H + 1e-9);
   });
 });

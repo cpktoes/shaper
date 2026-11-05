@@ -102,7 +102,11 @@ function groundOf(pic: Picture) {
 
 const unlike = (a: readonly number[], b: readonly number[], tol: number) => a.some((v, i) => Math.abs(v - b[i]) > tol);
 
-/** The board's box on the canvas: every pixel unlike the ground, in CSS dots (null if none). */
+/** How far in from each corner the canvas's rounded edge shows the page behind it, not its ground. */
+const CORNER_DOTS = 8;
+
+/** The board's box on the canvas: every pixel unlike the ground, in CSS dots (null if none). The four rounded
+ * corners are skipped. */
 function litBox(pic: Picture, ground = groundOf(pic)) {
   let left = Infinity;
   let top = Infinity;
@@ -110,7 +114,9 @@ function litBox(pic: Picture, ground = groundOf(pic)) {
   let bottom = -Infinity;
   for (let y = 0; y < pic.height; y++) {
     for (let x = 0; x < pic.width; x++) {
-      if (!unlike(pixel(pic, x, y), ground, 12)) continue;
+      const inCorner =
+        (x < CORNER_DOTS || x >= pic.width - CORNER_DOTS) && (y < CORNER_DOTS || y >= pic.height - CORNER_DOTS);
+      if (inCorner || !unlike(pixel(pic, x, y), ground, 12)) continue;
       left = Math.min(left, x);
       right = Math.max(right, x);
       top = Math.min(top, y);
@@ -137,7 +143,7 @@ function patchMean(pic: Picture, x: number, y: number, r = 2): [number, number, 
 }
 
 /**
- * A point on plain lit foam inside `region` (fractions of the canvas): its 7 × 7 patch all well unlike the ground
+ * A point on plain lit foam inside `region` (fractions of the canvas): its 7 × 7 patch all unlike the ground
  * and nearly one colour — off the stringer, off the rail's edge — so its colour can be compared zoomed and not.
  */
 function foamPoint(pic: Picture, region: { x0: number; x1: number; y0: number; y1: number }) {
@@ -158,7 +164,7 @@ function foamPoint(pic: Picture, region: { x0: number; x1: number; y0: number; y
     for (let dy = -3; dy <= 3 && ok; dy++) {
       for (let dx = -3; dx <= 3 && ok; dx++) {
         const p = pixel(pic, x + dx, y + dy);
-        if (!unlike(p, ground, 30)) ok = false;
+        if (!unlike(p, ground, 12)) ok = false;
         for (let c = 0; c < 3; c++) {
           lo[c] = Math.min(lo[c], p[c]);
           hi[c] = Math.max(hi[c], p[c]);
@@ -245,5 +251,340 @@ test.describe("zooming the 3D board", () => {
     await expect(spoken(page)).toHaveText(THREE_D_COPY.oneXSpoken);
     const back = await canvasPixels(host);
     expect(countDifferent(atOne.rgba, back.rgba, 2)).toBeLessThan(50);
+  });
+});
+
+/** The canvas's corner on the page, in CSS dots. */
+async function hostBox(host: Locator) {
+  const box = await host.boundingBox();
+  if (!box) throw new Error("the 3D canvas has no box");
+  return box;
+}
+
+/** A mouse drag across the canvas from its centre by (dx, dy) with `button`, Shift held if asked. */
+async function mouseDrag(
+  page: Page,
+  host: Locator,
+  dx: number,
+  dy: number,
+  { button = "left", shift = false, during }: { button?: "left" | "right" | "middle"; shift?: boolean; during?: () => Promise<void> } = {},
+) {
+  const box = await hostBox(host);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  if (shift) await page.keyboard.down("Shift");
+  await page.mouse.down({ button });
+  await page.mouse.move(x + dx, y + dy, { steps: 6 });
+  if (during) await during();
+  await page.mouse.up({ button });
+  if (shift) await page.keyboard.up("Shift");
+}
+
+async function backToOneByButton(page: Page, host: Locator) {
+  await afterFrame(host, () => zoomRow(page).getByRole("button", { name: "Back to 1x — the whole drawing", exact: true }).click());
+  await expect(zoomLevel(page)).toHaveText("1x");
+}
+
+test.describe("sliding the 3D board", () => {
+  test("2. a right-drag or a Shift-drag slides the board exactly with the pointer, and a long one can't lose it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer drives the mouse");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    const turn = await host.getAttribute("data-turn");
+    const room = await host.getAttribute("data-room");
+    const start = litBox(await canvasPixels(host));
+    if (!start) throw new Error("no board on the canvas");
+
+    // Right-drag 100 dots across and 40 down: the board's near corner moves exactly as far. The cursor shows the
+    // slide while the button is down.
+    let cursorWhileSliding = "";
+    await afterFrame(host, () =>
+      mouseDrag(page, host, 100, 40, {
+        button: "right",
+        during: async () => {
+          cursorWhileSliding = await host.evaluate((el) => (el as HTMLElement).style.cursor);
+        },
+      }),
+    );
+    expect(cursorWhileSliding).toBe("move");
+    expect(await host.evaluate((el) => (el as HTMLElement).style.cursor)).toBe("");
+    const slid = litBox(await canvasPixels(host));
+    if (!slid) throw new Error("the board went missing");
+    expect(Math.abs(slid.left - start.left - 100)).toBeLessThanOrEqual(2);
+    expect(Math.abs(slid.top - start.top - 40)).toBeLessThanOrEqual(2);
+    // Sliding is not turning, the camera stays put, and Back to 1x (now live, to undo the slide) brings it back.
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-room")).toBe(room);
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await backToOneByButton(page, host);
+    const back = litBox(await canvasPixels(host));
+    expect(back?.left).toBe(start.left);
+
+    // Shift + drag (a one-button trackpad) slides the same way.
+    await afterFrame(host, () => mouseDrag(page, host, 100, 40, { shift: true }));
+    const shifted = litBox(await canvasPixels(host));
+    if (!shifted) throw new Error("the board went missing");
+    expect(Math.abs(shifted.left - start.left - 100)).toBeLessThanOrEqual(2);
+    expect(Math.abs(shifted.top - start.top - 40)).toBeLessThanOrEqual(2);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    await backToOneByButton(page, host);
+
+    // A very long slide stops with the board's centre on the canvas's edge: half the board is still in view.
+    await afterFrame(host, () => mouseDrag(page, host, 3_000, 0, { button: "right" }));
+    expect((await cropOf(host)).cx).toBeCloseTo(-0.5, 4);
+    const far = await canvasPixels(host);
+    const farBox = litBox(far);
+    if (!farBox) throw new Error("the board was slid out of the window");
+    expect(farBox.left).toBeLessThan(far.width - 50);
+    expect(farBox.right).toBeGreaterThanOrEqual(far.width - 2);
+    // The right-click menu never opened (the page would have lost the mouse's up).
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test("3. a double-click goes back to 1x: zoom and slide undone, the turn kept", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer drives the mouse");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    // Turn the board a little first, so "the turn kept" means something.
+    await afterFrame(host, async () => {
+      await host.focus();
+      await page.keyboard.press("ArrowRight");
+    });
+    const turn = await host.getAttribute("data-turn");
+    expect(turn).not.toBe("0.0000 0.0000 0.0000 1.0000");
+    const turnedAtOne = litBox(await canvasPixels(host));
+    await afterFrame(host, () => zoomRow(page).getByRole("button", { name: "Zoom in", exact: true }).click());
+    await afterFrame(host, () => zoomRow(page).getByRole("button", { name: "Zoom in", exact: true }).click());
+    await afterFrame(host, () => mouseDrag(page, host, 60, -30, { button: "right" }));
+    expect(await cropOf(host)).not.toEqual({ zoom: 1, cx: 0, cy: 0 });
+
+    const box = await hostBox(host);
+    await afterFrame(host, () => page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2));
+    await expect(zoomLevel(page)).toHaveText("1x");
+    expect(await cropOf(host)).toEqual({ zoom: 1, cx: 0, cy: 0 });
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    await expect(spoken(page)).toHaveText(THREE_D_COPY.oneXSpoken);
+    expect(litBox(await canvasPixels(host))).toEqual(turnedAtOne);
+  });
+
+  test("4. the keys: plus and minus zoom, Shift with an arrow slides, 0 goes back to 1x — the page never scrolls", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer has the keyboard");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    await host.focus();
+    const turn = await host.getAttribute("data-turn");
+
+    // Shift + → slides the board a twentieth of the canvas to the right (read at 1x, where the whole board is in
+    // view); the turn is untouched.
+    const before = litBox(await canvasPixels(host));
+    if (!before) throw new Error("no board on the canvas");
+    const { width } = await hostBox(host);
+    await afterFrame(host, () => page.keyboard.press("Shift+ArrowRight"));
+    const after = litBox(await canvasPixels(host));
+    if (!after) throw new Error("the board went missing");
+    expect(Math.abs(after.left - before.left - width / 20)).toBeLessThanOrEqual(2);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    await afterFrame(host, () => page.keyboard.press("Shift+ArrowDown"));
+    expect((await cropOf(host)).cy).toBeLessThan(0);
+
+    // + (or =) and − zoom one step about the canvas's centre.
+    await afterFrame(host, () => page.keyboard.type("+"));
+    await expect(zoomLevel(page)).toHaveText("1.5x");
+    await afterFrame(host, () => page.keyboard.press("Minus"));
+    await expect(zoomLevel(page)).toHaveText("1x");
+    await afterFrame(host, () => page.keyboard.press("Equal"));
+    await expect(zoomLevel(page)).toHaveText("1.5x");
+
+    // 0: back to 1x at once, and a screen reader hears it.
+    await afterFrame(host, () => page.keyboard.press("Digit0"));
+    await expect(zoomLevel(page)).toHaveText("1x");
+    expect(await cropOf(host)).toEqual({ zoom: 1, cx: 0, cy: 0 });
+    await expect(spoken(page)).toHaveText(THREE_D_COPY.oneXSpoken);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    // The canvas keeps focus throughout, and Tab still leaves it.
+    await expect(host).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(host).not.toBeFocused();
+  });
+});
+
+test.describe("fingers on the 3D board (Android, real touch input)", () => {
+  test("5. two fingers pinch-zoom and slide, only the level and Back to 1x draw, a double-tap goes back, the page never scrolls", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "trusted touches through Chromium's own input pipeline");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    // At 1x a touch screen shows no zoom row at all.
+    await expect(zoomRow(page)).toBeHidden();
+    const turn = await host.getAttribute("data-turn");
+    const room = await host.getAttribute("data-room");
+    const scroller = page.locator("[data-design-controls-scroll]").first();
+    const panelScroll = await scroller.evaluate((el) => el.scrollTop);
+
+    const box = await hostBox(host);
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    const cdp = await page.context().newCDPSession(page);
+    const two = (d: number, shift = 0) => [
+      { x: cx - d / 2 + shift, y: cy, id: 0 },
+      { x: cx + d / 2 + shift, y: cy, id: 1 },
+    ];
+    // Spread the fingers from 100 to 250 dots apart: 2.5x.
+    await afterFrame(host, async () => {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: two(100) });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: two(100 + (150 * i) / 8) });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    });
+    await expect(zoomLevel(page)).toHaveText("2.5x");
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    // The touch rule: the level and Back to 1x, no zoom buttons beside them.
+    await expect(zoomRow(page)).toBeVisible();
+    await expect(zoomRow(page).getByRole("button", { name: "Back to 1x — the whole drawing", exact: true })).toBeVisible();
+    await expect(zoomRow(page).getByRole("button", { name: "Zoom in", exact: true })).toBeHidden();
+    await expect(zoomRow(page).getByRole("button", { name: "Zoom out", exact: true })).toBeHidden();
+
+    // Both fingers moving together slide the board, at the same level.
+    const before = await cropOf(host);
+    await afterFrame(host, async () => {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: two(150) });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: two(150, (60 * i) / 8) });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    });
+    const after = await cropOf(host);
+    expect(after.zoom).toBe(2.5);
+    expect(after.cx).toBeLessThan(before.cx);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-room")).toBe(room);
+
+    // A double-tap: back to 1x, the zoom row gone again.
+    await afterFrame(host, async () => {
+      for (let i = 0; i < 2; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: cx, y: cy, id: 0 }] });
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      }
+    });
+    expect(await cropOf(host)).toEqual({ zoom: 1, cx: 0, cy: 0 });
+    await expect(zoomRow(page)).toBeHidden();
+    await cdp.detach();
+
+    // Nothing scrolled: not the page, not the panel.
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    expect(await scroller.evaluate((el) => el.scrollTop)).toBe(panelScroll);
+  });
+
+  test("6. an upright iPhone at 1x has nothing over the board: no zoom row, no Wide view", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "the iPhone's own touch rule");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    await expect(page.locator("[data-viewer-zoom]")).toHaveCount(1);
+    await expect(zoomRow(page)).toBeHidden();
+    await expect(page.getByRole("button", { name: "Hide the sidebar for a wider view" })).toBeHidden();
+    // No Rotate button on the 3D screen (D-04): turning the phone already turns the board.
+    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(0);
+  });
+});
+
+test.describe("Wide view on the 3D screen", () => {
+  test("7. Wide view hides the sidebar and widens the canvas at the same zoom; it shows from 820 wide, and below it the zoom row takes the corner", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer's sidebar");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    const aside = page.locator("aside").first();
+    await expect(aside).toBeVisible();
+    await afterFrame(host, () => zoomRow(page).getByRole("button", { name: "Zoom in", exact: true }).click());
+    await afterFrame(host, () => zoomRow(page).getByRole("button", { name: "Zoom in", exact: true }).click());
+    const crop = await cropOf(host);
+    expect(crop.zoom).toBe(2);
+    const narrow = await hostBox(host);
+    const turn = await host.getAttribute("data-turn");
+
+    const wide = page.getByRole("button", { name: "Hide the sidebar for a wider view", exact: true });
+    await expect(wide).toHaveAttribute("title", "Wide view");
+    await afterFrame(host, () => wide.click());
+    await expect(aside).toBeHidden();
+    const shown = page.getByRole("button", { name: "Show the sidebar", exact: true });
+    await expect(shown).toHaveAttribute("aria-pressed", "true");
+    expect((await hostBox(host)).width).toBeGreaterThan(narrow.width + 200);
+    await expect(zoomLevel(page)).toHaveText("2x");
+    expect(await cropOf(host)).toEqual(crop);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    // The board is still drawn, re-framed for the wider canvas.
+    expect(litBox(await canvasPixels(host))).not.toBeNull();
+
+    await afterFrame(host, () => shown.click());
+    await expect(aside).toBeVisible();
+    await expect(zoomLevel(page)).toHaveText("2x");
+
+    // 820 wide: the shell, with Wide view and the zoom row under the icon row.
+    await page.setViewportSize({ width: 820, height: 800 });
+    await expect(wide).toBeVisible();
+    const at820 = await hostBox(host);
+    const row820 = await zoomRow(page).boundingBox();
+    expect(row820 && row820.y - at820.y).toBeGreaterThanOrEqual(38);
+    await expect(zoomLevel(page)).toHaveText("2x");
+    // Below 820: no Wide view, and the zoom row takes the canvas's corner.
+    await page.setViewportSize({ width: 800, height: 800 });
+    await expect(wide).toBeHidden();
+    await expect
+      .poll(async () => {
+        const h = await hostBox(host);
+        const r = await zoomRow(page).boundingBox();
+        return r ? Math.round(r.y - h.y) : null;
+      })
+      .toBeLessThanOrEqual(2);
+    await expect(zoomLevel(page)).toHaveText("2x");
+  });
+
+  test("8. with no 3D drawing there is no zoom row, but Wide view stays", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer's sidebar");
+    await page.addInitScript(() => {
+      HTMLCanvasElement.prototype.getContext = function () {
+        return null;
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await page.goto("/design/3d");
+    await expect(boardHost(page)).toHaveAttribute("data-board-state", "no-webgl", { timeout: FIRST_FRAME_MS });
+    await expect(page.locator("[data-canvas-message]")).toBeVisible();
+    await expect(page.locator("[data-viewer-zoom]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Hide the sidebar for a wider view", exact: true })).toBeVisible();
+  });
+});
+
+test.describe("the lights never move", () => {
+  test("9. zoomed to 4x and slid, the camera and the lights are where they were, and the same foam is the same colour", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the computer's software renderer gives the same pixels every run");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await drawn(host);
+    const room = await host.getAttribute("data-room");
+    const atOne = await canvasPixels(host);
+    // Plain foam near the board's middle, so the crop's hold at 4x never stops the zoom early.
+    const p = foamPoint(atOne, { x0: 0.42, x1: 0.58, y0: 0.4, y1: 0.6 });
+    const colourAtOne = patchMean(atOne, p.x, p.y);
+
+    // Six notches at that point: 4x, the same foam still under the pointer.
+    for (let i = 0; i < 6; i++) await afterFrame(host, () => wheelAt(page, host, p.x, p.y, -100));
+    await expect(zoomLevel(page)).toHaveText("4x");
+    expect(await host.getAttribute("data-room")).toBe(room);
+    const atFour = await canvasPixels(host);
+    const colourAtFour = patchMean(atFour, p.x, p.y);
+    expect(colourAtFour.every((v, c) => Math.abs(v - colourAtOne[c]) <= 6)).toBe(true);
+
+    // Slid 40 dots right: the same foam has moved with the board and is still the same colour.
+    await afterFrame(host, () => mouseDrag(page, host, 40, 0, { button: "right" }));
+    expect(await host.getAttribute("data-room")).toBe(room);
+    const slid = await canvasPixels(host);
+    const colourSlid = patchMean(slid, p.x + 40, p.y);
+    expect(colourSlid.every((v, c) => Math.abs(v - colourAtOne[c]) <= 6)).toBe(true);
   });
 });
