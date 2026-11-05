@@ -378,4 +378,10 @@ a board named "Chris's Secret Fish").
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 10 checkpoint.
+Presented by the orchestrator at the Wave 10 checkpoint, 2026-11-04, with the two pictures (the 3D bottom before and
+after, the Tail Rail rows). Item 4 — the continuous settings (Deck Profile, Ratio, the scale, every nudge) keep their
+long straight blend from each 12" mark to the centre, and only the five discrete settings follow the Tail Rail distances
+and the nose's own blend — the founder: "Yes, keep as built." Then: "Approved." Merged into `board-3d` as 8ce2cc99.
+The deviations (the nose-blend assertion loosened, the one-way sweep narrowed, the one line in three-d-screen.spec.ts,
+the RAILS pictures shot 1700 tall) were accepted by the orchestrator; the load-sensitive rack-stand-in test is watched
+at the branch gate.
