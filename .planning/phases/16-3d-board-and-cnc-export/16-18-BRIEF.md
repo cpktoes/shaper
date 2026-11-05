@@ -12,6 +12,8 @@ before go-live 2 (16-13). The 3D screen has not gone public: it ships at go-live
 - Asked whether to draw the room or only light the board like it: "Draw a simple room" — blue walls, a floor, and the two
   long lit strips visible.
 - Asked when: "Before go-live 2."
+- Then, on how it moves: "I'd like it to be like in a shaping room. The user should be able to flip the board ("on the racks"), and pick up the nose or tail and watch the shadows change. The board needs to also rotate on its side, at least from 45deg toward the left to 45deg toward the right (great for shadows down a rail), but I think for a computer a full 360 deg spin should be possible. I'd be good with controls to make this happen, 1 per plane, as dragging can be a bit of a challenge sometimes."
+  This settles the stand question below: racks are drawn and the board rests on them.
 
 ## What the photo shows
 
