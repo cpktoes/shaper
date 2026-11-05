@@ -14,8 +14,11 @@ import { BoardNameTab } from "@/components/design/board-name-tab";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { useDesign } from "@/components/design/design-store";
-import { useReducedMotion } from "@/components/design/use-viewer-media";
+import { useBelowShellWidth, useReducedMotion } from "@/components/design/use-viewer-media";
+import { AT_ONE_CROP, cropRect, cropStep, cropZoomAt, isAtOneCrop, type CropView } from "@/components/viewer/crop-zoom";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
+import { DEFAULT_MAX_ZOOM, normaliseWheelDelta, stepZoom, wheelStep, type WheelAccumulator } from "@/components/viewer/zoom-math";
+import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
@@ -95,6 +98,12 @@ function turnText(turn: Quat): string {
   return turn.map((v) => (Math.round(v * 1e4) / 1e4 + 0).toFixed(4)).join(" ");
 }
 
+/** The crop as the host's `data-crop` reports it to the tests: the level, then the slide's two fractions to 1e-4. */
+function cropText(view: CropView): string {
+  const f = (v: number) => (Math.round(v * 1e4) / 1e4 + 0).toFixed(4);
+  return `${view.zoom} ${f(view.cx)} ${f(view.cy)}`;
+}
+
 /** A message centred on the canvas: what happened, then what to do (UI-SPEC §8). */
 function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
   return (
@@ -154,11 +163,38 @@ export function ThreeDScreen() {
   const motionRef = useRef(0);
   /** A view picked while the drawing was still loading: applied, framed at 1x, when the board appears (§9). */
   const pendingFrameRef = useRef(false);
+  // The zoom and the slide (16-09, UI-SPEC §4–§5): a crop of the fixed camera's picture (crop-zoom.ts), kept in a
+  // ref like the turn and handed straight to the scene, which draws one frame per change. React state holds only
+  // what the zoom row shows — the level, and whether there is anything for Back to 1x to undo.
+  const cropRef = useRef<CropView>(AT_ONE_CROP);
+  const [zoomRow, setZoomRow] = useState<{ zoom: number; atOne: boolean }>({ zoom: 1, atOne: true });
+  const belowShellWidth = useBelowShellWidth();
   // What the scene last reported. Each mount's cleanup puts it back to `loading`, and a mount that has gone can
   // no longer report, so a scene that comes back (after the board could not be built and then could again) never
   // shows an old mount's state.
   const [sceneState, setSceneState] = useState<CanvasState>("loading");
   const buildable = built.ok;
+
+  /** Hands the crop to the scene for the canvas's size now — a resized canvas keeps the same zoom and slide. */
+  const pushCrop = useCallback(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const view = cropRef.current;
+    host.dataset.crop = cropText(view);
+    sceneRef.current?.setCrop(isAtOneCrop(view) ? null : cropRect(view, host.clientWidth, host.clientHeight));
+  }, []);
+
+  const applyCrop = useCallback(
+    (view: CropView) => {
+      const last = cropRef.current;
+      if (view.zoom === last.zoom && view.cx === last.cx && view.cy === last.cy) return;
+      cropRef.current = view;
+      pushCrop();
+      const atOne = isAtOneCrop(view);
+      setZoomRow((row) => (row.zoom === view.zoom && row.atOne === atOne ? row : { zoom: view.zoom, atOne }));
+    },
+    [pushCrop],
+  );
 
   // Hand every new board to the scene that is drawing (the turn and the room are kept).
   useEffect(() => {
@@ -198,7 +234,11 @@ export function ThreeDScreen() {
           const aspect = host.clientWidth / Math.max(1, host.clientHeight);
           handle.setTurn(turnRef.current, frameAtOne(board.framePoints, turnRef.current, aspect));
         } else if (turnRef.current !== REST_TURN) handle.setTurn(turnRef.current);
-        const fit = () => handle?.resize(host.clientWidth, host.clientHeight);
+        // Every new size re-works 1x for the board's turn (the scene's resize) and keeps the zoom and the slide.
+        const fit = () => {
+          handle?.resize(host.clientWidth, host.clientHeight);
+          pushCrop();
+        };
         fit();
         observer = new ResizeObserver(fit);
         observer.observe(host);
@@ -214,7 +254,7 @@ export function ThreeDScreen() {
       if (sceneRef.current === handle) sceneRef.current = null;
       setSceneState("loading");
     };
-  }, [buildable]);
+  }, [buildable, pushCrop]);
 
   // ------------------------------------------------------------------------------------------------------------
   // Turning the board by hand (16-07, UI-SPEC §5): a drag turns it like a ball under the hand, and letting go of a
@@ -397,6 +437,45 @@ export function ThreeDScreen() {
     }
   };
 
+  // ------------------------------------------------------------------------------------------------------------
+  // Zooming (16-09, UI-SPEC §4–§5): the zoom row and the wheel, in the 2D viewers' half steps, 1x to 10x.
+  // ------------------------------------------------------------------------------------------------------------
+  const onZoomStep = (steps: number) => {
+    const host = hostRef.current;
+    if (host) applyCrop(cropStep(cropRef.current, host.clientWidth, host.clientHeight, steps));
+  };
+  const onBackToOne = () => {
+    if (isAtOneCrop(cropRef.current)) return;
+    applyCrop(AT_ONE_CROP);
+    say(THREE_D_COPY.oneXSpoken);
+  };
+
+  // The wheel: a native listener, not React's `onWheel`, which React attaches as passive and so can never stop the
+  // page or the panel scrolling under the drawing. One notch is one half step toward the pointer (the 2D viewers'
+  // wheel rule, zoom-math.ts).
+  const zoomableRef = useRef(false);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let wheelAcc: WheelAccumulator = { sum: 0, lastMs: Number.NEGATIVE_INFINITY };
+    const onWheel = (event: WheelEvent) => {
+      if (!zoomableRef.current) return;
+      event.preventDefault();
+      const box = host.getBoundingClientRect();
+      const px = event.clientX - box.left;
+      const py = event.clientY - box.top;
+      const delta = normaliseWheelDelta(event.deltaY, event.deltaMode, window.innerHeight);
+      const step = wheelStep(wheelAcc, delta, event.timeStamp);
+      wheelAcc = step.acc;
+      if (step.steps === 0) return;
+      const current = cropRef.current;
+      const zoom = stepZoom(current.zoom, step.steps, DEFAULT_MAX_ZOOM);
+      applyCrop(cropZoomAt(current, host.clientWidth, host.clientHeight, zoom, px, py));
+    };
+    host.addEventListener("wheel", onWheel, { passive: false });
+    return () => host.removeEventListener("wheel", onWheel);
+  }, [applyCrop]);
+
   const state: CanvasState = built.ok ? sceneState : "cant-build";
   const message =
     state === "cant-build"
@@ -407,6 +486,11 @@ export function ThreeDScreen() {
           ? THREE_D_COPY.didntLoad
           : null;
   const name = bandBoardName(modelId, boardName);
+  // The zoom row comes with the board and goes while a canvas message shows (UI-SPEC §4, §8).
+  const zoomable = state === "ready" || state === "lost";
+  useEffect(() => {
+    zoomableRef.current = zoomable;
+  }, [zoomable]);
 
   return (
     <DesignScreenShell
@@ -447,6 +531,18 @@ export function ThreeDScreen() {
               className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
             />
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
+            {/* The zoom row every drawing has (UI-SPEC §4): under the corner toolbar at the shell's width, in the
+                corner below it, where there is no toolbar. */}
+            {zoomable && (
+              <ViewerZoomRow
+                zoom={zoomRow.zoom}
+                maxZoom={DEFAULT_MAX_ZOOM}
+                atOne={zoomRow.atOne}
+                onStep={onZoomStep}
+                onReset={onBackToOne}
+                placement={belowShellWidth ? "corner" : "under-toolbar"}
+              />
+            )}
             {/* For a screen reader (UI-SPEC §13): how to move the board, and — always in the page, empty until a
                 view is picked — which view it is now. Turning by hand is never announced. */}
             <p id={descriptionId} className="sr-only">

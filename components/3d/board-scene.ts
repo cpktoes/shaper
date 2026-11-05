@@ -11,7 +11,8 @@
  * The room (D-10): the camera is placed once, 50° above the floor on the shaper's side, and never moves; the four
  * lights are placed once and never move. Only the board's group turns (`setTurn`, 16-07), so a highlight
  * slides across the foam as the board turns rather than riding along with it. The group's orientation is
- * `turn × BOARD_TO_ROOM` and its place in front of the camera is `frameAtOne`'s (lib/geometry/view-3d.ts).
+ * `turn × BOARD_TO_ROOM` and its place in front of the camera is `frameAtOne`'s (lib/geometry/view-3d.ts). Zoom and
+ * slide (`setCrop`, 16-09) crop the picture the camera takes — `setViewOffset` — and never move it either.
  *
  * It draws on demand — one frame per change, no loop at rest — and counts its frames on the host's
  * `data-frames`, which is how the browser tests know a board was actually drawn.
@@ -88,6 +89,12 @@ export interface BoardSceneHandle {
   setTurn(turn: Quat, frame?: Frame): void;
   /** Where the board sits in front of the camera now. */
   frame(): Frame;
+  /**
+   * Zoom and slide (16-09): shows only `rect` of the picture the camera takes, in the canvas's own dots
+   * (`camera.setViewOffset`), or the whole picture for `null`. The camera never moves and neither do the lights,
+   * so the board is lit exactly the same zoomed or slid (D-10, D-28). One frame per call.
+   */
+  setCrop(rect: { x: number; y: number; width: number; height: number } | null): void;
   /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
   roomReport(): RoomReport;
   resize(width: number, height: number): void;
@@ -167,6 +174,7 @@ const NOOP_HANDLE: BoardSceneHandle = {
   setBoard() {},
   setTurn() {},
   frame: () => ({ distance: CAMERA_STANDOFF_MM, right: 0, up: 0 }),
+  setCrop() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
   dispose() {},
@@ -411,6 +419,13 @@ export function mountBoardScene(
       schedule();
     },
     frame: () => frame,
+    setCrop(rect) {
+      if (disposed) return;
+      // A crop of the camera's own picture: its position, its aim and the lights are untouched.
+      if (rect) camera.setViewOffset(size.width, size.height, rect.x, rect.y, rect.width, rect.height);
+      else camera.clearViewOffset();
+      schedule();
+    },
     roomReport,
     resize(width, height) {
       if (disposed || !(width > 0) || !(height > 0)) return;
