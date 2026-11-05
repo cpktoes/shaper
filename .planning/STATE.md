@@ -10,9 +10,9 @@ last_activity_desc: "Phase 16 Wave 7 merged: generic fins stand on the 3D board 
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 46
+  total_plans: 47
   completed_plans: 42
-  percent: 91
+  percent: 89
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---

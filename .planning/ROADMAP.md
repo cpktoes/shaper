@@ -318,7 +318,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no h
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-28 and the approved 16-UI-SPEC.md)
 **Brief:** `phases/16-3d-board-and-cnc-export/16-SPEC.md` (R1–R12 from the founder's words of 2026-11-03), decisions D-01–D-28 in `16-CONTEXT.md`, the approved `16-UI-SPEC.md`, the measured `16-RESEARCH.md` and the mock-up `pictures/3d-board-mockup.png`
 **Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
-**Plans:** 11/15 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 added on 2026-11-04 for D-32 as its own wave before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
+**Plans:** 11/15 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 (D-32) and 16-16 (D-33, D-34) added on 2026-11-04 as their own waves before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
 
 Plans:
 
@@ -366,7 +366,11 @@ Plans:
 
 - [ ] 16-15-PLAN.md — The tail's whole rail character (hard edge, the tucks, Family, Symmetrical) fades between Tail Rail Blends From and Ends At into the centre's rail as set; the centre-to-nose rail blends smoothly on its own with no control; the rows renamed for the tail rail; a saved-boards rail-character report (R2 R9 R10 R11 R12)
 
-**Wave 11** *(blocked on Wave 10; a founder step)*
+**Wave 11** *(blocked on Wave 10; added 2026-11-04 for D-33 and D-34, planned and approved with the founder's rulings)*
+
+- [ ] 16-16-PLAN.md — The deck stays smooth across a wing (only the rail's bands step in, easing out at Deck Mark 3; the bottom carries through) and the surface runs into each tip without a flip, VOLUME counting the tips' foam; rings at a wing's step; a read-only surface report (R2 R3 R8 R11 R12)
+
+**Wave 12** *(blocked on Wave 11; a founder step)*
 
 - [ ] 16-13-PLAN.md — Go-live: with two go-lives, first bring main's go-live-1 merge onto the branch; then the full gate, the founder's Shape3D test and device checks, one push on his go, a live check (R7 R8 R9 R11 R12)
 
