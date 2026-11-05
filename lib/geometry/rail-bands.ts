@@ -209,24 +209,30 @@ export interface RailSectionSpec {
   nudges: RailMarkNudges;
 }
 
-/** The three rail sections plus the tail-only Hard Edge flag. */
+/** The three rail sections plus the tail-only Hard Edge flag and the tail rail's two blend settings. Since
+ * D-32 (plan 16-15) those two settings bound the tail's WHOLE rail character — Hard Edge, Family,
+ * Symmetrical, Single Tuck and Sharp Bottom Tuck — fading into the centre's, Hard Edge ticked or not; the
+ * nose's blend is automatic and stores nothing. */
 export interface RailBandSpec {
   nose: RailSectionSpec;
   center: RailSectionSpec;
   tail: RailSectionSpec;
   tailHardEdge: boolean;
   /**
-   * Hard Edge Blends From (Phase 16, D-30, the founder 2026-11-04): where the tail's hard edge starts
-   * blending into the tucked rail, measured from the tail tip — the edge is full at and behind it. Absent on
-   * every board saved before D-30 and on every preset, which read `DEFAULT_HARD_EDGE_BLENDS_FROM_IN` (18");
-   * always read through `hardEdgeBlendsFrom`, which forgives anything outside its window.
+   * Tail Rail Blends From (Phase 16, D-30, the founder 2026-11-04; named Hard Edge Blends From until D-32):
+   * where the tail's rail starts blending into the centre's, measured from the tail tip — the tail's rail as
+   * set is full at and behind it. Since D-32 it governs the tail's whole rail character, not only the hard
+   * edge; the field keeps its name because saved boards carry it. Absent on every board saved before D-30
+   * and on every preset, which read `DEFAULT_HARD_EDGE_BLENDS_FROM_IN` (18"); always read through
+   * `hardEdgeBlendsFrom`, which forgives anything outside its window.
    */
   tailHardEdgeBlendsFrom?: Mm;
   /**
-   * Hard Edge Ends At (Phase 16, D-20/D-30): where the rail has fully blended into the centre's tucked rail —
-   * the centre's Single Tuck and Sharp Bottom Tuck (D-27) — measured from the tail tip. Absent on every board
-   * saved before Phase 16 and on every preset, which read the board's own `defaultHardEdgeEndsAt` (L/3 − 18
-   * inches short of the centre: 30" on a 6'0"); always read
+   * Tail Rail Ends At (Phase 16, D-20/D-30; named Hard Edge Ends At until D-32): where the rail has fully
+   * blended into the centre's rail as set — since D-32 its whole character, Family and tucks alike —
+   * measured from the tail tip; the field keeps its name because saved boards carry it. Absent on every
+   * board saved before Phase 16 and on every preset, which read the board's own `defaultHardEdgeEndsAt`
+   * (L/3 − 18 inches short of the centre: 30" on a 6'0"); always read
    * through `hardEdgeEndsAt`, which keeps it at least `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past
    * the board's centre.
    */
@@ -309,7 +315,8 @@ function endsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
  * Hard Edge Blends From, read forgivingly (Phase 16, D-30; threat T-16-01): the stored
  * `tailHardEdgeBlendsFrom` when it is a finite number inside 12" to min(30", centre − 2"), and otherwise 18"
  * clamped into that same window (so a short board's default still leaves room to blend before the centre).
- * `length` is the board's length; its centre is half of it, the litres' own centre station.
+ * `length` is the board's length; its centre is half of it, the litres' own centre station. Since D-32 it
+ * is Tail Rail Blends From, where the tail's whole rail character starts blending into the centre's.
  */
 export function hardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom">, length: Mm): Mm {
   const window = blendsFromWindow(length);
@@ -323,7 +330,8 @@ export function hardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlends
  * (Phase 16, D-20/D-30; threat T-16-01): Blends From is resolved first, then the stored `tailHardEdgeEndsAt`
  * is kept when it is a finite number from Blends From + 2" to the board's centre, and otherwise the board's
  * own default end (`defaultHardEdgeEndsAt`, L/3 − 18 inches short of the centre) is clamped into that window.
- * So the two can never cross, and a crafted or stale pair always reads as a valid pair.
+ * So the two can never cross, and a crafted or stale pair always reads as a valid pair. Since D-32 it is Tail
+ * Rail Ends At, where the tail's whole rail character has blended into the centre's.
  */
 export function hardEdgeEndsAt(
   rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt">,

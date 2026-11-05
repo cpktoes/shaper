@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC, type Point2D } from "./board";
 import { buildOutline, sampleOutline, MEASURE_STATION_MM } from "./outline";
 import {
+  boardSectionEnds,
   boardSections,
   boardSectionsWith,
   computeCrossSectionVolume,
@@ -10,6 +11,10 @@ import {
   HARD_EDGE_FADE,
   fadingSectionArea,
   HARD_EDGE_SWITCH,
+  noseRailWeight,
+  railCharacterDifferences,
+  railCharacterOf,
+  RAIL_CHARACTER_FADE,
   tailHardEdgeWeight,
   simpsonIntegrate,
   SIMPSON_PANEL_COUNT,
@@ -40,13 +45,14 @@ import {
 import { samplePchip, type SplinePoint } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
 import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { PHASE16_TUCKED, phase16Boards, phase16LiveBoards } from "./__fixtures__/phase16-boards";
 import {
   designCrossSectionInput,
   designSideProfile,
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
   summarizeDesign,
+  summarizeDesignWith,
   type DesignSummaryFields,
 } from "./design";
 import golden from "./__fixtures__/prototype-volume-golden.json";
@@ -517,19 +523,20 @@ describe("computeCrossSectionVolume", () => {
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
   });
 
-  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39) under the hard edge's fade (Phase 16, D-20/D-27): a
-  // station keeps the foam that corner's blend used to take off where its tucked side reads a ticked box. While
-  // Hard Edge is on, the tucked side of every tail-nearest station reads the CENTRE's box (the tail's is hidden on
-  // RAILS); the stations at and behind the 12" station are all hard edge and keep their blend. Every figure is the
-  // same board with the box off — never a typed area.
-  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam wherever the tucked side reads the centre, never where the edge is all hard, and the litres rise", () => {
+  // Sharp Bottom Tuck (quick 261102-gec plan 05, R22, PC39) under the whole rail's blend (Phase 16, D-32): a
+  // station keeps the foam that corner's blend used to take off wherever its base — the centre's rail — reads a
+  // ticked box. With the centre's box ticked and the nose's not, the nose's rail now differs from the centre's
+  // and blends into it from the centre to the nose 12" station; while Hard Edge is on, the tail reads the
+  // centre's box (the tail's is hidden on RAILS), so its only difference is the hard edge. The stations at and
+  // behind Blends From are all hard edge and keep their blend; the stations at and beyond the nose 12" are the
+  // nose's own rail and keep theirs. Every figure is the same board with the box off — never a typed area.
+  it("Sharp Bottom Tuck ticked on the centre (and on a hard-edge tail) keeps foam wherever the base reads the centre behind it, blends into the nose ahead of it, never moves an all-hard station nor the nose's own, and the litres rise", () => {
     const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
     const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
     const length = DEFAULT_BOARD_SPEC.outline.length;
     const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
     expect(DEFAULT_RAIL_BAND_SPEC.tailHardEdge).toBe(true);
-    // A short blend, 14" to 18" (D-30), so some tail-nearest stations are past it and wholly tucked: at the
-    // defaults (18" to 30") a 6'0" board's blend reaches past halfway to the centre and leaves none.
+    // A short blend, 14" to 18" (D-30), so some stations between it and the centre are wholly the centre's.
     const base: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
       tailHardEdgeBlendsFrom: inchesToMm(14),
@@ -541,37 +548,48 @@ describe("computeCrossSectionVolume", () => {
       center: { ...base.center, sharpBottomTuck: true },
       tail: { ...base.tail, sharpBottomTuck: true },
     };
+    expect(railCharacterDifferences(onRails, "tail")).toEqual(["hardEdge"]);
+    expect(railCharacterDifferences(onRails, "nose")).toEqual(["sharpBottomTuck"]);
     const on = computeCrossSectionVolume(input(onRails));
     const sections = boardSections(input(onRails));
-    // Which rail each station reads: the nearest of the three anchors (tail 12", centre, nose 12").
     const anchors = foilStationPoints(DEFAULT_FOIL_SPEC, length);
-    const [tail, center, nose] = [anchors[1].station, anchors[2].station, anchors[3].station];
-    const counted = { allHard: 0, fading: 0, tailTucked: 0, center: 0, nose: 0 };
+    const [center, nose] = [anchors[2].station, anchors[3].station];
+    const counted = { allHard: 0, tailBlend: 0, centre: 0, noseBlend: 0, noseOwn: 0 };
     off.stationBlendAreas.forEach((blendOff, i) => {
       const s = off.stations[i];
-      const [dT, dC, dN] = [Math.abs(s - tail), Math.abs(s - center), Math.abs(s - nose)];
-      const nearest = dT <= dC && dT <= dN ? "tail" : dC <= dN ? "center" : "nose";
       if (blendOff === 0) return;
-      const weight = sections[i].hardWeight;
-      if (weight === 1) {
+      const section = sections[i];
+      if (s <= center && section.tipWeight === 1) {
         counted.allHard++;
         expect(on.stationBlendAreas[i], `station ${i} (all hard)`).toBe(blendOff);
-      } else if (nearest === "nose") {
-        counted.nose++;
-        expect(on.stationBlendAreas[i], `station ${i} (nose)`).toBe(blendOff);
+      } else if (s >= nose) {
+        counted.noseOwn++;
+        expect(section.tipWeight, `station ${i} (the nose's own)`).toBe(1);
+        expect(on.stationBlendAreas[i], `station ${i} (the nose's own)`).toBe(blendOff);
       } else {
-        if (nearest === "center") counted.center++;
-        else if (weight > 0) counted.fading++;
-        else counted.tailTucked++;
-        expect(sections[i].sharpBottomTuck, `station ${i} reads the centre's box`).toBe(true);
-        expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
+        if (section.tipWeight === 0) counted.centre++;
+        else if (s <= center) counted.tailBlend++;
+        else counted.noseBlend++;
+        expect(section.sharpBottomTuck, `station ${i}: its base reads the centre's box`).toBe(true);
+        if (s <= center) {
+          expect(on.stationBlendAreas[i], `station ${i}`).toBeLessThan(blendOff);
+        } else {
+          // The nose's blend, from the sharp-tucked centre to the plain nose: the litres count the drawn ring
+          // (D-31), and a point blend of two rails this alike can hold a hair less foam than either end — so the
+          // station is asked only to sit within a thousandth of its two ends' areas blended.
+          const ends = boardSectionEnds(input(onRails), s);
+          const w = section.tipWeight;
+          const areasBlended = (1 - w) * ends.base.area + w * ends.tip.area;
+          expect(Math.abs(section.area - areasBlended) / section.area, `station ${i}`).toBeLessThan(1e-3);
+          expect(ends.base.area, `station ${i}: the centre's box keeps more foam`).toBeGreaterThan(ends.tip.area);
+        }
       }
     });
     expect(counted.allHard).toBeGreaterThan(0);
-    expect(counted.fading).toBeGreaterThan(0);
-    expect(counted.tailTucked).toBeGreaterThan(0);
-    expect(counted.center).toBeGreaterThan(0);
-    expect(counted.nose).toBeGreaterThan(0);
+    expect(counted.tailBlend).toBeGreaterThan(0);
+    expect(counted.centre).toBeGreaterThan(0);
+    expect(counted.noseBlend).toBeGreaterThan(0);
+    expect(counted.noseOwn).toBeGreaterThan(0);
     expect(on.volumeLitres).toBeGreaterThan(off.volumeLitres);
   });
 
@@ -945,28 +963,28 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     }
   });
 
-  it("on every hard-edged board of the forty, at the defaults, every fading station is the level-variant area (D-31)", () => {
+  it("on every board of the forty, at the defaults, every blending station is the level-variant area of its two ends (D-31, D-32)", () => {
     let checked = 0;
-    for (const board of phase16Boards().filter((b) => b.fields.rails.tailHardEdge)) {
+    for (const board of phase16Boards()) {
       const boardInput = designInput(board.fields);
       for (const section of boardSections(boardInput)) {
-        if (!(section.hardWeight > 0 && section.hardWeight < 1)) continue;
-        const at = (weight: number) =>
-          boardSectionsWith(boardInput, { ...HARD_EDGE_FADE, weight: () => weight }, [section.station])[0];
-        const [tucked, hard] = [at(0), at(1)];
-        const tuckedHalf = sampledFinishedRail(tucked.result!, tucked.domed, tucked.halfWidth);
-        const hardHalf = sampledFinishedRail(hard.result!, hard.domed, hard.halfWidth);
-        const w = section.hardWeight;
+        if (!(section.tipWeight > 0 && section.tipWeight < 1)) continue;
+        const ends = boardSectionEnds(boardInput, section.station);
+        expect(ends.tipWeight).toBe(section.tipWeight);
+        const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
+        const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
+        const w = section.tipWeight;
+        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, w));
         const expected =
           sampledSectionArea(section.blended!) +
-          (1 - w) * (tucked.area - sampledSectionArea(tuckedHalf)) +
-          w * (hard.area - sampledSectionArea(hardHalf));
+          (1 - w) * (ends.base.area - sampledSectionArea(baseHalf)) +
+          w * (ends.tip.area - sampledSectionArea(tipHalf));
         expect(Math.abs(section.area - expected) / section.area, `${board.label} at ${section.station}`).toBeLessThan(1e-9);
         checked++;
       }
     }
     expect(checked).toBeGreaterThan(20);
-  }, 30_000);
+  }, 120_000);
 
   it("with Hard Edge off, the fade and the old switch build the same sections on every board", () => {
     const soft = phase16Boards().filter((board) => !board.fields.rails.tailHardEdge);
@@ -1006,17 +1024,35 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     }
   });
 
+  // Since D-32 the two settings carry the tail's whole rail, so on a board whose tail also differs in Family
+  // the per-station difference is no longer the hard edge's alone and a narrow blend sliding across Simpson's
+  // alternating weights can move the litres a hair either way. So the one-way sweep is asked of the boards
+  // whose tail differs from the centre in nothing but the Hard Edge (the live rule), and of the forty under
+  // go-live 1's rule by name, as go-live 1 shipped it.
+  const sweepCases: { label: string; fields: DesignSummaryFields; litres: (fields: DesignSummaryFields) => number }[] = [
+    ...phase16LiveBoards()
+      .filter((board) => board.fields.rails.tailHardEdge)
+      .filter((board) => railCharacterDifferences(board.fields.rails, "tail").every((key) => key === "hardEdge"))
+      .map((board) => ({ ...board, litres: (fields: DesignSummaryFields) => summarizeDesign(fields).volumeLitres })),
+    ...phase16Boards()
+      .filter((board) => board.fields.rails.tailHardEdge)
+      .map((board) => ({
+        label: `${board.label} (go-live 1's rule)`,
+        fields: board.fields,
+        litres: (fields: DesignSummaryFields) =>
+          summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: HARD_EDGE_FADE }).volumeLitres,
+      })),
+  ];
   it("moving either setting further from the tail keeps more hard edge, so every hard-edged board's litres change step by step in one direction", () => {
-    const hard = phase16Boards().filter((board) => board.fields.rails.tailHardEdge);
-    expect(hard).toHaveLength(20);
+    expect(sweepCases.length).toBeGreaterThan(20);
     // Which way the litres go is the board's own (a hard edge holds more foam than a tucked rail on these
     // boards, so they rise); the test only asks that each sweep moves one way, never back.
-    const litresWith = (fields: DesignSummaryFields, from: number, to: number) =>
-      summarizeDesign({
-        ...fields,
-        rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(from), tailHardEdgeEndsAt: inchesToMm(to) },
-      }).volumeLitres;
-    for (const board of hard) {
+    for (const board of sweepCases) {
+      const litresWith = (fields: DesignSummaryFields, from: number, to: number) =>
+        board.litres({
+          ...fields,
+          rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(from), tailHardEdgeEndsAt: inchesToMm(to) },
+        });
       const centreIn = mmToInches(board.fields.outline.length) / 2;
       const endSweep = [20, 22, 24, 26, 28, 30].filter((to) => to <= centreIn).map((to) => litresWith(board.fields, 18, to));
       const startSweep = [12, 14, 16, 18, 20, 22].map((from) => litresWith(board.fields, from, 24));
@@ -1032,7 +1068,7 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
         }
       }
     }
-  });
+  }, 120_000);
 
   it("a board that says nothing reads exactly as a board that says 18\" and 30\"", () => {
     const said = computeCrossSectionVolume(
@@ -1049,5 +1085,314 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     const old = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeEndsAt: inchesToMm(24) };
     const both = { ...old, tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN) };
     expect(computeCrossSectionVolume(input(old)).volumeLitres).toBe(computeCrossSectionVolume(input(both)).volumeLitres);
+  });
+});
+
+describe("D-32 the whole rail character blends", () => {
+  // The founder, 2026-11-04: "we should also treat 'sharp bottom tuck' like a hard edge at the tail station. The
+  // same blend from and to applies ... if the center and/or nose have a sharp bottom tuck, the blend still
+  // applies, but maintains the sharper edge". Every expected figure is the app's own (Rule 1).
+  const outlineGeometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+  const halfWidthAt = (s: Mm) => sampleOutline(outlineGeometry, s);
+  const length = DEFAULT_BOARD_SPEC.outline.length;
+  const input = (rails: RailBandSpec) => ({ halfWidthAt, foil: DEFAULT_FOIL_SPEC, rails, length });
+  const anchorPoints = foilStationPoints(DEFAULT_FOIL_SPEC, length);
+  const [centre, nose12] = [anchorPoints[2].station, anchorPoints[3].station];
+  /** Stations every quarter inch from the tail end to the nose end. */
+  const dense = Array.from({ length: Math.floor(mmToInches(length) * 4) + 1 }, (_, i) => mm(inchesToMm(i / 4)));
+
+  /** The cross-section input `summarizeDesign` builds for a stored board. */
+  const designInput = (fields: DesignSummaryFields) => {
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(buildOutline(fields.outline), profile, rails, fields.outline.length);
+  };
+
+  it("railCharacterOf reads each rail as set; while Hard Edge is on the tail reads the centre's two tucks", () => {
+    const stock = railCharacterOf(DEFAULT_RAIL_BAND_SPEC, "tail");
+    expect(stock.hardEdge).toBe(true);
+    expect(stock.singleTuck).toBe(DEFAULT_RAIL_BAND_SPEC.center.singleTuck);
+    expect(stock.sharpBottomTuck).toBe(DEFAULT_RAIL_BAND_SPEC.center.sharpBottomTuck);
+    const ticked: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, singleTuck: true },
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, family: 1, sharpBottomTuck: true },
+    };
+    expect(railCharacterOf(ticked, "tail")).toEqual({
+      hardEdge: true,
+      family: ticked.tail.family,
+      symmetrical: ticked.tail.symmetrical,
+      singleTuck: ticked.center.singleTuck,
+      sharpBottomTuck: ticked.center.sharpBottomTuck,
+    });
+    const soft: RailBandSpec = { ...ticked, tailHardEdge: false };
+    expect(railCharacterOf(soft, "tail")).toEqual({
+      hardEdge: false,
+      family: soft.tail.family,
+      symmetrical: soft.tail.symmetrical,
+      singleTuck: soft.tail.singleTuck,
+      sharpBottomTuck: soft.tail.sharpBottomTuck,
+    });
+    for (const key of ["center", "nose"] as const) {
+      expect(railCharacterOf(ticked, key)).toEqual({
+        hardEdge: false,
+        family: ticked[key].family,
+        symmetrical: ticked[key].symmetrical,
+        singleTuck: ticked[key].singleTuck,
+        sharpBottomTuck: ticked[key].sharpBottomTuck,
+      });
+    }
+  });
+
+  it("railCharacterDifferences lists each differing setting once, in RAILS' order, and nothing for the centre's own copy", () => {
+    const c = DEFAULT_RAIL_BAND_SPEC.center;
+    const otherFamily: RailFamily = c.family === 1 ? 2 : 1;
+    const everything: RailSectionSpec = {
+      ...c,
+      family: otherFamily,
+      symmetrical: !c.symmetrical,
+      singleTuck: !c.singleTuck,
+      sharpBottomTuck: !c.sharpBottomTuck,
+    };
+    const soft: RailBandSpec = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdge: false, tail: everything, nose: everything };
+    expect(railCharacterDifferences(soft, "nose")).toEqual(["family", "symmetrical", "singleTuck", "sharpBottomTuck"]);
+    expect(railCharacterDifferences(soft, "tail")).toEqual(["family", "symmetrical", "singleTuck", "sharpBottomTuck"]);
+    // Hard Edge on: the tail's tucks are hidden (they read the centre's), so they never differ.
+    expect(railCharacterDifferences({ ...soft, tailHardEdge: true }, "tail")).toEqual(["hardEdge", "family", "symmetrical"]);
+    const own: RailBandSpec = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdge: false, tail: c, nose: c };
+    expect(railCharacterDifferences(own, "tail")).toEqual([]);
+    expect(railCharacterDifferences(own, "nose")).toEqual([]);
+    for (const board of phase16LiveBoards()) {
+      for (const tip of ["tail", "nose"] as const) {
+        const keys = railCharacterDifferences(board.fields.rails, tip);
+        expect(new Set(keys).size, `${board.label} ${tip}`).toBe(keys.length);
+      }
+    }
+  });
+
+  it("the nose's weight is 0 at and behind the centre, 1 at and beyond the nose 12\", a half midway, and never falls", () => {
+    const nineFoot = inchesToMm(108);
+    const points = foilStationPoints(DEFAULT_FOIL_SPEC, nineFoot);
+    const [c, n] = [points[2].station, points[3].station];
+    expect(noseRailWeight(c, c, n)).toBe(0);
+    expect(noseRailWeight(mm(c - 1), c, n)).toBe(0);
+    expect(noseRailWeight(mm(0), c, n)).toBe(0);
+    expect(noseRailWeight(n, c, n)).toBe(1);
+    expect(noseRailWeight(mm(n + 1), c, n)).toBe(1);
+    expect(noseRailWeight(nineFoot, c, n)).toBe(1);
+    expect(noseRailWeight(mm((c + n) / 2), c, n)).toBeCloseTo(0.5, 12);
+    let last = -Infinity;
+    for (let i = 0; i <= 4000; i++) {
+      const w = noseRailWeight(mm((i / 4000) * nineFoot), c, n);
+      expect(w).toBeGreaterThanOrEqual(last);
+      expect(w).toBeGreaterThanOrEqual(0);
+      expect(w).toBeLessThanOrEqual(1);
+      last = w;
+    }
+  });
+
+  it("a Sharp-Bottom-Tucked tail with Hard Edge off is the tail's rail to Blends From, the centre's from Ends At, the point blend between — sharp fading to round", () => {
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      tailHardEdge: false,
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, sharpBottomTuck: true },
+    };
+    expect(railCharacterDifferences(rails, "tail")).toEqual(["sharpBottomTuck"]);
+    const from = hardEdgeBlendsFrom(rails, length);
+    const to = hardEdgeEndsAt(rails, length);
+    const stations = [...dense.filter((s) => s <= centre), from, to].sort((a, b) => a - b).map(mm);
+    const counted = { tail: 0, between: 0, centre: 0 };
+    for (const section of boardSections(input(rails), stations)) {
+      if (section.halfWidth === 0) continue;
+      const s = section.station;
+      if (s <= from) {
+        counted.tail++;
+        expect(section.tipWeight, `at ${s}`).toBe(1);
+        expect(section.sharpBottomTuck, `at ${s}`).toBe(true);
+        expect(section.sharpness, `at ${s}`).toBe(1);
+        expect(section.blended).toBeUndefined();
+      } else if (s >= to) {
+        counted.centre++;
+        expect(section.tipWeight, `at ${s}`).toBe(0);
+        expect(section.sharpBottomTuck, `at ${s}`).toBe(false);
+        expect(section.sharpness, `at ${s}`).toBe(0);
+      } else {
+        counted.between++;
+        expect(section.tipWeight).toBe(tailHardEdgeWeight(s, from, to));
+        expect(section.sharpness).toBe(section.tipWeight);
+        expect(section.hardWeight).toBe(0);
+        const ends = boardSectionEnds(input(rails), s);
+        expect(ends.tipWeight).toBe(section.tipWeight);
+        expect(ends.tip.sharpBottomTuck).toBe(true);
+        expect(ends.base.sharpBottomTuck).toBe(false);
+        const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
+        const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
+        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, section.tipWeight));
+        const area = fadingSectionArea(ends.base.area, ends.tip.area, baseHalf, tipHalf, section.blended!, section.tipWeight);
+        expect(Math.abs(section.area - area) / section.area).toBeLessThan(1e-9);
+        // The two ends really differ, so the blend means something.
+        expect(Math.abs(ends.tip.area - ends.base.area)).toBeGreaterThan(0);
+      }
+    }
+    expect(counted.tail).toBeGreaterThan(0);
+    expect(counted.between).toBeGreaterThan(5);
+    expect(counted.centre).toBeGreaterThan(0);
+    // No step at either end of the blend.
+    const step = 1e-4;
+    for (const [a, b] of [
+      [from, from + step],
+      [to - step, to],
+    ] as const) {
+      const [left, right] = boardSections(input(rails), [mm(a), mm(b)]);
+      expect(Math.abs(left.area - right.area), `across ${a.toFixed(4)} mm`).toBeLessThan(1e-6 * left.area);
+    }
+  });
+
+  it("a hard-edged tail fading into a Sharp-Bottom-Tucked centre keeps its bottom edge sharp all the way", () => {
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
+    };
+    let checked = 0;
+    let blending = 0;
+    for (const section of boardSections(input(rails), dense.filter((s) => s <= centre))) {
+      if (section.halfWidth === 0) continue;
+      expect(section.sharpness, `at ${section.station}`).toBe(1);
+      if (section.tipWeight > 0 && section.tipWeight < 1) blending++;
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(100);
+    expect(blending).toBeGreaterThan(5);
+  });
+
+  it("a nose whose Sharp Bottom Tuck differs from the centre's blends its sharpness from the centre to the nose 12\"", () => {
+    const noseTicked: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, sharpBottomTuck: true },
+    };
+    const centreTicked: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true },
+    };
+    const ahead = [centre, ...dense.filter((s) => s > centre)];
+    const counted = { between: 0, nose: 0 };
+    const up = boardSections(input(noseTicked), ahead);
+    const down = boardSections(input(centreTicked), ahead);
+    up.forEach((section, i) => {
+      if (section.halfWidth === 0) return;
+      const s = section.station;
+      const w = noseRailWeight(s, centre, nose12);
+      expect(section.tipWeight, `at ${s}`).toBe(w);
+      if (s === centre) {
+        expect(section.sharpness).toBe(0);
+        expect(down[i].sharpness).toBe(1);
+      } else if (s >= nose12) {
+        counted.nose++;
+        expect(section.sharpness, `at ${s}`).toBe(1);
+        expect(down[i].sharpness, `at ${s}`).toBe(0);
+      } else {
+        counted.between++;
+        expect(section.sharpness, `at ${s}`).toBe(w);
+        expect(down[i].sharpness, `at ${s}`).toBe(1 - w);
+      }
+    });
+    expect(up[0].station).toBe(centre);
+    expect(counted.between).toBeGreaterThan(5);
+    expect(counted.nose).toBeGreaterThan(5);
+  });
+
+  it("at the tail 12\", the centre and the nose 12\" every board's sections are that rail's own character (RAILS' three plots)", () => {
+    let checked = 0;
+    for (const board of phase16LiveBoards()) {
+      const boardInput = designInput(board.fields);
+      const points = foilStationPoints(boardInput.foil, boardInput.length);
+      const [t12, c, n12] = boardSections(boardInput, [points[1].station, points[2].station, points[3].station]);
+      if (railCharacterDifferences(boardInput.rails, "tail").length > 0) {
+        expect(t12.tipWeight, board.label).toBe(1);
+        checked++;
+      }
+      expect(c.tipWeight, board.label).toBe(0);
+      if (railCharacterDifferences(boardInput.rails, "nose").length > 0) {
+        expect(n12.tipWeight, board.label).toBe(1);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(40);
+  }, 60_000);
+
+  it("with Hard Edge on, ticking the tail's hidden tucks still moves no litres on any preset (D-27)", () => {
+    for (const board of phase16Boards().filter((b) => b.label.endsWith("|asis|hard"))) {
+      const ticked: DesignSummaryFields = {
+        ...board.fields,
+        rails: {
+          ...board.fields.rails,
+          tail: { ...board.fields.rails.tail, singleTuck: !board.fields.rails.tail.singleTuck, sharpBottomTuck: !board.fields.rails.tail.sharpBottomTuck },
+        },
+      };
+      expect(summarizeDesign(ticked).volumeLitres, board.label).toBe(summarizeDesign(board.fields).volumeLitres);
+    }
+  });
+
+  type P = [number, number];
+  /** The shortest distance from a point to a polyline. */
+  const distToPolyline = (p: P, poly: readonly P[]) => {
+    let best = Infinity;
+    for (let i = 1; i < poly.length; i++) {
+      const [a, b] = [poly[i - 1], poly[i]];
+      const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+      const len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2)) : 0;
+      best = Math.min(best, Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy)));
+    }
+    return best;
+  };
+  /** A section's drawn half, measured from its own rail edge. */
+  const drawnHalf = (section: ReturnType<typeof boardSections>[number]): P[] =>
+    (section.blended ?? sampledFinishedRail(section.result!, section.domed, section.halfWidth)).map(
+      ([x, y]) => [x - section.halfWidth, y] as P,
+    );
+  /** How far the drawn half jumps across a station: the halves 0.01 mm either side, the larger of the two
+   * point-to-polyline distances. */
+  const jumpAcross = (boardInput: ReturnType<typeof designInput>, rule: Parameters<typeof boardSectionsWith>[1], s: number) => {
+    const [a, b] = boardSectionsWith(boardInput, rule, [mm(s - 0.01), mm(s + 0.01)]);
+    const [ha, hb] = [drawnHalf(a), drawnHalf(b)];
+    let d = 0;
+    for (const p of ha) d = Math.max(d, distToPolyline(p, hb));
+    for (const p of hb) d = Math.max(d, distToPolyline(p, ha));
+    return d;
+  };
+  for (const board of phase16LiveBoards()) {
+    it(`${board.label}: no step at the old halfway points on a side whose rail differs in more than the Hard Edge`, () => {
+      const boardInput = designInput(board.fields);
+      const points = foilStationPoints(boardInput.foil, boardInput.length);
+      const sides: number[] = [];
+      if (railCharacterDifferences(boardInput.rails, "tail").some((key) => key !== "hardEdge")) {
+        sides.push((points[1].station + points[2].station) / 2);
+      }
+      if (railCharacterDifferences(boardInput.rails, "nose").length > 0) {
+        sides.push((points[2].station + points[3].station) / 2);
+      }
+      for (const s of sides) {
+        expect(jumpAcross(boardInput, HARD_EDGE_FADE, s), `go-live 1's switch at ${s.toFixed(1)} mm`).toBeGreaterThan(0.3);
+        expect(jumpAcross(boardInput, RAIL_CHARACTER_FADE, s), `the live blend at ${s.toFixed(1)} mm`).toBeLessThan(0.05);
+      }
+    });
+  }
+
+  it("the 74 boards' tips that differ in more than the Hard Edge are the ones the step check above covers", () => {
+    const tips = phase16LiveBoards().flatMap((board) => [
+      railCharacterDifferences(board.fields.rails, "tail").some((key) => key !== "hardEdge"),
+      railCharacterDifferences(board.fields.rails, "nose").length > 0,
+    ]);
+    expect(tips.filter(Boolean).length).toBeGreaterThan(40);
+    // Every `tucked` board has at least one such tip; no `aligned` or `stock` board has any.
+    for (const board of phase16LiveBoards()) {
+      const any =
+        railCharacterDifferences(board.fields.rails, "tail").some((key) => key !== "hardEdge") ||
+        railCharacterDifferences(board.fields.rails, "nose").length > 0;
+      if (/^(aligned|stock)\|/.test(board.label)) expect(any, board.label).toBe(false);
+      if (board.label.startsWith("tucked|")) expect(any, board.label).toBe(true);
+    }
+    expect(Object.keys(PHASE16_TUCKED)).toHaveLength(6);
   });
 });

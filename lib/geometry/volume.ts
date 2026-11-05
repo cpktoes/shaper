@@ -57,6 +57,7 @@ import {
   ZERO_RAIL_NUDGES,
   type ComputeRailSectionInput,
   type RailBandSpec,
+  type RailFamily,
   type RailMarkNudges,
   type RailSectionKey,
   type RailSectionResult,
@@ -616,14 +617,19 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
 
 /**
  * One station's finished-rail cross-section, as the litres count it and the 3D board draws it (D-05).
- * `result` is the station's rail section — the only one when `hardWeight` is 0 or 1, and the TUCKED one
- * while the tail's hard edge fades (0 < `hardWeight` < 1); `result` is null where the foam has no width.
- * While it fades, `blended` is the half-section the 3D board draws there — the tucked and the hard-edged
- * finished rails sampled alike and blended point for point by the weight (`blendFinishedRails`, rail at
- * `halfWidth`, stringer at 0) — and the litres count that very ring (D-31, `fadingSectionArea`).
- * `sharpBottomTuck` is the flag the tucked section used. `area` is the full (both-rails) finished
- * cross-section in square millimetres and `blendArea` the foam the finished rail's blends take off it, both
- * rails — `stationAreas` and `stationBlendAreas` of `computeCrossSectionVolume`, element for element.
+ * Each station reads two rail characters — the BASE (the centre's rail, under the live rule) and the TIP
+ * (the tail's or the nose's) — and `tipWeight` says how much of the station is the tip's (Phase 16, D-32):
+ * 0 all base, 1 all tip, between a blend. `result` is the base section while blending (0 < `tipWeight` < 1)
+ * and the only section otherwise; it is null where the foam has no width. While it blends, `blended` is the
+ * half-section the 3D board draws there — the base and the tip finished rails sampled alike and blended point
+ * for point by the weight (`blendFinishedRails`, rail at `halfWidth`, stringer at 0) — and the litres count
+ * that very ring (D-31, `fadingSectionArea`). `hardWeight` is how much of the station is a hard edge and
+ * `sharpness` how sharp its bottom edge is drawn (an end is sharp when it has a hard edge or a Sharp Bottom
+ * Tuck: 1 where both ends are, 0 where neither is, the sharp end's share where one is — the founder's
+ * "maintains the sharper edge"). `sharpBottomTuck` is the base's (or the only) section's flag. `area` is the
+ * full (both-rails) finished cross-section in square millimetres and `blendArea` the foam the finished
+ * rail's blends take off it, both rails — `stationAreas` and `stationBlendAreas` of
+ * `computeCrossSectionVolume`, element for element.
  */
 export interface BoardSection {
   station: Mm;
@@ -631,7 +637,9 @@ export interface BoardSection {
   thickness: Mm;
   result: RailSectionResult | null;
   blended?: HalfSectionPoints;
+  tipWeight: number;
   hardWeight: number;
+  sharpness: number;
   domed: boolean;
   sharpBottomTuck: boolean;
   area: number;
@@ -682,8 +690,9 @@ export interface HardEdgeRule {
 /**
  * The hard edge as it was before Phase 16: a switch — fully hard at every station whose nearest anchor is
  * the tail 12" section (out to halfway to the centre) while the tail's Hard Edge is on, and not at all
- * anywhere else; every tuck read from the nearest anchor. Named only by the pin test of today's litres and
- * by the saved-boards report; no screen uses it.
+ * anywhere else; every tuck read from the nearest anchor. Named only by the 40-board pin test
+ * (`phase16-litres-pin.test.ts`) and by the hard-edge report (`lib/models/hard-edge-report.ts`); no screen
+ * uses it.
  */
 export const HARD_EDGE_SWITCH: HardEdgeRule = {
   weight(station, anchors, rails) {
@@ -700,7 +709,8 @@ export const HARD_EDGE_SWITCH: HardEdgeRule = {
  * behind `blendsFrom` (Hard Edge Blends From), 0 at and beyond `endsAt` (Hard Edge Ends At, where the rail has
  * fully blended into the centre's tucked rail), and between them the smoothstep `1 − t²(3 − 2t)` with
  * `t = (station − blendsFrom)/(endsAt − blendsFrom)` — level at both ends, so the litres kink at neither
- * setting. Never rises along the board.
+ * setting. Never rises along the board. Since D-32 (plan 16-15) the same weight carries the tail's WHOLE rail
+ * character into the centre's (`RAIL_CHARACTER_FADE`), the name kept because the hard edge was its first use.
  */
 export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): number {
   if (station <= blendsFrom) return 1;
@@ -710,7 +720,10 @@ export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): num
 }
 
 /**
- * The live hard edge (Phase 16, D-20/D-27/D-30, the founder): while the tail's Hard Edge is on it is full at
+ * Go-live 1's hard edge (Phase 16, D-20/D-27/D-30, the founder) — the live rule until D-32 (plan 16-15) made the
+ * tail's whole rail fade, kept as it was and named only by the 74-board pin test
+ * (`phase16-live-litres-pin.test.ts`) and by the rail-character report (`lib/models/rail-character-report.ts`);
+ * no screen uses it. While the tail's Hard Edge is on it is full at
  * and behind Hard Edge Blends From (`hardEdgeBlendsFrom`, 18" when the board says nothing) and fades by
  * `tailHardEdgeWeight` until it is gone at Hard Edge Ends At (`hardEdgeEndsAt`, 30" when the board says
  * nothing), where the rail is fully the centre's tucked rail; off, it is nowhere. Blends From never goes below
@@ -728,18 +741,187 @@ export const HARD_EDGE_FADE: HardEdgeRule = {
   },
 };
 
-/** The rule the live litres use. */
-const LIVE_HARD_EDGE_RULE: HardEdgeRule = HARD_EDGE_FADE;
+/**
+ * A rail's discrete character (Phase 16, D-32): the five settings that cannot be "halfway" — the tail's Hard
+ * Edge, the Family, Symmetrical, Use Single Tuck and Sharp Bottom Tuck. Every other rail setting (Deck
+ * Profile, Ratio, the scale and the nudges) is a number and blends by `blendContinuous`.
+ */
+export interface RailCharacter {
+  hardEdge: boolean;
+  family: RailFamily;
+  symmetrical: boolean;
+  singleTuck: boolean;
+  sharpBottomTuck: boolean;
+}
+
+/** One of `RailCharacter`'s five settings. */
+export type RailCharacterKey = keyof RailCharacter;
+
+/** The order `railCharacterDifferences` lists a tip's differences in (RAILS' own order). */
+const RAIL_CHARACTER_KEYS: readonly RailCharacterKey[] = [
+  "hardEdge",
+  "family",
+  "symmetrical",
+  "singleTuck",
+  "sharpBottomTuck",
+];
+
+/**
+ * One rail's character as the shaper set it (D-32). `hardEdge` is the tail's Hard Edge on the tail and false
+ * on the centre and the nose. While the tail's Hard Edge is on, the tail's own Single Tuck and Sharp Bottom
+ * Tuck are hidden on RAILS, so the tail reads the CENTRE's two tucks — a hidden box can never move the litres
+ * (D-27, research pitfall 8).
+ */
+export function railCharacterOf(rails: RailBandSpec, key: RailSectionKey): RailCharacter {
+  const spec = rails[key];
+  const hardEdge = key === "tail" && rails.tailHardEdge;
+  const tucks = hardEdge ? rails.center : spec;
+  return {
+    hardEdge,
+    family: spec.family,
+    symmetrical: spec.symmetrical,
+    singleTuck: tucks.singleTuck,
+    sharpBottomTuck: tucks.sharpBottomTuck,
+  };
+}
+
+/**
+ * The settings in which a tip's rail character differs from the centre's (D-32), each once, in the order Hard
+ * Edge, Family, Symmetrical, Single Tuck, Sharp Bottom Tuck. Empty when the tip's rail is the centre's: then
+ * nothing blends on that side of the board.
+ */
+export function railCharacterDifferences(rails: RailBandSpec, tip: "tail" | "nose"): RailCharacterKey[] {
+  const centre = railCharacterOf(rails, "center");
+  const own = railCharacterOf(rails, tip);
+  return RAIL_CHARACTER_KEYS.filter((key) => own[key] !== centre[key]);
+}
+
+/** A number held into [0, 1] — every blend weight passes through it before the branch (16-15's trap 1). */
+function unitWeight(weight: number): number {
+  return Math.min(1, Math.max(0, weight));
+}
+
+/**
+ * How much of a station ahead of the centre is the nose's rail (D-32, the founder: "The rule for center/nose
+ * blending should be to make the transition as smooth as possible. We don't need slider controls."): 0 at and
+ * behind the centre station, 1 at and beyond the nose 12" station, and between them the smoothstep `t²(3 − 2t)`
+ * with `t = (station − centre)/(nose12 − centre)` — the tail's own shape, level at both ends, the smoothest of
+ * the four the planner measured. Never falls along the board; always inside [0, 1]. From the nose 12" mark to
+ * the tip the nose's rail as set shrinks with the foam as it always has.
+ */
+export function noseRailWeight(station: Mm, centre: Mm, nose12: Mm): number {
+  if (station <= centre) return 0;
+  if (station >= nose12) return 1;
+  const t = (station - centre) / (nose12 - centre);
+  return unitWeight(t * t * (3 - 2 * t));
+}
+
+/** The two rail characters a station blends and how much of it is the tip's (0 all base, 1 all tip). */
+export interface StationRailCharacter {
+  base: RailCharacter;
+  tip: RailCharacter;
+  tipWeight: number;
+}
+
+/**
+ * How the rail character reaches each station (D-32): the base and the tip characters and the tip's weight,
+ * given the station's nearest anchor, the three anchors, the rails and the board's length.
+ */
+export interface RailCharacterRule {
+  at(station: Mm, nearest: RailSectionKey, anchors: RailAnchorStations, rails: RailBandSpec, length: Mm): StationRailCharacter;
+}
+
+/**
+ * Either kind of section rule: the two old hard-edge rules (`HARD_EDGE_SWITCH`, `HARD_EDGE_FADE`, kept as
+ * `HardEdgeRule`s and read exactly as before) or a rail-character rule (`RAIL_CHARACTER_FADE`). Told apart
+ * by `"at" in rule`.
+ */
+export type SectionRule = HardEdgeRule | RailCharacterRule;
+
+/**
+ * The live rule (Phase 16, D-32, the founder 2026-11-04: "we should also treat 'sharp bottom tuck' like a hard
+ * edge at the tail station. The same blend from and to applies"). Nothing about the rail switches anywhere:
+ *
+ * - The tail: at and behind the centre the base is the centre's rail as set and the tip the tail's
+ *   (`railCharacterOf`). Whenever they differ in anything (`railCharacterDifferences`) — Hard Edge ticked or
+ *   not — the tip's weight is `tailHardEdgeWeight` between Tail Rail Blends From and Tail Rail Ends At
+ *   (`hardEdgeBlendsFrom` / `hardEdgeEndsAt`, the shaper's two settings): the tail's rail full at and behind
+ *   Blends From, the centre's at and beyond Ends At, the point blend of the two between (D-31).
+ * - The nose, with no control and nothing stored ("Only the tail rail gets the users blend. The nose is a
+ *   default that always gets applied."): ahead of the centre the tip is the nose's rail, and whenever it
+ *   differs from the centre's the tip's weight is `noseRailWeight`, from the centre to the nose 12" station.
+ *
+ * Where a tip's rail is the centre's, its weight is 0 and every station on that side is the centre's rail, as
+ * before.
+ */
+export const RAIL_CHARACTER_FADE: RailCharacterRule = {
+  at(station, _nearest, anchors, rails, length) {
+    const base = railCharacterOf(rails, "center");
+    if (station <= anchors.center) {
+      const tip = railCharacterOf(rails, "tail");
+      if (railCharacterDifferences(rails, "tail").length === 0) return { base, tip, tipWeight: 0 };
+      const tipWeight = tailHardEdgeWeight(station, hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
+      return { base, tip, tipWeight };
+    }
+    const tip = railCharacterOf(rails, "nose");
+    if (railCharacterDifferences(rails, "nose").length === 0) return { base, tip, tipWeight: 0 };
+    return { base, tip, tipWeight: noseRailWeight(station, anchors.center, anchors.nose) };
+  },
+};
+
+/** The rule the live litres and the 3D board use. */
+const LIVE_SECTION_RULE: SectionRule = RAIL_CHARACTER_FADE;
+
+/**
+ * An old hard-edge rule read in the rail-character terms, exactly as it worked: both characters take the
+ * nearest anchor's Family and Symmetrical and the tuck source's two tucks, the base without a hard edge and
+ * the tip with one, and the tip's weight is the rule's own.
+ */
+function hardEdgeRuleCharacters(
+  rule: HardEdgeRule,
+  station: Mm,
+  nearest: RailSectionKey,
+  anchors: RailAnchorStations,
+  rails: RailBandSpec,
+  length: Mm,
+): StationRailCharacter {
+  const nearestSpec = rails[nearest];
+  const tuckSpec = rails[rule.tuckSource(nearest, rails)];
+  const base: RailCharacter = {
+    hardEdge: false,
+    family: nearestSpec.family,
+    symmetrical: nearestSpec.symmetrical,
+    singleTuck: tuckSpec.singleTuck,
+    sharpBottomTuck: tuckSpec.sharpBottomTuck,
+  };
+  return { base, tip: { ...base, hardEdge: true }, tipWeight: rule.weight(station, anchors, rails, length) };
+}
+
+/**
+ * How much of a station is a property both, neither or one end of a blend has (D-32): by cases, never by
+ * arithmetic that could round — 1 where both ends have it, 0 where neither does, the tip's weight where only
+ * the tip does and one less the tip's weight where only the base does.
+ */
+function sharedWeight(baseHas: boolean, tipHas: boolean, tipWeight: number): number {
+  if (baseHas && tipHas) return 1;
+  if (!baseHas && !tipHas) return 0;
+  return tipHas ? tipWeight : 1 - tipWeight;
+}
+
+/** Whether a rail character's bottom edge is drawn sharp: a hard edge or a Sharp Bottom Tuck. */
+function isSharp(character: RailCharacter): boolean {
+  return character.hardEdge || character.sharpBottomTuck;
+}
 
 /**
  * The cross-sections the litres integrate, one per station — the ONE section function the litres and the
- * 3D board both read (D-05), with the hard edge reaching each station by `rule`. `stations` defaults to the
- * litres' own (`crossSectionStations`); the 3D surface may pass its own. See `computeCrossSectionVolume` for
- * how each section is built.
+ * 3D board both read (D-05), with the rail character reaching each station by `rule` (an old hard-edge rule
+ * by name, or a rail-character rule). `stations` defaults to the litres' own (`crossSectionStations`); the 3D
+ * surface may pass its own. See `computeCrossSectionVolume` for how each section is built.
  */
 export function boardSectionsWith(
   input: CrossSectionVolumeInput,
-  rule: HardEdgeRule,
+  rule: SectionRule,
   stations?: readonly Mm[],
 ): BoardSection[] {
   const { halfWidthAt, foil, rails, length } = input;
@@ -771,7 +953,9 @@ export function boardSectionsWith(
         halfWidth,
         thickness,
         result: null,
+        tipWeight: 0,
         hardWeight: 0,
+        sharpness: 0,
         domed: false,
         sharpBottomTuck: false,
         area: 0,
@@ -817,25 +1001,30 @@ export function boardSectionsWith(
     ) as RailMarkNudges;
 
     const nearestKey = nearestAnchorSection(station, tailStation, centerStation, noseStation);
-    const nearestSpec = rails[nearestKey];
-    const tuckSpec = rails[rule.tuckSource(nearestKey, rails)];
-    const hardWeight = rule.weight(station, anchors, rails, length);
+    const { base, tip, tipWeight: rawWeight } =
+      "at" in rule
+        ? rule.at(station, nearestKey, anchors, rails, length)
+        : hardEdgeRuleCharacters(rule, station, nearestKey, anchors, rails, length);
+    // Held into [0, 1] before the branch: a weight a hair above 1 is the tip alone, a hair below 0 the base.
+    const tipWeight = unitWeight(rawWeight);
+    const hardWeight = sharedWeight(base.hardEdge, tip.hardEdge, tipWeight);
+    const sharpness = sharedWeight(isSharp(base), isSharp(tip), tipWeight);
 
     const domed = deckPercent < 100;
     const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
     const thicknessEff = domed ? railThicknessClamped : thickness;
 
-    const sectionInput = (hardEdge: boolean): ComputeRailSectionInput => ({
+    const sectionInput = (character: RailCharacter): ComputeRailSectionInput => ({
       thickness: thicknessEff,
       boardThickness: thickness,
       ratioTopPercent,
-      family: nearestSpec.family,
+      family: character.family,
       scale,
       nudges,
-      singleTuck: tuckSpec.singleTuck,
-      sharpBottomTuck: tuckSpec.sharpBottomTuck,
-      symmetrical: nearestSpec.symmetrical,
-      hardEdge,
+      singleTuck: character.singleTuck,
+      sharpBottomTuck: character.sharpBottomTuck,
+      symmetrical: character.symmetrical,
+      hardEdge: character.hardEdge,
     });
     // The cut area less both rails' blends: the finished rail, exactly (D-V1, PV1).
     const finished = (result: RailSectionResult) => {
@@ -845,47 +1034,53 @@ export function boardSectionsWith(
       return { area: stationArea(profilePairs, thickness, halfWidth) - blendBothRails, blendArea: blendBothRails };
     };
 
-    if (hardWeight > 0 && hardWeight < 1) {
-      // The fade (D-31, level variant): both sections, sampled alike and blended point for point — the ring
-      // the 3D board draws (never shrunk tuck marks, which would leave a rounded edge, research §G) — and the
-      // litres count that ring, corrected by the end sections' own polygon shortfalls (`fadingSectionArea`).
-      const tucked = computeRailSection(sectionInput(false));
-      const hard = computeRailSection(sectionInput(true));
-      const tuckedArea = finished(tucked);
-      const hardArea = finished(hard);
-      const tuckedHalf = sampledFinishedRail(tucked, domed, halfWidth);
-      const hardHalf = sampledFinishedRail(hard, domed, halfWidth);
-      const blended = blendFinishedRails(tuckedHalf, hardHalf, hardWeight);
-      const area = fadingSectionArea(tuckedArea.area, hardArea.area, tuckedHalf, hardHalf, blended, hardWeight);
+    if (tipWeight > 0 && tipWeight < 1) {
+      // The blend (D-31, level variant; D-32): both sections, the base first, sampled alike and blended point
+      // for point — the ring the 3D board draws (never shrunk tuck marks, which would leave a rounded edge,
+      // research §G) — and the litres count that ring, corrected by the end sections' own polygon shortfalls
+      // (`fadingSectionArea`).
+      const baseResult = computeRailSection(sectionInput(base));
+      const tipResult = computeRailSection(sectionInput(tip));
+      const baseArea = finished(baseResult);
+      const tipArea = finished(tipResult);
+      const baseHalf = sampledFinishedRail(baseResult, domed, halfWidth);
+      const tipHalf = sampledFinishedRail(tipResult, domed, halfWidth);
+      const blended = blendFinishedRails(baseHalf, tipHalf, tipWeight);
+      const area = fadingSectionArea(baseArea.area, tipArea.area, baseHalf, tipHalf, blended, tipWeight);
       // The cut area (finished plus blends) has no ring of its own; it is the two cuts blended by the weight,
       // so `area + blendArea` stays the station's cut area as everywhere else.
-      const cut = (1 - hardWeight) * (tuckedArea.area + tuckedArea.blendArea) + hardWeight * (hardArea.area + hardArea.blendArea);
+      const cut = (1 - tipWeight) * (baseArea.area + baseArea.blendArea) + tipWeight * (tipArea.area + tipArea.blendArea);
       sections.push({
         station,
         halfWidth,
         thickness,
-        result: tucked,
+        result: baseResult,
         blended,
+        tipWeight,
         hardWeight,
+        sharpness,
         domed,
-        sharpBottomTuck: tuckSpec.sharpBottomTuck,
+        sharpBottomTuck: base.sharpBottomTuck,
         area,
         blendArea: cut - area,
       });
       continue;
     }
 
-    // All hard or all tucked: one section, the arithmetic exactly as before Phase 16.
-    const result = computeRailSection(sectionInput(hardWeight === 1));
+    // All base or all tip: one section, the arithmetic exactly as before Phase 16.
+    const only = tipWeight === 1 ? tip : base;
+    const result = computeRailSection(sectionInput(only));
     const { area, blendArea } = finished(result);
     sections.push({
       station,
       halfWidth,
       thickness,
       result,
+      tipWeight,
       hardWeight,
+      sharpness,
       domed,
-      sharpBottomTuck: tuckSpec.sharpBottomTuck,
+      sharpBottomTuck: only.sharpBottomTuck,
       area,
       blendArea,
     });
@@ -893,9 +1088,27 @@ export function boardSectionsWith(
   return sections;
 }
 
-/** `boardSectionsWith` under the live hard-edge rule: the sections every screen's litres and the 3D board read. */
+/** `boardSectionsWith` under the live rule: the sections every screen's litres and the 3D board read. */
 export function boardSections(input: CrossSectionVolumeInput, stations?: readonly Mm[]): BoardSection[] {
-  return boardSectionsWith(input, LIVE_HARD_EDGE_RULE, stations);
+  return boardSectionsWith(input, LIVE_SECTION_RULE, stations);
+}
+
+/**
+ * The live rule's two end sections at one station (D-32), for the tests: the base alone (the tip's weight held
+ * at 0) and the tip alone (held at 1), with the station's own live tip weight — so a blended section can be
+ * checked against `blendFinishedRails` and `fadingSectionArea` of its two ends.
+ */
+export function boardSectionEnds(
+  input: CrossSectionVolumeInput,
+  station: Mm,
+): { base: BoardSection; tip: BoardSection; tipWeight: number } {
+  const held = (tipWeight: number): RailCharacterRule => ({
+    at: (...args) => ({ ...RAIL_CHARACTER_FADE.at(...args), tipWeight }),
+  });
+  const [base] = boardSectionsWith(input, held(0), [station]);
+  const [tip] = boardSectionsWith(input, held(1), [station]);
+  const [live] = boardSectionsWith(input, RAIL_CHARACTER_FADE, [station]);
+  return { base, tip, tipWeight: live.tipWeight };
 }
 
 /**
@@ -915,19 +1128,24 @@ export function boardSections(input: CrossSectionVolumeInput, stations?: readonl
  * "Scaled from center by" number (the centre always 1) and each of the seven nudges — are linearly
  * interpolated across station and held constant outboard of the outer two anchors (quick 261102-gec,
  * PC7: a nudge is a length, so a nudged centre fades into an un-nudged nose rather than stepping
- * halfway between them); the DISCRETE fields (`family`, `symmetrical`, `singleTuck`, and since quick
- * 261102-gec plan 05 `sharpBottomTuck`, R22/PC39) come from the nearest anchor section wholesale, because
- * a family index or a boolean cannot be interpolated.
- * `tailHardEdge` fades (Phase 16, D-20/D-27/D-30, `HARD_EDGE_FADE`): full at and behind Hard Edge Blends
- * From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise), easing by smoothstep until it is gone at
- * Hard Edge Ends At (`hardEdgeEndsAt`, 30" unless it says otherwise), where the rail is fully the centre's
- * tucked rail; a fading station counts the foam the 3D board draws there — the hard-edged and the tucked
+ * halfway between them) — that long straight blend from each 12" station to the centre is unchanged by
+ * D-32. The DISCRETE fields — the rail character (`RailCharacter`: the tail's Hard Edge, `family`,
+ * `symmetrical`, `singleTuck` and `sharpBottomTuck`), which cannot be "halfway" — blend as whole sections
+ * (Phase 16, D-32, the founder 2026-11-04, `RAIL_CHARACTER_FADE`): on the tail side the tail's rail as set is
+ * full at and behind Tail Rail Blends From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise) and
+ * eases by smoothstep into the centre's rail as set, which is full at and beyond Tail Rail Ends At
+ * (`hardEdgeEndsAt`, 30" on a 6'0" unless the board says otherwise) — Hard Edge ticked or not; on the nose side
+ * the centre's rail eases into the nose's by smoothstep from the centre to the nose 12" station, with no
+ * control (`noseRailWeight`). A blending station counts the foam the 3D board draws there — the two end
  * finished rails blended point for point by that weight — corrected by the same hair the drawn board loses to
- * its straight segments everywhere else (D-31, `fadingSectionArea`), and while Hard Edge is on the tucked side of every tail-nearest station reads the centre's
- * Single Tuck and Sharp Bottom Tuck (the tail's are hidden on RAILS). Before Phase 16 it was a switch — on
- * at every station whose nearest anchor is the tail (`HARD_EDGE_SWITCH`, kept by name). The board thickness at
- * the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band (2.4 x T)
- * follows the board's own thickness along its length.
+ * its straight segments everywhere else (D-31, `fadingSectionArea`); a bottom edge stays sharp through the
+ * blend wherever both ends are sharp (`BoardSection.sharpness`). While the tail's Hard Edge is on, the tail's
+ * own tucks are hidden on RAILS and the tail reads the centre's (D-27). RAILS' three plots and DATA are the
+ * three anchors' own rails, so nothing on RAILS moves. Before D-32 only the hard edge faded and every other
+ * discrete field came from the nearest anchor, switching halfway between two (`HARD_EDGE_FADE`, go-live 1's
+ * rule); before Phase 16 the hard edge was a switch too (`HARD_EDGE_SWITCH`); both kept by name. The board
+ * thickness at the station is T and the 1/16"-rounded tapered rail thickness t, so the Domed Deck Band
+ * (2.4 x T) follows the board's own thickness along its length.
  *
  * FINISHED RAIL (quick 261102-gec plan 03, the founder's D-V1, 2026-11-02: "Switch to the finished
  * curve"). Each station counts the finished rail — the cut rail with every corner blended halfway into
@@ -952,17 +1170,17 @@ export function boardSections(input: CrossSectionVolumeInput, stations?: readonl
  * panel straddling the corner's step.
  *
  * ONE SECTION FUNCTION (Phase 16, D-05). The station loop lives in `boardSections` (`boardSectionsWith` with
- * the live hard-edge rule): this function integrates exactly the `area` of each section it returns, and the
- * 3D board (16-03) draws the very same sections, so the litres and the surface can never disagree.
+ * the live rule): this function integrates exactly the `area` of each section it returns, and the 3D board
+ * (16-03) draws the very same sections, so the litres and the surface can never disagree.
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
-  return computeCrossSectionVolumeWith(input, LIVE_HARD_EDGE_RULE);
+  return computeCrossSectionVolumeWith(input, LIVE_SECTION_RULE);
 }
 
-/** `computeCrossSectionVolume` with the hard-edge rule named: Simpson over `boardSectionsWith(input, rule)`. */
+/** `computeCrossSectionVolume` with the section rule named: Simpson over `boardSectionsWith(input, rule)`. */
 export function computeCrossSectionVolumeWith(
   input: CrossSectionVolumeInput,
-  rule: HardEdgeRule,
+  rule: SectionRule,
 ): CrossSectionVolumeResult {
   const { length } = input;
   const cutStation = input.cutStation ?? mm(0);

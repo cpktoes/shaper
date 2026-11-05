@@ -31,7 +31,7 @@ import {
   computeVolume,
   type CrossSectionVolumeInput,
   type CrossSectionVolumeResult,
-  type HardEdgeRule,
+  type SectionRule,
   type VolumeRailValues,
   type VolumeResult,
   type VolumeSpec,
@@ -270,11 +270,12 @@ export interface DesignRules {
   /** Prepares a blank's own copy of its catalogue rows into the curves the board is cut from. */
   prepare: (record: BlankRecord) => PreparedBlank;
   /**
-   * How the tail's Hard Edge reaches each station of the litres (Phase 16, D-20/D-27). Absent means the
-   * live rule — the one every screen uses; the old pre-Phase-16 switch (`HARD_EDGE_SWITCH`) is named only
-   * by the pin test of today's litres and by the saved-boards report.
+   * How the rail character reaches each station of the litres (Phase 16, D-20/D-27/D-32). Absent means the
+   * live rule (`RAIL_CHARACTER_FADE`) — the one every screen uses. The two old rules are named only by the
+   * pins and the reports: the pre-Phase-16 switch (`HARD_EDGE_SWITCH`) by the 40-board pin and the hard-edge
+   * report, go-live 1's hard-edge fade (`HARD_EDGE_FADE`) by the 74-board pin and the rail-character report.
    */
-  hardEdge?: HardEdgeRule;
+  hardEdge?: SectionRule;
 }
 
 /**
