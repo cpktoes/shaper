@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–11 merged on board-3d (…, 16-16 reworked over four looks: the wing shared 3 inches each way, the tail rolled, the sharp tuck opening into a round one, the board built from actual values with 1/16 rounding for display only); next Wave 12 — 16-17 corner icons, real fins, the wire view; then 16-13 go-live 2 (wave 13)"
+stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–11 merged on board-3d (…, 16-16 reworked over four looks: the wing shared 3 inches each way, the tail rolled, the sharp tuck opening into a round one, the board built from actual values with 1/16 rounding for display only); next Wave 12 — 16-17 corner icons, real fins, the wire view; then 16-18 the shaping bay (wave 13), 16-13 go-live 2 (wave 14)"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
 last_activity_desc: "Phase 16 Wave 11 merged: a wing's step shared along the board, the tail's rail carried around its end, a sharp tuck opening into a round one, the Mid-length's rail smooth"
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 48
+  total_plans: 49
   completed_plans: 46
-  percent: 96
+  percent: 94
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---
