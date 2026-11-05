@@ -279,7 +279,7 @@ test.describe("the 3D screen", () => {
       if ((await body.count()) === 0) await heading.click();
       await expect(body.getByRole("button", { name: /Reset Advanced Settings/ })).toBeVisible({ timeout: 1_000 });
     }).toPass({ timeout: 30_000 });
-    const slider = page.getByRole("slider", { name: "Tail Rail hard edge ends at", exact: true });
+    const slider = page.getByRole("slider", { name: "Tail Rail ends at", exact: true });
     const valueBefore = await slider.getAttribute("aria-valuenow");
     await slider.press("Home");
     await expect(slider).not.toHaveAttribute("aria-valuenow", valueBefore ?? "");

@@ -23,16 +23,15 @@ export const THREE_D_COPY = {
   /** The panel title, drawn uppercase by the CSS. */
   title: "3D Board",
   subtitle: "Spin it under shaping-room lights, then export it for a CNC.",
-  /** The tail's hard edge (D-30): the same two settings as RAILS' tail Advanced menu, the same words and spoken
-   * names, so one control has one name wherever it is. */
-  hardEdgeHeading: "Hard Edge",
-  hardEdgeBlendsFrom: "Hard Edge Blends From",
-  hardEdgeEndsAt: "Hard Edge Ends At",
-  hardEdgeBlendsFromSlider: "Tail Rail hard edge blends from",
-  hardEdgeEndsAtSlider: "Tail Rail hard edge ends at",
-  hardEdgeFromTheTail: (distance: string) => `${distance} from the tail`,
-  /** Under the heading while the tail's Hard Edge is off: the two rows are dimmed and can't be moved. */
-  hardEdgeOffHint: "Tick Hard Edge on RAILS' tail to set where it blends.",
+  /** The tail rail's blend (D-30, D-32): the same two settings as RAILS' tail Advanced menu, the same words and
+   * spoken names, so one control has one name wherever it is. They bound the tail's whole rail, so they are always
+   * live; the nose's blend is automatic and has no control. */
+  tailRailHeading: "Tail Rail",
+  tailRailBlendsFrom: "Tail Rail Blends From",
+  tailRailEndsAt: "Tail Rail Ends At",
+  tailRailBlendsFromSlider: "Tail Rail blends from",
+  tailRailEndsAtSlider: "Tail Rail ends at",
+  tailRailFromTheTail: (distance: string) => `${distance} from the tail`,
   showHeading: "Show",
   fins: "Fins",
   blank: "Blank",

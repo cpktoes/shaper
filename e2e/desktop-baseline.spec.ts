@@ -2,6 +2,18 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-15, branch board-3d) — 3D only, `three-d-desktop.png`, for its words
+ * (D-32, the founder: "Only the tail rail gets the users blend. The nose is a default that always gets applied."): the
+ * panel's first group is now TAIL RAIL, its rows Tail Rail Blends From and Tail Rail Ends At, because the two settings
+ * now bound the tail's whole rail, not only its hard edge. Old and new were compared before re-recording: 3483 pixels
+ * differ, every one inside the group's heading and its two labels (x 40-238, y 214-305); the board is drawn bit for
+ * bit as before (the stock board's tail differs from its centre only in the Hard Edge, so D-32 leaves its shape and
+ * its litres alone), and SHOW, VIEW, EXPORT and the top bar are unchanged. The other five pictures passed and are
+ * byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3215) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run
+ * after the merge and re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: 3D fb4d7c90 to
+ * 087b427a.
+ *
  * ADDED 2026-11-04 (Phase 16, plan 16-12, branch board-3d) — a sixth picture, `three-d-desktop.png`, the 3D screen
  * (/design/3d) at 1280 × 800: the default board lit at its first view, and the panel's HARD EDGE, SHOW, VIEW and
  * EXPORT sections with Export for CNC… and its note. The canvas is NOT masked (D-28): headless Chromium draws WebGL in

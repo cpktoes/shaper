@@ -45,7 +45,7 @@ interface RailControlsProps {
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
-  /** The tail's Hard Edge Blends From and Ends At sliders (Phase 16, D-20/D-30), in millimetres from the tail. */
+  /** The tail's Tail Rail Blends From and Ends At sliders (Phase 16, D-20/D-30/D-32), in millimetres from the tail. */
   onChangeHardEdgeBlendsFrom: (value: Mm) => void;
   onChangeHardEdgeEndsAt: (value: Mm) => void;
   /** One mark's nudge off its formula (quick 261102-gec plan 02, PC19) — its own undo step per mark. */
@@ -151,11 +151,11 @@ interface RailSectionControlsProps {
   onToggleAdvancedOpen: () => void;
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
-  /** The tail's stored Hard Edge Blends From and Ends At (Phase 16, D-20/D-30); absent reads 18" and 30"
+  /** The tail's stored Tail Rail Blends From and Ends At (Phase 16, D-20/D-30/D-32); absent reads 18" and 30"
    * through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. */
   tailHardEdgeBlendsFrom?: Mm;
   tailHardEdgeEndsAt?: Mm;
-  /** The board's length: the two hard-edge settings' windows run to its centre (D-30). */
+  /** The board's length: the tail rail's two settings' windows run to its centre (D-30). */
   boardLength: Mm;
   onChangeHardEdgeBlendsFrom?: (value: Mm) => void;
   onChangeHardEdgeEndsAt?: (value: Mm) => void;
@@ -249,15 +249,18 @@ function RailSectionControls({
   const showTucks = !isTail || !hardEdgeOn;
   const showBottomTuck1 = showTucks && !spec.singleTuck;
 
-  /** The tail's two hard-edge rows (Phase 16, D-20 the founder 2026-11-03, D-30 2026-11-04; UI-SPEC §17), in
-   * this order: Hard Edge Blends From — the edge is full up to here (12" to 30") — then Hard Edge Ends At — the
-   * rail has fully blended into the centre's tucked rail by here (2" past Blends From, up to the board's centre).
-   * Each slider's range follows the other and the board's length, so the two can never be set within 2" of each
-   * other; 1/2" steps, whole centimetres in Metric, stored as whole millimetres. Only on the tail and only while
-   * Hard Edge is on — the exact complement of the tuck rows, so they take their place at the bottom of the menu.
-   * Both distances are dims, each read through its one named formatter. No hint and no note: nothing on screen
-   * says the litres moved (D-18). The 3D page draws the same two sliders over these same two values. */
-  const hardEdgeRows = () => {
+  /** The tail rail's two rows (Phase 16, D-20 the founder 2026-11-03, D-30 2026-11-04, D-32 2026-11-04; UI-SPEC
+   * §17), in this order: Tail Rail Blends From — the tail's rail as set is full up to here (12" to 30") — then
+   * Tail Rail Ends At — the rail has fully blended into the centre's rail as set by here (2" past Blends From, up
+   * to the board's centre). Since D-32 they bound the tail's WHOLE rail character — Hard Edge, Family,
+   * Symmetrical, Single Tuck and Sharp Bottom Tuck — so they always show on the tail, Hard Edge on or off; the
+   * nose's blend is automatic and has no row (the founder: "Only the tail rail gets the users blend. The nose is
+   * a default that always gets applied."). Each slider's range follows the other and the board's length, so the
+   * two can never be set within 2" of each other; 1/2" steps, whole centimetres in Metric, stored as whole
+   * millimetres (in the fields still named for the hard edge, because saved boards carry them). Both distances
+   * are dims, each read through its one named formatter. No hint and no note: nothing on screen says the litres
+   * moved (D-18). The 3D page draws the same two sliders over these same two values. */
+  const tailRailRows = () => {
     const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
     const blendsFrom = hardEdgeBlendsFrom(settings, boardLength);
     const endsAt = hardEdgeEndsAt(settings, boardLength);
@@ -268,23 +271,23 @@ function RailSectionControls({
     return (
       <>
         <SliderRow
-          label={`Hard Edge Blends From — ${fromText}`}
+          label={`Tail Rail Blends From — ${fromText}`}
           value={fromSlider.value}
           min={fromSlider.min}
           max={fromSlider.max}
           step={fromSlider.step}
           onValueChange={(v) => onChangeHardEdgeBlendsFrom?.(fromSlider.toMm(v))}
-          sliderLabel="Tail Rail hard edge blends from"
+          sliderLabel="Tail Rail blends from"
           sliderValueText={`${fromText} from the tail`}
         />
         <SliderRow
-          label={`Hard Edge Ends At — ${endsText}`}
+          label={`Tail Rail Ends At — ${endsText}`}
           value={endsSlider.value}
           min={endsSlider.min}
           max={endsSlider.max}
           step={endsSlider.step}
           onValueChange={(v) => onChangeHardEdgeEndsAt?.(endsSlider.toMm(v))}
-          sliderLabel="Tail Rail hard edge ends at"
+          sliderLabel="Tail Rail ends at"
           sliderValueText={`${endsText} from the tail`}
         />
       </>
@@ -408,8 +411,10 @@ function RailSectionControls({
                 the order PC32 (plan 04) set and PC40 (plan 05) extends: the scale on the nose and tail; Apex
                 Thickness, Deck Mark 1, Deck Mark 3 and the Domed Deck Band right under it (R18, the founder:
                 "I would like to add an advanced slider for the domed deck mark though."); Use Single Tuck
-                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22); on a hard-edged tail, in
-                the tuck rows' place, Hard Edge Blends From and Hard Edge Ends At (Phase 16, D-20/D-30) last before Reset; Reset. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
+                just above the slider it hides; Bottom Tuck 1 and 3; Sharp Bottom Tuck (R22) — the tuck rows hidden on a
+                hard-edged tail; on the tail, always, Tail Rail Blends From and Tail Rail Ends At (Phase 16, D-20/D-30/D-32)
+                last before Reset; Reset. The nose and the centre have no blend rows: the nose's blend into the centre is
+                automatic. Deck Mark 2 and Bottom Tuck 2 have no slider (R17:
                 "Always in the middle is great") — each is always halfway to its parent mark. */}
             {sectionKey !== "center" && (
               // "Scaled from center by" (R10): nose and tail only — the centre is always 1. A plain
@@ -479,13 +484,14 @@ function RailSectionControls({
               </label>
             )}
 
-            {/* Hard Edge Blends From then Hard Edge Ends At (Phase 16, D-20/D-30): the tail's last two sliders while
-                Hard Edge is on, directly above Reset, in the place the tuck rows hold on a tucked tail (UI-SPEC §17). */}
-            {isTail && hardEdgeOn && hardEdgeRows()}
+            {/* Tail Rail Blends From then Tail Rail Ends At (Phase 16, D-20/D-30/D-32): the tail's last two sliders,
+                always — Hard Edge on or off, they bound the tail's whole rail — directly above Reset, so with Hard Edge
+                off they follow Sharp Bottom Tuck (UI-SPEC §17). Never on the nose or the centre. */}
+            {isTail && tailRailRows()}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
-                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Hard Edge Blends From and Ends At back to 18"
-                and 30" (Phase 16) — one store action, so one undo step. */}
+                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At back to 18"
+                and the board's default end (Phase 16) — one store action, so one undo step. */}
             <button
               type="button"
               disabled={locked}

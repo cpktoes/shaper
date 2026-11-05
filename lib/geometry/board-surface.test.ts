@@ -29,8 +29,14 @@ import { foilStationPoints } from "./foil";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
 import { inchesToMm, mm } from "./units";
-import { boardSections, boardSectionsWith, computeCrossSectionVolume, crossSectionStations, HARD_EDGE_FADE } from "./volume";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import {
+  boardSectionEnds,
+  boardSections,
+  computeCrossSectionVolume,
+  crossSectionStations,
+  railCharacterDifferences,
+} from "./volume";
+import { phase16Boards, phase16RailCharacterBoards } from "./__fixtures__/phase16-boards";
 
 /**
  * The 3D board's surface (Phase 16, D-05): the litres' own sections lofted along the rocker. Every expected
@@ -72,7 +78,7 @@ const keyOf = (p: readonly number[]) => `${p[0]},${p[1]},${p[2]}`;
 /**
  * Whether a station's section is drawn wider than the foam, so the surface cuts it at the stringer before
  * its flat deck begins (research "Narrow tips", Pitfall 7): the finished rail's deck end lies inboard of the
- * stringer, for the tucked or the hard-edged half.
+ * stringer, for either end of the station's blend.
  */
 function cutAtStringer(input: BoardSurfaceInput, station: number): boolean {
   return endSections(input, station).some(
@@ -80,10 +86,16 @@ function cutAtStringer(input: BoardSurfaceInput, station: number): boolean {
   );
 }
 
-/** A station's two end sections — all tucked and all hard-edged — under the live rule's tuck sources. */
+/** A station's two end sections under the live rule (D-32) — the base alone and the tip alone. */
 function endSections(input: BoardSurfaceInput, station: number) {
-  const at = (w: number) => boardSectionsWith(input.sections, { ...HARD_EDGE_FADE, weight: () => w }, [mm(station)])[0];
-  return [at(0), at(1)] as const;
+  const { base, tip } = boardSectionEnds(input.sections, mm(station));
+  return [base, tip] as const;
+}
+
+/** Whether a station's section blends two rails (D-32): its tip weight strictly between 0 and 1. */
+function isBlending(input: BoardSurfaceInput, station: number): boolean {
+  const [section] = boardSections(input.sections, [mm(station)]);
+  return section.tipWeight > 0 && section.tipWeight < 1;
 }
 
 /** The foam a ring's right half and its mirror enclose (the half closed along the stringer), worked out afresh. */
@@ -100,12 +112,16 @@ function halfArea(half: readonly (readonly [number, number])[]): number {
 const BOARDS = phase16Boards();
 const boardOf = (label: string) => BOARDS.find((board) => board.label === label)!.fields;
 
-/** Each of the forty boards built once, with what the tests compare it against. */
-const BUILT = BOARDS.map((board) => {
+/** A board built once, with what the tests compare it against. */
+function built(board: { label: string; fields: DesignSummaryFields }) {
   const { input, profile, geometry } = surfaceInputOf(board.fields);
   const surface = buildBoardSurface(input);
   return { label: board.label, fields: board.fields, input, profile, geometry, surface };
-});
+}
+/** Each of the forty boards built once. */
+const BUILT = BOARDS.map(built);
+/** All 74 (D-32): the forty, then the 34 whose rail character the second pin records. */
+const BUILT_LIVE = [...BUILT, ...phase16RailCharacterBoards().map(built)];
 const isSwallow = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation > geometry.points[0].station;
 const isDiamond = (geometry: ReturnType<typeof buildOutline>) => geometry.centreCloseStation < geometry.points[0].station;
 
@@ -176,7 +192,9 @@ describe("where the surface takes its rings", () => {
       const cut = tailCutStation(input.geometry);
       if (cut > 0) wanted.push(cut);
       const { rails, length } = input.sections;
-      if (rails.tailHardEdge) wanted.push(hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
+      if (railCharacterDifferences(rails, "tail").length > 0) {
+        wanted.push(hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
+      }
       for (const s of wanted) expect(stations).toContain(s);
     });
   }
@@ -199,7 +217,7 @@ describe("where the surface takes its rings", () => {
     // Fully hard up to the start, fading between, gone at the end — as boardSections says.
     const at = (s: number) => surface.rings[stations.indexOf(s)];
     expect(at(inchesToMm(20.5)).sharpness).toBe(1);
-    expect(at(inchesToMm(33)).sharpness).toBe(boardSections(input.sections, [inchesToMm(33)])[0].sharpBottomTuck ? 1 : 0);
+    expect(at(inchesToMm(33)).sharpness).toBe(boardSections(input.sections, [inchesToMm(33)])[0].sharpness);
     expect(surface.rings.some((ring) => ring.station > inchesToMm(20.5) && ring.station < inchesToMm(33) && ring.sharpness > 0 && ring.sharpness < 1)).toBe(true);
     expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
     const litres = computeCrossSectionVolume(input.sections).volumeLitres;
@@ -209,15 +227,32 @@ describe("where the surface takes its rings", () => {
   });
 });
 
-describe("the surface reads boardSections element for element, at the fade's new defaults (D-30)", () => {
-  for (const { label, input, geometry, surface } of BUILT) {
-    it(`${label}: each ring is its boardSections section — station, width and hard weight`, () => {
+describe("a tucked tail with Hard Edge off still gets a ring at each end of its blend (D-32)", () => {
+  for (const { label, input, surface } of BUILT_LIVE.filter((b) => /^tucked\|.*\|tail-(sbt|single)$/.test(b.label))) {
+    it(`${label}: rings at Tail Rail Blends From and Ends At, the tail's rail behind, the centre's beyond`, () => {
+      const { rails, length } = input.sections;
+      expect(rails.tailHardEdge).toBe(false);
+      expect(railCharacterDifferences(rails, "tail").length).toBeGreaterThan(0);
+      const stations = surface.rings.map((ring) => ring.station as number);
+      const [from, to] = [hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length)];
+      expect(stations).toContain(from);
+      expect(stations).toContain(to);
+      const sections = boardSections(input.sections, [from, to]);
+      expect(sections[0].tipWeight).toBe(1);
+      expect(sections[1].tipWeight).toBe(0);
+    });
+  }
+});
+
+describe("the surface reads boardSections element for element, at the fade's new defaults (D-30, D-32)", () => {
+  for (const { label, input, geometry, surface } of BUILT_LIVE) {
+    it(`${label}: each ring is its boardSections section — station, width and sharpness`, () => {
       const sections = boardSections(input.sections, surfaceStations(input));
       expect(surface.rings.map((ring) => ring.station)).toEqual(sections.map((section) => section.station));
       const crotch = isSwallow(geometry) ? geometry.centreCloseStation : -1;
       surface.rings.forEach((ring, i) => {
         const section = sections[i];
-        expect(ring.sharpness).toBe(Math.max(section.hardWeight, section.sharpBottomTuck ? 1 : 0));
+        expect(ring.sharpness).toBe(section.sharpness);
         if (section.halfWidth > 0 && ring.station >= crotch) {
           const widest = Math.max(...ringPoints(surface.positions, ring).map((q) => q[1]));
           expect(Math.abs(widest - section.halfWidth)).toBeLessThan(1e-9);
@@ -227,11 +262,12 @@ describe("the surface reads boardSections element for element, at the fade's new
   }
 });
 
-describe("all forty boards: closed, and a hair under VOLUME's litres (SPEC acceptance 3 and 5)", () => {
-  it("checks every one of the forty", () => {
+describe("all 74 boards: closed, and a hair under VOLUME's litres (SPEC acceptance 3 and 5, D-32)", () => {
+  it("checks every one of the 74", () => {
     expect(BUILT).toHaveLength(40);
+    expect(BUILT_LIVE).toHaveLength(74);
   });
-  for (const { label, input, surface } of BUILT) {
+  for (const { label, input, surface } of BUILT_LIVE) {
     it(`${label}: watertight, consistently wound, no zero-area triangle; (mesh − litres)/litres in (−0.15%, 0]`, () => {
       expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
       const litres = computeCrossSectionVolume(input.sections).volumeLitres;
@@ -242,33 +278,34 @@ describe("all forty boards: closed, and a hair under VOLUME's litres (SPEC accep
   }
 });
 
-describe("inside the fade the litres count the ring the 3D board draws (D-31, level variant)", () => {
+describe("inside a blend the litres count the ring the 3D board draws (D-31, level variant; D-32)", () => {
   for (const { label, input, surface } of BUILT.filter((b) => b.input.sections.rails.tailHardEdge)) {
-    it(`${label}: each fading station's area is its drawn ring's area plus the end rings' blended shortfalls`, () => {
-      const fading = surface.rings.filter((ring) => ring.sharpness > 0 && ring.sharpness < 1);
+    it(`${label}: each blending station's area is its drawn ring's area plus the end rings' blended shortfalls`, () => {
+      const fading = surface.rings.filter((ring) => isBlending(input, ring.station));
       expect(fading.length).toBeGreaterThan(5);
       for (const ring of fading) {
         const [section] = boardSections(input.sections, [ring.station]);
-        const w = section.hardWeight;
+        const w = section.tipWeight;
         // The ring as drawn: the right half of the mesh's own ring, height above the rocker.
         const drawn = ringPoints(surface.positions, ring)
           .slice(0, SURFACE_POINTS.deck + SURFACE_POINTS.rail + SURFACE_POINTS.bottom - 2)
           .map(([, y, z]) => [y, z - input.rockerAt(ring.station)] as [number, number]);
-        const [tuckedEnd, hardEnd] = endSections(input, ring.station);
-        const shortfall = (end: typeof tuckedEnd) => end.area - halfArea(placedHalfSection(end, end.halfWidth, 0));
-        const expected = halfArea(drawn) + (1 - w) * shortfall(tuckedEnd) + w * shortfall(hardEnd);
+        const [baseEnd, tipEnd] = endSections(input, ring.station);
+        const shortfall = (end: typeof baseEnd) => end.area - halfArea(placedHalfSection(end, end.halfWidth, 0));
+        const expected = halfArea(drawn) + (1 - w) * shortfall(baseEnd) + w * shortfall(tipEnd);
         expect(Math.abs(section.area - expected) / section.area).toBeLessThan(1e-9);
       }
     });
   }
 });
 
-describe("a long fade on any board sits in the same band as every other (D-30, D-31)", () => {
+describe("a long fade on any board sits in the same band as every other (D-30, D-31, D-32)", () => {
   const settings = [
     { name: "blends from 12\", ends at the centre", from: 12 },
     { name: "blends from 30\", ends at the centre", from: 30 },
   ];
-  for (const board of BOARDS.filter((b) => b.fields.rails.tailHardEdge)) {
+  const tucked = phase16RailCharacterBoards().filter((b) => b.label.startsWith("tucked|"));
+  for (const board of [...BOARDS.filter((b) => b.fields.rails.tailHardEdge), ...tucked]) {
     for (const { name, from } of settings) {
       it(`${board.label}, ${name}: watertight and (mesh − litres)/litres in (−0.15%, 0]`, () => {
         const fields: DesignSummaryFields = {
@@ -399,20 +436,26 @@ describe("a board the builder can't build is refused, naming the value", () => {
   });
 });
 
-describe("the hard edge fades smoothly along the rail (D-20/D-27)", () => {
-  for (const label of ["shortboard|asis|hard", "fish|asis|hard", "longboard|pin|hard"]) {
-    it(`${label}: a fading ring lies point for point between its tucked and its hard-edged half`, () => {
-      const { input, surface } = BUILT.find((b) => b.label === label)!;
-      const fading = surface.rings.filter((ring) => ring.sharpness > 0 && ring.sharpness < 1);
+describe("the rail fades smoothly along the board (D-20/D-27, D-32)", () => {
+  for (const label of [
+    "shortboard|asis|hard",
+    "fish|asis|hard",
+    "longboard|pin|hard",
+    "tucked|shortboard|tail-sbt",
+    "tucked|midlength|nose-sbt",
+  ]) {
+    it(`${label}: a blending ring lies point for point between its base and its tip half`, () => {
+      const { input, surface } = BUILT_LIVE.find((b) => b.label === label)!;
+      const fading = surface.rings.filter((ring) => isBlending(input, ring.station));
       expect(fading.length).toBeGreaterThan(5);
       for (const ring of fading) {
         const [section] = boardSections(input.sections, [ring.station]);
         expect(section.blended).toBeDefined();
-        expect(ring.sharpness).toBe(section.hardWeight);
-        const [tuckedEnd, hardEnd] = endSections(input, ring.station);
-        const tucked = placedHalfSection(tuckedEnd, tuckedEnd.halfWidth, 0);
-        const hard = placedHalfSection(hardEnd, hardEnd.halfWidth, 0);
-        const w = section.hardWeight;
+        expect(ring.sharpness).toBe(section.sharpness);
+        const [baseEnd, tipEnd] = endSections(input, ring.station);
+        const tucked = placedHalfSection(baseEnd, baseEnd.halfWidth, 0);
+        const hard = placedHalfSection(tipEnd, tipEnd.halfWidth, 0);
+        const w = section.tipWeight;
         // The ring's loop starts with the right half, stringer deck point first — and it IS the section's ring.
         const right = ringPoints(surface.positions, ring).slice(0, tucked.length);
         right.forEach(([, y, z], i) => {

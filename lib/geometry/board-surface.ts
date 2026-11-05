@@ -17,9 +17,11 @@
  *    inboard — never squeezed — and split into deck, rail and bottom runs, each resampled by arc length to
  *    a fixed count (`SURFACE_POINTS`), so the bottom edge — a hard edge's corner, a Sharp Bottom Tuck's
  *    corner — is always the same ring index.
- * 2. While the tail's hard edge fades, the section itself carries the ring (`BoardSection.blended`): the
- *    tucked and the hard-edged halves sampled alike and blended point for point by the hard weight
- *    (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31). Nothing is blended here.
+ * 2. While a tip's rail blends into the centre's (the tail's between Tail Rail Blends From and Ends At, the
+ *    nose's from the centre to the nose 12" mark, D-32), the section itself carries the ring
+ *    (`BoardSection.blended`): the two end rails' halves sampled alike and blended point for point by the
+ *    tip's weight (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31) — and how sharp
+ *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here.
  * 3. Inside a swallow's notch the half is moved out to stand on the notch's wall (`inner`): the rail lands
  *    on the drawn curve (`outer`), the inside edge on the wall. Everywhere else `inner` is the stringer, 0.
  * 4. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
@@ -39,7 +41,13 @@ import { foilStationPoints, sampleFoil } from "./foil";
 import { type OutlineGeometry, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
 import { inchesToMm, mm, type Mm } from "./units";
-import { type BoardSection, type CrossSectionVolumeInput, boardSections, crossSectionStations } from "./volume";
+import {
+  type BoardSection,
+  type CrossSectionVolumeInput,
+  boardSections,
+  crossSectionStations,
+  railCharacterDifferences,
+} from "./volume";
 
 /** A point of the surface, in millimetres, in Shape3D's axes (x along, y across, z up). */
 export type Vec3 = readonly [number, number, number];
@@ -87,7 +95,8 @@ export interface BoardSurfaceInput {
  * inside the notch). Outside the notch the first vertex of the loop is the deck's stringer point.
  * `bottomEdge` holds the bottom-edge vertex of each side as an offset from `pieces[0].first` (right, then
  * left; one entry when both sides weld to the same point). `sharpness` is how sharp the screen draws that
- * edge (the hard weight, or 1 under a Sharp Bottom Tuck); `isSlice` marks the litres' own stations.
+ * edge (its section's `sharpness`: 1 where both ends of a blend are sharp, the sharp end's share where one
+ * is, D-32); `isSlice` marks the litres' own stations.
  */
 export interface SurfaceRing {
   station: Mm;
@@ -123,8 +132,9 @@ function assertFinite(field: string, value: number, station: number): void {
 
 /**
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
- * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — while the
- * tail's hard edge is on — where its fade begins and ends (D-30), filled in so no two neighbours are more than
+ * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — whenever the
+ * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
+ * ends (D-30), filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -137,8 +147,8 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
   for (const s of [anchors[1].station, anchors[2].station, anchors[3].station, cut]) {
     if (inside(s)) required.push(s);
   }
-  if (rails.tailHardEdge) {
-    // Both ends of the fade (D-30): where the blend begins and where the hard edge is gone.
+  if (railCharacterDifferences(rails, "tail").length > 0) {
+    // Both ends of the tail's blend (D-30, D-32): where it begins and where the rail is the centre's.
     for (const s of [hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length)]) {
       if (inside(s)) required.push(s);
     }
@@ -156,7 +166,7 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
 /**
  * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
  * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
- * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or inside the hard edge's fade the
+ * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or inside a tip's blend (D-32) the
  * very ring the litres count (`BoardSection.blended`, D-31), moved out by `inner` so its inside edge stands on
  * a swallow's notch wall (0 everywhere else). Nothing is sampled or blended here that the litres don't read.
  * A section with no foam is one point at `outer`, half its thickness up.
@@ -315,7 +325,7 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
       station: s,
       pieces,
       bottomEdge,
-      sharpness: Math.max(section.hardWeight, section.sharpBottomTuck ? 1 : 0),
+      sharpness: section.sharpness,
       isSlice: slices.has(s),
     });
     slots.push({ right, left, wallRight, wallLeft });
