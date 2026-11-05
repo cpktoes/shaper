@@ -196,7 +196,7 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     await page.goto("/design/outline");
     const sheet = await openPhoneMenu(page);
     const tiles = sheet.locator("[data-screen-tile]");
-    await expect(tiles).toHaveCount(6);
+    await expect(tiles).toHaveCount(7);
     for (const tile of await tiles.all()) {
       const box = await tile.boundingBox();
       if (!box) throw new Error("tile is missing a bounding box");

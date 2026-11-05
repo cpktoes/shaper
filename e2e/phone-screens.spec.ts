@@ -62,7 +62,7 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
       const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
       expect(scrollWidth).toBe(viewportSize.width);
 
-      // No bottom tab bar since quick 261003-q2f: the menu's six tiles, this screen's ticked.
+      // No bottom tab bar since quick 261003-q2f: the menu's seven tiles, this screen's ticked.
       await expectNoScreensNavigation(page);
       await expectSevenTilesInMenu(page, label);
     });

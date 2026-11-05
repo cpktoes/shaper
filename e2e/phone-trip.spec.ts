@@ -21,8 +21,8 @@ import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu, goToScreen 
  *
  * Every one of those six is handed to the real-device sweep (`10-SWEEP.md`), not proved here.
  * This spec's own job is narrower and duplicates nothing the three wave-1 specs already own: it
- * proves the ROUTE is walkable end to end — home, a preset, all six screens, the summary, and
- * back home — not that any individual control is the right size (`e2e/phone-dialogs.spec.ts`,
+ * proves the ROUTE is walkable end to end — home, a preset, all seven screens (the summary on the
+ * way, 3D last since Phase 16), and back home — not that any individual control is the right size (`e2e/phone-dialogs.spec.ts`,
  * `e2e/phone-account.spec.ts`, `e2e/phone-home.spec.ts`, `e2e/phone-screens.spec.ts` already own
  * that).
  */
@@ -46,9 +46,13 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     await dismissSignInBanner(page);
   });
 
-  test("home -> pick a preset -> all six screens by tapping their tiles in the menu -> summary reads clean -> back home with the board in the rack", async ({
+  test("home -> pick a preset -> all seven screens by tapping their tiles in the menu, the summary reading clean on the way -> 3D draws the board -> back home with the board in the rack", async ({
     page,
   }) => {
+    // Seven screens, the last of them 3D, whose first draw takes about five seconds on the iphone
+    // project: the suite's slow allowance.
+    test.slow();
+
     // 1. Home: no bottom tab bar (there is none anywhere since quick 261003-q2f).
     await page.goto("/");
     await expectNoScreensNavigation(page);
@@ -58,10 +62,10 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     await firstPreset.click();
     await page.waitForURL("**/design/outline");
 
-    // 3. Walk all six screens in order, by opening the top bar's menu and tapping each screen's
+    // 3. Walk all seven screens in order, by opening the top bar's menu and tapping each screen's
     // tile rather than by calling `goto` — this is what actually proves the route is walkable
     // through the UI a shaper will use, not just that the destination page itself renders.
-    // TEMPLATE is already open from the preset pick; the remaining five are reached by tapping
+    // TEMPLATE is already open from the preset pick; the remaining six are reached by tapping
     // their tiles in turn, and after each move the menu shows that screen's tile ticked. (The tiles
     // sit at the top of the window, clear of the dev server's own bottom-left corner badge, which
     // used to sit over the old bottom tab bar and swallow real taps.)
@@ -69,34 +73,13 @@ test.describe("the whole trip, walked once by machine before the founder is hand
       await goToScreen(page, screen.label);
       await expect(page).toHaveURL(new RegExp(`${screen.href}$`));
       await expectSevenTilesInMenu(page, screen.label);
+        // 4. On the summary screen, on the way past it, the order form reads clean.
+      if (screen.label === "SUMMARY") await expectSummaryReadsClean(page);
     }
 
-    // We should now be on SUMMARY, the last screen.
-    expect(page.url()).toContain("/design/summary");
-
-    // 4. On the summary screen: no sideways scroll, and the Print Order Form control sits fully
-    // inside the viewport — the two gross-layout facts this spec owns; the summary's own
-    // per-element sizing already lives in e2e/summary-preview.spec.ts and is not repeated here.
-    await expect(page.locator("[data-order-form-sheet]").first()).toBeVisible();
-
-    const viewportSize = page.viewportSize();
-    if (!viewportSize) throw new Error("no viewport size");
-    const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
-    expect(scrollWidth).toBe(viewportSize.width);
-
-    // The button sits well down a portrait order form and is reached by scrolling, same as
-    // e2e/summary-preview.spec.ts's own "sits fully on the screen" test — its own bounding-box
-    // check is horizontal only (x/width), for the same reason: the page scrolls vertically by
-    // design, only sideways scroll (Fact 6 in that file) is the regression this guards against.
-    // Scrolled into view, it must sit fully within the viewport on BOTH axes at that moment.
-    const printButton = page.getByRole("button", { name: "Print Order Form" });
-    await printButton.scrollIntoViewIfNeeded();
-    const printBox = await printButton.boundingBox();
-    if (!printBox) throw new Error("Print Order Form button is missing a bounding box");
-    expect(printBox.x).toBeGreaterThanOrEqual(0);
-    expect(printBox.x + printBox.width).toBeLessThanOrEqual(viewportSize.width);
-    expect(printBox.y).toBeGreaterThanOrEqual(0);
-    expect(printBox.y + printBox.height).toBeLessThanOrEqual(viewportSize.height + 1);
+    // We should now be on 3D, the last screen, with the board drawn.
+    expect(page.url()).toContain("/design/3d");
+    await expect(page.locator("[data-board-3d]")).toHaveAttribute("data-board-state", "ready", { timeout: 30_000 });
 
     // 5. Return home through the top bar's wordmark link.
     await page.getByRole("banner").getByRole("link", { name: "SHAPER ASSISTANT" }).click();
@@ -111,6 +94,32 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     ).toBeVisible();
   });
 });
+
+/** Step 4 of the trip, on the summary screen: no sideways scroll, and the Print Order Form control
+ * sits fully inside the viewport — the two gross-layout facts this spec owns; the summary's own
+ * per-element sizing already lives in e2e/summary-preview.spec.ts and is not repeated here. */
+async function expectSummaryReadsClean(page: Page) {
+  await expect(page.locator("[data-order-form-sheet]").first()).toBeVisible();
+
+  const viewportSize = page.viewportSize();
+  if (!viewportSize) throw new Error("no viewport size");
+  const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
+  expect(scrollWidth).toBe(viewportSize.width);
+
+  // The button sits well down a portrait order form and is reached by scrolling, same as
+  // e2e/summary-preview.spec.ts's own "sits fully on the screen" test — its own bounding-box
+  // check is horizontal only (x/width), for the same reason: the page scrolls vertically by
+  // design, only sideways scroll (Fact 6 in that file) is the regression this guards against.
+  // Scrolled into view, it must sit fully within the viewport on BOTH axes at that moment.
+  const printButton = page.getByRole("button", { name: "Print Order Form" });
+  await printButton.scrollIntoViewIfNeeded();
+  const printBox = await printButton.boundingBox();
+  if (!printBox) throw new Error("Print Order Form button is missing a bounding box");
+  expect(printBox.x).toBeGreaterThanOrEqual(0);
+  expect(printBox.x + printBox.width).toBeLessThanOrEqual(viewportSize.width);
+  expect(printBox.y).toBeGreaterThanOrEqual(0);
+  expect(printBox.y + printBox.height).toBeLessThanOrEqual(viewportSize.height + 1);
+}
 
 test.describe("desktop — unmoved by this plan", () => {
   test.beforeEach(async ({ page }, testInfo) => {

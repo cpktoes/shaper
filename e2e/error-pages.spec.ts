@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** The shared phone-vs-desktop shell assertions Task 3 reuses for the error screen too: on a
- * phone project, the phone top bar's Menu button opening the six screen tiles with none ticked,
+ * phone project, the phone top bar's Menu button opening the seven screen tiles with none ticked,
  * no bottom tab bar (removed in quick 261003-q2f), no sideways scroll and every actionable element
  * at least 44px tall; on desktop, the ordinary Settings gear and no phone chrome. */
 async function expectShell(page: Page, projectName: string, screen: string): Promise<void> {
@@ -83,7 +83,7 @@ test.describe("the not-found page", () => {
     await expectShell(page, testInfo.project.name, "[data-not-found-page]");
   });
 
-  test("an unknown design address keeps the phone shell, its menu holding the six screen tiles", async ({ page }, testInfo) => {
+  test("an unknown design address keeps the phone shell, its menu holding the seven screen tiles", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const response = await page.goto("/design/no-such-screen");
     expect(response?.status()).toBe(404);
