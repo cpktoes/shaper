@@ -12,8 +12,8 @@ import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canv
 import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 
 /**
- * The wire view (Phase 16, D-42, the founder's Shape3D picture): a # switch in the 3D corner draws the board as thin
- * lines across and along it on a plain foam, near side only, one look at a time with Contour Stripes, and changes
+ * The wire view (Phase 16, D-42, the founder's Shape3D picture): a # switch in the 3D corner draws the board as very thin
+ * black lines across and along it on a plain foam, near side only, one look at a time with Contour Stripes, and changes
  * nothing but the picture. The lines' counts and places are proven in lib/geometry/board-surface.test.ts; the zip with
  * the switch on is proven byte for byte in e2e/three-d-export.spec.ts, and the corner in e2e/viewer-toolbar.spec.ts and
  * e2e/three-d-show.spec.ts.
@@ -23,6 +23,8 @@ import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 const FIRST_FRAME_MS = 30_000;
 /** A canvas screenshot covers the corner: this keeps a button's pressed fill out of every comparison. */
 const HIDE_THE_CORNER = "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }";
+
+const BLACK = [0, 0, 0] as const;
 
 async function frames(host: Locator) {
   return Number((await host.getAttribute("data-frames")) ?? 0);
@@ -112,6 +114,30 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("the wire view (D-42)", () => {
+  test("0. every line is one real pixel of the screen, and pure black", async ({ page }) => {
+    await keepPreset(page, "Fish");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const density = () =>
+      host.evaluate((el) => {
+        const canvas = el.querySelector("canvas") as HTMLCanvasElement;
+        return { drawn: canvas.width / canvas.clientWidth, screen: window.devicePixelRatio };
+      });
+    const before = await density();
+    expect(before.drawn).toBeCloseTo(Math.min(before.screen, 2), 1);
+
+    await wireSwitch(page).click();
+    await expectPressed(wireSwitch(page), true);
+    await expect.poll(async () => (await density()).drawn).toBeCloseTo(before.screen, 1);
+    await settled(host);
+    // At the screen's own pixels: the lines reach black, at any theme's foam.
+    const pic = decodePng(await host.screenshot({ style: HIDE_THE_CORNER }));
+    expect(pic.width * pic.height - countUnlike(pic.rgba, BLACK, 40)).toBeGreaterThan(100);
+
+    await wireSwitch(page).click();
+    await expect.poll(async () => (await density()).drawn).toBeCloseTo(before.drawn, 1);
+  });
+
   test("1. the # switch draws dark lines on a plain foam, keeps the view, and gives the same frame back", async ({ page }, testInfo) => {
     await keepPreset(page, "Fish");
     await page.goto("/design/3d");
@@ -128,7 +154,6 @@ test.describe("the wire view (D-42)", () => {
     const crop = await host.getAttribute("data-crop");
     const shaded = await picture(host);
     const foam = await tokenRgb(page, "--surf-foam");
-    const ink = await tokenRgb(page, "--surf-on-foam");
     const ground = await tokenRgb(page, "--surf-3d-ground");
 
     await wire.click();
@@ -140,9 +165,9 @@ test.describe("the wire view (D-42)", () => {
     // A plain foam: the board's dots are now the foam's own colour or the lines', with no lit shading between them.
     const board = countUnlike(drawn.rgba, ground, 6);
     const onFoam = drawn.width * drawn.height - countUnlike(drawn.rgba, foam, 4);
-    const onInk = drawn.width * drawn.height - countUnlike(drawn.rgba, ink, 60);
+    const onBlack = drawn.width * drawn.height - countUnlike(drawn.rgba, BLACK, 90);
     expect(onFoam / board).toBeGreaterThan(0.25);
-    expect(onInk / board).toBeGreaterThan(0.02);
+    expect(onBlack / board).toBeGreaterThan(0.01);
 
     await wire.click();
     await expectPressed(wire, false);
@@ -167,10 +192,9 @@ test.describe("the wire view (D-42)", () => {
     await page.keyboard.press("ArrowUp");
     await settled(host);
     const pic = await picture(host);
-    const ink = await tokenRgb(page, "--surf-on-foam");
     // A column across the board away from the middle: only the deck's lines, the stringer and the rail's own loop.
     const deckLines = Math.floor(mmToInches(BOARD_PRESETS.find((p) => p.name === "Fish")!.outline.widePointWidth));
-    const crossed = linesCrossed(pic, Math.round(pic.width * 0.42), ink);
+    const crossed = linesCrossed(pic, Math.round(pic.width * 0.42), BLACK);
     expect(crossed).toBeGreaterThan(deckLines / 2);
     expect(crossed).toBeLessThanOrEqual(deckLines + 4);
   });
@@ -226,7 +250,7 @@ test.describe("the wire view (D-42)", () => {
     await expectPressed(wireSwitch(page), false);
   });
 
-  test("6. a theme change repaints the wire view in place, and it stays dark lines on a light board", async ({ page }, testInfo) => {
+  test("6. a theme change repaints the wire view's foam in place, and it stays black lines on a light board", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer switches the theme through App Default Settings");
     await keepPreset(page, "Fish");
     await page.goto("/design/3d");
@@ -242,8 +266,7 @@ test.describe("the wire view (D-42)", () => {
     await expect(appSettingsDialog(page)).toBeHidden();
 
     const foam = await tokenRgb(page, "--surf-foam");
-    const ink = await tokenRgb(page, "--surf-on-foam");
-    expect(foam[0] + foam[1] + foam[2]).toBeGreaterThan(ink[0] + ink[1] + ink[2]);
+    expect(foam[0] + foam[1] + foam[2]).toBeGreaterThan(3 * 128);
     await expect
       .poll(
         async () => {
@@ -254,5 +277,7 @@ test.describe("the wire view (D-42)", () => {
       )
       .toBeGreaterThan(1000);
     expect(await host.getAttribute("data-turn")).toBe(turn);
+    const pic = await picture(host);
+    expect(pic.width * pic.height - countUnlike(pic.rgba, BLACK, 90)).toBeGreaterThan(100);
   });
 });

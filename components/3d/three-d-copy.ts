@@ -60,7 +60,7 @@ export const THREE_D_COPY = {
   /** The # switch (D-42). */
   wireView: "Wire View",
   /** The # switch's tooltip and spoken description. */
-  wireViewTip: "Wire View — the board drawn in thin lines across and along it.",
+  wireViewTip: "Wire View — the board drawn in very thin black lines across and along it.",
 
   // On the canvas: each message is two lines.
   browserCantDraw: {

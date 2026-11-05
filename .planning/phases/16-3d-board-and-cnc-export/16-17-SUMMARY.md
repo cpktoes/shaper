@@ -66,6 +66,7 @@ key-files:
 key-decisions:
   - "The wire view's long-line count reads the board's stated width, its wide point: the figure a shaper quotes, so a 6'0\" × 20\" board gives 20. The founder said \"center width\"; the width exactly at the board's middle can fall a hair short and lose a line"
   - "The rings stand evenly about the board's middle, as many as whole 1 1/2\" steps fit the length, so a 6'0\" board draws 48 and none falls on a tip with no width"
+  - "The wire view's stroke is one device pixel of pure black: the picture draws at the screen's full density only while Wire View is on, and the stringer's ribbon hides, so nothing on the board is heavier than a line"
   - "A long line sits in the middle of its own inch, so an even count leaves the stringer clear and an odd count runs down it"
   - "Inside a swallow's notch a long line holds its share of the piece, wall to rail, so each piece gets every line and none stands in the air"
 duration: about 3 hours
@@ -75,7 +76,7 @@ metrics:
 actuals:
   tokens: 47000
   tasks: 3
-  commits: 4
+  commits: 5
 ---
 
 # Phase 16 Plan 17: Real fin shapes per setup, the switches as corner icons, and the wire view Summary
@@ -92,7 +93,7 @@ Every fin on the 3D board is now a basic real fin for its setup, stretched to FI
 - **No saved board and no preset changes.** A keel saved at 4.5" stays 4.5" until you press Reset or change its twin template, and keeps its "(standard)" label, as you ruled.
 - **The switches are icons.** Fins (TEMPLATE's fin icon), Blank (ROCKER's blank-from-above icon), Contour Stripes (a new stripes icon) and # for Wire View sit beside Wide view, filled when on. The zoom row sits under them at every width.
 - **Blank is dimmed on a hand-set board,** with its reason in its tooltip. A phone has no hover, so there the dimming is all it shows.
-- **Wire View draws the board in thin lines:** a ring every 1 1/2", one long line per whole inch of width on the deck and again on the bottom, one outline loop at the rail's apex, near side only, on a plain foam. It and Contour Stripes are one look at a time.
+- **Wire View draws the board in very thin black lines:** a ring every 1 1/2", one long line per whole inch of width on the deck and again on the bottom, one outline loop at the rail's apex, near side only, on a plain foam. Every line is pure black, one pixel of the screen wide, on a computer and on a phone, and the stringer is one more thin line in place of its ribbon. It and Contour Stripes are one look at a time.
 - **None of this reaches the CNC files,** the litres, the saved board or undo.
 
 ## Pictures
@@ -103,7 +104,7 @@ All in `.planning/phases/16-3d-board-and-cnc-export/pictures/`, the scripts in `
 - `16-17-fins-before-after.png`: every setup from below and aside, Side and Bottom, before and after.
 - `16-17-quad-and-keel.png`: the quad's rear beside its front; the keel before, at 6.5" and at 4.5".
 - `16-17-toolbar.png`: the corner on a computer, each switch pressed, a hand-set board, the panel before and after, and four phone views.
-- `16-17-wire-view.png`: his Shape3D picture above the Fish and the Longboard, end-on, three-quarter and from below; the Fish on a white page for his call (not built); two dark themes; the corner on a computer and an iPhone.
+- `16-17-wire-view.png`: his Shape3D picture; the stroke close up at four screens' own pixels, enlarged four times; the Fish and the Longboard end-on and three-quarter at real size; the Fish on a white page for his call (not built); two dark themes; the corner on a computer and an iPhone.
 
 ### Every preset's fins, today and after
 
@@ -212,6 +213,25 @@ The row, the zoom row and the board's nearest dot below the canvas's top, across
 
 The plan's own table was measured with three switches and a phone row of 114 dots; the fourth switch adds one 34-dot icon and its gap. The plan's nearest-dot figures of 61 and 124 become 54 and 121 here: these are all four presets as built after 16-16, and the row is 34 dots deep, so every screen stays clear.
 
+### The wire view's stroke
+
+The founder, on the first wire pictures: "Wire mesh should be very thin black lines (very small stroke)."
+
+**The stroke is one device pixel of pure black (#000000), in every theme.** This drawing method can only draw lines one pixel of the picture wide, so the stroke is set by the picture's density. The lit board caps that density at 2, which on an iPhone at 3 made a line 1.5 screen pixels wide and soft. While Wire View is on, the picture is drawn at the screen's full density, and it goes back to the cap when the switch goes off. The first version also used the stringer's dark navy, and the 3 mm stringer ribbon was the heaviest thing on the board: both are gone from this view.
+
+Measured in the Fish's Deck view, at each screen's own pixels, down one column across the long lines. Chromium, the phones emulated at their real density.
+
+| Screen | Screen pixels per dot | Picture density, lit | Picture density, Wire View | Pixels a line touches: typical (least–most) | Darkest pixel of a line: best, typical (0 is black) |
+|---|---|---|---|---|---|
+| Computer, normal density | 1 | 1 | 1 | 2 (1–2) | 0, 64 |
+| Computer, Retina density | 2 | 2 | 2 | 2 (1–2) | 0, 64 |
+| Pixel 7 | 2.625 | 2 | 2.624 | 2 (1–2) | 0, 75 |
+| iPhone 14 | 3 | 2 | 3 | 1 (1–2) | 0, 0 |
+
+**What that "2" means.** The ink is black and the stroke is one pixel, but the picture smooths its edges. A line that lands exactly on a row of pixels draws black in that one row. A line that falls between two rows is shared across them, about three quarters and one quarter, so it reads a dark grey (64 of 255) beside a pale row. That smoothing is set when the drawing starts and it also keeps the lit board's edges clean, so it stays. Lines with no smoothing at all, hard black stair-steps as in his Shape3D picture, would need the wire view drawn in a separate pass. That is his call: it is not built.
+
+At normal size the lines read about as heavy as his picture's, which is also one pixel of black. Near the tips they bunch to solid black, as in his.
+
 ## The founder's rulings as built
 
 | Ruling (2026-11-04 and 2026-11-05) | As built |
@@ -228,6 +248,7 @@ The plan's own table was measured with three switches and a phone row of 114 dot
 | The wire view's density | `WIRE_RING_STEP_IN` 1.5, `WIRE_LINE_SPACING_IN` 1, whole inches rounded down, deck and bottom |
 | One outline ring at the apex | `boardOutlineLoop(surface)`, the very loop the CNC outline file carries |
 | One look at a time with Contour Stripes | One piece of screen state, `look`, in `three-d-screen.tsx` |
+| "Very thin black lines (very small stroke)" | `WIRE_INK` #000000, never tinted by a theme; `drawingDensity(true)` draws at the screen's full density; the stringer's ribbon hides and its line takes the same pen |
 
 ## Proofs
 
@@ -239,6 +260,7 @@ The plan's own table was measured with three switches and a phone row of 114 dot
 - **Browser, on the iphone, android and desktop projects, port 3217:** `three-d-show`, `three-d-wire` and `viewer-toolbar` 51 passed, 33 skipped; `three-d-export` and `three-d-zoom` 23 passed, 22 skipped; `three-d-view`, `three-d-screen` and `three-d-hard-edge` 56 passed, 13 skipped; `fins-off-rail`, `touch-sizing` and `volume-fins-panels` 62 passed, 61 skipped. (Skips are the cases each project does not own.)
 - **`board-lock-screens`:** 39 passed, 18 skipped, 3 failed, none of them on the 3D screen; x-3d passed on all three projects. See below.
 - **Desktop baseline:** 6 of 6 after the one re-recording. The other five pictures passed before it, unchanged, and VOLUME still reads 30.29 L.
+- **After the stroke change:** `three-d-show`, `three-d-export` and `three-d-wire` 55 passed, 20 skipped; the desktop baseline 6 of 6, the 3D picture's hash unchanged, so nothing moved with Wire View off; `npm test` the same as above; `tsc` and lint the same. `three-d-wire` case 0 proves the density on all three projects and that the lines reach black.
 - **Near side only is a real test:** with the foam briefly made see-through, `three-d-wire` case 2 failed (33 lines crossed against a limit of 24). Restored, it passes.
 - **The zip** with Fins, Blank, Contour Stripes and Wire View flipped is byte for byte the first.
 - **Untouched:** `lib/export/`, `components/viewer/zoom-viewport.tsx`, `lib/models/design-snapshot.ts`, `drizzle/`, `lib/db/schema.ts`, `lib/geometry/presets.ts`, both FINS golden fixtures and the prototype extractor.
@@ -299,6 +321,7 @@ The board itself did not move: with Fins off, the canvas before and after differ
 - The before server ran on port 3219, by the orchestrator's ruling, not the plan's 3218.
 - `three-d-show` case 10 also runs on a sideways iPhone, beside the plan's 320-dot phone.
 - `components/3d/board-scene.ts` changed for the wire look, as Task 2b added to the plan; the fins' colour and the lights did not.
+- The stringer's ribbon hides in Wire View. His words named the mesh, not the stringer; the ribbon was the heaviest thing on the board, so I took "very thin" to cover it. It is one line to put back.
 - The wire picture adds a white-page row for his call. It changes the ground token in that picture only; nothing is built.
 - Keel areas read 22.3 in² here against the plan's 22.4: the 24-sample outline against the plan's rounded figure.
 
@@ -308,12 +331,13 @@ The board itself did not move: with Fins off, the canvas before and after differ
 - The shared corner touch box measures 44 by the house's rule and 42 by its own computed box, because its `::after` sits inside the button's 1-px border. The four switches wear it as every corner icon does.
 - FINS' bases for quad rears, side bites and the trailer (4.0–4.5") are longer than real fins of their depth, so those fins draw a little more raked than real ones. That is true to FINS (D-25).
 - The side fin, the twin and the single are joint fits across makers; the keel and the small fin are each fitted to one published fin, rounded to two decimals. No name appears anywhere and no foil is drawn.
-- The drawing's lines are one screen dot wide on every device, so on a sharp phone they read finer than on a computer.
-- The stringer keeps its 3 mm ribbon in Wire View, so close in it is heavier than the other lines.
+- One screen pixel is a finer line on a sharp phone than on a normal-density computer, so the same view reads lighter on the phone.
+- A line that falls between two rows of pixels reads dark grey, not black (see "The wire view's stroke").
+- While Wire View is on, a phone above density 2 draws more pixels than the lit board does. It has been run only on emulated phones, not on a real one.
 
 ## Self-Check: PASSED
 
-The five pictures, the archive, the six new source files and commits c00fdd4e, b3ef9331 and d3414096 exist; no scratch script is loose in the repo or under `.planning`.
+The five pictures, the archive, the six new source files and the plan's commits exist; no scratch script is loose in the repo or under `.planning`.
 
 ## Founder's look
 

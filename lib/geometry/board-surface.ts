@@ -575,7 +575,7 @@ function pointAcrossRun(positions: Float64Array, run: readonly number[], share: 
 }
 
 /**
- * The board drawn in thin lines (D-42, the founder's Shape3D view): a ring across it every `WIRE_RING_STEP_IN`, as many
+ * The board drawn in very thin black lines (D-42, the founder's Shape3D view): a ring across it every `WIRE_RING_STEP_IN`, as many
  * as whole steps fit the length, standing evenly about its middle so none falls on a tip; on the deck and again on the
  * bottom, one long line per `WIRE_LINE_SPACING_IN` of its width, counted in whole inches rounded down ("a 20.5\"
  * wide board still gets 20 bands on the deck and 20 on the bottom"); and one outline loop at the rail's apex.
