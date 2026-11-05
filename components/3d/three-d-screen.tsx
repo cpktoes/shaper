@@ -42,6 +42,7 @@ import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
+import { placedFins, type PlacedFin } from "@/lib/geometry/fin-outline";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { easeOut } from "@/lib/models/rack-gesture";
 import {
@@ -61,7 +62,7 @@ import {
   type ViewName,
 } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls, ThreeDHardEdge } from "./three-d-controls";
+import { ThreeDControls, ThreeDHardEdge, ThreeDShow } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 
 /**
@@ -173,7 +174,8 @@ function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
 }
 
 export function ThreeDScreen() {
-  const { outlineGeometry, sideProfile, effectiveRails, outline, boardName, modelId } = useDesign();
+  const { outlineGeometry, sideProfile, effectiveRails, outline, boardName, modelId, finPlacement, effectiveFins } =
+    useDesign();
 
   // The board's surface, from the litres' own input. A board the builder refuses (a value that isn't a number,
   // a length outside the app's range) gets the can't-build message rather than a half-built shape.
@@ -200,6 +202,26 @@ export function ThreeDScreen() {
   useEffect(() => {
     if (!built.ok) console.error("The 3D board could not be built:", built.error);
   }, [built]);
+
+  // The fins (16-10, D-06, D-21, D-25): FINS' own placement, each fin stood on the board's bottom with its generic
+  // outline. Shown unless the shaper unticks Fins — a view switch, never stored, never part of the board (D-17).
+  const fins = useMemo(
+    () =>
+      placedFins(
+        finPlacement.marks,
+        effectiveFins.finSetup,
+        effectiveFins.twinTemplate,
+        outline.length,
+        sideProfile.rockerAt,
+      ),
+    [finPlacement.marks, effectiveFins.finSetup, effectiveFins.twinTemplate, outline.length, sideProfile.rockerAt],
+  );
+  const droppedFins = finPlacement.marks.length - fins.length;
+  useEffect(() => {
+    if (droppedFins > 0) console.error(`The 3D board left out ${droppedFins} fin(s) whose figures are not numbers.`);
+  }, [droppedFins]);
+  const [showFins, setShowFins] = useState(true);
+  const finsRef = useRef<{ fins: readonly PlacedFin[]; visible: boolean }>({ fins, visible: showFins });
 
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<BoardSceneHandle | null>(null);
@@ -246,6 +268,13 @@ export function ThreeDScreen() {
     [pushCrop],
   );
 
+  // Hand the fins and the Fins tick to the scene that is drawing; a tick made while it loads applies when it arrives.
+  // Nothing else changes: the turn, the frame and the crop stay as they are.
+  useEffect(() => {
+    finsRef.current = { fins, visible: showFins };
+    sceneRef.current?.setFins(fins, showFins);
+  }, [fins, showFins]);
+
   // Hand every new board to the scene that is drawing (the turn and the room are kept).
   useEffect(() => {
     boardRef.current = built.ok ? built.board : null;
@@ -277,6 +306,7 @@ export function ThreeDScreen() {
         coloursRef.current = colours;
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
+        handle.setFins(finsRef.current.fins, finsRef.current.visible);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
         // §9); a view is framed at 1x for its own turn, as its button would have.
         if (pendingFrameRef.current) {
@@ -721,6 +751,7 @@ export function ThreeDScreen() {
       controls={
         <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
           <ThreeDHardEdge />
+          <ThreeDShow showFins={showFins} onShowFins={setShowFins} disabled={message !== null} />
         </ThreeDControls>
       }
       canvas={

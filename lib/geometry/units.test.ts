@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import {
+  INCHES_PER_FOOT,
   MM_PER_CM,
   MM_PER_INCH,
   centimetresToMm,
@@ -20,6 +21,7 @@ import {
   metricSliderRange,
   mm,
   mmToCentimetres,
+  mmToFeet,
   mmToInches,
   parseImperial,
   parseMetric,
@@ -568,5 +570,24 @@ describe("units boundary", () => {
         expect(result.max % stepMm).toBeCloseTo(0, 6);
       }
     });
+  });
+});
+
+describe("mmToFeet (Phase 16, D-22: a single fin's depth is the board's length in feet, read as inches)", () => {
+  it("is twelve inches to the foot", () => {
+    expect(INCHES_PER_FOOT).toBe(12);
+  });
+
+  it("gives a length in feet as a plain number", () => {
+    expect(mmToFeet(inchesToMm(108))).toBeCloseTo(9, 12);
+    expect(mmToFeet(inchesToMm(90))).toBeCloseTo(7.5, 12);
+    expect(mmToFeet(inchesToMm(74))).toBeCloseTo(74 / INCHES_PER_FOOT, 12);
+    expect(mmToFeet(mm(0))).toBe(0);
+  });
+
+  it("is inches over twelve, so it agrees with mmToInches everywhere", () => {
+    for (const v of [1, 250, 1828.8, 2743.2, 3657.6]) {
+      expect(mmToFeet(mm(v))).toBeCloseTo(mmToInches(mm(v)) / INCHES_PER_FOOT, 12);
+    }
   });
 });
