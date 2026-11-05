@@ -20,6 +20,7 @@ const OUTLINE_EDITOR_PATH = join(REPO_ROOT, "components/outline/outline-editor.t
 const ROCKER_EDITOR_PATH = join(REPO_ROOT, "components/rocker/rocker-editor.tsx");
 const RAILS_EDITOR_PATH = join(REPO_ROOT, "components/rails/rail-band-editor.tsx");
 const TOOLBAR_MODULE_PATH = join(REPO_ROOT, "components/viewer/toolbar-button.tsx");
+const THREE_D_SCREEN_PATH = join(REPO_ROOT, "components/3d/three-d-screen.tsx");
 
 /** Strips `//` line comments and `/* *\/` block comments, same helper as lib/theme.test.ts and
  * lib/db/ownership.test.ts. */
@@ -49,6 +50,16 @@ describe("viewer toolbar button extraction (05-06)", () => {
   const rockerSource = stripComments(readFileSync(ROCKER_EDITOR_PATH, "utf8"));
   const railsSource = stripComments(readFileSync(RAILS_EDITOR_PATH, "utf8"));
   const toolbarModuleSource = readFileSync(TOOLBAR_MODULE_PATH, "utf8");
+
+  // Phase 16 (16-09, 16-17): the 3D screen's corner row is the same shared row, and its one button of its own is Wide
+  // view (no Rotate, D-04).
+  it("the 3D screen draws its corner from the shared module, one row and one button of its own", () => {
+    const threeDSource = stripComments(readFileSync(THREE_D_SCREEN_PATH, "utf8"));
+    expect(threeDSource).toContain(SHARED_MODULE_SPECIFIER);
+    expect(threeDSource.match(/<ViewerToolbar>/g)?.length).toBe(1);
+    expect(threeDSource.match(/<\/ViewerToolbar>/g)?.length).toBe(1);
+    expect(threeDSource.match(/<ViewerToolbarButton/g)?.length).toBe(1);
+  });
 
   it("both editors import the shared toolbar module", () => {
     expect(outlineSource).toContain(SHARED_MODULE_SPECIFIER);

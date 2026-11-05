@@ -36,6 +36,9 @@ const TOOLBAR_GAP_PX = 6;
  * is the identical line-up, not merely "some consistent spacing". */
 const DESKTOP_STEP_PX = 40;
 
+/** The 3D screen's first frame is slow on the suite's development server, slowest on WebKit (about 5 s measured). */
+const FIRST_FRAME_MS = 30_000;
+
 type Box = { x: number; y: number; width: number; height: number };
 type ButtonInfo = { name: string; box: Box };
 
@@ -63,6 +66,17 @@ async function measureToolbar(page: Page): Promise<{ rowBox: Box; buttons: Butto
     buttons.push({ name, box });
   }
   return { rowBox, buttons };
+}
+
+/** Opens the 3D screen and waits for the lit board and for React to own the corner (a click before hydration is lost,
+ * and the row's buttons draw from the first paint). */
+async function openThreeD(page: Page) {
+  await page.goto("/design/3d");
+  await expect(page.locator("[data-board-3d]")).toHaveAttribute("data-board-state", "ready", { timeout: FIRST_FRAME_MS });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-toolbar] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
 }
 
 /** The founder's complaint, stated as a number: the corner-most visible button's right edge sits
@@ -134,6 +148,13 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
     assertRowWidthMatchesVisibleButtons(rowBox, buttons);
     assertButtonsContiguous(buttons);
   });
+
+  // Phase 16 (16-09): Wide view has no sidebar to hide on an upright phone and the 3D screen has no Rotate (D-04), so
+  // the corner stands empty.
+  test("3D (/design/3d): no icon in the corner", async ({ page }) => {
+    await openThreeD(page);
+    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(0);
+  });
 });
 
 // D-10 (10-SWEEP-2.md, 2026-09-11) brings this describe home to a real sideways phone. 10-05 had
@@ -194,6 +215,14 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     expect(buttons[0].name).toBe("Print Template");
     assertCornerFlush(rowBox, buttons[0]);
   });
+
+  test("3D (/design/3d): Wide view alone, flush in the corner", async ({ page }) => {
+    await openThreeD(page);
+    const { rowBox, buttons } = await measureToolbar(page);
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].name).toBe("Hide the sidebar for a wider view");
+    assertCornerFlush(rowBox, buttons[0]);
+  });
 });
 
 test.describe("desktop — the icons sit at the identical spacing they have always had", () => {
@@ -212,13 +241,16 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
     // Rails v2 (quick 261102-gec plan 02 and fast task 185, 2026-11-02): the Finished Rail toggle took the
     // corner, Ghost Bands sits beside it, and View Full Sized stepped to 80px — three on the same 40px step.
     { path: "/design/rails", label: "RAILS", expectedCount: 3 },
+    // Phase 16 (16-09): Wide view alone (no Rotate, D-04).
+    { path: "/design/3d", label: "3D", expectedCount: 1 },
   ] as const;
 
   for (const { path, label, expectedCount } of DESKTOP_CASES) {
     test(`${label} (${path}): ${expectedCount} icon(s), each at the old 0/40/80/120px line-up`, async ({
       page,
     }) => {
-      await page.goto(path);
+      if (path === "/design/3d") await openThreeD(page);
+      else await page.goto(path);
 
       const { rowBox, buttons } = await measureToolbar(page);
       expect(buttons.length).toBe(expectedCount);
