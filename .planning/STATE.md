@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 16: GO-LIVE 1 LIVE 2026-11-04 15:28 (main 43bd948a = LITRES_TIP 6ff19b31 merged: the hard edge's Blends From / Ends At sliders on RAILS and the litres counting the drawn foam; live check passed). Waves 1–4 merged on board-3d; Wave 5 (16-14, seven-screen specs + five baselines) executing; then 16-09 zoom, 16-10 fins, 16-11 ghost/stripes, 16-12 export, 16-15 (D-32, to be planned), 16-13 go-live 2"
+stopped_at: "Phase 16: go-live 1 LIVE (main 43bd948a); Waves 1–5 merged on board-3d 2026-11-04 (…, 16-14 the suite counts seven screens, five desktop pictures re-recorded); plan 16-15 (D-32) written by the planner, approved with the founder's rulings, awaiting its docs merge; next Wave 6 — 16-09 zoom and slide; then 16-10 fins, 16-11 ghost/stripes, 16-12 export, 16-15, 16-13 go-live 2"
 last_updated: "2026-11-04T15:11:38.794Z"
 last_activity: 2026-11-04
-last_activity_desc: "Go-live 1 is live: the hard edge's two RAILS sliders and the litres that count the foam the board really holds (Phase 16, D-20/D-30/D-31)"
+last_activity_desc: "Phase 16 Wave 5 merged: the browser suite counts seven screens and the five desktop pictures are re-recorded; go-live 1 live"
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 45
-  completed_plans: 39
-  percent: 87
+  completed_plans: 40
+  percent: 89
 current_phase: 13
 current_phase_name: 3d-board-and-cnc-export
 ---

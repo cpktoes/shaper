@@ -179,12 +179,9 @@ None.
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 5 checkpoint.
-
-## Self-Check: PASSED
-
-- FOUND: e2e/helpers/screens.ts (expectSevenTilesInMenu, "/design/3d")
-- FOUND: .planning/phases/16-3d-board-and-cnc-export/pictures/16-14-desktop-pictures-diff.png
-- FOUND: .planning/phases/16-3d-board-and-cnc-export/pictures/16-14-pictures-source.tar.gz
-- FOUND: commits c455ed75, f7e88a4d, bbd4d6a9
-- `git diff --stat e26e37fe HEAD -- app components lib` is empty
+Presented by the orchestrator at the Wave 5 checkpoint, 2026-11-04, with the five-picture diff. The founder: "Approved."
+Merged into `board-3d` as 0f04da65. The three deviations (row-by-row tile heights, the helper's rename in two more
+specs, the order form checked at the SUMMARY stop) were accepted by the orchestrator. The Turbopack confirmation of the
+five pictures could not run from the main checkout while the founder's review server held its dev lock; the webpack
+pictures stand, as in every earlier phase, and the branch gate's production-build specs and a full suite on a fresh
+copy were run after the merge.
