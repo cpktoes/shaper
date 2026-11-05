@@ -66,6 +66,21 @@
  * A board that does not open is counted, never printed with data. It never prints a board name, a
  * snapshot, a user id or the connection string, and it never changes the exit code.
  *
+ * `--rail-character-report` (Phase 16 D-32, the 14 D-18 report rule; read-only, board ids, settings and
+ * litres only): the founder's check before go-live 2 that every saved board's litres move as the whole rail's
+ * fade says — go-live 1 faded only the tail's hard edge; now the tail's whole rail fades into the centre's
+ * between Tail Rail Blends From and Ends At, and the centre's fades into the nose's on its own. For each board
+ * whose tail differs from its centre in more than the Hard Edge, or whose nose differs at all, it prints what
+ * differs on each side in RAILS' own words, the tail's two settings as the board reads them (in inches,
+ * `(default)` where it stores none of its own), then the litres before (go-live 1's rule, `HARD_EDGE_FADE`) and
+ * after (the live rule), worked out in lib/models/rail-character-report.ts (`railCharacterReportLines`):
+ *   rail-character report: N saved boards; k open[, d did not open]; m whose tail or nose rail differs from the centre's
+ *   <id>: tail <differences> · blends from <from> · ends at <to>; nose <differences> — <before> → <after> L (<move>)
+ *                                                                              one per such board, the largest move first
+ *   largest move: <id>, <move> L                                              (or: largest move: none)
+ * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
+ * a snapshot, a user id or the connection string, and it never changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -81,6 +96,10 @@
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rack-report'
  *   production, the hard-edge report — the founder only (Phase 16's go-live), the same temporary-file recipe:
  *     bash -c 'trap "rm -f .env.production.pull" EXIT; npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --hard-edge-report'
+ *   production, the rail-character report — the founder only (go-live 2, plan 16-13), in the form his terminal
+ *   accepts (Phase 14's go-lives found the `trap` form refused); the `; rm -f` ending deletes the pulled file
+ *   whether or not the report succeeds:
+ *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rail-character-report; rm -f .env.production.pull
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -132,6 +151,7 @@ async function main(): Promise<void> {
   const { accountsNeedingTipStyle, rackReport } = await import("../lib/models/rack-report");
   const { hardEdgeReportLines } = await import("../lib/models/hard-edge-report");
   type HardEdgeReportRow = import("../lib/models/hard-edge-report").HardEdgeReportRow;
+  const { railCharacterReportLines } = await import("../lib/models/rail-character-report");
 
   type Mm = import("../lib/geometry/units").Mm;
   type TipStyle = import("../lib/geometry/blank").TipStyle;
@@ -144,6 +164,7 @@ async function main(): Promise<void> {
   const thinTipsFlag = process.argv.includes("--thin-tips");
   const rackReportFlag = process.argv.includes("--rack-report");
   const hardEdgeReportFlag = process.argv.includes("--hard-edge-report");
+  const railCharacterReportFlag = process.argv.includes("--rail-character-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
@@ -160,7 +181,8 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
-  // --hard-edge-report (Phase 16 D-20): each board's id and its opened fields (null when it did not open).
+  // --hard-edge-report (Phase 16 D-20) and --rail-character-report (D-32): each board's id and its opened fields
+  // (null when it did not open) — the one collection both reports read.
   const hardEdgeRows: HardEdgeReportRow[] = [];
 
   for (const row of rows) {
@@ -315,6 +337,9 @@ async function main(): Promise<void> {
 
   // --hard-edge-report (Phase 16 D-20): ids and litres only; never changes the exit code.
   if (hardEdgeReportFlag) for (const line of hardEdgeReportLines(hardEdgeRows)) console.log(line);
+
+  // --rail-character-report (Phase 16 D-32): ids, settings and litres only; never changes the exit code.
+  if (railCharacterReportFlag) for (const line of railCharacterReportLines(hardEdgeRows)) console.log(line);
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);

@@ -69,7 +69,7 @@ import {
   type ViewName,
 } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls, ThreeDHardEdge, ThreeDShow, type ExportState } from "./three-d-controls";
+import { ThreeDControls, ThreeDShow, ThreeDTailRail, type ExportState } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 import { exportForCnc } from "./export-cnc";
 
@@ -930,7 +930,7 @@ export function ThreeDScreen() {
           exportState={exportState}
           onExport={onExport}
         >
-          <ThreeDHardEdge />
+          <ThreeDTailRail />
           <ThreeDShow
             showFins={showFins}
             onShowFins={setShowFins}

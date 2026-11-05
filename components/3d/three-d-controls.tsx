@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { SliderRow } from "@/components/design/slider-row";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Live } from "@/components/rocker/live";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import {
@@ -23,8 +22,8 @@ import { THREE_D_COPY } from "./three-d-copy";
  * apart — the same outer column every design screen's sidebar uses (`fin-controls.tsx`, `rocker-editor.tsx`).
  * The shell adds Back and Next and the site footer after it.
  *
- * Between the title and VIEW sits the `children` slot: the tail's two Hard Edge sliders bound to RAILS' own values
- * (D-30, `ThreeDHardEdge`), then SHOW (`ThreeDShow`, 16-10: Fins; 16-11 adds Blank and Contour Stripes), directly
+ * Between the title and VIEW sits the `children` slot: the tail rail's two sliders bound to RAILS' own values
+ * (D-30/D-32, `ThreeDTailRail`), then SHOW (`ThreeDShow`, 16-10: Fins; 16-11 adds Blank and Contour Stripes), directly
  * above VIEW as UI-SPEC §1 draws them. EXPORT (16-12) follows VIEW, last on the panel. Each block is a
  * `flex flex-col gap-2` opening with its ruled heading.
  */
@@ -83,21 +82,21 @@ export function ThreeDSectionHeading({ children }: { children: ReactNode }) {
 }
 
 /**
- * HARD EDGE (D-30, the founder 2026-11-04: "I'd like that control on both the rails and the 3-D pages and they feed
- * each other. Changing one changes the other."): RAILS' own two tail rows — Hard Edge Blends From, then Hard Edge
- * Ends At — drawn exactly as RAILS draws them, reading and writing the very same two values on the board through
- * the very same readers, slider ranges and setters. There is one value, not two kept in step: move either here and
- * RAILS' row reads it, VOLUME's litres follow and the 3D board redraws; move it on RAILS and this row follows.
+ * TAIL RAIL (D-30, the founder 2026-11-04: "I'd like that control on both the rails and the 3-D pages and they feed
+ * each other. Changing one changes the other."; D-32: "Only the tail rail gets the users blend. The nose is a
+ * default that always gets applied."): RAILS' own two tail rows — Tail Rail Blends From, then Tail Rail Ends At —
+ * drawn exactly as RAILS draws them, reading and writing the very same two values on the board through the very
+ * same readers, slider ranges and setters. There is one value, not two kept in step: move either here and RAILS'
+ * row reads it, VOLUME's litres follow and the 3D board redraws; move it on RAILS and this row follows.
  *
- * While the tail's Hard Edge is off the two rows stay in their place, dimmed and out of reach (the `Live` wrapper:
- * `opacity-40` and `inert`), under one line of reason at full strength. They change the board, so a locked board
- * greys them as it greys RAILS' rows (`SliderRow` reads the lock itself) — unlike VIEW, which only changes what is
- * seen.
+ * Since D-32 the two rows bound the tail's whole rail character — Hard Edge, Family, Symmetrical, Single Tuck and
+ * Sharp Bottom Tuck — so they are always live, Hard Edge ticked or not, with no reason line. They change the board,
+ * so a locked board greys them as it greys RAILS' rows (`SliderRow` reads the lock itself) — unlike VIEW, which
+ * only changes what is seen. The nose has no row here or anywhere: its blend is automatic.
  */
-export function ThreeDHardEdge() {
+export function ThreeDTailRail() {
   const { effectiveRails, outline, setTailHardEdgeBlendsFrom, setTailHardEdgeEndsAt } = useDesign();
   const { system } = useUnits();
-  const on = effectiveRails.tailHardEdge;
   const length = outline.length;
   const blendsFrom = hardEdgeBlendsFrom(effectiveRails, length);
   const endsAt = hardEdgeEndsAt(effectiveRails, length);
@@ -106,33 +105,28 @@ export function ThreeDHardEdge() {
   const fromText = formatHardEdgeBlendsFrom(blendsFrom, system);
   const endsText = formatHardEdgeEndsAt(endsAt, system);
   return (
-    <div className="flex flex-col gap-2" data-three-d-hard-edge={on ? "on" : "off"}>
-      <ThreeDSectionHeading>{THREE_D_COPY.hardEdgeHeading}</ThreeDSectionHeading>
-      {!on && <div className="text-xs text-surf-ink-muted font-normal">{THREE_D_COPY.hardEdgeOffHint}</div>}
-      <Live on={on}>
-        <div className="flex flex-col gap-2">
-          <SliderRow
-            label={`${THREE_D_COPY.hardEdgeBlendsFrom} — ${fromText}`}
-            value={fromSlider.value}
-            min={fromSlider.min}
-            max={fromSlider.max}
-            step={fromSlider.step}
-            onValueChange={(v) => setTailHardEdgeBlendsFrom(fromSlider.toMm(v))}
-            sliderLabel={THREE_D_COPY.hardEdgeBlendsFromSlider}
-            sliderValueText={THREE_D_COPY.hardEdgeFromTheTail(fromText)}
-          />
-          <SliderRow
-            label={`${THREE_D_COPY.hardEdgeEndsAt} — ${endsText}`}
-            value={endsSlider.value}
-            min={endsSlider.min}
-            max={endsSlider.max}
-            step={endsSlider.step}
-            onValueChange={(v) => setTailHardEdgeEndsAt(endsSlider.toMm(v))}
-            sliderLabel={THREE_D_COPY.hardEdgeEndsAtSlider}
-            sliderValueText={THREE_D_COPY.hardEdgeFromTheTail(endsText)}
-          />
-        </div>
-      </Live>
+    <div className="flex flex-col gap-2" data-three-d-tail-rail>
+      <ThreeDSectionHeading>{THREE_D_COPY.tailRailHeading}</ThreeDSectionHeading>
+      <SliderRow
+        label={`${THREE_D_COPY.tailRailBlendsFrom} — ${fromText}`}
+        value={fromSlider.value}
+        min={fromSlider.min}
+        max={fromSlider.max}
+        step={fromSlider.step}
+        onValueChange={(v) => setTailHardEdgeBlendsFrom(fromSlider.toMm(v))}
+        sliderLabel={THREE_D_COPY.tailRailBlendsFromSlider}
+        sliderValueText={THREE_D_COPY.tailRailFromTheTail(fromText)}
+      />
+      <SliderRow
+        label={`${THREE_D_COPY.tailRailEndsAt} — ${endsText}`}
+        value={endsSlider.value}
+        min={endsSlider.min}
+        max={endsSlider.max}
+        step={endsSlider.step}
+        onValueChange={(v) => setTailHardEdgeEndsAt(endsSlider.toMm(v))}
+        sliderLabel={THREE_D_COPY.tailRailEndsAtSlider}
+        sliderValueText={THREE_D_COPY.tailRailFromTheTail(endsText)}
+      />
     </div>
   );
 }
