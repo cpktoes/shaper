@@ -50,3 +50,16 @@ Three tasks like the siblings (tracer with the pin; the rule with tests on the w
 look with pictures), `autonomous: false`, wave = 16-15's + 1, `depends_on: ["16-15", "16-05"]`, PW_PORT=3216, no
 database change, the executor_environment in the siblings' style. 16-13 (go-live 2) moves one wave later and
 depends on 16-16; its live check should open a winged board's 3D deck view if a practice board carries a wing.
+
+## Added 2026-11-04 (D-34): no little flip at the tips
+
+The founder, from the 3D board: "the very tip of the nose and the tail (both tips on the swallow) have an unnecessary
+little flip/angle. Let's not do that little flip." Same plan, same surface code. Settle by measurement: the slope of
+the surface's deck line and bottom line over the last 2" into each tip (nose; a squash/pin/round tail's end; a
+swallow's two points) against the side profile's (`designSideProfile` / `rockerAt`, `deckAt`) own slope there — the
+flip is the angle between them, today in degrees per board; the likely cause is the tip cap (a no-foam station as one
+point half the thickness up, `placedHalfSection` in board-surface.ts) and the last real ring's finished rail squeezed
+into a tiny width; the fix makes the surface close into the tip along the side profile's deck and bottom curves (the
+cap on those curves, the last rings' deck/bottom following them), with the outline's tip as the plan-view point.
+Pictures: each tip close up from the side and from three-quarters, before/after, on the Fish (swallow), Shortboard
+(squash), a pin and a round tail. The CNC slices at the tips follow.
