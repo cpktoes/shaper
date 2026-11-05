@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC, type Point2D } from "./board";
-import { buildOutline, sampleOutline, MEASURE_STATION_MM } from "./outline";
+import { buildOutline, foamHalfWidth as foamHalfWidthOf, sampleOutline, MEASURE_STATION_MM } from "./outline";
+import { placedHalfSection } from "./board-surface";
 import {
+  type BoardSection,
   boardSectionEnds,
   boardSections,
   boardSectionsWith,
@@ -14,10 +16,21 @@ import {
   noseRailWeight,
   railCharacterDifferences,
   railCharacterOf,
+  computeCrossSectionVolumeWith,
+  OLD_SURFACE_FIT,
   RAIL_CHARACTER_FADE,
+  type RailCharacterRule,
+  SMOOTH_SURFACE_FADE,
+  TAIL_ROLL_RUN_IN,
+  TAIL_ROLL_SHARE,
   tailHardEdgeWeight,
+  tailRollDrop,
+  tailRollFoam,
+  tailRollScale,
+  tailRollStations,
   simpsonIntegrate,
   SIMPSON_PANEL_COUNT,
+  wingStepHalf,
   type VolumeRailValues,
   type VolumeSpec,
   type VolumeTemplateValues,
@@ -26,7 +39,17 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
-import { blendFinishedRails, railBlendArea, sampledFinishedRail, sampledSectionArea, sectionFinishedRail } from "./finished-rail";
+import {
+  blendFinishedRails,
+  fittedFinishedRail,
+  openedFinishedRail,
+  railBlendArea,
+  railReach,
+  sampledFinishedRail,
+  sampledSectionArea,
+  SECTION_POINTS,
+  sectionFinishedRail,
+} from "./finished-rail";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
@@ -35,6 +58,7 @@ import {
   DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
   defaultHardEdgeEndsAt,
   DEFAULT_TIP_RAIL_SCALE,
+  effectiveDeckPercent,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
   ZERO_RAIL_NUDGES,
@@ -44,8 +68,24 @@ import {
 } from "./rail-bands";
 import { samplePchip, type SplinePoint } from "./pchip";
 import { prepareRootCurve } from "./root-curve";
-import { cubicMmToLitres, formatInchesFraction, inchesToMm, MM_PER_INCH, type Mm, mm, mmToInches } from "./units";
-import { PHASE16_TUCKED, phase16Boards, phase16LiveBoards } from "./__fixtures__/phase16-boards";
+import {
+  cubicMmToLitres,
+  formatInchesFraction,
+  inchesToMm,
+  MM_PER_INCH,
+  type Mm,
+  mm,
+  mmToInches,
+  roundToSixteenthInch,
+} from "./units";
+import {
+  PHASE16_TUCKED,
+  phase16Boards,
+  phase16LiveBoards,
+  phase16SurfaceBoards,
+  phase16WingBoards,
+} from "./__fixtures__/phase16-boards";
+import { outlineWithoutWings, wingFootprint, wingShareAt, wingShareSpan, type Wing } from "./wings";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -59,6 +99,20 @@ import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
 
 const SQMM_PER_SQIN = MM_PER_INCH * MM_PER_INCH;
+
+/** A station's blend as the live rule draws it from its two ends' halves: a sharp end opened toward a round one. */
+function liveBlend(
+  ends: { base: BoardSection; tip: BoardSection },
+  baseHalf: [number, number][],
+  tipHalf: [number, number][],
+  w: number,
+) {
+  const [baseSharp, tipSharp] = [ends.base.sharpness === 1, ends.tip.sharpness === 1];
+  if (baseSharp === tipSharp) return blendFinishedRails(baseHalf, tipHalf, w);
+  return baseSharp
+    ? blendFinishedRails(openedFinishedRail(baseHalf, tipHalf, w), tipHalf, w)
+    : blendFinishedRails(baseHalf, openedFinishedRail(tipHalf, baseHalf, 1 - w), w);
+}
 
 /** One rail's half cross-section closed at the stringer — the full-thickness point at minus the half
  * width, the cut profile, the zero-height point at minus the half width — by the shoelace. A test-local
@@ -517,7 +571,10 @@ describe("computeCrossSectionVolume", () => {
       }
       const cut = 2 * closingPolygonArea(output.profile, section.boardThickness, halfWidth);
       expect(Math.abs(result.stationBlendAreas[i] - 2 * blendOneRail), `station ${i}`).toBeLessThan(1e-9 * cut);
-      expect(Math.abs(area + result.stationBlendAreas[i] - cut), `station ${i}`).toBeLessThan(1e-9 * cut);
+      // Where the rail has room the fit lifts nothing; narrower, the foam the fitted ring adds (D-34).
+      const fitted = fittedFinishedRail(output.result, output.domed, halfWidth);
+      const lift = sampledSectionArea(fitted) - sampledSectionArea(sampledFinishedRail(output.result, output.domed, halfWidth));
+      expect(Math.abs(area + result.stationBlendAreas[i] - cut - lift), `station ${i}`).toBeLessThan(1e-9 * cut);
       checked++;
     });
     expect(checked).toBeGreaterThan(SIMPSON_PANEL_COUNT - 2);
@@ -929,8 +986,9 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     // the two areas blended.
     const tuckedHalf = sampledFinishedRail(tuckedOnly.result!, mid.domed, mid.halfWidth);
     const hardHalf = sampledFinishedRail(hardOnly.result!, mid.domed, mid.halfWidth);
-    expect(mid.blended).toEqual(blendFinishedRails(tuckedHalf, hardHalf, mid.hardWeight));
     const w = mid.hardWeight;
+    // A hard edge fading into a round rail opens into a radius (the founder, 2026-11-05).
+    expect(mid.blended).toEqual(blendFinishedRails(tuckedHalf, openedFinishedRail(hardHalf, tuckedHalf, 1 - w), w));
     const level =
       sampledSectionArea(mid.blended!) +
       (1 - w) * (tuckedOnly.area - sampledSectionArea(tuckedHalf)) +
@@ -974,7 +1032,7 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
         const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
         const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
         const w = section.tipWeight;
-        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, w));
+        expect(section.blended).toEqual(liveBlend(ends, baseHalf, tipHalf, w));
         const expected =
           sampledSectionArea(section.blended!) +
           (1 - w) * (ends.base.area - sampledSectionArea(baseHalf)) +
@@ -1227,8 +1285,12 @@ describe("D-32 the whole rail character blends", () => {
         expect(ends.base.sharpBottomTuck).toBe(false);
         const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
         const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
-        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, section.tipWeight));
-        const area = fadingSectionArea(ends.base.area, ends.tip.area, baseHalf, tipHalf, section.blended!, section.tipWeight);
+        const w = section.tipWeight;
+        expect(section.blended).toEqual(liveBlend(ends, baseHalf, tipHalf, w));
+        const area =
+          sampledSectionArea(section.blended!) +
+          (1 - w) * (ends.base.area - sampledSectionArea(baseHalf)) +
+          w * (ends.tip.area - sampledSectionArea(tipHalf));
         expect(Math.abs(section.area - area) / section.area).toBeLessThan(1e-9);
         // The two ends really differ, so the blend means something.
         expect(Math.abs(ends.tip.area - ends.base.area)).toBeGreaterThan(0);
@@ -1394,5 +1456,531 @@ describe("D-32 the whole rail character blends", () => {
       if (board.label.startsWith("tucked|")) expect(any, board.label).toBe(true);
     }
     expect(Object.keys(PHASE16_TUCKED)).toHaveLength(6);
+  });
+});
+
+describe("D-37 a wing's two sides share the step, and the rail rolls straight up into the deck", () => {
+  type Half = readonly (readonly [number, number])[];
+  const BOTTOM_EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+  const deckRun = (half: Half) => half.slice(0, SECTION_POINTS.deck);
+  const bottomRun = (half: Half) => half.slice(BOTTOM_EDGE);
+  /** The drawn half of a section, as the 3D board lays it. */
+  const halfOf = (section: BoardSection): Half => placedHalfSection(section, section.halfWidth, 0);
+  /** Whether a run's distance across never turns back (`sign` 1 on the deck, walking out; −1 on the bottom). */
+  const folds = (run: Half, sign: 1 | -1) => run.some((p, i) => i > 0 && sign * (p[0] - run[i - 1][0]) < -1e-9);
+  /** A deck run's height at a distance across. */
+  function heightAt(run: Half, y: number): number {
+    for (let i = 1; i < run.length; i++) {
+      const [y0, h0] = run[i - 1];
+      const [y1, h1] = run[i];
+      if (y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : h1;
+    }
+    return run[run.length - 1][1];
+  }
+
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return { geometry, input: designCrossSectionInput(geometry, profile, rails, fields.outline.length) };
+  }
+  /** The live rule with its wing behaviour set back: the whole section shifts in with the outline. */
+  const SHIFT_WITH_LIVE_TIPS: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift" } };
+
+  /** One winged board, with its stations every 2 mm through each wing's shared stretch, three ways. */
+  const WINGED = phase16WingBoards().map((board) => {
+    const { geometry, input } = inputOf(board.fields);
+    const plain = inputOf({ ...board.fields, outline: outlineWithoutWings(board.fields.outline) }).input;
+    const wings = geometry.wings!;
+    const stations: Mm[] = [];
+    for (const wing of wings) {
+      const { middle, reach } = wingShareSpan(wing);
+      for (let s = middle - reach; s <= middle + reach; s += 2) stations.push(mm(s));
+    }
+    const live = boardSections(input, stations);
+    const shifted = boardSectionsWith(input, SHIFT_WITH_LIVE_TIPS, stations);
+    const without = boardSections(plain, stations);
+    return { ...board, geometry, input, plain, wings, stations, live, shifted, without };
+  });
+  /** The jump in the deck across a wing at one distance from the stringer, the board's own taper taken out. */
+  const ledgeAt = (rule: "live" | "shift", board: (typeof WINGED)[number], wing: Wing, y: (behindWidth: number) => number) => {
+    const { stepStart, inner } = wingFootprint(wing);
+    const stations = [mm(stepStart + 2), mm(inner - 2)];
+    const sections = rule === "live" ? boardSections(board.input, stations) : boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS, stations);
+    const [plainAhead, plainBehind] = boardSections(board.plain, stations);
+    const at = y(sections[1].halfWidth);
+    return (
+      heightAt(deckRun(halfOf(sections[0])), at) -
+      heightAt(deckRun(halfOf(sections[1])), at) -
+      (heightAt(deckRun(halfOf(plainAhead)), at) - heightAt(deckRun(halfOf(plainBehind)), at))
+    );
+  };
+
+  it("the 28 boards each reach through their wing", () => {
+    expect(WINGED).toHaveLength(28);
+    for (const board of WINGED) expect(board.stations.length).toBeGreaterThan(60);
+  });
+
+  describe("wingStepHalf: the rail moved onto the outline, the deck left on its line", () => {
+    const rail = computeRailBands(DEFAULT_RAIL_BAND_SPEC).center.result;
+    const moves = [0.01, 0.5, inchesToMm(3 / 16), inchesToMm(3 / 8), inchesToMm(1 / 2), inchesToMm(1)];
+    const rooms = (move: number) => [1.6, 2, 3, 5, 12].map((k) => k * move).concat([100, 200, 300]);
+
+    for (const size of moves) {
+      for (const move of [size, -size]) {
+        it(`a move of ${move.toFixed(2)} mm, on rooms from 1.6 × the move to 300 mm`, () => {
+          for (const room of rooms(size)) {
+            const half = sampledFinishedRail(rail, true, room);
+            const moved = wingStepHalf(half, room, move, rail.deckMark2);
+            const reach = Math.min(room, Math.max(rail.deckMark2, 2 * size));
+            expect(moved[0]).toEqual(half[0]);
+            expect(moved[moved.length - 1]).toEqual(half[half.length - 1]);
+            expect(Math.abs(Math.max(...moved.map((p) => p[0])) - (room - move))).toBeLessThan(1e-9);
+            expect(folds(deckRun(moved), 1)).toBe(false);
+            expect(folds(bottomRun(moved), -1)).toBe(false);
+            moved.forEach((p, i) => {
+              expect(p[1]).toBe(half[i][1]);
+              if (1.5 * size < reach && room - half[i][0] >= reach) expect(p[0]).toBe(half[i][0]);
+            });
+          }
+        });
+      }
+    }
+
+    it("moves nothing with a move of 0", () => {
+      const half = sampledFinishedRail(rail, true, 200);
+      expect(wingStepHalf(half, 200, 0, rail.deckMark2)).toEqual(half);
+    });
+  });
+
+  for (const board of WINGED) {
+    it(`${board.label}: the deck runs smooth across the wing, where the whole section's shift left a ledge`, () => {
+      for (const wing of board.wings) {
+        for (const inches of [1, 2]) {
+          const y = (width: number) => width - inchesToMm(inches);
+          const shared = Math.abs(ledgeAt("live", board, wing, y));
+          const shifted = Math.abs(ledgeAt("shift", board, wing, y));
+          expect(shifted).toBeGreaterThan(0.1);
+          expect(shared).toBeLessThan(shifted / 2);
+        }
+      }
+    }, 60_000);
+
+    it(`${board.label}: behind the wing the rail stands thicker, ahead of it thinner, and they share the step`, () => {
+      let behind = 0;
+      let ahead = 0;
+      board.stations.forEach((station, i) => {
+        const share = wingShareAt(board.geometry, station);
+        // Clear of the blend's far ends, where the share is too small to read.
+        if (Math.abs(share) < 0.25) return;
+        const y = board.live[i].halfWidth - inchesToMm(1);
+        const drawn = heightAt(deckRun(halfOf(board.live[i])), y);
+        const own = heightAt(deckRun(halfOf(board.shifted[i])), y);
+        if (share > 0) {
+          expect(drawn).toBeGreaterThan(own);
+          behind++;
+        } else {
+          expect(drawn).toBeLessThan(own);
+          ahead++;
+        }
+      });
+      expect(behind).toBeGreaterThan(10);
+      expect(ahead).toBeGreaterThan(10);
+    }, 60_000);
+
+    it(`${board.label}: the rail stands on the stepped outline, the bottom stays flat, and nothing folds`, () => {
+      board.stations.forEach((station, i) => {
+        const section = board.live[i];
+        const drawn = halfOf(section);
+        expect(section.halfWidth).toBe(foamHalfWidthOf(board.geometry, station));
+        expect(Math.abs(Math.max(...drawn.map((p) => p[0])) - section.halfWidth)).toBeLessThan(1e-9);
+        expect(folds(deckRun(drawn), 1)).toBe(false);
+        expect(folds(bottomRun(drawn), -1)).toBe(false);
+        for (const [, h] of bottomRun(drawn)) expect(h).toBeLessThan(1e-9);
+      });
+    }, 60_000);
+
+    it(`${board.label}: a station the shared stretch does not reach reads what it read with the wing rule off`, () => {
+      const live = boardSections(board.input);
+      const shifted = boardSectionsWith(board.input, SHIFT_WITH_LIVE_TIPS);
+      let reached = 0;
+      live.forEach((section, i) => {
+        if (wingShareAt(board.geometry, section.station) !== 0) {
+          reached++;
+          return;
+        }
+        expect(Object.is(section.area, shifted[i].area)).toBe(true);
+        expect(Object.is(section.blendArea, shifted[i].blendArea)).toBe(true);
+        expect(section.drawn).toEqual(shifted[i].drawn);
+      });
+      expect(reached).toBeGreaterThan(0);
+      expect(reached).toBeLessThan(live.length);
+    }, 60_000);
+  }
+
+  describe("the tuck moves with the rail", () => {
+    for (const board of WINGED.filter((b) => b.label.endsWith("|one") && b.input.rails.tailHardEdge)) {
+      it(`${board.label}: on a hard edge the corner is the rail itself, on the stepped outline`, () => {
+        let hard = 0;
+        board.stations.forEach((_, i) => {
+          const section = board.live[i];
+          if (section.hardWeight !== 1) return;
+          hard++;
+          expect(Math.abs(halfOf(section)[BOTTOM_EDGE][0] - section.halfWidth)).toBeLessThan(1e-9);
+        });
+        expect(hard).toBeGreaterThan(10);
+      });
+    }
+
+    for (const board of WINGED.filter((b) => b.label.endsWith("|one-soft") && !b.input.rails.center.symmetrical)) {
+      it(`${board.label}: a tuck narrower than the roll stays its own width from the rail, within the move`, () => {
+        board.stations.forEach((station, i) => {
+          const section = board.live[i];
+          const width = section.halfWidth - halfOf(section)[BOTTOM_EDGE][0];
+          const own = board.shifted[i].halfWidth - halfOf(board.shifted[i])[BOTTOM_EDGE][0];
+          expect(Math.abs(width - own)).toBeLessThanOrEqual(Math.abs(wingShareAt(board.geometry, station)) + 1e-6);
+        });
+      }, 60_000);
+    }
+  });
+});
+
+describe("D-34 the rail fits into a narrow tip", () => {
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return { geometry, input: designCrossSectionInput(geometry, profile, rails, fields.outline.length) };
+  }
+  const BOARDS = phase16SurfaceBoards().map((board) => ({ ...board, ...inputOf(board.fields) }));
+  /** An old-fit rule holding a station's tip weight, so each end of a blend can be read alone. */
+  const held = (tipWeight: number): RailCharacterRule => ({
+    at: (...args) => ({ ...RAIL_CHARACTER_FADE.at(...args), tipWeight }),
+  });
+
+  for (const { label, geometry, input } of BOARDS) {
+    it(`${label}: a station narrower than its rail counts the fitted ring; one with room counts what it always did`, () => {
+      const live = boardSections(input);
+      // The tips' fit alone set back: the same actual rail thickness, cut off at the stringer.
+      const old = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at, fit: { ...OLD_SURFACE_FIT, rail: "exact" } });
+      live.forEach((section, i) => {
+        if (!section.result || section.blended || wingShareAt(geometry, section.station) !== 0) return;
+        const before = old[i];
+        const sampled = sampledFinishedRail(before.result!, before.domed, before.halfWidth);
+        const fitted = fittedFinishedRail(before.result!, before.domed, before.halfWidth);
+        // The tail's roll draws a station's heights lower and leaves its area for the whole-board count (D-38).
+        const scaled = (half: typeof fitted) => half.map(([y, h]) => [y, h * (section.rollScale ?? 1)]);
+        if (fitted === sampled || section.halfWidth >= railReach(section.result, section.domed)) {
+          expect(Object.is(section.area, before.area)).toBe(true);
+          if (section.rollScale === undefined) expect(section.drawn).toBeUndefined();
+          else expect(section.drawn).toEqual(scaled(sampled));
+        } else {
+          const lift = sampledSectionArea(fitted) - sampledSectionArea(sampled);
+          expect(lift).toBeGreaterThan(0);
+          expect(section.area).toBe(before.area + lift);
+          expect(section.blendArea).toBe(before.blendArea);
+          expect(section.drawn).toEqual(scaled(fitted));
+        }
+      });
+    }, 60_000);
+  }
+
+  it("a blend at a station narrower than its rails is the level variant on the fitted halves", () => {
+    // A board 40 mm wide all along: every station is narrow, and the nose and the tail differ from the centre.
+    const room = mm(20);
+    const family: RailFamily = DEFAULT_RAIL_BAND_SPEC.center.family === 3 ? 4 : 3;
+    const rails: RailBandSpec = {
+      ...DEFAULT_RAIL_BAND_SPEC,
+      tailHardEdge: false,
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, family },
+      nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, family },
+    };
+    const input = {
+      halfWidthAt: () => room,
+      foil: DEFAULT_FOIL_SPEC,
+      rails,
+      length: DEFAULT_BOARD_SPEC.outline.length,
+      thicknessAt: () => mm(60),
+    };
+    let blending = 0;
+    for (const section of boardSections(input)) {
+      if (!section.blended) continue;
+      blending++;
+      const w = section.tipWeight;
+      const [base] = boardSectionsWith(input, held(0), [section.station]);
+      const [tip] = boardSectionsWith(input, held(1), [section.station]);
+      const end = (at: BoardSection) => {
+        const sampled = sampledFinishedRail(at.result!, at.domed, room);
+        const fitted = fittedFinishedRail(at.result!, at.domed, room);
+        expect(fitted).not.toBe(sampled);
+        return { fitted, exact: at.area + (sampledSectionArea(fitted) - sampledSectionArea(sampled)) };
+      };
+      const [a, b] = [end(base), end(tip)];
+      const blended = blendFinishedRails(a.fitted, b.fitted, w);
+      expect(section.blended).toEqual(blended);
+      expect(section.drawn).toBeUndefined();
+      expect(section.area).toBe(fadingSectionArea(a.exact, b.exact, a.fitted, b.fitted, blended, w));
+    }
+    expect(blending).toBeGreaterThan(3);
+  });
+
+  it("the old rules never fit a thing: their sections carry no drawn half", () => {
+    for (const rule of [HARD_EDGE_SWITCH, HARD_EDGE_FADE, RAIL_CHARACTER_FADE]) {
+      for (const { input } of BOARDS.filter((board) => board.label.endsWith("|asis|hard") || board.label.endsWith("|one"))) {
+        for (const section of boardSectionsWith(input, rule)) expect(section.drawn).toBeUndefined();
+      }
+    }
+  });
+
+  it("OLD_SURFACE_FIT is what every rule before plan 16-16 does, and the live rule fits both", () => {
+    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip", tail: "square", tuck: "corner", rail: "sixteenths" });
+    expect(RAIL_CHARACTER_FADE.fit).toBeUndefined();
+    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit", tail: "roll", tuck: "open", rail: "exact" });
+  });
+});
+
+describe("D-38 the tail's rail is carried around the end", () => {
+  const RUN = inchesToMm(TAIL_ROLL_RUN_IN);
+  const TIP = mm(20);
+  const boards = phase16SurfaceBoards().filter((board) => /\|(asis|pin|round|diamond|swallow)\|hard$|^wing\|.*\|one$/.test(board.label));
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  }
+
+  it("tailRollDrop is a quarter ellipse: the share of the tip at the end, nothing from the end of the run on", () => {
+    expect(tailRollDrop(mm(0), TIP)).toBeCloseTo(TIP * TAIL_ROLL_SHARE, 12);
+    expect(tailRollDrop(RUN, TIP)).toBe(0);
+    expect(tailRollDrop(mm(RUN + 5), TIP)).toBe(0);
+    // On the ellipse x² + y² = 1, walking in from the end.
+    for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      const y = 1 - tailRollDrop(mm(RUN * f), TIP) / (TIP * TAIL_ROLL_SHARE);
+      expect(y * y + (1 - f) * (1 - f)).toBeCloseTo(1, 10);
+    }
+  });
+
+  it("tailRollScale keeps every height's share, 1 clear of the roll", () => {
+    expect(tailRollScale(mm(0), TIP, TIP)).toBeCloseTo(1 - TAIL_ROLL_SHARE, 12);
+    expect(tailRollScale(RUN, mm(40), TIP)).toBe(1);
+  });
+
+  it("tailRollStations start at the tail end, stop at the end of the run, and crowd toward the end", () => {
+    const stations = tailRollStations(8);
+    expect(stations[0]).toBe(0);
+    expect(stations[8]).toBeCloseTo(RUN, 9);
+    for (let i = 1; i < 8; i++) expect(stations[i] - stations[i - 1]).toBeLessThan(stations[i + 1] - stations[i]);
+  });
+
+  for (const { label, fields } of boards) {
+    const input = inputOf(fields);
+    it(`${label}: the litres take off the roll's own foam, to within a part in twenty of a fine count`, () => {
+      const result = computeCrossSectionVolume(input);
+      const n = 2000;
+      const at = Array.from({ length: n + 1 }, (_, i) => mm((i * RUN) / n));
+      const lost = boardSections(input, at).map((section) => section.area * (1 - (section.rollScale ?? 1)));
+      const fine = simpsonIntegrate(lost, RUN / n);
+      expect(result.tailRollMm3).toBe(tailRollFoam(input, SMOOTH_SURFACE_FADE));
+      expect(result.tailRollMm3).toBeGreaterThan(0);
+      expect(Math.abs(result.tailRollMm3 - fine) / fine).toBeLessThan(0.05);
+    });
+
+    it(`${label}: a rolled station keeps its un-rolled area and draws its heights scaled, the bottom left alone`, () => {
+      const sections = boardSections(input, [mm(RUN / 3), mm(RUN / 2), mm(RUN + 1)]);
+      for (const section of sections.slice(0, 2)) {
+        expect(section.rollScale).toBeLessThan(1);
+        if (!section.result) continue;
+        const half = section.drawn!;
+        expect(Math.max(...half.map((p) => p[1]))).toBeCloseTo(section.thickness * section.rollScale!, 6);
+        expect(half[half.length - 1][1]).toBe(0);
+      }
+      expect(sections[2].rollScale).toBeUndefined();
+    });
+  }
+
+  it("the old rules keep the square end and count no roll", () => {
+    const input = inputOf(boards[0].fields);
+    for (const rule of [HARD_EDGE_SWITCH, HARD_EDGE_FADE, RAIL_CHARACTER_FADE]) {
+      expect(computeCrossSectionVolumeWith(input, rule).tailRollMm3).toBe(0);
+      expect(boardSectionsWith(input, rule, [mm(0)])[0].rollScale).toBeUndefined();
+    }
+  });
+});
+
+describe("a sharp bottom edge opens into a round one along the blend (the founder, 2026-11-05)", () => {
+  const EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+  /** The largest turn between neighbouring points around the tuck, in degrees. */
+  function tuckTurn(half: readonly (readonly [number, number])[]): number {
+    let best = 0;
+    for (let i = EDGE - 16; i <= EDGE + 8; i++) {
+      const a = Math.atan2(half[i][1] - half[i - 1][1], half[i][0] - half[i - 1][0]);
+      const b = Math.atan2(half[i + 1][1] - half[i][1], half[i + 1][0] - half[i][0]);
+      const d = (Math.abs(b - a) * 180) / Math.PI;
+      best = Math.max(best, d > 180 ? 360 - d : d);
+    }
+    return best;
+  }
+  function inputOf(label: string) {
+    const { fields } = phase16SurfaceBoards().find((board) => board.label === label)!;
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  }
+  const zone = (input: ReturnType<typeof inputOf>, side: "tail" | "nose") => {
+    const points = foilStationPoints(input.foil, input.length);
+    return side === "nose"
+      ? [points[2].station, points[3].station]
+      : [hardEdgeBlendsFrom(input.rails, input.length), hardEdgeEndsAt(input.rails, input.length)];
+  };
+  const halfOf = (section: BoardSection) => placedHalfSection(section, section.halfWidth, 0);
+
+  const cases: [string, "tail" | "nose"][] = [
+    ["tucked|shortboard|he-centre-sbt", "nose"],
+    ["tucked|fish|he-centre-sbt", "nose"],
+    ["tucked|shortboard|tail-sbt", "tail"],
+    ["tucked|fish|tail-sbt", "tail"],
+    ["shortboard|asis|hard", "tail"],
+    ["fish|asis|hard", "tail"],
+  ];
+  for (const [label, side] of cases) {
+    it(`${label}: by the blend's middle the corner is gone, where a point-for-point blend still carries one`, () => {
+      const input = inputOf(label);
+      const [from, to] = zone(input, side);
+      const s = mm((from + to) / 2);
+      const [live] = boardSections(input, [s]);
+      const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+      const ends = boardSectionEnds(input, s);
+      const round = ends.base.sharpness === 1 ? ends.tip : ends.base;
+      const own = tuckTurn(halfOf(round));
+      expect(tuckTurn(halfOf(live))).toBeLessThan(own + 4);
+      expect(tuckTurn(halfOf(corner))).toBeGreaterThan(own + 8);
+    });
+
+    it(`${label}: the turn only eases along the blend, from the sharp end to the round`, () => {
+      const input = inputOf(label);
+      const [from, to] = zone(input, side);
+      const fractions = Array.from({ length: 11 }, (_, i) => i / 10).slice(1, -1);
+      const stations = fractions.map((f) => mm(from + (to - from) * f));
+      const turns = boardSections(input, stations).map((section) => tuckTurn(halfOf(section)));
+      const ordered = side === "tail" ? turns : turns;
+      for (let i = 1; i < ordered.length; i++) expect(ordered[i]).toBeLessThan(ordered[i - 1] + 1);
+    });
+  }
+
+  it("two sharp ends stay sharp: a hard tail into a sharp centre is the point blend, as it was", () => {
+    const input = inputOf("tucked|shortboard|he-centre-sbt");
+    const [from, to] = zone(input, "tail");
+    const s = mm((from + to) / 2);
+    const [live] = boardSections(input, [s]);
+    const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+    expect(live.blended).toEqual(corner.blended);
+    expect(live.sharpness).toBe(1);
+  });
+
+  describe("openedFinishedRail", () => {
+    const rails = computeRailBands({ ...DEFAULT_RAIL_BAND_SPEC, center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true } });
+    const roundRails = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+    const sharp = sampledFinishedRail(rails.center.result, rails.center.domed, 200);
+    const round = sampledFinishedRail(roundRails.center.result, roundRails.center.domed, 200);
+
+    it("at share 0 it is the sharp half", () => {
+      expect(openedFinishedRail(sharp, round, 0)).toEqual(sharp);
+    });
+
+    for (const share of [0.02, 0.1, 0.25, 0.5, 0.75, 1]) {
+      it(`at share ${share} the edge point is on the bottom, the deck hasn't moved, and nothing folds`, () => {
+        const opened = openedFinishedRail(sharp, round, share);
+        expect(opened).toHaveLength(sharp.length);
+        expect(opened[EDGE][1]).toBe(0);
+        expect(opened[EDGE][0]).toBeLessThan(sharp[EDGE][0]);
+        expect(opened.slice(0, SECTION_POINTS.deck)).toEqual(sharp.slice(0, SECTION_POINTS.deck));
+        for (let i = EDGE + 1; i < opened.length; i++) {
+          expect(opened[i][1]).toBe(0);
+          expect(opened[i][0]).toBeLessThanOrEqual(opened[i - 1][0] + 1e-9);
+        }
+        for (let i = SECTION_POINTS.deck; i <= EDGE; i++) expect(opened[i][1]).toBeLessThanOrEqual(opened[i - 1][1] + 1e-9);
+        expect(opened[opened.length - 1]).toEqual(sharp[sharp.length - 1]);
+      });
+    }
+
+    it("a wider share is a wider radius, and takes a little more foam off", () => {
+      const areas = [0.1, 0.25, 0.5, 1].map((share) => sampledSectionArea(openedFinishedRail(sharp, round, share)));
+      for (let i = 1; i < areas.length; i++) expect(areas[i]).toBeLessThan(areas[i - 1]);
+      expect(areas[0]).toBeLessThan(sampledSectionArea(sharp));
+    });
+  });
+});
+
+describe("a domed deck's rail is built from its actual thickness (the founder, 2026-11-05)", () => {
+  const STEP = inchesToMm(1 / 8);
+  function inputOf(fields: DesignSummaryFields) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  }
+  const boards = phase16SurfaceBoards();
+  const midlength = boards.find((board) => board.label === "midlength|asis|hard")!.fields;
+  /** Another domed deck: the Shortboard with its Deck Profile taken down, so the rule isn't proven on one board. */
+  const domedShortboard = (() => {
+    const { fields } = boards.find((board) => board.label === "shortboard|asis|hard")!;
+    const down = (spec: RailBandSpec["center"]) => ({ ...spec, deckPercent: 88 });
+    return { ...fields, rails: { ...fields.rails, tail: down(fields.rails.tail), center: down(fields.rails.center), nose: down(fields.rails.nose) } };
+  })();
+
+  /** The largest bend along the board, in mm between neighbouring steps of 1/8": the deck 1", 2" and 3" in, and the rail. */
+  function largestBend(sections: BoardSection[]): number {
+    const halves = sections.map((section) => placedHalfSection(section, section.halfWidth, 0));
+    const height = (half: [number, number][], y: number) => {
+      const deck = half.slice(0, SECTION_POINTS.deck);
+      for (let i = 1; i < deck.length; i++) {
+        if (y <= deck[i][0]) {
+          const f = (y - deck[i - 1][0]) / (deck[i][0] - deck[i - 1][0] || 1);
+          return deck[i - 1][1] + (deck[i][1] - deck[i - 1][1]) * f;
+        }
+      }
+      return deck[deck.length - 1][1];
+    };
+    const lines = [
+      ...[1, 2, 3].map((inches) => sections.map((section, i) => section.thickness - height(halves[i], section.halfWidth - inchesToMm(inches)))),
+      halves.map((half) => half[SECTION_POINTS.deck - 1][1]),
+    ];
+    return Math.max(...lines.flatMap((line) => line.slice(1, -1).map((v, i) => Math.abs(line[i + 2] - 2 * v + line[i]))));
+  }
+
+  for (const [name, fields] of [["the Mid-length", midlength], ["a domed Shortboard", domedShortboard]] as const) {
+    it(`${name}: the rail runs smooth along the whole board, where the rounded thickness stepped`, () => {
+      const input = inputOf(fields);
+      const stations: Mm[] = [];
+      for (let s: number = inchesToMm(4); s <= input.length - inchesToMm(4); s += STEP) stations.push(mm(s));
+      expect(largestBend(boardSections(input, stations))).toBeLessThan(0.06);
+      expect(largestBend(boardSectionsWith(input, RAIL_CHARACTER_FADE, stations))).toBeGreaterThan(0.4);
+    }, 60_000);
+
+    it(`${name}: what a shaper reads stays on the 1/16", and the built section reads the actual thickness`, () => {
+      const input = inputOf(fields);
+      const output = computeRailBands(input.rails);
+      const points = foilStationPoints(input.foil, input.length);
+      const at = [points[1].station, points[2].station, points[3].station];
+      const live = boardSections(input, at);
+      const named = boardSectionsWith(input, RAIL_CHARACTER_FADE, at);
+      for (const [i, key] of (["tail", "center", "nose"] as const).entries()) {
+        const read = output[key];
+        expect(read.domed).toBe(true);
+        expect(read.railThicknessClamped).toBe(roundToSixteenthInch(read.railThicknessClamped));
+        expect(read.result.thickness).toBe(read.railThicknessClamped);
+        expect(named[i].result!.thickness).toBe(read.railThicknessClamped);
+        const deck = effectiveDeckPercent(input.rails[key].deckPercent);
+        expect(live[i].result!.thickness).toBe((live[i].thickness * deck) / 100);
+      }
+    });
+  }
+
+  it("a flat deck is the same rail either way, to the last digit", () => {
+    const rounded: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, rail: "sixteenths" } };
+    const input = inputOf(boards.find((board) => board.label === "shortboard|asis|hard")!.fields);
+    expect(Object.is(computeCrossSectionVolume(input).volumeMm3, computeCrossSectionVolumeWith(input, rounded).volumeMm3)).toBe(true);
   });
 });

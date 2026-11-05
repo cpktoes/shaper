@@ -45,6 +45,9 @@ import type { Point2D } from "./board";
 import {
   type HalfSectionPoints,
   blendFinishedRails,
+  finishedRailReach,
+  fittedFinishedRail,
+  openedFinishedRail,
   railBlendArea,
   sampledFinishedRail,
   sampledSectionArea,
@@ -545,6 +548,13 @@ export interface CrossSectionVolumeInput {
    * three rail-band anchors either way (their positions depend on length only).
    */
   thicknessAt?: (station: Mm) => Mm;
+  /**
+   * How far the stepped outline stands inside (+) or outside (−) the wing's meeting line at a station (Phase 16,
+   * D-37, `wingShareAt` in wings.ts): `crossSectionFoam` sets it only on a winged outline. The live rule builds
+   * each station near a wing at `halfWidthAt` plus this, then moves the rail onto the outline (`wingStepHalf`); the
+   * old rules never read it.
+   */
+  wingShareAt?: (station: Mm) => Mm;
 }
 
 /** `stationAreas` are full (both-rails) cross-section areas in square millimetres, nose-to-tail —
@@ -561,6 +571,9 @@ export interface CrossSectionVolumeResult {
    * (quick 261102-gec plan 03, PV5): `stationAreas[i] + stationBlendAreas[i]` is that station's cut area.
    * Exposed for auditing, as `stationAreas` is. */
   stationBlendAreas: number[];
+  /** The foam the tail's roll takes off the whole board, in cubic millimetres (D-38, `tailRollFoam`): already out of
+   * `volumeMm3`, and not in `stationAreas`. 0 under a rule with a square tail. */
+  tailRollMm3: number;
 }
 
 /** Linear interpolation between the three anchor sections (tail 12", centre, nose 12"), holding
@@ -630,6 +643,16 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * full (both-rails) finished cross-section in square millimetres and `blendArea` the foam the finished
  * rail's blends take off it, both rails — `stationAreas` and `stationBlendAreas` of
  * `computeCrossSectionVolume`, element for element.
+ *
+ * `drawn` is the half the 3D board draws whenever it is not `blended ?? sampledFinishedRail(result, domed,
+ * halfWidth)`: a rail fitted into a station narrower than its own bands (D-34, `fittedFinishedRail`), or near a
+ * wing (D-37), the section built on the deck's meeting line with its rail moved onto the outline (`wingStepHalf`).
+ * The stepped outline stays `halfWidth`, so the drawn half's outermost point is TEMPLATE's outline; `result` and
+ * `blended` are the section built on the meeting line.
+ *
+ * `rollScale` is the share of its height a station in the tail's last inch keeps (D-38, `tailRollScale`), absent
+ * clear of it; `drawn` is then already scaled by it. `area` stays the un-rolled section's, because the roll's foam is
+ * counted once, exactly, off the whole board (`tailRollFoam`).
  */
 export interface BoardSection {
   station: Mm;
@@ -637,6 +660,8 @@ export interface BoardSection {
   thickness: Mm;
   result: RailSectionResult | null;
   blended?: HalfSectionPoints;
+  drawn?: HalfSectionPoints;
+  rollScale?: number;
   tipWeight: number;
   hardWeight: number;
   sharpness: number;
@@ -829,6 +854,67 @@ export interface StationRailCharacter {
  */
 export interface RailCharacterRule {
   at(station: Mm, nearest: RailSectionKey, anchors: RailAnchorStations, rails: RailBandSpec, length: Mm): StationRailCharacter;
+  /** How the section fits the outline (plan 16-16); absent reads `OLD_SURFACE_FIT`. */
+  fit?: SurfaceFit;
+}
+
+/**
+ * How a rail-character rule fits the section to the outline (Phase 16, plan 16-16). `wings`: `"shift"` moves the
+ * whole section in with the outline behind a wing; `"share"` builds the stations either side of a wing on a deck
+ * line the two sides share and moves only the rail onto the outline (D-37). `tips`: `"clip"` cuts a rail wider than its station off at the stringer, so the
+ * stringer sinks under the side profile's deck near a tip; `"fit"` draws it into its room and the litres count
+ * what is drawn (D-34). `tail`: `"square"` ends the deck at the tail's full thickness; `"roll"` carries the rail
+ * around the end, the deck rolling over into the tail's edge (D-38). `tuck`: `"corner"` blends a sharp bottom edge
+ * into a round one point for point, a corner in every slice, shrinking; `"open"` opens the corner into a radius
+ * that grows along the blend (`openedFinishedRail`). `rail`: on a domed deck, `"sixteenths"` builds each station's
+ * rail from its thickness rounded to the nearest 1/16", which steps along the board; `"exact"` builds it from the
+ * thickness itself, so the rail runs smooth. RAILS, DATA and the order form read `computeRailBands`, which keeps
+ * the rounding, whichever rule the sections read.
+ */
+export interface SurfaceFit {
+  wings: "shift" | "share";
+  tips: "clip" | "fit";
+  tail: "square" | "roll";
+  tuck: "corner" | "open";
+  rail: "sixteenths" | "exact";
+}
+
+/** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off, the deck
+ * runs square to the tail's end, a sharp edge blends as a corner and a domed rail steps by sixteenths. */
+export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square", tuck: "corner", rail: "sixteenths" };
+
+/** How much of the tip's thickness the tail's roll takes off at the very end (D-38, the founder's pick). */
+export const TAIL_ROLL_SHARE = 1 / 3;
+/** How far in from the tail end the roll runs, in inches (D-38, the founder's pick). */
+export const TAIL_ROLL_RUN_IN = 1;
+/** The panels the litres integrate the roll's foam over (`tailRollFoam`). */
+const TAIL_ROLL_PANELS = 8;
+
+/**
+ * How far the deck has rolled down at a station in the tail's last inch (Phase 16, D-38, the founder: "The rail at the
+ * tail of the board can be carried around the tip, so there's usually a pretty mild rounding of the deck line for all
+ * tail types."), in millimetres: a quarter ellipse, `TAIL_ROLL_SHARE` of the tip's thickness tall and
+ * `TAIL_ROLL_RUN_IN` long, level with the deck where it starts and upright where it meets the tail's edge. 0 at
+ * and ahead of the end of the run.
+ */
+export function tailRollDrop(station: Mm, tipThickness: Mm): number {
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  if (station >= run) return 0;
+  const t = 1 - station / run;
+  return tipThickness * TAIL_ROLL_SHARE * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
+}
+
+/** The share of its height a station keeps under the tail's roll: 1 clear of it. Every height scales alike, so the
+ * bottom stays on the rocker and the rail keeps its shape. */
+export function tailRollScale(station: Mm, thickness: Mm, tipThickness: Mm): number {
+  return Math.max(0, 1 - tailRollDrop(station, tipThickness) / thickness);
+}
+
+/** `panels + 1` stations through the tail's roll, even in the ellipse's own angle, so they crowd where it turns
+ * fastest: the tail end first, the end of the run last. The 3D board's rings and the litres' count both take them. */
+export function tailRollStations(panels: number): Mm[] {
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  return Array.from({ length: panels + 1 }, (_, k) => mm(run * (1 - Math.cos((k / panels) * (Math.PI / 2)))));
 }
 
 /**
@@ -869,8 +955,47 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
   },
 };
 
+/**
+ * The live rule (Phase 16, D-33, D-34 and D-37, the founder: "Wings should be steps in the outline. The Deck should
+ * remain smooth across the wings location.", "Let's not do that little flip." and "they should share the blend"):
+ * `RAIL_CHARACTER_FADE`'s own rail character, with the stations either side of a wing built on the deck line the
+ * two sides share and only their rails moved onto the outline (`wingShareAt`, `wingStepHalf`), a rail wider than its
+ * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
+ * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`), and
+ * a domed deck's rail built from its thickness itself, not rounded to a sixteenth. `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
+ * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
+ */
+export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
+  at: RAIL_CHARACTER_FADE.at,
+  fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open", rail: "exact" },
+};
+
 /** The rule the live litres and the 3D board use. */
-const LIVE_SECTION_RULE: SectionRule = RAIL_CHARACTER_FADE;
+const LIVE_SECTION_RULE: SectionRule = SMOOTH_SURFACE_FADE;
+
+/**
+ * A half-section drawn at `room` (the width on the wing's meeting line) with its rail moved onto the outline by `move`:
+ * inward behind a wing (`move` above 0), outward ahead of it (below 0), straight up into the deck (D-37, the founder's
+ * red line: "Blend the rail up to the deck with the same radius."). A point `u = room − y` in from the meeting line's
+ * rail moves by `move × (1 − s(u / U))`, where `s(t) = t²(3 − 2t)` held to [0, 1] and
+ * `U = min(room, max(deckMark2, 2 × |move|))`. Right at the rail the ease is level, so the rail's own tight curve moves
+ * whole; the move is gone by Deck Mark 2 (never in under twice the move, or the rail would fold), and inside that
+ * the deck is the meeting line's. Only distances across change, so the flat bottom stays flat and the tuck moves with
+ * the rail. The stringer point never moves. Where `1.5 × |move| ≥ U` — a station barely wider than the move, where
+ * the ease itself would fold — the whole half is scaled evenly into `room − move` instead.
+ */
+export function wingStepHalf(half: HalfSectionPoints, room: number, move: number, deckMark2: Mm): HalfSectionPoints {
+  const reach = Math.min(room, Math.max(deckMark2, 2 * Math.abs(move)));
+  if (1.5 * Math.abs(move) >= reach) {
+    const k = (room - move) / room;
+    return half.map(([y, h]) => [y * k, h]);
+  }
+  return half.map(([y, h]) => {
+    const t = (room - y) / reach;
+    const eased = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+    return [y - move * (1 - eased), h];
+  });
+}
 
 /**
  * An old hard-edge rule read in the rail-character terms, exactly as it worked: both characters take the
@@ -942,16 +1067,28 @@ export function boardSectionsWith(
 
   const at = stations ?? crossSectionStations(length, input.cutStation ?? mm(0));
   const sections: BoardSection[] = [];
+  // An old rule never reads a fit (Phase 14 D-25's precedent): it runs today's arithmetic, wings and all.
+  const fit = "at" in rule ? (rule.fit ?? OLD_SURFACE_FIT) : OLD_SURFACE_FIT;
+  const tipThickness = thicknessAt(mm(0));
 
   for (const station of at) {
-    const halfWidth = halfWidthAt(station);
+    const foam = halfWidthAt(station);
     const thickness = thicknessAt(station);
+    // Near a wing (D-37) the section is built on the deck's meeting line; 0 everywhere else, and then every line
+    // below runs exactly as it always has. A station too narrow to stand on the line stays on its outline.
+    const offLine = fit.wings === "share" && input.wingShareAt && foam > 0 ? input.wingShareAt(station) : 0;
+    const move = foam + offLine > 0 ? offLine : 0;
+    const room = move !== 0 ? mm(foam + move) : foam;
+    // In the tail's last inch the deck rolls over into the tail's edge (D-38); 1 everywhere else.
+    const keep = fit.tail === "roll" ? tailRollScale(station, thickness, tipThickness) : 1;
+    const rollField = keep < 1 ? { rollScale: keep } : {};
 
-    if (halfWidth === 0) {
+    if (room === 0) {
       sections.push({
         station,
-        halfWidth,
+        halfWidth: foam,
         thickness,
+        ...rollField,
         result: null,
         tipWeight: 0,
         hardWeight: 0,
@@ -1011,8 +1148,8 @@ export function boardSectionsWith(
     const sharpness = sharedWeight(isSharp(base), isSharp(tip), tipWeight);
 
     const domed = deckPercent < 100;
-    const railThicknessClamped = roundToSixteenthInch(mm((thickness * deckPercent) / 100));
-    const thicknessEff = domed ? railThicknessClamped : thickness;
+    const railThickness = mm((thickness * deckPercent) / 100);
+    const thicknessEff = !domed ? thickness : fit.rail === "exact" ? railThickness : roundToSixteenthInch(railThickness);
 
     const sectionInput = (character: RailCharacter): ComputeRailSectionInput => ({
       thickness: thicknessEff,
@@ -1030,8 +1167,39 @@ export function boardSectionsWith(
     const finished = (result: RailSectionResult) => {
       const profile = buildRailProfile(result);
       const profilePairs: [number, number][] = profile.map((p) => [p.x, p.y]);
-      const blendBothRails = 2 * railBlendArea(sectionFinishedRail(result, domed));
-      return { area: stationArea(profilePairs, thickness, halfWidth) - blendBothRails, blendArea: blendBothRails };
+      const rail = sectionFinishedRail(result, domed);
+      const blendBothRails = 2 * railBlendArea(rail);
+      // Whether this rail is wider than the room it has, and the live rule draws it into that room (D-34).
+      const fits = fit.tips === "fit" && room < finishedRailReach(rail, thickness);
+      return { area: stationArea(profilePairs, thickness, room) - blendBothRails, blendArea: blendBothRails, fits };
+    };
+    // One end's half, and the end's exact area under it (D-34, the level variant): the fitted half's area less the
+    // cut-off half's lifts the exact area; a rail with room is sampled as it always was, the lift exactly nothing.
+    const endHalf = (result: RailSectionResult, end: { area: number; fits: boolean }) => {
+      const sampled = sampledFinishedRail(result, domed, room);
+      if (!end.fits) return { half: sampled, exact: end.area };
+      const half = fittedFinishedRail(result, domed, room);
+      return { half, exact: end.area + (sampledSectionArea(half) - sampledSectionArea(sampled)) };
+    };
+
+    // The rail moved onto the outline near a wing (D-37): the half moved by `wingStepHalf`, the foam that adds to or
+    // takes off the built area, and the stepped foam as the section's width (so the outline stays TEMPLATE's).
+    // `rollReach` is Deck Mark 2, carried through a blend by the blend's own weight so the roll never jumps.
+    const movedOn = (built: BoardSection, half: HalfSectionPoints, rollReach: Mm): BoardSection => {
+      const drawn = wingStepHalf(half, room, move, rollReach);
+      return {
+        ...built,
+        halfWidth: foam,
+        drawn,
+        area: built.area + (sampledSectionArea(drawn) - sampledSectionArea(half)),
+      };
+    };
+
+    // The tail's roll on a built section (D-38): whatever it draws, every height scaled, the bottom left alone.
+    const rolled = (built: BoardSection, half: HalfSectionPoints): BoardSection => {
+      if (keep === 1) return built;
+      const drawn = (built.drawn ?? half).map(([y, h]): [number, number] => [y, h * keep]);
+      return { ...built, ...rollField, drawn };
     };
 
     if (tipWeight > 0 && tipWeight < 1) {
@@ -1043,16 +1211,25 @@ export function boardSectionsWith(
       const tipResult = computeRailSection(sectionInput(tip));
       const baseArea = finished(baseResult);
       const tipArea = finished(tipResult);
-      const baseHalf = sampledFinishedRail(baseResult, domed, halfWidth);
-      const tipHalf = sampledFinishedRail(tipResult, domed, halfWidth);
-      const blended = blendFinishedRails(baseHalf, tipHalf, tipWeight);
-      const area = fadingSectionArea(baseArea.area, tipArea.area, baseHalf, tipHalf, blended, tipWeight);
+      const baseFinal = endHalf(baseResult, baseArea);
+      const tipFinal = endHalf(tipResult, tipArea);
+      // A sharp edge blending into a round one opens into a radius (the founder 2026-11-05): that end's half gains the
+      // radius and its exact area the change, the level variant again. Two sharp ends, or two round, stay as they are.
+      const opened = (end: typeof baseFinal, other: typeof baseFinal, share: number) => {
+        const half = openedFinishedRail(end.half, other.half, share);
+        return { half, exact: end.exact + (sampledSectionArea(half) - sampledSectionArea(end.half)) };
+      };
+      const opening = fit.tuck === "open" && isSharp(base) !== isSharp(tip);
+      const baseEnd = opening && isSharp(base) ? opened(baseFinal, tipFinal, tipWeight) : baseFinal;
+      const tipEnd = opening && isSharp(tip) ? opened(tipFinal, baseFinal, 1 - tipWeight) : tipFinal;
+      const blended = blendFinishedRails(baseEnd.half, tipEnd.half, tipWeight);
+      const area = fadingSectionArea(baseEnd.exact, tipEnd.exact, baseEnd.half, tipEnd.half, blended, tipWeight);
       // The cut area (finished plus blends) has no ring of its own; it is the two cuts blended by the weight,
       // so `area + blendArea` stays the station's cut area as everywhere else.
       const cut = (1 - tipWeight) * (baseArea.area + baseArea.blendArea) + tipWeight * (tipArea.area + tipArea.blendArea);
-      sections.push({
+      const section: BoardSection = {
         station,
-        halfWidth,
+        halfWidth: foam,
         thickness,
         result: baseResult,
         blended,
@@ -1063,17 +1240,19 @@ export function boardSectionsWith(
         sharpBottomTuck: base.sharpBottomTuck,
         area,
         blendArea: cut - area,
-      });
+      };
+      const rollReach = mm((1 - tipWeight) * baseResult.deckMark2 + tipWeight * tipResult.deckMark2);
+      sections.push(rolled(move !== 0 ? movedOn(section, blended, rollReach) : section, blended));
       continue;
     }
 
     // All base or all tip: one section, the arithmetic exactly as before Phase 16.
     const only = tipWeight === 1 ? tip : base;
     const result = computeRailSection(sectionInput(only));
-    const { area, blendArea } = finished(result);
-    sections.push({
+    const ended = finished(result);
+    const section: BoardSection = {
       station,
-      halfWidth,
+      halfWidth: foam,
       thickness,
       result,
       tipWeight,
@@ -1081,9 +1260,16 @@ export function boardSectionsWith(
       sharpness,
       domed,
       sharpBottomTuck: only.sharpBottomTuck,
-      area,
-      blendArea,
-    });
+      area: ended.area,
+      blendArea: ended.blendArea,
+    };
+    if (move === 0 && !ended.fits && keep === 1) {
+      sections.push(section);
+      continue;
+    }
+    const { half, exact } = endHalf(result, ended);
+    const counted = ended.fits ? { ...section, drawn: half, area: exact } : section;
+    sections.push(rolled(move !== 0 ? movedOn(counted, half, result.deckMark2) : counted, half));
   }
   return sections;
 }
@@ -1103,11 +1289,12 @@ export function boardSectionEnds(
   station: Mm,
 ): { base: BoardSection; tip: BoardSection; tipWeight: number } {
   const held = (tipWeight: number): RailCharacterRule => ({
-    at: (...args) => ({ ...RAIL_CHARACTER_FADE.at(...args), tipWeight }),
+    ...SMOOTH_SURFACE_FADE,
+    at: (...args) => ({ ...SMOOTH_SURFACE_FADE.at(...args), tipWeight }),
   });
   const [base] = boardSectionsWith(input, held(0), [station]);
   const [tip] = boardSectionsWith(input, held(1), [station]);
-  const [live] = boardSectionsWith(input, RAIL_CHARACTER_FADE, [station]);
+  const [live] = boardSectionsWith(input, SMOOTH_SURFACE_FADE, [station]);
   return { base, tip, tipWeight: live.tipWeight };
 }
 
@@ -1158,6 +1345,45 @@ export function boardSectionEnds(
  * as that base (PV3). This makes the integrated volume truthful to the board actually drawn, station by
  * station, rather than to a canned profile shape.
  *
+ * WINGS (Phase 16, D-33 and D-37, the founder: "Wings should be steps in the outline. The Deck should remain smooth
+ * across the wings location." and "they should share the blend"). A wing is a step in the outline only. The deck
+ * doesn't step: its rail stands on a meeting line (`wingShareAt`) that eases from the outline ahead of the wing to the
+ * outline behind it, 3" each way, half and half at the wing. Each station in that stretch is built on the line, and its
+ * rail then moves onto the real outline and rolls straight up into the deck (`wingStepHalf`): behind the wing the rail
+ * stands thicker than its own, ahead of it thinner, and they meet at the wing. The flat bottom stays flat and the tuck
+ * moves with the rail. The litres count that drawn half, as D-31 does a blend: the station's exact area plus the
+ * drawn half's area less the half's it was moved from. The old rules shift the whole section in with the outline and
+ * are kept by name for the pins (`OLD_SURFACE_FIT`).
+ *
+ * TIPS (Phase 16, D-34, the founder 2026-11-04: "Let's not do that little flip."; Q3: VOLUME counts the foam the
+ * fixed tips add). Near a tip a station can be narrower than its rail's own bands. The live rule draws that rail
+ * into its room instead of cutting it off at the stringer (`fittedFinishedRail`), so the stringer stays on the side
+ * profile's deck and bottom right into the tip, and the litres count the ring drawn, as D-31 does a blend: the
+ * end's exact area plus the fitted half's area less the cut-off half's, exactly 0 where the rail has room. The old
+ * rules keep the cut, by name for the pins (`OLD_SURFACE_FIT`).
+ *
+ * A DOMED DECK'S RAIL (the founder, 2026-11-05, of the Mid-length: "all wavy and I do not like it"). RAILS reads the
+ * rail-side thickness to the nearest 1/16", which is how a shaper marks it, but built station by station that rounding
+ * stepped the rail about 25 times along a domed board. So the live rule builds the sections, and with them the
+ * litres and the 3D board, from the thickness itself; the figures a shaper reads keep the rounding
+ * (`computeRailBands`). The old rules keep the steps, by name for the pins (`OLD_SURFACE_FIT`).
+ *
+ * A SHARP EDGE INTO A ROUND ONE (the founder, 2026-11-05: "make sure a sharp tuck can blend into a round tuck nicely").
+ * Where a blend runs between a sharp bottom edge (a hard edge or a Sharp Bottom Tuck) and a round one, a point-for-point
+ * blend keeps a real corner in every slice with its angle shrinking, a small kink along the board. So the sharp end's
+ * corner opens first (`openedFinishedRail`): it gains a radius that grows with the round rail's share, and that half is
+ * what blends. The litres count it the level way, the end's exact area plus the opened ring's less the sharp ring's. Two
+ * sharp ends blend as they always did, so a sharp edge stays sharp all the way between them. The old rules keep the
+ * corner (`OLD_SURFACE_FIT`).
+ *
+ * THE TAIL'S ROLL (Phase 16, D-38, the founder's pick: "Medium: 1/3 over 1""). The rail is carried around the tail's
+ * end: over the last inch every height of the section scales down along a quarter ellipse, a third of the tip's
+ * thickness at the end (`tailRollDrop`), so the deck rolls over into the tail's edge and the bottom stays on the
+ * rocker. The 51 stations are too far apart to see that: station 0 would stand for a whole first panel on a tail with
+ * width, and a tail that comes to a point has no station in the roll at all. So each section's `area` is left un-rolled
+ * and the roll's own foam comes off the whole board, integrated finely through the ellipse (`tailRollFoam`), so
+ * the litres count what the 3D board draws (D-31). The old rules keep the square end (`OLD_SURFACE_FIT`).
+ *
  * TAIL CUT (quick 261103-gcm, the founder, 2026-11-03: the litres count the tail the board is drawn
  * with). `halfWidthAt` is the foam actually there, so a station inside a swallow's notch reads the foam
  * on one side of the notch and a station inside a diamond's V reads the V's own width. A swallow's tail
@@ -1175,6 +1401,20 @@ export function boardSectionEnds(
  */
 export function computeCrossSectionVolume(input: CrossSectionVolumeInput): CrossSectionVolumeResult {
   return computeCrossSectionVolumeWith(input, LIVE_SECTION_RULE);
+}
+
+/**
+ * The foam the tail's roll takes off the whole board, in cubic millimetres (D-38): each station's area times the
+ * share of height it loses, Simpson-integrated through the run in the ellipse's own angle (`θ`, with
+ * `station = run (1 − cos θ)`), which keeps the integrand smooth where the ellipse stands upright at the tail end.
+ */
+export function tailRollFoam(input: CrossSectionVolumeInput, rule: SectionRule): number {
+  const stations = tailRollStations(TAIL_ROLL_PANELS);
+  const run = inchesToMm(TAIL_ROLL_RUN_IN);
+  const h = Math.PI / 2 / TAIL_ROLL_PANELS;
+  const sections = boardSectionsWith(input, rule, stations);
+  const lost = sections.map((section, k) => section.area * (1 - (section.rollScale ?? 1)) * run * Math.sin(k * h));
+  return simpsonIntegrate(lost, h);
 }
 
 /** `computeCrossSectionVolume` with the section rule named: Simpson over `boardSectionsWith(input, rule)`. */
@@ -1199,6 +1439,8 @@ export function computeCrossSectionVolumeWith(
   } else {
     volumeMm3 = simpsonIntegrate(stationAreas, length / SIMPSON_PANEL_COUNT);
   }
+  const tailRollMm3 = "at" in rule && rule.fit?.tail === "roll" ? tailRollFoam(input, rule) : 0;
+  if (tailRollMm3 !== 0) volumeMm3 -= tailRollMm3;
 
   return {
     volumeLitres: cubicMmToLitres(volumeMm3),
@@ -1207,5 +1449,6 @@ export function computeCrossSectionVolumeWith(
     stations,
     stationAreas,
     stationBlendAreas,
+    tailRollMm3,
   };
 }

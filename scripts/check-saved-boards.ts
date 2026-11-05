@@ -81,6 +81,19 @@
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
  * a snapshot, a user id or the connection string, and it never changes the exit code.
  *
+ * `--surface-report` (Phase 16 D-33 to D-38, the 14 D-18 report rule; read-only, board ids, wing counts, tail kinds
+ * and litres only): the founder's check before go-live 2 of what every saved board will read. It covers every
+ * board, because the tail's roll reaches them all, where --rail-character-report lists only the boards the whole
+ * rail's fade reaches. For each board it prints the wing count and tail kind, the litres the site reads today
+ * (`HARD_EDGE_FADE`) and will read (the live rule), the whole move, and this plan's share of it (against
+ * `RAIL_CHARACTER_FADE`), worked out in lib/models/surface-report.ts (`surfaceReportLines`):
+ *   surface report: N saved boards; k open[, d did not open]; m whose litres move
+ *   <id>: <no wings | 1 wing | 2 wings> · <tail kind> tail — <before> → <after> L (<move>, this plan <share>)
+ *                                                                              one per such board, the largest move first
+ *   largest move: <id>, <move> L                                              (or: largest move: none)
+ * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
+ * a snapshot, a user id or the connection string, and it never changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -100,6 +113,8 @@
  *   accepts (Phase 14's go-lives found the `trap` form refused); the `; rm -f` ending deletes the pulled file
  *   whether or not the report succeeds:
  *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rail-character-report; rm -f .env.production.pull
+ *   production, the surface report — the founder only (go-live 2, plan 16-13), the same form:
+ *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --surface-report; rm -f .env.production.pull
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -152,6 +167,7 @@ async function main(): Promise<void> {
   const { hardEdgeReportLines } = await import("../lib/models/hard-edge-report");
   type HardEdgeReportRow = import("../lib/models/hard-edge-report").HardEdgeReportRow;
   const { railCharacterReportLines } = await import("../lib/models/rail-character-report");
+  const { surfaceReportLines } = await import("../lib/models/surface-report");
 
   type Mm = import("../lib/geometry/units").Mm;
   type TipStyle = import("../lib/geometry/blank").TipStyle;
@@ -165,6 +181,7 @@ async function main(): Promise<void> {
   const rackReportFlag = process.argv.includes("--rack-report");
   const hardEdgeReportFlag = process.argv.includes("--hard-edge-report");
   const railCharacterReportFlag = process.argv.includes("--rail-character-report");
+  const surfaceReportFlag = process.argv.includes("--surface-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
@@ -181,7 +198,7 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
-  // --hard-edge-report (Phase 16 D-20) and --rail-character-report (D-32): each board's id and its opened fields
+  // --hard-edge-report (Phase 16 D-20), --rail-character-report (D-32) and --surface-report (D-33, D-34): each board's id and its opened fields
   // (null when it did not open) — the one collection both reports read.
   const hardEdgeRows: HardEdgeReportRow[] = [];
 
@@ -340,6 +357,9 @@ async function main(): Promise<void> {
 
   // --rail-character-report (Phase 16 D-32): ids, settings and litres only; never changes the exit code.
   if (railCharacterReportFlag) for (const line of railCharacterReportLines(hardEdgeRows)) console.log(line);
+
+  // --surface-report (Phase 16 D-33 to D-38): ids, wing counts, tail kinds and litres only; never changes the exit code.
+  if (surfaceReportFlag) for (const line of surfaceReportLines(hardEdgeRows)) console.log(line);
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);

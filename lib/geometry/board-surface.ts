@@ -13,24 +13,33 @@
  *
  * 1. `sampledFinishedRail` (finished-rail.ts) gives the station's finished rail with its rail at the
  *    section's half-width from the stringer: carried flat along the deck and the bottom if it starts
- *    outboard of the stringer (exactly the closure the litres assume), cut at the stringer if it starts
- *    inboard — never squeezed — and split into deck, rail and bottom runs, each resampled by arc length to
- *    a fixed count (`SURFACE_POINTS`), so the bottom edge — a hard edge's corner, a Sharp Bottom Tuck's
- *    corner — is always the same ring index.
+ *    outboard of the stringer (exactly the closure the litres assume), and split into deck, rail and bottom
+ *    runs, each resampled by arc length to a fixed count (`SURFACE_POINTS`), so the bottom edge — a hard edge's
+ *    corner, a Sharp Bottom Tuck's corner — is always the same ring index. Where the rail starts inboard of the
+ *    stringer (a station narrower than its rail's bands, near a tip) the section carries a ring drawn into its
+ *    room (`BoardSection.drawn`, D-34), so the stringer stays on the side profile.
  * 2. While a tip's rail blends into the centre's (the tail's between Tail Rail Blends From and Ends At, the
  *    nose's from the centre to the nose 12" mark, D-32), the section itself carries the ring
  *    (`BoardSection.blended`): the two end rails' halves sampled alike and blended point for point by the
  *    tip's weight (`blendFinishedRails`, D-20/D-27) — the very ring the litres count (D-31) — and how sharp
- *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here.
+ *    its bottom edge is drawn (`BoardSection.sharpness`). Nothing is blended here. Near a wing (D-37) the
+ *    section carries its ring too (`BoardSection.drawn`): built on the deck line the two sides share with only
+ *    its rail moved onto the outline, so the deck and the flat bottom run smooth across the wing; and rings stand at
+ *    each wing's own step and through the shared stretch (`surfaceStations`), so the outline steps where TEMPLATE
+ *    does.
  * 3. Inside a swallow's notch the half is moved out to stand on the notch's wall (`inner`): the rail lands
  *    on the drawn curve (`outer`), the inside edge on the wall. Everywhere else `inner` is the stringer, 0.
  * 4. The half is mirrored to the other rail. Points on the stringer are shared by both sides, so the deck
  *    is one surface across the stringer.
  *
- * The tips (research Pattern 3): inside a swallow's notch each station is two pieces, each from the notch's
- * square wall out to the rail, the two walls meeting along one shared edge at the crotch; a diamond's V is
- * ordinary foam narrowing to nothing at its tip; a station with no foam is one point; a tail end with width
- * (a square or squash tail) is closed with a flat cap.
+ * The tips (research Pattern 3, D-34): inside a swallow's notch each station is two pieces, each from the
+ * notch's square wall out to the rail, the two walls meeting along one shared edge at the crotch; a diamond's V
+ * is ordinary foam narrowing to nothing at its tip; a station with no foam is one edge from the bottom to the deck
+ * at the outline's own point, so a tip ends on the side profile from the side and on the outline's point from
+ * above, with no cap and no slice (the founder: "Let's not do that little flip."); a tail end with width (a square
+ * or squash tail) is closed with a flat cap. On every tail the rail is carried around the end (D-38): over the last
+ * inch the section's heights roll down (`tailRollDrop`), so the deck rolls over into the tail's edge, and rings crowd
+ * through the roll to draw it.
  *
  * Pure (CLAUDE.md Rule 1): no React, browser, database or `three` import.
  */
@@ -47,7 +56,9 @@ import {
   boardSections,
   crossSectionStations,
   railCharacterDifferences,
+  tailRollStations,
 } from "./volume";
+import { WING_HAIR_MM, wingShareSpan, wingStepShape } from "./wings";
 
 /** A point of the surface, in millimetres, in Shape3D's axes (x along, y across, z up). */
 export type Vec3 = readonly [number, number, number];
@@ -121,6 +132,12 @@ export interface BoardSurface {
 
 type P2 = [number, number];
 
+/** Rings each way through the stretch a wing's two sides share (D-37), so its short ease isn't straddled. */
+const WING_SHARE_RINGS = 12;
+
+/** Rings through the tail's roll (D-38), enough that its curve reads as one curve. */
+const TAIL_ROLL_RINGS = 14;
+
 /** Stations closer than this are one station. */
 const SAME_STATION_MM = 1e-6;
 
@@ -134,7 +151,9 @@ function assertFinite(field: string, value: number, station: number): void {
  * Where the surface takes a ring, tail to nose: the litres' own stations (so every slice the files carry
  * is a ring of the drawn mesh, D-24), both 12" stations, the centre, the tail cut's corner and — whenever the
  * tail's rail differs from the centre's (D-32; every hard-edged tail among them) — where its blend begins and
- * ends (D-30), filled in so no two neighbours are more than
+ * ends (D-30), at each wing's own step (D-33: every point of the step, or a hair either side of a square step's one
+ * station, which has two widths) and every twelfth of the way through the stretch the wing's two sides share (D-37)
+ * and through the tail's roll (D-38) — filled in so no two neighbours are more than
  * `SURFACE_STATION_STEP_IN` apart (the board split evenly). Stations closer than a millionth of a
  * millimetre are one, and the litres' own value is the one kept.
  */
@@ -153,6 +172,24 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
       if (inside(s)) required.push(s);
     }
   }
+  for (const wing of input.geometry.wings ?? []) {
+    const { points } = wingStepShape(wing);
+    points.forEach((point, i) => {
+      // Two step points at one station with different depths: a square step, two widths at one spot.
+      const square = points.some(
+        (other, j) => j !== i && Math.abs(other.station - point.station) < SAME_STATION_MM && other.inward !== point.inward,
+      );
+      for (const s of square ? [point.station - WING_HAIR_MM, point.station + WING_HAIR_MM] : [point.station]) {
+        if (inside(s)) required.push(s);
+      }
+    });
+    const { middle, reach } = wingShareSpan(wing);
+    for (let k = -WING_SHARE_RINGS; k <= WING_SHARE_RINGS; k++) {
+      const s = middle + (k * reach) / WING_SHARE_RINGS;
+      if (inside(s)) required.push(s);
+    }
+  }
+  required.push(...tailRollStations(TAIL_ROLL_RINGS).slice(1));
   const kept: number[] = [];
   const keep = (s: number) => {
     if (!kept.some((k) => Math.abs(k - s) < SAME_STATION_MM)) kept.push(s);
@@ -164,18 +201,33 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
 }
 
 /**
+ * A tip with no width as a half-section (D-34): one edge at `outer`, the deck run's points on the side profile's
+ * deck, the rail run's stepping down to the bottom and the bottom run's on the bottom. The rail run stands on the
+ * notch wall's own heights (`thickness × k / (wall + 1)`), so a swallow's point shares one set of vertices
+ * between its rail and its wall and the skin stays closed.
+ */
+function tipEdge(outer: number, thickness: number): P2[] {
+  const { deck, rail, bottom, wall } = SURFACE_POINTS;
+  const levels = wall + 1;
+  const edge: P2[] = [];
+  for (let j = 0; j < deck; j++) edge.push([outer, thickness]);
+  for (let j = 1; j < rail; j++) edge.push([outer, (thickness * Math.round((1 - j / (rail - 1)) * levels)) / levels]);
+  for (let j = 1; j < bottom; j++) edge.push([outer, 0]);
+  return edge;
+}
+
+/**
  * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
  * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
- * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or inside a tip's blend (D-32) the
- * very ring the litres count (`BoardSection.blended`, D-31), moved out by `inner` so its inside edge stands on
- * a swallow's notch wall (0 everywhere else). Nothing is sampled or blended here that the litres don't read.
- * A section with no foam is one point at `outer`, half its thickness up.
+ * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or the very ring the litres count
+ * — near a wing (`BoardSection.drawn`, D-37), inside a tip's blend (`BoardSection.blended`, D-31, D-32) — moved
+ * out by `inner` so its inside edge stands on a swallow's notch wall (0 everywhere else). Nothing is sampled or
+ * blended here that the litres don't read.
+ * A section with no foam is the tip's own edge at `outer` (`tipEdge`).
  */
 export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
-  if (!section.result || section.halfWidth <= 0) {
-    return Array.from({ length: HALF_POINTS }, () => [outer, section.thickness / 2] as P2);
-  }
-  const half = section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
+  if (!section.result || section.halfWidth <= 0) return tipEdge(outer, section.thickness * (section.rollScale ?? 1));
+  const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
   return half.map(([y, h]) => [inner + y, h] as P2);
 }
 
@@ -360,10 +412,10 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     }
   }
 
-  // The two ends: a flat fan from each end piece's centre, when the piece has width.
+  // The two ends: a flat fan from each end piece's centre, when the piece has width (a tip's edge has none).
   const cap = (ring: SurfaceRing, nose: boolean) => {
     for (const piece of ring.pieces) {
-      if (piece.count < 3) continue;
+      if (piece.count < 3 || !pieceHasWidth(positions, piece)) continue;
       let cy = 0;
       let cz = 0;
       for (let k = 0; k < piece.count; k++) {
@@ -464,6 +516,18 @@ function pointAt(positions: Float64Array, v: number): Vec3 {
   return [positions[3 * v], positions[3 * v + 1], positions[3 * v + 2]];
 }
 
+/** Whether a ring's piece spans any distance across: a tip with no width is one edge and does not (D-34). */
+function pieceHasWidth(positions: ArrayLike<number>, piece: SurfaceRing["pieces"][number]): boolean {
+  let least = Infinity;
+  let most = -Infinity;
+  for (let k = 0; k < piece.count; k++) {
+    const y = positions[3 * (piece.first + k) + 1];
+    least = Math.min(least, y);
+    most = Math.max(most, y);
+  }
+  return most - least > 1e-9;
+}
+
 /** The vertices of one piece of a ring, in loop order. */
 export function pieceVertices(piece: SurfaceRing["pieces"][number]): number[] {
   return Array.from({ length: piece.count }, (_, k) => piece.first + k);
@@ -493,11 +557,12 @@ function withoutRepeats(vertices: number[], loop: boolean): number[] {
 /**
  * The slices the CNC files carry (D-24): one per litres station with foam, tail to nose, each the closed
  * loop of that station's ring — two loops inside a swallow's notch, the right piece first (research
- * Pitfall 11). Every point is a vertex of the drawn mesh, the very numbers.
+ * Pitfall 11). Every point is a vertex of the drawn mesh, the very numbers. A tip's edge has no width and is
+ * never a slice (D-34).
  */
 export function boardSlices(surface: BoardSurface): { station: Mm; loops: Vec3[][] }[] {
   return surface.rings
-    .filter((ring) => ring.isSlice && ring.pieces.some((piece) => piece.count > 1))
+    .filter((ring) => ring.isSlice && ring.pieces.some((piece) => pieceHasWidth(surface.positions, piece)))
     .map((ring) => ({
       station: ring.station,
       loops: ring.pieces.map((piece) => pieceVertices(piece).map((v) => pointAt(surface.positions, v))),
@@ -508,13 +573,34 @@ export function boardSlices(surface: BoardSurface): { station: Mm; loops: Vec3[]
  * The board's outline as the files carry it (R8, D-26), in TEMPLATE's silhouette order: each ring's widest
  * point on the right rail, tail to nose, then on the left rail, nose to tail; on a swallow the notch's
  * inside edges then close the tail — along the left piece's wall to the crotch and back along the right's.
+ * At a tip with no width the rail's widest point is on the tip's edge, strictly between its bottom and its deck
+ * at the height nearest the next ring's widest point, so the outline doesn't climb the edge to reach it (D-34).
  * A closed loop: its last point joins its first. Every point is a vertex of the mesh.
  */
 export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
   const { positions, rings } = surface;
   const all = (ring: SurfaceRing) => ring.pieces.flatMap(pieceVertices);
-  const right = rings.map((ring) => extremeVertex(positions, all(ring), 1, 1));
-  const left = rings.map((ring) => extremeVertex(positions, all(ring), 1, -1)).reverse();
+  const rail = (sign: 1 | -1) => {
+    const widest = rings.map((ring) => extremeVertex(positions, all(ring), 1, sign));
+    const onEdge = (i: number, neighbour: number) => {
+      const ring = rings[i];
+      if (ring.pieces.some((piece) => pieceHasWidth(positions, piece))) return;
+      const height = positions[3 * widest[neighbour] + 2];
+      const across = positions[3 * widest[i] + 1];
+      const edge = all(ring).filter((v) => Math.abs(positions[3 * v + 1] - across) <= 1e-9);
+      const heights = edge.map((v) => positions[3 * v + 2]);
+      const [low, high] = [Math.min(...heights), Math.max(...heights)];
+      const inside = edge.filter((v) => positions[3 * v + 2] > low && positions[3 * v + 2] < high);
+      widest[i] = inside.reduce((best, v) =>
+        Math.abs(positions[3 * v + 2] - height) < Math.abs(positions[3 * best + 2] - height) ? v : best,
+      );
+    };
+    onEdge(0, 1);
+    onEdge(rings.length - 1, rings.length - 2);
+    return widest;
+  };
+  const right = rail(1);
+  const left = rail(-1).reverse();
   const notch: number[] = [];
   const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
   if (lastNotch >= 0 && lastNotch + 1 < rings.length) {

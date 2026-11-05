@@ -13,15 +13,21 @@ import { describe, expect, it } from "vitest";
 import type { Point2D } from "./board";
 import {
   DECK_BLEND_MAX_REACH_IN,
+  HALF_SECTION_POINT_COUNT,
+  SECTION_POINTS,
   cubicArea,
   cubicBlendArea,
   deckBlendWeight,
   finishedRail,
   finishedRailFromCuts,
   finishedRailPath,
+  fittedFinishedRail,
   matchedDomeReach,
   railBlendArea,
   railCutFoam,
+  railReach,
+  sampledFinishedRail,
+  sampledSectionArea,
   sectionFinishedRail,
   type FinishedRail,
   type FinishedRailOptions,
@@ -41,7 +47,16 @@ import {
 } from "./rail-bands";
 import { BOARD_PRESETS } from "./presets";
 import golden from "./__fixtures__/rails-v2-golden.json";
+import { phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
+import {
+  designCrossSectionInput,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+} from "./design";
+import { buildOutline } from "./outline";
 import { inchesToMm, mm, mmToInches } from "./units";
+import { boardSections } from "./volume";
 
 type Pt = number[];
 interface GoldenSegment {
@@ -1053,5 +1068,73 @@ describe("sectionFinishedRail — the very curve RAILS draws (quick 261102-gec p
         expect(fromSection.steps, variantLabel(entry, variant)).toEqual(drawn.steps);
       }
     }
+  });
+});
+
+describe("the rail drawn into its room near a tip (Phase 16, D-34)", () => {
+  const BOTTOM_EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+
+  /** Every station of the 102 boards, each read through its own rail. */
+  const SECTIONS = phase16SurfaceBoards().flatMap((board) => {
+    const geometry = buildOutline(board.fields.outline);
+    const profile = designSideProfile(board.fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(board.fields.rails, profile.effectiveFoil, board.fields.railsImportFoilThickness);
+    const input = designCrossSectionInput(geometry, profile, rails, board.fields.outline.length);
+    return boardSections(input)
+      .filter((section) => section.result)
+      .map((section) => ({ label: board.label, section }));
+  });
+
+  it("railReach is where the curve lands on the deck or the bottom: every sample further in lies on one or the other", () => {
+    for (const { section } of SECTIONS) {
+      const result = section.result!;
+      const reach = railReach(result, section.domed);
+      expect(reach).toBeGreaterThan(0);
+      const samples = sectionFinishedRail(result, section.domed).samples;
+      expect(samples.some((p) => -p.x === reach && p.y > 0 && p.y < result.boardThickness)).toBe(true);
+      for (const p of samples) {
+        if (-p.x > reach) expect(Math.min(Math.abs(p.y - result.boardThickness), Math.abs(p.y))).toBeLessThan(1e-9);
+      }
+    }
+  }, 120_000);
+
+  it("fittedFinishedRail is sampledFinishedRail's own points wherever the rail has room", () => {
+    for (const { section } of SECTIONS) {
+      const result = section.result!;
+      const reach = railReach(result, section.domed);
+      expect(fittedFinishedRail(result, section.domed, reach + 1)).toEqual(sampledFinishedRail(result, section.domed, reach + 1));
+      expect(fittedFinishedRail(result, section.domed, reach)).toEqual(sampledFinishedRail(result, section.domed, reach));
+    }
+  }, 120_000);
+
+  it("narrower, it runs from the stringer on the deck over a whole rail to the stringer on the bottom, and never folds", () => {
+    let narrow = 0;
+    for (const { section } of SECTIONS) {
+      const result = section.result!;
+      const reach = railReach(result, section.domed);
+      for (const room of [section.halfWidth, reach / 2, reach / 20, reach / 1000]) {
+        if (room >= reach) continue;
+        narrow++;
+        const half = fittedFinishedRail(result, section.domed, room);
+        expect(half).toHaveLength(HALF_SECTION_POINT_COUNT);
+        expect(half[0]).toEqual([0, result.boardThickness]);
+        expect(half[half.length - 1]).toEqual([0, 0]);
+        expect(Math.max(...half.map((p) => p[0]))).toBe(room);
+        expect(half[SECTION_POINTS.deck - 1][0]).toBe(room);
+        expect(half[BOTTOM_EDGE][1]).toBeLessThan(1e-9);
+        for (let i = 1; i < SECTION_POINTS.deck; i++) expect(half[i][0]).toBeGreaterThanOrEqual(half[i - 1][0] - 1e-9);
+        for (let i = BOTTOM_EDGE + 1; i < half.length; i++) expect(half[i][0]).toBeLessThanOrEqual(half[i - 1][0] + 1e-9);
+      }
+    }
+    expect(narrow).toBeGreaterThan(1000);
+  }, 120_000);
+
+  it("holds more foam than the same rail cut off at the stringer", () => {
+    const { section } = SECTIONS[0];
+    const result = section.result!;
+    const room = railReach(result, section.domed) / 2;
+    const fitted = sampledSectionArea(fittedFinishedRail(result, section.domed, room));
+    expect(fitted).toBeGreaterThan(sampledSectionArea(sampledFinishedRail(result, section.domed, room)));
+    expect(fitted).toBeLessThan(2 * room * result.boardThickness);
   });
 });

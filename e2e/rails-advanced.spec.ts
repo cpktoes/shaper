@@ -839,13 +839,14 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
     const litresAtDefaults = await estimatedVolume(page).textContent();
 
-    // Ends At all the way to the centre.
+    // Ends At down to its lowest, 2" past Blends From: a shorter hard edge is less foam, enough for VOLUME's two
+    // decimals. (Since the tail's roll, D-38, a longer fade lands on the same 30.29 L as the board opens on.)
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await endsAtSlider(page).press("End");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_CENTRE}`);
-    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", `${STOCK_CENTRE} from the tail`);
+    await endsAtSlider(page).press("Home");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
+    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", `${inches(20)} from the tail`);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
@@ -865,13 +866,13 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(estimatedVolume(page)).not.toHaveText(litresEndMoved ?? "");
 
     // The board this browser keeps holds both, in millimetres through the app's own conversion, before the reload.
-    await expect.poll(() => keptTailRail(page, "tailHardEdgeEndsAt")).toBe(mm(STOCK_LENGTH / 2));
+    await expect.poll(() => keptTailRail(page, "tailHardEdgeEndsAt")).toBe(inchesToMm(20));
     await expect.poll(() => keptTailRail(page, "tailHardEdgeBlendsFrom")).toBe(inchesToMm(12));
     await page.reload();
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_CENTRE}`, { timeout: 30_000 });
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`, { timeout: 30_000 });
     await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
   });
 
@@ -1086,8 +1087,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const railsBefore = await pageLines(page);
     // One setting only: moving both at once can leave the litres where they were (an earlier start takes off
     // about what a later end keeps), and this case is about what the page says when the litres DO move.
-    await endsAtSlider(page).press("End");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_CENTRE}`);
+    await endsAtSlider(page).press("Home");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
     const railsAfter = await pageLines(page);
     const railsChanged = changedLines(railsBefore, railsAfter);
     expect(railsChanged.length).toBeGreaterThan(0);
