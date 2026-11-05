@@ -20,6 +20,14 @@
  * Everything from the arc's top on (the tip and the trailing edge) is worked out relative to the trailing edge,
  * u − B, from the role's figures alone, which is what makes "only the base changes" exact.
  *
+ * The roles (D-25): a single is as deep, in inches, as the board is long in feet (D-22), on a base of 0.70 of its depth
+ * centred in FINS' box — FINS' "base" for a single is the 10.5" box the fin slides in, never the fin; a 2+1's centre
+ * takes the same rule. A twin is 5.0" deep, an upright twin's tip 0.75" behind its trailing edge and a keel's straight
+ * above it. A thruster's three are alike, 4.5" deep, as are a quad's fronts; a quad's rears are 4.25" deep. Every
+ * base but a single's is FINS' own, a default keel's 4.5" included. The two fins D-25 does not name — an Upright +
+ * Trailer twin's centre trailer and a quad's centre fin — take the thruster's outline (the planner's reading, put to
+ * the founder at this plan's look); a trailer twin's mains take the upright twin's.
+ *
  * Placement: each fin stands on its FINS line — the trailing edge at (`offTail`, `lateral`), the leading edge
  * toward (`leadingOffTail`, `leadingLateral`), so toe-in is already in it — upright, square to the bottom where it
  * stands (tilted along the board by the rocker's slope at the fin's centre), with no cant (FINS has none). The
@@ -33,10 +41,10 @@
 
 import type { Vec3 } from "./board-surface";
 import type { FinMark, FinSetup, TwinTemplate } from "./fins";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, mm, mmToFeet, type Mm } from "./units";
 
 /** The fin outlines there are: one per role. */
-export type FinOutlineRole = "thruster";
+export type FinOutlineRole = "single" | "twinUpright" | "twinKeel" | "thruster" | "quadRear";
 
 /** A role's figures, in inches (converted through `inchesToMm` where they are used). */
 export interface FinRoleShape {
@@ -51,12 +59,29 @@ export interface FinRoleShape {
 }
 
 /**
- * Each role's figures (D-25): a thruster's three fins alike, 4.5" deep, the tip 0.75" behind the trailing edge,
- * a 0.35" tip, 1/4" thick.
+ * Each role's figures but the single's (D-25). Side fins are 1/4" thick.
+ * - `twinUpright`: 5.0" deep, the tip 0.75" behind the trailing edge, a 0.5" tip.
+ * - `twinKeel`: the same, with the tip straight above the trailing edge — low, long and upright at the back.
+ * - `thruster`: a thruster's three alike (and a quad's fronts), 4.5" deep, the tip 0.75" behind, a 0.35" tip.
+ * - `quadRear`: a quad's rears, a touch shallower at 4.25", otherwise the thruster's.
  */
-export const FIN_ROLE_SHAPES: Record<FinOutlineRole, FinRoleShape> = {
+export const FIN_ROLE_SHAPES: Record<Exclude<FinOutlineRole, "single">, FinRoleShape> = {
+  twinUpright: { depthIn: 5, tipBehindIn: 0.75, tipRadiusIn: 0.5, thicknessIn: 0.25 },
+  twinKeel: { depthIn: 5, tipBehindIn: 0, tipRadiusIn: 0.5, thicknessIn: 0.25 },
   thruster: { depthIn: 4.5, tipBehindIn: 0.75, tipRadiusIn: 0.35, thicknessIn: 0.25 },
+  quadRear: { depthIn: 4.25, tipBehindIn: 0.75, tipRadiusIn: 0.35, thicknessIn: 0.25 },
 };
+
+/**
+ * A single fin's figures (D-22, D-25): its depth comes from the board's length (`singleFinDepth`); its base is 0.70 of
+ * that depth, its tip 0.15 of it behind the trailing edge, a 0.5" tip, 3/8" thick.
+ */
+export const FIN_SINGLE_SHAPE = { baseOfDepth: 0.7, tipBehindOfDepth: 0.15, tipRadiusIn: 0.5, thicknessIn: 0.375 } as const;
+
+/** A single fin's depth: the board's length in feet, read as inches (D-22) — a 9'0" board draws a 9" fin. */
+export function singleFinDepth(length: Mm): Mm {
+  return inchesToMm(mmToFeet(length));
+}
 
 /** How many points each cubic edge is sampled at, and the rounded tip. Fixed, so the work is bounded (T-16-22). */
 export const FIN_CUBIC_SAMPLES = 24;
@@ -89,13 +114,18 @@ export interface FinOutline {
 
 /** The role's depth for a board of `length` (every role but the single has its own fixed depth). */
 export function finRoleDepth(role: FinOutlineRole, length: Mm): Mm {
-  void length;
-  return inchesToMm(FIN_ROLE_SHAPES[role].depthIn);
+  return role === "single" ? singleFinDepth(length) : inchesToMm(FIN_ROLE_SHAPES[role].depthIn);
 }
 
 function finRoleFigures(role: FinOutlineRole, depth: Mm): { tipBehind: Mm; tipRadius: Mm; thickness: Mm } {
+  if (role === "single") {
+    return {
+      tipBehind: mm(FIN_SINGLE_SHAPE.tipBehindOfDepth * depth),
+      tipRadius: inchesToMm(FIN_SINGLE_SHAPE.tipRadiusIn),
+      thickness: inchesToMm(FIN_SINGLE_SHAPE.thicknessIn),
+    };
+  }
   const shape = FIN_ROLE_SHAPES[role];
-  void depth;
   return {
     tipBehind: inchesToMm(shape.tipBehindIn),
     tipRadius: inchesToMm(shape.tipRadiusIn),
@@ -206,12 +236,26 @@ export function finOutline(role: FinOutlineRole, base: Mm, depth: Mm): FinOutlin
   return { points, tipFrom, base: mm(B), depth: mm(D), tipBehind, tipRadius, thickness };
 }
 
-/** Which outline a FINS mark takes, for the board's fin setup. */
+/**
+ * Which outline a FINS mark takes, for the board's fin setup (D-25): a single, and a 2+1's centre, the single's; a
+ * 2+1's side bites the thruster's; a twin's mains the upright or the keel twin's by its template, an Upright + Trailer
+ * twin's mains the upright's and its centre trailer the thruster's; a quad's rears the rear outline, its fronts and
+ * its optional centre fin the thruster's; a thruster's three the thruster's.
+ */
 export function finOutlineRole(setup: FinSetup, twinTemplate: TwinTemplate, mark: FinMark): FinOutlineRole {
-  void setup;
-  void twinTemplate;
-  void mark;
-  return "thruster";
+  switch (setup) {
+    case "single":
+      return "single";
+    case "2plus1":
+      return mark.role === "center" ? "single" : "thruster";
+    case "twin":
+      if (mark.role === "center") return "thruster";
+      return twinTemplate === "keel" ? "twinKeel" : "twinUpright";
+    case "quad":
+      return mark.role === "rear" ? "quadRear" : "thruster";
+    case "thruster":
+      return "thruster";
+  }
 }
 
 /** One fin as the 3D board draws it. Points are in the board surface's axes (x along from the tail, y across, z up). */
@@ -248,9 +292,16 @@ export function placedFins(
   for (const mark of marks) {
     const role = finOutlineRole(setup, twinTemplate, mark);
     const depth = finRoleDepth(role, length);
-    const base = mark.baseLength;
-    const leadingAt = { x: mark.leadingOffTail as number, y: mark.leadingLateral as number };
-    const trailingAt = { x: mark.offTail as number, y: mark.lateral as number };
+    let base: number = mark.baseLength;
+    let leadingAt = { x: mark.leadingOffTail as number, y: mark.leadingLateral as number };
+    let trailingAt = { x: mark.offTail as number, y: mark.lateral as number };
+    if (role === "single") {
+      // FINS' base for a single is its box; the fin is 0.70 of its depth long, centred in the box, on the stringer.
+      base = FIN_SINGLE_SHAPE.baseOfDepth * depth;
+      const trailing = mark.offTail + (mark.baseLength - base) / 2;
+      trailingAt = { x: trailing, y: mark.lateral };
+      leadingAt = { x: trailing + base, y: mark.lateral };
+    }
     if (!finite(base, depth, leadingAt.x, leadingAt.y, trailingAt.x, trailingAt.y) || !(base > 0) || !(depth > 0)) {
       continue;
     }

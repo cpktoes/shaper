@@ -1,7 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
+import { presetDesignFields } from "../lib/blanks/preset-blanks";
+import { BOARD_PRESETS } from "../lib/geometry/presets";
 import { VIEW_TURNS, type Quat, type ViewName } from "../lib/geometry/view-3d";
+import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
+import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
+import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { countDifferent, decodePng } from "./helpers/canvas-pixels";
 
@@ -79,6 +84,43 @@ async function picture(host: Locator) {
   return decodePng(await host.screenshot());
 }
 
+/** A preset, kept in this browser as the open board, so /design/3d opens on it (fins as the preset sets them). */
+async function keepPreset(page: Page, name: string) {
+  const preset = BOARD_PRESETS.find((p) => p.name === name);
+  if (!preset) throw new Error(`no ${name} preset`);
+  const fields: DesignSnapshotFields = {
+    ...presetDesignFields(preset),
+    volume: DEFAULT_VOLUME_SPEC,
+    finsImportTemplate: true,
+    railsImportFoilThickness: true,
+    boardName: "",
+    finSystem: "fcs2",
+  };
+  const raw = openBoardCopyJson(fields, { modelId: null, ownerId: null, locked: false, dirty: true });
+  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
+}
+
+/** How many rows of the canvas the fins cover: the rows that change when Fins is unticked, top to bottom. */
+async function finsDrawnHeight(page: Page, host: Locator): Promise<{ rows: number; canvas: number }> {
+  const on = await picture(host);
+  await finsBox(page).click();
+  const off = await picture(host);
+  await finsBox(page).click();
+  let top = Infinity;
+  let bottom = -Infinity;
+  for (let y = 0; y < on.height; y++) {
+    for (let x = 0; x < on.width; x++) {
+      const i = 4 * (y * on.width + x);
+      if ([0, 1, 2].some((k) => Math.abs(on.rgba[i + k] - off.rgba[i + k]) > 2)) {
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+        break;
+      }
+    }
+  }
+  return { rows: bottom - top + 1, canvas: on.height };
+}
+
 function finsBox(page: Page) {
   return page.getByRole("checkbox", { name: THREE_D_COPY.fins, exact: true });
 }
@@ -122,5 +164,27 @@ test.describe("the 3D board's fins", () => {
     } else {
       expect(countDifferent(withFins.rgba, again.rgba, 2) / (again.width * again.height)).toBeLessThan(0.0005);
     }
+  });
+
+  test("2. a Longboard's single, as deep as the board is long in feet, hangs lower than a Shortboard's thruster fins", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer compares the two boards");
+    const heights: Record<string, { rows: number; canvas: number }> = {};
+    for (const name of ["Longboard", "Shortboard"]) {
+      const context = await browser.newContext(testInfo.project.use);
+      const page = await context.newPage();
+      await dismissStrips(page);
+      await keepPreset(page, name);
+      await page.goto("/design/3d");
+      const host = await waitForBoard(page);
+      await showView(page, host, "side");
+      heights[name] = await finsDrawnHeight(page, host);
+      await context.close();
+    }
+    // A 9" single on the 9'0" board against 4.5" side fins on the 6'2", each board framed to its own length: the
+    // single still stands taller on the canvas.
+    expect(heights.Longboard.rows).toBeGreaterThan(heights.Shortboard.rows);
+    expect(heights.Shortboard.rows).toBeGreaterThan(0);
   });
 });
