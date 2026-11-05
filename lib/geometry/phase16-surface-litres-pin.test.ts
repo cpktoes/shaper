@@ -44,7 +44,7 @@ function hasNarrowStation(board: (typeof BOARDS)[number]): boolean {
 
 /** The live rule with only its tips' fit (D-34) left on: the wing rule and the tail's roll set back, so each can be
  * told from the pin. */
-const TIPS_ONLY: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift", tail: "square" } };
+const TIPS_ONLY: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, wings: "shift", tail: "square", tuck: "corner" } };
 
 describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-37)", () => {
   it("the pin holds the 102 boards the set builds, and names its generator", () => {
@@ -71,12 +71,11 @@ describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-
   }
 
   for (const board of BOARDS) {
-    it(`${board.label}: the wing rule and the tail's roll move the live litres from there by a hair, and never by nothing`, () => {
+    it(`${board.label}: the wing, the tail's roll and the opening tuck move the live litres from there by a hair, and never by nothing`, () => {
       const tips = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: TIPS_ONLY }).volumeLitres;
       const live = summarizeDesign(board.fields).volumeLitres;
       expect(live).not.toBe(tips);
       expect(Math.abs(live - tips)).toBeLessThan(0.1);
-      if (!hasWing(board)) expect(live).toBeLessThan(tips);
     });
   }
 

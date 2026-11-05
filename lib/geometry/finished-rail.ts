@@ -782,6 +782,77 @@ export function blendFinishedRails(tucked: HalfSectionPoints, hard: HalfSectionP
   return blended;
 }
 
+/** How far the sharp corner may open along each side, as a share of what that side has. */
+const OPEN_ROOM = 0.8;
+/** The least a corner opens to at the full share, in inches, for a round rail that lands right beside it. */
+const OPEN_FLOOR_IN = 1 / 8;
+
+/** Each point's distance along a run from the run's first point. */
+function runLengths(run: readonly P2[]): number[] {
+  const lengths = [0];
+  for (let i = 1; i < run.length; i++) {
+    lengths.push(lengths[i - 1] + Math.hypot(run[i][0] - run[i - 1][0], run[i][1] - run[i - 1][1]));
+  }
+  return lengths;
+}
+
+/** The point `arc` along a run whose `lengths` are known. */
+function pointAlong(run: readonly P2[], lengths: readonly number[], arc: number): P2 {
+  let i = 1;
+  while (i < run.length - 1 && lengths[i] < arc) i++;
+  const d = lengths[i] - lengths[i - 1];
+  const t = d > 0 ? (arc - lengths[i - 1]) / d : 0;
+  return [run[i - 1][0] + (run[i][0] - run[i - 1][0]) * t, run[i - 1][1] + (run[i][1] - run[i - 1][1]) * t];
+}
+
+/**
+ * A sharp half with its bottom corner opened toward a round rail (Phase 16, the founder 2026-11-05: "make sure a sharp
+ * tuck can blend into a round tuck nicely. ... It's typical to have a sharp tuck at center that smooths/rounds toward
+ * the nose."). `share` is how much of the station is the round rail's, 0 to 1. A point-for-point blend keeps a real
+ * corner in every slice with its angle shrinking, the small kink he saw; here the corner gains a radius instead: a
+ * parabola with the corner as its control, leaving each side `share` of the way along the reach, which is how far
+ * across the round rail lands from the corner. Point for point, as the blend needs: the bottom edge's point moves to
+ * the curve's foot on the bottom, the rail's points within twice the reach of the corner spread evenly along the way
+ * there, so the curve has points to be drawn with, the bottom's points inside the foot spread out beyond it, and
+ * every other point stays exactly where it was. At `share` 0 it is the sharp half.
+ */
+export function openedFinishedRail(sharp: HalfSectionPoints, round: HalfSectionPoints, share: number): HalfSectionPoints {
+  const edge = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+  const corner = sharp[edge];
+  const reach = Math.max(Math.abs(corner[0] - round[edge][0]), inchesToMm(OPEN_FLOOR_IN)) * share;
+  const up = sharp.slice(SECTION_POINTS.deck - 1, edge + 1).reverse() as P2[];
+  const along = sharp.slice(edge) as P2[];
+  const [upLengths, alongLengths] = [runLengths(up), runLengths(along)];
+  const a = Math.min(reach, OPEN_ROOM * upLengths[upLengths.length - 1]);
+  const b = Math.min(reach, OPEN_ROOM * alongLengths[alongLengths.length - 1]);
+  if (!(a > 0) || !(b > 0)) return sharp;
+  const start = pointAlong(up, upLengths, a);
+  const foot = pointAlong(along, alongLengths, b);
+  const opened = sharp.map(([y, h]): P2 => [y, h]);
+  const curve = Array.from({ length: 33 }, (_, i): P2 => {
+    const t = i / 32;
+    const [u, v, w] = [(1 - t) * (1 - t), 2 * t * (1 - t), t * t];
+    return [u * start[0] + v * corner[0] + w * foot[0], u * start[1] + v * corner[1] + w * foot[1]];
+  });
+  // The last point left where it was, and the way from it to the foot: down the rail to the curve, then the curve.
+  let anchor = 1;
+  while (anchor < up.length - 1 && upLengths[anchor] < 2 * a) anchor++;
+  const onRail = up.slice(1, anchor + 1).filter((_, i) => upLengths[i + 1] > a).reverse();
+  const way = [...onRail, ...curve];
+  const wayLengths = runLengths(way);
+  for (let k = 1; k <= anchor; k++) {
+    opened[edge - anchor + k] = pointAlong(way, wayLengths, (k / anchor) * wayLengths[wayLengths.length - 1]);
+  }
+  opened[edge] = [foot[0], 0];
+  let beyond = 1;
+  while (beyond < along.length - 1 && alongLengths[beyond] <= b) beyond++;
+  for (let k = 1; k < beyond; k++) {
+    const t = k / beyond;
+    opened[edge + k] = [foot[0] + (along[beyond][0] - foot[0]) * t, 0];
+  }
+  return opened;
+}
+
 /** The foam a sampled half-section and its mirror enclose together, in square millimetres: the half closed
  * along the stringer, both rails. */
 export function sampledSectionArea(half: HalfSectionPoints): number {

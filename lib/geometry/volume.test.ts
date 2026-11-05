@@ -42,6 +42,7 @@ import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import {
   blendFinishedRails,
   fittedFinishedRail,
+  openedFinishedRail,
   railBlendArea,
   railReach,
   sampledFinishedRail,
@@ -88,6 +89,20 @@ import golden from "./__fixtures__/prototype-volume-golden.json";
 import blankDatasheet from "./__fixtures__/blank-datasheet-golden.json";
 
 const SQMM_PER_SQIN = MM_PER_INCH * MM_PER_INCH;
+
+/** A station's blend as the live rule draws it from its two ends' halves: a sharp end opened toward a round one. */
+function liveBlend(
+  ends: { base: BoardSection; tip: BoardSection },
+  baseHalf: [number, number][],
+  tipHalf: [number, number][],
+  w: number,
+) {
+  const [baseSharp, tipSharp] = [ends.base.sharpness === 1, ends.tip.sharpness === 1];
+  if (baseSharp === tipSharp) return blendFinishedRails(baseHalf, tipHalf, w);
+  return baseSharp
+    ? blendFinishedRails(openedFinishedRail(baseHalf, tipHalf, w), tipHalf, w)
+    : blendFinishedRails(baseHalf, openedFinishedRail(tipHalf, baseHalf, 1 - w), w);
+}
 
 /** One rail's half cross-section closed at the stringer — the full-thickness point at minus the half
  * width, the cut profile, the zero-height point at minus the half width — by the shoelace. A test-local
@@ -961,8 +976,9 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     // the two areas blended.
     const tuckedHalf = sampledFinishedRail(tuckedOnly.result!, mid.domed, mid.halfWidth);
     const hardHalf = sampledFinishedRail(hardOnly.result!, mid.domed, mid.halfWidth);
-    expect(mid.blended).toEqual(blendFinishedRails(tuckedHalf, hardHalf, mid.hardWeight));
     const w = mid.hardWeight;
+    // A hard edge fading into a round rail opens into a radius (the founder, 2026-11-05).
+    expect(mid.blended).toEqual(blendFinishedRails(tuckedHalf, openedFinishedRail(hardHalf, tuckedHalf, 1 - w), w));
     const level =
       sampledSectionArea(mid.blended!) +
       (1 - w) * (tuckedOnly.area - sampledSectionArea(tuckedHalf)) +
@@ -1006,7 +1022,7 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
         const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
         const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
         const w = section.tipWeight;
-        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, w));
+        expect(section.blended).toEqual(liveBlend(ends, baseHalf, tipHalf, w));
         const expected =
           sampledSectionArea(section.blended!) +
           (1 - w) * (ends.base.area - sampledSectionArea(baseHalf)) +
@@ -1259,8 +1275,12 @@ describe("D-32 the whole rail character blends", () => {
         expect(ends.base.sharpBottomTuck).toBe(false);
         const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
         const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
-        expect(section.blended).toEqual(blendFinishedRails(baseHalf, tipHalf, section.tipWeight));
-        const area = fadingSectionArea(ends.base.area, ends.tip.area, baseHalf, tipHalf, section.blended!, section.tipWeight);
+        const w = section.tipWeight;
+        expect(section.blended).toEqual(liveBlend(ends, baseHalf, tipHalf, w));
+        const area =
+          sampledSectionArea(section.blended!) +
+          (1 - w) * (ends.base.area - sampledSectionArea(baseHalf)) +
+          w * (ends.tip.area - sampledSectionArea(tipHalf));
         expect(Math.abs(section.area - area) / section.area).toBeLessThan(1e-9);
         // The two ends really differ, so the blend means something.
         expect(Math.abs(ends.tip.area - ends.base.area)).toBeGreaterThan(0);
@@ -1657,10 +1677,12 @@ describe("D-34 the rail fits into a narrow tip", () => {
   it("a blend at a station narrower than its rails is the level variant on the fitted halves", () => {
     // A board 40 mm wide all along: every station is narrow, and the nose and the tail differ from the centre.
     const room = mm(20);
+    const family: RailFamily = DEFAULT_RAIL_BAND_SPEC.center.family === 3 ? 4 : 3;
     const rails: RailBandSpec = {
       ...DEFAULT_RAIL_BAND_SPEC,
-      tailHardEdge: true,
-      nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, sharpBottomTuck: true },
+      tailHardEdge: false,
+      tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, family },
+      nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, family },
     };
     const input = {
       halfWidthAt: () => room,
@@ -1700,9 +1722,9 @@ describe("D-34 the rail fits into a narrow tip", () => {
   });
 
   it("OLD_SURFACE_FIT is what every rule before plan 16-16 does, and the live rule fits both", () => {
-    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip", tail: "square" });
+    expect(OLD_SURFACE_FIT).toEqual({ wings: "shift", tips: "clip", tail: "square", tuck: "corner" });
     expect(RAIL_CHARACTER_FADE.fit).toBeUndefined();
-    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit", tail: "roll" });
+    expect(SMOOTH_SURFACE_FADE.fit).toEqual({ wings: "share", tips: "fit", tail: "roll", tuck: "open" });
   });
 });
 
@@ -1772,5 +1794,110 @@ describe("D-38 the tail's rail is carried around the end", () => {
       expect(computeCrossSectionVolumeWith(input, rule).tailRollMm3).toBe(0);
       expect(boardSectionsWith(input, rule, [mm(0)])[0].rollScale).toBeUndefined();
     }
+  });
+});
+
+describe("a sharp bottom edge opens into a round one along the blend (the founder, 2026-11-05)", () => {
+  const EDGE = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+  /** The largest turn between neighbouring points around the tuck, in degrees. */
+  function tuckTurn(half: readonly (readonly [number, number])[]): number {
+    let best = 0;
+    for (let i = EDGE - 16; i <= EDGE + 8; i++) {
+      const a = Math.atan2(half[i][1] - half[i - 1][1], half[i][0] - half[i - 1][0]);
+      const b = Math.atan2(half[i + 1][1] - half[i][1], half[i + 1][0] - half[i][0]);
+      const d = (Math.abs(b - a) * 180) / Math.PI;
+      best = Math.max(best, d > 180 ? 360 - d : d);
+    }
+    return best;
+  }
+  function inputOf(label: string) {
+    const { fields } = phase16SurfaceBoards().find((board) => board.label === label)!;
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+  }
+  const zone = (input: ReturnType<typeof inputOf>, side: "tail" | "nose") => {
+    const points = foilStationPoints(input.foil, input.length);
+    return side === "nose"
+      ? [points[2].station, points[3].station]
+      : [hardEdgeBlendsFrom(input.rails, input.length), hardEdgeEndsAt(input.rails, input.length)];
+  };
+  const halfOf = (section: BoardSection) => placedHalfSection(section, section.halfWidth, 0);
+
+  const cases: [string, "tail" | "nose"][] = [
+    ["tucked|shortboard|he-centre-sbt", "nose"],
+    ["tucked|fish|he-centre-sbt", "nose"],
+    ["tucked|shortboard|tail-sbt", "tail"],
+    ["tucked|fish|tail-sbt", "tail"],
+    ["shortboard|asis|hard", "tail"],
+    ["fish|asis|hard", "tail"],
+  ];
+  for (const [label, side] of cases) {
+    it(`${label}: by the blend's middle the corner is gone, where a point-for-point blend still carries one`, () => {
+      const input = inputOf(label);
+      const [from, to] = zone(input, side);
+      const s = mm((from + to) / 2);
+      const [live] = boardSections(input, [s]);
+      const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+      const ends = boardSectionEnds(input, s);
+      const round = ends.base.sharpness === 1 ? ends.tip : ends.base;
+      const own = tuckTurn(halfOf(round));
+      expect(tuckTurn(halfOf(live))).toBeLessThan(own + 4);
+      expect(tuckTurn(halfOf(corner))).toBeGreaterThan(own + 8);
+    });
+
+    it(`${label}: the turn only eases along the blend, from the sharp end to the round`, () => {
+      const input = inputOf(label);
+      const [from, to] = zone(input, side);
+      const fractions = Array.from({ length: 11 }, (_, i) => i / 10).slice(1, -1);
+      const stations = fractions.map((f) => mm(from + (to - from) * f));
+      const turns = boardSections(input, stations).map((section) => tuckTurn(halfOf(section)));
+      const ordered = side === "tail" ? turns : turns;
+      for (let i = 1; i < ordered.length; i++) expect(ordered[i]).toBeLessThan(ordered[i - 1] + 1);
+    });
+  }
+
+  it("two sharp ends stay sharp: a hard tail into a sharp centre is the point blend, as it was", () => {
+    const input = inputOf("tucked|shortboard|he-centre-sbt");
+    const [from, to] = zone(input, "tail");
+    const s = mm((from + to) / 2);
+    const [live] = boardSections(input, [s]);
+    const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+    expect(live.blended).toEqual(corner.blended);
+    expect(live.sharpness).toBe(1);
+  });
+
+  describe("openedFinishedRail", () => {
+    const rails = computeRailBands({ ...DEFAULT_RAIL_BAND_SPEC, center: { ...DEFAULT_RAIL_BAND_SPEC.center, sharpBottomTuck: true } });
+    const roundRails = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+    const sharp = sampledFinishedRail(rails.center.result, rails.center.domed, 200);
+    const round = sampledFinishedRail(roundRails.center.result, roundRails.center.domed, 200);
+
+    it("at share 0 it is the sharp half", () => {
+      expect(openedFinishedRail(sharp, round, 0)).toEqual(sharp);
+    });
+
+    for (const share of [0.02, 0.1, 0.25, 0.5, 0.75, 1]) {
+      it(`at share ${share} the edge point is on the bottom, the deck hasn't moved, and nothing folds`, () => {
+        const opened = openedFinishedRail(sharp, round, share);
+        expect(opened).toHaveLength(sharp.length);
+        expect(opened[EDGE][1]).toBe(0);
+        expect(opened[EDGE][0]).toBeLessThan(sharp[EDGE][0]);
+        expect(opened.slice(0, SECTION_POINTS.deck)).toEqual(sharp.slice(0, SECTION_POINTS.deck));
+        for (let i = EDGE + 1; i < opened.length; i++) {
+          expect(opened[i][1]).toBe(0);
+          expect(opened[i][0]).toBeLessThanOrEqual(opened[i - 1][0] + 1e-9);
+        }
+        for (let i = SECTION_POINTS.deck; i <= EDGE; i++) expect(opened[i][1]).toBeLessThanOrEqual(opened[i - 1][1] + 1e-9);
+        expect(opened[opened.length - 1]).toEqual(sharp[sharp.length - 1]);
+      });
+    }
+
+    it("a wider share is a wider radius, and takes a little more foam off", () => {
+      const areas = [0.1, 0.25, 0.5, 1].map((share) => sampledSectionArea(openedFinishedRail(sharp, round, share)));
+      for (let i = 1; i < areas.length; i++) expect(areas[i]).toBeLessThan(areas[i - 1]);
+      expect(areas[0]).toBeLessThan(sampledSectionArea(sharp));
+    });
   });
 });

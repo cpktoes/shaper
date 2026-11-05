@@ -24,7 +24,7 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "./design";
-import { railReach, sampledFinishedRail } from "./finished-rail";
+import { openedFinishedRail, railReach, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
@@ -656,9 +656,12 @@ describe("the rail fades smoothly along the board (D-20/D-27, D-32)", () => {
         expect(section.blended).toBeDefined();
         expect(ring.sharpness).toBe(section.sharpness);
         const [baseEnd, tipEnd] = endSections(input, ring.station);
-        const tucked = placedHalfSection(baseEnd, baseEnd.halfWidth, 0);
-        const hard = placedHalfSection(tipEnd, tipEnd.halfWidth, 0);
+        // A sharp end opens toward a round one (the founder, 2026-11-05), so the ring is the blend of those halves.
+        const [baseHalf, tipHalf] = [placedHalfSection(baseEnd, baseEnd.halfWidth, 0), placedHalfSection(tipEnd, tipEnd.halfWidth, 0)];
         const w = section.tipWeight;
+        const [baseSharp, tipSharp] = [baseEnd.sharpness === 1, tipEnd.sharpness === 1];
+        const tucked = baseSharp && !tipSharp ? openedFinishedRail(baseHalf, tipHalf, w) : baseHalf;
+        const hard = tipSharp && !baseSharp ? openedFinishedRail(tipHalf, baseHalf, 1 - w) : tipHalf;
         // The ring's loop starts with the right half, stringer deck point first — and it IS the section's ring.
         const right = ringPoints(surface.positions, ring).slice(0, tucked.length);
         right.forEach(([, y, z], i) => {

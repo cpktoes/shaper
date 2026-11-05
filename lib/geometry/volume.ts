@@ -47,6 +47,7 @@ import {
   blendFinishedRails,
   finishedRailReach,
   fittedFinishedRail,
+  openedFinishedRail,
   railBlendArea,
   sampledFinishedRail,
   sampledSectionArea,
@@ -863,17 +864,20 @@ export interface RailCharacterRule {
  * line the two sides share and moves only the rail onto the outline (D-37). `tips`: `"clip"` cuts a rail wider than its station off at the stringer, so the
  * stringer sinks under the side profile's deck near a tip; `"fit"` draws it into its room and the litres count
  * what is drawn (D-34). `tail`: `"square"` ends the deck at the tail's full thickness; `"roll"` carries the rail
- * around the end, the deck rolling over into the tail's edge (D-38).
+ * around the end, the deck rolling over into the tail's edge (D-38). `tuck`: `"corner"` blends a sharp bottom edge
+ * into a round one point for point, a corner in every slice, shrinking; `"open"` opens the corner into a radius
+ * that grows along the blend (`openedFinishedRail`).
  */
 export interface SurfaceFit {
   wings: "shift" | "share";
   tips: "clip" | "fit";
   tail: "square" | "roll";
+  tuck: "corner" | "open";
 }
 
 /** What every rule before plan 16-16 does: the whole section shifts in with a wing, a wide rail is cut off, and the
  * deck runs square to the tail's end. */
-export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square" };
+export const OLD_SURFACE_FIT: SurfaceFit = { wings: "shift", tips: "clip", tail: "square", tuck: "corner" };
 
 /** How much of the tip's thickness the tail's roll takes off at the very end (D-38, the founder's pick). */
 export const TAIL_ROLL_SHARE = 1 / 3;
@@ -953,12 +957,12 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * `RAIL_CHARACTER_FADE`'s own rail character, with the stations either side of a wing built on the deck line the
  * two sides share and only their rails moved onto the outline (`wingShareAt`, `wingStepHalf`), a rail wider than its
  * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
- * (`tailRollDrop`, D-38). `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
+ * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`). `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
  * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
   at: RAIL_CHARACTER_FADE.at,
-  fit: { wings: "share", tips: "fit", tail: "roll" },
+  fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open" },
 };
 
 /** The rule the live litres and the 3D board use. */
@@ -1202,8 +1206,17 @@ export function boardSectionsWith(
       const tipResult = computeRailSection(sectionInput(tip));
       const baseArea = finished(baseResult);
       const tipArea = finished(tipResult);
-      const baseEnd = endHalf(baseResult, baseArea);
-      const tipEnd = endHalf(tipResult, tipArea);
+      const baseFinal = endHalf(baseResult, baseArea);
+      const tipFinal = endHalf(tipResult, tipArea);
+      // A sharp edge blending into a round one opens into a radius (the founder 2026-11-05): that end's half gains the
+      // radius and its exact area the change, the level variant again. Two sharp ends, or two round, stay as they are.
+      const opened = (end: typeof baseFinal, other: typeof baseFinal, share: number) => {
+        const half = openedFinishedRail(end.half, other.half, share);
+        return { half, exact: end.exact + (sampledSectionArea(half) - sampledSectionArea(end.half)) };
+      };
+      const opening = fit.tuck === "open" && isSharp(base) !== isSharp(tip);
+      const baseEnd = opening && isSharp(base) ? opened(baseFinal, tipFinal, tipWeight) : baseFinal;
+      const tipEnd = opening && isSharp(tip) ? opened(tipFinal, baseFinal, 1 - tipWeight) : tipFinal;
       const blended = blendFinishedRails(baseEnd.half, tipEnd.half, tipWeight);
       const area = fadingSectionArea(baseEnd.exact, tipEnd.exact, baseEnd.half, tipEnd.half, blended, tipWeight);
       // The cut area (finished plus blends) has no ring of its own; it is the two cuts blended by the weight,
@@ -1343,6 +1356,14 @@ export function boardSectionEnds(
  * profile's deck and bottom right into the tip, and the litres count the ring drawn, as D-31 does a blend: the
  * end's exact area plus the fitted half's area less the cut-off half's, exactly 0 where the rail has room. The old
  * rules keep the cut, by name for the pins (`OLD_SURFACE_FIT`).
+ *
+ * A SHARP EDGE INTO A ROUND ONE (the founder, 2026-11-05: "make sure a sharp tuck can blend into a round tuck nicely").
+ * Where a blend runs between a sharp bottom edge (a hard edge or a Sharp Bottom Tuck) and a round one, a point-for-point
+ * blend keeps a real corner in every slice with its angle shrinking, a small kink along the board. So the sharp end's
+ * corner opens first (`openedFinishedRail`): it gains a radius that grows with the round rail's share, and that half is
+ * what blends. The litres count it the level way, the end's exact area plus the opened ring's less the sharp ring's. Two
+ * sharp ends blend as they always did, so a sharp edge stays sharp all the way between them. The old rules keep the
+ * corner (`OLD_SURFACE_FIT`).
  *
  * THE TAIL'S ROLL (Phase 16, D-38, the founder's pick: "Medium: 1/3 over 1""). The rail is carried around the tail's
  * end: over the last inch every height of the section scales down along a quarter ellipse, a third of the tip's
