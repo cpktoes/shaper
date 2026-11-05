@@ -5,6 +5,7 @@ import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { readZip, type ZipEntryRead } from "../lib/export/zip";
 import { readStl } from "../lib/export/stl";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { inchesToMm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { boardFileStem } from "../lib/models/board-file";
@@ -159,5 +160,115 @@ test.describe("Export for CNC… on the 3D screen", () => {
     // The STL is the very triangles the screen draws.
     expect(stlOf(entries, stem).count).toBe(Number(await host.getAttribute("data-triangles")));
     await expectNote(page);
+  });
+
+  test("2. with no 3D drawing the message shows and Export still downloads the whole zip, the same as with it", async ({
+    page,
+    context,
+  }) => {
+    // The board drawn as normal first, in a page of its own.
+    const drawn = await context.newPage();
+    await dismissStrips(drawn);
+    await drawn.goto("/design/3d");
+    await waitForBoard(drawn);
+    const normal = await downloadedBytes(await exportZip(drawn));
+    await drawn.close();
+
+    await page.addInitScript(() => {
+      HTMLCanvasElement.prototype.getContext = function () {
+        return null;
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await page.goto("/design/3d");
+    await expect(boardHost(page)).toHaveAttribute("data-board-state", "no-webgl", { timeout: FIRST_FRAME_MS });
+    await expect(page.locator("[data-canvas-message]").getByText(THREE_D_COPY.browserCantDraw.line1)).toBeVisible();
+    await expectNote(page);
+    const download = await exportZip(page);
+    const { entries } = await expectWholeZip(page, download, "");
+    // The same names, the same slice count — the same bytes — as the drawn board's.
+    expect(Buffer.from(await downloadedBytes(download)).equals(Buffer.from(normal))).toBe(true);
+    expect(entries.map((entry) => entry.name)).toEqual(readZip(normal).map((entry) => entry.name));
+  });
+
+  test("3. a board that can't be built: Export is dimmed and the line says why", async ({ page }) => {
+    // 40" is a length a saved board may hold but outside the app's range, so the builder refuses it.
+    await keepBoard(page, "Fish", inchesToMm(40));
+    await page.goto("/design/3d");
+    await expect(boardHost(page)).toHaveAttribute("data-board-state", "cant-build", { timeout: FIRST_FRAME_MS });
+    await expect(exportButton(page)).toBeDisabled();
+    await expect(exportStatus(page)).toHaveText(THREE_D_COPY.exportNothingYet);
+    await expectNote(page);
+  });
+
+  test("4. the files never change with the switches: Fins, Blank and Contour Stripes leave the zip byte for byte the same", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the switches' views are proven on every project in three-d-show; the bytes here");
+    await keepBoard(page, "Fish");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const tick = (name: string) => panel(page).getByRole("checkbox", { name, exact: true });
+    await expect(tick(THREE_D_COPY.fins)).toBeChecked();
+    await expect(tick(THREE_D_COPY.blank)).not.toBeChecked();
+    await expect(tick(THREE_D_COPY.contourStripes)).not.toBeChecked();
+    const first = await exportZip(page);
+    const firstBytes = await downloadedBytes(first);
+
+    // Fins off, Blank on, Contour Stripes on: everything the picture can add or take away, flipped.
+    await tick(THREE_D_COPY.fins).click();
+    await tick(THREE_D_COPY.blank).click();
+    await tick(THREE_D_COPY.contourStripes).click();
+    await expect(tick(THREE_D_COPY.fins)).not.toBeChecked();
+    await expect(tick(THREE_D_COPY.blank)).toBeChecked();
+    await expect(tick(THREE_D_COPY.contourStripes)).toBeChecked();
+    const second = await exportZip(page);
+    const secondBytes = await downloadedBytes(second);
+
+    expect(secondBytes.byteLength).toBe(firstBytes.byteLength);
+    expect(Buffer.from(secondBytes).equals(Buffer.from(firstBytes)), "the zip is the bare board whatever the switches say").toBe(
+      true,
+    );
+    const { entries, stem } = await expectWholeZip(page, second, "");
+    expect(stlOf(entries, stem).count).toBe(Number(await host.getAttribute("data-triangles")));
+  });
+
+  test("5. a board with no name downloads Untitled Board-3d.zip", async ({ page }) => {
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    const download = await exportZip(page);
+    expect(download.suggestedFilename()).toBe("Untitled Board-3d.zip");
+    await expectWholeZip(page, download, "");
+    await expectNote(page);
+  });
+
+  test("6. a failure says so in warning ink, and pressing Export again is the retry", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "a forced failure; the download itself is proven on every project above");
+    // The browser refuses to make an address for the file until the test lets it.
+    await page.addInitScript(() => {
+      const original = URL.createObjectURL.bind(URL);
+      (window as unknown as { __failExport: boolean }).__failExport = true;
+      URL.createObjectURL = (blob: Blob | MediaSource) => {
+        if ((window as unknown as { __failExport: boolean }).__failExport) throw new Error("test: no address for the file");
+        return original(blob);
+      };
+    });
+    const errors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await exportButton(page).click();
+    await expect(exportStatus(page)).toHaveText(THREE_D_COPY.exportFailed);
+    await expect(exportStatus(page)).toHaveClass(/text-surf-warning-ink/);
+    expect(errors.some((text) => text.includes("could not be made"))).toBe(true);
+    await expectNote(page);
+
+    await page.evaluate(() => {
+      (window as unknown as { __failExport: boolean }).__failExport = false;
+    });
+    const download = await exportZip(page);
+    await expectWholeZip(page, download, "");
+    await expect(exportStatus(page)).not.toHaveClass(/text-surf-warning-ink/);
   });
 });
