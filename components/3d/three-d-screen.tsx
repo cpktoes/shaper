@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
@@ -42,12 +43,18 @@ import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
+import { buildBlankGhost, type BlankGhost } from "@/lib/geometry/blank-ghost";
+import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { placedFins, type PlacedFin } from "@/lib/geometry/fin-outline";
+import { buildRackBoardArt } from "@/lib/geometry/rack-art";
+import { threeDLoadingFrame, threeDTileArt } from "@/lib/geometry/three-d-tile-art";
+import { TOP_VIEW_SAMPLES } from "@/components/rocker/rocker-top-view";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { easeOut } from "@/lib/models/rack-gesture";
 import {
   cameraAxes,
   dragTurn,
+  FRAME_FILL,
   frameAtOne,
   framePointsOf,
   glideAt,
@@ -75,7 +82,8 @@ import { THREE_D_COPY } from "./three-d-copy";
  *
  * The drawing code (three.js) is fetched only here, by a dynamic `import()` of the scene module inside an effect (research
  * Pattern 5); `import type` above is erased from the bundle. What the canvas shows, in one place:
- * - `loading` — the ground colour until the scene has drawn its first frame (the loading picture is 16-11's);
+ * - `loading` — the ground colour on the server's paint; once the page is live, the loading picture (the 3D tile's
+ *   turned board, and after a second a line under it) until the scene has drawn its first frame (16-11, §9);
  * - `ready` — the board;
  * - `lost` — the drawing context went away for a moment; the board and view are kept and come back with it;
  * - `no-webgl` — this browser offers no 3D drawing, or a lost context never came back;
@@ -109,6 +117,71 @@ function readSceneColours(): SceneColours {
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
   };
+}
+
+/** How long the loading picture shows alone before its line appears under it (UI-SPEC §9). */
+const LOADING_LINE_AFTER_MS = 1000;
+
+/** The page is live — its script has run — on the client and never on the server's paint (UI-SPEC §9 steps 1–2). */
+const subscribeNever = () => () => {};
+const isLive = () => true;
+const isServerPaint = () => false;
+
+/** The theme's colours as one string, to tell a real theme change from any other change to the page's classes. */
+function coloursKey(colours: SceneColours): string {
+  return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine].join(" ");
+}
+
+/**
+ * The loading picture (UI-SPEC §9, §10): the 3D tile's own drawing of the board turned to the first view — the rack's
+ * turn at 50°, lying nose left — framed as the lit board will be at 1x, so the board arrives where the picture was. After
+ * a second still loading, one line under it says so. Drawn on the canvas's ground; never a fade.
+ */
+function LoadingPicture({
+  art,
+  slow,
+}: {
+  art: { board: string; stringer: string; viewBox: string; aspect: number } | null;
+  slow: boolean;
+}) {
+  // Half the drawn board's height: the share of the tighter direction the 1x frame fills, read in the box's own units.
+  const halfHeight = art ? `min(${(FRAME_FILL * 50) / art.aspect}cqw, ${FRAME_FILL * 50}cqh)` : "0px";
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden rounded-md [container-type:size]"
+      data-loading-picture
+    >
+      {art && (
+        <svg aria-hidden className="absolute inset-0 size-full" viewBox={art.viewBox} preserveAspectRatio="xMidYMid meet">
+          <path
+            d={art.board}
+            fill="var(--outline-board-fill)"
+            stroke="var(--outline-ink)"
+            strokeWidth={1.4}
+            vectorEffect="non-scaling-stroke"
+          />
+          <path
+            d={art.stringer}
+            fill="none"
+            stroke="var(--outline-blank-line)"
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
+      {slow && (
+        // In the ink, not the muted ink: the line sits on the 3D ground (darker than the canvas in the light themes),
+        // where muted ink would fall to 2.26:1; ink reads 5.20 / 5.20 / 15.29 / 7.84 there.
+        <p
+          className="absolute inset-x-0 px-4 text-center text-xs font-normal text-surf-ink"
+          style={{ top: `calc(50% + ${halfHeight} + 12px)` }}
+          data-loading-line
+        >
+          {THREE_D_COPY.gettingReady}
+        </p>
+      )}
+    </div>
+  );
 }
 
 /** How far back a release looks for the drag's speed: a board held still this long before letting go doesn't glide. */
@@ -223,6 +296,43 @@ export function ThreeDScreen() {
   const [showFins, setShowFins] = useState(true);
   const finsRef = useRef<{ fins: readonly PlacedFin[]; visible: boolean }>({ fins, visible: showFins });
 
+  // The blank's ghost (16-11, D-08): the blank ROCKER draws — its top view built exactly as ROCKER builds it, and its
+  // side view's bottom and deck — as a see-through shell round the board. Off until the shaper ticks Blank; a hand-set
+  // board has none. A view switch only: never stored, never part of the board or the files (D-16, D-17).
+  const ghost = useMemo(
+    () =>
+      buildBlankGhost(
+        sideProfile.blank,
+        buildBlankTopView({
+          blank: sideProfile.blank,
+          geometry: outlineGeometry,
+          length: sideProfile.length,
+          samples: TOP_VIEW_SAMPLES,
+        }),
+      ),
+    [sideProfile.blank, outlineGeometry, sideProfile.length],
+  );
+  const [showBlank, setShowBlank] = useState(false);
+  const ghostRef = useRef<{ ghost: BlankGhost | null; visible: boolean }>({ ghost, visible: showBlank });
+
+  // Contour Stripes (16-11, D-12): off until ticked; a view switch only, like the other two.
+  const [stripes, setStripes] = useState(false);
+  const stripesRef = useRef(stripes);
+
+  // The loading picture (UI-SPEC §9): the 3D tile's turned board. A board whose turn can't be worked out has no
+  // picture — the line alone.
+  const loadingArt = useMemo(() => {
+    try {
+      const art = buildRackBoardArt(sideProfile, outlineGeometry);
+      const { board, stringer } = threeDTileArt(art);
+      return { board, stringer, ...threeDLoadingFrame(art) };
+    } catch {
+      return null;
+    }
+  }, [sideProfile, outlineGeometry]);
+  const pageLive = useSyncExternalStore(subscribeNever, isLive, isServerPaint);
+  const [loadingSlow, setLoadingSlow] = useState(false);
+
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<BoardSceneHandle | null>(null);
   const coloursRef = useRef<SceneColours | null>(null);
@@ -275,6 +385,40 @@ export function ThreeDScreen() {
     sceneRef.current?.setFins(fins, showFins);
   }, [fins, showFins]);
 
+  // The same for the blank's ghost and the Blank tick.
+  useEffect(() => {
+    ghostRef.current = { ghost, visible: showBlank };
+    sceneRef.current?.setGhost(ghost, showBlank);
+  }, [ghost, showBlank]);
+
+  // And for Contour Stripes.
+  useEffect(() => {
+    stripesRef.current = stripes;
+    sceneRef.current?.setStripes(stripes);
+  }, [stripes]);
+
+  // The colours follow the theme while the screen is open (UI-SPEC § Color, §16): a new theme class on the page, or the
+  // computer's own light or dark setting changing under System, re-reads the theme's colours and repaints the scene in
+  // place — the turn, the zoom and the slide untouched. One observer and one listener, gone with the screen (T-16-24).
+  useEffect(() => {
+    const recolour = () => {
+      // Before the scene's code arrives there is nothing to repaint: the scene reads the colours itself as it starts.
+      if (!coloursRef.current) return;
+      const colours = readSceneColours();
+      if (coloursKey(colours) === coloursKey(coloursRef.current)) return;
+      coloursRef.current = colours;
+      sceneRef.current?.setColours(colours);
+    };
+    const observer = new MutationObserver(recolour);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    scheme.addEventListener("change", recolour);
+    return () => {
+      observer.disconnect();
+      scheme.removeEventListener("change", recolour);
+    };
+  }, []);
+
   // Hand every new board to the scene that is drawing (the turn and the room are kept).
   useEffect(() => {
     boardRef.current = built.ok ? built.board : null;
@@ -307,6 +451,8 @@ export function ThreeDScreen() {
         handle = mountBoardScene(host, { ...board, colours }, { onState: report });
         sceneRef.current = handle;
         handle.setFins(finsRef.current.fins, finsRef.current.visible);
+        handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
+        handle.setStripes(stripesRef.current);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
         // §9); a view is framed at 1x for its own turn, as its button would have.
         if (pendingFrameRef.current) {
@@ -744,6 +890,16 @@ export function ThreeDScreen() {
   useEffect(() => {
     zoomableRef.current = zoomable;
   }, [zoomable]);
+  // The loading picture shows once the page is live and until the lit board is ready; after a second, its line too.
+  const loading = state === "loading" && pageLive;
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setLoadingSlow(true), LOADING_LINE_AFTER_MS);
+    return () => {
+      clearTimeout(timer);
+      setLoadingSlow(false);
+    };
+  }, [loading]);
 
   return (
     <DesignScreenShell
@@ -751,7 +907,16 @@ export function ThreeDScreen() {
       controls={
         <ThreeDControls onView={onView} onReset={() => onReset()} drawingUnavailable={message !== null}>
           <ThreeDHardEdge />
-          <ThreeDShow showFins={showFins} onShowFins={setShowFins} disabled={message !== null} />
+          <ThreeDShow
+            showFins={showFins}
+            onShowFins={setShowFins}
+            showBlank={showBlank}
+            onShowBlank={setShowBlank}
+            hasBlank={ghost !== null}
+            stripes={stripes}
+            onStripes={setStripes}
+            disabled={message !== null}
+          />
         </ThreeDControls>
       }
       canvas={
@@ -789,6 +954,8 @@ export function ThreeDScreen() {
               onContextMenu={(event) => event.preventDefault()}
               className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
             />
+            {/* Replaced by the lit board in the same render the scene reports it drawn: no fade (§9 step 4). */}
+            {loading && <LoadingPicture art={loadingArt} slow={loadingSlow} />}
             {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
             {/* The corner toolbar (UI-SPEC §4): Wide view alone — exactly TEMPLATE's button, on a computer and a
                 sideways phone only (a phone upright has no sidebar to hide), and there from the first paint. No

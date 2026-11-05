@@ -22,6 +22,7 @@ import type { BoardSideProfile } from "./board-profile";
 import type { OutlineGeometry } from "./outline";
 import { buildRackBoardArt, stringerPoints, turnedBoardPoints, type RackBoardArt, type RackPoint } from "./rack-art";
 import { boxOfPoints, outlineTileArt, padBox, polylinePath, viewBoxOf } from "./screen-tiles";
+import { FRAME_FILL } from "./view-3d";
 
 /** The turn the 3D tile shows: 50 degrees, the 3D screen's first view. */
 export const THREE_D_TILE_TURN_RAD = (50 * Math.PI) / 180;
@@ -65,4 +66,26 @@ export function threeDTilePicture(profile: BoardSideProfile, geometry: OutlineGe
   } catch {
     return { kind: "fallback", ...outlineTileArt(geometry, "lying") };
   }
+}
+
+/**
+ * Where the loading picture draws the 3D tile's turned board (UI-SPEC §9): framed as the 3D screen's first view is at
+ * 1x, so the lit board lands where the picture was. `viewBox` is the turned board's own box (unpadded) grown about its
+ * centre by 1 / `fill`: drawn with `meet` across the whole canvas, the board's box then fills exactly `fill` of the
+ * canvas's tighter direction, as `frameAtOne` frames the board. `aspect` is the board's box, width over height, so the
+ * screen can place its one line just under the drawn board.
+ */
+export function threeDLoadingFrame(art: RackBoardArt, fill: number = FRAME_FILL): { viewBox: string; aspect: number } {
+  const box = boxOfPoints(lying(turnedBoardPoints(art, THREE_D_TILE_TURN_RAD)));
+  const width = box.width / fill;
+  const height = box.height / fill;
+  return {
+    viewBox: viewBoxOf({
+      minX: box.minX + box.width / 2 - width / 2,
+      minY: box.minY + box.height / 2 - height / 2,
+      width,
+      height,
+    }),
+    aspect: box.width / box.height,
+  };
 }
