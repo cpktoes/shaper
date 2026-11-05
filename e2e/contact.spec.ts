@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 import { CONTACT_STAND_IN_COOKIE } from "../lib/contact/delivery";
 import {
   CONTACT_ADDRESS,
@@ -115,7 +115,7 @@ test.describe("Contact page", () => {
       await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
       await expectNoScreensNavigation(page);
-      await expectSixTilesInMenu(page, null);
+      await expectSevenTilesInMenu(page, null);
 
       const overflow = await page.locator("[data-contact-page]").evaluate((el) => ({
         scrollWidth: el.scrollWidth,

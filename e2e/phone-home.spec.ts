@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SCREENS, expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 
 /**
  * 260909-hq9's own proof: the founder reported the phone home screen ("Phone Homepage layout is
@@ -45,28 +45,28 @@ test.describe("phone home screen — the compact top bar", () => {
   });
 });
 
-test.describe("phone home screen — no bottom tab bar here or after a board is picked; ☰ holds the six tiles (quick 261003-q2f)", () => {
+test.describe("phone home screen — no bottom tab bar here or after a board is picked; ☰ holds the seven tiles (quick 261003-q2f)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
     await dismissSignInBanner(page);
   });
 
-  test("no Screens navigation on the home route or after picking a preset, and ☰ shows the six tiles, none ticked at home", async ({
+  test("no Screens navigation on the home route or after picking a preset, and ☰ shows the seven tiles, none ticked at home", async ({
     page,
   }) => {
     await page.goto("/");
 
     // The old bottom tab bar never rendered here (D-07), and since quick 261003-q2f it renders
-    // nowhere; the six screens are in the top bar's menu, as tiles, with none ticked on this page.
+    // nowhere; the seven screens are in the top bar's menu, as tiles, with none ticked on this page.
     await expectNoScreensNavigation(page);
-    await expectSixTilesInMenu(page, null);
+    await expectSevenTilesInMenu(page, null);
 
     const firstPreset = page.getByRole("button").filter({ hasText: "Start Shaping" }).first();
     await firstPreset.click();
     await page.waitForURL("**/design/outline");
 
-    // The six tiles in order, the ticked tile and the 44px minimums are already asserted by
-    // e2e/phone-layout.spec.ts's own six-tile test on this same route — not duplicated here.
+    // The seven tiles in order, the ticked tile and the 44px minimums are already asserted by
+    // e2e/phone-layout.spec.ts's own seven-tile test on this same route — not duplicated here.
     await expectNoScreensNavigation(page);
   });
 });
@@ -128,7 +128,7 @@ test.describe("desktop home screen — unmoved", () => {
     await dismissSignInBanner(page);
   });
 
-  test("the desktop link row is visible with its six links, and neither phone bar renders", async ({
+  test("the desktop link row is visible with its seven links, and neither phone bar renders", async ({
     page,
   }) => {
     await page.goto("/");

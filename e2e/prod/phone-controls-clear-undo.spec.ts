@@ -27,7 +27,7 @@ import { SCREENS, goToScreen } from "../helpers/screens";
  * this same button passes whether the fault is there or not. Only a production build has the
  * layout a shaper actually gets.
  *
- * The first test is the general rule (no control on any of the six screens ends up under the pair,
+ * The first test is the general rule (no control on any of the seven screens ends up under the pair,
  * and every control in the pair's column — the Back and Next pair included — ends at least 7.5 dots
  * above it, the 8 dots of daylight each screen's end room is sized for); the second is the named
  * case, taken with a real tap. The screens are walked the way a shaper on a phone does, through the
@@ -162,6 +162,8 @@ test.describe("on a phone, the last control always clears the floating Undo/Redo
   test("with the pair showing and each screen scrolled to its very end, no control sits under it", async ({
     page,
   }) => {
+    // Seven screens since Phase 16, the last of them 3D, whose first draw is the slowest of them.
+    test.slow();
     await openAPresetWithThePairShowing(page);
     for (const screen of SCREENS) {
       await openScreen(page, screen);

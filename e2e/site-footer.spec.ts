@@ -46,6 +46,7 @@ const DESIGN_SCREENS = [
   "/design/rails",
   "/design/volume",
   "/design/fins",
+  "/design/3d",
 ] as const;
 
 const PAGES = ["/", "/contact", TERMS_ROUTE, PRIVACY_ROUTE, "/no-such-page-261006", ...DESIGN_SCREENS, "/design/summary"];
