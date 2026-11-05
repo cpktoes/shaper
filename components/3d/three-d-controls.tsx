@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { SliderRow } from "@/components/design/slider-row";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Live } from "@/components/rocker/live";
 import { buttonVariants } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
@@ -23,8 +24,9 @@ import { THREE_D_COPY } from "./three-d-copy";
  * The shell adds Back and Next and the site footer after it.
  *
  * Between the title and VIEW sits the `children` slot: the tail's two Hard Edge sliders bound to RAILS' own values
- * (D-30, `ThreeDHardEdge`), then the later plans' blocks (SHOW, 16-11). EXPORT (16-12) follows VIEW. Each block is a
- * `flex flex-col gap-2` opening with its ruled heading.
+ * (D-30, `ThreeDHardEdge`), then SHOW (`ThreeDShow`, 16-10: Fins; 16-11 adds Blank and Contour Stripes), directly
+ * above VIEW as UI-SPEC §1 draws them. EXPORT (16-12) follows VIEW. Each block is a `flex flex-col gap-2` opening
+ * with its ruled heading.
  */
 export function ThreeDControls({
   children,
@@ -114,6 +116,33 @@ export function ThreeDHardEdge() {
           />
         </div>
       </Live>
+    </div>
+  );
+}
+
+/**
+ * SHOW (UI-SPEC §1, §6): what the picture includes. Fins (D-06) is on by default and hides the fins when unticked. A
+ * tick only changes what is seen — never the board, never saved, never undoable (D-17) — so a locked board keeps it
+ * (marked lock-exempt, UI-SPEC §9), and the view stays exactly as it is. It is live while the drawing loads (a tick
+ * made then applies when the board appears) and dimmed only while a canvas message shows.
+ */
+export function ThreeDShow({
+  showFins,
+  onShowFins,
+  disabled,
+}: {
+  showFins: boolean;
+  onShowFins: (show: boolean) => void;
+  /** True while a canvas message shows instead of the board (UI-SPEC §8): there are no fins to show. */
+  disabled: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <ThreeDSectionHeading>{THREE_D_COPY.showHeading}</ThreeDSectionHeading>
+      <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+        <Checkbox data-lock-exempt disabled={disabled} checked={showFins} onCheckedChange={(checked) => onShowFins(checked)} />
+        {THREE_D_COPY.fins}
+      </label>
     </div>
   );
 }

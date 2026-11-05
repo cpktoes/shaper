@@ -25,9 +25,11 @@ import {
   Color,
   DirectionalLight,
   DoubleSide,
+  ExtrudeGeometry,
   Group,
   Line,
   LineBasicMaterial,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -35,10 +37,12 @@ import {
   PerspectiveCamera,
   Quaternion,
   Scene,
+  Shape,
   Vector3,
   WebGLRenderer,
 } from "three";
 import type { Vec3 } from "@/lib/geometry/board-surface";
+import { FIN_ROOT_SINK, type PlacedFin } from "@/lib/geometry/fin-outline";
 import type { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import {
   BOARD_TO_ROOM,
@@ -95,6 +99,12 @@ export interface BoardSceneHandle {
    * so the board is lit exactly the same zoomed or slid (D-10, D-28). One frame per call.
    */
   setCrop(rect: { x: number; y: number; width: number; height: number } | null): void;
+  /**
+   * The board's fins (16-10, D-06): each stood on the bottom at its FINS placement, in the board's group so it turns
+   * with the board, drawn only while `visible`. Changing either changes nothing else — the turn, the frame and the
+   * crop stay as they are. One frame per call.
+   */
+  setFins(fins: readonly PlacedFin[], visible: boolean): void;
   /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
   roomReport(): RoomReport;
   resize(width: number, height: number): void;
@@ -175,6 +185,7 @@ const NOOP_HANDLE: BoardSceneHandle = {
   setTurn() {},
   frame: () => ({ distance: CAMERA_STANDOFF_MM, right: 0, up: 0 }),
   setCrop() {},
+  setFins() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
   dispose() {},
@@ -213,6 +224,56 @@ function ribbon(points: readonly Vec3[], outward: 1 | -1): { ribbon: BufferGeome
   const lineGeometry = new BufferGeometry();
   lineGeometry.setAttribute("position", new BufferAttribute(centre, 3));
   return { ribbon: ribbonGeometry, line: lineGeometry };
+}
+
+/** How much of a fin's thickness each rounded edge takes, on each face: its edges read round, never knife-sharp. */
+const FIN_EDGE_ROUND_SHARE = 0.35;
+/** A fin's surface: a little glossier than the raw foam, as a glassed fin beside foam is (UI-SPEC § Color). */
+const FIN_ROUGHNESS = 0.6;
+
+/**
+ * One fin's solid, in the board's own axes: its outline extruded to its thickness with rounded edges, centred on its
+ * base line, standing square to the bottom (tilted along the board by the rocker's slope at its centre), with the
+ * solid carried `FIN_ROOT_SINK` (plus the rounding) up into the foam so no gap shows under its root.
+ */
+function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 } {
+  const { outline, thickness } = fin;
+  const round = thickness * FIN_EDGE_ROUND_SHARE;
+  const into = FIN_ROOT_SINK + round;
+  const shape = new Shape();
+  shape.moveTo(0, -into);
+  for (const p of outline.points) shape.lineTo(p.u, p.v);
+  shape.lineTo(outline.base, -into);
+  shape.closePath();
+  const core = Math.max(thickness - 2 * round, thickness * 0.05);
+  const geometry = new ExtrudeGeometry(shape, {
+    depth: core,
+    bevelEnabled: true,
+    bevelThickness: round,
+    bevelSize: round,
+    bevelOffset: -round,
+    bevelSegments: 3,
+    curveSegments: 1,
+  });
+  geometry.translate(0, 0, -core / 2);
+
+  // The fin's own axes in the board's: u along the base toward the tail, following the bottom's slope; v straight
+  // down off the bottom (square to it); and across its thickness.
+  const slope = Math.tan(fin.tiltRad);
+  const run = new Vector3(fin.trailing[0] - fin.leading[0], fin.trailing[1] - fin.leading[1], 0);
+  if (run.lengthSq() === 0) run.set(-1, 0, 0);
+  run.normalize();
+  const u = new Vector3(run.x, run.y, slope * run.x).normalize();
+  const v = new Vector3(slope, 0, -1).normalize();
+  const across = new Vector3().crossVectors(u, v).normalize();
+  const middle = new Vector3(
+    (fin.leading[0] + fin.trailing[0]) / 2,
+    (fin.leading[1] + fin.trailing[1]) / 2,
+    fin.rootZ,
+  );
+  const origin = middle.addScaledVector(u, -outline.base / 2);
+  const matrix = new Matrix4().makeBasis(u, v, across).setPosition(origin);
+  return { geometry, matrix };
 }
 
 /**
@@ -272,12 +333,16 @@ export function mountBoardScene(
   const centred = new Group();
   turned.add(centred);
   scene.add(turned);
+  // The fins (16-10): in the board's own axes beside the foam, so they turn with it.
+  const finGroup = new Group();
 
   let current = input;
   let turn: Quat = REST_TURN;
   let frame: Frame = { distance: CAMERA_STANDOFF_MM, right: 0, up: 0 };
   let size = { width: Math.max(1, host.clientWidth), height: Math.max(1, host.clientHeight) };
   let disposables: { dispose(): void }[] = [];
+  let fins: readonly PlacedFin[] = [];
+  let finDisposables: { dispose(): void }[] = [];
   let pending = 0;
   let frames = 0;
   let lost = false;
@@ -302,6 +367,28 @@ export function mountBoardScene(
     camera.far = frame.distance + reach * 1.5;
     camera.aspect = size.width / size.height;
     camera.updateProjectionMatrix();
+  };
+
+  /** The fins' solids, made again from `fins` in the board's fin colour. */
+  const buildFins = () => {
+    for (const d of finDisposables) d.dispose();
+    finDisposables = [];
+    finGroup.clear();
+    if (fins.length === 0) return;
+    const material = new MeshStandardMaterial({
+      color: new Color(current.colours.inkMuted),
+      roughness: FIN_ROUGHNESS,
+      metalness: 0,
+    });
+    finDisposables.push(material);
+    for (const fin of fins) {
+      const { geometry, matrix } = finSolid(fin);
+      const mesh = new Mesh(geometry, material);
+      mesh.matrixAutoUpdate = false;
+      mesh.matrix.copy(matrix);
+      finGroup.add(mesh);
+      finDisposables.push(geometry);
+    }
   };
 
   const build = () => {
@@ -340,6 +427,8 @@ export function mountBoardScene(
       centred.add(new Mesh(g.ribbon, paint), new Line(g.line, pen));
       disposables.push(g.ribbon, g.line);
     }
+    centred.add(finGroup);
+    buildFins();
     centred.position.set(-centre[0], -centre[1], -centre[2]);
     placeBoard();
   };
@@ -426,6 +515,15 @@ export function mountBoardScene(
       else camera.clearViewOffset();
       schedule();
     },
+    setFins(next, visible) {
+      if (disposed) return;
+      if (next !== fins) {
+        fins = next;
+        if (!lost) buildFins();
+      }
+      finGroup.visible = visible;
+      schedule();
+    },
     roomReport,
     resize(width, height) {
       if (disposed || !(width > 0) || !(height > 0)) return;
@@ -442,8 +540,9 @@ export function mountBoardScene(
       if (restoreTimer) clearTimeout(restoreTimer);
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      for (const d of disposables) d.dispose();
+      for (const d of [...disposables, ...finDisposables]) d.dispose();
       disposables = [];
+      finDisposables = [];
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
