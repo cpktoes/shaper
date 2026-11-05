@@ -40,8 +40,8 @@ const DESKTOP_STEP_PX = 40;
 /** The 3D screen's first frame is slow on the suite's development server, slowest on WebKit (about 5 s measured). */
 const FIRST_FRAME_MS = 30_000;
 
-/** The 3D corner's three switches, corner first. */
-const THREE_D_SWITCHES = [THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes];
+/** The 3D corner's four switches, corner first. */
+const THREE_D_SWITCHES = [THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes, THREE_D_COPY.wireView];
 /** Wide view's spoken name, as `three-d-screen.tsx` gives it with the sidebar showing. */
 const WIDE_VIEW_NAME = "Hide the sidebar for a wider view";
 
@@ -166,8 +166,8 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
   });
 
   // Phase 16 (16-17, D-35): Wide view has no sidebar to hide on an upright phone and the 3D screen has no Rotate (D-04),
-  // so the three switches take the corner, Fins in it.
-  test("3D (/design/3d): the three switches pack into the corner, Fins in it", async ({ page }) => {
+  // so the four switches take the corner, Fins in it.
+  test("3D (/design/3d): the four switches pack into the corner, Fins in it", async ({ page }) => {
     await openThreeD(page);
 
     const { rowBox, buttons } = await measureToolbar(page);
@@ -182,7 +182,7 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
     }
   });
 
-  test("3D at 320 × 568: the three switches stay inside the drawing", async ({ page }, testInfo) => {
+  test("3D at 320 × 568: the four switches stay inside the drawing", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "one phone at the narrowest width");
     await page.setViewportSize({ width: 320, height: 568 });
     await openThreeD(page);
@@ -257,7 +257,7 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     assertCornerFlush(rowBox, buttons[0]);
   });
 
-  test("3D (/design/3d): Wide view in the corner, then the three switches", async ({ page }) => {
+  test("3D (/design/3d): Wide view in the corner, then the four switches", async ({ page }) => {
     await openThreeD(page);
     const { rowBox, buttons } = await measureToolbar(page);
     expect(buttons.map((b) => b.name)).toEqual([WIDE_VIEW_NAME, ...THREE_D_SWITCHES]);
@@ -282,8 +282,9 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
     // Rails v2 (quick 261102-gec plan 02 and fast task 185, 2026-11-02): the Finished Rail toggle took the
     // corner, Ghost Bands sits beside it, and View Full Sized stepped to 80px — three on the same 40px step.
     { path: "/design/rails", label: "RAILS", expectedCount: 3 },
-    // Phase 16 (16-17, D-35): Wide view (no Rotate, D-04), then Fins, Blank and Contour Stripes, appended after it.
-    { path: "/design/3d", label: "3D", expectedCount: 4 },
+    // Phase 16 (16-17, D-35, D-42): Wide view (no Rotate, D-04), then Fins, Blank, Contour Stripes and Wire View,
+    // appended after it.
+    { path: "/design/3d", label: "3D", expectedCount: 5 },
   ] as const;
 
   for (const { path, label, expectedCount } of DESKTOP_CASES) {

@@ -30,6 +30,7 @@ import {
   Line,
   LineBasicMaterial,
   LineLoop,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -80,6 +81,8 @@ export interface BoardSceneInput {
   framePoints: Vec3[];
   /** The board's turning centre, in the surface's own axes. */
   centre: Vec3;
+  /** The wire view's lines (D-42): `wireSegments`, in the surface's own axes. */
+  wire: Float32Array;
   colours: SceneColours;
 }
 
@@ -120,6 +123,12 @@ export interface BoardSceneHandle {
    * stringer, the fins and the ghost draw as usual. One frame per call; the view is untouched.
    */
   setStripes(on: boolean): void;
+  /**
+   * The wire view (D-42): the foam drawn plain and unlit with the board's lines on it, near side only — the foam still
+   * hides what is behind it. It replaces Contour Stripes while it is on. The stringer, the fins and the ghost draw as
+   * usual. One frame per call; the view is untouched.
+   */
+  setWire(on: boolean): void;
   /**
    * The theme's colours again (16-11): the ground, the foam, the stringer and stripes, the fins and the ghost repainted
    * in place — nothing is rebuilt and nothing moves, so the turn, the frame, the zoom and the slide stay as they are.
@@ -208,6 +217,7 @@ const NOOP_HANDLE: BoardSceneHandle = {
   setFins() {},
   setGhost() {},
   setStripes() {},
+  setWire() {},
   setColours() {},
   roomReport: () => ({ camera: [0, 0, 0], lights: [] }),
   resize() {},
@@ -436,9 +446,11 @@ export function mountBoardScene(
   let ghost: BlankGhost | null = null;
   let ghostDisposables: { dispose(): void }[] = [];
   let stripes = false;
-  /** The foam and its two looks — lit by the room, or striped — so Contour Stripes swaps one for the other. */
+  let wire = false;
+  /** The foam and its three looks — lit by the room, striped, or plain under the wire view's lines. */
   let foamMesh: Mesh | null = null;
-  let foamMaterials: { lit: MeshStandardMaterial; striped: ShaderMaterial } | null = null;
+  let foamMaterials: { lit: MeshStandardMaterial; striped: ShaderMaterial; plain: MeshBasicMaterial } | null = null;
+  let wireMesh: LineSegments | null = null;
   /** Every colour the scene paints with and the theme's token it comes from, so a theme change repaints in place. */
   type Tint = [Color, keyof SceneColours];
   let boardTints: Tint[] = [];
@@ -450,6 +462,14 @@ export function mountBoardScene(
   let reportedReady = false;
   let restoreTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
+
+  /** The foam's look for the switches as they stand, and the wire view's lines with it. */
+  const foamLook = () => {
+    if (foamMesh && foamMaterials) {
+      foamMesh.material = wire ? foamMaterials.plain : stripes ? foamMaterials.striped : foamMaterials.lit;
+    }
+    if (wireMesh) wireMesh.visible = wire;
+  };
 
   /** The board's group at `frame`, turned by `turn`: the only thing in the room that ever moves. */
   const placeBoard = (reframe = true) => {
@@ -552,15 +572,34 @@ export function mountBoardScene(
       vertexShader: STRIPE_VERTEX,
       fragmentShader: STRIPE_FRAGMENT,
     });
-    foamMaterials = { lit: foam, striped };
-    foamMesh = new Mesh(geometry, stripes ? striped : foam);
+    // The wire view's foam: unlit, and set a hair back, so the lines lying on its skin draw and the far side's don't.
+    const plain = new MeshBasicMaterial({
+      color: new Color(colours.foam),
+      toneMapped: false,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 2,
+    });
+    foamMaterials = { lit: foam, striped, plain };
+    foamMesh = new Mesh(geometry, foam);
     centred.add(foamMesh);
-    disposables.push(geometry, foam, striped);
+    disposables.push(geometry, foam, striped, plain);
     boardTints = [
       [foam.color, "foam"],
       [striped.uniforms.foam.value as Color, "foam"],
       [striped.uniforms.onFoam.value as Color, "onFoam"],
+      [plain.color, "foam"],
     ];
+
+    // The wire view's lines (D-42): one thin set of lines, in the stringer's ink.
+    const wireGeometry = new BufferGeometry();
+    wireGeometry.setAttribute("position", new BufferAttribute(current.wire, 3));
+    const wirePen = new LineBasicMaterial({ color: new Color(colours.onFoam), toneMapped: false });
+    wireMesh = new LineSegments(wireGeometry, wirePen);
+    centred.add(wireMesh);
+    disposables.push(wireGeometry, wirePen);
+    boardTints.push([wirePen.color, "onFoam"]);
+    foamLook();
 
     // The stringer (D-07): a 3 mm ribbon so it has a real stringer's width up close, and a one-dot line on the
     // same points so it is never thinner than a dot far away. Painted, so the lights don't shade it.
@@ -685,7 +724,13 @@ export function mountBoardScene(
     setStripes(on) {
       if (disposed) return;
       stripes = on;
-      if (foamMesh && foamMaterials) foamMesh.material = on ? foamMaterials.striped : foamMaterials.lit;
+      foamLook();
+      schedule();
+    },
+    setWire(on) {
+      if (disposed) return;
+      wire = on;
+      foamLook();
       schedule();
     },
     setColours(colours) {

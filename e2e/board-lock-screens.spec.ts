@@ -867,7 +867,7 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     // The corner's switches (D-35): each only changes the picture, so each stays live, sends no save and leaves the
     // panel as it was.
     const corner = page.locator("[data-viewer-toolbar] button[data-three-d-show][data-lock-exempt]");
-    await expect(corner).toHaveCount(3);
+    await expect(corner).toHaveCount(4);
     for (const button of await corner.all()) {
       await expect(button).toBeEnabled();
       const was = (await button.getAttribute("aria-pressed")) ?? "";

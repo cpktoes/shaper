@@ -57,6 +57,10 @@ export const THREE_D_COPY = {
   contourStripes: "Contour Stripes",
   /** The Contour Stripes switch's tooltip and spoken description. */
   contourStripesTip: "Contour Stripes — bands of light that kink at a bump or a flat spot.",
+  /** The # switch (D-42). */
+  wireView: "Wire View",
+  /** The # switch's tooltip and spoken description. */
+  wireViewTip: "Wire View — the board drawn in thin lines across and along it.",
 
   // On the canvas: each message is two lines.
   browserCantDraw: {

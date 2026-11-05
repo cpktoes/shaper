@@ -1,5 +1,6 @@
 "use client";
 
+import { HashIcon } from "lucide-react";
 import { FinPlacementIcon } from "@/components/outline/fin-placement-icon";
 import { BlankTopViewIcon, ContourStripesIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { COARSE_TOUCH_BOX } from "@/components/viewer/zoom-viewport";
@@ -12,9 +13,11 @@ const DIMMED_BUT_HOVERABLE =
 
 /**
  * What the 3D picture includes (Phase 16, D-35, UI-SPEC §6, §9): Fins, on when the screen opens; Blank, a see-through
- * ghost of the picked blank (D-08), off when it opens; and Contour Stripes, bands of light in place of the foam's
- * shading (D-12), off when it opens. The founder, 2026-11-04: "Move the fins and blank checkboxes to icons in the viewer.
- * We already have a good fin icon." and of Contour Stripes, "An icon too".
+ * ghost of the picked blank (D-08), off when it opens; Contour Stripes, bands of light in place of the foam's shading
+ * (D-12), off when it opens; and Wire View, the board drawn in thin lines on a plain foam (D-42), off when it opens.
+ * Contour Stripes and Wire View each replace the foam's shading, so they are one look at a time. The founder,
+ * 2026-11-04: "Move the fins and blank checkboxes to icons in the viewer. We already have a good fin icon." and of
+ * Contour Stripes, "An icon too"; 2026-11-05: "Can we make this a toggle also (maybe the icon can be a # sign)."
  *
  * Its own module because `toolbar-button.test.ts` counts each file's buttons and the screen keeps its one Wide view
  * button. The switches are APPENDED after Wide view in the screen's one row, so nothing that exists moves (P-3).
@@ -33,6 +36,8 @@ export function ThreeDShowButtons({
   hasBlank,
   stripes,
   onStripes,
+  wire,
+  onWire,
   disabled,
 }: {
   showFins: boolean;
@@ -43,6 +48,8 @@ export function ThreeDShowButtons({
   hasBlank: boolean;
   stripes: boolean;
   onStripes: (on: boolean) => void;
+  wire: boolean;
+  onWire: (on: boolean) => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): there is nothing to show. */
   disabled: boolean;
 }) {
@@ -85,6 +92,18 @@ export function ThreeDShowButtons({
         className={COARSE_TOUCH_BOX}
       >
         <ContourStripesIcon className="size-6" />
+      </ViewerToolbarButton>
+      <ViewerToolbarButton
+        label={THREE_D_COPY.wireView}
+        title={THREE_D_COPY.wireViewTip}
+        pressed={wire}
+        disabled={disabled}
+        onClick={() => onWire(!wire)}
+        data-three-d-show="wire"
+        data-lock-exempt
+        className={COARSE_TOUCH_BOX}
+      >
+        <HashIcon className="size-6" />
       </ViewerToolbarButton>
     </>
   );

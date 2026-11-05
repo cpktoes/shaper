@@ -431,11 +431,11 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     await expect(host).not.toHaveAttribute("aria-busy", "true");
   });
 
-  test("8. a locked board keeps all three switches, since they only change the picture", async ({ page }) => {
+  test("8. a locked board keeps all four switches, since they only change the picture", async ({ page }) => {
     await keepPreset(page, "Fish", { locked: true });
     await page.goto("/design/3d");
     await waitForBoard(page);
-    for (const button of [finsSwitch(page), blankSwitch(page), stripesSwitch(page)]) {
+    for (const button of [finsSwitch(page), blankSwitch(page), stripesSwitch(page), cornerSwitch(page, THREE_D_COPY.wireView)]) {
       await expect(button).toBeEnabled();
       await expect(button).not.toHaveAttribute("aria-disabled", "true");
     }

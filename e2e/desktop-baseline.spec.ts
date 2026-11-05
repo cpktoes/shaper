@@ -2,6 +2,19 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-17, branch board-3d) — 3D only, `three-d-desktop.png`, once, after the
+ * fourth corner switch: SHOW left the panel and its three switches, with the new # for Wire View, joined Wide view in
+ * the corner (D-35, D-42), and the thruster's near fin, which shows below the rail at the first view, took its real
+ * shape (D-35). Compared with the tolerance at 0, against the picture as plan 16-16 left it: 39603 pixels differ in the
+ * panel from SHOW's old place down (x 20-358, y 270-796); 4462 in the corner row left of Wide view (x 1048-1207, y
+ * 147-180); 219 in the fin (x 1049-1095, y 506-523); 28 by one level of 255 in Wide view's and the zoom row's icons; and one
+ * dark pixel on the deck at (1064, 416), which is headless Chromium's software drawing alone: the fin's solid stays inside
+ * its outline, the dot is gone at 10x, and the same board on this Mac's graphics chip draws none. The board itself is
+ * unmoved: with Fins off, the canvas before and after differs in 0 of 1977840 colour values. The other five pictures
+ * passed and are byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by the webpack dev server
+ * (`IS_WEBPACK_TEST=1`, port 3217) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's
+ * Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D d7842e75 to 34d8a19c.
+ *
  * RE-RECORDED 2026-11-05 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the sharp edge
  * opening into the round one (the founder: "make sure a sharp tuck can blend into a round tuck nicely"): the stock
  * board's hard edge now gains a radius through its fade in place of a shrinking corner. Compared with the tolerance

@@ -69,7 +69,7 @@ describe("viewer toolbar button extraction (05-06)", () => {
     const threeDSource = stripComments(readFileSync(THREE_D_SCREEN_PATH, "utf8"));
     const showSource = stripComments(readFileSync(THREE_D_SHOW_BUTTONS_PATH, "utf8"));
     expect(showSource).toContain(SHARED_MODULE_SPECIFIER);
-    expect(showSource.match(/<ViewerToolbarButton/g)?.length).toBe(3);
+    expect(showSource.match(/<ViewerToolbarButton/g)?.length).toBe(4);
     const row = threeDSource.slice(threeDSource.indexOf("<ViewerToolbar>"), threeDSource.indexOf("</ViewerToolbar>"));
     expect(row).toContain("<ThreeDShowButtons");
   });

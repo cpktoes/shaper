@@ -480,7 +480,7 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     expect(await scroller.evaluate((el) => el.scrollTop)).toBe(panelScroll);
   });
 
-  test("6. an upright iPhone at 1x shows only the three switches over the board", async ({ page }, testInfo) => {
+  test("6. an upright iPhone at 1x shows only the four switches over the board", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "the iPhone's own touch rule");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
@@ -488,13 +488,13 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     await expect(page.locator("[data-viewer-zoom]")).toHaveCount(1);
     await expect(zoomRow(page)).toBeHidden();
     await expect(page.getByRole("button", { name: "Hide the sidebar for a wider view" })).toBeHidden();
-    // No Rotate button on the 3D screen (D-04), since turning the phone already turns the board: Fins, Blank and
-    // Contour Stripes alone (D-35).
-    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(3);
+    // No Rotate button on the 3D screen (D-04), since turning the phone already turns the board: Fins, Blank, Contour
+    // Stripes and Wire View alone (D-35, D-42).
+    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(4);
     const names = await page
       .locator("[data-viewer-toolbar] button:visible")
       .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
-    expect(names).toEqual([THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes]);
+    expect(names).toEqual([THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes, THREE_D_COPY.wireView]);
   });
 });
 

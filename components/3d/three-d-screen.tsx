@@ -40,7 +40,7 @@ import {
   type WheelAccumulator,
 } from "@/components/viewer/zoom-math";
 import { ViewerZoomRow } from "@/components/viewer/zoom-viewport";
-import { buildBoardSurface } from "@/lib/geometry/board-surface";
+import { buildBoardSurface, wireLines, wireSegments } from "@/lib/geometry/board-surface";
 import { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import { designCrossSectionInput } from "@/lib/geometry/design";
 import { buildBlankGhost, type BlankGhost } from "@/lib/geometry/blank-ghost";
@@ -267,6 +267,7 @@ export function ThreeDScreen() {
         stringer: stringerLines(surface),
         framePoints: points,
         centre,
+        wire: wireSegments(wireLines(surface)),
       };
       return { ok: true as const, surface, board, triangles: surface.triangleCount };
     } catch (error) {
@@ -317,9 +318,13 @@ export function ThreeDScreen() {
   const [showBlank, setShowBlank] = useState(false);
   const ghostRef = useRef<{ ghost: BlankGhost | null; visible: boolean }>({ ghost, visible: showBlank });
 
-  // Contour Stripes (16-11, D-12): off until pressed; a view switch only, like the other two.
-  const [stripes, setStripes] = useState(false);
+  // Contour Stripes (16-11, D-12) and the wire view (D-42): each replaces the foam's shading, so the board has one look
+  // at a time. Off until pressed; a view switch only, like the other two.
+  const [look, setLook] = useState<"shaded" | "stripes" | "wire">("shaded");
+  const stripes = look === "stripes";
+  const wire = look === "wire";
   const stripesRef = useRef(stripes);
+  const wireRef = useRef(wire);
 
   // The loading picture (UI-SPEC §9): the 3D tile's turned board. A board whose turn can't be worked out has no
   // picture — the line alone.
@@ -359,8 +364,8 @@ export function ThreeDScreen() {
   const buildable = built.ok;
 
   // Export for CNC… (16-12, D-14, D-16): the zip of the very surface drawn here, built and downloaded inside the tap
-  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank
-  // or Contour Stripes switches — and needs no 3D drawing. The done line stays until the next export or until the
+  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank,
+  // Contour Stripes or Wire View switches — and needs no 3D drawing. The done line stays until the next export or until the
   // shaper leaves the screen (this state goes with the screen); a board that can't be built has nothing to export.
   const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
   const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
@@ -414,6 +419,12 @@ export function ThreeDScreen() {
     stripesRef.current = stripes;
     sceneRef.current?.setStripes(stripes);
   }, [stripes]);
+
+  // And for the wire view.
+  useEffect(() => {
+    wireRef.current = wire;
+    sceneRef.current?.setWire(wire);
+  }, [wire]);
 
   // The colours follow the theme while the screen is open (UI-SPEC § Color, §16): a new theme class on the page, or the
   // computer's own light or dark setting changing under System, re-reads the theme's colours and repaints the scene in
@@ -471,6 +482,7 @@ export function ThreeDScreen() {
         handle.setFins(finsRef.current.fins, finsRef.current.visible);
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
+        handle.setWire(wireRef.current);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
         // §9); a view is framed at 1x for its own turn, as its button would have.
         if (pendingFrameRef.current) {
@@ -992,7 +1004,9 @@ export function ThreeDScreen() {
                 onShowBlank={setShowBlank}
                 hasBlank={ghost !== null}
                 stripes={stripes}
-                onStripes={setStripes}
+                onStripes={(on) => setLook(on ? "stripes" : "shaded")}
+                wire={wire}
+                onWire={(on) => setLook(on ? "wire" : "shaded")}
                 disabled={message !== null}
               />
             </ViewerToolbar>
