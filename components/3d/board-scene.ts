@@ -50,6 +50,8 @@ import {
   Scene,
   ShaderMaterial,
   Shape,
+  SRGBColorSpace,
+  TextureLoader,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -63,7 +65,9 @@ import {
   BAY,
   BAY_PAINT,
   BAY_TREATMENTS,
+  bayBackLogo,
   bayLens,
+  baySideLogo,
   boardPlace,
   floorPatch,
   freePlace,
@@ -517,6 +521,14 @@ function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 }
  */
 const BENCH_EYE_CLEAR_MM = 900;
 
+/** The founder's two logos, white on nothing (`brand/README.md`): the circle on the side walls, the line logo on the back wall. */
+const CIRCLE_LOGO_URL = "/bay-logo-circle.png";
+const LINE_LOGO_URL = "/bay-logo-wordmark.png";
+/** How much wider the line logo is than it is tall: the box `components/wordmark-path.ts` is drawn in. */
+const LINE_LOGO_ASPECT = 806.1 / 100;
+/** How far a logo stands off its wall, so the two never fight over which is nearer. */
+const LOGO_STANDOFF_MM = 5;
+
 /** The drawn bay and what the scene needs to keep hold of. */
 interface DrawnBay {
   room: Group;
@@ -532,7 +544,7 @@ interface DrawnBay {
  * and the board, and a viewer overhead sees down through the ceiling; the shelves and strips down both side
  * walls; and two racks, which never move. The room's colours are its own in every theme (D-43).
  */
-function buildBay(treatment: BayTreatment): DrawnBay {
+function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: () => void): DrawnBay {
   const { lengthMm: L, widthMm: W, heightMm: H } = BAY;
   const owned: { dispose(): void }[] = [];
   const room = new Group();
@@ -613,6 +625,38 @@ function buildBay(treatment: BayTreatment): DrawnBay {
     ]);
   }
 
+  // The logos are pictures, so each one stays hidden until its file has come, and a wall that never gets one stays bare.
+  // White and unlit, like the strips, whatever the light on the wall around them.
+  let gone = false;
+  let logosToCome = 2;
+  const loader = new TextureLoader();
+  const logo = (url: string, width: number, height: number, places: readonly { at: Vec3; turn: Vec3 }[]) => {
+    const material = new MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, visible: false });
+    owned.push(material);
+    for (const { at, turn } of places) plane(width, height, material, at, turn);
+    loader.load(url, (texture) => {
+      if (gone) {
+        texture.dispose();
+        return;
+      }
+      texture.colorSpace = SRGBColorSpace;
+      texture.anisotropy = sharpestAtAnAngle;
+      owned.push(texture);
+      material.map = texture;
+      material.visible = true;
+      material.needsUpdate = true;
+      logosToCome -= 1;
+      if (logosToCome === 0) onLogos();
+    });
+  };
+  const side = baySideLogo();
+  logo(CIRCLE_LOGO_URL, side.sizeMm, side.sizeMm, [
+    { at: [0, side.centreYMm, -(W / 2 - LOGO_STANDOFF_MM)], turn: [0, 0, 0] },
+    { at: [0, side.centreYMm, W / 2 - LOGO_STANDOFF_MM], turn: [0, Math.PI, 0] },
+  ]);
+  const back = bayBackLogo(LINE_LOGO_ASPECT);
+  logo(LINE_LOGO_URL, back.widthMm, back.heightMm, [{ at: [-(L / 2 - LOGO_STANDOFF_MM), back.centreYMm, 0], turn: [0, Math.PI / 2, 0] }]);
+
   const racks = new Group();
   room.add(racks);
   const steel = new MeshStandardMaterial({ color: new Color(BAY_PAINT.rack), roughness: 0.7, metalness: 0.1 });
@@ -642,6 +686,7 @@ function buildBay(treatment: BayTreatment): DrawnBay {
       stands[1].position.x = seat.at;
     },
     dispose() {
+      gone = true;
       for (const d of owned) d.dispose();
     },
   };
@@ -682,7 +727,10 @@ export function mountBoardScene(
   const camera = new PerspectiveCamera(ROOM_CAMERA.fovDeg, 1, CAMERA_NEAR_MM, CAMERA_FAR_MM);
 
   // The room and its light, placed once (D-10, D-43). The strips never move; the fill stands for the room's own light.
-  const bay = buildBay(treatment);
+  const bay = buildBay(treatment, renderer.capabilities.getMaxAnisotropy(), () => {
+    host.dataset.bayLogos = "ready";
+    schedule();
+  });
   scene.add(bay.room);
   scene.add(new AmbientLight(treatment.fillColour, treatment.fill));
   scene.add(new HemisphereLight(BAY_PAINT.hemisphereSky, BAY_PAINT.hemisphereGround, treatment.bounce * 3));

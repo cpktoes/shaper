@@ -2,6 +2,12 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-06 (Phase 16, fast task 199, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
+ * line logo high on the back wall (the circle logos on the side walls are out of this view). Against the picture recorded
+ * just below, 8987 pixels moved inside the logo's own box and 64 outside it, none of those by more than 2 levels in 255: a
+ * shade no eye can see, at the panel's rounded corners. The other five pictures passed unchanged. The shot now also waits
+ * for `data-bay-logos`, so the logos are always on the walls before it is taken.
+ *
  * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
  * notes after driving the bay: the panel now reads VIEW, the four sliders, Rail Blend Controls folded, then Export, with
  * Flip the Board gone and Side dimmed on Turn the Board; and each strip has its one shelf, the sill below it gone, so the
@@ -426,6 +432,7 @@ test.describe("desktop baseline screenshots", () => {
     // The lit board at its first view, the canvas unmasked (Chromium's software drawing is the same every run).
     const host = page.locator("[data-board-3d]");
     await expect(host).toHaveAttribute("data-board-state", "ready", { timeout: 30_000 });
+    await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: 30_000 });
     // Settled: the scene has drawn and two looks a frame apart find no new frame.
     await expect
       .poll(

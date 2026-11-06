@@ -13,6 +13,8 @@ What is here:
 - circle-logo-clean-2000.png: the circle logo through a levels curve, 2000 pixels square: pure
   black below 40, pure white above 225, a straight ramp between. It removes the grey haze and the
   JPEG fuzz so small sizes stay crisp.
+- circle-logo-white-on-black-source.jpg: the founder's circle logo in white on black, as he sent it
+  for the shaping room's walls (2026-11-06).
 - wordmark.svg: the black-on-white JPEG traced into one single-colour, even-odd shape. The
   picture was put through the same levels curve (0 below 40, 255 above 225), outlines were found
   along the 50 percent line, and curves were fitted to within 0.6 of a source pixel, with numbers
@@ -28,6 +30,11 @@ What is made from them:
   public/home-screen-icon-512.png are downscales of circle-logo-clean-2000.png. They are the
   Home Screen icons on iPhone, iPad and Android. The browser tab keeps the board drawing
   (app/icon.svg and app/favicon.ico), which is not made from anything here.
+- public/bay-logo-circle.png is the white-on-black JPEG with its background removed: the same levels
+  curve as above, its brightness becoming how see-through each pixel is, every pixel white, cut to
+  the ring's own bounds and scaled to 1024 square. It is the logo on the 3D room's side walls.
+- public/bay-logo-wordmark.png is wordmark.svg drawn white on nothing, 2048 by 254. It is the logo
+  on the 3D room's back wall.
 
 The tracer that made wordmark.svg, and the check that compares it back to the JPEG, are archived
 at .planning/quick/261010-km7-new-logo-top-bar-order-form-and-home-scr/trace-scripts.tar.gz. Run

@@ -69,6 +69,15 @@ export const BAY = {
   aim: 0.12,
   /** How far either end can be raised: the board never stands on end. */
   liftLimitDeg: 60,
+  /**
+   * The founder's logos on the walls (2026-11-06): the circle across this share of a side wall above the lights, and the
+   * line logo on the back wall, as tall as this share of the wall, this share of the wall down from the top. It may not
+   * cross more of the wall than the last share: its full height would run off both ends.
+   */
+  sideLogoShare: 0.4,
+  backLogoHeightShare: 0.2,
+  backLogoDropShare: 0.2,
+  backLogoWidestShare: 0.9,
 } as const;
 
 /** The room's own colours, the same in every theme (D-43); the fins' too (the founder at 16-10: "Keep them dark"). */
@@ -457,6 +466,19 @@ export const REST_VIEWER: Viewer = {
   elevationDeg: ROOM_CAMERA.elevationDeg,
   sightDeg: 0,
 };
+
+/** The circle on each side wall: its width and height, centred along the wall and up the space above the lights' shelf. */
+export function baySideLogo(): { sizeMm: number; centreYMm: number } {
+  const space = BAY.heightMm - BAY.benchTopMm;
+  return { sizeMm: BAY.sideLogoShare * space, centreYMm: BAY.benchTopMm + space / 2 };
+}
+
+/** The line logo on the back wall, for a logo `aspect` times as wide as it is tall. Its top stays where the founder put it. */
+export function bayBackLogo(aspect: number): { widthMm: number; heightMm: number; centreYMm: number } {
+  const heightMm = Math.min(BAY.backLogoHeightShare * BAY.heightMm, (BAY.backLogoWidestShare * BAY.widthMm) / aspect);
+  const topMm = BAY.heightMm * (1 - BAY.backLogoDropShare);
+  return { widthMm: heightMm * aspect, heightMm, centreYMm: topMm - heightMm / 2 };
+}
 
 /** How far Look Down the Rail shifts the eye either way: past the widest rail's own line from anywhere the viewer stands. */
 export const SIGHT_LIMIT_DEG = 25;

@@ -868,4 +868,13 @@ test.describe("the shaping bay under reduced motion", () => {
     expect(new Set(moves).size).toBe(1);
     await expect.poll(async () => viewerOf(host)).toEqual([WALK_VIEWS.side.azimuthDeg, WALK_VIEWS.side.elevationDeg, 0]);
   });
+
+  test("20. the founder's two logos reach the walls, one more frame and nothing else", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: FIRST_FRAME_MS });
+    const room = await host.getAttribute("data-room");
+    await expect.poll(async () => Number((await host.getAttribute("data-frames")) ?? 0)).toBeGreaterThanOrEqual(2);
+    expect(await host.getAttribute("data-room")).toBe(room);
+  });
 });
