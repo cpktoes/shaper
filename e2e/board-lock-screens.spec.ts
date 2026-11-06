@@ -9,6 +9,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { blankCards, openBlankPicker, starButton, waitForBlankButton } from "./helpers/blank-picker";
+import { hideDevBadge } from "./helpers/dev-badge";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
@@ -55,6 +56,7 @@ async function startPracticeRack(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await hideDevBadge(page);
   await freshPracticeRack(page);
   await openRack(page);
 }
@@ -430,6 +432,10 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
         await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
         await expect(page.locator("[data-rack-board]")).toHaveCount(5);
         await lockFromRack(page, 3);
+        // Forward waits for the rack to redraw with the lock on it. Next finishes a save as a push to the
+        // address it was made on, so Forward pressed in that moment has its next step written over, and
+        // the second Forward below would have nowhere to go.
+        await expect(captionFor(page, board(3).name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
         await page.goForward();
         await page.waitForURL("**/design/outline");
         await page.goForward();
