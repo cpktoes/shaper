@@ -2,11 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 import { SliderRow } from "@/components/design/slider-row";
-import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import { TwoOptionToggle } from "@/components/viewer/two-option-toggle";
 import { formatDim } from "@/lib/geometry/measure-display";
 import {
+  isRaised,
   raiseOfLift,
   raiseSlider,
   SIGHT_LIMIT_DEG,
@@ -14,7 +14,6 @@ import {
   type RackAngles,
   type RackSeat,
 } from "@/lib/geometry/shaping-bay";
-import { ThreeDSectionHeading } from "./three-d-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 
 /**
@@ -81,7 +80,8 @@ function RaiseRow({
   const { system } = useUnits();
   const height = raiseOfLift(liftDeg, seat);
   const slider = raiseSlider(height, seat, system);
-  const text = liftDeg > 0 ? formatDim(height, system) : THREE_D_COPY.onTheRack;
+  const raised = isRaised(liftDeg);
+  const text = raised ? formatDim(height, system) : THREE_D_COPY.onTheRack;
   return (
     <SliderRow
       lockExempt
@@ -93,29 +93,30 @@ function RaiseRow({
       onValueChange={(v) => onRaise(end, slider.toMm(v))}
       disabled={disabled}
       sliderLabel={end === "nose" ? THREE_D_COPY.raiseNose : THREE_D_COPY.raiseTail}
-      sliderValueText={THREE_D_COPY.raiseSpoken(end, liftDeg > 0 ? text : null)}
+      sliderValueText={THREE_D_COPY.raiseSpoken(end, raised ? text : null)}
     />
   );
 }
 
 /**
- * ON THE RACKS: Flip the Board, one press and never a pressed state, then one control per plane. A full turn of Rotate
- * on Side on every device: no switch decides its range, and a phone's slider is as long as a computer's.
+ * The four sliders, under VIEW's buttons (the founder: "follow this by the sliders"). A full turn of Rotate on Side on every
+ * device: no switch decides its range, and a phone's slider is as long as a computer's. Look Down the Rail says the same
+ * thing in both modes and gets there two ways: on Walk Around it moves you, on Turn the Board it turns the board.
  */
 export function ThreeDOnTheRacks({
   store,
   seat,
-  onFlip,
   onRaise,
   onRoll,
+  onSight,
   disabled,
 }: {
   store: RackStore;
   /** How the board sits on its racks; none while it can't be built. */
   seat: Pick<RackSeat, "at"> | null;
-  onFlip: () => void;
   onRaise: (end: RaisedEnd, heightMm: number) => void;
   onRoll: (deg: number) => void;
+  onSight: (deg: number) => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8). */
   disabled: boolean;
 }) {
@@ -123,10 +124,6 @@ export function ThreeDOnTheRacks({
   const roll = Math.round(reading.roll) + 0;
   return (
     <div className="flex flex-col gap-2" data-three-d-racks>
-      <ThreeDSectionHeading>{THREE_D_COPY.racksHeading}</ThreeDSectionHeading>
-      <Button type="button" variant="outline" className="w-full" data-lock-exempt disabled={disabled} onClick={onFlip}>
-        {THREE_D_COPY.flip}
-      </Button>
       <RaiseRow
         end="nose"
         liftDeg={Math.max(0, reading.lift)}
@@ -154,47 +151,29 @@ export function ThreeDOnTheRacks({
         sliderLabel={THREE_D_COPY.rotateOnSide}
         sliderValueText={THREE_D_COPY.rollSpoken(roll)}
       />
+      <SliderRow
+        lockExempt
+        label={THREE_D_COPY.lookDownRail}
+        displayValue={THREE_D_COPY.lookValue(reading.sight)}
+        value={reading.sight}
+        min={-SIGHT_LIMIT_DEG}
+        max={SIGHT_LIMIT_DEG}
+        step={SIGHT_STEP_DEG}
+        onValueChange={onSight}
+        disabled={disabled}
+        leftHint={THREE_D_COPY.lookLeft}
+        rightHint={THREE_D_COPY.lookRight}
+        sliderLabel={THREE_D_COPY.lookDownRail}
+        sliderValueText={THREE_D_COPY.lookSpoken(reading.sight)}
+      />
     </div>
-  );
-}
-
-/**
- * Look Down the Rail (the founder, D-44): "I want to be able to look down the rail of the board and shift my view slightly to
- * follow the curve of the outline." It moves the eye round the board, a little either way, and nothing else.
- */
-export function ThreeDLookDownRail({
-  store,
-  onSight,
-  disabled,
-}: {
-  store: RackStore;
-  onSight: (deg: number) => void;
-  disabled: boolean;
-}) {
-  const { sight } = useReading(store);
-  return (
-    <SliderRow
-      lockExempt
-      label={THREE_D_COPY.lookDownRail}
-      displayValue={THREE_D_COPY.lookValue(sight)}
-      value={sight}
-      min={-SIGHT_LIMIT_DEG}
-      max={SIGHT_LIMIT_DEG}
-      step={SIGHT_STEP_DEG}
-      onValueChange={onSight}
-      disabled={disabled}
-      leftHint={THREE_D_COPY.lookLeft}
-      rightHint={THREE_D_COPY.lookRight}
-      sliderLabel={THREE_D_COPY.lookDownRail}
-      sliderValueText={THREE_D_COPY.lookSpoken(sight)}
-    />
   );
 }
 
 /** What a drag does (D-43). */
 export type DragMode = "turn" | "walk";
 
-/** The two-way switch: a drag turns the board, or walks you round it. The sliders and the buttons work in both. */
+/** The two-way switch: the one view with only the board moving, or walking round it inside the room. */
 export function ThreeDModeSwitch({
   mode,
   onMode,

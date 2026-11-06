@@ -17,13 +17,14 @@ import {
   BOTTOM_UP,
   clampLift,
   clampViewer,
-  END_VIEW_FILL,
-  fillCrop,
   firstViewOutline,
+  headingOf,
   floorPatch,
   freePlace,
   isBottomUp,
+  isRaised,
   liftOfRaise,
+  lookOfSwing,
   overPad,
   rackAngles,
   rackDrag,
@@ -50,7 +51,9 @@ import {
   walkKey,
   WALK_VIEWS,
   wallReach,
+  type BayLens,
   type RackAngles,
+  type RackSeat,
   type Viewer,
 } from "./shaping-bay";
 import { inchesToMm, mm, mmToInches } from "./units";
@@ -144,10 +147,24 @@ describe("the room", () => {
     expect(inchesToMm(120) / 2).toBeLessThan(BAY.lengthMm / 2);
   });
 
-  it("the strip hangs under the shelf, above the sill, behind the shelf's front edge (the founder)", () => {
+  it("each strip hangs under its one shelf, behind the shelf's front edge (the founder)", () => {
     expect(BAY.stripHeightMm + BAY.stripFaceMm / 2).toBeLessThan(BAY.benchTopMm - BAY.benchThickMm);
-    expect(BAY.stripHeightMm - BAY.stripFaceMm / 2).toBeGreaterThan(BAY.sillTopMm);
     expect(BAY.stripInsetMm + BAY.stripFaceMm / 2).toBeLessThanOrEqual(BAY.benchDepthMm);
+    expect(Object.keys(BAY).filter((key) => key.startsWith("sill"))).toEqual([]);
+  });
+
+  it("a standing eye at the first view sees the strip below the shelf's front edge, on every preset", () => {
+    for (const { seat, points } of BOARDS) {
+      for (const [, aspect] of ASPECTS) {
+        const { position } = viewerPlace(REST_VIEWER, bayLens(points, seat, aspect), seat);
+        // The line from the eye to the strip's lower front corner, read where it passes under the shelf's front edge.
+        const lipZ = BAY.widthMm / 2 - BAY.benchDepthMm;
+        const stripZ = BAY.widthMm / 2 - BAY.stripInsetMm - BAY.stripFaceMm / 2;
+        const stripY = BAY.stripHeightMm - BAY.stripFaceMm / 2;
+        const atLip = position[1] + ((stripY - position[1]) * (lipZ - position[2])) / (stripZ - position[2]);
+        expect(atLip).toBeLessThan(BAY.benchTopMm - BAY.benchThickMm);
+      }
+    }
   });
 
   it("the two strips run the room's length along both side walls", () => {
@@ -254,11 +271,12 @@ describe("clampLift, shownAngles and the flip", () => {
   });
 });
 
-describe("a hand on the racks: the racks never move (the founder, on Swing: \"Remove it.\")", () => {
+describe("a hand on the racks: the board moves, the racks never do", () => {
   const FROM_TAIL = REST_VIEWER;
   const FROM_NOSE: Viewer = standAt("nose", 0);
   const FROM_RAIL: Viewer = standAt("side", 0);
   const start: RackAngles = { swing: 0, lift: 12, roll: 20 };
+  const endForEnd: RackAngles = { swing: 180, lift: 12, roll: 20 };
 
   it("a sideways drag from behind the tail is Rotate on Side, to the hand's right, at a drag's full rate", () => {
     expect(rackNudge(start, 30, 0, FROM_TAIL)).toEqual({ swing: 0, lift: 12, roll: expect.closeTo(50, 9) });
@@ -266,6 +284,15 @@ describe("a hand on the racks: the racks never move (the founder, on Swing: \"Re
 
   it("from the nose the same drag rolls the other way: the hand still goes to the picture's right", () => {
     expect(rackNudge(start, 30, 0, FROM_NOSE).roll).toBeCloseTo(-10, 9);
+  });
+
+  it("with the board end for end the hand gets the same answer from the one view as standing at the nose", () => {
+    const turned = rackNudge(endForEnd, 30, 10, FROM_TAIL);
+    const walked = rackNudge(start, 30, 10, FROM_NOSE);
+    expect(turned.roll).toBeCloseTo(walked.roll, 9);
+    expect(turned.lift).toBeCloseTo(walked.lift, 9);
+    // A drag down lifts the far end: on a board end for end that is the tail.
+    expect(rackNudge({ ...AT_REST, swing: 180 }, 0, 30, FROM_TAIL).lift).toBeCloseTo(-30, 9);
   });
 
   it("from the rail a sideways drag tips the board end over end, and a drag down rolls it", () => {
@@ -281,22 +308,22 @@ describe("a hand on the racks: the racks never move (the founder, on Swing: \"Re
     expect(rackNudge(start, 0, 30, FROM_TAIL).lift).toBeCloseTo(42, 9);
   });
 
-  it("a vertical drag matches a free drag exactly on a board at rest: the part that never depended on Swing", () => {
+  it("a vertical drag matches a free drag exactly on a board at rest", () => {
     const short = 400;
     const free = dragTurn(REST_TURN, 0, 80, short, viewerLook(FROM_TAIL));
     expect(turnAngle(rackTurn(rackDrag(AT_REST, 0, 80, short, FROM_TAIL)), free)).toBeLessThan(1e-9);
   });
 
-  it("no drag from anywhere, of any size, ever carries a swing, and the lift stops at its limit", () => {
+  it("no drag from anywhere, of any size, ever changes the board's heading, and the lift stops at its limit", () => {
     const random = seeded(16118);
-    let angles: RackAngles = AT_REST;
-    for (let i = 0; i < 2000; i++) {
-      const viewer: Viewer = { azimuthDeg: random() * 360 - 180, elevationDeg: random() * 90, sightDeg: random() * 12 - 6 };
-      angles = rackDrag(angles, (random() - 0.5) * 300, (random() - 0.5) * 300, 400, viewer);
-      expect(angles.swing).toBe(0);
-      expect(Math.abs(angles.lift)).toBeLessThanOrEqual(BAY.liftLimitDeg);
-      const back = rackAngles(rackTurn(angles));
-      expect(Math.abs(back.swing)).toBeLessThan(1e-9);
+    for (const heading of [0, 180, 7, -12]) {
+      let angles: RackAngles = { ...AT_REST, swing: heading };
+      for (let i = 0; i < 700; i++) {
+        const viewer: Viewer = { azimuthDeg: random() * 360 - 180, elevationDeg: random() * 90, sightDeg: random() * 12 - 6 };
+        angles = rackDrag(angles, (random() - 0.5) * 300, (random() - 0.5) * 300, 400, viewer);
+        expect(angles.swing).toBe(heading);
+        expect(Math.abs(angles.lift)).toBeLessThanOrEqual(BAY.liftLimitDeg);
+      }
     }
   });
 
@@ -315,11 +342,24 @@ describe("a hand on the racks: the racks never move (the founder, on Swing: \"Re
     expect(rackKey(AT_REST, "up", FROM_TAIL).lift).toBeCloseTo(-KEY_TURN_DEG, 9);
   });
 
-  it("a free-spun board settles back with no swing, inside the limit, its roll kept", () => {
-    const settled = rackAngles(settleOnRacks(rackTurn({ swing: 70, lift: 80, roll: 30 })));
-    expect(Math.abs(settled.swing)).toBeLessThan(1e-9);
-    expect(settled.lift).toBeCloseTo(BAY.liftLimitDeg, 9);
-    expect(settled.roll).toBeCloseTo(30, 9);
+  it("a free-spun board settles back straight down the room, whichever end is nearer, inside the limit, its roll kept", () => {
+    const near = rackAngles(settleOnRacks(rackTurn({ swing: 70, lift: 80, roll: 30 })));
+    expect(Math.abs(near.swing)).toBeLessThan(1e-9);
+    expect(near.lift).toBeCloseTo(BAY.liftLimitDeg, 9);
+    expect(near.roll).toBeCloseTo(30, 9);
+    const far = rackAngles(settleOnRacks(rackTurn({ swing: 120, lift: 10, roll: 30 })));
+    expect(Math.abs(far.swing)).toBeCloseTo(180, 9);
+  });
+
+  it("headingOf reads which end lies toward the first view, and lookOfSwing how far the board stands off it", () => {
+    expect(headingOf(0)).toBe(0);
+    expect(headingOf(14)).toBe(0);
+    expect(headingOf(170)).toBe(180);
+    expect(headingOf(-179)).toBe(180);
+    expect(lookOfSwing(6, 0)).toBe(6);
+    expect(lookOfSwing(186, 180)).toBe(6);
+    expect(lookOfSwing(-174, 180)).toBe(6);
+    expect(lookOfSwing(90, 0)).toBe(SIGHT_LIMIT_DEG);
   });
 });
 
@@ -400,12 +440,27 @@ describe("boardPlace — where the board stands for any turn", () => {
         }
       });
 
-      it("the racks never move: a swing in the turn never shifts the board's place off the room's middle line", () => {
-        const flat = boardPlace(points, { swing: 0, lift: 30, roll: 0 }, seat);
-        const swung = boardPlace(points, { swing: 90, lift: 30, roll: 0 }, seat);
-        expect(flat[2]).toBe(0);
-        expect(swung[2]).toBe(0);
+      it("end for end on the same racks: the board tips over the rack on its own far side, which stands at the other end", () => {
+        const here = boardPlace(points, { swing: 0, lift: 30, roll: 0 }, seat);
+        const turned = boardPlace(points, { swing: 180, lift: 30, roll: 0 }, seat);
+        expect(turned[0]).toBeCloseTo(-here[0], 6);
+        expect(turned[1]).toBeCloseTo(here[1], 9);
+        expect(turned[2]).toBeCloseTo(0, 6);
       });
+
+      it("end for end or turned a few degrees, no vertex lies 2 mm inside a pad, raised or rolled", () => {
+        for (const swing of [180, -SIGHT_LIMIT_DEG, SIGHT_LIMIT_DEG, 180 - SIGHT_LIMIT_DEG]) {
+          for (const lift of [-60, -30, 0, 30, 60]) {
+            for (const roll of [-90, -45, 0, 45, 90, 180]) {
+              const angles = { swing, lift, roll };
+              const place = boardPlace(all, angles, seat);
+              let deepest = -Infinity;
+              for (const p of all) deepest = Math.max(deepest, depthInPad(inRoom(p, angles, place), seat.at));
+              expect(deepest, `swing ${swing}, lift ${lift}, roll ${roll}`).toBeLessThanOrEqual(2);
+            }
+          }
+        }
+      }, 120_000);
 
       it("over Raise ±60° and every roll, no vertex lies 2 mm inside a pad and the foam stays off the floor", () => {
         for (let lift = -BAY.liftLimitDeg; lift <= BAY.liftLimitDeg; lift += 10) {
@@ -427,7 +482,7 @@ describe("boardPlace — where the board stands for any turn", () => {
     });
   }
 
-  it("no fin point lies inside a pad at rest or rolled 45°, in any fin setup on any preset", () => {
+  it("no fin point lies inside a pad at rest, rolled 45°, end for end or turned for Look Down the Rail, in any fin setup on any preset", () => {
     for (const finCase of phase16FinCases()) {
       const board = BOARDS.find((b) => b.label.startsWith(`${finCase.preset.id}|`));
       if (!board) throw new Error(finCase.label);
@@ -443,7 +498,14 @@ describe("boardPlace — where the board stands for any turn", () => {
             fin.leading[1] + (run[1] / length) * u - centre[1],
             fin.rootZ - v - centre[2],
           ];
-          for (const angles of [AT_REST, { ...AT_REST, roll: 45 }, { ...AT_REST, roll: -45 }]) {
+          for (const angles of [
+            AT_REST,
+            { ...AT_REST, roll: 45 },
+            { ...AT_REST, roll: -45 },
+            { ...AT_REST, swing: 180 },
+            { ...AT_REST, swing: SIGHT_LIMIT_DEG },
+            { ...AT_REST, swing: -SIGHT_LIMIT_DEG },
+          ]) {
             expect(depthInPad(inRoom(p, angles, boardPlace(points, angles, seat)), seat.at)).toBeLessThan(0);
           }
         }
@@ -483,6 +545,13 @@ describe("Raise the Nose and Raise the Tail (D-44)", () => {
       expect(raiseOfLift(-30, seat)).toBe(raiseOfLift(30, seat));
     });
   }
+
+  it("a speck of lift from reading a turn back is not a raise; a real one is", () => {
+    expect(isRaised(1e-13)).toBe(false);
+    expect(isRaised(0)).toBe(false);
+    expect(isRaised(0.5)).toBe(true);
+    expect(isRaised(Math.max(0, -rackAngles(rackTurn({ swing: 6, lift: 0, roll: 30 })).lift))).toBe(false);
+  });
 
   it("the slider reads a dim: 1/4\" steps from nothing up to the limit in Imperial, whole 5 mm steps in Metric", () => {
     const { seat } = BOARDS[0];
@@ -537,15 +606,23 @@ describe("where the viewer stands", () => {
     }
   });
 
-  it("Deck and Bottom stand straight overhead with the nose left, whatever the swing", () => {
+  it("Deck and Bottom stand directly above the board, nose toward the back wall, tail toward the first view", () => {
     for (const name of ["deck", "bottom"] as const) {
       expect(standAt(name, 40)).toEqual(WALK_VIEWS[name]);
-      const { right, forward } = viewerLook(WALK_VIEWS[name]);
+      const { up, forward } = viewerLook(WALK_VIEWS[name]);
       expect(forward[1]).toBeCloseTo(-1, 4);
-      expect(right).toEqual([expect.closeTo(1, 12), 0, expect.closeTo(0, 12)]);
       const nose = rotateVec(BOARD_TO_ROOM, [1, 0, 0]);
-      expect(dot(right, nose)).toBeCloseTo(-1, 9);
+      // The picture's up runs from the tail to the nose: the back wall is at the top.
+      expect(dot(up, nose)).toBeCloseTo(1, 4);
+      expect(WALK_VIEWS[name].azimuthDeg).toBe(REST_VIEWER.azimuthDeg);
     }
+  });
+
+  it("Side stands square to the board, with a strip on the wall behind it", () => {
+    const { position, axes } = viewerPlace(standAt("side", 0), bayLens(BOARDS[0].points, BOARDS[0].seat, 1.3), BOARDS[0].seat);
+    expect(axes.forward[2]).toBeCloseTo(-1, 9);
+    expect(position[2]).toBeGreaterThan(0);
+    expect(stripEnds()[0][0][2]).toBeLessThan(0);
   });
 
   it("aimAt is the full share at the first view and nothing at rail height or overhead", () => {
@@ -634,6 +711,21 @@ describe("where the viewer stands", () => {
   });
 });
 
+/** How far from the window's middle a pose reaches at the first view, as a share of the half-window. */
+function reachInWindow(points: readonly Vec3[], angles: RackAngles, lens: BayLens, seat: RackSeat, aspect: number): number {
+  const { position, axes } = viewerPlace(REST_VIEWER, lens, seat);
+  const place = boardPlace(points, angles, seat);
+  const tanV = Math.tan((lens.lensDeg * Math.PI) / 360);
+  let reach = 0;
+  for (const p of points) {
+    const room = inRoom(p, angles, place);
+    const r: Vec3 = [room[0] - position[0], room[1] - position[1], room[2] - position[2]];
+    const depth = dot(r, axes.forward);
+    reach = Math.max(reach, Math.abs(dot(r, axes.right)) / (depth * tanV * aspect), Math.abs(dot(r, axes.up)) / (depth * tanV));
+  }
+  return reach;
+}
+
 describe("bayLens — where the viewer stands at 1x", () => {
   for (const { label, seat, points } of BOARDS) {
     for (const [name, aspect] of ASPECTS) {
@@ -643,9 +735,7 @@ describe("bayLens — where the viewer stands at 1x", () => {
         expect(lens.distanceMm).toBeLessThanOrEqual(wallReach(REST_VIEWER.azimuthDeg, REST_VIEWER.elevationDeg) + 1e-6);
         expect(lens.lensDeg).toBeGreaterThanOrEqual(ROOM_CAMERA.fovDeg);
         for (const angles of [AT_REST, BOTTOM_UP]) {
-          const crop = fillCrop(points, angles, REST_VIEWER, lens, seat, aspect, 1);
-          // `fill / zoom` is the board's share of the window: the picture's box fits inside it.
-          expect(1 / crop.zoom).toBeLessThanOrEqual(BAY.fit + 1e-3);
+          expect(reachInWindow(points, angles, lens, seat, aspect)).toBeLessThanOrEqual(BAY.fit + 1e-3);
         }
       });
     }
@@ -681,25 +771,6 @@ describe("Look Down the Rail (D-44)", () => {
     const shifted = viewerPlace({ ...viewer, sightDeg: 6 }, lens, seat);
     expect(dot(straight.axes.right, [shifted.position[0] - straight.position[0], 0, shifted.position[2] - straight.position[2]])).toBeGreaterThan(0);
   });
-});
-
-describe("fillCrop — Nose and Tail at their share of the window", () => {
-  for (const { label, seat, points } of BOARDS) {
-    it(`${label}: the zoom asked for brings the board to END_VIEW_FILL, centred`, () => {
-      for (const [, aspect] of ASPECTS) {
-        const lens = bayLens(points, seat, aspect);
-        for (const name of ["nose", "tail"] as const) {
-          const viewer = standAt(name, 0);
-          const crop = fillCrop(points, AT_REST, viewer, lens, seat, aspect);
-          expect(crop.zoom).toBeGreaterThan(1);
-          // At twice the fill the zoom asks for exactly twice.
-          expect(fillCrop(points, AT_REST, viewer, lens, seat, aspect, END_VIEW_FILL * 2).zoom).toBeCloseTo(2 * crop.zoom, 9);
-          expect(Math.abs(crop.cx)).toBeLessThan(0.25);
-          expect(Math.abs(crop.cy)).toBeLessThan(0.25);
-        }
-      }
-    });
-  }
 });
 
 describe("firstViewOutline — the loading picture", () => {

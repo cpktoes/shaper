@@ -96,7 +96,12 @@ async function railsTail(page: Page, testInfo: TestInfo): Promise<Locator> {
 /** The 3D page, its panel live (React has taken the page over, so a key press reaches the slider). */
 async function openThreeD(page: Page) {
   await page.goto("/design/3d");
-  await expect(threeDTailRail(page)).toBeVisible({ timeout: 60_000 });
+  // The rows sit in Rail Blend Controls, folded until pressed; a press before React owns the page does nothing.
+  const fold = page.getByRole("button", { name: new RegExp(THREE_D_COPY.railBlendHeading) });
+  await expect(async () => {
+    if ((await fold.getAttribute("aria-expanded")) !== "true") await fold.click();
+    await expect(threeDTailRail(page)).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 60_000 });
   await page.waitForFunction(
     () => {
       const el = document.querySelector("[data-three-d-tail-rail]");
@@ -119,7 +124,7 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
 
     await openThreeD(page);
     const group = threeDTailRail(page);
-    await expect(group.getByText(THREE_D_COPY.tailRailHeading, { exact: true })).toBeVisible();
+    await expect(page.getByText(THREE_D_COPY.railBlendHeading, { exact: true })).toBeVisible();
     await expect(group.getByText(`${THREE_D_COPY.tailRailBlendsFrom} — ${inches(18)}`, { exact: true })).toBeVisible();
     await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_END}`, { exact: true })).toBeVisible();
     // Always live: nothing dimmed, nothing out of reach.
@@ -183,7 +188,7 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
     const litresBefore = await litres(page);
     await openThreeD(page);
     const group = threeDTailRail(page);
-    await expect(group.getByText(THREE_D_COPY.tailRailHeading, { exact: true })).toBeVisible();
+    await expect(page.getByText(THREE_D_COPY.railBlendHeading, { exact: true })).toBeVisible();
     // Live with Hard Edge off: no reason line, nothing dimmed or inert, both sliders take the keyboard's focus.
     await expect(group.locator("[data-live]")).toHaveCount(0);
     await expect(group.locator("[inert]")).toHaveCount(0);

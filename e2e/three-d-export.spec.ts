@@ -242,7 +242,7 @@ test.describe("Export for CNC… on the 3D screen", () => {
     expect(Buffer.from(third).equals(Buffer.from(firstBytes)), "Wire View never reaches the zip").toBe(true);
 
     // The board flipped, raised and walked round, and the room off: the same again (D-16, D-43).
-    await page.locator("[data-three-d-racks]").getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.bottom, exact: true }).click();
     const raise = page.getByRole("slider", { name: THREE_D_COPY.raiseNose, exact: true });
     await raise.focus();
     for (let i = 0; i < 4; i++) await raise.press("ArrowRight");

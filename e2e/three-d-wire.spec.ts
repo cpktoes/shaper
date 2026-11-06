@@ -195,6 +195,10 @@ test.describe("the wire view (D-42)", () => {
       exact: true,
     }).click();
     await settled(host);
+    // Overhead stands nose to the back wall; a quarter walk lays the board across the picture, nose left.
+    await host.focus();
+    for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowRight");
+    await settled(host);
     await corner(page, THREE_D_COPY.room).click();
     await settled(host);
     // Tipped a little, so the bottom's lines would land between the deck's if the foam let them through.

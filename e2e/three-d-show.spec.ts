@@ -79,19 +79,29 @@ async function settled(host: Locator) {
     .toBe(true);
 }
 
-/** Presses a view button and waits for the board to arrive and come to rest there. */
+/**
+ * Takes the board to a view and waits for it to come to rest. With the room off this suite stays on Turn the Board, where
+ * Deck, Bottom, Nose and Tail move the board. Side lives on Walk Around, so that one puts the room on to walk there and
+ * takes it off again, keeping the view.
+ */
 async function showView(page: Page, host: Locator, name: ViewName) {
-  await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", {
-    name: THREE_D_COPY.views[name],
-    exact: true,
-  }).click();
-  if (name === "deck" || name === "bottom") {
-    const want = rackTurn(name === "deck" ? AT_REST : BOTTOM_UP);
-    await expect.poll(async () => isTurn(await turnOf(host), want), { timeout: 10_000 }).toBe(true);
-  } else {
+  const views = page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true });
+  const press = () => views.getByRole("button", { name: THREE_D_COPY.views[name], exact: true }).click();
+  if (name === "side") {
+    const room = cornerSwitch(page, THREE_D_COPY.room);
+    await room.click();
+    await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.modeWalk, exact: true }).click();
+    await press();
     const azimuth = () => host.getAttribute("data-viewer").then((v) => Number((v ?? "").split(" ")[0]));
-    await expect.poll(azimuth, { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS[name].azimuthDeg, 1);
+    await expect.poll(azimuth, { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
+    await settled(host);
+    await room.click();
+    await settled(host);
+    return;
   }
+  await press();
+  const want = { deck: AT_REST, bottom: BOTTOM_UP, nose: { ...AT_REST, swing: 180 }, tail: AT_REST }[name];
+  await expect.poll(async () => isTurn(await turnOf(host), rackTurn(want)), { timeout: 10_000 }).toBe(true);
   await settled(host);
 }
 
@@ -483,12 +493,12 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
 });
 
 test.describe("the corner over the board and the panel without SHOW (D-35)", () => {
-  test("9. the panel holds no tick box, and reads On the Racks, Tail Rail, View and Export", async ({ page }) => {
+  test("9. the panel holds no tick box, and reads View, Rail Blend Controls and Export", async ({ page }) => {
     await page.goto("/design/3d");
     await waitForBoard(page);
     const panel = page.locator("[data-three-d-controls]");
     await expect(panel.getByRole("checkbox")).toHaveCount(0);
-    const headings = [THREE_D_COPY.racksHeading, THREE_D_COPY.tailRailHeading, THREE_D_COPY.viewHeading, THREE_D_COPY.exportHeading];
+    const headings = [THREE_D_COPY.viewHeading, THREE_D_COPY.railBlendHeading, THREE_D_COPY.exportHeading];
     const tops: number[] = [];
     for (const heading of headings) {
       const box = await panel.getByText(heading, { exact: true }).boundingBox();
@@ -517,7 +527,7 @@ test.describe("the corner over the board and the panel without SHOW (D-35)", () 
   async function expectCornerClear(page: Page) {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    const views: (ViewName | null)[] = [null, "deck", "bottom", "side", "nose", "tail"];
+    const views: (ViewName | null)[] = [null, "bottom", "deck", "nose", "tail", "side"];
     for (const view of views) {
       if (view) await showView(page, host, view);
       const canvas = (await host.boundingBox())!;

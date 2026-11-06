@@ -24,8 +24,6 @@ export const THREE_D_COPY = {
   title: "3D Board",
   subtitle: "Turn it on the racks under the bay's lights, then export it for a CNC.",
   /** The bay's controls (D-43, D-44), each one plane, in the founder's own names. */
-  racksHeading: "On the Racks",
-  flip: "Flip the Board",
   raiseNose: "Raise the Nose",
   raiseTail: "Raise the Tail",
   onTheRack: "on the rack",
@@ -35,7 +33,6 @@ export const THREE_D_COPY = {
     height === null ? `${end === "nose" ? "Nose" : "Tail"} on its rack.` : `${end === "nose" ? "Nose" : "Tail"} ${height} off its rack.`,
   rollSpoken: (deg: number) =>
     deg === 0 ? "Flat on the racks." : `Rotated ${Math.abs(deg)} degrees ${deg < 0 ? "left" : "right"}.`,
-  flipSpoken: { deck: "Deck up.", bottom: "Bottom up." },
   modeGroup: "What a drag does",
   modeTurn: "Turn the Board",
   modeWalk: "Walk Around",
@@ -50,7 +47,7 @@ export const THREE_D_COPY = {
   /** The tail rail's blend (D-30, D-32): the same two settings as RAILS' tail Advanced menu, the same words and
    * spoken names, so one control has one name wherever it is. They bound the tail's whole rail, so they are always
    * live; the nose's blend is automatic and has no control. */
-  tailRailHeading: "Tail Rail",
+  railBlendHeading: "Rail Blend Controls",
   tailRailBlendsFrom: "Tail Rail Blends From",
   tailRailEndsAt: "Tail Rail Ends At",
   tailRailBlendsFromSlider: "Tail Rail blends from",
@@ -60,6 +57,8 @@ export const THREE_D_COPY = {
   viewsGroup: "Views",
   views: { deck: "Deck", bottom: "Bottom", side: "Side", nose: "Nose", tail: "Tail" },
   resetView: "Reset View",
+  /** Side's tooltip and spoken reason on Turn the Board, where it is dimmed: that mode has the one view. */
+  sideNeedsWalk: "Side works in Walk Around.",
   exportHeading: "Export",
   exportButton: "Export for CNC…",
   /** The export's note (D-15, D-23 — Shape3D only). */
@@ -112,7 +111,7 @@ export const THREE_D_COPY = {
   canvasName: (boardName: string) => `${boardName} in 3D`,
   canvasRole: "3D view",
   canvasDescription:
-    "Drag to turn the board on its racks, scroll or pinch to zoom, and right-drag or use two fingers to slide it. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel raise an end and rotate it on its side.",
+    "Drag to turn the board on its racks, scroll or pinch to zoom, and right-drag or use two fingers to slide it. The view stays where it is. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel raise an end and rotate it on its side.",
   canvasDescriptionWalk:
     "Drag to walk around the board, scroll or pinch to zoom, and right-drag or use two fingers to slide the picture. With the keyboard: the arrow keys walk, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel still move the board.",
   viewSpoken: {
@@ -122,6 +121,8 @@ export const THREE_D_COPY = {
     nose: "Standing at the nose.",
     tail: "Standing at the tail.",
   },
+  /** Nose and Tail on Turn the Board, where the board turns rather than the viewer walking. */
+  endTowardYou: { nose: "Nose toward you.", tail: "Tail toward you." },
   resetSpoken: "Back to the first view.",
   oneXSpoken: "Back to 1x.",
 } as const;
