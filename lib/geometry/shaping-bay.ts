@@ -303,19 +303,36 @@ export interface RackSeat {
   home: number;
 }
 
-/** How far the board's centre stands above the pad tops rolled by `rollDeg`: it rests on its lowest point over a pad. */
-export function overPad(seat: Pick<RackSeat, "band">, rollDeg: number): number {
-  const c = Math.cos(rollDeg * RAD);
-  const s = Math.sin(rollDeg * RAD);
-  let need = -Infinity;
-  for (const p of seat.band) {
-    if (Math.abs(p[1] * c - p[2] * s) <= BAY.padHalfSpanMm) need = Math.max(need, -(p[2] * c + p[1] * s));
-  }
-  return Number.isFinite(need) ? need : 0;
-}
-
 /** The sampled points are coarser than a pad is deep, so the band reaches this far either side of it. */
 const BAND_REACH_MM = 45;
+
+/** The lowest point over the pads with the board rolled and turned `swingDeg` about the vertical over them. */
+function restingHeight(seat: Pick<RackSeat, "band" | "at">, rollDeg: number, swingDeg: number): number {
+  const c = Math.cos(rollDeg * RAD);
+  const s = Math.sin(rollDeg * RAD);
+  const turnC = Math.cos(swingDeg * RAD);
+  const turnS = Math.sin(swingDeg * RAD);
+  let need = -Infinity;
+  for (const p of seat.band) {
+    const across = p[1] * c - p[2] * s;
+    const along = -p[0] * turnC - across * turnS;
+    const side = -p[0] * turnS + across * turnC;
+    if (Math.abs(side) > BAY.padHalfSpanMm) continue;
+    if (Math.abs(Math.abs(along) - seat.at) > BAY.padHalfDepthMm + BAND_REACH_MM) continue;
+    need = Math.max(need, -(p[2] * c + p[1] * s));
+  }
+  return need;
+}
+
+/**
+ * How far the board's centre stands above the pad tops: it rests on its lowest point over a pad, rolled by `rollDeg` and
+ * turned `swingDeg` over racks that stay square to the room, so a pad's corners reach foam its edges wouldn't. Never lower
+ * than the board square to the pads, so it can't sink while Nose or Tail swings it round.
+ */
+export function overPad(seat: Pick<RackSeat, "band" | "at">, rollDeg: number, swingDeg = 0): number {
+  const need = Math.max(restingHeight(seat, rollDeg, 0), restingHeight(seat, rollDeg, swingDeg));
+  return Number.isFinite(need) ? need : 0;
+}
 
 /** The seat of a board on its racks, from its points relative to its turning centre (`framePointsOf`). */
 export function rackSeat(points: readonly Vec3[]): RackSeat {
@@ -327,7 +344,9 @@ export function rackSeat(points: readonly Vec3[]): RackSeat {
   }
   const length = points.length > 0 ? hi - lo : 0;
   const at = BAY.rackShare * length;
-  const band = points.filter((p) => Math.abs(Math.abs(p[0]) - at) <= BAY.padHalfDepthMm + BAND_REACH_MM);
+  // Wide enough for a pad's corner on a board turned to Look Down the Rail's limit.
+  const reach = BAY.padHalfDepthMm + BAND_REACH_MM + BAY.padHalfSpanMm * Math.sin(SIGHT_LIMIT_DEG * RAD);
+  const band = points.filter((p) => Math.abs(Math.abs(p[0]) - at) <= reach);
   const seat = { at, length, band, home: 0 };
   return { ...seat, home: overPad(seat, 0) };
 }
@@ -340,7 +359,7 @@ export function rackSeat(points: readonly Vec3[]): RackSeat {
  * end for end tips over the rack on its own far side.
  */
 export function boardPlace(points: readonly Vec3[], angles: RackAngles, seat: RackSeat): Vec3 {
-  const h = overPad(seat, angles.roll);
+  const h = overPad(seat, angles.roll, angles.swing);
   const a = Math.abs(angles.lift) * RAD;
   const sign = angles.lift < 0 ? -1 : 1;
   // Turned off the room's line, the board tips over the pad's corner, not its square edge.
@@ -440,7 +459,7 @@ export const REST_VIEWER: Viewer = {
 };
 
 /** How far Look Down the Rail shifts the eye either way: past the widest rail's own line from anywhere the viewer stands. */
-export const SIGHT_LIMIT_DEG = 15;
+export const SIGHT_LIMIT_DEG = 25;
 /** Look Down the Rail's step: about 13 mm of eye at the end of the room, finer than a rail's line needs. */
 export const SIGHT_STEP_DEG = 0.25;
 
