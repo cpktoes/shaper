@@ -862,12 +862,25 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
       await exempt.evaluateAll((els) => els.filter((el) => (el as HTMLButtonElement).disabled || el.hasAttribute("data-disabled")).length),
       "no view control or Export greyed on a locked board",
     ).toBe(0);
+    // The bay's controls (D-43, D-44) only change the picture: a press and a slider stay live, and send no save.
+    const racks = panel.locator("[data-three-d-racks]");
+    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+      await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
+    }
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeEnabled();
+    const roll = racks.getByRole("slider", { name: THREE_D_COPY.rotateOnSide, exact: true });
+    await roll.focus();
+    await roll.press("ArrowRight");
+    await roll.press("ArrowLeft");
+    expect(saves, "the bay's controls must never send a save").toEqual([]);
     const before = await panel.innerText();
 
     // The corner's switches (D-35): each only changes the picture, so each stays live, sends no save and leaves the
     // panel as it was.
     const corner = page.locator("[data-viewer-toolbar] button[data-three-d-show][data-lock-exempt]");
-    await expect(corner).toHaveCount(4);
+    await expect(corner).toHaveCount(5);
     for (const button of await corner.all()) {
       await expect(button).toBeEnabled();
       const was = (await button.getAttribute("aria-pressed")) ?? "";

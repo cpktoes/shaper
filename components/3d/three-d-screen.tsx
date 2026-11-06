@@ -393,6 +393,8 @@ export function ThreeDScreen() {
   const roomRef = useRef(true);
   /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
+  /** Where the move under way is going, so a second press of Flip the Board starts from there, not from halfway. */
+  const landingRef = useRef<Move | null>(null);
   // What the panel reads (the rack's Pattern 7): only the panel's own controls re-render during a drag.
   const [rackStore] = useState(makeRackStore);
   // The zoom and the slide (16-09, UI-SPEC §4–§5): a crop of the fixed camera's picture (crop-zoom.ts), kept in a
@@ -617,6 +619,7 @@ export function ThreeDScreen() {
   const stopMotion = useCallback(() => {
     if (motionRef.current) cancelAnimationFrame(motionRef.current);
     motionRef.current = 0;
+    landingRef.current = null;
   }, []);
 
   // The host reports the turn and the crop from its first paint, and a motion under way stops when the screen goes.
@@ -832,7 +835,9 @@ export function ThreeDScreen() {
   const moveTo = (move: Move, instant = false) => {
     stopMotion();
     dragRef.current = null;
+    landingRef.current = move;
     const land = () => {
+      landingRef.current = null;
       if (move.flipped !== undefined) flippedRef.current = move.flipped;
       if (move.angles) applyTurn(rackTurn(move.angles), false);
       if (move.viewer) applyViewer(move.viewer, false);
@@ -913,8 +918,9 @@ export function ThreeDScreen() {
 
   /** Flip the Board: half a turn about its long axis on the racks. One press, never a pressed state. */
   const onFlip = () => {
-    const now = rackAngles(turnRef.current);
-    const flipped = !flippedRef.current;
+    const landing = landingRef.current;
+    const now = landing?.angles ?? rackAngles(turnRef.current);
+    const flipped = !(landing?.flipped ?? flippedRef.current);
     moveTo({ angles: { ...now, roll: now.roll + 180 }, flipped });
     say(THREE_D_COPY.flipSpoken[flipped ? "bottom" : "deck"]);
   };
