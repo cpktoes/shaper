@@ -19,7 +19,6 @@ import { useDesign } from "@/components/design/design-store";
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import {
   AT_ONE_CROP,
-  cropLimit,
   cropPinch,
   cropRect,
   cropSlide,
@@ -36,7 +35,6 @@ import {
   DOUBLE_TAP_SLOP_PX,
   normaliseWheelDelta,
   PINCH_WHEEL_RATE,
-  snapZoom,
   stepZoom,
   wheelStep,
   type WheelAccumulator,
@@ -55,12 +53,12 @@ import {
   anglesBetween,
   AT_REST,
   bayLens,
-  BOTTOM_UP,
   clampViewer,
-  fillCrop,
   firstViewOutline,
+  headingOf,
   isBottomUp,
   liftOfRaise,
+  lookOfSwing,
   rackAngles,
   rackDrag,
   rackKey,
@@ -84,11 +82,10 @@ import {
 } from "@/lib/geometry/shaping-bay";
 import { cameraAxes, dragTurn, framePointsOf, glideAt, keyTurn, quatMultiply, REST_TURN, slerpShortest, VIEW_TURN_MS, type Quat, type ViewName } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
-import { ThreeDControls, ThreeDTailRail, type ExportState } from "./three-d-controls";
+import { ThreeDControls, ThreeDRailBlend, type ExportState } from "./three-d-controls";
 import {
   ThreeDModeSwitch,
   ThreeDOnTheRacks,
-  ThreeDLookDownRail,
   makeRackStore,
   type DragMode,
   type RaisedEnd,
@@ -224,6 +221,7 @@ function readBareRoom(): boolean {
 interface Move {
   angles?: RackAngles;
   flipped?: boolean;
+  heading?: 0 | 180;
   viewer?: Viewer;
   crop?: CropView;
 }
@@ -387,9 +385,11 @@ export function ThreeDScreen() {
   // state (the rack's Pattern 7). Each change hands it to the scene, which turns the board's group alone and draws
   // one frame — the strips never move (D-10). Nothing is remembered between visits (D-17).
   const turnRef = useRef<Quat>(REST_TURN);
-  /** Which face was last put up by Flip, Deck or Bottom: the Rotate on Side reading is taken from it (D-43). */
+  /** Which face Deck or Bottom last put up: the Rotate on Side reading is taken from it (D-43). */
   const flippedRef = useRef(false);
-  /** Where the viewer stands (D-43, D-44): moved by Nose, Tail, Side, Look Down the Rail and a walk; never stored. */
+  /** Which end Nose or Tail last turned toward you on Turn the Board; Look Down the Rail reads from it. */
+  const headingRef = useRef<0 | 180>(0);
+  /** Where the viewer stands: moved on Walk Around alone, and back to the one view on Turn the Board; never stored. */
   const viewerRef = useRef<Viewer>(REST_VIEWER);
   /** What a drag does, as the handlers read it: never Walk Around with the room off. */
   const walkingRef = useRef(false);
@@ -397,11 +397,8 @@ export function ThreeDScreen() {
   const roomRef = useRef(true);
   /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
-  /**
-   * The move under way and how it lands: a second press of Flip the Board starts from where the first is going, and a
-   * slider, a drag or a key finishes the move at once rather than leaving the viewer stranded halfway.
-   */
-  const landingRef = useRef<{ move: Move; land: () => void } | null>(null);
+  /** How the move under way lands: a slider, a drag or a key finishes it at once rather than stranding it halfway. */
+  const landingRef = useRef<(() => void) | null>(null);
   // What the panel reads (the rack's Pattern 7): only the panel's own controls re-render during a drag.
   const [rackStore] = useState(makeRackStore);
   // The zoom and the slide (16-09, UI-SPEC §4–§5): a crop of the fixed camera's picture (crop-zoom.ts), kept in a
@@ -587,7 +584,9 @@ export function ThreeDScreen() {
 
   /** The panel's readings for the turn and the viewer as they stand. */
   const readPanel = useCallback(() => {
-    rackStore.set({ ...shownAngles(turnRef.current, flippedRef.current), sight: viewerRef.current.sightDeg });
+    const shown = shownAngles(turnRef.current, flippedRef.current);
+    const sight = walkingRef.current ? viewerRef.current.sightDeg : lookOfSwing(shown.swing, headingRef.current);
+    rackStore.set({ ...shown, sight });
   }, [rackStore]);
 
   const applyTurn = useCallback(
@@ -642,7 +641,7 @@ export function ThreeDScreen() {
   const finishMotion = useCallback(() => {
     const landing = landingRef.current;
     stopMotion();
-    landing?.land();
+    landing?.();
   }, [stopMotion]);
 
   // The host reports the turn and the crop from its first paint, and a motion under way stops when the screen goes.
@@ -876,6 +875,7 @@ export function ThreeDScreen() {
     const land = () => {
       landingRef.current = null;
       if (move.flipped !== undefined) flippedRef.current = move.flipped;
+      if (move.heading !== undefined) headingRef.current = move.heading;
       if (move.angles) applyTurn(rackTurn(move.angles), false);
       if (move.viewer) applyViewer(move.viewer, false);
       if (move.crop) {
@@ -888,7 +888,7 @@ export function ThreeDScreen() {
       land();
       return;
     }
-    landingRef.current = { move, land };
+    landingRef.current = land;
     const fromAngles = rackAngles(turnRef.current);
     const fromViewer = viewerRef.current;
     const fromCrop = cropRef.current;
@@ -916,51 +916,38 @@ export function ThreeDScreen() {
     motionRef.current = requestAnimationFrame(tick);
   };
 
-  /** The crop that shows the board at Nose's and Tail's share of the window, standing at `viewer` (the founder, D-44). */
-  const endCrop = (viewer: Viewer): CropView => {
-    const board = boardRef.current;
-    const host = hostRef.current;
-    const lens = lensNow();
-    if (!board || !seat || !host || !lens) return AT_ONE_CROP;
-    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-    const fit = fillCrop(board.framePoints, rackAngles(turnRef.current), viewer, lens, seat, aspect);
-    const zoom = snapZoom(fit.zoom, DEFAULT_MAX_ZOOM);
-    const limit = cropLimit(zoom);
-    const hold = (v: number) => Math.min(Math.max(v, -limit), limit) + 0;
-    return { zoom, cx: hold(fit.cx), cy: hold(fit.cy) };
-  };
-
   /**
-   * The five buttons (the founder, D-44). Deck and Bottom put the board that way up on the racks with every slider at
-   * rest, straight overhead in Walk Around. Nose, Tail and Side stand the viewer there, moving neither the board nor the
-   * racks. The racks never move, by any control.
+   * The five buttons (the founder, 2026-11-05). On Turn the Board there is one view and only the board moves: Deck and
+   * Bottom put that face up on the racks, Nose and Tail turn it end for end so that end is nearer you, and Side has nothing
+   * to do. On Walk Around you move inside the room: Deck and Bottom stand you directly above the board, nose toward the
+   * back wall; Nose, Tail and Side stand you there. The racks never move, and nothing zooms by itself.
    */
   const onView = (name: ViewName) => {
+    const walking = walkingRef.current;
     if (name === "deck" || name === "bottom") {
+      const heading = walking ? 0 : headingRef.current;
       moveTo({
-        angles: name === "deck" ? AT_REST : BOTTOM_UP,
+        angles: { swing: heading, lift: 0, roll: name === "deck" ? 0 : 180 },
         flipped: name === "bottom",
-        viewer: walkingRef.current ? WALK_VIEWS[name] : { ...viewerRef.current, sightDeg: 0 },
+        heading,
+        viewer: walking ? WALK_VIEWS[name] : undefined,
         crop: AT_ONE_CROP,
       });
+      say(THREE_D_COPY.viewSpoken[name]);
+    } else if (walking) {
+      moveTo({ viewer: standAt(name, rackAngles(turnRef.current).swing), crop: AT_ONE_CROP });
+      say(THREE_D_COPY.viewSpoken[name]);
+    } else if (name === "side") {
+      say(THREE_D_COPY.sideNeedsWalk);
     } else {
-      const viewer = standAt(name, rackAngles(turnRef.current).swing);
-      moveTo({ viewer, crop: name === "side" ? AT_ONE_CROP : endCrop(viewer) });
+      const heading = name === "nose" ? 180 : 0;
+      moveTo({ angles: { ...rackAngles(turnRef.current), swing: heading }, heading, crop: AT_ONE_CROP });
+      say(THREE_D_COPY.endTowardYou[name]);
     }
-    say(THREE_D_COPY.viewSpoken[name]);
   };
   const onReset = (instant = false) => {
-    moveTo({ angles: AT_REST, flipped: false, viewer: REST_VIEWER, crop: AT_ONE_CROP }, instant);
+    moveTo({ angles: AT_REST, flipped: false, heading: 0, viewer: REST_VIEWER, crop: AT_ONE_CROP }, instant);
     say(THREE_D_COPY.resetSpoken);
-  };
-
-  /** Flip the Board: half a turn about its long axis on the racks. One press, never a pressed state. */
-  const onFlip = () => {
-    const landing = landingRef.current?.move;
-    const now = landing?.angles ?? rackAngles(turnRef.current);
-    const flipped = !(landing?.flipped ?? flippedRef.current);
-    moveTo({ angles: { ...now, roll: now.roll + 180 }, flipped });
-    say(THREE_D_COPY.flipSpoken[flipped ? "bottom" : "deck"]);
   };
 
   // Each control writes its own plane. The other two come from the turn's exact angles, never from the rounded thumbs,
@@ -974,7 +961,13 @@ export function ThreeDScreen() {
     setPlane({ lift: liftOfRaise(heightMm, seat) * (end === "nose" ? 1 : -1) });
   };
   const onRoll = (shown: number) => setPlane({ roll: totalRoll(shown, flippedRef.current) });
+  // Look Down the Rail moves you on Walk Around. On Turn the Board you stay put, so it turns the board instead, the same few
+  // degrees, which gives the same line of sight down the rail with the room still.
   const onSight = (sightDeg: number) => {
+    if (!walkingRef.current) {
+      setPlane({ swing: headingRef.current + sightDeg });
+      return;
+    }
     finishMotion();
     applyViewer({ ...viewerRef.current, sightDeg });
   };
@@ -1021,11 +1014,18 @@ export function ThreeDScreen() {
     }
   };
 
-  // What a drag does (D-43): pressing the switch stops any motion and moves nothing.
+  // The two modes (the founder, 2026-11-05). Turn the Board has the one view, so coming back to it brings you home.
+  // Walk Around starts from where you stand, and takes over Look Down the Rail, so a board turned a few degrees for it
+  // straightens first. With nothing to undo, the switch moves nothing.
   const onMode = (next: DragMode) => {
     finishMotion();
     dragRef.current = null;
     setMode(next);
+    walkingRef.current = next === "walk";
+    const now = rackAngles(turnRef.current);
+    if (next === "turn") moveTo({ viewer: REST_VIEWER });
+    else if (lookOfSwing(now.swing, headingRef.current) !== 0) moveTo({ angles: { ...now, swing: headingRef.current } });
+    else readPanel();
   };
   useEffect(() => {
     walkingRef.current = dragMode === "walk";
@@ -1047,6 +1047,7 @@ export function ThreeDScreen() {
     const from = turnRef.current;
     const to = settleOnRacks(from);
     flippedRef.current = isBottomUp(rackAngles(to).roll);
+    headingRef.current = headingOf(rackAngles(to).swing);
     if (!scene || reducedRef.current) {
       scene?.setFree(0);
       applyTurn(to);
@@ -1203,7 +1204,7 @@ export function ThreeDScreen() {
           onView={onView}
           onReset={() => onReset()}
           modeSwitch={<ThreeDModeSwitch mode={dragMode} onMode={onMode} disabled={message !== null || !roomOn} />}
-          lookDownRail={<ThreeDLookDownRail store={rackStore} onSight={onSight} disabled={message !== null} />}
+          sideWaits={dragMode === "turn"}
           drawingUnavailable={message !== null}
           exportState={exportState}
           onExport={onExport}
@@ -1211,12 +1212,12 @@ export function ThreeDScreen() {
           <ThreeDOnTheRacks
             store={rackStore}
             seat={seat}
-            onFlip={onFlip}
             onRaise={onRaise}
             onRoll={onRoll}
+            onSight={onSight}
             disabled={message !== null}
           />
-          <ThreeDTailRail />
+          <ThreeDRailBlend />
         </ThreeDControls>
       }
       canvas={

@@ -864,17 +864,25 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     ).toBe(0);
     // The bay's controls (D-43, D-44) only change the picture: a press and a slider stay live, and send no save.
     const racks = panel.locator("[data-three-d-racks]");
-    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
-    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
+    const views = panel.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true });
+    await views.getByRole("button", { name: THREE_D_COPY.views.bottom, exact: true }).click();
+    await views.getByRole("button", { name: THREE_D_COPY.views.deck, exact: true }).click();
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.lookDownRail]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
     }
-    await expect(panel.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeEnabled();
     const roll = racks.getByRole("slider", { name: THREE_D_COPY.rotateOnSide, exact: true });
     await roll.focus();
     await roll.press("ArrowRight");
     await roll.press("ArrowLeft");
     expect(saves, "the bay's controls must never send a save").toEqual([]);
+
+    // Rail Blend Controls: the fold only changes what shows, so it stays live; the rows inside change the board, so the lock
+    // greys them.
+    const fold = panel.getByRole("button", { name: new RegExp(THREE_D_COPY.railBlendHeading) });
+    await fold.click();
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.tailRailEndsAtSlider, exact: true })).toBeDisabled();
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.tailRailBlendsFromSlider, exact: true })).toBeDisabled();
+    await fold.click();
     const before = await panel.innerText();
 
     // The corner's switches (D-35): each only changes the picture, so each stays live, sends no save and leaves the

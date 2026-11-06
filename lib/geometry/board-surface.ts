@@ -58,7 +58,7 @@ import {
   railCharacterDifferences,
   tailRollStations,
 } from "./volume";
-import { WING_HAIR_MM, wingShareSpan, wingStepShape } from "./wings";
+import { WING_HAIR_MM, wingShareSpan, wingStepShape, wingTakeAt } from "./wings";
 
 /** A point of the surface, in millimetres, in Shape3D's axes (x along, y across, z up). */
 export type Vec3 = readonly [number, number, number];
@@ -109,7 +109,9 @@ export interface BoardSurfaceInput {
  * edge (its section's `sharpness`: 1 where both ends of a blend are sharp, the sharp end's share where one
  * is, D-32); `isSlice` marks the litres' own stations. `right` and `left` are the two half-sections' vertices
  * point for point (`HALF_SECTION_POINT_COUNT` each, inside edge on the deck round the rail to the inside edge on the
- * bottom), the same slot on every ring, so a loft line between two rings runs along the mesh's own edges.
+ * bottom), the same slot on every ring, so a loft line between two rings runs along the mesh's own edges. `wingTake` is
+ * how much the wings have cut the outline in at this station, 0 on a board with none: the wire view reads it, and it
+ * places nothing.
  */
 export interface SurfaceRing {
   station: Mm;
@@ -119,6 +121,7 @@ export interface SurfaceRing {
   isSlice: boolean;
   right: number[];
   left: number[];
+  wingTake: Mm;
 }
 
 /**
@@ -387,6 +390,7 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
       isSlice: slices.has(s),
       right,
       left,
+      wingTake: wingTakeAt(geometry, s),
     });
     slots.push({ right, left, wallRight, wallLeft });
   });
@@ -558,13 +562,14 @@ function loopWithoutRepeats(points: Vec3[]): Vec3[] {
 }
 
 /**
- * The point at `share` of a half-section's run from its inside edge to the rail's apex, across the board: 0 at the
- * inside edge (the stringer, or a notch's wall), 1 at the apex. `run` is the run's vertices, inside edge first; the
- * point lies on the edge between two of them. A tip with no width answers with its own end of the run.
+ * The point at `share` of a half-section's run from its inside edge across the board: 0 at the inside edge (the stringer,
+ * or a notch's wall), 1 at the outline without its wings, `wingTake` past the rail's apex. `run` is the run's vertices,
+ * inside edge first; the point lies on the edge between two of them. A line asking for more than the run has stops at the
+ * rail, so it never stands in the air of a wing's step. A tip with no width answers with its own end of the run.
  */
-function pointAcrossRun(positions: Float64Array, run: readonly number[], share: number): Vec3 {
+function pointAcrossRun(positions: Float64Array, run: readonly number[], share: number, wingTake: number): Vec3 {
   const across = (i: number) => Math.abs(positions[3 * run[i] + 1]);
-  const target = across(0) + share * (across(run.length - 1) - across(0));
+  const target = across(0) + share * (across(run.length - 1) + wingTake - across(0));
   for (let i = 0; i + 1 < run.length; i++) {
     const [from, to] = [across(i), across(i + 1)];
     if (to < target) continue;
@@ -581,9 +586,12 @@ function pointAcrossRun(positions: Float64Array, run: readonly number[], share: 
  * wide board still gets 20 bands on the deck and 20 on the bottom"); and one outline loop at the rail's apex.
  *
  * A long line holds one share of the half-width at every ring, so it runs out toward the rail where the board widens
- * and the lines fan into each tip. Inside a swallow's notch the share is of each piece, wall to rail, so each piece gets
- * its own lines and none stands in the notch's air. A ring between two of the surface's own rings is worked out along
- * the mesh's edges between them. So every point lies on the surface.
+ * and the lines fan into each tip. The half-width is the outline's without its wings (the founder: "I'd like to use this
+ * to identify contours"): a wing cuts the rail in, not the foam behind it, so a line runs straight across the wing's
+ * station and only a real contour bends it, such as the blend a wing shares with the rail, which a line near the rail
+ * shows. An outer line that would stand past the cut-in rail stops at the rail. Inside a swallow's notch the share is of
+ * each piece, wall to rail, so each piece gets its own lines and none stands in the notch's air. A ring between two of
+ * the surface's own rings is worked out along the mesh's edges between them. So every point lies on the surface.
  */
 export function wireLines(surface: BoardSurface): WireLines {
   const { positions, rings, length, width } = surface;
@@ -610,7 +618,7 @@ export function wireLines(surface: BoardSurface): WireLines {
   const apex = SURFACE_POINTS.deck - 1;
   const face = (runOf: (half: readonly number[]) => number[]): Vec3[][] => {
     const lineOn = (share: number, side: "right" | "left", along: readonly SurfaceRing[]) =>
-      along.map((ring) => pointAcrossRun(positions, runOf(ring[side]), Math.abs(share)));
+      along.map((ring) => pointAcrossRun(positions, runOf(ring[side]), Math.abs(share), ring.wingTake));
     const lines = shares.map((share) => lineOn(share, share < 0 ? "left" : "right", rings));
     // A line down the stringer stands on the right piece's wall in a notch; the left piece's wall gets its own.
     const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);

@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
+ * notes after driving the bay: the panel now reads VIEW, the four sliders, Rail Blend Controls folded, then Export, with
+ * Flip the Board gone and Side dimmed on Turn the Board; and each strip has its one shelf, the sill below it gone, so the
+ * strip's light runs down the wall. Compared with the tolerance at 0, against the picture recorded just below: 161651
+ * pixels differ, all in x 20-1242, y 214-800: 58456 in the panel, the rest in the room's walls, shelves and floor. Nothing
+ * above y 214 differs, so the top row, the band and the corner row are untouched. The other five pictures passed and are
+ * byte-for-byte what they were, so VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3218) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the
+ * merge. SHA-256 (first 8 characters), old to new: 3D 1a37927b to c70f39e1.
+ *
  * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once more, for the
  * founder's rulings at his look: Swing went from ON THE RACKS, so everything below it in the panel moved up a row, and Sight
  * Along became Look Down the Rail. Compared with the tolerance at 0, against the picture recorded just below: 34016 pixels

@@ -2,11 +2,11 @@
  * The shaping bay as plain numbers (Phase 16, D-43, D-44): the room the 3D board lies in, its racks, how the board
  * rests on them for any turn, and where the viewer may stand.
  *
- * The board's turn stays one quaternion (`view-3d.ts`, D-13). A shaper thinks of it in three planes, so `rackTurn` and
- * `rackAngles` are exact inverses between that turn and three angles. On the racks only two of them are ever used, the
- * Raise controls' lift and Rotate on Side about the board's own line: the racks never move (the founder, on Swing:
- * "Remove it."), so on them the swing is always zero. The third stays in the angles because a free spin with the room
- * off turns the board in every direction, and the readings must stay exact there too.
+ * The board's turn stays one quaternion (`view-3d.ts`, D-13). A shaper thinks of it in planes, so `rackTurn` and
+ * `rackAngles` are exact inverses between that turn and three angles: the Raise controls' lift, Rotate on Side about the
+ * board's own line, and the board's heading about the vertical. The racks never move, by any control. On Turn the Board
+ * the board does the moving: Tail heads it straight down the room, Nose end for end on the same racks, and Look Down
+ * the Rail a few degrees either way.
  *
  * Room axes as `view-3d.ts` has them: X along the room with the tail end at +X, Y up off the floor, Z across, the
  * floor at Y = 0 and the room's middle at X = Z = 0. Everything is in millimetres and degrees. Every figure here is a
@@ -45,15 +45,14 @@ export const BAY = {
   benchTopMm: 960,
   benchDepthMm: 200,
   benchThickMm: 30,
-  /** The strip hangs under the shelf's front edge (the founder: "the side lights should be UNDER the shelfs"). */
+  /**
+   * The strip hangs under the shelf's front edge (the founder: "the side lights should be UNDER the shelfs"), far enough
+   * forward that a standing eye sees it below the shelf. Each strip has this one shelf on top of it and nothing below.
+   */
   stripHeightMm: 900,
   stripInsetMm: 170,
-  stripFaceMm: 40,
+  stripFaceMm: 50,
   stripEndInsetMm: 150,
-  /** The sill below the strip, which catches its light as the long bright band in his photo. */
-  sillTopMm: 840,
-  sillDepthMm: 330,
-  sillThickMm: 30,
   /** The racks: pad tops off the floor, and each rack's distance from the board's middle as a share of its length. */
   rackTopMm: 740,
   rackShare: 0.18,
@@ -89,7 +88,7 @@ export const BAY_PAINT = {
 /**
  * One way of lighting the bay. `strip` is each strip's strength on the board; `fill` and `fillColour` stand for the
  * light coming back off the room; `bounce` for the floor's; the rest are the room's own paint: its base and how much
- * of the strip it catches, for the walls, the floor and the sill.
+ * of the strip it catches, for the walls, the floor and the shelf.
  */
 export interface BayTreatment {
   strip: number;
@@ -100,8 +99,8 @@ export interface BayTreatment {
   wallGlow: number;
   floorBase: number;
   floorGlow: number;
-  sillBase: number;
-  sillGlow: number;
+  benchBase: number;
+  benchGlow: number;
   floor: string;
 }
 
@@ -119,8 +118,8 @@ export const BAY_TREATMENTS: Record<"A" | "B" | "C", BayTreatment> = {
     wallGlow: 2.6,
     floorBase: 0.74,
     floorGlow: 2.4,
-    sillBase: 0.5,
-    sillGlow: 7,
+    benchBase: 0.5,
+    benchGlow: 7,
     floor: BAY_PAINT.floor,
   },
   B: {
@@ -132,8 +131,8 @@ export const BAY_TREATMENTS: Record<"A" | "B" | "C", BayTreatment> = {
     wallGlow: 2.6,
     floorBase: 0.66,
     floorGlow: 2.4,
-    sillBase: 0.5,
-    sillGlow: 7,
+    benchBase: 0.5,
+    benchGlow: 7,
     floor: "#7f7f82",
   },
   C: {
@@ -145,8 +144,8 @@ export const BAY_TREATMENTS: Record<"A" | "B" | "C", BayTreatment> = {
     wallGlow: 2.6,
     floorBase: 0.5,
     floorGlow: 2.4,
-    sillBase: 0.4,
-    sillGlow: 7,
+    benchBase: 0.4,
+    benchGlow: 7,
     floor: BAY_PAINT.floor,
   },
 };
@@ -170,8 +169,8 @@ export function stripEnds(): [[Vec3, Vec3], [Vec3, Vec3]] {
 
 /**
  * The board's lie in three planes, in degrees. `lift`: + the nose up, − the tail up. `roll`: + the deck tipping to the
- * right, seen from the tail. `swing`: + the nose to the right, seen from the tail; zero on the racks, and anything only in
- * a free spin with the room off.
+ * right, seen from the tail. `swing`: the board's heading about the vertical, + the nose to the right seen from the tail,
+ * 180 end for end. It turns the board alone, never the racks.
  */
 export interface RackAngles {
   swing: number;
@@ -242,17 +241,18 @@ export function clampLift(turn: Quat): Quat {
 
 /**
  * The board after a hand on the racks: `acrossDeg` to the picture's right and `downDeg` down it. Down is a turn about the
- * picture's left-right axis, exactly as a free drag has it. Across can't be: about the picture's upright it would swing
- * the board off racks that never move, so it turns the board in the plane of the picture instead, as a hand on the deck
- * pushing it over: from either end that is Rotate on Side, from the rail it tips the board end over end. Worked in the
- * angles, so the swing is zero by construction, the lift stops at its limit, and a drag straight back undoes it exactly.
+ * picture's left-right axis, exactly as a free drag has it. Across can't be: about the picture's upright it would carry
+ * the board off its racks, so it turns the board in the plane of the picture instead, as a hand on the deck pushing it
+ * over: from either end that is Rotate on Side, from the rail it tips the board end over end. Read from where the viewer
+ * stands relative to the board, so the hand gets the same answer with the board end for end. The heading is left as it
+ * is, the lift stops at its limit, and a drag straight back undoes it exactly.
  */
 export function rackNudge(angles: RackAngles, acrossDeg: number, downDeg: number, viewer: Viewer): RackAngles {
-  const az = (viewer.azimuthDeg - viewer.sightDeg) * RAD;
+  const az = (viewer.azimuthDeg - viewer.sightDeg - angles.swing) * RAD;
   const aboutX = Math.sin(az) * downDeg - Math.cos(az) * acrossDeg;
   const aboutZ = -Math.cos(az) * downDeg - Math.sin(az) * acrossDeg;
   const limit = BAY.liftLimitDeg;
-  return { swing: 0, lift: Math.min(limit, Math.max(-limit, angles.lift - aboutZ)), roll: wrap(angles.roll - aboutX) };
+  return { swing: angles.swing, lift: Math.min(limit, Math.max(-limit, angles.lift - aboutZ)), roll: wrap(angles.roll - aboutX) };
 }
 
 /** A drag of (dx, dy) screen dots on the racks: the length of the canvas's shorter side is half a turn, as off them. */
@@ -267,9 +267,20 @@ export function rackKey(angles: RackAngles, key: "left" | "right" | "up" | "down
   return rackNudge(angles, across * KEY_TURN_DEG, down * KEY_TURN_DEG, viewer);
 }
 
-/** The nearest lie on the racks to a free-spun board: within the lift limit, with no swing. */
+/** Which way down the room a heading lies: 0 with the tail toward the first view, 180 with the nose. */
+export function headingOf(swingDeg: number): 0 | 180 {
+  return Math.abs(wrap(swingDeg)) > 90 ? 180 : 0;
+}
+
+/** Look Down the Rail's reading on Turn the Board: how far the board stands off its heading, within the slider's limit. */
+export function lookOfSwing(swingDeg: number, heading: 0 | 180): number {
+  return Math.min(SIGHT_LIMIT_DEG, Math.max(-SIGHT_LIMIT_DEG, wrap(swingDeg - heading)));
+}
+
+/** The nearest lie on the racks to a free-spun board: within the lift limit, straight down the room, either end first. */
 export function settleOnRacks(turn: Quat): Quat {
-  return rackTurn({ ...rackAngles(clampLift(turn)), swing: 0 });
+  const a = rackAngles(clampLift(turn));
+  return rackTurn({ ...a, swing: headingOf(a.swing) });
 }
 
 /** `k` of the way from `a` to `b`, the short way round for the swing and the roll. */
@@ -325,13 +336,15 @@ export function rackSeat(points: readonly Vec3[]): RackSeat {
  * The board's centre in the room for three angles. Rolled, it rests on its lowest point over the pads. Raised, it tips
  * over the outer top edge of the far rack's pad, so the far end stays on its rack and no pad enters the foam: nose up
  * over the tail-side rack, which stands at room +X, tail up over the nose-side rack. The foam never comes nearer the
- * floor than `floorClearMm`. The racks never move, so the board stays on the room's middle line.
+ * floor than `floorClearMm`. The racks stay where they stand, the same two pads either way round, so a board heading
+ * end for end tips over the rack on its own far side.
  */
 export function boardPlace(points: readonly Vec3[], angles: RackAngles, seat: RackSeat): Vec3 {
   const h = overPad(seat, angles.roll);
   const a = Math.abs(angles.lift) * RAD;
   const sign = angles.lift < 0 ? -1 : 1;
-  const reach = seat.at + BAY.padHalfDepthMm;
+  // Turned off the room's line, the board tips over the pad's corner, not its square edge.
+  const reach = seat.at + BAY.padHalfDepthMm + BAY.padHalfSpanMm * Math.abs(Math.sin(angles.swing * RAD));
   const x = sign * (reach - reach * Math.cos(a) + h * Math.sin(a));
   let y = BAY.rackTopMm + reach * Math.sin(a) + h * Math.cos(a);
   const q = quatMultiply(rackTurn(angles), BOARD_TO_ROOM);
@@ -341,7 +354,8 @@ export function boardPlace(points: readonly Vec3[], angles: RackAngles, seat: Ra
     if (up < lowest) lowest = up;
   }
   if (Number.isFinite(lowest)) y += Math.max(0, BAY.floorClearMm - (y + lowest));
-  return [x, y, 0];
+  const s = angles.swing * RAD;
+  return [x * Math.cos(s), y, x * Math.sin(s)];
 }
 
 /** Where the board's centre stands with no racks: at its home, so turning the room off moves nothing. */
@@ -371,6 +385,14 @@ const PATCH_HALF_SPAN_MM = 420;
 /** From the pivot to the raised end's rack, along the board. */
 export function raiseArmMm(seat: Pick<RackSeat, "at">): number {
   return 2 * seat.at + BAY.padHalfDepthMm;
+}
+
+/** Below this an end is on its rack: a turn read back carries a speck of lift, which must not read as a raise. */
+const ON_THE_RACK_DEG = 0.01;
+
+/** Whether an end stands off its rack at `liftDeg`, its own end's lift. */
+export function isRaised(liftDeg: number): boolean {
+  return liftDeg > ON_THE_RACK_DEG;
 }
 
 /** How high an end stands off its rack at `liftDeg` (either sign). */
@@ -431,12 +453,13 @@ const OVERHEAD_DEG = 89.9;
 const END_VIEW_ELEVATION_DEG = 10;
 
 /**
- * Each view's place with the board straight down the room: Deck and Bottom straight overhead with the nose left, Side at rail height, Nose and
- * Tail on the stringer's line at each end.
+ * Each view's place on Walk Around, with the board straight down the room. Deck and Bottom stand directly above the board
+ * with the nose toward the back wall and the tail toward where the first view stands (the founder), Side at the rail with
+ * a strip on the wall behind the board, Nose and Tail on the stringer's line at each end.
  */
 export const WALK_VIEWS: Readonly<Record<ViewName, Viewer>> = {
-  deck: { azimuthDeg: 90, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
-  bottom: { azimuthDeg: 90, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
+  deck: { azimuthDeg: 0, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
+  bottom: { azimuthDeg: 0, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
   side: { azimuthDeg: 90, elevationDeg: 0, sightDeg: 0 },
   nose: { azimuthDeg: 180, elevationDeg: END_VIEW_ELEVATION_DEG, sightDeg: 0 },
   tail: { azimuthDeg: 0, elevationDeg: END_VIEW_ELEVATION_DEG, sightDeg: 0 },
@@ -653,49 +676,6 @@ export function walkGlideAt(
 export function railSightDeg(halfWidthMm: number, viewer: Viewer, lens: BayLens): number {
   const rho = Math.min(lens.distanceMm, wallReach(viewer.azimuthDeg, viewer.elevationDeg));
   return Math.asin(Math.min(1, halfWidthMm / (rho * Math.cos(viewer.elevationDeg * RAD)))) / RAD;
-}
-
-/**
- * How much of the window Nose and Tail show the board at (the founder: "Zoom in but not quite as far as currently
- * set"). His eye at the look decides; this is the one figure to change.
- */
-export const END_VIEW_FILL = 0.6;
-
-/**
- * How far below the window's middle Nose and Tail seat the board, as a share of the window: zoomed in, the zoom row shows
- * under the corner row, and at 60% of a phone's window a tip would reach under it.
- */
-const END_VIEW_LOW_SHARE = 0.07;
-
-/**
- * The crop that shows the board at `fill` of the window, sitting a little low: the zoom it asks for, and the crop's
- * centre, as `CropView` has it.
- */
-export function fillCrop(
-  points: readonly Vec3[],
-  angles: RackAngles,
-  viewer: Viewer,
-  lens: BayLens,
-  seat: RackSeat,
-  aspect: number,
-  fill: number = END_VIEW_FILL,
-): { zoom: number; cx: number; cy: number } {
-  if (points.length === 0 || !(aspect > 0)) return { zoom: 1, cx: 0, cy: 0 };
-  const { position, axes } = viewerPlace(viewer, lens, seat);
-  const tanV = Math.tan((lens.lensDeg * RAD) / 2);
-  let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
-  for (const p of posed(sampleOf(points), points, angles, seat)) {
-    const [x, y, depth] = project(p, position, axes, tanV, aspect);
-    if (!(depth > 0)) continue;
-    x0 = Math.min(x0, x);
-    x1 = Math.max(x1, x);
-    y0 = Math.min(y0, y);
-    y1 = Math.max(y1, y);
-  }
-  if (!(x1 >= x0)) return { zoom: 1, cx: 0, cy: 0 };
-  const share = Math.max((x1 - x0) / 2, (y1 - y0) / 2);
-  const zoom = share > 0 ? fill / share : 1;
-  return { zoom, cx: (x0 + x1) / 4, cy: -(y0 + y1) / 4 - END_VIEW_LOW_SHARE / zoom };
 }
 
 /** An SVG path through dots. */

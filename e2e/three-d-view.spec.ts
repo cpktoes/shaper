@@ -281,27 +281,32 @@ async function keepLockedBoard(page: Page) {
 }
 
 test.describe("the five views, Reset View and the keys", () => {
-  test("5. Deck and Bottom set the board on its racks, Nose, Tail and Side stand you there, and a screen reader hears which", async ({ page }) => {
-    // Ten moves on browsers that draw without a graphics card.
+  test("5. on Turn the Board the buttons move the board, on Walk Around you, and a screen reader hears which", async ({ page }) => {
+    // Twelve moves on browsers that draw without a graphics card.
     test.setTimeout(300_000);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
+    const land = async (want: Quat, words: string) => {
+      await expect.poll(async () => isTurn(await turnOf(host), want), { timeout: 10_000 }).toBe(true);
+      await expect(spoken(page)).toHaveText(words);
+      await settled(host);
+    };
+    await viewButton(page, THREE_D_COPY.views.bottom).click();
+    await land(rackTurn(BOTTOM_UP), THREE_D_COPY.viewSpoken.bottom);
+    await viewButton(page, THREE_D_COPY.views.deck).click();
+    await land(rackTurn(AT_REST), THREE_D_COPY.viewSpoken.deck);
+    await viewButton(page, THREE_D_COPY.views.nose).click();
+    await land(rackTurn({ ...AT_REST, swing: 180 }), THREE_D_COPY.endTowardYou.nose);
+    await viewButton(page, THREE_D_COPY.views.tail).click();
+    await land(rackTurn(AT_REST), THREE_D_COPY.endTowardYou.tail);
+    expect(await azimuthOf(host)).toBeCloseTo(0, 1);
+
+    await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.modeWalk, exact: true }).click();
     for (const name of VIEW_NAMES) {
       await viewButton(page, THREE_D_COPY.views[name]).click();
-      if (name === "deck" || name === "bottom") {
-        const want = rackTurn(name === "deck" ? AT_REST : BOTTOM_UP);
-        await expect.poll(async () => isTurn(await turnOf(host), want), { timeout: 10_000 }).toBe(true);
-      } else {
-        await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(wrapped(WALK_VIEWS[name].azimuthDeg), 1);
-      }
+      await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(wrapped(WALK_VIEWS[name].azimuthDeg), 1);
       await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
-      // Pressed again once the move has finished, it is already there: nothing moves.
       await settled(host);
-      const there = [await host.getAttribute("data-turn"), await host.getAttribute("data-viewer")];
-      await viewButton(page, THREE_D_COPY.views[name]).click();
-      await page.waitForTimeout(600);
-      expect([await host.getAttribute("data-turn"), await host.getAttribute("data-viewer")]).toEqual(there);
-      await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
     }
   });
 
@@ -311,10 +316,9 @@ test.describe("the five views, Reset View and the keys", () => {
     await viewButton(page, THREE_D_COPY.views.bottom).click();
     await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
     await viewButton(page, THREE_D_COPY.views.nose).click();
-    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(180, 1);
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn({ ...BOTTOM_UP, swing: 180 })), { timeout: 10_000 }).toBe(true);
     await viewButton(page, THREE_D_COPY.resetView).click();
     await expect.poll(async () => isTurn(await turnOf(host), [0, 0, 0, 1]), { timeout: 10_000 }).toBe(true);
-    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(0, 1);
     await expect(host).toHaveAttribute("data-crop", "1 0.0000 0.0000");
     await expect(spoken(page)).toHaveText(THREE_D_COPY.resetSpoken);
   });
@@ -374,11 +378,10 @@ test.describe("the five views, Reset View and the keys", () => {
     }
     // The bay's controls dim with them, and the switch.
     const racks = page.locator("[data-three-d-racks]");
-    await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeDisabled();
     for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeDisabled();
     }
-    await expect(page.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeDisabled();
+    await expect(racks.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeDisabled();
     const mode = page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button");
     await expect(mode).toHaveCount(2);
     for (const button of await mode.all()) await expect(button).toBeDisabled();
@@ -388,19 +391,16 @@ test.describe("the five views, Reset View and the keys", () => {
     await keepLockedBoard(page);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    for (const label of [...VIEW_NAMES.map((n) => THREE_D_COPY.views[n]), THREE_D_COPY.resetView]) {
+    // Side alone is dimmed, by the mode rather than the lock.
+    for (const label of [THREE_D_COPY.views.deck, THREE_D_COPY.views.bottom, THREE_D_COPY.views.nose, THREE_D_COPY.views.tail, THREE_D_COPY.resetView]) {
       await expect(viewButton(page, label)).toBeEnabled();
     }
-    await viewButton(page, THREE_D_COPY.views.side).click();
-    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
     // The bay's controls only change the picture, so a locked board keeps them too.
     const racks = page.locator("[data-three-d-racks]");
-    await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeEnabled();
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.lookDownRail]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
     }
-    await expect(page.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeEnabled();
-    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    await viewButton(page, THREE_D_COPY.views.bottom).click();
     await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
   });
 });

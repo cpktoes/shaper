@@ -282,6 +282,7 @@ test.describe("the 3D screen", () => {
       await page.goto("/design/3d");
       const host = await waitForBoard(page);
       const style = "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }";
+      await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.modeWalk, exact: true }).click();
       await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.side, exact: true }).click();
       await page.waitForTimeout(1_000);
       const on = decodePng(await host.screenshot({ style }));

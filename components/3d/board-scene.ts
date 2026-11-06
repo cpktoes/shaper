@@ -255,11 +255,10 @@ bayLine(geometryPosition, geometryNormal, geometryViewDir, bayB0, bayB1, materia
 
 /**
  * The room's paint: its own small shader, not lit by the board's light model. Each surface is `albedo × (base + glow ×
- * strip × E)`, with `E` the strips' own. A strip hangs under its shelf with the sill below it, so on the walls beside it
- * the light is only the slot between the two: above the shelf and below the sill the wall stays dim (`slot`), as in the
- * photo, and the far strip still reaches it. The floor falls dark under the sill, carries its dust (value noise, the
- * domain turned 30° so no grid shows from overhead) and a soft dark patch under the board. `kind` is 0 for a wall or a
- * bench, 1 for the floor.
+ * strip × E)`, with `E` the strips' own. A strip hangs under its shelf, so on the wall behind it the light stops at the
+ * shelf: above it the wall stays dim, as in the photo, and only the far strip reaches it (`shelved`). The floor carries its
+ * dust (value noise, the domain turned 30° so no grid shows from overhead) and a soft dark patch under the board. `kind`
+ * is 0 for a wall or a shelf, 1 for the floor.
  */
 const ROOM_VERTEX = `
 varying vec3 vP;
@@ -282,8 +281,6 @@ uniform float base;
 uniform float glow;
 uniform float kind;
 uniform float underShelf;
-uniform float overSill;
-uniform float sillFront;
 uniform vec3 patchCentre;
 uniform vec2 patchSize;
 uniform vec2 patchAxis;
@@ -298,10 +295,9 @@ float lineLight(vec3 P, vec3 N, vec3 A, vec3 B) {
   float nl = 0.5 * (dot(N, L0) / d0 + dot(N, L1) / d1);
   return 2.0 * max(nl, 0.0) / (d0 * d1 + dot(L0, L1) + 0.06);
 }
-float slot(vec3 P, vec3 N, float stripZ) {
+float shelved(vec3 P, vec3 N, float stripZ) {
   float own = smoothstep(900.0, 300.0, abs(P.z - stripZ)) * abs(N.z);
-  float open = smoothstep(underShelf + 30.0, underShelf - 10.0, P.y) * smoothstep(overSill - 30.0, overSill + 10.0, P.y);
-  return mix(1.0, open, own);
+  return mix(1.0, smoothstep(underShelf + 30.0, underShelf - 10.0, P.y), own);
 }
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -318,12 +314,12 @@ void main() {
   float e;
   vec3 c = albedo;
   if (kind > 0.5) {
-    e = (lineLight(vP, n, bayA0, bayA1) + lineLight(vP, n, bayB0, bayB1)) * smoothstep(sillFront + 60.0, sillFront - 260.0, abs(vP.z));
+    e = lineLight(vP, n, bayA0, bayA1) + lineLight(vP, n, bayB0, bayB1);
     vec2 d = mat2(0.866, -0.5, 0.5, 0.866) * vP.xz;
     float s = noise(d * vec2(0.0016, 0.0055) + 3.1) * 0.6 + noise(d * 0.012) * 0.3 + noise(d * 0.05) * 0.1;
     c *= 1.0 - 0.2 * smoothstep(0.34, 0.78, s);
   } else {
-    e = lineLight(vP, n, bayA0, bayA1) * slot(vP, n, bayA0.z) + lineLight(vP, n, bayB0, bayB1) * slot(vP, n, bayB0.z);
+    e = lineLight(vP, n, bayA0, bayA1) * shelved(vP, n, bayA0.z) + lineLight(vP, n, bayB0, bayB1) * shelved(vP, n, bayB0.z);
     e *= mix(0.4, 1.0, abs(n.z) + abs(n.y));
   }
   vec3 lit = c * (base + glow * e * stripColour);
@@ -516,8 +512,8 @@ function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 }
 }
 
 /**
- * How close to the eye a shelf or sill is drawn at all. A viewer walking along a wall stands over its sill, which would
- * otherwise fill the bottom of the picture with bright white.
+ * How close to the eye a shelf is drawn at all. A viewer walking along a wall stands under or over its shelf, which would
+ * otherwise fill the picture.
  */
 const BENCH_EYE_CLEAR_MM = 900;
 
@@ -533,7 +529,7 @@ interface DrawnBay {
 
 /**
  * The bay: floor, walls and ceiling as planes drawn from the inside only, so none of them ever stands between the viewer
- * and the board, and a viewer overhead sees down through the ceiling; the shelves, sills and strips down both side
+ * and the board, and a viewer overhead sees down through the ceiling; the shelves and strips down both side
  * walls; and two racks, which never move. The room's colours are its own in every theme (D-43).
  */
 function buildBay(treatment: BayTreatment): DrawnBay {
@@ -563,8 +559,6 @@ function buildBay(treatment: BayTreatment): DrawnBay {
         glow: { value: glow },
         kind: { value: kind },
         underShelf: { value: BAY.benchTopMm - BAY.benchThickMm },
-        overSill: { value: BAY.sillTopMm },
-        sillFront: { value: W / 2 - BAY.sillDepthMm },
         patchCentre: { value: patch.centre },
         patchSize: { value: patch.size },
         patchAxis: { value: patch.axis },
@@ -579,7 +573,7 @@ function buildBay(treatment: BayTreatment): DrawnBay {
   };
   const wall = paint(BAY_PAINT.wall, treatment.wallBase, treatment.wallGlow, 0);
   const floor = paint(treatment.floor, treatment.floorBase, treatment.floorGlow, 1);
-  const bench = paint(BAY_PAINT.bench, treatment.sillBase, treatment.sillGlow, 0, BENCH_EYE_CLEAR_MM);
+  const bench = paint(BAY_PAINT.bench, treatment.benchBase, treatment.benchGlow, 0, BENCH_EYE_CLEAR_MM);
   const ceiling = new MeshBasicMaterial({ color: new Color(BAY_PAINT.ceiling), side: FrontSide });
   const strip = new MeshBasicMaterial({ color: new Color(BAY_PAINT.strip), toneMapped: false });
   owned.push(ceiling, strip);
@@ -606,14 +600,12 @@ function buildBay(treatment: BayTreatment): DrawnBay {
     parent.add(mesh);
     owned.push(geometry);
   };
-  /** A shelf or sill: its top and its front edge only, so a viewer standing at the rail under one sees past it. */
-  const ledge = (side: number, top: number, depth: number, thick: number) => {
-    plane(L, depth, bench, [0, top, side * (W / 2 - depth / 2)], [-Math.PI / 2, 0, 0]);
-    plane(L, thick, bench, [0, top - thick / 2, side * (W / 2 - depth)], [0, side > 0 ? Math.PI : 0, 0]);
-  };
   for (const side of [-1, 1]) {
-    ledge(side, BAY.benchTopMm, BAY.benchDepthMm, BAY.benchThickMm);
-    ledge(side, BAY.sillTopMm, BAY.sillDepthMm, BAY.sillThickMm);
+    // One long shelf over each strip, its underside catching the strip's light.
+    const depth = BAY.benchDepthMm;
+    plane(L, depth, bench, [0, BAY.benchTopMm, side * (W / 2 - depth / 2)], [-Math.PI / 2, 0, 0]);
+    plane(L, BAY.benchThickMm, bench, [0, BAY.benchTopMm - BAY.benchThickMm / 2, side * (W / 2 - depth)], [0, side > 0 ? Math.PI : 0, 0]);
+    plane(L, depth, bench, [0, BAY.benchTopMm - BAY.benchThickMm, side * (W / 2 - depth / 2)], [Math.PI / 2, 0, 0]);
     box(room, [L - 2 * BAY.stripEndInsetMm, BAY.stripFaceMm, BAY.stripFaceMm], strip, [
       0,
       BAY.stripHeightMm,

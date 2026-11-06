@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -30,6 +31,7 @@ import {
 } from "./design";
 import { openedFinishedRail, railReach, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
+import type { Vec3 } from "./board-surface";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
 import { inchesToMm, mm } from "./units";
@@ -859,6 +861,106 @@ describe("the wire view's lines (D-42)", () => {
       [...wire.deck, ...wire.bottom].reduce((sum, line) => sum + line.length - 1, 0) +
       wire.outline.length;
     expect(segments.length).toBe(count * 6);
+  });
+});
+
+/**
+ * The wire view on a winged board (the founder: "I'd like to use this to identify contours and this kind of messes with
+ * the visual."): a long line holds its share of the outline WITHOUT the wing, so it runs straight across the wing's
+ * station. Before this a line away from the rail jumped sideways by up to 3.9 mm there, and the foam has no such jump.
+ */
+describe("wireLines on a winged board: the lines ignore the wing", () => {
+  /** How far a line away from the rail may stand off its share of the wing-free outline. */
+  const STRAIGHT_LIMIT_MM = 0.05;
+  const INCH = inchesToMm(1);
+
+  /** The share of each long line, as `wireLines` lays them. */
+  const sharesOf = (count: number) => Array.from({ length: count }, (_, k) => (2 * k + 1) / count - 1);
+
+  it("on all 74 boards with no wing, wireLines' output is what it was before, bit for bit", () => {
+    // SHA-256 of every coordinate as a 64-bit float, deck, bottom, rings and outline, board by board in this order,
+    // recorded from the code as it stood before the lines ignored the wing. Never re-record this to make it pass.
+    const hash = createHash("sha256");
+    for (const { surface } of BUILT_LIVE) {
+      const wire = wireLines(surface);
+      for (const lines of [wire.deck, wire.bottom, wire.rings, [wire.outline]]) {
+        for (const line of lines) hash.update(Buffer.from(Float64Array.from(line.flat()).buffer));
+      }
+    }
+    expect(hash.digest("hex").slice(0, 24)).toBe("4e6b2907b4606d20604bb92d");
+  }, 120_000);
+
+  it("a board with no wing carries no take on any ring", () => {
+    for (const { surface } of BUILT_LIVE) for (const ring of surface.rings) expect(ring.wingTake).toBe(0);
+  });
+
+  for (const board of BUILT_WINGED) {
+    describe(board.label, () => {
+      const wire = wireLines(board.surface);
+      const plain = buildOutline(outlineWithoutWings(board.fields.outline));
+      const shares = sharesOf(wire.deck.length);
+      const from = (isSwallow(board.geometry) ? board.geometry.centreCloseStation : 0) + 2 * INCH;
+      const to = board.surface.length - 2 * INCH;
+
+      it(`a line away from the rail stands within ${STRAIGHT_LIMIT_MM} mm of its share of the outline without the wing`, () => {
+        for (const [name, lines] of [["deck", wire.deck], ["bottom", wire.bottom]] as const) {
+          lines.forEach((line, k) => {
+            const share = Math.abs(shares[k]);
+            if (share > 0.7) return;
+            for (const p of line) {
+              if (p[0] < from || p[0] > to) continue;
+              const want = share * sampleOutline(plain, mm(p[0]));
+              expect(Math.abs(Math.abs(p[1]) - want), `${name} line ${k} at ${p[0]}`).toBeLessThanOrEqual(STRAIGHT_LIMIT_MM);
+            }
+          });
+        }
+      });
+
+      it("no point stands past the real rail: an outer line stops there, on the surface, never in the step's air", () => {
+        for (const lines of [wire.deck, wire.bottom]) {
+          lines.forEach((line, k) => {
+            line.forEach((p, i) => {
+              const ring = board.surface.rings[i];
+              const half = shares[k] < 0 ? ring.left : ring.right;
+              const rail = Math.max(...half.map((v) => Math.abs(board.surface.positions[3 * v + 1])));
+              expect(p[0]).toBe(ring.station);
+              expect(Math.abs(p[1])).toBeLessThanOrEqual(rail + 1e-9);
+            });
+          });
+        }
+      });
+
+      it("its wire still has a ring every 1 1/2\" and its one outline loop: the stroke and the rest stand", () => {
+        expect(wire.outline).toEqual(boardOutlineLoop(board.surface));
+        expect(wire.ringStations.length).toBe(Math.floor(board.surface.length / inchesToMm(WIRE_RING_STEP_IN)));
+      });
+    });
+  }
+
+  it("a real contour still reads: beside a deep wing the foam's blend bends a line near the rail, and leaves the middle alone", () => {
+    const winged = BUILT_WINGED.find((b) => b.label === "wing|shortboard|deep");
+    if (!winged) throw new Error("no deep wing");
+    const plain = built({ label: "plain", fields: { ...winged.fields, outline: outlineWithoutWings(winged.fields.outline) } });
+    const [wing] = winged.geometry.wings ?? [];
+    const { middle, reach } = wingShareSpan(wing);
+    const lines = wireLines(winged.surface).deck;
+    const flat = wireLines(plain.surface).deck;
+    const heightOf = (line: readonly Vec3[], x: number) => {
+      const i = line.findIndex((p) => p[0] >= x);
+      const [a, b] = [line[i - 1], line[i]];
+      return a[2] + ((b[2] - a[2]) * (x - a[0])) / (b[0] - a[0]);
+    };
+    const bendOf = (k: number) => {
+      let most = 0;
+      for (const p of lines[k]) {
+        if (Math.abs(p[0] - middle) <= reach) most = Math.max(most, Math.abs(p[2] - heightOf(flat[k], p[0])));
+      }
+      return most;
+    };
+    const outer = lines.length - 1;
+    const centre = lines.length >> 1;
+    expect(bendOf(outer)).toBeGreaterThan(0.5);
+    expect(bendOf(centre)).toBeLessThan(0.05);
   });
 });
 
