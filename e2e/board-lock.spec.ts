@@ -298,3 +298,47 @@ test.describe("the board lock on a phone (quick 261008-lsy)", () => {
     expect(box.height).toBeGreaterThanOrEqual(44);
   });
 });
+
+test.describe("a board opened the moment after its lock row is chosen, on every rack", () => {
+  const unlockButton = (page: Page) =>
+    page.getByRole("button", { name: BOARD_LOCK_COPY.unlockLabel }).filter({ visible: true });
+  const savedWord = (page: Page) => page.getByText("Saved", { exact: true }).filter({ visible: true });
+
+  test("o1. Open This Board pressed while the lock is still on its way opens the board locked", async ({ page }) => {
+    const first = board(1);
+    await startPracticeRack(page, "slow");
+    await openRack(page);
+
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await openFromCaption(page, first.name);
+
+    await expect(unlockButton(page)).toHaveCount(1);
+  });
+
+  test("o2. Open This Board pressed while an unlock is still on its way opens the board unlocked", async ({ page }) => {
+    const first = board(1);
+    await startPracticeRack(page, "slow");
+    await openRack(page);
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await expect(captionFor(page, first.name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
+
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.boardLocked, "true");
+    await openFromCaption(page, first.name);
+
+    await expect(savedWord(page)).toHaveCount(1);
+    await expect(unlockButton(page)).toHaveCount(0);
+  });
+
+  test("o3. a lock that failed leaves the board open to change, because the board never was locked", async ({ page }) => {
+    const first = board(1);
+    await startPracticeRack(page, "fail");
+    await openRack(page);
+
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await expect(captionFor(page, first.name).getByText(BOARD_LOCK_COPY.lockFailed)).toBeVisible();
+    await openFromCaption(page, first.name);
+
+    await expect(savedWord(page)).toHaveCount(1);
+    await expect(unlockButton(page)).toHaveCount(0);
+  });
+});

@@ -92,6 +92,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   const [duplicateErrors, setDuplicateErrors] = useState<Record<string, string>>({});
   /** A board's lock row failed (quick 261008-lsy): the words shown under its Open This Board. */
   const [lockErrors, setLockErrors] = useState<Record<string, string>>({});
+  /** The lock just chosen for a board, against the row the rack holds now. A row only learns of a lock
+   * once the server has answered and the page has redrawn, so Open This Board pressed in that moment
+   * reads this first, and the board opens the way the shaper just left it. The redraw brings a new row
+   * with the lock on it, so nothing here outlives that moment. */
+  const chosenLocks = useRef(new WeakMap<RackModel, boolean>());
   const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
   /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
   const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
@@ -264,6 +269,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
    */
   const handleToggleLock = async (model: RackModel) => {
     const next = !model.locked;
+    chosenLocks.current.set(model, next);
     setLockErrors((prev) => {
       if (!(model.id in prev)) return prev;
       const rest = { ...prev };
@@ -279,6 +285,7 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
       const result = await setModelLocked(model.id, next);
       if (!result.saved) throw new Error("The lock was not stored.");
     } catch {
+      chosenLocks.current.delete(model);
       setLockErrors((prev) => ({ ...prev, [model.id]: failure }));
       announce(failure, { visible: false });
       return;
@@ -290,8 +297,11 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
   /** Opens a board exactly as the old cards did: the saved board through the setup screen's
    * `handleSelectModel` (with its replace-board check), the unsaved one straight to the editor. */
   const openBoard = (board: RackBoard) => {
-    if (board.model) onSelectModel(board.model);
-    else onContinue();
+    if (board.model) {
+      onSelectModel({ ...board.model, locked: chosenLocks.current.get(board.model) ?? board.model.locked });
+    } else {
+      onContinue();
+    }
   };
 
   /**
