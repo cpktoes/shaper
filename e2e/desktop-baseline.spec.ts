@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once more, for the
+ * founder's rulings at his look: Swing went from ON THE RACKS, so everything below it in the panel moved up a row, and Sight
+ * Along became Look Down the Rail. Compared with the tolerance at 0, against the picture recorded just below: 34016 pixels
+ * differ, every one in the panel's column (x 20-359, y 354-800). The 3D drawing itself and its corner row differ in 0
+ * pixels. The other five pictures passed and are byte-for-byte what they were, so VOLUME still reads 30.29 L. Rendered by
+ * the webpack dev server (`IS_WEBPACK_TEST=1`, port 3218) in the plan's worktree on this Mac; the orchestrator confirms
+ * under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D 8418d4d6 to 1a37927b.
+ *
  * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the shaping
  * bay (D-43, D-44): the board now lies on its racks in a drawn room, seen from directly behind the tail; the panel opens
  * with ON THE RACKS and VIEW holds the two-way switch; the corner row gains the Room switch; and the subtitle has new

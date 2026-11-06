@@ -375,10 +375,10 @@ test.describe("the five views, Reset View and the keys", () => {
     // The bay's controls dim with them, and the switch.
     const racks = page.locator("[data-three-d-racks]");
     await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeDisabled();
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeDisabled();
     }
-    await expect(page.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeDisabled();
+    await expect(page.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeDisabled();
     const mode = page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button");
     await expect(mode).toHaveCount(2);
     for (const button of await mode.all()) await expect(button).toBeDisabled();
@@ -396,10 +396,10 @@ test.describe("the five views, Reset View and the keys", () => {
     // The bay's controls only change the picture, so a locked board keeps them too.
     const racks = page.locator("[data-three-d-racks]");
     await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeEnabled();
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
     }
-    await expect(page.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeEnabled();
+    await expect(page.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeEnabled();
     await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
     await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
   });

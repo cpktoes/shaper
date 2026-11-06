@@ -30,25 +30,21 @@ export const THREE_D_COPY = {
   raiseTail: "Raise the Tail",
   onTheRack: "on the rack",
   rotateOnSide: "Rotate on Side",
-  swing: "Swing",
   rollValue: (deg: number) => (deg === 0 ? "flat" : `${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
-  swingValue: (deg: number) => (deg === 0 ? "straight" : `nose ${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
   raiseSpoken: (end: "nose" | "tail", height: string | null) =>
     height === null ? `${end === "nose" ? "Nose" : "Tail"} on its rack.` : `${end === "nose" ? "Nose" : "Tail"} ${height} off its rack.`,
   rollSpoken: (deg: number) =>
     deg === 0 ? "Flat on the racks." : `Rotated ${Math.abs(deg)} degrees ${deg < 0 ? "left" : "right"}.`,
-  swingSpoken: (deg: number) =>
-    deg === 0 ? "Straight on the racks." : `Nose swung ${Math.abs(deg)} degrees ${deg < 0 ? "left" : "right"}.`,
   flipSpoken: { deck: "Deck up.", bottom: "Bottom up." },
   modeGroup: "What a drag does",
   modeTurn: "Turn the Board",
   modeWalk: "Walk Around",
   /** The view's own slider (D-44): a slight angle off the stringer's line, to look down a rail. */
-  sightAlong: "Sight Along",
-  sightLeft: "Left rail",
-  sightRight: "Right rail",
-  sightValue: (deg: number) => (deg === 0 ? "on the stringer" : `${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
-  sightSpoken: (deg: number) =>
+  lookDownRail: "Look Down the Rail",
+  lookLeft: "Left rail",
+  lookRight: "Right rail",
+  lookValue: (deg: number) => (deg === 0 ? "on the stringer" : `${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
+  lookSpoken: (deg: number) =>
     deg === 0 ? "On the stringer's line." : `${Math.abs(deg)} degrees to the ${deg < 0 ? "left" : "right"} of the stringer's line.`,
 
   /** The tail rail's blend (D-30, D-32): the same two settings as RAILS' tail Advanced menu, the same words and
@@ -116,7 +112,7 @@ export const THREE_D_COPY = {
   canvasName: (boardName: string) => `${boardName} in 3D`,
   canvasRole: "3D view",
   canvasDescription:
-    "Drag to turn the board on its racks, scroll or pinch to zoom, and right-drag or use two fingers to slide it. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel raise an end, rotate it on its side and swing it, one at a time.",
+    "Drag to turn the board on its racks, scroll or pinch to zoom, and right-drag or use two fingers to slide it. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel raise an end and rotate it on its side.",
   canvasDescriptionWalk:
     "Drag to walk around the board, scroll or pinch to zoom, and right-drag or use two fingers to slide the picture. With the keyboard: the arrow keys walk, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel still move the board.",
   viewSpoken: {
