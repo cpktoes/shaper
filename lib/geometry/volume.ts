@@ -963,7 +963,7 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
  * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`), and
  * a domed deck's rail built from its thickness itself, not rounded to a sixteenth. `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
- * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
+ * test and the two reports (`lib/models/surface-report.ts`, `lib/models/rail-character-report.ts`); no screen uses it.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
   at: RAIL_CHARACTER_FADE.at,

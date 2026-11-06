@@ -6,7 +6,8 @@
  * opens into a round one along a blend, and a domed deck's rail is built from its thickness itself. "Before" is
  * what the live site reads today (`HARD_EDGE_FADE`, go-live 1's rule), "after" what it will read (the live rule), so
  * each line is the move he will see. The bracket gives this plan's share of that move, against `RAIL_CHARACTER_FADE`:
- * the rest is the whole rail's fade, which `--rail-character-report` lists with its reasons, for the boards it reaches.
+ * the rest is the whole rail's fade, the very move `--rail-character-report` prints for the boards it lists with its
+ * reasons, and nothing at all on a board it leaves out (this report's test holds the two together on all 102 boards).
  *
  * It prints board ids, wing counts, tail kinds and litres only — never a board's name, an account, a snapshot or a
  * connection string — and a board that did not open is counted, never printed. Pure: no React, browser API or

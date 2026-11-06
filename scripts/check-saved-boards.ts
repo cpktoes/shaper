@@ -67,17 +67,19 @@
  * snapshot, a user id or the connection string, and it never changes the exit code.
  *
  * `--rail-character-report` (Phase 16 D-32, the 14 D-18 report rule; read-only, board ids, settings and
- * litres only): the founder's check before go-live 2 that every saved board's litres move as the whole rail's
- * fade says — go-live 1 faded only the tail's hard edge; now the tail's whole rail fades into the centre's
- * between Tail Rail Blends From and Ends At, and the centre's fades into the nose's on its own. For each board
- * whose tail differs from its centre in more than the Hard Edge, or whose nose differs at all, it prints what
- * differs on each side in RAILS' own words, the tail's two settings as the board reads them (in inches,
- * `(default)` where it stores none of its own), then the litres before (go-live 1's rule, `HARD_EDGE_FADE`) and
- * after (the live rule), worked out in lib/models/rail-character-report.ts (`railCharacterReportLines`):
+ * litres only): the founder's check before go-live 2 of how far the whole rail's fade alone moves every saved board
+ * — go-live 1 faded only the tail's hard edge; D-32 fades the tail's whole rail into the centre's between Tail Rail
+ * Blends From and Ends At, and the centre's into the nose's on its own. For each board whose tail differs from its
+ * centre in more than the Hard Edge, or whose nose differs at all, it prints what differs on each side in RAILS' own
+ * words, the tail's two settings as the board reads them (in inches, `(default)` where it stores none of its own), then
+ * the litres before (go-live 1's rule, `HARD_EDGE_FADE`) and with that fade alone (`RAIL_CHARACTER_FADE`, not the live
+ * rule: --surface-report has what a board will read), worked out in lib/models/rail-character-report.ts
+ * (`railCharacterReportLines`):
  *   rail-character report: N saved boards; k open[, d did not open]; m whose tail or nose rail differs from the centre's
  *   <id>: tail <differences> · blends from <from> · ends at <to>; nose <differences> — <before> → <after> L (<move>)
  *                                                                              one per such board, the largest move first
  *   largest move: <id>, <move> L                                              (or: largest move: none)
+ *   each line is the whole rail's fade alone: …                               (one closing line saying what the figures are)
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
  * a snapshot, a user id or the connection string, and it never changes the exit code.
  *
