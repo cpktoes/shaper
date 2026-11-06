@@ -432,6 +432,10 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
         await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
         await expect(page.locator("[data-rack-board]")).toHaveCount(5);
         await lockFromRack(page, 3);
+        // Forward waits for the rack to redraw with the lock on it. Next finishes a save as a push to the
+        // address it was made on, so Forward pressed in that moment has its next step written over, and
+        // the second Forward below would have nowhere to go.
+        await expect(captionFor(page, board(3).name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
         await page.goForward();
         await page.waitForURL("**/design/outline");
         await page.goForward();
