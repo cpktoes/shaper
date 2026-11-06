@@ -2,7 +2,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { VIEW_TURNS, type Quat, type ViewName } from "../lib/geometry/view-3d";
+import { AT_REST, BOTTOM_UP, rackTurn, WALK_VIEWS } from "../lib/geometry/shaping-bay";
+import { type Quat, type ViewName } from "../lib/geometry/view-3d";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
@@ -26,6 +27,8 @@ async function dismissStrips(page: Page) {
     ([bannerKey, tipKey]) => {
       window.sessionStorage.setItem(bannerKey, "true");
       window.localStorage.setItem(tipKey, "true");
+      // These measure the board against a plain ground, so the room is off (the Room switch's own path, 16-18).
+      (globalThis as { __shaper3dBareRoom?: boolean }).__shaper3dBareRoom = true;
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
@@ -66,7 +69,7 @@ async function settled(host: Locator) {
   await expect
     .poll(
       async () => {
-        const now = `${await host.getAttribute("data-turn")} ${await frames(host)}`;
+        const now = `${await host.getAttribute("data-turn")} ${await host.getAttribute("data-viewer")} ${await frames(host)}`;
         const same = now === last;
         last = now;
         return same;
@@ -82,7 +85,13 @@ async function showView(page: Page, host: Locator, name: ViewName) {
     name: THREE_D_COPY.views[name],
     exact: true,
   }).click();
-  await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS[name]), { timeout: 10_000 }).toBe(true);
+  if (name === "deck" || name === "bottom") {
+    const want = rackTurn(name === "deck" ? AT_REST : BOTTOM_UP);
+    await expect.poll(async () => isTurn(await turnOf(host), want), { timeout: 10_000 }).toBe(true);
+  } else {
+    const azimuth = () => host.getAttribute("data-viewer").then((v) => Number((v ?? "").split(" ")[0]));
+    await expect.poll(azimuth, { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS[name].azimuthDeg, 1);
+  }
   await settled(host);
 }
 
@@ -389,7 +398,7 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     expect(await host.getAttribute("data-board-state")).toBe("ready");
   });
 
-  test("7. while the drawing's code is on its way, the board's turned outline stands in, then the lit board replaces it", async ({
+  test("7. while the drawing's code is on its way, the first view's own outline stands in, then the lit board lands on it", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer holds the drawing's code back");
@@ -423,19 +432,46 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
     const line = (await page.getByText(THREE_D_COPY.gettingReady, { exact: true }).boundingBox())!;
     expect(line.y).toBeGreaterThan(svg.y + svg.height / 2);
     expect(line.y + line.height).toBeLessThanOrEqual(svg.y + svg.height);
+    const outlineBox = (await loading.locator("svg path").first().boundingBox())!;
+    expect(line.y).toBeGreaterThan(outlineBox.y + outlineBox.height - 1);
 
     // Then the lit board, and the picture and its line are gone.
     await waitForBoard(page);
     await expect(loading).toHaveCount(0);
     await expect(page.getByText(THREE_D_COPY.gettingReady, { exact: true })).toHaveCount(0);
     await expect(host).not.toHaveAttribute("aria-busy", "true");
+
+    // The lit board lands where the outline was, to 3 dots, Fins off so only the foam counts.
+    await finsSwitch(page).click();
+    const lit = await picture(host);
+    const ground = groundDot(lit);
+    const canvas = (await host.boundingBox())!;
+    let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
+    for (let y = 0; y < lit.height; y++) {
+      for (let x = 0; x < lit.width; x++) {
+        const i = 4 * (y * lit.width + x);
+        if ([0, 1, 2].some((k) => Math.abs(lit.rgba[i + k] - ground[k]) > 12)) {
+          const inCorner = (x < 8 || x >= lit.width - 8) && (y < 8 || y >= lit.height - 8);
+          if (inCorner) continue;
+          x0 = Math.min(x0, x);
+          x1 = Math.max(x1, x);
+          y0 = Math.min(y0, y);
+          y1 = Math.max(y1, y);
+        }
+      }
+    }
+    const scale = lit.width / canvas.width;
+    expect(Math.abs(x0 / scale - (outlineBox.x - canvas.x))).toBeLessThanOrEqual(3);
+    expect(Math.abs((x1 + 1) / scale - (outlineBox.x + outlineBox.width - canvas.x))).toBeLessThanOrEqual(3);
+    expect(Math.abs(y0 / scale - (outlineBox.y - canvas.y))).toBeLessThanOrEqual(3);
+    expect(Math.abs((y1 + 1) / scale - (outlineBox.y + outlineBox.height - canvas.y))).toBeLessThanOrEqual(3);
   });
 
-  test("8. a locked board keeps all four switches, since they only change the picture", async ({ page }) => {
+  test("8. a locked board keeps all five switches, since they only change the picture", async ({ page }) => {
     await keepPreset(page, "Fish", { locked: true });
     await page.goto("/design/3d");
     await waitForBoard(page);
-    for (const button of [finsSwitch(page), blankSwitch(page), stripesSwitch(page), cornerSwitch(page, THREE_D_COPY.wireView)]) {
+    for (const button of [finsSwitch(page), blankSwitch(page), stripesSwitch(page), cornerSwitch(page, THREE_D_COPY.wireView), cornerSwitch(page, THREE_D_COPY.room)]) {
       await expect(button).toBeEnabled();
       await expect(button).not.toHaveAttribute("aria-disabled", "true");
     }
@@ -447,12 +483,12 @@ test.describe("Contour Stripes, the theme and the loading picture (plan 11)", ()
 });
 
 test.describe("the corner over the board and the panel without SHOW (D-35)", () => {
-  test("9. the panel holds no tick box, and reads Tail Rail, View and Export", async ({ page }) => {
+  test("9. the panel holds no tick box, and reads On the Racks, Tail Rail, View and Export", async ({ page }) => {
     await page.goto("/design/3d");
     await waitForBoard(page);
     const panel = page.locator("[data-three-d-controls]");
     await expect(panel.getByRole("checkbox")).toHaveCount(0);
-    const headings = [THREE_D_COPY.tailRailHeading, THREE_D_COPY.viewHeading, THREE_D_COPY.exportHeading];
+    const headings = [THREE_D_COPY.racksHeading, THREE_D_COPY.tailRailHeading, THREE_D_COPY.viewHeading, THREE_D_COPY.exportHeading];
     const tops: number[] = [];
     for (const heading of headings) {
       const box = await panel.getByText(heading, { exact: true }).boundingBox();

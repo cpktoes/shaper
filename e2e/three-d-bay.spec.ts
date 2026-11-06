@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
-import { AT_REST, BAY, BOTTOM_UP, rackAngles, rackTurn, REST_VIEWER, shownAngles } from "../lib/geometry/shaping-bay";
+import { AT_REST, BAY, BOTTOM_UP, rackAngles, rackTurn, REST_VIEWER, shownAngles, WALK_VIEWS } from "../lib/geometry/shaping-bay";
 import { type Quat } from "../lib/geometry/view-3d";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
@@ -328,7 +328,7 @@ test.describe("the shaping bay", () => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await view(page, THREE_D_COPY.views.tail).click();
-    await expect.poll(async () => (await viewerOf(host))[1], { timeout: 10_000 }).toBeCloseTo(0, 1);
+    await expect.poll(async () => (await viewerOf(host))[1], { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.tail.elevationDeg, 1);
     await settled(host);
     const turn = await host.getAttribute("data-turn");
     const before = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
@@ -340,6 +340,26 @@ test.describe("the shaping bay", () => {
     expect(after.lights).toEqual(before.lights);
     expect(after.camera).not.toEqual(before.camera);
     await expect(page.getByText(`${THREE_D_COPY.sightAlong} — 6° right`, { exact: true })).toBeVisible();
+  });
+
+  test("8b. a slider moved while a view is on its way finishes that move, and never strands the viewer halfway", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await view(page, THREE_D_COPY.views.side).click();
+    await expect.poll(async () => (await viewerOf(host))[0], { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
+    await settled(host);
+    // Both in one go, inside the page: Reset View has only just begun when the slider moves.
+    await page.evaluate((name) => {
+      const reset = [...document.querySelectorAll("[role=group] button")].find((b) => b.textContent === "Reset View");
+      (reset as HTMLButtonElement).click();
+      const input = document.querySelector(`input[aria-label="${name}"]`) as HTMLInputElement;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "45");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, THREE_D_COPY.rotateOnSide);
+    await settled(host);
+    expect(await viewerOf(host)).toEqual([REST_VIEWER.azimuthDeg, REST_VIEWER.elevationDeg, 0]);
+    expect(isTurn(await turnOf(host), rackTurn({ ...AT_REST, roll: 45 }))).toBe(true);
   });
 
   test("9. on a coarse pointer each control has 44 dots of touch", async ({ page }, testInfo) => {
@@ -358,6 +378,162 @@ test.describe("the shaping bay", () => {
     for (const pill of await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button").all()) {
       expect((await touchSize(pill)).height).toBeGreaterThanOrEqual(44);
     }
+  });
+});
+
+function modeButton(page: Page, name: string) {
+  return page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name, exact: true });
+}
+
+function cornerSwitch(page: Page, name: string) {
+  return page.locator("[data-viewer-toolbar]").getByRole("button", { name, exact: true });
+}
+
+test.describe("Walk Around (D-43)", () => {
+  test("11. the switch moves nothing, and then a drag moves the viewer, never the board or the strips", async ({ page }, testInfo) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await expect(modeButton(page, THREE_D_COPY.modeTurn)).toHaveAttribute("aria-pressed", "true");
+    await expect(host).toHaveAttribute("data-mode", "turn");
+    const turn = await host.getAttribute("data-turn");
+    const room = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
+    const frames = await host.getAttribute("data-frames");
+
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+    await expect(host).toHaveAttribute("data-mode", "walk");
+    await expect(modeButton(page, THREE_D_COPY.modeWalk)).toHaveAttribute("aria-pressed", "true");
+    await page.waitForTimeout(300);
+    expect(await host.getAttribute("data-frames")).toBe(frames);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+
+    const box = await host.boundingBox();
+    if (!box) throw new Error("no canvas");
+    await dragBoard(page, testInfo.project.name, Math.min(box.width, box.height) / 4, 0);
+    await settled(host);
+    const walked = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(walked.lights).toEqual(room.lights);
+    expect(walked.camera).not.toEqual(room.camera);
+    expect((await viewerOf(host))[0]).not.toBe(REST_VIEWER.azimuthDeg);
+
+    // The sliders still move the board in this mode: the mode decides only what a drag does.
+    await setSlider(page, THREE_D_COPY.rotateOnSide, 30);
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn({ ...AT_REST, roll: 30 })), { timeout: 10_000 }).toBe(true);
+  });
+
+  test("12. a long walk stops at the floor and overhead, and the room's walls hold the eye", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a real drag is proven on the other two; the limits are the maths' own");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+    const box = await host.boundingBox();
+    if (!box) throw new Error("no canvas");
+    const short = Math.min(box.width, box.height);
+    // Dragging up the picture brings the eye down: past the floor's limit it stays there.
+    for (let i = 0; i < 2; i++) {
+      await dragBoard(page, testInfo.project.name, 0, -short * 0.4, 8);
+      await settled(host);
+    }
+    const low = (await viewerOf(host))[1];
+    expect(low).toBeLessThan(0);
+    const { camera } = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
+    expect(camera[1]).toBeGreaterThanOrEqual(BAY.viewerFloorMm - 1);
+    // And dragging down lifts it to straight overhead, no further.
+    for (let i = 0; i < 4; i++) {
+      await dragBoard(page, testInfo.project.name, 0, short * 0.4, 8);
+      await settled(host);
+    }
+    expect((await viewerOf(host))[1]).toBeCloseTo(WALK_VIEWS.deck.elevationDeg, 1);
+  });
+
+  test("13. each view walks to its place, Bottom flips the board, Deck flips it back, and Reset View keeps the mode", async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+
+    await view(page, THREE_D_COPY.views.bottom).click();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
+    await expect.poll(async () => viewerOf(host)).toEqual([WALK_VIEWS.bottom.azimuthDeg, WALK_VIEWS.bottom.elevationDeg, 0]);
+
+    await view(page, THREE_D_COPY.views.deck).click();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(AT_REST)), { timeout: 10_000 }).toBe(true);
+
+    for (const name of ["side", "nose", "tail"] as const) {
+      await view(page, THREE_D_COPY.views[name]).click();
+      await expect.poll(async () => viewerOf(host), { timeout: 10_000 }).toEqual([WALK_VIEWS[name].azimuthDeg, WALK_VIEWS[name].elevationDeg, 0]);
+    }
+
+    await view(page, THREE_D_COPY.resetView).click();
+    await expect.poll(async () => viewerOf(host), { timeout: 10_000 }).toEqual([REST_VIEWER.azimuthDeg, REST_VIEWER.elevationDeg, 0]);
+    await expect(host).toHaveAttribute("data-mode", "walk");
+    await expect(host).toHaveAttribute("data-crop", "1 0.0000 0.0000");
+  });
+
+  test("14. Turn the Board from a walked place: a drag turns the board like a ball under the hand from where you stand", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "iphone", "a real drag is proven on the other two");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await view(page, THREE_D_COPY.views.side).click();
+    await expect.poll(async () => (await viewerOf(host))[0], { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
+    await settled(host);
+    const room = await host.getAttribute("data-room");
+    const box = await host.boundingBox();
+    if (!box) throw new Error("no canvas");
+    // From the rail, dragging down the picture rolls the near rail down: all roll, no lift and no swing.
+    await dragBoard(page, testInfo.project.name, 0, Math.min(box.width, box.height) / 6);
+    await settled(host);
+    const a = rackAngles((await turnOf(host)) as unknown as Quat);
+    expect(Math.abs(a.roll)).toBeGreaterThan(5);
+    expect(Math.abs(a.swing)).toBeLessThan(0.5);
+    expect(Math.abs(a.lift)).toBeLessThan(0.5);
+    expect(await host.getAttribute("data-room")).toBe(room);
+  });
+});
+
+test.describe("the Room switch (the founder, 2026-11-05)", () => {
+  test("15. off, the bay goes, the board reads the same on a plain ground, and it spins freely; on, it settles back on its racks", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const room = cornerSwitch(page, THREE_D_COPY.room);
+    await expect(room).toHaveAttribute("aria-pressed", "true");
+    const place = await host.getAttribute("data-place");
+    const turn = await host.getAttribute("data-turn");
+
+    await room.click();
+    await expect(host).toHaveAttribute("data-bay", "off");
+    await expect(room).toHaveAttribute("aria-pressed", "false");
+    await expect(host).toHaveAttribute("data-place", place ?? "");
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    // Walk Around has no meaning without the room.
+    await expect(modeButton(page, THREE_D_COPY.modeWalk)).toBeDisabled();
+
+    // No rack and no limit: the keys take the board past 60°.
+    await host.focus();
+    for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowDown");
+    await expect.poll(async () => Math.abs(rackAngles((await turnOf(host)) as unknown as Quat).lift)).toBeGreaterThan(BAY.liftLimitDeg + 5);
+    await expect(host).toHaveAttribute("data-place", place ?? "");
+
+    await room.click();
+    await expect(host).toHaveAttribute("data-bay", "on");
+    await expect.poll(async () => Math.abs(rackAngles((await turnOf(host)) as unknown as Quat).lift), { timeout: 10_000 }).toBeLessThanOrEqual(BAY.liftLimitDeg + 0.05);
+    await settled(host);
+    await expect(modeButton(page, THREE_D_COPY.modeWalk)).toBeEnabled();
+    expect(await host.getAttribute("data-place")).not.toBe(place);
+  });
+
+  test("16. the Room switch changes nothing but the picture: VOLUME's litres read the same", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer reads the litres");
+    await page.goto("/design/volume");
+    const litres = page.getByText(/\d+\.\d+ ?L/).first();
+    await expect(litres).toBeVisible({ timeout: FIRST_FRAME_MS });
+    const before = await litres.innerText();
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await button(page, THREE_D_COPY.flip).click();
+    await page.goto("/design/volume");
+    await expect(page.getByText(/\d+\.\d+ ?L/).first()).toHaveText(before, { timeout: FIRST_FRAME_MS });
   });
 });
 
@@ -381,5 +557,24 @@ test.describe("the shaping bay under reduced motion", () => {
     });
     expect(new Set(seen).size).toBe(1);
     expect(isTurn(await turnOf(host), rackTurn(BOTTOM_UP))).toBe(true);
+  });
+
+  test("17. no walk glide, and the views land at once", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer proves the rule");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+    const moves = await host.evaluate(async (el) => {
+      const places: (string | null)[] = [];
+      const watch = new MutationObserver(() => places.push(el.getAttribute("data-viewer")));
+      watch.observe(el, { attributes: true, attributeFilter: ["data-viewer"] });
+      const side = [...document.querySelectorAll("[role=group] button")].find((b) => b.textContent === "Side");
+      (side as HTMLButtonElement).click();
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      watch.disconnect();
+      return places;
+    });
+    expect(new Set(moves).size).toBe(1);
+    await expect.poll(async () => viewerOf(host)).toEqual([WALK_VIEWS.side.azimuthDeg, WALK_VIEWS.side.elevationDeg, 0]);
   });
 });

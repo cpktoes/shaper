@@ -75,6 +75,7 @@ import {
   walkGlideAt,
   walkKey,
   WALK_VIEWS,
+  type BayLens,
   type RackAngles,
   type Viewer,
 } from "@/lib/geometry/shaping-bay";
@@ -393,8 +394,11 @@ export function ThreeDScreen() {
   const roomRef = useRef(true);
   /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
-  /** Where the move under way is going, so a second press of Flip the Board starts from there, not from halfway. */
-  const landingRef = useRef<Move | null>(null);
+  /**
+   * The move under way and how it lands: a second press of Flip the Board starts from where the first is going, and a
+   * slider, a drag or a key finishes the move at once rather than leaving the viewer stranded halfway.
+   */
+  const landingRef = useRef<{ move: Move; land: () => void } | null>(null);
   // What the panel reads (the rack's Pattern 7): only the panel's own controls re-render during a drag.
   const [rackStore] = useState(makeRackStore);
   // The zoom and the slide (16-09, UI-SPEC §4–§5): a crop of the fixed camera's picture (crop-zoom.ts), kept in a
@@ -608,12 +612,24 @@ export function ThreeDScreen() {
   /** A turn by hand stays on the racks: past the limit it stops, and with the room off nothing holds it. */
   const heldTurn = (turn: Quat) => (roomRef.current ? clampLift(turn) : turn);
 
-  /** A viewer by hand stays in the room: `clampViewer` for this board and this window's lens. */
-  const heldViewer = (viewer: Viewer) => {
+  /** This board's lens for this window, worked out once for each (the sum is too long for every move of a drag). */
+  const lensRef = useRef<{ points: readonly Vec3[]; aspect: number; lens: BayLens } | null>(null);
+  const lensNow = (): BayLens | null => {
     const board = boardRef.current;
     const host = hostRef.current;
-    if (!board || !seat || !host) return viewer;
-    return clampViewer(viewer, seat, bayLens(board.framePoints, seat, host.clientWidth / Math.max(1, host.clientHeight)));
+    if (!board || !seat || !host) return null;
+    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+    const last = lensRef.current;
+    if (last && last.points === board.framePoints && last.aspect === aspect) return last.lens;
+    const lens = bayLens(board.framePoints, seat, aspect);
+    lensRef.current = { points: board.framePoints, aspect, lens };
+    return lens;
+  };
+
+  /** A viewer by hand stays in the room: `clampViewer` for this board and this window's lens. */
+  const heldViewer = (viewer: Viewer) => {
+    const lens = lensNow();
+    return lens && seat ? clampViewer(viewer, seat, lens) : viewer;
   };
 
   const stopMotion = useCallback(() => {
@@ -621,6 +637,13 @@ export function ThreeDScreen() {
     motionRef.current = 0;
     landingRef.current = null;
   }, []);
+
+  /** Stops a glide where it is, and lands a move where it was going. */
+  const finishMotion = useCallback(() => {
+    const landing = landingRef.current;
+    stopMotion();
+    landing?.land();
+  }, [stopMotion]);
 
   // The host reports the turn and the crop from its first paint, and a motion under way stops when the screen goes.
   useEffect(() => {
@@ -698,7 +721,7 @@ export function ThreeDScreen() {
     // One primary pointer turns the board: the mouse's left button, one finger or a pen.
     if (!event.isPrimary || dragRef.current) return;
     if (event.pointerType === "mouse" && (event.button !== 0 || event.shiftKey)) return;
-    stopMotion();
+    finishMotion();
     capture(host, event.pointerId);
     const point = { t: performance.now(), x: event.clientX, y: event.clientY };
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, samples: [point] };
@@ -835,7 +858,6 @@ export function ThreeDScreen() {
   const moveTo = (move: Move, instant = false) => {
     stopMotion();
     dragRef.current = null;
-    landingRef.current = move;
     const land = () => {
       landingRef.current = null;
       if (move.flipped !== undefined) flippedRef.current = move.flipped;
@@ -851,6 +873,7 @@ export function ThreeDScreen() {
       land();
       return;
     }
+    landingRef.current = { move, land };
     const fromAngles = rackAngles(turnRef.current);
     const fromViewer = viewerRef.current;
     const fromCrop = cropRef.current;
@@ -882,9 +905,9 @@ export function ThreeDScreen() {
   const endCrop = (viewer: Viewer): CropView => {
     const board = boardRef.current;
     const host = hostRef.current;
-    if (!board || !seat || !host) return AT_ONE_CROP;
+    const lens = lensNow();
+    if (!board || !seat || !host || !lens) return AT_ONE_CROP;
     const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-    const lens = bayLens(board.framePoints, seat, aspect);
     const fit = fillCrop(board.framePoints, rackAngles(turnRef.current), viewer, lens, seat, aspect);
     const zoom = snapZoom(fit.zoom, DEFAULT_MAX_ZOOM);
     const limit = cropLimit(zoom);
@@ -918,7 +941,7 @@ export function ThreeDScreen() {
 
   /** Flip the Board: half a turn about its long axis on the racks. One press, never a pressed state. */
   const onFlip = () => {
-    const landing = landingRef.current;
+    const landing = landingRef.current?.move;
     const now = landing?.angles ?? rackAngles(turnRef.current);
     const flipped = !(landing?.flipped ?? flippedRef.current);
     moveTo({ angles: { ...now, roll: now.roll + 180 }, flipped });
@@ -928,7 +951,7 @@ export function ThreeDScreen() {
   // Each control writes its own plane. The other two come from the turn's exact angles, never from the rounded thumbs,
   // so a whole-degree reading can never creep them (the plan's trap 1).
   const setPlane = (change: Partial<RackAngles>) => {
-    stopMotion();
+    finishMotion();
     applyTurn(rackTurn({ ...rackAngles(turnRef.current), ...change }));
   };
   const onRaise = (end: RaisedEnd, heightMm: number) => {
@@ -938,7 +961,7 @@ export function ThreeDScreen() {
   const onRoll = (shown: number) => setPlane({ roll: totalRoll(shown, flippedRef.current) });
   const onSwing = (swing: number) => setPlane({ swing });
   const onSight = (sightDeg: number) => {
-    stopMotion();
+    finishMotion();
     applyViewer({ ...viewerRef.current, sightDeg });
   };
 
@@ -974,7 +997,7 @@ export function ThreeDScreen() {
     if (event.shiftKey) return;
     if (arrow) {
       event.preventDefault();
-      stopMotion();
+      finishMotion();
       if (walkingRef.current) applyViewer(heldViewer(walkKey(viewerRef.current, arrow)));
       else applyTurn(heldTurn(keyTurn(turnRef.current, arrow, viewerLook(viewerRef.current))));
     } else if (event.key === "Home") {
@@ -985,7 +1008,7 @@ export function ThreeDScreen() {
 
   // What a drag does (D-43): pressing the switch stops any motion and moves nothing.
   const onMode = (next: DragMode) => {
-    stopMotion();
+    finishMotion();
     dragRef.current = null;
     setMode(next);
   };

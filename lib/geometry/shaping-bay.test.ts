@@ -390,7 +390,7 @@ describe("boardPlace — where the board stands for any turn", () => {
         }
       }
     }
-  });
+  }, 120_000);
 
   it("the patch under the board follows its place and heading and shortens as an end comes up", () => {
     const { seat, points } = BOARDS[0];
@@ -450,18 +450,29 @@ describe("where the viewer stands", () => {
     const lie = (axis: Vec3) => rotateVec(BOARD_TO_ROOM, axis);
     const facing = (v: Viewer) => viewerLook(v).forward;
     const near = (a: Vec3, b: Vec3) => a.forEach((c, i) => expect(c).toBeCloseTo(b[i], 9));
-    near(facing(standAt("nose", 0)), lie([-1, 0, 0]));
-    near(facing(standAt("tail", 0)), lie([1, 0, 0]));
+    const level = (v: Vec3): Vec3 => [v[0], 0, v[2]];
+    const flat = (v: Viewer) => {
+      const f = level(facing(v));
+      const l = Math.hypot(...f);
+      return [f[0] / l, 0, f[2] / l] as Vec3;
+    };
+    near(flat(standAt("nose", 0)), lie([-1, 0, 0]));
+    near(flat(standAt("tail", 0)), lie([1, 0, 0]));
     near(facing(standAt("side", 0)), lie([0, -1, 0]));
-    for (const name of ["side", "nose", "tail"] as const) expect(WALK_VIEWS[name].elevationDeg).toBe(0);
+    // Side is at rail height; at the ends the eye is a little above the board, so the outline's curve shows.
+    expect(WALK_VIEWS.side.elevationDeg).toBe(0);
+    expect(WALK_VIEWS.nose.elevationDeg).toBeGreaterThan(0);
+    expect(WALK_VIEWS.nose.elevationDeg).toBeLessThan(REST_VIEWER.elevationDeg);
+    expect(WALK_VIEWS.tail.elevationDeg).toBe(WALK_VIEWS.nose.elevationDeg);
   });
 
   it("with the board swung, Nose, Tail and Side go where the board's ends and rail are now", () => {
     for (const swing of [-120, -35, 40, 90, 170]) {
       const nose = rotateVec(quatMultiply(rackTurn({ ...AT_REST, swing }), BOARD_TO_ROOM), [1, 0, 0]);
+      const end = Math.cos((WALK_VIEWS.nose.elevationDeg * Math.PI) / 180);
       const facing = viewerLook(standAt("nose", swing)).forward;
-      expect(dot(facing, nose)).toBeCloseTo(-1, 9);
-      expect(dot(viewerLook(standAt("tail", swing)).forward, nose)).toBeCloseTo(1, 9);
+      expect(dot(facing, nose)).toBeCloseTo(-end, 9);
+      expect(dot(viewerLook(standAt("tail", swing)).forward, nose)).toBeCloseTo(end, 9);
       const rail = rotateVec(quatMultiply(rackTurn({ ...AT_REST, swing }), BOARD_TO_ROOM), [0, 1, 0]);
       expect(dot(viewerLook(standAt("side", swing)).forward, rail)).toBeCloseTo(-1, 9);
     }

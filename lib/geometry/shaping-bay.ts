@@ -63,7 +63,7 @@ export const BAY = {
   viewerMarginMm: 200,
   viewerFloorMm: 300,
   /** The nearest the viewer stands at 1x, the share of the window the views stay inside, and how low the board sits. */
-  nearestMm: 2450,
+  nearestMm: 2100,
   fit: 0.95,
   aim: 0.12,
   /** How far either end can be raised: the board never stands on end. */
@@ -109,13 +109,13 @@ export interface BayTreatment {
  */
 export const BAY_TREATMENTS: Record<"A" | "B" | "C", BayTreatment> = {
   A: {
-    strip: 34,
+    strip: 40,
     fill: 0.8,
     fillColour: "#d9dbdf",
     bounce: 0.08,
-    wallBase: 0.72,
+    wallBase: 0.85,
     wallGlow: 2.6,
-    floorBase: 0.66,
+    floorBase: 0.74,
     floorGlow: 2.4,
     sillBase: 0.5,
     sillGlow: 7,
@@ -390,13 +390,22 @@ export const SIGHT_STEP_DEG = 0.25;
 
 const OVERHEAD_DEG = 89.9;
 
-/** Each view's place at no swing: Deck and Bottom straight overhead with the nose left, the rest at rail height. */
+/**
+ * How far above the board the eye stands at Nose and Tail: a shaper crouched at the end of it, low enough to look down
+ * the rail and high enough to see the outline's curve, which from dead level closes up to a line (16-18's pictures).
+ */
+const END_VIEW_ELEVATION_DEG = 10;
+
+/**
+ * Each view's place at no swing: Deck and Bottom straight overhead with the nose left, Side at rail height, Nose and
+ * Tail on the stringer's line at each end.
+ */
 export const WALK_VIEWS: Readonly<Record<ViewName, Viewer>> = {
   deck: { azimuthDeg: 90, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
   bottom: { azimuthDeg: 90, elevationDeg: OVERHEAD_DEG, sightDeg: 0 },
   side: { azimuthDeg: 90, elevationDeg: 0, sightDeg: 0 },
-  nose: { azimuthDeg: 180, elevationDeg: 0, sightDeg: 0 },
-  tail: { azimuthDeg: 0, elevationDeg: 0, sightDeg: 0 },
+  nose: { azimuthDeg: 180, elevationDeg: END_VIEW_ELEVATION_DEG, sightDeg: 0 },
+  tail: { azimuthDeg: 0, elevationDeg: END_VIEW_ELEVATION_DEG, sightDeg: 0 },
 };
 
 /** Where a view stands with the board swung: Side, Nose and Tail go where the board's rail and ends are now. */
@@ -609,7 +618,7 @@ export function walkGlideAt(
  */
 export function railSightDeg(halfWidthMm: number, viewer: Viewer, lens: BayLens): number {
   const rho = Math.min(lens.distanceMm, wallReach(viewer.azimuthDeg, viewer.elevationDeg));
-  return Math.asin(Math.min(1, halfWidthMm / rho)) / RAD;
+  return Math.asin(Math.min(1, halfWidthMm / (rho * Math.cos(viewer.elevationDeg * RAD)))) / RAD;
 }
 
 /**
@@ -618,7 +627,16 @@ export function railSightDeg(halfWidthMm: number, viewer: Viewer, lens: BayLens)
  */
 export const END_VIEW_FILL = 0.6;
 
-/** The crop that shows the board at `fill` of the window: the zoom it asks for, and the crop's centre, as `CropView` has it. */
+/**
+ * How far below the window's middle Nose and Tail seat the board, as a share of the window: zoomed in, the zoom row shows
+ * under the corner row, and at 60% of a phone's window a tip would reach under it.
+ */
+const END_VIEW_LOW_SHARE = 0.07;
+
+/**
+ * The crop that shows the board at `fill` of the window, sitting a little low: the zoom it asks for, and the crop's
+ * centre, as `CropView` has it.
+ */
 export function fillCrop(
   points: readonly Vec3[],
   angles: RackAngles,
@@ -642,7 +660,8 @@ export function fillCrop(
   }
   if (!(x1 >= x0)) return { zoom: 1, cx: 0, cy: 0 };
   const share = Math.max((x1 - x0) / 2, (y1 - y0) / 2);
-  return { zoom: share > 0 ? fill / share : 1, cx: (x0 + x1) / 4, cy: -(y0 + y1) / 4 };
+  const zoom = share > 0 ? fill / share : 1;
+  return { zoom, cx: (x0 + x1) / 4, cy: -(y0 + y1) / 4 - END_VIEW_LOW_SHARE / zoom };
 }
 
 /** An SVG path through dots. */

@@ -95,6 +95,13 @@ async function expectCornerIs(host: Locator, hex: string) {
   expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
 }
 
+/** The room off, by the Room switch's own path, for a case that measures the board against a plain ground. */
+async function bareRoom(page: Page) {
+  await page.addInitScript(() => {
+    (globalThis as { __shaper3dBareRoom?: boolean }).__shaper3dBareRoom = true;
+  });
+}
+
 /** The canvas host's picture, decoded. */
 async function hostPixels(host: Locator) {
   return decodePng(await host.screenshot());
@@ -119,6 +126,7 @@ test.describe("the 3D screen", () => {
   });
 
   test("2. the board is really drawn: much of the canvas is unlike its ground", async ({ page }) => {
+    await bareRoom(page);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     const ground = await threeDGround(page);
@@ -245,14 +253,67 @@ test.describe("the 3D screen", () => {
     await expect(canvas.locator("canvas")).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("10. in a dark theme the board is drawn on that theme's ground, not Daylight's", async ({ page }) => {
-    await page.addInitScript(([key, theme]) => window.localStorage.setItem(key, theme), [THEME_STORAGE_KEY, "slate"] as const);
-    await page.goto("/design/3d");
-    const host = await waitForBoard(page);
-    await expectCornerIs(host, await threeDGround(page));
+  test("10. the room is the same in every theme: its wall, floor and strips are its own, and the fins stay dark", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer proves the paint");
+    test.setTimeout(240_000);
+    const pictures: { name: string; wall: number[]; floor: number[]; strip: number[] }[] = [];
+    for (const theme of ["daylight", "chalk", "slate", "phosphor"]) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, theme] as const);
+      await page.goto("/design/3d");
+      const host = await waitForBoard(page);
+      const { rgba, width, height } = decodePng(
+        await host.screenshot({ style: "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }" }),
+      );
+      const at = (x: number, y: number) => {
+        const i = 4 * (Math.round(y) * width + Math.round(x));
+        return [rgba[i], rgba[i + 1], rgba[i + 2]];
+      };
+      pictures.push({
+        name: theme,
+        wall: at(width / 2, height * 0.16),
+        floor: at(width * 0.2, height * 0.9),
+        strip: at(width * 0.06, height * 0.5),
+      });
+    }
+    // The fins are the bay's own dark paint: what Fins takes away from the picture reads the same in every theme.
+    const finColours: number[][] = [];
+    for (const theme of ["daylight", "phosphor"]) {
+      await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, theme] as const);
+      await page.goto("/design/3d");
+      const host = await waitForBoard(page);
+      const style = "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }";
+      await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.side, exact: true }).click();
+      await page.waitForTimeout(1_000);
+      const on = decodePng(await host.screenshot({ style }));
+      await page.locator("[data-viewer-toolbar]").getByRole("button", { name: THREE_D_COPY.fins, exact: true }).click();
+      await page.waitForTimeout(500);
+      const off = decodePng(await host.screenshot({ style }));
+      const sum = [0, 0, 0];
+      let count = 0;
+      for (let i = 0; i < on.rgba.length; i += 4) {
+        if ([0, 1, 2].some((k) => Math.abs(on.rgba[i + k] - off.rgba[i + k]) > 12)) {
+          for (let k = 0; k < 3; k++) sum[k] += on.rgba[i + k];
+          count += 1;
+        }
+      }
+      expect(count).toBeGreaterThan(100);
+      finColours.push(sum.map((v) => v / count));
+    }
+    for (let k = 0; k < 3; k++) expect(Math.abs(finColours[0][k] - finColours[1][k])).toBeLessThanOrEqual(3);
+
+    for (const { wall, floor, strip } of pictures.slice(1)) {
+      for (const [got, want] of [
+        [wall, pictures[0].wall],
+        [floor, pictures[0].floor],
+        [strip, pictures[0].strip],
+      ]) {
+        for (let k = 0; k < 3; k++) expect(Math.abs(got[k] - want[k])).toBeLessThanOrEqual(2);
+      }
+    }
   });
 
-  test("11. in a light theme the board sits on the darker 3D ground, not the canvas's warm grey", async ({ page }) => {
+  test("11. with the room off the board sits on the theme's plain ground, and the light themes' ground is the darker one", async ({ page }) => {
+    await bareRoom(page);
     await page.addInitScript(([key, theme]) => window.localStorage.setItem(key, theme), [THEME_STORAGE_KEY, "daylight"] as const);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
@@ -267,6 +328,7 @@ test.describe("the 3D screen", () => {
 
   test("9. moving Hard Edge Ends At on RAILS changes the 3D board (D-30: one value, read by both)", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer proves the redraw");
+    await bareRoom(page);
     await page.goto("/design/3d");
     const before = await hostPixels(await waitForBoard(page));
     const trianglesBefore = await boardHost(page).getAttribute("data-triangles");

@@ -150,9 +150,11 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(exportStatus(page)).toHaveCount(1);
     await expect(exportStatus(page)).toHaveText("");
     await expectNote(page);
-    // The screen's one accent-filled button, last on the panel.
-    await expect(panel(page).locator("button.bg-surf-accent")).toHaveCount(1);
-    await expect(panel(page).locator("button.bg-surf-accent")).toHaveText(THREE_D_COPY.exportButton);
+    // The screen's one accent-filled action, last on the panel. The two-way switch's pressed pill wears the accent as
+    // every two-way pill in the app does, but it shows a state and carries `aria-pressed`, so it isn't counted (16-18).
+    const action = panel(page).locator("button.bg-surf-accent:not([aria-pressed])");
+    await expect(action).toHaveCount(1);
+    await expect(action).toHaveText(THREE_D_COPY.exportButton);
 
     const download = await exportZip(page);
     const { entries, stem } = await expectWholeZip(page, download, FISH_NAME);
@@ -238,6 +240,25 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
     const third = await downloadedBytes(await exportZip(page));
     expect(Buffer.from(third).equals(Buffer.from(firstBytes)), "Wire View never reaches the zip").toBe(true);
+
+    // The board flipped, raised and walked round, and the room off: the same again (D-16, D-43).
+    await page.locator("[data-three-d-racks]").getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    const raise = page.getByRole("slider", { name: THREE_D_COPY.raiseNose, exact: true });
+    await raise.focus();
+    for (let i = 0; i < 4; i++) await raise.press("ArrowRight");
+    await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", {
+      name: THREE_D_COPY.modeWalk,
+      exact: true,
+    }).click();
+    await host.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(host).not.toHaveAttribute("data-viewer", /^0\.00 /);
+    const fourth = await downloadedBytes(await exportZip(page));
+    expect(Buffer.from(fourth).equals(Buffer.from(firstBytes)), "flipped, raised and walked round, the zip is the same").toBe(true);
+    await corner(THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay", "off");
+    const fifth = await downloadedBytes(await exportZip(page));
+    expect(Buffer.from(fifth).equals(Buffer.from(firstBytes)), "with the room off, the zip is the same").toBe(true);
   });
 
   test("5. a board with no name downloads Untitled Board-3d.zip", async ({ page }) => {

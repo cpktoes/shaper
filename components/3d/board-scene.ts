@@ -287,6 +287,7 @@ uniform float sillFront;
 uniform vec3 patchCentre;
 uniform vec2 patchSize;
 uniform vec2 patchAxis;
+uniform float eyeClear;
 varying vec3 vP;
 varying vec3 vN;
 float lineLight(vec3 P, vec3 N, vec3 A, vec3 B) {
@@ -312,6 +313,7 @@ float noise(vec2 p) {
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 void main() {
+  if (distance(vP, cameraPosition) < eyeClear) discard;
   vec3 n = normalize(vN);
   float e;
   vec3 c = albedo;
@@ -513,6 +515,12 @@ function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 }
   return { geometry, matrix };
 }
 
+/**
+ * How close to the eye a shelf or sill is drawn at all. A viewer walking along a wall stands over its sill, which would
+ * otherwise fill the bottom of the picture with bright white.
+ */
+const BENCH_EYE_CLEAR_MM = 900;
+
 /** The drawn bay and what the scene needs to keep hold of. */
 interface DrawnBay {
   room: Group;
@@ -542,7 +550,7 @@ function buildBay(treatment: BayTreatment): DrawnBay {
   };
   const patch = { centre: new Vector3(), size: new Vector2(1, 1), axis: new Vector2(1, 0) };
 
-  const paint = (colour: string, base: number, glow: number, kind: 0 | 1) => {
+  const paint = (colour: string, base: number, glow: number, kind: 0 | 1, eyeClear = 0) => {
     const material = new ShaderMaterial({
       uniforms: {
         albedo: { value: new Color(colour) },
@@ -560,6 +568,7 @@ function buildBay(treatment: BayTreatment): DrawnBay {
         patchCentre: { value: patch.centre },
         patchSize: { value: patch.size },
         patchAxis: { value: patch.axis },
+        eyeClear: { value: eyeClear },
       },
       vertexShader: ROOM_VERTEX,
       fragmentShader: ROOM_FRAGMENT,
@@ -570,7 +579,7 @@ function buildBay(treatment: BayTreatment): DrawnBay {
   };
   const wall = paint(BAY_PAINT.wall, treatment.wallBase, treatment.wallGlow, 0);
   const floor = paint(treatment.floor, treatment.floorBase, treatment.floorGlow, 1);
-  const bench = paint(BAY_PAINT.bench, treatment.sillBase, treatment.sillGlow, 0);
+  const bench = paint(BAY_PAINT.bench, treatment.sillBase, treatment.sillGlow, 0, BENCH_EYE_CLEAR_MM);
   const ceiling = new MeshBasicMaterial({ color: new Color(BAY_PAINT.ceiling), side: FrontSide });
   const strip = new MeshBasicMaterial({ color: new Color(BAY_PAINT.strip), toneMapped: false });
   owned.push(ceiling, strip);

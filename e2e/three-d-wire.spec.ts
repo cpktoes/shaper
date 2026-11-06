@@ -108,6 +108,8 @@ test.beforeEach(async ({ page }) => {
     ([bannerKey, tipKey]) => {
       window.sessionStorage.setItem(bannerKey, "true");
       window.localStorage.setItem(tipKey, "true");
+      // These measure the board against a plain ground, so the room is off (the Room switch's own path, 16-18).
+      (globalThis as { __shaper3dBareRoom?: boolean }).__shaper3dBareRoom = true;
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
@@ -182,10 +184,18 @@ test.describe("the wire view (D-42)", () => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await wireSwitch(page).click();
+    // Straight overhead, from Walk Around's Deck, then back on the plain ground.
+    await corner(page, THREE_D_COPY.room).click();
+    await page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", {
+      name: THREE_D_COPY.modeWalk,
+      exact: true,
+    }).click();
     await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", {
       name: THREE_D_COPY.views.deck,
       exact: true,
     }).click();
+    await settled(host);
+    await corner(page, THREE_D_COPY.room).click();
     await settled(host);
     // Tipped a little, so the bottom's lines would land between the deck's if the foam let them through.
     await host.focus();
