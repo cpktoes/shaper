@@ -368,4 +368,4 @@ Checked against the working tree and `git log`: all created files exist, commits
 
 ## Founder's look
 
-Pending — presented by the orchestrator at the Wave 13 checkpoint.
+Presented by the orchestrator at the Wave 13 checkpoint, 2026-11-05 and 2026-11-06, with the pictures and then on the review site, where he drove it. Rulings along the way: "Look Down the Rail" as the name, Swing "Remove it", a Longboard at Side "Leave it"; his drive notes (D-45), which defined the two modes, took out Flip the Board and the sill, and reordered the panel; the wire view's long lines ignoring a wing; and "look down rail should go to 25deg". Final word: "approved". Merged into `board-3d` across b40f2fd0, 6526cbf2, 93e08904 and 48cf99b9. The real-iPhone checks went into 16-13.

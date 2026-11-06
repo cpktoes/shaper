@@ -318,7 +318,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no h
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-28 and the approved 16-UI-SPEC.md)
 **Brief:** `phases/16-3d-board-and-cnc-export/16-SPEC.md` (R1–R12 from the founder's words of 2026-11-03), decisions D-01–D-28 in `16-CONTEXT.md`, the approved `16-UI-SPEC.md`, the measured `16-RESEARCH.md` and the mock-up `pictures/3d-board-mockup.png`
 **Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
-**Plans:** 16/18 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 (D-32), 16-16 (D-33, D-34), 16-17 (D-35, D-36) and 16-18 (D-43) added as their own waves before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
+**Plans:** 17/18 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 (D-32), 16-16 (D-33, D-34), 16-17 (D-35, D-36) and 16-18 (D-43) added as their own waves before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
 
 Plans:
 
@@ -376,7 +376,7 @@ Plans:
 
 **Wave 13** *(blocked on Wave 12; added 2026-11-05 for D-43, planned with the founder's rulings)*
 
-- [ ] 16-18-PLAN.md — The shaping bay: a drawn room with the strips under the shelves, the board on racks that flips, lifts at either end and rolls with one control per plane, Turn the Board and Walk Around, and a Room switch for a plain background (R3 R4 R5 R6 R10)
+- [x] 16-18-PLAN.md — The shaping bay: a drawn room with the strips under the shelves, the board on racks that flips, lifts at either end and rolls with one control per plane, Turn the Board and Walk Around, and a Room switch for a plain background (R3 R4 R5 R6 R10)
 
 **Wave 14** *(blocked on Wave 13; a founder step)*
 
@@ -408,4 +408,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
-| 16. 3D Board and CNC Export | 16/18 | In Progress|  |
+| 16. 3D Board and CNC Export | 17/18 | In Progress|  |
