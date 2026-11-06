@@ -19,6 +19,7 @@ import { useDesign } from "@/components/design/design-store";
 import { useReducedMotion } from "@/components/design/use-viewer-media";
 import {
   AT_ONE_CROP,
+  cropLimit,
   cropPinch,
   cropRect,
   cropSlide,
@@ -35,6 +36,7 @@ import {
   DOUBLE_TAP_SLOP_PX,
   normaliseWheelDelta,
   PINCH_WHEEL_RATE,
+  snapZoom,
   stepZoom,
   wheelStep,
   type WheelAccumulator,
@@ -46,30 +48,47 @@ import { designCrossSectionInput } from "@/lib/geometry/design";
 import { buildBlankGhost, type BlankGhost } from "@/lib/geometry/blank-ghost";
 import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { placedFins, type PlacedFin } from "@/lib/geometry/fin-outline";
-import { buildRackBoardArt } from "@/lib/geometry/rack-art";
-import { threeDLoadingFrame, threeDTileArt } from "@/lib/geometry/three-d-tile-art";
 import { TOP_VIEW_SAMPLES } from "@/components/rocker/rocker-top-view";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { easeOut } from "@/lib/models/rack-gesture";
 import {
-  cameraAxes,
-  dragTurn,
-  FRAME_FILL,
-  frameAtOne,
-  framePointsOf,
-  glideAt,
-  keyTurn,
-  quatMultiply,
-  REST_TURN,
-  slerpShortest,
-  VIEW_TURN_MS,
-  VIEW_TURNS,
-  type Frame,
-  type Quat,
-  type ViewName,
-} from "@/lib/geometry/view-3d";
+  anglesBetween,
+  AT_REST,
+  bayLens,
+  BOTTOM_UP,
+  clampLift,
+  clampViewer,
+  fillCrop,
+  firstViewOutline,
+  isBottomUp,
+  liftOfRaise,
+  rackAngles,
+  rackSeat,
+  rackTurn,
+  REST_VIEWER,
+  shownAngles,
+  standAt,
+  totalRoll,
+  viewerLook,
+  walkBetween,
+  walkDrag,
+  walkGlideAt,
+  walkKey,
+  WALK_VIEWS,
+  type RackAngles,
+  type Viewer,
+} from "@/lib/geometry/shaping-bay";
+import { cameraAxes, dragTurn, framePointsOf, glideAt, keyTurn, quatMultiply, REST_TURN, slerpShortest, VIEW_TURN_MS, type Quat, type ViewName } from "@/lib/geometry/view-3d";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
 import { ThreeDControls, ThreeDTailRail, type ExportState } from "./three-d-controls";
+import {
+  ThreeDModeSwitch,
+  ThreeDOnTheRacks,
+  ThreeDSightAlong,
+  makeRackStore,
+  type DragMode,
+  type RaisedEnd,
+} from "./three-d-rack-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 import { ThreeDShowButtons } from "./three-d-show-buttons";
 import { exportForCnc } from "./export-cnc";
@@ -84,8 +103,9 @@ import { exportForCnc } from "./export-cnc";
  *
  * The drawing code (three.js) is fetched only here, by a dynamic `import()` of the scene module inside an effect (research
  * Pattern 5); `import type` above is erased from the bundle. What the canvas shows, in one place:
- * - `loading` — the ground colour on the server's paint; once the page is live, the loading picture (the 3D tile's
- *   turned board, and after a second a line under it) until the scene has drawn its first frame (16-11, §9);
+ * - `loading` — the ground colour on the server's paint; once the page is live, the loading picture (the first view's
+ *   own outline, drawn where the board will land, and after a second a line under it) until the scene has drawn its
+ *   first frame (16-11, §9);
  * - `ready` — the board;
  * - `lost` — the drawing context went away for a moment; the board and view are kept and come back with it;
  * - `no-webgl` — this browser offers no 3D drawing, or a lost context never came back;
@@ -134,27 +154,29 @@ function coloursKey(colours: SceneColours): string {
   return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine].join(" ");
 }
 
+/** The loading picture's drawing: the first view's outline and stringer in the canvas's own dots, and where it ends. */
+interface LoadingArt {
+  board: string;
+  stringer: string;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+/** How far under the board the loading line sits, and the room it needs from the canvas's bottom edge. */
+const LOADING_LINE_GAP = 12;
+const LOADING_LINE_ROOM = 24;
+
 /**
- * The loading picture (UI-SPEC §9, §10): the 3D tile's own drawing of the board turned to the first view — the rack's
- * turn at 50°, lying nose left — framed as the lit board will be at 1x, so the board arrives where the picture was. After
- * a second still loading, one line under it says so. Drawn on the canvas's ground; never a fade.
+ * The loading picture (UI-SPEC §9, §10): the first view's own outline and stringer, drawn in the canvas's dots where the
+ * lit board will land. After a second still loading, one line under it says so. Drawn on the canvas's ground; never a
+ * fade.
  */
-function LoadingPicture({
-  art,
-  slow,
-}: {
-  art: { board: string; stringer: string; viewBox: string; aspect: number } | null;
-  slow: boolean;
-}) {
-  // Half the drawn board's height: the share of the tighter direction the 1x frame fills, read in the box's own units.
-  const halfHeight = art ? `min(${(FRAME_FILL * 50) / art.aspect}cqw, ${FRAME_FILL * 50}cqh)` : "0px";
+function LoadingPicture({ art, slow }: { art: LoadingArt | null; slow: boolean }) {
   return (
-    <div
-      className="pointer-events-none absolute inset-0 overflow-hidden rounded-md [container-type:size]"
-      data-loading-picture
-    >
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-md" data-loading-picture>
       {art && (
-        <svg aria-hidden className="absolute inset-0 size-full" viewBox={art.viewBox} preserveAspectRatio="xMidYMid meet">
+        <svg aria-hidden className="absolute inset-0 size-full" viewBox={`0 0 ${art.width} ${art.height}`}>
           <path
             d={art.board}
             fill="var(--outline-board-fill)"
@@ -176,7 +198,9 @@ function LoadingPicture({
         // where muted ink would fall to 2.26:1; ink reads 5.20 / 5.20 / 15.29 / 7.84 there.
         <p
           className="absolute inset-x-0 px-4 text-center text-xs font-normal text-surf-ink"
-          style={{ top: `calc(50% + ${halfHeight} + 12px)` }}
+          style={{
+            top: art ? Math.min(art.bottom + LOADING_LINE_GAP, art.height - LOADING_LINE_ROOM) : "50%",
+          }}
           data-loading-line
         >
           {THREE_D_COPY.gettingReady}
@@ -184,6 +208,20 @@ function LoadingPicture({
       )}
     </div>
   );
+}
+
+/** A development server's picture scripts and specs may start with the room off; a production build never reads it. */
+function readBareRoom(): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  return (globalThis as { __shaper3dBareRoom?: unknown }).__shaper3dBareRoom === true;
+}
+
+/** What a move takes the screen to: the board's lie, which face is up, where the viewer stands, and the crop. */
+interface Move {
+  angles?: RackAngles;
+  flipped?: boolean;
+  viewer?: Viewer;
+  crop?: CropView;
 }
 
 /** How far back a release looks for the drag's speed: a board held still this long before letting go doesn't glide. */
@@ -222,6 +260,11 @@ function capture(host: HTMLElement, pointerId: number) {
 /** The turn as the host's `data-turn` reports it to the tests: four numbers to 1e-4. */
 function turnText(turn: Quat): string {
   return turn.map((v) => (Math.round(v * 1e4) / 1e4 + 0).toFixed(4)).join(" ");
+}
+
+/** Where the viewer stands as the host's `data-viewer` reports it to the tests: azimuth, elevation and sight, to 0.01°. */
+function viewerText(viewer: Viewer): string {
+  return [viewer.azimuthDeg, viewer.elevationDeg, viewer.sightDeg].map((v) => (Math.round(v * 100) / 100 + 0).toFixed(2)).join(" ");
 }
 
 /** The crop as the host's `data-crop` reports it to the tests: the level, then the slide's two fractions to 1e-4. */
@@ -279,6 +322,9 @@ export function ThreeDScreen() {
     if (!built.ok) console.error("The 3D board could not be built:", built.error);
   }, [built]);
 
+  // How this board sits on its racks: the Raise controls measure from it and Nose and Tail frame by it.
+  const seat = useMemo(() => (built.ok ? rackSeat(built.board.framePoints) : null), [built]);
+
   // The fins (16-10, D-06, D-21, D-25): FINS' own placement, each fin stood on the board's bottom with its generic
   // outline. Shown unless the shaper switches Fins off — a view switch, never stored, never part of the board (D-17).
   const fins = useMemo(
@@ -326,17 +372,6 @@ export function ThreeDScreen() {
   const stripesRef = useRef(stripes);
   const wireRef = useRef(wire);
 
-  // The loading picture (UI-SPEC §9): the 3D tile's turned board. A board whose turn can't be worked out has no
-  // picture — the line alone.
-  const loadingArt = useMemo(() => {
-    try {
-      const art = buildRackBoardArt(sideProfile, outlineGeometry);
-      const { board, stringer } = threeDTileArt(art);
-      return { board, stringer, ...threeDLoadingFrame(art) };
-    } catch {
-      return null;
-    }
-  }, [sideProfile, outlineGeometry]);
   const pageLive = useSyncExternalStore(subscribeNever, isLive, isServerPaint);
   const [loadingSlow, setLoadingSlow] = useState(false);
 
@@ -346,12 +381,20 @@ export function ThreeDScreen() {
   const boardRef = useRef<Omit<BoardSceneInput, "colours"> | null>(null);
   // The board's turn (16-07, UI-SPEC §5): plain numbers (lib/geometry/view-3d.ts) kept in a ref, never in React
   // state (the rack's Pattern 7). Each change hands it to the scene, which turns the board's group alone and draws
-  // one frame — the camera and the lights never move (D-10). Nothing is remembered between visits (D-17).
+  // one frame — the strips never move (D-10). Nothing is remembered between visits (D-17).
   const turnRef = useRef<Quat>(REST_TURN);
-  /** The glide or view turn under way, if any: its animation frame. */
+  /** Which face was last put up by Flip, Deck or Bottom: the Rotate on Side reading is taken from it (D-43). */
+  const flippedRef = useRef(false);
+  /** Where the viewer stands (D-43, D-44): moved by Nose, Tail, Side, Sight Along and a walk; never stored. */
+  const viewerRef = useRef<Viewer>(REST_VIEWER);
+  /** What a drag does, as the handlers read it: never Walk Around with the room off. */
+  const walkingRef = useRef(false);
+  /** Whether the room is drawn: off, the board spins freely with no racks and no limit. */
+  const roomRef = useRef(true);
+  /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
-  /** A view picked while the drawing was still loading: applied, framed at 1x, when the board appears (§9). */
-  const pendingFrameRef = useRef(false);
+  // What the panel reads (the rack's Pattern 7): only the panel's own controls re-render during a drag.
+  const [rackStore] = useState(makeRackStore);
   // The zoom and the slide (16-09, UI-SPEC §4–§5): a crop of the fixed camera's picture (crop-zoom.ts), kept in a
   // ref like the turn and handed straight to the scene, which draws one frame per change. React state holds only
   // what the zoom row shows — the level, and whether there is anything for Back to 1x to undo.
@@ -380,14 +423,16 @@ export function ThreeDScreen() {
     }
   };
 
-  /** Hands the crop to the scene for the canvas's size now — a resized canvas keeps the same zoom and slide. */
-  const pushCrop = useCallback(() => {
+  /** Shows a crop in the scene for the canvas's size now. */
+  const showCrop = useCallback((view: CropView) => {
     const host = hostRef.current;
     if (!host) return;
-    const view = cropRef.current;
     host.dataset.crop = cropText(view);
     sceneRef.current?.setCrop(isAtOneCrop(view) ? null : cropRect(view, host.clientWidth, host.clientHeight));
   }, []);
+
+  /** Hands the crop to the scene for the canvas's size now — a resized canvas keeps the same zoom and slide. */
+  const pushCrop = useCallback(() => showCrop(cropRef.current), [showCrop]);
 
   const applyCrop = useCallback(
     (view: CropView) => {
@@ -425,6 +470,14 @@ export function ThreeDScreen() {
     wireRef.current = wire;
     sceneRef.current?.setWire(wire);
   }, [wire]);
+
+  // The Room switch (the founder, 2026-11-05): "we also need a toggle to turn the room off (plain background)". On
+  // when the screen opens; a view switch only, like the other three, and Walk Around has no meaning without it.
+  const bareRoom = useSyncExternalStore(subscribeNever, readBareRoom, isServerPaint);
+  const [roomPick, setRoomPick] = useState<boolean | null>(null);
+  const roomOn = roomPick ?? !bareRoom;
+  const [mode, setMode] = useState<DragMode>("turn");
+  const dragMode: DragMode = roomOn ? mode : "turn";
 
   // The colours follow the theme while the screen is open (UI-SPEC § Color, §16): a new theme class on the page, or the
   // computer's own light or dark setting changing under System, re-reads the theme's colours and repaints the scene in
@@ -483,14 +536,12 @@ export function ThreeDScreen() {
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
         handle.setWire(wireRef.current);
-        // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC
-        // §9); a view is framed at 1x for its own turn, as its button would have.
-        if (pendingFrameRef.current) {
-          pendingFrameRef.current = false;
-          const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-          handle.setTurn(turnRef.current, frameAtOne(board.framePoints, turnRef.current, aspect));
-        } else if (turnRef.current !== REST_TURN) handle.setTurn(turnRef.current);
-        // Every new size re-works 1x for the board's turn (the scene's resize) and keeps the zoom and the slide.
+        handle.setRoom(roomRef.current);
+        handle.setFree(roomRef.current ? 0 : 1);
+        // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC §9).
+        handle.setTurn(turnRef.current);
+        handle.setViewer(viewerRef.current);
+        // Every new size re-works the lens (the scene's resize) and keeps the zoom and the slide.
         const fit = () => {
           handle?.resize(host.clientWidth, host.clientHeight);
           pushCrop();
@@ -525,12 +576,43 @@ export function ThreeDScreen() {
     null,
   );
 
-  const applyTurn = useCallback((turn: Quat) => {
-    turnRef.current = turn;
+  /** The panel's readings for the turn and the viewer as they stand. */
+  const readPanel = useCallback(() => {
+    rackStore.set({ ...shownAngles(turnRef.current, flippedRef.current), sight: viewerRef.current.sightDeg });
+  }, [rackStore]);
+
+  const applyTurn = useCallback(
+    (turn: Quat, read = true) => {
+      turnRef.current = turn;
+      const host = hostRef.current;
+      if (host) host.dataset.turn = turnText(turn);
+      sceneRef.current?.setTurn(turn);
+      if (read) readPanel();
+    },
+    [readPanel],
+  );
+
+  const applyViewer = useCallback(
+    (viewer: Viewer, read = true) => {
+      viewerRef.current = viewer;
+      const host = hostRef.current;
+      if (host) host.dataset.viewer = viewerText(viewer);
+      sceneRef.current?.setViewer(viewer);
+      if (read) readPanel();
+    },
+    [readPanel],
+  );
+
+  /** A turn by hand stays on the racks: past the limit it stops, and with the room off nothing holds it. */
+  const heldTurn = (turn: Quat) => (roomRef.current ? clampLift(turn) : turn);
+
+  /** A viewer by hand stays in the room: `clampViewer` for this board and this window's lens. */
+  const heldViewer = (viewer: Viewer) => {
+    const board = boardRef.current;
     const host = hostRef.current;
-    if (host) host.dataset.turn = turnText(turn);
-    sceneRef.current?.setTurn(turn);
-  }, []);
+    if (!board || !seat || !host) return viewer;
+    return clampViewer(viewer, seat, bayLens(board.framePoints, seat, host.clientWidth / Math.max(1, host.clientHeight)));
+  };
 
   const stopMotion = useCallback(() => {
     if (motionRef.current) cancelAnimationFrame(motionRef.current);
@@ -542,6 +624,7 @@ export function ThreeDScreen() {
     const host = hostRef.current;
     if (host) {
       host.dataset.turn = turnText(turnRef.current);
+      host.dataset.viewer = viewerText(viewerRef.current);
       host.dataset.crop = cropText(cropRef.current);
     }
     return stopMotion;
@@ -651,7 +734,8 @@ export function ThreeDScreen() {
     const t = performance.now();
     drag.samples.push({ t, x: event.clientX, y: event.clientY });
     while (drag.samples.length > 2 && drag.samples[0].t < t - GLIDE_SAMPLE_MS) drag.samples.shift();
-    applyTurn(dragTurn(turnRef.current, dx, dy, shortSide()));
+    if (walkingRef.current) applyViewer(heldViewer(walkDrag(viewerRef.current, dx, dy, shortSide())));
+    else applyTurn(heldTurn(dragTurn(turnRef.current, dx, dy, shortSide(), viewerLook(viewerRef.current))));
   };
 
   const endDrag = (event: PointerEvent<HTMLDivElement>, glide: boolean) => {
@@ -702,14 +786,33 @@ export function ThreeDScreen() {
     const vx = (last.x - first.x) * k;
     const vy = (last.y - first.y) * k;
     if (vx === 0 && vy === 0) return;
+    if (walkingRef.current) {
+      // A walk glides on as a turn does (D-13), in the same degrees a drag walks.
+      const velocity = { azimuthDeg: (vx * 180) / Math.PI, elevationDeg: (vy * 180) / Math.PI };
+      const start = viewerRef.current;
+      const began = performance.now();
+      const tick = () => {
+        const { azimuthDeg, elevationDeg, done } = walkGlideAt(velocity, performance.now() - began);
+        applyViewer(
+          heldViewer({
+            ...start,
+            azimuthDeg: start.azimuthDeg + azimuthDeg,
+            elevationDeg: start.elevationDeg + elevationDeg,
+          }),
+        );
+        motionRef.current = done ? 0 : requestAnimationFrame(tick);
+      };
+      motionRef.current = requestAnimationFrame(tick);
+      return;
+    }
     // About the very axis `dragTurn` turns about: the picture's up for a sideways drag, its right for an up-down one.
-    const { right, up } = cameraAxes();
+    const { right, up } = cameraAxes(viewerLook(viewerRef.current));
     const velocity: Vec3 = [up[0] * vx + right[0] * vy, up[1] * vx + right[1] * vy, up[2] * vx + right[2] * vy];
     const start = turnRef.current;
     const began = performance.now();
     const tick = () => {
       const { turnSince, done } = glideAt(velocity, performance.now() - began);
-      applyTurn(quatMultiply(turnSince, start));
+      applyTurn(heldTurn(quatMultiply(turnSince, start)));
       motionRef.current = done ? 0 : requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
@@ -721,60 +824,116 @@ export function ThreeDScreen() {
   const descriptionId = useId();
 
   /**
-   * Turns the board to `target` the short way round and re-frames it at 1x for that turn: over VIEW_TURN_MS with
-   * the rack's settle curve, or at once under reduced motion. Any glide or turn under way stops first. Picked
-   * while the drawing is still loading, the view is kept and applied when the board appears.
+   * Takes the screen to a move's lie, face, viewer and crop, together: over VIEW_TURN_MS with the rack's settle curve, or
+   * at once under reduced motion. Any glide or move under way stops first. Picked while the drawing is still loading,
+   * the move is kept and shows when the board appears. The panel's readings hold still until it lands, so Flip the Board
+   * leaves them reading what they read.
    */
-  const turnTo = (target: Quat, instant = false) => {
+  const moveTo = (move: Move, instant = false) => {
     stopMotion();
     dragRef.current = null;
-    // A view fits the board back to 1x, centred (§3): the zoom and the slide are undone with it, at once.
-    applyCrop(AT_ONE_CROP);
-    const scene = sceneRef.current;
-    const board = boardRef.current;
-    const host = hostRef.current;
-    if (!scene || !board || !host || sceneState !== "ready") {
-      turnRef.current = target;
-      if (host) host.dataset.turn = turnText(target);
-      pendingFrameRef.current = true;
+    const land = () => {
+      if (move.flipped !== undefined) flippedRef.current = move.flipped;
+      if (move.angles) applyTurn(rackTurn(move.angles), false);
+      if (move.viewer) applyViewer(move.viewer, false);
+      if (move.crop) {
+        showCrop(move.crop);
+        applyCrop(move.crop);
+      }
+      readPanel();
+    };
+    if (!sceneRef.current || sceneState !== "ready" || instant || reducedRef.current) {
+      land();
       return;
     }
-    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
-    const toFrame = frameAtOne(board.framePoints, target, aspect);
-    if (instant || reducedRef.current) {
-      turnRef.current = target;
-      host.dataset.turn = turnText(target);
-      scene.setTurn(target, toFrame);
-      return;
-    }
-    const fromTurn = turnRef.current;
-    const fromFrame = scene.frame();
+    const fromAngles = rackAngles(turnRef.current);
+    const fromViewer = viewerRef.current;
+    const fromCrop = cropRef.current;
     const began = performance.now();
-    const between = (a: Frame, b: Frame, k: number): Frame => ({
-      distance: a.distance + (b.distance - a.distance) * k,
-      right: a.right + (b.right - a.right) * k,
-      up: a.up + (b.up - a.up) * k,
-    });
     const tick = () => {
       const t = (performance.now() - began) / VIEW_TURN_MS;
-      const done = t >= 1;
+      if (t >= 1) {
+        motionRef.current = 0;
+        land();
+        return;
+      }
       const k = easeOut(t);
-      const turn = done ? target : slerpShortest(fromTurn, target, k);
-      turnRef.current = turn;
-      host.dataset.turn = turnText(turn);
-      scene.setTurn(turn, done ? toFrame : between(fromFrame, toFrame, k));
-      motionRef.current = done ? 0 : requestAnimationFrame(tick);
+      if (move.angles) applyTurn(rackTurn(anglesBetween(fromAngles, move.angles, k)), false);
+      if (move.viewer) applyViewer(walkBetween(fromViewer, move.viewer, k), false);
+      if (move.crop) {
+        const to = move.crop;
+        showCrop({
+          zoom: fromCrop.zoom + (to.zoom - fromCrop.zoom) * k,
+          cx: fromCrop.cx + (to.cx - fromCrop.cx) * k,
+          cy: fromCrop.cy + (to.cy - fromCrop.cy) * k,
+        });
+      }
+      motionRef.current = requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
   };
 
+  /** The crop that shows the board at Nose's and Tail's share of the window, standing at `viewer` (the founder, D-44). */
+  const endCrop = (viewer: Viewer): CropView => {
+    const board = boardRef.current;
+    const host = hostRef.current;
+    if (!board || !seat || !host) return AT_ONE_CROP;
+    const aspect = host.clientWidth / Math.max(1, host.clientHeight);
+    const lens = bayLens(board.framePoints, seat, aspect);
+    const fit = fillCrop(board.framePoints, rackAngles(turnRef.current), viewer, lens, seat, aspect);
+    const zoom = snapZoom(fit.zoom, DEFAULT_MAX_ZOOM);
+    const limit = cropLimit(zoom);
+    const hold = (v: number) => Math.min(Math.max(v, -limit), limit) + 0;
+    return { zoom, cx: hold(fit.cx), cy: hold(fit.cy) };
+  };
+
+  /**
+   * The five buttons (the founder, D-44). Deck and Bottom put the board that way up on the racks with every slider at
+   * rest, straight overhead in Walk Around. Nose, Tail and Side stand the viewer there, moving neither the board nor the
+   * racks. No button ever swings the racks by itself; Deck and Bottom bring a swing back to rest.
+   */
   const onView = (name: ViewName) => {
-    turnTo(VIEW_TURNS[name]);
+    if (name === "deck" || name === "bottom") {
+      moveTo({
+        angles: name === "deck" ? AT_REST : BOTTOM_UP,
+        flipped: name === "bottom",
+        viewer: walkingRef.current ? WALK_VIEWS[name] : { ...viewerRef.current, sightDeg: 0 },
+        crop: AT_ONE_CROP,
+      });
+    } else {
+      const viewer = standAt(name, rackAngles(turnRef.current).swing);
+      moveTo({ viewer, crop: name === "side" ? AT_ONE_CROP : endCrop(viewer) });
+    }
     say(THREE_D_COPY.viewSpoken[name]);
   };
   const onReset = (instant = false) => {
-    turnTo(REST_TURN, instant);
+    moveTo({ angles: AT_REST, flipped: false, viewer: REST_VIEWER, crop: AT_ONE_CROP }, instant);
     say(THREE_D_COPY.resetSpoken);
+  };
+
+  /** Flip the Board: half a turn about its long axis on the racks. One press, never a pressed state. */
+  const onFlip = () => {
+    const now = rackAngles(turnRef.current);
+    const flipped = !flippedRef.current;
+    moveTo({ angles: { ...now, roll: now.roll + 180 }, flipped });
+    say(THREE_D_COPY.flipSpoken[flipped ? "bottom" : "deck"]);
+  };
+
+  // Each control writes its own plane. The other two come from the turn's exact angles, never from the rounded thumbs,
+  // so a whole-degree reading can never creep them (the plan's trap 1).
+  const setPlane = (change: Partial<RackAngles>) => {
+    stopMotion();
+    applyTurn(rackTurn({ ...rackAngles(turnRef.current), ...change }));
+  };
+  const onRaise = (end: RaisedEnd, heightMm: number) => {
+    if (!seat) return;
+    setPlane({ lift: liftOfRaise(heightMm, seat) * (end === "nose" ? 1 : -1) });
+  };
+  const onRoll = (shown: number) => setPlane({ roll: totalRoll(shown, flippedRef.current) });
+  const onSwing = (swing: number) => setPlane({ swing });
+  const onSight = (sightDeg: number) => {
+    stopMotion();
+    applyViewer({ ...viewerRef.current, sightDeg });
   };
 
   /** The keys the canvas takes while it has focus (UI-SPEC §5), each at once: the arrows turn 15°, Shift with an
@@ -810,12 +969,55 @@ export function ThreeDScreen() {
     if (arrow) {
       event.preventDefault();
       stopMotion();
-      applyTurn(keyTurn(turnRef.current, arrow));
+      if (walkingRef.current) applyViewer(heldViewer(walkKey(viewerRef.current, arrow)));
+      else applyTurn(heldTurn(keyTurn(turnRef.current, arrow, viewerLook(viewerRef.current))));
     } else if (event.key === "Home") {
       event.preventDefault();
       onReset(true);
     }
   };
+
+  // What a drag does (D-43): pressing the switch stops any motion and moves nothing.
+  const onMode = (next: DragMode) => {
+    stopMotion();
+    dragRef.current = null;
+    setMode(next);
+  };
+  useEffect(() => {
+    walkingRef.current = dragMode === "walk";
+  }, [dragMode]);
+
+  // With the room off nothing holds the board, and it turns about its home in any direction (D-44). Turning the room back
+  // on settles it onto its racks by the nearest pose, with a glide.
+  useEffect(() => {
+    const was = roomRef.current;
+    roomRef.current = roomOn;
+    const scene = sceneRef.current;
+    scene?.setRoom(roomOn);
+    if (was === roomOn) return;
+    stopMotion();
+    if (!roomOn) {
+      scene?.setFree(1);
+      return;
+    }
+    const from = turnRef.current;
+    const to = clampLift(from);
+    flippedRef.current = isBottomUp(rackAngles(to).roll);
+    if (!scene || reducedRef.current) {
+      scene?.setFree(0);
+      applyTurn(to);
+      return;
+    }
+    const began = performance.now();
+    const tick = () => {
+      const t = (performance.now() - began) / VIEW_TURN_MS;
+      const k = easeOut(t);
+      scene.setFree(1 - k);
+      applyTurn(t >= 1 ? to : slerpShortest(from, to, k), t >= 1);
+      motionRef.current = t >= 1 ? 0 : requestAnimationFrame(tick);
+    };
+    motionRef.current = requestAnimationFrame(tick);
+  }, [roomOn, applyTurn, stopMotion]);
 
   // ------------------------------------------------------------------------------------------------------------
   // Zooming (16-09, UI-SPEC §4–§5): the zoom row, the wheel, a trackpad pinch and the keys, in the 2D viewers' half
@@ -922,6 +1124,24 @@ export function ThreeDScreen() {
   }, [zoomable]);
   // The loading picture shows once the page is live and until the lit board is ready; after a second, its line too.
   const loading = state === "loading" && pageLive;
+  // Its drawing is the first view's own, so it needs the canvas's size, and goes when the board has landed. A board with
+  // no surface has no picture: the line alone.
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !loading) return;
+    const observer = new ResizeObserver(() => setCanvasSize({ width: host.clientWidth, height: host.clientHeight }));
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [loading]);
+  const loadingArt = useMemo<LoadingArt | null>(() => {
+    if (!loading || !built.ok || !seat || !canvasSize || !(canvasSize.width > 0) || !(canvasSize.height > 0)) return null;
+    const { width, height } = canvasSize;
+    const { framePoints, stringer, centre } = built.board;
+    const deck = stringer.deck.map((p): Vec3 => [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]]);
+    const lens = bayLens(framePoints, seat, width / height);
+    return { ...firstViewOutline(framePoints, deck, lens, seat, width, height), width, height };
+  }, [loading, built, seat, canvasSize]);
   useEffect(() => {
     if (!loading) return;
     const timer = setTimeout(() => setLoadingSlow(true), LOADING_LINE_AFTER_MS);
@@ -938,10 +1158,21 @@ export function ThreeDScreen() {
         <ThreeDControls
           onView={onView}
           onReset={() => onReset()}
+          modeSwitch={<ThreeDModeSwitch mode={dragMode} onMode={onMode} disabled={message !== null || !roomOn} />}
+          sightAlong={<ThreeDSightAlong store={rackStore} onSight={onSight} disabled={message !== null} />}
           drawingUnavailable={message !== null}
           exportState={exportState}
           onExport={onExport}
         >
+          <ThreeDOnTheRacks
+            store={rackStore}
+            seat={seat}
+            onFlip={onFlip}
+            onRaise={onRaise}
+            onRoll={onRoll}
+            onSwing={onSwing}
+            disabled={message !== null}
+          />
           <ThreeDTailRail />
         </ThreeDControls>
       }
@@ -968,6 +1199,8 @@ export function ThreeDScreen() {
               aria-roledescription={THREE_D_COPY.canvasRole}
               aria-label={THREE_D_COPY.canvasName(name)}
               aria-describedby={descriptionId}
+              data-mode={dragMode}
+              data-bay={roomOn ? "on" : "off"}
               aria-busy={state === "loading" ? true : undefined}
               onKeyDown={onKeyDown}
               onPointerDown={message ? undefined : onPointerDown}
@@ -1007,6 +1240,8 @@ export function ThreeDScreen() {
                 onStripes={(on) => setLook(on ? "stripes" : "shaded")}
                 wire={wire}
                 onWire={(on) => setLook(on ? "wire" : "shaded")}
+                room={roomOn}
+                onRoom={setRoomPick}
                 disabled={message !== null}
               />
             </ViewerToolbar>
@@ -1025,7 +1260,7 @@ export function ThreeDScreen() {
             {/* For a screen reader (UI-SPEC §13): how to move the board, and — always in the page, empty until a
                 view is picked — which view it is now. Turning by hand is never announced. */}
             <p id={descriptionId} className="sr-only">
-              {THREE_D_COPY.canvasDescription}
+              {dragMode === "walk" ? THREE_D_COPY.canvasDescriptionWalk : THREE_D_COPY.canvasDescription}
             </p>
             <div role="status" aria-live="polite" className="sr-only" data-three-d-spoken>
               {spoken.text && <span key={spoken.count}>{spoken.text}</span>}

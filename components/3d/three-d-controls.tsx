@@ -21,24 +21,31 @@ import { THREE_D_COPY } from "./three-d-copy";
  * apart — the same outer column every design screen's sidebar uses (`fin-controls.tsx`, `rocker-editor.tsx`).
  * The shell adds Back and Next and the site footer after it.
  *
- * The panel reads the title, then the `children` slot — the tail rail's two sliders bound to RAILS' own values
- * (D-30/D-32, `ThreeDTailRail`) — then VIEW, then EXPORT (16-12), last on the panel. Each block is a
- * `flex flex-col gap-2` opening with its ruled heading. What the picture includes (Fins, Blank and Contour Stripes)
- * lives in the canvas's corner, as icons beside Wide view (D-35, `three-d-show-buttons.tsx`).
+ * The panel reads the title, then the `children` slot — ON THE RACKS (D-43, `three-d-rack-controls.tsx`) and the tail
+ * rail's two sliders bound to RAILS' own values (D-30/D-32, `ThreeDTailRail`) — then VIEW, then EXPORT (16-12), last on
+ * the panel. Each block is a `flex flex-col gap-2` opening with its ruled heading. What the picture includes (Fins,
+ * Blank, Contour Stripes, Wire View and the Room) lives in the canvas's corner, as icons beside Wide view (D-35,
+ * `three-d-show-buttons.tsx`).
  */
 export function ThreeDControls({
   children,
   onView,
   onReset,
+  modeSwitch,
+  sightAlong,
   drawingUnavailable,
   exportState,
   onExport,
 }: {
   children?: ReactNode;
-  /** Turns the board to a preset view and re-frames it at 1x. */
+  /** One of the five buttons: Deck and Bottom set the board on its racks, Nose, Tail and Side stand the viewer (D-44). */
   onView: (name: ViewName) => void;
   /** Back to the first view at 1x. */
   onReset: () => void;
+  /** What a drag does (D-43), first in VIEW. */
+  modeSwitch: ReactNode;
+  /** Sight Along (D-44), last in VIEW: it shifts the viewer, so it lives with the views. */
+  sightAlong: ReactNode;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): the view buttons have nothing to turn. */
   drawingUnavailable: boolean;
   /** What the export's status line says (UI-SPEC §7): nothing yet, the done line, the failed line, or why it waits. */
@@ -55,7 +62,13 @@ export function ThreeDControls({
         <div className="mt-0.5 text-sm text-surf-ink-muted font-normal">{THREE_D_COPY.subtitle}</div>
       </div>
       {children}
-      <ViewSection onView={onView} onReset={onReset} disabled={drawingUnavailable} />
+      <ViewSection
+        onView={onView}
+        onReset={onReset}
+        modeSwitch={modeSwitch}
+        sightAlong={sightAlong}
+        disabled={drawingUnavailable}
+      />
       <ExportSection state={exportState} onExport={onExport} />
     </div>
   );
@@ -140,17 +153,22 @@ const VIEW_SPAN: Record<ViewName, string> = {
 };
 
 /**
- * VIEW (UI-SPEC §1, §3): five preset views and Reset View. One-shot actions, never pressed toggles — once the shaper
- * drags, the board is no longer "in" a view, so none is ever marked as pressed. They only change what is seen, so a
- * locked board keeps them (`data-lock-exempt`, UI-SPEC §9); they are dimmed only while the canvas shows a message.
+ * VIEW (UI-SPEC §1, §3, D-43, D-44): what a drag does, the five buttons, Reset View and Sight Along. The buttons are
+ * one-shot actions, never pressed toggles — once the shaper drags, the board is no longer "in" a view, so none is ever
+ * marked as pressed. They only change what is seen, so a locked board keeps them (`data-lock-exempt`, UI-SPEC §9); they
+ * are dimmed only while the canvas shows a message.
  */
 function ViewSection({
   onView,
   onReset,
+  modeSwitch,
+  sightAlong,
   disabled,
 }: {
   onView: (name: ViewName) => void;
   onReset: () => void;
+  modeSwitch: ReactNode;
+  sightAlong: ReactNode;
   disabled: boolean;
 }) {
   const button = cn(buttonVariants({ variant: "outline" }), "w-full");
@@ -164,6 +182,7 @@ function ViewSection({
   return (
     <div className="flex flex-col gap-2">
       <ThreeDSectionHeading>{THREE_D_COPY.viewHeading}</ThreeDSectionHeading>
+      {modeSwitch}
       <div role="group" aria-label={THREE_D_COPY.viewsGroup} className="grid grid-cols-6 gap-2">
         <button data-lock-exempt {...view("deck")} />
         <button data-lock-exempt {...view("bottom")} />
@@ -174,6 +193,7 @@ function ViewSection({
           {THREE_D_COPY.resetView}
         </button>
       </div>
+      {sightAlong}
     </div>
   );
 }

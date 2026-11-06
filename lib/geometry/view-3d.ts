@@ -1,20 +1,18 @@
 /**
- * The 3D screen's turns and framing as plain numbers (Phase 16, UI-SPEC §3 and §14). The board turns under a
- * fixed camera and fixed lights (D-10): dragging, a preset view or Reset View changes only the board's own turn,
- * held here as a quaternion, and the camera and the lights never move — so the highlights move across the foam
- * instead of riding along with it.
+ * The 3D screen's turns as plain numbers (Phase 16, UI-SPEC §3 and §14). The board turns under fixed lights (D-10):
+ * a drag, a key or a control in the panel changes only the board's own turn, held here as a quaternion, so the
+ * highlights move across the foam instead of riding along with it. Where the viewer stands is its own matter
+ * (`viewerAxes` here, the shaping bay's room in `shaping-bay.ts`).
  *
  * Three sets of axes, all right-handed, all millimetres:
  * - **The board's** (the surface's, `board-surface.ts`): x along the board from the tail toward the nose, y
  *   across (the rails at ±y), z up toward the deck.
- * - **The room's**: X to the shaper's right, Y up, Z toward the shaper. The camera stands on the room's +Z side,
- *   `ROOM_CAMERA.elevationDeg` above the floor, looking at the board.
- * - **The camera's**: right, up and forward (into the picture), worked out once from the elevation.
+ * - **The room's**: X along the room (the tail end at +X), Y up, Z across it.
+ * - **The viewer's**: right, up and forward (into the picture), worked out from where the viewer stands.
  *
- * `BOARD_TO_ROOM` lays the board in the room at rest — nose to the left (room −X), deck up (room +Y), the near
- * rail (board +y) toward the camera (room +Z) — and a turn is applied in the room after it, so the board's full
- * orientation is `turn × BOARD_TO_ROOM`. `REST_TURN` is no turn at all: the first view (UI-SPEC §3), the side
- * view with the deck turned 50° toward the shaper.
+ * `BOARD_TO_ROOM` lays the board in the room at rest — the nose toward room −X, the deck up (room +Y), board +y
+ * toward room +Z — and a turn is applied in the room after it, so the board's full orientation is
+ * `turn × BOARD_TO_ROOM`. `REST_TURN` is no turn at all: deck up on the racks.
  *
  * Pure (CLAUDE.md Rule 1): no React, browser or `three` import.
  */
@@ -70,125 +68,41 @@ export const BOARD_TO_ROOM: Quat = [0, Math.SQRT1_2, Math.SQRT1_2, 0];
 /** No turn: the first view (UI-SPEC §3) — flat, deck up, nose left. */
 export const REST_TURN: Quat = [0, 0, 0, 1];
 
-/** The room's one camera (UI-SPEC §3): 50° above the floor, a 30° field of view top to bottom. It never moves. */
-export const ROOM_CAMERA = { elevationDeg: 50, fovDeg: 30 } as const;
-
-/** How much of the canvas's tighter direction the board fills at 1x (UI-SPEC §3). */
-export const FRAME_FILL = 0.85;
-
 /**
- * The camera's three axes in the room: `forward` into the picture (down and away from the shaper at the
- * camera's elevation), `up` the picture's up, `right` the picture's right (room +X).
+ * Where the viewer first stands (the founder, D-44: "directly behind the tail, looking forward toward the nose, deck
+ * up"): `azimuthDeg` is measured round the vertical from room +X (the tail end at rest) toward +Z, so 0 is on the
+ * stringer's line behind the tail; `elevationDeg` is how far above the board the eye looks down; `fovDeg` the lens,
+ * top to bottom.
  */
-export function roomCameraAxes(): { right: Vec3; up: Vec3; forward: Vec3 } {
-  const e = (ROOM_CAMERA.elevationDeg * Math.PI) / 180;
-  return {
-    right: [1, 0, 0],
-    up: [0, Math.cos(e), -Math.sin(e)],
-    forward: [0, -Math.sin(e), -Math.cos(e)],
-  };
+export const ROOM_CAMERA = { azimuthDeg: 0, elevationDeg: 20, fovDeg: 62 } as const;
+
+/** Three unit axes in the room: the picture's right, its up, and forward into the picture. */
+export interface ViewerAxes {
+  right: Vec3;
+  up: Vec3;
+  forward: Vec3;
 }
 
-/** Where the board's turning centre sits relative to the camera, along its axes. */
-export interface Frame {
-  /** How far in front of the camera, along its view axis. */
-  distance: number;
-  /** How far to the picture's right of the view axis. */
-  right: number;
-  /** How far up the picture from the view axis. */
-  up: number;
+/**
+ * The viewer's axes standing at `azimuthDeg` round the room and `elevationDeg` above the board, looking at it.
+ * `right` is level whatever the elevation, straight overhead too, so a view never rolls; `up` follows from it.
+ */
+export function viewerAxes(azimuthDeg: number, elevationDeg: number): ViewerAxes {
+  const az = (azimuthDeg * Math.PI) / 180;
+  const el = (elevationDeg * Math.PI) / 180;
+  const forward: Vec3 = [-Math.cos(el) * Math.cos(az), -Math.sin(el), -Math.cos(el) * Math.sin(az)];
+  const right: Vec3 = [Math.sin(az), 0, -Math.cos(az)];
+  const up: Vec3 = [
+    right[1] * forward[2] - right[2] * forward[1],
+    right[2] * forward[0] - right[0] * forward[2],
+    right[0] * forward[1] - right[1] * forward[0],
+  ];
+  return { right, up, forward };
 }
 
-const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-
-/**
- * Where to put the board so that, turned by `turn`, its picture is centred and its box fills `fill` of the
- * canvas in whichever direction is tighter ("1x", UI-SPEC §3). `points` are the board's points relative to its
- * turning centre, in the board's axes; `aspect` is the canvas's width over its height. The camera stays where it
- * is: the answer is the board's place in front of it.
- *
- * Perspective makes this a little non-linear, so it is solved, not guessed: for a given distance each direction
- * is centred by bisection (a point's place on the picture only grows as the board slides that way), and the
- * distance is refined until the tighter direction's half-extent is `fill` — by quick rounds, or, for an end-on view
- * whose near end sits close to the camera, by bisection too.
- */
-export function frameAtOne(points: readonly Vec3[], turn: Quat, aspect: number, fill: number = FRAME_FILL): Frame {
-  if (points.length === 0 || !(aspect > 0) || !(fill > 0)) return { distance: 1, right: 0, up: 0 };
-  const { right, up, forward } = roomCameraAxes();
-  const q = quatMultiply(turn, BOARD_TO_ROOM);
-  const n = points.length;
-  const a = new Float64Array(n);
-  const b = new Float64Array(n);
-  const c = new Float64Array(n);
-  let radius = 0;
-  for (let i = 0; i < n; i++) {
-    const p = rotateVec(q, points[i]);
-    a[i] = dot(p, right);
-    b[i] = dot(p, up);
-    c[i] = dot(p, forward);
-    radius = Math.max(radius, Math.hypot(p[0], p[1], p[2]));
-  }
-  if (!(radius > 0)) radius = 1;
-  const tanV = Math.tan((ROOM_CAMERA.fovDeg * Math.PI) / 360);
-  const tanH = tanV * aspect;
-
-  /** For a distance: the offset that centres one direction, and that direction's half-extent on the picture. */
-  const centre = (coord: Float64Array, tan: number, distance: number): { offset: number; half: number } => {
-    const extent = (offset: number) => {
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (let i = 0; i < n; i++) {
-        const v = (coord[i] + offset) / ((distance + c[i]) * tan);
-        if (v < lo) lo = v;
-        if (v > hi) hi = v;
-      }
-      return { lo, hi };
-    };
-    let lo = -2 * radius;
-    let hi = 2 * radius;
-    for (let k = 0; k < 64; k++) {
-      const mid = (lo + hi) / 2;
-      const e = extent(mid);
-      if (e.lo + e.hi > 0) hi = mid;
-      else lo = mid;
-    }
-    const offset = (lo + hi) / 2;
-    const e = extent(offset);
-    return { offset, half: (e.hi - e.lo) / 2 };
-  };
-
-  /** The frame at one distance, each direction centred, and the tighter direction's half-extent there. */
-  const at = (distance: number) => {
-    const x = centre(a, tanH, distance);
-    const y = centre(b, tanV, distance);
-    return { frame: { distance, right: x.offset, up: y.offset }, half: Math.max(x.half, y.half) };
-  };
-
-  // Start where an orthographic picture would put it, then refine: while the board's depth is small beside the
-  // distance the half-extent goes almost exactly as one over the distance, so scaling the distance by half/fill
-  // converges in a few rounds.
-  let distance = 4 * radius;
-  for (let round = 0; round < 40; round++) {
-    const { frame, half } = at(distance);
-    const next = distance * (half / fill);
-    if (Math.abs(next - distance) <= 1e-9 * distance) return frame;
-    // An end-on view (16-07) breaks that rule: its near end comes close to the camera and grows far faster than
-    // one over the distance, so the rounds overshoot or ask for a place inside the board's own reach.
-    if (!(next > radius)) break;
-    distance = next;
-  }
-
-  // Then solve it for certain: the picture only shrinks as the board stands back, so bisect between its own reach
-  // (where its near end would touch the camera) and a distance where it already fits.
-  let lo = radius * (1 + 1e-6);
-  let hi = 4 * radius;
-  for (let k = 0; k < 60 && at(hi).half > fill; k++) hi *= 2;
-  for (let k = 0; k < 80 && hi - lo > 1e-10 * hi; k++) {
-    const mid = (lo + hi) / 2;
-    if (at(mid).half > fill) lo = mid;
-    else hi = mid;
-  }
-  return at(hi).frame;
+/** The viewer's axes at the first view. */
+export function roomCameraAxes(): ViewerAxes {
+  return viewerAxes(ROOM_CAMERA.azimuthDeg, ROOM_CAMERA.elevationDeg);
 }
 
 /**
@@ -228,13 +142,14 @@ export function framePointsOf(positions: ArrayLike<number>, maxPoints = 6000): {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Turning the board (16-07, UI-SPEC §3 and §5). Every turn below is a turn in the ROOM, applied before the board's
-// own lie (`turn × BOARD_TO_ROOM`), and every one returns only the board's new turn: none of them takes, reads or
-// returns the camera or a light, so nothing but the board can ever move (D-10).
+// own lie (`turn × BOARD_TO_ROOM`), and every one returns only the board's new turn: none of them moves the viewer or
+// a light, so nothing but the board can move (D-10). The viewer's axes are read, so a drag feels like a ball under
+// the hand from wherever the viewer stands.
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The camera's axes in the room: the picture's right, its up, and the way back toward the camera. */
-export function cameraAxes(): { right: Vec3; up: Vec3; toCamera: Vec3 } {
-  const { right, up, forward } = roomCameraAxes();
+/** The viewer's axes as a drag reads them: the picture's right, its up, and the way back toward the viewer. */
+export function cameraAxes(axes: ViewerAxes = roomCameraAxes()): { right: Vec3; up: Vec3; toCamera: Vec3 } {
+  const { right, up, forward } = axes;
   return { right, up, toCamera: [-forward[0], -forward[1], -forward[2]] };
 }
 
@@ -243,66 +158,9 @@ export function quatConjugate(q: Quat): Quat {
   return [-q[0], -q[1], -q[2], q[3]];
 }
 
-/** The turn that takes the three axes (1,0,0), (0,1,0), (0,0,1) onto `x`, `y`, `z` (a right-handed unit frame). */
-export function quatFromBasis(x: Vec3, y: Vec3, z: Vec3): Quat {
-  // The rotation matrix's columns are x, y, z; Shepperd's method divides by the largest of the four terms.
-  const [m00, m10, m20] = x;
-  const [m01, m11, m21] = y;
-  const [m02, m12, m22] = z;
-  const trace = m00 + m11 + m22;
-  let q: Quat;
-  if (trace > 0) {
-    const s = 2 * Math.sqrt(trace + 1);
-    q = [(m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s, s / 4];
-  } else if (m00 > m11 && m00 > m22) {
-    const s = 2 * Math.sqrt(1 + m00 - m11 - m22);
-    q = [s / 4, (m01 + m10) / s, (m02 + m20) / s, (m21 - m12) / s];
-  } else if (m11 > m22) {
-    const s = 2 * Math.sqrt(1 + m11 - m00 - m22);
-    q = [(m01 + m10) / s, s / 4, (m12 + m21) / s, (m02 - m20) / s];
-  } else {
-    const s = 2 * Math.sqrt(1 + m22 - m00 - m11);
-    q = [(m02 + m20) / s, (m12 + m21) / s, s / 4, (m10 - m01) / s];
-  }
-  return quatNormalize(q);
-}
-
-/** The five preset views (D-13), in the panel's order. */
+/** The five view buttons (D-13, D-44), in the panel's order. */
 export type ViewName = "deck" | "bottom" | "side" | "nose" | "tail";
 export const VIEW_NAMES: readonly ViewName[] = ["deck", "bottom", "side", "nose", "tail"];
-
-const neg = (v: Vec3): Vec3 => [-v[0], -v[1], -v[2]];
-
-/**
- * Where each view puts the board's own three axes (x toward the nose, y the near rail, z the deck) among the
- * camera's (UI-SPEC §3's table): Deck — the deck square to the camera, nose left; Bottom — turned over along its
- * length, nose left; Side — the near rail square on, deck up, nose left; Nose — the nose tip toward the camera, deck
- * up; Tail — the tail toward the camera, deck up. The third axis of each follows from the other two (a right-handed
- * frame), so a view can never mirror the board.
- */
-function viewFrame(name: ViewName): [Vec3, Vec3, Vec3] {
-  const { right, up, toCamera } = cameraAxes();
-  switch (name) {
-    case "deck":
-      return [neg(right), neg(up), toCamera];
-    case "bottom":
-      return [neg(right), up, neg(toCamera)];
-    case "side":
-      return [neg(right), toCamera, up];
-    case "nose":
-      return [toCamera, right, up];
-    case "tail":
-      return [neg(toCamera), neg(right), up];
-  }
-}
-
-/** Each preset view as the board's turn in the room: the turn that, after the board's lie, gives that view. */
-export const VIEW_TURNS: Readonly<Record<ViewName, Quat>> = Object.fromEntries(
-  VIEW_NAMES.map((name) => {
-    const [x, y, z] = viewFrame(name);
-    return [name, quatNormalize(quatMultiply(quatFromBasis(x, y, z), quatConjugate(BOARD_TO_ROOM)))];
-  }),
-) as Record<ViewName, Quat>;
 
 /** How long a view button's turn takes (UI-SPEC §5), eased with the rack's settle curve; instant under reduced motion. */
 export const VIEW_TURN_MS = 400;
@@ -319,17 +177,27 @@ export const KEY_TURN_DEG = 15;
  * the axis square to the drag — and the length of the canvas's shorter side (`shortSide`) is half a turn. One turn
  * about one axis, so dragging straight back undoes it exactly.
  */
-export function dragTurn(turn: Quat, dx: number, dy: number, shortSide: number): Quat {
+export function dragTurn(
+  turn: Quat,
+  dx: number,
+  dy: number,
+  shortSide: number,
+  axes: { right: Vec3; up: Vec3 } = roomCameraAxes(),
+): Quat {
   const length = Math.hypot(dx, dy);
   if (!(length > 0) || !(shortSide > 0) || !Number.isFinite(length)) return quatNormalize(turn);
-  const { right, up } = cameraAxes();
+  const { right, up } = axes;
   const axis: Vec3 = [up[0] * dx + right[0] * dy, up[1] * dx + right[1] * dy, up[2] * dx + right[2] * dy];
   return quatNormalize(quatMultiply(quatFromAxisAngle(axis, (Math.PI * length) / shortSide), turn));
 }
 
 /** The board after one arrow key: 15° about the picture's up-down axis (← →) or its left-right axis (↑ ↓). */
-export function keyTurn(turn: Quat, key: "left" | "right" | "up" | "down"): Quat {
-  const { right, up } = cameraAxes();
+export function keyTurn(
+  turn: Quat,
+  key: "left" | "right" | "up" | "down",
+  axes: { right: Vec3; up: Vec3 } = roomCameraAxes(),
+): Quat {
+  const { right, up } = axes;
   const angle = (KEY_TURN_DEG * Math.PI) / 180;
   const step =
     key === "right"

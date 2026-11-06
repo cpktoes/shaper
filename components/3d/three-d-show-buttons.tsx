@@ -1,6 +1,6 @@
 "use client";
 
-import { HashIcon } from "lucide-react";
+import { HashIcon, WarehouseIcon } from "lucide-react";
 import { FinPlacementIcon } from "@/components/outline/fin-placement-icon";
 import { BlankTopViewIcon, ContourStripesIcon, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { COARSE_TOUCH_BOX } from "@/components/viewer/zoom-viewport";
@@ -14,7 +14,8 @@ const DIMMED_BUT_HOVERABLE =
 /**
  * What the 3D picture includes (Phase 16, D-35, UI-SPEC §6, §9): Fins, on when the screen opens; Blank, a see-through
  * ghost of the picked blank (D-08), off when it opens; Contour Stripes, bands of light in place of the foam's shading
- * (D-12), off when it opens; and Wire View, the board drawn in thin lines on a plain foam (D-42), off when it opens.
+ * (D-12), off when it opens; Wire View, the board drawn in thin lines on a plain foam (D-42), off when it opens; and
+ * the Room, on when it opens: off, the bay goes and the board spins free on a plain ground (D-43, D-44).
  * Contour Stripes and Wire View each replace the foam's shading, so they are one look at a time. The founder,
  * 2026-11-04: "Move the fins and blank checkboxes to icons in the viewer. We already have a good fin icon." and of
  * Contour Stripes, "An icon too"; 2026-11-05: "Can we make this a toggle also (maybe the icon can be a # sign)."
@@ -38,6 +39,8 @@ export function ThreeDShowButtons({
   onStripes,
   wire,
   onWire,
+  room,
+  onRoom,
   disabled,
 }: {
   showFins: boolean;
@@ -50,6 +53,8 @@ export function ThreeDShowButtons({
   onStripes: (on: boolean) => void;
   wire: boolean;
   onWire: (on: boolean) => void;
+  room: boolean;
+  onRoom: (on: boolean) => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): there is nothing to show. */
   disabled: boolean;
 }) {
@@ -104,6 +109,18 @@ export function ThreeDShowButtons({
         className={COARSE_TOUCH_BOX}
       >
         <HashIcon className="size-6" />
+      </ViewerToolbarButton>
+      <ViewerToolbarButton
+        label={THREE_D_COPY.room}
+        title={THREE_D_COPY.roomTip}
+        pressed={room}
+        disabled={disabled}
+        onClick={() => onRoom(!room)}
+        data-three-d-show="room"
+        data-lock-exempt
+        className={COARSE_TOUCH_BOX}
+      >
+        <WarehouseIcon className="size-6" />
       </ViewerToolbarButton>
     </>
   );

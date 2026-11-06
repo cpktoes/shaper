@@ -8,11 +8,17 @@
  * needs ever pulls it in. `components/3d/three-source.test.ts` fails if any other file imports it, and
  * `e2e/prod/three-d.spec.ts` proves no other route loads it.
  *
- * The room (D-10): the camera is placed once, 50° above the floor on the shaper's side, and never moves; the four
- * lights are placed once and never move. Only the board's group turns (`setTurn`, 16-07), so a highlight
- * slides across the foam as the board turns rather than riding along with it. The group's orientation is
- * `turn × BOARD_TO_ROOM` and its place in front of the camera is `frameAtOne`'s (lib/geometry/view-3d.ts). Zoom and
- * slide (`setCrop`, 16-09) crop the picture the camera takes — `setViewOffset` — and never move it either.
+ * The room (D-10, D-43): a drawn shaping bay, with deep blue walls, a dusty floor and two long strips under the
+ * shelves down both side walls, the board lying on a pair of racks. Its numbers are all `lib/geometry/shaping-bay.ts`'s.
+ * The strips never move. Only the board's group turns (`setTurn`, 16-07), so a highlight slides across the foam as the
+ * board turns rather than riding along with it; its orientation is `turn × BOARD_TO_ROOM` and `boardPlace` rests it on
+ * its racks. The viewer moves only by `setViewer` (`viewerPlace`). Zoom and slide (`setCrop`, 16-09) crop the picture the
+ * camera takes — `setViewOffset` — and never move it either.
+ *
+ * The light is two line lights with length and fall-off, closed-form, written into the standard material
+ * (`applyBayLight`), so the foam, the fins, the ghost and the racks share it, with a neutral fill for the light coming
+ * back off the room. The room itself is painted by a small shader of its own, so its big flat walls cost almost
+ * nothing. three's own `RectAreaLight` reads the same in the picture and costs 100 KB of tables (16-18's measurements).
  *
  * It draws on demand — one frame per change, no loop at rest — and counts its frames on the host's
  * `data-frames`, which is how the browser tests know a board was actually drawn.
@@ -20,13 +26,15 @@
 
 import {
   AmbientLight,
+  BoxGeometry,
   BufferAttribute,
   BufferGeometry,
   Color,
-  DirectionalLight,
   DoubleSide,
   ExtrudeGeometry,
+  FrontSide,
   Group,
+  HemisphereLight,
   Line,
   LineBasicMaterial,
   LineLoop,
@@ -37,27 +45,39 @@ import {
   MeshStandardMaterial,
   NeutralToneMapping,
   PerspectiveCamera,
+  PlaneGeometry,
   Quaternion,
   Scene,
   ShaderMaterial,
   Shape,
+  Vector2,
   Vector3,
   WebGLRenderer,
+  type Material,
 } from "three";
 import type { BlankGhost } from "@/lib/geometry/blank-ghost";
 import type { Vec3 } from "@/lib/geometry/board-surface";
 import { FIN_ROOT_SINK, type PlacedFin } from "@/lib/geometry/fin-outline";
 import type { renderMesh, stringerLines } from "@/lib/geometry/board-surface-render";
 import {
-  BOARD_TO_ROOM,
-  frameAtOne,
-  quatMultiply,
-  REST_TURN,
-  ROOM_CAMERA,
-  roomCameraAxes,
-  type Frame,
-  type Quat,
-} from "@/lib/geometry/view-3d";
+  BAY,
+  BAY_PAINT,
+  BAY_TREATMENTS,
+  bayLens,
+  boardPlace,
+  floorPatch,
+  freePlace,
+  rackAngles,
+  rackSeat,
+  REST_VIEWER,
+  stripEnds,
+  viewerPlace,
+  type BayLens,
+  type BayTreatment,
+  type RackSeat,
+  type Viewer,
+} from "@/lib/geometry/shaping-bay";
+import { BOARD_TO_ROOM, quatMultiply, REST_TURN, ROOM_CAMERA, type Quat } from "@/lib/geometry/view-3d";
 
 /** The theme's colours the scene paints with, read from the page's tokens (any CSS colour three can parse). */
 export interface SceneColours {
@@ -67,7 +87,7 @@ export interface SceneColours {
   foam: string;
   /** The stringer, painted on the foam: `--surf-on-foam`. */
   onFoam: string;
-  /** Fins and the blank's veil (16-10, 16-11): `--surf-ink-muted`. */
+  /** The blank's veil (16-11): `--surf-ink-muted`. The fins are the bay's own dark paint in every theme. */
   inkMuted: string;
   /** The blank's outline (16-11): `--outline-blank-line`. */
   blankLine: string;
@@ -77,7 +97,7 @@ export interface SceneColours {
 export interface BoardSceneInput {
   mesh: ReturnType<typeof renderMesh>;
   stringer: ReturnType<typeof stringerLines>;
-  /** The board's points relative to `centre`, for framing at 1x (`framePointsOf`). */
+  /** The board's points relative to `centre`, for its seat on the racks and the lens (`framePointsOf`). */
   framePoints: Vec3[];
   /** The board's turning centre, in the surface's own axes. */
   centre: Vec3;
@@ -91,14 +111,20 @@ export type BoardSceneState = "ready" | "lost" | "no-webgl";
 
 export interface BoardSceneHandle {
   setBoard(input: BoardSceneInput): void;
+  /** Turns the board (16-07): its group, resting on the racks, and the racks with its swing. The strips never move. */
+  setTurn(turn: Quat): void;
+  /** Stands the viewer (D-43): the camera's place and axes inside the room. One frame per call. */
+  setViewer(viewer: Viewer): void;
   /**
-   * Turns the board (16-07): the board's group only — the camera and the lights never move (D-10). With a
-   * `frame` the board is also placed there in front of the camera (a view button's re-framing at 1x); without
-   * one it keeps its place.
+   * The Room switch (the founder, 2026-11-05): off, the walls, floor, ceiling, strips, shelves and racks are hidden and
+   * the canvas clears to the theme's ground. The strips' light on the board stays, so the board reads the same.
    */
-  setTurn(turn: Quat, frame?: Frame): void;
-  /** Where the board sits in front of the camera now. */
-  frame(): Frame;
+  setRoom(on: boolean): void;
+  /**
+   * How much the board floats free of its racks, 0 to 1: at 1 it turns about its home in any direction (the Room
+   * switch off); a glide down to 0 settles it back onto the racks.
+   */
+  setFree(share: number): void;
   /**
    * Zoom and slide (16-09): shows only `rect` of the picture the camera takes, in the canvas's own dots
    * (`camera.setViewOffset`), or the whole picture for `null`. The camera never moves and neither do the lights,
@@ -136,13 +162,13 @@ export interface BoardSceneHandle {
    * in place — nothing is rebuilt and nothing moves, so the turn, the frame, the zoom and the slide stay as they are.
    */
   setColours(colours: SceneColours): void;
-  /** Where the camera and the four lights are in the room — for the tests, which prove a turn never moves them. */
+  /** Where the camera and the strips' ends are in the room — for the tests, which prove a turn never moves them. */
   roomReport(): RoomReport;
   resize(width: number, height: number): void;
   dispose(): void;
 }
 
-/** The camera's position and the four lights' positions in the room, each rounded to 1e-6. */
+/** The camera's position and the four ends of the two strips in the room, each rounded to 1e-6. */
 export interface RoomReport {
   camera: Vec3;
   lights: Vec3[];
@@ -155,61 +181,160 @@ export const CONTEXT_RESTORE_WAIT_MS = 5000;
 const STRINGER_WIDTH_MM = 3;
 const STRINGER_LIFT_MM = 0.3;
 
-/** Where the camera stands, in millimetres from the room's centre along its view axis. Never changes. */
-const CAMERA_STANDOFF_MM = 4000;
-
 /**
- * The room's lighting: each light's strength as a share of one key level, and the tone curve's exposure. Three's
- * lights are in physical units, so a white surface square to a light of strength π shows its own colour. The
- * contract's starting shares (UI-SPEC §3) were near rail 1.0, far rail 0.7, overhead 0.45 and fill 0.2. There is no
- * hemisphere or floor-bounce light in this room; the fill is the only light that reaches a face turned away from
- * every tube.
- *
- * The named settings are the candidates shot for the founder (16-06, the first look and the second). `ROOM_LIGHTING`
- * is the one every theme uses. On a development server only, a picture script may pick another by name through
+ * The treatment in force: `BAY_TREATMENTS.A`, or on a development server one a picture script named through
  * `window.__shaper3dLighting`, so candidates can be shot without editing the app; a production build never reads it.
  */
-export interface RoomLighting {
-  key: number;
-  nearRail: number;
-  farRail: number;
-  overhead: number;
-  fill: number;
-  exposure: number;
+function bayTreatmentInForce(): BayTreatment {
+  if (process.env.NODE_ENV === "production") return BAY_TREATMENTS.A;
+  const name = (globalThis as { __shaper3dLighting?: unknown }).__shaper3dLighting;
+  return typeof name === "string" && name in BAY_TREATMENTS
+    ? BAY_TREATMENTS[name as keyof typeof BAY_TREATMENTS]
+    : BAY_TREATMENTS.A;
 }
 
-export const LIGHTING_CANDIDATES = {
-  /** The first look (2026-11-04): the overhead lowered from 0.45 to 0.2 so the far rail's edge read. */
-  firstLook: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0.2, fill: 0.2, exposure: 1 },
-  /** A: the overhead off — the two low rail tubes and the fill alone. */
-  A: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0, fill: 0.2, exposure: 1 },
-  /** B: A with the fill lowered, so the shadow side of the dome and the rail's roll go darker. */
-  B: { key: 2.9, nearRail: 1.0, farRail: 0.7, overhead: 0, fill: 0.08, exposure: 1 },
-  /** C: B with the far tube lowered too (this room has no floor bounce to lower): the strongest shadowing. */
-  C: { key: 2.9, nearRail: 1.0, farRail: 0.45, overhead: 0, fill: 0.04, exposure: 1 },
-} as const satisfies Record<string, RoomLighting>;
+/** The depth range: the room is small beside it, and a board can come close to the eye when it is raised. */
+const CAMERA_NEAR_MM = 40;
+const CAMERA_FAR_MM = 60000;
+
+/** Where the strips' ends stand, for every material that takes their light: the same four points, never moved. */
+interface BayLightUniforms {
+  bayA0: { value: Vector3 };
+  bayA1: { value: Vector3 };
+  bayB0: { value: Vector3 };
+  bayB1: { value: Vector3 };
+  bayStrength: { value: Color };
+}
 
 /**
- * The lighting the screen uses, in every theme: B, the two rail tubes with the overhead off and the fill lowered.
- * The founder at the first look: "The shadowing can be stronger. Maybe no overhead light just the side lights."; and
- * from the candidates picture: "I like the look of B best with ground 2, even on the slate/dark background."
+ * Lights a standard material by the two strips: at each fragment, in metres, `E` is the closed-form light from a line
+ * with its ends at L0 and L1 from the fragment, softened near the line so it never blows up; the specular takes the
+ * point on the strip nearest the reflected ray. In three 0.186.1 `geometryPosition`, `geometryNormal`,
+ * `geometryViewDir` and `material` are in scope at `lights_fragment_end`; `viewMatrix` turns the strip's ends into view
+ * space. Run before the material's first use (`onBeforeCompile` runs per material).
  */
-export const ROOM_LIGHTING: RoomLighting = LIGHTING_CANDIDATES.B;
-
-/** The tubes' colours: neutral white near 5000 K for the rail tubes, a little warmer overhead (UI-SPEC §3). */
-const LIGHT_COLOURS = { rail: "#fff4e8", overhead: "#ffeedd", fill: "#ffffff" } as const;
-
-/** The lighting in force: `ROOM_LIGHTING`, or on a development server a candidate a picture script named. */
-function lightingInForce(): RoomLighting {
-  if (process.env.NODE_ENV === "production") return ROOM_LIGHTING;
-  const name = (globalThis as { __shaper3dLighting?: unknown }).__shaper3dLighting;
-  return typeof name === "string" && name in LIGHTING_CANDIDATES
-    ? LIGHTING_CANDIDATES[name as keyof typeof LIGHTING_CANDIDATES]
-    : ROOM_LIGHTING;
+function applyBayLight(material: Material, light: BayLightUniforms) {
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, light);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <lights_physical_pars_fragment>",
+        `#include <lights_physical_pars_fragment>
+uniform vec3 bayA0;
+uniform vec3 bayA1;
+uniform vec3 bayB0;
+uniform vec3 bayB1;
+uniform vec3 bayStrength;
+void bayLine(vec3 P, vec3 N, vec3 V, vec3 A, vec3 B, const in PhysicalMaterial material, inout ReflectedLight light) {
+  vec3 L0 = ((viewMatrix * vec4(A, 1.0)).xyz - P) * 0.001;
+  vec3 L1 = ((viewMatrix * vec4(B, 1.0)).xyz - P) * 0.001;
+  float d0 = length(L0);
+  float d1 = length(L1);
+  float nl = 0.5 * (dot(N, L0) / d0 + dot(N, L1) / d1);
+  float E = 2.0 * max(nl, 0.0) / (d0 * d1 + dot(L0, L1) + 0.06);
+  light.directDiffuse += bayStrength * E * BRDF_Lambert(material.diffuseColor);
+  vec3 R = reflect(-V, N);
+  vec3 Ld = L1 - L0;
+  float a = dot(R, Ld);
+  float t = clamp((dot(R, L0) * a - dot(L0, Ld)) / max(dot(Ld, Ld) - a * a, 1e-5), 0.0, 1.0);
+  vec3 Lv = L0 + t * Ld;
+  float dist = length(Lv);
+  vec3 L = Lv / dist;
+  light.directSpecular += bayStrength * max(dot(N, L), 0.0) * BRDF_GGX(L, V, N, material) / (dist * dist + 0.06) * 0.35;
+}`,
+      )
+      .replace(
+        "#include <lights_fragment_end>",
+        `#include <lights_fragment_end>
+bayLine(geometryPosition, geometryNormal, geometryViewDir, bayA0, bayA1, material, reflectedLight);
+bayLine(geometryPosition, geometryNormal, geometryViewDir, bayB0, bayB1, material, reflectedLight);`,
+      );
+  };
+  material.needsUpdate = true;
 }
 
-/** The rail lights' height above the deck's plane (UI-SPEC §3). */
-const RAIL_LIGHT_ELEVATION_DEG = 8;
+/**
+ * The room's paint: its own small shader, not lit by the board's light model. Each surface is `albedo × (base + glow ×
+ * strip × E)`, with `E` the strips' own. A strip hangs under its shelf with the sill below it, so on the walls beside it
+ * the light is only the slot between the two: above the shelf and below the sill the wall stays dim (`slot`), as in the
+ * photo, and the far strip still reaches it. The floor falls dark under the sill, carries its dust (value noise, the
+ * domain turned 30° so no grid shows from overhead) and a soft dark patch under the board. `kind` is 0 for a wall or a
+ * bench, 1 for the floor.
+ */
+const ROOM_VERTEX = `
+varying vec3 vP;
+varying vec3 vN;
+void main() {
+  vec4 world = modelMatrix * vec4(position, 1.0);
+  vP = world.xyz;
+  vN = normalize(mat3(modelMatrix) * normal);
+  gl_Position = projectionMatrix * viewMatrix * world;
+}
+`;
+const ROOM_FRAGMENT = `
+uniform vec3 albedo;
+uniform vec3 bayA0;
+uniform vec3 bayA1;
+uniform vec3 bayB0;
+uniform vec3 bayB1;
+uniform vec3 stripColour;
+uniform float base;
+uniform float glow;
+uniform float kind;
+uniform float underShelf;
+uniform float overSill;
+uniform float sillFront;
+uniform vec3 patchCentre;
+uniform vec2 patchSize;
+uniform vec2 patchAxis;
+varying vec3 vP;
+varying vec3 vN;
+float lineLight(vec3 P, vec3 N, vec3 A, vec3 B) {
+  vec3 L0 = (A - P) * 0.001;
+  vec3 L1 = (B - P) * 0.001;
+  float d0 = length(L0);
+  float d1 = length(L1);
+  float nl = 0.5 * (dot(N, L0) / d0 + dot(N, L1) / d1);
+  return 2.0 * max(nl, 0.0) / (d0 * d1 + dot(L0, L1) + 0.06);
+}
+float slot(vec3 P, vec3 N, float stripZ) {
+  float own = smoothstep(900.0, 300.0, abs(P.z - stripZ)) * abs(N.z);
+  float open = smoothstep(underShelf + 30.0, underShelf - 10.0, P.y) * smoothstep(overSill - 30.0, overSill + 10.0, P.y);
+  return mix(1.0, open, own);
+}
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void main() {
+  vec3 n = normalize(vN);
+  float e;
+  vec3 c = albedo;
+  if (kind > 0.5) {
+    e = (lineLight(vP, n, bayA0, bayA1) + lineLight(vP, n, bayB0, bayB1)) * smoothstep(sillFront + 60.0, sillFront - 260.0, abs(vP.z));
+    vec2 d = mat2(0.866, -0.5, 0.5, 0.866) * vP.xz;
+    float s = noise(d * vec2(0.0016, 0.0055) + 3.1) * 0.6 + noise(d * 0.012) * 0.3 + noise(d * 0.05) * 0.1;
+    c *= 1.0 - 0.2 * smoothstep(0.34, 0.78, s);
+  } else {
+    e = lineLight(vP, n, bayA0, bayA1) * slot(vP, n, bayA0.z) + lineLight(vP, n, bayB0, bayB1) * slot(vP, n, bayB0.z);
+    e *= mix(0.4, 1.0, abs(n.z) + abs(n.y));
+  }
+  vec3 lit = c * (base + glow * e * stripColour);
+  if (kind > 0.5) {
+    vec2 d = vP.xz - patchCentre.xz;
+    vec2 q = vec2(dot(d, patchAxis), dot(d, vec2(-patchAxis.y, patchAxis.x))) / patchSize;
+    lit *= 1.0 - 0.5 * smoothstep(1.0, 0.25, length(q));
+  }
+  gl_FragColor = vec4(lit, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
 
 /** The wire view's ink: black on the foam whatever the theme (the founder, D-42). */
 const WIRE_INK = "#000000";
@@ -225,7 +350,9 @@ function drawingDensity(wire: boolean): number {
 const NOOP_HANDLE: BoardSceneHandle = {
   setBoard() {},
   setTurn() {},
-  frame: () => ({ distance: CAMERA_STANDOFF_MM, right: 0, up: 0 }),
+  setViewer() {},
+  setRoom() {},
+  setFree() {},
   setCrop() {},
   setFins() {},
   setGhost() {},
@@ -386,6 +513,139 @@ function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 }
   return { geometry, matrix };
 }
 
+/** The drawn bay and what the scene needs to keep hold of. */
+interface DrawnBay {
+  room: Group;
+  racks: Group;
+  light: BayLightUniforms;
+  patch: { centre: Vector3; size: Vector2; axis: Vector2 };
+  setRacks(seat: RackSeat): void;
+  dispose(): void;
+}
+
+/**
+ * The bay: floor, walls and ceiling as planes drawn from the inside only, so none of them ever stands between the viewer
+ * and the board, and a viewer overhead sees down through the ceiling; the shelves, sills and strips down both side
+ * walls; and two racks, which the swing turns. The room's colours are its own in every theme (D-43).
+ */
+function buildBay(treatment: BayTreatment): DrawnBay {
+  const { lengthMm: L, widthMm: W, heightMm: H } = BAY;
+  const owned: { dispose(): void }[] = [];
+  const room = new Group();
+  const [[a0, a1], [b0, b1]] = stripEnds().map((pair) => pair.map((end) => new Vector3(...end)));
+  const light: BayLightUniforms = {
+    bayA0: { value: a0 },
+    bayA1: { value: a1 },
+    bayB0: { value: b0 },
+    bayB1: { value: b1 },
+    bayStrength: { value: new Color(BAY_PAINT.strip).multiplyScalar(treatment.strip) },
+  };
+  const patch = { centre: new Vector3(), size: new Vector2(1, 1), axis: new Vector2(1, 0) };
+
+  const paint = (colour: string, base: number, glow: number, kind: 0 | 1) => {
+    const material = new ShaderMaterial({
+      uniforms: {
+        albedo: { value: new Color(colour) },
+        stripColour: { value: new Color(BAY_PAINT.strip) },
+        bayA0: light.bayA0,
+        bayA1: light.bayA1,
+        bayB0: light.bayB0,
+        bayB1: light.bayB1,
+        base: { value: base },
+        glow: { value: glow },
+        kind: { value: kind },
+        underShelf: { value: BAY.benchTopMm - BAY.benchThickMm },
+        overSill: { value: BAY.sillTopMm },
+        sillFront: { value: W / 2 - BAY.sillDepthMm },
+        patchCentre: { value: patch.centre },
+        patchSize: { value: patch.size },
+        patchAxis: { value: patch.axis },
+      },
+      vertexShader: ROOM_VERTEX,
+      fragmentShader: ROOM_FRAGMENT,
+      side: FrontSide,
+    });
+    owned.push(material);
+    return material;
+  };
+  const wall = paint(BAY_PAINT.wall, treatment.wallBase, treatment.wallGlow, 0);
+  const floor = paint(treatment.floor, treatment.floorBase, treatment.floorGlow, 1);
+  const bench = paint(BAY_PAINT.bench, treatment.sillBase, treatment.sillGlow, 0);
+  const ceiling = new MeshBasicMaterial({ color: new Color(BAY_PAINT.ceiling), side: FrontSide });
+  const strip = new MeshBasicMaterial({ color: new Color(BAY_PAINT.strip), toneMapped: false });
+  owned.push(ceiling, strip);
+
+  const plane = (w: number, h: number, material: Material, at: Vec3, turn: Vec3) => {
+    const geometry = new PlaneGeometry(w, h);
+    const mesh = new Mesh(geometry, material);
+    mesh.position.set(...at);
+    mesh.rotation.set(...turn);
+    room.add(mesh);
+    owned.push(geometry);
+  };
+  plane(L, W, floor, [0, 0, 0], [-Math.PI / 2, 0, 0]);
+  plane(L, W, ceiling, [0, H, 0], [Math.PI / 2, 0, 0]);
+  plane(L, H, wall, [0, H / 2, -W / 2], [0, 0, 0]);
+  plane(L, H, wall, [0, H / 2, W / 2], [0, Math.PI, 0]);
+  plane(W, H, wall, [-L / 2, H / 2, 0], [0, Math.PI / 2, 0]);
+  plane(W, H, wall, [L / 2, H / 2, 0], [0, -Math.PI / 2, 0]);
+
+  const box = (parent: Group, size: Vec3, material: Material, at: Vec3) => {
+    const geometry = new BoxGeometry(...size);
+    const mesh = new Mesh(geometry, material);
+    mesh.position.set(...at);
+    parent.add(mesh);
+    owned.push(geometry);
+  };
+  /** A shelf or sill: its top and its front edge only, so a viewer standing at the rail under one sees past it. */
+  const ledge = (side: number, top: number, depth: number, thick: number) => {
+    plane(L, depth, bench, [0, top, side * (W / 2 - depth / 2)], [-Math.PI / 2, 0, 0]);
+    plane(L, thick, bench, [0, top - thick / 2, side * (W / 2 - depth)], [0, side > 0 ? Math.PI : 0, 0]);
+  };
+  for (const side of [-1, 1]) {
+    ledge(side, BAY.benchTopMm, BAY.benchDepthMm, BAY.benchThickMm);
+    ledge(side, BAY.sillTopMm, BAY.sillDepthMm, BAY.sillThickMm);
+    box(room, [L - 2 * BAY.stripEndInsetMm, BAY.stripFaceMm, BAY.stripFaceMm], strip, [
+      0,
+      BAY.stripHeightMm,
+      side * (W / 2 - BAY.stripInsetMm),
+    ]);
+  }
+
+  const racks = new Group();
+  room.add(racks);
+  const steel = new MeshStandardMaterial({ color: new Color(BAY_PAINT.rack), roughness: 0.7, metalness: 0.1 });
+  const pad = new MeshStandardMaterial({ color: new Color(BAY_PAINT.pad), roughness: 0.95, metalness: 0 });
+  applyBayLight(steel, light);
+  applyBayLight(pad, light);
+  owned.push(steel, pad);
+  const stands = [-1, 1].map(() => {
+    const stand = new Group();
+    const top = BAY.rackTopMm;
+    const headDepth = 2 * BAY.padHalfDepthMm;
+    box(stand, [60, top - 50, 60], steel, [0, (top - 50) / 2, 0]);
+    box(stand, [headDepth, 50, 2 * BAY.padHalfSpanMm], pad, [0, top - 25, 0]);
+    box(stand, [70, 40, 620], steel, [0, 20, 0]);
+    box(stand, [420, 40, 70], steel, [0, 20, 0]);
+    racks.add(stand);
+    return stand;
+  });
+
+  return {
+    room,
+    racks,
+    light,
+    patch,
+    setRacks(seat) {
+      stands[0].position.x = -seat.at;
+      stands[1].position.x = seat.at;
+    },
+    dispose() {
+      for (const d of owned) d.dispose();
+    },
+  };
+}
+
 /**
  * Makes the scene's canvas inside `host`, draws `input`'s board in the room, and returns the handle the screen
  * drives it with. With no drawing context to be had it reports `no-webgl`, removes its canvas and returns a
@@ -414,31 +674,20 @@ export function mountBoardScene(
   }
   renderer.setPixelRatio(drawingDensity(false));
   renderer.toneMapping = NeutralToneMapping;
-  const lighting = lightingInForce();
-  renderer.toneMappingExposure = lighting.exposure;
+  const treatment = bayTreatmentInForce();
+  renderer.toneMappingExposure = 1;
 
   const scene = new Scene();
-  const axes = roomCameraAxes();
-  const camera = new PerspectiveCamera(ROOM_CAMERA.fovDeg, 1, 1, 10);
-  const cameraAt = new Vector3(...axes.forward).multiplyScalar(-CAMERA_STANDOFF_MM);
-  camera.position.copy(cameraAt);
-  camera.up.set(0, 1, 0);
-  camera.lookAt(0, 0, 0);
+  const camera = new PerspectiveCamera(ROOM_CAMERA.fovDeg, 1, CAMERA_NEAR_MM, CAMERA_FAR_MM);
 
-  // The room's lights, placed once (D-10). A directional light shines from its position toward its target, the
-  // room's centre. The near rail is the room's +Z side, the camera's side.
-  const e = (RAIL_LIGHT_ELEVATION_DEG * Math.PI) / 180;
-  const nearRail = new DirectionalLight(LIGHT_COLOURS.rail, lighting.nearRail * lighting.key);
-  nearRail.position.set(0, Math.sin(e), Math.cos(e));
-  const farRail = new DirectionalLight(LIGHT_COLOURS.rail, lighting.farRail * lighting.key);
-  farRail.position.set(0, Math.sin(e), -Math.cos(e));
-  const overhead = new DirectionalLight(LIGHT_COLOURS.overhead, lighting.overhead * lighting.key);
-  overhead.position.set(0, 1, 0);
-  const fill = new AmbientLight(LIGHT_COLOURS.fill, lighting.fill * lighting.key);
-  scene.add(nearRail, farRail, overhead, fill);
+  // The room and its light, placed once (D-10, D-43). The strips never move; the fill stands for the room's own light.
+  const bay = buildBay(treatment);
+  scene.add(bay.room);
+  scene.add(new AmbientLight(treatment.fillColour, treatment.fill));
+  scene.add(new HemisphereLight(BAY_PAINT.hemisphereSky, BAY_PAINT.hemisphereGround, treatment.bounce * 3));
 
-  // The board: `turned` carries the turn and the place in front of the camera; `centred` moves the surface so it
-  // turns about its own middle.
+  // The board: `turned` carries the turn and its place on the racks; `centred` moves the surface so it turns about its
+  // own middle.
   const turned = new Group();
   const centred = new Group();
   turned.add(centred);
@@ -451,7 +700,10 @@ export function mountBoardScene(
 
   let current = input;
   let turn: Quat = REST_TURN;
-  let frame: Frame = { distance: CAMERA_STANDOFF_MM, right: 0, up: 0 };
+  let viewer: Viewer = REST_VIEWER;
+  let seat: RackSeat = rackSeat(current.framePoints);
+  let lens: BayLens = { distanceMm: BAY.nearestMm, lensDeg: ROOM_CAMERA.fovDeg };
+  let freeShare = 0;
   let size = { width: Math.max(1, host.clientWidth), height: Math.max(1, host.clientHeight) };
   let disposables: { dispose(): void }[] = [];
   let fins: readonly PlacedFin[] = [];
@@ -469,7 +721,6 @@ export function mountBoardScene(
   /** Every colour the scene paints with and the theme's token it comes from, so a theme change repaints in place. */
   type Tint = [Color, keyof SceneColours];
   let boardTints: Tint[] = [];
-  let finTints: Tint[] = [];
   let ghostTints: Tint[] = [];
   let pending = 0;
   let frames = 0;
@@ -490,39 +741,57 @@ export function mountBoardScene(
     }
   };
 
-  /** The board's group at `frame`, turned by `turn`: the only thing in the room that ever moves. */
-  const placeBoard = (reframe = true) => {
-    if (reframe) frame = frameAtOne(current.framePoints, turn, size.width / size.height);
+  /** The board's group turned by `turn` and rested on its racks, and the racks with its swing. */
+  const placeBoard = () => {
     const q = quatMultiply(turn, BOARD_TO_ROOM);
     turned.quaternion.copy(new Quaternion(q[0], q[1], q[2], q[3]));
-    turned.position
-      .copy(cameraAt)
-      .addScaledVector(new Vector3(...axes.forward), frame.distance)
-      .addScaledVector(new Vector3(...axes.right), frame.right)
-      .addScaledVector(new Vector3(...axes.up), frame.up);
-    // The board stays within its own reach of its centre whichever way it turns, so the depth range can hug it.
-    let reach = 1;
-    for (const p of current.framePoints) reach = Math.max(reach, Math.hypot(p[0], p[1], p[2]));
-    camera.near = Math.max(1, frame.distance - reach * 1.5);
-    camera.far = frame.distance + reach * 1.5;
+    const angles = rackAngles(turn);
+    const racked = boardPlace(current.framePoints, angles, seat);
+    const free = freePlace(seat);
+    turned.position.set(
+      racked[0] + (free[0] - racked[0]) * freeShare,
+      racked[1] + (free[1] - racked[1]) * freeShare,
+      racked[2] + (free[2] - racked[2]) * freeShare,
+    );
+    bay.racks.rotation.y = (-angles.swing * Math.PI) / 180;
+    const under = floorPatch(racked, angles, seat);
+    bay.patch.centre.set(under.centre[0], 0, under.centre[1]);
+    bay.patch.size.set(under.size[0], under.size[1]);
+    bay.patch.axis.set(under.axis[0], under.axis[1]);
+    bay.racks.updateMatrixWorld();
+  };
+
+  /** The camera where the viewer stands, for this window's lens. Its aim and its crop are the only things it carries. */
+  const placeViewer = () => {
+    const place = viewerPlace(viewer, lens, seat);
+    camera.position.set(...place.position);
+    camera.up.set(...place.axes.up);
+    camera.lookAt(
+      place.position[0] + place.axes.forward[0],
+      place.position[1] + place.axes.forward[1],
+      place.position[2] + place.axes.forward[2],
+    );
+    camera.fov = place.lensDeg;
     camera.aspect = size.width / size.height;
     camera.updateProjectionMatrix();
   };
 
-  /** The fins' solids, made again from `fins` in the board's fin colour. */
+  /** The lens for this board and this window: on a new board or a new size only. */
+  const fitLens = () => {
+    seat = rackSeat(current.framePoints);
+    bay.setRacks(seat);
+    lens = bayLens(current.framePoints, seat, size.width / size.height);
+  };
+
+  /** The fins' solids, made again from `fins`, in the bay's dark fin paint in every theme (F5). */
   const buildFins = () => {
     for (const d of finDisposables) d.dispose();
     finDisposables = [];
-    finTints = [];
     finGroup.clear();
     if (fins.length === 0) return;
-    const material = new MeshStandardMaterial({
-      color: new Color(current.colours.inkMuted),
-      roughness: FIN_ROUGHNESS,
-      metalness: 0,
-    });
+    const material = new MeshStandardMaterial({ color: new Color(BAY_PAINT.fin), roughness: FIN_ROUGHNESS, metalness: 0 });
+    applyBayLight(material, bay.light);
     finDisposables.push(material);
-    finTints = [[material.color, "inkMuted"]];
     for (const fin of fins) {
       const { geometry, matrix } = finSolid(fin);
       const mesh = new Mesh(geometry, material);
@@ -555,6 +824,7 @@ export function mountBoardScene(
       opacity: GHOST_OPACITY,
       depthWrite: false,
     });
+    applyBayLight(veil, bay.light);
     const skin = new Mesh(geometry, veil);
     skin.renderOrder = 1;
     const lineGeometry = new BufferGeometry();
@@ -582,6 +852,7 @@ export function mountBoardScene(
     geometry.setAttribute("normal", new BufferAttribute(mesh.normals, 3));
     geometry.setIndex(new BufferAttribute(mesh.indices, 1));
     const foam = new MeshStandardMaterial({ color: new Color(colours.foam), roughness: 0.92, metalness: 0 });
+    applyBayLight(foam, bay.light);
     const striped = new ShaderMaterial({
       uniforms: {
         foam: { value: new Color(colours.foam) },
@@ -651,16 +922,18 @@ export function mountBoardScene(
     buildFins();
     buildGhost();
     centred.position.set(-centre[0], -centre[1], -centre[2]);
+    fitLens();
     placeBoard();
+    placeViewer();
   };
 
   const round = (v: number) => Math.round(v * 1e6) / 1e6 + 0;
   const roomReport = (): RoomReport => ({
     camera: [round(camera.position.x), round(camera.position.y), round(camera.position.z)],
-    lights: [nearRail, farRail, overhead, fill].map((light) => [
-      round(light.position.x),
-      round(light.position.y),
-      round(light.position.z),
+    lights: [bay.light.bayA0, bay.light.bayA1, bay.light.bayB0, bay.light.bayB1].map(({ value }) => [
+      round(value.x),
+      round(value.y),
+      round(value.z),
     ]),
   });
 
@@ -672,6 +945,8 @@ export function mountBoardScene(
     host.dataset.frames = String(frames);
     // Read back from the room's own objects after every frame, so a test can see they never moved.
     host.dataset.room = JSON.stringify(roomReport());
+    host.dataset.place = turned.position.toArray().map((v) => v.toFixed(1)).join(" ");
+    host.dataset.racks = ((-bay.racks.rotation.y * 180) / Math.PI).toFixed(2);
     if (!reportedReady) {
       reportedReady = true;
       events.onState("ready");
@@ -721,14 +996,29 @@ export function mountBoardScene(
       build();
       schedule();
     },
-    setTurn(next, at) {
+    setTurn(next) {
       if (disposed) return;
       turn = next;
-      if (at) frame = at;
-      placeBoard(false);
+      placeBoard();
       schedule();
     },
-    frame: () => frame,
+    setViewer(next) {
+      if (disposed) return;
+      viewer = next;
+      placeViewer();
+      schedule();
+    },
+    setRoom(on) {
+      if (disposed) return;
+      bay.room.visible = on;
+      schedule();
+    },
+    setFree(share) {
+      if (disposed) return;
+      freeShare = share;
+      placeBoard();
+      schedule();
+    },
     setCrop(rect) {
       if (disposed) return;
       // A crop of the camera's own picture: its position, its aim and the lights are untouched.
@@ -762,7 +1052,7 @@ export function mountBoardScene(
       if (disposed) return;
       current = { ...current, colours };
       renderer.setClearColor(new Color(colours.canvas), 1);
-      for (const [color, token] of [...boardTints, ...finTints, ...ghostTints]) color.set(colours[token]);
+      for (const [color, token] of [...boardTints, ...ghostTints]) color.set(colours[token]);
       schedule();
     },
     setGhost(next, visible) {
@@ -780,7 +1070,9 @@ export function mountBoardScene(
       if (width === size.width && height === size.height) return;
       size = { width, height };
       renderer.setSize(width, height, false);
+      fitLens();
       placeBoard();
+      placeViewer();
       schedule();
     },
     dispose() {
@@ -791,6 +1083,7 @@ export function mountBoardScene(
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
       for (const d of [...disposables, ...finDisposables, ...ghostDisposables]) d.dispose();
+      bay.dispose();
       disposables = [];
       finDisposables = [];
       ghostDisposables = [];
