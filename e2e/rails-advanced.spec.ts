@@ -899,7 +899,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(nudgeLabel(tail, "Bottom Tuck 3")).toBeVisible();
     await expect(body.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toBeVisible();
     const rows = await advancedRows(body);
-    expect(rows.at(-4)).toBe("Sharp Bottom Tuck");
+    expect(rows.at(-5)).toBe("Sharp Bottom Tuck");
+    expect(rows.at(-4)).toBe("These controls are invisible here and corresponding controls with visual verification are found on the 3D page.");
     expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(18)}`);
     expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${inches(20)}`);
     expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
