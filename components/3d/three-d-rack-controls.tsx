@@ -11,6 +11,7 @@ import {
   raiseSlider,
   SIGHT_LIMIT_DEG,
   SIGHT_STEP_DEG,
+  sightShown,
   type RackAngles,
   type RackSeat,
 } from "@/lib/geometry/shaping-bay";
@@ -128,6 +129,7 @@ export function ThreeDOnTheRacks({
 }) {
   const reading = useReading(store);
   const roll = Math.round(reading.roll) + 0;
+  const sight = sightShown(reading.sight);
   return (
     <div className="flex flex-col gap-2" data-three-d-racks>
       <div className="flex gap-4">
@@ -162,7 +164,7 @@ export function ThreeDOnTheRacks({
       <SliderRow
         lockExempt
         label={THREE_D_COPY.lookDownRail}
-        displayValue={THREE_D_COPY.lookValue(reading.sight)}
+        displayValue={THREE_D_COPY.lookValue(sight)}
         value={reading.sight}
         min={-SIGHT_LIMIT_DEG}
         max={SIGHT_LIMIT_DEG}
@@ -172,7 +174,7 @@ export function ThreeDOnTheRacks({
         leftHint={THREE_D_COPY.lookLeft}
         rightHint={THREE_D_COPY.lookRight}
         sliderLabel={THREE_D_COPY.lookDownRail}
-        sliderValueText={THREE_D_COPY.lookSpoken(reading.sight)}
+        sliderValueText={THREE_D_COPY.lookSpoken(sight)}
       />
     </div>
   );

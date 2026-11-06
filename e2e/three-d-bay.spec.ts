@@ -442,6 +442,10 @@ test.describe("the shaping bay", () => {
     await setSlider(page, THREE_D_COPY.lookDownRail, 6);
     await expect.poll(async () => isTurn(await turnOf(host), rackTurn({ ...AT_REST, swing: 6 }))).toBe(true);
     await expect(page.getByText(`${THREE_D_COPY.lookDownRail} — 6° right`, { exact: true })).toBeVisible();
+    // The reading is the nearest half degree; the turn keeps the slider's exact stop.
+    await setSlider(page, THREE_D_COPY.lookDownRail, 6.25);
+    await expect(page.getByText(`${THREE_D_COPY.lookDownRail} — 6.5° right`, { exact: true })).toBeVisible();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn({ ...AT_REST, swing: 6.25 }))).toBe(true);
     // A turned board has both ends on their racks, and reads so.
     await setSlider(page, THREE_D_COPY.rotateOnSide, 30);
     await expect(page.locator("[data-three-d-racks]").getByText(THREE_D_COPY.onTheRack, { exact: true })).toHaveCount(2);

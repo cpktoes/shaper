@@ -40,6 +40,7 @@ import {
   settleOnRacks,
   shownAngles,
   SIGHT_LIMIT_DEG,
+  sightShown,
   standAt,
   stripEnds,
   totalRoll,
@@ -781,6 +782,16 @@ describe("bayLens — where the viewer stands at 1x", () => {
 });
 
 describe("Look Down the Rail (D-44)", () => {
+  it("the panel shows the nearest half degree, the same either side, and a hair off the stringer reads as on it", () => {
+    expect(sightShown(5.684341886080802e-14)).toBe(0); // the reading the founder saw, 2026-11-06
+    expect(sightShown(-5.684341886080802e-14)).toBe(0);
+    expect(sightShown(0.2)).toBe(0);
+    expect(sightShown(6.25)).toBe(6.5);
+    expect(sightShown(-6.25)).toBe(-6.5);
+    expect(sightShown(6.5)).toBe(6.5);
+    expect(sightShown(-SIGHT_LIMIT_DEG)).toBe(-SIGHT_LIMIT_DEG);
+  });
+
   for (const { label, seat, points, surface } of [...BOARDS, LONGEST]) {
     it(`${label}: reaches a true sight line down each rail, from the tail and from the nose`, () => {
       for (const [, aspect] of ASPECTS) {

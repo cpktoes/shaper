@@ -462,6 +462,13 @@ export const REST_VIEWER: Viewer = {
 export const SIGHT_LIMIT_DEG = 25;
 /** Look Down the Rail's step: about 13 mm of eye at the end of the room, finer than a rail's line needs. */
 export const SIGHT_STEP_DEG = 0.25;
+/** What the panel shows of Look Down the Rail (the founder, 2026-11-06): the nearest half degree. */
+export const SIGHT_SHOWN_DEG = 0.5;
+
+/** An angle as the panel shows it, the same either side of the stringer. The view itself keeps the exact angle. */
+export function sightShown(deg: number): number {
+  return Math.sign(deg) * Math.round(Math.abs(deg) / SIGHT_SHOWN_DEG) * SIGHT_SHOWN_DEG + 0;
+}
 
 const OVERHEAD_DEG = 89.9;
 
