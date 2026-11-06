@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  boardOutlineLoop,
+  boardFileOutlineLoop,
   boardProfileLines,
   boardSlices,
   buildBoardSurface,
@@ -239,7 +239,7 @@ describe("the whole export, on every preset and every swallow of the 40-board se
       }
 
       // The outline and the profile files: the mesh's own curves, the profile as deck then bottom.
-      const outline = boardOutlineLoop(surface);
+      const outline = boardFileOutlineLoop(surface);
       const profile = boardProfileLines(surface);
       const outlineBack = readXyz(text(`${stem}-outline.txt`));
       expect(outlineBack.length).toBe(1);

@@ -6,14 +6,14 @@ import { formatDim } from "@/lib/geometry/measure-display";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm } from "@/lib/geometry/units";
-import { HARD_EDGE_FADE, railCharacterDifferences } from "@/lib/geometry/volume";
+import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE, railCharacterDifferences } from "@/lib/geometry/volume";
 import { buildSnapshot, parseSnapshot, type DesignSnapshotFields } from "./design-snapshot";
-import { railCharacterLitresMove, railCharacterReportLines } from "./rail-character-report";
+import { RAIL_CHARACTER_REPORT_NOTE, railCharacterLitresMove, railCharacterReportLines } from "./rail-character-report";
 
 /**
- * The founder's read-only report of how the whole rail's fade moves every saved board's litres (Phase 16, D-32,
- * 14 D-18). Every expected figure is worked out here from the app's own functions — go-live 1's rule by name,
- * the live rule by `summarizeDesign` — never typed.
+ * The founder's read-only report of how far the whole rail's fade alone moves every saved board's litres (Phase 16,
+ * D-32, 14 D-18). Every expected figure is worked out here from the app's own functions — go-live 1's rule and D-32's
+ * by name — never typed.
  */
 
 const BOARDS = phase16LiveBoards();
@@ -25,6 +25,8 @@ const UNTOUCHED = BOARDS.filter((b) => !reached(b.fields));
 
 const goLiveOneLitres = (fields: DesignSnapshotFields | (typeof BOARDS)[number]["fields"]) =>
   summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: HARD_EDGE_FADE }).volumeLitres;
+const fadedLitres = (fields: DesignSnapshotFields | (typeof BOARDS)[number]["fields"]) =>
+  summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
 
 const WORDS: Record<string, string> = {
   hardEdge: "Hard Edge",
@@ -61,13 +63,29 @@ describe("railCharacterLitresMove", () => {
     for (const { fields } of UNTOUCHED) expect(railCharacterLitresMove(fields)).toBeNull();
   });
 
-  it("reads go-live 1's rule before and the live rule after, on every board D-32 reaches", () => {
+  it("a board it leaves out reads the same under both rules, to the last digit, its own Blends From and Ends At too", () => {
+    expect(UNTOUCHED.length).toBeGreaterThan(0);
+    for (const { fields } of UNTOUCHED) {
+      const own = {
+        ...fields,
+        rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(16), tailHardEdgeEndsAt: inchesToMm(22) },
+      };
+      for (const board of [fields, own]) {
+        expect(railCharacterLitresMove(board)).toBeNull();
+        expect(fadedLitres(board)).toBe(goLiveOneLitres(board));
+      }
+    }
+  }, 120_000);
+
+  it("reads go-live 1's rule before and D-32 alone after, on every board D-32 reaches, never the live rule's later work", () => {
     expect(MOVED.length).toBe(BOARDS.length - UNTOUCHED.length);
     for (const { fields } of MOVED) {
       const move = railCharacterLitresMove(fields);
       expect(move).not.toBeNull();
       expect(move!.before).toBe(goLiveOneLitres(fields));
-      expect(move!.after).toBe(summarizeDesign(fields).volumeLitres);
+      expect(move!.after).toBe(fadedLitres(fields));
+      // The tail's roll reaches every board, so a figure that held the live rule would differ here.
+      expect(move!.after).not.toBe(summarizeDesign(fields).volumeLitres);
     }
   }, 120_000);
 });
@@ -80,7 +98,7 @@ describe("railCharacterReportLines", () => {
     const moves = MOVED.map(({ label, fields }) => ({
       id: label,
       before: goLiveOneLitres(fields),
-      after: summarizeDesign(fields).volumeLitres,
+      after: fadedLitres(fields),
       tail: words(railCharacterDifferences(fields.rails, "tail")),
       nose: words(railCharacterDifferences(fields.rails, "nose")),
       // No test board stores either setting, so both read the defaults.
@@ -105,7 +123,8 @@ describe("railCharacterReportLines", () => {
     );
     const largest = sorted[0];
     expect(lines[1 + MOVED.length]).toBe(`largest move: ${largest.id}, ${signed(largest.after - largest.before)} L`);
-    expect(lines.length).toBe(MOVED.length + 2);
+    expect(lines[2 + MOVED.length]).toBe(RAIL_CHARACTER_REPORT_NOTE);
+    expect(lines.length).toBe(MOVED.length + 3);
     for (const { label } of UNTOUCHED) expect(lines.some((line) => line.startsWith(`${label}:`))).toBe(false);
   }, 120_000);
 
@@ -135,6 +154,7 @@ describe("railCharacterReportLines", () => {
     expect(lines).toEqual([
       `rail-character report: ${UNTOUCHED.length} saved boards; ${UNTOUCHED.length} open; 0 whose tail or nose rail differs from the centre's`,
       "largest move: none",
+      RAIL_CHARACTER_REPORT_NOTE,
     ]);
   });
 
@@ -156,7 +176,7 @@ describe("railCharacterReportLines", () => {
     for (const [id, fields] of [["a1", first], ["b2", second]] as const) {
       const move = railCharacterLitresMove(fields)!;
       expect(move.before).toBe(goLiveOneLitres(fields));
-      expect(move.after).toBe(summarizeDesign(fields).volumeLitres);
+      expect(move.after).toBe(fadedLitres(fields));
       const line = lines.find((l) => l.startsWith(`${id}: `));
       expect(line).toContain(` — ${move.before.toFixed(2)} → ${move.after.toFixed(2)} L (`);
     }
@@ -168,7 +188,7 @@ describe("railCharacterReportLines", () => {
     const a1 = lines.find((l) => l.startsWith("a1: "))!;
     expect(a1).toContain(" (default) · ends at ");
     // Every printed line is a count, an id with its differences, settings and litres, or the largest move.
-    for (const line of lines.slice(1)) {
+    for (const line of lines.slice(1, -1)) {
       expect(line).toMatch(
         /^(a1|b2): tail .+ · blends from .+ · ends at .+; nose .+ — \d+\.\d\d → \d+\.\d\d L \([+-]?\d+\.\d{4}\)$|^largest move: /,
       );

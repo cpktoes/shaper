@@ -109,15 +109,17 @@ export interface BoardSurfaceInput {
  * edge (its section's `sharpness`: 1 where both ends of a blend are sharp, the sharp end's share where one
  * is, D-32); `isSlice` marks the litres' own stations. `right` and `left` are the two half-sections' vertices
  * point for point (`HALF_SECTION_POINT_COUNT` each, inside edge on the deck round the rail to the inside edge on the
- * bottom), the same slot on every ring, so a loft line between two rings runs along the mesh's own edges. `wingTake` is
- * how much the wings have cut the outline in at this station, 0 on a board with none: the wire view reads it, and it
- * places nothing.
+ * bottom), the same slot on every ring, so a loft line between two rings runs along the mesh's own edges. `walls` is
+ * each side's notch wall, bottom corner to deck corner, the same heights by slot on every ring inside the notch and at
+ * the crotch, null everywhere else. `wingTake` is how much the wings have cut the outline in at this station, 0 on a board
+ * with none: the wire view reads it, and it places nothing.
  */
 export interface SurfaceRing {
   station: Mm;
   pieces: { first: number; count: number; inner: Mm }[];
   bottomEdge: number[];
   sharpness: number;
+  walls: { right: number[]; left: number[] } | null;
   isSlice: boolean;
   right: number[];
   left: number[];
@@ -387,6 +389,7 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
       pieces,
       bottomEdge,
       sharpness: section.sharpness,
+      walls: wallRight && wallLeft ? { right: wallRight, left: wallLeft } : null,
       isSlice: slices.has(s),
       right,
       left,
@@ -539,7 +542,7 @@ export interface WireLines {
   deck: Vec3[][];
   /** The long lines on the bottom, the same way. */
   bottom: Vec3[][];
-  /** One closed loop along the rail's apex, right round the board: the very loop the CNC outline file carries. */
+  /** One closed loop along the rail's apex, right round the board: the CNC outline file's, but for a swallow's notch. */
   outline: Vec3[];
 }
 
@@ -706,14 +709,11 @@ export function boardSlices(surface: BoardSurface): { station: Mm; loops: Vec3[]
 }
 
 /**
- * The board's outline as the files carry it (R8, D-26), in TEMPLATE's silhouette order: each ring's widest
- * point on the right rail, tail to nose, then on the left rail, nose to tail; on a swallow the notch's
- * inside edges then close the tail — along the left piece's wall to the crotch and back along the right's.
- * At a tip with no width the rail's widest point is on the tip's edge, strictly between its bottom and its deck
- * at the height nearest the next ring's widest point, so the outline doesn't climb the edge to reach it (D-34).
- * A closed loop: its last point joins its first. Every point is a vertex of the mesh.
+ * The two rails of the outline: each ring's widest point on the right rail, tail to nose, and on the left rail, nose
+ * to tail. At a tip with no width the rail's widest point is on the tip's edge, strictly between its bottom and its
+ * deck at the height nearest the next ring's widest point, so the outline doesn't climb the edge to reach it (D-34).
  */
-export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
+function outlineRails(surface: BoardSurface): { right: number[]; left: number[] } {
   const { positions, rings } = surface;
   const all = (ring: SurfaceRing) => ring.pieces.flatMap(pieceVertices);
   const rail = (sign: 1 | -1) => {
@@ -727,16 +727,28 @@ export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
       const heights = edge.map((v) => positions[3 * v + 2]);
       const [low, high] = [Math.min(...heights), Math.max(...heights)];
       const inside = edge.filter((v) => positions[3 * v + 2] > low && positions[3 * v + 2] < high);
-      widest[i] = inside.reduce((best, v) =>
-        Math.abs(positions[3 * v + 2] - height) < Math.abs(positions[3 * best + 2] - height) ? v : best,
+      // A tip with no thickness has one point and no "between": that point is the outline's.
+      widest[i] = inside.reduce(
+        (best, v) => (Math.abs(positions[3 * v + 2] - height) < Math.abs(positions[3 * best + 2] - height) ? v : best),
+        inside[0] ?? widest[i],
       );
     };
     onEdge(0, 1);
     onEdge(rings.length - 1, rings.length - 2);
     return widest;
   };
-  const right = rail(1);
-  const left = rail(-1).reverse();
+  return { right: rail(1), left: rail(-1).reverse() };
+}
+
+/**
+ * The board's outline as the wire view draws it (D-42), in TEMPLATE's silhouette order: the two rails, then on a swallow
+ * the notch's inside edges close the tail — along the left piece's deck corner on its wall to the crotch and back along
+ * the right's, the lines the foam's own edge shows. A closed loop: its last point joins its first. Every point is a
+ * vertex of the mesh. The files carry `boardFileOutlineLoop`, the same from above.
+ */
+export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
+  const { positions, rings } = surface;
+  const { right, left } = outlineRails(surface);
   const notch: number[] = [];
   const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
   if (lastNotch >= 0 && lastNotch + 1 < rings.length) {
@@ -745,6 +757,34 @@ export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
     notch.push(rings[lastNotch + 1].pieces[0].first); // the crotch, on the stringer
     for (let i = lastNotch; i >= 0; i--) notch.push(rings[i].pieces[0].first);
   }
+  return withoutRepeats([...right, ...left, ...notch], true).map((v) => pointAt(positions, v));
+}
+
+/**
+ * The board's outline as the files carry it (R8, D-26): `boardOutlineLoop` everywhere but a swallow's notch, where a
+ * program that reads the heights would see the loop jump straight up the edge at each swallow point, from the rail to the
+ * deck corner (D-34). So here the notch's inside edges run at one height share up the wall, tips to crotch: the wall
+ * slot the right rail's point stands on (a swallow's point shares its heights with its wall). A ring with no width is
+ * the rail's own point, already in the loop, so each wall starts from it with no step. From above it is exactly
+ * `boardOutlineLoop`. A closed loop: its last point joins its first. Every point is a vertex of the mesh.
+ */
+export function boardFileOutlineLoop(surface: BoardSurface): Vec3[] {
+  const { positions, rings } = surface;
+  const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
+  if (lastNotch < 0 || lastNotch + 1 >= rings.length) return boardOutlineLoop(surface);
+  const { right, left } = outlineRails(surface);
+  const height = (v: number) => positions[3 * v + 2];
+  const tipWall = rings[0].walls?.right ?? [];
+  const slot = tipWall.reduce(
+    (best, v, j) => (Math.abs(height(v) - height(right[0])) < Math.abs(height(tipWall[best]) - height(right[0])) ? j : best),
+    0,
+  );
+  const along = (side: "right" | "left") =>
+    rings
+      .slice(0, lastNotch + 1)
+      .flatMap((ring) => (ring.walls && ring.pieces.some((piece) => pieceHasWidth(positions, piece)) ? [ring.walls[side][slot]] : []));
+  const crotch = rings[lastNotch + 1].walls; // on the stringer, where the two walls meet
+  const notch = [...along("left"), ...(crotch ? [crotch.right[slot]] : []), ...along("right").reverse()];
   return withoutRepeats([...right, ...left, ...notch], true).map((v) => pointAt(positions, v));
 }
 

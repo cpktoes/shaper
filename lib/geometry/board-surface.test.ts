@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  boardFileOutlineLoop,
   boardOutlineLoop,
   boardProfileLines,
   boardSlices,
@@ -453,6 +454,53 @@ describe("a swallow's tail: two pieces from the notch wall to the rail, meeting 
   }
 });
 
+describe("the outline runs round a swallow's notch without climbing the edge (D-34, the file Shape3D reads)", () => {
+  const swallows = BUILT_SURFACE.filter((b) => isSwallow(b.geometry));
+  it("checks every swallow of the 102", () => {
+    expect(swallows.length).toBeGreaterThanOrEqual(BUILT.filter((b) => isSwallow(b.geometry)).length);
+  });
+  for (const { label, surface } of swallows) {
+    it(`${label}: no step straight up, about one wall height at most into each point, and the top view untouched`, () => {
+      const loop = boardFileOutlineLoop(surface);
+      // No point stands straight above or below its neighbour.
+      loop.forEach((q, i) => {
+        const next = loop[(i + 1) % loop.length];
+        expect(Math.hypot(next[0] - q[0], next[1] - q[1])).toBeGreaterThan(1e-9);
+      });
+
+      // Each swallow point is one point of the loop, the rail's own, and the notch leaves it at the rail's height: within
+      // about one of the wall's five heights (the next ring stands a little taller, and the two rails can stand one
+      // height apart at their points), not the deck corner half the thickness above.
+      const points = loop.flatMap((q, i) => (q[0] === 0 ? [i] : []));
+      expect(points).toHaveLength(2);
+      const [rightPoint, leftPoint] = points;
+      expect(rightPoint).toBe(0);
+      const next = surface.rings[1];
+      const heights = ringPoints(surface.positions, next).map((q) => q[2]);
+      const wallHeight = (Math.max(...heights) - Math.min(...heights)) / (SURFACE_POINTS.wall + 1);
+      expect(Math.abs(loop[leftPoint + 1][2] - loop[leftPoint][2])).toBeLessThanOrEqual(1.25 * wallHeight);
+      expect(Math.abs(loop[loop.length - 1][2] - loop[rightPoint][2])).toBeLessThanOrEqual(1.25 * wallHeight);
+
+      // From above nothing moved: the rails are the wire view's to the last digit, and inside the notch every point
+      // stands on its ring's wall, the crotch on the stringer.
+      expect(loop.slice(0, leftPoint + 1)).toEqual(boardOutlineLoop(surface).slice(0, leftPoint + 1));
+      const notch = loop.slice(leftPoint + 1);
+      const crotch = notch.findIndex((q) => Math.abs(q[1]) < 1e-9);
+      expect(notch[crotch][0]).toBe(surface.rings.find((ring) => ring.pieces.length === 1)!.station);
+      notch.forEach((q, i) => {
+        if (i === crotch) return;
+        const ring = surface.rings.find((candidate) => candidate.station === q[0])!;
+        expect(Math.abs(q[1])).toBeCloseTo(ring.pieces[0].inner, 9);
+        expect(Math.sign(q[1])).toBe(i < crotch ? -1 : 1);
+        // Strictly up the wall, never on its deck or bottom corner.
+        const zs = ringPoints(surface.positions, ring).map((p) => p[2]);
+        expect(q[2]).toBeLessThan(Math.max(...zs));
+        expect(q[2]).toBeGreaterThan(Math.min(...zs));
+      });
+    });
+  }
+});
+
 describe("a diamond's V is foam, narrowing to nothing at its tip — no wall", () => {
   const diamonds = BUILT.filter((b) => isDiamond(b.geometry));
   it("checks every diamond of the set", () => {
@@ -645,6 +693,25 @@ describe("a board the builder can't build is refused, naming the value", () => {
   });
 });
 
+describe("a tip with no thickness at all (no slider reaches it, a crafted file can) still draws, and has an outline", () => {
+  for (const label of ["fish|asis|hard", "shortboard|pin|hard"]) {
+    for (const [end, zero] of [
+      ["the nose", { noseTip: mm(0) }],
+      ["the tail", { tailTip: mm(0) }],
+      ["both tips", { noseTip: mm(0), tailTip: mm(0) }],
+    ] as const) {
+      it(`${label}, ${end} at 0`, () => {
+        const fields = boardOf(label);
+        const { input } = surfaceInputOf({ ...fields, foil: { ...fields.foil, ...zero } });
+        const surface = buildBoardSurface(input);
+        expect(boardOutlineLoop(surface).flat().every(Number.isFinite)).toBe(true);
+        expect(boardFileOutlineLoop(surface).flat().every(Number.isFinite)).toBe(true);
+        expect(Array.from(surface.positions).every(Number.isFinite)).toBe(true);
+      });
+    }
+  }
+});
+
 describe("the rail fades smoothly along the board (D-20/D-27, D-32)", () => {
   for (const label of [
     "shortboard|asis|hard",
@@ -698,7 +765,7 @@ describe("the slices, the outline and the profile come straight off the mesh (R8
         }
       }
 
-      const outline = boardOutlineLoop(surface);
+      const outline = boardFileOutlineLoop(surface);
       for (const q of outline) expect(keys.has(keyOf(q))).toBe(true);
       // Clear of the tail cut, each rail's widest point is the outline's own half-width.
       const clear = Math.max(geometry.points[0].station, geometry.centreCloseStation);
@@ -825,10 +892,9 @@ describe("the wire view's lines (D-42)", () => {
     }
   });
 
-  it("carries the outline loop the CNC file carries, whole, in addition to the counts", () => {
-    for (const { surface } of [shortboard, fish]) {
-      expect(wireLines(surface).outline).toEqual(boardOutlineLoop(surface));
-    }
+  it("carries the outline loop whole, in addition to the counts: the file's own, away from a swallow's notch", () => {
+    for (const { surface } of [shortboard, fish]) expect(wireLines(surface).outline).toEqual(boardOutlineLoop(surface));
+    expect(boardFileOutlineLoop(shortboard.surface)).toEqual(boardOutlineLoop(shortboard.surface));
   });
 
   it("gives a swallow's two pieces their own lines and their own ring loops", () => {

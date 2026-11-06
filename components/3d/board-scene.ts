@@ -975,6 +975,8 @@ export function mountBoardScene(
     if (restoreTimer) clearTimeout(restoreTimer);
     restoreTimer = null;
     lost = false;
+    // A Wire View press while the context was gone could not reach the renderer.
+    renderer.setPixelRatio(drawingDensity(wire));
     build();
     reportedReady = false;
     schedule();

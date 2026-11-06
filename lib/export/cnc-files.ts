@@ -13,7 +13,7 @@
  * - the text set: `{stem}-outline.txt`, `{stem}-profile.txt` (the deck line, one blank line, the bottom
  *   line) and one `{stem}-slice-NN.txt` per slice, counted from the tail (D-24: the litres' own stations with
  *   foam; `NN` two digits, three only past 99).
- * Every curve is read off the drawn mesh (`boardSlices`, `boardOutlineLoop`, `boardProfileLines`), so a file
+ * Every curve is read off the drawn mesh (`boardSlices`, `boardFileOutlineLoop`, `boardProfileLines`), so a file
  * can never describe a different board from the one on screen.
  *
  * Every file is named from the board's name through `boardFileStem`, the same stem Save board as file…
@@ -22,7 +22,7 @@
  *
  * Nothing here knows about WebGL, the screen or the browser: the files are pure functions of the surface.
  */
-import { boardOutlineLoop, boardProfileLines, boardSlices, type BoardSurface } from "../geometry/board-surface";
+import { boardFileOutlineLoop, boardProfileLines, boardSlices, type BoardSurface } from "../geometry/board-surface";
 import { boardFileStem } from "../models/board-file";
 import { writeDxf, type DxfPolyline } from "./dxf";
 import { stlHeader, writeStl } from "./stl";
@@ -57,7 +57,7 @@ export function sliceFileName(stem: string, index: number, count: number): strin
  */
 export function cncFiles(surface: BoardSurface, boardName: string): { files: CncFile[]; sliceCount: number } {
   const stem = boardFileStem(boardName);
-  const outline = boardOutlineLoop(surface);
+  const outline = boardFileOutlineLoop(surface);
   const profile = boardProfileLines(surface);
   const slices = boardSlices(surface);
   const encoder = new TextEncoder();

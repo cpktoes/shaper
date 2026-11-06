@@ -279,9 +279,10 @@ export interface DesignRules {
   prepare: (record: BlankRecord) => PreparedBlank;
   /**
    * How the rail character reaches each station of the litres (Phase 16, D-20/D-27/D-32). Absent means the
-   * live rule (`RAIL_CHARACTER_FADE`) — the one every screen uses. The two old rules are named only by the
-   * pins and the reports: the pre-Phase-16 switch (`HARD_EDGE_SWITCH`) by the 40-board pin and the hard-edge
-   * report, go-live 1's hard-edge fade (`HARD_EDGE_FADE`) by the 74-board pin and the rail-character report.
+   * live rule (`SMOOTH_SURFACE_FADE`) — the one every screen uses. The old rules are named only by the pins and
+   * the reports: the pre-Phase-16 switch (`HARD_EDGE_SWITCH`) by the 40-board pin and the hard-edge report, go-live
+   * 1's hard-edge fade (`HARD_EDGE_FADE`) by the 74-board pin and the rail-character and surface reports, and the
+   * whole rail's fade alone (`RAIL_CHARACTER_FADE`) by the 102-board pin and those same two reports.
    */
   hardEdge?: SectionRule;
 }

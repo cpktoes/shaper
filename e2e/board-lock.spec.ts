@@ -344,6 +344,55 @@ test.describe("a board opened the moment after its lock row is chosen, on every 
     await expect(unlockButton(page)).toHaveCount(0);
   });
 
+  /** Holds the rack's next save on the wire: the returned call lets it go, and it fails as a lost connection does. */
+  async function holdNextSaveThenFailIt(page: Page) {
+    let fail = () => {};
+    const held = new Promise<void>((resolve) => {
+      fail = resolve;
+    });
+    await page.route(`**${RACK_STAND_IN_ROUTE}**`, async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      await held;
+      await route.abort("connectionfailed");
+    });
+    return fail;
+  }
+
+  test("o5. an unlock that fails after Open This Board was pressed puts the open board back to locked", async ({ page }) => {
+    const first = board(1);
+    await startPracticeRack(page);
+    await openRack(page);
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await expect(captionFor(page, first.name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
+
+    const failTheSave = await holdNextSaveThenFailIt(page);
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.boardLocked, "true");
+    await openFromCaption(page, first.name);
+    // Opened the way the shaper just left it, before the server has answered.
+    await expect(savedWord(page)).toHaveCount(1);
+    await expect(unlockButton(page)).toHaveCount(0);
+
+    // The server still holds it locked, so the open board must say so.
+    failTheSave();
+    await expect(unlockButton(page)).toHaveCount(1);
+    await expect(savedWord(page)).toHaveCount(0);
+  });
+
+  test("o6. a lock that fails after Open This Board was pressed puts the open board back to open", async ({ page }) => {
+    const first = board(1);
+    await startPracticeRack(page);
+    await openRack(page);
+
+    const failTheSave = await holdNextSaveThenFailIt(page);
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await openFromCaption(page, first.name);
+    await expect(unlockButton(page)).toHaveCount(1);
+
+    failTheSave();
+    await expect(unlockButton(page)).toHaveCount(0);
+    await expect(savedWord(page)).toHaveCount(1);
+  });
+
   test("o4. a press that comes down as the page redraws after a lock, and lifts once it has, still opens the board", async ({
     page,
   }) => {

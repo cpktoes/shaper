@@ -5,6 +5,7 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE } from "@/lib/geometry/volume";
 import { buildSnapshot, parseSnapshot, type DesignSnapshotFields } from "./design-snapshot";
+import { railCharacterLitresMove } from "./rail-character-report";
 import { surfaceLitresMove, surfaceReportLines } from "./surface-report";
 
 /**
@@ -48,6 +49,22 @@ describe("surfaceLitresMove", () => {
   it("every one of the 102 moves, because the tail's roll reaches every board", () => {
     expect(BOARDS.filter((board) => surfaceLitresMove(board.fields))).toHaveLength(102);
   });
+});
+
+describe("the two reports together tell every board's whole move", () => {
+  for (const board of BOARDS) {
+    it(`${board.label}: whole move = the rail-character report's move + this plan's share`, () => {
+      const surface = surfaceLitresMove(board.fields)!;
+      const rail = railCharacterLitresMove(board.fields);
+      if (rail) {
+        expect(rail.before).toBe(surface.before);
+        expect(rail.after).toBe(surface.faded);
+      } else {
+        // A board the rail-character report leaves out has no share of the fade: this plan is its whole move.
+        expect(surface.faded).toBe(surface.before);
+      }
+    });
+  }
 });
 
 describe("surfaceReportLines", () => {

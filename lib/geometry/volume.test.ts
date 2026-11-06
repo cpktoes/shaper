@@ -1766,6 +1766,11 @@ describe("D-38 the tail's rail is carried around the end", () => {
     expect(tailRollScale(RUN, mm(40), TIP)).toBe(1);
   });
 
+  it("tailRollScale keeps everything of a station with no thickness to roll", () => {
+    expect(tailRollScale(mm(0), mm(0), mm(0))).toBe(1);
+    expect(tailRollScale(mm(0), mm(0), TIP)).toBe(1);
+  });
+
   it("tailRollStations start at the tail end, stop at the end of the run, and crowd toward the end", () => {
     const stations = tailRollStations(8);
     expect(stations[0]).toBe(0);

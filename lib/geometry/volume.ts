@@ -904,9 +904,10 @@ export function tailRollDrop(station: Mm, tipThickness: Mm): number {
   return tipThickness * TAIL_ROLL_SHARE * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
 }
 
-/** The share of its height a station keeps under the tail's roll: 1 clear of it. Every height scales alike, so the
- * bottom stays on the rocker and the rail keeps its shape. */
+/** The share of its height a station keeps under the tail's roll: 1 clear of it, and at a station with no thickness to
+ * roll. Every height scales alike, so the bottom stays on the rocker and the rail keeps its shape. */
 export function tailRollScale(station: Mm, thickness: Mm, tipThickness: Mm): number {
+  if (thickness <= 0) return 1;
   return Math.max(0, 1 - tailRollDrop(station, tipThickness) / thickness);
 }
 
@@ -963,7 +964,7 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * station drawn into its room and counted (`fittedFinishedRail`), and the tail's rail carried around its end
  * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`), and
  * a domed deck's rail built from its thickness itself, not rounded to a sixteenth. `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
- * test and the surface report (`lib/models/surface-report.ts`); no screen uses it.
+ * test and the two reports (`lib/models/surface-report.ts`, `lib/models/rail-character-report.ts`); no screen uses it.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
   at: RAIL_CHARACTER_FADE.at,
