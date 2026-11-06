@@ -376,6 +376,14 @@ describe("rackSeat and overPad — the board on its racks", () => {
         expect(seat.at).toBeCloseTo(BAY.rackShare * seat.length, 9);
       });
 
+      it("turned over the pads it rests on what the pad's corners reach, and square to them it reads as it always has", () => {
+        for (const roll of [0, 45, 90, 150, 180]) {
+          expect(overPad(seat, roll, 0)).toBe(overPad(seat, roll));
+          expect(overPad(seat, roll, 180)).toBeCloseTo(overPad(seat, roll), 6);
+          expect(overPad(seat, roll, SIGHT_LIMIT_DEG)).toBeGreaterThanOrEqual(overPad(seat, roll));
+        }
+      });
+
       it("at 0° overPad is home; on a rail it rises by less than half its width plus its thickness", () => {
         expect(overPad(seat, 0)).toBe(seat.home);
         const width = surface.width;
@@ -449,9 +457,10 @@ describe("boardPlace — where the board stands for any turn", () => {
       });
 
       it("end for end or turned a few degrees, no vertex lies 2 mm inside a pad, raised or rolled", () => {
-        for (const swing of [180, -SIGHT_LIMIT_DEG, SIGHT_LIMIT_DEG, 180 - SIGHT_LIMIT_DEG]) {
+        for (const swing of [180, -SIGHT_LIMIT_DEG, SIGHT_LIMIT_DEG, 180 - SIGHT_LIMIT_DEG, 180 + SIGHT_LIMIT_DEG]) {
           for (const lift of [-60, -30, 0, 30, 60]) {
-            for (const roll of [-90, -45, 0, 45, 90, 180]) {
+            // Every 30°: a coarser grid stepped over a board nearly bottom up, 4.6 mm into a pad at roll 150.
+            for (let roll = -180; roll < 180; roll += 30) {
               const angles = { swing, lift, roll };
               const place = boardPlace(all, angles, seat);
               let deepest = -Infinity;
@@ -505,6 +514,12 @@ describe("boardPlace — where the board stands for any turn", () => {
             { ...AT_REST, swing: 180 },
             { ...AT_REST, swing: SIGHT_LIMIT_DEG },
             { ...AT_REST, swing: -SIGHT_LIMIT_DEG },
+            { ...AT_REST, swing: 180 + SIGHT_LIMIT_DEG },
+            { ...AT_REST, swing: 180 - SIGHT_LIMIT_DEG },
+            { swing: SIGHT_LIMIT_DEG, lift: 0, roll: 45 },
+            { swing: -SIGHT_LIMIT_DEG, lift: 0, roll: -45 },
+            { swing: SIGHT_LIMIT_DEG, lift: BAY.liftLimitDeg, roll: 0 },
+            { swing: -SIGHT_LIMIT_DEG, lift: -BAY.liftLimitDeg, roll: 0 },
           ]) {
             expect(depthInPad(inRoom(p, angles, boardPlace(points, angles, seat)), seat.at)).toBeLessThan(0);
           }
@@ -659,6 +674,29 @@ describe("where the viewer stands", () => {
       });
     }
   });
+
+  it("the Look Down the Rail limit is the founder's 25°", () => {
+    expect(SIGHT_LIMIT_DEG).toBe(25);
+  });
+
+  for (const { label, seat, points } of [...BOARDS, LONGEST]) {
+    it(`${label}: at the full Look Down the Rail from either end the eye stays in the room, on every window`, () => {
+      for (const [, aspect] of ASPECTS) {
+        const lens = bayLens(points, seat, aspect);
+        for (const name of ["nose", "tail"] as const) {
+          for (const sightDeg of [-SIGHT_LIMIT_DEG, SIGHT_LIMIT_DEG]) {
+            const viewer = clampViewer({ ...standAt(name, 0), sightDeg }, seat, lens);
+            expect(viewer.sightDeg).toBe(sightDeg);
+            const { position, axes } = viewerPlace(viewer, lens, seat);
+            expect(Math.abs(position[0])).toBeLessThanOrEqual(BAY.lengthMm / 2 - BAY.viewerMarginMm + 1);
+            expect(Math.abs(position[2])).toBeLessThanOrEqual(BAY.widthMm / 2 - BAY.viewerMarginMm + 1);
+            expect(position[1]).toBeGreaterThanOrEqual(BAY.viewerFloorMm - 1);
+            expect(dot(axes.forward, [-position[0], BAY.rackTopMm + seat.home - position[1], -position[2]])).toBeGreaterThan(0);
+          }
+        }
+      }
+    });
+  }
 
   it("clampViewer leaves a viewer inside the limits alone, holds elevation at both ends and wraps azimuth", () => {
     const { seat, points } = BOARDS[0];

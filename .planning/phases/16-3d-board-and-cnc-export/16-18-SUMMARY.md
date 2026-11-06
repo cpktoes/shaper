@@ -116,7 +116,7 @@ The 3D screen is now a drawn shaping bay: deep blue walls, a dusty floor and a l
 | **Tail** | The board turns back, tail nearer you: the first view. | You stand at the tail, facing the nose. |
 | **Reset View** | The board and you back at the first view, at 1x. | The same; the mode stays. |
 | **A drag** | Moves the board only. See below. | Walks you round, inside the room and above the floor. |
-| **Look Down the Rail** | Turns the board up to 15° either way on the racks. | Moves your eye up to 15° either way. |
+| **Look Down the Rail** | Turns the board up to 25° either way on the racks. | Moves your eye up to 25° either way. |
 
 | Slider or switch | What it does |
 |---|---|
@@ -152,6 +152,7 @@ Before, a sideways drag from behind the tail was almost all swing. With the rack
 3. **Side on a Longboard:** "Leave it." No change.
 4. **His notes after driving it,** which override anything earlier: one shelf per strip; VIEW first; the two modes as tabled above; no Flip the Board; no auto zoom; the sliders next; Rail Blend Controls folded; then Export.
 5. **The wire view:** the lines ignore the wing.
+6. **Look Down the Rail:** "look down rail should go to 25deg". Done, in both modes, up from 15°.
 
 Standing as they were: Deck and Bottom reset Look Down the Rail with every other slider, and the switch's filled pill stays.
 
@@ -173,7 +174,7 @@ All in `.planning/phases/16-3d-board-and-cnc-export/pictures/`, the scripts in `
 - `16-18-on-the-racks.png`: Bottom, each end raised, rotated 45° each way, Nose end for end, on a computer and an iPhone, Shortboard and Longboard.
 - `16-18-two-ways.png`: the same drag each way, the buttons each way, Look Down the Rail in each mode, and a Longboard at Side.
 - `16-18-looks-and-themes.png`: Contour Stripes, Wire View, the room off, and the four themes both ways.
-- `16-18-panel.png`: the panel in his order, on a computer, an iPhone and a sideways phone, with Rail Blend Controls open and folded.
+- `16-18-panel.png`: the panel in his order, on a computer, an iPhone and a sideways phone, with Rail Blend Controls open and folded, and Look Down the Rail at its full 25°.
 - `16-18-wire-at-a-wing.png`: Wire View on a Shortboard from behind the tail, before and after, a default wing and a square one.
 
 ## Against his photo
@@ -207,7 +208,21 @@ Real surfaces, racks at 18%, pad tops at 740 mm. Heights are in mm off the floor
 | Longboard | 411 / 1775 | 225 / 2154 | 74 / 2437 |
 | 120" | 333 / 1845 | 128 / 2273 | 40 / 2672 |
 
-Proven by test over the raise in 10-degree steps and every roll in 15-degree steps, on every vertex of the full surface: nothing lies more than 2 mm inside a pad, and the foam stays at least 40 mm off the floor, a rule only the 120" board reaches. No fin point lies inside a pad at rest, rolled 45° each way, end for end or turned the full 15° either way, across all 32 fin cases. The same 2 mm rule on the foam holds end for end and turned 15°, raised up to 60° and rolled: a pose that needed the fix in deviation 13. These tables were measured with the board straight; a board turned for Look Down the Rail and raised stands a little higher.
+Proven by test over the raise in 10-degree steps and every roll in 15-degree steps, on every vertex of the full surface: nothing lies more than 2 mm inside a pad, and the foam stays at least 40 mm off the floor, a rule only the 120" board reaches. No fin point lies inside a pad at rest, rolled 45° each way, end for end or turned the full 25° either way, across all 32 fin cases. These tables are the board straight, and they did not move when the limit went to 25°; a board turned for Look Down the Rail and raised stands a little higher.
+
+### At the full Look Down the Rail, ±25°
+
+Measured on the real surface with every vertex, at both headings (±25° and 180° ±25°), raised up to 60° either way in 15° steps and rolled all the way round in 30° steps, with the rack posts counted as well as the pads. A negative figure is clear air. The 120" board takes the Longboard's fin setups on its own length and rocker.
+
+| Board | Deepest foam into a rack | Lowest foam off the floor | Nearest any fin comes to a rack | Eye off the nearest wall | Lowest eye height |
+|---|---|---|---|---|---|
+| Shortboard | clear by 0.6 mm | 307 mm | 29 mm clear | 1132 mm | 1235 mm |
+| Fish | clear by 0.2 mm | 349 mm | 10 mm clear | 1132 mm | 1238 mm |
+| Mid-length | **0.6 mm in** | 229 mm | 94 mm clear | 1019 mm | 1291 mm |
+| Longboard | clear by 0.02 mm | 71 mm | 175 mm clear | 565 mm | 1419 mm |
+| 120" | clear by 0.02 mm | 40 mm | 238 mm clear | 369 mm | 1470 mm |
+
+All inside the 2 mm rule, the 40 mm floor rule and the 200 mm wall rule. The eye figures are Walk Around from both ends, on all six windows. The fins are read down their centre plane, so take half a fin's thickness off the tightest, the Fish's 2+1. The sweep's own steps are 15° and 30°, so a pose between them isn't measured here.
 
 ## Where the viewer stands
 
@@ -237,7 +252,18 @@ All the on-chip figures sit inside one 60 Hz frame (16.7 ms). They were taken be
 
 ## How it was proven
 
-On the final code, after his notes and the wire view:
+After the 25° change (the last commit), on its own list:
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit`, `npm run lint` | Exit 0; the one existing warning |
+| `lib/geometry/shaping-bay.test.ts` | Exit 0: 146 passed |
+| `e2e/three-d-bay.spec.ts`, 3 projects | Exit 0: 58 passed, 8 skipped |
+| Desktop baseline | Exit 0: 6 passed, nothing re-recorded: the slider rests at its middle either way |
+
+The other specs and the whole unit suite were not re-run for this change. The figures below are from the commit before it.
+
+Before the 25° change, after his notes and the wire view:
 
 | Check | Result |
 |---|---|
@@ -307,7 +333,9 @@ The 78 skips are `test.skip` conditions that scope a case to a project.
 
 **15. `lib/geometry/board-surface.ts` changed,** which the plan's prohibition named. The orchestrator directed it for the wire view, on the condition that positions, triangles and the CNC files do not change; the surface pins prove they didn't. `e2e/three-d-hard-edge.spec.ts` changed too, to open the fold. Neither is in `files_modified`.
 
-**16. The run was interrupted once by an API connection error.** The first whole gate run was stopped by hand at test 135 of 318, as the load average had reached 260 to 390 and its results could not be trusted. Nothing was reset or lost.
+**16. [Rule 1 - Bug] At ±25° a board nearly bottom up sat in a pad.** The range change itself was clean on the tests' grid, but a finer measured sweep found 4.6 mm on the 120" board and 4.5 mm on the Longboard at roll 150°, which the grid stepped over. The resting height was worked out as if the board stood square to the pads. It now reads the pad's real footprint under the turned board, and never less than the square answer, so a straight board's figures are unchanged. The test grid now rolls every 30°, and with the fix out it fails.
+
+**17. The run was interrupted once by an API connection error.** The first whole gate run was stopped by hand at test 135 of 318, as the load average had reached 260 to 390 and its results could not be trusted. Nothing was reset or lost.
 
 ## Known Issues
 
