@@ -4,6 +4,7 @@ import { RACK_COPY } from "../components/setup/rack-config";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, RACK_STAND_IN_SAVE_COOKIE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { hideDevBadge } from "./helpers/dev-badge";
 import { freshPracticeRack } from "./helpers/practice-rack";
 
 /**
@@ -26,6 +27,7 @@ async function startPracticeRack(page: Page, save?: "fail" | "slow") {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await hideDevBadge(page);
   await freshPracticeRack(page, save);
 }
 
@@ -340,5 +342,24 @@ test.describe("a board opened the moment after its lock row is chosen, on every 
 
     await expect(savedWord(page)).toHaveCount(1);
     await expect(unlockButton(page)).toHaveCount(0);
+  });
+
+  test("o4. a press that comes down as the page redraws after a lock, and lifts once it has, still opens the board", async ({
+    page,
+  }) => {
+    const first = board(1);
+    await startPracticeRack(page);
+    await openRack(page);
+    const box = await captionFor(page, first.name).getByRole("button", { name: RACK_COPY.open }).boundingBox();
+    if (!box) throw new Error("missing bounding box for Open This Board");
+
+    await chooseLockRow(page, first.name, BOARD_LOCK_COPY.lockBoard, "false");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(captionFor(page, first.name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
+    await page.mouse.up();
+
+    await page.waitForURL("**/design/outline");
+    await expect(unlockButton(page)).toHaveCount(1);
   });
 });

@@ -9,6 +9,7 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { blankCards, openBlankPicker, starButton, waitForBlankButton } from "./helpers/blank-picker";
+import { hideDevBadge } from "./helpers/dev-badge";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
@@ -55,6 +56,7 @@ async function startPracticeRack(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await hideDevBadge(page);
   await freshPracticeRack(page);
   await openRack(page);
 }
