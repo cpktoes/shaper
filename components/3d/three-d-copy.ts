@@ -22,7 +22,7 @@ export const THREE_D_COPY = {
   // The side panel, top to bottom.
   /** The panel title, drawn uppercase by the CSS. */
   title: "3D Board",
-  subtitle: "Turn it on the racks under the bay's lights, then export it for a CNC.",
+  subtitle: "3D board rendered under shaping bay lighting.",
   /** The bay's controls (D-43, D-44), each one plane, in the founder's own names. */
   raiseNose: "Raise the Nose",
   raiseTail: "Raise the Tail",
