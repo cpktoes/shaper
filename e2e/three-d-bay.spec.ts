@@ -218,11 +218,13 @@ test.describe("the shaping bay", () => {
     await expect.poll(async () => (await placeOf(host))[1]).toBeGreaterThan(rest[1]);
     const up = rackAngles((await turnOf(host)) as unknown as Quat);
     expect(up.lift).toBeGreaterThan(0);
-    await expect(page.locator("[data-three-d-racks]").getByText(`${THREE_D_COPY.raiseNose} — 12"`, { exact: true })).toBeVisible();
+    const racks = page.locator("[data-three-d-racks]");
+    await expect(racks.getByText('12"', { exact: true })).toBeVisible();
     expect(await host.getAttribute("data-room")).toBe(room);
     // One at a time: moving the other brings this one back to rest.
     await setSlider(page, THREE_D_COPY.raiseTail, 6);
-    await expect(page.locator("[data-three-d-racks]").getByText(`${THREE_D_COPY.raiseNose} — ${THREE_D_COPY.onTheRack}`, { exact: true })).toBeVisible();
+    await expect(racks.getByText(THREE_D_COPY.onTheRack, { exact: true })).toHaveCount(1);
+    await expect(racks.getByText('6"', { exact: true })).toBeVisible();
     await expect(nose).toHaveValue("0");
     await expect.poll(async () => rackAngles((await turnOf(host)) as unknown as Quat).lift).toBeLessThan(0);
     await expect(tail).toHaveValue("6");
@@ -384,8 +386,7 @@ test.describe("the shaping bay", () => {
     await expect(page.getByText(`${THREE_D_COPY.lookDownRail} — 6° right`, { exact: true })).toBeVisible();
     // A turned board has both ends on their racks, and reads so.
     await setSlider(page, THREE_D_COPY.rotateOnSide, 30);
-    await expect(page.getByText(`${THREE_D_COPY.raiseNose} — ${THREE_D_COPY.onTheRack}`, { exact: true })).toBeVisible();
-    await expect(page.getByText(`${THREE_D_COPY.raiseTail} — ${THREE_D_COPY.onTheRack}`, { exact: true })).toBeVisible();
+    await expect(page.locator("[data-three-d-racks]").getByText(THREE_D_COPY.onTheRack, { exact: true })).toHaveCount(2);
     await setSlider(page, THREE_D_COPY.rotateOnSide, 0);
     expect(await host.getAttribute("data-room")).toBe(room);
     expect(await host.getAttribute("data-viewer")).toBe(viewer);
@@ -476,6 +477,10 @@ test.describe("the panel, in the founder's order, on every device", () => {
     for (const at of order) tops.push(await top(at));
     expect(tops.every(Number.isFinite)).toBe(true);
     expect([...tops].sort((a, b) => a - b)).toEqual(tops);
+    // Raise the Nose and Raise the Tail share a row, the nose on the left (the founder, 2026-11-06).
+    const [nose, tail] = await Promise.all([order[2].boundingBox(), order[3].boundingBox()]);
+    expect(nose?.y).toBeCloseTo(tail?.y ?? Number.NaN, 0);
+    expect(nose?.x ?? Number.NaN).toBeLessThan(tail?.x ?? Number.NaN);
   });
 
   test("19. Rail Blend Controls is folded when the screen opens, opens on a press, and is folded again next visit", async ({ page }) => {

@@ -62,7 +62,10 @@ function useReading(store: RackStore): RackReading {
 /** Which end a Raise control lifts. */
 export type RaisedEnd = "nose" | "tail";
 
-/** One Raise control: how high that end stands off its rack, the other end pivoting on its own (D-44). */
+/**
+ * One Raise control: how high that end stands off its rack, the other end pivoting on its own (D-44). The two share a row
+ * (the founder, 2026-11-06), so the reading sits under the track: half a panel can't hold the name and the reading on one line.
+ */
 function RaiseRow({
   end,
   liftDeg,
@@ -82,17 +85,20 @@ function RaiseRow({
   const slider = raiseSlider(height, seat, system);
   const raised = isRaised(liftDeg);
   const text = raised ? formatDim(height, system) : THREE_D_COPY.onTheRack;
+  const name = end === "nose" ? THREE_D_COPY.raiseNose : THREE_D_COPY.raiseTail;
   return (
     <SliderRow
       lockExempt
-      label={`${end === "nose" ? THREE_D_COPY.raiseNose : THREE_D_COPY.raiseTail} — ${text}`}
+      className="min-w-0 flex-1"
+      label={name}
+      leftHint={text}
       value={slider.value}
       min={slider.min}
       max={slider.max}
       step={slider.step}
       onValueChange={(v) => onRaise(end, slider.toMm(v))}
       disabled={disabled}
-      sliderLabel={end === "nose" ? THREE_D_COPY.raiseNose : THREE_D_COPY.raiseTail}
+      sliderLabel={name}
       sliderValueText={THREE_D_COPY.raiseSpoken(end, raised ? text : null)}
     />
   );
@@ -124,20 +130,22 @@ export function ThreeDOnTheRacks({
   const roll = Math.round(reading.roll) + 0;
   return (
     <div className="flex flex-col gap-2" data-three-d-racks>
-      <RaiseRow
-        end="nose"
-        liftDeg={Math.max(0, reading.lift)}
-        seat={seat ?? { at: 0 }}
-        onRaise={onRaise}
-        disabled={disabled || !seat}
-      />
-      <RaiseRow
-        end="tail"
-        liftDeg={Math.max(0, -reading.lift)}
-        seat={seat ?? { at: 0 }}
-        onRaise={onRaise}
-        disabled={disabled || !seat}
-      />
+      <div className="flex gap-4">
+        <RaiseRow
+          end="nose"
+          liftDeg={Math.max(0, reading.lift)}
+          seat={seat ?? { at: 0 }}
+          onRaise={onRaise}
+          disabled={disabled || !seat}
+        />
+        <RaiseRow
+          end="tail"
+          liftDeg={Math.max(0, -reading.lift)}
+          seat={seat ?? { at: 0 }}
+          onRaise={onRaise}
+          disabled={disabled || !seat}
+        />
+      </div>
       <SliderRow
         lockExempt
         label={THREE_D_COPY.rotateOnSide}
