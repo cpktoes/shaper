@@ -113,7 +113,7 @@ real life. But, the actual board will certainly blend and have values smaller th
   the litres moved. His Q3 card of 29.62 for the Shortboard is replaced: the tail's roll takes it back to 29.61.
 - **For go-live 2.** A read-only report lists every saved board, because the roll reaches them all: what the site reads
   today, what it will read, and this plan's share. The rail-character report still lists only the boards the fade reaches,
-  with its reasons; its "after" is the live rule, so it includes this plan's moves too.
+  with its reasons; its "after" was the live rule then, so it included this plan's moves too. (The code review's WR-04 changed that: its "after" is now the whole rail's fade alone. See 16-REVIEW-FIX.md.)
 
 ## Pictures
 
