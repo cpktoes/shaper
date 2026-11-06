@@ -645,6 +645,24 @@ describe("a board the builder can't build is refused, naming the value", () => {
   });
 });
 
+describe("a tip with no thickness at all (no slider reaches it, a crafted file can) still draws, and has an outline", () => {
+  for (const label of ["fish|asis|hard", "shortboard|pin|hard"]) {
+    for (const [end, zero] of [
+      ["the nose", { noseTip: mm(0) }],
+      ["the tail", { tailTip: mm(0) }],
+      ["both tips", { noseTip: mm(0), tailTip: mm(0) }],
+    ] as const) {
+      it(`${label}, ${end} at 0`, () => {
+        const fields = boardOf(label);
+        const { input } = surfaceInputOf({ ...fields, foil: { ...fields.foil, ...zero } });
+        const surface = buildBoardSurface(input);
+        expect(boardOutlineLoop(surface).flat().every(Number.isFinite)).toBe(true);
+        expect(Array.from(surface.positions).every(Number.isFinite)).toBe(true);
+      });
+    }
+  }
+});
+
 describe("the rail fades smoothly along the board (D-20/D-27, D-32)", () => {
   for (const label of [
     "shortboard|asis|hard",

@@ -727,8 +727,10 @@ export function boardOutlineLoop(surface: BoardSurface): Vec3[] {
       const heights = edge.map((v) => positions[3 * v + 2]);
       const [low, high] = [Math.min(...heights), Math.max(...heights)];
       const inside = edge.filter((v) => positions[3 * v + 2] > low && positions[3 * v + 2] < high);
-      widest[i] = inside.reduce((best, v) =>
-        Math.abs(positions[3 * v + 2] - height) < Math.abs(positions[3 * best + 2] - height) ? v : best,
+      // A tip with no thickness has one point and no "between": that point is the outline's.
+      widest[i] = inside.reduce(
+        (best, v) => (Math.abs(positions[3 * v + 2] - height) < Math.abs(positions[3 * best + 2] - height) ? v : best),
+        inside[0] ?? widest[i],
       );
     };
     onEdge(0, 1);

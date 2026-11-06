@@ -904,9 +904,10 @@ export function tailRollDrop(station: Mm, tipThickness: Mm): number {
   return tipThickness * TAIL_ROLL_SHARE * (1 - Math.sqrt(Math.max(0, 1 - t * t)));
 }
 
-/** The share of its height a station keeps under the tail's roll: 1 clear of it. Every height scales alike, so the
- * bottom stays on the rocker and the rail keeps its shape. */
+/** The share of its height a station keeps under the tail's roll: 1 clear of it, and at a station with no thickness to
+ * roll. Every height scales alike, so the bottom stays on the rocker and the rail keeps its shape. */
 export function tailRollScale(station: Mm, thickness: Mm, tipThickness: Mm): number {
+  if (thickness <= 0) return 1;
   return Math.max(0, 1 - tailRollDrop(station, tipThickness) / thickness);
 }
 
