@@ -258,8 +258,9 @@ function RailSectionControls({
    * a default that always gets applied."). Each slider's range follows the other and the board's length, so the
    * two can never be set within 2" of each other; 1/2" steps, whole centimetres in Metric, stored as whole
    * millimetres (in the fields still named for the hard edge, because saved boards carry them). Both distances
-   * are dims, each read through its one named formatter. No hint and no note: nothing on screen says the litres
-   * moved (D-18). The 3D page draws the same two sliders over these same two values. */
+   * are dims, each read through its one named formatter. No hint and no note on the litres: nothing on screen says
+   * they moved (D-18). The 3D page draws the same two sliders over these same two values, and the caption above them
+   * says so, because nothing on this page shows what they do (the founder, 2026-11-06). */
   const tailRailRows = () => {
     const settings = { tailHardEdgeBlendsFrom, tailHardEdgeEndsAt };
     const blendsFrom = hardEdgeBlendsFrom(settings, boardLength);
@@ -270,6 +271,9 @@ function RailSectionControls({
     const endsText = formatHardEdgeEndsAt(endsAt, system);
     return (
       <>
+        <div className="text-xs text-surf-ink-muted font-normal">
+          These controls are invisible here and corresponding controls with visual verification are found on the 3D page.
+        </div>
         <SliderRow
           label={`Tail Rail Blends From — ${fromText}`}
           value={fromSlider.value}

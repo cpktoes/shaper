@@ -162,7 +162,12 @@ export function ThreeDRailBlend() {
         <span>{THREE_D_COPY.railBlendHeading}</span>
         <span aria-hidden>{open ? "▾" : "▸"}</span>
       </button>
-      {open && <ThreeDTailRail />}
+      {open && (
+        <>
+          <div className="text-xs text-surf-ink-muted font-normal">{THREE_D_COPY.railBlendNote}</div>
+          <ThreeDTailRail />
+        </>
+      )}
     </div>
   );
 }

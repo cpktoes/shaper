@@ -48,6 +48,7 @@ export const THREE_D_COPY = {
    * spoken names, so one control has one name wherever it is. They bound the tail's whole rail, so they are always
    * live; the nose's blend is automatic and has no control. */
   railBlendHeading: "Rail Blend Controls",
+  railBlendNote: "These controls affect how you shape the board and corresponding controls are also on the RAILS page.",
   tailRailBlendsFrom: "Tail Rail Blends From",
   tailRailEndsAt: "Tail Rail Ends At",
   tailRailBlendsFromSlider: "Tail Rail blends from",

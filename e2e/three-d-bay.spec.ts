@@ -623,9 +623,11 @@ test.describe("the panel, in the founder's order, on every device", () => {
     const fold = page.getByRole("button", { name: new RegExp(THREE_D_COPY.railBlendHeading) });
     await expect(fold).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByRole("slider", { name: THREE_D_COPY.tailRailEndsAtSlider, exact: true })).toHaveCount(0);
+    await expect(page.getByText(THREE_D_COPY.railBlendNote, { exact: true })).toHaveCount(0);
     await fold.click();
     await expect(fold).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("slider", { name: THREE_D_COPY.tailRailEndsAtSlider, exact: true })).toHaveCount(1);
+    await expect(page.getByText(THREE_D_COPY.railBlendNote, { exact: true })).toBeVisible();
     await page.reload();
     await waitForBoard(page);
     await expect(fold).toHaveAttribute("aria-expanded", "false");

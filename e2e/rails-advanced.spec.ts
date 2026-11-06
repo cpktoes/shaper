@@ -830,6 +830,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     let tail = await showRail(page, testInfo, "tail");
     await expect(tail.getByRole("checkbox", { name: "Hard Edge" })).toBeChecked();
     const rows = await advancedRows(await openAdvanced(tail));
+    // The caption above the two rows sends a shaper to the 3D page, the only place they can be seen working.
+    await expect(tail.getByText("These controls are invisible here and corresponding controls with visual verification are found on the 3D page.", { exact: true })).toBeVisible();
     expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(18)}`);
     expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${STOCK_END}`);
     expect(STOCK_END).toBe(inches(30));
