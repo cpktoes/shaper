@@ -104,6 +104,57 @@ async function settled(host: Locator) {
     .toBe(true);
 }
 
+/**
+ * Presses a button whose move takes 400 ms, then, two frames into that move, presses something else: a button by its
+ * spoken name, a key on the drawing, or pointers coming down on the drawing and lifting again. Both inside the page, so
+ * the first move is certainly still under way however loaded the machine is.
+ */
+async function pressDuringMove(
+  page: Page,
+  first: string,
+  second: {
+    button?: string;
+    key?: string;
+    pointers?: { id: number; pointerType: "mouse" | "touch"; button: number }[];
+  },
+) {
+  await page.evaluate(
+    async ({ first, second }) => {
+      const press = (name: string) => {
+        const buttons = [...document.querySelectorAll<HTMLButtonElement>("button")];
+        const found = buttons.find((b) => b.textContent === name || b.getAttribute("aria-label") === name);
+        if (!found) throw new Error(`no button ${name}`);
+        found.click();
+      };
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      const host = document.querySelector("[data-board-3d]") as HTMLElement;
+      press(first);
+      await frame();
+      await frame();
+      if (second.button) press(second.button);
+      if (second.key) host.dispatchEvent(new KeyboardEvent("keydown", { key: second.key, bubbles: true, cancelable: true }));
+      const box = host.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const pointers = second.pointers ?? [];
+      const pointer = (type: string, p: (typeof pointers)[number], i: number) =>
+        new PointerEvent(type, {
+          clientX: x + i * 40,
+          clientY: y,
+          pointerId: p.id,
+          pointerType: p.pointerType,
+          button: p.button,
+          isPrimary: i === 0,
+          bubbles: true,
+          cancelable: true,
+        });
+      pointers.forEach((p, i) => host.dispatchEvent(pointer("pointerdown", p, i)));
+      pointers.forEach((p, i) => host.dispatchEvent(pointer("pointerup", p, i)));
+    },
+    { first, second },
+  );
+}
+
 /** A drag across the canvas by (dx, dy) from its centre: a finger on the Android phone, the mouse elsewhere. */
 async function dragBoard(page: Page, projectName: string, dx: number, dy: number, steps = 8) {
   const box = await boardHost(page).boundingBox();
@@ -428,6 +479,82 @@ test.describe("the shaping bay", () => {
     await settled(host);
     expect(await viewerOf(host)).toEqual([REST_VIEWER.azimuthDeg, REST_VIEWER.elevationDeg, 0]);
     expect(isTurn(await turnOf(host), rackTurn({ ...AT_REST, roll: 45 }))).toBe(true);
+  });
+
+  test("8c. a second button pressed during a move lands the first: Bottom then Nose keeps the bottom up", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const noseNearBottomUp = rackTurn({ swing: 180, lift: 0, roll: 180 });
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, { button: THREE_D_COPY.views.nose });
+    await expect.poll(async () => isTurn(await turnOf(host), noseNearBottomUp), { timeout: 10_000 }).toBe(true);
+    await settled(host);
+    expect(isTurn(await turnOf(host), noseNearBottomUp)).toBe(true);
+    // Bottom's face landed too, so Rotate on Side reads from the bottom: nothing left to show.
+    await expect(slider(page, THREE_D_COPY.rotateOnSide)).toHaveValue("0");
+  });
+
+  test("8d. and Nose then Deck keeps the nose toward you", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await pressDuringMove(page, THREE_D_COPY.views.nose, { button: THREE_D_COPY.views.deck });
+    await settled(host);
+    expect(isTurn(await turnOf(host), rackTurn({ ...AT_REST, swing: 180 }))).toBe(true);
+  });
+
+  test("8e. a slide, a second finger, a zoom key or the Room switch during a move lands the move, and the zoom it was undoing", async ({
+    page,
+  }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const bottomUp = rackTurn({ ...AT_REST, roll: 180 });
+    const zoomIn = async () => {
+      await host.focus();
+      await page.keyboard.press("+");
+      await page.keyboard.press("+");
+      await expect(host).toHaveAttribute("data-crop", /^2 /);
+    };
+    const backToDeck = async () => {
+      await view(page, THREE_D_COPY.views.deck).click();
+      await expect.poll(async () => isTurn(await turnOf(host), rackTurn(AT_REST)), { timeout: 10_000 }).toBe(true);
+      await settled(host);
+    };
+
+    // A right-drag's press.
+    await zoomIn();
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, { pointers: [{ id: 21, pointerType: "mouse", button: 2 }] });
+    await settled(host);
+    expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
+    await expect(host).toHaveAttribute("data-crop", "1 0.0000 0.0000");
+    await backToDeck();
+
+    // A second finger coming down.
+    await zoomIn();
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, {
+      pointers: [
+        { id: 22, pointerType: "touch", button: 0 },
+        { id: 23, pointerType: "touch", button: 0 },
+      ],
+    });
+    await settled(host);
+    expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
+    await expect(host).toHaveAttribute("data-crop", "1 0.0000 0.0000");
+    await backToDeck();
+
+    // A zoom key: the move lands first, so the press isn't thrown away when it does.
+    await zoomIn();
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, { key: "+" });
+    await settled(host);
+    expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
+    await expect(host).toHaveAttribute("data-crop", /^1\.5 /);
+    await host.focus();
+    await page.keyboard.press("0");
+    await backToDeck();
+
+    // The Room switch.
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, { button: THREE_D_COPY.room });
+    await expect(host).toHaveAttribute("data-bay", "off");
+    await settled(host);
+    expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
   });
 
   test("9. on a coarse pointer each control has 44 dots of touch", async ({ page }, testInfo) => {

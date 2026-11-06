@@ -666,6 +666,7 @@ export function ThreeDScreen() {
   /** Back to 1x (the button, a double-click or double-tap, the 0 key): the zoom and the slide undone, the turn kept,
    * and a screen reader hears it. At 1x already, nothing happens and nothing is said. */
   const backToOne = () => {
+    finishMotion();
     if (isAtOneCrop(cropRef.current)) return;
     applyCrop(AT_ONE_CROP);
     say(THREE_D_COPY.oneXSpoken);
@@ -695,10 +696,10 @@ export function ThreeDScreen() {
       touchesRef.current.set(event.pointerId, p);
       capture(host, event.pointerId);
       if (touchesRef.current.size === 2) {
-        // A second finger: the turn under way stops where it is, with no glide, and the two fingers zoom about their
+        // A second finger: a glide stops where it is and a button's move lands, and the two fingers zoom about their
         // midpoint and slide (UI-SPEC §5). The board's turn is untouched; a twist does nothing.
         dragRef.current = null;
-        stopMotion();
+        finishMotion();
         tapRef.current = null;
         lastTapRef.current = null;
         startPinch();
@@ -711,7 +712,7 @@ export function ThreeDScreen() {
       if (slideRef.current || dragRef.current) return;
       // A middle press would otherwise start the browser's own autoscroll.
       if (event.button === 1) event.preventDefault();
-      stopMotion();
+      finishMotion();
       capture(host, event.pointerId);
       slideRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
       if (event.pointerType === "mouse") host.style.cursor = "move";
@@ -865,12 +866,12 @@ export function ThreeDScreen() {
 
   /**
    * Takes the screen to a move's lie, face, viewer and crop, together: over VIEW_TURN_MS with the rack's settle curve, or
-   * at once under reduced motion. Any glide or move under way stops first. Picked while the drawing is still loading,
-   * the move is kept and shows when the board appears. The panel's readings hold still until it lands, so Flip the Board
-   * leaves them reading what they read.
+   * at once under reduced motion. A glide under way stops first and a move under way lands first, so the new move starts
+   * from where the last one was going. Picked while the drawing is still loading, the move is kept and shows when the
+   * board appears. The panel's readings hold still until it lands, so Flip the Board leaves them reading what they read.
    */
   const moveTo = (move: Move, instant = false) => {
-    stopMotion();
+    finishMotion();
     dragRef.current = null;
     const land = () => {
       landingRef.current = null;
@@ -920,9 +921,11 @@ export function ThreeDScreen() {
    * The five buttons (the founder, 2026-11-05). On Turn the Board there is one view and only the board moves: Deck and
    * Bottom put that face up on the racks, Nose and Tail turn it end for end so that end is nearer you, and Side has nothing
    * to do. On Walk Around you move inside the room: Deck and Bottom stand you directly above the board, nose toward the
-   * back wall; Nose, Tail and Side stand you there. The racks never move, and nothing zooms by itself.
+   * back wall; Nose, Tail and Side stand you there. The racks never move, and nothing zooms by itself. A press during a
+   * move lands that move first, so each button reads the board's landed lie, face and heading.
    */
   const onView = (name: ViewName) => {
+    finishMotion();
     const walking = walkingRef.current;
     if (name === "deck" || name === "bottom") {
       const heading = walking ? 0 : headingRef.current;
@@ -995,6 +998,7 @@ export function ThreeDScreen() {
     ];
     if (arrow && event.shiftKey) {
       event.preventDefault();
+      finishMotion();
       const w = host.clientWidth * KEY_SLIDE_SHARE;
       const h = host.clientHeight * KEY_SLIDE_SHARE;
       const [dx, dy] = { left: [-w, 0], right: [w, 0], up: [0, -h], down: [0, h] }[arrow];
@@ -1039,7 +1043,7 @@ export function ThreeDScreen() {
     const scene = sceneRef.current;
     scene?.setRoom(roomOn);
     if (was === roomOn) return;
-    stopMotion();
+    finishMotion();
     if (!roomOn) {
       scene?.setFree(1);
       return;
@@ -1062,7 +1066,7 @@ export function ThreeDScreen() {
       motionRef.current = t >= 1 ? 0 : requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
-  }, [roomOn, applyTurn, stopMotion]);
+  }, [roomOn, applyTurn, finishMotion]);
 
   // ------------------------------------------------------------------------------------------------------------
   // Zooming (16-09, UI-SPEC §4–§5): the zoom row, the wheel, a trackpad pinch and the keys, in the 2D viewers' half
@@ -1070,6 +1074,7 @@ export function ThreeDScreen() {
   // ------------------------------------------------------------------------------------------------------------
   const [wideView, setWideView] = useState(false);
   const onZoomStep = (steps: number) => {
+    finishMotion();
     const host = hostRef.current;
     if (host) applyCrop(cropStep(cropRef.current, host.clientWidth, host.clientHeight, steps));
   };
