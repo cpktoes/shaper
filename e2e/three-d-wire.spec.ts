@@ -140,6 +140,41 @@ test.describe("the wire view (D-42)", () => {
     await expect.poll(async () => (await density()).drawn).toBeCloseTo(before.drawn, 1);
   });
 
+  test("0b. a switch pressed while the drawing context is gone draws at the right density when it comes back", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const density = () =>
+      host.evaluate((el) => {
+        const canvas = el.querySelector("canvas") as HTMLCanvasElement;
+        return { drawn: canvas.width / canvas.clientWidth, screen: window.devicePixelRatio };
+      });
+    const lit = (await density()).drawn;
+    // A lost context hands out no extensions, so the one that lost it is kept to bring it back.
+    const loseContext = () =>
+      page.evaluate(async () => {
+        const canvas = document.querySelector("[data-board-3d] canvas") as HTMLCanvasElement;
+        const ext = canvas.getContext("webgl2")?.getExtension("WEBGL_lose_context");
+        if (!ext) throw new Error("no WEBGL_lose_context");
+        (window as unknown as { contextHandle: typeof ext }).contextHandle = ext;
+        const lost = new Promise((resolve) => canvas.addEventListener("webglcontextlost", resolve, { once: true }));
+        ext.loseContext();
+        await lost;
+      });
+    const restoreContext = () =>
+      page.evaluate(() => (window as unknown as { contextHandle: WEBGL_lose_context }).contextHandle.restoreContext());
+
+    for (const on of [true, false]) {
+      await loseContext();
+      await expect(host).toHaveAttribute("data-board-state", "lost");
+      await wireSwitch(page).click();
+      await expectPressed(wireSwitch(page), on);
+      await restoreContext();
+      await expect(host).toHaveAttribute("data-board-state", "ready", { timeout: FIRST_FRAME_MS });
+      const { screen } = await density();
+      await expect.poll(async () => (await density()).drawn).toBeCloseTo(on ? screen : lit, 1);
+    }
+  });
+
   test("1. the # switch draws dark lines on a plain foam, keeps the view, and gives the same frame back", async ({ page }, testInfo) => {
     await keepPreset(page, "Fish");
     await page.goto("/design/3d");
