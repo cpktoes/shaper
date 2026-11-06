@@ -1052,18 +1052,29 @@ export function ThreeDScreen() {
     const to = settleOnRacks(from);
     flippedRef.current = isBottomUp(rackAngles(to).roll);
     headingRef.current = headingOf(rackAngles(to).swing);
-    if (!scene || reducedRef.current) {
-      scene?.setFree(0);
+    // The settle lands like any move: a key, a drag or a slider during it finishes it, on the racks.
+    const land = () => {
+      landingRef.current = null;
+      sceneRef.current?.setFree(0);
       applyTurn(to);
+    };
+    if (!scene || reducedRef.current) {
+      land();
       return;
     }
+    landingRef.current = land;
     const began = performance.now();
     const tick = () => {
       const t = (performance.now() - began) / VIEW_TURN_MS;
+      if (t >= 1) {
+        motionRef.current = 0;
+        land();
+        return;
+      }
       const k = easeOut(t);
       scene.setFree(1 - k);
-      applyTurn(t >= 1 ? to : slerpShortest(from, to, k), t >= 1);
-      motionRef.current = t >= 1 ? 0 : requestAnimationFrame(tick);
+      applyTurn(slerpShortest(from, to, k), false);
+      motionRef.current = requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
   }, [roomOn, applyTurn, finishMotion]);

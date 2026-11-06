@@ -106,8 +106,8 @@ async function settled(host: Locator) {
 
 /**
  * Presses a button whose move takes 400 ms, then, two frames into that move, presses something else: a button by its
- * spoken name, a key on the drawing, or pointers coming down on the drawing and lifting again. Both inside the page, so
- * the first move is certainly still under way however loaded the machine is.
+ * spoken name, a key on the drawing, a slider set to a value, or pointers coming down on the drawing and lifting again.
+ * Both inside the page, so the first move is certainly still under way however loaded the machine is.
  */
 async function pressDuringMove(
   page: Page,
@@ -115,7 +115,8 @@ async function pressDuringMove(
   second: {
     button?: string;
     key?: string;
-    pointers?: { id: number; pointerType: "mouse" | "touch"; button: number }[];
+    slider?: { name: string; value: number };
+    pointers?: readonly { id: number; pointerType: "mouse" | "touch"; button: number }[];
   },
 ) {
   await page.evaluate(
@@ -133,6 +134,12 @@ async function pressDuringMove(
       await frame();
       if (second.button) press(second.button);
       if (second.key) host.dispatchEvent(new KeyboardEvent("keydown", { key: second.key, bubbles: true, cancelable: true }));
+      if (second.slider) {
+        const input = document.querySelector(`input[aria-label="${second.slider.name}"]`) as HTMLInputElement;
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, String(second.slider.value));
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
       const box = host.getBoundingClientRect();
       const x = box.left + box.width / 2;
       const y = box.top + box.height / 2;
@@ -756,6 +763,44 @@ test.describe("the Room switch (the founder, 2026-11-05)", () => {
     await expect(modeButton(page, THREE_D_COPY.modeWalk)).toBeEnabled();
     expect(await host.getAttribute("data-place")).not.toBe(place);
   });
+
+  for (const [what, press] of [
+    ["an arrow key", { key: "ArrowDown" }],
+    ["a slider", { slider: { name: THREE_D_COPY.rotateOnSide, value: 20 } }],
+    ["a press to drag", { pointers: [{ id: 24, pointerType: "mouse", button: 0 }] }],
+  ] as const) {
+    test(`15b. ${what} while the board settles back on its racks leaves it on them, neither sunk into the pads nor floating off`, async ({
+      page,
+    }) => {
+      await page.goto("/design/3d");
+      const host = await waitForBoard(page);
+      const room = cornerSwitch(page, THREE_D_COPY.room);
+      await room.click();
+      await expect(host).toHaveAttribute("data-bay", "off");
+      // Off the racks, the nose raised, so the two places the board can stand are well apart.
+      await host.focus();
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowDown");
+      await expect.poll(async () => Math.abs(rackAngles((await turnOf(host)) as unknown as Quat).lift)).toBeGreaterThan(20);
+
+      await pressDuringMove(page, THREE_D_COPY.room, press);
+      await expect(host).toHaveAttribute("data-bay", "on");
+      await settled(host);
+      const interrupted = await placeOf(host);
+      const turn = await turnOf(host);
+
+      // The truth: the same lie, settled with nothing pressed.
+      await room.click();
+      await expect(host).toHaveAttribute("data-bay", "off");
+      await room.click();
+      await expect(host).toHaveAttribute("data-bay", "on");
+      // This settle moves the place alone, so it is the place that is waited for.
+      await expect
+        .poll(async () => Math.max(...(await placeOf(host)).map((value, i) => Math.abs(value - interrupted[i]))), { timeout: 5_000 })
+        .toBeLessThanOrEqual(0.15);
+      expect(isTurn(await turnOf(host), turn as unknown as Quat)).toBe(true);
+    });
+  }
 
   test("16. the Room switch changes nothing but the picture: VOLUME's litres read the same", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer reads the litres");
