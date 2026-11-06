@@ -34,7 +34,7 @@
  * holds still, as it does under a dialog.
  */
 
-import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { deleteModel, duplicateModel, renameModel, setModelLocked } from "@/app/design/actions";
 import { BOARD_LOCK_COPY } from "@/components/design/board-lock-copy";
 import { useDesign } from "@/components/design/design-store";
@@ -97,6 +97,12 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
    * reads this first, and the board opens the way the shaper just left it. The redraw brings a new row
    * with the lock on it, so nothing here outlives that moment. */
   const chosenLocks = useRef(new WeakMap<RackModel, boolean>());
+  /** The board open in the editor now, for a lock answered after the press that sent it: Open This Board may have
+   * opened one in between. */
+  const openId = useRef(modelId);
+  useEffect(() => {
+    openId.current = modelId;
+  }, [modelId]);
   const [focusRequest, setFocusRequest] = useState<RackFocusRequest | null>(null);
   /** Puts the focus on board `key` — a new request every time, even for the board asked for last. */
   const requestFocus = (key: string) => setFocusRequest((prev) => ({ key, n: (prev?.n ?? 0) + 1 }));
@@ -286,11 +292,13 @@ export function BoardRack({ entries, rackOrder = null, onSelectModel, onContinue
       if (!result.saved) throw new Error("The lock was not stored.");
     } catch {
       chosenLocks.current.delete(model);
+      // Opened with the choice in that moment, the board goes back to what the server still holds.
+      if (model.id === openId.current) setOpenBoardLocked(!next);
       setLockErrors((prev) => ({ ...prev, [model.id]: failure }));
       announce(failure, { visible: false });
       return;
     }
-    if (model.id === modelId) setOpenBoardLocked(next);
+    if (model.id === openId.current) setOpenBoardLocked(next);
     announce(next ? BOARD_LOCK_COPY.locked(model.name) : BOARD_LOCK_COPY.unlocked(model.name), { visible: false });
   };
 
