@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the shaping
+ * bay (D-43, D-44): the board now lies on its racks in a drawn room, seen from directly behind the tail; the panel opens
+ * with ON THE RACKS and VIEW holds the two-way switch; the corner row gains the Room switch; and the subtitle has new
+ * words. Compared with the tolerance at 0, against the picture as plan 16-17 left it: 540908 pixels differ, all in x
+ * 20-1242, y 147-797: 51000 in the panel, the rest in the canvas and its corner row. Nothing above y 147 differs, so the
+ * top row and the band are untouched. The other five pictures passed and are byte-for-byte what they were, so VOLUME still
+ * reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3218) in the plan's worktree on this Mac; the
+ * orchestrator confirms under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new:
+ * 3D 34d8a19c to 8418d4d6.
+ *
  * RE-RECORDED 2026-11-05 (Phase 16, plan 16-17, branch board-3d) — 3D only, `three-d-desktop.png`, once, after the
  * fourth corner switch: SHOW left the panel and its three switches, with the new # for Wire View, joined Wide view in
  * the corner (D-35, D-42), and the thruster's near fin, which shows below the rail at the first view, took its real

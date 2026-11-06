@@ -13,8 +13,6 @@ import {
   BOARD_TO_ROOM,
   cameraAxes,
   dragTurn,
-  FRAME_FILL,
-  frameAtOne,
   framePointsOf,
   GLIDE_MAX_SPEED,
   GLIDE_MS,
@@ -28,20 +26,17 @@ import {
   REST_TURN,
   ROOM_CAMERA,
   roomCameraAxes,
+  viewerAxes,
   rotateVec,
   slerpShortest,
   turnAngle,
-  VIEW_NAMES,
-  VIEW_TURNS,
-  type Frame,
   type Quat,
 } from "./view-3d";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 
 /**
- * The 3D screen's turns and framing (Phase 16, UI-SPEC §3, §14). The framing is checked by projecting the very
- * points it framed through a camera built here from first principles — the elevation and the field of view read
- * from `ROOM_CAMERA`, never a typed figure (Rule 1).
+ * The 3D screen's turns (Phase 16, UI-SPEC §3, §14, D-43, D-44): every expected figure follows from a relation or from
+ * `ROOM_CAMERA`, never a typed figure (Rule 1).
  */
 
 const close = (a: readonly number[], b: readonly number[], tol = 1e-12) =>
@@ -92,9 +87,10 @@ describe("BOARD_TO_ROOM", () => {
     close(cross, z);
   });
 
-  it("the room camera is the contract's: 50° up, 30° field of view", () => {
-    expect(ROOM_CAMERA).toEqual({ elevationDeg: 50, fovDeg: 30 });
-    expect(FRAME_FILL).toBe(0.85);
+  it("the viewer stands first directly behind the tail, on the stringer's line (the founder, D-44)", () => {
+    expect(ROOM_CAMERA.azimuthDeg).toBe(0);
+    expect(ROOM_CAMERA.elevationDeg).toBeGreaterThan(0);
+    expect(ROOM_CAMERA.fovDeg).toBe(62);
   });
 });
 
@@ -113,30 +109,7 @@ function shortboardPoints() {
   return { surface, ...framePointsOf(surface.positions) };
 }
 
-/** The picture's box of `points`, in the canvas's own -1…1 units, from a camera built from first principles. */
-function projectedBox(points: readonly Vec3[], turn: Quat, frame: Frame, aspect: number) {
-  const e = (ROOM_CAMERA.elevationDeg * Math.PI) / 180;
-  const right: Vec3 = [1, 0, 0];
-  const up: Vec3 = [0, Math.cos(e), -Math.sin(e)];
-  const forward: Vec3 = [0, -Math.sin(e), -Math.cos(e)];
-  const tanV = Math.tan(((ROOM_CAMERA.fovDeg / 2) * Math.PI) / 180);
-  const dot = (p: Vec3, q: Vec3) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
-  const q = quatMultiply(turn, BOARD_TO_ROOM);
-  let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
-  for (const p of points) {
-    const r = rotateVec(q, p);
-    const depth = frame.distance + dot(r, forward);
-    const x = (dot(r, right) + frame.right) / (depth * tanV * aspect);
-    const y = (dot(r, up) + frame.up) / (depth * tanV);
-    x0 = Math.min(x0, x);
-    x1 = Math.max(x1, x);
-    y0 = Math.min(y0, y);
-    y1 = Math.max(y1, y);
-  }
-  return { x0, x1, y0, y1 };
-}
-
-describe("frameAtOne", () => {
+describe("framePointsOf", () => {
   const { points, centre, surface } = shortboardPoints();
 
   it("framePointsOf keeps the surface's reach on every axis, about its box's centre", () => {
@@ -155,55 +128,6 @@ describe("frameAtOne", () => {
     expect(points.length).toBeLessThanOrEqual(6006);
   });
 
-  for (const aspect of [1.6, 0.6]) {
-    it(`at rest on a ${aspect} canvas the board fills 85% of the tighter direction, centred`, () => {
-      const frame = frameAtOne(points, REST_TURN, aspect);
-      const box = projectedBox(points, REST_TURN, frame, aspect);
-      const halfX = (box.x1 - box.x0) / 2;
-      const halfY = (box.y1 - box.y0) / 2;
-      expect(Math.max(halfX, halfY)).toBeCloseTo(0.85, 4);
-      expect(Math.abs(box.x0 + box.x1) / 2).toBeLessThan(1e-4);
-      expect(Math.abs(box.y0 + box.y1) / 2).toBeLessThan(1e-4);
-      // A board is long: on both canvases its length is the tighter direction at rest, nose to tail across.
-      expect(halfX).toBeGreaterThan(halfY);
-      expect(frame.distance).toBeGreaterThan(0);
-    });
-  }
-
-  it("a turned board is framed the same way, and a smaller fill puts it further away", () => {
-    const turn = quatFromAxisAngle([0.3, 1, 0.2], 0.9);
-    const frame = frameAtOne(points, turn, 1.2);
-    const box = projectedBox(points, turn, frame, 1.2);
-    expect(Math.max((box.x1 - box.x0) / 2, (box.y1 - box.y0) / 2)).toBeCloseTo(0.85, 4);
-    expect(Math.abs(box.x0 + box.x1) / 2).toBeLessThan(1e-4);
-    expect(Math.abs(box.y0 + box.y1) / 2).toBeLessThan(1e-4);
-    expect(frameAtOne(points, turn, 1.2, 0.5).distance).toBeGreaterThan(frame.distance);
-  });
-
-  it("every preset view is framed the same way, end-on views too: the near end in front of the camera, never on it", () => {
-    // An end-on view puts half the board's length between its centre and the camera's side, and its near end is
-    // the widest thing in the picture (a wide tail end on): the board must stand back until that end fits.
-    for (const label of ["shortboard|asis|hard", "fish|swallow|hard"]) {
-      const { surface: s } = testBoard(label);
-      const { points: p } = framePointsOf(s.positions);
-      for (const view of [...VIEW_NAMES.map((n) => VIEW_TURNS[n]), REST_TURN]) {
-        for (const aspect of [1.3, 0.6]) {
-          const frame = frameAtOne(p, view, aspect);
-          const box = projectedBox(p, view, frame, aspect);
-          expect(Math.max((box.x1 - box.x0) / 2, (box.y1 - box.y0) / 2)).toBeCloseTo(0.85, 4);
-          expect(Math.abs(box.x0 + box.x1) / 2).toBeLessThan(1e-4);
-          expect(Math.abs(box.y0 + box.y1) / 2).toBeLessThan(1e-4);
-          const { forward } = roomCameraAxes();
-          const q = quatMultiply(view, BOARD_TO_ROOM);
-          const nearest = Math.min(...p.map((v) => {
-            const r = rotateVec(q, v);
-            return frame.distance + r[0] * forward[0] + r[1] * forward[1] + r[2] * forward[2];
-          }));
-          expect(nearest).toBeGreaterThan(0);
-        }
-      }
-    }
-  });
 });
 
 /** The same turn: a quaternion and its negative turn a board identically. */
@@ -220,6 +144,60 @@ function axisAngle(q: Quat): { axis: Vec3; angle: number } {
 }
 
 const unit = (q: Quat) => expect(Math.hypot(...q)).toBeCloseTo(1, 12);
+
+describe("viewerAxes — where the viewer stands in the room", () => {
+  const dotOf = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+  it("three unit, square, right-handed axes at any azimuth and elevation, straight overhead too", () => {
+    for (const azimuth of [-170, -90, -13, 0, 12, 90, 135, 180]) {
+      for (const elevation of [-11, 0, 20, 50, 89.9, 90]) {
+        const { right, up, forward } = viewerAxes(azimuth, elevation);
+        for (const axis of [right, up, forward]) expect(Math.hypot(...axis)).toBeCloseTo(1, 12);
+        expect(dotOf(right, up)).toBeCloseTo(0, 12);
+        expect(dotOf(right, forward)).toBeCloseTo(0, 12);
+        expect(dotOf(up, forward)).toBeCloseTo(0, 12);
+        const cross: Vec3 = [
+          right[1] * up[2] - right[2] * up[1],
+          right[2] * up[0] - right[0] * up[2],
+          right[0] * up[1] - right[1] * up[0],
+        ];
+        close(cross, [-forward[0], -forward[1], -forward[2]]);
+        // The picture's right is level, so a view never rolls.
+        expect(right[1]).toBe(0);
+      }
+    }
+  });
+
+  it("at azimuth 90° it is the camera the room used to have, for any elevation", () => {
+    for (const elevation of [0, 20, 50]) {
+      const e = (elevation * Math.PI) / 180;
+      const { right, up, forward } = viewerAxes(90, elevation);
+      close(right, [1, 0, 0]);
+      close(up, [0, Math.cos(e), -Math.sin(e)]);
+      close(forward, [0, -Math.sin(e), -Math.cos(e)]);
+    }
+  });
+
+  it("at azimuth 0 the viewer stands behind the tail looking along the board toward the nose", () => {
+    const { right, forward } = viewerAxes(0, 0);
+    const lie = (axis: Vec3) => rotateVec(BOARD_TO_ROOM, axis);
+    close(forward, lie([1, 0, 0]));
+    // The board's right rail, seen from the tail, is on the picture's right.
+    close(right, lie([0, -1, 0]));
+  });
+
+  it("the room's axes are the first view's", () => {
+    close(roomCameraAxes().forward, viewerAxes(ROOM_CAMERA.azimuthDeg, ROOM_CAMERA.elevationDeg).forward);
+  });
+
+  it("a drag and a key read the axes they are given, and the first view's without any", () => {
+    const axes = viewerAxes(70, 10);
+    const start = quatFromAxisAngle([1, 2, 3], 0.8);
+    expect(dragTurn(start, 30, 12, 400)).toEqual(dragTurn(start, 30, 12, 400, roomCameraAxes()));
+    expect(dragTurn(start, 30, 12, 400, axes)).not.toEqual(dragTurn(start, 30, 12, 400));
+    expect(keyTurn(start, "left", axes)).not.toEqual(keyTurn(start, "left"));
+  });
+});
 
 describe("cameraAxes", () => {
   it("is the room camera's own frame, right-handed, the way back toward the camera opposite its view", () => {
@@ -343,12 +321,11 @@ function testBoard(label: string) {
   return { geometry, profile, surface, length: board.fields.outline.length };
 }
 
-/** A point as the camera sees it in a view: across the picture to the right, and up it (orthographic). */
-function seen(view: Quat, p: Vec3): [number, number] {
-  const { right, up } = cameraAxes();
-  const r = rotateVec(quatMultiply(view, BOARD_TO_ROOM), p);
+/** A point of the board at rest as a viewer sees it: across the picture to the right, and up it (orthographic). */
+function seen(axes: { right: Vec3; up: Vec3 }, p: Vec3): [number, number] {
+  const r = rotateVec(BOARD_TO_ROOM, p);
   const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  return [dot(r, right), dot(r, up)];
+  return [dot(r, axes.right), dot(r, axes.up)];
 }
 
 /** Every pair of (got, want) differs by one and the same shift, to `tol` millimetres. */
@@ -364,50 +341,17 @@ function sameUpToShift(got: [number, number][], want: [number, number][], tol = 
   expect(worst).toBeLessThan(tol);
 }
 
-describe("VIEW_TURNS — the five preset views (UI-SPEC §3)", () => {
-  const { right, up, toCamera } = cameraAxes();
-  const face = (view: Quat, axis: Vec3) => rotateVec(quatMultiply(view, BOARD_TO_ROOM), axis);
-
-  it("each is a unit turn, and Reset View's first view is no turn at all", () => {
-    for (const name of VIEW_NAMES) unit(VIEW_TURNS[name]);
-    expect(REST_TURN).toEqual([0, 0, 0, 1]);
-    // Five different views.
-    for (const a of VIEW_NAMES) for (const b of VIEW_NAMES) if (a !== b) expect(turnAngle(VIEW_TURNS[a], VIEW_TURNS[b])).toBeGreaterThan(0.1);
-  });
-
-  it("Deck: the deck square to the camera, nose left", () => {
-    close(face(VIEW_TURNS.deck, [0, 0, 1]), toCamera);
-    close(face(VIEW_TURNS.deck, [1, 0, 0]), neg(right));
-  });
-
-  it("Bottom: the bottom square to the camera, nose left", () => {
-    close(face(VIEW_TURNS.bottom, [0, 0, -1]), toCamera);
-    close(face(VIEW_TURNS.bottom, [1, 0, 0]), neg(right));
-  });
-
-  it("Side: the near rail square on, deck up, nose left", () => {
-    close(face(VIEW_TURNS.side, [0, 1, 0]), toCamera);
-    close(face(VIEW_TURNS.side, [0, 0, 1]), up);
-    close(face(VIEW_TURNS.side, [1, 0, 0]), neg(right));
-  });
-
-  it("Nose and Tail: end on toward the camera, deck up", () => {
-    close(face(VIEW_TURNS.nose, [1, 0, 0]), toCamera);
-    close(face(VIEW_TURNS.nose, [0, 0, 1]), up);
-    close(face(VIEW_TURNS.tail, [-1, 0, 0]), toCamera);
-    close(face(VIEW_TURNS.tail, [0, 0, 1]), up);
-  });
-
+describe("the board as the viewer sees it from overhead and from the rail (UI-SPEC §3, D-44)", () => {
   for (const label of ["shortboard|asis|hard", "fish|asis|hard", "midlength|asis|hard", "longboard|asis|soft", "fish|swallow|hard"]) {
     describe(label, () => {
       const { geometry, profile, surface, length } = testBoard(label);
 
-      it("Deck shows TEMPLATE's outline lying nose-left, exactly, up to a shift", () => {
+      it("straight overhead shows TEMPLATE's outline lying nose-left, exactly, up to a shift", () => {
         // TEMPLATE lying (screen-tiles' outlineTileArt): x = −station across, w down the picture.
         const template = silhouette(geometry);
         sameUpToShift(
           template.map(({ station, w }) => {
-            const [x, y] = seen(VIEW_TURNS.deck, [station, w, 0]);
+            const [x, y] = seen(viewerAxes(90, 90), [station, w, 0]);
             return [x, -y];
           }),
           template.map(({ station, w }) => [-station, w]),
@@ -416,14 +360,14 @@ describe("VIEW_TURNS — the five preset views (UI-SPEC §3)", () => {
         const loop = boardOutlineLoop(surface);
         sameUpToShift(
           loop.map((p) => {
-            const [x, y] = seen(VIEW_TURNS.deck, p);
+            const [x, y] = seen(viewerAxes(90, 90), p);
             return [x, -y];
           }),
           loop.map((p) => [-p[0], p[1]]),
         );
       });
 
-      it("Side shows ROCKER's side view, nose left and deck up, exactly, up to a shift, between the 12\" stations", () => {
+      it("from the rail shows ROCKER's side view, nose left and deck up, exactly, up to a shift, between the 12\" stations", () => {
         const from = inchesToMm(12);
         const to = length - inchesToMm(12);
         const { deck, bottom } = boardProfileLines(surface);
@@ -434,7 +378,7 @@ describe("VIEW_TURNS — the five preset views (UI-SPEC §3)", () => {
           const inside = line.filter((p) => p[0] >= from && p[0] <= to);
           // As drawn: ROCKER's own picture is x = −station across and the height up (screen-tiles' sidePoints).
           sameUpToShift(
-            inside.map((p) => seen(VIEW_TURNS.side, p)),
+            inside.map((p) => seen(viewerAxes(90, 0), p)),
             inside.map((p) => [-p[0], heightAt(p[0] as Mm)]),
             1e-6,
           );
@@ -466,13 +410,6 @@ describe("slerpShortest — a view is reached the short way round", () => {
     }
   });
 
-  it("every view from rest is at most half a turn away, and halfway there is half of it", () => {
-    for (const name of VIEW_NAMES) {
-      const whole = turnAngle(REST_TURN, VIEW_TURNS[name]);
-      expect(whole).toBeLessThanOrEqual(Math.PI + 1e-12);
-      expect(turnAngle(REST_TURN, slerpShortest(REST_TURN, VIEW_TURNS[name], 0.5))).toBeCloseTo(whole / 2, 10);
-    }
-  });
 });
 
 describe("keyTurn — the arrow keys", () => {

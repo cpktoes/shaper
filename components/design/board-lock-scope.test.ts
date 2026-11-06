@@ -34,6 +34,9 @@ const LOCKABLE_FILES = [
   "components/3d/three-d-controls.tsx",
   // Phase 16 (16-17, D-35): the corner's picture switches only change what is seen, so each is data-lock-exempt.
   "components/3d/three-d-show-buttons.tsx",
+  // Phase 16 (16-18, D-43): the bay's controls only change what is seen. Flip the Board and the switch are
+  // data-lock-exempt; each SliderRow there must say `lockExempt`, which the case below proves.
+  "components/3d/three-d-rack-controls.tsx",
 ];
 
 /** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and
@@ -135,6 +138,13 @@ describe("board-lock-scope — the control inventory", () => {
     for (const path of ["components/design/slider-row.tsx", "components/design/measure-field.tsx"]) {
       expect(stripComments(read(path)), path).toMatch(/useControlsLocked\(\)/);
     }
+  });
+
+  it("every SliderRow in the 3D bay's controls says it only changes the picture (16-18, D-43)", () => {
+    const source = stripComments(read("components/3d/three-d-rack-controls.tsx"));
+    const rows = [...source.matchAll(/<SliderRow\b/g)];
+    expect(rows.length).toBeGreaterThanOrEqual(3);
+    for (const row of rows) expect(openingTag(source, row.index), "a bay slider must keep working on a locked board").toMatch(/\blockExempt\b/);
   });
 
   it("the two-option toggle can be disabled, and PillButton reads the lock itself", () => {

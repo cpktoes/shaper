@@ -2,7 +2,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { VIEW_NAMES, VIEW_TURNS, type Quat } from "../lib/geometry/view-3d";
+import { AT_REST, BOTTOM_UP, rackTurn, WALK_VIEWS } from "../lib/geometry/shaping-bay";
+import { VIEW_NAMES, type Quat } from "../lib/geometry/view-3d";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
@@ -15,8 +16,9 @@ import { countDifferent, decodePng } from "./helpers/canvas-pixels";
  * while the camera and the room's lights stay where they are, a let-go board glides to rest (never under reduced
  * motion), and nothing ever turns it by itself.
  *
- * The host reports what the tests read: `data-turn` (the board's turn, four numbers), `data-room` (where the camera
- * and the four lights are, read back from the scene after every frame) and `data-frames` (how many frames it drew).
+ * The host reports what the tests read: `data-turn` (the board's turn, four numbers), `data-viewer` (where the viewer
+ * stands), `data-room` (where the camera and the strips' ends are, read back from the scene after every frame) and
+ * `data-frames` (how many frames it drew).
  */
 
 /** WebKit draws its first frame more slowly on the suite's development server (about 5 s measured). */
@@ -50,6 +52,14 @@ async function waitForBoard(page: Page) {
 async function turnOf(host: Locator): Promise<number[]> {
   return ((await host.getAttribute("data-turn")) ?? "").split(" ").map(Number);
 }
+
+/** How far round the room the viewer stands. */
+async function azimuthOf(host: Locator): Promise<number> {
+  return Number(((await host.getAttribute("data-viewer")) ?? "").split(" ")[0]);
+}
+
+/** An azimuth as the screen reports it. */
+const wrapped = (deg: number) => (deg > 180 ? deg - 360 : deg);
 
 /** The canvas host's centre and its shorter side, in page dots. */
 async function hostGeometry(host: Locator) {
@@ -271,21 +281,26 @@ async function keepLockedBoard(page: Page) {
 }
 
 test.describe("the five views, Reset View and the keys", () => {
-  test("5. each view button turns the board to its view, and a screen reader hears which", async ({ page }) => {
-    // Ten view turns, each re-framed at 1x, on browsers that draw without a graphics card.
+  test("5. Deck and Bottom set the board on its racks, Nose, Tail and Side stand you there, and a screen reader hears which", async ({ page }) => {
+    // Ten moves on browsers that draw without a graphics card.
     test.setTimeout(300_000);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     for (const name of VIEW_NAMES) {
       await viewButton(page, THREE_D_COPY.views[name]).click();
-      await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS[name]), { timeout: 10_000 }).toBe(true);
+      if (name === "deck" || name === "bottom") {
+        const want = rackTurn(name === "deck" ? AT_REST : BOTTOM_UP);
+        await expect.poll(async () => isTurn(await turnOf(host), want), { timeout: 10_000 }).toBe(true);
+      } else {
+        await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(wrapped(WALK_VIEWS[name].azimuthDeg), 1);
+      }
       await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
-      // Pressed again once the turn has finished, it is already there: nothing moves.
+      // Pressed again once the move has finished, it is already there: nothing moves.
       await settled(host);
-      const there = await host.getAttribute("data-turn");
+      const there = [await host.getAttribute("data-turn"), await host.getAttribute("data-viewer")];
       await viewButton(page, THREE_D_COPY.views[name]).click();
       await page.waitForTimeout(600);
-      expect(await host.getAttribute("data-turn")).toBe(there);
+      expect([await host.getAttribute("data-turn"), await host.getAttribute("data-viewer")]).toEqual(there);
       await expect(spoken(page)).toHaveText(THREE_D_COPY.viewSpoken[name]);
     }
   });
@@ -294,9 +309,13 @@ test.describe("the five views, Reset View and the keys", () => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await viewButton(page, THREE_D_COPY.views.bottom).click();
-    await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS.bottom), { timeout: 10_000 }).toBe(true);
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
+    await viewButton(page, THREE_D_COPY.views.nose).click();
+    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(180, 1);
     await viewButton(page, THREE_D_COPY.resetView).click();
     await expect.poll(async () => isTurn(await turnOf(host), [0, 0, 0, 1]), { timeout: 10_000 }).toBe(true);
+    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(0, 1);
+    await expect(host).toHaveAttribute("data-crop", "1 0.0000 0.0000");
     await expect(spoken(page)).toHaveText(THREE_D_COPY.resetSpoken);
   });
 
@@ -353,6 +372,16 @@ test.describe("the five views, Reset View and the keys", () => {
     for (const label of [...VIEW_NAMES.map((n) => THREE_D_COPY.views[n]), THREE_D_COPY.resetView]) {
       await expect(viewButton(page, label)).toBeDisabled();
     }
+    // The bay's controls dim with them, and the switch.
+    const racks = page.locator("[data-three-d-racks]");
+    await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeDisabled();
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+      await expect(racks.getByRole("slider", { name, exact: true })).toBeDisabled();
+    }
+    await expect(page.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeDisabled();
+    const mode = page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button");
+    await expect(mode).toHaveCount(2);
+    for (const button of await mode.all()) await expect(button).toBeDisabled();
   });
 
   test("10. a locked board can still be turned: the view buttons are never greyed by the lock", async ({ page }) => {
@@ -363,6 +392,15 @@ test.describe("the five views, Reset View and the keys", () => {
       await expect(viewButton(page, label)).toBeEnabled();
     }
     await viewButton(page, THREE_D_COPY.views.side).click();
-    await expect.poll(async () => isTurn(await turnOf(host), VIEW_TURNS.side), { timeout: 10_000 }).toBe(true);
+    await expect.poll(async () => azimuthOf(host), { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
+    // The bay's controls only change the picture, so a locked board keeps them too.
+    const racks = page.locator("[data-three-d-racks]");
+    await expect(racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true })).toBeEnabled();
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+      await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
+    }
+    await expect(page.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeEnabled();
+    await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
   });
 });

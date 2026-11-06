@@ -22,7 +22,35 @@ export const THREE_D_COPY = {
   // The side panel, top to bottom.
   /** The panel title, drawn uppercase by the CSS. */
   title: "3D Board",
-  subtitle: "Spin it under shaping-room lights, then export it for a CNC.",
+  subtitle: "Turn it on the racks under the bay's lights, then export it for a CNC.",
+  /** The bay's controls (D-43, D-44), each one plane, in the founder's own names. */
+  racksHeading: "On the Racks",
+  flip: "Flip the Board",
+  raiseNose: "Raise the Nose",
+  raiseTail: "Raise the Tail",
+  onTheRack: "on the rack",
+  rotateOnSide: "Rotate on Side",
+  swing: "Swing",
+  rollValue: (deg: number) => (deg === 0 ? "flat" : `${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
+  swingValue: (deg: number) => (deg === 0 ? "straight" : `nose ${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
+  raiseSpoken: (end: "nose" | "tail", height: string | null) =>
+    height === null ? `${end === "nose" ? "Nose" : "Tail"} on its rack.` : `${end === "nose" ? "Nose" : "Tail"} ${height} off its rack.`,
+  rollSpoken: (deg: number) =>
+    deg === 0 ? "Flat on the racks." : `Rotated ${Math.abs(deg)} degrees ${deg < 0 ? "left" : "right"}.`,
+  swingSpoken: (deg: number) =>
+    deg === 0 ? "Straight on the racks." : `Nose swung ${Math.abs(deg)} degrees ${deg < 0 ? "left" : "right"}.`,
+  flipSpoken: { deck: "Deck up.", bottom: "Bottom up." },
+  modeGroup: "What a drag does",
+  modeTurn: "Turn the Board",
+  modeWalk: "Walk Around",
+  /** The view's own slider (D-44): a slight angle off the stringer's line, to look down a rail. */
+  sightAlong: "Sight Along",
+  sightLeft: "Left rail",
+  sightRight: "Right rail",
+  sightValue: (deg: number) => (deg === 0 ? "on the stringer" : `${Math.abs(deg)}° ${deg < 0 ? "left" : "right"}`),
+  sightSpoken: (deg: number) =>
+    deg === 0 ? "On the stringer's line." : `${Math.abs(deg)} degrees to the ${deg < 0 ? "left" : "right"} of the stringer's line.`,
+
   /** The tail rail's blend (D-30, D-32): the same two settings as RAILS' tail Advanced menu, the same words and
    * spoken names, so one control has one name wherever it is. They bound the tail's whole rail, so they are always
    * live; the nose's blend is automatic and has no control. */
@@ -62,6 +90,11 @@ export const THREE_D_COPY = {
   /** The # switch's tooltip and spoken description. */
   wireViewTip: "Wire View — the board drawn in very thin black lines across and along it.",
 
+  /** The fifth corner switch (the founder, 2026-11-05). */
+  room: "Room",
+  /** The Room switch's tooltip and spoken description. */
+  roomTip: "Room — turn it off for a plain background and a free spin.",
+
   // On the canvas: each message is two lines.
   browserCantDraw: {
     line1: "This browser can't draw the board in 3D.",
@@ -83,13 +116,15 @@ export const THREE_D_COPY = {
   canvasName: (boardName: string) => `${boardName} in 3D`,
   canvasRole: "3D view",
   canvasDescription:
-    "Drag to turn the board, scroll or pinch to zoom, and right-drag or use two fingers to slide it. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view.",
+    "Drag to turn the board on its racks, scroll or pinch to zoom, and right-drag or use two fingers to slide it. With the keyboard: the arrow keys turn it, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel raise an end, rotate it on its side and swing it, one at a time.",
+  canvasDescriptionWalk:
+    "Drag to walk around the board, scroll or pinch to zoom, and right-drag or use two fingers to slide the picture. With the keyboard: the arrow keys walk, Shift with an arrow key slides it, plus and minus zoom, 0 goes back to 1x and Home resets the view. The sliders in the panel still move the board.",
   viewSpoken: {
-    deck: "Deck view.",
-    bottom: "Bottom view.",
-    side: "Side view.",
-    nose: "Nose view.",
-    tail: "Tail view.",
+    deck: "Deck up on the racks.",
+    bottom: "Bottom up on the racks.",
+    side: "Standing at the rail.",
+    nose: "Standing at the nose.",
+    tail: "Standing at the tail.",
   },
   resetSpoken: "Back to the first view.",
   oneXSpoken: "Back to 1x.",

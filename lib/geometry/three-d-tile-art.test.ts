@@ -6,8 +6,7 @@ import { buildOutline } from "./outline";
 import { BOARD_PRESETS, type BoardPreset } from "./presets";
 import { buildRackBoardArt, stringerPoints, turnedBoardPoints } from "./rack-art";
 import { boxOfPoints, outlineTileArt } from "./screen-tiles";
-import { THREE_D_TILE_TURN_RAD, threeDLoadingFrame, threeDTileArt, threeDTilePicture } from "./three-d-tile-art";
-import { FRAME_FILL } from "./view-3d";
+import { THREE_D_TILE_TURN_RAD, threeDTileArt, threeDTilePicture } from "./three-d-tile-art";
 import { mm } from "./units";
 
 /**
@@ -137,32 +136,5 @@ describe("threeDTilePicture — what the tile draws, with its fallback", () => {
       kind: "fallback",
       ...outlineTileArt(good.geometry, "lying"),
     });
-  });
-});
-
-describe("threeDLoadingFrame — the loading picture framed as the first view at 1x (UI-SPEC §9)", () => {
-  it.each(named)("%s: the board's own box, grown about its centre so it fills the 1x share of the tighter side", (_, c) => {
-    const box = boxOfPoints(pathPoints(threeDTileArt(c.art).board));
-    const frame = threeDLoadingFrame(c.art);
-    const vb = parseViewBox(frame.viewBox);
-    expect(vb.width * FRAME_FILL).toBeCloseTo(box.width, 1);
-    expect(vb.height * FRAME_FILL).toBeCloseTo(box.height, 1);
-    expect(vb.minX + vb.width / 2).toBeCloseTo(box.minX + box.width / 2, 1);
-    expect(vb.minY + vb.height / 2).toBeCloseTo(box.minY + box.height / 2, 1);
-    expect(frame.aspect).toBeCloseTo(box.width / box.height, 3);
-  });
-
-  it("drawn with meet into a canvas of either shape, the board fills exactly the 1x share of the tighter side", () => {
-    const vb = parseViewBox(threeDLoadingFrame(CASES[0].art).viewBox);
-    for (const [w, h] of [
-      [1000, 700],
-      [375, 520],
-      [1400, 300],
-    ]) {
-      const scale = Math.min(w / vb.width, h / vb.height);
-      const drawnW = vb.width * FRAME_FILL * scale;
-      const drawnH = vb.height * FRAME_FILL * scale;
-      expect(Math.max(drawnW / w, drawnH / h)).toBeCloseTo(FRAME_FILL, 6);
-    }
   });
 });

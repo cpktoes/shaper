@@ -1,14 +1,12 @@
 /**
  * The 3D screen's small picture (Phase 16, UI-SPEC §10): the board turned three-quarters, drawn the
- * way the phone menu's other screen tiles are drawn. The same picture stands in for the 3D board
- * while its drawing code loads (UI-SPEC §9).
+ * way the phone menu's other screen tiles are drawn.
  *
  * It is the Board Rack's own turn (`rack-art.ts`'s `turnedBoardPoints`), at 50 degrees, with the
- * deck's stringer (`stringerPoints`) on it. 50 degrees is the 3D screen's first view: its camera
- * stands 50 degrees above the floor, looking at the board lying nose left and deck up
- * (`view-3d.ts`'s `REST_TURN` and `ROOM_CAMERA`). So the picture is laid nose left, like TEMPLATE's
- * tile (x = −station), and deck up (y = −x), like ROCKER's — the rack's standing board turned a
- * quarter turn, so the nose's rocker kicks up as it does on the screen.
+ * deck's stringer (`stringerPoints`) on it. It no longer mirrors the 3D screen's first view, which
+ * since the shaping bay (D-44) stands behind the tail: it stays a board anyone reads at a glance,
+ * laid nose left, like TEMPLATE's tile (x = −station), and deck up (y = −x), like ROCKER's — the
+ * rack's standing board turned a quarter turn, so the nose's rocker kicks up.
  *
  * This lives in its own file rather than beside the other tile pictures in `screen-tiles.ts`,
  * because `rack-art.ts` already imports that file: putting the rack's turn there would make the two
@@ -22,9 +20,8 @@ import type { BoardSideProfile } from "./board-profile";
 import type { OutlineGeometry } from "./outline";
 import { buildRackBoardArt, stringerPoints, turnedBoardPoints, type RackBoardArt, type RackPoint } from "./rack-art";
 import { boxOfPoints, outlineTileArt, padBox, polylinePath, viewBoxOf } from "./screen-tiles";
-import { FRAME_FILL } from "./view-3d";
 
-/** The turn the 3D tile shows: 50 degrees, the 3D screen's first view. */
+/** The turn the 3D tile shows: 50 degrees. */
 export const THREE_D_TILE_TURN_RAD = (50 * Math.PI) / 180;
 
 /** The air round the picture, as a share of its longer side — TEMPLATE's tile's own. */
@@ -66,26 +63,4 @@ export function threeDTilePicture(profile: BoardSideProfile, geometry: OutlineGe
   } catch {
     return { kind: "fallback", ...outlineTileArt(geometry, "lying") };
   }
-}
-
-/**
- * Where the loading picture draws the 3D tile's turned board (UI-SPEC §9): framed as the 3D screen's first view is at
- * 1x, so the lit board lands where the picture was. `viewBox` is the turned board's own box (unpadded) grown about its
- * centre by 1 / `fill`: drawn with `meet` across the whole canvas, the board's box then fills exactly `fill` of the
- * canvas's tighter direction, as `frameAtOne` frames the board. `aspect` is the board's box, width over height, so the
- * screen can place its one line just under the drawn board.
- */
-export function threeDLoadingFrame(art: RackBoardArt, fill: number = FRAME_FILL): { viewBox: string; aspect: number } {
-  const box = boxOfPoints(lying(turnedBoardPoints(art, THREE_D_TILE_TURN_RAD)));
-  const width = box.width / fill;
-  const height = box.height / fill;
-  return {
-    viewBox: viewBoxOf({
-      minX: box.minX + box.width / 2 - width / 2,
-      minY: box.minY + box.height / 2 - height / 2,
-      width,
-      height,
-    }),
-    aspect: box.width / box.height,
-  };
 }

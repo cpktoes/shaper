@@ -22,6 +22,8 @@ async function dismissStrips(page: Page) {
     ([bannerKey, tipKey]) => {
       window.sessionStorage.setItem(bannerKey, "true");
       window.localStorage.setItem(tipKey, "true");
+      // These measure the board against a plain ground, so the room is off (the Room switch's own path, 16-18).
+      (globalThis as { __shaper3dBareRoom?: boolean }).__shaper3dBareRoom = true;
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
@@ -480,7 +482,7 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     expect(await scroller.evaluate((el) => el.scrollTop)).toBe(panelScroll);
   });
 
-  test("6. an upright iPhone at 1x shows only the four switches over the board", async ({ page }, testInfo) => {
+  test("6. an upright iPhone at 1x shows only the five switches over the board", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "the iPhone's own touch rule");
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
@@ -489,12 +491,12 @@ test.describe("fingers on the 3D board (Android, real touch input)", () => {
     await expect(zoomRow(page)).toBeHidden();
     await expect(page.getByRole("button", { name: "Hide the sidebar for a wider view" })).toBeHidden();
     // No Rotate button on the 3D screen (D-04), since turning the phone already turns the board: Fins, Blank, Contour
-    // Stripes and Wire View alone (D-35, D-42).
-    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(4);
+    // Stripes, Wire View and the Room alone (D-35, D-42, D-43).
+    await expect(page.locator("[data-viewer-toolbar] button:visible")).toHaveCount(5);
     const names = await page
       .locator("[data-viewer-toolbar] button:visible")
       .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
-    expect(names).toEqual([THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes, THREE_D_COPY.wireView]);
+    expect(names).toEqual([THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes, THREE_D_COPY.wireView, THREE_D_COPY.room]);
   });
 });
 
