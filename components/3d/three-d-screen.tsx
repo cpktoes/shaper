@@ -56,16 +56,19 @@ import {
   AT_REST,
   bayLens,
   BOTTOM_UP,
-  clampLift,
   clampViewer,
   fillCrop,
   firstViewOutline,
   isBottomUp,
   liftOfRaise,
   rackAngles,
+  rackDrag,
+  rackKey,
+  rackNudge,
   rackSeat,
   rackTurn,
   REST_VIEWER,
+  settleOnRacks,
   shownAngles,
   standAt,
   totalRoll,
@@ -85,7 +88,7 @@ import { ThreeDControls, ThreeDTailRail, type ExportState } from "./three-d-cont
 import {
   ThreeDModeSwitch,
   ThreeDOnTheRacks,
-  ThreeDSightAlong,
+  ThreeDLookDownRail,
   makeRackStore,
   type DragMode,
   type RaisedEnd,
@@ -386,7 +389,7 @@ export function ThreeDScreen() {
   const turnRef = useRef<Quat>(REST_TURN);
   /** Which face was last put up by Flip, Deck or Bottom: the Rotate on Side reading is taken from it (D-43). */
   const flippedRef = useRef(false);
-  /** Where the viewer stands (D-43, D-44): moved by Nose, Tail, Side, Sight Along and a walk; never stored. */
+  /** Where the viewer stands (D-43, D-44): moved by Nose, Tail, Side, Look Down the Rail and a walk; never stored. */
   const viewerRef = useRef<Viewer>(REST_VIEWER);
   /** What a drag does, as the handlers read it: never Walk Around with the room off. */
   const walkingRef = useRef(false);
@@ -609,9 +612,6 @@ export function ThreeDScreen() {
     [readPanel],
   );
 
-  /** A turn by hand stays on the racks: past the limit it stops, and with the room off nothing holds it. */
-  const heldTurn = (turn: Quat) => (roomRef.current ? clampLift(turn) : turn);
-
   /** This board's lens for this window, worked out once for each (the sum is too long for every move of a drag). */
   const lensRef = useRef<{ points: readonly Vec3[]; aspect: number; lens: BayLens } | null>(null);
   const lensNow = (): BayLens | null => {
@@ -761,7 +761,8 @@ export function ThreeDScreen() {
     drag.samples.push({ t, x: event.clientX, y: event.clientY });
     while (drag.samples.length > 2 && drag.samples[0].t < t - GLIDE_SAMPLE_MS) drag.samples.shift();
     if (walkingRef.current) applyViewer(heldViewer(walkDrag(viewerRef.current, dx, dy, shortSide())));
-    else applyTurn(heldTurn(dragTurn(turnRef.current, dx, dy, shortSide(), viewerLook(viewerRef.current))));
+    else if (roomRef.current) applyTurn(rackTurn(rackDrag(rackAngles(turnRef.current), dx, dy, shortSide(), viewerRef.current)));
+    else applyTurn(dragTurn(turnRef.current, dx, dy, shortSide(), viewerLook(viewerRef.current)));
   };
 
   const endDrag = (event: PointerEvent<HTMLDivElement>, glide: boolean) => {
@@ -831,6 +832,20 @@ export function ThreeDScreen() {
       motionRef.current = requestAnimationFrame(tick);
       return;
     }
+    if (roomRef.current) {
+      // On the racks the glide carries on as the drag did, in the same degrees, so the racks stay put here too.
+      const velocity = { azimuthDeg: (vx * 180) / Math.PI, elevationDeg: (vy * 180) / Math.PI };
+      const start = rackAngles(turnRef.current);
+      const viewer = viewerRef.current;
+      const began = performance.now();
+      const tick = () => {
+        const { azimuthDeg, elevationDeg, done } = walkGlideAt(velocity, performance.now() - began);
+        applyTurn(rackTurn(rackNudge(start, azimuthDeg, elevationDeg, viewer)));
+        motionRef.current = done ? 0 : requestAnimationFrame(tick);
+      };
+      motionRef.current = requestAnimationFrame(tick);
+      return;
+    }
     // About the very axis `dragTurn` turns about: the picture's up for a sideways drag, its right for an up-down one.
     const { right, up } = cameraAxes(viewerLook(viewerRef.current));
     const velocity: Vec3 = [up[0] * vx + right[0] * vy, up[1] * vx + right[1] * vy, up[2] * vx + right[2] * vy];
@@ -838,7 +853,7 @@ export function ThreeDScreen() {
     const began = performance.now();
     const tick = () => {
       const { turnSince, done } = glideAt(velocity, performance.now() - began);
-      applyTurn(heldTurn(quatMultiply(turnSince, start)));
+      applyTurn(quatMultiply(turnSince, start));
       motionRef.current = done ? 0 : requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
@@ -918,7 +933,7 @@ export function ThreeDScreen() {
   /**
    * The five buttons (the founder, D-44). Deck and Bottom put the board that way up on the racks with every slider at
    * rest, straight overhead in Walk Around. Nose, Tail and Side stand the viewer there, moving neither the board nor the
-   * racks. No button ever swings the racks by itself; Deck and Bottom bring a swing back to rest.
+   * racks. The racks never move, by any control.
    */
   const onView = (name: ViewName) => {
     if (name === "deck" || name === "bottom") {
@@ -959,7 +974,6 @@ export function ThreeDScreen() {
     setPlane({ lift: liftOfRaise(heightMm, seat) * (end === "nose" ? 1 : -1) });
   };
   const onRoll = (shown: number) => setPlane({ roll: totalRoll(shown, flippedRef.current) });
-  const onSwing = (swing: number) => setPlane({ swing });
   const onSight = (sightDeg: number) => {
     finishMotion();
     applyViewer({ ...viewerRef.current, sightDeg });
@@ -999,7 +1013,8 @@ export function ThreeDScreen() {
       event.preventDefault();
       finishMotion();
       if (walkingRef.current) applyViewer(heldViewer(walkKey(viewerRef.current, arrow)));
-      else applyTurn(heldTurn(keyTurn(turnRef.current, arrow, viewerLook(viewerRef.current))));
+      else if (roomRef.current) applyTurn(rackTurn(rackKey(rackAngles(turnRef.current), arrow, viewerRef.current)));
+      else applyTurn(keyTurn(turnRef.current, arrow, viewerLook(viewerRef.current)));
     } else if (event.key === "Home") {
       event.preventDefault();
       onReset(true);
@@ -1030,7 +1045,7 @@ export function ThreeDScreen() {
       return;
     }
     const from = turnRef.current;
-    const to = clampLift(from);
+    const to = settleOnRacks(from);
     flippedRef.current = isBottomUp(rackAngles(to).roll);
     if (!scene || reducedRef.current) {
       scene?.setFree(0);
@@ -1188,7 +1203,7 @@ export function ThreeDScreen() {
           onView={onView}
           onReset={() => onReset()}
           modeSwitch={<ThreeDModeSwitch mode={dragMode} onMode={onMode} disabled={message !== null || !roomOn} />}
-          sightAlong={<ThreeDSightAlong store={rackStore} onSight={onSight} disabled={message !== null} />}
+          lookDownRail={<ThreeDLookDownRail store={rackStore} onSight={onSight} disabled={message !== null} />}
           drawingUnavailable={message !== null}
           exportState={exportState}
           onExport={onExport}
@@ -1199,7 +1214,6 @@ export function ThreeDScreen() {
             onFlip={onFlip}
             onRaise={onRaise}
             onRoll={onRoll}
-            onSwing={onSwing}
             disabled={message !== null}
           />
           <ThreeDTailRail />

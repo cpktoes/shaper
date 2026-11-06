@@ -12,9 +12,9 @@ requires:
   - "16-09: crop zoom and slide"
   - "16-07: the turn as one quaternion, the glide, the keys"
 provides:
-  - "lib/geometry/shaping-bay.ts: BAY, BAY_PAINT, BAY_TREATMENTS, RackAngles, RackSeat, Viewer, BayLens, REST_VIEWER, WALK_VIEWS, AT_REST, BOTTOM_UP, END_VIEW_FILL, SIGHT_LIMIT_DEG, SIGHT_STEP_DEG; rackTurn, rackAngles, shownAngles, totalRoll, isBottomUp, clampLift, anglesBetween, rackSeat, overPad, boardPlace, freePlace, floorPatch, raiseArmMm, raiseOfLift, liftOfRaise, raiseSlider, standAt, viewerLook, wallReach, aimAt, viewerPlace, bayLens, clampViewer, walkDrag, walkKey, walkBetween, walkGlideAt, railSightDeg, fillCrop, firstViewOutline, stripEnds"
+  - "lib/geometry/shaping-bay.ts: BAY, BAY_PAINT, BAY_TREATMENTS, RackAngles, RackSeat, Viewer, BayLens, REST_VIEWER, WALK_VIEWS, AT_REST, BOTTOM_UP, END_VIEW_FILL, SIGHT_LIMIT_DEG, SIGHT_STEP_DEG; rackTurn, rackAngles, rackNudge, rackDrag, rackKey, settleOnRacks, shownAngles, totalRoll, isBottomUp, clampLift, anglesBetween, rackSeat, overPad, boardPlace, freePlace, floorPatch, raiseArmMm, raiseOfLift, liftOfRaise, raiseSlider, standAt, viewerLook, wallReach, aimAt, viewerPlace, bayLens, clampViewer, walkDrag, walkKey, walkBetween, walkGlideAt, railSightDeg, fillCrop, firstViewOutline, stripEnds"
   - "lib/geometry/view-3d.ts: viewerAxes, ViewerAxes; ROOM_CAMERA gains azimuthDeg; cameraAxes, dragTurn and keyTurn take the viewer's axes. frameAtOne, Frame, FRAME_FILL, VIEW_TURNS, quatFromBasis go"
-  - "components/3d/three-d-rack-controls.tsx: ThreeDOnTheRacks, ThreeDSightAlong, ThreeDModeSwitch, makeRackStore"
+  - "components/3d/three-d-rack-controls.tsx: ThreeDOnTheRacks, ThreeDLookDownRail, ThreeDModeSwitch, makeRackStore"
   - "components/3d/board-scene.ts: setViewer, setRoom, setFree, applyBayLight, buildBay; setTurn takes the turn alone; frame() goes; RoomReport.lights is the strips' four ends; host data-place, data-racks"
   - "components/design/slider-row.tsx: lockExempt"
 affects: [16-13]
@@ -65,9 +65,11 @@ key-decisions:
   - "The racks stand 18% of the board's length from its middle, not the plan's 22%: at 22% a 2+1's side fins reached a pad on the Shortboard and went 23 mm into one on the Fish. The founder's 'no fin touches a rack' outranks the figure"
   - "A sill sits under each strip, deeper than the shelf above it. In his photo the long bright band is a surface catching the light, not the tube, and a strip truly under a shelf is hidden from a standing eye. This keeps the strip under the shelf and the bright band he liked"
   - "Nose and Tail stand the eye 10 degrees above the board, not at dead rail height: from dead level the outline closes up to a line and there is no curve to follow"
-  - "Sight Along swings the eye round the board by a small angle. It reaches each rail's own line at 5.5 to 7.1 degrees on every preset and the 120 inch board, inside its limit of 15"
+  - "Look Down the Rail swings the eye round the board by a small angle. It reaches each rail's own line at 5.5 to 7.1 degrees on every preset and the 120 inch board, inside its limit of 15"
   - "The viewer stands as near as 2100 mm, not 2450: the board reads larger and both strips still read"
   - "A slider, drag, arrow key or the two-way switch finishes a move under way at once; before this it could strand the viewer halfway"
+  - "Swing is gone and the racks never move, by any control. A sideways drag on Turn the Board was mostly a swing, so on the racks it now turns the board in the plane of the picture: Rotate on Side from either end, end over end from the rail. A vertical drag is unchanged"
+  - "swing stays a number in RackAngles, always zero on the racks, because a free spin with the room off still needs the exact inverse"
 duration: about 3 hours 30 minutes of work, in a run interrupted once by an API connection error
 completed: 2026-11-05
 metrics:
@@ -82,16 +84,16 @@ actuals:
 
 # Phase 16 Plan 18: The shaping bay Summary
 
-The 3D screen is now a drawn shaping bay: deep blue walls, a dusty floor and a long strip under the shelf down each side wall. The board lies on two racks. You stand directly behind the tail, and you can flip it, raise either end, rotate it on its side, swing it, walk around it, sight down a rail, or turn the room off and spin it freely.
+The 3D screen is now a drawn shaping bay: deep blue walls, a dusty floor and a long strip under the shelf down each side wall. The board lies on two racks that never move. You stand directly behind the tail, and you can flip it, raise either end, rotate it on its side, walk around it, look down a rail, or turn the room off and spin it freely.
 
 ## What changes for the founder
 
 - **You open standing directly behind the tail,** looking toward the nose, deck up, a little above the board. Reset View brings you back here.
 - **The strips hang under the shelves.** Below each one is a sill that catches the light, which gives the long bright band from your photo. The wall above the shelf stays dim and the wall below the sill stays dark.
 - **Shadows read grey and bright light reads white.** The walls stay blue and the foam doesn't take the blue.
-- **The board rests on two racks,** which stand wherever the board is. No fin touches a rack in any setup on any preset.
-- **ON THE RACKS,** first in the panel, holds Flip the Board and four sliders. Every control works on a locked board and saves nothing.
-- **VIEW** holds a two-way switch, the five buttons, Reset View and the new Sight Along slider.
+- **The board rests on two racks, and they never move,** by any control, drag or button. No fin touches a rack in any setup on any preset.
+- **ON THE RACKS,** first in the panel, holds Flip the Board and three sliders. Every control works on a locked board and saves nothing.
+- **VIEW** holds a two-way switch, the five buttons, Reset View and the new Look Down the Rail slider.
 - **A fifth corner icon is the Room switch.**
 - **Nothing here changes the board.** The litres don't move and the CNC zip stays byte for byte the same, flipped, raised, walked round or with the room off.
 
@@ -99,36 +101,49 @@ The 3D screen is now a drawn shaping bay: deep blue walls, a dusty floor and a l
 
 | Control | What it does |
 |---|---|
-| **Deck** | Board deck up on the racks, every slider at rest, Swing and Sight Along included. In Walk Around, you also go straight overhead. |
+| **Deck** | Board deck up on the racks, every slider at rest, Look Down the Rail included. In Walk Around, you also go straight overhead. |
 | **Bottom** | The same, bottom up. |
 | **Nose** | You stand at the nose, facing the tail, and the zoom goes to about 60% of the window. The board and racks don't move. |
 | **Tail** | You stand at the tail, facing the nose, the same way. |
-| **Side** | You stand at the rail, facing across, at 1x. If the board is swung, Nose, Tail and Side go to where its ends and rail are now. |
+| **Side** | You stand at the rail, facing across, at 1x. |
 | **Reset View** | The board and you back at the first view, at 1x. The Turn or Walk choice stays as it was. |
 | **Flip the Board** | Half a turn on the racks. Every reading stays what it was, and a screen reader hears "Bottom up." or "Deck up." |
 | **Raise the Nose / Raise the Tail** | How high that end stands off its rack, in your chosen units, with the other end pivoting on its rack. Moving one brings the other back to rest. It stops at 60 degrees. |
 | **Rotate on Side** | The board about its nose-to-tail line, a full turn either way on every device. The low rail stays on the pads. |
-| **Swing** | Slider only: the board and racks turn together. No button ever swings them. Deck, Bottom and Reset View bring it back. |
-| **Sight Along** | Shifts your eye up to 15 degrees either way, in steps of 1/4 degree. Only the eye moves. |
+| **Look Down the Rail** | Shifts your eye up to 15 degrees either way, in steps of 1/4 degree. Only the eye moves. |
 | **Turn the Board / Walk Around** | Decides what a drag does. Pressing it moves nothing, and the sliders and buttons work in both. Walk Around stays in the room and above the floor. |
+| **A drag on Turn the Board** | Up and down: from the tail it raises an end, from the rail it rotates the board on its side, as it always did. Sideways: **new**, see below. The arrow keys and the glide after a flick follow the same rule. |
 | **Room** | Off, the bay and racks go, the canvas clears to the theme's plain ground, the board reads the same and doesn't move, and a drag spins it freely with no limit. Walk Around dims. On, it settles back on its racks with a glide. |
 
-## Questions for the founder at the look
+### What a sideways drag does now
 
-1. **Sight Along's name.** It stands for now. **"Look Down the Rail"** is the proposal: those are your own words, and the pictures show that is exactly what it does. It changes in one file.
-2. **Nose and Tail's zoom.** `END_VIEW_FILL` is 0.6 in one place, if your eye wants more or less.
-3. **Swing.** Shown as you asked, in case Side and Sight Along make it unnecessary.
-4. **The sill.** It's an addition you didn't ask for by name (see Deviations). Does it read as your photo?
-5. **Deck and Bottom put Sight Along back to rest too,** reading "every slider" literally. Say if you would rather keep your sight line when you flip.
-6. **The pressed switch pill is accent-filled,** like every two-way pill in the app, so Export is no longer the only accent-filled thing on the panel. It's a look worth a glance.
+Swing's removal reached the drag, so this one needs his eye. Before, a sideways drag from behind the tail turned the board about the picture's upright, which was almost all swing with about a third of it landing as roll. It depended on Swing, so it could not stay: the board would either leave its racks, or the drag would go nearly dead.
+
+So on the racks a sideways drag now turns the board in the plane of the picture, as a hand on the deck pushing it over:
+
+- **From the tail or the nose:** Rotate on Side, at a drag's full rate, toward your hand. A quarter of the canvas's shorter side is 45 degrees.
+- **From the rail:** the board tips end over end, stopping at the 60-degree limit.
+- **Up and down is as he saw it,** as that part never depended on Swing. One small difference: from the rail with an end raised, it now rolls the board about its own line rather than the room's, which is what Rotate on Side does.
+
+With the Room off, a drag is the free spin it was, in every direction. Turning the Room back on settles the board onto its racks with no swing, straight down the room.
+
+## The founder's rulings at his first look
+
+1. **The name:** "Look Down the Rail". Done, everywhere it is spoken, shown or tested. The code's internal `sightDeg` keeps its short name; nobody reads it.
+2. **Swing:** "Remove it." Done: the slider, its copy and its tests are gone, and the racks never move, by any control.
+3. **Side on a Longboard:** "Leave it." No change.
+
+Standing as they were: Deck and Bottom reset Look Down the Rail with every other slider, the sill stays, and the switch's filled pill stays.
+
+Still open for his eye: Nose and Tail's zoom, one figure, `END_VIEW_FILL` at 0.6.
 
 ## Pictures
 
 All in `.planning/phases/16-3d-board-and-cnc-export/pictures/`, the scripts in `16-18-pictures-source.tar.gz`.
 
 - `16-18-bay-beside-photo.png`: your photo beside the Shortboard, then the Fish and Longboard on a computer, and all three on an iPhone.
-- `16-18-on-the-racks.png`: flipped, each end raised, rotated 45 degrees each way, swung, on a computer and an iPhone, Shortboard and Longboard.
-- `16-18-two-ways.png`: the same drag each way, the five buttons each way, Sight Along down each rail of a Shortboard and a Longboard, and a Longboard at Side.
+- `16-18-on-the-racks.png`: flipped, each end raised, rotated 45 degrees each way, on a computer and an iPhone, Shortboard and Longboard.
+- `16-18-two-ways.png`: the same drag each way, the five buttons each way, Look Down the Rail down each rail of a Shortboard and a Longboard, and a Longboard at Side.
 - `16-18-looks-and-themes.png`: Contour Stripes, Wire View, the room off, and the four themes both ways.
 - `16-18-panel.png`: the page on a computer, an iPhone at each section and a sideways phone.
 
@@ -163,13 +178,13 @@ Real surfaces, racks at 18%, pad tops at 740 mm. Heights are in mm off the floor
 | Longboard | 411 / 1775 | 225 / 2154 | 74 / 2437 |
 | 120" | 333 / 1845 | 128 / 2273 | 40 / 2672 |
 
-Proven by test over the raise in 10-degree steps and every roll in 15-degree steps, on every vertex of the full surface: nothing lies more than 2 mm inside a pad, and the foam stays at least 40 mm off the floor, a rule only the 120" board reaches. No fin point lies inside a pad at rest, rolled 45 degrees each way or swung 45, 90 or 135 degrees, across all 32 fin cases. The tightest is the Fish's 2+1, 19.5 mm clear.
+Proven by test over the raise in 10-degree steps and every roll in 15-degree steps, on every vertex of the full surface: nothing lies more than 2 mm inside a pad, and the foam stays at least 40 mm off the floor, a rule only the 120" board reaches. No fin point lies inside a pad at rest or rolled 45 degrees each way, across all 32 fin cases. The tightest is the Fish's 2+1, 19.5 mm clear. These tables were measured with Swing still in the app; the racks stood where they stand now, so they stand.
 
 ## Where the viewer stands
 
 Stand-off in mm, then the lens in degrees (62 unless it had to widen).
 
-| Board | Computer 804×615 | Tall window 482×700 | Pixel 7 | iPhone 14 | 320 | Sideways | Rail's own line, Sight Along |
+| Board | Computer 804×615 | Tall window 482×700 | Pixel 7 | iPhone 14 | 320 | Sideways | Rail's own line, Look Down the Rail |
 |---|---|---|---|---|---|---|---|
 | Shortboard | 2100 | 2100 | 2100 | 2100 | 2100 | 2100 | 6.6° |
 | Fish | 2100 | 2100 | 2100 | 2100 | 2100 | 2100 | 7.1° |
@@ -193,14 +208,20 @@ All the on-chip figures sit inside one 60 Hz frame (16.7 ms). They were taken be
 
 ## How it was proven
 
+After the founder's rulings, on the final code:
+
 | Check | Result |
 |---|---|
 | `npx tsc --noEmit` | Exit 0 |
-| `npm run lint` | No errors; one existing warning in `lib/db/import-designs-action.test.ts`, not from this plan |
-| `npm test` | Exit 0: 9416 passed, 2 skipped, 180 files |
-| Desktop baseline, desktop project | Exit 0: 6 passed. Only `three-d-desktop` re-recorded, 34d8a19c to 8418d4d6, after a diff put every changed pixel in the panel and the canvas |
-| Plan's browser gate, three projects | **Exit 1 as one run:** 212 passed, 9 failed, 100 skipped, 29.7 minutes |
-| The 9 failures, re-run alone | 8 pass; x-3d on the iPhone stays intermittent |
+| `npm run lint` | Exit 0; one existing warning in `lib/db/import-designs-action.test.ts`, not from this plan |
+| `npm test` | Exit 0 on the second run: 9425 passed, 2 skipped, 180 files. The first run lost one `board-surface` case to a 5-second timeout while a dev server and browsers shared the machine; alone, that file passed 1089 of 1089 |
+| `three-d-bay`, `three-d-screen`, `three-d-view`, three projects | Exit 0: 95 passed, 22 skipped |
+| Desktop baseline, desktop project | Exit 0: 6 passed. Only `three-d-desktop` re-recorded, 8418d4d6 to 1a37927b, after a diff put every changed pixel in the panel's column; the drawing differs in 0 pixels |
+| x-3d, 3 runs on each of 3 projects, warm server | Exit 1: 8 passed, 1 failed on the iPhone at the rack (Known Issues). A run just before it, on a freshly started server, failed on 2 projects in `openLockedBoard`, also before the 3D screen |
+
+`three-d-show`, `three-d-zoom`, `three-d-wire`, `three-d-export` and `viewer-toolbar` were not re-run after the rulings, as they were not on the list. They run with the room off or don't touch a drag on the racks; the go-live gate covers them.
+
+Before the rulings, the plan's whole browser gate, as one run: **exit 1**, 212 passed, 9 failed, 100 skipped, 29.7 minutes. Re-run alone, 8 of those 9 passed and x-3d on the iPhone stayed intermittent.
 
 The nine failures, one by one:
 
@@ -260,21 +281,23 @@ The gate was not re-run whole after the Export spec fix. That fix changed a test
 
 **11. The commits don't divide the code task by task.** The founder's controls changed the shape of everything at once, so the first commit carries most of the app code for all three tasks, and the later ones carry their proofs and fixes. The plan's one-commit-per-task count stands, and the subjects describe what each commit proves. A reviewer looking for the code by task should read 27f8092c first.
 
-**12. The run was interrupted once by an API connection error.** The first whole gate run was stopped by hand at test 135 of 318, as the load average had reached 260 to 390 and its results could not be trusted. Nothing was reset or lost.
+**12. `clampLift` is no longer on the hand paths.** The plan's acceptance line counts three `clampLift(` calls in the screen. With Swing gone, a drag, its glide and the keys go through `rackNudge`, which holds the lift at its limit itself, and `clampLift` now serves `settleOnRacks`. The rule the line stood for holds, tested over 2000 seeded drags.
+
+**13. The run was interrupted once by an API connection error.** The first whole gate run was stopped by hand at test 135 of 318, as the load average had reached 260 to 390 and its results could not be trusted. Nothing was reset or lost.
 
 ## Known Issues
 
-- **x-3d is intermittent on the iPhone project, and it's not closed.** It failed 2 of 16 in one captured batch and 1 of 6 in another, plus once in the gate. Both failures in the captured batch, and the one in the gate, hang at `e2e/board-lock-screens.spec.ts:86` in `openFromRack`: Open This Board is pressed on the home page's Board Rack and the page never reaches TEMPLATE. That's before the 3D screen is opened, and no rack file changed in this plan. The batch of 6 was not captured; its timing fits the same hang. All 14 runs in the captured batch that reached the 3D screen passed. I did not add a retry, because a tap on Open that does nothing could be a real iPhone bug and a retry would hide it. **The look-rails, look-rocker and x-rails failures on the iPhone fail on the same rack path and may share this cause; I did not confirm that.**
+- **x-3d is intermittent on the iPhone project, and it's not closed.** It failed 2 of 16 in one captured batch, 1 of 6 in another, 1 of 3 on a warm server after the rulings, plus once in the gate. Both failures in the captured batch, and the one in the gate, hang at `e2e/board-lock-screens.spec.ts:86` in `openFromRack`: Open This Board is pressed on the home page's Board Rack and the page never reaches TEMPLATE. That's before the 3D screen is opened, and no rack file changed in this plan. The batch of 6 was not captured; its timing fits the same hang. All 14 runs in the captured batch that reached the 3D screen passed. I did not add a retry, because a tap on Open that does nothing could be a real iPhone bug and a retry would hide it. **The look-rails, look-rocker and x-rails failures on the iPhone fail on the same rack path and may share this cause; I did not confirm that.**
 - **A long vertical drag in the suite's iPhone browser moved the board only 5 degrees.** I did not find out why. The suite's iPhone project uses a mouse rather than a real finger, and I worked round it by proving the limit there with arrow keys. Cases 12 and 14 skip the iPhone for the same reason, and real drags are proven on Android and the computer. **This should be walked on a real iPhone at the go-live (16-13).**
 
 ## Known limitations
 
 - **Shading, not cast shadows,** as ruled. The floor's dark patch under the board is painted.
-- **A long board runs off the window at Side.** You stop at the wall, so a Longboard overflows a computer's window a little and an iPhone's by more. Zoom can't go below 1x, and because your ruling makes Side move the viewer in both modes, there's no longer a Side that shows it whole. This is worth his attention.
+- **A long board runs off the window at Side.** You stop at the wall, so a Longboard overflows a computer's window a little and an iPhone's by more. Shown to him; his ruling: "Leave it."
 - **With the room off, Side still stops where the wall would be,** though no wall shows, so the board doesn't jump when the room is switched.
 - **A blank's ghost can pass through a rack's pad:** it is see-through and stands wider than the board.
 - **The 3D tile in the ☰ menu no longer matches the first view.** It stays as it was.
-- **A drag can swing a Rotate on Side or Swing thumb from one end to the other** as it crosses 180 degrees. The board doesn't jump.
+- **A drag can send the Rotate on Side thumb from one end to the other** as it crosses 180 degrees. The board doesn't jump.
 - **Toggling the Room during a move** stops that move where it is rather than finishing it. The room coming back on works out which face is up afresh.
 - **Frame costs are from a 2019 laptop chip,** not a phone.
 

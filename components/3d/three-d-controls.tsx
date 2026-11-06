@@ -32,7 +32,7 @@ export function ThreeDControls({
   onView,
   onReset,
   modeSwitch,
-  sightAlong,
+  lookDownRail,
   drawingUnavailable,
   exportState,
   onExport,
@@ -44,8 +44,8 @@ export function ThreeDControls({
   onReset: () => void;
   /** What a drag does (D-43), first in VIEW. */
   modeSwitch: ReactNode;
-  /** Sight Along (D-44), last in VIEW: it shifts the viewer, so it lives with the views. */
-  sightAlong: ReactNode;
+  /** Look Down the Rail (D-44), last in VIEW: it shifts the viewer, so it lives with the views. */
+  lookDownRail: ReactNode;
   /** True while a canvas message shows instead of the board (UI-SPEC §8): the view buttons have nothing to turn. */
   drawingUnavailable: boolean;
   /** What the export's status line says (UI-SPEC §7): nothing yet, the done line, the failed line, or why it waits. */
@@ -66,7 +66,7 @@ export function ThreeDControls({
         onView={onView}
         onReset={onReset}
         modeSwitch={modeSwitch}
-        sightAlong={sightAlong}
+        lookDownRail={lookDownRail}
         disabled={drawingUnavailable}
       />
       <ExportSection state={exportState} onExport={onExport} />
@@ -153,7 +153,7 @@ const VIEW_SPAN: Record<ViewName, string> = {
 };
 
 /**
- * VIEW (UI-SPEC §1, §3, D-43, D-44): what a drag does, the five buttons, Reset View and Sight Along. The buttons are
+ * VIEW (UI-SPEC §1, §3, D-43, D-44): what a drag does, the five buttons, Reset View and Look Down the Rail. The buttons are
  * one-shot actions, never pressed toggles — once the shaper drags, the board is no longer "in" a view, so none is ever
  * marked as pressed. They only change what is seen, so a locked board keeps them (`data-lock-exempt`, UI-SPEC §9); they
  * are dimmed only while the canvas shows a message.
@@ -162,13 +162,13 @@ function ViewSection({
   onView,
   onReset,
   modeSwitch,
-  sightAlong,
+  lookDownRail,
   disabled,
 }: {
   onView: (name: ViewName) => void;
   onReset: () => void;
   modeSwitch: ReactNode;
-  sightAlong: ReactNode;
+  lookDownRail: ReactNode;
   disabled: boolean;
 }) {
   const button = cn(buttonVariants({ variant: "outline" }), "w-full");
@@ -193,7 +193,7 @@ function ViewSection({
           {THREE_D_COPY.resetView}
         </button>
       </div>
-      {sightAlong}
+      {lookDownRail}
     </div>
   );
 }

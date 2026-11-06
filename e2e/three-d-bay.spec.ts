@@ -11,8 +11,8 @@ import { decodePng } from "./helpers/canvas-pixels";
  * panel, and two ways a drag can go.
  *
  * The host reports what the tests read: `data-turn` (the board's turn), `data-room` (the camera and the strips' ends,
- * read back from the scene after every frame), `data-place` (the board's centre in the room), `data-racks` (their
- * swing), `data-viewer` (azimuth, elevation, sight), `data-mode` and `data-bay`.
+ * read back from the scene after every frame), `data-place` (the board's centre in the room), `data-racks` (the racks'
+ * own turn, read back from the scene: always none), `data-viewer` (azimuth, elevation, sight), `data-mode` and `data-bay`.
  */
 
 /** WebKit draws its first frame more slowly on the suite's development server. */
@@ -229,43 +229,64 @@ test.describe("the shaping bay", () => {
     await expect(tail).toHaveValue("6");
   });
 
-  test("4. Swing turns the board and its racks together, and no button ever does", async ({ page }) => {
+  test("4. the racks never move: there is no Swing, and neither a sideways drag nor a button shifts them", async ({ page }, testInfo) => {
     test.setTimeout(240_000);
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
+    await expect(page.getByRole("slider", { name: "Swing", exact: true })).toHaveCount(0);
+    await expect(page.locator("[data-three-d-controls]").getByText("Swing", { exact: false })).toHaveCount(0);
     const room = await host.getAttribute("data-room");
-    await setSlider(page, THREE_D_COPY.swing, 90);
-    await expect(host).toHaveAttribute("data-racks", "90.00");
-    expect(await host.getAttribute("data-room")).toBe(room);
-    // Nose, Tail and Side stand you where the board's ends and rail are, and move neither it nor the racks.
-    for (const name of ["side", "nose", "tail"] as const) {
-      await view(page, THREE_D_COPY.views[name]).click();
-      await expect.poll(async () => (await viewerOf(host))[0], { timeout: 10_000 }).not.toBe(REST_VIEWER.azimuthDeg);
-      await settled(host);
-      await expect(host).toHaveAttribute("data-racks", "90.00");
+    const box = await host.boundingBox();
+    if (!box) throw new Error("no canvas");
+
+    // A sideways drag from behind the tail rotates the board on its side, at a drag's full rate. No swing reaches the turn.
+    // The iPhone's suite browser has no real finger to give, so there the arrow key takes the same road (`rackKey`).
+    if (testInfo.project.name === "iphone") {
+      await host.focus();
+      await page.keyboard.press("ArrowRight");
+    } else {
+      await dragBoard(page, testInfo.project.name, Math.min(box.width, box.height) / 4, 0);
     }
-    // Deck brings it back to rest, and every slider with it.
-    await view(page, THREE_D_COPY.views.deck).click();
-    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(AT_REST)), { timeout: 10_000 }).toBe(true);
+    await settled(host);
+    const dragged = rackAngles((await turnOf(host)) as unknown as Quat);
+    expect(dragged.roll).toBeGreaterThan(10);
+    expect(Math.abs(dragged.swing)).toBeLessThan(0.05);
+    expect(Math.abs(dragged.lift)).toBeLessThan(0.05);
     await expect(host).toHaveAttribute("data-racks", "0.00");
-    await expect(slider(page, THREE_D_COPY.swing)).toHaveValue("0");
+    expect((await placeOf(host))[2]).toBe(0);
+    expect(await host.getAttribute("data-room")).toBe(room);
+
+    // Nor does any button.
+    for (const name of ["side", "nose", "tail", "bottom", "deck"] as const) {
+      await view(page, THREE_D_COPY.views[name]).click();
+      await page.waitForTimeout(500);
+      await settled(host);
+      await expect(host).toHaveAttribute("data-racks", "0.00");
+      expect((await placeOf(host))[2]).toBe(0);
+    }
   });
 
   test("5. a drag and the controls stay in step, and a control moves its own plane alone", async ({ page }, testInfo) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
-    await dragBoard(page, testInfo.project.name, 40, 30);
+    await setSlider(page, THREE_D_COPY.raiseNose, 6);
+    await expect.poll(async () => rackAngles((await turnOf(host)) as unknown as Quat).lift).toBeGreaterThan(1);
+    if (testInfo.project.name === "iphone") {
+      await host.focus();
+      await page.keyboard.press("ArrowRight");
+    } else {
+      await dragBoard(page, testInfo.project.name, 40, 0);
+    }
     await settled(host);
     const turn = (await turnOf(host)) as unknown as Quat;
     const shown = shownAngles(turn, false);
     expect(Math.abs(Number(await slider(page, THREE_D_COPY.rotateOnSide).inputValue()) - shown.roll)).toBeLessThanOrEqual(1);
-    expect(Math.abs(Number(await slider(page, THREE_D_COPY.swing).inputValue()) - shown.swing)).toBeLessThanOrEqual(1);
-    // The roll's move changes the roll: the swing and the lift stay what they exactly were, not what the thumbs round to.
+    // The roll's move changes the roll: the lift stays what it exactly was, not what a thumb rounds to.
     await setSlider(page, THREE_D_COPY.rotateOnSide, Math.round(shown.roll) + 7);
     await expect.poll(async () => Math.abs(rackAngles((await turnOf(host)) as unknown as Quat).roll - Math.round(shown.roll) - 7)).toBeLessThan(0.05);
     const after = rackAngles((await turnOf(host)) as unknown as Quat);
-    expect(Math.abs(after.swing - shown.swing)).toBeLessThan(0.05);
     expect(Math.abs(after.lift - shown.lift)).toBeLessThan(0.05);
+    expect(Math.abs(after.swing)).toBeLessThan(0.05);
   });
 
   test("6. a drag past the limit stops with the nose at 60°", async ({ page }, testInfo) => {
@@ -295,10 +316,10 @@ test.describe("the shaping bay", () => {
     const host = await waitForBoard(page);
     await setSlider(page, THREE_D_COPY.raiseNose, 8);
     await setSlider(page, THREE_D_COPY.rotateOnSide, 30);
-    await setSlider(page, THREE_D_COPY.sightAlong, 3);
+    await setSlider(page, THREE_D_COPY.lookDownRail, 3);
     await view(page, THREE_D_COPY.views.bottom).click();
     await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing, THREE_D_COPY.sightAlong]) {
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.lookDownRail]) {
       await expect(slider(page, name)).toHaveValue("0");
     }
     // Turn the Board: the viewer stayed where it stood.
@@ -324,7 +345,7 @@ test.describe("the shaping bay", () => {
     await expect.poll(async () => viewerOf(host)).toEqual([REST_VIEWER.azimuthDeg, REST_VIEWER.elevationDeg, 0]);
   });
 
-  test("8. Sight Along moves the eye a little either way, and neither the board nor the strips", async ({ page }) => {
+  test("8. Look Down the Rail moves the eye a little either way, and neither the board nor the strips", async ({ page }) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await view(page, THREE_D_COPY.views.tail).click();
@@ -332,14 +353,14 @@ test.describe("the shaping bay", () => {
     await settled(host);
     const turn = await host.getAttribute("data-turn");
     const before = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
-    await setSlider(page, THREE_D_COPY.sightAlong, 6);
+    await setSlider(page, THREE_D_COPY.lookDownRail, 6);
     await expect.poll(async () => (await viewerOf(host))[2]).toBe(6);
     await settled(host);
     const after = JSON.parse((await host.getAttribute("data-room")) ?? "{}");
     expect(await host.getAttribute("data-turn")).toBe(turn);
     expect(after.lights).toEqual(before.lights);
     expect(after.camera).not.toEqual(before.camera);
-    await expect(page.getByText(`${THREE_D_COPY.sightAlong} — 6° right`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`${THREE_D_COPY.lookDownRail} — 6° right`, { exact: true })).toBeVisible();
   });
 
   test("8b. a slider moved while a view is on its way finishes that move, and never strands the viewer halfway", async ({ page }) => {
@@ -369,7 +390,7 @@ test.describe("the shaping bay", () => {
     const flip = await touchSize(button(page, THREE_D_COPY.flip));
     expect(flip.height).toBeGreaterThanOrEqual(44);
     const thumbs = page.locator("[data-three-d-racks] [data-slot='slider-thumb']");
-    await expect(thumbs).toHaveCount(4);
+    await expect(thumbs).toHaveCount(3);
     for (const thumb of await thumbs.all()) {
       const size = await touchSize(thumb);
       expect(size.height).toBeGreaterThanOrEqual(44);

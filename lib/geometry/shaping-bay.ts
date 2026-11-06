@@ -3,8 +3,10 @@
  * rests on them for any turn, and where the viewer may stand.
  *
  * The board's turn stays one quaternion (`view-3d.ts`, D-13). A shaper thinks of it in three planes, so `rackTurn` and
- * `rackAngles` are exact inverses between that turn and three angles, and every control in the panel writes through
- * them: Swing about the vertical, the Raise controls' lift, and Rotate on Side about the board's own line.
+ * `rackAngles` are exact inverses between that turn and three angles. On the racks only two of them are ever used, the
+ * Raise controls' lift and Rotate on Side about the board's own line: the racks never move (the founder, on Swing:
+ * "Remove it."), so on them the swing is always zero. The third stays in the angles because a free spin with the room
+ * off turns the board in every direction, and the readings must stay exact there too.
  *
  * Room axes as `view-3d.ts` has them: X along the room with the tail end at +X, Y up off the floor, Z across, the
  * floor at Y = 0 and the room's middle at X = Z = 0. Everything is in millimetres and degrees. Every figure here is a
@@ -167,8 +169,9 @@ export function stripEnds(): [[Vec3, Vec3], [Vec3, Vec3]] {
 }
 
 /**
- * The board's lie in three planes, in degrees. `swing`: + the nose to the right, seen from the tail. `lift`: + the nose
- * up, − the tail up. `roll`: + the deck tipping to the right, seen from the tail.
+ * The board's lie in three planes, in degrees. `lift`: + the nose up, − the tail up. `roll`: + the deck tipping to the
+ * right, seen from the tail. `swing`: + the nose to the right, seen from the tail; zero on the racks, and anything only in
+ * a free spin with the room off.
  */
 export interface RackAngles {
   swing: number;
@@ -237,6 +240,38 @@ export function clampLift(turn: Quat): Quat {
   return rackTurn({ ...a, lift: Math.sign(a.lift) * BAY.liftLimitDeg });
 }
 
+/**
+ * The board after a hand on the racks: `acrossDeg` to the picture's right and `downDeg` down it. Down is a turn about the
+ * picture's left-right axis, exactly as a free drag has it. Across can't be: about the picture's upright it would swing
+ * the board off racks that never move, so it turns the board in the plane of the picture instead, as a hand on the deck
+ * pushing it over: from either end that is Rotate on Side, from the rail it tips the board end over end. Worked in the
+ * angles, so the swing is zero by construction, the lift stops at its limit, and a drag straight back undoes it exactly.
+ */
+export function rackNudge(angles: RackAngles, acrossDeg: number, downDeg: number, viewer: Viewer): RackAngles {
+  const az = (viewer.azimuthDeg - viewer.sightDeg) * RAD;
+  const aboutX = Math.sin(az) * downDeg - Math.cos(az) * acrossDeg;
+  const aboutZ = -Math.cos(az) * downDeg - Math.sin(az) * acrossDeg;
+  const limit = BAY.liftLimitDeg;
+  return { swing: 0, lift: Math.min(limit, Math.max(-limit, angles.lift - aboutZ)), roll: wrap(angles.roll - aboutX) };
+}
+
+/** A drag of (dx, dy) screen dots on the racks: the length of the canvas's shorter side is half a turn, as off them. */
+export function rackDrag(angles: RackAngles, dx: number, dy: number, shortSide: number, viewer: Viewer): RackAngles {
+  if (!(shortSide > 0)) return angles;
+  return rackNudge(angles, (180 * dx) / shortSide, (180 * dy) / shortSide, viewer);
+}
+
+/** One arrow key on the racks: as far as a key turns the board off them. */
+export function rackKey(angles: RackAngles, key: "left" | "right" | "up" | "down", viewer: Viewer): RackAngles {
+  const [across, down] = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }[key];
+  return rackNudge(angles, across * KEY_TURN_DEG, down * KEY_TURN_DEG, viewer);
+}
+
+/** The nearest lie on the racks to a free-spun board: within the lift limit, with no swing. */
+export function settleOnRacks(turn: Quat): Quat {
+  return rackTurn({ ...rackAngles(clampLift(turn)), swing: 0 });
+}
+
 /** `k` of the way from `a` to `b`, the short way round for the swing and the roll. */
 export function anglesBetween(a: RackAngles, b: RackAngles, k: number): RackAngles {
   return {
@@ -290,7 +325,7 @@ export function rackSeat(points: readonly Vec3[]): RackSeat {
  * The board's centre in the room for three angles. Rolled, it rests on its lowest point over the pads. Raised, it tips
  * over the outer top edge of the far rack's pad, so the far end stays on its rack and no pad enters the foam: nose up
  * over the tail-side rack, which stands at room +X, tail up over the nose-side rack. The foam never comes nearer the
- * floor than `floorClearMm`, and the racks swing with the board about the room's middle.
+ * floor than `floorClearMm`. The racks never move, so the board stays on the room's middle line.
  */
 export function boardPlace(points: readonly Vec3[], angles: RackAngles, seat: RackSeat): Vec3 {
   const h = overPad(seat, angles.roll);
@@ -306,8 +341,7 @@ export function boardPlace(points: readonly Vec3[], angles: RackAngles, seat: Ra
     if (up < lowest) lowest = up;
   }
   if (Number.isFinite(lowest)) y += Math.max(0, BAY.floorClearMm - (y + lowest));
-  const s = angles.swing * RAD;
-  return [x * Math.cos(s), y, x * Math.sin(s)];
+  return [x, y, 0];
 }
 
 /** Where the board's centre stands with no racks: at its home, so turning the room off moves nothing. */
@@ -367,8 +401,8 @@ export function raiseSlider(value: Mm, seat: Pick<RackSeat, "at">, system: Units
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
- * Where the viewer stands: round the room from the tail end, above the board, and how far Sight Along has shifted the
- * eye off that line, + to the viewer's right. Sight Along moves the eye round the board and nothing else.
+ * Where the viewer stands: round the room from the tail end, above the board, and how far Look Down the Rail has shifted the
+ * eye off that line, + to the viewer's right. Look Down the Rail moves the eye round the board and nothing else.
  */
 export interface Viewer {
   azimuthDeg: number;
@@ -383,9 +417,9 @@ export const REST_VIEWER: Viewer = {
   sightDeg: 0,
 };
 
-/** How far Sight Along shifts the eye either way: past the widest rail's own line from anywhere the viewer stands. */
+/** How far Look Down the Rail shifts the eye either way: past the widest rail's own line from anywhere the viewer stands. */
 export const SIGHT_LIMIT_DEG = 15;
-/** Sight Along's step: about 13 mm of eye at the end of the room, finer than a rail's line needs. */
+/** Look Down the Rail's step: about 13 mm of eye at the end of the room, finer than a rail's line needs. */
 export const SIGHT_STEP_DEG = 0.25;
 
 const OVERHEAD_DEG = 89.9;
@@ -397,7 +431,7 @@ const OVERHEAD_DEG = 89.9;
 const END_VIEW_ELEVATION_DEG = 10;
 
 /**
- * Each view's place at no swing: Deck and Bottom straight overhead with the nose left, Side at rail height, Nose and
+ * Each view's place with the board straight down the room: Deck and Bottom straight overhead with the nose left, Side at rail height, Nose and
  * Tail on the stringer's line at each end.
  */
 export const WALK_VIEWS: Readonly<Record<ViewName, Viewer>> = {
@@ -408,7 +442,7 @@ export const WALK_VIEWS: Readonly<Record<ViewName, Viewer>> = {
   tail: { azimuthDeg: 0, elevationDeg: END_VIEW_ELEVATION_DEG, sightDeg: 0 },
 };
 
-/** Where a view stands with the board swung: Side, Nose and Tail go where the board's rail and ends are now. */
+/** Where a view stands: Side, Nose and Tail go where the board's rail and ends are, which a free spin can move. */
 export function standAt(name: ViewName, swingDeg: number): Viewer {
   const view = WALK_VIEWS[name];
   if (name === "deck" || name === "bottom") return view;
@@ -545,7 +579,7 @@ export function bayLens(points: readonly Vec3[], seat: RackSeat, aspect: number)
 
 /**
  * Holds a viewer in the room: above the floor by `viewerFloorMm` at the stand-off, up to straight overhead, the azimuth
- * wrapped, Sight Along within its limit. There is no lid overhead to stop at.
+ * wrapped, Look Down the Rail within its limit. There is no lid overhead to stop at.
  */
 export function clampViewer(viewer: Viewer, seat: RackSeat, lens: BayLens): Viewer {
   const pivot = pivotOf(seat)[1];
@@ -612,7 +646,7 @@ export function walkGlideAt(
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
- * The Sight Along shift that stands the eye square on a rail's own line, from where the viewer stands along the board:
+ * The Look Down the Rail shift that stands the eye square on a rail's own line, from where the viewer stands along the board:
  * `halfWidthMm` out from the stringer and parallel to it, so the rail's widest point lies on the line of sight and the
  * outline peels away from that line toward both tips.
  */

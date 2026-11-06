@@ -866,10 +866,10 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     const racks = panel.locator("[data-three-d-racks]");
     await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
     await racks.getByRole("button", { name: THREE_D_COPY.flip, exact: true }).click();
-    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.swing]) {
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide]) {
       await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
     }
-    await expect(panel.getByRole("slider", { name: THREE_D_COPY.sightAlong, exact: true })).toBeEnabled();
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.lookDownRail, exact: true })).toBeEnabled();
     const roll = racks.getByRole("slider", { name: THREE_D_COPY.rotateOnSide, exact: true });
     await roll.focus();
     await roll.press("ArrowRight");

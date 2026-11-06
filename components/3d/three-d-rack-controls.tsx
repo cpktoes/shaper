@@ -28,7 +28,7 @@ import { THREE_D_COPY } from "./three-d-copy";
  * its own plane, and the screen writes it over the turn's exact angles.
  */
 
-/** What the panel reads: the board's three planes as they are shown, and Sight Along. */
+/** What the panel reads: the board's three planes as they are shown, and Look Down the Rail. */
 export interface RackReading extends RackAngles {
   sight: number;
 }
@@ -108,7 +108,6 @@ export function ThreeDOnTheRacks({
   onFlip,
   onRaise,
   onRoll,
-  onSwing,
   disabled,
 }: {
   store: RackStore;
@@ -117,13 +116,11 @@ export function ThreeDOnTheRacks({
   onFlip: () => void;
   onRaise: (end: RaisedEnd, heightMm: number) => void;
   onRoll: (deg: number) => void;
-  onSwing: (deg: number) => void;
   /** True while a canvas message shows instead of the board (UI-SPEC §8). */
   disabled: boolean;
 }) {
   const reading = useReading(store);
   const roll = Math.round(reading.roll) + 0;
-  const swing = Math.round(reading.swing) + 0;
   return (
     <div className="flex flex-col gap-2" data-three-d-racks>
       <ThreeDSectionHeading>{THREE_D_COPY.racksHeading}</ThreeDSectionHeading>
@@ -157,28 +154,15 @@ export function ThreeDOnTheRacks({
         sliderLabel={THREE_D_COPY.rotateOnSide}
         sliderValueText={THREE_D_COPY.rollSpoken(roll)}
       />
-      <SliderRow
-        lockExempt
-        label={THREE_D_COPY.swing}
-        displayValue={THREE_D_COPY.swingValue(swing)}
-        value={swing}
-        min={-180}
-        max={180}
-        step={1}
-        onValueChange={onSwing}
-        disabled={disabled}
-        sliderLabel={THREE_D_COPY.swing}
-        sliderValueText={THREE_D_COPY.swingSpoken(swing)}
-      />
     </div>
   );
 }
 
 /**
- * Sight Along (the founder, D-44): "I want to be able to look down the rail of the board and shift my view slightly to
+ * Look Down the Rail (the founder, D-44): "I want to be able to look down the rail of the board and shift my view slightly to
  * follow the curve of the outline." It moves the eye round the board, a little either way, and nothing else.
  */
-export function ThreeDSightAlong({
+export function ThreeDLookDownRail({
   store,
   onSight,
   disabled,
@@ -191,18 +175,18 @@ export function ThreeDSightAlong({
   return (
     <SliderRow
       lockExempt
-      label={THREE_D_COPY.sightAlong}
-      displayValue={THREE_D_COPY.sightValue(sight)}
+      label={THREE_D_COPY.lookDownRail}
+      displayValue={THREE_D_COPY.lookValue(sight)}
       value={sight}
       min={-SIGHT_LIMIT_DEG}
       max={SIGHT_LIMIT_DEG}
       step={SIGHT_STEP_DEG}
       onValueChange={onSight}
       disabled={disabled}
-      leftHint={THREE_D_COPY.sightLeft}
-      rightHint={THREE_D_COPY.sightRight}
-      sliderLabel={THREE_D_COPY.sightAlong}
-      sliderValueText={THREE_D_COPY.sightSpoken(sight)}
+      leftHint={THREE_D_COPY.lookLeft}
+      rightHint={THREE_D_COPY.lookRight}
+      sliderLabel={THREE_D_COPY.lookDownRail}
+      sliderValueText={THREE_D_COPY.lookSpoken(sight)}
     />
   );
 }

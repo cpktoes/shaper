@@ -26,6 +26,9 @@ import {
   liftOfRaise,
   overPad,
   rackAngles,
+  rackDrag,
+  rackKey,
+  rackNudge,
   rackSeat,
   rackTurn,
   raiseArmMm,
@@ -33,6 +36,7 @@ import {
   raiseSlider,
   railSightDeg,
   REST_VIEWER,
+  settleOnRacks,
   shownAngles,
   SIGHT_LIMIT_DEG,
   standAt,
@@ -52,6 +56,7 @@ import {
 import { inchesToMm, mm, mmToInches } from "./units";
 import {
   BOARD_TO_ROOM,
+  dragTurn,
   framePointsOf,
   GLIDE_MS,
   KEY_TURN_DEG,
@@ -125,7 +130,7 @@ function inRoom(p: Vec3, angles: RackAngles, place: Vec3): Vec3 {
   return [r[0] + place[0], r[1] + place[1], r[2] + place[2]];
 }
 
-/** Inside a pad, how deep: its head stands `at` from the room's middle (unswung), its top at `rackTopMm`, 50 mm thick. */
+/** Inside a pad, how deep: its head stands `at` from the room's middle, its top at `rackTopMm`, 50 mm thick. */
 function depthInPad(p: Vec3, at: number): number {
   const across = BAY.padHalfSpanMm - Math.abs(p[2]);
   const along = BAY.padHalfDepthMm - Math.abs(Math.abs(p[0]) - at);
@@ -135,10 +140,8 @@ function depthInPad(p: Vec3, at: number): number {
 }
 
 describe("the room", () => {
-  it("is the same size for every board, and a 120\" board swung square clears the sills", () => {
-    const tip = inchesToMm(120) / 2;
-    expect(tip).toBeLessThan(BAY.widthMm / 2 - BAY.sillDepthMm);
-    expect(tip).toBeLessThan(BAY.lengthMm / 2);
+  it("is the same size for every board, and the app's longest board fits down it", () => {
+    expect(inchesToMm(120) / 2).toBeLessThan(BAY.lengthMm / 2);
   });
 
   it("the strip hangs under the shelf, above the sill, behind the shelf's front edge (the founder)", () => {
@@ -251,6 +254,75 @@ describe("clampLift, shownAngles and the flip", () => {
   });
 });
 
+describe("a hand on the racks: the racks never move (the founder, on Swing: \"Remove it.\")", () => {
+  const FROM_TAIL = REST_VIEWER;
+  const FROM_NOSE: Viewer = standAt("nose", 0);
+  const FROM_RAIL: Viewer = standAt("side", 0);
+  const start: RackAngles = { swing: 0, lift: 12, roll: 20 };
+
+  it("a sideways drag from behind the tail is Rotate on Side, to the hand's right, at a drag's full rate", () => {
+    expect(rackNudge(start, 30, 0, FROM_TAIL)).toEqual({ swing: 0, lift: 12, roll: expect.closeTo(50, 9) });
+  });
+
+  it("from the nose the same drag rolls the other way: the hand still goes to the picture's right", () => {
+    expect(rackNudge(start, 30, 0, FROM_NOSE).roll).toBeCloseTo(-10, 9);
+  });
+
+  it("from the rail a sideways drag tips the board end over end, and a drag down rolls it", () => {
+    const across = rackNudge(start, 30, 0, FROM_RAIL);
+    expect(across.lift).toBeCloseTo(42, 9);
+    expect(across.roll).toBeCloseTo(20, 9);
+    const down = rackNudge(start, 0, 30, FROM_RAIL);
+    expect(down.roll).toBeCloseTo(-10, 9);
+    expect(down.lift).toBeCloseTo(12, 9);
+  });
+
+  it("a drag down from behind the tail raises the nose, as it always has", () => {
+    expect(rackNudge(start, 0, 30, FROM_TAIL).lift).toBeCloseTo(42, 9);
+  });
+
+  it("a vertical drag matches a free drag exactly on a board at rest: the part that never depended on Swing", () => {
+    const short = 400;
+    const free = dragTurn(REST_TURN, 0, 80, short, viewerLook(FROM_TAIL));
+    expect(turnAngle(rackTurn(rackDrag(AT_REST, 0, 80, short, FROM_TAIL)), free)).toBeLessThan(1e-9);
+  });
+
+  it("no drag from anywhere, of any size, ever carries a swing, and the lift stops at its limit", () => {
+    const random = seeded(16118);
+    let angles: RackAngles = AT_REST;
+    for (let i = 0; i < 2000; i++) {
+      const viewer: Viewer = { azimuthDeg: random() * 360 - 180, elevationDeg: random() * 90, sightDeg: random() * 12 - 6 };
+      angles = rackDrag(angles, (random() - 0.5) * 300, (random() - 0.5) * 300, 400, viewer);
+      expect(angles.swing).toBe(0);
+      expect(Math.abs(angles.lift)).toBeLessThanOrEqual(BAY.liftLimitDeg);
+      const back = rackAngles(rackTurn(angles));
+      expect(Math.abs(back.swing)).toBeLessThan(1e-9);
+    }
+  });
+
+  it("a drag straight back undoes it, inside the limit", () => {
+    const there = rackDrag(start, 33, -17, 400, FROM_TAIL);
+    const back = rackDrag(there, -33, 17, 400, FROM_TAIL);
+    expect(back.lift).toBeCloseTo(start.lift, 9);
+    expect(back.roll).toBeCloseTo(start.roll, 9);
+    expect(rackDrag(start, 33, 17, 0, FROM_TAIL)).toBe(start);
+  });
+
+  it("the arrow keys take the same road, a key's worth at a time", () => {
+    expect(rackKey(AT_REST, "right", FROM_TAIL).roll).toBeCloseTo(KEY_TURN_DEG, 9);
+    expect(rackKey(AT_REST, "left", FROM_TAIL).roll).toBeCloseTo(-KEY_TURN_DEG, 9);
+    expect(rackKey(AT_REST, "down", FROM_TAIL).lift).toBeCloseTo(KEY_TURN_DEG, 9);
+    expect(rackKey(AT_REST, "up", FROM_TAIL).lift).toBeCloseTo(-KEY_TURN_DEG, 9);
+  });
+
+  it("a free-spun board settles back with no swing, inside the limit, its roll kept", () => {
+    const settled = rackAngles(settleOnRacks(rackTurn({ swing: 70, lift: 80, roll: 30 })));
+    expect(Math.abs(settled.swing)).toBeLessThan(1e-9);
+    expect(settled.lift).toBeCloseTo(BAY.liftLimitDeg, 9);
+    expect(settled.roll).toBeCloseTo(30, 9);
+  });
+});
+
 describe("rackSeat and overPad — the board on its racks", () => {
   for (const { label, seat, points, surface } of BOARDS) {
     describe(label, () => {
@@ -328,13 +400,11 @@ describe("boardPlace — where the board stands for any turn", () => {
         }
       });
 
-      it("swung, the board's place swings with the racks about the room's middle", () => {
+      it("the racks never move: a swing in the turn never shifts the board's place off the room's middle line", () => {
         const flat = boardPlace(points, { swing: 0, lift: 30, roll: 0 }, seat);
         const swung = boardPlace(points, { swing: 90, lift: 30, roll: 0 }, seat);
-        // The racks' +X end goes to +Z under a swing of +90° (`rackTurn`'s Ry(−swing)).
-        expect(swung[0]).toBeCloseTo(0, 9);
-        expect(swung[1]).toBeCloseTo(flat[1], 9);
-        expect(swung[2]).toBeCloseTo(flat[0], 9);
+        expect(flat[2]).toBe(0);
+        expect(swung[2]).toBe(0);
       });
 
       it("over Raise ±60° and every roll, no vertex lies 2 mm inside a pad and the foam stays off the floor", () => {
@@ -357,7 +427,7 @@ describe("boardPlace — where the board stands for any turn", () => {
     });
   }
 
-  it("no fin point lies inside a pad at rest, rolled 45° or swung, in any fin setup on any preset", () => {
+  it("no fin point lies inside a pad at rest or rolled 45°, in any fin setup on any preset", () => {
     for (const finCase of phase16FinCases()) {
       const board = BOARDS.find((b) => b.label.startsWith(`${finCase.preset.id}|`));
       if (!board) throw new Error(finCase.label);
@@ -373,19 +443,8 @@ describe("boardPlace — where the board stands for any turn", () => {
             fin.leading[1] + (run[1] / length) * u - centre[1],
             fin.rootZ - v - centre[2],
           ];
-          for (const angles of [
-            AT_REST,
-            { ...AT_REST, roll: 45 },
-            { ...AT_REST, roll: -45 },
-            { ...AT_REST, swing: 45 },
-            { ...AT_REST, swing: 90 },
-            { ...AT_REST, swing: 135 },
-          ]) {
-            // The racks swing with the board, so a pad is measured in the swung frame: unswing the point.
-            const place = boardPlace(points, angles, seat);
-            const room = inRoom(p, { ...angles, swing: 0 }, boardPlace(points, { ...angles, swing: 0 }, seat));
-            expect(place[1]).toBeCloseTo(boardPlace(points, { ...angles, swing: 0 }, seat)[1], 9);
-            expect(depthInPad(room, seat.at)).toBeLessThan(0);
+          for (const angles of [AT_REST, { ...AT_REST, roll: 45 }, { ...AT_REST, roll: -45 }]) {
+            expect(depthInPad(inRoom(p, angles, boardPlace(points, angles, seat)), seat.at)).toBeLessThan(0);
           }
         }
       }
@@ -466,7 +525,7 @@ describe("where the viewer stands", () => {
     expect(WALK_VIEWS.tail.elevationDeg).toBe(WALK_VIEWS.nose.elevationDeg);
   });
 
-  it("with the board swung, Nose, Tail and Side go where the board's ends and rail are now", () => {
+  it("with a free-spun board, Nose, Tail and Side go where its ends and rail are now", () => {
     for (const swing of [-120, -35, 40, 90, 170]) {
       const nose = rotateVec(quatMultiply(rackTurn({ ...AT_REST, swing }), BOARD_TO_ROOM), [1, 0, 0]);
       const end = Math.cos((WALK_VIEWS.nose.elevationDeg * Math.PI) / 180);
@@ -593,7 +652,7 @@ describe("bayLens — where the viewer stands at 1x", () => {
   }
 });
 
-describe("Sight Along (D-44)", () => {
+describe("Look Down the Rail (D-44)", () => {
   for (const { label, seat, points, surface } of [...BOARDS, LONGEST]) {
     it(`${label}: reaches a true sight line down each rail, from the tail and from the nose`, () => {
       for (const [, aspect] of ASPECTS) {

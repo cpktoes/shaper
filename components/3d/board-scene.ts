@@ -111,7 +111,7 @@ export type BoardSceneState = "ready" | "lost" | "no-webgl";
 
 export interface BoardSceneHandle {
   setBoard(input: BoardSceneInput): void;
-  /** Turns the board (16-07): its group, resting on the racks, and the racks with its swing. The strips never move. */
+  /** Turns the board (16-07): its group alone, resting on the racks. The racks and the strips never move. */
   setTurn(turn: Quat): void;
   /** Stands the viewer (D-43): the camera's place and axes inside the room. One frame per call. */
   setViewer(viewer: Viewer): void;
@@ -534,7 +534,7 @@ interface DrawnBay {
 /**
  * The bay: floor, walls and ceiling as planes drawn from the inside only, so none of them ever stands between the viewer
  * and the board, and a viewer overhead sees down through the ceiling; the shelves, sills and strips down both side
- * walls; and two racks, which the swing turns. The room's colours are its own in every theme (D-43).
+ * walls; and two racks, which never move. The room's colours are its own in every theme (D-43).
  */
 function buildBay(treatment: BayTreatment): DrawnBay {
   const { lengthMm: L, widthMm: W, heightMm: H } = BAY;
@@ -750,7 +750,7 @@ export function mountBoardScene(
     }
   };
 
-  /** The board's group turned by `turn` and rested on its racks, and the racks with its swing. */
+  /** The board's group turned by `turn` and rested on its racks. */
   const placeBoard = () => {
     const q = quatMultiply(turn, BOARD_TO_ROOM);
     turned.quaternion.copy(new Quaternion(q[0], q[1], q[2], q[3]));
@@ -762,12 +762,10 @@ export function mountBoardScene(
       racked[1] + (free[1] - racked[1]) * freeShare,
       racked[2] + (free[2] - racked[2]) * freeShare,
     );
-    bay.racks.rotation.y = (-angles.swing * Math.PI) / 180;
     const under = floorPatch(racked, angles, seat);
     bay.patch.centre.set(under.centre[0], 0, under.centre[1]);
     bay.patch.size.set(under.size[0], under.size[1]);
     bay.patch.axis.set(under.axis[0], under.axis[1]);
-    bay.racks.updateMatrixWorld();
   };
 
   /** The camera where the viewer stands, for this window's lens. Its aim and its crop are the only things it carries. */
