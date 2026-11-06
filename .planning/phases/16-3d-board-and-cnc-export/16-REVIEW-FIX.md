@@ -266,3 +266,7 @@ go-live gate.
 _Fixed: 2026-11-06T18:44:54Z_
 _Fixer: Claude (gsd-code-fixer)_
 _Iteration: 1_
+
+## Found during this round, fixed after it (D-46)
+
+The fixer reported, and left alone, a height jump on the outline's left side on all 56 hard-edged test boards. The founder chose to fix it before go-live 2: `extremeVertex` now takes the highest of equally wide points, so both sides run along the top of a hard edge's wall. On all 102 boards the two sides are exact mirrors. The right side, the wire view's other lines, the litres, the STL, the slices and the profile did not move. The outline file and the DXF's outline changed on those 56 boards, and six of them lost one repeated point at the tail tip, which moves nothing.

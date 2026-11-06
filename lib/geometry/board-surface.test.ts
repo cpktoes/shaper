@@ -931,6 +931,33 @@ describe("the wire view's lines (D-42)", () => {
 });
 
 /**
+ * The outline's two sides (D-46, the founder, 2026-11-06): a hard edge's rail stands straight up, every point of that
+ * wall equally wide, and the outline's right side ran along the top of it while its left ran along the bottom, then
+ * jumped up to the rest of the rail where the rail starts to blend: 15.9 mm in half an inch on the Fish.
+ */
+describe("the outline's two sides", () => {
+  for (const [name, outlineOf] of [
+    ["the wire view's outline", boardOutlineLoop],
+    ["the files' outline", boardFileOutlineLoop],
+  ] as const) {
+    it(`on all 102 boards ${name} has its left side the mirror of its right, station by station`, () => {
+      for (const { label, surface } of BUILT_SURFACE) {
+        const loop = outlineOf(surface);
+        const nose = loop.reduce((best, v, i) => (v[0] > loop[best][0] ? i : best), 0);
+        const right = loop.slice(0, nose + 1);
+        // After the nose the loop runs down the left rail; a swallow's notch comes after that and isn't a rail.
+        const left = loop.slice(nose, nose + right.length);
+        left.forEach((point, k) => {
+          const mirror = right[right.length - 1 - k];
+          const gap = Math.max(Math.abs(point[0] - mirror[0]), Math.abs(point[1] + mirror[1]), Math.abs(point[2] - mirror[2]));
+          expect(gap, `${label} point ${k}`).toBeLessThan(1e-9);
+        });
+      }
+    }, 120_000);
+  }
+});
+
+/**
  * The wire view on a winged board (the founder: "I'd like to use this to identify contours and this kind of messes with
  * the visual."): a long line holds its share of the outline WITHOUT the wing, so it runs straight across the wing's
  * station. Before this a line away from the rail jumped sideways by up to 3.9 mm there, and the foam has no such jump.
@@ -944,16 +971,19 @@ describe("wireLines on a winged board: the lines ignore the wing", () => {
   const sharesOf = (count: number) => Array.from({ length: count }, (_, k) => (2 * k + 1) / count - 1);
 
   it("on all 74 boards with no wing, wireLines' output is what it was before, bit for bit", () => {
-    // SHA-256 of every coordinate as a 64-bit float, deck, bottom, rings and outline, board by board in this order,
-    // recorded from the code as it stood before the lines ignored the wing. Never re-record this to make it pass.
+    // SHA-256 of every coordinate as a 64-bit float, deck, bottom, rings and the outline's right side, board by board in
+    // this order. Never re-record this to make it pass. It narrowed once, with the founder's yes (D-46, 2026-11-06): the
+    // outline's left side moved to match its right, so the pin stops at the nose and "the outline's two sides" below
+    // holds the left side. This figure was recorded from the code as it stood before that move, and passes after it.
     const hash = createHash("sha256");
     for (const { surface } of BUILT_LIVE) {
       const wire = wireLines(surface);
-      for (const lines of [wire.deck, wire.bottom, wire.rings, [wire.outline]]) {
+      const nose = wire.outline.reduce((best, v, i) => (v[0] > wire.outline[best][0] ? i : best), 0);
+      for (const lines of [wire.deck, wire.bottom, wire.rings, [wire.outline.slice(0, nose + 1)]]) {
         for (const line of lines) hash.update(Buffer.from(Float64Array.from(line.flat()).buffer));
       }
     }
-    expect(hash.digest("hex").slice(0, 24)).toBe("4e6b2907b4606d20604bb92d");
+    expect(hash.digest("hex").slice(0, 24)).toBe("b5a38be88f41b99e24480124");
   }, 120_000);
 
   it("a board with no wing carries no take on any ring", () => {

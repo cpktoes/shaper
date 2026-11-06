@@ -674,14 +674,20 @@ export function pieceVertices(piece: SurfaceRing["pieces"][number]): number[] {
 
 /**
  * The vertex of `vertices` furthest along `axis` (1 across, 2 up) in the direction `sign`; between two
- * level within a millionth of a millimetre, the one nearer the stringer, then the first in loop order.
+ * level within a millionth of a millimetre, the one nearer the stringer, then the higher, then the first in
+ * loop order. The higher comes before loop order so the two rails choose alike: a hard edge's rail stands
+ * straight up, every point of that wall equally wide, and loop order reaches the right rail's wall from the top
+ * and the left's from the bottom (the founder, 2026-11-06, D-46).
  */
 export function extremeVertex(positions: Float64Array, vertices: readonly number[], axis: 1 | 2, sign: 1 | -1): number {
   let best = vertices[0];
   for (const v of vertices) {
     const d = sign * (positions[3 * v + axis] - positions[3 * best + axis]);
     if (d > 1e-9) best = v;
-    else if (d > -1e-9 && Math.abs(positions[3 * v + 1]) < Math.abs(positions[3 * best + 1]) - 1e-9) best = v;
+    else if (d > -1e-9) {
+      const nearer = Math.abs(positions[3 * best + 1]) - Math.abs(positions[3 * v + 1]);
+      if (nearer > 1e-9 || (nearer > -1e-9 && positions[3 * v + 2] - positions[3 * best + 2] > 1e-9)) best = v;
+    }
   }
   return best;
 }
