@@ -17,7 +17,7 @@ duration: "in progress"
 completed: in progress
 ---
 
-# Plan 16-13: Go-live 2 (in progress, pushed on the founder's go, live check next)
+# Plan 16-13: Go-live 2 (live, waiting on the founder's confirmation)
 
 ## The gate
 
@@ -152,6 +152,19 @@ Shape3D: not tested. The founder, 2026-11-06: "shape3d I'll have to come back to
 offered. The Export button carries the caption that the export is experimental and Shape3D may or may not import the
 files yet, so nobody is promised it works.
 
+## The push
+
+Pushed 2026-11-06 22:14:49: main 43bd948a to 1c6dc5ef, a no-fast-forward merge of 47c10337, whose tree is the branch's
+exactly. origin/main^2 is 47c10337. main alone was pushed. Vercel reported success, and /design/3d went from 404 to 200
+at 22:16:07.
+
+## Live checks
+
+On https://www.shaperassistant.com, signed out, a real browser at computer and phone sizes, nothing saved: the Shortboard
+opened, its 3D screen reached ready with the logos loaded, the Room icon walked theme room, blue room, no room and back,
+Export 3D Files downloaded a 5.25 MB zip, VOLUME read 29.61 L, and there were no page errors. Pictures: 
+`pictures/16-13-live-computer.png` and `pictures/16-13-live-phone.png`.
+
 ## Still to record
 
-The push, the live checks and his confirmation.
+The founder's confirmation on the live site.
