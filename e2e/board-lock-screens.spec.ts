@@ -898,6 +898,13 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
     for (const button of await corner.all()) {
       await expect(button).toBeEnabled();
       const was = (await button.getAttribute("aria-pressed")) ?? "";
+      // The Room icon has three steps (quick 261106-ni6): the theme's room, the bright blue room, no room. Both rooms
+      // read as on, so its first press changes only its tooltip and its second turns it off.
+      if ((await button.getAttribute("data-three-d-show")) === "room") {
+        await button.click();
+        await expect(button).toHaveAttribute("title", THREE_D_COPY.roomTip.blue);
+        await expect(button).toHaveAttribute("aria-pressed", was);
+      }
       await button.click();
       await expect(button).not.toHaveAttribute("aria-pressed", was);
       await button.click();
