@@ -189,6 +189,7 @@ Recent decisions affecting current work:
 - [minor/geometry] Decide what happens when a very thin board's tip sits below its own center (Phase 14 review WR-02; the founder at go-live 2: "leave it for the showing" — one blank, centers of 1 1/4" and under) — `.planning/todos/pending/2026-10-02-decide-what-happens-when-a-thin-boards-tip-sits-below-its-center.md`
 - [minor/ui] Give every slider in the app a spoken name and a spoken value (Phase 14 review WR-01's wider gap; the two Thinning Starts sliders are already named) — `.planning/todos/pending/2026-10-02-give-every-slider-a-spoken-name.md`
 - [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
+- [minor/3d] Run the Shape3D acceptance test on the Export 3D Files zip (R8, left open by the founder at Phase 16's close) — `.planning/todos/pending/2026-11-06-run-the-shape3d-acceptance-test-on-the-export-zip.md`
 - [minor/ui] Clear the TEMPLATE toolbar off the readings on a sideways phone (found planning quick 261018-e6w; the founder, 2026-10-18: "Note it for later") — `.planning/todos/pending/2026-10-18-clear-the-template-toolbar-off-the-sideways-phone-readings.md`
 
 ### Blockers/Concerns
