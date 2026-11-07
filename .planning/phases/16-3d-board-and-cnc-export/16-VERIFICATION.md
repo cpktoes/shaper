@@ -4,18 +4,10 @@ verified: 2026-11-06T23:30:00Z
 status: passed
 score: 11/12 requirements verified in code (R8 open by the founder's decision, not a code gap)
 behavior_unverified: 0
-overrides_applied: 3
+overrides_applied: 1
 overrides:
   - must_have: "R8 The files are what Shape3D takes: the DXF, STL and text files open in Shape3D's import"
     reason: "NOT TESTED. Deferred with explicit tracking in .planning/todos/pending/2026-11-06-run-the-shape3d-acceptance-test-on-the-export-zip.md. The founder shipped without the test ('shape3d I'll have to come back to') and the Export button says the export is experimental. R8 stays out of requirements-completed."
-    accepted_by: "the founder"
-    accepted_at: "2026-11-06T23:20:00Z"
-  - must_have: "Mac Safari trackpad pinch on the live 3D screen"
-    reason: "NOT TESTED. Asked for and not reported; the founder closed the phase with it outstanding ('iphone and ipad checks good, close out phase 16'). Tracked as test 2 of 16-UAT.md."
-    accepted_by: "the founder"
-    accepted_at: "2026-11-06T23:20:00Z"
-  - must_have: "One of the founder's own saved boards on the live 3D screen"
-    reason: "NOT TESTED by hand. Asked for and not reported; the founder closed the phase with it outstanding. All 30 saved boards went through the read-only reports in 16-13-SUMMARY.md. Tracked as test 3 of 16-UAT.md."
     accepted_by: "the founder"
     accepted_at: "2026-11-06T23:20:00Z"
 re_verification: false
@@ -194,5 +186,7 @@ _Verifier: Claude (gsd-verifier)_
 ## Close-out (the orchestrator, 2026-11-06)
 
 The verifier returned human_needed. The status above was moved to passed at the founder's instruction to close the
-phase, through the three overrides in the frontmatter, not by testing. 11 of the 12 requirements are verified in code;
-R8 is accepted open. 16-UAT.md holds 1 pass and 3 skipped with reasons, and `/gsd-verify-work 16` picks them up.
+phase. Two of the three hand items then passed by his hand: the Mac Safari pinch and one of his own saved boards on the
+live 3D screen (the founder, 2026-11-06: "only the shape3D is still open.  the other 2 passed."). The third, R8, is the
+one override in the frontmatter: not tested, accepted open by him and tracked in a todo. 11 of the 12 requirements are
+verified in code. 16-UAT.md holds 3 passes and 1 skipped with its reason.

@@ -177,4 +177,5 @@ his real iPhone and iPad.
 - R8: the Shape3D acceptance test has not been run. The founder chose to ship without it and will come back to it. Plan
   16-13's own rule allows this: the push waits for the test or for his explicit decision to ship. R8 is therefore not in
   `requirements-completed` here.
-- The Mac Safari trackpad pinch and one of his own saved boards on the live 3D screen were asked for and not reported.
+- The Mac Safari trackpad pinch and one of his own saved boards on the live 3D screen both passed by his hand, reported
+  after the close: "only the shape3D is still open.  the other 2 passed."

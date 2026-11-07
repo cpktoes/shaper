@@ -3,7 +3,7 @@ status: complete
 phase: 16-3d-board-and-cnc-export
 source: [16-VERIFICATION.md]
 started: 2026-11-06T23:40:00Z
-updated: 2026-11-06T23:40:00Z
+updated: 2026-11-07T07:50:00Z
 ---
 
 ## Current Test
@@ -19,13 +19,11 @@ reason: The founder shipped without it, "shape3d I'll have to come back to" (202
 
 ### 2. Mac Safari trackpad pinch on the live 3D screen
 expected: A two-finger pinch zooms toward the pinch point, and the page itself never zooms
-result: skipped
-reason: Asked for and not reported when the founder closed the phase, "iphone and ipad checks good, close out phase 16" (2026-11-06).
+result: pass
 
 ### 3. One of the founder's own saved boards on the live 3D screen, signed in
 expected: The board draws as a closed solid, and the litres on the board's own screens match the new figure in the 16-13 surface report
-result: skipped
-reason: Asked for and not reported when the founder closed the phase. The live check used the Shortboard preset, signed out.
+result: pass
 
 ### 4. The room as shipped on a real iPhone and iPad
 expected: The theme room, the Room icon's three steps and the room filling the viewer all work by hand
@@ -34,12 +32,12 @@ result: pass
 ## Summary
 
 total: 4
-passed: 1
+passed: 3
 issues: 0
 pending: 0
-skipped: 3
+skipped: 1
 blocked: 0
 
 ## Gaps
 
-No gaps. Tests 1 to 3 are open by the founder's decision to close the phase with them outstanding. `/gsd-verify-work 16` picks them up.
+No gaps. Test 1 is open by the founder's decision and tracked in a todo. Tests 2 and 3 passed by his hand, the founder, 2026-11-06: "only the shape3D is still open.  the other 2 passed."
