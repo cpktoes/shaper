@@ -34,8 +34,15 @@ So three things are built once, in 019's dress, and one is put as variants:
   are ruled at Width, 2 × Width, 3 × Width out from the stringer (Wall 1, Wall 2, Wall 3 on the ruler and in DATA), and
   what the last wall leaves to the rail is read out, not set (the Width label: *1 3/4" · ramp 8° · last wall 1 9/16"
   off the rail*; a set that would not fit inside the rail is squeezed and says so). The ramp's angle follows from Depth
-  and Width; Smoothness runs it from a straight ramp (0) to a scooped one (100); a **Wall** choice flips the wall to
-  the stringer side. Three **runs**, after his table of the classic setups: **With the rail** (Rusty's semi-parallel:
+  and Width; Smoothness runs it from a straight ramp (0) to a scooped one (100); the wall is always at the rail side
+  (the founder, 2026-11-07: *"I don't think the wall control is necessary"*). The channels need not all be the same
+  length (his ask the same day: *"Channels may need a control for the outer or inner channels are longer"*):
+  **Longest** says which pair runs furthest forward — the inner pair (opening), the outer pair, or all the same — and
+  **Stagger** (2" opening, in half inches) is how much shorter each channel out from it starts. Start is the longest
+  pair's and says so; the Stagger label reads where the shortest pair starts; a wall is ruled and cut only from where its
+  own channel starts, so the fronts step across the top view and the walls appear one by one on the ruler as the section
+  moves aft; every channel is deepest at the same station and they end together, and a stagger too long stops an inch
+  ahead of the deepest station so the shortest channel keeps a lead-in. Three **runs**, after his table of the classic setups: **With the rail** (Rusty's semi-parallel:
   the set keeps its last wall the same distance off the rail, so the channels narrow toward the tail together),
   **Parallel to the stringer** (Merrick's, laid out at the deepest station and ruled straight; the outer ones run out
   through the rail where the outline narrows) and **Toe-in** (Biolos's splayed channels, angled like the front fins —
@@ -65,7 +72,7 @@ winged Fish with an extending single concave and four (so the wing rule has a co
 and Longboard with none.
 
 ## Variants
-- **A: Own card** — CHANNELS is a fourth card after TAIL (None / 4 / 6 / 8, the run, then the sliders), and the phone's
+- **A: Own card** — CHANNELS is a fourth card after TAIL (None / 4 / 6 / 8, the run and the length order, then the sliders), and the phone's
   switch gets a fourth button: NOSE · CENTER · TAIL · CHANNELS.
 - **B: Inside Tail** — the channels sit inside the TAIL card under the tail's own cut, the same stacking with one card
   fewer; the tail card grows, and on a phone the TAIL panel scrolls.
@@ -90,17 +97,24 @@ stations dims in centimetres).
   something else. The ramp angle and the last wall's distance off the rail on the Width label.
 - The three runs on the Fish and the Shortboard: *With the rail*, *Parallel to the stringer*, *Toe-in* at the fins'
   angle, and the run-out through the rail where the gaps have closed or the splay reaches it.
+- The length order: *Longest* — Inner pair, Outer pair, All the same — and the Stagger. The stepped fronts on the top
+  view, and the walls that come onto the ruler one at a time as the section moves aft. Should the deepest station or
+  the ends stagger too, or only the starts?
 - The ruler under the section: enough to lay the cut out from, or too much on one drawing? And the layout-marks table in
   DATA — the first columns are the sections' edges, then every channel wall.
-- The starting numbers for the channels (1/4" deep, 2" / 1 1/4" / 1" wide for 4 / 6 / 8, an inch off the stringer and
-  off the rail, from 10" ahead of the fins to the tail, deepest at the fins) are a first guess like the rest.
+- The starting numbers for the channels (1/4" deep, 2 1/2" / 1 3/4" / 1 1/4" wide for 4 / 6 / 8, from the stringer,
+  from 10" ahead of the fins to the tail, deepest at the fins, the inner pair longest with a 2" stagger) are a first
+  guess like the rest.
 
 ## Checked
 Headless Chromium at 1280 × 800 and 390 × 844 (iPhone 14, touch): no errors on any variant, theme, units or board. Six
 channels on the Shortboard take 0.26 L more than the same cuts without them; the three channels a side abut from the
 stringer at 1 3/4" each with the last wall 1 9/16" off the rail; a channel takes its full depth a hair inside its wall,
-nothing at its peak, and nothing again just past the wall (the next channel's peak), and the wall moves to the stringer
-side when asked; toe-in moves the first wall from 1 3/4" at the fins to about 1 7/16" six inches ahead and 2" four
+nothing at its peak, and nothing again just past the wall (the next channel's peak); with the inner pair longest the
+Shortboard's three channels start 20 7/8", 18 7/8" and 16 7/8" from the tail, an inch behind the longest start only Wall 1
+is ruled and only the inner channel takes foam, with the outer pair longest only Wall 3, with all the same all three, and
+a stagger too long stops an inch ahead of the deepest station; the Wall control is gone, the Longest choice and the
+Stagger slider are there, and the slider hides for All the same; toe-in moves the first wall from 1 3/4" at the fins to about 1 7/16" six inches ahead and 2" four
 inches behind; a double's Off Stringer flat takes nothing
 at the stringer or half an inch out and the full cut at its trough; on the winged Fish the two rules differ by the wing's
 depth ahead of it, and the narrowest rule measures off the real rail behind the inner corner; the test single of the
@@ -112,4 +126,4 @@ controls; the page never scrolls as a whole on a phone.
 `sketch-source.tar.gz` holds `board-data.ts` (reads the presets and builds the winged Fish through `phase16Boards`,
 `buildOutline` with `wings`, `curveHalfWidthAt`, `wingFootprint`, `placedWings`, `designSideProfile`,
 `deriveEffectiveRails`, `designCrossSectionInput`, `boardSections`, `sampledFinishedRail` and `computeFinPlacement` —
-never a hand-typed board figure), its `boards.json`, the page template, `build.py` and the Playwright checks.
+never a hand-typed board figure), its `boards.json`, the page template, `build.py`, the Playwright checks and the two picture scripts.

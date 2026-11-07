@@ -118,7 +118,10 @@ whatever the three sections leave — count, width (one number at every station)
 End, Depth, Smoothness; the shape is his (*"a quick V that goes into a vertical wall ... the stringer is also a peak of a V
 and each channel's peak is the new start of the next V"*): one sawtooth out from the stringer, each channel's floor
 deepening outward to a vertical wall at the rail side whose top is the next channel's peak, the walls ruled at Width,
-2 × Width, 3 × Width and the last wall's distance off the rail read out, not set; three runs after his table of the classic
+2 × Width, 3 × Width and the last wall's distance off the rail read out, not set; the wall always at the rail side (no Wall
+control — the founder, 2026-11-07) and a length order, his ask the same day — Longest: the inner pair, the outer pair or all
+the same, with a Stagger between neighbours, Start being the longest pair's and each wall ruled from its own channel's start;
+three runs after his table of the classic
 setups — With the rail (the set narrows with the outline, its last wall keeping its distance off the rail), Parallel to the
 stringer (Merrick) or Toe-in at the front fins' angle from FINS (Biolos's splayed channels). For *"dims for shaping"* the
 section carries a ruler of every layout mark of the live cut, off

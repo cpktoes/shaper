@@ -411,10 +411,13 @@ const CHANNELS_DEF = { name: "Channels", kind: "channels" };
 // The founder's pictures (2026-11-06): the stringer is a peak, each channel's floor deepens outward from its inner peak
 // to a vertical wall at the rail side, and the top of that wall is the next channel's peak — one sawtooth, no flat
 // ridge between channels. Off Stringer 0 means the stringer itself is the first peak; Off Rail is whatever the last
-// wall leaves, not a control.
-const makeChannels = (b, count) => ({ name: "Channels", kind: "channels", count, depth: i(1 / 4), width: i(count === 4 ? 2.5 : count === 8 ? 1.25 : 1.75), offS: 0, off: 0, start: b.fin + i(10), deep: b.fin, end: 0, smooth: 0, run: "rail", wall: "rail", trough: 0, vee: 0, pointed: false, spiral: false });
+// wall leaves, not a control. The wall is always at the rail side (the founder, 2026-11-07: no Wall control).
+// The channels need not all be the same length (the founder, 2026-11-07): Longest says which pair runs furthest
+// forward — the inner pair, the outer pair, or all together — and Stagger is how much shorter each channel out from
+// it starts. Start is the longest pair's; every channel is deepest at the same station and ends together.
+const makeChannels = (b, count) => ({ name: "Channels", kind: "channels", count, depth: i(1 / 4), width: i(count === 4 ? 2.5 : count === 8 ? 1.25 : 1.75), offS: 0, off: 0, start: b.fin + i(10), deep: b.fin, end: 0, smooth: 0, run: "rail", longer: "inner", stagger: i(2), trough: 0, vee: 0, pointed: false, spiral: false });
 const RUNS = (b) => [["rail", "With the rail"], ["parallel", "Parallel to the stringer"], ["toe", b.toeDeg > 0 ? `Toe-in · ${b.toeDeg.toFixed(1)}° like the fins` : "Toe-in (no toe on this board)"]];
-const WALLS = [["rail", "Wall at the rail side"], ["stringer", "Wall at the stringer side"]];
+const LONGER = [["inner", "Inner pair"], ["outer", "Outer pair"], ["same", "All the same"]];
 const OFF_RAIL_MIN = IN / 2; // the last wall never lands closer than this to the rail at the deepest station
 const TITLE = { nose: "Nose", center: "Center", tail: "Tail", channels: "Channels" };
 // each board's opening cuts, and how many channels it opens with (0 = none)
@@ -465,12 +468,17 @@ const innerAt = (s) => { const d = curveAt(s) - foamAt(s); return d > 0.3 ? d : 
 const refAt = (s) => sampleArr(state.wingRule === "natural" ? B.natural : B.narrow, s);
 
 /* foam taken off at (station from the tail, distance from the stringer) — the one number everything reads */
-function fade(c, s) {
-  const a = c.start, b = c.end, p = c.deep;
+function fadeAt(a, p, b, s) {
   if (s > a + 1e-9 || s < b - 1e-9) return 0;
   if (s >= p) { if (a - p < 1e-6) return 1; if (a >= B.L - 0.5) return 1; return sm((a - s) / (a - p)); }
   if (p - b < 1e-6) return 1; if (b <= 0.5) return 1; return sm((s - b) / (p - b));
 }
+const fade = (c, s) => fadeAt(c.start, c.deep, c.end, s);
+// channel j (0 = the one beside the stringer) starts Stagger behind its neighbour toward the longest pair, never
+// closer than an inch to the deepest station — so the shortest channel still has a lead-in
+const chSteps = (c, j) => c.longer === "inner" ? j : c.longer === "outer" ? (c.count / 2 - 1 - j) : 0;
+const chStart = (c, j) => Math.max(Math.min(c.start, c.deep + IN), c.start - chSteps(c, j) * c.stagger);
+const chFade = (c, j, s) => fadeAt(chStart(c, j), c.deep, c.end, s);
 function cutHalfWidth(c, s) {
   let C = refAt(s) - c.off;
   if (c.pointed && s < c.deep && c.deep - c.end > 1e-6) C *= Math.sqrt(Math.max(0, (s - c.end) / (c.deep - c.end)));
@@ -495,15 +503,16 @@ function channelEdges(c, s) {
   let w2 = w, shift = 0;
   if (c.run === "rail") w2 = Math.max(0, refAt(s) - offRail - c.offS) / n;
   else if (c.run === "toe" && B.toeDeg > 0) shift = (s - c.deep) * Math.tan(B.toeDeg * Math.PI / 180);
-  const out = []; for (let j = 0; j < n; j++) { const a = c.offS + j * w2 - shift, b = a + w2; if (b > 0.5) out.push([Math.max(0, a), b]); }
+  const out = []; for (let j = 0; j < n; j++) { const a = c.offS + j * w2 - shift, b = a + w2; if (b > 0.5) out.push([Math.max(0, a), b, j]); }
   return out;
 }
-// the walls, as a shaper rules them: Wall 1, Wall 2 … out from the stringer (and the flat's edge when Off Stringer > 0)
+// the walls, as a shaper rules them: Wall 1, Wall 2 … out from the stringer (and the flat's edge when Off Stringer > 0).
+// "on" says whether that channel has started by this station — a staggered set's shorter channels have not, ahead
+// of their own starts
 function channelMarks(c, s) {
   const edges = channelEdges(c, s); const out = [];
-  if (c.offS > 0.5 && edges.length) out.push({ y: edges[0][0], col: "Flat edge" });
-  edges.forEach(([a, b], j) => out.push(c.wall === "rail" ? { y: b, col: `Wall ${j + 1}` } : { y: a, col: `Wall ${j + 1}` }));
-  if (c.wall !== "rail" && edges.length) out.push({ y: edges[edges.length - 1][1], col: "Outer edge" });
+  if (c.offS > 0.5 && edges.length) out.push({ y: edges[0][0], col: "Flat edge", on: chFade(c, edges[0][2], s) > 0.004 });
+  for (const [, b, j] of edges) out.push({ y: b, col: `Wall ${j + 1}`, on: chFade(c, j, s) > 0.004 });
   return out;
 }
 function cutOff(c, s, y, W) {
@@ -512,9 +521,9 @@ function cutOff(c, s, y, W) {
   const r = c.smooth / 100; let out = 0;
   if (c.kind === "channels") {
     if (c.count < 4) return 0;
-    // the ramp runs from the channel's peak down to its wall: u = 0 at the peak, 1 at the wall (the rail side, as the
-    // founder's pictures have it, or the stringer side)
-    for (const [a, b] of channelEdges(c, s)) { if (y >= a && y <= b) { const u = c.wall === "rail" ? (y - a) / (b - a) : (b - y) / (b - a); return c.depth * f * Math.min(1, (b - a) / IN) * chan(u, r); } }
+    // the ramp runs from the channel's peak down to its wall: u = 0 at the peak, 1 at the wall at the rail side, as the
+    // founder's pictures have it; each channel fades in from its own start
+    for (const [a, b, j] of channelEdges(c, s)) { if (y >= a && y <= b) { const fj = chFade(c, j, s); if (fj <= 0) return 0; return c.depth * fj * Math.min(1, (b - a) / IN) * chan((y - a) / (b - a), r); } }
     return 0;
   }
   if (c.kind === "single" || c.kind === "double") {
@@ -541,7 +550,7 @@ function litresOff() {
 function marksOf(key, c, s) {
   if (c.kind === "flat" || c.depth <= 0 || fade(c, s) <= 0.004) return [];
   const W = curveAt(s); const t = TITLE[key];
-  if (c.kind === "channels") return channelMarks(c, s).filter((m) => m.y > 0.5 && m.y < W);
+  if (c.kind === "channels") return channelMarks(c, s).filter((m) => m.on && m.y > 0.5 && m.y < W);
   if (c.kind === "single") { const C = cutHalfWidth(c, s); return C > 0.5 && C < W ? [{ y: C, col: `${t} edge` }] : []; }
   if (c.kind === "double") { const C = cutHalfWidth(c, s); if (C <= 0.5) return []; const { a, t: tr } = doubleMarks(c, C); const out = [{ y: a, col: `${t} flat` }, { y: tr, col: `${t} trough` }]; if (C < W) out.push({ y: C, col: `${t} edge` }); return out.filter((m) => m.y > 0.5); }
   if (c.kind === "vee" && c.offS > 0.5 && c.offS < W) return [{ y: c.offS, col: `${t} flat` }];
@@ -655,9 +664,9 @@ function drawTop() {
         out += `<path class="pencil${live}" ${stroke} d="${runLine(c, (s) => doubleMarks(c, cutHalfWidth(c, s)).a, X, Y)}"/>`; }
     } else if (c.kind === "channels") {
       if (c.count < 4) continue;
-      // every wall as a pencil line (the peaks between channels), the flat's edge and the outer edge with them
-      let dd = ""; const count = channelMarks(c, c.deep).length;
-      for (let j = 0; j < count; j++) dd += runLine(c, (s) => { const m = channelMarks(c, s)[j]; return m ? m.y : null; }, X, Y, 160);
+      // every wall as a pencil line (the peaks between channels), the flat's edge with them, each from its own start
+      let dd = "";
+      for (const { col } of channelMarks(c, c.deep)) dd += runLine(c, (s) => { const m = channelMarks(c, s).find((q) => q.col === col); return m && m.on ? m.y : null; }, X, Y, 160);
       out += `<path class="pencil${live}" ${stroke} d="${dd}"/>`;
     } else if (c.offS > 0) {
       out += `<path class="pencil${live}" ${stroke} d="${runLine(c, () => c.offS, X, Y, 100)}"/>`;
@@ -710,7 +719,7 @@ function railAt(s) {
   if (hi[0] <= 0.5) return null; const T = thickAt(s); const sc = T / hi[0];
   return { hi: hi.map((h) => h * sc), lo: lo.map((h) => h * sc) };
 }
-function inChannel(s, y) { if (!chOn()) return false; const c = state.ch; if (fade(c, s) <= 0) return false; return channelEdges(c, s).some(([a, b]) => y >= a && y <= b); }
+function inChannel(s, y) { if (!chOn()) return false; const c = state.ch; if (fade(c, s) <= 0) return false; return channelEdges(c, s).some(([a, b, j]) => y >= a && y <= b && chFade(c, j, s) > 0); }
 function drawSec() {
   const fit = fitBox("sec"); if (!fit) return;
   const { H, px } = fit; const S = strokes(px);
@@ -826,7 +835,7 @@ function drawData() {
     h += `</tbody></table>`;
   }
   h += `<div class="datanotes"><p>Deepest cut is the largest gap under a straightedge laid rail to rail at that station. Rail lift is that gap at the rail. Stringer left is the planed thickness less the cut at the stringer.</p>` +
-    (cols.length ? `<p>Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank. The channels abut: ${chOn() && state.ch.wall !== "rail" ? "each wall is the deep side of its channel, whose floor rises to the next wall" : "the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak"}.</p>` : "") +
+    (cols.length ? `<p>Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank. The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak${chOn() && state.ch.longer !== "same" && state.ch.stagger > 0.5 ? `; a wall is ruled only from where its own channel starts — the ${state.ch.longer} pair first, each channel out from it ${dim(state.ch.stagger)} shorter` : ""}.</p>` : "") +
     `<p>Wide point ${dim(B.wide)} and ${B.finWord.toLowerCase()} ${dim(B.fin)} from the tail are the two rows in full ink.</p></div>`;
   document.getElementById("dataPanel").innerHTML = h;
 }
@@ -842,13 +851,14 @@ const CONTROLS = {
   trough: { label: "Trough At", fam: "mark", range: [0.5, 8], suffix: " from the stringer" },
   width: { label: "Channel Width", fam: "mark", range: [0.5, 4] },
   start: { label: "Start", fam: "station" }, deep: { label: "Deepest At", fam: "station" }, end: { label: "End", fam: "station" },
+  stagger: { label: "Stagger", fam: "length", range: [0, 8], hints: ["All start together", null] },
   depth: { label: "Depth", fam: "mark", range: [0, 0.5], hints: ["Nothing cut", null] },
   vee: { label: "Vee Lift", fam: "mark", range: [0, 0.5] },
   smooth: { label: "Smoothness", fam: "pct", hints: ["Straight to the edge", "Rounded out"] },
 };
 function controlsFor(c) {
   if (c.kind === "flat") return [];
-  if (c.kind === "channels") return ["width", "offS", "start", "deep", "end", "depth", "smooth"];
+  if (c.kind === "channels") return c.longer === "same" ? ["width", "offS", "start", "deep", "end", "depth", "smooth"] : ["width", "offS", "start", "stagger", "deep", "end", "depth", "smooth"];
   const list = [];
   if (c.kind === "single" || c.kind === "double") list.push("off");
   if (c.kind === "double") list.push("offS", "trough");
@@ -862,6 +872,8 @@ function sliderSpec(key, cutKey) {
   const C = CONTROLS[key]; const m = metric();
   if (C.fam === "pct") return { min: 0, max: 100, step: 5, toRaw: (v) => v, fromRaw: (v) => v, fill: "start" };
   if (C.fam === "mark") { const [a, b] = C.range; return m ? { min: Math.ceil(a * IN), max: Math.floor(b * IN), step: 1, toRaw: (mm) => Math.round(mm), fromRaw: (v) => v, fill: "start" } : { min: a, max: b, step: 1 / 16, toRaw: (mm) => mm / IN, fromRaw: (v) => v * IN, fill: "start" }; }
+  // a length along the board (a stagger): a dim, in half inches or whole centimetres
+  if (C.fam === "length") { const [a, b] = C.range; return m ? { min: Math.round(a * IN / 10) * 10, max: Math.round(b * IN / 10) * 10, step: 10, toRaw: (mm) => Math.round(mm / 10) * 10, fromRaw: (v) => v, fill: "start" } : { min: a, max: b, step: 0.5, toRaw: (mm) => mm / IN, fromRaw: (v) => v * IN, fill: "start" }; }
   // a station: every slider runs nose (left) to tail (right), like the drawing; the raw value is the distance from the nose
   const maxRaw = m ? Math.floor(B.L / 10) * 10 : Math.floor(B.L / IN * 2) / 2;
   return { min: 0, max: maxRaw, step: m ? 10 : 0.5, toRaw: (s) => m ? (B.L - s) : (B.L - s) / IN, fromRaw: (v) => B.L - (m ? v : v * IN), fill: cutKey === "nose" ? "start" : "end" };
@@ -874,8 +886,10 @@ function labelFor(key, c, cutKey) {
   if (key === "width" && c.kind === "channels") { const fit = channelFit(c);
     return `${C.label} — ${mark(c.width)}${fit.squeezed ? ` (${mark(fit.w)} to fit)` : ""} · ramp ${fit.w > 0 ? Math.round(Math.atan2(c.depth, fit.w) * 180 / Math.PI) : 0}° · last wall ${mark(fit.offRail)} off the rail`; }
   if (C.fam === "mark") return `${C.label} — ${mark(c[key])}${C.suffix || ""}`;
+  if (C.fam === "length") { const last = chStart(c, c.longer === "inner" ? c.count / 2 - 1 : 0);
+    return `${C.label} — ${dim(c[key])} per channel · the ${c.longer === "inner" ? "outer" : "inner"} pair starts ${dim(last)} from the tail`; }
   const fromNose = cutKey === "nose"; const v = fromNose ? B.L - c[key] : c[key];
-  return `${C.label} — ${dim(v)} from the ${fromNose ? "nose" : "tail"}`;
+  return `${C.label} — ${dim(v)} from the ${fromNose ? "nose" : "tail"}${key === "start" && c.kind === "channels" && c.longer !== "same" ? ` · the ${c.longer} pair` : ""}`;
 }
 function normalize(c, changed) {
   if (changed === "start") { if (c.deep > c.start) c.deep = c.start; if (c.end > c.deep) c.end = c.deep; }
@@ -889,7 +903,7 @@ function sliders(c, cutKey, cardKey) {
   for (const k of controlsFor(c)) {
     const sp = sliderSpec(k, cutKey); const C = CONTROLS[k];
     h += `<div data-row="${k}"><div class="lbl" data-lbl></div><input class="rng${sp.fill === "end" ? " fill-end" : ""}" type="range" data-sec="${cardKey}" data-cut="${cutKey}" data-key="${k}" min="${sp.min}" max="${sp.max}" step="${sp.step}" aria-label="${TITLE[cutKey]} ${C.label}">`;
-    const hints = k === "smooth" && c.kind === "channels" ? ["Straight ramp into the wall", "Scooped"] : C.fam === "station" ? ["Nose", "Tail"] : C.hints ? [C.hints[0], C.hints[1] === null ? (C.fam === "mark" ? mark(C.range[1] * IN) : "") : C.hints[1]] : null;
+    const hints = k === "smooth" && c.kind === "channels" ? ["Straight ramp into the wall", "Scooped"] : C.fam === "station" ? ["Nose", "Tail"] : C.hints ? [C.hints[0], C.hints[1] === null ? (C.fam === "mark" ? mark(C.range[1] * IN) : C.fam === "length" ? dim(C.range[1] * IN) : "") : C.hints[1]] : null;
     if (hints) h += `<div class="hints"><span>${hints[0] || ""}</span><span>${hints[1] || ""}</span></div>`;
     h += `</div>`;
   }
@@ -901,7 +915,7 @@ function channelBlock(cardKey, withNone) {
   const counts = withNone ? [[0, "None"], [4, "4 channels"], [6, "6 channels"], [8, "8 channels"]] : [[4, "4 channels"], [6, "6 channels"], [8, "8 channels"]];
   h += `<div><div class="lbl">${withNone ? "Channels" : "How many"}</div>${sel(`data-count="1" data-sec="${cardKey}"`, counts, ch.count)}</div>`;
   if (ch.count >= 4 || !withNone) {
-    h += `<div class="two"><div><div class="lbl">Run</div>${sel(`data-run="1" data-sec="${cardKey}"`, RUNS(B), ch.run)}</div><div><div class="lbl">Wall</div>${sel(`data-wall="1" data-sec="${cardKey}"`, WALLS, ch.wall)}</div></div>`;
+    h += `<div class="two"><div><div class="lbl">Run</div>${sel(`data-run="1" data-sec="${cardKey}"`, RUNS(B), ch.run)}</div><div><div class="lbl">Longest</div>${sel(`data-longer="1" data-sec="${cardKey}"`, LONGER, ch.longer)}</div></div>`;
     h += sliders(ch, "channels", cardKey);
   }
   return h;
@@ -959,7 +973,7 @@ function applyChrome() {
   document.querySelectorAll(".tabs .tab").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
   document.getElementById("viewerPanel").style.display = state.page === "viewer" ? "" : "none";
   document.getElementById("dataPanel").style.display = state.page === "data" ? "" : "none";
-  const notes = { A: "<b>A — Channels on their own card</b>, after TAIL, cut in shop order into whatever the three sections leave (a vee, a single). Pick 4, 6 or 8, how they run (with the rail · parallel · toe-in like the fins) and which side the wall is on; each channel is a ramp into a vertical wall. The phone's switch gets a fourth button. Everywhere: depth reads as 019's C (a faint shade with a contour line every 1/16\"); a double's flat at the stringer is its own Off Stringer mark; the section carries a ruler of every layout mark off the stringer, and DATA tables them station by station.",
+  const notes = { A: "<b>A — Channels on their own card</b>, after TAIL, cut in shop order into whatever the three sections leave (a vee, a single). Pick 4, 6 or 8, how they run (with the rail · parallel · toe-in like the fins) and which pair runs longest, staggering the rest; each channel is a ramp into a vertical wall at the rail side. The phone's switch gets a fourth button. Everywhere: depth reads as 019's C (a faint shade with a contour line every 1/16\"); a double's flat at the stringer is its own Off Stringer mark; the section carries a ruler of every layout mark off the stringer, and DATA tables them station by station.",
     B: "<b>B — Channels inside the TAIL card</b>, under the tail's own cut: the same stacking as A with one card fewer, so the tail card grows. On a phone the TAIL panel scrolls.",
     C: "<b>C — Channels as a tail cut</b>: \"Channels\" is a seventh name in the Tail picker, chosen instead of a vee or a concave. The simplest panel, and the honest cost — you cannot cut channels into a vee or a double." };
   document.getElementById("note").innerHTML = notes[state.variant];
@@ -999,7 +1013,7 @@ document.getElementById("sections").addEventListener("change", (e) => {
   else if (el.matches("select[data-count]")) { const was = state.ch.count; state.ch.count = +el.value; state.active = el.dataset.sec; state.live = state.variant === "C" ? "tail" : "channels"; buildControls();
     if (was === 0 && state.ch.count > 0) state.station = state.ch.deep; render(false); }
   else if (el.matches("select[data-run]")) { state.ch.run = el.value; state.live = state.variant === "C" ? "tail" : "channels"; render(false); }
-  else if (el.matches("select[data-wall]")) { state.ch.wall = el.value; state.live = state.variant === "C" ? "tail" : "channels"; render(false); }
+  else if (el.matches("select[data-longer]")) { state.ch.longer = el.value; state.active = el.dataset.sec; state.live = state.variant === "C" ? "tail" : "channels"; buildControls(); render(false); }
   else if (el.dataset.pointed) { state.cuts[el.dataset.pointed].pointed = el.checked; render(false); }
 });
 document.getElementById("sections").addEventListener("pointerdown", (e) => { const sec = e.target.closest(".sidesec"); if (!sec) return; const ck = cutKeyOf(e.target);
@@ -1021,7 +1035,7 @@ setBoard("shortboard");
 const viewerTheme = document.documentElement.dataset.theme;
 if (viewerTheme === "dark" || (viewerTheme !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)) state.theme = "slate";
 applyChrome(); render(true);
-window.sketch = { state, render, setBoard, foamOff, litresOff, deepestAt, applyChrome, channelEdges, channelMarks, channelFit, cutHalfWidth, marksOf, syncVariant, buildControls, railHalfWidth: curveAt, refHalfWidth: refAt };
+window.sketch = { state, render, setBoard, foamOff, litresOff, deepestAt, applyChrome, channelEdges, channelMarks, channelFit, chStart, chFade, cutOff, cutHalfWidth, marksOf, syncVariant, buildControls, railHalfWidth: curveAt, refHalfWidth: refAt };
 </script>
 </body>
 </html>
