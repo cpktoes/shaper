@@ -1,4 +1,5 @@
-import { devices, expect, test, type Page } from "@playwright/test";
+import { devices, expect, test, type Locator, type Page } from "@playwright/test";
+import { THREE_D_COPY } from "../components/3d/three-d-copy";
 
 /**
  * 260909-hd9's own proof: the founder's report was "The buttons in the phone viewer should live
@@ -36,6 +37,14 @@ const TOOLBAR_GAP_PX = 6;
  * is the identical line-up, not merely "some consistent spacing". */
 const DESKTOP_STEP_PX = 40;
 
+/** The 3D screen's first frame is slow on the suite's development server, slowest on WebKit (about 5 s measured). */
+const FIRST_FRAME_MS = 30_000;
+
+/** The 3D corner's five switches, corner first. */
+const THREE_D_SWITCHES = [THREE_D_COPY.fins, THREE_D_COPY.blank, THREE_D_COPY.contourStripes, THREE_D_COPY.wireView, THREE_D_COPY.room];
+/** Wide view's spoken name, as `three-d-screen.tsx` gives it with the sidebar showing. */
+const WIDE_VIEW_NAME = "Hide the sidebar for a wider view";
+
 type Box = { x: number; y: number; width: number; height: number };
 type ButtonInfo = { name: string; box: Box };
 
@@ -63,6 +72,27 @@ async function measureToolbar(page: Page): Promise<{ rowBox: Box; buttons: Butto
     buttons.push({ name, box });
   }
   return { rowBox, buttons };
+}
+
+/** Opens the 3D screen and waits for the lit board and for React to own the corner (a click before hydration is lost,
+ * and the row's buttons draw from the first paint). */
+async function openThreeD(page: Page) {
+  await page.goto("/design/3d");
+  await expect(page.locator("[data-board-3d]")).toHaveAttribute("data-board-state", "ready", { timeout: FIRST_FRAME_MS });
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-viewer-toolbar] button");
+    return !!el && Object.keys(el).some((key) => key.startsWith("__reactFiber"));
+  });
+}
+
+/** A button's touch size, by e2e/rocker-custom.spec.ts's house rule. */
+async function touchSize(button: Locator): Promise<{ width: number; height: number }> {
+  return button.evaluate((el) => {
+    const b = el as HTMLElement;
+    const after = getComputedStyle(b, "::after");
+    const grow = after.content === "none" || after.position !== "absolute" ? 0 : -parseFloat(after.left || "0");
+    return { width: b.offsetWidth + 2 * grow, height: b.offsetHeight + 2 * grow };
+  });
 }
 
 /** The founder's complaint, stated as a number: the corner-most visible button's right edge sits
@@ -134,6 +164,38 @@ test.describe("phone, upright — the corner icons pack tight with no gap where 
     assertRowWidthMatchesVisibleButtons(rowBox, buttons);
     assertButtonsContiguous(buttons);
   });
+
+  // Phase 16 (16-17, D-35): Wide view has no sidebar to hide on an upright phone and the 3D screen has no Rotate (D-04),
+  // so the five switches take the corner, Fins in it.
+  test("3D (/design/3d): the five switches pack into the corner, Fins in it", async ({ page }) => {
+    await openThreeD(page);
+
+    const { rowBox, buttons } = await measureToolbar(page);
+    expect(buttons.map((b) => b.name)).toEqual(THREE_D_SWITCHES);
+    assertCornerFlush(rowBox, buttons[0]);
+    assertRowWidthMatchesVisibleButtons(rowBox, buttons);
+    assertButtonsContiguous(buttons);
+    for (const name of THREE_D_SWITCHES) {
+      const touch = await touchSize(page.getByRole("button", { name, exact: true }));
+      expect(touch.width, `${name}'s touch box`).toBeGreaterThanOrEqual(44);
+      expect(touch.height, `${name}'s touch box`).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("3D at 320 × 568: the five switches stay inside the drawing", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "one phone at the narrowest width");
+    await page.setViewportSize({ width: 320, height: 568 });
+    await openThreeD(page);
+
+    const { rowBox, buttons } = await measureToolbar(page);
+    expect(buttons.map((b) => b.name)).toEqual(THREE_D_SWITCHES);
+    assertCornerFlush(rowBox, buttons[0]);
+    const canvas = (await page.locator("[data-board-3d]").boundingBox())!;
+    expect(rowBox.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(canvas.x + canvas.width + 1);
+    expect(rowBox.y).toBeGreaterThanOrEqual(canvas.y - 1);
+    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(canvas.y + canvas.height);
+  });
 });
 
 // D-10 (10-SWEEP-2.md, 2026-09-11) brings this describe home to a real sideways phone. 10-05 had
@@ -194,6 +256,14 @@ test.describe("phone held sideways, iPhone — the corner still packs tight, con
     expect(buttons[0].name).toBe("Print Template");
     assertCornerFlush(rowBox, buttons[0]);
   });
+
+  test("3D (/design/3d): Wide view in the corner, then the five switches", async ({ page }) => {
+    await openThreeD(page);
+    const { rowBox, buttons } = await measureToolbar(page);
+    expect(buttons.map((b) => b.name)).toEqual([WIDE_VIEW_NAME, ...THREE_D_SWITCHES]);
+    assertCornerFlush(rowBox, buttons[0]);
+    assertButtonsContiguous(buttons);
+  });
 });
 
 test.describe("desktop — the icons sit at the identical spacing they have always had", () => {
@@ -212,16 +282,21 @@ test.describe("desktop — the icons sit at the identical spacing they have alwa
     // Rails v2 (quick 261102-gec plan 02 and fast task 185, 2026-11-02): the Finished Rail toggle took the
     // corner, Ghost Bands sits beside it, and View Full Sized stepped to 80px — three on the same 40px step.
     { path: "/design/rails", label: "RAILS", expectedCount: 3 },
+    // Phase 16 (16-17, D-35, D-42; 16-18, D-43): Wide view (no Rotate, D-04), then Fins, Blank, Contour Stripes, Wire
+    // View and the Room, appended after it.
+    { path: "/design/3d", label: "3D", expectedCount: 6 },
   ] as const;
 
   for (const { path, label, expectedCount } of DESKTOP_CASES) {
     test(`${label} (${path}): ${expectedCount} icon(s), each at the old 0/40/80/120px line-up`, async ({
       page,
     }) => {
-      await page.goto(path);
+      if (path === "/design/3d") await openThreeD(page);
+      else await page.goto(path);
 
       const { rowBox, buttons } = await measureToolbar(page);
       expect(buttons.length).toBe(expectedCount);
+      if (path === "/design/3d") expect(buttons.map((b) => b.name)).toEqual([WIDE_VIEW_NAME, ...THREE_D_SWITCHES]);
 
       // Hard-coded on purpose: on the desktop the contract is not "some consistent spacing", it
       // is "the identical line-up the hand-written positions produced" — the desktop baseline

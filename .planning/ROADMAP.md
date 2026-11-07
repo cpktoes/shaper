@@ -318,7 +318,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no h
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-28 and the approved 16-UI-SPEC.md)
 **Brief:** `phases/16-3d-board-and-cnc-export/16-SPEC.md` (R1–R12 from the founder's words of 2026-11-03), decisions D-01–D-28 in `16-CONTEXT.md`, the approved `16-UI-SPEC.md`, the measured `16-RESEARCH.md` and the mock-up `pictures/3d-board-mockup.png`
 **Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
-**Plans:** 1/14 plans executed — planned 2026-11-04 (14 plans in 10 waves, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
+**Plans:** 17/18 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 (D-32), 16-16 (D-33, D-34), 16-17 (D-35, D-36) and 16-18 (D-43) added as their own waves before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
 
 Plans:
 
@@ -328,41 +328,57 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion; merge 16-02 before 16-03)*
 
-- [ ] 16-02-PLAN.md — The Hard Edge Ends At slider on RAILS (the tail's Advanced menu, 14"–24"), saved with the board, reset in one undo, and a read-only report of how every saved board's litres move (R9 R10 R11 R12)
-- [ ] 16-03-PLAN.md — The 3D board's surface as tested maths: the litres' own sections lofted into one closed shape within 0.15% of VOLUME, the swallow in two pieces, sharp edges kept sharp (R2 R3 R8 R12)
+- [x] 16-02-PLAN.md — The Hard Edge Ends At slider on RAILS (the tail's Advanced menu, 14"–24"), saved with the board, reset in one undo, and a read-only report of how every saved board's litres move (R9 R10 R11 R12)
+- [x] 16-03-PLAN.md — The 3D board's surface as tested maths: the litres' own sections lofted into one closed shape within 0.15% of VOLUME, the swallow in two pieces, sharp edges kept sharp (R2 R3 R8 R12)
 
 **Wave 3** *(blocked on Wave 2 completion; 16-04 is a founder step; 16-06 first — it installs three, then `npm install` in the main checkout)*
 
-- [ ] 16-04-PLAN.md — Go-live 1, only if the founder chose two go-lives: the hard edge's fade and the slider go live on their own (R9 R11 R12)
-- [ ] 16-05-PLAN.md — The CNC files: one zip with a DXF wireframe, the outline, profile and slice text files and an STL, in millimetres in Shape3D's axes, each read back by its own reader (R7 R8 R12)
-- [ ] 16-06-PLAN.md — TRACER: the 3D screen at /design/3d draws the board lit under the shaping-room lights, with three.js on that route only and plain messages when it can't draw (R1 R2 R3 R10 R11 R12)
+- [x] 16-04-PLAN.md — Go-live 1, only if the founder chose two go-lives: the hard edge's fade and the slider go live on their own (R9 R11 R12)
+- [x] 16-05-PLAN.md — The CNC files: one zip with a DXF wireframe, the outline, profile and slice text files and an STL, in millimetres in Shape3D's axes, each read back by its own reader (R7 R8 R12)
+- [x] 16-06-PLAN.md — TRACER: the 3D screen at /design/3d draws the board lit under the shaping-room lights, with three.js on that route only and plain messages when it can't draw (R1 R2 R3 R10 R11 R12)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16-07-PLAN.md — Turn the board: drag with a glide, the five views and Reset View, the arrow keys; the camera and lights stay fixed (R4 R10 R12)
-- [ ] 16-08-PLAN.md — Seven screens in the app: 3D last in the top row, the seventh tile on the phone menu, SUMMARY's Next goes to 3D, the code and documents say seven (R1 R10 R11 R12)
+- [x] 16-07-PLAN.md — Turn the board: drag with a glide, the five views and Reset View, the arrow keys; the camera and lights stay fixed (R4 R10 R12)
+- [x] 16-08-PLAN.md — Seven screens in the app: 3D last in the top row, the seventh tile on the phone menu, SUMMARY's Next goes to 3D, the code and documents say seven (R1 R10 R11 R12)
 
 **Wave 5** *(blocked on Wave 4 completion; until it merges, the six-count specs and the five desktop pictures are expected to fail)*
 
-- [ ] 16-14-PLAN.md — The browser checks count seven screens, and the five desktop pictures are re-recorded for the top row only, on a looked-at diff (R1 R10 R12)
+- [x] 16-14-PLAN.md — The browser checks count seven screens, and the five desktop pictures are re-recorded for the top row only, on a looked-at diff (R1 R10 R12)
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 16-09-PLAN.md — Zoom and slide: the shared zoom row, wheel, pinch, right-drag or two fingers, double-click back to 1x, Wide view (R4 R10 R12)
+- [x] 16-09-PLAN.md — Zoom and slide: the shared zoom row, wheel, pinch, right-drag or two fingers, double-click back to 1x, Wide view (R4 R10 R12)
 
 **Wave 7** *(blocked on Wave 6)*
 
-- [ ] 16-10-PLAN.md — Fins on the board: generic outlines with true bases at their FINS placement, a single fin as deep as the board is long in feet, and the Fins switch (R3 R5 R10 R12)
+- [x] 16-10-PLAN.md — Fins on the board: generic outlines with true bases at their FINS placement, a single fin as deep as the board is long in feet, and the Fins switch (R3 R5 R10 R12)
 
 **Wave 8** *(blocked on Wave 7)*
 
-- [ ] 16-11-PLAN.md — The blank as a see-through ghost, Contour Stripes, colours that follow the theme, and the loading picture (R3 R5 R6 R10 R12)
+- [x] 16-11-PLAN.md — The blank as a see-through ghost, Contour Stripes, colours that follow the theme, and the loading picture (R3 R5 R6 R10 R12)
 
 **Wave 9** *(blocked on Wave 8)*
 
-- [ ] 16-12-PLAN.md — Export for CNC… on the 3D panel: one tap, one zip, the Shape3D note, every state (no drawing, can't build, locked, signed out), plus the 3D screen's desktop picture (R7 R8 R10 R11 R12)
+- [x] 16-12-PLAN.md — Export for CNC… on the 3D panel: one tap, one zip, the Shape3D note, every state (no drawing, can't build, locked, signed out), plus the 3D screen's desktop picture (R7 R8 R10 R11 R12)
 
-**Wave 10** *(blocked on Wave 9; a founder step)*
+**Wave 10** *(blocked on Wave 9; added 2026-11-04 for D-32, planned and approved with the founder's rulings)*
+
+- [x] 16-15-PLAN.md — The tail's whole rail character (hard edge, the tucks, Family, Symmetrical) fades between Tail Rail Blends From and Ends At into the centre's rail as set; the centre-to-nose rail blends smoothly on its own with no control; the rows renamed for the tail rail; a saved-boards rail-character report (R2 R9 R10 R11 R12)
+
+**Wave 11** *(blocked on Wave 10; added 2026-11-04 for D-33 and D-34, planned and approved with the founder's rulings)*
+
+- [x] 16-16-PLAN.md — The deck stays smooth across a wing (only the rail's bands step in, easing out at Deck Mark 3; the bottom carries through) and the surface runs into each tip without a flip, VOLUME counting the tips' foam; rings at a wing's step; a read-only surface report (R2 R3 R8 R11 R12)
+
+**Wave 12** *(blocked on Wave 11; added 2026-11-04 for D-35 and D-36, planned with the founder's rulings)*
+
+- [x] 16-17-PLAN.md — The Fins, Blank and Contour Stripes switches become icons in the viewer's corner, the panel's SHOW section goes, and every fin gets a real shape per setup: the whole fin stretches to FINS' base, a box keel's whole footprint sits on the placement dots, quad rears 25% shorter than the fronts, twins default to 5.5" and keels to 6.5" (R5 R6 R10 R11 R12)
+
+**Wave 13** *(blocked on Wave 12; added 2026-11-05 for D-43, planned with the founder's rulings)*
+
+- [x] 16-18-PLAN.md — The shaping bay: a drawn room with the strips under the shelves, the board on racks that flips, lifts at either end and rolls with one control per plane, Turn the Board and Walk Around, and a Room switch for a plain background (R3 R4 R5 R6 R10)
+
+**Wave 14** *(blocked on Wave 13; a founder step)*
 
 - [ ] 16-13-PLAN.md — Go-live: with two go-lives, first bring main's go-live-1 merge onto the branch; then the full gate, the founder's Shape3D test and device checks, one push on his go, a live check (R7 R8 R9 R11 R12)
 
@@ -392,4 +408,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
-| 16. 3D Board and CNC Export | 1/14 | In Progress|  |
+| 16. 3D Board and CNC Export | 17/18 | In Progress|  |

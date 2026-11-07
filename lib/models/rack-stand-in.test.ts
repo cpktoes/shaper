@@ -105,16 +105,17 @@ describe("standInRackRows", () => {
     expect(log).not.toHaveBeenCalled();
   });
 
-  // 5,050 boards through the full validation, which since 15-01 also works out each board's turn:
-  // about 1.7 s on a quiet machine, past the 5 s default under load — so it carries its own limit,
-  // the way blank-fit.test.ts's whole-catalogue checks do.
+  // 5,050 boards through the full validation, which since 15-01 also works out each board's turn and
+  // since Phase 16 counts every litre the 3D board draws: about 20 s alone, past a minute with the rest
+  // of the suite and a browser run beside it — so it carries its own limit, the way blank-fit.test.ts's
+  // whole-catalogue checks do.
   it("every count from 1 to 100 survives the rack's validation with that many boards", () => {
     for (let count = 1; count <= 100; count++) {
       const log = vi.fn();
       expect(rackModelsFromRows(standInRackRows(count), log)).toHaveLength(count);
       expect(log).not.toHaveBeenCalled();
     }
-  }, 30_000);
+  }, 180_000);
 
   it("is deterministic", () => {
     expect(standInRackRows(30)).toEqual(standInRackRows(30));

@@ -7,6 +7,7 @@ import {
   BOARD_NAME_MAX_LENGTH,
   UNTITLED_BOARD_NAME,
   boardFileName,
+  boardFileStem,
   boardFileText,
   buildBoardFile,
   readOneBoardFile,
@@ -278,5 +279,37 @@ describe("boardFileName: a name safe on any computer (PC2)", () => {
 
   it("never splits an emoji", () => {
     expect(base("🏄".repeat(100))).toBe("🏄".repeat(80));
+  });
+});
+
+describe("boardFileStem: the one stem the board file and the CNC export share (Phase 16)", () => {
+  it.each([
+    [`Fish 5'10"`],
+    [`a/b\\c:d*e?f"g<h>i|j`],
+    ["a\u0000b\u001fc\u007fd"],
+    ["  ..Fish..  "],
+    [".hidden board"],
+    [""],
+    ["...."],
+    ["a".repeat(300)],
+    ["🏄".repeat(100)],
+  ])("%j: the stem and the extension are the board file's name", (name) => {
+    expect(`${boardFileStem(name)}${BOARD_FILE_EXTENSION}`).toBe(boardFileName(name));
+  });
+
+  it("turns refused characters into single spaces", () => {
+    expect(boardFileStem(`a/b\\c:d*e?f"g<h>i|j`)).toBe("a b c d e f g h i j");
+    expect(boardFileStem("../../etc/passwd")).toBe("etc passwd");
+  });
+
+  it("cuts at 80 whole letters with an emoji at the cut, never splitting it", () => {
+    const name = `${"a".repeat(79)}🏄🏄🏄`;
+    expect(boardFileStem(name)).toBe(`${"a".repeat(79)}🏄`);
+    expect(Array.from(boardFileStem(name)).length).toBe(80);
+  });
+
+  it("names an all-dots name an untitled board", () => {
+    expect(boardFileStem("....")).toBe(UNTITLED_BOARD_NAME);
+    expect(boardFileStem(". . .")).toBe(UNTITLED_BOARD_NAME);
   });
 });

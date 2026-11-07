@@ -28,6 +28,7 @@ import {
   isQuadRearModelAvailable,
   offRailTunerRangeIn,
   resetAdvanced,
+  twinTemplateChange,
   type FinAdvancedSpec,
   type FinPlacementResult,
   type FinPlacementSpec,
@@ -224,12 +225,12 @@ export function FinControls({
 
   const applySetup = (setup: FinSetup) => {
     setEditingRearOffTail(false);
-    onChange({ finSetup: setup, advanced: resetAdvanced(setup) });
+    onChange({ finSetup: setup, advanced: resetAdvanced(setup, spec.twinTemplate) });
   };
 
   const resetAdvancedSettings = () => {
     setEditingRearOffTail(false);
-    onChange({ advanced: resetAdvanced(spec.finSetup) });
+    onChange({ advanced: resetAdvanced(spec.finSetup, spec.twinTemplate) });
   };
 
   const { flags, resolved } = result;
@@ -514,7 +515,7 @@ export function FinControls({
               <PillButton
                 key={opt.value}
                 active={spec.twinTemplate === opt.value}
-                onClick={() => onChange({ twinTemplate: opt.value as TwinTemplate })}
+                onClick={() => onChange(twinTemplateChange(spec, opt.value as TwinTemplate))}
                 className="flex-1 basis-[30%]"
               >
                 {opt.label}

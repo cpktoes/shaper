@@ -25,13 +25,14 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
+import { wingShareAt } from "./wings";
 import {
   computeCrossSectionVolume,
   computeCrossSectionVolumeWith,
   computeVolume,
   type CrossSectionVolumeInput,
   type CrossSectionVolumeResult,
-  type HardEdgeRule,
+  type SectionRule,
   type VolumeRailValues,
   type VolumeResult,
   type VolumeSpec,
@@ -76,13 +77,20 @@ export function deriveEffectiveFins(
  * the preset and rack cards, the phone's tile, the order form and the printed template (quick
  * 261103-gcm). The width on one side of the stringer is the foam TEMPLATE draws (`foamHalfWidth`: a
  * swallow's notch is air, a diamond's V is foam), and the tail cut's corner is a cross-section station
- * (`tailCutStation`). Spread into `computeCrossSectionVolume`'s input.
+ * (`tailCutStation`). A winged outline also carries how far it stands off the deck's meeting line at each station
+ * (`wingShareAt`, Phase 16, D-37): the litres and the 3D board build the stations either side of a wing on that
+ * line and move the rail onto the outline. A board without wings carries no such thing. Spread into
+ * `computeCrossSectionVolume`'s input.
  */
-export function crossSectionFoam(geometry: OutlineGeometry): Pick<CrossSectionVolumeInput, "halfWidthAt" | "cutStation"> {
-  return {
-    halfWidthAt: (station) => foamHalfWidth(geometry, station),
+export function crossSectionFoam(
+  geometry: OutlineGeometry,
+): Pick<CrossSectionVolumeInput, "halfWidthAt" | "cutStation" | "wingShareAt"> {
+  const foam = {
+    halfWidthAt: (station: Mm) => foamHalfWidth(geometry, station),
     cutStation: tailCutStation(geometry),
   };
+  if (!geometry.wings || geometry.wings.length === 0) return foam;
+  return { ...foam, wingShareAt: (station: Mm) => wingShareAt(geometry, station) };
 }
 
 /**
@@ -270,11 +278,13 @@ export interface DesignRules {
   /** Prepares a blank's own copy of its catalogue rows into the curves the board is cut from. */
   prepare: (record: BlankRecord) => PreparedBlank;
   /**
-   * How the tail's Hard Edge reaches each station of the litres (Phase 16, D-20/D-27). Absent means the
-   * live rule — the one every screen uses; the old pre-Phase-16 switch (`HARD_EDGE_SWITCH`) is named only
-   * by the pin test of today's litres and by the saved-boards report.
+   * How the rail character reaches each station of the litres (Phase 16, D-20/D-27/D-32). Absent means the
+   * live rule (`SMOOTH_SURFACE_FADE`) — the one every screen uses. The old rules are named only by the pins and
+   * the reports: the pre-Phase-16 switch (`HARD_EDGE_SWITCH`) by the 40-board pin and the hard-edge report, go-live
+   * 1's hard-edge fade (`HARD_EDGE_FADE`) by the 74-board pin and the rail-character and surface reports, and the
+   * whole rail's fade alone (`RAIL_CHARACTER_FADE`) by the 102-board pin and those same two reports.
    */
-  hardEdge?: HardEdgeRule;
+  hardEdge?: SectionRule;
 }
 
 /**

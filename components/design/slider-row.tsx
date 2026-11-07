@@ -89,6 +89,12 @@ export interface SliderRowProps {
    * `.valbox`). Absent, the row renders exactly as before.
    */
   valueBox?: string;
+  /**
+   * The row only changes what is seen, never the board, so a locked board keeps it live (the 3D screen's bay controls,
+   * Phase 16, D-43): the lock doesn't grey it and the slider carries `data-lock-exempt`. Absent, the row renders exactly
+   * as before.
+   */
+  lockExempt?: boolean;
 }
 
 export function SliderRow({
@@ -110,10 +116,11 @@ export function SliderRow({
   sliderLabel,
   sliderValueText,
   valueBox,
+  lockExempt = false,
 }: SliderRowProps) {
   // A locked board greys every row on a design screen (the scope is false anywhere else).
   const locked = useControlsLocked();
-  const disabled = disabledProp || locked;
+  const disabled = disabledProp || (locked && !lockExempt);
   // `false` counts as no action, so a caller can write `hintAction={cond && <Button />}`.
   const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
   return (
@@ -150,6 +157,7 @@ export function SliderRow({
         className="slider-accent"
         thumbAriaLabel={sliderLabel}
         thumbAriaValueText={sliderValueText}
+        {...(lockExempt ? { "data-lock-exempt": true } : {})}
       />
       {(leftHint || rightHint || hintAction) && (
         <div

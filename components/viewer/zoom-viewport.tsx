@@ -550,9 +550,6 @@ export function ViewerZoomControl({ placement = "under-toolbar" }: { placement?:
   const ctx = useContext(ZoomContext);
   if (!ctx) return null;
   const { controller, maxZoom } = ctx;
-  const { zoom } = ctx.state;
-  const atOne = zoom <= 1;
-  const atMax = zoom >= snapZoom(maxZoom, maxZoom);
 
   function stepBy(steps: number) {
     const g = controller.geometry();
@@ -562,6 +559,44 @@ export function ViewerZoomControl({ placement = "under-toolbar" }: { placement?:
     if (next === current.zoom) return;
     controller.apply(zoomAt(g.base, g.client, current, next, g.client.width / 2, g.client.height / 2));
   }
+
+  return (
+    <ViewerZoomRow
+      zoom={ctx.state.zoom}
+      maxZoom={maxZoom}
+      onStep={stepBy}
+      onReset={() => controller.apply(AT_ONE)}
+      placement={placement}
+    />
+  );
+}
+
+/**
+ * The zoom row's markup (Phase 16, plan 09), lifted out of `ViewerZoomControl` unchanged so the 3D canvas — which
+ * zooms by cropping its camera's picture, not through a `viewBox` — wears exactly the row every drawing wears: the
+ * same elements, classes, words and order, and the same touch rule. It only draws; the caller decides what a step
+ * and a reset do.
+ *
+ * `atOne` is when the row counts as "at 1x" — Back to 1x dimmed, and the whole row hidden on a touch screen. It
+ * defaults to `zoom <= 1`, which is every 2D viewer's rule; the 3D canvas, whose board can be slid at 1x too,
+ * passes "at 1x and not slid", so Back to 1x stays live to undo a slide.
+ */
+export function ViewerZoomRow({
+  zoom,
+  maxZoom,
+  onStep,
+  onReset,
+  placement = "under-toolbar",
+  atOne = zoom <= 1,
+}: {
+  zoom: number;
+  maxZoom: number;
+  onStep: (steps: number) => void;
+  onReset: () => void;
+  placement?: "under-toolbar" | "corner";
+  atOne?: boolean;
+}) {
+  const atMax = zoom >= snapZoom(maxZoom, maxZoom);
 
   return (
     <div
@@ -576,7 +611,7 @@ export function ViewerZoomControl({ placement = "under-toolbar" }: { placement?:
     >
       <ViewerToolbarButton
         label="Back to 1x — the whole drawing"
-        onClick={() => controller.apply(AT_ONE)}
+        onClick={onReset}
         disabled={atOne}
         className={cn("disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surf-ground disabled:hover:text-surf-ink-muted", COARSE_TOUCH_BOX)}
       >
@@ -584,7 +619,7 @@ export function ViewerZoomControl({ placement = "under-toolbar" }: { placement?:
       </ViewerToolbarButton>
       <ViewerToolbarButton
         label="Zoom in"
-        onClick={() => stepBy(1)}
+        onClick={() => onStep(1)}
         disabled={atMax}
         className="coarse:hidden disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surf-ground disabled:hover:text-surf-ink-muted"
       >
@@ -598,8 +633,8 @@ export function ViewerZoomControl({ placement = "under-toolbar" }: { placement?:
       </div>
       <ViewerToolbarButton
         label="Zoom out"
-        onClick={() => stepBy(-1)}
-        disabled={atOne}
+        onClick={() => onStep(-1)}
+        disabled={zoom <= 1}
         className="coarse:hidden disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surf-ground disabled:hover:text-surf-ink-muted"
       >
         <ZoomOutIcon className="size-6" />

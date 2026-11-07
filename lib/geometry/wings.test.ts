@@ -11,6 +11,7 @@ import { inchesToMm, mm, mmToInches } from "./units";
 import {
   NO_FIN_EDGES,
   WING_DEFAULT_DEPTH_IN,
+  WING_HAIR_MM,
   WING_POSITION_MIN_IN,
   WING_SECOND_BY_HAND_IN,
   applyWings,
@@ -36,7 +37,11 @@ import {
   wingPositionTop,
   wingRadiusTop,
   wingStepShape,
+  WING_SHARE_REACH_IN,
+  wingShareAt,
+  wingShareSpan,
   wingStepShare,
+  wingTakeAt,
   wingedHalfWidthAt,
   wingReadouts,
   type Wing,
@@ -545,5 +550,94 @@ describe("outlineForFins: the outline the fins read has every wing's corner radi
     const board = twoWingBoard();
     const odd: OutlineSpec = { ...board, wings: board.wings!.map((w) => ({ ...w, radius: mm(Number.NaN) })) };
     expect(outlineForFins(odd)).toBe(odd);
+  });
+});
+
+describe("how much a wing takes, as the litres and the 3D board read it (Phase 16, D-33)", () => {
+  const add = (outline: OutlineSpec): readonly Wing[] => {
+    const first = nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial");
+    return [first, nextWing([first], NO_FIN_EDGES, buildOutline(outline), "imperial")];
+  };
+
+  for (const { id, outline } of BOARDS) {
+    const wings = add(outline);
+    const winged = buildOutline({ ...outline, wings });
+    const curve = buildOutline(outline);
+
+    it(`${id}: the take is what applyWings takes off every base point, within 1e-9 mm`, () => {
+      for (const p of curve.points) {
+        const point = winged.points.find((q) => q.station === p.station)!;
+        expect(Math.abs(p.halfWidth - point.halfWidth - wingTakeAt(winged, p.station))).toBeLessThan(1e-9);
+      }
+    });
+
+    it(`${id}: 0 ahead of every step and at or behind the tail pod`, () => {
+      const nosemost = Math.max(...wings.map((w) => wingFootprint(w).stepStart));
+      for (const s of [nosemost, nosemost + WING_HAIR_MM, winged.length]) expect(wingTakeAt(winged, mm(s))).toBe(0);
+      expect(wingTakeAt(winged, winged.tailPodStation)).toBe(0);
+      expect(wingTakeAt(winged, mm(winged.tailPodStation - 1))).toBe(0);
+    });
+
+    it(`${id}: the winged geometry records the placed wings and keeps its points, area and widths`, () => {
+      const { wings: recorded, ...rest } = winged;
+      expect(recorded).toEqual(placedWings(wings, winged));
+      expect(Object.keys(rest).sort()).toEqual(Object.keys(curve).sort());
+      // The widths and the area read the same points as ever; the golden below pins the points themselves.
+      expect(winged.tailWidthAt12in).toBe(2 * sampleOutline(winged, mm(inchesToMm(12))));
+    });
+
+    it(`${id}: the outline stands on the meeting line clear of the shared stretch, both ways, and at the tail pod`, () => {
+      for (const wing of winged.wings!) {
+        const { middle, reach } = wingShareSpan(wing);
+        expect(reach).toBe(inchesToMm(WING_SHARE_REACH_IN));
+        if (wings.length === 1) {
+          expect(wingShareAt(winged, mm(middle + reach + 1))).toBe(0);
+          expect(wingShareAt(winged, mm(middle - reach - 1))).toBe(0);
+        }
+      }
+      expect(wingShareAt(winged, winged.tailPodStation)).toBe(0);
+      expect(wingShareAt(curve, mm(winged.length / 2))).toBe(0);
+    });
+
+    it(`${id}: ahead of a wing the outline stands outside the line, behind it inside`, () => {
+      const [first, second] = winged.wings!;
+      const { stepStart } = wingFootprint(first);
+      const { inner } = wingFootprint(second);
+      const { middle: secondMiddle } = wingShareSpan(second);
+      // Ahead of both wings and behind both, the sign is the wing's own.
+      expect(wingShareAt(winged, mm(stepStart + inchesToMm(1)))).toBeLessThan(0);
+      if (wingFootprint(second).inner > winged.tailPodStation + inchesToMm(1)) {
+        expect(wingShareAt(winged, mm(inner - inchesToMm(0.5)))).toBeGreaterThan(0);
+      }
+      expect(secondMiddle).toBeLessThan(wingShareSpan(first).middle);
+    });
+
+    it(`${id}: a board without wings takes nothing and carries no wings`, () => {
+      expect(curve.wings).toBeUndefined();
+      expect("wings" in curve).toBe(false);
+      for (const p of curve.points) expect(wingTakeAt(curve, p.station)).toBe(0);
+      expect(buildOutline({ ...outline, wings: [] })).toEqual(curve);
+      expect(applyWings(curve, [])).toBe(curve);
+    });
+  }
+});
+
+describe("the two sides of a wing meet at half the step (Phase 16, D-37)", () => {
+  const { outline } = BOARDS[0];
+  const square: Wing = { ...nextWing([], NO_FIN_EDGES, buildOutline(outline), "imperial"), depth: inchesToMm(3 / 8), run: mm(0), radius: mm(0) };
+  const winged = buildOutline({ ...outline, wings: [square] });
+  const faded = (s: number) => (s - winged.tailPodStation) / (square.station - winged.tailPodStation);
+
+  it("a square step's share runs from half the depth outside the line to half the depth inside it", () => {
+    expect(Math.abs(wingShareAt(winged, mm(square.station + WING_HAIR_MM)) + square.depth / 2)).toBeLessThan(1e-4);
+    expect(Math.abs(wingShareAt(winged, mm(square.station - WING_HAIR_MM)) - (square.depth / 2) * faded(square.station))).toBeLessThan(1e-3);
+  });
+
+  it("the share eases: it shrinks away from the wing each way", () => {
+    const at = (inches: number) => Math.abs(wingShareAt(winged, mm(square.station + inchesToMm(inches))));
+    for (const inches of [0.5, 1, 1.5, 2, 2.5]) {
+      expect(at(inches + 0.5)).toBeLessThan(at(inches));
+      expect(at(-inches - 0.5)).toBeLessThan(at(-inches));
+    }
   });
 });

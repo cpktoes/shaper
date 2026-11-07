@@ -4,7 +4,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { CONTACT_COPY, CONTACT_ROUTE } from "../lib/contact/message";
 import { ERROR_COPY, NOT_FOUND_COPY } from "../lib/error-pages/copy";
 import { FORCED_ERROR_MESSAGE, FORCED_ERROR_ROUTE } from "../lib/error-pages/forced-error";
-import { expectNoScreensNavigation, expectSixTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
 
 /**
  * Quick 260930-fjm (Phase 13 item 12). Task 2 proves the not-found page's ways forward and the
@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** The shared phone-vs-desktop shell assertions Task 3 reuses for the error screen too: on a
- * phone project, the phone top bar's Menu button opening the six screen tiles with none ticked,
+ * phone project, the phone top bar's Menu button opening the seven screen tiles with none ticked,
  * no bottom tab bar (removed in quick 261003-q2f), no sideways scroll and every actionable element
  * at least 44px tall; on desktop, the ordinary Settings gear and no phone chrome. */
 async function expectShell(page: Page, projectName: string, screen: string): Promise<void> {
@@ -56,7 +56,7 @@ async function expectShell(page: Page, projectName: string, screen: string): Pro
       expect(height).toBeGreaterThanOrEqual(44);
     }
 
-    await expectSixTilesInMenu(page, null);
+    await expectSevenTilesInMenu(page, null);
   } else {
     await expect(page.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeHidden();
@@ -83,7 +83,7 @@ test.describe("the not-found page", () => {
     await expectShell(page, testInfo.project.name, "[data-not-found-page]");
   });
 
-  test("an unknown design address keeps the phone shell, its menu holding the six screen tiles", async ({ page }, testInfo) => {
+  test("an unknown design address keeps the phone shell, its menu holding the seven screen tiles", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const response = await page.goto("/design/no-such-screen");
     expect(response?.status()).toBe(404);

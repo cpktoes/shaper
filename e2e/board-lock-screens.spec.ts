@@ -1,10 +1,15 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
+import { readZip } from "../lib/export/zip";
+import { boardFileStem } from "../lib/models/board-file";
 import { RACK_COPY } from "../components/setup/rack-config";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { blankCards, openBlankPicker, starButton, waitForBlankButton } from "./helpers/blank-picker";
+import { hideDevBadge } from "./helpers/dev-badge";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen, type ScreenLabel } from "./helpers/screens";
 import { freshPracticeRack } from "./helpers/practice-rack";
@@ -51,6 +56,7 @@ async function startPracticeRack(page: Page) {
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
+  await hideDevBadge(page);
   await freshPracticeRack(page);
   await openRack(page);
 }
@@ -426,6 +432,10 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
         await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
         await expect(page.locator("[data-rack-board]")).toHaveCount(5);
         await lockFromRack(page, 3);
+        // Forward waits for the rack to redraw with the lock on it. Next finishes a save as a push to the
+        // address it was made on, so Forward pressed in that moment has its next step written over, and
+        // the second Forward below would have nowhere to go.
+        await expect(captionFor(page, board(3).name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
         await page.goForward();
         await page.waitForURL("**/design/outline");
         await page.goForward();
@@ -835,6 +845,97 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
 
     expect(await controls.innerText()).toBe(before);
     expect(saves, "printing and settings must never send a save").toEqual([]);
+    await expect(unlockButton(page)).toHaveCount(1);
+  });
+
+  test("x-3d. 3D: every view control stays live, Export for CNC… downloads the board's zip, and nothing saves or changes", async ({
+    page,
+  }) => {
+    // The 3D screen's first frame is slow on the iPhone's WebKit under the suite's development server.
+    test.slow();
+    const saves = await watchPrintsAndSaves(page);
+    await openLockedBoard(page, 1);
+    await goToScreen(page, "3D");
+    await expect(page.locator("[data-board-3d]")).toHaveAttribute("data-board-state", "ready", { timeout: 30_000 });
+    saves.length = 0;
+    const panel = page.locator("[data-three-d-controls]");
+    // What changes the board (the tail's Hard Edge rows) is greyed as on RAILS; everything else here only changes
+    // what is seen or what is downloaded, so it stays live (UI-SPEC §9).
+    expect(await liveBoardControls(panel), "3D: live board controls on a locked board").toEqual([]);
+    const exempt = panel.locator("button[data-lock-exempt], [role='checkbox'][data-lock-exempt]");
+    expect(await exempt.count()).toBeGreaterThan(0);
+    expect(
+      await exempt.evaluateAll((els) => els.filter((el) => (el as HTMLButtonElement).disabled || el.hasAttribute("data-disabled")).length),
+      "no view control or Export greyed on a locked board",
+    ).toBe(0);
+    // The bay's controls (D-43, D-44) only change the picture: a press and a slider stay live, and send no save.
+    const racks = panel.locator("[data-three-d-racks]");
+    const views = panel.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true });
+    await views.getByRole("button", { name: THREE_D_COPY.views.bottom, exact: true }).click();
+    await views.getByRole("button", { name: THREE_D_COPY.views.deck, exact: true }).click();
+    for (const name of [THREE_D_COPY.raiseNose, THREE_D_COPY.raiseTail, THREE_D_COPY.rotateOnSide, THREE_D_COPY.lookDownRail]) {
+      await expect(racks.getByRole("slider", { name, exact: true })).toBeEnabled();
+    }
+    const roll = racks.getByRole("slider", { name: THREE_D_COPY.rotateOnSide, exact: true });
+    await roll.focus();
+    await roll.press("ArrowRight");
+    await roll.press("ArrowLeft");
+    expect(saves, "the bay's controls must never send a save").toEqual([]);
+
+    // Rail Blend Controls: the fold only changes what shows, so it stays live; the rows inside change the board, so the lock
+    // greys them.
+    const fold = panel.getByRole("button", { name: new RegExp(THREE_D_COPY.railBlendHeading) });
+    await fold.click();
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.tailRailEndsAtSlider, exact: true })).toBeDisabled();
+    await expect(panel.getByRole("slider", { name: THREE_D_COPY.tailRailBlendsFromSlider, exact: true })).toBeDisabled();
+    await fold.click();
+    const before = await panel.innerText();
+
+    // The corner's switches (D-35): each only changes the picture, so each stays live, sends no save and leaves the
+    // panel as it was.
+    const corner = page.locator("[data-viewer-toolbar] button[data-three-d-show][data-lock-exempt]");
+    await expect(corner).toHaveCount(5);
+    for (const button of await corner.all()) {
+      await expect(button).toBeEnabled();
+      const was = (await button.getAttribute("aria-pressed")) ?? "";
+      // The Room icon has three steps (quick 261106-ni6): the theme's room, the bright blue room, no room. Both rooms
+      // read as on, so its first press changes only its tooltip and its second turns it off.
+      if ((await button.getAttribute("data-three-d-show")) === "room") {
+        await button.click();
+        await expect(button).toHaveAttribute("title", THREE_D_COPY.roomTip.blue);
+        await expect(button).toHaveAttribute("aria-pressed", was);
+      }
+      await button.click();
+      await expect(button).not.toHaveAttribute("aria-pressed", was);
+      await button.click();
+      await expect(button).toHaveAttribute("aria-pressed", was);
+    }
+    expect(await panel.innerText()).toBe(before);
+    expect(saves, "a corner switch must never send a save").toEqual([]);
+
+    const exportButton = panel.getByRole("button", { name: THREE_D_COPY.exportButton, exact: true });
+    await expect(exportButton).toBeEnabled();
+    const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);
+    const stem = boardFileStem(board(1).name);
+    expect(download.suggestedFilename()).toBe(`${stem}-3d.zip`);
+    const path = await download.path();
+    if (!path) throw new Error("the download has no file");
+    const entries = readZip(new Uint8Array(readFileSync(path)));
+    expect(entries.every((entry) => entry.crcOk)).toBe(true);
+    expect(entries.map((entry) => entry.name).slice(0, 4)).toEqual([
+      `${stem}.dxf`,
+      `${stem}.stl`,
+      `${stem}-outline.txt`,
+      `${stem}-profile.txt`,
+    ]);
+    const slices = entries.length - 4;
+    await expect(panel.locator("[data-three-d-export] [role='status']")).toHaveText(
+      THREE_D_COPY.exportDone(`${stem}-3d.zip`, slices),
+    );
+
+    // Only the status line changed; nothing was saved and the board is still locked.
+    expect(await panel.innerText()).toBe(`${before}\n${THREE_D_COPY.exportDone(`${stem}-3d.zip`, slices)}`);
+    expect(saves, "export must never send a save").toEqual([]);
     await expect(unlockButton(page)).toHaveCount(1);
   });
 });

@@ -4,10 +4,11 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 
 /**
  * Quick 261003-q2c: every design screen's controls end with a Back and a Next button, so a shaper
- * walks a board TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY without opening a menu (the founder's
- * "almost wizard like", sketch 008's pick B). TEMPLATE has only Next, SUMMARY only Back.
+ * walks a board TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY, 3D without opening a menu (the founder's
+ * "almost wizard like", sketch 008's pick B). TEMPLATE has only Next, 3D (the seventh screen since
+ * Phase 16) only Back; SUMMARY's Next goes to 3D.
  *
- * The six screens are hand-written here the way every phone spec in this suite does it: importing
+ * The seven screens are hand-written here the way every phone spec in this suite does it: importing
  * `components/site-nav.tsx` would pull the database client into Playwright's own Node process.
  */
 const SCREENS = [
@@ -17,6 +18,7 @@ const SCREENS = [
   { href: "/design/volume", label: "VOLUME", word: "Volume" },
   { href: "/design/fins", label: "FINS", word: "Fins" },
   { href: "/design/summary", label: "SUMMARY", word: "Summary" },
+  { href: "/design/3d", label: "3D", word: "3D" },
 ] as const;
 
 async function dismissBanners(page: Page) {
@@ -76,8 +78,44 @@ test.describe("Back and Next end every design screen's controls", () => {
   });
 });
 
+test.describe("SUMMARY's Next goes to 3D, the last screen (Phase 16)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissBanners(page);
+  });
+
+  test("SUMMARY reads Fins and 3D; 3D has Back to Summary alone, filling its row, and no Next", async ({ page }) => {
+    test.slow();
+    await startTheFirstPreset(page);
+    // Client-side moves all the way, so the board started above is the one on SUMMARY and 3D.
+    for (const href of ["/design/rocker", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {
+      await followStep(page, "next", href);
+    }
+
+    // SUMMARY: Back reads "Fins", Next reads "3D" — as written, never "3d".
+    await expect(stepNav(page).getByRole("link")).toHaveCount(2);
+    await expect(stepNav(page).getByRole("link", { name: "Previous screen: Fins", exact: true })).toHaveText("Fins");
+    const next = stepNav(page).getByRole("link", { name: "Next screen: 3D", exact: true });
+    await expect(next).toHaveText("3D");
+    await expect(next).toHaveAttribute("href", "/design/3d");
+
+    await followStep(page, "next", "/design/3d");
+
+    // 3D: Back alone, reading "Summary", as wide as the row it sits in; nothing after it.
+    await expect(stepNav(page).getByRole("link")).toHaveCount(1);
+    const back = stepNav(page).getByRole("link", { name: "Previous screen: Summary", exact: true });
+    await expect(back).toHaveText("Summary");
+    await expect(stepNav(page).getByRole("link", { name: /^Next screen: / })).toHaveCount(0);
+    const [backBox, rowBox] = await Promise.all([back.boundingBox(), stepNav(page).boundingBox()]);
+    if (!backBox || !rowBox) throw new Error("3D's Back or its row has no bounding box");
+    expect(backBox.width, "3D's Back fills its row").toBeCloseTo(rowBox.width, 0);
+
+    await followStep(page, "previous", "/design/summary");
+    await expect(stepNav(page).getByRole("link", { name: "Next screen: 3D", exact: true })).toBeVisible();
+  });
+});
+
 /** Checks the pair at screen `index` of the walk: the right words, and only the buttons that screen
- * should have (TEMPLATE has no Back, SUMMARY has no Next). */
+ * should have (TEMPLATE has no Back, 3D has no Next). */
 async function expectTheRightPair(page: Page, index: number) {
   const before = SCREENS[index - 1];
   const after = SCREENS[index + 1];
@@ -106,7 +144,7 @@ async function setNoseStartByHand(page: Page): Promise<string> {
   return label.innerText();
 }
 
-/** The whole walk: Next from TEMPLATE to SUMMARY, then Back to TEMPLATE, checking the pair at every
+/** The whole walk: Next from TEMPLATE to 3D, then Back to TEMPLATE, checking the pair at every
  * stop. A Nose Thinning Start set by hand on ROCKER on the way out must read the same on the way
  * back — proof that every move is client-side and the unsaved board survives. */
 async function walkOutAndBack(page: Page) {
@@ -134,9 +172,11 @@ test.describe("Back and Next walk the whole board", () => {
     await dismissBanners(page);
   });
 
-  test("Next walks TEMPLATE to SUMMARY and Back walks home again, keeping a hand-set Thinning Start", async ({
+  test("Next walks TEMPLATE to 3D and Back walks home again, keeping a hand-set Thinning Start", async ({
     page,
   }) => {
+    // The walk visits 3D, whose first drawing takes about 5 s on the iPhone project.
+    test.slow();
     await walkOutAndBack(page);
   });
 
@@ -239,7 +279,8 @@ test.describe("Back and Next on a Pixel 7 held sideways (863x360, the desktop sh
     await dismissBanners(page);
   });
 
-  test("Next walks TEMPLATE to SUMMARY and Back walks home again", async ({ page }) => {
+  test("Next walks TEMPLATE to 3D and Back walks home again", async ({ page }) => {
+    test.slow();
     await walkOutAndBack(page);
   });
 });

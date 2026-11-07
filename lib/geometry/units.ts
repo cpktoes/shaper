@@ -31,6 +31,18 @@ export function inchesToMm(value: number): Mm {
   return mm(value * MM_PER_INCH);
 }
 
+/** Twelve inches to the foot. */
+export const INCHES_PER_FOOT = 12;
+
+/**
+ * A length in feet, as a plain number (a 9'0" board is 9). Used where a rule is written in feet: the 3D board's
+ * single fin is as deep, in inches, as the board is long in feet (Phase 16, D-22). It is a units conversion, so it
+ * lives here with the others.
+ */
+export function mmToFeet(value: Mm): number {
+  return mmToInches(value) / INCHES_PER_FOOT;
+}
+
 export function cubicMmToLitres(volumeMm3: number): Litres {
   return litres(volumeMm3 / 1_000_000);
 }

@@ -2,6 +2,137 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-07 (Phase 16, quick 261106-ni6, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the room
+ * in the theme's own deep colour on Daylight, and the drawing filling the viewer out to its faint line (804 by 615 became
+ * 828 by 639). Against the picture recorded just below, 484305 pixels moved, all inside the viewer, and 0 in the top bar and
+ * the panel. The corner icons held their place: test 12 of `three-d-screen.spec.ts` pins them. The other five pictures passed
+ * unchanged.
+ *
+ * RE-RECORDED 2026-11-07 (Phase 16, fast task 201, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the line
+ * logo made 20% smaller again at the founder's word. Against the picture recorded just below, 7155 pixels moved inside the
+ * logo's own box and 0 outside it. The other five pictures passed unchanged.
+ *
+ * RE-RECORDED 2026-11-06 (Phase 16, fast task 200, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the line
+ * logo made 20% smaller at the founder's word. Against the picture recorded just below, 10808 pixels moved inside the
+ * logo's own box and 0 outside it. The other five pictures passed unchanged.
+ *
+ * RE-RECORDED 2026-11-06 (Phase 16, fast task 199, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
+ * line logo high on the back wall (the circle logos on the side walls are out of this view). Against the picture recorded
+ * just below, 8987 pixels moved inside the logo's own box and 64 outside it, none of those by more than 2 levels in 255: a
+ * shade no eye can see, at the panel's rounded corners. The other five pictures passed unchanged. The shot now also waits
+ * for `data-bay-logos`, so the logos are always on the walls before it is taken.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
+ * notes after driving the bay: the panel now reads VIEW, the four sliders, Rail Blend Controls folded, then Export, with
+ * Flip the Board gone and Side dimmed on Turn the Board; and each strip has its one shelf, the sill below it gone, so the
+ * strip's light runs down the wall. Compared with the tolerance at 0, against the picture recorded just below: 161651
+ * pixels differ, all in x 20-1242, y 214-800: 58456 in the panel, the rest in the room's walls, shelves and floor. Nothing
+ * above y 214 differs, so the top row, the band and the corner row are untouched. The other five pictures passed and are
+ * byte-for-byte what they were, so VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3218) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the
+ * merge. SHA-256 (first 8 characters), old to new: 3D 1a37927b to c70f39e1.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once more, for the
+ * founder's rulings at his look: Swing went from ON THE RACKS, so everything below it in the panel moved up a row, and Sight
+ * Along became Look Down the Rail. Compared with the tolerance at 0, against the picture recorded just below: 34016 pixels
+ * differ, every one in the panel's column (x 20-359, y 354-800). The 3D drawing itself and its corner row differ in 0
+ * pixels. The other five pictures passed and are byte-for-byte what they were, so VOLUME still reads 30.29 L. Rendered by
+ * the webpack dev server (`IS_WEBPACK_TEST=1`, port 3218) in the plan's worktree on this Mac; the orchestrator confirms
+ * under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D 8418d4d6 to 1a37927b.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-18, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the shaping
+ * bay (D-43, D-44): the board now lies on its racks in a drawn room, seen from directly behind the tail; the panel opens
+ * with ON THE RACKS and VIEW holds the two-way switch; the corner row gains the Room switch; and the subtitle has new
+ * words. Compared with the tolerance at 0, against the picture as plan 16-17 left it: 540908 pixels differ, all in x
+ * 20-1242, y 147-797: 51000 in the panel, the rest in the canvas and its corner row. Nothing above y 147 differs, so the
+ * top row and the band are untouched. The other five pictures passed and are byte-for-byte what they were, so VOLUME still
+ * reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3218) in the plan's worktree on this Mac; the
+ * orchestrator confirms under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new:
+ * 3D 34d8a19c to 8418d4d6.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-17, branch board-3d) — 3D only, `three-d-desktop.png`, once, after the
+ * fourth corner switch: SHOW left the panel and its three switches, with the new # for Wire View, joined Wide view in
+ * the corner (D-35, D-42), and the thruster's near fin, which shows below the rail at the first view, took its real
+ * shape (D-35). Compared with the tolerance at 0, against the picture as plan 16-16 left it: 39603 pixels differ in the
+ * panel from SHOW's old place down (x 20-358, y 270-796); 4462 in the corner row left of Wide view (x 1048-1207, y
+ * 147-180); 219 in the fin (x 1049-1095, y 506-523); 28 by one level of 255 in Wide view's and the zoom row's icons; and one
+ * dark pixel on the deck at (1064, 416), which is headless Chromium's software drawing alone: the fin's solid stays inside
+ * its outline, the dot is gone at 10x, and the same board on this Mac's graphics chip draws none. The board itself is
+ * unmoved: with Fins off, the canvas before and after differs in 0 of 1977840 colour values. The other five pictures
+ * passed and are byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by the webpack dev server
+ * (`IS_WEBPACK_TEST=1`, port 3217) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's
+ * Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D d7842e75 to 34d8a19c.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the sharp edge
+ * opening into the round one (the founder: "make sure a sharp tuck can blend into a round tuck nicely"): the stock
+ * board's hard edge now gains a radius through its fade in place of a shrinking corner. Compared with the tolerance
+ * at 0: 120 pixels differ, all along the lower rail's edge between x 900 and 1017, y 517 to 523, where the fade lies, and
+ * none by more than 50 of 255. The other five pictures passed and are byte-for-byte what they were — VOLUME still reads
+ * 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3216) in the plan's worktree on this Mac; the
+ * orchestrator confirms under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to
+ * new: 3D b5b8a3ef to d7842e75.
+ *
+ * RE-RECORDED 2026-11-05 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the tail
+ * (D-38, the founder: "The rail at the tail of the board can be carried around the tip"): the stock board's deck now
+ * rolls over into its tail's edge, a third of the tip's thickness over the last inch. The move sits inside the config's
+ * `maxDiffPixels: 100`, so old and new were compared by hand at tolerance 0: 8066 pixels differ, 6936 of them by a single
+ * step of 255 and only 7 by more than 50, all seven at the tail end. The rest is the same sub-pixel hairline along the
+ * rails and the stringer as the block below records: the tail's end moved, and the camera frames the board by its
+ * points. The other five pictures passed and are byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by
+ * the webpack dev server (`IS_WEBPACK_TEST=1`, port 3216) in the plan's worktree on this Mac; the orchestrator confirms
+ * under the main checkout's Turbopack run after the merge. SHA-256 (first 8 characters), old to new: 3D ac36afed to
+ * b5b8a3ef.
+ *
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-16, branch board-3d) — 3D only, `three-d-desktop.png`, for the board's two
+ * tips (D-34, the founder: "Let's not do that little flip."): the stock board's nose now ends on the side profile's own
+ * tip, one edge from the bottom to the deck, instead of diving into a point halfway up. The move sits inside the
+ * config's `maxDiffPixels: 100` (the old picture still passed), so old and new were compared by hand with the
+ * tolerance at 0: 11892 pixels differ, 11122 of them by under 6 of 255 and only 10 by more than 50, all ten at the
+ * nose tip (x 498-560). The rest is a hairline along the rails and the stringer: the taller tip grows the board's
+ * height, the camera frames the board by its points, and so the whole board sits a fraction of a pixel differently.
+ * SHOW, VIEW, TAIL RAIL, EXPORT and the top bar are unchanged. The other five pictures passed and are byte-for-byte
+ * what they were — VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3216) in
+ * the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the merge
+ * and re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: 3D 087b427a to ac36afed.
+ *
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-15, branch board-3d) — 3D only, `three-d-desktop.png`, for its words
+ * (D-32, the founder: "Only the tail rail gets the users blend. The nose is a default that always gets applied."): the
+ * panel's first group is now TAIL RAIL, its rows Tail Rail Blends From and Tail Rail Ends At, because the two settings
+ * now bound the tail's whole rail, not only its hard edge. Old and new were compared before re-recording: 3483 pixels
+ * differ, every one inside the group's heading and its two labels (x 40-238, y 214-305); the board is drawn bit for
+ * bit as before (the stock board's tail differs from its centre only in the Hard Edge, so D-32 leaves its shape and
+ * its litres alone), and SHOW, VIEW, EXPORT and the top bar are unchanged. The other five pictures passed and are
+ * byte-for-byte what they were — VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`,
+ * port 3215) in the plan's worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run
+ * after the merge and re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: 3D fb4d7c90 to
+ * 087b427a.
+ *
+ * ADDED 2026-11-04 (Phase 16, plan 16-12, branch board-3d) — a sixth picture, `three-d-desktop.png`, the 3D screen
+ * (/design/3d) at 1280 × 800: the default board lit at its first view, and the panel's HARD EDGE, SHOW, VIEW and
+ * EXPORT sections with Export for CNC… and its note. The canvas is NOT masked (D-28): headless Chromium draws WebGL in
+ * software and puts down the same pixels every run (research §B), so the picture pins the board as well as the panel
+ * and the chrome. No WebKit canvas is ever pinned — this spec runs on the desktop project only. The shot waits for the
+ * scene's `ready` and for two frames with no new drawing, so the loading picture is never in it. The other five were
+ * re-run unchanged, byte for byte. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3212) in the plan's
+ * worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the merge. Re-record
+ * it only after inspecting the diff, from the main checkout, like its siblings. SHA-256 (first 8 characters): 3D
+ * fb4d7c90.
+ *
+ * RE-RECORDED 2026-11-04 (Phase 16, plan 16-14, branch board-3d) — all five, nav row only: 16-08 added the seventh
+ * screen, so the top row now ends TEMPLATE · ROCKER · RAILS · VOLUME · FINS · SUMMARY · 3D. At 1280 the six existing
+ * links sit 40 dots further left to make room for `3D` and its gap (the gap between links is unchanged at this
+ * width). Old and new were compared pixel by pixel before re-recording, and the five diffs were looked at and
+ * composed into `.planning/phases/16-3d-board-and-cnc-export/pictures/16-14-desktop-pictures-diff.png`: on every
+ * screen each changed pixel sits inside the link row's own box (x 486-982, y 32-50) — TEMPLATE 3239, ROCKER 3247,
+ * RAILS 3248, VOLUME 3246, FINS 3222 pixels — and nothing below the row moved. The one exception is not movement:
+ * FINS' sidebar cards have 109 anti-aliased corner pixels that render one colour level apart from the old picture,
+ * the same on every render here (three re-records) — a shade no eye can see, at the cards' rounded corners, where
+ * the card itself did not move.
+ * VOLUME still reads 30.29 L. Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3214) in the plan's
+ * worktree on this Mac; the orchestrator confirms under the main checkout's Turbopack run after the merge and
+ * re-records there only if it disagrees. SHA-256 (first 8 characters), old to new: TEMPLATE 8605d28b to c3c675b2,
+ * ROCKER b989d40d to 407cbee1, RAILS e3ca0666 to b853ef2a, VOLUME 14f11e4c to d3377877, FINS 13cca29f to f915b9db.
+ *
  * RE-RECORDED 2026-11-04 (Phase 16, plan 16-02, branch board-3d) — VOLUME only, `volume-desktop.png`, for the
  * founder's D-30 (his words: "The hard edge blend needs a blend sharp edge from AND a blend to"): the default
  * board's tail is hard-edged, and its hard edge now runs full to Hard Edge Blends From (18" when the board says
@@ -308,5 +439,30 @@ test.describe("desktop baseline screenshots", () => {
     await page.goto("/design/fins");
     await expect(page.locator("svg").first()).toBeVisible();
     await expect(page).toHaveScreenshot("fins-desktop.png");
+  });
+
+  test("3D (/design/3d)", async ({ page }) => {
+    await page.goto("/design/3d");
+    // The lit board at its first view, the canvas unmasked (Chromium's software drawing is the same every run).
+    const host = page.locator("[data-board-3d]");
+    await expect(host).toHaveAttribute("data-board-state", "ready", { timeout: 30_000 });
+    await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: 30_000 });
+    // Settled: the scene has drawn and two looks a frame apart find no new frame.
+    await expect
+      .poll(
+        () =>
+          host.evaluate(
+            (el) =>
+              new Promise<boolean>((resolve) => {
+                const count = el.getAttribute("data-frames");
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => resolve(Number(count) > 0 && el.getAttribute("data-frames") === count)),
+                );
+              }),
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+    await expect(page).toHaveScreenshot("three-d-desktop.png");
   });
 });

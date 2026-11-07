@@ -281,7 +281,9 @@ Two looks, both presented by the orchestrator on 2026-11-04.
 - **Second look (the two rows, the per-length default, the report printing both settings):** "Approved." Merged into
   `board-3d` as b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149.
 
-**LITRES_TIP:** b56d24d4868c9c54ee3c6e2aad5b54c6b2ee3149
+**LITRES_TIP:** 6ff19b31cea9e8068c6a4183710a90e01e988288
+
+(Moved from b56d24d4, 16-02's own merge, by the orchestrator on 2026-11-04: the founder's D-31 — the litres counting exactly the foam the 3D board draws — was carried out in 16-03, so go-live 1 ships 16-03's merge commit. 16-03's surface files are pure maths under lib/geometry/ that no route imports until 16-06; the go-live's diff checks hold: only the RAILS and store files change under app/ and components/.)
 
 ## D-31 note (2026-11-04)
 

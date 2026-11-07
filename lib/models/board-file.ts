@@ -93,18 +93,29 @@ export function boardFileText(file: BoardFile): string {
 const UNSAFE_FILE_NAME_CHARACTERS = /[/\\:*?"<>|\u0000-\u001f\u007f]/g;
 
 /**
- * `<board name>.shaper-board.json`, safe on any computer (PC2): each refused character becomes a space,
- * runs of spaces become one, leading dots and surrounding spaces and dots are trimmed, and the name is
- * cut to 80 whole letters — counted by `Array.from`, so an emoji is never split. Nothing left is an
- * untitled board. So `Fish 5'10"` saves as `Fish 5'10.shaper-board.json`.
+ * A board's name made safe for any computer, with no extension (PC2) — the one stem both downloads use,
+ * the board file and the CNC export (Phase 16, `lib/export/cnc-files.ts`), so the two can never name a
+ * board differently. Each refused character becomes a space, runs of spaces become one, leading dots and
+ * surrounding spaces and dots are trimmed, and the name is cut to 80 whole letters — counted by
+ * `Array.from`, so an emoji is never split. Nothing left is an untitled board. No slash, backslash, colon
+ * or control character survives and no stem starts with a dot, so a stem can never name a folder or climb
+ * out of one (T-16-10). So `Fish 5'10"` gives `Fish 5'10`.
  */
-export function boardFileName(name: string): string {
+export function boardFileStem(name: string): string {
   const cleaned = name
     .replace(UNSAFE_FILE_NAME_CHARACTERS, " ")
     .replace(/\s+/g, " ")
     .replace(/^[\s.]+|[\s.]+$/g, "");
   const cut = Array.from(cleaned).slice(0, FILE_NAME_MAX_LENGTH).join("").replace(/[\s.]+$/, "");
-  return `${cut === "" ? UNTITLED_BOARD_NAME : cut}${BOARD_FILE_EXTENSION}`;
+  return cut === "" ? UNTITLED_BOARD_NAME : cut;
+}
+
+/**
+ * `<board name>.shaper-board.json`, safe on any computer (PC2): the board's `boardFileStem` and the
+ * extension. So `Fish 5'10"` saves as `Fish 5'10.shaper-board.json`.
+ */
+export function boardFileName(name: string): string {
+  return `${boardFileStem(name)}${BOARD_FILE_EXTENSION}`;
 }
 
 /** A one-board file's outer shape; the board inside is read by `readBoardEntry`. */
