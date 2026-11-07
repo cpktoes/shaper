@@ -127,8 +127,9 @@ export interface BoardSceneHandle {
   /**
    * The Room icon's three steps (the founder, 2026-11-05 and 2026-11-06, quick 261106-ni6). `"theme"` paints the walls and
    * ceiling in the theme's colours and `"blue"` in the bright blue room's; nothing else about the room changes between
-   * the two, and neither touches the board. `"none"` hides the walls, floor, ceiling, strips, shelves and racks, the
-   * founder's logos stay where they are ("These should always be present", 2026-11-06), and
+   * the two, and neither touches the board. In either room all four logos show. `"none"` hides the walls, floor, ceiling,
+   * strips, shelves and racks and three of the logos, the back wall's line logo alone staying where it is ("with no room,
+   * just keep the one linear logo in the back", the founder, 2026-11-06), and
    * the canvas clears to the theme's ground. The strips' light on the board stays, so the board reads the same.
    */
   setRoom(look: BayLook): void;
@@ -540,7 +541,7 @@ const LOGO_STANDOFF_MM = 5;
 /** The drawn bay and what the scene needs to keep hold of. */
 interface DrawnBay {
   room: Group;
-  /** Beside the room, not in it: the founder's logos stay when the Room switch takes the walls away (2026-11-06). */
+  /** Beside the room, not in it: the back wall's line logo alone, which stays with no room (the founder, 2026-11-06). */
   logos: Group;
   racks: Group;
   light: BayLightUniforms;
@@ -644,10 +645,11 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
   let gone = false;
   let logosToCome = 2;
   const loader = new TextureLoader();
-  const logo = (url: string, width: number, height: number, places: readonly { at: Vec3; turn: Vec3 }[]) => {
+  // Each place names its group, so one material per picture file is shared across the room and `logos`.
+  const logo = (url: string, width: number, height: number, places: readonly { at: Vec3; turn: Vec3; parent?: Group }[]) => {
     const material = new MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, visible: false });
     owned.push(material);
-    for (const { at, turn } of places) plane(width, height, material, at, turn, logos);
+    for (const { at, turn, parent } of places) plane(width, height, material, at, turn, parent);
     loader.load(url, (texture) => {
       if (gone) {
         texture.dispose();
@@ -670,7 +672,7 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
   ]);
   const end = bayEndLogo(LINE_LOGO_ASPECT);
   logo(LINE_LOGO_URL, end.widthMm, end.heightMm, [
-    { at: [-(L / 2 - LOGO_STANDOFF_MM), end.centreYMm, 0], turn: [0, Math.PI / 2, 0] },
+    { at: [-(L / 2 - LOGO_STANDOFF_MM), end.centreYMm, 0], turn: [0, Math.PI / 2, 0], parent: logos },
     { at: [L / 2 - LOGO_STANDOFF_MM, end.centreYMm, 0], turn: [0, -Math.PI / 2, 0] },
   ]);
 
@@ -756,7 +758,7 @@ export function mountBoardScene(
   scene.add(bay.room);
   scene.add(bay.logos);
   // The specs that find the board by what differs from the plain ground start with the room off through this hook, and
-  // leave the logos out with it. The Room switch never does, and a production build never reads it.
+  // leave the back wall's logo out with it. The Room icon never does, and a production build never reads it.
   if (process.env.NODE_ENV !== "production" && (globalThis as { __shaper3dBareRoom?: unknown }).__shaper3dBareRoom === true) {
     bay.logos.visible = false;
   }
