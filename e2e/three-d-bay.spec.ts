@@ -4,7 +4,7 @@ import { AT_REST, BAY, BOTTOM_UP, rackAngles, rackTurn, REST_VIEWER, shownAngles
 import { type Quat } from "../lib/geometry/view-3d";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
-import { decodePng } from "./helpers/canvas-pixels";
+import { countDifferent, decodePng } from "./helpers/canvas-pixels";
 
 /**
  * The shaping bay (Phase 16, plan 18, D-43, D-44): a drawn room, the board on its racks, one control per plane in the
@@ -12,7 +12,8 @@ import { decodePng } from "./helpers/canvas-pixels";
  *
  * The host reports what the tests read: `data-turn` (the board's turn), `data-room` (the camera and the strips' ends,
  * read back from the scene after every frame), `data-place` (the board's centre in the room), `data-racks` (the racks'
- * own turn, read back from the scene: always none), `data-viewer` (azimuth, elevation, sight), `data-mode` and `data-bay`.
+ * own turn, read back from the scene: always none), `data-viewer` (azimuth, elevation, sight), `data-mode`, `data-bay`
+ * (on or off) and `data-bay-look` (which step of the Room icon: theme, blue or none).
  */
 
 /** WebKit draws its first frame more slowly on the suite's development server. */
@@ -220,10 +221,10 @@ test.describe("the shaping bay", () => {
       const i = 4 * (Math.round(y) * width + Math.round(x));
       return [rgba[i], rgba[i + 1], rgba[i + 2]];
     };
-    // The canvas's upper middle is the room's blue wall, not the theme's ground.
+    // The canvas's upper middle is the room's deep green wall in the default Daylight theme, not the theme's grey ground.
     const [wr, wg, wb] = at(width / 2, height * 0.16);
-    expect(wb).toBeGreaterThan(2 * wr);
-    expect(wb).toBeGreaterThan(wg);
+    expect(wg).toBeGreaterThan(2 * wr);
+    expect(wg).toBeGreaterThan(wb);
     // A run of strip-bright pixels clear of the board, in the outer quarters of the picture.
     let longest = 0;
     for (let y = 0; y < height; y++) {
@@ -562,7 +563,15 @@ test.describe("the shaping bay", () => {
     await page.keyboard.press("0");
     await backToDeck();
 
-    // The Room switch.
+    // The Room icon, from the theme room: the blue step only repaints, so the move carries on and lands.
+    await pressDuringMove(page, THREE_D_COPY.views.bottom, { button: THREE_D_COPY.room });
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect(host).toHaveAttribute("data-bay", "on");
+    await settled(host);
+    expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
+    await backToDeck();
+
+    // And from the blue room, to no room: this one lands the move.
     await pressDuringMove(page, THREE_D_COPY.views.bottom, { button: THREE_D_COPY.room });
     await expect(host).toHaveAttribute("data-bay", "off");
     await settled(host);
@@ -593,6 +602,15 @@ function modeButton(page: Page, name: string) {
 
 function cornerSwitch(page: Page, name: string) {
   return page.locator("[data-viewer-toolbar]").getByRole("button", { name, exact: true });
+}
+
+/** Two presses of the Room icon, from the theme room to no room: the first stops at the bright blue room. */
+async function toNoRoom(page: Page, host: Locator) {
+  const room = cornerSwitch(page, THREE_D_COPY.room);
+  await room.click();
+  await expect(host).toHaveAttribute("data-bay-look", "blue");
+  await room.click();
+  await expect(host).toHaveAttribute("data-bay-look", "none");
 }
 
 test.describe("the panel, in the founder's order, on every device", () => {
@@ -753,6 +771,13 @@ test.describe("the Room switch (the founder, 2026-11-05)", () => {
     const place = await host.getAttribute("data-place");
     const turn = await host.getAttribute("data-turn");
 
+    // The first press only repaints: the bright blue room, with the board where it was and Walk Around still there.
+    await room.click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect(host).toHaveAttribute("data-place", place ?? "");
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    await expect(modeButton(page, THREE_D_COPY.modeWalk)).toBeEnabled();
+
     await room.click();
     await expect(host).toHaveAttribute("data-bay", "off");
     await expect(room).toHaveAttribute("aria-pressed", "false");
@@ -785,8 +810,7 @@ test.describe("the Room switch (the founder, 2026-11-05)", () => {
     }) => {
       await page.goto("/design/3d");
       const host = await waitForBoard(page);
-      const room = cornerSwitch(page, THREE_D_COPY.room);
-      await room.click();
+      await toNoRoom(page, host);
       await expect(host).toHaveAttribute("data-bay", "off");
       // Off the racks, the nose raised, so the two places the board can stand are well apart.
       await host.focus();
@@ -801,9 +825,9 @@ test.describe("the Room switch (the founder, 2026-11-05)", () => {
       const turn = await turnOf(host);
 
       // The truth: the same lie, settled with nothing pressed.
-      await room.click();
+      await toNoRoom(page, host);
       await expect(host).toHaveAttribute("data-bay", "off");
-      await room.click();
+      await cornerSwitch(page, THREE_D_COPY.room).click();
       await expect(host).toHaveAttribute("data-bay", "on");
       // This settle moves the place alone, so it is the place that is waited for.
       await expect
@@ -820,8 +844,7 @@ test.describe("the Room switch (the founder, 2026-11-05)", () => {
     await expect(litres).toBeVisible({ timeout: FIRST_FRAME_MS });
     const before = await litres.innerText();
     await page.goto("/design/3d");
-    await waitForBoard(page);
-    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await toNoRoom(page, await waitForBoard(page));
     await view(page, THREE_D_COPY.views.bottom).click();
     await page.goto("/design/volume");
     await expect(page.getByText(/\d+\.\d+ ?L/).first()).toHaveText(before, { timeout: FIRST_FRAME_MS });
@@ -869,7 +892,7 @@ test.describe("the shaping bay under reduced motion", () => {
     await expect.poll(async () => viewerOf(host)).toEqual([WALK_VIEWS.side.azimuthDeg, WALK_VIEWS.side.elevationDeg, 0]);
   });
 
-  test("20. the founder's logos reach the walls, and stay when the Room switch takes the room away", async ({ page }) => {
+  test("20. the back wall's line logo shows in the theme room, in the blue room and with no room", async ({ page }) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: FIRST_FRAME_MS });
@@ -887,7 +910,121 @@ test.describe("the shaping bay under reduced motion", () => {
     };
     await expect.poll(whiteUpHigh).toBeGreaterThan(100);
     await cornerSwitch(page, THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(whiteUpHigh).toBeGreaterThan(100);
+    await cornerSwitch(page, THREE_D_COPY.room).click();
     await expect(host).toHaveAttribute("data-bay", "off");
     await expect.poll(whiteUpHigh).toBeGreaterThan(100);
+  });
+
+  test("20b. the other three logos go with the room", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer has the dots to count a logo by");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: FIRST_FRAME_MS });
+    /** White dots in a share of the picture, with the corner's buttons out of the way. */
+    const whiteIn = async (x0: number, x1: number, y0: number, y1: number) => {
+      const { width, height, rgba } = decodePng(
+        await host.screenshot({ style: "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }" }),
+      );
+      let white = 0;
+      for (let y = Math.round(height * y0); y < height * y1; y++) {
+        for (let x = Math.round(width * x0); x < width * x1; x++) {
+          const i = 4 * (y * width + x);
+          if (rgba[i] > 245 && rgba[i + 1] > 245 && rgba[i + 2] > 245) white++;
+        }
+      }
+      return white;
+    };
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+
+    // Nose faces the far end wall, and its line logo, high above the board.
+    await view(page, THREE_D_COPY.views.nose).click();
+    await settled(host);
+    const farLogo = () => whiteIn(0.3, 0.7, 0, 0.3);
+    const farWithRoom = await farLogo();
+    await toNoRoom(page, host);
+    await settled(host);
+    const farNoRoom = await farLogo();
+
+    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    await settled(host);
+    await view(page, THREE_D_COPY.views.side).click();
+    await settled(host);
+    const circle = () => whiteIn(0.4, 0.6, 0.15, 0.4);
+    const circleWithRoom = await circle();
+    await toNoRoom(page, host);
+    await settled(host);
+    const circleNoRoom = await circle();
+
+    expect(farWithRoom).toBeGreaterThan(100);
+    expect(farNoRoom).toBeLessThan(farWithRoom / 10);
+    expect(circleWithRoom).toBeGreaterThan(100);
+    expect(circleNoRoom).toBeLessThan(circleWithRoom / 10);
+  });
+
+  test("21. the Room icon's three steps: what it says, what it presses, and when Walk Around is there", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const room = cornerSwitch(page, THREE_D_COPY.room);
+    const walk = modeButton(page, THREE_D_COPY.modeWalk);
+    for (const [index, look] of (["theme", "blue", "none", "theme"] as const).entries()) {
+      if (index > 0) await room.click();
+      await expect(host).toHaveAttribute("data-bay-look", look);
+      await expect(host).toHaveAttribute("data-bay", look === "none" ? "off" : "on");
+      await expect(room).toHaveAttribute("aria-pressed", String(look !== "none"));
+      await expect(room).toHaveAttribute("title", THREE_D_COPY.roomTip[look]);
+      if (look === "none") await expect(walk).toBeDisabled();
+      else await expect(walk).toBeEnabled();
+    }
+  });
+
+  test("22. going from the theme room to the blue room moves nothing", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await host.focus();
+    await page.keyboard.press("+");
+    await expect(host).toHaveAttribute("data-crop", /^1\.5 /);
+    await modeButton(page, THREE_D_COPY.modeWalk).click();
+    await host.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(host).not.toHaveAttribute("data-viewer", /^0\.00 /);
+    await settled(host);
+    const attributes = ["data-turn", "data-place", "data-viewer", "data-crop", "data-mode", "data-room", "data-racks"];
+    const read = () => Promise.all(attributes.map((name) => host.getAttribute(name)));
+    const before = await read();
+    for (const value of before) expect(value).not.toBeNull();
+    const frames = Number(await host.getAttribute("data-frames"));
+
+    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => Number(await host.getAttribute("data-frames"))).toBeGreaterThan(frames);
+    expect(await read()).toEqual(before);
+  });
+
+  test("22b. the walls change but the board's shading does not: the middle of the foam differs by no more than a level", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer proves the shading");
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    /** The foam patch in the middle of the first view, as its own little picture. */
+    const foam = async () => {
+      const { width, height, rgba } = decodePng(
+        await host.screenshot({ style: "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }" }),
+      );
+      const x0 = Math.round(width * 0.45);
+      const x1 = Math.round(width * 0.55);
+      const patch: number[] = [];
+      for (let y = Math.round(height * 0.55); y < Math.round(height * 0.75); y++) {
+        patch.push(...rgba.subarray(4 * (y * width + x0), 4 * (y * width + x1)));
+      }
+      return Uint8Array.from(patch);
+    };
+    const themeRoom = await foam();
+    const frames = Number(await host.getAttribute("data-frames"));
+    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => Number(await host.getAttribute("data-frames"))).toBeGreaterThan(frames);
+    expect(countDifferent(themeRoom, await foam(), 1)).toBe(0);
   });
 });

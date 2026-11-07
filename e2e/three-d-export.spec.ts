@@ -255,6 +255,8 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(host).not.toHaveAttribute("data-viewer", /^0\.00 /);
     const fourth = await downloadedBytes(await exportZip(page));
     expect(Buffer.from(fourth).equals(Buffer.from(firstBytes)), "flipped, raised and walked round, the zip is the same").toBe(true);
+    // Two presses to no room: the first stops at the bright blue room.
+    await corner(THREE_D_COPY.room).click();
     await corner(THREE_D_COPY.room).click();
     await expect(host).toHaveAttribute("data-bay", "off");
     const fifth = await downloadedBytes(await exportZip(page));

@@ -77,10 +77,12 @@ import {
   walkKey,
   WALK_VIEWS,
   type BayLens,
+  type BayLook,
   type RackAngles,
   type Viewer,
 } from "@/lib/geometry/shaping-bay";
 import { cameraAxes, dragTurn, framePointsOf, glideAt, keyTurn, quatMultiply, REST_TURN, slerpShortest, VIEW_TURN_MS, type Quat, type ViewName } from "@/lib/geometry/view-3d";
+import { cn } from "@/lib/utils";
 import type { BoardSceneHandle, BoardSceneInput, BoardSceneState, SceneColours } from "./board-scene";
 import { ThreeDControls, ThreeDRailBlend, type ExportState } from "./three-d-controls";
 import {
@@ -139,8 +141,17 @@ function readSceneColours(): SceneColours {
     onFoam: resolve("--surf-on-foam", "#1f2a3b"),
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
+    roomWall: resolve("--surf-3d-room-wall", "#123630"),
+    roomCeiling: resolve("--surf-3d-room-ceiling", "#081715"),
   };
 }
+
+/**
+ * The keyboard's ring, round the viewer's card: the drawing now runs to the card's faint line, where the ring the drawing
+ * wears everywhere else would be clipped away. It stays outside the picture, as it always has, and the same 3 dots of the
+ * same ink, so nothing is drawn over the board.
+ */
+const CARD_FOCUS_RING = "has-[[data-board-3d]:focus-visible]:shadow-[0_0_0_3px_var(--surf-accent-ink)]";
 
 /** How long the loading picture shows alone before its line appears under it (UI-SPEC §9). */
 const LOADING_LINE_AFTER_MS = 1000;
@@ -152,7 +163,8 @@ const isServerPaint = () => false;
 
 /** The theme's colours as one string, to tell a real theme change from any other change to the page's classes. */
 function coloursKey(colours: SceneColours): string {
-  return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine].join(" ");
+  // The room's two colours count: Daylight and Chalk share all the others, so without them that change would look like none.
+  return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine, colours.roomWall, colours.roomCeiling].join(" ");
 }
 
 /** The loading picture's drawing: the first view's outline and stringer in the canvas's own dots, and where it ends. */
@@ -395,6 +407,8 @@ export function ThreeDScreen() {
   const walkingRef = useRef(false);
   /** Whether the room is drawn: off, the board spins freely with no racks and no limit. */
   const roomRef = useRef(true);
+  /** Which room the scene paints, for a scene that mounts after the Room icon has been pressed. */
+  const lookRef = useRef<BayLook>("theme");
   /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
   /** How the move under way lands: a slider, a drag or a key finishes it at once rather than stranding it halfway. */
@@ -477,11 +491,13 @@ export function ThreeDScreen() {
     sceneRef.current?.setWire(wire);
   }, [wire]);
 
-  // The Room switch (the founder, 2026-11-05): "we also need a toggle to turn the room off (plain background)". On
-  // when the screen opens; a view switch only, like the other three, and Walk Around has no meaning without it.
+  // The Room icon (the founder, 2026-11-05: "we also need a toggle to turn the room off (plain background)"; three steps
+  // since 2026-11-06, quick 261106-ni6): the theme room when the screen opens, then the bright blue room, then no room, and
+  // never saved. A view switch only, like the other three, and Walk Around has no meaning with no room.
   const bareRoom = useSyncExternalStore(subscribeNever, readBareRoom, isServerPaint);
-  const [roomPick, setRoomPick] = useState<boolean | null>(null);
-  const roomOn = roomPick ?? !bareRoom;
+  const [lookPick, setLookPick] = useState<BayLook | null>(null);
+  const bayLook: BayLook = lookPick ?? (bareRoom ? "none" : "theme");
+  const roomOn = bayLook !== "none";
   const [mode, setMode] = useState<DragMode>("turn");
   const dragMode: DragMode = roomOn ? mode : "turn";
 
@@ -542,7 +558,7 @@ export function ThreeDScreen() {
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
         handle.setWire(wireRef.current);
-        handle.setRoom(roomRef.current);
+        handle.setRoom(lookRef.current);
         handle.setFree(roomRef.current ? 0 : 1);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC §9).
         handle.setTurn(turnRef.current);
@@ -1036,12 +1052,14 @@ export function ThreeDScreen() {
   }, [dragMode]);
 
   // With the room off nothing holds the board, and it turns about its home in any direction (D-44). Turning the room back
-  // on settles it onto its racks by the nearest pose, with a glide.
+  // on settles it onto its racks by the nearest pose, with a glide. Going from one room to the other only repaints: the
+  // early return comes before finishMotion, so a move under way carries on and lands (quick 261106-ni6).
   useEffect(() => {
     const was = roomRef.current;
     roomRef.current = roomOn;
+    lookRef.current = bayLook;
     const scene = sceneRef.current;
-    scene?.setRoom(roomOn);
+    scene?.setRoom(bayLook);
     if (was === roomOn) return;
     finishMotion();
     if (!roomOn) {
@@ -1077,7 +1095,7 @@ export function ThreeDScreen() {
       motionRef.current = requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
-  }, [roomOn, applyTurn, finishMotion]);
+  }, [roomOn, bayLook, applyTurn, finishMotion]);
 
   // ------------------------------------------------------------------------------------------------------------
   // Zooming (16-09, UI-SPEC §4–§5): the zoom row, the wheel, a trackpad pinch and the keys, in the 2D viewers' half
@@ -1242,40 +1260,57 @@ export function ThreeDScreen() {
           tabs={[{ id: "board", label: THREE_D_COPY.tab }]}
           active="board"
           compactOnPhone="drawing"
+          panelClassName={CARD_FOCUS_RING}
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
           {/* The canvas box: it fills the card on a computer and a sideways phone, and on an upright phone it is
               exactly tall enough that the drawing column comes out at its 66dvh cap — 31 dots of rims and the tab
               strip (UI-SPEC §2). Never printed (§12). */}
           <div className="relative flex min-h-0 flex-1 max-shell:h-[calc(66dvh-31px)] max-shell:flex-none print:hidden">
-            {/* The scene makes its own <canvas> inside this host; React puts nothing else in it. */}
+            {/* The room fills the viewer to the faint line (the founder, 2026-11-06): this box bleeds out over the card's own
+                pad, and only the drawing goes in it. The corner's two rows stay outside it, in the canvas box, so they
+                sit exactly where they always have. Its bleed is the pad `TabbedPanel` draws: 12 dots on the ordinary card,
+                none under either phone rule, and 4 in Wide view at every size, because the phone rules stand down there.
+                The clip is here and not on the card, which would cut the corner buttons' 44-dot touch boxes on a phone;
+                its curve is the card's own, less the 1-dot line. The drawing, the loading picture and a message share it,
+                so the outline still lands on the lit board. */}
             <div
-              ref={hostRef}
-              data-board-3d
-              data-board-state={state}
-              data-triangles={built.ok ? built.triangles : 0}
-              tabIndex={0}
-              role="application"
-              aria-roledescription={THREE_D_COPY.canvasRole}
-              aria-label={THREE_D_COPY.canvasName(name)}
-              aria-describedby={descriptionId}
-              data-mode={dragMode}
-              data-bay={roomOn ? "on" : "off"}
-              aria-busy={state === "loading" ? true : undefined}
-              onKeyDown={onKeyDown}
-              onPointerDown={message ? undefined : onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={(event) => endDrag(event, true)}
-              onPointerCancel={(event) => endDrag(event, false)}
-              onLostPointerCapture={(event) => endDrag(event, false)}
-              onDoubleClick={message ? undefined : backToOne}
-              // Right-drag slides the board, so the right-click menu (`contextmenu`) is kept off the drawing — only here.
-              onContextMenu={(event) => event.preventDefault()}
-              className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
-            />
-            {/* Replaced by the lit board in the same render the scene reports it drawn: no fade (§9 step 4). */}
-            {loading && <LoadingPicture art={loadingArt} slow={loadingSlow} />}
-            {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
+              data-three-d-drawing
+              className={cn(
+                "absolute overflow-hidden rounded-[calc(var(--radius-lg)-1px)]",
+                wideView ? "-inset-1" : "-inset-3 max-shell:inset-0 [@media(max-height:500px)]:inset-0",
+              )}
+            >
+              {/* The scene makes its own <canvas> inside this host; React puts nothing else in it. */}
+              <div
+                ref={hostRef}
+                data-board-3d
+                data-board-state={state}
+                data-triangles={built.ok ? built.triangles : 0}
+                tabIndex={0}
+                role="application"
+                aria-roledescription={THREE_D_COPY.canvasRole}
+                aria-label={THREE_D_COPY.canvasName(name)}
+                aria-describedby={descriptionId}
+                data-mode={dragMode}
+                data-bay={roomOn ? "on" : "off"}
+                data-bay-look={bayLook}
+                aria-busy={state === "loading" ? true : undefined}
+                onKeyDown={onKeyDown}
+                onPointerDown={message ? undefined : onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={(event) => endDrag(event, true)}
+                onPointerCancel={(event) => endDrag(event, false)}
+                onLostPointerCapture={(event) => endDrag(event, false)}
+                onDoubleClick={message ? undefined : backToOne}
+                // Right-drag slides the board, so the right-click menu (`contextmenu`) is kept off the drawing — only here.
+                onContextMenu={(event) => event.preventDefault()}
+                className="focus-ring-accent absolute inset-0 cursor-grab touch-none overflow-hidden rounded-md bg-[var(--surf-3d-ground)] coarse:cursor-auto"
+              />
+              {/* Replaced by the lit board in the same render the scene reports it drawn: no fade (§9 step 4). */}
+              {loading && <LoadingPicture art={loadingArt} slow={loadingSlow} />}
+              {message && <CanvasMessage line1={message.line1} line2={message.line2} />}
+            </div>
             {/* The corner toolbar (UI-SPEC §4, D-35), there from the first paint: on a computer and a sideways phone,
                 Wide view — exactly TEMPLATE's button — then the switches for what the picture includes; on an upright
                 phone, which has no sidebar to hide, those switches alone, packed into the corner. No Rotate button
@@ -1300,8 +1335,8 @@ export function ThreeDScreen() {
                 onStripes={(on) => setLook(on ? "stripes" : "shaded")}
                 wire={wire}
                 onWire={(on) => setLook(on ? "wire" : "shaded")}
-                room={roomOn}
-                onRoom={setRoomPick}
+                roomLook={bayLook}
+                onRoomLook={setLookPick}
                 disabled={message !== null}
               />
             </ViewerToolbar>

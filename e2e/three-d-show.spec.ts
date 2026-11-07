@@ -82,7 +82,7 @@ async function settled(host: Locator) {
 /**
  * Takes the board to a view and waits for it to come to rest. With the room off this suite stays on Turn the Board, where
  * Deck, Bottom, Nose and Tail move the board. Side lives on Walk Around, so that one puts the room on to walk there and
- * takes it off again, keeping the view.
+ * takes it off again, keeping the view: one press of the Room icon reaches the theme room, and two more reach no room.
  */
 async function showView(page: Page, host: Locator, name: ViewName) {
   const views = page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true });
@@ -95,6 +95,7 @@ async function showView(page: Page, host: Locator, name: ViewName) {
     const azimuth = () => host.getAttribute("data-viewer").then((v) => Number((v ?? "").split(" ")[0]));
     await expect.poll(azimuth, { timeout: 10_000 }).toBeCloseTo(WALK_VIEWS.side.azimuthDeg, 1);
     await settled(host);
+    await room.click();
     await room.click();
     await settled(host);
     return;

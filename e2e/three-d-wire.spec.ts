@@ -234,6 +234,8 @@ test.describe("the wire view (D-42)", () => {
     await host.focus();
     for (let i = 0; i < 6; i++) await page.keyboard.press("ArrowRight");
     await settled(host);
+    // Two presses back to no room: the first stops at the bright blue room.
+    await corner(page, THREE_D_COPY.room).click();
     await corner(page, THREE_D_COPY.room).click();
     await settled(host);
     // Tipped a little, so the bottom's lines would land between the deck's if the foam let them through.

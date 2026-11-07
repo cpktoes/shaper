@@ -78,7 +78,24 @@ export const BAY = {
   endLogoDropShare: 0.2,
 } as const;
 
-/** The room's own colours, the same in every theme (D-43); the fins' too (the founder at 16-10: "Keep them dark"). */
+/**
+ * Which room the 3D screen is showing (quick 261106-ni6, the founder, 2026-11-06): the room in the theme's colours, which
+ * it opens on; the bright blue room; or no room, a plain background and a free spin. A view setting, never saved.
+ */
+export type BayLook = "theme" | "blue" | "none";
+
+/** What a press of the Room icon goes to: the theme room, then the bright blue room, then no room, and round again. */
+export function nextBayLook(look: BayLook): BayLook {
+  if (look === "theme") return "blue";
+  if (look === "blue") return "none";
+  return "theme";
+}
+
+/**
+ * The room's paint. `wall` and `ceiling` are the bright blue room's: the theme room takes its walls and ceiling from the
+ * page's tokens instead (the founder, 2026-11-06, reversing D-43 for those two). Everything else here is the bay's own in
+ * all four themes, and that includes the fins (the founder at 16-10: "Keep them dark").
+ */
 export const BAY_PAINT = {
   wall: "#0a2f66",
   floor: "#62636f",

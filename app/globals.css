@@ -257,6 +257,8 @@
   --ramp-daylight-sidebar: #ffffff;
   --ramp-daylight-canvas: #dfdcd3;
   --ramp-daylight-3d-ground: #9d9b95; /* the 3D board's ground — the canvas warm grey about 30% darker, so the white foam stands off it (the founder's pick, 2026-11-04) */
+  --ramp-daylight-3d-room-wall: #123630; /* the 3D room's walls — the accent's hue held at the depth of the bright blue room, so white foam and logos stay as clear (the founder's pick, 2026-11-06) */
+  --ramp-daylight-3d-room-ceiling: #081715; /* the 3D room's ceiling — the same hue, deeper still (the founder's pick, 2026-11-06) */
   --ramp-daylight-tab-active: #ffffff;
   --ramp-daylight-panel: #ffffff;
   --ramp-daylight-well: #dfdcd3;
@@ -299,6 +301,8 @@
   --ramp-chalk-sidebar: #ffffff;
   --ramp-chalk-canvas: #dfdcd3;
   --ramp-chalk-3d-ground: #9d9b95; /* the 3D board's ground — the canvas warm grey about 30% darker, so the white foam stands off it (the founder's pick, 2026-11-04) */
+  --ramp-chalk-3d-room-wall: #133445; /* the 3D room's walls — the accent's hue held at the depth of the bright blue room, so white foam and logos stay as clear (the founder's pick, 2026-11-06) */
+  --ramp-chalk-3d-room-ceiling: #08161d; /* the 3D room's ceiling — the same hue, deeper still (the founder's pick, 2026-11-06) */
   --ramp-chalk-tab-active: #ffffff;
   --ramp-chalk-panel: #ffffff;
   --ramp-chalk-well: #dfdcd3;
@@ -331,6 +335,8 @@
   --ramp-slate-sidebar: #12141a;
   --ramp-slate-canvas: #1a1d25;
   --ramp-slate-3d-ground: #1a1d25; /* the 3D board's ground — the same as the canvas: the dark themes already set the foam off */
+  --ramp-slate-3d-room-wall: #0f3446; /* the 3D room's walls — the accent's hue held at the depth of the bright blue room, so white foam and logos stay as clear (the founder's pick, 2026-11-06) */
+  --ramp-slate-3d-room-ceiling: #07161e; /* the 3D room's ceiling — the same hue, deeper still (the founder's pick, 2026-11-06) */
   --ramp-slate-tab-active: #12141a;
   --ramp-slate-panel: #12141a;
   --ramp-slate-well: #1b1f26;
@@ -364,6 +370,8 @@
   --ramp-phosphor-sidebar: #050805;
   --ramp-phosphor-canvas: #142414;
   --ramp-phosphor-3d-ground: #142414; /* the 3D board's ground — the same as the canvas: the dark themes already set the foam off */
+  --ramp-phosphor-3d-room-wall: #0f380f; /* the 3D room's walls — the accent's hue held at the depth of the bright blue room, so white foam and logos stay as clear (the founder's pick, 2026-11-06) */
+  --ramp-phosphor-3d-room-ceiling: #061806; /* the 3D room's ceiling — the same hue, deeper still (the founder's pick, 2026-11-06) */
   --ramp-phosphor-tab-active: #050805;
   --ramp-phosphor-panel: #050805;
   --ramp-phosphor-well: #050805;
@@ -441,6 +449,9 @@
   --surf-on-foam: var(--ramp-daylight-ink);
   /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
   --surf-3d-ground: var(--ramp-daylight-3d-ground);
+  /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+  --surf-3d-room-wall: var(--ramp-daylight-3d-room-wall);
+  --surf-3d-room-ceiling: var(--ramp-daylight-3d-room-ceiling);
 }
 
 /* DEFAULT DARK — Slate, for an OS set to dark with no explicit choice. */
@@ -476,6 +487,9 @@
     --surf-on-foam: var(--ramp-slate-ground);
     /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
     --surf-3d-ground: var(--ramp-slate-3d-ground);
+    /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+    --surf-3d-room-wall: var(--ramp-slate-3d-room-wall);
+    --surf-3d-room-ceiling: var(--ramp-slate-3d-room-ceiling);
   }
 }
 
@@ -511,6 +525,9 @@
   --surf-on-foam: var(--ramp-daylight-ink);
   /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
   --surf-3d-ground: var(--ramp-daylight-3d-ground);
+  /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+  --surf-3d-room-wall: var(--ramp-daylight-3d-room-wall);
+  --surf-3d-room-ceiling: var(--ramp-daylight-3d-room-ceiling);
 }
 
 /* Chalk — explicit. */
@@ -545,6 +562,9 @@
   --surf-on-foam: var(--ramp-chalk-ink);
   /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
   --surf-3d-ground: var(--ramp-chalk-3d-ground);
+  /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+  --surf-3d-room-wall: var(--ramp-chalk-3d-room-wall);
+  --surf-3d-room-ceiling: var(--ramp-chalk-3d-room-ceiling);
 }
 
 /* Slate — explicit. */
@@ -579,6 +599,9 @@
   --surf-on-foam: var(--ramp-slate-ground);
   /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
   --surf-3d-ground: var(--ramp-slate-3d-ground);
+  /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+  --surf-3d-room-wall: var(--ramp-slate-3d-room-wall);
+  --surf-3d-room-ceiling: var(--ramp-slate-3d-room-ceiling);
 }
 
 /* Phosphor — explicit. */
@@ -613,6 +636,9 @@
   --surf-on-foam: var(--ramp-phosphor-ground);
   /* The ground behind the 3D board (Phase 16, the founder's second look): darker than the canvas in the light themes. */
   --surf-3d-ground: var(--ramp-phosphor-3d-ground);
+  /* The 3D room's walls and ceiling in this theme (quick 261106-ni6). Only the scene reads them, like the ground above. */
+  --surf-3d-room-wall: var(--ramp-phosphor-3d-room-wall);
+  --surf-3d-room-ceiling: var(--ramp-phosphor-3d-room-ceiling);
 }
 
 /* ---------------------------------------------------------------------------

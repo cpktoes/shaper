@@ -3,6 +3,7 @@ import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { BOARD_NAME_COPY } from "../components/design/board-name-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { BAY_PAINT } from "../lib/geometry/shaping-bay";
 import { inchesToMm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -12,6 +13,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { THEME_STORAGE_KEY } from "../lib/theme";
 import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canvas-pixels";
 import { storedOpenBoard } from "./helpers/open-board";
+import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 
 /**
  * The 3D screen (Phase 16, plan 06): the shaper's board drawn as a lit solid from the litres' own surface, on its
@@ -57,6 +59,9 @@ async function expectMessage(page: Page, message: { line1: string; line2: string
   const box = page.locator("[data-canvas-message]");
   await expect(box.getByText(message.line1, { exact: true })).toBeVisible();
   await expect(box.getByText(message.line2, { exact: true })).toBeVisible();
+  // It covers the drawing edge to edge: the two share one box (the founder, 2026-11-06).
+  const [messageBox, hostBox] = await Promise.all([box.boundingBox(), host.boundingBox()]);
+  expect(messageBox).toEqual(hostBox);
   // The box is the contract's: centred, at most 280 dots wide.
   const width = await box.locator("div").first().evaluate((el) => el.getBoundingClientRect().width);
   expect(width).toBeLessThanOrEqual(280);
@@ -85,6 +90,23 @@ async function threeDGround(page: Page) {
   return page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-3d-ground").trim());
 }
 
+/** A colour token as the page holds it now, in the theme on screen. */
+async function token(page: Page, name: string) {
+  return page.evaluate((property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(), name);
+}
+
+/**
+ * Whether a pixel of a wall or the ceiling reads as `hex`. It never reads its exact hex: the scene's tone mapping takes a
+ * dark colour's smallest channel out almost entirely, so blue paint (10, 47, 102) reads (0, 44, 100). So every channel
+ * must sit within 8 levels of the paint, except the paint's smallest, which need only read no higher than the paint.
+ * Chalk and Slate cannot be told apart this way, and need not be: their walls are three levels apart.
+ */
+function isPaint(read: readonly number[], hex: string) {
+  const paint = hexToRgb(hex);
+  const smallest = Math.min(...paint);
+  return paint.every((level, k) => (level === smallest ? read[k] <= level : Math.abs(read[k] - level) <= 8));
+}
+
 /** A pixel a little in from the canvas's top-left corner (its clear colour, clear of the rounded edge) is `hex`. */
 async function expectCornerIs(host: Locator, hex: string) {
   const { rgba, width } = await hostPixels(host);
@@ -93,6 +115,95 @@ async function expectCornerIs(host: Locator, hex: string) {
   expect(Math.abs(rgba[at] - r)).toBeLessThanOrEqual(2);
   expect(Math.abs(rgba[at + 1] - g)).toBeLessThanOrEqual(2);
   expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
+}
+
+/** The dots of the picture at a share of its width and height, with the corner's buttons out of the way. */
+async function dotAt(host: Locator, shareX: number, shareY: number) {
+  const { rgba, width, height } = decodePng(
+    await host.screenshot({ style: "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }" }),
+  );
+  const i = 4 * (Math.round(height * shareY) * width + Math.round(width * shareX));
+  return [rgba[i], rgba[i + 1], rgba[i + 2]];
+}
+
+/** The wall the first view faces, clear of the line logo and above the board. */
+const wallRead = (host: Locator) => dotAt(host, 0.5, 0.3);
+
+/** The ceiling, in Walk Around's Side view, the only view that shows it: a band across the top of the canvas. */
+const ceilingRead = (host: Locator) => dotAt(host, 0.5, 0.04);
+
+/** Waits until nothing is moving: the same turn and the same viewer across a quarter second. */
+async function settle(host: Locator) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = `${await host.getAttribute("data-turn")} ${await host.getAttribute("data-viewer")}`;
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
+function roomIcon(page: Page) {
+  return page.locator("[data-viewer-toolbar]").getByRole("button", { name: THREE_D_COPY.room, exact: true });
+}
+
+function dragModeButton(page: Page, name: string) {
+  return page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name, exact: true });
+}
+
+/** Picks a theme through App Default Settings with the 3D screen open, and shuts the box so it no longer dims the picture. */
+async function pickTheme(page: Page, theme: string) {
+  const dialog = await openAppSettings(page);
+  await dialog.locator(`[data-theme-tile="${theme}"]`).click();
+  await expect(page.locator("html")).toHaveClass(new RegExp(`(^|\\s)theme-${theme}(\\s|$)`));
+  await page.keyboard.press("Escape");
+  await expect(appSettingsDialog(page)).toBeHidden();
+}
+
+/**
+ * Where the drawing and the corner's two rows sit, in dots from the card's inner edges: inside its faint line. Read from
+ * the page rather than from a picture, so a row that moved by one dot says so.
+ */
+async function viewerEdges(page: Page) {
+  return page.evaluate(() => {
+    const card = document.querySelector("[data-viewer-panel]") as HTMLElement;
+    const box = card.getBoundingClientRect();
+    const left = box.left + card.clientLeft;
+    const top = box.top + card.clientTop;
+    const right = left + card.clientWidth;
+    const bottom = top + card.clientHeight;
+    const from = (selector: string) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return { top: r.top - top, right: right - r.right, left: r.left - left, bottom: bottom - r.bottom };
+    };
+    return { host: from("[data-board-3d]"), toolbar: from("[data-viewer-toolbar]"), zoom: from("[data-viewer-zoom]") };
+  });
+}
+
+/**
+ * The drawing meets the card's inner edges to within a dot, and the corner's rows are where they were before the drawing
+ * grew, `inset` dots in from the top and the right: the card's own pad, measured on 2026-11-06 before the change at 12 on
+ * a computer, 4 in Wide view, and 0 on a phone and a short window. The zoom row always sits 40 dots under the icons.
+ * `bottomWithin` is for the upright phone, whose canvas box has its own fixed height and has always stopped up to 1.3 dots
+ * short of the card's foot; that is the phone's own rounding, and this change does not touch it.
+ */
+async function expectViewerEdges(page: Page, inset: number, bottomWithin = 1) {
+  await expect(async () => {
+    const { host, toolbar, zoom } = await viewerEdges(page);
+    expect(Math.abs(host.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.right)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.bottom)).toBeLessThanOrEqual(bottomWithin);
+    expect(Math.abs(toolbar.top - inset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(toolbar.right - inset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(zoom.top - (inset + 40))).toBeLessThanOrEqual(1);
+    expect(Math.abs(zoom.right - inset)).toBeLessThanOrEqual(1);
+  }).toPass({ timeout: 5_000 });
 }
 
 /** The room off, by the Room switch's own path, for a case that measures the board against a plain ground. */
@@ -253,10 +364,10 @@ test.describe("the 3D screen", () => {
     await expect(canvas.locator("canvas")).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("10. the room is the same in every theme: its wall, floor and strips are its own, and the fins stay dark", async ({ page }, testInfo) => {
+  test("10. the room's walls take the theme's colour; its floor and strips are its own, and the fins stay dark", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer proves the paint");
     test.setTimeout(240_000);
-    const pictures: { name: string; wall: number[]; floor: number[]; strip: number[] }[] = [];
+    const pictures: { name: string; paint: string; wall: number[]; floor: number[]; strip: number[] }[] = [];
     for (const theme of ["daylight", "chalk", "slate", "phosphor"]) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, theme] as const);
       await page.goto("/design/3d");
@@ -270,9 +381,10 @@ test.describe("the 3D screen", () => {
       };
       pictures.push({
         name: theme,
-        wall: at(width / 2, height * 0.16),
+        paint: await token(page, "--surf-3d-room-wall"),
+        wall: at(width / 2, height * 0.3),
         floor: at(width * 0.2, height * 0.9),
-        strip: at(width * 0.06, height * 0.5),
+        strip: at(width * 0.06, height * 0.455),
       });
     }
     // The fins are the bay's own dark paint: what Fins takes away from the picture reads the same in every theme.
@@ -302,15 +414,93 @@ test.describe("the 3D screen", () => {
     }
     for (let k = 0; k < 3; k++) expect(Math.abs(finColours[0][k] - finColours[1][k])).toBeLessThanOrEqual(3);
 
-    for (const { wall, floor, strip } of pictures.slice(1)) {
+    for (const { name, paint, wall } of pictures) {
+      expect(isPaint(wall, paint), `${name} wall ${wall} against ${paint}`).toBe(true);
+      expect(isPaint(wall, BAY_PAINT.wall), `${name} wall ${wall} is the blue room's`).toBe(false);
+    }
+    for (const { floor, strip } of pictures.slice(1)) {
       for (const [got, want] of [
-        [wall, pictures[0].wall],
         [floor, pictures[0].floor],
         [strip, pictures[0].strip],
       ]) {
         for (let k = 0; k < 3; k++) expect(Math.abs(got[k] - want[k])).toBeLessThanOrEqual(2);
       }
     }
+  });
+
+  test("10b. each step of the Room icon paints the room: the theme's, then the bright blue, then no room, then the theme's", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer proves the paint");
+    await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, "daylight"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const paintOf = async (name: string) => token(page, name);
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    const wallPaint = await paintOf("--surf-3d-room-wall");
+    expect(isPaint(await wallRead(host), wallPaint), `${await wallRead(host)}`).toBe(true);
+
+    await dragModeButton(page, THREE_D_COPY.modeWalk).click();
+    await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.side, exact: true }).click();
+    await settle(host);
+    const ceilingTheme = await ceilingRead(host);
+    expect(isPaint(ceilingTheme, await paintOf("--surf-3d-room-ceiling")), `${ceilingTheme}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => isPaint(await ceilingRead(host), BAY_PAINT.ceiling)).toBe(true);
+
+    await dragModeButton(page, THREE_D_COPY.modeTurn).click();
+    await settle(host);
+    const wallBlue = await wallRead(host);
+    expect(isPaint(wallBlue, BAY_PAINT.wall), `${wallBlue}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay", "off");
+    await expect(host).toHaveAttribute("data-bay-look", "none");
+    await settle(host);
+    await expectCornerIs(host, await threeDGround(page));
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    await settle(host);
+    await expect.poll(async () => isPaint(await wallRead(host), wallPaint)).toBe(true);
+  });
+
+  test("10c. a theme change repaints a theme room at once, the view kept, and leaves the bright blue room blue", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer switches the theme through App Default Settings");
+    await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, "daylight"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    // Turn it a little first, so "kept" means something.
+    await host.focus();
+    await page.keyboard.press("ArrowLeft");
+    await settle(host);
+    const turn = await host.getAttribute("data-turn");
+
+    // Daylight to Chalk is the hard pair: the two share their ground, foam and muted ink, so only the room's own two
+    // colours tell the screen the theme has changed at all.
+    await pickTheme(page, "chalk");
+    const chalkPaint = await token(page, "--surf-3d-room-wall");
+    await expect.poll(async () => isPaint(await wallRead(host), chalkPaint), { timeout: 10_000 }).toBe(true);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-board-state")).toBe("ready");
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => isPaint(await wallRead(host), BAY_PAINT.wall)).toBe(true);
+
+    const framesBefore = await frames(host);
+    await pickTheme(page, "phosphor");
+    await expect.poll(async () => frames(host)).toBeGreaterThan(framesBefore);
+    const stillBlue = await wallRead(host);
+    expect(isPaint(stillBlue, BAY_PAINT.wall), `${stillBlue}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "none");
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    await settle(host);
+    const phosphorPaint = await token(page, "--surf-3d-room-wall");
+    await expect.poll(async () => isPaint(await wallRead(host), phosphorPaint)).toBe(true);
   });
 
   test("11. with the room off the board sits on the theme's plain ground, and the light themes' ground is the darker one", async ({ page }) => {
@@ -325,6 +515,37 @@ test.describe("the 3D screen", () => {
     const sum = (hex: string) => hexToRgb(hex).reduce((a, b) => a + b, 0);
     expect(sum(ground)).toBeLessThan(sum(canvas));
     await expectCornerIs(host, ground);
+  });
+
+  test("12. the drawing reaches the faint line on every layout, and the corner's icons stay where they have always been", async ({ page }, testInfo) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    // Zoomed, or a finger's zoom row hides at 1x and there is nothing to measure.
+    await host.focus();
+    await page.keyboard.press("+");
+    await page.keyboard.press("+");
+    await expect(host).toHaveAttribute("data-crop", /^2 /);
+    // The keyboard's ring goes round the card, since the drawing's own edge would clip it, and never over the picture.
+    const card = page.locator("[data-viewer-panel]");
+    expect(await card.evaluate((el) => getComputedStyle(el).boxShadow)).toContain("0px 0px 0px 3px");
+    expect(await host.evaluate((el) => getComputedStyle(el, "::after").content)).toBe("none");
+
+    const wide = page.getByRole("button", { name: "Hide the sidebar for a wider view", exact: true });
+    if (testInfo.project.name === "desktop") {
+      await expectViewerEdges(page, 12);
+      await wide.click();
+      await expectViewerEdges(page, 4);
+      await page.getByRole("button", { name: "Show the sidebar", exact: true }).click();
+      await page.setViewportSize({ width: 1000, height: 450 });
+      await expectViewerEdges(page, 0);
+      return;
+    }
+    await expectViewerEdges(page, 0, 1.5);
+    // Held sideways: the phone's own pad of nothing, and Wide view's 4 dots, which hold on a short screen too.
+    await page.setViewportSize(testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 393 });
+    await expectViewerEdges(page, 0);
+    await wide.click();
+    await expectViewerEdges(page, 4);
   });
 
   test("9. moving Hard Edge Ends At on RAILS changes the 3D board (D-30: one value, read by both)", async ({ page }, testInfo) => {
