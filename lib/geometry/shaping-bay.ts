@@ -71,13 +71,11 @@ export const BAY = {
   liftLimitDeg: 60,
   /**
    * The founder's logos on the walls (2026-11-06): the circle across this share of a side wall above the lights, and the
-   * line logo on the back wall, as tall as this share of the wall, this share of the wall down from the top. It may not
-   * cross more of the wall than the last share: its full height would run off both ends.
+   * line logo across this share of an end wall, its top this share of the wall's height down from the ceiling.
    */
-  sideLogoShare: 0.4,
-  backLogoHeightShare: 0.2,
-  backLogoDropShare: 0.2,
-  backLogoWidestShare: 0.9,
+  sideLogoShare: 0.46,
+  endLogoWidthShare: 0.72,
+  endLogoDropShare: 0.2,
 } as const;
 
 /** The room's own colours, the same in every theme (D-43); the fins' too (the founder at 16-10: "Keep them dark"). */
@@ -473,11 +471,12 @@ export function baySideLogo(): { sizeMm: number; centreYMm: number } {
   return { sizeMm: BAY.sideLogoShare * space, centreYMm: BAY.benchTopMm + space / 2 };
 }
 
-/** The line logo on the back wall, for a logo `aspect` times as wide as it is tall. Its top stays where the founder put it. */
-export function bayBackLogo(aspect: number): { widthMm: number; heightMm: number; centreYMm: number } {
-  const heightMm = Math.min(BAY.backLogoHeightShare * BAY.heightMm, (BAY.backLogoWidestShare * BAY.widthMm) / aspect);
-  const topMm = BAY.heightMm * (1 - BAY.backLogoDropShare);
-  return { widthMm: heightMm * aspect, heightMm, centreYMm: topMm - heightMm / 2 };
+/** The line logo on each end wall, for a logo `aspect` times as wide as it is tall. */
+export function bayEndLogo(aspect: number): { widthMm: number; heightMm: number; centreYMm: number } {
+  const widthMm = BAY.endLogoWidthShare * BAY.widthMm;
+  const heightMm = widthMm / aspect;
+  const topMm = BAY.heightMm * (1 - BAY.endLogoDropShare);
+  return { widthMm, heightMm, centreYMm: topMm - heightMm / 2 };
 }
 
 /** How far Look Down the Rail shifts the eye either way: past the widest rail's own line from anywhere the viewer stands. */

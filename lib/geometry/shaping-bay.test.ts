@@ -12,7 +12,7 @@ import {
   BAY,
   BAY_PAINT,
   BAY_TREATMENTS,
-  bayBackLogo,
+  bayEndLogo,
   bayLens,
   baySideLogo,
   boardPlace,
@@ -784,24 +784,16 @@ describe("bayLens — where the viewer stands at 1x", () => {
 });
 
 describe("the logos on the walls (the founder, 2026-11-06)", () => {
-  it("the circle takes 40% of the side wall above the lights, centred in that space", () => {
-    const space = BAY.heightMm - BAY.benchTopMm;
+  it("the circle takes 46% of the side wall above the lights, centred in that space", () => {
     const { sizeMm, centreYMm } = baySideLogo();
-    expect(sizeMm).toBeCloseTo(0.4 * space, 9);
+    expect(sizeMm).toBeCloseTo(0.46 * (BAY.heightMm - BAY.benchTopMm), 9);
     expect(centreYMm - BAY.benchTopMm).toBeCloseTo(BAY.heightMm - centreYMm, 9);
   });
 
-  it("a line logo that fits is 20% of the wall tall, its top 20% of the wall down", () => {
-    const { heightMm, centreYMm } = bayBackLogo(4);
-    expect(heightMm).toBeCloseTo(0.2 * BAY.heightMm, 9);
-    expect(BAY.heightMm - (centreYMm + heightMm / 2)).toBeCloseTo(0.2 * BAY.heightMm, 9);
-  });
-
-  it("the real line logo would run off the wall at 20%, so it stops at 90% of the wall across with its top in the same place", () => {
+  it("the line logo crosses 72% of an end wall at its own shape, its top 20% of the wall down from the ceiling", () => {
     const aspect = 806.1 / 100;
-    expect(0.2 * BAY.heightMm * aspect).toBeGreaterThan(BAY.widthMm);
-    const { widthMm, heightMm, centreYMm } = bayBackLogo(aspect);
-    expect(widthMm).toBeCloseTo(0.9 * BAY.widthMm, 9);
+    const { widthMm, heightMm, centreYMm } = bayEndLogo(aspect);
+    expect(widthMm).toBeCloseTo(0.72 * BAY.widthMm, 9);
     expect(widthMm / heightMm).toBeCloseTo(aspect, 9);
     expect(BAY.heightMm - (centreYMm + heightMm / 2)).toBeCloseTo(0.2 * BAY.heightMm, 9);
   });

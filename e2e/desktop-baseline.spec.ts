@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-06 (Phase 16, fast task 200, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the line
+ * logo made 20% smaller at the founder's word. Against the picture recorded just below, 10808 pixels moved inside the
+ * logo's own box and 0 outside it. The other five pictures passed unchanged.
+ *
  * RE-RECORDED 2026-11-06 (Phase 16, fast task 199, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the founder's
  * line logo high on the back wall (the circle logos on the side walls are out of this view). Against the picture recorded
  * just below, 8987 pixels moved inside the logo's own box and 64 outside it, none of those by more than 2 levels in 255: a

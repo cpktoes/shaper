@@ -65,7 +65,7 @@ import {
   BAY,
   BAY_PAINT,
   BAY_TREATMENTS,
-  bayBackLogo,
+  bayEndLogo,
   bayLens,
   baySideLogo,
   boardPlace,
@@ -120,7 +120,8 @@ export interface BoardSceneHandle {
   /** Stands the viewer (D-43): the camera's place and axes inside the room. One frame per call. */
   setViewer(viewer: Viewer): void;
   /**
-   * The Room switch (the founder, 2026-11-05): off, the walls, floor, ceiling, strips, shelves and racks are hidden and
+   * The Room switch (the founder, 2026-11-05): off, the walls, floor, ceiling, strips, shelves and racks are hidden, the
+   * founder's logos stay where they are ("These should always be present", 2026-11-06), and
    * the canvas clears to the theme's ground. The strips' light on the board stays, so the board reads the same.
    */
   setRoom(on: boolean): void;
@@ -521,7 +522,7 @@ function finSolid(fin: PlacedFin): { geometry: BufferGeometry; matrix: Matrix4 }
  */
 const BENCH_EYE_CLEAR_MM = 900;
 
-/** The founder's two logos, white on nothing (`brand/README.md`): the circle on the side walls, the line logo on the back wall. */
+/** The founder's two logos, white on nothing (`brand/README.md`): the circle on the side walls, the line logo on the end walls. */
 const CIRCLE_LOGO_URL = "/bay-logo-circle.png";
 const LINE_LOGO_URL = "/bay-logo-wordmark.png";
 /** How much wider the line logo is than it is tall: the box `components/wordmark-path.ts` is drawn in. */
@@ -532,6 +533,8 @@ const LOGO_STANDOFF_MM = 5;
 /** The drawn bay and what the scene needs to keep hold of. */
 interface DrawnBay {
   room: Group;
+  /** Beside the room, not in it: the founder's logos stay when the Room switch takes the walls away (2026-11-06). */
+  logos: Group;
   racks: Group;
   light: BayLightUniforms;
   patch: { centre: Vector3; size: Vector2; axis: Vector2 };
@@ -548,6 +551,7 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
   const { lengthMm: L, widthMm: W, heightMm: H } = BAY;
   const owned: { dispose(): void }[] = [];
   const room = new Group();
+  const logos = new Group();
   const [[a0, a1], [b0, b1]] = stripEnds().map((pair) => pair.map((end) => new Vector3(...end)));
   const light: BayLightUniforms = {
     bayA0: { value: a0 },
@@ -590,12 +594,12 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
   const strip = new MeshBasicMaterial({ color: new Color(BAY_PAINT.strip), toneMapped: false });
   owned.push(ceiling, strip);
 
-  const plane = (w: number, h: number, material: Material, at: Vec3, turn: Vec3) => {
+  const plane = (w: number, h: number, material: Material, at: Vec3, turn: Vec3, parent = room) => {
     const geometry = new PlaneGeometry(w, h);
     const mesh = new Mesh(geometry, material);
     mesh.position.set(...at);
     mesh.rotation.set(...turn);
-    room.add(mesh);
+    parent.add(mesh);
     owned.push(geometry);
   };
   plane(L, W, floor, [0, 0, 0], [-Math.PI / 2, 0, 0]);
@@ -633,7 +637,7 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
   const logo = (url: string, width: number, height: number, places: readonly { at: Vec3; turn: Vec3 }[]) => {
     const material = new MeshBasicMaterial({ transparent: true, depthWrite: false, toneMapped: false, visible: false });
     owned.push(material);
-    for (const { at, turn } of places) plane(width, height, material, at, turn);
+    for (const { at, turn } of places) plane(width, height, material, at, turn, logos);
     loader.load(url, (texture) => {
       if (gone) {
         texture.dispose();
@@ -654,8 +658,11 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
     { at: [0, side.centreYMm, -(W / 2 - LOGO_STANDOFF_MM)], turn: [0, 0, 0] },
     { at: [0, side.centreYMm, W / 2 - LOGO_STANDOFF_MM], turn: [0, Math.PI, 0] },
   ]);
-  const back = bayBackLogo(LINE_LOGO_ASPECT);
-  logo(LINE_LOGO_URL, back.widthMm, back.heightMm, [{ at: [-(L / 2 - LOGO_STANDOFF_MM), back.centreYMm, 0], turn: [0, Math.PI / 2, 0] }]);
+  const end = bayEndLogo(LINE_LOGO_ASPECT);
+  logo(LINE_LOGO_URL, end.widthMm, end.heightMm, [
+    { at: [-(L / 2 - LOGO_STANDOFF_MM), end.centreYMm, 0], turn: [0, Math.PI / 2, 0] },
+    { at: [L / 2 - LOGO_STANDOFF_MM, end.centreYMm, 0], turn: [0, -Math.PI / 2, 0] },
+  ]);
 
   const racks = new Group();
   room.add(racks);
@@ -678,6 +685,7 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
 
   return {
     room,
+    logos,
     racks,
     light,
     patch,
@@ -732,6 +740,7 @@ export function mountBoardScene(
     schedule();
   });
   scene.add(bay.room);
+  scene.add(bay.logos);
   scene.add(new AmbientLight(treatment.fillColour, treatment.fill));
   scene.add(new HemisphereLight(BAY_PAINT.hemisphereSky, BAY_PAINT.hemisphereGround, treatment.bounce * 3));
 

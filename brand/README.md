@@ -34,7 +34,7 @@ What is made from them:
   curve as above, its brightness becoming how see-through each pixel is, every pixel white, cut to
   the ring's own bounds and scaled to 1024 square. It is the logo on the 3D room's side walls.
 - public/bay-logo-wordmark.png is wordmark.svg drawn white on nothing, 2048 by 254. It is the logo
-  on the 3D room's back wall.
+  on the 3D room's two end walls.
 
 The tracer that made wordmark.svg, and the check that compares it back to the JPEG, are archived
 at .planning/quick/261010-km7-new-logo-top-bar-order-form-and-home-scr/trace-scripts.tar.gz. Run

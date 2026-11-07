@@ -869,12 +869,25 @@ test.describe("the shaping bay under reduced motion", () => {
     await expect.poll(async () => viewerOf(host)).toEqual([WALK_VIEWS.side.azimuthDeg, WALK_VIEWS.side.elevationDeg, 0]);
   });
 
-  test("20. the founder's two logos reach the walls, one more frame and nothing else", async ({ page }) => {
+  test("20. the founder's logos reach the walls, and stay when the Room switch takes the room away", async ({ page }) => {
     await page.goto("/design/3d");
     const host = await waitForBoard(page);
     await expect(host).toHaveAttribute("data-bay-logos", "ready", { timeout: FIRST_FRAME_MS });
-    const room = await host.getAttribute("data-room");
-    await expect.poll(async () => Number((await host.getAttribute("data-frames")) ?? 0)).toBeGreaterThanOrEqual(2);
-    expect(await host.getAttribute("data-room")).toBe(room);
+    // Up high in the middle of the picture, where the first view faces the line logo and nothing else is white.
+    const whiteUpHigh = async () => {
+      const { width, height, rgba } = decodePng(await host.screenshot());
+      let white = 0;
+      for (let y = 0; y < height * 0.35; y++) {
+        for (let x = Math.round(width * 0.3); x < width * 0.7; x++) {
+          const i = 4 * (y * width + x);
+          if (rgba[i] > 245 && rgba[i + 1] > 245 && rgba[i + 2] > 245) white++;
+        }
+      }
+      return white;
+    };
+    await expect.poll(whiteUpHigh).toBeGreaterThan(100);
+    await cornerSwitch(page, THREE_D_COPY.room).click();
+    await expect(host).toHaveAttribute("data-bay", "off");
+    await expect.poll(whiteUpHigh).toBeGreaterThan(100);
   });
 });
