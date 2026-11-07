@@ -59,6 +59,9 @@ async function expectMessage(page: Page, message: { line1: string; line2: string
   const box = page.locator("[data-canvas-message]");
   await expect(box.getByText(message.line1, { exact: true })).toBeVisible();
   await expect(box.getByText(message.line2, { exact: true })).toBeVisible();
+  // It covers the drawing edge to edge: the two share one box (the founder, 2026-11-06).
+  const [messageBox, hostBox] = await Promise.all([box.boundingBox(), host.boundingBox()]);
+  expect(messageBox).toEqual(hostBox);
   // The box is the contract's: centred, at most 280 dots wide.
   const width = await box.locator("div").first().evaluate((el) => el.getBoundingClientRect().width);
   expect(width).toBeLessThanOrEqual(280);
@@ -160,6 +163,47 @@ async function pickTheme(page: Page, theme: string) {
   await expect(page.locator("html")).toHaveClass(new RegExp(`(^|\\s)theme-${theme}(\\s|$)`));
   await page.keyboard.press("Escape");
   await expect(appSettingsDialog(page)).toBeHidden();
+}
+
+/**
+ * Where the drawing and the corner's two rows sit, in dots from the card's inner edges: inside its faint line. Read from
+ * the page rather than from a picture, so a row that moved by one dot says so.
+ */
+async function viewerEdges(page: Page) {
+  return page.evaluate(() => {
+    const card = document.querySelector("[data-viewer-panel]") as HTMLElement;
+    const box = card.getBoundingClientRect();
+    const left = box.left + card.clientLeft;
+    const top = box.top + card.clientTop;
+    const right = left + card.clientWidth;
+    const bottom = top + card.clientHeight;
+    const from = (selector: string) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return { top: r.top - top, right: right - r.right, left: r.left - left, bottom: bottom - r.bottom };
+    };
+    return { host: from("[data-board-3d]"), toolbar: from("[data-viewer-toolbar]"), zoom: from("[data-viewer-zoom]") };
+  });
+}
+
+/**
+ * The drawing meets the card's inner edges to within a dot, and the corner's rows are where they were before the drawing
+ * grew, `inset` dots in from the top and the right: the card's own pad, measured on 2026-11-06 before the change at 12 on
+ * a computer, 4 in Wide view, and 0 on a phone and a short window. The zoom row always sits 40 dots under the icons.
+ * `bottomWithin` is for the upright phone, whose canvas box has its own fixed height and has always stopped up to 1.3 dots
+ * short of the card's foot; that is the phone's own rounding, and this change does not touch it.
+ */
+async function expectViewerEdges(page: Page, inset: number, bottomWithin = 1) {
+  await expect(async () => {
+    const { host, toolbar, zoom } = await viewerEdges(page);
+    expect(Math.abs(host.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.right)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.left)).toBeLessThanOrEqual(1);
+    expect(Math.abs(host.bottom)).toBeLessThanOrEqual(bottomWithin);
+    expect(Math.abs(toolbar.top - inset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(toolbar.right - inset)).toBeLessThanOrEqual(1);
+    expect(Math.abs(zoom.top - (inset + 40))).toBeLessThanOrEqual(1);
+    expect(Math.abs(zoom.right - inset)).toBeLessThanOrEqual(1);
+  }).toPass({ timeout: 5_000 });
 }
 
 /** The room off, by the Room switch's own path, for a case that measures the board against a plain ground. */
@@ -471,6 +515,37 @@ test.describe("the 3D screen", () => {
     const sum = (hex: string) => hexToRgb(hex).reduce((a, b) => a + b, 0);
     expect(sum(ground)).toBeLessThan(sum(canvas));
     await expectCornerIs(host, ground);
+  });
+
+  test("12. the drawing reaches the faint line on every layout, and the corner's icons stay where they have always been", async ({ page }, testInfo) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    // Zoomed, or a finger's zoom row hides at 1x and there is nothing to measure.
+    await host.focus();
+    await page.keyboard.press("+");
+    await page.keyboard.press("+");
+    await expect(host).toHaveAttribute("data-crop", /^2 /);
+    // The keyboard's ring goes round the card, since the drawing's own edge would clip it, and never over the picture.
+    const card = page.locator("[data-viewer-panel]");
+    expect(await card.evaluate((el) => getComputedStyle(el).boxShadow)).toContain("0px 0px 0px 3px");
+    expect(await host.evaluate((el) => getComputedStyle(el, "::after").content)).toBe("none");
+
+    const wide = page.getByRole("button", { name: "Hide the sidebar for a wider view", exact: true });
+    if (testInfo.project.name === "desktop") {
+      await expectViewerEdges(page, 12);
+      await wide.click();
+      await expectViewerEdges(page, 4);
+      await page.getByRole("button", { name: "Show the sidebar", exact: true }).click();
+      await page.setViewportSize({ width: 1000, height: 450 });
+      await expectViewerEdges(page, 0);
+      return;
+    }
+    await expectViewerEdges(page, 0, 1.5);
+    // Held sideways: the phone's own pad of nothing, and Wide view's 4 dots, which hold on a short screen too.
+    await page.setViewportSize(testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 393 });
+    await expectViewerEdges(page, 0);
+    await wide.click();
+    await expectViewerEdges(page, 4);
   });
 
   test("9. moving Hard Edge Ends At on RAILS changes the 3D board (D-30: one value, read by both)", async ({ page }, testInfo) => {
