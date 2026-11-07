@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 16-3d-board-and-cnc-export
 source: [16-VERIFICATION.md]
 started: 2026-11-06T23:40:00Z
@@ -8,11 +8,7 @@ updated: 2026-11-06T23:40:00Z
 
 ## Current Test
 
-number: 1
-name: R8 - open the exported zip's files in Shape3D
-expected: |
-  Shape3D accepts each file, with the tail at x = 0, the deck up and the length in millimetres, and fits its own curves to it.
-awaiting: the founder, when he comes back to Shape3D
+[testing complete]
 
 ## Tests
 

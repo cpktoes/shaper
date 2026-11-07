@@ -64,7 +64,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
-- [ ] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide — opened 2026-11-03 on branch `board-3d`
+- [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
 
 ## Phase Details
 
@@ -318,7 +318,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` with no h
 **Requirements**: R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 (locked in `phases/16-3d-board-and-cnc-export/16-SPEC.md` from 16-CONTEXT.md's D-01–D-28 and the approved 16-UI-SPEC.md)
 **Brief:** `phases/16-3d-board-and-cnc-export/16-SPEC.md` (R1–R12 from the founder's words of 2026-11-03), decisions D-01–D-28 in `16-CONTEXT.md`, the approved `16-UI-SPEC.md`, the measured `16-RESEARCH.md` and the mock-up `pictures/3d-board-mockup.png`
 **Depends on:** Phase 15 (the rack's turn maths), quick 261102-gec (the finished rail), quick 261103-gcm (the foam at every station)
-**Plans:** 17/18 plans executed — planned 2026-11-04 (14 plans in 10 waves, plus 16-15 (D-32), 16-16 (D-33, D-34), 16-17 (D-35, D-36) and 16-18 (D-43) added as their own waves before go-live 2, the checker's two warnings fixed in a second pass; the checker's pass and the founder's approval recorded in STATE.md)
+**Plans:** 18/18 plans complete
 
 Plans:
 
@@ -380,7 +380,7 @@ Plans:
 
 **Wave 14** *(blocked on Wave 13; a founder step)*
 
-- [ ] 16-13-PLAN.md — Go-live: with two go-lives, first bring main's go-live-1 merge onto the branch; then the full gate, the founder's Shape3D test and device checks, one push on his go, a live check (R7 R8 R9 R11 R12)
+- [x] 16-13-PLAN.md — Go-live: with two go-lives, first bring main's go-live-1 merge onto the branch; then the full gate, the founder's Shape3D test and device checks, one push on his go, a live check (R7 R8 R9 R11 R12)
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/export/`, no expected number typed — every figure from the pin, a script-made fixture or the app's own functions (Rule 1); every conversion through `units.ts`, the single fin's feet rule included, and the files in millimetres (Rule 2); `three@0.186.1` exact, imported only by `components/3d/board-scene.ts` and only through `import()`; one section function (`boardSections`) feeds the litres, the drawing and the STL; no database change, nothing announced, switches and view never saved; width / pointer / height stay the only three layout switches; each executor in its own worktree with its own PW_PORT (3201–3212), never touching port 3005; every plan ends with the founder's look at pictures; nothing pushed without his go.
 
@@ -408,4 +408,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 13. Ready for the Shapers | 11/13 items | In progress | - |
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
-| 16. 3D Board and CNC Export | 17/18 | In Progress|  |
+| 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
