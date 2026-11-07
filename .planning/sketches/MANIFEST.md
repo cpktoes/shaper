@@ -115,8 +115,11 @@ clearance for the double concaves, and — reversing the morning's ruling, *"sin
 channels. Built on 019's C with the lines at 1/16": every double gets Off Stringer (a flat at the stringer, its own pencil
 line and mark), the Tri-Plane's panel reads as Off Stringer too, and the channels are one more cut, last in shop order, into
 whatever the three sections leave — count, width (one number at every station), Off Stringer, Off Rail, Start, Deepest At,
-End, Depth, Smoothness (0 = square walls and a flat floor), and a run of With the rail (the gaps close toward the tail) or
-Parallel to the stringer. For *"dims for shaping"* the section carries a ruler of every layout mark of the live cut, off
+End, Depth, Smoothness; the shape is his (*"a quick V that goes into a vertical wall ... at various angles"*): a ramp
+into a vertical wall, the ramp's angle following from depth and width, the wall at the stringer side (his pictures) or the
+rail side; three runs after his table of the classic setups — With the rail (the gaps close toward the tail, then the
+outer channels run out through the rail), Parallel to the stringer (Merrick) or Toe-in at the front fins' angle from FINS
+(Biolos's splayed channels). For *"dims for shaping"* the section carries a ruler of every layout mark of the live cut, off
 the stringer, and DATA gets a second table of those marks every 6". The question put as variants is where the channels live
 in the sidebar: their own card after TAIL (A, a fourth button on the phone's switch), inside the TAIL card (B), or as a seventh
 tail cut that replaces a vee or concave (C). And his wing question, as a bar switch on a fifth board (the Fish with a 1/4"

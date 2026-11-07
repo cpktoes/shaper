@@ -25,11 +25,19 @@ So three things are built once, in 019's dress, and one is put as variants:
   mark on the ruler and in DATA; the Tri-Plane's flat panel reads as Off Stringer too (half the old Flat Strip), so the
   across marks are one family: Off Rail, Off Stringer, Trough At.
 - **Channels** — one more cut, last in shop order, into whatever the three sections leave (a vee, a single, a double):
-  4, 6 or 8 (two, three or four a side); Channel Width (one number at every station), Off Stringer (the first wall),
-  Off Rail (the last wall at the deepest station), Start, Deepest At, End, Depth, Smoothness (0 is square walls and a flat
-  floor, 100 a round channel), and a run — **With the rail** (the gaps between channels close toward the tail, and once
-  they have closed the outer channels run out through the rail, as on a blank) or **Parallel to the stringer** (laid out
-  at the deepest station and ruled straight). A channel narrower than an inch shallows out, as a concave does.
+  4, 6 or 8 (two, three or four a side); Channel Width (one number at every station), Off Stringer (the first edge),
+  Off Rail (the last edge at the deepest station), Start, Deepest At, End, Depth. **The shape is the founder's** (his two
+  pictures, 2026-11-06: *"a channel is actually more like a quick V that goes into a vertical wall, but it can be at
+  various angles"*): a ramp from the channel's top edge down to a vertical wall, the ramp's angle following from Depth
+  and Width (the Width label says it — *1 1/4" · ramp 11°*), Smoothness running it from a straight ramp (0) to a scooped
+  one (100), and a **Wall** choice — at the stringer side (both his pictures: the ridge between channels is the top of
+  a wall, the floor rises toward the rail) or at the rail side. Three **runs**, after his table of the classic setups:
+  **With the rail** (Rusty's semi-parallel: the gaps between channels close toward the tail, and once they have closed
+  the outer channels run out through the rail, as on a blank), **Parallel to the stringer** (Merrick's, laid out at the
+  deepest station and ruled straight) and **Toe-in** (Biolos's splayed channels, angled like the front fins — the toe-in
+  angle read from FINS, 3.2° on the Shortboard, 2° on the Fish: inward toward the nose, splayed out toward the tail,
+  where they run out through the rail; a single-fin Longboard has no toe, and the choice says so). A channel narrower
+  than an inch shallows out, as a concave does.
 - **Dims for shaping** — the section carries a ruler laid from the stringer under the straightedge with a tick and its
   distance at every layout mark of the live cut (a single's edge; a double's flat, trough and edge; every channel wall),
   on a computer; a phone keeps the depths alone. DATA gets a second table, *Layout marks · off the stringer*, every 6"
@@ -72,8 +80,10 @@ stations dims in centimetres).
   C out.
 - The Off Rail rule on the winged Fish: flip *Narrowest* / *Natural* with the section just ahead of the wing (about 12"
   from the tail) and watch the outer channel wall and the shade at the wing's step.
-- The channel run: *With the rail* against *Parallel to the stringer* on the Fish, and the run-out through the rail
-  where the gaps have closed.
+- The channel's shape in the section: the ramp into the wall at ×4, the wall's side (stringer, as in your pictures, or
+  rail), and whether Smoothness should scoop the ramp or do something else. The ramp angle on the Width label.
+- The three runs on the Fish and the Shortboard: *With the rail*, *Parallel to the stringer*, *Toe-in* at the fins'
+  angle, and the run-out through the rail where the gaps have closed or the splay reaches it.
 - The ruler under the section: enough to lay the cut out from, or too much on one drawing? And the layout-marks table in
   DATA — the first columns are the sections' edges, then every channel wall.
 - The starting numbers for the channels (1/4" deep, 2" / 1 1/4" / 1" wide for 4 / 6 / 8, an inch off the stringer and
@@ -81,7 +91,9 @@ stations dims in centimetres).
 
 ## Checked
 Headless Chromium at 1280 × 800 and 390 × 844 (iPhone 14, touch): no errors on any variant, theme, units or board. Six
-channels on the Shortboard take 0.31 L more than the same cuts without them; a double's Off Stringer flat takes nothing
+channels on the Shortboard take 0.22 L more than the same cuts without them; a channel takes its full depth a hair
+inside its wall and nothing at its top edge, and the wall moves to the rail side when asked; toe-in moves the first
+edge from 1" at the fins to 2/3" six inches ahead and 1 1/4" four inches behind; a double's Off Stringer flat takes nothing
 at the stringer or half an inch out and the full cut at its trough; on the winged Fish the two rules differ by the wing's
 depth ahead of it, and the narrowest rule measures off the real rail behind the inner corner; the test single of the
 planning memory still takes 0.54 L; the ruler draws on a computer and not on a phone; DATA has both tables with the
