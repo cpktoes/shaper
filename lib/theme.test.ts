@@ -84,6 +84,20 @@ describe("theme registry", () => {
       }
     });
 
+    /** The block that starts at `marker`, up to its closing brace. */
+    const block = (marker: string) => {
+      const at = css.indexOf(marker);
+      expect(at, marker).toBeGreaterThanOrEqual(0);
+      return css.slice(at, css.indexOf("}", at));
+    };
+
+    /** Every block that assigns a theme: the bare default, the OS-dark default and the four explicit ones. */
+    const blocks: [string, string][] = [
+      ["/* DEFAULT LIGHT", DEFAULT_LIGHT_THEME],
+      ["/* DEFAULT DARK", DEFAULT_DARK_THEME],
+      ...THEMES.map((t): [string, string] => [`:root.theme-${t.id} {`, t.id]),
+    ];
+
     /**
      * Not a theme value, but it lives in the same file and was swept away once by a
      * regeneration of the theme blocks — taking every rounded corner in the app with it,
@@ -104,17 +118,6 @@ describe("theme registry", () => {
           expect(css, `--ramp-${t.id}-rocker-adjust-${n} missing`).toMatch(new RegExp(`--ramp-${t.id}-rocker-adjust-${n}:\\s*#[0-9a-fA-F]{6};`));
         }
       }
-      /** The block that starts at `marker`, up to its closing brace. */
-      const block = (marker: string) => {
-        const at = css.indexOf(marker);
-        expect(at, marker).toBeGreaterThanOrEqual(0);
-        return css.slice(at, css.indexOf("}", at));
-      };
-      const blocks: [string, string][] = [
-        ["/* DEFAULT LIGHT", DEFAULT_LIGHT_THEME],
-        ["/* DEFAULT DARK", DEFAULT_DARK_THEME],
-        ...THEMES.map((t): [string, string] => [`:root.theme-${t.id} {`, t.id]),
-      ];
       for (const [marker, id] of blocks) {
         const body = block(marker);
         for (const n of [1, 2]) {
@@ -123,6 +126,30 @@ describe("theme registry", () => {
       }
       expect(css).toContain("--color-rocker-adjust-1: var(--surf-rocker-adjust-1);");
       expect(css).toContain("--color-rocker-adjust-2: var(--surf-rocker-adjust-2);");
+    });
+
+    /**
+     * The 3D room's walls and ceiling (quick 261106-ni6, the founder's table of 2026-11-06). This is the guard for the
+     * block a dark computer falls back to, which no browser test reaches: a role missing there would leave the scene on
+     * its fallback colours with nothing to show for it.
+     */
+    it("every theme carries the founder's two 3D room colours and every theme block assigns both roles", () => {
+      const room: Record<string, { wall: string; ceiling: string }> = {
+        daylight: { wall: "#123630", ceiling: "#081715" },
+        chalk: { wall: "#133445", ceiling: "#08161d" },
+        slate: { wall: "#0f3446", ceiling: "#07161e" },
+        phosphor: { wall: "#0f380f", ceiling: "#061806" },
+      };
+      expect(Object.keys(room).sort()).toEqual(THEMES.map((t) => t.id).sort());
+      for (const t of THEMES) {
+        expect(css, `--ramp-${t.id}-3d-room-wall`).toContain(`--ramp-${t.id}-3d-room-wall: ${room[t.id].wall};`);
+        expect(css, `--ramp-${t.id}-3d-room-ceiling`).toContain(`--ramp-${t.id}-3d-room-ceiling: ${room[t.id].ceiling};`);
+      }
+      for (const [marker, id] of blocks) {
+        const body = block(marker);
+        expect(body, `${marker} --surf-3d-room-wall`).toContain(`--surf-3d-room-wall: var(--ramp-${id}-3d-room-wall);`);
+        expect(body, `${marker} --surf-3d-room-ceiling`).toContain(`--surf-3d-room-ceiling: var(--ramp-${id}-3d-room-ceiling);`);
+      }
     });
 
     it("has no theme block for an id the registry does not know", () => {

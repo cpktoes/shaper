@@ -139,6 +139,8 @@ function readSceneColours(): SceneColours {
     onFoam: resolve("--surf-on-foam", "#1f2a3b"),
     inkMuted: resolve("--surf-ink-muted", "#566171"),
     blankLine: resolve("--outline-blank-line", "#566171"),
+    roomWall: resolve("--surf-3d-room-wall", "#123630"),
+    roomCeiling: resolve("--surf-3d-room-ceiling", "#081715"),
   };
 }
 
@@ -152,7 +154,8 @@ const isServerPaint = () => false;
 
 /** The theme's colours as one string, to tell a real theme change from any other change to the page's classes. */
 function coloursKey(colours: SceneColours): string {
-  return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine].join(" ");
+  // The room's two colours count: Daylight and Chalk share all the others, so without them that change would look like none.
+  return [colours.canvas, colours.foam, colours.onFoam, colours.inkMuted, colours.blankLine, colours.roomWall, colours.roomCeiling].join(" ");
 }
 
 /** The loading picture's drawing: the first view's outline and stringer in the canvas's own dots, and where it ends. */
@@ -542,7 +545,7 @@ export function ThreeDScreen() {
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
         handle.setWire(wireRef.current);
-        handle.setRoom(roomRef.current);
+        handle.setRoom(roomRef.current ? "theme" : "none");
         handle.setFree(roomRef.current ? 0 : 1);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC §9).
         handle.setTurn(turnRef.current);
@@ -1041,7 +1044,7 @@ export function ThreeDScreen() {
     const was = roomRef.current;
     roomRef.current = roomOn;
     const scene = sceneRef.current;
-    scene?.setRoom(roomOn);
+    scene?.setRoom(roomOn ? "theme" : "none");
     if (was === roomOn) return;
     finishMotion();
     if (!roomOn) {

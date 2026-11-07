@@ -3,6 +3,7 @@ import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { BOARD_NAME_COPY } from "../components/design/board-name-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { BAY_PAINT } from "../lib/geometry/shaping-bay";
 import { inchesToMm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -83,6 +84,23 @@ async function keepBoard(page: Page, presetName: string, lengthMm?: number) {
 /** The ground the 3D board is drawn on: the theme's `--surf-3d-ground`. */
 async function threeDGround(page: Page) {
   return page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--surf-3d-ground").trim());
+}
+
+/** A colour token as the page holds it now, in the theme on screen. */
+async function token(page: Page, name: string) {
+  return page.evaluate((property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(), name);
+}
+
+/**
+ * Whether a pixel of a wall or the ceiling reads as `hex`. It never reads its exact hex: the scene's tone mapping takes a
+ * dark colour's smallest channel out almost entirely, so blue paint (10, 47, 102) reads (0, 44, 100). So every channel
+ * must sit within 8 levels of the paint, except the paint's smallest, which need only read no higher than the paint.
+ * Chalk and Slate cannot be told apart this way, and need not be: their walls are three levels apart.
+ */
+function isPaint(read: readonly number[], hex: string) {
+  const paint = hexToRgb(hex);
+  const smallest = Math.min(...paint);
+  return paint.every((level, k) => (level === smallest ? read[k] <= level : Math.abs(read[k] - level) <= 8));
 }
 
 /** A pixel a little in from the canvas's top-left corner (its clear colour, clear of the rounded edge) is `hex`. */
@@ -253,10 +271,10 @@ test.describe("the 3D screen", () => {
     await expect(canvas.locator("canvas")).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("10. the room is the same in every theme: its wall, floor and strips are its own, and the fins stay dark", async ({ page }, testInfo) => {
+  test("10. the room's walls take the theme's colour; its floor and strips are its own, and the fins stay dark", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer proves the paint");
     test.setTimeout(240_000);
-    const pictures: { name: string; wall: number[]; floor: number[]; strip: number[] }[] = [];
+    const pictures: { name: string; paint: string; wall: number[]; floor: number[]; strip: number[] }[] = [];
     for (const theme of ["daylight", "chalk", "slate", "phosphor"]) {
       await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, theme] as const);
       await page.goto("/design/3d");
@@ -270,9 +288,10 @@ test.describe("the 3D screen", () => {
       };
       pictures.push({
         name: theme,
-        wall: at(width / 2, height * 0.16),
+        paint: await token(page, "--surf-3d-room-wall"),
+        wall: at(width / 2, height * 0.3),
         floor: at(width * 0.2, height * 0.9),
-        strip: at(width * 0.06, height * 0.5),
+        strip: at(width * 0.06, height * 0.455),
       });
     }
     // The fins are the bay's own dark paint: what Fins takes away from the picture reads the same in every theme.
@@ -302,9 +321,12 @@ test.describe("the 3D screen", () => {
     }
     for (let k = 0; k < 3; k++) expect(Math.abs(finColours[0][k] - finColours[1][k])).toBeLessThanOrEqual(3);
 
-    for (const { wall, floor, strip } of pictures.slice(1)) {
+    for (const { name, paint, wall } of pictures) {
+      expect(isPaint(wall, paint), `${name} wall ${wall} against ${paint}`).toBe(true);
+      expect(isPaint(wall, BAY_PAINT.wall), `${name} wall ${wall} is the blue room's`).toBe(false);
+    }
+    for (const { floor, strip } of pictures.slice(1)) {
       for (const [got, want] of [
-        [wall, pictures[0].wall],
         [floor, pictures[0].floor],
         [strip, pictures[0].strip],
       ]) {

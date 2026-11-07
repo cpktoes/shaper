@@ -77,6 +77,7 @@ import {
   stripEnds,
   viewerPlace,
   type BayLens,
+  type BayLook,
   type BayTreatment,
   type RackSeat,
   type Viewer,
@@ -95,6 +96,10 @@ export interface SceneColours {
   inkMuted: string;
   /** The blank's outline (16-11): `--outline-blank-line`. */
   blankLine: string;
+  /** The theme room's walls (quick 261106-ni6): `--surf-3d-room-wall`. */
+  roomWall: string;
+  /** The theme room's ceiling (quick 261106-ni6): `--surf-3d-room-ceiling`. */
+  roomCeiling: string;
 }
 
 /** Everything the scene needs to draw one board. */
@@ -120,11 +125,13 @@ export interface BoardSceneHandle {
   /** Stands the viewer (D-43): the camera's place and axes inside the room. One frame per call. */
   setViewer(viewer: Viewer): void;
   /**
-   * The Room switch (the founder, 2026-11-05): off, the walls, floor, ceiling, strips, shelves and racks are hidden, the
+   * The Room icon's three steps (the founder, 2026-11-05 and 2026-11-06, quick 261106-ni6). `"theme"` paints the walls and
+   * ceiling in the theme's colours and `"blue"` in the bright blue room's; nothing else about the room changes between
+   * the two, and neither touches the board. `"none"` hides the walls, floor, ceiling, strips, shelves and racks, the
    * founder's logos stay where they are ("These should always be present", 2026-11-06), and
    * the canvas clears to the theme's ground. The strips' light on the board stays, so the board reads the same.
    */
-  setRoom(on: boolean): void;
+  setRoom(look: BayLook): void;
   /**
    * How much the board floats free of its racks, 0 to 1: at 1 it turns about its home in any direction (the Room
    * switch off); a glide down to 0 settles it back onto the racks.
@@ -539,13 +546,16 @@ interface DrawnBay {
   light: BayLightUniforms;
   patch: { centre: Vector3; size: Vector2; axis: Vector2 };
   setRacks(seat: RackSeat): void;
+  /** Paints the walls and ceiling in place (quick 261106-ni6): nothing is rebuilt. */
+  setPaint(wall: string, ceiling: string): void;
   dispose(): void;
 }
 
 /**
  * The bay: floor, walls and ceiling as planes drawn from the inside only, so none of them ever stands between the viewer
  * and the board, and a viewer overhead sees down through the ceiling; the shelves and strips down both side
- * walls; and two racks, which never move. The room's colours are its own in every theme (D-43).
+ * walls; and two racks, which never move. The scene paints the walls and ceiling for the look in force, the theme's or
+ * the bright blue room's (the founder, 2026-11-06); the floor, shelves, strips and racks are the bay's own in every theme.
  */
 function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: () => void): DrawnBay {
   const { lengthMm: L, widthMm: W, heightMm: H } = BAY;
@@ -693,6 +703,10 @@ function buildBay(treatment: BayTreatment, sharpestAtAnAngle: number, onLogos: (
       stands[0].position.x = -seat.at;
       stands[1].position.x = seat.at;
     },
+    setPaint(wallColour, ceilingColour) {
+      (wall.uniforms.albedo.value as Color).set(wallColour);
+      ceiling.color.set(ceilingColour);
+    },
     dispose() {
       gone = true;
       for (const d of owned) d.dispose();
@@ -767,6 +781,13 @@ export function mountBoardScene(
   let seat: RackSeat = rackSeat(current.framePoints);
   let lens: BayLens = { distanceMm: BAY.nearestMm, lensDeg: ROOM_CAMERA.fovDeg };
   let freeShare = 0;
+  let look: BayLook = "theme";
+  /** The walls and ceiling for the look in force: a blue room stays blue through a theme change (quick 261106-ni6). */
+  const paintRoom = () => {
+    if (look === "blue") bay.setPaint(BAY_PAINT.wall, BAY_PAINT.ceiling);
+    else bay.setPaint(current.colours.roomWall, current.colours.roomCeiling);
+  };
+  paintRoom();
   let size = { width: Math.max(1, host.clientWidth), height: Math.max(1, host.clientHeight) };
   let disposables: { dispose(): void }[] = [];
   let fins: readonly PlacedFin[] = [];
@@ -1071,9 +1092,11 @@ export function mountBoardScene(
       placeViewer();
       schedule();
     },
-    setRoom(on) {
+    setRoom(next) {
       if (disposed) return;
-      bay.room.visible = on;
+      look = next;
+      bay.room.visible = next !== "none";
+      paintRoom();
       schedule();
     },
     setFree(share) {
@@ -1116,6 +1139,7 @@ export function mountBoardScene(
       current = { ...current, colours };
       renderer.setClearColor(new Color(colours.canvas), 1);
       for (const [color, token] of [...boardTints, ...ghostTints]) color.set(colours[token]);
+      paintRoom();
       schedule();
     },
     setGhost(next, visible) {
