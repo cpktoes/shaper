@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-07 (Phase 16, quick 261106-ni6, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the room
+ * in the theme's own deep colour on Daylight, and the drawing filling the viewer out to its faint line (804 by 615 became
+ * 828 by 639). Against the picture recorded just below, 484305 pixels moved, all inside the viewer, and 0 in the top bar and
+ * the panel. The corner icons held their place: test 12 of `three-d-screen.spec.ts` pins them. The other five pictures passed
+ * unchanged.
+ *
+ * RE-RECORDED 2026-11-07 (Phase 16, fast task 201, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the line
+ * logo made 20% smaller again at the founder's word. Against the picture recorded just below, 7155 pixels moved inside the
+ * logo's own box and 0 outside it. The other five pictures passed unchanged.
+ *
  * RE-RECORDED 2026-11-06 (Phase 16, fast task 200, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the line
  * logo made 20% smaller at the founder's word. Against the picture recorded just below, 10808 pixels moved inside the
  * logo's own box and 0 outside it. The other five pictures passed unchanged.
