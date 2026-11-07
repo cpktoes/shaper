@@ -2,11 +2,20 @@
 sketch: 019
 name: bottom-contours
 question: "What does a BOTTOM page look like — two linked views of the contours plus a DATA table, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both?"
-winner: null
+winner: C
 tags: [bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes]
 ---
 
 # Sketch 019: Bottom contours
+
+## Decision (the founder, 2026-11-06)
+**C — shade with lines**, with the contour lines at every 1/16" of depth rather than 1/8" (*"shades and lines are the way
+to go, but lets make the contour lines at 1/16""*). Start and End stay taped from the nearest tip (*"yes"*). The height
+multiples stay as options (*"a nice option"*). Where the readouts live is still open (*"TBD"*). The starting numbers behind
+each name need his correction later — recorded as a todo, `2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`.
+His next asks (*"let's keep planning this for the best visualization and user experience ... as real as possible and be
+simple to follow dims for shaping it"*): a stringer clearance for the doubles, and 4, 6 or 8 channels after all — both
+in sketch 020, with the question of what Off Rail measures from on a winged board.
 
 ## Design Question
 The founder (2026-11-06, planning while go-live 2 of the 3D board ran): a page of its own, BOTTOM, between ROCKER and

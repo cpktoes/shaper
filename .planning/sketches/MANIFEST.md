@@ -104,6 +104,24 @@ away. The sketch draws the page on all four presets' real outlines, thickness an
 grammar — the section's cutting line as the drawing convention's dash-dot, the planed bottom as a straightedge, a broken
 slab, gauge-style dimensions — with DATA, live litres, both layouts, all four themes and both units, and puts one
 question as variants: how depth reads on the top view (a faint shade, contour lines, or both), against sketch 004's rule.
+The founder picked **C** — the shade with the lines, at every 1/16" of depth rather than 1/8" — kept Start and End taped
+from the nearest tip, kept the height multiples, left the readouts' home open, and asked for a reminder to set the
+starting numbers from the shop (a todo of 2026-11-06).
+
+### Bottom channels and layout marks (sketch 020, 2026-11-06)
+
+The founder's next asks, the same evening (*"as real as possible and be simple to follow dims for shaping it"*): a stringer
+clearance for the double concaves, and — reversing the morning's ruling, *"since you did such a nice job with this"* — 4, 6 or 8
+channels. Built on 019's C with the lines at 1/16": every double gets Off Stringer (a flat at the stringer, its own pencil
+line and mark), the Tri-Plane's panel reads as Off Stringer too, and the channels are one more cut, last in shop order, into
+whatever the three sections leave — count, width (one number at every station), Off Stringer, Off Rail, Start, Deepest At,
+End, Depth, Smoothness (0 = square walls and a flat floor), and a run of With the rail (the gaps close toward the tail) or
+Parallel to the stringer. For *"dims for shaping"* the section carries a ruler of every layout mark of the live cut, off
+the stringer, and DATA gets a second table of those marks every 6". The question put as variants is where the channels live
+in the sidebar: their own card after TAIL (A, a fourth button on the phone's switch), inside the TAIL card (B), or as a seventh
+tail cut that replaces a vee or concave (C). And his wing question, as a bar switch on a fifth board (the Fish with a 1/4"
+wing read from the app's own wing maths): Off Rail measured from the narrowest outline carried forward through the wing
+(never steps, the real rail behind it) or from the curve the shaper drew before the wing (sits outside the real rail behind it).
 
 ## Reference Points
 
@@ -134,7 +152,8 @@ question as variants: how depth reads on the top view (a faint shade, contour li
 | 016 | custom-rocker | With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker (nose and tail changes in the US Blanks notation, up to two per end), and how do the drawing, the name and the DATASHEET show it? | **D — Customize Rocker under the blank card, a popup** (the founder, 2026-10-16 after sixteen rounds: "This now looks perfect. Let's build it.") | rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation |
 | 017 | imported-dims | How should the INPUTS block show the dimensions a screen imports, so they are noticeable and read cleanly — one line or one line each, in a card, in the accent colour? | **C — Readout card** (the founder, 2026-10-18: "Go with C readout card, figures in accent = off") | sidebar, inputs, imported, typography, phone |
 | 018 | finished-rail-curve | What would the RAILS cross-sections look like with a curve showing the finished rail — the shape left once the bands are blended — drawn over today's bands? | **Blended halfway** (the founder, 2026-11-02: every corner blended halfway into the bands either side of it, so it always meets the rail at the Apex Center — picked over One even round; built into the RAILS screen with the Chris Rails v2 sheets by quick 261102-gec on branch rails-v2) | rails, viewer, cross-section, geometry, finished-rail |
-| 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | — (with the founder) | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
+| 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | C | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
+| 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | — (with the founder) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
 
 ## Decisions These Lock In
 
