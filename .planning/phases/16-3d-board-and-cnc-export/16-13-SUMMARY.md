@@ -17,7 +17,7 @@ duration: "in progress"
 completed: in progress
 ---
 
-# Plan 16-13: Go-live 2 (in progress, Task 1 waiting on the founder)
+# Plan 16-13: Go-live 2 (in progress, pushed on the founder's go, live check next)
 
 ## The gate
 
@@ -36,6 +36,19 @@ the final code.
 Sizes: the three chunk is 572,942 bytes raw and 142,537 gzipped and is in no route's first load; every other route
 grew by about 9 KB uncompressed against origin/main. The database diff and the scratch-script check both printed
 nothing.
+
+Final gate at 022963df (2026-11-06), the tip with the theme-coloured room, the three-step Room icon, the logos and the
+room filling the viewer: build, production-build specs, 9673 unit tests, types and lint all exit 0; the desktop
+baseline's pictures exit 0; the browser suite on three devices 1620 passed, 9 failed, 1179 skipped in 2.5 hours. Of
+the 9, 3 were one test on all three devices: board-lock-screens x-3d clicked each corner icon once and expected it to
+flip, and the Room icon now has three steps. The test was out of date and was fixed in 6755d9ab; nothing in the app
+changed. The other 6 were navigation timeouts on a loaded machine (legal-pages, new-board twice, old-safari-buttons,
+phone-screen-tiles, contact). All six spec files were re-run on all three devices at 6755d9ab: 165 passed, 50 skipped,
+and all 9 passed. One different test failed in that re-run, the iPhone's Fish tile test, the same kind of timeout
+opening a preset while the sketch session loaded the machine; it and its Longboard twin then passed 10 of 10 alone.
+Types and lint exit 0 at 6755d9ab. Since 022963df only that test and these notes changed. Every route's first-load
+size is about 9 KB over origin/main, as before; origin/main had not moved; the database diff and the scratch-script
+check printed nothing.
 
 ## The founder's reports (2026-11-06, run in his own terminal)
 
@@ -126,9 +139,19 @@ percent.
 
 ## Device checks
 
-The founder, 2026-11-06: "iphone and pad checks were good." The Mac Safari trackpad pinch was not mentioned.
+The founder, 2026-11-06: "iphone and pad checks were good." That was before the theme-coloured room, the Room icon's
+three steps and the room filling the viewer, which have been tested in the test browsers only. The Mac Safari trackpad
+pinch was not reported. Both go live unchecked by hand.
+
+## The founder's go
+
+"push all", 2026-11-06, about 19:20, while the final gate ran. He was told the push would wait for a clean gate and
+was told what goes live unconfirmed, and did not object.
+
+Shape3D: not tested. The founder, 2026-11-06: "shape3d I'll have to come back to." He goes live without the test, as
+offered. The Export button carries the caption that the export is experimental and Shape3D may or may not import the
+files yet, so nobody is promised it works.
 
 ## Still to record
 
-The Mac Safari pinch, the Shape3D result file by file (the founder will come back to it), the founder's go with its
-time, the push, the live checks and his confirmation.
+The push, the live checks and his confirmation.
