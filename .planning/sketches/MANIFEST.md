@@ -92,6 +92,19 @@ corner blended by a parabola that touches every band at its middle: never outsid
 the app's own nose, center and tail sections with the RAILS sidebar live (the app's rail maths bundled in), three ways: an ink line over today's bands, the
 finished foam shaded, and the foam the blend takes off each band edge with its depth.
 
+### Bottom contours (sketch 019, 2026-11-06)
+
+The founder, planning while go-live 2 of the 3D board ran: a page of its own, BOTTOM, between ROCKER and RAILS — his shop
+order — with two views, *"looking down on the template to mark out the shapes and locations, and a cross section view that
+moves up and down the board, showing the blend and depth"*, the panel *"very similar to RAILS"* (Nose, Center, Tail, each
+with its own contour type and controls), and the chat widget's look *"so long as its aesthetic fits in with the other
+aspects of the app"*. Rulings: thickness is the planed number; depth to 1/2" in 1/16" steps; no printed contours; presets
+stay Flat; Channels and Bonzer out, which leaves 18 names, six per section, behind five cuts that stack and only take foam
+away. The sketch draws the page on all four presets' real outlines, thickness and fin placement, in the app's drafting
+grammar — the section's cutting line as the drawing convention's dash-dot, the planed bottom as a straightedge, a broken
+slab, gauge-style dimensions — with DATA, live litres, both layouts, all four themes and both units, and puts one
+question as variants: how depth reads on the top view (a faint shade, contour lines, or both), against sketch 004's rule.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -121,6 +134,7 @@ finished foam shaded, and the foam the blend takes off each band edge with its d
 | 016 | custom-rocker | With a blank picked on ROCKER, how does a shaper set the blank's rocker as ordered from the maker (nose and tail changes in the US Blanks notation, up to two per end), and how do the drawing, the name and the DATASHEET show it? | **D — Customize Rocker under the blank card, a popup** (the founder, 2026-10-16 after sixteen rounds: "This now looks perfect. Let's build it.") | rocker, blank, custom-rocker, sidebar, viewer, datasheet, phone, notation |
 | 017 | imported-dims | How should the INPUTS block show the dimensions a screen imports, so they are noticeable and read cleanly — one line or one line each, in a card, in the accent colour? | **C — Readout card** (the founder, 2026-10-18: "Go with C readout card, figures in accent = off") | sidebar, inputs, imported, typography, phone |
 | 018 | finished-rail-curve | What would the RAILS cross-sections look like with a curve showing the finished rail — the shape left once the bands are blended — drawn over today's bands? | **Blended halfway** (the founder, 2026-11-02: every corner blended halfway into the bands either side of it, so it always meets the rail at the Apex Center — picked over One even round; built into the RAILS screen with the Chris Rails v2 sheets by quick 261102-gec on branch rails-v2) | rails, viewer, cross-section, geometry, finished-rail |
+| 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | — (with the founder) | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
 
 ## Decisions These Lock In
 
