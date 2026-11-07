@@ -10,14 +10,16 @@ tech-stack: [git worktree, Vercel, Playwright]
 key-files:
   created: [.planning/phases/16-3d-board-and-cnc-export/pictures/16-13-pictures-source.tar.gz]
   modified: []
-key-decisions: []
+key-decisions:
+  - "The founder went live without the Shape3D test: R8's acceptance test is still open, and the Export button's caption says the export is experimental"
+  - "The push waited for a clean gate even after the founder's go, and that held back 9 failures for a check first"
 patterns-established: []
-requirements-completed: []
-duration: "in progress"
-completed: in progress
+requirements-completed: [R7, R9, R11, R12]
+duration: "2026-11-06, one evening once the gate started"
+completed: 2026-11-06
 ---
 
-# Plan 16-13: Go-live 2 (live, waiting on the founder's confirmation)
+# Plan 16-13: Go-live 2 (live and confirmed by the founder)
 
 ## The gate
 
@@ -165,6 +167,14 @@ opened, its 3D screen reached ready with the logos loaded, the Room icon walked 
 Export 3D Files downloaded a 5.25 MB zip, VOLUME read 29.61 L, and there were no page errors. Pictures: 
 `pictures/16-13-live-computer.png` and `pictures/16-13-live-phone.png`.
 
-## Still to record
+## The founder's confirmation
 
-The founder's confirmation on the live site.
+"iphone and ipad checks good, close out phase 16", 2026-11-06, after the live checks. That covers the room as shipped on
+his real iPhone and iPad.
+
+## Left open
+
+- R8: the Shape3D acceptance test has not been run. The founder chose to ship without it and will come back to it. Plan
+  16-13's own rule allows this: the push waits for the test or for his explicit decision to ship. R8 is therefore not in
+  `requirements-completed` here.
+- The Mac Safari trackpad pinch and one of his own saved boards on the live 3D screen were asked for and not reported.
