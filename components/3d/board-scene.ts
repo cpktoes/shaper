@@ -741,6 +741,11 @@ export function mountBoardScene(
   });
   scene.add(bay.room);
   scene.add(bay.logos);
+  // The specs that find the board by what differs from the plain ground start with the room off through this hook, and
+  // leave the logos out with it. The Room switch never does, and a production build never reads it.
+  if (process.env.NODE_ENV !== "production" && (globalThis as { __shaper3dBareRoom?: unknown }).__shaper3dBareRoom === true) {
+    bay.logos.visible = false;
+  }
   scene.add(new AmbientLight(treatment.fillColour, treatment.fill));
   scene.add(new HemisphereLight(BAY_PAINT.hemisphereSky, BAY_PAINT.hemisphereGround, treatment.bounce * 3));
 

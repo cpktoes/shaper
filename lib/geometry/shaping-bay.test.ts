@@ -790,10 +790,10 @@ describe("the logos on the walls (the founder, 2026-11-06)", () => {
     expect(centreYMm - BAY.benchTopMm).toBeCloseTo(BAY.heightMm - centreYMm, 9);
   });
 
-  it("the line logo crosses 72% of an end wall at its own shape, its top 20% of the wall down from the ceiling", () => {
+  it("the line logo crosses 57.6% of an end wall at its own shape, its top 20% of the wall down from the ceiling", () => {
     const aspect = 806.1 / 100;
     const { widthMm, heightMm, centreYMm } = bayEndLogo(aspect);
-    expect(widthMm).toBeCloseTo(0.72 * BAY.widthMm, 9);
+    expect(widthMm).toBeCloseTo(0.576 * BAY.widthMm, 9);
     expect(widthMm / heightMm).toBeCloseTo(aspect, 9);
     expect(BAY.heightMm - (centreYMm + heightMm / 2)).toBeCloseTo(0.2 * BAY.heightMm, 9);
   });

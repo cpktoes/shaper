@@ -74,7 +74,7 @@ export const BAY = {
    * line logo across this share of an end wall, its top this share of the wall's height down from the ceiling.
    */
   sideLogoShare: 0.46,
-  endLogoWidthShare: 0.72,
+  endLogoWidthShare: 0.576,
   endLogoDropShare: 0.2,
 } as const;
 
