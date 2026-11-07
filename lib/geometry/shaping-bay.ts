@@ -84,6 +84,13 @@ export const BAY = {
  */
 export type BayLook = "theme" | "blue" | "none";
 
+/** What a press of the Room icon goes to: the theme room, then the bright blue room, then no room, and round again. */
+export function nextBayLook(look: BayLook): BayLook {
+  if (look === "theme") return "blue";
+  if (look === "blue") return "none";
+  return "theme";
+}
+
 /**
  * The room's paint. `wall` and `ceiling` are the bright blue room's: the theme room takes its walls and ceiling from the
  * page's tokens instead (the founder, 2026-11-06, reversing D-43 for those two). Everything else here is the bay's own in

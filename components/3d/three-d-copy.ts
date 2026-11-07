@@ -88,8 +88,12 @@ export const THREE_D_COPY = {
 
   /** The fifth corner switch (the founder, 2026-11-05). */
   room: "Room",
-  /** The Room switch's tooltip and spoken description. */
-  roomTip: "Room — turn it off for a plain background and a free spin.",
+  /** The Room icon's tooltip and spoken description, one per step: each says what the next click does (quick 261106-ni6). */
+  roomTip: {
+    theme: "Room — click for the bright blue room.",
+    blue: "Room — click for no room: a plain background and a free spin.",
+    none: "Room — click for the room in this theme's colours.",
+  },
 
   // On the canvas: each message is two lines.
   browserCantDraw: {

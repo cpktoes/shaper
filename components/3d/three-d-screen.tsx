@@ -77,6 +77,7 @@ import {
   walkKey,
   WALK_VIEWS,
   type BayLens,
+  type BayLook,
   type RackAngles,
   type Viewer,
 } from "@/lib/geometry/shaping-bay";
@@ -398,6 +399,8 @@ export function ThreeDScreen() {
   const walkingRef = useRef(false);
   /** Whether the room is drawn: off, the board spins freely with no racks and no limit. */
   const roomRef = useRef(true);
+  /** Which room the scene paints, for a scene that mounts after the Room icon has been pressed. */
+  const lookRef = useRef<BayLook>("theme");
   /** The glide or move under way, if any: its animation frame. */
   const motionRef = useRef(0);
   /** How the move under way lands: a slider, a drag or a key finishes it at once rather than stranding it halfway. */
@@ -480,11 +483,13 @@ export function ThreeDScreen() {
     sceneRef.current?.setWire(wire);
   }, [wire]);
 
-  // The Room switch (the founder, 2026-11-05): "we also need a toggle to turn the room off (plain background)". On
-  // when the screen opens; a view switch only, like the other three, and Walk Around has no meaning without it.
+  // The Room icon (the founder, 2026-11-05: "we also need a toggle to turn the room off (plain background)"; three steps
+  // since 2026-11-06, quick 261106-ni6): the theme room when the screen opens, then the bright blue room, then no room, and
+  // never saved. A view switch only, like the other three, and Walk Around has no meaning with no room.
   const bareRoom = useSyncExternalStore(subscribeNever, readBareRoom, isServerPaint);
-  const [roomPick, setRoomPick] = useState<boolean | null>(null);
-  const roomOn = roomPick ?? !bareRoom;
+  const [lookPick, setLookPick] = useState<BayLook | null>(null);
+  const bayLook: BayLook = lookPick ?? (bareRoom ? "none" : "theme");
+  const roomOn = bayLook !== "none";
   const [mode, setMode] = useState<DragMode>("turn");
   const dragMode: DragMode = roomOn ? mode : "turn";
 
@@ -545,7 +550,7 @@ export function ThreeDScreen() {
         handle.setGhost(ghostRef.current.ghost, ghostRef.current.visible);
         handle.setStripes(stripesRef.current);
         handle.setWire(wireRef.current);
-        handle.setRoom(roomRef.current ? "theme" : "none");
+        handle.setRoom(lookRef.current);
         handle.setFree(roomRef.current ? 0 : 1);
         // A turn made or a view picked while the drawing was still loading is applied as the board appears (UI-SPEC §9).
         handle.setTurn(turnRef.current);
@@ -1039,12 +1044,14 @@ export function ThreeDScreen() {
   }, [dragMode]);
 
   // With the room off nothing holds the board, and it turns about its home in any direction (D-44). Turning the room back
-  // on settles it onto its racks by the nearest pose, with a glide.
+  // on settles it onto its racks by the nearest pose, with a glide. Going from one room to the other only repaints: the
+  // early return comes before finishMotion, so a move under way carries on and lands (quick 261106-ni6).
   useEffect(() => {
     const was = roomRef.current;
     roomRef.current = roomOn;
+    lookRef.current = bayLook;
     const scene = sceneRef.current;
-    scene?.setRoom(roomOn ? "theme" : "none");
+    scene?.setRoom(bayLook);
     if (was === roomOn) return;
     finishMotion();
     if (!roomOn) {
@@ -1080,7 +1087,7 @@ export function ThreeDScreen() {
       motionRef.current = requestAnimationFrame(tick);
     };
     motionRef.current = requestAnimationFrame(tick);
-  }, [roomOn, applyTurn, finishMotion]);
+  }, [roomOn, bayLook, applyTurn, finishMotion]);
 
   // ------------------------------------------------------------------------------------------------------------
   // Zooming (16-09, UI-SPEC §4–§5): the zoom row, the wheel, a trackpad pinch and the keys, in the 2D viewers' half
@@ -1264,6 +1271,7 @@ export function ThreeDScreen() {
               aria-describedby={descriptionId}
               data-mode={dragMode}
               data-bay={roomOn ? "on" : "off"}
+              data-bay-look={bayLook}
               aria-busy={state === "loading" ? true : undefined}
               onKeyDown={onKeyDown}
               onPointerDown={message ? undefined : onPointerDown}
@@ -1303,8 +1311,8 @@ export function ThreeDScreen() {
                 onStripes={(on) => setLook(on ? "stripes" : "shaded")}
                 wire={wire}
                 onWire={(on) => setLook(on ? "wire" : "shaded")}
-                room={roomOn}
-                onRoom={setRoomPick}
+                roomLook={bayLook}
+                onRoomLook={setLookPick}
                 disabled={message !== null}
               />
             </ViewerToolbar>

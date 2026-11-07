@@ -13,6 +13,7 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { THEME_STORAGE_KEY } from "../lib/theme";
 import { countDifferent, countUnlike, decodePng, hexToRgb } from "./helpers/canvas-pixels";
 import { storedOpenBoard } from "./helpers/open-board";
+import { appSettingsDialog, openAppSettings } from "./helpers/settings";
 
 /**
  * The 3D screen (Phase 16, plan 06): the shaper's board drawn as a lit solid from the litres' own surface, on its
@@ -111,6 +112,54 @@ async function expectCornerIs(host: Locator, hex: string) {
   expect(Math.abs(rgba[at] - r)).toBeLessThanOrEqual(2);
   expect(Math.abs(rgba[at + 1] - g)).toBeLessThanOrEqual(2);
   expect(Math.abs(rgba[at + 2] - b)).toBeLessThanOrEqual(2);
+}
+
+/** The dots of the picture at a share of its width and height, with the corner's buttons out of the way. */
+async function dotAt(host: Locator, shareX: number, shareY: number) {
+  const { rgba, width, height } = decodePng(
+    await host.screenshot({ style: "[data-viewer-zoom], [data-viewer-toolbar] { visibility: hidden !important; }" }),
+  );
+  const i = 4 * (Math.round(height * shareY) * width + Math.round(width * shareX));
+  return [rgba[i], rgba[i + 1], rgba[i + 2]];
+}
+
+/** The wall the first view faces, clear of the line logo and above the board. */
+const wallRead = (host: Locator) => dotAt(host, 0.5, 0.3);
+
+/** The ceiling, in Walk Around's Side view, the only view that shows it: a band across the top of the canvas. */
+const ceilingRead = (host: Locator) => dotAt(host, 0.5, 0.04);
+
+/** Waits until nothing is moving: the same turn and the same viewer across a quarter second. */
+async function settle(host: Locator) {
+  let last = "";
+  await expect
+    .poll(
+      async () => {
+        const now = `${await host.getAttribute("data-turn")} ${await host.getAttribute("data-viewer")}`;
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
+function roomIcon(page: Page) {
+  return page.locator("[data-viewer-toolbar]").getByRole("button", { name: THREE_D_COPY.room, exact: true });
+}
+
+function dragModeButton(page: Page, name: string) {
+  return page.getByRole("group", { name: THREE_D_COPY.modeGroup, exact: true }).getByRole("button", { name, exact: true });
+}
+
+/** Picks a theme through App Default Settings with the 3D screen open, and shuts the box so it no longer dims the picture. */
+async function pickTheme(page: Page, theme: string) {
+  const dialog = await openAppSettings(page);
+  await dialog.locator(`[data-theme-tile="${theme}"]`).click();
+  await expect(page.locator("html")).toHaveClass(new RegExp(`(^|\\s)theme-${theme}(\\s|$)`));
+  await page.keyboard.press("Escape");
+  await expect(appSettingsDialog(page)).toBeHidden();
 }
 
 /** The room off, by the Room switch's own path, for a case that measures the board against a plain ground. */
@@ -333,6 +382,81 @@ test.describe("the 3D screen", () => {
         for (let k = 0; k < 3; k++) expect(Math.abs(got[k] - want[k])).toBeLessThanOrEqual(2);
       }
     }
+  });
+
+  test("10b. each step of the Room icon paints the room: the theme's, then the bright blue, then no room, then the theme's", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer proves the paint");
+    await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, "daylight"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    const paintOf = async (name: string) => token(page, name);
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    const wallPaint = await paintOf("--surf-3d-room-wall");
+    expect(isPaint(await wallRead(host), wallPaint), `${await wallRead(host)}`).toBe(true);
+
+    await dragModeButton(page, THREE_D_COPY.modeWalk).click();
+    await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.side, exact: true }).click();
+    await settle(host);
+    const ceilingTheme = await ceilingRead(host);
+    expect(isPaint(ceilingTheme, await paintOf("--surf-3d-room-ceiling")), `${ceilingTheme}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => isPaint(await ceilingRead(host), BAY_PAINT.ceiling)).toBe(true);
+
+    await dragModeButton(page, THREE_D_COPY.modeTurn).click();
+    await settle(host);
+    const wallBlue = await wallRead(host);
+    expect(isPaint(wallBlue, BAY_PAINT.wall), `${wallBlue}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay", "off");
+    await expect(host).toHaveAttribute("data-bay-look", "none");
+    await settle(host);
+    await expectCornerIs(host, await threeDGround(page));
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    await settle(host);
+    await expect.poll(async () => isPaint(await wallRead(host), wallPaint)).toBe(true);
+  });
+
+  test("10c. a theme change repaints a theme room at once, the view kept, and leaves the bright blue room blue", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer switches the theme through App Default Settings");
+    await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [THEME_STORAGE_KEY, "daylight"] as const);
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    // Turn it a little first, so "kept" means something.
+    await host.focus();
+    await page.keyboard.press("ArrowLeft");
+    await settle(host);
+    const turn = await host.getAttribute("data-turn");
+
+    // Daylight to Chalk is the hard pair: the two share their ground, foam and muted ink, so only the room's own two
+    // colours tell the screen the theme has changed at all.
+    await pickTheme(page, "chalk");
+    const chalkPaint = await token(page, "--surf-3d-room-wall");
+    await expect.poll(async () => isPaint(await wallRead(host), chalkPaint), { timeout: 10_000 }).toBe(true);
+    expect(await host.getAttribute("data-turn")).toBe(turn);
+    expect(await host.getAttribute("data-board-state")).toBe("ready");
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "blue");
+    await expect.poll(async () => isPaint(await wallRead(host), BAY_PAINT.wall)).toBe(true);
+
+    const framesBefore = await frames(host);
+    await pickTheme(page, "phosphor");
+    await expect.poll(async () => frames(host)).toBeGreaterThan(framesBefore);
+    const stillBlue = await wallRead(host);
+    expect(isPaint(stillBlue, BAY_PAINT.wall), `${stillBlue}`).toBe(true);
+
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "none");
+    await roomIcon(page).click();
+    await expect(host).toHaveAttribute("data-bay-look", "theme");
+    await settle(host);
+    const phosphorPaint = await token(page, "--surf-3d-room-wall");
+    await expect.poll(async () => isPaint(await wallRead(host), phosphorPaint)).toBe(true);
   });
 
   test("11. with the room off the board sits on the theme's plain ground, and the light themes' ground is the darker one", async ({ page }) => {

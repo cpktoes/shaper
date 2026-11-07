@@ -27,6 +27,7 @@ import {
   isRaised,
   liftOfRaise,
   lookOfSwing,
+  nextBayLook,
   overPad,
   rackAngles,
   rackDrag,
@@ -178,7 +179,7 @@ describe("the room", () => {
     expect(a1[2]).toBe(-b1[2]);
   });
 
-  it("the strips are pure white, the fill neutral, and only the walls are blue (D-44)", () => {
+  it("the strips are pure white, the fill neutral, and only the blue room's walls are blue (D-44)", () => {
     expect(BAY_PAINT.strip).toBe("#ffffff");
     const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
     for (const treatment of Object.values(BAY_TREATMENTS)) {
@@ -187,6 +188,23 @@ describe("the room", () => {
     }
     const [wr, , wb] = channels(BAY_PAINT.wall);
     expect(wb).toBeGreaterThan(wr * 4);
+  });
+
+  it("the blue room is exactly the room the app had before the theme room (the founder, 2026-11-06)", () => {
+    expect(BAY_PAINT.wall).toBe("#0a2f66");
+    expect(BAY_PAINT.ceiling).toBe("#04142e");
+  });
+
+  it("the Room icon goes theme room, blue room, no room, and round again", () => {
+    expect(nextBayLook("theme")).toBe("blue");
+    expect(nextBayLook("blue")).toBe("none");
+    expect(nextBayLook("none")).toBe("theme");
+  });
+
+  it("three presses from any step land where they began", () => {
+    for (const look of ["theme", "blue", "none"] as const) {
+      expect(nextBayLook(nextBayLook(nextBayLook(look)))).toBe(look);
+    }
   });
 });
 
