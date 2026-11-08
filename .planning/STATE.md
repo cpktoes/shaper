@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: planning
+status: executing
 stopped_at: "Phase 17 PLANNED 2026-11-08: 16 plans in 16 waves (commit 87a94931), checker passed with no blockers; awaiting the founder's approval before /gsd-execute-phase 17"
-last_updated: "2026-11-08T19:10:51.457Z"
-last_activity: 2026-11-06
-last_activity_desc: "Phase 16 complete: the 3D screen and Export 3D Files are live, confirmed by the founder"
+last_updated: "2026-11-08T19:20:01.647Z"
+last_activity: 2026-11-08
+last_activity_desc: Phase 17 execution started
 progress:
   total_phases: 5
   completed_phases: 3
@@ -24,7 +24,7 @@ current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 17 — BOTTOM, bottom contours — PLANNED 2026-11-08 on branch `claude/beautiful-fermi-ad3fb7`: the brief (`17-SPEC.md`), 39 decisions (`17-CONTEXT.md`), the approved screen contract (`17-UI-SPEC.md`), the research and 16 plans in 16 waves; the checker passed with no blockers; waiting on the founder's approval of the plans before `/gsd-execute-phase 17`
+**Current focus:** Phase 17 — BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 
 ## Current Position
 
@@ -36,8 +36,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Planned — ready to execute on the founder's approval of the sixteen plans
-Last activity: 2026-11-06 — Phase 16 complete, the 3D screen live
+Status: Executing Phase 17
+Last activity: 2026-11-08 — Phase 17 execution started
 
 ## Performance Metrics
 
