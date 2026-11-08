@@ -145,8 +145,11 @@ above with that one cut's shade and pencil lines, and the section across it at i
 what it is and looks like, then what it does. The five vees draw five different sections. The cuts on the board now are
 tagged. His second round the same day: *"The Guide looks awesome. Love everything about it."*; the three readouts under
 the drawing go (*"the space is better used for visualization"*) and the litres move to DATA's first line; the starting
-numbers go to research. Open: the sentences themselves (first drafts), the ruler (he could not find it — it draws only on a
-wide screen), and the researched starting numbers.
+numbers go to research (findings and proposed numbers in the starting-numbers todo). His third round, 2026-11-08: BOTTOM
+stays between ROCKER and RAILS with the fins read from the outline (three fin notes left for the phase), every card gets a
+*How to shape* note, and *"every page needs a guide like this"* — the todo `2026-11-08-a-guide-tab-on-every-page.md`. Open:
+the sentences and shop notes themselves (first drafts), the ruler (he could not find it — it draws only on a wide screen),
+and the researched starting numbers.
 
 ## Reference Points
 

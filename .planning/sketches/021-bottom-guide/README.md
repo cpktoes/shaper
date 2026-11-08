@@ -15,7 +15,20 @@ better used for visualization."* So the three figures under the drawing are gone
 litres and the stringer are one line at the top of DATA. He could not find the ruler (*"I don't see a ruler of the ticks
 you talk of"*) — it draws only on a wide screen, and only for the cut being edited; `pictures/desktop-ruler-close.png`
 shows it. The starting numbers go to research (*"Do a deeper research to see what is most common for each and report
-back. The one that stands out is the tear drop concave seems a bit short."*).
+back. The one that stands out is the tear drop concave seems a bit short."*) — the findings and the numbers proposed from
+them are in the todo `2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`, for his correction.
+
+## Third round (the founder, 2026-11-08)
+*"This all seems really great."* On the page's place — *"Is between Rocker and Rails the right place to put this? When I
+shape this is where I'd add it, but the fin placement is likely to have an affect too."* — the answer stands: BOTTOM stays
+between ROCKER and RAILS (RAILS works from what the bottom leaves), and the fins are read, not waited for: the app
+calculates the front-fin station and toe from the outline, which is why the sketch already ticks FRONT FINS and opens every
+tail cut deepest there. *"Let's leave as is"* — so three notes for the phase rather than the sketch: store the fin-driven
+stations (a tail cut's Deepest At, the channels' start and deepest) as a distance from the front fins so a fin move on FINS
+carries them; draw the fin boxes on the BOTTOM top view, not just the station line; and show the contour under the fins on
+the FINS tail drawing. Then: *"I think every page needs a guide like this. Super useful on what each parameter does to/for
+the board. Would also be nice to add a 'how to shape' note too."* — every card now carries a **How to shape** note in the
+shop's words (first drafts), and the guide on every page is the todo `2026-11-08-a-guide-tab-on-every-page.md`.
 
 ## Design Question
 The founder's rulings on sketch 020 (2026-11-07): *"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings
@@ -39,7 +52,9 @@ So this sketch is 020 with the rulings in and the variants gone, plus the tab:
 - **No readouts in the viewer** (second round): the drawings take the room; *Foam off 0.72 L · 28.89 L now, 29.61 L
   before contours · the stringer finishes 2 1/16" at the center, planed 2 1/4"* is the first line of DATA.
 - **GUIDE**, the third tab after VIEWER and DATA: nineteen cards — the six nose cuts, six center, six tail, and the channels —
-  each with its name, a cartoon, and two sentences: what it is and looks like (in ink), then what it does (muted). The cartoon
+  each with its name, a cartoon, two sentences — what it is and looks like (in ink), then what it does (muted) — and, under
+  a dashed rule, a *How to shape* note: which lines to pencil, what to cut with, where to take the most, what to check with
+  (third round). The cartoon
   is the board the shaper has open, drawn by the VIEWER's own code: from above with that one cut's shade and the pencil lines
   a shaper would rule, the dash-dot cutting line where the section is taken, and the section across it at its deepest point,
   Height ×8, with the planed bottom as a dashed straightedge. So the five vees draw five different sections — the Panel Vee's
@@ -60,7 +75,7 @@ None — the rulings are built in. The open questions are below.
 
 ## What to Look For
 - The GUIDE's sentences: right, wrong, or too long. The founder asked for *"VERY briefly (like 1-2 sentences)"*; every
-  card carries two.
+  card carries two, and now a How to shape note of one or two more — the shop's words are his to correct.
 - Whether the cartoon says enough — the top view and the section at ×8 — or whether the vees want a third drawing (three
   stacked sections, say, to show a spiral vee twisting along the tail).
 - Whether a card should be tappable to put that cut on the board (not built; the tab is informational, as asked).
@@ -76,7 +91,7 @@ slider there (and gone for All the same); Parallel rules the first wall straight
 behind the deepest station; every channel check of 020 still passes (the sawtooth, the length order, the clamp, the fit,
 toe-in, the litres, a double's flat at the stringer); the winged Fish shows the WINGS row with the selector on Narrowest and
 nothing on a wingless board, Natural takes and changes its note, and the two rules still differ at the wing's step; GUIDE
-has nineteen cards, every one with a cartoon, sixteen with a shade (every cut but the three flats), the five vees' sections
+has nineteen cards, every one with a cartoon and a How to shape note, sixteen with a shade (every cut but the three flats), the five vees' sections
 all different, the Shortboard's three cuts tagged and the Fish's three when the board changes, three across on a computer
 and one on a phone, scrolling inside the folder; Metric still reads in cm and mm with DATA's two tables; the phone's switch
 has three buttons and the tab strip stays on one line; the viewer has no readouts and DATA's first line carries the

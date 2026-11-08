@@ -164,6 +164,8 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
 .card svg path, .card svg line { vector-effect: non-scaling-stroke; }
 .card p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .card p b { font-weight: 600; color: var(--ink); }
+.card p.how { margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--faint); font-size: 12px; line-height: 1.45; }
+.card p.how .cap { display: block; margin-bottom: 1px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
 
 /* drawing strokes — one ink, one dash per role, as the app's viewers draw them. Widths, dashes and type are
    written by the drawing code in screen pixels (every picture scales to its box, the lines and words must not). */
@@ -875,6 +877,29 @@ const GUIDE = {
   "Extending Single Concave": ["The center's single concave carried through the fins and out the tail.", "Drive and lift to the very end — fast, and stiffer rail to rail."],
   "Channels": ["Four, six or eight troughs through the fins, each a ramp into a vertical wall at the rail side, cut last.", "Every wall grips like a small fin: drive and hold at speed in clean, powerful waves."],
 };
+// How each cut is shaped, in a sentence or two, in the shop's words (the founder, 2026-11-08: "Would also be nice to add
+// a 'how to shape' note too") — first drafts for his pen, like the sentences above.
+const HOW = {
+  "Flat Entry": "Nothing to cut: plane the bottom true and check it with a straightedge laid rail to rail every 6\".",
+  "Rolled Belly Entry": "Pencil Start and End on the rails. Roll the planer out from the stringer toward each rail in overlapping passes, most at the Deepest station, and screen it until a flexible batten touches everywhere — no flat left between stringer and rail.",
+  "Teardrop Nose Concave": "Pencil the edge at Off Rail from the tip back and close it to a point at End. Hollow along the stringer in shallow planer passes from Start, deepest at Deepest, then blend out to the pencil line with a flexible pad; a straightedge across the nose shows the depth.",
+  "Blended Nose Concave": "As the teardrop, but with no edge: carry the hollow out to the pencil line with a soft pad so no step is left, and fade it to nothing by End.",
+  "Slight Single Concave Entry": "A few shallow planer passes along the stringer from Start, screened out to Off Rail — a straightedge should show the gap you set and no more.",
+  "Reverse Vee Nose": "Pencil Start on the rails. Plane each side from the stringer out to the rail, most at the Deepest station and nothing at the stringer, and fade both panels to flat by End; a straightedge laid across should rock on the stringer by the lift you set.",
+  "Flat Center": "Nothing to cut: plane true, and check with a straightedge rail to rail.",
+  "Deep Single Concave": "Pencil the edge at Off Rail from Start to End. Hollow along the stringer in shallow planer passes, deepest at the Deepest station, then screen out to the edge with a flexible pad; check the gap with a straightedge every 6\" and keep both sides the same.",
+  "Shallow Single Concave": "The same cut with half the passes — most of it is in the screening. Check it with a straightedge every 6\".",
+  "Early Double Concave": "Pencil the flat at Off Stringer, the trough line at Trough At and the edge at Off Rail. Hollow each side along its trough line with a block or a small plane, leaving the stringer flat untouched, and blend both ways; a straightedge across shows the two gaps and the ridge.",
+  "Continuous Belly / Rolled Mid": "Roll the planer out from the stringer to the rails in long overlapping passes from Start to End, most at Deepest, then screen until a flexible batten touches everywhere; no flat anywhere between the stringer and the rail.",
+  "Tri-Plane Hull Center": "Pencil the panel's edge at Off Stringer each side. Plane each outer plane flat from that line out to the rail at one angle, most at the rail, leaving the center panel untouched; check each plane with a straightedge along the board and the angle across.",
+  "Flat Exit": "Nothing to cut: plane true, and check with a straightedge rail to rail.",
+  "Double Concave Exit": "Pencil the stringer flat, the trough lines and the edges from DATA's marks. Hollow each side along its trough with a block or a small plane, deepest at the front fins, leaving the stringer flat as the ridge, and fade both out by End.",
+  "Panel Vee": "Pencil Start on the rails. Plane each panel flat from the stringer out to the rail, most at the Deepest station and nothing at the stringer; a straightedge laid across should rock on the stringer by the lift you set, the same both sides.",
+  "Spiral Vee": "Cut the vee first as a panel vee, then hollow the two concaves into its panels along the trough lines, deepest at the fins, and fade both by End.",
+  "Rolled Vee": "Cut it as a panel vee, then screen the corner at the stringer and the panels round until a flexible batten rolls over them with no flat and no ridge.",
+  "Extending Single Concave": "Carry the center's edge line through the fins to End and hollow along the stringer the same way, deepest at the front fins; fade it to flat by End so the tail releases.",
+  "Channels": "Rule every wall off the stringer at each 6\" station from DATA's marks and join the marks with a straightedge. Cut each channel from its wall with a small plane or a block, the floor ramping up to the next peak and the wall square to the bottom, deepest at the front fins; sand the floors with paper on a dowel and keep every wall straight along the board.",
+};
 // One cut's cartoon: the open board from above with that cut alone — its shade and the pencil lines a shaper would rule —
 // and the section across it where it is deepest, Height ×8, the planed bottom a dashed straightedge beneath. Drawn with
 // the VIEWER's own maths and dashes so the guide teaches the drawing as well as the cut. Lines keep their width when the
@@ -938,8 +963,8 @@ function cartoon(c, key, id) {
 }
 function drawGuide() {
   let n = 0;
-  const card = (c, key, isOn) => `<div class="card${isOn ? " on" : ""}"><h4><span>${svgEsc(c.name)}</span>${isOn ? `<span class="now">On this board</span>` : ""}</h4>${cartoon(c, key, `g${n++}`)}<p><b>${svgEsc(GUIDE[c.name][0])}</b> ${svgEsc(GUIDE[c.name][1])}</p></div>`;
-  let h = `<div class="guidenote">What each cut is, and what it does. Every cut is drawn on your ${svgEsc(B.name)} at its starting numbers — from above with its shade, and across where it is deepest, Height ×8 — the way VIEWER draws it.</div>`;
+  const card = (c, key, isOn) => `<div class="card${isOn ? " on" : ""}"><h4><span>${svgEsc(c.name)}</span>${isOn ? `<span class="now">On this board</span>` : ""}</h4>${cartoon(c, key, `g${n++}`)}<p><b>${svgEsc(GUIDE[c.name][0])}</b> ${svgEsc(GUIDE[c.name][1])}</p><p class="how"><span class="cap">How to shape</span>${svgEsc(HOW[c.name])}</p></div>`;
+  let h = `<div class="guidenote">What each cut is, what it does, and how it is shaped. Every cut is drawn on your ${svgEsc(B.name)} at its starting numbers — from above with its shade, and across where it is deepest, Height ×8 — the way VIEWER draws it.</div>`;
   for (const [key, title] of [["nose", "Nose"], ["center", "Center"], ["tail", "Tail"]]) {
     h += `<div class="datahead">${title}</div><div class="cards">`;
     for (const def of NAMES[key]) h += card(makeCut(key, def.name, B), key, state.cuts[key].name === def.name);
