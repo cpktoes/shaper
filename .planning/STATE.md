@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** bottom contours, sketch 019 waiting on the founder's answers (branch of the sketch session, not merged); the next phase once he has answered
+**Current focus:** Phase 17 — BOTTOM, bottom contours (sketches 019–021 decided with the founder 2026-11-06 to 11-08, merged on main 8074ebe6): the brief is `17-SPEC.md`; the discussion, the screen contract and the plans next
 
 ## Current Position
 
@@ -174,6 +174,7 @@ Recent decisions affecting current work:
 
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
 - Phase 14 added (2026-10-02): Realistic Surfboard Flow — milestone v1.5, opened from the curve-flow todo on branch `surfboard-flow`; the founder wants it before the Oct 10 showing, curves and tips both; brief in `phases/14-realistic-surfboard-flow/14-SPEC.md`, research in the todo (now under `todos/completed/`)
+- Phase 17 added (2026-11-08): BOTTOM — bottom contours a shaper can map, measure and cut, from sketches 019–021 and the founder's rulings; brief in `phases/17-bottom-contours/17-SPEC.md`
 
 ### Pending Todos
 
