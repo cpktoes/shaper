@@ -96,7 +96,9 @@ brief's proposed readings, which he took ("Take all three"; the four open points
   to 1 across the cut and r = smoothness/100, a concave's depth profile is `(1−r)(1−u) + r(1+cos πu)/2` and a lift's is
   `(1−r)u + r(1−cos(πu/2))`; along the board the depth fades by smoothstep Start → Deepest → End; an end that lands on
   a tip runs out at full depth; a concave narrower than 3" shallows in proportion (no slot at a tip); the Teardrop closes
-  to a point by a square-root taper of its half-width. Smoothness does not move the litres (0.5442 L at 0, 50 and 100 on
+  to a point by a square-root taper of its half-width — the "Closes to a point toward the center" box shows on all three
+  nose single concaves and is ticked by the Teardrop's starting numbers alone, as the sketch has it (*sharpened
+  2026-11-08 at the screen contract; R4 reads the same*). Smoothness does not move the litres (0.5442 L at 0, 50 and 100 on
   the test single). (Claude's working, accepted by the founder as drawn.)
 - **D-07:** **Start, Deepest At and End are taped from the nearest tip** — the nose for the Nose section, the tail for
   Center and Tail (*"yes"*, 2026-11-06). Every station slider runs nose (left) to tail (right) like the drawing; the
@@ -230,10 +232,14 @@ brief's proposed readings, which he took ("Take all three"; the four open points
   shape; a later change needs a parser rule.
 
 ### Units, paper and phones
-- **D-25:** **Rule 2:** Depth, Off Rail, Off Stringer, Trough At, Channel Width, the lifts and the thicknesses are MARKS
-  (whole millimetres in Metric; 1/16" steps in Imperial); Start, Deepest At, End, Stagger, the stations and the widths
-  are DIMS (centimetres to one decimal; a 36" station reads the same digits as the station's own label); litres the same
-  in both; every conversion through `lib/geometry/units.ts`.
+- **D-25:** **Rule 2:** Depth, Off Rail, Off Stringer, Trough At, Channel Width, the lifts and the per-station thicknesses
+  (DATA's `stringer left`, `planed` and `stringer finishes` figures, the gauge readings) are MARKS (whole millimetres in
+  Metric; 1/16" steps in Imperial); Start, Deepest At, End, Stagger, the stations and the widths are DIMS (centimetres to
+  one decimal; a 36" station reads the same digits as the station's own label); the INPUTS card's Length, Width and
+  Thickness are the board's headline dims, read exactly as VOLUME's imported card reads them (CLAUDE.md Rule 2: a
+  board's headline thickness is a dim, `5.7 cm`, and the same number is a mark, `57`, in a datasheet column — both correct
+  for what they show); litres the same in both; every conversion through `lib/geometry/units.ts`. (*Sharpened 2026-11-08
+  at the screen contract, whose first draft had read "the thicknesses" as every thickness.*)
 - **D-26:** **On paper, numbers, not contours.** *"an image and some measurements is good enough."* (2026-11-06). No
   contour on the Full Sized Template or the Paper Saver, no card gauge; the order form and the Overview Sheet carry the
   bottom's names and numbers (the three cuts and the channels with their depths and marks) in lines the UI-SPEC settles;
@@ -248,6 +254,28 @@ brief's proposed readings, which he took ("Take all three"; the four open points
   live check. A second go-live only if he asks for one at plan approval (the maths-first waves change nothing visible
   while the presets stay flat). Pictures before every merge and his look between plans; this phase's branch, never his
   checkout or his dev server on port 3005; nothing pushed without his go. (The brief's reading A7, taken 2026-11-08.)
+
+### Rulings at the screen contract (the founder, 2026-11-08, on the contract's discretion calls)
+- **D-29:** **The bottom gets a printed page of its own, for now.** Asked whether the order form should carry the bottom as
+  a small box on page 2 or a paragraph inside PLANING, the founder: *"I think I'd like a more substantial way of portraying
+  how to shape contours. I'd like to keep it all on a double sided sheet but for now a new page would be acceptable and
+  I'll likely reorganize the sheet later."* So the order form gains a **third page, BOTTOM CONTOURS**, printed only when
+  the bottom has a cut (a flat board's two pages are byte-identical to today's): the bottom seen from above with its shade,
+  lines and layout marks, a cross-section at each cut's deepest station with its gauge readings, DATA's two tables and the
+  *How to shape* note of every cut on the board — the drawing, the sections and the measurements a shaper lays the bottom
+  out from. The page's exact dress is the screen contract's (§8) and his to correct at plan approval; folding it back into
+  a double-sided sheet is a later reorganisation of his, outside this phase. The Overview Sheet keeps its one line per cut.
+  (Supersedes D-26's "lines the UI-SPEC settles" for the order form; D-26's rule that nothing reaches the Full Sized
+  Template or the Paper Saver stands.) — **Reversibility:** reversible — a print layout.
+- **D-30:** **The ruler of layout marks draws from a 1024-dot window, values only.** Told the ruler and the gauge words
+  needed a 625-dot section box and so appeared only from about 1100 dots wide, he chose *"Ruler from 1024 too, values
+  only"*: from a section box of about 548 dots (a 1024 window) the ruler draws its ticks and values with no caption and the
+  gauge readings read as values alone; from 625 dots the `OFF THE STRINGER` caption and the gauge words join; below 548 (a
+  narrow desktop window, every phone) there is no ruler, as D-14 says. (Sharpens D-14.)
+- **D-31:** **The fins on BOTTOM's top view are FINS' own base lines** — the fin colour, solid, at the FINS placement, no
+  dots or dimensions — which is what his "fin boxes" (D-12) meant; the app has no fin-box drawing and gains none.
+- **D-32:** **"Closes to a point toward the center" shows on all three nose single concaves**, ticked by the Teardrop's
+  starting numbers alone, as the sketch has it (confirms D-06's and R4's sharpened reading).
 
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM

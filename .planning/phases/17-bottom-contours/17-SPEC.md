@@ -55,8 +55,9 @@ it. The sketch or ruling each one rests on is in brackets.
    Stringer (the flat left at the stringer on every double, and the Tri-Plane's flat panel); Trough At (doubles); Start,
    Deepest At and End taped from the NEAREST tip (the nose for the Nose section, the tail for Center and Tail), every
    station slider running nose (left) to tail (right); Depth; Smoothness (straight to the edge → rounded out); Vee Lift
-   (Spiral Vee); "Closes to a point toward the center" (Teardrop). Start ≥ Deepest ≥ End along the board is kept. A
-   board opens with every section flat. [sketches 019, 020; *"yes"* to the nearest tip]
+   (Spiral Vee); "Closes to a point toward the center" on the three nose single concaves, ticked by the Teardrop's starting
+   numbers (*sharpened 2026-11-08 at the screen contract: the sketch shows the box on every nose single*). Start ≥ Deepest ≥
+   End along the board is kept. A board opens with every section flat. [sketches 019, 020; *"yes"* to the nearest tip]
 5. **R5 — Channels inside the TAIL card, none to start, Parallel the opening run.** *"B: Inside Tail, Channel Default =
    none … Run default is parallel to stringer."* Under the tail's own cut: Channels None / 4 / 6 / 8 (picking a count
    brings that count's starting width — 2 1/2" · 1 3/4" · 1 1/4" — unless the shaper has set one), Channel Width (one
@@ -121,10 +122,14 @@ it. The sketch or ruling each one rests on is in brackets.
     are marks (whole millimetres in Metric; 1/16" steps in Imperial); Start, Deepest At, End, Stagger, the stations and
     the widths are dims (centimetres to one decimal); litres read the same in both. Every conversion through
     `lib/geometry/units.ts`. [CLAUDE.md Rule 2; sketch 019]
-14. **R14 — On paper: numbers, not contours.** *"an image and some measurements is good enough."* No contour is drawn on
-    the Full Sized Template or the Paper Saver and there is no card gauge; the order form and the Overview Sheet carry the
-    bottom's names and numbers (the three cuts and the channels with their depths and marks), the exact lines settled by
-    the screen contract. The presets stay flat, so their cards' litres do not move. [the founder, 2026-11-06]
+14. **R14 — On paper: a page for the bottom, no full-size contour.** *"an image and some measurements is good enough"*
+    (2026-11-06); then, at the screen contract (2026-11-08): *"I think I'd like a more substantial way of portraying how to
+    shape contours. I'd like to keep it all on a double sided sheet but for now a new page would be acceptable and I'll
+    likely reorganize the sheet later."* No contour is drawn on the Full Sized Template or the Paper Saver and there is no
+    card gauge; the order form gains a third page, BOTTOM CONTOURS, printed only when the bottom has a cut — the bottom from
+    above with its shade, lines and layout marks, a section at each cut's deepest station, DATA's two tables and the *How
+    to shape* notes — and the Overview Sheet one line per cut; the page's dress is the screen contract's (D-29). The
+    presets stay flat, so their cards' litres do not move. [the founder, 2026-11-06 and 2026-11-08]
 15. **R15 — Shown before it ships.** Pictures before every merge and the founder's look between plans; one go-live gate
     at the end as Phase 16's 16-13 had (the full suite, his device checks, one push on his go, a live check) — a second
     go-live only if he asks for one at plan approval; nothing pushed without his go. [the project's habit]
@@ -156,7 +161,8 @@ in from Shape3D or AkuShaper files; a third drawing per vee in the GUIDE (asked 
 
 ## Acceptance criteria
 
-1. The nav, the phone sheet and Back/Next show eight screens; ROCKER's Next reads `BOTTOM →` and BOTTOM's `RAILS →`.
+1. The nav, the phone sheet and Back/Next show eight screens; ROCKER's Next reads `Bottom →` and BOTTOM's `Rails →` (the
+   app's `screenWord` writes a screen's word in title case — corrected 2026-11-08 at the screen contract).
 2. Every one of the eighteen names opens on its starting numbers on each preset with Start ≥ Deepest ≥ End, draws its
    shade and lines, its section and its DATA rows; the five vees draw five different sections.
 3. A board with every section flat and no channels counts the litres it counts today, bit for bit, and every preset
@@ -173,8 +179,9 @@ in from Shape3D or AkuShaper files; a third drawing per vee in the GUIDE (asked 
 8. Metric reads every mark in whole millimetres and every dim in centimetres to one decimal, on screen and in DATA.
 9. The phone stack, the sideways phone and the desktop shell each pass their browser specs; the GUIDE scrolls inside the
    folder and the page never scrolls as a whole on a phone.
-10. The order form and the Overview Sheet carry the bottom's lines as the screen contract says; the Full Sized Template
-    and the Paper Saver draw no contour.
+10. The order form prints its BOTTOM CONTOURS page only when the bottom has a cut, and the Overview Sheet its lines, as
+    the screen contract says; a flat board's sheets are byte-identical to today's; the Full Sized Template and the Paper
+    Saver draw no contour.
 11. The whole unit suite, type check, lint, the named browser specs on three devices and a production build pass.
 
 ## Ambiguity Report — what the discussion must settle
