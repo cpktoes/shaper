@@ -149,7 +149,9 @@ numbers go to research (findings and proposed numbers in the starting-numbers to
 stays between ROCKER and RAILS with the fins read from the outline (three fin notes left for the phase), every card gets a
 *How to shape* note, and *"every page needs a guide like this"* — the todo `2026-11-08-a-guide-tab-on-every-page.md`. Open:
 the sentences and shop notes themselves (first drafts), the ruler (he could not find it — it draws only on a wide screen),
-and the researched starting numbers.
+and the shop's own numbers — the researched set went into the sketch on his word (fourth round, 2026-11-08: *"Put the
+proposed starting numbers into the sketch, and I think we're done here. Maybe don't show the finished rails from rails by
+default."*), the rail ghost now off to start. Sketch 021 is done.
 
 ## Reference Points
 

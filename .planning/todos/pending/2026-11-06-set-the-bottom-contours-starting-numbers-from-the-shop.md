@@ -38,6 +38,10 @@ live — under the drawing as sketched, or in a sidebar card ("TBD").
 
 ## Research, 2026-11-07 — what is most common, and the numbers proposed from it
 
+**Applied to sketch 021 on 2026-11-08** at the founder's word (*"Put the proposed starting numbers into the sketch"*): the
+`NAMES` table and `makeChannels` in `.planning/sketches/021-bottom-guide/` now open on the proposed column below, and the
+Tri-Plane's Off Stringer is `half the wide point's width − 4"`. They remain his to correct from the shop before the phase.
+
 The founder (reviewing sketch 021): *"Do a deeper research to see what is most common for each and report back. The one
 that stands out is the tear drop concave seems a bit short."* Read in a real browser (Swaylocks threads via their Discourse
 JSON, Swellnet, Lost, Greenlight) and web searches. Figures below are what shapers published, quoted short; "proposed" is

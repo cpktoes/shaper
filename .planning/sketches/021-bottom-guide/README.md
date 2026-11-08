@@ -30,6 +30,16 @@ the FINS tail drawing. Then: *"I think every page needs a guide like this. Super
 the board. Would also be nice to add a 'how to shape' note too."* — every card now carries a **How to shape** note in the
 shop's words (first drafts), and the guide on every page is the todo `2026-11-08-a-guide-tab-on-every-page.md`.
 
+## Fourth round (the founder, 2026-11-08): the numbers are in
+*"Put the proposed starting numbers into the sketch, and I think we're done here. Maybe don't show the finished rails from
+rails by default."* So every name now opens on the numbers the research proposed (the table in the starting-numbers todo):
+the teardrop 1/4" deep and 36" long, 2 1/4" in from the rails; the bellies 3/8", deepest at the wide point; the deep single
+flattened in the last 4"; the shallow single from a third back, deepest at the front fins; the tail double 1" off the rail
+from a foot ahead of the fins; the panel and rolled vees from a third of the length up, peaking at the fins; the tri-plane's
+flat panel to 4" from the rail; the channels 5/16" deep from a foot ahead of the front fins, the outer pair longest. The
+finished rail from RAILS is off until ticked. The sketch is done; the sentences, shop notes and numbers stay his to correct
+as the phase is planned.
+
 ## Design Question
 The founder's rulings on sketch 020 (2026-11-07): *"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings
 rule should have a selector, narrowest outline by default. Run default is parallel to stringer."* And one more ask the same
@@ -43,7 +53,9 @@ So this sketch is 020 with the rulings in and the variants gone, plus the tab:
   NOSE · CENTER · TAIL again. A flat tail with channels says *"Nothing is cut in this section but the channels."*
 - **None to start** — every board opens with no channels (the Shortboard keeps its deep single, the Fish its panel vee, the
   winged Fish its extending single). Picking 4, 6 or 8 gives that count's starting width (2 1/2" · 1 3/4" · 1 1/4") unless the
-  shaper has already set a width of their own.
+  shaper has already set a width of their own; a set opens 5/16" deep from a foot ahead of the front fins, the outer pair
+  longest with a 2" stagger (fourth round).
+- **The finished rail from RAILS is off** until its box is ticked (fourth round).
 - **Parallel to the stringer** is the run a set opens with; the Run menu reads *Parallel · With the rail · Toe-in · 3.2°*,
   short enough to read whole beside Longest.
 - **The wing rule is a selector** — a WINGS row above the three sections, shown only on a board with a wing (*1/4" wing at
@@ -81,7 +93,8 @@ None — the rulings are built in. The open questions are below.
 - Whether a card should be tappable to put that cut on the board (not built; the tab is informational, as asked).
 - The WINGS row's wording and place — above the sections, one setting for the whole bottom.
 - Still open from 019 and 020: the ruler under the section (computer only, the live cut's marks only), the starting
-  numbers (the todo, now under research), and whether a staggered set's deepest station or ends should stagger too.
+  numbers now in the sketch (the researched set, his to correct), and whether a staggered set's deepest station or ends
+  should stagger too.
 
 ## Checked
 Headless Chromium at 1280 × 800 and 390 × 844 (iPhone 14, touch): no errors on any theme, units or board. The bar has no
@@ -95,7 +108,10 @@ has nineteen cards, every one with a cartoon and a How to shape note, sixteen wi
 all different, the Shortboard's three cuts tagged and the Fish's three when the board changes, three across on a computer
 and one on a phone, scrolling inside the folder; Metric still reads in cm and mm with DATA's two tables; the phone's switch
 has three buttons and the tab strip stays on one line; the viewer has no readouts and DATA's first line carries the
-litres and the stringer in millimetres.
+litres and the stringer in millimetres; the finished rail is off to start and draws when ticked; the channels open
+5/16" deep from a foot ahead of the front fins with the outer pair longest; every board's opening cuts keep Start ≥
+Deepest ≥ End on the researched numbers (the Longboard's teardrop, belly and rolled vee take 3.33 L, the Shortboard's deep
+single 0.75 L, the Fish's panel vee 0.31 L).
 
 ## Source
 `sketch-source.tar.gz` holds `board-data.ts` (unchanged from 020), its `boards.json`, the page template, `build.py`, the
