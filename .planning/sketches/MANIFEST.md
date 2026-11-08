@@ -153,6 +153,22 @@ and the shop's own numbers — the researched set went into the sketch on his wo
 proposed starting numbers into the sketch, and I think we're done here. Maybe don't show the finished rails from rails by
 default."*), the rail ghost now off to start. Sketch 021 is done.
 
+### A GUIDE on every page — ROCKER first (sketch 022, 2026-11-08)
+
+The founder on 021's GUIDE (2026-11-08): *"I think every page needs a guide like this. Super useful on what each parameter
+does to/for the board. Would also be nice to add a 'how to shape' note too."* Round one is ROCKER, to settle the shape of a
+control's card against a cut's: GUIDE as the page's last tab (VIEWER · PLANING · DATASHEET · GUIDE on a computer, VIEWER · TOP ·
+PLANING · DATA · GUIDE on a phone), fourteen cards in the sidebar's order under Inputs · Blank · Rocker · Foil, each named as
+the page labels the control — Center Thickness, Nose Tip · Tail Tip, Blank, Placement, Deck Skin, Customize Rocker, Nose and
+Tail Rocker, Pin tips to · Deck and · Bottom, Nose and Tail Thinning Starts, the two 12" fine-tunes, Fine tune from — with the
+board's own value beside its name. The cartoon is the page's own drawing with the one setting pushed: the open board from the
+side in its blank, then the part the control touches closer, with the setting pushed by a stated amount in muted dashes beside
+the board as it is — every dashed profile built by the app's own `designSideProfile` with that field changed (the centre +1/2",
+the board slid along its blank, a 1/2" skin, a start at 24", the blank bent +1" from the centre or `+1/2"N18"`), the number
+dimensioned the way the VIEWER reads it. Two sentences and a *How to shape* note per card, first drafts for his pen. The
+sidebar, VIEWER, TOP, PLANING and DATASHEET are pictures of today's page from the same real numbers. Round two — TEMPLATE,
+RAILS, VOLUME and FINS the same way — waits on his rulings here.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -185,6 +201,7 @@ default."*), the rail ghost now off to start. Sketch 021 is done.
 | 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | C | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
 | 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | **B — Inside Tail** (the founder, 2026-11-07, with: none to start, Parallel, the wing rule a selector on Narrowest) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
 | 021 | bottom-guide | With the founder's rulings of 2026-11-07 built in — channels inside TAIL, none to start, Parallel, the wing rule a selector — how does a third GUIDE tab teach what each of the 18 cuts and the channels is and does, a cartoon and a sentence or two each, so the five vees read apart? | — (with the founder) | bottom, guide, contours, channels, wings, cartoons, tabs, sidebar, phone, units, themes |
+| 022 | page-guides | The founder on 021's GUIDE: "every page needs a guide like this." What is a control's card, against a cut's — on ROCKER first: one card per control or named choice, the board the shaper has open drawn from the side with that one setting pushed, two sentences and a How to shape note — and does GUIDE sit as ROCKER's fourth tab, on a phone too? | — (with the founder) | guide, rocker, cartoons, tabs, sidebar, phone, units, themes, blank, foil |
 
 ## Decisions These Lock In
 
