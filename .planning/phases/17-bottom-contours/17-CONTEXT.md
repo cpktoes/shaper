@@ -317,6 +317,24 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   today's live litres match none of the Phase 16 pins, so this phase pins its own `phase17-litres-pin.json` before
   `volume.ts` changes.
 
+### Rulings at the executions' looks (the founder, 2026-11-08)
+- **D-40:** **A vee or belly never takes thickness off the stringer; its lift runs out through the rail and thins it — no lip,
+  ever.** At plan 17-03's look the founder saw the 1/4"-everywhere floor (D-33) leave a small downward lip at a thin tip's rail
+  edge and ruled: *"Belly and Vee should never take thickness off the stringer. The result is a lifted, thinned rail … no
+  lips should ever be present. The contour should extend to the rail and make it effectively thinner."* and *"It should not
+  remove overall thickness of the tail station in question."* So: the station's thickness at the stringer is untouched by a
+  vee or belly (the stringer is their zero); the lift runs all the way out to the rail, whatever the foam there, and the rail
+  is simply thinner for it; where the lifted bottom would meet the planed deck the foam ends there (the rail's edge moves in —
+  never a bottom above the deck, never a step back to the planed bottom); the 1/4" floor of D-09 stays at the stringer, where
+  only a concave can reach it, and a concave still never leaves the stringer under 1/4"; a rail left thinner than 1/4" by a
+  lift is flagged in warning ink (the rail form of D-33's sentence), not clamped. D-33's "no cut where the foam is already
+  thinner than 1/4"" is withdrawn for vees and bellies. — **Reversibility:** reversible — one rule in `bottom.ts`'s seam.
+- **D-41:** **RAILS shows the lifted, thinned rail.** *"… which should be carried through to the RAILS page. This should
+  represent the angle in the bottom of the displayed rail in the viewer to represent the real rail shape, post bottom
+  contouring."* So D-22/D-35 are more than a thickness figure: the RAILS page's rail cross-section plots draw the bottom
+  under the rail at the vee's or belly's angle (the real rail shape after the bottom is cut), and the rail's thickness at
+  each station is the thinned figure; a concave, which leaves the rails, changes nothing on RAILS. Carried by plan 17-04.
+
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM
   CONTOURS — Map, measure and cut the bottom"); the BOTTOM tile's picture; the viewer's opening station (the sketch opens
