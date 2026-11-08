@@ -15,6 +15,9 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
 import { inchesToMm, mm } from "./units";
+import { phase16FinCases } from "./__fixtures__/phase16-fin-cases";
+import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
+import { computeFinPlacement, frontFinStation } from "./fins";
 import {
   crossSectionFoam,
   deriveEffectiveRails,
@@ -22,6 +25,7 @@ import {
   deriveQuotedVolumeLitres,
   deriveRailValues,
   deriveTemplateValues,
+  designFinPlacement,
   designSideProfile,
   LIVE_DESIGN_RULES,
   summarizeDesign,
@@ -715,5 +719,46 @@ describe("a blank's custom rocker reaches the side profile and leaves the fit al
 
   it("summarizeDesign gives the natural board's litres", () => {
     expect(summarizeDesign(bentFields).volumeLitres).toBe(summarizeDesign(naturalFields).volumeLitres);
+  });
+});
+
+describe("designFinPlacement — the fins exactly as FINS places them, for the bottom (Phase 17, D-03)", () => {
+  const opened = phase16FinCases().filter((c) => c.label.endsWith("|opened"));
+
+  it("covers every preset as it opens", () => {
+    expect(opened.map((c) => c.preset.id)).toEqual(BOARD_PRESETS.map((p) => p.id));
+  });
+
+  for (const c of opened) {
+    it(`${c.label}: the store's own chain gives the very marks FINS opens with (Import Template on)`, () => {
+      expect(designFinPlacement(recordedPresetDesignFields(c.preset)).marks).toEqual(c.marks);
+    });
+  }
+
+  it("an absent Import Template reads ticked, the store's default", () => {
+    for (const c of opened) {
+      const fields = recordedPresetDesignFields(c.preset);
+      expect(designFinPlacement(fields).marks).toEqual(designFinPlacement({ ...fields, finsImportTemplate: true }).marks);
+    }
+  });
+
+  it("with Import Template off the fins are the standalone calculator's, which never sees the outline", () => {
+    for (const c of opened) {
+      const fields = recordedPresetDesignFields(c.preset);
+      expect(designFinPlacement({ ...fields, finsImportTemplate: false }).marks).toEqual(
+        computeFinPlacement(c.preset.fins, null).marks,
+      );
+    }
+  });
+
+  it("Import Template moves the front fins on a preset it reaches — the reason the bottom reads the store's chain", () => {
+    const moved = opened.filter((c) => {
+      const fields = recordedPresetDesignFields(c.preset);
+      return (
+        frontFinStation(designFinPlacement(fields)) !==
+        frontFinStation(designFinPlacement({ ...fields, finsImportTemplate: false }))
+      );
+    });
+    expect(moved.length).toBeGreaterThan(0);
   });
 });

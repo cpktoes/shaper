@@ -25,7 +25,8 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
-import { wingShareAt } from "./wings";
+import { outlineForFins, wingShareAt } from "./wings";
+import { resolveWingStations } from "./wing-lock";
 import {
   computeCrossSectionVolume,
   computeCrossSectionVolumeWith,
@@ -39,7 +40,13 @@ import {
   type VolumeTemplateValues,
 } from "./volume";
 import type { Litres, Mm } from "./units";
-import type { FinPlacementSpec } from "./fins";
+import {
+  computeFinPlacement,
+  DEFAULT_FIN_PLACEMENT_SPEC,
+  importedFinTailFromOutline,
+  type FinPlacementResult,
+  type FinPlacementSpec,
+} from "./fins";
 
 /**
  * FINS' Import Template mapping, moved here out of `design-store.tsx`'s `effectiveFins` memo
@@ -70,6 +77,27 @@ export function deriveEffectiveFins(
     tailWidth12: geometry.tailWidthAt12in,
     tailShape: outline.tail.kind,
   };
+}
+
+/**
+ * The board's fins exactly as FINS places them (Phase 17, D-03, research Pitfall 1), for the bottom contours to read
+ * where the front fins sit: the store's own chain in the store's order (`components/design/design-store.tsx`) — the
+ * wings placed against their locks (`resolveWingStations`), every wing's corner sharpened for the fins
+ * (`outlineForFins`), Import Template's mapping (`deriveEffectiveFins`) and the real tail the fins read
+ * (`importedFinTailFromOutline`), then `computeFinPlacement`. Absent fins read the store's default fins; an absent
+ * Import Template reads ticked, the store's default — so a preset's front fins read where FINS shows them. It reads
+ * only the outline, the fins and the Import Template box, so any saved design or preset can be passed whole.
+ */
+export function designFinPlacement(
+  fields: Pick<DesignSummaryFields, "outline"> & { fins?: FinPlacementSpec; finsImportTemplate?: boolean },
+): FinPlacementResult {
+  const fins = fields.fins ?? DEFAULT_FIN_PLACEMENT_SPEC;
+  const importTemplate = fields.finsImportTemplate ?? true;
+  const resolvedOutline = resolveWingStations(fields.outline, fins, importTemplate).outline;
+  const finOutline = outlineForFins(resolvedOutline);
+  const finGeometry = buildOutline(finOutline);
+  const effectiveFins = deriveEffectiveFins(fins, importTemplate, finOutline, finGeometry);
+  return computeFinPlacement(effectiveFins, importTemplate ? importedFinTailFromOutline(finGeometry) : null);
 }
 
 /**

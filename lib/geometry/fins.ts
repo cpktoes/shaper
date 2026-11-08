@@ -1669,3 +1669,37 @@ export function computeFinPlacement(
     flags: core.flags,
   };
 }
+
+/** The marks the bottom reads as the front fins: every `front` mark, or every mark when the board has none (a
+ * single fin, or a 2+1's centre — the fin itself). */
+function frontFinMarks(placement: FinPlacementResult): readonly FinMark[] {
+  const front = placement.marks.filter((m) => m.role === "front");
+  return front.length > 0 ? front : placement.marks;
+}
+
+/** The front mark furthest from the tail — the one the bottom's stations are set from. */
+function leadFrontMark(placement: FinPlacementResult): FinMark | null {
+  let lead: FinMark | null = null;
+  for (const m of frontFinMarks(placement)) if (lead === null || m.offTail > lead.offTail) lead = m;
+  return lead;
+}
+
+/**
+ * Where the front fins sit, for the bottom contours (Phase 17, D-03): the largest distance off the tail of the
+ * front fins' trailing edges — or of every fin, when there is no front pair (a single fin's own trailing edge). The
+ * bottom reads it live, so moving the fins moves every cut set from them. 0 on a board with no fins at all.
+ */
+export function frontFinStation(placement: FinPlacementResult): Mm {
+  return leadFrontMark(placement)?.offTail ?? mm(0);
+}
+
+/**
+ * How far the front fins toe in, in degrees, for the bottom's Toe-in channel run (Phase 17, D-10): the angle of the
+ * lead front fin's base against the stringer, `atan2(toe, base length)`. 0 on a single fin (no toe) or a fin with no
+ * base. Never rounded here — a screen rounds it once, as it shows it.
+ */
+export function frontFinToeDegrees(placement: FinPlacementResult): number {
+  const lead = leadFrontMark(placement);
+  if (lead === null || !(lead.baseLength > 0)) return 0;
+  return (Math.atan2(lead.toe, lead.baseLength) * 180) / Math.PI;
+}

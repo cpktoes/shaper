@@ -12,6 +12,8 @@ import {
   finRoundingNote,
   fullSpreadRoundingAside,
   forwardFinsHeading,
+  frontFinStation,
+  frontFinToeDegrees,
   importedFinTailFromOutline,
   isQuadRearModelAvailable,
   offRailTunerRangeIn,
@@ -37,6 +39,7 @@ import { deriveEffectiveFins } from "./design";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { wingFootprint, wingStepShare, type Wing } from "./wings";
+import { phase16FinCases } from "./__fixtures__/phase16-fin-cases";
 
 const TOLERANCE_IN = 1e-9;
 
@@ -1427,5 +1430,53 @@ describe("the rear Off-Rail tuner moves a quad's stringer-placed rear fins toget
     );
     expect(formatMark(r.resolved.rearOffRail, "imperial")).toBe('2 3/16"');
     expect(formatMark(r.resolved.rearHalfSpread, "imperial")).toBe('3 1/8"');
+  });
+});
+
+describe("the front fins as the bottom reads them (Phase 17, D-03, D-10)", () => {
+  const opened = phase16FinCases().filter((c) => c.label.endsWith("|opened"));
+  const frontOf = (marks: readonly { role: string }[]) => {
+    const front = marks.filter((m) => m.role === "front");
+    return front.length > 0 ? front : marks;
+  };
+
+  it("covers all four presets as they open, and a board with no front pair", () => {
+    expect(opened.map((c) => c.preset.id)).toEqual(BOARD_PRESETS.map((p) => p.id));
+    expect(opened.some((c) => !c.marks.some((m) => m.role === "front"))).toBe(true);
+  });
+
+  for (const c of opened) {
+    const placement = computeFinPlacement(c.spec, importedFinTailFromOutline(buildOutline(c.preset.outline)));
+    const front = frontOf(placement.marks) as typeof placement.marks;
+    const lead = front.reduce((a, m) => (m.offTail > a.offTail ? m : a), front[0]);
+
+    it(`${c.label}: the station is the furthest front trailing edge off the tail`, () => {
+      expect(placement.marks).toEqual(c.marks);
+      expect(frontFinStation(placement)).toBe(Math.max(...front.map((m) => m.offTail)));
+    });
+
+    it(`${c.label}: the toe is that fin's own atan2(toe, base), in degrees, never rounded`, () => {
+      const expected = lead.baseLength > 0 ? (Math.atan2(lead.toe, lead.baseLength) * 180) / Math.PI : 0;
+      expect(frontFinToeDegrees(placement)).toBe(expected);
+    });
+  }
+
+  it("a single fin reads its own trailing edge and no toe", () => {
+    const single = opened.find((c) => !c.marks.some((m) => m.role === "front"))!;
+    const placement = computeFinPlacement(single.spec, importedFinTailFromOutline(buildOutline(single.preset.outline)));
+    expect(placement.marks).toHaveLength(1);
+    expect(frontFinStation(placement)).toBe(placement.marks[0].offTail);
+    expect(frontFinToeDegrees(placement)).toBe(0);
+  });
+
+  it("a toed-in pair reads a toe above 0 that a screen rounds once", () => {
+    const toed = opened.filter((c) => c.marks.some((m) => m.role === "front" && m.toe > 0));
+    expect(toed.length).toBeGreaterThan(0);
+    for (const c of toed) {
+      const placement = computeFinPlacement(c.spec, importedFinTailFromOutline(buildOutline(c.preset.outline)));
+      const toe = frontFinToeDegrees(placement);
+      expect(toe).toBeGreaterThan(0);
+      expect(Number.isInteger(toe * 100)).toBe(false);
+    }
   });
 });

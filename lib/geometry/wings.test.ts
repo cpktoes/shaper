@@ -3,8 +3,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/wings-golden.json";
 import { DEFAULT_BOARD_SPEC, TAIL_PRESETS, type OutlineSpec } from "./board";
-import { deriveEffectiveFins } from "./design";
-import { DEFAULT_FIN_PLACEMENT_SPEC, computeFinPlacement, importedFinTailFromOutline, type FinPlacementSpec } from "./fins";
+import { deriveEffectiveFins, designFinPlacement } from "./design";
+import { phase16WingBoards } from "./__fixtures__/phase16-boards";
+import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
+import { DEFAULT_FIN_PLACEMENT_SPEC, computeFinPlacement, frontFinStation, importedFinTailFromOutline, type FinPlacementSpec } from "./fins";
 import { buildOutline, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, mm, mmToInches } from "./units";
@@ -20,6 +22,7 @@ import {
   curveHalfWidthAt,
   effectiveWingRadius,
   maxWingRadius,
+  narrowestOutlineAt,
   nextWing,
   outlineForFins,
   outlineWithoutWings,
@@ -638,6 +641,79 @@ describe("the two sides of a wing meet at half the step (Phase 16, D-37)", () =>
     for (const inches of [0.5, 1, 1.5, 2, 2.5]) {
       expect(at(inches + 0.5)).toBeLessThan(at(inches));
       expect(at(-inches - 0.5)).toBeLessThan(at(-inches));
+    }
+  });
+});
+
+describe("narrowestOutlineAt — the Narrowest outline a winged board's bottom measures from (Phase 17, D-19)", () => {
+  /** The winged Fish of the research and sketch 020: the Fish as it opens, one sharp wing 1/4" deep with a 1" run,
+   * placed by hand 4" ahead of its front fins. */
+  function wingedFish() {
+    const fish = BOARD_PRESETS.find((p) => p.id === "fish")!;
+    const fields = recordedPresetDesignFields(fish);
+    const wing: Wing = {
+      station: mm(frontFinStation(designFinPlacement(fields)) + inchesToMm(4)),
+      depth: inchesToMm(1 / 4),
+      run: inchesToMm(1),
+      radius: mm(0),
+      lock: null,
+      finOffset: mm(0),
+    };
+    return buildOutline({ ...fields.outline, wings: [wing] });
+  }
+  /** The Fish with TEMPLATE's own first and second "+ Add a wing" (the Phase 16 wing set). */
+  function twoWings() {
+    const board = phase16WingBoards().find((b) => b.label === "wing|fish|two")!;
+    return buildOutline(board.fields.outline);
+  }
+  const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9;
+
+  for (const [label, make, count] of [
+    ["the winged Fish", wingedFish, 1],
+    ["a board with two wings", twoWings, 2],
+  ] as const) {
+    describe(label, () => {
+      const g = make();
+      const wings = g.wings ?? [];
+      const behind = Math.min(...wings.map((w) => wingFootprint(w).inner));
+      const ahead = Math.max(...wings.map((w) => wingFootprint(w).stepStart));
+
+      it("the board carries the wings the case means, clear of the tail pod", () => {
+        expect(wings).toHaveLength(count);
+        expect(behind).toBeGreaterThan(g.tailPodStation);
+      });
+
+      it("behind every wing's inner corner it sits on the real rail, at each of the outline's own points", () => {
+        const stations = g.points.map((p) => p.station).filter((s) => s > g.tailPodStation && s < behind);
+        expect(stations.length).toBeGreaterThan(10);
+        for (const s of stations) expect(near(narrowestOutlineAt(g, s), sampleOutline(g, s))).toBe(true);
+      });
+
+      it("at and ahead of every wing it is the curve less every wing's whole depth", () => {
+        const depth = wings.reduce((sum, w) => sum + w.depth, 0);
+        const stations = [ahead, ...Array.from({ length: 40 }, (_, k) => ahead + ((g.length - ahead) * (k + 1)) / 41)];
+        for (const s of stations) {
+          const expected = Math.max(0, curveHalfWidthAt(g, mm(s)) - depth);
+          expect(near(narrowestOutlineAt(g, mm(s)), expected)).toBe(true);
+        }
+      });
+
+      it("through the steps it never stands outside the real rail, so no cut measured from it crosses the rail", () => {
+        for (let k = 0; k <= 40; k++) {
+          const s = mm(behind + ((ahead - behind) * k) / 40);
+          expect(narrowestOutlineAt(g, s)).toBeLessThanOrEqual(sampleOutline(g, s) + 1e-9);
+        }
+      });
+    });
+  }
+
+  it("on a wingless board it IS the curve the shaper drew", () => {
+    for (const preset of BOARD_PRESETS) {
+      const g = buildOutline(preset.outline);
+      for (let k = 0; k <= 48; k++) {
+        const s = mm((g.length * k) / 48);
+        expect(Object.is(narrowestOutlineAt(g, s), curveHalfWidthAt(g, s))).toBe(true);
+      }
     }
   });
 });
