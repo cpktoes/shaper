@@ -9,6 +9,14 @@ tags: [bottom, guide, contours, channels, wings, cartoons, tabs, sidebar, phone,
 
 # Sketch 021: The BOTTOM page's GUIDE tab, with the rulings built in
 
+## Decision so far (the founder, 2026-11-07, second round)
+*"The Guide looks awesome. Love everything about it."* And: *"I don't think we need the 3 readouts. I think the space is
+better used for visualization."* So the three figures under the drawing are gone and the drawings take the room; the
+litres and the stringer are one line at the top of DATA. He could not find the ruler (*"I don't see a ruler of the ticks
+you talk of"*) — it draws only on a wide screen, and only for the cut being edited; `pictures/desktop-ruler-close.png`
+shows it. The starting numbers go to research (*"Do a deeper research to see what is most common for each and report
+back. The one that stands out is the tear drop concave seems a bit short."*).
+
 ## Design Question
 The founder's rulings on sketch 020 (2026-11-07): *"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings
 rule should have a selector, narrowest outline by default. Run default is parallel to stringer."* And one more ask the same
@@ -28,6 +36,8 @@ So this sketch is 020 with the rulings in and the variants gone, plus the tab:
 - **The wing rule is a selector** — a WINGS row above the three sections, shown only on a board with a wing (*1/4" wing at
   11 1/2"*): *Measure Off Rail from* — **Narrowest outline** (opening) or *Natural outline, before the wing* — with one line
   under it saying what each means. The sketch bar's switch is gone.
+- **No readouts in the viewer** (second round): the drawings take the room; *Foam off 0.72 L · 28.89 L now, 29.61 L
+  before contours · the stringer finishes 2 1/16" at the center, planed 2 1/4"* is the first line of DATA.
 - **GUIDE**, the third tab after VIEWER and DATA: nineteen cards — the six nose cuts, six center, six tail, and the channels —
   each with its name, a cartoon, and two sentences: what it is and looks like (in ink), then what it does (muted). The cartoon
   is the board the shaper has open, drawn by the VIEWER's own code: from above with that one cut's shade and the pencil lines
@@ -55,8 +65,8 @@ None — the rulings are built in. The open questions are below.
   stacked sections, say, to show a spiral vee twisting along the tail).
 - Whether a card should be tappable to put that cut on the board (not built; the tab is informational, as asked).
 - The WINGS row's wording and place — above the sections, one setting for the whole bottom.
-- Still open from 019 and 020: the ruler under the section (computer only, the live cut's marks only), the readouts' home,
-  the starting numbers (the todo), and whether a staggered set's deepest station or ends should stagger too.
+- Still open from 019 and 020: the ruler under the section (computer only, the live cut's marks only), the starting
+  numbers (the todo, now under research), and whether a staggered set's deepest station or ends should stagger too.
 
 ## Checked
 Headless Chromium at 1280 × 800 and 390 × 844 (iPhone 14, touch): no errors on any theme, units or board. The bar has no
@@ -69,8 +79,10 @@ nothing on a wingless board, Natural takes and changes its note, and the two rul
 has nineteen cards, every one with a cartoon, sixteen with a shade (every cut but the three flats), the five vees' sections
 all different, the Shortboard's three cuts tagged and the Fish's three when the board changes, three across on a computer
 and one on a phone, scrolling inside the folder; Metric still reads in cm and mm with DATA's two tables; the phone's switch
-has three buttons and the tab strip stays on one line.
+has three buttons and the tab strip stays on one line; the viewer has no readouts and DATA's first line carries the
+litres and the stringer in millimetres.
 
 ## Source
 `sketch-source.tar.gz` holds `board-data.ts` (unchanged from 020), its `boards.json`, the page template, `build.py`, the
-edit script that made this template from 020's, and the Playwright checks that also take the pictures.
+edit script that made this template from 020's, the Playwright checks that also take the pictures, and the script that
+takes the close picture of the ruler.

@@ -143,8 +143,10 @@ so many Vee options, I think we need a clear idea how they differ."* GUIDE, afte
 eighteen names and the channels — each with a cartoon drawn by the VIEWER's own code on the board the shaper has open (from
 above with that one cut's shade and pencil lines, and the section across it at its deepest point, Height ×8) and two sentences,
 what it is and looks like, then what it does. The five vees draw five different sections. The cuts on the board now are
-tagged. Open: the sentences themselves (first drafts), whether the cartoons say enough, and the three items he asked to hear
-more about — the ruler, the readouts' home, the starting numbers.
+tagged. His second round the same day: *"The Guide looks awesome. Love everything about it."*; the three readouts under
+the drawing go (*"the space is better used for visualization"*) and the litres move to DATA's first line; the starting
+numbers go to research. Open: the sentences themselves (first drafts), the ruler (he could not find it — it draws only on a
+wide screen), and the researched starting numbers.
 
 ## Reference Points
 

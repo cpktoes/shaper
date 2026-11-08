@@ -140,9 +140,7 @@ input.rng:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 
 .strow { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 2px 0; font-size: 12px; color: var(--muted); }
 .strow .lbl { margin: 0; font-size: 12px; flex: none; white-space: nowrap; }
 .strow input.rng { margin: 0; flex: 1; }
-.foot { flex: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--faint); display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; }
-.foot .fig dd { font-size: 18px; }
-.footline { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+.footline { font-size: 11px; color: var(--muted); }
 
 /* DATA */
 table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -216,7 +214,6 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
 #app.phone .view.top h3 { display: none; }
 #app.phone .capB { display: none; }
 #app.phone #exag .v { display: none; }
-#app.phone .foot { margin-top: 4px; padding-top: 4px; gap: 4px 8px; }
 #app.phone .side { width: auto; flex: 1; min-height: 0; border-right: 0; border-top: 1px solid var(--faint); }
 #app.phone .side .scroll { padding: 16px; }
 #app.phone .side .scroll::after { height: 53px; }
@@ -227,7 +224,6 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
 #app.phone .inner.text { padding: 8px; }
 #app.phone .ruled { margin-top: 14px; }
 #app.phone .side .rcard { padding: 8px 10px; }
-#app.phone .foot .fig dd { font-size: 16px; }
 #app.phone .view h3 { font-size: 10px; }
 #app.phone .sidesec { display: none; }
 #app.phone .sidesec.shown { display: block; }
@@ -243,7 +239,6 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
 #app .view.top h3 { display: none; }
 #app .capB { display: none; }
 #app #exag .v { display: none; }
-#app .foot { margin-top: 4px; padding-top: 4px; gap: 4px 8px; }
 #app .side { width: auto; flex: 1; min-height: 0; border-right: 0; border-top: 1px solid var(--faint); }
 #app .side .scroll { padding: 16px; }
 #app .side .scroll::after { height: 53px; }
@@ -254,7 +249,6 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
 #app .inner.text { padding: 8px; }
 #app .ruled { margin-top: 14px; }
 #app .side .rcard { padding: 8px 10px; }
-#app .foot .fig dd { font-size: 16px; }
 #app .view h3 { font-size: 10px; }
 #app .sidesec { display: none; }
 #app .sidesec.shown { display: block; }
@@ -339,7 +333,6 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
               <div class="strow"><span class="lbl" id="stLbl"></span><input class="rng" id="stSlider" type="range"></div>
             </div>
           </div>
-          <dl class="foot" id="foot"></dl>
         </div>
         <div class="inner text" id="dataPanel" style="display:none"></div>
         <div class="inner text" id="guidePanel" style="display:none"></div>
@@ -817,11 +810,11 @@ function drawSec() {
 }
 
 /* ============ the readouts and DATA ============ */
-function drawFoot() {
+// the litres and the stringer, one line at the top of DATA — the viewer keeps its room for the drawings (the founder,
+// 2026-11-07: "I don't think we need the 3 readouts. I think the space is better used for visualization.")
+function litresLine() {
   const off = litresOff(); const T = thickAt(B.L / 2); const strg = T - foamOff(B.L / 2, 0);
-  document.getElementById("foot").innerHTML =
-    `<div class="fig"><dt>Foam off</dt><dd>${L1(off)}</dd></div><div class="fig"><dt>Volume now</dt><dd>${L1(B.litres - off)}</dd></div><div class="fig"><dt>Stringer at center</dt><dd>${mark(strg)}</dd></div>` +
-    `<div class="footline">Planed ${mark(T)} at the center · ${L1(B.litres)} before contours · contours only take foam away.</div>`;
+  return `Foam off ${L1(off)} · ${L1(B.litres - off)} now, ${L1(B.litres)} before contours · the stringer finishes ${mark(strg)} at the center, planed ${mark(T)} · contours only take foam away.`;
 }
 function drawData() {
   const rows = []; const step = 6 * IN;
@@ -829,7 +822,7 @@ function drawData() {
   const unit = (f) => metric() ? ` <span style="font-weight:500;letter-spacing:0;text-transform:none">${f}</span>` : "";
   const rowCls = (s) => Math.abs(s - B.fin) < 3 * IN ? "fin" : Math.abs(s - B.wide) < 3 * IN ? "wide" : "";
   const label = (s) => s >= B.L - 1 ? "Nose tip" : s === 0 ? "Tail" : dimBare(s);
-  let h = `<div class="datahead">Depths under a straightedge</div><table class="data"><thead><tr><th>From the tail${unit("cm")}</th><th>Width${unit("cm")}</th><th>Deepest cut${unit("mm")}</th><th>Rail lift${unit("mm")}</th><th>Stringer left${unit("mm")}</th></tr></thead><tbody>`;
+  let h = `<div class="datanotes" style="margin:0 0 14px"><p>${litresLine()}</p></div><div class="datahead">Depths under a straightedge</div><table class="data"><thead><tr><th>From the tail${unit("cm")}</th><th>Width${unit("cm")}</th><th>Deepest cut${unit("mm")}</th><th>Rail lift${unit("mm")}</th><th>Stringer left${unit("mm")}</th></tr></thead><tbody>`;
   for (const s of rows) { const W = curveAt(s), inner = innerAt(s), T = thickAt(s);
     const deep = deepestAt(s), lift = foamOff(s, W), left = inner > 0.5 || W <= 0.5 ? null : T - foamOff(s, 0);
     h += `<tr class="${rowCls(s)}"><td>${label(s)}</td><td>${W > 0.5 ? dimBare(2 * W) : "—"}</td><td>${deep > 0.25 ? markBare(deep) : "—"}</td><td>${lift > 0.25 ? markBare(lift) : "—"}</td><td>${left === null ? "—" : markBare(left)}</td></tr>`; }
@@ -1065,7 +1058,7 @@ let raf = 0;
 function render(full) {
   if (full) { drawInputs(); buildControls(); }
   cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(() => { drawTop(); drawSec(); drawFoot(); if (state.page === "data") drawData(); if (state.page === "guide") drawGuide(); });
+  raf = requestAnimationFrame(() => { drawTop(); drawSec(); if (state.page === "data") drawData(); if (state.page === "guide") drawGuide(); });
 }
 function applyChrome() {
   // the real layout switch is CSS, width alone (the app's own rule); the class only draws the sketch bar's phone frame
