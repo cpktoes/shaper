@@ -472,6 +472,21 @@ export function wingTakeAt(geometry: OutlineGeometry, station: Mm): Mm {
 }
 
 /**
+ * The Narrowest outline (Phase 17, D-19): what a winged board's bottom measures Off Rail from — the real rail
+ * behind each wing's inner corner, and that narrower line carried forward past it, so no cut ever crosses the rail.
+ * It is the curve the shaper drew less every placed wing's FULL depth times its fade to the tail pod — no step
+ * share, unlike `takeAt`, so it never steps where the wing does. On an outline with no wings it IS
+ * `curveHalfWidthAt`; behind the tail pod (where every fade is 0) it is the tail block's half-width.
+ */
+export function narrowestOutlineAt(geometry: OutlineGeometry, station: Mm): Mm {
+  const curve = curveHalfWidthAt(geometry, station);
+  if (!geometry.wings || geometry.wings.length === 0 || station <= geometry.tailPodStation) return curve;
+  let take = 0;
+  for (const p of prepare(geometry.wings)) take += p.depth * fadeAt(geometry, p, station);
+  return mm(Math.max(0, curve - take));
+}
+
+/**
  * Where a wing's shared blend stands along the board (Phase 16, D-37): the middle of its step, and how far the blend
  * reaches each way from there — `WING_SHARE_REACH_IN`, never less than the step's own run.
  */
