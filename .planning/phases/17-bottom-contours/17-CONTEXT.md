@@ -331,7 +331,7 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   thinner than 1/4"" is withdrawn for vees and bellies. — **Reversibility:** reversible — one rule in `bottom.ts`'s seam.
 - **D-41:** **RAILS shows the lifted, thinned rail.** *"… which should be carried through to the RAILS page. This should
   represent the angle in the bottom of the displayed rail in the viewer to represent the real rail shape, post bottom
-  contouring."* So D-22/D-35 are more than a thickness figure: the RAILS page's rail cross-section plots draw the bottom
+  contouring."* — and, a minute later, *"i.e. contour before rail shaping"*: the bottom is cut before the rails are shaped, so the rail RAILS bands is the lifted, thinned one. So D-22/D-35 are more than a thickness figure: the RAILS page's rail cross-section plots draw the bottom
   under the rail at the vee's or belly's angle (the real rail shape after the bottom is cut), and the rail's thickness at
   each station is the thinned figure; a concave, which leaves the rails, changes nothing on RAILS. Carried by plan 17-04.
 
