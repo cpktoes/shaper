@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/bottom-golden.json";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_FLOOR,
@@ -35,7 +35,7 @@ import {
 import type { DesignSummaryFields } from "./design";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
-import { buildOutline } from "./outline";
+import { buildOutline, foamHalfWidth, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, litres, mm, type Mm } from "./units";
 
@@ -594,5 +594,24 @@ describe("bottomLitresLine (D-34): DATA's first line always adds up as printed",
   it("a flat bottom reads 0.00", () => {
     const before = litres(golden.boards[0].facts.litres);
     expect(bottomLitresLine(before, before).foamOff).toBe((0).toFixed(2));
+  });
+});
+
+describe("a diamond's V is cut (D-38): a Panel Vee takes foam off inside the V behind the tail block", () => {
+  it("on every diamond of the surface set, foamOff is above 0 inside the V where the drawn outline is 0", () => {
+    const diamonds = phase16SurfaceBoards().filter((b) => b.label.includes("|diamond|"));
+    expect(diamonds.length).toBeGreaterThan(0);
+    for (const { label, fields } of diamonds) {
+      const board = bottomBoardOf(fields);
+      const geometry = buildOutline(fields.outline);
+      const resolved = resolveBottom(bottomOf(board, { tail: "Panel Vee" }), board);
+      const inV = Array.from({ length: 30 }, (_, k) => mm(k * 3)).filter(
+        (s) => sampleOutline(geometry, s) === 0 && foamHalfWidth(geometry, s) > 0,
+      );
+      expect(inV.length, label).toBeGreaterThan(0);
+      for (const s of inV) {
+        expect(foamOff(resolved, board, s, mm(foamHalfWidth(geometry, s) * 0.9)), `${label} at ${s}`).toBeGreaterThan(0);
+      }
+    }
   });
 });
