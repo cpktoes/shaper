@@ -151,7 +151,8 @@ stays between ROCKER and RAILS with the fins read from the outline (three fin no
 the sentences and shop notes themselves (first drafts), the ruler (he could not find it — it draws only on a wide screen),
 and the shop's own numbers — the researched set went into the sketch on his word (fourth round, 2026-11-08: *"Put the
 proposed starting numbers into the sketch, and I think we're done here. Maybe don't show the finished rails from rails by
-default."*), the rail ghost now off to start. Sketch 021 is done.
+default."*), the rail ghost now off to start; and the section's one scale set so the wide point's section spans 95% of its
+box, the rail-lift value reading under the straightedge there (fifth round). Sketch 021 is done.
 
 ## Reference Points
 

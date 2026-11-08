@@ -734,7 +734,7 @@ function drawSec() {
   const fit = fitBox("sec"); if (!fit) return;
   const { H, px } = fit; const S = strokes(px);
   const s = state.station, Wo = curveAt(s), inner = innerAt(s), T = thickAt(s), Wf = foamAt(s);
-  const Wmax = B.widePointWidth / 2; const kx = Math.min(860, 1000 - 150 * px) / (2 * Wmax); const E = state.exag;
+  const Wmax = B.widePointWidth / 2; const kx = (1000 - 2 * 20 * px) / (2 * Wmax); const E = state.exag;
   // the layout marks row (a ruler under the straightedge) fits on a computer; a phone keeps the depths alone and DATA carries the marks
   const live = cutByKey(state.live); const marks = live ? marksOf(state.live, live, s) : [];
   const ruler = px < 1.6 && marks.length > 0;
@@ -772,30 +772,38 @@ function drawSec() {
     // the stringer, as a faint line down the section (the drawing's centreline)
     if (inner <= 0.5) out += `<line class="stringer" ${S.stringer} x1="${cx}" y1="${(yTop + 2 * px).toFixed(1)}" x2="${cx}" y2="${(hOf(0) - 2 * px).toFixed(1)}"/>`;
   }
-  // the planed bottom: a straightedge laid rail to rail
-  out += `<line class="straight" ${S.station} x1="${(xOf(-Wo) - 30 * px).toFixed(1)}" y1="${y0.toFixed(1)}" x2="${(xOf(Wo) + 30 * px).toFixed(1)}" y2="${y0.toFixed(1)}"/>`;
-  if (px < 1.6) out += `<text class="lab" ${S.lab} x="${(xOf(-Wo) - 30 * px).toFixed(1)}" y="${(y0 + 13 * px).toFixed(1)}" text-anchor="start">Planed bottom</text>`;
+  // the planed bottom: a straightedge laid rail to rail, overhanging as far as the box allows (less at the wide point)
+  const roomOut = 1000 - xOf(Wo); const over = Math.max(6 * px, Math.min(30 * px, roomOut - 2 * px));
+  out += `<line class="straight" ${S.station} x1="${(xOf(-Wo) - over).toFixed(1)}" y1="${y0.toFixed(1)}" x2="${(xOf(Wo) + over).toFixed(1)}" y2="${y0.toFixed(1)}"/>`;
+  if (px < 1.6) out += `<text class="lab" ${S.lab} x="${(xOf(-Wo) - over).toFixed(1)}" y="${(y0 + 13 * px).toFixed(1)}" text-anchor="start">Planed bottom</text>`;
   const shownE = ky / kx; out += `<text class="lab" ${S.lab} x="${(8 * px).toFixed(1)}" y="${(14 * px).toFixed(1)}" text-anchor="start">${shownE < 1.01 ? "True height" : `Height ×${Math.abs(shownE - E) < 0.01 ? E : shownE.toFixed(1)}`}</text>`;
   // the dimensions a shaper measures: the gap under the straightedge at the stringer, the lift at each rail, the stringer left
   const dline = (x, ya, yb, side, text, cls = "", line = 1) => { const t = Math.min(ya, yb), b2 = Math.max(ya, yb); let o = `<line class="dim" ${S.dimw} x1="${x.toFixed(1)}" y1="${t.toFixed(1)}" x2="${x.toFixed(1)}" y2="${b2.toFixed(1)}"/>`;
     o += `<line class="dim" ${S.dimw} x1="${(x - 4 * px).toFixed(1)}" y1="${t.toFixed(1)}" x2="${(x + 4 * px).toFixed(1)}" y2="${t.toFixed(1)}"/><line class="dim" ${S.dimw} x1="${(x - 4 * px).toFixed(1)}" y1="${b2.toFixed(1)}" x2="${(x + 4 * px).toFixed(1)}" y2="${b2.toFixed(1)}"/>`;
+    if (side === "none") return o;
     if (side === "below") o += `<text class="val ${cls}" ${S.val} x="${x.toFixed(1)}" y="${(b2 + (2 + 13 * line) * px).toFixed(1)}" text-anchor="middle">${svgEsc(text)}</text>`;
+    else if (side === "below-end") o += `<text class="val ${cls}" ${S.val} x="${x.toFixed(1)}" y="${(b2 + (2 + 13 * line) * px).toFixed(1)}" text-anchor="end">${svgEsc(text)}</text>`;
     else o += `<text class="val ${cls}" ${S.val} x="${(x + (side === "right" ? 7 * px : -7 * px)).toFixed(1)}" y="${((t + b2) / 2 + 4 * px).toFixed(1)}" text-anchor="${side === "right" ? "start" : "end"}">${svgEsc(text)}</text>`;
     return o; };
   if (Wo > 0.5) {
     const d0 = inner <= 0.5 ? foamOff(s, 0) : 0;
-    if (d0 > 0.25) out += dline(cx, y0, y0 - d0 * ky, "below", `${mark(d0)} at the stringer`);
+    const SHOW = IN / 32; // a gauge label draws only when it reads at least 1/16" (1 mm), never "0""
+    if (d0 >= SHOW) out += dline(cx, y0, y0 - d0 * ky, "below", `${mark(d0)} at the stringer`);
     const dR = foamOff(s, Wo);
     const roomRight = 1000 - xOf(Wo); // drawing units free beyond the right rail
-    const words = roomRight > 150 * px; // the words fit on a computer; a phone keeps the value alone
-    if (dR > 0.25) { out += `<line class="ext" ${S.line} x1="${xOf(Wo).toFixed(1)}" y1="${(y0 - dR * ky).toFixed(1)}" x2="${(xOf(Wo) + 22 * px).toFixed(1)}" y2="${(y0 - dR * ky).toFixed(1)}"/>` + dline(xOf(Wo) + 16 * px, y0, y0 - dR * ky, "right", `${mark(dR)}${words ? " rail lift" : ""}`);
+    const words = px < 1.6; // the words fit on a computer; a phone keeps the value alone
+    const beside = roomRight > (words ? 110 : 60) * px; // room for the value beside the rail; near the wide point it reads under the straightedge instead
+    if (dR >= SHOW && beside) { out += `<line class="ext" ${S.line} x1="${xOf(Wo).toFixed(1)}" y1="${(y0 - dR * ky).toFixed(1)}" x2="${(xOf(Wo) + 22 * px).toFixed(1)}" y2="${(y0 - dR * ky).toFixed(1)}"/>` + dline(xOf(Wo) + 16 * px, y0, y0 - dR * ky, "right", `${mark(dR)}${words ? " rail lift" : ""}`);
       out += `<line class="ext" ${S.line} x1="${xOf(-Wo).toFixed(1)}" y1="${(y0 - dR * ky).toFixed(1)}" x2="${(xOf(-Wo) - 22 * px).toFixed(1)}" y2="${(y0 - dR * ky).toFixed(1)}"/>` + dline(xOf(-Wo) - 16 * px, y0, y0 - dR * ky, "left", mark(dR)); }
-    if (!broken && inner <= 0.5 && T * ky > 30 * px && roomRight > 70 * px && (words || dR <= 0.25)) { const xr = Math.min(1000 - (words ? 90 : 40) * px, xOf(Wo) + (dR > 0.25 ? (words ? 110 : 60) * px : (words ? 50 : 30) * px)); const yb = y0 - d0 * ky;
+    else if (dR >= SHOW) { const xd = xOf(Wo) + 8 * px, xl = xOf(-Wo) - 8 * px, yt = y0 - dR * ky; // the dimension lines just outside each rail, the one value under the straightedge at the right rail
+      out += `<line class="ext" ${S.line} x1="${xOf(Wo).toFixed(1)}" y1="${yt.toFixed(1)}" x2="${(xd + 6 * px).toFixed(1)}" y2="${yt.toFixed(1)}"/><line class="ext" ${S.line} x1="${xOf(-Wo).toFixed(1)}" y1="${yt.toFixed(1)}" x2="${(xl - 6 * px).toFixed(1)}" y2="${yt.toFixed(1)}"/>`;
+      out += dline(xl, y0, yt, "none", "") + dline(xd, y0, yt, "below-end", `${mark(dR)}${words ? " rail lift" : ""}`); }
+    if (!broken && inner <= 0.5 && T * ky > 30 * px && roomRight > 70 * px && (roomRight > 150 * px || dR < SHOW)) { const xr = Math.min(1000 - (words ? 90 : 40) * px, xOf(Wo) + (dR > 0.25 ? (words ? 110 : 60) * px : (words ? 50 : 30) * px)); const yb = y0 - d0 * ky;
       out += `<line class="ext" ${S.line} x1="${cx}" y1="${yTop.toFixed(1)}" x2="${xr.toFixed(1)}" y2="${yTop.toFixed(1)}"/><line class="ext" ${S.line} x1="${cx}" y1="${yb.toFixed(1)}" x2="${xr.toFixed(1)}" y2="${yb.toFixed(1)}"/>` + dline(xr - 5 * px, yTop, yb, "right", `${mark(T - d0)}${words ? " stringer left" : ""}`); }
     // the deepest gap off the stringer (a double's trough, a channel's floor) when it is not at the stringer
     let best = 0, yBest = 0; for (let j = 0; j <= 80; j++) { const y = Wo * j / 80; const f = foamOff(s, y); if (f > best + 1e-9) { best = f; yBest = y; } }
     // on its own line when the stringer's gap is labelled too, so the two never run together on a phone
-    if (yBest > 3 && yBest < Wo - 3 && best > d0 + 0.25 && best > 0.25) out += dline(xOf(yBest), y0, y0 - best * ky, "below", `${mark(best)} ${inChannel(s, yBest) ? "in the channel" : "in the trough"}`, "", d0 > 0.25 ? 2 : 1);
+    if (yBest > 3 && yBest < Wo - 3 && best > d0 + 0.25 && best >= SHOW) out += dline(xOf(yBest), y0, y0 - best * ky, "below", `${mark(best)} ${inChannel(s, yBest) ? "in the channel" : "in the trough"}`, "", d0 >= SHOW ? 2 : 1);
     // the layout marks: a ruler laid from the stringer under the section, a tick and its distance at every mark of the live cut
     if (ruler) {
       const yR = y0 + 40 * px, far = Math.max(...marks.map((mk) => mk.y));

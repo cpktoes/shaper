@@ -40,6 +40,15 @@ flat panel to 4" from the rail; the channels 5/16" deep from a foot ahead of the
 finished rail from RAILS is off until ticked. The sketch is done; the sentences, shop notes and numbers stay his to correct
 as the phase is planned.
 
+## Fifth round (the founder, 2026-11-08): the section fills the box
+*"Can we maximize the width of the cross-section? I like that it doesn't scale according to station width, but perhaps we
+can make the section near full screen width at the board's wide point."* The section keeps one scale for every station,
+and that scale now puts the wide point's section across 95% of the box (20 dots of air each side) instead of 83%. The
+straightedge overhangs the rails as far as the box allows. Near the wide point there is no longer room beside the rail
+for the rail-lift value, so it reads under the straightedge at the right rail (*3/8" rail lift*), with its dimension lines
+just outside each rail; at a narrow station it reads beside the rail as before, and the stringer-left dimension draws
+only when there is room for it. A gauge label is drawn only when it would read at least 1/16" (1 mm), never *0"*.
+
 ## Design Question
 The founder's rulings on sketch 020 (2026-11-07): *"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings
 rule should have a selector, narrowest outline by default. Run default is parallel to stringer."* And one more ask the same
@@ -108,7 +117,8 @@ has nineteen cards, every one with a cartoon and a How to shape note, sixteen wi
 all different, the Shortboard's three cuts tagged and the Fish's three when the board changes, three across on a computer
 and one on a phone, scrolling inside the folder; Metric still reads in cm and mm with DATA's two tables; the phone's switch
 has three buttons and the tab strip stays on one line; the viewer has no readouts and DATA's first line carries the
-litres and the stringer in millimetres; the finished rail is off to start and draws when ticked; the channels open
+litres and the stringer in millimetres; the wide point's section spans 95% of its box, and the Longboard's rail-lift
+value reads under the straightedge inside the box there and beside the rail 12" from the tail; the finished rail is off to start and draws when ticked; the channels open
 5/16" deep from a foot ahead of the front fins with the outer pair longest; every board's opening cuts keep Start ≥
 Deepest ≥ End on the researched numbers (the Longboard's teardrop, belly and rolled vee take 3.33 L, the Shortboard's deep
 single 0.75 L, the Fish's panel vee 0.31 L).
