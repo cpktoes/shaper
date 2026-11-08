@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: planning
-stopped_at: "Phase 16 complete 2026-11-06: go-live 2 LIVE (main 1c6dc5ef) and confirmed by the founder; only the Shape3D test stays open (16-UAT.md and a todo)"
-last_updated: "2026-11-07T07:28:05.850Z"
+stopped_at: "Phase 17 context gathered 2026-11-08: the brief locked, 28 decisions in 17-CONTEXT.md; the screen contract (/gsd-ui-phase 17) next"
+last_updated: "2026-11-08T09:27:26.153Z"
 last_activity: 2026-11-06
 last_activity_desc: "Phase 16 complete: the 3D screen and Export 3D Files are live, confirmed by the founder"
 progress:
@@ -572,9 +572,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-07T07:30:00.000Z
-Stopped at: Phase 16 complete 2026-11-06: go-live 2 LIVE (main 1c6dc5ef) and confirmed by the founder; only the Shape3D test stays open (16-UAT.md and a todo)
-Resume file: .planning/phases/16-3d-board-and-cnc-export/16-UAT.md
+Last session: 2026-11-08T09:27:26.039Z
+Stopped at: Phase 17 context gathered 2026-11-08: the brief locked, 28 decisions in 17-CONTEXT.md; the screen contract (/gsd-ui-phase 17) next
+Resume file: .planning/phases/17-bottom-contours/17-CONTEXT.md
 Next action: the founder's answers on sketch 019 (BOTTOM contours), then open the next phase; Phase 13's two remaining items and the Shape3D todo stay open
 
 ## Operator Next Steps
