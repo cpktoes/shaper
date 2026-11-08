@@ -843,6 +843,7 @@ tail`, `data-lock-exempt`. Moving it moves the cutting line; dragging the line m
 - **RAILS** (D-22): no control or word changes. Whether its imported readout card's three thicknesses
   (`lib/geometry/imported-readout.ts:99-111`, captioned `From ROCKER & FOIL`) read the lifted rail is D-22's research
   (open item 3).
+- **The order form already has an optional third sheet** — the Rail Band Instructions (`components/summary/order-form.tsx:262`), found by the planning research: the BOTTOM CONTOURS page's "Page N of M" and the sheet count include it, and both flat cases (two sheets, and three with the instructions ticked) stay byte-identical to today's.
 - **The order form** (D-29, the founder 2026-11-08: *"a more substantial way of portraying how to shape contours … for now
   a new page would be acceptable and I'll likely reorganize the sheet later"*): a **third page, `BOTTOM CONTOURS`**, after
   page 2, **printed only when the bottom has a cut** — a flat board's two pages are byte-identical to today's. In the order
@@ -1022,7 +1023,9 @@ relations, never typed (CLAUDE.md Rule 1).
 | `e2e/site-footer.spec.ts:44-50` | `DESIGN_SCREENS` | Add `/design/bottom` |
 | `e2e/board-lock-screens.spec.ts:578` | The walk of screens greyed in turn | Add BOTTOM: pickers and sliders greyed, the view controls live |
 | `e2e/site-nav-width.spec.ts` | The row at 820–870 and 1024–1280 | Re-run with §10's gaps |
-| `e2e/desktop-baseline.spec.ts` | Five pictures | Re-record, nav row only (§9) |
+| `e2e/desktop-baseline.spec.ts` | Six pictures (the `three-d` picture was added at 16-12; this contract's first draft said five) | Re-record all six, nav row only (§9) |
+| `e2e/phone-home.spec.ts`, `error-pages.spec.ts`, `legal-pages.spec.ts`, `phone-screens.spec.ts`, `e2e/prod/phone-controls-clear-undo.spec.ts` | Count or walk the screens (found by the planning research) | Eight |
+| `e2e/contact.spec.ts`, `privacy.spec.ts`, `old-safari-buttons.spec.ts:146` | Hand-written screen lists (the research) | Add `/design/bottom` |
 | `lib/screen-steps.test.ts:7-15`, `:70-78` | A local seven | Eight, `Bottom` third |
 | `components/design/board-lock-scope.test.ts` | The control inventory | Finds every new control tied to the lock or marked view-only |
 
