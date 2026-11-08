@@ -15,6 +15,7 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
+import { NOTCH_WALL_MIN, type BottomBoard } from "./bottom";
 import { prepareBlank, thinningStartsOf, type PreparedBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
@@ -23,9 +24,9 @@ import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import type { FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
-import { buildOutline, foamHalfWidth, outlinePlanArea, tailCutStation } from "./outline";
+import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
-import { outlineForFins, wingShareAt } from "./wings";
+import { curveHalfWidthAt, narrowestOutlineAt, outlineForFins, wingShareAt } from "./wings";
 import { resolveWingStations } from "./wing-lock";
 import {
   computeCrossSectionVolume,
@@ -39,10 +40,12 @@ import {
   type VolumeSpec,
   type VolumeTemplateValues,
 } from "./volume";
-import type { Litres, Mm } from "./units";
+import { mm, type Litres, type Mm } from "./units";
 import {
   computeFinPlacement,
   DEFAULT_FIN_PLACEMENT_SPEC,
+  frontFinStation,
+  frontFinToeDegrees,
   importedFinTailFromOutline,
   type FinPlacementResult,
   type FinPlacementSpec,
@@ -98,6 +101,44 @@ export function designFinPlacement(
   const finGeometry = buildOutline(finOutline);
   const effectiveFins = deriveEffectiveFins(fins, importTemplate, finOutline, finGeometry);
   return computeFinPlacement(effectiveFins, importTemplate ? importedFinTailFromOutline(finGeometry) : null);
+}
+
+/**
+ * The board facts the bottom is read against (Phase 17, D-19, D-38), built once per board: its length, the wide point
+ * and its width, the front fins and their raw toe (`frontFinStation` / `frontFinToeDegrees` on FINS' own placement,
+ * D-03, D-10), and six readers along its length —
+ *
+ * - `railAt`: the rail a vee or belly runs out to — the drawn rail, or a diamond's V where that is wider, because the V
+ *   is foam and is cut (D-38): `max(sampleOutline, foamHalfWidth)`;
+ * - `curveAt`: the curve drawn before any wing (`curveHalfWidthAt`, the Natural outline);
+ * - `narrowestAt`: the Narrowest outline (`narrowestOutlineAt`, D-19);
+ * - `foamAt`: the foam actually there (`foamHalfWidth`);
+ * - `thicknessAt`: the planed thickness, the side profile's own;
+ * - `notchInner`: a swallow's notch inside wall — the drawn curve less the foam, where that is more than
+ *   `NOTCH_WALL_MIN` (the sketch's `innerAt`), 0 elsewhere.
+ */
+export function designBottomBoard(
+  outline: OutlineSpec,
+  geometry: OutlineGeometry,
+  profile: BoardSideProfile,
+  placement: FinPlacementResult,
+): BottomBoard {
+  return {
+    length: outline.length,
+    widePoint: geometry.widePointStation,
+    widePointWidth: outline.widePointWidth,
+    frontFins: frontFinStation(placement),
+    toeDegrees: frontFinToeDegrees(placement),
+    railAt: (s) => mm(Math.max(sampleOutline(geometry, s), foamHalfWidth(geometry, s))),
+    curveAt: (s) => curveHalfWidthAt(geometry, s),
+    narrowestAt: (s) => narrowestOutlineAt(geometry, s),
+    foamAt: (s) => foamHalfWidth(geometry, s),
+    thicknessAt: (s) => profile.thicknessAt(s),
+    notchInner: (s) => {
+      const d = sampleOutline(geometry, s) - foamHalfWidth(geometry, s);
+      return mm(d > NOTCH_WALL_MIN ? d : 0);
+    },
+  };
 }
 
 /**
