@@ -304,7 +304,7 @@ table.data tr.fin td, table.data tr.wide td { color: var(--ink); }
         <div class="sub">Map, measure and cut the bottom</div>
         <div class="ruled">Inputs</div>
         <div class="rcard" id="inputsCard"></div>
-        <div style="padding-top:12px"><label class="check"><input type="checkbox" id="showRail" checked>Show the finished rail from RAILS</label></div>
+        <div style="padding-top:12px"><label class="check"><input type="checkbox" id="showRail">Show the finished rail from RAILS</label></div>
         <div id="wingRow"></div>
         <div id="sections"></div>
         <nav class="stepnav" aria-label="Back and Next"><a href="#">← Rocker</a><a href="#">Rails →</a></nav>
@@ -384,32 +384,36 @@ const sm = (t) => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, t)))) / 2;
 const PINCH = 3 * IN; // a concave narrower than this shallows out in proportion, so a tip never gets a slot
 
 // the founder's 18 names (2026-11-06): six per section. Starting numbers in inches, from the tail, as functions of the board.
-// Forum-derived, not his — the todo of 2026-11-06 asks him to set each from the shop.
+// Set 2026-11-08 from what shapers publish (the research in the todo 2026-11-06-set-the-bottom-contours-starting-numbers-
+// from-the-shop.md, applied at the founder's word): a teardrop 36" long and 1/4" deep, 2 1/4" in from the rails; a belly
+// 3/8" deep, deepest at the wide point; a single 1/4" deepest between the wide point and the front fins, flattened in the
+// last 4"; a tail double 1/8" a side, deepest at the front fins; a panel vee 3/16" from a third of the length up, peaking
+// at the front fins; the tri-plane's flat panel to 4" from the rail. Still his to correct.
 const i = (v) => v * IN;
 const NAMES = {
   nose: [
     { name: "Flat Entry", kind: "flat" },
-    { name: "Rolled Belly Entry", kind: "belly", d: (b) => ({ start: b.L, deep: b.L - i(10), end: b.L * 0.55, depth: i(3 / 16), smooth: 100 }) },
-    { name: "Teardrop Nose Concave", kind: "single", d: (b) => ({ off: i(2), start: b.L - i(1), deep: b.L - i(10), end: b.L - i(22), depth: i(1 / 4), smooth: 70, pointed: true }) },
-    { name: "Blended Nose Concave", kind: "single", d: (b) => ({ off: i(1.5), start: b.L - i(2), deep: b.L - i(14), end: b.L * 0.5, depth: i(1 / 8), smooth: 70 }) },
-    { name: "Slight Single Concave Entry", kind: "single", d: (b) => ({ off: i(1.5), start: b.L - i(2), deep: b.L - i(18), end: b.L * 0.5, depth: i(1 / 16), smooth: 50 }) },
-    { name: "Reverse Vee Nose", kind: "vee", d: (b) => ({ start: b.L - i(3), deep: b.L - i(14), end: b.L * 0.6, depth: i(1 / 8), smooth: 0 }) },
+    { name: "Rolled Belly Entry", kind: "belly", d: (b) => ({ start: b.L, deep: b.L * 2 / 3, end: b.L * 0.55, depth: i(3 / 8), smooth: 100 }) },
+    { name: "Teardrop Nose Concave", kind: "single", d: (b) => ({ off: i(2.25), start: b.L - i(3), deep: b.L - i(20), end: b.L - i(38), depth: i(1 / 4), smooth: 70, pointed: true }) },
+    { name: "Blended Nose Concave", kind: "single", d: (b) => ({ off: i(1.625), start: b.L - i(2), deep: b.L - i(12), end: b.L - i(36), depth: i(3 / 16), smooth: 70 }) },
+    { name: "Slight Single Concave Entry", kind: "single", d: (b) => ({ off: i(2), start: b.L - i(12), deep: b.wide, end: b.wide - i(6), depth: i(1 / 16), smooth: 50 }) },
+    { name: "Reverse Vee Nose", kind: "vee", d: (b) => ({ start: b.L - i(3), deep: b.L * 2 / 3, end: b.fin + i(4), depth: i(3 / 16), smooth: 0 }) },
   ],
   center: [
     { name: "Flat Center", kind: "flat" },
-    { name: "Deep Single Concave", kind: "single", d: (b) => ({ off: i(2), start: b.L - i(16), deep: (b.wide + b.fin) / 2, end: b.fin - i(4), depth: i(1 / 4), smooth: 50 }) },
-    { name: "Shallow Single Concave", kind: "single", d: (b) => ({ off: i(2), start: b.L - i(16), deep: (b.wide + b.fin) / 2, end: b.fin - i(4), depth: i(1 / 8), smooth: 50 }) },
-    { name: "Early Double Concave", kind: "double", d: (b) => ({ off: i(2), offS: i(1), trough: i(4), start: b.wide + i(8), deep: b.wide, end: b.fin + i(2), depth: i(1 / 8), smooth: 60 }) },
-    { name: "Continuous Belly / Rolled Mid", kind: "belly", d: (b) => ({ start: b.L - i(8), deep: b.L / 2, end: i(8), depth: i(1 / 4), smooth: 100 }) },
-    { name: "Tri-Plane Hull Center", kind: "vee", d: (b) => ({ offS: i(2.5), start: b.L - i(14), deep: b.L / 2, end: i(10), depth: i(1 / 4), smooth: 0 }) },
+    { name: "Deep Single Concave", kind: "single", d: (b) => ({ off: i(2), start: b.L - i(16), deep: (b.wide + b.fin) / 2, end: i(4), depth: i(1 / 4), smooth: 50 }) },
+    { name: "Shallow Single Concave", kind: "single", d: (b) => ({ off: i(2), start: b.L * 2 / 3, deep: b.fin, end: i(4), depth: i(1 / 8), smooth: 50 }) },
+    { name: "Early Double Concave", kind: "double", d: (b) => ({ off: i(2), offS: i(1), trough: i(4), start: b.wide, deep: b.fin + i(6), end: b.fin + i(2), depth: i(1 / 8), smooth: 60 }) },
+    { name: "Continuous Belly / Rolled Mid", kind: "belly", d: (b) => ({ start: b.L - i(8), deep: b.wide, end: b.fin, depth: i(3 / 8), smooth: 100 }) },
+    { name: "Tri-Plane Hull Center", kind: "vee", d: (b) => ({ offS: b.widePointWidth / 2 - i(4), start: b.L - i(14), deep: b.L / 2, end: b.fin, depth: i(1 / 8), smooth: 0 }) },
   ],
   tail: [
     { name: "Flat Exit", kind: "flat" },
-    { name: "Double Concave Exit", kind: "double", d: (b) => ({ off: i(1.5), offS: i(3 / 4), trough: i(3), start: b.fin + i(8), deep: b.fin, end: 0, depth: i(1 / 8), smooth: 50 }) },
-    { name: "Panel Vee", kind: "vee", d: (b) => ({ start: i(16), deep: 0, end: 0, depth: i(1 / 4), smooth: 0 }) },
-    { name: "Spiral Vee", kind: "double", d: (b) => ({ off: i(1.5), offS: i(3 / 4), trough: i(3), start: b.fin + i(8), deep: b.fin, end: 0, depth: i(1 / 8), smooth: 50, vee: i(3 / 16) }) },
-    { name: "Rolled Vee", kind: "vee", d: (b) => ({ start: i(16), deep: 0, end: 0, depth: i(1 / 4), smooth: 60 }) },
-    { name: "Extending Single Concave", kind: "single", d: (b) => ({ off: i(1.75), start: b.fin + i(12), deep: b.fin + i(4), end: 0, depth: i(3 / 16), smooth: 50 }) },
+    { name: "Double Concave Exit", kind: "double", d: (b) => ({ off: i(1), offS: i(3 / 4), trough: i(3), start: b.fin + i(12), deep: b.fin, end: i(4), depth: i(1 / 8), smooth: 50 }) },
+    { name: "Panel Vee", kind: "vee", d: (b) => ({ start: b.L / 3, deep: b.fin, end: 0, depth: i(3 / 16), smooth: 0 }) },
+    { name: "Spiral Vee", kind: "double", d: (b) => ({ off: i(1), offS: i(3 / 4), trough: i(3), start: b.fin + i(12), deep: b.fin, end: 0, depth: i(1 / 8), smooth: 50, vee: i(3 / 16) }) },
+    { name: "Rolled Vee", kind: "vee", d: (b) => ({ start: b.L / 3, deep: b.fin, end: 0, depth: i(1 / 4), smooth: 60 }) },
+    { name: "Extending Single Concave", kind: "single", d: (b) => ({ off: i(2), start: b.fin + i(12), deep: b.fin, end: i(4), depth: i(3 / 16), smooth: 50 }) },
   ],
 };
 // channels: cut last, in shop order, into whatever the three sections leave. Count 4, 6 or 8 (two, three or four a side).
@@ -423,7 +427,9 @@ const NAMES = {
 // Every board opens with no channels and a set runs Parallel to the stringer until the shaper says otherwise (the founder,
 // 2026-11-07: "Channel Default = none", "Run default is parallel to stringer").
 const channelWidth = (count) => i(count === 4 ? 2.5 : count === 8 ? 1.25 : 1.75);
-const makeChannels = (b, count) => ({ name: "Channels", kind: "channels", count, depth: i(1 / 4), width: channelWidth(count), offS: 0, off: 0, start: b.fin + i(10), deep: b.fin, end: 0, smooth: 0, run: "parallel", longer: "inner", stagger: i(2), trough: 0, vee: 0, pointed: false, spiral: false });
+// 5/16" deep (shapers publish 1/4"–3/8"), from a foot ahead of the front fins, the outer pair longest (Col Smith, Myers,
+// Littlewood; Byrne ran the inner longest) — the research of 2026-11-08
+const makeChannels = (b, count) => ({ name: "Channels", kind: "channels", count, depth: i(5 / 16), width: channelWidth(count), offS: 0, off: 0, start: b.fin + i(12), deep: b.fin, end: 0, smooth: 0, run: "parallel", longer: "outer", stagger: i(2), trough: 0, vee: 0, pointed: false, spiral: false });
 // the Run menu shares its row with Longest, half the sidebar each, so its names are short enough to read whole
 const RUNS = (b) => [["parallel", "Parallel"], ["rail", "With the rail"], ["toe", b.toeDeg > 0 ? `Toe-in · ${b.toeDeg.toFixed(1)}°` : "Toe-in (no toe)"]];
 // what Off Rail is measured from on a winged board — a selector, Narrowest outline by default (the founder, 2026-11-07)
@@ -446,7 +452,8 @@ function makeCut(sectionKey, name, b) {
 const namesFor = (key) => NAMES[key];
 
 /* ============ state ============ */
-let state = { board: "shortboard", theme: "daylight", units: "imperial", frame: false, exag: 4, page: "viewer", active: "center", live: "center", showRail: true, station: 0, cuts: null, ch: null, wingRule: "narrow" };
+let state = { board: "shortboard", theme: "daylight", units: "imperial", frame: false, exag: 4, page: "viewer", active: "center", live: "center", showRail: false, station: 0, cuts: null, ch: null, wingRule: "narrow" };
+// showRail opens off (the founder, 2026-11-08: "Maybe don't show the finished rails from rails by default")
 let B = null;
 function setBoard(id) {
   state.board = id; B = DATA.boards.find((b) => b.id === id);
@@ -977,7 +984,7 @@ function drawGuide() {
 /* ============ the sidebar's sections ============ */
 const CONTROLS = {
   off: { label: "Off Rail", fam: "mark", range: [0, 6], hints: ["At the rail", null] },
-  offS: { label: "Off Stringer", fam: "mark", range: [0, 6], hints: ["At the stringer", null] },
+  offS: { label: "Off Stringer", fam: "mark", range: [0, 9], hints: ["At the stringer", null] },
   trough: { label: "Trough At", fam: "mark", range: [0.5, 8], suffix: " from the stringer" },
   width: { label: "Channel Width", fam: "mark", range: [0.5, 4] },
   start: { label: "Start", fam: "station" }, deep: { label: "Deepest At", fam: "station" }, end: { label: "End", fam: "station" },
