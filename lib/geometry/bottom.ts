@@ -437,3 +437,64 @@ export function isDefaultBottom(bottom: BoardBottom): boolean {
 export function refAt(board: BottomBoard, rule: BottomWingRule, s: Mm): Mm {
   return rule === "natural" ? board.curveAt(s) : board.narrowestAt(s);
 }
+
+/* ============ the one number (D-05, D-06) ============ */
+
+/** The across-section curve of a concave (u 0..1, r = smoothness 0..1): deepest at u = 0, nothing at u = 1. */
+export const sec = (u: number, r: number): number => (1 - r) * (1 - u) + r * (1 + Math.cos(Math.PI * u)) / 2;
+/** The across-section curve of a lift: nothing at the stringer (u = 0), full at the rail (u = 1). */
+export const rise = (u: number, r: number): number => (1 - r) * u + r * (1 - Math.cos(Math.PI * u / 2));
+/** The fade along the board, 0 to 1 (the sketch's `sm`). */
+export const smoothstep = (t: number): number => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, t)))) / 2;
+
+/**
+ * How much of a cut's depth it has at station `s`, given its Start `a`, Deepest At `p` and End `b` (stations from the
+ * tail): 0 outside the cut, 1 at its deepest, a smoothstep between — and full depth to the tip where a start or an end
+ * lands on one (D-06). The sketch's `fadeAt`.
+ */
+export function fadeAt(a: number, p: number, b: number, s: number, length: number): number {
+  if (s > a + STATION_GUARD || s < b - STATION_GUARD) return 0;
+  if (s >= p) { if (a - p < FADE_GUARD) return 1; if (a >= length - TIP_TOLERANCE) return 1; return smoothstep((a - s) / (a - p)); }
+  if (p - b < FADE_GUARD) return 1; if (b <= TIP_TOLERANCE) return 1; return smoothstep((s - b) / (p - b));
+}
+
+/** A concave's half-width at a station: the reference rail less Off Rail (the sketch's `cutHalfWidth`). */
+export function cutHalfWidth(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm): Mm {
+  const C = refAt(board, rule, s) - cut.offRail;
+  return mm(C);
+}
+
+/**
+ * One cut alone: the foam it takes off at station `s`, `y` out from the stringer (the sketch's `cutOff`). A flat takes
+ * nothing. A single concave is `depth × fade × min(1, C / PINCH) × sec(y / C, r)` inside its half-width C — narrower
+ * than 3" it shallows in proportion, so a tip never gets a slot. A vee or a belly lifts from Off Stringer out to the rail
+ * `railAt(s)`: `depth × fade × rise((y − F) / (W − F), r)`. Nothing where the board has no rail. A cut may run past its
+ * own section; whatever it overlaps, it adds to.
+ */
+export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): Mm {
+  const W = board.railAt(s);
+  if (W <= 0) return mm(0);
+  if (cut.kind === "flat" || cut.depth <= 0) return mm(0);
+  const f = fadeAt(cut.start, cut.deepest, cut.end, s, board.length); if (f <= 0) return mm(0);
+  const r = cut.smoothness / 100; let out = 0;
+  if (cut.kind === "single") {
+    const C = cutHalfWidth(cut, board, rule, s);
+    if (C > 0 && y < C) out += cut.depth * f * Math.min(1, C / PINCH) * sec(y / C, r);
+  } else { // vee or belly: a lift from the stringer (or the flat panel's edge, Off Stringer) out to the rail
+    const F = cut.offStringer; if (y > F && W > F) out += cut.depth * f * rise((y - F) / (W - F), r);
+  }
+  return mm(out);
+}
+
+/**
+ * THE one number (D-05): the foam the bottom takes off at station `s`, `y` out from the stringer — the sections' cuts
+ * added in shop order (every term is ≥ 0, so the order is the listing order, not an arithmetic one), never below 0, and
+ * never so deep that less than 1/4" of foam is left under the planed thickness (D-09, `BOTTOM_FLOOR`). The channels join
+ * the sum in 17-05.
+ */
+export function foamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): Mm {
+  if (board.railAt(s) <= 0) return mm(0);
+  let v = 0;
+  for (const section of BOTTOM_SECTIONS) v += cutFoamOff(resolved[section], board, resolved.wingRule, s, y);
+  return mm(Math.min(Math.max(0, v), Math.max(0, board.thicknessAt(s) - BOTTOM_FLOOR)));
+}
