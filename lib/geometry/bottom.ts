@@ -22,7 +22,7 @@
  */
 import type { BoardSideProfile } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, mm, type Litres, type Mm } from "./units";
 
 /* ============ the names ============ */
 
@@ -497,4 +497,52 @@ export function foamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: 
   let v = 0;
   for (const section of BOTTOM_SECTIONS) v += cutFoamOff(resolved[section], board, resolved.wingRule, s, y);
   return mm(Math.min(Math.max(0, v), Math.max(0, board.thicknessAt(s) - BOTTOM_FLOOR)));
+}
+
+/* ============ the one number, handed to the litres (D-05, D-21) ============ */
+
+/** A reader that remembers its last station: the seam asks for every point of one section at the same station. */
+function lastStation(read: (s: Mm) => Mm): (s: Mm) => Mm {
+  let at = Number.NaN;
+  let value = mm(0);
+  return (s) => {
+    if (!Object.is(s, at)) {
+      at = s;
+      value = read(s);
+    }
+    return value;
+  };
+}
+
+/**
+ * The bottom as the litres, the 3D board and the CNC files read it (D-05, D-21): at a station, `across` millimetres in
+ * from the section's own inside edge, the foam the bottom takes off — `foamOff` at `across` plus the swallow's notch
+ * wall (`notchInner`, 0 elsewhere), so a cut is read at its true distance from the stringer and the notch itself, which
+ * is air, is never cut. `design.ts` builds it once per board and hands it to `volume.ts` as `foamOffAt`; the board's
+ * readers are asked once per station, the same numbers either way.
+ */
+export function bottomSampler(resolved: ResolvedBottom, board: BottomBoard): (station: Mm, across: Mm) => Mm {
+  const read: BottomBoard = {
+    ...board,
+    railAt: lastStation((s) => board.railAt(s)),
+    curveAt: lastStation((s) => board.curveAt(s)),
+    narrowestAt: lastStation((s) => board.narrowestAt(s)),
+    foamAt: lastStation((s) => board.foamAt(s)),
+    thicknessAt: lastStation((s) => board.thicknessAt(s)),
+    notchInner: lastStation((s) => board.notchInner(s)),
+  };
+  return (station, across) => foamOff(resolved, read, station, mm(across + read.notchInner(station)));
+}
+
+/**
+ * DATA's first line (D-34): the litres now, the litres before the bottom, and the foam off between them, each to two
+ * decimals. The foam off is worked out from the two figures as printed, in whole hundredths, so the line always adds
+ * up as a shaper reads it: `before` less `foamOff` is `now`, digit for digit. A flat bottom reads `0.00`.
+ */
+export function bottomLitresLine(now: Litres, before: Litres): { now: string; before: string; foamOff: string } {
+  const printedNow = now.toFixed(2);
+  const printedBefore = before.toFixed(2);
+  const hundredths = (printed: string) => Math.round(Number(printed) * 100);
+  const off = hundredths(printedBefore) - hundredths(printedNow);
+  return { now: printedNow, before: printedBefore, foamOff: (off / 100).toFixed(2) };
 }

@@ -7,6 +7,8 @@ import {
   BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
   bottomHasCut,
+  bottomLitresLine,
+  bottomSampler,
   cutFoamOff,
   cutHalfWidth,
   cutKind,
@@ -35,7 +37,7 @@ import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_R
 import { frontFinStation } from "./fins";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, litres, mm, type Mm } from "./units";
 
 /*
  * Every expected figure here is the founder's sketch 021's own, executed on the app's five boards by
@@ -535,5 +537,62 @@ describe("the tests type no expected figure (Rule 1, T-17-01)", () => {
     const self = readFileSync(new URL("./bottom.test.ts", import.meta.url), "utf8");
     const figures = new RegExp(["0\\." + "54", "0\\." + "75", "0\\." + "31", "3\\." + "33", "0\\." + "26"].join("|"));
     expect(self).not.toMatch(figures);
+  });
+});
+
+/* ============ 17-03: the one number handed to the litres, and DATA's first line ============ */
+
+describe("bottomSampler (D-05, D-21): foamOff read from the section's own inside edge", () => {
+  it("on a board with no notch it is foamOff itself, at every golden probe", () => {
+    const board = boardById("shortboard");
+    const resolved = resolveBottom(bottomOf(board, { center: "Deep Single Concave", tail: "Rolled Vee" }), board);
+    const sample = bottomSampler(resolved, board);
+    const grid = gridOf("shortboard");
+    grid.s.forEach((sv, k) => {
+      for (const yv of grid.y[k]) {
+        expect(sample(mm(sv), mm(yv))).toBe(foamOff(resolved, board, mm(sv), mm(yv)));
+      }
+    });
+  });
+
+  it("inside a swallow's notch it reads the cut at its true distance from the stringer: across plus the notch wall", () => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|swallow|hard")!.fields;
+    const board = bottomBoardOf(fields);
+    const resolved = resolveBottom(bottomOf(board, { tail: "Panel Vee" }), board);
+    const sample = bottomSampler(resolved, board);
+    const notchStations = Array.from({ length: 40 }, (_, k) => mm(k * 2)).filter((s) => board.notchInner(s) > 0);
+    expect(notchStations.length).toBeGreaterThan(3);
+    for (const s of notchStations) {
+      for (const across of [0, 10, 40, 80].map(mm)) {
+        expect(sample(s, across)).toBe(foamOff(resolved, board, s, mm(across + board.notchInner(s))));
+      }
+    }
+  });
+});
+
+describe("bottomLitresLine (D-34): DATA's first line always adds up as printed", () => {
+  it("prints the two litres to two decimals and the foam off as the printed before less the printed now", () => {
+    const line = bottomLitresLine(litres(28.894), litres(29.613));
+    expect(line.now).toBe((28.894).toFixed(2));
+    expect(line.before).toBe((29.613).toFixed(2));
+    const hundredths = (printed: string) => Math.round(Number(printed) * 100);
+    expect(hundredths(line.foamOff)).toBe(hundredths(line.before) - hundredths(line.now));
+    expect(line.foamOff).toMatch(/^\d+\.\d\d$/);
+  });
+
+  it("adds up as printed on every board's litres with every cut of this wave, however the two figures round", () => {
+    for (const { id } of BOARDS) {
+      for (const c of nonFlatCutCases.filter((x) => x.board === id)) {
+        const before = golden.boards.find((b) => b.id === id)!.facts.litres;
+        const line = bottomLitresLine(litres(before - c.litresOff), litres(before));
+        const hundredths = (printed: string) => Math.round(Number(printed) * 100);
+        expect(hundredths(line.before) - hundredths(line.foamOff)).toBe(hundredths(line.now));
+      }
+    }
+  });
+
+  it("a flat bottom reads 0.00", () => {
+    const before = litres(golden.boards[0].facts.litres);
+    expect(bottomLitresLine(before, before).foamOff).toBe((0).toFixed(2));
   });
 });

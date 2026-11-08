@@ -4,6 +4,9 @@ import { buildOutline, foamHalfWidth as foamHalfWidthOf, sampleOutline, MEASURE_
 import { placedHalfSection } from "./board-surface";
 import {
   type BoardSection,
+  BOTTOM_COLUMN_FLOOR,
+  bottomedHalfSection,
+  type CrossSectionVolumeInput,
   boardSectionEnds,
   boardSections,
   boardSectionsWith,
@@ -50,7 +53,7 @@ import {
   SECTION_POINTS,
   sectionFinishedRail,
 } from "./finished-rail";
-import { DEFAULT_FOIL_SPEC, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
+import { DEFAULT_FOIL_SPEC, FOIL_THICKNESS_RANGE_IN, foilStationPoints, sampleFoil, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
@@ -1987,5 +1990,112 @@ describe("a domed deck's rail is built from its actual thickness (the founder, 2
     const rounded: RailCharacterRule = { ...SMOOTH_SURFACE_FADE, fit: { ...SMOOTH_SURFACE_FADE.fit!, rail: "sixteenths" } };
     const input = inputOf(boards.find((board) => board.label === "shortboard|asis|hard")!.fields);
     expect(Object.is(computeCrossSectionVolume(input).volumeMm3, computeCrossSectionVolumeWith(input, rounded).volumeMm3)).toBe(true);
+  });
+});
+
+describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom and leave its deck (bottomedHalfSection)", () => {
+  // A real finished half: the stock board's section at its centre, sampled exactly as the 3D board samples it.
+  const geometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
+  const input: CrossSectionVolumeInput = {
+    halfWidthAt: (station) => foamHalfWidthOf(geometry, station),
+    foil: DEFAULT_FOIL_SPEC,
+    rails: DEFAULT_RAIL_BAND_SPEC,
+    length: DEFAULT_BOARD_SPEC.outline.length,
+  };
+  const [centre] = boardSections(input, [mm(DEFAULT_BOARD_SPEC.outline.length / 2)]);
+  const half = sampledFinishedRail(centre.result!, centre.domed, centre.halfWidth);
+  const DECK = SECTION_POINTS.deck;
+
+  /** The deck run's height at `y`, worked out afresh from the half's own deck points. */
+  const deckAt = (points: readonly (readonly [number, number])[], y: number): number => {
+    if (y <= points[0][0]) return points[0][1];
+    for (let k = 0; k < DECK - 1; k++) {
+      const [y0, h0] = points[k];
+      const [y1, h1] = points[k + 1];
+      if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+    }
+    return points[DECK - 1][1];
+  };
+
+  it("the half has a planed bottom to lift: several bottom points stand at height 0", () => {
+    expect(half.slice(DECK).filter(([, h]) => h === 0).length).toBeGreaterThan(3);
+  });
+
+  it("with nothing to take off, every point comes back as the very same pair and nothing is floored", () => {
+    const { half: out, flooredAt } = bottomedHalfSection(half, () => mm(0), BOTTOM_COLUMN_FLOOR);
+    expect(out).toHaveLength(half.length);
+    out.forEach((point, k) => {
+      expect(point).toBe(half[k]);
+      expect(Object.is(point[0], half[k][0]) && Object.is(point[1], half[k][1])).toBe(true);
+    });
+    expect(flooredAt).toEqual([]);
+  });
+
+  it("the deck run and the rail's outermost point never move; a planed-bottom point rises by exactly the foam off", () => {
+    const lift = (y: Mm) => mm(1 + y / 100); // a few millimetres, never near the floor at the centre
+    const { half: out, flooredAt } = bottomedHalfSection(half, lift, BOTTOM_COLUMN_FLOOR);
+    for (let k = 0; k < DECK; k++) {
+      expect(Object.is(out[k][0], half[k][0]) && Object.is(out[k][1], half[k][1]), `deck point ${k}`).toBe(true);
+    }
+    expect(out[DECK - 1]).toBe(half[DECK - 1]);
+    let bottomPoints = 0;
+    for (let k = DECK; k < half.length; k++) {
+      expect(out[k][0]).toBe(half[k][0]);
+      if (half[k][1] === 0) {
+        bottomPoints++;
+        expect(out[k][1]).toBe(lift(mm(half[k][0])));
+      } else {
+        // the rail's lower run rises in proportion: never below where it was, never above the deck over it
+        expect(out[k][1]).toBeGreaterThanOrEqual(half[k][1]);
+        expect(out[k][1]).toBeLessThanOrEqual(Math.max(half[k][1], deckAt(half, half[k][0])));
+      }
+    }
+    expect(bottomPoints).toBeGreaterThan(3);
+    expect(flooredAt).toEqual([]);
+  });
+
+  it("asked for more than the foam holds, no bottom point leaves less than 1/4\" under the deck, no column inverts, and each shortened point is listed", () => {
+    const { half: out, flooredAt } = bottomedHalfSection(half, () => mm(1000), BOTTOM_COLUMN_FLOOR);
+    const listed = new Set<number>(flooredAt);
+    for (let k = DECK; k < half.length; k++) {
+      const [y, h] = out[k];
+      const top = deckAt(half, y);
+      expect(Number.isFinite(h)).toBe(true);
+      expect(h, `point ${k} above the deck`).toBeLessThanOrEqual(top + 1e-9);
+      // the foam left over the point is at least its share of the floor
+      expect(top - h).toBeGreaterThanOrEqual(((top - half[k][1]) * BOTTOM_COLUMN_FLOOR) / top - 1e-9);
+      if (half[k][1] === 0) {
+        expect(h).toBeLessThanOrEqual(top - BOTTOM_COLUMN_FLOOR + 1e-9);
+        expect(listed.has(y)).toBe(true);
+      }
+    }
+    expect(flooredAt.length).toBeGreaterThan(0);
+  });
+
+  it("the floor is the app's own thinnest foil, 1/4\"", () => {
+    expect(BOTTOM_COLUMN_FLOOR).toBe(inchesToMm(FOIL_THICKNESS_RANGE_IN.min));
+  });
+
+  it("a column with no deck over it (a tip's edge) is left as it is, and nothing is NaN", () => {
+    const edge = half.map(([y]) => [y, 0] as [number, number]);
+    const { half: out, flooredAt } = bottomedHalfSection(edge, () => mm(5), BOTTOM_COLUMN_FLOOR);
+    out.forEach((point, k) => expect(point).toBe(edge[k]));
+    expect(flooredAt).toEqual([]);
+  });
+
+  it("with no sampler the sections are the ones they always were; with one only the bottom moves and the area follows the ring", () => {
+    const stations = [mm(input.length * 0.3), mm(input.length * 0.5), mm(input.length * 0.7)];
+    const plain = boardSections(input, stations);
+    const cut = boardSections({ ...input, foamOffAt: () => mm(3) }, stations);
+    cut.forEach((section, i) => {
+      const before = plain[i].drawn ?? plain[i].blended ?? sampledFinishedRail(plain[i].result!, plain[i].domed, plain[i].halfWidth);
+      expect(plain[i].drawn).toBeUndefined();
+      expect(section.drawn).toBeDefined();
+      expect(section.drawn!.slice(0, DECK)).toEqual(before.slice(0, DECK));
+      expect(section.area - plain[i].area).toBeCloseTo(sampledSectionArea(section.drawn!) - sampledSectionArea(before), 6);
+      expect(section.area).toBeLessThan(plain[i].area);
+      expect(section.blendArea).toBe(plain[i].blendArea);
+      expect(section.flooredAt).toBeUndefined();
+    });
   });
 });
