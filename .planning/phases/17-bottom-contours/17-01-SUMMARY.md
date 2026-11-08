@@ -129,7 +129,9 @@ Nothing on any screen. This is the arithmetic underneath the coming BOTTOM page:
 
 None.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* The figures stand as drawn: the Shortboard, Fish, Longboard and winged Fish match the sketch to two decimals, the Mid-length takes 1.23 L with the app's own fins at 12", the Fish's toe reads 2.0°. Merged as 4627bc5a.
 
 `.planning/phases/17-bottom-contours/pictures/17-01-the-sketch-on-the-app-boards.png` — awaiting "approved" or
 changes.

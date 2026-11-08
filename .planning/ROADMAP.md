@@ -391,7 +391,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R15 (locked in `phases/17-bottom-contours/17-SPEC.md` from the founder's rulings on sketches 019–021, 2026-11-06 to 2026-11-08)
 **Brief:** `phases/17-bottom-contours/17-SPEC.md`; the decided sketches `.planning/sketches/019-bottom-contours/`, `020-bottom-channels/` and `021-bottom-guide/` (its `index.html` is the page as it will be built); the starting numbers and their sources in `todos/pending/2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`
 **Depends on:** Phase 16 (`boardSections`, the 3D surface and the CNC writers read the cut), Phase 14 (the planed thickness and the side profile the cut comes out of), quick 261102-gec (the finished rail the ghost draws), quick 261103-gcm (the foam at every station)
-**Plans:** 16 plans
+**Plans:** 1/16 plans executed
 
 Success criteria:
 
@@ -405,7 +405,7 @@ Success criteria:
 Plans:
 **Wave 1**
 
-- [ ] 17-01-PLAN.md — Today's litres pinned first; the front fins, their toe and the Narrowest outline as board facts; the sketch's own maths run on the app's boards as the golden
+- [x] 17-01-PLAN.md — Today's litres pinned first; the front fins, their toe and the Narrowest outline as board facts; the sketch's own maths run on the app's boards as the golden
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -496,4 +496,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
-| 17. BOTTOM — Bottom Contours | 0/16 | Planned | - |
+| 17. BOTTOM — Bottom Contours | 1/16 | In Progress|  |
