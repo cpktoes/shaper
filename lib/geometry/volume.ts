@@ -666,8 +666,8 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  *
  * With the bottom contours (Phase 17, D-21, `CrossSectionVolumeInput.foamOffAt`), `drawn` is also the half with its
  * bottom lifted (`bottomedHalfSection`), last of all, and `area` is corrected by the change in the ring's own area —
- * so the litres count the very ring the 3D board and the CNC files carry. `flooredAt` says where the 1/4" floor cut it
- * shallower than set.
+ * so the litres count the very ring the 3D board and the CNC files carry. `thinAt` says where a vee or belly leaves
+ * the rail under 1/4", and `railEdgeAt` where it lifted the bottom to the deck and the foam ends.
  */
 export interface BoardSection {
   station: Mm;
@@ -684,9 +684,13 @@ export interface BoardSection {
   sharpBottomTuck: boolean;
   area: number;
   blendArea: number;
-  /** Where the 1/4" floor shortened the bottom's cut at this station (Phase 17, D-33): the distances across, in from
-   * the section's inside edge, of every point whose cut the floor made shallower. Absent when nothing was shortened. */
-  flooredAt?: Mm[];
+  /** Where a vee or a belly leaves the rail thinner than 1/4" at this station (Phase 17, D-40): the distances across,
+   * in from the section's inside edge, of every bottom point with less than 1/4" of foam under the deck, the rail edge
+   * included — flagged for the warning, never cut shallower. Absent when the foam is 1/4" or more everywhere. */
+  thinAt?: Mm[];
+  /** Where a vee or a belly lifted the bottom to the deck (D-40): the section's foam ends here, a knife edge, this far
+   * across from its inside edge. Absent when the foam runs out to the rail as built. */
+  railEdgeAt?: Mm;
 }
 
 /**
@@ -992,8 +996,9 @@ export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
 /** The rule the live litres and the 3D board use. */
 const LIVE_SECTION_RULE: SectionRule = SMOOTH_SURFACE_FADE;
 
-/** The least foam the bottom contours ever leave under the deck at any column (Phase 17, D-33): the app's own thinnest
- * foil, 1/4". */
+/** The foam a shaper wants left under the deck (Phase 17, D-09): the app's own thinnest foil, 1/4". A concave is held
+ * to it at the stringer (bottom.ts's `foamOff`); a vee or a belly that leaves a rail thinner than this is flagged
+ * (`BoardSection.thinAt`), never cut shallower (D-40). */
 export const BOTTOM_COLUMN_FLOOR: Mm = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
 
 /** The deck run's height at `y` across (indices 0 to the rail's outermost point): straight between its two points
@@ -1009,38 +1014,90 @@ function deckHeightAt(half: HalfSectionPoints, y: number): number {
   return half[last][1];
 }
 
+/** How many halvings find where a lift meets the deck: far finer than a thousandth of a millimetre on any rail. */
+const RAIL_EDGE_STEPS = 48;
+
+/** The index of the bottom edge in a half: where the rail's run ends and the bottom's begins. */
+const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+
 /**
- * A finished half-section with its bottom lifted by the bottom contours (Phase 17, D-05, D-21, D-33; research
- * Pattern 2): the deck run — the stringer on the deck out to the rail's outermost point — never moves, because a
- * contour only takes foam from below. Every later point, `h` above the planed bottom at `y` across, rises by
- * `f · (1 − min(1, h / top))`, where `top` is the deck's height at that `y` and `f` the foam off there held so that at
- * least `floor` of foam is left under the deck: `min(foamOffAt(y), max(0, top − floor))`. So a point on the planed
- * bottom rises by exactly `f`, the rail's lower run rises in proportion and the rail's outermost point stays put. A
- * column with no deck above it (`top ≤ 0`, a tip's edge) is left as it is, never 0/0.
+ * A finished half-section with its bottom lifted by the bottom contours (Phase 17, D-05, D-21, D-40; research
+ * Pattern 2). The deck — the stringer on the deck out to the rail's outermost point — never moves: a contour only takes
+ * foam from below.
  *
- * Every point that does not move is returned as the very same pair, so with no foam off the half comes back point for
- * point. `flooredAt` lists the distances across of every point whose cut the floor made shallower.
+ * - Every point under the deck at `y` across, `h` above the planed bottom, rises by `f · (1 − h / a)`, with
+ *   `f = foamOffAt(y)` and `a` the height of the rail's outermost point: a point on the bottom by exactly `f`, the
+ *   rail's lower run less the higher it stands, the outermost point not at all — a lifted, thinned rail (the founder,
+ *   D-40). Out from the stringer a vee's or belly's lift only grows, so the underside only rises (no lip), and while
+ *   `f` is under `a` no point passes `a`, under the deck everywhere. Where `f` reaches `a` the rail there is cut away
+ *   and the underside is the lift's own line, `f`.
+ * - Nothing is clamped (D-40: "no lips should ever be present. The contour should extend to the rail and make it
+ *   effectively thinner."). Where the lifted bottom reaches the deck — on the bottom, or past the rail's outermost
+ *   height, where the rail is cut away and the bottom's line runs on — the foam ENDS: walking the underside out from
+ *   the stringer, the first place it meets the deck is found by halving and becomes the section's rail edge, a knife
+ *   edge on the deck (`railEdgeAt`). Every point outboard of it is drawn there, so no point of the bottom stands above
+ *   the deck and the bottom never steps back down.
+ *
+ * `thinAt` lists the distances across, on the bottom, where less than `floor` of foam is left under the deck, the rail
+ * edge included: the warning's to word, never the maths' to clamp. A column with no deck over it (a tip's edge) is left
+ * as it is, never 0/0. Every point that does not move is returned as the very same pair, so with no foam off the half
+ * comes back point for point.
  */
 export function bottomedHalfSection(
   half: HalfSectionPoints,
   foamOffAt: (across: Mm) => Mm,
   floor: Mm,
-): { half: HalfSectionPoints; flooredAt: Mm[] } {
-  const flooredAt: Mm[] = [];
-  const out = half.map((point, k): [number, number] => {
-    if (k < SECTION_POINTS.deck) return point;
+): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm } {
+  const deckCount = SECTION_POINTS.deck;
+  const out: [number, number][] = half.slice() as [number, number][];
+  const thinAt: Mm[] = [];
+  const apex = half[deckCount - 1][1];
+  /** The underside's height at a point `h` above the planed bottom, `y` across. */
+  const under = (y: number, h: number): number => {
+    const f = Math.max(0, foamOffAt(mm(y)));
+    if (f === 0) return h;
+    if (!(apex > 0) || f >= apex) return Math.max(h, f);
+    return h + f * (1 - Math.min(1, h / apex));
+  };
+  // The underside, walked out from the stringer: the bottom's run backwards, then the rail's run up to its outermost
+  // point. That point is the deck's and stays, unless a lift past its height ends the foam before it.
+  for (let k = half.length - 1; k >= deckCount - 1; k--) {
+    const point = half[k];
     const [y, h] = point;
-    const asked = foamOffAt(mm(y));
-    if (!(asked > 0)) return point;
+    const onRail = k < BOTTOM_EDGE_INDEX;
     const top = deckHeightAt(half, y);
-    if (!(top > 0) || h >= top) return point;
-    const room = Math.max(0, top - floor);
-    if (asked > room) flooredAt.push(mm(y));
-    const f = Math.min(asked, room);
-    if (f === 0) return point;
-    return [y, h + f * (1 - Math.min(1, h / top))];
-  });
-  return { half: out, flooredAt };
+    const raised = under(y, h);
+    if (raised === h || !(top > 0)) continue;
+    if (raised < top) {
+      out[k] = [y, raised];
+      if (!onRail && top - raised < floor) thinAt.push(mm(y));
+      continue;
+    }
+    // The lifted underside reaches the deck between the point inboard and this one: find where, and end the foam there.
+    const [y0, h0] = half[k + 1] ?? point;
+    const below = (t: number) => {
+      const yt = y0 + (y - y0) * t;
+      return under(yt, h0 + (h - h0) * t) < deckHeightAt(half, yt);
+    };
+    let inside = 0;
+    let outside = 1;
+    if (k + 1 < half.length && below(0)) {
+      for (let i = 0; i < RAIL_EDGE_STEPS; i++) {
+        const mid = (inside + outside) / 2;
+        if (below(mid)) inside = mid;
+        else outside = mid;
+      }
+    } else {
+      outside = 0;
+    }
+    const edgeY = y0 + (y - y0) * outside;
+    const edge: [number, number] = [edgeY, deckHeightAt(half, edgeY)];
+    for (let j = k; j >= deckCount; j--) out[j] = edge;
+    for (let j = 0; j < deckCount; j++) if (half[j][0] > edgeY) out[j] = edge;
+    thinAt.push(mm(edgeY));
+    return { half: out, thinAt, railEdgeAt: mm(edgeY) };
+  }
+  return { half: out, thinAt };
 }
 
 /**
@@ -1155,7 +1212,8 @@ export function boardSectionsWith(
       ...built,
       drawn: cut.half,
       area: built.area + (sampledSectionArea(cut.half) - sampledSectionArea(half)),
-      ...(cut.flooredAt.length > 0 ? { flooredAt: cut.flooredAt } : {}),
+      ...(cut.thinAt.length > 0 ? { thinAt: cut.thinAt } : {}),
+      ...(cut.railEdgeAt !== undefined ? { railEdgeAt: cut.railEdgeAt } : {}),
     };
   };
 

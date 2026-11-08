@@ -6,23 +6,15 @@ import { DEFAULT_BLANK_CUT, type BoardBlank } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./board";
 import { buildBoardProfile } from "./board-profile";
-import { railBlendArea, sampledFinishedRail, sampledSectionArea, sectionFinishedRail } from "./finished-rail";
+import { railBlendArea, sectionFinishedRail } from "./finished-rail";
 import { BOARD_PRESETS } from "./presets";
 import { presetSummary } from "./summary-line";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
-import {
-  boardSections,
-  BOTTOM_COLUMN_FLOOR,
-  bottomedHalfSection,
-  computeCrossSectionVolume,
-  computeVolume,
-  DEFAULT_VOLUME_SPEC,
-  simpsonIntegrate,
-} from "./volume";
-import { inchesToMm, mm, type Mm } from "./units";
+import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
+import { inchesToMm, mm } from "./units";
 import { phase16FinCases } from "./__fixtures__/phase16-fin-cases";
 import bottomGolden from "./__fixtures__/bottom-golden.json";
 import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
@@ -937,45 +929,11 @@ describe("the litres count the bottom's cut (Phase 17, D-05, D-20, D-21, D-33)",
     },
   );
 
-  it.each(["shortboard", "fishwing"])("%s: its opening cuts fall within 0.5% of the sketch's own figure", (id) => {
+  it.each(["shortboard", "fish", "fishwing"])("%s: its opening cuts fall within 0.5% of the sketch's own figure", (id) => {
     const fields = fieldsOf(id);
     const op = opening(id);
     const names = Object.fromEntries(BOTTOM_SECTIONS.map((s) => [s, op.cuts[s].name]));
     expect(Math.abs(fallOf(fields, bottomOf(fields, names)) / op.litresOff - 1)).toBeLessThan(0.005);
-  });
-
-  it("the Fish's opening Panel Vee stands short of the sketch only by the foam the 1/4\" column floor keeps at the tail's rails (D-33)", () => {
-    const fields = fieldsOf("fish");
-    const op = opening("fish");
-    const names = Object.fromEntries(BOTTOM_SECTIONS.map((s) => [s, op.cuts[s].name]));
-    const bottom = bottomOf(fields, names);
-    const geometry = buildOutline(fields.outline);
-    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
-    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
-    const flatInput = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
-    const cutInput = designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board: bottomBoardOf(fields) });
-    const flat = boardSections(flatInput);
-    // The foam each station loses with its cut held at a given floor, integrated over the litres' own stations.
-    const fallAt = (floor: Mm) => {
-      const lost = flat.map((section) => {
-        if (!section.result) return 0;
-        const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
-        const cut = bottomedHalfSection(half, (y) => cutInput.foamOffAt!(section.station, y), floor);
-        return sampledSectionArea(half) - sampledSectionArea(cut.half);
-      });
-      const stations = flat.map((section) => section.station);
-      const corner = stations.indexOf(flatInput.cutStation ?? mm(0));
-      const run = (from: number, to: number) => simpsonIntegrate(lost.slice(from, to + 1), (stations[to] - stations[from]) / (to - from));
-      return (corner > 0 ? run(0, corner) + run(corner, stations.length - 1) : run(0, stations.length - 1)) / 1e6;
-    };
-    const app = fallOf(fields, bottom);
-    // the arithmetic above is the litres' own: at the app's floor it reads the app's fall (the tail roll aside)
-    expect(Math.abs(fallAt(BOTTOM_COLUMN_FLOOR) / app - 1)).toBeLessThan(1e-3);
-    // the floor bites, so the fall is less than the sketch's; with no column floor it is within 0.5%
-    expect(boardSections(cutInput).some((section) => section.flooredAt)).toBe(true);
-    expect(app).toBeLessThan(op.litresOff);
-    expect(fallAt(mm(0))).toBeGreaterThan(app);
-    expect(Math.abs(fallAt(mm(0)) / op.litresOff - 1)).toBeLessThan(0.005);
   });
 
   it("the Mid-length with a Rolled Belly Entry, a Deep Single and a Rolled Vee falls by what the three take off one at a time", () => {

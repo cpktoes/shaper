@@ -1993,7 +1993,7 @@ describe("a domed deck's rail is built from its actual thickness (the founder, 2
   });
 });
 
-describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom and leave its deck (bottomedHalfSection)", () => {
+describe("Phase 17 D-21, D-40: the bottom contours lift a finished half's bottom and leave its deck (bottomedHalfSection)", () => {
   // A real finished half: the stock board's section at its centre, sampled exactly as the 3D board samples it.
   const geometry = buildOutline(DEFAULT_BOARD_SPEC.outline);
   const input: CrossSectionVolumeInput = {
@@ -2005,6 +2005,8 @@ describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom
   const [centre] = boardSections(input, [mm(DEFAULT_BOARD_SPEC.outline.length / 2)]);
   const half = sampledFinishedRail(centre.result!, centre.domed, centre.halfWidth);
   const DECK = SECTION_POINTS.deck;
+  const APEX = half[DECK - 1];
+  const halfWidth = APEX[0];
 
   /** The deck run's height at `y`, worked out afresh from the half's own deck points. */
   const deckAt = (points: readonly (readonly [number, number])[], y: number): number => {
@@ -2016,60 +2018,90 @@ describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom
     }
     return points[DECK - 1][1];
   };
+  /** The underside walked out from the stringer, the rail's outermost point last: never lower than the point inboard. */
+  const expectRisingUnderside = (out: readonly (readonly [number, number])[]) => {
+    for (let k = out.length - 1; k > DECK - 1; k--) {
+      expect(out[k - 1][1], `underside point ${k - 1}`).toBeGreaterThanOrEqual(out[k][1] - 1e-9);
+    }
+  };
+  /** No point of the underside above the deck over it. */
+  const expectUnderDeck = (out: readonly (readonly [number, number])[]) => {
+    for (let k = DECK; k < out.length; k++) expect(out[k][1]).toBeLessThanOrEqual(deckAt(out, out[k][0]) + 1e-9);
+  };
+  /** A vee's lift: nothing at the stringer, `depth` at the rail's outermost point. */
+  const vee = (depth: number) => (y: Mm) => mm((depth * y) / halfWidth);
 
   it("the half has a planed bottom to lift: several bottom points stand at height 0", () => {
     expect(half.slice(DECK).filter(([, h]) => h === 0).length).toBeGreaterThan(3);
   });
 
-  it("with nothing to take off, every point comes back as the very same pair and nothing is floored", () => {
-    const { half: out, flooredAt } = bottomedHalfSection(half, () => mm(0), BOTTOM_COLUMN_FLOOR);
-    expect(out).toHaveLength(half.length);
-    out.forEach((point, k) => {
-      expect(point).toBe(half[k]);
-      expect(Object.is(point[0], half[k][0]) && Object.is(point[1], half[k][1])).toBe(true);
-    });
-    expect(flooredAt).toEqual([]);
+  it("with nothing to take off, every point comes back as the very same pair and nothing is flagged", () => {
+    const cut = bottomedHalfSection(half, () => mm(0), BOTTOM_COLUMN_FLOOR);
+    expect(cut.half).toHaveLength(half.length);
+    cut.half.forEach((point, k) => expect(point).toBe(half[k]));
+    expect(cut.thinAt).toEqual([]);
+    expect(cut.railEdgeAt).toBeUndefined();
   });
 
-  it("the deck run and the rail's outermost point never move; a planed-bottom point rises by exactly the foam off", () => {
-    const lift = (y: Mm) => mm(1 + y / 100); // a few millimetres, never near the floor at the centre
-    const { half: out, flooredAt } = bottomedHalfSection(half, lift, BOTTOM_COLUMN_FLOOR);
-    for (let k = 0; k < DECK; k++) {
-      expect(Object.is(out[k][0], half[k][0]) && Object.is(out[k][1], half[k][1]), `deck point ${k}`).toBe(true);
-    }
-    expect(out[DECK - 1]).toBe(half[DECK - 1]);
+  it("the deck never moves; a planed-bottom point rises by exactly the foam off; the rail's outermost point stays", () => {
+    const lift = (y: Mm) => mm(1 + y / 100); // a few millimetres, far under the rail's height at the centre
+    const cut = bottomedHalfSection(half, lift, BOTTOM_COLUMN_FLOOR);
+    for (let k = 0; k < DECK; k++) expect(cut.half[k], `deck point ${k}`).toBe(half[k]);
     let bottomPoints = 0;
     for (let k = DECK; k < half.length; k++) {
-      expect(out[k][0]).toBe(half[k][0]);
+      expect(cut.half[k][0]).toBe(half[k][0]);
       if (half[k][1] === 0) {
         bottomPoints++;
-        expect(out[k][1]).toBe(lift(mm(half[k][0])));
+        expect(cut.half[k][1]).toBe(lift(mm(half[k][0])));
       } else {
-        // the rail's lower run rises in proportion: never below where it was, never above the deck over it
-        expect(out[k][1]).toBeGreaterThanOrEqual(half[k][1]);
-        expect(out[k][1]).toBeLessThanOrEqual(Math.max(half[k][1], deckAt(half, half[k][0])));
+        expect(cut.half[k][1]).toBeGreaterThanOrEqual(half[k][1]);
       }
     }
     expect(bottomPoints).toBeGreaterThan(3);
-    expect(flooredAt).toEqual([]);
+    expect(cut.railEdgeAt).toBeUndefined();
+    expectUnderDeck(cut.half);
   });
 
-  it("asked for more than the foam holds, no bottom point leaves less than 1/4\" under the deck, no column inverts, and each shortened point is listed", () => {
-    const { half: out, flooredAt } = bottomedHalfSection(half, () => mm(1000), BOTTOM_COLUMN_FLOOR);
-    const listed = new Set<number>(flooredAt);
-    for (let k = DECK; k < half.length; k++) {
-      const [y, h] = out[k];
-      const top = deckAt(half, y);
-      expect(Number.isFinite(h)).toBe(true);
-      expect(h, `point ${k} above the deck`).toBeLessThanOrEqual(top + 1e-9);
-      // the foam left over the point is at least its share of the floor
-      expect(top - h).toBeGreaterThanOrEqual(((top - half[k][1]) * BOTTOM_COLUMN_FLOOR) / top - 1e-9);
-      if (half[k][1] === 0) {
-        expect(h).toBeLessThanOrEqual(top - BOTTOM_COLUMN_FLOOR + 1e-9);
-        expect(listed.has(y)).toBe(true);
-      }
+  it("a vee lower than the rail's height lifts and thins the rail whole: nothing at the stringer, rising all the way out, no lip", () => {
+    const cut = bottomedHalfSection(half, vee(APEX[1] * 0.8), BOTTOM_COLUMN_FLOOR);
+    expect(cut.half[half.length - 1]).toBe(half[half.length - 1]); // the stringer untouched
+    expect(cut.half[DECK - 1]).toBe(APEX);
+    expect(cut.railEdgeAt).toBeUndefined();
+    expectRisingUnderside(cut.half);
+    expectUnderDeck(cut.half);
+    expect(sampledSectionArea(cut.half)).toBeLessThan(sampledSectionArea(half));
+  });
+
+  it("a vee past the rail's height is never clamped: the foam ends on the deck in a knife edge, inboard of the old rail, with no lip", () => {
+    const cut = bottomedHalfSection(half, vee(APEX[1] * 3), BOTTOM_COLUMN_FLOOR);
+    expect(cut.railEdgeAt).toBeDefined();
+    const edge = cut.railEdgeAt!;
+    expect(edge).toBeGreaterThan(0);
+    expect(edge).toBeLessThan(halfWidth);
+    // the knife edge is on the deck, and the lift meets the deck there
+    expect(cut.half[DECK - 1][0]).toBe(edge);
+    expect(cut.half[DECK - 1][1]).toBeCloseTo(deckAt(half, edge), 9);
+    expect(Math.abs(vee(APEX[1] * 3)(edge) - deckAt(half, edge))).toBeLessThan(1e-6);
+    // the deck inboard of it is where it was planed
+    for (let k = 0; k < DECK; k++) if (half[k][0] < edge) expect(cut.half[k]).toBe(half[k]);
+    expect(cut.half[half.length - 1]).toBe(half[half.length - 1]);
+    expectRisingUnderside(cut.half);
+    expectUnderDeck(cut.half);
+    // the rail is flagged thin, never cut shallower: the lift itself is what the bottom reads
+    expect(cut.thinAt).toContain(edge);
+    for (let k = BOTTOM_EDGE(); k < half.length; k++) {
+      const [y, h] = cut.half[k];
+      if (y < edge && half[k][1] === 0) expect(h).toBe(vee(APEX[1] * 3)(mm(y)));
     }
-    expect(flooredAt.length).toBeGreaterThan(0);
+  });
+
+  it("a rail left under 1/4\" is listed, and only there", () => {
+    const cut = bottomedHalfSection(half, vee(APEX[1] * 0.9), BOTTOM_COLUMN_FLOOR);
+    for (let k = DECK; k < half.length; k++) {
+      const [y, h] = cut.half[k];
+      if (half[k][1] !== 0) continue;
+      expect(cut.thinAt.includes(mm(y))).toBe(deckAt(half, y) - h < BOTTOM_COLUMN_FLOOR);
+    }
   });
 
   it("the floor is the app's own thinnest foil, 1/4\"", () => {
@@ -2078,9 +2110,9 @@ describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom
 
   it("a column with no deck over it (a tip's edge) is left as it is, and nothing is NaN", () => {
     const edge = half.map(([y]) => [y, 0] as [number, number]);
-    const { half: out, flooredAt } = bottomedHalfSection(edge, () => mm(5), BOTTOM_COLUMN_FLOOR);
-    out.forEach((point, k) => expect(point).toBe(edge[k]));
-    expect(flooredAt).toEqual([]);
+    const cut = bottomedHalfSection(edge, () => mm(5), BOTTOM_COLUMN_FLOOR);
+    cut.half.forEach((point) => expect(Number.isFinite(point[0]) && Number.isFinite(point[1])).toBe(true));
+    for (let k = DECK; k < edge.length; k++) expect(cut.half[k][1]).toBeLessThanOrEqual(0);
   });
 
   it("with no sampler the sections are the ones they always were; with one only the bottom moves and the area follows the ring", () => {
@@ -2095,7 +2127,12 @@ describe("Phase 17 D-21, D-33: the bottom contours lift a finished half's bottom
       expect(section.area - plain[i].area).toBeCloseTo(sampledSectionArea(section.drawn!) - sampledSectionArea(before), 6);
       expect(section.area).toBeLessThan(plain[i].area);
       expect(section.blendArea).toBe(plain[i].blendArea);
-      expect(section.flooredAt).toBeUndefined();
+      expect(section.railEdgeAt).toBeUndefined();
     });
   });
 });
+
+/** The bottom edge's index in a half: where the rail's run ends and the bottom's begins. */
+function BOTTOM_EDGE(): number {
+  return SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+}

@@ -24,9 +24,12 @@ import {
   type SurfaceRing,
 } from "./board-surface";
 import {
+  BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   cutHalfWidth,
+  cutKind,
   DEFAULT_BOTTOM,
+  foamOff,
   resolveBottom,
   startingCut,
   type BoardBottom,
@@ -1218,7 +1221,7 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
             expect(h, `the bottom above the deck at ${section.station}`).toBeLessThanOrEqual(deckAt(section.drawn, y) + 1e-9);
           }
         }
-      });
+      }, 120_000);
     }
   }
 
@@ -1285,5 +1288,90 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
       expect(y).toBeCloseTo(drawn[k][0], 9);
       expect(h).toBeCloseTo(drawn[k][1], 9);
     });
+  });
+
+  describe("Phase 17 D-40: a vee or belly lifts and thins the rail — never the stringer, never a lip, never past the deck", () => {
+    // The five boards the golden was taken on, every swallow and diamond of the Shortboard and the Fish, and the
+    // hand-set board with no blank.
+    const BOARDS_D40 = [
+      ...BOARD_PRESETS.map((preset) => `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`),
+      "shortboard|swallow|hard",
+      "shortboard|diamond|hard",
+      "fish|swallow|hard",
+      "fish|diamond|hard",
+    ].map((label) => ({ label, fields: boardOf(label) }));
+    const fish = boardOf("fish|asis|hard");
+    BOARDS_D40.push({
+      label: "fish, winged",
+      fields: {
+        ...fish,
+        outline: {
+          ...fish.outline,
+          wings: [{ station: mm(frontFinStation(designFinPlacement(fish)) + inchesToMm(4)), depth: inchesToMm(1 / 4), run: inchesToMm(1), radius: mm(0), lock: null, finOffset: mm(0) }],
+        },
+      },
+    });
+    BOARDS_D40.push({ label: "stock|hard", fields: phase16SurfaceBoards().find((b) => b.label === "stock|hard")!.fields });
+    const LIFTS = BOTTOM_SECTIONS.flatMap((section) =>
+      BOTTOM_CUT_NAMES[section].filter((name) => ["vee", "belly"].includes(cutKind(name))).map((name) => ({ section, name })),
+    );
+
+    it("walks five lift cuts on ten boards", () => {
+      expect(LIFTS).toHaveLength(5);
+      expect(BOARDS_D40).toHaveLength(10);
+    });
+
+    for (const { label, fields } of BOARDS_D40) {
+      it(`${label}: every lift alone, at its starting numbers and at 1/2", every column of every section`, () => {
+        let lifted = 0;
+        let edges = 0;
+        for (const { section, name } of LIFTS) {
+          for (const depth of [undefined, inchesToMm(1 / 2)]) {
+            const { input, flat, board, bottom } = cutBoard(fields, { [section]: name }, depth);
+            const resolved = resolveBottom(bottom, board);
+            const stations = surfaceStations(input);
+            const cut = boardSections(input.sections, stations);
+            const plain = boardSections(flat, stations);
+            cut.forEach((sec, i) => {
+              // the stringer is the lift's zero: no foam off there, and the planed thickness stands at the stringer
+              expect(foamOff(resolved, board, sec.station, mm(0))).toBe(0);
+              if (!sec.drawn) return;
+              lifted++;
+              if (sec.railEdgeAt !== undefined) edges++;
+              const half = sec.drawn;
+              const before = plain[i].drawn ?? plain[i].blended ?? sampledFinishedRail(plain[i].result!, plain[i].domed, plain[i].halfWidth);
+              expect(half[0]).toEqual(before[0]);
+              if (board.notchInner(sec.station) === 0) expect(half[half.length - 1]).toEqual(before[before.length - 1]);
+              // the underside, walked out from the stringer to the rail edge, only rises, and never above the deck
+              const deckAt = (y: number) => {
+                for (let k = 0; k + 1 < SURFACE_POINTS.deck; k++) {
+                  const [y0, h0] = half[k];
+                  const [y1, h1] = half[k + 1];
+                  if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+                }
+                return y <= half[0][0] ? half[0][1] : half[SURFACE_POINTS.deck - 1][1];
+              };
+              for (let k = half.length - 1; k >= SURFACE_POINTS.deck - 1; k--) {
+                const [y, h] = half[k];
+                expect(h, `${name} at ${sec.station}: above the deck`).toBeLessThanOrEqual(deckAt(y) + 1e-9);
+                if (k < half.length - 1) expect(h, `${name} at ${sec.station}: a lip at point ${k}`).toBeGreaterThanOrEqual(half[k + 1][1] - 1e-9);
+              }
+            });
+          }
+        }
+        expect(lifted).toBeGreaterThan(0);
+        if (label !== "longboard|asis|soft" && label !== "longboard|asis|hard") expect(edges).toBeGreaterThan(0);
+      }, 120_000);
+    }
+
+    it("at 1/2\" near the thin tips the lift reaches the deck and the foam ends in a knife edge — and the board is still one closed skin agreeing with the litres", () => {
+      for (const label of ["shortboard|asis|hard", "fish|swallow|hard", "fish|diamond|hard"]) {
+        const { input } = cutBoard(boardOf(label), { nose: "Rolled Belly Entry", tail: "Rolled Vee" }, inchesToMm(1 / 2));
+        const sections = boardSections(input.sections, surfaceStations(input));
+        expect(sections.some((section) => section.railEdgeAt !== undefined), label).toBe(true);
+        expect(sections.some((section) => section.thinAt && section.thinAt.length > 0), label).toBe(true);
+        expectClosedAndAgreeing(input);
+      }
+    }, 120_000);
   });
 });

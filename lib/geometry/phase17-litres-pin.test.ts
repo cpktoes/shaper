@@ -98,7 +98,8 @@ describe("the seam run with nothing to take off leaves every station's area exac
       seamed.forEach((section, i) => {
         expect(Object.is(section.area, plain[i].area), `area at station ${i}`).toBe(true);
         expect(section.drawn).toEqual(plain[i].drawn);
-        expect(section.flooredAt).toBeUndefined();
+        expect(section.thinAt).toBeUndefined();
+        expect(section.railEdgeAt).toBeUndefined();
       });
       expect(computeCrossSectionVolume(forced).volumeLitres.toPrecision(17)).toBe(PIN.litres[board.label]);
     });
