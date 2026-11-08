@@ -277,6 +277,46 @@ brief's proposed readings, which he took ("Take all three"; the four open points
 - **D-32:** **"Closes to a point toward the center" shows on all three nose single concaves**, ticked by the Teardrop's
   starting numbers alone, as the sketch has it (confirms D-06's and R4's sharpened reading).
 
+### Rulings from the planning research (2026-11-08) — the research's recommendations, taken as Claude's reading for the founder's overrule at plan approval
+The research (`17-RESEARCH.md`) ran the sketch's own maths unchanged on the app's boards and ported it line for line; nine
+things it found needed a ruling, none against a founder's word. Each is taken as recommended and flagged for his look.
+- **D-33:** **The 1/4" floor holds on every column, rails included.** The stringer floor never bites on any preset, but a
+  full-depth vee, belly or channel at a thinned tip would lift the bottom past the deck at the rails (342 columns on a
+  Rolled Belly Entry at the Shortboard's nose). The one number is clamped so no column is ever cut where the foam is already
+  thinner than 1/4"; the warning sentence gains a rail form (*"This cut meets the 1/4" floor at the rails near the nose: it is
+  cut shallower there than set."* — words his to correct). Extends D-09.
+- **D-34:** **DATA's `Foam off` is the finished board's foam** — VOLUME's litres before less now, so two screens never
+  disagree. On a long rolled rail that is less than the sketch's slab figure (the Longboard's opening cuts: 2.81 L finished,
+  3.33 L in the sketch, which counted foam out to the outline that the rail banding takes anyway); the other four boards
+  agree within 0.3%. The two Longboard figures go to the founder side by side at plan approval.
+- **D-35:** **RAILS reads the lifted rail at its three anchors, in a RAILS-only step.** The rail's thickness at each anchor
+  station is the planed thickness less the rail lift there (D-22 as written), applied only to RAILS' own figures — never to
+  `summarizeDesign`'s headline thickness (the rack card) or VOLUME's estimator rows. On short rails this matches the 3D
+  board's column-mapped rail within 0.2 mm; on the Longboard's belly it differs by up to 24.5 mm, so both pictures go to the
+  founder at plan approval. The readout caption may read `From ROCKER, FOIL & BOTTOM` only when a lift is present
+  (UI-SPEC open item 3).
+- **D-36:** **A fin move that carries a tail cut's Deepest past its Start or End:** on read the fin-anchored Deepest wins and
+  the other is pushed to it (Start = max(Start, Deepest); End = min(End, Deepest)); nothing is written back until the shaper
+  next moves a slider; the slider shows the pushed value.
+- **D-37:** **FINS with Import Template off:** the fin-anchored stations still follow FINS' placement as shown; FINS draws no
+  contour while unticked, because its drawing is not this board's tail.
+- **D-38:** **The diamond tail's V is cut** — vees and bellies run out the V, the rail there being the V's edge (`railAt =
+  max(sampleOutline, foamHalfWidth)`), as Phase 16's D-05 treats the V as foam; the sketch never cut it.
+- **D-39:** **Nose cuts' stations are stored from the nose**, Center and Tail cuts' from the tail — D-07's "taped from the
+  nearest tip" carried into storage, so a length change on TEMPLATE keeps every cut at its tip. Flagged for his yes because
+  D-24's saved shape is costly to change later.
+- **Figures corrected by the research (D-06, D-20):** the sketch's fins were read with Import Template off; the app's front
+  fins sit at 11" on the Shortboard (sketch 10 7/8") and 12" on the Mid-length, so the golden fixture uses the app's own fin
+  station and the Mid-length's opening cuts take 1.23 L; the test single's litres are 0.5443 L at every Smoothness; "six
+  channels take +0.26 L" does not reproduce (sketch 020's numbers give 0.237 L, sketch 021's 0.378 L) — every such figure is
+  a RELATION against the generated fixture, never a literal; the Fish's toe prints `2.0°` from the raw angle (the sketch's
+  1.9° was a double rounding).
+- **Also found:** the order form already has an optional third sheet (Rail Band Instructions), so the BOTTOM CONTOURS page's
+  numbering counts it and both flat cases stay byte-identical; there are six desktop reference pictures, not five, all
+  moving in the nav row only; five more browser specs count the screens (UI-SPEC §16 is amended by the research's list);
+  today's live litres match none of the Phase 16 pins, so this phase pins its own `phase17-litres-pin.json` before
+  `volume.ts` changes.
+
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM
   CONTOURS — Map, measure and cut the bottom"); the BOTTOM tile's picture; the viewer's opening station (the sketch opens

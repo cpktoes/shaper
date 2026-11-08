@@ -197,3 +197,69 @@ Almost everything above is ruled. These are the open points, in the founder's ow
 | A5 | Fin-relative stations beyond the tail | He ruled a tail cut's Deepest At and the channels' Start and Deepest At follow the front fins | The Center cuts whose starting numbers mention the fins (Deep Single's deepest, Early Double's deepest and end, the hull's end) are stations once set and do not follow the fins |
 | A6 | A cut deeper than the foam left near a thinned tip | Not ruled; a 1/2" cut can meet a tip thinned to 1/4" | Drawn as set and flagged in warning ink under the slider and in DATA, as Phase 14 treats a start set too close; the maths never takes the stringer below the 1/4" floor |
 | A7 | One go-live or two | Phase 16 had two because its first wave changed live litres; here a flat board's litres do not move | One go-live at the end (R15); his call at plan approval |
+
+## Edge Coverage
+
+*Appended 2026-11-08 from `17-RESEARCH.md`; the seven rows the research left open are resolved by D-33 to D-39 (the research's recommendations, taken as Claude's reading for the founder's overrule at plan approval).*
+
+| Category | Requirement | Status | Resolution / Reason |
+|----------|-------------|--------|---------------------|
+| A cut running past its own section | R3 | resolved | Stations are free along the board; `foamOff` sums wherever cuts overlap (sketch D-05) |
+| Overlapping cuts (a single into a double; a spiral vee; channels into a single) | R3, R5 | resolved | Plain sum of non-negative terms; a double is 0 inside Off Stringer, so the stringer stays the ridge; channels add +0.3784 L whatever the sections are |
+| Start ≥ Deepest ≥ End | R4 | resolved | `keepStationsInOrder` (the dragged slider wins, others pushed, one undo step); 1,680 starting cuts on 105 boards all in order |
+| An end (or start) on a tip | R3 | resolved | Full depth to the tip (`fadeAt`), as the founder saw; the floor clamps where the foam is thin |
+| A concave narrower than 3" | R3 | resolved | Depth × min(1, half-width / 3") (`PINCH`) — why the stringer floor never bites |
+| The Teardrop's closing | R4 | resolved | √((s − End)/(Deepest − End)) of the half-width behind Deepest; the tick box on all three nose singles, ticked by the Teardrop's numbers (D-32) |
+| The floor at a thinned tip (stringer) | R3, D-09 | resolved | `foamOff ≤ T(s) − 1/4"`; flags per cut; never met by any preset at its starting numbers or at 1/2" |
+| The floor at a thinned tip (rails) | R3, R11 | resolved (D-33) | The floor holds on every column, rails included: no cut where the foam is already thinner than 1/4"; a rail form of the warning sentence (words his to correct) |
+| A channel set that won't fit inside the rail | R5 | resolved | `channelFit`: width squeezed to leave 1/2" at the deepest station, label says so (muted) |
+| With the rail's run-out | R5 | resolved | Gaps close with the reference; outer channels run out through the rail (`channelEdges` keeps only walls > 1/2" off the stringer) |
+| A stagger too long | R5 | resolved | `chStart` stops 1" ahead of Deepest |
+| Toe-in on a single fin | R5 | resolved | toe 0 → behaves as Parallel; option reads `Toe-in (no toe)` |
+| Toe-in angle display | R5, R13 | resolved | raw angle, one `toFixed(1)`: Shortboard 3.2°, Fish 2.0° (not the sketch's 1.9°) |
+| A winged board, Narrowest | R10 | resolved | Real rail behind the inner corner (0.000" measured), curve − depth ahead |
+| A winged board, Natural | R10 | resolved | `curveHalfWidthAt`; a cut can run through the step; selector absent on a wingless board |
+| Two wings | R10 | resolved | Narrowest sums both wings' depth × fade |
+| A board with no blank (hand-set rocker) | R3, R11 | resolved | `thicknessAt` is the foil's; the seam is indifferent |
+| A board whose fins move (FINS) | R11, D-03 | resolved | Tail Deepest and channel Start/Deepest stored from the front fins; resolved on read |
+| Fins move a tail cut's Deepest past Start or End | R4, R11 | resolved (D-36) | On read the fin-anchored Deepest wins and Start / End are pushed to it; nothing is written back until the shaper next moves a slider |
+| FINS Import Template off | R11 | resolved (D-37) | The fin-anchored stations follow FINS' placement as shown; FINS draws no contour while Import Template is off (its tail is not this board's) |
+| A locked board | C4 | resolved | Pickers/sliders greyed; tabs, Height, Section at, the drag, the finished-rail tick live; store guard |
+| Signed out | C4 | resolved | Identical; the open-board copy carries `bottom` |
+| Metric | R13 | resolved | Formatters run: marks mm, dims cm, 36" = `91.4 cm`; Depth slider max 12 under a 13 mm label for a stored 1/2" |
+| A saved board from before this phase | R12 | resolved | No key → flat; nothing rewritten; version 5 |
+| A crafted or out-of-range `bottom` | R12 | resolved | Per-part `.catch`, enums, bounds; never rejects the board |
+| A board file / Import my designs | R12 | resolved | Through `parseSnapshot` already |
+| A board opened on `main` after a save here | R12 | resolved | Unknown key dropped → opens flat (rule 6 trade-off, as rules 12/13) |
+| Swallow tail | R11 | resolved | Two pieces; `foamOffAt` adds the notch inner; the notch is air; the wall runs from the lifted bottom |
+| Diamond tail | R11 | resolved (D-38) | A diamond's V is foam (Phase 16 D-05): vees and bellies run out the V, the rail there being the V's edge |
+| The 3D surface and STL with channels | R11 | resolved | Watertight on 20 boards with 8 channels at 1/2"; wall slots recommended for vertical walls |
+| Mesh volume vs litres with cuts | R11 | resolved | −0.025% to −0.086% on 20 boards; Phase 16's (−0.15%, 0] kept |
+| The litres pin (flat) | R11, acc 3 | resolved | 102/102 bit-identical with the map run; new `phase17-litres-pin.json` before `volume.ts` changes |
+| The Longboard's litres vs the sketch | R8, R11 | resolved (D-34) | DATA's `Foam off` is VOLUME's before less now — the finished board's foam (Longboard 2.81 L, the sketch's slab 3.33 L); shown to the founder side by side at plan approval |
+| RAILS on a vee/belly | R11, D-22 | resolved (D-35) | RAILS' three anchors read the planed thickness less the rail lift there, in a RAILS-only step (the rack card and VOLUME's rows untouched); the Longboard's belly shown to the founder in both pictures at plan approval |
+| Order form with the Rail Band Instructions sheet ticked | R14 | resolved | Sheet count 2 + cut + instructions; BOTTOM CONTOURS third; both flat cases byte-identical |
+| Nose stations when TEMPLATE's length changes | R12 | resolved (D-39) | Nose cuts' stations are stored from the nose (the Center and Tail's from the tail), so a length change keeps every cut at its tip |
+| A short screen / sideways phone | D-27 | resolved | UI-SPEC: `growOnShortScreen`, 360-dot floor, the column scrolls |
+
+## Prohibitions
+
+| Prohibition (must-NOT statement) | Requirement | Status | Verification / Reason |
+|----------------------------------|-------------|--------|-----------------------|
+| No reader may compute foam off itself; every reader calls `lib/geometry/bottom.ts` | R11, D-05 | resolved | Code review; a source-grep test that no component or `lib/export` file names `cutOff`/`sec(`/`rise(` maths |
+| `volume.ts` must NOT import outlines, wings, fins or `bottom.ts`; it takes one optional sampler | R11 | resolved | Import-graph test; the sampler is built in `design.ts` |
+| A flat bottom must NOT change any litres figure, any preset card, any RAILS figure or any CNC file | R11, acc 3 | resolved | `phase17-litres-pin.test.ts` (102 boards, toPrecision(17)); `computeRailBands` deep-equal; the export pin |
+| `summarizeDesign`'s centre thickness and VOLUME's estimator rows must NOT read the rail lift | R11 | resolved | design.test.ts relation on a vee board |
+| No column of any section may be inverted (bottom above deck) | R11 | resolved | Per-column floor; relation test with every cut at 1/2" + 8 channels |
+| The presets must NOT open with a contour | R14, D-04 | resolved | `presetDesignFields` carries no bottom; `bottomHasCut` false on every preset |
+| `DESIGN_SNAPSHOT_VERSION` must NOT change; `parseSnapshot` must NOT add a `bottom` key to a board without one | R12, D-24 | resolved | design-snapshot.test.ts: absent → no key; re-save key-for-key |
+| No database change (`lib/db/schema.ts`, `drizzle/`) | R12, C8 | resolved | `git diff --stat main -- drizzle lib/db/schema.ts` empty |
+| No new package | C5 | resolved | `git diff main -- package.json package-lock.json` empty |
+| No `25.4` (or bare `10` mm/cm conversion) outside `units.ts`; the sketch's `IN` must not be ported | Rule 2 | resolved | The existing grep test over `lib/`/`components/` |
+| No contour on the Full Sized Template or the Paper Saver; no card gauge | R14, D-26 | resolved | Their builders never import `bottom`; source test |
+| `three` must NOT be imported outside `components/3d/board-scene.ts` (the bottom reaches 3D through the surface only) | C5 | resolved | Phase 16's source-grep test |
+| GUIDE cards must NOT be buttons or put a cut on the board | R9, deferred | resolved | e2e: no role=button in the GUIDE list |
+| No fourth layout switch; no JS width test for layout (only a drawing's own box size) | C3 | resolved | Code review; UI-SPEC's two own-box questions only |
+| The reference copy must NOT be edited, and the app must NOT import it | Rule 1 | resolved | Its header; an import-graph test |
+| No hand-typed expected litres or foam-off figure in any test (0.54 / 0.75 / 0.31 / 3.33 / 0.26 L) | Rule 1, C1 | resolved | Fixtures generated by executing the sketch; review |
+| Nothing pushed, deployed or migrated without the founder's go; never his checkout or port 3005 | C8, D-28 | resolved | The 16-13-style gate plan (`autonomous: false`) |
