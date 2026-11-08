@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: planning
-stopped_at: Phase 17 UI-SPEC approved 2026-11-08 (6 of 6, 95 state rows; D-29..D-32 ruled); planning research running next
-last_updated: "2026-11-08T19:09:20.630Z"
+stopped_at: "Phase 17 PLANNED 2026-11-08: 16 plans in 16 waves (commit 87a94931), checker passed with no blockers; awaiting the founder's approval before /gsd-execute-phase 17"
+last_updated: "2026-11-08T19:10:51.457Z"
 last_activity: 2026-11-06
 last_activity_desc: "Phase 16 complete: the 3D screen and Export 3D Files are live, confirmed by the founder"
 progress:
@@ -572,9 +572,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-08T17:36:59.227Z
-Stopped at: Phase 17 UI-SPEC approved 2026-11-08 (6 of 6, 95 state rows; D-29..D-32 ruled); planning research running next
-Resume file: .planning/phases/17-bottom-contours/17-UI-SPEC.md
+Last session: 2026-11-08T19:10:51.368Z
+Stopped at: Phase 17 PLANNED 2026-11-08: 16 plans in 16 waves (commit 87a94931), checker passed with no blockers; awaiting the founder's approval before /gsd-execute-phase 17
+Resume file: .planning/phases/17-bottom-contours/17-01-PLAN.md
 Next action: the founder's answers on sketch 019 (BOTTOM contours), then open the next phase; Phase 13's two remaining items and the Shape3D todo stay open
 
 ## Operator Next Steps
