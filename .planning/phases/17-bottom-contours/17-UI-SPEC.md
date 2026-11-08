@@ -589,7 +589,7 @@ Channels  [ None ⌄ ]
   `.cutname`, sketch line 75). No View box and no ADVANCED fold: BOTTOM's sections are always open on a computer.
 - **INPUTS**: `RULED_HEADING` `Inputs`, then the card `mt-2` (as RAILS', `:605-613`), built by a new
   `bottomImportedReadout(length, width, thickness, system)` in `lib/geometry/imported-readout.ts` — Length through
-  `formatLength`, Width through `formatDim`, Thickness through `formatMark` (§11), `foot` the sentence above. The card is
+  `formatLength`, Width and Thickness through `formatDim` (§11 — the headline dims, D-25 as sharpened), `foot` the sentence above. The card is
   information: never greyed on a locked board.
 - **The finished-rail tick row** is the RAILS label row exactly (`components/rails/rail-controls.tsx:595`), `pt-2` under the
   card, with `data-lock-exempt` on the `Checkbox`. Off when the page opens; not saved with the board.

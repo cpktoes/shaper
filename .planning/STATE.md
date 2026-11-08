@@ -4,17 +4,17 @@ milestone: v1.5
 milestone_name: Ready for the Shapers
 status: planning
 stopped_at: Phase 17 UI-SPEC approved 2026-11-08 (6 of 6, 95 state rows; D-29..D-32 ruled); planning research running next
-last_updated: "2026-11-08T17:36:59.312Z"
+last_updated: "2026-11-08T19:09:20.630Z"
 last_activity: 2026-11-06
 last_activity_desc: "Phase 16 complete: the 3D screen and Export 3D Files are live, confirmed by the founder"
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
-  total_plans: 49
+  total_plans: 65
   completed_plans: 49
   percent: 75
-current_phase: 13
-current_phase_name: Ready for the Shapers
+current_phase: 17
+current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 17 — BOTTOM, bottom contours (sketches 019–021 decided with the founder 2026-11-06 to 11-08, merged on main 8074ebe6): the brief is `17-SPEC.md`; the discussion, the screen contract and the plans next
+**Current focus:** Phase 17 — BOTTOM, bottom contours — PLANNED 2026-11-08 on branch `claude/beautiful-fermi-ad3fb7`: the brief (`17-SPEC.md`), 39 decisions (`17-CONTEXT.md`), the approved screen contract (`17-UI-SPEC.md`), the research and 16 plans in 16 waves; the checker passed with no blockers; waiting on the founder's approval of the plans before `/gsd-execute-phase 17`
 
 ## Current Position
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Ready to plan
+Status: Planned — ready to execute on the founder's approval of the sixteen plans
 Last activity: 2026-11-06 — Phase 16 complete, the 3D screen live
 
 ## Performance Metrics
