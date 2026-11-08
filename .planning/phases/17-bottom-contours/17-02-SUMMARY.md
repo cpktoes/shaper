@@ -121,7 +121,9 @@ Task 2, where 114 tests failed on the missing functions before the port.
 None. `ResolvedBottom.channels` passes the stored channels through unchanged, by design, until 17-05 resolves them.
 `spiral` is always false and `closesToPoint` is never set by this wave's names; both belong to 17-04.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* On the three readings worked on the Shortboard he chose *"Keep all three"*: D-39 (nose cuts kept from the nose), D-03 (a tail cut's deepest point rides with the front fins) and D-36 (a fin move pushes a cut's Start on screen only) stand as built. Merged as a3c29d34.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-02-four-cuts-against-the-sketch.png` (sources in
 `17-02-pictures-source.tar.gz`). Awaiting "approved", or changes, and his yes or no on D-39 (nose stations kept from
