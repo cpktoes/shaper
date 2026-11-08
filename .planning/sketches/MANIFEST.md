@@ -131,6 +131,21 @@ tail cut that replaces a vee or concave (C). And his wing question, as a bar swi
 wing read from the app's own wing maths): Off Rail measured from the narrowest outline carried forward through the wing
 (never steps, the real rail behind it) or from the curve the shaper drew before the wing (sits outside the real rail behind it).
 
+### The GUIDE tab, with the rulings built in (sketch 021, 2026-11-07)
+
+The founder's rulings on 020 (*"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings rule should have a
+selector, narrowest outline by default. Run default is parallel to stringer."*) built in with the variants gone: the channels
+inside the TAIL card under the tail's own cut, every board opening with none (picking 4, 6 or 8 brings that count's starting
+width), Parallel the opening run, and the wing rule a WINGS row above the sections — *Measure Off Rail from*, Narrowest outline
+or Natural outline — shown only on a board with a wing. And his ask the same day: *"a third tab that is informational and
+teaches the user VERY briefly (like 1-2 sentences) and with a cartoon, what each contour type does, is, and looks like. With
+so many Vee options, I think we need a clear idea how they differ."* GUIDE, after VIEWER and DATA: nineteen cards — the
+eighteen names and the channels — each with a cartoon drawn by the VIEWER's own code on the board the shaper has open (from
+above with that one cut's shade and pencil lines, and the section across it at its deepest point, Height ×8) and two sentences,
+what it is and looks like, then what it does. The five vees draw five different sections. The cuts on the board now are
+tagged. Open: the sentences themselves (first drafts), whether the cartoons say enough, and the three items he asked to hear
+more about — the ruler, the readouts' home, the starting numbers.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -161,7 +176,8 @@ wing read from the app's own wing maths): Off Rail measured from the narrowest o
 | 017 | imported-dims | How should the INPUTS block show the dimensions a screen imports, so they are noticeable and read cleanly — one line or one line each, in a card, in the accent colour? | **C — Readout card** (the founder, 2026-10-18: "Go with C readout card, figures in accent = off") | sidebar, inputs, imported, typography, phone |
 | 018 | finished-rail-curve | What would the RAILS cross-sections look like with a curve showing the finished rail — the shape left once the bands are blended — drawn over today's bands? | **Blended halfway** (the founder, 2026-11-02: every corner blended halfway into the bands either side of it, so it always meets the rail at the Apex Center — picked over One even round; built into the RAILS screen with the Chris Rails v2 sheets by quick 261102-gec on branch rails-v2) | rails, viewer, cross-section, geometry, finished-rail |
 | 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | C | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
-| 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | — (with the founder) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
+| 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | **B — Inside Tail** (the founder, 2026-11-07, with: none to start, Parallel, the wing rule a selector on Narrowest) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
+| 021 | bottom-guide | With the founder's rulings of 2026-11-07 built in — channels inside TAIL, none to start, Parallel, the wing rule a selector — how does a third GUIDE tab teach what each of the 18 cuts and the channels is and does, a cartoon and a sentence or two each, so the five vees read apart? | — (with the founder) | bottom, guide, contours, channels, wings, cartoons, tabs, sidebar, phone, units, themes |
 
 ## Decisions These Lock In
 

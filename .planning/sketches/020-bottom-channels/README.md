@@ -2,12 +2,20 @@
 sketch: 020
 name: bottom-channels
 question: "With depth settled as a shade and 1/16\" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board?"
-winner: null
+winner: B
 builds_on: 019
 tags: [bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes]
 ---
 
 # Sketch 020: Bottom channels and layout marks
+
+## Decision (the founder, 2026-11-07)
+**B — Inside Tail**, and the rest in one breath: *"Stagger looks good now. B: Inside Tail, Channel Default = none. Wings
+rule should have a selector, narrowest outline by default. Run default is parallel to stringer."* So every board opens with
+no channels, a set opens Parallel to the stringer, the length order stays as built, and the wing rule becomes a selector in
+the sidebar with Narrowest outline as the opening choice. Sketch 021 builds all of it in and adds the GUIDE tab he asked for
+the same day. Still with him: the ruler, the readouts' home and the starting numbers (he asked to hear more about each), and
+whether a staggered set's deepest station or ends should stagger too.
 
 ## Design Question
 The founder's rulings on sketch 019 (2026-11-06): **C**, the shade with the lines — *"but lets make the contour lines at
