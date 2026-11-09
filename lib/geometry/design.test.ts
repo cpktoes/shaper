@@ -1029,8 +1029,9 @@ describe("RAILS bands the rail the bottom leaves, in a step only RAILS takes (Ph
   });
 
   it("with no bottom, all 102 Phase 16 boards' rails come back as the very same object and band exactly as before", () => {
-    expect(all).toHaveLength(102);
-    for (const { fields } of all) {
+    const surfaceBoards = phase16SurfaceBoards();
+    expect(surfaceBoards).toHaveLength(102);
+    for (const { fields } of surfaceBoards) {
       const { board, effectiveRails, anchors } = railsOf(fields);
       const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolveBottom(DEFAULT_BOTTOM, board), board), anchors);
       expect(onBottom).toBe(effectiveRails);

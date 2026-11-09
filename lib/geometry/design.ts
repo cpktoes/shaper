@@ -15,13 +15,23 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
-import { NOTCH_WALL_MIN, bottomHasCut, bottomSampler, resolveBottom, type BoardBottom, type BottomBoard } from "./bottom";
+import {
+  BOTTOM_FLOOR,
+  NOTCH_WALL_MIN,
+  bottomHasCut,
+  bottomSampler,
+  foamOff,
+  resolveBottom,
+  type BoardBottom,
+  type BottomBoard,
+  type ResolvedBottom,
+} from "./bottom";
 import { prepareBlank, thinningStartsOf, type PreparedBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
 import { prepareBoardBlank } from "./custom-rocker";
 import { railBlendArea, sectionFinishedRail } from "./finished-rail";
-import type { FoilSpec } from "./foil";
+import { foilStationPoints, type FoilSpec } from "./foil";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline, tailCutStation } from "./outline";
@@ -34,6 +44,7 @@ import {
   computeVolume,
   type CrossSectionVolumeInput,
   type CrossSectionVolumeResult,
+  type RailAnchorStations,
   type SectionRule,
   type VolumeRailValues,
   type VolumeResult,
@@ -277,6 +288,56 @@ export function deriveEffectiveRails(
     center: { ...rails.center, boardThickness: foil.center },
     tail: { ...rails.tail, boardThickness: foil.tail12 },
   };
+}
+
+/**
+ * The three stations RAILS bands (Phase 17, D-35): the tail 12", the centre and the nose 12" — the very anchors the
+ * litres' cross-sections blend their rails between (`boardSectionsWith`, from `foilStationPoints`), so RAILS reads the
+ * bottom at the stations the 3D board reads it.
+ */
+export function railAnchorStations(foil: FoilSpec, length: Mm): RailAnchorStations {
+  const points = foilStationPoints(foil, length);
+  const at = (key: string) => points.find((p) => p.key === key)!.station;
+  return { tail: at("tail12"), center: at("center"), nose: at("nose12") };
+}
+
+/**
+ * The rail lift at a station (Phase 17, D-22, D-35): the foam the bottom takes off right at the rail, `foamOff` read
+ * at the rail's own distance from the stringer (`railAt`). A vee or a belly lifts the rail; a concave runs out before
+ * the rail and lifts nothing there — DATA's "Rail lift" column.
+ */
+export function bottomRailLift(resolved: ResolvedBottom, board: BottomBoard): (station: Mm) => Mm {
+  return (station) => foamOff(resolved, board, station, board.railAt(station));
+}
+
+/**
+ * RAILS bands the rail the bottom leaves (Phase 17, D-22, D-35, D-40, D-41 — the founder: "contour before rail
+ * shaping"). Each of the three anchors' `boardThickness` is lowered by the rail lift at its station (`liftAt`, built
+ * by `bottomRailLift`), so RAILS' plots, DATA and its readout card show the thinner rail a vee or a belly leaves.
+ * When the lift is 0 at all three — a flat bottom, a concave alone — `rails` itself comes back, the same object, so a
+ * flat board's every RAILS figure is untouched.
+ *
+ * RAILS-ONLY (research Pitfalls 5 and 6). This never runs inside `deriveEffectiveRails`: the rack card's headline
+ * thickness (`summarizeDesign`'s `centerThickness`) and VOLUME's estimator rows read the planed figures, and the
+ * litres and the 3D board take the lift through their own sections. The two readings agree on a short rail to a
+ * fraction of a millimetre; on the Longboard's rolled rail, which starts about 7" in, they part most (research §C).
+ *
+ * A lift deeper than the rail can stand is held at RAILS' own 1/4" floor (`BOTTOM_FLOOR`, the least thickness RAILS
+ * and the foil ever take), because the band maths cannot band a rail of no thickness; such a rail is flagged as too
+ * thin on BOTTOM, never cut shallower (D-40).
+ */
+export function railsOnTheBottom(
+  rails: RailBandSpec,
+  liftAt: (station: Mm) => Mm,
+  anchors: RailAnchorStations,
+): RailBandSpec {
+  const lift = { tail: liftAt(anchors.tail), center: liftAt(anchors.center), nose: liftAt(anchors.nose) };
+  if (lift.tail === 0 && lift.center === 0 && lift.nose === 0) return rails;
+  const lowered = (key: "tail" | "center" | "nose") =>
+    lift[key] === 0
+      ? rails[key]
+      : { ...rails[key], boardThickness: mm(Math.max(BOTTOM_FLOOR, rails[key].boardThickness - lift[key])) };
+  return { ...rails, tail: lowered("tail"), center: lowered("center"), nose: lowered("nose") };
 }
 
 /** The subset of a stored design `summarizeDesign` needs to produce a rack card's four numbers. */
