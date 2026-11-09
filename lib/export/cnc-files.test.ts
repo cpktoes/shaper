@@ -8,8 +8,11 @@ import {
   type BoardSurface,
   type BoardSurfaceInput,
 } from "../geometry/board-surface";
+import { DEFAULT_BOTTOM, foamOff, resolveBottom, startingCut } from "../geometry/bottom";
 import {
+  designBottomBoard,
   designCrossSectionInput,
+  designFinPlacement,
   designSideProfile,
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
@@ -382,5 +385,54 @@ describe("slice file names (D-14)", () => {
   it("sort in board order as plain text", () => {
     const names = Array.from({ length: 50 }, (_, i) => sliceFileName("Fish", i, 50));
     expect([...names].sort()).toEqual(names);
+  });
+});
+
+describe("the CNC files carry the bottom's cut (Phase 17, D-21)", () => {
+  // The Shortboard with its Deep Single Concave at its starting numbers, read back from cncFiles' own slices.
+  const fields = boardFields("shortboard|asis|hard");
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  const bottom = { ...structuredClone(DEFAULT_BOTTOM), center: startingCut("center", "Deep Single Concave", board) };
+  const resolved = resolveBottom(bottom, board);
+  const cutSurface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board }),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  const flatSurface = surfaceOf(fields);
+  const NAME = "Shortboard";
+
+  /** The slice nearest a station, from the exported XYZ file itself, and the lowest point of its loop on the stringer. */
+  function stringerBottomAt(surface: BoardSurface, station: number) {
+    const { files } = cncFiles(surface, NAME);
+    const slices = boardSlices(surface);
+    const index = slices.reduce((best, slice, i) => (Math.abs(slice.station - station) < Math.abs(slices[best].station - station) ? i : best), 0);
+    const file = files.find((f) => f.name === sliceFileName(boardFileStem(NAME), index, slices.length))!;
+    const loops = readXyz(new TextDecoder().decode(file.data));
+    const onStringer = loops.flat().filter((p) => Math.abs(p[1]) < 1e-6);
+    return { station: slices[index].station, z: Math.min(...onStringer.map((p) => p[2])) };
+  }
+
+  it("the slice at the Deep Single's deepest station stands foamOff(station, 0) above the planed bottom at the stringer, within 0.05 mm", () => {
+    const cut = stringerBottomAt(cutSurface, resolved.center.deepest);
+    const flat = stringerBottomAt(flatSurface, resolved.center.deepest);
+    expect(cut.station).toBe(flat.station);
+    const lift = foamOff(resolved, board, cut.station, mm(0));
+    expect(lift).toBeGreaterThan(0);
+    expect(Math.abs(cut.z - flat.z - lift)).toBeLessThan(0.05);
+  });
+
+  it("the cut board's STL is still one closed skin, and its files still read back", () => {
+    expect(meshCheck(cutSurface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+    const { files, sliceCount } = cncFiles(cutSurface, NAME);
+    expect(sliceCount).toBe(cncFiles(flatSurface, NAME).sliceCount);
+    const stl = readStl(files.find((f) => f.name.endsWith(".stl"))!.data);
+    expect(stl.triangles.length).toBe(cutSurface.indices.length / 3);
+    expect(meshCheck(weld(stl.triangles))).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+    const dxf = readDxf(new TextDecoder().decode(files.find((f) => f.name.endsWith(".dxf"))!.data));
+    expect(dxf.polylines.filter((p) => p.layer === CNC_LAYERS.slices).length).toBeGreaterThanOrEqual(sliceCount);
   });
 });

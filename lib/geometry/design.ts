@@ -15,7 +15,7 @@
  */
 
 import type { BlankRecord, BoardBlank } from "./blank";
-import { NOTCH_WALL_MIN, type BottomBoard } from "./bottom";
+import { NOTCH_WALL_MIN, bottomHasCut, bottomSampler, resolveBottom, type BoardBottom, type BottomBoard } from "./bottom";
 import { prepareBlank, thinningStartsOf, type PreparedBlank } from "./blank-fit";
 import type { OutlineSpec } from "./board";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
@@ -167,19 +167,27 @@ export function crossSectionFoam(
  * outline (`crossSectionFoam`), the foil and the dense thickness curve off its side profile, the rails the
  * litres read (the effective rails — thicknesses imported from the foil when that box is ticked) and its
  * length. The litres (`summarizeDesignWith`) and the 3D board read the same sections through it.
+ *
+ * Phase 17 (D-05, D-20, D-21): with a `bottom` that cuts anything (`bottomHasCut`), the input also carries the foam
+ * the bottom takes off (`foamOffAt`, `bottomSampler` over the bottom read against the board's own facts), so the
+ * litres, the 3D board and the CNC files all count the cut. A flat bottom, or none, adds nothing at all: the input is
+ * key for key what it always was.
  */
 export function designCrossSectionInput(
   geometry: OutlineGeometry,
   profile: BoardSideProfile,
   rails: RailBandSpec,
   length: Mm,
+  bottom?: { bottom: BoardBottom; board: BottomBoard },
 ): CrossSectionVolumeInput {
+  const cut = bottom && bottomHasCut(bottom.bottom) ? bottom : null;
   return {
     ...crossSectionFoam(geometry),
     foil: profile.effectiveFoil,
     thicknessAt: profile.thicknessAt,
     rails,
     length,
+    ...(cut ? { foamOffAt: bottomSampler(resolveBottom(cut.bottom, cut.board), cut.board) } : {}),
   };
 }
 
@@ -283,6 +291,13 @@ export interface DesignSummaryFields {
   rocker?: FiveStationRocker;
   /** The board's own copy of its blank (D-01), or null/absent for a hand-set board. */
   blank?: BoardBlank | null;
+  /** The bottom contours (Phase 17, D-24). Absent reads flat — and a flat bottom never moves the litres (D-20). */
+  bottom?: BoardBottom;
+  /** FINS' own fins (D-03): where the front fins sit is what a tail cut's Deepest At is kept from. Absent reads the
+   * store's default fins, as `designFinPlacement` does. Read only when the bottom cuts anything. */
+  fins?: FinPlacementSpec;
+  /** FINS' Import Template box. Absent reads ticked, the store's default. Read only when the bottom cuts anything. */
+  finsImportTemplate?: boolean;
 }
 
 /**
@@ -411,7 +426,22 @@ export function summarizeDesignWith(fields: DesignSummaryFields, rules: DesignRu
   const railValues = deriveRailValues(railBands);
   const effectiveVolume = deriveEffectiveVolume(fields.volume, templateValues, railValues);
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
-  const crossSectionInput = designCrossSectionInput(outlineGeometry, profile, effectiveRails, fields.outline.length);
+  // The bottom's facts are built only when it cuts anything (D-20): a flat board reads exactly what it always did, and a
+  // rack card counts a saved board's cut exactly as VOLUME does (threat T-04-11).
+  const bottom =
+    fields.bottom && bottomHasCut(fields.bottom)
+      ? {
+          bottom: fields.bottom,
+          board: designBottomBoard(fields.outline, outlineGeometry, profile, designFinPlacement(fields)),
+        }
+      : undefined;
+  const crossSectionInput = designCrossSectionInput(
+    outlineGeometry,
+    profile,
+    effectiveRails,
+    fields.outline.length,
+    bottom,
+  );
   // No rule named is the live rule — the very function every screen's litres call.
   const crossSectionVolume = rules.hardEdge
     ? computeCrossSectionVolumeWith(crossSectionInput, rules.hardEdge)

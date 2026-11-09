@@ -24,7 +24,22 @@ import {
   type SurfaceRing,
 } from "./board-surface";
 import {
+  BOTTOM_CUT_NAMES,
+  BOTTOM_SECTIONS,
+  cutHalfWidth,
+  cutKind,
+  DEFAULT_BOTTOM,
+  foamOff,
+  resolveBottom,
+  startingCut,
+  type BoardBottom,
+  type BottomCutName,
+  type BottomSectionKey,
+} from "./bottom";
+import {
+  designBottomBoard,
   designCrossSectionInput,
+  designFinPlacement,
   designSideProfile,
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
@@ -35,7 +50,9 @@ import { foilStationPoints } from "./foil";
 import type { Vec3 } from "./board-surface";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
 import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "./rail-bands";
-import { inchesToMm, mm } from "./units";
+import { frontFinStation } from "./fins";
+import { BOARD_PRESETS } from "./presets";
+import { inchesToMm, mm, type Mm } from "./units";
 import {
   boardSectionEnds,
   boardSections,
@@ -46,7 +63,12 @@ import {
   tailRollDrop,
 } from "./volume";
 import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingShareSpan, wingStepShape } from "./wings";
-import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import {
+  phase16Boards,
+  phase16RailCharacterBoards,
+  phase16SurfaceBoards,
+  phase16WingBoards,
+} from "./__fixtures__/phase16-boards";
 import { stringerLines } from "./board-surface-render";
 
 /**
@@ -1117,3 +1139,239 @@ function distanceToTriangle(p: readonly number[], a: number[], b: number[], c: n
   }
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
+
+describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and agreeing with the litres", () => {
+  // the five boards bottom-golden.json was taken on, built as its script builds them, from the app
+  const fiveBoards = (): { id: string; fields: DesignSummaryFields }[] => {
+    const presets = BOARD_PRESETS.map((preset) => {
+      const label = `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`;
+      return { id: preset.id, fields: boardOf(label) };
+    });
+    const fish = presets.find((p) => p.id === "fish")!.fields;
+    const wing = {
+      station: mm(frontFinStation(designFinPlacement(fish)) + inchesToMm(4)),
+      depth: inchesToMm(1 / 4),
+      run: inchesToMm(1),
+      radius: mm(0),
+      lock: null,
+      finOffset: mm(0),
+    };
+    return [...presets, { id: "fishwing", fields: { ...fish, outline: { ...fish.outline, wings: [wing] } } }];
+  };
+
+  /** A board's surface input with a bottom: the cuts named, at their starting numbers (through `startingCut`), the
+   * Depth of each set to `depth` when given; `change` adjusts the stored cuts before they are read. */
+  function cutBoard(
+    fields: DesignSummaryFields,
+    names: Partial<Record<BottomSectionKey, string>>,
+    depth?: Mm,
+    change?: (bottom: BoardBottom) => void,
+  ) {
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    for (const section of BOTTOM_SECTIONS) {
+      const name = names[section];
+      if (!name) continue;
+      bottom[section] = startingCut(section, name as BottomCutName, board);
+      if (depth !== undefined) bottom[section].depth = depth;
+    }
+    change?.(bottom);
+    const sections = designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board });
+    const flat = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+    const input: BoardSurfaceInput = { sections, geometry, rockerAt: profile.rockerAt };
+    return { input, flat, board, bottom, geometry, profile };
+  }
+
+  /** Watertight, wound one way, no zero-area triangle, and the mesh a hair under the litres it was cut with. */
+  function expectClosedAndAgreeing(input: BoardSurfaceInput) {
+    const surface = buildBoardSurface(input);
+    expect(meshCheck(surface)).toEqual({ openEdges: 0, nonManifoldEdges: 0, misWoundEdges: 0, zeroAreaTriangles: 0 });
+    const litres = computeCrossSectionVolume(input.sections).volumeLitres;
+    const gap = (enclosedVolumeMm3(surface) / 1e6 - litres) / litres;
+    expect(gap).toBeLessThanOrEqual(0);
+    expect(gap).toBeGreaterThan(-0.0015);
+    return surface;
+  }
+
+  const TRIO = { nose: "Rolled Belly Entry", center: "Deep Single Concave", tail: "Rolled Vee" } as const;
+  const HALF_INCH = inchesToMm(1 / 2);
+
+  for (const { id, fields } of fiveBoards()) {
+    for (const depth of [undefined, HALF_INCH]) {
+      it(`${id}, a Rolled Belly Entry, a Deep Single and a Rolled Vee ${depth ? "every Depth at 1/2\"" : "at their starting numbers"}: closed, (mesh − litres)/litres in (−0.15%, 0], no column inverted`, () => {
+        const { input, flat } = cutBoard(fields, TRIO, depth);
+        expect(computeCrossSectionVolume(input.sections).volumeLitres).toBeLessThan(computeCrossSectionVolume(flat).volumeLitres);
+        expectClosedAndAgreeing(input);
+        const deckAt = (half: readonly (readonly [number, number])[], y: number) => {
+          const deck = half.slice(0, SURFACE_POINTS.deck);
+          for (let k = 0; k + 1 < deck.length; k++) {
+            const [y0, h0] = deck[k];
+            const [y1, h1] = deck[k + 1];
+            if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+          }
+          return y <= deck[0][0] ? deck[0][1] : deck[deck.length - 1][1];
+        };
+        for (const section of boardSections(input.sections, surfaceStations(input))) {
+          expect(Number.isFinite(section.area), `area at ${section.station}`).toBe(true);
+          if (!section.drawn) continue;
+          for (const [y, h] of section.drawn.slice(SURFACE_POINTS.deck)) {
+            expect(h, `the bottom above the deck at ${section.station}`).toBeLessThanOrEqual(deckAt(section.drawn, y) + 1e-9);
+          }
+        }
+      }, 120_000);
+    }
+  }
+
+  it("on a swallow, a single whose edge falls inside the notch cuts nothing there — the notch is air — and the board stays closed", () => {
+    const fields = boardOf("shortboard|swallow|hard");
+    // the Extending Single run out to the tail, 3" off the rail, so near the tail its whole width lies in the notch
+    const { input, flat, board, bottom } = cutBoard(fields, { tail: "Extending Single Concave" }, undefined, (b) => {
+      b.tail = { ...b.tail, offRail: inchesToMm(3), end: mm(0) };
+    });
+    const resolved = resolveBottom(bottom, board);
+    const stations = surfaceStations(input);
+    const cut = boardSections(input.sections, stations);
+    const plain = boardSections(flat, stations);
+    const inNotch = stations
+      .map((s, i) => ({ s, i }))
+      .filter(({ s }) => board.notchInner(s) > 0 && cutHalfWidth(resolved.tail, board, resolved.wingRule, s) <= board.notchInner(s));
+    expect(inNotch.length).toBeGreaterThan(0);
+    for (const { i } of inNotch) expect(Object.is(cut[i].area, plain[i].area), `station ${stations[i]}`).toBe(true);
+    // ahead of the notch the same cut does take foam off
+    expect(cut.some((section, i) => board.notchInner(section.station) === 0 && section.area < plain[i].area)).toBe(true);
+    expectClosedAndAgreeing(input);
+  });
+
+  it("on a swallow, a Panel Vee is read at its true distance from the stringer and cuts both pieces; the board stays closed", () => {
+    const fields = boardOf("shortboard|swallow|hard");
+    const { input, flat, board } = cutBoard(fields, { tail: "Panel Vee" });
+    const stations = surfaceStations(input).filter((s) => board.notchInner(s) > 0);
+    const cut = boardSections(input.sections, stations);
+    const plain = boardSections(flat, stations);
+    expect(cut.some((section, i) => section.result && section.area < plain[i].area)).toBe(true);
+    expectClosedAndAgreeing(input);
+  });
+
+  it("on a diamond, a Panel Vee cuts the V behind the tail block (D-38), and the board stays closed", () => {
+    const diamond = phase16SurfaceBoards().find((b) => b.label === "fish|diamond|hard")!.fields;
+    const { input, flat, geometry } = cutBoard(diamond, { tail: "Panel Vee" });
+    expect(isDiamond(geometry)).toBe(true);
+    const behindBlock = surfaceStations(input).filter((s) => sampleOutline(geometry, s) === 0 && foamHalfWidth(geometry, s) > 0);
+    expect(behindBlock.length).toBeGreaterThan(0);
+    const cut = boardSections(input.sections, behindBlock);
+    const plain = boardSections(flat, behindBlock);
+    expect(cut.some((section, i) => section.area < plain[i].area)).toBe(true);
+    expectClosedAndAgreeing(input);
+  });
+
+  it("a hand-set board with no blank bottoms the same way: its litres fall and its surface stays closed", () => {
+    const stock = phase16SurfaceBoards().find((b) => b.label === "stock|hard")!.fields;
+    expect(stock.blank).toBeNull();
+    const { input, flat } = cutBoard(stock, TRIO);
+    expect(computeCrossSectionVolume(input.sections).volumeLitres).toBeLessThan(computeCrossSectionVolume(flat).volumeLitres);
+    expectClosedAndAgreeing(input);
+  });
+
+  it("the surface draws each section's bottomed half: the very ring the litres count (placedHalfSection reads it first)", () => {
+    const { input } = cutBoard(boardOf("shortboard|asis|hard"), { center: "Deep Single Concave" });
+    const surface = buildBoardSurface(input);
+    const sections = boardSections(input.sections, surfaceStations(input));
+    const lifted = sections.findIndex((section) => section.drawn);
+    expect(lifted).toBeGreaterThanOrEqual(0);
+    const ring = surface.rings[lifted];
+    const points = ring.right.map((v) => [surface.positions[3 * v + 1], surface.positions[3 * v + 2] - input.rockerAt(ring.station)]);
+    const drawn = placedHalfSection(sections[lifted], sections[lifted].halfWidth, 0);
+    points.forEach(([y, h], k) => {
+      expect(y).toBeCloseTo(drawn[k][0], 9);
+      expect(h).toBeCloseTo(drawn[k][1], 9);
+    });
+  });
+
+  describe("Phase 17 D-40: a vee or belly lifts and thins the rail — never the stringer, never a lip, never past the deck", () => {
+    // The five boards the golden was taken on, every swallow and diamond of the Shortboard and the Fish, and the
+    // hand-set board with no blank.
+    const BOARDS_D40 = [
+      ...BOARD_PRESETS.map((preset) => `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`),
+      "shortboard|swallow|hard",
+      "shortboard|diamond|hard",
+      "fish|swallow|hard",
+      "fish|diamond|hard",
+    ].map((label) => ({ label, fields: boardOf(label) }));
+    const fish = boardOf("fish|asis|hard");
+    BOARDS_D40.push({
+      label: "fish, winged",
+      fields: {
+        ...fish,
+        outline: {
+          ...fish.outline,
+          wings: [{ station: mm(frontFinStation(designFinPlacement(fish)) + inchesToMm(4)), depth: inchesToMm(1 / 4), run: inchesToMm(1), radius: mm(0), lock: null, finOffset: mm(0) }],
+        },
+      },
+    });
+    BOARDS_D40.push({ label: "stock|hard", fields: phase16SurfaceBoards().find((b) => b.label === "stock|hard")!.fields });
+    const LIFTS = BOTTOM_SECTIONS.flatMap((section) =>
+      BOTTOM_CUT_NAMES[section].filter((name) => ["vee", "belly"].includes(cutKind(name))).map((name) => ({ section, name })),
+    );
+
+    it("walks five lift cuts on ten boards", () => {
+      expect(LIFTS).toHaveLength(5);
+      expect(BOARDS_D40).toHaveLength(10);
+    });
+
+    for (const { label, fields } of BOARDS_D40) {
+      it(`${label}: every lift alone, at its starting numbers and at 1/2", every column of every section`, () => {
+        let lifted = 0;
+        let edges = 0;
+        for (const { section, name } of LIFTS) {
+          for (const depth of [undefined, inchesToMm(1 / 2)]) {
+            const { input, flat, board, bottom } = cutBoard(fields, { [section]: name }, depth);
+            const resolved = resolveBottom(bottom, board);
+            const stations = surfaceStations(input);
+            const cut = boardSections(input.sections, stations);
+            const plain = boardSections(flat, stations);
+            cut.forEach((sec, i) => {
+              // the stringer is the lift's zero: no foam off there, and the planed thickness stands at the stringer
+              expect(foamOff(resolved, board, sec.station, mm(0))).toBe(0);
+              if (!sec.drawn) return;
+              lifted++;
+              if (sec.railEdgeAt !== undefined) edges++;
+              const half = sec.drawn;
+              const before = plain[i].drawn ?? plain[i].blended ?? sampledFinishedRail(plain[i].result!, plain[i].domed, plain[i].halfWidth);
+              expect(half[0]).toEqual(before[0]);
+              if (board.notchInner(sec.station) === 0) expect(half[half.length - 1]).toEqual(before[before.length - 1]);
+              // the underside, walked out from the stringer to the rail edge, only rises, and never above the deck
+              const deckAt = (y: number) => {
+                for (let k = 0; k + 1 < SURFACE_POINTS.deck; k++) {
+                  const [y0, h0] = half[k];
+                  const [y1, h1] = half[k + 1];
+                  if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+                }
+                return y <= half[0][0] ? half[0][1] : half[SURFACE_POINTS.deck - 1][1];
+              };
+              for (let k = half.length - 1; k >= SURFACE_POINTS.deck - 1; k--) {
+                const [y, h] = half[k];
+                expect(h, `${name} at ${sec.station}: above the deck`).toBeLessThanOrEqual(deckAt(y) + 1e-9);
+                if (k < half.length - 1) expect(h, `${name} at ${sec.station}: a lip at point ${k}`).toBeGreaterThanOrEqual(half[k + 1][1] - 1e-9);
+              }
+            });
+          }
+        }
+        expect(lifted).toBeGreaterThan(0);
+        if (label !== "longboard|asis|soft" && label !== "longboard|asis|hard") expect(edges).toBeGreaterThan(0);
+      }, 120_000);
+    }
+
+    it("at 1/2\" near the thin tips the lift reaches the deck and the foam ends in a knife edge — and the board is still one closed skin agreeing with the litres", () => {
+      for (const label of ["shortboard|asis|hard", "fish|swallow|hard", "fish|diamond|hard"]) {
+        const { input } = cutBoard(boardOf(label), { nose: "Rolled Belly Entry", tail: "Rolled Vee" }, inchesToMm(1 / 2));
+        const sections = boardSections(input.sections, surfaceStations(input));
+        expect(sections.some((section) => section.railEdgeAt !== undefined), label).toBe(true);
+        expect(sections.some((section) => section.thinAt && section.thinAt.length > 0), label).toBe(true);
+        expectClosedAndAgreeing(input);
+      }
+    }, 120_000);
+  });
+});

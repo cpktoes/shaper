@@ -18,11 +18,21 @@ import { inchesToMm, mm } from "./units";
 import { phase16FinCases } from "./__fixtures__/phase16-fin-cases";
 import bottomGolden from "./__fixtures__/bottom-golden.json";
 import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
-import { refAt } from "./bottom";
+import {
+  BOTTOM_CUT_NAMES,
+  BOTTOM_SECTIONS,
+  DEFAULT_BOTTOM,
+  refAt,
+  startingCut,
+  type BoardBottom,
+  type BottomCutName,
+  type BottomSectionKey,
+} from "./bottom";
 import { recordedPresetDesignFields } from "./__fixtures__/phase14-preset-blanks";
 import { computeFinPlacement, frontFinStation } from "./fins";
 import {
   crossSectionFoam,
+  designCrossSectionInput,
   deriveEffectiveRails,
   deriveEffectiveVolume,
   deriveQuotedVolumeLitres,
@@ -846,5 +856,130 @@ describe("designBottomBoard — the board facts the bottom is read against (Phas
       const ahead = mm(block + inchesToMm(6));
       expect(b.railAt(ahead)).toBe(sampleOutline(geometry, ahead));
     }
+  });
+});
+
+describe("the litres count the bottom's cut (Phase 17, D-05, D-20, D-21, D-33)", () => {
+  // the five boards bottom-golden.json was taken on, built as its script builds them, from the app
+  const all = phase16Boards();
+  const presets = BOARD_PRESETS.map((preset) => {
+    const label = `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`;
+    return { id: preset.id, fields: all.find((b) => b.label === label)!.fields };
+  });
+  const fish = presets.find((p) => p.id === "fish")!.fields;
+  const wing = {
+    station: mm(frontFinStation(designFinPlacement(fish)) + inchesToMm(4)),
+    depth: inchesToMm(1 / 4),
+    run: inchesToMm(1),
+    radius: mm(0),
+    lock: null,
+    finOffset: mm(0),
+  };
+  const jobs = [...presets, { id: "fishwing", fields: { ...fish, outline: { ...fish.outline, wings: [wing] } } }];
+  const fieldsOf = (id: string) => jobs.find((j) => j.id === id)!.fields;
+  const bottomBoardOf = (fields: DesignSummaryFields) =>
+    designBottomBoard(fields.outline, buildOutline(fields.outline), designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+  /** A bottom of the named cuts at their starting numbers on this board — through `startingCut`, never typed. */
+  const bottomOf = (fields: DesignSummaryFields, names: Partial<Record<BottomSectionKey, string>>): BoardBottom => {
+    const board = bottomBoardOf(fields);
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    for (const section of BOTTOM_SECTIONS) {
+      const name = names[section];
+      if (name) bottom[section] = startingCut(section, name as BottomCutName, board);
+    }
+    return bottom;
+  };
+  const litresOf = (fields: DesignSummaryFields, bottom?: BoardBottom) => summarizeDesign({ ...fields, bottom }).volumeLitres;
+  const fallOf = (fields: DesignSummaryFields, bottom: BoardBottom) => litresOf(fields) - litresOf(fields, bottom);
+
+  type GoldenCut = { kind: "cut"; board: string; section: BottomSectionKey; name: string; cut: { kind: string }; litresOff: number };
+  type GoldenOpening = { kind: "opening"; board: string; channels: number; cuts: Record<BottomSectionKey, { name: string }>; litresOff: number };
+  const goldenCases = bottomGolden.cases as unknown as { kind: string }[];
+  const thisWave = (name: string) => BOTTOM_SECTIONS.some((s) => (BOTTOM_CUT_NAMES[s] as readonly string[]).includes(name));
+  const cutCases = (goldenCases.filter((c) => c.kind === "cut") as GoldenCut[]).filter((c) => thisWave(c.name) && c.cut.kind !== "flat");
+  const opening = (id: string) =>
+    (goldenCases.filter((c) => c.kind === "opening") as GoldenOpening[]).find((c) => c.board === id && c.channels === 0)!;
+  const SHORT_RAILED = ["shortboard", "fish", "midlength", "fishwing"];
+
+  it("the Shortboard with a Deep Single Concave at its starting numbers quotes fewer litres than without it", () => {
+    const fields = fieldsOf("shortboard");
+    expect(litresOf(fields, bottomOf(fields, { center: "Deep Single Concave" }))).toBeLessThan(litresOf(fields));
+  });
+
+  it("covers this wave's ten cuts on the five boards", () => {
+    expect(cutCases).toHaveLength(10 * 5);
+  });
+
+  it.each(cutCases.map((c) => ({ ...c, label: `${c.board}: ${c.name}` })))(
+    "$label alone: the litres fall, and never by more than the sketch's slab figure (the finished rail only takes less)",
+    ({ board, section, name, litresOff }) => {
+      const fields = fieldsOf(board);
+      const fall = fallOf(fields, bottomOf(fields, { [section]: name }));
+      expect(fall).toBeGreaterThan(0);
+      expect(fall).toBeLessThanOrEqual(litresOff * 1.005);
+    },
+  );
+
+  it.each(cutCases.filter((c) => c.cut.kind === "single" && SHORT_RAILED.includes(c.board)).map((c) => ({ ...c, label: `${c.board}: ${c.name}` })))(
+    "$label: a single concave on a short-railed board falls within 0.5% of the sketch's own figure",
+    ({ board, section, name, litresOff }) => {
+      const fields = fieldsOf(board);
+      const fall = fallOf(fields, bottomOf(fields, { [section]: name }));
+      expect(Math.abs(fall / litresOff - 1)).toBeLessThan(0.005);
+    },
+  );
+
+  it.each(["shortboard", "fish", "fishwing"])("%s: its opening cuts fall within 0.5% of the sketch's own figure", (id) => {
+    const fields = fieldsOf(id);
+    const op = opening(id);
+    const names = Object.fromEntries(BOTTOM_SECTIONS.map((s) => [s, op.cuts[s].name]));
+    expect(Math.abs(fallOf(fields, bottomOf(fields, names)) / op.litresOff - 1)).toBeLessThan(0.005);
+  });
+
+  it("the Mid-length with a Rolled Belly Entry, a Deep Single and a Rolled Vee falls by what the three take off one at a time", () => {
+    const fields = fieldsOf("midlength");
+    const trio = { nose: "Rolled Belly Entry", center: "Deep Single Concave", tail: "Rolled Vee" } as const;
+    const together = fallOf(fields, bottomOf(fields, trio));
+    const alone = BOTTOM_SECTIONS.reduce((sum, s) => sum + fallOf(fields, bottomOf(fields, { [s]: trio[s] })), 0);
+    expect(together).toBeGreaterThan(0);
+    expect(Math.abs(together / alone - 1)).toBeLessThan(1e-3);
+    // and, as every cut alone, never more than the sketch's three slab figures together
+    const sketch = BOTTOM_SECTIONS.reduce((sum, s) => sum + cutCases.find((c) => c.board === "midlength" && c.name === trio[s])!.litresOff, 0);
+    expect(together).toBeLessThanOrEqual(sketch * 1.005);
+  });
+
+  it("Smoothness moves a single concave's litres by under 0.1% of the foam it takes off (D-06: the two section curves hold the same foam)", () => {
+    const fields = fieldsOf("shortboard");
+    const at = (smoothness: number) => {
+      const bottom = bottomOf(fields, { center: "Deep Single Concave" });
+      bottom.center = { ...bottom.center, smoothness };
+      return litresOf(fields, bottom);
+    };
+    const litres = [0, 50, 100].map(at);
+    const fall = litresOf(fields) - litres[1];
+    expect(Math.max(...litres) - Math.min(...litres)).toBeLessThan(fall * 1e-3);
+  });
+
+  it("a hand-set board with no blank bottoms the same way: its thickness is the foil's and its litres fall", () => {
+    const stock = phase16SurfaceBoards().find((b) => b.label === "stock|hard")!.fields;
+    expect(stock.blank).toBeNull();
+    expect(fallOf(stock, bottomOf(stock, { center: "Deep Single Concave", tail: "Rolled Vee" }))).toBeGreaterThan(0);
+  });
+
+  it("the input carries the bottom only when it cuts something; four arguments stay what they were", () => {
+    const fields = fieldsOf("shortboard");
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const board = bottomBoardOf(fields);
+    const four = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
+    const flat = designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom: DEFAULT_BOTTOM, board });
+    const cut = designCrossSectionInput(geometry, profile, rails, fields.outline.length, {
+      bottom: bottomOf(fields, { center: "Deep Single Concave" }),
+      board,
+    });
+    expect(Object.keys(flat)).toEqual(Object.keys(four));
+    expect("foamOffAt" in four).toBe(false);
+    expect(typeof cut.foamOffAt).toBe("function");
   });
 });

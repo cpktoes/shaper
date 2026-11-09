@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/bottom-golden.json";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
   bottomHasCut,
+  bottomLitresLine,
+  bottomSampler,
   cutFoamOff,
   cutHalfWidth,
   cutKind,
@@ -33,9 +35,9 @@ import {
 import type { DesignSummaryFields } from "./design";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
-import { buildOutline } from "./outline";
+import { buildOutline, foamHalfWidth, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { inchesToMm, mm, type Mm } from "./units";
+import { inchesToMm, litres, mm, type Mm } from "./units";
 
 /*
  * Every expected figure here is the founder's sketch 021's own, executed on the app's five boards by
@@ -399,20 +401,20 @@ describe("foamOff (D-05, D-09): the one number — golden", () => {
       });
     });
   });
-  it.each(nonFlatCutCases.map((c) => [c.board, c.name, c] as const))("%s · %s alone on the board: the sketch's foamOff, or the 1/4\" floor where that bites", (_b, _n, c) => {
+  it.each(nonFlatCutCases.map((c) => [c.board, c.name, c] as const))("%s · %s alone on the board: a concave is the sketch's foamOff held at the 1/4\" floor; a vee or belly is the sketch's own cut, never held (D-40)", (_b, _n, c) => {
     const board = boardById(c.board);
     const grid = gridOf(c.board);
     const resolved = resolveBottom(bottomOf(board, { [c.section]: c.name }), board);
     grid.s.forEach((s, k) => {
       grid.y[k].forEach((y, j) => {
-        const expected = Math.min(c.foamOff[k][j], floorCap(board, mm(s)));
+        const expected = c.cut.kind === "single" ? Math.min(c.foamOff[k][j], floorCap(board, mm(s))) : c.cutOff[k][j];
         expect(Math.abs(foamOff(resolved, board, mm(s), mm(y)) - expected)).toBeLessThan(TOL);
       });
     });
   });
 });
 
-describe("foamOff never leaves less than 1/4\" (D-09) and never goes below 0", () => {
+describe("a concave never leaves less than 1/4\" under the stringer (D-09); a vee or belly is never held and never touches the stringer (D-40)", () => {
   const thinStations = (board: BottomBoard): Mm[] => {
     const thin: Mm[] = [];
     for (let k = 0; k <= 400; k++) {
@@ -421,35 +423,60 @@ describe("foamOff never leaves less than 1/4\" (D-09) and never goes below 0", (
     }
     return thin;
   };
+  /** One name at `depth`, run from tip to tip so it reaches both ends at full depth. */
+  const tipToTip = (board: BottomBoard, section: BottomSectionKey, name: BottomCutName, depth: Mm) => {
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    bottom[section] = { ...startingCut(section, name, board), depth };
+    const ends = section === "nose" ? { start: mm(0), end: mm(board.length) } : { start: mm(board.length), end: mm(0) };
+    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "start", board);
+    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "end", board);
+    return resolveBottom(bottom, board);
+  };
+  const names = (keep: (name: BottomCutName) => boolean) =>
+    BOTTOM_SECTIONS.flatMap((section) => BOTTOM_CUT_NAMES[section].filter((n) => cutKind(n) !== "flat" && keep(n)).map((name) => ({ section, name })));
+
   it("at least three of the five boards thin under 3/4\" at a tip", () => {
     expect(BOARDS.filter(({ board }) => thinStations(board).length > 0).length).toBeGreaterThanOrEqual(3);
   });
-  it.each(BOARDS.filter(({ board }) => thinStations(board).length > 0).map((b) => [b.id, b.board] as const))("%s: every cut at 1/2\" where the foam is under 3/4\"", (_id, board) => {
-    const thin = thinStations(board);
-    let bit = 0;
-    for (const section of BOTTOM_SECTIONS) {
-      for (const name of BOTTOM_CUT_NAMES[section].filter((n) => cutKind(n) !== "flat")) {
-        const bottom = structuredClone(DEFAULT_BOTTOM);
-        bottom[section] = { ...startingCut(section, name, board), depth: inchesToMm(1 / 2) };
-        // run the cut from tip to tip, so it reaches the thin foam at both ends at full depth
-        const tipToTip = section === "nose" ? { start: mm(0), end: mm(board.length) } : { start: mm(board.length), end: mm(0) };
-        bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...tipToTip }, "start", board);
-        bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...tipToTip }, "end", board);
-        const resolved = resolveBottom(bottom, board);
-        for (const s of thin) {
+
+  it.each(BOARDS.filter(({ board }) => thinStations(board).length > 0).map((b) => [b.id, b.board] as const))(
+    "%s: a vee or belly at 1/2\" where the foam is under 3/4\" is its own cut, more than the foam holds somewhere, and 0 at the stringer",
+    (_id, board) => {
+      let pastTheFloor = 0;
+      for (const { section, name } of names((n) => cutKind(n) !== "single")) {
+        const resolved = tipToTip(board, section, name, inchesToMm(1 / 2));
+        for (const s of thinStations(board)) {
           const W = board.railAt(s);
           for (let j = 0; j <= 12; j++) {
             const y = mm((W * j) / 12);
             const v = foamOff(resolved, board, s, y);
-            expect(v).toBeGreaterThanOrEqual(0);
-            expect(v).toBeLessThanOrEqual(floorCap(board, s) + TOL);
-            if (sumOfCuts(resolved, board, s, y) > floorCap(board, s)) bit++;
+            expect(v).toBe(sumOfCuts(resolved, board, s, y));
+            if (j === 0) expect(v).toBe(0);
+            if (v > floorCap(board, s)) pastTheFloor++;
           }
         }
       }
-    }
-    expect(bit).toBeGreaterThan(0);
-  });
+      expect(pastTheFloor).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(BOARDS.map((b) => [b.id, b.board] as const))(
+    "%s: a concave set deeper than the foam holds (2\", past the slider) is held so 1/4\" stays under the stringer",
+    (_id, board) => {
+      let held = 0;
+      for (const { section, name } of names((n) => cutKind(n) === "single")) {
+        const resolved = tipToTip(board, section, name, inchesToMm(2));
+        for (let k = 0; k <= 200; k++) {
+          const s = mm((board.length * k) / 200);
+          const v = foamOff(resolved, board, s, mm(0));
+          expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(floorCap(board, s) + TOL);
+          if (sumOfCuts(resolved, board, s, mm(0)) > floorCap(board, s)) held++;
+        }
+      }
+      expect(held).toBeGreaterThan(0);
+    },
+  );
 });
 
 describe("cuts stack, run past their section, shallow when narrow and run out at full depth on a tip", () => {
@@ -535,5 +562,81 @@ describe("the tests type no expected figure (Rule 1, T-17-01)", () => {
     const self = readFileSync(new URL("./bottom.test.ts", import.meta.url), "utf8");
     const figures = new RegExp(["0\\." + "54", "0\\." + "75", "0\\." + "31", "3\\." + "33", "0\\." + "26"].join("|"));
     expect(self).not.toMatch(figures);
+  });
+});
+
+/* ============ 17-03: the one number handed to the litres, and DATA's first line ============ */
+
+describe("bottomSampler (D-05, D-21): foamOff read from the section's own inside edge", () => {
+  it("on a board with no notch it is foamOff itself, at every golden probe", () => {
+    const board = boardById("shortboard");
+    const resolved = resolveBottom(bottomOf(board, { center: "Deep Single Concave", tail: "Rolled Vee" }), board);
+    const sample = bottomSampler(resolved, board);
+    const grid = gridOf("shortboard");
+    grid.s.forEach((sv, k) => {
+      for (const yv of grid.y[k]) {
+        expect(sample(mm(sv), mm(yv))).toBe(foamOff(resolved, board, mm(sv), mm(yv)));
+      }
+    });
+  });
+
+  it("inside a swallow's notch it reads the cut at its true distance from the stringer: across plus the notch wall", () => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|swallow|hard")!.fields;
+    const board = bottomBoardOf(fields);
+    const resolved = resolveBottom(bottomOf(board, { tail: "Panel Vee" }), board);
+    const sample = bottomSampler(resolved, board);
+    const notchStations = Array.from({ length: 40 }, (_, k) => mm(k * 2)).filter((s) => board.notchInner(s) > 0);
+    expect(notchStations.length).toBeGreaterThan(3);
+    for (const s of notchStations) {
+      for (const across of [0, 10, 40, 80].map(mm)) {
+        expect(sample(s, across)).toBe(foamOff(resolved, board, s, mm(across + board.notchInner(s))));
+      }
+    }
+  });
+});
+
+describe("bottomLitresLine (D-34): DATA's first line always adds up as printed", () => {
+  it("prints the two litres to two decimals and the foam off as the printed before less the printed now", () => {
+    const line = bottomLitresLine(litres(28.894), litres(29.613));
+    expect(line.now).toBe((28.894).toFixed(2));
+    expect(line.before).toBe((29.613).toFixed(2));
+    const hundredths = (printed: string) => Math.round(Number(printed) * 100);
+    expect(hundredths(line.foamOff)).toBe(hundredths(line.before) - hundredths(line.now));
+    expect(line.foamOff).toMatch(/^\d+\.\d\d$/);
+  });
+
+  it("adds up as printed on every board's litres with every cut of this wave, however the two figures round", () => {
+    for (const { id } of BOARDS) {
+      for (const c of nonFlatCutCases.filter((x) => x.board === id)) {
+        const before = golden.boards.find((b) => b.id === id)!.facts.litres;
+        const line = bottomLitresLine(litres(before - c.litresOff), litres(before));
+        const hundredths = (printed: string) => Math.round(Number(printed) * 100);
+        expect(hundredths(line.before) - hundredths(line.foamOff)).toBe(hundredths(line.now));
+      }
+    }
+  });
+
+  it("a flat bottom reads 0.00", () => {
+    const before = litres(golden.boards[0].facts.litres);
+    expect(bottomLitresLine(before, before).foamOff).toBe((0).toFixed(2));
+  });
+});
+
+describe("a diamond's V is cut (D-38): a Panel Vee takes foam off inside the V behind the tail block", () => {
+  it("on every diamond of the surface set, foamOff is above 0 inside the V where the drawn outline is 0", () => {
+    const diamonds = phase16SurfaceBoards().filter((b) => b.label.includes("|diamond|"));
+    expect(diamonds.length).toBeGreaterThan(0);
+    for (const { label, fields } of diamonds) {
+      const board = bottomBoardOf(fields);
+      const geometry = buildOutline(fields.outline);
+      const resolved = resolveBottom(bottomOf(board, { tail: "Panel Vee" }), board);
+      const inV = Array.from({ length: 30 }, (_, k) => mm(k * 3)).filter(
+        (s) => sampleOutline(geometry, s) === 0 && foamHalfWidth(geometry, s) > 0,
+      );
+      expect(inV.length, label).toBeGreaterThan(0);
+      for (const s of inV) {
+        expect(foamOff(resolved, board, s, mm(foamHalfWidth(geometry, s) * 0.9)), `${label} at ${s}`).toBeGreaterThan(0);
+      }
+    }
   });
 });
