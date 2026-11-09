@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
@@ -235,5 +236,36 @@ describe("the CHANNELS block's words (D-10, D-11)", () => {
       "Channels Depth",
       "Channels Smoothness",
     ]);
+  });
+});
+
+describe("BOTTOM's viewer (17-10): Height, Section at and the finished rail — words, and none of it saved", () => {
+  it("Height's four buttons and their spoken names; Section at speaks its station from the tail", () => {
+    expect([1, 2, 4, 8].map(BOTTOM_COPY.heightButton)).toEqual(["×1", "×2", "×4", "×8"]);
+    expect([1, 2, 4, 8].map(BOTTOM_COPY.heightButtonName)).toEqual(["Height ×1", "Height ×2", "Height ×4", "Height ×8"]);
+    for (const system of SYSTEMS) {
+      const station = formatBottomStation(inchesToMm(36), system);
+      expect(BOTTOM_COPY.sectionAtValue(station)).toBe(`${station} from the tail`);
+    }
+  });
+
+  it("the ruler and the section's words ask only the section's own box: nothing under components/bottom reads the window or the device (C3)", () => {
+    for (const file of ["bottom-editor.tsx", "bottom-section.tsx", "bottom-top-view.tsx", "bottom-controls.tsx", "bottom-data.tsx"]) {
+      const source = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
+      expect(source, file).not.toMatch(/\binnerWidth\b|\bmatchMedia\b|\bouterWidth\b|\bdevicePixelRatio\b/);
+    }
+    expect(readFileSync(new URL("./bottom-section.tsx", import.meta.url), "utf8")).toMatch(/useSvgClientSize\(svgRef\)/);
+  });
+
+  it("the view state — the station, Height, the finished-rail tick, the live cut — lives in BottomEditor alone, never in the store or a saved board (UI-SPEC §14)", () => {
+    const editor = readFileSync(new URL("./bottom-editor.tsx", import.meta.url), "utf8");
+    for (const state of ["height", "showFinishedRail", "live"]) {
+      expect(editor).toMatch(new RegExp(`const \\[${state}, set\\w+\\] = useState`));
+    }
+    // The station: a store of BottomEditor's own, made once when the page opens on the wide point.
+    expect(editor).toMatch(/const \[stationStore\] = useState\(\(\) => createSectionStationStore\(\{ follow: "wide" \}\)\)/);
+    const store = readFileSync(new URL("../design/design-store.tsx", import.meta.url), "utf8");
+    const snapshot = readFileSync(new URL("../../lib/models/design-snapshot.ts", import.meta.url), "utf8");
+    for (const source of [store, snapshot]) expect(source).not.toMatch(/sectionStation|showFinishedRail|SectionHeight|sectionHeight/);
   });
 });

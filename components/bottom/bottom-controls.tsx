@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import { SliderRow } from "@/components/design/slider-row";
@@ -12,7 +12,6 @@ import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-r
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
-  bottomFloorFlags,
   channelReadout,
   stationFromNearestTip,
   storeChannelStation,
@@ -21,6 +20,7 @@ import {
   type BottomChannelsSpec,
   type BottomCutName,
   type BottomCutSpec,
+  type BottomFloorFlag,
   type BottomSectionKey,
   type BottomWingRule,
   type ResolvedChannels,
@@ -123,6 +123,11 @@ interface BottomControlsProps {
   /** A count picked from the CHANNELS block (the editor writes the store, makes the channels live and, opening a set,
    * moves the section to their Deepest). */
   onChannelCount: (count: BottomChannelsSpec["count"]) => void;
+  /** Where each cut meets the 1/4" floor — the editor's one scan (`bottomFloorFlags`), shared with DATA. */
+  floorFlags: BottomFloorFlag[];
+  /** The finished rail from RAILS on the section (D-13): view state, off when the page opens, never saved. */
+  showFinishedRail: boolean;
+  onShowFinishedRail: (on: boolean) => void;
 }
 
 /**
@@ -139,13 +144,20 @@ interface BottomControlsProps {
  * On a locked board every control is greyed and still (the Selects and the tick box `disabled={locked}`, each
  * `SliderRow` reads the lock itself); the readout card is information and keeps its strength.
  */
-export function BottomControls({ live, onLive, onPick, onChannelCount }: BottomControlsProps) {
+export const BottomControls = memo(function BottomControls({
+  live,
+  onLive,
+  onPick,
+  onChannelCount,
+  floorFlags,
+  showFinishedRail,
+  onShowFinishedRail,
+}: BottomControlsProps) {
   const { system } = useUnits();
   const {
     bottom,
     bottomBoard,
     resolvedBottom,
-    bottomSections,
     updateBottomCut,
     setBottomClosesToPoint,
     setChannelRun,
@@ -155,14 +167,10 @@ export function BottomControls({ live, onLive, onPick, onChannelCount }: BottomC
     effectiveRails,
   } = useDesign();
   const channelsCut = bottom.channels.count > 0;
-  // Where each cut meets the 1/4" floor (D-09, D-33 as amended by D-40): the stringer form from the maths' own scan, the
-  // rail form from the litres' own sections — the store's memoised `bottomSections`, never built here (the checker's W1).
-  // The scan costs about 50–75 ms on a full bottom (measured on the Shortboard with three cuts and six channels), so it
-  // reads deferred copies: a drag keeps its thumb under the finger and the sentence follows a moment after.
-  const flagsBottom = useDeferredValue(resolvedBottom);
-  const flagsBoard = useDeferredValue(bottomBoard);
-  const flagsSections = useDeferredValue(bottomSections);
-  const floorFlags = useMemo(() => bottomFloorFlags(flagsBottom, flagsBoard, flagsSections), [flagsBottom, flagsBoard, flagsSections]);
+  // Where each cut meets the 1/4" floor (D-09, D-33 as amended by D-40) comes from the editor's one scan: the stringer
+  // form from the maths' own scan, the rail form from the litres' own sections — the store's memoised `bottomSections`,
+  // never built here (the checker's W1). The scan (50–75 ms on a full bottom) reads deferred copies, so a drag keeps its
+  // thumb under the finger and the sentence follows a moment after.
 
   return (
     <div className="flex flex-col gap-5">
@@ -180,6 +188,13 @@ export function BottomControls({ live, onLive, onPick, onChannelCount }: BottomC
           className="mt-2"
           readout={bottomImportedReadout(outline.length, outline.widePointWidth, effectiveRails.center.boardThickness, system)}
         />
+        {/* D-13: the finished rail from RAILS on the section — RAILS' tick row, view-only, so a locked board keeps it. */}
+        <div data-lock-exempt className="pt-2">
+          <label className="flex cursor-pointer items-center gap-1.5 coarse:min-h-11 text-sm text-surf-ink-muted font-normal">
+            <Checkbox data-lock-exempt checked={showFinishedRail} onCheckedChange={(checked) => onShowFinishedRail(checked === true)} />
+            {BOTTOM_COPY.showFinishedRail}
+          </label>
+        </div>
       </div>
 
       {BOTTOM_SECTIONS.map((section) => (
@@ -226,7 +241,7 @@ export function BottomControls({ live, onLive, onPick, onChannelCount }: BottomC
       ))}
     </div>
   );
-}
+});
 
 interface BottomSectionCardProps {
   section: BottomSectionKey;
