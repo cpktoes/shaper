@@ -344,7 +344,7 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   Single already peaks there and only its End moves from 4" to the fins; the Shallow Single's Deepest moves ahead from the
   fins to that halfway station). Picking a tail vee while the center holds a single still at its starting numbers moves
   that single the same way in one undoable step; a single set by hand is never touched. Carried by plan 17-05 with the rest
-  of the names and their starting numbers (sharpens D-08). — **Reversibility:** reversible — starting numbers.
+  of the names and their starting numbers (sharpens D-08). *Sharpened at 17-05's look (2026-11-08): the re-seat works both ways — switching the tail from a vee back to a flat or a concave puts a single still sitting on the vee's numbers back on its original numbers ("Yes, both ways"); and the researched opening vees stand even though two of them (the Fish's Panel Vee, the Mid-length's Spiral Vee, 3/16" each) leave the tail rail's edge under 1/4" in the last few inches and so show D-40's thin-rail warning on a fresh pick — "Warn, keep the numbers": the warning is honest information, the numbers are his to tune at the UAT.* — **Reversibility:** reversible — starting numbers.
 
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM
