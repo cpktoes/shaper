@@ -542,6 +542,11 @@ export function bottomHasCut(bottom: BoardBottom): boolean {
     const cut = bottom[section];
     if (cutKind(cut.name) !== "flat" && cut.depth > 0) return true;
   }
+  return bottomHasChannels(bottom);
+}
+
+/** Whether the bottom cuts channels: a count picked and a depth above 0. */
+export function bottomHasChannels(bottom: BoardBottom): boolean {
   return bottom.channels.count > 0 && bottom.channels.depth > 0;
 }
 
@@ -836,6 +841,31 @@ export function channelFoamOff(ch: ResolvedChannels, board: BottomBoard, rule: B
     }
   }
   return mm(0);
+}
+
+/**
+ * Every wall of one side at a station, out from the stringer — one per channel a side, in order, the same number at
+ * every station (D-21, research §B): channel `j`'s wall at the outer edge `channelEdges` gives it, or at the stringer
+ * where that channel is not there (its wall within 1/2 mm of the stringer). Whether a wall stands — whether its channel
+ * has started and is cut there — is the one number's to say. None with fewer than four channels or at no depth.
+ */
+export function channelWallsAt(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): Mm[] {
+  if (ch.count < 4 || ch.depth <= 0) return [];
+  const walls: Mm[] = Array.from({ length: ch.count / 2 }, () => mm(0));
+  for (const [, b, j] of channelEdges(ch, board, rule, s)) walls[j] = b;
+  return walls;
+}
+
+/**
+ * The channels' walls as the litres, the 3D board and the CNC files read them (D-21): `channelWallsAt`, measured in
+ * from the section's own inside edge as `bottomSampler`'s `across` is (less a swallow's notch wall), never below 0.
+ * `design.ts` hands it to `volume.ts` as `bottomWallsAt` beside the sampler, only when the bottom has channels.
+ */
+export function bottomWallSampler(resolved: ResolvedBottom, board: BottomBoard): (station: Mm) => Mm[] {
+  return (station) => {
+    const inner = board.notchInner(station);
+    return channelWallsAt(resolved.channels, board, resolved.wingRule, station).map((w) => mm(Math.max(0, w - inner)));
+  };
 }
 
 /** The channels at a station, for the drawings and DATA: the fit at the deepest station, the edges and the marks. */

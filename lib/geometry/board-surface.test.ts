@@ -31,8 +31,10 @@ import {
   DEFAULT_BOTTOM,
   foamOff,
   resolveBottom,
+  startingChannels,
   startingCut,
   type BoardBottom,
+  type BottomBoard,
   type BottomCutName,
   type BottomSectionKey,
 } from "./bottom";
@@ -45,7 +47,7 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "./design";
-import { openedFinishedRail, railReach, sampledFinishedRail } from "./finished-rail";
+import { HALF_SECTION_POINT_COUNT, openedFinishedRail, railReach, sampledFinishedRail } from "./finished-rail";
 import { foilStationPoints } from "./foil";
 import type { Vec3 } from "./board-surface";
 import { buildOutline, foamHalfWidth, sampleOutline, tailCutStation } from "./outline";
@@ -56,6 +58,7 @@ import { inchesToMm, mm, type Mm } from "./units";
 import {
   boardSectionEnds,
   boardSections,
+  BOTTOM_WALL_SLOTS,
   computeCrossSectionVolume,
   crossSectionStations,
   railCharacterDifferences,
@@ -69,7 +72,7 @@ import {
   phase16SurfaceBoards,
   phase16WingBoards,
 } from "./__fixtures__/phase16-boards";
-import { stringerLines } from "./board-surface-render";
+import { renderMesh, stringerLines } from "./board-surface-render";
 
 /**
  * The 3D board's surface (Phase 16, D-05): the litres' own sections lofted along the rocker. Every expected
@@ -1165,7 +1168,7 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
     fields: DesignSummaryFields,
     names: Partial<Record<BottomSectionKey, string>>,
     depth?: Mm,
-    change?: (bottom: BoardBottom) => void,
+    change?: (bottom: BoardBottom, board: BottomBoard) => void,
   ) {
     const geometry = buildOutline(fields.outline);
     const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
@@ -1178,7 +1181,7 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
       bottom[section] = startingCut(section, name as BottomCutName, board);
       if (depth !== undefined) bottom[section].depth = depth;
     }
-    change?.(bottom);
+    change?.(bottom, board);
     const sections = designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board });
     const flat = designCrossSectionInput(geometry, profile, rails, fields.outline.length);
     const input: BoardSurfaceInput = { sections, geometry, rockerAt: profile.rockerAt };
@@ -1288,6 +1291,115 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
       expect(y).toBeCloseTo(drawn[k][0], 9);
       expect(h).toBeCloseTo(drawn[k][1], 9);
     });
+  });
+
+  describe("Phase 17 D-10, D-21, R11: the channels' walls are real walls in the 3D board and the STL", () => {
+    /** Eight channels on the board (D-11's numbers), `depth` deep when given, and the named sections cut. */
+    const withChannels = (fields: DesignSummaryFields, names: Partial<Record<BottomSectionKey, string>>, depth?: Mm) =>
+      cutBoard(fields, names, depth, (bottom, board) => {
+        bottom.channels = { ...startingChannels(8, board, bottom.channels), ...(depth !== undefined ? { depth } : {}) };
+      });
+    const RING_WITH_WALLS = HALF_SECTION_POINT_COUNT + 2 * BOTTOM_WALL_SLOTS;
+
+    for (const { id, fields } of fiveBoards()) {
+      for (const depth of [undefined, HALF_INCH]) {
+        it(`channels: ${id} with eight channels ${depth ? "and every section and the channels at 1/2\"" : "at their starting numbers"} — closed, (mesh − litres)/litres in (−0.15%, 0], every ring the board's own length, the walls drawn`, () => {
+          const { input, flat } = withChannels(fields, depth ? TRIO : {}, depth);
+          expect(input.sections.bottomWallsAt).toBeDefined();
+          expect(computeCrossSectionVolume(input.sections).volumeLitres).toBeLessThan(computeCrossSectionVolume(flat).volumeLitres);
+          const surface = expectClosedAndAgreeing(input);
+          for (const ring of surface.rings) {
+            expect(ring.right).toHaveLength(RING_WITH_WALLS);
+            expect(ring.left).toHaveLength(RING_WITH_WALLS);
+          }
+          expect(Array.from(surface.faceKinds).filter((k) => k === SURFACE_FACE.channelWall).length).toBeGreaterThan(0);
+          // no point of the bottom above the deck over it
+          for (const section of boardSections(input.sections, surfaceStations(input))) {
+            if (!section.drawn) continue;
+            const deck = section.drawn.slice(0, SURFACE_POINTS.deck);
+            const deckAt = (y: number) => {
+              for (let k = 0; k + 1 < deck.length; k++) {
+                const [y0, h0] = deck[k];
+                const [y1, h1] = deck[k + 1];
+                if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+              }
+              return y <= deck[0][0] ? deck[0][1] : deck[deck.length - 1][1];
+            };
+            for (const [y, h] of section.drawn.slice(SURFACE_POINTS.deck)) expect(h, `at ${section.station}`).toBeLessThanOrEqual(deckAt(y) + 1e-9);
+          }
+        }, 120_000);
+      }
+    }
+
+    it("channels: a wall is a vertical face in the mesh — its two rows share their distance across at every ring, one the channel's depth above the other where it is deepest", () => {
+      const { input, board } = withChannels(boardOf("shortboard|asis|hard"), {});
+      const surface = buildBoardSurface(input);
+      const sections = boardSections(input.sections, surfaceStations(input));
+      const rows = sections.find((section) => section.wallRows)!.wallRows!;
+      expect(rows).toHaveLength(4);
+      const at = surface.rings.findIndex((ring) => ring.station >= board.frontFins);
+      const ring = surface.rings[at];
+      const y = (v: number) => surface.positions[3 * v + 1];
+      const z = (v: number) => surface.positions[3 * v + 2];
+      let standing = 0;
+      surface.rings.forEach((r) => rows.forEach((row) => expect(y(r.right[row])).toBe(y(r.right[row + 1]))));
+      for (const row of rows) {
+        if (ring.right[row] === ring.right[row + 1]) continue;
+        standing++;
+        expect(z(ring.right[row + 1]) - z(ring.right[row])).toBeGreaterThan(inchesToMm(1 / 4));
+      }
+      // three walls stand on the bottom at the fins; the fourth runs out through the rail
+      expect(standing).toBeGreaterThanOrEqual(3);
+    });
+
+    it("channels: the screen draws the walls sharp — a wall's normals point across the board, the channel floor's up", () => {
+      const { input } = withChannels(boardOf("shortboard|asis|hard"), {});
+      const surface = buildBoardSurface(input);
+      const drawn = renderMesh(surface);
+      // the points a wall touches: its top and foot rows
+      const onWall = new Set<number>();
+      for (let t = 0; t < surface.triangleCount; t++) {
+        if (surface.faceKinds[t] === SURFACE_FACE.channelWall) for (let e = 0; e < 3; e++) onWall.add(surface.indices[3 * t + e]);
+      }
+      expect(onWall.size).toBeGreaterThan(0);
+      let walls = 0;
+      let floors = 0;
+      for (let t = 0; t < surface.triangleCount; t++) {
+        const kind = surface.faceKinds[t];
+        for (let e = 0; e < 3; e++) {
+          const v = surface.indices[3 * t + e];
+          if (!onWall.has(v)) continue;
+          const out = drawn.indices[3 * t + e];
+          const [ny, nz] = [drawn.normals[3 * out + 1], drawn.normals[3 * out + 2]];
+          if (kind === SURFACE_FACE.channelWall) {
+            expect(Math.abs(ny)).toBeGreaterThan(Math.abs(nz));
+            walls++;
+          } else if (kind === SURFACE_FACE.bottom) {
+            // the same point drawn for the floor beside the wall: its own normal, pointing down out of the bottom
+            expect(Math.abs(nz)).toBeGreaterThan(Math.abs(ny));
+            floors++;
+          }
+        }
+      }
+      expect(walls).toBeGreaterThan(0);
+      expect(floors).toBeGreaterThan(0);
+    });
+
+    it("a board without channels keeps its rings as they were: the usual length, no wall faces", () => {
+      const { input } = cutBoard(boardOf("shortboard|asis|hard"), TRIO);
+      expect("bottomWallsAt" in input.sections).toBe(false);
+      const surface = expectClosedAndAgreeing(input);
+      for (const ring of surface.rings) expect(ring.right).toHaveLength(HALF_SECTION_POINT_COUNT);
+      expect(Array.from(surface.faceKinds)).not.toContain(SURFACE_FACE.channelWall);
+    });
+
+    it("channels on a swallow and a diamond, and on the board with no blank, stay closed", () => {
+      for (const label of ["shortboard|swallow|hard", "fish|swallow|hard", "shortboard|diamond|hard"]) {
+        expectClosedAndAgreeing(withChannels(boardOf(label), {}, HALF_INCH).input);
+      }
+      const stock = phase16SurfaceBoards().find((b) => b.label === "stock|hard")!.fields;
+      expectClosedAndAgreeing(withChannels(stock, TRIO, HALF_INCH).input);
+    }, 120_000);
   });
 
   describe("Phase 17 D-40: a vee or belly lifts and thins the rail — never the stringer, never a lip, never past the deck", () => {
