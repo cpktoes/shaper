@@ -90,6 +90,28 @@ describe("design-store.tsx — the blank rides in every hand-written field list 
   });
 });
 
+describe("design-store.tsx — BOTTOM's two edits (Phase 17, 17-08)", () => {
+  it("historySnapshot carries the bottom, so Undo and Redo take a cut pick or a cut slider back", () => {
+    const { object, deps } = memo("historySnapshot");
+    expect(object).toMatch(/\bbottom:\s*state\.bottom\b/);
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+  });
+
+  it("a Cut pick is one undo step through pickCut, so D-42's re-seat rides in the same step", () => {
+    const body = handler("pickBottomCut");
+    expect(body).toMatch(/noteEdit\(null\)/);
+    expect(body).toMatch(/bottom:\s*pickCut\(prev\.bottom,\s*section,\s*name,\s*bottomBoard\)/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+
+  it("a cut slider keeps Start ≥ Deepest ≥ End in the same step, under one key per field dragged", () => {
+    const body = handler("updateBottomCut");
+    expect(body).toMatch(/noteEdit\(`bottom:\$\{section\}:\$\{patchKey\(patch\)\}`\)/);
+    expect(body).toMatch(/keepStationsInOrder\(section,/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+});
+
 describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 5)", () => {
   it("the blank is prepared once per blank copy and rocker, inside a useMemo, through the one helper (R14, quick 261016-mkb)", () => {
     const { object, deps } = memo("preparedBlank");

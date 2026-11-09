@@ -4,7 +4,7 @@ import { SCREENS, expectNoScreensNavigation, goToScreen, openPhoneMenu, screenTi
 /**
  * TEST-01's proof for Phase 9's tracer (09-02): TEMPLATE stacks on the iphone and android
  * projects — the drawing pinned across the full width above a controls region that alone
- * scrolls, under a compact top bar whose menu opens the seven screen tiles (the old six-tab bottom
+ * scrolls, under a compact top bar whose menu opens the eight screen tiles (the old six-tab bottom
  * bar was removed in quick 261003-q2f; 3D joined the tiles in Phase 16) — while the desktop project proves the sidebar-beside-canvas
  * shell and the phone chrome are untouched. Later plans in this phase (top
  * bar and menu, orientation) extend this same file rather than starting a new one.
@@ -81,7 +81,7 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
     expect(controlsScroll.scrollHeight).toBeGreaterThan(controlsScroll.clientHeight);
   });
 
-  test("no bottom tab bar; the menu shows all seven screen tiles in order, TEMPLATE ticked, every tile at least 44px", async ({
+  test("no bottom tab bar; the menu shows all eight screen tiles in order, TEMPLATE ticked, every tile at least 44px", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -91,7 +91,7 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
 
     const sheet = await openPhoneMenu(page);
     const tiles = sheet.locator("[data-screen-tile]");
-    await expect(tiles).toHaveCount(7);
+    await expect(tiles).toHaveCount(8);
     expect(await tiles.evaluateAll((els) => els.map((el) => el.getAttribute("data-screen-tile")))).toEqual(
       SCREENS.map((screen) => screen.href),
     );
@@ -124,13 +124,13 @@ test.describe("phone shell — TEMPLATE stacks with the drawing pinned above the
   // at these three narrow phone widths, every tile's name and line render whole — no clip — and
   // the page never scrolls sideways.
   for (const width of [360, 375, 393]) {
-    test(`all seven tiles' names and lines stay whole at ${width}px wide`, async ({ page }) => {
+    test(`all eight tiles' names and lines stay whole at ${width}px wide`, async ({ page }) => {
       await page.setViewportSize({ width, height: 640 });
       await page.goto("/design/outline");
 
       const sheet = await openPhoneMenu(page);
       const tiles = sheet.locator("[data-screen-tile]");
-      await expect(tiles).toHaveCount(7);
+      await expect(tiles).toHaveCount(8);
 
       const docScrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
       expect(docScrollWidth, `the page scrolled sideways at ${width}px`).toBe(width);
@@ -347,7 +347,7 @@ test.describe("phone held sideways, iPhone — the rotate button stays gone, con
 // any screen 500 dots tall or less, and the phone's own thin bar takes its place, carrying the
 // design screens in its Menu. This test was rewritten for that: the desktop shell itself is
 // unchanged (D-10 still holds), but what used to be a visible desktop link row with six links is
-// now the phone bar's Menu with the same screens inside it (seven since Phase 16 added 3D).
+// now the phone bar's Menu with the same screens inside it (eight since Phase 17 added BOTTOM).
 test.describe("phone held sideways — the desktop shell renders under the phone's thin bar (D-10, quick 260930-r8s)", () => {
   test.use({ ...pixel7LandscapeViewport });
 
@@ -359,7 +359,7 @@ test.describe("phone held sideways — the desktop shell renders under the phone
     await dismissSignInBanner(page);
   });
 
-  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders under the phone's thin bar: the desktop link row is gone, there is no bottom tab bar, the seven screen tiles are in the menu, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
+  test("at 863 x 360 (a real Pixel 7 turned sideways) the desktop shell renders under the phone's thin bar: the desktop link row is gone, there is no bottom tab bar, the eight screen tiles are in the menu, and the rotate button is gone (a touch pointer's own job, not this switch's)", async ({
     page,
   }) => {
     await page.goto("/design/outline");
@@ -397,7 +397,7 @@ test.describe("phone held sideways — the desktop shell renders under the phone
 
     await expectNoScreensNavigation(page);
 
-    // The seven screens the desktop row shows on a computer are reachable from the Menu's tiles instead.
+    // The eight screens the desktop row shows on a computer are reachable from the Menu's tiles instead.
     const popup = await openPhoneMenu(page);
     for (const screen of SCREENS) {
       await expect(screenTile(page, screen.label)).toBeVisible();

@@ -1,6 +1,6 @@
 /**
- * The order a board is shaped in — TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY, 3D, the seven
- * design screens — and the one question the Back and Next buttons ask of it: "from this screen, which
+ * The order a board is shaped in — TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY, 3D, the eight
+ * design screens (BOTTOM third since Phase 17) — and the one question the Back and Next buttons ask of it: "from this screen, which
  * one comes before and which one comes after?" SUMMARY's Next goes to 3D (Phase 16), the board seen
  * as a solid, which is the end of the chain.
  *

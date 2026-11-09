@@ -7,6 +7,7 @@ import {
   railsImportedReadout,
   rockerImportedReadout,
   volumeImportedReadout,
+  bottomImportedReadout,
   type ImportedReadout,
 } from "./imported-readout";
 import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
@@ -235,6 +236,40 @@ describe("finsImportedReadout — FINS' INPUTS card", () => {
         ["Tail block", formatDim(inchesToMm(9.25), system)],
         ["Depth", formatMark(inchesToMm(2.25), system)],
       ]);
+    }
+  });
+});
+
+describe("bottomImportedReadout — BOTTOM's INPUTS card (Phase 17, D-25)", () => {
+  const length = inchesToMm(74);
+  const width = inchesToMm(18.75);
+  const thickness = inchesToMm(2.25);
+
+  it("reads the board's headline dims in Imperial, with its caption and foot", () => {
+    const r = bottomImportedReadout(length, width, thickness, "imperial");
+    expect(r.caption).toBe("From TEMPLATE & ROCKER");
+    expect(pairs(r)).toEqual([
+      ["Length", formatLength(length, "imperial")],
+      ["Width", formatDim(width, "imperial")],
+      ["Thickness", formatDim(thickness, "imperial")],
+    ]);
+    expect(r.foot).toBe("Thickness is the planed number. The contour comes out of it.");
+  });
+
+  it("reads every figure as a dim in Metric — the thickness in centimetres, never a mark", () => {
+    const r = bottomImportedReadout(length, width, thickness, "metric");
+    expect(pairs(r)).toEqual([
+      ["Length", formatLength(length, "metric")],
+      ["Width", formatDim(width, "metric")],
+      ["Thickness", formatDim(thickness, "metric")],
+    ]);
+    expect(r.items[2].value).toMatch(/ cm$/);
+    expect(r.items[2].value).not.toBe(formatMark(thickness, "metric"));
+  });
+
+  it("reads exactly as VOLUME's card reads the same three figures", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(pairs(bottomImportedReadout(length, width, thickness, system))).toEqual(pairs(volumeImportedReadout(length, width, thickness, system)));
     }
   });
 });

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { screenStepsAround, screenWord } from "./screen-steps";
 
-// A local copy of the seven screens, in the order a board is shaped. The real list (NAV_LINKS in
+// A local copy of the eight screens, in the order a board is shaped. The real list (NAV_LINKS in
 // components/site-nav.tsx) cannot be imported here — it pulls Clerk and React client code into a
 // node unit test — so e2e/step-nav.spec.ts walks the real list in a browser instead.
 const SCREENS = [
   { href: "/design/outline", label: "TEMPLATE" },
   { href: "/design/rocker", label: "ROCKER" },
+  { href: "/design/bottom", label: "BOTTOM" },
   { href: "/design/rails", label: "RAILS" },
   { href: "/design/volume", label: "VOLUME" },
   { href: "/design/fins", label: "FINS" },
@@ -21,22 +22,28 @@ describe("screenStepsAround", () => {
     expect(steps.next).toBe(SCREENS[1]);
   });
 
-  it("RAILS, in the middle, sits between ROCKER and VOLUME", () => {
+  it("BOTTOM, third since Phase 17, sits between ROCKER and RAILS", () => {
+    const steps = screenStepsAround(SCREENS, "/design/bottom");
+    expect(steps.previous?.href).toBe("/design/rocker");
+    expect(steps.next?.href).toBe("/design/rails");
+  });
+
+  it("RAILS, in the middle, sits between BOTTOM and VOLUME", () => {
     const steps = screenStepsAround(SCREENS, "/design/rails");
-    expect(steps.previous).toBe(SCREENS[1]);
-    expect(steps.next).toBe(SCREENS[3]);
+    expect(steps.previous).toBe(SCREENS[2]);
+    expect(steps.next).toBe(SCREENS[4]);
   });
 
   it("SUMMARY has FINS before it and 3D after it", () => {
     const steps = screenStepsAround(SCREENS, "/design/summary");
-    expect(steps.previous).toBe(SCREENS[4]);
-    expect(steps.next).toBe(SCREENS[6]);
+    expect(steps.previous).toBe(SCREENS[5]);
+    expect(steps.next).toBe(SCREENS[7]);
     expect(steps.next?.href).toBe("/design/3d");
   });
 
   it("3D, the last screen, has SUMMARY before it and nothing after it — never wraps to TEMPLATE", () => {
     const steps = screenStepsAround(SCREENS, "/design/3d");
-    expect(steps.previous).toBe(SCREENS[5]);
+    expect(steps.previous).toBe(SCREENS[6]);
     expect(steps.next).toBeNull();
   });
 
@@ -66,10 +73,11 @@ describe("screenStepsAround", () => {
 });
 
 describe("screenWord", () => {
-  it("turns each of the seven screens' capitals into the word a button reads", () => {
+  it("turns each of the eight screens' capitals into the word a button reads", () => {
     expect(SCREENS.map((screen) => screenWord(screen.label))).toEqual([
       "Template",
       "Rocker",
+      "Bottom",
       "Rails",
       "Volume",
       "Fins",

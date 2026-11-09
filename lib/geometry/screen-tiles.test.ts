@@ -3,7 +3,9 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import type { Point2D } from "./board";
 import { prepareBlank, thinningStartsOf } from "./blank-fit";
 import { buildBoardProfile, type BoardSideProfile } from "./board-profile";
-import { deriveEffectiveRails } from "./design";
+import { DEFAULT_BOTTOM, resolveBottom, startingCut } from "./bottom";
+import { bottomTileLine } from "./bottom-tile-art";
+import { deriveEffectiveRails, designBottomBoard } from "./design";
 import { computeFinPlacement, importedFinTailFromOutline, type FinMark } from "./fins";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS, type BoardPreset } from "./presets";
@@ -75,6 +77,9 @@ function presetBoard(preset: BoardPreset) {
     finSetup: effectiveFins.finSetup,
     finTail: { points: importedTail.points, connector },
     marks: finPlacement.marks,
+    // The bottom the store reads the board against (Phase 17): every preset opens flat.
+    bottomBoard: designBottomBoard(fields.outline, outline, sideProfile, finPlacement),
+    flatBottom: resolveBottom(DEFAULT_BOTTOM, designBottomBoard(fields.outline, outline, sideProfile, finPlacement)),
   };
 }
 
@@ -373,11 +378,12 @@ describe("screenTileLines — the line under each tile's name", () => {
   };
   for (const preset of BOARD_PRESETS) {
     it(`${preset.id}: its dims, its blank, its fin setup`, () => {
-      const { fields, finSetup } = presetBoard(preset);
-      const lines = screenTileLines({ outline: fields.outline, blank: fields.blank, finSetup, system: "imperial" });
+      const { fields, finSetup, flatBottom } = presetBoard(preset);
+      const lines = screenTileLines({ outline: fields.outline, blank: fields.blank, bottom: flatBottom, finSetup, system: "imperial" });
       expect(lines).toEqual({
         template: expected[preset.id].template,
         rocker: expected[preset.id].rocker,
+        bottom: "All flat",
         rails: "Center rail",
         volume: "Estimated",
         fins: expected[preset.id].fins,
@@ -388,18 +394,27 @@ describe("screenTileLines — the line under each tile's name", () => {
   }
 
   it("a hand-set board reads Hand-set", () => {
-    const { fields, finSetup } = shortboard;
-    expect(screenTileLines({ outline: fields.outline, blank: null, finSetup, system: "imperial" }).rocker).toBe(
+    const { fields, finSetup, flatBottom } = shortboard;
+    expect(screenTileLines({ outline: fields.outline, blank: null, bottom: flatBottom, finSetup, system: "imperial" }).rocker).toBe(
       "Hand-set",
     );
   });
 
   it("Metric changes only the template line", () => {
-    const { fields, finSetup } = shortboard;
-    const imperial = screenTileLines({ outline: fields.outline, blank: fields.blank, finSetup, system: "imperial" });
-    const metric = screenTileLines({ outline: fields.outline, blank: fields.blank, finSetup, system: "metric" });
+    const { fields, finSetup, flatBottom } = shortboard;
+    const imperial = screenTileLines({ outline: fields.outline, blank: fields.blank, bottom: flatBottom, finSetup, system: "imperial" });
+    const metric = screenTileLines({ outline: fields.outline, blank: fields.blank, bottom: flatBottom, finSetup, system: "metric" });
     expect(metric.template).toMatch(/^\d+\.\d × \d+\.\d cm$/);
     expect({ ...metric, template: "" }).toEqual({ ...imperial, template: "" });
+  });
+
+  it("BOTTOM's line is the board's own cuts (Phase 17, bottomTileLine): All flat, then 1 cut once one is picked", () => {
+    const { fields, finSetup, flatBottom, bottomBoard } = shortboard;
+    const input = { outline: fields.outline, blank: fields.blank, finSetup, system: "imperial" as const };
+    expect(screenTileLines({ ...input, bottom: flatBottom }).bottom).toBe(bottomTileLine(flatBottom));
+    const cut = resolveBottom({ ...DEFAULT_BOTTOM, center: startingCut("center", "Deep Single Concave", bottomBoard) }, bottomBoard);
+    expect(screenTileLines({ ...input, bottom: cut }).bottom).toBe("1 cut");
+    expect(screenTileLines({ ...input, bottom: cut }).bottom).toBe(bottomTileLine(cut));
   });
 });
 
@@ -419,7 +434,7 @@ describe("screenTileRocker — ROCKER's second line (quick 261016-mkb, D-11)", (
     expect(screenTileRocker(custom)).toBe(blankDisplayLines(custom.copy, rocker)[1]);
     expect(screenTileRocker(custom)).toBe(formatRockerNote(rocker));
     // The first line is unchanged by a custom rocker.
-    const lines = screenTileLines({ outline: fields.outline, blank: custom, finSetup, system: "imperial" });
+    const lines = screenTileLines({ outline: fields.outline, blank: custom, bottom: shortboard.flatBottom, finSetup, system: "imperial" });
     expect(lines.rocker).toBe(`On a ${fields.blank.copy.name}`);
   });
 });

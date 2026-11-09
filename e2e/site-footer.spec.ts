@@ -43,6 +43,7 @@ const NOTICE = `© ${new Date().getFullYear()} Shaper Assistant. All rights rese
 const DESIGN_SCREENS = [
   "/design/outline",
   "/design/rocker",
+  "/design/bottom",
   "/design/rails",
   "/design/volume",
   "/design/fins",

@@ -11,7 +11,7 @@ import { BoardLockContext, useControlsLocked } from "@/components/design/use-con
  * finding sliders that silently don't move. The REAL guard is the design store (Plan 01 refuses every
  * change while locked, and the server refuses the save); this scope only makes that refusal visible.
  *
- * `BoardLockScope` wraps the seven design screens in `app/design/layout.tsx`. The top bar, its gear
+ * `BoardLockScope` wraps the eight design screens in `app/design/layout.tsx`. The top bar, its gear
  * menu, the phone's ☰ sheet and App Default Settings are mounted from the root layout, OUTSIDE it,
  * so they stay usable — which is also why `MeasureField`, used by App Default Settings too, is
  * never greyed there. Outside any scope `useControlsLocked()` reads false.

@@ -1168,19 +1168,21 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
   });
 });
 
-/** Every one of the five design screens, for the iPad-like and computer checks below — `tabs`
+/** Every one of the six drawing screens (BOTTOM since Phase 17), for the iPad-like and computer checks below — `tabs`
  * empty means a non-interactive single label (VOLUME; TEMPLATE too until quick 261014-wii gave it a
  * WINGS tab), with nothing to tap. */
-const ALL_FIVE_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
+const ALL_DRAWING_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
   { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS"] },
   { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
+  // BOTTOM (Phase 17, 17-08): VIEWER and DATA; GUIDE joins in 17-11.
+  { path: "/design/bottom", label: "BOTTOM", tabs: ["VIEWER", "DATA"] },
   { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
   { path: "/design/volume", label: "VOLUME", tabs: [] },
   { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "MODEL INFO"] },
 ];
 
-test.describe("All five screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {
-  for (const screen of ALL_FIVE_SCREENS) {
+test.describe("All six drawing screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {
+  for (const screen of ALL_DRAWING_SCREENS) {
     test(`${screen.label} at 1180x820, a touch device, desktop shell: today's 12px frames and 30px tabs, touch box still reaches`, async ({
       page,
     }, testInfo) => {
@@ -1214,13 +1216,13 @@ test.describe("All five screens — a tall touch screen (iPad-like) keeps today'
   }
 });
 
-test.describe("All five screens — a computer is untouched (item 9e)", () => {
+test.describe("All six drawing screens — a computer is untouched (item 9e)", () => {
   for (const size of [
     { width: 1280, height: 800 },
     { width: 1024, height: 768 },
     { width: 820, height: 800 },
   ]) {
-    for (const screen of ALL_FIVE_SCREENS) {
+    for (const screen of ALL_DRAWING_SCREENS) {
       test(`${screen.label} at ${size.width}x${size.height}: today's 12px frames, 30px tabs, no touch box on a mouse`, async ({
         page,
       }, testInfo) => {

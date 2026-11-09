@@ -466,6 +466,31 @@ export function keepStationsInOrder(
 }
 
 /**
+ * One of a cut's three stations set from the tail — a station slider's drag on BOTTOM (D-07, R4) — as the patch that
+ * stores it the way the cut keeps it: from the nose for a Nose cut (D-39), from the front fins for a Tail cut's Deepest
+ * At (D-03), from the tail for every other. The other two stations are not in the patch; the store applies it and keeps
+ * the three in order in the same step (`keepStationsInOrder`, the dragged one winning).
+ */
+export function storeCutStation(
+  section: BottomSectionKey,
+  field: "start" | "deepest" | "end",
+  fromTail: Mm,
+  board: Pick<BottomBoard, "length" | "frontFins">,
+): Partial<BottomCutSpec> {
+  if (section === "nose") return { [field]: mm(board.length - fromTail) };
+  if (section === "tail" && field === "deepest") return { deepest: mm(fromTail - board.frontFins) };
+  return { [field]: mm(fromTail) };
+}
+
+/**
+ * A cut's station as its label reads it (D-07): taped from the nose for a Nose cut, from the tail for a Center or Tail
+ * cut — the same rule the top view's lower rail reads (`topViewMarks`).
+ */
+export function stationFromNearestTip(section: BottomSectionKey, fromTail: Mm, board: Pick<BottomBoard, "length">): Mm {
+  return section === "nose" ? mm(board.length - fromTail) : fromTail;
+}
+
+/**
  * A section's cut picked from its menu, opening on its starting numbers (D-08) — the pure half of the store's pick
  * (17-08's `pickBottomCut`, which writes the result in one undoable step).
  *
@@ -947,6 +972,17 @@ export function bottomLitresLine(now: Litres, before: Litres): { now: string; be
   const hundredths = (printed: string) => Math.round(Number(printed) * 100);
   const off = hundredths(printedBefore) - hundredths(printedNow);
   return { now: printedNow, before: printedBefore, foamOff: (off / 100).toFixed(2) };
+}
+
+/**
+ * DATA's first line's stringer (D-16; the sketch's `litresLine`): at the board's centre, half its length from the tail,
+ * the planed thickness and what the bottom leaves of it at the stringer — the planed thickness less `foamOff` there.
+ * Both are marks on screen (`2 1/16"`, `53 mm`).
+ */
+export function stringerAtCenter(resolved: ResolvedBottom, board: BottomBoard): { planed: Mm; left: Mm } {
+  const s = mm(board.length / 2);
+  const planed = board.thicknessAt(s);
+  return { planed: mm(planed), left: mm(planed - foamOff(resolved, board, s, mm(0))) };
 }
 
 /* ============ DATA's numbers (D-16, R8): the depths every 6", the layout marks, the floor ============ */

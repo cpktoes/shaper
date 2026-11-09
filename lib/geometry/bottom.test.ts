@@ -50,6 +50,9 @@ import {
   sec,
   smoothstep,
   startingCut,
+  stationFromNearestTip,
+  storeCutStation,
+  stringerAtCenter,
   type BoardBottom,
   type BottomBoard,
   type BottomCutName,
@@ -270,6 +273,52 @@ describe("stations kept from the nearest tip (D-39) and the tail's deepest from 
     expect(r.tail).toEqual(resolveCut("tail", bottom.tail, board));
     expect(r.channels).toEqual(resolveChannels(bottom.channels, board));
     expect(r.wingRule).toBe("narrowest");
+  });
+});
+
+describe("a station slider's drag, stored (17-08: storeCutStation, stationFromNearestTip)", () => {
+  it.each(BOTTOM_SECTIONS)("%s: each field's patch holds that field alone, and all three read back to the station dragged", (section) => {
+    for (const { board } of BOARDS) {
+      const name = BOTTOM_CUT_NAMES[section].find((n) => cutKind(n) !== "flat")!;
+      const to = mm(board.length * 0.4);
+      let spec = startingCut(section, name, board);
+      for (const field of ["start", "deepest", "end"] as const) {
+        const patch = storeCutStation(section, field, to, board);
+        expect(Object.keys(patch)).toEqual([field]);
+        spec = { ...spec, ...patch };
+      }
+      // all three at one station, so no order rule moves any of them on read
+      const r = resolveCut(section, spec, board);
+      for (const field of ["start", "deepest", "end"] as const) expect(Math.abs(r[field] - to)).toBeLessThan(TOL);
+    }
+  });
+
+  it("a Nose station is taped from the nose and every other from the tail", () => {
+    const board = boardById("shortboard");
+    const s = mm(inchesToMm(20));
+    expect(stationFromNearestTip("nose", s, board)).toBe(board.length - s);
+    expect(stationFromNearestTip("center", s, board)).toBe(s);
+    expect(stationFromNearestTip("tail", s, board)).toBe(s);
+    // the label of a stored Nose station is the stored number itself
+    const nose = startingCut("nose", "Teardrop Nose Concave", board);
+    const r = resolveCut("nose", nose, board);
+    expect(Math.abs(stationFromNearestTip("nose", r.start, board) - nose.start)).toBeLessThan(TOL);
+  });
+});
+
+describe("stringerAtCenter (D-16): DATA's first line's stringer, at half the board's length", () => {
+  it("reads the planed thickness and what the one number leaves of it at the stringer", () => {
+    for (const { board } of BOARDS) {
+      const s = mm(board.length / 2);
+      const flat = stringerAtCenter(resolveBottom(DEFAULT_BOTTOM, board), board);
+      expect(flat.planed).toBe(board.thicknessAt(s));
+      expect(flat.left).toBe(flat.planed);
+      const cut = resolveBottom({ ...DEFAULT_BOTTOM, center: startingCut("center", "Deep Single Concave", board) }, board);
+      const read = stringerAtCenter(cut, board);
+      expect(read.planed).toBe(flat.planed);
+      expect(Math.abs(read.left - (read.planed - foamOff(cut, board, s, mm(0))))).toBeLessThan(TOL);
+      expect(read.left).toBeLessThanOrEqual(read.planed);
+    }
   });
 });
 

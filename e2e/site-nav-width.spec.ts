@@ -2,7 +2,7 @@ import { devices, expect, test, type Page } from "@playwright/test";
 
 /**
  * Standing regression test for the top-nav overflow commit `5dae1f1` fixed and left unproven
- * (10-REVIEW.md WR-01). The desktop-style top row (wordmark + seven screen links + settings + Save
+ * (10-REVIEW.md WR-01). The desktop-style top row (wordmark + eight screen links + settings + Save
  * + the account control) ran 51px past the viewport's right edge at 820px wide — a bug that had
  * shipped broken since before this phase — and widening the account control's tap target for
  * touch (D-05, `nav-auth-control.tsx`) pushed it another 7px over on a phone held sideways. The
@@ -17,6 +17,12 @@ import { devices, expect, test, type Page } from "@playwright/test";
  * have run 7 dots past the edge at 820 and wrapped `Sign in` at 1024, so the links' gap now steps
  * `gap-3 lg:gap-4 xl:gap-5` — 12 dots below 1024, 16 to 1279, 20 from 1280 as before (UI-SPEC §11).
  * Every check below is unchanged: the same row, one link longer, still has to fit.
+ *
+ * Phase 17 added an eighth link, BOTTOM, third after ROCKER (63.7 dots). With 12 / 16 / 20 the row would have run 63
+ * dots past the edge at 820 (39 at 844, 20 at 863) and wrapped `Sign in` at 1024, so the gap now steps
+ * `gap-1.5 lg:gap-3 xl:gap-5` — 6 dots below 1024, 12 to 1279, 20 from 1280 as before (17-UI-SPEC §10, measured with
+ * the app's built stylesheet: 8 below 1024 still overflowed by 15 at 820). The one cost: `Sign in` wraps onto two
+ * lines from 820 to 909 rather than to 899. Every check below is unchanged again.
  *
  * 820 to 870 is the band: 820px is where the fix's own commit message measured the first 51px
  * overflow, and 863px is a real Pixel 7 held sideways (10-SWEEP.md, 2026-09-11) — the touch case
