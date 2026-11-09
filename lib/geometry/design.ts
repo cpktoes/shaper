@@ -36,6 +36,7 @@ import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import type { OutlineGeometry } from "./outline";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline, tailCutStation } from "./outline";
 import { computeRailBands, type RailBandSpec, type RailBandsOutput } from "./rail-bands";
+import { railSectionBottom } from "./rail-bottom";
 import { curveHalfWidthAt, narrowestOutlineAt, outlineForFins, wingShareAt } from "./wings";
 import { resolveWingStations } from "./wing-lock";
 import {
@@ -338,6 +339,34 @@ export function railsOnTheBottom(
       ? rails[key]
       : { ...rails[key], boardThickness: mm(Math.max(BOTTOM_FLOOR, rails[key].boardThickness - lift[key])) };
   return { ...rails, tail: lowered("tail"), center: lowered("center"), nose: lowered("nose") };
+}
+
+/**
+ * RAILS' three sections standing on the bottom the cut leaves (Phase 17, D-41): each section whose rail the bottom
+ * lifts carries that bottom across (`railSectionBottom`, read off `foamOff` at its anchor — the same one number the
+ * litres and the 3D board read, D-05), so its plot draws the planed bottom falling away under the rail at the vee's or
+ * belly's own angle. `bands` are the bands of `railsOnTheBottom`'s rails, so the rail drawn on that bottom is the
+ * thinner one. A section whose rail is not lifted is passed through as it is; when none is, `bands` itself comes back.
+ */
+export function railBandsOnTheBottom(
+  bands: RailBandsOutput,
+  resolved: ResolvedBottom,
+  board: BottomBoard,
+  anchors: RailAnchorStations,
+): RailBandsOutput {
+  const onBottom = (key: "tail" | "center" | "nose") => {
+    const station = anchors[key];
+    const rail = board.railAt(station);
+    const lift = foamOff(resolved, board, station, rail);
+    if (lift === 0) return bands[key];
+    const liftIn = (inFromRail: Mm) => foamOff(resolved, board, station, mm(Math.abs(rail - inFromRail)));
+    return { ...bands[key], bottom: railSectionBottom(bands[key], lift, liftIn) };
+  };
+  const tail = onBottom("tail");
+  const center = onBottom("center");
+  const nose = onBottom("nose");
+  if (tail === bands.tail && center === bands.center && nose === bands.nose) return bands;
+  return { tail, center, nose };
 }
 
 /** The subset of a stored design `summarizeDesign` needs to produce a rack card's four numbers. */

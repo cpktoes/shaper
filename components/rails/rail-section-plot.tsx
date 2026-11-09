@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
 import { railPlotDots, type RailSectionKey, type RailSectionOutput, type RailSegmentKey } from "@/lib/geometry/rail-bands";
+import { finishedRailOnBottom, railBottomLine, railBottomLowest, railPointOnBottom } from "@/lib/geometry/rail-bottom";
 import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
 // px per inch, matches buildPlot's default scale for all output-card plots. Exported so a caller
@@ -192,12 +193,17 @@ interface RailSectionPlotProps {
  * `maxY` never move, so not one drawn coordinate shifts and `railPlotProjection` is untouched.
  * Every other caller (the VIEWER tab's `rail-band-editor.tsx`, the View Full Sized dialog) omits
  * the option and gets today's exact box, unchanged.
+ *
+ * A section standing on a vee or a belly (`output.bottom`, Phase 17, D-41) has its box taken down by
+ * as far as the planed bottom falls below the rail's own bottom across the plot, so the fall is
+ * drawn inside it; `maxY` never moves, so neither does any drawn coordinate. Without a `bottom` the
+ * box is exactly today's.
  */
 export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, options?: { calloutRoom?: boolean }) {
   const xAxisMinIn = mmToInches(xAxisMin);
   const yAxisMaxIn = mmToInches(output.bounds.yAxisMax);
   const minX = xAxisMinIn - 0.15;
-  const minY = -0.15;
+  const minY = output.bottom ? Math.min(-0.15, mmToInches(railBottomLowest(output.bottom, xAxisMin)) - 0.15) : -0.15;
   const maxY = yAxisMaxIn + 0.15;
   const width = (0.15 - minX) * SCALE + LEFT_PAD + (options?.calloutRoom ? CALLOUT_RIGHT_PAD : 0);
   const height = (maxY - minY) * SCALE + AXIS_LABEL_PAD + (options?.calloutRoom ? CALLOUT_BOTTOM_PAD : 0);
@@ -603,14 +609,32 @@ export function RailSectionPlot({
   ];
   const apexLine = { x1: px(0), y1: py(-0.35), x2: px(0), y2: py(blankThicknessIn + 0.35) };
 
-  const segmentLines = segments.map((seg) => ({
-    key: seg.key,
-    x1: px(mmToInches(seg.p1.x)),
-    y1: py(mmToInches(seg.p1.y)),
-    x2: px(mmToInches(seg.p2.x)),
-    y2: py(mmToInches(seg.p2.y)),
-    color: RAIL_SEGMENT_COLORS[seg.key],
-  }));
+  // A rail standing on a vee or a belly (Phase 17, D-41 — the founder: "the real rail shape, post bottom
+  // contouring"): every point of the drawing is moved onto the planed bottom by the one map in
+  // lib/geometry/rail-bottom.ts, and the bottom inboard of the last bottom mark is drawn as the bottom
+  // itself, falling away toward the stringer at the cut's own angle. With no `bottom` (every flat board)
+  // `onBottom` is the identity and the bottom is the straight connector it always was.
+  const { bottom } = output;
+  const onBottom = (p: Point2D): Point2D => (bottom ? railPointOnBottom(bottom, boardThickness, p) : p);
+  const segmentLines = segments.map((seg) => {
+    const p1 = onBottom(seg.p1);
+    const p2 = onBottom(seg.p2);
+    return {
+      key: seg.key,
+      x1: px(mmToInches(p1.x)),
+      y1: py(mmToInches(p1.y)),
+      x2: px(mmToInches(p2.x)),
+      y2: py(mmToInches(p2.y)),
+      color: RAIL_SEGMENT_COLORS[seg.key],
+      // The planed bottom under a lifted rail: a line through the bottom's own samples, not a straight connector.
+      bottomPoints:
+        bottom && seg.key === "bottomConn"
+          ? railBottomLine(bottom, seg.p1.x, seg.p2.x)
+              .map((p) => `${px(mmToInches(p.x))},${py(mmToInches(p.y))}`)
+              .join(" ")
+          : null,
+    };
+  });
 
   // The finished rail (quick 261102-gec plan 02, R13, PC22, 2026-11-02) — the founder's brief: "a 3px ink
   // line over the bands, filled with the app's board fill under the grid". Worked out from this plot's own
@@ -618,10 +642,12 @@ export function RailSectionPlot({
   // lands exactly on them. Two paths: the closed shape, filled with the board's colour as the svg's FIRST
   // child, so the zoom grid, the grid lines and the reference dashes all sit over it; and the curve itself,
   // after the band lines and before the dots, so the mark dots stay on top.
-  const finished = useMemo(
-    () => (showFinishedRail ? finishedRail(output, xAxisMin) : null),
-    [showFinishedRail, output, xAxisMin],
-  );
+  const finished = useMemo(() => {
+    if (!showFinishedRail) return null;
+    const rail = finishedRail(output, xAxisMin);
+    // On a lifted rail (D-41) the finished rail stands on the planed bottom, through the same map as the bands.
+    return output.bottom ? finishedRailOnBottom(rail, output.bottom, output.boardThickness) : rail;
+  }, [showFinishedRail, output, xAxisMin]);
   const projectMm = (p: Point2D) => ({ x: px(mmToInches(p.x)), y: py(mmToInches(p.y)) });
   const finishedFill = finished ? finishedRailPath(finished, projectMm, { closed: true }) : null;
   const finishedCurve = finished ? finishedRailPath(finished, projectMm) : null;
@@ -630,18 +656,24 @@ export function RailSectionPlot({
 
   // Which marks get a dot, and in what order, is `railPlotDots`' one rule (lib/geometry/rail-bands.ts)
   // — the same rule the RAILS picture in the phone menu reads (quick 261003-q2f).
-  const dots: { cx: number; cy: number; color: string; apex: boolean }[] = railPlotDots(segments, result, domed).map((dot) => ({
-    cx: px(mmToInches(dot.x)),
-    cy: py(mmToInches(dot.y)),
-    color: dot.key === "apexCenter" ? RAIL_APEX_CENTER_COLOR : RAIL_SEGMENT_COLORS[dot.key],
-    apex: dot.key === "apexCenter",
-  }));
+  const dots: { cx: number; cy: number; color: string; apex: boolean }[] = railPlotDots(segments, result, domed).map((dot) => {
+    const at = onBottom({ x: dot.x, y: dot.y });
+    return {
+      cx: px(mmToInches(at.x)),
+      cy: py(mmToInches(at.y)),
+      color: dot.key === "apexCenter" ? RAIL_APEX_CENTER_COLOR : RAIL_SEGMENT_COLORS[dot.key],
+      apex: dot.key === "apexCenter",
+    };
+  });
 
   // A tick's own little mark (the short perpendicular line below/beside the axis, distinct from
   // the long `gridLines` spanning the whole plot) is drawn for every 10mm step regardless of
   // `labelEvery` — the grid is what a shaper counts squares on. Only the render below skips the
   // `<text>` for a tick whose `label` came back empty (thinned): the mark stays, only the number
   // that would have sat beside it is gone.
+  // Under a lifted rail (D-41) the bottom can fall below the axis inboard; the numbers then read just
+  // under its lowest point, so the falling bottom never runs through them. Flat: py(0), as always.
+  const tickLabelBaseY = bottom ? py(Math.min(0, mmToInches(railBottomLowest(bottom, xAxisMin)))) : py(0);
   const xTicks: { x1: number; y1: number; x2: number; y2: number; label: string; lx: number; ly: number }[] =
     grid.xTicks.map((tick) => ({
       x1: px(tick.value),
@@ -650,7 +682,7 @@ export function RailSectionPlot({
       y2: py(0) + 4 * zoomUnit,
       label: tick.label,
       lx: px(tick.value),
-      ly: py(0) + 16 * zoomUnit,
+      ly: tickLabelBaseY + 16 * zoomUnit,
     }));
   // `leftLabelsInside` (Metric-only, set above): when even the bare numbers do not fit the
   // left-hand strip, a label reads from just inside the plot instead of outside it — anchored a
@@ -745,9 +777,22 @@ export function RailSectionPlot({
           no opacity attribute (the usual case) the group paints exactly the pixels the bare lines always
           did; `data-rail-bands` is a hook for the browser tests, nothing styles it. */}
       <g data-rail-bands={ghosted ? "ghosted" : "full"} opacity={ghosted ? GHOST_BANDS_OPACITY : undefined}>
-        {segmentLines.map((sg) => (
-          <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-        ))}
+        {segmentLines.map((sg) =>
+          sg.bottomPoints ? (
+            <polyline
+              key={sg.key}
+              data-rail-planed-bottom
+              points={sg.bottomPoints}
+              fill="none"
+              stroke={sg.color}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : (
+            <line key={sg.key} x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2} stroke={sg.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          ),
+        )}
       </g>
       {finishedCurve && (
         <path

@@ -111,6 +111,7 @@ import {
   deriveRailValues,
   deriveTemplateValues,
   railAnchorStations,
+  railBandsOnTheBottom,
   railsOnTheBottom,
 } from "@/lib/geometry/design";
 import {
@@ -1341,18 +1342,23 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // RAILS bands the rail the bottom leaves (D-22, D-35): its three anchors less the rail lift there, in a step only
   // RAILS' own figures take — the litres above read `effectiveRails`. While no rail is lifted both are the very
   // objects `effectiveRails` and `railBands` are, so a flat board's RAILS is untouched.
+  //
+  // D-41 (the founder, 2026-11-08: "contour before rail shaping"): each lifted section's bands also carry the bottom
+  // under the rail (`railBandsOnTheBottom`), so RAILS' plots draw the planed bottom at the vee's or belly's angle.
+  const railAnchors = useMemo(
+    () => railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
+    [sideProfile.effectiveFoil, state.outline.length],
+  );
   const railsOnBottom = useMemo(
-    () =>
-      railsOnTheBottom(
-        effectiveRails,
-        bottomRailLift(resolvedBottom, bottomBoard),
-        railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
-      ),
-    [effectiveRails, resolvedBottom, bottomBoard, sideProfile.effectiveFoil, state.outline.length],
+    () => railsOnTheBottom(effectiveRails, bottomRailLift(resolvedBottom, bottomBoard), railAnchors),
+    [effectiveRails, resolvedBottom, bottomBoard, railAnchors],
   );
   const railBandsOnBottom = useMemo(
-    () => (railsOnBottom === effectiveRails ? railBands : computeRailBands(railsOnBottom)),
-    [railsOnBottom, effectiveRails, railBands],
+    () =>
+      railsOnBottom === effectiveRails
+        ? railBands
+        : railBandsOnTheBottom(computeRailBands(railsOnBottom), resolvedBottom, bottomBoard, railAnchors),
+    [railsOnBottom, effectiveRails, railBands, resolvedBottom, bottomBoard, railAnchors],
   );
 
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
