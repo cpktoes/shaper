@@ -1174,8 +1174,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
 const ALL_DRAWING_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
   { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS"] },
   { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
-  // BOTTOM (Phase 17, 17-08): VIEWER and DATA; GUIDE joins in 17-11.
-  { path: "/design/bottom", label: "BOTTOM", tabs: ["VIEWER", "DATA"] },
+  // BOTTOM (Phase 17): VIEWER and DATA (17-08), and GUIDE (17-11).
+  { path: "/design/bottom", label: "BOTTOM", tabs: ["VIEWER", "DATA", "GUIDE"] },
   { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
   { path: "/design/volume", label: "VOLUME", tabs: [] },
   { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "MODEL INFO"] },
