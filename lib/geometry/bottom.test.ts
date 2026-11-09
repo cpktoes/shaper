@@ -10,13 +10,17 @@ import {
   bottomLitresLine,
   bottomSampler,
   cutFoamOff,
+  cutFoamOffParts,
   cutHalfWidth,
   cutKind,
   DEFAULT_BOTTOM,
+  doubleMarks,
   fadeAt,
   foamOff,
   isDefaultBottom,
+  isTailVee,
   keepStationsInOrder,
+  pickCut,
   PINCH,
   resolveBottom,
   resolveCut,
@@ -112,11 +116,13 @@ function expectSketchCut(r: ResolvedCut, g: GoldenCut) {
 }
 
 describe("the names (D-04)", () => {
-  it("lists this wave's thirteen names, in D-04's order, each a flat, a belly, a vee or a single", () => {
-    expect(BOTTOM_CUT_NAMES.nose.length + BOTTOM_CUT_NAMES.center.length + BOTTOM_CUT_NAMES.tail.length).toBe(13);
+  it("lists all eighteen names, six a section, in D-04's order: the golden's NAMES, name for name and in order", () => {
+    expect(BOTTOM_CUT_NAMES.nose.length + BOTTOM_CUT_NAMES.center.length + BOTTOM_CUT_NAMES.tail.length).toBe(18);
+    const allGolden = cases.filter((c) => c.kind === "cut") as CutCase[];
     for (const section of BOTTOM_SECTIONS) {
-      // the sketch's own order, less the names 17-04 inserts
-      const sketchOrder = [...new Set(cutCases.filter((c) => c.section === section).map((c) => c.name))];
+      // the sketch's own NAMES order, every name it has
+      const sketchOrder = [...new Set(allGolden.filter((c) => c.section === section).map((c) => c.name))];
+      expect(sketchOrder).toHaveLength(6);
       expect([...BOTTOM_CUT_NAMES[section]]).toEqual(sketchOrder);
       for (const name of BOTTOM_CUT_NAMES[section]) {
         const g = cutCases.find((c) => c.name === name)!;
@@ -127,8 +133,8 @@ describe("the names (D-04)", () => {
 });
 
 describe("starting numbers (D-08): the sketch's makeCut, on each of the five boards", () => {
-  it("covers 13 names on 5 boards", () => {
-    expect(cutCases.length).toBe(13 * 5);
+  it("covers 18 names on 5 boards", () => {
+    expect(cutCases.length).toBe(18 * 5);
   });
   it.each(cutCases.map((c) => [c.board, c.section, c.name, c] as const))("%s · %s · %s", (_b, section, name, c) => {
     const board = boardById(c.board);
@@ -245,8 +251,9 @@ describe("stations kept from the nearest tip (D-39) and the tail's deepest from 
 });
 
 describe("keepStationsInOrder (D-07): the sketch's normalize", () => {
-  it("covers every station drag of this wave's non-flat names", () => {
-    expect(normalizeCases.length).toBe(10 * 3 * 3 * 5);
+  it("covers every station drag of the fifteen non-flat names, the three doubles' flat and trough line included", () => {
+    expect(normalizeCases.length).toBe(15 * 3 * 3 * 5);
+    expect(normalizeCases.filter((c) => cutKind(c.name as BottomCutName) === "double").length).toBe(3 * 3 * 3 * 5);
   });
   it.each(normalizeCases.map((c) => [c.board, c.section, c.name, c.changed, c.to, c] as const))(
     "%s · %s · %s · %s to %d",
@@ -257,7 +264,7 @@ describe("keepStationsInOrder (D-07): the sketch's normalize", () => {
       // the drag, written the way it is stored: from the nose, from the tail, or the tail's deepest from the fins
       const storedTo = section === "nose" ? board.length - to : section === "tail" && field === "deepest" ? to - board.frontFins : to;
       const dragged = { ...stored, [field]: mm(storedTo) };
-      const kept = keepStationsInOrder(section, dragged, field, board);
+      const kept = keepStationsInOrder(section, dragged, field, board, "narrowest");
       const r = resolveCut(section, kept, board);
       expect(Math.abs(r.start - c.after.start)).toBeLessThan(TOL);
       expect(Math.abs(r.deepest - c.after.deep)).toBeLessThan(TOL);
@@ -357,8 +364,8 @@ const sumOfCuts = (r: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm) =>
 const floorCap = (board: BottomBoard, s: Mm) => Math.max(0, board.thicknessAt(s) - BOTTOM_FLOOR);
 
 describe("cutFoamOff (D-05, D-06): one cut alone, the sketch's cutOff — golden", () => {
-  it("covers the 10 non-flat names of this wave on 5 boards", () => {
-    expect(nonFlatCutCases.length).toBe(10 * 5);
+  it("covers the 15 non-flat names on 5 boards", () => {
+    expect(nonFlatCutCases.length).toBe(15 * 5);
   });
   it.each(nonFlatCutCases.map((c) => [c.board, c.section, c.name, c] as const))("%s · %s · %s, at all 25 × 13 probes", (_b, section, name, c) => {
     const board = boardById(c.board);
@@ -386,17 +393,19 @@ describe("cutFoamOff (D-05, D-06): one cut alone, the sketch's cutOff — golden
 });
 
 describe("foamOff (D-05, D-09): the one number — golden", () => {
-  const openings = openingCases.filter((c) => c.channels === 0 && ["shortboard", "fish", "fishwing"].includes(c.board));
-  it("covers the Shortboard's, the Fish's and the winged Fish's openings", () => {
-    expect(openings.map((c) => c.board)).toEqual(["shortboard", "fish", "fishwing"]);
+  const openings = openingCases.filter((c) => c.channels === 0);
+  it("covers all five boards' openings, the Mid-length's and the Longboard's with this wave's names", () => {
+    expect(openings.map((c) => c.board)).toEqual(["shortboard", "fish", "midlength", "longboard", "fishwing"]);
   });
   it.each(openings.map((c) => [c.board, c] as const))("%s's opening cuts equal the sketch's foamOff, and the floor does not bite", (_b, c) => {
     const board = boardById(c.board);
     const grid = gridOf(c.board);
     const resolved = resolveBottom(bottomOf(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }), board);
+    const concaveSum = (s: Mm, y: Mm) =>
+      BOTTOM_SECTIONS.reduce((v, section) => v + cutFoamOffParts(resolved[section], board, resolved.wingRule, s, y).concave, 0);
     grid.s.forEach((s, k) => {
       grid.y[k].forEach((y, j) => {
-        expect(sumOfCuts(resolved, board, mm(s), mm(y))).toBeLessThanOrEqual(floorCap(board, mm(s)));
+        expect(concaveSum(mm(s), mm(y))).toBeLessThanOrEqual(floorCap(board, mm(s)));
         expect(Math.abs(foamOff(resolved, board, mm(s), mm(y)) - c.foamOff[k][j])).toBeLessThan(TOL);
       });
     });
@@ -405,9 +414,17 @@ describe("foamOff (D-05, D-09): the one number — golden", () => {
     const board = boardById(c.board);
     const grid = gridOf(c.board);
     const resolved = resolveBottom(bottomOf(board, { [c.section]: c.name }), board);
+    const concave = c.cut.kind === "single" || c.cut.kind === "double";
     grid.s.forEach((s, k) => {
       grid.y[k].forEach((y, j) => {
-        const expected = c.cut.kind === "single" ? Math.min(c.foamOff[k][j], floorCap(board, mm(s))) : c.cutOff[k][j];
+        if (c.cut.spiral) {
+          // the Spiral Vee: its double is concave work, its vee a lift; at its starting numbers the floor never holds
+          // the double, so the whole is the sketch's own cut
+          expect(cutFoamOffParts(resolved[c.section], board, "narrowest", mm(s), mm(y)).concave).toBeLessThanOrEqual(floorCap(board, mm(s)));
+          expect(Math.abs(foamOff(resolved, board, mm(s), mm(y)) - c.cutOff[k][j])).toBeLessThan(TOL);
+          return;
+        }
+        const expected = concave ? Math.min(c.foamOff[k][j], floorCap(board, mm(s))) : c.cutOff[k][j];
         expect(Math.abs(foamOff(resolved, board, mm(s), mm(y)) - expected)).toBeLessThan(TOL);
       });
     });
@@ -428,8 +445,8 @@ describe("a concave never leaves less than 1/4\" under the stringer (D-09); a ve
     const bottom = structuredClone(DEFAULT_BOTTOM);
     bottom[section] = { ...startingCut(section, name, board), depth };
     const ends = section === "nose" ? { start: mm(0), end: mm(board.length) } : { start: mm(board.length), end: mm(0) };
-    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "start", board);
-    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "end", board);
+    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "start", board, "narrowest");
+    bottom[section] = keepStationsInOrder(section, { ...bottom[section], ...ends }, "end", board, "narrowest");
     return resolveBottom(bottom, board);
   };
   const names = (keep: (name: BottomCutName) => boolean) =>
@@ -637,6 +654,304 @@ describe("a diamond's V is cut (D-38): a Panel Vee takes foam off inside the V b
       for (const s of inV) {
         expect(foamOff(resolved, board, s, mm(foamHalfWidth(geometry, s) * 0.9)), `${label} at ${s}`).toBeGreaterThan(0);
       }
+    }
+  });
+});
+
+/* ============ 17-05: the doubles, the Spiral Vee, the Tri-Plane, the Teardrop's closing, D-42 ============ */
+
+const NEW_NAMES = ["Teardrop Nose Concave", "Early Double Concave", "Tri-Plane Hull Center", "Double Concave Exit", "Spiral Vee"] as const;
+const TAIL_VEES = ["Panel Vee", "Spiral Vee", "Rolled Vee"] as const;
+
+describe("the five names of 17-05 against the golden", () => {
+  it("are each in the place D-04 gives them", () => {
+    expect(BOTTOM_CUT_NAMES.nose[2]).toBe("Teardrop Nose Concave");
+    expect(BOTTOM_CUT_NAMES.center[3]).toBe("Early Double Concave");
+    expect(BOTTOM_CUT_NAMES.center[5]).toBe("Tri-Plane Hull Center");
+    expect(BOTTOM_CUT_NAMES.tail[1]).toBe("Double Concave Exit");
+    expect(BOTTOM_CUT_NAMES.tail[3]).toBe("Spiral Vee");
+    expect(NEW_NAMES.map((n) => cutKind(n))).toEqual(["single", "double", "vee", "double", "double"]);
+  });
+  it("the Spiral Vee alone is the spiral, and all five are in the golden on all five boards", () => {
+    for (const { board } of BOARDS) {
+      for (const section of BOTTOM_SECTIONS) {
+        for (const name of BOTTOM_CUT_NAMES[section]) {
+          expect(resolveCut(section, startingCut(section, name, board), board).spiral).toBe(name === "Spiral Vee");
+        }
+      }
+    }
+    expect(nonFlatCutCases.filter((c) => (NEW_NAMES as readonly string[]).includes(c.name))).toHaveLength(5 * 5);
+  });
+  it("the Tri-Plane's flat panel is half the wide width less 4\", and the Spiral Vee's vee 3/16\", read from the board", () => {
+    for (const { id, board } of BOARDS) {
+      const g = cutCases.find((c) => c.board === id && c.name === "Tri-Plane Hull Center")!;
+      const tri = resolveCut("center", startingCut("center", "Tri-Plane Hull Center", board), board);
+      expect(Math.abs(tri.offStringer - (board.widePointWidth / 2 - inchesToMm(4)))).toBeLessThan(TOL);
+      expect(Math.abs(tri.offStringer - g.cut.offS)).toBeLessThan(TOL);
+      expect(resolveCut("tail", startingCut("tail", "Spiral Vee", board), board).veeLift).toBe(inchesToMm(3 / 16));
+    }
+  });
+});
+
+describe("the double (D-05): ported line for line", () => {
+  const board = boardById("shortboard");
+
+  it("doubleMarks keeps the flat at most half the width, the trough at least 1/4\" outside it and inside 85%", () => {
+    const cut = resolveCut("center", startingCut("center", "Early Double Concave", board), board);
+    for (const C of [0, 5, 10, 20, 40, 80, 160, 240].map(mm)) {
+      const { flat, trough } = doubleMarks(cut, C);
+      expect(flat).toBeLessThanOrEqual(Math.max(0, C * 0.5) + TOL);
+      expect(flat).toBeLessThanOrEqual(cut.offStringer);
+      expect(trough).toBeGreaterThanOrEqual(flat + inchesToMm(1 / 4) - TOL);
+      if (C * 0.85 >= flat + inchesToMm(1 / 4)) expect(trough).toBeLessThanOrEqual(C * 0.85 + TOL);
+    }
+    // a wide cut keeps the numbers as set
+    expect(doubleMarks(cut, mm(240))).toEqual({ flat: cut.offStringer, trough: cut.troughAt });
+  });
+
+  it("takes nothing inside its flat, is deepest at its trough and nothing at its edge", () => {
+    const cut = resolveCut("center", startingCut("center", "Early Double Concave", board), board);
+    const s = cut.deepest;
+    const C = cutHalfWidth(cut, board, "narrowest", s);
+    const { flat, trough } = doubleMarks(cut, C);
+    for (let j = 0; j <= 20; j++) expect(cutFoamOff(cut, board, "narrowest", s, mm((flat * j) / 20))).toBe(0);
+    const atTrough = cutFoamOff(cut, board, "narrowest", s, trough);
+    expect(Math.abs(atTrough - cut.depth * Math.min(1, (C - flat) / PINCH))).toBeLessThan(TOL);
+    for (let j = 0; j <= 40; j++) {
+      const y = mm(flat + ((C - flat) * j) / 40);
+      expect(cutFoamOff(cut, board, "narrowest", s, y)).toBeLessThanOrEqual(atTrough + TOL);
+    }
+    expect(cutFoamOff(cut, board, "narrowest", s, C)).toBe(0);
+  });
+
+  it("a Deep Single stacked on an Early Double: at the stringer the one number is the single's own term — the stringer stays the ridge", () => {
+    const resolved = resolveBottom(bottomOf(board, { center: "Early Double Concave" }), board);
+    const single = resolveCut("center", startingCut("center", "Deep Single Concave", board), board);
+    const stacked: ResolvedBottom = { ...resolved, nose: { ...single, section: "nose" } };
+    let both = 0;
+    for (let k = 0; k <= 200; k++) {
+      const s = mm((board.length * k) / 200);
+      const own = cutFoamOff(single, board, "narrowest", s, mm(0));
+      expect(cutFoamOff(resolved.center, board, "narrowest", s, mm(0))).toBe(0);
+      expect(Math.abs(foamOff(stacked, board, s, mm(0)) - Math.min(own, floorCap(board, s)))).toBeLessThan(TOL);
+      if (own > 0 && cutFoamOff(resolved.center, board, "narrowest", s, inchesToMm(4)) > 0) both++;
+    }
+    expect(both).toBeGreaterThan(0);
+  });
+
+  it("the Spiral Vee is the double with a Vee Lift veeLift × fade × rise(y / W, 0) added — nothing of it at the stringer", () => {
+    for (const { board: b } of BOARDS) {
+      const spiral = resolveCut("tail", startingCut("tail", "Spiral Vee", b), b);
+      const double: ResolvedCut = { ...spiral, spiral: false };
+      for (let k = 0; k <= 60; k++) {
+        const s = mm((spiral.start * k) / 60);
+        const W = b.railAt(s);
+        if (W <= 0) continue;
+        const f = fadeAt(spiral.start, spiral.deepest, spiral.end, s, b.length);
+        for (let j = 0; j <= 12; j++) {
+          const y = mm((W * j) / 12);
+          const vee = spiral.veeLift * f * rise(Math.min(1, y / W), 0);
+          expect(Math.abs(cutFoamOff(spiral, b, "narrowest", s, y) - (cutFoamOff(double, b, "narrowest", s, y) + vee))).toBeLessThan(TOL);
+          expect(Math.abs(cutFoamOffParts(spiral, b, "narrowest", s, y).lift - vee)).toBeLessThan(TOL);
+        }
+        expect(cutFoamOffParts(spiral, b, "narrowest", s, mm(0)).lift).toBe(0);
+      }
+    }
+  });
+
+  it("D-40: the Tri-Plane's planes and the Spiral Vee's vee are never held and never touch the stringer; the doubles are held at the floor", () => {
+    for (const { board: b } of BOARDS) {
+      for (const [section, name] of [["center", "Tri-Plane Hull Center"], ["tail", "Spiral Vee"]] as const) {
+        const resolved = resolveBottom(bottomOf(b, { [section]: name }), b);
+        for (let k = 0; k <= 100; k++) {
+          const s = mm((b.length * k) / 100);
+          expect(cutFoamOffParts(resolved[section], b, "narrowest", s, mm(0)).lift).toBe(0);
+          if (name === "Tri-Plane Hull Center") expect(foamOff(resolved, b, s, mm(0))).toBe(0);
+        }
+      }
+      // a double set deeper than the foam holds (2") is held so 1/4" stays under the planed thickness
+      for (const [section, name] of [["center", "Early Double Concave"], ["tail", "Double Concave Exit"]] as const) {
+        const bottom = bottomOf(b, { [section]: name });
+        bottom[section] = { ...bottom[section], depth: inchesToMm(2) };
+        const resolved = resolveBottom(bottom, b);
+        let held = 0;
+        for (let k = 0; k <= 100; k++) {
+          const s = mm((b.length * k) / 100);
+          const W = b.railAt(s);
+          for (let j = 0; j <= 24; j++) {
+            const y = mm((W * j) / 24);
+            expect(foamOff(resolved, b, s, y)).toBeLessThanOrEqual(floorCap(b, s) + TOL);
+            if (cutFoamOff(resolved[section], b, "narrowest", s, y) > floorCap(b, s)) held++;
+          }
+        }
+        expect(held).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe("the Teardrop's closing (D-06, D-32)", () => {
+  it("ticks closesToPoint on the Teardrop alone; the Blended Nose Concave and the Slight Single Concave Entry open unticked", () => {
+    for (const { board } of BOARDS) {
+      expect(startingCut("nose", "Teardrop Nose Concave", board).closesToPoint).toBe(true);
+      expect(startingCut("nose", "Blended Nose Concave", board).closesToPoint).toBe(false);
+      expect(startingCut("nose", "Slight Single Concave Entry", board).closesToPoint).toBe(false);
+    }
+  });
+
+  it.each(BOARDS.map((b) => [b.id, b.board] as const))("%s: the Teardrop's half-width is 0 at its End and grows as √ to its Deepest", (_id, board) => {
+    const tear = resolveCut("nose", startingCut("nose", "Teardrop Nose Concave", board), board);
+    const open: ResolvedCut = { ...tear, closesToPoint: false };
+    expect(cutHalfWidth(tear, board, "narrowest", tear.end)).toBe(0);
+    for (let k = 1; k <= 40; k++) {
+      const s = mm(tear.end + ((tear.deepest - tear.end) * k) / 41);
+      const root = Math.sqrt((s - tear.end) / (tear.deepest - tear.end));
+      expect(Math.abs(cutHalfWidth(tear, board, "narrowest", s) - cutHalfWidth(open, board, "narrowest", s) * root)).toBeLessThan(TOL);
+    }
+    for (let k = 0; k <= 20; k++) {
+      const s = mm(tear.deepest + ((tear.start - tear.deepest) * k) / 20);
+      expect(cutHalfWidth(tear, board, "narrowest", s)).toBe(cutHalfWidth(open, board, "narrowest", s));
+    }
+  });
+
+  it.each(["Blended Nose Concave", "Slight Single Concave Entry"] as const)("ticking it on the %s closes it the same way", (name) => {
+    for (const { board } of BOARDS) {
+      const open = resolveCut("nose", startingCut("nose", name, board), board);
+      const closed: ResolvedCut = { ...open, closesToPoint: true };
+      let narrowed = 0;
+      for (let k = 0; k <= 60; k++) {
+        const s = mm(open.end + ((open.start - open.end) * k) / 60);
+        const C = cutHalfWidth(open, board, "narrowest", s);
+        if (C <= 0) continue;
+        if (s >= open.deepest) {
+          for (let j = 0; j <= 12; j++) {
+            const y = mm((C * j) / 12);
+            expect(cutFoamOff(closed, board, "narrowest", s, y)).toBe(cutFoamOff(open, board, "narrowest", s, y));
+          }
+          continue;
+        }
+        const root = Math.sqrt(Math.max(0, (s - open.end) / (open.deepest - open.end)));
+        const Ck = C * root;
+        if (Ck <= 0) {
+          expect(cutFoamOff(closed, board, "narrowest", s, mm(0))).toBe(0);
+          continue;
+        }
+        narrowed++;
+        // the closed cut at y·root is the open cut at y, but for the narrower cut's own shallowing under 3"
+        for (let j = 0; j < 12; j++) {
+          const y = (C * j) / 12;
+          const a = cutFoamOff(closed, board, "narrowest", s, mm(y * root)) / Math.min(1, Ck / PINCH);
+          const b = cutFoamOff(open, board, "narrowest", s, mm(y)) / Math.min(1, C / PINCH);
+          expect(Math.abs(a - b)).toBeLessThan(1e-7);
+        }
+      }
+      expect(narrowed).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("Start ≥ Deepest ≥ End on every board with fins (the SPEC edge, count half)", () => {
+  it("every non-flat name's starting cut keeps its order and stays on the board, on the five golden boards and every Phase 16 board with fins", () => {
+    const surface = phase16SurfaceBoards()
+      .map(({ label, fields }) => ({ label, board: bottomBoardOf(fields) }))
+      .filter(({ board }) => board.frontFins > 0);
+    const boards = [...BOARDS.map(({ id, board }) => ({ label: id, board })), ...surface];
+    let checked = 0;
+    for (const { label, board } of boards) {
+      for (const section of BOTTOM_SECTIONS) {
+        for (const name of BOTTOM_CUT_NAMES[section]) {
+          if (cutKind(name) === "flat") continue;
+          for (const tail of [undefined, "Panel Vee" as const]) {
+            const r = resolveCut(section, startingCut(section, name, board, tail), board);
+            const where = `${label} · ${name}${tail ? " with a tail vee" : ""}`;
+            expect(r.start, where).toBeGreaterThanOrEqual(r.deepest);
+            expect(r.deepest, where).toBeGreaterThanOrEqual(r.end);
+            expect(r.end, where).toBeGreaterThanOrEqual(0);
+            expect(r.start, where).toBeLessThanOrEqual(board.length);
+            checked++;
+          }
+        }
+      }
+    }
+    console.info(`Start ≥ Deepest ≥ End held on ${checked} starting cuts (${boards.length} boards × 15 names, with and without a tail vee)`);
+    expect(checked).toBe(boards.length * 15 * 2);
+  });
+});
+
+describe("D-42: a center single fades out before a tail vee peaks (the founder, 2026-11-08)", () => {
+  const SINGLES = ["Deep Single Concave", "Shallow Single Concave"] as const;
+
+  it("names the three tail vees", () => {
+    expect(BOTTOM_CUT_NAMES.tail.filter((n) => isTailVee(n))).toEqual([...TAIL_VEES]);
+  });
+
+  it.each(BOARDS.map((b) => [b.id, b.board] as const))("%s: with a tail vee a center single is deepest halfway from the wide point to the fins and ends at the fins", (_id, board) => {
+    for (const name of SINGLES) {
+      const plain = resolveCut("center", startingCut("center", name, board), board);
+      for (const tail of BOTTOM_CUT_NAMES.tail) {
+        const r = resolveCut("center", startingCut("center", name, board, tail), board);
+        if (!isTailVee(tail)) {
+          expect(r).toEqual(plain);
+          continue;
+        }
+        expect(Math.abs(r.deepest - (board.widePoint + board.frontFins) / 2)).toBeLessThan(TOL);
+        expect(r.end).toBe(board.frontFins);
+        expect(r.start).toBe(plain.start);
+        expect({ ...r, deepest: 0, end: 0 }).toEqual({ ...plain, deepest: 0, end: 0 });
+        // the single has run out where the vee is deepest
+        const vee = resolveCut("tail", startingCut("tail", tail, board), board);
+        const W = board.railAt(vee.deepest);
+        for (let j = 0; j <= 12; j++) expect(cutFoamOff(r, board, "narrowest", vee.deepest, mm((W * j) / 12))).toBe(0);
+      }
+    }
+    // the Deep Single already peaked there: only its End moves; the Shallow Single's Deepest moves ahead of the fins
+    const deep = resolveCut("center", startingCut("center", "Deep Single Concave", board), board);
+    const deepWithVee = resolveCut("center", startingCut("center", "Deep Single Concave", board, "Rolled Vee"), board);
+    expect(deepWithVee.deepest).toBe(deep.deepest);
+    expect(deepWithVee.end).toBeGreaterThan(deep.end);
+    const shallow = resolveCut("center", startingCut("center", "Shallow Single Concave", board), board);
+    const shallowWithVee = resolveCut("center", startingCut("center", "Shallow Single Concave", board, "Rolled Vee"), board);
+    expect(shallow.deepest).toBe(board.frontFins);
+    expect(shallowWithVee.deepest).toBeGreaterThan(shallow.deepest);
+  });
+
+  it.each(BOARDS.map((b) => [b.id, b.board] as const))("%s: picking a tail vee re-seats a center single still on its starting numbers, in one step; a single set by hand is never touched", (_id, board) => {
+    for (const name of SINGLES) {
+      for (const vee of TAIL_VEES) {
+        // a single picked on a flat tail, then a vee picked
+        const opened = pickCut(DEFAULT_BOTTOM, "center", name, board);
+        expect(opened.center).toEqual(startingCut("center", name, board));
+        const withVee = pickCut(opened, "tail", vee, board);
+        expect(withVee.tail).toEqual(startingCut("tail", vee, board));
+        expect(withVee.center).toEqual(startingCut("center", name, board, vee));
+        expect(withVee.center).not.toEqual(opened.center);
+        expect(opened.center).toEqual(startingCut("center", name, board)); // the step wrote nothing back
+        // picking the single with the vee already there opens it on the vee's numbers
+        expect(pickCut(pickCut(DEFAULT_BOTTOM, "tail", vee, board), "center", name, board).center).toEqual(withVee.center);
+        // a vee to another vee leaves it; a vee to a flat exit puts the sketch's numbers back
+        expect(pickCut(withVee, "tail", "Rolled Vee", board).center).toEqual(withVee.center);
+        expect(pickCut(withVee, "tail", "Flat Exit", board).center).toEqual(opened.center);
+        // set by hand: never touched, either way
+        const byHand: BoardBottom = { ...opened, center: { ...opened.center, depth: mm(opened.center.depth + 1) } };
+        expect(pickCut(byHand, "tail", vee, board).center).toBe(byHand.center);
+        const byHandOnVee: BoardBottom = { ...withVee, center: { ...withVee.center, end: mm(withVee.center.end + 10) } };
+        expect(pickCut(byHandOnVee, "tail", "Flat Exit", board).center).toBe(byHandOnVee.center);
+      }
+    }
+    // a center that is not a single is never moved by a tail pick
+    for (const name of BOTTOM_CUT_NAMES.center.filter((n) => cutKind(n) !== "single")) {
+      const opened = pickCut(DEFAULT_BOTTOM, "center", name, board);
+      expect(pickCut(opened, "tail", "Panel Vee", board).center).toBe(opened.center);
+    }
+  });
+
+  it("the golden's figures for a single alone are unchanged: with no tail named, every center single opens on the sketch's own numbers", () => {
+    const singles = cutCases.filter((x) => x.section === "center" && x.cut.kind === "single");
+    expect(singles).toHaveLength(2 * 5);
+    for (const c of singles) {
+      const board = boardById(c.board);
+      expectSketchCut(resolveCut("center", startingCut("center", c.name as BottomCutName, board), board), c.cut);
+      expectSketchCut(resolveCut("center", pickCut(DEFAULT_BOTTOM, "center", c.name as BottomCutName, board).center, board), c.cut);
     }
   });
 });

@@ -913,8 +913,8 @@ describe("the litres count the bottom's cut (Phase 17, D-05, D-20, D-21, D-33)",
     expect(litresOf(fields, bottomOf(fields, { center: "Deep Single Concave" }))).toBeLessThan(litresOf(fields));
   });
 
-  it("covers this wave's ten cuts on the five boards", () => {
-    expect(cutCases).toHaveLength(10 * 5);
+  it("covers the fifteen cuts on the five boards", () => {
+    expect(cutCases).toHaveLength(15 * 5);
   });
 
   it.each(cutCases.map((c) => ({ ...c, label: `${c.board}: ${c.name}` })))(
@@ -936,11 +936,24 @@ describe("the litres count the bottom's cut (Phase 17, D-05, D-20, D-21, D-33)",
     },
   );
 
-  it.each(["shortboard", "fish", "fishwing"])("%s: its opening cuts fall within 0.5% of the sketch's own figure", (id) => {
+  it.each(["shortboard", "fish", "midlength", "fishwing"])("%s: its opening cuts fall within 0.5% of the sketch's own figure", (id) => {
     const fields = fieldsOf(id);
     const op = opening(id);
     const names = Object.fromEntries(BOTTOM_SECTIONS.map((s) => [s, op.cuts[s].name]));
-    expect(Math.abs(fallOf(fields, bottomOf(fields, names)) / op.litresOff - 1)).toBeLessThan(0.005);
+    const fall = fallOf(fields, bottomOf(fields, names));
+    console.info(`${id} opening (${Object.values(names).join(" · ")}): falls ${fall.toFixed(4)} L, the sketch's slab ${op.litresOff.toFixed(4)} L`);
+    expect(Math.abs(fall / op.litresOff - 1)).toBeLessThan(0.005);
+  });
+
+  it("D-34: the Longboard's opening cuts (Teardrop · Continuous Belly / Rolled Mid · Rolled Vee) fall by less than the sketch's slab figure — its rolled rail takes that foam anyway", () => {
+    const fields = fieldsOf("longboard");
+    const op = opening("longboard");
+    const names = Object.fromEntries(BOTTOM_SECTIONS.map((s) => [s, op.cuts[s].name]));
+    expect(names).toEqual({ nose: "Teardrop Nose Concave", center: "Continuous Belly / Rolled Mid", tail: "Rolled Vee" });
+    const fall = fallOf(fields, bottomOf(fields, names));
+    console.info(`longboard opening: falls ${fall.toFixed(4)} L, the sketch's slab ${op.litresOff.toFixed(4)} L (${((fall / op.litresOff) * 100).toFixed(1)}%)`);
+    expect(fall).toBeGreaterThan(0);
+    expect(fall).toBeLessThan(op.litresOff);
   });
 
   it("the Mid-length with a Rolled Belly Entry, a Deep Single and a Rolled Vee falls by what the three take off one at a time", () => {

@@ -1,7 +1,8 @@
 /**
  * The bottom contours (Phase 17) — the cuts a shaper takes out of the bottom after the blank is planed: a flat, a
- * belly, a vee, a single concave (this file, 17-02), the doubles, the Spiral Vee, the Tri-Plane, the Teardrop's closing
- * (17-04) and the channels (17-05).
+ * belly, a vee, a single concave (17-02), the doubles, the Spiral Vee, the Tri-Plane, the Teardrop's closing (17-05)
+ * and the channels (17-06) — and the numbers DATA prints: the depths every 6", the layout marks off the stringer and
+ * where a cut meets the 1/4" floor (17-05).
  *
  * D-05, the one number: **foam off at (station, distance from the stringer)** — the sum of the cuts, never below zero
  * and never deeper than the 1/4" floor under the planed thickness. Every reader — the shade, the section, DATA, the
@@ -27,8 +28,8 @@ import { inchesToMm, mm, type Litres, type Mm } from "./units";
 /* ============ the names ============ */
 
 export type BottomSectionKey = "nose" | "center" | "tail";
-/** What a cut IS — a flat, a belly, a vee or a single concave (17-04 adds the double). Comes from the name. */
-export type BottomCutKind = "flat" | "belly" | "vee" | "single";
+/** What a cut IS — a flat, a belly, a vee, a single concave or a double concave. Comes from the name. */
+export type BottomCutKind = "flat" | "belly" | "vee" | "single" | "double";
 /** What Off Rail is measured from on a winged board (D-19): the Narrowest outline, or the curve drawn before the wing. */
 export type BottomWingRule = "narrowest" | "natural";
 
@@ -36,14 +37,13 @@ export type BottomWingRule = "narrowest" | "natural";
 export const BOTTOM_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
 
 /**
- * The names this wave cuts, in D-04's order within each section — the order of each section's menu. 17-04 inserts the
- * other five (Teardrop Nose Concave, Early Double Concave, Tri-Plane Hull Center, Double Concave Exit, Spiral Vee) in
- * their D-04 places.
+ * The founder's eighteen names (D-04), six per section, in D-04's order within each section — the order of each
+ * section's menu, and the sketch's own `NAMES` order. No Bonzer and no other name (SPEC, out of scope).
  */
 export const BOTTOM_CUT_NAMES = {
-  nose: ["Flat Entry", "Rolled Belly Entry", "Blended Nose Concave", "Slight Single Concave Entry", "Reverse Vee Nose"],
-  center: ["Flat Center", "Deep Single Concave", "Shallow Single Concave", "Continuous Belly / Rolled Mid"],
-  tail: ["Flat Exit", "Panel Vee", "Rolled Vee", "Extending Single Concave"],
+  nose: ["Flat Entry", "Rolled Belly Entry", "Teardrop Nose Concave", "Blended Nose Concave", "Slight Single Concave Entry", "Reverse Vee Nose"],
+  center: ["Flat Center", "Deep Single Concave", "Shallow Single Concave", "Early Double Concave", "Continuous Belly / Rolled Mid", "Tri-Plane Hull Center"],
+  tail: ["Flat Exit", "Double Concave Exit", "Panel Vee", "Spiral Vee", "Rolled Vee", "Extending Single Concave"],
 } as const;
 
 export type BottomCutName = (typeof BOTTOM_CUT_NAMES)[BottomSectionKey][number];
@@ -69,18 +69,18 @@ export interface BottomCutSpec {
   offRail: Mm;
   /** A vee's flat panel either side of the stringer, a double's flat (a mark). */
   offStringer: Mm;
-  /** A double's trough, out from the stringer (a mark; 17-04's). */
+  /** A double's trough, out from the stringer (a mark). */
   troughAt: Mm;
   start: Mm;
   deepest: Mm;
   end: Mm;
   /** How deep the cut is at its deepest station; a vee's or belly's lift at the rail (a mark). */
   depth: Mm;
-  /** The Spiral Vee's lift under its double (a mark; 17-04's). */
+  /** The Spiral Vee's lift under its double (a mark). */
   veeLift: Mm;
   /** 0 to 100: straight to the edge at 0, rounded out at 100. */
   smoothness: number;
-  /** A nose single that closes to a point toward the center (the Teardrop's; 17-04's). */
+  /** A nose single that closes to a point toward the center (the Teardrop's, D-06 / D-32). */
   closesToPoint: boolean;
 }
 
@@ -151,6 +151,14 @@ export const NOTCH_WALL_MIN: Mm = mm(0.3);
 export const STATION_GUARD: Mm = mm(1e-9);
 /** Deepest At this close to Start or End means no fade on that side (the sketch's 1e-6). */
 export const FADE_GUARD: Mm = mm(1e-6);
+/** A double's trough stands at least this far outside its flat (the sketch's `IN / 4`). */
+export const DOUBLE_TROUGH_GAP: Mm = inchesToMm(1 / 4);
+/** A double's flat is at most this share of the cut's half-width (the sketch's 0.5). */
+export const DOUBLE_FLAT_SHARE = 0.5;
+/** A double's trough is at most this share of the cut's half-width (the sketch's 0.85). */
+export const DOUBLE_TROUGH_SHARE = 0.85;
+/** The least half-width `keepStationsInOrder` reads a double's marks against (the sketch's `IN`). */
+export const DOUBLE_MIN_HALF_WIDTH: Mm = inchesToMm(1);
 /** The top view's shade steps every 1/32" of depth (D-12; drawn from 17-06). */
 export const BOTTOM_SHADE_STEP: Mm = inchesToMm(1 / 32);
 /** The least foam the bottom ever leaves under the deck: the app's own thinnest foil (D-09). */
@@ -182,13 +190,14 @@ interface CutEntry {
 const i = inchesToMm;
 
 /**
- * The sketch's `NAMES` table (template.html 367–401), this wave's thirteen names. Set 2026-11-08 from what shapers
- * publish, at the founder's word — still his to correct.
+ * The sketch's `NAMES` table (template.html 367–401), all eighteen names. Set 2026-11-08 from what shapers publish, at
+ * the founder's word — still his to correct.
  */
 const CUT_TABLE: Readonly<Record<BottomSectionKey, readonly CutEntry[]>> = {
   nose: [
     { name: "Flat Entry", kind: "flat" },
     { name: "Rolled Belly Entry", kind: "belly", d: (b) => ({ start: b.length, deepest: b.length * 2 / 3, end: b.length * 0.55, depth: i(3 / 8), smoothness: 100 }) },
+    { name: "Teardrop Nose Concave", kind: "single", d: (b) => ({ offRail: i(2.25), start: b.length - i(3), deepest: b.length - i(20), end: b.length - i(38), depth: i(1 / 4), smoothness: 70, closesToPoint: true }) },
     { name: "Blended Nose Concave", kind: "single", d: (b) => ({ offRail: i(1.625), start: b.length - i(2), deepest: b.length - i(12), end: b.length - i(36), depth: i(3 / 16), smoothness: 70 }) },
     { name: "Slight Single Concave Entry", kind: "single", d: (b) => ({ offRail: i(2), start: b.length - i(12), deepest: b.widePoint, end: b.widePoint - i(6), depth: i(1 / 16), smoothness: 50 }) },
     { name: "Reverse Vee Nose", kind: "vee", d: (b) => ({ start: b.length - i(3), deepest: b.length * 2 / 3, end: b.frontFins + i(4), depth: i(3 / 16), smoothness: 0 }) },
@@ -197,11 +206,15 @@ const CUT_TABLE: Readonly<Record<BottomSectionKey, readonly CutEntry[]>> = {
     { name: "Flat Center", kind: "flat" },
     { name: "Deep Single Concave", kind: "single", d: (b) => ({ offRail: i(2), start: b.length - i(16), deepest: (b.widePoint + b.frontFins) / 2, end: i(4), depth: i(1 / 4), smoothness: 50 }) },
     { name: "Shallow Single Concave", kind: "single", d: (b) => ({ offRail: i(2), start: b.length * 2 / 3, deepest: b.frontFins, end: i(4), depth: i(1 / 8), smoothness: 50 }) },
+    { name: "Early Double Concave", kind: "double", d: (b) => ({ offRail: i(2), offStringer: i(1), troughAt: i(4), start: b.widePoint, deepest: b.frontFins + i(6), end: b.frontFins + i(2), depth: i(1 / 8), smoothness: 60 }) },
     { name: "Continuous Belly / Rolled Mid", kind: "belly", d: (b) => ({ start: b.length - i(8), deepest: b.widePoint, end: b.frontFins, depth: i(3 / 8), smoothness: 100 }) },
+    { name: "Tri-Plane Hull Center", kind: "vee", d: (b) => ({ offStringer: b.widePointWidth / 2 - i(4), start: b.length - i(14), deepest: b.length / 2, end: b.frontFins, depth: i(1 / 8), smoothness: 0 }) },
   ],
   tail: [
     { name: "Flat Exit", kind: "flat" },
+    { name: "Double Concave Exit", kind: "double", d: (b) => ({ offRail: i(1), offStringer: i(3 / 4), troughAt: i(3), start: b.frontFins + i(12), deepest: b.frontFins, end: i(4), depth: i(1 / 8), smoothness: 50 }) },
     { name: "Panel Vee", kind: "vee", d: (b) => ({ start: b.length / 3, deepest: b.frontFins, end: 0, depth: i(3 / 16), smoothness: 0 }) },
+    { name: "Spiral Vee", kind: "double", d: (b) => ({ offRail: i(1), offStringer: i(3 / 4), troughAt: i(3), start: b.frontFins + i(12), deepest: b.frontFins, end: 0, depth: i(1 / 8), smoothness: 50, veeLift: i(3 / 16) }) },
     { name: "Rolled Vee", kind: "vee", d: (b) => ({ start: b.length / 3, deepest: b.frontFins, end: 0, depth: i(1 / 4), smoothness: 60 }) },
     { name: "Extending Single Concave", kind: "single", d: (b) => ({ offRail: i(2), start: b.frontFins + i(12), deepest: b.frontFins, end: i(4), depth: i(3 / 16), smoothness: 50 }) },
   ],
@@ -222,11 +235,29 @@ export function cutKind(name: BottomCutName): BottomCutKind {
   throw new Error(`${name} is not a bottom cut`);
 }
 
-/** The sketch's `makeCut`: zeros, then the name's starting numbers over them. Stations from the tail. */
-function makeAbsolute(section: BottomSectionKey, name: BottomCutName, board: BottomBoard): AbsoluteCut {
+/** The three tail cuts that are vees (D-42): a Panel Vee, a Rolled Vee, or the Spiral Vee's vee under its double. */
+export const TAIL_VEE_NAMES: readonly BottomCutName[] = ["Panel Vee", "Spiral Vee", "Rolled Vee"];
+
+/** Whether a tail cut is one of the vees a center single fades out ahead of (D-42). */
+export function isTailVee(name: BottomCutName): boolean {
+  return TAIL_VEE_NAMES.includes(name);
+}
+
+/**
+ * The sketch's `makeCut`: zeros, then the name's starting numbers over them. Stations from the tail.
+ *
+ * D-42 (the founder, 2026-11-08): when the tail cut is a vee, a center single concave opens deepest halfway from the
+ * wide point to the front fins and ends AT the front fins, so it has run out where the vee is deepest. Without a tail
+ * vee (or no tail named) the numbers are the sketch's own, line for line.
+ */
+function makeAbsolute(section: BottomSectionKey, name: BottomCutName, board: BottomBoard, tail?: BottomCutName): AbsoluteCut {
   const entry = entryOf(section, name);
   const c: AbsoluteCut = { offRail: 0, offStringer: 0, troughAt: 0, start: 0, deepest: 0, end: 0, depth: 0, veeLift: 0, smoothness: 0, closesToPoint: false };
   if (entry.d) Object.assign(c, entry.d(board));
+  if (section === "center" && entry.kind === "single" && tail !== undefined && isTailVee(tail)) {
+    c.deepest = (board.widePoint + board.frontFins) / 2;
+    c.end = board.frontFins;
+  }
   return c;
 }
 
@@ -269,11 +300,12 @@ function flatSpec(name: BottomCutName): BottomCutSpec {
 
 /**
  * A name's starting numbers on this board (D-08), in the stored form: the sketch's `makeCut`, then each station
- * measured from where it is kept. A flat stores all zeros.
+ * measured from where it is kept. A flat stores all zeros. `tail` is the board's tail cut, read only by a center single
+ * (D-42); left out, every name opens on the sketch's own numbers.
  */
-export function startingCut(section: BottomSectionKey, name: BottomCutName, board: BottomBoard): BottomCutSpec {
+export function startingCut(section: BottomSectionKey, name: BottomCutName, board: BottomBoard, tail?: BottomCutName): BottomCutSpec {
   if (entryOf(section, name).kind === "flat") return flatSpec(name);
-  const c = makeAbsolute(section, name, board);
+  const c = makeAbsolute(section, name, board, tail);
   return {
     name,
     offRail: mm(c.offRail),
@@ -292,7 +324,7 @@ export interface ResolvedCut {
   section: BottomSectionKey;
   name: BottomCutName;
   kind: BottomCutKind;
-  /** The Spiral Vee's double-in-a-vee (17-04's); false for every name of this wave. */
+  /** The Spiral Vee's double with a vee under it — true for that name alone (the sketch's `spiral`). */
   spiral: boolean;
   offRail: Mm;
   offStringer: Mm;
@@ -335,7 +367,7 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
     section,
     name: spec.name,
     kind,
-    spiral: false,
+    spiral: spec.name === "Spiral Vee",
     offRail: spec.offRail,
     offStringer: spec.offStringer,
     troughAt: spec.troughAt,
@@ -361,22 +393,52 @@ export function resolveBottom(bottom: BoardBottom, board: BottomBoard): Resolved
 }
 
 /**
- * Start ≥ Deepest ≥ End, kept (D-07, R4): the sketch's `normalize` for the three stations. The station just moved
- * wins and the others are pushed ahead of it — a value is never stopped. Read on the board (stations from the tail),
- * then stored again; a Tail cut's Deepest At stays measured from the fins.
+ * Start ≥ Deepest ≥ End, kept (D-07, R4): the sketch's `normalize`. The station just moved wins and the others are
+ * pushed ahead of it — a value is never stopped. Read on the board (stations from the tail), then stored again; a Tail
+ * cut's Deepest At stays measured from the fins.
+ *
+ * A double's two across marks are kept in order too, against its half-width at Deepest At (never read under an inch):
+ * Off Stringer at most half of it, Trough At at least Off Stringer + 1/4" and at most 85% of it. `rule` is the bottom's
+ * own `wingRule`, which the half-width is measured against (D-19).
  */
 export function keepStationsInOrder(
   section: BottomSectionKey,
   spec: BottomCutSpec,
   changed: "start" | "deepest" | "end",
   board: BottomBoard,
+  rule: BottomWingRule,
 ): BottomCutSpec {
-  if (cutKind(spec.name) === "flat") return { ...spec };
+  const kind = cutKind(spec.name);
+  if (kind === "flat") return { ...spec };
   const c = absoluteStations(section, spec, board);
   if (changed === "start") { if (c.deepest > c.start) c.deepest = c.start; if (c.end > c.deepest) c.end = c.deepest; }
   else if (changed === "end") { if (c.deepest < c.end) c.deepest = c.end; if (c.start < c.deepest) c.start = c.deepest; }
   else if (changed === "deepest") { if (c.start < c.deepest) c.start = c.deepest; if (c.end > c.deepest) c.end = c.deepest; }
-  return { ...spec, ...storedStations(section, c, board) };
+  const kept: BottomCutSpec = { ...spec, ...storedStations(section, c, board) };
+  if (kind === "double") {
+    const C = Math.max(DOUBLE_MIN_HALF_WIDTH, refAt(board, rule, c.deepest) - spec.offRail);
+    kept.offStringer = mm(Math.min(spec.offStringer, C * DOUBLE_FLAT_SHARE));
+    kept.troughAt = mm(Math.max(kept.offStringer + DOUBLE_TROUGH_GAP, Math.min(spec.troughAt, C * DOUBLE_TROUGH_SHARE)));
+  }
+  return kept;
+}
+
+/**
+ * A section's cut picked from its menu, opening on its starting numbers (D-08) — the pure half of the store's pick
+ * (17-08's `pickBottomCut`, which writes the result in one undoable step).
+ *
+ * D-42: a center single opens on the numbers its tail asks for (`startingCut`'s `tail`). Picking a new tail cut moves
+ * a center single that is still exactly on the starting numbers of the tail it had to the starting numbers of the new
+ * one — so picking a tail vee runs that single out at the front fins, and picking a tail that is not a vee puts it
+ * back. A center single set by hand (any number moved) is never touched.
+ */
+export function pickCut(bottom: BoardBottom, section: BottomSectionKey, name: BottomCutName, board: BottomBoard): BoardBottom {
+  const next: BoardBottom = { ...bottom, [section]: startingCut(section, name, board, section === "center" ? bottom.tail.name : undefined) };
+  if (section === "tail" && cutKind(bottom.center.name) === "single") {
+    const asOpened = startingCut("center", bottom.center.name, board, bottom.tail.name);
+    if (sameFields(bottom.center, asOpened)) next.center = startingCut("center", bottom.center.name, board, name);
+  }
+  return next;
 }
 
 /* ============ the default, and whether a bottom cuts anything ============ */
@@ -458,32 +520,78 @@ export function fadeAt(a: number, p: number, b: number, s: number, length: numbe
   if (p - b < FADE_GUARD) return 1; if (b <= TIP_TOLERANCE) return 1; return smoothstep((s - b) / (p - b));
 }
 
-/** A concave's half-width at a station: the reference rail less Off Rail (the sketch's `cutHalfWidth`). */
+/**
+ * A concave's half-width at a station: the reference rail less Off Rail (the sketch's `cutHalfWidth`). A cut that closes
+ * to a point (the Teardrop's, D-06 / D-32) narrows behind its Deepest At by √((s − End) / (Deepest − End)), to nothing
+ * at its End.
+ */
 export function cutHalfWidth(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm): Mm {
-  const C = refAt(board, rule, s) - cut.offRail;
+  let C = refAt(board, rule, s) - cut.offRail;
+  if (cut.closesToPoint && s < cut.deepest && cut.deepest - cut.end > FADE_GUARD) C *= Math.sqrt(Math.max(0, (s - cut.end) / (cut.deepest - cut.end)));
   return mm(C);
 }
 
 /**
- * One cut alone: the foam it takes off at station `s`, `y` out from the stringer (the sketch's `cutOff`). A flat takes
- * nothing. A single concave is `depth × fade × min(1, C / PINCH) × sec(y / C, r)` inside its half-width C — narrower
- * than 3" it shallows in proportion, so a tip never gets a slot. A vee or a belly lifts from Off Stringer out to the rail
- * `railAt(s)`: `depth × fade × rise((y − F) / (W − F), r)`. Nothing where the board has no rail. A cut may run past its
- * own section; whatever it overlaps, it adds to.
+ * A double's two across marks at half-width `C`, kept in order (the sketch's `doubleMarks`): the flat at the stringer
+ * (Off Stringer, at most half the cut's width), then the trough (Trough At, at least 1/4" outside the flat and inside
+ * 85% of the width).
+ */
+export function doubleMarks(cut: Pick<ResolvedCut, "offStringer" | "troughAt">, C: Mm): { flat: Mm; trough: Mm } {
+  const a = Math.min(cut.offStringer, Math.max(0, C * DOUBLE_FLAT_SHARE));
+  const t = Math.max(a + DOUBLE_TROUGH_GAP, Math.min(cut.troughAt, C * DOUBLE_TROUGH_SHARE));
+  return { flat: mm(a), trough: mm(t) };
+}
+
+/**
+ * One cut alone, in its two kinds of work (D-40): the foam it hollows out of the middle of the bottom (`concave` — a
+ * single, a double) and the foam it lifts off toward the rail (`lift` — a vee, a belly, the Spiral Vee's vee). The
+ * sketch's `cutOff` is their sum, in its own order (see `cutFoamOff`).
+ *
+ * - A single concave: `depth × fade × min(1, C / PINCH) × sec(y / C, r)` inside its half-width C — narrower than 3" it
+ *   shallows in proportion, so a tip never gets a slot.
+ * - A double concave takes nothing inside its flat (Off Stringer), so a single stacked on it leaves the stringer as
+ *   the ridge; from the flat it deepens to its trough and shallows again to its edge, `D × sec(u, r)` with
+ *   `D = depth × fade × min(1, (C − flat) / PINCH)`.
+ * - The Spiral Vee is that double with a Vee Lift under it: `veeLift × fade × rise(y / W, 0)`, nothing at the stringer.
+ * - A vee or a belly lifts from Off Stringer (the Tri-Plane's flat panel) out to the rail `railAt(s)`:
+ *   `depth × fade × rise((y − F) / (W − F), r)`.
+ *
+ * Nothing where the board has no rail. A cut may run past its own section; whatever it overlaps, it adds to.
+ */
+export function cutFoamOffParts(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): { concave: number; lift: number } {
+  const none = { concave: 0, lift: 0 };
+  const W = board.railAt(s);
+  if (W <= 0) return none;
+  if (cut.kind === "flat" || cut.depth <= 0) return none;
+  const f = fadeAt(cut.start, cut.deepest, cut.end, s, board.length); if (f <= 0) return none;
+  const r = cut.smoothness / 100; let concave = 0; let lift = 0;
+  if (cut.kind === "single" || cut.kind === "double") {
+    const C = cutHalfWidth(cut, board, rule, s);
+    if (C > 0 && y < C) {
+      if (cut.kind === "single") concave += cut.depth * f * Math.min(1, C / PINCH) * sec(y / C, r);
+      else {
+        const { flat: a, trough: t } = doubleMarks(cut, C);
+        if (y > a) {
+          const D = cut.depth * f * Math.min(1, (C - a) / PINCH);
+          const u = y < t ? (t - y) / (t - a) : (y - t) / (C - t);
+          concave += D * sec(Math.min(1, u), r);
+        }
+      }
+    }
+    if (cut.spiral && cut.veeLift > 0 && W > 0) lift += cut.veeLift * f * rise(Math.min(1, y / W), 0);
+  } else { // vee or belly: a lift from the stringer (or the flat panel's edge, Off Stringer) out to the rail
+    const F = cut.offStringer; if (y > F && W > F) lift += cut.depth * f * rise((y - F) / (W - F), r);
+  }
+  return { concave, lift };
+}
+
+/**
+ * One cut alone: the foam it takes off at station `s`, `y` out from the stringer — the sketch's `cutOff`, its concave
+ * work and its lift added in the sketch's own order (`cutFoamOffParts`).
  */
 export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): Mm {
-  const W = board.railAt(s);
-  if (W <= 0) return mm(0);
-  if (cut.kind === "flat" || cut.depth <= 0) return mm(0);
-  const f = fadeAt(cut.start, cut.deepest, cut.end, s, board.length); if (f <= 0) return mm(0);
-  const r = cut.smoothness / 100; let out = 0;
-  if (cut.kind === "single") {
-    const C = cutHalfWidth(cut, board, rule, s);
-    if (C > 0 && y < C) out += cut.depth * f * Math.min(1, C / PINCH) * sec(y / C, r);
-  } else { // vee or belly: a lift from the stringer (or the flat panel's edge, Off Stringer) out to the rail
-    const F = cut.offStringer; if (y > F && W > F) out += cut.depth * f * rise((y - F) / (W - F), r);
-  }
-  return mm(out);
+  const { concave, lift } = cutFoamOffParts(cut, board, rule, s, y);
+  return mm(concave + lift);
 }
 
 /**
@@ -500,20 +608,31 @@ export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWin
  *   section's foam simply ends (`bottomedHalfSection` in volume.ts), and a rail left under 1/4" is flagged, not cut
  *   shallower.
  *
- * The channels join the concaves' sum in 17-05.
+ * A double's flat and troughs are concave work (held); the Spiral Vee's vee and the Tri-Plane's planes are lifts (never
+ * held, nothing at the stringer). The channels join the concaves' sum in 17-06.
  */
 export function foamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): Mm {
   if (board.railAt(s) <= 0) return mm(0);
+  const { concave, lift } = foamOffParts(resolved, board, s, y);
+  const held = Math.min(Math.max(0, concave), stringerFloorCap(board, s));
+  return mm(held + Math.max(0, lift));
+}
+
+/** The most concave work a station holds: the planed thickness less the 1/4" floor (D-09), never below 0. */
+function stringerFloorCap(board: BottomBoard, s: Mm): number {
+  return Math.max(0, board.thicknessAt(s) - BOTTOM_FLOOR);
+}
+
+/** The sections' concave work and lifts at a point, each summed in shop order, before the floor holds the concaves. */
+function foamOffParts(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): { concave: number; lift: number } {
   let concave = 0;
   let lift = 0;
   for (const section of BOTTOM_SECTIONS) {
-    const cut = resolved[section];
-    const v = cutFoamOff(cut, board, resolved.wingRule, s, y);
-    if (cut.kind === "single") concave += v;
-    else lift += v;
+    const parts = cutFoamOffParts(resolved[section], board, resolved.wingRule, s, y);
+    concave += parts.concave;
+    lift += parts.lift;
   }
-  const held = Math.min(Math.max(0, concave), Math.max(0, board.thicknessAt(s) - BOTTOM_FLOOR));
-  return mm(held + Math.max(0, lift));
+  return { concave, lift };
 }
 
 /* ============ the one number, handed to the litres (D-05, D-21) ============ */
