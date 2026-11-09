@@ -561,6 +561,54 @@ export function startingChannels(count: ChannelCount, board: BottomBoard, curren
   return { ...DEFAULT_BOTTOM.channels, count, width: followsCount ? CHANNEL_STARTING_WIDTHS[count] : current.width };
 }
 
+/**
+ * A channel count picked from BOTTOM's `Channels` menu (D-10, D-11; the orchestrator's ruling at 17-09): the count, and
+ * that count's starting width (2 1/2" · 1 3/4" · 1 1/4") unless the width there now was set by hand — `startingChannels`'
+ * own width rule — with every other channel number kept as it is. `None` (0) hides the set and keeps every number, so
+ * the next count opens on them again (UI-SPEC §2, "keeps the settings for the next count"). A board that has never had
+ * channels holds D-11's numbers (`DEFAULT_BOTTOM.channels`), so its first count opens exactly on `startingChannels`
+ * (the sketch's count pick, template.html line 1124, which changes the count and the width and nothing else).
+ */
+export function switchChannelCount(current: BottomChannelsSpec, count: BottomChannelsSpec["count"], board: BottomBoard): BottomChannelsSpec {
+  if (count === 0) return { ...current, count: 0 };
+  return { ...current, count, width: startingChannels(count, board, current).width };
+}
+
+/**
+ * One of the channels' three stations set from the tail — a channel station slider's drag on BOTTOM (D-03, D-07) — as
+ * the patch that stores it the way the channels keep it: Start and Deepest At from the front fins, End from the tail.
+ * The other two are not in the patch; the store keeps the three in order in the same step
+ * (`keepChannelStationsInOrder`, the dragged one winning).
+ */
+export function storeChannelStation(
+  field: "start" | "deepest" | "end",
+  fromTail: Mm,
+  board: Pick<BottomBoard, "frontFins">,
+): Partial<BottomChannelsSpec> {
+  if (field === "start") return { startFromFins: mm(fromTail - board.frontFins) };
+  if (field === "deepest") return { deepestFromFins: mm(fromTail - board.frontFins) };
+  return { end: fromTail };
+}
+
+/**
+ * Start ≥ Deepest ≥ End for the channels, kept as a cut's are (`keepStationsInOrder`; the sketch's `normalize`, which
+ * runs on the channels too, template.html line 1013): read on the board (stations from the tail, clamped to it), the
+ * station just moved wins and the others are pushed ahead of it — a value is never stopped — then stored again, Start
+ * and Deepest At from the front fins. Only the starts stagger, so nothing else moves.
+ */
+export function keepChannelStationsInOrder(
+  spec: BottomChannelsSpec,
+  changed: "start" | "deepest" | "end",
+  board: Pick<BottomBoard, "length" | "frontFins">,
+): BottomChannelsSpec {
+  const clamp = (s: number) => Math.max(0, Math.min(board.length, s));
+  const c = { start: clamp(board.frontFins + spec.startFromFins), deepest: clamp(board.frontFins + spec.deepestFromFins), end: clamp(spec.end) };
+  if (changed === "start") { if (c.deepest > c.start) c.deepest = c.start; if (c.end > c.deepest) c.end = c.deepest; }
+  else if (changed === "end") { if (c.deepest < c.end) c.deepest = c.end; if (c.start < c.deepest) c.start = c.deepest; }
+  else { if (c.start < c.deepest) c.start = c.deepest; if (c.end > c.deepest) c.end = c.deepest; }
+  return { ...spec, startFromFins: mm(c.start - board.frontFins), deepestFromFins: mm(c.deepest - board.frontFins), end: mm(c.end) };
+}
+
 /** Whether the bottom takes any foam: false when every section is flat (or 0 deep) and there are no channels. */
 export function bottomHasCut(bottom: BoardBottom): boolean {
   for (const section of BOTTOM_SECTIONS) {

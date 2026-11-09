@@ -7,7 +7,18 @@
  * Later plans add theirs (17-09 the other cuts' rows and the channels, 17-10 the Height buttons and `Section at`,
  * 17-11 GUIDE).
  */
-import type { BottomSectionKey } from "@/lib/geometry/bottom";
+import { formatBottomStation } from "@/lib/geometry/blank-reasons";
+import {
+  BOTTOM_FLOOR,
+  stationFromNearestTip,
+  type BottomBoard,
+  type BottomChannelsSpec,
+  type BottomFloorFlag,
+  type BottomSectionKey,
+  type channelReadout,
+} from "@/lib/geometry/bottom";
+import { formatDim, formatMark } from "@/lib/geometry/measure-display";
+import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** A section's name as the panel and the screen readers say it. */
 export const BOTTOM_SECTION_NAME: Record<BottomSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -27,9 +38,15 @@ export const BOTTOM_COPY = {
   cutSelectName: (section: BottomSectionKey) => `${BOTTOM_SECTION_NAME[section]} Cut`,
   flatNote: "Nothing is cut in this section.",
 
-  /** The single concave's rows (UI-SPEC § The side panel, slider rows). */
+  /** A cut's rows (UI-SPEC § The side panel, slider rows), in D-04's order. */
   offRail: "Off Rail",
   offRailLeft: "At the rail",
+  offStringer: "Off Stringer",
+  offStringerLeft: "At the stringer",
+  troughAt: "Trough At",
+  /** `4" from the stringer`: Trough At's value as its label reads it. */
+  fromStringer: (mark: string) => `${mark} from the stringer`,
+  veeLift: "Vee Lift",
   start: "Start",
   deepestAt: "Deepest At",
   end: "End",
@@ -40,6 +57,10 @@ export const BOTTOM_COPY = {
   smoothness: "Smoothness",
   smoothnessLeft: "Straight to the edge",
   smoothnessRight: "Rounded out",
+  /** `50%`: Smoothness as its label and a screen reader read it. */
+  percent: (value: number) => `${value}%`,
+  /** The tick box on the three Nose single concaves (D-06, D-32), ticked by the Teardrop's starting numbers only. */
+  closesToPoint: "Closes to a point toward the center",
   /** `58" from the tail` (a Nose cut's `from the nose`): a station as its label reads it, from the cut's nearest tip. */
   fromTip: (section: BottomSectionKey, station: string) => `${station} from the ${section === "nose" ? "nose" : "tail"}`,
   /** A slider's spoken name: `Center Off Rail`, `Center Deepest At`. */
@@ -75,3 +96,121 @@ export const BOTTOM_COPY = {
   rowNoseTip: "Nose tip",
   emptyCell: "—",
 } as const;
+
+/** The floor's fix, said once after either form (UI-SPEC § Warnings and edge copy). */
+const FLOOR_FIX = "Lower the Depth, or move the cut away from the tip.";
+
+/**
+ * The floor in words (D-09, D-33 as amended by D-40) — the sentence under a cut's (or the channels') Depth row, from that
+ * cut's own `bottomFloorFlags` entry; `null` when it meets nothing. Two forms, each said only when it holds:
+ *
+ * - **the stringer form**, a concave the floor holds: `This cut meets the 1/4" floor 3" from the nose: the stringer is
+ *   left at 1/4" there, shallower than the depth set.` — `{at}` is the held station nearest the cut's own tip, read from
+ *   that tip (the nose for a Nose cut, the tail otherwise);
+ * - **the rail form**, a lift (or a channel) that leaves the rail under 1/4": `This cut leaves the rail under 1/4" near
+ *   the tail: the rail is thinner there than the floor.` (the channels: `The channels leave …`) — `near the {nose|tail}`
+ *   is the tip nearer the flagged station nearest the cut's own tip.
+ *
+ * Then the fix, once. The floor is `BOTTOM_FLOOR` (the app's 1/4", `FOIL_THICKNESS_RANGE_IN.min`) as a mark — `6 mm` in
+ * Metric — and the station a dim through `formatBottomStation` (CLAUDE.md Rule 2). Words the founder may rewrite.
+ */
+export function floorWarning(flag: BottomFloorFlag | undefined, board: Pick<BottomBoard, "length">, system: UnitsSystem): string | null {
+  if (!flag || (flag.stringer.length === 0 && flag.rails.length === 0)) return null;
+  const floor = formatMark(BOTTOM_FLOOR, system);
+  const fromNose = flag.section === "nose";
+  const nearestOwnTip = (stations: readonly Mm[]): Mm => (fromNose ? Math.max(...stations) : Math.min(...stations)) as Mm;
+  const parts: string[] = [];
+  if (flag.stringer.length > 0 && flag.section !== "channels") {
+    const at = formatBottomStation(stationFromNearestTip(flag.section, nearestOwnTip(flag.stringer), board), system);
+    parts.push(`This cut meets the ${floor} floor ${at} from the ${fromNose ? "nose" : "tail"}: the stringer is left at ${floor} there, shallower than the depth set.`);
+  }
+  if (flag.rails.length > 0) {
+    const tip = nearestOwnTip(flag.rails) > board.length / 2 ? "nose" : "tail";
+    const who = flag.section === "channels" ? "The channels leave" : "This cut leaves";
+    parts.push(`${who} the rail under ${floor} near the ${tip}: the rail is thinner there than the floor.`);
+  }
+  return [...parts, FLOOR_FIX].join(" ");
+}
+
+/* ============ the CHANNELS block, inside TAIL (D-10, D-11; UI-SPEC § The channels block) ============ */
+
+type ChannelCountChoice = BottomChannelsSpec["count"];
+type ChannelReadout = ReturnType<typeof channelReadout>;
+
+export const CHANNELS_COPY = {
+  /** The sub-heading (drawn `CHANNELS`). */
+  heading: "Channels",
+  /** The sub-heading's echo: `None`, or `6, cut after the Flat Exit`. */
+  echo: (count: ChannelCountChoice, tailName: string) => (count > 0 ? `${count}, cut after the ${tailName}` : "None"),
+  /** The count menu: its label, its spoken name and its options. */
+  countLabel: "Channels",
+  countSelectName: "Channels",
+  countOption: (count: ChannelCountChoice) => (count === 0 ? "None" : `${count} channels`),
+  /** Run and Longest, side by side. */
+  runLabel: "Run",
+  runSelectName: "Channel Run",
+  longestLabel: "Longest",
+  longestSelectName: "Longest Channels",
+  longestOption: { inner: "Inner pair", outer: "Outer pair", same: "All the same" } as const satisfies Record<BottomChannelsSpec["longest"], string>,
+  /** The rows' labels. Off Stringer, Start, Deepest At, End, Depth and Smoothness are the section rows' own words. */
+  width: "Channel Width",
+  stagger: "Stagger",
+  staggerLeft: "All start together",
+  smoothnessLeft: "Straight ramp into the wall",
+  smoothnessRight: "Scooped",
+  /** The sliders' spoken names (UI-SPEC § Screen readers): `Channel Width`, then `Channels {control}`. */
+  sliderName: (control: string) => (control === "Channel Width" ? control : `Channels ${control}`),
+  /** Start's suffix: the pair that starts there (nothing for All the same). */
+  startWords: (station: string, longest: BottomChannelsSpec["longest"]) => (longest === "same" ? station : `${station} · the ${longest} pair`),
+  /** A flat TAIL with channels (sketch line 1050). */
+  flatNoteWithChannels: "Nothing is cut in this section but the channels.",
+} as const;
+
+/**
+ * A Run option's words (D-10; SPEC edge "Toe-in angle display"): `Parallel` · `With the rail` · `Toe-in · 3.2°`, the
+ * front fins' raw toe written once to one decimal here — or `Toe-in (no toe)` on a board with no toe (a single fin),
+ * where the walls then run as Parallel.
+ */
+export function runOptionLabel(run: BottomChannelsSpec["run"], toeDegrees: number): string {
+  if (run === "parallel") return "Parallel";
+  if (run === "rail") return "With the rail";
+  return toeDegrees > 0 ? `Toe-in · ${toeDegrees.toFixed(1)}°` : "Toe-in (no toe)";
+}
+
+/**
+ * The Channel Width row's value words — read out, never set (D-10): the width asked for, `({fitted} to fit)` when the
+ * set had to be squeezed, the ramp's whole degrees and the last wall's distance off the rail, every figure from
+ * `channelReadout` and every length a mark: `1 3/4" · ramp 10° · last wall 1 5/8" off the rail`.
+ */
+export function channelWidthWords(readout: ChannelReadout, system: UnitsSystem): string {
+  const fitted = readout.squeezed ? ` (${formatMark(readout.fittedWidth, system)} to fit)` : "";
+  return `${formatMark(readout.width, system)}${fitted} · ramp ${readout.rampDegrees}° · last wall ${formatMark(readout.lastWallOffRail, system)} off the rail`;
+}
+
+/** The Channel Width label line: `Channel Width — 1 3/4" · ramp 10° · last wall 1 5/8" off the rail`. */
+export function channelWidthLabel(readout: ChannelReadout, system: UnitsSystem): string {
+  return `${CHANNELS_COPY.width} — ${channelWidthWords(readout, system)}`;
+}
+
+/**
+ * The Stagger row's value words (D-10): the stagger a dim per channel, then where the shortest pair starts from the tail
+ * — the outer pair when the inner is longest, the inner otherwise: `2" per channel · the inner pair starts 19" from the
+ * tail`. `null` for All the same, where the row is hidden.
+ */
+export function staggerWords(channels: Pick<BottomChannelsSpec, "stagger" | "longest">, readout: ChannelReadout, system: UnitsSystem): string | null {
+  if (channels.longest === "same") return null;
+  const shortest = channels.longest === "inner" ? "outer" : "inner";
+  return `${formatDim(channels.stagger, system)} per channel · the ${shortest} pair starts ${formatBottomStation(readout.shortestStart, system)} from the tail`;
+}
+
+/** The Stagger label line, or `null` for All the same. */
+export function staggerLabel(channels: Pick<BottomChannelsSpec, "stagger" | "longest">, readout: ChannelReadout, system: UnitsSystem): string | null {
+  const words = staggerWords(channels, readout, system);
+  return words === null ? null : `${CHANNELS_COPY.stagger} — ${words}`;
+}
+
+/** The channels' Smoothness words: `0% · a straight ramp`, `100% · scooped`, a plain percent between. */
+export function channelSmoothnessWords(value: number): string {
+  const percent = BOTTOM_COPY.percent(value);
+  return value === 0 ? `${percent} · a straight ramp` : value === 100 ? `${percent} · scooped` : percent;
+}

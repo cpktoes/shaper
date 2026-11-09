@@ -51,8 +51,11 @@ import {
   smoothstep,
   startingCut,
   stationFromNearestTip,
+  keepChannelStationsInOrder,
+  storeChannelStation,
   storeCutStation,
   stringerAtCenter,
+  switchChannelCount,
   type BoardBottom,
   type BottomBoard,
   type BottomCutName,
@@ -1740,4 +1743,59 @@ describe("the channels in DATA's floor (D-09, D-40)", () => {
     }
     expect(flag.at).toBe(Math.min(...flag.rails));
   }, 120_000);
+});
+
+describe("the channels' own edits on the panel (17-09): the count switch, the stations stored and kept in order", () => {
+  const board = boardById("shortboard");
+  const COUNTS = [4, 6, 8] as const;
+
+  it("a board that never had channels opens each count exactly on startingChannels", () => {
+    for (const count of COUNTS) expect(switchChannelCount(DEFAULT_BOTTOM.channels, count, board)).toEqual(startingChannels(count, board, DEFAULT_BOTTOM.channels));
+  });
+
+  it("on an open set a count brings its own starting width and keeps every other number; a width set by hand stays", () => {
+    const tuned = { ...switchChannelCount(DEFAULT_BOTTOM.channels, 6, board), depth: inchesToMm(1 / 4), stagger: inchesToMm(3), run: "rail" as const };
+    for (const count of COUNTS) expect(switchChannelCount(tuned, count, board)).toEqual({ ...tuned, count, width: CHANNEL_STARTING_WIDTHS[count] });
+    const handSet = { ...tuned, width: inchesToMm(2) };
+    for (const count of COUNTS) expect(switchChannelCount(handSet, count, board)).toEqual({ ...handSet, count });
+  });
+
+  it("None hides the set and keeps every number; the next count opens on them again", () => {
+    const tuned = { ...switchChannelCount(DEFAULT_BOTTOM.channels, 8, board), width: inchesToMm(2), depth: inchesToMm(3 / 16), longest: "same" as const };
+    const none = switchChannelCount(tuned, 0, board);
+    expect(none).toEqual({ ...tuned, count: 0 });
+    expect(switchChannelCount(none, 8, board)).toEqual(tuned);
+  });
+
+  it("a station dragged on the panel is stored from the fins (Start, Deepest At) or the tail (End), and reads back where it was dragged", () => {
+    const set = switchChannelCount(DEFAULT_BOTTOM.channels, 6, board);
+    const r = resolveChannels(set, board);
+    const to = { start: mm(r.start + inchesToMm(2)), deepest: mm(r.deepest + inchesToMm(1)), end: mm(r.end + inchesToMm(1 / 2)) };
+    for (const field of ["start", "deepest", "end"] as const) {
+      const moved = resolveChannels({ ...set, ...storeChannelStation(field, to[field], board) }, board);
+      expect(moved[field]).toBeCloseTo(to[field], 9);
+    }
+  });
+
+  it("Start ≥ Deepest ≥ End is kept the way a cut's are: the moved station wins (a Center cut's keepStationsInOrder, the same drag)", () => {
+    const set = switchChannelCount(DEFAULT_BOTTOM.channels, 6, board);
+    const r = resolveChannels(set, board);
+    const center = startingCut("center", "Deep Single Concave", board);
+    const drags: [field: "start" | "deepest" | "end", fromTail: Mm][] = [
+      ["start", mm(board.frontFins - inchesToMm(4))],
+      ["end", mm(board.frontFins + inchesToMm(6))],
+      ["deepest", mm(board.frontFins + inchesToMm(20))],
+      ["deepest", inchesToMm(1)],
+    ];
+    for (const [field, fromTail] of drags) {
+      const kept = resolveChannels(keepChannelStationsInOrder({ ...set, ...storeChannelStation(field, fromTail, board) }, field, board), board);
+      const cut = keepStationsInOrder("center", { ...center, start: r.start, deepest: r.deepest, end: r.end, [field]: fromTail }, field, board, "narrowest");
+      expect(kept.start).toBeCloseTo(cut.start, 9);
+      expect(kept.deepest).toBeCloseTo(cut.deepest, 9);
+      expect(kept.end).toBeCloseTo(cut.end, 9);
+      expect(kept.start).toBeGreaterThanOrEqual(kept.deepest);
+      expect(kept.deepest).toBeGreaterThanOrEqual(kept.end);
+      expect(kept[field]).toBeCloseTo(fromTail, 9);
+    }
+  });
 });
