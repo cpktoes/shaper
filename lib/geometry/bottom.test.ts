@@ -13,6 +13,23 @@ import {
   bottomLayoutMarks,
   bottomLitresLine,
   bottomSampler,
+  chan,
+  CHANNEL_FLAT_KEY,
+  CHANNEL_LEAD_IN,
+  CHANNEL_OFF_RAIL_MIN,
+  CHANNEL_STARTING_WIDTHS,
+  channelEdges,
+  channelFit,
+  channelFoamOff,
+  channelLayout,
+  channelMarks,
+  channelReadout,
+  channelStart,
+  channelWallKey,
+  refAt,
+  resolveChannels,
+  startingChannels,
+  type ChannelCount,
   cutFoamOff,
   cutFoamOffParts,
   cutHalfWidth,
@@ -42,7 +59,7 @@ import {
   type ResolvedCut,
 } from "./bottom";
 import type { DesignSummaryFields } from "./design";
-import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
+import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES, summarizeDesign } from "./design";
 import { frontFinStation } from "./fins";
 import { buildOutline, foamHalfWidth, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
@@ -245,13 +262,13 @@ describe("stations kept from the nearest tip (D-39) and the tail's deepest from 
     expect(r.end).toBe(0);
   });
 
-  it("resolveBottom reads the three sections and passes the channels and the wing rule through", () => {
+  it("resolveBottom reads the three sections and the channels, and passes the wing rule through", () => {
     const bottom: BoardBottom = { ...DEFAULT_BOTTOM, center: startingCut("center", "Deep Single Concave", board) };
     const r = resolveBottom(bottom, board);
     expect(r.center).toEqual(resolveCut("center", bottom.center, board));
     expect(r.nose).toEqual(resolveCut("nose", bottom.nose, board));
     expect(r.tail).toEqual(resolveCut("tail", bottom.tail, board));
-    expect(r.channels).toBe(bottom.channels);
+    expect(r.channels).toEqual(resolveChannels(bottom.channels, board));
     expect(r.wingRule).toBe("narrowest");
   });
 });
@@ -856,8 +873,8 @@ describe("the Teardrop's closing (D-06, D-32)", () => {
   });
 });
 
-describe("Start ≥ Deepest ≥ End on every board with fins (the SPEC edge, count half)", () => {
-  it("every non-flat name's starting cut keeps its order and stays on the board, on the five golden boards and every Phase 16 board with fins", () => {
+describe("Start ≥ Deepest ≥ End on every board with fins (the SPEC edge, complete)", () => {
+  it("every non-flat name's starting cut and every starting channel set keeps its order and stays on the board, on the five golden boards and every Phase 16 board with fins", () => {
     const surface = phase16SurfaceBoards()
       .map(({ label, fields }) => ({ label, board: bottomBoardOf(fields) }))
       .filter(({ board }) => board.frontFins > 0);
@@ -878,9 +895,27 @@ describe("Start ≥ Deepest ≥ End on every board with fins (the SPEC edge, cou
           }
         }
       }
+      // the channels: every count and length order at its starting numbers — the set and each channel's own start
+      for (const count of [4, 6, 8] as const) {
+        for (const longest of ["inner", "outer", "same"] as const) {
+          const ch = resolveChannels({ ...startingChannels(count, board, DEFAULT_BOTTOM.channels), longest }, board);
+          const where = `${label} · ${count} channels, the ${longest} longest`;
+          expect(ch.start, where).toBeGreaterThanOrEqual(ch.deepest);
+          expect(ch.deepest, where).toBeGreaterThanOrEqual(ch.end);
+          expect(ch.end, where).toBeGreaterThanOrEqual(0);
+          expect(ch.start, where).toBeLessThanOrEqual(board.length);
+          for (let j = 0; j < count / 2; j++) {
+            expect(channelStart(ch, j), where).toBeGreaterThanOrEqual(ch.deepest);
+            expect(channelStart(ch, j), where).toBeLessThanOrEqual(ch.start);
+          }
+          checked++;
+        }
+      }
     }
-    console.info(`Start ≥ Deepest ≥ End held on ${checked} starting cuts (${boards.length} boards × 15 names, with and without a tail vee)`);
-    expect(checked).toBe(boards.length * 15 * 2);
+    console.info(
+      `Start ≥ Deepest ≥ End held on ${checked} starting cuts (${boards.length} boards × 15 names, with and without a tail vee, and 9 channel sets)`,
+    );
+    expect(checked).toBe(boards.length * (15 * 2 + 9));
   });
 });
 
@@ -1232,4 +1267,428 @@ describe("DATA: where a cut meets the 1/4\" floor (D-09, D-33, D-40)", () => {
     // without the sections there is no rail form to read
     expect(bottomFloorFlags(resolveBottom(bottom, board), board)).toEqual([]);
   });
+});
+
+/* ============ 17-06 Task 1: the channels (D-03, D-05, D-10, D-11, D-16) ============ */
+
+type GoldenChannels = { count: number; depth: number; width: number; offS: number; start: number; deep: number; end: number; smooth: number; run: string; longer: string; stagger: number };
+type GoldenChannelMark = { y: number; col: string; on: boolean };
+type ChannelsCase = {
+  kind: "channels";
+  board: string;
+  count: ChannelCount;
+  run: "parallel" | "rail" | "toe";
+  longer: "inner" | "outer" | "same";
+  ch: GoldenChannels;
+  fit: { n: number; w: number; offRail: number; squeezed: boolean };
+  starts: number[];
+  stations: { s: number; edges: [number, number, number][]; marks: GoldenChannelMark[] }[];
+};
+type OpeningWithChannels = OpeningWithMarks & { cuts: Record<string, GoldenCut & Partial<GoldenChannels>> };
+
+const channelsCases = cases.filter((c) => c.kind === "channels") as ChannelsCase[];
+/** A golden channel column (`Wall 2`, `Flat edge`) as the app's key. */
+function channelKeyOf(col: string): string {
+  if (col === "Flat edge") return CHANNEL_FLAT_KEY;
+  expect(col).toMatch(/^Wall [1-4]$/);
+  return channelWallKey(Number(col.slice("Wall ".length)));
+}
+
+/** A board's bottom with the named sections at their starting numbers and channels picked as the store picks them. */
+function withChannels(board: BottomBoard, names: Partial<Record<BottomSectionKey, string>>, count: ChannelCount, change?: Partial<BoardBottom["channels"]>): BoardBottom {
+  const bottom = bottomOf(board, names);
+  bottom.channels = { ...startingChannels(count, board, bottom.channels), ...change };
+  return bottom;
+}
+
+/**
+ * The board as the sketch reads it: its reference rails sampled at the golden's 4,801 stations and read straight
+ * between them (the sketch's `sampleArr`). Between two samples — the front fins' station is not one — the sketch's
+ * line stands a few millionths of a millimetre off the app's own outline; reading the app's own samples the sketch's
+ * way checks the channels' arithmetic to the last digit, and the gap itself is checked on its own below.
+ */
+function sampledLikeTheSketch(board: BottomBoard): BottomBoard {
+  const steps = golden.provenance.stations - 1;
+  const sample = (read: (s: Mm) => Mm) => {
+    const values = Array.from({ length: steps + 1 }, (_, k) => read(mm((k / steps) * board.length)));
+    return (s: Mm) => {
+      const x = Math.max(0, Math.min(steps, (s / board.length) * steps));
+      const k = Math.min(steps - 1, Math.floor(x));
+      return mm(values[k] + (values[k + 1] - values[k]) * (x - k));
+    };
+  };
+  return { ...board, narrowestAt: sample(board.narrowestAt), curveAt: sample(board.curveAt) };
+}
+
+describe("the channels — golden: every count, run and length order on the Shortboard and the Fish", () => {
+  it("covers the 54 golden channel cases (3 counts × 3 runs × 3 longest × 2 boards)", () => {
+    expect(channelsCases).toHaveLength(54);
+    expect(new Set(channelsCases.map((c) => `${c.board}|${c.count}|${c.run}|${c.longer}`)).size).toBe(54);
+  });
+
+  it("the app reads the rail at the front fins exactly, where the sketch read it straight between its samples: the two agree within a ten-thousandth of a millimetre", () => {
+    for (const c of channelsCases) {
+      const board = boardById(c.board);
+      const ch = resolveBottom(withChannels(board, {}, c.count, { run: c.run, longest: c.longer }), board).channels;
+      expect(Math.abs(channelFit(ch, board, "narrowest").offRail - c.fit.offRail)).toBeLessThan(1e-4);
+    }
+  });
+
+  it.each(channelsCases.map((c) => [c.board, c.count, c.run, c.longer, c] as const))(
+    "channels: %s · %d · %s · the %s pair longest — the sketch's makeChannels, channelFit, chStart, and channelEdges and channelMarks every 6\"",
+    (_b, count, run, longer, c) => {
+      const board = sampledLikeTheSketch(boardById(c.board));
+      const bottom = withChannels(board, {}, count, { run, longest: longer });
+      const ch = resolveBottom(bottom, board).channels;
+      // the starting numbers (D-11), read from the fins (D-03)
+      for (const [app, sketch] of [
+        [ch.depth, c.ch.depth],
+        [ch.width, c.ch.width],
+        [ch.offStringer, c.ch.offS],
+        [ch.start, c.ch.start],
+        [ch.deepest, c.ch.deep],
+        [ch.end, c.ch.end],
+        [ch.stagger, c.ch.stagger],
+      ] as const) {
+        expect(Math.abs(app - sketch)).toBeLessThan(TOL);
+      }
+      expect(ch.smoothness).toBe(c.ch.smooth);
+      expect(ch.count).toBe(c.count);
+      // the fit at the deepest station
+      const fit = channelFit(ch, board, "narrowest");
+      expect(fit.perSide).toBe(c.fit.n);
+      expect(Math.abs(fit.width - c.fit.w)).toBeLessThan(TOL);
+      expect(Math.abs(fit.offRail - c.fit.offRail)).toBeLessThan(TOL);
+      expect(fit.squeezed).toBe(c.fit.squeezed);
+      // each channel's own start
+      expect(c.starts).toHaveLength(count / 2);
+      c.starts.forEach((start, j) => expect(Math.abs(channelStart(ch, j) - start)).toBeLessThan(TOL));
+      // the edges and the marks every 6"
+      for (const g of c.stations) {
+        const edges = channelEdges(ch, board, "narrowest", mm(g.s));
+        expect(edges.map((e) => e[2])).toEqual(g.edges.map((e) => e[2]));
+        edges.forEach(([a, b], k) => {
+          expect(Math.abs(a - g.edges[k][0])).toBeLessThan(TOL);
+          expect(Math.abs(b - g.edges[k][1])).toBeLessThan(TOL);
+        });
+        const marks = channelMarks(ch, board, "narrowest", mm(g.s));
+        expect(marks.map((m) => [m.column, m.on])).toEqual(g.marks.map((m) => [channelKeyOf(m.col), m.on]));
+        marks.forEach((m, k) => expect(Math.abs(m.across - g.marks[k].y)).toBeLessThan(TOL));
+        // channelLayout is the same three readings, at the same station
+        expect(channelLayout(resolveBottom(bottom, board), board, mm(g.s))).toEqual({ fit, edges, marks });
+      }
+    },
+  );
+
+  it("the cases are not all alike: the three runs lay different walls toward the tail, and the three length orders different starts", () => {
+    for (const id of ["shortboard", "fish"]) {
+      const at = (run: string, longer: string) => channelsCases.find((c) => c.board === id && c.count === 6 && c.run === run && c.longer === longer)!;
+      const tailWalls = (c: ChannelsCase) => JSON.stringify(c.stations[1].edges);
+      expect(new Set(["parallel", "rail", "toe"].map((run) => tailWalls(at(run, "outer")))).size).toBe(3);
+      expect(new Set(["inner", "outer", "same"].map((longer) => JSON.stringify(at("parallel", longer).starts))).size).toBe(3);
+    }
+  });
+});
+
+describe("the channels in the one number (D-05): the openings with six channels — golden", () => {
+  const withSix = (cases.filter((c) => c.kind === "opening") as OpeningWithChannels[]).filter((c) => c.channels === 6);
+  const withNone = (id: string) => (cases.filter((c) => c.kind === "opening") as OpeningCase[]).find((c) => c.channels === 0 && c.board === id)!;
+
+  it("covers all five boards", () => {
+    expect(withSix.map((c) => c.board)).toEqual(["shortboard", "fish", "midlength", "longboard", "fishwing"]);
+  });
+
+  it.each(withSix.map((c) => [c.board, c] as const))("channels: %s's opening cuts plus six channels equal the sketch's foamOff, and the channels alone are the sketch's added term", (_b, c) => {
+    const board = boardById(c.board);
+    const grid = gridOf(c.board);
+    const bottom = withChannels(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }, 6);
+    const resolved = resolveBottom(bottom, board);
+    const none = withNone(c.board);
+    let cut = 0;
+    grid.s.forEach((s, k) => {
+      grid.y[k].forEach((y, j) => {
+        expect(Math.abs(foamOff(resolved, board, mm(s), mm(y)) - c.foamOff[k][j])).toBeLessThan(TOL);
+        // cut last: the channels add their own term to whatever the sections leave
+        const term = channelFoamOff(resolved.channels, board, resolved.wingRule, mm(s), mm(y));
+        expect(Math.abs(term - (c.foamOff[k][j] - none.foamOff[k][j]))).toBeLessThan(TOL);
+        if (term > 0) cut++;
+      });
+    });
+    expect(cut).toBeGreaterThan(0);
+  });
+
+  it.each(withSix.map((c) => [c.board, c] as const))("channels: %s's opening with six channels — the layout columns are the sketch's, the walls after the sections', and every 6\" the cells its marksOf", (_b, c) => {
+    const board = boardById(c.board);
+    const resolved = resolveBottom(withChannels(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }, 6), board);
+    const keyOf = (section: string, col: string) => (section === "channels" ? channelKeyOf(col) : keyOfColumn(section as BottomSectionKey, col));
+    const goldenKeys = [...BOTTOM_SECTIONS, "channels"].flatMap((section) => (c.columns[section] ?? []).map((col) => keyOf(section, col)));
+    const { columns, rows } = bottomLayoutMarks(resolved, board, c.marks.map((m) => mm(m.s)));
+    expect(columns.map((col) => col.key)).toEqual(goldenKeys);
+    const walls = columns.filter((col) => col.section === "channels");
+    expect(walls.map((col) => [col.mark, col.index])).toEqual([1, 2, 3].map((n) => ["wall", n]));
+    expect(columns.slice(-3)).toEqual(walls);
+    let marked = 0;
+    c.marks.forEach((m, k) => {
+      columns.forEach((col, j) => {
+        const g = (m.marks[col.section] ?? []).find((x) => keyOf(col.section, x.col) === col.key);
+        const cell = rows[k].cells[j];
+        if (!g) expect(cell).toBeNull();
+        else {
+          expect(cell).not.toBeNull();
+          expect(Math.abs(cell! - g.y)).toBeLessThan(TOL);
+          marked++;
+        }
+      });
+    });
+    expect(marked).toBeGreaterThan(0);
+    // a wall is ruled only from its own channel's start: every 1/2" over the stagger, each wall's cell is empty ahead
+    // of its own start and filled behind it — the outer pair is longest (D-11), so the inner walls come on last
+    const ch = resolved.channels;
+    const half = inchesToMm(1 / 2);
+    const stations: Mm[] = [];
+    for (let s = ch.start - inchesToMm(6); s < ch.start; s += half) stations.push(mm(s));
+    const fine = bottomLayoutMarks(resolved, board, stations);
+    let ahead = 0;
+    let behind = 0;
+    fine.rows.forEach((row) => {
+      walls.forEach((col) => {
+        const start = channelStart(ch, col.index! - 1);
+        const cell = row.cells[fine.columns.findIndex((x) => x.key === col.key)];
+        if (row.station >= start) {
+          expect(cell, `${col.key} at ${row.station}`).toBeNull();
+          ahead++;
+        } else if (start - row.station > half && cell !== null) behind++;
+      });
+    });
+    expect(ahead).toBeGreaterThan(0);
+    expect(behind).toBeGreaterThan(0);
+  });
+});
+
+describe("the channels' shape (D-10): the founder's sawtooth", () => {
+  const board = boardById("shortboard");
+  const ch = resolveChannels(startingChannels(6, board, DEFAULT_BOTTOM.channels), board);
+  const s = ch.deepest;
+  const edges = channelEdges(ch, board, "narrowest", s);
+
+  it("the stringer is the first peak; each channel deepens out to a wall at the rail side whose top is the next channel's peak", () => {
+    expect(edges).toHaveLength(3);
+    expect(edges[0][0]).toBe(0);
+    // the stringer itself: nothing off it
+    expect(channelFoamOff(ch, board, "narrowest", s, mm(0))).toBe(0);
+    for (const [a, b, j] of edges) {
+      // a peak: next to nothing just outside the channel's inner edge (at the edge itself stands the wall inside it)
+      expect(channelFoamOff(ch, board, "narrowest", s, mm(a + 1e-6))).toBeLessThan(1e-4);
+      // the floor deepens outward, all the way to the wall
+      let last = -1;
+      for (let k = 1; k <= 20; k++) {
+        const v = channelFoamOff(ch, board, "narrowest", s, mm(a + ((b - a) * k) / 20));
+        expect(v).toBeGreaterThan(last);
+        last = v;
+      }
+      // at the wall the full depth (the channels are deepest here, and an inch or wider)
+      expect(Math.abs(channelFoamOff(ch, board, "narrowest", s, b) - ch.depth)).toBeLessThan(TOL);
+      // and the next channel starts from nothing just outside it: the wall is vertical
+      if (j + 1 < edges.length) {
+        expect(edges[j + 1][0]).toBe(b);
+        expect(channelFoamOff(ch, board, "narrowest", s, mm(b + 1e-6))).toBeLessThan(1e-4);
+      }
+    }
+    // the walls at Width, 2 × Width, 3 × Width from Off Stringer
+    edges.forEach(([, b], j) => expect(Math.abs(b - (j + 1) * ch.width)).toBeLessThan(TOL));
+    // and nothing outside the last wall
+    expect(channelFoamOff(ch, board, "narrowest", s, mm(edges[2][1] + 1))).toBe(0);
+  });
+
+  it("Smoothness runs the floor from a straight ramp (0) to a scooped one (100)", () => {
+    const scooped = { ...ch, smoothness: 100 };
+    const [a, b] = edges[1];
+    const mid = mm((a + b) / 2);
+    expect(Math.abs(channelFoamOff(ch, board, "narrowest", s, mid) - ch.depth * chan(0.5, 0))).toBeLessThan(TOL);
+    expect(Math.abs(channelFoamOff(scooped, board, "narrowest", s, mid) - ch.depth * chan(0.5, 1))).toBeLessThan(TOL);
+    expect(channelFoamOff(scooped, board, "narrowest", s, mid)).toBeLessThan(channelFoamOff(ch, board, "narrowest", s, mid));
+  });
+
+  it("a channel narrower than an inch shallows out in proportion", () => {
+    const narrow = { ...ch, width: inchesToMm(1 / 2) };
+    const [, b] = channelEdges(narrow, board, "narrowest", s)[0];
+    expect(Math.abs(channelFoamOff(narrow, board, "narrowest", s, b) - narrow.depth * (inchesToMm(1 / 2) / inchesToMm(1)))).toBeLessThan(TOL);
+  });
+
+  it("no channels, or none deep, take nothing anywhere", () => {
+    for (const none of [{ ...ch, count: 0 as const }, { ...ch, depth: mm(0) }]) {
+      for (let k = 0; k <= 20; k++) expect(channelFoamOff(none, board, "narrowest", s, mm(k * 10))).toBe(0);
+    }
+  });
+});
+
+describe("startingChannels (D-10, D-11)", () => {
+  const board = boardById("shortboard");
+
+  it("opens D-11's numbers at each count's starting width: 2 1/2\" · 1 3/4\" · 1 1/4\"", () => {
+    const widths = { 4: 2.5, 6: 1.75, 8: 1.25 } as const;
+    for (const count of [4, 6, 8] as const) {
+      const ch = startingChannels(count, board, DEFAULT_BOTTOM.channels);
+      expect(ch).toEqual({ ...DEFAULT_BOTTOM.channels, count, width: inchesToMm(widths[count]) });
+      expect(CHANNEL_STARTING_WIDTHS[count]).toBe(inchesToMm(widths[count]));
+    }
+    expect(DEFAULT_BOTTOM.channels.run).toBe("parallel");
+    expect(DEFAULT_BOTTOM.channels.longest).toBe("outer");
+    expect(DEFAULT_BOTTOM.channels.stagger).toBe(inchesToMm(2));
+  });
+
+  it("a width still at a starting width follows the count: 8 channels from 1 3/4\" open at 1 1/4\"", () => {
+    const current = { ...DEFAULT_BOTTOM.channels, count: 6 as const, width: inchesToMm(1.75) };
+    expect(startingChannels(8, board, current).width).toBe(inchesToMm(1.25));
+  });
+
+  it("a width set by hand is kept: 8 channels from 2\" stay at 2\"", () => {
+    const current = { ...DEFAULT_BOTTOM.channels, count: 6 as const, width: inchesToMm(2) };
+    expect(startingChannels(8, board, current).width).toBe(inchesToMm(2));
+  });
+
+  it("has no Wall control and staggers only the starts: the stored set has one deepest station and one end (D-10)", () => {
+    expect(Object.keys(DEFAULT_BOTTOM.channels).sort()).toEqual(
+      ["count", "width", "offStringer", "startFromFins", "deepestFromFins", "end", "depth", "smoothness", "run", "longest", "stagger"].sort(),
+    );
+  });
+
+  it("Start and Deepest At ride with the front fins; a fin move past Start pushes Start to it on read and writes nothing back", () => {
+    const stored = startingChannels(6, board, DEFAULT_BOTTOM.channels);
+    const ch = resolveChannels(stored, board);
+    expect(Math.abs(ch.start - (board.frontFins + inchesToMm(12)))).toBeLessThan(TOL);
+    expect(ch.deepest).toBe(board.frontFins);
+    expect(ch.end).toBe(0);
+    const moved = { ...board, frontFins: mm(board.frontFins + inchesToMm(3)) };
+    expect(resolveChannels(stored, moved).deepest).toBe(moved.frontFins);
+    const past = { ...stored, deepestFromFins: inchesToMm(14) };
+    const r = resolveChannels(past, board);
+    expect(r.start).toBe(r.deepest);
+    expect(past.startFromFins).toBe(inchesToMm(12));
+  });
+});
+
+describe("the channels' edges of the SPEC (D-10)", () => {
+  it("Toe-in on a single fin: the Longboard has no toe, so Toe-in lays the same walls as Parallel", () => {
+    const board = boardById("longboard");
+    expect(board.toeDegrees).toBe(0);
+    const ch = resolveChannels(startingChannels(6, board, DEFAULT_BOTTOM.channels), board);
+    const toe = { ...ch, run: "toe" as const };
+    for (const s of bottomDataStations(board)) expect(channelEdges(toe, board, "narrowest", s)).toEqual(channelEdges(ch, board, "narrowest", s));
+  });
+
+  it("Toe-in splays the set at the front fins' raw toe: inward toward the nose, out toward the tail", () => {
+    const board = boardById("shortboard");
+    expect(board.toeDegrees).toBeGreaterThan(0);
+    const ch = { ...resolveChannels(startingChannels(6, board, DEFAULT_BOTTOM.channels), board), run: "toe" as const };
+    const at = (s: number) => channelEdges(ch, board, "narrowest", mm(s));
+    const d = inchesToMm(6);
+    const tan = Math.tan((board.toeDegrees * Math.PI) / 180);
+    expect(Math.abs(at(ch.deepest - d)[0][1] - (ch.width + d * tan))).toBeLessThan(TOL);
+    expect(Math.abs(at(ch.deepest + d)[0][1] - (ch.width - d * tan))).toBeLessThan(TOL);
+  });
+
+  it("A stagger too long: an 8\" stagger never starts the shortest channel closer than an inch ahead of the deepest station", () => {
+    for (const { id, board } of BOARDS) {
+      for (const longest of ["inner", "outer"] as const) {
+        const ch = resolveChannels({ ...startingChannels(8, board, DEFAULT_BOTTOM.channels), longest, stagger: inchesToMm(8) }, board);
+        const starts = [0, 1, 2, 3].map((j) => channelStart(ch, j));
+        expect(Math.min(...starts), `${id} · ${longest}`).toBeGreaterThanOrEqual(ch.deepest + CHANNEL_LEAD_IN - TOL);
+        // the shortest one does stop exactly there — the stagger would have taken it further
+        expect(Math.abs(Math.min(...starts) - (ch.deepest + CHANNEL_LEAD_IN))).toBeLessThan(TOL);
+        // and the longest pair still starts at Start
+        expect(Math.max(...starts)).toBe(ch.start);
+        expect(channelReadout(ch, board, "narrowest").shortestStart).toBe(Math.min(...starts));
+      }
+    }
+  });
+
+  it("A channel set that won't fit inside the rail is squeezed so the last wall leaves 1/2\" to the rail at the deepest station, and says so", () => {
+    for (const { id, board } of BOARDS) {
+      const ch = resolveChannels({ ...startingChannels(8, board, DEFAULT_BOTTOM.channels), width: inchesToMm(4) }, board);
+      const fit = channelFit(ch, board, "narrowest");
+      expect(fit.squeezed, id).toBe(true);
+      expect(fit.width).toBeLessThan(ch.width);
+      const edges = channelEdges(ch, board, "narrowest", ch.deepest);
+      const lastWall = edges[edges.length - 1][1];
+      expect(Math.abs(refAt(board, "narrowest", ch.deepest) - lastWall - CHANNEL_OFF_RAIL_MIN), id).toBeLessThan(TOL);
+      const readout = channelReadout(ch, board, "narrowest");
+      expect(readout).toMatchObject({ width: ch.width, fittedWidth: fit.width, squeezed: true });
+      expect(Math.abs(readout.lastWallOffRail - CHANNEL_OFF_RAIL_MIN)).toBeLessThan(TOL);
+      expect(readout.rampDegrees).toBe(Math.round((Math.atan2(ch.depth, fit.width) * 180) / Math.PI));
+      // the opening set fits as asked, and its last wall's distance is read out, never set
+      const opening = resolveChannels(startingChannels(8, board, DEFAULT_BOTTOM.channels), board);
+      const open = channelReadout(opening, board, "narrowest");
+      expect(open.squeezed).toBe(false);
+      expect(open.fittedWidth).toBe(opening.width);
+      expect(Math.abs(open.lastWallOffRail - (refAt(board, "narrowest", opening.deepest) - 4 * opening.width))).toBeLessThan(TOL);
+    }
+  });
+
+  it("With the rail keeps the last wall's distance off the rail; where the gaps close the outer channels run out through the rail, never every channel pinched", () => {
+    const board = boardById("fish");
+    const parallel = resolveChannels(startingChannels(6, board, DEFAULT_BOTTOM.channels), board);
+    const rail = { ...parallel, run: "rail" as const };
+    const { offRail } = channelFit(rail, board, "narrowest");
+    let narrowed = 0;
+    for (const s of bottomDataStations(board)) {
+      const edges = channelEdges(rail, board, "narrowest", s);
+      if (edges.length === 3) {
+        expect(Math.abs(refAt(board, "narrowest", s) - edges[2][1] - offRail)).toBeLessThan(TOL);
+        if (s < rail.deepest) narrowed++;
+      }
+      // the channels it keeps are the outer ones' walls more than 1/2 mm off the stringer, never fewer than all
+      for (const [, b] of edges) expect(b).toBeGreaterThan(0.5);
+    }
+    expect(narrowed).toBeGreaterThan(0);
+    // Parallel rules the walls straight: toward the tail the outer walls stand past the rail, so those channels run out
+    const atTail = channelEdges(parallel, board, "narrowest", mm(0));
+    expect(atTail.length).toBe(3);
+    expect(atTail[2][1]).toBeGreaterThan(board.railAt(mm(0)));
+  });
+});
+
+describe("the channels take the same foam under any center cut (SPEC: overlapping cuts, the channels' half; D-05)", () => {
+  it("the channels' litres on the Shortboard under a Deep Single, a shallower single and a Flat Center agree within 1%", () => {
+    const { fields } = FIELDS.find((f) => f.id === "shortboard")!;
+    const board = bottomBoardOf(fields);
+    const litresOf = (bottom: BoardBottom) => summarizeDesign({ ...fields, bottom }).volumeLitres;
+    const deep = bottomOf(board, { center: "Deep Single Concave" });
+    const shallower = bottomOf(board, { center: "Deep Single Concave" });
+    shallower.center = { ...shallower.center, depth: inchesToMm(1 / 8) };
+    const flat = bottomOf(board, {});
+    const takes = [deep, shallower, flat].map((b) => {
+      const withSix = structuredClone(b);
+      withSix.channels = startingChannels(6, board, b.channels);
+      // a flat bottom alone cuts nothing, so it is never handed to the litres: its litres are the board's own
+      return litresOf(b) - litresOf(withSix);
+    });
+    console.info(`six channels on the Shortboard take ${takes.map((t) => t.toFixed(4)).join(" / ")} L under a Deep Single, a 1/8" single and a Flat Center`);
+    for (const t of takes) {
+      expect(t).toBeGreaterThan(0);
+      expect(Math.abs(t / takes[2] - 1)).toBeLessThan(0.01);
+    }
+  });
+});
+
+describe("the channels in DATA's floor (D-09, D-40)", () => {
+  it("channels never meet the stringer floor; eight at 1/2\" out the tail thin the tail rail and are flagged in the rail form, nearest the tail", () => {
+    const { fields } = FIELDS.find((f) => f.id === "shortboard")!;
+    const board = bottomBoardOf(fields);
+    const bottom = withChannels(board, {}, 8, { depth: inchesToMm(1 / 2) });
+    const resolved = resolveBottom(bottom, board);
+    // each channel's floor starts at a peak: nothing off the stringer, anywhere
+    for (const s of bottomDataStations(board)) expect(channelFoamOff(resolved.channels, board, "narrowest", s, mm(0))).toBe(0);
+    const sections = sectionsOf(fields, bottom);
+    const flags = bottomFloorFlags(resolved, board, sections);
+    expect(flags.map((f) => f.section)).toEqual(["channels"]);
+    const [flag] = flags;
+    expect(flag.stringer).toEqual([]);
+    expect(flag.rails.length).toBeGreaterThan(0);
+    for (const s of flag.rails) {
+      expect(s).toBeLessThanOrEqual(resolved.channels.start);
+      expect(sections.find((x) => x.station === s)!.thinAt!.length).toBeGreaterThan(0);
+    }
+    expect(flag.at).toBe(Math.min(...flag.rails));
+  }, 120_000);
 });
