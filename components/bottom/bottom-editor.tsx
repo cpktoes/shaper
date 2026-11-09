@@ -125,7 +125,7 @@ export function BottomEditor() {
             )}
             {activePage === "data" && (
               <div className="flex min-h-0 flex-1 flex-col print:hidden">
-                <BottomData />
+                <BottomData floorFlags={floorFlags} />
               </div>
             )}
           </TabbedPanel>

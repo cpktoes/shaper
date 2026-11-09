@@ -4,7 +4,10 @@ import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
 import type { BottomSectionKey } from "../lib/geometry/bottom";
+import { RACK_COPY } from "../components/setup/rack-config";
+import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
+import { freshPracticeRack } from "./helpers/practice-rack";
 import { goToScreen } from "./helpers/screens";
 
 /**
@@ -333,5 +336,111 @@ test.describe("BOTTOM's viewer follows the shaper (17-10)", () => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     expect(await cutAt(page)).toBeGreaterThan(opening);
     await expectOneStation(page);
+  });
+});
+
+test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "DATA is the same page on a phone; its phone stack is 17-14's");
+    await dismissStrips(page);
+    await forgetOpenBoardOnEveryLoad(page);
+  });
+
+  const dataTab = (page: Page) => page.getByRole("tab", { name: BOTTOM_COPY.dataTab, exact: true });
+  const notes = (page: Page) => page.locator("[data-bottom-notes] p");
+
+  test("a flat board: Foam off 0.00 L, the depths table with nothing cut, no layout-marks table, two notes and no floor note", async ({ page }) => {
+    test.setTimeout(180_000);
+    await openBottom(page, "shortboard");
+    await dataTab(page).click();
+    await expect(page.locator("[data-bottom-litres]")).toHaveText(/^Foam off 0\.00 L · /);
+    await expect(page.locator("[data-bottom-depths]")).toBeVisible();
+    const deepest = await page.locator("[data-bottom-depths] tbody tr td:nth-of-type(2)").allTextContents();
+    expect(deepest.length).toBeGreaterThan(5);
+    expect(new Set(deepest)).toEqual(new Set([BOTTOM_COPY.emptyCell]));
+    await expect(page.locator("[data-bottom-marks]")).toHaveCount(0);
+    await expect(page.getByText(BOTTOM_COPY.marksHeading(false), { exact: true })).toHaveCount(0);
+    await expect(notes(page)).toHaveCount(2);
+    await expect(notes(page).first()).toHaveText(BOTTOM_COPY.depthsNote);
+    await expect(notes(page).nth(1)).toHaveText(/^Wide point .+ and front fins .+ from the tail are the two rows in full ink\.$/);
+    await expect(page.locator("[data-bottom-floor-note]")).toHaveCount(0);
+  });
+
+  test("a Deep Single and six channels: the marks table's columns in shop order, a wall `—` ahead of its own channel's start, and the notes", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openBottom(page, "shortboard");
+    await pick(page, "center", "Deep Single Concave");
+    await pickChannels(page, "6 channels");
+    await dataTab(page).click();
+    const marks = page.locator("[data-bottom-marks]");
+    await expect(marks).toBeVisible();
+    await expect(page.getByText(BOTTOM_COPY.marksHeading(false), { exact: true })).toBeVisible();
+    const headers = await marks.locator("thead th").allTextContents();
+    expect(headers[0]).toBe("From the tail");
+    const words = headers.slice(1);
+    expect(words[0]).toBe("Center edge");
+    expect(words).toEqual(expect.arrayContaining(["Wall 1", "Wall 2", "Wall 3"]));
+    const walls = words.filter((w) => /^Wall \d$/.test(w));
+    expect(walls).toEqual(["Wall 1", "Wall 2", "Wall 3"]);
+    // The rows: the depths table's own stations, the same reference rows in ink.
+    const depthRows = await page.locator("[data-bottom-depths] tbody th").allTextContents();
+    expect(await marks.locator("tbody th").allTextContents()).toEqual(depthRows);
+    // Staggered (the outer pair longest, 2" a channel): a row where an outer wall is ruled and an inner one is not yet.
+    const cells = await marks.locator("tbody tr").evaluateAll((trs, wallAt) =>
+      trs.map((tr) => [...tr.querySelectorAll("td")].map((td) => td.textContent ?? "").filter((_, i) => (wallAt as number[]).includes(i))),
+    words.map((w, i) => (/^Wall \d$/.test(w) ? i : -1)).filter((i) => i >= 0));
+    expect(
+      cells.some((row) => row.includes(BOTTOM_COPY.emptyCell) && row.some((v) => v !== BOTTOM_COPY.emptyCell)),
+      "a staggered wall reads — ahead of its own channel's start",
+    ).toBe(true);
+    await expect(notes(page)).toHaveCount(3);
+    await expect(notes(page).nth(1)).toHaveText(/^Layout marks are measured out from the stringer at each station, .+ — the outer pair first, each channel out from it 2" shorter\.$/);
+    // The reference rows are ink in both tables.
+    const inkRows = await marks.locator("tbody tr[data-reference]").count();
+    expect(inkRows).toBeGreaterThan(0);
+    expect(inkRows).toBe(await page.locator("[data-bottom-depths] tbody tr[data-reference]").count());
+  });
+
+  test("a fresh Rolled Belly Entry on the Shortboard: the floor note is the panel's own rail sentence, in warning ink, and no stringer cell is coloured", async ({ page }) => {
+    test.setTimeout(180_000);
+    await openBottom(page, "shortboard");
+    await pick(page, "nose", "Rolled Belly Entry");
+    const panelSentence = await card(page, "nose").locator("[data-bottom-floor]").textContent();
+    expect(panelSentence).toMatch(/^This cut leaves the rail under 1\/4" near the nose: /);
+    await dataTab(page).click();
+    const note = page.locator("[data-bottom-floor-note]");
+    await expect(note).toHaveCount(1);
+    await expect(note).toHaveText(`Rolled Belly Entry: ${panelSentence}`);
+    const color = (loc: Locator) => loc.evaluate((el) => getComputedStyle(el).color);
+    const warning = await page.evaluate(() => {
+      const probe = document.createElement("span");
+      probe.className = "text-surf-warning-ink";
+      document.body.append(probe);
+      const c = getComputedStyle(probe).color;
+      probe.remove();
+      return c;
+    });
+    expect(await color(note)).toBe(warning);
+    await expect(page.locator("[data-bottom-floor-cell]")).toHaveCount(0);
+  });
+
+  test("signed out on the practice rack, a saved board's BOTTOM reads exactly the same page", async ({ page }) => {
+    test.setTimeout(180_000);
+    await freshPracticeRack(page);
+    await page.goto(`${RACK_STAND_IN_ROUTE}?boards=2`);
+    await expect(page.locator("[data-rack-board]")).toHaveCount(2);
+    const name = standInRackRows(2)[0].name;
+    const open = page.getByRole("group", { name: RACK_COPY.captionGroup(name) }).getByRole("button", { name: RACK_COPY.open });
+    await expect(async () => {
+      if (!/\/design\/outline$/.test(page.url())) await open.click({ timeout: 2_000 });
+      await expect(page).toHaveURL(/\/design\/outline$/, { timeout: 5_000 });
+    }).toPass({ timeout: 90_000 });
+    await goToScreen(page, "BOTTOM");
+    await expect(cutLine(page)).toBeAttached({ timeout: 60_000 });
+    await expect(page.getByRole("group", { name: BOTTOM_COPY.height, exact: true })).toBeVisible();
+    await expect(sectionAt(page)).toBeEnabled();
+    await dataTab(page).click();
+    await expect(page.locator("[data-bottom-litres]")).toHaveText(/^Foam off 0\.00 L · /);
+    await expect(page.getByText(BOTTOM_COPY.depthsHeading, { exact: true })).toBeVisible();
   });
 });
