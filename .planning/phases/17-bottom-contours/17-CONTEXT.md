@@ -335,6 +335,17 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   under the rail at the vee's or belly's angle (the real rail shape after the bottom is cut), and the rail's thickness at
   each station is the thinned figure; a concave, which leaves the rails, changes nothing on RAILS. Carried by plan 17-04.
 
+- **D-42:** **A center single concave fades out before a tail vee peaks.** At 17-03's second look the founder saw a test
+  board whose Shallow Single Concave and Rolled Vee both peaked at the front fins and read the whole bottom as thinned;
+  told the stringer's 1/8" was the concave's own hollow (D-05), he confirmed it — *"Ah, got it. This shouldn't really exist
+  much in real life. So yes, a concave hollows the stringer and this makes sense."* — and chose to have the single run out
+  first: when the tail cut is a vee (Panel Vee, Rolled Vee or Spiral Vee), a center single concave opens deepest halfway
+  from the wide point to the front fins and ends AT the front fins, so it has run out where the vee is deepest (the Deep
+  Single already peaks there and only its End moves from 4" to the fins; the Shallow Single's Deepest moves ahead from the
+  fins to that halfway station). Picking a tail vee while the center holds a single still at its starting numbers moves
+  that single the same way in one undoable step; a single set by hand is never touched. Carried by plan 17-05 with the rest
+  of the names and their starting numbers (sharpens D-08). — **Reversibility:** reversible — starting numbers.
+
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM
   CONTOURS — Map, measure and cut the bottom"); the BOTTOM tile's picture; the viewer's opening station (the sketch opens
