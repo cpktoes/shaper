@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 import {
+  BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   BOTTOM_SHADE_STEP,
+  bottomLayoutMarks,
   channelStart,
+  channelWallKey,
+  deepestCutAt,
   DEFAULT_BOTTOM,
   foamOff,
   resolveBottom,
+  resolveCut,
   startingChannels,
   startingCut,
   type BoardBottom,
@@ -21,8 +26,20 @@ import {
   bottomContourLines,
   bottomFinLines,
   bottomPencilLines,
+  bottomSection,
   bottomShadeBands,
+  cutAlone,
+  DRAWING_WIDTH,
+  GAUGE_BESIDE_ROOM,
+  gaugeReads,
+  ghostRail,
+  ghostRailPath,
+  guideCartoon,
   placeRailLabels,
+  SECTION_AIR,
+  sectionGauges,
+  sectionHeightLabel,
+  sectionRuler,
   sectionOpeningStation,
   shadePathData,
   stationAtPointer,
@@ -31,15 +48,18 @@ import {
   topViewMarks,
   topViewX,
   TOP_VIEW_GRID,
+  type GuideCartoonKey,
   type ShadeRect,
 } from "./bottom-draw";
 import { formatBottomStation } from "./blank-reasons";
 import type { DesignSummaryFields } from "./design";
-import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
+import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import type { FinPlacementResult } from "./fins";
 import { buildOutline, type OutlineGeometry } from "./outline";
 import { BOARD_PRESETS } from "./presets";
+import { formatMarkBare } from "./measure-display";
 import { inchesToMm, mm, UNITS_SYSTEMS, type Mm } from "./units";
+import { boardSections } from "./volume";
 
 /*
  * Every expected figure here is the app's own: the one number (`foamOff`), the cuts' own starting numbers
@@ -337,5 +357,299 @@ describe("no foam off is worked out here (D-05)", () => {
     const twice = { ...once, center: { ...once.center, depth: mm(once.center.depth * 2) as Mm } };
     expect(bottomShadeBands(twice, t.board).length).toBe(Math.floor((2 * once.center.depth) / BOTTOM_SHADE_STEP + 1e-9));
     expect(inchesToMm(1 / 32)).toBe(BOTTOM_SHADE_STEP);
+  });
+});
+
+/* ============ Task 2: the section, its gauges, the ruler, the ghost, the cartoons ============ */
+
+/** The section's box in a 1280 × 800 window: the window less the panel and the column's, folder's and card's gutters
+ * (548 dots at 1024, so 804 at 1280 — D-30), and 165 dots tall under the top view, as sketch 021's section stands in
+ * its own 1280 × 800 picture (`desktop-tail-channels.png`). */
+const BOX_1280 = { width: 804, height: 165 };
+const measureValue = (text: string) => text.length * 6.2;
+
+function sectionsOf(t: TestBoard, bottom: BoardBottom, stations?: Mm[]) {
+  const profile = designSideProfile(t.fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(t.fields.rails, profile.effectiveFoil, t.fields.railsImportFoilThickness);
+  return boardSections(designCrossSectionInput(t.geometry, profile, rails, t.fields.outline.length, { bottom, board: t.board }), stations);
+}
+
+describe("the section (D-13): one scale at every station", () => {
+  it.each(BOARDS.map((b) => [b.id, b] as const))("%s: the wide point's section spans the box less 20 dots a side; nearer the tail it is narrower at the same scale", (_id, t) => {
+    const resolved = resolveBottom(bottomOf(t.board, OPENINGS[t.id]), t.board);
+    for (const box of [BOX_1280, { width: 548, height: 260 }, { width: 344, height: 200 }]) {
+      const wide = bottomSection(resolved, t.board, t.board.widePoint, 4, box, { live: "center" });
+      const px = DRAWING_WIDTH / box.width;
+      expect(wide.kx).toBeCloseTo((DRAWING_WIDTH - 2 * SECTION_AIR * px) / t.board.widePointWidth, 12);
+      // the outline at the wide point is the wide point's width, so its slab spans the box less the air
+      const span = 2 * t.board.railAt(t.board.widePoint) * wide.kx;
+      expect(span).toBeCloseTo(DRAWING_WIDTH - 2 * SECTION_AIR * px, 6);
+      expect(wide.widthAtStation).toBeCloseTo(2 * t.board.railAt(t.board.widePoint), 9);
+      const back = bottomSection(resolved, t.board, mm(t.board.frontFins), 4, box, { live: "center" });
+      expect(back.kx).toBe(wide.kx);
+      expect(back.railEdge).toBeLessThan(wide.railEdge);
+    }
+  });
+
+  it("at Height ×8 on the Longboard's belly the cut is fitted, and the factor drawn is below 8", () => {
+    const t = byId("longboard");
+    const resolved = resolveBottom(bottomOf(t.board, { center: "Continuous Belly / Rolled Mid" }), t.board);
+    const sec = bottomSection(resolved, t.board, resolved.center.deepest, 8, BOX_1280, { live: "center" });
+    expect(sec.fitted).toBe(true);
+    expect(sec.heightDrawn).toBeLessThan(8);
+    expect(sectionHeightLabel(sec)).toBe(`HEIGHT ×${sec.heightDrawn.toFixed(1)}`);
+    const shallow = bottomSection(resolved, t.board, resolved.center.deepest, 1, BOX_1280, { live: "center" });
+    expect(shallow.fitted).toBe(false);
+    expect(sectionHeightLabel(shallow)).toBe("TRUE HEIGHT");
+    expect(sectionHeightLabel(bottomSection(resolved, t.board, resolved.center.deepest, 2, BOX_1280, { live: "center" }))).toBe("HEIGHT ×2");
+  });
+
+  it("the slab's bottom is the one number at every point, held at its top; a slab that would not fit has a break line", () => {
+    const t = byId("shortboard");
+    const resolved = resolveBottom(bottomOf(t.board, OPENINGS.shortboard), t.board);
+    const s = resolved.center.deepest;
+    const sec = bottomSection(resolved, t.board, s, 4, BOX_1280, { live: "center" });
+    for (const y of [0, 20, 80, 150]) expect(sec.bottomAt(y)).toBe(Math.min(foamOff(resolved, t.board, s, mm(y)), t.board.thicknessAt(s)));
+    expect(sec.pieces).toHaveLength(1);
+    // the planed thickness at ×4 does not fit a 300-dot box: the slab breaks
+    expect(sec.breakLine).toBe(sec.y0 - t.board.thicknessAt(s) * sec.ky < Math.min(24 * sec.px, sec.height * 0.14));
+    expect(sec.breakPath !== null).toBe(sec.breakLine);
+    // the straightedge overhangs each rail, never past the box
+    expect(sec.straightedge.x1).toBeLessThan(sec.cx - sec.railEdge * sec.kx);
+    expect(sec.straightedge.x2).toBeGreaterThan(sec.cx + sec.railEdge * sec.kx);
+    expect(sec.straightedge.x2).toBeLessThanOrEqual(DRAWING_WIDTH);
+    // the foot sits 92 dots up with the ruler under it, 44 without
+    expect(sec.ruler).toBe(true);
+    expect(sec.height - sec.y0).toBeCloseTo(Math.min(92 * sec.px, sec.height * 0.42), 9);
+    const bare = bottomSection(resolved, t.board, s, 4, { width: 500, height: 300 }, { live: "center" });
+    expect(bare.ruler).toBe(false);
+    expect(bare.height - bare.y0).toBeCloseTo(Math.min(44 * bare.px, bare.height * 0.26), 9);
+  });
+
+  it("a swallow's tail is two pieces; the nose tip has no slab at all", () => {
+    const t = byId("fish");
+    const resolved = resolveBottom(bottomOf(t.board, OPENINGS.fish), t.board);
+    const notch = [inchesToMm(1 / 2), inchesToMm(1)].map(mm).find((s) => t.board.notchInner(s) > 0.5)!;
+    expect(notch).toBeDefined();
+    expect(bottomSection(resolved, t.board, notch, 4, BOX_1280, { live: "tail" }).pieces).toHaveLength(2);
+    const tip = bottomSection(resolved, t.board, t.board.length, 4, BOX_1280, { live: "tail" });
+    expect(tip.pieces).toEqual([]);
+    expect(tip.widthAtStation).toBe(0);
+    expect(sectionGauges(tip, resolved, t.board, "imperial")).toEqual([]);
+  });
+
+  it("D-40: where a vee lifts the tail to the deck the foam ends at the seam's knife edge — no lip, nothing above the slab", () => {
+    const t = byId("fish");
+    const bottom = bottomOf(t.board, OPENINGS.fish);
+    bottom.tail = { ...bottom.tail, depth: inchesToMm(1 / 2) };
+    const resolved = resolveBottom(bottom, t.board);
+    const edged = sectionsOf(t, bottom).filter((sec) => sec.railEdgeAt !== undefined && sec.station > 1);
+    expect(edged.length).toBeGreaterThan(0);
+    for (const seam of edged) {
+      const sec = bottomSection(resolved, t.board, seam.station, 4, BOX_1280, { live: "tail", seam });
+      expect(sec.railEdge).toBeLessThanOrEqual(t.board.notchInner(seam.station) + seam.railEdgeAt! + 1e-9);
+      expect(sec.railEdge).toBeLessThan(t.board.railAt(seam.station));
+      for (const d of sec.pieces) {
+        for (const [, y] of d.matchAll(/[ML][-\d.]+ ([-\d.]+)/g)) expect(Number(y)).toBeGreaterThanOrEqual(sec.yTop - 0.1);
+      }
+    }
+  });
+
+  it("D-40: a lift deeper than the slab ends the slab where the cut reaches its top — a knife edge, never a lip", () => {
+    const t = byId("shortboard");
+    const bottom = bottomOf(t.board, { tail: "Panel Vee" });
+    const s = mm(t.board.frontFins);
+    bottom.tail = { ...bottom.tail, depth: mm(t.board.thicknessAt(s) * 1.5) };
+    const resolved = resolveBottom(bottom, t.board);
+    const sec = bottomSection(resolved, t.board, s, 1, { width: 804, height: 400 }, { live: "tail" });
+    expect(sec.railEdge).toBeLessThan(t.board.railAt(s));
+    expect(foamOff(resolved, t.board, s, sec.railEdge)).toBeGreaterThanOrEqual(t.board.thicknessAt(s) - 1e-6);
+    expect(foamOff(resolved, t.board, s, mm(sec.railEdge - 0.01))).toBeLessThan(t.board.thicknessAt(s));
+    expect(sec.bottomAt(t.board.railAt(s))).toBe(t.board.thicknessAt(s));
+  });
+});
+
+describe("the section's gauges (D-13, D-30)", () => {
+  const t = byId("shortboard");
+  const resolved = resolveBottom(bottomOf(t.board, OPENINGS.shortboard), t.board);
+  const s = resolved.center.deepest;
+
+  it("a flat station has no gauge", () => {
+    const flat = resolveBottom(DEFAULT_BOTTOM, t.board);
+    expect(sectionGauges(bottomSection(flat, t.board, s, 4, BOX_1280, { live: "center" }), flat, t.board, "imperial").filter((g) => g.kind !== "stringerLeft")).toEqual([]);
+  });
+
+  it.each(UNITS_SYSTEMS)("%s: the Deep Single at its Deepest reads the gap at the stringer, the one number there", (system) => {
+    const sec = bottomSection(resolved, t.board, s, 4, BOX_1280, { live: "center" });
+    const stringer = sectionGauges(sec, resolved, t.board, system).find((g) => g.kind === "stringer")!;
+    expect(stringer.value).toBe(foamOff(resolved, t.board, s, mm(0)));
+    expect(stringer.lines[0].y2 - stringer.lines[0].y1).toBeCloseTo(stringer.value * sec.ky, 9);
+  });
+
+  it("a value that would read 0 draws no gauge: under half a millimetre in Metric, under 1/32\" in Imperial", () => {
+    for (const [depth, system, shows] of [
+      [0.4, "metric", false],
+      [0.6, "metric", true],
+      [0.6, "imperial", false],
+      [1.0, "imperial", true],
+    ] as const) {
+      const b = bottomOf(t.board, OPENINGS.shortboard);
+      b.center = { ...b.center, depth: mm(depth) };
+      const r = resolveBottom(b, t.board);
+      const sec = bottomSection(r, t.board, r.center.deepest, 4, BOX_1280, { live: "center" });
+      expect(sectionGauges(sec, r, t.board, system).some((g) => g.kind === "stringer")).toBe(shows);
+      expect(gaugeReads(depth, system)).toBe(shows);
+    }
+    expect(gaugeReads(0, "imperial")).toBe(false);
+  });
+
+  it("the words go with the values from a 625-dot box: none in 600, all in 700", () => {
+    const tailVee = resolveBottom(bottomOf(t.board, { center: "Deep Single Concave", tail: "Panel Vee" }), t.board);
+    const at = mm(t.board.frontFins);
+    for (const [width, words] of [[600, false], [700, true]] as const) {
+      const gauges = sectionGauges(bottomSection(tailVee, t.board, at, 4, { width, height: 300 }, { live: "tail" }), tailVee, t.board, "imperial");
+      expect(gauges.length).toBeGreaterThan(0);
+      for (const g of gauges.filter((q) => q.kind === "railLift" || q.kind === "stringerLeft" || q.kind === "stringer")) expect(g.words).toBe(words);
+    }
+  });
+
+  it("the rail lift reads beside the rail with room past it, under the straightedge without", () => {
+    const vee = resolveBottom(bottomOf(t.board, { tail: "Panel Vee" }), t.board);
+    // nearer the tail the board is narrow: room past the rail
+    const back = bottomSection(vee, t.board, mm(t.board.frontFins), 4, BOX_1280, { live: "tail" });
+    const roomBack = (DRAWING_WIDTH - (back.cx + back.railEdge * back.kx)) / back.px;
+    const liftBack = sectionGauges(back, vee, t.board, "imperial").find((g) => g.kind === "railLift")!;
+    expect(roomBack).toBeGreaterThan(GAUGE_BESIDE_ROOM.words);
+    expect(liftBack.placement).toBe("beside");
+    expect(liftBack.value).toBe(foamOff(vee, t.board, back.station, back.railEdge));
+    // a vee peaking at the wide point: no room past the rail there
+    const atWide = { ...vee, tail: { ...vee.tail, start: t.board.length, deepest: t.board.widePoint } };
+    const wide = bottomSection(atWide, t.board, t.board.widePoint, 4, BOX_1280, { live: "tail" });
+    const roomWide = (DRAWING_WIDTH - (wide.cx + wide.railEdge * wide.kx)) / wide.px;
+    expect(roomWide).toBeLessThan(GAUGE_BESIDE_ROOM.words);
+    expect(sectionGauges(wide, atWide, t.board, "imperial").find((g) => g.kind === "railLift")!.placement).toBe("under");
+    // in a box under 625 the room asked is 60 dots
+    const small = bottomSection(vee, t.board, mm(t.board.frontFins), 4, { width: 560, height: 300 }, { live: "tail" });
+    const roomSmall = (DRAWING_WIDTH - (small.cx + small.railEdge * small.kx)) / small.px;
+    expect(sectionGauges(small, vee, t.board, "imperial").find((g) => g.kind === "railLift")!.placement).toBe(roomSmall > GAUGE_BESIDE_ROOM.bare ? "beside" : "under");
+  });
+
+  it("a double's trough and a channel's floor read on their own lines", () => {
+    const dbl = resolveBottom(bottomOf(t.board, { center: "Early Double Concave" }), t.board);
+    const atDouble = bottomSection(dbl, t.board, dbl.center.deepest, 4, BOX_1280, { live: "center" });
+    const trough = sectionGauges(atDouble, dbl, t.board, "imperial").find((g) => g.kind === "trough");
+    expect(trough).toBeDefined();
+    expect(trough!.value).toBeGreaterThan(foamOff(dbl, t.board, dbl.center.deepest, mm(0)));
+    const six = resolveBottom(bottomOf(t.board, {}, 6), t.board);
+    const atChannels = bottomSection(six, t.board, six.channels.deepest, 4, BOX_1280, { live: "channels" });
+    const floor = sectionGauges(atChannels, six, t.board, "imperial").find((g) => g.kind === "channel");
+    expect(floor).toBeDefined();
+    expect(floor!.value).toBeCloseTo(deepestCutAt(six, t.board, six.channels.deepest), 0);
+  });
+});
+
+describe("the section's ruler (D-14, D-30)", () => {
+  const t = byId("shortboard");
+
+  it("nothing in a 500-dot box, bare ticks in 560, the caption from 625; its ticks are DATA's marks for the live cut", () => {
+    const resolved = resolveBottom(bottomOf(t.board, { center: "Early Double Concave" }), t.board);
+    const s = resolved.center.deepest;
+    const ruler = (width: number, system: "imperial" | "metric" = "imperial") =>
+      sectionRuler(bottomSection(resolved, t.board, s, 4, { width, height: 300 }, { live: "center" }), resolved, t.board, "center", system, measureValue);
+    expect(ruler(500)).toBeNull();
+    expect(ruler(560)!.caption).toBeNull();
+    expect(ruler(700)!.caption).toBe("OFF THE STRINGER");
+    expect(ruler(700, "metric")!.caption).toBe("OFF THE STRINGER · mm");
+    const { columns, rows } = bottomLayoutMarks(resolved, t.board, [s]);
+    const expected = columns.map((c, q) => ({ column: c.key, across: rows[0].cells[q] })).filter((m) => m.across !== null && m.column.startsWith("center:"));
+    const ticks = ruler(700)!.ticks;
+    expect(ticks.map((k) => [k.column, k.across]).sort()).toEqual(expected.map((m) => [m.column, m.across]).sort());
+    for (const k of ticks) expect(k.text).toBe(formatMarkBare(k.across, "imperial"));
+    // with no live cut, or a live flat, no ruler
+    expect(sectionRuler(bottomSection(resolved, t.board, s, 4, BOX_1280, { live: "tail" }), resolved, t.board, "tail", "imperial", measureValue)).toBeNull();
+  });
+
+  it("a channel wall appears on the ruler only past its own channel's start", () => {
+    const six = resolveBottom(bottomOf(t.board, {}, 6), t.board);
+    const ch = six.channels;
+    // between the outer wall's start and the inner wall's start, only the outer channels have begun
+    const between = mm((channelStart(ch, 0) + channelStart(ch, 2)) / 2);
+    const r = sectionRuler(bottomSection(six, t.board, between, 4, BOX_1280, { live: "channels" }), six, t.board, "channels", "imperial", measureValue)!;
+    expect(r.ticks.map((k) => k.column)).toContain(channelWallKey(3));
+    expect(r.ticks.map((k) => k.column)).not.toContain(channelWallKey(1));
+  });
+
+  it("values that would touch take the second row", () => {
+    const six = resolveBottom(bottomOf(t.board, {}, 8), t.board);
+    const r = sectionRuler(bottomSection(six, t.board, six.channels.deepest, 4, { width: 560, height: 300 }, { live: "channels" }), six, t.board, "channels", "imperial", (text) => text.length * 20)!;
+    expect(r.ticks.some((k) => k.row === 1)).toBe(true);
+  });
+});
+
+describe("the ghost (D-13, research §C)", () => {
+  it.each(BOARDS.map((b) => [b.id, b] as const))("%s: the ghost is the station's own bottomed ring from boardSections", (_id, t) => {
+    const bottom = bottomOf(t.board, OPENINGS[t.id]);
+    const s = t.board.widePoint;
+    const sections = sectionsOf(t, bottom, [s]);
+    const ring = ghostRail(sections, s)!;
+    expect(ring).toBe(sections[0].drawn ?? sections[0].blended);
+    expect(ring.length).toBeGreaterThan(10);
+    const path = ghostRailPath(ring, bottomSection(resolveBottom(bottom, t.board), t.board, s, 4, BOX_1280, { live: "center" }));
+    expect(path.match(/M/g)).toHaveLength(2);
+  });
+});
+
+describe("the GUIDE cartoons (D-17)", () => {
+  const t = byId("shortboard");
+  const keys: GuideCartoonKey[] = [
+    ...BOTTOM_SECTIONS.flatMap((section) => BOTTOM_CUT_NAMES[section].map((name) => ({ section, name }) as GuideCartoonKey)),
+    { section: "channels" },
+  ];
+
+  it.each(keys.map((k) => ["name" in k ? k.name : "Channels", k] as const))("%s: one cut alone at its starting numbers, the section where it is deepest", (_n, key) => {
+    const cartoon = guideCartoon(key, t.board, t.geometry);
+    const alone = cutAlone(key, t.board);
+    expect(cartoon.viewBox).toBe("0 0 300 154");
+    if (key.section === "channels") {
+      expect(alone.channels.count).toBe(6);
+      for (const section of BOTTOM_SECTIONS) expect(alone[section].kind).toBe("flat");
+    } else {
+      expect(alone[key.section].name).toBe(key.name);
+      expect(alone[key.section]).toEqual(resolveCut(key.section, startingCut(key.section, key.name, t.board), t.board));
+      for (const other of BOTTOM_SECTIONS.filter((q) => q !== key.section)) expect(alone[other].kind).toBe("flat");
+      expect(alone.channels.count).toBe(0);
+    }
+    const cut = key.section === "channels" ? alone.channels : alone[key.section];
+    const on = key.section === "channels" || (alone[key.section].kind !== "flat" && alone[key.section].depth > 0);
+    const clear = inchesToMm(3);
+    expect(cartoon.station).toBeCloseTo(on ? Math.max(clear, Math.min(t.board.length - clear, cut.deepest)) : t.board.widePoint, 9);
+    expect(cartoon.shade.length > 0).toBe(on);
+    expect(cartoon.section.pieces.length).toBeGreaterThan(0);
+  });
+
+  it("the five vees draw five different sections", () => {
+    const vees: GuideCartoonKey[] = [
+      { section: "nose", name: "Reverse Vee Nose" },
+      { section: "center", name: "Tri-Plane Hull Center" },
+      { section: "tail", name: "Panel Vee" },
+      { section: "tail", name: "Spiral Vee" },
+      { section: "tail", name: "Rolled Vee" },
+    ];
+    const profiles = vees.map((k) => guideCartoon(k, t.board, t.geometry).section.pieces.join(""));
+    expect(new Set(profiles).size).toBe(5);
+  });
+
+  it("the channels' card draws six channels: three walls a side", () => {
+    const cartoon = guideCartoon({ section: "channels" }, t.board, t.geometry);
+    const walls = bottomPencilLines(cutAlone({ section: "channels" }, t.board), t.board, "channels").filter((l) => l.kind === "wall");
+    expect(walls).toHaveLength(3);
+    expect(cartoon.pencil.match(/M/g)!.length).toBe(walls.flatMap((w) => w.runs).length);
+  });
+
+  it("a deep cut's section is fitted at ×8 when it would leave the card", () => {
+    const lb = byId("longboard");
+    const belly = guideCartoon({ section: "center", name: "Continuous Belly / Rolled Mid" }, lb.board, lb.geometry);
+    expect(belly.section.heightDrawn).toBeLessThanOrEqual(8 + 1e-9);
+    expect(belly.section.fitted).toBe(belly.section.heightDrawn < 8 - 1e-9);
   });
 });
