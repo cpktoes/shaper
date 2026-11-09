@@ -2,6 +2,17 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-08 (Phase 17, plan 17-08, branch claude/beautiful-fermi-ad3fb7) — all six pictures, once, for the
+ * top row: BOTTOM joined it third, between ROCKER and RAILS (D-01), and the links' gap below 1280 became 6 / 12 (it
+ * stays 20 at 1280, so at this window only TEMPLATE and ROCKER move left to make room). Old and new were compared
+ * before re-recording, pixel by pixel: on all six every changed pixel sits inside the top row (x 402-645, y 32-50);
+ * nothing below it moved on TEMPLATE, ROCKER, RAILS, VOLUME or FINS. On 3D, 42 pixels below the row differ by at most
+ * 2 of 255 along the sidebar card's rounded edges — anti-aliasing, not a move (the same pixels varied between two
+ * runs of the same page). Rendered by the webpack dev server (`IS_WEBPACK_TEST=1`, port 3308) in the plan's worktree on
+ * this Mac; the orchestrator confirms under Turbopack from the main checkout after the merge. SHA-256 (first 8
+ * characters), old to new: TEMPLATE c3c675b2 to 3db79bc8, ROCKER 407cbee1 to e75e0c14, RAILS b853ef2a to 47559ff4,
+ * VOLUME d3377877 to 0a95a0e4, FINS f915b9db to aa0d5a38, 3D ed28a40d to 604965f1.
+ *
  * RE-RECORDED 2026-11-07 (Phase 16, quick 261106-ni6, branch board-3d) — 3D only, `three-d-desktop.png`, once, for the room
  * in the theme's own deep colour on Daylight, and the drawing filling the viewer out to its faint line (804 by 615 became
  * 828 by 639). Against the picture recorded just below, 484305 pixels moved, all inside the viewer, and 0 in the top bar and

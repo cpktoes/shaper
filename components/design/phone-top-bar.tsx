@@ -11,7 +11,7 @@
  * thin line instead of the desktop row, which used to wrap the app's name onto two lines there.
  * Now 48 dots (`--phone-top-bar-h`, item 9e, quick 260930-s23, P-7 — was 56), still read from the
  * one token in `app/globals.css`. Wherever this bar draws, its menu opens a sheet that hangs from
- * the bar's own bottom edge and spans the window, starting with the seven screen tiles (quick
+ * the bar's own bottom edge and spans the window, starting with the eight screen tiles (quick
  * 261003-q2f) — so the header hands itself to the menu as the sheet's anchor.
  *
  * `SaveButton` is reused unchanged — its own four strings (Save, Saving…, Saved, Not saved) are

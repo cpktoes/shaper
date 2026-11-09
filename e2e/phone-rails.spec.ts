@@ -847,7 +847,7 @@ async function expectSharedRailControls(page: Page) {
   await expect(aside.getByText("Include Rail Band Instructions in Print")).toBeVisible();
   await expect(aside.getByText("Adds a third reference page")).toBeVisible();
   const stepNav = aside.locator("[data-step-nav]");
-  await expect(stepNav.getByRole("link", { name: "Previous screen: Rocker" })).toBeVisible();
+  await expect(stepNav.getByRole("link", { name: "Previous screen: Bottom" })).toBeVisible();
   await expect(stepNav.getByRole("link", { name: "Next screen: Volume" })).toBeVisible();
 }
 

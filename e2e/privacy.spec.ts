@@ -103,6 +103,7 @@ test.describe("Privacy page", () => {
     "/",
     "/design/outline",
     "/design/rocker",
+    "/design/bottom",
     "/design/rails",
     "/design/volume",
     "/design/fins",

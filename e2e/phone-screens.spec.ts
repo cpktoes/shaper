@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectEightTilesInMenu } from "./helpers/screens";
 
 /**
  * 09-03's own proof, extending 09-02's phone-shell test file's own pattern to the three screens
@@ -43,7 +43,7 @@ async function dismissSignInBanner(page: Page) {
   }, TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
-test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", () => {
+test.describe("phone routes — ROCKER, BOTTOM, VOLUME and FINS never scroll sideways", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only shell assertions");
     await dismissSignInBanner(page);
@@ -51,6 +51,7 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
 
   for (const [path, label] of [
     ["/design/rocker", "ROCKER"],
+    ["/design/bottom", "BOTTOM"],
     ["/design/volume", "VOLUME"],
     ["/design/fins", "FINS"],
   ] as const) {
@@ -62,9 +63,9 @@ test.describe("phone routes — ROCKER, VOLUME and FINS never scroll sideways", 
       const scrollWidth = await page.evaluate(() => document.scrollingElement?.scrollWidth ?? 0);
       expect(scrollWidth).toBe(viewportSize.width);
 
-      // No bottom tab bar since quick 261003-q2f: the menu's seven tiles, this screen's ticked.
+      // No bottom tab bar since quick 261003-q2f: the menu's eight tiles, this screen's ticked.
       await expectNoScreensNavigation(page);
-      await expectSevenTilesInMenu(page, label);
+      await expectEightTilesInMenu(page, label);
     });
   }
 });
