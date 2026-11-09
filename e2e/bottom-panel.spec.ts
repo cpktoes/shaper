@@ -2,8 +2,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { BOTTOM_CUT_NAMES, type BottomSectionKey } from "../lib/geometry/bottom";
+import { BOTTOM_CUT_NAMES, CHANNEL_STARTING_WIDTHS, type BottomSectionKey } from "../lib/geometry/bottom";
+import { designFinPlacement } from "../lib/geometry/design";
+import { frontFinToeDegrees } from "../lib/geometry/fins";
+import { formatMark } from "../lib/geometry/measure-display";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
+import { goToScreen } from "./helpers/screens";
 
 /**
  * BOTTOM's panel, every row (Phase 17, plan 17-09): each of the eighteen names opens on its own rows and its starting
@@ -58,18 +62,28 @@ async function dismissStrips(page: Page) {
   await page.addInitScript((key) => window.localStorage.setItem(key, "true"), TOOLBAR_TIP_DISMISSAL_KEY);
 }
 
-/** Opens a preset from the home page and walks to BOTTOM by the top row, so the board stays the one opened. */
+/** Opens a preset from the home page and walks to BOTTOM by the top row (or ☰ and its tile on a phone), so the board
+ * stays the one opened. A computer's preset card says `Start Shaping`; a phone's carries the board's litres. */
 async function openBottom(page: Page, presetId: string) {
   const preset = BOARD_PRESETS.find((p) => p.id === presetId);
   if (!preset) throw new Error(`no ${presetId} preset`);
   await page.goto("/");
-  const card = page.getByRole("button").filter({ hasText: "Start Shaping" }).filter({ hasText: preset.name }).first();
+  const card = page
+    .getByRole("button")
+    .filter({ hasText: preset.name })
+    .filter({ hasText: /Start Shaping|\d\.\d L/ })
+    .first();
   await expect(async () => {
-    await card.click();
-    await expect(page).toHaveURL(/\/design\/outline$/, { timeout: 3_000 });
-  }).toPass({ timeout: 60_000 });
-  await page.locator("nav:not([aria-label])").getByRole("link", { name: "BOTTOM", exact: true }).click();
-  await page.waitForURL("**/design/bottom");
+    // Tap only while the card is still on the page: under load the screen can change before the address does, and a
+    // second tap would find no card. A phone's cards stand in a row that scrolls sideways, so the card is brought into
+    // view first.
+    if (!/\/design\/outline$/.test(page.url()) && (await card.count()) > 0) {
+      await card.scrollIntoViewIfNeeded({ timeout: 2_000 });
+      await card.click({ timeout: 2_000 });
+    }
+    await expect(page).toHaveURL(/\/design\/outline$/, { timeout: 5_000 });
+  }).toPass({ timeout: 90_000 });
+  await goToScreen(page, "BOTTOM");
 }
 
 function card(page: Page, section: BottomSectionKey): Locator {
@@ -220,4 +234,171 @@ test.describe("BOTTOM's panel: every cut's own rows, the Teardrop's tick box and
     });
     expect(ink).toBe(warning);
   });
+});
+
+/* ============ the CHANNELS block, inside TAIL (D-10, D-11) ============ */
+
+/** The words a menu shows as picked (its value, without the chevron). */
+function selected(page: Page, selectName: string): Locator {
+  return page.getByRole("combobox", { name: selectName, exact: true }).locator("[data-slot=select-value]");
+}
+
+/** Picks an option from one of the block's menus by its spoken name, retried until React owns the menu. */
+async function pickFrom(page: Page, selectName: string, option: string) {
+  const trigger = page.getByRole("combobox", { name: selectName, exact: true });
+  await expect(async () => {
+    await trigger.click();
+    await page.getByRole("option", { name: option, exact: true }).click({ timeout: 2_000 });
+    await expect(selected(page, selectName)).toHaveText(option, { timeout: 2_000 });
+  }).toPass({ timeout: 60_000 });
+}
+
+/** The colour an element's text is drawn in, and the colour a theme ink resolves to on the same page. */
+async function inkOf(locator: Locator, cssVar: string): Promise<{ text: string; ink: string }> {
+  return locator.evaluate((el, name) => {
+    const probe = document.createElement("span");
+    probe.style.color = `var(${name})`;
+    document.body.appendChild(probe);
+    const ink = getComputedStyle(probe).color;
+    probe.remove();
+    return { text: getComputedStyle(el).color, ink };
+  }, cssVar);
+}
+
+const channels = (page: Page) => page.locator("[data-bottom-channels]");
+const widthLabel = (page: Page) => channels(page).getByText(/^Channel Width — /);
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** `Channel Width — 1 3/4" · ramp 10° · last wall …` for a count's own starting width (the app's figure), never squeezed. */
+const startingWidthLine = (count: 4 | 6 | 8) =>
+  new RegExp(`^Channel Width — ${escapeRegExp(formatMark(CHANNEL_STARTING_WIDTHS[count], "imperial"))} · ramp \\d+° · last wall .+ off the rail$`);
+
+test.describe("BOTTOM's CHANNELS block, inside TAIL", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissStrips(page);
+    await forgetOpenBoardOnEveryLoad(page);
+  });
+
+  test("channels: None to start; 4, 6 and 8 open at their starting widths unless the width was set by hand; None hides and keeps", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openBottom(page, "shortboard");
+    const tail = card(page, "tail");
+    await expect(channels(page).locator("[data-bottom-channels-echo]")).toHaveText("None");
+    await expect(selected(page, "Channels")).toHaveText("None");
+    await expect(page.getByRole("slider", { name: "Channel Width", exact: true })).toHaveCount(0);
+    await expect(tail.getByText("Nothing is cut in this section.", { exact: true })).toBeVisible();
+
+    // Opening a set makes the channels the live cut and moves the section to their Deepest.
+    await pickFrom(page, "Channels", "6 channels");
+    await expect(page.locator("[data-bottom-live]")).toHaveAttribute("data-bottom-live", "channels");
+    const deepest = ((await channels(page).getByText(/^Deepest At — /).textContent()) ?? "").replace(/^Deepest At — (.+) from the tail$/, "$1");
+    await expect(page.getByText(/^SECTION · /).first()).toHaveText(new RegExp(`^SECTION · ${escapeRegExp(deepest)} FROM THE TAIL`));
+    await expect(channels(page).locator("[data-bottom-channels-echo]")).toHaveText("6, cut after the Flat Exit");
+    await expect(tail.getByText("Nothing is cut in this section but the channels.", { exact: true })).toBeVisible();
+    await expect(channels(page).getByRole("slider")).toHaveCount(8);
+    expect(await channels(page).getByRole("slider").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")))).toEqual([
+      "Channel Width",
+      "Channels Off Stringer",
+      "Channels Start",
+      "Channels Stagger",
+      "Channels Deepest At",
+      "Channels End",
+      "Channels Depth",
+      "Channels Smoothness",
+    ]);
+    await expect(channels(page).getByText("Smoothness — 0% · a straight ramp", { exact: true })).toBeVisible();
+
+    for (const count of [4, 8, 6] as const) {
+      await pickFrom(page, "Channels", `${count} channels`);
+      await expect(widthLabel(page)).toHaveText(startingWidthLine(count));
+    }
+
+    // A width set by hand (1 3/4" + four 1/16" steps = 2") survives every count and None.
+    const width = page.getByRole("slider", { name: "Channel Width", exact: true });
+    await width.focus();
+    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+    await expect(widthLabel(page)).toHaveText(/^Channel Width — 2" (· |\(.+ to fit\) · )/);
+    await pickFrom(page, "Channels", "8 channels");
+    await expect(widthLabel(page)).toHaveText(/^Channel Width — 2" (· |\(.+ to fit\) · )/);
+    await pickFrom(page, "Channels", "None");
+    await expect(page.getByRole("slider", { name: "Channel Width", exact: true })).toHaveCount(0);
+    await expect(channels(page).locator("[data-bottom-channels-echo]")).toHaveText("None");
+    await expect(tail.getByText("Nothing is cut in this section.", { exact: true })).toBeVisible();
+    await pickFrom(page, "Channels", "4 channels");
+    await expect(widthLabel(page)).toHaveText(/^Channel Width — 2" (· |\(.+ to fit\) · )/);
+    // Each pick is one Undo.
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(selected(page, "Channels")).toHaveText("None");
+  });
+
+  test("channels: a squeezed set says what it was cut to in the muted ink; Stagger hides for All the same; Start names the longest pair", async ({ page }) => {
+    test.setTimeout(240_000);
+    await openBottom(page, "shortboard");
+    await pickFrom(page, "Channels", "8 channels");
+    const width = page.getByRole("slider", { name: "Channel Width", exact: true });
+    await width.focus();
+    await page.keyboard.press("End");
+    await expect(widthLabel(page)).toHaveText(/^Channel Width — 4" \(.+ to fit\) · ramp \d+° · last wall .+ off the rail$/);
+    const muted = await inkOf(widthLabel(page), "--surf-ink-muted");
+    expect(muted.text).toBe(muted.ink);
+    const warning = await inkOf(widthLabel(page), "--surf-warning-ink");
+    expect(warning.text).not.toBe(warning.ink);
+
+    await expect(channels(page).getByText(/^Start — .+ from the tail · the outer pair$/)).toBeVisible();
+    await expect(channels(page).getByText(/^Stagger — .+ per channel · the inner pair starts .+ from the tail$/)).toBeVisible();
+    await pickFrom(page, "Longest Channels", "Inner pair");
+    await expect(channels(page).getByText(/^Start — .+ from the tail · the inner pair$/)).toBeVisible();
+    await expect(channels(page).getByText(/^Stagger — .+ per channel · the outer pair starts .+ from the tail$/)).toBeVisible();
+    await pickFrom(page, "Longest Channels", "All the same");
+    await expect(page.getByRole("slider", { name: "Channels Stagger", exact: true })).toHaveCount(0);
+    await expect(channels(page).getByText(/^Stagger — /)).toHaveCount(0);
+    await expect(channels(page).getByText(/^Start — .+ from the tail$/)).toBeVisible();
+  });
+
+  for (const presetId of ["shortboard", "fish", "longboard"] as const) {
+    test(`channels: the Run menu on the ${presetId} reads the front fins' own toe`, async ({ page }) => {
+      test.setTimeout(180_000);
+      const preset = BOARD_PRESETS.find((p) => p.id === presetId)!;
+      // The toe the app itself works out for this preset's fins, written once to one decimal.
+      const toe = frontFinToeDegrees(designFinPlacement({ outline: preset.outline, fins: preset.fins }));
+      const toeOption = toe > 0 ? `Toe-in · ${toe.toFixed(1)}°` : "Toe-in (no toe)";
+      if (presetId === "longboard") expect(toe).toBe(0);
+      else expect(toe).toBeGreaterThan(0);
+      await openBottom(page, presetId);
+      await pickFrom(page, "Channels", "6 channels");
+      await expect(selected(page, "Channel Run")).toHaveText("Parallel");
+      await page.getByRole("combobox", { name: "Channel Run", exact: true }).click();
+      await expect(page.getByRole("option")).toHaveText(["Parallel", "With the rail", toeOption]);
+      await page.getByRole("option", { name: toeOption, exact: true }).click();
+      await expect(selected(page, "Channel Run")).toHaveText(toeOption);
+    });
+  }
+
+  for (const width of [820, 1280]) {
+    test(`channels at ${width} wide: the Width read-out wraps to a second line and the Run trigger never overflows its row (E10)`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "desktop", "a window's width, on a computer");
+      test.setTimeout(180_000);
+      await page.setViewportSize({ width, height: 800 });
+      await openBottom(page, "longboard");
+      await pickFrom(page, "Channels", "6 channels");
+      await pickFrom(page, "Channel Run", "Toe-in (no toe)");
+      const lines = await widthLabel(page).evaluate((el) => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
+      expect(Math.round(lines), "the Width read-out's lines").toBeGreaterThanOrEqual(2);
+      const run = page.getByRole("combobox", { name: "Channel Run", exact: true });
+      const fit = await run.evaluate((el) => {
+        const value = el.querySelector("[data-slot=select-value]") as HTMLElement;
+        const row = el.parentElement!.parentElement!.getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        return {
+          overflowsRow: box.right > row.right + 0.5 || box.left < row.left - 0.5,
+          cut: value.scrollWidth > value.clientWidth,
+          ellipsis: getComputedStyle(value).textOverflow === "ellipsis" && getComputedStyle(value).overflow === "hidden",
+        };
+      });
+      expect(fit.overflowsRow).toBe(false);
+      expect(fit.ellipsis).toBe(true);
+      // Measured (UI-SPEC § Already done): `Toe-in (no toe)` is cut with an ellipsis from 820 to about 880 wide; at
+      // 1280 the column is wide enough and it reads whole.
+      expect(fit.cut).toBe(width === 820);
+    });
+  }
 });

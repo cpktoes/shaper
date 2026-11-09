@@ -118,11 +118,14 @@ import {
   DEFAULT_BOTTOM,
   bottomHasCut,
   cutKind,
+  keepChannelStationsInOrder,
   keepStationsInOrder,
   pickCut,
   resolveBottom,
+  switchChannelCount,
   type BoardBottom,
   type BottomBoard,
+  type BottomChannelsSpec,
   type BottomCutName,
   type BottomCutSpec,
   type BottomSectionKey,
@@ -480,6 +483,19 @@ interface DesignContextValue {
   /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
    * one undo step each. Nothing on a locked board. */
   setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
+  /** The CHANNELS block's count (D-10, D-11): 4, 6 or 8 bring that count's starting width unless the width was set by
+   * hand, every other number kept (`switchChannelCount`); `None` (0) hides the set and keeps its numbers. One undo step
+   * each. Nothing on a locked board. */
+  setChannelCount: (count: BottomChannelsSpec["count"]) => void;
+  /** The channels' Run: Parallel, With the rail or Toe-in (D-10). One undo step each. Nothing on a locked board. */
+  setChannelRun: (run: BottomChannelsSpec["run"]) => void;
+  /** Which channels are longest — the inner pair, the outer pair or all the same (D-10). One undo step each. Nothing on
+   * a locked board. */
+  setChannelLongest: (longest: BottomChannelsSpec["longest"]) => void;
+  /** One of the channels' sliders: the patch in the stored form (a station through `storeChannelStation`); with
+   * `changed`, Start ≥ Deepest ≥ End kept in the same step, the dragged station winning. One undo step per drag.
+   * Nothing on a locked board. */
+  updateChannels: (patch: Partial<BottomChannelsSpec>, changed?: "start" | "deepest" | "end") => void;
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
@@ -1435,6 +1451,50 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // The CHANNELS block inside TAIL (D-10, D-11). The three menus are discrete choices — noteEdit(null), one undo step
+  // each — and like every mutator they check the lock first and mark the board started and dirty.
+  type ChannelsEdit = (channels: BottomChannelsSpec) => BottomChannelsSpec;
+  const setChannels = (next: ChannelsEdit) => {
+    if (lockedRef.current) return;
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, channels: next(prev.bottom.channels) },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // The count (the orchestrator's ruling at 17-09): a count brings its starting width unless the width was set by hand,
+  // every other number kept; None hides the set and keeps its numbers for the next count (`switchChannelCount`).
+  const setChannelCount = (count: BottomChannelsSpec["count"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => switchChannelCount(channels, count, bottomBoard));
+  };
+
+  const setChannelRun = (run: BottomChannelsSpec["run"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => ({ ...channels, run }));
+  };
+
+  const setChannelLongest = (longest: BottomChannelsSpec["longest"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => ({ ...channels, longest }));
+  };
+
+  // A channels slider (D-10): the patch in the stored form, one key per field dragged, and — when a station moved —
+  // Start ≥ Deepest ≥ End kept in the same step, the dragged one winning (`keepChannelStationsInOrder`).
+  const updateChannels = (patch: Partial<BottomChannelsSpec>, changed?: "start" | "deepest" | "end") => {
+    if (lockedRef.current) return;
+    noteEdit(`bottom:channels:${patchKey(patch)}`);
+    setChannels((channels) => {
+      const patched: BottomChannelsSpec = { ...channels, ...patch };
+      return changed ? keepChannelStationsInOrder(patched, changed, bottomBoard) : patched;
+    });
+  };
+
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
   // dirty, like every mutator above, so undo, autosave and the replace-board prompt all see them.
 
@@ -2015,6 +2075,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pickBottomCut,
     updateBottomCut,
     setBottomClosesToPoint,
+    setChannelCount,
+    setChannelRun,
+    setChannelLongest,
+    updateChannels,
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,

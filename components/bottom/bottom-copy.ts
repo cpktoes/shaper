@@ -8,8 +8,16 @@
  * 17-11 GUIDE).
  */
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
-import { BOTTOM_FLOOR, stationFromNearestTip, type BottomBoard, type BottomFloorFlag, type BottomSectionKey } from "@/lib/geometry/bottom";
-import { formatMark } from "@/lib/geometry/measure-display";
+import {
+  BOTTOM_FLOOR,
+  stationFromNearestTip,
+  type BottomBoard,
+  type BottomChannelsSpec,
+  type BottomFloorFlag,
+  type BottomSectionKey,
+  type channelReadout,
+} from "@/lib/geometry/bottom";
+import { formatDim, formatMark } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** A section's name as the panel and the screen readers say it. */
@@ -122,4 +130,87 @@ export function floorWarning(flag: BottomFloorFlag | undefined, board: Pick<Bott
     parts.push(`${who} the rail under ${floor} near the ${tip}: the rail is thinner there than the floor.`);
   }
   return [...parts, FLOOR_FIX].join(" ");
+}
+
+/* ============ the CHANNELS block, inside TAIL (D-10, D-11; UI-SPEC § The channels block) ============ */
+
+type ChannelCountChoice = BottomChannelsSpec["count"];
+type ChannelReadout = ReturnType<typeof channelReadout>;
+
+export const CHANNELS_COPY = {
+  /** The sub-heading (drawn `CHANNELS`). */
+  heading: "Channels",
+  /** The sub-heading's echo: `None`, or `6, cut after the Flat Exit`. */
+  echo: (count: ChannelCountChoice, tailName: string) => (count > 0 ? `${count}, cut after the ${tailName}` : "None"),
+  /** The count menu: its label, its spoken name and its options. */
+  countLabel: "Channels",
+  countSelectName: "Channels",
+  countOption: (count: ChannelCountChoice) => (count === 0 ? "None" : `${count} channels`),
+  /** Run and Longest, side by side. */
+  runLabel: "Run",
+  runSelectName: "Channel Run",
+  longestLabel: "Longest",
+  longestSelectName: "Longest Channels",
+  longestOption: { inner: "Inner pair", outer: "Outer pair", same: "All the same" } as const satisfies Record<BottomChannelsSpec["longest"], string>,
+  /** The rows' labels. Off Stringer, Start, Deepest At, End, Depth and Smoothness are the section rows' own words. */
+  width: "Channel Width",
+  stagger: "Stagger",
+  staggerLeft: "All start together",
+  smoothnessLeft: "Straight ramp into the wall",
+  smoothnessRight: "Scooped",
+  /** The sliders' spoken names (UI-SPEC § Screen readers): `Channel Width`, then `Channels {control}`. */
+  sliderName: (control: string) => (control === "Channel Width" ? control : `Channels ${control}`),
+  /** Start's suffix: the pair that starts there (nothing for All the same). */
+  startWords: (station: string, longest: BottomChannelsSpec["longest"]) => (longest === "same" ? station : `${station} · the ${longest} pair`),
+  /** A flat TAIL with channels (sketch line 1050). */
+  flatNoteWithChannels: "Nothing is cut in this section but the channels.",
+} as const;
+
+/**
+ * A Run option's words (D-10; SPEC edge "Toe-in angle display"): `Parallel` · `With the rail` · `Toe-in · 3.2°`, the
+ * front fins' raw toe written once to one decimal here — or `Toe-in (no toe)` on a board with no toe (a single fin),
+ * where the walls then run as Parallel.
+ */
+export function runOptionLabel(run: BottomChannelsSpec["run"], toeDegrees: number): string {
+  if (run === "parallel") return "Parallel";
+  if (run === "rail") return "With the rail";
+  return toeDegrees > 0 ? `Toe-in · ${toeDegrees.toFixed(1)}°` : "Toe-in (no toe)";
+}
+
+/**
+ * The Channel Width row's value words — read out, never set (D-10): the width asked for, `({fitted} to fit)` when the
+ * set had to be squeezed, the ramp's whole degrees and the last wall's distance off the rail, every figure from
+ * `channelReadout` and every length a mark: `1 3/4" · ramp 10° · last wall 1 5/8" off the rail`.
+ */
+export function channelWidthWords(readout: ChannelReadout, system: UnitsSystem): string {
+  const fitted = readout.squeezed ? ` (${formatMark(readout.fittedWidth, system)} to fit)` : "";
+  return `${formatMark(readout.width, system)}${fitted} · ramp ${readout.rampDegrees}° · last wall ${formatMark(readout.lastWallOffRail, system)} off the rail`;
+}
+
+/** The Channel Width label line: `Channel Width — 1 3/4" · ramp 10° · last wall 1 5/8" off the rail`. */
+export function channelWidthLabel(readout: ChannelReadout, system: UnitsSystem): string {
+  return `${CHANNELS_COPY.width} — ${channelWidthWords(readout, system)}`;
+}
+
+/**
+ * The Stagger row's value words (D-10): the stagger a dim per channel, then where the shortest pair starts from the tail
+ * — the outer pair when the inner is longest, the inner otherwise: `2" per channel · the inner pair starts 19" from the
+ * tail`. `null` for All the same, where the row is hidden.
+ */
+export function staggerWords(channels: Pick<BottomChannelsSpec, "stagger" | "longest">, readout: ChannelReadout, system: UnitsSystem): string | null {
+  if (channels.longest === "same") return null;
+  const shortest = channels.longest === "inner" ? "outer" : "inner";
+  return `${formatDim(channels.stagger, system)} per channel · the ${shortest} pair starts ${formatBottomStation(readout.shortestStart, system)} from the tail`;
+}
+
+/** The Stagger label line, or `null` for All the same. */
+export function staggerLabel(channels: Pick<BottomChannelsSpec, "stagger" | "longest">, readout: ChannelReadout, system: UnitsSystem): string | null {
+  const words = staggerWords(channels, readout, system);
+  return words === null ? null : `${CHANNELS_COPY.stagger} — ${words}`;
+}
+
+/** The channels' Smoothness words: `0% · a straight ramp`, `100% · scooped`, a plain percent between. */
+export function channelSmoothnessWords(value: number): string {
+  const percent = BOTTOM_COPY.percent(value);
+  return value === 0 ? `${percent} · a straight ramp` : value === 100 ? `${percent} · scooped` : percent;
 }

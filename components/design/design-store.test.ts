@@ -110,6 +110,19 @@ describe("design-store.tsx — BOTTOM's two edits (Phase 17, 17-08)", () => {
     expect(body).toMatch(/keepStationsInOrder\(section,/);
     expect(body.match(/setState\(/g)).toHaveLength(1);
   });
+
+  it("17-09: the tick box and the three channel menus are one undo step each; the count goes through switchChannelCount", () => {
+    for (const name of ["setBottomClosesToPoint", "setChannelCount", "setChannelRun", "setChannelLongest"]) {
+      expect(handler(name), name).toMatch(/noteEdit\(null\)/);
+    }
+    expect(handler("setChannelCount")).toMatch(/switchChannelCount\(channels,\s*count,\s*bottomBoard\)/);
+  });
+
+  it("17-09: a channels slider keeps Start ≥ Deepest ≥ End in the same step, under one key per field dragged", () => {
+    const body = handler("updateChannels");
+    expect(body).toMatch(/noteEdit\(`bottom:channels:\$\{patchKey\(patch\)\}`\)/);
+    expect(body).toMatch(/keepChannelStationsInOrder\(patched,\s*changed,\s*bottomBoard\)/);
+  });
 });
 
 describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 5)", () => {

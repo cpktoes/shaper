@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useDeferredValue, useMemo, type ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import { SliderRow } from "@/components/design/slider-row";
@@ -13,20 +13,36 @@ import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   bottomFloorFlags,
+  channelReadout,
   stationFromNearestTip,
+  storeChannelStation,
   storeCutStation,
   type BottomBoard,
+  type BottomChannelsSpec,
   type BottomCutName,
   type BottomCutSpec,
   type BottomSectionKey,
+  type BottomWingRule,
+  type ResolvedChannels,
   type ResolvedCut,
 } from "@/lib/geometry/bottom";
 import type { BottomCutKey } from "@/lib/geometry/bottom-draw";
 import { bottomImportedReadout } from "@/lib/geometry/imported-readout";
-import { formatMark, measureSlider } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, measureSlider } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
-import { BOTTOM_COPY, BOTTOM_SECTION_NAME, floorWarning } from "./bottom-copy";
+import {
+  BOTTOM_COPY,
+  BOTTOM_SECTION_NAME,
+  CHANNELS_COPY,
+  channelSmoothnessWords,
+  channelWidthLabel,
+  channelWidthWords,
+  floorWarning,
+  runOptionLabel,
+  staggerLabel,
+  staggerWords,
+} from "./bottom-copy";
 
 /** RAILS' ruled heading (`components/rails/rail-controls.tsx`'s `RULED_HEADING`), the dress BOTTOM's panel wears
  * (D-08): the INPUTS heading and each section's heading share it. */
@@ -104,6 +120,9 @@ interface BottomControlsProps {
   onLive: (key: BottomCutKey) => void;
   /** A name picked from a section's Cut menu (the editor writes the store and moves the section to the cut). */
   onPick: (section: BottomSectionKey, name: BottomCutName) => void;
+  /** A count picked from the CHANNELS block (the editor writes the store, makes the channels live and, opening a set,
+   * moves the section to their Deepest). */
+  onChannelCount: (count: BottomChannelsSpec["count"]) => void;
 }
 
 /**
@@ -120,12 +139,30 @@ interface BottomControlsProps {
  * On a locked board every control is greyed and still (the Selects and the tick box `disabled={locked}`, each
  * `SliderRow` reads the lock itself); the readout card is information and keeps its strength.
  */
-export function BottomControls({ live, onLive, onPick }: BottomControlsProps) {
+export function BottomControls({ live, onLive, onPick, onChannelCount }: BottomControlsProps) {
   const { system } = useUnits();
-  const { bottom, bottomBoard, resolvedBottom, bottomSections, updateBottomCut, setBottomClosesToPoint, outline, effectiveRails } = useDesign();
+  const {
+    bottom,
+    bottomBoard,
+    resolvedBottom,
+    bottomSections,
+    updateBottomCut,
+    setBottomClosesToPoint,
+    setChannelRun,
+    setChannelLongest,
+    updateChannels,
+    outline,
+    effectiveRails,
+  } = useDesign();
+  const channelsCut = bottom.channels.count > 0;
   // Where each cut meets the 1/4" floor (D-09, D-33 as amended by D-40): the stringer form from the maths' own scan, the
   // rail form from the litres' own sections — the store's memoised `bottomSections`, never built here (the checker's W1).
-  const floorFlags = useMemo(() => bottomFloorFlags(resolvedBottom, bottomBoard, bottomSections), [resolvedBottom, bottomBoard, bottomSections]);
+  // The scan costs about 50–75 ms on a full bottom (measured on the Shortboard with three cuts and six channels), so it
+  // reads deferred copies: a drag keeps its thumb under the finger and the sentence follows a moment after.
+  const flagsBottom = useDeferredValue(resolvedBottom);
+  const flagsBoard = useDeferredValue(bottomBoard);
+  const flagsSections = useDeferredValue(bottomSections);
+  const floorFlags = useMemo(() => bottomFloorFlags(flagsBottom, flagsBoard, flagsSections), [flagsBottom, flagsBoard, flagsSections]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -159,11 +196,33 @@ export function BottomControls({ live, onLive, onPick }: BottomControlsProps) {
             bottomBoard,
             system,
           )}
+          flatNote={section === "tail" && channelsCut ? CHANNELS_COPY.flatNoteWithChannels : BOTTOM_COPY.flatNote}
           onLive={() => onLive(section)}
           onPick={(name) => onPick(section, name)}
           onChange={(patch, changed) => updateBottomCut(section, patch, changed)}
           onClosesToPoint={(on) => setBottomClosesToPoint(section, on)}
-        />
+        >
+          {section === "tail" && (
+            <ChannelsBlock
+              spec={bottom.channels}
+              resolved={resolvedBottom.channels}
+              board={bottomBoard}
+              rule={resolvedBottom.wingRule}
+              tailName={bottom.tail.name}
+              system={system}
+              floor={floorWarning(
+                floorFlags.find((flag) => flag.section === "channels"),
+                bottomBoard,
+                system,
+              )}
+              onLive={() => onLive("channels")}
+              onCount={onChannelCount}
+              onRun={setChannelRun}
+              onLongest={setChannelLongest}
+              onChange={updateChannels}
+            />
+          )}
+        </BottomSectionCard>
       ))}
     </div>
   );
@@ -178,15 +237,34 @@ interface BottomSectionCardProps {
   live: boolean;
   /** The floor sentence under the Depth row (`floorWarning`), or null when this cut meets no floor. */
   floor: string | null;
+  /** A flat section's one line (TAIL's names the channels when there are any). */
+  flatNote: string;
   onLive: () => void;
   onPick: (name: BottomCutName) => void;
   onChange: (patch: Partial<BottomCutSpec>, changed?: StationField) => void;
   onClosesToPoint: (on: boolean) => void;
+  /** Drawn under the card's last row: TAIL's CHANNELS block. */
+  children?: ReactNode;
 }
 
 /** One section's card: RAILS' group (`flex flex-col gap-3.5`), its heading echoing the cut, the `Cut` menu, then the
- * flat note or the cut's own rows, then (on a Nose single) the tick box. A press anywhere in it makes it the live cut. */
-function BottomSectionCard({ section, spec, resolved, board, system, live, floor, onLive, onPick, onChange, onClosesToPoint }: BottomSectionCardProps) {
+ * flat note or the cut's own rows, then (on a Nose single) the tick box, then (TAIL) the CHANNELS block. A press
+ * anywhere in it makes it the live cut. */
+function BottomSectionCard({
+  section,
+  spec,
+  resolved,
+  board,
+  system,
+  live,
+  floor,
+  flatNote,
+  onLive,
+  onPick,
+  onChange,
+  onClosesToPoint,
+  children,
+}: BottomSectionCardProps) {
   const locked = useControlsLocked();
   const items = BOTTOM_CUT_NAMES[section].map((name) => ({ value: name, label: name }));
   const name = BOTTOM_SECTION_NAME[section];
@@ -223,7 +301,7 @@ function BottomSectionCard({ section, spec, resolved, board, system, live, floor
         </Select>
       </div>
 
-      {resolved.kind === "flat" && <p className="text-sm text-surf-ink-muted font-normal">{BOTTOM_COPY.flatNote}</p>}
+      {resolved.kind === "flat" && <p className="text-sm text-surf-ink-muted font-normal">{flatNote}</p>}
 
       {cutRows(resolved).map((row) => {
         if (row === "smoothness") {
@@ -267,7 +345,271 @@ function BottomSectionCard({ section, spec, resolved, board, system, live, floor
           </label>
         </div>
       )}
+
+      {children}
     </div>
+  );
+}
+
+/** The CHANNELS sub-heading (UI-SPEC §2): 10/800 muted caps, its echo 12/400 at the right, truncating. */
+const SUBHEADING =
+  "flex w-full items-center justify-between gap-2 text-[10px] font-display text-surf-ink-muted uppercase tracking-architectural font-extrabold";
+
+const CHANNEL_COUNTS = [0, 4, 6, 8] as const;
+const CHANNEL_RUNS = ["parallel", "rail", "toe"] as const;
+const CHANNEL_LONGEST = ["inner", "outer", "same"] as const;
+/** Stagger, a dim along the board (UI-SPEC §1): 0–8" in 1/2" steps, 10 mm in Metric. */
+const STAGGER = { rangeIn: { min: 0, max: 8 }, stepIn: 0.5, stepMm: 10 } as const;
+/** Channel Width, a mark: 1/2–4" (UI-SPEC §1). */
+const CHANNEL_WIDTH_RANGE_IN = { min: 0.5, max: 4 } as const;
+
+interface ChannelsBlockProps {
+  spec: BottomChannelsSpec;
+  resolved: ResolvedChannels;
+  board: BottomBoard;
+  rule: BottomWingRule;
+  tailName: BottomCutName;
+  system: UnitsSystem;
+  /** The floor sentence under the channels' Depth (the rail form only: the channels never touch the stringer). */
+  floor: string | null;
+  onLive: () => void;
+  onCount: (count: BottomChannelsSpec["count"]) => void;
+  onRun: (run: BottomChannelsSpec["run"]) => void;
+  onLongest: (longest: BottomChannelsSpec["longest"]) => void;
+  onChange: (patch: Partial<BottomChannelsSpec>, changed?: StationField) => void;
+}
+
+/**
+ * The CHANNELS block, inside TAIL under its last row (D-10, D-11, UI-SPEC §2): a dashed rule, `CHANNELS` echoing the
+ * set, then the count. With a count: Run and Longest on one row, then Channel Width — its ramp and last wall read out by
+ * the maths' `channelReadout`, never set — Off Stringer, Start, Stagger (hidden, not dimmed, for All the same), Deepest
+ * At, End, Depth (the floor under it) and Smoothness. `None` hides the rows and keeps their numbers. A press, or the
+ * keyboard arriving, anywhere in it makes the channels the live cut — after the TAIL card's own capture, so it wins.
+ * Every figure through the formatters (Rule 2), every number the maths' (Rule 1); no Wall control and nothing but the
+ * starts staggers (D-10).
+ */
+function ChannelsBlock({ spec, resolved, board, rule, tailName, system, floor, onLive, onCount, onRun, onLongest, onChange }: ChannelsBlockProps) {
+  const locked = useControlsLocked();
+  const counts = CHANNEL_COUNTS.map((count) => ({ value: String(count), label: CHANNELS_COPY.countOption(count) }));
+  const runs = CHANNEL_RUNS.map((run) => ({ value: run, label: runOptionLabel(run, board.toeDegrees) }));
+  const longest = CHANNEL_LONGEST.map((value) => ({ value, label: CHANNELS_COPY.longestOption[value] }));
+  const open = spec.count > 0;
+
+  return (
+    <div data-bottom-channels className="mt-2 border-t border-dashed border-surf-line-faint pt-3" onPointerDownCapture={onLive} onFocusCapture={onLive}>
+      <div className={SUBHEADING}>
+        <span className="shrink-0">{CHANNELS_COPY.heading}</span>
+        <span data-bottom-channels-echo className={HEADING_ECHO}>
+          {CHANNELS_COPY.echo(spec.count, tailName)}
+        </span>
+      </div>
+      <div className="mt-3.5 flex flex-col gap-3.5">
+        <div className={cn(locked && "opacity-40")}>
+          <div className={SELECT_LABEL}>{CHANNELS_COPY.countLabel}</div>
+          <Select
+            items={counts}
+            value={String(spec.count)}
+            onValueChange={(value) => onCount(Number(value) as BottomChannelsSpec["count"])}
+            disabled={locked}
+          >
+            <SelectTrigger aria-label={CHANNELS_COPY.countSelectName} className={CUT_TRIGGER}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {counts.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {open && (
+          <>
+            {/* Run and Longest share one row (UI-SPEC §2); each column may shrink, so a long option truncates with an
+                ellipsis inside its trigger rather than pushing the row wider. */}
+            <div className={cn("grid grid-cols-2 gap-2", locked && "opacity-40")}>
+              <div className="min-w-0">
+                <div className={SELECT_LABEL}>{CHANNELS_COPY.runLabel}</div>
+                <Select items={runs} value={spec.run} onValueChange={(value) => onRun(value as BottomChannelsSpec["run"])} disabled={locked}>
+                  <SelectTrigger aria-label={CHANNELS_COPY.runSelectName} className={cn(CUT_TRIGGER, TRUNCATING_VALUE)}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {runs.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0">
+                <div className={SELECT_LABEL}>{CHANNELS_COPY.longestLabel}</div>
+                <Select
+                  items={longest}
+                  value={spec.longest}
+                  onValueChange={(value) => onLongest(value as BottomChannelsSpec["longest"])}
+                  disabled={locked}
+                >
+                  <SelectTrigger aria-label={CHANNELS_COPY.longestSelectName} className={cn(CUT_TRIGGER, TRUNCATING_VALUE)}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {longest.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <ChannelRows spec={spec} resolved={resolved} board={board} rule={rule} system={system} floor={floor} onChange={onChange} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A Select trigger whose value truncates with an ellipsis in a narrow column (the Run trigger's `Toe-in (no toe)` at
+ * an 820 window, UI-SPEC § Already done): the value a block that may shrink, cut with `…`. */
+const TRUNCATING_VALUE = "min-w-0 *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
+
+/** The channels' sliders, in the UI-SPEC's order: Channel Width, Off Stringer, Start, Stagger, Deepest At, End, Depth,
+ * Smoothness. */
+function ChannelRows({
+  spec,
+  resolved,
+  board,
+  rule,
+  system,
+  floor,
+  onChange,
+}: {
+  spec: BottomChannelsSpec;
+  resolved: ResolvedChannels;
+  board: BottomBoard;
+  rule: BottomWingRule;
+  system: UnitsSystem;
+  floor: string | null;
+  onChange: (patch: Partial<BottomChannelsSpec>, changed?: StationField) => void;
+}) {
+  const readout = channelReadout(resolved, board, rule);
+  const widthSlider = measureSlider(spec.width, CHANNEL_WIDTH_RANGE_IN, MARK_STEP_IN, 1, system);
+  const widthWords = channelWidthWords(readout, system);
+  const staggerText = staggerLabel(spec, readout, system);
+  const stagger = measureSlider(spec.stagger, STAGGER.rangeIn, STAGGER.stepIn, STAGGER.stepMm, system);
+  const station = (field: StationField) => (
+    <ChannelStationRow key={field} field={field} resolved={resolved} board={board} system={system} longest={spec.longest} onChange={onChange} />
+  );
+
+  return (
+    <>
+      {/* The Width label reads the set out — the width asked for, what it was cut to when squeezed, the ramp and the last
+          wall — in the panel's muted ink: information, never the warning colour (the RAILS "trimmed to fit" rule). */}
+      <div data-bottom-channel-width>
+        <SliderRow
+          label={channelWidthLabel(readout, system)}
+          value={widthSlider.value}
+          min={widthSlider.min}
+          max={widthSlider.max}
+          step={widthSlider.step}
+          sliderLabel={CHANNELS_COPY.sliderName(CHANNELS_COPY.width)}
+          sliderValueText={widthWords}
+          onValueChange={(v) => onChange({ width: widthSlider.toMm(v) })}
+        />
+      </div>
+      <MarkRow
+        name={CHANNELS_COPY.sliderName(BOTTOM_COPY.offStringer)}
+        field="offStringer"
+        value={spec.offStringer}
+        system={system}
+        onChange={(value) => onChange({ offStringer: value })}
+      />
+      {station("start")}
+      {staggerText !== null && (
+        <SliderRow
+          label={staggerText}
+          value={stagger.value}
+          min={stagger.min}
+          max={stagger.max}
+          step={stagger.step}
+          leftHint={CHANNELS_COPY.staggerLeft}
+          rightHint={formatDim(stagger.toMm(stagger.max), system)}
+          sliderLabel={CHANNELS_COPY.sliderName(CHANNELS_COPY.stagger)}
+          sliderValueText={staggerWords(spec, readout, system) ?? undefined}
+          onValueChange={(v) => onChange({ stagger: stagger.toMm(v) })}
+        />
+      )}
+      {station("deepest")}
+      {station("end")}
+      <div>
+        <MarkRow
+          name={CHANNELS_COPY.sliderName(BOTTOM_COPY.depth)}
+          field="depth"
+          value={spec.depth}
+          system={system}
+          onChange={(value) => onChange({ depth: value })}
+        />
+        {floor && (
+          <p data-bottom-floor className={FLOOR_LINE}>
+            {floor}
+          </p>
+        )}
+      </div>
+      <SmoothnessRow
+        name={CHANNELS_COPY.sliderName(BOTTOM_COPY.smoothness)}
+        value={spec.smoothness}
+        words={channelSmoothnessWords(spec.smoothness)}
+        hints={[CHANNELS_COPY.smoothnessLeft, CHANNELS_COPY.smoothnessRight]}
+        onChange={(v) => onChange({ smoothness: v })}
+      />
+    </>
+  );
+}
+
+/**
+ * The channels' Start, Deepest At or End (D-03, D-07): the section rows' own track — nose (left) to tail (right), filling
+ * from the dot to the tail — read from the tail, Start naming the longest pair; a drag stored the channels' way
+ * (`storeChannelStation`) and kept in order by the store. Reads the RESOLVED channels, so a station the front fins
+ * pushed shows where it is (D-36).
+ */
+function ChannelStationRow({
+  field,
+  resolved,
+  board,
+  system,
+  longest,
+  onChange,
+}: {
+  field: StationField;
+  resolved: ResolvedChannels;
+  board: BottomBoard;
+  system: UnitsSystem;
+  longest: BottomChannelsSpec["longest"];
+  onChange: (patch: Partial<BottomChannelsSpec>, changed?: StationField) => void;
+}) {
+  const slider = bottomStationSlider(resolved[field], board.length, system);
+  const fromTail = BOTTOM_COPY.fromTip("tail", formatBottomStation(resolved[field], system));
+  const words = field === "start" ? CHANNELS_COPY.startWords(fromTail, longest) : fromTail;
+  return (
+    <SliderRow
+      className="slider-fill-end"
+      label={STATION_LABEL[field]}
+      displayValue={words}
+      value={slider.value}
+      min={slider.min}
+      max={slider.max}
+      step={slider.step}
+      leftHint={BOTTOM_COPY.stationLeft}
+      rightHint={BOTTOM_COPY.stationRight}
+      sliderLabel={CHANNELS_COPY.sliderName(STATION_LABEL[field])}
+      sliderValueText={words}
+      onValueChange={(v) => onChange(storeChannelStation(field, slider.toMm(v), board), field)}
+    />
   );
 }
 
@@ -287,15 +629,12 @@ function MarkRow({
   field,
   value,
   system,
-  label,
   onChange,
 }: {
   name: string;
   field: MarkField;
   value: Mm;
   system: UnitsSystem;
-  /** The label line in place of the plain `{label} — {mark}` (the channels' Width read-out). */
-  label?: string;
   onChange: (value: Mm) => void;
 }) {
   const row = MARK_ROWS[field];
@@ -304,8 +643,8 @@ function MarkRow({
   const words = row.words ? row.words(mark) : mark;
   return (
     <SliderRow
-      label={label ?? row.label}
-      displayValue={label === undefined ? words : undefined}
+      label={row.label}
+      displayValue={words}
       value={slider.value}
       min={slider.min}
       max={slider.max}
