@@ -1,27 +1,41 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useId, useMemo, useRef } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { DimensionLine, useSvgClientSize, ViewerZoomUnitProvider } from "@/components/viewer/callout-primitives";
-import { zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { COARSE_TOUCH_BOX, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   bottomSection,
+  ghostRail,
+  ghostRailPath,
   sectionGauges,
   sectionHeightLabel,
+  sectionRuler,
   SECTION_WORDS_MIN_BOX,
+  type BottomCutKey,
   type Gauge,
   type GaugeLabel,
   type SectionHeight,
+  type SectionRuler,
 } from "@/lib/geometry/bottom-draw";
 import { formatDim, formatMark } from "@/lib/geometry/measure-display";
 import { mm, type UnitsSystem } from "@/lib/geometry/units";
+import { cn } from "@/lib/utils";
 import { BOTTOM_COPY } from "./bottom-copy";
+import { useSectionStation } from "./section-station";
 
 /** The drawing's words, in screen dots (the sketch's `.lab` 9 and `.val` 11). */
 const LABEL_DOTS = 9;
 const VALUE_DOTS = 11;
+
+/** The four Height picks (D-13). */
+const HEIGHTS: readonly SectionHeight[] = [1, 2, 4, 8];
+
+/** A ruler value's width in dots — the sketch's own estimate, 6.2 dots a figure (sketch line 787), so every paint lays the
+ * values out the same way. */
+const rulerValueWidth = (text: string) => text.length * 6.2;
 
 /** A gauge's words (UI-SPEC § On the drawings): with them in a box of 625 dots or more, the value alone below it. */
 function gaugeText(gauge: Gauge, label: GaugeLabel, system: UnitsSystem): string {
@@ -42,9 +56,12 @@ function gaugeText(gauge: Gauge, label: GaugeLabel, system: UnitsSystem): string
 }
 
 interface BottomSectionProps {
-  /** Where the section is taken, from the tail. */
-  station: number;
   height: SectionHeight;
+  onHeight: (height: SectionHeight) => void;
+  /** The live cut: its layout marks are the ruler's (D-14). */
+  live: BottomCutKey;
+  /** The finished rail from RAILS, drawn over the slab (D-13). */
+  showFinishedRail: boolean;
 }
 
 /**
@@ -54,24 +71,41 @@ interface BottomSectionProps {
  * the stringer left — each drawn with the app's `DimensionLine` and its 45° tick, never `0"`.
  *
  * One scale for every station (the wide point's section spans the box less 20 dots a side) and the height at the
- * Height pick, fitted when a deep cut would leave the box. Like the top view the picture takes its own box's shape and
- * every stroke and word is written in screen dots; the only size question is this box's own (`useSvgClientSize`) — the
- * gauges' words and `PLANED BOTTOM` from 625 dots (D-30). Every shape is `bottom-draw.ts`'s (CLAUDE.md Rule 1). The ruler
- * of layout marks and the finished rail from RAILS join in 17-10 — until then the section is drawn with no live cut,
- * so `bottomSection` leaves no room for a ruler under it.
+ * Height pick — `HEIGHT ×4`, `TRUE HEIGHT` at ×1 — fitted when a deep cut would leave the box, the factor actually drawn
+ * then written (`HEIGHT ×2.3`), with a break line across the slab's top when it would not fit. Under the straightedge
+ * the ruler of the live cut's layout marks off the stringer (D-14, D-30): bare from a 548-dot box, its caption and the
+ * gauge words from 625, none below 548. The finished rail from RAILS (D-13, D-41), when ticked, is the station's own
+ * bottomed ring from the store's `bottomSections` — the rail RAILS bands, lifted and thinned by the cut — clipped to the
+ * slab.
+ *
+ * Like the top view the picture takes its own box's shape and every stroke and word is written in screen dots; the only
+ * size question is this box's own (`useSvgClientSize`), never the window or the device. Every shape is
+ * `bottom-draw.ts`'s (CLAUDE.md Rule 1).
  */
-export function BottomSection({ station, height }: BottomSectionProps) {
+export function BottomSection({ height, onHeight, live, showFinishedRail }: BottomSectionProps) {
   const { system } = useUnits();
-  const { bottomBoard: board, resolvedBottom: resolved } = useDesign();
+  // Where the section is taken, from the tail: the cutting line's station (`section-station.ts`).
+  const station = useSectionStation();
+  const { bottomBoard: board, resolvedBottom: resolved, bottomSections } = useDesign();
   const svgRef = useRef<SVGSVGElement>(null);
   const box = useSvgClientSize(svgRef);
+  const clipId = useId();
   const measured = box.width > 40 && box.height > 20;
 
   const drawing = useMemo(
-    () => (measured ? bottomSection(resolved, board, mm(station), height, { width: box.width, height: box.height }, { live: null }) : null),
-    [measured, resolved, board, station, height, box.width, box.height],
+    () => (measured ? bottomSection(resolved, board, mm(station), height, { width: box.width, height: box.height }, { live }) : null),
+    [measured, resolved, board, station, height, box.width, box.height, live],
   );
   const gauges = useMemo(() => (drawing ? sectionGauges(drawing, resolved, board, system) : []), [drawing, resolved, board, system]);
+  const ruler = useMemo(
+    () => (drawing ? sectionRuler(drawing, resolved, board, live, system, rulerValueWidth) : null),
+    [drawing, resolved, board, live, system],
+  );
+  const ghost = useMemo(() => {
+    if (!showFinishedRail || !drawing || drawing.pieces.length === 0) return null;
+    const ring = ghostRail(bottomSections, mm(station));
+    return ring ? ghostRailPath(ring, drawing) : null;
+  }, [showFinishedRail, drawing, bottomSections, station]);
 
   const stationText = formatBottomStation(mm(station), system);
   const widthText = drawing ? formatDim(drawing.widthAtStation, system) : null;
@@ -79,15 +113,17 @@ export function BottomSection({ station, height }: BottomSectionProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-none items-center justify-between gap-2 pb-1">
-        <span className="text-[10px] font-bold tracking-architectural text-surf-ink-muted">
+        <span className="block min-w-0 truncate text-[10px] font-bold tracking-architectural text-surf-ink-muted">
           {BOTTOM_COPY.sectionCaption(stationText)}
           {widthText !== null && <span className="max-shell:hidden">{BOTTOM_COPY.sectionCaptionWidth(widthText)}</span>}
         </span>
+        <HeightPicker height={height} onHeight={onHeight} />
       </div>
       <div className="relative min-h-0 flex-1">
         <svg
           ref={svgRef}
           data-bottom-section
+          data-height={drawing ? drawing.heightDrawn.toFixed(2) : undefined}
           role="img"
           aria-label={BOTTOM_COPY.sectionName(stationText, widthText ?? "")}
           viewBox={drawing ? `0 0 ${drawing.width} ${drawing.height}` : undefined}
@@ -97,7 +133,7 @@ export function BottomSection({ station, height }: BottomSectionProps) {
           {drawing && (
             // Every DimensionLine and its tick in screen dots: one dot is `px` drawing units.
             <ViewerZoomUnitProvider value={drawing.px}>
-              <SectionDrawingParts drawing={drawing} gauges={gauges} system={system} />
+              <SectionDrawingParts drawing={drawing} gauges={gauges} ruler={ruler} ghost={ghost} clipId={clipId} system={system} />
             </ViewerZoomUnitProvider>
           )}
         </svg>
@@ -106,13 +142,54 @@ export function BottomSection({ station, height }: BottomSectionProps) {
   );
 }
 
+/**
+ * The Height control (D-13; UI-SPEC §3.5): the word `Height` on a computer, then `×1` `×2` `×4` `×8`, the pick pressed.
+ * ×4 when the page opens; kept while on the page, never saved. View-only, so a locked board keeps it. On a touch screen
+ * each button takes the zoom row's invisible 44-dot touch box.
+ */
+function HeightPicker({ height, onHeight }: { height: SectionHeight; onHeight: (height: SectionHeight) => void }) {
+  return (
+    <div role="group" aria-label={BOTTOM_COPY.height} data-lock-exempt data-bottom-height className="flex flex-none items-center gap-2">
+      <span className="text-xs text-surf-ink-muted font-normal max-shell:hidden">{BOTTOM_COPY.height}</span>
+      <div className="flex gap-1">
+        {HEIGHTS.map((factor) => {
+          const pressed = factor === height;
+          return (
+            <button
+              key={factor}
+              type="button"
+              data-lock-exempt
+              aria-label={BOTTOM_COPY.heightButtonName(factor)}
+              aria-pressed={pressed}
+              onClick={() => onHeight(factor)}
+              className={cn(
+                "focus-ring-accent cursor-pointer rounded border px-2 text-[10px] font-bold tracking-[0.05em]",
+                COARSE_TOUCH_BOX,
+                pressed ? "border-surf-line text-surf-ink" : "border-transparent text-surf-ink-muted",
+              )}
+            >
+              {BOTTOM_COPY.heightButton(factor)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SectionDrawingParts({
   drawing,
   gauges,
+  ruler,
+  ghost,
+  clipId,
   system,
 }: {
   drawing: ReturnType<typeof bottomSection>;
   gauges: Gauge[];
+  ruler: SectionRuler | null;
+  ghost: string | null;
+  clipId: string;
   system: UnitsSystem;
 }) {
   const { px } = drawing;
@@ -135,16 +212,29 @@ function SectionDrawingParts({
 
   return (
     <>
-      <text x={8 * px} y={14 * px} style={labelStyle}>
+      <text data-bottom-height-label x={8 * px} y={14 * px} style={labelStyle}>
         {sectionHeightLabel(drawing)}
       </text>
       {drawing.pieces.map((d, i) => (
         <path key={i} d={d} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={1.1 * px} />
       ))}
+      {ghost && (
+        // The finished rail from RAILS (D-13), sitting on what the contour left, clipped to the slab.
+        <>
+          <defs>
+            <clipPath id={clipId}>
+              {drawing.pieces.map((d, i) => (
+                <path key={i} d={d} />
+              ))}
+            </clipPath>
+          </defs>
+          <path data-bottom-ghost d={ghost} fill="none" stroke="var(--outline-ghost)" strokeWidth={px} clipPath={`url(#${clipId})`} />
+        </>
+      )}
       {drawing.breakPath && (
         <>
           <path d={drawing.breakPath} fill="none" stroke="var(--surf-panel)" strokeWidth={7 * px} />
-          <path d={drawing.breakPath} fill="none" stroke="var(--outline-ink)" strokeWidth={px} />
+          <path data-bottom-break d={drawing.breakPath} fill="none" stroke="var(--outline-ink)" strokeWidth={px} />
         </>
       )}
       {drawing.stringer && (
@@ -189,6 +279,42 @@ function SectionDrawingParts({
           ))}
         </g>
       ))}
+      {ruler && <RulerParts ruler={ruler} px={px} labelStyle={labelStyle} />}
     </>
+  );
+}
+
+/**
+ * The ruler of layout marks (D-14, D-30; UI-SPEC §3.3; sketch lines 782–791): 40 dots under the straightedge, an ink line
+ * from the stringer to the farthest mark, a 10-dot origin tick, an 8-dot tick and its bare value (11/600) at every mark of
+ * the live cut, the values alternating two rows where they would touch, and `OFF THE STRINGER` left of the origin from
+ * a 625-dot box. Every position is `sectionRuler`'s.
+ */
+function RulerParts({ ruler, px, labelStyle }: { ruler: SectionRuler; px: number; labelStyle: Record<string, string | number> }) {
+  const valueStyle = {
+    fontFamily: "var(--font-body)",
+    fontWeight: 600,
+    fill: "var(--outline-ink)",
+    fontSize: VALUE_DOTS * px,
+    fontVariantNumeric: "tabular-nums",
+  } as const;
+  return (
+    <g data-bottom-ruler={ruler.caption === null ? "bare" : "captioned"}>
+      <line x1={ruler.x1} y1={ruler.y} x2={ruler.x2} y2={ruler.y} stroke="var(--outline-ink)" strokeWidth={px} />
+      <line x1={ruler.x1} y1={ruler.y - 5 * px} x2={ruler.x1} y2={ruler.y + 5 * px} stroke="var(--outline-ink)" strokeWidth={px} />
+      {ruler.caption !== null && (
+        <text data-bottom-ruler-caption x={ruler.x1 - 8 * px} y={ruler.y + 3 * px} textAnchor="end" style={labelStyle}>
+          {ruler.caption}
+        </text>
+      )}
+      {ruler.ticks.map((tick) => (
+        <g key={tick.column} data-bottom-ruler-tick={tick.column}>
+          <line x1={tick.x} y1={ruler.y - 4 * px} x2={tick.x} y2={ruler.y + 4 * px} stroke="var(--outline-ink)" strokeWidth={px} />
+          <text x={tick.x} y={ruler.y + (16 + 11 * tick.row) * px} textAnchor="middle" style={valueStyle}>
+            {tick.text}
+          </text>
+        </g>
+      ))}
+    </g>
   );
 }

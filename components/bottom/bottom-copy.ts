@@ -14,8 +14,10 @@ import {
   type BottomBoard,
   type BottomChannelsSpec,
   type BottomFloorFlag,
+  type BottomMarkColumn,
   type BottomSectionKey,
   type channelReadout,
+  type ResolvedChannels,
 } from "@/lib/geometry/bottom";
 import { formatDim, formatMark } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
@@ -95,7 +97,74 @@ export const BOTTOM_COPY = {
   rowTail: "Tail",
   rowNoseTip: "Nose tip",
   emptyCell: "—",
+
+  /** The finished rail from RAILS (D-13): a tick row in INPUTS, off when the page opens, never saved. */
+  showFinishedRail: "Show the finished rail from RAILS",
+
+  /** The Height control (D-13, UI-SPEC §3.5): the group's word and name, each button's face and spoken name. */
+  height: "Height",
+  heightButton: (factor: number) => `×${factor}`,
+  heightButtonName: (factor: number) => `Height ×${factor}`,
+
+  /** `Section at` (UI-SPEC §3.6): the row's word, the slider's spoken name, and its spoken value `36" from the tail`. */
+  sectionAt: "Section at",
+  sectionAtValue: (station: string) => `${station} from the tail`,
+
+  /** DATA's second table (D-16): its heading, Metric ` (mm)` — the app's header form, not the sketch's ` · mm`. */
+  marksHeading: (metric: boolean) => `Layout marks · off the stringer${metric ? " (mm)" : ""}`,
+
+  /** DATA's first note (UI-SPEC § Copywriting "DATA", the sketch's line 855). */
+  depthsNote:
+    "Deepest cut is the largest gap under a straightedge laid rail to rail at that station. Rail lift is that gap at the rail. Stringer left is the planed thickness less the cut at the stringer.",
 } as const;
+
+/** A layout-marks column's words (D-16; UI-SPEC § Copywriting "DATA"): each section's mark — `Nose edge`, `Center
+ * flat`, `Center trough`, `Center edge`, `Tail flat` — then the channels' `Flat edge` and `Wall 1` … `Wall 4`. */
+export function layoutMarkColumnName(column: Pick<BottomMarkColumn, "section" | "mark" | "index">): string {
+  if (column.section === "channels") return column.mark === "wall" ? `Wall ${column.index ?? 1}` : "Flat edge";
+  return `${BOTTOM_SECTION_NAME[column.section]} ${column.mark}`;
+}
+
+/** A stagger this small is no stagger in DATA's note (the sketch's 0.5 mm). */
+const STAGGER_SAID = 0.5;
+
+/**
+ * DATA's second note, said only when the layout-marks table is drawn (the sketch's own sentence, line 856): how the marks
+ * are measured; then, only when channels are cut — the same test that gives DATA its `Wall` columns (a count of 4, 6 or 8
+ * and some depth) — how the channels abut, and for a staggered set that a wall is ruled only from where its own channel
+ * starts, `the outer pair first, each channel out from it 2" shorter` (the stagger a dim, `formatDim`). A board with no
+ * channels never mentions them (the founder at 17-10's look, 2026-11-09).
+ */
+export function layoutMarksNote(channels: Pick<ResolvedChannels, "count" | "depth" | "longest" | "stagger">, system: UnitsSystem): string {
+  const measured =
+    "Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank.";
+  if (channels.count < 4 || channels.depth <= 0) return measured;
+  const staggered = channels.longest !== "same" && channels.stagger > STAGGER_SAID;
+  const stagger = staggered
+    ? `; a wall is ruled only from where its own channel starts — the ${channels.longest} pair first, each channel out from it ${formatDim(channels.stagger, system)} shorter`
+    : "";
+  return `${measured} The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak${stagger}.`;
+}
+
+/** DATA's third note: the two rows drawn in full ink, `Wide point 36" and front fins 10 7/8" from the tail …` — a board
+ * with no front pair names its `fin`, as the top view's `FIN · 14"` does. Each station through `formatBottomStation`. */
+export function referenceRowsNote(board: Pick<BottomBoard, "widePoint" | "frontFins">, frontPair: boolean, system: UnitsSystem): string {
+  return `Wide point ${formatBottomStation(board.widePoint, system)} and ${frontPair ? "front fins" : "fin"} ${formatBottomStation(board.frontFins, system)} from the tail are the two rows in full ink.`;
+}
+
+/** The floor note in DATA (D-09, D-33 as amended by D-40; the orchestrator's ruling at 17-09): the panel's own sentence
+ * (`floorWarning`), never a third wording, named for the cut it belongs to — `Deep Single Concave: This cut meets …`;
+ * the channels' sentence already names them. `null` when the cut meets nothing. */
+export function dataFloorNote(
+  flag: BottomFloorFlag | undefined,
+  cutName: string,
+  board: Pick<BottomBoard, "length">,
+  system: UnitsSystem,
+): string | null {
+  const sentence = floorWarning(flag, board, system);
+  if (sentence === null || !flag) return null;
+  return flag.section === "channels" ? sentence : `${cutName}: ${sentence}`;
+}
 
 /** The floor's fix, said once after either form (UI-SPEC § Warnings and edge copy). */
 const FLOOR_FIX = "Lower the Depth, or move the cut away from the tip.";

@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useMemo, useRef } from "react";
+import { memo, useId, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
+import { TAP_MAX_TRAVEL_PX } from "@/components/viewer/drag-selection";
 import { zoomDashToken } from "@/components/viewer/zoom-viewport";
 import {
   bottomContourLines,
@@ -13,6 +14,7 @@ import {
   placeRailLabels,
   polylinesPathData,
   shadePathData,
+  stationAtPointer,
   topViewFrame,
   topViewMap,
   topViewMarks,
@@ -20,11 +22,13 @@ import {
   topViewY,
   type BottomCutKey,
   type RailMark,
+  type TopViewFrame,
 } from "@/lib/geometry/bottom-draw";
 import { formatLength } from "@/lib/geometry/measure-display";
 import { silhouette } from "@/lib/geometry/screen-tiles";
-import { mm } from "@/lib/geometry/units";
+import { mm, type Mm } from "@/lib/geometry/units";
 import { BOTTOM_COPY } from "./bottom-copy";
+import { useSectionStation, useSetSectionStation } from "./section-station";
 
 /** The shade's strength per 1/32" level on the top view (UI-SPEC § Color; a GUIDE cartoon's is 5%). */
 const SHADE_OPACITY = 0.04;
@@ -43,10 +47,16 @@ function labelWidth(mark: Pick<RailMark, "name" | "value">, joined: boolean): nu
 
 interface BottomTopViewProps {
   live: BottomCutKey;
-  /** Where the section is taken, from the tail: the cutting line stands there. */
-  station: number;
   /** The board's name as the tab band shows it, for the drawing's spoken name. */
   boardName: string;
+}
+
+/** The gesture under way: where it was pressed (in client dots) and whether it has travelled far enough to be a drag. */
+interface Gesture {
+  pointerId: number;
+  x: number;
+  y: number;
+  dragging: boolean;
 }
 
 /**
@@ -54,7 +64,7 @@ interface BottomTopViewProps {
  * stringer, wide point and front fins; the shade, one path per 1/32" level, clipped to the board; a contour line at
  * every 1/16"; the pencil lines a shaper would rule, the live cut's in ink; FINS' own base lines; the wide point and the
  * front fins named on the upper rail and the live cut's START · DEEPEST · END on the lower; and the section's cutting
- * line with its grab dot (its drag is 17-10's).
+ * line with its grab dot. Press anywhere on the board, drag or tap, and the section follows (D-12, 17-10).
  *
  * The picture takes its own box's shape (a viewBox 1000 wide and as tall as the box) and every stroke, dash and word is
  * written in screen dots — `px` drawing units a dot — so a 1-dot line is 1 dot on any box (`useSvgClientSize`, the
@@ -62,10 +72,15 @@ interface BottomTopViewProps {
  * paint agree. Every shape is `bottom-draw.ts`'s; this only paints (CLAUDE.md Rule 1). The shade and the lines are
  * worked out once per bottom, never per station (17-07: 45-85 ms a board).
  */
-export function BottomTopView({ live, station, boardName }: BottomTopViewProps) {
+export function BottomTopView({ live, boardName }: BottomTopViewProps) {
   const { system } = useUnits();
+  // A press, drag or tap moves the section (from the tail, clamped to the board); only the cutting line reads it back.
+  const setStation = useSetSectionStation();
+  const onStation = (at: Mm) => setStation({ at });
   const { bottomBoard: board, resolvedBottom: resolved, outlineGeometry, finPlacement, outline } = useDesign();
   const svgRef = useRef<SVGSVGElement>(null);
+  const drawingRef = useRef<SVGGElement>(null);
+  const gestureRef = useRef<Gesture | null>(null);
   const box = useSvgClientSize(svgRef);
   const clipId = useId();
 
@@ -73,7 +88,7 @@ export function BottomTopView({ live, station, boardName }: BottomTopViewProps) 
   const contours = useMemo(() => bottomContourLines(resolved, board), [resolved, board]);
   const pencil = useMemo(() => bottomPencilLines(resolved, board, live), [resolved, board, live]);
   const fins = useMemo(() => bottomFinLines(finPlacement), [finPlacement]);
-  const marks = topViewMarks(board, resolved, live, finPlacement, system);
+  const marks = useMemo(() => topViewMarks(board, resolved, live, finPlacement, system), [board, resolved, live, finPlacement, system]);
 
   const measured = box.width > 40 && box.height > 20;
   const frame = useMemo(() => (measured ? topViewFrame(board, box.width, box.height) : null), [measured, board, box.width, box.height]);
@@ -89,6 +104,43 @@ export function BottomTopView({ live, station, boardName }: BottomTopViewProps) 
     };
   }, [frame, outlineGeometry, shade, contours, pencil]);
 
+  /** The pointer's x in drawing units, from the drawing group's own screen matrix (TEMPLATE's `toBoardPoint`). */
+  function pointerStation(event: ReactPointerEvent<HTMLDivElement>): Mm | null {
+    const el = drawingRef.current ?? svgRef.current;
+    const ctm = el?.getScreenCTM();
+    if (!frame || !ctm) return null;
+    const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+    return stationAtPointer(local.x, frame);
+  }
+
+  // D-12: press anywhere on the top view and the section jumps there; drag and it follows the pointer. A press that
+  // moves less than `TAP_MAX_TRAVEL_PX` is a tap, so a finger's wobble leaves the section where it landed.
+  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || !frame) return;
+    const at = pointerStation(event);
+    if (at === null) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    gestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragging: false };
+    onStation(at);
+  }
+
+  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture.dragging && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) <= TAP_MAX_TRAVEL_PX) return;
+    gesture.dragging = true;
+    const at = pointerStation(event);
+    if (at !== null) onStation(at);
+  }
+
+  function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    gestureRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
   return (
     <div className="flex min-h-0 flex-[1.25] flex-col">
       {/* The caption row (UI-SPEC §3.1); on an upright phone it is hidden — width alone. */}
@@ -96,7 +148,17 @@ export function BottomTopView({ live, station, boardName }: BottomTopViewProps) 
         <span className="text-[10px] font-bold uppercase tracking-architectural text-surf-ink-muted">{BOTTOM_COPY.topViewCaption}</span>
         <span className="text-xs text-surf-ink-muted">{BOTTOM_COPY.topViewNoseLeft(formatLength(outline.length, system))}</span>
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div
+        data-bottom-top-view-press
+        className="relative min-h-0 flex-1 touch-none select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        // The cutting line is pointer-only; its keyboard path is `Section at` (UI-SPEC §12). View-only, so a locked board
+        // keeps it (UI-SPEC §7).
+        data-lock-exempt
+      >
         <svg
           ref={svgRef}
           data-bottom-top-view
@@ -107,30 +169,37 @@ export function BottomTopView({ live, station, boardName }: BottomTopViewProps) 
           className="absolute inset-0 block h-full w-full touch-none select-none"
         >
           {frame && paths && (
-            <TopViewDrawing
-              frame={frame}
-              paths={paths}
-              clipId={clipId}
-              board={board}
-              marks={marks}
-              fins={fins}
-              station={station}
-            />
+            <g ref={drawingRef}>
+              <TopViewDrawing frame={frame} paths={paths} clipId={clipId} board={board} marks={marks} fins={fins} />
+            </g>
           )}
+        </svg>
+        {/* The cutting line on a layer of its own, the same box and viewBox over the drawing: a drag moves only this
+            layer, so the shade (16 paths and 100 KB of path data on a fully cut Longboard) is never painted again
+            while a finger moves — measured, the repaint was most of a drag step's cost. */}
+        <svg
+          aria-hidden
+          data-bottom-cut-layer
+          viewBox={frame ? `0 0 ${frame.width} ${frame.height}` : undefined}
+          preserveAspectRatio="xMidYMid meet"
+          className="pointer-events-none absolute inset-0 block h-full w-full touch-none select-none [will-change:transform]"
+        >
+          {frame && <CuttingLine frame={frame} board={board} />}
         </svg>
       </div>
     </div>
   );
 }
 
-function TopViewDrawing({
+/** Everything on the top view but the cutting line — memoised, so a drag (which moves only the line) never redraws the
+ * shade, the lines or the names. */
+const TopViewDrawing = memo(function TopViewDrawing({
   frame,
   paths,
   clipId,
   board,
   marks,
   fins,
-  station,
 }: {
   frame: ReturnType<typeof topViewFrame>;
   paths: {
@@ -143,7 +212,6 @@ function TopViewDrawing({
   board: ReturnType<typeof useDesign>["bottomBoard"];
   marks: ReturnType<typeof topViewMarks>;
   fins: ReturnType<typeof bottomFinLines>;
-  station: number;
 }) {
   const { px, height } = frame;
   const X = (s: number) => topViewX(frame, s);
@@ -174,7 +242,6 @@ function TopViewDrawing({
         (text) => labelWidth({ name: text, value: marks.lower!.marks.find((m) => m.name === text)!.value }, false),
       )
     : [];
-  const cutX = X(station);
 
   return (
     <>
@@ -306,18 +373,44 @@ function TopViewDrawing({
             )}
           </g>
         ))}
-      {/* The section's cutting line, the drawing convention's dash-dot, and its grab dot under the board. */}
+    </>
+  );
+});
+
+/**
+ * The section's cutting line (D-12; UI-SPEC §3.2): the drawing convention's dash-dot from 8 dots above the board to the
+ * lower rail, its accent grab dot (r 7) 30 dots under the rail, and over both a 44-dot invisible grab zone that takes the
+ * `ew-resize` cursor. The press itself is the SVG's (anywhere on the top view moves the section); the zone only says
+ * where the line can be taken.
+ */
+function CuttingLine({ frame, board }: { frame: TopViewFrame; board: ReturnType<typeof useDesign>["bottomBoard"] }) {
+  const station = useSectionStation();
+  const { px, height } = frame;
+  const x = topViewX(frame, station);
+  const yTop = topViewY(frame, -board.railAt(mm(station))) - 8 * px;
+  const yLow = height - frame.padBottom + 6 * px;
+  return (
+    <g data-bottom-cut-at={station.toFixed(1)}>
       <line
         data-bottom-cut-line
-        x1={cutX}
-        y1={Y(-edgeAt(station)) - 8 * px}
-        x2={cutX}
+        x1={x}
+        y1={yTop}
+        x2={x}
         y2={yLow + 2 * px}
         stroke="var(--outline-ink)"
         strokeWidth={1.1 * px}
-        strokeDasharray={dash("--outline-cut-dash")}
+        strokeDasharray={zoomDashToken("--outline-cut-dash", px)}
       />
-      <circle cx={cutX} cy={yLow + 30 * px} r={7 * px} fill="var(--surf-accent)" stroke="var(--outline-ink)" strokeWidth={px} />
-    </>
+      <circle data-bottom-grab cx={x} cy={yLow + 30 * px} r={7 * px} fill="var(--surf-accent)" stroke="var(--outline-ink)" strokeWidth={px} />
+      <rect
+        data-bottom-grab-zone
+        x={x - 22 * px}
+        y={yTop}
+        width={44 * px}
+        height={yLow + 40 * px - yTop}
+        fill="transparent"
+        className="pointer-events-auto cursor-ew-resize"
+      />
+    </g>
   );
 }

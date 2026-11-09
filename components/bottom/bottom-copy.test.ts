@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
@@ -29,7 +30,11 @@ import {
   channelSmoothnessWords,
   channelWidthLabel,
   channelWidthWords,
+  dataFloorNote,
   floorWarning,
+  layoutMarkColumnName,
+  layoutMarksNote,
+  referenceRowsNote,
   runOptionLabel,
   staggerLabel,
   staggerWords,
@@ -235,5 +240,88 @@ describe("the CHANNELS block's words (D-10, D-11)", () => {
       "Channels Depth",
       "Channels Smoothness",
     ]);
+  });
+});
+
+describe("DATA's second table and notes (17-10, D-16)", () => {
+  it("the layout-marks columns read each section's mark, then the channels' flat edge and walls", () => {
+    expect(layoutMarkColumnName({ section: "nose", mark: "edge" })).toBe("Nose edge");
+    expect(layoutMarkColumnName({ section: "center", mark: "flat" })).toBe("Center flat");
+    expect(layoutMarkColumnName({ section: "center", mark: "trough" })).toBe("Center trough");
+    expect(layoutMarkColumnName({ section: "tail", mark: "flat" })).toBe("Tail flat");
+    expect(layoutMarkColumnName({ section: "channels", mark: "flat" })).toBe("Flat edge");
+    expect([1, 2, 3, 4].map((index) => layoutMarkColumnName({ section: "channels", mark: "wall", index }))).toEqual(["Wall 1", "Wall 2", "Wall 3", "Wall 4"]);
+    expect(BOTTOM_COPY.marksHeading(false)).toBe("Layout marks · off the stringer");
+    expect(BOTTOM_COPY.marksHeading(true)).toBe("Layout marks · off the stringer (mm)");
+  });
+
+  it("the marks note speaks of the channels only when they are cut (the founder, 2026-11-09), and names the stagger only for a staggered set", () => {
+    const measured = "Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank.";
+    const base = `${measured} The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak`;
+    const two = inchesToMm(2);
+    const quarter = inchesToMm(1 / 4);
+    // No channels cut — None, or a set with no depth — never mentions them.
+    expect(layoutMarksNote({ count: 0, depth: quarter, longest: "outer", stagger: two }, "imperial")).toBe(measured);
+    expect(layoutMarksNote({ count: 6, depth: mm(0), longest: "outer", stagger: two }, "imperial")).toBe(measured);
+    // Channels cut: how they abut, and the stagger only when there is one.
+    expect(layoutMarksNote({ count: 6, depth: quarter, longest: "same", stagger: two }, "imperial")).toBe(`${base}.`);
+    expect(layoutMarksNote({ count: 6, depth: quarter, longest: "outer", stagger: mm(0) }, "imperial")).toBe(`${base}.`);
+    for (const system of SYSTEMS) {
+      expect(layoutMarksNote({ count: 6, depth: quarter, longest: "outer", stagger: two }, system)).toBe(
+        `${base}; a wall is ruled only from where its own channel starts — the outer pair first, each channel out from it ${formatDim(two, system)} shorter.`,
+      );
+    }
+  });
+
+  it("the reference-rows note: the wide point and the front fins (or a single fin) through the station formatter", () => {
+    const at = { widePoint: inchesToMm(36), frontFins: inchesToMm(10.875) };
+    for (const system of SYSTEMS) {
+      expect(referenceRowsNote(at, true, system)).toBe(
+        `Wide point ${formatBottomStation(at.widePoint, system)} and front fins ${formatBottomStation(at.frontFins, system)} from the tail are the two rows in full ink.`,
+      );
+    }
+    expect(referenceRowsNote(at, true, "imperial")).toBe('Wide point 36" and front fins 10 7/8" from the tail are the two rows in full ink.');
+    expect(referenceRowsNote(at, false, "imperial")).toMatch(/ and fin 10 7\/8" from the tail /);
+  });
+
+  it("the floor note in DATA is the panel's own sentence, named for its cut — never a third wording", () => {
+    for (const system of SYSTEMS) {
+      const concave = flag("center", [inchesToMm(30)], []);
+      expect(dataFloorNote(concave, "Deep Single Concave", board, system)).toBe(`Deep Single Concave: ${floorWarning(concave, board, system)}`);
+      const channels = flag("channels", [], [inchesToMm(2)]);
+      expect(dataFloorNote(channels, "", board, system)).toBe(floorWarning(channels, board, system));
+      expect(dataFloorNote(undefined, "Deep Single Concave", board, system)).toBeNull();
+    }
+  });
+});
+
+describe("BOTTOM's viewer (17-10): Height, Section at and the finished rail — words, and none of it saved", () => {
+  it("Height's four buttons and their spoken names; Section at speaks its station from the tail", () => {
+    expect([1, 2, 4, 8].map(BOTTOM_COPY.heightButton)).toEqual(["×1", "×2", "×4", "×8"]);
+    expect([1, 2, 4, 8].map(BOTTOM_COPY.heightButtonName)).toEqual(["Height ×1", "Height ×2", "Height ×4", "Height ×8"]);
+    for (const system of SYSTEMS) {
+      const station = formatBottomStation(inchesToMm(36), system);
+      expect(BOTTOM_COPY.sectionAtValue(station)).toBe(`${station} from the tail`);
+    }
+  });
+
+  it("the ruler and the section's words ask only the section's own box: nothing under components/bottom reads the window or the device (C3)", () => {
+    for (const file of ["bottom-editor.tsx", "bottom-section.tsx", "bottom-top-view.tsx", "bottom-controls.tsx", "bottom-data.tsx"]) {
+      const source = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
+      expect(source, file).not.toMatch(/\binnerWidth\b|\bmatchMedia\b|\bouterWidth\b|\bdevicePixelRatio\b/);
+    }
+    expect(readFileSync(new URL("./bottom-section.tsx", import.meta.url), "utf8")).toMatch(/useSvgClientSize\(svgRef\)/);
+  });
+
+  it("the view state — the station, Height, the finished-rail tick, the live cut — lives in BottomEditor alone, never in the store or a saved board (UI-SPEC §14)", () => {
+    const editor = readFileSync(new URL("./bottom-editor.tsx", import.meta.url), "utf8");
+    for (const state of ["height", "showFinishedRail", "live"]) {
+      expect(editor).toMatch(new RegExp(`const \\[${state}, set\\w+\\] = useState`));
+    }
+    // The station: a store of BottomEditor's own, made once when the page opens on the wide point.
+    expect(editor).toMatch(/const \[stationStore\] = useState\(\(\) => createSectionStationStore\(\{ follow: "wide" \}\)\)/);
+    const store = readFileSync(new URL("../design/design-store.tsx", import.meta.url), "utf8");
+    const snapshot = readFileSync(new URL("../../lib/models/design-snapshot.ts", import.meta.url), "utf8");
+    for (const source of [store, snapshot]) expect(source).not.toMatch(/sectionStation|showFinishedRail|SectionHeight|sectionHeight/);
   });
 });

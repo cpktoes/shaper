@@ -30,6 +30,11 @@ const LOCKABLE_FILES = [
   // Phase 17 (17-08): BOTTOM's panel — its three Cut menus are tied to the lock; its sliders are SliderRows, which read
   // the lock themselves. The view's own controls (17-10's Height, Section at and the drag) are data-lock-exempt.
   "components/bottom/bottom-controls.tsx",
+  // Phase 17 (17-10): the Height buttons under the section, and `Section at` under the drawings — view-only, each
+  // data-lock-exempt. (The top view's drag is its box's own pointer handlers, marked data-lock-exempt; it has no tag
+  // this inventory reads, and the case below checks it.)
+  "components/bottom/bottom-section.tsx",
+  "components/bottom/bottom-editor.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",
   "components/summary/order-form.tsx",
@@ -177,6 +182,25 @@ describe("board-lock-scope — the control inventory", () => {
     expect(pick).toHaveLength(1);
     expect(pick[0].tag).not.toMatch(/\bdata-lock-exempt\b/);
     expect(disabledExpression(pick[0].tag)).toBe("locked");
+  });
+
+  it("BOTTOM's view controls stay live on a locked board, and every board-changing one is tied to the lock (17-10, UI-SPEC §7)", () => {
+    // The finished-rail tick is view-only; the Teardrop's tick box changes the board.
+    const panel = interactiveTags("components/bottom/bottom-controls.tsx").filter(({ name }) => name === "Checkbox");
+    expect(panel.filter(({ tag }) => /\bdata-lock-exempt\b/.test(tag))).toHaveLength(1);
+    expect(panel.filter(({ tag }) => disabledExpression(tag) === "locked").length).toBeGreaterThanOrEqual(1);
+    // Height's four buttons are one mapped <button>, view-only; `Section at` is the one Slider, view-only.
+    const height = interactiveTags("components/bottom/bottom-section.tsx");
+    expect(height.map(({ name }) => name)).toEqual(["button"]);
+    expect(height[0].tag).toMatch(/\bdata-lock-exempt\b/);
+    const sectionAt = interactiveTags("components/bottom/bottom-editor.tsx");
+    expect(sectionAt.map(({ name }) => name)).toEqual(["Slider"]);
+    expect(sectionAt[0].tag).toMatch(/\bdata-lock-exempt\b/);
+    // The cutting line's drag lives on the top view's box, which says it only moves the section.
+    const topView = stripComments(read("components/bottom/bottom-top-view.tsx"));
+    const press = openingTag(topView, topView.lastIndexOf("<div", topView.indexOf("onPointerDown=")));
+    expect(press).toMatch(/onPointerDown=/);
+    expect(press).toMatch(/\bdata-lock-exempt\b/);
   });
 
   it("the design layout wraps every screen in the lock scope", () => {
