@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { BOTTOM_COPY, CHANNELS_COPY } from "../components/bottom/bottom-copy";
-import { BOTTOM_GUIDE_WORDS } from "../components/bottom/bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, GUIDE_SPACING, guideHow } from "../components/bottom/bottom-guide-words";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
@@ -293,6 +293,30 @@ test.describe("BOTTOM's GUIDE: nineteen cards in the founder's words, each drawn
       test.info().annotations.push({ type: "card heights", description: `${size.width}: ${Math.min(...heights)}–${Math.max(...heights)} dots` });
     });
   }
+
+  test('a Metric shaper reads 15 cm where an Imperial one reads 6": the four notes that space a straightedge, and no inch figure on any card', async ({ page }) => {
+    test.setTimeout(180_000);
+    // The chooser's own saved pick, set before the page loads — the way a returning Metric shaper arrives.
+    await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+    await openBottom(page, "shortboard");
+    await openGuide(page);
+
+    const spaced = BOTTOM_GUIDE_WORDS.filter((card) => card.how.includes(GUIDE_SPACING.imperial));
+    expect(spaced.map((card) => card.key)).toEqual(["Flat Entry", "Deep Single Concave", "Shallow Single Concave", "Channels"]);
+
+    // The founder's own example card, word for word.
+    const deepSingle = cardOf(page, "Deep Single Concave").locator("[data-guide-how]");
+    await expect(deepSingle).toContainText("check the gap with a straightedge every 15 cm and keep both sides the same");
+    await expect(deepSingle).not.toContainText('6"');
+
+    // Every note is the page's line with that one figure said the Metric way; fifteen of them are unchanged.
+    await expect(cards(page).locator("[data-guide-how]")).toHaveText(
+      BOTTOM_GUIDE_WORDS.map((card) => `${BOTTOM_COPY.guideHowToShape}${guideHow(card, "metric")}`),
+    );
+    for (const card of spaced) await expect(cardOf(page, card.key).locator("[data-guide-how]")).toContainText(GUIDE_SPACING.metric);
+    // Nowhere in the GUIDE does a Metric shaper meet an inch mark.
+    expect(await guide(page).evaluate((el) => (el as HTMLElement).innerText)).not.toMatch(/\d\s*["″]/);
+  });
 
   test("the words are drawn as plain text: nothing under components/bottom writes raw HTML", () => {
     const dir = join(process.cwd(), "components", "bottom");

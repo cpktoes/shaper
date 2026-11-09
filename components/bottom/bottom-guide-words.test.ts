@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BOTTOM_CUT_NAMES } from "@/lib/geometry/bottom";
 import { BOTTOM_COPY } from "./bottom-copy";
-import { BOTTOM_GUIDE_WORDS } from "./bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, GUIDE_SPACING, guideHow } from "./bottom-guide-words";
 
 /*
  * The GUIDE's words are the founder's (Phase 17, D-18): `17-GUIDE-WORDS.md` is the page he marks up, and the module the
@@ -116,6 +116,66 @@ describe("the GUIDE's words are the founder's page, line for line (D-18)", () =>
       tail: "Tail",
       channels: "Channels · cut last, inside TAIL",
     });
+  });
+});
+
+describe("the one figure in the words reads in the shaper's own system (the founder, 2026-11-09)", () => {
+  const SPACED = ["Flat Entry", "Deep Single Concave", "Shallow Single Concave", "Channels"];
+  const withSpacing = BOTTOM_GUIDE_WORDS.filter((card) => card.how.includes('6"'));
+
+  it('the spacing is said `6"` in Imperial and the round `15 cm` in Metric — two pieces of copy, nothing converted', () => {
+    expect(GUIDE_SPACING).toEqual({ imperial: '6"', metric: "15 cm" });
+    const words = readFileSync(new URL("./bottom-guide-words.ts", import.meta.url), "utf8");
+    expect(words).not.toMatch(/25\.4|2\.54|Math\.|toFixed/);
+  });
+
+  it("four notes carry it — Flat Entry, Deep Single Concave, Shallow Single Concave and Channels — once each", () => {
+    expect(withSpacing.map((card) => card.key)).toEqual(SPACED);
+    for (const card of withSpacing) expect(card.how.split('6"'), card.key).toHaveLength(2);
+  });
+
+  it('an Imperial shaper reads every note exactly as the page writes it, `6"` and all', () => {
+    for (const card of BOTTOM_GUIDE_WORDS) expect(guideHow(card, "imperial"), card.key).toBe(card.how);
+    for (const card of withSpacing) expect(guideHow(card, "imperial"), card.key).toContain('6"');
+  });
+
+  it("a Metric shaper reads `15 cm` in that place and the same words around it", () => {
+    for (const card of withSpacing) {
+      const [before, after] = card.how.split('6"');
+      expect(guideHow(card, "metric"), card.key).toBe(`${before}15 cm${after}`);
+    }
+    expect(guideHow(BOTTOM_GUIDE_WORDS[0], "metric")).toBe(
+      "Nothing to cut: plane the bottom true and check it with a straightedge laid rail to rail every 15 cm.",
+    );
+    expect(guideHow(BOTTOM_GUIDE_WORDS.at(-1)!, "metric")).toContain("at each 15 cm station from DATA's marks");
+    // The fifteen other notes read the same in both systems.
+    for (const card of BOTTOM_GUIDE_WORDS) {
+      if (!SPACED.includes(card.key)) expect(guideHow(card, "metric"), card.key).toBe(card.how);
+    }
+  });
+
+  it("no card a Metric shaper reads carries an inch figure anywhere — the name, the two sentences or the note", () => {
+    for (const card of BOTTOM_GUIDE_WORDS) {
+      for (const line of [card.key, card.is, card.does, guideHow(card, "metric")]) {
+        expect(line, card.key).not.toContain('6"');
+        expect(line, card.key).not.toMatch(/\d\s*("|''|″|in\b|inch)/);
+      }
+    }
+  });
+
+  it("the founder's page records the rule beside the words", () => {
+    const path = findPage(PLANNING);
+    if (!path) throw new Error(`${PAGE_NAME} was not found anywhere under .planning/`);
+    const text = readFileSync(path, "utf8").replace(/\s+/g, " ");
+    expect(text).toContain("**Metric (the founder, 2026-11-09");
+    expect(text).toContain('An Imperial shaper reads `6"` exactly as written below; a Metric shaper reads `15 cm` in its place.');
+  });
+
+  it("the guide hands each card its note through that one rule, and reads the chosen system from the app", () => {
+    const guide = readFileSync(new URL("./bottom-guide.tsx", import.meta.url), "utf8");
+    expect(guide).toMatch(/useUnits\(\)/);
+    expect(guide).toMatch(/guideHow\(card, system\)/);
+    expect(guide).not.toMatch(/card\.how/);
   });
 });
 

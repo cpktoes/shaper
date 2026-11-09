@@ -46,7 +46,7 @@ metrics:
 actuals:
   tokens: 16600
   tasks: 2
-  commits: 2
+  commits: 3
 ---
 
 # Phase 17 Plan 11: BOTTOM's GUIDE tab — Summary
@@ -151,13 +151,24 @@ about the window or the device, and that a card has no button or press handler. 
 Android one — where the plan says "390 (iphone project)" only. The test tool's own swapped box (664 × 390) is a layout
 no real phone shows. File: `e2e/bottom-guide.spec.ts`.
 
-### Raised, not changed
+### Raised at the look, then changed on the founder's word
 
 **9. Four How to shape notes say 6"** — Flat Entry, Deep Single Concave, Shallow Single Concave ("every 6"") and
-Channels ("each 6" station"). They are the founder's words and the plan says verbatim, so a Metric shaper reads 6" too.
-CLAUDE.md's Rule 2 says Metric means all-metric, with the rocker note as the one inch figure a Metric shaper sees. This
-is the founder's call: leave them as shop talk, or have Metric read 15 cm. Shown on the picture (panel 4, the sixth
-card) and asked as item 5 below.
+Channels ("each 6" station"). They are the founder's words and the plan says verbatim, so the first build showed a
+Metric shaper 6" too, against CLAUDE.md's Rule 2 (Metric means all-metric). It was shown on the picture (panel 4, the
+sixth card) and asked as item 5 below.
+
+**10. [The founder, 2026-11-09: "15 cm in Metric"] A Metric shaper now reads 15 cm in those four notes.** An Imperial
+shaper reads 6" exactly as before. It is a rule-of-thumb spacing said in prose, not a number off the board, so it is
+the round 15 cm (never 15.2 cm) and it is written as copy for each system — nothing is converted, and no inch or
+millimetre figure is worked out anywhere outside `lib/geometry/units.ts`. The founder's page keeps its lines in inches
+and now records the rule above the cards; the words module carries the two readings (`GUIDE_SPACING`, `guideHow`) and
+the GUIDE asks the app which system the shaper picked. Tests hold both ways: each of the four notes reads 6" in
+Imperial and 15 cm in Metric, the fifteen other notes read the same in both, no Metric card carries an inch figure,
+and a browser test reads the Deep Single Concave card as a Metric shaper. The picture was taken before this change, so
+its Metric card (panel 4, sixth) still shows 6"; no new picture was asked for. Files:
+`components/bottom/bottom-guide-words.ts`, `bottom-guide-words.test.ts`, `bottom-guide.tsx`,
+`e2e/bottom-guide.spec.ts`, `17-GUIDE-WORDS.md`.
 
 ## Known Stubs
 

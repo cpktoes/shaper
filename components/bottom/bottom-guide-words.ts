@@ -4,9 +4,12 @@
  *
  * That page is the source of truth, and it is his to mark up: a correction lands in both files in one change, and
  * `bottom-guide-words.test.ts` reads the page and fails if a single line here differs from it. Nothing else lives
- * here — no number, no drawing, no markup; the cards draw these strings as plain text.
+ * here — no drawing, no markup, no sum; the cards draw these strings as plain text.
+ *
+ * One figure in the words is said differently in each system (the founder, 2026-11-09) — see `GUIDE_SPACING` below.
  */
 import type { BottomCutName, BottomSectionKey } from "@/lib/geometry/bottom";
+import type { UnitsSystem } from "@/lib/geometry/units";
 
 /** One GUIDE card's words. `key` is the cut's own name (or `Channels`); `section` is the group it is listed under. */
 export interface BottomGuideCard {
@@ -16,8 +19,25 @@ export interface BottomGuideCard {
   is: string;
   /** What it does — drawn muted, after `is` in the same paragraph. */
   does: string;
-  /** How to shape — the note under the dashed rule. */
+  /** How to shape — the note under the dashed rule, as the page writes it (an Imperial shaper's reading). */
   how: string;
+}
+
+/**
+ * How far apart a straightedge check, or a channel's layout station, is — the one figure in the GUIDE's words. Four
+ * How to shape notes carry it: Flat Entry, Deep Single Concave, Shallow Single Concave and Channels.
+ *
+ * It is a rule of thumb said in prose, not a number off the board, so each system says it its own round way and
+ * nothing is converted (the founder, 2026-11-09: "15 cm in Metric" — never `15.2 cm`). The page writes the notes in
+ * inches; a Metric shaper reads the same notes with `15 cm` in that place.
+ */
+export const GUIDE_SPACING: Readonly<Record<UnitsSystem, string>> = { imperial: '6"', metric: "15 cm" };
+
+/** A card's How to shape note as a shaper on `system` reads it: the page's own line in Imperial, and in Metric the
+ * same line with the spacing said the Metric way. */
+export function guideHow(card: BottomGuideCard, system: UnitsSystem): string {
+  if (system === "imperial") return card.how;
+  return card.how.split(GUIDE_SPACING.imperial).join(GUIDE_SPACING.metric);
 }
 
 /** The nineteen cards in the page's order: Nose, Center, Tail, then Channels (cut last, inside TAIL). */

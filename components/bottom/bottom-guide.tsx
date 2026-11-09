@@ -3,13 +3,14 @@
 import { memo } from "react";
 import { bandBoardName } from "@/components/design/board-name-copy";
 import { useDesign } from "@/components/design/design-store";
+import { useUnits } from "@/components/units-provider";
 import type { BottomBoard, BottomCutName, BottomWingRule } from "@/lib/geometry/bottom";
 import type { GuideCartoonKey } from "@/lib/geometry/bottom-draw";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { cn } from "@/lib/utils";
 import { BottomCartoon } from "./bottom-cartoon";
 import { BOTTOM_COPY } from "./bottom-copy";
-import { BOTTOM_GUIDE_WORDS, type BottomGuideCard } from "./bottom-guide-words";
+import { BOTTOM_GUIDE_WORDS, guideHow, type BottomGuideCard } from "./bottom-guide-words";
 
 /**
  * GUIDE (Phase 17, D-17, D-18; UI-SPEC §5): what every cut is, what it does and how it is shaped — nineteen cards in
@@ -50,6 +51,7 @@ const GROUP_HEADING = "mt-4 mb-2 text-[10px] font-display text-surf-ink uppercas
 const ACCENT_CAPS = "text-[10px] font-display text-surf-accent-ink uppercase tracking-architectural font-extrabold";
 
 export function BottomGuide() {
+  const { system } = useUnits();
   const { bottom, bottomBoard, outlineGeometry, boardName, modelId } = useDesign();
 
   return (
@@ -70,6 +72,7 @@ export function BottomGuide() {
                 key={card.key}
                 card={card}
                 cut={cut}
+                how={guideHow(card, system)}
                 on={card.section === "channels" ? bottom.channels.count > 0 : bottom[card.section].name === card.key}
                 board={bottomBoard}
                 geometry={outlineGeometry}
@@ -84,6 +87,8 @@ export function BottomGuide() {
 }
 
 interface GuideCardProps extends GuideEntry {
+  /** The How to shape note as this shaper reads it: the page's line, its one spacing said in their own system. */
+  how: string;
   /** Whether this cut is the one on the open board in its section (the channels: whether any are cut). */
   on: boolean;
   board: BottomBoard;
@@ -93,7 +98,7 @@ interface GuideCardProps extends GuideEntry {
 
 /** One card: the name (and the tag), the cartoon, the two sentences, and the shaping note under a dashed rule. Drawn
  * again only when its own tag or the board changes — never because a slider moved. */
-const GuideCard = memo(function GuideCard({ card, cut, on, board, geometry, wingRule }: GuideCardProps) {
+const GuideCard = memo(function GuideCard({ card, cut, how, on, board, geometry, wingRule }: GuideCardProps) {
   return (
     <li
       data-guide-card={card.key}
@@ -117,7 +122,7 @@ const GuideCard = memo(function GuideCard({ card, cut, on, board, geometry, wing
       </p>
       <p data-guide-how className="border-t border-dashed border-surf-line-faint pt-2 text-xs leading-normal text-surf-ink-muted">
         <span className={cn(ACCENT_CAPS, "mb-1 block")}>{BOTTOM_COPY.guideHowToShape}</span>
-        {card.how}
+        {how}
       </p>
     </li>
   );

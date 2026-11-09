@@ -12,6 +12,12 @@ a card he leaves alone ships as written.
 
 The founder asked for *"VERY briefly (like 1-2 sentences)"* — every card below is two sentences plus the note.
 
+**Metric (the founder, 2026-11-09 — "15 cm in Metric"):** four How to shape notes carry a `6"` — Flat Entry, Deep
+Single Concave, Shallow Single Concave and Channels. An Imperial shaper reads `6"` exactly as written below; a Metric
+shaper reads `15 cm` in its place. It is a rule-of-thumb spacing said in prose, not a number off the board, so it is the
+round `15 cm`, never `15.2 cm`. The lines below stay as written, in inches; the screen swaps that one figure and nothing
+else, and a test holds both readings.
+
 
 ## Nose
 
