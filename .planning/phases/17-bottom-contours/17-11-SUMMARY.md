@@ -180,7 +180,9 @@ None new. T-17-10 (the board's name in the intro): the name is a plain text node
 `components/bottom/`, and a unit test holds that. T-17-11 (nineteen cartoons per redraw): each cartoon is remembered and
 the set is kept per board; the grids are 17-07's fixed small ones.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it"* Columns: keep three across from 1200 dots and two below. One change at the look: the four notes that say 6" read 15 cm for a Metric shaper (commit 8548a54a). The committed picture predates that change. No word corrections yet; he may mark any card at the UAT. Merged as 82ec6c17.
 
 **The picture:** `.planning/phases/17-bottom-contours/pictures/17-11-guide.png` (5300 × 7099 dots; every panel is the
 running page). Its makings are in `pictures/17-11-pictures-source.tar.gz`.
