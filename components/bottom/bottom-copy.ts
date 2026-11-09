@@ -130,15 +130,20 @@ const STAGGER_SAID = 0.5;
 
 /**
  * DATA's second note, said only when the layout-marks table is drawn (the sketch's own sentence, line 856): how the marks
- * are measured, how the channels abut, and — when a staggered set is cut — that a wall is ruled only from where its own
- * channel starts, `the outer pair first, each channel out from it 2" shorter` (the stagger a dim, `formatDim`).
+ * are measured; then, only when channels are cut — the same test that gives DATA its `Wall` columns (a count of 4, 6 or 8
+ * and some depth) — how the channels abut, and for a staggered set that a wall is ruled only from where its own channel
+ * starts, `the outer pair first, each channel out from it 2" shorter` (the stagger a dim, `formatDim`). A board with no
+ * channels never mentions them (the founder at 17-10's look, 2026-11-09).
  */
-export function layoutMarksNote(channels: Pick<ResolvedChannels, "count" | "longest" | "stagger">, system: UnitsSystem): string {
-  const staggered = channels.count > 0 && channels.longest !== "same" && channels.stagger > STAGGER_SAID;
+export function layoutMarksNote(channels: Pick<ResolvedChannels, "count" | "depth" | "longest" | "stagger">, system: UnitsSystem): string {
+  const measured =
+    "Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank.";
+  if (channels.count < 4 || channels.depth <= 0) return measured;
+  const staggered = channels.longest !== "same" && channels.stagger > STAGGER_SAID;
   const stagger = staggered
     ? `; a wall is ruled only from where its own channel starts — the ${channels.longest} pair first, each channel out from it ${formatDim(channels.stagger, system)} shorter`
     : "";
-  return `Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank. The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak${stagger}.`;
+  return `${measured} The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak${stagger}.`;
 }
 
 /** DATA's third note: the two rows drawn in full ink, `Wide point 36" and front fins 10 7/8" from the tail …` — a board

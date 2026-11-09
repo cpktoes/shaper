@@ -370,6 +370,13 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     test.setTimeout(240_000);
     await openBottom(page, "shortboard");
     await pick(page, "center", "Deep Single Concave");
+    // The Deep Single alone: a marks table and its note, which never mentions channels (the founder, 2026-11-09).
+    await dataTab(page).click();
+    await expect(page.locator("[data-bottom-marks]")).toBeVisible();
+    await expect(notes(page)).toHaveCount(3);
+    await expect(notes(page).nth(1)).toHaveText(/^Layout marks are measured out from the stringer at each station, .+ ruled onto the blank\.$/);
+    await expect(page.locator("[data-bottom-notes]")).not.toContainText("channels abut");
+    await page.getByRole("tab", { name: BOTTOM_COPY.viewerTab, exact: true }).click();
     await pickChannels(page, "6 channels");
     await dataTab(page).click();
     const marks = page.locator("[data-bottom-marks]");

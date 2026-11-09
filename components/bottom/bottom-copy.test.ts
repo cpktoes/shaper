@@ -255,14 +255,19 @@ describe("DATA's second table and notes (17-10, D-16)", () => {
     expect(BOTTOM_COPY.marksHeading(true)).toBe("Layout marks · off the stringer (mm)");
   });
 
-  it("the marks note names the stagger only when a staggered set is cut, the stagger a dim", () => {
-    const base = "Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank. The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak";
+  it("the marks note speaks of the channels only when they are cut (the founder, 2026-11-09), and names the stagger only for a staggered set", () => {
+    const measured = "Layout marks are measured out from the stringer at each station, the way a concave's edge or a channel's walls are ruled onto the blank.";
+    const base = `${measured} The channels abut: the stringer is the first peak, each channel's floor deepens out to its wall, and the top of that wall is the next channel's peak`;
     const two = inchesToMm(2);
-    expect(layoutMarksNote({ count: 0, longest: "outer", stagger: two }, "imperial")).toBe(`${base}.`);
-    expect(layoutMarksNote({ count: 6, longest: "same", stagger: two }, "imperial")).toBe(`${base}.`);
-    expect(layoutMarksNote({ count: 6, longest: "outer", stagger: mm(0) }, "imperial")).toBe(`${base}.`);
+    const quarter = inchesToMm(1 / 4);
+    // No channels cut — None, or a set with no depth — never mentions them.
+    expect(layoutMarksNote({ count: 0, depth: quarter, longest: "outer", stagger: two }, "imperial")).toBe(measured);
+    expect(layoutMarksNote({ count: 6, depth: mm(0), longest: "outer", stagger: two }, "imperial")).toBe(measured);
+    // Channels cut: how they abut, and the stagger only when there is one.
+    expect(layoutMarksNote({ count: 6, depth: quarter, longest: "same", stagger: two }, "imperial")).toBe(`${base}.`);
+    expect(layoutMarksNote({ count: 6, depth: quarter, longest: "outer", stagger: mm(0) }, "imperial")).toBe(`${base}.`);
     for (const system of SYSTEMS) {
-      expect(layoutMarksNote({ count: 6, longest: "outer", stagger: two }, system)).toBe(
+      expect(layoutMarksNote({ count: 6, depth: quarter, longest: "outer", stagger: two }, system)).toBe(
         `${base}; a wall is ruled only from where its own channel starts — the outer pair first, each channel out from it ${formatDim(two, system)} shorter.`,
       );
     }

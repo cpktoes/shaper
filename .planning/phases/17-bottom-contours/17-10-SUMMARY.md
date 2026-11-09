@@ -170,6 +170,7 @@ and a locked board can be looked over but not changed.
 10. **Task 1's commit carries DATA's words** (`layoutMarkColumnName` …) in `bottom-copy.ts`; Task 2 uses them.
 11. **The WINGS Select does not exist yet** (17-12 adds it). When it lands it takes `disabled={locked}` like the Cut menus,
     and `board-lock-scope.test.ts` already lists `bottom-controls.tsx`.
+12. Channels note shown only when channels are cut (the founder at the look, 2026-11-09).
 
 ## Known Stubs
 
