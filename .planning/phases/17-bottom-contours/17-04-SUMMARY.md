@@ -204,7 +204,9 @@ None. `bottom` is `DEFAULT_BOTTOM` on every board by design until 17-08 (the BOT
 
 None. There is no new endpoint, input, file path or schema. The bottom reaches every reader from one store memo.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* He kept the readout caption as built: *"From ROCKER, FOIL & BOTTOM"* only when a lift is present, *"From ROCKER & FOIL"* otherwise (D-35 and D-41 as drawn; the order form's Rail Band Reference prints the same thinned rail). Merged as 82368774.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-04-rails-on-the-bottom.png` (sources in
 `17-04-pictures-source.tar.gz`). Awaiting "approved", or changes.
