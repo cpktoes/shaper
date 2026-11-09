@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import pin from "./__fixtures__/phase17-litres-pin.json";
-import { BOTTOM_SECTIONS, bottomHasCut, DEFAULT_BOTTOM, type BoardBottom } from "./bottom";
+import { BOTTOM_SECTIONS, bottomHasChannels, bottomHasCut, DEFAULT_BOTTOM, type BoardBottom } from "./bottom";
+import { HALF_SECTION_POINT_COUNT } from "./finished-rail";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -13,7 +14,7 @@ import {
 } from "./design";
 import { buildOutline } from "./outline";
 import { inchesToMm, mm } from "./units";
-import { boardSections, computeCrossSectionVolume } from "./volume";
+import { boardSections, computeCrossSectionVolume, halfSectionPointCount } from "./volume";
 
 /**
  * Phase 17, D-20 (SPEC edge "The litres pin (flat)" and the prohibition "A flat bottom must NOT change any litres
@@ -74,6 +75,16 @@ describe("the 102 boards' litres, pinned before the bottom seam (D-20)", () => {
   it("a flat bottom with other numbers cuts nothing, so it is never handed to the litres", () => {
     expect(bottomHasCut(DEFAULT_BOTTOM)).toBe(false);
     expect(bottomHasCut(FLAT_BUT_NOT_DEFAULT)).toBe(false);
+  });
+
+  it("17-06: channels set to None carry no walls, so every one of these boards keeps its rings at their usual length (research Pitfall 7)", () => {
+    expect(bottomHasChannels(DEFAULT_BOTTOM)).toBe(false);
+    expect(bottomHasChannels(FLAT_BUT_NOT_DEFAULT)).toBe(false);
+    for (const board of BOARDS) {
+      const input = crossSectionInputOf(board.fields);
+      expect("bottomWallsAt" in input).toBe(false);
+      expect(halfSectionPointCount(input)).toBe(HALF_SECTION_POINT_COUNT);
+    }
   });
 
   for (const board of BOARDS) {

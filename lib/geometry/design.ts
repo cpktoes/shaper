@@ -18,8 +18,10 @@ import type { BlankRecord, BoardBlank } from "./blank";
 import {
   BOTTOM_FLOOR,
   NOTCH_WALL_MIN,
+  bottomHasChannels,
   bottomHasCut,
   bottomSampler,
+  bottomWallSampler,
   foamOff,
   resolveBottom,
   type BoardBottom,
@@ -182,8 +184,10 @@ export function crossSectionFoam(
  *
  * Phase 17 (D-05, D-20, D-21): with a `bottom` that cuts anything (`bottomHasCut`), the input also carries the foam
  * the bottom takes off (`foamOffAt`, `bottomSampler` over the bottom read against the board's own facts), so the
- * litres, the 3D board and the CNC files all count the cut. A flat bottom, or none, adds nothing at all: the input is
- * key for key what it always was.
+ * litres, the 3D board and the CNC files all count the cut. With channels (`bottomHasChannels`) it also carries where
+ * their walls stand (`bottomWallsAt`, `bottomWallSampler`), so every section is laid out with a vertical step at each
+ * wall (D-10, D-21). A flat bottom, or none, adds nothing at all: the input is key for key what it always was; a bottom
+ * without channels adds the sampler alone, so its rings keep their usual length.
  */
 export function designCrossSectionInput(
   geometry: OutlineGeometry,
@@ -193,13 +197,15 @@ export function designCrossSectionInput(
   bottom?: { bottom: BoardBottom; board: BottomBoard },
 ): CrossSectionVolumeInput {
   const cut = bottom && bottomHasCut(bottom.bottom) ? bottom : null;
+  const resolved = cut ? resolveBottom(cut.bottom, cut.board) : null;
   return {
     ...crossSectionFoam(geometry),
     foil: profile.effectiveFoil,
     thicknessAt: profile.thicknessAt,
     rails,
     length,
-    ...(cut ? { foamOffAt: bottomSampler(resolveBottom(cut.bottom, cut.board), cut.board) } : {}),
+    ...(cut && resolved ? { foamOffAt: bottomSampler(resolved, cut.board) } : {}),
+    ...(cut && resolved && bottomHasChannels(cut.bottom) ? { bottomWallsAt: bottomWallSampler(resolved, cut.board) } : {}),
   };
 }
 

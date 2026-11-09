@@ -5,7 +5,10 @@ import { placedHalfSection } from "./board-surface";
 import {
   type BoardSection,
   BOTTOM_COLUMN_FLOOR,
+  BOTTOM_RUN_WITH_WALLS,
+  BOTTOM_WALL_SLOTS,
   bottomedHalfSection,
+  halfSectionPointCount,
   type CrossSectionVolumeInput,
   boardSectionEnds,
   boardSections,
@@ -39,12 +42,15 @@ import {
   type VolumeTemplateValues,
 } from "./volume";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
+import { DEFAULT_BOTTOM, resolveBottom, startingChannels, startingCut, type BoardBottom, type BottomBoard } from "./bottom";
+import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
 import { buildBlankProfile, buildFallbackProfile } from "./board-profile";
 import {
   blendFinishedRails,
   fittedFinishedRail,
+  HALF_SECTION_POINT_COUNT,
   openedFinishedRail,
   railBlendArea,
   railReach,
@@ -90,7 +96,9 @@ import {
 } from "./__fixtures__/phase16-boards";
 import { outlineWithoutWings, wingFootprint, wingShareAt, wingShareSpan, type Wing } from "./wings";
 import {
+  designBottomBoard,
   designCrossSectionInput,
+  designFinPlacement,
   designSideProfile,
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
@@ -2136,3 +2144,120 @@ describe("Phase 17 D-21, D-40: the bottom contours lift a finished half's bottom
 function BOTTOM_EDGE(): number {
   return SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
 }
+
+describe("Phase 17 D-10, D-21: a channel's wall is a vertical step in the ring (bottomedHalfWithWalls)", () => {
+  // The four presets as they open, read the way the store reads them — every figure here is the app's own.
+  const presetFields = (id: string): DesignSummaryFields => {
+    const preset = BOARD_PRESETS.find((p) => p.id === id)!;
+    return phase16Boards().find((b) => b.label === `${id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`)!.fields;
+  };
+  function channelInput(id: string, count: 0 | 4 | 6 | 8, change?: (bottom: BoardBottom, board: BottomBoard) => void) {
+    const fields = presetFields(id);
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    if (count !== 0) bottom.channels = startingChannels(count, board, bottom.channels);
+    change?.(bottom, board);
+    const input = designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board });
+    return { input, board, bottom, resolved: resolveBottom(bottom, board) };
+  }
+  const EDGE = BOTTOM_EDGE();
+
+  it("a board without channels carries no walls: its sections keep their 24-point bottom run and no ring length of their own", () => {
+    const { input } = channelInput("shortboard", 0, (b, board) => {
+      b.center = startingCut("center", "Deep Single Concave", board);
+    });
+    expect(input.foamOffAt).toBeDefined();
+    expect("bottomWallsAt" in input).toBe(false);
+    expect(halfSectionPointCount(input)).toBe(HALF_SECTION_POINT_COUNT);
+    for (const section of boardSections(input)) {
+      expect(section.ringLength).toBeUndefined();
+      expect(section.wallRows).toBeUndefined();
+      if (section.drawn) expect(section.drawn).toHaveLength(HALF_SECTION_POINT_COUNT);
+    }
+  });
+
+  it("with six channels every section has the board's own ring length — 24 bottom points and a top and a foot for each of four walls", () => {
+    const { input } = channelInput("shortboard", 6);
+    expect(input.bottomWallsAt).toBeDefined();
+    expect(BOTTOM_RUN_WITH_WALLS).toBe(SECTION_POINTS.bottom + 2 * BOTTOM_WALL_SLOTS);
+    expect(halfSectionPointCount(input)).toBe(HALF_SECTION_POINT_COUNT + 2 * BOTTOM_WALL_SLOTS);
+    let counted = 0;
+    for (const section of boardSections(input)) {
+      if (!section.result) continue;
+      expect(section.drawn).toHaveLength(halfSectionPointCount(input));
+      expect(section.ringLength).toBe(halfSectionPointCount(input));
+      expect(section.wallRows).toHaveLength(3);
+      counted++;
+    }
+    expect(counted).toBeGreaterThan(10);
+  });
+
+  it("at the front fins each wall's top and foot stand at the wall's own distance across — a vertical face — the foot the channel's depth higher", () => {
+    const { input, board, resolved } = channelInput("shortboard", 6);
+    const [section] = boardSections(input, [board.frontFins]);
+    const walls = input.bottomWallsAt!(board.frontFins);
+    expect(walls).toHaveLength(3);
+    const ch = resolved.channels;
+    section.wallRows!.forEach((row, j) => {
+      const top = section.drawn![row];
+      const foot = section.drawn![row + 1];
+      expect(top[0]).toBe(walls[j]);
+      expect(foot[0]).toBe(walls[j]);
+      // nothing else is cut here, so the step is the channels' full depth (deepest here, and wider than an inch)
+      expect(Math.abs(foot[1] - top[1] - ch.depth)).toBeLessThan(1e-4);
+    });
+    // and every other bottom point is the one number, read where it stands
+    for (let k = EDGE + 1; k < section.drawn!.length; k++) {
+      if (section.wallRows!.includes(k)) continue;
+      const [y, h] = section.drawn![k];
+      expect(Math.abs(h - input.foamOffAt!(board.frontFins, mm(y)))).toBeLessThan(1e-9);
+    }
+  });
+
+  it("a wall whose channel has not started yet has its top and foot on one spot (the outer pair longest, so the inner walls come on last)", () => {
+    const { input, resolved } = channelInput("shortboard", 6);
+    const ch = resolved.channels;
+    const s = mm(ch.start - inchesToMm(1));
+    const [section] = boardSections(input, [s]);
+    const rows = section.wallRows!;
+    // the outer channel has started here; the inner one starts 4" further back
+    const [inner, , outer] = rows.map((row) => [section.drawn![row], section.drawn![row + 1]]);
+    expect(inner[0]).toEqual(inner[1]);
+    expect(outer[1][1]).toBeGreaterThan(outer[0][1]);
+    expect(outer[0][0]).toBe(outer[1][0]);
+  });
+
+  it("the re-laid run counts the channels' foam far closer to a 400-point bottom than the 24-point run did, on every preset and count", () => {
+    for (const id of ["shortboard", "fish", "midlength", "longboard"]) {
+      for (const count of [4, 6, 8] as const) {
+        const { input } = channelInput(id, count);
+        const { bottomWallsAt, foamOffAt, ...plain } = input;
+        expect(bottomWallsAt).toBeDefined();
+        const base = boardSections(plain);
+        const walled = boardSections(input);
+        const smeared = boardSections({ ...plain, foamOffAt });
+        let truth = 0;
+        let walledError = 0;
+        let smearedError = 0;
+        base.forEach((section, k) => {
+          if (!section.result) return;
+          const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
+          const [edgeY] = half[EDGE];
+          const dense: [number, number][] = [...half.slice(0, EDGE + 1)];
+          for (let i = 1; i <= 400; i++) dense.push([edgeY + ((half[half.length - 1][0] - edgeY) * i) / 400, 0]);
+          const cut = bottomedHalfSection(dense, (y) => foamOffAt!(section.station, y), BOTTOM_COLUMN_FLOOR);
+          const off = sampledSectionArea(dense) - sampledSectionArea(cut.half);
+          truth += off;
+          walledError += Math.abs(section.area - walled[k].area - off);
+          smearedError += Math.abs(section.area - smeared[k].area - off);
+        });
+        expect(truth, `${id} · ${count}`).toBeGreaterThan(0);
+        expect(walledError, `${id} · ${count}`).toBeLessThan(smearedError / 3);
+        expect(walledError / truth, `${id} · ${count}`).toBeLessThan(0.02);
+      }
+    }
+  }, 120_000);
+});

@@ -339,12 +339,30 @@ export interface ResolvedCut {
   closesToPoint: boolean;
 }
 
-/** The whole bottom as the maths reads it. The channels pass through as stored until 17-05 resolves them. */
+/**
+ * The channels as the maths reads them (D-03, D-10): Start (the longest pair's), Deepest At and End as stations from
+ * the tail, in order. Every other number as stored.
+ */
+export interface ResolvedChannels {
+  count: BottomChannelsSpec["count"];
+  width: Mm;
+  offStringer: Mm;
+  start: Mm;
+  deepest: Mm;
+  end: Mm;
+  depth: Mm;
+  smoothness: number;
+  run: BottomChannelsSpec["run"];
+  longest: BottomChannelsSpec["longest"];
+  stagger: Mm;
+}
+
+/** The whole bottom as the maths reads it. */
 export interface ResolvedBottom {
   nose: ResolvedCut;
   center: ResolvedCut;
   tail: ResolvedCut;
-  channels: BottomChannelsSpec;
+  channels: ResolvedChannels;
   wingRule: BottomWingRule;
 }
 
@@ -382,13 +400,36 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
   };
 }
 
+/**
+ * The channels, read (D-03; D-36 as it reads for a tail cut): Start and Deepest At ride with the front fins, End is
+ * from the tail, each clamped to the board. The fin-anchored Deepest At wins: when a fin move carries it past Start
+ * or End, the other is pushed to it — Start = max(Start, Deepest), End = min(End, Deepest) — on read only, with
+ * nothing written back. The stored spec is never mutated.
+ */
+export function resolveChannels(spec: BottomChannelsSpec, board: BottomBoard): ResolvedChannels {
+  const deepest = clampStation(board.frontFins + spec.deepestFromFins, board);
+  return {
+    count: spec.count,
+    width: spec.width,
+    offStringer: spec.offStringer,
+    start: mm(Math.max(clampStation(board.frontFins + spec.startFromFins, board), deepest)),
+    deepest,
+    end: mm(Math.min(clampStation(spec.end, board), deepest)),
+    depth: spec.depth,
+    smoothness: spec.smoothness,
+    run: spec.run,
+    longest: spec.longest,
+    stagger: spec.stagger,
+  };
+}
+
 /** The whole bottom, read (D-03, D-36, D-39). */
 export function resolveBottom(bottom: BoardBottom, board: BottomBoard): ResolvedBottom {
   return {
     nose: resolveCut("nose", bottom.nose, board),
     center: resolveCut("center", bottom.center, board),
     tail: resolveCut("tail", bottom.tail, board),
-    channels: bottom.channels,
+    channels: resolveChannels(bottom.channels, board),
     wingRule: bottom.wingRule,
   };
 }
@@ -444,6 +485,20 @@ export function pickCut(bottom: BoardBottom, section: BottomSectionKey, name: Bo
 
 /* ============ the default, and whether a bottom cuts anything ============ */
 
+/** How many channels a set can have (D-10): two, three or four a side. */
+export type ChannelCount = 4 | 6 | 8;
+
+/** Each count's starting width (D-10, D-11; the sketch's `channelWidth`): 2 1/2" for 4, 1 3/4" for 6, 1 1/4" for 8. */
+export const CHANNEL_STARTING_WIDTHS: Readonly<Record<ChannelCount, Mm>> = {
+  4: inchesToMm(2.5),
+  6: inchesToMm(1.75),
+  8: inchesToMm(1.25),
+};
+
+/** A width this close to one of the three starting widths is still a starting width, so it follows the count (the
+ * sketch's 0.01). */
+export const CHANNEL_WIDTH_FOLLOWS: Mm = mm(0.01);
+
 /**
  * Every board opens flat with no channels (D-04, D-10). The channels' numbers are D-11's, kept for when a count is
  * picked: 5/16" deep, from 12" ahead of the front fins, deepest at them, out the tail, Off Stringer 0, Smoothness 0,
@@ -455,7 +510,7 @@ export const DEFAULT_BOTTOM: BoardBottom = {
   tail: flatSpec(FLAT_CUT_NAMES.tail),
   channels: {
     count: 0,
-    width: inchesToMm(1.75),
+    width: CHANNEL_STARTING_WIDTHS[6],
     offStringer: mm(0),
     startFromFins: inchesToMm(12),
     deepestFromFins: mm(0),
@@ -469,12 +524,29 @@ export const DEFAULT_BOTTOM: BoardBottom = {
   wingRule: "narrowest",
 };
 
+/**
+ * A channel count picked (D-10, D-11): the set opens on D-11's numbers — 5/16" deep, from 12" ahead of the front fins,
+ * deepest at them, out the tail, Off Stringer 0, Smoothness 0, Parallel, the outer pair longest with a 2" stagger —
+ * and the count's own starting width, unless the width there now was set by hand (more than 0.01 mm from all three
+ * starting widths), which is kept (the sketch's count pick, template.html line 1124). Start and Deepest At are stored
+ * from the front fins, so the set opens at the same place on any `board`; nothing else about the board changes them.
+ */
+export function startingChannels(count: ChannelCount, board: BottomBoard, current: BottomChannelsSpec): BottomChannelsSpec {
+  const followsCount = ([4, 6, 8] as const).some((n) => Math.abs(current.width - CHANNEL_STARTING_WIDTHS[n]) < CHANNEL_WIDTH_FOLLOWS);
+  return { ...DEFAULT_BOTTOM.channels, count, width: followsCount ? CHANNEL_STARTING_WIDTHS[count] : current.width };
+}
+
 /** Whether the bottom takes any foam: false when every section is flat (or 0 deep) and there are no channels. */
 export function bottomHasCut(bottom: BoardBottom): boolean {
   for (const section of BOTTOM_SECTIONS) {
     const cut = bottom[section];
     if (cutKind(cut.name) !== "flat" && cut.depth > 0) return true;
   }
+  return bottomHasChannels(bottom);
+}
+
+/** Whether the bottom cuts channels: a count picked and a depth above 0. */
+export function bottomHasChannels(bottom: BoardBottom): boolean {
   return bottom.channels.count > 0 && bottom.channels.depth > 0;
 }
 
@@ -610,13 +682,19 @@ export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWin
  *   shallower.
  *
  * A double's flat and troughs are concave work (held); the Spiral Vee's vee and the Tri-Plane's planes are lifts (never
- * held, nothing at the stringer). The channels join the concaves' sum in 17-06.
+ * held, nothing at the stringer).
+ *
+ * The channels are cut last, into whatever the sections leave (D-05, D-10): their foam off (`channelFoamOff`) is the
+ * last term of the sum. Each channel's floor starts at its peak, where it takes nothing — the stringer itself is the
+ * first peak — so the channels never take foam off the stringer and are never held there; like a lift, nothing clamps
+ * them (D-40 binds their walls too): where a channel's floor would meet the deck near a thin rail, the section's foam
+ * ends there and the rail is flagged (`bottomFloorFlags`).
  */
 export function foamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): Mm {
   if (board.railAt(s) <= 0) return mm(0);
   const { concave, lift } = foamOffParts(resolved, board, s, y);
   const held = Math.min(Math.max(0, concave), stringerFloorCap(board, s));
-  return mm(held + Math.max(0, lift));
+  return mm(held + Math.max(0, lift) + channelFoamOff(resolved.channels, board, resolved.wingRule, s, y));
 }
 
 /** The most concave work a station holds: the planed thickness less the 1/4" floor (D-09), never below 0. */
@@ -634,6 +712,193 @@ function foamOffParts(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm
     lift += parts.lift;
   }
   return { concave, lift };
+}
+
+/* ============ the channels (D-10, D-11): the founder's sawtooth, cut last ============ */
+
+/** The last wall never lands closer than this to the reference rail at the deepest station (the sketch's
+ * `OFF_RAIL_MIN`): a set that would is squeezed. */
+export const CHANNEL_OFF_RAIL_MIN: Mm = inchesToMm(1 / 2);
+/** A channel narrower than this shallows out in proportion, as a concave does (the sketch's `IN` in `cutOff`). */
+export const CHANNEL_PINCH: Mm = inchesToMm(1);
+/** A staggered channel never starts closer than this ahead of the deepest station, so the shortest keeps a lead-in
+ * (the sketch's `IN` in `chStart`). */
+export const CHANNEL_LEAD_IN: Mm = inchesToMm(1);
+/** A channel whose wall is no further than this off the stringer is not there (the sketch's 0.5 in `channelEdges`);
+ * a set this narrow or narrower has no channels at all. */
+export const CHANNEL_EDGE_MIN: Mm = mm(0.5);
+/** A fitted width this far under the asked width says the set was squeezed (the sketch's 0.01). */
+export const CHANNEL_SQUEEZE_GUARD: Mm = mm(0.01);
+
+/**
+ * A channel's floor across its width (the founder's pictures, 2026-11-06: "a quick V that goes into a vertical
+ * wall"): u = 0 at its peak (the stringer, or the wall top of the channel inside it), 1 at its own wall at the rail
+ * side; straight at r = 0, scooped at r = 1. The sketch's `chan`.
+ */
+export const chan = (u: number, r: number): number => (1 - r) * u + r * (1 - Math.cos(Math.PI * u / 2));
+
+/**
+ * The width the channels get at the deepest station and what the last wall leaves to the reference rail there (the
+ * sketch's `channelFit`): the width asked for, squeezed only if the set would not fit with 1/2" left to the rail —
+ * `squeezed` says so. `offRail` is read out, never set (D-10). A set of no channels has nothing to fit.
+ */
+export function channelFit(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule): { perSide: number; width: Mm; offRail: Mm; squeezed: boolean } {
+  const n = ch.count / 2;
+  const W = refAt(board, rule, ch.deepest);
+  if (n < 1) return { perSide: 0, width: mm(0), offRail: mm(W - ch.offStringer), squeezed: false };
+  const w = Math.max(0, Math.min(ch.width, (W - ch.offStringer - CHANNEL_OFF_RAIL_MIN) / n));
+  return { perSide: n, width: mm(w), offRail: mm(W - ch.offStringer - n * w), squeezed: w < ch.width - CHANNEL_SQUEEZE_GUARD };
+}
+
+/** How many Staggers shorter than the longest pair channel `j` (0 beside the stringer) starts (the sketch's `chSteps`). */
+function channelSteps(ch: ResolvedChannels, j: number): number {
+  return ch.longest === "inner" ? j : ch.longest === "outer" ? ch.count / 2 - 1 - j : 0;
+}
+
+/**
+ * Where channel `j` (0 beside the stringer) starts, from the tail (the sketch's `chStart`): Stagger behind its
+ * neighbour toward the longest pair, never closer than an inch ahead of the deepest station. Only the starts stagger:
+ * every channel is deepest at the same station and they all end together (D-10).
+ */
+export function channelStart(ch: ResolvedChannels, j: number): Mm {
+  return mm(Math.max(Math.min(ch.start, ch.deepest + CHANNEL_LEAD_IN), ch.start - channelSteps(ch, j) * ch.stagger));
+}
+
+/** How much of the channels' depth channel `j` has at station `s` (the sketch's `chFade`). */
+function channelFade(ch: ResolvedChannels, j: number, s: Mm, length: Mm): number {
+  return fadeAt(channelStart(ch, j), ch.deepest, ch.end, s, length);
+}
+
+/**
+ * One side's channels at a station, each `[inner, outer, index]` out from the stringer — abutting, the outer of one
+ * the inner of the next, `index` 0 beside the stringer (the sketch's `channelEdges`). The walls are ruled at Width,
+ * 2 × Width … out from Off Stringer.
+ *
+ * - **Parallel** rules them straight from the deepest station; where the outline narrows the outer ones run out
+ *   through the rail.
+ * - **With the rail** keeps the last wall the same distance off the reference rail, so the set narrows toward the
+ *   tail together; once the gaps have closed the outer channels run out through the rail.
+ * - **Toe-in** angles the whole set at the front fins' raw toe — inward toward the nose, splayed out toward the tail.
+ *   A single fin has no toe, so it is laid Parallel.
+ *
+ * Only channels whose wall stands more than 1/2 mm off the stringer are kept.
+ */
+export function channelEdges(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): [inner: Mm, outer: Mm, index: number][] {
+  const { perSide: n, width: w, offRail } = channelFit(ch, board, rule);
+  if (n < 1 || w <= CHANNEL_EDGE_MIN) return [];
+  let w2: number = w;
+  let shift = 0;
+  if (ch.run === "rail") w2 = Math.max(0, refAt(board, rule, s) - offRail - ch.offStringer) / n;
+  else if (ch.run === "toe" && board.toeDegrees > 0) shift = (s - ch.deepest) * Math.tan(board.toeDegrees * Math.PI / 180);
+  const out: [Mm, Mm, number][] = [];
+  for (let j = 0; j < n; j++) {
+    const a = ch.offStringer + j * w2 - shift;
+    const b = a + w2;
+    if (b > CHANNEL_EDGE_MIN) out.push([mm(Math.max(0, a)), mm(b), j]);
+  }
+  return out;
+}
+
+const CHANNEL_WALL_PREFIX = "channels:wall:";
+/** The layout-mark key of channel wall `n` (1 out from the stringer): `channels:wall:n`. */
+export const channelWallKey = (n: number): string => `${CHANNEL_WALL_PREFIX}${n}`;
+/** The layout-mark key of the channels' flat edge (Off Stringer): `channels:flat`. */
+export const CHANNEL_FLAT_KEY = "channels:flat";
+
+/**
+ * The channels' layout marks at a station, out from the stringer — as a shaper rules them (the sketch's
+ * `channelMarks`): the flat's edge when Off Stringer is more than 1/2 mm (`channels:flat`), then every wall
+ * (`channels:wall:1` …). `on` says whether that channel has started by this station: a staggered set's shorter
+ * channels have not, ahead of their own starts, so their walls are neither cut nor ruled there.
+ */
+export function channelMarks(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): { across: Mm; column: string; on: boolean }[] {
+  const edges = channelEdges(ch, board, rule, s);
+  const out: { across: Mm; column: string; on: boolean }[] = [];
+  if (ch.offStringer > CHANNEL_EDGE_MIN && edges.length) {
+    out.push({ across: edges[0][0], column: CHANNEL_FLAT_KEY, on: channelFade(ch, edges[0][2], s, board.length) > BOTTOM_MARK_FADE_MIN });
+  }
+  for (const [, b, j] of edges) out.push({ across: b, column: channelWallKey(j + 1), on: channelFade(ch, j, s, board.length) > BOTTOM_MARK_FADE_MIN });
+  return out;
+}
+
+/**
+ * The foam the channels take off at station `s`, `y` out from the stringer — the channels' branch of the sketch's
+ * `cutOff`, line for line: in the channel `[a, b]` that holds `y`, `depth × fade × min(1, (b − a) / 1") × chan(u, r)`
+ * with u = (y − a) / (b − a) — nothing at its peak, the full cut at its wall — each channel faded in from its own
+ * start. Nothing with fewer than four channels, at no depth, or where the board has no rail.
+ */
+export function channelFoamOff(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): Mm {
+  if (ch.count < 4 || ch.depth <= 0) return mm(0);
+  if (board.railAt(s) <= 0) return mm(0);
+  const f = fadeAt(ch.start, ch.deepest, ch.end, s, board.length);
+  if (f <= 0) return mm(0);
+  const r = ch.smoothness / 100;
+  for (const [a, b, j] of channelEdges(ch, board, rule, s)) {
+    if (y >= a && y <= b) {
+      const fj = channelFade(ch, j, s, board.length);
+      if (fj <= 0) return mm(0);
+      return mm(ch.depth * fj * Math.min(1, (b - a) / CHANNEL_PINCH) * chan((y - a) / (b - a), r));
+    }
+  }
+  return mm(0);
+}
+
+/**
+ * Every wall of one side at a station, out from the stringer — one per channel a side, in order, the same number at
+ * every station (D-21, research §B): channel `j`'s wall at the outer edge `channelEdges` gives it, or at the stringer
+ * where that channel is not there (its wall within 1/2 mm of the stringer). Whether a wall stands — whether its channel
+ * has started and is cut there — is the one number's to say. None with fewer than four channels or at no depth.
+ */
+export function channelWallsAt(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): Mm[] {
+  if (ch.count < 4 || ch.depth <= 0) return [];
+  const walls: Mm[] = Array.from({ length: ch.count / 2 }, () => mm(0));
+  for (const [, b, j] of channelEdges(ch, board, rule, s)) walls[j] = b;
+  return walls;
+}
+
+/**
+ * The channels' walls as the litres, the 3D board and the CNC files read them (D-21): `channelWallsAt`, measured in
+ * from the section's own inside edge as `bottomSampler`'s `across` is (less a swallow's notch wall), never below 0.
+ * `design.ts` hands it to `volume.ts` as `bottomWallsAt` beside the sampler, only when the bottom has channels.
+ */
+export function bottomWallSampler(resolved: ResolvedBottom, board: BottomBoard): (station: Mm) => Mm[] {
+  return (station) => {
+    const inner = board.notchInner(station);
+    return channelWallsAt(resolved.channels, board, resolved.wingRule, station).map((w) => mm(Math.max(0, w - inner)));
+  };
+}
+
+/** The channels at a station, for the drawings and DATA: the fit at the deepest station, the edges and the marks. */
+export function channelLayout(
+  resolved: ResolvedBottom,
+  board: BottomBoard,
+  s: Mm,
+): { fit: ReturnType<typeof channelFit>; edges: ReturnType<typeof channelEdges>; marks: ReturnType<typeof channelMarks> } {
+  const { channels: ch, wingRule: rule } = resolved;
+  return { fit: channelFit(ch, board, rule), edges: channelEdges(ch, board, rule, s), marks: channelMarks(ch, board, rule, s) };
+}
+
+/**
+ * What the Width and Stagger labels read out, never set (D-10; the sketch's `labelFor`): the width asked for and the
+ * width the set gets (`squeezed` when it had to be narrowed to fit), the ramp's angle from the depth and the fitted
+ * width in whole degrees, the last wall's distance off the reference rail at the deepest station, and where the
+ * shortest pair starts from the tail (the outer pair when the inner is longest, the inner otherwise). The words are
+ * the screen's.
+ */
+export function channelReadout(
+  ch: ResolvedChannels,
+  board: BottomBoard,
+  rule: BottomWingRule,
+): { width: Mm; fittedWidth: Mm; squeezed: boolean; rampDegrees: number; lastWallOffRail: Mm; shortestStart: Mm } {
+  const fit = channelFit(ch, board, rule);
+  return {
+    width: ch.width,
+    fittedWidth: fit.width,
+    squeezed: fit.squeezed,
+    rampDegrees: fit.width > 0 ? Math.round((Math.atan2(ch.depth, fit.width) * 180) / Math.PI) : 0,
+    lastWallOffRail: fit.offRail,
+    shortestStart: channelStart(ch, ch.longest === "inner" ? ch.count / 2 - 1 : 0),
+  };
 }
 
 /* ============ the one number, handed to the litres (D-05, D-21) ============ */
@@ -776,12 +1041,33 @@ export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): Bo
 
 /** One column of DATA's layout-marks table. Its words (`Center edge`, `Wall 1`) are the screen's, built from `key`. */
 export interface BottomMarkColumn {
-  /** `${section}:${mark}`, with the wall's number for a channel wall (17-06). */
+  /** `${section}:${mark}`, with the wall's number for a channel wall (`channels:wall:1`). */
   key: string;
   section: BottomSectionKey | "channels";
   mark: "edge" | "flat" | "trough" | "wall";
-  /** A channel wall's number, 1 out from the stringer (17-06). */
+  /** A channel wall's number, 1 out from the stringer. */
   index?: number;
+}
+
+/** The channels' columns (the sketch's `markColumns` for the channels): their marks at the deepest station — the flat's
+ * edge when Off Stringer is more than 1/2 mm, then Wall 1, Wall 2 … — or none with no channels or at no depth. */
+function channelColumns(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule): BottomMarkColumn[] {
+  if (ch.count < 4 || ch.depth <= 0) return [];
+  return channelMarks(ch, board, rule, ch.deepest).map((m) =>
+    m.column === CHANNEL_FLAT_KEY
+      ? { key: m.column, section: "channels" as const, mark: "flat" as const }
+      : { key: m.column, section: "channels" as const, mark: "wall" as const, index: Number(m.column.slice(CHANNEL_WALL_PREFIX.length)) },
+  );
+}
+
+/** The channels' marks at a station (the sketch's `marksOf` for the channels): only once the set has started, and of
+ * each wall only from its own channel's start, between the stringer and the rail. */
+function channelMarksOf(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): { key: string; y: Mm }[] {
+  if (ch.count < 4 || ch.depth <= 0 || fadeAt(ch.start, ch.deepest, ch.end, s, board.length) <= BOTTOM_MARK_FADE_MIN) return [];
+  const W = board.railAt(s);
+  return channelMarks(ch, board, rule, s)
+    .filter((m) => m.on && m.across > BOTTOM_DATA_EDGE && m.across < W)
+    .map((m) => ({ key: m.column, y: m.across }));
 }
 
 const markColumn = (section: BottomSectionKey, mark: BottomMarkColumn["mark"]): BottomMarkColumn => ({ key: `${section}:${mark}`, section, mark });
@@ -819,18 +1105,21 @@ function marksOf(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: 
 
 /**
  * DATA's layout-marks table (D-16): the columns in shop order — each section's flat, trough and edge, as its cut has
- * them (the channels' walls join in 17-06) — and at each station the marks off the stringer, `null` where a cut does not
- * reach. The stations are DATA's rows unless others are asked for. No columns on a flat bottom.
+ * them, then the channels' flat edge and every wall — and at each station the marks off the stringer, `null` where a
+ * cut does not reach (a channel's wall is `null` ahead of its own channel's start). The stations are DATA's rows unless
+ * others are asked for. No columns on a flat bottom.
  */
 export function bottomLayoutMarks(
   resolved: ResolvedBottom,
   board: BottomBoard,
   stations: readonly Mm[] = bottomDataStations(board),
 ): { columns: BottomMarkColumn[]; rows: { station: Mm; cells: (Mm | null)[] }[] } {
-  const columns = BOTTOM_SECTIONS.flatMap((section) => markColumnsOf(resolved[section]));
+  const rule = resolved.wingRule;
+  const columns = [...BOTTOM_SECTIONS.flatMap((section) => markColumnsOf(resolved[section])), ...channelColumns(resolved.channels, board, rule)];
   const rows = stations.map((station) => {
     const here = new Map<string, Mm>();
-    for (const section of BOTTOM_SECTIONS) for (const m of marksOf(resolved[section], board, resolved.wingRule, station)) here.set(m.key, m.y);
+    for (const section of BOTTOM_SECTIONS) for (const m of marksOf(resolved[section], board, rule, station)) here.set(m.key, m.y);
+    for (const m of channelMarksOf(resolved.channels, board, rule, station)) here.set(m.key, m.y);
     return { station, cells: columns.map((c) => here.get(c.key) ?? null) };
   });
   return { columns, rows };
@@ -904,6 +1193,18 @@ export function bottomFloorFlags(resolved: ResolvedBottom, board: BottomBoard, s
     const all = [...stringer, ...rails];
     const at = mm(section === "nose" ? Math.max(...all) : Math.min(...all));
     flags.push({ section, stringer, rails, at });
+  }
+  // The channels, cut last: they never take foam off the stringer (each floor starts at a peak), so only the rail
+  // form can meet them — a channel's floor taking foam off a point left under 1/4", or lifted to the deck (D-40).
+  const ch = resolved.channels;
+  if (ch.count >= 4 && ch.depth > 0) {
+    const rails: Mm[] = [];
+    for (const built of sections ?? []) {
+      if (!built.thinAt || built.thinAt.length === 0) continue;
+      const inner = board.notchInner(built.station);
+      if (built.thinAt.some((across) => channelFoamOff(ch, board, rule, built.station, mm(across + inner)) > 0)) rails.push(built.station);
+    }
+    if (rails.length > 0) flags.push({ section: "channels", stringer: [], rails, at: mm(Math.min(...rails)) });
   }
   return flags;
 }
