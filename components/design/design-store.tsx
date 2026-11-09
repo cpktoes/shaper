@@ -117,6 +117,7 @@ import {
 import {
   DEFAULT_BOTTOM,
   bottomHasCut,
+  cutKind,
   keepStationsInOrder,
   pickCut,
   resolveBottom,
@@ -476,6 +477,9 @@ interface DesignContextValue {
   /** One of BOTTOM's cut sliders (D-07): the patch in the stored form; with `changed`, Start ≥ Deepest ≥ End kept in
    * the same step, the dragged station winning. One undo step per drag. Nothing on a locked board. */
   updateBottomCut: (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => void;
+  /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
+   * one undo step each. Nothing on a locked board. */
+  setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
@@ -1404,7 +1408,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     noteEdit(`bottom:${section}:${patchKey(patch)}`);
     setState((prev) => {
       const patched: BottomCutSpec = { ...prev.bottom[section], ...patch };
-      const kept = changed ? keepStationsInOrder(section, patched, changed, bottomBoard, prev.bottom.wingRule) : patched;
+      // A double's Off Rail, Off Stringer or Trough At moved keeps its flat and trough in order the sketch's way
+      // (`normalize` runs on every drag, template.html line 1017): `keepStationsInOrder` read with Deepest At as the
+      // station that moved, which pushes no station that is already in order and keeps the two across marks.
+      const keepFrom = changed ?? (cutKind(patched.name) === "double" ? "deepest" : undefined);
+      const kept = keepFrom ? keepStationsInOrder(section, patched, keepFrom, bottomBoard, prev.bottom.wingRule) : patched;
       return {
         ...startedFrom(prev, liveTipsRef.current),
         bottom: { ...prev.bottom, [section]: kept },
@@ -1412,6 +1420,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
         dirty: true,
       };
     });
+  };
+
+  // The Teardrop's tick box (D-06, D-32): a Nose single concave closing to a point toward the center, or not. A tick is
+  // a discrete choice, so its own undo step: noteEdit(null).
+  const setBottomClosesToPoint = (section: BottomSectionKey, on: boolean) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, [section]: { ...prev.bottom[section], closesToPoint: on } },
+      boardStarted: true,
+      dirty: true,
+    }));
   };
 
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
@@ -1993,6 +2014,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     updateRailSection,
     pickBottomCut,
     updateBottomCut,
+    setBottomClosesToPoint,
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,
