@@ -107,7 +107,8 @@ async function settled(host: Locator) {
 
 /**
  * Presses a button whose move takes 400 ms, then, two frames into that move, presses something else: a button by its
- * spoken name, a key on the drawing, a slider set to a value, or pointers coming down on the drawing and lifting again.
+ * spoken name, a key on the drawing, a key on a slider (the arrow a shaper's keyboard presses), a slider set to a value, or
+ * pointers coming down on the drawing and lifting again.
  * Both inside the page, so the first move is certainly still under way however loaded the machine is.
  */
 async function pressDuringMove(
@@ -116,6 +117,7 @@ async function pressDuringMove(
   second: {
     button?: string;
     key?: string;
+    sliderKey?: { name: string; key: string };
     slider?: { name: string; value: number };
     pointers?: readonly { id: number; pointerType: "mouse" | "touch"; button: number }[];
   },
@@ -135,6 +137,11 @@ async function pressDuringMove(
       await frame();
       if (second.button) press(second.button);
       if (second.key) host.dispatchEvent(new KeyboardEvent("keydown", { key: second.key, bubbles: true, cancelable: true }));
+      if (second.sliderKey) {
+        const input = document.querySelector(`input[aria-label="${second.sliderKey.name}"]`) as HTMLInputElement;
+        input.focus({ preventScroll: true });
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: second.sliderKey.key, bubbles: true, cancelable: true }));
+      }
       if (second.slider) {
         const input = document.querySelector(`input[aria-label="${second.slider.name}"]`) as HTMLInputElement;
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, String(second.slider.value));
@@ -576,6 +583,35 @@ test.describe("the shaping bay", () => {
     await expect(host).toHaveAttribute("data-bay", "off");
     await settled(host);
     expect(isTurn(await turnOf(host), bottomUp)).toBe(true);
+  });
+
+  test("8f. a slider touched while Deck is still turning back from Bottom reads from the deck: Rotate on Side moves one step from flat, and never rolls the board back bottom up", async ({
+    page,
+  }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await view(page, THREE_D_COPY.views.bottom).click();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn(BOTTOM_UP)), { timeout: 10_000 }).toBe(true);
+    await settled(host);
+    await expect(slider(page, THREE_D_COPY.rotateOnSide)).toHaveValue("0");
+    await pressDuringMove(page, THREE_D_COPY.views.deck, { sliderKey: { name: THREE_D_COPY.rotateOnSide, key: "ArrowRight" } });
+    await settled(host);
+    await expect(slider(page, THREE_D_COPY.rotateOnSide)).toHaveValue("1");
+    await expect(page.locator("[data-three-d-racks]").getByText(`${THREE_D_COPY.rotateOnSide} — 1° right`, { exact: true })).toBeVisible();
+    expect(isTurn(await turnOf(host), rackTurn({ ...AT_REST, roll: 1 }))).toBe(true);
+  });
+
+  test("8g. and Look Down the Rail touched while Tail is still turning back from Nose turns from the tail, not the nose", async ({ page }) => {
+    await page.goto("/design/3d");
+    const host = await waitForBoard(page);
+    await view(page, THREE_D_COPY.views.nose).click();
+    await expect.poll(async () => isTurn(await turnOf(host), rackTurn({ ...AT_REST, swing: 180 })), { timeout: 10_000 }).toBe(true);
+    await settled(host);
+    await expect(slider(page, THREE_D_COPY.lookDownRail)).toHaveValue("0");
+    await pressDuringMove(page, THREE_D_COPY.views.tail, { slider: { name: THREE_D_COPY.lookDownRail, value: 6 } });
+    await settled(host);
+    await expect(slider(page, THREE_D_COPY.lookDownRail)).toHaveValue("6");
+    expect(isTurn(await turnOf(host), rackTurn({ ...AT_REST, swing: 6 }))).toBe(true);
   });
 
   test("9. on a coarse pointer each control has 44 dots of touch", async ({ page }, testInfo) => {
