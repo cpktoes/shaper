@@ -164,7 +164,9 @@ None. The channels' layout columns and their place in `foamOff`'s concave sum ar
 
 None. There is no new endpoint, input, file path or schema.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* On the executor's two questions: the D-42 re-seat works both ways (*"Yes, both ways"*), and the researched opening vees stand even where they leave the tail rail's edge under 1/4" and so warn on a fresh pick (*"Warn, keep the numbers"*). D-34 as drawn: DATA's Foam off reads VOLUME's figure (the Longboard 2.55 L against the sketch's slab 3.33 L). Merged as b00e2366.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-05-doubles-vees-teardrop.png` (sources in
 `17-05-pictures-source.tar.gz`). Awaiting "approved", or changes, and the D-34 answer.
