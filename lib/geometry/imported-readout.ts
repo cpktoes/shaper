@@ -67,6 +67,9 @@ const TAIL_NAME: Record<TailShape["kind"], string> = {
 
 const FROM_TEMPLATE = "From TEMPLATE";
 const FROM_ROCKER_AND_FOIL = "From ROCKER & FOIL";
+/** RAILS' caption once a vee or a belly has lifted the rail (Phase 17, D-35, UI-SPEC open item 3): the three
+ * thicknesses are then the foil's less the bottom's lift at the rail, so the card names BOTTOM too. */
+const FROM_ROCKER_FOIL_AND_BOTTOM = "From ROCKER, FOIL & BOTTOM";
 /** VOLUME's caption names both screens it draws from: the length and width come from TEMPLATE, the
  * centre thickness from ROCKER's foil (the founder, 2026-10-18: "imported from Template and Rocker
  * & Foil"). */
@@ -95,11 +98,19 @@ export function rockerImportedReadout(length: Mm, width: Mm, system: UnitsSystem
  * @param nose12 the foil's nose thickness at the 12" station
  * @param center the board's centre thickness
  * @param tail12 the foil's tail thickness at the 12" station
+ * @param liftPresent whether the bottom lifts the rail at any of the three stations (Phase 17, D-35) — the figures
+ *   passed are then the thinned ones, and the caption names BOTTOM. Absent or false: today's card exactly.
  */
-export function railsImportedReadout(nose12: Mm, center: Mm, tail12: Mm, system: UnitsSystem): ImportedReadout {
+export function railsImportedReadout(
+  nose12: Mm,
+  center: Mm,
+  tail12: Mm,
+  system: UnitsSystem,
+  liftPresent = false,
+): ImportedReadout {
   const station = stationLabel(system);
   return {
-    caption: FROM_ROCKER_AND_FOIL,
+    caption: liftPresent ? FROM_ROCKER_FOIL_AND_BOTTOM : FROM_ROCKER_AND_FOIL,
     items: [
       { key: "nose", label: `Nose @ ${station}`, value: formatMark(nose12, system) },
       { key: "center", label: "Center", value: formatMark(center, system) },

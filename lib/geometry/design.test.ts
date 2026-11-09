@@ -12,19 +12,23 @@ import { presetSummary } from "./summary-line";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
-import { DEFAULT_FOIL_SPEC, type FoilSpec } from "./foil";
+import { DEFAULT_FOIL_SPEC, foilStationPoints, type FoilSpec } from "./foil";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
-import { inchesToMm, mm } from "./units";
+import { inchesToMm, mm, type Mm } from "./units";
 import { phase16FinCases } from "./__fixtures__/phase16-fin-cases";
 import bottomGolden from "./__fixtures__/bottom-golden.json";
 import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
+  foamOff,
   refAt,
+  resolveBottom,
   startingCut,
   type BoardBottom,
+  type BottomBoard,
   type BottomCutName,
   type BottomSectionKey,
 } from "./bottom";
@@ -41,7 +45,10 @@ import {
   designBottomBoard,
   designFinPlacement,
   designSideProfile,
+  bottomRailLift,
   LIVE_DESIGN_RULES,
+  railAnchorStations,
+  railsOnTheBottom,
   summarizeDesign,
   summarizeDesignWith,
   type DesignSummaryFields,
@@ -981,5 +988,115 @@ describe("the litres count the bottom's cut (Phase 17, D-05, D-20, D-21, D-33)",
     expect(Object.keys(flat)).toEqual(Object.keys(four));
     expect("foamOffAt" in four).toBe(false);
     expect(typeof cut.foamOffAt).toBe("function");
+  });
+});
+
+describe("RAILS bands the rail the bottom leaves, in a step only RAILS takes (Phase 17, D-22, D-35, D-40)", () => {
+  const all = phase16Boards();
+  const fieldsOf = (id: string) => {
+    const preset = BOARD_PRESETS.find((p) => p.id === id)!;
+    return all.find((b) => b.label === `${id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`)!.fields;
+  };
+  /** Everything RAILS reads for a board: its effective rails, its three anchors and its bottom's facts. */
+  const railsOf = (fields: DesignSummaryFields) => {
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const geometry = buildOutline(fields.outline);
+    const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+    const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const anchors = railAnchorStations(profile.effectiveFoil, fields.outline.length);
+    return { board, effectiveRails, anchors };
+  };
+  /** A bottom of the named cuts at their starting numbers on this board — through `startingCut`, never typed. */
+  const bottomOf = (board: BottomBoard, names: Partial<Record<BottomSectionKey, BottomCutName>>): BoardBottom => {
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    for (const section of BOTTOM_SECTIONS) {
+      const name = names[section];
+      if (name) bottom[section] = startingCut(section, name, board);
+    }
+    return bottom;
+  };
+
+  it("the three anchors are the litres' own: the foil's tail 12\", centre and nose 12\" stations", () => {
+    const fields = fieldsOf("fish");
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const points = foilStationPoints(profile.effectiveFoil, fields.outline.length);
+    const station = (key: string) => points.find((p) => p.key === key)!.station;
+    expect(railAnchorStations(profile.effectiveFoil, fields.outline.length)).toEqual({
+      tail: station("tail12"),
+      center: station("center"),
+      nose: station("nose12"),
+    });
+  });
+
+  it("with no bottom, all 102 Phase 16 boards' rails come back as the very same object and band exactly as before", () => {
+    const surfaceBoards = phase16SurfaceBoards();
+    expect(surfaceBoards).toHaveLength(102);
+    for (const { fields } of surfaceBoards) {
+      const { board, effectiveRails, anchors } = railsOf(fields);
+      const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolveBottom(DEFAULT_BOTTOM, board), board), anchors);
+      expect(onBottom).toBe(effectiveRails);
+      expect(computeRailBands(onBottom)).toEqual(computeRailBands(effectiveRails));
+    }
+  });
+
+  it("the Fish's Panel Vee lowers each anchor by exactly its own rail lift, the tail's most", () => {
+    const fields = fieldsOf("fish");
+    const { board, effectiveRails, anchors } = railsOf(fields);
+    const resolved = resolveBottom(bottomOf(board, { tail: "Panel Vee" }), board);
+    const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolved, board), anchors);
+    const liftAt = (s: Mm) => foamOff(resolved, board, s, board.railAt(s));
+    expect(onBottom).not.toBe(effectiveRails);
+    expect(liftAt(anchors.tail)).toBeGreaterThan(0);
+    for (const key of ["tail", "center", "nose"] as const) {
+      expect(onBottom[key].boardThickness).toBeCloseTo(effectiveRails[key].boardThickness - liftAt(anchors[key]), 9);
+      // nothing else on the section moves
+      expect({ ...onBottom[key], boardThickness: 0 }).toEqual({ ...effectiveRails[key], boardThickness: 0 });
+    }
+    expect(onBottom.tail.boardThickness).toBeLessThan(effectiveRails.tail.boardThickness);
+    // the switches the rails carry beside the three sections are the rails' own
+    expect({ ...onBottom, nose: null, center: null, tail: null }).toEqual({ ...effectiveRails, nose: null, center: null, tail: null });
+  });
+
+  it("a Deep Single Concave alone leaves RAILS as the same object: a concave lifts the stringer, never the rail", () => {
+    const fields = fieldsOf("shortboard");
+    const { board, effectiveRails, anchors } = railsOf(fields);
+    const resolved = resolveBottom(bottomOf(board, { center: "Deep Single Concave" }), board);
+    expect(railsOnTheBottom(effectiveRails, bottomRailLift(resolved, board), anchors)).toBe(effectiveRails);
+  });
+
+  it("the Longboard's belly lowers its centre anchor by the belly's lift at the rail (D-35's second picture)", () => {
+    const fields = fieldsOf("longboard");
+    const { board, effectiveRails, anchors } = railsOf(fields);
+    const resolved = resolveBottom(bottomOf(board, { center: "Continuous Belly / Rolled Mid" }), board);
+    const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolved, board), anchors);
+    const lift = foamOff(resolved, board, anchors.center, board.railAt(anchors.center));
+    expect(lift).toBeGreaterThan(0);
+    expect(onBottom.center.boardThickness).toBeCloseTo(effectiveRails.center.boardThickness - lift, 9);
+  });
+
+  it("a lift deeper than the rail can stand is held at RAILS' 1/4\" floor, never a rail of no thickness", () => {
+    const fields = fieldsOf("fish");
+    const { effectiveRails, anchors } = railsOf(fields);
+    const onBottom = railsOnTheBottom(effectiveRails, () => mm(effectiveRails.center.boardThickness * 2), anchors);
+    for (const key of ["tail", "center", "nose"] as const) expect(onBottom[key].boardThickness).toBe(BOTTOM_FLOOR);
+  });
+
+  it("never moves the rack card's thickness or VOLUME's estimator rows (Pitfalls 5 and 6): a Panel Vee board reads the planed figures", () => {
+    const fields = fieldsOf("fish");
+    const { board, effectiveRails, anchors } = railsOf(fields);
+    const bottom = bottomOf(board, { tail: "Panel Vee" });
+    const flatSummary = summarizeDesign(fields);
+    const veeSummary = summarizeDesign({ ...fields, bottom });
+    expect(veeSummary.centerThickness).toBe(flatSummary.centerThickness);
+    expect(veeSummary.volumeLitres).toBeLessThan(flatSummary.volumeLitres);
+    // VOLUME's rows read the shared effective rails, which the bottom cannot reach
+    const profile = designSideProfile({ ...fields, bottom } as DesignSummaryFields, LIVE_DESIGN_RULES);
+    const sharedRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    expect(deriveRailValues(computeRailBands(sharedRails))).toEqual(deriveRailValues(computeRailBands(effectiveRails)));
+    // and RAILS' own figures do move — so the two above are not equal by accident
+    const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolveBottom(bottom, board), board), anchors);
+    expect(deriveRailValues(computeRailBands(onBottom)).tailThickness).toBeLessThan(
+      deriveRailValues(computeRailBands(effectiveRails)).tailThickness,
+    );
   });
 });

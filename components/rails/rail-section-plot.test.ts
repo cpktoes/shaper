@@ -12,6 +12,7 @@ vi.mock("@/app/actions/units", () => ({ saveUnitsPreference: async () => {} }));
 import { DEFAULT_RAIL_BAND_SPEC, computeRailBands } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
 import { MIN_PINNED_FIT_SCALE } from "@/components/viewer/callout-primitives";
+import { railBottomLowest, railSectionBottom } from "@/lib/geometry/rail-bottom";
 import {
   CALLOUT_BOTTOM_PAD,
   CALLOUT_RIGHT_PAD,
@@ -208,6 +209,36 @@ describe("computeRailPlotBounds calloutRoom option", () => {
     // The room the below-axis names live in: the distance from the axis to the floor of the box
     // grows by exactly CALLOUT_BOTTOM_PAD when the room is asked for.
     expect(padded.height - py(0)).toBeCloseTo(plain.height - py(0) + CALLOUT_BOTTOM_PAD, 9);
+  });
+});
+
+/**
+ * A rail standing on a vee or a belly (Phase 17, D-41): its box reaches down as far as the planed bottom falls below
+ * the rail's own bottom, and nothing drawn moves. The bottom is built by the geometry's own `railSectionBottom` from a
+ * straight lift, never a typed coordinate.
+ */
+describe("computeRailPlotBounds on a lifted rail", () => {
+  const bands = computeRailBands(DEFAULT_RAIL_BAND_SPEC);
+  const plain = bands.tail;
+  const xAxisMin = plain.bounds.xAxisMin;
+  const lift = mm(inchesToMm(0.25));
+  const lifted = { ...plain, bottom: railSectionBottom(plain, lift, (d) => mm(Math.max(0, lift - 0.02 * d))) };
+
+  it("a section with no bottom keeps today's box exactly", () => {
+    expect(computeRailPlotBounds({ ...plain, bottom: undefined }, xAxisMin)).toEqual(computeRailPlotBounds(plain, xAxisMin));
+  });
+
+  it("the box's floor goes down by the bottom's lowest fall across the plot; its top, width and projection stay", () => {
+    const before = computeRailPlotBounds(plain, xAxisMin);
+    const after = computeRailPlotBounds(lifted, xAxisMin);
+    const lowestIn = mmToInches(railBottomLowest(lifted.bottom, xAxisMin));
+    expect(lowestIn).toBeLessThan(0);
+    expect(after.minY).toBeCloseTo(lowestIn - 0.15, 12);
+    expect(after.maxY).toBe(before.maxY);
+    expect(after.minX).toBe(before.minX);
+    expect(after.width).toBe(before.width);
+    expect(after.height).toBeCloseTo(before.height + (before.minY - after.minY) * SCALE, 9);
+    expect(railPlotProjection(lifted, xAxisMin).py(0)).toBe(railPlotProjection(plain, xAxisMin).py(0));
   });
 });
 

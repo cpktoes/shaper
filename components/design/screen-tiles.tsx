@@ -74,13 +74,14 @@ const TILE_KIND: Record<NavLink["href"], ScreenTileKind> = {
 const PICTURE_CLASS = "block h-[46px] w-full";
 
 function useTilePictures() {
-  const { outline, blank, outlineGeometry, sideProfile, railBands, effectiveFins, finTailOutline, finPlacement, quotedVolumeLitres } =
+  const { outline, blank, outlineGeometry, sideProfile, railBandsOnBottom, effectiveFins, finTailOutline, finPlacement, quotedVolumeLitres } =
     useDesign();
   const { system } = useUnits();
 
   const template = useMemo(() => outlineTileArt(outlineGeometry, "lying"), [outlineGeometry]);
   const rocker = useMemo(() => rockerTileArt(sideProfile), [sideProfile]);
-  const rails = useMemo(() => railsTileArt(railBands.center), [railBands.center]);
+  // The rail RAILS bands, the bottom's lift taken off (Phase 17, D-22) — `railBands` itself on a flat bottom.
+  const rails = useMemo(() => railsTileArt(railBandsOnBottom.center), [railBandsOnBottom.center]);
   const fins = useMemo(
     () =>
       finsTileArt(

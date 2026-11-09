@@ -111,6 +111,31 @@ describe("railsImportedReadout — RAILS' INPUTS card", () => {
   });
 });
 
+describe("railsImportedReadout under a bottom (Phase 17, D-35, UI-SPEC open item 3)", () => {
+  const nose = inchesToMm(1.31);
+  const center = inchesToMm(2.5);
+  const tail = inchesToMm(1.56);
+
+  it("names BOTTOM in its caption when a vee or belly has lifted the rail", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(railsImportedReadout(nose, center, tail, system, true).caption).toBe("From ROCKER, FOIL & BOTTOM");
+    }
+  });
+
+  it("without a lift it is today's card exactly, flag or no flag", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(railsImportedReadout(nose, center, tail, system, false)).toEqual(railsImportedReadout(nose, center, tail, system));
+      expect(railsImportedReadout(nose, center, tail, system).caption).toBe("From ROCKER & FOIL");
+    }
+  });
+
+  it("the three figures are the same formatter's either way: only the caption changes", () => {
+    const lifted = railsImportedReadout(nose, center, tail, "imperial", true);
+    expect(lifted.items).toEqual(railsImportedReadout(nose, center, tail, "imperial").items);
+    expect(lifted.foot).toBeNull();
+  });
+});
+
 describe("finsImportedReadout — FINS' INPUTS card", () => {
   const length = inchesToMm(72);
   const tailWidth12 = inchesToMm(14.75);
