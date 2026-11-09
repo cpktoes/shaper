@@ -199,7 +199,9 @@ None.
 
 None: no new endpoint, input or file path; the bottom reaches `volume.ts` as one closure built in `design.ts`.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* His rulings at this plan's two looks: D-40 (a vee or belly never takes thickness off the stringer, runs out through the rail and thins it, no lip — applied in this worktree before the merge), D-41 (RAILS draws the angle in the bottom of the displayed rail — plan 17-04) and D-42 (a center single fades out before a tail vee peaks — plan 17-05); the concave's hollow at the stringer confirmed: *"Ah, got it … a concave hollows the stringer and this makes sense."* Merged as 65a2762a.
 
 Picture (redrawn after D-40):
 `.planning/phases/17-bottom-contours/pictures/17-03-litres-and-sections.png` (sources in
