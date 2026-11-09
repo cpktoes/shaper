@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 executing: wave 8 (17-08) merged a57e080e after the founder's look, 8 of 16 plans; 17-09 (every row of every cut, the floor warning and the CHANNELS block) next"
+stopped_at: "Phase 17 executing: wave 9 (17-09) merged 36001eb5 after the founder's look, 9 of 16 plans; 17-10 (the viewer follows the shaper, DATA's layout marks, the locked board) next"
 last_updated: "2026-11-08T19:20:01.647Z"
 last_activity: 2026-11-08
 last_activity_desc: Phase 17 execution started
@@ -11,8 +11,8 @@ progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 65
-  completed_plans: 57
-  percent: 88
+  completed_plans: 58
+  percent: 89
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---

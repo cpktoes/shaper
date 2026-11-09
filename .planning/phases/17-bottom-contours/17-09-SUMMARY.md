@@ -164,7 +164,9 @@ None. T-17-16: every new action returns on `lockedRef.current`. The new Selects 
 `disabled={locked}`, and the sliders are `SliderRow`s. `board-lock-scope.test.ts` passes. T-17-18: the station rows read
 the resolved cut and the resolved channels; nothing is written until a slider moves.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it"* On the same card he kept both floor sentences exactly as written ("Keep these words"), chose "Bring my numbers back" for None on the channel count, and kept the warnings that show on a fresh pick ("Keep the warnings" — D-42's "Warn, keep the numbers"). The full browser suite on the merged 17-08 was read first: desktop clean; 17 phone failures, 13 passing alone; the iPhone x-3d failure on the 3D page is a Phase 16 race (Rotate on Side reads the face-up flag before the Deck move lands), not this plan. Merged as 36001eb5.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-09-every-row-and-the-channels.png` (sources, the raw shots and
 the probe scripts in `17-09-pictures-source.tar.gz`). Taken from the worktree's dev server on 3309 at 1280 wide,
