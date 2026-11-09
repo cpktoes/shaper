@@ -183,7 +183,9 @@ None.
 None. There is no new endpoint, input or file path. T-17-04 (closed mesh) and T-17-03 (channel-free boards unchanged)
 are mitigated and tested. T-17-11 holds: at most four walls a side are read.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* The channels as drawn: the sawtooth, the three runs, the length orders with only the starts staggered, the squeeze, the walls as real steps in the 3D board and the STL; the executor's two honest notes (the re-pinned litres relation, the swallow-prong mesh fix) accepted with the plan. Merged as 8fdca149.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-06-channels.png` (sources in `17-06-pictures-source.tar.gz`).
 
