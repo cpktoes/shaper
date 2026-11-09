@@ -123,8 +123,10 @@ function levelsUnder(depth: number, step: number): number {
 /**
  * A depth this close under a shade level still draws that level: a thousandth of an inch, which no one can see. The
  * grid's columns stand between stations, so a cut whose deepest is one station reads its full depth a hair shy on the
- * grid (measured on every starting cut of the four presets: under 0.02 mm), and a 1/4" cut would otherwise shade
- * seven levels deep, not eight. Display only — the shade is a tone, the numbers are elsewhere (UI-SPEC § Color).
+ * grid (measured on the starting singles, vees and bellies of the four presets: at most 0.0011 mm), and a 1/4" cut
+ * would otherwise shade seven levels deep, not eight. A double's trough, and the Spiral Vee's, can also fall between
+ * two samples across and read up to 0.24 mm shy; the reach does not try to close that. Display only — the shade is a
+ * tone, the numbers are elsewhere (UI-SPEC § Color).
  */
 export const BOTTOM_SHADE_REACH: Mm = inchesToMm(1 / 1000);
 
