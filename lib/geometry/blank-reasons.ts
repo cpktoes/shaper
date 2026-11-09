@@ -296,6 +296,33 @@ export function formatThinningStartBare(start: Mm, system: UnitsSystem): string 
 }
 
 /**
+ * A station on the BOTTOM page (Phase 17, D-25, UI-SPEC §11): a cut's Start, Deepest At and End from its nearest
+ * tip, a channel set's Stagger, the stations on the top view's rails and in the section's caption, `Section at`, a
+ * wing's station. A dim, exactly as a Thinning Start reads: through `formatDim`, Imperial `23 7/16"`, Metric
+ * centimetres to one decimal — so a 12" station prints `stationLabel`'s own digits (`30.5 cm`), never `305 mm`.
+ */
+export function formatBottomStation(value: Mm, system: UnitsSystem): string {
+  return formatDim(value, system);
+}
+
+/**
+ * The `Section at` slider (Phase 17, UI-SPEC §3.6, D-25): the track is the distance from the nose — the nose at the
+ * left end, the tail at the right, as the top view draws the board — on the Thinning Start slider's grid: 1/2" steps
+ * Imperial, each end rounded inward onto the 1/2" grid, 10 mm steps Metric. `station` is from the tail and so is what
+ * `toMm` gives back, clamped to the board. A station off the grid is drawn where it is, never snapped; only a drag's
+ * `toMm` snaps (`measureSlider`).
+ */
+export function bottomStationSlider(station: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
+  const stepIn = 0.5;
+  const lengthIn = mmToInches(length);
+  // Imperial rounds the far end inward onto the 1/2" grid, as `thinningStartSlider` does; Metric rounds it inward onto
+  // its own 10 mm grid (`metricSliderRange`), so it reads the board's length to the whole centimetre below.
+  const maxIn = system === "metric" ? lengthIn : Math.floor(lengthIn / stepIn + 1e-9) * stepIn;
+  const view = measureSlider(mm(length - station), { min: 0, max: maxIn }, stepIn, 10, system);
+  return { ...view, toMm: (dragged: number) => mm(Math.max(0, Math.min(length, length - view.toMm(dragged)))) };
+}
+
+/**
  * The Thinning Starts slider (D-11, UI-SPEC §3): the tip at the left end and the board's centre at the
  * right, on BOTH tips, so dragging right always means "starts further in". The tip view's range (6"
  * to half the length) is turned into the inch-domain range `measureSlider` takes, each end rounded

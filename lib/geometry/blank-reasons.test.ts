@@ -6,6 +6,8 @@ import { DEFAULT_BLANK_CUT, type BlankRecord, type BlankShortfall, type RunsOutC
 import { MIN_FOIL_THICKNESS_MM, boardOnBlank, fitAt, placementRange, prepareBlank } from "./blank-fit";
 import {
   blankReason,
+  bottomStationSlider,
+  formatBottomStation,
   blankRowMeta,
   blankRowVolume,
   pickBlankSummary,
@@ -1269,3 +1271,41 @@ describe("Hard Edge Blends From and Ends At — dims, and their coupled sliders 
     expect(ends.min).toBeGreaterThanOrEqual(mmToInches(start) + gapIn);
   });
 });
+
+describe("formatBottomStation and the Section at slider (Phase 17, D-25, UI-SPEC §11, §3.6)", () => {
+  const stations = [MEASURE_STATION_MM, inchesToMm(36), inchesToMm(23 + 7 / 16)];
+
+  it.each(UNITS_SYSTEMS)("%s: a station reads as a dim, exactly as formatDim and a Thinning Start read it", (system) => {
+    for (const s of stations) {
+      expect(formatBottomStation(s, system)).toBe(formatDim(s, system));
+      expect(formatBottomStation(s, system)).toBe(formatThinningStart(s, system));
+    }
+    // a 12" station prints the station label's own digits in Metric, never a millimetre mark
+    expect(formatBottomStation(MEASURE_STATION_MM, system)).toBe(stationLabel(system));
+    expect(formatBottomStation(MEASURE_STATION_MM, "metric")).not.toBe(formatMark(MEASURE_STATION_MM, "metric"));
+  });
+
+  const BOARD = inchesToMm(74); // 6'2"
+  it.each(UNITS_SYSTEMS)("%s: the slider runs on the Thinning Start slider's grid, from the nose (left) to the tail (right)", (system) => {
+    const thinning = thinningStartSlider({ fromTip: MEASURE_STATION_MM, range: thinningStartRange(BOARD) }, system);
+    const view = bottomStationSlider(inchesToMm(36), BOARD, system);
+    expect(view.step).toBe(thinning.step);
+    expect(view.min).toBe(0);
+    if (system === "imperial") {
+      expect(view.max).toBe(Math.floor(mmToInches(BOARD) / view.step + 1e-9) * view.step);
+      expect(view.value).toBeCloseTo(mmToInches(mm(BOARD - inchesToMm(36))), 9);
+    } else {
+      expect(view.max).toBe(metricSliderRange({ min: 0, max: mmToInches(BOARD) }, 10).max);
+      expect(view.max % 10).toBe(0);
+      expect(view.max).toBeLessThanOrEqual(BOARD);
+    }
+    // the left end is the nose, the right end the tail; toMm hands back a station from the tail
+    expect(view.toMm(view.min)).toBeCloseTo(BOARD, 6);
+    expect(view.toMm(view.max)).toBeLessThan(inchesToMm(1 / 2) + 1e-6);
+    expect(view.toMm(view.value + view.step)).toBeLessThan(inchesToMm(36));
+    // a drag past either end is clamped to the board
+    expect(view.toMm(-1e6)).toBeLessThanOrEqual(BOARD);
+    expect(view.toMm(1e6)).toBeGreaterThanOrEqual(0);
+  });
+});
+
