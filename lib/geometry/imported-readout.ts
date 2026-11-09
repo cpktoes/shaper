@@ -74,6 +74,11 @@ const FROM_ROCKER_FOIL_AND_BOTTOM = "From ROCKER, FOIL & BOTTOM";
  * centre thickness from ROCKER's foil (the founder, 2026-10-18: "imported from Template and Rocker
  * & Foil"). */
 const FROM_TEMPLATE_AND_ROCKER_AND_FOIL = "From TEMPLATE and ROCKER & FOIL";
+/** BOTTOM's caption (Phase 17, UI-SPEC § Copywriting): the sketch's own words — the length and width from TEMPLATE, the
+ * planed thickness from ROCKER. */
+const FROM_TEMPLATE_AND_ROCKER = "From TEMPLATE & ROCKER";
+/** BOTTOM's foot line: the thickness is the planed one, and a contour is cut out of it (D-25). */
+const BOTTOM_FOOT = "Thickness is the planed number. The contour comes out of it.";
 
 /**
  * ROCKER: the template's length and width. `Length 6'0"`, `Width 19"`; Metric `182.9 cm`, `48.3 cm`.
@@ -160,6 +165,25 @@ export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system:
       { key: "thickness", label: "Thickness", value: formatDim(centre, system) },
     ],
     foot: "Rail shapes from RAILS",
+  };
+}
+
+/**
+ * BOTTOM (Phase 17, D-25, UI-SPEC §1): the board the contours are cut into — its length, its width and its planed
+ * centre thickness, the board's headline dims exactly as VOLUME's card reads them (Length through `formatLength`, Width
+ * and Thickness through `formatDim`, so Metric reads `188.0 cm`, `47.6 cm`, `5.7 cm`), captioned with the two screens
+ * they come from, and a foot saying the contour comes out of the planed thickness. DATA's `planed` figure is the same
+ * thickness read as a mark (`57 mm`): the same number two ways, each right for what it shows (CLAUDE.md Rule 2).
+ */
+export function bottomImportedReadout(length: Mm, width: Mm, thickness: Mm, system: UnitsSystem): ImportedReadout {
+  return {
+    caption: FROM_TEMPLATE_AND_ROCKER,
+    items: [
+      { key: "length", label: "Length", value: formatLength(length, system) },
+      { key: "width", label: "Width", value: formatDim(width, system) },
+      { key: "thickness", label: "Thickness", value: formatDim(thickness, system) },
+    ],
+    foot: BOTTOM_FOOT,
   };
 }
 

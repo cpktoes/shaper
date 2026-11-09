@@ -27,6 +27,9 @@ const LOCKABLE_FILES = [
   // Quick 261018-ejc: the Remove This Blank popup — its Cancel is view-only, its Remove Blank tied to the lock.
   "components/rocker/remove-blank-dialog.tsx",
   "components/rails/rail-controls.tsx",
+  // Phase 17 (17-08): BOTTOM's panel — its three Cut menus are tied to the lock; its sliders are SliderRows, which read
+  // the lock themselves. The view's own controls (17-10's Height, Section at and the drag) are data-lock-exempt.
+  "components/bottom/bottom-controls.tsx",
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",
   "components/summary/order-form.tsx",

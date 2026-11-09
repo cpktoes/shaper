@@ -117,9 +117,14 @@ import {
 import {
   DEFAULT_BOTTOM,
   bottomHasCut,
+  keepStationsInOrder,
+  pickCut,
   resolveBottom,
   type BoardBottom,
   type BottomBoard,
+  type BottomCutName,
+  type BottomCutSpec,
+  type BottomSectionKey,
   type ResolvedBottom,
 } from "@/lib/geometry/bottom";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
@@ -187,7 +192,11 @@ import { pickOutlineGhost } from "@/lib/outline-ghost";
  * never a field this history's own `useMemo` looks at — a typed board name can never produce a
  * new snapshot identity, and so can never record a step, by construction rather than by a
  * separate guard that could drift out of sync with it. */
-type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName">;
+type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName"> & {
+  /** The bottom (Phase 17, 17-08) rides in every undo step, so Undo and Redo take a cut pick or a cut slider back;
+   * saving it with the board is 17-12's (`DesignSnapshotFields` gains it there). */
+  bottom: BoardBottom;
+};
 
 interface DesignState {
   outline: OutlineSpec;
@@ -461,6 +470,12 @@ interface DesignContextValue {
    * board. Wholesale replace, like `applyPreset`, with its resets. */
   applyBoardFile: (snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
+  /** BOTTOM's Cut menu (Phase 17, D-08, D-42): sets the section to the name's starting numbers on this board — a tail
+   * pick re-seating a center single still on its starting numbers — in one undo step. Nothing on a locked board. */
+  pickBottomCut: (section: BottomSectionKey, name: BottomCutName) => void;
+  /** One of BOTTOM's cut sliders (D-07): the patch in the stored form; with `changed`, Start ≥ Deepest ≥ End kept in
+   * the same step, the dragged station winning. One undo step per drag. Nothing on a locked board. */
+  updateBottomCut: (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => void;
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
@@ -722,6 +737,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       railsImportFoilThickness: state.railsImportFoilThickness,
       finSystem: state.finSystem,
       blank: state.blank,
+      bottom: state.bottom,
     }),
     [
       state.outline,
@@ -734,6 +750,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.railsImportFoilThickness,
       state.finSystem,
       state.blank,
+      state.bottom,
     ],
   );
 
@@ -1361,6 +1378,42 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [railsOnBottom, effectiveRails, railBands, resolvedBottom, bottomBoard, railAnchors],
   );
 
+  // BOTTOM's two edits (Phase 17, 17-08). They sit after `bottomBoard` because both read the board the bottom is cut
+  // into; like every mutator they check the lock first, note their undo key, and mark the board started and dirty.
+  //
+  // A pick from a section's Cut menu (D-08, D-42): the section opens on the name's starting numbers on this board, and —
+  // when a tail is picked — a center single still on its starting numbers is re-seated for the new tail in the SAME
+  // step (`pickCut`), so one Undo takes the whole pick back. A menu pick, not a drag: noteEdit(null).
+  const pickBottomCut = (section: BottomSectionKey, name: BottomCutName) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: pickCut(prev.bottom, section, name, bottomBoard),
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // A slider on one of a section's cut rows (D-07, R4): the patch in the stored form (a station through
+  // `storeCutStation`). When a station moved (`changed`), Start ≥ Deepest ≥ End is kept in the same step, the dragged
+  // one winning (`keepStationsInOrder`) — so a drag that pushes the other two is still one undo step, under one key per
+  // field dragged.
+  const updateBottomCut = (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => {
+    if (lockedRef.current) return;
+    noteEdit(`bottom:${section}:${patchKey(patch)}`);
+    setState((prev) => {
+      const patched: BottomCutSpec = { ...prev.bottom[section], ...patch };
+      const kept = changed ? keepStationsInOrder(section, patched, changed, bottomBoard, prev.bottom.wingRule) : patched;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        bottom: { ...prev.bottom, [section]: kept },
+        boardStarted: true,
+        dirty: true,
+      };
+    });
+  };
+
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
   // dirty, like every mutator above, so undo, autosave and the replace-board prompt all see them.
 
@@ -1938,6 +1991,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyModel,
     applyBoardFile,
     updateRailSection,
+    pickBottomCut,
+    updateBottomCut,
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,
