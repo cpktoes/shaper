@@ -200,7 +200,9 @@ T-17-16: both actions return first on a locked board, the Cut menus are `disable
 `board-lock-scope.test.ts` lists `bottom-controls.tsx`. T-17-12: the sideways tile floor 92 measured on both phones.
 T-17-11: one shade path per level; the tracer spec reads the path count.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* He kept both of the executor's proposals: the BOTTOM tile (the board lying nose-left with its own shade and a cutting line at the wide point, reading All flat / 1 cut / 2 cuts · 6 channels) and the panel title *Bottom Contours — Map, measure and cut the bottom*. The six desktop pictures moved in the top row only (pixel-compared before re-recording). Merged as a57e080e.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-08-bottom-screen-first-look.png` (sources, the six
 before/after/diff pictures and the raw shots in `17-08-pictures-source.tar.gz`). Taken from the worktree's dev
