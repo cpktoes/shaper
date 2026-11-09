@@ -38,6 +38,7 @@ import {
   runOptionLabel,
   staggerLabel,
   staggerWords,
+  wingWords,
 } from "./bottom-copy";
 
 /*
@@ -323,5 +324,40 @@ describe("BOTTOM's viewer (17-10): Height, Section at and the finished rail — 
     const store = readFileSync(new URL("../design/design-store.tsx", import.meta.url), "utf8");
     const snapshot = readFileSync(new URL("../../lib/models/design-snapshot.ts", import.meta.url), "utf8");
     for (const source of [store, snapshot]) expect(source).not.toMatch(/sectionStation|showFinishedRail|SectionHeight|sectionHeight/);
+  });
+});
+
+describe("BOTTOM's WINGS row (17-12, D-19): the words, and every figure through the app's own formatters", () => {
+  const one = [{ depth: inchesToMm(1 / 4), station: inchesToMm(11.5) }];
+  const two = [...one, { depth: inchesToMm(1 / 8), station: inchesToMm(7.5) }];
+
+  it("a wing's depth is a mark and its station a dim, in both systems", () => {
+    for (const system of SYSTEMS) {
+      expect(wingWords(two, system)).toEqual(two.map((w) => ({ depth: formatMark(w.depth, system), station: formatBottomStation(w.station, system) })));
+    }
+    expect(wingWords(one, "imperial")).toEqual([{ depth: '1/4"', station: '11 1/2"' }]);
+    // Metric: whole millimetres for the depth, centimetres to one decimal for the station (CLAUDE.md Rule 2).
+    expect(wingWords(one, "metric")).toEqual([{ depth: "6 mm", station: "29.2 cm" }]);
+    expect(wingWords([], "imperial")).toEqual([]);
+  });
+
+  it("the heading echoes one wing with its depth, two wings by their stations", () => {
+    expect(BOTTOM_COPY.wingsEcho(wingWords(one, "imperial"))).toBe('1/4" wing at 11 1/2"');
+    expect(BOTTOM_COPY.wingsEcho(wingWords(two, "imperial"))).toBe('wings at 11 1/2" and 7 1/2"');
+    expect(BOTTOM_COPY.wingsEcho(wingWords(one, "metric"))).toBe("6 mm wing at 29.2 cm");
+  });
+
+  it("the top view's caption names the wings on a winged board, and reads as it always has without any", () => {
+    expect(BOTTOM_COPY.topViewNoseLeft("6'2\"")).toBe("Nose left · 6'2\"");
+    expect(BOTTOM_COPY.topViewNoseLeft("5'8\"", wingWords(one, "imperial"))).toBe("Nose left · 5'8\" · wing 1/4\" at 11 1/2\"");
+    expect(BOTTOM_COPY.topViewNoseLeft("5'8\"", wingWords(two, "imperial"))).toBe("Nose left · 5'8\" · wings at 11 1/2\" and 7 1/2\"");
+  });
+
+  it("the menu opens on the narrowest outline, and each rule has its own note", () => {
+    expect(DEFAULT_BOTTOM.wingRule).toBe("narrowest");
+    expect(Object.keys(BOTTOM_COPY.wingRuleOptions)).toEqual(["narrowest", "natural"]);
+    expect(BOTTOM_COPY.wingRuleOptions).toEqual({ narrowest: "Narrowest outline", natural: "Natural outline, before the wing" });
+    expect(BOTTOM_COPY.wingRuleNotes.narrowest).toMatch(/^The real rail behind the wing/);
+    expect(BOTTOM_COPY.wingRuleNotes.natural).toMatch(/^The curve you drew before the wing/);
   });
 });

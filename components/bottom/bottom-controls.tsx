@@ -30,6 +30,7 @@ import type { BottomCutKey } from "@/lib/geometry/bottom-draw";
 import { bottomImportedReadout } from "@/lib/geometry/imported-readout";
 import { formatDim, formatMark, measureSlider } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
+import { placedWings } from "@/lib/geometry/wings";
 import { cn } from "@/lib/utils";
 import {
   BOTTOM_COPY,
@@ -42,6 +43,7 @@ import {
   runOptionLabel,
   staggerLabel,
   staggerWords,
+  wingWords,
 } from "./bottom-copy";
 
 /** RAILS' ruled heading (`components/rails/rail-controls.tsx`'s `RULED_HEADING`), the dress BOTTOM's panel wears
@@ -67,6 +69,9 @@ const FLOOR_LINE = "mt-2 text-xs text-surf-warning-ink";
 const MARK_STEP_IN = 1 / 16;
 /** Smoothness runs 0 to 100 in steps of 5. */
 const SMOOTHNESS = { min: 0, max: 100, step: 5 } as const;
+
+/** WINGS' two rules, in the menu's order: the narrowest outline first, where every board opens (D-19). */
+const WING_RULES: readonly BottomWingRule[] = ["narrowest", "natural"];
 
 const STATION_FIELDS = ["start", "deepest", "end"] as const;
 type StationField = (typeof STATION_FIELDS)[number];
@@ -160,13 +165,20 @@ export const BottomControls = memo(function BottomControls({
     resolvedBottom,
     updateBottomCut,
     setBottomClosesToPoint,
+    setBottomWingRule,
     setChannelRun,
     setChannelLongest,
     updateChannels,
     outline,
+    outlineGeometry,
     effectiveRails,
   } = useDesign();
+  const locked = useControlsLocked();
   const channelsCut = bottom.channels.count > 0;
+  // The wings as the board draws them (D-19): the WINGS row is for a winged board only, and a wing with no depth is no
+  // wing. Placing them is the maths' own (`placedWings`); this only asks whether there are any and reads their figures.
+  const wings = wingWords(placedWings(outline.wings ?? [], outlineGeometry), system);
+  const wingRuleItems = WING_RULES.map((rule) => ({ value: rule, label: BOTTOM_COPY.wingRuleOptions[rule] }));
   // Where each cut meets the 1/4" floor (D-09, D-33 as amended by D-40) comes from the editor's one scan: the stringer
   // form from the maths' own scan, the rail form from the litres' own sections — the store's memoised `bottomSections`,
   // never built here (the checker's W1). The scan (50–75 ms on a full bottom) reads deferred copies, so a drag keeps its
@@ -196,6 +208,37 @@ export const BottomControls = memo(function BottomControls({
           </label>
         </div>
       </div>
+
+      {/* WINGS (D-19, UI-SPEC §1): on a winged board only — which outline every cut's Off Rail is measured from. One
+          setting for the whole bottom, saved with it; greyed and still on a locked board. */}
+      {wings.length > 0 && (
+        <div data-bottom-wings className="flex flex-col gap-3.5">
+          <div className={RULED_HEADING}>
+            <span className="shrink-0">{BOTTOM_COPY.wingsHeading}</span>
+            <span data-bottom-wings-echo className={HEADING_ECHO}>
+              {BOTTOM_COPY.wingsEcho(wings)}
+            </span>
+          </div>
+          <div className={cn(locked && "opacity-40")}>
+            <div className={SELECT_LABEL}>{BOTTOM_COPY.wingRuleLabel}</div>
+            <Select items={wingRuleItems} value={bottom.wingRule} onValueChange={(value) => setBottomWingRule(value as BottomWingRule)} disabled={locked}>
+              <SelectTrigger aria-label={BOTTOM_COPY.wingRuleLabel} className={CUT_TRIGGER}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {wingRuleItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p data-bottom-wing-note className="text-xs text-surf-ink-muted font-normal">
+            {BOTTOM_COPY.wingRuleNotes[bottom.wingRule]}
+          </p>
+        </div>
+      )}
 
       {BOTTOM_SECTIONS.map((section) => (
         <BottomSectionCard

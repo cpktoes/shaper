@@ -17,6 +17,7 @@ import {
   type BottomFloorFlag,
   type BottomMarkColumn,
   type BottomSectionKey,
+  type BottomWingRule,
   type channelReadout,
   type ResolvedChannels,
 } from "@/lib/geometry/bottom";
@@ -42,6 +43,21 @@ export const BOTTOM_COPY = {
   title: "Bottom Contours",
   subtitle: "Map, measure and cut the bottom",
   inputsHeading: "Inputs",
+
+  /**
+   * WINGS, on a winged board only (D-19): the one setting for the whole bottom — which outline every cut's Off Rail is
+   * measured from. The heading echoes the placed wings (`1/4" wing at 11 1/2"`; two wings `wings at 11 1/2" and
+   * 7 1/2"`), each depth a mark and each station a dim, handed in already written.
+   */
+  wingsHeading: "Wings",
+  wingsEcho: (wings: readonly { depth: string; station: string }[]) =>
+    wings.length === 1 ? `${wings[0].depth} wing at ${wings[0].station}` : `wings at ${wings.map((w) => w.station).join(" and ")}`,
+  wingRuleLabel: "Measure Off Rail from",
+  wingRuleOptions: { narrowest: "Narrowest outline", natural: "Natural outline, before the wing" } satisfies Record<BottomWingRule, string>,
+  wingRuleNotes: {
+    narrowest: "The real rail behind the wing, and that narrower line carried forward past it — so no cut ever crosses the rail.",
+    natural: "The curve you drew before the wing. Behind the wing it sits outside the real rail, so a cut can run out through the step.",
+  } satisfies Record<BottomWingRule, string>,
 
   /** A section card. */
   cutLabel: "Cut",
@@ -99,7 +115,13 @@ export const BOTTOM_COPY = {
 
   /** The top view. */
   topViewCaption: "BOTTOM VIEW",
-  topViewNoseLeft: (length: string) => `Nose left · ${length}`,
+  /** The caption's right end: `Nose left · 6'2"`, and on a winged board the wings too — `Nose left · 5'8" · wing 1/4"
+   * at 11 1/2"`, two wings `· wings at 11 1/2" and 7 1/2"`. */
+  topViewNoseLeft: (length: string, wings: readonly { depth: string; station: string }[] = []) => {
+    if (wings.length === 0) return `Nose left · ${length}`;
+    const note = wings.length === 1 ? `wing ${wings[0].depth} at ${wings[0].station}` : `wings at ${wings.map((w) => w.station).join(" and ")}`;
+    return `Nose left · ${length} · ${note}`;
+  },
   topViewName: (boardName: string) => `The bottom of ${boardName} from below, with the contours shaded`,
 
   /** The section. */
@@ -142,6 +164,15 @@ export const BOTTOM_COPY = {
   depthsNote:
     "Deepest cut is the largest gap under a straightedge laid rail to rail at that station. Rail lift is that gap at the rail. Stringer left is the planed thickness less the cut at the stringer.",
 } as const;
+
+/**
+ * The placed wings as WINGS' heading and the top view's caption say them: each wing's depth a mark (`1/4"`, Metric
+ * `6 mm`) and its station from the tail a dim (`11 1/2"`, Metric `29.2 cm`) — CLAUDE.md Rule 2. Takes the wings as the
+ * board draws them (`placedWings`), in the order they are stored (wing 1 first).
+ */
+export function wingWords(wings: readonly { depth: Mm; station: Mm }[], system: UnitsSystem): { depth: string; station: string }[] {
+  return wings.map((wing) => ({ depth: formatMark(wing.depth, system), station: formatBottomStation(wing.station, system) }));
+}
 
 /** A layout-marks column's words (D-16; UI-SPEC § Copywriting "DATA"): each section's mark — `Nose edge`, `Center
  * flat`, `Center trough`, `Center edge`, `Tail flat` — then the channels' `Flat edge` and `Wall 1` … `Wall 4`. */

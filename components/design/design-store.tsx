@@ -129,6 +129,7 @@ import {
   type BottomCutName,
   type BottomCutSpec,
   type BottomSectionKey,
+  type BottomWingRule,
   type ResolvedBottom,
 } from "@/lib/geometry/bottom";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
@@ -483,6 +484,9 @@ interface DesignContextValue {
   /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
    * one undo step each. Nothing on a locked board. */
   setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
+  /** WINGS on BOTTOM (D-19): where Off Rail is measured from on a winged board — the narrowest outline, or the curve
+   * drawn before the wing. One setting for the whole bottom; one undo step each. Nothing on a locked board. */
+  setBottomWingRule: (rule: BottomWingRule) => void;
   /** The CHANNELS block's count (D-10, D-11): 4, 6 or 8 bring that count's starting width unless the width was set by
    * hand, every other number kept (`switchChannelCount`); `None` (0) hides the set and keeps its numbers. One undo step
    * each. Nothing on a locked board. */
@@ -1451,6 +1455,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // WINGS (D-19): which outline every cut's Off Rail is measured from on a winged board. A menu pick is a discrete
+  // choice, so its own undo step: noteEdit(null).
+  const setBottomWingRule = (rule: BottomWingRule) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, wingRule: rule },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // The CHANNELS block inside TAIL (D-10, D-11). The three menus are discrete choices — noteEdit(null), one undo step
   // each — and like every mutator they check the lock first and mark the board started and dirty.
   type ChannelsEdit = (channels: BottomChannelsSpec) => BottomChannelsSpec;
@@ -2075,6 +2092,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pickBottomCut,
     updateBottomCut,
     setBottomClosesToPoint,
+    setBottomWingRule,
     setChannelCount,
     setChannelRun,
     setChannelLongest,

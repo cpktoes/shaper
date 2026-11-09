@@ -27,7 +27,8 @@ import {
 import { formatLength } from "@/lib/geometry/measure-display";
 import { silhouette } from "@/lib/geometry/screen-tiles";
 import { mm, type Mm } from "@/lib/geometry/units";
-import { BOTTOM_COPY } from "./bottom-copy";
+import { placedWings } from "@/lib/geometry/wings";
+import { BOTTOM_COPY, wingWords } from "./bottom-copy";
 import { useSectionStation, useSetSectionStation } from "./section-station";
 
 /** The shade's strength per 1/32" level on the top view (UI-SPEC § Color; a GUIDE cartoon's is 5%). */
@@ -146,7 +147,10 @@ export function BottomTopView({ live, boardName }: BottomTopViewProps) {
       {/* The caption row (UI-SPEC §3.1); on an upright phone it is hidden — width alone. */}
       <div className="flex flex-none items-center justify-between gap-2 pb-1 max-shell:hidden">
         <span className="text-[10px] font-bold uppercase tracking-architectural text-surf-ink-muted">{BOTTOM_COPY.topViewCaption}</span>
-        <span className="text-xs text-surf-ink-muted">{BOTTOM_COPY.topViewNoseLeft(formatLength(outline.length, system))}</span>
+        {/* On a winged board the caption names the wings too (D-19): a depth is a mark, a station a dim. */}
+        <span data-bottom-top-view-note className="text-xs text-surf-ink-muted">
+          {BOTTOM_COPY.topViewNoseLeft(formatLength(outline.length, system), wingWords(placedWings(outline.wings ?? [], outlineGeometry), system))}
+        </span>
       </div>
       <div
         data-bottom-top-view-press
