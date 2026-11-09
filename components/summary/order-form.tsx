@@ -237,6 +237,7 @@ export function OrderForm() {
     outlineGeometry,
     sideProfile,
     railBands,
+    railBandsOnBottom,
     finPlacement,
     effectiveFins,
     quotedVolumeLitres,
@@ -264,13 +265,15 @@ export function OrderForm() {
   const sections = SECTION_KEYS.map((key) => ({
     key,
     title: SECTION_TITLE[key],
-    dataGroups: railBands[key].dataGroups,
+    // The Rail Band Reference prints the rail RAILS bands, the bottom's lift taken off (Phase 17, D-22), so the paper
+    // matches the screen; the very `railBands` on a flat bottom.
+    dataGroups: railBandsOnBottom[key].dataGroups,
   }));
 
   // One shared x-axis minimum across all three plots, then cropped at -6.5in — the same derivation
   // the landscape summary used. Three plots on one axis are comparable at a glance; three plots on
   // three different axes are not, which is the whole reason a shaper looks at them side by side.
-  const rawSharedXAxisMinMm = Math.min(...SECTION_KEYS.map((key) => railBands[key].bounds.xAxisMin));
+  const rawSharedXAxisMinMm = Math.min(...SECTION_KEYS.map((key) => railBandsOnBottom[key].bounds.xAxisMin));
   const sharedXAxisMin = mm(Math.max(rawSharedXAxisMinMm, inchesToMm(-6.5)));
 
   const finSetupLabel =
@@ -296,6 +299,7 @@ export function OrderForm() {
         }`
       : undefined;
 
+  // The board's headline thickness is the planed figure, never the rail the bottom leaves (Phase 17, Pitfall 6).
   const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
 
   // The PLANING table's words, read off the same side profile and Planer Max Depth ROCKER uses.
@@ -430,7 +434,7 @@ export function OrderForm() {
                       <div className="flex min-h-0 flex-1 items-center justify-center">
                         <RailSectionPlot
                           sectionKey={key}
-                          output={railBands[key]}
+                          output={railBandsOnBottom[key]}
                           xAxisMin={sharedXAxisMin}
                           fit="height"
                         />

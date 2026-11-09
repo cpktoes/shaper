@@ -49,6 +49,7 @@ export function RailBandEditor() {
   const {
     rails,
     effectiveRails,
+    railsOnBottom,
     railsImportFoilThickness,
     toggleRailsImportFoilThickness,
     updateRailSection,
@@ -57,7 +58,9 @@ export function RailBandEditor() {
     setTailHardEdgeEndsAt,
     updateRailNudge,
     resetRailAdvanced,
-    railBands: bands,
+    // RAILS draws and tables the rail the bottom leaves (Phase 17, D-22, D-35, D-41): the very `railBands` while no
+    // vee or belly lifts a rail. The sliders below still read and write the shaper's own thicknesses (`effectiveRails`).
+    railBandsOnBottom: bands,
     outline,
   } = useDesign();
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
@@ -301,6 +304,8 @@ export function RailBandEditor() {
               state only: fold state, the design and saved boards are untouched. */}
           <RailControls
             spec={effectiveRails}
+            importedSpec={railsOnBottom}
+            importedFromBottom={railsOnBottom !== effectiveRails}
             bands={bands}
             onChangeSection={updateSection}
             onToggleHardEdge={toggleHardEdge}

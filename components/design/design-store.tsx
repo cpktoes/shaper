@@ -101,6 +101,8 @@ import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
+  bottomRailLift,
+  designBottomBoard,
   designCrossSectionInput,
   deriveEffectiveRails,
   deriveEffectiveVolume,
@@ -108,7 +110,17 @@ import {
   deriveEffectiveFins,
   deriveRailValues,
   deriveTemplateValues,
+  railAnchorStations,
+  railsOnTheBottom,
 } from "@/lib/geometry/design";
+import {
+  DEFAULT_BOTTOM,
+  bottomHasCut,
+  resolveBottom,
+  type BoardBottom,
+  type BottomBoard,
+  type ResolvedBottom,
+} from "@/lib/geometry/bottom";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
 import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
@@ -133,8 +145,10 @@ import {
 } from "@/lib/geometry/fins";
 import {
   DEFAULT_VOLUME_SPEC,
+  boardSections,
   computeCrossSectionVolume,
   computeVolume,
+  type BoardSection,
   type CrossSectionVolumeResult,
   type VolumeRailValues,
   type VolumeResult,
@@ -182,6 +196,11 @@ interface DesignState {
   foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
+  /** The bottom contours (Phase 17, D-01, D-05): the three sections' cuts and the channels, as stored. Every board
+   * opens flat (`DEFAULT_BOTTOM`, D-04) — a preset, a saved board and a board file alike, until 17-12 reads a saved
+   * one — and a flat bottom moves nothing on any screen. Every reader takes it from this one value, through the
+   * memos below (`bottomBoard`, `resolvedBottom`, the litres' input, `bottomSections`, `railsOnBottom`). */
+  bottom: BoardBottom;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
   /** Whether the RAILS screen's three thickness sliders read from the foil (ROCKER screen) or
@@ -257,6 +276,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   foil: DEFAULT_BOARD_SPEC.foil,
   rails: DEFAULT_RAIL_BAND_SPEC,
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
+  bottom: DEFAULT_BOTTOM,
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
   railsImportFoilThickness: true,
@@ -539,6 +559,26 @@ interface DesignContextValue {
    * directly, so the RAILS screen's numbers and its own thickness sliders always agree. */
   effectiveRails: RailBandSpec;
   railBands: RailBandsOutput;
+  /** The stored bottom (Phase 17) — see `DesignState.bottom`. */
+  bottom: BoardBottom;
+  /** The board facts the bottom is read against (`designBottomBoard`, D-19, D-38): the drawn outline, its side
+   * profile and the front fins exactly as FINS places them (`finPlacement`, D-03). */
+  bottomBoard: BottomBoard;
+  /** The bottom read against the board (`resolveBottom`): every station from the tail, a tail cut's Deepest At
+   * following the front fins (D-36). */
+  resolvedBottom: ResolvedBottom;
+  /** The litres' own sections (`boardSections` over the very input `crossSectionVolume` integrates, the bottom
+   * included), so BOTTOM's thin-rail sentence (17-09) and its ghost ring (17-10) read the sections the litres, the 3D
+   * board and the CNC files read — no component builds sections of its own (the checker's W1, 2026-11-08). */
+  bottomSections: BoardSection[];
+  /** `effectiveRails` with each anchor's thickness lowered by the rail lift there (`railsOnTheBottom`, D-22, D-35):
+   * the rail RAILS bands once a vee or a belly has lifted it. The SAME object as `effectiveRails` while the bottom
+   * lifts no rail. RAILS-only: the litres and the headline thickness never read it. */
+  railsOnBottom: RailBandSpec;
+  /** `computeRailBands(railsOnBottom)` — what RAILS' plots, DATA and readout, the RAILS tile and the order form's Rail
+   * Band Reference show. The SAME object as `railBands` while the bottom lifts no rail; VOLUME's estimator rows keep
+   * `railBands`. */
+  railBandsOnBottom: RailBandsOutput;
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
   /** `fins` unless `finsImportTemplate`, in which case boardLength/tailWidth12/tailShape come
@@ -571,6 +611,9 @@ interface DesignContextValue {
    * `lib/geometry/design.ts`): `crossSectionVolume`'s figure while importing the drawn template,
    * `volumeResult`'s estimator figure while the Volume screen is a standalone quick estimator. */
   quotedVolumeLitres: Litres;
+  /** The litres before the bottom (Phase 17, D-34, DATA's first line): `quotedVolumeLitres`' own rule with no bottom.
+   * The same figure as `quotedVolumeLitres` while the bottom cuts nothing. */
+  quotedVolumeLitresBeforeBottom: Litres;
 }
 
 const DesignContext = createContext<DesignContextValue | null>(null);
@@ -805,7 +848,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     openBoardPendingRef.current = null;
     openBoardRestoredRef.current = true;
     clearOpenBoardCopy();
-    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
+    // Every preset opens flat (D-04): its bottom is DEFAULT_BOTTOM, never anything a preset could carry.
+    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), bottom: DEFAULT_BOTTOM, boardStarted: true, dirty: true }));
   };
 
   // The one place `dirty` deliberately does NOT follow `boardStarted`: opening a saved board
@@ -836,6 +880,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       foil: snapshot.foil,
       rails: snapshot.rails,
       fins: snapshot.fins,
+      // A saved board opens flat until its snapshot carries a bottom (17-12 reads it, D-24).
+      bottom: DEFAULT_BOTTOM,
       volume: snapshot.volume,
       finsImportTemplate: snapshot.finsImportTemplate,
       railsImportFoilThickness: snapshot.railsImportFoilThickness,
@@ -1264,12 +1310,49 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
   // Built through `designCrossSectionInput`, the very helper `summarizeDesign` uses (Phase 16, D-05), so
   // VOLUME, the cards and the coming 3D board all read one input.
-  const crossSectionVolume = useMemo(
+  //
+  // Phase 17 (D-05, D-20, D-21): the input carries the store's one bottom, read against the board's own facts, so the
+  // litres count the cut; a flat bottom adds nothing to the input at all (`designCrossSectionInput`).
+  const bottomBoard = useMemo(
+    () => designBottomBoard(resolvedOutline, outlineGeometry, sideProfile, finPlacement),
+    [resolvedOutline, outlineGeometry, sideProfile, finPlacement],
+  );
+  const resolvedBottom = useMemo(() => resolveBottom(state.bottom, bottomBoard), [state.bottom, bottomBoard]);
+  const crossSectionInput = useMemo(
     () =>
-      computeCrossSectionVolume(
-        designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length),
+      designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length, {
+        bottom: state.bottom,
+        board: bottomBoard,
+      }),
+    [outlineGeometry, sideProfile, effectiveRails, state.outline.length, state.bottom, bottomBoard],
+  );
+  const crossSectionVolume = useMemo(() => computeCrossSectionVolume(crossSectionInput), [crossSectionInput]);
+  // The litres' own sections, for BOTTOM's readers (the checker's W1): the same input, so the same rings.
+  const bottomSections = useMemo(() => boardSections(crossSectionInput), [crossSectionInput]);
+  // The litres before the bottom (D-34): the same input with no bottom — built only while the bottom cuts something.
+  const crossSectionVolumeBeforeBottom = useMemo(
+    () =>
+      bottomHasCut(state.bottom)
+        ? computeCrossSectionVolume(designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length))
+        : crossSectionVolume,
+    [state.bottom, outlineGeometry, sideProfile, effectiveRails, state.outline.length, crossSectionVolume],
+  );
+
+  // RAILS bands the rail the bottom leaves (D-22, D-35): its three anchors less the rail lift there, in a step only
+  // RAILS' own figures take — the litres above read `effectiveRails`. While no rail is lifted both are the very
+  // objects `effectiveRails` and `railBands` are, so a flat board's RAILS is untouched.
+  const railsOnBottom = useMemo(
+    () =>
+      railsOnTheBottom(
+        effectiveRails,
+        bottomRailLift(resolvedBottom, bottomBoard),
+        railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
       ),
-    [outlineGeometry, sideProfile, effectiveRails, state.outline.length],
+    [effectiveRails, resolvedBottom, bottomBoard, sideProfile.effectiveFoil, state.outline.length],
+  );
+  const railBandsOnBottom = useMemo(
+    () => (railsOnBottom === effectiveRails ? railBands : computeRailBands(railsOnBottom)),
+    [railsOnBottom, effectiveRails, railBands],
   );
 
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
@@ -1461,6 +1544,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const quotedVolumeLitres = useMemo(
     () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate),
     [volumeResult, crossSectionVolume],
+  );
+  const quotedVolumeLitresBeforeBottom = useMemo(
+    () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolumeBeforeBottom, volumeResult.importingTemplate),
+    [volumeResult, crossSectionVolumeBeforeBottom],
   );
 
   // The prototype's own handoff semantics (Volume.dc.html lines 412-437), now behind ONE box
@@ -1868,6 +1955,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     sideProfile,
     effectiveRails,
     railBands,
+    bottom: state.bottom,
+    bottomBoard,
+    resolvedBottom,
+    bottomSections,
+    railsOnBottom,
+    railBandsOnBottom,
     templateValues,
     railValues,
     effectiveFins,
@@ -1878,6 +1971,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     volumeResult,
     crossSectionVolume,
     quotedVolumeLitres,
+    quotedVolumeLitresBeforeBottom,
   };
 
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;

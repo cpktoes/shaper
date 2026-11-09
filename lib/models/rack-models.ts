@@ -51,9 +51,15 @@ export interface RackBoardFigures {
  * The one way a board's rack figures are worked out: its card numbers (`summarizeDesign`) and its
  * rack art from its own side profile (`designSideProfile` under the live rules) and its own outline.
  * Throws when either can't be worked out.
+ *
+ * Phase 17 (threat T-04-11): the board's own fins and FINS' Import Template box go into the summary
+ * with it, because a tail cut's Deepest At follows the front fins exactly as FINS places them (D-03).
+ * So once a saved board carries its bottom (17-12), its card counts the cut exactly as VOLUME does,
+ * and a rack card and VOLUME can never quote two litres for one board. A flat board reads the fins
+ * nowhere, so its card is what it always was.
  */
 export function rackBoardFigures(fields: DesignSummaryFields): RackBoardFigures {
-  const summary = summarizeDesign(fields);
+  const summary = summarizeDesign({ ...fields, fins: fields.fins, finsImportTemplate: fields.finsImportTemplate });
   const art = buildRackBoardArt(designSideProfile(fields, LIVE_DESIGN_RULES), buildOutline(fields.outline));
   return { summary, art };
 }

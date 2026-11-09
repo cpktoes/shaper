@@ -115,11 +115,17 @@ describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 
   // Since Phase 16 (D-05) the store builds its litres input through `designCrossSectionInput`, the helper
   // `summarizeDesign` uses, handing it the whole side profile; that helper reads the profile's own
   // thickness curve and foil (its own source is checked below), so the rule still holds in one place.
+  // Phase 17 (D-05, the checker's W1): the input is one memo, `crossSectionInput`, carrying the store's one bottom;
+  // the litres integrate it and `bottomSections` builds the same sections from it.
   it("the cross-section volume integrates the side profile's own thickness curve", () => {
-    const { object } = memo("crossSectionVolume");
+    expect(memo("crossSectionVolume").object).toMatch(/computeCrossSectionVolume\(\s*crossSectionInput\s*\)/);
+    expect(memo("bottomSections").object).toMatch(/boardSections\(\s*crossSectionInput\s*\)/);
+    const { object, deps } = memo("crossSectionInput");
     expect(object).toMatch(
-      /designCrossSectionInput\(\s*outlineGeometry,\s*sideProfile,\s*effectiveRails,\s*state\.outline\.length\s*\)/,
+      /designCrossSectionInput\(\s*outlineGeometry,\s*sideProfile,\s*effectiveRails,\s*state\.outline\.length,\s*\{\s*bottom:\s*state\.bottom,\s*board:\s*bottomBoard,?\s*\}\s*\)/,
     );
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+    expect(deps).toMatch(/\bbottomBoard\b/);
     const designSource = stripComments(readFileSync(new URL("../../lib/geometry/design.ts", import.meta.url), "utf8"));
     const helperStart = designSource.indexOf("export function designCrossSectionInput");
     expect(helperStart).toBeGreaterThanOrEqual(0);

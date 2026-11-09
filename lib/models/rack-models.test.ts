@@ -3,7 +3,15 @@ import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { DEFAULT_BLANK_CUT } from "@/lib/geometry/blank";
 import { DEFAULT_BOARD_SPEC } from "@/lib/geometry/board";
-import { LIVE_DESIGN_RULES, designSideProfile, summarizeDesign, type DesignSummaryFields } from "@/lib/geometry/design";
+import {
+  LIVE_DESIGN_RULES,
+  designBottomBoard,
+  designFinPlacement,
+  designSideProfile,
+  summarizeDesign,
+  type DesignSummaryFields,
+} from "@/lib/geometry/design";
+import { DEFAULT_BOTTOM, bottomHasCut, startingCut } from "@/lib/geometry/bottom";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
 import { buildOutline } from "@/lib/geometry/outline";
@@ -145,6 +153,36 @@ describe("rackBoardFigures", () => {
 
   it("throws for the crafted 500 mm board in a blank", () => {
     expect(() => rackBoardFigures({ ...FIELDS, outline: { ...FIELDS.outline, length: mm(500) } })).toThrow();
+  });
+
+  it.each(CASES)("%s: with its fins and Import Template box present and no bottom, the card reads exactly as before", (_, fields) => {
+    const withFins = { ...fields, fins: DEFAULT_FIN_PLACEMENT_SPEC, finsImportTemplate: false };
+    const without: DesignSummaryFields = { ...withFins };
+    delete without.fins;
+    delete without.finsImportTemplate;
+    expect(rackBoardFigures(withFins).summary).toEqual(rackBoardFigures(without).summary);
+  });
+
+  it("a board's own fins reach the card: a Panel Vee follows the board's front fins, as VOLUME counts it (T-04-11)", () => {
+    const preset = BOARD_PRESETS.find((p) => p.id === "fish")!;
+    const base: DesignSummaryFields = { ...presetDesignFields(preset), volume: DEFAULT_VOLUME_SPEC, railsImportFoilThickness: true };
+    const board = designBottomBoard(base.outline, buildOutline(base.outline), designSideProfile(base, LIVE_DESIGN_RULES), designFinPlacement(base));
+    const bottom = { ...DEFAULT_BOTTOM, tail: startingCut("tail", "Panel Vee", board) };
+    // the front fins moved 1" up the board from where the preset has them (FINS' own Forward Position offset)
+    const movedFins = { ...base.fins!, advanced: { ...base.fins!.advanced, forwardPositionOffset: inchesToMm(1) } };
+    const card = rackBoardFigures({ ...base, bottom, fins: movedFins });
+    expect(card.summary).toEqual(summarizeDesign({ ...base, bottom, fins: movedFins }));
+    expect(card.summary.volumeLitres).not.toBe(rackBoardFigures({ ...base, bottom }).summary.volumeLitres);
+  });
+});
+
+describe("every preset opens flat (Phase 17, D-04)", () => {
+  it.each(BOARD_PRESETS.map((preset) => [preset.name, preset] as const))("%s: no bottom of its own, and the store's opening bottom cuts nothing", (_, preset) => {
+    const fields = presetDesignFields(preset);
+    expect("bottom" in fields).toBe(false);
+    expect(bottomHasCut(DEFAULT_BOTTOM)).toBe(false);
+    const asOpened: DesignSummaryFields = { ...fields, volume: DEFAULT_VOLUME_SPEC, railsImportFoilThickness: true };
+    expect(summarizeDesign({ ...asOpened, bottom: DEFAULT_BOTTOM })).toEqual(summarizeDesign(asOpened));
   });
 });
 
