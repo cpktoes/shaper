@@ -1316,8 +1316,8 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
       BOTTOM_CUT_NAMES[section].filter((name) => ["vee", "belly"].includes(cutKind(name))).map((name) => ({ section, name })),
     );
 
-    it("walks five lift cuts on ten boards", () => {
-      expect(LIFTS).toHaveLength(5);
+    it("walks six lift cuts on ten boards (the Tri-Plane's planes joined them in 17-05)", () => {
+      expect(LIFTS).toHaveLength(6);
       expect(BOARDS_D40).toHaveLength(10);
     });
 
