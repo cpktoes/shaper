@@ -7,6 +7,7 @@
  * Later plans add theirs (17-09 the other cuts' rows and the channels, 17-10 the Height buttons and `Section at`,
  * 17-11 GUIDE).
  */
+import { BOARD_NAME_COPY } from "@/components/design/board-name-copy";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_FLOOR,
@@ -24,6 +25,13 @@ import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** A section's name as the panel and the screen readers say it. */
 export const BOTTOM_SECTION_NAME: Record<BottomSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
+
+/** The open board as GUIDE's intro names it: its own name, or `board` when it has none (blank, or the band's
+ * `Untitled` for a board not saved yet), so the sentence reads `your board`. */
+function guideBoardName(boardName: string | null): string {
+  const trimmed = boardName?.trim() ?? "";
+  return trimmed === "" || trimmed === BOARD_NAME_COPY.untitled ? "board" : trimmed;
+}
 
 export const BOTTOM_COPY = {
   /** The page `<title>` names the screen after its panel, as RAILS' page does. */
@@ -68,9 +76,26 @@ export const BOTTOM_COPY = {
   /** A slider's spoken name: `Center Off Rail`, `Center Deepest At`. */
   sliderName: (section: BottomSectionKey, control: string) => `${BOTTOM_SECTION_NAME[section]} ${control}`,
 
-  /** The tabs. GUIDE joins in 17-11. */
+  /** The tabs. */
   viewerTab: "VIEWER",
   dataTab: "DATA",
+  guideTab: "GUIDE",
+
+  /**
+   * GUIDE (D-17, D-18; UI-SPEC § Copywriting "GUIDE"). The nineteen cards' own three lines are the founder's and live
+   * in `bottom-guide-words.ts`, copied from his page; these are the words around them.
+   *
+   * The intro names the open board as the tab band does. A board never named reads `your board` — never `your
+   * Untitled`, which is the band's word for "not saved yet" and not a name.
+   */
+  guideIntro: (boardName: string | null) =>
+    `What each cut is, what it does, and how it is shaped. Every cut is drawn on your ${guideBoardName(boardName)} at its starting numbers — from above with its shade, and across where it is deepest, Height ×8 — the way VIEWER draws it.`,
+  /** The four group headings (drawn in capitals by their style), in the order the cards are listed. */
+  guideGroups: { nose: "Nose", center: "Center", tail: "Tail", channels: "Channels · cut last, inside TAIL" },
+  /** The tag on a card whose cut is on the open board (the channels' card: when any are cut). */
+  guideOnThisBoard: "On this board",
+  /** The label over a card's shaping note. */
+  guideHowToShape: "How to shape",
 
   /** The top view. */
   topViewCaption: "BOTTOM VIEW",

@@ -16,15 +16,17 @@ import type { Mm } from "@/lib/geometry/units";
 import { BOTTOM_COPY } from "./bottom-copy";
 import { BottomControls } from "./bottom-controls";
 import { BottomData } from "./bottom-data";
+import { BottomGuide } from "./bottom-guide";
 import { BottomSection } from "./bottom-section";
 import { BottomTopView } from "./bottom-top-view";
 import { createSectionStationStore, SectionStationContext, useSectionStation, useSetSectionStation } from "./section-station";
 
-type BottomPage = "viewer" | "data";
+type BottomPage = "viewer" | "data" | "guide";
 
 /**
  * BOTTOM, the eighth design screen (Phase 17, D-01): the board's bottom contours — pick a cut for the nose, the center
- * and the tail, and see it from below, across the board at a station, and in DATA's numbers.
+ * and the tail, and see it from below, across the board at a station, and in DATA's numbers. A third tab, GUIDE, says
+ * what every cut is, what it does and how it is shaped, each drawn on the open board (D-17).
  *
  * Everything drawn comes from the store's one bottom (`resolvedBottom`, `bottomBoard`) through the pure drawings in
  * `lib/geometry/bottom-draw.ts` and DATA's numbers in `bottom.ts` — no foam off is worked out here or in any component
@@ -108,6 +110,7 @@ export function BottomEditor() {
             tabs={[
               { id: "viewer" as const, label: BOTTOM_COPY.viewerTab },
               { id: "data" as const, label: BOTTOM_COPY.dataTab },
+              { id: "guide" as const, label: BOTTOM_COPY.guideTab },
             ]}
             active={activePage}
             onSelect={setActivePage}
@@ -126,6 +129,12 @@ export function BottomEditor() {
             {activePage === "data" && (
               <div className="flex min-h-0 flex-1 flex-col print:hidden">
                 <BottomData floorFlags={floorFlags} />
+              </div>
+            )}
+            {activePage === "guide" && (
+              // The cards scroll inside the folder, never the page (D-17). Words and pictures for the screen only.
+              <div className="flex min-h-0 flex-1 flex-col print:hidden">
+                <BottomGuide />
               </div>
             )}
           </TabbedPanel>
