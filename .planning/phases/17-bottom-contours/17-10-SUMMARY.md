@@ -182,7 +182,9 @@ None. T-17-16: every store action already returns on `lockedRef.current`. The on
 `data-lock-exempt`, and the inventory and `s-bottom` prove it. T-17-11: measured above. The shade is memoised per board and
 bottom and never redrawn during a drag.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it"* The founder asked for one change at the look: DATA's channels note shows only when channels are cut (commit e9805e62). Drag speed is his to check on his own phone before go-live. Merged as 97184477.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-10-the-viewer-and-data.png` (2123 × 7846, two columns). Its
 sources, the raw shots and the probe scripts are in `17-10-pictures-source.tar.gz`. All taken from this worktree's dev
