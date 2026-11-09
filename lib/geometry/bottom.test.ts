@@ -6,13 +6,18 @@ import {
   BOTTOM_CUT_NAMES,
   BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
+  bottomDataRows,
+  bottomDataStations,
+  bottomFloorFlags,
   bottomHasCut,
+  bottomLayoutMarks,
   bottomLitresLine,
   bottomSampler,
   cutFoamOff,
   cutFoamOffParts,
   cutHalfWidth,
   cutKind,
+  deepestCutAt,
   DEFAULT_BOTTOM,
   doubleMarks,
   fadeAt,
@@ -37,11 +42,12 @@ import {
   type ResolvedCut,
 } from "./bottom";
 import type { DesignSummaryFields } from "./design";
-import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
+import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
 import { buildOutline, foamHalfWidth, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { inchesToMm, litres, mm, type Mm } from "./units";
+import { formatInchesFraction, inchesToMm, litres, mm, type Mm } from "./units";
+import { boardSections } from "./volume";
 
 /*
  * Every expected figure here is the founder's sketch 021's own, executed on the app's five boards by
@@ -953,5 +959,277 @@ describe("D-42: a center single fades out before a tail vee peaks (the founder, 
       expectSketchCut(resolveCut("center", startingCut("center", c.name as BottomCutName, board), board), c.cut);
       expectSketchCut(resolveCut("center", pickCut(DEFAULT_BOTTOM, "center", c.name as BottomCutName, board).center, board), c.cut);
     }
+  });
+});
+
+/* ============ 17-05 Task 2: DATA's numbers — the depths, the layout marks, the floor ============ */
+
+type OpeningMarks = { s: number; marks: Record<string, { y: number; col: string }[]> };
+type OpeningWithMarks = OpeningCase & { columns: Record<string, string[]>; marks: OpeningMarks[] };
+const SECTION_TITLE: Record<BottomSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
+/** A golden column name (`Center edge`) as the app's key (`center:edge`). */
+const keyOfColumn = (section: BottomSectionKey, col: string) => {
+  const mark = col.slice(SECTION_TITLE[section].length + 1);
+  expect(`${SECTION_TITLE[section]} ${mark}`).toBe(col);
+  return `${section}:${mark}`;
+};
+
+/** The sections VOLUME, the 3D board and the CNC files read, for a board with this bottom. */
+function sectionsOf(fields: DesignSummaryFields, bottom: BoardBottom) {
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  return boardSections(designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board }));
+}
+
+describe("DATA: the depths every 6\" (D-16, R8)", () => {
+  const board = boardById("shortboard");
+  const resolved = resolveBottom(bottomOf(board, { center: "Deep Single Concave" }), board);
+  const rows = bottomDataRows(resolved, board);
+
+  it("DATA rows run from the tail every 6\" to the nose tip", () => {
+    expect(rows[0].station).toBe(0);
+    expect(rows[0].label).toBe("tail");
+    expect(rows[rows.length - 1].station).toBe(board.length);
+    expect(rows[rows.length - 1].label).toBe("nose");
+    expect(bottomDataStations(board)).toEqual(rows.map((r) => r.station));
+    for (let k = 1; k < rows.length - 1; k++) {
+      expect(rows[k].label).toBe("station");
+      expect(Math.abs(rows[k].station - rows[k - 1].station - inchesToMm(6))).toBeLessThan(1e-6);
+    }
+    expect(board.length - rows[rows.length - 2].station).toBeGreaterThan(0);
+    expect(board.length - rows[rows.length - 2].station).toBeLessThanOrEqual(inchesToMm(6) + 1);
+  });
+
+  it("DATA: every figure is the one number read at the row", () => {
+    let cutting = 0;
+    for (const r of rows) {
+      const W = board.railAt(r.station);
+      expect(r.railLift).toBe(foamOff(resolved, board, r.station, W));
+      expect(r.deepest).toBe(deepestCutAt(resolved, board, r.station));
+      expect(r.deepest).toBeGreaterThanOrEqual(r.railLift);
+      expect(r.deepest).toBeGreaterThanOrEqual(foamOff(resolved, board, r.station, mm(0)));
+      if (W > 0.5) {
+        expect(r.width).toBe(2 * W);
+        expect(r.stringerLeft).toBe(board.thicknessAt(r.station) - foamOff(resolved, board, r.station, mm(0)));
+      } else {
+        expect(r.width).toBeNull();
+        expect(r.stringerLeft).toBeNull();
+      }
+      expect(r.atFloor).toBe(false);
+      if (r.deepest > 0) cutting++;
+    }
+    expect(cutting).toBeGreaterThan(2);
+    // a concave lifts nothing at the rail
+    expect(rows.every((r) => r.railLift === 0)).toBe(true);
+  });
+
+  it("DATA: exactly one row is the wide point's and one the front fins', each within 3\"", () => {
+    for (const { board: b } of BOARDS) {
+      const all = bottomDataRows(resolveBottom(DEFAULT_BOTTOM, b), b);
+      const wide = all.filter((r) => r.reference === "wide");
+      const fins = all.filter((r) => r.reference === "fins");
+      expect(wide).toHaveLength(1);
+      expect(fins).toHaveLength(1);
+      expect(Math.abs(wide[0].station - b.widePoint)).toBeLessThan(inchesToMm(3));
+      expect(Math.abs(fins[0].station - b.frontFins)).toBeLessThan(inchesToMm(3));
+    }
+  });
+
+  it("DATA: a flat bottom gives no deepest cut and no rail lift at any row, and the stringer its planed thickness", () => {
+    for (const { board: b } of BOARDS) {
+      for (const r of bottomDataRows(resolveBottom(DEFAULT_BOTTOM, b), b)) {
+        expect(r.deepest).toBe(0);
+        expect(r.railLift).toBe(0);
+        if (r.stringerLeft !== null) expect(r.stringerLeft).toBe(b.thicknessAt(r.station));
+      }
+    }
+  });
+
+  it("DATA: a vee's rail lift is its depth where it is deepest, and it leaves the stringer as planed", () => {
+    const fish = boardById("fish");
+    const vee = resolveBottom(bottomOf(fish, { tail: "Panel Vee" }), fish);
+    const all = bottomDataRows(vee, fish);
+    for (const r of all) {
+      if (r.stringerLeft !== null) expect(r.stringerLeft).toBe(fish.thicknessAt(r.station));
+      expect(r.railLift).toBe(foamOff(vee, fish, r.station, fish.railAt(r.station)));
+    }
+    expect(all.some((r) => r.railLift > 0)).toBe(true);
+  });
+
+  it("DATA: inside a swallow's notch the stringer is air, so Stringer left reads nothing", () => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|swallow|hard")!.fields;
+    const swallow = bottomBoardOf(fields);
+    const all = bottomDataRows(resolveBottom(bottomOf(swallow, { tail: "Panel Vee" }), swallow), swallow);
+    expect(all[0].stringerLeft).toBeNull();
+    expect(all[0].width).not.toBeNull();
+  });
+
+  it("DATA: a row where the floor holds a concave is flagged, and its stringer left is the 1/4\" floor", () => {
+    const deep = bottomOf(board, { center: "Deep Single Concave" });
+    deep.center = keepStationsInOrder("center", { ...deep.center, depth: inchesToMm(2), end: mm(0) }, "end", board, "narrowest");
+    const held = bottomDataRows(resolveBottom(deep, board), board).filter((r) => r.atFloor);
+    expect(held.length).toBeGreaterThan(0);
+    for (const r of held) expect(Math.abs(r.stringerLeft! - BOTTOM_FLOOR)).toBeLessThan(TOL);
+  });
+});
+
+describe("DATA: the layout marks off the stringer (D-16) — golden", () => {
+  const openings = (cases.filter((c) => c.kind === "opening") as OpeningWithMarks[]).filter((c) => c.channels === 0);
+
+  it.each(openings.map((c) => [c.board, c] as const))("%s's opening: the columns are the sketch's markColumns and every 6\" the cells its marksOf", (_b, c) => {
+    const board = boardById(c.board);
+    const resolved = resolveBottom(bottomOf(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }), board);
+    const goldenKeys = BOTTOM_SECTIONS.flatMap((section) => (c.columns[section] ?? []).map((col) => keyOfColumn(section, col)));
+    const { columns, rows } = bottomLayoutMarks(resolved, board, c.marks.map((m) => mm(m.s)));
+    expect(columns.map((col) => col.key)).toEqual(goldenKeys);
+    for (const col of columns) expect(col.key).toBe(`${col.section}:${col.mark}`);
+    let marked = 0;
+    c.marks.forEach((m, k) => {
+      expect(rows[k].station).toBe(m.s);
+      columns.forEach((col, j) => {
+        const section = col.section as BottomSectionKey;
+        const g = (m.marks[section] ?? []).find((x) => keyOfColumn(section, x.col) === col.key);
+        const cell = rows[k].cells[j];
+        if (!g) expect(cell).toBeNull();
+        else {
+          expect(cell).not.toBeNull();
+          expect(Math.abs(cell! - g.y)).toBeLessThan(TOL);
+          marked++;
+        }
+      });
+      // and nothing the sketch marks is missing a column
+      for (const section of BOTTOM_SECTIONS) for (const x of m.marks[section] ?? []) expect(goldenKeys).toContain(keyOfColumn(section, x.col));
+    });
+    if (goldenKeys.length > 0) expect(marked).toBeGreaterThan(0);
+  });
+
+  it("DATA: the openings with marks are the singles' and the Spiral Vee's double (flat, trough, edge)", () => {
+    const withMarks = openings.filter((c) => BOTTOM_SECTIONS.some((s) => (c.columns[s] ?? []).length > 0)).map((c) => c.board);
+    expect(withMarks).toContain("midlength");
+    const mid = openings.find((c) => c.board === "midlength")!;
+    expect(mid.columns.tail.map((col) => keyOfColumn("tail", col))).toEqual(["tail:flat", "tail:trough", "tail:edge"]);
+  });
+
+  it("DATA: a flat bottom gives no columns; a belly or a plain vee none either", () => {
+    for (const { board } of BOARDS) {
+      expect(bottomLayoutMarks(resolveBottom(DEFAULT_BOTTOM, board), board).columns).toEqual([]);
+      expect(bottomLayoutMarks(resolveBottom(bottomOf(board, { nose: "Rolled Belly Entry", tail: "Panel Vee" }), board), board).columns).toEqual([]);
+    }
+  });
+
+  it("DATA: the Tri-Plane rules its flat panel's edge, Off Stringer out, wherever it cuts", () => {
+    for (const { board } of BOARDS) {
+      const resolved = resolveBottom(bottomOf(board, { center: "Tri-Plane Hull Center" }), board);
+      const { columns, rows } = bottomLayoutMarks(resolved, board);
+      expect(columns.map((c) => c.key)).toEqual(["center:flat"]);
+      let marked = 0;
+      for (const r of rows) {
+        const f = fadeAt(resolved.center.start, resolved.center.deepest, resolved.center.end, r.station, board.length);
+        const shown = f > 0.004 && resolved.center.offStringer < board.railAt(r.station);
+        expect(r.cells[0]).toBe(shown ? resolved.center.offStringer : null);
+        if (shown) marked++;
+      }
+      expect(marked).toBeGreaterThan(0);
+    }
+  });
+
+  it("DATA: a double's marks stay in order at every row — flat, then trough, then edge", () => {
+    for (const { board } of BOARDS) {
+      for (const [section, name] of [["center", "Early Double Concave"], ["tail", "Double Concave Exit"], ["tail", "Spiral Vee"]] as const) {
+        const { columns, rows } = bottomLayoutMarks(resolveBottom(bottomOf(board, { [section]: name }), board), board);
+        expect(columns.map((c) => c.mark)).toEqual(["flat", "trough", "edge"]);
+        for (const r of rows) {
+          const [flat, trough, edge] = r.cells;
+          if (flat !== null && trough !== null) expect(trough).toBeGreaterThan(flat);
+          if (trough !== null && edge !== null) expect(edge).toBeGreaterThan(trough);
+        }
+      }
+    }
+  });
+});
+
+describe("DATA: where a cut meets the 1/4\" floor (D-09, D-33, D-40)", () => {
+  const openings = (cases.filter((c) => c.kind === "opening") as OpeningCase[]).filter((c) => c.channels === 0);
+  /** One single at `depth`, run out to a tip: the nose tip (its Start) or the tail (its End). */
+  const toTip = (board: BottomBoard, section: BottomSectionKey, name: BottomCutName, tip: "nose" | "tail", depth: Mm): BoardBottom => {
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    const cut = { ...startingCut(section, name, board), depth };
+    // stored from the nose for a Nose cut (D-39), from the tail otherwise
+    const field = tip === "nose" ? "start" : "end";
+    const value = tip === "nose" ? (section === "nose" ? mm(0) : board.length) : section === "nose" ? board.length : mm(0);
+    bottom[section] = keepStationsInOrder(section, { ...cut, [field]: value }, field, board, "narrowest");
+    return bottom;
+  };
+  const SINGLES = BOTTOM_SECTIONS.flatMap((section) => BOTTOM_CUT_NAMES[section].filter((n) => cutKind(n) === "single").map((name) => ({ section, name })));
+
+  it.each(openings.map((c) => [c.board, c] as const))("%s's opening cuts never meet the stringer floor; a tail vee that thins the rail edge under 1/4\" is flagged there, behind the fins", (_b, c) => {
+    const { fields } = FIELDS.find((f) => f.id === c.board)!;
+    const board = bottomBoardOf(fields);
+    const bottom = bottomOf(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name });
+    const sections = sectionsOf(fields, bottom);
+    const flags = bottomFloorFlags(resolveBottom(bottom, board), board, sections);
+    expect(flags.flatMap((f) => f.stringer)).toEqual([]);
+    // D-40: a lift that leaves the rail under 1/4" is flagged, never cut shallower — on these boards only the tail's
+    // vees do it, at the rail's edge in the last few inches of the tail
+    for (const flag of flags) {
+      expect(flag.section).toBe("tail");
+      expect(isTailVee(c.cuts.tail.name as BottomCutName)).toBe(true);
+      for (const s of flag.rails) {
+        expect(s).toBeLessThan(board.frontFins);
+        expect(sections.find((x) => x.station === s)!.thinAt!.length).toBeGreaterThan(0);
+      }
+      expect(flag.at).toBe(Math.min(...flag.rails));
+      console.info(`${c.board}: ${c.cuts.tail.name} thins the rail edge under 1/4" at ${flag.rails.map((x) => formatInchesFraction(mm(x))).join(", ")} from the tail`);
+    }
+  });
+
+  it.each(BOARDS.map((b) => [b.id, b.board] as const))("%s: no single at 1/2\" run out to either tip meets the stringer floor", (_id, board) => {
+    expect(SINGLES).toHaveLength(6);
+    for (const { section, name } of SINGLES) {
+      for (const tip of ["nose", "tail"] as const) {
+        const bottom = toTip(board, section, name, tip, inchesToMm(1 / 2));
+        const r = resolveBottom(bottom, board);
+        expect(tip === "nose" ? r[section].start : r[section].end).toBe(tip === "nose" ? board.length : 0);
+        expect(bottomFloorFlags(r, board).flatMap((f) => f.stringer), `${name} to the ${tip}`).toEqual([]);
+      }
+    }
+  });
+
+  it("a concave set deeper than the foam holds meets the stringer floor, and its flag's `at` is the station nearest its own tip", () => {
+    const board = boardById("shortboard");
+    for (const { section, name } of SINGLES) {
+      const tip = section === "nose" ? "nose" : "tail";
+      const r = resolveBottom(toTip(board, section, name, tip, inchesToMm(2)), board);
+      const flags = bottomFloorFlags(r, board);
+      expect(flags.map((f) => f.section)).toEqual([section]);
+      const [flag] = flags;
+      expect(flag.stringer.length).toBeGreaterThan(0);
+      expect(flag.rails).toEqual([]);
+      expect(flag.at).toBe(tip === "nose" ? Math.max(...flag.stringer) : Math.min(...flag.stringer));
+      // every flagged station is one the floor really holds
+      for (const s of flag.stringer) expect(cutFoamOff(r[section], board, "narrowest", s, mm(0))).toBeGreaterThan(floorCap(board, s));
+    }
+  });
+
+  it("a Rolled Belly Entry at 1/2\" on the Shortboard leaves the rail under 1/4\" near the nose: the rail form, `at` nearest the nose", () => {
+    const { fields } = FIELDS.find((f) => f.id === "shortboard")!;
+    const board = bottomBoardOf(fields);
+    const bottom = bottomOf(board, { nose: "Rolled Belly Entry" });
+    bottom.nose = { ...bottom.nose, depth: inchesToMm(1 / 2) };
+    const sections = sectionsOf(fields, bottom);
+    const flags = bottomFloorFlags(resolveBottom(bottom, board), board, sections);
+    expect(flags.map((f) => f.section)).toEqual(["nose"]);
+    const [flag] = flags;
+    expect(flag.stringer).toEqual([]);
+    expect(flag.rails.length).toBeGreaterThan(0);
+    for (const s of flag.rails) {
+      expect(s).toBeGreaterThan(board.length / 2);
+      expect(sections.find((x) => x.station === s)!.thinAt!.length).toBeGreaterThan(0);
+    }
+    expect(flag.at).toBe(Math.max(...flag.rails));
+    // without the sections there is no rail form to read
+    expect(bottomFloorFlags(resolveBottom(bottom, board), board)).toEqual([]);
   });
 });

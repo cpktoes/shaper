@@ -24,6 +24,7 @@
 import type { BoardSideProfile } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { inchesToMm, mm, type Litres, type Mm } from "./units";
+import type { BoardSection } from "./volume";
 
 /* ============ the names ============ */
 
@@ -681,4 +682,228 @@ export function bottomLitresLine(now: Litres, before: Litres): { now: string; be
   const hundredths = (printed: string) => Math.round(Number(printed) * 100);
   const off = hundredths(printedBefore) - hundredths(printedNow);
   return { now: printedNow, before: printedBefore, foamOff: (off / 100).toFixed(2) };
+}
+
+/* ============ DATA's numbers (D-16, R8): the depths every 6", the layout marks, the floor ============ */
+
+/** DATA's rows step every 6" from the tail (the sketch's `drawData`). */
+export const BOTTOM_DATA_STEP: Mm = inchesToMm(6);
+/** The last 6" row stops this short of the nose, where the nose tip's own row stands (the sketch's 1). */
+export const BOTTOM_DATA_NOSE_GAP: Mm = mm(1);
+/** A row within this of the front fins or the wide point is a reference row, drawn in full ink (the sketch's 3"). */
+export const BOTTOM_REFERENCE_REACH: Mm = inchesToMm(3);
+/** A width, stringer or mark this close to nothing reads as nothing in DATA (the sketch's 0.5). */
+export const BOTTOM_DATA_EDGE: Mm = mm(0.5);
+/** A depth this small reads `—` in DATA (the sketch's 0.25) — for the component that formats DATA's cells. */
+export const BOTTOM_DATA_DEPTH_SHOWN: Mm = mm(0.25);
+/** A cut faded to this share of its depth or less rules no layout mark at a station (the sketch's 0.004). */
+export const BOTTOM_MARK_FADE_MIN = 0.004;
+/** The floor warning scans every 1/2" of the board, and every DATA row (D-09, D-33). */
+export const BOTTOM_FLOOR_SCAN_STEP: Mm = inchesToMm(1 / 2);
+/** The deepest cut is read at 61 points across, stringer to rail (the sketch's `deepestAt`). */
+const DEEPEST_SPANS = 60;
+/** The floor only "meets" a cut that passes it by more than this: a tie to the last binary digit is not a warning. */
+const FLOOR_GUARD: Mm = mm(1e-9);
+
+/** One row of DATA's depths table. Every length is a stored `Mm`; the screen formats them (Rule 2). */
+export interface BottomDataRow {
+  /** From the tail. */
+  station: Mm;
+  /** The tail's row, the nose tip's, or a 6" station between. */
+  label: "tail" | "nose" | "station";
+  /** The board's full width there (twice `railAt`); `null` where there is no rail to measure. */
+  width: Mm | null;
+  /** The deepest cut: the most foam off across the station, the gap under a straightedge laid rail to rail. */
+  deepest: Mm;
+  /** The foam off at the rail. */
+  railLift: Mm;
+  /** The planed thickness less the cut at the stringer; `null` where the stringer is air (a swallow's notch) or there
+   * is no rail. */
+  stringerLeft: Mm | null;
+  /** A reference row, drawn in full ink: the row within 3" of the front fins, or of the wide point. */
+  reference: "wide" | "fins" | null;
+  /** The 1/4" floor holds the concaves at the stringer here (D-09): `stringerLeft` is the floor. */
+  atFloor: boolean;
+}
+
+/** DATA's stations: the tail, every 6" from it, and the nose tip (the sketch's `drawData` rows). */
+export function bottomDataStations(board: BottomBoard): Mm[] {
+  const rows: Mm[] = [];
+  for (let s = 0; s < board.length - BOTTOM_DATA_NOSE_GAP; s += BOTTOM_DATA_STEP) rows.push(mm(s));
+  rows.push(board.length);
+  return rows;
+}
+
+/** The deepest cut at a station: the most foam off across 61 points from the stringer to the rail (the sketch's
+ * `deepestAt`). */
+export function deepestCutAt(resolved: ResolvedBottom, board: BottomBoard, s: Mm): Mm {
+  const W = board.railAt(s);
+  let m = 0;
+  for (let j = 0; j <= DEEPEST_SPANS; j++) m = Math.max(m, foamOff(resolved, board, s, mm((W * j) / DEEPEST_SPANS)));
+  return mm(m);
+}
+
+/** Which reference a row is: the front fins first, then the wide point, each within 3" (the sketch's `rowCls`). */
+function referenceOf(board: BottomBoard, s: Mm): BottomDataRow["reference"] {
+  if (Math.abs(s - board.frontFins) < BOTTOM_REFERENCE_REACH) return "fins";
+  if (Math.abs(s - board.widePoint) < BOTTOM_REFERENCE_REACH) return "wide";
+  return null;
+}
+
+/**
+ * DATA's depths table (D-16): a row at the tail, every 6" from it and at the nose tip — the width, the deepest cut,
+ * the rail lift and the stringer left, each the one number (`foamOff`) read at that station.
+ */
+export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): BottomDataRow[] {
+  const stations = bottomDataStations(board);
+  return stations.map((s, k) => {
+    const W = board.railAt(s);
+    const hasRail = W > BOTTOM_DATA_EDGE;
+    const stringerAir = board.notchInner(s) > BOTTOM_DATA_EDGE || !hasRail;
+    const stringerLeft = stringerAir ? null : mm(board.thicknessAt(s) - foamOff(resolved, board, s, mm(0)));
+    return {
+      station: s,
+      label: k === 0 ? "tail" : k === stations.length - 1 ? "nose" : "station",
+      width: hasRail ? mm(2 * W) : null,
+      deepest: deepestCutAt(resolved, board, s),
+      railLift: foamOff(resolved, board, s, W),
+      stringerLeft,
+      reference: referenceOf(board, s),
+      atFloor: stringerLeft !== null && foamOffParts(resolved, board, s, mm(0)).concave > stringerFloorCap(board, s) + FLOOR_GUARD,
+    };
+  });
+}
+
+/** One column of DATA's layout-marks table. Its words (`Center edge`, `Wall 1`) are the screen's, built from `key`. */
+export interface BottomMarkColumn {
+  /** `${section}:${mark}`, with the wall's number for a channel wall (17-06). */
+  key: string;
+  section: BottomSectionKey | "channels";
+  mark: "edge" | "flat" | "trough" | "wall";
+  /** A channel wall's number, 1 out from the stringer (17-06). */
+  index?: number;
+}
+
+const markColumn = (section: BottomSectionKey, mark: BottomMarkColumn["mark"]): BottomMarkColumn => ({ key: `${section}:${mark}`, section, mark });
+
+/** The columns a cut can put in the layout table (the sketch's `markColumns`). */
+function markColumnsOf(cut: ResolvedCut): BottomMarkColumn[] {
+  if (cut.kind === "flat" || cut.depth <= 0) return [];
+  if (cut.kind === "single") return [markColumn(cut.section, "edge")];
+  if (cut.kind === "double") return [markColumn(cut.section, "flat"), markColumn(cut.section, "trough"), markColumn(cut.section, "edge")];
+  if (cut.kind === "vee" && cut.offStringer > BOTTOM_DATA_EDGE) return [markColumn(cut.section, "flat")];
+  return [];
+}
+
+/** A cut's layout marks at a station, out from the stringer — what a shaper rules onto the blank (the sketch's
+ * `marksOf`). */
+function marksOf(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: Mm): { key: string; y: Mm }[] {
+  if (cut.kind === "flat" || cut.depth <= 0 || fadeAt(cut.start, cut.deepest, cut.end, s, board.length) <= BOTTOM_MARK_FADE_MIN) return [];
+  const W = board.railAt(s);
+  const key = (mark: BottomMarkColumn["mark"]) => markColumn(cut.section, mark).key;
+  if (cut.kind === "single") {
+    const C = cutHalfWidth(cut, board, rule, s);
+    return C > BOTTOM_DATA_EDGE && C < W ? [{ key: key("edge"), y: C }] : [];
+  }
+  if (cut.kind === "double") {
+    const C = cutHalfWidth(cut, board, rule, s);
+    if (C <= BOTTOM_DATA_EDGE) return [];
+    const { flat, trough } = doubleMarks(cut, C);
+    const out = [{ key: key("flat"), y: flat }, { key: key("trough"), y: trough }];
+    if (C < W) out.push({ key: key("edge"), y: C });
+    return out.filter((m) => m.y > BOTTOM_DATA_EDGE);
+  }
+  if (cut.kind === "vee" && cut.offStringer > BOTTOM_DATA_EDGE && cut.offStringer < W) return [{ key: key("flat"), y: cut.offStringer }];
+  return [];
+}
+
+/**
+ * DATA's layout-marks table (D-16): the columns in shop order — each section's flat, trough and edge, as its cut has
+ * them (the channels' walls join in 17-06) — and at each station the marks off the stringer, `null` where a cut does not
+ * reach. The stations are DATA's rows unless others are asked for. No columns on a flat bottom.
+ */
+export function bottomLayoutMarks(
+  resolved: ResolvedBottom,
+  board: BottomBoard,
+  stations: readonly Mm[] = bottomDataStations(board),
+): { columns: BottomMarkColumn[]; rows: { station: Mm; cells: (Mm | null)[] }[] } {
+  const columns = BOTTOM_SECTIONS.flatMap((section) => markColumnsOf(resolved[section]));
+  const rows = stations.map((station) => {
+    const here = new Map<string, Mm>();
+    for (const section of BOTTOM_SECTIONS) for (const m of marksOf(resolved[section], board, resolved.wingRule, station)) here.set(m.key, m.y);
+    return { station, cells: columns.map((c) => here.get(c.key) ?? null) };
+  });
+  return { columns, rows };
+}
+
+/** Where one cut meets the 1/4" floor (D-09, D-33, D-40). */
+export interface BottomFloorFlag {
+  section: BottomSectionKey | "channels";
+  /** The stations where the floor holds this cut's concave work, so 1/4" is left under the planed thickness. */
+  stringer: Mm[];
+  /** The stations where this cut takes foam off a rail left thinner than 1/4" (or lifted to the deck, D-40). */
+  rails: Mm[];
+  /** The flagged station nearest this cut's own tip — the nose for a Nose cut, the tail otherwise; `null` when none. */
+  at: Mm | null;
+}
+
+/** The floor's scan: every 1/2" from the tail to the nose, and every DATA row, in order. */
+function floorScanStations(board: BottomBoard): Mm[] {
+  const at = new Set<number>(bottomDataStations(board));
+  for (let s = 0; s <= board.length; s += BOTTOM_FLOOR_SCAN_STEP) at.add(s);
+  return [...at].sort((a, b) => a - b).map(mm);
+}
+
+/**
+ * Where each cut meets the 1/4" floor (D-09, D-33 as amended by D-40), for the warning under its Depth and DATA's
+ * floor note:
+ *
+ * - **the stringer form** — the stations (every 1/2", and every DATA row) where the floor holds the concaves and this
+ *   cut is one of them: somewhere across the foam at that station (61 points, and a double's trough) its own concave
+ *   work is above 0 and the concaves together would leave less than 1/4" under the planed thickness. Only a concave
+ *   can meet it; a vee or a belly never touches the stringer (D-40);
+ * - **the rail form** — from the sections the litres and the 3D board read (`boardSections`), the stations where a
+ *   section's foam is left under 1/4" (`BoardSection.thinAt`, the knife edge of `railEdgeAt` included) and this cut takes
+ *   foam off at one of those points.
+ *
+ * Only the cuts that meet it are listed, in shop order.
+ */
+export function bottomFloorFlags(resolved: ResolvedBottom, board: BottomBoard, sections?: readonly BoardSection[]): BottomFloorFlag[] {
+  const rule = resolved.wingRule;
+  const scan = floorScanStations(board);
+  const flags: BottomFloorFlag[] = [];
+  for (const section of BOTTOM_SECTIONS) {
+    const cut = resolved[section];
+    if (cut.kind === "flat" || cut.depth <= 0) continue;
+    const stringer: Mm[] = [];
+    if (cut.kind === "single" || cut.kind === "double") {
+      for (const s of scan) {
+        // only the foam there: a swallow's notch is air, so the scan starts at its inside wall
+        const W = board.railAt(s);
+        const inner = board.notchInner(s);
+        if (W - inner <= 0) continue;
+        const cap = stringerFloorCap(board, s) + FLOOR_GUARD;
+        const across: number[] = [];
+        for (let j = 0; j <= DEEPEST_SPANS; j++) across.push(inner + ((W - inner) * j) / DEEPEST_SPANS);
+        if (cut.kind === "double") {
+          const C = cutHalfWidth(cut, board, rule, s);
+          const { trough } = doubleMarks(cut, C);
+          if (C > 0 && trough > inner) across.push(trough);
+        }
+        const meets = across.some((y) => cutFoamOffParts(cut, board, rule, s, mm(y)).concave > 0 && foamOffParts(resolved, board, s, mm(y)).concave > cap);
+        if (meets) stringer.push(s);
+      }
+    }
+    const rails: Mm[] = [];
+    for (const built of sections ?? []) {
+      if (!built.thinAt || built.thinAt.length === 0) continue;
+      const inner = board.notchInner(built.station);
+      if (built.thinAt.some((across) => cutFoamOff(cut, board, rule, built.station, mm(across + inner)) > 0)) rails.push(built.station);
+    }
+    if (stringer.length === 0 && rails.length === 0) continue;
+    const all = [...stringer, ...rails];
+    const at = mm(section === "nose" ? Math.max(...all) : Math.min(...all));
+    flags.push({ section, stringer, rails, at });
+  }
+  return flags;
 }
