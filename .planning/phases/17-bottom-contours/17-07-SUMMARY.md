@@ -200,7 +200,9 @@ None. Every function is used by its tests and the picture; 17-08 paints them.
 None. There is no new endpoint, input, file path or schema. T-17-11 is mitigated and tested (one path per level, ≤ 48
 on the worst board; measured 17). T-17-01 is mitigated: every expectation is the app's own function.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-08)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it."* Every drawing as drawn: the shade and lines, the pencil lines and fins, the section and its gauges, the ruler bare from a 1024 window (D-30), the GUIDE cartoons and the tile; the executor's notes (the shade's 1/1000" display allowance, the box-height fit, the widened signatures) accepted with the plan. Merged as 8dc93f77.
 
 Picture: `.planning/phases/17-bottom-contours/pictures/17-07-the-drawings.png` (sources in
 `17-07-pictures-source.tar.gz`). Every drawing in it is painted straight from the new functions, with no React, beside
