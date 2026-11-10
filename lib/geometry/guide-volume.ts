@@ -31,6 +31,7 @@ import {
 } from "./guide-card";
 import {
   guideDetailBox,
+  GUIDE_HDIM_LABEL_OFF,
   guideHDim,
   guideHalfWidthAt,
   guidePlanPrims,
@@ -135,9 +136,9 @@ const SECTION_H = 110;
 const TYPES_H = 130;
 /** A window name's band at the top of a detail, and a dimension label's band under a plan. */
 const NAME_BAND = 3 + GUIDE_TEXT_UNITS_MAX + 2;
-const DIM_BAND = 6 + 3 + GUIDE_TEXT_UNITS_MAX + 2;
+const DIM_BAND = 6 + GUIDE_HDIM_LABEL_OFF + GUIDE_TEXT_UNITS_MAX + 2;
 /** The room kept right of a drawing for a vertical dimension's label. */
-const LABEL_GUTTER = 84;
+const LABEL_GUTTER = 85;
 
 interface PlanOptions {
   /** The plan drawn in muted dashes, the board as it is drawn under it. */

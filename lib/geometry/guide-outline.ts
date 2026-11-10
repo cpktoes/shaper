@@ -39,6 +39,7 @@ import {
 } from "./guide-card";
 import {
   guideDetailBox,
+  GUIDE_HDIM_LABEL_OFF,
   guideHDim,
   guideHalfWidthAt,
   guidePlanPrims,
@@ -356,7 +357,7 @@ const DETAIL_H: Record<WindowKind, number> = {
 };
 /** A window name's band at the top of a detail, and a dimension label's band under the board. */
 const NAME_BAND = 3 + GUIDE_TEXT_UNITS_MAX + 2;
-const DIM_BAND = 6 + 3 + GUIDE_TEXT_UNITS_MAX + 2;
+const DIM_BAND = 6 + GUIDE_HDIM_LABEL_OFF + GUIDE_TEXT_UNITS_MAX + 2;
 /** The room kept right of a drawing for a vertical dimension's label (a 9-character figure at 10 dots on
  * the narrowest card, with its gap). */
 const LABEL_GUTTER = 94;

@@ -55,12 +55,21 @@ import {
 } from "./guide-card";
 import {
   GUIDE_DETAIL_GAP,
+  GUIDE_HDIM_LABEL_OFF,
   GUIDE_STRIP_BAND,
   GUIDE_STRIP_MARGIN,
   GUIDE_TEXT_UNITS_MAX,
+  GUIDE_VDIM_LABEL_OFF,
   guideStripInset,
+  guideLabelHull,
+  guidePointInShape,
+  guideShapes,
+  guideStrokeMeetsBox,
+  guideStrokes,
   guideTextBox,
   guideWindowName,
+  type GuideShape,
+  type GuideStroke,
 } from "./guide-draw";
 import { GUIDE_FRAME, guidePush } from "./guide-push";
 import { formatMark, formatSignedMark, measureSlider, stationLabel } from "./measure-display";
@@ -455,8 +464,9 @@ function tallestIn(profiles: readonly BoardSideProfile[], s0: number, s1: number
   return hi;
 }
 
-/* Labels: a dimension's value goes beside it, above it or below it, wherever the first of its places keeps
-   it inside its window and clear of every label already set (checked at the narrowest card's text size). */
+/* Labels: a dimension's value goes beside it, above it or below it, at the nearest of its places that is
+   inside its window, clear of every label already set and of every drawn line and tick, and not inside the
+   board or its blank (all checked for the room the label can take at any card's text size). */
 
 function boxInside(a: GuideBox, b: GuideBox): boolean {
   return a.x >= b.x + 1 && a.y >= b.y + 1 && a.x + a.w <= b.x + b.w - 1 && a.y + a.h <= b.y + b.h - 1;
@@ -465,67 +475,210 @@ function boxesMeet(a: GuideBox, b: GuideBox): boolean {
   return a.x < b.x + b.w + 1 && b.x < a.x + a.w + 1 && a.y < b.y + b.h + 1 && b.y < a.y + a.h + 1;
 }
 
+/** The room a label claims: its box at the narrowest card's text size, with the room its ink can take at
+ * any size (a smaller text closes in on the point it hangs from). */
+function labelClaim(prim: GuidePrim): GuideBox | null {
+  const text = guideTextBox(prim, GUIDE_MIN_FIT);
+  const hull = guideLabelHull(prim);
+  if (!text || !hull) return null;
+  const x = Math.min(text.x, hull.x);
+  const y = Math.min(text.y, hull.y);
+  return { x, y, w: Math.max(text.x + text.w, hull.x + hull.w) - x, h: Math.max(text.y + text.h, hull.y + hull.h) - y };
+}
+
+/** How clear a label's place is, best first. */
+const PLACE = { clear: 0, inPush: 1, inBoard: 2, onFaintLine: 3, onLine: 4, noRoom: 5 } as const;
+/** The clear space kept between a label and any drawn line, in drawing units. */
+const LABEL_GAP = 1;
+
+/** A window's labels: what is drawn there, and the labels already set. */
 class LabelRoom {
   private placed: GuideBox[] = [];
-  constructor(private readonly box: GuideBox) {}
-  fits(prim: GuidePrim): boolean {
-    const b = guideTextBox(prim, GUIDE_MIN_FIT);
-    return b !== null && boxInside(b, this.box) && !this.placed.some((p) => boxesMeet(b, p));
+  private readonly strokes: GuideStroke[];
+  private readonly shapes: GuideShape[];
+  /** `drawn` is everything the window draws that a label must keep off: the board, its blank, the pushes,
+   * every mark and extension line, and every dimension's own line and end ticks. */
+  constructor(
+    private readonly box: GuideBox,
+    drawn: readonly GuidePrim[],
+  ) {
+    const [x0, y0, x1, y1] = [box.x, box.y, box.x + box.w, box.y + box.h];
+    this.strokes = guideStrokes(drawn).filter(
+      (s) => Math.max(s.x1, s.x2) >= x0 && Math.min(s.x1, s.x2) <= x1 && Math.max(s.y1, s.y2) >= y0 && Math.min(s.y1, s.y2) <= y1,
+    );
+    this.shapes = guideShapes(drawn);
+  }
+  private score(prim: GuidePrim): number {
+    const claim = labelClaim(prim);
+    if (!claim || !boxInside(claim, this.box) || this.placed.some((p) => boxesMeet(claim, p))) return PLACE.noRoom;
+    const [x0, y0, x1, y1] = [claim.x - LABEL_GAP, claim.y - LABEL_GAP, claim.x + claim.w + LABEL_GAP, claim.y + claim.h + LABEL_GAP];
+    let worst: number = PLACE.clear;
+    for (const s of this.strokes) {
+      if (Math.max(s.x1, s.x2) < x0 || Math.min(s.x1, s.x2) > x1 || Math.max(s.y1, s.y2) < y0 || Math.min(s.y1, s.y2) > y1) continue;
+      if (!guideStrokeMeetsBox(s, claim, LABEL_GAP)) continue;
+      if (!s.faint) return PLACE.onLine;
+      worst = PLACE.onFaintLine;
+    }
+    if (worst !== PLACE.clear) return worst;
+    const cx = claim.x + claim.w / 2;
+    const cy = claim.y + claim.h / 2;
+    for (const shape of this.shapes) {
+      if (guidePointInShape(cx, cy, shape)) worst = Math.max(worst, shape.role === "push" ? PLACE.inPush : PLACE.inBoard);
+    }
+    return worst;
   }
   take(prim: GuidePrim): GuidePrim {
-    const b = guideTextBox(prim, GUIDE_MIN_FIT);
-    if (b) this.placed.push(b);
+    const claim = labelClaim(prim);
+    if (claim) this.placed.push(claim);
     return prim;
   }
-  /** The first candidate that fits, or the first when none does (the overlap test then names it). */
-  place(candidates: readonly GuidePrim[]): GuidePrim {
-    return this.take(candidates.find((c) => this.fits(c)) ?? candidates[0]);
+  /** The first place that is clear, or the clearest when none is (the page's tests then name it). */
+  place(dim: PendingDim): GuidePrim {
+    let best = dim.line;
+    let bestScore = Infinity;
+    // A side's places are only worked out once every side before it has none clear.
+    sides: for (const side of dim.sides) {
+      for (const place of side()) {
+        const score = this.score(place);
+        if (score < bestScore) {
+          best = place;
+          bestScore = score;
+          if (score === PLACE.clear) break sides;
+        }
+      }
+    }
+    return this.take(best);
   }
 }
 
-type LabelSide = "right" | "left" | "above" | "aboveRight" | "aboveLeft" | "below";
-/** Every place a label may go: a dimension's own preferred places first, then these. */
-const ALL_SIDES: readonly LabelSide[] = ["right", "left", "above", "aboveRight", "aboveLeft", "below"];
+type LabelSide = "right" | "left" | "above" | "aboveRight" | "aboveLeft" | "below" | "belowRight" | "belowLeft";
+/** Every side a label may take: a dimension's own preferred sides first, then these. */
+const ALL_SIDES: readonly LabelSide[] = ["right", "left", "above", "aboveRight", "aboveLeft", "below", "belowRight", "belowLeft"];
+/** How far a label steps from one place to the next, and how many steps it may take. */
+const PLACE_STEP = 3;
+const PLACE_RISES = 6;
+const PLACE_SLIDES = 5;
 
-/** A vertical dimension at `x` from `ya` to `yb`, its label on the first side in `sides` that fits. */
-function vDim(room: LabelRoom, x: number, ya: number, yb: number, parts: readonly GuideTextPart[], sides: readonly LabelSide[]): GuidePrim {
-  const t = f1(Math.min(ya, yb));
-  const b = f1(Math.max(ya, yb));
-  const line = { kind: "dim" as const, x1: f1(x), y1: t, x2: f1(x), y2: b, parts };
-  const at = (side: LabelSide): GuidePrim => {
-    switch (side) {
-      case "right":
-        return { ...line, lx: f1(x + 5), ly: f1((t + b) / 2), dy: 0.35, anchor: "start" };
-      case "left":
-        return { ...line, lx: f1(x - 5), ly: f1((t + b) / 2), dy: 0.35, anchor: "end" };
-      case "above":
-        return { ...line, lx: f1(x), ly: f1(t - 4), anchor: "middle" };
-      case "aboveRight":
-        return { ...line, lx: f1(x + 2), ly: f1(t - 4), anchor: "start" };
-      case "aboveLeft":
-        return { ...line, lx: f1(x - 2), ly: f1(t - 4), anchor: "end" };
-      case "below":
-        return { ...line, lx: f1(x), ly: f1(b + 3), dy: 0.85, anchor: "middle" };
+/** A dimension whose label is still to be set: its line, and its places side by side, nearest first. The label is set once every
+ * dimension in the window is known, so no later dimension's line can run through it. */
+type PendingDim = { pending: true; line: GuidePrim; sides: readonly (() => readonly GuidePrim[])[] };
+type Draft = GuidePrim | PendingDim;
+const isPending = (d: Draft): d is PendingDim => "pending" in d;
+
+type DimLine = { kind: "dim"; x1: number; y1: number; x2: number; y2: number; parts: readonly GuideTextPart[] };
+type Spot = { cost: number; prim: GuidePrim };
+
+/** The places over (`up`) or under a point `x` at height `y`: the label's baseline `GUIDE_HDIM_LABEL_OFF`
+ * clear of `y` and stepping away, centred on `x` or slid along to either side, `lean` first. */
+function overUnder(line: DimLine, x: number, y: number, up: boolean, lean: -1 | 0 | 1, reach: number): Spot[] {
+  const out: Spot[] = [];
+  for (let k = 0; k < PLACE_RISES; k++) {
+    const ly = f1(up ? y - GUIDE_HDIM_LABEL_OFF - k * PLACE_STEP : y + GUIDE_HDIM_LABEL_OFF + k * PLACE_STEP);
+    const dy = up ? {} : { dy: 0.85 };
+    out.push({ cost: k + (lean === 0 ? 0 : 0.5), prim: { ...line, lx: f1(x), ly, ...dy, anchor: "middle" } });
+    for (let m = 0; m <= PLACE_SLIDES; m++) {
+      const off = 2 + m * 2 * PLACE_STEP;
+      if (off > reach) break;
+      out.push({ cost: k + m + (lean === 1 ? 0 : lean === 0 ? 0.6 : 1.2), prim: { ...line, lx: f1(x + off), ly, ...dy, anchor: "start" } });
+      out.push({ cost: k + m + (lean === -1 ? 0 : lean === 0 ? 0.7 : 1.2), prim: { ...line, lx: f1(x - off), ly, ...dy, anchor: "end" } });
     }
-  };
-  return room.place([...sides, ...ALL_SIDES.filter((side) => !sides.includes(side))].map(at));
+  }
+  return out.sort((a, b) => a.cost - b.cost);
 }
 
-/** A horizontal dimension at `y` from `xa` to `xb`, its label above it, or below it when that is all that fits. */
-function hDim(room: LabelRoom, xa: number, xb: number, y: number, parts: readonly GuideTextPart[]): GuidePrim {
+/** The places beside a point: `GUIDE_VDIM_LABEL_OFF` to its right or left at height `y`, stepping up and
+ * down as far as `reach`. */
+function beside(line: DimLine, x: number, y: number, right: boolean, reach: number): Spot[] {
+  const out: Spot[] = [];
+  for (let j = 0; j * PLACE_STEP <= reach; j++) {
+    for (const sign of j === 0 ? [0] : [-1, 1]) {
+      out.push({
+        cost: j,
+        prim: { ...line, lx: f1(right ? x + GUIDE_VDIM_LABEL_OFF : x - GUIDE_VDIM_LABEL_OFF), ly: f1(y + sign * j * PLACE_STEP), dy: 0.35, anchor: right ? "start" : "end" },
+      });
+    }
+  }
+  return out;
+}
+
+/** A vertical dimension at `x` from `ya` to `yb`, its label on the nearest clear place, `sides` first. */
+function vDim(x: number, ya: number, yb: number, parts: readonly GuideTextPart[], sides: readonly LabelSide[]): PendingDim {
+  const t = f1(Math.min(ya, yb));
+  const b = f1(Math.max(ya, yb));
+  const line: DimLine = { kind: "dim", x1: f1(x), y1: t, x2: f1(x), y2: b, parts };
+  const reach = (b - t) / 2 + 2 * PLACE_STEP;
+  const at = (side: LabelSide): Spot[] => {
+    switch (side) {
+      case "right":
+        return beside(line, x, (t + b) / 2, true, reach);
+      case "left":
+        return beside(line, x, (t + b) / 2, false, reach);
+      case "above":
+        return overUnder(line, x, t, true, 0, Infinity);
+      case "aboveRight":
+        return overUnder(line, x, t, true, 1, Infinity);
+      case "aboveLeft":
+        return overUnder(line, x, t, true, -1, Infinity);
+      case "below":
+        return overUnder(line, x, b, false, 0, Infinity);
+      case "belowRight":
+        return overUnder(line, x, b, false, 1, Infinity);
+      case "belowLeft":
+        return overUnder(line, x, b, false, -1, Infinity);
+    }
+  };
+  return {
+    pending: true,
+    line: { ...line, lx: f1(x), ly: t, anchor: "middle" },
+    sides: [...sides, ...ALL_SIDES.filter((side) => !sides.includes(side))].map((side) => () => at(side).map((spot) => spot.prim)),
+  };
+}
+
+type HSide = "above" | "below" | "right" | "left";
+const ALL_HSIDES: readonly HSide[] = ["above", "below", "right", "left"];
+
+/** A horizontal dimension at `y` from `xa` to `xb`, its label on the nearest clear place, `sides` first:
+ * over or under it (slid along it where its middle is taken), or beside either end. */
+function hDim(xa: number, xb: number, y: number, parts: readonly GuideTextPart[], sides: readonly HSide[] = ALL_HSIDES): PendingDim {
   const l = f1(Math.min(xa, xb));
   const r = f1(Math.max(xa, xb));
-  const line = { kind: "dim" as const, x1: l, y1: f1(y), x2: r, y2: f1(y), parts };
-  const mid = f1((l + r) / 2);
-  return room.place([
-    { ...line, lx: mid, ly: f1(y - 3), anchor: "middle" },
-    { ...line, lx: l, ly: f1(y - 3), anchor: "start" },
-    { ...line, lx: r, ly: f1(y - 3), anchor: "end" },
-    { ...line, lx: mid, ly: f1(y + 3), dy: 0.85, anchor: "middle" },
-  ]);
+  const line: DimLine = { kind: "dim", x1: l, y1: f1(y), x2: r, y2: f1(y), parts };
+  const mid = (l + r) / 2;
+  const at = (side: HSide): Spot[] => {
+    switch (side) {
+      case "above":
+        return overUnder(line, mid, y, true, 0, (r - l) / 2 + 2);
+      case "below":
+        return overUnder(line, mid, y, false, 0, (r - l) / 2 + 2);
+      case "right":
+        return beside(line, r, y, true, 0);
+      case "left":
+        return beside(line, l, y, false, 0);
+    }
+  };
+  return {
+    pending: true,
+    line: { ...line, lx: f1(mid), ly: f1(y), anchor: "middle" },
+    sides: [...sides, ...ALL_HSIDES.filter((side) => !sides.includes(side))].map((side) => () => at(side).map((spot) => spot.prim)),
+  };
 }
 
 const extension = (x1: number, y: number, x2: number): GuidePrim => ({ kind: "line", role: "extension", x1: f1(x1), y1: f1(y), x2: f1(x2), y2: f1(y) });
+/** An extension line dropped from a point on the board to a dimension drawn under it. */
+const dropLine = (x: number, y1: number, y2: number): GuidePrim => ({ kind: "line", role: "extension", x1: f1(x), y1: f1(y1), x2: f1(x), y2: f1(y2) });
+
+/** The room a label hung under a line takes below it: its drop, its whole text box at the narrowest card's
+ * text size (a hung label's box starts a tenth of its size under its drop), and a little clear of the
+ * window's edge. */
+const HUNG_LABEL = GUIDE_HDIM_LABEL_OFF + 1.1 * GUIDE_TEXT_UNITS_MAX + 1.5;
+/** How far under the baseline a Thinning Start's dimension is drawn, and under a tip the spare foam's. */
+const UNDER_DROP = 4;
+const SPARE_DROP = 8;
+/** The least a spare foam's dimension drops under its tip: its end ticks clear of the foam. */
+const SPARE_DROP_MIN = 5.5;
+/** The foot a window keeps for a label hung under its baseline, and for a dimension drawn under it. */
+const FOOT_HUNG_LABEL = HUNG_LABEL;
+const FOOT_UNDER_DIM = UNDER_DROP + HUNG_LABEL;
 
 /** What a detail window holds beyond the board in its blank: the pushes drawn there, and its dimensions. */
 interface DetailSpec {
@@ -536,15 +689,14 @@ interface DetailSpec {
   pushBlank: boolean;
   /** The room under the window's baseline, for a label that hangs below it (default `DETAIL_FOOT`). */
   foot?: number;
-  /** The window's dimensions and any marks, given the window's frame, its labels and its box. */
-  dims: (ctx: DetailContext) => GuidePrim[];
+  /** The window's dimensions and any marks, given the window's frame and its box. */
+  dims: (ctx: DetailContext) => Draft[];
 }
 
 interface DetailContext {
   base: BoardSideProfile;
   pushes: readonly BoardSideProfile[];
   f: Frame;
-  room: LabelRoom;
   box: GuideBox;
   /** The window's baseline. */
   yb: number;
@@ -621,9 +773,11 @@ function rockerFigure(base: BoardSideProfile, details: readonly DetailSpec[]): G
       if (d.pushBlank && p.blank) prims.push({ kind: "path", role: "push", d: blankPath(p.blank, f, a, b, DETAIL_SAMPLES + 40) });
       prims.push({ kind: "path", role: "push", d: boardPath(p, f, a, b, DETAIL_SAMPLES) });
     }
-    const room = new LabelRoom(box);
+    // Every dimension's line and marks first, then the labels: each takes the nearest place clear of all of it.
+    const drafts = d.dims({ base, pushes: d.pushes, f, box, yb, where: d.where });
+    const room = new LabelRoom(box, [...prims, ...drafts.map((draft) => (isPending(draft) ? draft.line : draft))]);
     const name = room.take(guideWindowName(box, [guideText(d.where.name)]));
-    prims.push(...d.dims({ base, pushes: d.pushes, f, room, box, yb, where: d.where }), name);
+    prims.push(...drafts.map((draft) => (isPending(draft) ? room.place(draft) : draft)), name);
     return { box, prims };
   });
   return { height: FIGURE_H, strip: stripPrims, windows };
@@ -635,13 +789,13 @@ const markParts = (v: Mm, system: UnitsSystem, after = "") =>
   after ? [guideFigure(formatMark(v, system)), guideText(after)] : [guideFigure(formatMark(v, system))];
 
 /** The thickness at a station, deck to bottom, its label clear of the board's other side. */
-function thicknessDim(ctx: DetailContext, s: Mm, system: UnitsSystem, sides: readonly LabelSide[]): GuidePrim[] {
+function thicknessDim(ctx: DetailContext, s: Mm, system: UnitsSystem, sides: readonly LabelSide[]): Draft[] {
   const p = ctx.base;
-  return [vDim(ctx.room, ctx.f.X(s), ctx.f.Y(p.rockerAt(s)), ctx.f.Y(p.deckAt(s)), markParts(mm(p.deckAt(s) - p.rockerAt(s)), system), sides)];
+  return [vDim(ctx.f.X(s), ctx.f.Y(p.rockerAt(s)), ctx.f.Y(p.deckAt(s)), markParts(mm(p.deckAt(s) - p.rockerAt(s)), system), sides)];
 }
 
 /** A tip's thickness, stood just beyond the tip on extension lines. */
-function tipThicknessDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): GuidePrim[] {
+function tipThicknessDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): Draft[] {
   const p = ctx.base;
   const s = end === "nose" ? p.length : mm(0);
   const xTip = ctx.f.X(s);
@@ -652,21 +806,22 @@ function tipThicknessDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): 
   return [
     extension(xTip, lo, x - (end === "nose" ? 3 : -3)),
     extension(xTip, hi, x - (end === "nose" ? 3 : -3)),
-    vDim(ctx.room, x, lo, hi, markParts(mm(p.deckAt(s) - p.rockerAt(s)), system), sides),
+    vDim(x, lo, hi, markParts(mm(p.deckAt(s) - p.rockerAt(s)), system), sides),
   ];
 }
 
 /** A tip's rocker: from the baseline up to the tip's bottom, just beyond the tip. */
-function tipRockerDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): GuidePrim[] {
+function tipRockerDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): Draft[] {
   const p = ctx.base;
   const s = end === "nose" ? p.length : mm(0);
   const xTip = ctx.f.X(s);
   const x = xTip + (end === "nose" ? -DIM_OUT : DIM_OUT);
   const y = ctx.f.Y(p.rockerAt(s));
-  const sides: LabelSide[] = end === "nose" ? ["left", "aboveLeft", "above", "right"] : ["right", "aboveRight", "above", "left"];
+  // A nose's figure goes in the room its rocker leaves under it; a tail's hangs under the baseline.
+  const sides: LabelSide[] = end === "nose" ? ["right", "belowRight", "left", "aboveLeft"] : ["below", "belowLeft", "belowRight", "right"];
   return [
     extension(xTip, y, x - (end === "nose" ? 3 : -3)),
-    vDim(ctx.room, x, ctx.yb, y, markParts(p.blank ? rockerAtTip(p, end) : mm(p.rockerAt(s)), system), sides),
+    vDim(x, ctx.yb, y, markParts(p.blank ? rockerAtTip(p, end) : mm(p.rockerAt(s)), system), sides),
   ];
 }
 
@@ -676,7 +831,7 @@ function rockerAtTip(p: BoardSideProfile, end: TipEnd): Mm {
 }
 
 /** How far the blank runs past the board's tip, dimensioned over it. */
-function spareDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): GuidePrim[] {
+function spareDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): Draft[] {
   const p = ctx.base;
   const view = p.blank;
   if (!view) return [];
@@ -684,46 +839,66 @@ function spareDim(ctx: DetailContext, end: TipEnd, system: UnitsSystem): GuidePr
   const blankEnd = end === "nose" ? view.end : view.start;
   const spare = Math.abs(blankEnd - s);
   if (formatMark(mm(spare), system) === formatMark(mm(0), system)) return [];
-  const y = ctx.f.Y(Math.max(view.deckAt(mm(Math.min(Math.max(s, view.start), view.end))), p.deckAt(s))) - 6;
-  return [hDim(ctx.room, ctx.f.X(s), ctx.f.X(blankEnd), y, markParts(mm(spare), system))];
+  const at = mm(Math.min(Math.max(s, view.start), view.end));
+  const xa = ctx.f.X(s);
+  const xb = ctx.f.X(blankEnd);
+  const parts = markParts(mm(spare), system);
+  // Under the tip where its rocker leaves the room (a nose), over it where it does not (a tail).
+  const low = ctx.f.Y(Math.min(view.bottomAt(at), view.bottomAt(blankEnd), p.rockerAt(s)));
+  const room = ctx.yb - low - HUNG_LABEL;
+  if (room >= SPARE_DROP_MIN) {
+    const y = low + Math.min(SPARE_DROP, room);
+    return [
+      dropLine(xa, ctx.f.Y(p.rockerAt(s)) + 1.5, y + 2),
+      dropLine(xb, ctx.f.Y(view.bottomAt(blankEnd)) + 1.5, y + 2),
+      hDim(xa, xb, y, parts, ["below", "above"]),
+    ];
+  }
+  const y = ctx.f.Y(Math.max(view.deckAt(at), p.deckAt(s))) - 6;
+  return [hDim(xa, xb, y, parts)];
 }
 
 /** The foam off at a station: `which` the deck (blank's deck down to the board's) or the bottom. */
-function foamOffDim(ctx: DetailContext, s: Mm, which: "deck" | "bottom", system: UnitsSystem, after: string, sides: readonly LabelSide[]): GuidePrim[] {
+function foamOffDim(ctx: DetailContext, s: Mm, which: "deck" | "bottom", system: UnitsSystem, after: string, sides: readonly LabelSide[]): Draft[] {
   const p = ctx.base;
   const view = p.blank;
   if (!view || s < view.start || s > view.end) return [];
   const [a, b] = which === "deck" ? [view.deckAt(s), p.deckAt(s)] : [p.rockerAt(s), view.bottomAt(s)];
   const off = mm(Math.max(0, a - b));
   if (formatMark(off, system) === formatMark(mm(0), system)) return [];
-  return [vDim(ctx.room, ctx.f.X(s), ctx.f.Y(a), ctx.f.Y(b), markParts(off, system, after), sides)];
+  return [vDim(ctx.f.X(s), ctx.f.Y(a), ctx.f.Y(b), markParts(off, system, after), sides)];
 }
 
-/** A Thinning Start: the tip to its mark along the board, a dim, under the board near the baseline, with
- * the pushed start's mark in dashes. */
-function startDims(ctx: DetailContext, end: TipEnd, system: UnitsSystem): GuidePrim[] {
+/** A Thinning Start: the tip to its mark along the board, a dim, drawn under the baseline with its figure
+ * hung beneath it (the window keeps `FOOT_UNDER_DIM` for the two), and the pushed start's mark in dashes. */
+function startDims(ctx: DetailContext, end: TipEnd, system: UnitsSystem): Draft[] {
   const p = ctx.base;
   if (!p.blank) return [];
   const tip = p.blank.tips[end];
   const s = end === "nose" ? p.length : mm(0);
-  const out: GuidePrim[] = [];
+  const out: Draft[] = [];
   for (const q of ctx.pushes) {
     if (!q.blank) continue;
     const st = q.blank.tips[end].station;
     const x = f1(ctx.f.X(st));
     out.push({ kind: "line", role: "push", x1: x, y1: f1(ctx.f.Y(q.rockerAt(st)) + 5), x2: x, y2: f1(ctx.f.Y(q.deckAt(st)) - 5) });
   }
-  out.push(hDim(ctx.room, ctx.f.X(s), ctx.f.X(tip.station), ctx.yb - 3, [guideFigure(formatThinningStart(tip.fromTip, system))]));
+  const y = ctx.yb + UNDER_DROP;
+  out.push(
+    dropLine(ctx.f.X(s), ctx.f.Y(p.rockerAt(s)) + 1.5, y + 2),
+    dropLine(ctx.f.X(tip.station), ctx.f.Y(p.rockerAt(tip.station)) + 1.5, y + 2),
+    hDim(ctx.f.X(s), ctx.f.X(tip.station), y, [guideFigure(formatThinningStart(tip.fromTip, system))], ["below", "right", "left"]),
+  );
   return out;
 }
 
 /** The maker's bend: how much the tip rises, and where the bend starts. */
-function bendDims(ctx: DetailContext, fromTip: Mm | undefined, system: UnitsSystem): GuidePrim[] {
+function bendDims(ctx: DetailContext, fromTip: Mm | undefined, system: UnitsSystem): Draft[] {
   const p = ctx.base;
   const q = ctx.pushes[0];
   if (!q) return [];
   const s = p.length;
-  const out: GuidePrim[] = [];
+  const out: Draft[] = [];
   if (fromTip !== undefined && q.blank) {
     const st = mm(s - fromTip);
     const x = f1(ctx.f.X(st));
@@ -734,7 +909,7 @@ function bendDims(ctx: DetailContext, fromTip: Mm | undefined, system: UnitsSyst
   const ya = ctx.f.Y(p.rockerAt(s));
   const yq = ctx.f.Y(q.rockerAt(s));
   out.push(extension(xTip, ya, x - 3), extension(xTip, yq, x - 3));
-  out.push(vDim(ctx.room, x, ya, yq, [guideFigure(formatSignedMark(mm(q.rockerAt(s) - p.rockerAt(s)), system))], ["left", "aboveLeft", "above", "right"]));
+  out.push(vDim(x, ya, yq, [guideFigure(formatSignedMark(mm(q.rockerAt(s) - p.rockerAt(s)), system))], ["left", "aboveLeft", "above", "right"]));
   return out;
 }
 
@@ -796,6 +971,8 @@ export function buildRockerGuide(input: RockerGuideInput, system: UnitsSystem): 
   }
 
   // Blank
+  // How far the blank's bottom sits under the baseline where its foam off is measured, in drawing units.
+  const blankUnder = base.blank ? Math.max(0, -base.blank.bottomAt(mm(L / 2 - frame.gapAt))) * (GUIDE_STRIP_BAND / frame.centerSpan) : 0;
   cards.push({
     id: ids.blank,
     tag: blank ? valueTag(`${blank.copy.vendor} ${blank.copy.name}`) : GUIDE_NO_TAG,
@@ -806,9 +983,9 @@ export function buildRockerGuide(input: RockerGuideInput, system: UnitsSystem): 
           ...foamOffDim(ctx, mm(L / 2), "deck", system, " skin", ["aboveRight", "right", "above"]),
           ...foamOffDim(ctx, mm(L / 2 - frame.gapAt), "bottom", system, " off the bottom", ["below", "left", "right"]),
         ]),
-        // Room under the baseline for the foam off the bottom's label; the centre window is drawn to its
-        // width, not its height, so the board draws no smaller for it.
-        foot: DETAIL_FOOT + 3 + GUIDE_TEXT_UNITS_MAX + 2,
+        // Room under the blank's own bottom for the foam off the bottom's label, hung beneath it; the centre
+        // window is drawn to its width, not its height, so the board draws no smaller for it.
+        foot: blankUnder + HUNG_LABEL + 1,
       },
     ]),
   });
@@ -872,7 +1049,10 @@ export function buildRockerGuide(input: RockerGuideInput, system: UnitsSystem): 
       id,
       tag: valueTag(formatMark(rockerAtTip(base, end), system)),
       caption: pushPlan[id].caption,
-      figure: figure(base, [one(tipWin(end), pushes, (ctx) => tipRockerDim(ctx, end, system), true)]),
+      // A tail's rocker is too low for its figure to sit beside it: the window keeps a foot for it.
+      figure: figure(base, [
+        { ...one(tipWin(end), pushes, (ctx) => tipRockerDim(ctx, end, system), true), ...(end === "tail" ? { foot: FOOT_HUNG_LABEL } : {}) },
+      ]),
     });
   }
 
@@ -906,7 +1086,12 @@ export function buildRockerGuide(input: RockerGuideInput, system: UnitsSystem): 
       id,
       tag: tip ? valueTag(`${formatThinningStart(tip.fromTip, system)}${tip.automatic ? " · Automatic" : ""}`) : GUIDE_NO_TAG,
       caption: pushPlan[id].caption,
-      figure: figure(base, [one(tipWin(end, mm(Math.max(frame.tipSpan, reachIn + frame.tipInset + frame.beyondTip))), pushes, (ctx) => startDims(ctx, end, system))]),
+      figure: figure(base, [
+        {
+          ...one(tipWin(end, mm(Math.max(frame.tipSpan, reachIn + frame.tipInset + frame.beyondTip))), pushes, (ctx) => startDims(ctx, end, system)),
+          foot: FOOT_UNDER_DIM,
+        },
+      ]),
     });
   }
   {

@@ -14,6 +14,7 @@ import {
   GUIDE_VIEWBOX_WIDTH,
   type GuideBox,
   type GuideFigure,
+  type GuideRole,
   type GuidePrim,
   type GuideTextPart,
 } from "./guide-card";
@@ -193,7 +194,7 @@ export function guidePlanPrims(
 }
 
 /** A vertical dimension line at `x` from `ya` to `yb`, its label beside it on the given side, centred on
- * its height (D-08: outside the thing measured, the value beside it). */
+ * its height (D-08: outside the thing measured, the value beside it) and clear of the end ticks. */
 export function guideVDim(
   x: number,
   ya: number,
@@ -210,14 +211,14 @@ export function guideVDim(
     x2: x,
     y2: b,
     parts,
-    lx: x + (side === "right" ? 5 : -5),
+    lx: x + (side === "right" ? GUIDE_VDIM_LABEL_OFF : -GUIDE_VDIM_LABEL_OFF),
     ly: (t + b) / 2,
     dy: 0.35,
     anchor: side === "right" ? "start" : "end",
   };
 }
 
-/** A horizontal dimension line at `y` from `xa` to `xb`, its label above or below it. */
+/** A horizontal dimension line at `y` from `xa` to `xb`, its label above or below it, clear of the end ticks. */
 export function guideHDim(
   xa: number,
   xb: number,
@@ -229,7 +230,7 @@ export function guideHDim(
   const l = Math.min(xa, xb);
   const r = Math.max(xa, xb);
   const lx = anchor === "end" ? r : anchor === "start" ? l : (l + r) / 2;
-  return { kind: "dim", x1: l, y1: y, x2: r, y2: y, parts, lx, ly: above ? y - 3 : y + 3, dy: above ? 0 : 0.85, anchor };
+  return { kind: "dim", x1: l, y1: y, x2: r, y2: y, parts, lx, ly: above ? y - GUIDE_HDIM_LABEL_OFF : y + GUIDE_HDIM_LABEL_OFF, dy: above ? 0 : 0.85, anchor };
 }
 
 /** A window's name in its detail's top-left corner, clear of the frame. */
@@ -342,4 +343,233 @@ export function guideFigureBounds(figure: GuideFigure): GuideBox {
   const x0 = Math.min(...xs);
   const y0 = Math.min(...ys);
   return { x: x0, y: y0, w: Math.max(...xs) - x0, h: Math.max(...ys) - y0 };
+}
+
+/**
+ * How far a dimension line's end tick reaches from the line's end, each way, in drawing units: the viewers'
+ * own 45° slash (`CALLOUT_TICK_SIZE` in `components/viewer/callout-primitives.tsx`, which a GUIDE drawing
+ * paints at one unit to the unit). A test holds the two to the same number.
+ */
+export const GUIDE_TICK_REACH = 4;
+/** The least clear space, in drawing units, kept between a label's ink and a dimension's tick or line. */
+export const GUIDE_LABEL_CLEAR = 1.5;
+/** A horizontal dimension's label: this far above the line to its baseline, or below the line to the point
+ * its capitals hang from (`dy` 0.85 em), so its ink clears the end ticks at any text size. */
+export const GUIDE_HDIM_LABEL_OFF = GUIDE_TICK_REACH + GUIDE_LABEL_CLEAR;
+/** A vertical dimension's label: this far beside the line, clear of the end ticks. */
+export const GUIDE_VDIM_LABEL_OFF = GUIDE_TICK_REACH + GUIDE_LABEL_CLEAR;
+
+/** The lines a label may never lie on: the board, a blank, a push, a fin, a rail, a window's dash-dot. The
+ * rest of the vocabulary is the faint reference lines (a baseline, a station, the stringer, an extension). */
+const INK_ROLES: ReadonlySet<GuideRole> = new Set<GuideRole>([
+  "board",
+  "shade",
+  "foam",
+  "window",
+  "cut",
+  "push",
+  "fin",
+  "rail",
+  "band",
+  "apex",
+  "mark",
+]);
+
+/** A drawn line a label is checked against: its two ends, what it is, and whether it is only a faint
+ * reference line. */
+export type GuideStroke = { x1: number; y1: number; x2: number; y2: number; by: string; faint: boolean };
+
+/** Every `M`…`L`… run of a path as its own list of points, closed where the run ends in `Z`. */
+function pathRuns(d: string): number[][][] {
+  const runs: number[][][] = [];
+  for (const piece of d.split(/(?=M)/)) {
+    const pts = pathPoints(piece);
+    if (pts.length === 0) continue;
+    if (/Z\s*$/i.test(piece) && pts.length > 1) pts.push(pts[0]);
+    runs.push(pts);
+  }
+  return runs;
+}
+
+/** A closed outline a drawing fills or dashes (the board, its blank, a push), as its corner points. */
+export type GuideShape = { role: GuideRole; points: readonly (readonly number[])[] };
+
+/** Every closed outline a list of prims draws: each `M`…`Z` run of a path, with the path's role. */
+export function guideShapes(prims: readonly GuidePrim[]): GuideShape[] {
+  const out: GuideShape[] = [];
+  for (const prim of prims) {
+    if (prim.kind !== "path") continue;
+    for (const piece of prim.d.split(/(?=M)/)) {
+      if (!/Z\s*$/i.test(piece)) continue;
+      const points = pathPoints(piece);
+      if (points.length > 2) out.push({ role: prim.role, points });
+    }
+  }
+  return out;
+}
+
+/** Whether a point lies inside a closed outline (a ray cast to the right, counting the sides it crosses). */
+export function guidePointInShape(x: number, y: number, shape: GuideShape): boolean {
+  const pts = shape.points;
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** The two end ticks of a dimension line, as the painter draws them: a 45° slash through each end. */
+export function guideDimTicks(prim: Extract<GuidePrim, { kind: "dim" }>): GuideStroke[] {
+  const t = GUIDE_TICK_REACH;
+  return [
+    { x1: prim.x1 - t, y1: prim.y1 + t, x2: prim.x1 + t, y2: prim.y1 - t, by: "tick", faint: false },
+    { x1: prim.x2 - t, y1: prim.y2 + t, x2: prim.x2 + t, y2: prim.y2 - t, by: "tick", faint: false },
+  ];
+}
+
+/** Every line a list of prims draws, as straight pieces: paths, lines, a window's rectangle, and each
+ * dimension's own line and end ticks. Fills are not lines; a `railFill` draws none. */
+export function guideStrokes(prims: readonly GuidePrim[]): GuideStroke[] {
+  const out: GuideStroke[] = [];
+  for (const prim of prims) {
+    switch (prim.kind) {
+      case "path": {
+        if (prim.role === "railFill") break;
+        const faint = !INK_ROLES.has(prim.role);
+        for (const run of pathRuns(prim.d)) {
+          for (let i = 1; i < run.length; i++) {
+            out.push({ x1: run[i - 1][0], y1: run[i - 1][1], x2: run[i][0], y2: run[i][1], by: prim.role, faint });
+          }
+        }
+        break;
+      }
+      case "line":
+        out.push({ x1: prim.x1, y1: prim.y1, x2: prim.x2, y2: prim.y2, by: prim.role, faint: !INK_ROLES.has(prim.role) });
+        break;
+      case "rect": {
+        const faint = prim.role === "frame";
+        const [x0, y0, x1, y1] = [prim.x, prim.y, prim.x + prim.w, prim.y + prim.h];
+        out.push({ x1: x0, y1: y0, x2: x1, y2: y0, by: prim.role, faint }, { x1: x1, y1: y0, x2: x1, y2: y1, by: prim.role, faint });
+        out.push({ x1: x1, y1: y1, x2: x0, y2: y1, by: prim.role, faint }, { x1: x0, y1: y1, x2: x0, y2: y0, by: prim.role, faint });
+        break;
+      }
+      case "dim":
+        out.push({ x1: prim.x1, y1: prim.y1, x2: prim.x2, y2: prim.y2, by: "dimension", faint: false }, ...guideDimTicks(prim));
+        break;
+      default:
+        break;
+    }
+  }
+  return out;
+}
+
+/** The box a label's ink takes at a fit: `guideTextBox` without the room under the baseline that only a
+ * descender uses, which figures and most of the drawings' words do not have. */
+export function guideInkBox(prim: GuidePrim, fit: number): GuideBox | null {
+  const box = guideTextBox(prim, fit);
+  if (!box || (prim.kind !== "text" && prim.kind !== "dim")) return null;
+  const descends = prim.parts.some((part) => /[gjpqy,]/.test(part.text));
+  return { x: box.x, y: box.y + 0.03 * box.h, w: box.w, h: (descends ? 0.95 : 0.72) * box.h };
+}
+
+/** The room a label's ink can take at any text size: its ink box at the narrowest card, where the text is
+ * biggest in drawing units, stretched to the point it is hung from, which a smaller text closes in on. A
+ * place that is clear for this box is clear on every card. */
+export function guideLabelHull(prim: GuidePrim): GuideBox | null {
+  const box = guideInkBox(prim, GUIDE_MIN_FIT);
+  if (!box || (prim.kind !== "text" && prim.kind !== "dim")) return null;
+  const at = prim.kind === "dim" ? prim.ly : prim.y;
+  const top = Math.min(box.y, at);
+  const bottom = Math.max(box.y + box.h, at);
+  return { x: box.x, y: top, w: box.w, h: bottom - top };
+}
+
+/** Whether a straight piece passes through a box grown by `gap` on every side (Liang–Barsky). */
+export function guideStrokeMeetsBox(s: Pick<GuideStroke, "x1" | "y1" | "x2" | "y2">, box: GuideBox, gap = 0): boolean {
+  const [x0, y0, x1, y1] = [box.x - gap, box.y - gap, box.x + box.w + gap, box.y + box.h + gap];
+  const dx = s.x2 - s.x1;
+  const dy = s.y2 - s.y1;
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) {
+      if (r > t1) return false;
+      if (r > t0) t0 = r;
+    } else {
+      if (r < t0) return false;
+      if (r < t1) t1 = r;
+    }
+    return true;
+  };
+  return clip(-dx, s.x1 - x0) && clip(dx, x1 - s.x1) && clip(-dy, s.y1 - y0) && clip(dy, y1 - s.y1) && t0 <= t1;
+}
+
+/** A label lying on a drawn line: which label (its words), what it lies on, and whether that is only a
+ * faint reference line. */
+export type GuideCrossing = { text: string; by: string; faint: boolean; where: "strip" | number };
+
+/**
+ * Every label that lies on a drawn line at a fit — the board's edge, a push, a fin, another dimension, or
+ * the end ticks of its own. Labels in a window are checked against that window's lines, the strip's against
+ * the strip's. An empty list (faint lines aside) is a drawing whose every figure can be read.
+ */
+export function guideLabelCrossings(figure: GuideFigure, fit: number, gap = 0.4): GuideCrossing[] {
+  const out: GuideCrossing[] = [];
+  const scan = (prims: readonly GuidePrim[], where: "strip" | number) => {
+    const strokes = guideStrokes(prims);
+    for (const prim of prims) {
+      const box = guideInkBox(prim, fit);
+      if (!box || (prim.kind !== "text" && prim.kind !== "dim")) continue;
+      const text = prim.parts.map((part) => part.text).join("");
+      const seen = new Set<string>();
+      for (const stroke of strokes) {
+        if (seen.has(stroke.by) || !guideStrokeMeetsBox(stroke, box, gap)) continue;
+        seen.add(stroke.by);
+        out.push({ text, by: stroke.by, faint: stroke.faint, where });
+      }
+    }
+  };
+  scan(figure.strip, "strip");
+  figure.windows.forEach((win, i) => scan(win.prims, i));
+  return out;
+}
+
+/** A label drawn inside a closed outline: which label (its words) and what it sits in. */
+export type GuideInside = { text: string; in: GuideRole; where: "strip" | number };
+
+/**
+ * Every label that sits inside a drawn outline at a fit — the board, its blank, a push — by its ink box's
+ * centre or any corner. The drafting rule is that nothing but faint lines goes inside a board, so an empty
+ * list is a drawing that keeps it. Labels in a window are checked against that window's outlines, the
+ * strip's against the strip's.
+ */
+export function guideLabelsInShapes(figure: GuideFigure, fit: number): GuideInside[] {
+  const out: GuideInside[] = [];
+  const scan = (prims: readonly GuidePrim[], where: "strip" | number) => {
+    const shapes = guideShapes(prims);
+    if (shapes.length === 0) return;
+    for (const prim of prims) {
+      const box = guideInkBox(prim, fit);
+      if (!box || (prim.kind !== "text" && prim.kind !== "dim")) continue;
+      const corners = [
+        [box.x + box.w / 2, box.y + box.h / 2],
+        [box.x, box.y],
+        [box.x + box.w, box.y],
+        [box.x, box.y + box.h],
+        [box.x + box.w, box.y + box.h],
+      ];
+      for (const shape of shapes) {
+        if (corners.some(([x, y]) => guidePointInShape(x, y, shape))) {
+          out.push({ text: prim.parts.map((part) => part.text).join(""), in: shape.role, where });
+        }
+      }
+    }
+  };
+  scan(figure.strip, "strip");
+  figure.windows.forEach((win, i) => scan(win.prims, i));
+  return out;
 }

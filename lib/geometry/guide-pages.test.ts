@@ -15,7 +15,7 @@ import {
   type GuidePageBuild,
   type GuidePrim,
 } from "./guide-card";
-import { guideFigureBounds, guideLabelOverlaps } from "./guide-draw";
+import { guideFigureBounds, guideLabelCrossings, guideLabelOverlaps, guideLabelsInShapes } from "./guide-draw";
 import { buildFinsGuide, FINS_GUIDE_CARD_ORDER, FINS_GUIDE_PUSH_FIELDS, finsGuideVariants } from "./guide-fins";
 import { buildTemplateGuide, TEMPLATE_GUIDE_CARD_ORDER, TEMPLATE_GUIDE_PUSH_FIELDS, templateGuideVariants } from "./guide-outline";
 import {
@@ -37,6 +37,7 @@ import { UNITS_SYSTEMS, type UnitsSystem } from "./units";
  * short for McKee Longboard rears, two wings, the unsaved stock board — and asks the same questions of every
  * card: the right cards in the right order, nothing thrown, the board never written, the same cards twice,
  * `dashed` only where something is dashed, every figure finite and inside its drawing, no label on another,
+ * on a drawn line, on a dimension's tick or inside the board,
  * each push changing only its own control's fields, and no inch figure in Metric outside the two exempt
  * strings.
  */
@@ -357,6 +358,30 @@ for (const page of PAGES) {
           for (const card of run(page, board, system).values()) {
             for (const fit of [GUIDE_MIN_FIT, 0.79, 1.26]) {
               expect(guideLabelOverlaps(card.figure, fit), `${board.label} ${system} ${card.id} at ${fit}`).toEqual([]);
+            }
+          }
+        }
+      }
+    });
+
+    it("lays no label on a drawn line or a dimension's end tick, faint lines included, from the narrowest card to a phone", SLOW, () => {
+      for (const system of UNITS_SYSTEMS) {
+        for (const board of BOARDS[system]) {
+          for (const card of run(page, board, system).values()) {
+            for (const fit of [GUIDE_MIN_FIT, 0.79, 1.26]) {
+              expect(guideLabelCrossings(card.figure, fit), `${board.label} ${system} ${card.id} at ${fit}`).toEqual([]);
+            }
+          }
+        }
+      }
+    });
+
+    it("draws no label inside the board, its blank or a push: nothing but faint lines inside a board", SLOW, () => {
+      for (const system of UNITS_SYSTEMS) {
+        for (const board of BOARDS[system]) {
+          for (const card of run(page, board, system).values()) {
+            for (const fit of [GUIDE_MIN_FIT, 0.79, 1.26]) {
+              expect(guideLabelsInShapes(card.figure, fit), `${board.label} ${system} ${card.id} at ${fit}`).toEqual([]);
             }
           }
         }

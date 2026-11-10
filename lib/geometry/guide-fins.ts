@@ -60,15 +60,20 @@ import {
 } from "./guide-card";
 import {
   guideDetailBox,
+  guideLabelHull,
   guidePlanPrims,
   guideStripFit,
+  guideStrokeMeetsBox,
+  guideStrokes,
   guideTextBox,
   guideWindowFit,
   guideWindowName,
   guideX,
   guideY,
+  GUIDE_HDIM_LABEL_OFF,
   GUIDE_TEXT_UNITS_MAX,
   type GuideMap,
+  type GuideStroke,
 } from "./guide-draw";
 import { GUIDE_FRAME, guideFrame, guidePush } from "./guide-push";
 import { formatDim, formatLength, formatMark } from "./measure-display";
@@ -249,7 +254,7 @@ const DETAIL_H = 170;
 const FIGURE_H = STRIP_H + 6 + DETAIL_H;
 /** The window name's band at the top of the detail, and one row of labels above or below the tail. */
 const NAME_BAND = 3 + GUIDE_TEXT_UNITS_MAX + 2;
-const ROW = GUIDE_TEXT_UNITS_MAX + 7;
+const ROW = GUIDE_TEXT_UNITS_MAX + 4 + GUIDE_HDIM_LABEL_OFF;
 const BOTTOM_PAD = 2;
 /** How far inside the detail's sides a label is kept, and the gap kept between two labels in a row. */
 const SIDE_PAD = 3;
@@ -260,6 +265,8 @@ const TAIL_SHARES: readonly number[] = Array.from({ length: 21 }, (_, i) => i / 
 const MIN_SPARE = 70;
 /** The VIEWER's fin dots, at the card's scale. */
 const DOT_R = 2;
+/** The furthest row a label is ever sent to (counted from 0). */
+const MAX_ROWS = 6;
 
 /** The tail FINS draws: the store's (the rounded board) while importing, the generic tail curve else. */
 function drawnTail(input: FinsGuideInput): { points: Point2D[]; connector: Point2D | null } {
@@ -289,8 +296,9 @@ function trimmedTail(points: readonly Point2D[], end: number): Point2D[] {
 }
 
 /** The detail's map: `x = ox − s·k` along the board from the tail tip, `y = oy + lateral·k` across it (a
- * left fin's negative lateral draws above the stringer), and the half width of the band the tail fills. */
-export type FinsDetailMap = GuideMap & { bandHalf: number };
+ * left fin's negative lateral draws above the stringer), the half width of the band the tail fills, and the
+ * rows of labels it keeps room for above and below that band. */
+export type FinsDetailMap = GuideMap & { bandHalf: number; rowsUp: number; rowsDown: number };
 
 function detailMapFor(input: FinsGuideInput, system: UnitsSystem, rowsUp: number, rowsDown: number, share: number): FinsDetailMap {
   const box = guideDetailBox(STRIP_H, DETAIL_H);
@@ -303,7 +311,7 @@ function detailMapFor(input: FinsGuideInput, system: UnitsSystem, rowsUp: number
   const k = Math.min((bottom - top) / (2 * bandHalf), (box.w - MIN_SPARE) / span);
   const spare = box.w - span * k;
   const ox = box.x + box.w - spare * share - GUIDE_FRAME.fins.tailMargin * k;
-  return { k, kx: -k, ky: k, ox, oy: (top + bottom) / 2, bandHalf };
+  return { k, kx: -k, ky: k, ox, oy: (top + bottom) / 2, bandHalf, rowsUp, rowsDown };
 }
 
 /** Which dimensions a card draws on its board's fins (D-08). */
@@ -315,6 +323,8 @@ type Want = {
   side: "up" | "down";
   parts: readonly GuideTextPart[];
   options: readonly { anchor: "start" | "middle" | "end"; x: number }[];
+  /** The stretch along the row the label has to stay beside: its dimension's own span, or its leader. */
+  near: readonly [number, number];
   make: (label: { lx: number; ly: number; dy: number; anchor: "start" | "middle" | "end"; rowEdge: number }) => GuidePrim[];
 };
 
@@ -328,42 +338,119 @@ function spanOf(anchor: "start" | "middle" | "end", x: number, w: number): [numb
   return anchor === "start" ? [x, x + w] : anchor === "end" ? [x - w, x] : [x - w / 2, x + w / 2];
 }
 
-/** Places each label in the first row on its side where one of its places fits inside the detail and clear
- * of the labels already there. Returns the rows used on each side and the placed prims. */
-function placeLabels(wants: readonly Want[], box: GuideBox, map: FinsDetailMap) {
-  const rows: Record<"up" | "down", [number, number][][]> = { up: [], down: [] };
+/** The clear space kept between a label and any line that is not its own dimension's. */
+const LINE_GAP = 1;
+
+/** How far a label may sit from what it measures and still read as its label, and the step it is slid by
+ * when it looks for a free place in a row. */
+const NEAR = 4;
+const SLIDE_STEP = 4;
+
+/**
+ * Where along a row a label may sit, best first: the places its dimension asks for (slid inside the detail
+ * where one runs past its side), then every place in the row that still touches what it measures, nearest
+ * its first choice first. A label right of what it measures is anchored at its start and one left of it at
+ * its end, so a smaller text closes in on the dimension.
+ */
+function placesFor(want: Want, lo: number, hi: number): { anchor: "start" | "middle" | "end"; l: number; rr: number }[] {
+  const w = widthOf(want.parts);
+  const asked = want.options.map((option) => {
+    let [l, rr] = spanOf(option.anchor, option.x, w);
+    if (l < lo) [l, rr] = [lo, lo + w];
+    if (rr > hi) [l, rr] = [hi - w, hi];
+    return { anchor: option.anchor, l, rr };
+  });
+  const [n0, n1] = want.near;
+  const first = asked.length > 0 ? (asked[0].l + asked[0].rr) / 2 : (n0 + n1) / 2;
+  const slid: { anchor: "start" | "middle" | "end"; l: number; rr: number }[] = [];
+  const lefts: number[] = [];
+  for (let l = lo; l + w < hi; l += SLIDE_STEP) lefts.push(l);
+  if (hi - w >= lo) lefts.push(hi - w);
+  for (const l of lefts) {
+    const rr = l + w;
+    if (rr < n0 - NEAR || l > n1 + NEAR) continue;
+    slid.push({ anchor: (l + rr) / 2 < (n0 + n1) / 2 ? "end" : "start", l, rr });
+  }
+  slid.sort((a, b) => Math.abs((a.l + a.rr) / 2 - first) - Math.abs((b.l + b.rr) / 2 - first));
+  return [...asked, ...slid];
+}
+
+type PlacedSide = { prims: GuidePrim[]; rows: number; clean: boolean };
+
+/**
+ * Places one side's labels in the order given, each in the first row where one of its places fits inside
+ * the detail, clear of the labels already there, and where nothing drawn lies on a label: not this
+ * dimension's own ticks, not a leader on its way to a row further out, not a line placed before it.
+ * With a `cap`, a label that finds no such place inside that many rows fails the whole order (`null`).
+ * Without one, a label no row can keep clear of every line takes the first row it merely fits.
+ */
+function placeInOrder(wants: readonly Want[], side: "up" | "down", box: GuideBox, map: FinsDetailMap, cap: number | null): PlacedSide | null {
+  const rows: [number, number][][] = [];
   const prims: GuidePrim[] = [];
+  const strokes: GuideStroke[] = [];
+  const hulls: GuideBox[] = [];
   const lo = box.x + SIDE_PAD;
   const hi = box.x + box.w - SIDE_PAD;
-  const bandTop = map.oy - map.k * map.bandHalf;
-  const bandBottom = map.oy + map.k * map.bandHalf;
-  for (const want of wants) {
-    const w = widthOf(want.parts);
-    let placed = false;
-    for (let r = 0; !placed; r++) {
-      const row = (rows[want.side][r] ??= []);
-      for (const option of want.options) {
-        let [l, rr] = spanOf(option.anchor, option.x, w);
-        // Kept inside the detail: slid in from whichever side it ran past.
-        if (l < lo) [l, rr] = [lo, lo + w];
-        if (rr > hi) [l, rr] = [hi - w, hi];
+  const edge0 = side === "down" ? map.oy + map.k * map.bandHalf + 2 : map.oy - map.k * map.bandHalf - 2;
+  const out = side === "down" ? 1 : -1;
+  const meets = (lines: readonly GuideStroke[], boxes: readonly GuideBox[]) => boxes.some((b) => lines.some((s) => guideStrokeMeetsBox(s, b, LINE_GAP)));
+  const tryPlace = (want: Want, strict: boolean): boolean => {
+    const places = placesFor(want, lo, hi);
+    const last = cap === null ? MAX_ROWS : cap - 1;
+    for (let r = 0; r <= last; r++) {
+      const row = (rows[r] ??= []);
+      for (const { anchor, l, rr } of places) {
         if (row.some(([a, b]) => l < b + LABEL_GAP && a < rr + LABEL_GAP)) continue;
+        const lx = anchor === "start" ? l : anchor === "end" ? rr : (l + rr) / 2;
+        const rowEdge = edge0 + out * r * ROW;
+        const made = want.make({ lx, ly: rowEdge + out * GUIDE_HDIM_LABEL_OFF, dy: side === "down" ? 0.85 : 0, anchor, rowEdge });
+        const mine = guideStrokes(made);
+        const myHulls = made.flatMap((prim) => guideLabelHull(prim) ?? []);
+        if (strict && (meets([...strokes, ...mine], myHulls) || meets(mine, hulls))) continue;
         row.push([l, rr]);
-        const lx = option.anchor === "start" ? l : option.anchor === "end" ? rr : (l + rr) / 2;
-        if (want.side === "down") {
-          const rowTop = bandBottom + r * ROW;
-          prims.push(...want.make({ lx, ly: rowTop + 5, dy: 0.85, anchor: option.anchor, rowEdge: rowTop + 2 }));
-        } else {
-          const rowBottom = bandTop - r * ROW;
-          prims.push(...want.make({ lx, ly: rowBottom - 5, dy: 0, anchor: option.anchor, rowEdge: rowBottom - 2 }));
-        }
-        placed = true;
-        break;
+        prims.push(...made);
+        strokes.push(...mine);
+        hulls.push(...myHulls);
+        return true;
       }
-      if (r > 6) throw new Error("a FINS label found no row");
     }
+    return false;
+  };
+  let clean = true;
+  for (const want of wants) {
+    if (tryPlace(want, true)) continue;
+    if (cap !== null) return null;
+    clean = false;
+    if (!tryPlace(want, false)) throw new Error("a FINS label found no row");
   }
-  return { up: rows.up.length, down: rows.down.length, prims };
+  return { prims, rows: rows.reduce((n, row, r) => (row.length > 0 ? r + 1 : n), 0), clean };
+}
+
+/** Every order a short list can be taken in, the order given first. */
+function orders<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) return [[...items]];
+  if (items.length > 4) return [[...items], [...items].reverse()];
+  return items.flatMap((item, i) => orders([...items.slice(0, i), ...items.slice(i + 1)]).map((rest) => [item, ...rest]));
+}
+
+/**
+ * Places a card's labels in the rows the map keeps above and below the tail. Which label takes the row
+ * nearest the tail decides whose leader passes whose words, so each side tries its labels in every order
+ * and keeps the first in which no line lies on a label. `clean` says every label found such a place; where
+ * none did, the labels take the rows they merely fit and the rows used may run past the map's.
+ */
+function placeLabels(wants: readonly Want[], box: GuideBox, map: FinsDetailMap) {
+  const side = (which: "up" | "down", cap: number): PlacedSide => {
+    const mine = wants.filter((want) => want.side === which);
+    for (const order of orders(mine)) {
+      const placed = placeInOrder(order, which, box, map, cap);
+      if (placed) return placed;
+    }
+    return placeInOrder(mine, which, box, map, null)!;
+  };
+  const up = side("up", map.rowsUp);
+  const down = side("down", map.rowsDown);
+  return { up: up.rows, down: down.rows, clean: up.clean && down.clean, prims: [...up.prims, ...down.prims] };
 }
 
 const line = (role: "extension" | "reference", x1: number, y1: number, x2: number, y2: number): GuidePrim => ({ kind: "line", role, x1, y1, x2, y2 });
@@ -395,6 +482,7 @@ function dimWants(dims: readonly FinDim[], marks: readonly FinMark[], tail: read
         { anchor: "middle", x: (xTe + xTip) / 2 },
         { anchor: "end", x: xTip },
       ],
+      near: [Math.min(xTe, xTip), Math.max(xTe, xTip)],
       make: (at) => {
         const reach = side === "down" ? 3 : -3;
         return [
@@ -427,8 +515,9 @@ function dimWants(dims: readonly FinDim[], marks: readonly FinMark[], tail: read
           { anchor: "start", x: x + 4 },
           { anchor: "middle", x },
         ],
+        near: [x, x],
         make: (at) => [
-          line("extension", x, yRail, x, at.ly + 4),
+          line("extension", x, yRail, x, at.rowEdge + 3),
           { kind: "dim", x1: x, y1: yFin, x2: x, y2: yRail, parts, lx: at.lx, ly: at.ly, dy: at.dy, anchor: at.anchor },
         ],
       });
@@ -447,9 +536,10 @@ function dimWants(dims: readonly FinDim[], marks: readonly FinMark[], tail: read
           { anchor: "middle", x: xLe },
           { anchor: "start", x: xLe + 4 },
         ],
+        near: [xDim, xDim],
         make: (at) => [
           line("reference", xTe, yTe, xLe - 10, yTe),
-          line("extension", xDim, Math.min(yTe, yLe), xDim, at.ly + 3),
+          line("extension", xDim, Math.min(yTe, yLe), xDim, at.rowEdge - 3),
           { kind: "dim", x1: xDim, y1: yTe, x2: xDim, y2: yLe, parts, lx: at.lx, ly: at.ly, dy: at.dy, anchor: at.anchor },
         ],
       });
@@ -467,6 +557,7 @@ function dimWants(dims: readonly FinDim[], marks: readonly FinMark[], tail: read
           { anchor: "start", x: xLe },
           { anchor: "end", x: xTe },
         ],
+        near: [Math.min(xTe, xLe), Math.max(xTe, xLe)],
         make: (at) => [
           line("extension", xLe, Y(m.leadingLateral), xLe, at.rowEdge - 3),
           line("extension", xTe, Y(m.lateral), xTe, at.rowEdge - 3),
@@ -528,21 +619,28 @@ const ROW_PLANS: readonly [number, number][] = [
 
 /**
  * The map every card shares: the fewest label rows, and where along the detail the tail tip sits, such that
- * every card's labels find a place in them. The tail is drawn as large as those rows leave room for.
+ * every card's labels find a place in them with no line lying on a label. The tail is drawn as large as
+ * those rows leave room for. A board no map can keep that clean takes the first whose labels fit their rows.
  */
 function layoutFor(input: FinsGuideInput, system: UnitsSystem, drafts: readonly CardDraft[]): { map: FinsDetailMap } {
   const box = guideDetailBox(STRIP_H, DETAIL_H);
   const tail = trimmedTail(drawnTail(input).points, guideFrame(system).finsTailWindow);
+  // The first map whose labels merely fit their rows, kept in case no map keeps every label off every line.
+  let loose: FinsDetailMap | null = null;
   for (const [rowsUp, rowsDown] of ROW_PLANS) {
     for (const share of TAIL_SHARES) {
       const map = detailMapFor(input, system, rowsUp, rowsDown, share);
+      let clean = true;
       const fits = drafts.every(({ draw }) => {
         const placed = placeLabels(dimWants(draw.dims, draw.marks, tail, map, system), box, map);
-        return placed.up <= rowsUp && placed.down <= rowsDown;
+        clean &&= placed.clean;
+        return placed.up <= rowsUp && placed.down <= rowsDown && (clean || !loose);
       });
-      if (fits) return { map };
+      if (fits && clean) return { map };
+      if (fits) loose ??= map;
     }
   }
+  if (loose) return { map: loose };
   const [rowsUp, rowsDown] = ROW_PLANS[ROW_PLANS.length - 1];
   return { map: detailMapFor(input, system, rowsUp, rowsDown, TAIL_SHARES[0]) };
 }

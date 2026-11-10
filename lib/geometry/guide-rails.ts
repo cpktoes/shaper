@@ -35,6 +35,7 @@ import {
 } from "./guide-card";
 import {
   guideDetailBox,
+  GUIDE_HDIM_LABEL_OFF,
   guideHDim,
   guideHalfWidthAt,
   guidePlanPrims,
@@ -289,9 +290,10 @@ const PLAN_H = 110;
 /** A window name's band at the top of a detail. */
 const NAME_BAND = 3 + GUIDE_TEXT_UNITS_MAX + 2;
 /** The band over the deck for a deck mark's dimension label. */
-const TOP_DIM_BAND = GUIDE_TEXT_UNITS_MAX + 4;
-/** The band under the bottom for a tuck's dimension label (the line 4 under, the label 3 under that). */
-const BOTTOM_DIM_BAND = 4 + 3 + 1.1 * GUIDE_TEXT_UNITS_MAX + 1;
+const TOP_DIM_BAND = GUIDE_TEXT_UNITS_MAX + 1 + GUIDE_HDIM_LABEL_OFF;
+/** The band under the bottom for a tuck's dimension label (the line 4 under, the label under that, clear of
+ * the line's end ticks). */
+const BOTTOM_DIM_BAND = 4 + GUIDE_HDIM_LABEL_OFF + 1.1 * GUIDE_TEXT_UNITS_MAX + 1;
 /** The room kept right of the rail for a vertical dimension's label. */
 const LABEL_GUTTER = 84;
 /** How far inside the rail's line the tail's hard edge is drawn on the plan, in drawing units. */

@@ -1,13 +1,27 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { guideFigure, guideText, type GuideFigure, type GuidePrim } from "./guide-card";
+import { guideFigure, GUIDE_MIN_FIT, guideText, type GuideFigure, type GuidePrim } from "./guide-card";
 import {
+  GUIDE_HDIM_LABEL_OFF,
   GUIDE_STRIP_BAND,
   GUIDE_STRIP_MARGIN,
+  GUIDE_TICK_REACH,
+  GUIDE_VDIM_LABEL_OFF,
   guideDetailBox,
+  guideDimTicks,
   guideFigureBounds,
   guideHalfWidthAt,
   guideHDim,
+  guideInkBox,
+  guideLabelCrossings,
+  guideLabelHull,
   guideLabelOverlaps,
+  guideLabelsInShapes,
+  guidePointInShape,
+  guideShapes,
+  guideStrokeMeetsBox,
+  guideStrokes,
   guideOutlinePath,
   guidePlanPrims,
   guideSectionPath,
@@ -129,9 +143,27 @@ describe("guideHalfWidthAt and guideOutlinePath", () => {
 describe("dimensions and labels", () => {
   it("place a vertical dimension's label beside it and a horizontal one's above or below", () => {
     const v = guideVDim(100, 80, 40, [guideFigure('2 1/4"')]);
-    expect(v).toMatchObject({ kind: "dim", y1: 40, y2: 80, lx: 105, ly: 60, anchor: "start" });
+    expect(v).toMatchObject({ kind: "dim", y1: 40, y2: 80, lx: 100 + GUIDE_VDIM_LABEL_OFF, ly: 60, anchor: "start" });
     const h = guideHDim(200, 50, 90, [guideFigure('6\'2"')], false);
-    expect(h).toMatchObject({ kind: "dim", x1: 50, x2: 200, lx: 125, ly: 93, anchor: "middle" });
+    expect(h).toMatchObject({ kind: "dim", x1: 50, x2: 200, lx: 125, ly: 90 + GUIDE_HDIM_LABEL_OFF, anchor: "middle" });
+  });
+
+  it("keeps a dimension's own label off its own end ticks, at every text size", () => {
+    const dims = [
+      guideVDim(100, 80, 40, [guideFigure('2 1/4"')]),
+      guideVDim(100, 80, 40, [guideFigure('2 1/4"')], "left"),
+      guideVDim(100, 46, 40, [guideFigure("6 mm")]),
+      guideHDim(200, 50, 90, [guideFigure('6\'2"')]),
+      guideHDim(200, 50, 90, [guideFigure('6\'2"')], false),
+      guideHDim(60, 50, 90, [guideFigure("305 mm")], false),
+      guideHDim(60, 50, 90, [guideFigure("305 mm")], true, "start"),
+    ];
+    for (const dim of dims) {
+      for (const fit of [GUIDE_MIN_FIT, 0.79, 1, 1.26]) {
+        const figure: GuideFigure = { height: 200, strip: [dim], windows: [] };
+        expect(guideLabelCrossings(figure, fit), JSON.stringify(dim)).toEqual([]);
+      }
+    }
   });
 
   it("estimates a label's box at 10 screen dots whatever the fit", () => {
@@ -176,3 +208,122 @@ describe("dimensions and labels", () => {
     expect(guideFigureBounds(figure)).toEqual({ x: 0, y: 20, w: 108, h: 75 });
   });
 });
+
+describe("a label and the lines around it", () => {
+  const label = (x: number, y: number, text: string): GuidePrim => ({ kind: "text", role: "value", x, y, parts: [guideText(text)], anchor: "start" });
+
+  it("draws a dimension's end tick the size the viewers draw theirs", () => {
+    const source = readFileSync(join(__dirname, "../../components/viewer/callout-primitives.tsx"), "utf8");
+    const size = /export const CALLOUT_TICK_SIZE = (\d+(?:\.\d+)?);/.exec(source);
+    expect(size).not.toBeNull();
+    expect(GUIDE_TICK_REACH).toBe(Number(size![1]));
+  });
+
+  it("gives a dimension two 45° slashes, one through each end", () => {
+    const dim = guideHDim(50, 200, 90, [guideFigure('6\'2"')]);
+    if (dim.kind !== "dim") throw new Error("not a dimension");
+    expect(guideDimTicks(dim)).toEqual([
+      { x1: 46, y1: 94, x2: 54, y2: 86, by: "tick", faint: false },
+      { x1: 196, y1: 94, x2: 204, y2: 86, by: "tick", faint: false },
+    ]);
+  });
+
+  it("reads every drawn line as straight pieces: a path's runs, a closed run's last side, a rectangle, a dimension and its ticks", () => {
+    const strokes = guideStrokes([
+      { kind: "path", role: "board", d: "M0 0L10 0L10 10ZM20 20L30 20" },
+      { kind: "path", role: "railFill", d: "M0 0L10 0L10 10Z" },
+      { kind: "line", role: "baseline", x1: 0, y1: 50, x2: 100, y2: 50 },
+      { kind: "rect", role: "window", x: 0, y: 0, w: 10, h: 5 },
+      guideHDim(50, 200, 90, [guideFigure("1")]),
+    ]);
+    // Three sides of the triangle and one open piece; nothing for the fill; one baseline; four sides; a line and two ticks.
+    expect(strokes.map((s) => s.by)).toEqual([
+      "board", "board", "board", "board",
+      "baseline",
+      "window", "window", "window", "window",
+      "dimension", "tick", "tick",
+    ]);
+    expect(strokes[2]).toMatchObject({ x1: 10, y1: 10, x2: 0, y2: 0 });
+    expect(strokes.filter((s) => s.faint).map((s) => s.by)).toEqual(["baseline"]);
+  });
+
+  it("knows whether a straight piece passes through a box, and how near counts", () => {
+    const box = { x: 10, y: 10, w: 20, h: 10 };
+    expect(guideStrokeMeetsBox({ x1: 0, y1: 15, x2: 40, y2: 15 }, box)).toBe(true);
+    expect(guideStrokeMeetsBox({ x1: 0, y1: 0, x2: 40, y2: 30 }, box)).toBe(true);
+    expect(guideStrokeMeetsBox({ x1: 12, y1: 12, x2: 14, y2: 14 }, box)).toBe(true);
+    expect(guideStrokeMeetsBox({ x1: 0, y1: 22, x2: 40, y2: 22 }, box)).toBe(false);
+    expect(guideStrokeMeetsBox({ x1: 0, y1: 22, x2: 40, y2: 22 }, box, 2.5)).toBe(true);
+    expect(guideStrokeMeetsBox({ x1: 0, y1: 15, x2: 8, y2: 15 }, box)).toBe(false);
+    expect(guideStrokeMeetsBox({ x1: 5, y1: 0, x2: 5, y2: 40 }, box)).toBe(false);
+  });
+
+  it("measures a label's ink shorter than its line of text, and deeper for a letter with a tail", () => {
+    const plain = guideInkBox(label(100, 50, "12 mm"), 1)!;
+    const tailed = guideInkBox(label(100, 50, "by eye"), 1)!;
+    const text = guideTextBox(label(100, 50, "12 mm"), 1)!;
+    expect(plain.y).toBeCloseTo(text.y + 0.3, 9);
+    expect(plain.h).toBeCloseTo(7.2, 9);
+    expect(tailed.h).toBeCloseTo(9.5, 9);
+    expect(guideInkBox({ kind: "line", role: "board", x1: 0, y1: 0, x2: 1, y2: 1 }, 1)).toBeNull();
+  });
+
+  it("gives a label the room it takes at any text size: its biggest ink, stretched to where it is hung from", () => {
+    const hung = guideHDim(50, 200, 90, [guideFigure("305")], false);
+    const hull = guideLabelHull(hung)!;
+    for (const fit of [GUIDE_MIN_FIT, 0.79, 1, 1.26]) {
+      const ink = guideInkBox(hung, fit)!;
+      expect(ink.y).toBeGreaterThanOrEqual(hull.y - 1e-9);
+      expect(ink.y + ink.h).toBeLessThanOrEqual(hull.y + hull.h + 1e-9);
+    }
+    expect(hull.y).toBeCloseTo(90 + GUIDE_HDIM_LABEL_OFF, 9);
+  });
+
+  it("lists a label lying on a drawn line, says which line, and tells a faint line from an inked one", () => {
+    const figure: GuideFigure = {
+      height: 200,
+      strip: [
+        { kind: "line", role: "board", x1: 0, y1: 47, x2: 300, y2: 47 },
+        { kind: "line", role: "baseline", x1: 0, y1: 146, x2: 300, y2: 146 },
+        label(100, 50, "on the board"),
+        label(100, 100, "in the clear"),
+        label(100, 150, "on the baseline"),
+      ],
+      windows: [{ box: { x: 0, y: 160, w: 300, h: 40 }, prims: [label(100, 50, "other window")] }],
+    };
+    expect(guideLabelCrossings(figure, 1)).toEqual([
+      { text: "on the board", by: "board", faint: false, where: "strip" },
+      { text: "on the baseline", by: "baseline", faint: true, where: "strip" },
+    ]);
+  });
+
+  it("finds each closed outline of a path, and whether a point is inside one", () => {
+    const shapes = guideShapes([
+      { kind: "path", role: "board", d: "M0 0L100 0L100 40L0 40ZM200 0L260 0L260 40Z" },
+      { kind: "path", role: "push", d: "M0 60L100 60L100 80" },
+      { kind: "line", role: "board", x1: 0, y1: 0, x2: 1, y2: 1 },
+    ]);
+    expect(shapes.map((s) => [s.role, s.points.length])).toEqual([
+      ["board", 4],
+      ["board", 3],
+    ]);
+    expect(guidePointInShape(50, 20, shapes[0])).toBe(true);
+    expect(guidePointInShape(150, 20, shapes[0])).toBe(false);
+    expect(guidePointInShape(250, 10, shapes[1])).toBe(true);
+    expect(guidePointInShape(210, 30, shapes[1])).toBe(false);
+  });
+
+  it("lists a label drawn inside a board, by its centre or a corner, and none drawn beside it", () => {
+    const board: GuidePrim = { kind: "path", role: "board", d: "M0 40L300 40L300 80L0 80Z" };
+    const figure: GuideFigure = {
+      height: 200,
+      strip: [board, label(100, 65, "inside"), label(100, 30, "above"), label(100, 84, "a corner in")],
+      windows: [{ box: { x: 0, y: 100, w: 300, h: 60 }, prims: [label(100, 65, "another window's")] }],
+    };
+    expect(guideLabelsInShapes(figure, 1)).toEqual([
+      { text: "inside", in: "board", where: "strip" },
+      { text: "a corner in", in: "board", where: "strip" },
+    ]);
+  });
+});
+
