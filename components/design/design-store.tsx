@@ -118,6 +118,7 @@ import {
   DEFAULT_BOTTOM,
   bottomHasCut,
   cutKind,
+  isDefaultBottom,
   keepChannelStationsInOrder,
   keepStationsInOrder,
   pickCut,
@@ -129,6 +130,7 @@ import {
   type BottomCutName,
   type BottomCutSpec,
   type BottomSectionKey,
+  type BottomWingRule,
   type ResolvedBottom,
 } from "@/lib/geometry/bottom";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
@@ -197,8 +199,9 @@ import { pickOutlineGhost } from "@/lib/outline-ghost";
  * new snapshot identity, and so can never record a step, by construction rather than by a
  * separate guard that could drift out of sync with it. */
 type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName"> & {
-  /** The bottom (Phase 17, 17-08) rides in every undo step, so Undo and Redo take a cut pick or a cut slider back;
-   * saving it with the board is 17-12's (`DesignSnapshotFields` gains it there). */
+  /** The bottom (Phase 17, 17-08) rides in every undo step, so Undo and Redo take a cut pick or a cut slider back.
+   * Always present here, even when it is the opening bottom — unlike a save (`DesignSnapshotFields`, 17-12), which
+   * leaves the opening bottom out so an untouched board saves key for key as it always did. */
   bottom: BoardBottom;
 };
 
@@ -211,8 +214,9 @@ interface DesignState {
   rails: RailBandSpec;
   fins: FinPlacementSpec;
   /** The bottom contours (Phase 17, D-01, D-05): the three sections' cuts and the channels, as stored. Every board
-   * opens flat (`DEFAULT_BOTTOM`, D-04) — a preset, a saved board and a board file alike, until 17-12 reads a saved
-   * one — and a flat bottom moves nothing on any screen. Every reader takes it from this one value, through the
+   * that carries no bottom of its own opens flat (`DEFAULT_BOTTOM`, D-04) — every preset, and every saved board and
+   * board file from before the bottom was saved with the board (17-12, D-24) — and a flat bottom moves nothing on
+   * any screen. Every reader takes it from this one value, through the
    * memos below (`bottomBoard`, `resolvedBottom`, the litres' input, `bottomSections`, `railsOnBottom`). */
   bottom: BoardBottom;
   volume: VolumeSpec;
@@ -483,6 +487,9 @@ interface DesignContextValue {
   /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
    * one undo step each. Nothing on a locked board. */
   setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
+  /** WINGS on BOTTOM (D-19): where Off Rail is measured from on a winged board — the narrowest outline, or the curve
+   * drawn before the wing. One setting for the whole bottom; one undo step each. Nothing on a locked board. */
+  setBottomWingRule: (rule: BottomWingRule) => void;
   /** The CHANNELS block's count (D-10, D-11): 4, 6 or 8 bring that count's starting width unless the width was set by
    * hand, every other number kept (`switchChannelCount`); `None` (0) hides the set and keeps its numbers. One undo step
    * each. Nothing on a locked board. */
@@ -918,8 +925,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       foil: snapshot.foil,
       rails: snapshot.rails,
       fins: snapshot.fins,
-      // A saved board opens flat until its snapshot carries a bottom (17-12 reads it, D-24).
-      bottom: DEFAULT_BOTTOM,
+      // A saved board opens with its own bottom, or flat when it was saved without one — every board
+      // saved before BOTTOM, and any board never touched there (17-12, D-24). Nothing is rewritten.
+      bottom: snapshot.bottom ?? DEFAULT_BOTTOM,
       volume: snapshot.volume,
       finsImportTemplate: snapshot.finsImportTemplate,
       railsImportFoilThickness: snapshot.railsImportFoilThickness,
@@ -1451,6 +1459,19 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // WINGS (D-19): which outline every cut's Off Rail is measured from on a winged board. A menu pick is a discrete
+  // choice, so its own undo step: noteEdit(null).
+  const setBottomWingRule = (rule: BottomWingRule) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, wingRule: rule },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // The CHANNELS block inside TAIL (D-10, D-11). The three menus are discrete choices — noteEdit(null), one undo step
   // each — and like every mutator they check the lock first and mark the board started and dirty.
   type ChannelsEdit = (channels: BottomChannelsSpec) => BottomChannelsSpec;
@@ -1738,6 +1759,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardName: state.boardName,
       finSystem: state.finSystem,
       blank: state.blank,
+      // The bottom is saved only once it is not the opening one (17-12, D-24): a board never touched on
+      // BOTTOM saves key for key as it did before the page existed, so no saved board is rewritten.
+      ...(isDefaultBottom(state.bottom) ? {} : { bottom: state.bottom }),
     }),
     [
       resolvedOutline,
@@ -1751,6 +1775,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.boardName,
       state.finSystem,
       state.blank,
+      state.bottom,
     ],
   );
 
@@ -2075,6 +2100,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pickBottomCut,
     updateBottomCut,
     setBottomClosesToPoint,
+    setBottomWingRule,
     setChannelCount,
     setChannelRun,
     setChannelLongest,

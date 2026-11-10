@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildDesignsExport } from "@/lib/account/account-data";
 import type { ModelRow } from "@/lib/db/schema";
+import { DEFAULT_BOTTOM, pickCut, startingChannels, type BoardBottom } from "@/lib/geometry/bottom";
+import {
+  LIVE_DESIGN_RULES,
+  designBottomBoard,
+  designFinPlacement,
+  designSideProfile,
+  summarizeDesign,
+} from "@/lib/geometry/design";
+import { buildOutline } from "@/lib/geometry/outline";
 import {
   BOARD_FILE_EXTENSION,
   BOARD_FILE_MAX_BYTES,
@@ -311,5 +320,60 @@ describe("boardFileStem: the one stem the board file and the CNC export share (P
   it("names an all-dots name an untitled board", () => {
     expect(boardFileStem("....")).toBe(UNTITLED_BOARD_NAME);
     expect(boardFileStem(". . .")).toBe(UNTITLED_BOARD_NAME);
+  });
+});
+
+describe("a board file carries the board's bottom (Phase 17, D-24)", () => {
+  const board = designBottomBoard(
+    FISH.fields.outline,
+    buildOutline(FISH.fields.outline),
+    designSideProfile(FISH.fields, LIVE_DESIGN_RULES),
+    designFinPlacement(FISH.fields),
+  );
+  /** A Deep Single Concave, a Spiral Vee, six channels and Natural. */
+  const BOTTOM: BoardBottom = (() => {
+    const picked = pickCut(pickCut(DEFAULT_BOTTOM, "center", "Deep Single Concave", board), "tail", "Spiral Vee", board);
+    return { ...picked, channels: startingChannels(6, board, picked.channels), wingRule: "natural" };
+  })();
+  const WITH_BOTTOM: DesignSnapshotFields = { ...FISH.fields, bottom: BOTTOM };
+
+  it("a board with cuts, channels and Natural reads back from its file with every number as it was", () => {
+    const text = fileTextFor(FISH.name, WITH_BOTTOM);
+    expect(text).toContain('"bottom"');
+    const result = readOneBoardFile(text, {});
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.fields.bottom).toEqual(BOTTOM);
+    expect(result.fields).toEqual({ ...WITH_BOTTOM, boardName: FISH.name });
+    expect(summarizeDesign(result.fields).volumeLitres).toBeLessThan(summarizeDesign(FISH.fields).volumeLitres);
+  });
+
+  it("a board never touched on BOTTOM writes the file it always wrote: no bottom in it", () => {
+    for (const saved of BOARDS) {
+      expect("bottom" in saved.fields, saved.name).toBe(false);
+      expect(fileTextFor(saved.name, saved.fields), saved.name).not.toContain('"bottom"');
+    }
+  });
+
+  it("a file whose bottom is not a bottom still opens, flat — never refused", () => {
+    const snapshot = JSON.parse(JSON.stringify(buildSnapshot(WITH_BOTTOM)));
+    for (const bad of ["x", 7, null, [], {}]) {
+      const design = { ...snapshot, design: { ...snapshot.design, bottom: bad } };
+      const result = readOneBoardFile(fileTextWithBoard({ name: FISH.name, design }), {});
+      expect(result.ok, JSON.stringify(bad)).toBe(true);
+      if (!result.ok) return;
+      expect("bottom" in result.fields, JSON.stringify(bad)).toBe(false);
+      expect(result.fields).toEqual({ ...FISH.fields, boardName: FISH.name });
+    }
+  });
+
+  it("a file with one bad part opens with that part flat and the rest of the bottom kept", () => {
+    const design = JSON.parse(JSON.stringify(buildSnapshot(WITH_BOTTOM)));
+    design.design.bottom.tail.name = "Bonzer";
+    design.design.bottom.channels.count = 5;
+    const result = readOneBoardFile(fileTextWithBoard({ name: FISH.name, design }), {});
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.fields.bottom).toEqual({ ...BOTTOM, tail: DEFAULT_BOTTOM.tail, channels: DEFAULT_BOTTOM.channels });
   });
 });

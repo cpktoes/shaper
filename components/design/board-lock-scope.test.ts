@@ -203,6 +203,29 @@ describe("board-lock-scope — the control inventory", () => {
     expect(press).toMatch(/\bdata-lock-exempt\b/);
   });
 
+  it("BOTTOM's WINGS menu is tied to the lock, and its store action refuses a locked board in one undo step (17-12, D-19)", () => {
+    // The one Select holding the wing rule: greyed and still on a locked board, never view-only.
+    const wings = interactiveTags("components/bottom/bottom-controls.tsx").filter(
+      ({ name, tag }) => name === "Select" && /\bvalue=\{bottom\.wingRule\}/.test(tag),
+    );
+    expect(wings).toHaveLength(1);
+    expect(wings[0].tag).not.toMatch(/\bdata-lock-exempt\b/);
+    expect(disabledExpression(wings[0].tag)).toBe("locked");
+    expect(wings[0].tag).toMatch(/onValueChange=\{\(value\) => setBottomWingRule\(/);
+    // The row is drawn for a winged board only: it stands inside the placed wings' own test.
+    const panel = stripComments(read("components/bottom/bottom-controls.tsx"));
+    expect(panel).toMatch(/placedWings\(outline\.wings \?\? \[\], outlineGeometry\)/);
+    expect(panel).toMatch(/\{wings\.length > 0 && \(\s*<div data-bottom-wings\b/);
+    // The store is the real guard: the lock first, then one undo step, then the rule alone.
+    const store = stripComments(read("components/design/design-store.tsx"));
+    const at = store.indexOf("const setBottomWingRule = (");
+    expect(at).toBeGreaterThan(0);
+    const body = store.slice(at, store.indexOf("\n  };", at));
+    expect(body.slice(body.indexOf("{") + 1).trimStart()).toMatch(/^if \(lockedRef\.current\) return;\s*noteEdit\(null\);/);
+    expect(body).toMatch(/bottom:\s*\{\s*\.\.\.prev\.bottom,\s*wingRule:\s*rule\s*\}/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+
   it("the design layout wraps every screen in the lock scope", () => {
     expect(stripComments(read("app/design/layout.tsx"))).toMatch(/<BoardLockScope>/);
   });

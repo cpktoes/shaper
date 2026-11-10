@@ -125,6 +125,24 @@ describe("design-store.tsx — BOTTOM's two edits (Phase 17, 17-08)", () => {
   });
 });
 
+describe("design-store.tsx — the bottom is saved with the board, and only once it is cut (Phase 17, 17-12, D-24)", () => {
+  it("a save carries the bottom only when it is not the opening one, so an untouched board saves key for key as before", () => {
+    const { object, deps } = memo("designSnapshotFields");
+    expect(object).toMatch(/\.\.\.\(isDefaultBottom\(state\.bottom\)\s*\?\s*\{\}\s*:\s*\{\s*bottom:\s*state\.bottom\s*\}\)/);
+    expect(object, "never the bottom written outright").not.toMatch(/^\s*bottom:\s*state\.bottom\b/m);
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+  });
+
+  it("a saved board opens with its own bottom, or flat when it was saved without one", () => {
+    expect(handler("applyModel")).toMatch(/\bbottom:\s*snapshot\.bottom\s*\?\?\s*DEFAULT_BOTTOM\b/);
+  });
+
+  it("a board file is spread over the defaults, so a file without a bottom opens flat and one with a bottom keeps it", () => {
+    expect(handler("applyBoardFile")).toMatch(/\{\s*\.\.\.DEFAULT_DESIGN_STATE,\s*\.\.\.snapshot,/);
+    expect(SOURCE).toMatch(/\n  bottom:\s*DEFAULT_BOTTOM,/);
+  });
+});
+
 describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 5)", () => {
   it("the blank is prepared once per blank copy and rocker, inside a useMemo, through the one helper (R14, quick 261016-mkb)", () => {
     const { object, deps } = memo("preparedBlank");
