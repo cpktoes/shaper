@@ -28,6 +28,7 @@ import {
   bottomPencilLines,
   bottomSection,
   bottomShadeBands,
+  builtSectionAt,
   cutAlone,
   DRAWING_WIDTH,
   GAUGE_BESIDE_ROOM,
@@ -48,9 +49,12 @@ import {
   topViewMarks,
   topViewX,
   TOP_VIEW_GRID,
+  type BottomCutKey,
   type GuideCartoonKey,
+  type SectionDrawing,
   type ShadeRect,
 } from "./bottom-draw";
+import { bottomPrintCuts } from "./bottom-print";
 import { formatBottomStation } from "./blank-reasons";
 import type { DesignSummaryFields } from "./design";
 import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
@@ -466,6 +470,128 @@ describe("the section (D-13): one scale at every station", () => {
     expect(foamOff(resolved, t.board, s, sec.railEdge)).toBeGreaterThanOrEqual(t.board.thicknessAt(s) - 1e-6);
     expect(foamOff(resolved, t.board, s, mm(sec.railEdge - 0.01))).toBeLessThan(t.board.thicknessAt(s));
     expect(sec.bottomAt(t.board.railAt(s))).toBe(t.board.thicknessAt(s));
+  });
+});
+
+describe("WR-03: a drawn section ends its foam where the litres end it (builtSectionAt, the code review 2026-11-10)", () => {
+  const inputOf = (t: TestBoard, bottom?: BoardBottom) => {
+    const profile = designSideProfile(t.fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(t.fields.rails, profile.effectiveFoil, t.fields.railsImportFoilThickness);
+    return designCrossSectionInput(t.geometry, profile, rails, t.fields.outline.length, bottom ? { bottom, board: t.board } : undefined);
+  };
+  /** Every stock starting bottom of a board: each named cut alone, the sketch's opening set, and each count of channels. */
+  const startingBottoms = (t: TestBoard): [name: string, bottom: BoardBottom][] => [
+    ...BOTTOM_SECTIONS.flatMap((section) => BOTTOM_CUT_NAMES[section].map((name): [string, BoardBottom] => [name, bottomOf(t.board, { [section]: name })])),
+    ["the opening set", bottomOf(t.board, OPENINGS[t.id])],
+    ...([4, 6, 8] as const).map((count): [string, BoardBottom] => [`${count} channels`, bottomOf(t.board, {}, count)]),
+  ];
+  /** Every inch from the tail to the nose, and the stations the Bottom Contours sheet prints its sections at. */
+  const drawnStations = (t: TestBoard, bottom: BoardBottom): Mm[] => {
+    const out: Mm[] = [];
+    for (let s = 0; s <= t.board.length; s += inchesToMm(1)) out.push(mm(s));
+    return [...out, ...bottomPrintCuts(resolveBottom(bottom, t.board)).map((cut) => cut.deepest)];
+  };
+  /** A drawing as its numbers and paths: its one function is read across the station instead. */
+  const drawn = ({ bottomAt, ...rest }: SectionDrawing) => ({ ...rest, across: Array.from({ length: 9 }, (_, k) => bottomAt((rest.railEdge * k) / 8)) });
+  /** The two box sizes the Bottom Contours sheet draws a section in (one cut alone, and two side by side). */
+  const PRINT_BOXES = [
+    { width: 650, height: 120 },
+    { width: 322, height: 100 },
+  ];
+
+  it("is the litres' own section: at each of the litres' stations the very section their list holds, and at any other the one boardSections builds there", () => {
+    for (const t of BOARDS) {
+      const bottom = bottomOf(t.board, OPENINGS[t.id], 6);
+      const input = inputOf(t, bottom);
+      const list = boardSections(input);
+      expect(list.length).toBeGreaterThan(0);
+      for (const section of list) expect(builtSectionAt(input, section.station), `${t.id} at ${section.station}`).toEqual(section);
+      for (const s of drawnStations(t, bottom)) expect(builtSectionAt(input, s), `${t.id} at ${s}`).toEqual(boardSections(input, [s])[0]);
+    }
+  });
+
+  it("a flat bottom builds no section at all, and its drawing is its own", () => {
+    for (const t of BOARDS) {
+      const flat = structuredClone(DEFAULT_BOTTOM);
+      const resolved = resolveBottom(flat, t.board);
+      for (const input of [inputOf(t), inputOf(t, flat), inputOf(t, bottomOf(t.board, { nose: "Flat Entry", center: "Flat Center", tail: "Flat Exit" }))]) {
+        expect(input.foamOffAt).toBeUndefined();
+        for (const s of drawnStations(t, flat)) expect(builtSectionAt(input, s)).toBeNull();
+      }
+      // with nothing handed over the drawing is the one it has always been
+      for (const s of drawnStations(t, flat)) {
+        expect(drawn(bottomSection(resolved, t.board, s, 4, BOX_1280, { live: null, seam: null }))).toEqual(drawn(bottomSection(resolved, t.board, s, 4, BOX_1280, { live: null })));
+      }
+    }
+  });
+
+  it.each(BOARDS.map((b) => [b.id, b] as const))(
+    "%s: on every stock starting bottom the section is the same drawing, point for point, wherever the litres' section has no knife edge — and every printed section is one of those",
+    (_id, t) => {
+      let same = 0;
+      for (const [name, bottom] of startingBottoms(t)) {
+        const resolved = resolveBottom(bottom, t.board);
+        const input = inputOf(t, bottom);
+        const printed = bottomPrintCuts(resolved).map((cut) => cut.deepest);
+        for (const s of drawnStations(t, bottom)) {
+          const seam = builtSectionAt(input, s);
+          if (seam?.railEdgeAt !== undefined) {
+            // a starting bottom ends the foam only by a tip, never where the sheet prints a section
+            expect(printed, `${name}: a printed section with a knife edge at ${s}`).not.toContain(s);
+            continue;
+          }
+          // the screen's box at every inch; at a printed station the sheet's two boxes as well, with each live cut
+          const looks: [box: { width: number; height: number }, live: BottomCutKey | null][] = [[BOX_1280, null]];
+          if (printed.includes(s)) for (const box of PRINT_BOXES) for (const live of [null, "center", "channels"] as const) looks.push([box, live]);
+          for (const [box, live] of looks) {
+            const without = bottomSection(resolved, t.board, s, 4, box, { live });
+            const withSeam = bottomSection(resolved, t.board, s, 4, box, { live, seam });
+            expect(drawn(withSeam), `${name} at ${s}`).toEqual(drawn(without));
+            expect(sectionGauges(withSeam, resolved, t.board, "imperial")).toEqual(sectionGauges(without, resolved, t.board, "imperial"));
+          }
+          same++;
+        }
+      }
+      expect(same).toBeGreaterThan(0);
+    },
+    120_000,
+  );
+
+  it("where the litres end the foam the drawing ends it there too, never at its own later estimate", () => {
+    const SETS: [id: string, name: string, bottom: (t: TestBoard) => BoardBottom][] = [
+      ["shortboard", "six channels 1/2\" deep", (t) => ({ ...bottomOf(t.board, {}, 6), channels: { ...startingChannels(6, t.board, DEFAULT_BOTTOM.channels), depth: inchesToMm(1 / 2) } })],
+      ["midlength", "six channels 1/2\" deep", (t) => ({ ...bottomOf(t.board, {}, 6), channels: { ...startingChannels(6, t.board, DEFAULT_BOTTOM.channels), depth: inchesToMm(1 / 2) } })],
+      ["shortboard", "a Rolled Vee lifted 1/2\"", (t) => ({ ...bottomOf(t.board, { tail: "Rolled Vee" }), tail: { ...startingCut("tail", "Rolled Vee", t.board), veeLift: inchesToMm(1 / 2) } })],
+      ["fish", "a Panel Vee 1/2\" deep", (t) => ({ ...bottomOf(t.board, OPENINGS.fish), tail: { ...startingCut("tail", "Panel Vee", t.board), depth: inchesToMm(1 / 2) } })],
+    ];
+    for (const [id, name, make] of SETS) {
+      const t = byId(id);
+      const bottom = make(t);
+      const resolved = resolveBottom(bottom, t.board);
+      const input = inputOf(t, bottom);
+      let ended = 0;
+      let earlier = 0;
+      for (let s = 0; s <= inchesToMm(8); s += inchesToMm(1 / 4)) {
+        const seam = builtSectionAt(input, mm(s));
+        if (seam?.railEdgeAt === undefined) continue;
+        ended++;
+        const litresEdge = t.board.notchInner(mm(s)) + seam.railEdgeAt;
+        const without = bottomSection(resolved, t.board, mm(s), 4, BOX_1280, { live: null });
+        const withSeam = bottomSection(resolved, t.board, mm(s), 4, BOX_1280, { live: null, seam });
+        // the litres' edge, unless the drawing's own slab already ended further in
+        expect(withSeam.railEdge, `${id} · ${name} at ${s}`).toBe(Math.min(without.railEdge, litresEdge));
+        expect(withSeam.railEdge).toBeLessThanOrEqual(t.board.railAt(mm(s)));
+        expect(withSeam.widthAtStation).toBe(without.widthAtStation);
+        if (withSeam.railEdge < without.railEdge) {
+          earlier++;
+          expect(withSeam.railEdge).toBe(litresEdge);
+          // the straightedge still overhangs the rail the drawing now ends at
+          expect(withSeam.straightedge.x2).toBeGreaterThan(withSeam.cx + withSeam.railEdge * withSeam.kx);
+        }
+      }
+      expect(ended, `${id} · ${name}: sections the litres end early`).toBeGreaterThan(0);
+      expect(earlier, `${id} · ${name}: drawings that used to run past the litres' edge`).toBeGreaterThan(0);
+    }
   });
 });
 

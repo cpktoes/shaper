@@ -343,9 +343,11 @@ function gaugeWords(gauge: Gauge, system: UnitsSystem): string {
 /** Part 2, one of: the cross-section at a cut's deepest station, and the same numbers in words under it. */
 function SectionFigure({ cut, lone }: { cut: BottomPrintCut; lone: boolean }) {
   const { system } = useUnits();
-  const { bottomBoard: board, resolvedBottom: resolved } = useDesign();
+  const { bottomBoard: board, resolvedBottom: resolved, bottomSectionAt } = useDesign();
   const box = lone ? BOTTOM_SECTION_BOX.lone : BOTTOM_SECTION_BOX.pair;
-  const drawing = useMemo(() => bottomSection(resolved, board, cut.deepest, 4, box, { live: null }), [resolved, board, cut.deepest, box]);
+  // The litres' own section at this station: the printed section ends its foam where the CNC file ends it (D-40).
+  const seam = useMemo(() => bottomSectionAt(cut.deepest), [bottomSectionAt, cut.deepest]);
+  const drawing = useMemo(() => bottomSection(resolved, board, cut.deepest, 4, box, { live: null, seam }), [resolved, board, cut.deepest, box, seam]);
   const gauges = useMemo(() => sectionGauges(drawing, resolved, board, system), [drawing, resolved, board, system]);
 
   // The drawing is worked out in the screen's units (1000 across); one dot is `px` of them. The picture is written in

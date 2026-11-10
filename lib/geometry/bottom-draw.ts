@@ -57,7 +57,7 @@ import { formatMark, formatMarkBare } from "./measure-display";
 import type { OutlineGeometry } from "./outline";
 import { silhouette } from "./screen-tiles";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "./units";
-import type { BoardSection } from "./volume";
+import { boardSections, type BoardSection, type CrossSectionVolumeInput } from "./volume";
 
 /* ============ shared shapes ============ */
 
@@ -669,11 +669,25 @@ export interface SectionDrawing {
   bottomAt: (across: number) => number;
 }
 
-/** What a section is drawn for: the live cut (its marks are the ruler's), and the station's own built section, if
- * the caller has it (its `railEdgeAt`, D-40). */
+/** What a section is drawn for: the live cut (its marks are the ruler's), and the station's own built section
+ * (`builtSectionAt`; its `railEdgeAt`, D-40) — the screen's section and the printed sheet's both hand it in. */
 export interface SectionOptions {
   live: BottomCutKey | null;
   seam?: Pick<BoardSection, "railEdgeAt"> | null;
+}
+
+/**
+ * The litres' own section at one drawn station, for a section drawing's `seam` (the code review's WR-03, 2026-11-10):
+ * `boardSections` over the very input the litres, the 3D board and the CNC files read, at this one station — so the
+ * section on the screen and the one printed on the Bottom Contours sheet end their foam exactly where those end it
+ * (D-40), never at the drawing's own estimate. A section costs well under a millisecond to build.
+ *
+ * Null on a bottom that cuts nothing (an input with no `foamOffAt`): no section of such a board can end before its
+ * rail, so none is built and the drawing is its own, point for point.
+ */
+export function builtSectionAt(input: CrossSectionVolumeInput, station: Mm): BoardSection | null {
+  if (!input.foamOffAt) return null;
+  return boardSections(input, [station])[0] ?? null;
 }
 
 /** The live cut's layout marks at a station — DATA's own (`bottomLayoutMarks`), the columns of that cut. */

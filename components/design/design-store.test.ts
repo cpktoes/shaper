@@ -186,6 +186,24 @@ describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 
     expect(helper).toMatch(/thicknessAt:\s*profile\.thicknessAt\b/);
     expect(helper).toMatch(/foil:\s*profile\.effectiveFoil\b/);
   });
+
+  // The code review's WR-03 (2026-11-10): a section drawn on BOTTOM or printed on the Bottom Contours sheet ends
+  // its foam where the litres end it. The store hands out the litres' own section at any one station, built by the
+  // pure helper from the one input the litres integrate, and both drawings pass it on as the drawing's `seam` —
+  // neither builds a section of its own (the checker's W1).
+  it("a drawn section's knife edge comes from the litres' own input, on the screen and on the printed sheet", () => {
+    const { object, deps } = memo("bottomSectionAt");
+    expect(object).toMatch(/\(station: Mm\)\s*=>\s*builtSectionAt\(\s*crossSectionInput,\s*station\s*\)/);
+    expect(deps).toMatch(/^\[\s*crossSectionInput\s*\]/);
+    for (const file of ["../bottom/bottom-section.tsx", "../summary/bottom-contours-sheet.tsx"]) {
+      const source = stripComments(readFileSync(new URL(file, import.meta.url), "utf8"));
+      expect(source, file).toMatch(/const seam = useMemo\(\s*\(\)\s*=>[^;]*\bbottomSectionAt\(/);
+      const calls = [...source.matchAll(/\bbottomSection\(/g)].map((m) => balancedFrom(source, m.index));
+      expect(calls.length, file).toBeGreaterThan(0);
+      for (const call of calls) expect(call, file).toMatch(/\{\s*live(?::\s*null)?,\s*seam\s*\}\s*\)$/);
+      expect(source, file).not.toMatch(/\bboardSections\(|\bbuiltSectionAt\(/);
+    }
+  });
 });
 
 describe("design-store.tsx — nothing but the shaper's own pick or removal changes the blank (R6, store half)", () => {

@@ -86,15 +86,18 @@ export function BottomSection({ height, onHeight, live, showFinishedRail }: Bott
   const { system } = useUnits();
   // Where the section is taken, from the tail: the cutting line's station (`section-station.ts`).
   const station = useSectionStation();
-  const { bottomBoard: board, resolvedBottom: resolved, bottomSections } = useDesign();
+  const { bottomBoard: board, resolvedBottom: resolved, bottomSections, bottomSectionAt } = useDesign();
   const svgRef = useRef<SVGSVGElement>(null);
   const box = useSvgClientSize(svgRef);
   const clipId = useId();
   const measured = box.width > 40 && box.height > 20;
 
+  // The litres' own section at this station (the store's reader, under a millisecond): where it ends the foam, the
+  // drawing ends it too (D-40).
+  const seam = useMemo(() => (measured ? bottomSectionAt(mm(station)) : null), [measured, bottomSectionAt, station]);
   const drawing = useMemo(
-    () => (measured ? bottomSection(resolved, board, mm(station), height, { width: box.width, height: box.height }, { live }) : null),
-    [measured, resolved, board, station, height, box.width, box.height, live],
+    () => (measured ? bottomSection(resolved, board, mm(station), height, { width: box.width, height: box.height }, { live, seam }) : null),
+    [measured, resolved, board, station, height, box.width, box.height, live, seam],
   );
   const gauges = useMemo(() => (drawing ? sectionGauges(drawing, resolved, board, system) : []), [drawing, resolved, board, system]);
   const ruler = useMemo(

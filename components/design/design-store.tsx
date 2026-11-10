@@ -133,6 +133,7 @@ import {
   type BottomWingRule,
   type ResolvedBottom,
 } from "@/lib/geometry/bottom";
+import { builtSectionAt } from "@/lib/geometry/bottom-draw";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
 import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
@@ -614,6 +615,10 @@ interface DesignContextValue {
    * included), so BOTTOM's thin-rail sentence (17-09) and its ghost ring (17-10) read the sections the litres, the 3D
    * board and the CNC files read — no component builds sections of its own (the checker's W1, 2026-11-08). */
   bottomSections: BoardSection[];
+  /** The litres' own section at any one station (`builtSectionAt` over the same input), for a drawn section's knife
+   * edge (D-40; the code review's WR-03): the section on the screen and the printed sheet's end their foam where the
+   * litres, the 3D board and the CNC files end it. Null on a bottom that cuts nothing. */
+  bottomSectionAt: (station: Mm) => BoardSection | null;
   /** `effectiveRails` with each anchor's thickness lowered by the rail lift there (`railsOnTheBottom`, D-22, D-35):
    * the rail RAILS bands once a vee or a belly has lifted it. The SAME object as `effectiveRails` while the bottom
    * lifts no rail. RAILS-only: the litres and the headline thickness never read it. */
@@ -1375,6 +1380,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const crossSectionVolume = useMemo(() => computeCrossSectionVolume(crossSectionInput), [crossSectionInput]);
   // The litres' own sections, for BOTTOM's readers (the checker's W1): the same input, so the same rings.
   const bottomSections = useMemo(() => boardSections(crossSectionInput), [crossSectionInput]);
+  // The same input at any one station a section is drawn at (the code review's WR-03): the drawing's knife edge.
+  const bottomSectionAt = useMemo(() => (station: Mm) => builtSectionAt(crossSectionInput, station), [crossSectionInput]);
   // The litres before the bottom (D-34): the same input with no bottom — built only while the bottom cuts something.
   const crossSectionVolumeBeforeBottom = useMemo(
     () =>
@@ -2132,6 +2139,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     bottomBoard,
     resolvedBottom,
     bottomSections,
+    bottomSectionAt,
     railsOnBottom,
     railBandsOnBottom,
     templateValues,
