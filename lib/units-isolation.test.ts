@@ -902,3 +902,62 @@ describe("the Volume card's litres figure reads the same in both systems (SCRN-0
     ).toEqual([]);
   });
 });
+
+/**
+ * Phase 18 (D-17, R11): the GUIDE reads every figure through the display boundary too. Every source file
+ * under `components/guide` and every `lib/geometry/guide-*.ts` (tests left out) is walked fresh each run, so
+ * a new page's GUIDE is held the moment it appears: none names an Imperial or Metric formatter of
+ * `units.ts` directly, none converts with `mmToInches` / `mmToCentimetres` or a raw 25.4 or 2.54, and only
+ * `lib/geometry/guide-push.ts` — where the pushes and the sketch's inch frames are written down — may call
+ * `inchesToMm`.
+ */
+describe("the GUIDE reads every figure through the display boundary (Phase 18)", () => {
+  const BANNED = [
+    ["format", "InchesFraction"].join(""),
+    ["format", "FeetInches"].join(""),
+    ["format", "SignedInchesFraction"].join(""),
+    ["format", "Centimetres"].join(""),
+    ["format", "WholeMm"].join(""),
+    ["mm", "ToInches"].join(""),
+    ["mm", "ToCentimetres"].join(""),
+  ];
+  const INCHES_TO_MM = ["inches", "ToMm"].join("");
+  const PUSH_FILE = "lib/geometry/guide-push.ts";
+
+  function walk(dir: string): string[] {
+    const out: string[] = [];
+    if (!existsSync(join(REPO_ROOT, dir))) return out;
+    for (const entry of readdirSync(join(REPO_ROOT, dir))) {
+      const rel = `${dir}/${entry}`;
+      if (statSync(join(REPO_ROOT, rel)).isDirectory()) out.push(...walk(rel));
+      else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(rel);
+    }
+    return out;
+  }
+
+  function guideFiles(): string[] {
+    const geometry = readdirSync(join(REPO_ROOT, "lib/geometry"))
+      .filter((entry) => /^guide-.*\.ts$/.test(entry) && !entry.endsWith(".test.ts"))
+      .map((entry) => `lib/geometry/${entry}`);
+    return [...walk("components/guide"), ...geometry];
+  }
+
+  it("walks the GUIDE's files, the push file among them", () => {
+    const files = guideFiles();
+    expect(files).toContain(PUSH_FILE);
+    expect(files).toContain("components/guide/guide-cartoon.tsx");
+  });
+
+  it("no GUIDE file names a banned formatter or converter, or a raw inch factor", () => {
+    for (const file of guideFiles()) {
+      const source = readStripped(file);
+      for (const name of BANNED) expect(source, `${file} names ${name}`).not.toMatch(new RegExp(`\\b${name}\\b`));
+      expect(source, `${file} holds a raw inch factor`).not.toMatch(/(?<![\d.])(25\.4|2\.54)(?!\d)/);
+    }
+  });
+
+  it(`only ${PUSH_FILE} may call ${INCHES_TO_MM}`, () => {
+    const users = guideFiles().filter((file) => new RegExp(`\\b${INCHES_TO_MM}\\b`).test(readStripped(file)));
+    expect(users).toEqual([PUSH_FILE]);
+  });
+});
