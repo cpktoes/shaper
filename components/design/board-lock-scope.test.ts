@@ -189,13 +189,16 @@ describe("board-lock-scope — the control inventory", () => {
     const panel = interactiveTags("components/bottom/bottom-controls.tsx").filter(({ name }) => name === "Checkbox");
     expect(panel.filter(({ tag }) => /\bdata-lock-exempt\b/.test(tag))).toHaveLength(1);
     expect(panel.filter(({ tag }) => disabledExpression(tag) === "locked").length).toBeGreaterThanOrEqual(1);
-    // Height's four buttons are one mapped <button>, view-only; `Section at` is the one Slider, view-only.
+    // Height's four buttons are one mapped <button>, view-only; `Section at` is the one Slider, view-only. The phone's
+    // NOSE · CENTER · TAIL row (17-14) is one more mapped <button> above it: it picks which section is shown, never
+    // what the board is, so it is view-only too.
     const height = interactiveTags("components/bottom/bottom-section.tsx");
     expect(height.map(({ name }) => name)).toEqual(["button"]);
     expect(height[0].tag).toMatch(/\bdata-lock-exempt\b/);
-    const sectionAt = interactiveTags("components/bottom/bottom-editor.tsx");
-    expect(sectionAt.map(({ name }) => name)).toEqual(["Slider"]);
-    expect(sectionAt[0].tag).toMatch(/\bdata-lock-exempt\b/);
+    const editor = interactiveTags("components/bottom/bottom-editor.tsx");
+    expect(editor.map(({ name }) => name)).toEqual(["button", "Slider"]);
+    for (const { tag } of editor) expect(tag).toMatch(/\bdata-lock-exempt\b/);
+    expect(editor[0].tag, "the phone's section row sets the live section and nothing else").toMatch(/onClick=\{\(\) => setLive\(section\)\}/);
     // The cutting line's drag lives on the top view's box, which says it only moves the section.
     const topView = stripComments(read("components/bottom/bottom-top-view.tsx"));
     const press = openingTag(topView, topView.lastIndexOf("<div", topView.indexOf("onPointerDown=")));

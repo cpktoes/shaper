@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef } from "react";
+import { useId, useMemo, useRef, type CSSProperties } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { DimensionLine, useSvgClientSize, ViewerZoomUnitProvider } from "@/components/viewer/callout-primitives";
@@ -212,7 +212,16 @@ function SectionDrawingParts({
 
   return (
     <>
-      <text data-bottom-height-label x={8 * px} y={14 * px} style={labelStyle}>
+      {/* On a phone the box is short enough that the slab's break line rises to the label's own line, so there the
+          label sits 5 dots higher, clear of it. Behind the layout's width line — a computer's label is drawn where
+          it always was. The lift is in the drawing's own units, a dot being `px`. */}
+      <text
+        data-bottom-height-label
+        x={8 * px}
+        y={14 * px}
+        style={{ ...labelStyle, "--bottom-height-label-lift": `${-5 * px}px` } as CSSProperties}
+        className="max-shell:[transform:translateY(var(--bottom-height-label-lift))]"
+      >
         {sectionHeightLabel(drawing)}
       </text>
       {drawing.pieces.map((d, i) => (

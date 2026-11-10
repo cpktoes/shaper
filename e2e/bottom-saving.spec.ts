@@ -12,6 +12,7 @@ import { parseSnapshot, type DesignSnapshotFields } from "../lib/models/design-s
 import { IN_PROGRESS_KEY } from "../lib/models/rack-order";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { showBottomSection } from "./helpers/bottom";
 import { storedOpenBoard } from "./helpers/open-board";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { goToScreen } from "./helpers/screens";
@@ -82,6 +83,8 @@ const selected = (page: Page, menu: string) => page.getByRole("combobox", { name
 
 /** Picks a name from a section's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
 async function pick(page: Page, section: BottomSectionKey, name: string) {
+  // On an upright phone only the section picked on the NOSE · CENTER · TAIL row is drawn (17-14): tap it first.
+  await showBottomSection(page, section);
   await expect(async () => {
     await page.getByRole("combobox", { name: `${SECTION_WORD[section]} Cut` }).click();
     await page.getByRole("option", { name, exact: true }).click({ timeout: 2_000 });
@@ -91,6 +94,9 @@ async function pick(page: Page, section: BottomSectionKey, name: string) {
 
 /** Picks an option from one of BOTTOM's other menus by its spoken name, the same way. */
 async function pickFrom(page: Page, menu: string, option: string) {
+  // A menu that is not drawn is one of the channels', which are TAIL's: on an upright phone they show only while
+  // TAIL is the section picked (17-14).
+  if (!(await page.getByRole("combobox", { name: menu, exact: true }).isVisible())) await showBottomSection(page, "tail");
   await expect(async () => {
     await page.getByRole("combobox", { name: menu, exact: true }).click();
     await page.getByRole("option", { name: option, exact: true }).click({ timeout: 2_000 });
@@ -189,7 +195,9 @@ test.describe("the bottom is kept with the board", () => {
     await openPreset(page, "fish");
     await addWing(page);
     await goToScreen(page, "BOTTOM");
-    const depth = page.getByRole("slider", { name: "Center Depth", exact: true });
+    // The slider is found by its own spoken name on its own input, not by what is drawn: on an upright phone CENTER's
+    // sliders are off the screen while TAIL is the section picked (17-14), and the walk reads the Depth all the way.
+    const depth = page.locator('input[type="range"][aria-label="Center Depth"]');
     const valueOf = async () => Number((await depth.getAttribute("aria-valuenow")) ?? (await depth.inputValue()));
 
     // 1. A cut.
@@ -324,6 +332,8 @@ test.describe("the bottom is kept with the board", () => {
     await expect(echo(page, "nose")).toHaveText("Flat Entry");
     await expect(echo(page, "center")).toHaveText("Deep Single Concave");
     await expect(echo(page, "tail")).toHaveText("Spiral Vee");
+    // On an upright phone the channels are TAIL's, drawn only while TAIL is the section picked (17-14).
+    await showBottomSection(page, "tail");
     await expect(selected(page, "Channels")).toHaveText("6 channels");
     await expect(channelsEcho(page)).toHaveText(/^6, /);
     // The Fish in the file has no wing, so there is no WINGS row to show.
@@ -348,6 +358,8 @@ test.describe("the bottom is kept with the board", () => {
     await expect(echo(page, "nose")).toHaveText("Flat Entry");
     await expect(echo(page, "center")).toHaveText("Flat Center");
     await expect(echo(page, "tail")).toHaveText("Flat Exit");
+    // On an upright phone the channels are TAIL's, drawn only while TAIL is the section picked (17-14).
+    await showBottomSection(page, "tail");
     await expect(selected(page, "Channels")).toHaveText("None");
     await page.getByRole("tab", { name: "DATA", exact: true }).click();
     await expect(page.locator("[data-bottom-litres]")).toHaveText(/^Foam off 0\.00 L · /);

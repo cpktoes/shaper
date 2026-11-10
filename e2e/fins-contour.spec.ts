@@ -7,6 +7,7 @@ import { formatBottomStation } from "../lib/geometry/blank-reasons";
 import { designFinPlacement } from "../lib/geometry/design";
 import { frontFinStation } from "../lib/geometry/fins";
 import { inchesToMm, mm, mmToInches } from "../lib/geometry/units";
+import { showBottomSection } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad, storedOpenBoard } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
@@ -58,6 +59,8 @@ async function openShortboardOnBottom(page: Page) {
 
 /** Picks a name from a section's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
 async function pick(page: Page, section: BottomSectionKey, name: string) {
+  // On an upright phone only the section picked on the NOSE · CENTER · TAIL row is drawn (17-14): tap it first.
+  await showBottomSection(page, section);
   const echo = page.locator(`[data-bottom-card="${section}"] [data-bottom-cut-echo]`);
   await expect(async () => {
     await page.getByRole("combobox", { name: `${SECTION_WORD[section]} Cut` }).click();
@@ -68,6 +71,9 @@ async function pick(page: Page, section: BottomSectionKey, name: string) {
 
 /** Picks an option from one of BOTTOM's other menus by its spoken name, the same way. */
 async function pickFrom(page: Page, menu: string, option: string) {
+  // A menu that is not drawn is one of the channels', which are TAIL's: on an upright phone they show only while
+  // TAIL is the section picked (17-14).
+  if (!(await page.getByRole("combobox", { name: menu, exact: true }).isVisible())) await showBottomSection(page, "tail");
   const trigger = page.getByRole("combobox", { name: menu, exact: true });
   await expect(async () => {
     await trigger.click();

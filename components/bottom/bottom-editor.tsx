@@ -13,7 +13,7 @@ import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-r
 import { bottomFloorFlags, cutKind, type BottomChannelsSpec, type BottomCutName, type BottomSectionKey } from "@/lib/geometry/bottom";
 import type { BottomCutKey, SectionHeight } from "@/lib/geometry/bottom-draw";
 import type { Mm } from "@/lib/geometry/units";
-import { BOTTOM_COPY } from "./bottom-copy";
+import { BOTTOM_COPY, BOTTOM_SECTION_NAME } from "./bottom-copy";
 import { BottomControls } from "./bottom-controls";
 import { BottomData } from "./bottom-data";
 import { BottomGuide } from "./bottom-guide";
@@ -22,6 +22,9 @@ import { BottomTopView } from "./bottom-top-view";
 import { createSectionStationStore, SectionStationContext, useSectionStation, useSetSectionStation } from "./section-station";
 
 type BottomPage = "viewer" | "data" | "guide";
+
+/** The phone's NOSE · CENTER · TAIL row, in the order the board is drawn (nose left). */
+const PHONE_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
 
 /**
  * BOTTOM, the eighth design screen (Phase 17, D-01): the board's bottom contours — pick a cut for the nose, the center
@@ -42,6 +45,12 @@ type BottomPage = "viewer" | "data" | "guide";
  * and the `Section at` slider under it — the cutting line's keyboard path. Moving any one moves the other two. It is
  * held in a small store of its own (`section-station.ts`) that only those three read, so a drag redraws them and
  * nothing else on the screen.
+ *
+ * On an upright phone (D-27, UI-SPEC §6) the drawing is pinned over the controls at 66% of the screen, the folder's card
+ * the same height on every tab, and VIEWER's card opens with RAILS' NOSE · CENTER · TAIL row: the section tapped is the
+ * live one, and its card is the one drawn beneath (the channels are TAIL's). The row and the one-card rule are CSS
+ * behind the layout's width line — nothing here reads the window — so a computer, and a phone held sideways, keep all
+ * three cards and no row.
  *
  * The floor scan (`bottomFloorFlags`, 50–75 ms on a full bottom) runs once here, on deferred copies so a drag keeps its
  * thumb under the finger, and feeds both the panel's sentence and DATA's note and cells — never a second scan.
@@ -88,6 +97,8 @@ export function BottomEditor() {
   );
 
   const shownName = bandBoardName(modelId, boardName);
+  // The section the phone's row shows as picked: the live one, the channels being TAIL's own block.
+  const phoneSection: BottomSectionKey = live === "channels" ? "tail" : live;
 
   return (
     <SectionStationContext.Provider value={stationStore}>
@@ -103,6 +114,8 @@ export function BottomEditor() {
             floorFlags={floorFlags}
             showFinishedRail={showFinishedRail}
             onShowFinishedRail={setShowFinishedRail}
+            // The row is VIEWER's, so only VIEWER narrows the cards beneath to one; DATA and GUIDE show all three.
+            phoneSection={activePage === "viewer" ? phoneSection : undefined}
           />
         }
         canvas={
@@ -115,12 +128,44 @@ export function BottomEditor() {
             active={activePage}
             onSelect={setActivePage}
             compactOnPhone={activePage === "viewer" ? "drawing" : "text"}
+            // On an upright phone the card is the pinned height on every tab — 66% of the screen less the column's
+            // rims, the strip and the folder's border (UI-SPEC §6) — so VIEWER, DATA and GUIDE never move the controls
+            // beneath, and DATA and GUIDE scroll inside it.
+            panelClassName="max-shell:h-[calc(66dvh-40px)] max-shell:flex-none"
             trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
           >
             {activePage === "viewer" && (
               // The two drawings share the card, the top view a little the larger, then `Section at` (sketch line
               // 299-311). BOTTOM is not printable: a shaper's paper is the order form (UI-SPEC §13).
               <div data-bottom-live={live} className="flex min-h-0 flex-1 flex-col gap-2 print:hidden">
+                {/* Phone only: RAILS' NOSE · CENTER · TAIL row (`rail-band-editor.tsx`), copied — which section's
+                    controls show beneath the pinned drawing, and the live cut. Hidden at the layout's width line.
+                    It only changes what is seen, so a locked board keeps it (`data-lock-exempt`). */}
+                <div data-bottom-phone-sections className="hidden flex-none gap-1.5 pt-[11px] max-shell:flex" role="tablist">
+                  {PHONE_SECTIONS.map((section) => {
+                    const on = section === phoneSection;
+                    return (
+                      <button
+                        key={section}
+                        type="button"
+                        role="tab"
+                        aria-selected={on}
+                        data-lock-exempt
+                        onClick={() => setLive(section)}
+                        className={
+                          "cursor-pointer rounded-t-lg border px-2 py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                          // Touch-only: a 44-dot hit area centred on the 22-dot tab (RAILS' own).
+                          "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-[''] " +
+                          (on
+                            ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
+                            : "border-transparent bg-transparent text-surf-ink-muted")
+                        }
+                      >
+                        {BOTTOM_SECTION_NAME[section]}
+                      </button>
+                    );
+                  })}
+                </div>
                 <BottomTopView live={live} boardName={shownName} />
                 <BottomSection height={height} onHeight={setHeight} live={live} showFinishedRail={showFinishedRail} />
                 <SectionAtRow length={bottomBoard.length} />

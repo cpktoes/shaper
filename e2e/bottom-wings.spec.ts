@@ -19,6 +19,7 @@ import { buildOutline } from "../lib/geometry/outline";
 import type { UnitsSystem } from "../lib/geometry/units";
 import { resolveWingStations, wingFinEdges } from "../lib/geometry/wing-lock";
 import { nextWing, outlineWithoutWings, placedWings } from "../lib/geometry/wings";
+import { showBottomSection } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
@@ -89,6 +90,8 @@ async function addWings(page: Page, count: number) {
 
 /** Picks a name from a section's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
 async function pick(page: Page, section: BottomSectionKey, name: string) {
+  // On an upright phone only the section picked on the NOSE · CENTER · TAIL row is drawn (17-14): tap it first.
+  await showBottomSection(page, section);
   const echo = page.locator(`[data-bottom-card="${section}"] [data-bottom-cut-echo]`);
   await expect(async () => {
     await page.getByRole("combobox", { name: `${SECTION_WORD[section]} Cut` }).click();
@@ -181,6 +184,8 @@ test.describe("BOTTOM's WINGS row: where Off Rail is measured from on a winged b
     const note = row.locator("[data-bottom-wing-note]");
     await expect(note).toHaveText(BOTTOM_COPY.wingRuleNotes.narrowest);
     // The row stands between INPUTS and the three section cards.
+    // On an upright phone one section's controls are drawn at a time (17-14): NOSE is asked for.
+    await showBottomSection(page, "nose");
     const rowTop = (await row.boundingBox())!.y;
     const noseTop = (await page.locator('[data-bottom-card="nose"]').boundingBox())!.y;
     expect(rowTop, "WINGS above NOSE").toBeLessThan(noseTop);
@@ -223,6 +228,8 @@ test.describe("BOTTOM's WINGS row: where Off Rail is measured from on a winged b
     test.setTimeout(180_000);
     await openPreset(page, "shortboard");
     await goToScreen(page, "BOTTOM");
+    // On an upright phone one section's controls are drawn at a time (17-14): NOSE is asked for.
+    await showBottomSection(page, "nose");
     await expect(page.locator('[data-bottom-card="nose"]')).toBeVisible();
     await expect(page.locator("[data-bottom-wings]")).toHaveCount(0);
     await expect(page.getByText(BOTTOM_COPY.wingsHeading, { exact: true })).toHaveCount(0);

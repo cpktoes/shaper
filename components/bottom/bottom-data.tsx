@@ -42,6 +42,18 @@ const MARKS_STATION_WIDTH = 96;
 const MARKS_COLUMN_WIDTH = 72;
 
 /**
+ * A table's own box: it scrolls sideways on a narrow phone, with RAILS' 24-dot fade at its right edge.
+ *
+ * The page above is a column that scrolls down, and a box that scrolls sideways is one a column may squeeze to nothing
+ * — which is what an upright phone's pinned card did: both tables shrank to their headings and the rows went out of
+ * sight (found at 17-13's look). So on a phone, upright or held sideways, the box keeps its table's full height
+ * (ROCKER's datasheet rule, `rocker-datasheet.tsx`) and the page scrolls instead. Behind the layout's width line and the
+ * short-screen query, so a computer's DATA is drawn exactly as it was.
+ */
+const TABLE_SCROLLER =
+  "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] max-shell:shrink-0 [@media(max-height:500px)]:shrink-0";
+
+/**
  * DATA (Phase 17, D-15, D-16, D-34; UI-SPEC §4): no readouts in the viewer — the numbers live here.
  *
  * First the line that says what the contours cost — `Foam off … L · … L now, … L before contours · the stringer finishes
@@ -106,7 +118,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
       <h3 className={GROUP_HEADING}>{BOTTOM_COPY.depthsHeading}</h3>
       {/* Sideways on a narrow phone, never a dropped column — RAILS' scroller and its 24-dot fade, which lands on the
           table's own 24 dots of end room so it never dims the last column. */}
-      <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
+      <div className={TABLE_SCROLLER}>
         <div className="min-w-[504px] pr-[24px]">
           <table data-bottom-depths className="w-full border-collapse text-sm tabular-nums">
             <thead>
@@ -146,7 +158,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
       {marks.columns.length > 0 && (
         <>
           <h3 className={GROUP_HEADING}>{BOTTOM_COPY.marksHeading(system === "metric")}</h3>
-          <div className="overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
+          <div className={TABLE_SCROLLER}>
             <div className="pr-[24px]" style={{ minWidth: MARKS_STATION_WIDTH + MARKS_COLUMN_WIDTH * marks.columns.length + 24 }}>
               <table data-bottom-marks className="w-full border-collapse text-sm tabular-nums">
                 <thead>
