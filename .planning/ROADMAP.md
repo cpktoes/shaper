@@ -398,13 +398,13 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R13 (locked in `phases/18-a-guide-on-every-page/18-SPEC.md` from sketch 022 as decided and the founder's rulings, 2026-11-08 to 2026-11-09)
 **Brief:** `phases/18-a-guide-on-every-page/18-SPEC.md`; the decided sketch `.planning/sketches/022-page-guides/` (its `index.html` is the five GUIDEs as they will be built); the words `18-GUIDE-WORDS.md`
 **Depends on:** Phase 16 (the pages as they stand), quick 261102-gec (the finished rail the RAILS cards draw); Phase 17's GUIDE card dress is copied, not waited for — its branch lands separately and BOTTOM adopts the shared card after
-**Plans:** 10 plans
+**Plans:** 2/10 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 18-01-PLAN.md — VOLUME's GUIDE from end to end (eight cards), with the card, the cartoon painter, the words held to the founder's page and the units check every other page then uses
-- [ ] 18-02-PLAN.md — the board's name gives way on a strip with no room for it, never a stub (D-21); ROCKER's captions written onto the words page (D-23)
+- [x] 18-01-PLAN.md — VOLUME's GUIDE from end to end (eight cards), with the card, the cartoon painter, the words held to the founder's page and the units check every other page then uses
+- [x] 18-02-PLAN.md — the board's name gives way on a strip with no room for it, never a stub (D-21); ROCKER's captions written onto the words page (D-23)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -452,4 +452,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
 | 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |
-| 18. A GUIDE on Every Page | 0/? | Planning | - |
+| 18. A GUIDE on Every Page | 2/10 | In Progress|  |

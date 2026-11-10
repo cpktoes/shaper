@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: Phase 18 being built, wave 1 of 5 (the VOLUME guide and the board name rule)
+stopped_at: Phase 18 being built, wave 1 of 5 merged (the VOLUME guide and the board name rule), wave 2 next (TEMPLATE, ROCKER, RAILS, FINS and the Metric sayings)
 last_updated: "2026-11-10T06:16:26.129Z"
 last_activity: 2026-11-09
-last_activity_desc: Phase 18 execution started
+last_activity_desc: Phase 18 wave 1 merged, two of ten plans done
 progress:
   total_phases: 6
   completed_phases: 3
