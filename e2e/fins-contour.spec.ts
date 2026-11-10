@@ -198,6 +198,12 @@ test.describe("FINS and the bottom: the contours under the fins, and the fins ca
     await expect(finLines(page).first()).toBeVisible();
     const toggle = contourToggle(page);
     await expect(toggle).toHaveCount(1);
+    // With a mouse neither button of the pair grows a touch box: each is exactly as big as it is drawn.
+    const mouseToggle = await touchSize(toggle);
+    const mouseCallouts = await touchSize(calloutsToggle(page));
+    expect(mouseToggle.width).toBe(mouseToggle.drawn);
+    expect(mouseCallouts.width).toBe(mouseCallouts.drawn);
+    expect(mouseCallouts.drawn).toBe(mouseToggle.drawn);
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(toggle).toHaveAccessibleName(SHOW_CONTOURS);
@@ -319,12 +325,18 @@ test.describe("FINS and the bottom: the contours under the fins, and the fins ca
     await expect(toggle).toHaveAccessibleName(SHOW_CONTOURS);
     await expect(contour(page)).toHaveCount(0);
 
-    // Drawn the size of the row's other button, with an invisible touch box round it reaching 44 dots.
+    // The pair matches under a thumb: both drawn the same size, each with an invisible touch box round it
+    // reaching 44 dots — the callouts button too, which had none before this one arrived beside it.
     const size = await touchSize(toggle);
-    const callouts = (await calloutsToggle(page).boundingBox())!;
-    expect(size.drawn).toBe(callouts.width);
+    const callouts = await touchSize(calloutsToggle(page));
+    expect(size.drawn).toBe(callouts.drawn);
     expect(size.width).toBeGreaterThanOrEqual(44);
     expect(size.height).toBeGreaterThanOrEqual(44);
+    expect(callouts.width, "the callouts button takes the same touch").toBe(size.width);
+    expect(callouts.height).toBe(size.height);
+
+    // The button carries the depth-chart glyph: two closed rings and the short mark at the low spot.
+    await expect(toggle.locator("svg path")).toHaveCount(3);
 
     await toggle.tap();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");

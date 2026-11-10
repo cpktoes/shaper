@@ -26,7 +26,7 @@
  */
 
 import { useDeferredValue, useId, useMemo, useRef } from "react";
-import { RulerDimensionLineIcon, WavesVerticalIcon } from "lucide-react";
+import { RulerDimensionLineIcon } from "lucide-react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -43,7 +43,7 @@ import {
 } from "@/lib/geometry/bottom-draw";
 import { useDesign } from "@/components/design/design-store";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
-import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { BottomContoursIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { COARSE_TOUCH_BOX, useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { scaleDash } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
@@ -883,7 +883,8 @@ export function FinViewer({
         </svg>
         {/* The icon row (the FINS screen only): the fin placement callouts toggle, pressed while they show —
             the accent fill ROCKER's own toggles use — and, to its left, the Bottom Contours toggle, there only
-            while this board's tail has a cut to show and not pressed until the shaper presses it. */}
+            while this board's tail has a cut to show and not pressed until the shaper presses it. Both take
+            the 44-dot touch box the 3D screen's icons use, so the pair is the same under a thumb. */}
         {onToggleCallouts && (
           <ViewerToolbar>
             <ViewerToolbarButton
@@ -891,6 +892,7 @@ export function FinViewer({
               pressed={showCallouts}
               label={showCallouts ? "Hide fin placement callouts" : "Show fin placement callouts"}
               title="Fin Placement Callouts"
+              className={COARSE_TOUCH_BOX}
             >
               <RulerDimensionLineIcon className="size-6" />
             </ViewerToolbarButton>
@@ -900,11 +902,10 @@ export function FinViewer({
                 onClick={onToggleContours}
                 pressed={showContours}
                 label={showContours ? "Hide bottom contours" : "Show bottom contours"}
-                // lucide's three wavy lines running up and down — the way the bottom's lines run along the tail
-                // on this drawing. The 44-dot touch box is the one the 3D screen's icons use.
                 className={COARSE_TOUCH_BOX}
               >
-                <WavesVerticalIcon className="size-6" />
+                {/* A scrap of a depth chart, drawn in the shared toolbar module beside the app's other glyphs. */}
+                <BottomContoursIcon className="size-6" />
               </ViewerToolbarButton>
             )}
           </ViewerToolbar>
