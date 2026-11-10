@@ -31,7 +31,10 @@ describe("the words page", () => {
         if (line === null) continue;
         expect(line, `${card.page} ${card.name}`).toBe(line.trim());
         expect(line.length, `${card.page} ${card.name}`).toBeGreaterThan(0);
-        expect(line, `${card.page} ${card.name}`).not.toMatch(/\*\*|<|>/);
+        // VOLUME's lines hold no `**`, `<` or `>` at all. Elsewhere a `>` standing alone between spaces is
+        // a word, not markup: FINS' Keel note, the MODEL INFO tab's own words verbatim, says
+        // "generally > 5 1/2"". Anything that could open or close a tag still fails.
+        expect(line, `${card.page} ${card.name}`).not.toMatch(card.page === "volume" ? /\*\*|<|>/ : /\*\*|<\S|\S>/);
       }
     }
   });
