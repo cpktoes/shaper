@@ -519,6 +519,82 @@ Tabs: VIEWER · DATA · GUIDE. 23 cards.
 - does: More toe-in is looser and turns easier at the cost of speed; less is drivey and fast down the line.
 - how: Mark the leading edge the toe distance further in from the rail than the trailing edge, then lay a straightedge through the two marks to pencil the box line.
 
+## Metric sayings
+
+How a shaper who picked Metric reads the few phrases above that carry an inch or a foot (D-22, the founder's Phase 17 ruling
+carried to all five pages: *"15 cm in Metric" — never 15.2 cm*). The cards above stay written the Imperial way; a Metric shaper reads
+each phrase on the left replaced by the one on the right, in the order listed, and nothing else on the card changes. **First drafts
+for the founder's pen**, like every other word on this page. There are two kinds. **A number of the app** — a station, a slider's
+limit, a fin model's fixed range, toe or threshold, the 8'0" minimum, the 9' anchor, the rounding grain — is said exactly as the app
+prints that number in Metric (the 12" station is `30.5 cm` because that is its own label; a fin figure is whole millimetres; a length
+is centimetres to one decimal), and the test works each one out from the app's own constant. **A rule of thumb** — *the last foot*,
+*every few inches*, *an eighth* — is said the Metric way as a round figure of its own (*the last 30 cm*, *every 10 cm or so*, *3 mm*),
+never a converted fraction. A card with no inch or foot in its words has no line here. The blank's own name (`US Blanks 6'3"RP`) and
+the maker's rocker order code (`+1/2"N18"`) stay in inches in both systems; they are the maker's, not ours.
+
+### TEMPLATE
+
+- Board Length › Board Length · does: `The 12" stations` → `The 30.5 cm stations`
+- Nose Controls › Nose Angle · how: `the last foot` → `the last 30 cm`
+- Tail Controls › Tail Angle · how: `the last foot` → `the last 30 cm`
+- Wings › Vertical run · is: `two inches` → `51 mm`
+
+### ROCKER
+
+- Inputs › Nose Tip · Tail Tip · how: `every few inches` → `every 10 cm or so`
+- Blank › Blank · how: `by an eighth` → `by 3 mm`
+- Blank › Customize Rocker · does: `18 inches in` → `45.7 cm in`
+- Rocker › Nose Rocker · is: `the 12-inch station` → `the 30.5 cm station`
+- Rocker › Nose Rocker · how: `the 12-inch station` → `the 30.5 cm station`
+- Rocker › Tail Rocker · is: `the 12-inch station` → `the 30.5 cm station`
+- Rocker › Tail Rocker · how: `the last 12 inches` → `the last 30.5 cm`
+- Foil › Pin tips to · Bottom · does: `to the inch` → `to the millimetre`
+- Foil › Nose Thinning Starts · is: `12 inches from the tip` → `30.5 cm from the tip`
+- Foil › Nose Thinning Starts · does: `within a foot of the nose` → `within 30 cm of the nose`
+- Foil › Tail Thinning Starts · is: `12 inches from the tip` → `30.5 cm from the tip`
+- Foil › Nose @ 12" · Tail @ 12" · is: `the two 12-inch stations` → `the two 30.5 cm stations`
+- Foil › Nose @ 12" · Tail @ 12" · is: `a quarter inch` → `6 mm`
+- Foil › Nose @ 12" · Tail @ 12" · does: `the tail 12` → `the tail 30.5 cm`
+- Foil › Nose @ 12" · Tail @ 12" · does: `the nose 12` → `the nose 30.5 cm`
+- Foil › Nose @ 12" · Tail @ 12" · how: `the 12-inch thicknesses` → `the 30.5 cm thicknesses`
+- Foil › Nose @ 12" · Tail @ 12" · how: `a couple of feet` → `a good 60 cm`
+- Foil › Fine tune from · is: `a 12-inch fine-tune` → `a 30.5 cm fine-tune`
+- Foil › Fine tune from · does: `a lower 12-inch station` → `a lower 30.5 cm station`
+
+### RAILS
+
+- Inputs › Import Rocker & Foil Values · is: `the nose 12"` → `the nose 30.5 cm`
+- Inputs › Import Rocker & Foil Values · is: `tail 12"` → `tail 30.5 cm`
+- Inputs › Board Thickness · Thickness @12" · how: `the 12" stations` → `the 30.5 cm stations`
+
+### VOLUME
+
+- Inputs › Board Length · does: `an inch of length is worth less than an inch of width` → `a centimetre of length is worth less than a centimetre of width`
+- Inputs › Center Thickness · does: `a quarter inch at the centre is about three litres on a shortboard` → `half a centimetre at the centre is about three litres on a shortboard`
+- What the ESTIMATE card reads › Length-Weighted Effective Thickness · how: `tail 12"` → `tail at 30.5 cm`
+
+### FINS
+
+- intro: `the last 24"` → `the last 60 cm`
+- Inputs › Import Designed Board · is: `its tail width at 12"` → `its tail width at 30.5 cm`
+- Convention › Trailing-edge convention · does: `the nearest 1/16"` → `the nearest millimetre`
+- Single Fin › Single Fin · info: `(4 1/2" to 6")` → `(114 mm to 152 mm)`
+- Twin › Twin · info: `Modern = 7" to 8"` → `Modern = 178 mm to 203 mm`
+- Twin › Twin · info: `Keel = 6" to 6 1/2"` → `Keel = 152 mm to 165 mm`
+- Twin › Twin · info: `at ~10"` → `at ~254 mm`
+- Twin › Modern/Upright · info: `≤ 5 1/2"` → `≤ 140 mm`
+- Twin › Keel · info: `> 5 1/2"` → `> 140 mm`
+- Twin › Upright + Trailer · how: `four inches off the tail` → `102 mm off the tail`
+- Thruster › Basic (Half Rate) · how: `a quarter inch` → `6 mm`
+- 2+1 › 2+1 · info: `a length anchor of 9'` → `a length anchor of 274.3 cm`
+- 2+1 › 2+1 · info: `(15" to 16 1/2")` → `(381 mm to 419 mm)`
+- Quad › Basic - Off-Rail · is: `a quarter inch` → `6 mm`
+- Quad › Basic - Off-Rail · info: `+1/4"` → `+6 mm`
+- Quad › McKee Longboard · is: `eight feet or longer` → `243.8 cm or longer`
+- Quad › McKee Longboard · info: `8'0"` → `243.8 cm`
+- Quad › McKee Longboard · how: `eight feet or longer` → `243.8 cm or longer`
+- Advanced › Aft/Forward position · is: `an inch and a half` → `38 mm`
+
 ## The pushes the cartoons draw (millimetres unless named)
 
 ROCKER (`board-data.ts` PUSH): {"center":12.7,"tips":9.524999999999999,"skin":12.7,"startIn":609.5999999999999,"fine":6.35,"rocker":25.4,"bend":12.7,"bendFrom":457.2}
