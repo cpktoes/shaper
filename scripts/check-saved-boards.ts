@@ -96,6 +96,19 @@
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
  * a snapshot, a user id or the connection string, and it never changes the exit code.
  *
+ * `--bottom-report` (Phase 17 D-24; read-only, board ids and litres only): the founder's check, before BOTTOM's
+ * saving ships, that nothing a shaper has saved changes when it does. For every saved board it says that the board
+ * opens, whether it has a bottom cut (none can before the page that makes them is live), and its litres beside the
+ * litres the site reads today — the same board with its bottom left out, which is what the deployed reader does.
+ * Worked out in lib/models/bottom-report.ts (`bottomReportLines`):
+ *   bottom report: N saved boards; k open[, d did not open]; c with a cut; m whose litres differ from today's
+ *   <id>: opens · no cut — <litres> L (same as today)                         one per saved board, in the order read
+ *   <id>: opens · has a cut — <litres> L (today <litres> L, <move>)
+ *   <id>: did not open
+ *   every saved board opens flat, with the litres it reads today: yes         (or: no — N to look at)
+ * It only reads; it never prints a board name, a snapshot, a user id or the connection string, and it never
+ * changes the exit code.
+ *
  * Commands (D-20: nothing in package.json — no npm script, no dependency; `--no-install` means npx
  * can only ever run the tsx already in node_modules, never download one):
  *
@@ -117,6 +130,9 @@
  *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --rail-character-report; rm -f .env.production.pull
  *   production, the surface report — the founder only (go-live 2, plan 16-13), the same form:
  *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --surface-report; rm -f .env.production.pull
+ *   production, the bottom report — the founder only (Phase 17's go-live, plan 17-12), the same form:
+ *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --bottom-report; rm -f .env.production.pull
+ *   development, the bottom report: either development command above with ` --bottom-report` added.
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -170,6 +186,7 @@ async function main(): Promise<void> {
   type HardEdgeReportRow = import("../lib/models/hard-edge-report").HardEdgeReportRow;
   const { railCharacterReportLines } = await import("../lib/models/rail-character-report");
   const { surfaceReportLines } = await import("../lib/models/surface-report");
+  const { bottomReportLines } = await import("../lib/models/bottom-report");
 
   type Mm = import("../lib/geometry/units").Mm;
   type TipStyle = import("../lib/geometry/blank").TipStyle;
@@ -184,6 +201,7 @@ async function main(): Promise<void> {
   const hardEdgeReportFlag = process.argv.includes("--hard-edge-report");
   const railCharacterReportFlag = process.argv.includes("--rail-character-report");
   const surfaceReportFlag = process.argv.includes("--surface-report");
+  const bottomReportFlag = process.argv.includes("--bottom-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
   // Read-only: one select of every saved board's id, owner and snapshot, nothing else. The owner
@@ -362,6 +380,11 @@ async function main(): Promise<void> {
 
   // --surface-report (Phase 16 D-33 to D-38): ids, wing counts, tail kinds and litres only; never changes the exit code.
   if (surfaceReportFlag) for (const line of surfaceReportLines(hardEdgeRows)) console.log(line);
+
+  // --bottom-report (Phase 17 D-24): ids and litres only, from the rows already read; never changes the exit code.
+  if (bottomReportFlag) {
+    for (const line of bottomReportLines(rows.map(({ id, snapshot }) => ({ id, snapshot })))) console.log(line);
+  }
 
   if (notOpened.length > 0) console.log(`boards that do not open: ${notOpened.join(", ")}`);
   if (moved.length > 0) console.log(`Phase 11 boards whose five thicknesses moved: ${moved.join(", ")}`);

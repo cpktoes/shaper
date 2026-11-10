@@ -11,7 +11,7 @@ import {
   summarizeDesign,
   type DesignSummaryFields,
 } from "@/lib/geometry/design";
-import { DEFAULT_BOTTOM, bottomHasCut, startingCut } from "@/lib/geometry/bottom";
+import { DEFAULT_BOTTOM, bottomHasCut, startingChannels, startingCut, type BoardBottom } from "@/lib/geometry/bottom";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
 import { buildOutline } from "@/lib/geometry/outline";
@@ -21,7 +21,7 @@ import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
-import { buildSnapshot, type DesignSnapshotFields } from "./design-snapshot";
+import { SNAPSHOT_BOARD_LENGTH_MM, buildSnapshot, type DesignSnapshotFields } from "./design-snapshot";
 import { rackBoardFigures, rackModelsAndDrops, rackModelsFromRows, type RackRow } from "./rack-models";
 
 /** WR-05: one saved board that can't be drawn drops only its own rack card, never the page. */
@@ -203,5 +203,78 @@ describe("rackModelsAndDrops", () => {
   it("rackModelsFromRows hands back exactly its models", () => {
     const rows = [row("before", FIELDS), crafted(), notASnapshot(), row("hand-set", { ...FIELDS, blank: null }), row("after", FIELDS)];
     expect(rackModelsFromRows(rows, vi.fn())).toEqual(rackModelsAndDrops(rows, vi.fn()).models);
+  });
+});
+
+describe("a saved board's bottom reaches its rack card (Phase 17, D-24)", () => {
+  const board = designBottomBoard(
+    FIELDS.outline,
+    buildOutline(FIELDS.outline),
+    designSideProfile(FIELDS, LIVE_DESIGN_RULES),
+    designFinPlacement(FIELDS),
+  );
+  const BOTTOM: BoardBottom = { ...DEFAULT_BOTTOM, center: startingCut("center", "Deep Single Concave", board) };
+
+  it("the card counts the cut exactly as VOLUME does: fewer litres than the same board saved flat", () => {
+    const log = vi.fn();
+    const [flat, cut] = rackModelsFromRows([row("flat", FIELDS), row("cut", { ...FIELDS, bottom: BOTTOM })], log);
+    expect(log).not.toHaveBeenCalled();
+    expect("bottom" in flat.snapshot).toBe(false);
+    expect(cut.snapshot.bottom).toEqual(BOTTOM);
+    const card = rackBoardFigures(cut.snapshot);
+    expect(card.summary).toEqual(summarizeDesign({ ...FIELDS, bottom: BOTTOM }));
+    expect(card.summary.volumeLitres).toBeLessThan(rackBoardFigures(flat.snapshot).summary.volumeLitres);
+  });
+
+  it("a crafted bottom never drops the card: the board stands on the rack, flat", () => {
+    const flatCard = rackBoardFigures(rackModelsFromRows([row("flat", FIELDS)], vi.fn())[0].snapshot).summary;
+    for (const bad of ["x", 7, null, [], { nose: { name: "Bonzer", depth: 1e9 }, channels: { count: 5 }, wingRule: "widest" }]) {
+      const log = vi.fn();
+      const stored = row("crafted-bottom", FIELDS);
+      (stored.snapshot as { design: Record<string, unknown> }).design.bottom = bad;
+      const result = rackModelsAndDrops([row("before", FIELDS), stored, row("after", FIELDS)], log);
+      expect(result.dropped, JSON.stringify(bad)).toEqual([]);
+      expect(log).not.toHaveBeenCalled();
+      expect(result.models.map((model) => model.id)).toEqual(["before", "crafted-bottom", "after"]);
+      expect("bottom" in result.models[1].snapshot, JSON.stringify(bad)).toBe(false);
+      expect(rackBoardFigures(result.models[1].snapshot).summary).toEqual(flatCard);
+    }
+  });
+
+  it("a bottom at the furthest numbers the reader lets through still makes a card", () => {
+    const far = SNAPSHOT_BOARD_LENGTH_MM.max;
+    const numbers = {
+      offRail: inchesToMm(12),
+      offStringer: inchesToMm(12),
+      troughAt: inchesToMm(12),
+      start: far,
+      deepest: far,
+      end: mm(-far),
+      depth: inchesToMm(1),
+      veeLift: inchesToMm(1),
+      smoothness: 100,
+      closesToPoint: true,
+    };
+    const edge: BoardBottom = {
+      nose: { name: "Teardrop Nose Concave", ...numbers },
+      center: { name: "Early Double Concave", ...numbers },
+      tail: { name: "Spiral Vee", ...numbers },
+      channels: {
+        ...startingChannels(8, board, DEFAULT_BOTTOM.channels),
+        width: inchesToMm(12),
+        offStringer: inchesToMm(12),
+        startFromFins: far,
+        deepestFromFins: mm(-far),
+        depth: inchesToMm(1),
+        stagger: inchesToMm(12),
+      },
+      wingRule: "natural",
+    };
+    const log = vi.fn();
+    const result = rackModelsAndDrops([row("edge", { ...FIELDS, bottom: edge })], log);
+    expect(result.dropped).toEqual([]);
+    expect(log).not.toHaveBeenCalled();
+    expect(result.models[0].snapshot.bottom).toEqual(edge);
+    expect(Number.isFinite(rackBoardFigures(result.models[0].snapshot).summary.volumeLitres)).toBe(true);
   });
 });
