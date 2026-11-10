@@ -124,6 +124,52 @@ stands and is marked *(sketch)*. The README's "What to Look For" items he has no
   read to its EXIT line, re-recorded desktop baselines reviewed, then push to `main`, the Vercel deploy confirmed by a server-rendered
   marker, and the founder's own look on his phone. Executors work in their own worktrees; the founder's checkout and port 3005 are his.
 
+### Rulings on the research's open questions (2026-11-09; the founder sees each at the look and may overrule)
+- **D-21:** **The tab words stay whole, the page never scrolls sideways, and the board's name gives way.** Research measured it
+  (18-RESEARCH.md, Finding 5): five ROCKER tabs need 374 dots with the name's bare rim and four RAILS tabs need 366, so a 360- or
+  375-dot phone cannot hold both, and at 390 the name would be a stub (`U…`). The rule: on any strip, at any width, the name is drawn
+  only when it has room for a readable piece of itself (about 48 dots of box); below that it is not drawn at all, never a stub, and
+  the page's width is never exceeded. TEMPLATE, VOLUME and FINS keep the name whole at every phone width as today. No tab word is
+  shortened: the founder named them, and PLANING or VIEWER said short is his call alone. How it is done (a container query on the
+  strip's trailing wrapper, or `overflow-x: clip` with a width test) is the planner's choice; `e2e/board-name-band.spec.ts` (p1, p1b,
+  d1, `TAPPABLE` with VOLUME) and `components/viewer/tabbed-panel.test.ts:123` are rewritten to this rule, and a browser test proves
+  no sideways scroll and no stub at 360, 375, 390, 412, 430 and 820. **This changes his rule of 2026-10-08 ("Untitled whole at 360")
+  on ROCKER and RAILS only; it is put to him with pictures at the look, with shorter phone words as the other lever.**
+- **D-22:** **A Metric shaper reads no inch or foot figure on any card** — name, tag, caption, dimension label, the two sentences,
+  the Model info note and How to shape. This is the founder's own Phase 17 ruling of 2026-11-09 (`bottom-guide-words.ts`:
+  *"15 cm in Metric" — never `15.2 cm`*; its test bans an inch figure in every Metric line), carried to all five pages. Two kinds of
+  figure, as there:
+  - **A number of the app** (a 12" station, a slider's limit, a model's fixed range or toe, the 8'0" minimum, the 9' anchor, the 1/16"
+    grain) is said through `lib/geometry/units.ts` and the pages' own formatters: the station by its own label (`30.5 cm`), a fin
+    figure as a mark in whole millimetres, a length as a dim.
+  - **A rule of thumb said in prose** (*the last foot*, *every few inches*, *a couple of feet*, *to the inch*, *an inch of length*)
+    is said each system's own round way, two pieces of copy and nothing converted (*the last 30 cm*, *every 10 cm or so*).
+  The words page stays the source of truth and stays written the Imperial way; it gains a **Metric sayings** section listing every
+  Imperial phrase beside its Metric phrase, card by card. The words module carries the same pairs; one pure function hands a card its
+  lines for a system; the words test proves the pairs equal the page, that every app-number phrase equals what `units.ts` formats for
+  that value, and that no Metric line matches an inch or foot figure (*under foot* and *back foot* are a surfer's feet, not a length).
+  The Metric sayings are first drafts for the founder's pen like every other word.
+- **D-23:** **ROCKER's captions go on the words page.** The ten the UI-SPEC wrote are added to `18-GUIDE-WORDS.md` beside their cards,
+  so every caption on every page is tested from the one page.
+- **D-24:** **The Convention card's Metric tag is `to 1 mm`**, its own one-line rule beside `finRoundingGrain` (whose word,
+  `millimetre`, stays in the sentence).
+- **D-25:** **A Metric push is a round figure of its own family.** One number drives the drawing, the dimension label and the
+  caption. Dims in clean centimetres (6" → 15 cm, 4" → 10 cm, 3" → 7.5 cm, 2" → 5 cm, 1" → 2.5 cm, 18" → 45 cm, 24" → 60 cm); marks
+  in the UI-SPEC's round millimetres (1/4" → 6, 3/8" → 10, 1/2" → 13, 3/4" → 19, 1" → 25, 1 1/2" → 38, 2" → 50, 4" → 100). Degrees,
+  percentages and scales are the same in both systems.
+- **D-26:** **A card never says "dashed" with nothing dashed.** Where the app's own limits leave a push no room (Placement with no
+  slide room, a rocker change already at the 2" limit, a Thinning Start at the end of its range), the push is drawn the other way if
+  that has room, and the caption says so (`dashed · −1" nose rocker`); if neither way has room the board is drawn as it is with no
+  caption. Tail Block on a pin or round tail and Tail Angle on a diamond are tagged `—`, draw the board as it is and carry no caption.
+  A rocker push on a board that already carries an ordered rocker adds to that end's amount, inside the app's own limits. McKee
+  Longboard's availability is asked of `isQuadRearModelAvailable`, never a length compared by hand.
+- **D-27:** **Card ids are page + group + name.** Names repeat (TEMPLATE has two *Fullness* and two *Depth*), so the words module,
+  the tests and `data-guide-card` all key on the three together.
+- **D-28:** **VOLUME's phone GUIDE uses the shell as it stands** (research measured the pinned branch in Chromium and WebKit: 66dvh,
+  the page still, the sidebar scrolling inside itself), accepting that VOLUME's strip becomes pressable for the first time and its
+  phone card sits about 9 dots lower; the specs that find ESTIMATE as plain text are rewritten. **Lazy drawing is decided by a timed
+  run** of the real page under a 4× slowed processor: built only if first paint of a GUIDE tab passes about 150 ms; otherwise not built.
+
 </decisions>
 
 <where_to_look>
