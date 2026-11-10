@@ -417,6 +417,16 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   they were made and never edited: Parallel and Toe-in on its own angle are still held to them exactly; With the
   rail is no longer compared with the sketch's walls at all (its starting numbers, fit and starts still are), and is
   proved from the rule itself instead. BOTTOM's GUIDE is not reworded (sharpens D-10, changes D-43's wall shape).
+  *Approved by the founder at his look at the real page (2026-11-10): "Angle and warning approved." — the Angle as
+  built, with every choice listed above as OURS left as it stands.*
+- **D-45:** **A channel cut deeper than the foam keeps today's warning and today's numbers for go-live; a clearer sentence comes afterwards.**
+  The code review's WR-01: a concave is held to the 1/4" stringer floor, but a channel's depth has no floor, so where a
+  channel is deeper than the foam above it — a thin tail rail — the foam ends at that channel's wall (D-40's knife edge
+  applied to a channel), and the screen warns the shaper. Claude put it to the founder with a recommendation — keep the
+  warning and the numbers for go-live, write a clearer sentence afterwards — and he ruled (2026-11-10): *"Angle and
+  warning approved."* So no code changes for WR-01 in this phase: no floor is added under a channel, the litres, the 3D
+  board and the STL keep the rule they have, and the warning's wording (the review's IN-02 — it speaks only of the rail)
+  is a follow-up after go-live, with the words shown to him before they ship.
 
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM

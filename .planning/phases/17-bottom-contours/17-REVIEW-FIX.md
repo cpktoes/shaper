@@ -18,7 +18,7 @@ status: partial
 **Summary:**
 - Findings in scope: 4 (CR-01, WR-01, WR-02, WR-03)
 - Fixed: 3 (CR-01, WR-03, WR-02) — all three are fixes to the board's maths or its drawing, so all are marked for a human look
-- Skipped: 1 (WR-01) — waits for the founder's ruling; no code was changed for it
+- Skipped: 1 (WR-01) — ruled by the founder 2026-11-10 (D-45): today's warning and numbers stay for go-live, a clearer sentence afterwards; no code was changed for it
 - Out of scope, untouched: IN-01, IN-02, IN-03
 
 The orchestrator ruled which findings to fix before the first run: CR-01 and WR-03 fixed, WR-01 and WR-02 left for the
@@ -28,7 +28,7 @@ the same fixer was resumed for it — the second iteration.
 A third iteration followed the founder's look at the real page the same day. He asked for an Angle on the two angled
 channel runs and for With-the-rail channels to fan subtly (D-44 in 17-CONTEXT.md). That is a change he asked for, not
 a review finding, so it is recorded in its own section below and the counts above are unchanged: four findings in
-scope, three fixed, WR-01 still waiting for his word.
+scope, three fixed, WR-01 ruled by him the same day (D-45): left as it is for go-live.
 
 ## Fixed Issues
 
@@ -242,6 +242,8 @@ inch is the right narrowest channel and 1/2" the right ease; and WR-01, which th
 
 ### D-44: Channels laid With the rail or Toe-in get an Angle slider, and With-the-rail walls are now straight lines that fan
 
+**Approved by the founder at his look at the real page, 2026-11-10:** *"Angle and warning approved."*
+
 **Asked for by:** the founder, at his look at the real page, 2026-11-10 — *"Along the rail is subtle, like the middle board
 in this image."* and *"The toe in and splayed out (along rail) needs an angle adjustment. Set default by the rail and
 the fins toe in, but overiderable."* Recorded as D-44 in `17-CONTEXT.md`, with every number that is ours for him to
@@ -360,7 +362,8 @@ line, saved boards with and without the number, and the store's Run change and R
 ### WR-01: A channel cut deeper than the foam ends the whole board at that channel's wall
 
 **File:** `lib/geometry/bottom.ts:766-771` with `lib/geometry/volume.ts:1094-1117`
-**Reason:** skipped: awaiting the founder's ruling. No code was changed. This is the same deliberate rule as D-40's
+**Reason:** skipped on the founder's ruling (D-45 in `17-CONTEXT.md`, 2026-11-10: *"Angle and warning approved."*) — today's
+warning and today's numbers stay for go-live, and a clearer sentence (IN-02) follows afterwards. No code was changed. This is the same deliberate rule as D-40's
 knife edge — where a cut reaches the deck the foam ends — applied to a channel, and the screen already warns the
 shaper when a channel goes deeper than the foam. Whether a channel should be held to a floor instead is the
 founder's to rule. Since WR-02's fix a With-the-rail set reaches it at starting numbers on the Shortboard's tail and
