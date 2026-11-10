@@ -802,6 +802,9 @@ export const CHANNEL_LEAD_IN: Mm = inchesToMm(1);
 export const CHANNEL_EDGE_MIN: Mm = mm(0.5);
 /** A fitted width this far under the asked width says the set was squeezed (the sketch's 0.01). */
 export const CHANNEL_SQUEEZE_GUARD: Mm = mm(0.01);
+/** With the rail, the channels stop narrowing at an inch each (`CHANNEL_PINCH`). They ease into that over this much
+ * of width either side of it, so a wall bends into its straight run rather than kinking (see `channelRailWidth`). */
+export const CHANNEL_RAIL_EASE: Mm = inchesToMm(1 / 2);
 
 /**
  * A channel's floor across its width (the founder's pictures, 2026-11-06: "a quick V that goes into a vertical
@@ -843,28 +846,62 @@ function channelFade(ch: ResolvedChannels, j: number, s: Mm, length: Mm): number
 }
 
 /**
+ * How wide each channel of a set laid With the rail is at a station, from the width that following the rail alone
+ * would give it there (`raw`: the rail, less the last wall's keep off it, less Off Stringer, shared between the
+ * channels) and the set's fitted Width (`set`).
+ *
+ * The founder's ruling (2026-11-10): "the channels with the rail shoud never bunch at the tip. the early wording was
+ * correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line) but never
+ * meet at a single point." The early wording is D-10's: once the gaps have closed the outer channels run OUT through
+ * the rail, never pinching every channel.
+ *
+ * So a channel follows the rail only while that leaves it real width. It is never narrower than an inch (or than the
+ * set's own Width, where that is under an inch): from there to the tip the walls run straight, an inch apart, and the
+ * outer ones run out through the rail as a Parallel set's do. Between following the rail and running straight the
+ * width bends over rather than kinks — over the 1/2" either side of the narrowest (less where the set's Width is
+ * within 1/2" of it), meeting both with no step and no corner. A channel that following the rail leaves 1/2" or more
+ * wider than the narrowest is exactly as wide as the rail gives it: at the deepest station that is the fitted Width
+ * itself.
+ */
+export function channelRailWidth(raw: Mm, set: Mm): Mm {
+  const floor = Math.min(set, CHANNEL_PINCH);
+  const ease = Math.min(CHANNEL_RAIL_EASE, set - floor);
+  // no room to ease in (a Width of an inch or less): the channels simply stop narrowing at the set's own Width
+  if (!(ease > 0)) return mm(Math.max(raw, floor));
+  const x = raw - floor;
+  if (x >= ease) return raw;
+  if (x <= -ease) return mm(floor);
+  return mm(floor + (x + ease) ** 2 / (4 * ease));
+}
+
+/**
  * One side's channels at a station, each `[inner, outer, index]` out from the stringer — abutting, the outer of one
- * the inner of the next, `index` 0 beside the stringer (the sketch's `channelEdges`). The walls are ruled at Width,
- * 2 × Width … out from Off Stringer.
+ * the inner of the next, `index` 0 beside the stringer (the sketch's `channelEdges`, but for With the rail's narrowest
+ * width — see below). The walls are ruled at Width, 2 × Width … out from Off Stringer.
  *
  * - **Parallel** rules them straight from the deepest station; where the outline narrows the outer ones run out
  *   through the rail.
- * - **With the rail** keeps the last wall the same distance off the reference rail, so the set narrows toward the
- *   tail together; once the gaps have closed the outer channels run out through the rail.
+ * - **With the rail** keeps the last wall the same distance off the reference rail, so the set narrows toward a tip
+ *   together — but only down to an inch a channel (`channelRailWidth`). From there the walls run straight to the tip
+ *   and the outer channels run out through the rail: the set never bunches and its walls never meet at a point (the
+ *   founder's ruling on the code review's WR-02, 2026-11-10; D-10's own wording). The sketch narrowed every channel to
+ *   nothing with the rail; the app departs from it here, on his word.
  * - **Toe-in** angles the whole set at the front fins' raw toe — inward toward the nose, splayed out toward the tail.
  *   A single fin has no toe, so it is laid Parallel.
  *
  * Only channels whose wall stands more than 1/2 mm off the stringer are kept, and only channels more than 1/2 mm wide:
- * a channel with no real width is not a channel. With the rail and an Off Stringer wider than a narrow tail the set has
- * no room left at all there — every channel would be two walls on the Off Stringer line — so there are none (the code
- * review's CR-01, 2026-11-10). Wherever a channel still has real width it is ruled exactly as before.
+ * a channel with no real width is not a channel. With the rail no longer makes one. Where a narrow tail is narrower
+ * than the flat by the stringer and the last wall's keep together (the code review's CR-01, 2026-11-10) the set used
+ * to have no room at all; now it keeps its narrowest width there, ruled straight from the flat's edge, as a Parallel
+ * set is. A wall past the rail is still returned, as Parallel's and Toe-in's always were: the board ends at its rail,
+ * so nothing is cut out there, and DATA and the top view show a wall only between the stringer and the rail.
  */
 export function channelEdges(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): [inner: Mm, outer: Mm, index: number][] {
   const { perSide: n, width: w, offRail } = channelFit(ch, board, rule);
   if (n < 1 || w <= CHANNEL_EDGE_MIN) return [];
   let w2: number = w;
   let shift = 0;
-  if (ch.run === "rail") w2 = Math.max(0, refAt(board, rule, s) - offRail - ch.offStringer) / n;
+  if (ch.run === "rail") w2 = channelRailWidth(mm(Math.max(0, refAt(board, rule, s) - offRail - ch.offStringer) / n), w);
   else if (ch.run === "toe" && board.toeDegrees > 0) shift = (s - ch.deepest) * Math.tan(board.toeDegrees * Math.PI / 180);
   const out: [Mm, Mm, number][] = [];
   for (let j = 0; j < n; j++) {

@@ -12,18 +12,22 @@ import {
   bottomHasCut,
   bottomLayoutMarks,
   bottomLitresLine,
+  BOTTOM_MARK_FADE_MIN,
   bottomSampler,
   chan,
   CHANNEL_EDGE_MIN,
   CHANNEL_FLAT_KEY,
   CHANNEL_LEAD_IN,
   CHANNEL_OFF_RAIL_MIN,
+  CHANNEL_PINCH,
+  CHANNEL_RAIL_EASE,
   CHANNEL_STARTING_WIDTHS,
   channelEdges,
   channelFit,
   channelFoamOff,
   channelLayout,
   channelMarks,
+  channelRailWidth,
   channelReadout,
   channelStart,
   channelWallKey,
@@ -1361,6 +1365,15 @@ function withChannels(board: BottomBoard, names: Partial<Record<BottomSectionKey
  * line stands a few millionths of a millimetre off the app's own outline; reading the app's own samples the sketch's
  * way checks the channels' arithmetic to the last digit, and the gap itself is checked on its own below.
  */
+/** Every eighth of an inch from the tail to the channels' Start, and Start itself. */
+function stationsToStart(start: Mm): Mm[] {
+  const step = inchesToMm(1 / 8);
+  const out: Mm[] = [];
+  for (let k = 0; k * step < start; k++) out.push(mm(k * step));
+  out.push(start);
+  return out;
+}
+
 function sampledLikeTheSketch(board: BottomBoard): BottomBoard {
   const steps = golden.provenance.stations - 1;
   const sample = (read: (s: Mm) => Mm) => {
@@ -1418,18 +1431,75 @@ describe("the channels — golden: every count, run and length order on the Shor
       expect(c.starts).toHaveLength(count / 2);
       c.starts.forEach((start, j) => expect(Math.abs(channelStart(ch, j) - start)).toBeLessThan(TOL));
       // the edges and the marks every 6"
+      let asTheSketch = 0;
+      let heldOpen = 0;
       for (const g of c.stations) {
         const edges = channelEdges(ch, board, "narrowest", mm(g.s));
-        expect(edges.map((e) => e[2])).toEqual(g.edges.map((e) => e[2]));
-        edges.forEach(([a, b], k) => {
-          expect(Math.abs(a - g.edges[k][0])).toBeLessThan(TOL);
-          expect(Math.abs(b - g.edges[k][1])).toBeLessThan(TOL);
-        });
         const marks = channelMarks(ch, board, "narrowest", mm(g.s));
-        expect(marks.map((m) => [m.column, m.on])).toEqual(g.marks.map((m) => [channelKeyOf(m.col), m.on]));
-        marks.forEach((m, k) => expect(Math.abs(m.across - g.marks[k].y)).toBeLessThan(TOL));
+        /** The sketch's own walls and marks, to the last digit. */
+        const exactlyTheSketch = () => {
+          expect(edges.map((e) => e[2])).toEqual(g.edges.map((e) => e[2]));
+          edges.forEach(([a, b], k) => {
+            expect(Math.abs(a - g.edges[k][0])).toBeLessThan(TOL);
+            expect(Math.abs(b - g.edges[k][1])).toBeLessThan(TOL);
+          });
+          expect(marks.map((m) => [m.column, m.on])).toEqual(g.marks.map((m) => [channelKeyOf(m.col), m.on]));
+          marks.forEach((m, k) => expect(Math.abs(m.across - g.marks[k].y)).toBeLessThan(TOL));
+        };
+        if (run !== "rail") exactlyTheSketch();
+        else {
+          /*
+           * With the rail, the app departs from the sketch on the founder's word (his ruling on the code review's
+           * WR-02, 2026-11-10): "the channels with the rail shoud never bunch at the tip. the early wording was
+           * correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line) but
+           * never meet at a single point." The sketch narrowed every channel with the rail down to nothing; the app
+           * follows the rail only down to an inch a channel and runs straight from there (`channelRailWidth`).
+           *
+           * So the golden holds the app through that rule, as a relation: at each recorded station every channel is
+           * `channelRailWidth(the sketch's width there, the fitted Width)` wide, the walls ruled from it. Where the
+           * rule gives the sketch's own width back — wherever the rail leaves a channel 1/2" more than an inch — the
+           * walls and the marks are still the sketch's, to the last digit.
+           */
+          // the sketch's width there: any channel it recorded (they abut, all one width, and no golden set is off the
+          // stringer). Where it recorded none every wall was within 1/2 mm of the stringer — a width the rule answers
+          // exactly as it answers nothing at all.
+          expect(ch.offStringer).toBe(0);
+          expect(channelRailWidth(CHANNEL_EDGE_MIN, fit.width)).toBe(channelRailWidth(mm(0), fit.width));
+          const sketchWidth = g.edges.length ? g.edges[0][1] - g.edges[0][0] : 0;
+          const width = channelRailWidth(mm(sketchWidth), fit.width);
+          // every channel is there, abutting from the stringer at that width
+          expect(edges.map((e) => e[2])).toEqual(Array.from({ length: fit.perSide }, (_, k) => k));
+          edges.forEach(([a, b], k) => {
+            expect(Math.abs(a - k * width)).toBeLessThan(TOL);
+            expect(Math.abs(b - (k + 1) * width)).toBeLessThan(TOL);
+          });
+          // the marks follow the walls: one a wall, on from its own channel's start — the sketch's own answer for every
+          // wall the sketch ruled, and the same rule (the channel's fade) for a wall the sketch had lost at the stringer
+          expect(marks.map((m) => m.column)).toEqual(edges.map((e) => channelWallKey(e[2] + 1)));
+          marks.forEach((m, k) => {
+            expect(m.across).toBe(edges[k][1]);
+            expect(m.on).toBe(fadeAt(channelStart(ch, k), ch.deepest, ch.end, g.s, board.length) > BOTTOM_MARK_FADE_MIN);
+            const sketched = g.marks.find((q) => channelKeyOf(q.col) === m.column);
+            if (sketched) expect(m.on).toBe(sketched.on);
+          });
+          if (width === sketchWidth) {
+            asTheSketch++;
+            exactlyTheSketch();
+          } else {
+            heldOpen++;
+            // the departure only ever widens a channel, and never past an inch and the ease's small bulge
+            expect(width).toBeGreaterThan(sketchWidth);
+            expect(width).toBeLessThan(CHANNEL_PINCH + CHANNEL_RAIL_EASE);
+          }
+        }
         // channelLayout is the same three readings, at the same station
         expect(channelLayout(resolveBottom(bottom, board), board, mm(g.s))).toEqual({ fit, edges, marks });
+      }
+      // With the rail: both kinds of station are in every case — the sketch's own walls where the board is wide, the
+      // founder's inch toward a tip
+      if (run === "rail") {
+        expect(asTheSketch).toBeGreaterThan(0);
+        expect(heldOpen).toBeGreaterThan(0);
       }
     },
   );
@@ -1622,6 +1692,130 @@ describe("startingChannels (D-10, D-11)", () => {
   });
 });
 
+/* ============ the founder's ruling on the code review's WR-02 (2026-11-10): With the rail never bunches ============ */
+
+describe("channelRailWidth: With the rail follows the rail down to an inch a channel, then runs straight (the founder's ruling on WR-02; D-10)", () => {
+  /** The set's Widths to try: the three starting Widths, every 1/16" from 1/4" to 3", and one that is no round figure. */
+  const SET_WIDTHS: Mm[] = [...Object.values(CHANNEL_STARTING_WIDTHS), ...Array.from({ length: 45 }, (_, k) => inchesToMm(1 / 4 + k / 16)), mm(31.337)];
+  /** What following the rail could leave a channel: every 1/64" from nothing to 4". */
+  const FOLLOWED: Mm[] = Array.from({ length: 257 }, (_, k) => inchesToMm(k / 64));
+  /** The narrowest a channel of the set gets, and how far either side of it the narrowing eases in. */
+  const narrowestOf = (set: Mm) => Math.min(set, CHANNEL_PINCH);
+  const easeOf = (set: Mm) => Math.min(CHANNEL_RAIL_EASE, set - narrowestOf(set));
+
+  it("the narrowest is the inch a channel shallows under, and the ease is half of it", () => {
+    expect(CHANNEL_PINCH).toBe(inchesToMm(1));
+    expect(CHANNEL_RAIL_EASE).toBe(CHANNEL_PINCH / 2);
+  });
+
+  it("a channel the rail leaves the ease or more wider than its narrowest is exactly as wide as the rail leaves it", () => {
+    let checked = 0;
+    for (const set of SET_WIDTHS) {
+      const [narrowest, ease] = [narrowestOf(set), easeOf(set)];
+      for (const followed of [...FOLLOWED, set]) {
+        if (!(followed - narrowest >= ease)) continue;
+        checked++;
+        expect(channelRailWidth(followed, set)).toBe(followed);
+      }
+      // and at the join itself, however the join's own arithmetic rounds
+      expect(Math.abs(channelRailWidth(mm(narrowest + ease), set) - (narrowest + ease))).toBeLessThan(TOL);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("a channel the rail would leave the ease or more under its narrowest — down to nothing at all — is its narrowest, exactly", () => {
+    for (const set of SET_WIDTHS) {
+      const [narrowest, ease] = [narrowestOf(set), easeOf(set)];
+      expect(channelRailWidth(mm(0), set)).toBe(narrowest);
+      for (const followed of FOLLOWED) {
+        if (followed - narrowest <= -ease) expect(channelRailWidth(followed, set)).toBe(narrowest);
+      }
+      expect(Math.abs(channelRailWidth(mm(narrowest - ease), set) - narrowest)).toBeLessThan(TOL);
+    }
+  });
+
+  it("never narrower than its narrowest, never narrower than the rail leaves it, and never more than a quarter of the ease over the wider of the two", () => {
+    for (const set of SET_WIDTHS) {
+      const [narrowest, ease] = [narrowestOf(set), easeOf(set)];
+      for (const followed of FOLLOWED) {
+        const width = channelRailWidth(followed, set);
+        expect(width).toBeGreaterThanOrEqual(narrowest);
+        expect(width).toBeGreaterThanOrEqual(followed - TOL);
+        expect(width).toBeLessThanOrEqual(Math.max(followed, narrowest) + ease / 4 + TOL);
+      }
+    }
+  });
+
+  it("it never runs backward and never changes faster than the rail does: a wider rail never makes a narrower channel", () => {
+    for (const set of SET_WIDTHS) {
+      for (let k = 1; k < FOLLOWED.length; k++) {
+        const step = channelRailWidth(FOLLOWED[k], set) - channelRailWidth(FOLLOWED[k - 1], set);
+        expect(step).toBeGreaterThanOrEqual(-TOL);
+        expect(step).toBeLessThanOrEqual(FOLLOWED[k] - FOLLOWED[k - 1] + TOL);
+      }
+    }
+  });
+
+  it("no step and no corner where it leaves the rail or where it reaches its narrowest: the width and its slope both meet at each join", () => {
+    const h = 1e-4;
+    let eased = 0;
+    for (const set of SET_WIDTHS) {
+      const [narrowest, ease] = [narrowestOf(set), easeOf(set)];
+      if (!(ease > 0)) continue;
+      eased++;
+      const at = (followed: number) => channelRailWidth(mm(followed), set);
+      const slope = (from: number, to: number) => (at(to) - at(from)) / (to - from);
+      const [leaves, reaches] = [narrowest + ease, narrowest - ease];
+      // where it leaves the rail: the rail's own width, and the rail's own slope (1) from both sides
+      expect(Math.abs(at(leaves) - leaves)).toBeLessThan(TOL);
+      expect(Math.abs(slope(leaves, leaves + h) - 1)).toBeLessThan(1e-3);
+      expect(Math.abs(slope(leaves - h, leaves) - 1)).toBeLessThan(1e-3);
+      // where it reaches its narrowest: that width, and level (0) from both sides
+      expect(Math.abs(at(reaches) - narrowest)).toBeLessThan(TOL);
+      expect(Math.abs(slope(reaches, reaches + h))).toBeLessThan(1e-3);
+      expect(Math.abs(slope(reaches - h, reaches))).toBeLessThan(1e-3);
+      // and between the joins it is a bend, not a line: halfway it stands a quarter of the ease over its narrowest
+      expect(Math.abs(at(narrowest) - (narrowest + ease / 4))).toBeLessThan(TOL);
+    }
+    expect(eased).toBeGreaterThan(0);
+  });
+
+  it("a Width of an inch or under has no room to ease: the channels simply stop narrowing at the set's own Width", () => {
+    let checked = 0;
+    for (const set of SET_WIDTHS.filter((w) => w <= CHANNEL_PINCH)) {
+      checked++;
+      for (const followed of FOLLOWED) expect(channelRailWidth(followed, set)).toBe(Math.max(followed, set));
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("at the deepest station it is the fitted Width exactly: all five boards, 4, 6 and 8 channels, as asked, squeezed and narrow", () => {
+    for (const { id, board } of BOARDS) {
+      for (const count of [4, 6, 8] as const) {
+        for (const width of [CHANNEL_STARTING_WIDTHS[count], inchesToMm(4), inchesToMm(3 / 4)]) {
+          const parallel = resolveChannels({ ...startingChannels(count, board, DEFAULT_BOTTOM.channels), width }, board);
+          const rail = { ...parallel, run: "rail" as const };
+          const fit = channelFit(rail, board, "narrowest");
+          const name = `${id} · ${count} · ${formatInchesFraction(width)}`;
+          expect(fit.width, name).toBeGreaterThan(0);
+          expect(channelRailWidth(fit.width, fit.width), name).toBe(fit.width);
+          // and so the set is the Parallel set there, wall for wall: Width is still the width at the deepest station
+          const edges = channelEdges(rail, board, "narrowest", rail.deepest);
+          const straight = channelEdges(parallel, board, "narrowest", rail.deepest);
+          expect(edges.length, name).toBe(fit.perSide);
+          expect(straight.length, name).toBe(fit.perSide);
+          edges.forEach(([a, b, j], k) => {
+            expect(j).toBe(straight[k][2]);
+            expect(Math.abs(b - a - fit.width), name).toBeLessThan(TOL);
+            expect(Math.abs(a - straight[k][0]), name).toBeLessThan(TOL);
+            expect(Math.abs(b - straight[k][1]), name).toBeLessThan(TOL);
+          });
+        }
+      }
+    }
+  });
+});
+
 describe("the channels' edges of the SPEC (D-10)", () => {
   it("Toe-in on a single fin: the Longboard has no toe, so Toe-in lays the same walls as Parallel", () => {
     const board = boardById("longboard");
@@ -1679,26 +1873,82 @@ describe("the channels' edges of the SPEC (D-10)", () => {
     }
   });
 
-  it("With the rail keeps the last wall's distance off the rail; where the gaps close the outer channels run out through the rail, never every channel pinched", () => {
-    const board = boardById("fish");
-    const parallel = resolveChannels(startingChannels(6, board, DEFAULT_BOTTOM.channels), board);
-    const rail = { ...parallel, run: "rail" as const };
-    const { offRail } = channelFit(rail, board, "narrowest");
-    let narrowed = 0;
-    for (const s of bottomDataStations(board)) {
-      const edges = channelEdges(rail, board, "narrowest", s);
-      if (edges.length === 3) {
-        expect(Math.abs(refAt(board, "narrowest", s) - edges[2][1] - offRail)).toBeLessThan(TOL);
-        if (s < rail.deepest) narrowed++;
+  it("With the rail keeps the last wall's distance off the rail only while that leaves every channel real width: from an inch a channel the walls run straight to the tail and the outer ones run out through the rail, never every channel pinched (D-10; the founder's ruling on WR-02)", () => {
+    for (const id of ["shortboard", "midlength", "fish"]) {
+      const board = boardById(id);
+      for (const count of [4, 6, 8] as const) {
+        const name = `${id} · ${count}`;
+        const rail = { ...resolveChannels(startingChannels(count, board, DEFAULT_BOTTOM.channels), board), run: "rail" as const };
+        const { perSide, width, offRail } = channelFit(rail, board, "narrowest");
+        const narrowest = Math.min(width, CHANNEL_PINCH);
+        const ease = Math.min(CHANNEL_RAIL_EASE, width - narrowest);
+        const widthAt = (s: Mm) => {
+          const edges = channelEdges(rail, board, "narrowest", s);
+          // every channel of the set, at every station: none is lost and none has closed
+          expect(edges.map((e) => e[2]), `${name} at ${s}`).toEqual(Array.from({ length: perSide }, (_, k) => k));
+          const each = edges[0][1] - edges[0][0];
+          edges.forEach(([a, b], k) => {
+            expect(b - a, `${name} at ${s}`).toBeGreaterThanOrEqual(narrowest - TOL);
+            // abutting, all one width: no two walls ever meet
+            expect(Math.abs(a - k * each)).toBeLessThan(TOL);
+            expect(Math.abs(b - (k + 1) * each)).toBeLessThan(TOL);
+          });
+          return { each, lastWall: edges[perSide - 1][1] };
+        };
+        let [onTheRail, narrowedOnTheRail, straight] = [0, 0, 0];
+        let before: { ref: number; each: number } | null = null;
+        for (const s of stationsToStart(rail.start)) {
+          const ref = refAt(board, "narrowest", s);
+          const { each, lastWall } = widthAt(s);
+          const followed = Math.max(0, ref - offRail - rail.offStringer) / perSide;
+          expect(each, `${name} at ${s}`).toBeGreaterThanOrEqual(followed - TOL);
+          if (followed - narrowest >= ease) {
+            // the set has not reached the ease: the last wall keeps its distance off the rail
+            onTheRail++;
+            if (s < rail.deepest) narrowedOnTheRail++;
+            expect(Math.abs(ref - lastWall - offRail), `${name} at ${s}`).toBeLessThan(TOL);
+          } else if (followed - narrowest <= -ease) {
+            // past the ease: an inch a channel (or the set's own Width), the walls straight
+            straight++;
+            expect(each, `${name} at ${s}`).toBe(narrowest);
+          }
+          // the width never jumps: from one 1/8" station to the next it moves no more than the rail itself does
+          if (before) expect(Math.abs(each - before.each), `${name} at ${s}`).toBeLessThanOrEqual(Math.abs(ref - before.ref) / perSide + TOL);
+          before = { ref, each };
+        }
+        expect(onTheRail, name).toBeGreaterThan(0);
+        // a set more than the ease wider than its narrowest does narrow with the rail behind the deepest station first
+        if (width - narrowest > CHANNEL_RAIL_EASE) expect(narrowedOnTheRail, name).toBeGreaterThan(0);
+        const tail = widthAt(mm(0));
+        if (id === "fish") {
+          // the Fish's wide tail never closes the set that far: its last wall is still inside the rail at the tail
+          expect(tail.lastWall, name).toBeLessThan(board.railAt(mm(0)));
+        } else {
+          // the Shortboard and the Midlength do: the walls run straight, an inch apart, out the tail
+          expect(straight, name).toBeGreaterThan(0);
+          expect(tail.each, name).toBe(narrowest);
+          expect(narrowest, name).toBe(CHANNEL_PINCH);
+          // and the outer wall stands past the rail there — the outer channel has run out through it. (Four channels
+          // an inch wide put their outer wall 2" out, which is the Shortboard's own tail corner, so six and eight.)
+          if (count > 4 || id === "midlength") expect(tail.lastWall, name).toBeGreaterThan(board.railAt(mm(0)));
+          else expect(tail.lastWall, name).toBeGreaterThanOrEqual(board.railAt(mm(0)) - TOL);
+        }
       }
-      // the channels it keeps are the outer ones' walls more than 1/2 mm off the stringer, never fewer than all
-      for (const [, b] of edges) expect(b).toBeGreaterThan(0.5);
     }
-    expect(narrowed).toBeGreaterThan(0);
+    // the Fish's six, where the tail leaves each channel a little over an inch: eased, neither the rail's width nor the inch
+    const fish = boardById("fish");
+    const parallel = resolveChannels(startingChannels(6, fish, DEFAULT_BOTTOM.channels), fish);
+    const rail = { ...parallel, run: "rail" as const };
+    const fit = channelFit(rail, fish, "narrowest");
+    const followedAtTail = (refAt(fish, "narrowest", mm(0)) - fit.offRail) / fit.perSide;
+    const [first] = channelEdges(rail, fish, "narrowest", mm(0));
+    expect(first[1] - first[0]).toBeGreaterThan(followedAtTail + TOL);
+    expect(first[1] - first[0]).toBeGreaterThan(CHANNEL_PINCH + TOL);
+    expect(first[1] - first[0]).toBeLessThan(CHANNEL_PINCH + CHANNEL_RAIL_EASE);
     // Parallel rules the walls straight: toward the tail the outer walls stand past the rail, so those channels run out
-    const atTail = channelEdges(parallel, board, "narrowest", mm(0));
+    const atTail = channelEdges(parallel, fish, "narrowest", mm(0));
     expect(atTail.length).toBe(3);
-    expect(atTail[2][1]).toBeGreaterThan(board.railAt(mm(0)));
+    expect(atTail[2][1]).toBeGreaterThan(fish.railAt(mm(0)));
   });
 });
 
@@ -1804,6 +2054,14 @@ describe("the channels' own edits on the panel (17-09): the count switch, the st
 
 /* ============ the code review's CR-01 (2026-11-10): With the rail, a flat by the stringer, and a narrow tail ============ */
 
+/*
+ * CR-01 found the litres, the 3D tail and the CNC files thrown where the tail is narrower than the flat and the last
+ * wall's keep together: With the rail had no room left for the set there. Its first fix laid no channels at such a
+ * station. The founder's ruling on WR-02 the same day changes what is true there — the set no longer follows the rail
+ * down to nothing, so it is never without room: it keeps its narrowest width and runs straight from the flat's edge,
+ * and whatever of it stands outboard of the rail cuts nothing. These tests hold that, and that every number stays finite.
+ */
+
 describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is narrower than the flat and the last wall's keep", () => {
   const OFF = inchesToMm(1 / 2);
   /** The review's three sets and the two stock boards it did not name: board, channels, Width in inches. */
@@ -1823,47 +2081,60 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     const resolved = resolveBottom(bottom, board);
     return { fields, board, bottom, resolved, ch: resolved.channels, rule: resolved.wingRule };
   };
-  /** Every eighth of an inch from the tail to the channels' Start, and Start itself. */
-  const stationsToStart = (start: Mm): Mm[] => {
-    const step = inchesToMm(1 / 8);
-    const out: Mm[] = [];
-    for (let k = 0; k * step < start; k++) out.push(mm(k * step));
-    out.push(start);
-    return out;
-  };
   /** The room With the rail leaves the whole set at a station: the rail, less the last wall's keep, less the flat. */
   const roomAt = (set: ReturnType<typeof setOf>, s: Mm) => refAt(set.board, set.rule, s) - channelFit(set.ch, set.board, set.rule).offRail - set.ch.offStringer;
 
-  it("the tail does get that narrow on every one of them, and there the set is no channels at all — never a channel of no width", () => {
+  it("the tail does get that narrow on every one of them, and there the set stops following the rail: every channel keeps its narrowest width, ruled straight from the flat's edge — never a channel of no width, and never no channels", () => {
     for (const [id, count, widthInches] of SETS) {
       const set = setOf(id, count, widthInches, OFF);
       const name = nameOf(id, count, widthInches);
-      let noRoom = 0;
+      const { perSide, width } = channelFit(set.ch, set.board, set.rule);
+      const narrowest = Math.min(width, CHANNEL_PINCH);
+      let [noRoom, outboard] = [0, 0];
       for (const s of stationsToStart(set.ch.start)) {
         const edges = channelEdges(set.ch, set.board, set.rule, s);
-        for (const [a, b] of edges) expect(b - a, `${name} at ${s}`).toBeGreaterThan(CHANNEL_EDGE_MIN);
+        expect(edges.map((e) => e[2]), `${name} at ${s}`).toEqual(Array.from({ length: perSide }, (_, k) => k));
+        for (const [a, b] of edges) expect(b - a, `${name} at ${s}`).toBeGreaterThanOrEqual(narrowest - TOL);
+        // the litres' walls: one per channel a side as always, each where its channel's wall stands
+        expect(channelWallsAt(set.ch, set.board, set.rule, s), `${name} at ${s}`).toEqual(edges.map(([, b]) => b));
         if (roomAt(set, s) <= 0) {
           noRoom++;
-          expect(edges, `${name} at ${s}`).toEqual([]);
-          expect(channelMarks(set.ch, set.board, set.rule, s), `${name} at ${s}`).toEqual([]);
-          // the litres' walls: one per channel a side as always, every one of them back on the stringer
-          expect(channelWallsAt(set.ch, set.board, set.rule, s), `${name} at ${s}`).toEqual(Array.from({ length: count / 2 }, () => 0));
+          edges.forEach(([a, b], k) => {
+            expect(Math.abs(a - (set.ch.offStringer + k * narrowest)), `${name} at ${s}`).toBeLessThan(TOL);
+            expect(Math.abs(b - (set.ch.offStringer + (k + 1) * narrowest)), `${name} at ${s}`).toBeLessThan(TOL);
+          });
+          // the marks: the flat's edge on the Off Stringer line, then every wall
+          const marks = channelMarks(set.ch, set.board, set.rule, s);
+          expect(marks.map((m) => m.column), `${name} at ${s}`).toEqual([CHANNEL_FLAT_KEY, ...edges.map((e) => channelWallKey(e[2] + 1))]);
+          expect(marks.map((m) => m.across), `${name} at ${s}`).toEqual([edges[0][0], ...edges.map(([, b]) => b)]);
+        }
+        const rail = set.board.railAt(s);
+        if (rail <= set.ch.offStringer) {
+          // the flat alone is wider than the tail here: the whole set stands outboard of the rail and cuts nothing
+          outboard++;
+          for (const [a] of edges) expect(a, `${name} at ${s}`).toBeGreaterThanOrEqual(rail);
+          for (let k = 0; k <= 48; k++) expect(channelFoamOff(set.ch, set.board, set.rule, s, mm((rail * k) / 48)), `${name} at ${s}`).toBe(0);
         }
       }
       expect(noRoom, name).toBeGreaterThan(0);
+      // the Midlength's round pin closes to nothing, so there the flat does stand wider than the tail
+      if (id === "midlength") expect(outboard, name).toBeGreaterThan(0);
     }
   });
 
-  it("wherever the set still has real width it is ruled exactly as it always was: abutting from the flat's edge, the last wall keeping its distance off the rail", () => {
-    for (const [id, count, widthInches] of SETS) {
+  it("the set is ruled abutting from the flat's edge at channelRailWidth's width at every station: on the rail — the last wall keeping its distance off it — while that leaves the ease over the narrowest, and held wider than the rail would leave it from there", () => {
+    // the review's sets, an inch wide and under (no ease), and the same boards at their starting Widths (eased)
+    const stock: typeof SETS = SETS.map(([id, count]) => [id, count, CHANNEL_STARTING_WIDTHS[count] / inchesToMm(1)]);
+    for (const [id, count, widthInches] of [...SETS, ...stock]) {
       const set = setOf(id, count, widthInches, OFF);
       const name = nameOf(id, count, widthInches);
-      const { perSide, offRail } = channelFit(set.ch, set.board, set.rule);
-      let ruled = 0;
+      const { perSide, width, offRail } = channelFit(set.ch, set.board, set.rule);
+      const narrowest = Math.min(width, CHANNEL_PINCH);
+      const ease = Math.min(CHANNEL_RAIL_EASE, width - narrowest);
+      let [onTheRail, held] = [0, 0];
       for (const s of stationsToStart(set.ch.start)) {
-        const each = roomAt(set, s) / perSide;
-        if (!(each > CHANNEL_EDGE_MIN)) continue;
-        ruled++;
+        const followed = mm(Math.max(0, roomAt(set, s)) / perSide);
+        const each = channelRailWidth(followed, width);
         const edges = channelEdges(set.ch, set.board, set.rule, s);
         expect(edges.length, `${name} at ${s}`).toBe(perSide);
         edges.forEach(([a, b, j], k) => {
@@ -1871,9 +2142,47 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
           expect(Math.abs(a - (set.ch.offStringer + k * each))).toBeLessThan(TOL);
           expect(Math.abs(b - (set.ch.offStringer + (k + 1) * each))).toBeLessThan(TOL);
         });
-        expect(Math.abs(refAt(set.board, set.rule, s) - edges[perSide - 1][1] - offRail), `${name} at ${s}`).toBeLessThan(TOL);
+        const offTheRail = refAt(set.board, set.rule, s) - edges[perSide - 1][1];
+        if (followed - narrowest >= ease) {
+          onTheRail++;
+          expect(each, `${name} at ${s}`).toBe(followed);
+          expect(Math.abs(offTheRail - offRail), `${name} at ${s}`).toBeLessThan(TOL);
+        } else {
+          held++;
+          expect(each, `${name} at ${s}`).toBeGreaterThanOrEqual(followed);
+          // the last wall has come closer to the rail than its keep — or has run out through it
+          expect(offTheRail, `${name} at ${s}`).toBeLessThanOrEqual(offRail + TOL);
+        }
       }
-      expect(ruled, name).toBeGreaterThan(0);
+      expect(onTheRail, name).toBeGreaterThan(0);
+      expect(held, name).toBeGreaterThan(0);
+    }
+  });
+
+  it("a set an inch wide or under laid With the rail is the Parallel set, wall for wall, from the deepest station back to the tail: it only follows the rail ahead of it, where the board is wider", () => {
+    for (const [id, count, widthInches] of SETS) {
+      for (const off of [mm(0), OFF]) {
+        const set = setOf(id, count, widthInches, off);
+        const name = nameOf(id, count, widthInches);
+        const parallel = { ...set.ch, run: "parallel" as const };
+        const { width } = channelFit(set.ch, set.board, set.rule);
+        expect(width, name).toBeLessThanOrEqual(CHANNEL_PINCH);
+        let [same, wider] = [0, 0];
+        for (const s of stationsToStart(set.ch.start)) {
+          const edges = channelEdges(set.ch, set.board, set.rule, s);
+          const straight = channelEdges(parallel, set.board, set.rule, s);
+          expect(edges.length, `${name} at ${s}`).toBe(straight.length);
+          if (s <= set.ch.deepest) {
+            same++;
+            edges.forEach(([a, b], k) => {
+              expect(Math.abs(a - straight[k][0]), `${name} at ${s}`).toBeLessThan(TOL);
+              expect(Math.abs(b - straight[k][1]), `${name} at ${s}`).toBeLessThan(TOL);
+            });
+          } else if (edges[edges.length - 1][1] > straight[straight.length - 1][1] + TOL) wider++;
+        }
+        expect(same, name).toBeGreaterThan(0);
+        expect(wider, name).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -1903,21 +2212,25 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     }
   });
 
-  it("the litres, the 3D board and the CNC files: no section ends its foam where the same set on the stringer does not, and the foam off is the same within a few hundredths of a litre", () => {
-    for (const [id, count, widthInches] of SETS.filter(([id]) => id !== "fish")) {
+  it("the litres, the 3D board and the CNC files: every section is finite, a section ends its foam only where the same set laid Parallel ends it, and 1/2\" of Off Stringer moves the foam off by no more than a few hundredths of a litre", () => {
+    for (const [id, count, widthInches] of SETS) {
       const name = nameOf(id, count, widthInches);
       const onStringer = setOf(id, count, widthInches, mm(0));
       const offStringer = setOf(id, count, widthInches, OFF);
-      const knifeEdges = (set: ReturnType<typeof setOf>) => {
-        const sections = sectionsOf(set.fields, set.bottom);
+      const knifeEdges = (fields: DesignSummaryFields, bottom: BoardBottom) => {
+        const sections = sectionsOf(fields, bottom);
         for (const section of sections) {
           expect(Number.isFinite(section.area), `${name}: the section at ${section.station}`).toBe(true);
           for (const [y, h] of section.drawn ?? []) expect(Number.isFinite(y) && Number.isFinite(h), `${name}: the section at ${section.station}`).toBe(true);
         }
         return sections.filter((section) => section.railEdgeAt !== undefined).map((section) => section.station);
       };
-      const before = knifeEdges(onStringer);
-      for (const station of knifeEdges(offStringer)) expect(before, `${name}: a knife edge at ${station}`).toContain(station);
+      // Behind the deepest station these sets are the Parallel sets wall for wall (the test above), and ahead of it
+      // the board is thick: so With the rail ends a section's foam at the very stations Parallel does, no others.
+      for (const set of [onStringer, offStringer]) {
+        const parallel: BoardBottom = { ...set.bottom, channels: { ...set.bottom.channels, run: "parallel" } };
+        expect(knifeEdges(set.fields, set.bottom), name).toEqual(knifeEdges(set.fields, parallel));
+      }
       const plain = summarizeDesign(onStringer.fields).volumeLitres;
       const took = (set: ReturnType<typeof setOf>) => plain - summarizeDesign({ ...set.fields, bottom: set.bottom }).volumeLitres;
       const [takenOn, takenOff] = [took(onStringer), took(offStringer)];
