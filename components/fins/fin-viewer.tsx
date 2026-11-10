@@ -26,7 +26,7 @@
  */
 
 import { useDeferredValue, useId, useMemo, useRef } from "react";
-import { RulerDimensionLineIcon } from "lucide-react";
+import { RulerDimensionLineIcon, WavesVerticalIcon } from "lucide-react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
@@ -44,7 +44,7 @@ import {
 import { useDesign } from "@/components/design/design-store";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
-import { useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { COARSE_TOUCH_BOX, useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { scaleDash } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { useUnits } from "@/components/units-provider";
@@ -441,6 +441,13 @@ interface FinViewerProps {
    * pressed while they show (the founder, 2026-10-19: moved here from the sidebar's Settings fold) —
    * given by the FINS screen only. Absent (the Summary's card), no icon row is drawn. */
   onToggleCallouts?: () => void;
+  /** Whether the bottom's contours are drawn under the fins. Off unless the shaper presses the icon (the founder,
+   * 2026-11-09: "let's add a contour toggle icon to FINS with default off"). A view choice like `showCallouts`:
+   * never saved, never an Undo step. Absent (the Summary's card), nothing of the bottom is drawn. */
+  showContours?: boolean;
+  /** Adds the Bottom Contours toggle to the icon row, left of the callouts toggle — drawn only while there is
+   * something to show (this board's own tail, and a bottom with a cut). Given by the FINS screen only. */
+  onToggleContours?: () => void;
   /** The real designed outline (from the shared design store), drawn behind the fin marks in
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
    * values. It is the DRAWN board, rounded wing corners included (quick 261015-u8y, D4: "keep the
@@ -472,6 +479,8 @@ export function FinViewer({
   tailWidth12,
   showCallouts,
   onToggleCallouts,
+  showContours = false,
+  onToggleContours,
   outlineOverride,
   importedTail,
   compact = false,
@@ -487,13 +496,16 @@ export function FinViewer({
   );
 
   // The bottom's contours under the fins (Phase 17, D-23, UI-SPEC §8): BOTTOM's own shade, 1/16" lines and pencil
-  // lines, read-only, painted through `boardToFins` and clipped to the tail. Only while FINS is drawing THIS board's
-  // tail (Import Designed Board ticked, D-37) and the bottom has a cut — a flat board, or the box unticked, adds no
-  // element at all. Every line comes from `lib/geometry/bottom-draw.ts`; nothing about the bottom is worked out here.
-  // The values are deferred so a fin slider stays under the finger while the shade (the heavy part) catches up.
+  // lines, read-only, painted through `boardToFins` and clipped to the tail. There is something to show only while
+  // FINS is drawing THIS board's tail (Import Designed Board ticked, D-37) and the bottom has a cut — and then it is
+  // drawn only once the shaper presses the Bottom Contours icon, which is off when the screen opens (the founder,
+  // 2026-11-09). A flat board, or the box unticked, adds no element at all: no lines and no icon. Every line comes
+  // from `lib/geometry/bottom-draw.ts`; nothing about the bottom is worked out here. The values are deferred so a
+  // fin slider stays under the finger while the shade (the heavy part) catches up.
   const { bottom, resolvedBottom, bottomBoard, finsImportTemplate } = useDesign();
   const contourClipId = useId();
-  const showContour = !compact && finsImportTemplate && bottomHasCut(bottom);
+  const canShowContour = !compact && finsImportTemplate && bottomHasCut(bottom);
+  const showContour = canShowContour && showContours;
   const contourBottom = useDeferredValue(resolvedBottom);
   const contourBoard = useDeferredValue(bottomBoard);
   const contour = useMemo(() => {
@@ -869,8 +881,9 @@ export function FinViewer({
                 )),
               )}
         </svg>
-        {/* The icon row (the FINS screen only): one toggle, the fin placement callouts, pressed while
-            they show — the accent fill ROCKER's own toggles use. */}
+        {/* The icon row (the FINS screen only): the fin placement callouts toggle, pressed while they show —
+            the accent fill ROCKER's own toggles use — and, to its left, the Bottom Contours toggle, there only
+            while this board's tail has a cut to show and not pressed until the shaper presses it. */}
         {onToggleCallouts && (
           <ViewerToolbar>
             <ViewerToolbarButton
@@ -881,6 +894,19 @@ export function FinViewer({
             >
               <RulerDimensionLineIcon className="size-6" />
             </ViewerToolbarButton>
+            {onToggleContours && canShowContour && (
+              <ViewerToolbarButton
+                data-fins-contour-toggle
+                onClick={onToggleContours}
+                pressed={showContours}
+                label={showContours ? "Hide bottom contours" : "Show bottom contours"}
+                // lucide's three wavy lines running up and down — the way the bottom's lines run along the tail
+                // on this drawing. The 44-dot touch box is the one the 3D screen's icons use.
+                className={COARSE_TOUCH_BOX}
+              >
+                <WavesVerticalIcon className="size-6" />
+              </ViewerToolbarButton>
+            )}
           </ViewerToolbar>
         )}
         {/* The zoom row (D8, R2): under the icon row on the FINS screen, in this box's top-right

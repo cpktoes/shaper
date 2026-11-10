@@ -13,9 +13,12 @@ import { goToScreen } from "./helpers/screens";
 /**
  * FINS and the bottom (Phase 17, plan 17-13; D-03, D-23, D-36, D-37).
  *
- * FINS' tail drawing shows the bottom's contours under the fins — BOTTOM's own shade, 1/16" lines and pencil lines,
- * read-only — only while the bottom has a cut and FINS is drawing this board's tail (Import Designed Board ticked). A
- * flat board's FINS gains no element at all.
+ * FINS' tail drawing can show the bottom's contours under the fins — BOTTOM's own shade, 1/16" lines and pencil
+ * lines, read-only. There is something to show only while the bottom has a cut and FINS is drawing this board's tail
+ * (Import Designed Board ticked), and then the drawing's icon row gains a Bottom Contours button. It is off when the
+ * screen opens (the founder, 2026-11-09: "let's add a contour toggle icon to FINS with default off"): until it is
+ * pressed, a board with a cut shows FINS exactly as a flat board's. It is a view choice — nothing is written to the
+ * board and it is not an Undo step. A flat board's FINS gains no element at all, button included.
  *
  * And the fins carry the bottom: a Tail cut's Deepest At and the channels' Start and Deepest At are measured from the
  * front fins, so moving the fins on FINS moves them on BOTTOM — worked out when the bottom is read, with nothing
@@ -140,40 +143,90 @@ const fromTheTail = (station: ReturnType<typeof frontFinsAt>) =>
 
 const contour = (page: Page) => page.locator("[data-fin-plot] [data-fins-contour]");
 const finLines = (page: Page) => page.locator('[data-fin-plot] svg line[stroke*="surf-accent-ink"]');
+/** The Bottom Contours button in FINS' icon row, and the row's other button beside it. */
+const contourToggle = (page: Page) => page.locator("[data-fins-contour-toggle]");
+const calloutsToggle = (page: Page) => page.getByRole("button", { name: /fin placement callouts$/ });
+const toolbarButtons = (page: Page) => page.locator("[data-fin-plot] [data-viewer-toolbar] button");
+/** The parts of the tail drawing itself — every drawn element that is not an icon inside one of the row's buttons. */
+const drawingParts = (page: Page) => page.locator("[data-fin-plot] svg > *:not(button *)");
+const SHOW_CONTOURS = "Show bottom contours";
+const HIDE_CONTOURS = "Hide bottom contours";
+
+/** A toolbar icon's touch size: its laid-out box plus the invisible touch box round it (none on a mouse). */
+async function touchSize(button: Locator): Promise<{ width: number; height: number; drawn: number }> {
+  return button.evaluate((el) => {
+    const b = el as HTMLElement;
+    const after = getComputedStyle(b, "::after");
+    const grow = after.content === "none" || after.position !== "absolute" ? 0 : -parseFloat(after.left || "0");
+    return { width: b.offsetWidth + 2 * grow, height: b.offsetHeight + 2 * grow, drawn: b.offsetWidth };
+  });
+}
 
 test.describe("FINS and the bottom: the contours under the fins, and the fins carrying the tail cut and the channels", () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "BOTTOM's panel is the computer's here; BOTTOM on a phone is 17-14's");
+    const phoneTest = testInfo.title.startsWith("on a phone");
+    test.skip(!phoneTest && testInfo.project.name !== "desktop", "BOTTOM's panel is the computer's here; BOTTOM on a phone is 17-14's");
+    test.skip(phoneTest && testInfo.project.name !== "android", "one phone is enough for the button's touch size");
     test.setTimeout(300_000);
     await dismissStrips(page);
     await forgetOpenBoardOnEveryLoad(page);
   });
 
-  test("a flat board's FINS gains nothing; a Spiral Vee and six channels show under the fins, and go when Import Designed Board is unticked", async ({ page }) => {
+  test("a flat board's FINS gains nothing; with a cut the Bottom Contours button is there and off, draws the bottom under the fins when pressed, and is gone when Import Designed Board is unticked", async ({ page }) => {
     await openShortboardOnBottom(page);
 
-    // Flat: FINS as it has always been — no contour group, and nothing else added for it.
+    // Flat: FINS as it has always been — no contour group, no button for it, and nothing else added.
     await goToScreen(page, "FINS");
     await expect(finLines(page).first()).toBeVisible();
     await expect(contour(page)).toHaveCount(0);
+    await expect(contourToggle(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /bottom contours/i })).toHaveCount(0);
+    await expect(toolbarButtons(page)).toHaveCount(1);
     await expect(page.locator("[data-fin-plot] svg defs")).toHaveCount(0);
     await expect(page.locator("[data-fin-plot] svg clipPath")).toHaveCount(0);
     const flatFinLines = await finLines(page).count();
-    const flatChildren = await page.locator("[data-fin-plot] svg > *").count();
+    const flatChildren = await drawingParts(page).count();
 
     // A Spiral Vee and six channels on BOTTOM.
     await goToScreen(page, "BOTTOM");
     await pick(page, "tail", "Spiral Vee");
     await pickFrom(page, "Channels", "6 channels");
+    await expect.poll(async () => (await keptBottom(page))?.channels.count).toBe(6);
 
-    // FINS draws them under the fins.
+    // FINS with a cut, before anything is pressed: the drawing is a flat board's, and the button is there, not pressed.
     await goToScreen(page, "FINS");
+    await expect(finLines(page).first()).toBeVisible();
+    const toggle = contourToggle(page);
+    await expect(toggle).toHaveCount(1);
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).toHaveAccessibleName(SHOW_CONTOURS);
+    await expect(toggle).toHaveAttribute("title", SHOW_CONTOURS);
+    await expect(contour(page)).toHaveCount(0);
+    await expect(page.locator("[data-fin-plot] svg defs")).toHaveCount(0);
+    expect(await drawingParts(page).count(), "the drawing is a flat board's until the button is pressed").toBe(flatChildren);
+    expect(await finLines(page).count()).toBe(flatFinLines);
+    // the button is one of the row's own: the same size as the callouts button, on the same line, to its left
+    await expect(toolbarButtons(page)).toHaveCount(2);
+    const toggleBox = (await toggle.boundingBox())!;
+    const calloutsBox = (await calloutsToggle(page).boundingBox())!;
+    expect(toggleBox.width).toBe(calloutsBox.width);
+    expect(toggleBox.height).toBe(calloutsBox.height);
+    expect(toggleBox.y).toBe(calloutsBox.y);
+    expect(toggleBox.x + toggleBox.width, "left of the callouts button").toBeLessThan(calloutsBox.x);
+    await expect(calloutsToggle(page)).toHaveAttribute("aria-pressed", "true");
+
+    // Pressed: FINS draws the bottom under the fins — and the board is not written.
+    const keptBeforePress = await storedOpenBoard(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toHaveAccessibleName(HIDE_CONTOURS);
     await expect(contour(page)).toHaveCount(1);
     expect(await contour(page).locator("[data-fins-contour-shade] path").count(), "the shade, level by level").toBeGreaterThan(0);
     expect(await contour(page).locator("[data-fins-contour-line]").count(), 'the 1/16" lines').toBeGreaterThan(0);
     expect(await contour(page).locator('[data-fins-contour-pencil="wall"]').count(), "the channel walls").toBeGreaterThan(0);
     // exactly the group and its clip were added; the fins are the same fins
-    expect(await page.locator("[data-fin-plot] svg > *").count()).toBe(flatChildren + 2);
+    expect(await drawingParts(page).count()).toBe(flatChildren + 2);
     expect(await finLines(page).count()).toBe(flatFinLines);
 
     const facts = await contour(page).evaluate((group) => {
@@ -201,16 +254,86 @@ test.describe("FINS and the bottom: the contours under the fins, and the fins ca
     expect(facts.pointerEvents).toBe("none");
     expect(facts.text).toBe(0);
     expect(facts.drawn).toBe(true);
+    // a view choice, not part of the board: the copy this browser keeps is word for word what it was
+    expect(await storedOpenBoard(page), "pressing the button writes nothing to the board").toEqual(keptBeforePress);
 
-    // Import Designed Board unticked: FINS' tail is no longer this board's, so nothing of its bottom is drawn (D-37).
+    // Pressed again: gone, and the drawing is a flat board's once more. Then on again.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).toHaveAccessibleName(SHOW_CONTOURS);
+    await expect(contour(page)).toHaveCount(0);
+    await expect(page.locator("[data-fin-plot] svg clipPath")).toHaveCount(0);
+    expect(await drawingParts(page).count()).toBe(flatChildren);
+    expect(await storedOpenBoard(page)).toEqual(keptBeforePress);
+    await toggle.click();
+    await expect(contour(page)).toHaveCount(1);
+
+    // The other tab and back: still on, like the callouts beside it.
+    await page.getByRole("tab", { name: "DATA", exact: true }).click();
+    await expect(page.locator("[data-fin-plot]")).toHaveCount(0);
+    await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+    await expect(contourToggle(page)).toHaveAttribute("aria-pressed", "true");
+    await expect(contour(page)).toHaveCount(1);
+
+    // Not an Undo step: one Undo takes back the last change to the BOARD (the six channels), not the button — the
+    // walls go, the vee's shade stays, and the button is still pressed.
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect.poll(async () => (await keptBottom(page))?.channels.count).not.toBe(6);
+    await expect(contourToggle(page)).toHaveAttribute("aria-pressed", "true");
+    await expect(contour(page)).toHaveCount(1);
+    await expect(contour(page).locator('[data-fins-contour-pencil="wall"]')).toHaveCount(0);
+    expect(await contour(page).locator("[data-fins-contour-shade] path").count()).toBeGreaterThan(0);
+
+    // Import Designed Board unticked: FINS' tail is no longer this board's, so nothing of its bottom is drawn and
+    // there is no button to press (D-37). Ticked again, the button is back as it was left.
     const box = page.getByRole("checkbox", { name: "Import Designed Board" });
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "false");
     await expect(contour(page)).toHaveCount(0);
+    await expect(contourToggle(page)).toHaveCount(0);
+    await expect(toolbarButtons(page)).toHaveCount(1);
     await expect(page.locator("[data-fin-plot] svg clipPath")).toHaveCount(0);
     await box.click();
     await expect(box).toHaveAttribute("aria-checked", "true");
+    await expect(contourToggle(page)).toHaveAttribute("aria-pressed", "true");
     await expect(contour(page)).toHaveCount(1);
+
+    // Leaving FINS and coming back: off again, the way the screen opens.
+    await goToScreen(page, "BOTTOM");
+    await goToScreen(page, "FINS");
+    await expect(finLines(page).first()).toBeVisible();
+    await expect(contourToggle(page)).toHaveAttribute("aria-pressed", "false");
+    await expect(contour(page)).toHaveCount(0);
+  });
+
+  test("on a phone the Bottom Contours button starts off, takes a 44-dot touch, and a tap draws the bottom under the fins", async ({ page }) => {
+    await openShortboardOnBottom(page);
+    await pick(page, "tail", "Spiral Vee");
+    await expect.poll(async () => (await keptBottom(page))?.tail.name).toBe("Spiral Vee");
+
+    await goToScreen(page, "FINS");
+    await expect(finLines(page).first()).toBeVisible();
+    const toggle = contourToggle(page);
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).toHaveAccessibleName(SHOW_CONTOURS);
+    await expect(contour(page)).toHaveCount(0);
+
+    // Drawn the size of the row's other button, with an invisible touch box round it reaching 44 dots.
+    const size = await touchSize(toggle);
+    const callouts = (await calloutsToggle(page).boundingBox())!;
+    expect(size.drawn).toBe(callouts.width);
+    expect(size.width).toBeGreaterThanOrEqual(44);
+    expect(size.height).toBeGreaterThanOrEqual(44);
+
+    await toggle.tap();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toHaveAccessibleName(HIDE_CONTOURS);
+    await expect(contour(page)).toHaveCount(1);
+    expect(await contour(page).locator("[data-fins-contour-shade] path").count()).toBeGreaterThan(0);
+    await toggle.tap();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(contour(page)).toHaveCount(0);
   });
 
   test("moving the front fins 1\" toward the nose on FINS moves the tail cut's Deepest At and the channels' Start and Deepest At with them; a Center cut stays", async ({ page }) => {
