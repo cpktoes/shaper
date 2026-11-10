@@ -233,12 +233,28 @@ crafted values. **T-17-08** (re-saving an old board): no bottom is written unles
 5, and a key-for-key re-save test holds it. **T-17-09** (the report): ids and litres only, read-only, and never run by
 the build. No new page address, sign-in path or file access was added.
 
-## Saved-boards report (development branch): Pending — the orchestrator runs it with the founder
+## Saved-boards report (development branch): Run 2026-11-09 — every board opens flat, litres unchanged
 
-Not run by this build. The command forms are in the header of `scripts/check-saved-boards.ts`. What it prints: a first
-line `bottom report: N saved boards; k open…; c with a cut; m whose litres differ from today's`, one line per board
-(`<id>: opens · no cut — <litres> L (same as today)`), and a last line `every saved board opens flat, with the litres
-it reads today: yes` — or `no — N to look at`. The flag never changes the check's own pass or fail.
+The founder ran the read-only check in his own terminal against the development copy of the database, from the phase branch after 17-12 merged (8094b2bf). It wrote nothing. Its output, whole:
+
+```
+saved boards: 9 (v1 5, v2 0, v3 0, v4 1, v5 3); open: 9 of 9
+Phase 11 boards with a blank: 1; five station thicknesses kept: 1 of 1
+carried boards that no longer fit where they sit: 1 of 1
+bottom report: 9 saved boards; 9 open; 0 with a cut; 0 whose litres differ from today's
+3c16edc3-c303-49a9-94a4-955ea1227092: opens · no cut — 20.29 L (same as today)
+bae9ce3c-aa7d-44df-85c7-05219a1ee034: opens · no cut — 30.61 L (same as today)
+1f9c3fba-f3e3-4f42-8a14-71234726e552: opens · no cut — 30.56 L (same as today)
+cb1cf2e4-52a6-41c5-857a-933243c08cd9: opens · no cut — 41.50 L (same as today)
+47747951-7807-452e-b605-060fc28c998e: opens · no cut — 64.20 L (same as today)
+eb03016a-1d60-4f95-8e2a-1d912750005c: opens · no cut — 44.08 L (same as today)
+b1c54735-e46e-4a0d-bad9-043c97b01714: opens · no cut — 30.29 L (same as today)
+7283c56f-40da-464d-a272-bbbc565a45a2: opens · no cut — 54.65 L (same as today)
+37e82b96-39d6-4f86-9bba-1c9a6acb6dfe: opens · no cut — 47.86 L (same as today)
+every saved board opens flat, with the litres it reads today: yes
+```
+
+The same check is run against production by the founder before go-live (17-16).
 
 ## Founder's look: Approved (2026-11-09)
 
