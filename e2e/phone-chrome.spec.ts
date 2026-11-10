@@ -293,6 +293,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // DATASHEET keeps an 8px reading margin.
     await datasheetTab.click();
@@ -343,6 +345,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     await datasheetTab.click();
     await expect(page.locator("[data-viewer-panel]")).toHaveCSS("padding-left", "8px");
@@ -385,6 +389,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // The Undo/Redo pair appears once there is something to take back (Alternative A: over the corner).
     const slider = page.locator("aside [data-slot='slider-thumb'] input[type='range']").first();
@@ -437,6 +443,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -493,6 +501,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // Nothing scrolls sideways.
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -538,6 +548,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
@@ -576,6 +588,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // TEMPLATE sideways repeats the Undo/Redo check: under Alternative A the pair floats over the
     // drawing's corner on every drawing screen, not only ROCKER's.
@@ -629,6 +643,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1024,6 +1040,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // The phone-only NOSE/CENTER/TAIL switch, visible on VIEWER (the default tab) only upright.
     const noseTab = page.getByRole("tab", { name: "NOSE" });
@@ -1090,6 +1108,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const noseTab = page.getByRole("tab", { name: "NOSE" });
     const centerTab = page.getByRole("tab", { name: "CENTER" });
@@ -1144,6 +1164,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -1180,6 +1202,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1188,11 +1212,13 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
 
 /** Every one of the five design screens, for the iPad-like and computer checks below — `tabs`
  * empty means a non-interactive single label, with nothing to tap (none today: TEMPLATE until quick
- * 261014-wii gave it a WINGS tab, VOLUME until Phase 18 gave it GUIDE). */
+ * 261014-wii gave it a WINGS tab, VOLUME until Phase 18 gave it GUIDE). Since Phase 18 every page's
+ * strip ends in GUIDE (plan 18-08 added it to TEMPLATE, ROCKER and RAILS here). These sizes are all the
+ * desktop shell, so ROCKER's tabs keep their full words (DATASHEET, not DATA). */
 const ALL_FIVE_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
-  { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS"] },
-  { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
-  { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
+  { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS", "GUIDE"] },
+  { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET", "GUIDE"] },
+  { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS", "GUIDE"] },
   { path: "/design/volume", label: "VOLUME", tabs: ["ESTIMATE", "GUIDE"] },
   { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "GUIDE"] },
 ];

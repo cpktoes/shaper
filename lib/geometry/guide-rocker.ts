@@ -814,13 +814,25 @@ export function buildRockerGuide(input: RockerGuideInput, system: UnitsSystem): 
   });
   {
     const pushes = pushesOf(ids.placement);
+    // A board well short of its blank (a longboard cut down in its own blank) leaves more foam past a tip
+    // than a pair window shows past it; the window then moves out until the blank's own end, and a little
+    // foam beyond it, is inside, so the spare's dimension and its figure stay in the window (plan 18-08).
+    const placementWin = (end: TipEnd): WindowAt => {
+      const win = pairTip(end);
+      if (!view) return win;
+      const { s0, s1 } = rockerWindowRange(win, L);
+      const reach = frame.markReach;
+      if (end === "nose" && view.end + reach > s1) return { ...win, at: mm(view.end + reach - win.span / 2) };
+      if (end === "tail" && view.start - reach < s0) return { ...win, at: mm(view.start - reach + win.span / 2) };
+      return win;
+    };
     cards.push({
       id: ids.placement,
       tag: view ? valueTag(formatPlacement(view.placement, system)) : GUIDE_NO_TAG,
       caption: pushPlan[ids.placement].caption,
       figure: figure(base, [
-        one(pairTip("nose"), pushes, (ctx) => spareDim(ctx, "nose", system), true),
-        one(pairTip("tail"), pushes, (ctx) => spareDim(ctx, "tail", system), true),
+        one(placementWin("nose"), pushes, (ctx) => spareDim(ctx, "nose", system), true),
+        one(placementWin("tail"), pushes, (ctx) => spareDim(ctx, "tail", system), true),
       ]),
     });
   }

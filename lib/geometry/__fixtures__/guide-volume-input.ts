@@ -15,6 +15,7 @@ import {
   designCrossSectionInput,
   designSideProfile,
   LIVE_DESIGN_RULES,
+  type DesignSummaryFields,
 } from "../design";
 import type { VolumeGuideInput } from "../guide-volume";
 import { buildOutline } from "../outline";
@@ -22,12 +23,11 @@ import { BOARD_PRESETS, type BoardPreset } from "../presets";
 import { computeRailBands } from "../rail-bands";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC, type VolumeSpec } from "../volume";
 
-/** The store's VOLUME inputs for a preset as its card opens it, with an optional change to the stored
- * quick-estimate settings (Import Designed Board unticked, a slider moved). */
-export function guideVolumeInput(presetId: BoardPreset["id"], volume: Partial<VolumeSpec> = {}): VolumeGuideInput {
-  const preset = BOARD_PRESETS.find((p) => p.id === presetId);
-  if (!preset) throw new Error(`no preset ${presetId}`);
-  const fields = presetDesignFields(preset);
+/** The store's VOLUME inputs for a board's fields, memo for memo, with the stored quick-estimate settings. */
+export function volumeGuideInputFromFields(
+  fields: Pick<DesignSummaryFields, "outline" | "rocker" | "foil" | "blank" | "rails">,
+  volume: Partial<VolumeSpec> = {},
+): VolumeGuideInput {
   const storedVolume: VolumeSpec = { ...DEFAULT_VOLUME_SPEC, ...volume };
   const outlineGeometry = buildOutline(fields.outline);
   const sideProfile = designSideProfile(fields, LIVE_DESIGN_RULES);
@@ -50,4 +50,12 @@ export function guideVolumeInput(presetId: BoardPreset["id"], volume: Partial<Vo
     quotedVolumeLitres: deriveQuotedVolumeLitres(volumeResult, crossSection, volumeResult.importingTemplate),
     importing: storedVolume.importTemplateDimensions,
   };
+}
+
+/** The store's VOLUME inputs for a preset as its card opens it, with an optional change to the stored
+ * quick-estimate settings (Import Designed Board unticked, a slider moved). */
+export function guideVolumeInput(presetId: BoardPreset["id"], volume: Partial<VolumeSpec> = {}): VolumeGuideInput {
+  const preset = BOARD_PRESETS.find((p) => p.id === presetId);
+  if (!preset) throw new Error(`no preset ${presetId}`);
+  return volumeGuideInputFromFields(presetDesignFields(preset), volume);
 }

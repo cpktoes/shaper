@@ -226,7 +226,7 @@ describe("no Metric line on any card or intro carries an inch or a foot", () => 
 const placed = (change: Partial<FinPlacementSpec>) => computeFinPlacement({ ...DEFAULT_FIN_PLACEMENT_SPEC, ...change });
 const markM = (value: Mm) => formatMark(value, "metric");
 const inchMark = (inches: number) => markM(inchesToMm(inches));
-/** A range a MODEL INFO note gives in inches, read off the note `fins.ts` itself writes. */
+/** A range a FINS card's Model info note gives in inches, read off the note `fins.ts` itself writes. */
 const noteRange = (note: string, pattern: RegExp): [number, number] => {
   const m = pattern.exec(note);
   if (!m) throw new Error(`${pattern} is not in "${note}"`);

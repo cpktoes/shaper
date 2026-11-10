@@ -9,7 +9,7 @@ import type { GuideViewCard } from "./guide-view";
 /**
  * One GUIDE card (Phase 18, D-05 to D-10; UI-SPEC §3), dressed as Phase 17's: the name with the board's
  * own value (or `On this board`) beside it, the drawing of the open board with its caption, the two
- * sentences, the MODEL INFO note where FINS has one, and the How to shape note under a dashed rule.
+ * sentences, the Model info note where a FINS card has one, and the How to shape note under a dashed rule.
  *
  * A card is words and a picture, never a control: nothing on it can be pressed or focused, and nothing on
  * it changes the board. It is drawn again only when its own tag, caption, drawing or words change.

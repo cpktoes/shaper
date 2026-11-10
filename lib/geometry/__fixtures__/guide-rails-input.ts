@@ -5,7 +5,7 @@
  * Foil Values ticked). Nothing here is a typed number: every value comes out of the app's maths.
  */
 import { presetDesignFields } from "../../blanks/preset-blanks";
-import { deriveEffectiveRails, designSideProfile, LIVE_DESIGN_RULES } from "../design";
+import { deriveEffectiveRails, designSideProfile, LIVE_DESIGN_RULES, type DesignSummaryFields } from "../design";
 import type { RailsGuideInput } from "../guide-rails";
 import { buildOutline } from "../outline";
 import { BOARD_PRESETS, type BoardPreset } from "../presets";
@@ -13,7 +13,7 @@ import { computeRailBands, type RailBandSpec } from "../rail-bands";
 
 /** The store's RAILS inputs for a board's fields: the rails as stored, the foil they may import from. */
 export function railsGuideInputFromFields(
-  fields: ReturnType<typeof presetDesignFields>,
+  fields: Pick<DesignSummaryFields, "outline" | "rocker" | "foil" | "blank" | "rails">,
   railsImportFoilThickness = true,
 ): RailsGuideInput {
   const outlineGeometry = buildOutline(fields.outline);

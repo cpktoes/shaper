@@ -29,7 +29,7 @@ export const GUIDE_COPY = {
   onThisBoard: "On this board",
   /** The label over a card's shaping note. */
   howToShape: "How to shape",
-  /** The label over a FINS card's MODEL INFO note. */
+  /** The label over a FINS card's Model info note (the fourteen notes that live on FINS' GUIDE cards). */
   modelInfo: "Model info",
   /** The scroller's spoken name: `Guide to Volume`. */
   regionLabel(page: GuidePage): string {
@@ -45,7 +45,7 @@ export type GuideWordsCard = {
   name: string;
   is: string;
   does: string;
-  /** FINS' MODEL INFO note; `null` on every other card. */
+  /** The Model info note on fourteen of FINS' GUIDE cards; `null` on every other card. */
   info: string | null;
   how: string;
 };
