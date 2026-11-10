@@ -25,16 +25,26 @@
  * keyed to `result.legend`'s Front/Rear/Center dash — see the inline comment at that line.
  */
 
-import { useMemo, useRef } from "react";
+import { useDeferredValue, useId, useMemo, useRef } from "react";
 import { RulerDimensionLineIcon } from "lucide-react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
 import type { Point2D } from "@/lib/geometry/board";
+import { bottomHasCut } from "@/lib/geometry/bottom";
+import {
+  bottomContourLines,
+  bottomPencilLines,
+  bottomShadeBands,
+  polylinesPathData,
+  shadePathData,
+  type BoardToDrawing,
+} from "@/lib/geometry/bottom-draw";
+import { useDesign } from "@/components/design/design-store";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
-import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
-import { useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
+import { BottomContoursIcon, ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
+import { COARSE_TOUCH_BOX, useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { scaleDash } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
 import { useUnits } from "@/components/units-provider";
@@ -86,6 +96,17 @@ function toPxX(xIn: number): number {
 function toPxY(offTailIn: number): number {
   return TAIL_Y - offTailIn * SCALE;
 }
+
+/** Board millimetres (a station from the tail, a distance across from the stringer) onto this drawing — the one map the
+ * bottom's contours are painted through (Phase 17, D-23). */
+const boardToFins: BoardToDrawing = (station, across) => ({
+  x: toPxX(mmToInches(mm(across))),
+  y: toPxY(mmToInches(mm(station))),
+});
+
+/** How strongly one 1/32" level of the bottom's shade paints — BOTTOM's own figure (`bottom-top-view.tsx`), so the same
+ * cut reads the same grey on both pages. */
+const CONTOUR_SHADE_OPACITY = 0.04;
 
 /** Ported from `catmullPath` (Fins.dc.html lines 753-766). */
 function catmullPath(pts: [number, number][]): string {
@@ -420,6 +441,13 @@ interface FinViewerProps {
    * pressed while they show (the founder, 2026-10-19: moved here from the sidebar's Settings fold) —
    * given by the FINS screen only. Absent (the Summary's card), no icon row is drawn. */
   onToggleCallouts?: () => void;
+  /** Whether the bottom's contours are drawn under the fins. Off unless the shaper presses the icon (the founder,
+   * 2026-11-09: "let's add a contour toggle icon to FINS with default off"). A view choice like `showCallouts`:
+   * never saved, never an Undo step. Absent (the Summary's card), nothing of the bottom is drawn. */
+  showContours?: boolean;
+  /** Adds the Bottom Contours toggle to the icon row, left of the callouts toggle — drawn only while there is
+   * something to show (this board's own tail, and a bottom with a cut). Given by the FINS screen only. */
+  onToggleContours?: () => void;
   /** The real designed outline (from the shared design store), drawn behind the fin marks in
    * place of the polynomial tail-shape fallback, when the fins screen is importing template
    * values. It is the DRAWN board, rounded wing corners included (quick 261015-u8y, D4: "keep the
@@ -451,6 +479,8 @@ export function FinViewer({
   tailWidth12,
   showCallouts,
   onToggleCallouts,
+  showContours = false,
+  onToggleContours,
   outlineOverride,
   importedTail,
   compact = false,
@@ -464,6 +494,38 @@ export function FinViewer({
     () => buildOutlinePaths(tailShape, tailWidth12, outlineOverride ?? undefined),
     [tailShape, tailWidth12, outlineOverride],
   );
+
+  // The bottom's contours under the fins (Phase 17, D-23, UI-SPEC §8): BOTTOM's own shade, 1/16" lines and pencil
+  // lines, read-only, painted through `boardToFins` and clipped to the tail. There is something to show only while
+  // FINS is drawing THIS board's tail (Import Designed Board ticked, D-37) and the bottom has a cut — and then it is
+  // drawn only once the shaper presses the Bottom Contours icon, which is off when the screen opens (the founder,
+  // 2026-11-09). A flat board, or the box unticked, adds no element at all: no lines and no icon. Every line comes
+  // from `lib/geometry/bottom-draw.ts`; nothing about the bottom is worked out here. The values are deferred so a
+  // fin slider stays under the finger while the shade (the heavy part) catches up.
+  const { bottom, resolvedBottom, bottomBoard, finsImportTemplate } = useDesign();
+  const contourClipId = useId();
+  const canShowContour = !compact && finsImportTemplate && bottomHasCut(bottom);
+  const showContour = canShowContour && showContours;
+  const contourBottom = useDeferredValue(resolvedBottom);
+  const contourBoard = useDeferredValue(bottomBoard);
+  const contour = useMemo(() => {
+    if (!showContour) return null;
+    return {
+      shade: bottomShadeBands(contourBottom, contourBoard).map((level) => ({
+        index: level.index,
+        d: shadePathData(level.rects, boardToFins),
+      })),
+      lines: bottomContourLines(contourBottom, contourBoard).map((level) => ({
+        index: level.index,
+        d: polylinesPathData(level.lines, boardToFins),
+      })),
+      pencil: bottomPencilLines(contourBottom, contourBoard, null).map((line) => ({
+        key: `${line.column}:${line.kind}`,
+        kind: line.kind,
+        d: polylinesPathData(line.runs, boardToFins),
+      })),
+    };
+  }, [showContour, contourBottom, contourBoard]);
 
   const marksGeom: MarkGeom[] = useMemo(
     () =>
@@ -662,6 +724,40 @@ export function FinViewer({
             />
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2 * zoomUnit} />
+            {/* The bottom's contours, between the board's fill and the reference lines, so the fins and every
+                callout stay on top (UI-SPEC §8). Nothing here is live and nothing is a control: every line is the
+                pencil grey, no cutting line, no names. Not rendered at all for a flat board. */}
+            {contour && (
+              <>
+                <defs>
+                  <clipPath id={contourClipId}>
+                    <path d={filled} />
+                  </clipPath>
+                </defs>
+                <g data-fins-contour clipPath={`url(#${contourClipId})`} pointerEvents="none">
+                  <g data-fins-contour-shade fill="var(--outline-bottom-shade)" fillOpacity={CONTOUR_SHADE_OPACITY}>
+                    {contour.shade.map((level) => (
+                      <path key={level.index} d={level.d} />
+                    ))}
+                  </g>
+                  <g fill="none" stroke="var(--outline-pencil-line)" strokeWidth={zoomUnit}>
+                    {contour.lines.map((level) => (
+                      <path key={level.index} data-fins-contour-line={level.index} d={level.d} />
+                    ))}
+                    {contour.pencil.map((line) => (
+                      <path
+                        key={line.key}
+                        data-fins-contour-pencil={line.kind}
+                        d={line.d}
+                        strokeDasharray={
+                          line.kind === "trough" ? zoomDashToken("--outline-trough-dash", zoomUnit) : undefined
+                        }
+                      />
+                    ))}
+                  </g>
+                </g>
+              </>
+            )}
             {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
                 line is a derived station (station dash) — the input value itself lives in the
                 sidebar, not repeated here (outputs only, sketch 002). */}
@@ -785,8 +881,10 @@ export function FinViewer({
                 )),
               )}
         </svg>
-        {/* The icon row (the FINS screen only): one toggle, the fin placement callouts, pressed while
-            they show — the accent fill ROCKER's own toggles use. */}
+        {/* The icon row (the FINS screen only): the fin placement callouts toggle, pressed while they show —
+            the accent fill ROCKER's own toggles use — and, to its left, the Bottom Contours toggle, there only
+            while this board's tail has a cut to show and not pressed until the shaper presses it. Both take
+            the 44-dot touch box the 3D screen's icons use, so the pair is the same under a thumb. */}
         {onToggleCallouts && (
           <ViewerToolbar>
             <ViewerToolbarButton
@@ -794,9 +892,22 @@ export function FinViewer({
               pressed={showCallouts}
               label={showCallouts ? "Hide fin placement callouts" : "Show fin placement callouts"}
               title="Fin Placement Callouts"
+              className={COARSE_TOUCH_BOX}
             >
               <RulerDimensionLineIcon className="size-6" />
             </ViewerToolbarButton>
+            {onToggleContours && canShowContour && (
+              <ViewerToolbarButton
+                data-fins-contour-toggle
+                onClick={onToggleContours}
+                pressed={showContours}
+                label={showContours ? "Hide bottom contours" : "Show bottom contours"}
+                className={COARSE_TOUCH_BOX}
+              >
+                {/* A scrap of a depth chart, drawn in the shared toolbar module beside the app's other glyphs. */}
+                <BottomContoursIcon className="size-6" />
+              </ViewerToolbarButton>
+            )}
           </ViewerToolbar>
         )}
         {/* The zoom row (D8, R2): under the icon row on the FINS screen, in this box's top-right
