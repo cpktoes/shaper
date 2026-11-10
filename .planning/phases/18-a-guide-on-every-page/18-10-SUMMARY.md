@@ -98,6 +98,15 @@ Exactly five changed (TEMPLATE, ROCKER, RAILS, VOLUME, FINS); 3D did not. Measur
 5. LW-05 — whether a drawing's caption is read to a screen reader.
 6. VOLUME's ESTIMATE card one dot lower on a computer.
 
+## The founder's rulings, 2026-11-10, after trying the live site on his phone
+
+- **The board's name (D-21):** "Leave it off." The name stays off narrow ROCKER and RAILS strips; every tab word stays whole.
+- **How fast a GUIDE opens (D-28):** "Fast enough, leave it." The quicker opening is not built.
+- **The inch rocker code in Metric (MD-02):** "Keep the inch code." Nothing on screen changes; CLAUDE.md Rule 2 now names
+  the Customize Rocker GUIDE card among the places that code shows.
+
+Points 1, 5 and 6 above stay his, with no deadline: the words are his to edit at any time.
+
 ## Follow-ups, not this phase
 
 - Two older checks fail under Turbopack's dev server only (`board-file.spec.ts:85`, `three-d-wire.spec.ts:178`).
