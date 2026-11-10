@@ -292,6 +292,8 @@ const TOP_DIM_BAND = GUIDE_TEXT_UNITS_MAX + 4;
 const BOTTOM_DIM_BAND = 4 + 3 + 1.1 * GUIDE_TEXT_UNITS_MAX + 1;
 /** The room kept right of the rail for a vertical dimension's label. */
 const LABEL_GUTTER = 84;
+/** How far inside the rail's line the tail's hard edge is drawn on the plan, in drawing units. */
+const EDGE_INSET = 2.5;
 
 /** The three stations a rail is cut at: the tail 12", the centre, the nose 12". */
 function stationsOf(length: number): Record<RailSectionKey, number> {
@@ -516,7 +518,8 @@ function blendsFigure(input: RailsGuideInput, pushedPair: { blendsFrom: Mm; ends
     for (const p of g.points) if (p.station >= s0 && p.station <= s1) out.push({ x: p.station, y: guideHalfWidthAt(g.points, p.station) });
     out.unshift({ x: s0, y: guideHalfWidthAt(g.points, s0) });
     out.push({ x: s1, y: guideHalfWidthAt(g.points, s1) });
-    return out.map((p, i) => `${i ? "L" : "M"}${f1(X(p.x))} ${f1(Y(p.y))}`).join("");
+    // Drawn just inside the rail's own line, so the edge reads as its own line beside the outline.
+    return out.map((p, i) => `${i ? "L" : "M"}${f1(X(p.x))} ${f1(Y(p.y) + EDGE_INSET)}`).join("");
   };
   if (input.effectiveRails.tailHardEdge) {
     prims.push({ kind: "path", role: "band", band: "hardEdge", d: along(Math.max(0, g.points[0]?.station ?? 0), from) });

@@ -14,10 +14,11 @@ import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { RailDataTable } from "./rail-data-table";
 import { RailInstructions } from "./rail-instructions";
+import { RailsGuide } from "@/components/guide/rails-guide";
 import { RailKeySwatch, RailPlotZoom, RailSectionPlot, buildRailLegend, computeRailPlotBounds } from "./rail-section-plot";
 import { ViewFullSizedDialog, firstOpenSection } from "./view-full-sized-dialog";
 
-type RailPage = "viewer" | "data" | "instructions";
+type RailPage = "viewer" | "data" | "instructions" | "guide";
 
 const SECTION_KEYS: RailSectionKey[] = ["nose", "center", "tail"];
 const SECTION_TITLE: Record<RailSectionKey, string> = { nose: "Nose", center: "Center", tail: "Tail" };
@@ -285,7 +286,9 @@ export function RailBandEditor() {
       // this column sits BESIDE the reading exactly as it does for a mouse. Whether that's right in
       // the hand for a phone -- rather than for a real desktop -- is left for the founder's
       // real-device sweep to judge, the same as the desktop question above; it is not decided here.
-      phonePinned={activePage === "instructions" ? "none" : "50dvh"}
+      // Phase 18 (D-15): GUIDE pins the drawing area at two thirds of a phone's screen, as every page's GUIDE
+      // does, and its cards scroll inside it; leaving GUIDE gives back RAILS' own pin exactly as above.
+      phonePinned={activePage === "instructions" ? "none" : activePage === "guide" ? "66dvh" : "50dvh"}
       controls={
         <div className={activePage === "instructions" ? "max-shell:hidden" : undefined}>
           {/* Quick 261005-big (the founder's request, 2026-10-05: "on screens that put the rails on
@@ -339,6 +342,7 @@ export function RailBandEditor() {
             { id: "viewer" as const, label: "VIEWER" },
             { id: "data" as const, label: "DATA" },
             { id: "instructions" as const, label: "INSTRUCTIONS" },
+            { id: "guide" as const, label: "GUIDE" },
           ]}
           active={activePage}
           onSelect={setActivePage}
@@ -584,6 +588,8 @@ export function RailBandEditor() {
         )}
 
         {activePage === "instructions" && <RailInstructions />}
+
+        {activePage === "guide" && <RailsGuide />}
         </TabbedPanel>
       }
     />
