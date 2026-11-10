@@ -183,7 +183,7 @@ guide page, we don't need both."*): the Depth card says it is a diamond's or a s
 tagged so and draws the board as a swallow in dashes; FINS' GUIDE runs setup by setup — a Convention card first (MODEL INFO's
 trailing-edge paragraph, drawn with its three measurements), then Single Fin, Twin, Thruster, 2+1 and Quad, each the setup's
 own card and then its models or templates, with MODEL INFO's notes verbatim on the cards they describe — and the MODEL INFO
-tab is gone (VIEWER · DATA · GUIDE). 84 cards.
+tab is gone (VIEWER · DATA · GUIDE). 84 cards. **Decided 2026-11-09** — the founder: *"Let's build this and go live"*; built as Phase 18.
 
 ## Reference Points
 
@@ -217,7 +217,7 @@ tab is gone (VIEWER · DATA · GUIDE). 84 cards.
 | 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | C | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
 | 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | **B — Inside Tail** (the founder, 2026-11-07, with: none to start, Parallel, the wing rule a selector on Narrowest) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
 | 021 | bottom-guide | With the founder's rulings of 2026-11-07 built in — channels inside TAIL, none to start, Parallel, the wing rule a selector — how does a third GUIDE tab teach what each of the 18 cuts and the channels is and does, a cartoon and a sentence or two each, so the five vees read apart? | — (with the founder) | bottom, guide, contours, channels, wings, cartoons, tabs, sidebar, phone, units, themes |
-| 022 | page-guides | The founder on 021's GUIDE: "every page needs a guide like this." What is a control's card, against a cut's — one card per control or named choice, the board the shaper has open drawn the page's own way with that one setting pushed, two sentences and a How to shape note — on ROCKER first, then TEMPLATE, RAILS, VOLUME and FINS, and does GUIDE sit as each page's last tab, on a phone too? | — (with the founder) | guide, template, rocker, rails, volume, fins, cartoons, tabs, sidebar, phone, units, themes, blank, foil, wings |
+| 022 | page-guides | The founder on 021's GUIDE: "every page needs a guide like this." What is a control's card, against a cut's — one card per control or named choice, the board the shaper has open drawn the page's own way with that one setting pushed, two sentences and a How to shape note — on ROCKER first, then TEMPLATE, RAILS, VOLUME and FINS, and does GUIDE sit as each page's last tab, on a phone too? | the sketch as built, rounds 1–3 (the founder, 2026-11-09: "Let's build this and go live" → Phase 18) | guide, template, rocker, rails, volume, fins, cartoons, tabs, sidebar, phone, units, themes, blank, foil, wings |
 
 ## Decisions These Lock In
 

@@ -2,7 +2,7 @@
 sketch: 022
 name: page-guides
 question: "The founder on 021's GUIDE: \"every page needs a guide like this.\" What is a control's card, against a cut's — one card per control or named choice, the board the shaper has open drawn the page's own way with that one setting pushed, two sentences and a How to shape note — on ROCKER first (round one), then TEMPLATE, RAILS, VOLUME and FINS (round two), and does GUIDE sit as each page's last tab, on a phone too?"
-winner: null
+winner: "the sketch as built, rounds one to three — the founder, 2026-11-09: \"Let's build this and go live\" (Phase 18)"
 builds_on: 021
 tags: [guide, template, rocker, rails, volume, fins, cartoons, tabs, sidebar, phone, units, themes, blank, foil, wings]
 ---
@@ -10,6 +10,11 @@ tags: [guide, template, rocker, rails, volume, fins, cartoons, tabs, sidebar, ph
 # Sketch 022: A GUIDE on every page
 
 ## Design Question
+**Decided 2026-11-09.** The founder, after round three: *"Let's build this and go live."* The sketch as it stands — the card's shape, the
+value beside the name, the groups, GUIDE as each page's last tab on a phone too, FINS by setup with the MODEL INFO notes on
+the cards, Depth as a diamond's or a swallow's alone — is what Phase 18 builds; the open items under What to Look For stay
+his to overrule during the build. The sentences and shop notes remain first drafts for his pen.
+
 The founder's verdict on sketch 021's GUIDE tab (2026-11-08): *"The Guide looks awesome. Love everything about it. I think
 every page needs a guide like this. Super useful on what each parameter does to/for the board. Would also be nice to add a
 'how to shape' note too."* The todo `2026-11-08-a-guide-tab-on-every-page.md` says what each page's guide would cover and

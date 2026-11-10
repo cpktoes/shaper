@@ -174,6 +174,8 @@ Recent decisions affecting current work:
 
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
 - Phase 14 added (2026-10-02): Realistic Surfboard Flow — milestone v1.5, opened from the curve-flow todo on branch `surfboard-flow`; the founder wants it before the Oct 10 showing, curves and tips both; brief in `phases/14-realistic-surfboard-flow/14-SPEC.md`, research in the todo (now under `todos/completed/`)
+- Phase 17 noted (2026-11-09): BOTTOM — bottom contours a shaper can map, measure and cut; opened 2026-11-08 and being built on branch `claude/beautiful-fermi-ad3fb7`, where its brief and plans live — a placeholder entry on `main` so Phase 18 takes the next number
+- Phase 18 added (2026-11-09): A GUIDE on Every Page — a GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS, built from sketch 022 (decided as built, rounds one to three) at the founder's word, "Let's build this and go live"; brief in `phases/18-a-guide-on-every-page/18-SPEC.md`
 
 ### Pending Todos
 

@@ -65,6 +65,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 - [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
+- [ ] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021; planned and being built on branch `claude/beautiful-fermi-ad3fb7` — its SPEC, CONTEXT, UI-SPEC and plans live there until it lands)
 
 ## Phase Details
 
@@ -384,6 +385,23 @@ Plans:
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/export/`, no expected number typed — every figure from the pin, a script-made fixture or the app's own functions (Rule 1); every conversion through `units.ts`, the single fin's feet rule included, and the files in millimetres (Rule 2); `three@0.186.1` exact, imported only by `components/3d/board-scene.ts` and only through `import()`; one section function (`boardSections`) feeds the litres, the drawing and the STL; no database change, nothing announced, switches and view never saved; width / pointer / height stay the only three layout switches; each executor in its own worktree with its own PW_PORT (3201–3212), never touching port 3005; every plan ends with the founder's look at pictures; nothing pushed without his go.
 
+### Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
+
+**Goal:** A shaper maps, measures and cuts the bottom of the board they designed, on a new BOTTOM screen between ROCKER and RAILS. This entry is a placeholder on `main`: the phase was opened 2026-11-08 and is being built on branch `claude/beautiful-fermi-ad3fb7`, where its full section, `phases/17-bottom-contours/17-SPEC.md`, CONTEXT, UI-SPEC and plans live (13 of 16 plans executed as of 2026-11-09). It is written here so Phase 18 can take the next number without a collision when that branch lands.
+**Depends on:** Phase 16, Phase 14, quick 261102-gec, quick 261103-gcm
+**Plans:** on its branch
+
+### Phase 18: A GUIDE on Every Page
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
 ---
 
 ## Progress
@@ -409,3 +427,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
+| 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |

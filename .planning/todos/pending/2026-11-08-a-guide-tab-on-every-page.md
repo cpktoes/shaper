@@ -12,7 +12,7 @@ files:
   - app/design/volume/page.tsx
   - app/design/fins/page.tsx
 source: the founder, 2026-11-08, reviewing sketch 021's GUIDE tab ("I think every page needs a guide like this. Super useful on what each parameter does to/for the board. Would also be nice to add a 'how to shape' note too.")
-resolves_phase:
+resolves_phase: 18
 ---
 
 # A GUIDE tab on every design page
@@ -47,3 +47,8 @@ The text should stay as brief as 021's (one or two sentences per part) and the c
 maths, the viewer's own dashes). The sentences and shop notes are the founder's to write or correct; the sketch's are first
 drafts from shaping lore. Build order: a sketch first (one page's GUIDE in 021's pattern, to settle the shape of a control's
 card against a cut's), then the pages together or one phase each, after BOTTOM ships.
+
+## Taken up
+
+Sketch 022 (`.planning/sketches/022-page-guides/`) settled the control's card on all five pages in three rounds (2026-11-08/09); the
+founder's verdict, 2026-11-09: *"Let's build this and go live."* Built as **Phase 18: A GUIDE on Every Page** (`phases/18-a-guide-on-every-page/`).
