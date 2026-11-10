@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readGuideWordsPage } from "@/components/guide/words/read-words-page";
 import { readSeedCatalog } from "../blanks/seed-files";
+import { DEFAULT_BOARD_SPEC } from "./board";
 import { guideRockerInput, rockerGuideInputFromFields } from "./__fixtures__/guide-rocker-input";
 import { BLANK_PLACEMENT_BUFFER_MM, placementRange } from "./blank-fit";
 import { formatThinningStart } from "./blank-reasons";
@@ -296,5 +297,36 @@ describe("buildRockerGuide — the drawings", () => {
         [ids.tips, ids.placement, ids.pinDeck, ids.pinBottom, ids.fineTunes, ids.fineTuneFrom].includes(card.id as never) ? 2 : 1,
       );
     }
+  });
+});
+
+describe("buildRockerGuide — a hand-set board, with no blank picked (a fresh ROCKER)", () => {
+  const handSet = rockerGuideInputFromFields({
+    outline: DEFAULT_BOARD_SPEC.outline,
+    rocker: DEFAULT_BOARD_SPEC.rocker,
+    foil: DEFAULT_BOARD_SPEC.foil,
+    blank: null,
+  });
+
+  it("draws all fourteen cards with no collision; the blank's cards push nothing and say nothing", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const built = buildRockerGuide(handSet, system);
+      expect([...built.keys()]).toEqual(ROCKER_GUIDE_CARD_ORDER);
+      for (const card of built.values()) expect(guideLabelOverlaps(card.figure, GUIDE_MIN_FIT), `${system} ${card.id}`).toEqual([]);
+      for (const id of [ids.blank, ids.placement, ids.deckSkin, ids.customizeRocker, ids.pinDeck, ids.pinBottom, ids.noseThinningStarts, ids.tailThinningStarts, ids.fineTunes, ids.fineTuneFrom]) {
+        expect(built.get(id)!.caption.kind, id).toBe("none");
+        expect(built.get(id)!.tag.kind, id).toBe("none");
+      }
+    }
+  });
+
+  it("pushes the typed tip lifts on Nose Rocker and Tail Rocker, and tags them with the hand-set rocker", () => {
+    const push = guidePush("imperial").rocker;
+    const plan = rockerGuideVariants(handSet, "imperial");
+    expect(plan[ids.noseRocker].pushes[0].rocker.noseTip).toBeCloseTo(handSet.rocker.noseTip + push.rocker, 9);
+    expect(plan[ids.tailRocker].pushes[0].rocker.tailTip).toBeCloseTo(handSet.rocker.tailTip + push.rocker, 9);
+    const built = buildRockerGuide(handSet, "imperial");
+    expect(built.get(ids.noseRocker)!.tag.text).toBe(formatMark(handSet.sideProfile.stationRocker.noseTip, "imperial"));
+    expect(guideCaptionText(built.get(ids.noseRocker)!.caption)).toBe(`dashed · +1" nose rocker`);
   });
 });
