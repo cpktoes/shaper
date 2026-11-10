@@ -14,6 +14,7 @@ import {
   bottomLitresLine,
   bottomSampler,
   chan,
+  CHANNEL_EDGE_MIN,
   CHANNEL_FLAT_KEY,
   CHANNEL_LEAD_IN,
   CHANNEL_OFF_RAIL_MIN,
@@ -26,6 +27,7 @@ import {
   channelReadout,
   channelStart,
   channelWallKey,
+  channelWallsAt,
   refAt,
   resolveChannels,
   startingChannels,
@@ -1797,5 +1799,155 @@ describe("the channels' own edits on the panel (17-09): the count switch, the st
       expect(kept.deepest).toBeGreaterThanOrEqual(kept.end);
       expect(kept[field]).toBeCloseTo(fromTail, 9);
     }
+  });
+});
+
+/* ============ the code review's CR-01 (2026-11-10): With the rail, a flat by the stringer, and a narrow tail ============ */
+
+describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is narrower than the flat and the last wall's keep", () => {
+  const OFF = inchesToMm(1 / 2);
+  /** The review's three sets and the two stock boards it did not name: board, channels, Width in inches. */
+  const SETS: [id: string, count: ChannelCount, widthInches: number][] = [
+    ["midlength", 6, 1],
+    ["shortboard", 8, 3 / 4],
+    ["shortboard", 6, 1],
+    ["longboard", 4, 3 / 4],
+    ["fish", 4, 3 / 4],
+  ];
+  const nameOf = (id: string, count: number, widthInches: number) => `${id} · ${count} channels ${formatInchesFraction(inchesToMm(widthInches))} wide`;
+  /** A stock board with a set laid With the rail, this far off the stringer. */
+  const setOf = (id: string, count: ChannelCount, widthInches: number, offStringer: Mm) => {
+    const { fields } = FIELDS.find((f) => f.id === id)!;
+    const board = boardById(id);
+    const bottom = withChannels(board, {}, count, { run: "rail", width: inchesToMm(widthInches), offStringer });
+    const resolved = resolveBottom(bottom, board);
+    return { fields, board, bottom, resolved, ch: resolved.channels, rule: resolved.wingRule };
+  };
+  /** Every eighth of an inch from the tail to the channels' Start, and Start itself. */
+  const stationsToStart = (start: Mm): Mm[] => {
+    const step = inchesToMm(1 / 8);
+    const out: Mm[] = [];
+    for (let k = 0; k * step < start; k++) out.push(mm(k * step));
+    out.push(start);
+    return out;
+  };
+  /** The room With the rail leaves the whole set at a station: the rail, less the last wall's keep, less the flat. */
+  const roomAt = (set: ReturnType<typeof setOf>, s: Mm) => refAt(set.board, set.rule, s) - channelFit(set.ch, set.board, set.rule).offRail - set.ch.offStringer;
+
+  it("the tail does get that narrow on every one of them, and there the set is no channels at all — never a channel of no width", () => {
+    for (const [id, count, widthInches] of SETS) {
+      const set = setOf(id, count, widthInches, OFF);
+      const name = nameOf(id, count, widthInches);
+      let noRoom = 0;
+      for (const s of stationsToStart(set.ch.start)) {
+        const edges = channelEdges(set.ch, set.board, set.rule, s);
+        for (const [a, b] of edges) expect(b - a, `${name} at ${s}`).toBeGreaterThan(CHANNEL_EDGE_MIN);
+        if (roomAt(set, s) <= 0) {
+          noRoom++;
+          expect(edges, `${name} at ${s}`).toEqual([]);
+          expect(channelMarks(set.ch, set.board, set.rule, s), `${name} at ${s}`).toEqual([]);
+          // the litres' walls: one per channel a side as always, every one of them back on the stringer
+          expect(channelWallsAt(set.ch, set.board, set.rule, s), `${name} at ${s}`).toEqual(Array.from({ length: count / 2 }, () => 0));
+        }
+      }
+      expect(noRoom, name).toBeGreaterThan(0);
+    }
+  });
+
+  it("wherever the set still has real width it is ruled exactly as it always was: abutting from the flat's edge, the last wall keeping its distance off the rail", () => {
+    for (const [id, count, widthInches] of SETS) {
+      const set = setOf(id, count, widthInches, OFF);
+      const name = nameOf(id, count, widthInches);
+      const { perSide, offRail } = channelFit(set.ch, set.board, set.rule);
+      let ruled = 0;
+      for (const s of stationsToStart(set.ch.start)) {
+        const each = roomAt(set, s) / perSide;
+        if (!(each > CHANNEL_EDGE_MIN)) continue;
+        ruled++;
+        const edges = channelEdges(set.ch, set.board, set.rule, s);
+        expect(edges.length, `${name} at ${s}`).toBe(perSide);
+        edges.forEach(([a, b, j], k) => {
+          expect(j).toBe(k);
+          expect(Math.abs(a - (set.ch.offStringer + k * each))).toBeLessThan(TOL);
+          expect(Math.abs(b - (set.ch.offStringer + (k + 1) * each))).toBeLessThan(TOL);
+        });
+        expect(Math.abs(refAt(set.board, set.rule, s) - edges[perSide - 1][1] - offRail), `${name} at ${s}`).toBeLessThan(TOL);
+      }
+      expect(ruled, name).toBeGreaterThan(0);
+    }
+  });
+
+  it("the foam off is a finite number, never under nothing and never over the channels' depth, at every wall, on the flat's edge and across every station from the tail to Start", () => {
+    for (const [id, count, widthInches] of SETS) {
+      const set = setOf(id, count, widthInches, OFF);
+      const name = nameOf(id, count, widthInches);
+      const sampler = bottomSampler(set.resolved, set.board);
+      let cut = 0;
+      for (const s of stationsToStart(set.ch.start)) {
+        const rail = set.board.railAt(s);
+        const across: number[] = [set.ch.offStringer, ...channelWallsAt(set.ch, set.board, set.rule, s)];
+        for (const [a, b] of channelEdges(set.ch, set.board, set.rule, s)) across.push(a, b, (a + b) / 2);
+        for (let k = 0; k <= 48; k++) across.push((rail * k) / 48);
+        for (const y of across) {
+          const channels = channelFoamOff(set.ch, set.board, set.rule, s, mm(y));
+          expect(Number.isFinite(channels), `${name}: the channels at ${s}, ${y} across`).toBe(true);
+          expect(channels).toBeGreaterThanOrEqual(0);
+          expect(channels).toBeLessThanOrEqual(set.ch.depth + TOL);
+          expect(Number.isFinite(foamOff(set.resolved, set.board, s, mm(y))), `${name}: the one number at ${s}, ${y} across`).toBe(true);
+          expect(Number.isFinite(sampler(s, mm(y))), `${name}: the litres' reading at ${s}, ${y} across`).toBe(true);
+          if (channels > 0) cut++;
+        }
+      }
+      // and the set is still there to be cut: this is not a board whose channels went missing
+      expect(cut, name).toBeGreaterThan(0);
+    }
+  });
+
+  it("the litres, the 3D board and the CNC files: no section ends its foam where the same set on the stringer does not, and the foam off is the same within a few hundredths of a litre", () => {
+    for (const [id, count, widthInches] of SETS.filter(([id]) => id !== "fish")) {
+      const name = nameOf(id, count, widthInches);
+      const onStringer = setOf(id, count, widthInches, mm(0));
+      const offStringer = setOf(id, count, widthInches, OFF);
+      const knifeEdges = (set: ReturnType<typeof setOf>) => {
+        const sections = sectionsOf(set.fields, set.bottom);
+        for (const section of sections) {
+          expect(Number.isFinite(section.area), `${name}: the section at ${section.station}`).toBe(true);
+          for (const [y, h] of section.drawn ?? []) expect(Number.isFinite(y) && Number.isFinite(h), `${name}: the section at ${section.station}`).toBe(true);
+        }
+        return sections.filter((section) => section.railEdgeAt !== undefined).map((section) => section.station);
+      };
+      const before = knifeEdges(onStringer);
+      for (const station of knifeEdges(offStringer)) expect(before, `${name}: a knife edge at ${station}`).toContain(station);
+      const plain = summarizeDesign(onStringer.fields).volumeLitres;
+      const took = (set: ReturnType<typeof setOf>) => plain - summarizeDesign({ ...set.fields, bottom: set.bottom }).volumeLitres;
+      const [takenOn, takenOff] = [took(onStringer), took(offStringer)];
+      console.info(`${name}, With the rail: ${takenOn.toFixed(4)} L off on the stringer, ${takenOff.toFixed(4)} L with a 1/2" flat`);
+      expect(takenOn, name).toBeGreaterThan(0);
+      expect(takenOff, name).toBeGreaterThan(0);
+      expect(Math.abs(takenOff - takenOn), name).toBeLessThan(3 / 100);
+    }
+  }, 240_000);
+
+  it("the last wall's distance off the rail is never read out below nothing, across the whole of Off Stringer's slider; where it is a real distance it is channelFit's own", () => {
+    let pastTheRail = 0;
+    for (const { id, board } of BOARDS) {
+      for (const count of [4, 6, 8] as const) {
+        for (let quarters = 0; quarters <= 36; quarters++) {
+          const ch = resolveChannels({ ...startingChannels(count, board, DEFAULT_BOTTOM.channels), run: "rail", offStringer: inchesToMm(quarters / 4) }, board);
+          const fit = channelFit(ch, board, "narrowest");
+          const { lastWallOffRail } = channelReadout(ch, board, "narrowest");
+          expect(lastWallOffRail, `${id} · ${count} · ${quarters / 4}"`).toBeGreaterThanOrEqual(0);
+          if (fit.offRail >= 0) expect(lastWallOffRail).toBe(fit.offRail);
+          else {
+            pastTheRail++;
+            expect(lastWallOffRail).toBe(0);
+            // and such a set has no channels anywhere: there is no wall to measure from
+            for (const s of bottomDataStations(board)) expect(channelEdges(ch, board, "narrowest", s)).toEqual([]);
+          }
+        }
+      }
+    }
+    // the slider does reach it: an Off Stringer wider than the board is at the deepest station
+    expect(pastTheRail).toBeGreaterThan(0);
   });
 });

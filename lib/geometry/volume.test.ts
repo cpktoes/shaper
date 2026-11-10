@@ -2051,6 +2051,27 @@ describe("Phase 17 D-21, D-40: the bottom contours lift a finished half's bottom
     expect(cut.railEdgeAt).toBeUndefined();
   });
 
+  it("a cut that is not a number takes nothing off and never ends the foam (the code review's CR-01)", () => {
+    // Not a number everywhere: the half comes back untouched, exactly as with nothing to take off.
+    const broken = bottomedHalfSection(half, () => mm(Number.NaN), BOTTOM_COLUMN_FLOOR);
+    broken.half.forEach((point, k) => expect(point).toBe(half[k]));
+    expect(broken.thinAt).toEqual([]);
+    expect(broken.railEdgeAt).toBeUndefined();
+    // Not a number over the middle third of a real lift, and no number at all beside it: the same section as the lift
+    // that takes nothing off there.
+    const lift = (y: Mm) => mm(1 + y / 100);
+    const inTheGap = (y: number) => y > halfWidth / 3 && y < (2 * halfWidth) / 3;
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const holed = bottomedHalfSection(half, (y) => (inTheGap(y) ? mm(bad) : lift(y)), BOTTOM_COLUMN_FLOOR);
+      const honest = bottomedHalfSection(half, (y) => (inTheGap(y) ? mm(0) : lift(y)), BOTTOM_COLUMN_FLOOR);
+      expect(holed.half, String(bad)).toEqual(honest.half);
+      expect(holed.thinAt).toEqual(honest.thinAt);
+      expect(holed.railEdgeAt).toBeUndefined();
+      for (const [y, h] of holed.half) expect(Number.isFinite(y) && Number.isFinite(h)).toBe(true);
+    }
+    expect(half.slice(DECK).some(([y]) => inTheGap(y))).toBe(true);
+  });
+
   it("the deck never moves; a planed-bottom point rises by exactly the foam off; the rail's outermost point stays", () => {
     const lift = (y: Mm) => mm(1 + y / 100); // a few millimetres, far under the rail's height at the centre
     const cut = bottomedHalfSection(half, lift, BOTTOM_COLUMN_FLOOR);

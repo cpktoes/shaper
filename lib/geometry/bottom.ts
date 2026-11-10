@@ -854,7 +854,10 @@ function channelFade(ch: ResolvedChannels, j: number, s: Mm, length: Mm): number
  * - **Toe-in** angles the whole set at the front fins' raw toe — inward toward the nose, splayed out toward the tail.
  *   A single fin has no toe, so it is laid Parallel.
  *
- * Only channels whose wall stands more than 1/2 mm off the stringer are kept.
+ * Only channels whose wall stands more than 1/2 mm off the stringer are kept, and only channels more than 1/2 mm wide:
+ * a channel with no real width is not a channel. With the rail and an Off Stringer wider than a narrow tail the set has
+ * no room left at all there — every channel would be two walls on the Off Stringer line — so there are none (the code
+ * review's CR-01, 2026-11-10). Wherever a channel still has real width it is ruled exactly as before.
  */
 export function channelEdges(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): [inner: Mm, outer: Mm, index: number][] {
   const { perSide: n, width: w, offRail } = channelFit(ch, board, rule);
@@ -867,7 +870,8 @@ export function channelEdges(ch: ResolvedChannels, board: BottomBoard, rule: Bot
   for (let j = 0; j < n; j++) {
     const a = ch.offStringer + j * w2 - shift;
     const b = a + w2;
-    if (b > CHANNEL_EDGE_MIN) out.push([mm(Math.max(0, a)), mm(b), j]);
+    const inner = Math.max(0, a);
+    if (b > CHANNEL_EDGE_MIN && b - inner > CHANNEL_EDGE_MIN) out.push([mm(inner), mm(b), j]);
   }
   return out;
 }
@@ -898,7 +902,8 @@ export function channelMarks(ch: ResolvedChannels, board: BottomBoard, rule: Bot
  * The foam the channels take off at station `s`, `y` out from the stringer — the channels' branch of the sketch's
  * `cutOff`, line for line: in the channel `[a, b]` that holds `y`, `depth × fade × min(1, (b − a) / 1") × chan(u, r)`
  * with u = (y − a) / (b − a) — nothing at its peak, the full cut at its wall — each channel faded in from its own
- * start. Nothing with fewer than four channels, at no depth, or where the board has no rail.
+ * start. Nothing with fewer than four channels, at no depth, or where the board has no rail — and nothing in a channel
+ * of no width, whose u would be 0 / 0: the foam off is always a finite number (CR-01).
  */
 export function channelFoamOff(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm, y: Mm): Mm {
   if (ch.count < 4 || ch.depth <= 0) return mm(0);
@@ -910,7 +915,9 @@ export function channelFoamOff(ch: ResolvedChannels, board: BottomBoard, rule: B
     if (y >= a && y <= b) {
       const fj = channelFade(ch, j, s, board.length);
       if (fj <= 0) return mm(0);
-      return mm(ch.depth * fj * Math.min(1, (b - a) / CHANNEL_PINCH) * chan((y - a) / (b - a), r));
+      const span = b - a;
+      if (!(span > 0)) return mm(0);
+      return mm(ch.depth * fj * Math.min(1, span / CHANNEL_PINCH) * chan((y - a) / span, r));
     }
   }
   return mm(0);
@@ -957,6 +964,10 @@ export function channelLayout(
  * width in whole degrees, the last wall's distance off the reference rail at the deepest station, and where the
  * shortest pair starts from the tail (the outer pair when the inner is longest, the inner otherwise). The words are
  * the screen's.
+ *
+ * The last wall's distance is never read out below nothing: with an Off Stringer wider than the board is at the deepest
+ * station there is no set and no wall, and `channelFit`'s own figure (the rail less the Off Stringer) goes negative — a
+ * distance the label must never print (the code review's CR-01, 2026-11-10).
  */
 export function channelReadout(
   ch: ResolvedChannels,
@@ -969,7 +980,7 @@ export function channelReadout(
     fittedWidth: fit.width,
     squeezed: fit.squeezed,
     rampDegrees: fit.width > 0 ? Math.round((Math.atan2(ch.depth, fit.width) * 180) / Math.PI) : 0,
-    lastWallOffRail: fit.offRail,
+    lastWallOffRail: mm(Math.max(0, fit.offRail)),
     shortestStart: channelStart(ch, ch.longest === "inner" ? ch.count / 2 - 1 : 0),
   };
 }

@@ -7,6 +7,7 @@ import {
   DEFAULT_BOTTOM,
   bottomDataRows,
   bottomFloorFlags,
+  channelFit,
   channelReadout,
   resolveBottom,
   resolveChannels,
@@ -205,6 +206,25 @@ describe("the CHANNELS block's words (D-10, D-11)", () => {
     expect(channelWidthWords(readout, "imperial")).toBe(
       `${mark(readout.width)} (${mark(readout.fittedWidth)} to fit) · ramp ${readout.rampDegrees}° · last wall ${mark(readout.lastWallOffRail)} off the rail`,
     );
+  });
+
+  it.each(SYSTEMS)("Channel Width (%s) never reads a distance below nothing, anywhere on Off Stringer's slider (the code review's CR-01)", (system) => {
+    let pastTheRail = 0;
+    for (const board of [shortboard, longboard, presetBoard("midlength"), presetBoard("fish")]) {
+      for (const count of [4, 6, 8] as const) {
+        for (let quarters = 0; quarters <= 36; quarters++) {
+          const { spec, readout } = readoutOf(board, count, { run: "rail", offStringer: inchesToMm(quarters / 4) });
+          const words = channelWidthWords(readout, system);
+          expect(words, `${count} · ${quarters / 4}"`).not.toMatch(/-\d|−/);
+          // The slider does take the flat past the rail at the deepest station, and there the words read nothing.
+          if (channelFit(resolveChannels(spec, board), board, "narrowest").offRail < 0) {
+            pastTheRail++;
+            expect(words).toMatch(new RegExp(`last wall ${formatMark(mm(0), system)} off the rail$`));
+          }
+        }
+      }
+    }
+    expect(pastTheRail).toBeGreaterThan(0);
   });
 
   it.each(SYSTEMS)("Stagger (%s): a dim per channel, naming the shortest pair and where it starts; nothing for All the same", (system) => {

@@ -1060,7 +1060,8 @@ const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
  * `thinAt` lists the distances across, on the bottom, where less than `floor` of foam is left under the deck, the rail
  * edge included: the warning's to word, never the maths' to clamp. A column with no deck over it (a tip's edge) is left
  * as it is, never 0/0. Every point that does not move is returned as the very same pair, so with no foam off the half
- * comes back point for point.
+ * comes back point for point. A foam off that is not a finite number is read as none at that point — the foam ends only
+ * where a real cut reaches the deck, never because a sampler slipped.
  */
 export function bottomedHalfSection(
   half: HalfSectionPoints,
@@ -1073,7 +1074,9 @@ export function bottomedHalfSection(
   const apex = half[deckCount - 1][1];
   /** The underside's height at a point `h` above the planed bottom, `y` across. */
   const under = (y: number, h: number): number => {
-    const f = Math.max(0, foamOffAt(mm(y)));
+    // A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01).
+    const raw = foamOffAt(mm(y));
+    const f = Number.isFinite(raw) ? Math.max(0, raw) : 0;
     if (f === 0) return h;
     if (!(apex > 0) || f >= apex) return Math.max(h, f);
     return h + f * (1 - Math.min(1, h / apex));
