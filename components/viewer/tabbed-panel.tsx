@@ -122,7 +122,7 @@ export function TabbedPanel<T extends string>({
    * `"drawing"` and `"text"`, give the IDENTICAL tab strip and the IDENTICAL outer rim — only the
    * INNER card's own padding differs between them (`text` keeps an 8px reading margin, `drawing`
    * has none) — so switching between a screen's VIEWER tab and its DATASHEET/DATA/INSTRUCTIONS/
-   * MODEL INFO/ESTIMATE tab never moves the frame itself, only what's drawn inside it (P-4).
+   * GUIDE/ESTIMATE tab never moves the frame itself, only what's drawn inside it (P-4).
    */
   compactOnPhone?: "drawing" | "text";
   /**
@@ -304,7 +304,7 @@ export function TabbedPanel<T extends string>({
             // P-1/P-2/P-4: this card's own border and 12px pad (p-3) drop to nothing on a phone —
             // the folder card above now carries the whole 2px rim, so a second nested border and
             // pad here would double it. `text` then puts back an 8px reading margin (P-4) so
-            // DATASHEET/DATA/INSTRUCTIONS/MODEL INFO/ESTIMATE text never touches the frame line;
+            // DATASHEET/DATA/INSTRUCTIONS/GUIDE/ESTIMATE text never touches the frame line;
             // `drawing` stays at zero so a drawing can reach the rim. Order matters here: `cn`
             // (tailwind-merge) keeps the LAST class written for a given CSS property, so `text`'s
             // `p-2` has to come after the `border-0 p-0` reset to survive, and the touch-box
