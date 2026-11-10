@@ -106,7 +106,6 @@ export function guideIntro(
     const sayings = GUIDE_METRIC_SAYINGS[`${page}.intro`] ?? [];
     if (sayings.length > 0) text = applySayings(text, sayings, `${page} intro`);
   }
-  text = text.replaceAll("{board}", fill.board);
-  if (fill.blank !== undefined) text = text.replaceAll("{blank}", fill.blank);
-  return text;
+  // Both names go in in one pass and exactly as typed: a board called `Fish $& Pro` or `{blank}` reads as that.
+  return text.replace(/\{board\}|\{blank\}/g, (token) => (token === "{board}" ? fill.board : (fill.blank ?? token)));
 }

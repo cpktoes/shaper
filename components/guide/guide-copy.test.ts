@@ -97,4 +97,13 @@ describe("guideIntro", () => {
     expect(text).not.toContain("{board}");
     expect(guideIntro(VOLUME_GUIDE_INTRO, "metric", { board: "board" }, "volume")).toBe(text);
   });
+
+  it("puts a board's name in exactly as typed, whatever characters it holds", () => {
+    expect(guideIntro("Every card is your {board} on the {blank}.", "imperial", { board: "Fish $& Pro $$", blank: "6'2\"A" })).toBe(
+      "Every card is your Fish $& Pro $$ on the 6'2\"A.",
+    );
+    // A board named like the page's own placeholder stays the board's name; a page with no blank keeps its words.
+    expect(guideIntro("{board} on {blank}", "imperial", { board: "{blank}", blank: "foam" })).toBe("{blank} on foam");
+    expect(guideIntro("{board} on {blank}", "imperial", { board: "Egg" })).toBe("Egg on {blank}");
+  });
 });
