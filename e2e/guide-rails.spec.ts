@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { GUIDE_COPY } from "../components/guide/guide-copy";
+import { guideImperialFigures } from "../components/guide/words/metric-sayings";
 import { RAILS_GUIDE_GROUPS, RAILS_GUIDE_WORDS } from "../components/guide/words/rails";
 import { guideRailsInput } from "../lib/geometry/__fixtures__/guide-rails-input";
 import { guideCaptionText, guideSlug } from "../lib/geometry/guide-card";
@@ -111,13 +112,15 @@ test.describe("RAILS' GUIDE on a computer (18-05)", () => {
       await expect(guideCard(page, id).locator("[data-guide-caption]")).toHaveText(/^dashed · [+-]\d+ mm$/);
     }
     await expect(guideCard(page, RAILS_GUIDE_CARD_IDS.blends).locator("[data-guide-tag]")).toHaveText(/^\d+\.\d cm · \d+\.\d cm$/);
-    // No inch mark on any name, tag, caption or drawing label. The two prose lines that quote the 12" stations
-    // (Import Rocker & Foil Values' is, Board Thickness' how) read their Metric sayings once plan 18-07 lands them.
+    // No inch or foot figure anywhere in the GUIDE: no name, tag, caption or drawing label, and no sentence —
+    // the two prose lines that quote the 12" stations (Import Rocker & Foil Values' is, Board Thickness' how)
+    // read their Metric sayings (plan 18-07). The words as seen, and each part's own words, case kept.
+    expect(guideImperialFigures(await guide(page).innerText())).toEqual([]);
     const figures = await guide(page)
-      .locator("h4, [data-guide-tag], [data-guide-caption], svg[data-guide-cartoon] text")
+      .locator("[data-guide-intro], h3, h4, [data-guide-tag], [data-guide-caption], [data-guide-text], [data-guide-how], svg[data-guide-cartoon] text")
       .evaluateAll((els) => els.map((el) => el.textContent ?? ""));
     expect(figures.length).toBeGreaterThan(COUNT);
-    for (const text of figures) expect(text).not.toMatch(/\d\s*["″]|\d'/);
+    for (const text of figures) expect(guideImperialFigures(text), text).toEqual([]);
   });
 
   test("the cartoons draw in RAILS' own colours: every hue a RAILS cartoon uses is one VIEWER's own plot uses", async ({ page }) => {
