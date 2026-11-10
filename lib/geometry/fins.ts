@@ -1385,8 +1385,8 @@ export function fullSpreadRoundingAside(system: UnitsSystem): string {
  * The fin notes' closing line, worded per system. This is the prototype's own closing note
  * (reference/project/Fins.dc.html line 1286), reworded: the prototype's bracketed centimetre
  * aside was never true of either printed system, so it is dropped rather than translated.
- * `computeFinPlacement` never sees the shaper's system, so the display layer (the order form, and
- * FINS' MODEL INFO tab) appends this after the model notes. (quick 260928-vpi, Phase 13 item 8b)
+ * `computeFinPlacement` never sees the shaper's system, so the display layer (the order form)
+ * appends this after the model notes. (quick 260928-vpi, Phase 13 item 8b)
  */
 export function finRoundingNote(system: UnitsSystem): string {
   return `All measurements round to the nearest ${finRoundingGrain(system)} — expect a hair of play when routing to these numbers.`;

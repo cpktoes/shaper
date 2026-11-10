@@ -10,17 +10,17 @@ import { finsImportedReadout } from "@/lib/geometry/imported-readout";
 import { buildFinsPresetSource } from "@/lib/geometry/preset-source";
 import { FinControls } from "./fin-controls";
 import { FinDataPanel } from "./fin-data-panel";
-import { FinModelInfo } from "./fin-model-info";
+import { FinsGuide } from "@/components/guide/fins-guide";
 import { FINS_MAX_ZOOM, FinViewer } from "./fin-viewer";
 import { ViewerZoomProvider } from "@/components/viewer/zoom-viewport";
 import { BoardNameTab } from "@/components/design/board-name-tab";
 import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { ToeAimTableModal } from "./toe-aim-table-modal";
 
-type FinTab = "viewer" | "data" | "info";
+type FinTab = "viewer" | "data" | "guide";
 
-const TAB_LABEL: Record<FinTab, string> = { viewer: "VIEWER", data: "DATA", info: "MODEL INFO" };
-const TAB_ORDER: FinTab[] = ["viewer", "data", "info"];
+const TAB_LABEL: Record<FinTab, string> = { viewer: "VIEWER", data: "DATA", guide: "GUIDE" };
+const TAB_ORDER: FinTab[] = ["viewer", "data", "guide"];
 
 /**
  * Reads the design state from the shared `DesignProvider` (components/design/design-store.tsx)
@@ -122,6 +122,9 @@ export function FinPlacementEditor() {
           active={activeTab}
           onSelect={setActiveTab}
           compactOnPhone={activeTab === "viewer" ? "drawing" : "text"}
+          // Phase 18: GUIDE last, in place of the old notes tab (D-01, D-02). While it is open the folder grows with its
+          // cards on a short screen, as every page's GUIDE does.
+          growOnShortScreen={activeTab === "guide"}
           // Quick 261008-raw: the board's name at the band's right end.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
@@ -156,7 +159,7 @@ export function FinPlacementEditor() {
             />
           )}
 
-          {activeTab === "info" && <FinModelInfo />}
+          {activeTab === "guide" && <FinsGuide />}
         </TabbedPanel>
       }
       sidebarFooter={
@@ -187,7 +190,7 @@ export function FinPlacementEditor() {
           view={toeTableView}
         />
       }
-      phonePinned="55dvh"
+      phonePinned={activeTab === "guide" ? "66dvh" : "55dvh"}
     />
   );
 }
