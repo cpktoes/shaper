@@ -12,6 +12,8 @@ import {
   formatLength,
   formatMark,
   formatMarkBare,
+  formatMarkOrLess,
+  formatMarkOrLessBare,
   formatPasses,
   formatSignedDim,
   formatSignedMark,
@@ -92,6 +94,50 @@ describe("formatMarkBare", () => {
 
   it("imperial branch keeps its inch mark", () => {
     expect(formatMarkBare(inchesToMm(2.625), "imperial")).toBe('2 5/8"');
+  });
+
+  it("is left as it was: a size too small for the tape still reads as a bare zero here", () => {
+    expect(formatMarkBare(mm(0.3), "imperial")).toBe('0"');
+    expect(formatMarkBare(mm(0.3), "metric")).toBe("0");
+  });
+});
+
+// The founder, 2026-11-10: "say <1/16 if it's not actually 0" — a depth that is there never reads as nothing.
+describe("formatMarkOrLess and formatMarkOrLessBare", () => {
+  it("a size too small for the tape reads less than its smallest step, with its own unit", () => {
+    expect(formatMarkOrLess(mm(0.3), "imperial")).toBe('<1/16"');
+    expect(formatMarkOrLess(mm(0.3), "metric")).toBe("<1 mm");
+  });
+
+  it("the bare form drops the unit in Metric only, for a column whose head already says mm", () => {
+    expect(formatMarkOrLessBare(mm(0.3), "imperial")).toBe('<1/16"');
+    expect(formatMarkOrLessBare(mm(0.3), "metric")).toBe("<1");
+  });
+
+  it("turns at half a step in each system: 1/32 inch in Imperial, half a millimetre in Metric", () => {
+    const halfSixteenth = inchesToMm(1 / 32);
+    expect(formatMarkOrLessBare(mm(halfSixteenth - 0.001), "imperial")).toBe('<1/16"');
+    expect(formatMarkOrLessBare(halfSixteenth, "imperial")).toBe('1/16"');
+    expect(formatMarkOrLessBare(mm(0.499), "metric")).toBe("<1");
+    expect(formatMarkOrLessBare(mm(0.5), "metric")).toBe("1");
+    expect(formatMarkOrLess(mm(0.5), "metric")).toBe("1 mm");
+  });
+
+  it("an actual zero still reads as zero", () => {
+    expect(formatMarkOrLess(mm(0), "imperial")).toBe('0"');
+    expect(formatMarkOrLess(mm(0), "metric")).toBe("0 mm");
+    expect(formatMarkOrLessBare(mm(0), "imperial")).toBe('0"');
+    expect(formatMarkOrLessBare(mm(0), "metric")).toBe("0");
+  });
+
+  it("every size the tape can read is formatMark's own text, in both systems", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const inches of [1 / 16, 1 / 8, 3 / 16, 1 / 4, 3 / 8, 0.5, 2.625]) {
+        const value = inchesToMm(inches);
+        expect(formatMarkOrLess(value, system)).toBe(formatMark(value, system));
+        expect(formatMarkOrLessBare(value, system)).toBe(formatMarkBare(value, system));
+      }
+    }
   });
 });
 

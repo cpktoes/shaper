@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
+  BOTTOM_DATA_DEPTH_SHOWN,
   BOTTOM_FLOOR,
   DEFAULT_BOTTOM,
+  bottomDataRows,
   bottomFloorFlags,
   channelReadout,
   resolveBottom,
@@ -19,13 +21,14 @@ import {
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
 import { FOIL_THICKNESS_RANGE_IN } from "@/lib/geometry/foil";
-import { formatDim, formatMark } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { inchesToMm, mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { boardSections } from "@/lib/geometry/volume";
 import {
   BOTTOM_COPY,
+  bottomDepthCell,
   CHANNELS_COPY,
   channelSmoothnessWords,
   channelWidthLabel,
@@ -360,4 +363,83 @@ describe("BOTTOM's WINGS row (17-12, D-19): the words, and every figure through 
     expect(BOTTOM_COPY.wingRuleNotes.narrowest).toMatch(/^The real rail behind the wing/);
     expect(BOTTOM_COPY.wingRuleNotes.natural).toMatch(/^The curve you drew before the wing/);
   });
+});
+
+describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on the printed page (17-15; the founder, 2026-11-10)", () => {
+  // The three depths below are stand-ins for the three bands of the rule, not a board's figures: one under the
+  // quarter-millimetre line, one between it and half a millimetre, one between half a millimetre and half a sixteenth.
+  const NOTHING = mm(0.1);
+  const UNDER_BOTH_TAPES = mm(0.4);
+  const UNDER_THE_INCH_TAPE_ONLY = mm(0.7);
+
+  it("under a quarter of a millimetre nothing is cut, and the cell is the dash — the rule as it always was", () => {
+    for (const system of SYSTEMS) {
+      expect(bottomDepthCell(mm(0), system)).toBe(BOTTOM_COPY.emptyCell);
+      expect(bottomDepthCell(NOTHING, system)).toBe(BOTTOM_COPY.emptyCell);
+      expect(bottomDepthCell(mm(BOTTOM_DATA_DEPTH_SHOWN - 1e-6), system)).toBe(BOTTOM_COPY.emptyCell);
+    }
+  });
+
+  it("a depth that is there but too small for the tape reads less than its smallest step, never a nought", () => {
+    expect(bottomDepthCell(BOTTOM_DATA_DEPTH_SHOWN, "imperial")).toBe('<1/16"');
+    expect(bottomDepthCell(BOTTOM_DATA_DEPTH_SHOWN, "metric")).toBe("<1");
+    expect(bottomDepthCell(UNDER_BOTH_TAPES, "imperial")).toBe('<1/16"');
+    expect(bottomDepthCell(UNDER_BOTH_TAPES, "metric")).toBe("<1");
+    for (const system of SYSTEMS) {
+      for (const depth of [BOTTOM_DATA_DEPTH_SHOWN, UNDER_BOTH_TAPES]) {
+        expect(bottomDepthCell(depth, system)).not.toBe(formatMarkBare(mm(0), system));
+      }
+    }
+  });
+
+  it("a millimetre tape reads what an inch tape cannot: between half a millimetre and half a sixteenth", () => {
+    expect(bottomDepthCell(UNDER_THE_INCH_TAPE_ONLY, "imperial")).toBe('<1/16"');
+    expect(bottomDepthCell(UNDER_THE_INCH_TAPE_ONLY, "metric")).toBe(formatMarkBare(mm(1), "metric"));
+  });
+
+  it("from half a step up the cell is the mark itself, as it always was", () => {
+    const halfSixteenth = inchesToMm(1 / 32);
+    expect(bottomDepthCell(halfSixteenth, "imperial")).toBe(formatMarkBare(inchesToMm(1 / 16), "imperial"));
+    expect(bottomDepthCell(mm(0.5), "metric")).toBe(formatMarkBare(mm(1), "metric"));
+    for (const system of SYSTEMS) {
+      for (const sixteenths of [1, 2, 3, 5, 8]) {
+        const depth = inchesToMm(sixteenths / 16);
+        expect(bottomDepthCell(depth, system)).toBe(formatMarkBare(depth, system));
+      }
+    }
+  });
+
+  it("on the four stock boards with a cut in every section and eight channels, no depth cell reads a nought — and some read less-than", () => {
+    let lessThan = 0;
+    for (const preset of BOARD_PRESETS) {
+      const found = phase16Boards().find((b) => b.label === `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`)!;
+      const fields = found.fields;
+      const bottomBoard = designBottomBoard(fields.outline, buildOutline(fields.outline), designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+      const bottom: BoardBottom = structuredClone(DEFAULT_BOTTOM);
+      bottom.nose = startingCut("nose", "Teardrop Nose Concave", bottomBoard);
+      bottom.center = startingCut("center", "Early Double Concave", bottomBoard);
+      bottom.tail = startingCut("tail", "Spiral Vee", bottomBoard);
+      bottom.channels = startingChannels(8, bottomBoard, bottom.channels);
+      const rows = bottomDataRows(resolveBottom(bottom, bottomBoard), bottomBoard);
+      expect(rows.length, preset.id).toBeGreaterThan(8);
+      for (const system of SYSTEMS) {
+        const nought = formatMarkBare(mm(0), system);
+        for (const row of rows) {
+          for (const depth of [row.deepest, row.railLift]) {
+            const cell = bottomDepthCell(depth, system);
+            expect(cell, `${preset.id} ${system} at ${row.station}`).not.toBe(nought);
+            if (cell.startsWith("<")) {
+              lessThan += 1;
+              // What used to print as a nought, and nothing else, is what reads less-than now.
+              expect(formatMarkBare(depth, system), `${preset.id} ${system} at ${row.station}`).toBe(nought);
+              expect(depth).toBeGreaterThanOrEqual(BOTTOM_DATA_DEPTH_SHOWN);
+            } else if (cell !== BOTTOM_COPY.emptyCell) {
+              expect(cell).toBe(formatMarkBare(depth, system));
+            }
+          }
+        }
+      }
+    }
+    expect(lessThan, "the stock boards do carry such depths (non-vacuity)").toBeGreaterThan(0);
+  }, 120_000);
 });

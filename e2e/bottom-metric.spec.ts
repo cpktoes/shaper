@@ -44,7 +44,7 @@ import {
   type DesignSummaryFields,
 } from "../lib/geometry/design";
 import { bottomImportedReadout } from "../lib/geometry/imported-readout";
-import { columnUnitSuffix, formatDim, formatDimBare, formatLength, formatMark, formatMarkBare, measureSlider } from "../lib/geometry/measure-display";
+import { columnUnitSuffix, formatDim, formatDimBare, formatLength, formatMark, formatMarkBare, formatMarkOrLessBare, measureSlider } from "../lib/geometry/measure-display";
 import { buildOutline } from "../lib/geometry/outline";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
 import { mm, type Mm, type UnitsSystem } from "../lib/geometry/units";
@@ -334,7 +334,7 @@ function dataWords(m: Model, system: UnitsSystem) {
   const columns = BOTTOM_COPY.depthsColumns;
   const rowLabel = (row: BottomDataRow) =>
     row.label === "tail" ? BOTTOM_COPY.rowTail : row.label === "nose" ? BOTTOM_COPY.rowNoseTip : formatDimBare(row.station, system);
-  const depth = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkBare(value, system));
+  const depth = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system));
   const frontPair = m.placement.marks.some((mark) => mark.role === "front");
   const floorNotes = [...BOTTOM_SECTIONS, "channels" as const]
     .map((section) =>

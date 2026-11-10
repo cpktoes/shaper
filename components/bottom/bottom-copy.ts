@@ -10,6 +10,7 @@
 import { BOARD_NAME_COPY } from "@/components/design/board-name-copy";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
+  BOTTOM_DATA_DEPTH_SHOWN,
   BOTTOM_FLOOR,
   stationFromNearestTip,
   type BottomBoard,
@@ -21,7 +22,7 @@ import {
   type channelReadout,
   type ResolvedChannels,
 } from "@/lib/geometry/bottom";
-import { formatDim, formatMark } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, formatMarkOrLessBare } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
 /** A section's name as the panel and the screen readers say it. */
@@ -172,6 +173,20 @@ export const BOTTOM_COPY = {
  */
 export function wingWords(wings: readonly { depth: Mm; station: Mm }[], system: UnitsSystem): { depth: string; station: string }[] {
   return wings.map((wing) => ({ depth: formatMark(wing.depth, system), station: formatBottomStation(wing.station, system) }));
+}
+
+/**
+ * A cell of the depths table — Deepest cut or Rail lift — on DATA and on the printed BOTTOM CONTOURS page alike, the
+ * one function both read so the screen and the paper can never drift.
+ *
+ * Three readings, by how much foam is off there:
+ * - under `BOTTOM_DATA_DEPTH_SHOWN` (the sketch's 0.25 mm) nothing is cut, and the cell is the dash;
+ * - a cut that is there but too shallow for the tape reads less than its smallest step — `<1/16"`, Metric `<1` under a
+ *   head that says mm — never `0"` (the founder, 2026-11-10: "say <1/16 if it's not actually 0");
+ * - everything else is the depth as a mark.
+ */
+export function bottomDepthCell(value: Mm, system: UnitsSystem): string {
+  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system);
 }
 
 /** A layout-marks column's words (D-16; UI-SPEC § Copywriting "DATA"): each section's mark — `Nose edge`, `Center

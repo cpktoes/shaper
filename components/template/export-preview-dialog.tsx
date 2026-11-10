@@ -56,6 +56,7 @@ import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
 import { wingFigures } from "@/lib/geometry/wing-figures";
 import { placedWings } from "@/lib/geometry/wings";
+import { bottomPrintLines } from "@/lib/geometry/bottom-print";
 import { useUnits } from "@/components/units-provider";
 import { printOverviewPdf } from "@/components/template/build-overview-pdf";
 import { printTemplatePdf } from "@/components/template/build-template-pdf";
@@ -199,7 +200,7 @@ function PreviewPage({ index, style }: { index: number; style?: CSSProperties })
 }
 
 export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
-  const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres, wingFinEdges } =
+  const { outline, outlineGeometry, boardName, templateValues, railValues, quotedVolumeLitres, wingFinEdges, resolvedBottom, bottomBoard } =
     useDesign();
   const { system } = useUnits();
   const [open, setOpen] = useState(false);
@@ -240,6 +241,10 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
   // The marks both full-size prints draw — the station marks, plus one dashed line at each wing's
   // station (quick 261015-sei, D2). A board with no wings gets exactly the marks it always did.
   const marks = useMemo(() => computeTemplateMarks(outlineGeometry, placed), [outlineGeometry, placed]);
+  // The bottom's cuts in words, for the Overview Sheet alone (Phase 17, D-26) — none for a flat bottom, so that
+  // sheet prints as it always has. The Full Sized Template and the Paper Saver are never handed them: a template is
+  // an outline to cut around, and a contour drawn on it would be a line to cut by mistake.
+  const bottomLines = useMemo(() => bottomPrintLines(resolvedBottom, bottomBoard, system), [resolvedBottom, bottomBoard, system]);
   const pageCount = layout.pages.length;
   const stripPageCount = stripLayout.pages.length;
 
@@ -282,6 +287,7 @@ export function ExportPreviewDialog({ trigger }: { trigger: ReactElement }) {
             boardName,
             system,
             wings,
+            bottomLines,
           }, tab);
         } else if (artifact === "strip") {
           printStripPdf({
