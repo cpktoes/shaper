@@ -25,13 +25,23 @@
  * keyed to `result.legend`'s Front/Rear/Center dash — see the inline comment at that line.
  */
 
-import { useMemo, useRef } from "react";
+import { useDeferredValue, useId, useMemo, useRef } from "react";
 import { RulerDimensionLineIcon } from "lucide-react";
 import type { FinMark, FinPlacementResult, FinRole, FinTailShape, FinLateralKind, ImportedFinTail } from "@/lib/geometry/fins";
 import { tailHalfWidthAt, tailOffTailAtHalfWidth, tailOutlineHalfPoints } from "@/lib/geometry/fins";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { formatDim, formatLength, formatMark } from "@/lib/geometry/measure-display";
 import type { Point2D } from "@/lib/geometry/board";
+import { bottomHasCut } from "@/lib/geometry/bottom";
+import {
+  bottomContourLines,
+  bottomPencilLines,
+  bottomShadeBands,
+  polylinesPathData,
+  shadePathData,
+  type BoardToDrawing,
+} from "@/lib/geometry/bottom-draw";
+import { useDesign } from "@/components/design/design-store";
 import { CALLOUT_FONT_VALUE, CALLOUT_PX, DimensionTick, useSvgFitScale } from "@/components/viewer/callout-primitives";
 import { ViewerToolbar, ViewerToolbarButton } from "@/components/viewer/toolbar-button";
 import { useViewerZoom, ViewerZoomControl, zoomDashToken } from "@/components/viewer/zoom-viewport";
@@ -86,6 +96,17 @@ function toPxX(xIn: number): number {
 function toPxY(offTailIn: number): number {
   return TAIL_Y - offTailIn * SCALE;
 }
+
+/** Board millimetres (a station from the tail, a distance across from the stringer) onto this drawing — the one map the
+ * bottom's contours are painted through (Phase 17, D-23). */
+const boardToFins: BoardToDrawing = (station, across) => ({
+  x: toPxX(mmToInches(mm(across))),
+  y: toPxY(mmToInches(mm(station))),
+});
+
+/** How strongly one 1/32" level of the bottom's shade paints — BOTTOM's own figure (`bottom-top-view.tsx`), so the same
+ * cut reads the same grey on both pages. */
+const CONTOUR_SHADE_OPACITY = 0.04;
 
 /** Ported from `catmullPath` (Fins.dc.html lines 753-766). */
 function catmullPath(pts: [number, number][]): string {
@@ -465,6 +486,35 @@ export function FinViewer({
     [tailShape, tailWidth12, outlineOverride],
   );
 
+  // The bottom's contours under the fins (Phase 17, D-23, UI-SPEC §8): BOTTOM's own shade, 1/16" lines and pencil
+  // lines, read-only, painted through `boardToFins` and clipped to the tail. Only while FINS is drawing THIS board's
+  // tail (Import Designed Board ticked, D-37) and the bottom has a cut — a flat board, or the box unticked, adds no
+  // element at all. Every line comes from `lib/geometry/bottom-draw.ts`; nothing about the bottom is worked out here.
+  // The values are deferred so a fin slider stays under the finger while the shade (the heavy part) catches up.
+  const { bottom, resolvedBottom, bottomBoard, finsImportTemplate } = useDesign();
+  const contourClipId = useId();
+  const showContour = !compact && finsImportTemplate && bottomHasCut(bottom);
+  const contourBottom = useDeferredValue(resolvedBottom);
+  const contourBoard = useDeferredValue(bottomBoard);
+  const contour = useMemo(() => {
+    if (!showContour) return null;
+    return {
+      shade: bottomShadeBands(contourBottom, contourBoard).map((level) => ({
+        index: level.index,
+        d: shadePathData(level.rects, boardToFins),
+      })),
+      lines: bottomContourLines(contourBottom, contourBoard).map((level) => ({
+        index: level.index,
+        d: polylinesPathData(level.lines, boardToFins),
+      })),
+      pencil: bottomPencilLines(contourBottom, contourBoard, null).map((line) => ({
+        key: `${line.column}:${line.kind}`,
+        kind: line.kind,
+        d: polylinesPathData(line.runs, boardToFins),
+      })),
+    };
+  }, [showContour, contourBottom, contourBoard]);
+
   const marksGeom: MarkGeom[] = useMemo(
     () =>
       result.marks.map((mark) => ({
@@ -662,6 +712,40 @@ export function FinViewer({
             />
             <path d={filled} fill="var(--outline-board-fill)" stroke="none" />
             <path d={open} fill="none" stroke="var(--outline-ink)" strokeWidth={2 * zoomUnit} />
+            {/* The bottom's contours, between the board's fill and the reference lines, so the fins and every
+                callout stay on top (UI-SPEC §8). Nothing here is live and nothing is a control: every line is the
+                pencil grey, no cutting line, no names. Not rendered at all for a flat board. */}
+            {contour && (
+              <>
+                <defs>
+                  <clipPath id={contourClipId}>
+                    <path d={filled} />
+                  </clipPath>
+                </defs>
+                <g data-fins-contour clipPath={`url(#${contourClipId})`} pointerEvents="none">
+                  <g data-fins-contour-shade fill="var(--outline-bottom-shade)" fillOpacity={CONTOUR_SHADE_OPACITY}>
+                    {contour.shade.map((level) => (
+                      <path key={level.index} d={level.d} />
+                    ))}
+                  </g>
+                  <g fill="none" stroke="var(--outline-pencil-line)" strokeWidth={zoomUnit}>
+                    {contour.lines.map((level) => (
+                      <path key={level.index} data-fins-contour-line={level.index} d={level.d} />
+                    ))}
+                    {contour.pencil.map((line) => (
+                      <path
+                        key={line.key}
+                        data-fins-contour-pencil={line.kind}
+                        d={line.d}
+                        strokeDasharray={
+                          line.kind === "trough" ? zoomDashToken("--outline-trough-dash", zoomUnit) : undefined
+                        }
+                      />
+                    ))}
+                  </g>
+                </g>
+              </>
+            )}
             {/* Reference lines: the centreline is static (stringer dash); the tail-width-12"
                 line is a derived station (station dash) — the input value itself lives in the
                 sidebar, not repeated here (outputs only, sketch 002). */}
