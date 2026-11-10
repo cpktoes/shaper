@@ -150,7 +150,8 @@ table.data td .passes { display: block; font-size: 11px; color: var(--muted); }
 
 /* GUIDE: one card per control or named choice (sketch 021's dress) — its cartoon (the board the shaper has open, drawn by the
    page's own kind of drawing, with that one setting pushed in muted dashes), its name with the board's own value, a sentence
-   on what it is and looks like, one on what it does, and a How to shape note under a dashed rule */
+   on what it is and looks like, one on what it does, a Model info note where the page's MODEL INFO tab had one (FINS), and a
+   How to shape note under a dashed rule */
 .guidenote { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; margin-bottom: 6px; }
 .card { min-width: 0; border: 1px solid var(--faint); border-radius: 10px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
@@ -162,9 +163,11 @@ table.data td .passes { display: block; font-size: 11px; color: var(--muted); }
 .card svg path, .card svg line, .card svg rect { vector-effect: non-scaling-stroke; }
 .card p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .card p b { font-weight: 600; color: var(--ink); }
-.card p.how { margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--faint); font-size: 12px; line-height: 1.45; }
+.card p.how, .card p.info { margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--faint); font-size: 12px; line-height: 1.45; }
 .card .ghostcap { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ghost); text-align: right; margin-top: -2px; }
-.card p.how .cap { display: block; margin-bottom: 1px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.card .ghostcap.drawn { color: var(--muted); }
+.card p.how .cap, .card p.info .cap { display: block; margin-bottom: 1px; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.card p.info .cap { color: var(--muted); }
 .datahead .sub2 { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; margin-left: 8px; }
 
 /* drawing strokes — one ink, one dash per role, as the app's viewers draw them. The blank is a real object, so its line is
@@ -703,7 +706,9 @@ function rockerCartoon(c, id) {
 }
 function drawGuide() {
   const P = PAGE_DEFS[state.pg]; let n = 0; const all = P.cards();
-  const card = (c) => `<div class="card${c.on ? " on" : ""}" data-key="${c.key}"><h4><span>${svgEsc(c.name)}</span>${c.tag ? `<span class="now${c.on || !c.tag ? "" : " val"}">${svgEsc(c.tag)}</span>` : ""}</h4>${P.cartoon(c, `g${n++}`)}<p><b>${svgEsc(P.GUIDE[c.key][0])}</b> ${svgEsc(P.GUIDE[c.key][1])}</p><p class="how"><span class="cap">How to shape</span>${svgEsc(P.HOW[c.key])}</p></div>`;
+  // a GUIDE entry may be a function when its words follow the units (FINS' convention names the rounding grain)
+  const words = (c) => typeof P.GUIDE[c.key] === "function" ? P.GUIDE[c.key]() : P.GUIDE[c.key];
+  const card = (c) => { const g = words(c); return `<div class="card${c.on ? " on" : ""}" data-key="${c.key}"><h4><span>${svgEsc(c.name)}</span>${c.tag ? `<span class="now${c.on || !c.tag ? "" : " val"}">${svgEsc(c.tag)}</span>` : ""}</h4>${P.cartoon(c, `g${n++}`)}<p><b>${svgEsc(g[0])}</b> ${svgEsc(g[1])}</p>${P.INFO && P.INFO[c.key] ? `<p class="info"><span class="cap">Model info</span>${svgEsc(P.INFO[c.key])}</p>` : ""}<p class="how"><span class="cap">How to shape</span>${svgEsc(P.HOW[c.key])}</p></div>`; };
   let h = `<div class="guidenote">${P.guideNote()}</div>`;
   for (const [key, title, sub] of P.groups) { h += `<div class="datahead">${title}${sub ? `<span class="sub2">${sub}</span>` : ""}</div><div class="cards">`; for (const c of all.filter((c) => c.group === key)) h += card(c); h += `</div>`; }
   document.getElementById("panel-guide").innerHTML = h;
@@ -738,7 +743,8 @@ function cardFrame(O, opts) {
   let out = `<path class="board" stroke-width="1" d="${outlinePath(O, X, Y)}"/>`;
   out += `<line class="stringer" stroke-width="1" stroke-dasharray="12 3 3 3" x1="${f1(X(L) - 4)}" y1="${cy}" x2="${f1(X(Math.max(0, O.close)) + 4)}" y2="${cy}"/>`;
   if (stations) for (const [s, cut] of stations) out += `<line class="${cut ? "cutline" : "station"}" stroke-width="1" stroke-dasharray="${cut ? "7 2.5 1.5 2.5" : "5 4"}" x1="${f1(X(s))}" y1="${f1(Y(-halfAt(O, s)) - (cut ? 5 : 2))}" x2="${f1(X(s))}" y2="${f1(Y(halfAt(O, s)) + (cut ? 5 : 2))}"/>`;
-  if (fins) for (const m of fins) out += `<line class="finmark" stroke-width="1.5" x1="${f1(X(m.offTail))}" y1="${f1(Y(m.side * m.lateral))}" x2="${f1(X(m.leadOff))}" y2="${f1(Y(m.side * m.leadLat))}"/>`;
+  // a mark's lateral and leadLat are already signed by its side (the left fin's are negative) — never multiply by the side again
+  if (fins) for (const m of fins) out += `<line class="finmark" stroke-width="1.5" x1="${f1(X(m.offTail))}" y1="${f1(Y(m.lateral))}" x2="${f1(X(m.leadOff))}" y2="${f1(Y(m.leadLat))}"/>`;
   // the window: along the board [s0, s1], across [-w, w] or [0, w] (one rail), zoomed to fit the box
   const top0 = hTop + 6, x0 = 8, w = 284; const span = win.s1 - win.s0; const across = (win.half ? 1 : 2) * win.w;
   const kz = Math.min(w / span, (hDet - 14) / across);
@@ -747,7 +753,7 @@ function cardFrame(O, opts) {
   const cid = `${id}w`; let g = opts.draw(Xz, Yz, kz, { x0, w, top0, hDet });
   out += `<defs><clipPath id="${cid}"><rect x="${x0}" y="${top0}" width="${w}" height="${hDet}"/></clipPath></defs><g clip-path="url(#${cid})">${g}</g><rect class="station" stroke-width="1" x="${x0}" y="${top0}" width="${w}" height="${hDet}" rx="3"/>`;
   if (opts.cap) out += labAt(x0 + 4, top0 + 10, opts.cap);
-  return `<svg viewBox="0 0 300 ${H}" aria-hidden="true">${out}</svg>${opts.ghostWord ? `<div class="ghostcap">dashed · ${svgEsc(opts.ghostWord)}</div>` : ""}`;
+  return `<svg viewBox="0 0 300 ${H}" aria-hidden="true">${out}</svg>${opts.ghostWord ? `<div class="ghostcap">dashed · ${svgEsc(opts.ghostWord)}</div>` : opts.drawnWord ? `<div class="ghostcap drawn">drawn as · ${svgEsc(opts.drawnWord)}</div>` : ""}`;
 }
 
 /* ============ TEMPLATE ============ */
@@ -765,7 +771,7 @@ const TEMPLATE_GUIDE = {
   tail_squash: ["A tail cut square across a block, the corners rounded.", "The planing area and two hard release points of most modern shortboards: fast in small waves, quick off the top."],
   tail_swallow: ["A tail cut into two points with a crotch between them.", "Each tip holds like a pin while the width between them keeps the planing speed — the fish's tail."],
   tailBlock: ["The width of the tail across its block, on a squash, diamond or swallow.", "A wider block means more area and lift in the tail; narrower tightens the turn and the bite."],
-  depth: ["How far the tail cut runs in: a diamond's point behind its corners, a swallow's crotch between its tips.", "Deeper makes each tip more its own pin and loosens the tail; shallower keeps more of the block's area working."],
+  depth: ["Only a diamond or swallow tail has a depth: how far the cut runs in — the diamond's point behind its corners, the swallow's crotch between its tips.", "On a pin, round or squash tail the slider is greyed out. Deeper makes each tip more its own pin and loosens the tail; shallower keeps more of the block's area working."],
   tailAngle: ["How sharp the tail curve comes to the block or point: pointy at 30°, round at 90°.", "A pointier tail pulls the outline in through the fins for hold; a rounder one keeps width behind the fins for speed and release."],
   tailFull: ["How much the curve bellies out between the wide point and the tail.", "Fuller carries width into the tail for planing and drive; thinner straightens the tail rail for a cleaner line and a tighter arc."],
   wingAdd: ["A step in the outline ahead of the fins where the rail jumps in toward the stringer — up to two.", "The step lets the tail behind it run narrower and release while the width ahead keeps planing; the corner gives the rail a bite point."],
@@ -789,7 +795,7 @@ const TEMPLATE_HOW = {
   tail_squash: "Mark the block width across the tail, cut square, and round the two corners to a small radius with a block.",
   tail_swallow: "Mark the block width and the crotch depth on the stringer, cut the V with a saw and clean it with a file, then round the two tips.",
   tailBlock: "Mark half the block each side of the stringer at the tail and cut across; check the width with a square before rounding the corners.",
-  depth: "Mark the depth on the stringer from the tail and saw the cut in to the mark; a file squares the inside corners.",
+  depth: "On a diamond or swallow, mark the depth on the stringer from the tail and saw the cut in to the mark; a file squares the inside corners.",
   tailAngle: "Fair the last foot of the tail curve with a batten through the block corners; the angle sets itself once the batten lies clean.",
   tailFull: "Spring a batten through the wide point and the tail block and look for flats; adjust the template before cutting.",
   wingAdd: "Cut the outline to the wingless curve first, mark the wing's station on both rails, then cut the step in with a saw and square it with a block.",
@@ -812,7 +818,10 @@ function templateCards() {
     { group: "wide", key: "noseRail", name: "Nose Rail", tag: pct(sp.noseRail), variant: "noseRailPlus", win: "nosehalf", dims: ["noseRail"], ghostWord: `${pct(Math.min(100, sp.noseRail + PAGES.push.rail))} long` },
     ...["pin", "round", "diamond", "squash", "swallow"].map((k) => ({ group: "tail", key: `tail_${k}`, name: cap(k), tag: tailOn(k) ? "On this board" : "", on: tailOn(k), base: `tail_${k}`, variant: null, win: "tail", dims: ["block"] })),
     { group: "tail", key: "tailBlock", name: "Tail Block", tag: O.pinned ? "—" : dim(O.block), variant: V.tailBlockPlus ? "tailBlockPlus" : null, win: "tail", dims: ["block"], ghostWord: V.tailBlockPlus ? `${dim(V.tailBlockPlus.block)} block` : null, note: O.pinned ? "a pin or round tail has no block" : null },
-    { group: "tail", key: "depth", name: "Depth", tag: sp.tail === "diamond" || sp.tail === "swallow" ? mark(sp.tail === "diamond" ? O.depth : O.close - O.first) : "—", variant: V.depthPlus ? "depthPlus" : null, win: "tail", dims: ["depth"], ghostWord: V.depthPlus ? `${mark(sp.tail === "diamond" ? V.depthPlus.depth : V.depthPlus.close - V.depthPlus.first)} deep` : null },
+    // Depth is a diamond's or a swallow's alone: on those the board's own depth is pushed; on any other tail the card draws the board as a swallow in dashes, so the depth is still seen
+    sp.tail === "diamond" || sp.tail === "swallow"
+      ? { group: "tail", key: "depth", name: "Depth", tag: mark(sp.tail === "diamond" ? O.depth : O.close - O.first), variant: V.depthPlus ? "depthPlus" : null, win: "tail", dims: ["depth"], ghostWord: V.depthPlus ? `${mark(sp.tail === "diamond" ? V.depthPlus.depth : V.depthPlus.close - V.depthPlus.first)} deep` : null }
+      : { group: "tail", key: "depth", name: "Depth", tag: "Diamond & swallow only", variant: "tail_swallow", win: "tail", dims: ["ghostDepth"], ghostWord: `as a swallow, ${mark(V.tail_swallow.close - V.tail_swallow.first)} deep`, note: `no depth on a ${sp.tail} tail` },
     { group: "tail", key: "tailAngle", name: "Tail Angle", tag: sp.tail === "diamond" ? "—" : deg(sp.tailAngle), variant: V.tailAnglePlus ? "tailAnglePlus" : null, win: "tail", dims: ["tailAngle"], ghostWord: V.tailAnglePlus ? `${deg(Math.min(90, sp.tailAngle + PAGES.push.tailAngle))}` : null },
     { group: "tail", key: "tailFull", name: "Fullness", tag: pct(sp.tailFullness), variant: "tailFullPlus", win: "tail", dims: ["tailFull"], ghostWord: `${pct(Math.min(100, sp.tailFullness + PAGES.push.full))} full` },
     { group: "wings", key: "wingAdd", name: "+ Add a wing", tag: O.wings.length ? `${O.wings.length} on this board` : "None yet", variant: "wingAdd", win: "tail", dims: ["wing"], ghostWord: `a ${mark(w0.depth)} wing at ${dim(w0.station)}` },
@@ -835,9 +844,8 @@ function templateCartoon(c, id) {
       g += `<line class="stringer" stroke-width="1" stroke-dasharray="12 3 3 3" x1="${f1(Xz(L) - 6)}" y1="${f1(Yz(0))}" x2="${f1(Xz(Math.max(0, O.close)) + 6)}" y2="${f1(Yz(0))}"/>`;
       for (const s of [12 * IN, L - 12 * IN]) if (s > win.s0 && s < win.s1) g += `<line class="station" stroke-width="1" stroke-dasharray="5 4" x1="${f1(Xz(s))}" y1="${f1(Yz(-halfAt(O, s)) - 4)}" x2="${f1(Xz(s))}" y2="${f1(Yz(halfAt(O, s)) + 4)}"/>`;
       if (O.wide > win.s0 && O.wide < win.s1) g += `<line class="widepoint" stroke-width="1" stroke-dasharray="2 3" x1="${f1(Xz(O.wide))}" y1="${f1(Yz(-O.wideW / 2) - 4)}" x2="${f1(Xz(O.wide))}" y2="${f1(Yz(O.wideW / 2) + 4)}"/>`;
-      if (fins) for (const m of fins) g += `<line class="finmark" stroke-width="2" x1="${f1(Xz(m.offTail))}" y1="${f1(Yz(m.side * m.lateral))}" x2="${f1(Xz(m.leadOff))}" y2="${f1(Yz(m.side * m.leadLat))}"/><circle class="findot" r="2.5" cx="${f1(Xz(m.offTail))}" cy="${f1(Yz(m.side * m.lateral))}"/>`;
+      if (fins) for (const m of fins) g += `<line class="finmark" stroke-width="2" x1="${f1(Xz(m.offTail))}" y1="${f1(Yz(m.lateral))}" x2="${f1(Xz(m.leadOff))}" y2="${f1(Yz(m.leadLat))}"/><circle class="findot" r="2.5" cx="${f1(Xz(m.offTail))}" cy="${f1(Yz(m.lateral))}"/>`;
       if (G) g += `<path class="ghost" stroke-width="1.2" stroke-dasharray="3 2" d="${outlinePath(G, Xz, Yz)}"/>`;
-      const yTop = Yz(-halfAt(O, c.win === "tail" ? 6 * IN : c.win === "nose" ? L - 10 * IN : O.wide)) - 8;
       for (const d of c.dims) {
         if (d === "length") g += hdim(Xz(0), Xz(L), Yz(O.wideW / 2) + 10, len(L), false);
         if (d === "width") g += vdim(Xz(O.wide) + 6, Yz(-O.wideW / 2), Yz(O.wideW / 2), dim(O.wideW));
@@ -848,6 +856,7 @@ function templateCartoon(c, id) {
         if (d === "noseRail") g += labAt(Xz(L - 16 * IN), Yz(-halfAt(O, L - 16 * IN)) - 6, `Nose Rail ${pct(PG().outline.spec.noseRail)}`, "middle", "val");
         if (d === "block" && !O.pinned && O.block > 1) g += vdim(Xz(O.first) + 8, Yz(-O.block / 2), Yz(O.block / 2), dim(O.block));
         if (d === "depth" && Math.abs(O.close - O.first) > 1) g += hdim(Xz(O.first), Xz(O.close), Yz(O.block / 2) + 10, mark(Math.abs(O.close - O.first)), false);
+        if (d === "ghostDepth" && G && Math.abs(G.close - G.first) > 1) g += hdim(Xz(G.first), Xz(G.close), Yz(Math.max(O.block, G.block) / 2) + 10, mark(Math.abs(G.close - G.first)), false);
         if (d === "tailAngle") g += labAt(Xz(8 * IN), Yz(-halfAt(O, 8 * IN)) - 6, PG().outline.spec.tail === "diamond" ? "set by the diamond" : deg(PG().outline.spec.tailAngle), "middle", "val");
         if (d === "tailFull") g += labAt(Xz(14 * IN), Yz(-halfAt(O, 14 * IN)) - 6, `${pct(PG().outline.spec.tailFullness)} full`, "middle", "val");
         if ((d === "wing" || d === "wingPos" || d === "wingRun") && O.wings.length) { const w = O.wings[0]; const outer = halfAt(O, w.station + w.run + IN), inner = halfAt(O, w.inner);
@@ -855,7 +864,7 @@ function templateCartoon(c, id) {
           if (d === "wingPos") g += hdim(Xz(0), Xz(w.station), Yz(-outer) - 10, dim(w.station));
           if (d === "wingRun") g += hdim(Xz(w.stepStart), Xz(w.station), Yz(-outer) - 10, mark(w.run)); }
       }
-      if (c.note) g += labAt(Xz(win.s1) - 4 + (Xz(win.s0) - Xz(win.s1)) - 8, yTop, c.note, "end");
+      if (c.note) g += labAt(Xz(win.s1) + 8, Yz(0) - 6, c.note, "start");   // inside the board at the window's nose end, over the stringer, where nothing else is drawn
       return g;
     } });
 }
@@ -1154,6 +1163,7 @@ function drawEstimate() {
 
 /* ============ FINS ============ */
 const FINS_GUIDE = {
+  convention: () => ["All positions use the trailing-edge convention: off-tail and off-rail are measured to the trailing edge of the fin base, and toe-in is the leading edge's inward offset from that trailing edge (regardless of fin base length).", `Rears are often defined by a trailing edge spread rather than off-tail measurement, and every value is rounded to the nearest ${metric() ? "millimetre" : '1/16"'}.`],
   importFins: ["Takes the board's length, its tail width at 12\" and its tail shape from TEMPLATE — the three numbers every fin position is worked from.", "The fins follow the outline as you change it; untick to place fins for a board you know only by those three numbers."],
   setup_single: ["One fin on the stringer in a long box, set well forward of the tail.", "Pivot and glide: a single fin trims and carves long arcs and holds a straight line; it does not want to be pumped."],
   setup_twin: ["Two fins out by the rails and nothing on the stringer.", "Loose and fast: twins skate and release off the tail and love small, soft waves; they slide out when pushed hard."],
@@ -1178,6 +1188,7 @@ const FINS_GUIDE = {
   finToe: ["How much the leading edge points in toward the stringer, as a distance at the leading edge.", "More toe-in is looser and turns easier at the cost of speed; less is drivey and fast down the line."],
 };
 const FINS_HOW = {
+  convention: "Mark the trailing edge first — off the tail along the stringer, squared across, then in from the rail — and lay the leading edge from it with the toe; the base length moves the leading-edge mark, never the trailing edge.",
   importFins: "Leave it ticked and finish TEMPLATE first — the fin marks are measured from the tail tip and in from the rail you drew.",
   setup_single: "Mark the box's centre on the stringer at the off-tail distance from DATA and route the box square to the stringer, the length of the box.",
   setup_twin: "Mark each fin's trailing edge off the tail on the stringer and square across, then measure in from the rail at that mark; mark the leading edge with the toe and join the two for the box.",
@@ -1201,16 +1212,41 @@ const FINS_HOW = {
   finOffRail: "Measure in from the rail at each trailing-edge mark with a rule held square to the stringer; mark both sides and check them against each other.",
   finToe: "Mark the leading edge the toe distance further in from the rail than the trailing edge, then lay a straightedge through the two marks to pencil the box line.",
 };
+// MODEL INFO's notes on where each model's placement guidance comes from (components/fins/fin-model-info.tsx, verbatim),
+// each on the card of the setup or model it describes — the tab itself is gone (the founder, 2026-11-09)
+const FINS_INFO = {
+  setup_single: "Single fin box placement comes from an established fixed range rather than a length equation — the default value is in a common working range (4 1/2\" to 6\") and can be fine-tuned by the forward/aft slider in the advanced menu, rather than solved for.",
+  setup_twin: "All twin placements come from established fixed ranges rather than a length equation — they're centered in a working range (Modern = 7\" to 8\", Keel = 6\" to 6 1/2\", and Upright+Trailer = at ~10\") and can be adjusted by the forward/aft slider in the advanced menu, rather than solved for.",
+  twin_upright: "Good for shorter base (generally ≤ 5 1/2\"), more upright twin fins.",
+  twin_keel: "Use for wide base (generally > 5 1/2\"), retro-style twin fins.",
+  twin_trailer: "Typically used with shorter-base, thruster-like, twins with a small trailer fin for added hold and drive.",
+  thruster_proportional: "A straightforward linear length-scaled placement based on a smaller range of short board. It's the simplest of the four and the least tuned for longer boards.",
+  thruster_basic: "Also scales linearly with length, but more slowly. It follows a \"half rate convention\" based on the idea that stance width scales slower than board length.",
+  thruster_mckeeSB: "Fitted to Greg McKee's published fin-placement guidance for shortboards and guns respectively. Also follows a \"half rate\" style convention.",
+  thruster_mckeeGun: "Fitted to Greg McKee's published fin-placement guidance for shortboards and guns respectively. Also follows a \"half rate\" style convention.",
+  setup_2plus1: "The center fin box placement follows the Single Model above. Side bite placements come from an established fixed range, scaled off a length anchor of 9' rather than a length equation — the default value is centered in a working range (15\" to 16 1/2\") and can be adjusted by the forward/aft slider in the advanced menu, rather than solved for.",
+  quad_basic: "Uses the front Basic Model as input. Rears are placed at 1/2 the front distance from tail as default. Rears use common spread values which tend to put the fins closer to the stringer than the Off-Rail Model, resulting in a looser board.",
+  quad_basicOffRail: "Uses the front Basic Model as input. Rears are placed at 1/2 the front distance +1/4\" from tail as default. Rears use common Off-Rail values which tend to put the fins closer to the rail (wider spread) than the Spread Model, resulting in a board with extra drive. The slightly farther forward rear fins help to avoid feeling tracky.",
+  quad_mckeeSB: "McKee's shortboard/gun rear-pair guidance, paired with the matching front model.",
+  quad_mckeeLB: "McKee's dedicated longboard front-and-rear guidance, for boards 8'0\" and longer. On a shorter board the app uses McKee SB/Gun instead.",
+};
 function finsCards() {
   const F = PG().fins, b = F.base, V = F.variants; const r = b.resolved;
   const has = (role) => b.marks.some((m) => m.role === role);
   const onSetup = (s) => b.setup === s;
-  const list = [{ group: "inputs", key: "importFins", name: "Import Designed Board", tag: "On this board", on: true, base: null, variant: null, dims: ["offTail", "offRail"] }];
-  for (const s of F.setups) list.push({ group: "setup", key: `setup_${s.value}`, name: s.label, tag: onSetup(s.value) ? "On this board" : "", on: onSetup(s.value), base: `setup_${s.value}`, variant: null, dims: ["offTail", "offRail"] });
-  for (const m of F.thrusterModels) list.push({ group: "thruster", key: `thruster_${m.value}`, name: m.label, tag: b.setup === "thruster" && b.frontModel === m.value ? "On this board" : "", on: b.setup === "thruster" && b.frontModel === m.value, base: `thruster_${m.value}`, variant: null, dims: ["offTail", "toe"] });
-  for (const m of F.quadModels) list.push({ group: "quad", key: `quad_${m.value}`, name: m.label, tag: b.setup === "quad" && b.quadRearModel === m.value ? "On this board" : V[`quad_${m.value}`].disabled ? `Needs 8'0"` : "", on: b.setup === "quad" && b.quadRearModel === m.value, base: `quad_${m.value}`, variant: null, dims: ["rearOffTail"] });
-  list.push({ group: "quad", key: "quad_center", name: "Add 5th/Center fin", tag: b.setup === "quad" && b.centerOn ? "On this board" : "", on: b.setup === "quad" && b.centerOn, base: "quad_center", variant: null, dims: ["centerOffTail"] });
-  for (const t of F.twinTemplates) list.push({ group: "twin", key: `twin_${t.value}`, name: t.label, tag: b.setup === "twin" && b.twinTemplate === t.value ? "On this board" : "", on: b.setup === "twin" && b.twinTemplate === t.value, base: `twin_${t.value}`, variant: null, dims: ["offTail", "base"] });
+  const list = [{ group: "inputs", key: "importFins", name: "Import Designed Board", tag: "On this board", on: true, base: null, variant: null, dims: ["offTail", "offRail"] },
+    { group: "convention", key: "convention", name: "Trailing-edge convention", tag: metric() ? "to the millimetre" : 'to 1/16"', on: false, base: null, variant: null, dims: ["offTail", "offRail", "toe", "baseUpper"] }];
+  // one group per Fin Setup, in the sidebar's order: the setup's own card, then its models or templates (the founder, 2026-11-09)
+  const setupCard = (s) => ({ group: s.value, key: `setup_${s.value}`, name: s.label, tag: onSetup(s.value) ? "On this board" : "", on: onSetup(s.value), base: `setup_${s.value}`, variant: null, dims: ["offTail", "offRail"] });
+  for (const s of F.setups) {
+    list.push(setupCard(s));
+    if (s.value === "twin") for (const t of F.twinTemplates) list.push({ group: "twin", key: `twin_${t.value}`, name: t.label, tag: b.setup === "twin" && b.twinTemplate === t.value ? "On this board" : "", on: b.setup === "twin" && b.twinTemplate === t.value, base: `twin_${t.value}`, variant: null, dims: ["offTail", "baseUpper"] });
+    if (s.value === "thruster") for (const m of F.thrusterModels) list.push({ group: "thruster", key: `thruster_${m.value}`, name: m.label, tag: b.setup === "thruster" && b.frontModel === m.value ? "On this board" : "", on: b.setup === "thruster" && b.frontModel === m.value, base: `thruster_${m.value}`, variant: null, dims: ["offTail", "toe"] });
+    if (s.value === "quad") {
+      for (const m of F.quadModels) list.push({ group: "quad", key: `quad_${m.value}`, name: m.label, tag: b.setup === "quad" && b.quadRearModel === m.value ? "On this board" : V[`quad_${m.value}`].disabled ? `Needs 8'0"` : "", on: b.setup === "quad" && b.quadRearModel === m.value, base: `quad_${m.value}`, variant: null, dims: ["rearOffTail"] });
+      list.push({ group: "quad", key: "quad_center", name: "Add 5th/Center fin", tag: b.setup === "quad" && b.centerOn ? "On this board" : "", on: b.setup === "quad" && b.centerOn, base: "quad_center", variant: null, dims: ["centerOffTail"] });
+    }
+  }
   const fwd = has("front") ? "front" : has("rear") ? "rear" : "center";
   list.push({ group: "advanced", key: "finBase", name: has("front") || has("rear") ? "Fin Base Length" : "Fin Box Length", tag: mark(b.marks[0].base), base: null, variant: "basePlus", dims: ["base"], ghostWord: `${mark(b.marks[0].base + PAGES.push.finBase)} base` });
   list.push({ group: "advanced", key: "finForward", name: "Aft/Forward position", tag: mark(b.marks.find((m) => m.role === fwd).offTail), base: null, variant: "forwardPlus", dims: ["offTail"], ghostWord: `${mark(PAGES.push.finForward)} forward` });
@@ -1218,33 +1254,43 @@ function finsCards() {
   list.push({ group: "advanced", key: "finToe", name: "Toe-In", tag: has("front") || has("rear") ? mark(has("front") ? r.forwardToe : r.rearToe) : "— (no rail fins)", base: null, variant: has("front") || has("rear") ? "toePlus" : null, dims: ["toe"], ghostWord: has("front") || has("rear") ? `${mark(PAGES.push.finToe)} toe-in` : null });
   return list;
 }
-const FINS_GROUPS = [["inputs", "Inputs"], ["setup", "Fin Setup"], ["thruster", "Thruster Model", "drawn as a thruster on this board"], ["quad", "Quad Model", "drawn as a quad on this board"], ["twin", "Twin Template", "drawn as a twin on this board"], ["advanced", "Advanced", "the forward fins'; the rear pair and the center fin have the same"]];
+const FINS_GROUPS = [["inputs", "Inputs"], ["convention", "Convention", "how every mark below is measured"],
+  ["single", "Single Fin", "one box on the stringer"], ["twin", "Twin", "two rail fins, placed by one of three templates"], ["thruster", "Thruster", "the front pair by one of four front models (the quad's front pair uses them too), the center fin behind"],
+  ["2plus1", "2+1", "a single's center box with two side bites"], ["quad", "Quad", "the rear pair by one of four rear models, each bringing its matching front model; a fifth box behind if you want it"],
+  ["advanced", "Advanced", "the forward fins'; the rear pair and the center fin have the same"]];
 function finLines(marks, Xz, Yz, ghost) {
-  let g = ""; for (const m of marks) { const x1 = Xz(m.offTail), y1 = Yz(m.side * m.lateral), x2 = Xz(m.leadOff), y2 = Yz(m.side * m.leadLat);
+  let g = ""; for (const m of marks) { const x1 = Xz(m.offTail), y1 = Yz(m.lateral), x2 = Xz(m.leadOff), y2 = Yz(m.leadLat);   // lateral is signed by the side already
     g += ghost ? `<line class="ghost" stroke-width="2" stroke-dasharray="3 2" x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/>` : `<line class="finmark" stroke-width="2.5" ${m.kind === "rail" ? 'stroke-dasharray="8 4"' : m.kind === "stringer" ? 'stroke-dasharray="2 3"' : ""} x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/><circle class="findot" r="3" cx="${f1(x1)}" cy="${f1(y1)}"/><circle class="findot" r="3" cx="${f1(x2)}" cy="${f1(y2)}"/>`; }
   return g;
 }
 function finsCartoon(c, id) {
   const F = PG().fins, O = PG().outline.base; const base = c.base ? F.variants[c.base] : F.base; const G = c.variant ? F.variants[c.variant] : null;
   const win = { s0: -1.5 * IN, s1: 24 * IN, w: halfAt(O, 24 * IN) + IN };
-  return cardFrame(O, { hTop: 60, hDet: 170, win, id, fins: base.marks, cap: `Tail, ${dim(24 * IN)} from above`, ghostWord: G && c.ghostWord ? c.ghostWord : (c.base && base.modelHeader ? base.modelHeader : null), draw: (Xz, Yz) => {
+  return cardFrame(O, { hTop: 60, hDet: 170, win, id, fins: base.marks, cap: `Tail, ${dim(24 * IN)} from above`, ghostWord: G && c.ghostWord ? c.ghostWord : null, drawnWord: !G && c.base && base.modelHeader ? base.modelHeader : null, draw: (Xz, Yz) => {
     let g = `<path class="board" stroke-width="1" d="${outlinePath(O, Xz, Yz)}"/><line class="stringer" stroke-width="1" stroke-dasharray="12 3 3 3" x1="${f1(Xz(26 * IN))}" y1="${f1(Yz(0))}" x2="${f1(Xz(Math.max(0, O.close)) + 6)}" y2="${f1(Yz(0))}"/>`;
     g += `<line class="station" stroke-width="1" stroke-dasharray="5 4" x1="${f1(Xz(12 * IN))}" y1="${f1(Yz(-halfAt(O, 12 * IN)) - 4)}" x2="${f1(Xz(12 * IN))}" y2="${f1(Yz(halfAt(O, 12 * IN)) + 4)}"/>`;
     g += finLines(base.marks, Xz, Yz, false); if (G) g += finLines(G.marks, Xz, Yz, true);
     const pick = (role) => base.marks.find((m) => m.role === role && m.side !== -1) || base.marks[0];
     const front = pick("front"), rear = pick("rear"), center = base.marks.find((m) => m.role === "center");
+    const up = (m) => base.marks.find((k) => k.role === m.role && k.side === -1) || m;   // the same fin on the upper side
+    // dimension lines sit outside the board, the drafting way: off-tail just below the rail at the fin's own station (the
+    // tail is narrower there, so the line clears the tail), the center fin's above the upper rail
     for (const d of c.dims) {
-      if (d === "offTail" && front) g += hdim(Xz(0), Xz(front.offTail), Yz(halfAt(O, 2 * IN)) + 10, `${mark(front.offTail)} off tail`, false);
-      if (d === "offTail" && !front && center) g += hdim(Xz(0), Xz(center.offTail), Yz(halfAt(O, 2 * IN)) + 10, `${mark(center.offTail)} off tail`, false);
-      if (d === "rearOffTail" && rear) g += hdim(Xz(0), Xz(rear.offTail), Yz(halfAt(O, 2 * IN)) + 10, `${mark(rear.offTail)} off tail`, false);
-      if (d === "centerOffTail" && center) g += hdim(Xz(0), Xz(center.offTail), Yz(-halfAt(O, 2 * IN)) - 10, `center ${mark(center.offTail)} off tail`);
-      if (d === "offRail" && front && front.kind === "rail") { const hwm = halfAt(O, front.offTail); g += vdim(Xz(front.offTail) - 6, Yz(hwm), Yz(front.lateral), `${mark(hwm - front.lateral)} off rail`, "left"); }
-      if (d === "toe" && front && front.toe > 0.5) g += vdim(Xz(front.leadOff) + 6, Yz(-front.lateral), Yz(-front.leadLat), `${mark(front.toe)} toe`, "right");
-      if (d === "base" && (front || center)) { const m = front || center; g += hdim(Xz(m.offTail), Xz(m.leadOff), Yz(m.side * m.lateral) + (m.side >= 0 ? 12 : -8), `${mark(m.base)} base`, m.side < 0); }
+      if (d === "offTail" && front) g += hdim(Xz(0), Xz(front.offTail), Yz(halfAt(O, front.offTail)) + 12, `${mark(front.offTail)} off tail`, false);
+      if (d === "offTail" && !front && center) g += hdim(Xz(0), Xz(center.offTail), Yz(halfAt(O, center.offTail)) + 12, `${mark(center.offTail)} off tail`, false);
+      if (d === "rearOffTail" && rear) g += hdim(Xz(0), Xz(rear.offTail), Yz(halfAt(O, rear.offTail)) + 12, `${mark(rear.offTail)} off tail`, false);
+      if (d === "centerOffTail" && center) g += hdim(Xz(0), Xz(center.offTail), Yz(-halfAt(O, center.offTail)) - 12, `center ${mark(center.offTail)} off tail`);
+      if (d === "offRail" && front && front.kind === "rail") { const hwm = halfAt(O, front.offTail); g += vdim(Xz(front.offTail) - 6, Yz(hwm), Yz(front.lateral), `${mark(hwm - front.lateral)} off rail`, "right"); }   // the label on the tail side of the line, clear of the fin
+      // toe-in on the upper fin: a dashed reference through its trailing edge, parallel to the stringer, and the gap to the
+      // leading edge dimensioned nose-ward of it, where the board is empty
+      if (d === "toe" && front && front.toe > 0.5) { const u = up(front); g += `<line class="refdash" stroke-width="1" stroke-dasharray="2 3" x1="${f1(Xz(u.offTail))}" y1="${f1(Yz(u.lateral))}" x2="${f1(Xz(u.leadOff) - 14)}" y2="${f1(Yz(u.lateral))}"/>` + vdim(Xz(u.leadOff) - 8, Yz(u.lateral), Yz(u.leadLat), `${mark(u.toe)} toe`, "left"); }
+      if (d === "base" && (front || center)) { const m = front || center; g += hdim(Xz(m.offTail), Xz(m.leadOff), Yz(m.lateral) + (m.side >= 0 ? 12 : -8), `${mark(m.base)} base`, m.side < 0); }
+      // the base on the upper fin, above it, clear of the off-tail and off-rail lines on the lower one (the Convention and twin cards)
+      if (d === "baseUpper" && (front || center)) { const m = (front && base.marks.find((k) => k.role === front.role && k.side === -1)) || front || center; g += hdim(Xz(m.offTail), Xz(m.leadOff), Yz(m.lateral) - 8, `${mark(m.base)} base`, true); }
     }
     return g; } });
 }
-const finsGuideNote = () => `What each setup, model and control on this page is, what it does to the ride, and how the marks are laid out. Every card is your ${svgEsc(B.name)}'s tail the way VIEWER draws it — the last ${dim(24 * IN)} from above, the fins as lines from trailing edge to leading edge — each setup and model drawn on this board, and the Advanced settings pushed in muted dashes. No cant: the page has none.`;
+const finsGuideNote = () => `Each fin setup with its models or templates: what it is, what it does to the ride, where its numbers come from (the MODEL INFO notes, now on the cards) and how the marks are laid out. Every card is your ${svgEsc(B.name)}'s tail the way VIEWER draws it — the last ${dim(24 * IN)} from above, the fins as lines from trailing edge to leading edge — each setup and model drawn on this board, and the Advanced settings pushed in muted dashes. No cant: the page has none.`;
 function buildFinsSidebar() {
   const F = PG().fins, b = F.base, O = PG().outline.base;
   let h = `<div class="ruled">Inputs</div><div class="group"><label class="check"><input type="checkbox" checked>Import Designed Board</label><div class="rcard"><div class="cap">From TEMPLATE</div><dl class="figs three"><div class="fig"><dt>Length</dt><dd>${len(O.L)}</dd></div><div class="fig"><dt>Tail @ ${station()}</dt><dd>${dim(O.tail12)}</dd></div><div class="fig"><dt>Tail</dt><dd>${cap(PG().outline.spec.tail)}</dd></div></dl></div></div>`;
@@ -1264,13 +1310,13 @@ function drawFinsViewer() {
   let d = ""; for (const [s, w] of O.pts) if (s <= span + 2 * IN) d += (d ? "L" : "M") + f1(X(w)) + " " + f1(Y(s)); const ptsIn = O.pts.filter(([s]) => s <= span + 2 * IN); for (let j = ptsIn.length - 1; j >= 0; j--) d += "L" + f1(X(-ptsIn[j][1])) + " " + f1(Y(ptsIn[j][0])); if (Math.abs(O.close - O.first) > 0.5) d += "L" + f1(X(0)) + " " + f1(Y(O.close));
   let out = `<path class="board" stroke-width="${sw(px, 1.5)}" d="${d}Z"/><line class="stringer" stroke-width="${sw(px, 1)}" stroke-dasharray="${sw(px, 16)} ${sw(px, 4)} ${sw(px, 4)} ${sw(px, 4)}" x1="${cx}" y1="${f1(Y(span + 2 * IN))}" x2="${cx}" y2="${f1(Y(Math.max(0, O.close)) + 6 * px)}"/>`;
   out += `<line class="station" stroke-width="${sw(px, 1)}" stroke-dasharray="${sw(px, 5)} ${sw(px, 4)}" x1="${f1(X(-halfAt(O, 12 * IN)) - 6 * px)}" y1="${f1(Y(12 * IN))}" x2="${f1(X(halfAt(O, 12 * IN)) + 6 * px)}" y2="${f1(Y(12 * IN))}"/>`;
-  for (const m of b.marks) { const x1 = X(m.side * m.lateral), y1 = Y(m.offTail), x2 = X(m.side * m.leadLat), y2 = Y(m.leadOff);
+  for (const m of b.marks) { const x1 = X(m.lateral), y1 = Y(m.offTail), x2 = X(m.leadLat), y2 = Y(m.leadOff);   // lateral is signed by the side already
     out += `<line class="finmark" stroke-width="${sw(px, 2.5)}" ${m.kind === "rail" ? `stroke-dasharray="${sw(px, 8)} ${sw(px, 4)}"` : m.kind === "stringer" ? `stroke-dasharray="${sw(px, 2)} ${sw(px, 3)}"` : ""} x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}"/><circle class="findot" r="${sw(px, 3.5)}" cx="${f1(x1)}" cy="${f1(y1)}"/><circle class="findot" r="${sw(px, 3.5)}" cx="${f1(x2)}" cy="${f1(y2)}"/>`; }
   const left = b.marks.find((m) => m.side === -1 && m.role !== "rear") || b.marks.find((m) => m.role === "center"), right = b.marks.find((m) => m.side === 1 && m.role !== "rear");
   const S = { line: `stroke-width="${sw(px, 1)}"`, val: `font-size="${sw(px, 11)}"` };
   const vd = (x, ya, yb, text, anchor) => `<line class="dim" ${S.line} x1="${f1(x)}" y1="${f1(ya)}" x2="${f1(x)}" y2="${f1(yb)}"/><line class="dim" ${S.line} x1="${f1(x - 4 * px)}" y1="${f1(ya)}" x2="${f1(x + 4 * px)}" y2="${f1(ya)}"/><line class="dim" ${S.line} x1="${f1(x - 4 * px)}" y1="${f1(yb)}" x2="${f1(x + 4 * px)}" y2="${f1(yb)}"/><text class="val" ${S.val} x="${f1(x + (anchor === "start" ? 6 : -6) * px)}" y="${f1((ya + yb) / 2 + 4 * px)}" text-anchor="${anchor}">${svgEsc(text)}</text>`;
   const hd = (xa, xb, y, text) => `<line class="dim" ${S.line} x1="${f1(xa)}" y1="${f1(y)}" x2="${f1(xb)}" y2="${f1(y)}"/><line class="dim" ${S.line} x1="${f1(xa)}" y1="${f1(y - 4 * px)}" x2="${f1(xa)}" y2="${f1(y + 4 * px)}"/><line class="dim" ${S.line} x1="${f1(xb)}" y1="${f1(y - 4 * px)}" x2="${f1(xb)}" y2="${f1(y + 4 * px)}"/><text class="val" ${S.val} x="${f1((xa + xb) / 2)}" y="${f1(y - 6 * px)}" text-anchor="middle">${svgEsc(text)}</text>`;
-  if (left) { const xl = X(-hw) - 10 * px; out += `<line class="ext" ${S.line} x1="${f1(X(left.side * left.lateral))}" y1="${f1(Y(left.offTail))}" x2="${f1(xl)}" y2="${f1(Y(left.offTail))}"/>` + vd(xl, Y(0), Y(left.offTail), mark(left.offTail), "end"); if (left.toe > 0.5) out += hd(X(-left.lateral), X(-left.leadLat), Y(left.leadOff) - 10 * px, mark(left.toe)); }
+  if (left) { const xl = X(-hw) - 10 * px; out += `<line class="ext" ${S.line} x1="${f1(X(left.lateral))}" y1="${f1(Y(left.offTail))}" x2="${f1(xl)}" y2="${f1(Y(left.offTail))}"/>` + vd(xl, Y(0), Y(left.offTail), mark(left.offTail), "end"); if (left.toe > 0.5) out += hd(X(-left.lateral), X(-left.leadLat), Y(left.leadOff) - 10 * px, mark(left.toe)); }
   if (right && right.kind === "rail") { const hwm = halfAt(O, right.offTail); out += hd(X(right.lateral), X(hwm), Y(right.offTail) - 10 * px, mark(hwm - right.lateral)); }
   document.getElementById("svg-viewer").innerHTML = out;
   document.getElementById("note-viewer").innerHTML = `<span class="findotkey"></span>Trailing &amp; Leading Edges${b.legend.map((l) => ` · Base Length (${svgEsc(l.label)}): ${mark(l.base)}`).join("")} · ${svgEsc(b.modelHeader)}`;
@@ -1281,7 +1327,7 @@ function drawFinsData() {
   for (const s of b.sections) { h += `<div class="datahead">${svgEsc(s.label)}</div><table class="data"><tbody>`; for (const g of s.groups) { h += `<tr><td colspan="2" class="ink" style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">${g.heading}</td></tr>`; for (const r of g.rows) h += `<tr><td>${svgEsc(r.label)}</td><td>${mark(r.value)}</td></tr>`; if (g.fullSpread !== null) h += `<tr><td>Full Spread</td><td>${mark(g.fullSpread)}</td></tr>`; } h += `</tbody></table>`; }
   document.getElementById("panel-data").innerHTML = h;
 }
-function drawFinsInfo() { document.getElementById("panel-info").innerHTML = `<div class="datahead">Model Info</div><div class="intro">Reference note on where each model's placement guidance comes from.</div><div class="datanotes"><p>Convention · Single Model · Twin Models · 2+1 Model · Thruster &amp; Quad Front Models · Quad Rear Models — as on the live page; not part of this sketch.</p></div>`; }
+// MODEL INFO is no longer a tab: its text sits on the GUIDE's cards (FINS_INFO), one note per setup or model
 
 
 /* ============ the pages: each brings its own sidebar, tabs, panels and GUIDE; the GUIDE's card and the chrome are shared ============ */
@@ -1305,9 +1351,9 @@ const PAGE_DEFS = {
     sidebar: buildVolumeSidebar, draw: { estimate: drawEstimate, guide: drawGuide },
     groups: VOLUME_GROUPS, cards: volumeCards, GUIDE: VOLUME_GUIDE, HOW: VOLUME_HOW, cartoon: volumeCartoon, guideNote: volumeGuideNote },
   fins: { nav: "Fins", label: "Fins", title: "Fin Setup & Placement", sub: "Quantitative reference · trailing-edge convention", back: "← Volume", next: "Summary →",
-    tabs: [["viewer", "Viewer"], ["data", "Data"], ["info", "Model info"], ["guide", "Guide"]], svg: { viewer: "The tail from above with the fin marks and their dimensions" },
-    sidebar: buildFinsSidebar, draw: { viewer: drawFinsViewer, data: drawFinsData, info: drawFinsInfo, guide: drawGuide },
-    groups: FINS_GROUPS, cards: finsCards, GUIDE: FINS_GUIDE, HOW: FINS_HOW, cartoon: finsCartoon, guideNote: finsGuideNote },
+    tabs: [["viewer", "Viewer"], ["data", "Data"], ["guide", "Guide"]], svg: { viewer: "The tail from above with the fin marks and their dimensions" },   // MODEL INFO folded into GUIDE (round three)
+    sidebar: buildFinsSidebar, draw: { viewer: drawFinsViewer, data: drawFinsData, guide: drawGuide },
+    groups: FINS_GROUPS, cards: finsCards, GUIDE: FINS_GUIDE, HOW: FINS_HOW, INFO: FINS_INFO, cartoon: finsCartoon, guideNote: finsGuideNote },
 };
 const PAGE_ORDER = ["outline", "rocker", "rails", "volume", "fins"];
 function buildPage() {
@@ -1340,7 +1386,7 @@ function applyChrome() {
   if (!cur || getComputedStyle(cur).display === "none") state.page = PAGE_DEFS[state.pg].tabs[0][0];
   document.querySelectorAll(".tabs .tab").forEach((b) => b.classList.toggle("on", b.dataset.page === state.page));
   document.querySelectorAll("#folder > .inner").forEach((el) => { el.style.display = el.id === `panel-${state.page}` ? "" : "none"; });
-  document.getElementById("note").innerHTML = "<b>022 — a GUIDE on every design page.</b> Round one was ROCKER; round two adds TEMPLATE, RAILS, VOLUME and FINS the same way (the Page buttons). The founder on sketch 021's GUIDE (2026-11-08): \"every page needs a guide like this ... what each parameter does to/for the board ... a 'how to shape' note too.\" GUIDE joins ROCKER's own tabs — VIEWER · PLANING · DATASHEET on a computer, VIEWER · TOP · PLANING · DATA on a phone — with one card per control or named choice, each drawn from the board you have open with that setting pushed in muted dashes, two sentences and a shop note. The sidebar, VIEWER, PLANING and DATASHEET are pictures of today's page from the real numbers; the tabs and GUIDE are the sketch. Every sentence is a first draft for the founder's pen.";
+  document.getElementById("note").innerHTML = "<b>022 — a GUIDE on every design page.</b> Round one was ROCKER; round two adds TEMPLATE, RAILS, VOLUME and FINS the same way (the Page buttons); round three (2026-11-09) says TEMPLATE's Depth is a diamond's or a swallow's alone, and regroups FINS' GUIDE by Fin Setup with the MODEL INFO notes on the cards — that tab is gone. The founder on sketch 021's GUIDE (2026-11-08): \"every page needs a guide like this ... what each parameter does to/for the board ... a 'how to shape' note too.\" GUIDE joins ROCKER's own tabs — VIEWER · PLANING · DATASHEET on a computer, VIEWER · TOP · PLANING · DATA on a phone — with one card per control or named choice, each drawn from the board you have open with that setting pushed in muted dashes, two sentences and a shop note. The sidebar, VIEWER, PLANING and DATASHEET are pictures of today's page from the real numbers; the tabs and GUIDE are the sketch. Every sentence is a first draft for the founder's pen.";
 }
 
 /* ============ wiring (once) ============ */

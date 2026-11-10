@@ -176,7 +176,13 @@ Board Type with the litres at its seven steps, and the three figures the ESTIMAT
 the four thruster and four quad models, the center fin, the three twin templates and the four Advanced sliders, every one
 drawn on the board's own tail) — each page with its own sidebar picture and tabs, every pushed drawing through the app's own
 maths (`buildOutline`, `computeRailSectionOutput` + `finishedRail`, `computeVolume`, `computeFinPlacement`). 83 cards of first
-drafts for his pen.
+drafts for his pen. Round three (2026-11-09, the founder: *"Template Depth only used for Diamond and Swallow tails, say so.
+FINS guide = reorganize the guide into Fin Setups along with their model info, and combine the model info tab into this new
+guide page, we don't need both."*): the Depth card says it is a diamond's or a swallow's alone and, on any other tail, is
+tagged so and draws the board as a swallow in dashes; FINS' GUIDE runs setup by setup — a Convention card first (MODEL INFO's
+trailing-edge paragraph, drawn with its three measurements), then Single Fin, Twin, Thruster, 2+1 and Quad, each the setup's
+own card and then its models or templates, with MODEL INFO's notes verbatim on the cards they describe — and the MODEL INFO
+tab is gone (VIEWER · DATA · GUIDE). 84 cards.
 
 ## Reference Points
 
