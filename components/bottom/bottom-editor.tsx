@@ -52,6 +52,11 @@ const PHONE_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
  * behind the layout's width line — nothing here reads the window — so a computer, and a phone held sideways, keep all
  * three cards and no row.
  *
+ * On a short screen — a phone held sideways, by height alone — the two drawings keep 360 dots between them rather than
+ * being squeezed into what is left under the top bar, the folder's cards grow with what they hold (`growOnShortScreen`,
+ * RAILS' own rule) and the drawing column scrolls; DATA and GUIDE grow the same way and scroll with the column, so
+ * nothing scrolls inside something that scrolls.
+ *
  * The floor scan (`bottomFloorFlags`, 50–75 ms on a full bottom) runs once here, on deferred copies so a drag keeps its
  * thumb under the finger, and feeds both the panel's sentence and DATA's note and cells — never a second scan.
  */
@@ -132,12 +137,18 @@ export function BottomEditor() {
             // rims, the strip and the folder's border (UI-SPEC §6) — so VIEWER, DATA and GUIDE never move the controls
             // beneath, and DATA and GUIDE scroll inside it.
             panelClassName="max-shell:h-[calc(66dvh-40px)] max-shell:flex-none"
+            // A phone held sideways: the cards grow with their content and the drawing column scrolls (RAILS' rule).
+            growOnShortScreen
             trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
           >
             {activePage === "viewer" && (
               // The two drawings share the card, the top view a little the larger, then `Section at` (sketch line
               // 299-311). BOTTOM is not printable: a shaper's paper is the order form (UI-SPEC §13).
-              <div data-bottom-live={live} className="flex min-h-0 flex-1 flex-col gap-2 print:hidden">
+              // On a short screen the pair keeps a 360-dot floor (UI-SPEC §6) and the column scrolls to the rest.
+              <div
+                data-bottom-live={live}
+                className="flex min-h-0 flex-1 flex-col gap-2 print:hidden [@media(max-height:500px)]:min-h-[360px]"
+              >
                 {/* Phone only: RAILS' NOSE · CENTER · TAIL row (`rail-band-editor.tsx`), copied — which section's
                     controls show beneath the pinned drawing, and the live cut. Hidden at the layout's width line.
                     It only changes what is seen, so a locked board keeps it (`data-lock-exempt`). */}
@@ -172,13 +183,15 @@ export function BottomEditor() {
               </div>
             )}
             {activePage === "data" && (
-              <div className="flex min-h-0 flex-1 flex-col print:hidden">
+              // On a short screen the tables take their own height and the column scrolls, not a box inside it.
+              <div className="flex min-h-0 flex-1 flex-col print:hidden [@media(max-height:500px)]:flex-none">
                 <BottomData floorFlags={floorFlags} />
               </div>
             )}
             {activePage === "guide" && (
               // The cards scroll inside the folder, never the page (D-17). Words and pictures for the screen only.
-              <div className="flex min-h-0 flex-1 flex-col print:hidden">
+              // On a short screen they take their own height and scroll with the drawing column.
+              <div className="flex min-h-0 flex-1 flex-col print:hidden [@media(max-height:500px)]:flex-none">
                 <BottomGuide />
               </div>
             )}

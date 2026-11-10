@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { blankButton, blankCards, closeBlankPicker, openBlankPicker, openRocker, pickFirstFittingBlank } from "./helpers/blank-picker";
+import { bottomPhoneRow, showBottomSection } from "./helpers/bottom";
 import { openFoilAdvanced } from "./helpers/rocker-sidebar";
 import { openPhoneMenu } from "./helpers/screens";
 
@@ -436,6 +437,133 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
       return !!hit && (hit === el || el.contains(hit));
     });
     expect(hitsTheButton, "the Automatic button's centre is the button, not the thumb's ring").toBe(true);
+  });
+
+  // BOTTOM (Phase 17, plan 17-14): every menu, tick row and slider a finger meets on the page, the folder's tabs and
+  // the phone's NOSE · CENTER · TAIL row, and the four Height buttons over the cross-section. The Height buttons and the
+  // tabs are drawn small on purpose — the drawing keeps the room — so what is measured for them is the invisible touch
+  // box round each one, and that a finger landing in it presses that button and no other.
+  test("BOTTOM: every menu, tick row and slider thumb is at least 44px, and the tabs and the Height buttons take a 44px touch box", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await page.goto("/design/bottom");
+    await expect(page.locator("[data-bottom-top-view]")).toBeVisible({ timeout: 60_000 });
+    const panel = page.locator("[data-design-controls-scroll]");
+    const pickFrom = async (menu: string, option: string) => {
+      const trigger = page.getByRole("combobox", { name: menu, exact: true });
+      await expect(async () => {
+        // A menu left open by a try that failed covers its own trigger: close it before trying again.
+        if ((await trigger.getAttribute("aria-expanded")) === "true") await page.keyboard.press("Escape");
+        await trigger.click({ timeout: 2_000 });
+        await page.getByRole("option", { name: option, exact: true }).click({ timeout: 2_000 });
+        await expect(trigger.locator("[data-slot=select-value]")).toHaveText(option, { timeout: 2_000 });
+      }).toPass({ timeout: 60_000 });
+    };
+    /** Every one of these that is drawn right now is at least 44 dots tall; says how many were measured. */
+    const tallEnough = async (what: string, locator: ReturnType<Page["locator"]>) => {
+      let measured = 0;
+      for (const each of await locator.all()) {
+        if (!(await each.isVisible())) continue;
+        const height = await each.evaluate((el) => el.getBoundingClientRect().height);
+        expect(height, `${what} ${measured + 1}`).toBeGreaterThanOrEqual(44);
+        measured += 1;
+      }
+      return measured;
+    };
+    const tickRows = panel.locator('label:has([data-slot="checkbox"])');
+
+    // TAIL with a Spiral Vee and six channels: the most controls the panel ever holds — the section's own menu, the
+    // channels' three, and every slider of both.
+    await showBottomSection(page, "tail");
+    await pickFrom("Tail Cut", "Spiral Vee");
+    await pickFrom("Channels", "6 channels");
+    expect(await tallEnough("menu", panel.getByRole("combobox")), "Tail Cut, Channels, Channel Run and Longest Channels").toBeGreaterThanOrEqual(4);
+    expect(await tallEnough("tick row", tickRows), "the finished-rail tick row").toBeGreaterThanOrEqual(1);
+    let thumbs = 0;
+    for (const thumb of await page.locator('[data-slot="slider-thumb"]').all()) {
+      if (!(await thumb.isVisible())) continue;
+      const box = await slideThumbTargetBox(thumb);
+      expect(box.width, `slider thumb ${thumbs + 1} width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `slider thumb ${thumbs + 1} height`).toBeGreaterThanOrEqual(44);
+      thumbs += 1;
+    }
+    expect(thumbs, "the Spiral Vee's sliders, the channels' eight and Section at").toBeGreaterThan(10);
+
+    // NOSE with a single concave: the section's menu again, and its own tick row beside the finished rail's.
+    await showBottomSection(page, "nose");
+    await pickFrom("Nose Cut", "Teardrop Nose Concave");
+    expect(await tallEnough("menu", panel.getByRole("combobox"))).toBeGreaterThanOrEqual(1);
+    expect(await tallEnough("tick row", tickRows), "the finished rail's row and the Nose single's own").toBeGreaterThanOrEqual(2);
+
+    // The folder's tabs, and the phone's row when it is drawn (an upright phone): 44 dots of touch round each.
+    const tabs = [
+      ...["VIEWER", "DATA", "GUIDE"].map((name) => page.getByRole("tab", { name, exact: true })),
+      ...(await bottomPhoneRow(page).getByRole("tab").all()),
+    ];
+    let tabsMeasured = 0;
+    for (const tab of tabs) {
+      if (!(await tab.isVisible())) continue;
+      const touch = await tab.evaluate((el) => parseFloat(getComputedStyle(el, "::after").height));
+      expect(touch, `the ${await tab.innerText()} tab's touch box`).toBeGreaterThanOrEqual(43.5);
+      tabsMeasured += 1;
+    }
+    expect(tabsMeasured, "VIEWER · DATA · GUIDE and NOSE · CENTER · TAIL").toBe(6);
+
+    // The Height buttons: drawn small, each inside a touch box 44 dots square or better; the boxes stand side by side
+    // without covering one another, and a finger anywhere in a box presses that button.
+    const buttons = page.locator("[data-bottom-height] button");
+    await expect(buttons).toHaveCount(4);
+    const boxes = await buttons.evaluateAll((els) =>
+      els.map((el) => {
+        const drawn = el.getBoundingClientRect();
+        const after = getComputedStyle(el, "::after");
+        const left = drawn.left + parseFloat(after.left);
+        const top = drawn.top + parseFloat(after.top);
+        const width = parseFloat(after.width);
+        const height = parseFloat(after.height);
+        const hits = (x: number, y: number) => {
+          const hit = document.elementFromPoint(x, y);
+          return !!hit && (hit === el || el.contains(hit));
+        };
+        return {
+          name: el.getAttribute("aria-label") ?? "",
+          drawn: { width: drawn.width, height: drawn.height },
+          left,
+          right: left + width,
+          width,
+          height,
+          centre: hits(drawn.left + drawn.width / 2, drawn.top + drawn.height / 2),
+          corners: [
+            hits(left + 2, top + 2),
+            hits(left + width - 2, top + 2),
+            hits(left + 2, top + height - 2),
+            hits(left + width - 2, top + height - 2),
+          ],
+        };
+      }),
+    );
+    for (const [at, box] of boxes.entries()) {
+      expect(box.width, `${box.name}: touch box width`).toBeGreaterThanOrEqual(44);
+      expect(box.height, `${box.name}: touch box height`).toBeGreaterThanOrEqual(44);
+      expect(box.drawn.height, `${box.name}: drawn small, the drawing keeps the room`).toBeLessThan(24);
+      expect(box.centre, `${box.name}: its own centre is the button`).toBe(true);
+      expect(box.corners, `${box.name}: every corner of its touch box is the button`).toEqual([true, true, true, true]);
+      if (at > 0) expect(box.left, `${box.name}: its touch box starts where the one before ends`).toBeGreaterThanOrEqual(boxes[at - 1].right - 0.5);
+    }
+    // And a finger in the low part of a box — under the drawn button, over the top of the drawing — presses it.
+    const second = buttons.nth(1);
+    const before = await second.getAttribute("aria-pressed");
+    const target = await second.evaluate((el) => {
+      const drawn = el.getBoundingClientRect();
+      const after = getComputedStyle(el, "::after");
+      return { x: drawn.left + drawn.width / 2, y: drawn.top + parseFloat(after.top) + parseFloat(after.height) - 6 };
+    });
+    await expect(async () => {
+      if ((await second.getAttribute("aria-pressed")) !== "true") await page.touchscreen.tap(target.x, target.y);
+      await expect(second).toHaveAttribute("aria-pressed", "true", { timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
+    expect(before, "the second Height button was not the pick when the page opened").toBe("false");
   });
 });
 

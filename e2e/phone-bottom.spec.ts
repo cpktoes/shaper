@@ -16,6 +16,15 @@ import { goToScreen } from "./helpers/screens";
  * two tables show their rows (the fault 17-13's look found: on a phone they had been squeezed to their headings), and
  * the layout-marks table with eight channels scrolls sideways with its station column staying put (E17's backstop).
  *
+ * Held sideways a phone is wide enough for the computer's layout — the controls beside the drawing, all three sections
+ * in them, no NOSE · CENTER · TAIL row — and short. There BOTTOM does what RAILS does: its two drawings keep a floor
+ * of height between them, the card grows to hold them, and the drawing column scrolls; DATA and GUIDE grow the same
+ * way and scroll with the column. The page itself still never moves.
+ *
+ * And one proof that is FINS' (the orchestrator's ruling 3b, from 17-13's look): the two buttons in FINS' icon row sit
+ * 6 dots apart, so their 44-dot touch areas share a thin strip between them — a tap on either button's own centre
+ * still presses that button and only that one.
+ *
  * No figure is typed: every number here is read off the page, and the two-thirds rule is worked from the screen's own
  * height.
  */
@@ -338,6 +347,253 @@ test.describe("BOTTOM on an upright phone: the drawing pinned on top, NOSE · CE
     test.info().annotations.push({
       type: "layout marks",
       description: `${sideways.columns} columns, ${sideways.holds} dots of table in a ${sideways.shows}-dot box`,
+    });
+  });
+});
+
+/** The sizes real hardware reports, never an emulator's swap (CLAUDE.md, Layout): a sideways iPhone is about 844 dots
+ * wide and a Pixel 7 about 863 — both over the layout's 820, so both get the computer's layout, on a short screen.
+ * Each phone is walked at its whole screen and at the shorter page its browser leaves under its own bar. */
+const SIDEWAYS: Record<string, ReadonlyArray<{ width: number; height: number; what: string }>> = {
+  iphone: [
+    { width: 844, height: 390, what: "an iPhone's whole screen" },
+    { width: 844, height: 340, what: "the page Safari leaves under its bar" },
+  ],
+  android: [
+    { width: 863, height: 393, what: "a Pixel 7's whole screen" },
+    { width: 863, height: 360, what: "the page Chrome leaves under its bar" },
+  ],
+};
+
+/** The least height VIEWER's two drawings keep between them on a short screen (UI-SPEC §6, open item 2). */
+const DRAWINGS_FLOOR = 360;
+
+/** Waits until the drawing column has stopped changing size — two reads a tenth of a second apart that agree — so a
+ * measurement is never taken halfway through the layout a turned phone asks for. */
+async function settleColumn(page: Page) {
+  let previous = "";
+  await expect(async () => {
+    const current = await page.evaluate(() => {
+      const main = document.querySelector("main")!;
+      const box = main.getBoundingClientRect();
+      return `${box.width}|${box.height}|${main.scrollHeight}|${window.innerWidth}|${window.innerHeight}`;
+    });
+    const matched = current === previous;
+    previous = current;
+    if (!matched) throw new Error("still settling");
+  }).toPass({ timeout: 15_000, intervals: [100] });
+}
+
+/** What a sideways phone shows: the top bar, the drawing column and what it holds, the card, and the controls. */
+async function sidewaysRead(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
+    const main = document.querySelector("main")!;
+    const column = main.getBoundingClientRect();
+    return {
+      screen: { width: window.innerWidth, height: window.innerHeight },
+      bar: [...document.querySelectorAll("header")].map((el) => el.getBoundingClientRect().height).find((height) => height > 0) ?? 0,
+      column: { top: column.top, bottom: column.bottom, left: column.left, right: column.right, shows: main.clientHeight, holds: main.scrollHeight, scrolls: getComputedStyle(main).overflowY },
+      card: box("[data-viewer-panel]")?.height ?? 0,
+      drawings: box("[data-bottom-live]")?.height ?? 0,
+      topView: box("[data-bottom-top-view]")?.height ?? 0,
+      section: box("[data-bottom-section]")?.height ?? 0,
+      controls: { right: box("[data-design-controls-scroll]")?.right ?? 0, width: box("[data-design-controls-scroll]")?.width ?? 0 },
+      pageMoved: window.scrollY,
+      pageHeight: document.documentElement.scrollHeight,
+      pageWidth: document.documentElement.scrollWidth,
+    };
+  });
+}
+
+/** Scrolls the drawing column to its end, the way a thumb would, and says how far it went. */
+async function scrollColumnToEnd(page: Page): Promise<number> {
+  return page.locator("main").evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+    return el.scrollTop;
+  });
+}
+
+test.describe("BOTTOM on a phone held sideways: the drawings keep their height and the column scrolls (17-14, D-27)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phones' layout; a computer's is every other BOTTOM spec");
+    await dismissStrips(page);
+    await forgetOpenBoardOnEveryLoad(page);
+  });
+
+  test("turned on its side: the controls beside the drawing under the compact bar, the two drawings keeping their height, the column scrolling to the section, and DATA and GUIDE growing with the column — the page never moving", async ({ page }, testInfo) => {
+    test.setTimeout(420_000);
+    // The board is cut upright, as a shaper would have it in hand, and then the phone is turned.
+    await openBottom(page, "shortboard");
+    await showBottomSection(page, "center");
+    await pickFrom(page, "Center Cut", "Deep Single Concave");
+    await showBottomSection(page, "tail");
+    await pickFrom(page, "Tail Cut", "Spiral Vee");
+    await pickFrom(page, "Channels", "6 channels");
+
+    const notes: string[] = [];
+    for (const size of SIDEWAYS[testInfo.project.name]) {
+      const where = `${size.width}x${size.height} (${size.what})`;
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await openTab(page, BOTTOM_COPY.viewerTab, page.locator("[data-bottom-top-view]"));
+      await page.locator("main").evaluate((el) => (el.scrollTop = 0));
+      await settleColumn(page);
+
+      // The computer's layout under the phone's compact bar: the controls beside the drawing, every section in them,
+      // and no NOSE · CENTER · TAIL row.
+      const viewer = await sidewaysRead(page);
+      expect(viewer.bar, `${where}: the compact top bar is there`).toBeGreaterThan(40);
+      expect(viewer.bar, `${where}: the compact top bar`).toBeLessThanOrEqual(49);
+      expect(viewer.controls.width, `${where}: the controls keep a column of their own`).toBeGreaterThan(300);
+      expect(viewer.controls.right, `${where}: the controls stand beside the drawing, never over it`).toBeLessThanOrEqual(viewer.column.left + 1);
+      await expect(bottomPhoneRow(page)).toBeHidden();
+      expect(await shownSections(page)).toEqual(["nose", "center", "tail"]);
+      await expect(page.getByRole("combobox", { name: "Nose Cut", exact: true })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Tail Cut", exact: true })).toBeAttached();
+
+      // The two drawings keep their floor, each tall enough to read, and the card holds them: the column is longer than
+      // the screen and scrolls — the column, not the page.
+      expect(viewer.drawings, `${where}: the two drawings' height`).toBeGreaterThanOrEqual(DRAWINGS_FLOOR);
+      expect(viewer.topView, `${where}: the top view`).toBeGreaterThanOrEqual(150);
+      expect(viewer.section, `${where}: the cross-section`).toBeGreaterThanOrEqual(100);
+      expect(viewer.card, `${where}: the card holds both drawings`).toBeGreaterThanOrEqual(viewer.drawings);
+      expect(viewer.column.scrolls, `${where}: the column may scroll`).toBe("auto");
+      expect(viewer.column.holds, `${where}: the column holds more than it shows`).toBeGreaterThan(viewer.column.shows);
+      await expect(page.locator("[data-bottom-top-view]")).toBeInViewport({ ratio: 0.5 });
+      expect(await scrollColumnToEnd(page), `${where}: the column scrolled`).toBeGreaterThan(0);
+      await expect(page.locator("[data-bottom-section]")).toBeInViewport({ ratio: 0.99 });
+      await expect(page.getByRole("slider", { name: BOTTOM_COPY.sectionAt, exact: true }).locator('xpath=ancestor::*[@data-slot="slider-thumb"]')).toBeInViewport();
+      await expectPageStill(page, `${where}, VIEWER`);
+
+      // DATA: the card grows to hold both tables, whole — nothing scrolls inside it — and the column scrolls to the
+      // last row.
+      const data = page.locator("[data-bottom-data]");
+      await openTab(page, BOTTOM_COPY.dataTab, data);
+      await settleColumn(page);
+      const dataRead = await data.evaluate((el) => ({ holds: el.scrollHeight, shows: el.clientHeight }));
+      expect(dataRead.holds, `${where}: DATA is whole inside its card`).toBeLessThanOrEqual(dataRead.shows + 1);
+      for (const table of ["[data-bottom-depths]", "[data-bottom-marks]"]) {
+        const read = await data.locator(table).evaluate((el) => {
+          const box = el.parentElement!.parentElement!;
+          return { table: el.getBoundingClientRect().height, box: box.clientHeight, rows: el.querySelectorAll("tbody tr").length };
+        });
+        expect(read.rows, `${where}, ${table}: rows`).toBeGreaterThan(5);
+        expect(read.box, `${where}, ${table}: the box holds its whole table`).toBeGreaterThanOrEqual(Math.floor(read.table));
+      }
+      const dataColumn = await sidewaysRead(page);
+      expect(dataColumn.column.holds, `${where}: DATA is longer than the screen`).toBeGreaterThan(dataColumn.column.shows);
+      expect(await scrollColumnToEnd(page)).toBeGreaterThan(0);
+      // The column's end is the last of DATA's notes; the last row of the last table stands just above them, and on the
+      // shortest page it is the column, again, that brings it whole onto the screen.
+      await expect(data.locator("[data-bottom-notes] p").last()).toBeInViewport({ ratio: 0.99 });
+      const lastRow = data.locator("[data-bottom-marks] tbody tr").last().locator("th, td").first();
+      await lastRow.scrollIntoViewIfNeeded();
+      await expect(lastRow).toBeInViewport({ ratio: 0.99 });
+      await expectPageStill(page, `${where}, DATA`);
+
+      // GUIDE: the same — every card in the card, the column scrolling to the last of them.
+      const guide = page.locator("[data-bottom-guide]");
+      await openTab(page, BOTTOM_COPY.guideTab, guide);
+      await settleColumn(page);
+      const guideRead = await guide.evaluate((el) => ({ holds: el.scrollHeight, shows: el.clientHeight }));
+      expect(guideRead.holds, `${where}: GUIDE is whole inside its card`).toBeLessThanOrEqual(guideRead.shows + 1);
+      const guideColumn = await sidewaysRead(page);
+      expect(guideColumn.column.holds, `${where}: GUIDE is longer than the screen`).toBeGreaterThan(guideColumn.column.shows);
+      expect(await scrollColumnToEnd(page)).toBeGreaterThan(0);
+      // A card can stand taller than a sideways screen, so the proof is its foot: the last card ends inside the column.
+      const lastCard = await guide.locator("[data-guide-card]").last().evaluate((el) => {
+        const card = el.getBoundingClientRect();
+        const column = document.querySelector("main")!.getBoundingClientRect();
+        return { foot: card.bottom, top: card.top, columnFoot: column.bottom };
+      });
+      expect(lastCard.foot, `${where}: the last GUIDE card's foot is on the screen`).toBeLessThanOrEqual(lastCard.columnFoot + 1);
+      expect(lastCard.top, `${where}: the last GUIDE card reaches up into the column`).toBeLessThan(lastCard.columnFoot - 100);
+      await expect(guide.locator("[data-guide-card]").last()).toBeInViewport({ ratio: 0.3 });
+      await expectPageStill(page, `${where}, GUIDE`);
+
+      notes.push(
+        `${where}: drawings ${Math.round(viewer.drawings)} (top view ${Math.round(viewer.topView)}, section ${Math.round(viewer.section)}), ` +
+          `column shows ${viewer.column.shows} of ${viewer.column.holds}; DATA ${dataColumn.column.holds}; GUIDE ${guideColumn.column.holds}`,
+      );
+    }
+    test.info().annotations.push({ type: "sideways", description: notes.join(" · ") });
+  });
+});
+
+test.describe("FINS on a phone: the two icon buttons' touch areas (17-13's look, ruling 3b)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "a mouse's buttons take no touch area");
+    await dismissStrips(page);
+    await forgetOpenBoardOnEveryLoad(page);
+  });
+
+  test("a tap on either button's own centre presses that button and only that one, though their touch areas share a strip of the gap", async ({ page }) => {
+    test.setTimeout(300_000);
+    await openBottom(page, "shortboard");
+    await showBottomSection(page, "tail");
+    await pickFrom(page, "Tail Cut", "Spiral Vee");
+    await goToScreen(page, "FINS");
+
+    const contours = page.locator("[data-fins-contour-toggle]");
+    const callouts = page.getByRole("button", { name: /fin placement callouts$/ });
+    await expect(contours).toBeVisible({ timeout: 60_000 });
+    await expect(callouts).toBeVisible();
+    const pressed = async () => ({
+      contours: await contours.getAttribute("aria-pressed"),
+      callouts: await callouts.getAttribute("aria-pressed"),
+    });
+    const flip = (value: string | null) => (value === "true" ? "false" : "true");
+
+    // Where the two stand: side by side, each with a touch area wider than it is drawn, the two areas meeting in the gap.
+    const geometry = await page.evaluate(() => {
+      const read = (el: Element) => {
+        const box = el.getBoundingClientRect();
+        const after = getComputedStyle(el, "::after");
+        const grow = after.content === "none" || after.position !== "absolute" ? 0 : (parseFloat(after.width) - box.width) / 2;
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, grow };
+      };
+      const a = read(document.querySelector("[data-fins-contour-toggle]")!);
+      const b = read([...document.querySelectorAll("button")].find((el) => /fin placement callouts$/.test(el.getAttribute("aria-label") ?? ""))!);
+      const [first, second] = a.left < b.left ? [a, b] : [b, a];
+      return {
+        gap: second.left - first.right,
+        shared: first.right + first.grow - (second.left - second.grow),
+        drawn: first.right - first.left,
+        touch: first.right - first.left + 2 * first.grow,
+      };
+    });
+    // Measured, not assumed: a 34-dot button with a one-dot border gets a 42-dot touch area from the shared rule (its
+    // five dots a side are counted from inside the border), not the 44 the rule is named for. Left as it is on the
+    // orchestrator's ruling; pinned here at what is true, and raised for the founder in 17-14's summary.
+    expect(geometry.touch, "each button's touch area is wider than the button is drawn").toBeGreaterThan(geometry.drawn);
+    expect(geometry.touch, "each button's touch area").toBeGreaterThanOrEqual(42);
+    expect(geometry.gap, "the two buttons do not touch").toBeGreaterThan(0);
+    expect(geometry.shared, "the shared strip is narrower than the gap, so it never reaches either button").toBeLessThan(geometry.gap);
+
+    // The point under each button's own centre is that button, and a finger there presses it alone.
+    for (const [name, button, other] of [
+      ["Bottom Contours", contours, "callouts"],
+      ["the callouts", callouts, "contours"],
+    ] as const) {
+      const centre = await button.evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const y = box.top + box.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return { x, y, own: !!hit && (hit === el || el.contains(hit)) };
+      });
+      expect(centre.own, `${name}: the point under its centre is the button itself`).toBe(true);
+      const own = other === "callouts" ? "contours" : "callouts";
+      for (let tap = 1; tap <= 2; tap += 1) {
+        const before = await pressed();
+        await page.touchscreen.tap(centre.x, centre.y);
+        await expect.poll(async () => (await pressed())[own], { message: `${name}: tap ${tap} pressed it` }).toBe(flip(before[own]));
+        expect((await pressed())[other], `${name}: tap ${tap} left the other button alone`).toBe(before[other]);
+      }
+    }
+    test.info().annotations.push({
+      type: "FINS' two buttons",
+      description: `${geometry.touch}-dot touch areas, ${geometry.gap} dots apart, sharing ${geometry.shared} dots of that gap`,
     });
   });
 });
