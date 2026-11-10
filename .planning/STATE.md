@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: executing
-stopped_at: Phase 18 being built, waves 1 to 3 of 5 merged (all five page guides, the Metric sayings, and the five guides proven together, eight of ten plans), wave 4 next (pictures for the founder's look)
-last_updated: "2026-11-10T06:16:26.129Z"
+status: verifying
+stopped_at: Phase 18 complete and live 2026-11-10 as main 79110e41 (the GUIDE on all five pages); the founder's look on his phone and his word on six points are awaited
+last_updated: "2026-11-10T18:10:00.000Z"
 last_activity: 2026-11-10
-last_activity_desc: Phase 18 wave 3 merged, eight of ten plans done
+last_activity_desc: Phase 18 live as main 79110e41, ten of ten plans; the founder's look awaited
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 59
-  completed_plans: 55
-  percent: 56
+  completed_plans: 57
+  percent: 58
 current_phase: 18
 current_phase_name: A GUIDE on Every Page
 ---
@@ -28,6 +28,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
+**Phase 18 — A GUIDE on Every Page — complete and live 2026-11-10.** 10 of 10 plans. GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS, 84 cards in all, and FINS' MODEL INFO tab is gone with its words on the cards. Pushed as main `79110e41` at the founder's word ("Push it once the suite is green") and seen on the live site at 09:58 Pacific on all five pages. The gate: 9,932 unit tests, lint, the production build, and the browser suite at 1,685 passed with five page-load timeouts that each passed alone (named in `18-10-SUMMARY.md`). Verified 12 of 12 checkable requirements (`18-VERIFICATION.md`). **Awaiting the founder:** his look at the cards on his phone and a computer, and his word on six points: every sentence is a first draft for his pen (`18-GUIDE-WORDS.md`); the board's name steps aside on narrow ROCKER and RAILS strips (D-21); how fast a GUIDE opens on a slow phone (D-28, `18-TIMING.md`); the maker's inch rocker code on a Metric Customize Rocker card (MD-02, which also asks whether CLAUDE.md Rule 2 should name the GUIDE); whether a drawing's caption is read to a screen reader (LW-05); VOLUME's ESTIMATE card sitting one dot lower on a computer. BOTTOM's GUIDE adopts the shared card after Phase 17 lands (pending todo).
+
 **Phase 16 — 3D Board and CNC Export — complete 2026-11-06.** 18 of 18 plans. Go-live 1 on 2026-11-04 (main 43bd948a), go-live 2 on 2026-11-06 (main 1c6dc5ef, live 22:16), confirmed by the founder on iPhone and iPad. Verified 11 of 12 requirements in code; R8, Shape3D opening the files, is accepted open by the founder and tracked in a todo. The closing commits sit on `board-3d`, docs only, unpushed.
 
 **Milestone v1.5 — Ready for the Shapers, Phase 13 open (2026-09-27).** **11 of 13 items done.** Items 1–6, 8, 10, 11 and 12 live (security patch, housekeeping, the retired column, the five Phase 12 answers, the founder's US Blanks preset picks, fins drawn against the real tail, page 2's PLANING table to the left of the rail markings, the Contact page and form, and the privacy page with visit counts). Item 7 closed by the founder's own check: the four presets' litres are within 1/2–1 L of what each board should have. The client-secret file still sits in the project folder. Item 8b — page 2 on a phone print, plus the Metric fin-note wording — is live too (quick 260928-vpi; the founder's own iPhone print is the last check). Item 9 is skipped for now (the founder, 2026-09-29). Item 10 is done: the Contact page and its form are live, sending through Resend to support@shaperassistant.com on Zoho Mail (the founder's live test passed 2026-09-30). Item 11a is done: a shaper deletes their own account from Clerk's Manage account and a signed `user.deleted` webhook deletes their boards and settings (the founder's live test: "Deleted: saved boards 1, settings rows 1"). Item 11 is done: the privacy page and cookie-free visit counts are live (the founder's checks passed). Item 12 is done: the error and not-found screens and the link preview are live (the founder: "looks perfect"; the site title now reads "Shaper Assistant — Surfboard Shaping and Design"). **Item 13 — the real-device rehearsal — is prepared (2026-09-30): `13-UAT.md` holds the nine checks and a printed walk sheet went to the founder; the founder's walk is next (suggested by Oct 3–4), then the freeze on Wed 2026-10-07 evening.** The same evening the founder picked up optional item 9b (the last-edit ghost on TEMPLATE, quick 260930-lia) and added item 9c (undo/redo buttons on every design screen on a computer, quick 260930-lo8); both are live (pushed on the founder's go, Vercel deployment 6774767581; the ghost a faint solid line at 55%, the founder's pick). The founder lowered Clerk's password minimum to 8. The RAILS colour key's last entry under the Undo button on a computer is accepted for now (the founder, 2026-10-01). Later the same evening the founder added 9d (a thin top bar on a phone held sideways, with the six screens in its menu) and 9e (every band and gutter around the drawing minimised on phones, the sideways drawing running to the bottom of the screen with the undo/redo pair over its corner — the founder's Alternative A), under the rule "phone real estate is expensive, we need to save all of it"; both live (Vercel deployment 6777696405). Item 9 (catalogue links) is skipped for now and 9b stays optional.
@@ -36,8 +38,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Executing Phase 18
-Last activity: 2026-11-10 — Phase 18 wave 2 merged (seven of ten plans)
+Status: Phase 18 complete and live; the founder's look awaited
+Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans)
 
 ## Performance Metrics
 

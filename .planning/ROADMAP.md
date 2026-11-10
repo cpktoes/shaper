@@ -66,7 +66,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 - [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
 - [ ] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021; planned and being built on branch `claude/beautiful-fermi-ad3fb7` — its SPEC, CONTEXT, UI-SPEC and plans live there until it lands)
-- [ ] **Phase 18: A GUIDE on Every Page** - A GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS: one card per control or named choice with the board's own value, a cartoon of the open board with that one setting pushed through the app's own maths, two sentences and a How to shape note; FINS by setup with the MODEL INFO notes on the cards and that tab gone (opened 2026-11-09 from sketch 022 on branch `page-guides`)
+- [x] **Phase 18: A GUIDE on Every Page** - A GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS: one card per control or named choice with the board's own value, a cartoon of the open board with that one setting pushed through the app's own maths, two sentences and a How to shape note; FINS by setup with the MODEL INFO notes on the cards and that tab gone (opened 2026-11-09 from sketch 022 on branch `page-guides`; live 2026-11-10 as main `79110e41`)
 
 ## Phase Details
 
@@ -398,7 +398,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R13 (locked in `phases/18-a-guide-on-every-page/18-SPEC.md` from sketch 022 as decided and the founder's rulings, 2026-11-08 to 2026-11-09)
 **Brief:** `phases/18-a-guide-on-every-page/18-SPEC.md`; the decided sketch `.planning/sketches/022-page-guides/` (its `index.html` is the five GUIDEs as they will be built); the words `18-GUIDE-WORDS.md`
 **Depends on:** Phase 16 (the pages as they stand), quick 261102-gec (the finished rail the RAILS cards draw); Phase 17's GUIDE card dress is copied, not waited for — its branch lands separately and BOTTOM adopts the shared card after
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans executed
 
 Plans:
 **Wave 1**
@@ -424,7 +424,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 18-10-PLAN.md — the go-live gate: tests, lint, build, the full browser suite, the push to main, the live site confirmed, the founder's look on his phone (D-20)
+- [x] 18-10-PLAN.md — the go-live gate: tests, lint, build, the full browser suite, the push to main, the live site confirmed, the founder's look on his phone (D-20)
 
 ---
 
@@ -452,4 +452,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
 | 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |
-| 18. A GUIDE on Every Page | 9/10 | In Progress|  |
+| 18. A GUIDE on Every Page | 10/10 | Complete    | 2026-11-10 |
