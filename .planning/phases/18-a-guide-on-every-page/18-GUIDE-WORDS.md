@@ -554,8 +554,8 @@ the maker's rocker order code (`+1/2"N18"`) stay in inches in both systems; they
 - Foil › Tail Thinning Starts · is: `12 inches from the tip` → `30.5 cm from the tip`
 - Foil › Nose @ 12" · Tail @ 12" · is: `the two 12-inch stations` → `the two 30.5 cm stations`
 - Foil › Nose @ 12" · Tail @ 12" · is: `a quarter inch` → `6 mm`
-- Foil › Nose @ 12" · Tail @ 12" · does: `the tail 12` → `the tail 30.5 cm station`
-- Foil › Nose @ 12" · Tail @ 12" · does: `the nose 12` → `the nose 30.5 cm station`
+- Foil › Nose @ 12" · Tail @ 12" · does: `the tail 12` → `the tail 30.5 cm`
+- Foil › Nose @ 12" · Tail @ 12" · does: `the nose 12` → `the nose 30.5 cm`
 - Foil › Nose @ 12" · Tail @ 12" · how: `the 12-inch thicknesses` → `the 30.5 cm thicknesses`
 - Foil › Nose @ 12" · Tail @ 12" · how: `a couple of feet` → `a good 60 cm`
 - Foil › Fine tune from · is: `a 12-inch fine-tune` → `a 30.5 cm fine-tune`
