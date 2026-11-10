@@ -169,6 +169,8 @@ stands and is marked *(sketch)*. The README's "What to Look For" items he has no
   the page still, the sidebar scrolling inside itself), accepting that VOLUME's strip becomes pressable for the first time and its
   phone card sits about 9 dots lower; the specs that find ESTIMATE as plain text are rewritten. **Lazy drawing is decided by a timed
   run** of the real page under a 4× slowed processor: built only if first paint of a GUIDE tab passes about 150 ms; otherwise not built.
+  *Outcome, 2026-11-10 (`18-TIMING.md`): on a production build four pages pass the line on the slowed processor (219 to 270 ms)
+  and open in 35 to 67 ms unslowed. Lazy drawing was not built: a departure from this ruling, for the founder's look.*
 
 </decisions>
 
