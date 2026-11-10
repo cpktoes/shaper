@@ -123,7 +123,8 @@ brief's proposed readings, which he took ("Take all three"; the four open points
   End; Depth; Smoothness (a straight ramp at 0 to a scooped one at 100); Run — Parallel to the stringer (laid out at the
   deepest station and ruled straight; the outer ones run out through the rail where the outline narrows), With the rail
   (the last wall keeps its distance off the rail, so the set narrows toward the tail together; once the gaps have
-  closed the outer channels run OUT through the rail, never pinching every channel), or Toe-in (splayed at the front
+  closed the outer channels run OUT through the rail, never pinching every channel — held to exactly that at the
+  go-live gate, D-43), or Toe-in (splayed at the front
   fins' angle read from FINS — 3.2° on the Shortboard, 2° on the Fish; a single fin has no toe and the choice says so);
   Longest — Inner pair, Outer pair or All the same — and Stagger (how much shorter each channel out from the longest
   pair starts; 2" to start, 1/2" steps, hidden for All the same; a stagger too long stops an inch ahead of the deepest
@@ -345,6 +346,26 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   fins to that halfway station). Picking a tail vee while the center holds a single still at its starting numbers moves
   that single the same way in one undoable step; a single set by hand is never touched. Carried by plan 17-05 with the rest
   of the names and their starting numbers (sharpens D-08). *Sharpened at 17-05's look (2026-11-08): the re-seat works both ways — switching the tail from a vee back to a flat or a concave puts a single still sitting on the vee's numbers back on its original numbers ("Yes, both ways"); and the researched opening vees stand even though two of them (the Fish's Panel Vee, the Mid-length's Spiral Vee, 3/16" each) leave the tail rail's edge under 1/4" in the last few inches and so show D-40's thin-rail warning on a fresh pick — "Warn, keep the numbers": the warning is honest information, the numbers are his to tune at the UAT.* — **Reversibility:** reversible — starting numbers.
+
+### Rulings at the go-live gate (the founder, 2026-11-10)
+- **D-43:** **Channels laid With the rail never bunch at the tail: they narrow to an inch, then run straight, and the outer ones run out through the rail.**
+  The code review (WR-02) found the code following the last sketch's rule — the room inside the rail shared equally
+  among the channels at every station, so on a narrow tail all of them closed to slivers together — against D-10's
+  words. Shown both, the founder ruled: *"the channels with the rail shoud never bunch at the tip. the early wording
+  was correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line) but never
+  meet at a single point."* As built (`channelRailWidth` in `lib/geometry/bottom.ts`, commit f4e156d0): a With-the-rail
+  channel follows the rail while that leaves it 1/2" more than an inch; it is never narrower than an inch (or than the
+  set's own Width, when that is under an inch); the change from following the rail to running straight is eased over
+  1/2" of width so no wall kinks; from there the walls run straight to the tail and the outer channels run out through
+  the rail, exactly as a Parallel set's do. Parallel and Toe-in are untouched, number for number. What follows from it:
+  a With-the-rail set takes a little more foam than it did (Shortboard six channels 0.33 → 0.37 L; Parallel's 0.38 L is
+  unchanged); a set an inch wide or under laid With the rail is the Parallel set from the deepest station back; and the
+  thin-rail note and the foam's knife edge (D-40), which With the rail could never reach before, now show where a
+  channel runs out through a thin tail rail — at the Shortboard's tail with 4, 6 or 8 channels and at the Midlength's
+  1 3/4" station with 6 or 8 (Parallel reaches them at more stations). The sketch's golden figures are kept as they
+  were made: Parallel and Toe-in are still held to them exactly, With the rail is held to them as a relation (the
+  sketch's width put through the new rule), because the sketch is the picture he was shown and the rule is his ruling
+  on it. An inch and the 1/2" ease are Claude's numbers, shown to him on the real page for his look (sharpens D-10).
 
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM

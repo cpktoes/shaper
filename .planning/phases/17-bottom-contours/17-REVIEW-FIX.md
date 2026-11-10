@@ -1,28 +1,29 @@
 ---
 phase: 17-bottom-contours
-fixed_at: 2026-11-10T20:16:17Z
+fixed_at: 2026-11-10T21:13:21Z
 review_path: .planning/phases/17-bottom-contours/17-REVIEW.md
-iteration: 1
+iteration: 2
 findings_in_scope: 4
-fixed: 2
-skipped: 2
+fixed: 3
+skipped: 1
 status: partial
 ---
 
 # Phase 17: Code Review Fix Report
 
-**Fixed at:** 2026-11-10T20:16:17Z
+**Fixed at:** 2026-11-10T20:16:17Z (CR-01, WR-03) and 2026-11-10T21:13:21Z (WR-02, after the founder's ruling)
 **Source review:** .planning/phases/17-bottom-contours/17-REVIEW.md
-**Iteration:** 1
+**Iteration:** 2
 
 **Summary:**
 - Findings in scope: 4 (CR-01, WR-01, WR-02, WR-03)
-- Fixed: 2 (CR-01, WR-03) — both are fixes to the board's maths, so both are marked for a human look
-- Skipped: 2 (WR-01, WR-02) — both wait for the founder's ruling; no code was changed for either
+- Fixed: 3 (CR-01, WR-03, WR-02) — all three are fixes to the board's maths or its drawing, so all are marked for a human look
+- Skipped: 1 (WR-01) — waits for the founder's ruling; no code was changed for it
 - Out of scope, untouched: IN-01, IN-02, IN-03
 
-The orchestrator ruled which findings to fix before this run: CR-01 and WR-03 fixed, WR-01 and WR-02 left for the
-founder, the three Info findings not touched.
+The orchestrator ruled which findings to fix before the first run: CR-01 and WR-03 fixed, WR-01 and WR-02 left for the
+founder, the three Info findings not touched. The founder then ruled on WR-02 (2026-11-10, D-43 in 17-CONTEXT.md) and
+the same fixer was resumed for it — the second iteration.
 
 ## Fixed Issues
 
@@ -151,6 +152,83 @@ up to about 9 mm (3/8") on a Shortboard with six channels 1/2" deep.
 **No existing test or fixture changed value.** No test pinned the old drawing for a knife-edged case, so none had
 to be updated, and no golden fixture moved.
 
+### WR-02: "With the rail" squeezed every channel to nothing at the pod — now the set narrows to an inch, runs straight, and the outer channels run out through the rail
+
+**Status:** fixed: requires human verification (a change to how the board is cut, on the founder's ruling — the tests prove the rule, the look and the two numbers in it are his)
+**Files modified:** `lib/geometry/bottom.ts`
+**Tests changed and added in:** `lib/geometry/bottom.test.ts`
+**Commit:** f4e156d0
+
+**The ruling (the founder, 2026-11-10, D-43).** *"the channels with the rail shoud never bunch at the tip. the early
+wording was correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line)
+but never meet at a single point."*
+
+**What was wrong, in the shaper's terms.** With the rail shared the room inside the rail equally among the channels at
+every station. On a tail that narrows to a couple of inches that left six channels about 1/8" wide each at the tail —
+every wall bunched against the stringer, and every channel shallowed away together.
+
+**Applied fix.** One small function, `channelRailWidth`, and one changed line in `channelEdges`: a With-the-rail
+channel follows the rail while that leaves it 1/2" more than an inch; it is never narrower than an inch (or than the
+set's own Width, when that is under an inch); the change is eased over 1/2" of width so no wall kinks. From there the
+walls run straight to the tail and the outer channels run out through the rail. Parallel and Toe-in were not touched
+and their numbers are identical before and after.
+
+**Each channel's width, Shortboard, six channels, before and after:**
+
+| Station (from the tail) | Before | Now |
+|---|---|---|
+| 11" (deepest) | 1.750" | 1.750" |
+| 8" | 1.484" | 1.484" |
+| 6" | 1.268" | 1.295" |
+| 4" | 1.009" | 1.129" |
+| 2" | 0.676" | 1.015" |
+| the tail | 0.128" | 1.000" |
+
+At the Shortboard's tail the walls now stand at 1", 2" and 3" against a rail 2" out: the inner channel is whole, the
+second ends on the tail's corner, the third has run out through the rail. The Midlength's six are an inch wide from
+the tail to 2". The Fish's tail is wide enough that its last wall is still inside the rail (1.052" → 1.152").
+
+**The foam the channels take off, With the rail, before and after (starting Widths):**
+
+| Board | 4 channels | 6 channels | 8 channels |
+|---|---|---|---|
+| Shortboard | 0.333 → 0.348 L | 0.332 → 0.365 L | 0.282 → 0.351 L |
+| Midlength | 0.325 → 0.350 L | 0.324 → 0.370 L | 0.274 → 0.360 L |
+| Fish | unchanged | 0.2849 → 0.2858 L | 0.252 → 0.265 L |
+| Longboard | unchanged | 0.2512 → 0.2517 L | 0.225 → 0.234 L |
+
+A set an inch wide or under laid With the rail is now the Parallel set from the deepest station back, and takes
+nearly twice the foam it did (Midlength, 6 at 1": 0.144 → 0.266 L; Shortboard, 8 at 3/4": 0.114 → 0.198 L). Those
+are the CR-01 table's boards: its "Now" column is superseded by these figures.
+
+**Two things With the rail can now reach that it never could** — both follow from a channel running out through a
+thin tail rail, both already existed for Parallel, and both are WR-01's subject:
+
+- The thin-rail note: the Shortboard's tail with 4, 6 or 8 channels (and 1 1/2" up with 8), the Midlength's 1 3/4"
+  station with 6 or 8 (and 3 1/2" with 8). Parallel flags more stations on both boards. Fish and Longboard: none.
+- The foam's knife edge (D-40) at starting Widths: the Shortboard's tail with 4, 6 or 8 channels (the foam ends about
+  1/32" inside the rail) and the Midlength's 1 3/4" station with 6 or 8 (the rail falls in the deep side of the third
+  channel, whose 1/4" cut is more than the rail has there).
+
+**The sketch's golden figures were not edited.** Parallel and Toe-in are still held to them exactly. The 18
+With-the-rail cases are held as a relation — the sketch's width put through `channelRailWidth` — with a count kept
+of the stations where the rule returns the sketch's own width and of those where it holds the channel open, so every
+case is proved to have both kinds.
+
+**Tests (1124 → 1133 in `lib/geometry/bottom.test.ts`):** a new group of eight on `channelRailWidth` itself (never
+under an inch or the set's Width; the sketch's width above the ease; smooth across it; never wider than Parallel);
+the With-the-rail spec test rewritten for the Shortboard, Midlength and Fish with 4, 6 and 8 channels at every 1/8";
+the CR-01 tests rewritten to the new truth; and "a set an inch wide or under laid With the rail is the Parallel set,
+wall for wall". The 3D board and the CNC files were probed on 22 With-the-rail sets: every surface closed, no bad
+figure in any DXF, XYZ or STL.
+
+**Nothing else needed changing.** The top view and DATA already clip a wall to inside the rail; the 3D board, the CNC
+files, the printed sheet and the controls only read the walls they are given; no word on the GUIDE or the controls
+describes how the set narrows.
+
+**Worth a human look:** the look of the tail on the real page (pictures sent to the founder 2026-11-10); whether an
+inch is the right narrowest channel and 1/2" the right ease; and WR-01, which this makes more visible.
+
 ## Skipped Issues
 
 ### WR-01: A channel cut deeper than the foam ends the whole board at that channel's wall
@@ -159,21 +237,11 @@ to be updated, and no golden fixture moved.
 **Reason:** skipped: awaiting the founder's ruling. No code was changed. This is the same deliberate rule as D-40's
 knife edge — where a cut reaches the deck the foam ends — applied to a channel, and the screen already warns the
 shaper when a channel goes deeper than the foam. Whether a channel should be held to a floor instead is the
-founder's to rule.
+founder's to rule. Since WR-02's fix a With-the-rail set reaches it at starting numbers on the Shortboard's tail and
+the Midlength's 1 3/4" station (above), as a Parallel set already did.
 **Original issue:** A concave is held to the 1/4" stringer floor, but a channel's depth is added with no limit.
 Where a channel is deeper than the foam above it, the section ends at that channel's wall, and everything outboard
 of it — the rest of the bottom and the rail — leaves the litres, the 3D board and the STL.
-
-### WR-02: "With the rail" squeezes every channel to nothing at the pod — the outer channels never run out through the rail (contrary to D-10)
-
-**File:** `lib/geometry/bottom.ts:864`
-**Reason:** skipped: awaiting the founder's ruling. No code was changed. The code follows the final sketch's rule
-(the whole set narrows together toward the pod); D-10's words say the outer channels should run out through the
-rail instead. Which of the two is the board he wants is the founder's to rule. CR-01's fix was kept clear of it:
-it drops only a channel of no width and leaves the way the set narrows untouched (proved by a test, above).
-**Original issue:** D-10 says that once the gaps have closed the outer channels run out through the rail, "never
-pinching every channel". The code divides the width left between Off Stringer and Off Rail equally among all the
-channels on a side, so they all narrow together, and the 1" pinch rule then shallows all of them at once.
 
 ## Out of scope (not touched)
 
@@ -189,13 +257,19 @@ same tree the two commits sit in. No separate isolated worktree, temporary branc
 this run (the orchestrator directed the work to this checkout), so these numbers can be reproduced from this tree
 as it stands. The founder's own checkout was not touched. Nothing was pushed.
 
-Each check was run on its own, after the second commit (1582dd7a):
+Each check was run on its own, after the second commit (1582dd7a), and again after the third (f4e156d0 — the second table):
 
 | Check | Result |
 |---|---|
 | `npx tsc --noEmit` | clean, exit 0 |
 | `npm run lint` | 0 errors, 1 warning — the known one at `lib/db/import-designs-action.test.ts:42`; no new warning |
 | `npx vitest run --testTimeout=120000` (the whole suite) | 209 files passed of 209; 12,074 tests passed, 2 skipped, 0 failed; exit 0; 708 s |
+
+| After f4e156d0 | Result |
+|---|---|
+| `npx tsc --noEmit` | clean, exit 0 |
+| `npm run lint` | 0 errors, the same 1 known warning |
+| `npx vitest run --testTimeout=120000` (the whole suite) | 209 files passed of 209; 12,083 tests passed, 2 skipped, 0 failed; exit 0 |
 
 The two skipped tests are the long-standing sample-PDF writers that only run when asked to write a file
 (`components/template/build-strip-pdf.test.ts`, `components/template/build-template-pdf.test.ts`). No sweep timed
@@ -231,8 +305,14 @@ They could not be run here, so every `e2e/bottom-*.spec.ts`, `e2e/phone-bottom.s
 
 No browser test sets channels With the rail and then moves Off Stringer, so none exercises CR-01's case.
 
+**After WR-02's fix:** the only browser test that names With the rail is `e2e/bottom-panel.spec.ts` (it lists the
+Run's three options and reads nothing a narrowing set changes), and no baseline holds a BOTTOM picture, so none is
+believed to fail. The orchestrator built the branch for production with stand-in settings and photographed the
+Shortboard and the Mid-length with six channels in all three runs on the real page; the full browser suite runs at
+the go-live gate.
+
 ---
 
-_Fixed: 2026-11-10T20:16:17Z_
+_Fixed: 2026-11-10T20:16:17Z (iteration 1), 2026-11-10T21:13:21Z (iteration 2)_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_

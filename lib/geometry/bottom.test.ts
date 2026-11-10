@@ -2212,7 +2212,7 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     }
   });
 
-  it("the litres, the 3D board and the CNC files: every section is finite, a section ends its foam only where the same set laid Parallel ends it, and 1/2\" of Off Stringer moves the foam off by no more than a few hundredths of a litre", () => {
+  it("the litres, the 3D board and the CNC files: every section is finite, a section of these sets (each an inch wide or under) ends its foam only where the same set laid Parallel ends it, and 1/2\" of Off Stringer moves the foam off by no more than a few hundredths of a litre", () => {
     for (const [id, count, widthInches] of SETS) {
       const name = nameOf(id, count, widthInches);
       const onStringer = setOf(id, count, widthInches, mm(0));
