@@ -19,11 +19,13 @@ import { FinPlacementIcon } from "./fin-placement-icon";
 import { WingControls } from "./wing-controls";
 import { WingsPanel } from "./wings-panel";
 import { WingDialInDialog } from "./wing-dial-in-dialog";
+import { TemplateGuide } from "@/components/guide/template-guide";
 import { useUnits } from "@/components/units-provider";
 import { nextWing } from "@/lib/geometry/wings";
 
-/** TEMPLATE's two tabs (quick 261014-wii, D3): the whole board, and the tail close up with its wings. */
-type TemplateTab = "viewer" | "wings";
+/** TEMPLATE's tabs (quick 261014-wii, D3): the whole board, the tail close up with its wings, and (Phase 18,
+ * D-01) the GUIDE, last. */
+type TemplateTab = "viewer" | "wings" | "guide";
 
 /**
  * Whether fin placement (the FINS marks drawn on TEMPLATE's board) is showing, remembered for the
@@ -123,6 +125,7 @@ export function OutlineEditor() {
   const templateTabs = [
     { id: "viewer" as const, label: "VIEWER" },
     { id: "wings" as const, label: wingCount === 0 ? "ADD WINGS" : `WINGS · ${wingCount}` },
+    { id: "guide" as const, label: "GUIDE" },
   ];
   const activeTab: TemplateTab = requestedTab;
 
@@ -380,7 +383,10 @@ export function OutlineEditor() {
           tabs={templateTabs}
           active={activeTab}
           onSelect={setRequestedTab}
-          compactOnPhone="drawing"
+          // Phase 18 (D-15): the GUIDE's cards are words, so its strip sits as a text tab does; on a short
+          // screen the folder grows with its cards and the drawing column scrolls them.
+          compactOnPhone={activeTab === "guide" ? "text" : "drawing"}
+          growOnShortScreen={activeTab === "guide"}
           // Quick 261008-raw: the board's name at the band's right end. Wide View is `bare`, which
           // draws no band, so the name goes with it.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
@@ -400,6 +406,8 @@ export function OutlineEditor() {
               wholeBoard={wingsWholeBoard}
               onToggleWholeBoard={() => setWingsWholeBoard((v) => !v)}
             />
+          ) : activeTab === "guide" ? (
+            <TemplateGuide />
           ) : (
             viewerContent
           )}

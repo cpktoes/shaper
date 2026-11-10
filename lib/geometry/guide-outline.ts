@@ -326,21 +326,34 @@ export function templateGuideVariants(input: TemplateGuideInput, system: UnitsSy
 
 /* ============ the drawing ============ */
 
-/** The part of the board a card's detail shows (the sketch's `templateCartoon` windows). */
-type WindowKind = "whole" | "nose" | "tail" | "wide" | "tailhalf" | "nosehalf";
+/**
+ * The part of the board a card's detail shows (the sketch's `templateCartoon` windows). `widetail` is the
+ * wide point's window run back to the tail, so the Width card can stand its dimension beyond the tail, off
+ * the board (D-08), where the sketch's window cut the board at both ends and left the label over it.
+ */
+type WindowKind = "whole" | "nose" | "tail" | "wide" | "widetail" | "tailhalf" | "nosehalf";
 
 const WINDOW_NAMES: Record<WindowKind, string> = {
   whole: "Whole board",
   nose: "Nose",
   tail: "Tail",
   wide: "Wide point",
+  widetail: "Wide point",
   tailhalf: "Tail half",
   nosehalf: "Nose half",
 };
 
 /** Strip and detail heights (UI-SPEC §4: TEMPLATE strip 70, detail 100 or 140). */
 const STRIP_H = 70;
-const DETAIL_H: Record<WindowKind, number> = { whole: 100, tailhalf: 100, nosehalf: 100, nose: 140, tail: 140, wide: 140 };
+const DETAIL_H: Record<WindowKind, number> = {
+  whole: 100,
+  tailhalf: 100,
+  nosehalf: 100,
+  nose: 140,
+  tail: 140,
+  wide: 140,
+  widetail: 140,
+};
 /** A window name's band at the top of a detail, and a dimension label's band under the board. */
 const NAME_BAND = 3 + GUIDE_TEXT_UNITS_MAX + 2;
 const DIM_BAND = 6 + 3 + GUIDE_TEXT_UNITS_MAX + 2;
@@ -373,6 +386,8 @@ function windowSpec(kind: WindowKind, base: OutlineGeometry, push: OutlineGeomet
       return span(-f.margin, f.tipSpan, f.tailAcross);
     case "wide":
       return span(base.widePointStation - f.wideSpan, base.widePointStation + f.wideSpan, f.wideAcross);
+    case "widetail":
+      return span(-f.margin, base.widePointStation + f.wideSpan, f.wideAcross);
     case "tailhalf":
       return span(-f.margin, L / 2 + f.halfPast, f.halfAcross);
     case "nosehalf":
@@ -454,9 +469,12 @@ function templateFigure(opts: FigureOptions): GuideFigure {
     const y = guideY(detail, Math.max(...boards.map((b) => maxHalf(b, lo, hi)))) + 6;
     prims.push(guideHDim(guideX(detail, s0), guideX(detail, s1), y, parts, false));
   }
+  // A vertical dimension stands just beyond the tail's last point (a diamond's point is behind its corners),
+  // off the board, its label in the gutter kept for it.
+  const beyondTail = guideX(detail, Math.min(0, base.points[0].station, base.centreCloseStation)) + 8;
   if (opts.across) {
     if (opts.across.at === "wide") {
-      const x = band.x + band.w + 8;
+      const x = beyondTail;
       const xWide = guideX(detail, base.widePointStation);
       const yTop = guideY(detail, -hw);
       const yBot = guideY(detail, hw);
@@ -464,10 +482,8 @@ function templateFigure(opts: FigureOptions): GuideFigure {
       prims.push({ kind: "line", role: "extension", x1: xWide, y1: yBot, x2: x + 3, y2: yBot });
       prims.push(guideVDim(x, yTop, yBot, opts.across.parts));
     } else {
-      // The block's corners, and the dimension just beyond the tail's last point (a diamond's point is
-      // behind its corners).
       const corner = base.points[0].station;
-      const x = guideX(detail, Math.min(0, corner, base.centreCloseStation)) + 8;
+      const x = beyondTail;
       const hb = base.halfTailBlockWidth;
       const yTop = guideY(detail, -hb);
       const yBot = guideY(detail, hb);
@@ -560,7 +576,7 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
     ids.width,
     valueTag(formatDim(o.widePointWidth, system)),
     dashed(guideFigure(formatDim(pushOf(ids.width)?.widePointWidth ?? o.widePointWidth, system)), guideText(" wide")),
-    fig(ids.width, "wide", { across: { at: "wide", parts: [guideFigure(formatDim(mm(2 * g.halfWidePointWidth), system))] } }),
+    fig(ids.width, "widetail", { across: { at: "wide", parts: [guideFigure(formatDim(mm(2 * g.halfWidePointWidth), system))] } }),
   );
   card(
     ids.offset,
