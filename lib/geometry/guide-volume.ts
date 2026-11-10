@@ -124,6 +124,9 @@ export function volumeGuideVariants(input: VolumeGuideInput, system: UnitsSystem
 
 /** Litres as the page prints a quick estimate: one decimal, the same in both systems. */
 const quickLitres = (litres: number) => `${litres.toFixed(1)} L`;
+/** A step's litres on Board Type's scale: one decimal, and whole litres from 100 L up, where seven figures with
+ * a decimal would run into each other on the narrowest card (the picked step's own label keeps its decimal). */
+const stepLitres = (litres: number) => (litres.toFixed(1).length > 4 ? litres.toFixed(0) : litres.toFixed(1));
 
 /** Strip, plan and section frame sizes (UI-SPEC §4: VOLUME strip 60, plan 100, section 110). */
 const STRIP_H = 60;
@@ -278,7 +281,7 @@ function typesFigure(input: VolumeGuideInput, system: UnitsSystem): GuideFigure 
     const on = i === spec.boardTypeIndex;
     const litres = computeVolume({ ...spec, boardTypeIndex: i }, null, null).volumeLitres;
     prims.push({ kind: "line", role: "board", x1: x, y1: y - (on ? 10 : 5), x2: x, y2: y + 5 });
-    prims.push({ kind: "text", role: on ? "value" : "valueMuted", x, y: y + 9, dy: 0.85, parts: [guideFigure(litres.toFixed(1))], anchor: "middle" });
+    prims.push({ kind: "text", role: on ? "value" : "valueMuted", x, y: y + 9, dy: 0.85, parts: [guideFigure(stepLitres(litres))], anchor: "middle" });
     if (on) {
       const anchor = i < 2 ? "start" : i > steps - 3 ? "end" : "middle";
       prims.push({

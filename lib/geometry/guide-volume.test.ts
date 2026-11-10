@@ -149,3 +149,22 @@ describe("buildVolumeGuide — on the other presets and with Import Designed Boa
     expect(cards.get(ids.boardLength)!.tag.text).toBe(formatLength(input.effectiveVolume.length, "imperial"));
   });
 });
+
+describe("buildVolumeGuide — a very big board", () => {
+  it("keeps Board Type's seven litres figures clear of each other at 100 L and over", () => {
+    const big = guideVolumeInput("longboard", {
+      length: inchesToMm(120),
+      width: inchesToMm(25),
+      centerThickness: inchesToMm(5),
+      importTemplateDimensions: false,
+      importRailThickness: false,
+    });
+    for (const system of UNITS_SYSTEMS) {
+      const card = buildVolumeGuide(big, system).get(ids.boardType)!;
+      const spec = { ...big.effectiveVolume, importTemplateDimensions: false, importRailThickness: false };
+      const litres = BOARD_TYPE_LABELS.map((_, i) => computeVolume({ ...spec, boardTypeIndex: i }, null, null).volumeLitres);
+      expect(Math.max(...litres)).toBeGreaterThan(100);
+      for (const fit of [0.7, 0.79, 1.26]) expect(guideLabelOverlaps(card.figure, fit), `${system} at ${fit}`).toEqual([]);
+    }
+  });
+});
