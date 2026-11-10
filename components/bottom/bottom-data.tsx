@@ -47,11 +47,18 @@ const MARKS_COLUMN_WIDTH = 72;
  * The page above is a column that scrolls down, and a box that scrolls sideways is one a column may squeeze to nothing
  * — which is what an upright phone's pinned card did: both tables shrank to their headings and the rows went out of
  * sight (found at 17-13's look). So on a phone, upright or held sideways, the box keeps its table's full height
- * (ROCKER's datasheet rule, `rocker-datasheet.tsx`) and the page scrolls instead. Behind the layout's width line and the
- * short-screen query, so a computer's DATA is drawn exactly as it was.
+ * (ROCKER's datasheet rule, `rocker-datasheet.tsx`) and the page scrolls instead.
  */
 const TABLE_SCROLLER =
   "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] max-shell:shrink-0 [@media(max-height:500px)]:shrink-0";
+/**
+ * The same rule on a computer, once a cut gives DATA its second table: two tables shared the squeeze, so each was a
+ * strip a few rows tall that scrolled inside the page that scrolls (122 of 459 dots each at 1280 x 800 with three cuts,
+ * found at 17-14's look). With a second table on the page both boxes keep their full height on every screen and DATA's
+ * page is the one thing that scrolls down. A flat board's one table is left as it was — it fits a computer's card, so
+ * that page is drawn dot for dot as before.
+ */
+const TABLE_FULL_HEIGHT = "shrink-0";
 
 /**
  * DATA (Phase 17, D-15, D-16, D-34; UI-SPEC §4): no readouts in the viewer — the numbers live here.
@@ -84,6 +91,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
   const litres = bottomLitresLine(quotedVolumeLitres, quotedVolumeLitresBeforeBottom);
   const columns = BOTTOM_COPY.depthsColumns;
   const frontPair = finPlacement.marks.some((m) => m.role === "front");
+  const tableBox = cn(TABLE_SCROLLER, marks.columns.length > 0 && TABLE_FULL_HEIGHT);
 
   const headers = [
     `${columns.station}${columnUnitSuffix("dim", system)}`,
@@ -118,7 +126,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
       <h3 className={GROUP_HEADING}>{BOTTOM_COPY.depthsHeading}</h3>
       {/* Sideways on a narrow phone, never a dropped column — RAILS' scroller and its 24-dot fade, which lands on the
           table's own 24 dots of end room so it never dims the last column. */}
-      <div className={TABLE_SCROLLER}>
+      <div className={tableBox}>
         <div className="min-w-[504px] pr-[24px]">
           <table data-bottom-depths className="w-full border-collapse text-sm tabular-nums">
             <thead>
@@ -158,7 +166,7 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
       {marks.columns.length > 0 && (
         <>
           <h3 className={GROUP_HEADING}>{BOTTOM_COPY.marksHeading(system === "metric")}</h3>
-          <div className={TABLE_SCROLLER}>
+          <div className={tableBox}>
             <div className="pr-[24px]" style={{ minWidth: MARKS_STATION_WIDTH + MARKS_COLUMN_WIDTH * marks.columns.length + 24 }}>
               <table data-bottom-marks className="w-full border-collapse text-sm tabular-nums">
                 <thead>

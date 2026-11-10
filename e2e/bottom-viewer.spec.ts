@@ -432,6 +432,69 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     expect(inkRows).toBe(await page.locator("[data-bottom-depths] tbody tr[data-reference]").count());
   });
 
+  test("three cuts at 1280 × 800: both tables at their full height, the DATA card the one thing that scrolls, the page still, and the last note reachable; a flat board's page is left as it was", async ({ page }) => {
+    test.setTimeout(240_000);
+    expect(page.viewportSize()).toEqual({ width: 1280, height: 800 });
+    await openBottom(page, "shortboard");
+    const data = page.locator("[data-bottom-data]");
+    /** Each table's box against its table, and every box inside DATA that scrolls down (DATA itself aside). */
+    const read = () =>
+      data.evaluate((root) => {
+        const tables = [...root.querySelectorAll("table")].map((table) => {
+          const box = table.parentElement!.parentElement!;
+          return { box: box.getBoundingClientRect().height, table: table.getBoundingClientRect().height, rows: table.querySelectorAll("tbody tr").length };
+        });
+        const innerScrollers = [...root.querySelectorAll("*")].filter((el) => el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY)).length;
+        return { tables, innerScrollers, holds: root.scrollHeight, shows: root.clientHeight, overflowY: getComputedStyle(root).overflowY };
+      });
+    const pageStill = async (where: string) => {
+      const doc = await page.evaluate(() => ({ holds: document.documentElement.scrollHeight, shows: document.documentElement.clientHeight, at: window.scrollY }));
+      expect(doc.holds, `${where}: the page itself has nothing to scroll`).toBeLessThanOrEqual(doc.shows);
+      expect(doc.at, `${where}: the page itself has not moved`).toBe(0);
+    };
+
+    // A flat board first: one table, and its page fits the card — nothing for the card to scroll, as before.
+    await dataTab(page).click();
+    await expect(data).toBeVisible();
+    await bottomFloorScanSettled(page);
+    const flat = await read();
+    expect(flat.tables).toHaveLength(1);
+    expect(flat.holds, "a flat board's DATA fits its card").toBeLessThanOrEqual(flat.shows + 1);
+    await expect(notes(page).last()).toBeInViewport({ ratio: 0.99 });
+    await pageStill("flat");
+
+    // Three cuts: a Deep Single, a Spiral Vee and six channels.
+    await page.getByRole("tab", { name: BOTTOM_COPY.viewerTab, exact: true }).click();
+    await pick(page, "center", "Deep Single Concave");
+    await pick(page, "tail", "Spiral Vee");
+    await pickChannels(page, "6 channels");
+    await dataTab(page).click();
+    await expect(page.locator("[data-bottom-marks]")).toBeVisible();
+    await bottomFloorScanSettled(page);
+    const cut = await read();
+    expect(cut.tables).toHaveLength(2);
+    for (const [i, table] of cut.tables.entries()) {
+      expect(table.rows, `table ${i + 1}: rows`).toBeGreaterThan(5);
+      expect(Math.abs(table.box - table.table), `table ${i + 1}: its box is as tall as the table (${table.box} against ${table.table})`).toBeLessThan(1);
+    }
+    // The card is the one scroller: it holds more than it shows, and no box inside it scrolls down.
+    expect(cut.overflowY).toBe("auto");
+    expect(cut.holds, "DATA is longer than its card").toBeGreaterThan(cut.shows + 1);
+    expect(cut.innerScrollers, "no box scrolls down inside DATA").toBe(0);
+    await pageStill("three cuts");
+    // Every row is on the page — the last of the layout marks comes into view by scrolling the card alone...
+    const lastRow = page.locator("[data-bottom-marks] tbody tr").last().locator("th").first();
+    await expect(lastRow).not.toBeInViewport();
+    await lastRow.scrollIntoViewIfNeeded();
+    await expect(lastRow).toBeInViewport({ ratio: 0.99 });
+    // ...and so does the last note, at the card's end.
+    await data.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect(notes(page).last()).toBeInViewport({ ratio: 0.99 });
+    expect(await data.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect(await data.evaluate((el) => Math.abs(el.scrollTop + el.clientHeight - el.scrollHeight))).toBeLessThan(1.5);
+    await pageStill("three cuts, scrolled to the end");
+  });
+
   test("a fresh Rolled Belly Entry on the Shortboard: the floor note is the panel's own rail sentence, in warning ink, and no stringer cell is coloured", async ({ page }) => {
     test.setTimeout(180_000);
     await openBottom(page, "shortboard");
