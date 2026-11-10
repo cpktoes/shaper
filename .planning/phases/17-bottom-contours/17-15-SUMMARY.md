@@ -378,7 +378,7 @@ The founder looked at the pictures and the eight things put to him, and approved
 > "4 lets say <1/16 if it's not actually 0. all else approved."
 
 Item 4 was the `0"` in the depths table: where a cut is too shallow to read at 1/16", the table printed `0"`, and DATA
-on the screen did the same. Items 1 to 3 and 5 to 8 stood as recommended. `## Founder's look: Pending` below is left as
+on the screen did the same. Items 1 to 3 and 5 to 8 stood as recommended. The founder's-look heading below is left as
 it was; the coordinator stamps it at the merge.
 
 ### What was built
@@ -492,7 +492,9 @@ And within it: `lib/geometry/bottom-print.ts`, `lib/geometry/bottom-print.test.t
 
 No database change, no stored field, nothing a saved board holds: only how a number is shown.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-10)
+
+The founder, on the checkpoint card with the picture: *"4 lets say <1/16 if it's not actually 0.  all else approved."* A depth that is there but too small for a tape now reads <1/16" (Metric <1 mm) on DATA and on paper, never 0; the tables side by side, the tables' own sheet for three or more cuts, the Overview Sheet's tighter fullest list and the rest stood as recommended. Held unmerged at his word until the GUIDE on every page (Phase 18) was live, then merged on 2026-11-10. Merged as a4db2688.
 
 The pictures are real prints — PDFs printed from this plan's own build and rendered — not pictures of the screen.
 
