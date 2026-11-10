@@ -398,7 +398,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R13 (locked in `phases/18-a-guide-on-every-page/18-SPEC.md` from sketch 022 as decided and the founder's rulings, 2026-11-08 to 2026-11-09)
 **Brief:** `phases/18-a-guide-on-every-page/18-SPEC.md`; the decided sketch `.planning/sketches/022-page-guides/` (its `index.html` is the five GUIDEs as they will be built); the words `18-GUIDE-WORDS.md`
 **Depends on:** Phase 16 (the pages as they stand), quick 261102-gec (the finished rail the RAILS cards draw); Phase 17's GUIDE card dress is copied, not waited for — its branch lands separately and BOTTOM adopts the shared card after
-**Plans:** 8/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -420,7 +420,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 18-09-PLAN.md — pictures of every GUIDE for the founder's look, and one paragraph in CLAUDE.md
+- [x] 18-09-PLAN.md — pictures of every GUIDE for the founder's look, and one paragraph in CLAUDE.md
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -452,4 +452,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
 | 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |
-| 18. A GUIDE on Every Page | 8/10 | In Progress|  |
+| 18. A GUIDE on Every Page | 9/10 | In Progress|  |
