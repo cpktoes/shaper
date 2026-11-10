@@ -219,6 +219,19 @@ the figure they quote. Worth a look at the review.
   "computer is untouched" rows of `phone-chrome.spec.ts` already require 30). No figure, word or colour in the picture
   changed. The other five pictures pass untouched.
 
+## Test results (this worktree, webpack dev server on 3111)
+
+- `npx vitest run`: 187 files, 9739 passed, 2 skipped. `npx tsc --noEmit`: clean. `npm run lint`: 0 errors, 1 warning
+  that was already there (`lib/db/import-designs-action.test.ts` `_calls`).
+- `e2e/guide-volume.spec.ts`: 7 passed on iphone, android and desktop (8 skipped by project).
+- `e2e/phone-chrome.spec.ts -g VOLUME`: all VOLUME rows green on every project (the iPhone upright row timed out once on a
+  cold first compile and passed alone).
+- `e2e/phone-screens.spec.ts`: 15 passed. `e2e/volume-fins-panels.spec.ts`: 10 passed.
+- `e2e/desktop-baseline.spec.ts --project=desktop`: 6 passed after the VOLUME picture was re-recorded.
+- VOLUME-touching phone specs (`old-safari-buttons`, `imported-readout`, `touch-sizing`, `step-nav`, iphone + android):
+  76 passed, EXIT 0.
+- `e2e/board-name-band.spec.ts`: 4 failed, all the expected red below; 8 passed.
+
 ## Deviations from Plan
 
 ### Auto-fixed / adjusted
