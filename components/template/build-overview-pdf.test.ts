@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { buildOutline, outlinePlanArea } from "@/lib/geometry/outline";
 import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
+import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import {
+  BOTTOM_SECTIONS,
+  DEFAULT_BOTTOM,
+  resolveBottom,
+  startingChannels,
+  startingCut,
+  type BoardBottom,
+  type BottomBoard,
+  type BottomCutName,
+  type BottomSectionKey,
+  type ChannelCount,
+} from "@/lib/geometry/bottom";
+import { bottomPrintLines } from "@/lib/geometry/bottom-print";
+import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
+import { PAPER_MM } from "@/lib/geometry/template";
 import { formatInchesFraction, inchesToMm, mm, squareMmToSquareInches, type UnitsSystem } from "@/lib/geometry/units";
 import jsPDF from "jspdf";
 import { wingFigures } from "@/lib/geometry/wing-figures";
@@ -15,6 +31,8 @@ import {
   overviewStationLines,
   overviewStationWidthText,
   overviewWpOffsetLabelText,
+  specLinePitch,
+  wrapSpecLine,
 } from "./build-overview-pdf";
 
 function buildOptions(paper: "letter" | "a4" = "letter", presetIndex = 0, system: UnitsSystem = "imperial") {
@@ -549,5 +567,190 @@ describe("the Overview Sheet lists each wing (quick 261015-sei)", () => {
     const text = String(doc.output());
     expect(text).toContain('Wing 2: 3/16" @ 4 1/2"');
     expect(text).toContain('Run: 1/4"');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Phase 17, plan 15 (D-26): the Overview Sheet lists the bottom's cuts. Added below the frozen tests.
+
+/** The four presets as their cards open them, each with the board the bottom's maths reads. */
+function bottomBoards() {
+  const all = phase16Boards();
+  return BOARD_PRESETS.map((preset) => {
+    const label = `${preset.id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`;
+    const fields = all.find((b) => b.label === label)!.fields;
+    const geometry = buildOutline(fields.outline);
+    const board = designBottomBoard(fields.outline, geometry, designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+    return { preset, outline: fields.outline, geometry, board };
+  });
+}
+
+/** A bottom with the named sections on their starting numbers and channels picked as the store picks them. */
+function cutBottom(board: BottomBoard, names: Partial<Record<BottomSectionKey, BottomCutName>>, count: ChannelCount | 0): BoardBottom {
+  const bottom = structuredClone(DEFAULT_BOTTOM);
+  for (const section of BOTTOM_SECTIONS) {
+    const name = names[section];
+    if (name) bottom[section] = startingCut(section, name, board);
+  }
+  if (count > 0) bottom.channels = startingChannels(count as ChannelCount, board, bottom.channels);
+  return bottom;
+}
+
+/** The fullest bottom a board can carry: a cut in every section and eight channels. */
+const EVERY_CUT = { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee" } as const;
+
+function courierDoc() {
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
+  doc.setFont("courier", "normal");
+  doc.setFontSize(9);
+  return doc;
+}
+
+/** A built sheet's own bytes with the two things jsPDF stamps differently on every build taken out. */
+function pdfBody(doc: jsPDF): string {
+  return String(doc.output())
+    .replace(/\/CreationDate \([^)]*\)/g, "")
+    .replace(/\/ID \[[^\]]*\]/g, "");
+}
+
+describe("the Overview Sheet lists the bottom's cuts (Phase 17, D-26)", () => {
+  it("prints today's list for a flat bottom, for every preset in both systems", () => {
+    for (const { outline, geometry, board } of bottomBoards()) {
+      for (const system of ["imperial", "metric"] as const) {
+        const flat = bottomPrintLines(resolveBottom(DEFAULT_BOTTOM, board), board, system);
+        expect(flat).toEqual([]);
+        const today = overviewSpecLines(outline, geometry, system);
+        expect(overviewSpecLines(outline, geometry, system, [], flat)).toEqual(today);
+        expect(today.some((l) => l.startsWith("Bottom"))).toBe(false);
+        expect(today[today.length - 1].startsWith("Template Area:")).toBe(true);
+      }
+    }
+  });
+
+  it("closes the list with a Bottom: head and one indented line per cut, after Template Area", () => {
+    for (const { outline, geometry, board } of bottomBoards()) {
+      for (const system of ["imperial", "metric"] as const) {
+        const bottomLines = bottomPrintLines(resolveBottom(cutBottom(board, { center: "Deep Single Concave" }, 6), board), board, system);
+        expect(bottomLines.length).toBe(2);
+        const today = overviewSpecLines(outline, geometry, system);
+        const lines = overviewSpecLines(outline, geometry, system, [], bottomLines);
+        expect(lines.slice(0, today.length)).toEqual(today);
+        expect(lines.slice(today.length)).toEqual(["Bottom:", ...bottomLines.map((l) => `${NB}${l}`)]);
+      }
+    }
+  });
+
+  it("leaves a winged board's wing lines where they were and adds the bottom after them", () => {
+    const { outline, geometry, figures } = wingedFish("imperial");
+    const bottomLines = ["Center: a cut.", "Channels: some."];
+    const withWings = overviewSpecLines(outline, geometry, "imperial", figures);
+    const lines = overviewSpecLines(outline, geometry, "imperial", figures, bottomLines);
+    expect(lines.slice(0, withWings.length)).toEqual(withWings);
+    expect(lines.slice(withWings.length)).toEqual(["Bottom:", `${NB}Center: a cut.`, `${NB}Channels: some.`]);
+  });
+
+  it("wraps every line the sheet printed before exactly as it always has", () => {
+    const doc = courierDoc();
+    for (const { outline, geometry } of bottomBoards()) {
+      for (const system of ["imperial", "metric"] as const) {
+        for (const line of overviewSpecLines(outline, geometry, system)) expect(wrapSpecLine(line, doc)).toEqual(wrapTextToWidth(line, 60, doc));
+      }
+    }
+    for (const system of ["imperial", "metric"] as const) {
+      const { outline, geometry, figures } = wingedFish(system);
+      for (const line of overviewSpecLines(outline, geometry, system, figures)) expect(wrapSpecLine(line, doc)).toEqual(wrapTextToWidth(line, 60, doc));
+    }
+  });
+
+  it("wraps a bottom line inside its indent, inside the column, with every word kept and no figure broken in two", () => {
+    const doc = courierDoc();
+    let wrappedLines = 0;
+    for (const { board } of bottomBoards()) {
+      for (const system of ["imperial", "metric"] as const) {
+        for (const names of [EVERY_CUT, { nose: "Rolled Belly Entry", center: "Tri-Plane Hull Center", tail: "Double Concave Exit" }] as const) {
+          for (const line of bottomPrintLines(resolveBottom(cutBottom(board, names, 8), board), board, system)) {
+            const rows = wrapSpecLine(`${NB}${line}`, doc);
+            if (rows.length > 1) wrappedLines += 1;
+            for (const row of rows) {
+              expect(row.startsWith(NB)).toBe(true);
+              expect(doc.getTextWidth(row)).toBeLessThanOrEqual(60);
+            }
+            // The words are the line's own, in order: nothing added, dropped or changed by the wrapping.
+            expect(rows.map((row) => row.slice(NB.length)).join(" ")).toBe(line);
+            // No row ends on a whole number whose fraction or unit opens the next row.
+            for (let i = 0; i + 1 < rows.length; i++) {
+              const broken = /\d$/.test(rows[i]) && /^(\d+\/\d+"|mm\b|cm\b)/.test(rows[i + 1].slice(NB.length));
+              expect(broken).toBe(false);
+            }
+          }
+        }
+      }
+    }
+    expect(wrappedLines).toBeGreaterThan(0);
+  });
+
+  it("draws the list at its usual 5 mm pitch whenever it fits, which every list without a bottom does", () => {
+    const doc = courierDoc();
+    const contentTop = 32; // the sheet's own top: margin, title and board name
+    const lists: string[][] = [];
+    for (const { outline, geometry } of bottomBoards()) {
+      for (const system of ["imperial", "metric"] as const) lists.push(overviewSpecLines(outline, geometry, system));
+    }
+    for (const system of ["imperial", "metric"] as const) {
+      const { outline, geometry, figures } = wingedFish(system);
+      lists.push(overviewSpecLines(outline, geometry, system, figures));
+    }
+    for (const list of lists) {
+      const rows = list.flatMap((line) => wrapSpecLine(line, doc)).length;
+      for (const paper of ["letter", "a4"] as const) expect(specLinePitch(rows, contentTop, PAPER_MM[paper].height, 10)).toBe(5);
+    }
+  });
+
+  it("keeps the fullest list — two wings, a cut in every section, eight channels — above the page's bottom margin", () => {
+    const doc = courierDoc();
+    const contentTop = 32;
+    for (const system of ["imperial", "metric"] as const) {
+      const { outline, geometry, figures } = wingedFish(system);
+      const fish = bottomBoards().find((b) => b.preset.id === "fish")!;
+      const bottomLines = bottomPrintLines(resolveBottom(cutBottom(fish.board, EVERY_CUT, 8), fish.board), fish.board, system);
+      expect(bottomLines.length).toBe(4);
+      const rows = overviewSpecLines(outline, geometry, system, figures, bottomLines).flatMap((line) => wrapSpecLine(line, doc)).length;
+      for (const paper of ["letter", "a4"] as const) {
+        const pitch = specLinePitch(rows, contentTop, PAPER_MM[paper].height, 10);
+        expect(contentTop + rows * pitch).toBeLessThanOrEqual(PAPER_MM[paper].height - 10 + 1e-9);
+        // Never tighter than the type is tall: 9 pt is 3.2 mm, and the tightest list still gets well over 4.
+        expect(pitch).toBeGreaterThan(4);
+        expect(pitch).toBeLessThanOrEqual(5);
+      }
+    }
+  });
+
+  it("builds one page whose own text carries the Bottom: head and each cut's line", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      const { preset, outline, geometry, board } = bottomBoards()[0];
+      const bottomLines = bottomPrintLines(resolveBottom(cutBottom(board, { center: "Deep Single Concave" }, 6), board), board, "imperial");
+      const doc = buildOverviewPdf({ geometry, outline, paper, boardName: preset.name, system: "imperial", bottomLines });
+      expect(doc.getNumberOfPages()).toBe(1);
+      const text = String(doc.output());
+      expect(text).toContain("Bottom:");
+      const drawn = courierDoc();
+      for (const line of bottomLines) {
+        for (const row of wrapSpecLine(`${NB}${line}`, drawn)) {
+          const words = row.slice(NB.length);
+          if (!/[()\\]/.test(words)) expect(text).toContain(words);
+        }
+      }
+    }
+  });
+
+  it("builds the very same sheet for a flat bottom as for no bottom handed over at all", () => {
+    for (const paper of ["letter", "a4"] as const) {
+      for (const { preset, outline, geometry } of bottomBoards()) {
+        for (const system of ["imperial", "metric"] as const) {
+          const options = { geometry, outline, paper, boardName: preset.name, system };
+          expect(pdfBody(buildOverviewPdf({ ...options, bottomLines: [] }))).toBe(pdfBody(buildOverviewPdf(options)));
+        }
+      }
+    }
   });
 });

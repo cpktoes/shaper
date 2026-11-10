@@ -128,3 +128,49 @@ describe("the founder's sketch is never imported or named by the app (Rule 1)", 
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the full-size prints carry no contour (D-26)", () => {
+  // A template is an outline to cut around: a contour drawn on it would be a line to cut by mistake. So the two
+  // builders that print at full size are never handed the bottom — they import nothing of it, and the print window
+  // gives its words to the Overview Sheet alone.
+  const builders = ["components/template/build-template-pdf.ts", "components/template/build-strip-pdf.ts"];
+
+  /** Every name a source brings in: `import { a, type B as c } from "m"`, `import d from "m"`, `import * as e from "m"`. */
+  function importedNames(source: string): string[] {
+    const names: string[] = [];
+    for (const match of source.matchAll(/\bimport\s+(?:type\s+)?([^"'`;]+?)\s+from\s*["'`]/g)) {
+      for (const piece of match[1].replace(/[{}]/g, ",").split(",")) {
+        const name = piece.trim().replace(/^type\s+/, "");
+        if (name.length > 0) names.push(name);
+      }
+    }
+    return names;
+  }
+
+  it.each(builders)("%s imports no module and no name of the bottom", (file) => {
+    const source = sourceOf(file);
+    const modules = importedModules(source);
+    expect(modules.length).toBeGreaterThan(0);
+    expect(modules.filter((name) => /bottom/i.test(name))).toEqual([]);
+    const names = importedNames(source);
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.filter((name) => /bottom/i.test(name))).toEqual([]);
+  });
+
+  it("the rule catches a builder that would: its own fixture strings fail it", () => {
+    expect(importedModules('import { x } from "@/lib/geometry/bottom-draw";').filter((name) => /bottom/i.test(name))).toHaveLength(1);
+    expect(importedNames('import { a, type ResolvedBottom as R } from "@/lib/geometry/x";').filter((name) => /bottom/i.test(name))).toHaveLength(1);
+  });
+
+  it("the print window hands the bottom's lines to the Overview Sheet and to neither full-size print", () => {
+    const source = sourceOf("components/template/export-preview-dialog.tsx");
+    const handedTo = (call: string) => {
+      const from = source.indexOf(`${call}({`);
+      expect(from, call).toBeGreaterThan(-1);
+      return source.slice(from, source.indexOf("}, tab)", from));
+    };
+    expect(handedTo("printOverviewPdf")).toContain("bottomLines");
+    expect(handedTo("printTemplatePdf")).not.toMatch(/bottom/i);
+    expect(handedTo("printStripPdf")).not.toMatch(/bottom/i);
+  });
+});
