@@ -214,6 +214,7 @@ Task 3 was committed before Task 2 (it was written while Task 2's browser run wa
 - `e2e/board-name-band.spec.ts` (all three projects, `IS_WEBPACK_TEST=1 PW_PORT=3112`): 16 passed, 16 skipped by project, 1 failed — e1, unchanged by this plan, timed out at 30 s waiting for a page's first webpack compile. Re-run alone it timed out again opening the practice rack (cold compile); with `--timeout=170000` it passed (52 s). Every new or rewritten test passed in that full run.
 - `e2e/desktop-baseline.spec.ts --project=desktop`: 6 passed, no snapshot updated, no baseline changed.
 - `e2e/phone-chrome.spec.ts --project=iphone`: 17 passed.
+- `npx vitest run` (whole unit suite): 9674 passed, 2 skipped, 1 failed in `lib/geometry/board-surface.test.ts` (a file this plan does not touch, 311 s under the machine load of two executors); re-run alone, all 1210 of its tests passed.
 - `npx tsc --noEmit` clean; `npm run lint` 0 errors, 1 warning from before this plan (`lib/db/import-designs-action.test.ts`, `_calls`).
 
 ## What later plans must know
