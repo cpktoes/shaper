@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { guideRailsInput } from "./__fixtures__/guide-rails-input";
+import { presetDesignFields } from "../blanks/preset-blanks";
+import { guideRailsInput, railsGuideInputFromFields } from "./__fixtures__/guide-rails-input";
 import { finishedRail } from "./finished-rail";
 import { guideCaptionText, GUIDE_VIEWBOX_WIDTH, type GuidePrim } from "./guide-card";
 import { guideFigureBounds, guideLabelOverlaps } from "./guide-draw";
@@ -26,7 +27,8 @@ import {
   RAIL_NUDGE_KEYS,
   type RailSectionSpec,
 } from "./rail-bands";
-import { mm, UNITS_SYSTEMS } from "./units";
+import { BOARD_PRESETS } from "./presets";
+import { inchesToMm, mm, UNITS_SYSTEMS } from "./units";
 
 const ids = RAILS_GUIDE_CARD_IDS;
 const shortboard = guideRailsInput("shortboard");
@@ -283,6 +285,26 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
   it("draws a section card 186 tall and the tail from above 176 (UI-SPEC §4)", () => {
     for (const card of buildRailsGuide(shortboard, "imperial").values()) {
       expect(card.figure.height, card.id).toBe(card.id === ids.blends ? 176 : 186);
+    }
+  });
+});
+
+describe("buildRailsGuide — a short board", () => {
+  // The four presets are all 5'10" or longer where it matters; a 5'0" to 5'11" board puts Ends At close to the
+  // nose edge of the tail's window, where its figure once ran off the edge and lost its first digit.
+  it("keeps both of Tail Rail Blends From · Ends At's figures whole, inside the window and clear of each other", () => {
+    const fields = presetDesignFields(BOARD_PRESETS.find((p) => p.id === "shortboard")!);
+    for (let inches = 60; inches <= 72; inches++) {
+      for (const wide of [16, 18, 20]) {
+        const outline = { ...fields.outline, length: inchesToMm(inches), widePointWidth: inchesToMm(wide) };
+        const input = railsGuideInputFromFields({ ...fields, outline });
+        for (const system of UNITS_SYSTEMS) {
+          const card = buildRailsGuide(input, system).get(ids.blends)!;
+          for (const fit of [0.7, 0.79, 1.26]) {
+            expect(guideLabelOverlaps(card.figure, fit), `${inches}" x ${wide}" ${system} at ${fit}`).toEqual([]);
+          }
+        }
+      }
     }
   });
 });

@@ -19,6 +19,7 @@
  */
 import { finishedRail, type FinishedRail } from "./finished-rail";
 import {
+  GUIDE_MIN_FIT,
   GUIDE_NO_CAPTION,
   GUIDE_NO_TAG,
   guideCardId,
@@ -38,6 +39,7 @@ import {
   guideHalfWidthAt,
   guidePlanPrims,
   guideStripFit,
+  guideTextBox,
   guideVDim,
   guideWindowFit,
   guideWindowName,
@@ -539,7 +541,12 @@ function blendsFigure(input: RailsGuideInput, pushedPair: { blendsFrom: Mm; ends
   // run away from each other and never meet.
   const labelY = f1(Y(0) + 3);
   prims.push({ kind: "text", role: "value", x: f1(X(from) + 3), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(from, system))], anchor: "start" });
-  prims.push({ kind: "text", role: "value", x: f1(X(ends) - 3), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(ends, system))], anchor: "end" });
+  // On a short board Ends At sits close to the window's nose edge, and its figure would run off that edge and
+  // lose its first digit (`9 1/2"` for 29 1/2"). So the figure is held inside the window at the narrowest card's
+  // text size: it slides back under its own mark by just what it needs, and still ends well short of Blends From's.
+  const endsLabel = (x: number): GuidePrim => ({ kind: "text", role: "value", x: f1(x), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(ends, system))], anchor: "end" });
+  const endsWidth = guideTextBox(endsLabel(0), GUIDE_MIN_FIT)?.w ?? 0;
+  prims.push(endsLabel(Math.max(X(ends) - 3, box.x + 2 + endsWidth)));
   prims.push(guideWindowName(box, [guideText("Tail, from above")]));
 
   const stripLines: GuidePrim[] = [...stripPrims(input, "tail", strip), { kind: "rect", role: "window", ...fitted.rect }];
