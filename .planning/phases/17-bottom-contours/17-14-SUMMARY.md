@@ -357,7 +357,9 @@ sight with the card at its end. Taken back out, the fix fails that test.
 sources are archived beside it as `17-14-data-computer-source.tar.gz`). Three pictures of the running page at
 1,280 × 800 with those three cuts: DATA before, DATA after, and DATA after scrolled to its end.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"Approved"* He approved the phone pictures with the orchestrator's four recommendations as put to him: the starting channels keep their rail warning on a Shortboard and the test that raced it is repaired; a tap on NOSE / CENTER / TAIL keeps the scroll where it was, to be judged on his phone at go-live; DATA on a computer gets the phone's fix before the merge (done, the after picture checked by the orchestrator and sent to him with the merge report); FINS' two small buttons keep their 42-dot touch areas. The sideways page at 360 dots and the 177-dot controls box wait for his real phones at go-live. Merged as d8d47b71.
 
 **The picture:** `.planning/phases/17-bottom-contours/pictures/17-14-phones.png` (its sources are archived beside it as
 `17-14-pictures-source.tar.gz`). Every picture on it is the running page on a 6'2" Shortboard with a Deep Single
