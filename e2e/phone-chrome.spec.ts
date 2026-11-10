@@ -293,6 +293,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // DATASHEET keeps an 8px reading margin.
     await datasheetTab.click();
@@ -343,6 +345,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     await datasheetTab.click();
     await expect(page.locator("[data-viewer-panel]")).toHaveCSS("padding-left", "8px");
@@ -385,6 +389,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // The Undo/Redo pair appears once there is something to take back (Alternative A: over the corner).
     const slider = page.locator("aside [data-slot='slider-thumb'] input[type='range']").first();
@@ -437,6 +443,8 @@ test.describe("ROCKER — the slimmer phone frame and the 44px touch box (item 9
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(datasheetTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -493,6 +501,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // Nothing scrolls sideways.
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -538,6 +548,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
@@ -576,6 +588,8 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // TEMPLATE sideways repeats the Undo/Redo check: under Alternative A the pair floats over the
     // drawing's corner on every drawing screen, not only ROCKER's.
@@ -629,23 +643,28 @@ test.describe("TEMPLATE — the slimmer phone frame and the 44px touch box on VI
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(wingsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
   });
 });
 
-test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading margin (item 9e)", () => {
+test.describe("VOLUME — the slimmer phone frame, two tabs and an 8px reading margin (item 9e; Phase 18)", () => {
+  // Phase 18 (18-01, D-28, R12): VOLUME's strip gained GUIDE, so ESTIMATE is a tappable tab like every
+  // other page's — found by its role, with the strip's 9-dot clearance for the 44-dot touch box above it
+  // (tab 11 below the top bar, 22 tall, the reading area 11 below it). It used to be a plain label, 2 below
+  // the top bar and 10 above the reading area. The 13-dot reading margins at the sides and the bottom hold.
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "this describe's own upright/sideways sizes are phone-only");
     await dismissChrome(page);
   });
 
-  function label(page: Page) {
-    return page.locator("main > div").first().locator("span").filter({ hasText: "ESTIMATE" });
-  }
+  const estimateTab = (page: Page) => page.getByRole("tab", { name: "ESTIMATE" });
+  const guideTab = (page: Page) => page.getByRole("tab", { name: "GUIDE" });
 
-  test("iphone upright (390x844): label frame and the 13px text margin", async ({ page }, testInfo) => {
+  test("iphone upright (390x844): two tabs, their touch boxes and the 13px text margin", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
     await page.setViewportSize(IPHONE_UPRIGHT);
     await gotoRoute(page, "/design/volume");
@@ -659,32 +678,34 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
 
     const topBar = await topBarBox(page);
     const main = await page.locator("main").boundingBox();
-    const labelBox = await label(page).boundingBox();
+    const tabBox = await estimateTab(page).boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !main || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !main || !tabBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] VOLUME 390x844 upright — label top ${labelBox.y - (topBar.y + topBar.height)}, ` +
-        `label height ${labelBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
+      `[9e] VOLUME 390x844 upright — tab top ${tabBox.y - (topBar.y + topBar.height)}, ` +
+        `tab height ${tabBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    expect(labelBox.height).toBeGreaterThanOrEqual(20);
-    expect(labelBox.height).toBeLessThanOrEqual(23);
-    expectWithin(content.y - (labelBox.y + labelBox.height), 10, 1);
+    expectWithin(tabBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(tabBox.height, 22, 1);
+    expectWithin(content.y - (tabBox.y + tabBox.height), 11, 1);
     expectWithin(main.y + main.height - (content.y + content.height), 13, 1);
     expectWithin(content.x - main.x, 13, 1);
     expectWithin(main.x + main.width - (content.x + content.width), 13, 1);
 
-    // Growth floor, width only (today 322 wide; the card's own content reflow can shrink its
-    // height, per the plan's own measured table — height is not a reliable growth signal here).
+    // Growth floor, width only (the card's own content reflow can shrink its height).
     expect(content.width).toBeGreaterThanOrEqual(362);
+
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(estimateTab(page), bounds);
+    await assertTabTouchBox(guideTab(page), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_UPRIGHT.width);
   });
 
-  test("android upright (412x915): label frame and the 13px text margin", async ({ page }, testInfo) => {
+  test("android upright (412x915): two tabs, their touch boxes and the 13px text margin", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "android-only viewport");
     await page.setViewportSize(ANDROID_UPRIGHT);
     await gotoRoute(page, "/design/volume");
@@ -698,30 +719,33 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
 
     const topBar = await topBarBox(page);
     const main = await page.locator("main").boundingBox();
-    const labelBox = await label(page).boundingBox();
+    const tabBox = await estimateTab(page).boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !main || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !main || !tabBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] VOLUME 412x915 upright — label top ${labelBox.y - (topBar.y + topBar.height)}, ` +
-        `label height ${labelBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
+      `[9e] VOLUME 412x915 upright — tab top ${tabBox.y - (topBar.y + topBar.height)}, ` +
+        `tab height ${tabBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
-    expect(labelBox.height).toBeGreaterThanOrEqual(20);
-    expect(labelBox.height).toBeLessThanOrEqual(23);
-    expectWithin(content.y - (labelBox.y + labelBox.height), 10, 1);
+    expectWithin(tabBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(tabBox.height, 22, 1);
+    expectWithin(content.y - (tabBox.y + tabBox.height), 11, 1);
     expectWithin(main.y + main.height - (content.y + content.height), 13, 1);
     expectWithin(content.x - main.x, 13, 1);
     expectWithin(main.x + main.width - (content.x + content.width), 13, 1);
 
     expect(content.width).toBeGreaterThanOrEqual(384);
 
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(estimateTab(page), bounds);
+    await assertTabTouchBox(guideTab(page), bounds);
+
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
   });
 
-  test("iphone sideways (844x390): label frame and the 13px sideways bottom", async ({ page }, testInfo) => {
+  test("iphone sideways (844x390): two tabs and the 13px sideways bottom", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "iphone", "iphone-only viewport");
     await page.setViewportSize(IPHONE_SIDEWAYS);
     await gotoRoute(page, "/design/volume");
@@ -733,26 +757,31 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
     expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
-    const labelBox = await label(page).boundingBox();
+    const tabBox = await estimateTab(page).boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !tabBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] VOLUME 844x390 sideways — main padding-bottom ${paddingBottom}, drawing area ${content.width}x${content.height}, ` +
-        `clearance to window bottom ${IPHONE_SIDEWAYS.height - (content.y + content.height)}`,
+      `[9e] VOLUME 844x390 sideways — tab top ${tabBox.y - (topBar.y + topBar.height)}, main padding-bottom ${paddingBottom}, ` +
+        `drawing area ${content.width}x${content.height}, clearance to window bottom ${IPHONE_SIDEWAYS.height - (content.y + content.height)}`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
+    expectWithin(tabBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(tabBox.height, 22, 1);
     expect(content.width).toBeGreaterThanOrEqual(456);
     // VOLUME is `text`: the same 2px bottom padding plus its own 8px reading margin is 13, not
     // the drawing screens' 5.
     expectWithin(IPHONE_SIDEWAYS.height - (content.y + content.height), 13, 1);
 
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(estimateTab(page), bounds);
+    await assertTabTouchBox(guideTab(page), bounds);
+
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
   });
 
-  test("android sideways (863x360): label frame and the 13px sideways bottom", async ({ page }, testInfo) => {
+  test("android sideways (863x360): two tabs and the 13px sideways bottom", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "android", "android-only viewport");
     await page.setViewportSize(ANDROID_SIDEWAYS);
     await gotoRoute(page, "/design/volume");
@@ -764,18 +793,23 @@ test.describe("VOLUME — the slimmer phone frame, a label and an 8px reading ma
     expectWithin(paddingBottom, 2, 0.5);
 
     const topBar = await topBarBox(page);
-    const labelBox = await label(page).boundingBox();
+    const tabBox = await estimateTab(page).boundingBox();
     const content = await contentBox(page);
-    if (!topBar || !labelBox) throw new Error("missing a bounding box");
+    if (!topBar || !tabBox) throw new Error("missing a bounding box");
 
     console.log(
-      `[9e] VOLUME 863x360 sideways — main padding-bottom ${paddingBottom}, drawing area ${content.width}x${content.height}, ` +
-        `clearance to window bottom ${ANDROID_SIDEWAYS.height - (content.y + content.height)}`,
+      `[9e] VOLUME 863x360 sideways — tab top ${tabBox.y - (topBar.y + topBar.height)}, main padding-bottom ${paddingBottom}, ` +
+        `drawing area ${content.width}x${content.height}, clearance to window bottom ${ANDROID_SIDEWAYS.height - (content.y + content.height)}`,
     );
 
-    expectWithin(labelBox.y - (topBar.y + topBar.height), 2, 1);
+    expectWithin(tabBox.y - (topBar.y + topBar.height), 11, 1);
+    expectWithin(tabBox.height, 22, 1);
     expect(content.width).toBeGreaterThanOrEqual(466);
     expectWithin(ANDROID_SIDEWAYS.height - (content.y + content.height), 13, 1);
+
+    const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+    await assertTabTouchBox(estimateTab(page), bounds);
+    await assertTabTouchBox(guideTab(page), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -804,7 +838,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const main = await page.locator("main").boundingBox();
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
@@ -828,7 +862,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_UPRIGHT.width);
@@ -850,7 +884,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const main = await page.locator("main").boundingBox();
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
@@ -874,7 +908,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
@@ -894,7 +928,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !viewerBox) throw new Error("missing a bounding box");
@@ -912,7 +946,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -932,7 +966,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !viewerBox) throw new Error("missing a bounding box");
@@ -950,7 +984,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1006,6 +1040,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     // The phone-only NOSE/CENTER/TAIL switch, visible on VIEWER (the default tab) only upright.
     const noseTab = page.getByRole("tab", { name: "NOSE" });
@@ -1072,6 +1108,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const noseTab = page.getByRole("tab", { name: "NOSE" });
     const centerTab = page.getByRole("tab", { name: "CENTER" });
@@ -1126,6 +1164,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -1162,6 +1202,8 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
     await assertTabTouchBox(instructionsTab, bounds);
+    // GUIDE, last on the strip since Phase 18 (plan 18-08), answers the same 44-dot touch box.
+    await assertTabTouchBox(page.getByRole("tab", { name: "GUIDE", exact: true }), bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1299,16 +1341,18 @@ test.describe("BOTTOM — the slimmer phone frame and TWO stacked rows of tappab
 });
 
 /** Every one of the six drawing screens (BOTTOM since Phase 17), for the iPad-like and computer checks below — `tabs`
- * empty means a non-interactive single label (VOLUME; TEMPLATE too until quick 261014-wii gave it a
- * WINGS tab), with nothing to tap. */
+ * empty means a non-interactive single label, with nothing to tap (none today: TEMPLATE until quick
+ * 261014-wii gave it a WINGS tab, VOLUME until Phase 18 gave it GUIDE). Since Phase 18 every page's
+ * strip ends in GUIDE (plan 18-08 added it to TEMPLATE, ROCKER and RAILS here; BOTTOM has had its own since
+ * 17-11). These sizes are all the desktop shell, so ROCKER's tabs keep their full words (DATASHEET, not DATA). */
 const ALL_DRAWING_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
-  { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS"] },
-  { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
+  { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS", "GUIDE"] },
+  { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET", "GUIDE"] },
   // BOTTOM (Phase 17): VIEWER and DATA (17-08), and GUIDE (17-11).
   { path: "/design/bottom", label: "BOTTOM", tabs: ["VIEWER", "DATA", "GUIDE"] },
-  { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
-  { path: "/design/volume", label: "VOLUME", tabs: [] },
-  { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "MODEL INFO"] },
+  { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS", "GUIDE"] },
+  { path: "/design/volume", label: "VOLUME", tabs: ["ESTIMATE", "GUIDE"] },
+  { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "GUIDE"] },
 ];
 
 test.describe("All six drawing screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {

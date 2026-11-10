@@ -207,6 +207,21 @@ how big a picture draws and whether a browser has a toolbar worth hiding are bot
 the device in hand, not about which layout a width selects. That is what lets both keep working
 correctly on either side of this switch, including through the one wave it briefly read height too.
 
+**GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS** (Phase 18). Each page's GUIDE is a list
+of cards, one per control, each the shaper's own board drawn with that one setting pushed in muted dashes, two
+sentences on what it does and a How to shape note. VOLUME's strip became two tappable tabs to hold it, and FINS'
+MODEL INFO tab is gone — its words now sit on the GUIDE's cards. A GUIDE only reads the board and never writes
+it: no card can be pressed and nothing on one changes a setting. Every word on every card lives on
+`18-GUIDE-WORDS.md` (in the phase folder, moved to the archive when the phase closes), the founder's page to mark
+up, and a test holds the code to it line for line. Adding a fifth tab crowded two strips, so a strip's board name
+is now drawn only when the strip has 50 dots of room after its last tab (a 44-dot box for the name and its gap),
+and otherwise not at all — never a two-letter stub, never a page pushed sideways. That is decided by the strip's
+own trailing slot, a question about the room left on that one strip, and it is none of the three screen switches:
+never the window's width, the pointer or the height. On an upright phone ROCKER loses the name below about 412 dots
+and RAILS below about 400, and both lose it in an 820-dot computer window; TEMPLATE, VOLUME and FINS keep it
+everywhere. This changes the founder's rule of 2026-10-08 ("Untitled whole at 360") on ROCKER and RAILS, and it is
+his to overrule at the look — shorter phone tab words are the other lever.
+
 **Control size (and the Rotate button's presence) — pointer alone.** The `coarse` pointer variant
 decides how BIG a control draws, on any width a touch device happens to be, and, for the viewer's
 Rotate button alone, whether it draws at all — since turning a touch device already turns the

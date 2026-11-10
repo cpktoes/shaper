@@ -120,7 +120,25 @@ describe("TabbedPanel with a trailing slot", () => {
     expect(html).toContain('role="tablist"');
     // The tab list holds only tabs: the trailing button comes after it closes.
     expect(html.indexOf("Fish")).toBeGreaterThan(html.indexOf("INSTRUCTIONS"));
-    expect(html).toMatch(/<\/div><div class="ml-auto flex min-w-0"><button>Fish<\/button>/);
+    // Phase 18 D-21: the slot is a size container whose name gives way, gap and all, under 50 dots.
+    expect(html).toMatch(
+      /<\/div><div class="@container flex min-w-0 flex-1 justify-end"><div class="flex min-w-0 pl-1\.5 @max-\[50px\]:hidden"><button>Fish<\/button>/,
+    );
+  });
+
+  it("moves the 6-dot gap inside the slot, so it gives way with the name (D-21)", () => {
+    const html = render({ ...SHAPE_B, trailing: () => createElement("button", null, "Fish") });
+    expect(html).toMatch(/^<div class="flex flex-none(?: [^"]*)?"><div class="flex flex-none gap-1\.5" role="tablist">/);
+    expect(html).not.toMatch(/^<div class="flex flex-none gap-1\.5/);
+  });
+
+  it("leaves a strip with no trailing slot as it was: flex flex-none gap-1.5, no container", () => {
+    for (const shape of [SHAPE_A, SHAPE_B, SHAPE_C]) {
+      const html = render(shape);
+      expect(html).toMatch(/^<div class="flex flex-none gap-1\.5[ "]/);
+      expect(html).not.toContain("@container");
+      expect(html).not.toContain("@max-[50px]:hidden");
+    }
   });
 
   it("tells the trailing item whether the tabs carry the phone touch box", () => {

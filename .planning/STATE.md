@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 executing: wave 15 (17-15) merged a4db2688 after the founder's look, 15 of 16 plans; 17-16 (the go-live gate) next"
-last_updated: "2026-11-08T19:20:01.647Z"
-last_activity: 2026-11-08
-last_activity_desc: Phase 17 execution started
+stopped_at: "Phase 17 executing: wave 15 (17-15) merged a4db2688 after the founder's look, 15 of 16 plans; main (Phase 18, the GUIDE on every page, live 2026-11-10) merged into the branch; 17-16 (the go-live gate) next. Phase 18: the founder's look on his phone and his word on its open points still awaited"
+last_updated: "2026-11-10T22:00:00.000Z"
+last_activity: 2026-11-10
+last_activity_desc: Phase 18 (live on main) merged into the Phase 17 branch; 15 of 16 BOTTOM plans done
 progress:
-  total_phases: 5
-  completed_phases: 3
-  total_plans: 65
-  completed_plans: 64
-  percent: 98
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 75
+  completed_plans: 74
+  percent: 99
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
@@ -24,9 +24,11 @@ current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 17 — BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
+**Current focus:** Phase 17 — BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut (Phase 18, A GUIDE on Every Page, is live and waits only for the founder's look)
 
 ## Current Position
+
+**Phase 18 — A GUIDE on Every Page — complete and live 2026-11-10.** 10 of 10 plans. GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS, 84 cards in all, and FINS' MODEL INFO tab is gone with its words on the cards. Pushed as main `79110e41` at the founder's word ("Push it once the suite is green") and seen on the live site at 09:58 Pacific on all five pages. The gate: 9,932 unit tests, lint, the production build, and the browser suite at 1,685 passed with five page-load timeouts that each passed alone (named in `18-10-SUMMARY.md`). Verified 12 of 12 checkable requirements (`18-VERIFICATION.md`). **Awaiting the founder:** his look at the cards on his phone and a computer, and his word on six points: every sentence is a first draft for his pen (`18-GUIDE-WORDS.md`); the board's name steps aside on narrow ROCKER and RAILS strips (D-21); how fast a GUIDE opens on a slow phone (D-28, `18-TIMING.md`); the maker's inch rocker code on a Metric Customize Rocker card (MD-02, which also asks whether CLAUDE.md Rule 2 should name the GUIDE); whether a drawing's caption is read to a screen reader (LW-05); VOLUME's ESTIMATE card sitting one dot lower on a computer. BOTTOM's GUIDE adopts the shared card after Phase 17 lands (pending todo).
 
 **Phase 16 — 3D Board and CNC Export — complete 2026-11-06.** 18 of 18 plans. Go-live 1 on 2026-11-04 (main 43bd948a), go-live 2 on 2026-11-06 (main 1c6dc5ef, live 22:16), confirmed by the founder on iPhone and iPad. Verified 11 of 12 requirements in code; R8, Shape3D opening the files, is accepted open by the founder and tracked in a todo. The closing commits sit on `board-3d`, docs only, unpushed.
 
@@ -36,8 +38,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Executing Phase 17
-Last activity: 2026-11-08 — Phase 17 execution started
+Status: Executing Phase 17 (15 of 16 plans; the go-live gate is next); Phase 18 complete and live, the founder's look awaited
+Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific; main then merged into the Phase 17 branch
 
 ## Performance Metrics
 
@@ -175,6 +177,7 @@ Recent decisions affecting current work:
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
 - Phase 14 added (2026-10-02): Realistic Surfboard Flow — milestone v1.5, opened from the curve-flow todo on branch `surfboard-flow`; the founder wants it before the Oct 10 showing, curves and tips both; brief in `phases/14-realistic-surfboard-flow/14-SPEC.md`, research in the todo (now under `todos/completed/`)
 - Phase 17 added (2026-11-08): BOTTOM — bottom contours a shaper can map, measure and cut, from sketches 019–021 and the founder's rulings; brief in `phases/17-bottom-contours/17-SPEC.md`
+- Phase 18 added (2026-11-09): A GUIDE on Every Page — a GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS, built from sketch 022 (decided as built, rounds one to three) at the founder's word, "Let's build this and go live"; brief in `phases/18-a-guide-on-every-page/18-SPEC.md`
 
 ### Pending Todos
 
@@ -446,6 +449,7 @@ Recent decisions affecting current work:
 | 261103-k8o-01 | A board file goes both ways, plan 01 of 2 — the founder, 2026-11-03: "I can download my board data from the site, but I need a way to upload it (or send a board to a friend)." A saved board's ⋯ menu on the Board Rack gets **Save board as file…** (after Duplicate; works on a locked board; downloads one board as `<name>.shaper-board.json`, no account details inside, synchronously in the tap so Safari allows it), and the home page gets **Open a board file…** under the preset cards (his line under it word for word; nothing in the phone ☰ menu), opening the file as a NEW unsaved board under the file's name (`applyBoardFile` in the store, through the replace prompt "Open this board file?"), kept across a reload and saved by Save like any new board; an Export my designs file holding one board opens the same way, one holding more points at Import my designs; a file that won't open gets one quiet line. One pure module, `lib/models/board-file.ts` (tests first, 65), every file read through the saved-board parser. No database change, no server action. 6,717 unit tests, `e2e/board-file.spec.ts` on three devices, five desktop reference pictures unchanged. The band keeps its rule (a never-saved board reads Untitled) by the founder's choice | 2026-11-03 | a4df2666 | [261103-k8o-upload-a-board-save-board-as-file-on-a-r](./quick/261103-k8o-upload-a-board-save-board-as-file-on-a-r/) |
 | 261103-k8o-02 | A board file goes both ways, plan 02 of 2 — **Import my designs** on the Your data page, between Export and Delete. Choose a file… reads an Export my designs file and, before anything is written, says on the page which boards will be added (by name), how many are already on the account (by board id) and will be left exactly as they are, and any that couldn't be read; one tick box, off every time, also adds the file's versions of those as copies ("Copy of …"); then Import or Cancel (the founder, asked "should the app ask to skip rather than just blind skipping?": a preview with one choice, never a per-board yes/no). The import only ever ADDS, each board unlocked — never an update or a delete, a locked board never touched, the file's settings never read; a board keeps its file id when free so the same file imported twice adds nothing; everything added stands at the front of an arranged rack (his ruling). The preview reads the account's own board ids (`listMyBoardIds`, one select) and the import runs in batches of 25 under the 1 MB server-action cap; both actions on `lib/db/ownership.test.ts`'s list. The Privacy Policy's Your choices gains one sentence ("You can put a downloaded file back onto your account with Import my designs."), the effective date left at October 10 by his choice. No database change. 6,772 unit tests, the page proven by static-render and source-contract tests (Clerk's panel can't be driven in the suite), stand-in pictures from a throwaway route archived and deleted; one pre-existing iPhone-only privacy visit-counter failure noted, not this plan's | 2026-11-03 | 4abb7bfa | [261103-k8o-upload-a-board-save-board-as-file-on-a-r](./quick/261103-k8o-upload-a-board-save-board-as-file-on-a-r/) |
 | 261106-ni6 | The 3D room wears the theme's colours — the founder, 2026-11-06: deepened colours, today's blue on the first click of the room icon, no room on the second, before go-live 2. With no room only the back wall's line logo stays. The drawing fills the viewer to the faint line and the corner icons stay put. | 2026-11-07 | 2cb5326a | [261106-ni6-theme-coloured-shaping-room-with-a-three](./quick/261106-ni6-theme-coloured-shaping-room-with-a-three/) |
+| 261109-efm | A slider touched while the 3D board is still turning lands the turn first — found by Phase 17 as the locked-board check x-3d failing every time on an iPhone run alone. Bottom, then Deck, then a touch of Rotate on Side used to land the board bottom up again ("179° left"), and on Turn the Board, Nose, then Tail, then Look Down the Rail swung the nose back toward you with the slider stuck at its limit; both read which face and which end from the move the board was leaving. Now the move lands, then the slider takes its step from the board the shaper is about to see. Two new checks (8f, 8g in e2e/three-d-bay.spec.ts) failed on the old code and pass now; nothing else on the page changed. | 2026-11-09 | 6f948006 | [261109-efm-fix-3d-race-a-slider-during-a-view-move](./quick/261109-efm-fix-3d-race-a-slider-during-a-view-move/) |
 
 ## Deferred Items
 
@@ -572,10 +576,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-08T19:10:51.368Z
-Stopped at: Phase 17 PLANNED 2026-11-08: 16 plans in 16 waves (commit 87a94931), checker passed with no blockers; awaiting the founder's approval before /gsd-execute-phase 17
-Resume file: .planning/phases/17-bottom-contours/17-01-PLAN.md
-Next action: the founder's answers on sketch 019 (BOTTOM contours), then open the next phase; Phase 13's two remaining items and the Shape3D todo stay open
+Last session: 2026-11-10T22:00:00.000Z
+Stopped at: Phase 17 wave 15 merged (a4db2688); main with Phase 18 merged into the branch; 17-16, the go-live gate, next
+Resume file: .planning/phases/17-bottom-contours/17-16-PLAN.md
+Next action: 17-16, the go-live gate for BOTTOM (full browser suite, the founder's phone checks and saved boards, one push on his go); BOTTOM's GUIDE to adopt Phase 18's shared card (todo of 2026-11-09); the founder's look at Phase 18 on his phone and his word on its open points; Phase 13's two remaining items and the Shape3D todo stay open
 
 ## Operator Next Steps
 

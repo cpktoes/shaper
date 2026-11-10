@@ -972,7 +972,10 @@ export function ThreeDScreen() {
   };
 
   // Each control writes its own plane. The other two come from the turn's exact angles, never from the rounded thumbs,
-  // so a whole-degree reading can never creep them (the plan's trap 1).
+  // so a whole-degree reading can never creep them (the plan's trap 1). A slider touched while a view's move is still
+  // under way lands that move first: Rotate on Side then reads from the face the move was putting up, and Look Down the
+  // Rail from the end it was turning toward you, the same promise the comment above onView makes for the buttons. (Before
+  // quick 261109-efm, Bottom, then Deck, then a touch of Rotate on Side landed the board bottom up again.)
   const setPlane = (change: Partial<RackAngles>) => {
     finishMotion();
     applyTurn(rackTurn({ ...rackAngles(turnRef.current), ...change }));
@@ -981,15 +984,19 @@ export function ThreeDScreen() {
     if (!seat) return;
     setPlane({ lift: liftOfRaise(heightMm, seat) * (end === "nose" ? 1 : -1) });
   };
-  const onRoll = (shown: number) => setPlane({ roll: totalRoll(shown, flippedRef.current) });
+  const onRoll = (shown: number) => {
+    finishMotion();
+    setPlane({ roll: totalRoll(shown, flippedRef.current) });
+  };
   // Look Down the Rail moves you on Walk Around. On Turn the Board you stay put, so it turns the board instead, the same few
-  // degrees, which gives the same line of sight down the rail with the room still.
+  // degrees, which gives the same line of sight down the rail with the room still. Either way a move under way lands first,
+  // so the few degrees are measured from the end the board was turning toward you.
   const onSight = (sightDeg: number) => {
+    finishMotion();
     if (!walkingRef.current) {
       setPlane({ swing: headingRef.current + sightDeg });
       return;
     }
-    finishMotion();
     applyViewer({ ...viewerRef.current, sightDeg });
   };
 

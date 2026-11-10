@@ -84,9 +84,9 @@ export function DesignScreenShell({
   const simpleAsideBase = nonePinned
     ? "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
       "max-shell:order-last max-shell:h-auto max-shell:flex-none max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t max-shell:overflow-visible"
-    : // simpleSidebar && !nonePinned: no current caller exercises this combination (VOLUME, the
-      // only `simpleSidebar` caller, always pairs it with `phonePinned="none"`) — kept, not
-      // deleted, for a future caller that might.
+    : // simpleSidebar && !nonePinned: VOLUME while its GUIDE tab is open (Phase 18, D-28), which pins the
+      // GUIDE above the sidebar on a phone as the other four pages do. VOLUME's ESTIMATE tab keeps
+      // `phonePinned="none"` and the branch above.
       "h-full min-h-0 w-full max-w-[400px] flex-1 basis-[340px] overflow-y-auto border-r border-surf-line-faint bg-surf-sidebar p-10 text-surf-ink " +
       "max-shell:order-last max-shell:h-auto max-shell:w-full max-shell:max-w-none max-shell:basis-auto max-shell:border-r-0 max-shell:border-t";
 
