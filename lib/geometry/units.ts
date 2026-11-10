@@ -336,6 +336,39 @@ export function formatSignedInchesFraction(
 }
 
 /**
+ * A size this close to nothing IS nothing: the same `1e-9` the formatters above nudge by, so float
+ * noise left over from a subtraction never reads as "something there".
+ */
+const NOTHING_THERE: Mm = mm(1e-9);
+
+/**
+ * `formatInchesFraction` for a size that must never read as nothing when something is there (the
+ * founder, 2026-11-10: "say <1/16 if it's not actually 0"): a size above nothing that would round
+ * to `0"` reads `<1/16"` instead — less than the smallest step an inch tape is read to. Everything
+ * else, an actual zero included, prints exactly as `formatInchesFraction` prints it.
+ *
+ * The switch is decided by what WOULD be printed, not by a second copy of the rounding, so the two
+ * can never disagree about a value on the boundary: half a step (1/32") and up reads `1/16"`, as it
+ * always has. For sizes — a depth, a lift — not for signed offsets: a negative value is left to
+ * `formatInchesFraction`.
+ */
+export function formatInchesFractionOrLess(value: Mm): string {
+  const printed = formatInchesFraction(value);
+  return value > NOTHING_THERE && printed === '0"' ? '<1/16"' : printed;
+}
+
+/**
+ * The Metric counterpart of `formatInchesFractionOrLess`: a size above nothing that would round to
+ * a whole `0` reads `<1` — less than the one millimetre a metric tape is read to, bare like
+ * `formatWholeMm` (the caller adds `mm` where the value carries its own unit). Half a millimetre
+ * and up reads `1`, as it always has; an actual zero still reads `0`.
+ */
+export function formatWholeMmOrLess(value: Mm): string {
+  const printed = formatWholeMm(value);
+  return value > NOTHING_THERE && printed === "0" ? "<1" : printed;
+}
+
+/**
  * Snaps a millimetre value to the nearest 1/16 inch. Ported from the prototype's `round16`
  * (reference/project/Rails.dc.html line 652: `Math.round(x * 16) / 16`), applied here in the
  * inch domain then converted back to Mm. This is not a display nicety — it's the taper clamp

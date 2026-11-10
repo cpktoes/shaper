@@ -3,7 +3,7 @@ import { BOTTOM_COPY, layoutMarkColumnName } from "../components/bottom/bottom-c
 import { BOTTOM_GUIDE_WORDS, guideHow } from "../components/bottom/bottom-guide-words";
 import { bottomSheetLayout, bottomSheetStationsLine } from "../components/summary/bottom-sheet-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, bottomLayoutMarks, type BottomDataRow } from "../lib/geometry/bottom";
-import { columnUnitSuffix, formatDimBare, formatMarkBare } from "../lib/geometry/measure-display";
+import { columnUnitSuffix, formatDimBare, formatMarkBare, formatMarkOrLessBare } from "../lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "../lib/geometry/units";
 import { boardWithBottom, openOnBoard, type BoardWithBottom } from "./helpers/bottom-print";
 
@@ -79,9 +79,18 @@ async function openSummaryOn(page: Page, board: BoardWithBottom) {
   await expect(page.locator("[data-bottom-sheet]")).toBeVisible({ timeout: 60_000 });
 }
 
-/** DATA's own cell rules (`components/bottom/bottom-data.tsx`), which the printed tables follow word for word. */
+/**
+ * DATA's own cell rules (`bottomDepthCell` in `components/bottom/bottom-copy.ts`), which the printed tables follow word
+ * for word — spelled out again here so the page is judged by the rule, not by the function that draws it. Under a
+ * quarter of a millimetre nothing is cut and the cell is the dash; a depth that is there but too small for the tape
+ * reads `<1/16"` (`<1` under a head that carries `mm`), never a nought (the founder, 2026-11-10).
+ */
 function depthCell(value: Mm, system: UnitsSystem): string {
-  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkBare(value, system);
+  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system);
+}
+/** What a depth that is there must never read: a bare nought, as the tape's own formatter would print it. */
+function nought(system: UnitsSystem): string {
+  return formatMarkBare(0 as Mm, system);
 }
 function rowLabel(row: BottomDataRow, system: UnitsSystem): string {
   if (row.label === "tail") return BOTTOM_COPY.rowTail;
@@ -211,6 +220,11 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
       );
       // Non-vacuity: the cut is really in the table — some row carries a depth.
       expect(rows.some((row) => row.deepest >= BOTTOM_DATA_DEPTH_SHOWN), "a row with a depth to cut").toBe(true);
+      // A depth that is there never prints as a nought: the Deepest cut and Rail lift cells are a mark, `<1/16"`
+      // (`<1`), or the dash.
+      for (const cells of await tableCells(depths)) {
+        expect([cells[2], cells[3]], "no depth cell reads a bare nought").not.toContain(nought(system));
+      }
 
       // The layout marks: a column for each line a shaper rules, row for row with the depths.
       const marks = bottomLayoutMarks(board.resolved, board.board);
@@ -275,6 +289,14 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
     const rows = bottomDataRows(board.resolved, board.board);
     await expect(tablesSheet.locator("table[data-bottom-sheet-depths] tbody tr")).toHaveCount(rows.length);
     await expect(tablesSheet.locator("table[data-bottom-sheet-marks] tbody tr")).toHaveCount(rows.length);
+    // This board's cuts thin out to almost nothing at some stations — a depth that is there but too small for the
+    // tape. Those cells read `<1/16"`, never `0"` (the founder, 2026-11-10); under a quarter of a millimetre the cell
+    // is still the dash.
+    const depthCells = (await tableCells(tablesSheet.locator("table[data-bottom-sheet-depths]"))).map((cells) => [cells[2], cells[3]]);
+    expect(depthCells).toEqual(rows.map((row) => [depthCell(row.deepest, "imperial"), depthCell(row.railLift, "imperial")]));
+    expect(depthCells.flat(), "no depth cell reads a bare nought").not.toContain(nought("imperial"));
+    expect(depthCells.flat(), "a depth too small for the tape is on this page (non-vacuity)").toContain('<1/16"');
+    expect(depthCells.flat(), "and a station where nothing is cut still reads the dash").toContain(BOTTOM_COPY.emptyCell);
     await expect(tablesSheet.locator("table[data-bottom-sheet-marks] thead th")).toHaveCount(
       bottomLayoutMarks(board.resolved, board.board).columns.length + 1,
     );

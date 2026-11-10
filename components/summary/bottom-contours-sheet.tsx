@@ -29,11 +29,11 @@
  */
 
 import { useId, useMemo, type CSSProperties } from "react";
-import { BOTTOM_COPY, layoutMarkColumnName, wingWords } from "@/components/bottom/bottom-copy";
+import { BOTTOM_COPY, bottomDepthCell, layoutMarkColumnName, wingWords } from "@/components/bottom/bottom-copy";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { DimensionLine, ViewerZoomUnitProvider } from "@/components/viewer/callout-primitives";
-import { BOTTOM_DATA_DEPTH_SHOWN, type BottomDataRow } from "@/lib/geometry/bottom";
+import type { BottomDataRow } from "@/lib/geometry/bottom";
 import {
   bottomContourLines,
   bottomFinLines,
@@ -56,7 +56,7 @@ import {
 import { BOTTOM_PRINT_CHANNELS, BOTTOM_PRINT_SECTION, type BottomPrintCut } from "@/lib/geometry/bottom-print";
 import { columnUnitSuffix, formatDimBare, formatLength, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
 import { silhouette } from "@/lib/geometry/screen-tiles";
-import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
+import { mm, type UnitsSystem } from "@/lib/geometry/units";
 import { placedWings } from "@/lib/geometry/wings";
 import { cn } from "@/lib/utils";
 import {
@@ -465,10 +465,7 @@ function SectionFigure({ cut, lone }: { cut: BottomPrintCut; lone: boolean }) {
   );
 }
 
-/** DATA's cell rules, word for word (`components/bottom/bottom-data.tsx`): a depth too small to cut reads `—`. */
-function depthCell(value: Mm, system: UnitsSystem): string {
-  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkBare(value, system);
-}
+/** DATA's own row label (`components/bottom/bottom-data.tsx`); the depth cells are DATA's one function, `bottomDepthCell`. */
 function rowLabel(row: BottomDataRow, system: UnitsSystem): string {
   if (row.label === "tail") return BOTTOM_COPY.rowTail;
   if (row.label === "nose") return BOTTOM_COPY.rowNoseTip;
@@ -533,8 +530,8 @@ function DepthsTable({ layout, beside = false }: { layout: BottomSheetLayout; be
                   {rowLabel(row, system)}
                 </th>
                 <td className={cell}>{row.width === null ? BOTTOM_COPY.emptyCell : formatDimBare(row.width, system)}</td>
-                <td className={cell}>{depthCell(row.deepest, system)}</td>
-                <td className={cell}>{depthCell(row.railLift, system)}</td>
+                <td className={cell}>{bottomDepthCell(row.deepest, system)}</td>
+                <td className={cell}>{bottomDepthCell(row.railLift, system)}</td>
                 <td className={cell}>{row.stringerLeft === null ? BOTTOM_COPY.emptyCell : formatMarkBare(row.stringerLeft, system)}</td>
               </tr>
             );

@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import {
-  BOTTOM_DATA_DEPTH_SHOWN,
   BOTTOM_SECTIONS,
   bottomDataRows,
   bottomLayoutMarks,
@@ -14,14 +13,9 @@ import {
   type BottomFloorFlag,
 } from "@/lib/geometry/bottom";
 import { columnUnitSuffix, formatDimBare, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
-import type { Mm, UnitsSystem } from "@/lib/geometry/units";
+import type { UnitsSystem } from "@/lib/geometry/units";
 import { cn } from "@/lib/utils";
-import { BOTTOM_COPY, dataFloorNote, layoutMarkColumnName, layoutMarksNote, referenceRowsNote } from "./bottom-copy";
-
-/** A depth this small reads `—` (`BOTTOM_DATA_DEPTH_SHOWN`, the sketch's 0.25 mm): nothing is cut there. */
-function depthCell(value: Mm, system: UnitsSystem): string {
-  return value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkBare(value, system);
-}
+import { BOTTOM_COPY, bottomDepthCell, dataFloorNote, layoutMarkColumnName, layoutMarksNote, referenceRowsNote } from "./bottom-copy";
 
 function rowLabel(row: BottomDataRow, system: UnitsSystem): string {
   if (row.label === "tail") return BOTTOM_COPY.rowTail;
@@ -148,8 +142,8 @@ export function BottomData({ floorFlags }: { floorFlags: BottomFloorFlag[] }) {
                       {rowLabel(row, system)}
                     </th>
                     <td className={cell}>{row.width === null ? BOTTOM_COPY.emptyCell : formatDimBare(row.width, system)}</td>
-                    <td className={cell}>{depthCell(row.deepest, system)}</td>
-                    <td className={cell}>{depthCell(row.railLift, system)}</td>
+                    <td className={cell}>{bottomDepthCell(row.deepest, system)}</td>
+                    <td className={cell}>{bottomDepthCell(row.railLift, system)}</td>
                     {/* At the floor (D-09, D-40: a concave holding the stringer at 1/4") the cell reads in warning ink —
                         the DATASHEET's own treatment — and the floor note under the tables names it in words. */}
                     <td data-bottom-floor-cell={row.atFloor ? "" : undefined} className={cn(cell, row.atFloor && "text-surf-warning-ink")}>

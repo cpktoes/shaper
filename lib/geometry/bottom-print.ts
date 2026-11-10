@@ -9,7 +9,9 @@
  * Pure: no React, no browser, no database. Every figure is read through the app's own formatters — a depth, a lift, a
  * distance off the rail or the stringer and a channel's width are marks (`formatMark`: sixteenths of an inch, whole
  * millimetres); a station and a stagger are dims (`formatBottomStation`: inches, centimetres to one decimal). No
- * conversion happens here.
+ * conversion happens here. A cut's depth, its vee lift and the channels' depth read through `formatMarkOrLess`: a line
+ * is only printed for a cut that is there, so a depth too small for the tape reads `<1/16"` (`<1 mm`), never `0"` —
+ * the sliders step by a whole sixteenth or millimetre, so only a board file made outside the app can hold one.
  *
  * A cut's run is a pair of stations in one line of running text, so in Metric the pair carries its unit once, at the
  * end (`147.3 to 10.2 cm`) — the printed-pair rule the order form's thinning line already follows
@@ -29,7 +31,7 @@ import {
   type ResolvedCut,
 } from "./bottom";
 import type { BottomCutKey } from "./bottom-draw";
-import { formatDimBare, formatMark } from "./measure-display";
+import { formatDimBare, formatMark, formatMarkOrLess } from "./measure-display";
 import { mm, type Mm, type UnitsSystem } from "./units";
 
 /** A section's name as paper heads it — the screen's own words (`BOTTOM_SECTION_NAME`; a test holds the two together). */
@@ -96,14 +98,14 @@ function stationWords(section: BottomSectionKey, cut: Pick<ResolvedCut, "start" 
 /** One section's cut in one line. */
 function cutLine(section: BottomSectionKey, cut: ResolvedCut, board: BottomBoard, system: UnitsSystem): string {
   const head = `${BOTTOM_PRINT_SECTION[section]}: ${cut.name}`;
-  const depth = formatMark(cut.depth, system);
+  const depth = formatMarkOrLess(cut.depth, system);
   const where = stationWords(section, cut, board, system);
   if (cut.kind === "single") {
     const point = cut.closesToPoint ? ", closes to a point" : "";
     return `${head} ${depth}, ${where}; ${formatMark(cut.offRail, system)} off the rail${point}.`;
   }
   if (cut.kind === "double") {
-    const lift = cut.spiral ? ` with ${formatMark(cut.veeLift, system)} vee lift` : "";
+    const lift = cut.spiral ? ` with ${formatMarkOrLess(cut.veeLift, system)} vee lift` : "";
     return (
       `${head} ${depth}${lift}, ${where}; ${formatMark(cut.offRail, system)} off the rail, ` +
       `flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`
@@ -130,7 +132,7 @@ function channelsLine(resolved: ResolvedBottom, board: BottomBoard, system: Unit
   const width = channelFit(ch, board, resolved.wingRule).width;
   const longest = ch.longest === "same" ? "all the same length" : `${ch.longest} pair longest, ${formatBottomStation(ch.stagger, system)} stagger`;
   return (
-    `${BOTTOM_PRINT_CHANNELS}: ${ch.count} at ${formatMark(width, system)}, ${formatMark(ch.depth, system)} deep, ` +
+    `${BOTTOM_PRINT_CHANNELS}: ${ch.count} at ${formatMark(width, system)}, ${formatMarkOrLess(ch.depth, system)} deep, ` +
     `${rangeWords(ch.start, ch.end, system)} from the tail, deepest ${formatBottomStation(ch.deepest, system)}; ` +
     `${channelRunWords(ch.run, board.toeDegrees)}, ${longest}.`
   );

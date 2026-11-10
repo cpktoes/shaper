@@ -28,7 +28,7 @@ import {
 } from "@/lib/geometry/bottom";
 import type { BottomCutKey } from "@/lib/geometry/bottom-draw";
 import { bottomImportedReadout } from "@/lib/geometry/imported-readout";
-import { formatDim, formatMark, measureSlider } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, formatMarkOrLess, measureSlider } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 import { placedWings } from "@/lib/geometry/wings";
 import { cn } from "@/lib/utils";
@@ -713,7 +713,9 @@ function MarkRow({
 }) {
   const row = MARK_ROWS[field];
   const slider = measureSlider(value, row.rangeIn, MARK_STEP_IN, 1, system);
-  const mark = formatMark(value, system);
+  // A depth or a lift that is there never reads as nothing (the founder, 2026-11-10): one too small for the tape — only
+  // a board file made outside the app can hold it, the slider steps by a whole sixteenth — reads `<1/16"`, not `0"`.
+  const mark = field === "depth" || field === "veeLift" ? formatMarkOrLess(value, system) : formatMark(value, system);
   const words = row.words ? row.words(mark) : mark;
   return (
     <SliderRow

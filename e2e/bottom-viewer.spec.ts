@@ -3,11 +3,13 @@ import { BOTTOM_COPY, dataFloorNote } from "../components/bottom/bottom-copy";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import type { BottomFloorFlag, BottomSectionKey } from "../lib/geometry/bottom";
+import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, type BottomFloorFlag, type BottomSectionKey } from "../lib/geometry/bottom";
+import { formatMarkBare, formatMarkOrLessBare } from "../lib/geometry/measure-display";
 import type { Mm } from "../lib/geometry/units";
 import { RACK_COPY } from "../components/setup/rack-config";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
 import { bottomFloorScanSettled } from "./helpers/bottom";
+import { boardWithBottom, openOnBoard } from "./helpers/bottom-print";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { goToScreen } from "./helpers/screens";
@@ -518,6 +520,47 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     expect(await color(note)).toBe(warning);
     await expect(page.locator("[data-bottom-floor-cell]")).toHaveCount(0);
   });
+
+  for (const system of ["imperial", "metric"] as const) {
+    const less = system === "metric" ? "<1" : '<1/16"';
+    test(`a depth that is there but too small for the tape reads ${less}, never a nought (${system})`, async ({ page }) => {
+      test.setTimeout(180_000);
+      // A Longboard with a cut in every section: its cuts thin out to almost nothing at some stations (a third to a
+      // half of a millimetre), which used to read `0"` / `0` in the Deepest cut column (the founder, 2026-11-10).
+      const board = boardWithBottom("longboard", {
+        nose: "Teardrop Nose Concave",
+        center: "Early Double Concave",
+        tail: "Spiral Vee",
+        channels: 8,
+      });
+      const rows = bottomDataRows(board.resolved, board.board);
+      // The rule, spelled out: under a quarter of a millimetre nothing is cut (the dash); above it the mark, or
+      // "less than the tape's smallest step" when the mark would round to nothing.
+      const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, system));
+      const expected = rows.map((row) => [cell(row.deepest), cell(row.railLift)]);
+      expect(expected.flat(), "this board has such a depth (non-vacuity)").toContain(less);
+      expect(expected.flat(), "and a station where nothing is cut").toContain(BOTTOM_COPY.emptyCell);
+
+      if (system === "metric") {
+        await page.addInitScript(() => window.localStorage.setItem("shaper-units", "metric"));
+        await page.context().addCookies([{ name: "shaper-units", value: "metric", domain: "localhost", path: "/" }]);
+      }
+      await openOnBoard(page, board); // added after the forget in beforeEach, so every load opens on this board
+      await page.goto("/design/bottom");
+      await expect(cutLine(page)).toBeAttached({ timeout: 60_000 });
+      await expect(async () => {
+        if ((await page.locator("[data-bottom-data]").count()) === 0) await dataTab(page).click({ timeout: 2_000 });
+        await expect(page.locator("[data-bottom-data]")).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 60_000 });
+      // Polled: the page draws the stock board for a moment before the kept one.
+      const depthCells = () =>
+        page
+          .locator("[data-bottom-depths] tbody tr")
+          .evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll("td")].slice(1, 3).map((td) => (td.textContent ?? "").trim())));
+      await expect.poll(depthCells, { timeout: 60_000 }).toEqual(expected);
+      expect((await depthCells()).flat(), "no depth cell reads a bare nought").not.toContain(formatMarkBare(0 as Mm, system));
+    });
+  }
 
   test("signed out on the practice rack, a saved board's BOTTOM reads exactly the same page", async ({ page }) => {
     test.setTimeout(180_000);

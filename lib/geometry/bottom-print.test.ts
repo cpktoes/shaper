@@ -23,7 +23,7 @@ import { BOTTOM_PRINT_NATURAL_NOTE, bottomPrintCuts, bottomPrintLines, channelRu
 import type { DesignSummaryFields } from "./design";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
-import { formatDimBare, formatMark } from "./measure-display";
+import { formatDimBare, formatMark, formatMarkOrLess } from "./measure-display";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
 import { inchesToMm, mm, UNITS_SYSTEMS, type Mm, type UnitsSystem } from "./units";
@@ -345,5 +345,61 @@ describe("the wing rule's note (D-19): one more line when Off Rail is measured f
 
   it("a flat bottom prints nothing, whatever the rule", () => {
     expect(lines(winged, { ...structuredClone(DEFAULT_BOTTOM), wingRule: "natural" }, "imperial")).toEqual([]);
+  });
+});
+
+describe("a cut that is there never reads as a nought (17-15; the founder, 2026-11-10)", () => {
+  // The sliders step by a whole sixteenth or a whole millimetre, so only a board file made outside the app can hold a
+  // depth this small. A stand-in depth, not a board's figure: there, and under half a step of either tape.
+  const TINY = mm(0.4);
+  const less = (system: UnitsSystem) => formatMarkOrLess(TINY, system);
+
+  it("the stand-in is one the plain mark would print as a nought", () => {
+    for (const system of UNITS_SYSTEMS) expect(formatMark(TINY, system)).toBe(formatMark(mm(0), system));
+    expect(less("imperial")).toBe('<1/16"');
+    expect(less("metric")).toBe("<1 mm");
+  });
+
+  describe.each(UNITS_SYSTEMS.map((s) => [s] as const))("%s", (system) => {
+    it("a single concave's depth", () => {
+      const board = byId("shortboard");
+      const bottom = bottomOf(board, { center: "Deep Single Concave" });
+      bottom.center = { ...bottom.center, depth: TINY };
+      const cut = resolveBottom(bottom, board).center;
+      expect(lines(board, bottom, system)).toEqual([
+        `Center: Deep Single Concave ${less(system)}, ${stations("center", cut, board, system)}; ${formatMark(cut.offRail, system)} off the rail.`,
+      ]);
+    });
+
+    it("a Spiral Vee's depth and its vee lift", () => {
+      const board = byId("midlength");
+      const bottom = bottomOf(board, { tail: "Spiral Vee" });
+      bottom.tail = { ...bottom.tail, depth: TINY, veeLift: TINY };
+      const cut = resolveBottom(bottom, board).tail;
+      expect(cut.depth).toBe(TINY);
+      expect(cut.veeLift).toBe(TINY);
+      expect(lines(board, bottom, system)).toEqual([
+        `Tail: Spiral Vee ${less(system)} with ${less(system)} vee lift, ${stations("tail", cut, board, system)}; ` +
+          `${formatMark(cut.offRail, system)} off the rail, flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`,
+      ]);
+    });
+
+    it("a vee's rail lift, and the channels' depth", () => {
+      const board = byId("fish");
+      const bottom = bottomOf(board, { tail: "Panel Vee" }, 6);
+      bottom.tail = { ...bottom.tail, depth: TINY };
+      bottom.channels = { ...bottom.channels, depth: TINY };
+      const out = lines(board, bottom, system);
+      expect(out).toHaveLength(2);
+      expect(out[0]).toContain(`Tail: Panel Vee ${less(system)} rail lift, `);
+      expect(out[1]).toContain(`, ${less(system)} deep, `);
+    });
+
+    it("a cut on a tape-readable depth reads exactly as it always has", () => {
+      const board = byId("shortboard");
+      const bottom = bottomOf(board, { center: "Deep Single Concave" });
+      const cut = resolveBottom(bottom, board).center;
+      expect(formatMarkOrLess(cut.depth, system)).toBe(formatMark(cut.depth, system));
+    });
   });
 });
