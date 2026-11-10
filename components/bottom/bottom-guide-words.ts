@@ -171,8 +171,8 @@ export const BOTTOM_GUIDE_WORDS: readonly BottomGuideCard[] = [
   {
     key: "Channels",
     section: "channels",
-    is: "Four, six or eight troughs through the fins, each a ramp into a vertical wall at the rail side, cut last.",
+    is: "Four, six or eight troughs through the fins, each a ramp into a vertical wall at the rail side — laid Parallel to the stringer, fanned With the rail or turned Toe-in with the fins — and cut last.",
     does: "Every wall grips like a small fin: drive and hold at speed in clean, powerful waves.",
-    how: "Rule every wall off the stringer at each 6\" station from DATA's marks and join the marks with a straightedge. Cut each channel from its wall with a small plane or a block, the floor ramping up to the next peak and the wall square to the bottom, deepest at the front fins; sand the floors with paper on a dowel and keep every wall straight along the board.",
+    how: "Rule every wall off the stringer at each 6\" station from DATA's marks and join the marks with a straightedge — the marks already carry the Run and its Angle. Cut each channel from its wall with a small plane or a block, the floor ramping up to the next peak and the wall square to the bottom, deepest at the front fins; sand the floors with paper on a dowel and keep every wall a straight line from mark to mark.",
   },
 ];

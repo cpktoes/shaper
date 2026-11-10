@@ -137,9 +137,13 @@ else, and a test holds both readings.
 
 ### 19. Channels
 
-- **What it is and looks like:** Four, six or eight troughs through the fins, each a ramp into a vertical wall at the rail side, cut last.
+*Reworded 2026-11-10 after the channels' Run got its Angle (D-44) — the founder: "I suppose the guide for along rail*
+*channels needs to be updated." The three ways to lay them are named, the layout note says DATA's marks carry the Run*
+*and its Angle, and "straight along the board" became "a straight line from mark to mark". A first draft like the rest.*
+
+- **What it is and looks like:** Four, six or eight troughs through the fins, each a ramp into a vertical wall at the rail side — laid Parallel to the stringer, fanned With the rail or turned Toe-in with the fins — and cut last.
 - **What it does:** Every wall grips like a small fin: drive and hold at speed in clean, powerful waves.
-- **How to shape:** Rule every wall off the stringer at each 6" station from DATA's marks and join the marks with a straightedge. Cut each channel from its wall with a small plane or a block, the floor ramping up to the next peak and the wall square to the bottom, deepest at the front fins; sand the floors with paper on a dowel and keep every wall straight along the board.
+- **How to shape:** Rule every wall off the stringer at each 6" station from DATA's marks and join the marks with a straightedge — the marks already carry the Run and its Angle. Cut each channel from its wall with a small plane or a block, the floor ramping up to the next peak and the wall square to the bottom, deepest at the front fins; sand the floors with paper on a dowel and keep every wall a straight line from mark to mark.
 
 ---
 
