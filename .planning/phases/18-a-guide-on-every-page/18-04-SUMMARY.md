@@ -45,12 +45,12 @@ metrics:
   duration: "about 1 h 45 min"
   completed: 2026-11-10
   tasks: 3
-  commits: 5
+  commits: 6
   files: 11
 actuals:
   tokens: 46000
   tasks: 3
-  commits: 5
+  commits: 6
 ---
 
 # Phase 18 Plan 04: ROCKER's GUIDE Summary
@@ -173,9 +173,37 @@ None. `guide-card.ts`, `guide-push.ts`, `guide-draw.ts`, the components under `c
 `18-GUIDE-WORDS.md` are as they were. `guide-rocker.ts` imports `FIT_DEFAULTS_RANGE_IN` from
 `lib/fit-defaults-preference.ts`, which is pure, for the Deck Skin slider's limit.
 
-## Test results
+## Test results (this worktree, a webpack dev server on 3114; the machine's load ran from about 95 to 950)
 
-<!-- filled below -->
+- `lib/geometry/guide-rocker.test.ts`: 19 passed. `components/guide/words/rocker.test.ts`,
+  `components/rocker/rocker-live-controls.test.ts`, `components/guide/guide-source.test.ts`: all passed (35 tests with the
+  builder test at the time). `components/guide`, `components/rocker` and `lib/units-isolation.test.ts`: 7 files, 161 passed.
+- **Whole unit suite** (`npx vitest run`): 189 files, 9618 passed, 148 failed, 2 skipped. Every failure was in 18 files
+  this plan never touched, all 5-second timeouts or "under 250 ms" speed checks at a load average near 750. Re-run with
+  `--testTimeout=180000`: **9754 passed, 12 failed, 2 skipped**. The 12 are in `blank-fit` (two speed checks: 270 ms and
+  582 ms against 250), `finished-rail` (one), `shaping-bay` (eight, their own 120 s limits) and `rack-stand-in` (one,
+  past 180 s). Those four files alone, once more at a load near 340: 292 passed, 8 failed. Every one of the eight is
+  the test's own time limit (30, 120 or 180 s, which override `--testTimeout`) or a speed check (257 ms against 250).
+  None of the four files changed on this branch.
+- `npx tsc --noEmit`: clean. `npm run lint`: 0 errors, 1 warning that was already there
+  (`lib/db/import-designs-action.test.ts` `_calls`).
+- `e2e/guide-rocker.spec.ts`: **8 passed** on iphone, android and desktop (10 skipped by project).
+- `e2e/desktop-baseline.spec.ts --project=desktop`: ROCKER (re-recorded), RAILS, VOLUME, FINS and 3D pass (3D after a
+  timeout under load, alone). TEMPLATE failed twice at 4104 dots, see below.
+- `e2e/board-name-band.spec.ts` (p1 and p2, both phones): **ROCKER's rows held the room rule at every width on the
+  Pixel**: 1.8 / 16.8 / 31.8, name not drawn; then 53.8 / 71.8, drawn with boxes of 47.8 and 65.8, 6.0 clear of GUIDE
+  and shortened with "…". After that the test timed out on a page load at VOLUME. On the iPhone, p1 and p2 stopped in
+  their setup: the Rename popup's Save was still saving to the practice rack after 5 s, so ROCKER was never reached.
+  The whole band file, run once, timed out on page loads of over 4 minutes and was stopped. **p2 on the iPhone was
+  therefore not seen failing in this worktree.** My own spec measured its input: 41.7 dots of room held sideways, name
+  not drawn. By its own assertion (`a sideways phone has the room for the name`), p2 will fail at ROCKER on the iphone
+  project.
+- `e2e/rocker-top-view.spec.ts`, `e2e/rocker-live-controls.spec.ts` and `e2e/rocker-panel.spec.ts` on all three
+  projects: **32 passed, 49 skipped by project, none failed (EXIT 0).** These cover the tab lists crossing 820 dots,
+  TOP VIEW on a narrow window and the sidebar following the tab in view.
+- ROCKER's other specs (`rocker-blanks`, `-custom`, `-cut`, `-planing`, `-remove-blank`) were **not run**: at this load
+  a page took minutes. They are left for the orchestrator's full suite. They find tabs by name, and GUIDE adds a tab
+  without renaming one.
 
 ## For the orchestrator and plan 18-08
 
@@ -197,3 +225,11 @@ None.
 None. The blank's and board's names reach the intro and the Blank tag as React text only (T-18-01, held by
 `guide-source.test.ts`). The fourteen side profiles take about 30 ms in all on a cold start and are kept per board and
 system (T-18-02).
+
+## Self-Check: PASSED
+
+- FOUND: lib/geometry/guide-rocker.ts, lib/geometry/guide-rocker.test.ts, lib/geometry/__fixtures__/guide-rocker-input.ts,
+  components/guide/words/rocker.ts, components/guide/words/rocker.test.ts, components/guide/rocker-guide.tsx,
+  e2e/guide-rocker.spec.ts, this SUMMARY
+- FOUND commits: a2b66e50 (task 1), 481e9172 (task 2), c4c213c5 (the hand-set test), 06901afd (task 3), b42e2ca8 (this
+  summary), and the commit that adds these last results
