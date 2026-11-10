@@ -55,6 +55,15 @@ first frame. Passing that size as a CSS variable instead (so the cards are worke
 fresh production build and **made no measurable difference** (TEMPLATE 252 → 240, RAILS 241 → 249, phone RAILS 262 → 291;
 inside the run-to-run spread). It was reverted; nothing was committed.
 
+## After the labels were moved clear of the lines (`83cafbcd`)
+
+The figures above were taken before the drawings' labels were moved clear of lines and ticks. Finding a clear place for
+each label costs a little more working-out on two pages. Timed on its own outside a browser (the Shortboard, one build of
+a page's cards, milliseconds): TEMPLATE 7.8 before and 7.9 after; ROCKER 20.5 and 25.8; RAILS 5.1 and 4.8; VOLUME 2.0 and
+1.8; FINS 4.1 and 26.2. So ROCKER gains about 5 ms and FINS about 22 ms on this Mac, which is four times that on the
+slowed processor: FINS would read about 340 ms there instead of 251. On a current phone it is still well under a tenth of
+a second. The browser figures above were not retaken.
+
 ## Decision
 
 D-28 says lazy drawing is built only if a GUIDE's first paint passes about 150 ms on a four-times-slowed processor. Four of

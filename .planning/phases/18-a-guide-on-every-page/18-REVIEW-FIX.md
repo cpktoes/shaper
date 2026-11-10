@@ -23,7 +23,20 @@ with a test where a test can hold it.
 | LW-01 | Nothing: a comment claimed more than the cache does | The comment says what is true: the cache saves an Imperial/Metric switch while GUIDE is open (`guide-memo.ts`) | — |
 | IN-05 | Nothing: a stale comment | Names VOLUME's GUIDE as the caller (`design-screen-shell.tsx`) | — |
 
-None of these changes how a preset board's card draws, so the phase's pictures stand.
+None of these changes how a preset board's card draws.
+
+## Found at the pictures, after the review: labels on lines
+
+Looking over the first pictures showed something the review did not: on some cards a figure sat on a drawn line, was
+slashed by the little end tick of its own dimension line, or was written inside the board. That breaks the drafting rule
+the viewers follow ("nothing but faint lines inside a board"). Fixed on all five pages in `83cafbcd`:
+
+- every figure now stands clear of every drawn line, faint ones included, and of every dimension's end ticks;
+- no figure is written inside the board, its blank or a dashed push;
+- this holds from the narrowest card to a phone's, on every preset board, in Imperial and in Metric.
+
+Held by two tests per page in `guide-pages.test.ts` (no label crosses a line; no label sits inside a shape) and by the
+label tests in `guide-draw.test.ts`. The pictures in `pictures/` were retaken after this fix.
 
 ## Left for the founder's word
 

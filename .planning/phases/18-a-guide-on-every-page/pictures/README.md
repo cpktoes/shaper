@@ -4,6 +4,9 @@ Every picture is the Shortboard preset, opened from the home page and not saved,
 the board's name it reads "Untitled". "Computer" is a 1280-dot-wide window; "phone" is an iPhone held upright;
 "sideways" is an iPhone on its side (844 × 390). Imperial unless the name says metric.
 
+All fifty were retaken on 2026-11-10 after the drawings' figures were moved clear of the lines, the end ticks and
+the board (`83cafbcd`), so what you see here is what goes live.
+
 Three rulings were made for you while you were away, and these pictures are where you can overrule them:
 
 - **D-21 — the board's name steps aside on a crowded strip.** With GUIDE added, ROCKER's and RAILS' tabs leave too
