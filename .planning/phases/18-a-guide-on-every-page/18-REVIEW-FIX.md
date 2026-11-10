@@ -46,6 +46,9 @@ label tests in `guide-draw.test.ts`. The pictures in `pictures/` were retaken af
 - **LW-05 — a card's caption line is not read to a screen reader.** The design contract hides the whole figure
   (drawing and caption); the card's name, tag and words are read. His call whether the caption should be read too.
 
+**MD-02 ruled 2026-11-10: "Keep the inch code."** The card stays as built and CLAUDE.md Rule 2 gained the GUIDE card.
+LW-05 is still open.
+
 ## Follow-ups, not this phase
 
 - LW-04 — a push is not held inside its slider's range on every card (VOLUME, ROCKER, RAILS, FINS), so a board already

@@ -152,7 +152,8 @@ know why:
   seven bordered cells each take their own (`188.0 cm`, `40.0 cm`, ...) — the same list of numbers,
   formatted two different ways, on purpose.
 - A blank's custom rocker note (`-1/4"N18" +1/8"T36"`) is always written in inches, in Metric too —
-  on the BLANK button, the Pick a Blank cards, the DATASHEET, the phone's ROCKER tile and the order
+  on the BLANK button, the Pick a Blank cards, the DATASHEET, the phone's ROCKER tile, the Customize
+  Rocker card on ROCKER's GUIDE (the founder, 2026-11-10) and the order
   form's blank line (`US Blanks 9'4"B -1/4"N18" — centered`) — because it is the maker's order code,
   like the blank's name itself (the founder, 2026-10-16, quick 261016-mkb). `formatRockerNote` in
   `lib/geometry/custom-rocker.ts` is the one place an inch figure is shown to a Metric shaper; every
@@ -218,8 +219,9 @@ and otherwise not at all — never a two-letter stub, never a page pushed sidewa
 own trailing slot, a question about the room left on that one strip, and it is none of the three screen switches:
 never the window's width, the pointer or the height. On an upright phone ROCKER loses the name below about 412 dots
 and RAILS below about 400, and both lose it in an 820-dot computer window; TEMPLATE, VOLUME and FINS keep it
-everywhere. This changes the founder's rule of 2026-10-08 ("Untitled whole at 360") on ROCKER and RAILS, and it is
-his to overrule at the look — shorter phone tab words are the other lever.
+everywhere. This changes the founder's rule of 2026-10-08 ("Untitled whole at 360") on ROCKER and RAILS, and
+he confirmed it after trying the live site on his phone (2026-11-10: "Leave it off"). Shorter phone tab words were
+the other lever, not taken.
 
 **Control size (and the Rotate button's presence) — pointer alone.** The `coarse` pointer variant
 decides how BIG a control draws, on any width a touch device happens to be, and, for the viewer's

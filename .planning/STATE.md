@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: verifying
-stopped_at: Phase 18 complete and live 2026-11-10 as main 79110e41 (the GUIDE on all five pages); the founder's look on his phone and his word on six points are awaited
+stopped_at: Phase 18 complete and live 2026-11-10 as main 79110e41 (the GUIDE on all five pages); the founder tried it on his phone and ruled on the name, the speed and the inch code; the words stay his to edit
 last_updated: "2026-11-10T18:10:00.000Z"
 last_activity: 2026-11-10
-last_activity_desc: Phase 18 live as main 79110e41, ten of ten plans; the founder's look awaited
+last_activity_desc: Phase 18 live and the founder's three rulings recorded
 progress:
   total_phases: 6
   completed_phases: 4
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 ## Current Position
 
-**Phase 18 — A GUIDE on Every Page — complete and live 2026-11-10.** 10 of 10 plans. GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS, 84 cards in all, and FINS' MODEL INFO tab is gone with its words on the cards. Pushed as main `79110e41` at the founder's word ("Push it once the suite is green") and seen on the live site at 09:58 Pacific on all five pages. The gate: 9,932 unit tests, lint, the production build, and the browser suite at 1,685 passed with five page-load timeouts that each passed alone (named in `18-10-SUMMARY.md`). Verified 12 of 12 checkable requirements (`18-VERIFICATION.md`). **Awaiting the founder:** his look at the cards on his phone and a computer, and his word on six points: every sentence is a first draft for his pen (`18-GUIDE-WORDS.md`); the board's name steps aside on narrow ROCKER and RAILS strips (D-21); how fast a GUIDE opens on a slow phone (D-28, `18-TIMING.md`); the maker's inch rocker code on a Metric Customize Rocker card (MD-02, which also asks whether CLAUDE.md Rule 2 should name the GUIDE); whether a drawing's caption is read to a screen reader (LW-05); VOLUME's ESTIMATE card sitting one dot lower on a computer. BOTTOM's GUIDE adopts the shared card after Phase 17 lands (pending todo).
+**Phase 18 — A GUIDE on Every Page — complete and live 2026-11-10.** 10 of 10 plans. GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS, 84 cards in all, and FINS' MODEL INFO tab is gone with its words on the cards. Pushed as main `79110e41` at the founder's word ("Push it once the suite is green") and seen on the live site at 09:58 Pacific on all five pages. The gate: 9,932 unit tests, lint, the production build, and the browser suite at 1,685 passed with five page-load timeouts that each passed alone (named in `18-10-SUMMARY.md`). Verified 12 of 12 checkable requirements (`18-VERIFICATION.md`). **The founder's rulings after trying the live site on his phone, 2026-11-10:** the board's name stays off narrow ROCKER and RAILS strips (D-21, "Leave it off"); the GUIDE opens fast enough as it is, so the quicker opening is not built (D-28, "Fast enough, leave it"); the Customize Rocker card keeps the maker's inch order code in Metric and CLAUDE.md Rule 2 now names the GUIDE card (MD-02, "Keep the inch code"). **Still his, with no deadline:** every sentence is a first draft for his pen (`18-GUIDE-WORDS.md`); whether a drawing's caption is read to a screen reader (LW-05); VOLUME's ESTIMATE card sits one dot lower on a computer. BOTTOM's GUIDE adopts the shared card after Phase 17 lands (pending todo).
 
 **Phase 16 — 3D Board and CNC Export — complete 2026-11-06.** 18 of 18 plans. Go-live 1 on 2026-11-04 (main 43bd948a), go-live 2 on 2026-11-06 (main 1c6dc5ef, live 22:16), confirmed by the founder on iPhone and iPad. Verified 11 of 12 requirements in code; R8, Shape3D opening the files, is accepted open by the founder and tracked in a todo. The closing commits sit on `board-3d`, docs only, unpushed.
 
@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 18 complete and live; the founder's look awaited
+Status: Phase 18 complete and live; the founder's three rulings recorded
 Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans)
 
 ## Performance Metrics
