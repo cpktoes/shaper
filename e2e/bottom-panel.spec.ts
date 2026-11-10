@@ -6,6 +6,7 @@ import { BOTTOM_CUT_NAMES, CHANNEL_STARTING_WIDTHS, type BottomSectionKey } from
 import { designFinPlacement } from "../lib/geometry/design";
 import { frontFinToeDegrees } from "../lib/geometry/fins";
 import { formatMark } from "../lib/geometry/measure-display";
+import { bottomFloorScanSettled, showBottomSection } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
@@ -92,6 +93,8 @@ function card(page: Page, section: BottomSectionKey): Locator {
 
 /** Picks a name from a section's Cut menu, retried until React owns the menu so a click before hydration is never lost. */
 async function pick(page: Page, section: BottomSectionKey, name: string) {
+  // On an upright phone only the section picked on the NOSE · CENTER · TAIL row is drawn (17-14): tap it first.
+  await showBottomSection(page, section);
   const echo = card(page, section).locator("[data-bottom-cut-echo]");
   if ((await echo.textContent()) === name) return;
   await expect(async () => {
@@ -169,6 +172,8 @@ test.describe("BOTTOM's panel: every cut's own rows, the Teardrop's tick box and
           }
 
           if (VEES.includes(name)) veeSections.set(name, await sectionPaths(page));
+          // The floor's sentence lands a moment after the pick: it is looked for once the scan has run.
+          await bottomFloorScanSettled(page);
           if ((await card(page, section).locator("[data-bottom-floor]").count()) > 0) warned.push(name);
 
           // DATA fills its rows: some station has a cut under the straightedge.
@@ -245,6 +250,9 @@ function selected(page: Page, selectName: string): Locator {
 
 /** Picks an option from one of the block's menus by its spoken name, retried until React owns the menu. */
 async function pickFrom(page: Page, selectName: string, option: string) {
+  // A menu that is not drawn is one of the channels', which are TAIL's: on an upright phone they show only while
+  // TAIL is the section picked (17-14).
+  if (!(await page.getByRole("combobox", { name: selectName, exact: true }).isVisible())) await showBottomSection(page, "tail");
   const trigger = page.getByRole("combobox", { name: selectName, exact: true });
   await expect(async () => {
     await trigger.click();
@@ -281,6 +289,8 @@ test.describe("BOTTOM's CHANNELS block, inside TAIL", () => {
   test("channels: None to start; 4, 6 and 8 open at their starting widths unless the width was set by hand; None hides and keeps", async ({ page }) => {
     test.setTimeout(240_000);
     await openBottom(page, "shortboard");
+    // On an upright phone the channels are TAIL's, drawn only while TAIL is the section picked (17-14).
+    await showBottomSection(page, "tail");
     const tail = card(page, "tail");
     await expect(channels(page).locator("[data-bottom-channels-echo]")).toHaveText("None");
     await expect(selected(page, "Channels")).toHaveText("None");

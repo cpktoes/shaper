@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
+import { BOTTOM_COPY, dataFloorNote } from "../components/bottom/bottom-copy";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import type { BottomSectionKey } from "../lib/geometry/bottom";
+import type { BottomFloorFlag, BottomSectionKey } from "../lib/geometry/bottom";
+import type { Mm } from "../lib/geometry/units";
 import { RACK_COPY } from "../components/setup/rack-config";
 import { RACK_STAND_IN_ROUTE, standInRackRows } from "../lib/models/rack-stand-in";
+import { bottomFloorScanSettled } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { freshPracticeRack } from "./helpers/practice-rack";
 import { goToScreen } from "./helpers/screens";
@@ -360,6 +362,8 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     expect(new Set(deepest)).toEqual(new Set([BOTTOM_COPY.emptyCell]));
     await expect(page.locator("[data-bottom-marks]")).toHaveCount(0);
     await expect(page.getByText(BOTTOM_COPY.marksHeading(false), { exact: true })).toHaveCount(0);
+    // Counted once the floor scan has run, so "no floor note" is the scan's answer and not a count taken ahead of it.
+    await bottomFloorScanSettled(page);
     await expect(notes(page)).toHaveCount(2);
     await expect(notes(page).first()).toHaveText(BOTTOM_COPY.depthsNote);
     await expect(notes(page).nth(1)).toHaveText(/^Wide point .+ and front fins .+ from the tail are the two rows in full ink\.$/);
@@ -368,11 +372,16 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
 
   test("a Deep Single and six channels: the marks table's columns in shop order, a wall `—` ahead of its own channel's start, and the notes", async ({ page }) => {
     test.setTimeout(240_000);
+    const shortboard = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
     await openBottom(page, "shortboard");
     await pick(page, "center", "Deep Single Concave");
     // The Deep Single alone: a marks table and its note, which never mentions channels (the founder, 2026-11-09).
     await dataTab(page).click();
     await expect(page.locator("[data-bottom-marks]")).toBeVisible();
+    // The floor scan trails a pick by a moment: the notes are counted once it has run, so three notes and no floor note
+    // is what the scan found for a Deep Single on this board, not a count read before its answer landed.
+    await bottomFloorScanSettled(page);
+    await expect(page.locator("[data-bottom-floor-note]")).toHaveCount(0);
     await expect(notes(page)).toHaveCount(3);
     await expect(notes(page).nth(1)).toHaveText(/^Layout marks are measured out from the stringer at each station, .+ ruled onto the blank\.$/);
     await expect(page.locator("[data-bottom-notes]")).not.toContainText("channels abut");
@@ -400,12 +409,90 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
       cells.some((row) => row.includes(BOTTOM_COPY.emptyCell) && row.some((v) => v !== BOTTOM_COPY.emptyCell)),
       "a staggered wall reads — ahead of its own channel's start",
     ).toBe(true);
-    await expect(notes(page)).toHaveCount(3);
+    // Six starting channels on the stock Shortboard run their outer walls into rail thinner than the 1/4" floor near
+    // the tail, so the channels' own floor note joins the three (the founder kept the warning, 2026-11-09). It lands a
+    // moment after the pick — waited for, never raced — and its words are the copy module's own sentence for a channels
+    // flag at the tail, which is also the sentence under the channels' Depth row.
+    const floorNote = page.locator("[data-bottom-floor-note]");
+    await expect(floorNote).toHaveCount(1);
+    const railsAtTheTail: BottomFloorFlag = { section: "channels", stringer: [], rails: [0 as Mm], at: 0 as Mm };
+    const channelsSentence = dataFloorNote(railsAtTheTail, "", shortboard.outline, "imperial");
+    expect(channelsSentence).not.toBeNull();
+    await expect(floorNote).toHaveText(channelsSentence!);
+    await expect(page.locator("[data-bottom-channels] [data-bottom-floor]")).toHaveText(channelsSentence!);
+    await bottomFloorScanSettled(page);
+    await expect(notes(page)).toHaveCount(4);
+    await expect(notes(page).first()).toHaveText(BOTTOM_COPY.depthsNote);
     await expect(notes(page).nth(1)).toHaveText(/^Layout marks are measured out from the stringer at each station, .+ — the outer pair first, each channel out from it 2" shorter\.$/);
+    await expect(notes(page).nth(2)).toHaveText(/^Wide point .+ and front fins .+ from the tail are the two rows in full ink\.$/);
+    await expect(notes(page).nth(3)).toHaveText(channelsSentence!);
     // The reference rows are ink in both tables.
     const inkRows = await marks.locator("tbody tr[data-reference]").count();
     expect(inkRows).toBeGreaterThan(0);
     expect(inkRows).toBe(await page.locator("[data-bottom-depths] tbody tr[data-reference]").count());
+  });
+
+  test("three cuts at 1280 × 800: both tables at their full height, the DATA card the one thing that scrolls, the page still, and the last note reachable; a flat board's page is left as it was", async ({ page }) => {
+    test.setTimeout(240_000);
+    expect(page.viewportSize()).toEqual({ width: 1280, height: 800 });
+    await openBottom(page, "shortboard");
+    const data = page.locator("[data-bottom-data]");
+    /** Each table's box against its table, and every box inside DATA that scrolls down (DATA itself aside). */
+    const read = () =>
+      data.evaluate((root) => {
+        const tables = [...root.querySelectorAll("table")].map((table) => {
+          const box = table.parentElement!.parentElement!;
+          return { box: box.getBoundingClientRect().height, table: table.getBoundingClientRect().height, rows: table.querySelectorAll("tbody tr").length };
+        });
+        const innerScrollers = [...root.querySelectorAll("*")].filter((el) => el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY)).length;
+        return { tables, innerScrollers, holds: root.scrollHeight, shows: root.clientHeight, overflowY: getComputedStyle(root).overflowY };
+      });
+    const pageStill = async (where: string) => {
+      const doc = await page.evaluate(() => ({ holds: document.documentElement.scrollHeight, shows: document.documentElement.clientHeight, at: window.scrollY }));
+      expect(doc.holds, `${where}: the page itself has nothing to scroll`).toBeLessThanOrEqual(doc.shows);
+      expect(doc.at, `${where}: the page itself has not moved`).toBe(0);
+    };
+
+    // A flat board first: one table, and its page fits the card — nothing for the card to scroll, as before.
+    await dataTab(page).click();
+    await expect(data).toBeVisible();
+    await bottomFloorScanSettled(page);
+    const flat = await read();
+    expect(flat.tables).toHaveLength(1);
+    expect(flat.holds, "a flat board's DATA fits its card").toBeLessThanOrEqual(flat.shows + 1);
+    await expect(notes(page).last()).toBeInViewport({ ratio: 0.99 });
+    await pageStill("flat");
+
+    // Three cuts: a Deep Single, a Spiral Vee and six channels.
+    await page.getByRole("tab", { name: BOTTOM_COPY.viewerTab, exact: true }).click();
+    await pick(page, "center", "Deep Single Concave");
+    await pick(page, "tail", "Spiral Vee");
+    await pickChannels(page, "6 channels");
+    await dataTab(page).click();
+    await expect(page.locator("[data-bottom-marks]")).toBeVisible();
+    await bottomFloorScanSettled(page);
+    const cut = await read();
+    expect(cut.tables).toHaveLength(2);
+    for (const [i, table] of cut.tables.entries()) {
+      expect(table.rows, `table ${i + 1}: rows`).toBeGreaterThan(5);
+      expect(Math.abs(table.box - table.table), `table ${i + 1}: its box is as tall as the table (${table.box} against ${table.table})`).toBeLessThan(1);
+    }
+    // The card is the one scroller: it holds more than it shows, and no box inside it scrolls down.
+    expect(cut.overflowY).toBe("auto");
+    expect(cut.holds, "DATA is longer than its card").toBeGreaterThan(cut.shows + 1);
+    expect(cut.innerScrollers, "no box scrolls down inside DATA").toBe(0);
+    await pageStill("three cuts");
+    // Every row is on the page — the last of the layout marks comes into view by scrolling the card alone...
+    const lastRow = page.locator("[data-bottom-marks] tbody tr").last().locator("th").first();
+    await expect(lastRow).not.toBeInViewport();
+    await lastRow.scrollIntoViewIfNeeded();
+    await expect(lastRow).toBeInViewport({ ratio: 0.99 });
+    // ...and so does the last note, at the card's end.
+    await data.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect(notes(page).last()).toBeInViewport({ ratio: 0.99 });
+    expect(await data.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    expect(await data.evaluate((el) => Math.abs(el.scrollTop + el.clientHeight - el.scrollHeight))).toBeLessThan(1.5);
+    await pageStill("three cuts, scrolled to the end");
   });
 
   test("a fresh Rolled Belly Entry on the Shortboard: the floor note is the panel's own rail sentence, in warning ink, and no stringer cell is coloured", async ({ page }) => {
@@ -416,6 +503,7 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
     expect(panelSentence).toMatch(/^This cut leaves the rail under 1\/4" near the nose: /);
     await dataTab(page).click();
     const note = page.locator("[data-bottom-floor-note]");
+    await bottomFloorScanSettled(page);
     await expect(note).toHaveCount(1);
     await expect(note).toHaveText(`Rolled Belly Entry: ${panelSentence}`);
     const color = (loc: Locator) => loc.evaluate((el) => getComputedStyle(el).color);
