@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: Phase 18 planned, ten plans in five waves, plan check passed
-last_updated: "2026-11-10T06:14:14.881Z"
-last_activity: 2026-11-06
-last_activity_desc: "Phase 16 complete: the 3D screen and Export 3D Files are live, confirmed by the founder"
+stopped_at: Phase 18 being built, wave 1 of 5 (the VOLUME guide and the board name rule)
+last_updated: "2026-11-10T06:16:26.129Z"
+last_activity: 2026-11-09
+last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 59
   completed_plans: 49
   percent: 50
-current_phase: 13
-current_phase_name: Ready for the Shapers
+current_phase: 18
+current_phase_name: A GUIDE on Every Page
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** bottom contours, sketch 019 waiting on the founder's answers (branch of the sketch session, not merged); the next phase once he has answered
+**Current focus:** Phase 18 — A GUIDE on Every Page
 
 ## Current Position
 
@@ -36,8 +36,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Ready to execute
-Last activity: 2026-11-06 — Phase 16 complete, the 3D screen live
+Status: Executing Phase 18
+Last activity: 2026-11-09 — Phase 18 execution started
 
 ## Performance Metrics
 
