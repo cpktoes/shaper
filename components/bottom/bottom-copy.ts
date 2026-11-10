@@ -22,6 +22,7 @@ import {
   type channelReadout,
   type ResolvedChannels,
 } from "@/lib/geometry/bottom";
+import { CHANNEL_RUN_NAME, formatChannelAngle } from "@/lib/geometry/bottom-print";
 import { formatDim, formatMark, formatMarkOrLessBare } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
 
@@ -292,6 +293,14 @@ export const CHANNELS_COPY = {
   longestLabel: "Longest",
   longestSelectName: "Longest Channels",
   longestOption: { inner: "Inner pair", outer: "Outer pair", same: "All the same" } as const satisfies Record<BottomChannelsSpec["longest"], string>,
+  /**
+   * The Angle row, under Run and Longest for With the rail and Toe-in only (D-44): its label, its slider's spoken
+   * name, and the Reset link — drawn only when the angle was set by hand — with its spoken name.
+   */
+  angle: "Angle",
+  angleSliderName: "Channel Angle",
+  angleReset: "Reset",
+  angleResetName: "Reset Channel Angle",
   /** The rows' labels. Off Stringer, Start, Deepest At, End, Depth and Smoothness are the section rows' own words. */
   width: "Channel Width",
   stagger: "Stagger",
@@ -307,14 +316,26 @@ export const CHANNELS_COPY = {
 } as const;
 
 /**
- * A Run option's words (D-10; SPEC edge "Toe-in angle display"): `Parallel` · `With the rail` · `Toe-in · 3.2°`, the
- * front fins' raw toe written once to one decimal here — or `Toe-in (no toe)` on a board with no toe (a single fin),
- * where the walls then run as Parallel.
+ * A Run option's words (D-10, D-44): the plain names `Parallel` · `With the rail` · `Toe-in`, the same three paper
+ * prints (`CHANNEL_RUN_NAME`). The angle a run is laid at reads on the Angle row under the menu, not in the option.
  */
-export function runOptionLabel(run: BottomChannelsSpec["run"], toeDegrees: number): string {
-  if (run === "parallel") return "Parallel";
-  if (run === "rail") return "With the rail";
-  return toeDegrees > 0 ? `Toe-in · ${toeDegrees.toFixed(1)}°` : "Toe-in (no toe)";
+export function runOptionLabel(run: BottomChannelsSpec["run"]): string {
+  return CHANNEL_RUN_NAME[run];
+}
+
+/**
+ * The Angle row's value words (D-44): the angle in use, then where it comes from. On the run's own angle:
+ * `9.1° · the rail's own`, `3.2° · the fins' toe-in`, or `0.0° · these fins have no toe-in` on a board whose fins
+ * have none (a single fin). Set by hand, the run's own is still said, so a shaper can see what Reset goes back to:
+ * `7.5° · set by hand · the rail's own is 9.1°`, `5.0° · set by hand · the fins' toe-in is 3.2°`, or
+ * `5.0° · set by hand · these fins have no toe-in`. `own` is the run's own angle (`channelDefaultAngle`) and both are
+ * degrees, written by paper's own formatter.
+ */
+export function channelAngleWords(run: Exclude<BottomChannelsSpec["run"], "parallel">, inUse: number, own: number, byHand: boolean): string {
+  const angle = formatChannelAngle(inUse);
+  if (run === "rail") return byHand ? `${angle} · set by hand · the rail's own is ${formatChannelAngle(own)}` : `${angle} · the rail's own`;
+  if (!(own > 0)) return byHand ? `${angle} · set by hand · these fins have no toe-in` : `${angle} · these fins have no toe-in`;
+  return byHand ? `${angle} · set by hand · the fins' toe-in is ${formatChannelAngle(own)}` : `${angle} · the fins' toe-in`;
 }
 
 /**

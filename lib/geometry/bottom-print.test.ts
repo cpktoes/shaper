@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { BOTTOM_SECTION_NAME, CHANNELS_COPY, runOptionLabel } from "@/components/bottom/bottom-copy";
+import { BOTTOM_SECTION_NAME, CHANNELS_COPY, channelAngleWords, runOptionLabel } from "@/components/bottom/bottom-copy";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 import { formatBottomStation } from "./blank-reasons";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   bottomHasCut,
+  CHANNEL_ANGLE_MAX,
+  channelDefaultAngle,
   channelFit,
   cutKind,
   DEFAULT_BOTTOM,
@@ -19,7 +21,7 @@ import {
   type BottomSectionKey,
   type ChannelCount,
 } from "./bottom";
-import { BOTTOM_PRINT_NATURAL_NOTE, bottomPrintCuts, bottomPrintLines, channelRunWords } from "./bottom-print";
+import { BOTTOM_PRINT_NATURAL_NOTE, bottomPrintCuts, bottomPrintLines, CHANNEL_RUN_NAME, channelRunWords, formatChannelAngle } from "./bottom-print";
 import type { DesignSummaryFields } from "./design";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
 import { frontFinStation } from "./fins";
@@ -238,7 +240,7 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
       const longest = ch.longest === "same" ? "all the same length" : `${ch.longest} pair longest, ${formatBottomStation(ch.stagger, system)} stagger`;
       expect(lines(board, bottom, system)).toEqual([
         `Channels: ${count} at ${formatMark(width, system)}, ${formatMark(ch.depth, system)} deep, ` +
-          `${range(ch.start, ch.end, system)} from the tail, deepest ${formatBottomStation(ch.deepest, system)}; ${runOptionLabel(ch.run, board.toeDegrees)}, ${longest}.`,
+          `${range(ch.start, ch.end, system)} from the tail, deepest ${formatBottomStation(ch.deepest, system)}; ${runOptionLabel(ch.run)}, ${longest}.`,
       ]);
     });
 
@@ -271,13 +273,51 @@ describe("each kind of cut reads its own numbers, marks as marks and stations as
     });
   });
 
-  it("the run's words are the screen's own, for every run on every board", () => {
+  it("the run's words are the screen's own, for every run on every board: the Run menu's name, then the Angle row's figure (D-44)", () => {
     for (const { board } of BOARDS) {
       for (const run of ["parallel", "rail", "toe"] as const) {
-        expect(channelRunWords(run, board.toeDegrees)).toBe(runOptionLabel(run, board.toeDegrees));
+        for (const angle of [null, 0, 7.5, CHANNEL_ANGLE_MAX]) {
+          const bottom = bottomOf(board, {}, 6);
+          bottom.channels = { ...bottom.channels, run, angle };
+          const resolved = resolveBottom(bottom, board);
+          const ch = resolved.channels;
+          if (run === "parallel") {
+            expect(channelRunWords(ch)).toBe(runOptionLabel(run));
+            continue;
+          }
+          const own = channelDefaultAngle(run, ch, board, resolved.wingRule);
+          const onScreen = channelAngleWords(run, ch.angle, own, angle !== null).split(" · ")[0];
+          expect(channelRunWords(ch)).toBe(`${runOptionLabel(run)} · ${onScreen}`);
+        }
       }
     }
-    for (const toe of [0, 3.2]) expect(channelRunWords("toe", toe)).toBe(runOptionLabel("toe", toe));
+  });
+
+  it("the three runs' names, and an angle to one decimal with its degree sign", () => {
+    expect(CHANNEL_RUN_NAME).toEqual({ parallel: "Parallel", rail: "With the rail", toe: "Toe-in" });
+    expect(channelRunWords({ run: "parallel", angle: 0 })).toBe("Parallel");
+    expect(channelRunWords({ run: "rail", angle: 9.0678 })).toBe("With the rail · 9.1°");
+    expect(channelRunWords({ run: "toe", angle: 3.1798 })).toBe("Toe-in · 3.2°");
+    expect(channelRunWords({ run: "toe", angle: 0 })).toBe("Toe-in · 0.0°");
+    expect(formatChannelAngle(7.5)).toBe("7.5°");
+  });
+
+  it.each(UNITS_SYSTEMS)("%s: an angled run prints the angle in use — the run's own until one is set by hand — in degrees in both systems", (system) => {
+    for (const { board } of BOARDS) {
+      for (const run of ["rail", "toe"] as const) {
+        const bottom = bottomOf(board, {}, 6);
+        bottom.channels = { ...bottom.channels, run };
+        const own = resolveBottom(bottom, board);
+        const ownAngle = channelDefaultAngle(run, own.channels, board, own.wingRule);
+        expect(own.channels.angle).toBe(ownAngle);
+        expect(bottomPrintLines(own, board, system)[0]).toContain(`; ${CHANNEL_RUN_NAME[run]} · ${formatChannelAngle(ownAngle)}, `);
+        bottom.channels = { ...bottom.channels, angle: 7.5 };
+        expect(lines(board, bottom, system)[0]).toContain(`; ${CHANNEL_RUN_NAME[run]} · 7.5°, `);
+      }
+      const parallel = bottomOf(board, {}, 6);
+      expect(lines(board, parallel, system)[0]).toContain("; Parallel, ");
+      expect(lines(board, parallel, system)[0]).not.toContain("°");
+    }
   });
 });
 

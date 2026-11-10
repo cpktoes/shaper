@@ -124,6 +124,7 @@ import {
   pickCut,
   resolveBottom,
   switchChannelCount,
+  switchChannelRun,
   type BoardBottom,
   type BottomBoard,
   type BottomChannelsSpec,
@@ -495,8 +496,12 @@ interface DesignContextValue {
    * hand, every other number kept (`switchChannelCount`); `None` (0) hides the set and keeps its numbers. One undo step
    * each. Nothing on a locked board. */
   setChannelCount: (count: BottomChannelsSpec["count"]) => void;
-  /** The channels' Run: Parallel, With the rail or Toe-in (D-10). One undo step each. Nothing on a locked board. */
+  /** The channels' Run: Parallel, With the rail or Toe-in (D-10). A different Run puts the Angle back to that run's
+   * own (D-44, `switchChannelRun`). One undo step each. Nothing on a locked board. */
   setChannelRun: (run: BottomChannelsSpec["run"]) => void;
+  /** The Angle row's Reset (D-44): the angle set by hand forgotten, so the run is laid at its own again — the rail's
+   * own angle, or the fins' toe-in. One undo step. Nothing on a locked board. */
+  resetChannelAngle: () => void;
   /** Which channels are longest — the inner pair, the outer pair or all the same (D-10). One undo step each. Nothing on
    * a locked board. */
   setChannelLongest: (longest: BottomChannelsSpec["longest"]) => void;
@@ -1503,7 +1508,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const setChannelRun = (run: BottomChannelsSpec["run"]) => {
     if (lockedRef.current) return;
     noteEdit(null);
-    setChannels((channels) => ({ ...channels, run }));
+    setChannels((channels) => switchChannelRun(channels, run));
+  };
+
+  // The Angle row's Reset (D-44): a discrete press, its own undo step. The slider itself goes through `updateChannels`
+  // like Channel Width, so one slow drag is one step.
+  const resetChannelAngle = () => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => ({ ...channels, angle: null }));
   };
 
   const setChannelLongest = (longest: BottomChannelsSpec["longest"]) => {
@@ -2110,6 +2123,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     setBottomWingRule,
     setChannelCount,
     setChannelRun,
+    resetChannelAngle,
     setChannelLongest,
     updateChannels,
     toggleTailHardEdge,

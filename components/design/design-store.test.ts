@@ -118,6 +118,19 @@ describe("design-store.tsx — BOTTOM's two edits (Phase 17, 17-08)", () => {
     expect(handler("setChannelCount")).toMatch(/switchChannelCount\(channels,\s*count,\s*bottomBoard\)/);
   });
 
+  it("D-44: a Run pick goes through switchChannelRun (so the angle goes back to that run's own), Reset is one undo step, and the Angle slider is a channels slider", () => {
+    expect(handler("setChannelRun")).toMatch(/setChannels\(\(channels\)\s*=>\s*switchChannelRun\(channels,\s*run\)\)/);
+    const reset = handler("resetChannelAngle");
+    expect(reset).toMatch(/lockedRef\.current/);
+    expect(reset).toMatch(/noteEdit\(null\)/);
+    expect(reset).toMatch(/setChannels\(\(channels\)\s*=>\s*\(\{\s*\.\.\.channels,\s*angle:\s*null\s*\}\)\)/);
+    // The slider has no handler of its own: it hands `{ angle }` to updateChannels, whose undo key is the field's name,
+    // so one slow drag is one step and never joins a drag of another channels slider.
+    expect(SOURCE).not.toMatch(/const setChannelAngle\b/);
+    expect(handler("updateChannels")).toMatch(/patchKey\(patch\)/);
+    expect(SOURCE).toMatch(/\n\s+resetChannelAngle,\n/);
+  });
+
   it("17-09: a channels slider keeps Start ≥ Deepest ≥ End in the same step, under one key per field dragged", () => {
     const body = handler("updateChannels");
     expect(body).toMatch(/noteEdit\(`bottom:channels:\$\{patchKey\(patch\)\}`\)/);

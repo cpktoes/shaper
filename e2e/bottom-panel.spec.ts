@@ -1,8 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { CHANNELS_COPY, channelAngleWords } from "../components/bottom/bottom-copy";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { BOTTOM_CUT_NAMES, CHANNEL_STARTING_WIDTHS, type BottomSectionKey } from "../lib/geometry/bottom";
+import { BOTTOM_CUT_NAMES, CHANNEL_ANGLE_MAX, CHANNEL_STARTING_WIDTHS, type BottomSectionKey } from "../lib/geometry/bottom";
+import { formatChannelAngle } from "../lib/geometry/bottom-print";
 import { designFinPlacement } from "../lib/geometry/design";
 import { frontFinToeDegrees } from "../lib/geometry/fins";
 import { formatMark } from "../lib/geometry/measure-display";
@@ -275,6 +277,8 @@ async function inkOf(locator: Locator, cssVar: string): Promise<{ text: string; 
 
 const channels = (page: Page) => page.locator("[data-bottom-channels]");
 const widthLabel = (page: Page) => channels(page).getByText(/^Channel Width — /);
+/** The Angle row's label and words (D-44) — drawn only for With the rail and Toe-in. */
+const angleLabel = (page: Page) => channels(page).getByText(/^Angle — /);
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** `Channel Width — 1 3/4" · ramp 10° · last wall …` for a count's own starting width (the app's figure), never squeezed. */
 const startingWidthLine = (count: 4 | 6 | 8) =>
@@ -365,23 +369,78 @@ test.describe("BOTTOM's CHANNELS block, inside TAIL", () => {
   });
 
   for (const presetId of ["shortboard", "fish", "longboard"] as const) {
-    test(`channels: the Run menu on the ${presetId} reads the front fins' own toe`, async ({ page }) => {
+    test(`channels: the Run menu on the ${presetId} has three plain names, and Toe-in's Angle row reads the front fins' own toe (D-44)`, async ({ page }) => {
       test.setTimeout(180_000);
       const preset = BOARD_PRESETS.find((p) => p.id === presetId)!;
-      // The toe the app itself works out for this preset's fins, written once to one decimal.
+      // The toe the app itself works out for this preset's fins, written by the row's own words.
       const toe = frontFinToeDegrees(designFinPlacement({ outline: preset.outline, fins: preset.fins }));
-      const toeOption = toe > 0 ? `Toe-in · ${toe.toFixed(1)}°` : "Toe-in (no toe)";
       if (presetId === "longboard") expect(toe).toBe(0);
       else expect(toe).toBeGreaterThan(0);
       await openBottom(page, presetId);
       await pickFrom(page, "Channels", "6 channels");
       await expect(selected(page, "Channel Run")).toHaveText("Parallel");
+      await expect(angleLabel(page)).toHaveCount(0);
       await page.getByRole("combobox", { name: "Channel Run", exact: true }).click();
-      await expect(page.getByRole("option")).toHaveText(["Parallel", "With the rail", toeOption]);
-      await page.getByRole("option", { name: toeOption, exact: true }).click();
-      await expect(selected(page, "Channel Run")).toHaveText(toeOption);
+      await expect(page.getByRole("option")).toHaveText(["Parallel", "With the rail", "Toe-in"]);
+      await page.getByRole("option", { name: "Toe-in", exact: true }).click();
+      await expect(selected(page, "Channel Run")).toHaveText("Toe-in");
+      await expect(angleLabel(page)).toHaveText(`${CHANNELS_COPY.angle} — ${channelAngleWords("toe", toe, toe, false)}`);
     });
   }
+
+  test("channels: the Angle row (D-44) — the rail's own to start, set by hand from the slider, Reset, and gone for Parallel", async ({ page }, testInfo) => {
+    // NOT YET RUN (written 2026-11-10 with D-44; no dev server could start in the worktree it was built in).
+    test.skip(testInfo.project.name !== "desktop", "the panel's cards are the computer's");
+    test.setTimeout(240_000);
+    await openBottom(page, "shortboard");
+    await pickFrom(page, "Channels", "6 channels");
+    const slider = page.getByRole("slider", { name: CHANNELS_COPY.angleSliderName, exact: true });
+    const reset = page.getByRole("button", { name: CHANNELS_COPY.angleResetName, exact: true });
+    // Parallel has no angle to set: no row, no slider.
+    await expect(slider).toHaveCount(0);
+    await expect(page.locator("[data-bottom-channel-angle]")).toHaveCount(0);
+
+    // With the rail: the row appears directly under Run / Longest, reading the rail's own angle — a figure the page
+    // works out, read off it here and never typed.
+    await pickFrom(page, "Channel Run", "With the rail");
+    await expect(angleLabel(page)).toHaveText(/^Angle — \d+\.\d° · the rail's own$/);
+    const own = ((await angleLabel(page).textContent()) ?? "").replace(/^Angle — (\d+\.\d°) · the rail's own$/, "$1");
+    expect(Number.parseFloat(own)).toBeGreaterThan(0);
+    expect(Number.parseFloat(own)).toBeLessThanOrEqual(CHANNEL_ANGLE_MAX);
+    await expect(reset).toHaveCount(0);
+    await expect(channels(page).getByRole("slider")).toHaveCount(9);
+
+    // The slider's two ends and one step, by the keyboard: every one is an angle set by hand, and says the rail's own.
+    await slider.focus();
+    await page.keyboard.press("End");
+    await expect(angleLabel(page)).toHaveText(`Angle — ${formatChannelAngle(CHANNEL_ANGLE_MAX)} · set by hand · the rail's own is ${own}`);
+    await page.keyboard.press("Home");
+    await expect(angleLabel(page)).toHaveText(`Angle — ${formatChannelAngle(0)} · set by hand · the rail's own is ${own}`);
+    await page.keyboard.press("ArrowRight");
+    await expect(angleLabel(page)).toHaveText(`Angle — ${formatChannelAngle(0.5)} · set by hand · the rail's own is ${own}`);
+    await expect(slider).toHaveAttribute("aria-valuetext", `${formatChannelAngle(0.5)} · set by hand · the rail's own is ${own}`);
+
+    // Reset puts the rail's own back and takes itself away; it is one Undo.
+    await expect(reset).toBeVisible();
+    await reset.click();
+    await expect(angleLabel(page)).toHaveText(`Angle — ${own} · the rail's own`);
+    await expect(reset).toHaveCount(0);
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(angleLabel(page)).toHaveText(`Angle — ${formatChannelAngle(0.5)} · set by hand · the rail's own is ${own}`);
+
+    // A different Run starts from that run's own angle, never the one set by hand for the last.
+    await pickFrom(page, "Channel Run", "Toe-in");
+    await expect(angleLabel(page)).toHaveText(/^Angle — \d+\.\d° · the fins' toe-in$/);
+    await expect(reset).toHaveCount(0);
+    await pickFrom(page, "Channel Run", "With the rail");
+    await expect(angleLabel(page)).toHaveText(`Angle — ${own} · the rail's own`);
+
+    // Parallel: the row goes.
+    await pickFrom(page, "Channel Run", "Parallel");
+    await expect(slider).toHaveCount(0);
+    await expect(angleLabel(page)).toHaveCount(0);
+    await expect(channels(page).getByRole("slider")).toHaveCount(8);
+  });
 
   for (const width of [820, 1280]) {
     test(`channels at ${width} wide: the Width read-out wraps to a second line and the Run trigger never overflows its row (E10)`, async ({ page }, testInfo) => {
@@ -390,7 +449,8 @@ test.describe("BOTTOM's CHANNELS block, inside TAIL", () => {
       await page.setViewportSize({ width, height: 800 });
       await openBottom(page, "longboard");
       await pickFrom(page, "Channels", "6 channels");
-      await pickFrom(page, "Channel Run", "Toe-in (no toe)");
+      // The longest of the three names since D-44 took the angle off the menu and gave it its own row.
+      await pickFrom(page, "Channel Run", "With the rail");
       const lines = await widthLabel(page).evaluate((el) => el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
       expect(Math.round(lines), "the Width read-out's lines").toBeGreaterThanOrEqual(2);
       const run = page.getByRole("combobox", { name: "Channel Run", exact: true });
@@ -406,9 +466,11 @@ test.describe("BOTTOM's CHANNELS block, inside TAIL", () => {
       });
       expect(fit.overflowsRow).toBe(false);
       expect(fit.ellipsis).toBe(true);
-      // Measured (UI-SPEC § Already done): `Toe-in (no toe)` is cut with an ellipsis from 820 to about 880 wide; at
-      // 1280 the column is wide enough and it reads whole.
-      expect(fit.cut).toBe(width === 820);
+      // At 1280 the column is wide enough and the name reads whole. At 820 the old `Toe-in (no toe)` (98.2 dots of
+      // text in 84 of room) was measured cut with an ellipsis (UI-SPEC § Already done); `With the rail` measured 78.9
+      // there, so it should read whole — but the trigger has NOT been re-measured in a browser since D-44, so 820
+      // holds only the two rules above: never out of its row, and an ellipsis if it is ever cut.
+      if (width === 1280) expect(fit.cut).toBe(false);
     });
   }
 });

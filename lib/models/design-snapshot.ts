@@ -167,6 +167,13 @@
  *    unknown key, so a board saved here opens there flat — its cuts are not lost from the stored row, but
  *    a save from there would write the board back without them. No database change — the bottom lives in
  *    the `snapshot` JSON column.
+ *    The channels' `angle` (D-44, the founder, 2026-11-10: an Angle on the two angled runs, "Set default by
+ *    the rail and the fins toe in, but overiderable") is the one channel key that may be missing: `null`
+ *    means "this run's own angle", and a board saved before the Angle slider existed has no key at all, so
+ *    absent reads as `null` and every one of those boards keeps the rest of its channels untouched. A value
+ *    that is not a number, not finite, or outside 0° to the slider's far end reads as `null` too — that ONE
+ *    key, never the channels. The key is always there once read, so a bottom that is the opening one still
+ *    compares equal to it and still leaves no key.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -187,6 +194,7 @@ import {
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
 import {
   BOTTOM_CUT_NAMES,
+  CHANNEL_ANGLE_MAX,
   DEFAULT_BOTTOM,
   isDefaultBottom,
   type BoardBottom,
@@ -570,6 +578,8 @@ const bottomChannelsSchema = z
     depth: bottomDepthSchema,
     smoothness: bottomSmoothnessSchema,
     run: z.enum(["parallel", "rail", "toe"]),
+    // D-44: forgiving on its own, so a missing or bad angle never costs a board the rest of its channels.
+    angle: z.number().min(0).max(CHANNEL_ANGLE_MAX).nullable().catch(null),
     longest: z.enum(["inner", "outer", "same"]),
     stagger: bottomAcrossSchema,
   })

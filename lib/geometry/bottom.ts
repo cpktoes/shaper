@@ -85,7 +85,12 @@ export interface BottomCutSpec {
   closesToPoint: boolean;
 }
 
-/** The channels as STORED (D-10, D-11; resolved by 17-05). `startFromFins` and `deepestFromFins` ride with the fins. */
+/**
+ * The channels as STORED (D-10, D-11, D-44; resolved by 17-05). `startFromFins` and `deepestFromFins` ride with the
+ * fins. `angle` is the angle the two angled runs are laid at, in degrees, when the shaper set it by hand — `null`
+ * means "this run's own": the rail's own angle for With the rail, the fins' toe-in for Toe-in
+ * (`channelDefaultAngle`). Parallel has no angle and ignores it.
+ */
 export interface BottomChannelsSpec {
   count: 0 | 4 | 6 | 8;
   width: Mm;
@@ -97,6 +102,8 @@ export interface BottomChannelsSpec {
   depth: Mm;
   smoothness: number;
   run: "parallel" | "rail" | "toe";
+  /** Degrees, set by hand (D-44) — or `null` for the run's own angle. */
+  angle: number | null;
   longest: "inner" | "outer" | "same";
   stagger: Mm;
 }
@@ -340,8 +347,11 @@ export interface ResolvedCut {
 }
 
 /**
- * The channels as the maths reads them (D-03, D-10): Start (the longest pair's), Deepest At and End as stations from
- * the tail, in order. Every other number as stored.
+ * The channels as the maths reads them (D-03, D-10, D-44): Start (the longest pair's), Deepest At and End as stations
+ * from the tail, in order, and `angle` — the angle IN USE, in degrees: 0 for Parallel, otherwise the one set by hand
+ * or, with none set, the run's own (`channelDefaultAngle`), always between 0 and `CHANNEL_ANGLE_MAX`. It is worked out
+ * once, in `resolveChannels`, so the walls, the words on screen and the printed sheet all read the same angle. Every
+ * other number as stored.
  */
 export interface ResolvedChannels {
   count: BottomChannelsSpec["count"];
@@ -353,6 +363,8 @@ export interface ResolvedChannels {
   depth: Mm;
   smoothness: number;
   run: BottomChannelsSpec["run"];
+  /** The angle in use, degrees: 0 for Parallel (D-44). */
+  angle: number;
   longest: BottomChannelsSpec["longest"];
   stagger: Mm;
 }
@@ -405,19 +417,28 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
  * from the tail, each clamped to the board. The fin-anchored Deepest At wins: when a fin move carries it past Start
  * or End, the other is pushed to it — Start = max(Start, Deepest), End = min(End, Deepest) — on read only, with
  * nothing written back. The stored spec is never mutated.
+ *
+ * The angle in use is settled here and nowhere else (D-44): 0 for Parallel; for With the rail and Toe-in, the angle
+ * the shaper set by hand, or — with none set, or one that is not a number — that run's own (`channelDefaultAngle`,
+ * which needs the wing `rule` to know which rail a winged board's channels follow), held between 0 and
+ * `CHANNEL_ANGLE_MAX`.
  */
-export function resolveChannels(spec: BottomChannelsSpec, board: BottomBoard): ResolvedChannels {
+export function resolveChannels(spec: BottomChannelsSpec, board: BottomBoard, rule: BottomWingRule): ResolvedChannels {
   const deepest = clampStation(board.frontFins + spec.deepestFromFins, board);
+  const start = mm(Math.max(clampStation(board.frontFins + spec.startFromFins, board), deepest));
+  const byHand = spec.angle !== null && Number.isFinite(spec.angle) ? spec.angle : null;
+  const angle = spec.run === "parallel" ? 0 : clampChannelAngle(byHand ?? channelDefaultAngle(spec.run, { start, deepest }, board, rule));
   return {
     count: spec.count,
     width: spec.width,
     offStringer: spec.offStringer,
-    start: mm(Math.max(clampStation(board.frontFins + spec.startFromFins, board), deepest)),
+    start,
     deepest,
     end: mm(Math.min(clampStation(spec.end, board), deepest)),
     depth: spec.depth,
     smoothness: spec.smoothness,
     run: spec.run,
+    angle,
     longest: spec.longest,
     stagger: spec.stagger,
   };
@@ -429,7 +450,7 @@ export function resolveBottom(bottom: BoardBottom, board: BottomBoard): Resolved
     nose: resolveCut("nose", bottom.nose, board),
     center: resolveCut("center", bottom.center, board),
     tail: resolveCut("tail", bottom.tail, board),
-    channels: resolveChannels(bottom.channels, board),
+    channels: resolveChannels(bottom.channels, board, bottom.wingRule),
     wingRule: bottom.wingRule,
   };
 }
@@ -527,7 +548,8 @@ export const CHANNEL_WIDTH_FOLLOWS: Mm = mm(0.01);
 /**
  * Every board opens flat with no channels (D-04, D-10). The channels' numbers are D-11's, kept for when a count is
  * picked: 5/16" deep, from 12" ahead of the front fins, deepest at them, out the tail, Off Stringer 0, Smoothness 0,
- * Parallel, the outer pair longest with a 2" stagger, and the six-channel width of 1 3/4".
+ * Parallel (so no angle set by hand, D-44), the outer pair longest with a 2" stagger, and the six-channel width of
+ * 1 3/4".
  */
 export const DEFAULT_BOTTOM: BoardBottom = {
   nose: flatSpec(FLAT_CUT_NAMES.nose),
@@ -543,6 +565,7 @@ export const DEFAULT_BOTTOM: BoardBottom = {
     depth: inchesToMm(5 / 16),
     smoothness: 0,
     run: "parallel",
+    angle: null,
     longest: "outer",
     stagger: inchesToMm(2),
   },
@@ -572,6 +595,25 @@ export function startingChannels(count: ChannelCount, board: BottomBoard, curren
 export function switchChannelCount(current: BottomChannelsSpec, count: BottomChannelsSpec["count"], board: BottomBoard): BottomChannelsSpec {
   if (count === 0) return { ...current, count: 0 };
   return { ...current, count, width: startingChannels(count, board, current).width };
+}
+
+/**
+ * A Run picked from BOTTOM's `Run` menu (D-10, D-44): the run, and — when it is a different run from the one there —
+ * the angle put back to that run's own (`angle: null`), so With the rail opens on the rail's own angle and Toe-in on
+ * the fins' toe-in whatever the other was set to. Picking the run already there changes nothing, an angle set by hand
+ * included. Every other channel number is kept.
+ */
+export function switchChannelRun(current: BottomChannelsSpec, run: BottomChannelsSpec["run"]): BottomChannelsSpec {
+  return current.run === run ? current : { ...current, run, angle: null };
+}
+
+/**
+ * An angle off the Angle slider, as it is stored (D-44): on the slider's own 1/2° grid (`CHANNEL_ANGLE_STEP`), between
+ * 0 and `CHANNEL_ANGLE_MAX`. The slider's dot rests on a run's own angle (9.1°, say) until it is moved, so its first
+ * step would otherwise store a figure off the grid.
+ */
+export function snapChannelAngle(degrees: number): number {
+  return clampChannelAngle(Math.round(degrees / CHANNEL_ANGLE_STEP) * CHANNEL_ANGLE_STEP);
 }
 
 /**
@@ -805,6 +847,11 @@ export const CHANNEL_SQUEEZE_GUARD: Mm = mm(0.01);
 /** With the rail, the channels stop narrowing at an inch each (`CHANNEL_PINCH`). They ease into that over this much
  * of width either side of it, so a wall bends into its straight run rather than kinking (see `channelRailWidth`). */
 export const CHANNEL_RAIL_EASE: Mm = inchesToMm(1 / 2);
+/** The steepest the two angled runs can be laid, in degrees (D-44): the Angle slider runs 0° to this. Ours, for the
+ * founder to change — the rail's own angle on the four starting boards is about 9° to 11°. */
+export const CHANNEL_ANGLE_MAX = 15;
+/** The Angle slider's step, in degrees (D-44). Ours, for the founder to change. */
+export const CHANNEL_ANGLE_STEP = 0.5;
 
 /**
  * A channel's floor across its width (the founder's pictures, 2026-11-06: "a quick V that goes into a vertical
@@ -845,23 +892,59 @@ function channelFade(ch: ResolvedChannels, j: number, s: Mm, length: Mm): number
   return fadeAt(channelStart(ch, j), ch.deepest, ch.end, s, length);
 }
 
+/** An angle held to what a run can be laid at: 0 to `CHANNEL_ANGLE_MAX` degrees, and 0 for anything not a number. */
+function clampChannelAngle(degrees: number): number {
+  return Number.isFinite(degrees) ? Math.max(0, Math.min(CHANNEL_ANGLE_MAX, degrees)) : 0;
+}
+
 /**
- * How wide each channel of a set laid With the rail is at a station, from the width that following the rail alone
- * would give it there (`raw`: the rail, less the last wall's keep off it, less Off Stringer, shared between the
- * channels) and the set's fitted Width (`set`).
+ * A run's OWN angle, in degrees — the one the channels are laid at until the shaper sets another by hand (the
+ * founder, 2026-11-10, D-44: "The toe in and splayed out (along rail) needs an angle adjustment. Set default by the
+ * rail and the fins toe in, but overiderable.").
  *
- * The founder's ruling (2026-11-10): "the channels with the rail shoud never bunch at the tip. the early wording was
- * correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line) but never
- * meet at a single point." The early wording is D-10's: once the gaps have closed the outer channels run OUT through
- * the rail, never pinching every channel.
+ * - **Parallel** has none: 0.
+ * - **Toe-in** is the front fins' raw toe-in (`board.toeDegrees`), so the channels point where the fins point; 0 on a
+ *   board whose fins have no toe.
+ * - **With the rail** is the rail's own angle over the channels' length: the straight line from the reference rail at
+ *   Deepest At to the reference rail at Start (the longest pair's), measured off the stringer. A last wall laid at it
+ *   is exactly as far off the rail at Start as it is at Deepest At. Where Start is within an inch of Deepest At there
+ *   is no length to measure over, so the inch ahead of Deepest At is used instead (`CHANNEL_LEAD_IN`, the same inch
+ *   the shortest channel always keeps); at the very nose, with no board ahead, it is 0. The reference rail is the wing
+ *   rule's (`refAt`), so a winged board's channels follow the rail they are measured from.
  *
- * So a channel follows the rail only while that leaves it real width. It is never narrower than an inch (or than the
- * set's own Width, where that is under an inch): from there to the tip the walls run straight, an inch apart, and the
- * outer ones run out through the rail as a Parallel set's do. Between following the rail and running straight the
+ * Never negative — a rail that narrows toward the nose over that stretch gives 0, the walls then running straight —
+ * and never more than `CHANNEL_ANGLE_MAX`.
+ */
+export function channelDefaultAngle(
+  run: BottomChannelsSpec["run"],
+  ch: Pick<ResolvedChannels, "start" | "deepest">,
+  board: BottomBoard,
+  rule: BottomWingRule,
+): number {
+  if (run === "parallel") return 0;
+  if (run === "toe") return clampChannelAngle(board.toeDegrees);
+  const ahead = ch.start - ch.deepest >= CHANNEL_LEAD_IN ? ch.start : mm(Math.min(board.length, ch.deepest + CHANNEL_LEAD_IN));
+  const span = ahead - ch.deepest;
+  if (!(span > 0)) return 0;
+  const rise = refAt(board, rule, ahead) - refAt(board, rule, ch.deepest);
+  return clampChannelAngle((Math.atan(rise / span) * 180) / Math.PI);
+}
+
+/**
+ * How wide each channel of a set laid With the rail is at a station, from the width its straight, fanning walls
+ * alone would give it there (`raw`: the set's Width, plus the last wall's turn since the deepest station shared
+ * between the channels — less than Width toward the tail, more toward the nose) and the set's fitted Width (`set`).
+ *
+ * The founder's ruling (2026-11-10, D-43): "the channels with the rail shoud never bunch at the tip. the early
+ * wording was correct. They either are straight, or splay in (toe in with the fins) or out (following the rail line)
+ * but never meet at a single point." D-44 made the walls straight lines; this is what keeps them from meeting.
+ *
+ * So a channel narrows toward the tail only while that leaves it real width. It is never narrower than an inch (or
+ * than the set's own Width, where that is under an inch): from there to the tip the walls run parallel, an inch
+ * apart, and the outer ones run out through the rail as a Parallel set's do. Between fanning and running parallel the
  * width bends over rather than kinks — over the 1/2" either side of the narrowest (less where the set's Width is
- * within 1/2" of it), meeting both with no step and no corner. A channel that following the rail leaves 1/2" or more
- * wider than the narrowest is exactly as wide as the rail gives it: at the deepest station that is the fitted Width
- * itself.
+ * within 1/2" of it), meeting both with no step and no corner. A channel the fan leaves 1/2" or more wider than the
+ * narrowest is exactly as wide as the fan gives it: at the deepest station that is the fitted Width itself.
  */
 export function channelRailWidth(raw: Mm, set: Mm): Mm {
   const floor = Math.min(set, CHANNEL_PINCH);
@@ -876,33 +959,35 @@ export function channelRailWidth(raw: Mm, set: Mm): Mm {
 
 /**
  * One side's channels at a station, each `[inner, outer, index]` out from the stringer — abutting, the outer of one
- * the inner of the next, `index` 0 beside the stringer (the sketch's `channelEdges`, but for With the rail's narrowest
- * width — see below). The walls are ruled at Width, 2 × Width … out from Off Stringer.
+ * the inner of the next, `index` 0 beside the stringer (the sketch's `channelEdges`, but for the two angled runs — see
+ * below). At the deepest station the walls are ruled at Width, 2 × Width … out from Off Stringer, whatever the run.
  *
- * - **Parallel** rules them straight from the deepest station; where the outline narrows the outer ones run out
- *   through the rail.
- * - **With the rail** keeps the last wall the same distance off the reference rail, so the set narrows toward a tip
- *   together — but only down to an inch a channel (`channelRailWidth`). From there the walls run straight to the tip
- *   and the outer channels run out through the rail: the set never bunches and its walls never meet at a point (the
- *   founder's ruling on the code review's WR-02, 2026-11-10; D-10's own wording). The sketch narrowed every channel to
- *   nothing with the rail; the app departs from it here, on his word.
- * - **Toe-in** angles the whole set at the front fins' raw toe — inward toward the nose, splayed out toward the tail.
- *   A single fin has no toe, so it is laid Parallel.
+ * - **Parallel** rules them straight from there; where the outline narrows the outer ones run out through the rail.
+ * - **With the rail** (D-44, the founder's photo: "Along the rail is subtle, like the middle board in this image")
+ *   lays every wall as a STRAIGHT line, and the set fans. The last wall passes through its place at the deepest
+ *   station at the angle in use (`ch.angle`), closing toward the stringer going to the tail and opening toward the
+ *   nose; the wall beside the stringer stays at Off Stringer; the walls between share the turn evenly, so wall `j` of
+ *   `n` turns `j / n` of what the last one does. Each channel is therefore `Width + (s − deepest) × tan(angle) / n`
+ *   wide at station `s` — but never narrower than an inch (`channelRailWidth`), so the set never bunches and its walls
+ *   never meet at a point (D-43): where the fan would take a channel under an inch the walls run on parallel, and the
+ *   outer ones run out through the rail. At an angle of 0 the set is a Parallel set exactly.
+ * - **Toe-in** keeps every channel its Width and angles the whole set at the angle in use — inward toward the nose,
+ *   splayed out toward the tail. On its own angle that is the front fins' raw toe-in, so a board whose fins have none
+ *   is laid as Parallel until the shaper sets an angle by hand (D-44).
  *
  * Only channels whose wall stands more than 1/2 mm off the stringer are kept, and only channels more than 1/2 mm wide:
- * a channel with no real width is not a channel. With the rail no longer makes one. Where a narrow tail is narrower
- * than the flat by the stringer and the last wall's keep together (the code review's CR-01, 2026-11-10) the set used
- * to have no room at all; now it keeps its narrowest width there, ruled straight from the flat's edge, as a Parallel
- * set is. A wall past the rail is still returned, as Parallel's and Toe-in's always were: the board ends at its rail,
- * so nothing is cut out there, and DATA and the top view show a wall only between the stringer and the rail.
+ * a channel with no real width is not a channel. A wall past the rail is still returned, on every run: the board ends
+ * at its rail, so nothing is cut out there, and DATA and the top view show a wall only between the stringer and the
+ * rail. That is what lets an angled wall run out through the rail — toward the tail on any run, and ahead of the
+ * deepest station too when an angle set by hand is steeper than the rail's own.
  */
 export function channelEdges(ch: ResolvedChannels, board: BottomBoard, rule: BottomWingRule, s: Mm): [inner: Mm, outer: Mm, index: number][] {
-  const { perSide: n, width: w, offRail } = channelFit(ch, board, rule);
+  const { perSide: n, width: w } = channelFit(ch, board, rule);
   if (n < 1 || w <= CHANNEL_EDGE_MIN) return [];
   let w2: number = w;
   let shift = 0;
-  if (ch.run === "rail") w2 = channelRailWidth(mm(Math.max(0, refAt(board, rule, s) - offRail - ch.offStringer) / n), w);
-  else if (ch.run === "toe" && board.toeDegrees > 0) shift = (s - ch.deepest) * Math.tan(board.toeDegrees * Math.PI / 180);
+  if (ch.run === "rail") w2 = channelRailWidth(mm(w + ((s - ch.deepest) * Math.tan(ch.angle * Math.PI / 180)) / n), w);
+  else if (ch.run === "toe" && ch.angle > 0) shift = (s - ch.deepest) * Math.tan(ch.angle * Math.PI / 180);
   const out: [Mm, Mm, number][] = [];
   for (let j = 0; j < n; j++) {
     const a = ch.offStringer + j * w2 - shift;

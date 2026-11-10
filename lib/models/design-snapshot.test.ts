@@ -15,8 +15,12 @@ import {
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
   bottomHasCut,
+  CHANNEL_ANGLE_MAX,
+  CHANNEL_ANGLE_STEP,
+  channelDefaultAngle,
   isDefaultBottom,
   pickCut,
+  resolveBottom,
   startingChannels,
   startingCut,
   type BoardBottom,
@@ -1163,6 +1167,7 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
         startFromFins: inchesToMm(9),
         deepestFromFins: inchesToMm(-2),
         run: "toe",
+        angle: 7.5,
         longest: "inner",
         stagger: inchesToMm(3.5),
       },
@@ -1199,6 +1204,7 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
         depth: inchesToMm(1 / 2),
         smoothness: 100,
         run: "rail",
+        angle: CHANNEL_ANGLE_MAX,
         longest: "same",
         stagger: inchesToMm(8),
       },
@@ -1330,6 +1336,72 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
     }
   });
 
+  it("D-44: channels saved before the Angle slider open with every number they had, on the run's own angle", () => {
+    // A board saved before the slider has no `angle` among its channels. It is not a bad part: nothing else is reset.
+    const bottom = looseFull();
+    expect("angle" in bottom.channels).toBe(true);
+    delete bottom.channels.angle;
+    const stored = wireWithBottom(bottom);
+    expect(JSON.stringify(stored.design.bottom)).not.toContain('"angle"');
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.bottom!.channels).toEqual({ ...FULL.channels, angle: null });
+    for (const key of PARTS) if (key !== "channels") expect(opened.bottom![key], key).toEqual(FULL[key]);
+    // ...and it saves again with the angle written as none, then reads back the same board.
+    expect(roundTrip(opened).bottom).toEqual(opened.bottom);
+    // The old run is still an angled one, so the maths works its own angle out for it.
+    const resolved = resolveBottom(opened.bottom!, BOARD);
+    expect(resolved.channels.angle).toBe(channelDefaultAngle(resolved.channels.run, resolved.channels, BOARD, resolved.wingRule));
+  });
+
+  it("D-44: an angle the slider could never give reads as none and takes nothing else with it", () => {
+    const BAD: [string, unknown][] = [
+      ["not a number (stored as nothing)", Number.NaN],
+      ["endless", Number.POSITIVE_INFINITY],
+      ["in words", "steep"],
+      ["past the slider's far end", CHANNEL_ANGLE_MAX + 0.5],
+      ["a billion degrees", 1e9],
+      ["below zero", -0.5],
+      ["a box", {}],
+      ["a list", [5]],
+      ["yes", true],
+    ];
+    const plain = parseSnapshot(wire());
+    for (const [what, angle] of BAD) {
+      const bottom = looseFull();
+      bottom.channels.angle = angle;
+      const stored = wireWithBottom(bottom);
+      expect(() => parseSnapshot(stored), what).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom!.channels, what).toEqual({ ...FULL.channels, angle: null });
+      for (const key of PARTS) if (key !== "channels") expect(opened.bottom![key], `${what}: ${key}`).toEqual(FULL[key]);
+      expect(withoutBottom(opened), what).toEqual(plain);
+    }
+  });
+
+  it("D-44: every angle the slider can give — and one it cannot, between two steps — comes back exactly; none stays none", () => {
+    for (const angle of [null, 0, CHANNEL_ANGLE_STEP, 7.5, 9.0678, CHANNEL_ANGLE_MAX]) {
+      for (const run of ["rail", "toe", "parallel"] as const) {
+        const bottom: BoardBottom = { ...FULL, channels: { ...FULL.channels, run, angle } };
+        expect(roundTrip({ ...FIXTURES[0], bottom }).bottom, `${run} · ${angle}`).toEqual(bottom);
+      }
+    }
+  });
+
+  it("D-44: the opening bottom is still no bottom at all, written with the angle or without it", () => {
+    expect(DEFAULT_BOTTOM.channels.angle).toBeNull();
+    expect(isDefaultBottom(DEFAULT_BOTTOM)).toBe(true);
+    expect("bottom" in parseSnapshot(wireWithBottom(JSON.parse(JSON.stringify(DEFAULT_BOTTOM))))).toBe(false);
+    expect("bottom" in roundTrip({ ...FIXTURES[0], bottom: structuredClone(DEFAULT_BOTTOM) })).toBe(false);
+    const old = JSON.parse(JSON.stringify(DEFAULT_BOTTOM)) as LooseBottom;
+    delete old.channels.angle;
+    expect("bottom" in parseSnapshot(wireWithBottom(old))).toBe(false);
+    // An angle alone, with no channels picked, is a change to the bottom and is kept — it cuts nothing.
+    const angled: BoardBottom = { ...DEFAULT_BOTTOM, channels: { ...DEFAULT_BOTTOM.channels, angle: 5 } };
+    expect(isDefaultBottom(angled)).toBe(false);
+    expect(roundTrip({ ...FIXTURES[0], bottom: angled }).bottom).toEqual(angled);
+    expect(bottomHasCut(angled)).toBe(false);
+  });
+
   it("a bottom that is not a bottom at all reads as none — the board opens flat, never rejected", () => {
     const plain = parseSnapshot(wire());
     const NOT_A_BOTTOM: unknown[] = [
@@ -1413,6 +1485,7 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
               depth: inchesToMm(1),
               smoothness: 100,
               run: (["parallel", "rail", "toe"] as const)[k % 3],
+              angle: ([null, 0, CHANNEL_ANGLE_MAX] as const)[k % 3],
               longest: (["inner", "outer", "same"] as const)[k % 3],
               stagger: inchesToMm(12),
             },

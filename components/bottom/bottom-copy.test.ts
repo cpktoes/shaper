@@ -7,6 +7,8 @@ import {
   DEFAULT_BOTTOM,
   bottomDataRows,
   bottomFloorFlags,
+  CHANNEL_ANGLE_MAX,
+  channelDefaultAngle,
   channelFit,
   channelReadout,
   resolveBottom,
@@ -22,6 +24,7 @@ import {
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
 import { FOIL_THICKNESS_RANGE_IN } from "@/lib/geometry/foil";
+import { CHANNEL_RUN_NAME, formatChannelAngle } from "@/lib/geometry/bottom-print";
 import { formatDim, formatMark, formatMarkBare } from "@/lib/geometry/measure-display";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -31,6 +34,7 @@ import {
   BOTTOM_COPY,
   bottomDepthCell,
   CHANNELS_COPY,
+  channelAngleWords,
   channelSmoothnessWords,
   channelWidthLabel,
   channelWidthWords,
@@ -179,16 +183,67 @@ describe("the CHANNELS block's words (D-10, D-11)", () => {
   const longboard = presetBoard("longboard");
   const readoutOf = (board: BottomBoard, count: 4 | 6 | 8, change: Partial<BoardBottom["channels"]> = {}) => {
     const spec = { ...startingChannels(count, board, DEFAULT_BOTTOM.channels), ...change };
-    return { spec, readout: channelReadout(resolveChannels(spec, board), board, "narrowest") };
+    return { spec, readout: channelReadout(resolveChannels(spec, board, "narrowest"), board, "narrowest") };
   };
 
-  it("Run: Parallel, With the rail, and Toe-in with the front fins' own toe to one decimal; Toe-in (no toe) on a single fin", () => {
-    expect(runOptionLabel("parallel", shortboard.toeDegrees)).toBe("Parallel");
-    expect(runOptionLabel("rail", shortboard.toeDegrees)).toBe("With the rail");
-    expect(shortboard.toeDegrees).toBeGreaterThan(0);
-    expect(runOptionLabel("toe", shortboard.toeDegrees)).toBe(`Toe-in · ${shortboard.toeDegrees.toFixed(1)}°`);
-    expect(longboard.toeDegrees).toBe(0);
-    expect(runOptionLabel("toe", longboard.toeDegrees)).toBe("Toe-in (no toe)");
+  it("Run: three plain names — the angle is the Angle row's to say (D-44)", () => {
+    expect((["parallel", "rail", "toe"] as const).map(runOptionLabel)).toEqual(["Parallel", "With the rail", "Toe-in"]);
+    for (const run of ["parallel", "rail", "toe"] as const) expect(runOptionLabel(run)).toBe(CHANNEL_RUN_NAME[run]);
+  });
+
+  describe("the Angle row's words (D-44)", () => {
+    it("the row's label, its slider's spoken name and its Reset", () => {
+      expect(CHANNELS_COPY.angle).toBe("Angle");
+      expect(CHANNELS_COPY.angleSliderName).toBe("Channel Angle");
+      expect(CHANNELS_COPY.angleReset).toBe("Reset");
+      expect(CHANNELS_COPY.angleResetName).toBe("Reset Channel Angle");
+    });
+
+    it("the founder's six lines, word for word", () => {
+      expect(channelAngleWords("rail", 9.1, 9.1, false)).toBe("9.1° · the rail's own");
+      expect(channelAngleWords("toe", 3.2, 3.2, false)).toBe("3.2° · the fins' toe-in");
+      expect(channelAngleWords("toe", 0, 0, false)).toBe("0.0° · these fins have no toe-in");
+      expect(channelAngleWords("rail", 7.5, 9.1, true)).toBe("7.5° · set by hand · the rail's own is 9.1°");
+      expect(channelAngleWords("toe", 5, 3.2, true)).toBe("5.0° · set by hand · the fins' toe-in is 3.2°");
+      // Ours: an angle set by hand on a board whose fins have none still says why there is nothing to go back to.
+      expect(channelAngleWords("toe", 5, 0, true)).toBe("5.0° · set by hand · these fins have no toe-in");
+    });
+
+    it.each(["shortboard", "fish", "midlength", "longboard"])("%s: the words carry the maths' own angles — the one in use first, the run's own after", (id) => {
+      const board = presetBoard(id);
+      for (const run of ["rail", "toe"] as const) {
+        const spec = { ...startingChannels(6, board, DEFAULT_BOTTOM.channels), run };
+        const own = channelDefaultAngle(run, resolveChannels(spec, board, "narrowest"), board, "narrowest");
+        const atDefault = resolveChannels(spec, board, "narrowest");
+        expect(atDefault.angle).toBe(own);
+        const words = channelAngleWords(run, atDefault.angle, own, false);
+        expect(words.startsWith(`${formatChannelAngle(own)} · `)).toBe(true);
+        expect(words).not.toContain("set by hand");
+        const byHand = resolveChannels({ ...spec, angle: 7.5 }, board, "narrowest");
+        expect(byHand.angle).toBe(7.5);
+        const handWords = channelAngleWords(run, byHand.angle, own, true);
+        expect(handWords.startsWith(`${formatChannelAngle(7.5)} · set by hand · `)).toBe(true);
+        if (run === "rail" || own > 0) expect(handWords.endsWith(` is ${formatChannelAngle(own)}`)).toBe(true);
+        else expect(handWords.endsWith("these fins have no toe-in")).toBe(true);
+      }
+    });
+
+    it("degrees to one decimal with the degree sign, the same in both systems — an angle has no inch or millimetre in it", () => {
+      expect(formatChannelAngle(0)).toBe("0.0°");
+      expect(formatChannelAngle(9.0678)).toBe("9.1°");
+      expect(formatChannelAngle(CHANNEL_ANGLE_MAX)).toBe("15.0°");
+    });
+
+    it("the longest row still fits two lines of a 340-dot panel: label, dash and words stay under 60 characters", () => {
+      const worst = [
+        channelAngleWords("rail", CHANNEL_ANGLE_MAX, CHANNEL_ANGLE_MAX, true),
+        channelAngleWords("toe", CHANNEL_ANGLE_MAX, CHANNEL_ANGLE_MAX, true),
+        channelAngleWords("toe", CHANNEL_ANGLE_MAX, 0, true),
+        channelAngleWords("rail", CHANNEL_ANGLE_MAX, CHANNEL_ANGLE_MAX, false),
+        channelAngleWords("toe", 0, 0, false),
+      ];
+      for (const words of worst) expect(`${CHANNELS_COPY.angle} — ${words}`.length, words).toBeLessThan(60);
+    });
   });
 
   it.each(SYSTEMS)("Channel Width (%s): the width, the ramp's degrees and the last wall off the rail, every length a mark", (system) => {
@@ -217,7 +272,7 @@ describe("the CHANNELS block's words (D-10, D-11)", () => {
           const words = channelWidthWords(readout, system);
           expect(words, `${count} · ${quarters / 4}"`).not.toMatch(/-\d|−/);
           // The slider does take the flat past the rail at the deepest station, and there the words read nothing.
-          if (channelFit(resolveChannels(spec, board), board, "narrowest").offRail < 0) {
+          if (channelFit(resolveChannels(spec, board, "narrowest"), board, "narrowest").offRail < 0) {
             pastTheRail++;
             expect(words).toMatch(new RegExp(`last wall ${formatMark(mm(0), system)} off the rail$`));
           }

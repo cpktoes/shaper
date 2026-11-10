@@ -12,7 +12,11 @@ import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-r
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
+  CHANNEL_ANGLE_MAX,
+  CHANNEL_ANGLE_STEP,
+  channelDefaultAngle,
   channelReadout,
+  snapChannelAngle,
   stationFromNearestTip,
   storeChannelStation,
   storeCutStation,
@@ -27,6 +31,7 @@ import {
   type ResolvedCut,
 } from "@/lib/geometry/bottom";
 import type { BottomCutKey } from "@/lib/geometry/bottom-draw";
+import { formatChannelAngle } from "@/lib/geometry/bottom-print";
 import { bottomImportedReadout } from "@/lib/geometry/imported-readout";
 import { formatDim, formatMark, formatMarkOrLess, measureSlider } from "@/lib/geometry/measure-display";
 import type { Mm, UnitsSystem } from "@/lib/geometry/units";
@@ -36,6 +41,7 @@ import {
   BOTTOM_COPY,
   BOTTOM_SECTION_NAME,
   CHANNELS_COPY,
+  channelAngleWords,
   channelSmoothnessWords,
   channelWidthLabel,
   channelWidthWords,
@@ -178,6 +184,7 @@ export const BottomControls = memo(function BottomControls({
     setBottomClosesToPoint,
     setBottomWingRule,
     setChannelRun,
+    resetChannelAngle,
     setChannelLongest,
     updateChannels,
     outline,
@@ -288,6 +295,7 @@ export const BottomControls = memo(function BottomControls({
               onLive={() => onLive("channels")}
               onCount={onChannelCount}
               onRun={setChannelRun}
+              onAngleReset={resetChannelAngle}
               onLongest={setChannelLongest}
               onChange={updateChannels}
             />
@@ -449,23 +457,40 @@ interface ChannelsBlockProps {
   onLive: () => void;
   onCount: (count: BottomChannelsSpec["count"]) => void;
   onRun: (run: BottomChannelsSpec["run"]) => void;
+  /** The Angle row's Reset: the angle set by hand forgotten, the run laid at its own again (D-44). */
+  onAngleReset: () => void;
   onLongest: (longest: BottomChannelsSpec["longest"]) => void;
   onChange: (patch: Partial<BottomChannelsSpec>, changed?: StationField) => void;
 }
 
 /**
  * The CHANNELS block, inside TAIL under its last row (D-10, D-11, UI-SPEC §2): a dashed rule, `CHANNELS` echoing the
- * set, then the count. With a count: Run and Longest on one row, then Channel Width — its ramp and last wall read out by
+ * set, then the count. With a count: Run and Longest on one row, the Angle row under them for With the rail and Toe-in
+ * only (D-44), then Channel Width — its ramp and last wall read out by
  * the maths' `channelReadout`, never set — Off Stringer, Start, Stagger (hidden, not dimmed, for All the same), Deepest
  * At, End, Depth (the floor under it) and Smoothness. `None` hides the rows and keeps their numbers. A press, or the
  * keyboard arriving, anywhere in it makes the channels the live cut — after the TAIL card's own capture, so it wins.
  * Every figure through the formatters (Rule 2), every number the maths' (Rule 1); no Wall control and nothing but the
  * starts staggers (D-10).
  */
-function ChannelsBlock({ spec, resolved, board, rule, tailName, system, floor, onLive, onCount, onRun, onLongest, onChange }: ChannelsBlockProps) {
+function ChannelsBlock({
+  spec,
+  resolved,
+  board,
+  rule,
+  tailName,
+  system,
+  floor,
+  onLive,
+  onCount,
+  onRun,
+  onAngleReset,
+  onLongest,
+  onChange,
+}: ChannelsBlockProps) {
   const locked = useControlsLocked();
   const counts = CHANNEL_COUNTS.map((count) => ({ value: String(count), label: CHANNELS_COPY.countOption(count) }));
-  const runs = CHANNEL_RUNS.map((run) => ({ value: run, label: runOptionLabel(run, board.toeDegrees) }));
+  const runs = CHANNEL_RUNS.map((run) => ({ value: run, label: runOptionLabel(run) }));
   const longest = CHANNEL_LONGEST.map((value) => ({ value, label: CHANNELS_COPY.longestOption[value] }));
   const open = spec.count > 0;
 
@@ -540,6 +565,9 @@ function ChannelsBlock({ spec, resolved, board, rule, tailName, system, floor, o
                 </Select>
               </div>
             </div>
+            {spec.run !== "parallel" && (
+              <ChannelAngleRow run={spec.run} spec={spec} resolved={resolved} board={board} rule={rule} onChange={onChange} onReset={onAngleReset} />
+            )}
             <ChannelRows spec={spec} resolved={resolved} board={board} rule={rule} system={system} floor={floor} onChange={onChange} />
           </>
         )}
@@ -548,8 +576,67 @@ function ChannelsBlock({ spec, resolved, board, rule, tailName, system, floor, o
   );
 }
 
-/** A Select trigger whose value truncates with an ellipsis in a narrow column (the Run trigger's `Toe-in (no toe)` at
- * an 820 window, UI-SPEC § Already done): the value a block that may shrink, cut with `…`. */
+/**
+ * The Angle row (D-44), directly under Run and Longest and only for the two angled runs: how far the channels' walls
+ * turn off the stringer's line, 0° to 15° in half degrees. Untouched it rests on the run's own angle — the rail's own
+ * between the channels' Start and Deepest At, or the fins' toe-in — and its words say which; moved, it stores the angle
+ * by hand (one slow drag is one Undo step, the Channel Width slider's own plumbing) and a Reset link takes the hint
+ * line's right end, there only while the angle is by hand. Both figures are the maths' (`resolved.angle`,
+ * `channelDefaultAngle`), written by paper's own formatter. Degrees read the same in Imperial and Metric.
+ */
+function ChannelAngleRow({
+  run,
+  spec,
+  resolved,
+  board,
+  rule,
+  onChange,
+  onReset,
+}: {
+  run: Exclude<BottomChannelsSpec["run"], "parallel">;
+  spec: BottomChannelsSpec;
+  resolved: ResolvedChannels;
+  board: BottomBoard;
+  rule: BottomWingRule;
+  onChange: (patch: Partial<BottomChannelsSpec>) => void;
+  onReset: () => void;
+}) {
+  const locked = useControlsLocked();
+  const byHand = spec.angle !== null;
+  const words = channelAngleWords(run, resolved.angle, channelDefaultAngle(run, resolved, board, rule), byHand);
+  return (
+    <div data-bottom-channel-angle>
+      <SliderRow
+        label={CHANNELS_COPY.angle}
+        displayValue={words}
+        value={resolved.angle}
+        min={0}
+        max={CHANNEL_ANGLE_MAX}
+        step={CHANNEL_ANGLE_STEP}
+        leftHint={formatChannelAngle(0)}
+        rightHint={formatChannelAngle(CHANNEL_ANGLE_MAX)}
+        hintAction={
+          byHand && (
+            <button type="button" disabled={locked} aria-label={CHANNELS_COPY.angleResetName} onClick={onReset} className={ANGLE_RESET}>
+              {CHANNELS_COPY.angleReset}
+            </button>
+          )
+        }
+        sliderLabel={CHANNELS_COPY.angleSliderName}
+        sliderValueText={words}
+        onValueChange={(v) => onChange({ angle: snapChannelAngle(v) })}
+      />
+    </div>
+  );
+}
+
+/** The Angle row's Reset: ROCKER's Automatic link on a Thinning Starts row, class for class — the accent ink, and a
+ * 44-dot touch box on a coarse pointer. */
+const ANGLE_RESET =
+  "focus-ring-accent shrink-0 cursor-pointer text-left text-[11px] font-bold text-surf-accent-ink coarse:flex coarse:min-h-11 coarse:items-center disabled:cursor-default disabled:opacity-40";
+
+/** A Select trigger whose value truncates with an ellipsis in a narrow column (a long Longest option at an 820
+ * window, UI-SPEC § Already done): the value a block that may shrink, cut with `…`. */
 const TRUNCATING_VALUE = "min-w-0 *:data-[slot=select-value]:block *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate";
 
 /** The channels' sliders, in the UI-SPEC's order: Channel Width, Off Stringer, Start, Stagger, Deepest At, End, Depth,

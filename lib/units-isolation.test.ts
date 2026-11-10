@@ -1017,21 +1017,34 @@ describe("BOTTOM reads every measurement through the display boundary", () => {
   });
 
   it("the only numbers the screen rounds by hand are not measurements", () => {
-    // A fin's toe-in in degrees (the same in both systems), and two drawing facts written onto the page for the
-    // browser tests to read: how tall the section is drawn, and the station the cutting line stands at.
-    const allowed = [/toeDegrees\.toFixed\(1\)/, /data-height=\{[^}]*heightDrawn\.toFixed\(2\)/, /data-bottom-cut-at=\{station\.toFixed\(1\)\}/];
+    // Two drawing facts written onto the page for the browser tests to read: how tall the section is drawn, and the
+    // station the cutting line stands at. (Until D-44 a third stood here, the fins' toe-in in the Run menu; a channel
+    // angle is now written in one place for the screen and paper alike — see the next test.)
+    const allowed = [/data-height=\{[^}]*heightDrawn\.toFixed\(2\)/, /data-bottom-cut-at=\{station\.toFixed\(1\)\}/];
     const lines = bottomScreenFiles().flatMap((file) =>
       readStripped(file)
         .split("\n")
         .filter((line) => line.includes(".toFixed("))
         .map((line) => ({ file, line: line.trim() })),
     );
-    expect(lines.length, "expected the three known hand-rounded numbers on BOTTOM").toBe(allowed.length);
+    expect(lines.length, "expected the two known hand-rounded numbers on BOTTOM").toBe(allowed.length);
     for (const { file, line } of lines) {
       expect(
         allowed.some((pattern) => pattern.test(line)),
         `${file} rounds a number by hand: "${line}" — a measure a shaper reads must come from measure-display.ts`,
       ).toBe(true);
+    }
+  });
+
+  it("a channel angle is written in one place, in degrees, for the screen and the printed line alike (D-44)", () => {
+    // Degrees read the same in Imperial and Metric, so the angle needs no unit rule — only one formatter, so the
+    // Angle row, its slider's spoken value and the Overview Sheet's channels line can never round it two ways.
+    const print = readStripped("lib/geometry/bottom-print.ts");
+    const rounded = print.split("\n").filter((line) => line.includes(".toFixed("));
+    expect(rounded.map((line) => line.trim())).toEqual(["return `${degrees.toFixed(1)}°`;"]);
+    expect(print).toMatch(/export function formatChannelAngle\(degrees: number\): string/);
+    for (const file of [`${BOTTOM_FOLDER}/bottom-copy.ts`, `${BOTTOM_FOLDER}/bottom-controls.tsx`]) {
+      expect(readStripped(file), `${file} no longer writes the angle with formatChannelAngle`).toContain("formatChannelAngle(");
     }
   });
 

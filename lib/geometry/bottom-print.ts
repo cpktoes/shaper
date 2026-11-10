@@ -116,14 +116,25 @@ function cutLine(section: BottomSectionKey, cut: ResolvedCut, board: BottomBoard
   return `${head} ${depth} rail lift, ${where}${panel}.`;
 }
 
+/** A Run's plain name — the screen's Run menu and paper read the same three words (D-44). */
+export const CHANNEL_RUN_NAME: Readonly<Record<BottomChannelsSpec["run"], string>> = { parallel: "Parallel", rail: "With the rail", toe: "Toe-in" };
+
 /**
- * The words for how the channels run — the screen's own Run options (`runOptionLabel`, held together by a test):
- * `Parallel`, `With the rail`, `Toe-in · 3.2°`, or `Toe-in (no toe)` on a board with no toe.
+ * A channel angle as it is written, on screen and on paper: degrees to one decimal, `9.1°`. Degrees read the same in
+ * Imperial and Metric, so there is no system to ask and nothing to convert.
  */
-export function channelRunWords(run: BottomChannelsSpec["run"], toeDegrees: number): string {
-  if (run === "parallel") return "Parallel";
-  if (run === "rail") return "With the rail";
-  return toeDegrees > 0 ? `Toe-in · ${toeDegrees.toFixed(1)}°` : "Toe-in (no toe)";
+export function formatChannelAngle(degrees: number): string {
+  return `${degrees.toFixed(1)}°`;
+}
+
+/**
+ * The words for how the channels run (D-44): the Run's plain name, and for the two angled runs the angle IN USE —
+ * the one the walls are really laid at, whether it is the run's own or set by hand: `Parallel`, `With the rail · 9.1°`,
+ * `Toe-in · 3.2°`. The name is the screen's Run option and the figure is the first figure of the screen's Angle row
+ * (held together by a test).
+ */
+export function channelRunWords(ch: Pick<ResolvedChannels, "run" | "angle">): string {
+  return ch.run === "parallel" ? CHANNEL_RUN_NAME.parallel : `${CHANNEL_RUN_NAME[ch.run]} · ${formatChannelAngle(ch.angle)}`;
 }
 
 /** The channels in one line. The width is the width the set gets — the fitted one when it had to be squeezed. */
@@ -134,7 +145,7 @@ function channelsLine(resolved: ResolvedBottom, board: BottomBoard, system: Unit
   return (
     `${BOTTOM_PRINT_CHANNELS}: ${ch.count} at ${formatMark(width, system)}, ${formatMarkOrLess(ch.depth, system)} deep, ` +
     `${rangeWords(ch.start, ch.end, system)} from the tail, deepest ${formatBottomStation(ch.deepest, system)}; ` +
-    `${channelRunWords(ch.run, board.toeDegrees)}, ${longest}.`
+    `${channelRunWords(ch)}, ${longest}.`
   );
 }
 
