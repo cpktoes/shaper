@@ -606,6 +606,39 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
     ).toBe(2 * marginMm);
   });
 
+  it("the BOTTOM CONTOURS page's phone rule measures its sheet against page 2's own design width — no new paper figure", () => {
+    // Phase 17, D-29. The bottom's page shrinks its type on a narrow phone sheet the way page 2 does, and it must
+    // count "narrow" from the same printed width: the same two paper widths and the same margin, written the same
+    // way. A second copy that drifted would be a new paper figure nobody checks against use-print-fit.ts.
+    const css = readStripped(ORDER_FORM_CSS_PATH);
+    const widthShortfall = (expr: string) => expr.match(/max\(0px,.*100cqw\)/)?.[0];
+    const { body: phoneRefBody } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-reference {",
+    );
+    const { body: phoneBottomBody } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-bottom {",
+    );
+    const reference = widthShortfall(extractDeclarationValue(phoneRefBody, "--order-form-ref-unit"));
+    const bottom = widthShortfall(extractDeclarationValue(phoneBottomBody, "--order-form-bottom-unit"));
+
+    expect(reference, "page 2's fit unit no longer carries its width-shortfall term").toBeDefined();
+    expect(bottom, "the bottom page's unit does not measure its sheet the way page 2's does").toBe(reference);
+
+    const { index: phoneShapeIndex } = phoneSheetRuleBody(css);
+    const { index: bottomRuleIndex } = ruleBodyAndIndex(
+      css,
+      "[data-order-form-root][data-print-touch] .order-form-sheet-bottom {",
+    );
+    expect(bottomRuleIndex, "the bottom page's phone rule appears before @media print").toBeGreaterThan(
+      css.indexOf("@media print {"),
+    );
+    expect(bottomRuleIndex, "the bottom page's phone rule appears before the phone sheet's own shape rule").toBeGreaterThan(
+      phoneShapeIndex,
+    );
+  });
+
   it("the fit rule and the content floor apply only in print, after the phone sheet's own shape rule", () => {
     const css = readStripped(ORDER_FORM_CSS_PATH);
     const mediaPrintIndex = css.indexOf("@media print {");

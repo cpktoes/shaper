@@ -84,6 +84,11 @@ const PRINT_SURFACE_DISPLAY_FILES: { file: string; converted: boolean }[] = [
   // design-screen entries above.
   { file: "components/rails/rail-instructions.tsx", converted: true },
   { file: "components/rails/rail-plan-side-figure.tsx", converted: true },
+  // 17-15 (D-29): the order form's BOTTOM CONTOURS page and the rule that decides what it holds. Every
+  // depth, mark and station they print reads through the boundary — marks in whole millimetres and
+  // stations in centimetres for a Metric shaper — so the print-specific checks below run over them too.
+  { file: "components/summary/bottom-contours-sheet.tsx", converted: true },
+  { file: "components/summary/bottom-sheet-fit.ts", converted: true },
 ];
 
 /**

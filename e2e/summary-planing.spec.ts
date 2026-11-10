@@ -13,6 +13,9 @@ import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { planingTable, thinningLine } from "../lib/geometry/planing";
 import { THINNING_START_MIN_MM, thinningStartRange } from "../lib/geometry/tip-taper";
 import { inchesToMm, mm, parseImperial, parseMetric, type Mm, type UnitsSystem } from "../lib/geometry/units";
+import { bottomSheetLayout } from "../components/summary/bottom-sheet-fit";
+import { bottomDataRows, bottomLayoutMarks } from "../lib/geometry/bottom";
+import { boardWithBottom, openOnBoard, type BottomPicks } from "./helpers/bottom-print";
 
 /**
  * Browser proof for the order form's PLANING table (Phase 13 item 8, the founder's 2026-09-29
@@ -1117,5 +1120,226 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       const roundingLines = texts.filter((t) => t.startsWith("All measurements round"));
       expect(roundingLines.length, `${system}: exactly one line should start with "All measurements round"`).toBe(1);
     });
+  }
+});
+
+
+/**
+ * The BOTTOM CONTOURS page's fit (Phase 17, D-29 — the backstop for the plan's edge E20: "the worst bottom still
+ * prints, every table row on paper").
+ *
+ * The page is laid out by arithmetic (`components/summary/bottom-sheet-fit.ts` decides, from the board alone, whether
+ * the two tables stay on the page or take a sheet of their own), and arithmetic about a page is only as good as the
+ * page agrees with it. This is where the page is asked: four boards — the fullest bottom the rule keeps on one page,
+ * a long board with three cuts, the worst bottom there is (a cut in every section and eight channels on the longest
+ * stock board, nineteen rows under eleven columns of marks), and the same worst bottom on the widest stock board,
+ * whose picture from above stands tallest over four sections — on a computer's printed sheet and on a phone's
+ * sheet at every width the other pages are swept at, in both systems. On every one: no sheet clips, no box on the page
+ * clips, every table is inside its box and has every row, the content stops above the page mark, and the bottom's own
+ * picture is drawn at its full size (it is the one part allowed to give way, so a page the rule says fits must never
+ * have needed it to). Then both papers are printed and the PDF has exactly as many pages as the form has sheets, each
+ * at true size — nothing pushed onto a blank extra page.
+ */
+const BOTTOM_FIT_BOARDS: { name: string; preset: string; picks: BottomPicks; tablesOnOwnSheet: boolean }[] = [
+  {
+    name: "the fullest bottom the page holds whole — a Shortboard with a Deep Single Concave and 6 channels",
+    preset: "shortboard",
+    picks: { center: "Deep Single Concave", channels: 6 },
+    tablesOnOwnSheet: false,
+  },
+  {
+    name: "a Longboard with a cut in every section",
+    preset: "longboard",
+    picks: { nose: "Teardrop Nose Concave", center: "Continuous Belly / Rolled Mid", tail: "Rolled Vee" },
+    tablesOnOwnSheet: true,
+  },
+  {
+    name: "the worst bottom — a Longboard with a cut in every section and 8 channels",
+    preset: "longboard",
+    picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
+    tablesOnOwnSheet: true,
+  },
+  {
+    name: "the fullest page of drawings — a Fish with a cut in every section and 8 channels",
+    preset: "fish",
+    picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
+    tablesOnOwnSheet: true,
+  },
+];
+
+interface BottomSheetMeasurement {
+  width: number;
+  height: number;
+  /** How far the sheet's content runs past the sheet. */
+  sheetClip: number;
+  /** `page` for the BOTTOM CONTOURS page, `tables` for the tables' own sheet, null for every other sheet. */
+  kind: "page" | "tables" | null;
+  /** The parts on the sheet, in page order. */
+  parts: string[];
+  /** The most any box on the sheet hides of what it holds, down or across. */
+  boxClip: number;
+  /** How far the content's last line stands above the page mark (negative: it runs into it). */
+  clearOfMark: number;
+  /** How many dots shorter than its full size the bottom's picture is drawn (0: full size). */
+  topViewSqueeze: number;
+  /** Each table's rows, and how far it runs past its own box across. */
+  tables: { rows: number; across: number }[];
+  /** The page's smallest type, in dots — for the report. */
+  smallestType: number;
+}
+
+function measureBottomSheets(): BottomSheetMeasurement[] {
+  return [...document.querySelectorAll("[data-order-form-sheet]")].map((sheet) => {
+    const rect = sheet.getBoundingClientRect();
+    const body = sheet.querySelector("[data-bottom-sheet], [data-bottom-tables-sheet]");
+    const entry: BottomSheetMeasurement = {
+      width: rect.width,
+      height: rect.height,
+      sheetClip: sheet.scrollHeight - sheet.clientHeight,
+      kind: null,
+      parts: [],
+      boxClip: 0,
+      clearOfMark: 0,
+      topViewSqueeze: 0,
+      tables: [],
+      smallestType: 0,
+    };
+    if (!body) return entry;
+    entry.kind = body.hasAttribute("data-bottom-sheet") ? "page" : "tables";
+    entry.parts = [...body.querySelectorAll("[data-bottom-sheet-part]")].map((part) => part.getAttribute("data-bottom-sheet-part") ?? "");
+    for (const box of [body, ...body.querySelectorAll("div")]) {
+      entry.boxClip = Math.max(entry.boxClip, box.scrollHeight - box.clientHeight, box.scrollWidth - box.clientWidth);
+    }
+    const mark = sheet.lastElementChild!.getBoundingClientRect();
+    const lowest = Math.max(...[...body.children].map((child) => child.getBoundingClientRect().bottom));
+    entry.clearOfMark = mark.top - lowest;
+    const top = body.querySelector('[data-bottom-sheet-part="top"]');
+    if (top) {
+      const view = top.querySelector("svg")!.viewBox.baseVal;
+      const box = top.getBoundingClientRect();
+      entry.topViewSqueeze = (box.width * view.height) / view.width - box.height;
+    }
+    entry.tables = [...body.querySelectorAll("table")].map((table) => ({
+      rows: table.querySelectorAll("tbody tr").length,
+      across: table.getBoundingClientRect().width - table.parentElement!.getBoundingClientRect().width,
+    }));
+    entry.smallestType = Math.min(
+      ...[...body.querySelectorAll("p, td, th")].map((el) => Number.parseFloat(getComputedStyle(el).fontSize)),
+    );
+    return entry;
+  });
+}
+
+test.describe("Summary — the BOTTOM CONTOURS page fits its sheet (Phase 17, D-29)", () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissChrome(page);
+  });
+
+  for (const fit of BOTTOM_FIT_BOARDS) {
+    for (const system of SYSTEMS) {
+      test(`${fit.name}: on a computer's print, at every phone print width and on both papers (${system})`, async ({
+        page,
+      }, testInfo) => {
+        test.skip(testInfo.project.name !== "desktop", "measures layout at print sizes; one engine is enough");
+        test.slow(); // nine layouts of a four-sheet form, then two PDFs
+
+        const board = boardWithBottom(fit.preset, fit.picks);
+        const layout = bottomSheetLayout(board.resolved, board.board, system, board.frontPair);
+        const rows = bottomDataRows(board.resolved, board.board).length;
+        const markColumns = bottomLayoutMarks(board.resolved, board.board).columns.length;
+        // Non-vacuity: the board is the case its name says, by the rule the order form itself asks.
+        expect(layout.tablesOnOwnSheet, `${fit.name}: the fit rule's answer`).toBe(fit.tablesOnOwnSheet);
+        expect(rows, `${fit.name}: rows to print`).toBeGreaterThan(10);
+        const sheetCount = 2 + layout.sheets;
+
+        await selectSystem(page, system);
+        await openOnBoard(page, board);
+        await page.goto("/design/summary");
+        await expect(page.locator("[data-bottom-sheet]")).toBeVisible({ timeout: 60_000 });
+        await expect(page.locator("[data-order-form-sheet]")).toHaveCount(sheetCount);
+
+        const runs: { label: string; touch: boolean; sheets: BottomSheetMeasurement[] }[] = [];
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await page.emulateMedia({ media: "print" });
+        runs.push({ label: `computer print (${system})`, touch: false, sheets: await page.evaluate(measureBottomSheets) });
+        await page.emulateMedia({ media: "screen" });
+
+        await forceTouchSheet(page);
+        for (const width of FIT_WIDTHS) {
+          await page.setViewportSize({ width, height: 1400 });
+          await page.emulateMedia({ media: "print" });
+          runs.push({ label: `touch ${width} (${system})`, touch: true, sheets: await page.evaluate(measureBottomSheets) });
+          await page.emulateMedia({ media: "screen" });
+        }
+
+        // Every run is reported first, so a failing sweep shows every width; only then asserted.
+        for (const run of runs) {
+          const line =
+            `[17-15] ${fit.preset} ${run.label}: ` +
+            run.sheets
+              .filter((sheet) => sheet.kind !== null)
+              .map(
+                (sheet) =>
+                  `${sheet.kind} ${sheet.width.toFixed(0)}x${sheet.height.toFixed(0)} clear of mark ${sheet.clearOfMark.toFixed(1)}, ` +
+                  `sheet clip ${sheet.sheetClip}, box clip ${sheet.boxClip}, picture squeeze ${sheet.topViewSqueeze.toFixed(1)}, ` +
+                  `smallest type ${sheet.smallestType.toFixed(2)}px, tables ${JSON.stringify(sheet.tables.map((t) => t.rows))}`,
+              )
+              .join(" | ");
+          console.log(line);
+          await testInfo.attach(run.label, { body: line, contentType: "text/plain" });
+        }
+
+        for (const run of runs) {
+          expect(run.sheets, `${run.label}: sheets`).toHaveLength(sheetCount);
+          for (const [index, sheet] of run.sheets.entries()) {
+            expect(sheet.sheetClip, `${run.label}: sheet ${index + 1} clips its content`).toBeLessThanOrEqual(0.5);
+            if (run.touch) {
+              // The phone-sheet path really is in effect: the sheet is the paper's own shape.
+              expect(Math.abs(sheet.height / sheet.width - EXPECTED_TOUCH_RATIO), `${run.label}: sheet ${index + 1} ratio`).toBeLessThan(0.001);
+            }
+          }
+          const bottomPage = run.sheets[2];
+          expect(bottomPage.kind, `${run.label}: the third sheet is the BOTTOM CONTOURS page`).toBe("page");
+          expect(bottomPage.parts, `${run.label}: the page's parts, top to bottom`).toEqual(
+            fit.tablesOnOwnSheet ? ["top", "sections", "notes"] : ["top", "sections", "tables", "notes"],
+          );
+          expect(bottomPage.topViewSqueeze, `${run.label}: the bottom's picture is drawn at its full size`).toBeLessThanOrEqual(0.5);
+
+          const withTables = fit.tablesOnOwnSheet ? run.sheets[3] : bottomPage;
+          if (fit.tablesOnOwnSheet) {
+            expect(withTables.kind, `${run.label}: the fourth sheet carries the tables`).toBe("tables");
+            // DATA's notes on reading the tables follow them only where the rule found room (`layout.tableNotes`).
+            expect(withTables.parts, `${run.label}: the tables' sheet`).toEqual(
+              layout.tableNotes.length > 0 ? ["tables", "table-notes"] : ["tables"],
+            );
+          }
+          expect(
+            withTables.tables.map((table) => table.rows),
+            `${run.label}: both tables, every row`,
+          ).toEqual(markColumns > 0 ? [rows, rows] : [rows]);
+
+          for (const sheet of run.sheets.filter((s) => s.kind !== null)) {
+            expect(sheet.boxClip, `${run.label}: a box on the ${sheet.kind} sheet hides part of what it holds`).toBeLessThanOrEqual(0.5);
+            expect(sheet.clearOfMark, `${run.label}: the ${sheet.kind} sheet's content runs into the page mark`).toBeGreaterThanOrEqual(-0.5);
+            for (const table of sheet.tables) {
+              expect(table.across, `${run.label}: a table is wider than its box`).toBeLessThanOrEqual(0.5);
+            }
+          }
+        }
+
+        // Both papers: as many pages as sheets, each at true size — nothing pushed onto a blank extra page.
+        await page.locator("[data-order-form-root]").evaluate((el) => el.removeAttribute("data-print-touch"));
+        await page.setViewportSize({ width: 1280, height: 800 });
+        // The sweep above left the page pinned to "screen"; a PDF made that way is a picture of the screen, not the
+        // print. Hand the choice back so `page.pdf()` prints as a printer does.
+        await page.emulateMedia({ media: null });
+        for (const format of ["Letter", "A4"] as const) {
+          const pdfBytes = await page.pdf({ format, printBackground: false });
+          const geometries = extractPageGeometries(pdfBytes);
+          expect(geometries, `${format} (${system}): one printed page a sheet`).toHaveLength(sheetCount);
+          geometries.forEach((geometry, i) => assertPageIsCorrect(geometry, `${format} (${system}) page ${i + 1}`));
+        }
+      });
+    }
   }
 });

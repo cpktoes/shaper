@@ -770,6 +770,41 @@
     --summary-font-label: calc(1.9 * var(--order-form-ref-unit));
   }
 
+  /* The BOTTOM CONTOURS page on a phone sheet (Phase 17, D-29) — the same repair as page 2's rule
+     above, for the same two reasons. A phone's sheet is the paper's own shape, 8.5 by 11, which is
+     about 4% shorter for its width than the sheet a computer prints; and below the design width the
+     12px floors on the form's type stop it shrinking with the page, while the page's drawings, which
+     are sized by the sheet's width, go on shrinking. Left alone, a narrow phone sheet's tables would
+     push the bottom's own picture smaller to make room. So on a phone sheet this page's type follows
+     the sheet's width with no floor, at 0.92 of the form's own scale.
+
+     The second term is page 2's own, and so is its design width — the same paper figures, written
+     the same way, so no new one is introduced here (components/summary/order-form-print.test.ts
+     fails if the two expressions ever differ). A box's hairline rules and its few dots of padding
+     are fixed sizes that do not shrink with the sheet, so on a narrower sheet they take a larger
+     share of the page; the type gives that share back, 0.003 of a dot for every dot the sheet is
+     narrower than the design width. Measured on this page's fullest one-sheet board at 560, 618,
+     680, 733 and 900 dots, the page keeps its spare room at every width.
+
+     On a computer's sheet and on screen this page uses the order form's own scale, untouched: it is
+     a dense page, like the front, so it restates nothing. The fit rule in
+     components/summary/bottom-sheet-fit.ts counts this page's parts at these sizes, and
+     e2e/summary-planing.spec.ts measures the fullest bottom on every phone width the other pages
+     are swept at. */
+  [data-order-form-root][data-print-touch] .order-form-sheet-bottom {
+    --order-form-bottom-unit: calc(0.92cqw - 0.003 * max(0px, min(8.5in, 8.27in) - 16mm - 100cqw));
+    --order-form-caption: calc(1.636 * var(--order-form-bottom-unit));
+    --order-form-micro: calc(1.636 * var(--order-form-bottom-unit));
+    --order-form-value: calc(1.8 * var(--order-form-bottom-unit));
+    --order-form-row: calc(1.7 * var(--order-form-bottom-unit));
+    --order-form-group: calc(1.636 * var(--order-form-bottom-unit));
+
+    --summary-font-callout: calc(1.8 * var(--order-form-bottom-unit));
+    --summary-font-group: calc(1.636 * var(--order-form-bottom-unit));
+    --summary-font-row: calc(1.7 * var(--order-form-bottom-unit));
+    --summary-font-label: calc(1.636 * var(--order-form-bottom-unit));
+  }
+
   /* Each of page 2's two table boxes — the rail row and the Fin Placement box — is never shorter
      than what it holds, so the page's spare room goes where the content actually is (quick
      260928-vpi, Phase 13 item 8b). On a computer print both floors sit below the boxes' own flex
