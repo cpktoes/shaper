@@ -30,6 +30,10 @@ export function guideView(
   for (const card of words) {
     if (!build.has(card.id)) throw new Error(`the GUIDE card ${card.id} has words but nothing worked out to draw`);
   }
+  const named = new Set(groups.map((group) => group.name));
+  for (const card of words) {
+    if (!named.has(card.group)) throw new Error(`the GUIDE card ${card.id} is in the group ${card.group}, which the page does not have`);
+  }
   return groups.map((group) => ({
     key: group.name,
     name: group.name,
