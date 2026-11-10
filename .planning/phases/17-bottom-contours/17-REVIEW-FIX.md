@@ -1,8 +1,8 @@
 ---
 phase: 17-bottom-contours
-fixed_at: 2026-11-10T21:13:21Z
+fixed_at: 2026-11-10T22:52:50Z
 review_path: .planning/phases/17-bottom-contours/17-REVIEW.md
-iteration: 2
+iteration: 3
 findings_in_scope: 4
 fixed: 3
 skipped: 1
@@ -11,9 +11,9 @@ status: partial
 
 # Phase 17: Code Review Fix Report
 
-**Fixed at:** 2026-11-10T20:16:17Z (CR-01, WR-03) and 2026-11-10T21:13:21Z (WR-02, after the founder's ruling)
+**Fixed at:** 2026-11-10T20:16:17Z (CR-01, WR-03) and 2026-11-10T21:13:21Z (WR-02, after the founder's ruling); 2026-11-10T22:52:50Z (D-44, the founder's ruling at his look — a change he asked for, not a review finding)
 **Source review:** .planning/phases/17-bottom-contours/17-REVIEW.md
-**Iteration:** 2
+**Iteration:** 3
 
 **Summary:**
 - Findings in scope: 4 (CR-01, WR-01, WR-02, WR-03)
@@ -24,6 +24,11 @@ status: partial
 The orchestrator ruled which findings to fix before the first run: CR-01 and WR-03 fixed, WR-01 and WR-02 left for the
 founder, the three Info findings not touched. The founder then ruled on WR-02 (2026-11-10, D-43 in 17-CONTEXT.md) and
 the same fixer was resumed for it — the second iteration.
+
+A third iteration followed the founder's look at the real page the same day. He asked for an Angle on the two angled
+channel runs and for With-the-rail channels to fan subtly (D-44 in 17-CONTEXT.md). That is a change he asked for, not
+a review finding, so it is recorded in its own section below and the counts above are unchanged: four findings in
+scope, three fixed, WR-01 still waiting for his word.
 
 ## Fixed Issues
 
@@ -154,6 +159,10 @@ to be updated, and no golden fixture moved.
 
 ### WR-02: "With the rail" squeezed every channel to nothing at the pod — now the set narrows to an inch, runs straight, and the outer channels run out through the rail
 
+*The shape of these walls was changed again the same day by the founder's ruling D-44 — straight lines that fan, at an
+Angle the shaper can set. The inch they never narrow under and the rule that they never meet at a point both stand.
+See "The founder's ruling at his look" below.*
+
 **Status:** fixed: requires human verification (a change to how the board is cut, on the founder's ruling — the tests prove the rule, the look and the two numbers in it are his)
 **Files modified:** `lib/geometry/bottom.ts`
 **Tests changed and added in:** `lib/geometry/bottom.test.ts`
@@ -229,6 +238,123 @@ describes how the set narrows.
 **Worth a human look:** the look of the tail on the real page (pictures sent to the founder 2026-11-10); whether an
 inch is the right narrowest channel and 1/2" the right ease; and WR-01, which this makes more visible.
 
+## The founder's ruling at his look — D-44 (not a review finding)
+
+### D-44: Channels laid With the rail or Toe-in get an Angle slider, and With-the-rail walls are now straight lines that fan
+
+**Asked for by:** the founder, at his look at the real page, 2026-11-10 — *"Along the rail is subtle, like the middle board
+in this image."* and *"The toe in and splayed out (along rail) needs an angle adjustment. Set default by the rail and
+the fins toe in, but overiderable."* Recorded as D-44 in `17-CONTEXT.md`, with every number that is ours for him to
+change marked there.
+**Status:** built: requires human verification — it changes the board's maths and adds a control, and only the founder's
+look at the real page can say it reads right. No picture of the page was taken by this run.
+**Commit:** 2f942bd4
+**Files modified:** `lib/geometry/bottom.ts`, `lib/geometry/bottom.test.ts`, `lib/geometry/bottom-print.ts`,
+`lib/geometry/bottom-print.test.ts`, `lib/models/design-snapshot.ts`, `lib/models/design-snapshot.test.ts`,
+`components/bottom/bottom-controls.tsx`, `components/bottom/bottom-copy.ts`, `components/bottom/bottom-copy.test.ts`,
+`components/design/design-store.tsx`, `components/design/design-store.test.ts`, `lib/units-isolation.test.ts`,
+`e2e/bottom-panel.spec.ts`
+
+**What a shaper sees:**
+
+- Pick Run: With the rail or Toe-in and an **Angle** row appears directly under Run and Longest — a slider from 0° to
+  15° in half degrees. Until it is moved it rests on the run's own angle and says so: `9.1° · the rail's own` or
+  `3.2° · the fins' toe-in` (fins with no toe-in: `0.0° · these fins have no toe-in`). Moved, it reads
+  `7.5° · set by hand · the rail's own is 9.1°`, and a small **Reset** puts the run's own angle back. Parallel has no
+  Angle row.
+- One slow drag is one Undo step, Reset is one Undo step, and picking a different Run starts from that run's own angle.
+- The Run menu's three options are plain names now — Parallel, With the rail, Toe-in — because the angle has its own row.
+- The Overview Sheet's channels line prints the angle in use for both angled runs: `With the rail · 9.1°`,
+  `Toe-in · 3.2°`. Degrees read the same in Imperial and Metric.
+
+**What changes on the board:**
+
+- **With the rail:** every wall is a straight line and the set fans gently. The wall beside the stringer stays where it
+  is, the last wall is laid at the Angle through its place at Deepest At, and the walls between share the turn evenly —
+  so the channels are all one width at any station, wider toward the nose and narrower toward the tail. They still
+  never narrow under an inch and never meet at a point (D-43), and the outer ones still run out through the rail. At 0°
+  the set is a Parallel set exactly.
+- **The rail's own angle** is the straight line of the rail from the channels' Deepest At to their Start.
+- **Toe-in** keeps its shape and is turned at the Angle in use — the fins' own toe-in until one is set by hand.
+- **Parallel** is untouched, and so is Toe-in on its own angle: both still match the sketch's figures number for number.
+
+**The starting numbers, measured through the app's own maths** (six channels, each board's starting numbers, With the
+rail on the rail's own angle; widths are one channel's, in inches):
+
+| Board | The rail's own | Start | Width at Start | Width at the front fins (Deepest At) | Width at the tail |
+|---|---|---|---|---|---|
+| Shortboard | 9.1° (9.0678) | 23" | 2.388 | 1.750 | 1.221 |
+| Fish | 9.5° (9.5430) | 19.5" | 2.422 | 1.750 | 1.344 |
+| Mid-length | 10.4° (10.3528) | 24" | 2.481 | 1.750 | 1.135 |
+| Longboard | 11.2° (11.2371) | 17.5" | 2.545 | 1.750 | 1.392 |
+
+The rail's own angle is the same with four, six or eight channels. Four channels run 3.458 / 2.500 / 1.622 on the
+Shortboard, 3.509 / 2.500 / 1.870 on the Fish, 3.596 / 2.500 / 1.409 on the Mid-length and 3.692 / 2.500 / 1.954 on the
+Longboard; eight run 1.729 / 1.250 / 1.004, 1.754 / 1.250 / 1.034, 1.798 / 1.250 / 1.000 and 1.846 / 1.250 / 1.051 —
+eight start so close to an inch that behind Deepest At they are held by the inch rule rather than by the fan. On the
+Shortboard and the Mid-length the last wall runs out through the rail before the tail; on the Fish and the Longboard it
+stays inside it. Toe-in's own angle is the front fins' toe-in: 3.2° on the Shortboard and the Mid-length, 2.0° on the
+Fish, 0.0° on the Longboard's single fin.
+
+What six channels take from the litres (the flat board less the cut one):
+
+| Board | Parallel | With the rail, its own | With the rail, 15° | Toe-in, its own | Toe-in, 15° |
+|---|---|---|---|---|---|
+| Shortboard (29.61 L flat) | 0.384 | 0.381 | 0.376 | 0.365 | 0.297 |
+| Fish (34.65 L) | 0.304 | 0.295 | 0.289 | 0.304 | 0.285 |
+| Mid-length (49.40 L) | 0.391 | 0.386 | 0.379 | 0.376 | 0.308 |
+| Longboard (73.61 L) | 0.251 | 0.258 | 0.254 | 0.251 | 0.222 |
+
+**Saved boards:** the angle is one new number saved with the channels, or none — meaning the run's own. A board saved
+before today has no such number and opens exactly as it was saved, on the run's own angle, keeping every other
+channel number. A stored angle that is not a number, or is outside 0°–15°, reads as none and takes nothing else with
+it. A board with nothing cut still saves no bottom. No database change.
+
+**Decided here rather than in the brief — each is ours for the founder to change** (the same list is in D-44):
+
+- D-43's inch and its half-inch easing are kept, so a set that reaches an inch stops fanning there and its walls bend
+  slightly at that point; ahead of Deepest At every wall is exactly straight.
+- A stored angle outside 0°–15° reads as none in a saved board, rather than being pulled to the nearest end; the maths
+  itself still holds any angle it is handed inside 0°–15°.
+- The slider's end hints read `0.0°` and `15.0°`; Reset is drawn only when an angle has been set by hand, in the
+  far-end hint's place; its spoken name is "Reset Channel Angle" and the slider's is "Channel Angle".
+- On fins with no toe-in the printed line reads `Toe-in · 0.0°`, and an angle set by hand reads
+  `5.0° · set by hand · these fins have no toe-in`.
+- Changing the number of channels keeps an angle set by hand; only changing the Run puts it back to the run's own.
+- The run's own angle is rarely a round half degree, so the first press of the slider lands on the nearest half degree.
+
+**Every place that reads a channel's run — checked.** The walls are laid in one place only, `channelEdges` in
+`lib/geometry/bottom.ts`. Everything else reads through the shared functions and needed no change of its own: in
+`lib/geometry/` — `bottom.ts` (the marks, the foam off, the drawn walls, the layout, the readout, the litres' sampler),
+`bottom-draw.ts`, `bottom-print.ts`, `bottom-tile-art.ts` (count and depth only), `design.ts` (hands the front fins'
+toe-in to the bottom) and `volume.ts` (the litres, the 3D board and the CNC files all come from the one sampler); in
+`lib/models/` — `design-snapshot.ts`; in `components/bottom/` — `bottom-controls.tsx`, `bottom-copy.ts`,
+`bottom-data.tsx`, `bottom-editor.tsx`, `bottom-guide.tsx`, `bottom-cartoon.tsx`, `bottom-section.tsx`,
+`bottom-top-view.tsx`, `section-station.ts`; `components/design/design-store.tsx` and `screen-tiles.tsx`;
+`components/summary/bottom-contours-sheet.tsx`, `bottom-sheet-fit.ts` and `order-form.tsx`;
+`components/template/build-overview-pdf.ts` and `export-preview-dialog.tsx`. (`components/fins/fin-viewer.tsx` reads
+the fins' toe-in only. The other files with a "run" in them — the wing files — mean a wing's Run, not a channel's.)
+
+**GUIDE:** no sentence is made untrue, and none was reworded. The Channels card's How to shape note — "Rule every wall
+off the stringer at each 6" station from DATA's marks and join the marks with a straightedge. … keep every wall
+straight along the board." (`components/bottom/bottom-guide-words.ts`, `17-GUIDE-WORDS.md`) — is truer now than
+before, since With-the-rail walls are straight lines. The one caveat, already there under D-43: where a set has
+narrowed to an inch behind Deepest At, a wall bends slightly at that point.
+
+**Tests:** With the rail's tests are rewritten from the rule itself — straight walls, the even fan, 0° is a Parallel set,
+never under an inch, nothing not-a-number, at 0°, the run's own and 15° on five boards with 4, 6 and 8 channels on and
+off the stringer; the litres, the 3D board and the CNC sections at 15° on the four stock boards. The sketch's golden
+file (`lib/geometry/__fixtures__/bottom-golden.json`) is **not edited**: its With-the-rail walls are no longer compared
+(a comment names D-44), and its Parallel and Toe-in cases still are. New tests cover the Angle row's words, the printed
+line, saved boards with and without the number, and the store's Run change and Reset. The six test files this change touches run alone, with the test runner's ordinary five-second allowance: 6 files, 1,483 tests, all passed.
+
+**Not done:**
+
+- The browser test added for the Angle row (`e2e/bottom-panel.spec.ts`) **has not been run** — no browser test can run
+  in this checkout. Neither have the two browser tests changed for the Run menu's plain names.
+- `17-UI-SPEC.md` still shows the Run menu's old option words (`Toe-in · 3.2°`, `Toe-in (no toe)`). It was not in this
+  change's list of records to edit; D-44 says it is superseded.
+
 ## Skipped Issues
 
 ### WR-01: A channel cut deeper than the foam ends the whole board at that channel's wall
@@ -271,6 +397,25 @@ Each check was run on its own, after the second commit (1582dd7a), and again aft
 | `npm run lint` | 0 errors, the same 1 known warning |
 | `npx vitest run --testTimeout=120000` (the whole suite) | 209 files passed of 209; 12,083 tests passed, 2 skipped, 0 failed; exit 0 |
 
+| After 2f942bd4 (D-44) | Result |
+|---|---|
+| `npx tsc --noEmit` | clean, exit 0 |
+| `npm run lint` | 0 errors, the same 1 known warning |
+| `npx vitest run --testTimeout=120000` (the whole suite) | 209 files passed of 209; 12,115 tests passed, 2 skipped, 0 failed; exit 0; 521 s |
+
+Three earlier whole-suite runs for D-44 are recorded plainly. The first had one real failure (a test that counts the
+numbers BOTTOM's screen rounds by hand — the fins' toe-in is now rounded in the one shared place, so the count fell
+from three to two; the test was brought up to date) and three failures in files this change does not touch — two
+time-outs and one speed check (`lib/models/rack-stand-in.test.ts`, `lib/geometry/shaping-bay.test.ts`,
+`lib/geometry/blank-fit.test.ts`) — caused by other heavy commands running beside the suite; all three passed in
+every later run. The second, with nothing beside it, had one failure: this change's
+own new sweep ran past its two minutes under the suite's load. That sweep, and one more of this change's that took
+7 s alone, now gather what is wrong and hold it up once a layout instead of asking the test runner about half a
+million readings one by one (25 s and 7 s alone before, 2 s and 1 s after; a deliberately wrong reading was fed to a
+throwaway copy of each to prove it still fails). The third passed — 209 files, 12,115 tests passed, 2 skipped, exit
+0 — before the second of those two sweeps was lightened. The run in the table is the fourth, on the files exactly as
+committed, with nothing else running.
+
 The two skipped tests are the long-standing sample-PDF writers that only run when asked to write a file
 (`components/template/build-strip-pdf.test.ts`, `components/template/build-template-pdf.test.ts`). No sweep timed
 out.
@@ -311,8 +456,15 @@ believed to fail. The orchestrator built the branch for production with stand-in
 Shortboard and the Mid-length with six channels in all three runs on the real page; the full browser suite runs at
 the go-live gate.
 
+**After D-44:** `e2e/bottom-panel.spec.ts` is the only browser test that names a channel run. Its Run-menu test now
+expects the three plain names and reads Toe-in's Angle row; its narrow-window test picks With the rail and no longer
+expects the name to be cut short at 820 dots (the old, longer option words were what was cut); and one new desktop
+test walks the Angle row — the rail's own to start, the slider, Reset, Undo, a Run change, and no row for Parallel.
+**None of the three has been run.** Every other browser test leaves channels on Parallel, which has no Angle row and
+whose numbers have not moved, and no baseline holds a BOTTOM picture.
+
 ---
 
-_Fixed: 2026-11-10T20:16:17Z (iteration 1), 2026-11-10T21:13:21Z (iteration 2)_
+_Fixed: 2026-11-10T20:16:17Z (iteration 1), 2026-11-10T21:13:21Z (iteration 2), 2026-11-10T22:52:50Z (iteration 3 — D-44)_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 2_
+_Iteration: 3_

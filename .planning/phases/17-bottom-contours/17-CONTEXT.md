@@ -366,6 +366,57 @@ things it found needed a ruling, none against a founder's word. Each is taken as
   were made: Parallel and Toe-in are still held to them exactly, With the rail is held to them as a relation (the
   sketch's width put through the new rule), because the sketch is the picture he was shown and the rule is his ruling
   on it. An inch and the 1/2" ease are Claude's numbers, shown to him on the real page for his look (sharpens D-10).
+  *Changed by D-44 the same day: the walls' shape — straight lines that fan at an Angle, no longer the rail's own curve. The inch, the ease, "never meet at a single point" and running out through the rail all stand.*
+- **D-44:** **Both angled channel runs get an Angle the shaper can set — the rail's own, or the fins' toe-in, until he sets one — and With-the-rail walls are straight lines that fan.**
+  At his look at the real page (2026-11-10) the founder sent a photo of three channelled boards and ruled: *"Along the
+  rail is subtle, like the middle board in this image."* and *"The toe in and splayed out (along rail) needs an angle
+  adjustment. Set default by the rail and the fins toe in, but overiderable."* In the photo the walls are straight
+  lines that fan gently, not curves that copy the outline. D-43 stands in spirit: the channels never meet at a point.
+  As built (`channelDefaultAngle`, `channelEdges`, `switchChannelRun`, `snapChannelAngle` in `lib/geometry/bottom.ts`):
+  - **One new stored number**, the channels' `angle`, in degrees — or none, which means "this run's own". A board saved
+    before the slider opens with none and loses nothing else; a board whose bottom is the opening one still saves no
+    bottom; no version change, no database change.
+  - **An Angle row** directly under Run and Longest, drawn only for With the rail and Toe-in: a slider from 0° to 15°
+    in half degrees, reading `9.1° · the rail's own` or `3.2° · the fins' toe-in` (a single fin:
+    `0.0° · these fins have no toe-in`) until it is moved, then `7.5° · set by hand · the rail's own is 9.1°` /
+    `5.0° · set by hand · the fins' toe-in is 3.2°`, with a small Reset that is there only while the angle is by hand.
+    One slow drag is one Undo; Reset is one Undo. The Run menu's three options are now plain — `Parallel`,
+    `With the rail`, `Toe-in` — the angle having moved to its own row (this replaces 17-UI-SPEC.md's `Toe-in · 3.2°`
+    and `Toe-in (no toe)` option words, which that page still shows as first built).
+  - **With the rail**: every wall is a straight line. The last wall passes through its place at Deepest At at the
+    Angle, closing toward the stringer going to the tail and opening toward the nose; the wall beside the stringer
+    stays at Off Stringer; the walls between share the turn evenly, so every channel is the same width at any one
+    station. At 0° the set is a Parallel set, number for number.
+  - **Toe-in**: unchanged in shape — every channel keeps its Width and the whole set is turned — but turned at the
+    Angle in use rather than always at the fins' toe. On a single fin it is Parallel until an angle is set by hand.
+  - **Print**: the Overview Sheet's channels line carries the angle in use for both angled runs
+    (`With the rail · 9.1°`, `Toe-in · 3.2°`; a single fin `Toe-in · 0.0°`), in degrees in both systems.
+  The numbers and rules below are OURS, shown to him on the real page for his look, and his to change:
+  - *The fan* — that the walls between the stringer's and the last share the turn evenly (the other choice: every wall
+    at the same angle, which is Toe-in's shape mirrored).
+  - *"The rail's own"* — the straight line of the rail from the channels' Deepest At to their Start (the longest
+    pair's), measured off the stringer, on the rail the wing rule reads. Laid at it the last wall is exactly as far
+    off the rail at Start as at Deepest At. With six channels on their starting numbers it is 9.1° on the Shortboard,
+    9.5° on the Fish, 10.4° on the Mid-length and 11.2° on the Longboard; it moves when Start or Deepest At moves.
+  - *0° to 15° in 0.5° steps.* The first touch of the slider takes an own angle such as 9.07° onto the half-degree
+    marks.
+  - *A different Run puts the angle back to that run's own*; a different channel count keeps an angle set by hand.
+  - *The plain Run names*, the word `Reset`, the slider's end marks `0.0°` and `15.0°`, and the by-hand line on a
+    single fin (`5.0° · set by hand · these fins have no toe-in`).
+  - *A saved angle the slider could never give* (past 15°, below 0°, not a number) *reads as none* — the run's own —
+    rather than being pulled to the nearest end; nothing else about the channels is touched.
+  - *D-43's inch and 1/2" ease are kept*, and they are the one place a With-the-rail wall is not a straight line:
+    behind Deepest At, where the fan would take a channel under an inch, the walls bend over that 1/2" into running
+    parallel, an inch apart. Ahead of Deepest At every wall is exactly straight. Eight channels on their starting
+    1 1/4" reach the inch almost at once behind Deepest At.
+  What follows from it, six channels on their starting numbers at the rail's own angle: each channel is 2.39" wide at
+  Start, 1 3/4" at the front fins and 1.22" at the tail on the Shortboard (Fish 2.42" / 1 3/4" / 1.34"; Mid-length
+  2.48" / 1 3/4" / 1.14"; Longboard 2.55" / 1 3/4" / 1.39"); the last wall runs out through the rail before the tail
+  on the Shortboard and the Mid-length and stays inside it on the Fish and the Longboard; the set takes 0.38 L on the
+  Shortboard, the same as Parallel to two places (D-43's rule took 0.37 L). The sketch's golden figures are kept as
+  they were made and never edited: Parallel and Toe-in on its own angle are still held to them exactly; With the
+  rail is no longer compared with the sketch's walls at all (its starting numbers, fit and starts still are), and is
+  proved from the rule itself instead. BOTTOM's GUIDE is not reworded (sharpens D-10, changes D-43's wall shape).
 
 ### Claude's Discretion
 - The saved field's name and the version stamp (D-24); the sidebar's and page's titles (the sketch reads "BOTTOM
