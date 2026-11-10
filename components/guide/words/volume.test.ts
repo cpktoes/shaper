@@ -16,7 +16,7 @@ const page = readGuideWordsPage();
 const volume = page.pages.find((p) => p.page === "volume")!;
 
 describe("the words page", () => {
-  it("is read as five pages and only five, with the cards and MODEL INFO notes it holds", () => {
+  it("is read as five pages and only five, with the cards and the Model info notes it holds", () => {
     expect(page.pages.map((p) => p.page)).toEqual(["template", "rocker", "rails", "volume", "fins"]);
     expect(page.pages.map((p) => p.cards.length)).toEqual([22, 14, 17, 8, 23]);
     expect(page.cards).toHaveLength(84);
@@ -32,7 +32,7 @@ describe("the words page", () => {
         expect(line, `${card.page} ${card.name}`).toBe(line.trim());
         expect(line.length, `${card.page} ${card.name}`).toBeGreaterThan(0);
         // VOLUME's lines hold no `**`, `<` or `>` at all. Elsewhere a `>` standing alone between spaces is
-        // a word, not markup: FINS' Keel note, the MODEL INFO tab's own words verbatim, says
+        // a word, not markup: FINS' Keel card's Model info note, kept word for word from the notes FINS carried, says
         // "generally > 5 1/2"". Anything that could open or close a tag still fails.
         expect(line, `${card.page} ${card.name}`).not.toMatch(card.page === "volume" ? /\*\*|<|>/ : /\*\*|<\S|\S>/);
       }
