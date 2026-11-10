@@ -41,7 +41,7 @@ export const VOLUME_GUIDE_WORDS: readonly GuideWordsCard[] = [
   }),
   card(INPUTS, "Center Thickness", {
     is: "The centre thickness for the quick estimate — the foil's one number.",
-    does: "Thickness adds litres everywhere at once: a quarter inch at the centre is about two litres on a shortboard.",
+    does: "Thickness adds litres everywhere at once: a quarter inch at the centre is about three litres on a shortboard.",
     how: "Calipers at the centre, deck to bottom, at the wide point.",
   }),
   card(INPUTS, "Board Type", {

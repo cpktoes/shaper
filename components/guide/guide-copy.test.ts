@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { guideVolumeInput } from "@/lib/geometry/__fixtures__/guide-volume-input";
 import { guideCardId } from "@/lib/geometry/guide-card";
 import { stationLabel } from "@/lib/geometry/measure-display";
-import { mm } from "@/lib/geometry/units";
+import { inchesToMm, mm } from "@/lib/geometry/units";
 import { computeVolume } from "@/lib/geometry/volume";
 import { GUIDE_COPY, guideBoardName, guideIntro, guideLines, type GuideWordsCard } from "./guide-copy";
 import { GUIDE_METRIC_SAYINGS } from "./words/metric-sayings";
@@ -74,6 +74,18 @@ describe("guideLines", () => {
     const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
     expect(GUIDE_METRIC_SAYINGS[THICKNESS][0].metric).toBe(
       `half a centimetre at the centre is about ${WORDS[Math.round(gain)]} litres on a shortboard`,
+    );
+  });
+
+  it("says a quarter inch at the centre in the Shortboard's own round litres too", () => {
+    const input = guideVolumeInput("shortboard");
+    const quick = { ...input.effectiveVolume, importTemplateDimensions: false, importRailThickness: false };
+    const gain =
+      computeVolume({ ...quick, centerThickness: mm(quick.centerThickness + inchesToMm(0.25)) }, null, null).volumeLitres -
+      computeVolume(quick, null, null).volumeLitres;
+    const WORDS = ["no", "one", "two", "three", "four", "five", "six"];
+    expect(GUIDE_METRIC_SAYINGS[THICKNESS][0].imperial).toBe(
+      `a quarter inch at the centre is about ${WORDS[Math.round(gain)]} litres on a shortboard`,
     );
   });
 });

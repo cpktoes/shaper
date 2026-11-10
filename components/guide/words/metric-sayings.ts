@@ -28,7 +28,7 @@ export const GUIDE_METRIC_SAYINGS: Readonly<Record<string, readonly GuideMetricS
   [guideCardId("volume", "Inputs", "Center Thickness")]: [
     {
       field: "does",
-      imperial: "a quarter inch at the centre is about two litres on a shortboard",
+      imperial: "a quarter inch at the centre is about three litres on a shortboard",
       // computeVolume on the Shortboard's quick estimate at its own thickness and half a centimetre more:
       // 2.57 L, said as a round figure (the test works it out again).
       metric: "half a centimetre at the centre is about three litres on a shortboard",

@@ -343,7 +343,7 @@ Tabs: ESTIMATE · GUIDE. 8 cards.
 
 **Center Thickness** · tag on the Shortboard: `2 1/4"` · caption: `dashed · 2 1/2" → 32.7 L quick estimate`  
 - is: The centre thickness for the quick estimate — the foil's one number.
-- does: Thickness adds litres everywhere at once: a quarter inch at the centre is about two litres on a shortboard.
+- does: Thickness adds litres everywhere at once: a quarter inch at the centre is about three litres on a shortboard.
 - how: Calipers at the centre, deck to bottom, at the wide point.
 
 **Board Type** · tag on the Shortboard: `Balanced`  
