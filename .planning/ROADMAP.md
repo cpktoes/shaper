@@ -398,7 +398,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R13 (locked in `phases/18-a-guide-on-every-page/18-SPEC.md` from sketch 022 as decided and the founder's rulings, 2026-11-08 to 2026-11-09)
 **Brief:** `phases/18-a-guide-on-every-page/18-SPEC.md`; the decided sketch `.planning/sketches/022-page-guides/` (its `index.html` is the five GUIDEs as they will be built); the words `18-GUIDE-WORDS.md`
 **Depends on:** Phase 16 (the pages as they stand), quick 261102-gec (the finished rail the RAILS cards draw); Phase 17's GUIDE card dress is copied, not waited for — its branch lands separately and BOTTOM adopts the shared card after
-**Plans:** 2/10 plans executed
+**Plans:** 7/10 plans executed
 
 Plans:
 **Wave 1**
@@ -408,11 +408,11 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 18-03-PLAN.md — TEMPLATE's GUIDE, 22 cards; Depth says it is for diamond and swallow tails only
-- [ ] 18-04-PLAN.md — ROCKER's GUIDE, 14 cards, last in both of ROCKER's tab rows (computer and phone)
-- [ ] 18-05-PLAN.md — RAILS' GUIDE, 17 cards, drawn on the finished rail
-- [ ] 18-06-PLAN.md — FINS' GUIDE setup by setup, 23 cards carrying the 14 Model info notes word for word; the MODEL INFO tab goes
-- [ ] 18-07-PLAN.md — how a Metric shaper reads the few figures inside the words, all five pages (D-22)
+- [x] 18-03-PLAN.md — TEMPLATE's GUIDE, 22 cards; Depth says it is for diamond and swallow tails only
+- [x] 18-04-PLAN.md — ROCKER's GUIDE, 14 cards, last in both of ROCKER's tab rows (computer and phone)
+- [x] 18-05-PLAN.md — RAILS' GUIDE, 17 cards, drawn on the finished rail
+- [x] 18-06-PLAN.md — FINS' GUIDE setup by setup, 23 cards carrying the 14 Model info notes word for word; the MODEL INFO tab goes
+- [x] 18-07-PLAN.md — how a Metric shaper reads the few figures inside the words, all five pages (D-22)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -452,4 +452,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
 | 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |
-| 18. A GUIDE on Every Page | 2/10 | In Progress|  |
+| 18. A GUIDE on Every Page | 7/10 | In Progress|  |

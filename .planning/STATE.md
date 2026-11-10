@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: Phase 18 being built, wave 1 of 5 merged (the VOLUME guide and the board name rule), wave 2 next (TEMPLATE, ROCKER, RAILS, FINS and the Metric sayings)
+stopped_at: Phase 18 being built, waves 1 and 2 of 5 merged (all five page guides and the Metric sayings, seven of ten plans), wave 3 next (the five guides proven together)
 last_updated: "2026-11-10T06:16:26.129Z"
-last_activity: 2026-11-09
-last_activity_desc: Phase 18 wave 1 merged, two of ten plans done
+last_activity: 2026-11-10
+last_activity_desc: Phase 18 wave 2 merged, seven of ten plans done
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 59
-  completed_plans: 49
-  percent: 50
+  completed_plans: 54
+  percent: 55
 current_phase: 18
 current_phase_name: A GUIDE on Every Page
 ---
@@ -37,7 +37,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Executing Phase 18
-Last activity: 2026-11-09 — Phase 18 execution started
+Last activity: 2026-11-10 — Phase 18 wave 2 merged (seven of ten plans)
 
 ## Performance Metrics
 
