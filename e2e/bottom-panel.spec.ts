@@ -6,7 +6,7 @@ import { BOTTOM_CUT_NAMES, CHANNEL_STARTING_WIDTHS, type BottomSectionKey } from
 import { designFinPlacement } from "../lib/geometry/design";
 import { frontFinToeDegrees } from "../lib/geometry/fins";
 import { formatMark } from "../lib/geometry/measure-display";
-import { showBottomSection } from "./helpers/bottom";
+import { bottomFloorScanSettled, showBottomSection } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
@@ -172,6 +172,8 @@ test.describe("BOTTOM's panel: every cut's own rows, the Teardrop's tick box and
           }
 
           if (VEES.includes(name)) veeSections.set(name, await sectionPaths(page));
+          // The floor's sentence lands a moment after the pick: it is looked for once the scan has run.
+          await bottomFloorScanSettled(page);
           if ((await card(page, section).locator("[data-bottom-floor]").count()) > 0) warned.push(name);
 
           // DATA fills its rows: some station has a cut under the straightedge.

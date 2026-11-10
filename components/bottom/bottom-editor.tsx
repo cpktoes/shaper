@@ -76,6 +76,8 @@ export function BottomEditor() {
   const flagsBoard = useDeferredValue(bottomBoard);
   const flagsSections = useDeferredValue(bottomSections);
   const floorFlags = useMemo(() => bottomFloorFlags(flagsBottom, flagsBoard, flagsSections), [flagsBottom, flagsBoard, flagsSections]);
+  // The scan has caught up once every deferred copy is the board as it is now; until then the flags are the last board's.
+  const floorScanSettled = flagsBottom === resolvedBottom && flagsBoard === bottomBoard && flagsSections === bottomSections;
 
   // Stable while the board is unchanged, so nothing but a pick redraws the panel (`BottomControls` is memoised).
   const handlePick = useCallback(
@@ -117,6 +119,7 @@ export function BottomEditor() {
             onPick={handlePick}
             onChannelCount={handleChannelCount}
             floorFlags={floorFlags}
+            floorScanSettled={floorScanSettled}
             showFinishedRail={showFinishedRail}
             onShowFinishedRail={setShowFinishedRail}
             // The row is VIEWER's, so only VIEWER narrows the cards beneath to one; DATA and GUIDE show all three.

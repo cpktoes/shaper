@@ -3,7 +3,7 @@ import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { bottomPhoneRow, bottomPhoneTab, showBottomSection, type BottomSection } from "./helpers/bottom";
+import { bottomFloorScanSettled, bottomPhoneRow, bottomPhoneTab, showBottomSection, type BottomSection } from "./helpers/bottom";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { goToScreen } from "./helpers/screens";
 
@@ -288,6 +288,8 @@ test.describe("BOTTOM on an upright phone: the drawing pinned on top, NOSE · CE
 
     const data = page.locator("[data-bottom-data]");
     await openTab(page, BOTTOM_COPY.dataTab, data);
+    // The floor notes land a moment after the last pick and lengthen the page: it is measured once they are in.
+    await bottomFloorScanSettled(page);
 
     // Each table's own box is as tall as its table — no row squeezed out of sight (17-13's fault) — and the rows are
     // on the page, the first of them in view as DATA opens.
@@ -469,6 +471,7 @@ test.describe("BOTTOM on a phone held sideways: the drawings keep their height a
       // last row.
       const data = page.locator("[data-bottom-data]");
       await openTab(page, BOTTOM_COPY.dataTab, data);
+      await bottomFloorScanSettled(page);
       await settleColumn(page);
       const dataRead = await data.evaluate((el) => ({ holds: el.scrollHeight, shows: el.clientHeight }));
       expect(dataRead.holds, `${where}: DATA is whole inside its card`).toBeLessThanOrEqual(dataRead.shows + 1);

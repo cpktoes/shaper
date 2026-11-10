@@ -133,6 +133,11 @@ interface BottomControlsProps {
   /** The finished rail from RAILS on the section (D-13): view state, off when the page opens, never saved. */
   showFinishedRail: boolean;
   onShowFinishedRail: (on: boolean) => void;
+  /** Whether the floor scan behind `floorFlags` has caught up with the board as it is now. The scan trails a pick or a
+   * drag by a moment (the editor defers it), so for that moment the sentences under the Depth rows and DATA's floor note
+   * are still the last board's. Written on the panel as `data-bottom-floor-scan`, where a browser test can wait for it
+   * before it says a warning is or is not there; nothing is drawn from it. */
+  floorScanSettled: boolean;
   /** On an upright phone, VIEWER's NOSE · CENTER · TAIL row picks the one section whose card shows beneath the pinned
    * drawing (D-27, RAILS' rule); the other two are hidden below the layout's width line and nowhere else. Left out
    * (DATA and GUIDE carry no row), all three cards show on every width. */
@@ -159,6 +164,7 @@ export const BottomControls = memo(function BottomControls({
   onPick,
   onChannelCount,
   floorFlags,
+  floorScanSettled,
   showFinishedRail,
   onShowFinishedRail,
   phoneSection,
@@ -190,7 +196,7 @@ export const BottomControls = memo(function BottomControls({
   // thumb under the finger and the sentence follows a moment after.
 
   return (
-    <div className="flex flex-col gap-5">
+    <div data-bottom-floor-scan={floorScanSettled ? "settled" : "pending"} className="flex flex-col gap-5">
       <div>
         <div className="text-lg leading-tight font-display text-surf-ink uppercase tracking-architectural font-extrabold">
           {BOTTOM_COPY.title}
