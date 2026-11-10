@@ -565,12 +565,13 @@ test.describe("the name in the band on a phone (quick 261008-raw; Phase 18 D-21)
     }
   });
 
-  test("p2. held sideways: the same on every screen, and the tap opens the popup", async ({ page }, testInfo) => {
+  test("p2. held sideways: the same room rule on every screen, and where the name is drawn the tap opens the popup", async ({ page }, testInfo) => {
     test.setTimeout(240_000);
     const size = testInfo.project.name === "iphone" ? { width: 844, height: 390 } : { width: 863, height: 360 };
     await openFirstBoardWithLongName(page);
     await page.setViewportSize(size);
 
+    let drawn = 0;
     for (const label of SCREEN_ORDER) {
       await goToScreen(page, label);
       const where = `${label} sideways ${size.width}x${size.height}`;
@@ -578,11 +579,18 @@ test.describe("the name in the band on a phone (quick 261008-raw; Phase 18 D-21)
       const m = await measureStrip(page);
       expect(Math.round(m.stripHeight), `${where}: the band's height is unchanged`).toBe(phoneStripHeight(m));
       expectRoomRule(m, where);
-      expect(m.name, `${where}: a sideways phone has the room for the name`).not.toBeNull();
-      expect(m.name!.title).toBe(STAND_IN_LONG_NAME);
+      // The room rule holds sideways too. With GUIDE on every page ROCKER's five tabs leave an iPhone
+      // held sideways about 42 dots after the last tab, so the name gives way there (D-21); every
+      // other page, and ROCKER on the wider Android, still shows it.
+      console.log(`[board-name] ${where}: room ${m.room.toFixed(1)}, name ${m.name ? "drawn" : "not drawn"}`);
+      if (label !== "ROCKER") expect(m.name, `${where}: a sideways phone has the room for the name`).not.toBeNull();
+      if (!m.name) continue;
+      drawn += 1;
+      expect(m.name.title).toBe(STAND_IN_LONG_NAME);
       await expectNameTouchBox(page, label, m.tappable);
       await expectPopupFits(page);
     }
+    expect(drawn, "the name is drawn, and its popup opened, on at least four of the five screens").toBeGreaterThanOrEqual(4);
   });
 
   test("p3. a long, emoji and right-to-left name gives way at exactly the widths Untitled does: the room is the strip's, never the name's", async ({
@@ -618,11 +626,13 @@ test.describe("the name in the band on a phone (quick 261008-raw; Phase 18 D-21)
           expect(m.name !== null, `${where}: drawn exactly where Untitled was`).toBe(was.drawn);
         }
 
-        // Today's strips all have the room, so narrow this one by hand either side of the line: the
-        // odd name and Untitled must give way at the same 50 dots.
+        // Where the narrowest phone's strip still has the room, narrow it by hand either side of the
+        // line: the odd name and Untitled must give way at the same 50 dots. ROCKER and RAILS are under
+        // the line there already now that GUIDE is on them (the loop above proved both names give way),
+        // and a strip cannot be narrowed to more room than it has.
         await resizeTo(page, PHONE_SIZES[0]);
         const before = await measureStrip(page);
-        for (const target of [49, 51]) {
+        for (const target of before.room >= 51 ? [49, 51] : []) {
           await crowdStrip(page, before.stripRight - before.room - before.stripLeft + target);
           const m = await measureStrip(page);
           expectRoomRule(m, `${label} ${called} crowded to ${target}`);
@@ -677,8 +687,8 @@ test.describe("the name in the band on a computer, at every width (quick 261008-
 });
 
 // ---------------------------------------------------------------------------------------------
-// The room rule itself, on a strip crowded by hand (18-02). No page is crowded yet — the GUIDE tabs
-// that crowd ROCKER and RAILS arrive in later plans — so this narrows ROCKER's real strip in the
+// The room rule itself, on a strip crowded by hand (18-02). ROCKER and RAILS are crowded for real on a
+// narrow phone now that GUIDE is on them (p1 and p3 above), so this narrows VOLUME's real strip in the
 // browser to put the room either side of the line, proving the hiding rule really ships in the page's
 // CSS and that Chromium and WebKit both honour it.
 // ---------------------------------------------------------------------------------------------
@@ -689,7 +699,7 @@ test.describe("the room rule on a strip crowded by hand (Phase 18 D-21)", () => 
   }, testInfo) => {
     await startPracticeRack(page);
     await page.setViewportSize(testInfo.project.name === "desktop" ? { width: 1280, height: 800 } : { width: 360, height: 780 });
-    await page.goto("/design/rocker");
+    await page.goto("/design/volume");
     await expectSlotName(page, "Untitled");
 
     const shipsRule = await page.evaluate(() => {
@@ -715,15 +725,15 @@ test.describe("the room rule on a strip crowded by hand (Phase 18 D-21)", () => 
     expect(shipsRule.length, "the page's CSS carries the name slot's container query").toBeGreaterThan(0);
 
     const before = await measureStrip(page);
-    expectRoomRule(before, `ROCKER ${testInfo.project.name} as it stands`);
-    expect(before.name, "today's ROCKER strip has the room").not.toBeNull();
+    expectRoomRule(before, `VOLUME ${testInfo.project.name} as it stands`);
+    expect(before.name, "VOLUME's two-tab strip has the room at every width").not.toBeNull();
     const lastTabFromLeft = before.stripRight - before.room - before.stripLeft;
 
     for (const target of [40, 49, 51, 60]) {
       await crowdStrip(page, lastTabFromLeft + target);
       const m = await measureStrip(page);
       expect(Math.abs(m.room - target), `crowded to ${target}: the room is what was set`).toBeLessThanOrEqual(0.5);
-      expectRoomRule(m, `ROCKER ${testInfo.project.name} crowded to ${target} dots of room`);
+      expectRoomRule(m, `VOLUME ${testInfo.project.name} crowded to ${target} dots of room`);
       expect(m.name === null, `crowded to ${target}`).toBe(target < NAME_ROOM);
     }
   });
