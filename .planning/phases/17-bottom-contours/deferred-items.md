@@ -52,8 +52,15 @@ phones.
 2. **On a crowded picture of the bottom from above, a cut's DEEPEST label is left out when it has no room** between its
    START and END labels (the screen's own label rule, `lib/geometry/bottom-draw.ts`). The printed page repeats every
    station in words under each section, so nothing is lost on paper; the screen has no such line.
-3. **DATA's tables can print a `0` in Metric** in places; the cause was not looked into. It is what DATA shows
-   on the screen too; the printed page prints DATA's rows as they are.
-
-**Left alone because** all three are the screen's or the GUIDE's own, outside 17-15's files, and this plan changes what
+**Left alone because** both are the screen's or the GUIDE's own, outside 17-15's files, and this plan changes what
 prints and nothing else.
+
+### Fixed in 17-15 after the founder's look (2026-11-10)
+
+3. **DATA's tables could print a `0"` (a `0` in Metric) for a depth that was not nothing** — FIXED. The cause: where a
+   cut thins out to a third or a half of a millimetre, the figure is over the quarter-millimetre line under which a
+   cell is the dash, yet under half a step of the tape, so it rounded to nought. The founder's ruling: *"lets say <1/16
+   if it's not actually 0."* Such a cell now reads `<1/16"` in Imperial and `<1` under a column head that already says
+   mm, on DATA and on the printed page alike — both draw the cell with one shared rule (`bottomDepthCell` in
+   `components/bottom/bottom-copy.ts`, over `formatMarkOrLessBare` in the units files). Where nothing is cut the cell
+   is still the dash.

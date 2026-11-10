@@ -38,6 +38,7 @@ key-files:
     - .planning/phases/17-bottom-contours/pictures/17-15-paper.png
     - .planning/phases/17-bottom-contours/pictures/17-15-paper-page.png
     - .planning/phases/17-bottom-contours/pictures/17-15-pictures-source.tar.gz
+    - .planning/phases/17-bottom-contours/pictures/17-15-paper-small-depth.png
   modified:
     - components/summary/order-form.tsx
     - components/summary/order-form-print.test.ts
@@ -49,6 +50,16 @@ key-files:
     - lib/units-isolation.test.ts
     - e2e/summary-planing.spec.ts
     - .planning/phases/17-bottom-contours/deferred-items.md
+    - lib/geometry/units.ts
+    - lib/geometry/units.test.ts
+    - lib/geometry/measure-display.ts
+    - lib/geometry/measure-display.test.ts
+    - components/bottom/bottom-copy.ts
+    - components/bottom/bottom-copy.test.ts
+    - components/bottom/bottom-data.tsx
+    - components/bottom/bottom-controls.tsx
+    - e2e/bottom-metric.spec.ts
+    - e2e/bottom-viewer.spec.ts
 decisions:
   - The BOTTOM CONTOURS page falls third, after the double-sided pair and before the Rail Band Instructions, which stay last
   - When the picture, the sections, the tables and the notes cannot share one sheet, the two tables move whole to a sheet of their own — never shrunk, never cut short
@@ -57,6 +68,8 @@ decisions:
   - A straightedge reading with no clear place inside a small section moves beside its own tick, and every reading is repeated in words under the picture
   - No floor-warning ink on paper — the page prints what will be cut, and the warnings stay on the screen
   - On a phone's print sheet the page's type follows the sheet's width at 0.92 of the form's own scale, measured against page 2's own design width
+  - A depth that is there never reads as a nought — under half a step of the tape it reads <1/16" (Metric <1 mm); under a quarter of a millimetre nothing is cut and the cell is still the dash (the founder, 2026-11-10)
+  - DATA on the screen and the printed page draw their depth cells with one shared function, so they cannot drift
 metrics:
   started: 2026-11-10T06:51:42Z
   reached_checkpoint: 2026-11-10T10:57:09Z
@@ -64,10 +77,11 @@ metrics:
   tasks_completed: 2 of 3 (the third is the founder's look)
   commits: 3 before this summary
   files_changed: 19 (16 of code and tests, 3 pictures and their source)
+  after_the_look: 2026-11-10T16:35:43Z — one fix on the founder's word, 14 more files of code and tests, one new picture
 actuals:
-  tokens: 44500   # chars/4 over the realized diff of code and tests (177,947 characters); pictures not counted
+  tokens: 55600   # chars/4 over the realized diff of code and tests: 177,947 characters to the checkpoint, 44,405 more for the fix after the founder's look; pictures not counted
   tasks: 2
-  commits: 4      # two task commits, the pictures, this summary
+  commits: 6      # two task commits, the pictures, this summary; then the fix and its pictures and notes
 ---
 
 # Phase 17 Plan 15: The Printed Bottom Summary
@@ -333,12 +347,14 @@ Recorded in `deferred-items.md`; none is this plan's to fix.
 - On a crowded picture from above, a cut's DEEPEST label is left out when it has no room between START and END — the
   screen's own label rule. On paper the stations line under each section carries it.
 - DATA's tables show a `0` in places in Metric. It is what DATA shows on the screen; the cause was not looked into.
+  **Fixed after the founder's look** — see "After the founder's look" below.
 - The Longboard's page 3 (three sections, three notes) leaves a wide empty band under the notes — 172 dots clear of
   the page mark — because its tables are on the next sheet.
 
 ## Deferred Issues
 
-None from this plan's own work. The pre-existing lint warning and the three items above are outside it.
+None from this plan's own work. The pre-existing lint warning and the items above are outside it (the `0` in DATA was
+fixed after the founder's look).
 
 ## Known Stubs
 
@@ -354,6 +370,127 @@ the printer from data the page already holds.
 Task 1 is marked `tdd="true"`, and there is no separate `test(...)` commit before its `feat(...)` commit: ruling 5 asks
 for one commit per task, so `04a89279` carries the tests and the code together, and the git history cannot show a red
 run. The plan itself is `type: execute`, not `type: tdd`, so no plan-level gate applies.
+
+## After the founder's look (2026-11-10)
+
+The founder looked at the pictures and the eight things put to him, and approved all but one. His words:
+
+> "4 lets say <1/16 if it's not actually 0. all else approved."
+
+Item 4 was the `0"` in the depths table: where a cut is too shallow to read at 1/16", the table printed `0"`, and DATA
+on the screen did the same. Items 1 to 3 and 5 to 8 stood as recommended. `## Founder's look: Pending` below is left as
+it was; the coordinator stamps it at the merge.
+
+### What was built
+
+**A depth that is there never reads as a nought.** Where a cut thins out to a third or a half of a millimetre, it is
+too small for a tape to read, but it is not nothing — and `0"` reads as "no cut here". Such a cell now says the cut is
+under the tape's smallest step:
+
+| The depth at that station | Imperial | Metric (the head says mm) |
+| --- | --- | --- |
+| under a quarter of a millimetre — nothing is cut | `—` | `—` |
+| from there up to half a step of the tape | `<1/16"` (up to 1/32", about 0.79 mm) | `<1` (up to 0.5 mm) |
+| half a step and up | the mark, as before (`1/16"`, `1/8"` …) | the mark, as before (`1`, `2` …) |
+
+Where a mark carries its own unit, Metric reads `<1 mm`. The dash line is unchanged, and every figure a tape can read
+prints exactly as it did.
+
+- **One rule, in the units files.** `formatInchesFractionOrLess` and `formatWholeMmOrLess` in `lib/geometry/units.ts`,
+  and over them `formatMarkOrLess` (`<1/16"` / `<1 mm`) and `formatMarkOrLessBare` (`<1/16"` / `<1`) in
+  `lib/geometry/measure-display.ts`. The switch is decided by what the plain mark would print, not by a second copy of
+  the rounding, so the two can never disagree at the boundary. `formatMarkBare` is untouched for every other caller.
+- **One cell for the screen and the paper.** `bottomDepthCell` in `components/bottom/bottom-copy.ts` draws the Deepest
+  cut and Rail lift cells for DATA (`components/bottom/bottom-data.tsx`) and for the printed page
+  (`components/summary/bottom-contours-sheet.tsx`). Each file had its own copy of the rule before; now neither does.
+
+### Where the same nought could appear, and where it could not
+
+| Place a bottom depth is read out | Could it read `0"` for a real cut? | What was done |
+| --- | --- | --- |
+| DATA's Deepest cut and Rail lift cells | Yes — 121 cells in a scan of the four stock boards (every cut on its own, three full bottoms, each channel count; both systems counted). After the fix: none | Fixed (the shared cell) |
+| The printed page's Deepest cut and Rail lift cells | Yes — the same rows | Fixed (the shared cell) |
+| The Overview Sheet's `Bottom:` lines — a cut's depth, a Spiral Vee's vee lift, the channels' depth | Only from a board file made outside the app: the sliders step a whole sixteenth or a whole millimetre | Same rule applied (`lib/geometry/bottom-print.ts`), tested with a stand-in depth |
+| The BOTTOM side panel's Depth and Vee Lift labels | Only from such a file, for the same reason | Same rule applied (`components/bottom/bottom-controls.tsx`) |
+| A section's gauge readings, on screen and on paper, and the readings repeated in words under each section | No — a gauge that would read nothing is never drawn (D-13, `gaugeReads`) | Left |
+| The phone's BOTTOM screen | No readout of its own — it shows the same DATA table and the same side panel | Covered by the rows above |
+| Stringer left | It is a thickness, not a depth | Left, as told |
+| The layout marks table (distances off the stringer) | Not on any stock board — none reads zero. In theory an Imperial mark between 0.5 and 0.79 mm off the stringer would read `0"`; that is a distance, and "on the stringer" is true to a sixteenth | Left; said here so it is known |
+| `… to 0" from the tail` in a `Bottom:` line or a stations line | That is a true zero — the tail itself | Left |
+
+### Checked
+
+| Check | Result |
+| --- | --- |
+| `npx tsc --noEmit` | clean, exit 0 |
+| `npm run lint` | 0 errors, the 1 warning that was there before (`lib/db/import-designs-action.test.ts`), exit 0 |
+| `npm test` (the whole unit suite) | 191 files, 11,799 passed, 2 skipped, 0 failed, exit 0 |
+| Browser specs on port 3315 — `summary-bottom-page`, `bottom-metric`, `bottom-viewer`, all three projects | 57 tests: 24 passed, 32 skipped (each test names the one project it is for), 1 failed on a page-load timeout, exit 1. That one (`bottom-viewer.spec.ts:189`, the Height test — not touched by this fix) re-run alone twice: 2 passed, exit 0 |
+| A flat board's order form, against the capture taken before the plan's first edit | Identical — markup, every box, and the printed words and page counts on US Letter and A4, unticked and with the Rail Band Instructions ticked |
+| The printed pages, read back from the PDFs | See below |
+
+Two of those runs were first taken while the machine was under heavy load from other sessions (load average over 40),
+and are said plainly here:
+
+- The first whole-suite run had 8 tests time out at 5 seconds, in five files this fix does not touch (`blank-fit`,
+  `surface-report`, `board-surface-render`, `rack-art`, `round-tip`). Those five files alone: 842 passed. The whole
+  suite again once the print jobs and the server had stopped: the clean run in the table.
+- The first flat-board capture, taken while the pages were being re-printed, differed in one file: the boxes of the
+  ticked form's lettering, 106 of them a font's width apart, with the markup and the printed words identical — the
+  drawing's lettering font had not finished loading when the boxes were measured. Taken again on its own: identical in
+  every file.
+
+**What the unit tests now pin** — 5 files, 370 tests in the targeted run: the new formatters in both systems; the
+boundary at half a step (0.79 mm reads `<1/16"`, 1/32" reads `1/16"`; 0.49 mm reads `<1`, 0.5 mm reads `1`); an actual
+zero still reads `0"` / `0`; float noise is nothing; the dash line unmoved at a quarter of a millimetre; a 0.7 mm cut
+reads `<1/16"` in Imperial and `1` in Metric; and the four stock boards with every section cut and 8 channels have no
+nought in a depth cell and do have less-than cells. The `Bottom:` lines are tested with a stand-in 0.4 mm depth, vee
+lift and channel depth.
+
+**What the browser tests now pin:** on the printed page, in both systems, no Deepest cut or Rail lift cell reads a bare
+nought, and the Longboard's tables sheet prints `<1/16"` and still prints the dash; on DATA, in both systems, the
+Longboard's depth cells equal the rule row for row, with a less-than cell and a dash both present.
+
+**The printed pages, read back from the PDFs with pypdf** (depth cells between the two table headings):
+
+| Printed sheet | Before | After |
+| --- | --- | --- |
+| Longboard, three opening cuts — tables sheet, US Letter | `0"` at 102" | `<1/16"` at 102"; no bare nought |
+| Shortboard, every cut + 8 channels — tables sheet, US Letter | `0"` at 30" | `<1/16"` at 30"; no bare nought |
+| Longboard, every cut + 8 channels — tables sheet, US Letter | `0"` at 48" and 102" | `<1/16"` at both; no bare nought |
+| Longboard, every cut + 8 channels — tables sheet, A4, Metric | `0` at 121.9 and 259.1 cm | `<1` at both; no bare nought |
+| Fish, every cut + 8 channels — tables sheet, US Letter | not printed before | `<1/16"` at 30"; no bare nought |
+| Shortboard, Deep Single Concave + 6 channels — US Letter and Metric | no such cell | no such cell; unchanged |
+
+Every re-printed form kept its page count, its page marks and its parts (four sheets for the two-sheet bottoms, three
+for the Shortboard's one-sheet page).
+
+### Pictures
+
+- `.planning/phases/17-bottom-contours/pictures/17-15-paper.png` (2400 × 7851) — re-made with the three sheets whose
+  tables changed: the Longboard's tables sheet in view (c), and the Shortboard's and the Longboard's worst-case tables
+  sheets in view (e). Views (a), (b), (d), (f) and (g) and the Shortboard's Metric page had no such cell and are the
+  same prints as before.
+- `.planning/phases/17-bottom-contours/pictures/17-15-paper-small-depth.png` (1800 × 1534) — new: the depths table
+  close up for the Longboard with every cut and 8 channels, on paper (a real print) beside DATA on the screen, in
+  Imperial (`<1/16"` at 48" and 102") and in Metric (`<1` at 121.9 and 259.1 cm).
+- `17-15-paper-page.png` is unchanged (its board has no such cell). `17-15-pictures-source.tar.gz` gains the scripts
+  that re-printed, read back and composed these.
+
+### Files this fix touched
+
+Beyond the plan's own list, because the rule belongs with the units and with DATA's cell:
+
+- `lib/geometry/units.ts`, `lib/geometry/units.test.ts`
+- `lib/geometry/measure-display.ts`, `lib/geometry/measure-display.test.ts`
+- `components/bottom/bottom-copy.ts`, `components/bottom/bottom-copy.test.ts`
+- `components/bottom/bottom-data.tsx`, `components/bottom/bottom-controls.tsx`
+- `e2e/bottom-metric.spec.ts`, `e2e/bottom-viewer.spec.ts`
+
+And within it: `lib/geometry/bottom-print.ts`, `lib/geometry/bottom-print.test.ts`,
+`components/summary/bottom-contours-sheet.tsx`, `e2e/summary-bottom-page.spec.ts`.
+
+No database change, no stored field, nothing a saved board holds: only how a number is shown.
 
 ## Founder's look: Pending
 
@@ -388,3 +525,12 @@ Answer "approved", or say what to change.
 - Commits `04a89279`, `f4f42e1b` and `28101cee` are on this branch (`git log`).
 - The plan's commits changed 19 files and deleted none.
 - STATE.md and ROADMAP.md were not touched.
+
+After the founder's look (2026-11-10), checked again:
+
+- The fix is commit `90cb899c` on this branch (`git log`); the pictures and this write-up follow it in a `docs(17-15)`
+  commit of their own.
+- `17-15-paper-small-depth.png` is on disk beside the re-made `17-15-paper.png`.
+- From the plan's starting point to the fix, 31 files changed and none was deleted; STATE.md, ROADMAP.md, the
+  database's schema and its migrations are not among them.
+- Nothing is listening on port 3315.
