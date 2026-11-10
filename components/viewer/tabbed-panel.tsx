@@ -210,7 +210,10 @@ export function TabbedPanel<T extends string>({
       {!bare && (
         <div
           className={cn(
-            "flex flex-none gap-1.5",
+            // With a trailing slot the row carries no gap of its own: the 6 dots between the last
+            // tab and the board's name live inside the slot (its `pl-1.5`), so they give way with
+            // the name (D-21, below). Without one the row is exactly what it always was.
+            trailing ? "flex flex-none" : "flex flex-none gap-1.5",
             // P-3: the tab strip's own top padding — only while the strip is interactive, since a
             // single read-only label (TEMPLATE/VOLUME) carries no touch box to clear. 9px of
             // padding plus the column's own 2px rim is 11px, which is where the touch box below
@@ -224,7 +227,24 @@ export function TabbedPanel<T extends string>({
               <div className="flex flex-none gap-1.5" role={interactive ? "tablist" : undefined}>
                 {tabButtons}
               </div>
-              <div className="ml-auto flex min-w-0">{trailing({ touchClearance })}</div>
+              {/*
+               * Phase 18 D-21: the founder named the tabs, so the tab words stay whole and the
+               * board's name gives way instead. This slot is a size container that takes whatever
+               * room the tabs leave, so "is there room for the name?" is asked of the room in dots
+               * on this strip — never of the window's width, the pointer or the height (none of the
+               * three screen switches), and never of how many letters the name has. Under 50 dots
+               * of room (a 44-dot name box after the 6-dot gap) the name is not drawn at all, gap
+               * included, never a stub — which is what lets ROCKER's five tabs fit a 360-dot phone.
+               * The line sits at 44 rather than D-21's "about 48" because ROCKER's measured box is
+               * 47.8 at 412 and 25.8 at 390: at 44 every measured width stays at least 3.8 dots
+               * from the line, and about 30 dots of the name still reads. A browser without
+               * container queries (Safari before 16) ignores both the container and the hiding
+               * rule, so there the slot behaves exactly as before: at the strip's right end, the
+               * name shortening with "…".
+               */}
+              <div className="@container flex min-w-0 flex-1 justify-end">
+                <div className="flex min-w-0 pl-1.5 @max-[50px]:hidden">{trailing({ touchClearance })}</div>
+              </div>
             </>
           ) : (
             tabButtons
