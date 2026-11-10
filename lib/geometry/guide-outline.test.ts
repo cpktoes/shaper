@@ -42,7 +42,11 @@ function boards(system: UnitsSystem): [string, TemplateGuideInput][] {
   ];
 }
 
-describe("TEMPLATE's 22 cards", () => {
+/** The checks that build every card on all eight fixture boards in both systems — a few hundred outlines —
+ * take a second or two alone and can pass five under a loaded machine. */
+const EVERY_BOARD = { timeout: 60_000 };
+
+describe("TEMPLATE's 22 cards", EVERY_BOARD, () => {
   it("are the words page's 22, in its order, the two Fullness and the two Depth four distinct ids", () => {
     expect(TEMPLATE_GUIDE_CARD_ORDER).toEqual(words.cards.map((card) => guideCardId("template", card.group, card.name)));
     expect(TEMPLATE_GUIDE_CARD_ORDER).toHaveLength(22);
@@ -246,7 +250,7 @@ describe("TEMPLATE's wing cards", () => {
   });
 });
 
-describe("TEMPLATE's figures in both systems", () => {
+describe("TEMPLATE's figures in both systems", EVERY_BOARD, () => {
   it("print every tag, caption and label through the page's formatters; Metric has no inch or foot mark", () => {
     const preset = BOARD_PRESETS.find((p) => p.id === "shortboard")!;
     const metric = buildTemplateGuide(shortboard, "metric");
