@@ -575,7 +575,9 @@ test.describe("the name in the band on a phone (quick 261008-raw; Phase 18 D-21)
     for (const label of SCREEN_ORDER) {
       await goToScreen(page, label);
       const where = `${label} sideways ${size.width}x${size.height}`;
-      await expect(bandName(page)).toHaveCount(1);
+      // The name's slot is in the page whether or not the name is drawn, so wait for the slot, not the name.
+      await expect(page.locator("[data-board-name-band]").first()).toBeAttached();
+      await resizeTo(page, size);
       const m = await measureStrip(page);
       expect(Math.round(m.stripHeight), `${where}: the band's height is unchanged`).toBe(phoneStripHeight(m));
       expectRoomRule(m, where);
