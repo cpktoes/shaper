@@ -902,3 +902,139 @@ describe("the Volume card's litres figure reads the same in both systems (SCRN-0
     ).toEqual([]);
   });
 });
+
+/**
+ * BOTTOM (Phase 17, plan 17-13; R13, D-26). A Metric shaper reads the bottom's depths and layout marks in whole
+ * millimetres and its stations, widths and the board's size in centimetres to one decimal — and the only way that
+ * stays true is that no file of the screen, and no file of the bottom's maths, ever works a unit out for itself.
+ *
+ * Unlike the per-file ledgers above, this one WALKS the screen's folder, so a file added to BOTTOM tomorrow is held
+ * to the same rule the day it lands, with nothing to remember to add here. `e2e/bottom-metric.spec.ts` is the other
+ * half: it reads the running page in both systems against the same rules.
+ */
+describe("BOTTOM reads every measurement through the display boundary", () => {
+  const BOTTOM_FOLDER = "components/bottom";
+  /** The bottom's maths, its drawings and its tile art — pure files that hand the screen ready-made label text. */
+  const BOTTOM_GEOMETRY_FILES = ["lib/geometry/bottom.ts", "lib/geometry/bottom-draw.ts", "lib/geometry/bottom-tile-art.ts"];
+  /** FINS' tail drawing, which since 17-13 paints the bottom's contours under the fins. */
+  const FINS_VIEWER = "components/fins/fin-viewer.tsx";
+
+  // Built from parts, for the same reason as the list above: this file must never match its own needles.
+  const BANNED_FORMATTERS: string[] = [
+    ["format", "InchesFraction"].join(""),
+    ["format", "FeetInches"].join(""),
+    ["format", "SignedInchesFraction"].join(""),
+    ["format", "Centimetres"].join(""),
+    ["format", "WholeMm"].join(""),
+  ];
+  const CONVERTERS: string[] = [["mm", "ToInches"].join(""), ["inches", "ToMm"].join(""), ["mm", "ToCentimetres"].join("")];
+  /** The three places a measure is turned into words: the display boundary, the station rule, and the page's copy. */
+  const BOUNDARIES = ["@/lib/geometry/measure-display", "@/lib/geometry/blank-reasons", "./bottom-copy"];
+
+  /** Every source file of the screen, tests left out. */
+  function bottomScreenFiles(): string[] {
+    return readdirSync(join(REPO_ROOT, BOTTOM_FOLDER))
+      .filter((name) => /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name))
+      .sort()
+      .map((name) => `${BOTTOM_FOLDER}/${name}`);
+  }
+
+  /** What a file imports from the units module, by name (`type` markers dropped), or nothing if it does not. */
+  function unitsImports(source: string): string[] {
+    const names: string[] = [];
+    for (const match of source.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+"(?:@\/lib\/geometry|\.)\/units"/g)) {
+      for (const name of match[1].split(",")) {
+        const bare = name.replace(/\btype\b/, "").trim();
+        if (bare !== "") names.push(bare);
+      }
+    }
+    return names;
+  }
+
+  it("walks the whole screen folder, so the checks below are not checking an empty list", () => {
+    const files = bottomScreenFiles();
+    for (const name of ["bottom-controls.tsx", "bottom-data.tsx", "bottom-section.tsx", "bottom-top-view.tsx", "bottom-copy.ts"]) {
+      expect(files, `${BOTTOM_FOLDER}/${name} was not found by the walk`).toContain(`${BOTTOM_FOLDER}/${name}`);
+    }
+    for (const file of [...BOTTOM_GEOMETRY_FILES, FINS_VIEWER]) {
+      expect(existsSync(join(REPO_ROOT, file)), `${file} has moved — point this guard at its new home`).toBe(true);
+    }
+  });
+
+  it("writes no inch or centimetre factor of its own", () => {
+    for (const file of [...bottomScreenFiles(), ...BOTTOM_GEOMETRY_FILES, FINS_VIEWER]) {
+      const source = readStripped(file);
+      expect(source, `${file} writes out the inch factor — every conversion belongs in lib/geometry/units.ts`).not.toMatch(/\b25\.4\b/);
+      expect(source, `${file} writes out the centimetre factor — every conversion belongs in lib/geometry/units.ts`).not.toMatch(/\b2\.54\b/);
+    }
+  });
+
+  it("names no formatter that only knows one system", () => {
+    for (const file of [...bottomScreenFiles(), ...BOTTOM_GEOMETRY_FILES]) {
+      const source = readStripped(file);
+      for (const banned of BANNED_FORMATTERS) {
+        expect(
+          source.includes(banned),
+          `${file} names ${banned} — a one-system formatter would show a Metric shaper inches (or an Imperial one ` +
+            `millimetres); use formatMark / formatDim / formatLength from measure-display.ts instead`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("no file of the screen converts a measure itself", () => {
+    for (const file of bottomScreenFiles()) {
+      const source = readStripped(file);
+      for (const converter of CONVERTERS) {
+        expect(source.includes(`${converter}(`), `${file} calls ${converter} — the screen only ever hands millimetres to a formatter`).toBe(false);
+      }
+      // From the units module the screen takes the types and the millimetre brand, and nothing that converts.
+      for (const name of unitsImports(source)) {
+        expect(["mm", "Mm", "UnitsSystem", "Degrees", "Litres"], `${file} imports ${name} from the units module`).toContain(name);
+      }
+    }
+  });
+
+  it("every file of the screen that knows the units system reads through the boundary", () => {
+    const knowing = bottomScreenFiles().filter((file) => /\b(?:useUnits|UnitsSystem)\b/.test(readStripped(file)));
+    expect(knowing.length, "expected BOTTOM's panel, drawings and DATA to know the units system").toBeGreaterThanOrEqual(5);
+    for (const file of knowing) {
+      // The GUIDE's words are the one exception, and a narrow one: its only figure is a rule of thumb the founder
+      // gave both ways in words ('6"' and "15 cm"), swapped whole and never converted — pinned by its own test.
+      if (file === `${BOTTOM_FOLDER}/bottom-guide-words.ts`) continue;
+      const source = readStripped(file);
+      expect(
+        BOUNDARIES.some((boundary) => source.includes(`from "${boundary}"`)),
+        `${file} knows which system the shaper picked but imports none of ${BOUNDARIES.join(", ")} — whatever it ` +
+          `shows for a measure is not coming from the unit rule`,
+      ).toBe(true);
+    }
+  });
+
+  it("the only numbers the screen rounds by hand are not measurements", () => {
+    // A fin's toe-in in degrees (the same in both systems), and two drawing facts written onto the page for the
+    // browser tests to read: how tall the section is drawn, and the station the cutting line stands at.
+    const allowed = [/toeDegrees\.toFixed\(1\)/, /data-height=\{[^}]*heightDrawn\.toFixed\(2\)/, /data-bottom-cut-at=\{station\.toFixed\(1\)\}/];
+    const lines = bottomScreenFiles().flatMap((file) =>
+      readStripped(file)
+        .split("\n")
+        .filter((line) => line.includes(".toFixed("))
+        .map((line) => ({ file, line: line.trim() })),
+    );
+    expect(lines.length, "expected the three known hand-rounded numbers on BOTTOM").toBe(allowed.length);
+    for (const { file, line } of lines) {
+      expect(
+        allowed.some((pattern) => pattern.test(line)),
+        `${file} rounds a number by hand: "${line}" — a measure a shaper reads must come from measure-display.ts`,
+      ).toBe(true);
+    }
+  });
+
+  it("the drawings' own label text is composed through the boundary", () => {
+    const source = readStripped("lib/geometry/bottom-draw.ts");
+    expect(source, "bottom-draw.ts no longer writes its gauge and ruler figures with the display boundary").toContain('from "./measure-display"');
+    expect(source, "bottom-draw.ts no longer writes its stations with the station rule").toContain('from "./blank-reasons"');
+    // It takes the system in, so a label can never be composed without one.
+    expect(source).toMatch(/\bsystem: UnitsSystem\b/);
+  });
+});
