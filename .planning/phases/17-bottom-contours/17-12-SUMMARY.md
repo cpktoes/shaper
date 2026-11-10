@@ -240,7 +240,9 @@ line `bottom report: N saved boards; k open…; c with a cut; m whose litres dif
 (`<id>: opens · no cut — <litres> L (same as today)`), and a last line `every saved board opens flat, with the litres
 it reads today: yes` — or `no — N to look at`. The flag never changes the check's own pass or fail.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"Approved — merge it"* He kept the WINGS heading as built (the step's size, then where it sits) and will check that one slow slider drag is one Undo step on his own phone at go-live, with the drag-speed check. Merged as 8ca00e9e.
 
 **The picture:** `.planning/phases/17-bottom-contours/pictures/17-12-wings-and-saving.png` (5400 × 5927 dots; every
 panel is the running page from this build's own test server). Its makings are in
