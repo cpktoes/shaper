@@ -11,8 +11,8 @@ import { expectReadout, importedReadout, readoutValue } from "./helpers/imported
  * unticked they come back for the quick estimate, and one Undo ticks the box again.
  *
  * FINS: `Import Designed Board` with its readout card (quick 261018-fg1), the three replaced controls hidden while it is ticked,
- * ADVANCED running nose to tail (front fins, rear fins, centre fin, Reset), and MODEL INFO wearing the
- * side panel's own headings.
+ * ADVANCED running nose to tail (front fins, rear fins, centre fin, Reset). (The old model-notes tab is gone; its notes
+ * now sit on FINS' GUIDE cards, proven by `e2e/guide-fins.spec.ts`.)
  *
  * Every helper is copied locally, as every spec in this suite does.
  */
@@ -123,8 +123,8 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------
-// FINS: `Import Designed Board` with its line, ADVANCED nose to tail, and MODEL INFO in the sidebar's
-// own heading style.
+// FINS: `Import Designed Board` with its line and ADVANCED nose to tail. (The old model-notes tab
+// is gone; its notes sit on the GUIDE cards, proven by e2e/guide-fins.spec.ts.)
 // ---------------------------------------------------------------------------------------------------
 
 /** Opens FINS' ADVANCED fold (a plain disclosure button), once React owns it. */
@@ -281,36 +281,5 @@ test.describe("FINS' ADVANCED — nose to tail", () => {
     const center = aside.getByText("Center Fin Box Position", { exact: true });
     await expect(center).toBeVisible();
     expect(await blockBorderTop(center)).toBe("0px");
-  });
-});
-
-test.describe("FINS' MODEL INFO — the side panel's own headings", () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "desktop-only look proof");
-    await dismissSignInBanner(page);
-  });
-
-  test("title at 18px, note with no heavy rule, ruled 12px block headings, bold model names", async ({ page }) => {
-    await page.goto("/design/fins");
-    const tab = page.getByRole("tab", { name: "MODEL INFO" });
-    await expect(tab).toBeVisible();
-    await expect
-      .poll(() => tab.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber"))))
-      .toBe(true);
-    await tab.click();
-
-    const title = page.getByText("Model Info", { exact: true });
-    await expect(title).toBeVisible();
-    expect(await title.evaluate((el) => getComputedStyle(el).fontSize)).toBe("18px");
-
-    const note = page.getByText("Reference note on where each model's placement guidance comes from.");
-    expect(await note.evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe("0px");
-    expect(await note.evaluate((el) => getComputedStyle(el).fontSize)).toBe("14px");
-
-    const heading = page.getByText("Convention", { exact: true });
-    expect(await heading.evaluate((el) => getComputedStyle(el).fontSize)).toBe("12px");
-    expect(await heading.evaluate((el) => getComputedStyle(el).borderBottomWidth)).toBe("1px");
-
-    await expect(page.locator("strong", { hasText: "Modern/Upright" })).toBeVisible();
   });
 });

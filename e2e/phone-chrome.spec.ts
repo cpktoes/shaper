@@ -822,7 +822,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const main = await page.locator("main").boundingBox();
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
@@ -846,7 +846,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_UPRIGHT.width);
@@ -868,7 +868,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const main = await page.locator("main").boundingBox();
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
@@ -892,7 +892,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_UPRIGHT.width);
@@ -912,7 +912,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !viewerBox) throw new Error("missing a bounding box");
@@ -930,7 +930,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(IPHONE_SIDEWAYS.width);
@@ -950,7 +950,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const topBar = await topBarBox(page);
     const viewerTab = page.getByRole("tab", { name: "VIEWER" });
     const dataTab = page.getByRole("tab", { name: "DATA" });
-    const infoTab = page.getByRole("tab", { name: "MODEL INFO" });
+    const guideTab = page.getByRole("tab", { name: "GUIDE", exact: true });
     const viewerBox = await viewerTab.boundingBox();
     const content = await contentBox(page);
     if (!topBar || !viewerBox) throw new Error("missing a bounding box");
@@ -968,7 +968,7 @@ test.describe("FINS — the slimmer phone frame and the 44px touch box across th
     const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
     await assertTabTouchBox(viewerTab, bounds);
     await assertTabTouchBox(dataTab, bounds);
-    await assertTabTouchBox(infoTab, bounds);
+    await assertTabTouchBox(guideTab, bounds);
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(scrollWidth).toBeLessThanOrEqual(ANDROID_SIDEWAYS.width);
@@ -1194,7 +1194,7 @@ const ALL_FIVE_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: 
   { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET"] },
   { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS"] },
   { path: "/design/volume", label: "VOLUME", tabs: ["ESTIMATE", "GUIDE"] },
-  { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "MODEL INFO"] },
+  { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "GUIDE"] },
 ];
 
 test.describe("All five screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {
