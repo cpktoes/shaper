@@ -94,6 +94,7 @@ import { rockerImportedReadout } from "@/lib/geometry/imported-readout";
 import { buildBlankTopView } from "@/lib/geometry/blank-top-view";
 import { buildRockerPresetSource } from "@/lib/geometry/preset-source";
 import { RockerControls, type RockerControlsSectionKey } from "./rocker-controls";
+import { RockerGuide } from "@/components/guide/rocker-guide";
 import { RockerDatasheet } from "./rocker-datasheet";
 import { RockerPlaning } from "./rocker-planing";
 import type { RockerTab } from "./rocker-live-controls";
@@ -105,6 +106,9 @@ const ROCKER_TABS: readonly PanelTab<RockerTab>[] = [
   { id: "viewer", label: "VIEWER" },
   { id: "planing", label: "PLANING" },
   { id: "datasheet", label: "DATASHEET" },
+  // Phase 18 (D-01): the GUIDE, last on the strip, in both lists — so a window crossing 820 dots with it open
+  // keeps it open.
+  { id: "guide", label: "GUIDE" },
 ];
 /** On an upright phone, a phone held sideways, or a narrow or short window, the blank seen from
  * above has no room beside the side view, so it gets its own tab, after VIEWER — the two drawings
@@ -121,6 +125,7 @@ const ROCKER_TABS_SMALL_SCREEN: readonly PanelTab<RockerTab>[] = [
   { id: "topView", label: "TOP VIEW", shortLabel: "TOP" },
   { id: "planing", label: "PLANING" },
   { id: "datasheet", label: "DATASHEET", shortLabel: "DATA" },
+  { id: "guide", label: "GUIDE" },
 ];
 
 export function RockerEditor({
@@ -313,7 +318,9 @@ export function RockerEditor({
           tabs={tabs}
           active={activeTab}
           onSelect={setRequestedTab}
-          compactOnPhone={activeTab === "datasheet" || activeTab === "planing" ? "text" : "drawing"}
+          compactOnPhone={activeTab === "datasheet" || activeTab === "planing" || activeTab === "guide" ? "text" : "drawing"}
+          // Phase 18: on a short screen the GUIDE's cards grow with their words and the drawing column scrolls.
+          growOnShortScreen={activeTab === "guide"}
           // Quick 261008-raw: the board's name at the band's right end.
           trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
         >
@@ -436,6 +443,10 @@ export function RockerEditor({
             // The PLANING tab (quick 261019-gqo, plan 02): the station-by-station planing numbers, with the
             // foam off the deck and the planer passes at every station. Every sidebar control stays live here.
             <RockerPlaning profile={sideProfile} />
+          ) : activeTab === "guide" ? (
+            // The GUIDE tab (Phase 18): what each control is, what it does and how it is shaped, every card drawn
+            // from this board. It reads the board only; every sidebar control stays live beside it.
+            <RockerGuide />
           ) : (
             <RockerDatasheet
               profile={sideProfile}

@@ -73,7 +73,7 @@ describe("liveControls (quick 261006-v20)", () => {
   });
 
   it("the FOIL heading is live whenever any of its rows is live, on every tab (D-13, P-02: the tips left it)", () => {
-    const tabs: RockerTab[] = ["viewer", "planing", "datasheet", "topView"];
+    const tabs: RockerTab[] = ["viewer", "planing", "datasheet", "topView", "guide"];
     for (const tab of tabs) {
       const live = liveControls(tab);
       expect(live.thicknessHeading, tab).toBe(live.fineTune || live.tipStyle || live.thinning);

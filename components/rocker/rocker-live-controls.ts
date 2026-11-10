@@ -30,8 +30,9 @@
  * "only make live the 3 thickness values". Changing that is one value in the DATASHEET table below.
  */
 
-/** The ROCKER panel's tabs; TOP VIEW exists only on a small screen (quick 261006-qfm, D-04). */
-export type RockerTab = "viewer" | "planing" | "datasheet" | "topView";
+/** The ROCKER panel's tabs; TOP VIEW exists only on a small screen (quick 261006-qfm, D-04). GUIDE (Phase 18)
+ * leaves every control live, like VIEWER. */
+export type RockerTab = "viewer" | "planing" | "datasheet" | "topView" | "guide";
 
 /** One flag per group of sidebar controls: true means live, false means dimmed and inert. */
 export interface RockerLiveControls {
