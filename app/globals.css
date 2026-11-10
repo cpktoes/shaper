@@ -930,6 +930,9 @@
      sets (plus the print block below, where a separate rule hides this entirely) — so it follows
      any theme or a fifth one added later with no per-theme copy. */
   --outline-ghost: color-mix(in srgb, var(--surf-ink-muted) 55%, transparent); /* 55%, solid: the founder's pick (2026-09-30) over 80% and 35% — faint, still readable in Slate */
+  /* Phase 18: a GUIDE card's one pushed setting, in muted dashes beside the board as it is. 75% of muted
+     clears 3:1 on the panel and on the board fill in all four themes (18-UI-SPEC.md Color). */
+  --outline-push-line: color-mix(in srgb, var(--surf-ink-muted) 75%, transparent);
 
   /* Callout-system tokens (sketches 001-004, see .planning/sketches/MANIFEST.md).
      Dash patterns are shared across every plan-view board viewer so a reference line always
