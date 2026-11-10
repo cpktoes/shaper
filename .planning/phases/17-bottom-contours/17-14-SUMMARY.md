@@ -13,11 +13,13 @@ provides:
   - DATA's rows back in sight on a phone (they had been squeezed down to their headings)
   - finger-sized Height buttons on a touch screen, drawn as small as ever
   - browser proof on both phone profiles — the pin, the row, the scrolling, the touch sizes, the bands and gutters — and proof that a computer's BOTTOM did not move
+  - after the founder's look — DATA on a computer shows every row of both tables and scrolls as one page, once a cut gives it its second table
+  - after the founder's look — BOTTOM's browser tests wait for the rail and stringer check before they count DATA's notes or say no warning shows
 affects:
   - components/bottom/bottom-editor.tsx (the phone's section row, the pinned card height, the short-screen rules)
-  - components/bottom/bottom-controls.tsx (only the picked section's controls are drawn on an upright phone)
+  - components/bottom/bottom-controls.tsx (only the picked section's controls are drawn on an upright phone; after the look, a mark nothing is drawn from saying whether the rail and stringer check has caught up)
   - components/bottom/bottom-section.tsx (the Height buttons' touch area, the word Height on a short screen, the height label clear of the drawing on a phone)
-  - components/bottom/bottom-data.tsx (the two tables keep their rows on a phone)
+  - components/bottom/bottom-data.tsx (the two tables keep their rows on a phone; after the look, on a computer too whenever there are two tables)
   - components/design/board-lock-scope.test.ts (the lock check learns the new row)
 tech-stack:
   added: []
@@ -33,6 +35,8 @@ key-files:
     - e2e/helpers/bottom.ts
     - .planning/phases/17-bottom-contours/pictures/17-14-phones.png
     - .planning/phases/17-bottom-contours/pictures/17-14-pictures-source.tar.gz
+    - .planning/phases/17-bottom-contours/pictures/17-14-data-computer.png
+    - .planning/phases/17-bottom-contours/pictures/17-14-data-computer-source.tar.gz
     - .planning/phases/17-bottom-contours/deferred-items.md
   modified:
     - components/bottom/bottom-editor.tsx
@@ -43,6 +47,7 @@ key-files:
     - e2e/phone-chrome.spec.ts
     - e2e/touch-sizing.spec.ts
     - e2e/bottom-panel.spec.ts
+    - e2e/bottom-viewer.spec.ts
     - e2e/bottom-saving.spec.ts
     - e2e/bottom-wings.spec.ts
     - e2e/bottom-metric.spec.ts
@@ -52,18 +57,22 @@ decisions:
   - "The row is on VIEWER only. On DATA and GUIDE all three sections' controls show beneath, because there is no row there to pick with."
   - "A tap on NOSE, CENTER or TAIL leaves the controls box scrolled where it was, exactly as RAILS does. Making it jump to the top was tried and taken back out: it is a design choice, and it is raised for the founder below."
   - "On a phone held sideways the two drawings keep 360 dots between them and the drawing's column scrolls; DATA and GUIDE grow to their full height there and scroll with the column, so nothing scrolls inside something that scrolls."
-  - "DATA's two tables keep their full height on a phone, upright or sideways, and the card scrolls instead. On a computer DATA is drawn exactly as it was — the same squeeze can happen there with a full bottom, and that is raised for the founder rather than changed, because a mouse must see nothing change in this plan."
+  - "DATA's two tables keep their full height on a phone, upright or sideways, and the card scrolls instead. As first built a computer's DATA was left exactly as it was and the same squeeze there was raised for the founder; at his look he asked for it fixed the same way (next line)."
+  - "After the look: on a computer DATA's tables keep their full height whenever there are two of them (any board with a cut), and the card scrolls as one page. A flat board's one table is left as it was, so that page is drawn dot for dot as before — giving it full height too would cut 8 dots off its last note in a window exactly 800 tall."
+  - "After the look: a board with one cut also changes on a computer. The brief hoped it would look exactly as today, but it has two tables and was squeezed the same way (each showed 186 of 459 dots), so it gets its rows back too."
+  - "After the look: six starting channels opening with the rail warning on a Shortboard is right and is kept (the founder). The computer test that expected three notes was reading the page before the warning landed; it now waits for it and expects four."
+  - "After the look: BOTTOM's side panel carries a mark, drawn nowhere, that says whether the rail and stringer check has caught up with the board. It is there so a test can wait for the check's answer — including the answer nothing is wrong, which shows nothing on the screen."
   - "The Height buttons (×1 ×2 ×4 ×8) each take a touch area 44 dots square on a touch screen, written for them: the app's shared touch box adds 5 dots all round, which makes 44 of a 34-dot icon and only 27 of a button this small. They stand 12 dots apart on a touch screen (4 on a computer) so the four areas sit side by side."
   - "The word Height is not drawn on a short screen, as it already is not on an upright phone: the four buttons need the room. A screen reader still hears the group's name."
   - "FINS' two icon buttons were left exactly as they are. Their touch areas measure 42 dots, not 44; the test pins what is true and proves a tap on each button's own centre presses that button and only that one."
   - "No file under lib/, no database file and no package changed."
 metrics:
-  duration: about 2 h 15 min on the clock (2026-11-10 03:49 to about 06:05 UTC) for Tasks 1 and 2 and the picture
+  duration: about 2 h 15 min on the clock (2026-11-10 03:49 to about 06:05 UTC) for Tasks 1 and 2 and the picture; about 50 min more after the founder's look
   completed: 2026-11-10 UTC (Tasks 1 and 2; Task 3 is the founder's look)
 actuals:
-  tokens: 21800
+  tokens: 25600
   tasks: 2
-  commits: 4
+  commits: 8
 ---
 
 # Phase 17 Plan 14: BOTTOM on phones, upright and held sideways — Summary
@@ -95,9 +104,11 @@ picture it was.
   square, and they stand a little further apart on a touch screen so the four areas do not cover one another.
 - **Every other control was already finger-sized, and is now proven so.** The seven menus are 44 dots tall on a touch
   screen, the tick rows and the tabs take 44-dot touch areas, the slider thumbs the app's touch size.
-- **A computer sees nothing change.** Every rule added is behind the width line, the touch rule or the short-screen
-  rule. The six reference pictures of the computer's screens did not move, and six pictures of BOTTOM on a computer
-  taken before and after the plan are the same files byte for byte.
+- **A computer sees one thing change, and that one after your look.** As first built every rule added was behind the
+  width line, the touch rule or the short-screen rule, and six pictures of BOTTOM on a computer taken before and after
+  were the same files byte for byte. After your look DATA on a computer shows every row of both tables and scrolls as
+  one page (see What changed after the founder's look). The six reference pictures of the computer's screens did not
+  move, before or after.
 - **Nothing in the database changed.** No migration, nothing to run on production.
 
 ## Tasks
@@ -106,7 +117,10 @@ picture it was.
 | ---- | ---- | ------ | ----- |
 | 1 | BOTTOM on an upright phone: the drawing pinned on top, NOSE · CENTER · TAIL, one section's controls beneath | `94160477` | `components/bottom/bottom-editor.tsx`, `bottom-controls.tsx`, `bottom-section.tsx`, `bottom-data.tsx`, `components/design/board-lock-scope.test.ts`, `e2e/phone-bottom.spec.ts`, `e2e/helpers/bottom.ts`, five older browser tests |
 | 2 | BOTTOM held sideways keeps its drawings readable and scrolls the column; every control finger-sized on a touch screen | `60cf75d3` | `components/bottom/bottom-editor.tsx`, `bottom-section.tsx`, `e2e/phone-bottom.spec.ts`, `e2e/phone-chrome.spec.ts`, `e2e/touch-sizing.spec.ts` |
-| 3 | The founder's look (checkpoint) — the picture and this summary | `81366d50`, and this summary's own commit | `pictures/17-14-phones.png`, `pictures/17-14-pictures-source.tar.gz`, this summary, `deferred-items.md` |
+| 3 | The founder's look (checkpoint) — the picture and this summary | `81366d50`, `8067bb9e` | `pictures/17-14-phones.png`, `pictures/17-14-pictures-source.tar.gz`, this summary, `deferred-items.md` |
+| After the look, 1 | BOTTOM's tests wait for the rail and stringer check before counting DATA's notes, and expect the channels' warning on a Shortboard | `b47bf3dc` | `components/bottom/bottom-editor.tsx`, `bottom-controls.tsx`, `e2e/helpers/bottom.ts`, `e2e/bottom-viewer.spec.ts`, `bottom-panel.spec.ts`, `phone-bottom.spec.ts` |
+| After the look, 2 | DATA on a computer shows every row of both tables and scrolls as one page | `fb000a88` | `components/bottom/bottom-data.tsx`, `e2e/bottom-viewer.spec.ts` |
+| After the look, picture | DATA on a computer, before and after | `bd7ff7d5`, and this summary's own commit | `pictures/17-14-data-computer.png`, `pictures/17-14-data-computer-source.tar.gz`, this summary, `deferred-items.md` |
 
 ## Verification
 
@@ -130,6 +144,23 @@ Every run below finished before this was written. All browser runs used port 331
 | The picture run (scratch, port 3314) | finished on both phones upright, both sideways and the touch close-ups — exit 0 |
 | Nothing under `drizzle/`, in `lib/db/schema.ts` or under `lib/` changed; no `db:*` command was run; no package added | confirmed by `git diff --stat` against the base: the fourteen files in the table above and the two pictures |
 | No fourth switch | the row and the one-section rule are the width rule; the sideways rules the short-screen rule; the touch areas the touch rule. No file under `components/bottom` reads the window |
+
+### After the founder's look
+
+Every run below finished before this was written, on the code as committed. Port 3314 again; the server was mine and
+is stopped, and the port is free.
+
+| Check | Result |
+| ----- | ------ |
+| `npx tsc --noEmit` and `npm run lint` | both exit 0 — lint's one warning was there before (`lib/db/import-designs-action.test.ts`, an unused name) |
+| DATA's five tests in `e2e/bottom-viewer.spec.ts` on the computer, alone | 5 passed, 0 failed — exit 0 (57.7 s) |
+| The new three-cut test with the fix taken back out | fails, as it should: "table 1: its box is as tall as the table (122 against 492)". Fix put back |
+| Every BOTTOM browser test, the phone test and FINS' contour test, on the computer and both phones (162 tests) | 86 passed, 76 skipped (phone tests on the computer and computer tests on the phones), 0 failed — exit 0 (13.9 min) |
+| The computer's reference pictures (`e2e/desktop-baseline.spec.ts`) | 6 passed, 0 failed — exit 0 (34.3 s); no picture changed, none updated. None of the six is of BOTTOM |
+| The phone bands and touch sizes (`e2e/phone-chrome.spec.ts`, `e2e/touch-sizing.spec.ts`) on both phones | 70 passed, 76 skipped, 0 failed — exit 0 (5.4 min) |
+| `npm test -- --testTimeout=120000` (whole unit suite, once, on the final code) | 189 files, 11,430 passed, 2 skipped — exit 0 (359 s) |
+| A flat board's DATA on a computer, pictured before and after | the same file, byte for byte |
+| Nothing under `drizzle/`, in `lib/db/schema.ts` or under `lib/` changed; no `db:*` command was run; no package added | confirmed by `git diff --stat` against the base |
 
 What the tests hold, on both phone profiles (an iPhone at 390 × 664 and a Pixel 7 at 412 × 839):
 
@@ -231,13 +262,14 @@ would also touch the 3D screen's icons.
 **16. The same DATA squeeze can happen on a computer.** At 1,280 × 800 with a Deep Single, a Spiral Vee and six
 channels, each of DATA's two tables shows 122 of its 459 dots and scrolls inside itself. It was so before this plan.
 The fix here is kept to phones because a mouse must see nothing change in this plan; extending it to a computer is one
-line, and yours to call.
+line, and yours to call. **Settled after the look:** fixed on a computer too, in `fb000a88`.
 
 **17. After scrolling down TAIL's controls, a tap on CENTER leaves the box scrolled where it was.** That is how RAILS
 behaves too. Jumping to the top was tried: the box then shows the panel's heading and INPUTS rather than the section's
 own menu, so it is not plainly better, and it was taken back out. Raised below.
 
-**18. A computer test from 17-10 fails, and did before this plan.** See Deferred Issues.
+**18. A computer test from 17-10 fails, and did before this plan.** See Deferred Issues. **Settled after the look:** the
+warning is right and the test was reading the page too soon; repaired in `b47bf3dc`.
 
 ## Deferred Issues
 
@@ -249,6 +281,9 @@ taken back out, so it is not this plan's. Either the test is stale or six channe
 the warning; that is a question about the bottom's starting numbers, not about phones. Written up in
 `.planning/phases/17-bottom-contours/deferred-items.md`.
 
+**Closed after the look (`b47bf3dc`).** The founder ruled the warning right and kept it. The test is repaired, the
+note in `deferred-items.md` is marked closed, and nothing is left deferred from this plan.
+
 ## Known Stubs
 
 None.
@@ -258,6 +293,69 @@ None.
 None. The plan changes how BOTTOM is laid out and how big its touch areas are; nothing new is saved, read or sent. The
 plan's one threat is covered as far as a test can: a control or drawing out of reach on a sideways phone (T-17-12) —
 the 360-dot floor and the column's own scroll are proven at four sideways sizes. The real phones are the founder's.
+
+## What changed after the founder's look
+
+You approved the phone work as shown (2026-11-09) and asked for two changes before it merges. Both are made, in this
+same worktree.
+
+**Your rulings on what was raised, as recorded**
+
+- Six starting channels opening with the rail warning on a Shortboard: **kept.** The warning is right; the old test
+  only passed by reading the page before the warning arrived.
+- A tap on NOSE, CENTER or TAIL leaves the controls scrolled where they were: **left as built**; you judge it on your
+  phone at go-live.
+- FINS' two icon buttons at a 42-dot touch: **left.**
+- 360 dots sideways, and the 177-dot controls box on the shortest upright iPhone: **your real phones at go-live.**
+  Nothing done.
+
+**1. The computer test that found four notes where it expected three (`b47bf3dc`).** The check that finds where a cut
+leaves the stringer or the rail under 1/4" runs a moment after a pick, so a slider never waits on it, and its sentence
+and DATA's note land when it is done — about a tenth of a second later. The old test counted the notes inside that
+tenth of a second. It now waits for the channels' warning, reads its words from the app's own sentence rather than a
+retyped one, and then counts four notes. With the Deep Single alone it first waits for the check to finish, so "three
+notes and no warning" is the check's answer and not a count taken ahead of it.
+
+To make that last wait possible the side panel now carries a mark saying whether the check has caught up with the
+board. Nothing is drawn from it and nothing on the screen changes; it exists because "the check ran and found nothing"
+otherwise looks exactly like "the check has not run yet".
+
+The same wait went in everywhere else a test counted notes, or said no warning was showing, straight after a pick: the
+flat board and the Rolled Belly Entry on DATA, the eighteen names on the panel, and the two DATA measures on a phone
+(a late note would lengthen the page being measured). The Metric test already waited and was left alone.
+
+**2. DATA on a computer (`fb000a88`).** On a computer a board with any cut has two tables on DATA, and each was
+squeezed to a strip a few rows tall that scrolled inside the card. Now both tables keep their full height and the card
+scrolls as one page down to the notes and the warnings; nothing scrolls inside something that scrolls, and the page
+itself does not move. Measured at 1,280 × 800 on the stock 6'0" Shortboard:
+
+| Board | Before — each table shows | After — each table shows | The card |
+| ----- | ------------------------- | ------------------------ | -------- |
+| Flat (one table) | 451 of 459 dots | 451 of 459 dots — not changed | 614 dots, nothing to scroll; the picture is the same file byte for byte |
+| One cut (a Deep Single) | 186 of 459 | 459 of 459 | shows 614 of 1,160 and scrolls |
+| Three cuts (Deep Single, Spiral Vee, six channels) | 122 of 459 | 459 of 459 | shows 614 of 1,288 and scrolls |
+
+A new computer test holds it for the three-cut board: both tables' boxes as tall as the tables, the card the only
+thing that scrolls down, the page still, the last layout row out of sight until scrolled to, and the last note in
+sight with the card at its end. Taken back out, the fix fails that test.
+
+**What I had to decide**
+
+- **A board with one cut does change.** The brief asked that a board with a short DATA page — flat, or one cut — look
+  exactly as today. A one-cut board is not short: it has both tables and was squeezed like the three-cut board (186 of
+  459 dots each), so it gets its rows back and its card scrolls. Only the flat board can look exactly as today, and it
+  does.
+- **The flat board is left alone on purpose.** Giving its one table full height as well would make its page 8 dots
+  taller than the card in a window exactly 800 tall, and cut the last note's bottom line. So full height is given only
+  when there is a second table. A flat board in a shorter computer window still squeezes its one table a little, as
+  it does today.
+- **No reference picture could move.** The six are TEMPLATE, ROCKER, RAILS, VOLUME, FINS and 3D; none is of BOTTOM.
+  All six passed unchanged and none was re-made.
+- **The mark on the side panel** (above) is the one thing added to the app for a test's sake.
+
+**The picture:** `.planning/phases/17-bottom-contours/pictures/17-14-data-computer.png` (2,800 × 1,110 dots; its
+sources are archived beside it as `17-14-data-computer-source.tar.gz`). Three pictures of the running page at
+1,280 × 800 with those three cuts: DATA before, DATA after, and DATA after scrolled to its end.
 
 ## Founder's look: Pending
 

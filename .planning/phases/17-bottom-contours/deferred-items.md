@@ -3,7 +3,17 @@
 Things a plan's work ran into that were not that plan's to fix. Each says what was seen, how it was proved not to be
 the plan's own doing, and what would settle it.
 
-## 1. A Shortboard with a Deep Single and six channels trips the app's own rail warning — and one computer test still expects it not to
+## 1. CLOSED — A Shortboard with a Deep Single and six channels trips the app's own rail warning — and one computer test still expects it not to
+
+**Closed by:** plan 17-14's follow-up after the founder's look, commit `b47bf3dc`, 2026-11-10 UTC.
+
+**How it was settled.** The founder ruled it the first of the two below: the warning is right and is kept. On the
+stock Shortboard six channels at their starting numbers do leave the rail under 1/4" at the stations nearest the
+tail, with or without a Deep Single, and the bottom's maths has not changed since the test was written. The test had
+only ever passed by luck of timing: the check that finds the thin rail runs a moment after a pick, and the test
+counted DATA's notes before the warning landed. It now waits for the warning, reads its words from the app's own
+sentence, and expects four notes; and every other BOTTOM test that counted notes straight after a pick waits the
+same way. What follows is the note as first written, kept for the record.
 
 **Found by:** plan 17-14 (BOTTOM on phones), 2026-11-10 UTC, while running the plan's full browser line.
 
