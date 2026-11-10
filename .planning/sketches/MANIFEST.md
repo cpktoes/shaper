@@ -154,6 +154,37 @@ proposed starting numbers into the sketch, and I think we're done here. Maybe do
 default."*), the rail ghost now off to start; and the section's one scale set so the wide point's section spans 95% of its
 box, the rail-lift value reading under the straightedge there (fifth round). Sketch 021 is done.
 
+### A GUIDE on every page (sketch 022, 2026-11-08)
+
+The founder on 021's GUIDE (2026-11-08): *"I think every page needs a guide like this. Super useful on what each parameter
+does to/for the board. Would also be nice to add a 'how to shape' note too."* Round one is ROCKER, to settle the shape of a
+control's card against a cut's: GUIDE as the page's last tab (VIEWER · PLANING · DATASHEET · GUIDE on a computer, VIEWER · TOP ·
+PLANING · DATA · GUIDE on a phone), fourteen cards in the sidebar's order under Inputs · Blank · Rocker · Foil, each named as
+the page labels the control — Center Thickness, Nose Tip · Tail Tip, Blank, Placement, Deck Skin, Customize Rocker, Nose and
+Tail Rocker, Pin tips to · Deck and · Bottom, Nose and Tail Thinning Starts, the two 12" fine-tunes, Fine tune from — with the
+board's own value beside its name. The cartoon is the page's own drawing with the one setting pushed: the open board from the
+side in its blank, then the part the control touches closer, with the setting pushed by a stated amount in muted dashes beside
+the board as it is — every dashed profile built by the app's own `designSideProfile` with that field changed (the centre +1/2",
+the board slid along its blank, a 1/2" skin, a start at 24", the blank bent +1" from the centre or `+1/2"N18"`), the number
+dimensioned the way the VIEWER reads it. Two sentences and a *How to shape* note per card, first drafts for his pen. The
+sidebar, VIEWER, TOP, PLANING and DATASHEET are pictures of today's page from the same real numbers. Round two, the same
+day (*"Round two: do the other four pages the same way"*): TEMPLATE (22 cards — the length, nose and widepoint controls, the
+five tails each drawn on the board, Tail Block, Depth, Tail Angle and Fullness, and the WINGS tab's six controls drawn with the
+first wing the button would place), RAILS (17 — Import Rocker & Foil Values, the thickness, Deck Profile, Family, Ratio,
+Symmetrical and Hard Edge, and the Advanced fold's ten, the cartoon the board from above with its three stations and the
+cross-section at one in the page's own band colours), VOLUME (8 — Import Designed Board, the three quick-estimate sliders,
+Board Type with the litres at its seven steps, and the three figures the ESTIMATE card reads) and FINS (22 — the five setups,
+the four thruster and four quad models, the center fin, the three twin templates and the four Advanced sliders, every one
+drawn on the board's own tail) — each page with its own sidebar picture and tabs, every pushed drawing through the app's own
+maths (`buildOutline`, `computeRailSectionOutput` + `finishedRail`, `computeVolume`, `computeFinPlacement`). 83 cards of first
+drafts for his pen. Round three (2026-11-09, the founder: *"Template Depth only used for Diamond and Swallow tails, say so.
+FINS guide = reorganize the guide into Fin Setups along with their model info, and combine the model info tab into this new
+guide page, we don't need both."*): the Depth card says it is a diamond's or a swallow's alone and, on any other tail, is
+tagged so and draws the board as a swallow in dashes; FINS' GUIDE runs setup by setup — a Convention card first (MODEL INFO's
+trailing-edge paragraph, drawn with its three measurements), then Single Fin, Twin, Thruster, 2+1 and Quad, each the setup's
+own card and then its models or templates, with MODEL INFO's notes verbatim on the cards they describe — and the MODEL INFO
+tab is gone (VIEWER · DATA · GUIDE). 84 cards.
+
 ## Reference Points
 
 - Traditional drafting / engineering-drawing conventions (extension lines, end ticks, value in a
@@ -186,6 +217,7 @@ box, the rail-lift value reading under the straightedge there (fifth round). Ske
 | 019 | bottom-contours | What does the BOTTOM page look like — the top view and a moving cross-section linked, DATA, the three sections' cuts in the sidebar, live litres — and how should depth read on the top view: a faint shade, contour lines, or both? | C | bottom, contours, viewer, cross-section, sidebar, data, litres, phone, units, themes |
 | 020 | bottom-channels | With depth settled as a shade and 1/16" contour lines, where do 4, 6 or 8 channels live in the BOTTOM sidebar — their own card after TAIL, inside the TAIL card, or as a seventh tail cut — and what does Off Rail measure from on a winged board? | **B — Inside Tail** (the founder, 2026-11-07, with: none to start, Parallel, the wing rule a selector on Narrowest) | bottom, channels, contours, cross-section, layout-marks, wings, sidebar, data, phone, units, themes |
 | 021 | bottom-guide | With the founder's rulings of 2026-11-07 built in — channels inside TAIL, none to start, Parallel, the wing rule a selector — how does a third GUIDE tab teach what each of the 18 cuts and the channels is and does, a cartoon and a sentence or two each, so the five vees read apart? | — (with the founder) | bottom, guide, contours, channels, wings, cartoons, tabs, sidebar, phone, units, themes |
+| 022 | page-guides | The founder on 021's GUIDE: "every page needs a guide like this." What is a control's card, against a cut's — one card per control or named choice, the board the shaper has open drawn the page's own way with that one setting pushed, two sentences and a How to shape note — on ROCKER first, then TEMPLATE, RAILS, VOLUME and FINS, and does GUIDE sit as each page's last tab, on a phone too? | — (with the founder) | guide, template, rocker, rails, volume, fins, cartoons, tabs, sidebar, phone, units, themes, blank, foil, wings |
 
 ## Decisions These Lock In
 
