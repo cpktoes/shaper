@@ -367,7 +367,9 @@ None. FINS reads the bottom and draws it; the button changes only what is drawn,
 here saves or reaches the network. The plan's two threats are covered: a Metric shaper's labels can no longer drift
 from the stored values without a test failing (T-17-18), and a switch of system is proven to write nothing (T-17-03).
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-09)
+
+The founder, on the checkpoint card with the picture: *"approved, merge it and start 17-14"* That was his third look: at the first he approved the page and asked for a contour toggle on FINS, off to start, leaving the 12 mm ("approved, let's add a contour toggle icon to FINS with default off, leave the 12 mm"); at the second he asked for a different icon ("the icon isn't great. maybe more like an oceanography contour lines for topography. the rest looks good."); the depth-chart icon and the callouts button's matching touch followed. Merged as a6623a6a.
 
 **The picture:** `.planning/phases/17-bottom-contours/pictures/17-13-fins-and-metric.png` (its sources, and the drafts
 the icon was chosen from, are archived beside it as `17-13-pictures-source.tar.gz`). Every picture on it is the running
