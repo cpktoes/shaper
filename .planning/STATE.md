@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 walk-through done 2026-11-10 (17-UAT.md: 8 passed, 2 gaps diagnosed, 1 skipped — the CNC check, superseded by the .brd export). Founder ruled both gaps fixed inside Phase 17; fix plans 17-17..17-20 written and checked (wave 1: 17-17 VOLUME words, 17-18 RAILS channel walls, 17-19 litres pin; wave 2: 17-20 the solid board). Next: /gsd-execute-phase 17 --gaps-only on his go, then go-live and his re-check of tests 5 and 6. Branch claude/bottom-uat-17-d1559c, not pushed."
-last_updated: "2026-11-11T07:30:00.000Z"
-last_activity: 2026-11-10
-last_activity_desc: The founder walked BOTTOM on the live site — 8 passed, 2 to fix (VOLUME's words; channels rounded by the finished rail), fix plans 17-17..17-20 ready
+stopped_at: "Phase 17 fix waves: 17-17 (VOLUME words), 17-18 (RAILS straight channel walls) approved at his looks and 17-19 (litres pin) merged on claude/bottom-uat-17-d1559c; wave 1 gate green (tsc, lint, 12,192 unit tests; CR-01 load timeout passes alone). 17-20 (the solid board) executing; 17-21 (his two answers: RAILS shows flat-tail channels, DATA Rail lift matches RAILS) planned, waits on 17-20. Not pushed."
+last_updated: "2026-11-11T12:00:00.000Z"
+last_activity: 2026-11-11
+last_activity_desc: Phase 17 fix wave 1 merged — VOLUME says what its litres count, RAILS draws channel walls straight up, the channel boards' litres pinned
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 75
-  completed_plans: 75
-  percent: 100
+  total_plans: 80
+  completed_plans: 78
+  percent: 98
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
