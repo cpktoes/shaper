@@ -893,9 +893,11 @@ export interface RailSectionOutput {
   segments: RailSegment[];
   bounds: { xAxisMin: Mm; yAxisMax: Mm };
   dataGroups: RailDataGroup[];
-  /** The bottom under this rail once a vee or a belly has lifted it (Phase 17, D-41) — set only by `design.ts`'s
-   * `railBandsOnTheBottom`, and only on a section whose rail the bottom lifts. Absent (every flat board, every
-   * section `computeRailSectionOutput` builds): the rail stands on a flat bottom, exactly as it always has. */
+  /** The bottom under this rail (Phase 17, D-41) — set only by `design.ts`'s `railBandsOnTheBottom`, on a section
+   * whose rail a vee or a belly lifts, or on a section no vee or belly lifts but into which a channel is cut (then
+   * `lift` is 0 and `across` flat, and only the channels are drawn into it — the founder, 2026-11-11: "Show channels
+   * too"). Absent (every board without channels whose bottom lifts no rail, every section `computeRailSectionOutput`
+   * builds): the rail stands on a flat bottom, exactly as it always has. */
   bottom?: RailSectionBottom;
 }
 
@@ -904,7 +906,9 @@ export interface RailSectionOutput {
  * of the displayed rail … the real rail shape, post bottom contouring"), in the section's own frame: x in from the
  * rail's apex (0) toward the stringer (negative), y up from the rail's own bottom at its edge. The section's bands are
  * worked out for the rail the lift leaves (`railsOnTheBottom`); this says how the planed bottom falls away under it
- * toward the stringer. Read by `lib/geometry/rail-bottom.ts`.
+ * toward the stringer. On a section no vee or belly lifts but into which a channel is cut, `lift` is 0 and `across`
+ * is flat — the planed bottom RAILS has always drawn — and `channelCut` carries the channels (the founder,
+ * 2026-11-11: "Show channels too"). Read by `lib/geometry/rail-bottom.ts`.
  */
 export interface RailSectionBottom {
   /** The rail lift at this section's station: the foam the bottom takes off at the rail. */

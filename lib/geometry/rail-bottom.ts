@@ -19,7 +19,10 @@
  * is shaped"). The vee or belly is cut before the rail is shaped, so it moves the rail's drawing (`railPointOnBottom`);
  * the channels are cut after it, so they never go through that map. They are cut into the drawn bottom and into the
  * finished rail, straight up at each wall's own place (`channelCut`): wherever a channel's floor stands higher than the
- * rail it takes the rail up to it, under the tuck's curve too, and never above the deck.
+ * rail it takes the rail up to it, under the tuck's curve too, and never above the deck. A section no vee or belly lifts
+ * shows its channels the same way (the founder, 2026-11-11: "Show channels too"): its bottom has no lift and a flat
+ * `across`, so every map here is the identity — the rail is drawn exactly where it always was — and only the channels
+ * are cut into it.
  *
  * Pure: no React, browser or database import. A section with no `bottom` is never passed here by the plot.
  */
