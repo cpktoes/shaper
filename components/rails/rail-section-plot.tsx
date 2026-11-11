@@ -612,8 +612,11 @@ export function RailSectionPlot({
   // A rail standing on a vee or a belly (Phase 17, D-41 — the founder: "the real rail shape, post bottom
   // contouring"): every point of the drawing is moved onto the planed bottom by the one map in
   // lib/geometry/rail-bottom.ts, and the bottom inboard of the last bottom mark is drawn as the bottom
-  // itself, falling away toward the stringer at the cut's own angle. With no `bottom` (every flat board)
-  // `onBottom` is the identity and the bottom is the straight connector it always was.
+  // itself, falling away toward the stringer at the cut's own angle. A section no vee or belly lifts but
+  // into which a channel is cut carries a flat bottom (the founder, 2026-11-11: "Show channels too"):
+  // `onBottom` is then the identity and only the channels are cut into the bottom line and the finished
+  // rail. With no `bottom` (a board without channels whose bottom lifts no rail) `onBottom` is the
+  // identity and the bottom is the straight connector it always was.
   const { bottom } = output;
   const onBottom = (p: Point2D): Point2D => (bottom ? railPointOnBottom(bottom, boardThickness, p) : p);
   const segmentLines = segments.map((seg) => {
