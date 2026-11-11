@@ -84,7 +84,9 @@ Tail row Rail lift, before and after, from the app's own figures (`bottomDataRow
 
 Before, DATA rounded these to the tape: 1/4", `<1/16"`, 3/16", 5/16", 1/4", 5/16", 1/4", 1/8", 1/8". No other row of these boards changed. Across the 185 captured boards, Rail lift changed on 79 rows, one row on each of 79 boards, and every one of those boards carries channels.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-11)
+
+The founder looked at both pictures and approved ("Approved"). His answers to the three questions: the section gauge's rail lift should **match DATA** (vee or belly only); DATA's note takes the suggested sentence **as written** ("Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts."); and RAILS should **draw the concave** under the channels (this replaces D-41's "a concave changes nothing on RAILS" for a tail concave with channels; band marks may move). All three are planned as a further fix plan.
 
 - `.planning/phases/17-bottom-contours/pictures/17-21-rails-flat-tail-channels.png` shows RAILS' tail section, Finished Rail on, 1280 wide, Imperial, before (left) and after (right). Two boards:
   - the Shortboard with a flat tail and its starting six channels
