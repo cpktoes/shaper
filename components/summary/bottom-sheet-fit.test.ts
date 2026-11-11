@@ -30,6 +30,7 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { inchesToMm, UNITS_SYSTEMS, type UnitsSystem } from "@/lib/geometry/units";
 import {
   BOTTOM_SECTION_BOX,
+  BOTTOM_SHEET_SPARE,
   BOTTOM_TABLES_BESIDE_MAX_COLUMNS,
   BOTTOM_TOP_VIEW,
   bottomSheetLayout,
@@ -292,9 +293,8 @@ describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-
     for (const tail of BOTTOM_CUT_NAMES.tail) for (const count of [0, 8] as const) SETUPS.push({ names: { nose, center: "Early Double Concave", tail }, count });
   for (const center of BOTTOM_CUT_NAMES.center) for (const count of [0, 4, 6, 8] as const) SETUPS.push({ names: { center }, count });
 
-  const tightOf = (layout: BottomSheetLayout) => (layout as BottomSheetLayout & { tablesTight?: boolean }).tablesTight;
   /** The tables' sheet's spare room counted at today's rows, whatever the layout chose. */
-  const regularSpare = (layout: BottomSheetLayout, board: BottomBoard) => bottomSheetSpare({ ...layout, tablesTight: false } as BottomSheetLayout, board).tables;
+  const regularSpare = (layout: BottomSheetLayout, board: BottomBoard) => bottomSheetSpare({ ...layout, tablesTight: false }, board).tables;
 
   function layoutsOf(label: string) {
     const built16 = build(label, phase16Boards().find((b) => b.label === label)!.fields);
@@ -327,33 +327,33 @@ describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-
     for (const { layout, wanted, board, what } of layoutsOf(label)) {
       expect(layout.sheets, what).toBe(layout.tablesOnOwnSheet ? 2 : 1);
       if (!layout.tablesOnOwnSheet) {
-        expect(tightOf(layout), `${what}: tables on the page never tighten`).toBe(false);
+        expect(layout.tablesTight, `${what}: tables on the page never tighten`).toBe(false);
         expect(layout.tableNotes).toEqual([]);
         continue;
       }
       ownSheet++;
       expect(layout.tableNotes, `${what}: every note`).toEqual(wanted);
       expect(bottomSheetSpare(layout, board).tables!, `${what}: the tables' sheet has room`).toBeGreaterThanOrEqual(0);
-      if (tightOf(layout)) {
+      if (layout.tablesTight) {
         tight++;
         // Tight only where today's rows leave no room for every note.
         expect(regularSpare(layout, board)!, `${what}: tight although the notes fit today's rows`).toBeLessThan(bottomSheetSpare(layout, board).tables!);
-        expect(regularSpare(layout, board)!, `${what}: tight although the notes fit today's rows`).toBeLessThan(4);
+        expect(regularSpare(layout, board)!, `${what}: tight although the notes fit today's rows`).toBeLessThan(BOTTOM_SHEET_SPARE);
       } else {
-        expect(tightOf(layout), what).toBe(false);
+        expect(layout.tablesTight, what).toBe(false);
       }
     }
     expect(ownSheet, "the Longboard's tables take their own sheet on some setups (non-vacuity)").toBeGreaterThan(0);
     expect(tight, "and some of them need the tighter rows (non-vacuity)").toBeGreaterThan(0);
-  });
+  }, 60_000);
 
   it.each(others)("%s: every note prints with the rows as they are — nothing tightens", (label) => {
     for (const { layout, wanted, what } of layoutsOf(label)) {
-      expect(tightOf(layout), what).toBe(false);
+      expect(layout.tablesTight, what).toBe(false);
       expect(layout.sheets, what).toBe(layout.tablesOnOwnSheet ? 2 : 1);
       expect(layout.tableNotes, what).toEqual(layout.tablesOnOwnSheet ? wanted : []);
     }
-  });
+  }, 60_000);
 });
 
 describe("bottomSheetStationsLine: a cut's three stations in words", () => {

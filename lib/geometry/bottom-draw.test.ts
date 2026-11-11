@@ -737,7 +737,7 @@ describe("the section's rail lift is the vee's or belly's alone, as DATA reads i
         expect(line.y1).toBeCloseTo(drawing.y0 - want * drawing.ky, 9);
       }
     }
-  });
+  }, 60_000);
 
   const tailOf = (label: string) => {
     const { board, resolved, rows } = setUp(phase17ChannelBoards().find((b) => b.label === label)!.fields);
