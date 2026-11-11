@@ -16,9 +16,10 @@
  * column (where the fall is 0) stay put, and with no `bottom` nothing moves at all.
  *
  * Channels are different (G-17-6, the founder's ruling of 2026-11-10: "channels are the last cut, made after the rail
- * is shaped"). They are cut after the rail is shaped, so they never go through the map: they are cut into the drawn
- * bottom and into the finished rail, straight up at each wall's own place (`channelCut`), and wherever a channel's
- * floor stands higher than the rail it takes the rail up to it — never above the deck.
+ * is shaped"). The vee or belly is cut before the rail is shaped, so it moves the rail's drawing (`railPointOnBottom`);
+ * the channels are cut after it, so they never go through that map. They are cut into the drawn bottom and into the
+ * finished rail, straight up at each wall's own place (`channelCut`): wherever a channel's floor stands higher than the
+ * rail it takes the rail up to it, under the tuck's curve too, and never above the deck.
  *
  * Pure: no React, browser or database import. A section with no `bottom` is never passed here by the plot.
  */
@@ -57,7 +58,8 @@ export interface RailSectionChannels {
  * One section's bottom: the rail lift there, and the bottom across from `RAIL_BOTTOM_REACH` inboard of the plot's own
  * left edge out to the apex, from `liftIn` — the foam the vee or belly takes off this far in from the rail (`design.ts`
  * reads it off `sectionsFoamOff`, D-05). With `channels`, the channels' cut over the same reach (`channelCut`): a
- * sample every 1/64" and two at every wall, so each wall stands straight up at its own place.
+ * sample every 1/64" and two at every wall, so each wall stands straight up at its own place — and held so that no
+ * channel's floor stands above the section's deck (`boardThickness`).
  */
 export function railSectionBottom(
   output: RailSectionOutput,
@@ -74,15 +76,22 @@ export function railSectionBottom(
   }
   across.push({ x: mm(0), y: mm(0) });
   if (!channels) return { lift, across };
-  const channelCut = railChannelCut(reach, channels);
+  const deck = output.boardThickness;
+  const channelCut = railChannelCut(reach, channels, (x, v) => Math.min(v, deck - readAcross(across, mm(x))));
   return channelCut ? { lift, across, channelCut } : { lift, across };
 }
 
-/** The channels' cut over `reach` in from the rail, x ascending to the apex — or undefined when it is 0 everywhere. */
-function railChannelCut(reach: number, { cutIn, wallsIn }: RailSectionChannels): Point2D[] | undefined {
-  const read = (inFromRail: number) => {
+/** The channels' cut over `reach` in from the rail, x ascending to the apex — or undefined when it is 0 everywhere.
+ * `hold` keeps a value at `x` from taking the floor above the deck. */
+function railChannelCut(
+  reach: number,
+  { cutIn, wallsIn }: RailSectionChannels,
+  hold: (x: number, v: number) => number,
+): Point2D[] | undefined {
+  // Read `inFromRail` in from the rail, held against the deck at `x` (where the point is drawn).
+  const read = (inFromRail: number, x = -inFromRail) => {
     const v = cutIn(mm(inFromRail));
-    return Number.isFinite(v) ? v : 0;
+    return Number.isFinite(v) ? hold(x, v) : 0;
   };
   const walls = [...new Set(wallsIn.filter((p) => Number.isFinite(p) && p > 0 && p < reach))].sort((a, b) => b - a);
   const count = Math.ceil(reach / RAIL_CHANNEL_STEP);
@@ -96,8 +105,8 @@ function railChannelCut(reach: number, { cutIn, wallsIn }: RailSectionChannels):
       const p = walls[w++];
       // In x order: the side further in from the rail first (on this side of the stringer, the channel's deep floor),
       // then the side nearer the rail.
-      const left = read(p + WALL_GAP);
-      const right = read(p - WALL_GAP);
+      const left = read(p + WALL_GAP, -p);
+      const right = read(p - WALL_GAP, -p);
       if (Math.abs(left - right) > WALL_GAP) cut.push({ x: mm(-p), y: mm(left) }, { x: mm(-p), y: mm(right) });
     }
     if (walls.some((p) => Math.abs(p - inFromRail) <= WALL_GAP)) continue;
@@ -193,11 +202,12 @@ export function railBottomLowest(bottom: RailSectionBottom, from: Mm): Mm {
  * keep their own steps, their control points moved by the same map (the map is all but straight over a blend's few
  * millimetres).
  *
- * Then the channels, cut last (G-17-6): every straight run of the underside that a channel reaches is drawn in pieces
- * at the channels' own 1/64" points, each raised to the channel's floor wherever the floor stands above the rail, and
- * at every wall it crosses two points at the wall's own x — walking toward the stringer, the outboard (shallow) one
- * first, then the deep one — so the wall stands straight up. Everything above the underside, and every run no channel
- * reaches, is drawn exactly as without channels.
+ * Then the channels, cut last (G-17-6): every run of the underside that a channel reaches — a straight run or a curve
+ * of the tuck — is drawn in pieces no longer than 1/64" across, put at the channels' own points, each raised to the
+ * channel's floor wherever the floor stands above the rail (never above the deck), and at every wall it crosses two
+ * points at the wall's own x — walking toward the stringer, the outboard (shallow) one first, then the deep one — so
+ * the wall stands straight up. Everything above the underside, and every run no channel reaches, is drawn exactly as
+ * without channels.
  */
 export function finishedRailOnBottom(rail: FinishedRail, bottom: RailSectionBottom, thickness: Mm): FinishedRail {
   const on = (p: Point2D) => railPointOnBottom(bottom, thickness, p);
@@ -212,8 +222,9 @@ export function finishedRailOnBottom(rail: FinishedRail, bottom: RailSectionBott
     pen = to;
   };
   rail.steps.forEach((step, index) => {
-    if (span && index >= underside && step.kind === "line" && overlaps(at.x, step.to.x, span)) {
-      for (const p of channelPieces(bottom, on, [at, step.to])) lineTo(p);
+    const run = span && index >= underside ? runOf(at, step, on) : null;
+    if (run && overlaps(run.xs, span!)) {
+      for (const p of channelPieces(bottom, run, thickness)) lineTo(p);
     } else if (step.kind === "line") {
       for (let k = 1; k <= RAIL_BOTTOM_LINE_PIECES; k++) {
         const t = k / RAIL_BOTTOM_LINE_PIECES;
@@ -235,6 +246,102 @@ export function finishedRailOnBottom(rail: FinishedRail, bottom: RailSectionBott
   return { start: on(rail.start), steps, samples: rail.samples.map(on), chain: rail.chain.map(on) };
 }
 
+/** One step of the rail as a run, standing on the bottom exactly as it is drawn without channels: where it is at `t`
+ * (0 at its start, 1 at its end), the x of every point that shapes it (its ends and guide points), and the `t`s it is
+ * sampled at — a straight run its two ends, a curve finely enough that no piece between two samples is longer than
+ * `RAIL_CHANNEL_STEP` across or along. */
+interface Run {
+  at: (t: number) => Point2D;
+  xs: number[];
+  ts: number[];
+  straight: boolean;
+}
+
+function runOf(start: Point2D, step: FinishedRailStep, on: (p: Point2D) => Point2D): Run {
+  if (step.kind === "line") {
+    // A straight run's every point moved by the map, as its 24 pieces are without channels.
+    const b = step.to;
+    return {
+      at: (t) => on(t === 1 ? b : { x: mm(start.x + (b.x - start.x) * t), y: mm(start.y + (b.y - start.y) * t) }),
+      xs: [start.x, b.x],
+      ts: [0, 1],
+      straight: true,
+    };
+  }
+  // A curve drawn through its moved guide points, as it is without channels.
+  const a = on(start);
+  const guide = step.kind === "quad" ? [a, on(step.control), on(step.to)] : [a, on(step.c1), on(step.c2), on(step.to)];
+  const at =
+    guide.length === 3
+      ? (t: number) => {
+          const u = 1 - t;
+          const [p0, p1, p2] = guide;
+          return { x: mm(u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x), y: mm(u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y) };
+        }
+      : (t: number) => {
+          const u = 1 - t;
+          const [p0, p1, p2, p3] = guide;
+          return {
+            x: mm(u ** 3 * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t ** 3 * p3.x),
+            y: mm(u ** 3 * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t ** 3 * p3.y),
+          };
+        };
+  // The curve is never longer, nor wider across, than the line through its guide points.
+  let length = 0;
+  for (let i = 1; i < guide.length; i++) length += Math.hypot(guide[i].x - guide[i - 1].x, guide[i].y - guide[i - 1].y);
+  const n = Math.max(8, Math.ceil(length / RAIL_CHANNEL_STEP));
+  return { at, xs: guide.map((p) => p.x), ts: Array.from({ length: n + 1 }, (_, k) => k / n), straight: false };
+}
+
+function overlaps(xs: number[], [lo, hi]: [number, number]): boolean {
+  return Math.max(...xs) >= lo && Math.min(...xs) <= hi;
+}
+
+/** The `t` between `t0` and `t1` where the run stands at `x` (which lies between the two): exact on a straight run, by
+ * halving on a curve (its x runs one way between two of its fine samples). */
+function tAt(run: Run, x: number, t0: number, t1: number): number {
+  const x0 = run.at(t0).x;
+  const x1 = run.at(t1).x;
+  if (run.straight) return t0 + ((x - x0) / (x1 - x0)) * (t1 - t0);
+  let lo = t0;
+  let hi = t1;
+  const rising = x1 > x0;
+  for (let k = 0; k < 52; k++) {
+    const mid = (lo + hi) / 2;
+    if (run.at(mid).x < x === rising) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * A run of the rail cut by the channels: the channels' own points put in between its samples, every point raised to
+ * the channel's floor where that stands higher (and held at the deck), and a wall crossed drawn as two points at its
+ * x, in the order the run walks.
+ */
+function channelPieces(bottom: RailSectionBottom, run: Run, thickness: Mm): Point2D[] {
+  const cut = bottom.channelCut!;
+  const raised = (p: Point2D, depth: number): Point2D => {
+    const floor = Math.min(railBottomFall(bottom, p.x) + depth, thickness);
+    return floor > p.y ? { x: p.x, y: mm(floor) } : p;
+  };
+  const first = run.at(run.ts[0]);
+  const out: Point2D[] = [raised(first, railChannelDepth(bottom, first.x))];
+  for (let i = 1; i < run.ts.length; i++) {
+    const t0 = run.ts[i - 1];
+    const t1 = run.ts[i];
+    const a = run.at(t0);
+    const b = run.at(t1);
+    const lo = Math.min(a.x, b.x);
+    const hi = Math.max(a.x, b.x);
+    const inside = cut.filter((p) => p.x > lo && p.x < hi);
+    if (b.x < a.x) inside.reverse();
+    for (const p of inside) out.push(raised({ ...run.at(tAt(run, p.x, t0, t1)), x: p.x }, p.y));
+    out.push(raised(b, railChannelDepth(bottom, b.x)));
+  }
+  return out;
+}
+
 /** Where the channels cut anything, as [lowest x, highest x] — from the point before the first that is not 0 to the
  * point after the last — or null when they cut nothing. */
 function channelSpan(bottom: RailSectionBottom): [number, number] | null {
@@ -254,37 +361,4 @@ function undersideFrom(rail: FinishedRail): number {
     if (step.to.x > rail.steps[best].to.x) best = index;
   });
   return best + 1;
-}
-
-function overlaps(a: number, b: number, [lo, hi]: [number, number]): boolean {
-  return Math.max(a, b) >= lo && Math.min(a, b) <= hi;
-}
-
-/**
- * A run of the rail (`path`, unmoved, in drawing order) cut by the channels: each point moved onto the bottom, the
- * channels' own points put in between, every point raised to the channel's floor where that stands higher, and a wall
- * crossed drawn as two points at its x, in the order the run walks.
- */
-function channelPieces(bottom: RailSectionBottom, on: (p: Point2D) => Point2D, path: readonly Point2D[]): Point2D[] {
-  const cut = bottom.channelCut!;
-  const raised = (p: Point2D, depth: number): Point2D => {
-    const moved = on(p);
-    const floor = railBottomFall(bottom, p.x) + depth;
-    return floor > moved.y ? { x: moved.x, y: mm(floor) } : moved;
-  };
-  const out: Point2D[] = [raised(path[0], railChannelDepth(bottom, path[0].x))];
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1];
-    const b = path[i];
-    const lo = Math.min(a.x, b.x);
-    const hi = Math.max(a.x, b.x);
-    const inside = cut.filter((p) => p.x > lo && p.x < hi);
-    if (b.x < a.x) inside.reverse();
-    for (const p of inside) {
-      const t = (p.x - a.x) / (b.x - a.x);
-      out.push(raised({ x: p.x, y: mm(a.y + (b.y - a.y) * t) }, p.y));
-    }
-    out.push(raised(b, railChannelDepth(bottom, b.x)));
-  }
-  return out;
 }

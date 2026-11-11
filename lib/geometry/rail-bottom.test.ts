@@ -388,7 +388,8 @@ describe("G-17-6 — RAILS cuts the channels straight up into the Finished Rail 
       // inside the channels' span every piece is a short straight line
       expect(drawn.steps[i - 1].kind).toBe("line");
       expect(Math.abs(ends[i].x - ends[i - 1].x)).toBeLessThanOrEqual(RAIL_CHANNEL_STEP + 1e-9);
-      if (ends[i].x === ends[i - 1].x) continue; // the second point of a wall: checked below
+      // a wall's two points (one x, two heights): checked below
+      if (ends[i].x === ends[i - 1].x || (i + 1 < ends.length && ends[i].x === ends[i + 1].x)) continue;
       expect(Math.abs(ends[i].y - Math.max(heightOn(reference, ends[i].x), floorAt(ends[i].x)))).toBeLessThan(1e-3);
       checked++;
     }
