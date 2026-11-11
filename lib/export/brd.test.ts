@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { bezierDeviation } from "../geometry/bezier-fit";
+import { bezierDeviation, type P2 } from "../geometry/bezier-fit";
 import {
   boardFileHalfOutline,
-  boardFileOutlineLoop,
-  boardHalfSlices,
+  boardSectionHalves,
   boardProfileLines,
-  boardSlices,
   boardStringerLines,
   buildBoardSurface,
+  SURFACE_POINTS,
   type BoardSurface,
-  type Vec3,
 } from "../geometry/board-surface";
 import { DEFAULT_BOTTOM, resolveBottom, startingChannels, startingCut } from "../geometry/bottom";
 import {
@@ -22,15 +20,28 @@ import {
   type DesignSummaryFields,
 } from "../geometry/design";
 import { buildOutline } from "../geometry/outline";
-import { mm, mmToCentimetres } from "../geometry/units";
+import { inchesToMm, mm, mmToCentimetres } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
-import { BRD_MACHINE_FIELDS, brdCurves, brdFile, brdText, formatBrdNumber, readBrdText } from "./brd";
+import {
+  BRD_KNOT_GAP_MM,
+  BRD_MACHINE_FIELDS,
+  BRD_SECTION_SPACING_IN,
+  BRD_SECTION_TARGET_MM,
+  brdBottomStations,
+  brdCurves,
+  brdFile,
+  brdText,
+  formatBrdNumber,
+  readBrdText,
+  type BrdCurves,
+  type BrdOptions,
+} from "./brd";
 import { BRD_MAGIC, unscrambleBrd } from "./brd-scramble";
 
 /**
  * The .brd writer on three boards: the flat Shortboard, the Fish (a swallow) and the Shortboard with a Deep Single
  * Concave and four channels. Every expected figure is the surface's own, read through its readers; never a typed
- * number (Rule 1). The surfaces and files are built once per describe.
+ * number (Rule 1). The surfaces and curves are built once, at module scope or per describe.
  */
 
 const BOARDS = phase16Boards();
@@ -66,37 +77,48 @@ function cutSurface(fields: DesignSummaryFields) {
     geometry,
     rockerAt: profile.rockerAt,
   });
-  return { surface, deepest: resolveBottom(bottom, board).center.deepest };
+  const resolved = resolveBottom(bottom, board);
+  return { surface, deepest: resolved.center.deepest, resolved };
 }
 
 const shortboard = flatSurface(fieldsOf("shortboard|asis|hard"));
 const fish = flatSurface(fieldsOf("fish|asis|hard"));
 const cut = cutSurface(fieldsOf("shortboard|asis|hard"));
+const cutOptions: BrdOptions = { bottomStations: brdBottomStations(cut.resolved) };
 
-const CASES: [string, BoardSurface][] = [
-  ["the flat Shortboard", shortboard],
-  ["the Fish (a swallow)", fish],
-  ["the Shortboard with a Deep Single and 4 channels", cut.surface],
+const CASES: [string, BoardSurface, BrdOptions][] = [
+  ["the flat Shortboard", shortboard, {}],
+  ["the Fish (a swallow)", fish, {}],
+  ["the Shortboard with a Deep Single and 4 channels", cut.surface, cutOptions],
 ];
 
-const key = (p: Vec3) => `${p[0]},${p[1]},${p[2]}`;
-
 describe.each(CASES)("the surface readers on %s", (_label, surface) => {
-  const slices = boardSlices(surface);
-  const halves = boardHalfSlices(surface);
+  const { halves, walls, bottomEdge, widest } = boardSectionHalves(surface);
 
-  it("boardHalfSlices has the slices' stations, every point from that slice, bottom to deck at one distance across", () => {
-    expect(halves.map((h) => h.station)).toEqual(slices.map((s) => s.station));
+  it("boardSectionHalves gives one half per full ring, tail to nose, every slot kept, bottom at the stringer first", () => {
+    const full = surface.rings.filter(
+      (ring) => ring.pieces.length === 1 && Math.max(...ring.right.map((v) => Math.abs(surface.positions[3 * v + 1]))) > 1e-9,
+    );
+    expect(halves.map((h) => h.station)).toEqual(full.map((ring) => ring.station));
     halves.forEach((half, i) => {
-      const loopPoints = new Set(slices[i].loops.flat().map(key));
-      for (const p of half.points) expect(loopPoints.has(key(p))).toBe(true);
-      const first = half.points[0];
-      const last = half.points[half.points.length - 1];
-      expect(Math.abs(Math.abs(first[1]) - Math.abs(last[1]))).toBeLessThan(1e-9);
-      expect(first[2]).toBeLessThan(last[2]);
-      const widest = Math.max(...slices[i].loops.flat().map((p) => Math.abs(p[1])));
-      expect(Math.max(...half.points.map((p) => Math.abs(p[1])))).toBeCloseTo(widest, 9);
+      const ring = full[i];
+      expect(half.points.length).toBe(ring.right.length);
+      expect(Math.abs(half.points[0][1])).toBeLessThan(1e-9);
+      expect(Math.abs(half.points[half.points.length - 1][1])).toBeLessThan(1e-9);
+      expect(half.points[0][2]).toBeLessThan(half.points[half.points.length - 1][2]);
+      // Slot k is the ring's own vertex, counted from the bottom.
+      const vertex = ring.right[ring.right.length - 1 - bottomEdge];
+      expect(half.points[bottomEdge]).toEqual([surface.positions[3 * vertex], surface.positions[3 * vertex + 1], surface.positions[3 * vertex + 2]]);
+      const furthest = Math.max(...half.points.map((p) => Math.abs(p[1])));
+      expect(Math.abs(half.points[widest][1])).toBeCloseTo(furthest, 9);
     });
+    for (let i = 1; i < halves.length; i++) expect(halves[i].station).toBeGreaterThan(halves[i - 1].station);
+  });
+
+  it("boardSectionHalves puts the bottom edge on the surface's own row, 78 counted from the deck", () => {
+    const n = halves[0].points.length;
+    expect(bottomEdge).toBe(n - 1 - (SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2));
+    expect(widest).toBe(n - SURFACE_POINTS.deck);
   });
 
   it("boardStringerLines gives one deck and one bottom point per ring, the deck never under the bottom", () => {
@@ -110,19 +132,17 @@ describe.each(CASES)("the surface readers on %s", (_label, surface) => {
     });
   });
 
-  it("boardFileHalfOutline is the loop's right half: loop points, y >= 0, the nose last, the widest as wide as the loop", () => {
-    const loop = boardFileOutlineLoop(surface);
-    const loopKeys = new Set(loop.map(key));
-    const half = boardFileHalfOutline(surface);
-    for (const p of half) {
-      expect(loopKeys.has(key(p))).toBe(true);
-      expect(p[1]).toBeGreaterThanOrEqual(-1e-9);
+  it("the walls are empty without channels and two with four, innermost first, the foot just under the top", () => {
+    expect(surface.channelWallRows.length).toBe(walls.length);
+    if (surface !== cut.surface) {
+      expect(walls).toEqual([]);
+      return;
     }
-    expect(half[half.length - 1][0]).toBeCloseTo(surface.length, 6);
-    expect(Math.max(...half.map((p) => p[1]))).toBeCloseTo(Math.max(...loop.map((p) => Math.abs(p[1]))), 9);
-    // From the tail's furthest point (x = 0) on, x only rises toward the nose.
-    const tail = half.findIndex((p) => p[0] === Math.min(...half.map((q) => q[0])));
-    for (let i = tail + 1; i < half.length; i++) expect(half[i][0]).toBeGreaterThanOrEqual(half[i - 1][0] - 1e-9);
+    expect(walls.length).toBe(2);
+    for (const wall of walls) expect(wall.foot).toBe(wall.top - 1);
+    expect(walls[0].top).toBeLessThan(walls[1].foot);
+    // Counted from the deck, the innermost wall sits lowest in the ring, so its slot counted from the bottom is smallest.
+    expect(surface.channelWallRows[0]).toBeGreaterThan(surface.channelWallRows[1]);
   });
 });
 
@@ -135,11 +155,38 @@ describe("the surface readers where the boards differ", () => {
     expect(stringer[2] - lowest[2]).toBeGreaterThan(1);
   });
 
+  it("on the Deep Single board a wall stands on some rings (foot and top at one distance across) and is welded on others", () => {
+    const { halves, walls } = boardSectionHalves(cut.surface);
+    const standing = halves.filter((h) => {
+      const foot = h.points[walls[0].foot];
+      const top = h.points[walls[0].top];
+      return Math.abs(Math.abs(foot[1]) - Math.abs(top[1])) < 1e-9 && Math.abs(top[2] - foot[2]) > 1e-6;
+    });
+    const welded = halves.filter((h) => h.points[walls[0].foot][1] === h.points[walls[0].top][1] && h.points[walls[0].foot][2] === h.points[walls[0].top][2]);
+    expect(standing.length).toBeGreaterThan(0);
+    expect(welded.length).toBeGreaterThan(0);
+  });
+
   it("on the Fish the half outline starts on the stringer at the crotch and reaches x = 0 at the swallow's point", () => {
     const half = boardFileHalfOutline(fish);
     expect(half[0][1]).toBeCloseTo(0, 9);
     expect(half[0][0]).toBeGreaterThan(0);
     expect(Math.min(...half.map((p) => p[0]))).toBeCloseTo(0, 9);
+  });
+});
+
+describe("brdBottomStations", () => {
+  it("is every start, deepest and end of the cuts with depth and of the channels, sorted, no repeats", () => {
+    const { resolved } = cut;
+    const stations = brdBottomStations(resolved);
+    const expected = new Set<number>();
+    for (const c of [resolved.nose, resolved.center, resolved.tail]) {
+      if (c.kind !== "flat" && c.depth > 0) [c.start, c.deepest, c.end].forEach((v) => expected.add(v));
+    }
+    [resolved.channels.start, resolved.channels.deepest, resolved.channels.end].forEach((v) => expected.add(v));
+    expect(stations).toEqual([...expected].sort((a, b) => a - b));
+    expect(stations.length).toBeGreaterThanOrEqual(3);
+    for (let i = 1; i < stations.length; i++) expect(stations[i]).toBeGreaterThan(stations[i - 1]);
   });
 });
 
@@ -162,13 +209,29 @@ describe("formatBrdNumber", () => {
   });
 });
 
-describe.each(CASES)("the .brd of %s", (_label, surface) => {
-  const written = brdText(surface);
+/** A point's distance to a polyline. */
+function distanceToPolyline(p: P2, line: readonly P2[]): number {
+  let best = Infinity;
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [ax, ay] = line[i];
+    const [bx, by] = line[i + 1];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const squared = dx * dx + dy * dy;
+    const t = squared > 0 ? Math.max(0, Math.min(1, ((p[0] - ax) * dx + (p[1] - ay) * dy) / squared)) : 0;
+    best = Math.min(best, Math.hypot(p[0] - (ax + t * dx), p[1] - (ay + t * dy)));
+  }
+  return best;
+}
+
+describe.each(CASES)("the .brd of %s", (_label, surface, options) => {
+  const written = brdText(surface, options);
   const read = readBrdText(written.text);
-  const slices = boardSlices(surface);
-  const curves = brdCurves(surface);
+  const curves = brdCurves(surface, options);
+  const { halves } = boardSectionHalves(surface);
   const header = new Map(read.header);
   const num = (name: string) => Number(header.get(name));
+  const length = surface.length;
 
   it("is ASCII with \\n line ends, ends `)\\n`, and carries exactly the proven header", () => {
     expect(/^[\x20-\x7e\n]*$/.test(written.text)).toBe(true);
@@ -181,7 +244,7 @@ describe.each(CASES)("the .brd of %s", (_label, surface) => {
   });
 
   it("reads back the board's length, width and thickness, with the bottom's own length over it", () => {
-    expect(num("p01")).toBeCloseTo(mmToCentimetres(surface.length), 9);
+    expect(num("p01")).toBeCloseTo(mmToCentimetres(length), 9);
     expect(num("p04")).toBeCloseTo(mmToCentimetres(surface.width), 9);
     const { deck, bottom } = boardStringerLines(surface);
     const thickest = Math.max(...deck.map((p, i) => p[2] - bottom[i][2]));
@@ -189,26 +252,23 @@ describe.each(CASES)("the .brd of %s", (_label, surface) => {
     expect(num("p02")).toBeGreaterThan(num("p01"));
   });
 
-  it("has a section at every litres station with foam, an empty one closing each pointed tip, all numbers finite", () => {
-    // A squared tail or nose has its own real section at the tip, so no empty one is added beside it.
-    const tailEmpty = slices[0].station > 1e-6 ? 1 : 0;
-    const noseEmpty = slices[slices.length - 1].station < surface.length - 1e-6 ? 1 : 0;
-    expect(read.sections.length).toBe(slices.length + tailEmpty + noseEmpty);
+  it("closes each tip with a one-knot all-zero section, the curves' sections between, all numbers finite", () => {
+    expect(read.sections.length).toBe(curves.sections.length + 2);
     expect(read.sections[0].station).toBe(0);
-    expect(read.sections[read.sections.length - 1].station).toBeCloseTo(mmToCentimetres(surface.length), 9);
-    read.sections.forEach((s, i) => {
-      if (i > 0) expect(s.station).toBeGreaterThan(read.sections[i - 1].station);
-    });
-    const ends: [boolean, (typeof read.sections)[number]][] = [
-      [tailEmpty === 1, read.sections[0]],
-      [noseEmpty === 1, read.sections[read.sections.length - 1]],
-    ];
-    for (const [empty, end] of ends) {
-      expect(end.knots.length > 1).toBe(!empty);
-      if (!empty) continue;
+    expect(read.sections[read.sections.length - 1].station).toBeCloseTo(mmToCentimetres(length), 9);
+    for (const end of [read.sections[0], read.sections[read.sections.length - 1]]) {
+      expect(end.knots.length).toBe(1);
       expect([...end.knots[0].point, ...end.knots[0].before, ...end.knots[0].after]).toEqual([0, 0, 0, 0, 0, 0]);
       expect(end.knots[0].smooth).toBe(false);
     }
+    read.sections.forEach((s, i) => {
+      if (i > 0) expect(s.station).toBeGreaterThan(read.sections[i - 1].station);
+    });
+    curves.sections.forEach((section, i) => {
+      const written = read.sections[i + 1];
+      expect(written.station).toBeCloseTo(mmToCentimetres(section.station), 9);
+      expect(written.knots.length).toBe(curves.sectionKnotRoles.length);
+    });
     const all = [read.outline, read.bottom, read.deck, ...read.sections.map((s) => s.knots)].flat();
     for (const knot of all) for (const v of [...knot.point, ...knot.before, ...knot.after]) expect(Number.isFinite(v)).toBe(true);
   });
@@ -220,48 +280,209 @@ describe.each(CASES)("the .brd of %s", (_label, surface) => {
     expect(Math.abs(knotWidest - num("p04") / 2)).toBeLessThan(0.005);
   });
 
-  it("fits every curve within 0.5 mm of the board, both ways, with fewer than 40 knots", () => {
-    const all = [curves.outline, curves.bottom, curves.deck, ...curves.sections];
-    for (const curve of all) {
+  it("fits the outline, rocker and deck within 0.5 mm with fewer than 40 knots, and every section within 1 mm", () => {
+    for (const curve of [curves.outline, curves.bottom, curves.deck]) {
       expect(curve.knots.length).toBeLessThan(40);
       expect(bezierDeviation(curve.points, curve.knots)).toBeLessThanOrEqual(0.5);
     }
+    for (const section of curves.sections) {
+      expect(bezierDeviation(section.points, section.knots)).toBeLessThanOrEqual(BRD_SECTION_TARGET_MM);
+    }
+  });
+
+  it("gives every section the same knots in the same order: the stringer's bottom first, its deck last, no two neighbours on one point", () => {
+    const roles = curves.sectionKnotRoles;
+    expect(roles[0]).toBe("bottomStringer");
+    expect(roles[roles.length - 1]).toBe("deckStringer");
+    expect(roles.slice(-4)).toEqual(["bottomEdge", "widest", "shoulder", "deckStringer"]);
+    const walls = roles.filter((r) => r === "wallFoot" || r === "wallTop");
+    expect(walls).toEqual(surface === cut.surface ? ["wallFoot", "wallTop", "wallFoot", "wallTop"] : []);
+    if (surface !== cut.surface) expect(roles.length).toBe(5);
+    for (const section of curves.sections) {
+      expect(section.knots.length).toBe(roles.length);
+      expect(section.knots[0].point[0]).toBeCloseTo(0, 9);
+      expect(section.knots[0].point[1]).toBeCloseTo(0, 9);
+      expect(section.knots[section.knots.length - 1].point[0]).toBeCloseTo(0, 9);
+      for (let i = 1; i < section.knots.length; i++) {
+        const a = section.knots[i - 1].point;
+        const b = section.knots[i].point;
+        expect(Math.hypot(a[0] - b[0], a[1] - b[1])).toBeGreaterThan(1e-6);
+      }
+    }
+  });
+
+  it("stands its sections strictly inside the board at the tips' 1\", the 12\" marks, the wide point and no more than 8\" apart", () => {
+    const stations = curves.sections.map((s) => s.station);
+    stations.forEach((s, i) => {
+      expect(s).toBeGreaterThan(0);
+      expect(s).toBeLessThan(length);
+      if (i > 0) expect(s).toBeGreaterThan(stations[i - 1]);
+    });
+    const nearestHalf = (target: number) =>
+      halves.reduce((best, h) => (Math.abs(h.station - target) < Math.abs(best.station - target) ? h : best), halves[0]).station;
+    expect(stations).toContain(nearestHalf(inchesToMm(1)));
+    expect(stations).toContain(nearestHalf(inchesToMm(12)));
+    expect(stations).toContain(nearestHalf(length - inchesToMm(12)));
+    expect(stations).toContain(nearestHalf(length - inchesToMm(1)));
+    const wide = halves.reduce((best, h) => (Math.max(...h.points.map((p) => Math.abs(p[1]))) > Math.max(...best.points.map((p) => Math.abs(p[1]))) + 1e-9 ? h : best), halves[0]);
+    expect(stations).toContain(wide.station);
+    for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeLessThanOrEqual(inchesToMm(BRD_SECTION_SPACING_IN + 0.5));
+    // About a dozen sections, never fifty.
+    expect(stations.length).toBeGreaterThanOrEqual(8);
+    expect(stations.length).toBeLessThanOrEqual(16);
+  });
+
+  it("keeps each anchor knot's share of the width and of the thickness within a fifth from one section to the next", () => {
+    const roles = curves.sectionKnotRoles;
+    const shares = curves.sections.map((section) => {
+      const across = Math.max(...section.points.map((p) => p[0]));
+      const height = section.points[section.points.length - 1][1];
+      return section.knots.map((k) => [k.point[0] / across, k.point[1] / height]);
+    });
+    roles.forEach((role, i) => {
+      if (role === "wallFoot" || role === "wallTop" || role === "added") return;
+      // On the cut board the concave itself carries the bottom edge up and down against the stringer, 0.29 of the
+      // thickness between 4" and 12" — real shape, not a jump — so only the flat bottoms are held to a fifth there.
+      if (surface === cut.surface && role === "bottomEdge") return;
+      for (let s = 1; s < shares.length; s++) {
+        expect(Math.abs(shares[s][i][0] - shares[s - 1][i][0])).toBeLessThanOrEqual(0.2);
+        expect(Math.abs(shares[s][i][1] - shares[s - 1][i][1])).toBeLessThanOrEqual(0.2);
+      }
+    });
   });
 
   it("writes the same bytes twice, named from the board", () => {
-    const a = brdFile(surface, `Fish 5'10"`);
-    const b = brdFile(surface, `Fish 5'10"`);
+    const a = brdFile(surface, `Fish 5'10"`, options);
+    const b = brdFile(surface, `Fish 5'10"`, options);
     expect(Buffer.from(a.data).equals(Buffer.from(b.data))).toBe(true);
     expect(a.name).toBe("Fish 5'10.brd");
-    expect(brdFile(surface, "").name).toBe("Untitled Board.brd");
-    expect(a.sectionCount).toBe(slices.length);
+    expect(brdFile(surface, "", options).name).toBe("Untitled Board.brd");
+    expect(a.sectionCount).toBe(curves.sections.length);
+    expect(a.sectionCount).toBe(written.sectionCount);
     expect(String.fromCharCode(...a.data.subarray(0, 12))).toBe(BRD_MAGIC);
     expect(unscrambleBrd(a.data)).toBe(written.text);
   });
 });
 
-describe("what the cut and the swallow add to the file", () => {
-  it("the cut board's sections go below the stringer's bottom and carry sharp knots at the channel walls", () => {
-    const read = readBrdText(brdText(cut.surface).text);
+/** The five-knot sections of a board with no channels, and what makes one smooth or sharp. */
+describe("the flat Shortboard's sections (the known-good file stays at least as smooth)", () => {
+  const curves = brdCurves(shortboard);
+
+  it("has five knots a section, at most one corner a section and only ever at the bottom edge", () => {
+    expect(curves.sectionKnotRoles.length).toBe(5);
+    for (const section of curves.sections) {
+      expect(section.knots.length).toBe(5);
+      const sharp = section.knots.map((k, i) => (k.smooth ? -1 : i)).filter((i) => i >= 0);
+      expect(sharp.length).toBeLessThanOrEqual(1);
+      for (const i of sharp) expect(curves.sectionKnotRoles[i]).toBe("bottomEdge");
+    }
+  });
+
+  it("holds every smooth knot's two handles in one straight line through it", () => {
+    checkSmoothHandles(curves);
+  });
+});
+
+function checkSmoothHandles(curves: BrdCurves): void {
+  for (const section of curves.sections) {
+    for (const k of section.knots) {
+      if (!k.smooth) continue;
+      const a: P2 = [k.point[0] - k.before[0], k.point[1] - k.before[1]];
+      const b: P2 = [k.after[0] - k.point[0], k.after[1] - k.point[1]];
+      const cross = a[0] * b[1] - a[1] * b[0];
+      expect(Math.abs(cross)).toBeLessThanOrEqual(1e-6 * Math.max(Math.hypot(...a) * Math.hypot(...b), 1e-9));
+    }
+  }
+}
+
+describe("the channel walls on the Deep Single + 4 channels board keep their knot numbers", () => {
+  const curves = brdCurves(cut.surface, cutOptions);
+  const { halves, walls } = boardSectionHalves(cut.surface);
+  const roles = curves.sectionKnotRoles;
+  const footAt = (wall: number) => roles.findIndex((r, i) => r === "wallFoot" && roles.slice(0, i).filter((q) => q === "wallFoot").length === wall);
+  const topAt = (wall: number) => roles.findIndex((r, i) => r === "wallTop" && roles.slice(0, i).filter((q) => q === "wallTop").length === wall);
+
+  it("puts both knots of a standing wall on the wall as corners, and both of a missing wall smooth on the bottom, apart", () => {
+    let standingSections = 0;
+    let missingSections = 0;
+    for (const section of curves.sections) {
+      const half = halves.find((h) => h.station === section.station)!;
+      const baseZ = half.points[0][2];
+      walls.forEach((wall, w) => {
+        const foot = section.knots[footAt(w)];
+        const top = section.knots[topAt(w)];
+        const footPoint = half.points[wall.foot];
+        const topPoint = half.points[wall.top];
+        const height = topPoint[2] - footPoint[2];
+        const standing = Math.hypot(topPoint[1] - footPoint[1], topPoint[2] - footPoint[2]) >= BRD_KNOT_GAP_MM;
+        if (standing) {
+          standingSections++;
+          expect(foot.smooth).toBe(false);
+          expect(top.smooth).toBe(false);
+          expect(foot.point[0]).toBeCloseTo(Math.abs(footPoint[1]), 6);
+          expect(top.point[0]).toBeCloseTo(Math.abs(topPoint[1]), 6);
+          expect(foot.point[1]).toBeCloseTo(footPoint[2] - baseZ, 6);
+          expect(top.point[1] - foot.point[1]).toBeCloseTo(height, 6);
+        } else {
+          missingSections++;
+          expect(foot.smooth).toBe(true);
+          expect(top.smooth).toBe(true);
+          expect(distanceToPolyline(foot.point, section.points)).toBeLessThan(1e-6);
+          expect(distanceToPolyline(top.point, section.points)).toBeLessThan(1e-6);
+        }
+      });
+      for (let i = 1; i < section.knots.length; i++) {
+        const gap = Math.hypot(section.knots[i].point[0] - section.knots[i - 1].point[0], section.knots[i].point[1] - section.knots[i - 1].point[1]);
+        expect(gap).toBeGreaterThan(1e-6);
+      }
+      section.knots.forEach((k, i) => {
+        if (!k.smooth) expect(["wallFoot", "wallTop", "bottomEdge"]).toContain(roles[i]);
+      });
+    }
+    expect(standingSections).toBeGreaterThan(0);
+    expect(missingSections).toBeGreaterThan(0);
+  });
+
+  it("keeps the wall knots that sit on the bottom at least half a millimetre from each other and from their neighbours", () => {
+    for (const section of curves.sections) {
+      walls.forEach((_, w) => {
+        for (const i of [footAt(w), topAt(w)]) {
+          const knot = section.knots[i];
+          if (knot.smooth) {
+            for (const j of [i - 1, i + 1]) {
+              const other = section.knots[j].point;
+              expect(Math.hypot(knot.point[0] - other[0], knot.point[1] - other[1])).toBeGreaterThanOrEqual(BRD_KNOT_GAP_MM - 1e-6);
+            }
+          }
+        }
+      });
+    }
+  });
+
+  it("holds every smooth knot's two handles in one straight line, as on the flat board", () => {
+    checkSmoothHandles(curves);
+  });
+});
+
+describe("the Fish's sections", () => {
+  it("every Fish section starts and ends on the stringer, the first at the crotch's ring", () => {
+    const curves = brdCurves(fish);
+    const { halves } = boardSectionHalves(fish);
+    expect(curves.sections[0].station).toBe(halves[0].station);
+    for (const section of curves.sections) {
+      expect(section.knots[0].point[0]).toBeCloseTo(0, 9);
+      expect(section.knots[section.knots.length - 1].point[0]).toBeCloseTo(0, 9);
+    }
+  });
+});
+
+describe("what the cut adds to the file", () => {
+  it("the cut board's sections go below the stringer's bottom", () => {
+    const read = readBrdText(brdText(cut.surface, cutOptions).text);
     expect(read.sections.some((s) => s.knots.some((k) => k.point[1] < -1e-6))).toBe(true);
-    const sharpest = Math.max(...read.sections.map((s) => s.knots.filter((k) => !k.smooth).length));
-    // Two walls a side, two corners a wall, none of them rounded off (the flat board has the rail's edge at most).
-    const flat = readBrdText(brdText(shortboard).text);
-    const flatSharpest = Math.max(...flat.sections.map((s) => s.knots.filter((k) => !k.smooth).length));
-    expect(sharpest).toBeGreaterThanOrEqual(flatSharpest + 4);
   });
 
-  it("the Fish's notch sections start off the stringer, and its outline starts on the stringer past the tail", () => {
-    const read = readBrdText(brdText(fish).text);
-    const inside = read.sections.filter((s) => s.knots.length > 1 && s.knots[0].point[0] > 1e-6);
-    expect(inside.length).toBeGreaterThan(0);
-    expect(read.outline[0].point[1]).toBeCloseTo(0, 9);
-    expect(read.outline[0].point[0]).toBeGreaterThan(0);
-    // The sharp knots of the notch: the swallow's point is a corner.
-    expect(read.outline.some((k) => !k.smooth)).toBe(true);
-  });
-
-  it("a stringer section's ends are level, with the mirrored handle across the stringer", () => {
+  it("a section's ends are level, with the mirrored handle across the stringer", () => {
     const read = readBrdText(brdText(shortboard).text);
     const section = read.sections[Math.floor(read.sections.length / 2)];
     const first = section.knots[0];

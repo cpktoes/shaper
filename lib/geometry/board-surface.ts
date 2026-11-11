@@ -143,6 +143,12 @@ export interface BoardSurface {
   length: Mm;
   width: Mm;
   triangleCount: number;
+  /**
+   * The rows of a ring (counted from the deck's stringer point, as `right` is) that are the top of a channel wall, the
+   * wall's foot being the next row down; the same rows on every ring of the board, innermost wall first, empty on a board
+   * without channels (quick 261110-veo: the board file keeps each wall's two points under fixed numbers).
+   */
+  channelWallRows: number[];
 }
 
 type P2 = [number, number];
@@ -489,6 +495,7 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     length: mm(length),
     width: mm(2 * geometry.halfWidePointWidth),
     triangleCount: indices.length / 3,
+    channelWallRows: [...channelWallRows].sort((a, b) => b - a),
   };
 }
 
@@ -838,18 +845,36 @@ export function boardProfileLines(surface: BoardSurface): { deck: Vec3[]; bottom
 }
 
 /**
- * Each of the CNC files' slices (the same rings `boardSlices` keeps) as its right half only, the way a board file's
- * cross-section is written: from the bottom at the inside edge (the stringer, or the notch wall inside a swallow's
- * notch), round the rail, to the deck at the inside edge. Every point is a vertex of the mesh; a vertex a welded slot
- * repeats is given once.
+ * Every full ring of the surface as a board file's cross-section is read (quick 261110-veo): the ring's right half,
+ * bottom first — slot 0 the bottom at the stringer, the last slot the deck at the stringer — with EVERY slot kept (a slot
+ * the surface welded repeats its neighbour's point), so slot k is the same place on every half and a file can hold the
+ * same knots in the same places on every section. A ring is a full one when it is one piece with width: never a tip's
+ * edge, never a station inside a swallow's notch. The rings come tail to nose, each as `{ station, points }` with the
+ * points in the surface's own axes. Beside them: `walls`, each channel wall's `{ foot, top }` slot (innermost first; the foot
+ * is the slot nearer the stringer, the channel's roof, and the top the next one out, where the wall meets the planed
+ * bottom — the file's names for the pair, whatever way up they stand), empty on a board without channels; `bottomEdge`, the slot of the bottom edge (the tuck);
+ * and `widest`, the slot of the rail's widest point. Every point is a vertex of the mesh.
  */
-export function boardHalfSlices(surface: BoardSurface): { station: Mm; points: Vec3[] }[] {
-  return surface.rings
-    .filter((ring) => ring.isSlice && ring.pieces.some((piece) => pieceHasWidth(surface.positions, piece)))
-    .map((ring) => ({
+export function boardSectionHalves(surface: BoardSurface): {
+  halves: { station: Mm; points: Vec3[] }[];
+  walls: { foot: number; top: number }[];
+  bottomEdge: number;
+  widest: number;
+} {
+  const full = surface.rings.filter((ring) => ring.pieces.length === 1 && pieceHasWidth(surface.positions, ring.pieces[0]));
+  const count = surface.rings[0]?.right.length ?? 0;
+  return {
+    halves: full.map((ring) => ({
       station: ring.station,
-      points: withoutRepeats(ring.right.slice().reverse(), false).map((v) => pointAt(surface.positions, v)),
-    }));
+      points: ring.right
+        .slice()
+        .reverse()
+        .map((v) => pointAt(surface.positions, v)),
+    })),
+    walls: surface.channelWallRows.map((row) => ({ foot: count - 1 - (row + 1), top: count - 1 - row })),
+    bottomEdge: count - 1 - BOTTOM_EDGE,
+    widest: count - SURFACE_POINTS.deck,
+  };
 }
 
 /**

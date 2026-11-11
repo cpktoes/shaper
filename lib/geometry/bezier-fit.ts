@@ -295,3 +295,105 @@ export function fitBezierKnots(points: readonly P2[], options: BezierFitOptions)
 
   return specs.map((_, pos) => knotAt(pos));
 }
+
+/** Schneider's cubic basis weights at t. */
+const basis = (t: number): [number, number, number, number] => {
+  const u = 1 - t;
+  return [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+};
+
+/**
+ * The two handles of ONE cubic between two knots that are already fixed, with the direction the curve leaves the first
+ * and arrives at the last also fixed (quick 261110-veo): the board file writes every cross-section with the same knots in
+ * the same places, so only the handles are left to fit. `points` runs from the first knot's point to the last knot's
+ * point inclusive; `outgoing` is the unit direction the curve leaves the first knot and `incoming` the unit direction it
+ * arrives at the last, both along the way the curve travels. Returns the first knot's outgoing handle (`after`) and the
+ * last knot's incoming handle (`before`).
+ *
+ * It is Schneider's least squares on the two handle lengths with the directions held: chord-length parameters, the 2 by
+ * 2 normal equations solved for the lengths, then eight rounds of Newton re-parameterisation keeping the round with the
+ * smallest `bezierDeviation`. A length that comes out not positive or not finite, or a singular system, falls back to a
+ * third of the chord for both; fewer than three points gives a third of the chord along each direction; a zero chord
+ * gives both handles at the point. Throws on a non-finite coordinate. Pure, no units.
+ */
+export function fitBezierSpan(points: readonly P2[], outgoing: P2, incoming: P2): { after: P2; before: P2 } {
+  for (const p of [...points, outgoing, incoming]) {
+    if (!Number.isFinite(p[0]) || !Number.isFinite(p[1])) throw new Error("A curve point is not a finite number.");
+  }
+  const first = points[0];
+  const last = points[points.length - 1];
+  const chord = Math.hypot(last[0] - first[0], last[1] - first[1]);
+  if (!(chord > SAME_POINT)) return { after: first, before: last };
+  const third = chord / 3;
+  const handles = (a1: number, a2: number): { after: P2; before: P2 } => ({
+    after: [first[0] + outgoing[0] * a1, first[1] + outgoing[1] * a1],
+    // `incoming` points the way the curve travels, so the last knot's handle sits back along it.
+    before: [last[0] - incoming[0] * a2, last[1] - incoming[1] * a2],
+  });
+  const fallback = handles(third, third);
+  if (points.length < 3) return fallback;
+
+  const asKnots = (h: { after: P2; before: P2 }): [BezierKnot, BezierKnot] => [
+    { point: first, before: first, after: h.after, smooth: true },
+    { point: last, before: h.before, after: last, smooth: true },
+  ];
+  let u: number[] = [0];
+  for (let i = 1; i < points.length; i++) {
+    u.push(u[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  }
+  const total = u[u.length - 1];
+  u = u.map((x) => x / total);
+
+  const back: P2 = [-incoming[0], -incoming[1]];
+  let best = fallback;
+  let bestError = bezierDeviation(points, asKnots(fallback));
+  for (let round = 0; round < 8; round++) {
+    let c00 = 0;
+    let c01 = 0;
+    let c11 = 0;
+    let x0 = 0;
+    let x1 = 0;
+    for (let i = 0; i < points.length; i++) {
+      const b = basis(u[i]);
+      const a1: P2 = [outgoing[0] * b[1], outgoing[1] * b[1]];
+      const a2: P2 = [back[0] * b[2], back[1] * b[2]];
+      c00 += a1[0] * a1[0] + a1[1] * a1[1];
+      c01 += a1[0] * a2[0] + a1[1] * a2[1];
+      c11 += a2[0] * a2[0] + a2[1] * a2[1];
+      const rest: P2 = [
+        points[i][0] - (first[0] * (b[0] + b[1]) + last[0] * (b[2] + b[3])),
+        points[i][1] - (first[1] * (b[0] + b[1]) + last[1] * (b[2] + b[3])),
+      ];
+      x0 += a1[0] * rest[0] + a1[1] * rest[1];
+      x1 += a2[0] * rest[0] + a2[1] * rest[1];
+    }
+    const det = c00 * c11 - c01 * c01;
+    let l1 = det !== 0 ? (x0 * c11 - x1 * c01) / det : Number.NaN;
+    let l2 = det !== 0 ? (c00 * x1 - c01 * x0) / det : Number.NaN;
+    if (!(l1 > 1e-6 * chord) || !(l2 > 1e-6 * chord) || !Number.isFinite(l1) || !Number.isFinite(l2)) {
+      l1 = third;
+      l2 = third;
+    }
+    const h = handles(l1, l2);
+    const knots = asKnots(h);
+    const error = bezierDeviation(points, knots);
+    if (error < bestError) {
+      bestError = error;
+      best = h;
+    }
+    // Newton's step on each parameter: move it to where the curve is nearest its point.
+    const e = 1e-4;
+    u = u.map((t, i) => {
+      const q = bezierPoint(knots[0], knots[1], t);
+      const hi = Math.min(1, t + e);
+      const lo = Math.max(0, t - e);
+      const q1 = bezierPoint(knots[0], knots[1], hi);
+      const q0 = bezierPoint(knots[0], knots[1], lo);
+      const d1: P2 = [(q1[0] - q0[0]) / (hi - lo), (q1[1] - q0[1]) / (hi - lo)];
+      const num = (q[0] - points[i][0]) * d1[0] + (q[1] - points[i][1]) * d1[1];
+      const den = d1[0] * d1[0] + d1[1] * d1[1];
+      return den > 0 ? Math.min(1, Math.max(0, t - num / den)) : t;
+    });
+  }
+  return best;
+}
