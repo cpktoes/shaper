@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 executing: 15 of 16 plans merged; the code review's two fixes are in (a7cb13b1, 1582dd7a); main merged into the branch twice (Phase 18 live, then the founder's three GUIDE rulings); 17-16 (the go-live gate) under way. Phase 18 complete and live 2026-11-10 as main 79110e41; the founder tried it on his phone and ruled on the name, the speed and the inch code"
-last_updated: "2026-11-10T20:30:00.000Z"
+stopped_at: "Phase 17 LIVE 2026-11-10 as main ff5818c0 (16 of 16 plans; gate at 25fa9fed, the founder’s Go at 7:25 pm, 31 saved boards open flat with today’s litres). Still to do: verification, the founder’s walk-through, closing the phase; the docs after the go-live are on the branch, not pushed."
+last_updated: "2026-11-11T03:35:00.000Z"
 last_activity: 2026-11-10
-last_activity_desc: BOTTOM's go-live gate under way — code review done and two findings fixed; Phase 18 live with the founder's three rulings recorded
+last_activity_desc: BOTTOM is live — the go-live gate passed, the founder said Go, and the live site answers with eight screens
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 75
-  completed_plans: 74
-  percent: 99
+  completed_plans: 75
+  percent: 100
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
