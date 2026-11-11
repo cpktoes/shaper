@@ -196,8 +196,9 @@ interface RailSectionPlotProps {
  *
  * A section standing on a vee or a belly (`output.bottom`, Phase 17, D-41) has its box taken down by
  * as far as the planed bottom falls below the rail's own bottom across the plot, so the fall is
- * drawn inside it; `maxY` never moves, so neither does any drawn coordinate. Without a `bottom` the
- * box is exactly today's.
+ * drawn inside it; `maxY` never moves, so neither does any drawn coordinate. A concave only ever
+ * hollows the bottom up, above the rail's own bottom (the founder, 2026-11-11: "Always draw it"), so
+ * it never moves the box. Without a `bottom` the box is exactly today's.
  */
 export function computeRailPlotBounds(output: RailSectionOutput, xAxisMin: Mm, options?: { calloutRoom?: boolean }) {
   const xAxisMinIn = mmToInches(xAxisMin);
@@ -612,11 +613,13 @@ export function RailSectionPlot({
   // A rail standing on a vee or a belly (Phase 17, D-41 — the founder: "the real rail shape, post bottom
   // contouring"): every point of the drawing is moved onto the planed bottom by the one map in
   // lib/geometry/rail-bottom.ts, and the bottom inboard of the last bottom mark is drawn as the bottom
-  // itself, falling away toward the stringer at the cut's own angle. A section no vee or belly lifts but
-  // into which a channel is cut carries a flat bottom (the founder, 2026-11-11: "Show channels too"):
-  // `onBottom` is then the identity and only the channels are cut into the bottom line and the finished
-  // rail. With no `bottom` (a board without channels whose bottom lifts no rail) `onBottom` is the
-  // identity and the bottom is the straight connector it always was.
+  // itself, falling away toward the stringer at the cut's own angle. Under a concave the same map lifts
+  // a mark inside its reach up onto the hollow and leaves every other point where it was, and the
+  // bottom is drawn hollowing up toward the stringer (the founder, 2026-11-11: "Always draw it"). A
+  // flat section into which a channel is cut carries a flat bottom ("Show channels too"): `onBottom` is
+  // then the identity and only the channels are cut into the bottom line and the finished rail. With no
+  // `bottom` (a section whose bottom is flat there with no channels) `onBottom` is the identity and the
+  // bottom is the straight connector it always was.
   const { bottom } = output;
   const onBottom = (p: Point2D): Point2D => (bottom ? railPointOnBottom(bottom, boardThickness, p) : p);
   const segmentLines = segments.map((seg) => {

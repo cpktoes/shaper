@@ -1,28 +1,32 @@
 /**
  * The rail on the bottom it stands on (Phase 17, D-41 — the founder at 17-03's look: "This should represent the angle
  * in the bottom of the displayed rail in the viewer to represent the real rail shape, post bottom contouring … i.e.
- * contour before rail shaping").
+ * contour before rail shaping"; and on 2026-11-11, "Always draw it": every concave is drawn too).
  *
  * A vee or a belly is cut before the rails are shaped. It lifts the bottom at the rail by the rail lift and lifts it
  * less toward the stringer, so the rail RAILS bands is thinner (`railsOnTheBottom` in `design.ts`) and the planed
  * bottom under it falls away toward the stringer at the cut's own angle. RAILS draws each rail in its own frame — x in
  * from the apex (0) toward the stringer, y up from the rail's bottom at its edge — so the rail itself stays exactly
  * where RAILS has always drawn it, and only the bottom inboard of it, and the marks that stand on that bottom, follow
- * the cut down.
+ * the cut down. A concave is cut before the rails are shaped too, but it runs out to nothing at the rail: it lifts
+ * nothing there, so the rail RAILS bands is the flat board's own, and the bottom inboard of it hollows UP toward the
+ * stringer instead — the same frame, the fall above 0 rather than below.
  *
  * Every drawn point goes through one map, `railPointOnBottom`: a point is moved down by the bottom's fall at its own
  * distance in from the rail, scaled from all of it on the bottom (y = 0) to none of it on the deck (y = the rail's
- * thickness). So a bottom tuck sits ON the planed bottom (never above it), the deck and everything on the apex's own
- * column (where the fall is 0) stay put, and with no `bottom` nothing moves at all.
+ * thickness). So a bottom tuck sits ON the planed bottom (never above it, and on a concave's hollow, never below it),
+ * the deck and everything on the apex's own column (where the fall is 0) stay put, and with no `bottom` nothing moves
+ * at all. A mark outside a concave's reach (where the fall is 0) is the very same point.
  *
  * Channels are different (G-17-6, the founder's ruling of 2026-11-10: "channels are the last cut, made after the rail
  * is shaped"). The vee or belly is cut before the rail is shaped, so it moves the rail's drawing (`railPointOnBottom`);
  * the channels are cut after it, so they never go through that map. They are cut into the drawn bottom and into the
  * finished rail, straight up at each wall's own place (`channelCut`): wherever a channel's floor stands higher than the
  * rail it takes the rail up to it, under the tuck's curve too, and never above the deck. A section no vee or belly lifts
- * shows its channels the same way (the founder, 2026-11-11: "Show channels too"): its bottom has no lift and a flat
- * `across`, so every map here is the identity — the rail is drawn exactly where it always was — and only the channels
- * are cut into it.
+ * shows its channels the same way (the founder, 2026-11-11: "Show channels too"): its bottom has no lift, and the
+ * channels are cut into whatever `across` it stands on — flat on a flat bottom, where every map here is the identity
+ * and the rail is drawn exactly where it always was, or a concave's hollow ("Always draw it"), the channels' floors
+ * held at the deck less the concave under them.
  *
  * Pure: no React, browser or database import. A section with no `bottom` is never passed here by the plot.
  */
@@ -59,10 +63,11 @@ export interface RailSectionChannels {
 
 /**
  * One section's bottom: the rail lift there, and the bottom across from `RAIL_BOTTOM_REACH` inboard of the plot's own
- * left edge out to the apex, from `liftIn` — the foam the vee or belly takes off this far in from the rail (`design.ts`
- * reads it off `sectionsFoamOff`, D-05). With `channels`, the channels' cut over the same reach (`channelCut`): a
- * sample every 1/64" and two at every wall, so each wall stands straight up at its own place — and held so that no
- * channel's floor stands above the section's deck (`boardThickness`).
+ * left edge out to the apex, from `liftIn` — the foam the vees, bellies and concaves take off this far in from the
+ * rail (`design.ts` reads it off `sectionsFoamOff`, D-05; a concave's is above the lift, so its `across` stands above
+ * 0). With `channels`, the channels' cut over the same reach (`channelCut`): a sample every 1/64" and two at every
+ * wall, so each wall stands straight up at its own place — and held so that no channel's floor stands above the
+ * section's deck (`boardThickness`), on a concave's hollow too.
  */
 export function railSectionBottom(
   output: RailSectionOutput,
