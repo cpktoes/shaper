@@ -95,6 +95,7 @@ import {
 import { THREE_D_COPY } from "./three-d-copy";
 import { ThreeDShowButtons } from "./three-d-show-buttons";
 import { exportBrd } from "./export-cnc";
+import { brdBottomStations, brdTailWrittenSquare } from "@/lib/export/brd";
 
 /**
  * The 3D screen (Phase 16, R1–R3, UI-SPEC §1–§3, §8, §9, §13): the board the shaper designed, drawn as a lit solid
@@ -306,8 +307,19 @@ function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
 }
 
 export function ThreeDScreen() {
-  const { outlineGeometry, sideProfile, effectiveRails, outline, boardName, modelId, finPlacement, effectiveFins, bottom, bottomBoard } =
-    useDesign();
+  const {
+    outlineGeometry,
+    sideProfile,
+    effectiveRails,
+    outline,
+    boardName,
+    modelId,
+    finPlacement,
+    effectiveFins,
+    bottom,
+    bottomBoard,
+    resolvedBottom,
+  } = useDesign();
 
   // The board's surface, from the litres' own input. A board the builder refuses (a value that isn't a number,
   // a length outside the app's range) gets the can't-build message rather than a half-built shape.
@@ -437,7 +449,8 @@ export function ThreeDScreen() {
   const onExport = () => {
     if (!built.ok) return;
     try {
-      const { fileName, sliceCount } = exportBrd(built.surface, boardName);
+      // The file's sections stand where the bottom changes (quick 261110-veo), so it gets the bottom's own stations.
+      const { fileName, sliceCount } = exportBrd(built.surface, boardName, brdBottomStations(resolvedBottom));
       setExportResult({ kind: "done", fileName, sliceCount });
     } catch (error) {
       console.error("The board file could not be made:", error);
@@ -1250,6 +1263,7 @@ export function ThreeDScreen() {
           sideWaits={dragMode === "turn"}
           drawingUnavailable={message !== null}
           exportState={exportState}
+          exportSwallowNote={built.ok && brdTailWrittenSquare(built.surface)}
           onExport={onExport}
         >
           <ThreeDOnTheRacks

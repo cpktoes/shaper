@@ -1,6 +1,7 @@
 import { brdFile } from "@/lib/export/brd";
 import { cncZip } from "@/lib/export/cnc-files";
 import type { BoardSurface } from "@/lib/geometry/board-surface";
+import type { Mm } from "@/lib/geometry/units";
 
 /**
  * Starts a download of `data` as `name`. Plain and synchronous on purpose, and called straight from the tap: Safari, an
@@ -30,10 +31,16 @@ function download(name: string, data: Uint8Array, type: string): void {
  *
  * It imports the writers in `lib/export` and never the scene, so the file is made in a browser that can't draw in 3D as
  * well ("the file doesn't need the drawing"). Any error is left to the caller, which says so on the status line.
- * `sliceCount` is the number of cross-sections the file carries beside the two empty ends.
+ * `sliceCount` is the number of cross-sections the file carries beside the two empty ends. `bottomStations` are the
+ * stations where the bottom changes (`brdBottomStations` of the store's resolved bottom), where the file puts its sections
+ * (quick 261110-veo).
  */
-export function exportBrd(surface: BoardSurface, boardName: string): { fileName: string; sliceCount: number } {
-  const file = brdFile(surface, boardName);
+export function exportBrd(
+  surface: BoardSurface,
+  boardName: string,
+  bottomStations: readonly Mm[],
+): { fileName: string; sliceCount: number } {
+  const file = brdFile(surface, boardName, { bottomStations });
   download(file.name, file.data, "application/octet-stream");
   return { fileName: file.name, sliceCount: file.sectionCount };
 }

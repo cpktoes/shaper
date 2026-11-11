@@ -35,6 +35,7 @@ export function ThreeDControls({
   sideWaits,
   drawingUnavailable,
   exportState,
+  exportSwallowNote,
   onExport,
 }: {
   children?: ReactNode;
@@ -50,6 +51,8 @@ export function ThreeDControls({
   drawingUnavailable: boolean;
   /** What the export's status line says (UI-SPEC §7): nothing yet, the done line, the failed line, or why it waits. */
   exportState: ExportState;
+  /** True on a swallow-tail board: the file writes the tail square, and a line under the export button says so. */
+  exportSwallowNote: boolean;
   /** Builds and downloads the zip, inside the tap. */
   onExport: () => void;
 }) {
@@ -69,7 +72,7 @@ export function ThreeDControls({
         disabled={drawingUnavailable}
       />
       {children}
-      <ExportSection state={exportState} onExport={onExport} />
+      <ExportSection state={exportState} swallowNote={exportSwallowNote} onExport={onExport} />
     </div>
   );
 }
@@ -242,7 +245,7 @@ function ViewSection({
  * drawing (the files don't need it) and on a locked board (`data-lock-exempt`: exporting changes nothing, UI-SPEC §9).
  * The done line names the file in ink and counts the slices from the writer, never a typed number.
  */
-function ExportSection({ state, onExport }: { state: ExportState; onExport: () => void }) {
+function ExportSection({ state, swallowNote, onExport }: { state: ExportState; swallowNote: boolean; onExport: () => void }) {
   return (
     <div className="flex flex-col gap-2" data-three-d-export>
       <ThreeDSectionHeading>{THREE_D_COPY.exportHeading}</ThreeDSectionHeading>
@@ -257,6 +260,11 @@ function ExportSection({ state, onExport }: { state: ExportState; onExport: () =
           {THREE_D_COPY.exportButton}
         </Button>
         <div className="mt-2 text-xs text-surf-ink-muted font-normal">{THREE_D_COPY.exportNote}</div>
+        {swallowNote ? (
+          <div className="mt-2 text-xs text-surf-ink-muted font-normal" data-three-d-export-swallow>
+            {THREE_D_COPY.exportSwallowNote}
+          </div>
+        ) : null}
         <div
           role="status"
           aria-live="polite"

@@ -64,6 +64,8 @@ export const THREE_D_COPY = {
   exportButton: "Export .brd File",
   /** The export's note (D-15, D-23; quick 261110-tvk — one AkuShaper board file, for AkuShaper or Shape3D). */
   exportNote: "A board file for AkuShaper or Shape3D.",
+  /** Under the note on a swallow-tail board only (quick 261110-veo, brief decision 4): the file writes the tail square. */
+  exportSwallowNote: "A swallow tail is written as a square tail at its points — cut the swallow by hand.",
   exportDone: (file: string, sections: number) =>
     `Downloaded ${file}. The outline, rocker, deck and ${sections} cross-sections.`,
   exportWorking: "Making the file…",

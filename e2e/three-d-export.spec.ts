@@ -75,6 +75,9 @@ async function expectNote(page: Page) {
   await expect(page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportNote, { exact: true })).toBeVisible();
 }
 
+/** The swallow line (quick 261110-veo): under the note on a swallow-tail board, the file written with a square tail. */
+const swallowNote = (page: Page) => page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportSwallowNote, { exact: true });
+
 /** Taps Export .brd File and answers the download the browser received. */
 async function exportFile(page: Page): Promise<Download> {
   await expect(exportButton(page)).toBeEnabled();
@@ -133,6 +136,9 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expect(exportStatus(page)).toHaveCount(1);
     await expect(exportStatus(page)).toHaveText("");
     await expectNote(page);
+    // The Fish has a swallow tail, which the file writes as a square one: the page says so, under the note.
+    await expect(swallowNote(page)).toBeVisible();
+    await expect(page.locator("[data-three-d-export-swallow]")).toHaveCount(1);
     // The screen's one accent-filled action, last on the panel. The two-way switch's pressed pill wears the accent as
     // every two-way pill in the app does, but it shows a state and carries `aria-pressed`, so it isn't counted (16-18).
     const action = panel(page).locator("button.bg-surf-accent:not([aria-pressed])");
@@ -147,7 +153,11 @@ test.describe("Export .brd File on the 3D screen", () => {
     const header = new Map(read.header);
     expect(Number(header.get("p01"))).toBeCloseTo(mmToCentimetres(fish.length), 6);
     expect(Number(header.get("p04"))).toBeCloseTo(mmToCentimetres(fish.widePointWidth), 6);
+    // Every cross-section the file holds, but the one-knot ones that close the tips, has the same number of knots.
+    const knotCounts = new Set(read.sections.filter((section) => section.knots.length > 1).map((section) => section.knots.length));
+    expect(knotCounts.size).toBe(1);
     await expectNote(page);
+    await expect(swallowNote(page)).toBeVisible();
   });
 
   test("2. with no 3D drawing the message shows and Export still downloads the whole file, the same as with it", async ({
@@ -255,6 +265,8 @@ test.describe("Export .brd File on the 3D screen", () => {
     expect(download.suggestedFilename()).toBe("Untitled Board.brd");
     await expectWholeBrd(page, download, "");
     await expectNote(page);
+    // The board a new shaper starts on has no swallow, so there is no swallow line.
+    await expect(swallowNote(page)).toHaveCount(0);
   });
 
   test("6. a failure says so in warning ink, and pressing Export again is the retry", async ({ page }, testInfo) => {
