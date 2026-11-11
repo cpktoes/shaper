@@ -31,7 +31,7 @@ import { finishedRail, type FinishedRail } from "./finished-rail";
 import type { Point2D } from "./board";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { computeRailBands, railPlotDots, type RailSectionKey } from "./rail-bands";
+import { computeRailBands, railPlotDots, type RailBandsOutput, type RailSectionKey } from "./rail-bands";
 import {
   RAIL_BOTTOM_LINE_PIECES,
   RAIL_CHANNEL_STEP,
@@ -219,12 +219,13 @@ describe("railSectionBottom and railBottomFall", () => {
 const GAP = 1e-6;
 
 /** RAILS for a board with the named cuts and a set of channels picked as the store picks them, the channels' numbers
- * then changed by `change` — every figure the app's own. */
+ * then changed by `change` and each named cut's by `changeCut` — every figure the app's own. */
 function channelsSetup(
   label: string,
   names: Partial<Record<BottomSectionKey, BottomCutName>>,
   count: 4 | 6 | 8,
   change: (channels: BoardBottom["channels"]) => Partial<BoardBottom["channels"]> = () => ({}),
+  changeCut: (cut: BoardBottom[BottomSectionKey]) => BoardBottom[BottomSectionKey] = (cut) => cut,
 ) {
   const fields = all.find((b) => b.label === label)!.fields;
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
@@ -232,7 +233,7 @@ function channelsSetup(
   const bottom: BoardBottom = structuredClone(DEFAULT_BOTTOM);
   for (const section of BOTTOM_SECTIONS) {
     const name = names[section];
-    if (name) bottom[section] = startingCut(section, name, board);
+    if (name) bottom[section] = changeCut(startingCut(section, name, board));
   }
   const started = startingChannels(count, board, bottom.channels);
   bottom.channels = { ...started, ...change(started) };
@@ -696,5 +697,212 @@ describe("G-17-6 — RAILS shows the channels on a flat tail too (the founder, 2
     expect(aloneBottom).toBeDefined();
     expect(aloneBottom.channelCut).toBeUndefined();
     expect(aloneBottom.across).toEqual(bottom.across);
+  });
+});
+
+// The founder's answers of 2026-11-11, "Draw the concave" (at his look at 17-21) and "Always draw it" (on 17-22's
+// plan): RAILS draws every concave, on the nose, centre and tail sections, channels or not — retiring D-41's "a concave
+// changes nothing on RAILS". A concave runs out to nothing at the rail, so it never thins the rail RAILS bands (D-22,
+// D-35, D-40); a mark inside its reach rides up onto its hollow by the one map a vee uses; the channels are cut last into
+// it (D-05, D-10) and never move a mark. Every expected figure is the app's own.
+describe("G-17-6 — RAILS draws every concave (the founder, 2026-11-11: \"Always draw it\")", () => {
+  const PRESET_BOARDS = ["shortboard", "fish", "midlength", "longboard"].flatMap((id) => [`${id}|asis|hard`, `${id}|asis|soft`]);
+  const CONCAVE_CARDS: [BottomSectionKey, BottomCutName][] = [
+    ["nose", "Teardrop Nose Concave"],
+    ["nose", "Blended Nose Concave"],
+    ["nose", "Slight Single Concave Entry"],
+    ["center", "Deep Single Concave"],
+    ["center", "Shallow Single Concave"],
+    ["center", "Early Double Concave"],
+    ["tail", "Double Concave Exit"],
+    ["tail", "Extending Single Concave"],
+  ];
+  const LIFT_CARDS: [BottomSectionKey, BottomCutName][] = [
+    ["tail", "Panel Vee"],
+    ["tail", "Spiral Vee"],
+    ["tail", "Rolled Vee"],
+    ["nose", "Reverse Vee Nose"],
+    ["center", "Tri-Plane Hull Center"],
+    ["nose", "Rolled Belly Entry"],
+    ["center", "Continuous Belly / Rolled Mid"],
+  ];
+  const fieldsAt = (label: string) => all.find((b) => b.label === label)!.fields;
+
+  /** Every point the plot moves onto the bottom: each band segment's two ends and each mark dot. */
+  function markPoints(section: RailBandsOutput[RailSectionKey]): Point2D[] {
+    const ends = section.segments.flatMap((seg) => [seg.p1, seg.p2]);
+    const dots = railPlotDots(section.segments, section.result, section.domed).map((d) => ({ x: d.x, y: d.y }));
+    return [...ends, ...dots];
+  }
+
+  /** Where the plot draws those points: on the section's bottom, or where they stand when it has none. */
+  const drawnMarks = (section: RailBandsOutput[RailSectionKey]) =>
+    markPoints(section).map((p) => (section.bottom ? railPointOnBottom(section.bottom, section.boardThickness, p) : p));
+
+  it.each(PRESET_BOARDS)("%s: each concave card alone — the same rails, each section on the concave's own foam or the bands' own object, the rest of it the flat board's", (label) => {
+    const flat = railsSetup(fieldsAt(label), {});
+    const drawnOn = new Set<RailSectionKey>();
+    for (const [where, name] of CONCAVE_CARDS) {
+      const c = railsSetup(fieldsAt(label), { [where]: name });
+      expect(c.rails, name).toBe(c.effectiveRails);
+      for (const key of SECTIONS) {
+        const section = c.bands[key];
+        const rail = c.board.railAt(c.anchors[key]);
+        const foamIn = (inFromRail: Mm) => sectionsFoamOff(c.resolved, c.board, c.anchors[key], mm(Math.abs(rail - inFromRail)));
+        if (!section.bottom) {
+          // no concave within the section's reach: every sample the bottom would read is 0
+          expect(section, `${name} ${key}`).toBe(c.liftedBands[key]);
+          expect(railSectionBottom(section, mm(0), foamIn).across.every((p) => p.y === 0), `${name} ${key}`).toBe(true);
+          continue;
+        }
+        const { bottom, ...rest } = section;
+        expect(bottom.lift).toBe(0);
+        expect(bottom.channelCut).toBeUndefined();
+        expect(bottom.across.some((p) => p.y !== 0)).toBe(true);
+        for (const p of bottom.across) expect(p.y, `${name} ${key} at ${p.x}`).toBe(foamIn(mm(-p.x)));
+        expect(rest).toEqual(flat.bands[key]);
+        drawnOn.add(key);
+      }
+    }
+    // non-vacuity: the cards between them draw a concave on the nose, the centre and the tail sections
+    expect([...drawnOn].sort()).toEqual(["center", "nose", "tail"]);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the control — a flat bottom and each vee and belly alone, no channels, hand back the bands' own object for every section they lift nothing at", (label) => {
+    let checked = 0;
+    for (const names of [{}, ...LIFT_CARDS.map(([where, name]) => ({ [where]: name }))]) {
+      const c = railsSetup(fieldsAt(label), names);
+      const liftAt = bottomRailLift(c.resolved, c.board);
+      for (const key of SECTIONS) {
+        if (liftAt(c.anchors[key]) !== 0) continue;
+        expect(c.bands[key], `${JSON.stringify(names)} ${key}`).toBe(c.liftedBands[key]);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the marks — every band end and mark dot stands still where the concave is 0 and rides up onto it by exactly its share of the hollow elsewhere, never down", (label) => {
+    let dotsMoved = 0;
+    for (const [where, name] of CONCAVE_CARDS) {
+      const c = railsSetup(fieldsAt(label), { [where]: name });
+      for (const key of SECTIONS) {
+        const section = c.bands[key];
+        if (!section.bottom) continue;
+        const T = section.boardThickness;
+        const dots = new Set(railPlotDots(section.segments, section.result, section.domed).map((d) => `${d.x},${d.y}`));
+        for (const p of markPoints(section)) {
+          const fall = railBottomFall(section.bottom, p.x);
+          const q = railPointOnBottom(section.bottom, T, p);
+          if (fall === 0) {
+            expect(q).toBe(p);
+            continue;
+          }
+          expect(q.x).toBe(p.x);
+          expect(q.y).toBe(mm(p.y + fall * (1 - p.y / T)));
+          expect(q.y).toBeGreaterThanOrEqual(p.y);
+          if (q.y > p.y && dots.has(`${p.x},${p.y}`)) dotsMoved++;
+        }
+      }
+    }
+    // the Shortboard's and the Fish's mark dots all stand outside every concave: none moves (only the bottom
+    // connector's inner end, which is the planed bottom itself, stands on the hollow)
+    if (label === "shortboard|asis|hard" || label === "fish|asis|hard") expect(dotsMoved).toBe(0);
+  });
+
+  it("the Longboard's rolled rail: a tuck mark rides up onto the Early Double Concave at the tail section, and onto the Deep Single Concave at the centre", () => {
+    for (const [where, name, key] of [
+      ["center", "Early Double Concave", "tail"],
+      ["center", "Deep Single Concave", "center"],
+    ] as const) {
+      const c = railsSetup(fieldsAt("longboard|asis|soft"), { [where]: name });
+      const section = c.bands[key];
+      const dots = railPlotDots(section.segments, section.result, section.domed);
+      const risen = dots.filter((d) => railPointOnBottom(section.bottom!, section.boardThickness, { x: d.x, y: d.y }).y > d.y);
+      expect(risen.length, `${name} at the ${key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it.each(PRESET_BOARDS)("%s: channels never move a mark — with each concave and its starting six, every band end and mark dot is drawn where it is with no channels", (label) => {
+    for (const [where, name] of CONCAVE_CARDS) {
+      const withSix = channelsSetup(label, { [where]: name }, 6);
+      const none = railsSetup(fieldsAt(label), { [where]: name });
+      for (const key of SECTIONS) {
+        expect(drawnMarks(withSix.bands[key]), `${name} ${key}`).toEqual(drawnMarks(none.bands[key]));
+      }
+    }
+  });
+
+  const underChannels: [string, BottomCutName, 4 | 6 | 8][] = [
+    ["shortboard|asis|hard", "Double Concave Exit", 6],
+    ["fish|asis|hard", "Extending Single Concave", 8],
+  ];
+
+  it.each(underChannels)("%s with the %s and %i channels: on the thin line every wall is two points at its own x, apart by exactly its step, each the concave there plus the channel's own depth", (label, name, count) => {
+    const c = channelsSetup(label, { tail: name }, count);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    expect(bottom.lift).toBe(0);
+    const line = railBottomLine(bottom, section.bounds.xAxisMin, mm(0));
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    let onConcave = 0;
+    for (const wall of walls) {
+      const i = pairAt(line, wall.x);
+      expect(i).toBeGreaterThan(0);
+      expect(Math.abs(line[i - 1].y - line[i].y - wall.step)).toBeLessThan(1e-9);
+      const concave = railBottomFall(bottom, wall.x);
+      if (concave > 0) onConcave++;
+      expect(line[i - 1].y).toBeCloseTo(concave + wall.deep, 9);
+      expect(line[i].y).toBeCloseTo(concave + wall.shallow, 9);
+    }
+    // non-vacuity: walls stand on the concave, not beside it
+    expect(onConcave).toBeGreaterThan(0);
+  });
+
+  it.each(underChannels)("%s with the %s and %i channels: the Finished Rail holds two consecutive ends at every such wall, the floor inboard of it the drawn bottom there (no chord)", (label, name, count) => {
+    const c = channelsSetup(label, { tail: name }, count);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), bottom, section.boardThickness);
+    const ends = endsOf(rail);
+    const apex = apexIndex(rail);
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    for (const wall of walls) {
+      const i = pairAt(ends, wall.x, apex + 1);
+      expect(i).toBeGreaterThan(apex);
+      expect(Math.abs(ends[i].y - railDrawnBottom(bottom, wall.x))).toBeLessThan(1e-6);
+      expect(Math.abs(ends[i].y - ends[i - 1].y - wall.step)).toBeLessThan(1e-6);
+    }
+  });
+
+  it("the deck: the Shortboard with the Extending Single Concave at 1/2\" deep and its starting eight at 1/2\" never draws either line above the section's thickness", () => {
+    const half = mm(inchesToMm(1 / 2));
+    const c = channelsSetup("shortboard|asis|hard", { tail: "Extending Single Concave" }, 8, () => ({ depth: half }), (cut) => ({ ...cut, depth: half }));
+    let drawnOn = 0;
+    for (const key of SECTIONS) {
+      const section = c.bands[key];
+      if (!section.bottom) continue;
+      drawnOn++;
+      expect(section.bottom.lift).toBe(0);
+      const T = section.boardThickness;
+      const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom, T);
+      for (const p of endsOf(rail).slice(apexIndex(rail))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+      for (const p of railBottomLine(section.bottom, section.bounds.xAxisMin, mm(0))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+    }
+    expect(c.bands.tail.bottom?.across.some((p) => p.y > 0)).toBe(true);
+    expect(drawnOn).toBeGreaterThan(0);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the frame never moves — on every concave board, nothing below the rail's own bottom inside the plot", (label) => {
+    for (const [where, name] of CONCAVE_CARDS) {
+      for (const c of [railsSetup(fieldsAt(label), { [where]: name }), channelsSetup(label, { [where]: name }, 6)]) {
+        for (const key of SECTIONS) {
+          const section = c.bands[key];
+          if (section.bottom) expect(railBottomLowest(section.bottom, section.bounds.xAxisMin), `${name} ${key}`).toBe(0);
+        }
+      }
+    }
   });
 });

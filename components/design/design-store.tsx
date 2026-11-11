@@ -629,10 +629,10 @@ interface DesignContextValue {
    * lifts no rail. RAILS-only: the litres and the headline thickness never read it. */
   railsOnBottom: RailBandSpec;
   /** `computeRailBands(railsOnBottom)` — what RAILS' plots, DATA and readout, the RAILS tile and the order form's Rail
-   * Band Reference show. The SAME object as `railBands` while the bottom lifts no rail and cuts no channel within a
-   * section's reach; a flat tail's channels are drawn on RAILS, on View Full Sized and on the order form's Rail Band
-   * Reference, as a vee board's already are (the founder, 2026-11-11: "Show channels too"). VOLUME's estimator rows
-   * keep `railBands`. */
+   * Band Reference show. The SAME object as `railBands` while the bottom is flat and cuts no channel within every
+   * section's reach; every concave, and a flat tail's channels, are drawn on RAILS, on View Full Sized and on the
+   * order form's Rail Band Reference, as a vee board's bottom already is (the founder, 2026-11-11: "Show channels too",
+   * "Always draw it"). A concave never thins the rail. VOLUME's estimator rows keep `railBands`. */
   railBandsOnBottom: RailBandsOutput;
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
@@ -1404,10 +1404,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   //
   // D-41 (the founder, 2026-11-08: "contour before rail shaping"): each lifted section's bands also carry the bottom
   // under the rail (`railBandsOnTheBottom`), so RAILS' plots draw the planed bottom at the vee's or belly's angle. It is
-  // read on every board, because the channels are cut last into a section no vee or belly lifts too (the founder,
-  // 2026-11-11: "Show channels too"): a flat tail's channels are drawn on RAILS, on View Full Sized and on the order
-  // form's Rail Band Reference, with the rail RAILS bands unchanged. A board that lifts no rail and has no channel
-  // within a section's reach still gets `railBands` itself back.
+  // read on every board, because every concave is drawn on its section too, hollowing up toward the stringer, and the
+  // channels are cut last into a section no vee or belly lifts (the founder, 2026-11-11: "Always draw it", "Show
+  // channels too"): both are drawn on RAILS, on View Full Sized and on the order form's Rail Band Reference, and the
+  // rail RAILS bands is never thinned by either. A board whose bottom is flat with no channel within a section's reach
+  // still gets `railBands` itself back.
   const railAnchors = useMemo(
     () => railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
     [sideProfile.effectiveFoil, state.outline.length],
