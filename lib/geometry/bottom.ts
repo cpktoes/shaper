@@ -1226,7 +1226,9 @@ export interface BottomDataRow {
   width: Mm | null;
   /** The deepest cut: the most foam off across the station, the gap under a straightedge laid rail to rail. */
   deepest: Mm;
-  /** The foam off at the rail. */
+  /** The vee's or belly's lift at the rail (`sectionsFoamOff` there) — the figure RAILS thins the rail by
+   * (`bottomRailLift`). A channel is cut after the rail is shaped and never counts here, even one that runs out
+   * through the rail (the founder, 2026-11-11: "Match RAILS"; D-05, D-43). */
   railLift: Mm;
   /** The planed thickness less the cut at the stringer; `null` where the stringer is air (a swallow's notch) or there
    * is no rail. */
@@ -1263,7 +1265,10 @@ function referenceOf(board: BottomBoard, s: Mm): BottomDataRow["reference"] {
 
 /**
  * DATA's depths table (D-16): a row at the tail, every 6" from it and at the nose tip — the width, the deepest cut,
- * the rail lift and the stringer left, each the one number (`foamOff`) read at that station.
+ * the rail lift and the stringer left. The deepest cut and the stringer left are the one number (`foamOff`), channels
+ * included. The rail lift is the vee's or belly's lift at the rail alone (`sectionsFoamOff`), the figure RAILS thins
+ * the rail by: a channel is cut after the rail is shaped and never counts there, even one that runs out through the
+ * rail (the founder, 2026-11-11: "Match RAILS").
  */
 export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): BottomDataRow[] {
   const stations = bottomDataStations(board);
@@ -1277,7 +1282,7 @@ export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): Bo
       label: k === 0 ? "tail" : k === stations.length - 1 ? "nose" : "station",
       width: hasRail ? mm(2 * W) : null,
       deepest: deepestCutAt(resolved, board, s),
-      railLift: foamOff(resolved, board, s, W),
+      railLift: sectionsFoamOff(resolved, board, s, W),
       stringerLeft,
       reference: referenceOf(board, s),
       atFloor: stringerLeft !== null && foamOffParts(resolved, board, s, mm(0)).concave > stringerFloorCap(board, s) + FLOOR_GUARD,
