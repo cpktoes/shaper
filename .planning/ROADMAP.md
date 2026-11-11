@@ -392,7 +392,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R15 (locked in `phases/17-bottom-contours/17-SPEC.md` from the founder's rulings on sketches 019–021, 2026-11-06 to 2026-11-08)
 **Brief:** `phases/17-bottom-contours/17-SPEC.md`; the decided sketches `.planning/sketches/019-bottom-contours/`, `020-bottom-channels/` and `021-bottom-guide/` (its `index.html` is the page as it will be built); the starting numbers and their sources in `todos/pending/2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`
 **Depends on:** Phase 16 (`boardSections`, the 3D surface and the CNC writers read the cut), Phase 14 (the planed thickness and the side profile the cut comes out of), quick 261102-gec (the finished rail the ghost draws), quick 261103-gcm (the foam at every station)
-**Plans:** 20/21 plans executed — LIVE 2026-11-10 as main ff5818c0; verified, and the founder’s walk-through (17-UAT.md) found two things to fix (G-17-5, G-17-6): six fix plans, 17-17 to 17-22 (17-21 from his two answers at his look at 17-18, 17-22 from his three at his look at 17-21, both 2026-11-11), then a go-live and his re-check
+**Plans:** 21/22 plans executed — LIVE 2026-11-10 as main ff5818c0; verified, and the founder’s walk-through (17-UAT.md) found two things to fix (G-17-5, G-17-6): six fix plans, 17-17 to 17-22 (17-21 from his two answers at his look at 17-18, 17-22 from his three at his look at 17-21, both 2026-11-11), then a go-live and his re-check
 
 Success criteria:
 
@@ -480,7 +480,7 @@ Plans:
 
 **Fix wave 3** *(blocked on 17-20; the founder's two answers at his look at 17-18, 2026-11-11)*
 
-- [ ] 17-21-PLAN.md — "Show channels too": RAILS draws the channels on a flat tail as it does on a vee or belly, cut straight up into the thin bottom line and the Finished Rail, the rail's thickness and band marks untouched; "Match RAILS": BOTTOM's DATA Rail lift counts the vee or belly alone; no litres figure moves (G-17-6)
+- [x] 17-21-PLAN.md — "Show channels too": RAILS draws the channels on a flat tail as it does on a vee or belly, cut straight up into the thin bottom line and the Finished Rail, the rail's thickness and band marks untouched; "Match RAILS": BOTTOM's DATA Rail lift counts the vee or belly alone; no litres figure moves (G-17-6)
 
 **Fix wave 4** *(blocked on 17-21; the founder's three answers at his look at 17-21, 2026-11-11)*
 
@@ -549,5 +549,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
-| 17. BOTTOM — Bottom Contours | 20/21 | In Progress|  |
+| 17. BOTTOM — Bottom Contours | 21/22 | In Progress|  |
 | 18. A GUIDE on Every Page | 10/10 | Complete    | 2026-11-10 |
