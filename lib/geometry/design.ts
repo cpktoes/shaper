@@ -331,7 +331,8 @@ export function bottomRailLift(resolved: ResolvedBottom, board: BottomBoard): (s
  * shaping"). Each of the three anchors' `boardThickness` is lowered by the rail lift at its station (`liftAt`, built
  * by `bottomRailLift`), so RAILS' plots, DATA and its readout card show the thinner rail a vee or a belly leaves.
  * When the lift is 0 at all three — a flat bottom, a concave alone — `rails` itself comes back, the same object, so a
- * flat board's every RAILS figure is untouched.
+ * flat board's every RAILS figure is untouched. A flat tail with channels keeps its rails too: a channel is cut after
+ * the rail is shaped and never lifts it (the founder, 2026-11-11).
  *
  * RAILS-ONLY (research Pitfalls 5 and 6). This never runs inside `deriveEffectiveRails`: the rack card's headline
  * thickness (`summarizeDesign`'s `centerThickness`) and VOLUME's estimator rows read the planed figures, and the
@@ -357,16 +358,21 @@ export function railsOnTheBottom(
 }
 
 /**
- * RAILS' three sections standing on the bottom the cut leaves (Phase 17, D-41): each section whose rail a vee or a
- * belly lifts carries that bottom across (`railSectionBottom`, read off `sectionsFoamOff` at its anchor — the one
- * number without the channels, D-05), so its plot draws the planed bottom falling away under the rail at the vee's or
- * belly's own angle. `bands` are the bands of `railsOnTheBottom`'s rails, so the rail drawn on that bottom is the
- * thinner one. A section whose rail is not lifted is passed through as it is; when none is, `bands` itself comes back.
+ * RAILS' three sections standing on the bottom the cut leaves (Phase 17, D-41). A section whose rail a vee or a belly
+ * lifts stands on that bottom (`railSectionBottom`, read off `sectionsFoamOff` at its anchor — the one number without
+ * the channels, D-05), so its plot draws the planed bottom falling away under the rail at the vee's or belly's own
+ * angle. `bands` are the bands of `railsOnTheBottom`'s rails, so the rail drawn on that bottom is the thinner one.
  *
  * The channels are cut last, after the rail is shaped (G-17-6, the founder, 2026-11-10: D-05, D-10): they never lift
  * the rail RAILS bands, and are handed over as their own cut (`channelFoamOff`) and walls (`channelWallsAt`, measured
  * in from the rail on both sides of the stringer), so the plot cuts them into its bottom and its finished rail
- * straight up at each wall.
+ * straight up at each wall. A section no vee or belly lifts, but which a channel reaches, stands on the flat planed
+ * bottom with the channels cut into it (the founder, 2026-11-11: "Show channels too") — flat, because a concave
+ * changes nothing on RAILS (D-41), so the sections' own foam is never read for it. The rail RAILS bands is never
+ * changed by a channel, on either kind of section.
+ *
+ * A section no vee or belly lifts and no channel reaches is passed through as the same object; when all three are,
+ * `bands` itself comes back.
  */
 export function railBandsOnTheBottom(
   bands: RailBandsOutput,
@@ -376,13 +382,20 @@ export function railBandsOnTheBottom(
 ): RailBandsOutput {
   const onBottom = (key: "tail" | "center" | "nose") => {
     const station = anchors[key];
+    const { channels, wingRule } = resolved;
+    const walls = channelWallsAt(channels, board, wingRule, station);
     const rail = board.railAt(station);
     const lift = sectionsFoamOff(resolved, board, station, rail);
-    if (lift === 0) return bands[key];
-    const liftIn = (inFromRail: Mm) => sectionsFoamOff(resolved, board, station, mm(Math.abs(rail - inFromRail)));
-    const { channels, wingRule } = resolved;
+    // No lift and no channels on the board: nothing to stand on, nothing sampled.
+    if (lift === 0 && walls.length === 0) return bands[key];
     const cutIn = (inFromRail: Mm) => channelFoamOff(channels, board, wingRule, station, mm(Math.abs(rail - inFromRail)));
-    const wallsIn = channelWallsAt(channels, board, wingRule, station).flatMap((w) => [mm(rail - w), mm(rail + w)]);
+    const wallsIn = walls.flatMap((w) => [mm(rail - w), mm(rail + w)]);
+    if (lift === 0) {
+      // The flat planed bottom, with the channels cut into it (the founder, 2026-11-11: "Show channels too").
+      const bottom = railSectionBottom(bands[key], mm(0), () => mm(0), { cutIn, wallsIn });
+      return bottom.channelCut ? { ...bands[key], bottom } : bands[key];
+    }
+    const liftIn = (inFromRail: Mm) => sectionsFoamOff(resolved, board, station, mm(Math.abs(rail - inFromRail)));
     return { ...bands[key], bottom: railSectionBottom(bands[key], lift, liftIn, { cutIn, wallsIn }) };
   };
   const tail = onBottom("tail");

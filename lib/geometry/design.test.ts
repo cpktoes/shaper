@@ -11,6 +11,7 @@ import { BOARD_PRESETS } from "./presets";
 import { presetSummary } from "./summary-line";
 import { buildOutline, foamHalfWidth, outlinePlanArea, sampleOutline } from "./outline";
 import { computeRailBands, DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "./rail-bands";
+import { RAIL_BOTTOM_REACH, RAIL_CHANNEL_STEP } from "./rail-bottom";
 import { DEFAULT_FALLBACK_ROCKER, type FiveStationRocker } from "./rocker";
 import { DEFAULT_FOIL_SPEC, foilStationPoints, type FoilSpec } from "./foil";
 import { computeCrossSectionVolume, computeVolume, DEFAULT_VOLUME_SPEC } from "./volume";
@@ -24,6 +25,7 @@ import {
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
   channelFoamOff,
+  channelWallsAt,
   foamOff,
   refAt,
   resolveBottom,
@@ -1142,7 +1144,9 @@ describe("RAILS bands the rail the bottom leaves, in a step only RAILS takes (Ph
     expect(cutAtAnAnchor).toBeGreaterThan(0);
   });
 
-  it("a flat tail whose outer channel runs out through the rail at the tail anchor keeps RAILS' planed rails: the very same rails and bands", () => {
+  // The founder's answer of 2026-11-11, "Show channels too": the same board's tail section now carries the flat planed
+  // bottom with the channels cut into it, while the rail RAILS bands stays the planed one.
+  it("a flat tail whose outer channel runs out through the rail at the tail anchor keeps RAILS' planed rails (the very same rails), and its tail section carries the flat bottom with the channels cut into it", () => {
     const fields = fieldsOf("shortboard");
     const { board, effectiveRails, anchors } = railsOf(fields);
     const rail = board.railAt(anchors.tail);
@@ -1168,6 +1172,34 @@ describe("RAILS bands the rail the bottom leaves, in a step only RAILS takes (Ph
     const onBottom = railsOnTheBottom(effectiveRails, bottomRailLift(resolved, board), anchors);
     expect(onBottom).toBe(effectiveRails);
     const bands = computeRailBands(onBottom);
-    expect(railBandsOnTheBottom(bands, resolved, board, anchors)).toBe(bands);
+    const drawn = railBandsOnTheBottom(bands, resolved, board, anchors);
+    expect(drawn).not.toBe(bands);
+    // the tail: a flat planed bottom (no lift, every point across at 0) with the channels cut into it
+    const tailBottom = drawn.tail.bottom!;
+    expect(tailBottom).toBeDefined();
+    expect(tailBottom.lift).toBe(0);
+    expect(tailBottom.across.every((p) => p.y === 0)).toBe(true);
+    expect(tailBottom.channelCut?.some((p) => p.y > 0)).toBe(true);
+    // and otherwise the very tail the bands draw with no channels
+    const { bottom: _drawnBottom, ...tailWithoutBottom } = drawn.tail;
+    void _drawnBottom;
+    expect(tailWithoutBottom).toEqual(bands.tail);
+    // the centre and the nose: the bands' own objects wherever no channel reaches them within the section's reach
+    // (read from the channels themselves, every 1/64" in from the rail, never assumed)
+    let unreached = 0;
+    for (const key of ["center", "nose"] as const) {
+      const s = anchors[key];
+      const r = board.railAt(s);
+      const reach = -bands[key].bounds.xAxisMin + RAIL_BOTTOM_REACH;
+      const walls = channelWallsAt(resolved.channels, board, resolved.wingRule, s);
+      let reached = false;
+      for (let x = 0; x <= reach && !reached; x += RAIL_CHANNEL_STEP) {
+        if (channelFoamOff(resolved.channels, board, resolved.wingRule, s, mm(Math.abs(r - x))) > 0) reached = true;
+      }
+      if (walls.length > 0 && reached) continue;
+      unreached++;
+      expect(drawn[key]).toBe(bands[key]);
+    }
+    expect(unreached, "at least one section no channel reaches (non-vacuity)").toBeGreaterThan(0);
   });
 });
