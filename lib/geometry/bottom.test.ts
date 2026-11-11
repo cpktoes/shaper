@@ -14,6 +14,7 @@ import {
   bottomLitresLine,
   BOTTOM_MARK_FADE_MIN,
   bottomSampler,
+  bottomSectionsSampler,
   chan,
   CHANNEL_ANGLE_MAX,
   CHANNEL_ANGLE_STEP,
@@ -56,6 +57,7 @@ import {
   resolveBottom,
   resolveCut,
   rise,
+  sectionsFoamOff,
   sec,
   smoothstep,
   startingCut,
@@ -2601,5 +2603,63 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     }
     // the slider does reach it: an Off Stringer wider than the board is at the deepest station
     expect(pastTheRail).toBeGreaterThan(0);
+  });
+});
+
+/* ============ G-17-6: the one number without the channels (the founder, 2026-11-10) ============ */
+
+describe("sectionsFoamOff (G-17-6): the vees, bellies and concaves alone — the channels are cut into what they leave", () => {
+  const openings = cases.filter((c) => c.kind === "opening") as OpeningCase[];
+  const withSix = openings.filter((c) => c.channels === 6);
+
+  it("covers all five boards", () => {
+    expect(withSix.map((c) => c.board)).toEqual(["shortboard", "fish", "midlength", "longboard", "fishwing"]);
+  });
+
+  it.each(withSix.map((c) => [c.board, c] as const))("%s's opening with six channels: the sections' part plus the channels' is the one number to the last bit, at every golden probe", (_b, c) => {
+    const board = boardById(c.board);
+    const grid = gridOf(c.board);
+    const resolved = resolveBottom(withChannels(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }, 6), board);
+    let cut = 0;
+    grid.s.forEach((s, k) => {
+      for (const y of grid.y[k]) {
+        const channels = channelFoamOff(resolved.channels, board, resolved.wingRule, mm(s), mm(y));
+        expect(Object.is(sectionsFoamOff(resolved, board, mm(s), mm(y)) + channels, foamOff(resolved, board, mm(s), mm(y)))).toBe(true);
+        if (channels > 0) cut++;
+      }
+    });
+    expect(cut).toBeGreaterThan(0);
+  });
+
+  it.each(openings.filter((c) => c.channels === 0).map((c) => [c.board, c] as const))("%s's opening with no channels: the sections' part is the one number itself, bit for bit", (_b, c) => {
+    const board = boardById(c.board);
+    const grid = gridOf(c.board);
+    const resolved = resolveBottom(bottomOf(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }), board);
+    grid.s.forEach((s, k) => {
+      for (const y of grid.y[k]) expect(Object.is(sectionsFoamOff(resolved, board, mm(s), mm(y)), foamOff(resolved, board, mm(s), mm(y)))).toBe(true);
+    });
+  });
+
+  it("bottomSectionsSampler reads it as the litres read the one number: across plus a swallow's notch wall", () => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|swallow|hard")!.fields;
+    const board = bottomBoardOf(fields);
+    const bottom = bottomOf(board, { tail: "Panel Vee" });
+    bottom.channels = startingChannels(6, board, bottom.channels);
+    const resolved = resolveBottom(bottom, board);
+    const sections = bottomSectionsSampler(resolved, board);
+    const whole = bottomSampler(resolved, board);
+    const notchStations = Array.from({ length: 40 }, (_, k) => mm(k * 2)).filter((s) => board.notchInner(s) > 0);
+    expect(notchStations.length).toBeGreaterThan(3);
+    let parted = 0;
+    for (const s of notchStations) {
+      for (const across of [0, 10, 40, 80].map(mm)) {
+        const y = mm(across + board.notchInner(s));
+        expect(sections(s, across)).toBe(sectionsFoamOff(resolved, board, s, y));
+        expect(Object.is(sections(s, across) + channelFoamOff(resolved.channels, board, resolved.wingRule, s, y), whole(s, across))).toBe(true);
+        if (sections(s, across) !== whole(s, across)) parted++;
+      }
+    }
+    // the channels are cut there, so the two readers part somewhere — the sections' one leaves them out
+    expect(parted).toBeGreaterThan(0);
   });
 });
