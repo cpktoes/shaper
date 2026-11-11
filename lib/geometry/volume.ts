@@ -1055,6 +1055,20 @@ const RAIL_EDGE_STEPS = 48;
 /** The index of the bottom edge in a half: where the rail's run ends and the bottom's begins. */
 const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
 
+/** A point `h` above the planed bottom lifted by `f` of foam off (D-40, D-41), `apex` the height of the rail's outermost
+ * point: the vee's or belly's rule — a point on the bottom by exactly `f`, the rail's lower run less the higher it
+ * stands, the outermost point not at all; where `f` reaches `apex` the lift's own line. */
+function liftedBy(h: number, f: number, apex: number): number {
+  if (f === 0) return h;
+  if (!(apex > 0) || f >= apex) return Math.max(h, f);
+  return h + f * (1 - Math.min(1, h / apex));
+}
+
+/** A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01). */
+function foamRead(raw: number): number {
+  return Number.isFinite(raw) ? Math.max(0, raw) : 0;
+}
+
 /**
  * A finished half-section with its bottom lifted by the bottom contours (Phase 17, D-05, D-21, D-40; research
  * Pattern 2). The deck — the stringer on the deck out to the rail's outermost point — never moves: a contour only takes
@@ -1085,41 +1099,39 @@ const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
  * lifted rail and the channel's floor (`foamOffAt`, the sections' bottom plus the channel there). On the bottom that is
  * exactly `foamOffAt`; wherever no channel reaches, exactly the lifted point. Without `sectionsOffAt` the rule above is
  * the only rule, untouched.
+ *
+ * `bottomEdgeAt` is the across of the finished rail's true bottom edge when a ring has been laid with its walled run
+ * starting outboard of it, on the rail's curve (`bottomedHalfWithWalls`, G-17-6): `thinAt` then flags only points at or
+ * inboard of it, so BOTTOM's thin-rail warning still falls only on the bottom. Absent, the bottom is every point from
+ * the bottom edge's index in, as always — on every ring laid as before, the same thing.
  */
 export function bottomedHalfSection(
   half: HalfSectionPoints,
   foamOffAt: (across: Mm) => Mm,
   floor: Mm,
   sectionsOffAt?: (across: Mm) => Mm,
+  bottomEdgeAt?: Mm,
 ): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm } {
   const deckCount = SECTION_POINTS.deck;
   const out: [number, number][] = half.slice() as [number, number][];
   const thinAt: Mm[] = [];
   const apex = half[deckCount - 1][1];
-  /** A point `h` above the planed bottom lifted by `f` of foam off (D-40, D-41): the vee's or belly's rule. */
-  const lift = (h: number, f: number): number => {
-    if (f === 0) return h;
-    if (!(apex > 0) || f >= apex) return Math.max(h, f);
-    return h + f * (1 - Math.min(1, h / apex));
-  };
-  // A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01).
-  const read = (raw: number): number => (Number.isFinite(raw) ? Math.max(0, raw) : 0);
   /** The underside's height at a point `h` above the planed bottom, `y` across. */
   const under = sectionsOffAt
     ? (y: number, h: number): number => {
         // the vee or belly lifts the rail; the channel is then cut straight up into what that leaves (G-17-6, D-05)
-        const total = read(foamOffAt(mm(y)));
-        const sections = read(sectionsOffAt(mm(y)));
-        const lifted = lift(h, sections);
+        const total = foamRead(foamOffAt(mm(y)));
+        const sections = foamRead(sectionsOffAt(mm(y)));
+        const lifted = liftedBy(h, sections, apex);
         return total > sections ? Math.max(lifted, total) : lifted;
       }
-    : (y: number, h: number): number => lift(h, read(foamOffAt(mm(y))));
+    : (y: number, h: number): number => liftedBy(h, foamRead(foamOffAt(mm(y))), apex);
   // The underside, walked out from the stringer: the bottom's run backwards, then the rail's run up to its outermost
   // point. That point is the deck's and stays, unless a lift past its height ends the foam before it.
   for (let k = half.length - 1; k >= deckCount - 1; k--) {
     const point = half[k];
     const [y, h] = point;
-    const onRail = k < BOTTOM_EDGE_INDEX;
+    const onRail = k < BOTTOM_EDGE_INDEX || (bottomEdgeAt !== undefined && y > bottomEdgeAt);
     const top = deckHeightAt(half, y);
     const raised = under(y, h);
     if (raised === h || !(top > 0)) continue;
@@ -1186,6 +1198,73 @@ function bottomRunHeightAt(run: HalfSectionPoints, y: number): number {
   return Math.abs(y - first[0]) <= Math.abs(y - last[0]) ? first[1] : last[1];
 }
 
+/** The rail's own height at `y` across on a half's rail run (its bottom edge out to its outermost point), straight
+ * between its two points either side, walked out from the bottom edge: the underside there. */
+function railRunHeightAt(half: HalfSectionPoints, y: number): number {
+  for (let k = BOTTOM_EDGE_INDEX; k > SECTION_POINTS.deck - 1; k--) {
+    const [y0, h0] = half[k];
+    const [y1, h1] = half[k - 1];
+    if (y >= Math.min(y0, y1) && y <= Math.max(y0, y1)) return y1 !== y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.min(h0, h1);
+  }
+  return y <= half[BOTTOM_EDGE_INDEX][0] ? half[BOTTOM_EDGE_INDEX][1] : half[SECTION_POINTS.deck - 1][1];
+}
+
+/**
+ * The walls that stand under the rail's curve at a station (G-17-6, the founder's ruling of 2026-11-10; D-10, D-21): a
+ * wall lying between the half's bottom edge and its outermost point, where the channel's floor just inboard of it
+ * (`foamOffAt` at the wall) stands above the rail lifted by the sections alone there (the vee's rule on the rail's own
+ * height) by more than `WALL_MIN_STEP`. Null when none does — the ring is then laid as it always was.
+ *
+ * With one, the ring's walled run starts at a split on the rail's run outboard of the outermost standing wall: the
+ * first original rail-run point outboard of it by more than `WALL_READ_GAP`, or — when that is the rail's outermost
+ * point itself — the point on the rail's run halfway between the wall and it. `railRun` is the rail's run from its
+ * outermost point down to the split, every original point it holds kept and brought back to `SECTION_POINTS.rail`
+ * points by putting extra points on its longest segments, so the rail's shape is untouched and the ring keeps its
+ * length.
+ */
+function wallsUnderTheCurve(
+  half: HalfSectionPoints,
+  walls: readonly number[],
+  foamOffAt: (across: Mm) => Mm,
+  sectionsOffAt: (across: Mm) => Mm,
+): { standing: Set<number>; split: [number, number]; railRun: HalfSectionPoints } | null {
+  const outermost = SECTION_POINTS.deck - 1;
+  const [yOut, apex] = half[outermost];
+  const yEdge = half[BOTTOM_EDGE_INDEX][0];
+  const standing = new Set<number>();
+  let outer = -Infinity;
+  walls.forEach((w, j) => {
+    if (!(w > yEdge && w < yOut)) return;
+    const lifted = liftedBy(railRunHeightAt(half, w), foamRead(sectionsOffAt(mm(w))), apex);
+    if (foamRead(foamOffAt(mm(w))) - lifted > WALL_MIN_STEP) {
+      standing.add(j);
+      outer = Math.max(outer, w);
+    }
+  });
+  if (standing.size === 0) return null;
+  let k = BOTTOM_EDGE_INDEX;
+  while (k > outermost && !(half[k][0] > outer + WALL_READ_GAP)) k--;
+  const railRun: [number, number][] = half.slice(outermost, k + 1) as [number, number][];
+  if (k === outermost) {
+    const y = (outer + yOut) / 2;
+    railRun.push([y, railRunHeightAt(half, y)]);
+  }
+  while (railRun.length < SECTION_POINTS.rail) {
+    let longest = 0;
+    let at = 0;
+    for (let i = 0; i + 1 < railRun.length; i++) {
+      const length = Math.hypot(railRun[i + 1][0] - railRun[i][0], railRun[i + 1][1] - railRun[i][1]);
+      if (length > longest) {
+        longest = length;
+        at = i;
+      }
+    }
+    const [a, b] = [railRun[at], railRun[at + 1]];
+    railRun.splice(at + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  }
+  return { standing, split: railRun[railRun.length - 1], railRun };
+}
+
 /**
  * A finished half-section on a board with channels, its bottom lifted (Phase 17, D-10, D-21, R11; research §B "A
  * channel's wall in the ring"). With only the 24 points of the bottom run a channel's vertical wall would be smeared
@@ -1205,7 +1284,15 @@ function bottomRunHeightAt(run: HalfSectionPoints, y: number): number {
  * out afresh moves no foam. `wallRows` is the index of each wall's top in the returned half; its foot is the next.
  *
  * With `sectionsOffAt` (G-17-6, D-05) the vee or belly lifts the rail and the channels are cut straight up into what
- * that leaves (`bottomedHalfSection`): a channel's floor never rides up the rail's curve.
+ * that leaves (`bottomedHalfSection`): a channel's floor never rides up the rail's curve. And a wall that stands under
+ * the rail's curve — between the bottom edge and the rail's outermost point, its channel's floor above the lifted rail
+ * (`wallsUnderTheCurve`) — gets its own vertical face there: the walled run then starts on the rail's run outboard of
+ * it, each of its points placed on the original underside by its across (the rail's curve outboard of the bottom edge,
+ * the planed bottom inboard of it), the original bottom edge laid as one point of the stretch that holds it, that
+ * stretch's other points spread either side of it in proportion. `bottomEdgeRow` is that point's index. Every wall
+ * keeps its two slots and the ring its length. A wall that does not stand there is held at its own across inside the
+ * walled run (its two slots on one spot); one past the run's outer end is held at that end. With no wall standing under
+ * the curve the ring is laid exactly as above, and `bottomEdgeRow` is absent.
  */
 export function bottomedHalfWithWalls(
   half: HalfSectionPoints,
@@ -1213,49 +1300,77 @@ export function bottomedHalfWithWalls(
   foamOffAt: (across: Mm) => Mm,
   floor: Mm,
   sectionsOffAt?: (across: Mm) => Mm,
-): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm; wallRows: number[] } {
+): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm; wallRows: number[]; bottomEdgeRow?: number } {
   const run = half.slice(BOTTOM_EDGE_INDEX);
   const edge = run[0];
   const inside = run[run.length - 1];
   const yInside = inside[0];
   const yEdge = edge[0];
   const n = Math.min(walls.length, BOTTOM_WALL_SLOTS);
-  // the walls in order out from the inside edge, on the bottom
+  // a wall standing under the rail's curve, if any: the walled run then starts on the rail's run outboard of it (G-17-6)
+  const curve = sectionsOffAt ? wallsUnderTheCurve(half, walls.slice(0, n), foamOffAt, sectionsOffAt) : null;
+  const yOuter = curve ? curve.split[0] : yEdge;
+  // the walls in order out from the inside edge, inside the walled run
   const at: number[] = [];
-  for (let j = 0; j < n; j++) at.push(Math.max(at[j - 1] ?? yInside, Math.min(yEdge, walls[j])));
+  for (let j = 0; j < n; j++) at.push(Math.max(at[j - 1] ?? yInside, Math.min(yOuter, walls[j])));
   const interior = BOTTOM_RUN_WITH_WALLS - 2 - 2 * n;
   const perChannel = Math.floor(interior / (n + 1));
   const outerCount = interior - n * perChannel;
-  const bounds = [yInside, ...at, yEdge];
-  const planed = (y: number): [number, number] => [y, bottomRunHeightAt(run, y)];
+  const bounds = [yInside, ...at, yOuter];
+  // a point on the original underside: the planed bottom, or outboard of the bottom edge the rail's own curve
+  const planed = (y: number): [number, number] => [y, curve && y > yEdge ? railRunHeightAt(half, y) : bottomRunHeightAt(run, y)];
   // laid out from the inside edge outward, then turned to run from the bottom edge inward like the rest of the half
   const outward: [number, number][] = [inside];
   const tops: { at: number; y: number; wall: number }[] = [];
+  let edgeAt = -1;
   for (let k = 0; k <= n; k++) {
     const count = k < n ? perChannel : outerCount;
     const from = bounds[k];
     const to = bounds[k + 1];
-    for (let i = 1; i <= count; i++) outward.push(planed(from + ((to - from) * i) / (count + 1)));
+    if (curve && from < yEdge && yEdge < to) {
+      // the stretch that holds the original bottom edge lays it as one of its points, the rest spread either side of it
+      const inboard = Math.round(((count - 1) * (yEdge - from)) / (to - from));
+      const outboard = count - 1 - inboard;
+      for (let i = 1; i <= inboard; i++) outward.push(planed(from + ((yEdge - from) * i) / (inboard + 1)));
+      edgeAt = outward.length;
+      outward.push(edge);
+      for (let i = 1; i <= outboard; i++) outward.push(planed(yEdge + ((to - yEdge) * i) / (outboard + 1)));
+    } else {
+      for (let i = 1; i <= count; i++) outward.push(planed(from + ((to - from) * i) / (count + 1)));
+    }
     if (k === n) break;
     const w = at[k];
     const foot = planed(w);
+    if (curve && w === yEdge && edgeAt < 0) edgeAt = outward.length;
     outward.push(foot);
-    const stands = w > yInside && w < yEdge && foamOffAt(mm(w)) - foamOffAt(mm(w + WALL_READ_GAP)) > WALL_MIN_STEP;
+    const stands =
+      curve && w > yEdge
+        ? curve.standing.has(k) && w === walls[k]
+        : w > yInside && w < yEdge && foamOffAt(mm(w)) - foamOffAt(mm(w + WALL_READ_GAP)) > WALL_MIN_STEP;
     tops.push({ at: outward.length, y: stands ? w + WALL_READ_GAP : w, wall: w });
     outward.push(stands ? planed(w + WALL_READ_GAP) : foot);
   }
-  outward.push(edge);
+  outward.push(curve ? curve.split : edge);
   const last = outward.length - 1;
-  const relaid: HalfSectionPoints = [...half.slice(0, BOTTOM_EDGE_INDEX + 1), ...outward.slice(0, last).reverse()];
+  const relaid: HalfSectionPoints = curve
+    ? [...half.slice(0, SECTION_POINTS.deck - 1), ...curve.railRun, ...outward.slice(0, last).reverse()]
+    : [...half.slice(0, BOTTOM_EDGE_INDEX + 1), ...outward.slice(0, last).reverse()];
   const wallRows = tops.map((top) => BOTTOM_EDGE_INDEX + last - top.at);
-  const cut = bottomedHalfSection(relaid, foamOffAt, floor, sectionsOffAt);
+  const bottomEdgeRow = curve && edgeAt >= 0 ? BOTTOM_EDGE_INDEX + last - edgeAt : undefined;
+  const cut = bottomedHalfSection(relaid, foamOffAt, floor, sectionsOffAt, curve ? mm(yEdge) : undefined);
   const out = cut.half.slice();
   tops.forEach((top, j) => {
     const row = wallRows[j];
     // set the top back on the wall's own line, unless the foam ended inboard of it (the knife edge, D-40)
     if (top.y !== top.wall && out[row][0] === top.y) out[row] = [top.wall, out[row][1]];
   });
-  return { half: out, thinAt: cut.thinAt, ...(cut.railEdgeAt !== undefined ? { railEdgeAt: cut.railEdgeAt } : {}), wallRows };
+  return {
+    half: out,
+    thinAt: cut.thinAt,
+    ...(cut.railEdgeAt !== undefined ? { railEdgeAt: cut.railEdgeAt } : {}),
+    wallRows,
+    ...(bottomEdgeRow !== undefined ? { bottomEdgeRow } : {}),
+  };
 }
 
 /**
@@ -1384,6 +1499,7 @@ export function boardSectionsWith(
         ...(walled.railEdgeAt !== undefined ? { railEdgeAt: walled.railEdgeAt } : {}),
         ringLength: walled.half.length,
         wallRows: walled.wallRows,
+        ...(walled.bottomEdgeRow !== undefined ? { bottomEdgeRow: walled.bottomEdgeRow } : {}),
       };
     }
     const cut = bottomedHalfSection(half, (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR, sectionsAt);

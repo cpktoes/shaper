@@ -2269,7 +2269,14 @@ describe("Phase 17 D-10, D-21: a channel's wall is a vertical step in the ring (
           if (!section.result) return;
           const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
           const [edgeY] = half[EDGE];
-          const dense: [number, number][] = [...half.slice(0, EDGE + 1)];
+          // dense under the rail's curve too (G-17-6: a channel is cut straight up into it), every segment of the rail's
+          // run in 16 straight pieces, then 400 points across the bottom
+          const dense: [number, number][] = [...half.slice(0, SECTION_POINTS.deck)];
+          for (let k = SECTION_POINTS.deck - 1; k < EDGE; k++) {
+            for (let i = 1; i <= 16; i++) {
+              dense.push([half[k][0] + ((half[k + 1][0] - half[k][0]) * i) / 16, half[k][1] + ((half[k + 1][1] - half[k][1]) * i) / 16]);
+            }
+          }
           for (let i = 1; i <= 400; i++) dense.push([edgeY + ((half[half.length - 1][0] - edgeY) * i) / 400, 0]);
           const cut = bottomedHalfSection(
             dense,
@@ -2390,7 +2397,8 @@ describe("channels are cut straight up into the finished rail (G-17-6, the found
     let moved = 0;
     now.forEach((section, i) => {
       const half = halves[i];
-      if (!half || !section.drawn) return;
+      // a section with a wall standing under the curve lays its rail's run afresh (17-20 Task 2): checked on its own
+      if (!half || !section.drawn || section.bottomEdgeRow !== undefined) return;
       for (let k = OUTERMOST; k < EDGE; k++) {
         const y = mm(half[k][0]);
         if (input.foamOffAt!(section.station, y) !== input.sectionsOffAt!(section.station, y)) {
