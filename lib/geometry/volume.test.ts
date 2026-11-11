@@ -2405,3 +2405,159 @@ describe("channels are cut straight up into the finished rail (G-17-6, the found
     expect(moved).toBeGreaterThan(0);
   });
 });
+
+describe("a channel wall under the rail's curve gets its own vertical face (G-17-6; D-10, D-21)", () => {
+  const EDGE = BOTTOM_EDGE();
+  const OUTERMOST = SECTION_POINTS.deck - 1;
+  const GAP = 1e-6;
+  /** A board from the Phase 16 set as its card opens it, with `count` channels on their starting numbers. */
+  function boardInput(label: string, count: 4 | 6 | 8) {
+    const fields = phase16Boards().find((b) => b.label === label)!.fields;
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+    const bottom = structuredClone(DEFAULT_BOTTOM);
+    bottom.channels = startingChannels(count, board, bottom.channels);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board });
+  }
+  /** The unlifted half each section was built with: the sections of the same board without its bottom. */
+  function unlifted(input: CrossSectionVolumeInput, stations?: readonly Mm[]) {
+    const plain: CrossSectionVolumeInput = { ...input };
+    delete plain.foamOffAt;
+    delete plain.sectionsOffAt;
+    delete plain.bottomWallsAt;
+    return boardSections(plain, stations).map((section) =>
+      section.result ? (section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth)) : null,
+    );
+  }
+  /** The unlifted underside's height at `y` across, read afresh off the half: the rail's run outboard of the bottom edge
+   * (walked out from the edge, straight between its points), the bottom run inboard of it. */
+  const undersideAt = (half: readonly (readonly [number, number])[], y: number): number => {
+    const yEdge = half[EDGE][0];
+    if (y > yEdge) {
+      for (let k = EDGE; k > OUTERMOST; k--) {
+        const [y0, h0] = half[k];
+        const [y1, h1] = half[k - 1];
+        if (y >= Math.min(y0, y1) && y <= Math.max(y0, y1)) return y1 !== y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.min(h0, h1);
+      }
+      return half[OUTERMOST][1];
+    }
+    for (let k = EDGE; k + 1 < half.length; k++) {
+      const [y0, h0] = half[k];
+      const [y1, h1] = half[k + 1];
+      if (y >= Math.min(y0, y1) && y <= Math.max(y0, y1)) return y1 !== y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+    }
+    return half[half.length - 1][1];
+  };
+  /** Where the underside at `y` stands once cut, worked out afresh: the vee's lift by the sections' foam, then the
+   * channel's floor cut straight up. */
+  function cutHeightAt(input: CrossSectionVolumeInput, station: Mm, half: readonly (readonly [number, number])[], y: number): number {
+    const h = undersideAt(half, y);
+    const apex = half[OUTERMOST][1];
+    const S = Math.max(0, input.sectionsOffAt!(station, mm(y)));
+    const T = Math.max(0, input.foamOffAt!(station, mm(y)));
+    const lifted = S === 0 ? h : !(apex > 0) || S >= apex ? Math.max(h, S) : h + S * (1 - Math.min(1, h / apex));
+    return T > S ? Math.max(lifted, T) : lifted;
+  }
+  /** The rail lifted by the sections alone at `y`: what a wall's floor must stand above to have a face under the curve. */
+  function liftedRailAt(input: CrossSectionVolumeInput, station: Mm, half: readonly (readonly [number, number])[], y: number): number {
+    const h = undersideAt(half, y);
+    const apex = half[OUTERMOST][1];
+    const S = Math.max(0, input.sectionsOffAt!(station, mm(y)));
+    return S === 0 ? h : !(apex > 0) || S >= apex ? Math.max(h, S) : h + S * (1 - Math.min(1, h / apex));
+  }
+  /** Checks every wall standing under the rail's curve at `station`: its top and foot at the wall's own across, the
+   * face between them the cut's own step there. Returns how many stood. */
+  function expectWallsUnderTheCurve(input: CrossSectionVolumeInput, station: Mm): number {
+    const [section] = boardSections(input, [station]);
+    const [half] = unlifted(input, [station]);
+    const drawn = section.drawn!;
+    const walls = input.bottomWallsAt!(station);
+    const yEdge = half![EDGE][0];
+    const yOut = half![OUTERMOST][0];
+    let standing = 0;
+    walls.forEach((w, j) => {
+      if (!(w > yEdge && w < yOut)) return;
+      if (!(input.foamOffAt!(station, w) > liftedRailAt(input, station, half!, w) + 1e-6)) return;
+      standing++;
+      const row = section.wallRows![j];
+      const [topY, topH] = drawn[row];
+      const [footY, footH] = drawn[row + 1];
+      expect(topY, `wall ${j} at ${station}`).toBe(w);
+      expect(footY, `wall ${j} at ${station}`).toBe(w);
+      const face = cutHeightAt(input, station, half!, w) - cutHeightAt(input, station, half!, w + GAP);
+      expect(face, `wall ${j} at ${station}`).toBeGreaterThan(0);
+      expect(Math.abs(footH - topH - face), `wall ${j} at ${station}`).toBeLessThan(1e-6);
+    });
+    return standing;
+  }
+
+  it("the soft-tailed Shortboard with six channels, 6\" from the tail: the wall under the rail's curve has its face at its own across", () => {
+    const input = boardInput("shortboard|asis|soft", 6);
+    expect(expectWallsUnderTheCurve(input, mm(inchesToMm(6)))).toBeGreaterThanOrEqual(1);
+  });
+
+  it("the Longboard's rolled rail with six channels, at 3\", 6\" and 12\" from the tail: every wall standing under the curve has its face", () => {
+    const input = boardInput("longboard|asis|soft", 6);
+    let standing = 0;
+    for (const inches of [3, 6, 12]) standing += expectWallsUnderTheCurve(input, mm(inchesToMm(inches)));
+    expect(standing).toBeGreaterThanOrEqual(1);
+  });
+
+  it("the Longboard at 6\": no point of the section stands above the higher of the vee's lift and the channel's floor at its own across", () => {
+    const input = boardInput("longboard|asis|soft", 6);
+    const station = mm(inchesToMm(6));
+    const [section] = boardSections(input, [station]);
+    const [half] = unlifted(input, [station]);
+    expect(section.railEdgeAt).toBeUndefined();
+    const tops = new Set(section.wallRows);
+    section.drawn!.forEach(([y, h], k) => {
+      if (k < OUTERMOST) return;
+      const expected = cutHeightAt(input, station, half!, y);
+      expect(h, `point ${k}`).toBeLessThanOrEqual(expected + 1e-9);
+      // every point but a wall's top (read just outside its wall, set back on the wall's line) stands right on it
+      if (!tops.has(k)) expect(Math.abs(h - expected), `point ${k}`).toBeLessThan(1e-9);
+    });
+  });
+
+  for (const [label, count] of [
+    ["shortboard|asis|soft", 6],
+    ["longboard|asis|soft", 6],
+    ["longboard|asis|soft", 8],
+  ] as const) {
+    it(`${label} with ${count} channels: every ring the board's own length, the same wall rows, each wall's top and foot at one across, no fold, and the true bottom edge marked`, () => {
+      const input = boardInput(label, count);
+      const sections = boardSections(input);
+      const halves = unlifted(input);
+      const rows = sections.find((section) => section.wallRows)!.wallRows!;
+      let marked = 0;
+      sections.forEach((section, i) => {
+        if (!section.result) return;
+        const drawn = section.drawn!;
+        expect(drawn).toHaveLength(halfSectionPointCount(input));
+        expect(section.ringLength).toBe(halfSectionPointCount(input));
+        expect(section.wallRows).toEqual(rows);
+        for (const row of rows) expect(drawn[row][0]).toBe(drawn[row + 1][0]);
+        for (let k = EDGE; k + 1 < drawn.length; k++) expect(drawn[k + 1][0], `${section.station} point ${k + 1}`).toBeLessThanOrEqual(drawn[k][0] + 1e-9);
+        const half = halves[i]!;
+        const yEdge = half[EDGE][0];
+        // the walled run starts outboard of the bottom edge exactly where the bottom edge row is marked
+        if (section.bottomEdgeRow !== undefined) {
+          marked++;
+          expect(drawn[EDGE][0]).toBeGreaterThan(yEdge);
+          expect(section.bottomEdgeRow).toBeGreaterThan(EDGE);
+          expect(drawn[section.bottomEdgeRow][0]).toBe(yEdge);
+        } else if (!section.railEdgeAt) {
+          expect(drawn[EDGE][0]).toBe(yEdge);
+        }
+        // the warning's flags fall only on the bottom: at or inboard of the true bottom edge, or at the foam's end
+        for (const y of section.thinAt ?? []) {
+          if (y === section.railEdgeAt) continue;
+          expect(y).toBeLessThanOrEqual(yEdge + 1e-9);
+        }
+      });
+      expect(marked).toBeGreaterThan(0);
+    });
+  }
+});

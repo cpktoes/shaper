@@ -721,6 +721,11 @@ export interface BoardSection {
    * next index, and the face between the two is the wall. A wall with no step at this station has its top and foot on
    * the one spot. */
   wallRows?: number[];
+  /** On a board with channels, at a station where a wall stands under the rail's curve (G-17-6): the index in `drawn`
+   * of the finished rail's true bottom edge, laid inside the walled run, which then starts outboard of it on the rail's
+   * run so the wall has its own vertical face. The 3D board draws its sharp bottom edge here, and the faces outboard of
+   * it as the rail's. Absent everywhere else, where the bottom edge is the bottom run's first point as always. */
+  bottomEdgeRow?: number;
 }
 
 /**
