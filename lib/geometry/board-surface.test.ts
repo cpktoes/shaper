@@ -1385,6 +1385,58 @@ describe("Phase 17 D-21: the bottom in the surface — the cut drawn, closed and
       expect(floors).toBeGreaterThan(0);
     });
 
+    for (const [label, count] of [
+      ["shortboard|asis|soft", 6],
+      ["longboard|asis|soft", 6],
+      ["longboard|asis|soft", 8],
+    ] as const) {
+      it(`channels under the rail's curve (G-17-6): ${label} with ${count} channels — closed, (mesh − litres)/litres in (−0.15%, 0], the sharp bottom edge at the true edge, the walls under the curve channel walls, the faces outboard of the edge the rail's`, () => {
+        const { input } = cutBoard(boardOf(label), {}, undefined, (bottom, board) => {
+          bottom.channels = startingChannels(count, board, bottom.channels);
+        });
+        const surface = expectClosedAndAgreeing(input);
+        const sections = boardSections(input.sections, surfaceStations(input));
+        const rows = new Set(sections.find((section) => section.wallRows)!.wallRows!);
+        const edgeRowOf = new Map<number, number>();
+        for (const section of sections) edgeRowOf.set(section.station, section.bottomEdgeRow ?? SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2);
+        const ringEdge = surface.rings.map((ring) => edgeRowOf.get(ring.station) ?? SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2);
+        // the sharp bottom edge is the true edge's own vertex on every ring
+        let curveRings = 0;
+        surface.rings.forEach((ring, i) => {
+          const base = ring.pieces[0].first;
+          expect(ring.bottomEdge, `ring at ${ring.station}`).toContain(ring.right[ringEdge[i]] - base);
+          if (ringEdge[i] !== SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2) curveRings++;
+        });
+        expect(curveRings).toBeGreaterThan(0);
+        // each triangle of the right side whose three points are each one row of one ring: its kind by its strip's row
+        const owner = new Map<number, { ring: number; row: number }[]>();
+        surface.rings.forEach((ring, i) => ring.right.forEach((v, row) => owner.set(v, [...(owner.get(v) ?? []), { ring: i, row }])));
+        let railFacesOutboard = 0;
+        let wallFacesUnderCurve = 0;
+        for (let t = 0; t < surface.triangleCount; t++) {
+          const at = [0, 1, 2].map((e) => owner.get(surface.indices[3 * t + e]));
+          if (at.some((o) => !o || o.length !== 1)) continue;
+          const points = at.map((o) => o![0]);
+          const ringsOf = [...new Set(points.map((p) => p.ring))].sort((a, b) => a - b);
+          if (ringsOf.length !== 2 || ringsOf[1] !== ringsOf[0] + 1) continue;
+          const j = Math.min(...points.map((p) => p.row));
+          const lower = Math.min(ringEdge[ringsOf[0]], ringEdge[ringsOf[1]]);
+          const kind = surface.faceKinds[t];
+          if (rows.has(j)) {
+            expect(kind).toBe(SURFACE_FACE.channelWall);
+            if (j < Math.max(ringEdge[ringsOf[0]], ringEdge[ringsOf[1]])) wallFacesUnderCurve++;
+          } else if (j < lower) {
+            expect(kind).toBe(SURFACE_FACE.upper);
+            if (j >= SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2) railFacesOutboard++;
+          } else {
+            expect(kind).toBe(SURFACE_FACE.bottom);
+          }
+        }
+        expect(railFacesOutboard).toBeGreaterThan(0);
+        expect(wallFacesUnderCurve).toBeGreaterThan(0);
+      }, 120_000);
+    }
+
     it("a board without channels keeps its rings as they were: the usual length, no wall faces", () => {
       const { input } = cutBoard(boardOf("shortboard|asis|hard"), TRIO);
       expect("bottomWallsAt" in input.sections).toBe(false);

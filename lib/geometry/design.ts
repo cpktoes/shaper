@@ -21,6 +21,7 @@ import {
   bottomHasChannels,
   bottomHasCut,
   bottomSampler,
+  bottomSectionsSampler,
   bottomWallSampler,
   channelFoamOff,
   channelWallsAt,
@@ -188,8 +189,10 @@ export function crossSectionFoam(
  * the bottom takes off (`foamOffAt`, `bottomSampler` over the bottom read against the board's own facts), so the
  * litres, the 3D board and the CNC files all count the cut. With channels (`bottomHasChannels`) it also carries where
  * their walls stand (`bottomWallsAt`, `bottomWallSampler`), so every section is laid out with a vertical step at each
- * wall (D-10, D-21). A flat bottom, or none, adds nothing at all: the input is key for key what it always was; a bottom
- * without channels adds the sampler alone, so its rings keep their usual length.
+ * wall (D-10, D-21), and the foam the vees, bellies and concaves alone take off (`sectionsOffAt`,
+ * `bottomSectionsSampler`), so the vee or belly lifts the finished rail and the channels are then cut straight up into
+ * it, last (G-17-6, the founder's ruling of 2026-11-10). A flat bottom, or none, adds nothing at all: the input is key
+ * for key what it always was; a bottom without channels adds the sampler alone, so its rings keep their usual length.
  */
 export function designCrossSectionInput(
   geometry: OutlineGeometry,
@@ -207,7 +210,9 @@ export function designCrossSectionInput(
     rails,
     length,
     ...(cut && resolved ? { foamOffAt: bottomSampler(resolved, cut.board) } : {}),
-    ...(cut && resolved && bottomHasChannels(cut.bottom) ? { bottomWallsAt: bottomWallSampler(resolved, cut.board) } : {}),
+    ...(cut && resolved && bottomHasChannels(cut.bottom)
+      ? { bottomWallsAt: bottomWallSampler(resolved, cut.board), sectionsOffAt: bottomSectionsSampler(resolved, cut.board) }
+      : {}),
   };
 }
 
