@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 LIVE 2026-11-10 as main ff5818c0 (16 of 16 plans; gate at 25fa9fed, the founder’s Go at 7:25 pm, 31 saved boards open flat with today’s litres). Still to do: verification, the founder’s walk-through, closing the phase; the docs after the go-live are on the branch, not pushed."
-last_updated: "2026-11-11T03:35:00.000Z"
+stopped_at: "Phase 17 walk-through done 2026-11-10 (17-UAT.md: 8 passed, 2 gaps diagnosed, 1 skipped — the CNC check, superseded by the .brd export). Founder ruled both gaps fixed inside Phase 17; fix plans 17-17..17-20 written and checked (wave 1: 17-17 VOLUME words, 17-18 RAILS channel walls, 17-19 litres pin; wave 2: 17-20 the solid board). Next: /gsd-execute-phase 17 --gaps-only on his go, then go-live and his re-check of tests 5 and 6. Branch claude/bottom-uat-17-d1559c, not pushed."
+last_updated: "2026-11-11T07:30:00.000Z"
 last_activity: 2026-11-10
-last_activity_desc: BOTTOM is live — the go-live gate passed, the founder said Go, and the live site answers with eight screens
+last_activity_desc: The founder walked BOTTOM on the live site — 8 passed, 2 to fix (VOLUME's words; channels rounded by the finished rail), fix plans 17-17..17-20 ready
 progress:
   total_phases: 6
   completed_phases: 4
@@ -38,7 +38,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Executing Phase 17 (15 of 16 plans; the go-live gate under way); Phase 18 complete and live, the founder's three rulings recorded
+Status: Phase 17 live (16 of 16 plans); the founder's walk-through found 2 gaps, fix plans 17-17..17-20 ready for /gsd-execute-phase 17 --gaps-only; Phase 18 complete and live
 Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans); main merged into the Phase 17 branch
 
 ## Performance Metrics
