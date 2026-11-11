@@ -83,6 +83,7 @@ blocked: 0
 - 2026-11-11: 17-20 (the litres, 3D board and export files cut channels straight up into the finished rail) approved at his look, with the litres table: Hard Edge tails unchanged, soft Shortboard/Mid +0.002 L, Longboard rolled rail up to +0.06 L.
 - 2026-11-11: 17-21 (RAILS shows flat-tail channels; DATA Rail lift counts the vee or belly only) approved at his look. Three more answers: BOTTOM's section gauge rail lift matches DATA ("Match DATA"); DATA's note becomes "Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts." ("Use the sentence"); RAILS draws a tail concave under the channels ("Draw the concave" — supersedes D-41 for that case; band marks may move up to about 3/16"). Planned as a further fix plan.
 - 2026-11-11: on 17-22's plan, two more answers: RAILS draws a concave on every section, channels or not ("Always draw it" — widens his 17-21 answer and retires D-41's "a concave changes nothing on RAILS" entirely); the 9'+ Longboard's printed tables sheet must keep all three notes with the longer DATA sentence ("Make it fit").
+- 2026-11-11: 17-22 (RAILS draws every concave on every section; marks move only on the Longboard's rolled rail, Rail Tuck 2 up to 0.116") approved at his look.
 
 ## Gaps
 

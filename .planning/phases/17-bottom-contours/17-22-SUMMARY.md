@@ -89,7 +89,9 @@ Faint ends that also get drawn, too small to see:
 
 The Mid-length's other "moves" are under 0.0005". With the Hard Edge on, the Longboard's tail marks stand outside the concave and do not move.
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-11)
+
+The founder looked at both before-and-after pictures, with the Longboard's moved marks ringed, and approved ("Approved").
 
 - `.planning/phases/17-bottom-contours/pictures/17-22-rails-concave-alone.png` shows three boards with no channels, before (left) and after (right), with the Finished Rail on, 1280 wide, in Imperial:
   - the Shortboard's Blended Nose Concave at the nose section
