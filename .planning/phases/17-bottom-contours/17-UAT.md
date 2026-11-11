@@ -74,6 +74,11 @@ pending: 0
 skipped: 1
 blocked: 0
 
+## Founder Rulings
+
+- 2026-11-10: both gaps are fixed as Phase 17 fix plans; the phase stays open until they are done, live and re-checked by him.
+- 2026-11-10: VOLUME's words — the suggested sentence, as written.
+
 ## Gaps
 
 - gap_id: G-17-5
@@ -93,7 +98,8 @@ blocked: 0
     - path: "lib/geometry/imported-readout.test.ts, e2e/volume-fins-panels.spec.ts, e2e/imported-readout.spec.ts"
       issue: "pin the old foot; the e2e specs find the card by its caption"
   missing:
-    - "The founder's wording for the INPUTS card foot (suggested: 'Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.')"
+    - "INPUTS card foot reads 'Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.' (the founder chose the suggested sentence, 2026-11-10)"
+    - "GUIDE's Import Designed Board card names BOTTOM: 'Finish TEMPLATE, ROCKER, BOTTOM and RAILS first' (with the suggested sentence, 2026-11-10)"
     - "GUIDE words brought in line on the founder's words page first, then the code, in one change"
     - "Pinning tests updated in the same change; look at the wrap in an 820-dot window"
   debug_session: .planning/debug/volume-litres-say-what-they-include.md
