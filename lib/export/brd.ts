@@ -21,14 +21,16 @@
  * programs). Left out on purpose: p58 (a stamp neither program checks), p10 (a blank's file path on someone's PC) and
  * the name fields p08, p45, p48, p49, p51, p54, whose meanings are not sure. The file's own name carries the board's name.
  *
- * A swallow's notch: the outline starts at the crotch on the stringer, runs back along the notch's edge to the
- * swallow's point, then along the rail.
+ * A swallow is written as a square tail at the width of its points, to be cut by hand: the outline runs (0, 0) to
+ * (0, half the points' width) as a corner and then up the rail, its x never going backwards (a 3D view reads the outline
+ * as a half-width at each distance along the board, and an outline that turns back is not drawn). The rocker and deck
+ * run back to x = 0 at the points' bottom and deck, as if the notch were not cut, and no section stands inside it.
  *
  * Pure and synchronous. Every mm-to-cm step goes through `lib/geometry/units.ts`.
  */
 import { bezierDeviation, fitBezierKnots, fitBezierSpan, type BezierKnot, type P2 } from "../geometry/bezier-fit";
 import {
-  boardFileHalfOutline,
+  boardRailHalfOutline,
   boardSectionHalves,
   boardStringerLines,
   type BoardSurface,
@@ -176,6 +178,15 @@ export interface BrdCurves {
 /** What shapes the file beyond the surface: the stations where the bottom changes, from `brdBottomStations`. */
 export interface BrdOptions {
   bottomStations?: readonly Mm[];
+}
+
+/**
+ * Whether the file writes this board's tail square although it is not: a swallow (a ring of two pieces) is written as a
+ * wide square tail at the width of its points, and its notch is left to be cut by hand (the founder, 2026-11-10, quick
+ * 261110-veo: "fish files on the aku site don't have swallows cut, just a big wide tail").
+ */
+export function brdTailWrittenSquare(surface: BoardSurface): boolean {
+  return surface.rings.some((ring) => ring.pieces.length === 2);
 }
 
 /**
@@ -384,19 +395,27 @@ function fitSection(half: readonly Vec3[], slots: readonly KnotSlot[], walls: re
   return { points: flat, knots, spans, deviation: bezierDeviation(flat, knots) };
 }
 
-/** Every curve of the file, in millimetres, fitted to the surface. */
-export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdCurves {
-  // Outline: the right half; its widest point is a level knot (the wide point exact), the ends sit on the stringer.
-  const half: P2[] = boardFileHalfOutline(surface).map((p) => [p[0], Math.abs(p[1])]);
+/**
+ * The file's outline, in millimetres: the right half; its widest point is a level knot (the wide point exact), the ends
+ * sit on the stringer. It is the right rail alone, so x only rises: a swallow starts at its points' width and is written
+ * as a square tail there, (0, 0) to (0, half the points' width) as a corner.
+ */
+export function brdOutlineCurve(surface: BoardSurface): BrdCurve {
+  const half: P2[] = boardRailHalfOutline(surface).map((p) => [p[0], Math.abs(p[1])]);
   const outlinePoints: P2[] = [...half];
   if (Math.abs(outlinePoints[0][1]) > OFF) outlinePoints.unshift([outlinePoints[0][0], 0]);
   const last = outlinePoints[outlinePoints.length - 1];
   if (Math.abs(last[1]) > OFF) outlinePoints.push([last[0], 0]);
   const widest = outlinePoints.reduce((best, p, i) => (p[1] > outlinePoints[best][1] ? i : best), 0);
-  const outline: BrdCurve = {
+  return {
     points: outlinePoints,
     knots: fitBezierKnots(outlinePoints, { tolerance: BRD_TOLERANCE_MM, keep: [widest], level: [widest] }),
   };
+}
+
+/** Every curve of the file, in millimetres, fitted to the surface. */
+export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdCurves {
+  const outline = brdOutlineCurve(surface);
 
   // Rocker: the stringer's bottom, and the deck with the tips' edges closing the profile.
   const stringer = boardStringerLines(surface);

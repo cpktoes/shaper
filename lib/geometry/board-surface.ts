@@ -893,26 +893,12 @@ export function boardStringerLines(surface: BoardSurface): { deck: Vec3[]; botto
 }
 
 /**
- * The right half of `boardFileOutlineLoop`, tail to nose, as a board file's outline carries it. On a swallow it starts
- * at the crotch on the stringer, runs back along the right notch edge to the swallow's point, then along the right rail
- * to the nose; elsewhere it is the right rail. Every point is a vertex of the mesh.
+ * The right rail of the outline, tail to nose, one point per ring — each ring's widest vertex — as a board file's outline
+ * carries it (quick 261110-veo): the distance along the board only ever rises, so a program that reads the outline as a
+ * half-width at each distance along the board can draw it. On a swallow it starts at the swallow's point (x = 0) and never
+ * visits the notch: the file writes the tail square at the points' width, to be cut by hand. Every point is a vertex of
+ * the mesh.
  */
-export function boardFileHalfOutline(surface: BoardSurface): Vec3[] {
-  const { positions, rings } = surface;
-  const { right } = outlineRails(surface);
-  const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
-  if (lastNotch < 0 || lastNotch + 1 >= rings.length) return right.map((v) => pointAt(positions, v));
-  // The same wall slot `boardFileOutlineLoop` walks (the one the right rail's tail point stands on).
-  const height = (v: number) => positions[3 * v + 2];
-  const tipWall = rings[0].walls?.right ?? [];
-  const slot = tipWall.reduce(
-    (best, v, j) => (Math.abs(height(v) - height(right[0])) < Math.abs(height(tipWall[best]) - height(right[0])) ? j : best),
-    0,
-  );
-  const wall = rings
-    .slice(0, lastNotch + 1)
-    .flatMap((ring) => (ring.walls && ring.pieces.some((piece) => pieceHasWidth(positions, piece)) ? [ring.walls.right[slot]] : []))
-    .reverse();
-  const crotch = rings[lastNotch + 1].walls;
-  return withoutRepeats([...(crotch ? [crotch.right[slot]] : []), ...wall, ...right], false).map((v) => pointAt(positions, v));
+export function boardRailHalfOutline(surface: BoardSurface): Vec3[] {
+  return outlineRails(surface).right.map((v) => pointAt(surface.positions, v));
 }

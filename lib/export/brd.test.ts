@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { bezierDeviation, type P2 } from "../geometry/bezier-fit";
+import { bezierDeviation, bezierPoint, type P2 } from "../geometry/bezier-fit";
 import {
-  boardFileHalfOutline,
+  boardFileOutlineLoop,
+  boardRailHalfOutline,
   boardSectionHalves,
   boardProfileLines,
   boardStringerLines,
@@ -30,6 +31,8 @@ import {
   brdBottomStations,
   brdCurves,
   brdFile,
+  brdOutlineCurve,
+  brdTailWrittenSquare,
   brdText,
   formatBrdNumber,
   readBrdText,
@@ -167,11 +170,33 @@ describe("the surface readers where the boards differ", () => {
     expect(welded.length).toBeGreaterThan(0);
   });
 
-  it("on the Fish the half outline starts on the stringer at the crotch and reaches x = 0 at the swallow's point", () => {
-    const half = boardFileHalfOutline(fish);
-    expect(half[0][1]).toBeCloseTo(0, 9);
-    expect(half[0][0]).toBeGreaterThan(0);
-    expect(Math.min(...half.map((p) => p[0]))).toBeCloseTo(0, 9);
+  it("on the Fish the rail outline starts at x = 0, as wide as the swallow's points", () => {
+    const half = boardRailHalfOutline(fish);
+    const ring = fish.rings[0];
+    const widest = Math.max(...ring.right.map((v) => Math.abs(fish.positions[3 * v + 1])));
+    expect(half[0][0]).toBeCloseTo(0, 9);
+    expect(half[0][1]).toBeCloseTo(widest, 9);
+    expect(half[0][1]).toBeGreaterThan(0);
+  });
+});
+
+describe.each(CASES)("boardRailHalfOutline on %s", (_label, surface) => {
+  const half = boardRailHalfOutline(surface);
+
+  it("has one point per ring, tail to nose, each the ring's widest vertex, x only rising, the last at the length", () => {
+    expect(half.length).toBe(surface.rings.length);
+    half.forEach((p, i) => {
+      const ring = surface.rings[i];
+      const across = Math.max(...ring.pieces.flatMap((piece) => Array.from({ length: piece.count }, (_, k) => Math.abs(surface.positions[3 * (piece.first + k) + 1]))));
+      expect(Math.abs(p[1])).toBeCloseTo(across, 9);
+      if (i > 0) expect(p[0]).toBeGreaterThanOrEqual(half[i - 1][0]);
+    });
+    expect(half[half.length - 1][0]).toBeCloseTo(surface.length, 6);
+  });
+
+  it("is as wide as the file outline loop's widest", () => {
+    const loop = boardFileOutlineLoop(surface);
+    expect(Math.max(...half.map((p) => Math.abs(p[1])))).toBeCloseTo(Math.max(...loop.map((p) => Math.abs(p[1]))), 9);
   });
 });
 
@@ -274,7 +299,7 @@ describe.each(CASES)("the .brd of %s", (_label, surface, options) => {
   });
 
   it("puts the outline's widest knot exactly at the widest point of the outline, within 0.05 mm of half the width", () => {
-    const widest = Math.max(...boardFileHalfOutline(surface).map((p) => p[1]));
+    const widest = Math.max(...boardRailHalfOutline(surface).map((p) => p[1]));
     const knotWidest = Math.max(...read.outline.map((k) => k.point[1]));
     expect(knotWidest).toBeCloseTo(mmToCentimetres(mm(widest)), 9);
     expect(Math.abs(knotWidest - num("p04") / 2)).toBeLessThan(0.005);
@@ -473,6 +498,82 @@ describe("the Fish's sections", () => {
       expect(section.knots[0].point[0]).toBeCloseTo(0, 9);
       expect(section.knots[section.knots.length - 1].point[0]).toBeCloseTo(0, 9);
     }
+  });
+});
+
+/** Every step of a curve sampled 64 times a span: x never goes backwards by more than a millionth of a millimetre. */
+function curveNeverTurnsBack(knots: BrdCurves["outline"]["knots"]): boolean {
+  let x = -Infinity;
+  for (let i = 0; i + 1 < knots.length; i++) {
+    for (let k = 0; k <= 64; k++) {
+      const p = bezierPoint(knots[i], knots[i + 1], k / 64);
+      if (p[0] < x - 1e-6) return false;
+      x = Math.max(x, p[0]);
+    }
+  }
+  return true;
+}
+
+describe("a swallow is written as a wide square tail at its points", () => {
+  const curves = brdCurves(fish);
+  const half = boardRailHalfOutline(fish);
+
+  it("starts the outline (0, 0) to (0, half the points' width) as a corner, then up the rail, x never going backwards", () => {
+    const [first, second] = curves.outline.knots;
+    expect(first.point).toEqual([0, 0]);
+    expect(second.point[0]).toBeCloseTo(0, 9);
+    expect(second.point[1]).toBeCloseTo(Math.abs(half[0][1]), 9);
+    expect(second.smooth).toBe(false);
+    curves.outline.knots.forEach((k, i) => {
+      if (i > 0) expect(k.point[0]).toBeGreaterThanOrEqual(curves.outline.knots[i - 1].point[0]);
+    });
+    expect(curveNeverTurnsBack(curves.outline.knots)).toBe(true);
+    expect(bezierDeviation(curves.outline.points, curves.outline.knots)).toBeLessThanOrEqual(0.5);
+    const widest = Math.max(...half.map((p) => Math.abs(p[1])));
+    expect(Math.max(...curves.outline.knots.map((k) => k.point[1]))).toBeCloseTo(widest, 9);
+  });
+
+  it("carries the rocker and the deck back to x = 0 at the points' bottom and deck, and stands no section in the notch", () => {
+    const { deck, bottom } = boardStringerLines(fish);
+    expect(curves.bottom.knots[0].point[0]).toBeCloseTo(0, 9);
+    expect(curves.bottom.knots[0].point[1]).toBeCloseTo(bottom[0][2], 9);
+    expect(curves.deck.knots[0].point[0]).toBeCloseTo(0, 9);
+    expect(curves.deck.points[1][1]).toBeCloseTo(deck[0][2], 9);
+    const crotch = boardSectionHalves(fish).halves[0].station;
+    for (const section of curves.sections) expect(section.station).toBeGreaterThanOrEqual(crotch);
+  });
+});
+
+describe("the outline never turns back, on every preset as it opens and re-cut with a swallow and a diamond", () => {
+  const labels = ["shortboard", "fish", "midlength", "longboard"].flatMap((id) => ["asis", "swallow", "diamond"].map((tail) => `${id}|${tail}|hard`));
+  const available = labels.filter((label) => BOARDS.some((b) => b.label === label));
+
+  it("covers twelve boards", () => {
+    expect(available.length).toBe(12);
+  });
+
+  describe.each(available)("%s", (label) => {
+    it("writes an outline from (0, 0) whose x never decreases, square exactly when the tail is a swallow, a diamond's own rail untouched", () => {
+      const fields = fieldsOf(label);
+      const surface = flatSurface(fields);
+      const outline = brdOutlineCurve(surface);
+      expect(outline.knots[0].point).toEqual([0, 0]);
+      expect(curveNeverTurnsBack(outline.knots)).toBe(true);
+      const swallow = fields.outline.tail.kind === "swallow";
+      expect(brdTailWrittenSquare(surface)).toBe(swallow);
+      if (fields.outline.tail.kind === "diamond") {
+        const rail = boardRailHalfOutline(surface).map((p): P2 => [p[0], Math.abs(p[1])]);
+        expect(outline.points.slice(rail[0][1] > 1e-6 ? 1 : 0, rail.length + (rail[0][1] > 1e-6 ? 1 : 0))).toEqual(rail);
+      }
+    });
+  });
+});
+
+describe("brdTailWrittenSquare", () => {
+  it("is true for the Fish and false for the flat Shortboard and the Deep Single board", () => {
+    expect(brdTailWrittenSquare(fish)).toBe(true);
+    expect(brdTailWrittenSquare(shortboard)).toBe(false);
+    expect(brdTailWrittenSquare(cut.surface)).toBe(false);
   });
 });
 
