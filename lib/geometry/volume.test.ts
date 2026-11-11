@@ -42,7 +42,7 @@ import {
   type VolumeTemplateValues,
 } from "./volume";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
-import { DEFAULT_BOTTOM, resolveBottom, startingChannels, startingCut, type BoardBottom, type BottomBoard } from "./bottom";
+import { DEFAULT_BOTTOM, pickCut, resolveBottom, startingChannels, startingCut, type BoardBottom, type BottomBoard } from "./bottom";
 import { BOARD_PRESETS } from "./presets";
 import { DEFAULT_BLANK_CUT } from "./blank";
 import { prepareBlank } from "./blank-fit";
@@ -2255,11 +2255,13 @@ describe("Phase 17 D-10, D-21: a channel's wall is a vertical step in the ring (
     for (const id of ["shortboard", "fish", "midlength", "longboard"]) {
       for (const count of [4, 6, 8] as const) {
         const { input } = channelInput(id, count);
-        const { bottomWallsAt, foamOffAt, ...plain } = input;
+        const { bottomWallsAt, foamOffAt, sectionsOffAt, ...plain } = input;
         expect(bottomWallsAt).toBeDefined();
+        expect(sectionsOffAt).toBeDefined();
         const base = boardSections(plain);
         const walled = boardSections(input);
-        const smeared = boardSections({ ...plain, foamOffAt });
+        // the channels cut straight up into the finished rail (G-17-6), but no walls laid out: the 24-point run smears them
+        const smeared = boardSections({ ...plain, foamOffAt, sectionsOffAt });
         let truth = 0;
         let walledError = 0;
         let smearedError = 0;
@@ -2269,7 +2271,12 @@ describe("Phase 17 D-10, D-21: a channel's wall is a vertical step in the ring (
           const [edgeY] = half[EDGE];
           const dense: [number, number][] = [...half.slice(0, EDGE + 1)];
           for (let i = 1; i <= 400; i++) dense.push([edgeY + ((half[half.length - 1][0] - edgeY) * i) / 400, 0]);
-          const cut = bottomedHalfSection(dense, (y) => foamOffAt!(section.station, y), BOTTOM_COLUMN_FLOOR);
+          const cut = bottomedHalfSection(
+            dense,
+            (y) => foamOffAt!(section.station, y),
+            BOTTOM_COLUMN_FLOOR,
+            (y) => sectionsOffAt!(section.station, y),
+          );
           const off = sampledSectionArea(dense) - sampledSectionArea(cut.half);
           truth += off;
           walledError += Math.abs(section.area - walled[k].area - off);
@@ -2281,4 +2288,120 @@ describe("Phase 17 D-10, D-21: a channel's wall is a vertical step in the ring (
       }
     }
   }, 120_000);
+});
+
+describe("channels are cut straight up into the finished rail (G-17-6, the founder's ruling of 2026-11-10; D-05)", () => {
+  const EDGE = BOTTOM_EDGE();
+  const OUTERMOST = SECTION_POINTS.deck - 1;
+  /** A board from the Phase 16 set as its card opens it, with `count` channels on their starting numbers (0: none,
+   * a Deep Single Concave instead, so the bottom still cuts) and a Rolled Vee tail when asked, read as the store reads it. */
+  function boardInput(label: string, count: 0 | 4 | 6 | 8, rolledVee = false) {
+    const fields = phase16Boards().find((b) => b.label === label)!.fields;
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+    let bottom = structuredClone(DEFAULT_BOTTOM);
+    if (rolledVee) bottom = pickCut(bottom, "tail", "Rolled Vee", board);
+    if (count !== 0) bottom.channels = startingChannels(count, board, bottom.channels);
+    else bottom.center = startingCut("center", "Deep Single Concave", board);
+    return designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board });
+  }
+  /** The unlifted half each section was built with: the sections of the same board without its bottom. */
+  function unliftedHalves(input: CrossSectionVolumeInput, stations?: readonly Mm[]) {
+    const plain: CrossSectionVolumeInput = { ...input };
+    delete plain.foamOffAt;
+    delete plain.sectionsOffAt;
+    delete plain.bottomWallsAt;
+    return boardSections(plain, stations).map((section) =>
+      section.result ? (section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth)) : null,
+    );
+  }
+  /** Where a point of the unlifted half stands once cut, worked out afresh here: the vee's or belly's lift by the
+   * sections' foam (`h + S·(1 − h/a)`, `a` the rail's outermost height), then the channel's floor, cut straight up. */
+  const expectedHeight = (h: number, apex: number, S: number, T: number): number => {
+    const lifted = S === 0 ? h : !(apex > 0) || S >= apex ? Math.max(h, S) : h + S * (1 - Math.min(1, h / apex));
+    return T > S ? Math.max(lifted, T) : lifted;
+  };
+
+  it("a board without channels carries no sections sampler, and its sections are those of the one number alone", () => {
+    const input = boardInput("shortboard|asis|soft", 0);
+    expect(input.foamOffAt).toBeDefined();
+    expect("sectionsOffAt" in input).toBe(false);
+    expect("bottomWallsAt" in input).toBe(false);
+    const alone = boardSections({ halfWidthAt: input.halfWidthAt, cutStation: input.cutStation, foil: input.foil, thicknessAt: input.thicknessAt, rails: input.rails, length: input.length, foamOffAt: input.foamOffAt });
+    boardSections(input).forEach((section, i) => {
+      expect(section.area).toBe(alone[i].area);
+      expect(section.drawn).toEqual(alone[i].drawn);
+    });
+  });
+
+  it("on the soft-tailed Shortboard with six channels, where a channel first reaches the rail's run, every rail point stands at the higher of the vee's lift and the channel's floor", () => {
+    const input = boardInput("shortboard|asis|soft", 6);
+    const { foamOffAt, sectionsOffAt } = input;
+    expect(foamOffAt && sectionsOffAt && input.bottomWallsAt).toBeDefined();
+    const sections = boardSections(input);
+    const halves = unliftedHalves(input);
+    // the first litres station from the tail where the channels' foam lands on a point of the finished rail's own run
+    const index = sections.findIndex((section, i) => {
+      const half = halves[i];
+      if (!half || !section.drawn) return false;
+      for (let k = OUTERMOST; k <= EDGE; k++) {
+        if (foamOffAt!(section.station, mm(half[k][0])) > sectionsOffAt!(section.station, mm(half[k][0]))) return true;
+      }
+      return false;
+    });
+    expect(index).toBeGreaterThanOrEqual(0);
+    const section = sections[index];
+    const half = halves[index]!;
+    const drawn = section.drawn!;
+    expect(section.railEdgeAt).toBeUndefined();
+    const apex = half[OUTERMOST][1];
+    let cutUp = 0;
+    for (let k = OUTERMOST; k < EDGE; k++) {
+      const [y, h] = half[k];
+      const S = sectionsOffAt!(section.station, mm(y));
+      const T = foamOffAt!(section.station, mm(y));
+      const expected = expectedHeight(h, apex, S, T);
+      expect(drawn[k][0], `rail point ${k}`).toBe(y);
+      expect(Math.abs(drawn[k][1] - expected), `rail point ${k}`).toBeLessThan(1e-9);
+      expect(drawn[k][1], `rail point ${k}`).toBeLessThanOrEqual(expected + 1e-9);
+      if (T > expectedHeight(h, apex, S, S)) cutUp++;
+    }
+    // the channel really is cut up into the curve here: on some rail point its floor stands above the lifted rail
+    expect(cutUp).toBeGreaterThan(0);
+    // every point of the bottom run, the bottom edge included, still stands at the one number (wall tops aside: each is
+    // read just outside its wall and set back on the wall's line)
+    for (let k = EDGE; k < drawn.length; k++) {
+      if (section.wallRows!.includes(k)) continue;
+      const [y, h] = drawn[k];
+      expect(Math.abs(h - foamOffAt!(section.station, mm(y))), `bottom point ${k}`).toBeLessThan(1e-9);
+    }
+  });
+
+  it("a rail point no channel reaches is exactly the vee's lifted point, as before (the Rolled Vee Shortboard, soft tail, six channels)", () => {
+    const input = boardInput("shortboard|asis|soft", 6, true);
+    const old: CrossSectionVolumeInput = { ...input };
+    delete old.sectionsOffAt;
+    const now = boardSections(input);
+    const before = boardSections(old);
+    const halves = unliftedHalves(input);
+    let checked = 0;
+    let moved = 0;
+    now.forEach((section, i) => {
+      const half = halves[i];
+      if (!half || !section.drawn) return;
+      for (let k = OUTERMOST; k < EDGE; k++) {
+        const y = mm(half[k][0]);
+        if (input.foamOffAt!(section.station, y) !== input.sectionsOffAt!(section.station, y)) {
+          if (section.drawn[k][1] !== before[i].drawn![k][1]) moved++;
+          continue;
+        }
+        expect(section.drawn[k]).toEqual(before[i].drawn![k]);
+        checked++;
+      }
+    });
+    expect(checked).toBeGreaterThan(100);
+    expect(moved).toBeGreaterThan(0);
+  });
 });

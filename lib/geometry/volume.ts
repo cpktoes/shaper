@@ -575,6 +575,15 @@ export interface CrossSectionVolumeInput {
    * rather than a ramp between two of its points (`bottomedHalfWithWalls`). Absent, every section keeps its 24 points.
    */
   bottomWallsAt?: (station: Mm) => Mm[];
+  /**
+   * The foam the three sections' cuts alone take off (G-17-6, the founder's ruling of 2026-11-10; D-05): the vees,
+   * bellies and concaves without the channels, read at the same station and `across` as `foamOffAt`
+   * (`bottomSectionsSampler` in bottom.ts). `design.ts` hands it in only on a board with channels. With it the vee or
+   * belly lifts the finished rail as always (D-41), and the channels are then cut straight up into the rail that
+   * leaves — a channel's floor never rides up the rail's curve, and a wall under the curve keeps its face. Absent,
+   * every section is exactly as it was.
+   */
+  sectionsOffAt?: (station: Mm, across: Mm) => Mm;
 }
 
 /** `stationAreas` are full (both-rails) cross-section areas in square millimetres, nose-to-tail —
@@ -675,7 +684,9 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * counted once, exactly, off the whole board (`tailRollFoam`).
  *
  * With the bottom contours (Phase 17, D-21, `CrossSectionVolumeInput.foamOffAt`), `drawn` is also the half with its
- * bottom lifted (`bottomedHalfSection`), last of all, and `area` is corrected by the change in the ring's own area —
+ * bottom lifted (`bottomedHalfSection`), last of all — the vee or belly lifts the rail, and on a board with channels the
+ * channels are then cut into what that leaves, straight up (G-17-6, `sectionsOffAt`) — and `area` is corrected by the
+ * change in the ring's own area —
  * so the litres count the very ring the 3D board and the CNC files carry. `thinAt` says where a vee or belly leaves
  * the rail under 1/4", and `railEdgeAt` where it lifted the bottom to the deck and the foam ends.
  */
@@ -929,7 +940,7 @@ export const TAIL_ROLL_SHARE = 1 / 3;
 /** How far in from the tail end the roll runs, in inches (D-38, the founder's pick). */
 export const TAIL_ROLL_RUN_IN = 1;
 /** The panels the litres integrate the roll's foam over (`tailRollFoam`). */
-const TAIL_ROLL_PANELS = 8;
+export const TAIL_ROLL_PANELS = 8;
 
 /**
  * How far the deck has rolled down at a station in the tail's last inch (Phase 16, D-38, the founder: "The rail at the
@@ -1062,25 +1073,42 @@ const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
  * as it is, never 0/0. Every point that does not move is returned as the very same pair, so with no foam off the half
  * comes back point for point. A foam off that is not a finite number is read as none at that point — the foam ends only
  * where a real cut reaches the deck, never because a sampler slipped.
+ *
+ * On a board with channels (`sectionsOffAt`, G-17-6, the founder's ruling of 2026-11-10; D-05): the vee, belly or
+ * concave lifts the rail by the rule above, read from `sectionsOffAt` — the sections' foam alone — and the channels are
+ * then cut into what that leaves, straight up, the way a shaper cuts them last: each point stands at the higher of the
+ * lifted rail and the channel's floor (`foamOffAt`, the sections' bottom plus the channel there). On the bottom that is
+ * exactly `foamOffAt`; wherever no channel reaches, exactly the lifted point. Without `sectionsOffAt` the rule above is
+ * the only rule, untouched.
  */
 export function bottomedHalfSection(
   half: HalfSectionPoints,
   foamOffAt: (across: Mm) => Mm,
   floor: Mm,
+  sectionsOffAt?: (across: Mm) => Mm,
 ): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm } {
   const deckCount = SECTION_POINTS.deck;
   const out: [number, number][] = half.slice() as [number, number][];
   const thinAt: Mm[] = [];
   const apex = half[deckCount - 1][1];
-  /** The underside's height at a point `h` above the planed bottom, `y` across. */
-  const under = (y: number, h: number): number => {
-    // A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01).
-    const raw = foamOffAt(mm(y));
-    const f = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+  /** A point `h` above the planed bottom lifted by `f` of foam off (D-40, D-41): the vee's or belly's rule. */
+  const lift = (h: number, f: number): number => {
     if (f === 0) return h;
     if (!(apex > 0) || f >= apex) return Math.max(h, f);
     return h + f * (1 - Math.min(1, h / apex));
   };
+  // A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01).
+  const read = (raw: number): number => (Number.isFinite(raw) ? Math.max(0, raw) : 0);
+  /** The underside's height at a point `h` above the planed bottom, `y` across. */
+  const under = sectionsOffAt
+    ? (y: number, h: number): number => {
+        // the vee or belly lifts the rail; the channel is then cut straight up into what that leaves (G-17-6, D-05)
+        const total = read(foamOffAt(mm(y)));
+        const sections = read(sectionsOffAt(mm(y)));
+        const lifted = lift(h, sections);
+        return total > sections ? Math.max(lifted, total) : lifted;
+      }
+    : (y: number, h: number): number => lift(h, read(foamOffAt(mm(y))));
   // The underside, walked out from the stringer: the bottom's run backwards, then the rail's run up to its outermost
   // point. That point is the deck's and stays, unless a lift past its height ends the foam before it.
   for (let k = half.length - 1; k >= deckCount - 1; k--) {
@@ -1170,12 +1198,16 @@ function bottomRunHeightAt(run: HalfSectionPoints, y: number): number {
  *
  * The bottom edge and the inside edge are the very same points; the bottom run lies on the planed bottom, so laying it
  * out afresh moves no foam. `wallRows` is the index of each wall's top in the returned half; its foot is the next.
+ *
+ * With `sectionsOffAt` (G-17-6, D-05) the vee or belly lifts the rail and the channels are cut straight up into what
+ * that leaves (`bottomedHalfSection`): a channel's floor never rides up the rail's curve.
  */
 export function bottomedHalfWithWalls(
   half: HalfSectionPoints,
   walls: readonly Mm[],
   foamOffAt: (across: Mm) => Mm,
   floor: Mm,
+  sectionsOffAt?: (across: Mm) => Mm,
 ): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm; wallRows: number[] } {
   const run = half.slice(BOTTOM_EDGE_INDEX);
   const edge = run[0];
@@ -1211,7 +1243,7 @@ export function bottomedHalfWithWalls(
   const last = outward.length - 1;
   const relaid: HalfSectionPoints = [...half.slice(0, BOTTOM_EDGE_INDEX + 1), ...outward.slice(0, last).reverse()];
   const wallRows = tops.map((top) => BOTTOM_EDGE_INDEX + last - top.at);
-  const cut = bottomedHalfSection(relaid, foamOffAt, floor);
+  const cut = bottomedHalfSection(relaid, foamOffAt, floor, sectionsOffAt);
   const out = cut.half.slice();
   tops.forEach((top, j) => {
     const row = wallRows[j];
@@ -1318,7 +1350,7 @@ export function boardSectionsWith(
   // An old rule never reads a fit (Phase 14 D-25's precedent): it runs today's arithmetic, wings and all.
   const fit = "at" in rule ? (rule.fit ?? OLD_SURFACE_FIT) : OLD_SURFACE_FIT;
   const tipThickness = thicknessAt(mm(0));
-  const { foamOffAt, bottomWallsAt } = input;
+  const { foamOffAt, bottomWallsAt, sectionsOffAt } = input;
 
   // The bottom contours (Phase 17, D-05, D-21, research Pattern 2): once a section is finished — the wing move and the
   // tail roll done — its half has its bottom lifted by the foam off (`bottomedHalfSection`), set as the half the 3D
@@ -1329,8 +1361,16 @@ export function boardSectionsWith(
   const bottomed = (built: BoardSection): BoardSection => {
     if (!foamOffAt || !built.result) return built;
     const half = built.drawn ?? built.blended ?? sampledFinishedRail(built.result, built.domed, built.halfWidth);
+    // the vees and bellies alone, so the channels are cut straight up into the rail they leave (G-17-6, D-05)
+    const sectionsAt = sectionsOffAt ? (across: Mm) => sectionsOffAt(built.station, across) : undefined;
     if (bottomWallsAt) {
-      const walled = bottomedHalfWithWalls(half, bottomWallsAt(built.station), (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR);
+      const walled = bottomedHalfWithWalls(
+        half,
+        bottomWallsAt(built.station),
+        (across) => foamOffAt(built.station, across),
+        BOTTOM_COLUMN_FLOOR,
+        sectionsAt,
+      );
       return {
         ...built,
         drawn: walled.half,
@@ -1341,7 +1381,7 @@ export function boardSectionsWith(
         wallRows: walled.wallRows,
       };
     }
-    const cut = bottomedHalfSection(half, (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR);
+    const cut = bottomedHalfSection(half, (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR, sectionsAt);
     if (cut.half.every((point, k) => point === half[k])) return built;
     return {
       ...built,
