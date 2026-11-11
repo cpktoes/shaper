@@ -912,6 +912,12 @@ export interface RailSectionBottom {
   /** The bottom across, x ascending from well inboard of the plot to the apex (x = 0, y = 0): at each x, the foam
    * off there less the lift — below 0 under a vee or a belly, which takes less off toward the stringer. */
   across: Point2D[];
+  /** The channels, cut last — after the vee or belly and after the rail is shaped (G-17-6, the founder's ruling of
+   * 2026-11-10) — in the section's own frame: at each x, how far they take the bottom up above `across`. x ascending
+   * over the same reach, out to the apex; 0 between channels; every standing wall two points at its own x, the
+   * channel's floor at its deepest first (inboard), then the next channel's peak. Absent when no channel is cut within
+   * the section's reach. */
+  channelCut?: Point2D[];
 }
 
 export interface RailBandsOutput {

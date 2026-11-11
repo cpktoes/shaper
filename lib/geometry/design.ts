@@ -22,8 +22,10 @@ import {
   bottomHasCut,
   bottomSampler,
   bottomWallSampler,
-  foamOff,
+  channelFoamOff,
+  channelWallsAt,
   resolveBottom,
+  sectionsFoamOff,
   type BoardBottom,
   type BottomBoard,
   type ResolvedBottom,
@@ -309,12 +311,14 @@ export function railAnchorStations(foil: FoilSpec, length: Mm): RailAnchorStatio
 }
 
 /**
- * The rail lift at a station (Phase 17, D-22, D-35): the foam the bottom takes off right at the rail, `foamOff` read
- * at the rail's own distance from the stringer (`railAt`). A vee or a belly lifts the rail; a concave runs out before
- * the rail and lifts nothing there — DATA's "Rail lift" column.
+ * RAILS' rail lift at a station (Phase 17, D-22, D-35): the foam the vee or belly takes off right at the rail,
+ * `sectionsFoamOff` read at the rail's own distance from the stringer (`railAt`). A vee or a belly lifts the rail; a
+ * concave runs out before the rail and lifts nothing there. A channel never counts, even one that runs out through the
+ * rail (D-43): channels are cut after the rail is shaped (G-17-6, the founder, 2026-11-10), so the rail RAILS bands is
+ * the one the vee or belly leaves.
  */
 export function bottomRailLift(resolved: ResolvedBottom, board: BottomBoard): (station: Mm) => Mm {
-  return (station) => foamOff(resolved, board, station, board.railAt(station));
+  return (station) => sectionsFoamOff(resolved, board, station, board.railAt(station));
 }
 
 /**
@@ -348,11 +352,16 @@ export function railsOnTheBottom(
 }
 
 /**
- * RAILS' three sections standing on the bottom the cut leaves (Phase 17, D-41): each section whose rail the bottom
- * lifts carries that bottom across (`railSectionBottom`, read off `foamOff` at its anchor — the same one number the
- * litres and the 3D board read, D-05), so its plot draws the planed bottom falling away under the rail at the vee's or
+ * RAILS' three sections standing on the bottom the cut leaves (Phase 17, D-41): each section whose rail a vee or a
+ * belly lifts carries that bottom across (`railSectionBottom`, read off `sectionsFoamOff` at its anchor — the one
+ * number without the channels, D-05), so its plot draws the planed bottom falling away under the rail at the vee's or
  * belly's own angle. `bands` are the bands of `railsOnTheBottom`'s rails, so the rail drawn on that bottom is the
  * thinner one. A section whose rail is not lifted is passed through as it is; when none is, `bands` itself comes back.
+ *
+ * The channels are cut last, after the rail is shaped (G-17-6, the founder, 2026-11-10: D-05, D-10): they never lift
+ * the rail RAILS bands, and are handed over as their own cut (`channelFoamOff`) and walls (`channelWallsAt`, measured
+ * in from the rail on both sides of the stringer), so the plot cuts them into its bottom and its finished rail
+ * straight up at each wall.
  */
 export function railBandsOnTheBottom(
   bands: RailBandsOutput,
@@ -363,10 +372,13 @@ export function railBandsOnTheBottom(
   const onBottom = (key: "tail" | "center" | "nose") => {
     const station = anchors[key];
     const rail = board.railAt(station);
-    const lift = foamOff(resolved, board, station, rail);
+    const lift = sectionsFoamOff(resolved, board, station, rail);
     if (lift === 0) return bands[key];
-    const liftIn = (inFromRail: Mm) => foamOff(resolved, board, station, mm(Math.abs(rail - inFromRail)));
-    return { ...bands[key], bottom: railSectionBottom(bands[key], lift, liftIn) };
+    const liftIn = (inFromRail: Mm) => sectionsFoamOff(resolved, board, station, mm(Math.abs(rail - inFromRail)));
+    const { channels, wingRule } = resolved;
+    const cutIn = (inFromRail: Mm) => channelFoamOff(channels, board, wingRule, station, mm(Math.abs(rail - inFromRail)));
+    const wallsIn = channelWallsAt(channels, board, wingRule, station).flatMap((w) => [mm(rail - w), mm(rail + w)]);
+    return { ...bands[key], bottom: railSectionBottom(bands[key], lift, liftIn, { cutIn, wallsIn }) };
   };
   const tail = onBottom("tail");
   const center = onBottom("center");
