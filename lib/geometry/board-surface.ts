@@ -836,3 +836,58 @@ export function boardProfileLines(surface: BoardSurface): { deck: Vec3[]; bottom
     rings.map((ring) => pointAt(positions, extremeVertex(positions, pieceVertices(ring.pieces[0]), 2, sign)));
   return { deck: line(1), bottom: line(-1) };
 }
+
+/**
+ * Each of the CNC files' slices (the same rings `boardSlices` keeps) as its right half only, the way a board file's
+ * cross-section is written: from the bottom at the inside edge (the stringer, or the notch wall inside a swallow's
+ * notch), round the rail, to the deck at the inside edge. Every point is a vertex of the mesh; a vertex a welded slot
+ * repeats is given once.
+ */
+export function boardHalfSlices(surface: BoardSurface): { station: Mm; points: Vec3[] }[] {
+  return surface.rings
+    .filter((ring) => ring.isSlice && ring.pieces.some((piece) => pieceHasWidth(surface.positions, piece)))
+    .map((ring) => ({
+      station: ring.station,
+      points: withoutRepeats(ring.right.slice().reverse(), false).map((v) => pointAt(surface.positions, v)),
+    }));
+}
+
+/**
+ * The stringer's deck and bottom lines as a board file's rocker curves carry them: every ring, tail to nose, its deck
+ * point (the first vertex of the right half) and its bottom point (the last) — on the stringer, or on the right piece's
+ * notch wall inside a swallow's notch. Unlike `boardProfileLines`, which takes each ring's lowest vertex wherever it
+ * stands, the bottom here is always the one at the inside edge, so a concave that lifts the stringer shows as it is.
+ * Every point is a vertex of the mesh.
+ */
+export function boardStringerLines(surface: BoardSurface): { deck: Vec3[]; bottom: Vec3[] } {
+  const { positions, rings } = surface;
+  return {
+    deck: rings.map((ring) => pointAt(positions, ring.right[0])),
+    bottom: rings.map((ring) => pointAt(positions, ring.right[ring.right.length - 1])),
+  };
+}
+
+/**
+ * The right half of `boardFileOutlineLoop`, tail to nose, as a board file's outline carries it. On a swallow it starts
+ * at the crotch on the stringer, runs back along the right notch edge to the swallow's point, then along the right rail
+ * to the nose; elsewhere it is the right rail. Every point is a vertex of the mesh.
+ */
+export function boardFileHalfOutline(surface: BoardSurface): Vec3[] {
+  const { positions, rings } = surface;
+  const { right } = outlineRails(surface);
+  const lastNotch = rings.findLastIndex((ring) => ring.pieces.length === 2);
+  if (lastNotch < 0 || lastNotch + 1 >= rings.length) return right.map((v) => pointAt(positions, v));
+  // The same wall slot `boardFileOutlineLoop` walks (the one the right rail's tail point stands on).
+  const height = (v: number) => positions[3 * v + 2];
+  const tipWall = rings[0].walls?.right ?? [];
+  const slot = tipWall.reduce(
+    (best, v, j) => (Math.abs(height(v) - height(right[0])) < Math.abs(height(tipWall[best]) - height(right[0])) ? j : best),
+    0,
+  );
+  const wall = rings
+    .slice(0, lastNotch + 1)
+    .flatMap((ring) => (ring.walls && ring.pieces.some((piece) => pieceHasWidth(positions, piece)) ? [ring.walls.right[slot]] : []))
+    .reverse();
+  const crotch = rings[lastNotch + 1].walls;
+  return withoutRepeats([...(crotch ? [crotch.right[slot]] : []), ...wall, ...right], false).map((v) => pointAt(positions, v));
+}
