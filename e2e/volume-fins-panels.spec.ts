@@ -75,7 +75,7 @@ test.describe("VOLUME's Inputs — one Import Designed Board box", () => {
       ["Width", `19"`],
       ["Thickness", `2 1/2"`],
     ]);
-    await expect(card.locator("[data-readout-foot]")).toHaveText("Rail shapes from RAILS");
+    await expect(card.locator("[data-readout-foot]")).toHaveText("Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.");
 
     await expect(aside.getByText(/Board Length —/)).toHaveCount(0);
     await expect(aside.getByText(/Board Width —/)).toHaveCount(0);

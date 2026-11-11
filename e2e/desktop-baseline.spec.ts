@@ -2,6 +2,15 @@ import { expect, test } from "@playwright/test";
 import { openRocker } from "./helpers/blank-picker";
 
 /**
+ * RE-RECORDED 2026-11-10 (Phase 17, plan 17-17, gap G-17-5, branch worktree-agent-a4bcfdf53a2d8e2d8) — VOLUME only,
+ * `volume-desktop.png`, once, for the INPUTS card's foot: "Rail shapes from RAILS" became the founder's sentence "Counts the
+ * finished rail shape from RAILS and the bottom contours from BOTTOM.", which wraps over two lines instead of one. Old and new
+ * were compared pixel by pixel before re-recording: 13705 pixels changed, all inside x 40-358, y 335-502 — the side panel from
+ * the card's foot down (the foot's two lines, the Rails / Fins buttons and the footer pushed one line lower); the drawing, the
+ * top row, the ESTIMATE card's litres and the other five pictures did not move. Rendered by the webpack dev server
+ * (`IS_WEBPACK_TEST=1`, port 3317) in the plan's worktree on this Mac; the orchestrator confirms under Turbopack from the main
+ * checkout after the merge. SHA-256 (first 8 characters), old to new: VOLUME f4d7cc62 to bec057d3.
+ *
  * RE-RECORDED 2026-11-08 (Phase 17, plan 17-08, branch claude/beautiful-fermi-ad3fb7) — all six pictures, once, for the
  * top row: BOTTOM joined it third, between ROCKER and RAILS (D-01), and the links' gap below 1280 became 6 / 12 (it
  * stays 20 at 1280, so at this window only TEMPLATE and ROCKER move left to make room). Old and new were compared
