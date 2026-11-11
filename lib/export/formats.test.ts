@@ -191,7 +191,7 @@ describe("nothing under lib/export needs WebGL, React, the page or an inch (SPEC
   const sources = readdirSync(__dirname).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"));
 
   it("finds the writers to check", () => {
-    for (const writer of ["zip.ts", "stl.ts", "dxf.ts", "xyz.ts", "cnc-files.ts"]) expect(sources).toContain(writer);
+    for (const writer of ["zip.ts", "stl.ts", "dxf.ts", "xyz.ts", "cnc-files.ts", "md5.ts", "des.ts", "brd-scramble.ts"]) expect(sources).toContain(writer);
   });
 
   it.each(sources)("%s imports no three.js or React, names no browser global and carries no inch constant", (name) => {
