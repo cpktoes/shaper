@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 17-bottom-contours
 source: [17-VERIFICATION.md]
 started: 2026-11-11T05:29:57Z
@@ -82,8 +82,21 @@ blocked: 0
   reason: "User reported: The volume input should say that it takes into account the finished rail shape and bottom contours"
   severity: minor
   test: 5
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "Words only, the maths is right. VOLUME's litres already count the finished rail (both rails' blends taken off each of the 51 sections) and every bottom contour (each section raised by BOTTOM's foam off, channel walls included) — checked on all four presets. The page never says so: the INPUTS card reads 'FROM TEMPLATE AND ROCKER & FOIL' with the foot 'Rail shapes from RAILS', never naming BOTTOM or 'finished'. Also: the ESTIMATE tab's rows above the litres (template area, three thicknesses) come from the older quick estimate and do not move with a cut; and its 'checkable against a published blank's own stated volume' no longer holds on a board with a concave."
+  artifacts:
+    - path: "lib/geometry/imported-readout.ts"
+      issue: "INPUTS card caption (line 75) and foot 'Rail shapes from RAILS' (lines 159-168) leave out BOTTOM and the finished rail — the main fix site"
+    - path: "components/volume/volume-calculation-card.tsx"
+      issue: "ESTIMATE tab lines 87 and 191: says 'finished cross-sections' but never the bottom; the blank-catalogue comparison is off for a cut board"
+    - path: "components/guide/words/volume.ts"
+      issue: "Import Designed Board card (28-32, from 18-GUIDE-WORDS.md:329-332) and Estimated Volume how-line (59) name TEMPLATE, ROCKER and RAILS but not BOTTOM"
+    - path: "lib/geometry/imported-readout.test.ts, e2e/volume-fins-panels.spec.ts, e2e/imported-readout.spec.ts"
+      issue: "pin the old foot; the e2e specs find the card by its caption"
+  missing:
+    - "The founder's wording for the INPUTS card foot (suggested: 'Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.')"
+    - "GUIDE words brought in line on the founder's words page first, then the code, in one change"
+    - "Pinning tests updated in the same change; look at the wrap in an 820-dot window"
+  debug_session: .planning/debug/volume-litres-say-what-they-include.md
 
 - gap_id: G-17-6
   truth: "Channels keep their own shape all the way to the rail: the finished rail never rounds them off"
@@ -91,5 +104,21 @@ blocked: 0
   reason: "User reported: pass, but the finished rail messes with channel shape. We need to make sure that the channels are kept, the finished rail shoudl not round them."
   severity: major
   test: 6
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  picture: pictures/17-UAT-channels-cut-by-the-finished-rail.webp  # the founder's screenshot, RAILS tail section of Dex's 5'8" Twin Mod Fish
+  root_cause: "Two separate faults. (1) RAILS, the place in his screenshot — drawing only: RAILS reads the bottom every 1/8\" and lays the Finished Rail's bottom as 24 straight pieces (~1/4\" each); no point lands on a channel wall, so the thick line cuts a slanted chord across every wall (up to ~90% of a wall missed) and the thin line's walls are 1/8\"-wide slopes. Does not touch the litres. Shows only where a vee or belly lifts the rail (no lift = no bottom drawn on RAILS). (2) The solid board (3D, CNC files, litres, BOTTOM's finished-rail ghost): wall corners are built only on the flat of the bottom; a wall under the rail's curved tuck is pushed out and loses its face, and the channel depth goes through the vee's lift-the-rail rule so its floor rides up the rail curve. Seen on soft tails where the outer channel runs out through the rail, and on the Longboard's rolled rail for 2 of 3 walls a side. Litres effect small: about +0.002-0.003 L Shortboard/Mid, 0 on Hard Edge tails, about +0.063 L Longboard with 6 channels."
+  artifacts:
+    - path: "lib/geometry/rail-bottom.ts"
+      issue: "RAIL_BOTTOM_STEP 1/8\" (:27), RAIL_BOTTOM_LINE_PIECES 24 (:34); railSectionBottom/railBottomFall straight between readings (:41-71); finishedRailOnBottom (:107-125) chords the walls, comment at :104-105 assumes the map is near-straight"
+    - path: "components/rails/rail-section-plot.tsx"
+      issue: "band segments straight between moved ends (:617-637); finished rail on the bottom (:645-653)"
+    - path: "lib/geometry/volume.ts"
+      issue: "f*(1-h/a) lift applied to channels too (:1076-1083); wall pushed out to the bottom edge (:1188); a wall gets a face only if w < yEdge (:1206); channel-board seam (:1329-1343)"
+    - path: "lib/geometry/design.ts"
+      issue: "railBandsOnTheBottom liftIn reads the full foam off, channels included (:357-376, :368); bottomRailLift counts channel foam in the rail lift (:316-318)"
+  missing:
+    - "Channels treated as D-05 says — the last cut, after the rail is shaped; D-41's contour-before-rail-shaping kept for vees and bellies only"
+    - "RAILS: lay the finished rail on the vee/belly as now, then cut the channels into both lines at each wall's own position (top and bottom point, as 3D's bottomWallsAt does), sampling any curve that crosses a channel finely"
+    - "3D section: split the foam off — vees/bellies/concaves keep the lift rule; channels cut straight up into the finished rail (underside = the higher of rail and channel floor), wall faces wherever a wall stands, under the rail's curve too"
+    - "Rail lift for RAILS' banded thickness counts the vee or belly alone, never a channel"
+    - "Tests: a vertical wall on RAILS' thin and thick lines; a wall under a soft rail and under the Longboard's rolled rail"
+  debug_session: .planning/debug/finished-rail-rounds-channels.md
