@@ -61,13 +61,13 @@ export const THREE_D_COPY = {
   /** Side's tooltip and spoken reason on Turn the Board, where it is dimmed: that mode has the one view. */
   sideNeedsWalk: "Side works in Walk Around.",
   exportHeading: "Export",
-  exportButton: "Export 3D Files",
-  /** The export's note (D-15, D-23 — Shape3D only). */
-  exportNote: "This export is experimental: Shape3D may or may not be able to import these files yet.",
-  exportDone: (file: string, slices: number) =>
-    `Downloaded ${file}. The outline, the profile and ${slices} slices, in millimetres.`,
-  exportWorking: "Making the files…",
-  exportFailed: "Couldn't make the files — try again.",
+  exportButton: "Export .brd File",
+  /** The export's note (D-15, D-23; quick 261110-tvk — one AkuShaper board file, for AkuShaper or Shape3D). */
+  exportNote: "A board file for AkuShaper or Shape3D.",
+  exportDone: (file: string, sections: number) =>
+    `Downloaded ${file}. The outline, rocker, deck and ${sections} cross-sections.`,
+  exportWorking: "Making the file…",
+  exportFailed: "Couldn't make the file — try again.",
   exportNothingYet: "There's nothing to export until the board can be drawn.",
 
   // The corner switches (D-35), each drawn as an icon over the canvas: these are their spoken names and tooltips.
@@ -98,7 +98,7 @@ export const THREE_D_COPY = {
   // On the canvas: each message is two lines.
   browserCantDraw: {
     line1: "This browser can't draw the board in 3D.",
-    line2: "Export 3D Files still works — the files don't need the drawing.",
+    line2: "Export .brd File still works — the file doesn't need the drawing.",
   },
   boardCantBeDrawn: {
     line1: "This board can't be drawn in 3D.",

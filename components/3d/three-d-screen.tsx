@@ -94,7 +94,7 @@ import {
 } from "./three-d-rack-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 import { ThreeDShowButtons } from "./three-d-show-buttons";
-import { exportForCnc } from "./export-cnc";
+import { exportBrd } from "./export-cnc";
 
 /**
  * The 3D screen (Phase 16, R1–R3, UI-SPEC §1–§3, §8, §9, §13): the board the shaper designed, drawn as a lit solid
@@ -314,7 +314,7 @@ export function ThreeDScreen() {
   const built = useMemo(() => {
     try {
       const surface = buildBoardSurface({
-        // The store's one bottom (Phase 17, D-21): the drawn board and its Export 3D Files carry the cut the litres
+        // The store's one bottom (Phase 17, D-21): the drawn board and its Export .brd File carry the cut the litres
         // count; a flat bottom adds nothing to the input.
         sections: designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, outline.length, { bottom, board: bottomBoard }),
         geometry: outlineGeometry,
@@ -428,7 +428,7 @@ export function ThreeDScreen() {
   const [sceneState, setSceneState] = useState<CanvasState>("loading");
   const buildable = built.ok;
 
-  // Export for CNC… (16-12, D-14, D-16): the zip of the very surface drawn here, built and downloaded inside the tap
+  // Export .brd File (16-12, D-14, D-16; quick 261110-tvk): the .brd of the very surface drawn here, built and downloaded inside the tap
   // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank,
   // Contour Stripes or Wire View switches — and needs no 3D drawing. The done line stays until the next export or until the
   // shaper leaves the screen (this state goes with the screen); a board that can't be built has nothing to export.
@@ -437,10 +437,10 @@ export function ThreeDScreen() {
   const onExport = () => {
     if (!built.ok) return;
     try {
-      const { fileName, sliceCount } = exportForCnc(built.surface, boardName);
+      const { fileName, sliceCount } = exportBrd(built.surface, boardName);
       setExportResult({ kind: "done", fileName, sliceCount });
     } catch (error) {
-      console.error("The CNC files could not be made:", error);
+      console.error("The board file could not be made:", error);
       setExportResult({ kind: "failed" });
     }
   };

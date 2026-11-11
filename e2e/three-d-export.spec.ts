@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Download, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
-import { readZip, type ZipEntryRead } from "../lib/export/zip";
-import { readStl } from "../lib/export/stl";
+import { readBrdText } from "../lib/export/brd";
+import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { inchesToMm } from "../lib/geometry/units";
+import { inchesToMm, mmToCentimetres } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { boardFileStem } from "../lib/models/board-file";
@@ -15,10 +15,11 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { goToScreen } from "./helpers/screens";
 
 /**
- * Export for CNC… (Phase 16, plan 12; D-14, D-15 as amended by D-23, D-16): one tap on the 3D panel downloads one zip —
- * the DXF, the STL and the text set of the board the screen draws — named from the board, with a status line that says
- * what arrived. Every downloaded file is read back with the writers' own readers (`readZip`, `readStl`), every expected
- * name comes from `boardFileStem`, and every word from `THREE_D_COPY`, so nothing here is typed twice.
+ * Export .brd File (Phase 16, plan 12; D-14, D-15 as amended by D-23, D-16; quick 261110-tvk): one tap on the 3D panel
+ * downloads one AkuShaper board file of the board the screen draws, named from the board, with a status line that says
+ * what arrived. Every downloaded file is unlocked and read back with the writer's own readers (`unscrambleBrd`,
+ * `readBrdText`), every expected name comes from `boardFileStem`, and every word from `THREE_D_COPY`, so nothing here
+ * is typed twice.
  *
  * The download is started inside the tap (Safari refuses one started after it), and the iPhone project is WebKit, so
  * these cases prove it there too. Every case runs signed out.
@@ -74,8 +75,8 @@ async function expectNote(page: Page) {
   await expect(page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportNote, { exact: true })).toBeVisible();
 }
 
-/** Taps Export for CNC… and answers the download the browser received. */
-async function exportZip(page: Page): Promise<Download> {
+/** Taps Export .brd File and answers the download the browser received. */
+async function exportFile(page: Page): Promise<Download> {
   await expect(exportButton(page)).toBeEnabled();
   const [download] = await Promise.all([page.waitForEvent("download"), exportButton(page).click()]);
   return download;
@@ -88,41 +89,23 @@ async function downloadedBytes(download: Download): Promise<Uint8Array> {
   return new Uint8Array(readFileSync(path));
 }
 
-/** The names a zip of `stem` with `slices` slices must hold, in the writer's order. */
-function expectedNames(stem: string, slices: number): string[] {
-  const pad = slices > 99 ? 3 : 2;
-  return [
-    `${stem}.dxf`,
-    `${stem}.stl`,
-    `${stem}-outline.txt`,
-    `${stem}-profile.txt`,
-    ...Array.from({ length: slices }, (_, i) => `${stem}-slice-${String(i + 1).padStart(pad, "0")}.txt`),
-  ];
-}
-
 /**
- * Reads a downloaded zip back whole for the board named `boardName`: its suggested name, every CRC, exactly the D-14
- * names with two-digit slice numbers, and the status line's done line counting the slice files it holds. Answers the
- * entries and the slice count.
+ * Reads a downloaded board file back whole for the board named `boardName`: its suggested name, AkuShaper's stamp, the
+ * text unlocked and read strictly, and the status line's done line counting the cross-sections the file holds. Answers
+ * what was read and the section count (the sections with more than one knot: an empty tip section has one).
  */
-async function expectWholeZip(page: Page, download: Download, boardName: string) {
+async function expectWholeBrd(page: Page, download: Download, boardName: string) {
   const stem = boardFileStem(boardName);
-  expect(download.suggestedFilename()).toBe(`${stem}-3d.zip`);
-  const entries = readZip(await downloadedBytes(download));
-  expect(entries.every((entry) => entry.crcOk), "every CRC checks").toBe(true);
-  const slices = entries.filter((entry) => entry.name.startsWith(`${stem}-slice-`)).length;
-  expect(slices).toBeGreaterThan(0);
-  expect(entries.map((entry) => entry.name)).toEqual(expectedNames(stem, slices));
-  await expect(exportStatus(page)).toHaveText(THREE_D_COPY.exportDone(`${stem}-3d.zip`, slices));
+  expect(download.suggestedFilename()).toBe(`${stem}.brd`);
+  const bytes = await downloadedBytes(download);
+  expect(new TextDecoder().decode(bytes.subarray(0, BRD_MAGIC.length)), "the file wears AkuShaper's stamp").toBe(BRD_MAGIC);
+  const read = readBrdText(unscrambleBrd(bytes));
+  const sections = read.sections.filter((section) => section.knots.length > 1).length;
+  expect(sections).toBeGreaterThan(0);
+  await expect(exportStatus(page)).toHaveText(THREE_D_COPY.exportDone(`${stem}.brd`, sections));
   // The file's name alone is in ink; the rest of the line is muted.
-  await expect(exportStatus(page).locator("span.text-surf-ink")).toHaveText(`${stem}-3d.zip`);
-  return { entries, slices, stem };
-}
-
-function stlOf(entries: ZipEntryRead[], stem: string) {
-  const stl = entries.find((entry) => entry.name === `${stem}.stl`);
-  if (!stl) throw new Error("no STL in the zip");
-  return readStl(stl.data);
+  await expect(exportStatus(page).locator("span.text-surf-ink")).toHaveText(`${stem}.brd`);
+  return { read, sections, stem };
 }
 
 test.beforeEach(async ({ page }) => {
@@ -130,8 +113,8 @@ test.beforeEach(async ({ page }) => {
   await dismissStrips(page);
 });
 
-test.describe("Export for CNC… on the 3D screen", () => {
-  test("1. one tap downloads the named board's zip: the DXF, the STL and the text set, with the done line", async ({
+test.describe("Export .brd File on the 3D screen", () => {
+  test("1. one tap downloads the named board's .brd, the board the screen draws, with the done line", async ({
     page,
   }) => {
     await keepBoard(page, "Fish");
@@ -144,7 +127,7 @@ test.describe("Export for CNC… on the 3D screen", () => {
       await expect(nameBox).toHaveValue(FISH_NAME, { timeout: 1_000 });
     }).toPass({ timeout: 30_000 });
     await goToScreen(page, "3D");
-    const host = await waitForBoard(page);
+    await waitForBoard(page);
 
     // Idle: the line is in the page, empty.
     await expect(exportStatus(page)).toHaveCount(1);
@@ -156,15 +139,18 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(action).toHaveCount(1);
     await expect(action).toHaveText(THREE_D_COPY.exportButton);
 
-    const download = await exportZip(page);
-    const { entries, stem } = await expectWholeZip(page, download, FISH_NAME);
+    const download = await exportFile(page);
+    const { read, stem } = await expectWholeBrd(page, download, FISH_NAME);
     expect(stem).toBe(boardFileStem(FISH_NAME));
-    // The STL is the very triangles the screen draws.
-    expect(stlOf(entries, stem).count).toBe(Number(await host.getAttribute("data-triangles")));
+    // The file's length and width are the Fish preset's own, in centimetres.
+    const fish = presetDesignFields(BOARD_PRESETS.find((preset) => preset.name === "Fish")!).outline;
+    const header = new Map(read.header);
+    expect(Number(header.get("p01"))).toBeCloseTo(mmToCentimetres(fish.length), 6);
+    expect(Number(header.get("p04"))).toBeCloseTo(mmToCentimetres(fish.widePointWidth), 6);
     await expectNote(page);
   });
 
-  test("2. with no 3D drawing the message shows and Export still downloads the whole zip, the same as with it", async ({
+  test("2. with no 3D drawing the message shows and Export still downloads the whole file, the same as with it", async ({
     page,
     context,
   }) => {
@@ -173,7 +159,7 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await dismissStrips(drawn);
     await drawn.goto("/design/3d");
     await waitForBoard(drawn);
-    const normal = await downloadedBytes(await exportZip(drawn));
+    const normal = await downloadedBytes(await exportFile(drawn));
     await drawn.close();
 
     await page.addInitScript(() => {
@@ -185,11 +171,11 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(boardHost(page)).toHaveAttribute("data-board-state", "no-webgl", { timeout: FIRST_FRAME_MS });
     await expect(page.locator("[data-canvas-message]").getByText(THREE_D_COPY.browserCantDraw.line1)).toBeVisible();
     await expectNote(page);
-    const download = await exportZip(page);
-    const { entries } = await expectWholeZip(page, download, "");
-    // The same names, the same slice count — the same bytes — as the drawn board's.
+    const download = await exportFile(page);
+    const { read } = await expectWholeBrd(page, download, "");
+    // The same sections, the same bytes, as the drawn board's.
     expect(Buffer.from(await downloadedBytes(download)).equals(Buffer.from(normal))).toBe(true);
-    expect(entries.map((entry) => entry.name)).toEqual(readZip(normal).map((entry) => entry.name));
+    expect(read.sections.length).toBe(readBrdText(unscrambleBrd(normal)).sections.length);
   });
 
   test("3. a board that can't be built: Export is dimmed and the line says why", async ({ page }) => {
@@ -202,7 +188,7 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expectNote(page);
   });
 
-  test("4. the files never change with the switches: Fins, Blank, Contour Stripes and Wire View leave the zip byte for byte the same", async ({
+  test("4. the file never changes with the switches: Fins, Blank, Contour Stripes and Wire View leave the .brd byte for byte the same", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the switches' views are proven on every project in three-d-show; the bytes here");
@@ -214,7 +200,7 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "false");
     await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
     await expect(corner(THREE_D_COPY.wireView)).toHaveAttribute("aria-pressed", "false");
-    const first = await exportZip(page);
+    const first = await exportFile(page);
     const firstBytes = await downloadedBytes(first);
 
     // Fins off, Blank on, Contour Stripes on: everything the picture can add or take away, flipped.
@@ -224,22 +210,21 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await expect(corner(THREE_D_COPY.fins)).toHaveAttribute("aria-pressed", "false");
     await expect(corner(THREE_D_COPY.blank)).toHaveAttribute("aria-pressed", "true");
     await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "true");
-    const second = await exportZip(page);
+    const second = await exportFile(page);
     const secondBytes = await downloadedBytes(second);
 
     expect(secondBytes.byteLength).toBe(firstBytes.byteLength);
-    expect(Buffer.from(secondBytes).equals(Buffer.from(firstBytes)), "the zip is the bare board whatever the switches say").toBe(
+    expect(Buffer.from(secondBytes).equals(Buffer.from(firstBytes)), "the file is the bare board whatever the switches say").toBe(
       true,
     );
-    const { entries, stem } = await expectWholeZip(page, second, "");
-    expect(stlOf(entries, stem).count).toBe(Number(await host.getAttribute("data-triangles")));
+    await expectWholeBrd(page, second, "");
 
-    // Wire View takes over from Contour Stripes (D-42), and the zip is the same again.
+    // Wire View takes over from Contour Stripes (D-42), and the file is the same again.
     await corner(THREE_D_COPY.wireView).click();
     await expect(corner(THREE_D_COPY.wireView)).toHaveAttribute("aria-pressed", "true");
     await expect(corner(THREE_D_COPY.contourStripes)).toHaveAttribute("aria-pressed", "false");
-    const third = await downloadedBytes(await exportZip(page));
-    expect(Buffer.from(third).equals(Buffer.from(firstBytes)), "Wire View never reaches the zip").toBe(true);
+    const third = await downloadedBytes(await exportFile(page));
+    expect(Buffer.from(third).equals(Buffer.from(firstBytes)), "Wire View never reaches the file").toBe(true);
 
     // The board flipped, raised and walked round, and the room off: the same again (D-16, D-43).
     await page.getByRole("group", { name: THREE_D_COPY.viewsGroup, exact: true }).getByRole("button", { name: THREE_D_COPY.views.bottom, exact: true }).click();
@@ -253,22 +238,22 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await host.focus();
     await page.keyboard.press("ArrowLeft");
     await expect(host).not.toHaveAttribute("data-viewer", /^0\.00 /);
-    const fourth = await downloadedBytes(await exportZip(page));
-    expect(Buffer.from(fourth).equals(Buffer.from(firstBytes)), "flipped, raised and walked round, the zip is the same").toBe(true);
+    const fourth = await downloadedBytes(await exportFile(page));
+    expect(Buffer.from(fourth).equals(Buffer.from(firstBytes)), "flipped, raised and walked round, the file is the same").toBe(true);
     // Two presses to no room: the first stops at the bright blue room.
     await corner(THREE_D_COPY.room).click();
     await corner(THREE_D_COPY.room).click();
     await expect(host).toHaveAttribute("data-bay", "off");
-    const fifth = await downloadedBytes(await exportZip(page));
-    expect(Buffer.from(fifth).equals(Buffer.from(firstBytes)), "with the room off, the zip is the same").toBe(true);
+    const fifth = await downloadedBytes(await exportFile(page));
+    expect(Buffer.from(fifth).equals(Buffer.from(firstBytes)), "with the room off, the file is the same").toBe(true);
   });
 
-  test("5. a board with no name downloads Untitled Board-3d.zip", async ({ page }) => {
+  test("5. a board with no name downloads Untitled Board.brd", async ({ page }) => {
     await page.goto("/design/3d");
     await waitForBoard(page);
-    const download = await exportZip(page);
-    expect(download.suggestedFilename()).toBe("Untitled Board-3d.zip");
-    await expectWholeZip(page, download, "");
+    const download = await exportFile(page);
+    expect(download.suggestedFilename()).toBe("Untitled Board.brd");
+    await expectWholeBrd(page, download, "");
     await expectNote(page);
   });
 
@@ -298,8 +283,8 @@ test.describe("Export for CNC… on the 3D screen", () => {
     await page.evaluate(() => {
       (window as unknown as { __failExport: boolean }).__failExport = false;
     });
-    const download = await exportZip(page);
-    await expectWholeZip(page, download, "");
+    const download = await exportFile(page);
+    await expectWholeBrd(page, download, "");
     await expect(exportStatus(page)).not.toHaveClass(/text-surf-warning-ink/);
   });
 });
