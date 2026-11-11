@@ -119,9 +119,11 @@ The test works out each board's rule from the app's own sections. Each rule is a
 | Soft tail, Shortboard / Fish / Mid-length | within 0.01 L | 18 boards | +0.0025 L (Shortboard, flat, 8 channels) |
 | Soft tail, Longboard | within 0.15 L | 6 boards | +0.0634 L (flat, 6 channels) |
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-11)
 
-- `.planning/phases/17-bottom-contours/pictures/17-20-before-and-after.png` (in this worktree: `/Users/kontoes/Code/shaper/.claude/worktrees/agent-a7ee8a20ce84477ef/.planning/phases/17-bottom-contours/pictures/17-20-before-and-after.png`). It is one sheet, two boards, each with three rows of before (left) and after (right):
+The founder looked at the before-and-after picture and the litres table and approved ("Approved"); merged onto claude/bottom-uat-17-d1559c as 8522f594.
+
+- `.planning/phases/17-bottom-contours/pictures/17-20-before-and-after.png` (in this worktree: `.planning/phases/17-bottom-contours/pictures/17-20-before-and-after.png`). It is one sheet, two boards, each with three rows of before (left) and after (right):
   - **Longboard (rolled rail), six channels, BOTTOM's section 6" from the tail, finished rail from RAILS ticked, Height x4.** In the whole-section row, the thin grey diagonal lines that rode above the channel floors near both rails are gone. The grey finished-rail line now runs along the channel floors.
   - **Longboard close-up of the right rail.** This is the clearest picture. Before, the grey line climbed above the channel floor and slanted across the wall. After, it lies on the floor, the rail's curve comes down to the outer wall's top, and the wall drops straight to the floor.
   - **Shortboard with a soft tail (Hard Edge unticked), six channels, the same section and close-up.** Before, the grey line came down the rail with a kink and a slope beside the outer channel. After, it comes down the rail's curve and meets the outer channel's wall, which stands straight up.

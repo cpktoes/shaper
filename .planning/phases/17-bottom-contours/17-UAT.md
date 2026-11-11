@@ -80,6 +80,7 @@ blocked: 0
 - 2026-11-10: VOLUME's words — the suggested sentence, as written.
 - 2026-11-11: 17-17 (VOLUME's words) approved at his look.
 - 2026-11-11: 17-18 (RAILS draws channel walls straight up) approved at his look. Two answers: RAILS shows the channels on a board with no vee or belly too ("Show channels too"); BOTTOM's DATA Rail lift counts the vee or belly only, matching RAILS ("Match RAILS"). Both become a further Phase 17 fix plan after 17-20.
+- 2026-11-11: 17-20 (the litres, 3D board and export files cut channels straight up into the finished rail) approved at his look, with the litres table: Hard Edge tails unchanged, soft Shortboard/Mid +0.002 L, Longboard rolled rail up to +0.06 L.
 
 ## Gaps
 
