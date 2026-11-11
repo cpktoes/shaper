@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { phase17ChannelBoards } from "./__fixtures__/phase17-channel-boards";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   BOTTOM_SHADE_STEP,
+  bottomDataRows,
   bottomLayoutMarks,
   channelStart,
   channelWallKey,
   deepestCutAt,
   DEFAULT_BOTTOM,
   foamOff,
+  pickCut,
   resolveBottom,
   resolveCut,
+  sectionsFoamOff,
   startingChannels,
   startingCut,
   type BoardBottom,
@@ -647,7 +651,7 @@ describe("the section's gauges (D-13, D-30)", () => {
     const liftBack = sectionGauges(back, vee, t.board, "imperial").find((g) => g.kind === "railLift")!;
     expect(roomBack).toBeGreaterThan(GAUGE_BESIDE_ROOM.words);
     expect(liftBack.placement).toBe("beside");
-    expect(liftBack.value).toBe(foamOff(vee, t.board, back.station, back.railEdge));
+    expect(liftBack.value).toBe(sectionsFoamOff(vee, t.board, back.station, t.board.railAt(back.station)));
     // a vee peaking at the wide point: no room past the rail there
     const atWide = { ...vee, tail: { ...vee.tail, start: t.board.length, deepest: t.board.widePoint } };
     const wide = bottomSection(atWide, t.board, t.board.widePoint, 4, BOX_1280, { live: "tail" });
@@ -671,6 +675,90 @@ describe("the section's gauges (D-13, D-30)", () => {
     const floor = sectionGauges(atChannels, six, t.board, "imperial").find((g) => g.kind === "channel");
     expect(floor).toBeDefined();
     expect(floor!.value).toBeCloseTo(deepestCutAt(six, t.board, six.channels.deepest), 0);
+  });
+});
+
+/*
+ * The founder's answer of 2026-11-11 at his look at 17-21, "Match DATA": the section's rail-lift gauge reads what DATA's
+ * Rail lift column reads — the vee's or belly's lift at the rail alone (`sectionsFoamOff` at `board.railAt`), held at
+ * the slab's thickness as every gauge is. A channel is cut after the rail is shaped and never counts, even one that
+ * runs out through the rail; a flat tail or a concave shows no rail lift. Every expected figure is DATA's own row and
+ * the drawing's own scale (Rule 1).
+ */
+describe("the section's rail lift is the vee's or belly's alone, as DATA reads it (the founder, 2026-11-11: \"Match DATA\")", () => {
+  const GAUGE_CUTS: [BottomSectionKey, BottomCutName][] = [
+    ["tail", "Panel Vee"],
+    ["tail", "Spiral Vee"],
+    ["tail", "Rolled Vee"],
+    ["tail", "Double Concave Exit"],
+    ["tail", "Extending Single Concave"],
+    ["center", "Continuous Belly / Rolled Mid"],
+  ];
+  const builtBoard = (fields: DesignSummaryFields): BottomBoard =>
+    designBottomBoard(fields.outline, buildOutline(fields.outline), designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+  const cases: { label: string; fields: DesignSummaryFields }[] = phase17ChannelBoards().map((b) => ({ label: `p17 ${b.label}`, fields: b.fields }));
+  const all16 = phase16Boards();
+  for (const preset of BOARD_PRESETS) {
+    for (const edge of ["hard", "soft"] as const) {
+      const base = all16.find((b) => b.label === `${preset.id}|asis|${edge}`)!.fields;
+      const board = builtBoard(base);
+      for (const [section, name] of GAUGE_CUTS) {
+        for (const count of [0, 4, 6, 8] as const) {
+          let bottom: BoardBottom = pickCut(structuredClone(DEFAULT_BOTTOM), section, name, board);
+          if (count > 0) bottom = { ...bottom, channels: startingChannels(count as ChannelCount, board, bottom.channels) };
+          cases.push({ label: `${preset.id}|${edge}|${name}|${count}`, fields: { ...base, bottom } });
+        }
+      }
+    }
+  }
+
+  function setUp(fields: DesignSummaryFields) {
+    const board = builtBoard(fields);
+    const resolved = resolveBottom(fields.bottom ?? DEFAULT_BOTTOM, board);
+    return { board, resolved, rows: bottomDataRows(resolved, board) };
+  }
+  const railLifts = (drawing: SectionDrawing, resolved: ReturnType<typeof resolveBottom>, board: BottomBoard) =>
+    sectionGauges(drawing, resolved, board, "imperial").filter((g) => g.kind === "railLift");
+
+  it.each(cases.map((c) => [c.label, c] as const))("%s: at every DATA station the gauge is DATA's Rail lift, or none", (_label, c) => {
+    const { board, resolved, rows } = setUp(c.fields);
+    for (const row of rows) {
+      const drawing = bottomSection(resolved, board, row.station, 4, BOX_1280, { live: "tail" });
+      const want = Math.min(row.railLift, drawing.thickness);
+      const lifts = railLifts(drawing, resolved, board);
+      if (!gaugeReads(want, "imperial")) {
+        expect(lifts, `${row.station}: no rail lift where DATA's reads none`).toEqual([]);
+        continue;
+      }
+      expect(lifts, `${row.station}: one rail-lift gauge`).toHaveLength(1);
+      expect(lifts[0].value).toBe(want);
+      for (const line of lifts[0].lines) {
+        expect(line.y2).toBeCloseTo(drawing.y0, 9);
+        expect(line.y1).toBeCloseTo(drawing.y0 - want * drawing.ky, 9);
+      }
+    }
+  });
+
+  const tailOf = (label: string) => {
+    const { board, resolved, rows } = setUp(phase17ChannelBoards().find((b) => b.label === label)!.fields);
+    const tail = rows[0];
+    expect(tail.label).toBe("tail");
+    const drawing = bottomSection(resolved, board, tail.station, 4, BOX_1280, { live: "tail" });
+    const drawnGap = Math.min(foamOff(resolved, board, tail.station, drawing.railEdge), drawing.thickness);
+    return { board, resolved, drawing, drawnGap };
+  };
+
+  it("the Fish, flat tail, eight channels, at the tail: the channel at the rail would read as a gauge, and no rail lift is drawn", () => {
+    const { board, resolved, drawing, drawnGap } = tailOf("fish|hard|flat|8");
+    expect(gaugeReads(drawnGap, "imperial"), "the drawn gap at the rail edge reads (non-vacuity)").toBe(true);
+    expect(railLifts(drawing, resolved, board)).toEqual([]);
+  });
+
+  it("the Fish, Rolled Vee, eight channels, at the tail: the rail lift reads the vee alone, below the drawn gap", () => {
+    const { board, resolved, drawing, drawnGap } = tailOf("fish|hard|rolled-vee|8");
+    const lifts = railLifts(drawing, resolved, board);
+    expect(lifts).toHaveLength(1);
+    expect(lifts[0].value).toBeLessThan(drawnGap);
   });
 });
 
