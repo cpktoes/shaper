@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 fix waves 1-3 merged and approved on claude/bottom-uat-17-d1559c (17-17..17-21; gate green after 17-21: tsc, lint, 12,255 unit tests, CR-01 load timeout passes alone). 17-22 planned from his three answers at 17-21 (gauge matches DATA, DATA note sentence, RAILS draws a tail concave under channels). Not pushed."
+stopped_at: "Phase 17 fix waves 1-3 merged and approved on claude/bottom-uat-17-d1559c (17-17..17-21; gate green after 17-21). Fix wave 4 planned from his answers: 17-22 RAILS draws every concave on every section (D-41 retired), 17-23 BOTTOM section gauge matches DATA + the DATA note sentence + the Longboard tables sheet keeps all three notes. Both run side by side next. Not pushed."
 last_updated: "2026-11-11T12:00:00.000Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 17 fix wave 1 merged — VOLUME says what its litres count, RAILS draws channel walls straight up, the channel boards' litres pinned
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 81
+  total_plans: 82
   completed_plans: 80
-  percent: 99
+  percent: 98
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
