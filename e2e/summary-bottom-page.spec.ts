@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { BOTTOM_COPY, layoutMarkColumnName } from "../components/bottom/bottom-copy";
+import { BOTTOM_COPY, layoutMarkColumnName, layoutMarksNote, referenceRowsNote } from "../components/bottom/bottom-copy";
 import { BOTTOM_GUIDE_WORDS, guideHow } from "../components/bottom/bottom-guide-words";
 import { bottomSheetLayout, bottomSheetStationsLine } from "../components/summary/bottom-sheet-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, bottomLayoutMarks, type BottomDataRow } from "../lib/geometry/bottom";
@@ -302,6 +302,14 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
     );
     // DATA's notes on reading the tables follow them — as many as the sheet has room for, by the rule's own list.
     await expect(tablesSheet.locator('[data-bottom-sheet-part="table-notes"] p')).toHaveText(layout.tableNotes);
+    // The founder's answer of 2026-11-11, "Make it fit": that is every note DATA has for this board — all three — and
+    // to make the room the sheet's rows sit tight (their padding off, the type the same size).
+    expect(layout.tableNotes, "every note DATA has prints (non-vacuity: all three)").toEqual([
+      BOTTOM_COPY.depthsNote,
+      layoutMarksNote(board.resolved.channels, "imperial"),
+      referenceRowsNote(board.board, board.frontPair, "imperial"),
+    ]);
+    await expect(tablesSheet.locator('[data-bottom-tables-sheet][data-bottom-rows="tight"]')).toHaveCount(1);
     await expect(page.getByText("Two portrait pages, printed double-sided — plus two Bottom Contours pages.", { exact: true })).toBeVisible();
 
     await tickRailInstructions(page, 4);
