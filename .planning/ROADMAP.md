@@ -392,7 +392,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R15 (locked in `phases/17-bottom-contours/17-SPEC.md` from the founder's rulings on sketches 019–021, 2026-11-06 to 2026-11-08)
 **Brief:** `phases/17-bottom-contours/17-SPEC.md`; the decided sketches `.planning/sketches/019-bottom-contours/`, `020-bottom-channels/` and `021-bottom-guide/` (its `index.html` is the page as it will be built); the starting numbers and their sources in `todos/pending/2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`
 **Depends on:** Phase 16 (`boardSections`, the 3D surface and the CNC writers read the cut), Phase 14 (the planed thickness and the side profile the cut comes out of), quick 261102-gec (the finished rail the ghost draws), quick 261103-gcm (the foam at every station)
-**Plans:** 21/22 plans executed — LIVE 2026-11-10 as main ff5818c0; verified, and the founder’s walk-through (17-UAT.md) found two things to fix (G-17-5, G-17-6): six fix plans, 17-17 to 17-22 (17-21 from his two answers at his look at 17-18, 17-22 from his three at his look at 17-21, both 2026-11-11), then a go-live and his re-check
+**Plans:** 21/22 plans executed — LIVE 2026-11-10 as main ff5818c0; verified, and the founder’s walk-through (17-UAT.md) found two things to fix (G-17-5, G-17-6): seven fix plans, 17-17 to 17-23 (17-21 from his two answers at his look at 17-18; 17-22 and 17-23 from his answers at his look at 17-21 and on 17-22's first plan, all 2026-11-11), then a go-live and his re-check
 
 Success criteria:
 
@@ -482,9 +482,10 @@ Plans:
 
 - [x] 17-21-PLAN.md — "Show channels too": RAILS draws the channels on a flat tail as it does on a vee or belly, cut straight up into the thin bottom line and the Finished Rail, the rail's thickness and band marks untouched; "Match RAILS": BOTTOM's DATA Rail lift counts the vee or belly alone; no litres figure moves (G-17-6)
 
-**Fix wave 4** *(blocked on 17-21; the founder's three answers at his look at 17-21, 2026-11-11)*
+**Fix wave 4** *(blocked on 17-21; the founder's answers at his look at 17-21 and on 17-22's first plan, 2026-11-11; the two plans share no file and run side by side)*
 
-- [ ] 17-22-PLAN.md — "Draw the concave": RAILS draws a tail concave under the channels, cut last and straight up, the rail's thickness, readout and DATA untouched; "Match DATA": BOTTOM's section gauge reads the vee's or belly's rail lift alone, on screen and on paper; "Use the sentence": DATA's note in his words; no litres figure moves (G-17-6)
+- [ ] 17-22-PLAN.md — "Draw the concave" and "Always draw it": RAILS draws every concave, on the nose, centre and tail sections, channels or not, the channels cut last and straight up into it; the rail's thickness, readout and DATA untouched; no litres figure moves (G-17-6)
+- [ ] 17-23-PLAN.md — "Match DATA": BOTTOM's section gauge reads the vee's or belly's rail lift alone, on screen and on paper; "Use the sentence": DATA's note in his words; "Make it fit": the Longboard's printed tables sheet prints every note, its rows tighter only where needed; no litres figure moves (G-17-6)
 
 The sixteen plans run one per wave, 1 to 16 in the order listed — the founder's build order (the maths first; the double, spiral vee, tri-plane and teardrop; the channels; the screen as a tracer, then its rows, its viewer, GUIDE, WINGS and saving, FINS and Metric, the phones; the paper; one go-live) — every plan ending with his look at pictures (`autonomous: false`), the next wave starting only after his yes. Planned 2026-11-08; the checker passed with no blockers (five warnings: three fixed in the plans, the tracer's size and the estimates accepted as known hand-back risks).
 
