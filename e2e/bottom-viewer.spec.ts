@@ -3,7 +3,7 @@ import { BOTTOM_COPY, dataFloorNote } from "../components/bottom/bottom-copy";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, type BottomFloorFlag, type BottomSectionKey } from "../lib/geometry/bottom";
+import { BOTTOM_DATA_DEPTH_SHOWN, bottomDataRows, foamOff, type BottomFloorFlag, type BottomSectionKey } from "../lib/geometry/bottom";
 import { formatMarkBare, formatMarkOrLessBare } from "../lib/geometry/measure-display";
 import type { Mm } from "../lib/geometry/units";
 import { RACK_COPY } from "../components/setup/rack-config";
@@ -561,6 +561,37 @@ test.describe("BOTTOM's DATA lays the bottom out station by station (17-10, D-16
       expect((await depthCells()).flat(), "no depth cell reads a bare nought").not.toContain(formatMarkBare(0 as Mm, system));
     });
   }
+
+  // The founder's answer of 2026-11-11, "Match RAILS": DATA's Rail lift is the vee's or belly's lift at the rail, the
+  // figure RAILS thins the rail by. A channel is cut after the rail is shaped and never counts, even one that runs out
+  // through the rail — so on a flat tail with channels the tail row's Rail lift reads the dash.
+  test("the Fish with a flat tail and its starting eight channels: the tail row's Rail lift reads the dash, a channel at the rail never counting", async ({ page }) => {
+    test.setTimeout(180_000);
+    const board = boardWithBottom("fish", { channels: 8 });
+    const rows = bottomDataRows(board.resolved, board.board);
+    const cell = (value: Mm) => (value < BOTTOM_DATA_DEPTH_SHOWN ? BOTTOM_COPY.emptyCell : formatMarkOrLessBare(value, "imperial"));
+    const expected = rows.map((row) => [cell(row.deepest), cell(row.railLift)]);
+    // the tail row: the channel at the rail is deep enough to have read as a figure, and it no longer does
+    const tail = rows[0];
+    expect(tail.label).toBe("tail");
+    expect(foamOff(board.resolved, board.board, tail.station, board.board.railAt(tail.station))).toBeGreaterThanOrEqual(BOTTOM_DATA_DEPTH_SHOWN);
+    expect(expected[0][1]).toBe(BOTTOM_COPY.emptyCell);
+
+    await openOnBoard(page, board); // added after the forget in beforeEach, so every load opens on this board
+    await page.goto("/design/bottom");
+    await expect(cutLine(page)).toBeAttached({ timeout: 60_000 });
+    await expect(async () => {
+      if ((await page.locator("[data-bottom-data]").count()) === 0) await dataTab(page).click({ timeout: 2_000 });
+      await expect(page.locator("[data-bottom-data]")).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 60_000 });
+    // Polled: the page draws the stock board for a moment before the kept one.
+    const depthCells = () =>
+      page
+        .locator("[data-bottom-depths] tbody tr")
+        .evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll("td")].slice(1, 3).map((td) => (td.textContent ?? "").trim())));
+    await expect.poll(depthCells, { timeout: 60_000 }).toEqual(expected);
+    expect((await depthCells())[0][1], "the tail row's Rail lift").toBe(BOTTOM_COPY.emptyCell);
+  });
 
   test("signed out on the practice rack, a saved board's BOTTOM reads exactly the same page", async ({ page }) => {
     test.setTimeout(180_000);
