@@ -87,9 +87,28 @@ describe("railBandsOnTheBottom — which sections stand on a cut bottom (D-41)",
     }
   });
 
-  it("a concave alone lifts no rail: the bands come back untouched (D-41: a concave changes nothing on RAILS)", () => {
-    const { bands, liftedBands } = railsSetup(fieldsOf("shortboard"), { center: "Deep Single Concave" });
-    expect(bands).toBe(liftedBands);
+  it("a concave alone lifts no rail but is drawn: the rails come back as the same object and the concave's section stands on its hollow (the founder, 2026-11-11: \"Always draw it\")", () => {
+    const { bands, rails, effectiveRails, board, resolved, anchors } = railsSetup(fieldsOf("shortboard"), {
+      center: "Deep Single Concave",
+    });
+    expect(rails).toBe(effectiveRails);
+    const center = bands.center;
+    const bottom = center.bottom!;
+    expect(bottom).toBeDefined();
+    expect(bottom.lift).toBe(0);
+    expect(bottom.channelCut).toBeUndefined();
+    // the hollow, within the plot
+    expect(bottom.across.some((p) => p.x >= center.bounds.xAxisMin && p.y > 0)).toBe(true);
+    // every point the concave's own foam off there, never rounded
+    const rail = board.railAt(anchors.center);
+    for (const p of bottom.across) {
+      expect(p.y).toBe(sectionsFoamOff(resolved, board, anchors.center, mm(Math.abs(rail + p.x))));
+    }
+    // and the rail it stands under is the flat board's own
+    const flat = railsSetup(fieldsOf("shortboard"), {});
+    const { bottom: drawn, ...rest } = center;
+    expect(drawn).toBe(bottom);
+    expect(rest).toEqual(flat.bands.center);
   });
 
   it("the Fish's Panel Vee: only the tail stands on a cut bottom, its lift the foam off at the rail", () => {
@@ -490,9 +509,11 @@ describe("G-17-6 — RAILS cuts the channels straight up into the Finished Rail 
 });
 
 // The founder's answer of 2026-11-11 at his look at 17-18, "Show channels too": a section no vee or belly lifts, but
-// into which a channel is cut, stands on the flat planed bottom with the channels cut into it last, straight up at each
-// wall (D-05, D-10) — and the rail RAILS bands there is the rail it bands with no channels (D-22, D-35); a concave is
-// still not drawn on RAILS (D-41). Every expected figure is the app's own.
+// into which a channel is cut, stands on the planed bottom with the channels cut into it last, straight up at each wall
+// (D-05, D-10) — and the rail RAILS bands there is the rail it bands with no channels (D-22, D-35). On a flat tail that
+// bottom is flat; under a concave it is the concave's own hollow (his answers of 2026-11-11 at his look at 17-21 and on
+// 17-22's plan, "Draw the concave" and "Always draw it" — the last test here, and 17-22's describe below). Every
+// expected figure is the app's own.
 describe("G-17-6 — RAILS shows the channels on a flat tail too (the founder, 2026-11-11: \"Show channels too\")", () => {
   const flatTails: [string, 4 | 6 | 8][] = [
     ["fish|asis|hard", 8],
@@ -638,40 +659,42 @@ describe("G-17-6 — RAILS shows the channels on a flat tail too (the founder, 2
     expect(untouched).toBeGreaterThan(0);
   });
 
-  it("a concave stays off RAILS: the Shortboard's Double Concave Exit with its starting six — the tail's bottom flat, its cut the channels' own (held at the deck); without channels, the bands' own tail", () => {
+  it("the concave under the channels: the Shortboard's Double Concave Exit with its starting six — the tail's bottom the concave's own foam, its cut the channels' own held at the deck less the concave; without channels, the concave alone", () => {
     const c = channelsSetup("shortboard|asis|hard", { tail: "Double Concave Exit" }, 6);
     const section = c.bands.tail;
     const bottom = section.bottom!;
     const T = section.boardThickness;
     const rail = c.board.railAt(c.anchors.tail);
+    expect(c.rails).toBe(c.effectiveRails);
     expect(bottom.lift).toBe(0);
-    expect(bottom.across.every((p) => p.y === 0)).toBe(true);
-    // the concave is there, inside the section's reach — it is just not drawn (D-41)
-    const reach = -bottom.across[0].x;
-    let concave = 0;
-    for (let d = 0; d <= reach; d += RAIL_CHANNEL_STEP) {
-      concave = Math.max(concave, sectionsFoamOff(c.resolved, c.board, c.anchors.tail, mm(Math.abs(rail - d))));
+    // the concave is drawn: every point the sections' own foam off there (the founder, 2026-11-11: "Draw the concave")
+    expect(bottom.across.some((p) => p.y > 0)).toBe(true);
+    for (const p of bottom.across) {
+      expect(p.y).toBe(sectionsFoamOff(c.resolved, c.board, c.anchors.tail, mm(Math.abs(rail + p.x))));
     }
-    expect(concave).toBeGreaterThan(0);
-    // the cut: every sample the channels' own foam off there, held at the deck; every wall pair as the channels read it
+    // the cut: every sample the channels' own foam off there, held at the deck less the concave under it; every wall
+    // pair as the channels read it
     const cut = bottom.channelCut!;
     expect(cut.some((p) => p.y > 0)).toBe(true);
-    const cutIn = (inFromRail: number) => {
+    const cutIn = (inFromRail: number, x: number) => {
       const v = channelAt(c, "tail", Math.abs(rail - inFromRail));
-      return Number.isFinite(v) ? Math.min(v, T) : 0;
+      return Number.isFinite(v) ? Math.min(v, T - railBottomFall(bottom, mm(x))) : 0;
     };
     for (let i = 0; i < cut.length; i++) {
       const paired = (i > 0 && cut[i - 1].x === cut[i].x) || (i + 1 < cut.length && cut[i + 1].x === cut[i].x);
       const p = -cut[i].x;
       if (!paired) {
-        expect(cut[i].y).toBe(cutIn(p));
+        expect(cut[i].y).toBe(cutIn(p, cut[i].x));
       } else if (i + 1 < cut.length && cut[i + 1].x === cut[i].x) {
-        expect(cut[i].y).toBe(cutIn(p + GAP));
-        expect(cut[i + 1].y).toBe(cutIn(p - GAP));
+        expect(cut[i].y).toBe(cutIn(p + GAP, cut[i].x));
+        expect(cut[i + 1].y).toBe(cutIn(p - GAP, cut[i].x));
       }
     }
+    // the same tail without channels carries the concave alone
     const alone = railsSetup(all.find((b) => b.label === "shortboard|asis|hard")!.fields, { tail: "Double Concave Exit" });
-    expect(alone.bands.tail).toBe(alone.liftedBands.tail);
-    expect(alone.bands.tail.bottom).toBeUndefined();
+    const aloneBottom = alone.bands.tail.bottom!;
+    expect(aloneBottom).toBeDefined();
+    expect(aloneBottom.channelCut).toBeUndefined();
+    expect(aloneBottom.across).toEqual(bottom.across);
   });
 });
