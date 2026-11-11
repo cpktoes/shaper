@@ -55,7 +55,7 @@
  * — this hook writes nothing at all there — while a computer's box is untouched.
  */
 
-import type { CSSProperties, ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
@@ -69,6 +69,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ExportPreviewDialog } from "@/components/template/export-preview-dialog";
 import { RailLegendTicks } from "@/components/rails/rail-legend-ticks";
+import { BOTTOM_SHEET_COPY, BottomContoursSheet, BottomTablesSheet } from "./bottom-contours-sheet";
+import { bottomSheetLayout } from "./bottom-sheet-fit";
 import { RailInstructionsSheet } from "./rail-instructions-sheet";
 import {
   FormBox,
@@ -84,6 +86,7 @@ import { Wordmark } from "@/components/wordmark";
 import { cn } from "@/lib/utils";
 import { StepNav } from "@/components/design/step-nav";
 import { SiteFooter } from "@/components/site-footer";
+import { bottomHasCut } from "@/lib/geometry/bottom";
 import { FIN_SETUPS, FIN_SYSTEMS, finRoundingNote, type FinSystem } from "@/lib/geometry/fins";
 import { planingTable } from "@/lib/geometry/planing";
 import type { RailSectionKey } from "@/lib/geometry/rail-bands";
@@ -141,8 +144,10 @@ function Sheet({
   /** "reference" is page 2, which carries only two tables and can therefore afford much larger
    * type than the densely packed order form — see `order-form.css`, where the variant redeclares
    * the whole type scale. "instructions" is the third sheet (PRNT-05, D-09) — the fixed Rail Band
-   * Instructions reference page, present only when the shaper has ticked the print preference. */
-  variant?: "form" | "reference" | "instructions";
+   * Instructions reference page, present only when the shaper has ticked the print preference.
+   * "bottom" is the BOTTOM CONTOURS page (Phase 17, D-29), present only when the bottom has a cut, and
+   * the sheet its two tables take when the page cannot hold them. */
+  variant?: "form" | "reference" | "instructions" | "bottom";
   children: ReactNode;
 }) {
   return (
@@ -152,6 +157,7 @@ function Sheet({
         "flex flex-col gap-1 border-[1.5px] border-surf-ink bg-surf-panel p-1.5",
         variant === "reference" && "order-form-sheet-reference",
         variant === "instructions" && "order-form-sheet-instructions",
+        variant === "bottom" && "order-form-sheet-bottom",
       )}
     >
       {children}
@@ -231,12 +237,29 @@ function OutlineHalf({ label, children }: { label: string; children: ReactNode }
   );
 }
 
+/**
+ * What comes off the printer, said under the buttons. A flat bottom's two sentences are the form's own, word for
+ * word; a bottom with a cut adds its page (or two, when its tables take a sheet of their own).
+ */
+function printHint(railInstructions: boolean, bottomSheets: number): string {
+  if (bottomSheets === 0) {
+    return railInstructions
+      ? "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page."
+      : "Two portrait pages — print double-sided for a front-and-back form.";
+  }
+  const bottomPages = bottomSheets === 1 ? "a Bottom Contours page" : "two Bottom Contours pages";
+  return railInstructions
+    ? `Two portrait pages, printed double-sided — plus ${bottomPages} and a Rail Band Instructions page.`
+    : `Two portrait pages, printed double-sided — plus ${bottomPages}.`;
+}
+
 export function OrderForm() {
   const {
     outline,
     outlineGeometry,
     sideProfile,
     railBands,
+    railBandsOnBottom,
     finPlacement,
     effectiveFins,
     quotedVolumeLitres,
@@ -245,6 +268,9 @@ export function OrderForm() {
     finSystem,
     setFinSystem,
     blank,
+    bottom,
+    bottomBoard,
+    resolvedBottom,
   } = useDesign();
   const { system } = useUnits();
   // A locked board's Board Name is read-only and its Fin System is greyed on screen; both print in full ink.
@@ -259,18 +285,37 @@ export function OrderForm() {
   // matching this form's pre-milestone output byte-for-byte (PRNT-06), three ticked.
   const { included: printRailInstructions, setIncluded: setPrintRailInstructions } =
     usePrintRailInstructions();
-  const sheetCount = printRailInstructions ? 3 : 2;
+  // The BOTTOM CONTOURS page (Phase 17, D-29) prints only when the bottom has a cut: a flat board has no layout, no
+  // sheet and no extra page, so its order form is the stack it always was. A board whose cuts fill the page gives the
+  // two tables a sheet of their own (`bottom-sheet-fit.ts`), counted here so every page mark agrees with the stack.
+  const bottomCut = bottomHasCut(bottom);
+  const bottomLayout = useMemo(
+    () =>
+      bottomCut
+        ? bottomSheetLayout(
+            resolvedBottom,
+            bottomBoard,
+            system,
+            finPlacement.marks.some((mark) => mark.role === "front"),
+          )
+        : null,
+    [bottomCut, resolvedBottom, bottomBoard, system, finPlacement],
+  );
+  const bottomSheets = bottomLayout ? bottomLayout.sheets : 0;
+  const sheetCount = 2 + bottomSheets + (printRailInstructions ? 1 : 0);
 
   const sections = SECTION_KEYS.map((key) => ({
     key,
     title: SECTION_TITLE[key],
-    dataGroups: railBands[key].dataGroups,
+    // The Rail Band Reference prints the rail RAILS bands, the bottom's lift taken off (Phase 17, D-22), so the paper
+    // matches the screen; the very `railBands` on a flat bottom.
+    dataGroups: railBandsOnBottom[key].dataGroups,
   }));
 
   // One shared x-axis minimum across all three plots, then cropped at -6.5in — the same derivation
   // the landscape summary used. Three plots on one axis are comparable at a glance; three plots on
   // three different axes are not, which is the whole reason a shaper looks at them side by side.
-  const rawSharedXAxisMinMm = Math.min(...SECTION_KEYS.map((key) => railBands[key].bounds.xAxisMin));
+  const rawSharedXAxisMinMm = Math.min(...SECTION_KEYS.map((key) => railBandsOnBottom[key].bounds.xAxisMin));
   const sharedXAxisMin = mm(Math.max(rawSharedXAxisMinMm, inchesToMm(-6.5)));
 
   const finSetupLabel =
@@ -296,10 +341,47 @@ export function OrderForm() {
         }`
       : undefined;
 
+  // The board's headline thickness is the planed figure, never the rail the bottom leaves (Phase 17, Pitfall 6).
   const thicknessDisplay = formatDim(railBands.center.boardThickness, system);
 
   // The PLANING table's words, read off the same side profile and Planer Max Depth ROCKER uses.
   const planing = planingTable(sideProfile, defaults.planerMaxDepth, system);
+
+  // A back page comes off the printer as a loose sheet and gets carried to the blank on its
+  // own, so it has to say which board it belongs to without the front in hand. Board name
+  // and the four numbers that identify a board — nothing a shaper would have to cross-check
+  // against page 1.
+  // The BOTTOM CONTOURS page is a loose sheet too, so it carries the same strip.
+  const sheetHead = (
+    <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-ink pb-1 order-form-band-refhead">
+      <div className="flex min-w-0 items-baseline gap-2">
+        {/* The founder's logo, standing on the same baseline as the board's name (quick
+            261010-km7, D-09/D-12). 8.7em of the wordmark size is 214 dots on screen (the old
+            capitals were 309) and its box, 0.859em tall, is no taller than the old line's
+            0.864em ascent, so the strip cannot grow; the p's tail paints below the baseline
+            inside the strip's own room. Measured, though, the logo's box still stood 0.16 dot
+            (screen) and 0.64 dot (print) above what the old line gave the strip, so the strip
+            grew by that much; the 0.1em of negative top margin takes that out of the box's
+            share of the strip's height without moving the letters (the baseline stays where
+            it is, the box just reaches into the sheet's own padding), and the board's name then
+            sets the strip's height, as it does in print today. The 7.16em floor is the width of ASSISTANT, the
+            narrowest the old text could wrap down to, so a narrow phone sheet can shrink it
+            no further than before. */}
+        <Wordmark
+          baseline
+          className="-mt-[0.1em] h-auto w-[8.7em] min-w-[7.16em] text-surf-ink order-form-wordmark"
+        />
+        <span className="truncate font-bold text-surf-ink order-form-value">
+          {boardName || "Unnamed board"}
+        </span>
+      </div>
+      <span className="flex-none font-bold text-surf-ink-muted order-form-value">
+        {identificationLengthText(outline.length, system)} ·{" "}
+        {formatDimBare(outline.widePointWidth, system)} · {thicknessDisplay} ·{" "}
+        {quotedVolumeLitres.toFixed(1)} L
+      </span>
+    </div>
+  );
 
   return (
     <div
@@ -430,7 +512,7 @@ export function OrderForm() {
                       <div className="flex min-h-0 flex-1 items-center justify-center">
                         <RailSectionPlot
                           sectionKey={key}
-                          output={railBands[key]}
+                          output={railBandsOnBottom[key]}
                           xAxisMin={sharedXAxisMin}
                           fit="height"
                         />
@@ -636,40 +718,7 @@ export function OrderForm() {
 
         {/* ══════════ PAGE 2 — the shaper's reference ══════════════════════════════════════ */}
         <Sheet variant="reference">
-          {/*
-           * A back page comes off the printer as a loose sheet and gets carried to the blank on its
-           * own, so it has to say which board it belongs to without the front in hand. Board name
-           * and the four numbers that identify a board — nothing a shaper would have to cross-check
-           * against page 1.
-           */}
-          <div className="flex flex-none items-baseline justify-between gap-3 border-b-[1.5px] border-surf-ink pb-1 order-form-band-refhead">
-            <div className="flex min-w-0 items-baseline gap-2">
-              {/* The founder's logo, standing on the same baseline as the board's name (quick
-                  261010-km7, D-09/D-12). 8.7em of the wordmark size is 214 dots on screen (the old
-                  capitals were 309) and its box, 0.859em tall, is no taller than the old line's
-                  0.864em ascent, so the strip cannot grow; the p's tail paints below the baseline
-                  inside the strip's own room. Measured, though, the logo's box still stood 0.16 dot
-                  (screen) and 0.64 dot (print) above what the old line gave the strip, so the strip
-                  grew by that much; the 0.1em of negative top margin takes that out of the box's
-                  share of the strip's height without moving the letters (the baseline stays where
-                  it is, the box just reaches into the sheet's own padding), and the board's name then
-                  sets the strip's height, as it does in print today. The 7.16em floor is the width of ASSISTANT, the
-                  narrowest the old text could wrap down to, so a narrow phone sheet can shrink it
-                  no further than before. */}
-              <Wordmark
-                baseline
-                className="-mt-[0.1em] h-auto w-[8.7em] min-w-[7.16em] text-surf-ink order-form-wordmark"
-              />
-              <span className="truncate font-bold text-surf-ink order-form-value">
-                {boardName || "Unnamed board"}
-              </span>
-            </div>
-            <span className="flex-none font-bold text-surf-ink-muted order-form-value">
-              {identificationLengthText(outline.length, system)} ·{" "}
-              {formatDimBare(outline.widePointWidth, system)} · {thicknessDisplay} ·{" "}
-              {quotedVolumeLitres.toFixed(1)} L
-            </span>
-          </div>
+          {sheetHead}
 
           <div className="flex min-h-0 flex-1 gap-1">
             <RailLabel>Shaping Data</RailLabel>
@@ -949,7 +998,27 @@ export function OrderForm() {
           <PageMark page={2} of={sheetCount} title="Shaper Reference" />
         </Sheet>
 
-        {/* ══════════ PAGE 3 — Rail Band Instructions ═══════════════════════════════════════ */}
+        {/* ══════════ PAGE 3 — Bottom Contours, only when the bottom has a cut ═══════════════ */}
+        {/* The bottom from above, a section at each cut, the depths and marks, and how to shape it
+            (Phase 17, D-29) — the page a shaper takes to the bay to cut the bottom from. A flat board
+            draws nothing here, so its stack and its page marks are what they always were. */}
+        {bottomLayout && (
+          <Sheet variant="bottom">
+            {sheetHead}
+            <BottomContoursSheet layout={bottomLayout} />
+            <PageMark page={3} of={sheetCount} title={BOTTOM_SHEET_COPY.pageTitle} />
+          </Sheet>
+        )}
+        {/* A board whose cuts fill that page: the two tables, whole, on the sheet after it. */}
+        {bottomLayout?.tablesOnOwnSheet && (
+          <Sheet variant="bottom">
+            {sheetHead}
+            <BottomTablesSheet layout={bottomLayout} />
+            <PageMark page={4} of={sheetCount} title={BOTTOM_SHEET_COPY.tablesPageTitle} />
+          </Sheet>
+        )}
+
+        {/* ══════════ THE LAST PAGE — Rail Band Instructions ════════════════════════════════ */}
         {/* Present the moment the box is ticked — this form is measured on screen and printed as
             measured, so a sheet that prints must be a sheet that shows (D-09). Always the Flat
             example rail and every legend line, whatever the INSTRUCTIONS tab's own switch and
@@ -957,7 +1026,7 @@ export function OrderForm() {
         {printRailInstructions && (
           <Sheet variant="instructions">
             <RailInstructionsSheet />
-            <PageMark page={3} of={sheetCount} title="Rail Band Reference" />
+            <PageMark page={sheetCount} of={sheetCount} title="Rail Band Reference" />
           </Sheet>
         )}
         </div>
@@ -1001,9 +1070,7 @@ export function OrderForm() {
           Include Rail Band Instructions in Print
         </label>
         <span className="text-xs text-surf-ink-muted">
-          {printRailInstructions
-            ? "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page."
-            : "Two portrait pages — print double-sided for a front-and-back form."}
+          {printHint(printRailInstructions, bottomSheets)}
         </span>
         {/* These are the RAILS tab's own nine ticks (D-01), not a second set — ticking one here
             changes the sheet above immediately and changes the INSTRUCTIONS tab too. No

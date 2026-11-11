@@ -1,5 +1,5 @@
 /**
- * The small pictures in the phone menu's screen tiles (quick 261003-q2f, sketch 007's C1), seven
+ * The small pictures in the phone menu's screen tiles (quick 261003-q2f, sketch 007's C1), eight
  * since Phase 16 added 3D.
  *
  * Each picture is a label-free copy of that screen's own drawing of the CURRENT board — TEMPLATE's
@@ -18,6 +18,10 @@ import type { BlankRecord } from "./blank";
 import type { OutlineSpec, Point2D } from "./board";
 import { blankDisplayLines, type BlankRockerSpec } from "./custom-rocker";
 import type { BoardSideProfile } from "./board-profile";
+import type { ResolvedBottom } from "./bottom";
+// A cycle on purpose: bottom-tile-art.ts draws on TEMPLATE's tile (`outlineTileArt`, here). Both sides read the other's
+// functions only when called, never while the modules load.
+import { bottomTileLine } from "./bottom-tile-art";
 import { FIN_SETUPS, type FinMark, type FinSetup } from "./fins";
 import type { OutlineGeometry } from "./outline";
 import { railPlotDots, type RailPlotDot, type RailSectionOutput, type RailSegmentKey } from "./rail-bands";
@@ -252,14 +256,16 @@ export function formatTileLitres(litres: Litres): string {
   return litres.toFixed(1);
 }
 
-export type ScreenTileKind = "template" | "rocker" | "rails" | "volume" | "fins" | "summary" | "threeD";
+export type ScreenTileKind = "template" | "rocker" | "bottom" | "rails" | "volume" | "fins" | "summary" | "threeD";
 
 /** The one line under each tile's name: TEMPLATE the length × width in the shaper's units, ROCKER
- * the blank the board sits in (or Hand-set), FINS the setup's name as the FINS screen's own picker
- * spells it, 3D what the screen is for (Phase 16). */
+ * the blank the board sits in (or Hand-set), BOTTOM the cuts on this board (`All flat`, `1 cut`,
+ * `2 cuts · 6 channels` — Phase 17, `bottomTileLine`), FINS the setup's name as the FINS screen's own
+ * picker spells it, 3D what the screen is for (Phase 16). */
 export function screenTileLines(input: {
   outline: Pick<OutlineSpec, "length" | "widePointWidth">;
   blank: { copy: { name: string } } | null;
+  bottom: ResolvedBottom;
   finSetup: FinSetup;
   system: UnitsSystem;
 }): Record<ScreenTileKind, string> {
@@ -267,6 +273,7 @@ export function screenTileLines(input: {
   return {
     template: formatLengthByWidth(input.outline.length, input.outline.widePointWidth, input.system),
     rocker: input.blank ? `On a ${input.blank.copy.name}` : "Hand-set",
+    bottom: bottomTileLine(input.bottom),
     rails: "Center rail",
     volume: "Estimated",
     fins: finLabel,

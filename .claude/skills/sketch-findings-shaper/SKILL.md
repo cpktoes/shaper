@@ -48,7 +48,7 @@ Sketch sessions wrapped: 2026-10-05 (sketches 001–011; 005 excluded as superse
 |------|-----------|--------------|
 | Drawing & callouts | references/drawing-and-callouts.md | Drafting dimension lines on fixed rails; computed values get dimension lines, inputs get chips; no text inside a board |
 | Board orientation | references/board-orientation.md | Rotate the Template board in place from one corner button; vertical by default, not remembered |
-| Phone chrome | references/phone-chrome.md | No tab bar: ☰ opens seven screen tiles drawn from the current board (four by two upright, one row of seven sideways; Phase 16, D-03); Back + Next end every screen |
+| Phone chrome | references/phone-chrome.md | No tab bar: ☰ opens eight screen tiles drawn from the current board (four over four upright, one row of eight sideways; BOTTOM third since Phase 17, D-02); Back + Next end every screen |
 | Board Rack | references/board-rack.md | Boards stand sideways at one true scale and turn their real turn as the cursor or thumb passes; the shaper sets the order (drag / hold-and-drag); the unsaved board stays first |
 | Wings | references/wings.md | A wing is a step after the curve whose depth fades out by the tail pod; up to two, 2" to the centre or locked to the front fin, with a run and a corner radius in 1/16" steps; on a WINGS tab whose tail window grows with the wing, the sidebar swapped to the wing controls alone |
 | Blank top view | references/blank-top-view.md | A blank's 0-wide nose is drawn round by a parabola from the tip, fixed by the printed widths alone |

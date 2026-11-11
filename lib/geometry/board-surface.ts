@@ -55,6 +55,7 @@ import {
   type CrossSectionVolumeInput,
   boardSections,
   crossSectionStations,
+  halfSectionPointCount,
   railCharacterDifferences,
   tailRollStations,
 } from "./volume";
@@ -74,14 +75,16 @@ export const SURFACE_STATION_STEP_IN = 0.5;
  */
 export const SURFACE_POINTS = { ...SECTION_POINTS, wall: 4 } as const;
 
-/** Points in one half-section: the three runs, sharing their two joins. */
+/** Points in one half-section on a board without channels: the three runs, sharing their two joins. A board with
+ * channels has eight more, the same on every one of its rings (`halfSectionPointCount`, Phase 17, D-21). */
 const HALF_POINTS = HALF_SECTION_POINT_COUNT;
 /** The half-section's index of the bottom edge (the rail run's last point, the bottom run's first). */
 const BOTTOM_EDGE = SURFACE_POINTS.deck + SURFACE_POINTS.rail - 2;
 
 /**
  * What each triangle of the surface is, for the screen's normals (board-surface-render.ts): the deck and
- * rail above the bottom edge, the bottom below it, a notch wall on either side, or a tip's flat cap.
+ * rail above the bottom edge, the bottom below it, a notch wall on either side, a tip's flat cap, or a channel's
+ * vertical wall (Phase 17, D-10, D-21) — which, like a notch wall, the screen always draws sharp.
  */
 export const SURFACE_FACE = {
   upper: 0,
@@ -90,6 +93,7 @@ export const SURFACE_FACE = {
   wallLeft: 3,
   capTail: 4,
   capNose: 5,
+  channelWall: 6,
 } as const;
 
 /** What `buildBoardSurface` reads: the litres' own cross-section input, the outline and the rocker. */
@@ -215,10 +219,12 @@ export function surfaceStations(input: BoardSurfaceInput): Mm[] {
  * A tip with no width as a half-section (D-34): one edge at `outer`, the deck run's points on the side profile's
  * deck, the rail run's stepping down to the bottom and the bottom run's on the bottom. The rail run stands on the
  * notch wall's own heights (`thickness × k / (wall + 1)`), so a swallow's point shares one set of vertices
- * between its rail and its wall and the skin stays closed.
+ * between its rail and its wall and the skin stays closed. `ringLength` is the board's own (`halfSectionPointCount`):
+ * a board with channels has a longer bottom run, so its tip edges do too.
  */
-function tipEdge(outer: number, thickness: number): P2[] {
-  const { deck, rail, bottom, wall } = SURFACE_POINTS;
+function tipEdge(outer: number, thickness: number, ringLength: number): P2[] {
+  const { deck, rail, wall } = SURFACE_POINTS;
+  const bottom = ringLength - deck - rail + 2;
   const levels = wall + 1;
   const edge: P2[] = [];
   for (let j = 0; j < deck; j++) edge.push([outer, thickness]);
@@ -228,18 +234,29 @@ function tipEdge(outer: number, thickness: number): P2[] {
 }
 
 /**
- * One station's half-section as the surface lays it (`HALF_SECTION_POINT_COUNT` points, inside edge on the
- * deck round the rail to the inside edge on the bottom; distance across from the stringer, height above the
- * bottom): the section's own sampled finished rail (`sampledFinishedRail`), or the very ring the litres count
- * — near a wing (`BoardSection.drawn`, D-37), inside a tip's blend (`BoardSection.blended`, D-31, D-32) — moved
- * out by `inner` so its inside edge stands on a swallow's notch wall (0 everywhere else). Nothing is sampled or
- * blended here that the litres don't read.
+ * One station's half-section as the surface lays it (`ringLength` points — the board's own, `HALF_SECTION_POINT_COUNT`
+ * unless it has channels — inside edge on the deck round the rail to the inside edge on the bottom; distance across
+ * from the stringer, height above the bottom): the section's own sampled finished rail (`sampledFinishedRail`), or
+ * the very ring the litres count — near a wing (`BoardSection.drawn`, D-37), inside a tip's blend
+ * (`BoardSection.blended`, D-31, D-32), with its bottom cut (Phase 17) — moved out by `inner` so its inside edge
+ * stands on a swallow's notch wall (0 everywhere else). Nothing is sampled or blended here that the litres don't read.
  * A section with no foam is the tip's own edge at `outer` (`tipEdge`).
  */
-export function placedHalfSection(section: BoardSection, outer: number, inner: number): [number, number][] {
-  if (!section.result || section.halfWidth <= 0) return tipEdge(outer, section.thickness * (section.rollScale ?? 1));
+export function placedHalfSection(section: BoardSection, outer: number, inner: number, ringLength: number = HALF_POINTS): [number, number][] {
+  if (!section.result || section.halfWidth <= 0) return tipEdge(outer, section.thickness * (section.rollScale ?? 1), ringLength);
   const half = section.drawn ?? section.blended ?? sampledFinishedRail(section.result, section.domed, section.halfWidth);
   return half.map(([y, h]) => [inner + y, h] as P2);
+}
+
+/** The area a half-section encloses, its points closed back along the stringer (the shoelace sum), in mm². */
+function halfPolygonArea(half: readonly P2[]): number {
+  let twice = 0;
+  for (let k = 0; k < half.length; k++) {
+    const [y0, h0] = half[k];
+    const [y1, h1] = half[(k + 1) % half.length];
+    twice += y0 * h1 - y1 * h0;
+  }
+  return twice / 2;
 }
 
 /** A position's key for welding the points of one ring that land on the same spot. */
@@ -284,6 +301,11 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
   const first = geometry.points[0];
   const close = geometry.centreCloseStation;
   const swallow = close > first.station;
+  // The board's own ring length, the same on every ring and tip edge (Phase 17, D-21): the usual count, or eight more
+  // on a board with channels — and the rows of the ring whose faces are the channels' vertical walls, the same rows on
+  // every ring of it.
+  const ringLength = halfSectionPointCount(sectionInput);
+  const channelWallRows = new Set(sections.find((section) => section.wallRows)?.wallRows ?? []);
 
   // Each station's two half-sections placed at the outline.
   const placed = sections.map((section) => {
@@ -291,7 +313,8 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     const inNotch = swallow && s < close;
     const outer = inNotch ? sampleOutline(geometry, s) : section.halfWidth;
     const inner = inNotch ? Math.max(0, outer - section.halfWidth) : 0;
-    const half = placedHalfSection(section, outer, inner);
+    const half = placedHalfSection(section, outer, inner, ringLength);
+    if (half.length !== ringLength) throw new Error(`3D board: a ring of ${half.length} points at ${s} mm on a board whose rings have ${ringLength}`);
     const z0 = rockerAt(s);
     for (const [y, h] of half) {
       assertFinite("a surface point's distance across", y, s);
@@ -322,10 +345,11 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
       allocated++;
       return index;
     };
-    const right: number[] = new Array(HALF_POINTS);
-    const left: number[] = new Array(HALF_POINTS);
+    const last = ringLength - 1;
+    const right: number[] = new Array(ringLength);
+    const left: number[] = new Array(ringLength);
     const wallPoint = (side: 1 | -1, j: number): P2 => {
-      const bottom = half[HALF_POINTS - 1];
+      const bottom = half[last];
       const top = half[0];
       const t = j / (W + 1);
       return [side * (bottom[0] + (top[0] - bottom[0]) * t), bottom[1] + (top[1] - bottom[1]) * t];
@@ -337,15 +361,15 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     if (!notch) {
       const start = positions.length / 3;
       const before = allocated;
-      for (let j = 0; j < HALF_POINTS; j++) right[j] = vertex(half[j][0], half[j][1]);
-      left[HALF_POINTS - 1] = vertex(-half[HALF_POINTS - 1][0], half[HALF_POINTS - 1][1]);
-      for (let j = HALF_POINTS - 2; j >= 1; j--) left[j] = vertex(-half[j][0], half[j][1]);
+      for (let j = 0; j < ringLength; j++) right[j] = vertex(half[j][0], half[j][1]);
+      left[last] = vertex(-half[last][0], half[last][1]);
+      for (let j = last - 1; j >= 1; j--) left[j] = vertex(-half[j][0], half[j][1]);
       left[0] = vertex(-half[0][0], half[0][1]);
       pieces.push({ first: start, count: allocated - before, inner: mm(0) });
       if (besideNotch) {
         // The crotch: both walls come to the stringer and share its points, bottom to deck.
         wallRight = new Array(W + 2);
-        wallRight[0] = right[HALF_POINTS - 1];
+        wallRight[0] = right[last];
         wallRight[W + 1] = right[0];
         for (let j = 1; j <= W; j++) {
           const [y, h] = wallPoint(1, j);
@@ -357,9 +381,9 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
       // Right piece: deck from the wall, round the rail, along the bottom to the wall, up the wall.
       let start = positions.length / 3;
       let before = allocated;
-      for (let j = 0; j < HALF_POINTS; j++) right[j] = vertex(half[j][0], half[j][1]);
+      for (let j = 0; j < ringLength; j++) right[j] = vertex(half[j][0], half[j][1]);
       wallRight = new Array(W + 2);
-      wallRight[0] = right[HALF_POINTS - 1];
+      wallRight[0] = right[last];
       wallRight[W + 1] = right[0];
       for (let j = 1; j <= W; j++) {
         const [y, h] = wallPoint(1, j);
@@ -376,9 +400,9 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
         const [y, h] = wallPoint(-1, j);
         wallLeft[j] = vertex(y, h);
       }
-      left[HALF_POINTS - 1] = vertex(-half[HALF_POINTS - 1][0], half[HALF_POINTS - 1][1]);
-      wallLeft[0] = left[HALF_POINTS - 1];
-      for (let j = HALF_POINTS - 2; j >= 1; j--) left[j] = vertex(-half[j][0], half[j][1]);
+      left[last] = vertex(-half[last][0], half[last][1]);
+      wallLeft[0] = left[last];
+      for (let j = last - 1; j >= 1; j--) left[j] = vertex(-half[j][0], half[j][1]);
       pieces.push({ first: start, count: allocated - before, inner: mm(inner) });
     }
 
@@ -411,11 +435,18 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     tri(b, c, d, kind);
   };
 
+  // Where the bottom cuts a swallow's prong right through (Phase 17, D-40: the foam ends where the lifted bottom meets
+  // the deck), a ring's half closes up into one point. From the ring beside it with foam the loft is a cone that closes
+  // there; between that point and the prong's own tip edge — a line with no width — there is no foam at all, and the
+  // rail's strip and the notch wall's would lay the same triangles twice, so nothing is drawn between them.
+  const flatHalf = placed.map(({ half }) => Math.abs(halfPolygonArea(half)) < 1e-9);
+  const pole = slots.map((slot) => slot.right.every((v) => v === slot.right[0]) && slot.left.every((v) => v === slot.left[0]));
   for (let i = 0; i < rings.length - 1; i++) {
     const A = slots[i];
     const B = slots[i + 1];
-    for (let j = 0; j < HALF_POINTS - 1; j++) {
-      const kind = j < BOTTOM_EDGE ? SURFACE_FACE.upper : SURFACE_FACE.bottom;
+    if (flatHalf[i] && flatHalf[i + 1] && (pole[i] || pole[i + 1])) continue;
+    for (let j = 0; j < ringLength - 1; j++) {
+      const kind = j < BOTTOM_EDGE ? SURFACE_FACE.upper : channelWallRows.has(j) ? SURFACE_FACE.channelWall : SURFACE_FACE.bottom;
       quad(A.right[j], A.right[j + 1], B.right[j], B.right[j + 1], kind);
       quad(A.left[j + 1], A.left[j], B.left[j + 1], B.left[j], kind);
     }

@@ -12,11 +12,13 @@ import {
   formatFeetInches,
   wholeFeetAndInches,
   formatInchesFraction,
+  formatInchesFractionOrLess,
   formatSignedInchesFraction,
   formatWholeFeet,
   formatWholeInches,
   formatTenthMm,
   formatWholeMm,
+  formatWholeMmOrLess,
   inchesToMm,
   metricSliderRange,
   mm,
@@ -378,6 +380,83 @@ describe("units boundary", () => {
 
     it("formats zero with no decimal point and no minus sign", () => {
       expect(formatWholeMm(mm(0))).toBe("0");
+    });
+  });
+
+  // The founder, 2026-11-10: "say <1/16 if it's not actually 0". A size that is there but too small
+  // for the tape reads "less than the smallest step", never nothing. Every boundary below is worked
+  // from the conversion (25.4 mm to the inch, half a step either side), never read off a page.
+  describe("formatInchesFractionOrLess", () => {
+    const halfStep = inchesToMm(1 / 32);
+
+    it("reads a size under half a sixteenth as less than a sixteenth, never as nothing", () => {
+      expect(formatInchesFraction(mm(0.3))).toBe('0"');
+      expect(formatInchesFractionOrLess(mm(0.3))).toBe('<1/16"');
+      expect(formatInchesFractionOrLess(mm(0.25))).toBe('<1/16"');
+      expect(formatInchesFractionOrLess(mm(0.001))).toBe('<1/16"');
+    });
+
+    it("turns at exactly half a step: 1/32 inch and up still rounds to 1/16 inch", () => {
+      expect(formatInchesFractionOrLess(halfStep)).toBe('1/16"');
+      expect(formatInchesFractionOrLess(mm(halfStep - 0.001))).toBe('<1/16"');
+      expect(formatInchesFractionOrLess(mm(halfStep + 0.001))).toBe('1/16"');
+    });
+
+    it("leaves an actual zero as zero, float noise included", () => {
+      expect(formatInchesFractionOrLess(mm(0))).toBe('0"');
+      expect(formatInchesFractionOrLess(mm(1e-12))).toBe('0"');
+    });
+
+    it("prints every size the tape can read exactly as formatInchesFraction prints it", () => {
+      for (const inches of [1 / 16, 1 / 8, 3 / 16, 1 / 4, 0.5, 1, 2.625, 18.5, 72]) {
+        const value = inchesToMm(inches);
+        expect(formatInchesFractionOrLess(value)).toBe(formatInchesFraction(value));
+      }
+    });
+
+    it("is for sizes: a negative value is left to formatInchesFraction", () => {
+      for (const value of [mm(-0.3), mm(-5), inchesToMm(-2.25)]) {
+        expect(formatInchesFractionOrLess(value)).toBe(formatInchesFraction(value));
+      }
+    });
+  });
+
+  describe("formatWholeMmOrLess", () => {
+    it("reads a size under half a millimetre as less than one, never as nothing", () => {
+      expect(formatWholeMm(mm(0.3))).toBe("0");
+      expect(formatWholeMmOrLess(mm(0.3))).toBe("<1");
+      expect(formatWholeMmOrLess(mm(0.25))).toBe("<1");
+      expect(formatWholeMmOrLess(mm(0.001))).toBe("<1");
+    });
+
+    it("turns at exactly half a millimetre, which still rounds to 1", () => {
+      expect(formatWholeMmOrLess(mm(0.5))).toBe("1");
+      expect(formatWholeMmOrLess(mm(0.499))).toBe("<1");
+      expect(formatWholeMmOrLess(mm(0.501))).toBe("1");
+    });
+
+    it("leaves an actual zero as zero, float noise included", () => {
+      expect(formatWholeMmOrLess(mm(0))).toBe("0");
+      expect(formatWholeMmOrLess(mm(1e-12))).toBe("0");
+    });
+
+    it("prints every size the tape can read exactly as formatWholeMm prints it", () => {
+      for (const value of [0.5, 0.79, 1, 1.5875, 6.35, 66.675, 514, 1880]) {
+        expect(formatWholeMmOrLess(mm(value))).toBe(formatWholeMm(mm(value)));
+      }
+    });
+
+    it("is for sizes: a negative value is left to formatWholeMm", () => {
+      for (const value of [-0.3, -5, -66.5]) {
+        expect(formatWholeMmOrLess(mm(value))).toBe(formatWholeMm(mm(value)));
+      }
+    });
+
+    it("a size between half a millimetre and half a sixteenth is the one the two systems read differently", () => {
+      // 0.6 mm is over half a millimetre but under 1/32 inch (0.79375 mm): a whole 1 on a metric tape,
+      // less than a sixteenth on an inch one. Each is honest to its own smallest step.
+      expect(formatWholeMmOrLess(mm(0.6))).toBe("1");
+      expect(formatInchesFractionOrLess(mm(0.6))).toBe('<1/16"');
     });
   });
 

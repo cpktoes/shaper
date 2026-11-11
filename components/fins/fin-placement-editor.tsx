@@ -64,6 +64,10 @@ export function FinPlacementEditor() {
   // The fin placement callouts, on when the screen opens — toggled by the drawing's own icon (the
   // founder, 2026-10-19: moved there from the sidebar's Settings fold). View state, never saved.
   const [showCallouts, setShowCallouts] = useState(true);
+  // The bottom's contours under the fins, off when the screen opens — toggled by the drawing's own icon (the
+  // founder, 2026-11-09: "let's add a contour toggle icon to FINS with default off"). View state kept exactly
+  // where the callouts' is: never saved, never an Undo step, back to off on leaving FINS.
+  const [showContours, setShowContours] = useState(false);
   const [activeTab, setActiveTab] = useState<FinTab>("viewer");
   const [toeTableOpen, setToeTableOpen] = useState(false);
   const [justCopiedPreset, setJustCopiedPreset] = useState(false);
@@ -142,6 +146,8 @@ export function FinPlacementEditor() {
                   tailWidth12={spec.tailWidth12}
                   showCallouts={showCallouts}
                   onToggleCallouts={() => setShowCallouts((v) => !v)}
+                  showContours={showContours}
+                  onToggleContours={() => setShowContours((v) => !v)}
                   outlineOverride={finTailOutline}
                   importedTail={finImportedTail}
                 />

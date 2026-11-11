@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { expectNoScreensNavigation, expectSevenTilesInMenu } from "./helpers/screens";
+import { expectNoScreensNavigation, expectEightTilesInMenu } from "./helpers/screens";
 import { LEGAL_DOCUMENTS, legalOutline, type LegalSlug } from "../lib/legal/documents";
 
 /**
@@ -73,7 +73,7 @@ test.describe("Terms and Privacy pages", () => {
         await expect(page.getByRole("banner").getByRole("button", { name: "Menu" })).toBeVisible();
         await expect(page.getByRole("button", { name: "Settings" })).toBeHidden();
         await expectNoScreensNavigation(page);
-        await expectSevenTilesInMenu(page, null);
+        await expectEightTilesInMenu(page, null);
 
         const overflow = await legalPage.evaluate((el) => ({
           scrollWidth: el.scrollWidth,

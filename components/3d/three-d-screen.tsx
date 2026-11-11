@@ -306,7 +306,7 @@ function CanvasMessage({ line1, line2 }: { line1: string; line2: string }) {
 }
 
 export function ThreeDScreen() {
-  const { outlineGeometry, sideProfile, effectiveRails, outline, boardName, modelId, finPlacement, effectiveFins } =
+  const { outlineGeometry, sideProfile, effectiveRails, outline, boardName, modelId, finPlacement, effectiveFins, bottom, bottomBoard } =
     useDesign();
 
   // The board's surface, from the litres' own input. A board the builder refuses (a value that isn't a number,
@@ -314,7 +314,9 @@ export function ThreeDScreen() {
   const built = useMemo(() => {
     try {
       const surface = buildBoardSurface({
-        sections: designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, outline.length),
+        // The store's one bottom (Phase 17, D-21): the drawn board and its Export 3D Files carry the cut the litres
+        // count; a flat bottom adds nothing to the input.
+        sections: designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, outline.length, { bottom, board: bottomBoard }),
         geometry: outlineGeometry,
         rockerAt: sideProfile.rockerAt,
       });
@@ -330,7 +332,7 @@ export function ThreeDScreen() {
     } catch (error) {
       return { ok: false as const, error };
     }
-  }, [outlineGeometry, sideProfile, effectiveRails, outline.length]);
+  }, [outlineGeometry, sideProfile, effectiveRails, outline.length, bottom, bottomBoard]);
 
   useEffect(() => {
     if (!built.ok) console.error("The 3D board could not be built:", built.error);

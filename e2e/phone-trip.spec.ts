@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu, goToScreen } from "./helpers/screens";
+import { SCREENS, expectNoScreensNavigation, expectEightTilesInMenu, goToScreen } from "./helpers/screens";
 
 /**
  * Phase 10 plan 04, Task 1 — the machine pass over PHON-10's whole trip, walked once by
@@ -21,7 +21,7 @@ import { SCREENS, expectNoScreensNavigation, expectSevenTilesInMenu, goToScreen 
  *
  * Every one of those six is handed to the real-device sweep (`10-SWEEP.md`), not proved here.
  * This spec's own job is narrower and duplicates nothing the three wave-1 specs already own: it
- * proves the ROUTE is walkable end to end — home, a preset, all seven screens (the summary on the
+ * proves the ROUTE is walkable end to end — home, a preset, all eight screens (the summary on the
  * way, 3D last since Phase 16), and back home — not that any individual control is the right size (`e2e/phone-dialogs.spec.ts`,
  * `e2e/phone-account.spec.ts`, `e2e/phone-home.spec.ts`, `e2e/phone-screens.spec.ts` already own
  * that).
@@ -46,10 +46,10 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     await dismissSignInBanner(page);
   });
 
-  test("home -> pick a preset -> all seven screens by tapping their tiles in the menu, the summary reading clean on the way -> 3D draws the board -> back home with the board in the rack", async ({
+  test("home -> pick a preset -> all eight screens by tapping their tiles in the menu, the summary reading clean on the way -> 3D draws the board -> back home with the board in the rack", async ({
     page,
   }) => {
-    // Seven screens, the last of them 3D, whose first draw takes about five seconds on the iphone
+    // Eight screens, the last of them 3D, whose first draw takes about five seconds on the iphone
     // project: the suite's slow allowance.
     test.slow();
 
@@ -62,7 +62,7 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     await firstPreset.click();
     await page.waitForURL("**/design/outline");
 
-    // 3. Walk all seven screens in order, by opening the top bar's menu and tapping each screen's
+    // 3. Walk all eight screens in order, by opening the top bar's menu and tapping each screen's
     // tile rather than by calling `goto` — this is what actually proves the route is walkable
     // through the UI a shaper will use, not just that the destination page itself renders.
     // TEMPLATE is already open from the preset pick; the remaining six are reached by tapping
@@ -72,7 +72,7 @@ test.describe("the whole trip, walked once by machine before the founder is hand
     for (const screen of SCREENS) {
       await goToScreen(page, screen.label);
       await expect(page).toHaveURL(new RegExp(`${screen.href}$`));
-      await expectSevenTilesInMenu(page, screen.label);
+      await expectEightTilesInMenu(page, screen.label);
         // 4. On the summary screen, on the way past it, the order form reads clean.
       if (screen.label === "SUMMARY") await expectSummaryReadsClean(page);
     }

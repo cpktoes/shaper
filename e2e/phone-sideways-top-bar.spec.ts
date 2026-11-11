@@ -12,12 +12,12 @@ import { SCREENS, expectNoScreensNavigation, goToScreen, openPhoneMenu, screenTi
  * after this plan the same screen gets the phone's own 48-dot bar (item 9e, quick 260930-s23,
  * P-7, made it thinner still — 56 when this plan first shipped it), name on one line, with the
  * design screens reachable from its Menu instead of the desktop row. Since quick 261003-q2f that Menu
- * opens a sheet whose first items are the screen tiles — seven since Phase 16 added 3D, one row of
- * seven at this width — and an upright phone's Menu opens the same tiles (four over three) — there is
+ * opens a sheet whose first items are the screen tiles — eight since Phase 17 added BOTTOM, one row of
+ * eight at this width — and an upright phone's Menu opens the same tiles (four over four) — there is
  * no bottom tab bar anywhere.
  *
  * This file starts as Task 1's tracer (one Pixel 7 sideways test) and is Task 2's home for the
- * full proof: both real sideways phones, every route, the Menu's walk between all seven screens,
+ * full proof: both real sideways phones, every route, the Menu's walk between all eight screens,
  * the fold check, a tall computer window, and an upright phone — all deliberately in one file so
  * the shared helpers below are written once.
  */
@@ -118,17 +118,17 @@ async function openMenu(page: Page): Promise<Locator> {
   return openPhoneMenu(page);
 }
 
-/** Every address this file proves draws the thin bar on, not only the seven design screens: the
+/** Every address this file proves draws the thin bar on, not only the eight design screens: the
  * home screen and a mistyped address both mount `SiteNav` too (P-2, quick 260930-fjm). */
 const ROUTES = [...SCREENS.map((screen) => screen.href), "/", "/no-such-page"];
 
-/** Walks all seven screens from the Menu, starting on TEMPLATE: for each screen in turn, moves
+/** Walks all eight screens from the Menu, starting on TEMPLATE: for each screen in turn, moves
  * there by its tile (`goToScreen`), confirms the move was client-side (the marker set once before
  * the walk survives every stop), confirms exactly one tile in the Screens group is ticked and it is
  * the screen just reached, then closes the menu with Escape before moving to the next screen —
- * proving the whole seven-screen loop, not only one hop (T-r8s-01). The walk ends on 3D, whose
+ * proving the whole eight-screen loop, not only one hop (T-r8s-01). The walk ends on 3D, whose
  * first draw takes about five seconds on the iphone project, so it gets the suite's slow allowance. */
-async function walkAllSevenFromTheMenu(page: Page) {
+async function walkAllEightFromTheMenu(page: Page) {
   test.slow();
   await page.goto("/design/outline");
   await page.evaluate(() => {
@@ -152,11 +152,11 @@ async function walkAllSevenFromTheMenu(page: Page) {
   }
 }
 
-/** Opens the menu and confirms all seven screen tiles sit whole inside the sheet's own box — none
+/** Opens the menu and confirms all eight screen tiles sit whole inside the sheet's own box — none
  * clipped by the fold — in ONE row at this desktop-shell width, each at least 44 dots tall under a
  * touch pointer. Logs the sheet's height and the tiles' bottom edge for the SUMMARY. Returns the
  * sheet, left open. */
-async function assertAllSevenInFirstView(page: Page): Promise<Locator> {
+async function assertAllEightInFirstView(page: Page): Promise<Locator> {
   const popup = await openMenu(page);
   const popupBox = await popup.boundingBox();
   if (!popupBox) throw new Error("popup has no bounding box");
@@ -175,7 +175,7 @@ async function assertAllSevenInFirstView(page: Page): Promise<Locator> {
     tops.add(Math.round(tileBox.y));
     lastTileBottom = Math.max(lastTileBottom, tileBox.y + tileBox.height);
   }
-  expect(tops.size, "the seven tiles sit in one row").toBe(1);
+  expect(tops.size, "the eight tiles sit in one row").toBe(1);
   console.log(`[q2f] sideways sheet height ${popupBox.height}, tiles' bottom ${lastTileBottom}`);
 
   return popup;
@@ -240,13 +240,13 @@ test.describe("a Pixel 7 held sideways gets the phone's thin bar, not the deskto
     }
   });
 
-  test("the menu walks to all seven screens, current one ticked, without reloading", async ({ page }) => {
-    await walkAllSevenFromTheMenu(page);
+  test("the menu walks to all eight screens, current one ticked, without reloading", async ({ page }) => {
+    await walkAllEightFromTheMenu(page);
   });
 
-  test("all seven screens are in view the moment the menu opens", async ({ page }) => {
+  test("all eight screens are in view the moment the menu opens", async ({ page }) => {
     await page.goto("/design/outline");
-    await assertAllSevenInFirstView(page);
+    await assertAllEightInFirstView(page);
   });
 
   test("everything the desktop row offered is still here", async ({ page }) => {
@@ -336,14 +336,14 @@ test.describe("a real iPhone held sideways gets the phone's thin bar too (quick 
     }
   });
 
-  test("the menu walks to all seven screens", async ({ page }) => {
-    await walkAllSevenFromTheMenu(page);
+  test("the menu walks to all eight screens", async ({ page }) => {
+    await walkAllEightFromTheMenu(page);
   });
 
-  test("with Safari's bar showing (844x340), all seven screens are in view", async ({ page }) => {
+  test("with Safari's bar showing (844x340), all eight screens are in view", async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 340 });
     await page.goto("/design/outline");
-    await assertAllSevenInFirstView(page);
+    await assertAllEightInFirstView(page);
   });
 });
 
@@ -387,13 +387,13 @@ test.describe("a tall computer window keeps the desktop row; its gear menu has n
   }
 });
 
-test.describe("an upright phone's menu opens on the seven screen tiles too (quick 261003-q2f)", () => {
+test.describe("an upright phone's menu opens on the eight screen tiles too (quick 261003-q2f)", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "desktop", "phone-only: each phone project's own upright viewport");
     await dismissSignInBanner(page);
   });
 
-  test("the desktop row stays hidden, there is no bottom tab bar, and the menu starts with the seven tiles", async ({
+  test("the desktop row stays hidden, there is no bottom tab bar, and the menu starts with the eight tiles", async ({
     page,
   }, testInfo) => {
     await page.goto("/design/outline");

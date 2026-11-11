@@ -124,14 +124,14 @@ test.describe("the board's name in the tab band on a computer (quick 261008-raw)
     await openFromCaption(page, "Tracer Fish");
     await expect(bandName(page)).toHaveText("Tracer Fish");
   });
-  test("e1. the name is in the band on all five drawing screens, SUMMARY has none, and a rename from FINS reaches TEMPLATE and SUMMARY", async ({
+  test("e1. the name is in the band on all six drawing screens, SUMMARY has none, and a rename from FINS reaches TEMPLATE and SUMMARY", async ({
     page,
   }) => {
     const first = board(1);
     await openRack(page);
     await openFromCaption(page, first.name);
 
-    const screens: ScreenLabel[] = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS"];
+    const screens: ScreenLabel[] = ["TEMPLATE", "ROCKER", "BOTTOM", "RAILS", "VOLUME", "FINS"];
     for (const label of screens) {
       await goToScreen(page, label);
       await expect(bandName(page), label).toHaveCount(1);
@@ -252,7 +252,7 @@ test.describe("a rename that cannot be saved (quick 261008-raw)", () => {
 // by renaming it from the band itself, which also proves a tap or a click opens the popup and saves.
 // ---------------------------------------------------------------------------------------------
 
-const SCREEN_ORDER: ScreenLabel[] = ["TEMPLATE", "ROCKER", "RAILS", "VOLUME", "FINS"];
+const SCREEN_ORDER: ScreenLabel[] = ["TEMPLATE", "ROCKER", "BOTTOM", "RAILS", "VOLUME", "FINS"];
 
 /** D-21's line: the slot needs this much room for the name to be drawn — a 44-dot box after the 6-dot gap. */
 const NAME_ROOM = 50;

@@ -10,8 +10,30 @@ import { buildBoardProfile } from "@/lib/geometry/board-profile";
 import { formatMark } from "@/lib/geometry/measure-display";
 import { normalizeSpec, type BlankRockerSpec, type RockerChange } from "@/lib/geometry/custom-rocker";
 import { carryPhase11Blank } from "@/lib/geometry/phase11-foil";
-import { summarizeDesign } from "@/lib/geometry/design";
-import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
+import {
+  BOTTOM_CUT_NAMES,
+  BOTTOM_SECTIONS,
+  DEFAULT_BOTTOM,
+  bottomHasCut,
+  CHANNEL_ANGLE_MAX,
+  CHANNEL_ANGLE_STEP,
+  channelDefaultAngle,
+  isDefaultBottom,
+  pickCut,
+  resolveBottom,
+  startingChannels,
+  startingCut,
+  type BoardBottom,
+  type BottomBoard,
+} from "@/lib/geometry/bottom";
+import {
+  LIVE_DESIGN_RULES,
+  designBottomBoard,
+  designFinPlacement,
+  designSideProfile,
+  summarizeDesign,
+} from "@/lib/geometry/design";
+import { MEASURE_STATION_MM, buildOutline } from "@/lib/geometry/outline";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
@@ -1113,5 +1135,369 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     expect(back).toEqual(fields.rails);
     expect(back.tailHardEdgeBlendsFrom).toBe(inchesToMm(20));
     expect(back.tailHardEdgeEndsAt).toBe(inchesToMm(26));
+  });
+});
+
+describe("the bottom rides on the board, optional and read forgivingly (rule 14, Phase 17 D-24)", () => {
+  const ELEVEN_KEYS = [...V3_KEYS, "blank"];
+  type LoosePart = Record<string, unknown>;
+  type LooseBottom = { nose: LoosePart; center: LoosePart; tail: LoosePart; channels: LoosePart; wingRule: unknown };
+  const PARTS = ["nose", "center", "tail", "channels", "wingRule"] as const;
+
+  const boardOf = (fields: DesignSnapshotFields): BottomBoard =>
+    designBottomBoard(
+      fields.outline,
+      buildOutline(fields.outline),
+      designSideProfile(fields, LIVE_DESIGN_RULES),
+      designFinPlacement(fields),
+    );
+  const BOARD = boardOf(FIXTURES[0]);
+
+  /** A bottom with every part moved off its opening value: a cut in each section, six channels, Natural. */
+  const FULL: BoardBottom = (() => {
+    let bottom = pickCut(DEFAULT_BOTTOM, "nose", "Teardrop Nose Concave", BOARD);
+    bottom = pickCut(bottom, "center", "Deep Single Concave", BOARD);
+    bottom = pickCut(bottom, "tail", "Spiral Vee", BOARD);
+    return {
+      ...bottom,
+      center: { ...bottom.center, depth: inchesToMm(5 / 16), smoothness: 35 },
+      tail: { ...bottom.tail, deepest: inchesToMm(-1.5), veeLift: inchesToMm(1 / 4) },
+      channels: {
+        ...startingChannels(6, BOARD, bottom.channels),
+        startFromFins: inchesToMm(9),
+        deepestFromFins: inchesToMm(-2),
+        run: "toe",
+        angle: 7.5,
+        longest: "inner",
+        stagger: inchesToMm(3.5),
+      },
+      wingRule: "natural",
+    };
+  })();
+
+  /** Every slider on BOTTOM at its far end, on the longest board the app draws. */
+  const FAR_END: BoardBottom = (() => {
+    const far = inchesToMm(BOARD_LENGTH_RANGE_IN.max);
+    const numbers = {
+      offRail: inchesToMm(6),
+      offStringer: inchesToMm(9),
+      troughAt: inchesToMm(8),
+      start: far,
+      deepest: far,
+      end: far,
+      depth: inchesToMm(1 / 2),
+      veeLift: inchesToMm(1 / 2),
+      smoothness: 100,
+      closesToPoint: true,
+    };
+    return {
+      nose: { name: "Teardrop Nose Concave", ...numbers },
+      center: { name: "Early Double Concave", ...numbers },
+      tail: { name: "Spiral Vee", ...numbers, deepest: mm(-far) },
+      channels: {
+        count: 8,
+        width: inchesToMm(4),
+        offStringer: inchesToMm(9),
+        startFromFins: far,
+        deepestFromFins: mm(-far),
+        end: far,
+        depth: inchesToMm(1 / 2),
+        smoothness: 100,
+        run: "rail",
+        angle: CHANNEL_ANGLE_MAX,
+        longest: "same",
+        stagger: inchesToMm(8),
+      },
+      wingRule: "natural",
+    };
+  })();
+
+  const wire = (fields: DesignSnapshotFields = FIXTURES[0]) =>
+    JSON.parse(JSON.stringify(buildSnapshot(fields))) as { version: number; design: Record<string, unknown> };
+  const wireWithBottom = (bottom: unknown) => {
+    const stored = wire();
+    stored.design.bottom = bottom;
+    return stored;
+  };
+  const looseFull = () => structuredClone(FULL) as unknown as LooseBottom;
+  /** A read board without its bottom, to hold against the same board saved with none. */
+  const withoutBottom = (fields: DesignSnapshotFields): DesignSnapshotFields => {
+    const rest = { ...fields };
+    delete rest.bottom;
+    return rest;
+  };
+
+  it("a board saved before BOTTOM has no bottom key, opens with none, and saves again key for key (D-24)", () => {
+    for (const fixture of FIXTURES) {
+      const stored = wire(fixture);
+      expect("bottom" in stored.design).toBe(false);
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect("bottom" in opened, fixture.boardName).toBe(false);
+      expect(Object.keys(opened).sort()).toEqual([...ELEVEN_KEYS].sort());
+      const again = JSON.parse(JSON.stringify(buildSnapshot(opened))) as typeof stored;
+      expect(again).toEqual(stored);
+      expect(Object.keys(again.design).sort()).toEqual(Object.keys(stored.design).sort());
+      expect(JSON.stringify(again)).not.toContain('"bottom"');
+    }
+  });
+
+  it("a whole bottom — a cut in each section, six channels, Natural — comes back exactly, version still 5", () => {
+    const fields: DesignSnapshotFields = { ...FIXTURES[0], bottom: FULL };
+    const built = buildSnapshot(fields);
+    expect(built.version).toBe(5);
+    expect(DESIGN_SNAPSHOT_VERSION).toBe(5);
+    const opened = parseSnapshot(Object.freeze(JSON.parse(JSON.stringify(built))));
+    expect(opened.bottom).toEqual(FULL);
+    expect(Object.keys(opened).sort()).toEqual([...ELEVEN_KEYS, "bottom"].sort());
+    // Everything else about the board is what it is saved without a bottom.
+    expect(withoutBottom(opened)).toEqual(parseSnapshot(wire()));
+    expect(roundTrip(opened)).toEqual(opened);
+  });
+
+  it("every name's starting cut and every channel count come back exactly, on every preset", () => {
+    for (const fixture of FIXTURES) {
+      const board = boardOf(fixture);
+      for (const section of BOTTOM_SECTIONS) {
+        for (const name of BOTTOM_CUT_NAMES[section]) {
+          for (const tail of [undefined, "Panel Vee"] as const) {
+            const bottom: BoardBottom = { ...DEFAULT_BOTTOM, [section]: startingCut(section, name, board, tail) };
+            const back = roundTrip({ ...fixture, bottom }).bottom;
+            if (isDefaultBottom(bottom)) expect(back, `${fixture.boardName} · ${name}`).toBeUndefined();
+            else expect(back, `${fixture.boardName} · ${name}`).toEqual(bottom);
+          }
+        }
+      }
+      for (const count of [4, 6, 8] as const) {
+        const bottom: BoardBottom = { ...DEFAULT_BOTTOM, channels: startingChannels(count, board, DEFAULT_BOTTOM.channels) };
+        expect(roundTrip({ ...fixture, bottom }).bottom, `${fixture.boardName} · ${count} channels`).toEqual(bottom);
+      }
+    }
+  });
+
+  it("every slider's far end is kept, and a cut slid to no depth keeps its name", () => {
+    expect(roundTrip({ ...FIXTURES[0], bottom: FAR_END }).bottom).toEqual(FAR_END);
+    const noDepth: BoardBottom = { ...FULL, center: { ...FULL.center, depth: mm(0) }, channels: { ...FULL.channels, depth: mm(0) } };
+    expect(roundTrip({ ...FIXTURES[0], bottom: noDepth }).bottom).toEqual(noDepth);
+    // A far-end bottom is still a board the app can work out, on every preset.
+    for (const fixture of FIXTURES) {
+      const opened = roundTrip({ ...fixture, bottom: FAR_END });
+      expect(() => summarizeDesign(opened), fixture.boardName).not.toThrow();
+      expect(Number.isFinite(summarizeDesign(opened).volumeLitres)).toBe(true);
+    }
+  });
+
+  it("the Narrowest rule alone is no bottom at all, and Natural alone is kept", () => {
+    expect("bottom" in parseSnapshot(wireWithBottom(JSON.parse(JSON.stringify(DEFAULT_BOTTOM))))).toBe(false);
+    const natural: BoardBottom = { ...DEFAULT_BOTTOM, wingRule: "natural" };
+    expect(roundTrip({ ...FIXTURES[0], bottom: natural }).bottom).toEqual(natural);
+  });
+
+  it("a bad part reads its opening value and never rejects the board; every other part is kept", () => {
+    const CRAFTED: [string, (typeof PARTS)[number], (bottom: LooseBottom) => void][] = [
+      ["a name the app never had", "nose", (b) => { b.nose.name = "Bonzer"; }],
+      ["a Center name in the Nose's place", "nose", (b) => { b.nose.name = "Deep Single Concave"; }],
+      ["a ticked box that is not yes or no", "nose", (b) => { b.nose.closesToPoint = "yes"; }],
+      ["a depth that is not a number", "center", (b) => { b.center.depth = Number.NaN; }],
+      ["a depth of nothing (what NaN is once stored)", "center", (b) => { b.center.depth = null; }],
+      ["a depth of 1e9", "center", (b) => { b.center.depth = 1e9; }],
+      ["a depth below zero", "center", (b) => { b.center.depth = -1; }],
+      ["a depth in words", "center", (b) => { b.center.depth = "deep"; }],
+      ["an endless Off Rail", "center", (b) => { b.center.offRail = Number.POSITIVE_INFINITY; }],
+      ["a station a billion millimetres behind the tail", "tail", (b) => { b.tail.start = -1e9; }],
+      ["a station a billion millimetres past the nose", "tail", (b) => { b.tail.end = 1e9; }],
+      ["a Smoothness over 100", "tail", (b) => { b.tail.smoothness = 101; }],
+      ["a missing number", "tail", (b) => { delete b.tail.veeLift; }],
+      ["a section that is not a cut", "center", (b) => { (b as Record<string, unknown>).center = "x"; }],
+      ["a missing section", "nose", (b) => { delete (b as Record<string, unknown>).nose; }],
+      ["five channels", "channels", (b) => { b.channels.count = 5; }],
+      ["a channel run the app never had", "channels", (b) => { b.channels.run = "diagonal"; }],
+      ["a longest pair the app never had", "channels", (b) => { b.channels.longest = "middle"; }],
+      ["an endless channel width", "channels", (b) => { b.channels.width = Number.POSITIVE_INFINITY; }],
+      ["a channel start a billion millimetres off", "channels", (b) => { b.channels.startFromFins = -1e9; }],
+      ["channels that are not channels", "channels", (b) => { (b as Record<string, unknown>).channels = [4]; }],
+      ["a wing rule the app never had", "wingRule", (b) => { b.wingRule = "widest"; }],
+      ["no wing rule", "wingRule", (b) => { delete (b as Record<string, unknown>).wingRule; }],
+    ];
+    const plain = parseSnapshot(wire());
+    for (const [what, part, craft] of CRAFTED) {
+      const bottom = looseFull();
+      craft(bottom);
+      const stored = wireWithBottom(bottom);
+      expect(() => parseSnapshot(stored), what).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom, what).toBeDefined();
+      for (const key of PARTS) {
+        if (key === part) expect(opened.bottom![key], `${what}: ${key}`).toEqual(DEFAULT_BOTTOM[key]);
+        else expect(opened.bottom![key], `${what}: ${key}`).toEqual(FULL[key]);
+      }
+      // The opening value handed back is the board's own copy, never the app's shared one.
+      if (part !== "wingRule") expect(opened.bottom![part], what).not.toBe(DEFAULT_BOTTOM[part]);
+      expect(withoutBottom(opened), what).toEqual(plain);
+    }
+  });
+
+  it("D-44: channels saved before the Angle slider open with every number they had, on the run's own angle", () => {
+    // A board saved before the slider has no `angle` among its channels. It is not a bad part: nothing else is reset.
+    const bottom = looseFull();
+    expect("angle" in bottom.channels).toBe(true);
+    delete bottom.channels.angle;
+    const stored = wireWithBottom(bottom);
+    expect(JSON.stringify(stored.design.bottom)).not.toContain('"angle"');
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(opened.bottom!.channels).toEqual({ ...FULL.channels, angle: null });
+    for (const key of PARTS) if (key !== "channels") expect(opened.bottom![key], key).toEqual(FULL[key]);
+    // ...and it saves again with the angle written as none, then reads back the same board.
+    expect(roundTrip(opened).bottom).toEqual(opened.bottom);
+    // The old run is still an angled one, so the maths works its own angle out for it.
+    const resolved = resolveBottom(opened.bottom!, BOARD);
+    expect(resolved.channels.angle).toBe(channelDefaultAngle(resolved.channels.run, resolved.channels, BOARD, resolved.wingRule));
+  });
+
+  it("D-44: an angle the slider could never give reads as none and takes nothing else with it", () => {
+    const BAD: [string, unknown][] = [
+      ["not a number (stored as nothing)", Number.NaN],
+      ["endless", Number.POSITIVE_INFINITY],
+      ["in words", "steep"],
+      ["past the slider's far end", CHANNEL_ANGLE_MAX + 0.5],
+      ["a billion degrees", 1e9],
+      ["below zero", -0.5],
+      ["a box", {}],
+      ["a list", [5]],
+      ["yes", true],
+    ];
+    const plain = parseSnapshot(wire());
+    for (const [what, angle] of BAD) {
+      const bottom = looseFull();
+      bottom.channels.angle = angle;
+      const stored = wireWithBottom(bottom);
+      expect(() => parseSnapshot(stored), what).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom!.channels, what).toEqual({ ...FULL.channels, angle: null });
+      for (const key of PARTS) if (key !== "channels") expect(opened.bottom![key], `${what}: ${key}`).toEqual(FULL[key]);
+      expect(withoutBottom(opened), what).toEqual(plain);
+    }
+  });
+
+  it("D-44: every angle the slider can give — and one it cannot, between two steps — comes back exactly; none stays none", () => {
+    for (const angle of [null, 0, CHANNEL_ANGLE_STEP, 7.5, 9.0678, CHANNEL_ANGLE_MAX]) {
+      for (const run of ["rail", "toe", "parallel"] as const) {
+        const bottom: BoardBottom = { ...FULL, channels: { ...FULL.channels, run, angle } };
+        expect(roundTrip({ ...FIXTURES[0], bottom }).bottom, `${run} · ${angle}`).toEqual(bottom);
+      }
+    }
+  });
+
+  it("D-44: the opening bottom is still no bottom at all, written with the angle or without it", () => {
+    expect(DEFAULT_BOTTOM.channels.angle).toBeNull();
+    expect(isDefaultBottom(DEFAULT_BOTTOM)).toBe(true);
+    expect("bottom" in parseSnapshot(wireWithBottom(JSON.parse(JSON.stringify(DEFAULT_BOTTOM))))).toBe(false);
+    expect("bottom" in roundTrip({ ...FIXTURES[0], bottom: structuredClone(DEFAULT_BOTTOM) })).toBe(false);
+    const old = JSON.parse(JSON.stringify(DEFAULT_BOTTOM)) as LooseBottom;
+    delete old.channels.angle;
+    expect("bottom" in parseSnapshot(wireWithBottom(old))).toBe(false);
+    // An angle alone, with no channels picked, is a change to the bottom and is kept — it cuts nothing.
+    const angled: BoardBottom = { ...DEFAULT_BOTTOM, channels: { ...DEFAULT_BOTTOM.channels, angle: 5 } };
+    expect(isDefaultBottom(angled)).toBe(false);
+    expect(roundTrip({ ...FIXTURES[0], bottom: angled }).bottom).toEqual(angled);
+    expect(bottomHasCut(angled)).toBe(false);
+  });
+
+  it("a bottom that is not a bottom at all reads as none — the board opens flat, never rejected", () => {
+    const plain = parseSnapshot(wire());
+    const NOT_A_BOTTOM: unknown[] = [
+      "x",
+      7,
+      null,
+      true,
+      Number.NaN,
+      [],
+      [FULL],
+      {},
+      { nose: "x", center: 3, tail: null, channels: [], wingRule: 9 },
+    ];
+    for (const value of NOT_A_BOTTOM) {
+      const stored = wireWithBottom(value);
+      expect(() => parseSnapshot(stored), JSON.stringify(value)).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect("bottom" in opened, JSON.stringify(value)).toBe(false);
+      expect(opened).toEqual(plain);
+    }
+  });
+
+  it("anything extra on a stored bottom is dropped and the bottom itself kept", () => {
+    const bottom = looseFull();
+    bottom.center.bonzer = true;
+    bottom.channels.count9 = 9;
+    (bottom as Record<string, unknown>).deck = { name: "Flat Deck" };
+    const opened = parseSnapshot(wireWithBottom(bottom));
+    expect(opened.bottom).toEqual(FULL);
+    expect(JSON.stringify(opened.bottom)).not.toContain("bonzer");
+  });
+
+  it("a save keeps the bottom: what arrives is read, renamed and stored with every number as it came", () => {
+    // app/design/actions.ts: buildSnapshot → parseSnapshot → buildSnapshot under the trimmed name.
+    const incoming = buildSnapshot({ ...FIXTURES[0], bottom: FULL });
+    const design = parseSnapshot(JSON.parse(JSON.stringify(incoming)));
+    const stored = buildSnapshot({ ...design, boardName: "Twin with a vee" });
+    expect(stored.version).toBe(5);
+    const reopened = parseSnapshot(JSON.parse(JSON.stringify(stored)));
+    expect(reopened.bottom).toEqual(FULL);
+    expect(reopened.boardName).toBe("Twin with a vee");
+  });
+
+  it("a saved cut is counted: fewer litres than the same board flat, and a bottom that read as none counts none", () => {
+    const flat = summarizeDesign(parseSnapshot(wire())).volumeLitres;
+    const cut = parseSnapshot(wireWithBottom(JSON.parse(JSON.stringify(FULL))));
+    expect(bottomHasCut(cut.bottom!)).toBe(true);
+    expect(summarizeDesign(cut).volumeLitres).toBeLessThan(flat);
+    expect(summarizeDesign(parseSnapshot(wireWithBottom("x"))).volumeLitres).toBe(flat);
+  });
+
+  it("the furthest numbers the reader lets through are still a board the app can work out", () => {
+    // Further than any slider goes: 12" across, 1" deep, every station twice the longest board away.
+    const far = SNAPSHOT_BOARD_LENGTH_MM.max;
+    for (const fixture of [FIXTURES[0], FIXTURES[FIXTURES.length - 1]]) {
+      for (let k = 0; k < BOTTOM_CUT_NAMES.nose.length; k += 1) {
+        for (const at of [far, 0, -far]) {
+          const numbers = {
+            offRail: inchesToMm(12),
+            offStringer: inchesToMm(12),
+            troughAt: inchesToMm(12),
+            start: mm(at),
+            deepest: mm(at),
+            end: mm(at),
+            depth: inchesToMm(1),
+            veeLift: inchesToMm(1),
+            smoothness: 100,
+            closesToPoint: true,
+          };
+          const bottom: BoardBottom = {
+            nose: { name: BOTTOM_CUT_NAMES.nose[k], ...numbers },
+            center: { name: BOTTOM_CUT_NAMES.center[k], ...numbers },
+            tail: { name: BOTTOM_CUT_NAMES.tail[k], ...numbers },
+            channels: {
+              count: ([4, 6, 8] as const)[k % 3],
+              width: inchesToMm(12),
+              offStringer: inchesToMm(12),
+              startFromFins: mm(at),
+              deepestFromFins: mm(at === 0 ? 0 : -at),
+              end: mm(at),
+              depth: inchesToMm(1),
+              smoothness: 100,
+              run: (["parallel", "rail", "toe"] as const)[k % 3],
+              angle: ([null, 0, CHANNEL_ANGLE_MAX] as const)[k % 3],
+              longest: (["inner", "outer", "same"] as const)[k % 3],
+              stagger: inchesToMm(12),
+            },
+            wingRule: k % 2 === 0 ? "natural" : "narrowest",
+          };
+          const what = `${fixture.boardName} · ${BOTTOM_CUT_NAMES.center[k]} · stations at ${at}`;
+          const opened = roundTrip({ ...fixture, bottom });
+          expect(opened.bottom, what).toEqual(bottom);
+          expect(() => summarizeDesign(opened), what).not.toThrow();
+          expect(Number.isFinite(summarizeDesign(opened).volumeLitres), what).toBe(true);
+        }
+      }
+    }
   });
 });

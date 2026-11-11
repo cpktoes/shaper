@@ -4,16 +4,17 @@ import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 
 /**
  * Quick 261003-q2c: every design screen's controls end with a Back and a Next button, so a shaper
- * walks a board TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY, 3D without opening a menu (the founder's
- * "almost wizard like", sketch 008's pick B). TEMPLATE has only Next, 3D (the seventh screen since
+ * walks a board TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY, 3D without opening a menu (the founder's
+ * "almost wizard like", sketch 008's pick B). TEMPLATE has only Next, 3D (the last screen since
  * Phase 16) only Back; SUMMARY's Next goes to 3D.
  *
- * The seven screens are hand-written here the way every phone spec in this suite does it: importing
+ * The eight screens are hand-written here the way every phone spec in this suite does it: importing
  * `components/site-nav.tsx` would pull the database client into Playwright's own Node process.
  */
 const SCREENS = [
   { href: "/design/outline", label: "TEMPLATE", word: "Template" },
   { href: "/design/rocker", label: "ROCKER", word: "Rocker" },
+  { href: "/design/bottom", label: "BOTTOM", word: "Bottom" },
   { href: "/design/rails", label: "RAILS", word: "Rails" },
   { href: "/design/volume", label: "VOLUME", word: "Volume" },
   { href: "/design/fins", label: "FINS", word: "Fins" },
@@ -67,11 +68,11 @@ test.describe("Back and Next end every design screen's controls", () => {
 
     await followStep(page, "next", "/design/rocker");
 
-    // ROCKER has both: Back reading "Template", Next reading "Rails".
+    // ROCKER has both: Back reading "Template", Next reading "Bottom" (BOTTOM third since Phase 17).
     await expect(stepNav(page).getByRole("link", { name: "Previous screen: Template", exact: true })).toHaveText(
       "Template",
     );
-    await expect(stepNav(page).getByRole("link", { name: "Next screen: Rails", exact: true })).toHaveText("Rails");
+    await expect(stepNav(page).getByRole("link", { name: "Next screen: Bottom", exact: true })).toHaveText("Bottom");
 
     await followStep(page, "previous", "/design/outline");
     await expect(stepNav(page).getByRole("link", { name: "Next screen: Rocker", exact: true })).toBeVisible();
@@ -87,7 +88,7 @@ test.describe("SUMMARY's Next goes to 3D, the last screen (Phase 16)", () => {
     test.slow();
     await startTheFirstPreset(page);
     // Client-side moves all the way, so the board started above is the one on SUMMARY and 3D.
-    for (const href of ["/design/rocker", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {
+    for (const href of ["/design/rocker", "/design/bottom", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {
       await followStep(page, "next", href);
     }
 
@@ -185,17 +186,18 @@ test.describe("Back and Next walk the whole board", () => {
   }, testInfo) => {
     await page.goto("/design/rocker");
     const expected = testInfo.project.name === "desktop" ? 32 : 44;
-    for (const name of ["Previous screen: Template", "Next screen: Rails"]) {
+    for (const name of ["Previous screen: Template", "Next screen: Bottom"]) {
       const box = await stepNav(page).getByRole("link", { name, exact: true }).boundingBox();
       if (!box) throw new Error(`${name} has no bounding box`);
       expect(box.height, `${name} height`).toBeCloseTo(expected, 0);
     }
   });
 
-  test("on each of the five design screens the pair sits below the last of the screen's own controls", async ({
+  test("on each of the six drawing screens the pair sits below the last of the screen's own controls", async ({
     page,
   }) => {
-    for (const screen of SCREENS.slice(0, 5)) {
+    // TEMPLATE, ROCKER, BOTTOM (Phase 17), RAILS, VOLUME and FINS.
+    for (const screen of SCREENS.slice(0, 6)) {
       await page.goto(screen.href);
       await expect(stepNav(page), screen.label).toBeVisible();
       // Every in-flow box inside the sidebar except the pair itself: none may reach down past the
@@ -315,13 +317,14 @@ test.describe("on an upright phone, the buttons scroll clear of the floating Und
     await page.keyboard.press("ArrowRight");
     await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
 
-    // Only the two screens whose whole page scrolls (VOLUME and SUMMARY). On the other four the
+    // Only the two screens whose whole page scrolls (VOLUME and SUMMARY). On the other five the
     // controls scroll in a window under the pinned drawing that is only about 57 dots tall at
     // 390x664 on this dev server, so scrolled to its end the pair is simply out of that window;
     // the production-build spec (e2e/prod/phone-controls-clear-undo.spec.ts) covers those.
+    // VOLUME and SUMMARY, fifth and seventh since BOTTOM joined third (Phase 17).
     const stops = [
-      { screen: 3, direction: "next" },
-      { screen: 5, direction: "previous" },
+      { screen: 4, direction: "next" },
+      { screen: 6, direction: "previous" },
     ] as const;
     let here = 0;
     for (const stop of stops) {

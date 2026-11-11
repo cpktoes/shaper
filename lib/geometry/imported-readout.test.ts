@@ -7,6 +7,7 @@ import {
   railsImportedReadout,
   rockerImportedReadout,
   volumeImportedReadout,
+  bottomImportedReadout,
   type ImportedReadout,
 } from "./imported-readout";
 import { formatDim, formatLength, formatMark, stationLabel } from "./measure-display";
@@ -111,6 +112,31 @@ describe("railsImportedReadout — RAILS' INPUTS card", () => {
   });
 });
 
+describe("railsImportedReadout under a bottom (Phase 17, D-35, UI-SPEC open item 3)", () => {
+  const nose = inchesToMm(1.31);
+  const center = inchesToMm(2.5);
+  const tail = inchesToMm(1.56);
+
+  it("names BOTTOM in its caption when a vee or belly has lifted the rail", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(railsImportedReadout(nose, center, tail, system, true).caption).toBe("From ROCKER, FOIL & BOTTOM");
+    }
+  });
+
+  it("without a lift it is today's card exactly, flag or no flag", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(railsImportedReadout(nose, center, tail, system, false)).toEqual(railsImportedReadout(nose, center, tail, system));
+      expect(railsImportedReadout(nose, center, tail, system).caption).toBe("From ROCKER & FOIL");
+    }
+  });
+
+  it("the three figures are the same formatter's either way: only the caption changes", () => {
+    const lifted = railsImportedReadout(nose, center, tail, "imperial", true);
+    expect(lifted.items).toEqual(railsImportedReadout(nose, center, tail, "imperial").items);
+    expect(lifted.foot).toBeNull();
+  });
+});
+
 describe("finsImportedReadout — FINS' INPUTS card", () => {
   const length = inchesToMm(72);
   const tailWidth12 = inchesToMm(14.75);
@@ -210,6 +236,40 @@ describe("finsImportedReadout — FINS' INPUTS card", () => {
         ["Tail block", formatDim(inchesToMm(9.25), system)],
         ["Depth", formatMark(inchesToMm(2.25), system)],
       ]);
+    }
+  });
+});
+
+describe("bottomImportedReadout — BOTTOM's INPUTS card (Phase 17, D-25)", () => {
+  const length = inchesToMm(74);
+  const width = inchesToMm(18.75);
+  const thickness = inchesToMm(2.25);
+
+  it("reads the board's headline dims in Imperial, with its caption and foot", () => {
+    const r = bottomImportedReadout(length, width, thickness, "imperial");
+    expect(r.caption).toBe("From TEMPLATE & ROCKER");
+    expect(pairs(r)).toEqual([
+      ["Length", formatLength(length, "imperial")],
+      ["Width", formatDim(width, "imperial")],
+      ["Thickness", formatDim(thickness, "imperial")],
+    ]);
+    expect(r.foot).toBe("Thickness is the planed number. The contour comes out of it.");
+  });
+
+  it("reads every figure as a dim in Metric — the thickness in centimetres, never a mark", () => {
+    const r = bottomImportedReadout(length, width, thickness, "metric");
+    expect(pairs(r)).toEqual([
+      ["Length", formatLength(length, "metric")],
+      ["Width", formatDim(width, "metric")],
+      ["Thickness", formatDim(thickness, "metric")],
+    ]);
+    expect(r.items[2].value).toMatch(/ cm$/);
+    expect(r.items[2].value).not.toBe(formatMark(thickness, "metric"));
+  });
+
+  it("reads exactly as VOLUME's card reads the same three figures", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      expect(pairs(bottomImportedReadout(length, width, thickness, system))).toEqual(pairs(volumeImportedReadout(length, width, thickness, system)));
     }
   });
 });

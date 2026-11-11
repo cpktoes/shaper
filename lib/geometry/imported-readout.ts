@@ -67,10 +67,18 @@ const TAIL_NAME: Record<TailShape["kind"], string> = {
 
 const FROM_TEMPLATE = "From TEMPLATE";
 const FROM_ROCKER_AND_FOIL = "From ROCKER & FOIL";
+/** RAILS' caption once a vee or a belly has lifted the rail (Phase 17, D-35, UI-SPEC open item 3): the three
+ * thicknesses are then the foil's less the bottom's lift at the rail, so the card names BOTTOM too. */
+const FROM_ROCKER_FOIL_AND_BOTTOM = "From ROCKER, FOIL & BOTTOM";
 /** VOLUME's caption names both screens it draws from: the length and width come from TEMPLATE, the
  * centre thickness from ROCKER's foil (the founder, 2026-10-18: "imported from Template and Rocker
  * & Foil"). */
 const FROM_TEMPLATE_AND_ROCKER_AND_FOIL = "From TEMPLATE and ROCKER & FOIL";
+/** BOTTOM's caption (Phase 17, UI-SPEC § Copywriting): the sketch's own words — the length and width from TEMPLATE, the
+ * planed thickness from ROCKER. */
+const FROM_TEMPLATE_AND_ROCKER = "From TEMPLATE & ROCKER";
+/** BOTTOM's foot line: the thickness is the planed one, and a contour is cut out of it (D-25). */
+const BOTTOM_FOOT = "Thickness is the planed number. The contour comes out of it.";
 
 /**
  * ROCKER: the template's length and width. `Length 6'0"`, `Width 19"`; Metric `182.9 cm`, `48.3 cm`.
@@ -95,11 +103,19 @@ export function rockerImportedReadout(length: Mm, width: Mm, system: UnitsSystem
  * @param nose12 the foil's nose thickness at the 12" station
  * @param center the board's centre thickness
  * @param tail12 the foil's tail thickness at the 12" station
+ * @param liftPresent whether the bottom lifts the rail at any of the three stations (Phase 17, D-35) — the figures
+ *   passed are then the thinned ones, and the caption names BOTTOM. Absent or false: today's card exactly.
  */
-export function railsImportedReadout(nose12: Mm, center: Mm, tail12: Mm, system: UnitsSystem): ImportedReadout {
+export function railsImportedReadout(
+  nose12: Mm,
+  center: Mm,
+  tail12: Mm,
+  system: UnitsSystem,
+  liftPresent = false,
+): ImportedReadout {
   const station = stationLabel(system);
   return {
-    caption: FROM_ROCKER_AND_FOIL,
+    caption: liftPresent ? FROM_ROCKER_FOIL_AND_BOTTOM : FROM_ROCKER_AND_FOIL,
     items: [
       { key: "nose", label: `Nose @ ${station}`, value: formatMark(nose12, system) },
       { key: "center", label: "Center", value: formatMark(center, system) },
@@ -149,6 +165,25 @@ export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system:
       { key: "thickness", label: "Thickness", value: formatDim(centre, system) },
     ],
     foot: "Rail shapes from RAILS",
+  };
+}
+
+/**
+ * BOTTOM (Phase 17, D-25, UI-SPEC §1): the board the contours are cut into — its length, its width and its planed
+ * centre thickness, the board's headline dims exactly as VOLUME's card reads them (Length through `formatLength`, Width
+ * and Thickness through `formatDim`, so Metric reads `188.0 cm`, `47.6 cm`, `5.7 cm`), captioned with the two screens
+ * they come from, and a foot saying the contour comes out of the planed thickness. DATA's `planed` figure is the same
+ * thickness read as a mark (`57 mm`): the same number two ways, each right for what it shows (CLAUDE.md Rule 2).
+ */
+export function bottomImportedReadout(length: Mm, width: Mm, thickness: Mm, system: UnitsSystem): ImportedReadout {
+  return {
+    caption: FROM_TEMPLATE_AND_ROCKER,
+    items: [
+      { key: "length", label: "Length", value: formatLength(length, system) },
+      { key: "width", label: "Width", value: formatDim(width, system) },
+      { key: "thickness", label: "Thickness", value: formatDim(thickness, system) },
+    ],
+    foot: BOTTOM_FOOT,
   };
 }
 

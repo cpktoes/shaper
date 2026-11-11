@@ -47,13 +47,15 @@ import {
   blendFinishedRails,
   finishedRailReach,
   fittedFinishedRail,
+  HALF_SECTION_POINT_COUNT,
   openedFinishedRail,
   railBlendArea,
+  SECTION_POINTS,
   sampledFinishedRail,
   sampledSectionArea,
   sectionFinishedRail,
 } from "./finished-rail";
-import { type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
+import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, foilStationPoints, sampleFoil } from "./foil";
 import {
   DEFAULT_TIP_RAIL_SCALE,
   RAIL_NUDGE_KEYS,
@@ -555,6 +557,24 @@ export interface CrossSectionVolumeInput {
    * old rules never read it.
    */
   wingShareAt?: (station: Mm) => Mm;
+  /**
+   * The foam the bottom contours take off (Phase 17, D-05, D-21): at a station, `across` millimetres in from the
+   * section's own inside edge (the stringer, or a swallow's notch wall), how far the bottom is lifted above the planed
+   * bottom. `design.ts` builds it from the board's bottom (`bottomSampler` in bottom.ts) only when the bottom cuts
+   * anything, and hands it in as a closure — this file never imports the bottom, the outline, the wings or the fins
+   * (the design rule above). Absent, every section is exactly as it always was. `boardSectionsWith` reads it at the end
+   * of each section (`bottomedHalfSection`), so the litres, the 3D board and the CNC files all carry the same cut.
+   */
+  foamOffAt?: (station: Mm, across: Mm) => Mm;
+  /**
+   * Where the channels' walls stand (Phase 17, D-10, D-21; research §B): at a station, each wall's distance across on
+   * one side, in from the section's own inside edge as `foamOffAt`'s `across` is — one entry per channel a side, the
+   * same number at every station of a board (up to `BOTTOM_WALL_SLOTS`). `design.ts` supplies it beside `foamOffAt`
+   * only when the bottom has channels. With it, every section's bottom run is laid out afresh to
+   * `BOTTOM_RUN_WITH_WALLS` points with a top and a foot slot at each wall, so a wall is a vertical step in the ring
+   * rather than a ramp between two of its points (`bottomedHalfWithWalls`). Absent, every section keeps its 24 points.
+   */
+  bottomWallsAt?: (station: Mm) => Mm[];
 }
 
 /** `stationAreas` are full (both-rails) cross-section areas in square millimetres, nose-to-tail —
@@ -653,6 +673,11 @@ function stationArea(profile: [number, number][], boardThickness: number, halfWi
  * `rollScale` is the share of its height a station in the tail's last inch keeps (D-38, `tailRollScale`), absent
  * clear of it; `drawn` is then already scaled by it. `area` stays the un-rolled section's, because the roll's foam is
  * counted once, exactly, off the whole board (`tailRollFoam`).
+ *
+ * With the bottom contours (Phase 17, D-21, `CrossSectionVolumeInput.foamOffAt`), `drawn` is also the half with its
+ * bottom lifted (`bottomedHalfSection`), last of all, and `area` is corrected by the change in the ring's own area —
+ * so the litres count the very ring the 3D board and the CNC files carry. `thinAt` says where a vee or belly leaves
+ * the rail under 1/4", and `railEdgeAt` where it lifted the bottom to the deck and the foam ends.
  */
 export interface BoardSection {
   station: Mm;
@@ -669,6 +694,22 @@ export interface BoardSection {
   sharpBottomTuck: boolean;
   area: number;
   blendArea: number;
+  /** Where a vee or a belly leaves the rail thinner than 1/4" at this station (Phase 17, D-40): the distances across,
+   * in from the section's inside edge, of every bottom point with less than 1/4" of foam under the deck, the rail edge
+   * included — flagged for the warning, never cut shallower. Absent when the foam is 1/4" or more everywhere. */
+  thinAt?: Mm[];
+  /** Where a vee or a belly lifted the bottom to the deck (D-40): the section's foam ends here, a knife edge, this far
+   * across from its inside edge. Absent when the foam runs out to the rail as built. */
+  railEdgeAt?: Mm;
+  /** On a board with channels (`CrossSectionVolumeInput.bottomWallsAt`): how many points `drawn` holds — the board's
+   * own ring length, the same on every section of it. Absent on every other board, which keeps
+   * `HALF_SECTION_POINT_COUNT`. */
+  ringLength?: number;
+  /** On a board with channels: the index in `drawn` of each wall's top — its rail-side point, the next channel's peak,
+   * as the founder draws the bottom (board upside down); the wall's foot, the channel's floor at its deepest, is the
+   * next index, and the face between the two is the wall. A wall with no step at this station has its top and foot on
+   * the one spot. */
+  wallRows?: number[];
 }
 
 /**
@@ -974,6 +1015,212 @@ export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
 /** The rule the live litres and the 3D board use. */
 const LIVE_SECTION_RULE: SectionRule = SMOOTH_SURFACE_FADE;
 
+/** The foam a shaper wants left under the deck (Phase 17, D-09): the app's own thinnest foil, 1/4". A concave is held
+ * to it at the stringer (bottom.ts's `foamOff`); a vee or a belly that leaves a rail thinner than this is flagged
+ * (`BoardSection.thinAt`), never cut shallower (D-40). */
+export const BOTTOM_COLUMN_FLOOR: Mm = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
+
+/** The deck run's height at `y` across (indices 0 to the rail's outermost point): straight between its two points
+ * either side, the first point's height inside it and the outermost point's beyond it. */
+function deckHeightAt(half: HalfSectionPoints, y: number): number {
+  const last = SECTION_POINTS.deck - 1;
+  if (y <= half[0][0]) return half[0][1];
+  for (let k = 0; k < last; k++) {
+    const [y0, h0] = half[k];
+    const [y1, h1] = half[k + 1];
+    if (y >= y0 && y <= y1) return y1 > y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+  }
+  return half[last][1];
+}
+
+/** How many halvings find where a lift meets the deck: far finer than a thousandth of a millimetre on any rail. */
+const RAIL_EDGE_STEPS = 48;
+
+/** The index of the bottom edge in a half: where the rail's run ends and the bottom's begins. */
+const BOTTOM_EDGE_INDEX = SECTION_POINTS.deck + SECTION_POINTS.rail - 2;
+
+/**
+ * A finished half-section with its bottom lifted by the bottom contours (Phase 17, D-05, D-21, D-40; research
+ * Pattern 2). The deck — the stringer on the deck out to the rail's outermost point — never moves: a contour only takes
+ * foam from below.
+ *
+ * - Every point under the deck at `y` across, `h` above the planed bottom, rises by `f · (1 − h / a)`, with
+ *   `f = foamOffAt(y)` and `a` the height of the rail's outermost point: a point on the bottom by exactly `f`, the
+ *   rail's lower run less the higher it stands, the outermost point not at all — a lifted, thinned rail (the founder,
+ *   D-40). Out from the stringer a vee's or belly's lift only grows, so the underside only rises (no lip), and while
+ *   `f` is under `a` no point passes `a`, under the deck everywhere. Where `f` reaches `a` the rail there is cut away
+ *   and the underside is the lift's own line, `f`.
+ * - Nothing is clamped (D-40: "no lips should ever be present. The contour should extend to the rail and make it
+ *   effectively thinner."). Where the lifted bottom reaches the deck — on the bottom, or past the rail's outermost
+ *   height, where the rail is cut away and the bottom's line runs on — the foam ENDS: walking the underside out from
+ *   the stringer, the first place it meets the deck is found by halving and becomes the section's rail edge, a knife
+ *   edge on the deck (`railEdgeAt`). Every point outboard of it is drawn there, so no point of the bottom stands above
+ *   the deck and the bottom never steps back down.
+ *
+ * `thinAt` lists the distances across, on the bottom, where less than `floor` of foam is left under the deck, the rail
+ * edge included: the warning's to word, never the maths' to clamp. A column with no deck over it (a tip's edge) is left
+ * as it is, never 0/0. Every point that does not move is returned as the very same pair, so with no foam off the half
+ * comes back point for point. A foam off that is not a finite number is read as none at that point — the foam ends only
+ * where a real cut reaches the deck, never because a sampler slipped.
+ */
+export function bottomedHalfSection(
+  half: HalfSectionPoints,
+  foamOffAt: (across: Mm) => Mm,
+  floor: Mm,
+): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm } {
+  const deckCount = SECTION_POINTS.deck;
+  const out: [number, number][] = half.slice() as [number, number][];
+  const thinAt: Mm[] = [];
+  const apex = half[deckCount - 1][1];
+  /** The underside's height at a point `h` above the planed bottom, `y` across. */
+  const under = (y: number, h: number): number => {
+    // A cut that is not a finite number takes nothing off: it must never end the foam (the code review's CR-01).
+    const raw = foamOffAt(mm(y));
+    const f = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+    if (f === 0) return h;
+    if (!(apex > 0) || f >= apex) return Math.max(h, f);
+    return h + f * (1 - Math.min(1, h / apex));
+  };
+  // The underside, walked out from the stringer: the bottom's run backwards, then the rail's run up to its outermost
+  // point. That point is the deck's and stays, unless a lift past its height ends the foam before it.
+  for (let k = half.length - 1; k >= deckCount - 1; k--) {
+    const point = half[k];
+    const [y, h] = point;
+    const onRail = k < BOTTOM_EDGE_INDEX;
+    const top = deckHeightAt(half, y);
+    const raised = under(y, h);
+    if (raised === h || !(top > 0)) continue;
+    if (raised < top) {
+      out[k] = [y, raised];
+      if (!onRail && top - raised < floor) thinAt.push(mm(y));
+      continue;
+    }
+    // The lifted underside reaches the deck between the point inboard and this one: find where, and end the foam there.
+    const [y0, h0] = half[k + 1] ?? point;
+    const below = (t: number) => {
+      const yt = y0 + (y - y0) * t;
+      return under(yt, h0 + (h - h0) * t) < deckHeightAt(half, yt);
+    };
+    let inside = 0;
+    let outside = 1;
+    if (k + 1 < half.length && below(0)) {
+      for (let i = 0; i < RAIL_EDGE_STEPS; i++) {
+        const mid = (inside + outside) / 2;
+        if (below(mid)) inside = mid;
+        else outside = mid;
+      }
+    } else {
+      outside = 0;
+    }
+    const edgeY = y0 + (y - y0) * outside;
+    const edge: [number, number] = [edgeY, deckHeightAt(half, edgeY)];
+    for (let j = k; j >= deckCount; j--) out[j] = edge;
+    for (let j = 0; j < deckCount; j++) if (half[j][0] > edgeY) out[j] = edge;
+    thinAt.push(mm(edgeY));
+    return { half: out, thinAt, railEdgeAt: mm(edgeY) };
+  }
+  return { half: out, thinAt };
+}
+
+/** Up to four channel walls a side (Phase 17, D-10: eight channels at most). */
+export const BOTTOM_WALL_SLOTS = 4;
+/** On a board with channels each section's bottom run holds this many points (research §B): the 24 of every other
+ * board, and a top and a foot for each of up to four walls a side. */
+export const BOTTOM_RUN_WITH_WALLS = SECTION_POINTS.bottom + 2 * BOTTOM_WALL_SLOTS;
+
+/** How many points one half-section holds on this board — the same for every ring and tip edge of it: the usual
+ * `HALF_SECTION_POINT_COUNT`, or eight more on a board with channels (`bottomWallsAt`). */
+export function halfSectionPointCount(input: Pick<CrossSectionVolumeInput, "bottomWallsAt">): number {
+  return HALF_SECTION_POINT_COUNT + (input.bottomWallsAt ? BOTTOM_RUN_WITH_WALLS - SECTION_POINTS.bottom : 0);
+}
+
+/** A wall's top — the next channel's peak — is read this far outside the wall, then set back on the wall's own line, so
+ * the face between its top and its foot is vertical: far under a thousandth of a millimetre. */
+const WALL_READ_GAP = 1e-6;
+/** A wall whose foot stands less than this above its top has no face at a station (its channel has not started, or
+ * has no depth there): its two slots are one point, welded in the 3D board. */
+const WALL_MIN_STEP = 1e-6;
+
+/** The planed bottom's height at `y` across, read along a bottom run straight between its two points either side. */
+function bottomRunHeightAt(run: HalfSectionPoints, y: number): number {
+  for (let k = 0; k + 1 < run.length; k++) {
+    const [y0, h0] = run[k];
+    const [y1, h1] = run[k + 1];
+    if (y >= Math.min(y0, y1) && y <= Math.max(y0, y1)) return y1 !== y0 ? h0 + ((h1 - h0) * (y - y0)) / (y1 - y0) : Math.max(h0, h1);
+  }
+  const first = run[0];
+  const last = run[run.length - 1];
+  return Math.abs(y - first[0]) <= Math.abs(y - last[0]) ? first[1] : last[1];
+}
+
+/**
+ * A finished half-section on a board with channels, its bottom lifted (Phase 17, D-10, D-21, R11; research §B "A
+ * channel's wall in the ring"). With only the 24 points of the bottom run a channel's vertical wall would be smeared
+ * into a ramp between two of them, so first the bottom run — from the bottom edge back to the inside edge — is laid out
+ * afresh to `BOTTOM_RUN_WITH_WALLS` points: a foot and a top slot at each wall's own distance across (`walls`, out
+ * from the inside edge), and the rest spread evenly between the inside edge, the walls and the bottom edge, a fixed
+ * number in each stretch, so every ring of the board has the same count and each wall keeps the same two slots from
+ * ring to ring. Then the bottom is lifted exactly as on any other board (`bottomedHalfSection`).
+ *
+ * - A wall's foot is the channel's floor at its deepest (`foamOffAt` at the wall); its top is the next channel's peak,
+ *   read just outside the wall and set back on the wall's own line, so the face between them is vertical.
+ * - A wall with no step — its channel not yet started (a staggered set), no depth there, or a wall at or past the
+ *   bottom edge (the channel runs out through the rail) — has its top and foot on one spot, which the 3D board welds
+ *   into one point, so the ring stays closed and no triangle has no area.
+ *
+ * The bottom edge and the inside edge are the very same points; the bottom run lies on the planed bottom, so laying it
+ * out afresh moves no foam. `wallRows` is the index of each wall's top in the returned half; its foot is the next.
+ */
+export function bottomedHalfWithWalls(
+  half: HalfSectionPoints,
+  walls: readonly Mm[],
+  foamOffAt: (across: Mm) => Mm,
+  floor: Mm,
+): { half: HalfSectionPoints; thinAt: Mm[]; railEdgeAt?: Mm; wallRows: number[] } {
+  const run = half.slice(BOTTOM_EDGE_INDEX);
+  const edge = run[0];
+  const inside = run[run.length - 1];
+  const yInside = inside[0];
+  const yEdge = edge[0];
+  const n = Math.min(walls.length, BOTTOM_WALL_SLOTS);
+  // the walls in order out from the inside edge, on the bottom
+  const at: number[] = [];
+  for (let j = 0; j < n; j++) at.push(Math.max(at[j - 1] ?? yInside, Math.min(yEdge, walls[j])));
+  const interior = BOTTOM_RUN_WITH_WALLS - 2 - 2 * n;
+  const perChannel = Math.floor(interior / (n + 1));
+  const outerCount = interior - n * perChannel;
+  const bounds = [yInside, ...at, yEdge];
+  const planed = (y: number): [number, number] => [y, bottomRunHeightAt(run, y)];
+  // laid out from the inside edge outward, then turned to run from the bottom edge inward like the rest of the half
+  const outward: [number, number][] = [inside];
+  const tops: { at: number; y: number; wall: number }[] = [];
+  for (let k = 0; k <= n; k++) {
+    const count = k < n ? perChannel : outerCount;
+    const from = bounds[k];
+    const to = bounds[k + 1];
+    for (let i = 1; i <= count; i++) outward.push(planed(from + ((to - from) * i) / (count + 1)));
+    if (k === n) break;
+    const w = at[k];
+    const foot = planed(w);
+    outward.push(foot);
+    const stands = w > yInside && w < yEdge && foamOffAt(mm(w)) - foamOffAt(mm(w + WALL_READ_GAP)) > WALL_MIN_STEP;
+    tops.push({ at: outward.length, y: stands ? w + WALL_READ_GAP : w, wall: w });
+    outward.push(stands ? planed(w + WALL_READ_GAP) : foot);
+  }
+  outward.push(edge);
+  const last = outward.length - 1;
+  const relaid: HalfSectionPoints = [...half.slice(0, BOTTOM_EDGE_INDEX + 1), ...outward.slice(0, last).reverse()];
+  const wallRows = tops.map((top) => BOTTOM_EDGE_INDEX + last - top.at);
+  const cut = bottomedHalfSection(relaid, foamOffAt, floor);
+  const out = cut.half.slice();
+  tops.forEach((top, j) => {
+    const row = wallRows[j];
+    // set the top back on the wall's own line, unless the foam ended inboard of it (the knife edge, D-40)
+    if (top.y !== top.wall && out[row][0] === top.y) out[row] = [top.wall, out[row][1]];
+  });
+  return { half: out, thinAt: cut.thinAt, ...(cut.railEdgeAt !== undefined ? { railEdgeAt: cut.railEdgeAt } : {}), wallRows };
+}
+
 /**
  * A half-section drawn at `room` (the width on the wing's meeting line) with its rail moved onto the outline by `move`:
  * inward behind a wing (`move` above 0), outward ahead of it (below 0), straight up into the deck (D-37, the founder's
@@ -1071,6 +1318,39 @@ export function boardSectionsWith(
   // An old rule never reads a fit (Phase 14 D-25's precedent): it runs today's arithmetic, wings and all.
   const fit = "at" in rule ? (rule.fit ?? OLD_SURFACE_FIT) : OLD_SURFACE_FIT;
   const tipThickness = thicknessAt(mm(0));
+  const { foamOffAt, bottomWallsAt } = input;
+
+  // The bottom contours (Phase 17, D-05, D-21, research Pattern 2): once a section is finished — the wing move and the
+  // tail roll done — its half has its bottom lifted by the foam off (`bottomedHalfSection`), set as the half the 3D
+  // board draws, and its area corrected by the change the ring itself sees (the level variant, as `movedOn`). With no
+  // sampler, or no foam off at this station, the section is returned exactly as it was built. On a board with
+  // channels every section's bottom run is laid out afresh with its walls first (`bottomedHalfWithWalls`), so every
+  // ring of the board has the board's own length.
+  const bottomed = (built: BoardSection): BoardSection => {
+    if (!foamOffAt || !built.result) return built;
+    const half = built.drawn ?? built.blended ?? sampledFinishedRail(built.result, built.domed, built.halfWidth);
+    if (bottomWallsAt) {
+      const walled = bottomedHalfWithWalls(half, bottomWallsAt(built.station), (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR);
+      return {
+        ...built,
+        drawn: walled.half,
+        area: built.area + (sampledSectionArea(walled.half) - sampledSectionArea(half)),
+        ...(walled.thinAt.length > 0 ? { thinAt: walled.thinAt } : {}),
+        ...(walled.railEdgeAt !== undefined ? { railEdgeAt: walled.railEdgeAt } : {}),
+        ringLength: walled.half.length,
+        wallRows: walled.wallRows,
+      };
+    }
+    const cut = bottomedHalfSection(half, (across) => foamOffAt(built.station, across), BOTTOM_COLUMN_FLOOR);
+    if (cut.half.every((point, k) => point === half[k])) return built;
+    return {
+      ...built,
+      drawn: cut.half,
+      area: built.area + (sampledSectionArea(cut.half) - sampledSectionArea(half)),
+      ...(cut.thinAt.length > 0 ? { thinAt: cut.thinAt } : {}),
+      ...(cut.railEdgeAt !== undefined ? { railEdgeAt: cut.railEdgeAt } : {}),
+    };
+  };
 
   for (const station of at) {
     const foam = halfWidthAt(station);
@@ -1243,7 +1523,7 @@ export function boardSectionsWith(
         blendArea: cut - area,
       };
       const rollReach = mm((1 - tipWeight) * baseResult.deckMark2 + tipWeight * tipResult.deckMark2);
-      sections.push(rolled(move !== 0 ? movedOn(section, blended, rollReach) : section, blended));
+      sections.push(bottomed(rolled(move !== 0 ? movedOn(section, blended, rollReach) : section, blended)));
       continue;
     }
 
@@ -1265,12 +1545,12 @@ export function boardSectionsWith(
       blendArea: ended.blendArea,
     };
     if (move === 0 && !ended.fits && keep === 1) {
-      sections.push(section);
+      sections.push(bottomed(section));
       continue;
     }
     const { half, exact } = endHalf(result, ended);
     const counted = ended.fits ? { ...section, drawn: half, area: exact } : section;
-    sections.push(rolled(move !== 0 ? movedOn(counted, half, result.deckMark2) : counted, half));
+    sections.push(bottomed(rolled(move !== 0 ? movedOn(counted, half, result.deckMark2) : counted, half)));
   }
   return sections;
 }

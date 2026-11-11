@@ -40,6 +40,10 @@ export interface BuildOverviewPdfOptions {
    * D3) — the export dialog always passes it, computed once for all three printouts (P8). Absent or
    * empty on a board without wings, so the sheet prints exactly as before (D4). */
   wings?: readonly WingFigures[];
+  /** The bottom's cuts in words, one line per cut (Phase 17, D-26: `bottomPrintLines`) — the export dialog passes
+   * them, read off the open board. Absent or empty on a board whose bottom is flat, so the sheet prints exactly as
+   * before. */
+  bottomLines?: readonly string[];
 }
 
 const TITLE_FONT_SIZE_PT = 18;
@@ -60,6 +64,8 @@ const COLUMN_GAP_MM = 8;
  * `wrapTextToWidth` splits on ordinary spaces only, so a no-break indent survives it, and jsPDF's
  * courier draws U+00A0 as blank space of the same width as any other character (F3). */
 const WING_ROW_INDENT = "  ";
+/** The head line the bottom's cuts are listed under (Phase 17, D-26). */
+const BOTTOM_HEAD = "Bottom:";
 
 const OUTLINE_LINE_WEIGHT_MM = 0.5;
 const STRINGER_LINE_WEIGHT_MM = 0.35;
@@ -122,12 +128,18 @@ function tailShapeLabel(kind: OutlineSpec["tail"]["kind"]): string {
  * Angle: a head line `Wing 1 · Fin: 3/16" @ 7 1/2"` (depth @ distance from the tail, the card's own
  * head), then one indented line per card row — `Run`, `Radius`, and `Offset` only for a locked wing.
  * No wings (the default) adds no lines, so the list is byte-for-byte what it was (D4).
+ *
+ * The bottom (Phase 17, D-26) closes the list, after Template Area: a head line `Bottom:`, then one indented line per
+ * cut — Nose, Center, Tail, Channels — worded by `bottomPrintLines` (`lib/geometry/bottom-print.ts`), each already in
+ * `system`. A flat bottom hands over no lines (the default), so nothing is added and the list is byte-for-byte what it
+ * was — the wings' own rule.
  */
 export function overviewSpecLines(
   outline: OutlineSpec,
   geometry: OutlineGeometry,
   system: UnitsSystem,
   wings: readonly WingFigures[] = [],
+  bottomLines: readonly string[] = [],
 ): string[] {
   const stationText = stationLabel(system);
   const lines = [
@@ -162,7 +174,41 @@ export function overviewSpecLines(
       ? `Template Area: ${areaFigure}`
       : `Template Area: ${areaFigure} (${(squareMmToSquareInches(planArea) / 144).toFixed(2)} sq ft)`;
   lines.push(areaLine);
+  if (bottomLines.length > 0) {
+    lines.push(BOTTOM_HEAD);
+    for (const line of bottomLines) lines.push(`${WING_ROW_INDENT}${line}`);
+  }
   return lines;
+}
+
+/** The space inside one figure — between a whole number and its fraction (`23 1/2"`), or a number and its unit
+ * (`59.7 cm`, `6 mm`) — where a wrapped line must not break. */
+const INSIDE_A_FIGURE = /(\d) (?=\d+\/\d+"|mm\b|cm\b)/g;
+
+/**
+ * One line of the spec list, wrapped to the column. A line that fits is returned exactly as `wrapTextToWidth` gives
+ * it — every line the sheet has ever printed. An indented line too long for the column (only the bottom's lines are)
+ * wraps inside its indent, so every row of it stands under the `Bottom:` head rather than back at the margin, and
+ * never breaks inside a figure: `23 1/2"` and `59.7 cm` each stay on one row. The words come back unchanged — the
+ * figure's own space is held with a no-break space only while the line is being wrapped.
+ */
+export function wrapSpecLine(line: string, doc: jsPDF): string[] {
+  const whole = wrapTextToWidth(line, SPEC_COLUMN_WIDTH_MM, doc);
+  if (whole.length <= 1 || !line.startsWith(WING_ROW_INDENT)) return whole;
+  const room = SPEC_COLUMN_WIDTH_MM - doc.getTextWidth(WING_ROW_INDENT);
+  const held = line.slice(WING_ROW_INDENT.length).replace(INSIDE_A_FIGURE, "$1\u00a0");
+  return wrapTextToWidth(held, room, doc).map((row) => `${WING_ROW_INDENT}${row.replace(/\u00a0/g, " ")}`);
+}
+
+/**
+ * How far apart the spec list's rows are drawn: 5 mm, as on every sheet printed so far, for any list that fits above
+ * the page's bottom margin at that pitch — every list without a bottom does. Only a list too long for the page (a
+ * board with two wings and every section of its bottom cut) is drawn tighter, by exactly as much as it takes for its
+ * last row to stand on the margin, so no line of it is ever lost off the foot of the sheet.
+ */
+export function specLinePitch(rows: number, contentTop: number, pageHeight: number, margin: number): number {
+  const room = pageHeight - margin - contentTop;
+  return rows * SPEC_LINE_HEIGHT_MM <= room ? SPEC_LINE_HEIGHT_MM : room / rows;
 }
 
 /** The length callout printed above the drawn outline, e.g. `6'0" - 72"` on Imperial —
@@ -365,13 +411,14 @@ export function buildOverviewPdf(options: BuildOverviewPdfOptions): jsPDF {
   // label and value stay column-aligned the way a shaper reads a spec sheet.
   doc.setFont("courier", "normal");
   doc.setFontSize(SPEC_FONT_SIZE_PT);
-  const wrappedSpecLines = overviewSpecLines(outline, geometry, system, options.wings ?? []).flatMap((line) =>
-    wrapTextToWidth(line, SPEC_COLUMN_WIDTH_MM, doc),
+  const wrappedSpecLines = overviewSpecLines(outline, geometry, system, options.wings ?? [], options.bottomLines ?? []).flatMap(
+    (line) => wrapSpecLine(line, doc),
   );
   doc.setFont("courier", "normal");
   doc.setFontSize(SPEC_FONT_SIZE_PT);
+  const specPitch = specLinePitch(wrappedSpecLines.length, contentTop, paperDims.height, margin);
   wrappedSpecLines.forEach((line, i) => {
-    doc.text(line, margin, contentTop + (i + 1) * SPEC_LINE_HEIGHT_MM);
+    doc.text(line, margin, contentTop + (i + 1) * specPitch);
   });
 
   // Outline drawing region — right of the spec column, filling the rest of the page (round 3

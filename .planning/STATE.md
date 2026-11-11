@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: verifying
-stopped_at: Phase 18 complete and live 2026-11-10 as main 79110e41 (the GUIDE on all five pages); the founder tried it on his phone and ruled on the name, the speed and the inch code; the words stay his to edit
-last_updated: "2026-11-10T18:10:00.000Z"
+status: executing
+stopped_at: "Phase 17 executing: 15 of 16 plans merged; the code review's two fixes are in (a7cb13b1, 1582dd7a); main merged into the branch twice (Phase 18 live, then the founder's three GUIDE rulings); 17-16 (the go-live gate) under way. Phase 18 complete and live 2026-11-10 as main 79110e41; the founder tried it on his phone and ruled on the name, the speed and the inch code"
+last_updated: "2026-11-10T20:30:00.000Z"
 last_activity: 2026-11-10
-last_activity_desc: Phase 18 live and the founder's three rulings recorded
+last_activity_desc: BOTTOM's go-live gate under way — code review done and two findings fixed; Phase 18 live with the founder's three rulings recorded
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 59
-  completed_plans: 57
-  percent: 58
-current_phase: 18
-current_phase_name: A GUIDE on Every Page
+  total_plans: 75
+  completed_plans: 74
+  percent: 99
+current_phase: 17
+current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: A GUIDE on Every Page
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 18 — A GUIDE on Every Page
+**Current focus:** Phase 17 — BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut (Phase 18, A GUIDE on Every Page, is live and waits only for the founder's look)
 
 ## Current Position
 
@@ -38,8 +38,8 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 18 complete and live; the founder's three rulings recorded
-Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans)
+Status: Executing Phase 17 (15 of 16 plans; the go-live gate under way); Phase 18 complete and live, the founder's three rulings recorded
+Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans); main merged into the Phase 17 branch
 
 ## Performance Metrics
 
@@ -176,7 +176,7 @@ Recent decisions affecting current work:
 
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
 - Phase 14 added (2026-10-02): Realistic Surfboard Flow — milestone v1.5, opened from the curve-flow todo on branch `surfboard-flow`; the founder wants it before the Oct 10 showing, curves and tips both; brief in `phases/14-realistic-surfboard-flow/14-SPEC.md`, research in the todo (now under `todos/completed/`)
-- Phase 17 noted (2026-11-09): BOTTOM — bottom contours a shaper can map, measure and cut; opened 2026-11-08 and being built on branch `claude/beautiful-fermi-ad3fb7`, where its brief and plans live — a placeholder entry on `main` so Phase 18 takes the next number
+- Phase 17 added (2026-11-08): BOTTOM — bottom contours a shaper can map, measure and cut, from sketches 019–021 and the founder's rulings; brief in `phases/17-bottom-contours/17-SPEC.md`
 - Phase 18 added (2026-11-09): A GUIDE on Every Page — a GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS, built from sketch 022 (decided as built, rounds one to three) at the founder's word, "Let's build this and go live"; brief in `phases/18-a-guide-on-every-page/18-SPEC.md`
 
 ### Pending Todos
@@ -576,10 +576,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-10T04:49:08.101Z
-Stopped at: Phase 18 UI-SPEC approved
-Resume file: .planning/phases/18-a-guide-on-every-page/18-UI-SPEC.md
-Next action: the founder's answers on sketch 019 (BOTTOM contours), then open the next phase; Phase 13's two remaining items and the Shape3D todo stay open
+Last session: 2026-11-10T22:00:00.000Z
+Stopped at: Phase 17 wave 15 merged (a4db2688); main with Phase 18 merged into the branch; 17-16, the go-live gate, next
+Resume file: .planning/phases/17-bottom-contours/17-16-PLAN.md
+Next action: 17-16, the go-live gate for BOTTOM (full browser suite, the founder's phone checks and saved boards, one push on his go); BOTTOM's GUIDE to adopt Phase 18's shared card (todo of 2026-11-09); the founder's look at Phase 18 on his phone and his word on its open points; Phase 13's two remaining items and the Shape3D todo stay open
 
 ## Operator Next Steps
 

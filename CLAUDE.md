@@ -162,13 +162,14 @@ know why:
 
 ## Layout
 
-- `app/design/{outline,rocker,rails,volume,fins,summary,3d}/` — the seven design screens, in the order a
-  board is shaped: TEMPLATE, ROCKER, RAILS, VOLUME, FINS, SUMMARY and 3D. 3D (Phase 16) is the seventh,
-  last after SUMMARY — the finished board seen as a solid, and the CNC export — so SUMMARY's Next goes
+- `app/design/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — the eight design screens, in the order
+  a board is shaped: TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY and 3D. BOTTOM (Phase 17) is the
+  third, between ROCKER and RAILS — the bottom's contours are cut before the rails are banded. 3D (Phase 16) is
+  the last, after SUMMARY — the finished board seen as a solid, and the CNC export — so SUMMARY's Next goes
   there and 3D has only Back. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
   ☰ sheet's tiles and Back + Next alike
 - `components/design/design-store.tsx` — the shared board-design state
-- `components/{outline,rocker,rails,volume,fins,summary,3d}/` — per-screen UI
+- `components/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — per-screen UI
 - `reference/project/` — the original Claude Design prototype; source of truth for formulas
 - `brand/` — the founder's logo sources and the traced single-colour logo (not served; `brand/README.md` says how every derived file was made); `components/wordmark.tsx` draws the logo in whatever ink surrounds it
 - `.planning/` — GSD roadmap, phase plans and quick-task log
@@ -178,7 +179,7 @@ different question about the screen — never conflated with either of the other
 
 **Layout — width alone.** The `max-shell`/`shell` custom variants in `app/globals.css` decide
 which LAYOUT a screen renders: stacked-and-pinned (drawing above, controls scrolling beneath,
-under a compact top bar whose ☰ opens a sheet of seven screen tiles drawn from the current board — no
+under a compact top bar whose ☰ opens a sheet of eight screen tiles drawn from the current board — no
 bottom tab bar since quick 261003-q2f) below 820 dots wide, the desktop sidebar-beside-canvas
 shell at or above it. At exactly 820 the desktop side owns the boundary, by declaration rather
 than by source order. For one wave (10-05, 2026-09-11 to 2026-09-11) this switch read width AND
@@ -251,7 +252,7 @@ is never under 500 dots tall, so that rule can never reach a mouse. The fourth i
 screen the phone's compact bar — wordmark, Save, the hamburger menu — replaces the desktop row at any
 width, because that row stood about 105 dots tall on a 390-dot screen with the wordmark wrapped onto
 two lines. The layout beneath it is still the desktop shell, chosen by width alone; and on a short screen the
-same ☰ sheet of seven screen tiles opens as on an upright phone — one row of seven at a desktop-shell
+same ☰ sheet of eight screen tiles opens as on an upright phone — one row of eight at a desktop-shell
 width, four by two below it (width alone). `site-nav.tsx`
 and `phone-top-bar.tsx` own that rule, written inline the same way, and `e2e/phone-sideways-top-bar.spec.ts`
 proves it on a sideways Pixel 7 and iPhone and proves a tall window of any width still gets the desktop row.

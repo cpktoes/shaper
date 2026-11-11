@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * The seven screen tiles at the top of the phone menu (quick 261003-q2f, sketch 007's C1): TEMPLATE,
- * ROCKER, RAILS, VOLUME, FINS, SUMMARY and — since Phase 16 — 3D, each a small picture of the board the shaper is working on
+ * The eight screen tiles at the top of the phone menu (quick 261003-q2f, sketch 007's C1): TEMPLATE,
+ * ROCKER, BOTTOM (Phase 17), RAILS, VOLUME, FINS, SUMMARY and — since Phase 16 — 3D, each a small picture of the board the shaper is working on
  * right now, its name, and one line. The founder picked tiles (round 1: "ooh, I kinda like the screen
  * tiles") and asked for real pictures (round 2: "the icons need to look realistic (rocker cannot look
  * like a U). Can we use current board as the art?"), so every picture is that screen's own drawing of
@@ -17,11 +17,16 @@
  * only inside the open menu (Base UI unmounts a closed menu's content), so dragging a slider with the
  * menu shut never rebuilds a picture.
  *
- * Four across and two down on an upright phone (TEMPLATE ROCKER RAILS VOLUME over FINS SUMMARY 3D);
- * one row of seven at the desktop-shell width — width alone, CLAUDE.md's layout switch. At that width
- * the menu button only ever shows on a short screen (a tall window has the desktop row), so seven
- * across is only ever a phone held sideways, where the pictures come out a little larger and leave
- * room for the rows below.
+ * Four over four on an upright phone (TEMPLATE ROCKER BOTTOM RAILS over VOLUME FINS SUMMARY 3D);
+ * one row of eight at the desktop-shell width — width alone, CLAUDE.md's layout switch. At that width
+ * the menu button only ever shows on a short screen (a tall window has the desktop row), so eight
+ * across is only ever a phone held sideways, where each tile is about 96 dots wide (Phase 17 UI-SPEC
+ * § Already done: 95.5 at 844, 97.9 at 863) — room still for TEMPLATE's name.
+ *
+ * BOTTOM's picture (Phase 17, UI-SPEC §9) is TEMPLATE's board lying nose left with this board's own
+ * bottom on it — its shade on a coarse grid, its pencil lines — and the section's cutting line at the
+ * wide point, which is what tells a flat board's tile from TEMPLATE's; its line is `All flat`, `1 cut`
+ * or `2 cuts · 6 channels` (`bottomTileArt`, `bottomTileLine`). Never a made-up cut.
  *
  * Each tile is a real `Menu.Item` (arrow keys, Enter, tap) whose accessible name is its screen and its
  * line ("TEMPLATE — 6'2" × 18 3/4"", "VOLUME — 29.6 L Estimated"); the pictures themselves are hidden
@@ -58,12 +63,14 @@ import {
   type ScreenTileKind,
 } from "@/lib/geometry/screen-tiles";
 import { threeDTilePicture } from "@/lib/geometry/three-d-tile-art";
+import { bottomTileArt } from "@/lib/geometry/bottom-tile-art";
 
 /** Which picture each screen gets, keyed by its address — typed on the one screen list, so a new
  * screen fails to compile until it has a picture. */
 const TILE_KIND: Record<NavLink["href"], ScreenTileKind> = {
   "/design/outline": "template",
   "/design/rocker": "rocker",
+  "/design/bottom": "bottom",
   "/design/rails": "rails",
   "/design/volume": "volume",
   "/design/fins": "fins",
@@ -74,13 +81,30 @@ const TILE_KIND: Record<NavLink["href"], ScreenTileKind> = {
 const PICTURE_CLASS = "block h-[46px] w-full";
 
 function useTilePictures() {
-  const { outline, blank, outlineGeometry, sideProfile, railBands, effectiveFins, finTailOutline, finPlacement, quotedVolumeLitres } =
-    useDesign();
+  const {
+    outline,
+    blank,
+    outlineGeometry,
+    sideProfile,
+    railBandsOnBottom,
+    effectiveFins,
+    finTailOutline,
+    finPlacement,
+    quotedVolumeLitres,
+    resolvedBottom,
+    bottomBoard,
+  } = useDesign();
   const { system } = useUnits();
 
   const template = useMemo(() => outlineTileArt(outlineGeometry, "lying"), [outlineGeometry]);
   const rocker = useMemo(() => rockerTileArt(sideProfile), [sideProfile]);
-  const rails = useMemo(() => railsTileArt(railBands.center), [railBands.center]);
+  // This board's own bottom on TEMPLATE's lying board, with the cutting line at the wide point (Phase 17, UI-SPEC §9).
+  const bottom = useMemo(
+    () => bottomTileArt(outlineGeometry, resolvedBottom, bottomBoard),
+    [outlineGeometry, resolvedBottom, bottomBoard],
+  );
+  // The rail RAILS bands, the bottom's lift taken off (Phase 17, D-22) — `railBands` itself on a flat bottom.
+  const rails = useMemo(() => railsTileArt(railBandsOnBottom.center), [railBandsOnBottom.center]);
   const fins = useMemo(
     () =>
       finsTileArt(
@@ -94,13 +118,13 @@ function useTilePictures() {
   // The rack's own turn at 50 degrees, or TEMPLATE's lying outline for a board it can't turn.
   const threeD = useMemo(() => threeDTilePicture(sideProfile, outlineGeometry), [sideProfile, outlineGeometry]);
   const lines = useMemo(
-    () => screenTileLines({ outline, blank, finSetup: effectiveFins.finSetup, system }),
-    [outline, blank, effectiveFins.finSetup, system],
+    () => screenTileLines({ outline, blank, bottom: resolvedBottom, finSetup: effectiveFins.finSetup, system }),
+    [outline, blank, resolvedBottom, effectiveFins.finSetup, system],
   );
   // ROCKER's second line: the blank's rocker — `Natural` or the note (quick 261016-mkb, D-11).
   const rockerLine = useMemo(() => screenTileRocker(blank), [blank]);
   const litres = formatTileLitres(quotedVolumeLitres);
-  return { template, rocker, rails, fins, summary, threeD, lines, rockerLine, litres };
+  return { template, rocker, bottom, rails, fins, summary, threeD, lines, rockerLine, litres };
 }
 
 type TilePictures = ReturnType<typeof useTilePictures>;
@@ -136,6 +160,38 @@ function TilePicture({ kind, pictures }: { kind: ScreenTileKind; pictures: TileP
             fill="var(--outline-board-fill)"
             stroke="var(--outline-ink)"
             strokeWidth={1.4}
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      );
+    case "bottom":
+      return (
+        <svg aria-hidden data-tile-picture className={PICTURE_CLASS} viewBox={pictures.bottom.viewBox} preserveAspectRatio="xMidYMid meet">
+          <path d={pictures.bottom.board} fill="var(--outline-board-fill)" />
+          {pictures.bottom.shade.map((d, i) => (
+            <path key={i} d={d} fill="var(--outline-bottom-shade)" fillOpacity={0.04} />
+          ))}
+          {pictures.bottom.pencil !== "" && (
+            <path
+              d={pictures.bottom.pencil}
+              fill="none"
+              stroke="var(--outline-pencil-line)"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          <path
+            d={pictures.bottom.board}
+            fill="none"
+            stroke="var(--outline-ink)"
+            strokeWidth={1.4}
+            vectorEffect="non-scaling-stroke"
+          />
+          <line
+            {...pictures.bottom.cutLine}
+            stroke="var(--outline-ink)"
+            strokeWidth={1}
+            strokeDasharray="4 2 1.5 2"
             vectorEffect="non-scaling-stroke"
           />
         </svg>
@@ -260,7 +316,7 @@ export function ScreenTiles({ screens }: { screens: readonly NavLink[] }) {
   const pictures = useTilePictures();
 
   return (
-    <Menu.Group aria-label="Screens" className="grid grid-cols-4 gap-2 shell:grid-cols-7">
+    <Menu.Group aria-label="Screens" className="grid grid-cols-4 gap-2 shell:grid-cols-8">
       {screens.map((link) => {
         const kind = TILE_KIND[link.href];
         const active = pathname === link.href || pathname?.startsWith(`${link.href}/`);

@@ -53,7 +53,7 @@ async function expectOneRowMenu(page: Page, phoneSheet: boolean) {
   });
   expect(textOutsideTiles).not.toContain("Blank Makers");
   if (phoneSheet) {
-    await expect(menu.locator("[data-screen-tile]")).toHaveCount(7);
+    await expect(menu.locator("[data-screen-tile]")).toHaveCount(8);
     await expect(menu.locator("[data-phone-menu-account]")).toHaveCount(1);
   }
   await page.keyboard.press("Escape");

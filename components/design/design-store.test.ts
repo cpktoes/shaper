@@ -90,6 +90,72 @@ describe("design-store.tsx — the blank rides in every hand-written field list 
   });
 });
 
+describe("design-store.tsx — BOTTOM's two edits (Phase 17, 17-08)", () => {
+  it("historySnapshot carries the bottom, so Undo and Redo take a cut pick or a cut slider back", () => {
+    const { object, deps } = memo("historySnapshot");
+    expect(object).toMatch(/\bbottom:\s*state\.bottom\b/);
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+  });
+
+  it("a Cut pick is one undo step through pickCut, so D-42's re-seat rides in the same step", () => {
+    const body = handler("pickBottomCut");
+    expect(body).toMatch(/noteEdit\(null\)/);
+    expect(body).toMatch(/bottom:\s*pickCut\(prev\.bottom,\s*section,\s*name,\s*bottomBoard\)/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+
+  it("a cut slider keeps Start ≥ Deepest ≥ End in the same step, under one key per field dragged", () => {
+    const body = handler("updateBottomCut");
+    expect(body).toMatch(/noteEdit\(`bottom:\$\{section\}:\$\{patchKey\(patch\)\}`\)/);
+    expect(body).toMatch(/keepStationsInOrder\(section,/);
+    expect(body.match(/setState\(/g)).toHaveLength(1);
+  });
+
+  it("17-09: the tick box and the three channel menus are one undo step each; the count goes through switchChannelCount", () => {
+    for (const name of ["setBottomClosesToPoint", "setChannelCount", "setChannelRun", "setChannelLongest"]) {
+      expect(handler(name), name).toMatch(/noteEdit\(null\)/);
+    }
+    expect(handler("setChannelCount")).toMatch(/switchChannelCount\(channels,\s*count,\s*bottomBoard\)/);
+  });
+
+  it("D-44: a Run pick goes through switchChannelRun (so the angle goes back to that run's own), Reset is one undo step, and the Angle slider is a channels slider", () => {
+    expect(handler("setChannelRun")).toMatch(/setChannels\(\(channels\)\s*=>\s*switchChannelRun\(channels,\s*run\)\)/);
+    const reset = handler("resetChannelAngle");
+    expect(reset).toMatch(/lockedRef\.current/);
+    expect(reset).toMatch(/noteEdit\(null\)/);
+    expect(reset).toMatch(/setChannels\(\(channels\)\s*=>\s*\(\{\s*\.\.\.channels,\s*angle:\s*null\s*\}\)\)/);
+    // The slider has no handler of its own: it hands `{ angle }` to updateChannels, whose undo key is the field's name,
+    // so one slow drag is one step and never joins a drag of another channels slider.
+    expect(SOURCE).not.toMatch(/const setChannelAngle\b/);
+    expect(handler("updateChannels")).toMatch(/patchKey\(patch\)/);
+    expect(SOURCE).toMatch(/\n\s+resetChannelAngle,\n/);
+  });
+
+  it("17-09: a channels slider keeps Start ≥ Deepest ≥ End in the same step, under one key per field dragged", () => {
+    const body = handler("updateChannels");
+    expect(body).toMatch(/noteEdit\(`bottom:channels:\$\{patchKey\(patch\)\}`\)/);
+    expect(body).toMatch(/keepChannelStationsInOrder\(patched,\s*changed,\s*bottomBoard\)/);
+  });
+});
+
+describe("design-store.tsx — the bottom is saved with the board, and only once it is cut (Phase 17, 17-12, D-24)", () => {
+  it("a save carries the bottom only when it is not the opening one, so an untouched board saves key for key as before", () => {
+    const { object, deps } = memo("designSnapshotFields");
+    expect(object).toMatch(/\.\.\.\(isDefaultBottom\(state\.bottom\)\s*\?\s*\{\}\s*:\s*\{\s*bottom:\s*state\.bottom\s*\}\)/);
+    expect(object, "never the bottom written outright").not.toMatch(/^\s*bottom:\s*state\.bottom\b/m);
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+  });
+
+  it("a saved board opens with its own bottom, or flat when it was saved without one", () => {
+    expect(handler("applyModel")).toMatch(/\bbottom:\s*snapshot\.bottom\s*\?\?\s*DEFAULT_BOTTOM\b/);
+  });
+
+  it("a board file is spread over the defaults, so a file without a bottom opens flat and one with a bottom keeps it", () => {
+    expect(handler("applyBoardFile")).toMatch(/\{\s*\.\.\.DEFAULT_DESIGN_STATE,\s*\.\.\.snapshot,/);
+    expect(SOURCE).toMatch(/\n  bottom:\s*DEFAULT_BOTTOM,/);
+  });
+});
+
 describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 5)", () => {
   it("the blank is prepared once per blank copy and rocker, inside a useMemo, through the one helper (R14, quick 261016-mkb)", () => {
     const { object, deps } = memo("preparedBlank");
@@ -115,17 +181,41 @@ describe("design-store.tsx — one side profile feeds RAILS and VOLUME (Pattern 
   // Since Phase 16 (D-05) the store builds its litres input through `designCrossSectionInput`, the helper
   // `summarizeDesign` uses, handing it the whole side profile; that helper reads the profile's own
   // thickness curve and foil (its own source is checked below), so the rule still holds in one place.
+  // Phase 17 (D-05, the checker's W1): the input is one memo, `crossSectionInput`, carrying the store's one bottom;
+  // the litres integrate it and `bottomSections` builds the same sections from it.
   it("the cross-section volume integrates the side profile's own thickness curve", () => {
-    const { object } = memo("crossSectionVolume");
+    expect(memo("crossSectionVolume").object).toMatch(/computeCrossSectionVolume\(\s*crossSectionInput\s*\)/);
+    expect(memo("bottomSections").object).toMatch(/boardSections\(\s*crossSectionInput\s*\)/);
+    const { object, deps } = memo("crossSectionInput");
     expect(object).toMatch(
-      /designCrossSectionInput\(\s*outlineGeometry,\s*sideProfile,\s*effectiveRails,\s*state\.outline\.length\s*\)/,
+      /designCrossSectionInput\(\s*outlineGeometry,\s*sideProfile,\s*effectiveRails,\s*state\.outline\.length,\s*\{\s*bottom:\s*state\.bottom,\s*board:\s*bottomBoard,?\s*\}\s*\)/,
     );
+    expect(deps).toMatch(/\bstate\.bottom\b/);
+    expect(deps).toMatch(/\bbottomBoard\b/);
     const designSource = stripComments(readFileSync(new URL("../../lib/geometry/design.ts", import.meta.url), "utf8"));
     const helperStart = designSource.indexOf("export function designCrossSectionInput");
     expect(helperStart).toBeGreaterThanOrEqual(0);
     const helper = balancedFrom(designSource, designSource.indexOf("return {", helperStart));
     expect(helper).toMatch(/thicknessAt:\s*profile\.thicknessAt\b/);
     expect(helper).toMatch(/foil:\s*profile\.effectiveFoil\b/);
+  });
+
+  // The code review's WR-03 (2026-11-10): a section drawn on BOTTOM or printed on the Bottom Contours sheet ends
+  // its foam where the litres end it. The store hands out the litres' own section at any one station, built by the
+  // pure helper from the one input the litres integrate, and both drawings pass it on as the drawing's `seam` —
+  // neither builds a section of its own (the checker's W1).
+  it("a drawn section's knife edge comes from the litres' own input, on the screen and on the printed sheet", () => {
+    const { object, deps } = memo("bottomSectionAt");
+    expect(object).toMatch(/\(station: Mm\)\s*=>\s*builtSectionAt\(\s*crossSectionInput,\s*station\s*\)/);
+    expect(deps).toMatch(/^\[\s*crossSectionInput\s*\]/);
+    for (const file of ["../bottom/bottom-section.tsx", "../summary/bottom-contours-sheet.tsx"]) {
+      const source = stripComments(readFileSync(new URL(file, import.meta.url), "utf8"));
+      expect(source, file).toMatch(/const seam = useMemo\(\s*\(\)\s*=>[^;]*\bbottomSectionAt\(/);
+      const calls = [...source.matchAll(/\bbottomSection\(/g)].map((m) => balancedFrom(source, m.index));
+      expect(calls.length, file).toBeGreaterThan(0);
+      for (const call of calls) expect(call, file).toMatch(/\{\s*live(?::\s*null)?,\s*seam\s*\}\s*\)$/);
+      expect(source, file).not.toMatch(/\bboardSections\(|\bbuiltSectionAt\(/);
+    }
   });
 });
 

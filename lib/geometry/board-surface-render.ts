@@ -8,8 +8,10 @@
  * marked by the surface itself (`SurfaceRing.bottomEdge`): each of its vertices is drawn twice, once for the
  * rail above it and once for the bottom below, and each copy's normal is the smooth normal leaning toward its
  * own side's by the ring's `sharpness` — the hard edge's weight (full to 12", fading with D-20), or 1 under a
- * Sharp Bottom Tuck. A swallow's notch walls and the flat caps at the tips are always drawn sharp. The STL
- * reads the surface itself, welded, and carries face normals only.
+ * Sharp Bottom Tuck. A swallow's notch walls, the flat caps at the tips and a channel's vertical walls (Phase 17,
+ * D-10, D-21: `SURFACE_FACE.channelWall`, the rows of the ring the surface lays at each wall) are always drawn sharp:
+ * each takes its own copies of its vertices, so the floor beside a wall keeps its own normal and the wall its own. The
+ * STL reads the surface itself, welded, and carries face normals only.
  *
  * Pure (CLAUDE.md Rule 1): no React, browser or `three` import.
  */

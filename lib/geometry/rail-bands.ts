@@ -893,6 +893,25 @@ export interface RailSectionOutput {
   segments: RailSegment[];
   bounds: { xAxisMin: Mm; yAxisMax: Mm };
   dataGroups: RailDataGroup[];
+  /** The bottom under this rail once a vee or a belly has lifted it (Phase 17, D-41) — set only by `design.ts`'s
+   * `railBandsOnTheBottom`, and only on a section whose rail the bottom lifts. Absent (every flat board, every
+   * section `computeRailSectionOutput` builds): the rail stands on a flat bottom, exactly as it always has. */
+  bottom?: RailSectionBottom;
+}
+
+/**
+ * The bottom a vee or a belly leaves under one rail (Phase 17, D-41 — the founder: "represent the angle in the bottom
+ * of the displayed rail … the real rail shape, post bottom contouring"), in the section's own frame: x in from the
+ * rail's apex (0) toward the stringer (negative), y up from the rail's own bottom at its edge. The section's bands are
+ * worked out for the rail the lift leaves (`railsOnTheBottom`); this says how the planed bottom falls away under it
+ * toward the stringer. Read by `lib/geometry/rail-bottom.ts`.
+ */
+export interface RailSectionBottom {
+  /** The rail lift at this section's station: the foam the bottom takes off at the rail. */
+  lift: Mm;
+  /** The bottom across, x ascending from well inboard of the plot to the apex (x = 0, y = 0): at each x, the foam
+   * off there less the lift — below 0 under a vee or a belly, which takes less off toward the stringer. */
+  across: Point2D[];
 }
 
 export interface RailBandsOutput {

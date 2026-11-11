@@ -42,6 +42,12 @@ interface RailControlsProps {
    * value while `railsImportFoilThickness` is on, so the Inputs card and the bands it feeds always
    * agree with the same number. */
   spec: RailBandSpec;
+  /** What the Inputs card's three figures read (Phase 17, D-35): the rails the bottom leaves (`railsOnBottom`), the
+   * foil's thickness less the rail lift at each anchor. Absent: `spec` itself. The sliders always read `spec`, the
+   * shaper's own numbers, so a lift is never written back into them. */
+  importedSpec?: RailBandSpec;
+  /** Whether a vee or a belly lifts a rail, so the card's caption names BOTTOM (UI-SPEC open item 3). Default false. */
+  importedFromBottom?: boolean;
   bands: Record<RailSectionKey, RailSectionOutput>;
   onChangeSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
   onToggleHardEdge: () => void;
@@ -555,6 +561,8 @@ function RailSectionControls({
 
 export function RailControls({
   spec,
+  importedSpec = spec,
+  importedFromBottom = false,
   bands,
   onChangeSection,
   onToggleHardEdge,
@@ -605,10 +613,11 @@ export function RailControls({
           <ImportedReadoutCard
             className="mt-2"
             readout={railsImportedReadout(
-              spec.nose.boardThickness,
-              spec.center.boardThickness,
-              spec.tail.boardThickness,
+              importedSpec.nose.boardThickness,
+              importedSpec.center.boardThickness,
+              importedSpec.tail.boardThickness,
               system,
+              importedFromBottom,
             )}
           />
         )}

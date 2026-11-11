@@ -229,10 +229,11 @@ async function expectControlsBack(scope: Locator) {
   await expect.poll(async () => (await liveBoardControls(scope)).length).toBeGreaterThan(0);
 }
 
-/** Every range input on the page is disabled (there is at least one), or none is. */
+/** Every range input on the page is disabled (there is at least one), or none is. A slider that only moves the view —
+ * BOTTOM's `Section at` (17-10), marked `data-lock-exempt` — is not a board control and is not counted. */
 async function rangeInputsDisabled(page: Page): Promise<{ total: number; live: number }> {
   return page.evaluate(() => {
-    const inputs = [...document.querySelectorAll('input[type="range"]')];
+    const inputs = [...document.querySelectorAll('input[type="range"]')].filter((i) => !i.closest("[data-lock-exempt]"));
     return { total: inputs.length, live: inputs.filter((i) => !(i as HTMLInputElement).disabled).length };
   });
 }
@@ -411,6 +412,91 @@ test.describe("a locked board's controls are greyed on a computer (quick 261008-
     await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
   });
 
+  test("s-bottom. BOTTOM is greyed: its Cut menus, sliders and tick boxes are disabled and unmoved by a click; the tabs, Height, Section at, the drag and the finished rail stay live; Unlock brings it back", async ({
+    page,
+  }) => {
+    test.slow();
+    // Every preset opens flat, with no sliders on BOTTOM, and a locked board cannot be cut. So, as s-fins does: open board
+    // 1 unlocked, cut a Deep Single and six channels on BOTTOM, go back to the rack, lock that board from its ⋯ (which
+    // takes effect in the open editor at once), and come forward to BOTTOM.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await startPracticeRack(page);
+        await openFromRack(page, 1);
+        await goToScreen(page, "BOTTOM");
+        const center = page.getByRole("combobox", { name: "Center Cut" });
+        await expect(async () => {
+          await center.click();
+          await page.getByRole("option", { name: "Deep Single Concave", exact: true }).click({ timeout: 2_000 });
+          await expect(page.locator('[data-bottom-card="center"] [data-bottom-cut-echo]')).toHaveText("Deep Single Concave", { timeout: 2_000 });
+        }).toPass({ timeout: 60_000 });
+        await page.getByRole("combobox", { name: "Channels", exact: true }).click();
+        await page.getByRole("option", { name: "6 channels", exact: true }).click();
+        await expect(page.locator("[data-bottom-channels-echo]")).toHaveText(/^6, /);
+        await page.goBack();
+        await page.waitForURL("**/design/outline");
+        await page.goBack();
+        await page.waitForURL((url) => url.pathname === RACK_STAND_IN_ROUTE);
+        await expect(page.locator("[data-rack-board]")).toHaveCount(5);
+        await lockFromRack(page, 1);
+        await expect(captionFor(page, board(1).name).getByRole("img", { name: BOARD_LOCK_COPY.padlock })).toBeVisible();
+        await page.goForward();
+        await page.waitForURL("**/design/outline");
+        await page.goForward();
+        await page.waitForURL("**/design/bottom");
+        await expect(unlockButton(page)).toHaveCount(1, { timeout: 10_000 });
+        await expect(page.locator("[data-bottom-channels-echo]")).toHaveText(/^6, /);
+        break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      }
+    }
+
+    const controls = page.locator("[data-design-controls-scroll]");
+    await expectGreyedScreen(page, controls);
+    await expectGreyedLook(controls, "BOTTOM, a cut board");
+
+    // A board control is unmoved by a click: the Cut menu stays shut, the Depth stays where it was.
+    const depthLabel = controls.locator('[data-bottom-card="center"]').getByText(/^Depth — /);
+    const depthBefore = await depthLabel.textContent();
+    const depth = page.getByRole("slider", { name: "Center Depth", exact: true });
+    const track = await depth.locator("xpath=ancestor::*[@data-slot='slider'][1]").boundingBox();
+    if (!track) throw new Error("no Center Depth track");
+    await page.mouse.click(track.x + track.width * 0.9, track.y + track.height / 2);
+    await expect(depthLabel).toHaveText(depthBefore ?? "");
+    await page.getByRole("combobox", { name: "Center Cut" }).click({ force: true });
+    await expect(page.getByRole("option", { name: "Flat Center", exact: true })).toHaveCount(0);
+
+    // The view stays live: Height, Section at, the cutting line's drag, the finished rail, and the tabs.
+    const height8 = page.getByRole("button", { name: "Height ×8", exact: true });
+    await expect(height8).toBeEnabled();
+    await height8.click();
+    await expect(height8).toHaveAttribute("aria-pressed", "true");
+    const cutAt = async () => Number(await page.locator("[data-bottom-cut-at]").getAttribute("data-bottom-cut-at"));
+    const before = await cutAt();
+    const sectionAt = page.getByRole("slider", { name: "Section at", exact: true });
+    await expect(sectionAt).toBeEnabled();
+    await sectionAt.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(cutAt).toBeLessThan(before);
+    const top = await page.locator("[data-bottom-top-view]").boundingBox();
+    if (!top) throw new Error("no top view");
+    await page.mouse.click(top.x + top.width * 0.3, top.y + top.height * 0.45);
+    await expect.poll(cutAt).toBeGreaterThan(before);
+    const ghost = controls.getByRole("checkbox", { name: "Show the finished rail from RAILS" });
+    await expect(ghost).toBeEnabled();
+    await ghost.click();
+    await expect(page.locator("[data-bottom-ghost]")).toHaveCount(1);
+    await page.getByRole("tab", { name: "DATA", exact: true }).click();
+    await expect(page.locator("[data-bottom-depths]")).toBeVisible();
+    await page.getByRole("tab", { name: "VIEWER", exact: true }).click();
+    await expect(page.locator("[data-bottom-top-view]")).toBeVisible();
+    await expect(unlockButton(page)).toHaveCount(1);
+
+    await pressUnlock(page);
+    await expect.poll(async () => (await rangeInputsDisabled(page)).live).toBeGreaterThan(0);
+  });
+
   test("s-fins. FINS is greyed, the toe-in table still opens and closes, Fin Placement Callouts still toggles, and Unlock brings it back", async ({
     page,
   }) => {
@@ -565,16 +651,16 @@ test.describe("a locked board's controls are greyed on a phone (quick 261008-lsy
 
   const stepNav = (page: Page) => page.getByRole("navigation", { name: "Back and Next", exact: true });
 
-  test("p-screens. all six screens are greyed in turn, through the ☰ tiles and Back + Next, and Unlock on FINS brings its sliders back", async ({
+  test("p-screens. all seven screens are greyed in turn, through the ☰ tiles and Back + Next, and Unlock on FINS brings its sliders back", async ({
     page,
   }) => {
-    // Six screens in one test: on a freshly started dev server the first walk compiles every screen
+    // Seven screens in one test (BOTTOM joined in Phase 17): on a freshly started dev server the first walk compiles every screen
     // and took 29.8 s against the 30 s limit on the iPhone (quick 261014-wii, 2026-10-15 — the same
     // timeout on the commit before wings, so not a wings fault). Tripled, like s-fins above.
     test.slow();
     await openLockedBoard(page, 1);
     await expectPhoneScreenGreyed(page);
-    const walk: ScreenLabel[] = ["ROCKER", "RAILS", "VOLUME"];
+    const walk: ScreenLabel[] = ["ROCKER", "BOTTOM", "RAILS", "VOLUME"];
     for (const label of walk) {
       await goToScreen(page, label);
       await expectPhoneScreenGreyed(page);
@@ -614,6 +700,9 @@ test.describe("a locked board reads as greyed, label and all, on every screen (f
   for (const [screen, boards] of [
     ["TEMPLATE", [1]],
     ["ROCKER", [1, 5]],
+    // BOTTOM on a stock board: its three Cut menus and the CHANNELS menu (no cut, so no sliders); a cut board's rows are
+    // s-bottom's.
+    ["BOTTOM", [1]],
     ["RAILS", [1]],
     ["VOLUME", [1]],
     ["FINS", [1, 3]],
@@ -634,7 +723,9 @@ test.describe("a locked board reads as greyed, label and all, on every screen (f
         await expect(
           screen === "VOLUME"
             ? controls.locator('[data-slot="checkbox"]').first()
-            : page.locator('input[type="range"]').first(),
+            : screen === "BOTTOM"
+              ? controls.getByRole("combobox", { name: "Center Cut" })
+              : page.locator('input[type="range"]').first(),
         ).toBeAttached();
         await expectGreyedLook(controls, `${screen}, board ${n}`);
         if (process.env.LOOK_SHOTS) await page.screenshot({ path: `${process.env.LOOK_SHOTS}/${screen}-${n}-${testInfo.project.name}.png` });

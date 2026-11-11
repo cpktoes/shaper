@@ -1210,21 +1210,153 @@ test.describe("RAILS — the slimmer phone frame and TWO stacked rows of tappabl
   });
 });
 
-/** Every one of the five design screens, for the iPad-like and computer checks below — `tabs`
+/** BOTTOM (Phase 17, plan 17-14): the same bands and gutters as every screen, under the same two rules. Upright it
+ * has RAILS' two stacked rows of tabs — VIEWER · DATA · GUIDE, and the phone-only NOSE · CENTER · TAIL inside VIEWER —
+ * and its card is pinned at the drawing column's two-thirds cap, so the whole card is drawing. Sideways the column
+ * scrolls, as RAILS' does, so only the column's own 2-dot bottom padding is asked there; the height its two drawings
+ * keep is `e2e/phone-bottom.spec.ts`'s question. */
+const BOTTOM_UPRIGHT = [
+  { project: "iphone", name: "iphone upright (390x844)", size: IPHONE_UPRIGHT, floor: { width: 378, height: 500 } },
+  { project: "android", name: "android upright (412x915)", size: ANDROID_UPRIGHT, floor: { width: 400, height: 546 } },
+] as const;
+const BOTTOM_SIDEWAYS = [
+  { project: "iphone", name: "iphone sideways (844x390)", size: IPHONE_SIDEWAYS, floor: { width: 466 } },
+  { project: "android", name: "android sideways (863x360)", size: ANDROID_SIDEWAYS, floor: { width: 476 } },
+] as const;
+
+test.describe("BOTTOM — the slimmer phone frame and TWO stacked rows of tappable tabs (Phase 17, 17-14)", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "this describe's own upright/sideways sizes are phone-only");
+    await dismissChrome(page);
+  });
+
+  for (const phone of BOTTOM_UPRIGHT) {
+    test(`${phone.name}: frame, both tab rows, drawing area and the no-overlap proof`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== phone.project, `${phone.project}-only viewport`);
+      await page.setViewportSize(phone.size);
+      await gotoRoute(page, "/design/bottom");
+      await settle(page);
+
+      const padding = await mainPadding(page);
+      expectWithin(padding.top, 2, 0.5);
+      expectWithin(padding.right, 2, 0.5);
+      expectWithin(padding.bottom, 2, 0.5);
+      expectWithin(padding.left, 2, 0.5);
+
+      const topBar = await topBarBox(page);
+      const main = await page.locator("main").boundingBox();
+      const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+      const dataTab = page.getByRole("tab", { name: "DATA" });
+      const guideTab = page.getByRole("tab", { name: "GUIDE" });
+      const viewerBox = await viewerTab.boundingBox();
+      const content = await contentBox(page);
+      if (!topBar || !main || !viewerBox) throw new Error("missing a bounding box");
+
+      console.log(
+        `[17-14] BOTTOM ${phone.size.width}x${phone.size.height} upright — top bar ${topBar.height}, outer tab top ${viewerBox.y - (topBar.y + topBar.height)}, ` +
+          `outer tab height ${viewerBox.height}, drawing area ${content.width}x${content.height} at (${content.x},${content.y})`,
+      );
+
+      expectWithin(topBar.height, 48, 1);
+      expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+      expectWithin(viewerBox.height, 22, 1);
+      expectWithin(content.y - (viewerBox.y + viewerBox.height), 11, 1);
+      expectWithin(main.y + main.height - (content.y + content.height), 5, 1);
+      expectWithin(content.x - main.x, 5, 1);
+      expectWithin(main.x + main.width - (content.x + content.width), 5, 1);
+
+      // The drawing column stands at its two-thirds cap, and all of it but those bands is drawing.
+      expect(main.height).toBeLessThanOrEqual(phone.size.height * 0.66 + 0.5);
+      expect(content.height).toBeGreaterThanOrEqual(phone.floor.height);
+      expect(content.width).toBeGreaterThanOrEqual(phone.floor.width);
+
+      const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+      await assertTabTouchBox(viewerTab, bounds);
+      await assertTabTouchBox(dataTab, bounds);
+      await assertTabTouchBox(guideTab, bounds);
+
+      // The phone-only NOSE · CENTER · TAIL row, on VIEWER (the tab the page opens on), 22 dots drawn like the row
+      // above it and 11 dots under the card's top edge.
+      const row = page.locator("[data-bottom-phone-sections]");
+      const noseTab = row.getByRole("tab", { name: "Nose", exact: true });
+      const centerTab = row.getByRole("tab", { name: "Center", exact: true });
+      const tailTab = row.getByRole("tab", { name: "Tail", exact: true });
+      const noseBox = await noseTab.boundingBox();
+      if (!noseBox) throw new Error("missing the NOSE tab's box");
+      expectWithin(noseBox.height, 22, 1);
+      expectWithin(noseBox.y - content.y, 11, 1);
+      await assertBasicTouchBox(noseTab);
+      await assertBasicTouchBox(centerTab);
+      await assertBasicTouchBox(tailTab);
+
+      // The two stacked rows' touch boxes never reach one another.
+      expect(await assertNotHitAbove(noseTab, 11), "a point 1px above NOSE's touch box must not hit NOSE").toBe(false);
+      expect(await assertNotHitBelow(viewerTab, 11), "a point 1px below VIEWER's touch box must not hit VIEWER").toBe(false);
+
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(scrollWidth).toBeLessThanOrEqual(phone.size.width);
+    });
+  }
+
+  for (const phone of BOTTOM_SIDEWAYS) {
+    test(`${phone.name}: frame, drawing width and touch boxes — the column scrolls, no fixed clearance`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== phone.project, `${phone.project}-only viewport`);
+      await page.setViewportSize(phone.size);
+      await gotoRoute(page, "/design/bottom");
+      await settle(page);
+
+      const padding = await mainPadding(page);
+      expectWithin(padding.bottom, 2, 0.5);
+      expectWithin(padding.top, 2, 0.5);
+
+      const topBar = await topBarBox(page);
+      const viewerTab = page.getByRole("tab", { name: "VIEWER" });
+      const dataTab = page.getByRole("tab", { name: "DATA" });
+      const guideTab = page.getByRole("tab", { name: "GUIDE" });
+      const viewerBox = await viewerTab.boundingBox();
+      const content = await contentBox(page);
+      if (!topBar || !viewerBox) throw new Error("missing a bounding box");
+
+      console.log(`[17-14] BOTTOM ${phone.size.width}x${phone.size.height} sideways — drawing area ${content.width}x${content.height} (column scrolls)`);
+
+      // The phone's compact bar, the tab strip 11 dots under it and 22 dots drawn, the drawing 11 dots under that.
+      expectWithin(topBar.height, 48, 1);
+      expectWithin(viewerBox.y - (topBar.y + topBar.height), 11, 1);
+      expectWithin(viewerBox.height, 22, 1);
+      expectWithin(content.y - (viewerBox.y + viewerBox.height), 11, 1);
+      expect(content.width).toBeGreaterThanOrEqual(phone.floor.width);
+
+      const bounds = { topBarBottom: topBar.y + topBar.height, drawingTop: content.y };
+      await assertTabTouchBox(viewerTab, bounds);
+      await assertTabTouchBox(dataTab, bounds);
+      await assertTabTouchBox(guideTab, bounds);
+
+      // Sideways the controls stand beside the drawing with all three sections in them: no NOSE · CENTER · TAIL row.
+      await expect(page.locator("[data-bottom-phone-sections]")).toBeHidden();
+
+      const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      expect(scrollWidth).toBeLessThanOrEqual(phone.size.width);
+    });
+  }
+});
+
+/** Every one of the six drawing screens (BOTTOM since Phase 17), for the iPad-like and computer checks below — `tabs`
  * empty means a non-interactive single label, with nothing to tap (none today: TEMPLATE until quick
  * 261014-wii gave it a WINGS tab, VOLUME until Phase 18 gave it GUIDE). Since Phase 18 every page's
- * strip ends in GUIDE (plan 18-08 added it to TEMPLATE, ROCKER and RAILS here). These sizes are all the
- * desktop shell, so ROCKER's tabs keep their full words (DATASHEET, not DATA). */
-const ALL_FIVE_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
+ * strip ends in GUIDE (plan 18-08 added it to TEMPLATE, ROCKER and RAILS here; BOTTOM has had its own since
+ * 17-11). These sizes are all the desktop shell, so ROCKER's tabs keep their full words (DATASHEET, not DATA). */
+const ALL_DRAWING_SCREENS: Array<{ path: `/design/${string}`; label: string; tabs: string[] }> = [
   { path: "/design/outline", label: "TEMPLATE", tabs: ["VIEWER", "ADD WINGS", "GUIDE"] },
   { path: "/design/rocker", label: "ROCKER", tabs: ["VIEWER", "DATASHEET", "GUIDE"] },
+  // BOTTOM (Phase 17): VIEWER and DATA (17-08), and GUIDE (17-11).
+  { path: "/design/bottom", label: "BOTTOM", tabs: ["VIEWER", "DATA", "GUIDE"] },
   { path: "/design/rails", label: "RAILS", tabs: ["VIEWER", "DATA", "INSTRUCTIONS", "GUIDE"] },
   { path: "/design/volume", label: "VOLUME", tabs: ["ESTIMATE", "GUIDE"] },
   { path: "/design/fins", label: "FINS", tabs: ["VIEWER", "DATA", "GUIDE"] },
 ];
 
-test.describe("All five screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {
-  for (const screen of ALL_FIVE_SCREENS) {
+test.describe("All six drawing screens — a tall touch screen (iPad-like) keeps today's look (item 9e)", () => {
+  for (const screen of ALL_DRAWING_SCREENS) {
     test(`${screen.label} at 1180x820, a touch device, desktop shell: today's 12px frames and 30px tabs, touch box still reaches`, async ({
       page,
     }, testInfo) => {
@@ -1258,13 +1390,13 @@ test.describe("All five screens — a tall touch screen (iPad-like) keeps today'
   }
 });
 
-test.describe("All five screens — a computer is untouched (item 9e)", () => {
+test.describe("All six drawing screens — a computer is untouched (item 9e)", () => {
   for (const size of [
     { width: 1280, height: 800 },
     { width: 1024, height: 768 },
     { width: 820, height: 800 },
   ]) {
-    for (const screen of ALL_FIVE_SCREENS) {
+    for (const screen of ALL_DRAWING_SCREENS) {
       test(`${screen.label} at ${size.width}x${size.height}: today's 12px frames, 30px tabs, no touch box on a mouse`, async ({
         page,
       }, testInfo) => {

@@ -236,6 +236,36 @@ export function ContourStripesIcon({ className }: { className?: string }) {
 }
 
 /**
+ * The glyph on FINS' Bottom Contours toggle (Phase 17, plan 13 — the founder, at his second look, 2026-11-09:
+ * "the icon isn't great. maybe more like an oceanography contour lines for topography"). It is a scrap of a
+ * depth chart: two uneven closed rings, the inner one following the outer the way neighbouring depth lines
+ * do, round a short mark at the low spot. lucide has nothing that reads that way — its nearest are perfect
+ * circles (a target) and stacked sheets (layers) — so it is drawn here beside the page's other glyphs, in
+ * lucide's own grammar (a 2-unit round stroke) so it weighs the same as the lucide ruler on the button beside
+ * it. A third ring was tried and measured: at this size it left under one dot of clear ground between rings
+ * and clotted, where two rings and the mark keep at least a dot and a half. It is the ONE glyph for both
+ * states; the button's pressed fill says which.
+ */
+export function BottomContoursIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M22 12.1C22.3 14 22.5 16.9 21.5 18.4C20.4 19.8 17.4 20.7 15.6 20.8C13.8 20.9 12.3 19.5 10.6 18.9C8.9 18.4 6.8 18.7 5.3 17.5C3.9 16.4 1.8 13.9 1.8 12.1C1.9 10.3 4 8 5.4 6.7C6.8 5.4 8.5 4.7 10.2 4.1C11.9 3.6 14 2.9 15.6 3.3C17.3 3.8 18.8 5.5 19.9 6.9C21 8.4 21.8 10.2 22 12.1Z" />
+      <path d="M18.1 12.4C18.3 13.4 18.6 15.1 18 15.8C17.4 16.5 15.6 16.8 14.7 16.7C13.8 16.6 13.2 15.6 12.4 15.3C11.5 15 10.5 15.5 9.7 15C8.8 14.6 7.4 13.3 7.4 12.4C7.3 11.5 8.6 10.2 9.4 9.6C10.2 8.9 11.2 8.8 12.1 8.6C12.9 8.3 13.9 8.1 14.6 8.3C15.4 8.5 16.1 9.2 16.7 9.9C17.3 10.6 17.9 11.4 18.1 12.4Z" />
+      <path d="M12.6 11.9 14.2 12.9" />
+    </svg>
+  );
+}
+
+/**
  * The glyph on the Customize Rocker popup's Show my board toggle (quick 261017-ojc, P-11, 2026-10-17 —
  * the founder: "lets make icons in the upper right like the other pages have"). lucide has no
  * surfboard, so it is drawn here beside the page's other two: a blank seen from the side, both ends

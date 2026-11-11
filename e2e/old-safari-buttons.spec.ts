@@ -143,7 +143,7 @@ test.describe("old Safari's button rule (before 18.4) no longer squashes anythin
     await expectOldSafariRuleChangesNothing(page);
   });
 
-  for (const path of ["/design/outline", "/design/rocker", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {
+  for (const path of ["/design/outline", "/design/rocker", "/design/bottom", "/design/rails", "/design/volume", "/design/fins", "/design/summary"]) {
     test(`${path}: no button's insides move`, async ({ page }) => {
       await page.goto(path);
       await expect(page.locator("button").filter({ visible: true }).first()).toBeVisible();

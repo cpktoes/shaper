@@ -101,6 +101,8 @@ import type { TipEnd } from "@/lib/geometry/tip-taper";
 import { buildBoardProfile, handSetFromProfile, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import type { BoardPreset } from "@/lib/geometry/presets";
 import {
+  bottomRailLift,
+  designBottomBoard,
   designCrossSectionInput,
   deriveEffectiveRails,
   deriveEffectiveVolume,
@@ -108,7 +110,31 @@ import {
   deriveEffectiveFins,
   deriveRailValues,
   deriveTemplateValues,
+  railAnchorStations,
+  railBandsOnTheBottom,
+  railsOnTheBottom,
 } from "@/lib/geometry/design";
+import {
+  DEFAULT_BOTTOM,
+  bottomHasCut,
+  cutKind,
+  isDefaultBottom,
+  keepChannelStationsInOrder,
+  keepStationsInOrder,
+  pickCut,
+  resolveBottom,
+  switchChannelCount,
+  switchChannelRun,
+  type BoardBottom,
+  type BottomBoard,
+  type BottomChannelsSpec,
+  type BottomCutName,
+  type BottomCutSpec,
+  type BottomSectionKey,
+  type BottomWingRule,
+  type ResolvedBottom,
+} from "@/lib/geometry/bottom";
+import { builtSectionAt } from "@/lib/geometry/bottom-draw";
 import { resolveWingStations, wingFinEdges as wingFinEdgesOf } from "@/lib/geometry/wing-lock";
 import { outlineForFins, outlineWithoutWings, type WingFinEdges } from "@/lib/geometry/wings";
 import {
@@ -133,8 +159,10 @@ import {
 } from "@/lib/geometry/fins";
 import {
   DEFAULT_VOLUME_SPEC,
+  boardSections,
   computeCrossSectionVolume,
   computeVolume,
+  type BoardSection,
   type CrossSectionVolumeResult,
   type VolumeRailValues,
   type VolumeResult,
@@ -172,7 +200,12 @@ import { pickOutlineGhost } from "@/lib/outline-ghost";
  * never a field this history's own `useMemo` looks at — a typed board name can never produce a
  * new snapshot identity, and so can never record a step, by construction rather than by a
  * separate guard that could drift out of sync with it. */
-type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName">;
+type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName"> & {
+  /** The bottom (Phase 17, 17-08) rides in every undo step, so Undo and Redo take a cut pick or a cut slider back.
+   * Always present here, even when it is the opening bottom — unlike a save (`DesignSnapshotFields`, 17-12), which
+   * leaves the opening bottom out so an untouched board saves key for key as it always did. */
+  bottom: BoardBottom;
+};
 
 interface DesignState {
   outline: OutlineSpec;
@@ -182,6 +215,12 @@ interface DesignState {
   foil: FoilSpec;
   rails: RailBandSpec;
   fins: FinPlacementSpec;
+  /** The bottom contours (Phase 17, D-01, D-05): the three sections' cuts and the channels, as stored. Every board
+   * that carries no bottom of its own opens flat (`DEFAULT_BOTTOM`, D-04) — every preset, and every saved board and
+   * board file from before the bottom was saved with the board (17-12, D-24) — and a flat bottom moves nothing on
+   * any screen. Every reader takes it from this one value, through the
+   * memos below (`bottomBoard`, `resolvedBottom`, the litres' input, `bottomSections`, `railsOnBottom`). */
+  bottom: BoardBottom;
   volume: VolumeSpec;
   finsImportTemplate: boolean;
   /** Whether the RAILS screen's three thickness sliders read from the foil (ROCKER screen) or
@@ -257,6 +296,7 @@ const DEFAULT_DESIGN_STATE: DesignState = {
   foil: DEFAULT_BOARD_SPEC.foil,
   rails: DEFAULT_RAIL_BAND_SPEC,
   fins: DEFAULT_FIN_PLACEMENT_SPEC,
+  bottom: DEFAULT_BOTTOM,
   volume: DEFAULT_VOLUME_SPEC,
   finsImportTemplate: true,
   railsImportFoilThickness: true,
@@ -440,6 +480,35 @@ interface DesignContextValue {
    * board. Wholesale replace, like `applyPreset`, with its resets. */
   applyBoardFile: (snapshot: DesignSnapshotFields) => void;
   updateRailSection: (key: RailSectionKey, patch: Partial<RailSectionSpec>) => void;
+  /** BOTTOM's Cut menu (Phase 17, D-08, D-42): sets the section to the name's starting numbers on this board — a tail
+   * pick re-seating a center single still on its starting numbers — in one undo step. Nothing on a locked board. */
+  pickBottomCut: (section: BottomSectionKey, name: BottomCutName) => void;
+  /** One of BOTTOM's cut sliders (D-07): the patch in the stored form; with `changed`, Start ≥ Deepest ≥ End kept in
+   * the same step, the dragged station winning. One undo step per drag. Nothing on a locked board. */
+  updateBottomCut: (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => void;
+  /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
+   * one undo step each. Nothing on a locked board. */
+  setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
+  /** WINGS on BOTTOM (D-19): where Off Rail is measured from on a winged board — the narrowest outline, or the curve
+   * drawn before the wing. One setting for the whole bottom; one undo step each. Nothing on a locked board. */
+  setBottomWingRule: (rule: BottomWingRule) => void;
+  /** The CHANNELS block's count (D-10, D-11): 4, 6 or 8 bring that count's starting width unless the width was set by
+   * hand, every other number kept (`switchChannelCount`); `None` (0) hides the set and keeps its numbers. One undo step
+   * each. Nothing on a locked board. */
+  setChannelCount: (count: BottomChannelsSpec["count"]) => void;
+  /** The channels' Run: Parallel, With the rail or Toe-in (D-10). A different Run puts the Angle back to that run's
+   * own (D-44, `switchChannelRun`). One undo step each. Nothing on a locked board. */
+  setChannelRun: (run: BottomChannelsSpec["run"]) => void;
+  /** The Angle row's Reset (D-44): the angle set by hand forgotten, so the run is laid at its own again — the rail's
+   * own angle, or the fins' toe-in. One undo step. Nothing on a locked board. */
+  resetChannelAngle: () => void;
+  /** Which channels are longest — the inner pair, the outer pair or all the same (D-10). One undo step each. Nothing on
+   * a locked board. */
+  setChannelLongest: (longest: BottomChannelsSpec["longest"]) => void;
+  /** One of the channels' sliders: the patch in the stored form (a station through `storeChannelStation`); with
+   * `changed`, Start ≥ Deepest ≥ End kept in the same step, the dragged station winning. One undo step per drag.
+   * Nothing on a locked board. */
+  updateChannels: (patch: Partial<BottomChannelsSpec>, changed?: "start" | "deepest" | "end") => void;
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
@@ -539,6 +608,30 @@ interface DesignContextValue {
    * directly, so the RAILS screen's numbers and its own thickness sliders always agree. */
   effectiveRails: RailBandSpec;
   railBands: RailBandsOutput;
+  /** The stored bottom (Phase 17) — see `DesignState.bottom`. */
+  bottom: BoardBottom;
+  /** The board facts the bottom is read against (`designBottomBoard`, D-19, D-38): the drawn outline, its side
+   * profile and the front fins exactly as FINS places them (`finPlacement`, D-03). */
+  bottomBoard: BottomBoard;
+  /** The bottom read against the board (`resolveBottom`): every station from the tail, a tail cut's Deepest At
+   * following the front fins (D-36). */
+  resolvedBottom: ResolvedBottom;
+  /** The litres' own sections (`boardSections` over the very input `crossSectionVolume` integrates, the bottom
+   * included), so BOTTOM's thin-rail sentence (17-09) and its ghost ring (17-10) read the sections the litres, the 3D
+   * board and the CNC files read — no component builds sections of its own (the checker's W1, 2026-11-08). */
+  bottomSections: BoardSection[];
+  /** The litres' own section at any one station (`builtSectionAt` over the same input), for a drawn section's knife
+   * edge (D-40; the code review's WR-03): the section on the screen and the printed sheet's end their foam where the
+   * litres, the 3D board and the CNC files end it. Null on a bottom that cuts nothing. */
+  bottomSectionAt: (station: Mm) => BoardSection | null;
+  /** `effectiveRails` with each anchor's thickness lowered by the rail lift there (`railsOnTheBottom`, D-22, D-35):
+   * the rail RAILS bands once a vee or a belly has lifted it. The SAME object as `effectiveRails` while the bottom
+   * lifts no rail. RAILS-only: the litres and the headline thickness never read it. */
+  railsOnBottom: RailBandSpec;
+  /** `computeRailBands(railsOnBottom)` — what RAILS' plots, DATA and readout, the RAILS tile and the order form's Rail
+   * Band Reference show. The SAME object as `railBands` while the bottom lifts no rail; VOLUME's estimator rows keep
+   * `railBands`. */
+  railBandsOnBottom: RailBandsOutput;
   templateValues: VolumeTemplateValues;
   railValues: VolumeRailValues;
   /** `fins` unless `finsImportTemplate`, in which case boardLength/tailWidth12/tailShape come
@@ -571,6 +664,9 @@ interface DesignContextValue {
    * `lib/geometry/design.ts`): `crossSectionVolume`'s figure while importing the drawn template,
    * `volumeResult`'s estimator figure while the Volume screen is a standalone quick estimator. */
   quotedVolumeLitres: Litres;
+  /** The litres before the bottom (Phase 17, D-34, DATA's first line): `quotedVolumeLitres`' own rule with no bottom.
+   * The same figure as `quotedVolumeLitres` while the bottom cuts nothing. */
+  quotedVolumeLitresBeforeBottom: Litres;
 }
 
 const DesignContext = createContext<DesignContextValue | null>(null);
@@ -678,6 +774,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       railsImportFoilThickness: state.railsImportFoilThickness,
       finSystem: state.finSystem,
       blank: state.blank,
+      bottom: state.bottom,
     }),
     [
       state.outline,
@@ -690,6 +787,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.railsImportFoilThickness,
       state.finSystem,
       state.blank,
+      state.bottom,
     ],
   );
 
@@ -805,7 +903,8 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     openBoardPendingRef.current = null;
     openBoardRestoredRef.current = true;
     clearOpenBoardCopy();
-    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), boardStarted: true, dirty: true }));
+    // Every preset opens flat (D-04): its bottom is DEFAULT_BOTTOM, never anything a preset could carry.
+    setState(() => ({ ...DEFAULT_DESIGN_STATE, ...presetDesignFields(preset), bottom: DEFAULT_BOTTOM, boardStarted: true, dirty: true }));
   };
 
   // The one place `dirty` deliberately does NOT follow `boardStarted`: opening a saved board
@@ -836,6 +935,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       foil: snapshot.foil,
       rails: snapshot.rails,
       fins: snapshot.fins,
+      // A saved board opens with its own bottom, or flat when it was saved without one — every board
+      // saved before BOTTOM, and any board never touched there (17-12, D-24). Nothing is rewritten.
+      bottom: snapshot.bottom ?? DEFAULT_BOTTOM,
       volume: snapshot.volume,
       finsImportTemplate: snapshot.finsImportTemplate,
       railsImportFoilThickness: snapshot.railsImportFoilThickness,
@@ -1264,13 +1366,175 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // less the Deck Skin and the centre gap) exactly as drawn, never re-splined through five stations.
   // Built through `designCrossSectionInput`, the very helper `summarizeDesign` uses (Phase 16, D-05), so
   // VOLUME, the cards and the coming 3D board all read one input.
-  const crossSectionVolume = useMemo(
-    () =>
-      computeCrossSectionVolume(
-        designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length),
-      ),
-    [outlineGeometry, sideProfile, effectiveRails, state.outline.length],
+  //
+  // Phase 17 (D-05, D-20, D-21): the input carries the store's one bottom, read against the board's own facts, so the
+  // litres count the cut; a flat bottom adds nothing to the input at all (`designCrossSectionInput`).
+  const bottomBoard = useMemo(
+    () => designBottomBoard(resolvedOutline, outlineGeometry, sideProfile, finPlacement),
+    [resolvedOutline, outlineGeometry, sideProfile, finPlacement],
   );
+  const resolvedBottom = useMemo(() => resolveBottom(state.bottom, bottomBoard), [state.bottom, bottomBoard]);
+  const crossSectionInput = useMemo(
+    () =>
+      designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length, {
+        bottom: state.bottom,
+        board: bottomBoard,
+      }),
+    [outlineGeometry, sideProfile, effectiveRails, state.outline.length, state.bottom, bottomBoard],
+  );
+  const crossSectionVolume = useMemo(() => computeCrossSectionVolume(crossSectionInput), [crossSectionInput]);
+  // The litres' own sections, for BOTTOM's readers (the checker's W1): the same input, so the same rings.
+  const bottomSections = useMemo(() => boardSections(crossSectionInput), [crossSectionInput]);
+  // The same input at any one station a section is drawn at (the code review's WR-03): the drawing's knife edge.
+  const bottomSectionAt = useMemo(() => (station: Mm) => builtSectionAt(crossSectionInput, station), [crossSectionInput]);
+  // The litres before the bottom (D-34): the same input with no bottom — built only while the bottom cuts something.
+  const crossSectionVolumeBeforeBottom = useMemo(
+    () =>
+      bottomHasCut(state.bottom)
+        ? computeCrossSectionVolume(designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, state.outline.length))
+        : crossSectionVolume,
+    [state.bottom, outlineGeometry, sideProfile, effectiveRails, state.outline.length, crossSectionVolume],
+  );
+
+  // RAILS bands the rail the bottom leaves (D-22, D-35): its three anchors less the rail lift there, in a step only
+  // RAILS' own figures take — the litres above read `effectiveRails`. While no rail is lifted both are the very
+  // objects `effectiveRails` and `railBands` are, so a flat board's RAILS is untouched.
+  //
+  // D-41 (the founder, 2026-11-08: "contour before rail shaping"): each lifted section's bands also carry the bottom
+  // under the rail (`railBandsOnTheBottom`), so RAILS' plots draw the planed bottom at the vee's or belly's angle.
+  const railAnchors = useMemo(
+    () => railAnchorStations(sideProfile.effectiveFoil, state.outline.length),
+    [sideProfile.effectiveFoil, state.outline.length],
+  );
+  const railsOnBottom = useMemo(
+    () => railsOnTheBottom(effectiveRails, bottomRailLift(resolvedBottom, bottomBoard), railAnchors),
+    [effectiveRails, resolvedBottom, bottomBoard, railAnchors],
+  );
+  const railBandsOnBottom = useMemo(
+    () =>
+      railsOnBottom === effectiveRails
+        ? railBands
+        : railBandsOnTheBottom(computeRailBands(railsOnBottom), resolvedBottom, bottomBoard, railAnchors),
+    [railsOnBottom, effectiveRails, railBands, resolvedBottom, bottomBoard, railAnchors],
+  );
+
+  // BOTTOM's two edits (Phase 17, 17-08). They sit after `bottomBoard` because both read the board the bottom is cut
+  // into; like every mutator they check the lock first, note their undo key, and mark the board started and dirty.
+  //
+  // A pick from a section's Cut menu (D-08, D-42): the section opens on the name's starting numbers on this board, and —
+  // when a tail is picked — a center single still on its starting numbers is re-seated for the new tail in the SAME
+  // step (`pickCut`), so one Undo takes the whole pick back. A menu pick, not a drag: noteEdit(null).
+  const pickBottomCut = (section: BottomSectionKey, name: BottomCutName) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: pickCut(prev.bottom, section, name, bottomBoard),
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // A slider on one of a section's cut rows (D-07, R4): the patch in the stored form (a station through
+  // `storeCutStation`). When a station moved (`changed`), Start ≥ Deepest ≥ End is kept in the same step, the dragged
+  // one winning (`keepStationsInOrder`) — so a drag that pushes the other two is still one undo step, under one key per
+  // field dragged.
+  const updateBottomCut = (section: BottomSectionKey, patch: Partial<BottomCutSpec>, changed?: "start" | "deepest" | "end") => {
+    if (lockedRef.current) return;
+    noteEdit(`bottom:${section}:${patchKey(patch)}`);
+    setState((prev) => {
+      const patched: BottomCutSpec = { ...prev.bottom[section], ...patch };
+      // A double's Off Rail, Off Stringer or Trough At moved keeps its flat and trough in order the sketch's way
+      // (`normalize` runs on every drag, template.html line 1017): `keepStationsInOrder` read with Deepest At as the
+      // station that moved, which pushes no station that is already in order and keeps the two across marks.
+      const keepFrom = changed ?? (cutKind(patched.name) === "double" ? "deepest" : undefined);
+      const kept = keepFrom ? keepStationsInOrder(section, patched, keepFrom, bottomBoard, prev.bottom.wingRule) : patched;
+      return {
+        ...startedFrom(prev, liveTipsRef.current),
+        bottom: { ...prev.bottom, [section]: kept },
+        boardStarted: true,
+        dirty: true,
+      };
+    });
+  };
+
+  // The Teardrop's tick box (D-06, D-32): a Nose single concave closing to a point toward the center, or not. A tick is
+  // a discrete choice, so its own undo step: noteEdit(null).
+  const setBottomClosesToPoint = (section: BottomSectionKey, on: boolean) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, [section]: { ...prev.bottom[section], closesToPoint: on } },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // WINGS (D-19): which outline every cut's Off Rail is measured from on a winged board. A menu pick is a discrete
+  // choice, so its own undo step: noteEdit(null).
+  const setBottomWingRule = (rule: BottomWingRule) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, wingRule: rule },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // The CHANNELS block inside TAIL (D-10, D-11). The three menus are discrete choices — noteEdit(null), one undo step
+  // each — and like every mutator they check the lock first and mark the board started and dirty.
+  type ChannelsEdit = (channels: BottomChannelsSpec) => BottomChannelsSpec;
+  const setChannels = (next: ChannelsEdit) => {
+    if (lockedRef.current) return;
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, channels: next(prev.bottom.channels) },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
+  // The count (the orchestrator's ruling at 17-09): a count brings its starting width unless the width was set by hand,
+  // every other number kept; None hides the set and keeps its numbers for the next count (`switchChannelCount`).
+  const setChannelCount = (count: BottomChannelsSpec["count"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => switchChannelCount(channels, count, bottomBoard));
+  };
+
+  const setChannelRun = (run: BottomChannelsSpec["run"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => switchChannelRun(channels, run));
+  };
+
+  // The Angle row's Reset (D-44): a discrete press, its own undo step. The slider itself goes through `updateChannels`
+  // like Channel Width, so one slow drag is one step.
+  const resetChannelAngle = () => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => ({ ...channels, angle: null }));
+  };
+
+  const setChannelLongest = (longest: BottomChannelsSpec["longest"]) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setChannels((channels) => ({ ...channels, longest }));
+  };
+
+  // A channels slider (D-10): the patch in the stored form, one key per field dragged, and — when a station moved —
+  // Start ≥ Deepest ≥ End kept in the same step, the dragged one winning (`keepChannelStationsInOrder`).
+  const updateChannels = (patch: Partial<BottomChannelsSpec>, changed?: "start" | "deepest" | "end") => {
+    if (lockedRef.current) return;
+    noteEdit(`bottom:channels:${patchKey(patch)}`);
+    setChannels((channels) => {
+      const patched: BottomChannelsSpec = { ...channels, ...patch };
+      return changed ? keepChannelStationsInOrder(patched, changed, bottomBoard) : patched;
+    });
+  };
 
   // The blank moves (D-01, D-02, D-11). Each notes its edit first and marks the board started and
   // dirty, like every mutator above, so undo, autosave and the replace-board prompt all see them.
@@ -1462,6 +1726,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolume, volumeResult.importingTemplate),
     [volumeResult, crossSectionVolume],
   );
+  const quotedVolumeLitresBeforeBottom = useMemo(
+    () => deriveQuotedVolumeLitres(volumeResult, crossSectionVolumeBeforeBottom, volumeResult.importingTemplate),
+    [volumeResult, crossSectionVolumeBeforeBottom],
+  );
 
   // The prototype's own handoff semantics (Volume.dc.html lines 412-437), now behind ONE box
   // (quick 261017-vdh) — the one place derived values must be written back into stored state.
@@ -1511,6 +1779,9 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       boardName: state.boardName,
       finSystem: state.finSystem,
       blank: state.blank,
+      // The bottom is saved only once it is not the opening one (17-12, D-24): a board never touched on
+      // BOTTOM saves key for key as it did before the page existed, so no saved board is rewritten.
+      ...(isDefaultBottom(state.bottom) ? {} : { bottom: state.bottom }),
     }),
     [
       resolvedOutline,
@@ -1524,6 +1795,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
       state.boardName,
       state.finSystem,
       state.blank,
+      state.bottom,
     ],
   );
 
@@ -1845,6 +2117,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     applyModel,
     applyBoardFile,
     updateRailSection,
+    pickBottomCut,
+    updateBottomCut,
+    setBottomClosesToPoint,
+    setBottomWingRule,
+    setChannelCount,
+    setChannelRun,
+    resetChannelAngle,
+    setChannelLongest,
+    updateChannels,
     toggleTailHardEdge,
     setTailHardEdgeBlendsFrom,
     setTailHardEdgeEndsAt,
@@ -1868,6 +2149,13 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     sideProfile,
     effectiveRails,
     railBands,
+    bottom: state.bottom,
+    bottomBoard,
+    resolvedBottom,
+    bottomSections,
+    bottomSectionAt,
+    railsOnBottom,
+    railBandsOnBottom,
     templateValues,
     railValues,
     effectiveFins,
@@ -1878,6 +2166,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     volumeResult,
     crossSectionVolume,
     quotedVolumeLitres,
+    quotedVolumeLitresBeforeBottom,
   };
 
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;

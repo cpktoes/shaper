@@ -12,7 +12,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 
 **Milestone v1.4 (Phase 12, complete 2026-09-27)** models the foil the way a shaper actually cuts it. Phase 11 scaled the blank's thickness profile down to the centre thickness; a shaper does something else with a planer: skins the deck by a roughly constant amount, planes the bottom down to thickness, and only then thins the tips. The founder's brief put that on the screen — a deck skin taken off parallel to the blank's deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, a bottom curve parallel to the blank's rocker, and tip thinning in the last 12" with a pin-deck or bottom choice — so the DATASHEET's numbers became the numbers a shaper works to. One phase of ten plans, opened on branch `foil-real-shaping` the afternoon v1.3 shipped and live the next morning: production carried migration 0006 before the merge (`125a90f`), the founder passed all eight UAT checks on real phones and the live site, and every one of the phase's 35 declared threats is closed.
 
-**Milestone v1.5 (Phase 13, opened 2026-09-27)** gets the app ready for the room. On Saturday 2026-10-10 the founder shows Shaper Assistant to many shapers at once. That is the build guide's M4, "invite shapers, free for everyone, watch what they use", and the founder plans to go public with tiered subscriptions (M5) shortly after hearing from them. A review on the day v1.4 closed found the app healthy but not yet ready for that. The live site ran a framework version with a critical security advisory. Three milestones of stale records were still open, along with five founder decisions and four provisional preset blanks. Volume had never been checked against a real finished board. The order form was missing the tips and the planer passes. And there was no way for a shaper to send feedback, or for the founder to see which screens get used. The phase has thirteen items, most of them small, run one at a time with a review between: safe fixes first, then the founder's decisions, then what shapers will test first, then what lets the founder listen, then a rehearsal on real phones and a freeze on Oct 7. **Phase 14 (opened 2026-10-02)** joins it at the founder's word, "before the 10th": the curves a shaper cuts foam to are redrawn so they flow the way a real surfboard does. A blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely (measured on the US Blanks catalogue), a hand-set board follows the same rule, and each tip runs down steadily from a start point that moves in when it has to, so no board comes out thinner near a tip than at the tip itself. **Phase 15 (opened 2026-10-05)** follows at the founder's word, "before Wednesday's freeze": the home page's saved boards become the Board Rack, boards standing sideways at one true scale like a shop rack, each turning its real turn to show its outline as the cursor or the thumb passes, kept in the order the shaper sets (sketches 009–011).
+**Milestone v1.5 (Phase 13, opened 2026-09-27)** gets the app ready for the room. On Saturday 2026-10-10 the founder shows Shaper Assistant to many shapers at once. That is the build guide's M4, "invite shapers, free for everyone, watch what they use", and the founder plans to go public with tiered subscriptions (M5) shortly after hearing from them. A review on the day v1.4 closed found the app healthy but not yet ready for that. The live site ran a framework version with a critical security advisory. Three milestones of stale records were still open, along with five founder decisions and four provisional preset blanks. Volume had never been checked against a real finished board. The order form was missing the tips and the planer passes. And there was no way for a shaper to send feedback, or for the founder to see which screens get used. The phase has thirteen items, most of them small, run one at a time with a review between: safe fixes first, then the founder's decisions, then what shapers will test first, then what lets the founder listen, then a rehearsal on real phones and a freeze on Oct 7. **Phase 14 (opened 2026-10-02)** joins it at the founder's word, "before the 10th": the curves a shaper cuts foam to are redrawn so they flow the way a real surfboard does. A blank's bottom, thickness and width are drawn between their printed stations by the rule that redraws real blanks most closely (measured on the US Blanks catalogue), a hand-set board follows the same rule, and each tip runs down steadily from a start point that moves in when it has to, so no board comes out thinner near a tip than at the tip itself. **Phase 15 (opened 2026-10-05)** follows at the founder's word, "before Wednesday's freeze": the home page's saved boards become the Board Rack, boards standing sideways at one true scale like a shop rack, each turning its real turn to show its outline as the cursor or the thumb passes, kept in the order the shaper sets (sketches 009–011). **Phase 16 (opened 2026-11-03, live 2026-11-06)** draws the board as a solid under shaping-room lights on a 3D screen of its own and exports it for a CNC program. **Phase 17 (opened 2026-11-08)** puts the bottom in: a BOTTOM screen between ROCKER and RAILS where each section takes a named cut and the tail its channels, every cut shaded and lined at 1/16" of depth, sectioned and tabled, and counted in the litres, the 3D board and the CNC files (sketches 019–021).
 
 ## Milestones
 
@@ -21,7 +21,7 @@ Shaper started from a working prototype (built in Claude Design) that already pr
 - ✅ **v1.2 — Rails Finished, Phone Ready** — Phases 8–10 (shipped 2026-09-12)
 - ✅ **v1.3 — Rocker from Real Blanks** — Phase 11 (shipped 2026-09-26)
 - ✅ **v1.4 — Foil the Way a Shaper Cuts It** — Phase 12 (shipped 2026-09-27)
-- 🚧 **v1.5 — Ready for the Shapers** — Phases 13–15 (in progress; the shapers see it 2026-10-10)
+- 🚧 **v1.5 — Ready for the Shapers** — Phases 13–17 (in progress; the shapers saw it 2026-10-10)
 
 ## Phases
 
@@ -65,7 +65,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 - [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
-- [ ] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021; planned and being built on branch `claude/beautiful-fermi-ad3fb7` — its SPEC, CONTEXT, UI-SPEC and plans live there until it lands)
+- [ ] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021)
 - [x] **Phase 18: A GUIDE on Every Page** - A GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS: one card per control or named choice with the board's own value, a cartoon of the open board with that one setting pushed through the app's own maths, two sentences and a How to shape note; FINS by setup with the MODEL INFO notes on the cards and that tab gone (opened 2026-11-09 from sketch 022 on branch `page-guides`; live 2026-11-10 as main `79110e41`)
 
 ## Phase Details
@@ -388,9 +388,89 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 
 ### Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 
-**Goal:** A shaper maps, measures and cuts the bottom of the board they designed, on a new BOTTOM screen between ROCKER and RAILS. This entry is a placeholder on `main`: the phase was opened 2026-11-08 and is being built on branch `claude/beautiful-fermi-ad3fb7`, where its full section, `phases/17-bottom-contours/17-SPEC.md`, CONTEXT, UI-SPEC and plans live (13 of 16 plans executed as of 2026-11-09). It is written here so Phase 18 can take the next number without a collision when that branch lands.
-**Depends on:** Phase 16, Phase 14, quick 261102-gec, quick 261103-gcm
-**Plans:** on its branch
+**Goal:** A shaper maps, measures and cuts the bottom of the board they designed. A new design screen, **BOTTOM**, sits between ROCKER and RAILS — the shop order, after the blank is planed to thickness and before the rails are banded. Each of three sections, Nose, Center and Tail, takes one of six named cuts (a flat, a belly, a vee, a single or a double concave under the names a shaper uses), and the tail can take four, six or eight channels cut last. The page shows the bottom from above with every cut as a shade and a contour line at each 1/16" of depth, a cross-section at a station the shaper slides along the board with the depths dimensioned as a gauge reads them, a DATA table of depths and layout marks every 6", and a GUIDE that teaches each cut with a cartoon drawn from the open board. One number drives all of it — the foam taken off at a station and a distance from the stringer — so VOLUME's litres, the 3D board, the CNC files and RAILS all read the same cut. The app's thickness is the planed number and the contour comes out of it; contours only take foam away and cuts stack in shaping order; depth runs to 1/2" in 1/16" steps; the presets stay flat; nothing is printed full size; a saved board gets one new optional field with no database change.
+**Requirements**: R1–R15 (locked in `phases/17-bottom-contours/17-SPEC.md` from the founder's rulings on sketches 019–021, 2026-11-06 to 2026-11-08)
+**Brief:** `phases/17-bottom-contours/17-SPEC.md`; the decided sketches `.planning/sketches/019-bottom-contours/`, `020-bottom-channels/` and `021-bottom-guide/` (its `index.html` is the page as it will be built); the starting numbers and their sources in `todos/pending/2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`
+**Depends on:** Phase 16 (`boardSections`, the 3D surface and the CNC writers read the cut), Phase 14 (the planed thickness and the side profile the cut comes out of), quick 261102-gec (the finished rail the ghost draws), quick 261103-gcm (the foam at every station)
+**Plans:** 15/16 plans executed
+
+Success criteria:
+
+1. Every one of the eighteen names opens on its starting numbers on each preset, draws its shade, lines, section and DATA rows, and the five vees draw five different sections.
+2. A board with every section flat and no channels counts today's litres bit for bit, and no preset card's litres moves.
+3. For any cut, VOLUME's litres, the 3D board's surface, the STL's enclosed volume and DATA's stringer-left column agree with the one foam-off function.
+4. RAILS works from what the bottom leaves, FINS shows the contour under the fins, and a fin move on FINS carries a tail cut's Deepest At and the channels' Start and Deepest At.
+5. A board saved before this phase opens flat with nothing rewritten; a board saved with a bottom reopens exact; a board file carries it.
+6. Eight screens everywhere; the phone stack, the sideways phone and the desktop shell pass their browser specs; Metric reads marks in whole millimetres and dims in centimetres; the order form and the Overview Sheet carry the bottom's lines and the templates draw no contour.
+
+Plans:
+**Wave 1**
+
+- [x] 17-01-PLAN.md — Today's litres pinned first; the front fins, their toe and the Narrowest outline as board facts; the sketch's own maths run on the app's boards as the golden
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 17-02-PLAN.md — The one foam-off number for a flat, a belly, a vee and a single concave, stations from the nearest tip, the 1/4" floor
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 17-03-PLAN.md — The cut counted in the litres, the 3D board and the CNC files through one seam; flat boards bit for bit
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [x] 17-04-PLAN.md — RAILS works from what the bottom leaves; one bottom in the store, read by every screen (still flat)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [x] 17-05-PLAN.md — The double concave, the Spiral Vee, the Tri-Plane and the Teardrop's closing; DATA's numbers and the floor flags
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [x] 17-06-PLAN.md — The channels: the sawtooth, the three runs, Longest and Stagger, the fit; real walls in the 3D board and the STL
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [x] 17-07-PLAN.md — Every drawing as pure geometry: the shade and 1/16" lines, the section a gauge reads, the ruler, the ghost, the cartoon, the tile
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [x] 17-08-PLAN.md — TRACER: the BOTTOM screen end to end on one cut (route, nav, tile, Back/Next, panel, drawings, DATA); eight screens everywhere
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [x] 17-09-PLAN.md — Every row of every cut, the Teardrop's tick box, the floor warning, and the CHANNELS block inside TAIL
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [x] 17-10-PLAN.md — The section follows a drag or a tap; Section at, Height, the ruler, the finished rail; DATA's layout marks; the locked board
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [x] 17-11-PLAN.md — GUIDE: nineteen cards drawn from the open board, the founder's words folded in
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [x] 17-12-PLAN.md — The WINGS selector; the bottom saved with the board and in board files, undo, the read-only saved-boards report
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [x] 17-13-PLAN.md — FINS shows the contour under the fins and a fin move carries the stations; BOTTOM all-metric
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [x] 17-14-PLAN.md — BOTTOM on phones: upright, held sideways, finger-sized
+
+**Wave 15** *(blocked on Wave 14 completion)*
+
+- [x] 17-15-PLAN.md — On paper: the order form's BOTTOM CONTOURS page and the Overview Sheet's lines; nothing on the full-size template
+
+**Wave 16** *(blocked on Wave 15 completion)*
+
+- [ ] 17-16-PLAN.md — The one go-live: the full gate, the founder's devices and saved boards, one push on his go, a live check
+
+The sixteen plans run one per wave, 1 to 16 in the order listed — the founder's build order (the maths first; the double, spiral vee, tri-plane and teardrop; the channels; the screen as a tracer, then its rows, its viewer, GUIDE, WINGS and saving, FINS and Metric, the phones; the paper; one go-live) — every plan ending with his look at pictures (`autonomous: false`), the next wave starting only after his yes. Planned 2026-11-08; the checker passed with no blockers (five warnings: three fixed in the plans, the tracer's size and the estimates accepted as known hand-back risks).
+
+Cross-cutting constraints: geometry pure and tested in `lib/geometry/bottom.ts` and its companions, every fixture generated by a script that executes the sketch's own maths (`reference/sketches/021-bottom-maths.js`), never a typed figure (Rule 1); every number through `units.ts` / `measure-display.ts` — marks in whole mm, dims in cm, the INPUTS card's Thickness a dim (Rule 2, D-25); one foam-off function read by the litres, the 3D board, the CNC files, RAILS, FINS and every drawing (D-05); a flat bottom bit-identical on the 102-board pin and no preset's litres moving (D-20); one optional snapshot field at version 5, absent means flat, no database change (D-24); width / pointer / height the only three layout switches; each executor in its own worktree with its own PW_PORT (3301–3316) and `IS_WEBPACK_TEST=1`, never touching port 3005 or the founder's checkout; nothing pushed without his go (D-28).
 
 ### Phase 18: A GUIDE on Every Page
 
@@ -431,7 +511,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete) → 13 → 14 (v1.5, in progress) → 15
+Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 6 → 7 (v1.1, complete) → 8 → 9 → 10 (v1.2, complete) → 11 (v1.3, complete) → 12 (v1.4, complete) → 13 → 14 (v1.5, in progress) → 15 → 16 → 17 → 18 (18 went live first, 2026-11-10, while 17 was still building on its branch)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -451,5 +531,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
-| 17. BOTTOM — Bottom Contours | 13/16 (on its branch) | In progress | - |
+| 17. BOTTOM — Bottom Contours | 15/16 | In Progress|  |
 | 18. A GUIDE on Every Page | 10/10 | Complete    | 2026-11-10 |

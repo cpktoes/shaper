@@ -152,6 +152,28 @@
  *    The version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment) drops the
  *    unknown keys, so a board saved here opens there with its old hard edge. No database change — rails
  *    live in the `snapshot` JSON column.
+ * 14. The board carries its bottom, optional (Phase 17, D-24): `bottom` — the Nose, Center and Tail cuts, the
+ *    channels, and the rule a winged board measures Off Rail from — every length in millimetres. It is
+ *    written only when the bottom is not the opening one (flat, no channels, Narrowest), so a board never
+ *    touched on BOTTOM saves key for key as it did before the page existed, and absent reads as that
+ *    opening bottom: every board saved before opens flat with nothing rewritten. It is read forgivingly,
+ *    part by part: a cut whose name its section never had, a channel count that is not 0, 4, 6 or 8, a
+ *    number that is not finite or could not sit on any board, reads that ONE part — the Nose, the Center,
+ *    the Tail, the channels or the wing rule — as its opening value and keeps the others; a bottom that is
+ *    not an object at all, or that reads as the opening one, leaves no key. So a crafted bottom never
+ *    rejects the board and never crashes the rack. The bounds are outer ones, as rule 7's are — BOTTOM's
+ *    sliders set the real ranges, and `resolveBottom` holds every station on the board on each read. The
+ *    version stays 5, for rule 6's reason: the reader on `main` (and a rolled-back deployment) drops the
+ *    unknown key, so a board saved here opens there flat — its cuts are not lost from the stored row, but
+ *    a save from there would write the board back without them. No database change — the bottom lives in
+ *    the `snapshot` JSON column.
+ *    The channels' `angle` (D-44, the founder, 2026-11-10: an Angle on the two angled runs, "Set default by
+ *    the rail and the fins toe in, but overiderable") is the one channel key that may be missing: `null`
+ *    means "this run's own angle", and a board saved before the Angle slider existed has no key at all, so
+ *    absent reads as `null` and every one of those boards keeps the rest of its channels untouched. A value
+ *    that is not a number, not finite, or outside 0° to the slider's far end reads as `null` too — that ONE
+ *    key, never the channels. The key is always there once read, so a bottom that is the opening one still
+ *    compares equal to it and still leaves no key.
  *
  * Imports only from lib/geometry/*, the pure catalogue rule in `lib/blanks/catalog.ts` and the
  * validation library — never the ORM layer or the auth SDK. That keeps this file inside vitest's `lib/**\/*.test.ts` include pattern and inside Rule
@@ -170,6 +192,14 @@ import {
   type BlankRockerSpec,
 } from "@/lib/geometry/custom-rocker";
 import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, type OutlineSpec } from "@/lib/geometry/board";
+import {
+  BOTTOM_CUT_NAMES,
+  CHANNEL_ANGLE_MAX,
+  DEFAULT_BOTTOM,
+  isDefaultBottom,
+  type BoardBottom,
+  type BottomSectionKey,
+} from "@/lib/geometry/bottom";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   type FinPlacementSpec,
@@ -506,6 +536,64 @@ const volumeSpecSchema = z.object({
 
 const finSystemSchema = z.enum(["fcs2", "fcsOriginal", "futures", "lokbox", "probox", "glassOn"]);
 
+/*
+ * The bottom (rule 14). Outer bounds only, in the wing schema's spirit: they keep a stored value a number
+ * the maths can draw, and BOTTOM's own sliders set the real ranges (Off Rail to 6", Off Stringer to 9", a
+ * trough to 8", depth and lift to 1/2", a channel to 4" wide, a stagger to 8"). Each bound stands clear of
+ * its slider's far end, so a value a shaper really set is never read as bad. A station may be signed — a
+ * Tail cut's Deepest At and the channels' Start and Deepest At are measured from the front fins — and none
+ * can be further off than the longest board a snapshot holds.
+ */
+const bottomAcrossSchema = z.number().min(0).max(inchesToMm(12));
+const bottomDepthSchema = z.number().min(0).max(inchesToMm(1));
+const bottomStationSchema = z.number().min(-SNAPSHOT_BOARD_LENGTH_MM.max).max(SNAPSHOT_BOARD_LENGTH_MM.max);
+const bottomSmoothnessSchema = z.number().min(0).max(100);
+
+/** One section's cut: only that section's six names. A bad cut reads as the section's flat — a fresh copy. */
+const bottomCutSchema = (section: BottomSectionKey) =>
+  z
+    .object({
+      name: z.enum(BOTTOM_CUT_NAMES[section] as readonly string[]),
+      offRail: bottomAcrossSchema,
+      offStringer: bottomAcrossSchema,
+      troughAt: bottomAcrossSchema,
+      start: bottomStationSchema,
+      deepest: bottomStationSchema,
+      end: bottomStationSchema,
+      depth: bottomDepthSchema,
+      veeLift: bottomDepthSchema,
+      smoothness: bottomSmoothnessSchema,
+      closesToPoint: z.boolean(),
+    })
+    .catch(() => ({ ...DEFAULT_BOTTOM[section] }));
+
+const bottomChannelsSchema = z
+  .object({
+    count: z.union([z.literal(0), z.literal(4), z.literal(6), z.literal(8)]),
+    width: bottomAcrossSchema,
+    offStringer: bottomAcrossSchema,
+    startFromFins: bottomStationSchema,
+    deepestFromFins: bottomStationSchema,
+    end: bottomStationSchema,
+    depth: bottomDepthSchema,
+    smoothness: bottomSmoothnessSchema,
+    run: z.enum(["parallel", "rail", "toe"]),
+    // D-44: forgiving on its own, so a missing or bad angle never costs a board the rest of its channels.
+    angle: z.number().min(0).max(CHANNEL_ANGLE_MAX).nullable().catch(null),
+    longest: z.enum(["inner", "outer", "same"]),
+    stagger: bottomAcrossSchema,
+  })
+  .catch(() => ({ ...DEFAULT_BOTTOM.channels }));
+
+/** A board's bottom as stored. Each part forgives itself; anything the app never wrote is dropped. */
+const bottomSchema = z.object({
+  nose: bottomCutSchema("nose"),
+  center: bottomCutSchema("center"),
+  tail: bottomCutSchema("tail"),
+  channels: bottomChannelsSchema,
+  wingRule: z.enum(["narrowest", "natural"]).catch("narrowest"),
+});
+
 // `.partial()` at this one level (not recursively) is the version-tolerance mechanism: a whole
 // top-level field missing from an older snapshot parses as `undefined` here and is backfilled
 // from a DEFAULT_* constant in `parseSnapshot` below, rather than failing the whole row. A field
@@ -524,11 +612,14 @@ const designFieldsSchema = z
     boardName: z.string(),
     finSystem: finSystemSchema,
     blank: boardBlankSchema.nullable(),
+    // Rule 14: a bottom that is not one at all reads as absent rather than rejecting the board.
+    bottom: bottomSchema.optional().catch(undefined),
   })
   .partial();
 
 /** A Zod object with a numeric `version` and a `design` object mirroring the eleven snapshot
- * fields (see the module doc-comment for the tolerance rule this schema enforces). */
+ * fields and the optional bottom (see the module doc-comment for the tolerance rules this schema
+ * enforces). */
 export const designSnapshotSchema = z.object({
   version: z.number(),
   design: designFieldsSchema,
@@ -555,6 +646,9 @@ export interface DesignSnapshotFields {
   finSystem: FinSystem;
   /** The board's blank, by value (D-01), or `null` for the hand-set fallback (D-02). */
   blank: BoardBlank | null;
+  /** The board's bottom (rule 14, Phase 17 D-24). Left out — never `undefined` — when the bottom is the
+   * opening one: flat in all three sections, no channels, Narrowest. Read it as `bottom ?? DEFAULT_BOTTOM`. */
+  bottom?: BoardBottom;
 }
 
 export interface DesignSnapshot {
@@ -715,6 +809,11 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
     };
   }
 
+  // Rule 14: the bottom is kept only when it read as one AND is not the opening bottom — a stored
+  // opening bottom, and one whose every part read as bad, are the same board as one with no key.
+  const readBottom = design.bottom as BoardBottom | undefined;
+  const bottom = readBottom !== undefined && !isDefaultBottom(readBottom) ? readBottom : undefined;
+
   // The cast below is the one deliberate bridge from "validated plain numbers" back to the
   // branded Mm/Degrees/Litres types real design state is built from — see rule 1 in the module
   // doc-comment. Each field was validated shape-for-shape above; only the numeric brand is
@@ -731,5 +830,7 @@ export function parseSnapshot(value: unknown, options: ParseSnapshotOptions = {}
     boardName: design.boardName ?? "",
     finSystem: (design.finSystem ?? "fcs2") as FinSystem,
     blank,
+    // Never a present-but-undefined key: both stores spread these fields over a board's state.
+    ...(bottom !== undefined ? { bottom } : {}),
   };
 }

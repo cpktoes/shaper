@@ -943,6 +943,15 @@
   --outline-station-dash: 5 4; /* derived station lines (12" marks, etc) */
   --outline-dim-ink: var(--outline-ink); /* dimension lines, ticks and values */
   --outline-callout-label: var(--surf-ink-muted); /* muted: station names and chip names */
+  /* BOTTOM's drawings (Phase 17, D-12, UI-SPEC § Color) — four tokens, each off a contract token, so they follow every
+     theme as the ghost does; no new hue. The shade is the one wash ever drawn inside an outline: its colour here, its
+     strength a fill-opacity stepped per 1/32" of depth on the drawing itself. The pencil lines are the ones a shaper
+     rules on the blank (a concave's edge, a double's flat, every channel wall), between the faint station lines and the
+     ink. The two dashes are the drawing convention's cutting line (dash-dot) and the dotted trough / Deepest line. */
+  --outline-bottom-shade: var(--surf-ink-muted);
+  --outline-pencil-line: color-mix(in srgb, var(--surf-ink-muted) 78%, transparent);
+  --outline-cut-dash: 9 3 2 3;
+  --outline-trough-dash: 1 3;
 }
 
 @layer base {

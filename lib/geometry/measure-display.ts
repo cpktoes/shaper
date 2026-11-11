@@ -27,9 +27,11 @@ import {
   formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
+  formatInchesFractionOrLess,
   formatSignedInchesFraction,
   formatTenthMm,
   formatWholeMm,
+  formatWholeMmOrLess,
   inchesToMm,
   metricSliderRange,
   mm,
@@ -85,6 +87,22 @@ export function formatMark(value: Mm, system: UnitsSystem): string {
 /** The bare form of `formatMark`, for D-10's tables. Imperial is unchanged. */
 export function formatMarkBare(value: Mm, system: UnitsSystem): string {
   return system === "metric" ? formatWholeMm(value) : formatInchesFraction(value);
+}
+
+/**
+ * `formatMark` for a size that is shown because something IS there — a cut's depth, a rail's lift —
+ * and so must never read as nothing (the founder, 2026-11-10: "say <1/16 if it's not actually 0").
+ * A size above nothing that is too small for the tape reads "less than the smallest step": imperial
+ * `<1/16"`, metric `<1 mm`. Every other value, an actual zero included, reads exactly as
+ * `formatMark` reads it — half a step and up still rounds to one step.
+ */
+export function formatMarkOrLess(value: Mm, system: UnitsSystem): string {
+  return system === "metric" ? `${formatWholeMmOrLess(value)} mm` : formatInchesFractionOrLess(value);
+}
+
+/** The bare form of `formatMarkOrLess`, for a table whose column head carries the unit: `<1/16"`, `<1`. */
+export function formatMarkOrLessBare(value: Mm, system: UnitsSystem): string {
+  return system === "metric" ? formatWholeMmOrLess(value) : formatInchesFractionOrLess(value);
 }
 
 /**
