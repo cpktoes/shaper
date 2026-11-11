@@ -327,9 +327,9 @@ Tabs: ESTIMATE · GUIDE. 8 cards.
 ### Inputs — the three sliders and Board Type show only when Import Designed Board is unticked
 
 **Import Designed Board** · tag on the Shortboard: `On this board`  
-- is: Measures the board you drew — its template area and 51 real cross-sections with the RAILS rails — instead of the quick estimate from a board type.
+- is: Measures the board you drew — its template area and 51 real cross-sections with the finished RAILS rails and the BOTTOM contours — instead of the quick estimate from a board type.
 - does: The accurate litres, quoted everywhere the app shows volume; unticked, the page becomes a quick calculator for a board you know only by length, width and thickness.
-- how: Finish TEMPLATE, ROCKER and RAILS first; the litres here follow them. Compare the figure with a blank's catalogue volume before you cut — the foam off should be the difference.
+- how: Finish TEMPLATE, ROCKER, BOTTOM and RAILS first; the litres here follow them. Compare the figure with a blank's catalogue volume before you cut — the foam off should be the difference.
 
 **Board Length** · tag on the Shortboard: `6'2"` · caption: `dashed · 6'8" → 31.8 L quick estimate`  
 - is: The board's length for the quick estimate — one of the three numbers the quick figure multiplies.
