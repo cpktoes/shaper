@@ -71,7 +71,9 @@ Every figure comes from the app's own maths. "Before" is the diagnosis's measure
 | Fish, Rolled Vee, the starting 8, 4.237" | 0.181" | 0.164" of it missed | the whole 0.181" | 1/8" slope | straight up, 0.181" |
 | Longboard, Rolled Vee, 6 channels, 2.486" (under the rail's curve) | 0.136" | no wall at all | cuts 0.026" up into the curve, where its floor stands above the rail | 1/8" slope | straight up, 0.136" |
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-11)
+
+The founder looked at the before-and-after picture and approved ("Approved"); merged onto claude/bottom-uat-17-d1559c as 71b289ec. His answers to the two questions below: **"Show channels too"** (RAILS should draw the channels on a board with no vee or belly) and **"Match RAILS"** (DATA's Rail lift should count the vee or belly only). Both are new work, planned after 17-20.
 
 - `.planning/phases/17-bottom-contours/pictures/17-18-rails-channels.png` shows RAILS' tail section with the Finished Rail on, before (left) and after (right), at 1280 wide in Imperial, on three boards:
   - **Fish, Rolled Vee, eight channels at Off Stringer 3".** This is the case nearest his screenshot. Before, the thick line chords across the walls. After, four clean vertical steps, each channel floor running up to its wall.
@@ -79,7 +81,7 @@ Every figure comes from the app's own maths. "Before" is the diagnosis's measure
   - **Longboard, Rolled Vee, six channels.** Before, the outer walls were a notch and a slope. After, they stand straight up, and the inner wall cuts straight up into the rolled rail's curve. The rail above the channels is the same rail as before.
   - **One thing to look for:** on the Longboard, the blue band mark at 3" now sits on the vee's own bottom, a little below the drawn channel floor. The plan keeps the marks on the vee's or belly's bottom because they are laid out before the channels are cut. Before, the marks rode up and down on the channels.
 
-### A question for the founder (not built)
+### A question for the founder (not built — answered 2026-11-11, see above)
 
 - **Channels on a board with no vee or belly.** RAILS still draws no bottom under a board whose channels are cut with no vee or belly, the same as before this plan. Should RAILS show the channels there too?
 - **BOTTOM's DATA "Rail lift" column.** It still reads the whole one number at the rail, so a channel that runs out through the rail shows up there. RAILS now leaves that channel out. This is unchanged, and it is his call whether DATA should match RAILS.

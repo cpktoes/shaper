@@ -78,6 +78,8 @@ blocked: 0
 
 - 2026-11-10: both gaps are fixed as Phase 17 fix plans; the phase stays open until they are done, live and re-checked by him.
 - 2026-11-10: VOLUME's words — the suggested sentence, as written.
+- 2026-11-11: 17-17 (VOLUME's words) approved at his look.
+- 2026-11-11: 17-18 (RAILS draws channel walls straight up) approved at his look. Two answers: RAILS shows the channels on a board with no vee or belly too ("Show channels too"); BOTTOM's DATA Rail lift counts the vee or belly only, matching RAILS ("Match RAILS"). Both become a further Phase 17 fix plan after 17-20.
 
 ## Gaps
 
