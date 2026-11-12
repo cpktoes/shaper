@@ -1,10 +1,15 @@
 ---
 phase: 17-bottom-contours
 verified: 2026-11-11T05:28:10Z
-status: human_needed
+status: passed
 score: 6/6 roadmap success criteria verified in the code and by tests (15/15 requirements accounted for); 0 gaps
 behavior_unverified: 0
-overrides_applied: 0
+overrides_applied: 1
+overrides:
+  - must_have: "Open 3D on a board with a cut and with channels; then use Download CNC files on that board — the STL loads in the CNC program as one closed solid"
+    reason: "NOT TESTED by hand. Set aside by the founder at the walk-through: \"no, we're working on swapping this export to a .brd file\" (quick 261110-tvk, on branch close-bottom-17). The tests hold the mesh closed and its volume equal to the litres; the .brd export is checked against the solid-board fix (17-20) when it joins main. Shape3D's own test stays open from Phase 16."
+    accepted_by: "founder (Chris Kontoes)"
+    accepted_at: "2026-11-11T05:45:00Z"
 re_verification: false
 gaps: []
 deferred: []
@@ -157,3 +162,21 @@ No gaps. Every roadmap success criterion and every requirement R1 to R15 is deli
 
 _Verified: 2026-11-11T05:28:10Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Close-out (2026-11-11)
+
+The founder walked all eleven checks on the live site (`17-UAT.md`): eight passed outright, two found things to fix
+(G-17-5, VOLUME's words; G-17-6, the finished rail rounding the channels), and one was set aside (the CNC-files check,
+because that export is being replaced by a .brd file — recorded above as an override: accepted open, **not tested**).
+
+Both gaps were fixed inside the phase by seven more plans (17-17 to 17-23), each approved by him from before-and-after
+pictures, and went live on his word as main `93c0ea8f`. He re-checked both on the live site: "Pass all 3". Along the
+way he changed one earlier ruling: RAILS now draws every concave (D-41's "a concave changes nothing on RAILS" is
+retired); a vee or belly still lifts and thins the rail, and channels are cut last.
+
+The fix waves were pushed before their code review; the review was run afterwards on the live code
+(`17-FIXWAVE-REVIEW.md`: no blockers, three warnings, three notes). On his word ("Close 17, log as follow-ups") the
+three warnings are to-dos, with the five production-build browser tests that were not run before the push and the
+ESTIMATE tab's words (`.planning/todos/pending/2026-11-11-*.md`). Security: `17-SECURITY.md`, 37 threats, none open.
+
+_Closed: 2026-11-11 — status set to passed by the orchestrator after the founder's walk-through and re-check._
