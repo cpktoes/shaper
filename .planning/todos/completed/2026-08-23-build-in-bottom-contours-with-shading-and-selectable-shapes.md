@@ -10,7 +10,7 @@ files:
   - components/design/design-store.tsx
   - components/outline/outline-viewer.tsx
 source: user request 2026-08-23
-resolves_phase:
+resolves_phase: 17
 ---
 
 # Build in bottom contours with shading and selectable shapes

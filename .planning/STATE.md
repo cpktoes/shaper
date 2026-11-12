@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
-status: executing
-stopped_at: "Phase 17 fix waves LIVE 2026-11-11 as main 93c0ea8f (17-17..17-23, pushed on the founder's Go; live marker seen 19:13 Pacific, eight screens answer). Gate: tsc, lint, 12,586 unit tests, full browser suite 1,825 passed with 9 phone load failures that pass alone, production build, desktop pictures under Turbopack; e2e/prod not run (needs the main folder's settings). Still to do: his re-check of UAT tests 5 and 6 on the live site, then close the phase. The .brd export on close-bottom-17 joins main after this."
-last_updated: "2026-11-11T12:00:00.000Z"
+status: planning
+stopped_at: "Phase 17 (BOTTOM) COMPLETE 2026-11-11: walk-through 10 passed + 1 set aside (CNC files, superseded by the .brd export); seven fix plans 17-17..17-23 live as main 93c0ea8f and re-checked by the founder; security 37/37; fix-wave code review 0 blockers, 3 warnings filed as to-dos. The closing records are on claude/bottom-uat-17-d1559c, not pushed (paperwork only). Next: the .brd export on close-bottom-17 joins main; Phase 13 items remain."
+last_updated: "2026-11-12T04:28:20.818Z"
 last_activity: 2026-11-11
-last_activity_desc: The seven fixes from the founder's BOTTOM walk-through are live — VOLUME says what its litres count, channels keep straight walls on RAILS and in the solid board, RAILS draws every concave
+last_activity_desc: Phase 17 (BOTTOM) closed — the founder's walk-through passed, its seven fixes are live and re-checked, five follow-ups filed
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 82
   completed_plans: 82
-  percent: 100
-current_phase: 17
-current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
+  percent: 83
+current_phase: 13
+current_phase_name: Ready for the Shapers
 ---
 
 # Project State
@@ -24,9 +24,11 @@ current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 17 — BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut (Phase 18, A GUIDE on Every Page, is live and waits only for the founder's look)
+**Current focus:** Phase 13 — Ready for the Shapers (its last items); Phases 16, 17 and 18 are complete and live. The .brd export (quicks 261110-tvk, 261110-veo on branch `close-bottom-17`) joins main next
 
 ## Current Position
+
+**Phase 17 — BOTTOM — complete 2026-11-11.** 23 of 23 plans. Live 2026-11-10 as main `ff5818c0` (16 plans), verified in code 6 of 6 success criteria and R1–R15. The founder walked the eleven checks on the live site (`17-UAT.md`): eight passed, the CNC-files check was set aside ("we're working on swapping this export to a .brd file" — recorded as accepted open, not tested), and two found things to fix: VOLUME should say what its litres count (G-17-5), and the finished rail rounded the channels (G-17-6). Seven fix plans, each approved from before-and-after pictures: 17-17 VOLUME's words; 17-18 RAILS draws channel walls straight up; 17-19 the channelled boards' litres recorded; 17-20 the litres, 3D board and export files cut channels straight up into the finished rail (Hard Edge tails unchanged, the Longboard's rolled rail up to +0.06 L); 17-21 RAILS shows channels on a flat tail and DATA's Rail lift counts the vee or belly only; 17-22 RAILS draws every concave; 17-23 BOTTOM's section gauge matches DATA, DATA's note in his sentence, the Longboard's printed tables sheet prints all three notes. Pushed on his Go as main `93c0ea8f` (live 19:13 Pacific) and re-checked by him ("Pass all 3"). The gate: tsc, lint, 12,586 unit tests, the full browser suite at 1,825 passed with nine phone load failures that each passed alone, the production build and the desktop pictures under Turbopack. **Said plainly:** the fix waves were pushed before their code review, and the five production-build browser tests were not run; the review was run afterwards on the live code (`17-FIXWAVE-REVIEW.md`: no blockers, three warnings) and on his word ("Close 17, log as follow-ups") those are to-dos. Security `17-SECURITY.md`, 37 of 37 closed.
 
 **Phase 18 — A GUIDE on Every Page — complete and live 2026-11-10.** 10 of 10 plans. GUIDE is the last tab on TEMPLATE, ROCKER, RAILS, VOLUME and FINS, 84 cards in all, and FINS' MODEL INFO tab is gone with its words on the cards. Pushed as main `79110e41` at the founder's word ("Push it once the suite is green") and seen on the live site at 09:58 Pacific on all five pages. The gate: 9,932 unit tests, lint, the production build, and the browser suite at 1,685 passed with five page-load timeouts that each passed alone (named in `18-10-SUMMARY.md`). Verified 12 of 12 checkable requirements (`18-VERIFICATION.md`). **The founder's rulings after trying the live site on his phone, 2026-11-10:** the board's name stays off narrow ROCKER and RAILS strips (D-21, "Leave it off"); the GUIDE opens fast enough as it is, so the quicker opening is not built (D-28, "Fast enough, leave it"); the Customize Rocker card keeps the maker's inch order code in Metric and CLAUDE.md Rule 2 now names the GUIDE card (MD-02, "Keep the inch code"). **Still his, with no deadline:** every sentence is a first draft for his pen (`18-GUIDE-WORDS.md`); whether a drawing's caption is read to a screen reader (LW-05); VOLUME's ESTIMATE card sits one dot lower on a computer. BOTTOM's GUIDE adopts the shared card after Phase 17 lands (pending todo).
 
@@ -38,14 +40,14 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 17 live (16 of 16 plans); the founder's walk-through found 2 gaps, fix plans 17-17..17-20 ready for /gsd-execute-phase 17 --gaps-only; Phase 18 complete and live
-Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific (ten of ten plans); main merged into the Phase 17 branch
+Status: Phase 17 complete and live; Phase 13 open (11 of 13 items); Phases 14, 15, 16 and 18 complete
+Last activity: 2026-11-11 — Phase 17 closed after the founder's walk-through, seven fixes live as main `93c0ea8f` and his re-check
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 126
+- Total plans completed: 149
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -67,6 +69,7 @@ Last activity: 2026-11-10 — Phase 18 live as main `79110e41` at 09:58 Pacific 
 | 12 | 10 | - | - |
 | 15 | 13 | - | - |
 | 16 | 18 | - | - |
+| 17 | 23 | - | - |
 
 **Recent Trend:**
 
@@ -172,6 +175,9 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 5] 05-05: 34 of the planned 38+ SliderRow renders were migrated; eight sliders (three Board Length Select-combos, FINS' paired Tail Width @ 12in, and RAILS' Family/Ratio/Corner Cut Offset/Bottom Tuck 3) were deliberately left hand-rolled and named in slider-row.test.ts's allowlist with a reason each, since their shape doesn't fit SliderRow without changing how they look -- approved by the shaper at the checkpoint with the shortfall disclosed
 - [Phase ?]: [Phase 5] 05-07: the shaper authorised the orchestrator to run git push origin main and npm run db:migrate:prod during Task 2's checkpoint, rather than typing each command personally -- CLAUDE.md's push-then-deploy-then-migrate order was still followed exactly, gated on the shaper's own "deployed and migrated" resume signal
 
+- [Phase 17]: the founder's rulings at the walk-through and its fixes, 2026-11-10/11 — channels are the last cut and keep straight walls everywhere (RAILS' thin and Finished Rail lines, the litres, the 3D board, the export files); a channel never thins RAILS' rail and never counts as rail lift (RAILS, DATA's column and BOTTOM's section gauge all read the vee or belly alone); RAILS shows channels on a flat tail too ("Show channels too"); RAILS draws every concave on every section, channels or not ("Always draw it" — D-41's "a concave changes nothing on RAILS" is retired; a vee or belly still lifts and thins the rail, a concave never does); VOLUME's INPUTS card ends "Counts the finished rail shape from RAILS and the bottom contours from BOTTOM."; DATA's note reads "Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts."; the Longboard's printed tables sheet tightens its rows 2 dots, type unchanged, so every note prints ("Make it fit")
+- [Phase 17]: the CNC-files walk-through check was set aside by the founder, not tested ("we're working on swapping this export to a .brd file"); the fix waves went live before their code review and without the production-build browser tests — both recorded in 17-SECURITY.md and 17-UAT.md, the review run after (0 blockers), its three warnings filed as to-dos on his word ("Close 17, log as follow-ups")
+
 ### Roadmap Evolution
 
 - Phase 13 added (2026-09-27): Ready for the Shapers — milestone v1.5, the build guide's M4 preparation for the founder's showing to many shapers on 2026-10-10; 13 ordered items in `phases/13-ready-for-the-shapers/13-SPEC.md`, run one at a time as quick tasks with the founder's review between
@@ -184,7 +190,6 @@ Recent decisions affecting current work:
 11 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10. The off-rail fine-tuner todo was closed by quick 261018-dw6 on 2026-10-18. The retire-today's-curve todo was closed by quick 261018-dvu on 2026-10-18. The custom-rocker todo of 2026-09-28 was closed by quick 261016-mkb, live 2026-10-17, and the founder's follow-up on its popup's off view was built as quick 261017-ojc the same day):
 
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
-- [minor/general] Build in bottom contours with shading and selectable shapes — `.planning/todos/pending/2026-08-23-build-in-bottom-contours-with-shading-and-selectable-shapes.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
 - [minor/rocker] Open the blank's own catalog page from the app — `.planning/todos/pending/2026-09-26-open-the-blank-s-catalog-page-from-the-app.md`
@@ -195,6 +200,11 @@ Recent decisions affecting current work:
 - [minor/geometry] Tape-check a real Arctic blank against the new bottom curve (Phase 14 D-08: after go-live, when a blank is in the bay) — `.planning/todos/pending/2026-10-02-tape-check-a-real-arctic-blank-against-the-new-curve.md`
 - [minor/3d] Run the Shape3D acceptance test on the Export 3D Files zip (R8, left open by the founder at Phase 16's close) — `.planning/todos/pending/2026-11-06-run-the-shape3d-acceptance-test-on-the-export-zip.md`
 - [minor/ui] Clear the TEMPLATE toolbar off the readings on a sideways phone (found planning quick 261018-e6w; the founder, 2026-10-18: "Note it for later") — `.planning/todos/pending/2026-10-18-clear-the-template-toolbar-off-the-sideways-phone-readings.md`
+- [minor/ui] RAILS' thin bottom line should meet the tuck band on a rolled rail with channels (Phase 17 fix-wave review WR-01; a look question for the founder first) — `.planning/todos/pending/2026-11-11-rails-thin-bottom-line-meets-the-tuck-on-a-rolled-rail-with-channels.md`
+- [minor/print] A 9'7" to 10'0" board with channels should print every note on its BOTTOM CONTOURS tables sheet (WR-02) — `.planning/todos/pending/2026-11-11-long-boards-with-channels-print-every-note-on-the-tables-sheet.md`
+- [minor/tests] Hold the channelled boards' litres exactly, and let the record be made again (WR-03, with the review's three notes) — `.planning/todos/pending/2026-11-11-hold-the-channel-boards-litres-exactly.md`
+- [minor/tests] Run the production-build browser tests on the BOTTOM fixes that went live 2026-11-11 (not run before the push) — `.planning/todos/pending/2026-11-11-run-the-production-build-browser-tests-on-the-bottom-fixes.md`
+- [minor/copy] VOLUME's ESTIMATE tab words still leave BOTTOM out (17-17's unruled follow-ups) — `.planning/todos/pending/2026-11-11-volume-estimate-tab-words-after-bottom.md`
 
 ### Blockers/Concerns
 
@@ -576,10 +586,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-10T22:00:00.000Z
-Stopped at: Phase 17 wave 15 merged (a4db2688); main with Phase 18 merged into the branch; 17-16, the go-live gate, next
-Resume file: .planning/phases/17-bottom-contours/17-16-PLAN.md
-Next action: 17-16, the go-live gate for BOTTOM (full browser suite, the founder's phone checks and saved boards, one push on his go); BOTTOM's GUIDE to adopt Phase 18's shared card (todo of 2026-11-09); the founder's look at Phase 18 on his phone and his word on its open points; Phase 13's two remaining items and the Shape3D todo stay open
+Last session: 2026-11-12T04:30:00.000Z
+Stopped at: Phase 17 (BOTTOM) closed 2026-11-11; fix waves live as main 93c0ea8f; closing records on claude/bottom-uat-17-d1559c, not pushed
+Resume file: .planning/phases/17-bottom-contours/17-UAT.md
+Next action: push the closing records (paperwork only) on the founder's word; bring the .brd export (close-bottom-17) onto main and re-check it against 17-20; the five 2026-11-11 to-dos (RAILS thin line under the tuck on a rolled rail with channels; long boards with channels printing every note; the channel litres test; the production-build browser tests; VOLUME's ESTIMATE words); BOTTOM's GUIDE to adopt the shared card (todo of 2026-11-09)
 
 ## Operator Next Steps
 

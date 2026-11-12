@@ -17,6 +17,8 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**Live since 2026-11-10, closed 2026-11-11: Phase 17, BOTTOM.** Between ROCKER and RAILS a shaper now picks a named cut for the nose, center and tail (flat, belly, vee, single or double concave) and 4, 6 or 8 channels on the tail, sees the bottom from above shaded and lined at every 1/16" of depth, slides a cross-section with gauge readings, reads DATA every 6" and a GUIDE card per cut, and prints a BOTTOM CONTOURS page. One foam-off number feeds the litres, the 3D board, the export files and RAILS. The founder walked it on the live site; his two findings were fixed and re-checked the next day: VOLUME says its litres count the finished rail and the bottom contours, channels keep straight walls under the finished rail everywhere, RAILS draws channels on any tail and every concave, and rail lift means the vee or belly alone on RAILS, DATA and the section gauge. The CNC-files check was set aside, not tested, while that export is replaced by a .brd file.
+
 **Live since 2026-11-06: Phase 16, the 3D board and Export 3D Files.** Every board has a 3D screen, last after SUMMARY, a solid in a shaping room, and a zip of DXF, XYZ and STL files for a CNC program. The litres now count that same surface. Shape3D has not opened the files yet, so the export says it is experimental.
 
 **Shipped: v1.4 — Foil the Way a Shaper Cuts It** (2026-09-27, Phase 12, 10 plans)
@@ -184,6 +186,7 @@ The work list, who does each item, what "done" means, and the Progress Log are i
 
 - [x] User can shape a board on the five design screens from a phone — stacked layout, thumb-sized controls, outline and rocker points that drag under a finger, drawings that use the full width — with desktop mouse and keyboard behaviour unchanged, all proven by Playwright on iPhone and Android profiles — Validated in Phase 9: The Design Screens on a Phone (PHON-01…06, TEST-01; UAT 7/7 after two gap plans; security 47/47)
 - [x] User can see the board as a 3D surface in a shaping room and export it as files for a CNC program — Validated in Phase 16: 3D Board and CNC Export (Shape3D import not yet tested)
+- [x] User can map, measure and cut the bottom of the board: a named cut for the nose, center and tail and 4, 6 or 8 channels, drawn from above and in section, tabled every 6", printed, and counted in the litres, the 3D board and RAILS — Validated in Phase 17: BOTTOM (walk-through 10 of 11 passed; the CNC-files check set aside, not tested)
 - ✓ User can do everything else the app does from a phone — sign-in, the rack, the summary — with the whole trip proven in a shaper's hand on a real iPhone (Android walk skipped by founder decision D-12) — v1.2, Phase 10: The Whole App on a Phone (2026-09-12)
 
 - ✓ User can set a target centre thickness, pick a real blank that fits, slide the board along it and read the board's rocker, thickness and foil off the foam — every blank that won't fit shown with why, five Fit & Tip Defaults saved on the account, older boards reopening hand-set — v1.3, Phase 11: Rocker from Real Blanks (2026-09-26; the spec's sixteen requirements R1–R16 verified 16/16, UAT 7/7, security 43/43, six live checks)
@@ -298,4 +301,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-06 after Phase 16*
+*Last updated: 2026-11-11 after Phase 17*
