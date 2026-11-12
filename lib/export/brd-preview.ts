@@ -12,7 +12,16 @@
  * Pure: no React, browser or database import (CLAUDE.md Rule 1).
  */
 import { bezierPoint, type BezierKnot, type P2 } from "../geometry/bezier-fit";
-import { centimetresToMm, mm, type Mm } from "../geometry/units";
+import { formatDim } from "../geometry/measure-display";
+import {
+  centimetresToMm,
+  formatCentimetres,
+  formatFeetInches,
+  formatInchesFraction,
+  mm,
+  type Mm,
+  type UnitsSystem,
+} from "../geometry/units";
 import { brdFile, readBrdText, type BrdOptions, type BrdRead, type BrdReadKnot } from "./brd";
 import { unscrambleBrd } from "./brd-scramble";
 import type { BoardSurface } from "../geometry/board-surface";
@@ -169,4 +178,175 @@ export function brdFileWithPreview(surface: BoardSurface, boardName: string, opt
   const file = brdFile(surface, boardName, options);
   const preview = brdPreview(readBrdText(unscrambleBrd(file.data)));
   return { name: file.name, data: file.data, sectionCount: file.sectionCount, preview };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Laying the three drawings out (the dialog only paints what is worked out here).
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Dots of room left and right of every drawing, so an end of the board never touches the edge of its box. */
+export const BRD_PREVIEW_PAD_X = 10;
+
+/** Dots of room above and below every drawing. */
+export const BRD_PREVIEW_PAD_Y = 8;
+
+/** A line standing across (or up through) the board at one slice, in screen dots. */
+export interface BrdSliceLine {
+  number: number;
+  x: number;
+  y1: number;
+  y2: number;
+}
+
+/** The top view: the outline mirrored about the stringer, nose at the left. */
+export interface BrdTopFrame {
+  height: number;
+  /** The closed outline: the right half tail to nose, then the left half back. */
+  outline: P2[];
+  /** The stringer's line, end to end. */
+  stringer: { x1: number; x2: number; y: number };
+  slices: BrdSliceLine[];
+}
+
+/** The side view: bottom and deck along the stringer, nose at the left, deck up, at true height. */
+export interface BrdSideFrame {
+  height: number;
+  /** The closed board: along the bottom, back along the deck. */
+  outline: P2[];
+  bottom: P2[];
+  deck: P2[];
+  slices: BrdSliceLine[];
+}
+
+/** One slice drawn large: the whole cross-section, mirrored about the stringer. */
+export interface BrdSliceFrame {
+  number: number;
+  /** The closed shape: the right half stringer-bottom round to stringer-deck, then the left half back. */
+  outline: P2[];
+  /** The slice's own knots, on its right half. */
+  knots: P2[];
+  /** The stringer, top to bottom of the box. */
+  stringer: { x: number; y1: number; y2: number };
+}
+
+/** All three drawings for a box this wide. Every slice is drawn at the one scale (`sliceScale`), so stepping shows real change. */
+export interface BrdPreviewFrames {
+  width: number;
+  /** Dots to a millimetre along the board, shared by the top and side views and, being true height, their height too. */
+  scale: number;
+  sliceScale: number;
+  length: number;
+  top: BrdTopFrame;
+  side: BrdSideFrame;
+  /** The height of the slice box, the same for every slice so it never jumps while stepping. */
+  sliceHeight: number;
+  slices: BrdSliceFrame[];
+}
+
+/** The x a station draws at: the nose is at the left, so station 0 (the tail) is at the right end. */
+export function brdStationX(frames: Pick<BrdPreviewFrames, "scale" | "length">, station: number): number {
+  return BRD_PREVIEW_PAD_X + (frames.length - station) * frames.scale;
+}
+
+/** The station standing at an x in the top or side view: `brdStationX` undone. */
+export function brdStationAtX(frames: Pick<BrdPreviewFrames, "scale" | "length">, x: number): number {
+  return frames.length - (x - BRD_PREVIEW_PAD_X) / frames.scale;
+}
+
+/** Lays the preview out for a box `width` dots wide: see `BrdPreviewFrames`. */
+export function brdPreviewFrames(preview: BrdPreview, width: number): BrdPreviewFrames {
+  const length = preview.length;
+  const room = Math.max(width - 2 * BRD_PREVIEW_PAD_X, 1);
+  const scale = room / length;
+  const at = { scale, length };
+  const sx = (station: number) => brdStationX(at, station);
+
+  // Top view.
+  const halfMax = Math.max(...preview.outline.map(([, hw]) => hw));
+  const topCentre = BRD_PREVIEW_PAD_Y + halfMax * scale;
+  const upper = preview.outline.map(([station, hw]): P2 => [sx(station), topCentre - hw * scale]);
+  const lower = preview.outline.map(([station, hw]): P2 => [sx(station), topCentre + hw * scale]).reverse();
+  const top: BrdTopFrame = {
+    height: 2 * topCentre,
+    outline: [...upper, ...lower],
+    stringer: { x1: sx(length), x2: sx(0), y: topCentre },
+    slices: preview.slices.map((slice) => ({
+      number: slice.number,
+      x: sx(slice.station),
+      y1: topCentre - slice.halfWidth * scale,
+      y2: topCentre + slice.halfWidth * scale,
+    })),
+  };
+
+  // Side view, at true height.
+  const high = Math.max(...preview.deck.map(([, h]) => h));
+  const low = Math.min(...preview.bottom.map(([, h]) => h));
+  const sy = (heightMm: number) => BRD_PREVIEW_PAD_Y + (high - heightMm) * scale;
+  const bottomLine = preview.bottom.map(([station, h]): P2 => [sx(station), sy(h)]);
+  const deckLine = preview.deck.map(([station, h]): P2 => [sx(station), sy(h)]);
+  const side: BrdSideFrame = {
+    height: 2 * BRD_PREVIEW_PAD_Y + (high - low) * scale,
+    outline: [...bottomLine, ...[...deckLine].reverse()],
+    bottom: bottomLine,
+    deck: deckLine,
+    slices: preview.slices.map((slice) => ({
+      number: slice.number,
+      x: sx(slice.station),
+      y1: sy(slice.bottom),
+      y2: sy(slice.deck),
+    })),
+  };
+
+  // The slices: one scale for all, the widest filling the box.
+  const reachMax = Math.max(...preview.slices.map((slice) => slice.reach));
+  const sliceScale = room / (2 * reachMax);
+  const ups = preview.slices.flatMap((slice) => slice.section.map(([, up]) => up));
+  const upMax = Math.max(...ups);
+  const upMin = Math.min(...ups);
+  const centreX = width / 2;
+  const uy = (up: number) => BRD_PREVIEW_PAD_Y + (upMax - up) * sliceScale;
+  const slices = preview.slices.map((slice): BrdSliceFrame => {
+    const right = slice.section.map(([out, up]): P2 => [centreX + out * sliceScale, uy(up)]);
+    const left = slice.section.map(([out, up]): P2 => [centreX - out * sliceScale, uy(up)]).reverse();
+    return {
+      number: slice.number,
+      outline: [...right, ...left],
+      knots: slice.knots.map(([out, up]): P2 => [centreX + out * sliceScale, uy(up)]),
+      stringer: { x: centreX, y1: uy(upMax), y2: uy(upMin) },
+    };
+  });
+
+  return {
+    width,
+    scale,
+    sliceScale,
+    length,
+    top,
+    side,
+    sliceHeight: 2 * BRD_PREVIEW_PAD_Y + (upMax - upMin) * sliceScale,
+    slices,
+  };
+}
+
+/** The words a shaper reads, in the system they picked: see `brdPreviewWords`. */
+export interface BrdPreviewWords {
+  /** Length × width × thickness, as the file's own p01, p04 and p03 say. */
+  dims: string;
+  /** The widest gap between neighbouring slices, as a dim. */
+  gap: string;
+  /** Where each slice stands from the tail, as a dim, in slice order. */
+  stations: string[];
+}
+
+/** The preview's dims line, gap and stations in `system`, through `units.ts` and `measure-display.ts`. */
+export function brdPreviewWords(preview: BrdPreview, system: UnitsSystem): BrdPreviewWords {
+  const dims =
+    system === "metric"
+      ? `${[preview.length, preview.width, preview.thickness].map(formatCentimetres).join(" × ")} cm`
+      : [formatFeetInches(preview.length), formatInchesFraction(preview.width), formatInchesFraction(preview.thickness)].join(" × ");
+  return {
+    dims,
+    gap: formatDim(preview.widestGap, system),
+    stations: preview.slices.map((slice) => formatDim(slice.station, system)),
+  };
 }

@@ -45,6 +45,8 @@ const LOCKABLE_FILES = [
   // Phase 16 (16-18, D-43): the bay's controls only change what is seen. Flip the Board and the switch are
   // data-lock-exempt; each SliderRow there must say `lockExempt`, which the case below proves.
   "components/3d/three-d-rack-controls.tsx",
+  // Quick 261112-dbi: the Board file preview only shows the file and saves it, so every button there is data-lock-exempt.
+  "components/3d/brd-preview-dialog.tsx",
 ];
 
 /** `PillButton` (fin-controls.tsx) is not listed: it reads the lock itself, so every use is covered and

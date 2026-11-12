@@ -19,7 +19,15 @@ import {
   type DesignSummaryFields,
 } from "../geometry/design";
 import { buildOutline } from "../geometry/outline";
-import { centimetresToMm, inchesToMm } from "../geometry/units";
+import { formatDim } from "../geometry/measure-display";
+import {
+  centimetresToMm,
+  formatCentimetres,
+  formatFeetInches,
+  formatInchesFraction,
+  inchesToMm,
+  UNITS_SYSTEMS,
+} from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import {
   BRD_SECTION_SPACING_IN,
@@ -30,7 +38,18 @@ import {
   type BrdOptions,
 } from "./brd";
 import { unscrambleBrd } from "./brd-scramble";
-import { brdFileWithPreview, brdPreview, brdSliceNearest, type BrdPreview } from "./brd-preview";
+import {
+  BRD_PREVIEW_PAD_X,
+  BRD_PREVIEW_PAD_Y,
+  brdFileWithPreview,
+  brdPreview,
+  brdPreviewFrames,
+  brdPreviewWords,
+  brdSliceNearest,
+  brdStationAtX,
+  brdStationX,
+  type BrdPreview,
+} from "./brd-preview";
 
 /**
  * The preview on three boards: the flat Shortboard, the Fish and the Shortboard with a Deep Single Concave and four
@@ -174,5 +193,94 @@ describe("brdSliceNearest", () => {
     preview.slices.forEach((s, i) => expect(brdSliceNearest(preview, s.station)).toBe(i));
     expect(brdSliceNearest(preview, -1e6)).toBe(0);
     expect(brdSliceNearest(preview, 1e6)).toBe(preview.slices.length - 1);
+  });
+});
+
+/** Widths a phone and a computer give the drawings (dots). */
+const WIDTHS = [330, 760, 1000];
+
+describe.each(CASES)("the preview's drawings on %s", (_label, surface, options) => {
+  const { preview } = brdFileWithPreview(surface, "Test Board", options);
+
+  it.each(WIDTHS)("keeps every point inside its box at %i dots wide", (width) => {
+    const f = brdPreviewFrames(preview, width);
+    const inside = (points: readonly (readonly [number, number])[], height: number) =>
+      points.every(([x, y]) => x >= -1e-9 && x <= width + 1e-9 && y >= -1e-9 && y <= height + 1e-9);
+    expect(inside(f.top.outline, f.top.height)).toBe(true);
+    expect(inside(f.side.outline, f.side.height)).toBe(true);
+    for (const slice of f.slices) {
+      expect(inside(slice.outline, f.sliceHeight)).toBe(true);
+      expect(inside(slice.knots, f.sliceHeight)).toBe(true);
+    }
+  });
+
+  it("stands each slice line in the top view exactly above its line in the side view, nose at the left", () => {
+    const f = brdPreviewFrames(preview, 760);
+    f.top.slices.forEach((line, i) => {
+      expect(line.x).toBe(f.side.slices[i].x);
+      expect(line.number).toBe(preview.slices[i].number);
+    });
+    expect(brdStationX(f, preview.length)).toBeCloseTo(BRD_PREVIEW_PAD_X, 9);
+    expect(brdStationX(f, 0)).toBeCloseTo(760 - BRD_PREVIEW_PAD_X, 9);
+    // Station rises toward the nose, so x falls: the tail's slice 1 is the right-most.
+    expect(f.top.slices[0].x).toBeGreaterThan(f.top.slices[f.top.slices.length - 1].x);
+  });
+
+  it("draws the side view at true height: one scale for both axes", () => {
+    const f = brdPreviewFrames(preview, 760);
+    const high = Math.max(...preview.deck.map(([, h]) => h));
+    const low = Math.min(...preview.bottom.map(([, h]) => h));
+    const trueRatio = (high - low) / preview.length;
+    const drawnRatio = (f.side.height - 2 * BRD_PREVIEW_PAD_Y) / (760 - 2 * BRD_PREVIEW_PAD_X);
+    expect(Math.abs(drawnRatio / trueRatio - 1)).toBeLessThan(0.01);
+  });
+
+  it("draws each slice mirrored about the stringer at one scale, the widest filling the width", () => {
+    const f = brdPreviewFrames(preview, 760);
+    const reachMax = Math.max(...preview.slices.map((s) => s.reach));
+    expect(f.sliceScale * 2 * reachMax).toBeCloseTo(760 - 2 * BRD_PREVIEW_PAD_X, 9);
+    f.slices.forEach((slice, i) => {
+      const half = slice.outline.length / 2;
+      for (let k = 0; k < half; k++) {
+        const right = slice.outline[k];
+        const left = slice.outline[slice.outline.length - 1 - k];
+        expect(left[0]).toBeCloseTo(760 - right[0], 9);
+        expect(left[1]).toBeCloseTo(right[1], 9);
+      }
+      // Its knot dots sit on its right half.
+      for (const [x] of slice.knots) expect(x).toBeGreaterThanOrEqual(760 / 2 - 1e-9);
+      expect(slice.number).toBe(preview.slices[i].number);
+    });
+  });
+
+  it("turns an x back into the station it was drawn from, within a millionth of a millimetre", () => {
+    const f = brdPreviewFrames(preview, 760);
+    for (const slice of preview.slices) expect(Math.abs(brdStationAtX(f, brdStationX(f, slice.station)) - slice.station)).toBeLessThan(1e-6);
+  });
+});
+
+describe.each(CASES)("the preview's words on %s", (_label, surface, options) => {
+  const { preview } = brdFileWithPreview(surface, "Test Board", options);
+
+  it("writes Imperial dims each with its own mark, and every station and the gap as dims", () => {
+    const words = brdPreviewWords(preview, "imperial");
+    expect(words.dims).toBe(
+      `${formatFeetInches(preview.length)} × ${formatInchesFraction(preview.width)} × ${formatInchesFraction(preview.thickness)}`,
+    );
+    expect(words.gap).toBe(formatDim(preview.widestGap, "imperial"));
+    expect(words.stations).toEqual(preview.slices.map((slice) => formatDim(slice.station, "imperial")));
+  });
+
+  it("writes Metric dims in centimetres to one decimal with cm once at the end", () => {
+    const words = brdPreviewWords(preview, "metric");
+    expect(words.dims).toBe(
+      `${formatCentimetres(preview.length)} × ${formatCentimetres(preview.width)} × ${formatCentimetres(preview.thickness)} cm`,
+    );
+    expect(words.gap).toBe(formatDim(preview.widestGap, "metric"));
+    expect(words.stations).toEqual(preview.slices.map((slice) => formatDim(slice.station, "metric")));
+  });
+
+  it("has a station for every slice in every system", () => {
+    for (const system of UNITS_SYSTEMS) expect(brdPreviewWords(preview, system).stations.length).toBe(preview.slices.length);
   });
 });
