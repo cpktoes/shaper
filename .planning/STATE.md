@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17: all seven fix plans (17-17..17-23) built, approved at his looks and merged on claude/bottom-uat-17-d1559c. Next: the go-live gate on the merged branch (unit suite, browser suite, production build), then push to main only on his word, the live check, and his re-check of UAT tests 5 and 6; then close the phase. The .brd export on close-bottom-17 joins main after this lands. Not pushed."
+stopped_at: "Phase 17 fix waves LIVE 2026-11-11 as main 93c0ea8f (17-17..17-23, pushed on the founder's Go; live marker seen 19:13 Pacific, eight screens answer). Gate: tsc, lint, 12,586 unit tests, full browser suite 1,825 passed with 9 phone load failures that pass alone, production build, desktop pictures under Turbopack; e2e/prod not run (needs the main folder's settings). Still to do: his re-check of UAT tests 5 and 6 on the live site, then close the phase. The .brd export on close-bottom-17 joins main after this."
 last_updated: "2026-11-11T12:00:00.000Z"
 last_activity: 2026-11-11
-last_activity_desc: All seven fixes from the founder's BOTTOM walk-through are built and approved on the branch — the go-live checks are next
+last_activity_desc: The seven fixes from the founder's BOTTOM walk-through are live — VOLUME says what its litres count, channels keep straight walls on RAILS and in the solid board, RAILS draws every concave
 progress:
   total_phases: 6
   completed_phases: 4

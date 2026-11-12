@@ -98,11 +98,17 @@ blocked: 0
 | Desktop baseline pictures under Turbopack | 6 of 6 pass — VOLUME's re-taken picture included |
 | Production-build browser tests (`e2e/prod`, five specs) | NOT RUN — they need the machine's own settings file, which lives only in the main folder (on another branch today) |
 
+## Fix-wave go-live (2026-11-11)
+
+Pushed on the founder's word ("Go — push to main") as a fast-forward: main 556162ba → 93c0ea8f. The live site showed VOLUME's new sentence at 19:13 Pacific, the old one gone, and all eight design screens and the home page answer. His re-check of tests 5 and 6 on the live site follows.
+
 ## Gaps
 
 - gap_id: G-17-5
   truth: "On VOLUME the shaper can tell what the litres take into account, the finished rail shape and the bottom contours included"
-  status: failed
+  status: resolved        # was: failed
+  resolved_by: 17-17-PLAN.md
+  resolved_at: 2026-11-11
   reason: "User reported: The volume input should say that it takes into account the finished rail shape and bottom contours"
   severity: minor
   test: 5
@@ -125,7 +131,9 @@ blocked: 0
 
 - gap_id: G-17-6
   truth: "Channels keep their own shape all the way to the rail: the finished rail never rounds them off"
-  status: failed
+  status: resolved        # was: failed
+  resolved_by: 17-18-PLAN.md, 17-19-PLAN.md, 17-20-PLAN.md, 17-21-PLAN.md, 17-22-PLAN.md, 17-23-PLAN.md
+  resolved_at: 2026-11-11
   reason: "User reported: pass, but the finished rail messes with channel shape. We need to make sure that the channels are kept, the finished rail shoudl not round them."
   severity: major
   test: 6
