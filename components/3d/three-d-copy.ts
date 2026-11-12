@@ -83,8 +83,13 @@ export const THREE_D_COPY = {
   previewCancel: "Cancel",
   /** Under the SLICE caption: which slice is drawn, of how many, and where it stands along the board (a dim in the shaper's system). */
   previewSliceLine: (n: number, count: number, distance: string) => `Slice ${n} of ${count} · ${distance} from the tail`,
-  /** Under the three drawings: how many slices the file holds, how far apart at most, and the file's own length × width × thickness. */
-  previewFacts: (count: number, gap: string, dims: string) => `${count} slices · none more than ${gap} apart · ${dims}`,
+  /**
+   * Under the three drawings: how many slices the file holds, how far apart at most, and the file's own length × width ×
+   * thickness. The thickness is the file's: measured at the stringer, where a concave has already taken foam off, so it
+   * can read less than the planed figure — the line says which it is, in the founder's words (2026-11-12).
+   */
+  previewFacts: (count: number, gap: string, dims: string) =>
+    `${count} slices · none more than ${gap} apart · ${dims} (finished foam thickness at stringer)`,
   /** The ‹ and › buttons' spoken names: ‹ moves the marked slice toward the nose (the left), › toward the tail. */
   previewTowardNose: "Slice toward the nose",
   previewTowardTail: "Slice toward the tail",
