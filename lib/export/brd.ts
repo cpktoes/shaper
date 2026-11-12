@@ -9,7 +9,8 @@
  * rocker and deck are runs of cubic Bézier knots (`lib/geometry/bezier-fit.ts`) fitted through points of the surface to
  * within half a millimetre (1/50"). Channel walls and a square tail's corners stay sharp knots.
  * A standing channel wall is written leaning 3 mm (`BRD_WALL_LEAN_MM`), never straight up: AkuShaper reads a section's
- * width where the bottom first runs straight up, so an upright wall was taken for the rail.
+ * width where the bottom first runs straight up, so an upright wall was taken for the rail. Where a wall stands, the
+ * sections stand 1 1/2" apart (`BRD_WALL_SECTION_SPACING_IN`), so the walls run straight between them.
  *
  * Sections, the way AkuShaper writes its own (the founder's finding, 2026-11-10: a 3D view joins knot i of one section
  * to knot i of the next, so the same number of knots in the same places on every section is what draws a smooth board):
@@ -30,7 +31,7 @@
  *
  * Pure and synchronous. Every mm-to-cm step goes through `lib/geometry/units.ts`.
  */
-import { bezierDeviation, fitBezierKnots, fitBezierSpan, type BezierKnot, type P2 } from "../geometry/bezier-fit";
+import { bezierDeviation, bezierPoint, fitBezierKnots, fitBezierSpan, type BezierKnot, type P2 } from "../geometry/bezier-fit";
 import {
   boardRailHalfOutline,
   boardSectionHalves,
@@ -68,6 +69,13 @@ export const BRD_WALL_LEAN_PER_HEIGHT = 0.4;
 
 /** A wall's lean never takes more than this share of the bottom between it and the next knot toward the rail. */
 export const BRD_WALL_LEAN_ROOM = 0.5;
+
+/**
+ * Where a channel wall stands, the sections stand this far apart, in inches. Between two sections a program blends them
+ * and stretches the blend to the outline, so on sections 8" apart a straight wall bowed with the rail and flared at the
+ * tail (the founder in Shape3D, 2026-11-12); 1 1/2" apart the walls ran straight in AkuShaper's bay.
+ */
+export const BRD_WALL_SECTION_SPACING_IN = 1.5;
 
 /** The deck shoulder's slot in the deck run of 48 points: 36 of 24 / 32 / 36 / 40 / 43 fitted all three sample boards best. */
 export const BRD_SHOULDER_SLOT = 36;
@@ -232,7 +240,7 @@ const unitFrom = (from: P2, to: P2): P2 => {
 };
 
 /** Which half of a ring each station is read from: indices into the halves, tail to nose. */
-function chooseSectionHalves(halves: readonly { station: Mm; reach: number }[], length: Mm, bottomStations: readonly Mm[]): number[] {
+function chooseSectionHalves(halves: readonly { station: Mm; reach: number; walled?: boolean }[], length: Mm, bottomStations: readonly Mm[]): number[] {
   const tip = inchesToMm(BRD_TIP_SECTION_IN);
   const twelve = inchesToMm(12);
   const spacing = inchesToMm(BRD_SECTION_SPACING_IN);
@@ -253,6 +261,22 @@ function chooseSectionHalves(halves: readonly { station: Mm; reach: number }[], 
     }
   });
   const kept = new Set<number>([nearest(tip), nearest(twelve), wide, nearest(length - twelve), nearest(length - tip)]);
+  // Where a channel wall stands, a ring every 1 1/2" is a section: between two sections
+  // a program stretches the blend to the outline, so on sections far apart a straight wall bows with the rail (the
+  // founder in Shape3D, 2026-11-12: "they all bend/flare near the tip of the tail").
+  const firstIn = nearest(tip);
+  const lastIn = nearest(length - tip);
+  const wallSpacing = inchesToMm(BRD_WALL_SECTION_SPACING_IN);
+  let lastWalled = -Infinity;
+  halves.forEach((half, i) => {
+    if (i < firstIn || i > lastIn || !half.walled) return;
+    if (half.station - lastWalled < wallSpacing - 1e-9) return;
+    lastWalled = half.station;
+    // Never within an inch of a station already standing (the 12" mark, a bottom station): two sections that close
+    // add nothing.
+    if ([...kept].some((k) => Math.abs(halves[k].station - half.station) < tip - 1e-9)) return;
+    kept.add(i);
+  });
   for (const station of bottomStations) {
     if (!(station > 0 && station < length)) continue;
     if ([...kept].some((i) => Math.abs(halves[i].station - station) <= tip)) continue;
@@ -352,9 +376,11 @@ function fitSection(half: readonly Vec3[], slots: readonly KnotSlot[], walls: re
     while (j < slots.length && !fixed[j]) j++;
     const low = at[i - 1];
     const high = at[j];
-    for (let k = i; k < j; k++) at[k] = Math.max(at[k], (k === i ? low : at[k - 1]) + gap);
-    for (let k = j - 1; k >= i; k--) at[k] = Math.min(at[k], (k === j - 1 ? high : at[k + 1]) - gap);
-    if (at[i] < low + gap - 1e-9) for (let k = i; k < j; k++) at[k] = low + ((high - low) * (k - i + 1)) / (j - i + 1);
+    // Twice the gap along the section, so that round a bend the knots are still the gap apart in a straight line.
+    const apart = 2 * gap;
+    for (let k = i; k < j; k++) at[k] = Math.max(at[k], (k === i ? low : at[k - 1]) + apart);
+    for (let k = j - 1; k >= i; k--) at[k] = Math.min(at[k], (k === j - 1 ? high : at[k + 1]) - apart);
+    if (at[i] < low + apart - 1e-9) for (let k = i; k < j; k++) at[k] = low + ((high - low) * (k - i + 1)) / (j - i + 1);
     i = j;
   }
   const pointAtArc = (s: number): P2 => {
@@ -427,6 +453,27 @@ function fitSection(half: readonly Vec3[], slots: readonly KnotSlot[], walls: re
     knots[i + 1] = { ...knots[i + 1], before: handles.before };
     spans.push({ from: slots[i].slot, to: slots[i + 1].slot, points: run });
   }
+  // From the stringer to the bottom edge the written bottom never runs straight up or back (AkuShaper takes the first
+  // upright for the rail): a span whose fitted handles let x stall is drawn in closer to its own chord until it rises.
+  const edgeKnot = slots.findIndex((s) => s.role === "bottomEdge");
+  for (let i = 0; i < edgeKnot; i++) {
+    if (!(knots[i + 1].point[0] > knots[i].point[0])) continue;
+    const rises = () => {
+      let x = knots[i].point[0];
+      for (let k = 1; k <= 32; k++) {
+        const p = bezierPoint(knots[i], knots[i + 1], k / 32);
+        if (!(p[0] > x)) return false;
+        x = p[0];
+      }
+      return true;
+    };
+    for (let tries = 0; tries < 12 && !rises(); tries++) {
+      const a = knots[i];
+      const b = knots[i + 1];
+      knots[i] = { ...a, after: [a.point[0] + (a.after[0] - a.point[0]) / 2, a.point[1] + (a.after[1] - a.point[1]) / 2] };
+      knots[i + 1] = { ...b, before: [b.point[0] + (b.before[0] - b.point[0]) / 2, b.point[1] + (b.before[1] - b.point[1]) / 2] };
+    }
+  }
   const flat = withoutRepeatPoints(raw);
   return { points: flat, knots, spans, deviation: bezierDeviation(flat, knots) };
 }
@@ -478,7 +525,11 @@ export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdC
   if (halves.length > 0) {
     const count = halves[0].points.length;
     const layout = { count, walls, bottomEdge, widest: widestSlot };
-    const reaching = halves.map((h) => ({ station: h.station, reach: Math.max(...h.points.map((p) => Math.abs(p[1]))) }));
+    const reaching = halves.map((h) => ({
+      station: h.station,
+      reach: Math.max(...h.points.map((p) => Math.abs(p[1]))),
+      walled: walls.some((wall) => Math.hypot(h.points[wall.foot][1] - h.points[wall.top][1], h.points[wall.foot][2] - h.points[wall.top][2]) >= BRD_KNOT_GAP_MM),
+    }));
     const chosen = chooseSectionHalves(reaching, surface.length, options.bottomStations ?? []).map((i) => halves[i]);
     // Added knots are board-wide, so the count and the places stay the same on every section: while a section misses by
     // more than the target, the worst span of any section gets a knot halfway between its slots, on every section.

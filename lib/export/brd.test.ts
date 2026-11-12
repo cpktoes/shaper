@@ -31,6 +31,7 @@ import {
   BRD_WALL_LEAN_MM,
   BRD_WALL_LEAN_PER_HEIGHT,
   BRD_WALL_LEAN_ROOM,
+  BRD_WALL_SECTION_SPACING_IN,
   brdBottomStations,
   brdCurves,
   brdFile,
@@ -355,9 +356,20 @@ describe.each(CASES)("the .brd of %s", (_label, surface, options) => {
     const wide = halves.reduce((best, h) => (Math.max(...h.points.map((p) => Math.abs(p[1]))) > Math.max(...best.points.map((p) => Math.abs(p[1]))) + 1e-9 ? h : best), halves[0]);
     expect(stations).toContain(wide.station);
     for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeLessThanOrEqual(inchesToMm(BRD_SECTION_SPACING_IN + 0.5));
-    // About a dozen sections, never fifty.
+    // About a dozen sections, never fifty; a board with channels stands more, 1 1/2" apart where a wall stands.
+    const walls = boardSectionHalves(surface).walls;
+    const walled = halves.filter((h) => walls.some((w) => Math.hypot(h.points[w.foot][1] - h.points[w.top][1], h.points[w.foot][2] - h.points[w.top][2]) >= BRD_KNOT_GAP_MM));
     expect(stations.length).toBeGreaterThanOrEqual(8);
-    expect(stations.length).toBeLessThanOrEqual(16);
+    expect(stations.length).toBeLessThanOrEqual(walled.length > 0 ? 30 : 16);
+    if (walled.length > 0) {
+      const first = Math.max(walled[0].station, nearestHalf(inchesToMm(1)));
+      const last = walled[walled.length - 1].station;
+      const inRun = stations.filter((s) => s >= first && s <= last);
+      // 1 1/2" apart, give or take a ring and the inch kept clear of a station already standing.
+      for (let i = 1; i < inRun.length; i++) expect(inRun[i] - inRun[i - 1]).toBeLessThanOrEqual(inchesToMm(BRD_WALL_SECTION_SPACING_IN + 1.5));
+      for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeGreaterThanOrEqual(inchesToMm(0.9));
+      expect(inRun.length).toBeGreaterThan(8);
+    }
   });
 
   it("keeps each anchor knot's share of the width and of the thickness within a fifth from one section to the next", () => {
