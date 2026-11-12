@@ -13,6 +13,7 @@
  */
 import { bezierPoint, type BezierKnot, type P2 } from "../geometry/bezier-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, type BottomBoard, type ResolvedBottom } from "../geometry/bottom";
+import type { SectionHeight } from "../geometry/bottom-draw";
 import { sideProfileAt, sideProfileLines, type SideProfileReader } from "../geometry/side-profile";
 import { formatDim } from "../geometry/measure-display";
 import {
@@ -259,9 +260,14 @@ export interface BrdTopFrame {
   slices: BrdSliceLine[];
 }
 
-/** The side view: bottom and deck along the stringer, nose at the left, deck up, at true height. */
+/**
+ * The side view: bottom and deck along the stringer, nose at the left, deck up. Its height is stretched by the Height pick
+ * (`heightFactor`, 1 being true height); along the board it keeps the top view's own scale.
+ */
 export interface BrdSideFrame {
   height: number;
+  /** How many times true height the side view is drawn: BOTTOM's Height ×1 ×2 ×4 ×8. */
+  heightFactor: SectionHeight;
   /** The closed board: along the bottom, back along the deck. */
   outline: P2[];
   bottom: P2[];
@@ -285,7 +291,7 @@ export interface BrdSliceFrame {
 /** All three drawings for a box this wide. Every slice is drawn at the one scale (`sliceScale`), so stepping shows real change. */
 export interface BrdPreviewFrames {
   width: number;
-  /** Dots to a millimetre along the board, shared by the top and side views and, being true height, their height too. */
+  /** Dots to a millimetre along the board, shared by the top and side views; the side view's height is this times its Height pick. */
   scale: number;
   sliceScale: number;
   length: number;
@@ -310,7 +316,7 @@ export function brdStationAtX(frames: Pick<BrdPreviewFrames, "scale" | "length">
 export function brdPreviewFrames(
   preview: BrdPreview,
   width: number,
-  extras: { railBottom?: readonly P2[] | null } = {},
+  extras: { railBottom?: readonly P2[] | null; height?: SectionHeight } = {},
 ): BrdPreviewFrames {
   const length = preview.length;
   const room = Math.max(width - 2 * BRD_PREVIEW_PAD_X, 1);
@@ -335,15 +341,18 @@ export function brdPreviewFrames(
     })),
   };
 
-  // Side view, at true height.
+  // Side view: the heights are stretched by the Height pick, the lengths never are, so a slice's line in the top view stays
+  // directly above its line here.
+  const stretch = extras.height ?? 1;
   const rail = extras.railBottom ?? null;
   const high = Math.max(...preview.deck.map(([, h]) => h), ...(rail ?? []).map(([, h]) => h));
   const low = Math.min(...preview.bottom.map(([, h]) => h), ...(rail ?? []).map(([, h]) => h));
-  const sy = (heightMm: number) => BRD_PREVIEW_PAD_Y + (high - heightMm) * scale;
+  const sy = (heightMm: number) => BRD_PREVIEW_PAD_Y + (high - heightMm) * scale * stretch;
   const bottomLine = preview.bottom.map(([station, h]): P2 => [sx(station), sy(h)]);
   const deckLine = preview.deck.map(([station, h]): P2 => [sx(station), sy(h)]);
   const side: BrdSideFrame = {
-    height: 2 * BRD_PREVIEW_PAD_Y + (high - low) * scale,
+    height: 2 * BRD_PREVIEW_PAD_Y + (high - low) * scale * stretch,
+    heightFactor: stretch,
     outline: [...bottomLine, ...[...deckLine].reverse()],
     bottom: bottomLine,
     deck: deckLine,
@@ -387,24 +396,39 @@ export function brdPreviewFrames(
   };
 }
 
+/**
+ * The side view opens this many times true height (the founder, 2026-11-12: the same ×1 ×2 ×4 ×8 buttons as BOTTOM's
+ * cross-section, opening at ×4).
+ */
+export const BRD_PREVIEW_SIDE_HEIGHT: SectionHeight = 4;
+
 /** The words a shaper reads, in the system they picked: see `brdPreviewWords`. */
 export interface BrdPreviewWords {
-  /** Length × width × thickness, as the file's own p01, p04 and p03 say. */
+  /** Length × width, as the file's own p01 and p04 say. */
   dims: string;
+  /** The thickness along the stringer, the file's own p03, as a dim. */
+  stringer: string;
+  /** The side profile's maximum thickness, from the board maths, as a dim. */
+  profileMax: string;
   /** The widest gap between neighbouring slices, as a dim. */
   gap: string;
   /** Where each slice stands from the tail, as a dim, in slice order. */
   stations: string[];
 }
 
-/** The preview's dims line, gap and stations in `system`, through `units.ts` and `measure-display.ts`. */
-export function brdPreviewWords(preview: BrdPreview, system: UnitsSystem): BrdPreviewWords {
+/**
+ * The preview's dims line, the two thicknesses, the gap and the stations in `system`, through `units.ts` and
+ * `measure-display.ts`. `maxThickness` is the side profile's maximum (`BrdPreviewProfile`).
+ */
+export function brdPreviewWords(preview: BrdPreview, system: UnitsSystem, maxThickness: Mm): BrdPreviewWords {
   const dims =
     system === "metric"
-      ? `${[preview.length, preview.width, preview.thickness].map(formatCentimetres).join(" × ")} cm`
-      : [formatFeetInches(preview.length), formatInchesFraction(preview.width), formatInchesFraction(preview.thickness)].join(" × ");
+      ? `${[preview.length, preview.width].map(formatCentimetres).join(" × ")} cm`
+      : [formatFeetInches(preview.length), formatInchesFraction(preview.width)].join(" × ");
   return {
     dims,
+    stringer: formatDim(preview.thickness, system),
+    profileMax: formatDim(maxThickness, system),
     gap: formatDim(preview.widestGap, system),
     stations: preview.slices.map((slice) => formatDim(slice.station, system)),
   };

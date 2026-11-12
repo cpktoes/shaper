@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { devices, expect, test, type Download, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
-import { readBrdText } from "../lib/export/brd";
+import { brdFileBottom, readBrdText } from "../lib/export/brd";
 import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
 import { brdPreview, brdPreviewWords } from "../lib/export/brd-preview";
-import { DEFAULT_BOTTOM, pickCut, startingChannels, switchChannelCount, type BoardBottom } from "../lib/geometry/bottom";
+import { DEFAULT_BOTTOM, pickCut, resolveBottom, startingChannels, switchChannelCount, type BoardBottom } from "../lib/geometry/bottom";
 import { LIVE_DESIGN_RULES, designBottomBoard, designFinPlacement, designSideProfile } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
+import { sideProfileLines } from "../lib/geometry/side-profile";
 import { inchesToMm, mmToCentimetres } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -92,6 +93,18 @@ function presetBottom(presetName: string, options: { deepSingle: boolean; channe
   const cuts = options.deepSingle ? pickCut(DEFAULT_BOTTOM, "center", "Deep Single Concave", board) : DEFAULT_BOTTOM;
   const four = { ...cuts, channels: startingChannels(4, board, cuts.channels) };
   return options.channels ? four : { ...four, channels: switchChannelCount(four.channels, 0, board) };
+}
+
+/**
+ * The side profile's maximum thickness the preview should quote for a preset, worked out with the app's own readers from
+ * the bottom the file is written from (the channel-less one) — the same sum the page does, never a number typed here.
+ */
+function sideProfileMaxOf(presetName: string, bottom: BoardBottom = DEFAULT_BOTTOM) {
+  const fields = presetFields(presetName);
+  const outline = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const board = designBottomBoard(fields.outline, outline, profile, designFinPlacement(fields));
+  return sideProfileLines(resolveBottom(brdFileBottom(bottom, board), board), board, profile).maxThickness;
 }
 
 const boardHost = (page: Page) => page.locator("[data-board-3d]");
@@ -252,8 +265,8 @@ test.describe("Export .brd File on the 3D screen", () => {
     expect(sideLines, "so does the side view").toBe(sections);
     // The dialog was drawn from the very bytes saved: its facts line is the saved file's own reading.
     const saved = previewOfBytes(await downloadedBytes(download));
-    const words = brdPreviewWords(saved, "imperial");
-    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims));
+    const words = brdPreviewWords(saved, "imperial", sideProfileMaxOf("Fish"));
+    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims, words.stringer, words.profileMax));
     // The file's length and width are the Fish preset's own, in centimetres.
     const fish = presetDesignFields(BOARD_PRESETS.find((preset) => preset.name === "Fish")!).outline;
     const header = new Map(read.header);
@@ -529,7 +542,7 @@ test.describe("Export .brd File on the 3D screen", () => {
     const download = await savePreview(page);
     expect(downloads.length).toBe(1);
     const saved = previewOfBytes(await downloadedBytes(download));
-    const words = brdPreviewWords(saved, "imperial");
+    const words = brdPreviewWords(saved, "imperial", sideProfileMaxOf("Shortboard", presetBottom("Shortboard", { deepSingle: true, channels: true })));
     expect(opening).toBe(THREE_D_COPY.previewSliceLine(saved.openingSlice + 1, saved.slices.length, words.stations[saved.openingSlice]));
   });
 
@@ -545,10 +558,13 @@ test.describe("Export .brd File on the 3D screen", () => {
     const facts = (await factsLine(page).textContent()) ?? "";
     const download = await savePreview(page);
     const saved = previewOfBytes(await downloadedBytes(download));
-    const words = brdPreviewWords(saved, "metric");
+    const words = brdPreviewWords(saved, "metric", sideProfileMaxOf("Shortboard", presetBottom("Shortboard", { deepSingle: true, channels: true })));
     expect(words.dims.endsWith(" cm")).toBe(true);
     expect(words.dims.match(/ cm/g)?.length, "cm once, at the end").toBe(1);
-    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims));
+    // A thickness standing alone carries its own unit.
+    expect(words.stringer.endsWith(" cm")).toBe(true);
+    expect(words.profileMax.endsWith(" cm")).toBe(true);
+    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims, words.stringer, words.profileMax));
     expect(opening).toBe(THREE_D_COPY.previewSliceLine(saved.openingSlice + 1, saved.slices.length, words.stations[saved.openingSlice]));
   });
 
@@ -565,6 +581,18 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expect(lines(page)).toHaveCount(2);
     await expect(lines(page).nth(0)).toHaveAttribute("data-brd-side-line", "stringer");
     await expect(lines(page).nth(1)).toHaveAttribute("data-brd-side-line", "rail");
+    const key = (target: Page, which: string) => previewDialog(target).locator(`[data-brd-preview-side-key] [data-brd-side-key="${which}"]`);
+    await expect(key(page, "stringer")).toHaveText(THREE_D_COPY.previewKeyStringer);
+    await expect(key(page, "rail")).toHaveText(THREE_D_COPY.previewKeyRail);
+    await expect(key(page, "one")).toHaveCount(0);
+    // The facts line quotes two different thicknesses here: the file's at the stringer, the side profile's maximum.
+    const stringerMax = async (target: Page) => {
+      const m = /· ([^·]+) at the stringer · ([^·]+) side profile max$/.exec((await factsLine(target).textContent()) ?? "");
+      if (!m) throw new Error("not a facts line");
+      return { stringer: m[1], max: m[2] };
+    };
+    const deepWords = await stringerMax(page);
+    expect(deepWords.stringer).not.toBe(deepWords.max);
 
     // The plain Shortboard has a flat bottom: the stringer and the rail are the same line, so one is drawn.
     const flat = await context.newPage();
@@ -575,6 +603,12 @@ test.describe("Export .brd File on the 3D screen", () => {
     await openPreview(flat);
     await expect(lines(flat)).toHaveCount(1);
     await expect(lines(flat).first()).toHaveAttribute("data-brd-side-line", "stringer");
+    await expect(key(flat, "one")).toHaveText(THREE_D_COPY.previewKeyOneLine);
+    await expect(key(flat, "stringer")).toHaveCount(0);
+    await expect(key(flat, "rail")).toHaveCount(0);
+    // On a flat board the two thicknesses are equal, and both are still shown.
+    const flatWords = await stringerMax(flat);
+    expect(flatWords.stringer).toBe(flatWords.max);
     await flat.close();
   });
 });

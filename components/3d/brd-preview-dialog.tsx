@@ -5,9 +5,12 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { FULL_SCREEN_CLASS, LARGE_DIALOG_CLASS } from "@/components/rocker/blank-picker-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { HeightPicker } from "@/components/bottom/bottom-section";
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
+import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
 import {
+  BRD_PREVIEW_SIDE_HEIGHT,
   brdPreviewFrames,
   brdPreviewWords,
   brdSliceNearest,
@@ -106,6 +109,30 @@ function SliceLines({
   );
 }
 
+/**
+ * One entry of the side view's key: a short swatch in the line's own stroke, then what the line is. The stringer's is the
+ * board's ink edge, solid; the rail's is the dashed line the drawing gives it, the same three stroke values.
+ */
+function KeyEntry({ which, word }: { which: "stringer" | "rail" | "one"; word: string }) {
+  const dashed = which === "rail";
+  return (
+    <div data-brd-side-key={which} className="flex items-center gap-1.5">
+      <svg aria-hidden width={24} height={6} viewBox="0 0 24 6" className="flex-none">
+        <line
+          x1={0}
+          x2={24}
+          y1={3}
+          y2={3}
+          stroke={dashed ? "var(--outline-push-line)" : "var(--outline-ink)"}
+          strokeWidth={dashed ? 1.2 : 1.1}
+          {...(dashed ? { strokeDasharray: "3 2" } : {})}
+        />
+      </svg>
+      <span>{word}</span>
+    </div>
+  );
+}
+
 const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(([x, y]) => `${x},${y}`).join(" ");
 
 function PreviewBody({
@@ -126,11 +153,14 @@ function PreviewBody({
   const count = preview.slices.length;
   // The slice marked in both views and drawn large, as an index into the slices (the file's own order, tail first).
   const [selected, setSelected] = useState(preview.openingSlice);
-  const words = useMemo(() => brdPreviewWords(preview, system), [preview, system]);
+  // The side view's Height, as BOTTOM's cross-section has it: ×4 each time the preview opens (this body remounts), never
+  // saved, and view-only, so a locked board keeps it.
+  const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
+  const words = useMemo(() => brdPreviewWords(preview, system, file.profile.maxThickness), [preview, system, file.profile.maxThickness]);
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
   const frames = useMemo(
-    () => (box.width > 0 ? brdPreviewFrames(preview, box.width, { railBottom: file.profile.railBottom }) : null),
-    [preview, file.profile, box.width],
+    () => (box.width > 0 ? brdPreviewFrames(preview, box.width, { railBottom: file.profile.railBottom, height }) : null),
+    [preview, file.profile, box.width, height],
   );
 
   // The nose is at the left, so ‹ and the left arrow move toward the nose: the next slice up from the tail.
@@ -255,11 +285,19 @@ function PreviewBody({
           </div>
 
           <div>
-            <div className={cn(CAPTION_CLASS, "mb-1")}>{THREE_D_COPY.previewSideView}</div>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className={CAPTION_CLASS} data-brd-preview-side-caption>
+                {THREE_D_COPY.previewSideViewAt(sectionHeightLabel({ heightAsked: height, heightDrawn: height }))}
+              </div>
+              <div data-brd-preview-height>
+                <HeightPicker height={height} onHeight={setHeight} />
+              </div>
+            </div>
             <svg
               data-brd-preview-side
+              data-brd-preview-side-height={height}
               role="img"
-              aria-label={THREE_D_COPY.previewSideName(count)}
+              aria-label={THREE_D_COPY.previewSideName(count, height, file.profile.railBottom !== null)}
               viewBox={frames ? `0 0 ${frames.width} ${frames.side.height}` : undefined}
               className="block w-full cursor-pointer"
               style={{ height: frames ? frames.side.height : 0 }}
@@ -291,10 +329,23 @@ function PreviewBody({
                 </>
               )}
             </svg>
+            <div
+              data-brd-preview-side-key
+              className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surf-ink-muted"
+            >
+              {file.profile.railBottom ? (
+                <>
+                  <KeyEntry which="stringer" word={THREE_D_COPY.previewKeyStringer} />
+                  <KeyEntry which="rail" word={THREE_D_COPY.previewKeyRail} />
+                </>
+              ) : (
+                <KeyEntry which="one" word={THREE_D_COPY.previewKeyOneLine} />
+              )}
+            </div>
           </div>
 
           <div data-brd-preview-facts className="text-xs text-surf-ink">
-            {THREE_D_COPY.previewFacts(count, words.gap, words.dims)}
+            {THREE_D_COPY.previewFacts(count, words.gap, words.dims, words.stringer, words.profileMax)}
           </div>
           {swallowNote && (
             <p data-brd-preview-swallow className="text-xs text-surf-ink-muted">

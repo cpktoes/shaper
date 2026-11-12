@@ -84,19 +84,32 @@ export const THREE_D_COPY = {
   /** Under the SLICE caption: which slice is drawn, of how many, and where it stands along the board (a dim in the shaper's system). */
   previewSliceLine: (n: number, count: number, distance: string) => `Slice ${n} of ${count} · ${distance} from the tail`,
   /**
-   * Under the three drawings: how many slices the file holds, how far apart at most, and the file's own length × width ×
-   * thickness. The thickness is the file's: measured at the stringer, where a concave has already taken foam off, so it
-   * can read less than the planed figure — the line says which it is, in the founder's words (2026-11-12).
+   * Under the three drawings: how many slices the file holds, how far apart at most, the file's own length × width, and the
+   * two thicknesses (the founder, 2026-11-12). The stringer figure is the file's own — what AkuShaper and Shape3D read,
+   * measured along the stringer, where a concave has already taken foam off. The maximum is the side profile's, from the
+   * board maths: the deck down to whichever bottom line is lower. On a flat board they are equal, and both are shown.
    */
-  previewFacts: (count: number, gap: string, dims: string) =>
-    `${count} slices · none more than ${gap} apart · ${dims} (finished foam thickness at stringer)`,
+  previewFacts: (count: number, gap: string, dims: string, stringer: string, max: string) =>
+    `${count} slices · none more than ${gap} apart · ${dims} · ${stringer} at the stringer · ${max} side profile max`,
+  /** The side view's caption, with which Height is on (`sectionHeightLabel`'s words: TRUE HEIGHT or HEIGHT ×4). */
+  previewSideViewAt: (height: string) => `SIDE VIEW · ${height}`,
+  /**
+   * The key under the side view: what each bottom line is. The rail's line is worked out from the board, not read from
+   * the file, and its entry says so (the founder's ruling, 2026-11-12); the dialog's line under the title stays as it is.
+   */
+  previewKeyStringer: "at the stringer",
+  previewKeyRail: "at the rail, before the rails are shaped (from your bottom, not in the file)",
+  previewKeyOneLine: "at the stringer and at the rail — the same line on this bottom",
   /** The ‹ and › buttons' spoken names: ‹ moves the marked slice toward the nose (the left), › toward the tail. */
   previewTowardNose: "Slice toward the nose",
   previewTowardTail: "Slice toward the tail",
   /** The three drawings' spoken names. */
   previewTopName: (count: number) => `The board file from above, with its ${count} slices`,
   previewSliceName: (n: number, count: number) => `Slice ${n} of ${count}, the whole cross-section`,
-  previewSideName: (count: number) => `The board file from the side, with its ${count} slices`,
+  previewSideName: (count: number, height: number, twoLines: boolean) =>
+    `The board file from the side, with its ${count} slices${twoLines ? ", the bottom at the stringer and at the rail" : ""}${
+      height === 1 ? ", true height" : `, height ×${height}`
+    }`,
   exportWorking: "Making the file…",
   exportFailed: "Couldn't make the file — try again.",
   exportNothingYet: "There's nothing to export until the board can be drawn.",

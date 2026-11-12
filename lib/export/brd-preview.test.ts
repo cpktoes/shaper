@@ -46,6 +46,7 @@ import {
 import { unscrambleBrd } from "./brd-scramble";
 import {
   BRD_PREVIEW_PAD_X,
+  BRD_PREVIEW_SIDE_HEIGHT,
   BRD_PREVIEW_PAD_Y,
   brdFileWithPreview,
   brdPreview,
@@ -58,6 +59,7 @@ import {
   type BrdPreview,
   type BrdSideProfileInput,
 } from "./brd-preview";
+import type { SectionHeight } from "../geometry/bottom-draw";
 
 /**
  * The preview on three boards: the flat Shortboard, the Fish and the Shortboard with a Deep Single Concave and four
@@ -296,29 +298,77 @@ describe.each(CASES)("the preview's drawings on %s", (_label, surface, options, 
 });
 
 describe.each(CASES)("the preview's words on %s", (_label, surface, options, sides) => {
-  const { preview } = brdFileWithPreview(surface, "Test Board", options, sides);
+  const { preview, profile } = brdFileWithPreview(surface, "Test Board", options, sides);
 
-  it("writes Imperial dims each with its own mark, and every station and the gap as dims", () => {
-    const words = brdPreviewWords(preview, "imperial");
-    expect(words.dims).toBe(
-      `${formatFeetInches(preview.length)} × ${formatInchesFraction(preview.width)} × ${formatInchesFraction(preview.thickness)}`,
-    );
+  it("writes Imperial dims each with its own mark, both thicknesses, and every station and the gap as dims", () => {
+    const words = brdPreviewWords(preview, "imperial", profile.maxThickness);
+    expect(words.dims).toBe(`${formatFeetInches(preview.length)} × ${formatInchesFraction(preview.width)}`);
+    expect(words.stringer).toBe(formatDim(preview.thickness, "imperial"));
+    expect(words.profileMax).toBe(formatDim(profile.maxThickness, "imperial"));
     expect(words.gap).toBe(formatDim(preview.widestGap, "imperial"));
     expect(words.stations).toEqual(preview.slices.map((slice) => formatDim(slice.station, "imperial")));
   });
 
-  it("writes Metric dims in centimetres to one decimal with cm once at the end", () => {
-    const words = brdPreviewWords(preview, "metric");
-    expect(words.dims).toBe(
-      `${formatCentimetres(preview.length)} × ${formatCentimetres(preview.width)} × ${formatCentimetres(preview.thickness)} cm`,
-    );
+  it("writes Metric dims in centimetres to one decimal with cm once at the end, the thicknesses as dims", () => {
+    const words = brdPreviewWords(preview, "metric", profile.maxThickness);
+    expect(words.dims).toBe(`${formatCentimetres(preview.length)} × ${formatCentimetres(preview.width)} cm`);
+    expect(words.stringer).toBe(formatDim(preview.thickness, "metric"));
+    expect(words.profileMax).toBe(formatDim(profile.maxThickness, "metric"));
     expect(words.gap).toBe(formatDim(preview.widestGap, "metric"));
     expect(words.stations).toEqual(preview.slices.map((slice) => formatDim(slice.station, "metric")));
   });
 
   it("has a station for every slice in every system", () => {
-    for (const system of UNITS_SYSTEMS) expect(brdPreviewWords(preview, system).stations.length).toBe(preview.slices.length);
+    for (const system of UNITS_SYSTEMS) expect(brdPreviewWords(preview, system, profile.maxThickness).stations.length).toBe(preview.slices.length);
   });
+});
+
+describe("the two thickness words", () => {
+  it("differ on the Deep Single, 2 1/8 inches at the stringer and 2 1/4 side profile max", () => {
+    const { preview, profile } = brdFileWithPreview(deep.surface, "Deep", deep.options, deep.sides);
+    const words = brdPreviewWords(preview, "imperial", profile.maxThickness);
+    expect(words.stringer).not.toBe(words.profileMax);
+    expect(words.stringer).toBe(`2 1/8"`);
+    expect(words.profileMax).toBe(`2 1/4"`);
+  });
+
+  it("are equal on the flat Shortboard", () => {
+    const [, surface, options, sides] = CASES[0];
+    const { preview, profile } = brdFileWithPreview(surface, "Flat", options, sides);
+    const words = brdPreviewWords(preview, "imperial", profile.maxThickness);
+    expect(words.stringer).toBe(words.profileMax);
+  });
+});
+
+describe.each(CASES)("the side view's Height on %s", (_label, surface, options, sides) => {
+  const { preview, profile } = brdFileWithPreview(surface, "Test Board", options, sides);
+  const extras = (height: SectionHeight) => ({ railBottom: profile.railBottom, height });
+  const HEIGHTS: SectionHeight[] = [1, 2, 4, 8];
+
+  it("opens at ×4", () => {
+    expect(BRD_PREVIEW_SIDE_HEIGHT).toBe(4);
+  });
+
+  it.each(HEIGHTS)("stretches only the side view's height, ×%i, and keeps the top view's frame", (height) => {
+    const one = brdPreviewFrames(preview, 760, extras(1));
+    const f = brdPreviewFrames(preview, 760, extras(height));
+    expect(f.side.heightFactor).toBe(height);
+    expect(f.side.height - 2 * BRD_PREVIEW_PAD_Y).toBeCloseTo(height * (one.side.height - 2 * BRD_PREVIEW_PAD_Y), 9);
+    expect(f.top).toEqual(one.top);
+    f.side.slices.forEach((line, i) => expect(line.x).toBe(f.top.slices[i].x));
+  });
+
+  it.each(WIDTHS.flatMap((width) => HEIGHTS.map((height): [number, SectionHeight] => [width, height])))(
+    "keeps every side, slice-line and rail point inside its box at %i dots wide, ×%i",
+    (width, height) => {
+      const f = brdPreviewFrames(preview, width, extras(height));
+      const inside = (points: readonly (readonly [number, number])[]) =>
+        points.every(([x, y]) => x >= -1e-9 && x <= width + 1e-9 && y >= -1e-9 && y <= f.side.height + 1e-9);
+      expect(inside(f.side.outline)).toBe(true);
+      expect(inside(f.side.rail ?? [])).toBe(true);
+      expect(inside(f.side.slices.flatMap((line) => [[line.x, line.y1], [line.x, line.y2]] as [number, number][]))).toBe(true);
+    },
+  );
 });
 
 describe("the preview's rail line (quick 261112-lmr)", () => {

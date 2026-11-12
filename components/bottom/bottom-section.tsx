@@ -156,8 +156,10 @@ const HEIGHT_TOUCH_BOX =
  * further apart there so the four boxes sit side by side without covering one another, 5 dots of each box reach up
  * into the gap under the top view and the rest hangs over the cross-section's empty top margin. (The zoom row's own
  * touch box adds 5 dots all round, which makes 44 of a 34-dot icon and only 27 of a button this small.)
+ *
+ * Exported because the Board file preview's side view on the 3D page uses the same buttons (quick 261112-lmr).
  */
-function HeightPicker({ height, onHeight }: { height: SectionHeight; onHeight: (height: SectionHeight) => void }) {
+export function HeightPicker({ height, onHeight }: { height: SectionHeight; onHeight: (height: SectionHeight) => void }) {
   return (
     <div role="group" aria-label={BOTTOM_COPY.height} data-lock-exempt data-bottom-height className="flex flex-none items-center gap-2 coarse:pr-1.5">
       <span className="text-xs text-surf-ink-muted font-normal max-shell:hidden [@media(max-height:500px)]:hidden">{BOTTOM_COPY.height}</span>
