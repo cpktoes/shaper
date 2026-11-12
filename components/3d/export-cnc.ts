@@ -1,4 +1,4 @@
-import { brdFileWithPreview, type BrdFileWithPreview } from "@/lib/export/brd-preview";
+import { brdFileWithPreview, type BrdFileWithPreview, type BrdSideProfileInput } from "@/lib/export/brd-preview";
 import { cncZip } from "@/lib/export/cnc-files";
 import type { BoardSurface } from "@/lib/geometry/board-surface";
 import type { Mm } from "@/lib/geometry/units";
@@ -36,10 +36,17 @@ function download(name: string, data: Uint8Array, type: string): void {
  * It imports the writers in `lib/export` and never the scene, so the file is made in a browser that can't draw in 3D as
  * well ("the file doesn't need the drawing"). Any error is left to the caller, which says so on the status line.
  * `bottomStations` are the stations where the bottom changes (`brdBottomStations` of the store's resolved bottom), where
- * the file puts its sections (quick 261110-veo).
+ * the file puts its sections (quick 261110-veo). `sides` is what the board maths needs for the preview's rail line and its
+ * side profile maximum (quick 261112-lmr): the file's own resolved bottom, the board and the planed side profile. It never
+ * reaches the file's bytes.
  */
-export function makeBrdExport(surface: BoardSurface, boardName: string, bottomStations: readonly Mm[]): BrdFileWithPreview {
-  return brdFileWithPreview(surface, boardName, { bottomStations });
+export function makeBrdExport(
+  surface: BoardSurface,
+  boardName: string,
+  bottomStations: readonly Mm[],
+  sides: BrdSideProfileInput,
+): BrdFileWithPreview {
+  return brdFileWithPreview(surface, boardName, { bottomStations }, sides);
 }
 
 /**

@@ -551,6 +551,32 @@ test.describe("Export .brd File on the 3D screen", () => {
     expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims));
     expect(opening).toBe(THREE_D_COPY.previewSliceLine(saved.openingSlice + 1, saved.slices.length, words.stations[saved.openingSlice]));
   });
+
+  test("11. the side view draws the bottom at the stringer and at the rail on a Deep Single, and one line on a flat board", async ({
+    page,
+    context,
+  }) => {
+    // A Deep Single Concave scoops the stringer's line away from the rail's: two bottom lines, the stringer's first.
+    await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await openPreview(page);
+    const lines = (target: Page) => previewDialog(target).locator("[data-brd-preview-side] [data-brd-side-line]");
+    await expect(lines(page)).toHaveCount(2);
+    await expect(lines(page).nth(0)).toHaveAttribute("data-brd-side-line", "stringer");
+    await expect(lines(page).nth(1)).toHaveAttribute("data-brd-side-line", "rail");
+
+    // The plain Shortboard has a flat bottom: the stringer and the rail are the same line, so one is drawn.
+    const flat = await context.newPage();
+    await dismissStrips(flat);
+    await keepBoard(flat, "Shortboard");
+    await flat.goto("/design/3d");
+    await waitForBoard(flat);
+    await openPreview(flat);
+    await expect(lines(flat)).toHaveCount(1);
+    await expect(lines(flat).first()).toHaveAttribute("data-brd-side-line", "stringer");
+    await flat.close();
+  });
 });
 
 /**

@@ -128,7 +128,10 @@ function PreviewBody({
   const [selected, setSelected] = useState(preview.openingSlice);
   const words = useMemo(() => brdPreviewWords(preview, system), [preview, system]);
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
-  const frames = useMemo(() => (box.width > 0 ? brdPreviewFrames(preview, box.width) : null), [preview, box.width]);
+  const frames = useMemo(
+    () => (box.width > 0 ? brdPreviewFrames(preview, box.width, { railBottom: file.profile.railBottom }) : null),
+    [preview, file.profile, box.width],
+  );
 
   // The nose is at the left, so ‹ and the left arrow move toward the nose: the next slice up from the tail.
   const step = (by: number) => setSelected((now) => Math.min(count - 1, Math.max(0, now + by)));
@@ -264,7 +267,26 @@ function PreviewBody({
             >
               {frames && (
                 <>
-                  <polygon points={pointsOf(frames.side.outline)} fill="var(--outline-board-fill)" stroke="var(--outline-ink)" strokeWidth={1.1} />
+                  <polygon
+                    data-brd-side-line="stringer"
+                    points={pointsOf(frames.side.outline)}
+                    fill="var(--outline-board-fill)"
+                    stroke="var(--outline-ink)"
+                    strokeWidth={1.1}
+                  />
+                  {frames.side.rail && (
+                    // The bottom at the rail before the rails are shaped, in the dash the GUIDE gives a pushed setting: a
+                    // token already checked for contrast on the panel and the board fill in every theme, and distinct from
+                    // the faint slice lines and the marked slice's dash-dot beside it.
+                    <polyline
+                      data-brd-side-line="rail"
+                      points={pointsOf(frames.side.rail)}
+                      fill="none"
+                      stroke="var(--outline-push-line)"
+                      strokeWidth={1.2}
+                      strokeDasharray="3 2"
+                    />
+                  )}
                   <SliceLines lines={frames.side.slices} selected={number} attr="side" />
                 </>
               )}

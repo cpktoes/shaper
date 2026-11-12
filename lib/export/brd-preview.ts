@@ -12,6 +12,8 @@
  * Pure: no React, browser or database import (CLAUDE.md Rule 1).
  */
 import { bezierPoint, type BezierKnot, type P2 } from "../geometry/bezier-fit";
+import { BOTTOM_DATA_DEPTH_SHOWN, type BottomBoard, type ResolvedBottom } from "../geometry/bottom";
+import { sideProfileAt, sideProfileLines, type SideProfileReader } from "../geometry/side-profile";
 import { formatDim } from "../geometry/measure-display";
 import {
   centimetresToMm,
@@ -71,12 +73,36 @@ export interface BrdPreview {
   openingSlice: number;
 }
 
-/** A file's sections, as made and as read back. */
+/**
+ * What the board maths needs to work out the preview's rail line and the side profile's maximum (quick 261112-lmr): the
+ * bottom the file was written from (the channel-less one, `brdFileBottom`, resolved), the board, and the planed side
+ * profile's rocker and thickness.
+ */
+export interface BrdSideProfileInput {
+  resolved: ResolvedBottom;
+  board: BottomBoard;
+  profile: SideProfileReader;
+}
+
+/** The two things the preview shows that the file itself does not hold: see `brdPreviewProfile`. */
+export interface BrdPreviewProfile {
+  /**
+   * The bottom at the rail before the rails are shaped, along the file's own stringer bottom: each point is the file's
+   * bottom there moved by the foam off at the rail less the foam off at the stringer. `null` where it never parts from
+   * the stringer's line by more than DATA's quarter millimetre (one line is drawn).
+   */
+  railBottom: P2[] | null;
+  /** The side profile's maximum thickness: the deck down to whichever bottom line is lower, the most along the board. */
+  maxThickness: Mm;
+}
+
+/** A file's sections, as made and as read back, and the board maths' two extras. */
 export interface BrdFileWithPreview {
   name: string;
   data: Uint8Array;
   sectionCount: number;
   preview: BrdPreview;
+  profile: BrdPreviewProfile;
 }
 
 const toKnot = (knot: BrdReadKnot): BezierKnot => knot;
@@ -171,13 +197,38 @@ export function brdSliceNearest(preview: Pick<BrdPreview, "slices">, station: nu
 }
 
 /**
- * The board file for a surface and its preview, read back from the very bytes the file is made of: `data` is the array
- * `brdFile` returned, untouched, so what Save downloads is what was drawn.
+ * The rail line and the maximum thickness for a read file (quick 261112-lmr): the file's own stringer bottom moved at each
+ * of its points by the board maths' foam off at the rail less the foam off at the stringer, so both lines sit on the
+ * file's own rocker. The stringer's line itself and the deck stay as the file says.
  */
-export function brdFileWithPreview(surface: BoardSurface, boardName: string, options: BrdOptions = {}): BrdFileWithPreview {
+export function brdPreviewProfile(preview: BrdPreview, sides: BrdSideProfileInput): BrdPreviewProfile {
+  let parted = 0;
+  const rail = preview.bottom.map(([x, h]): P2 => {
+    const at = sideProfileAt(sides.resolved, sides.board, sides.profile, mm(x));
+    const lift = at.railFoamOff - at.stringerFoamOff;
+    parted = Math.max(parted, Math.abs(lift));
+    return [x, h + lift];
+  });
+  return {
+    railBottom: parted > BOTTOM_DATA_DEPTH_SHOWN ? rail : null,
+    maxThickness: sideProfileLines(sides.resolved, sides.board, sides.profile).maxThickness,
+  };
+}
+
+/**
+ * The board file for a surface and its preview, read back from the very bytes the file is made of: `data` is the array
+ * `brdFile` returned, untouched, so what Save downloads is what was drawn. Everything drawn comes from those bytes except
+ * the rail line and the maximum thickness, which are worked out from the board maths beside them (`sides`).
+ */
+export function brdFileWithPreview(
+  surface: BoardSurface,
+  boardName: string,
+  options: BrdOptions,
+  sides: BrdSideProfileInput,
+): BrdFileWithPreview {
   const file = brdFile(surface, boardName, options);
   const preview = brdPreview(readBrdText(unscrambleBrd(file.data)));
-  return { name: file.name, data: file.data, sectionCount: file.sectionCount, preview };
+  return { name: file.name, data: file.data, sectionCount: file.sectionCount, preview, profile: brdPreviewProfile(preview, sides) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -215,6 +266,8 @@ export interface BrdSideFrame {
   outline: P2[];
   bottom: P2[];
   deck: P2[];
+  /** The bottom at the rail before the rails are shaped, through the same scales; null when it is the stringer's line. */
+  rail: P2[] | null;
   slices: BrdSliceLine[];
 }
 
@@ -254,7 +307,11 @@ export function brdStationAtX(frames: Pick<BrdPreviewFrames, "scale" | "length">
 }
 
 /** Lays the preview out for a box `width` dots wide: see `BrdPreviewFrames`. */
-export function brdPreviewFrames(preview: BrdPreview, width: number): BrdPreviewFrames {
+export function brdPreviewFrames(
+  preview: BrdPreview,
+  width: number,
+  extras: { railBottom?: readonly P2[] | null } = {},
+): BrdPreviewFrames {
   const length = preview.length;
   const room = Math.max(width - 2 * BRD_PREVIEW_PAD_X, 1);
   const scale = room / length;
@@ -279,8 +336,9 @@ export function brdPreviewFrames(preview: BrdPreview, width: number): BrdPreview
   };
 
   // Side view, at true height.
-  const high = Math.max(...preview.deck.map(([, h]) => h));
-  const low = Math.min(...preview.bottom.map(([, h]) => h));
+  const rail = extras.railBottom ?? null;
+  const high = Math.max(...preview.deck.map(([, h]) => h), ...(rail ?? []).map(([, h]) => h));
+  const low = Math.min(...preview.bottom.map(([, h]) => h), ...(rail ?? []).map(([, h]) => h));
   const sy = (heightMm: number) => BRD_PREVIEW_PAD_Y + (high - heightMm) * scale;
   const bottomLine = preview.bottom.map(([station, h]): P2 => [sx(station), sy(h)]);
   const deckLine = preview.deck.map(([station, h]): P2 => [sx(station), sy(h)]);
@@ -289,6 +347,7 @@ export function brdPreviewFrames(preview: BrdPreview, width: number): BrdPreview
     outline: [...bottomLine, ...[...deckLine].reverse()],
     bottom: bottomLine,
     deck: deckLine,
+    rail: rail ? rail.map(([station, h]): P2 => [sx(station), sy(h)]) : null,
     slices: preview.slices.map((slice) => ({
       number: slice.number,
       x: sx(slice.station),

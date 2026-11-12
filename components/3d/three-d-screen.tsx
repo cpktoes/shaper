@@ -463,7 +463,7 @@ export function ThreeDScreen() {
       // without channels gets its own surface and stations, as it always did.
       const fileBottom = brdFileBottom(bottom, bottomBoard);
       let surface = built.surface;
-      let stations = brdBottomStations(resolvedBottom);
+      let fileResolved = resolvedBottom;
       if (fileBottom !== bottom) {
         // Built here, in the tap, so a shaper who never exports pays nothing; it is synchronous, as Safari needs.
         surface = buildBoardSurface({
@@ -471,10 +471,15 @@ export function ThreeDScreen() {
           geometry: outlineGeometry,
           rockerAt: sideProfile.rockerAt,
         });
-        stations = brdBottomStations(resolveBottom(fileBottom, bottomBoard));
+        fileResolved = resolveBottom(fileBottom, bottomBoard);
       }
-      // The file's sections stand where the bottom changes (quick 261110-veo), so it gets the bottom's own stations.
-      const file = makeBrdExport(surface, boardName, stations);
+      // The file's sections stand where the bottom changes (quick 261110-veo), so it gets the bottom's own stations. The
+      // preview's rail line is worked out from the same bottom the file was written from (quick 261112-lmr).
+      const file = makeBrdExport(surface, boardName, brdBottomStations(fileResolved), {
+        resolved: fileResolved,
+        board: bottomBoard,
+        profile: sideProfile,
+      });
       setPrepared({ file, swallowNote: brdTailWrittenSquare(built.surface), channelsNote: brdLeavesChannelsOut(bottom) });
     } catch (error) {
       console.error("The board file could not be made:", error);

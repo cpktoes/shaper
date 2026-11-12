@@ -5,10 +5,15 @@ import {
 } from "../geometry/board-surface";
 import {
   DEFAULT_BOTTOM,
+  BOTTOM_DATA_DEPTH_SHOWN,
+  pickCut,
   resolveBottom,
   startingChannels,
   startingCut,
+  type BoardBottom,
+  type BottomBoard,
 } from "../geometry/bottom";
+import { sideProfileAt, sideProfileLines } from "../geometry/side-profile";
 import {
   designBottomBoard,
   designCrossSectionInput,
@@ -26,6 +31,7 @@ import {
   formatFeetInches,
   formatInchesFraction,
   inchesToMm,
+  mm,
   UNITS_SYSTEMS,
 } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
@@ -43,12 +49,14 @@ import {
   BRD_PREVIEW_PAD_Y,
   brdFileWithPreview,
   brdPreview,
+  brdPreviewProfile,
   brdPreviewFrames,
   brdPreviewWords,
   brdSliceNearest,
   brdStationAtX,
   brdStationX,
   type BrdPreview,
+  type BrdSideProfileInput,
 } from "./brd-preview";
 
 /**
@@ -63,6 +71,14 @@ const fieldsOf = (label: string): DesignSummaryFields => {
   return board.fields;
 };
 
+/** What the board maths needs beside a file (the bottom the file was written from, the board, the planed side profile). */
+function sidesOf(fields: DesignSummaryFields, bottom: BoardBottom = DEFAULT_BOTTOM): BrdSideProfileInput {
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  return { resolved: resolveBottom(brdFileBottom(bottom, board), board), board, profile };
+}
+
 function flatSurface(fields: DesignSummaryFields): BoardSurface {
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
@@ -74,7 +90,24 @@ function flatSurface(fields: DesignSummaryFields): BoardSurface {
   });
 }
 
-function deepSingle(fields: DesignSummaryFields): { surface: BoardSurface; options: BrdOptions } {
+/** A Shortboard with one cut picked (and channels if asked), made the way the 3D page makes its file. */
+function cutBoard(fields: DesignSummaryFields, pick: (board: BottomBoard) => BoardBottom): { surface: BoardSurface; options: BrdOptions; sides: BrdSideProfileInput } {
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  const bottom = pick(board);
+  const fileBottom = brdFileBottom(bottom, board);
+  const resolved = resolveBottom(fileBottom, board);
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom: fileBottom, board }),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  return { surface, options: { bottomStations: brdBottomStations(resolved) }, sides: { resolved, board, profile } };
+}
+
+function deepSingle(fields: DesignSummaryFields): { surface: BoardSurface; options: BrdOptions; sides: BrdSideProfileInput } {
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -90,15 +123,16 @@ function deepSingle(fields: DesignSummaryFields): { surface: BoardSurface; optio
     geometry,
     rockerAt: profile.rockerAt,
   });
-  return { surface, options: { bottomStations: brdBottomStations(resolveBottom(fileBottom, board)) } };
+  return { surface, options: { bottomStations: brdBottomStations(resolveBottom(fileBottom, board)) }, sides: { resolved: resolveBottom(fileBottom, board), board, profile } };
 }
 
 const deep = deepSingle(fieldsOf("shortboard|asis|hard"));
+const vee = cutBoard(fieldsOf("shortboard|asis|hard"), (board) => pickCut(DEFAULT_BOTTOM, "tail", "Rolled Vee", board));
 
-const CASES: [string, BoardSurface, BrdOptions][] = [
-  ["the flat Shortboard", flatSurface(fieldsOf("shortboard|asis|hard")), {}],
-  ["the Fish", flatSurface(fieldsOf("fish|asis|hard")), {}],
-  ["the Deep Single Shortboard", deep.surface, deep.options],
+const CASES: [string, BoardSurface, BrdOptions, BrdSideProfileInput][] = [
+  ["the flat Shortboard", flatSurface(fieldsOf("shortboard|asis|hard")), {}, sidesOf(fieldsOf("shortboard|asis|hard"))],
+  ["the Fish", flatSurface(fieldsOf("fish|asis|hard")), {}, sidesOf(fieldsOf("fish|asis|hard"))],
+  ["the Deep Single Shortboard", deep.surface, deep.options, deep.sides],
 ];
 
 /** The slice nearest half the length: where a Deep Single is deepest. */
@@ -106,8 +140,8 @@ function middleSlice(preview: BrdPreview) {
   return preview.slices[brdSliceNearest(preview, preview.length / 2)];
 }
 
-describe.each(CASES)("the board file preview on %s", (_label, surface, options) => {
-  const made = brdFileWithPreview(surface, "Test Board", options);
+describe.each(CASES)("the board file preview on %s", (_label, surface, options, sides) => {
+  const made = brdFileWithPreview(surface, "Test Board", options, sides);
   const plain = brdFile(surface, "Test Board", options);
   const read = readBrdText(unscrambleBrd(made.data));
   const { preview } = made;
@@ -175,20 +209,20 @@ describe.each(CASES)("the board file preview on %s", (_label, surface, options) 
 
 describe("the preview's middle slice", () => {
   it("dips below the stringer on the Deep Single by more than a millimetre", () => {
-    const preview = brdFileWithPreview(deep.surface, "Deep", deep.options).preview;
+    const preview = brdFileWithPreview(deep.surface, "Deep", deep.options, deep.sides).preview;
     const lowest = Math.min(...middleSlice(preview).section.map(([, up]) => up));
     expect(lowest).toBeLessThan(-1);
   });
 
   it("stays flat on the flat Shortboard, none lower than half a millimetre below", () => {
-    const preview = brdFileWithPreview(CASES[0][1], "Flat").preview;
+    const preview = brdFileWithPreview(CASES[0][1], "Flat", {}, CASES[0][3]).preview;
     const lowest = Math.min(...middleSlice(preview).section.map(([, up]) => up));
     expect(lowest).toBeGreaterThan(-0.5);
   });
 });
 
 describe("brdSliceNearest", () => {
-  const { preview } = brdFileWithPreview(CASES[0][1], "Flat");
+  const { preview } = brdFileWithPreview(CASES[0][1], "Flat", {}, CASES[0][3]);
   it("finds each slice from its own station and one past either end", () => {
     preview.slices.forEach((s, i) => expect(brdSliceNearest(preview, s.station)).toBe(i));
     expect(brdSliceNearest(preview, -1e6)).toBe(0);
@@ -199,15 +233,17 @@ describe("brdSliceNearest", () => {
 /** Widths a phone and a computer give the drawings (dots). */
 const WIDTHS = [330, 760, 1000];
 
-describe.each(CASES)("the preview's drawings on %s", (_label, surface, options) => {
-  const { preview } = brdFileWithPreview(surface, "Test Board", options);
+describe.each(CASES)("the preview's drawings on %s", (_label, surface, options, sides) => {
+  const { preview, profile } = brdFileWithPreview(surface, "Test Board", options, sides);
 
   it.each(WIDTHS)("keeps every point inside its box at %i dots wide", (width) => {
-    const f = brdPreviewFrames(preview, width);
+    const f = brdPreviewFrames(preview, width, { railBottom: profile.railBottom });
     const inside = (points: readonly (readonly [number, number])[], height: number) =>
       points.every(([x, y]) => x >= -1e-9 && x <= width + 1e-9 && y >= -1e-9 && y <= height + 1e-9);
     expect(inside(f.top.outline, f.top.height)).toBe(true);
     expect(inside(f.side.outline, f.side.height)).toBe(true);
+    expect(inside(f.side.rail ?? [], f.side.height)).toBe(true);
+    expect(inside(f.side.slices.flatMap((line) => [[line.x, line.y1], [line.x, line.y2]] as [number, number][]), f.side.height)).toBe(true);
     for (const slice of f.slices) {
       expect(inside(slice.outline, f.sliceHeight)).toBe(true);
       expect(inside(slice.knots, f.sliceHeight)).toBe(true);
@@ -259,8 +295,8 @@ describe.each(CASES)("the preview's drawings on %s", (_label, surface, options) 
   });
 });
 
-describe.each(CASES)("the preview's words on %s", (_label, surface, options) => {
-  const { preview } = brdFileWithPreview(surface, "Test Board", options);
+describe.each(CASES)("the preview's words on %s", (_label, surface, options, sides) => {
+  const { preview } = brdFileWithPreview(surface, "Test Board", options, sides);
 
   it("writes Imperial dims each with its own mark, and every station and the gap as dims", () => {
     const words = brdPreviewWords(preview, "imperial");
@@ -282,5 +318,72 @@ describe.each(CASES)("the preview's words on %s", (_label, surface, options) => 
 
   it("has a station for every slice in every system", () => {
     for (const system of UNITS_SYSTEMS) expect(brdPreviewWords(preview, system).stations.length).toBe(preview.slices.length);
+  });
+});
+
+describe("the preview's rail line (quick 261112-lmr)", () => {
+  const flat = CASES[0];
+  const fish = CASES[1];
+
+  it.each([flat, fish])("is not drawn on %s, and the maximum is the file's own thickness", (_label, surface, options, sides) => {
+    const made = brdFileWithPreview(surface, "Flat", options, sides);
+    expect(made.profile.railBottom).toBeNull();
+    expect(Math.abs(made.profile.maxThickness - made.preview.thickness)).toBeLessThan(0.1);
+  });
+
+  describe("on the Deep Single", () => {
+    const made = brdFileWithPreview(deep.surface, "Deep", deep.options, deep.sides);
+    const { preview, profile } = made;
+    const { resolved, board, profile: planed } = deep.sides;
+
+    it("runs along the file's own bottom, moved by the rail's foam off less the stringer's", () => {
+      expect(profile.railBottom).not.toBeNull();
+      const rail = profile.railBottom ?? [];
+      expect(rail.map(([x]) => x)).toEqual(preview.bottom.map(([x]) => x));
+      rail.forEach(([x, h], i) => {
+        const at = sideProfileAt(resolved, board, planed, mm(x));
+        expect(Math.abs(h - (preview.bottom[i][1] + at.railFoamOff - at.stringerFoamOff))).toBeLessThan(1e-9);
+      });
+    });
+
+    it("lies more than a millimetre under the stringer's bottom at the middle slice", () => {
+      const middle = middleSlice(preview);
+      const rail = profile.railBottom ?? [];
+      const at = rail.reduce((best, p) => (Math.abs(p[0] - middle.station) < Math.abs(best[0] - middle.station) ? p : best));
+      expect(middle.bottom - at[1]).toBeGreaterThan(1);
+    });
+
+    it("quotes a maximum from the board maths, thicker than the file's own by more than a millimetre", () => {
+      expect(profile.maxThickness).toBe(sideProfileLines(resolved, board, planed).maxThickness);
+      expect(profile.maxThickness - preview.thickness).toBeGreaterThan(1);
+    });
+
+    it("agrees with every slice's own thickness, deck less stringer bottom, within 0.05 mm", () => {
+      for (const slice of preview.slices) {
+        const at = sideProfileAt(resolved, board, planed, slice.station);
+        expect(Math.abs(slice.thickness - (at.deck - at.stringerBottom))).toBeLessThan(0.05);
+      }
+    });
+  });
+
+  it("is drawn above the stringer's bottom on a Rolled Vee, at the tail cut's deepest station", () => {
+    const made = brdFileWithPreview(vee.surface, "Vee", vee.options, vee.sides);
+    const rail = made.profile.railBottom ?? [];
+    expect(rail.length).toBeGreaterThan(0);
+    const at = vee.sides.resolved.tail.deepest;
+    const nearest = rail.reduce((best, p, i) => (Math.abs(p[0] - at) < Math.abs(rail[best][0] - at) ? i : best), 0);
+    expect(rail[nearest][1] - made.preview.bottom[nearest][1]).toBeGreaterThan(BOTTOM_DATA_DEPTH_SHOWN);
+  });
+
+  it("is the same list brdPreviewProfile gives for the read file", () => {
+    const made = brdFileWithPreview(deep.surface, "Deep", deep.options, deep.sides);
+    expect(brdPreviewProfile(made.preview, deep.sides)).toEqual(made.profile);
+  });
+
+  it("changes nothing in the drawings when there is no rail line", () => {
+    const { preview } = brdFileWithPreview(flat[1], "Flat", flat[2], flat[3]);
+    const plain = brdPreviewFrames(preview, 760);
+    expect(brdPreviewFrames(preview, 760, { railBottom: null })).toEqual(plain);
+    expect(plain.side.rail).toBeNull();
   });
 });
