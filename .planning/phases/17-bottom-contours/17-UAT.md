@@ -84,6 +84,7 @@ blocked: 0
 - 2026-11-11: 17-21 (RAILS shows flat-tail channels; DATA Rail lift counts the vee or belly only) approved at his look. Three more answers: BOTTOM's section gauge rail lift matches DATA ("Match DATA"); DATA's note becomes "Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts." ("Use the sentence"); RAILS draws a tail concave under the channels ("Draw the concave" — supersedes D-41 for that case; band marks may move up to about 3/16"). Planned as a further fix plan.
 - 2026-11-11: on 17-22's plan, two more answers: RAILS draws a concave on every section, channels or not ("Always draw it" — widens his 17-21 answer and retires D-41's "a concave changes nothing on RAILS" entirely); the 9'+ Longboard's printed tables sheet must keep all three notes with the longer DATA sentence ("Make it fit").
 - 2026-11-11: 17-22 (RAILS draws every concave on every section; marks move only on the Longboard's rolled rail, Rail Tuck 2 up to 0.116") approved at his look.
+- 2026-11-11: 17-23 (BOTTOM's section gauge matches DATA; DATA's note in his sentence; the Longboard's printed tables sheet prints all three notes, rows 2 dots closer, type unchanged) approved at his look. All seven fix plans (17-17 to 17-23) are on the branch; the go-live gate and his re-check of tests 5 and 6 on the live site remain.
 
 ## Gaps
 

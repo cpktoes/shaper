@@ -116,7 +116,9 @@ The real-browser fit sweep passed for all four boards in both systems:
 - every sheet, at every phone width and on both papers, has nothing clipped
 - the worst Longboard's tables sheet has about 61 dots clear above the page mark on a computer's print
 
-## Founder's look: Pending
+## Founder's look: Approved (2026-11-11)
+
+The founder looked at both before-and-after pictures and approved ("Approved").
 
 - `.planning/phases/17-bottom-contours/pictures/17-23-bottom-gauge.png` shows BOTTOM's VIEWER section at DATA's tail row, 1280 wide, Imperial, before (left) and after (right).
   - **Fish, flat tail, eight channels:** the `5/16" rail lift` reading is gone, and the `5/16" in the channel` reading is where it was.

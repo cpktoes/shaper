@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: executing
-stopped_at: "Phase 17 fix waves 1-3 merged and approved on claude/bottom-uat-17-d1559c (17-17..17-21; gate green after 17-21). Fix wave 4 planned from his answers: 17-22 RAILS draws every concave on every section (D-41 retired), 17-23 BOTTOM section gauge matches DATA + the DATA note sentence + the Longboard tables sheet keeps all three notes. Both run side by side next. Not pushed."
+stopped_at: "Phase 17: all seven fix plans (17-17..17-23) built, approved at his looks and merged on claude/bottom-uat-17-d1559c. Next: the go-live gate on the merged branch (unit suite, browser suite, production build), then push to main only on his word, the live check, and his re-check of UAT tests 5 and 6; then close the phase. The .brd export on close-bottom-17 joins main after this lands. Not pushed."
 last_updated: "2026-11-11T12:00:00.000Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 17 fix wave 1 merged — VOLUME says what its litres count, RAILS draws channel walls straight up, the channel boards' litres pinned
+last_activity_desc: All seven fixes from the founder's BOTTOM walk-through are built and approved on the branch — the go-live checks are next
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 82
-  completed_plans: 80
-  percent: 98
+  completed_plans: 82
+  percent: 100
 current_phase: 17
 current_phase_name: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut
 ---
