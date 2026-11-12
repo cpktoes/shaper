@@ -162,9 +162,13 @@ export const BOTTOM_COPY = {
   /** DATA's second table (D-16): its heading, Metric ` (mm)` — the app's header form, not the sketch's ` · mm`. */
   marksHeading: (metric: boolean) => `Layout marks · off the stringer${metric ? " (mm)" : ""}`,
 
-  /** DATA's first note (UI-SPEC § Copywriting "DATA", the sketch's line 855). */
+  /**
+   * DATA's first note (UI-SPEC § Copywriting "DATA", the sketch's line 855). Its middle sentence is the founder's own of
+   * 2026-11-11 ("Use the sentence"), after 17-21's "Match RAILS": Rail lift counts the vee or belly alone, and a channel
+   * never counts. The printed tables sheet carries the same note.
+   */
   depthsNote:
-    "Deepest cut is the largest gap under a straightedge laid rail to rail at that station. Rail lift is that gap at the rail. Stringer left is the planed thickness less the cut at the stringer.",
+    "Deepest cut is the largest gap under a straightedge laid rail to rail at that station. Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts. Stringer left is the planed thickness less the cut at the stringer.",
 } as const;
 
 /**

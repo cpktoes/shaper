@@ -518,3 +518,19 @@ describe("bottomDepthCell: the Deepest cut and Rail lift cells, on DATA and on t
     expect(lessThan, "the stock boards do carry such depths (non-vacuity)").toBeGreaterThan(0);
   }, 120_000);
 });
+
+describe("DATA's note says what Rail lift counts, in the founder's words (2026-11-11: \"Use the sentence\")", () => {
+  const FOUNDER = "Rail lift is the vee's or belly's lift at the rail; a channel is cut after the rail is shaped and never counts.";
+  const FIRST = "Deepest cut is the largest gap under a straightedge laid rail to rail at that station.";
+  const LAST = "Stringer left is the planed thickness less the cut at the stringer.";
+
+  it("the middle sentence is his, word for word; the first and last are as they were; the old gap sentence is gone", () => {
+    const note = BOTTOM_COPY.depthsNote;
+    expect(note).toContain(FOUNDER);
+    expect(note.startsWith(FIRST)).toBe(true);
+    expect(note.endsWith(LAST)).toBe(true);
+    expect(note).not.toContain("Rail lift is that gap at the rail.");
+    // Three sentences in all, each ending in a full stop.
+    expect(note.split(/(?<=\.)\s+/)).toEqual([FIRST, FOUNDER, LAST]);
+  });
+});

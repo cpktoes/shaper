@@ -807,9 +807,22 @@ export function cutFoamOff(cut: ResolvedCut, board: BottomBoard, rule: BottomWin
  */
 export function foamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): Mm {
   if (board.railAt(s) <= 0) return mm(0);
+  return mm(sectionsFoamOff(resolved, board, s, y) + channelFoamOff(resolved.channels, board, resolved.wingRule, s, y));
+}
+
+/**
+ * The one number without the channels (G-17-6, the founder's ruling of 2026-11-10: "channels are the last cut, made
+ * after the rail is shaped"): the foam the vees, bellies and concaves alone take off at station `s`, `y` out from the
+ * stringer — the concaves held by the 1/4" floor at the stringer, the lifts never held, exactly as `foamOff` adds them.
+ * The vees and bellies are cut before the rails are shaped, so this is the bottom the rail stands on (RAILS' rail lift
+ * reads it at the rail); the channels are cut afterwards, into what this leaves. `foamOff` is this plus
+ * `channelFoamOff`, added in that order, so it is the same number to the last bit.
+ */
+export function sectionsFoamOff(resolved: ResolvedBottom, board: BottomBoard, s: Mm, y: Mm): Mm {
+  if (board.railAt(s) <= 0) return mm(0);
   const { concave, lift } = foamOffParts(resolved, board, s, y);
   const held = Math.min(Math.max(0, concave), stringerFloorCap(board, s));
-  return mm(held + Math.max(0, lift) + channelFoamOff(resolved.channels, board, resolved.wingRule, s, y));
+  return mm(held + Math.max(0, lift));
 }
 
 /** The most concave work a station holds: the planed thickness less the 1/4" floor (D-09), never below 0. */
@@ -1130,7 +1143,24 @@ function lastStation(read: (s: Mm) => Mm): (s: Mm) => Mm {
  * readers are asked once per station, the same numbers either way.
  */
 export function bottomSampler(resolved: ResolvedBottom, board: BottomBoard): (station: Mm, across: Mm) => Mm {
-  const read: BottomBoard = {
+  const read = stationReaders(board);
+  return (station, across) => foamOff(resolved, read, station, mm(across + read.notchInner(station)));
+}
+
+/**
+ * `bottomSampler`'s twin for the vees, bellies and concaves alone (G-17-6, the founder, 2026-11-10): the bottom the
+ * rail is shaped on, before the channels are cut into it — `sectionsFoamOff` read exactly as `bottomSampler` reads
+ * `foamOff`, `across` in from the section's own inside edge plus a swallow's notch wall. The channels are then cut
+ * straight up into whatever this and the finished rail leave.
+ */
+export function bottomSectionsSampler(resolved: ResolvedBottom, board: BottomBoard): (station: Mm, across: Mm) => Mm {
+  const read = stationReaders(board);
+  return (station, across) => sectionsFoamOff(resolved, read, station, mm(across + read.notchInner(station)));
+}
+
+/** The board's readers, each asked once per station (`lastStation`). */
+function stationReaders(board: BottomBoard): BottomBoard {
+  return {
     ...board,
     railAt: lastStation((s) => board.railAt(s)),
     curveAt: lastStation((s) => board.curveAt(s)),
@@ -1139,7 +1169,6 @@ export function bottomSampler(resolved: ResolvedBottom, board: BottomBoard): (st
     thicknessAt: lastStation((s) => board.thicknessAt(s)),
     notchInner: lastStation((s) => board.notchInner(s)),
   };
-  return (station, across) => foamOff(resolved, read, station, mm(across + read.notchInner(station)));
 }
 
 /**
@@ -1197,7 +1226,9 @@ export interface BottomDataRow {
   width: Mm | null;
   /** The deepest cut: the most foam off across the station, the gap under a straightedge laid rail to rail. */
   deepest: Mm;
-  /** The foam off at the rail. */
+  /** The vee's or belly's lift at the rail (`sectionsFoamOff` there) — the figure RAILS thins the rail by
+   * (`bottomRailLift`). A channel is cut after the rail is shaped and never counts here, even one that runs out
+   * through the rail (the founder, 2026-11-11: "Match RAILS"; D-05, D-43). */
   railLift: Mm;
   /** The planed thickness less the cut at the stringer; `null` where the stringer is air (a swallow's notch) or there
    * is no rail. */
@@ -1234,7 +1265,10 @@ function referenceOf(board: BottomBoard, s: Mm): BottomDataRow["reference"] {
 
 /**
  * DATA's depths table (D-16): a row at the tail, every 6" from it and at the nose tip — the width, the deepest cut,
- * the rail lift and the stringer left, each the one number (`foamOff`) read at that station.
+ * the rail lift and the stringer left. The deepest cut and the stringer left are the one number (`foamOff`), channels
+ * included. The rail lift is the vee's or belly's lift at the rail alone (`sectionsFoamOff`), the figure RAILS thins
+ * the rail by: a channel is cut after the rail is shaped and never counts there, even one that runs out through the
+ * rail (the founder, 2026-11-11: "Match RAILS").
  */
 export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): BottomDataRow[] {
   const stations = bottomDataStations(board);
@@ -1248,7 +1282,7 @@ export function bottomDataRows(resolved: ResolvedBottom, board: BottomBoard): Bo
       label: k === 0 ? "tail" : k === stations.length - 1 ? "nose" : "station",
       width: hasRail ? mm(2 * W) : null,
       deepest: deepestCutAt(resolved, board, s),
-      railLift: foamOff(resolved, board, s, W),
+      railLift: sectionsFoamOff(resolved, board, s, W),
       stringerLeft,
       reference: referenceOf(board, s),
       atFloor: stringerLeft !== null && foamOffParts(resolved, board, s, mm(0)).concave > stringerFloorCap(board, s) + FLOOR_GUARD,

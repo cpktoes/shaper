@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import golden from "./__fixtures__/bottom-golden.json";
 import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
+import { phase17ChannelBoards } from "./__fixtures__/phase17-channel-boards";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_DATA_DEPTH_SHOWN,
   BOTTOM_FLOOR,
   BOTTOM_SECTIONS,
   bottomDataRows,
@@ -14,6 +16,7 @@ import {
   bottomLitresLine,
   BOTTOM_MARK_FADE_MIN,
   bottomSampler,
+  bottomSectionsSampler,
   chan,
   CHANNEL_ANGLE_MAX,
   CHANNEL_ANGLE_STEP,
@@ -56,6 +59,7 @@ import {
   resolveBottom,
   resolveCut,
   rise,
+  sectionsFoamOff,
   sec,
   smoothstep,
   startingCut,
@@ -77,7 +81,7 @@ import {
   type ResolvedCut,
 } from "./bottom";
 import type { DesignSummaryFields } from "./design";
-import { deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES, summarizeDesign } from "./design";
+import { bottomRailLift, deriveEffectiveRails, designBottomBoard, designCrossSectionInput, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES, summarizeDesign } from "./design";
 import { frontFinStation } from "./fins";
 import { buildOutline, foamHalfWidth, sampleOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
@@ -1106,7 +1110,7 @@ describe("DATA: the depths every 6\" (D-16, R8)", () => {
     let cutting = 0;
     for (const r of rows) {
       const W = board.railAt(r.station);
-      expect(r.railLift).toBe(foamOff(resolved, board, r.station, W));
+      expect(r.railLift).toBe(sectionsFoamOff(resolved, board, r.station, W));
       expect(r.deepest).toBe(deepestCutAt(resolved, board, r.station));
       expect(r.deepest).toBeGreaterThanOrEqual(r.railLift);
       expect(r.deepest).toBeGreaterThanOrEqual(foamOff(resolved, board, r.station, mm(0)));
@@ -1153,7 +1157,7 @@ describe("DATA: the depths every 6\" (D-16, R8)", () => {
     const all = bottomDataRows(vee, fish);
     for (const r of all) {
       if (r.stringerLeft !== null) expect(r.stringerLeft).toBe(fish.thicknessAt(r.station));
-      expect(r.railLift).toBe(foamOff(vee, fish, r.station, fish.railAt(r.station)));
+      expect(r.railLift).toBe(sectionsFoamOff(vee, fish, r.station, fish.railAt(r.station)));
     }
     expect(all.some((r) => r.railLift > 0)).toBe(true);
   });
@@ -1172,6 +1176,82 @@ describe("DATA: the depths every 6\" (D-16, R8)", () => {
     const held = bottomDataRows(resolveBottom(deep, board), board).filter((r) => r.atFloor);
     expect(held.length).toBeGreaterThan(0);
     for (const r of held) expect(Math.abs(r.stringerLeft! - BOTTOM_FLOOR)).toBeLessThan(TOL);
+  });
+});
+
+// The founder's answer of 2026-11-11 at his look at 17-18, "Match RAILS": DATA's Rail lift is the vee's or belly's
+// lift at the rail — the figure RAILS thins the rail by (`bottomRailLift`). Channels are cut after the rail is shaped
+// (D-05), so a channel never counts there, even one that runs out through the rail (D-43). Every other figure stays the
+// one number. Every expected figure is the app's own (Rule 1).
+describe("DATA's Rail lift counts the vee or belly alone, as RAILS does (the founder, 2026-11-11: \"Match RAILS\")", () => {
+  const channelBoards = phase17ChannelBoards();
+  /** A channelled board's bottom, resolved, with the same board's bottom with the channels set to None. */
+  const setupOf = (fields: DesignSummaryFields) => {
+    const board = bottomBoardOf(fields);
+    const bottom = fields.bottom!;
+    const resolved = resolveBottom(bottom, board);
+    const none = resolveBottom({ ...bottom, channels: DEFAULT_BOTTOM.channels }, board);
+    return { board, resolved, none };
+  };
+
+  it.each(["fish|hard|rolled-vee|6", "shortboard|hard|rolled-vee|6"])("%s: every row's Rail lift is RAILS' own rail lift, and the same board's with the channels set to None", (label) => {
+    const { board, resolved, none } = setupOf(channelBoards.find((b) => b.label === label)!.fields);
+    const rows = bottomDataRows(resolved, board);
+    const noneRows = bottomDataRows(none, board);
+    const railsLift = bottomRailLift(resolved, board);
+    let lifted = 0;
+    rows.forEach((r, k) => {
+      expect(Object.is(r.railLift, railsLift(r.station))).toBe(true);
+      expect(Object.is(r.railLift, noneRows[k].railLift)).toBe(true);
+      if (r.railLift > 0) lifted++;
+    });
+    expect(lifted, "the vee lifts the rail somewhere (non-vacuity)").toBeGreaterThan(0);
+  });
+
+  const flatLabels = channelBoards.map((b) => b.label).filter((l) => /^(shortboard|fish|longboard)\|(hard|soft)\|flat\|[468]$/.test(l));
+
+  it("the set: the Shortboard, the Fish and the Longboard, Hard Edge and soft, with a flat tail and four, six and eight channels", () => {
+    expect(flatLabels).toHaveLength(18);
+  });
+
+  it.each(flatLabels)("%s: a channel that runs out through the rail never shows as Rail lift — every row reads the sections' number at the rail, 0 on a flat tail", (label) => {
+    const { board, resolved } = setupOf(channelBoards.find((b) => b.label === label)!.fields);
+    const rows = bottomDataRows(resolved, board);
+    for (const r of rows) {
+      const W = board.railAt(r.station);
+      expect(r.railLift).toBe(sectionsFoamOff(resolved, board, r.station, W));
+      expect(r.railLift).toBe(0);
+    }
+    // the tail row: the whole one number at the rail is a channel there, deep enough to have read as a figure in DATA
+    const tail = rows[0];
+    expect(tail.label).toBe("tail");
+    expect(foamOff(resolved, board, tail.station, board.railAt(tail.station))).toBeGreaterThanOrEqual(BOTTOM_DATA_DEPTH_SHOWN);
+  });
+
+  it.each([...flatLabels, "fish|hard|rolled-vee|6", "shortboard|hard|rolled-vee|6"])("%s: every other figure is unchanged — Deepest cut and Stringer left still the one number, the rest as the board with no channels", (label) => {
+    const { board, resolved, none } = setupOf(channelBoards.find((b) => b.label === label)!.fields);
+    const rows = bottomDataRows(resolved, board);
+    const noneRows = bottomDataRows(none, board);
+    let channelled = 0;
+    rows.forEach((r, k) => {
+      expect(r.deepest).toBe(deepestCutAt(resolved, board, r.station));
+      expect(r.deepest).toBeGreaterThanOrEqual(r.railLift);
+      if (r.stringerLeft === null) expect(noneRows[k].stringerLeft).toBeNull();
+      else expect(r.stringerLeft).toBe(board.thicknessAt(r.station) - foamOff(resolved, board, r.station, mm(0)));
+      expect(r.station).toBe(noneRows[k].station);
+      expect(r.label).toBe(noneRows[k].label);
+      expect(r.width).toBe(noneRows[k].width);
+      expect(r.reference).toBe(noneRows[k].reference);
+      expect(r.atFloor).toBe(noneRows[k].atFloor);
+      if (r.deepest > noneRows[k].deepest) channelled++;
+    });
+    expect(channelled, "the channels are in the Deepest cut (non-vacuity)").toBeGreaterThan(0);
+  });
+
+  it("without channels nothing moves: a flat bottom's every row reads 0 Rail lift on every board", () => {
+    for (const { board: b } of BOARDS) {
+      for (const r of bottomDataRows(resolveBottom(DEFAULT_BOTTOM, b), b)) expect(r.railLift).toBe(0);
+    }
   });
 });
 
@@ -2601,5 +2681,63 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     }
     // the slider does reach it: an Off Stringer wider than the board is at the deepest station
     expect(pastTheRail).toBeGreaterThan(0);
+  });
+});
+
+/* ============ G-17-6: the one number without the channels (the founder, 2026-11-10) ============ */
+
+describe("sectionsFoamOff (G-17-6): the vees, bellies and concaves alone — the channels are cut into what they leave", () => {
+  const openings = cases.filter((c) => c.kind === "opening") as OpeningCase[];
+  const withSix = openings.filter((c) => c.channels === 6);
+
+  it("covers all five boards", () => {
+    expect(withSix.map((c) => c.board)).toEqual(["shortboard", "fish", "midlength", "longboard", "fishwing"]);
+  });
+
+  it.each(withSix.map((c) => [c.board, c] as const))("%s's opening with six channels: the sections' part plus the channels' is the one number to the last bit, at every golden probe", (_b, c) => {
+    const board = boardById(c.board);
+    const grid = gridOf(c.board);
+    const resolved = resolveBottom(withChannels(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }, 6), board);
+    let cut = 0;
+    grid.s.forEach((s, k) => {
+      for (const y of grid.y[k]) {
+        const channels = channelFoamOff(resolved.channels, board, resolved.wingRule, mm(s), mm(y));
+        expect(Object.is(sectionsFoamOff(resolved, board, mm(s), mm(y)) + channels, foamOff(resolved, board, mm(s), mm(y)))).toBe(true);
+        if (channels > 0) cut++;
+      }
+    });
+    expect(cut).toBeGreaterThan(0);
+  });
+
+  it.each(openings.filter((c) => c.channels === 0).map((c) => [c.board, c] as const))("%s's opening with no channels: the sections' part is the one number itself, bit for bit", (_b, c) => {
+    const board = boardById(c.board);
+    const grid = gridOf(c.board);
+    const resolved = resolveBottom(bottomOf(board, { nose: c.cuts.nose.name, center: c.cuts.center.name, tail: c.cuts.tail.name }), board);
+    grid.s.forEach((s, k) => {
+      for (const y of grid.y[k]) expect(Object.is(sectionsFoamOff(resolved, board, mm(s), mm(y)), foamOff(resolved, board, mm(s), mm(y)))).toBe(true);
+    });
+  });
+
+  it("bottomSectionsSampler reads it as the litres read the one number: across plus a swallow's notch wall", () => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|swallow|hard")!.fields;
+    const board = bottomBoardOf(fields);
+    const bottom = bottomOf(board, { tail: "Panel Vee" });
+    bottom.channels = startingChannels(6, board, bottom.channels);
+    const resolved = resolveBottom(bottom, board);
+    const sections = bottomSectionsSampler(resolved, board);
+    const whole = bottomSampler(resolved, board);
+    const notchStations = Array.from({ length: 40 }, (_, k) => mm(k * 2)).filter((s) => board.notchInner(s) > 0);
+    expect(notchStations.length).toBeGreaterThan(3);
+    let parted = 0;
+    for (const s of notchStations) {
+      for (const across of [0, 10, 40, 80].map(mm)) {
+        const y = mm(across + board.notchInner(s));
+        expect(sections(s, across)).toBe(sectionsFoamOff(resolved, board, s, y));
+        expect(Object.is(sections(s, across) + channelFoamOff(resolved.channels, board, resolved.wingRule, s, y), whole(s, across))).toBe(true);
+        if (sections(s, across) !== whole(s, across)) parted++;
+      }
+    }
+    // the channels are cut there, so the two readers part somewhere — the sections' one leaves them out
+    expect(parted).toBeGreaterThan(0);
   });
 });

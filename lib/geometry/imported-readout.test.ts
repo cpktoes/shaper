@@ -287,7 +287,7 @@ describe("volumeImportedReadout — VOLUME's INPUTS card", () => {
       ["Width", `19"`],
       ["Thickness", `2 1/2"`],
     ]);
-    expect(r.foot).toBe("Rail shapes from RAILS");
+    expect(r.foot).toBe("Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.");
   });
 
   it("reads the default board in Metric, each figure with its own unit", () => {
@@ -296,6 +296,13 @@ describe("volumeImportedReadout — VOLUME's INPUTS card", () => {
       ["Width", "48.3 cm"],
       ["Thickness", "6.4 cm"],
     ]);
+  });
+
+  it("reads the very same foot in Metric — the sentence has no figure in it", () => {
+    const metric = volumeImportedReadout(length, width, centre, "metric");
+    expect(metric.foot).toBe(volumeImportedReadout(length, width, centre, "imperial").foot);
+    expect(metric.foot).toBe("Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.");
+    expect(metric.caption).toBe("From TEMPLATE and ROCKER & FOIL");
   });
 
   it("is built from formatLength and formatDim, never its own numbers, in both systems", () => {

@@ -413,7 +413,9 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     }
 
     const base = pieces[0].first;
-    const bottomEdge = [...new Set([right[BOTTOM_EDGE] - base, left[BOTTOM_EDGE] - base])];
+    // a wall standing under the rail's curve moves the true bottom edge into the walled run (G-17-6): drawn sharp there
+    const edgeRow = section.bottomEdgeRow ?? BOTTOM_EDGE;
+    const bottomEdge = [...new Set([right[edgeRow] - base, left[edgeRow] - base])];
     rings.push({
       station: s,
       pieces,
@@ -451,8 +453,10 @@ export function buildBoardSurface(input: BoardSurfaceInput): BoardSurface {
     const A = slots[i];
     const B = slots[i + 1];
     if (flatHalf[i] && flatHalf[i + 1] && (pole[i] || pole[i + 1])) continue;
+    // a channel wall first, then the rail's faces down to the lower of the two rings' true bottom edges (G-17-6)
+    const railRows = Math.min(placed[i].section.bottomEdgeRow ?? BOTTOM_EDGE, placed[i + 1].section.bottomEdgeRow ?? BOTTOM_EDGE);
     for (let j = 0; j < ringLength - 1; j++) {
-      const kind = j < BOTTOM_EDGE ? SURFACE_FACE.upper : channelWallRows.has(j) ? SURFACE_FACE.channelWall : SURFACE_FACE.bottom;
+      const kind = channelWallRows.has(j) ? SURFACE_FACE.channelWall : j < railRows ? SURFACE_FACE.upper : SURFACE_FACE.bottom;
       quad(A.right[j], A.right[j + 1], B.right[j], B.right[j + 1], kind);
       quad(A.left[j + 1], A.left[j], B.left[j + 1], B.left[j], kind);
     }

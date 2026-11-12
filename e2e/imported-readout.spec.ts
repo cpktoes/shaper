@@ -164,7 +164,7 @@ test.describe("the imported dimensions as a readout card — on a computer (quic
     await expect(card).toBeVisible();
     expectComputerLook(await readoutFacts(card), 3, 1);
     await expect(card.locator("[data-readout-foot]")).toBeVisible();
-    await expect(card.locator("[data-readout-foot]")).toHaveText("Rail shapes from RAILS");
+    await expect(card.locator("[data-readout-foot]")).toHaveText("Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.");
   });
 
   test("ROCKER: the From TEMPLATE card — two columns, one row", async ({ page }) => {

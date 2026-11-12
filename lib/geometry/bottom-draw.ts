@@ -38,6 +38,7 @@ import {
   fadeAt,
   foamOff,
   resolveBottom,
+  sectionsFoamOff,
   startingChannels,
   startingCut,
   type BoardBottom,
@@ -938,9 +939,13 @@ export function gaugeReads(value: number, system: UnitsSystem): boolean {
  * each the one number read where a gauge would sit:
  *
  * - the gap at the stringer, its value below (a swallow's notch has none: the stringer is air);
- * - the lift at the rail edge that remains (D-40), at each rail with extension lines — beside the rail (the value
- *   right of the right one) when there are 110 dots of room past it (60 in a box under 625), else the two lines just
- *   outside the rails and one value under the straightedge at the right rail;
+ * - the rail lift, at each rail with extension lines — beside the rail (the value right of the right one) when there
+ *   are 110 dots of room past it (60 in a box under 625), else the two lines just outside the rails and one value under
+ *   the straightedge at the right rail. It is the vee's or belly's lift at the rail edge that remains (D-40), the very
+ *   figure DATA's Rail lift column reads (`sectionsFoamOff` at the rail), held at the slab's thickness as every gauge
+ *   is. A channel is cut after the rail is shaped and never counts, even one that runs out through the rail — there
+ *   the tick runs up to where the vee or belly took the rail, a point in the channel's air. A flat tail or a concave
+ *   lifts no rail, so it shows no rail lift (the founder, 2026-11-11: "Match DATA");
  * - a double's trough or a channel's floor, the deepest gap off the stringer, on its own line (a second line under the
  *   stringer's when both draw);
  * - the stringer left, on the right, only for a whole slab with 70+ dots past the rail.
@@ -967,18 +972,22 @@ export function sectionGauges(drawing: SectionDrawing, resolved: ResolvedBottom,
     gauges.push({ kind: "stringer", value: mm(d0), placement: "beside", words, lines: [tick(cx, y0, y0 - d0 * ky)], extensions: [], labels: [below(cx, y0, 1, "middle", words)] });
   }
 
+  // The gap drawn at the rail edge, channels and all: it keeps deciding the stringer-left gauge's room and reach below,
+  // so that gauge stands exactly where it always has.
   const dR = off(Wo);
   const roomRight = DRAWING_WIDTH - xOf(Wo);
   const beside = roomRight > (words ? GAUGE_BESIDE_ROOM.words : GAUGE_BESIDE_ROOM.bare) * px;
-  const railShows = gaugeReads(dR, system);
-  if (railShows) {
-    const yt = y0 - dR * ky;
+  const drawnGapShows = gaugeReads(dR, system);
+  // The rail lift itself: the vee's or belly's lift alone, read where DATA reads it (the founder, 2026-11-11).
+  const lift = Math.min(sectionsFoamOff(resolved, board, s, board.railAt(s)), drawing.thickness);
+  if (gaugeReads(lift, system)) {
+    const yt = y0 - lift * ky;
     if (beside) {
       const xr = xOf(Wo) + 16 * px;
       const xl = xOf(-Wo) - 16 * px;
       gauges.push({
         kind: "railLift",
-        value: mm(dR),
+        value: mm(lift),
         placement: "beside",
         words,
         lines: [tick(xr, y0, yt), tick(xl, y0, yt)],
@@ -996,7 +1005,7 @@ export function sectionGauges(drawing: SectionDrawing, resolved: ResolvedBottom,
       const xl = xOf(-Wo) - 8 * px;
       gauges.push({
         kind: "railLift",
-        value: mm(dR),
+        value: mm(lift),
         placement: "under",
         words,
         lines: [tick(xl, y0, yt), tick(xd, y0, yt)],
@@ -1011,7 +1020,7 @@ export function sectionGauges(drawing: SectionDrawing, resolved: ResolvedBottom,
 
   const T = drawing.thickness;
   const left = T - d0;
-  if (!drawing.breakLine && inner <= SECTION_MIN_HALF && T * ky > 30 * px && roomRight > GAUGE_STRINGER_LEFT_ROOM * px && (roomRight > 150 * px || !railShows) && gaugeReads(left, system)) {
+  if (!drawing.breakLine && inner <= SECTION_MIN_HALF && T * ky > 30 * px && roomRight > GAUGE_STRINGER_LEFT_ROOM * px && (roomRight > 150 * px || !drawnGapShows) && gaugeReads(left, system)) {
     const reach = dR > 0.25 ? (words ? 110 : 60) : words ? 50 : 30;
     const xr = Math.min(DRAWING_WIDTH - (words ? 90 : 40) * px, xOf(Wo) + reach * px);
     const yb = y0 - d0 * ky;

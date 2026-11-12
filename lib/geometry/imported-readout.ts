@@ -79,6 +79,9 @@ const FROM_TEMPLATE_AND_ROCKER_AND_FOIL = "From TEMPLATE and ROCKER & FOIL";
 const FROM_TEMPLATE_AND_ROCKER = "From TEMPLATE & ROCKER";
 /** BOTTOM's foot line: the thickness is the planed one, and a contour is cut out of it (D-25). */
 const BOTTOM_FOOT = "Thickness is the planed number. The contour comes out of it.";
+/** VOLUME's foot: the founder's own sentence (2026-11-10, UAT 17 test 5) saying what the cross-section litres count —
+ * the finished rail from RAILS and every contour cut on BOTTOM. No figure in it, so Imperial and Metric read the same. */
+const VOLUME_FOOT = "Counts the finished rail shape from RAILS and the bottom contours from BOTTOM.";
 
 /**
  * ROCKER: the template's length and width. `Length 6'0"`, `Width 19"`; Metric `182.9 cm`, `48.3 cm`.
@@ -154,7 +157,8 @@ export function finsImportedReadout(board: FinsImportedBoard, system: UnitsSyste
 /**
  * VOLUME: the board the litres are measured from — length and width (from TEMPLATE) and centre
  * thickness (from ROCKER's foil), all dims, so Metric reads them in centimetres to one decimal —
- * captioned with both screens, with a foot line saying the rail shapes come from RAILS.
+ * captioned with both screens, with a foot line saying what the litres count: the finished rail shape from RAILS and
+ * the bottom contours from BOTTOM.
  */
 export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system: UnitsSystem): ImportedReadout {
   return {
@@ -164,7 +168,7 @@ export function volumeImportedReadout(length: Mm, width: Mm, centre: Mm, system:
       { key: "width", label: "Width", value: formatDim(width, system) },
       { key: "thickness", label: "Thickness", value: formatDim(centre, system) },
     ],
-    foot: "Rail shapes from RAILS",
+    foot: VOLUME_FOOT,
   };
 }
 

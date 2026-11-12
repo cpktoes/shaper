@@ -3,8 +3,12 @@ import { phase16Boards, phase16SurfaceBoards } from "./__fixtures__/phase16-boar
 import {
   BOTTOM_SECTIONS,
   DEFAULT_BOTTOM,
+  channelFoamOff,
+  channelWallsAt,
   foamOff,
   resolveBottom,
+  sectionsFoamOff,
+  startingChannels,
   startingCut,
   type BoardBottom,
   type BottomBoard,
@@ -23,16 +27,19 @@ import {
   railsOnTheBottom,
   type DesignSummaryFields,
 } from "./design";
-import { finishedRail } from "./finished-rail";
+import { finishedRail, type FinishedRail } from "./finished-rail";
+import type { Point2D } from "./board";
 import { buildOutline } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { computeRailBands, type RailSectionKey } from "./rail-bands";
+import { computeRailBands, railPlotDots, type RailBandsOutput, type RailSectionKey } from "./rail-bands";
 import {
   RAIL_BOTTOM_LINE_PIECES,
+  RAIL_CHANNEL_STEP,
   finishedRailOnBottom,
   railBottomFall,
   railBottomLine,
   railBottomLowest,
+  railDrawnBottom,
   railPointOnBottom,
   railSectionBottom,
 } from "./rail-bottom";
@@ -80,9 +87,28 @@ describe("railBandsOnTheBottom — which sections stand on a cut bottom (D-41)",
     }
   });
 
-  it("a concave alone lifts no rail: the bands come back untouched (D-41: a concave changes nothing on RAILS)", () => {
-    const { bands, liftedBands } = railsSetup(fieldsOf("shortboard"), { center: "Deep Single Concave" });
-    expect(bands).toBe(liftedBands);
+  it("a concave alone lifts no rail but is drawn: the rails come back as the same object and the concave's section stands on its hollow (the founder, 2026-11-11: \"Always draw it\")", () => {
+    const { bands, rails, effectiveRails, board, resolved, anchors } = railsSetup(fieldsOf("shortboard"), {
+      center: "Deep Single Concave",
+    });
+    expect(rails).toBe(effectiveRails);
+    const center = bands.center;
+    const bottom = center.bottom!;
+    expect(bottom).toBeDefined();
+    expect(bottom.lift).toBe(0);
+    expect(bottom.channelCut).toBeUndefined();
+    // the hollow, within the plot
+    expect(bottom.across.some((p) => p.x >= center.bounds.xAxisMin && p.y > 0)).toBe(true);
+    // every point the concave's own foam off there, never rounded
+    const rail = board.railAt(anchors.center);
+    for (const p of bottom.across) {
+      expect(p.y).toBe(sectionsFoamOff(resolved, board, anchors.center, mm(Math.abs(rail + p.x))));
+    }
+    // and the rail it stands under is the flat board's own
+    const flat = railsSetup(fieldsOf("shortboard"), {});
+    const { bottom: drawn, ...rest } = center;
+    expect(drawn).toBe(bottom);
+    expect(rest).toEqual(flat.bands.center);
   });
 
   it("the Fish's Panel Vee: only the tail stands on a cut bottom, its lift the foam off at the rail", () => {
@@ -184,5 +210,699 @@ describe("railSectionBottom and railBottomFall", () => {
     expect(railBottomFall(bottom, mm(-1e6))).toBe(bottom.across[0].y);
     expect(railBottomFall(bottom, mm(5))).toBe(0);
     expect(railBottomLowest(bottom, mm(inchesToMm(-2)))).toBeCloseTo(slope * inchesToMm(-2), 9);
+  });
+});
+
+/* ============ G-17-6: the channels are the last cut, straight up at each wall (the founder, 2026-11-10) ============ */
+
+/** A wall is read this close either side, as RAILS reads it. */
+const GAP = 1e-6;
+
+/** RAILS for a board with the named cuts and a set of channels picked as the store picks them, the channels' numbers
+ * then changed by `change` and each named cut's by `changeCut` — every figure the app's own. */
+function channelsSetup(
+  label: string,
+  names: Partial<Record<BottomSectionKey, BottomCutName>>,
+  count: 4 | 6 | 8,
+  change: (channels: BoardBottom["channels"]) => Partial<BoardBottom["channels"]> = () => ({}),
+  changeCut: (cut: BoardBottom[BottomSectionKey]) => BoardBottom[BottomSectionKey] = (cut) => cut,
+) {
+  const fields = all.find((b) => b.label === label)!.fields;
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const board: BottomBoard = designBottomBoard(fields.outline, buildOutline(fields.outline), profile, designFinPlacement(fields));
+  const bottom: BoardBottom = structuredClone(DEFAULT_BOTTOM);
+  for (const section of BOTTOM_SECTIONS) {
+    const name = names[section];
+    if (name) bottom[section] = changeCut(startingCut(section, name, board));
+  }
+  const started = startingChannels(count, board, bottom.channels);
+  bottom.channels = { ...started, ...change(started) };
+  const resolved = resolveBottom(bottom, board);
+  const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const anchors = railAnchorStations(profile.effectiveFoil, fields.outline.length);
+  const rails = railsOnTheBottom(effectiveRails, bottomRailLift(resolved, board), anchors);
+  const liftedBands = computeRailBands(rails);
+  const bands = railBandsOnTheBottom(liftedBands, resolved, board, anchors);
+  return { board, resolved, anchors, effectiveRails, rails, liftedBands, bands };
+}
+
+type ChannelsSetup = ReturnType<typeof channelsSetup>;
+
+/** The channel's depth `y` out from the stringer at a section's anchor. */
+const channelAt = (c: ChannelsSetup, key: RailSectionKey, y: number) =>
+  channelFoamOff(c.resolved.channels, c.board, c.resolved.wingRule, c.anchors[key], mm(y));
+
+/** Every wall of this side of the stringer that stands inside a section's plot: its x on RAILS and its step — the
+ * floor at its deepest just inboard less the next channel's peak just outboard, each the one number's own channel term. */
+function standingWalls(c: ChannelsSetup, key: RailSectionKey): { x: Mm; step: number; deep: number; shallow: number }[] {
+  const rail = c.board.railAt(c.anchors[key]);
+  return channelWallsAt(c.resolved.channels, c.board, c.resolved.wingRule, c.anchors[key])
+    .map((w) => {
+      const deep = channelAt(c, key, w - GAP);
+      const shallow = channelAt(c, key, w + GAP);
+      return { x: mm(-(rail - w)), step: deep - shallow, deep, shallow };
+    })
+    .filter((wall) => wall.step > GAP && wall.x > c.bands[key].bounds.xAxisMin && wall.x < 0);
+}
+
+/** The finished rail's every end point, the start first. */
+const endsOf = (rail: FinishedRail): Point2D[] => [rail.start, ...rail.steps.map((s) => s.to)];
+
+/** The index (in `endsOf`) of the apex — the end at the curve's largest x; the underside is every end after it. */
+function apexIndex(rail: FinishedRail): number {
+  const ends = endsOf(rail);
+  let best = 1;
+  for (let i = 1; i < ends.length; i++) if (ends[i].x > ends[best].x) best = i;
+  return best;
+}
+
+/** Where two consecutive points stand at the same x, the second's index — or -1. */
+const pairAt = (points: Point2D[], x: number, from = 1) => {
+  for (let i = Math.max(1, from); i < points.length; i++) if (points[i].x === x && points[i - 1].x === x) return i;
+  return -1;
+};
+
+/** The underside of a finished rail as a fine line (its curves sampled 2,000 times a step), from the apex inward. */
+function undersideLine(rail: FinishedRail): Point2D[] {
+  const apex = apexIndex(rail);
+  const ends = endsOf(rail);
+  const line: Point2D[] = [ends[apex]];
+  for (let i = apex; i < rail.steps.length; i++) {
+    const a = ends[i];
+    const step = rail.steps[i];
+    if (step.kind === "line") {
+      line.push(step.to);
+      continue;
+    }
+    for (let k = 1; k <= 2000; k++) {
+      const t = k / 2000;
+      const u = 1 - t;
+      line.push(
+        step.kind === "quad"
+          ? { x: mm(u * u * a.x + 2 * u * t * step.control.x + t * t * step.to.x), y: mm(u * u * a.y + 2 * u * t * step.control.y + t * t * step.to.y) }
+          : {
+              x: mm(u ** 3 * a.x + 3 * u * u * t * step.c1.x + 3 * u * t * t * step.c2.x + t ** 3 * step.to.x),
+              y: mm(u ** 3 * a.y + 3 * u * u * t * step.c1.y + 3 * u * t * t * step.c2.y + t ** 3 * step.to.y),
+            },
+      );
+    }
+  }
+  return line;
+}
+
+/** A fine line's height at `x`: straight between the two points either side of it, the first such pair met. */
+function heightOn(line: Point2D[], x: number): number {
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1];
+    const b = line[i];
+    if (Math.min(a.x, b.x) <= x && x <= Math.max(a.x, b.x)) {
+      return b.x === a.x ? Math.max(a.y, b.y) : a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+    }
+  }
+  throw new Error(`no point of the line at x = ${x}`);
+}
+
+describe("G-17-6 — RAILS cuts the channels straight up into the thin bottom line (the founder, 2026-11-10)", () => {
+  it("the Fish with a Rolled Vee and eight channels at Off Stringer 3\": every wall in the plot is two points at its own x, the deep floor first, apart by exactly the wall's step", () => {
+    const fish = channelsSetup("fish|asis|hard", { tail: "Rolled Vee" }, 8, () => ({ offStringer: mm(inchesToMm(3)) }));
+    const section = fish.bands.tail;
+    const line = railBottomLine(section.bottom!, section.bounds.xAxisMin, mm(0));
+    const walls = standingWalls(fish, "tail");
+    expect(walls.length).toBe(4);
+    for (const wall of walls) {
+      const i = pairAt(line, wall.x);
+      expect(i).toBeGreaterThan(0);
+      expect(Math.abs(line[i - 1].y - line[i].y - wall.step)).toBeLessThan(1e-9);
+      // the floor at its deepest is the vee's fall plus the channel's own depth, the peak the vee's fall plus its own
+      expect(line[i - 1].y).toBeCloseTo(railBottomFall(section.bottom!, wall.x) + wall.deep, 9);
+      expect(line[i].y).toBeCloseTo(railBottomFall(section.bottom!, wall.x) + wall.shallow, 9);
+    }
+  });
+});
+
+describe("G-17-6 — RAILS cuts the channels straight up into the Finished Rail (the founder, 2026-11-10)", () => {
+  it("the Fish with a Rolled Vee and eight channels at Off Stringer 3\": two consecutive ends at every wall, the floor inboard of it the vee's fall plus the channel's depth (no chord)", () => {
+    const fish = channelsSetup("fish|asis|hard", { tail: "Rolled Vee" }, 8, () => ({ offStringer: mm(inchesToMm(3)) }));
+    const section = fish.bands.tail;
+    const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom!, section.boardThickness);
+    const ends = endsOf(rail);
+    const apex = apexIndex(rail);
+    const walls = standingWalls(fish, "tail");
+    expect(walls.length).toBe(4);
+    for (const wall of walls) {
+      const i = pairAt(ends, wall.x, apex + 1);
+      expect(i).toBeGreaterThan(apex);
+      // walking toward the stringer: the next channel's peak first, then straight up to the floor at its deepest
+      expect(Math.abs(ends[i].y - ends[i - 1].y - wall.step)).toBeLessThan(1e-6);
+      expect(Math.abs(ends[i].y - (railBottomFall(section.bottom!, wall.x) + wall.deep))).toBeLessThan(1e-6);
+    }
+  });
+
+  it("the Fish with a Rolled Vee and the starting eight: every wall in the plot, the one about 4.2\" in from the rail too, is drawn whole on the thick line", () => {
+    const fish = channelsSetup("fish|asis|hard", { tail: "Rolled Vee" }, 8);
+    const section = fish.bands.tail;
+    const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom!, section.boardThickness);
+    const ends = endsOf(rail);
+    const apex = apexIndex(rail);
+    const walls = standingWalls(fish, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    for (const wall of walls) {
+      const i = pairAt(ends, wall.x, apex + 1);
+      expect(i).toBeGreaterThan(apex);
+      expect(Math.abs(ends[i].y - ends[i - 1].y - wall.step)).toBeLessThan(1e-6);
+    }
+  });
+
+  it("the Longboard (the rolled rail) with a Rolled Vee and six channels: where the tuck's curve crosses a channel it is drawn in pieces no longer than 1/64\", each end the higher of the rail on the vee and the channel's floor; a wall under the curve drops by the floor's height above the rail there", () => {
+    const longboard = channelsSetup("longboard|asis|soft", { tail: "Rolled Vee" }, 6);
+    const section = longboard.bands.tail;
+    const bottom = section.bottom!;
+    const T = section.boardThickness;
+    const plain = finishedRail(section, section.bounds.xAxisMin);
+    // the rail on the vee alone: the same section's bottom without its channels
+    const { channelCut: cut, ...veeOnly } = bottom;
+    expect(cut).toBeDefined();
+    const onVee = finishedRailOnBottom(plain, veeOnly, T);
+    const reference = undersideLine(onVee);
+    const drawn = finishedRailOnBottom(plain, bottom, T);
+    const ends = endsOf(drawn);
+    const apex = apexIndex(drawn);
+    const floorAt = (x: number) => Math.min(railDrawnBottom(bottom, mm(x)), T);
+
+    // a wall under the tuck's curve: inside the x-span of one of the vee-only rail's underside curves
+    const curveSpans: [number, number][] = [];
+    const veeEnds = endsOf(onVee);
+    for (let i = apexIndex(onVee); i < onVee.steps.length; i++) {
+      if (onVee.steps[i].kind !== "line") {
+        curveSpans.push([Math.min(veeEnds[i].x, onVee.steps[i].to.x), Math.max(veeEnds[i].x, onVee.steps[i].to.x)]);
+      }
+    }
+    const underCurve = standingWalls(longboard, "tail").filter((w) => curveSpans.some(([lo, hi]) => lo < w.x && w.x < hi));
+    expect(underCurve.length).toBeGreaterThan(0);
+
+    const cutXs = cut!.filter((p) => p.y !== 0).map((p) => p.x);
+    const [lo, hi] = [Math.min(...cutXs), Math.max(...cutXs)];
+    let checked = 0;
+    for (let i = apex + 1; i < ends.length; i++) {
+      if (Math.max(ends[i - 1].x, ends[i].x) < lo || Math.min(ends[i - 1].x, ends[i].x) > hi) continue;
+      // inside the channels' span every piece is a short straight line
+      expect(drawn.steps[i - 1].kind).toBe("line");
+      expect(Math.abs(ends[i].x - ends[i - 1].x)).toBeLessThanOrEqual(RAIL_CHANNEL_STEP + 1e-9);
+      // a wall's two points (one x, two heights): checked below
+      if (ends[i].x === ends[i - 1].x || (i + 1 < ends.length && ends[i].x === ends[i + 1].x)) continue;
+      expect(Math.abs(ends[i].y - Math.max(heightOn(reference, ends[i].x), floorAt(ends[i].x)))).toBeLessThan(1e-3);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(100);
+    for (const wall of underCurve) {
+      const railThere = heightOn(reference, wall.x);
+      const fall = railBottomFall(bottom, wall.x);
+      const top = Math.min(fall + wall.deep, T);
+      const foot = Math.max(railThere, Math.min(fall + wall.shallow, T));
+      const i = pairAt(ends, wall.x, apex + 1);
+      if (top > railThere + 1e-3) {
+        expect(i).toBeGreaterThan(apex);
+        expect(Math.abs(ends[i].y - ends[i - 1].y - (top - foot))).toBeLessThan(1e-3);
+      } else {
+        // the floor is below the rail there: the rail is drawn, no wall
+        expect(i).toBe(-1);
+      }
+    }
+  });
+
+  it("across the stringer: every wall pair stands where the cut read through |rail − p| jumps, the two values either side in x order", () => {
+    const fish = channelsSetup("fish|asis|hard", { tail: "Rolled Vee" }, 8);
+    const cut = fish.bands.tail.bottom!.channelCut!;
+    const rail = fish.board.railAt(fish.anchors.tail);
+    const cutIn = (p: number) => channelAt(fish, "tail", Math.abs(rail - p));
+    let far = 0;
+    let pairs = 0;
+    for (let i = 1; i < cut.length; i++) {
+      expect(cut[i].x).toBeGreaterThanOrEqual(cut[i - 1].x);
+      if (cut[i].x !== cut[i - 1].x) continue;
+      pairs++;
+      const p = -cut[i].x;
+      expect(cut[i - 1].y).toBe(cutIn(p + GAP));
+      expect(cut[i].y).toBe(cutIn(p - GAP));
+      expect(Math.abs(cut[i - 1].y - cut[i].y)).toBeGreaterThan(GAP);
+      if (p > rail) far++;
+    }
+    // every wall within the reach, both sides of the stringer, has its pair
+    const walls = channelWallsAt(fish.resolved.channels, fish.board, fish.resolved.wingRule, fish.anchors.tail);
+    const reach = -cut[0].x;
+    const expected = [...new Set(walls.flatMap((w) => [rail - w, rail + w]))].filter(
+      (p) => p > 0 && p < reach && Math.abs(cutIn(p + GAP) - cutIn(p - GAP)) > GAP,
+    );
+    expect(pairs).toBe(expected.length);
+    for (const p of expected) expect(pairAt(cut, -p)).toBeGreaterThan(0);
+    expect(far).toBeGreaterThan(0);
+  });
+
+  it("the deck: eight channels 1/2\" deep on the Shortboard's thin tail never draw the underside above the section's thickness", () => {
+    const shortboard = channelsSetup("shortboard|asis|hard", { tail: "Rolled Vee" }, 8, () => ({ depth: mm(inchesToMm(1 / 2)) }));
+    let lifted = 0;
+    for (const key of SECTIONS) {
+      const section = shortboard.bands[key];
+      if (!section.bottom) continue;
+      lifted++;
+      const T = section.boardThickness;
+      const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom, T);
+      for (const p of endsOf(rail).slice(apexIndex(rail))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+      for (const p of railBottomLine(section.bottom, section.bounds.xAxisMin, mm(0))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+    }
+    expect(lifted).toBeGreaterThan(0);
+  });
+
+  it("the deck, where a channel would reach it: the floor is drawn at the thickness, never above, on both lines", () => {
+    const { flatBands } = railsSetup(fieldsOf("fish"), {});
+    const section = flatBands.tail;
+    const T = section.boardThickness;
+    const lift = mm(inchesToMm(0.2));
+    // a cut twice the rail's own thickness from 1" to 3" in from the rail: it would stand far above the deck
+    const bottom = railSectionBottom(section, lift, (d: Mm) => mm(lift - 0.01 * d), {
+      cutIn: (d: Mm) => (d > inchesToMm(1) && d < inchesToMm(3) ? mm(T * 2) : mm(0)),
+      wallsIn: [mm(inchesToMm(1)), mm(inchesToMm(3))],
+    });
+    const rail = finishedRailOnBottom(finishedRail({ ...section, bottom }, section.bounds.xAxisMin), bottom, T);
+    const underside = endsOf(rail).slice(apexIndex(rail));
+    expect(Math.max(...underside.map((p) => p.y))).toBeCloseTo(T, 9);
+    for (const p of underside) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+    const line = railBottomLine(bottom, section.bounds.xAxisMin, mm(0));
+    expect(Math.max(...line.map((p) => p.y))).toBeCloseTo(T, 9);
+    for (const p of line) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+  });
+
+  it("a board with a vee and no channels carries no channel cut: RAILS draws it exactly as before", () => {
+    const { bands } = railsSetup(fieldsOf("fish"), { tail: "Rolled Vee" });
+    expect(bands.tail.bottom).toBeDefined();
+    expect("channelCut" in bands.tail.bottom!).toBe(false);
+  });
+
+  it("the bottom under the rail is the vee's alone: its lift and its fall are the sections' number, no channel in them", () => {
+    const fish = channelsSetup("fish|asis|hard", { tail: "Rolled Vee" }, 8, () => ({ offStringer: mm(inchesToMm(3)) }));
+    const rail = fish.board.railAt(fish.anchors.tail);
+    const bottom = fish.bands.tail.bottom!;
+    expect(bottom.lift).toBe(sectionsFoamOff(fish.resolved, fish.board, fish.anchors.tail, rail));
+    for (const p of bottom.across) {
+      expect(p.y).toBe(mm(sectionsFoamOff(fish.resolved, fish.board, fish.anchors.tail, mm(Math.abs(rail + p.x))) - bottom.lift));
+    }
+  });
+});
+
+// The founder's answer of 2026-11-11 at his look at 17-18, "Show channels too": a section no vee or belly lifts, but
+// into which a channel is cut, stands on the planed bottom with the channels cut into it last, straight up at each wall
+// (D-05, D-10) — and the rail RAILS bands there is the rail it bands with no channels (D-22, D-35). On a flat tail that
+// bottom is flat; under a concave it is the concave's own hollow (his answers of 2026-11-11 at his look at 17-21 and on
+// 17-22's plan, "Draw the concave" and "Always draw it" — the last test here, and 17-22's describe below). Every
+// expected figure is the app's own.
+describe("G-17-6 — RAILS shows the channels on a flat tail too (the founder, 2026-11-11: \"Show channels too\")", () => {
+  const flatTails: [string, 4 | 6 | 8][] = [
+    ["fish|asis|hard", 8],
+    ["shortboard|asis|hard", 6],
+  ];
+
+  it.each(flatTails)("%s with its starting %i channels: the tail's bottom is flat, and every wall in the plot is two points on the thin line at its own x, the deep floor first, apart by exactly its step", (label, count) => {
+    const c = channelsSetup(label, {}, count);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    expect(bottom).toBeDefined();
+    expect(bottom.lift).toBe(0);
+    expect(bottom.across.every((p) => p.y === 0)).toBe(true);
+    const line = railBottomLine(bottom, section.bounds.xAxisMin, mm(0));
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    for (const wall of walls) {
+      const i = pairAt(line, wall.x);
+      expect(i).toBeGreaterThan(0);
+      expect(Math.abs(line[i - 1].y - line[i].y - wall.step)).toBeLessThan(1e-9);
+      // the fall is 0: each side is the channel's own depth there
+      expect(railBottomFall(bottom, wall.x)).toBe(0);
+      expect(line[i - 1].y).toBeCloseTo(wall.deep, 9);
+      expect(line[i].y).toBeCloseTo(wall.shallow, 9);
+    }
+  });
+
+  it.each(flatTails)("%s with its starting %i channels: the Finished Rail holds two consecutive ends at every such wall, the floor inboard of it the channel's depth (no chord)", (label, count) => {
+    const c = channelsSetup(label, {}, count);
+    const section = c.bands.tail;
+    const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom!, section.boardThickness);
+    const ends = endsOf(rail);
+    const apex = apexIndex(rail);
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    for (const wall of walls) {
+      const i = pairAt(ends, wall.x, apex + 1);
+      expect(i).toBeGreaterThan(apex);
+      expect(Math.abs(ends[i].y - ends[i - 1].y - wall.step)).toBeLessThan(1e-6);
+      expect(Math.abs(ends[i].y - wall.deep)).toBeLessThan(1e-6);
+    }
+  });
+
+  it("the Longboard (the rolled rail) with its starting six on a flat tail: where the tuck's curve crosses a channel it is drawn in pieces no longer than 1/64\", each end the higher of the rail and the channel's floor; a wall under the curve drops by the floor's height above the rail there", () => {
+    const longboard = channelsSetup("longboard|asis|soft", {}, 6);
+    const section = longboard.bands.tail;
+    const bottom = section.bottom!;
+    expect(bottom.lift).toBe(0);
+    const T = section.boardThickness;
+    const plain = finishedRail(section, section.bounds.xAxisMin);
+    // the rail with no channels: the same section's flat bottom without its cut
+    const { channelCut: cut, ...flatOnly } = bottom;
+    expect(cut).toBeDefined();
+    const onFlat = finishedRailOnBottom(plain, flatOnly, T);
+    const reference = undersideLine(onFlat);
+    const drawn = finishedRailOnBottom(plain, bottom, T);
+    const ends = endsOf(drawn);
+    const apex = apexIndex(drawn);
+    const floorAt = (x: number) => Math.min(railDrawnBottom(bottom, mm(x)), T);
+
+    const curveSpans: [number, number][] = [];
+    const flatEnds = endsOf(onFlat);
+    for (let i = apexIndex(onFlat); i < onFlat.steps.length; i++) {
+      if (onFlat.steps[i].kind !== "line") {
+        curveSpans.push([Math.min(flatEnds[i].x, onFlat.steps[i].to.x), Math.max(flatEnds[i].x, onFlat.steps[i].to.x)]);
+      }
+    }
+    const underCurve = standingWalls(longboard, "tail").filter((w) => curveSpans.some(([lo, hi]) => lo < w.x && w.x < hi));
+    expect(underCurve.length).toBeGreaterThan(0);
+
+    const cutXs = cut!.filter((p) => p.y !== 0).map((p) => p.x);
+    const [lo, hi] = [Math.min(...cutXs), Math.max(...cutXs)];
+    let checked = 0;
+    for (let i = apex + 1; i < ends.length; i++) {
+      if (Math.max(ends[i - 1].x, ends[i].x) < lo || Math.min(ends[i - 1].x, ends[i].x) > hi) continue;
+      expect(drawn.steps[i - 1].kind).toBe("line");
+      expect(Math.abs(ends[i].x - ends[i - 1].x)).toBeLessThanOrEqual(RAIL_CHANNEL_STEP + 1e-9);
+      if (ends[i].x === ends[i - 1].x || (i + 1 < ends.length && ends[i].x === ends[i + 1].x)) continue;
+      expect(Math.abs(ends[i].y - Math.max(heightOn(reference, ends[i].x), floorAt(ends[i].x)))).toBeLessThan(1e-3);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(100);
+    for (const wall of underCurve) {
+      const railThere = heightOn(reference, wall.x);
+      const top = Math.min(wall.deep, T);
+      const foot = Math.max(railThere, Math.min(wall.shallow, T));
+      const i = pairAt(ends, wall.x, apex + 1);
+      if (top > railThere + 1e-3) {
+        expect(i).toBeGreaterThan(apex);
+        expect(Math.abs(ends[i].y - ends[i - 1].y - (top - foot))).toBeLessThan(1e-3);
+      } else {
+        // the floor is below the rail there: the rail is drawn, no wall
+        expect(i).toBe(-1);
+      }
+    }
+  });
+
+  it("the deck: the Shortboard's starting eight at 1/2\" deep on a flat tail never draw either line above the section's thickness", () => {
+    const shortboard = channelsSetup("shortboard|asis|hard", {}, 8, () => ({ depth: mm(inchesToMm(1 / 2)) }));
+    let drawnOn = 0;
+    for (const key of SECTIONS) {
+      const section = shortboard.bands[key];
+      if (!section.bottom) continue;
+      drawnOn++;
+      expect(section.bottom.lift).toBe(0);
+      const T = section.boardThickness;
+      const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom, T);
+      for (const p of endsOf(rail).slice(apexIndex(rail))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+      for (const p of railBottomLine(section.bottom, section.bounds.xAxisMin, mm(0))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+    }
+    expect(drawnOn).toBeGreaterThan(0);
+  });
+
+  it.each(flatTails)("%s with its starting %i channels: the rail itself is untouched — the same rails, each section the bands with None, every band end and mark dot where it stands", (label, count) => {
+    const c = channelsSetup(label, {}, count);
+    expect(c.rails).toBe(c.effectiveRails);
+    const none = railsSetup(all.find((b) => b.label === label)!.fields, {});
+    expect(none.bands).toBe(none.liftedBands);
+    let untouched = 0;
+    for (const key of SECTIONS) {
+      const section = c.bands[key];
+      const { bottom, ...rest } = section;
+      expect(rest).toEqual(none.bands[key]);
+      if (!bottom) {
+        // a section no channel reaches: the bands' own object
+        expect(section).toBe(c.liftedBands[key]);
+        untouched++;
+        continue;
+      }
+      const T = section.boardThickness;
+      for (const seg of section.segments) {
+        expect(railPointOnBottom(bottom, T, seg.p1)).toBe(seg.p1);
+        expect(railPointOnBottom(bottom, T, seg.p2)).toBe(seg.p2);
+      }
+      const dots = railPlotDots(section.segments, section.result, section.domed);
+      expect(dots.length).toBeGreaterThan(0);
+      for (const dot of dots) {
+        const p = { x: dot.x, y: dot.y };
+        expect(railPointOnBottom(bottom, T, p)).toBe(p);
+      }
+    }
+    expect(c.bands.tail.bottom).toBeDefined();
+    expect(untouched).toBeGreaterThan(0);
+  });
+
+  it("the concave under the channels: the Shortboard's Double Concave Exit with its starting six — the tail's bottom the concave's own foam, its cut the channels' own held at the deck less the concave; without channels, the concave alone", () => {
+    const c = channelsSetup("shortboard|asis|hard", { tail: "Double Concave Exit" }, 6);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    const T = section.boardThickness;
+    const rail = c.board.railAt(c.anchors.tail);
+    expect(c.rails).toBe(c.effectiveRails);
+    expect(bottom.lift).toBe(0);
+    // the concave is drawn: every point the sections' own foam off there (the founder, 2026-11-11: "Draw the concave")
+    expect(bottom.across.some((p) => p.y > 0)).toBe(true);
+    for (const p of bottom.across) {
+      expect(p.y).toBe(sectionsFoamOff(c.resolved, c.board, c.anchors.tail, mm(Math.abs(rail + p.x))));
+    }
+    // the cut: every sample the channels' own foam off there, held at the deck less the concave under it; every wall
+    // pair as the channels read it
+    const cut = bottom.channelCut!;
+    expect(cut.some((p) => p.y > 0)).toBe(true);
+    const cutIn = (inFromRail: number, x: number) => {
+      const v = channelAt(c, "tail", Math.abs(rail - inFromRail));
+      return Number.isFinite(v) ? Math.min(v, T - railBottomFall(bottom, mm(x))) : 0;
+    };
+    for (let i = 0; i < cut.length; i++) {
+      const paired = (i > 0 && cut[i - 1].x === cut[i].x) || (i + 1 < cut.length && cut[i + 1].x === cut[i].x);
+      const p = -cut[i].x;
+      if (!paired) {
+        expect(cut[i].y).toBe(cutIn(p, cut[i].x));
+      } else if (i + 1 < cut.length && cut[i + 1].x === cut[i].x) {
+        expect(cut[i].y).toBe(cutIn(p + GAP, cut[i].x));
+        expect(cut[i + 1].y).toBe(cutIn(p - GAP, cut[i].x));
+      }
+    }
+    // the same tail without channels carries the concave alone
+    const alone = railsSetup(all.find((b) => b.label === "shortboard|asis|hard")!.fields, { tail: "Double Concave Exit" });
+    const aloneBottom = alone.bands.tail.bottom!;
+    expect(aloneBottom).toBeDefined();
+    expect(aloneBottom.channelCut).toBeUndefined();
+    expect(aloneBottom.across).toEqual(bottom.across);
+  });
+});
+
+// The founder's answers of 2026-11-11, "Draw the concave" (at his look at 17-21) and "Always draw it" (on 17-22's
+// plan): RAILS draws every concave, on the nose, centre and tail sections, channels or not — retiring D-41's "a concave
+// changes nothing on RAILS". A concave runs out to nothing at the rail, so it never thins the rail RAILS bands (D-22,
+// D-35, D-40); a mark inside its reach rides up onto its hollow by the one map a vee uses; the channels are cut last into
+// it (D-05, D-10) and never move a mark. Every expected figure is the app's own.
+describe("G-17-6 — RAILS draws every concave (the founder, 2026-11-11: \"Always draw it\")", () => {
+  const PRESET_BOARDS = ["shortboard", "fish", "midlength", "longboard"].flatMap((id) => [`${id}|asis|hard`, `${id}|asis|soft`]);
+  const CONCAVE_CARDS: [BottomSectionKey, BottomCutName][] = [
+    ["nose", "Teardrop Nose Concave"],
+    ["nose", "Blended Nose Concave"],
+    ["nose", "Slight Single Concave Entry"],
+    ["center", "Deep Single Concave"],
+    ["center", "Shallow Single Concave"],
+    ["center", "Early Double Concave"],
+    ["tail", "Double Concave Exit"],
+    ["tail", "Extending Single Concave"],
+  ];
+  const LIFT_CARDS: [BottomSectionKey, BottomCutName][] = [
+    ["tail", "Panel Vee"],
+    ["tail", "Spiral Vee"],
+    ["tail", "Rolled Vee"],
+    ["nose", "Reverse Vee Nose"],
+    ["center", "Tri-Plane Hull Center"],
+    ["nose", "Rolled Belly Entry"],
+    ["center", "Continuous Belly / Rolled Mid"],
+  ];
+  const fieldsAt = (label: string) => all.find((b) => b.label === label)!.fields;
+
+  /** Every point the plot moves onto the bottom: each band segment's two ends and each mark dot. */
+  function markPoints(section: RailBandsOutput[RailSectionKey]): Point2D[] {
+    const ends = section.segments.flatMap((seg) => [seg.p1, seg.p2]);
+    const dots = railPlotDots(section.segments, section.result, section.domed).map((d) => ({ x: d.x, y: d.y }));
+    return [...ends, ...dots];
+  }
+
+  /** Where the plot draws those points: on the section's bottom, or where they stand when it has none. */
+  const drawnMarks = (section: RailBandsOutput[RailSectionKey]) =>
+    markPoints(section).map((p) => (section.bottom ? railPointOnBottom(section.bottom, section.boardThickness, p) : p));
+
+  it.each(PRESET_BOARDS)("%s: each concave card alone — the same rails, each section on the concave's own foam or the bands' own object, the rest of it the flat board's", (label) => {
+    const flat = railsSetup(fieldsAt(label), {});
+    const drawnOn = new Set<RailSectionKey>();
+    for (const [where, name] of CONCAVE_CARDS) {
+      const c = railsSetup(fieldsAt(label), { [where]: name });
+      expect(c.rails, name).toBe(c.effectiveRails);
+      for (const key of SECTIONS) {
+        const section = c.bands[key];
+        const rail = c.board.railAt(c.anchors[key]);
+        const foamIn = (inFromRail: Mm) => sectionsFoamOff(c.resolved, c.board, c.anchors[key], mm(Math.abs(rail - inFromRail)));
+        if (!section.bottom) {
+          // no concave within the section's reach: every sample the bottom would read is 0
+          expect(section, `${name} ${key}`).toBe(c.liftedBands[key]);
+          expect(railSectionBottom(section, mm(0), foamIn).across.every((p) => p.y === 0), `${name} ${key}`).toBe(true);
+          continue;
+        }
+        const { bottom, ...rest } = section;
+        expect(bottom.lift).toBe(0);
+        expect(bottom.channelCut).toBeUndefined();
+        expect(bottom.across.some((p) => p.y !== 0)).toBe(true);
+        for (const p of bottom.across) expect(p.y, `${name} ${key} at ${p.x}`).toBe(foamIn(mm(-p.x)));
+        expect(rest).toEqual(flat.bands[key]);
+        drawnOn.add(key);
+      }
+    }
+    // non-vacuity: the cards between them draw a concave on the nose, the centre and the tail sections
+    expect([...drawnOn].sort()).toEqual(["center", "nose", "tail"]);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the control — a flat bottom and each vee and belly alone, no channels, hand back the bands' own object for every section they lift nothing at", (label) => {
+    let checked = 0;
+    for (const names of [{}, ...LIFT_CARDS.map(([where, name]) => ({ [where]: name }))]) {
+      const c = railsSetup(fieldsAt(label), names);
+      const liftAt = bottomRailLift(c.resolved, c.board);
+      for (const key of SECTIONS) {
+        if (liftAt(c.anchors[key]) !== 0) continue;
+        expect(c.bands[key], `${JSON.stringify(names)} ${key}`).toBe(c.liftedBands[key]);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the marks — every band end and mark dot stands still where the concave is 0 and rides up onto it by exactly its share of the hollow elsewhere, never down", (label) => {
+    let dotsMoved = 0;
+    for (const [where, name] of CONCAVE_CARDS) {
+      const c = railsSetup(fieldsAt(label), { [where]: name });
+      for (const key of SECTIONS) {
+        const section = c.bands[key];
+        if (!section.bottom) continue;
+        const T = section.boardThickness;
+        const dots = new Set(railPlotDots(section.segments, section.result, section.domed).map((d) => `${d.x},${d.y}`));
+        for (const p of markPoints(section)) {
+          const fall = railBottomFall(section.bottom, p.x);
+          const q = railPointOnBottom(section.bottom, T, p);
+          if (fall === 0) {
+            expect(q).toBe(p);
+            continue;
+          }
+          expect(q.x).toBe(p.x);
+          expect(q.y).toBe(mm(p.y + fall * (1 - p.y / T)));
+          expect(q.y).toBeGreaterThanOrEqual(p.y);
+          if (q.y > p.y && dots.has(`${p.x},${p.y}`)) dotsMoved++;
+        }
+      }
+    }
+    // the Shortboard's and the Fish's mark dots all stand outside every concave: none moves (only the bottom
+    // connector's inner end, which is the planed bottom itself, stands on the hollow)
+    if (label === "shortboard|asis|hard" || label === "fish|asis|hard") expect(dotsMoved).toBe(0);
+  });
+
+  it("the Longboard's rolled rail: a tuck mark rides up onto the Early Double Concave at the tail section, and onto the Deep Single Concave at the centre", () => {
+    for (const [where, name, key] of [
+      ["center", "Early Double Concave", "tail"],
+      ["center", "Deep Single Concave", "center"],
+    ] as const) {
+      const c = railsSetup(fieldsAt("longboard|asis|soft"), { [where]: name });
+      const section = c.bands[key];
+      const dots = railPlotDots(section.segments, section.result, section.domed);
+      const risen = dots.filter((d) => railPointOnBottom(section.bottom!, section.boardThickness, { x: d.x, y: d.y }).y > d.y);
+      expect(risen.length, `${name} at the ${key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it.each(PRESET_BOARDS)("%s: channels never move a mark — with each concave and its starting six, every band end and mark dot is drawn where it is with no channels", (label) => {
+    for (const [where, name] of CONCAVE_CARDS) {
+      const withSix = channelsSetup(label, { [where]: name }, 6);
+      const none = railsSetup(fieldsAt(label), { [where]: name });
+      for (const key of SECTIONS) {
+        expect(drawnMarks(withSix.bands[key]), `${name} ${key}`).toEqual(drawnMarks(none.bands[key]));
+      }
+    }
+  });
+
+  const underChannels: [string, BottomCutName, 4 | 6 | 8][] = [
+    ["shortboard|asis|hard", "Double Concave Exit", 6],
+    ["fish|asis|hard", "Extending Single Concave", 8],
+  ];
+
+  it.each(underChannels)("%s with the %s and %i channels: on the thin line every wall is two points at its own x, apart by exactly its step, each the concave there plus the channel's own depth", (label, name, count) => {
+    const c = channelsSetup(label, { tail: name }, count);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    expect(bottom.lift).toBe(0);
+    const line = railBottomLine(bottom, section.bounds.xAxisMin, mm(0));
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    let onConcave = 0;
+    for (const wall of walls) {
+      const i = pairAt(line, wall.x);
+      expect(i).toBeGreaterThan(0);
+      expect(Math.abs(line[i - 1].y - line[i].y - wall.step)).toBeLessThan(1e-9);
+      const concave = railBottomFall(bottom, wall.x);
+      if (concave > 0) onConcave++;
+      expect(line[i - 1].y).toBeCloseTo(concave + wall.deep, 9);
+      expect(line[i].y).toBeCloseTo(concave + wall.shallow, 9);
+    }
+    // non-vacuity: walls stand on the concave, not beside it
+    expect(onConcave).toBeGreaterThan(0);
+  });
+
+  it.each(underChannels)("%s with the %s and %i channels: the Finished Rail holds two consecutive ends at every such wall, the floor inboard of it the drawn bottom there (no chord)", (label, name, count) => {
+    const c = channelsSetup(label, { tail: name }, count);
+    const section = c.bands.tail;
+    const bottom = section.bottom!;
+    const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), bottom, section.boardThickness);
+    const ends = endsOf(rail);
+    const apex = apexIndex(rail);
+    const walls = standingWalls(c, "tail");
+    expect(walls.length).toBeGreaterThan(0);
+    for (const wall of walls) {
+      const i = pairAt(ends, wall.x, apex + 1);
+      expect(i).toBeGreaterThan(apex);
+      expect(Math.abs(ends[i].y - railDrawnBottom(bottom, wall.x))).toBeLessThan(1e-6);
+      expect(Math.abs(ends[i].y - ends[i - 1].y - wall.step)).toBeLessThan(1e-6);
+    }
+  });
+
+  it("the deck: the Shortboard with the Extending Single Concave at 1/2\" deep and its starting eight at 1/2\" never draws either line above the section's thickness", () => {
+    const half = mm(inchesToMm(1 / 2));
+    const c = channelsSetup("shortboard|asis|hard", { tail: "Extending Single Concave" }, 8, () => ({ depth: half }), (cut) => ({ ...cut, depth: half }));
+    let drawnOn = 0;
+    for (const key of SECTIONS) {
+      const section = c.bands[key];
+      if (!section.bottom) continue;
+      drawnOn++;
+      expect(section.bottom.lift).toBe(0);
+      const T = section.boardThickness;
+      const rail = finishedRailOnBottom(finishedRail(section, section.bounds.xAxisMin), section.bottom, T);
+      for (const p of endsOf(rail).slice(apexIndex(rail))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+      for (const p of railBottomLine(section.bottom, section.bounds.xAxisMin, mm(0))) expect(p.y).toBeLessThanOrEqual(T + 1e-9);
+    }
+    expect(c.bands.tail.bottom?.across.some((p) => p.y > 0)).toBe(true);
+    expect(drawnOn).toBeGreaterThan(0);
+  });
+
+  it.each(PRESET_BOARDS)("%s: the frame never moves — on every concave board, nothing below the rail's own bottom inside the plot", (label) => {
+    for (const [where, name] of CONCAVE_CARDS) {
+      for (const c of [railsSetup(fieldsAt(label), { [where]: name }), channelsSetup(label, { [where]: name }, 6)]) {
+        for (const key of SECTIONS) {
+          const section = c.bands[key];
+          if (section.bottom) expect(railBottomLowest(section.bottom, section.bounds.xAxisMin), `${name} ${key}`).toBe(0);
+        }
+      }
+    }
   });
 });

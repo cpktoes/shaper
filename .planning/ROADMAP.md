@@ -65,7 +65,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 - [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
-- [ ] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021)
+- [x] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021) (completed 2026-11-11)
 - [x] **Phase 18: A GUIDE on Every Page** - A GUIDE tab, last on each of TEMPLATE, ROCKER, RAILS, VOLUME and FINS: one card per control or named choice with the board's own value, a cartoon of the open board with that one setting pushed through the app's own maths, two sentences and a How to shape note; FINS by setup with the MODEL INFO notes on the cards and that tab gone (opened 2026-11-09 from sketch 022 on branch `page-guides`; live 2026-11-10 as main `79110e41`)
 
 ## Phase Details
@@ -392,7 +392,7 @@ Cross-cutting constraints: geometry pure and tested in `lib/geometry/` and `lib/
 **Requirements**: R1–R15 (locked in `phases/17-bottom-contours/17-SPEC.md` from the founder's rulings on sketches 019–021, 2026-11-06 to 2026-11-08)
 **Brief:** `phases/17-bottom-contours/17-SPEC.md`; the decided sketches `.planning/sketches/019-bottom-contours/`, `020-bottom-channels/` and `021-bottom-guide/` (its `index.html` is the page as it will be built); the starting numbers and their sources in `todos/pending/2026-11-06-set-the-bottom-contours-starting-numbers-from-the-shop.md`
 **Depends on:** Phase 16 (`boardSections`, the 3D surface and the CNC writers read the cut), Phase 14 (the planed thickness and the side profile the cut comes out of), quick 261102-gec (the finished rail the ghost draws), quick 261103-gcm (the foam at every station)
-**Plans:** 16/16 plans executed — LIVE 2026-11-10 as main ff5818c0; verification and the founder’s walk-through still to come
+**Plans:** 23/23 plans complete — LIVE 2026-11-10 as main ff5818c0; verified; the founder’s walk-through (17-UAT.md) passed eight checks, set one aside (the CNC files, being replaced by a .brd export) and found two things to fix (G-17-5 VOLUME’s words, G-17-6 the finished rail rounding the channels). Seven fix plans, 17-17 to 17-23, each approved from before-and-after pictures, went LIVE 2026-11-11 as main 93c0ea8f and he re-checked both on the live site (“Pass all 3”). RAILS now draws every concave (D-41 retired for concaves). Closed 2026-11-11 with five follow-ups filed as to-dos (17-FIXWAVE-REVIEW.md’s three warnings, the production-build browser tests, VOLUME’s ESTIMATE words)
 
 Success criteria:
 
@@ -468,6 +468,25 @@ Plans:
 
 - [x] 17-16-PLAN.md — The one go-live: the full gate, the founder's devices and saved boards, one push on his go, a live check
 
+**Fixes from the founder's walk-through (17-UAT.md, his rulings of 2026-11-10) — fix wave 1**
+
+- [x] 17-17-PLAN.md — VOLUME says what its litres count: the INPUTS card ends "Counts the finished rail shape from RAILS and the bottom contours from BOTTOM." and the GUIDE's Import Designed Board card names BOTTOM (G-17-5)
+- [x] 17-18-PLAN.md — RAILS draws the channels straight up at every wall, on the thin bottom line and the thick Finished Rail line; RAILS' rail is thinned by a vee or belly alone (G-17-6)
+- [x] 17-19-PLAN.md — The litres of 49 channelled boards pinned before the solid board changes, and the "before" pictures (G-17-6)
+
+**Fix wave 2** *(blocked on 17-18 and 17-19)*
+
+- [x] 17-20-PLAN.md — The litres, the 3D board and the CNC files cut the channels straight up into the finished rail, with a real wall under the rail's curve; Hard Edge tails and boards without channels keep their litres; the before-and-after table (G-17-6)
+
+**Fix wave 3** *(blocked on 17-20; the founder's two answers at his look at 17-18, 2026-11-11)*
+
+- [x] 17-21-PLAN.md — "Show channels too": RAILS draws the channels on a flat tail as it does on a vee or belly, cut straight up into the thin bottom line and the Finished Rail, the rail's thickness and band marks untouched; "Match RAILS": BOTTOM's DATA Rail lift counts the vee or belly alone; no litres figure moves (G-17-6)
+
+**Fix wave 4** *(blocked on 17-21; the founder's answers at his look at 17-21 and on 17-22's first plan, 2026-11-11; the two plans share no file and run side by side)*
+
+- [x] 17-22-PLAN.md — "Draw the concave" and "Always draw it": RAILS draws every concave, on the nose, centre and tail sections, channels or not, the channels cut last and straight up into it; the rail's thickness, readout and DATA untouched; no litres figure moves (G-17-6)
+- [x] 17-23-PLAN.md — "Match DATA": BOTTOM's section gauge reads the vee's or belly's rail lift alone, on screen and on paper; "Use the sentence": DATA's note in his words; "Make it fit": the Longboard's printed tables sheet prints every note, its rows tighter only where needed; no litres figure moves (G-17-6)
+
 The sixteen plans run one per wave, 1 to 16 in the order listed — the founder's build order (the maths first; the double, spiral vee, tri-plane and teardrop; the channels; the screen as a tracer, then its rows, its viewer, GUIDE, WINGS and saving, FINS and Metric, the phones; the paper; one go-live) — every plan ending with his look at pictures (`autonomous: false`), the next wave starting only after his yes. Planned 2026-11-08; the checker passed with no blockers (five warnings: three fixed in the plans, the tracer's size and the estimates accepted as known hand-back risks).
 
 Cross-cutting constraints: geometry pure and tested in `lib/geometry/bottom.ts` and its companions, every fixture generated by a script that executes the sketch's own maths (`reference/sketches/021-bottom-maths.js`), never a typed figure (Rule 1); every number through `units.ts` / `measure-display.ts` — marks in whole mm, dims in cm, the INPUTS card's Thickness a dim (Rule 2, D-25); one foam-off function read by the litres, the 3D board, the CNC files, RAILS, FINS and every drawing (D-05); a flat bottom bit-identical on the 102-board pin and no preset's litres moving (D-20); one optional snapshot field at version 5, absent means flat, no database change (D-24); width / pointer / height the only three layout switches; each executor in its own worktree with its own PW_PORT (3301–3316) and `IS_WEBPACK_TEST=1`, never touching port 3005 or the founder's checkout; nothing pushed without his go (D-28).
@@ -531,5 +550,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
-| 17. BOTTOM — Bottom Contours | 16/16 | Live 2026-11-10, verification to come|  |
+| 17. BOTTOM — Bottom Contours | 23/23 | Complete    | 2026-11-11 |
 | 18. A GUIDE on Every Page | 10/10 | Complete    | 2026-11-10 |

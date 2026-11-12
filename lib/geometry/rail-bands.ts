@@ -893,25 +893,40 @@ export interface RailSectionOutput {
   segments: RailSegment[];
   bounds: { xAxisMin: Mm; yAxisMax: Mm };
   dataGroups: RailDataGroup[];
-  /** The bottom under this rail once a vee or a belly has lifted it (Phase 17, D-41) — set only by `design.ts`'s
-   * `railBandsOnTheBottom`, and only on a section whose rail the bottom lifts. Absent (every flat board, every
-   * section `computeRailSectionOutput` builds): the rail stands on a flat bottom, exactly as it always has. */
+  /** The bottom under this rail (Phase 17, D-41) — set only by `design.ts`'s `railBandsOnTheBottom`, wherever the
+   * vees, bellies and concaves leave a bottom that is not flat within the section's reach, or channels are cut into
+   * it. Under a vee or a belly `lift` is the rail lift; under a concave `lift` is 0 and `across` stands above 0 toward
+   * the stringer (the founder, 2026-11-11: "Always draw it"); on a flat bottom with channels `lift` is 0, `across` flat
+   * and only the channels are drawn into it ("Show channels too"). Absent (a section whose bottom is flat there with no
+   * channels, every section `computeRailSectionOutput` builds): the rail stands on a flat bottom, exactly as it always
+   * has. */
   bottom?: RailSectionBottom;
 }
 
 /**
- * The bottom a vee or a belly leaves under one rail (Phase 17, D-41 — the founder: "represent the angle in the bottom
- * of the displayed rail … the real rail shape, post bottom contouring"), in the section's own frame: x in from the
- * rail's apex (0) toward the stringer (negative), y up from the rail's own bottom at its edge. The section's bands are
- * worked out for the rail the lift leaves (`railsOnTheBottom`); this says how the planed bottom falls away under it
- * toward the stringer. Read by `lib/geometry/rail-bottom.ts`.
+ * The bottom the vees, bellies and concaves leave under one rail (Phase 17, D-41 — the founder: "represent the angle
+ * in the bottom of the displayed rail … the real rail shape, post bottom contouring"), in the section's own frame: x in
+ * from the rail's apex (0) toward the stringer (negative), y up from the rail's own bottom at its edge. Under a vee or
+ * a belly the section's bands are worked out for the rail the lift leaves (`railsOnTheBottom`), and this says how the
+ * planed bottom falls away under it toward the stringer. Under a concave nothing is lifted at the rail, so `lift` is
+ * 0, the bands are the flat board's own, and `across` hollows up above 0 toward the stringer (the founder, 2026-11-11:
+ * "Always draw it"). On a flat bottom into which a channel is cut, `lift` is 0 and `across` is flat — the planed bottom
+ * RAILS has always drawn. Either way `channelCut` carries the channels, cut last (the founder, 2026-11-11: "Show
+ * channels too"). Read by `lib/geometry/rail-bottom.ts`.
  */
 export interface RailSectionBottom {
   /** The rail lift at this section's station: the foam the bottom takes off at the rail. */
   lift: Mm;
   /** The bottom across, x ascending from well inboard of the plot to the apex (x = 0, y = 0): at each x, the foam
-   * off there less the lift — below 0 under a vee or a belly, which takes less off toward the stringer. */
+   * off there less the lift — below 0 under a vee or a belly, which takes less off toward the stringer; above 0 under a
+   * concave, which takes more. */
   across: Point2D[];
+  /** The channels, cut last — after the vee or belly and after the rail is shaped (G-17-6, the founder's ruling of
+   * 2026-11-10) — in the section's own frame: at each x, how far they take the bottom up above `across`. x ascending
+   * over the same reach, out to the apex; 0 between channels; every standing wall two points at its own x, the
+   * channel's floor at its deepest first (inboard), then the next channel's peak. Absent when no channel is cut within
+   * the section's reach. */
+  channelCut?: Point2D[];
 }
 
 export interface RailBandsOutput {
