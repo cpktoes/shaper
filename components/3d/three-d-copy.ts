@@ -70,6 +70,17 @@ export const THREE_D_COPY = {
   exportChannelsNote: "Channels are left out of the file — cut them by hand.",
   exportDone: (file: string, sections: number) =>
     `Downloaded ${file}. The outline, rocker, deck and ${sections} cross-sections.`,
+  /** The preview dialog's title (quick 261112-dbi): Export .brd File opens it, and nothing is saved until its Save button. */
+  previewTitle: "Board file preview",
+  /** The one line saying the preview is read back from the file, never from the screen's board. */
+  previewFromFile: "Drawn from the file itself — these are the slices AkuShaper and Shape3D will read.",
+  /** The three drawings' small-caps captions, top to bottom. */
+  previewTopView: "TOP VIEW",
+  previewSlice: "SLICE",
+  previewSideView: "SIDE VIEW",
+  /** The dialog's two buttons. */
+  previewSave: "Save .brd File",
+  previewCancel: "Cancel",
   exportWorking: "Making the file…",
   exportFailed: "Couldn't make the file — try again.",
   exportNothingYet: "There's nothing to export until the board can be drawn.",

@@ -94,7 +94,9 @@ import {
 } from "./three-d-rack-controls";
 import { THREE_D_COPY } from "./three-d-copy";
 import { ThreeDShowButtons } from "./three-d-show-buttons";
-import { exportBrd } from "./export-cnc";
+import { makeBrdExport, saveBrdExport } from "./export-cnc";
+import { BrdPreviewDialog } from "./brd-preview-dialog";
+import type { BrdFileWithPreview } from "@/lib/export/brd-preview";
 import { brdBottomStations, brdFileBottom, brdLeavesChannelsOut, brdTailWrittenSquare } from "@/lib/export/brd";
 import { resolveBottom } from "@/lib/geometry/bottom";
 
@@ -442,12 +444,16 @@ export function ThreeDScreen() {
   const [sceneState, setSceneState] = useState<CanvasState>("loading");
   const buildable = built.ok;
 
-  // Export .brd File (16-12, D-14, D-16; quick 261110-tvk): the .brd of the very surface drawn here, built and downloaded inside the tap
-  // with nothing awaited first (Safari's rule). It reads the surface and the board's name only — never the Fins, Blank,
-  // Contour Stripes or Wire View switches — and needs no 3D drawing. The done line stays until the next export or until the
-  // shaper leaves the screen (this state goes with the screen); a board that can't be built has nothing to export.
+  // Export .brd File (16-12, D-14, D-16; quick 261110-tvk; quick 261112-dbi): the tap builds the .brd of the very surface
+  // drawn here and opens a preview drawn from the file's own bytes; nothing is downloaded until the preview's Save, which
+  // downloads those same bytes inside its own tap with nothing awaited first (Safari's rule). It reads the surface and
+  // the board's name only — never the Fins, Blank, Contour Stripes or Wire View switches — and needs no 3D drawing. The
+  // done line stays until the next export or until the shaper leaves the screen (this state goes with the screen); a
+  // board that can't be built has nothing to export.
   const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
   const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
+  const exportButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [prepared, setPrepared] = useState<{ file: BrdFileWithPreview; swallowNote: boolean; channelsNote: boolean } | null>(null);
   const onExport = () => {
     if (!built.ok) return;
     try {
@@ -468,12 +474,24 @@ export function ThreeDScreen() {
         stations = brdBottomStations(resolveBottom(fileBottom, bottomBoard));
       }
       // The file's sections stand where the bottom changes (quick 261110-veo), so it gets the bottom's own stations.
-      const { fileName, sliceCount } = exportBrd(surface, boardName, stations);
+      const file = makeBrdExport(surface, boardName, stations);
+      setPrepared({ file, swallowNote: brdTailWrittenSquare(built.surface), channelsNote: brdLeavesChannelsOut(bottom) });
+    } catch (error) {
+      console.error("The board file could not be made:", error);
+      setExportResult({ kind: "failed" });
+    }
+  };
+  /** The preview's Save: the very bytes it was drawn from, downloaded inside this tap, then the dialog closes. */
+  const onSaveBrd = () => {
+    if (!prepared) return;
+    try {
+      const { fileName, sliceCount } = saveBrdExport(prepared.file);
       setExportResult({ kind: "done", fileName, sliceCount });
     } catch (error) {
       console.error("The board file could not be made:", error);
       setExportResult({ kind: "failed" });
     }
+    setPrepared(null);
   };
 
   /** Shows a crop in the scene for the canvas's size now. */
@@ -1271,6 +1289,7 @@ export function ThreeDScreen() {
   }, [loading]);
 
   return (
+    <>
     <DesignScreenShell
       wideView={wideView}
       controls={
@@ -1283,6 +1302,7 @@ export function ThreeDScreen() {
           exportState={exportState}
           exportSwallowNote={built.ok && brdTailWrittenSquare(built.surface)}
           exportChannelsNote={built.ok && brdLeavesChannelsOut(bottom)}
+          exportButtonRef={exportButtonRef}
           onExport={onExport}
         >
           <ThreeDOnTheRacks
@@ -1406,5 +1426,16 @@ export function ThreeDScreen() {
         </TabbedPanel>
       }
     />
+    <BrdPreviewDialog
+      prepared={prepared?.file ?? null}
+      swallowNote={prepared?.swallowNote ?? false}
+      channelsNote={prepared?.channelsNote ?? false}
+      onSave={onSaveBrd}
+      onOpenChange={(open) => {
+        if (!open) setPrepared(null);
+      }}
+      finalFocus={exportButtonRef}
+    />
+    </>
   );
 }

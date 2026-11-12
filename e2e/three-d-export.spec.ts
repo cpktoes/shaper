@@ -108,11 +108,29 @@ const swallowNote = (page: Page) => page.locator("[data-three-d-export]").getByT
 /** The channels line (quick 261112-c2d): under the note on a board with channels, the file written without them. */
 const channelsNote = (page: Page) => page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportChannelsNote, { exact: true });
 
-/** Taps Export .brd File and answers the download the browser received. */
-async function exportFile(page: Page): Promise<Download> {
+/** The Board file preview (quick 261112-dbi): what Export .brd File opens, and where the download now starts. */
+const previewDialog = (page: Page) => page.locator("[data-brd-preview]");
+const previewSave = (page: Page) => previewDialog(page).getByRole("button", { name: THREE_D_COPY.previewSave, exact: true });
+
+/** Taps Export .brd File and waits for the preview to open: nothing has been downloaded yet. */
+async function openPreview(page: Page) {
   await expect(exportButton(page)).toBeEnabled();
-  const [download] = await Promise.all([page.waitForEvent("download"), exportButton(page).click()]);
+  await exportButton(page).click();
+  await expect(previewDialog(page)).toBeVisible();
+  await expect(previewDialog(page).getByText(THREE_D_COPY.previewTitle, { exact: true })).toBeVisible();
+}
+
+/** Presses Save .brd File in the open preview and answers the download the browser received; the dialog closes. */
+async function savePreview(page: Page): Promise<Download> {
+  const [download] = await Promise.all([page.waitForEvent("download"), previewSave(page).click()]);
+  await expect(previewDialog(page)).toHaveCount(0);
   return download;
+}
+
+/** Taps Export .brd File, then Save .brd File in the preview, and answers the download the browser received. */
+async function exportFile(page: Page): Promise<Download> {
+  await openPreview(page);
+  return savePreview(page);
 }
 
 /** The downloaded file's bytes, read from where the browser put it. */
@@ -177,9 +195,13 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expect(action).toHaveCount(1);
     await expect(action).toHaveText(THREE_D_COPY.exportButton);
 
-    const download = await exportFile(page);
-    const { read, stem } = await expectWholeBrd(page, download, FISH_NAME);
+    // Export opens the preview and downloads nothing; its top view draws a line across the board at every slice.
+    await openPreview(page);
+    const topLines = await previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice]").count();
+    const download = await savePreview(page);
+    const { read, stem, sections } = await expectWholeBrd(page, download, FISH_NAME);
     expect(stem).toBe(boardFileStem(FISH_NAME));
+    expect(topLines, "the top view has a slice line for every cross-section in the file").toBe(sections);
     // The file's length and width are the Fish preset's own, in centimetres.
     const fish = presetDesignFields(BOARD_PRESETS.find((preset) => preset.name === "Fish")!).outline;
     const header = new Map(read.header);
@@ -319,7 +341,10 @@ test.describe("Export .brd File on the 3D screen", () => {
     });
     await page.goto("/design/3d");
     await waitForBoard(page);
-    await exportButton(page).click();
+    // The failure now comes at Save, the moment the download starts: the dialog closes and the page says so.
+    await openPreview(page);
+    await previewSave(page).click();
+    await expect(previewDialog(page)).toHaveCount(0);
     await expect(exportStatus(page)).toHaveText(THREE_D_COPY.exportFailed);
     await expect(exportStatus(page)).toHaveClass(/text-surf-warning-ink/);
     expect(errors.some((text) => text.includes("could not be made"))).toBe(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { SliderRow } from "@/components/design/slider-row";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function ThreeDControls({
   exportState,
   exportSwallowNote,
   exportChannelsNote,
+  exportButtonRef,
   onExport,
 }: {
   children?: ReactNode;
@@ -56,7 +57,9 @@ export function ThreeDControls({
   exportSwallowNote: boolean;
   /** True on a board with channels: the file leaves them out, and a line under the export button says so. */
   exportChannelsNote: boolean;
-  /** Builds and downloads the zip, inside the tap. */
+  /** The Export button, so focus goes back to it when the preview dialog it opens is closed (quick 261112-dbi). */
+  exportButtonRef?: RefObject<HTMLButtonElement | null>;
+  /** Makes the board file and opens its preview; nothing is downloaded until the preview's Save. */
   onExport: () => void;
 }) {
   return (
@@ -75,7 +78,13 @@ export function ThreeDControls({
         disabled={drawingUnavailable}
       />
       {children}
-      <ExportSection state={exportState} swallowNote={exportSwallowNote} channelsNote={exportChannelsNote} onExport={onExport} />
+      <ExportSection
+        state={exportState}
+        swallowNote={exportSwallowNote}
+        channelsNote={exportChannelsNote}
+        buttonRef={exportButtonRef}
+        onExport={onExport}
+      />
     </div>
   );
 }
@@ -252,11 +261,13 @@ function ExportSection({
   state,
   swallowNote,
   channelsNote,
+  buttonRef,
   onExport,
 }: {
   state: ExportState;
   swallowNote: boolean;
   channelsNote: boolean;
+  buttonRef?: RefObject<HTMLButtonElement | null>;
   onExport: () => void;
 }) {
   return (
@@ -264,6 +275,7 @@ function ExportSection({
       <ThreeDSectionHeading>{THREE_D_COPY.exportHeading}</ThreeDSectionHeading>
       <div>
         <Button
+          ref={buttonRef}
           type="button"
           data-lock-exempt
           disabled={state.kind === "cant-build"}

@@ -1,4 +1,4 @@
-import { brdFile } from "@/lib/export/brd";
+import { brdFileWithPreview, type BrdFileWithPreview } from "@/lib/export/brd-preview";
 import { cncZip } from "@/lib/export/cnc-files";
 import type { BoardSurface } from "@/lib/geometry/board-surface";
 import type { Mm } from "@/lib/geometry/units";
@@ -29,18 +29,24 @@ function download(name: string, data: Uint8Array, type: string): void {
  * file can never describe a different board from the one on screen. The bare board only (D-16): it reads the surface and
  * the board's name and nothing else, so the Fins, Blank and Contour Stripes switches can never reach the file.
  *
+ * Since quick 261112-dbi the Export tap only MAKES the file, with the preview read back from its own bytes
+ * (`lib/export/brd-preview.ts`), and downloads nothing: the shaper looks at the slices first. The download is the
+ * preview's Save tap (`saveBrdExport`), the very same bytes, started inside that tap with nothing awaited — Safari's rule.
+ *
  * It imports the writers in `lib/export` and never the scene, so the file is made in a browser that can't draw in 3D as
  * well ("the file doesn't need the drawing"). Any error is left to the caller, which says so on the status line.
- * `sliceCount` is the number of cross-sections the file carries beside the two empty ends. `bottomStations` are the
- * stations where the bottom changes (`brdBottomStations` of the store's resolved bottom), where the file puts its sections
- * (quick 261110-veo).
+ * `bottomStations` are the stations where the bottom changes (`brdBottomStations` of the store's resolved bottom), where
+ * the file puts its sections (quick 261110-veo).
  */
-export function exportBrd(
-  surface: BoardSurface,
-  boardName: string,
-  bottomStations: readonly Mm[],
-): { fileName: string; sliceCount: number } {
-  const file = brdFile(surface, boardName, { bottomStations });
+export function makeBrdExport(surface: BoardSurface, boardName: string, bottomStations: readonly Mm[]): BrdFileWithPreview {
+  return brdFileWithPreview(surface, boardName, { bottomStations });
+}
+
+/**
+ * Saves a file made by `makeBrdExport`: the preview's Save tap. `sliceCount` is the number of cross-sections the file
+ * carries beside the two empty ends.
+ */
+export function saveBrdExport(file: BrdFileWithPreview): { fileName: string; sliceCount: number } {
   download(file.name, file.data, "application/octet-stream");
   return { fileName: file.name, sliceCount: file.sectionCount };
 }
