@@ -165,8 +165,12 @@ know why:
 - `app/design/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — the eight design screens, in the order
   a board is shaped: TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY and 3D. BOTTOM (Phase 17) is the
   third, between ROCKER and RAILS — the bottom's contours are cut before the rails are banded. 3D (Phase 16) is
-  the last, after SUMMARY — the finished board seen as a solid, and the CNC export — so SUMMARY's Next goes
-  there and 3D has only Back. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
+  the last, after SUMMARY — the finished board seen as a solid, and Export .brd File, one AkuShaper board file that
+  AkuShaper and Shape3D open (`lib/export/brd.ts`; quick 261110-tvk and after) — so SUMMARY's Next goes
+  there and 3D has only Back. The file carries the outline, the rocker and deck, and twenty to thirty-five
+  cross-sections with BOTTOM's concaves, vees and bellies; a swallow is written as a square tail and channels are left
+  out, both to be cut by hand and both said under the button (the founder, 2026-11-10 and 2026-11-12: neither program
+  draws them well). The DXF, STL and XYZ writers stay in `lib/export/`, tested and no longer offered. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
   ☰ sheet's tiles and Back + Next alike
 - `components/design/design-store.tsx` — the shared board-design state
 - `components/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — per-screen UI

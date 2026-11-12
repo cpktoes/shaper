@@ -2605,6 +2605,7 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
     }
   });
 
+  // A heavy sweep: 3 to 4 seconds alone, past the 5-second default while the whole suite runs beside it.
   it("the foam off is a finite number, never under nothing and never over the channels' depth, at every wall, on the flat's edge and across every station from the tail to Start", () => {
     for (const [id, count, widthInches] of SETS) {
       const set = setOf(id, count, widthInches, OFF);
@@ -2629,7 +2630,7 @@ describe("CR-01: With-the-rail channels and an Off Stringer, where the tail is n
       // and the set is still there to be cut: this is not a board whose channels went missing
       expect(cut, name).toBeGreaterThan(0);
     }
-  });
+  }, 30_000);
 
   it("the litres, the 3D board and the CNC files: every section is finite, a section of these sets (each an inch wide or under) ends its foam only where the same set laid Parallel ends it, and 1/2\" of Off Stringer moves the foam off by no more than a few hundredths of a litre", () => {
     for (const [id, count, widthInches] of SETS) {

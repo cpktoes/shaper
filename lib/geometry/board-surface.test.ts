@@ -905,6 +905,7 @@ describe("the wire view's lines (D-42)", () => {
     across.forEach((y, i) => expect(nearly(y, -across[across.length - 1 - i], 1e-9)).toBe(true));
   });
 
+  // A heavy sweep: 3 to 4 seconds alone, past the 5-second default while the whole suite runs beside it.
   it("puts every end point on the surface, between its rings where a station falls between them", () => {
     for (const { surface } of [shortboard, fish]) {
       const wire = wireLines(surface);
@@ -915,7 +916,7 @@ describe("the wire view's lines (D-42)", () => {
         expect(distanceToMesh(surface, near, points[i])).toBeLessThan(1e-6);
       }
     }
-  });
+  }, 30_000);
 
   it("carries the outline loop whole, in addition to the counts: the file's own, away from a swallow's notch", () => {
     for (const { surface } of [shortboard, fish]) expect(wireLines(surface).outline).toEqual(boardOutlineLoop(surface));
