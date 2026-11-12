@@ -2,15 +2,19 @@
  * The AkuShaper board file for one board (quick 261110-tvk, reworked in 261110-veo): a `.brd` a shaper opens in
  * AkuShaper or Shape3D, written from the surface the 3D screen draws (`buildBoardSurface`), so it can never describe a
  * different board from the one on screen. It holds the board's outline (the right half, tail to nose), its bottom rocker
- * and deck along the stringer, and about a dozen cross-sections at chosen stations — with BOTTOM's concaves and
- * channels in them, because the sections are read off the cut surface. Fins are not written.
+ * and deck along the stringer, and about a dozen cross-sections at chosen stations — with BOTTOM's concaves, vees and
+ * bellies in them, because the sections are read off the cut surface. Channels are left out: the 3D page writes the
+ * board as it stands before they are cut (`brdFileBottom`, quick 261112-c2d, the founder 2026-11-12 — neither
+ * AkuShaper nor Shape3D carries a straight, sharp-walled channel well). Fins are not written.
  *
  * The file is text in centimetres, tail at x = 0, locked with AkuShaper's own scramble (`brd-scramble.ts`). The outline,
  * rocker and deck are runs of cubic Bézier knots (`lib/geometry/bezier-fit.ts`) fitted through points of the surface to
  * within half a millimetre (1/50"). Channel walls and a square tail's corners stay sharp knots.
  * A standing channel wall is written leaning 3 mm (`BRD_WALL_LEAN_MM`), never straight up: AkuShaper reads a section's
  * width where the bottom first runs straight up, so an upright wall was taken for the rail. Where a wall stands, the
- * sections stand 1 1/2" apart (`BRD_WALL_SECTION_SPACING_IN`), so the walls run straight between them.
+ * sections stand 1 1/2" apart (`BRD_WALL_SECTION_SPACING_IN`), so the walls run straight between them. All of that
+ * channel handling stays in this file, untouched and still tested, for a surface that carries walls; the 3D page
+ * simply no longer hands the writer one.
  *
  * Sections, the way AkuShaper writes its own (the founder's finding, 2026-11-10: a 3D view joins knot i of one section
  * to knot i of the next, so the same number of knots in the same places on every section is what draws a smooth board):
@@ -39,7 +43,13 @@ import {
   type BoardSurface,
   type Vec3,
 } from "../geometry/board-surface";
-import type { ResolvedBottom } from "../geometry/bottom";
+import {
+  bottomHasChannels,
+  switchChannelCount,
+  type BoardBottom,
+  type BottomBoard,
+  type ResolvedBottom,
+} from "../geometry/bottom";
 import { inchesToMm, mm, mmToCentimetres, type Mm } from "../geometry/units";
 import { boardFileStem } from "../models/board-file";
 import { scrambleBrd } from "./brd-scramble";
@@ -214,6 +224,24 @@ export interface BrdOptions {
  */
 export function brdTailWrittenSquare(surface: BoardSurface): boolean {
   return surface.rings.some((ring) => ring.pieces.length === 2);
+}
+
+/**
+ * Whether the file leaves this bottom's channels out: it does whenever the bottom cuts any (quick 261112-c2d, the founder
+ * 2026-11-12). The 3D page's line under the export button reads this same answer, so the two never disagree.
+ */
+export function brdLeavesChannelsOut(bottom: BoardBottom): boolean {
+  return bottomHasChannels(bottom);
+}
+
+/**
+ * The bottom the file is written from: the board before the channels are cut — every nose, center and tail cut, and the
+ * wing rule, kept exactly; the channels switched off by the app's own None. A bottom that cuts no channels is handed back
+ * as the very same object, so a board without channels is written byte for byte as it always was.
+ */
+export function brdFileBottom(bottom: BoardBottom, board: BottomBoard): BoardBottom {
+  if (!brdLeavesChannelsOut(bottom)) return bottom;
+  return { ...bottom, channels: switchChannelCount(bottom.channels, 0, board) };
 }
 
 /**

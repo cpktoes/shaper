@@ -10,7 +10,15 @@ import {
   SURFACE_POINTS,
   type BoardSurface,
 } from "../geometry/board-surface";
-import { DEFAULT_BOTTOM, resolveBottom, startingChannels, startingCut } from "../geometry/bottom";
+import {
+  DEFAULT_BOTTOM,
+  resolveBottom,
+  startingChannels,
+  startingCut,
+  switchChannelCount,
+  type BoardBottom,
+  type BottomBoard,
+} from "../geometry/bottom";
 import {
   designBottomBoard,
   designCrossSectionInput,
@@ -35,6 +43,8 @@ import {
   brdBottomStations,
   brdCurves,
   brdFile,
+  brdFileBottom,
+  brdLeavesChannelsOut,
   brdOutlineCurve,
   brdTailWrittenSquare,
   brdText,
@@ -85,7 +95,19 @@ function cutSurface(fields: DesignSummaryFields) {
     rockerAt: profile.rockerAt,
   });
   const resolved = resolveBottom(bottom, board);
-  return { surface, deepest: resolved.center.deepest, resolved };
+  return { surface, deepest: resolved.center.deepest, resolved, bottom, board, geometry, profile, rails, fields };
+}
+
+/** A surface and its file's text the way the 3D page's Export .brd File makes them: from `bottom` as it is handed. */
+function surfaceAndText(cutOf: ReturnType<typeof cutSurface>, bottom: BoardBottom) {
+  const { board, geometry, profile, rails, fields } = cutOf;
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board }),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  const options: BrdOptions = { bottomStations: brdBottomStations(resolveBottom(bottom, board)) };
+  return { surface, options, text: brdText(surface, options).text, curves: brdCurves(surface, options) };
 }
 
 const shortboard = flatSurface(fieldsOf("shortboard|asis|hard"));
@@ -633,6 +655,68 @@ describe("what the cut adds to the file", () => {
     expect(first.before[0]).toBeCloseTo(-first.after[0], 9);
     expect(last.before[1]).toBeCloseTo(last.point[1], 9);
     expect(last.after[0]).toBeCloseTo(-last.before[0], 9);
+  });
+});
+
+describe("the file leaves the channels out (quick 261112-c2d)", () => {
+  const board: BottomBoard = cut.board;
+  const withChannels = cut.bottom;
+  const channelsNone: BoardBottom = { ...withChannels, channels: switchChannelCount(withChannels.channels, 0, board) };
+  const deepSingleNone: BoardBottom = {
+    ...structuredClone(DEFAULT_BOTTOM),
+    center: withChannels.center,
+    channels: switchChannelCount(DEFAULT_BOTTOM.channels, 0, board),
+  };
+  const fileBottom = brdFileBottom(withChannels, board);
+  const written = surfaceAndText(cut, fileBottom);
+  const none = surfaceAndText(cut, channelsNone);
+  const read = readBrdText(written.text);
+
+  it("says a bottom with 4, 6 or 8 channels and depth leaves them out, and one without does not", () => {
+    for (const count of [4, 6, 8] as const) {
+      const bottom: BoardBottom = { ...withChannels, channels: startingChannels(count, board, DEFAULT_BOTTOM.channels) };
+      expect(brdLeavesChannelsOut(bottom)).toBe(true);
+    }
+    expect(brdLeavesChannelsOut(DEFAULT_BOTTOM)).toBe(false);
+    expect(brdLeavesChannelsOut(channelsNone)).toBe(false);
+    expect(brdLeavesChannelsOut({ ...withChannels, channels: { ...withChannels.channels, depth: mm(0) } })).toBe(false);
+  });
+
+  it("hands a bottom without channels back as the very same object", () => {
+    expect(brdFileBottom(DEFAULT_BOTTOM, board)).toBe(DEFAULT_BOTTOM);
+    expect(brdFileBottom(deepSingleNone, board)).toBe(deepSingleNone);
+  });
+
+  it("keeps every cut and the wing rule and only switches the channels off, the way None does", () => {
+    expect(fileBottom.channels).toEqual(switchChannelCount(withChannels.channels, 0, board));
+    expect(fileBottom.nose).toEqual(withChannels.nose);
+    expect(fileBottom.center).toEqual(withChannels.center);
+    expect(fileBottom.tail).toEqual(withChannels.tail);
+    expect(fileBottom.wingRule).toEqual(withChannels.wingRule);
+  });
+
+  it("writes the board with channels as the same file as the same board with Channels None", () => {
+    expect(written.text).toBe(none.text);
+  });
+
+  it("writes the flat board's five knot places a section, plus the knots the concave needs, with no wall knots and a corner only at the bottom edge", () => {
+    // The concave is a bend the five base knots cannot follow within the section target, so the writer adds a knot
+    // board-wide (BRD_ADDED_KNOTS_MAX); the channels' wall feet and tops are what is gone.
+    const roles = written.curves.sectionKnotRoles;
+    const flatRoles = brdCurves(shortboard).sectionKnotRoles;
+    expect(roles.filter((r) => r !== "added")).toEqual(flatRoles);
+    expect(roles).not.toContain("wallFoot");
+    expect(roles).not.toContain("wallTop");
+    for (const section of written.curves.sections) {
+      expect(section.knots.length).toBe(roles.length);
+      const sharp = section.knots.map((k, i) => (k.smooth ? -1 : i)).filter((i) => i >= 0);
+      expect(sharp.length).toBeLessThanOrEqual(1);
+      for (const i of sharp) expect(roles[i]).toBe("bottomEdge");
+    }
+  });
+
+  it("keeps the concave: some section goes below the stringer's bottom", () => {
+    expect(read.sections.some((s) => s.knots.some((k) => k.point[1] < -1e-6))).toBe(true);
   });
 });
 

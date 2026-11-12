@@ -95,7 +95,8 @@ import {
 import { THREE_D_COPY } from "./three-d-copy";
 import { ThreeDShowButtons } from "./three-d-show-buttons";
 import { exportBrd } from "./export-cnc";
-import { brdBottomStations, brdTailWrittenSquare } from "@/lib/export/brd";
+import { brdBottomStations, brdFileBottom, brdLeavesChannelsOut, brdTailWrittenSquare } from "@/lib/export/brd";
+import { resolveBottom } from "@/lib/geometry/bottom";
 
 /**
  * The 3D screen (Phase 16, R1–R3, UI-SPEC §1–§3, §8, §9, §13): the board the shaper designed, drawn as a lit solid
@@ -326,8 +327,9 @@ export function ThreeDScreen() {
   const built = useMemo(() => {
     try {
       const surface = buildBoardSurface({
-        // The store's one bottom (Phase 17, D-21): the drawn board and its Export .brd File carry the cut the litres
-        // count; a flat bottom adds nothing to the input.
+        // The store's one bottom (Phase 17, D-21): the drawn board carries the cut the litres count, channels
+        // included; a flat bottom adds nothing to the input. The Export .brd File carries the same bottom with the
+        // channels left out (quick 261112-c2d), built in the tap below.
         sections: designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, outline.length, { bottom, board: bottomBoard }),
         geometry: outlineGeometry,
         rockerAt: sideProfile.rockerAt,
@@ -449,8 +451,24 @@ export function ThreeDScreen() {
   const onExport = () => {
     if (!built.ok) return;
     try {
+      // Channels are left out of the file (quick 261112-c2d, the founder 2026-11-12): the file is the board before the
+      // channels are cut, every concave, vee and belly kept; the drawing keeps them. The writer's own channel handling
+      // in lib/export/brd.ts stays, untouched and tested, and simply no longer meets a wall from this page. A board
+      // without channels gets its own surface and stations, as it always did.
+      const fileBottom = brdFileBottom(bottom, bottomBoard);
+      let surface = built.surface;
+      let stations = brdBottomStations(resolvedBottom);
+      if (fileBottom !== bottom) {
+        // Built here, in the tap, so a shaper who never exports pays nothing; it is synchronous, as Safari needs.
+        surface = buildBoardSurface({
+          sections: designCrossSectionInput(outlineGeometry, sideProfile, effectiveRails, outline.length, { bottom: fileBottom, board: bottomBoard }),
+          geometry: outlineGeometry,
+          rockerAt: sideProfile.rockerAt,
+        });
+        stations = brdBottomStations(resolveBottom(fileBottom, bottomBoard));
+      }
       // The file's sections stand where the bottom changes (quick 261110-veo), so it gets the bottom's own stations.
-      const { fileName, sliceCount } = exportBrd(built.surface, boardName, brdBottomStations(resolvedBottom));
+      const { fileName, sliceCount } = exportBrd(surface, boardName, stations);
       setExportResult({ kind: "done", fileName, sliceCount });
     } catch (error) {
       console.error("The board file could not be made:", error);

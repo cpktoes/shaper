@@ -4,6 +4,9 @@ import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { readBrdText } from "../lib/export/brd";
 import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
+import { DEFAULT_BOTTOM, pickCut, startingChannels, switchChannelCount, type BoardBottom } from "../lib/geometry/bottom";
+import { LIVE_DESIGN_RULES, designBottomBoard, designFinPlacement, designSideProfile } from "../lib/geometry/design";
+import { buildOutline } from "../lib/geometry/outline";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
 import { inchesToMm, mmToCentimetres } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
@@ -41,12 +44,12 @@ async function dismissStrips(page: Page) {
   );
 }
 
-/** A preset as its card opens it, kept in this browser as an earlier visit would have left it. */
-async function keepBoard(page: Page, presetName: string, lengthMm?: number) {
+/** A preset's fields as its card opens it, the way `keepBoard` stores them (a `bottom` of its own is optional). */
+function presetFields(presetName: string, lengthMm?: number, bottom?: BoardBottom): DesignSnapshotFields {
   const preset = BOARD_PRESETS.find((p) => p.name === presetName);
   if (!preset) throw new Error(`no ${presetName} preset`);
   const base = presetDesignFields(preset);
-  const fields: DesignSnapshotFields = {
+  return {
     ...base,
     outline: lengthMm === undefined ? base.outline : { ...base.outline, length: lengthMm as typeof base.outline.length },
     volume: DEFAULT_VOLUME_SPEC,
@@ -54,9 +57,33 @@ async function keepBoard(page: Page, presetName: string, lengthMm?: number) {
     railsImportFoilThickness: true,
     boardName: "",
     finSystem: "fcs2",
+    ...(bottom ? { bottom } : {}),
   };
+}
+
+/** A preset as its card opens it, kept in this browser as an earlier visit would have left it. */
+async function keepBoard(page: Page, presetName: string, lengthMm?: number, bottom?: BoardBottom) {
+  const fields = presetFields(presetName, lengthMm, bottom);
   const raw = openBoardCopyJson(fields, { modelId: null, ownerId: null, locked: false, dirty: true });
   await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
+}
+
+/**
+ * A preset's bottom with 4 channels (and, when `deepSingle` is true, a Deep Single Concave), built with the app's own
+ * helpers against the board the preset makes; `channels: false` is the same bottom with Channels None, the way the
+ * Channels menu's None does it.
+ */
+function presetBottom(presetName: string, options: { deepSingle: boolean; channels: boolean }): BoardBottom {
+  const fields = presetFields(presetName);
+  const board = designBottomBoard(
+    fields.outline,
+    buildOutline(fields.outline),
+    designSideProfile(fields, LIVE_DESIGN_RULES),
+    designFinPlacement(fields),
+  );
+  const cuts = options.deepSingle ? pickCut(DEFAULT_BOTTOM, "center", "Deep Single Concave", board) : DEFAULT_BOTTOM;
+  const four = { ...cuts, channels: startingChannels(4, board, cuts.channels) };
+  return options.channels ? four : { ...four, channels: switchChannelCount(four.channels, 0, board) };
 }
 
 const boardHost = (page: Page) => page.locator("[data-board-3d]");
@@ -298,5 +325,29 @@ test.describe("Export .brd File on the 3D screen", () => {
     const download = await exportFile(page);
     await expectWholeBrd(page, download, "");
     await expect(exportStatus(page)).not.toHaveClass(/text-surf-warning-ink/);
+  });
+
+  test("7. a board with channels downloads the board before its channels are cut, the same bytes as with Channels None", async ({
+    page,
+    context,
+  }) => {
+    // The same Shortboard with a Deep Single and Channels None, in a page of its own.
+    const bare = await context.newPage();
+    await dismissStrips(bare);
+    await keepBoard(bare, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: false }));
+    await bare.goto("/design/3d");
+    await waitForBoard(bare);
+    const bareBytes = await downloadedBytes(await exportFile(bare));
+    await bare.close();
+
+    await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    const download = await exportFile(page);
+    const { read } = await expectWholeBrd(page, download, "");
+    // Every section but the one-knot ones that close the tips has the same number of knots, as on a board without channels.
+    const knotCounts = new Set(read.sections.filter((section) => section.knots.length > 1).map((section) => section.knots.length));
+    expect(knotCounts.size).toBe(1);
+    expect(Buffer.from(await downloadedBytes(download)).equals(Buffer.from(bareBytes)), "the channels are left out of the file").toBe(true);
   });
 });
