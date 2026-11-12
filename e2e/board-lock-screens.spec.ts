@@ -1007,7 +1007,15 @@ test.describe("a locked board still exports and prints exactly as an unlocked on
 
     const exportButton = panel.getByRole("button", { name: THREE_D_COPY.exportButton, exact: true });
     await expect(exportButton).toBeEnabled();
-    const [download] = await Promise.all([page.waitForEvent("download"), exportButton.click()]);
+    // Export opens the Board file preview (quick 261112-dbi); its Save .brd File starts the download, on a locked board too.
+    await exportButton.click();
+    const preview = page.locator("[data-brd-preview]");
+    await expect(preview).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      preview.getByRole("button", { name: THREE_D_COPY.previewSave, exact: true }).click(),
+    ]);
+    await expect(preview).toHaveCount(0);
     const stem = boardFileStem(board(1).name);
     expect(download.suggestedFilename()).toBe(`${stem}.brd`);
     const path = await download.path();

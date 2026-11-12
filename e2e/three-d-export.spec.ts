@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
-import { expect, test, type Download, type Locator, type Page } from "@playwright/test";
+import { devices, expect, test, type Download, type Locator, type Page } from "@playwright/test";
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { readBrdText } from "../lib/export/brd";
 import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
+import { brdPreview, brdPreviewWords } from "../lib/export/brd-preview";
 import { DEFAULT_BOTTOM, pickCut, startingChannels, switchChannelCount, type BoardBottom } from "../lib/geometry/bottom";
 import { LIVE_DESIGN_RULES, designBottomBoard, designFinPlacement, designSideProfile } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
@@ -15,6 +16,7 @@ import { boardFileStem } from "../lib/models/board-file";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
 import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
+import { setMetricUnits } from "./helpers/guide";
 import { goToScreen } from "./helpers/screens";
 
 /**
@@ -39,6 +41,12 @@ async function dismissStrips(page: Page) {
     ([bannerKey, tipKey]) => {
       window.sessionStorage.setItem(bannerKey, "true");
       window.localStorage.setItem(tipKey, "true");
+      // The development server's round Next.js badge sits bottom left, over a phone's Cancel; a deployed site has none.
+      document.addEventListener("DOMContentLoaded", () => {
+        const hide = document.createElement("style");
+        hide.textContent = "nextjs-portal{display:none !important}";
+        document.head.appendChild(hide);
+      });
     },
     [BANNER_DISMISSAL_KEY, TOOLBAR_TIP_DISMISSAL_KEY] as const,
   );
@@ -133,6 +141,39 @@ async function exportFile(page: Page): Promise<Download> {
   return savePreview(page);
 }
 
+/** Under the SLICE caption: `Slice 9 of 22 · 28" from the tail`. */
+const sliceLine = (page: Page) => previewDialog(page).locator("[data-brd-preview-slice-line]");
+/** Under the drawings: the slice count, the widest gap and the file's own length × width × thickness. */
+const factsLine = (page: Page) => previewDialog(page).locator("[data-brd-preview-facts]");
+
+/** What the preview should have drawn, read from the bytes the browser saved (the app's own readers, nothing typed). */
+function previewOfBytes(bytes: Uint8Array) {
+  return brdPreview(readBrdText(unscrambleBrd(bytes)));
+}
+
+/** The slice number a slice line names, and how many there are. */
+async function sliceNumbers(page: Page): Promise<{ n: number; of: number }> {
+  const text = (await sliceLine(page).textContent()) ?? "";
+  const m = /^Slice (\d+) of (\d+)/.exec(text);
+  if (!m) throw new Error(`not a slice line: ${text}`);
+  return { n: Number(m[1]), of: Number(m[2]) };
+}
+
+/** Taps or clicks the middle of one slice line in the top or side view (a tap anywhere picks the nearest slice). */
+async function tapSliceLine(page: Page, view: "top" | "side", number: number) {
+  const line = previewDialog(page).locator(`[data-brd-preview-${view}] [data-brd-slice="${number}"]`);
+  await line.scrollIntoViewIfNeeded();
+  const box = await line.boundingBox();
+  if (!box) throw new Error(`slice ${number} has no box in the ${view} view`);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  if (await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches)) {
+    await page.touchscreen.tap(x, y);
+  } else {
+    await page.mouse.click(x, y);
+  }
+}
+
 /** The downloaded file's bytes, read from where the browser put it. */
 async function downloadedBytes(download: Download): Promise<Uint8Array> {
   const path = await download.path();
@@ -197,11 +238,22 @@ test.describe("Export .brd File on the 3D screen", () => {
 
     // Export opens the preview and downloads nothing; its top view draws a line across the board at every slice.
     await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice]").first()).toBeAttached();
     const topLines = await previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice]").count();
+    const sideLines = await previewDialog(page).locator("[data-brd-preview-side] [data-brd-slice]").count();
+    // The dialog says the swallow is written square, and the Fish has no channels to leave out.
+    await expect(previewDialog(page).locator("[data-brd-preview-swallow]")).toHaveText(THREE_D_COPY.exportSwallowNote);
+    await expect(previewDialog(page).locator("[data-brd-preview-channels]")).toHaveCount(0);
+    const facts = (await factsLine(page).textContent()) ?? "";
     const download = await savePreview(page);
     const { read, stem, sections } = await expectWholeBrd(page, download, FISH_NAME);
     expect(stem).toBe(boardFileStem(FISH_NAME));
     expect(topLines, "the top view has a slice line for every cross-section in the file").toBe(sections);
+    expect(sideLines, "so does the side view").toBe(sections);
+    // The dialog was drawn from the very bytes saved: its facts line is the saved file's own reading.
+    const saved = previewOfBytes(await downloadedBytes(download));
+    const words = brdPreviewWords(saved, "imperial");
+    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims));
     // The file's length and width are the Fish preset's own, in centimetres.
     const fish = presetDesignFields(BOARD_PRESETS.find((preset) => preset.name === "Fish")!).outline;
     const header = new Map(read.header);
@@ -380,7 +432,10 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expect(channelsNote(page)).toBeVisible();
     await expect(page.locator("[data-three-d-export-channels]")).toHaveCount(1);
     await expect(swallowNote(page)).toHaveCount(0);
-    const download = await exportFile(page);
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-channels]")).toHaveText(THREE_D_COPY.exportChannelsNote);
+    await expect(previewDialog(page).locator("[data-brd-preview-swallow]")).toHaveCount(0);
+    const download = await savePreview(page);
     const { read } = await expectWholeBrd(page, download, "");
     // Every section but the one-knot ones that close the tips has the same number of knots, as on a board without channels.
     const knotCounts = new Set(read.sections.filter((section) => section.knots.length > 1).map((section) => section.knots.length));
@@ -395,5 +450,188 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expectNote(page);
     await expect(swallowNote(page)).toBeVisible();
     await expect(channelsNote(page)).toBeVisible();
+    // And the preview says both too.
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-swallow]")).toHaveText(THREE_D_COPY.exportSwallowNote);
+    await expect(previewDialog(page).locator("[data-brd-preview-channels]")).toHaveText(THREE_D_COPY.exportChannelsNote);
+  });
+
+  test("9. the preview steps through the slices, and Cancel, Escape and a click outside save nothing", async ({ page }, testInfo) => {
+    const desktop = testInfo.project.name === "desktop";
+    await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
+    const downloads: string[] = [];
+    page.on("download", (download) => downloads.push(download.suggestedFilename()));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice]").first()).toBeAttached();
+    const opening = (await sliceLine(page).textContent()) ?? "";
+    const { n, of } = await sliceNumbers(page);
+    expect(of).toBeGreaterThan(5);
+    await expect(previewDialog(page).locator("[data-brd-preview-slice]")).toHaveAttribute("data-brd-preview-slice-at", String(n));
+    await expect(previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice-selected]")).toHaveAttribute("data-brd-slice", String(n));
+    await expect(previewDialog(page).locator("[data-brd-preview-side] [data-brd-slice-selected]")).toHaveAttribute("data-brd-slice", String(n));
+
+    // ‹ moves toward the nose (the left, the next slice up from the tail) and › back.
+    const towardNose = previewDialog(page).getByRole("button", { name: THREE_D_COPY.previewTowardNose, exact: true });
+    const towardTail = previewDialog(page).getByRole("button", { name: THREE_D_COPY.previewTowardTail, exact: true });
+    await towardNose.click();
+    expect((await sliceNumbers(page)).n).toBe(n + 1);
+    await expect(previewDialog(page).locator("[data-brd-preview-slice]")).toHaveAttribute("data-brd-preview-slice-at", String(n + 1));
+    await towardTail.click();
+    expect((await sliceNumbers(page)).n).toBe(n);
+    await expect(sliceLine(page)).toHaveText(opening);
+
+    // The arrow keys do the same, with focus in the dialog.
+    if (desktop) {
+      await page.keyboard.press("ArrowLeft");
+      expect((await sliceNumbers(page)).n).toBe(n + 1);
+      await page.keyboard.press("ArrowRight");
+      expect((await sliceNumbers(page)).n).toBe(n);
+    }
+
+    // A tap or click on a view picks the slice nearest it: slice 3 in the top view, slice 15 in the side view.
+    await tapSliceLine(page, "top", 3);
+    expect((await sliceNumbers(page)).n).toBe(3);
+    await expect(previewDialog(page).locator("[data-brd-preview-slice]")).toHaveAttribute("data-brd-preview-slice-at", "3");
+    await tapSliceLine(page, "side", 15);
+    expect((await sliceNumbers(page)).n).toBe(15);
+    await expect(previewDialog(page).locator("[data-brd-preview-slice]")).toHaveAttribute("data-brd-preview-slice-at", "15");
+    await expect(previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice-selected]")).toHaveAttribute("data-brd-slice", "15");
+
+    // Cancel, Escape and (on a computer) a click outside close it and save nothing.
+    const before = await exportStatus(page).textContent();
+    await previewDialog(page).getByRole("button", { name: THREE_D_COPY.previewCancel, exact: true }).click();
+    await expect(previewDialog(page)).toHaveCount(0);
+    await page.waitForTimeout(1_000);
+    expect(downloads).toEqual([]);
+    await expect(exportStatus(page)).toHaveText(before ?? "");
+
+    await openPreview(page);
+    await page.keyboard.press("Escape");
+    await expect(previewDialog(page)).toHaveCount(0);
+    await page.waitForTimeout(1_000);
+    expect(downloads).toEqual([]);
+
+    if (desktop) {
+      await openPreview(page);
+      await page.mouse.click(2, 2);
+      await expect(previewDialog(page)).toHaveCount(0);
+      await page.waitForTimeout(1_000);
+      expect(downloads).toEqual([]);
+      await expect(exportStatus(page)).toHaveText(before ?? "");
+    }
+
+    // Open again, on a fresh slice; Save; the opening line is the saved file's own nearest-the-wide-point slice.
+    await openPreview(page);
+    await expect(sliceLine(page)).toHaveText(opening);
+    const download = await savePreview(page);
+    expect(downloads.length).toBe(1);
+    const saved = previewOfBytes(await downloadedBytes(download));
+    const words = brdPreviewWords(saved, "imperial");
+    expect(opening).toBe(THREE_D_COPY.previewSliceLine(saved.openingSlice + 1, saved.slices.length, words.stations[saved.openingSlice]));
+  });
+
+  test("10. in Metric the preview reads centimetres, from the saved file", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "the units are proven on one project; the figures come from the file");
+    await setMetricUnits(page);
+    await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-top] [data-brd-slice]").first()).toBeAttached();
+    const opening = (await sliceLine(page).textContent()) ?? "";
+    const facts = (await factsLine(page).textContent()) ?? "";
+    const download = await savePreview(page);
+    const saved = previewOfBytes(await downloadedBytes(download));
+    const words = brdPreviewWords(saved, "metric");
+    expect(words.dims.endsWith(" cm")).toBe(true);
+    expect(words.dims.match(/ cm/g)?.length, "cm once, at the end").toBe(1);
+    expect(facts).toBe(THREE_D_COPY.previewFacts(saved.slices.length, words.gap, words.dims));
+    expect(opening).toBe(THREE_D_COPY.previewSliceLine(saved.openingSlice + 1, saved.slices.length, words.stations[saved.openingSlice]));
+  });
+});
+
+/**
+ * The preview on a phone (brief item 5): the dialog fills the screen, all three drawings can be reached, and Cancel,
+ * Save .brd File, ‹ and › stay in view and at least 44 dots on a finger.
+ */
+async function phoneChecks(page: Page) {
+  await page.goto("/design/3d");
+  await waitForBoard(page);
+  await openPreview(page);
+  const dialog = previewDialog(page);
+  await expect(dialog.locator("[data-brd-preview-top] [data-brd-slice]").first()).toBeAttached();
+  // The dialog zooms in as it opens; measure it once it has settled, or a box reads a hair under its size.
+  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)).then(() => undefined));
+  const viewport = page.viewportSize()!;
+  const buttons: [string, Locator][] = [
+    ["Cancel", dialog.getByRole("button", { name: THREE_D_COPY.previewCancel, exact: true })],
+    ["Save", previewSave(page)],
+  ];
+  for (const [name, button] of buttons) {
+    const box = (await button.boundingBox())!;
+    expect(box.height, `${name} is a finger-sized box`).toBeGreaterThanOrEqual(44);
+    expect(box.y >= 0 && box.y + box.height <= viewport.height + 0.5, `${name} is in view`).toBe(true);
+    expect(box.x >= 0 && box.x + box.width <= viewport.width + 0.5, `${name} is across the screen`).toBe(true);
+  }
+  const steppers: [string, Locator][] = [
+    ["‹", dialog.getByRole("button", { name: THREE_D_COPY.previewTowardNose, exact: true })],
+    ["›", dialog.getByRole("button", { name: THREE_D_COPY.previewTowardTail, exact: true })],
+  ];
+  for (const [name, button] of steppers) {
+    await button.scrollIntoViewIfNeeded();
+    const box = (await button.boundingBox())!;
+    expect(box.height, `${name} is 44 dots tall`).toBeGreaterThanOrEqual(44);
+    expect(box.width, `${name} is 44 dots wide`).toBeGreaterThanOrEqual(44);
+  }
+  // Every drawing can be scrolled to, and the part showing is inside the scrolling body between header and footer.
+  const body = (await dialog.locator("[data-brd-preview-body]").boundingBox())!;
+  for (const drawing of ["[data-brd-preview-top]", "[data-brd-preview-slice]", "[data-brd-preview-side]"]) {
+    const svg = dialog.locator(drawing);
+    await svg.scrollIntoViewIfNeeded();
+    await expect(svg).toBeVisible();
+    const box = (await svg.boundingBox())!;
+    const overlap = Math.min(box.y + box.height, body.y + body.height) - Math.max(box.y, body.y);
+    expect(overlap, `${drawing} shows inside the body`).toBeGreaterThan(0);
+  }
+  // And a Save from here downloads the file.
+  const download = await savePreview(page);
+  await expectWholeBrd(page, download, "");
+}
+
+test.describe("the preview on an upright phone", () => {
+  test("fits, with finger-sized buttons in view and every drawing reachable", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "a phone's own layout");
+    await phoneChecks(page);
+  });
+});
+
+// The real sideways iPhone (844 × 390, measured on hardware) and Pixel 7, built the way rocker-custom.spec.ts builds them.
+const {
+  defaultBrowserType: iphoneLandscapeBrowserType,
+  viewport: iphoneLandscapeEmulatorViewport,
+  ...iphoneLandscapeRest
+} = devices["iPhone 14 landscape"];
+void iphoneLandscapeBrowserType;
+void iphoneLandscapeEmulatorViewport;
+const realSidewaysIphone = { ...iphoneLandscapeRest, viewport: { width: 844, height: 390 } };
+const { defaultBrowserType: pixel7LandscapeBrowserType, ...pixel7Landscape } = devices["Pixel 7 landscape"];
+void pixel7LandscapeBrowserType;
+
+test.describe("the preview on a real iPhone held sideways", () => {
+  test.use({ ...realSidewaysIphone });
+  test("fits, with finger-sized buttons in view and every drawing reachable", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "iphone", "this describe supplies its own device (iPhone 14 landscape, 844 × 390)");
+    await phoneChecks(page);
+  });
+});
+
+test.describe("the preview on a Pixel 7 held sideways", () => {
+  test.use({ ...pixel7Landscape });
+  test("fits, with finger-sized buttons in view and every drawing reachable", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "android", "this describe supplies its own device (Pixel 7 landscape)");
+    await phoneChecks(page);
   });
 });

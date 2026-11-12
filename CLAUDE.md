@@ -170,7 +170,9 @@ know why:
   there and 3D has only Back. The file carries the outline, the rocker and deck, and twenty to thirty-five
   cross-sections with BOTTOM's concaves, vees and bellies; a swallow is written as a square tail and channels are left
   out, both to be cut by hand and both said under the button (the founder, 2026-11-10 and 2026-11-12: neither program
-  draws them well). The DXF, STL and XYZ writers stay in `lib/export/`, tested and no longer offered. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
+  draws them well). Pressing the button opens a Board file preview drawn from the file's own bytes
+  (`lib/export/brd-preview.ts`, quick 261112-dbi: the board from above, the picked slice, the side view, a line at
+  every slice) and the file is saved from the preview's Save .brd File. The DXF, STL and XYZ writers stay in `lib/export/`, tested and no longer offered. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
   ☰ sheet's tiles and Back + Next alike
 - `components/design/design-store.tsx` — the shared board-design state
 - `components/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — per-screen UI
