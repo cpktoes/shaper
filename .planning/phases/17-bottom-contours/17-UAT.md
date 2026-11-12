@@ -86,6 +86,18 @@ blocked: 0
 - 2026-11-11: 17-22 (RAILS draws every concave on every section; marks move only on the Longboard's rolled rail, Rail Tuck 2 up to 0.116") approved at his look.
 - 2026-11-11: 17-23 (BOTTOM's section gauge matches DATA; DATA's note in his sentence; the Longboard's printed tables sheet prints all three notes, rows 2 dots closer, type unchanged) approved at his look. All seven fix plans (17-17 to 17-23) are on the branch; the go-live gate and his re-check of tests 5 and 6 on the live site remain.
 
+## Fix-wave go-live gate (2026-11-11, on claude/bottom-uat-17-d1559c at 6544ff7a, before any push)
+
+| Check | Result |
+|---|---|
+| Types (`tsc`) and lint | pass (lint's one known warning) |
+| Whole unit suite | 12,586 passed; 1 timed out under the full-suite load (bottom.test.ts CR-01, the known one) and passes alone |
+| Full browser suite, three devices, webpack test server (2.9 h) | 1,825 passed, 1,379 skipped, 9 failed — all nine on the phone profiles, desktop clean; all nine pass when re-run alone (13 passed, 3 skipped by project) |
+| The two tests that timed out during 17-22's build (board-lock-screens:824, rails-advanced:1109) | pass alone on a quiet machine at the normal time limit (7.4 s, 10.0 s) — load, not a slowdown |
+| Production build (Turbopack) | completes, with the test suite's stand-in settings |
+| Desktop baseline pictures under Turbopack | 6 of 6 pass — VOLUME's re-taken picture included |
+| Production-build browser tests (`e2e/prod`, five specs) | NOT RUN — they need the machine's own settings file, which lives only in the main folder (on another branch today) |
+
 ## Gaps
 
 - gap_id: G-17-5
