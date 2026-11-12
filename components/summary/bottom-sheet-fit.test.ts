@@ -5,6 +5,7 @@ import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import {
+  BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
   bottomDataRows,
   bottomLayoutMarks,
@@ -29,6 +30,7 @@ import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { inchesToMm, UNITS_SYSTEMS, type UnitsSystem } from "@/lib/geometry/units";
 import {
   BOTTOM_SECTION_BOX,
+  BOTTOM_SHEET_SPARE,
   BOTTOM_TABLES_BESIDE_MAX_COLUMNS,
   BOTTOM_TOP_VIEW,
   bottomSheetLayout,
@@ -36,6 +38,7 @@ import {
   bottomSheetStationsLine,
   bottomTopViewBox,
   placeSheetGaugeLabels,
+  type BottomSheetLayout,
 } from "./bottom-sheet-fit";
 
 /** The words the screen puts after a gauge's value, by kind (`BOTTOM_COPY`'s own, with the value taken off). */
@@ -274,6 +277,83 @@ describe("bottomSheetLayout: what the page carries", () => {
       expect(spare.tables!).toBeGreaterThanOrEqual(0);
     }
   });
+});
+
+/*
+ * The founder's answer of 2026-11-11, "Make it fit": DATA's note took his longer sentence, and on the 9'+ Longboard the
+ * tables' own sheet then had no room for its other notes (with channels it already printed only the first). Now every
+ * note DATA has for the board prints there. Where the notes would not otherwise fit, that sheet's rows lose their one
+ * dot of padding above and below — the type stays the same size — and every sheet whose notes fit keeps its rows. The
+ * setups are every nose × tail name with a centre Early Double Concave at 0 and 8 channels, and every centre name at 0,
+ * 4, 6 and 8 channels, built as `bottomOf` builds them, on every board of the Phase 16 set, in both systems.
+ */
+describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-11-11: \"Make it fit\")", () => {
+  const SETUPS: { names: Names; count: ChannelCount | 0 }[] = [];
+  for (const nose of BOTTOM_CUT_NAMES.nose)
+    for (const tail of BOTTOM_CUT_NAMES.tail) for (const count of [0, 8] as const) SETUPS.push({ names: { nose, center: "Early Double Concave", tail }, count });
+  for (const center of BOTTOM_CUT_NAMES.center) for (const count of [0, 4, 6, 8] as const) SETUPS.push({ names: { center }, count });
+
+  /** The tables' sheet's spare room counted at today's rows, whatever the layout chose. */
+  const regularSpare = (layout: BottomSheetLayout, board: BottomBoard) => bottomSheetSpare({ ...layout, tablesTight: false }, board).tables;
+
+  function layoutsOf(label: string) {
+    const built16 = build(label, phase16Boards().find((b) => b.label === label)!.fields);
+    return SETUPS.flatMap(({ names, count }) => {
+      const resolved = resolveBottom(bottomOf(built16.board, names, count), built16.board);
+      return UNITS_SYSTEMS.map((system) => {
+        const layout = bottomSheetLayout(resolved, built16.board, system, built16.frontPair);
+        const wanted = [
+          BOTTOM_COPY.depthsNote,
+          ...(layout.marks.columns.length > 0 ? [layoutMarksNote(resolved.channels, system)] : []),
+          referenceRowsNote(built16.board, built16.frontPair, system),
+        ];
+        return { layout, wanted, board: built16.board, what: `${Object.values(names).join(", ")} · ${count} channels · ${system}` };
+      });
+    });
+  }
+
+  const longboards = phase16Boards().filter((b) => b.label.startsWith("longboard|")).map((b) => b.label);
+  const others = phase16Boards().filter((b) => !b.label.startsWith("longboard|")).map((b) => b.label);
+
+  it("the set is the 96 setups, on ten Longboards and thirty other boards", () => {
+    expect(SETUPS).toHaveLength(96);
+    expect(longboards).toHaveLength(10);
+    expect(others).toHaveLength(30);
+  });
+
+  it.each(longboards)("%s: every note DATA has prints on the tables' own sheet, its rows tight only where the notes need them", (label) => {
+    let tight = 0;
+    let ownSheet = 0;
+    for (const { layout, wanted, board, what } of layoutsOf(label)) {
+      expect(layout.sheets, what).toBe(layout.tablesOnOwnSheet ? 2 : 1);
+      if (!layout.tablesOnOwnSheet) {
+        expect(layout.tablesTight, `${what}: tables on the page never tighten`).toBe(false);
+        expect(layout.tableNotes).toEqual([]);
+        continue;
+      }
+      ownSheet++;
+      expect(layout.tableNotes, `${what}: every note`).toEqual(wanted);
+      expect(bottomSheetSpare(layout, board).tables!, `${what}: the tables' sheet has room`).toBeGreaterThanOrEqual(0);
+      if (layout.tablesTight) {
+        tight++;
+        // Tight only where today's rows leave no room for every note.
+        expect(regularSpare(layout, board)!, `${what}: tight although the notes fit today's rows`).toBeLessThan(bottomSheetSpare(layout, board).tables!);
+        expect(regularSpare(layout, board)!, `${what}: tight although the notes fit today's rows`).toBeLessThan(BOTTOM_SHEET_SPARE);
+      } else {
+        expect(layout.tablesTight, what).toBe(false);
+      }
+    }
+    expect(ownSheet, "the Longboard's tables take their own sheet on some setups (non-vacuity)").toBeGreaterThan(0);
+    expect(tight, "and some of them need the tighter rows (non-vacuity)").toBeGreaterThan(0);
+  }, 60_000);
+
+  it.each(others)("%s: every note prints with the rows as they are — nothing tightens", (label) => {
+    for (const { layout, wanted, what } of layoutsOf(label)) {
+      expect(layout.tablesTight, what).toBe(false);
+      expect(layout.sheets, what).toBe(layout.tablesOnOwnSheet ? 2 : 1);
+      expect(layout.tableNotes, what).toEqual(layout.tablesOnOwnSheet ? wanted : []);
+    }
+  }, 60_000);
 });
 
 describe("bottomSheetStationsLine: a cut's three stations in words", () => {

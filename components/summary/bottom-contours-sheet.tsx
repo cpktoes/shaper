@@ -481,6 +481,12 @@ const HEAD_STATION = "pb-0.5 text-left align-bottom font-extrabold text-surf-ink
 const ROW = "border-b border-surf-line-faint leading-tight";
 const STATION_CELL = "whitespace-nowrap py-px pr-1.5 text-left font-bold text-surf-ink";
 const CELL = "whitespace-nowrap py-px pl-1.5 text-right";
+/**
+ * The same two cells with their one dot of padding above and below taken off: the rows of the tables' own sheet when
+ * its notes need the room (`layout.tablesTight`; the founder, 2026-11-11: "Make it fit"). The type is the same size.
+ */
+const STATION_CELL_TIGHT = "whitespace-nowrap pr-1.5 text-left font-bold text-surf-ink";
+const CELL_TIGHT = "whitespace-nowrap pl-1.5 text-right";
 const HEAD_ROW_STYLE = { fontSize: "var(--summary-font-label, 12px)" } as const;
 /**
  * Side by side, every heading stands two lines tall whether or not its words wrap — so the two tables' rows line up
@@ -490,7 +496,7 @@ const TWO_LINE_HEAD = { height: "2.75em" } as const;
 const ROW_STYLE = { fontSize: "var(--summary-font-row, 11px)" } as const;
 
 /** The depths under a straightedge: DATA's first table. */
-function DepthsTable({ layout, beside = false }: { layout: BottomSheetLayout; beside?: boolean }) {
+function DepthsTable({ layout, beside = false, tight = false }: { layout: BottomSheetLayout; beside?: boolean; tight?: boolean }) {
   const { system } = useUnits();
   const columns = BOTTOM_COPY.depthsColumns;
   const headers = [
@@ -525,10 +531,10 @@ function DepthsTable({ layout, beside = false }: { layout: BottomSheetLayout; be
         <tbody>
           {layout.dataRows.map((row) => {
             // The rows a shaper measures from — within reach of the wide point and the front fins — in full ink.
-            const cell = cn(CELL, row.reference !== null ? "font-bold text-surf-ink" : "text-surf-ink-muted");
+            const cell = cn(tight ? CELL_TIGHT : CELL, row.reference !== null ? "font-bold text-surf-ink" : "text-surf-ink-muted");
             return (
               <tr key={row.station} data-bottom-sheet-row-at={row.label} className={ROW} style={ROW_STYLE}>
-                <th scope="row" className={STATION_CELL}>
+                <th scope="row" className={tight ? STATION_CELL_TIGHT : STATION_CELL}>
                   {rowLabel(row, system)}
                 </th>
                 <td className={cell}>{row.width === null ? BOTTOM_COPY.emptyCell : formatDimBare(row.width, system)}</td>
@@ -545,7 +551,7 @@ function DepthsTable({ layout, beside = false }: { layout: BottomSheetLayout; be
 }
 
 /** The layout marks off the stringer: DATA's second table, a column for each line a shaper rules. */
-function MarksTable({ layout, beside = false }: { layout: BottomSheetLayout; beside?: boolean }) {
+function MarksTable({ layout, beside = false, tight = false }: { layout: BottomSheetLayout; beside?: boolean; tight?: boolean }) {
   const { system } = useUnits();
   const { marks, dataRows } = layout;
   // DATA's heading is `Layout marks · off the stringer` (with `(mm)` in Metric): the name is the box's caption, the rest
@@ -569,10 +575,10 @@ function MarksTable({ layout, beside = false }: { layout: BottomSheetLayout; bes
         <tbody>
           {marks.rows.map((markRow, r) => {
             const row = dataRows[r];
-            const cell = cn(CELL, row.reference !== null ? "font-bold text-surf-ink" : "text-surf-ink-muted");
+            const cell = cn(tight ? CELL_TIGHT : CELL, row.reference !== null ? "font-bold text-surf-ink" : "text-surf-ink-muted");
             return (
               <tr key={markRow.station} className={ROW} style={ROW_STYLE}>
-                <th scope="row" className={STATION_CELL}>
+                <th scope="row" className={tight ? STATION_CELL_TIGHT : STATION_CELL}>
                   {rowLabel(row, system)}
                 </th>
                 {markRow.cells.map((value, c) => (
@@ -589,21 +595,24 @@ function MarksTable({ layout, beside = false }: { layout: BottomSheetLayout; bes
   );
 }
 
-/** Part 3: the two tables — side by side when the marks table is narrow, otherwise one above the other. */
-function Tables({ layout, beside }: { layout: BottomSheetLayout; beside: boolean }) {
+/**
+ * Part 3: the two tables — side by side when the marks table is narrow, otherwise one above the other. `tight` draws
+ * the full-width tables' rows without their padding (the tables' own sheet only; the page itself never tightens).
+ */
+function Tables({ layout, beside, tight = false }: { layout: BottomSheetLayout; beside: boolean; tight?: boolean }) {
   const columns = layout.marks.columns.length;
   if (columns === 0) {
     return (
       <div data-bottom-sheet-part="tables" className="flex flex-none flex-col gap-1">
-        <DepthsTable layout={layout} />
+        <DepthsTable layout={layout} tight={tight} />
       </div>
     );
   }
   if (!beside) {
     return (
       <div data-bottom-sheet-part="tables" className="flex flex-none flex-col gap-1">
-        <DepthsTable layout={layout} />
-        <MarksTable layout={layout} />
+        <DepthsTable layout={layout} tight={tight} />
+        <MarksTable layout={layout} tight={tight} />
       </div>
     );
   }
@@ -654,13 +663,14 @@ export function BottomContoursSheet({ layout }: { layout: BottomSheetLayout }) {
 
 /**
  * The tables' own sheet, for a board whose cuts fill the page: the same two tables at the page's full width, with
- * DATA's own notes on how to read them — as many as the fit rule found room for under the tables
- * (`layout.tableNotes`; the longest board with the most columns of marks leaves room for none, and keeps every row).
+ * DATA's own notes on how to read them — every one (`layout.tableNotes`; the founder, 2026-11-11: "Make it fit"). Where
+ * they would not otherwise all fit, the rows sit two dots closer together (`layout.tablesTight`, marked
+ * `data-bottom-rows="tight"`), every row kept and the type the same size.
  */
 export function BottomTablesSheet({ layout }: { layout: BottomSheetLayout }) {
   return (
-    <div data-bottom-tables-sheet className="flex min-h-0 flex-1 flex-col gap-1">
-      <Tables layout={layout} beside={false} />
+    <div data-bottom-tables-sheet data-bottom-rows={layout.tablesTight ? "tight" : undefined} className="flex min-h-0 flex-1 flex-col gap-1">
+      <Tables layout={layout} beside={false} tight={layout.tablesTight} />
       {layout.tableNotes.length > 0 && (
         <div data-bottom-sheet-part="table-notes" className="flex flex-none flex-col gap-[3px] px-0.5 pt-0.5 text-surf-ink-muted leading-tight order-form-micro">
           {layout.tableNotes.map((note) => (

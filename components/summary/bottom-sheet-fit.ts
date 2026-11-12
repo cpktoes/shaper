@@ -97,10 +97,17 @@ export interface BottomSheetLayout {
   /** Whether the two tables take a sheet of their own, after the page. */
   tablesOnOwnSheet: boolean;
   /**
-   * DATA's notes on how to read the tables, for the tables' own sheet: as many of the three as the sheet has room for
-   * under its tables, in DATA's order. Empty when the tables stay on the page, which has no room for them.
+   * DATA's notes on how to read the tables, for the tables' own sheet: every note DATA has for the board, in DATA's
+   * order (the founder, 2026-11-11: "Make it fit") — fewer only on a hand-set board longer than any stock board, whose
+   * sheet takes as many as fit. Empty when the tables stay on the page, which has no room for them.
    */
   tableNotes: string[];
+  /**
+   * Whether the tables' own sheet draws its rows without their one dot of padding above and below — each row two dots
+   * tighter, the type the same size — because every note would not otherwise fit under them. False on every sheet
+   * whose notes fit today's rows, and whenever the tables stay on the page.
+   */
+  tablesTight: boolean;
   /** How many sheets the bottom prints on: 1, or 2 when the tables take their own. */
   sheets: 1 | 2;
 }
@@ -127,6 +134,8 @@ interface SheetSizes {
   tableHeadOne: number;
   tableHeadTwo: number;
   tableRow: number;
+  /** One row of numbers with its cells' padding off: the tables' own sheet, when its notes need the room. */
+  tableRowTight: number;
 }
 
 /**
@@ -148,6 +157,7 @@ const SHEETS: readonly SheetSizes[] = [
     tableHeadOne: 19,
     tableHeadTwo: 34,
     tableRow: 18.6,
+    tableRowTight: 16.6,
   },
   {
     room: 882,
@@ -161,6 +171,7 @@ const SHEETS: readonly SheetSizes[] = [
     tableHeadOne: 17.6,
     tableHeadTwo: 31.4,
     tableRow: 17.35,
+    tableRowTight: 15.35,
   },
 ];
 
@@ -216,9 +227,10 @@ function pageHeightWithoutTables(sheet: SheetSizes, board: Pick<BottomBoard, "le
 /**
  * The two tables' height. Side by side they stand as tall as one, under headings held to two lines so their rows line
  * up; one above the other each takes the page's width, and the marks table's many headings are counted on two lines.
+ * `tight` counts the full-width tables' rows with their padding off (the tables' own sheet only).
  */
-function tablesHeight(sheet: SheetSizes, rows: number, markColumns: number, beside: boolean): number {
-  const numbers = rows * sheet.tableRow;
+function tablesHeight(sheet: SheetSizes, rows: number, markColumns: number, beside: boolean, tight = false): number {
+  const numbers = rows * (tight && !beside ? sheet.tableRowTight : sheet.tableRow);
   if (beside) return sheet.tableFrameBeside + sheet.tableHeadTwo + numbers;
   const depths = sheet.tableFrameWide + sheet.tableHeadOne + numbers;
   return markColumns === 0 ? depths : depths + PAGE.gap + sheet.tableFrameWide + sheet.tableHeadTwo + numbers;
@@ -252,24 +264,39 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
   const withTables = spareAfter((sheet) => pageHeightWithoutTables(sheet, board, notes) + PAGE.gap + tablesHeight(sheet, rows, markColumns, narrow));
   const tablesOnOwnSheet = cuts.length > 0 && withTables < PAGE.spare;
   // On a sheet of their own the two tables have the page to themselves, so each takes its full width — and DATA's
-  // notes on reading them follow, as many as fit under the tables.
+  // notes on reading them follow, every one (the founder, 2026-11-11: "Make it fit"). Where they would not all fit
+  // under today's rows, the rows lose their padding to make the room; the type is never made smaller. Whether the
+  // tables take that sheet at all is decided above, at today's rows, so no board prints a sheet more or fewer.
   const tablesBeside = narrow && !tablesOnOwnSheet;
-  const tableNotes: string[] = [];
+  let tableNotes: string[] = [];
+  let tablesTight = false;
   if (tablesOnOwnSheet) {
     const wanted = [BOTTOM_COPY.depthsNote, ...(markColumns > 0 ? [layoutMarksNote(resolved.channels, system)] : []), referenceRowsNote(board, frontPair, system)];
-    for (const note of wanted) {
-      const next = [...tableNotes, note];
-      if (spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false) + tableNotesHeight(sheet, next)) < PAGE.spare) break;
-      tableNotes.push(note);
+    const fits = (list: readonly string[], tight: boolean) =>
+      spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, tight) + tableNotesHeight(sheet, list)) >= PAGE.spare;
+    if (fits(wanted, false)) {
+      tableNotes = wanted;
+    } else {
+      // Every stock board fits every note here; only a hand-set board longer than any of them stops short, keeping
+      // as many notes as fit, in DATA's order — and every row.
+      tablesTight = true;
+      for (const note of wanted) {
+        if (!fits([...tableNotes, note], true)) break;
+        tableNotes.push(note);
+      }
     }
   }
-  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tableNotes, sheets: tablesOnOwnSheet ? 2 : 1 };
+  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tableNotes, tablesTight, sheets: tablesOnOwnSheet ? 2 : 1 };
 }
+
+/** The room, in dots, a sheet must have left over for its parts to count as fitting (for the tests). */
+export const BOTTOM_SHEET_SPARE = PAGE.spare;
 
 /**
  * The room the arithmetic leaves on each sheet the bottom prints on, on the tighter of the two sheets it is counted
  * on: `page` for the BOTTOM CONTOURS page as it is laid out, `tables` for the tables' own sheet (null when they stay on
- * the page). For the tests: a negative figure is a page whose picture has to give way.
+ * the page), its rows counted tight when the layout says so. For the tests: a negative figure is a page whose picture
+ * has to give way.
  */
 export function bottomSheetSpare(layout: BottomSheetLayout, board: Pick<BottomBoard, "length" | "widePointWidth">): { page: number; tables: number | null } {
   const rows = layout.dataRows.length;
@@ -280,7 +307,7 @@ export function bottomSheetSpare(layout: BottomSheetLayout, board: Pick<BottomBo
       (layout.tablesOnOwnSheet ? 0 : PAGE.gap + tablesHeight(sheet, rows, markColumns, layout.tablesBeside)),
   );
   const tables = layout.tablesOnOwnSheet
-    ? spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false) + tableNotesHeight(sheet, layout.tableNotes))
+    ? spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, layout.tablesTight) + tableNotesHeight(sheet, layout.tableNotes))
     : null;
   return { page, tables };
 }
