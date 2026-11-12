@@ -1282,6 +1282,7 @@ export function ThreeDScreen() {
           drawingUnavailable={message !== null}
           exportState={exportState}
           exportSwallowNote={built.ok && brdTailWrittenSquare(built.surface)}
+          exportChannelsNote={built.ok && brdLeavesChannelsOut(bottom)}
           onExport={onExport}
         >
           <ThreeDOnTheRacks

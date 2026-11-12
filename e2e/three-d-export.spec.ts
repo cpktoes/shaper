@@ -105,6 +105,9 @@ async function expectNote(page: Page) {
 /** The swallow line (quick 261110-veo): under the note on a swallow-tail board, the file written with a square tail. */
 const swallowNote = (page: Page) => page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportSwallowNote, { exact: true });
 
+/** The channels line (quick 261112-c2d): under the note on a board with channels, the file written without them. */
+const channelsNote = (page: Page) => page.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportChannelsNote, { exact: true });
+
 /** Taps Export .brd File and answers the download the browser received. */
 async function exportFile(page: Page): Promise<Download> {
   await expect(exportButton(page)).toBeEnabled();
@@ -166,6 +169,8 @@ test.describe("Export .brd File on the 3D screen", () => {
     // The Fish has a swallow tail, which the file writes as a square one: the page says so, under the note.
     await expect(swallowNote(page)).toBeVisible();
     await expect(page.locator("[data-three-d-export-swallow]")).toHaveCount(1);
+    // The Fish has no channels, so no channels line.
+    await expect(channelsNote(page)).toHaveCount(0);
     // The screen's one accent-filled action, last on the panel. The two-way switch's pressed pill wears the accent as
     // every two-way pill in the app does, but it shows a state and carries `aria-pressed`, so it isn't counted (16-18).
     const action = panel(page).locator("button.bg-surf-accent:not([aria-pressed])");
@@ -294,6 +299,7 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expectNote(page);
     // The board a new shaper starts on has no swallow, so there is no swallow line.
     await expect(swallowNote(page)).toHaveCount(0);
+    await expect(channelsNote(page)).toHaveCount(0);
   });
 
   test("6. a failure says so in warning ink, and pressing Export again is the retry", async ({ page }, testInfo) => {
@@ -337,17 +343,32 @@ test.describe("Export .brd File on the 3D screen", () => {
     await keepBoard(bare, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: false }));
     await bare.goto("/design/3d");
     await waitForBoard(bare);
+    await expect(bare.locator("[data-three-d-export]").getByText(THREE_D_COPY.exportChannelsNote, { exact: true })).toHaveCount(0);
     const bareBytes = await downloadedBytes(await exportFile(bare));
     await bare.close();
 
     await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
     await page.goto("/design/3d");
     await waitForBoard(page);
+    // The page says so: one line under the note, and no swallow line on a board with a square tail.
+    await expectNote(page);
+    await expect(channelsNote(page)).toBeVisible();
+    await expect(page.locator("[data-three-d-export-channels]")).toHaveCount(1);
+    await expect(swallowNote(page)).toHaveCount(0);
     const download = await exportFile(page);
     const { read } = await expectWholeBrd(page, download, "");
     // Every section but the one-knot ones that close the tips has the same number of knots, as on a board without channels.
     const knotCounts = new Set(read.sections.filter((section) => section.knots.length > 1).map((section) => section.knots.length));
     expect(knotCounts.size).toBe(1);
     expect(Buffer.from(await downloadedBytes(download)).equals(Buffer.from(bareBytes)), "the channels are left out of the file").toBe(true);
+  });
+
+  test("8. a swallow-tail board with channels shows both lines", async ({ page }) => {
+    await keepBoard(page, "Fish", undefined, presetBottom("Fish", { deepSingle: false, channels: true }));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await expectNote(page);
+    await expect(swallowNote(page)).toBeVisible();
+    await expect(channelsNote(page)).toBeVisible();
   });
 });

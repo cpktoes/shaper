@@ -36,6 +36,7 @@ export function ThreeDControls({
   drawingUnavailable,
   exportState,
   exportSwallowNote,
+  exportChannelsNote,
   onExport,
 }: {
   children?: ReactNode;
@@ -53,6 +54,8 @@ export function ThreeDControls({
   exportState: ExportState;
   /** True on a swallow-tail board: the file writes the tail square, and a line under the export button says so. */
   exportSwallowNote: boolean;
+  /** True on a board with channels: the file leaves them out, and a line under the export button says so. */
+  exportChannelsNote: boolean;
   /** Builds and downloads the zip, inside the tap. */
   onExport: () => void;
 }) {
@@ -72,7 +75,7 @@ export function ThreeDControls({
         disabled={drawingUnavailable}
       />
       {children}
-      <ExportSection state={exportState} swallowNote={exportSwallowNote} onExport={onExport} />
+      <ExportSection state={exportState} swallowNote={exportSwallowNote} channelsNote={exportChannelsNote} onExport={onExport} />
     </div>
   );
 }
@@ -245,7 +248,17 @@ function ViewSection({
  * drawing (the files don't need it) and on a locked board (`data-lock-exempt`: exporting changes nothing, UI-SPEC §9).
  * The done line names the file in ink and counts the slices from the writer, never a typed number.
  */
-function ExportSection({ state, swallowNote, onExport }: { state: ExportState; swallowNote: boolean; onExport: () => void }) {
+function ExportSection({
+  state,
+  swallowNote,
+  channelsNote,
+  onExport,
+}: {
+  state: ExportState;
+  swallowNote: boolean;
+  channelsNote: boolean;
+  onExport: () => void;
+}) {
   return (
     <div className="flex flex-col gap-2" data-three-d-export>
       <ThreeDSectionHeading>{THREE_D_COPY.exportHeading}</ThreeDSectionHeading>
@@ -263,6 +276,11 @@ function ExportSection({ state, swallowNote, onExport }: { state: ExportState; s
         {swallowNote ? (
           <div className="mt-2 text-xs text-surf-ink-muted font-normal" data-three-d-export-swallow>
             {THREE_D_COPY.exportSwallowNote}
+          </div>
+        ) : null}
+        {channelsNote ? (
+          <div className="mt-2 text-xs text-surf-ink-muted font-normal" data-three-d-export-channels>
+            {THREE_D_COPY.exportChannelsNote}
           </div>
         ) : null}
         <div
