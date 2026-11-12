@@ -2,7 +2,7 @@
  * The AkuShaper board file for one board (quick 261110-tvk, reworked in 261110-veo): a `.brd` a shaper opens in
  * AkuShaper or Shape3D, written from the surface the 3D screen draws (`buildBoardSurface`), so it can never describe a
  * different board from the one on screen. It holds the board's outline (the right half, tail to nose), its bottom rocker
- * and deck along the stringer, and about a dozen cross-sections at chosen stations — with BOTTOM's concaves, vees and
+ * and deck along the stringer, and twenty to thirty-five cross-sections at chosen stations — with BOTTOM's concaves, vees and
  * bellies in them, because the sections are read off the cut surface. Channels are left out: the 3D page writes the
  * board as it stands before they are cut (`brdFileBottom`, quick 261112-c2d, the founder 2026-11-12 — neither
  * AkuShaper nor Shape3D carries a straight, sharp-walled channel well). Fins are not written.
@@ -18,8 +18,10 @@
  *
  * Sections, the way AkuShaper writes its own (the founder's finding, 2026-11-10: a 3D view joins knot i of one section
  * to knot i of the next, so the same number of knots in the same places on every section is what draws a smooth board):
- * about a dozen stations (1" in from each tip, 12" from each tip, the wide point, where each bottom cut and the channels
- * start, are deepest and end, and no two neighbours more than 8" apart), each with the same knots in the same order —
+ * twenty to thirty-five stations (1" in from each tip, 12" from each tip, the wide point, where each bottom cut and the
+ * channels start, are deepest and end, no two neighbours more than 4" apart, and one more wherever a blend of two
+ * neighbours would stray more than a millimetre from the drawn board — the founder, 2026-11-12: "a significant number
+ * of slices to make sure the contours stay true"), each with the same knots in the same order —
  * the bottom at the stringer, any channel walls' feet and tops, the bottom edge (the tuck), the rail's widest point, the
  * deck shoulder, the deck at the stringer. The knots are the board's own places; only their handles are fitted. A
  * one-knot section closes the tail and the nose, as AkuShaper's own Scoop does at its square tail.
@@ -87,14 +89,26 @@ export const BRD_WALL_LEAN_ROOM = 0.5;
  */
 export const BRD_WALL_SECTION_SPACING_IN = 1.5;
 
+/**
+ * How close a blend of two neighbouring sections stays to the board between them: where it strays further, another
+ * section is stood there (the founder, 2026-11-12: "a significant number of slices to make sure the contours stay true").
+ */
+export const BRD_BLEND_TARGET_MM = 1;
+
+/** The most sections a file ever carries. */
+export const BRD_SECTIONS_MAX = 60;
+
 /** The deck shoulder's slot in the deck run of 48 points: 36 of 24 / 32 / 36 / 40 / 43 fitted all three sample boards best. */
 export const BRD_SHOULDER_SLOT = 36;
 
 /** The sections nearest each tip stand this far in from it, in inches: the very tip is the one-knot section. */
 export const BRD_TIP_SECTION_IN = 1;
 
-/** No two neighbouring sections stand further apart than this, in inches, so a blend of two stays close to the board. */
-export const BRD_SECTION_SPACING_IN = 8;
+/**
+ * No two neighbouring sections stand further apart than this, in inches, so a blend of two stays close to the board. It
+ * was 8" until the founder asked for "a significant number of slices to make sure the contours stay true" (2026-11-12).
+ */
+export const BRD_SECTION_SPACING_IN = 4;
 
 /** The most knots added board-wide beyond the base set, for a span that would otherwise miss by more than the target. */
 export const BRD_ADDED_KNOTS_MAX = 4;
@@ -524,6 +538,62 @@ export function brdOutlineCurve(surface: BoardSurface): BrdCurve {
   };
 }
 
+/**
+ * How far a blend of two sections strays from the drawn board between them, and at which ring most: the two sections'
+ * knots mixed by distance, each first taken as a share of its own half-width and stringer thickness, then stretched to
+ * the ring's — the way a shaping program fills the board in between two sections. A ring an inch on from the last is
+ * looked at: closer than that no section could be stood anyway.
+ */
+function blendStrayBetween(
+  halves: readonly { station: Mm; points: readonly Vec3[] }[],
+  a: number,
+  b: number,
+  fa: { points: readonly P2[]; knots: readonly BezierKnot[] },
+  fb: { points: readonly P2[]; knots: readonly BezierKnot[] },
+): { miss: number; at: number } {
+  const sizeOf = (points: readonly P2[]) => [Math.max(...points.map((q) => q[0])), points[points.length - 1][1]] as const;
+  const look = inchesToMm(BRD_TIP_SECTION_IN) - 1e-6;
+  const [wa, ta] = sizeOf(fa.points);
+  const [wb, tb] = sizeOf(fb.points);
+  let miss = 0;
+  let at = -1;
+  let last = halves[a].station;
+  for (let r = a + 1; r < b; r++) {
+    if (halves[r].station - last < look) continue;
+    last = halves[r].station;
+    const base = halves[r].points[0][2];
+    const ring = withoutRepeatPoints(halves[r].points.map((q): P2 => [Math.abs(q[1]), q[2] - base]));
+    const [wr, tr] = sizeOf(ring);
+    const f = (halves[r].station - halves[a].station) / (halves[b].station - halves[a].station);
+    const mix = (qa: P2, qb: P2): P2 => [((1 - f) * (qa[0] / wa) + f * (qb[0] / wb)) * wr, ((1 - f) * (qa[1] / ta) + f * (qb[1] / tb)) * tr];
+    const blend: BezierKnot[] = fa.knots.map((ka, k) => {
+      const kb = fb.knots[k];
+      return { point: mix(ka.point, kb.point), before: mix(ka.before, kb.before), after: mix(ka.after, kb.after), smooth: ka.smooth };
+    });
+    const stray = bezierDeviation(ring, blend);
+    if (stray > miss) {
+      miss = stray;
+      at = r;
+    }
+  }
+  return { miss, at };
+}
+
+/**
+ * The furthest the written sections, blended two by two, stray from the drawn board anywhere between them, in
+ * millimetres (`BRD_BLEND_TARGET_MM` is what the writer stands its sections to hold).
+ */
+export function brdBlendStray(surface: BoardSurface, curves: BrdCurves): number {
+  const { halves } = boardSectionHalves(surface);
+  const at = curves.sections.map((section) => halves.findIndex((h) => h.station === section.station));
+  let worst = 0;
+  for (let k = 0; k + 1 < at.length; k++) {
+    if (at[k] < 0 || at[k + 1] < 0) continue;
+    worst = Math.max(worst, blendStrayBetween(halves, at[k], at[k + 1], curves.sections[k], curves.sections[k + 1]).miss);
+  }
+  return worst;
+}
+
 /** Every curve of the file, in millimetres, fitted to the surface. */
 export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdCurves {
   const outline = brdOutlineCurve(surface);
@@ -545,7 +615,7 @@ export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdC
   if (noseEdge) deckKnots[deckKnots.length - 1] = { ...deckKnots[deckKnots.length - 1], smooth: false };
   const deck: BrdCurve = { points: deckPoints, knots: deckKnots };
 
-  // Sections: about a dozen chosen stations, each a ring of the drawn board read slot for slot, so knot i is the same
+  // Sections: chosen stations (4" apart at most, closer where the board changes), each a ring of the drawn board read slot for slot, so knot i is the same
   // place on every section. y = 0 at the bottom at the stringer.
   const { halves, walls, bottomEdge, widest: widestSlot } = boardSectionHalves(surface);
   const sections: BrdSection[] = [];
@@ -558,32 +628,76 @@ export function brdCurves(surface: BoardSurface, options: BrdOptions = {}): BrdC
       reach: Math.max(...h.points.map((p) => Math.abs(p[1]))),
       walled: walls.some((wall) => Math.hypot(h.points[wall.foot][1] - h.points[wall.top][1], h.points[wall.foot][2] - h.points[wall.top][2]) >= BRD_KNOT_GAP_MM),
     }));
-    const chosen = chooseSectionHalves(reaching, surface.length, options.bottomStations ?? []).map((i) => halves[i]);
+    let picked = chooseSectionHalves(reaching, surface.length, options.bottomStations ?? []);
     // Added knots are board-wide, so the count and the places stay the same on every section: while a section misses by
     // more than the target, the worst span of any section gets a knot halfway between its slots, on every section.
     const added: number[] = [];
     let slots = knotSlots(layout, added);
-    let fits = chosen.map((h) => fitSection(h.points, slots, walls));
-    while (added.length < BRD_ADDED_KNOTS_MAX && Math.max(...fits.map((f) => f.deviation)) > BRD_SECTION_TARGET_MM) {
-      let worst = -1;
-      let worstSlot = -1;
-      for (const fit of fits) {
-        fit.spans.forEach((span, i) => {
-          if (span.to - span.from < 2) return;
-          const miss = bezierDeviation(span.points, [fit.knots[i], fit.knots[i + 1]]);
-          if (miss > worst) {
-            worst = miss;
-            worstSlot = Math.floor((span.from + span.to) / 2);
-          }
-        });
+    let fits = new Map<number, FittedSection>();
+    const fitAll = () => {
+      fits = new Map(picked.map((i) => [i, fitSection(halves[i].points, slots, walls)]));
+    };
+    const settleKnots = () => {
+      while (added.length < BRD_ADDED_KNOTS_MAX && Math.max(...picked.map((i) => fits.get(i)!.deviation)) > BRD_SECTION_TARGET_MM) {
+        let worst = -1;
+        let worstSlot = -1;
+        for (const i of picked) {
+          const fit = fits.get(i)!;
+          fit.spans.forEach((span, k) => {
+            if (span.to - span.from < 2) return;
+            const miss = bezierDeviation(span.points, [fit.knots[k], fit.knots[k + 1]]);
+            if (miss > worst) {
+              worst = miss;
+              worstSlot = Math.floor((span.from + span.to) / 2);
+            }
+          });
+        }
+        if (worstSlot < 0) break;
+        added.push(worstSlot);
+        slots = knotSlots(layout, added);
+        fitAll();
       }
-      if (worstSlot < 0) break;
-      added.push(worstSlot);
-      slots = knotSlots(layout, added);
-      fits = chosen.map((h) => fitSection(h.points, slots, walls));
+    };
+    fitAll();
+    settleKnots();
+
+    // Enough sections that the contours stay true between them (the founder, 2026-11-12). A program draws the board
+    // between two sections as a blend of the two, stretched to the outline and the thickness there; where that blend
+    // strays from the drawn board by more than the target — where a hard edge ends, where a concave starts — the ring it
+    // strays at most becomes a section too, until every stretch holds or the sections are an inch apart. A board with
+    // channel walls already stands its sections close where the walls are, and is left as chosen.
+    if (!reaching.some((r) => r.walled)) {
+      const apart = inchesToMm(BRD_TIP_SECTION_IN);
+      const strayBetween = (a: number, b: number) => blendStrayBetween(halves, a, b, fits.get(a)!, fits.get(b)!);
+      const known = new Map<string, { miss: number; at: number }>();
+      while (picked.length < BRD_SECTIONS_MAX) {
+        const more: number[] = [];
+        for (let k = 0; k + 1 < picked.length; k++) {
+          const a = picked[k];
+          const b = picked[k + 1];
+          const key = `${a}-${b}`;
+          if (!known.has(key)) known.set(key, strayBetween(a, b));
+          const { miss, at } = known.get(key)!;
+          if (!(miss > BRD_BLEND_TARGET_MM) || at < 0) continue;
+          // The ring it strays at most, kept an inch clear of both sections; a stretch under two inches is left.
+          const low = halves[a].station + apart;
+          const high = halves[b].station - apart;
+          let best = -1;
+          for (let r = a + 1; r < b; r++) {
+            const s = halves[r].station;
+            if (s < low - 1e-9 || s > high + 1e-9) continue;
+            if (best < 0 || Math.abs(s - halves[at].station) < Math.abs(halves[best].station - halves[at].station)) best = r;
+          }
+          if (best >= 0) more.push(best);
+        }
+        if (more.length === 0) break;
+        for (const r of more.slice(0, BRD_SECTIONS_MAX - picked.length)) fits.set(r, fitSection(halves[r].points, slots, walls));
+        picked = [...picked, ...more.slice(0, BRD_SECTIONS_MAX - picked.length)].sort((x, y) => x - y);
+      }
+      settleKnots();
     }
     sectionKnotRoles = slots.map((s) => s.role);
-    chosen.forEach((h, i) => sections.push({ station: mm(h.station), points: fits[i].points, knots: fits[i].knots }));
+    for (const i of picked) sections.push({ station: mm(halves[i].station), points: fits.get(i)!.points, knots: fits.get(i)!.knots });
   }
 
   const thickness = Math.max(...stringer.deck.map((p, i) => p[2] - stringer.bottom[i][2]));

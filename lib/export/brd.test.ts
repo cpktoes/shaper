@@ -32,15 +32,18 @@ import { buildOutline } from "../geometry/outline";
 import { inchesToMm, mm, mmToCentimetres } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import {
+  BRD_BLEND_TARGET_MM,
   BRD_KNOT_GAP_MM,
   BRD_MACHINE_FIELDS,
   BRD_SECTION_SPACING_IN,
   BRD_SECTION_TARGET_MM,
+  BRD_SECTIONS_MAX,
   BRD_WALL_LEAN_MM,
   BRD_WALL_LEAN_PER_HEIGHT,
   BRD_WALL_LEAN_ROOM,
   BRD_WALL_SECTION_SPACING_IN,
   brdBottomStations,
+  brdBlendStray,
   brdCurves,
   brdFile,
   brdFileBottom,
@@ -378,18 +381,21 @@ describe.each(CASES)("the .brd of %s", (_label, surface, options) => {
     const wide = halves.reduce((best, h) => (Math.max(...h.points.map((p) => Math.abs(p[1]))) > Math.max(...best.points.map((p) => Math.abs(p[1]))) + 1e-9 ? h : best), halves[0]);
     expect(stations).toContain(wide.station);
     for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeLessThanOrEqual(inchesToMm(BRD_SECTION_SPACING_IN + 0.5));
-    // About a dozen sections, never fifty; a board with channels stands more, 1 1/2" apart where a wall stands.
+    // Enough sections that the contours stay true between them, never more than the cap; a board with channels stands
+    // them 1 1/2" apart where a wall stands.
     const walls = boardSectionHalves(surface).walls;
     const walled = halves.filter((h) => walls.some((w) => Math.hypot(h.points[w.foot][1] - h.points[w.top][1], h.points[w.foot][2] - h.points[w.top][2]) >= BRD_KNOT_GAP_MM));
-    expect(stations.length).toBeGreaterThanOrEqual(8);
-    expect(stations.length).toBeLessThanOrEqual(walled.length > 0 ? 30 : 16);
+    expect(stations.length).toBeGreaterThanOrEqual(16);
+    expect(stations.length).toBeLessThanOrEqual(BRD_SECTIONS_MAX);
+    // Never two within an inch (give or take a ring), and between two neighbours a blend of the two stays on the board.
+    for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeGreaterThanOrEqual(inchesToMm(0.9));
+    if (walled.length === 0) expect(brdBlendStray(surface, curves)).toBeLessThanOrEqual(BRD_BLEND_TARGET_MM + 0.25);
     if (walled.length > 0) {
       const first = Math.max(walled[0].station, nearestHalf(inchesToMm(1)));
       const last = walled[walled.length - 1].station;
       const inRun = stations.filter((s) => s >= first && s <= last);
       // 1 1/2" apart, give or take a ring and the inch kept clear of a station already standing.
       for (let i = 1; i < inRun.length; i++) expect(inRun[i] - inRun[i - 1]).toBeLessThanOrEqual(inchesToMm(BRD_WALL_SECTION_SPACING_IN + 1.5));
-      for (let i = 1; i < stations.length; i++) expect(stations[i] - stations[i - 1]).toBeGreaterThanOrEqual(inchesToMm(0.9));
       expect(inRun.length).toBeGreaterThan(8);
     }
   });
