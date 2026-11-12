@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 17-bottom-contours
 source: [17-VERIFICATION.md]
 started: 2026-11-11T05:29:57Z
-updated: 2026-11-11T05:50:18Z
+updated: 2026-11-12T03:30:00Z
 ---
 
 ## Current Test
@@ -32,17 +32,13 @@ result: pass
 
 ### 5. Litres with and without a cut
 expected: On VOLUME, a Deep Single Concave drops the litres by exactly DATA's first-line Foam off. An all-flat board shows exactly its old litres.
-result: issue
-reported: "The volume input should say that it takes into account the finished rail shape and bottom contours"
-severity: minor
-note: a wording request on the VOLUME page; the litres arithmetic itself was not reported wrong
+result: pass
+note: first walk 2026-11-10 — issue, minor ("The volume input should say that it takes into account the finished rail shape and bottom contours"; a wording request, the litres arithmetic was not reported wrong) → gap G-17-5 → fixed by 17-17 → re-checked by the founder on the live site 2026-11-11 ("Pass all 3")
 
 ### 6. RAILS on a Rolled Vee or Continuous Belly
 expected: Rail thickness reads less than the planed figure by the rail lift (the Longboard's belly by up to about 24 mm).
-result: issue
-reported: "pass, but the finished rail messes with channel shape. We need to make sure that the channels are kept, the finished rail shoudl not round them."
-severity: major
-note: the rail-thickness-less-the-lift reading passed; the issue is the finished rail rounding the channels
+result: pass
+note: first walk 2026-11-10 — the rail-lift reading passed, with an issue, major ("pass, but the finished rail messes with channel shape. We need to make sure that the channels are kept, the finished rail shoudl not round them.") → gap G-17-6 → fixed by 17-18 to 17-23 → re-checked by the founder on the live site 2026-11-11 ("Pass all 3")
 
 ### 7. FINS with a tail cut
 expected: Press the contour icon: the contour shows under the fins. Move the fins: a tail cut's Deepest At and the channels' Start and Deepest At move with them.
@@ -68,8 +64,8 @@ result: pass
 ## Summary
 
 total: 11
-passed: 8
-issues: 2
+passed: 10
+issues: 0
 pending: 0
 skipped: 1
 blocked: 0
@@ -101,6 +97,8 @@ blocked: 0
 ## Fix-wave go-live (2026-11-11)
 
 Pushed on the founder's word ("Go — push to main") as a fast-forward: main 556162ba → 93c0ea8f. The live site showed VOLUME's new sentence at 19:13 Pacific, the old one gone, and all eight design screens and the home page answer. His re-check of tests 5 and 6 on the live site follows.
+
+**Re-check, 2026-11-11:** the founder tried VOLUME's words, the channel walls on RAILS and the further items (flat-tail channels, concaves on RAILS, DATA's Rail lift and the section gauge) on the live site: "Pass all 3". Both gaps closed.
 
 ## Gaps
 
