@@ -28,6 +28,9 @@ import {
   BRD_MACHINE_FIELDS,
   BRD_SECTION_SPACING_IN,
   BRD_SECTION_TARGET_MM,
+  BRD_WALL_LEAN_MM,
+  BRD_WALL_LEAN_PER_HEIGHT,
+  BRD_WALL_LEAN_ROOM,
   brdBottomStations,
   brdCurves,
   brdFile,
@@ -430,6 +433,7 @@ describe("the channel walls on the Deep Single + 4 channels board keep their kno
   it("puts both knots of a standing wall on the wall as corners, and both of a missing wall smooth on the bottom, apart", () => {
     let standingSections = 0;
     let missingSections = 0;
+    let fullLeans = 0;
     for (const section of curves.sections) {
       const half = halves.find((h) => h.station === section.station)!;
       const baseZ = half.points[0][2];
@@ -445,7 +449,16 @@ describe("the channel walls on the Deep Single + 4 channels board keep their kno
           expect(foot.smooth).toBe(false);
           expect(top.smooth).toBe(false);
           expect(foot.point[0]).toBeCloseTo(Math.abs(footPoint[1]), 6);
-          expect(top.point[0]).toBeCloseTo(Math.abs(topPoint[1]), 6);
+          // The wall leans (BRD_WALL_LEAN_MM): its lower end is written toward the rail, never straight under the upper.
+          const lean = top.point[0] - foot.point[0];
+          const wanted = Math.max(BRD_WALL_LEAN_MM, Math.abs(height) * BRD_WALL_LEAN_PER_HEIGHT);
+          const room = section.knots[topAt(w) + 1].point[0] - Math.abs(topPoint[1]);
+          expect(lean).toBeGreaterThan(0);
+          expect(lean).toBeLessThanOrEqual(wanted + 1e-6);
+          if (room * BRD_WALL_LEAN_ROOM > wanted + 1) {
+            fullLeans++;
+            expect(lean).toBeCloseTo(wanted, 6);
+          }
           expect(foot.point[1]).toBeCloseTo(footPoint[2] - baseZ, 6);
           expect(top.point[1] - foot.point[1]).toBeCloseTo(height, 6);
         } else {
@@ -466,6 +479,21 @@ describe("the channel walls on the Deep Single + 4 channels board keep their kno
     }
     expect(standingSections).toBeGreaterThan(0);
     expect(missingSections).toBeGreaterThan(0);
+    expect(fullLeans).toBeGreaterThan(0);
+  });
+
+  it("never runs straight up between the stringer and the rail: x rises along the whole bottom of every section (AkuShaper takes the first upright for the rail)", () => {
+    const edge = roles.indexOf("bottomEdge");
+    for (const section of curves.sections) {
+      let x = -Infinity;
+      for (let i = 0; i < edge; i++) {
+        for (let k = 0; k <= 64; k++) {
+          const p = bezierPoint(section.knots[i], section.knots[i + 1], k / 64);
+          if (k > 0) expect(p[0]).toBeGreaterThan(x);
+          x = p[0];
+        }
+      }
+    }
   });
 
   it("keeps the wall knots that sit on the bottom at least half a millimetre from each other and from their neighbours", () => {

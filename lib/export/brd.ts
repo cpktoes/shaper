@@ -8,6 +8,8 @@
  * The file is text in centimetres, tail at x = 0, locked with AkuShaper's own scramble (`brd-scramble.ts`). The outline,
  * rocker and deck are runs of cubic Bézier knots (`lib/geometry/bezier-fit.ts`) fitted through points of the surface to
  * within half a millimetre (1/50"). Channel walls and a square tail's corners stay sharp knots.
+ * A standing channel wall is written leaning 3 mm (`BRD_WALL_LEAN_MM`), never straight up: AkuShaper reads a section's
+ * width where the bottom first runs straight up, so an upright wall was taken for the rail.
  *
  * Sections, the way AkuShaper writes its own (the founder's finding, 2026-11-10: a 3D view joins knot i of one section
  * to knot i of the next, so the same number of knots in the same places on every section is what draws a smooth board):
@@ -49,6 +51,23 @@ export const BRD_SECTION_TARGET_MM = 1;
 
 /** The least two neighbouring knots of one section stand apart where the board lets them (no two ever share a point). */
 export const BRD_KNOT_GAP_MM = 0.5;
+
+/**
+ * How far a standing channel wall leans in the file: its lower end, where it meets the planed bottom, is written this far
+ * toward the rail, so the bottom never runs straight up before the rail (the founder's test in AkuShaper's Bay, 2026-11-12:
+ * a wall standing straight up was taken for the rail and the section stretched to the outline; walls leaning 0.25 mm and
+ * 1 mm drew torn; 3 mm drew clean). The lean opens the channel toward the bottom, the way a cutter can reach it.
+ */
+export const BRD_WALL_LEAN_MM = 3;
+
+/**
+ * A taller wall leans this much of its height when that is more, so no wall in a file is steeper than the steepest one that
+ * drew clean (3 mm on a wall 7.9 mm tall).
+ */
+export const BRD_WALL_LEAN_PER_HEIGHT = 0.4;
+
+/** A wall's lean never takes more than this share of the bottom between it and the next knot toward the rail. */
+export const BRD_WALL_LEAN_ROOM = 0.5;
 
 /** The deck shoulder's slot in the deck run of 48 points: 36 of 24 / 32 / 36 / 40 / 43 fitted all three sample boards best. */
 export const BRD_SHOULDER_SLOT = 36;
@@ -297,6 +316,23 @@ interface FittedSection {
 function fitSection(half: readonly Vec3[], slots: readonly KnotSlot[], walls: readonly { foot: number; top: number }[]): FittedSection {
   const base = half[0][2];
   const raw: P2[] = half.map((p): P2 => [Math.abs(p[1]), p[2] - base]);
+  // Each standing wall leans (BRD_WALL_LEAN_MM): its lower end moves toward the rail, and the stretch of bottom from there
+  // to the next knot's slot closes up behind it, heights untouched, so every slot is still a point of the written section.
+  const slotOrder = slots.map((s) => s.slot);
+  for (const wall of walls) {
+    const upper = raw[wall.foot];
+    const lower = raw[wall.top];
+    if (dist(upper, lower) < BRD_KNOT_GAP_MM) continue;
+    const next = slotOrder.find((slot) => slot > wall.top);
+    if (next === undefined) continue;
+    const from = lower[0];
+    const to = raw[next][0];
+    const wanted = Math.max(BRD_WALL_LEAN_MM, Math.abs(upper[1] - lower[1]) * BRD_WALL_LEAN_PER_HEIGHT) - (from - upper[0]);
+    const lean = Math.min(wanted, (to - from) * BRD_WALL_LEAN_ROOM);
+    if (!(lean > 0)) continue;
+    const squeeze = (to - from - lean) / (to - from);
+    for (let k = wall.top; k < next; k++) raw[k] = [to - (to - raw[k][0]) * squeeze, raw[k][1]];
+  }
   const arc: number[] = [0];
   for (let k = 1; k < raw.length; k++) arc.push(arc[k - 1] + dist(raw[k], raw[k - 1]));
   const reach = Math.max(...raw.map((p) => p[0]));
