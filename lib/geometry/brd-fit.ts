@@ -748,11 +748,16 @@ function fitSideProfile(lines: BrdLines, stringerLift?: (station: Mm) => number)
 /**
  * The closest board the controls can make to the board in `lines`, and how close it gets: see the file's header. Never
  * throws for lines a reader has accepted; the search budgets are fixed, so the time is the same whatever the file holds.
+ * `sameOutlineAs` is an earlier fit of the SAME lines: its outline is reused instead of being searched for again.
  */
-export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => number): BrdFit {
+export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => number, sameOutlineAs?: BrdFit): BrdFit {
   // One length for both fits, always one the controls can make.
   const lines = { ...given, length: mm(clamp(given.length, inchesToMm(BOARD_LENGTH_RANGE_IN.min), inchesToMm(BOARD_LENGTH_RANGE_IN.max))) };
-  const outline = fitOutline(lines);
+  // The outline never depends on the stringer's lift, so a refit for a lift may take the first fit's outline as it stands (the search
+  // is the costly part of a file with wings, and a second one would give the very same answer).
+  const outline: OutlineFit = sameOutlineAs
+    ? { spec: sameOutlineAs.outline, drawn: sameOutlineAs.lines.outline, fileWings: sameOutlineAs.fileWings }
+    : fitOutline(lines);
   const side = fitSideProfile(lines, stringerLift);
   return {
     outline: outline.spec,

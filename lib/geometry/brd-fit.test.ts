@@ -701,3 +701,23 @@ describe("the app's own default second wing", () => {
     expect(trip.ms).toBeLessThan(1500);
   }, 120_000);
 });
+
+describe("a refit for a stringer lift may reuse the first fit's outline (quick 261113-hyy)", () => {
+  const lift = (s: number) => mm(3 * Math.max(0, Math.sin((Math.PI * (s - 600)) / 1000)) ** 2);
+
+  it.each([
+    ["a wingless board", () => tripOf("shortboard|asis|hard")],
+    ["a board with two wings", () => wingTripOf("wing|shortboard|two", inchesToMm(1 / 4))],
+  ])("gives exactly the fit it gives when it searches again, for %s, and says so in far less time", (_name, trip) => {
+    const { file, fit } = trip();
+    const lines = { length: file.length, outline: file.outline, bottom: file.bottom, deck: file.deck };
+    const started = performance.now();
+    const searched = fitBoardToBrd(lines, lift);
+    const searchedMs = performance.now() - started;
+    const reusedAt = performance.now();
+    const reused = fitBoardToBrd(lines, lift, fit);
+    const reusedMs = performance.now() - reusedAt;
+    expect(reused).toEqual(searched);
+    expect(reusedMs).toBeLessThan(searchedMs);
+  }, 120_000);
+});

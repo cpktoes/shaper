@@ -100,7 +100,7 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   let lifted = false;
   for (let i = 0; i <= LIFT_PROBES && !lifted; i++) if (lift(mm((board0.length * i) / LIFT_PROBES)) > 0) lifted = true;
   if (!lifted) return { board, fit: first, bottom: measureBrdBottom(found.bottom, found.sections, board0), planedBottom: board.bottom };
-  const fit = fitBoardToBrd(lines, lift);
+  const fit = fitBoardToBrd(lines, lift, first);
   return {
     board,
     fit,
