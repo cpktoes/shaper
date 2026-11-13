@@ -11,6 +11,7 @@ import { buildOutline } from "../lib/geometry/outline";
 import { mm } from "../lib/geometry/units";
 import { phase16Boards } from "../lib/geometry/__fixtures__/phase16-boards";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
+import { brdBoardFields } from "../lib/models/brd-board";
 import { BOARD_FILE_ACCEPT } from "../lib/models/board-file";
 import { OPEN_BOARD_STORAGE_KEY } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
@@ -263,5 +264,234 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
       await expect(line).toHaveText(sheet.closeness[which]);
       await expect(line).toContainText(" mm");
     }
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick 261113-et0: the tables, Open as a Board and Print Overview
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** True when two JSON values hold the same words and numbers within `tolerance` (the fit is exact in V8 and a hair off in WebKit). */
+function sameWithin(actual: unknown, expected: unknown, tolerance: number, path = "value"): string | null {
+  if (typeof expected === "number") {
+    if (typeof actual !== "number") return `${path}: ${String(actual)} is not a number`;
+    return Math.abs(actual - expected) <= tolerance ? null : `${path}: ${actual} differs from ${expected} by more than ${tolerance}`;
+  }
+  if (expected !== null && typeof expected === "object") {
+    if (actual === null || typeof actual !== "object") return `${path}: ${String(actual)} is not an object`;
+    for (const key of Object.keys(expected)) {
+      const problem = sameWithin((actual as Record<string, unknown>)[key], (expected as Record<string, unknown>)[key], tolerance, `${path}.${key}`);
+      if (problem) return problem;
+    }
+    return null;
+  }
+  return actual === expected ? null : `${path}: ${String(actual)} is not ${String(expected)}`;
+}
+
+/** Every table of the preview as it reads on the screen: kind, then each row's key, label and the two figures. */
+async function tablesOf(dialog: ReturnType<typeof dialogOf>) {
+  return dialog.locator("[data-brd-fit-table]").evaluateAll((tables) =>
+    tables.map((table) => ({
+      kind: table.getAttribute("data-brd-fit-table"),
+      rows: [...table.querySelectorAll("[data-brd-fit-row]")].map((row) => ({
+        key: row.getAttribute("data-brd-fit-row"),
+        label: row.querySelector("th")?.textContent ?? "",
+        file: row.querySelector('[data-brd-fit-cell="file"]')?.textContent ?? "",
+        fit: row.querySelector('[data-brd-fit-cell="fit"]')?.textContent ?? "",
+      })),
+    })),
+  );
+}
+
+/** Every server action a page sends (a save is one); signed out and with no database, a board that opens must send none. */
+function watchSaves(page: Page): string[] {
+  const saves: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.headers()["next-action"]) saves.push(request.url());
+  });
+  return saves;
+}
+
+test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(120_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b6. the three tables hold five rows each, the figures are the sheet's, and the three footer buttons fit and never overlap", async ({ page }, testInfo) => {
+    const file = boardFile(SHORTBOARD);
+    const exact = testInfo.project.name !== "iphone";
+    const sheet = sheetOf(file.locked, "Shortboard.brd", "imperial");
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+
+    const tables = await tablesOf(dialog);
+    expect(tables.map((t) => t.kind)).toEqual(["widths", "rocker", "thickness"]);
+    for (const [i, table] of tables.entries()) {
+      expect(table.rows.map((r) => r.key)).toEqual(sheet.tables[i].rows.map((r) => r.key));
+      expect(table.rows.map((r) => r.label)).toEqual(sheet.tables[i].rows.map((r) => r.label));
+      for (const [j, row] of table.rows.entries()) {
+        if (exact) {
+          expect(row.file).toBe(sheet.tables[i].rows[j].file);
+          expect(row.fit).toBe(sheet.tables[i].rows[j].fit);
+        } else {
+          expect(row.file).not.toBe("");
+          expect(row.fit).not.toBe("");
+        }
+      }
+    }
+    await expect(dialog.locator("[data-brd-fit-rocker-use]")).toHaveText(sheet.rockerUse);
+
+    // The footer: Print Overview, Open as a Board and Close, all in view.
+    const names = [BRD_FIT_COPY.print, BRD_FIT_COPY.openBoard, BRD_FIT_COPY.close];
+    const boxes = [];
+    for (const name of names) {
+      const button = dialog.getByRole("button", { name, exact: true });
+      await expect(button).toHaveCount(1);
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      if (!box) throw new Error(`no box for ${name}`);
+      boxes.push(box);
+    }
+    if (testInfo.project.name !== "desktop") {
+      const viewport = page.viewportSize();
+      if (!viewport) throw new Error("no viewport");
+      for (const box of boxes) {
+        // 44 dots under a finger; WebKit lays the 2.75rem box out to a hair under it (43.99) on some runs.
+        expect(box.height).toBeGreaterThanOrEqual(44 - 0.05);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+        expect(box.y).toBeGreaterThanOrEqual(0);
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+      }
+    }
+    for (let a = 0; a < boxes.length; a++) {
+      for (let b = a + 1; b < boxes.length; b++) {
+        const apart =
+          boxes[a].x + boxes[a].width <= boxes[b].x + 0.5 ||
+          boxes[b].x + boxes[b].width <= boxes[a].x + 0.5 ||
+          boxes[a].y + boxes[a].height <= boxes[b].y + 0.5 ||
+          boxes[b].y + boxes[b].height <= boxes[a].y + 0.5;
+        expect(apart, `${names[a]} and ${names[b]} must not overlap`).toBe(true);
+      }
+    }
+  });
+
+  test("b7. Open as a Board with nothing in progress opens the fit on TEMPLATE, named after the file, no blank, nothing saved", async ({ page }, testInfo) => {
+    const file = boardFile(SHORTBOARD);
+    const look = lookOf(file.locked);
+    const fields = brdBoardFields(look.fit, "Shortboard.brd");
+    if (!fields) throw new Error("the fit would not open as a board");
+    const saves = watchSaves(page);
+
+    await page.goto("/");
+    expect(await storedOpenBoard(page)).toBeNull();
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect(dialog).toHaveCount(0);
+
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Shortboard");
+    const kept = await storedOpenBoard(page);
+    expect(kept?.modelId).toBeNull();
+    expect(kept?.dirty).toBe(true);
+    const design = kept!.snapshot.design as unknown as Record<string, unknown>;
+    expect(design.blank).toBeNull();
+    const tolerance = testInfo.project.name === "iphone" ? 0.01 : 1e-9;
+    for (const part of ["outline", "rocker", "foil"] as const) {
+      expect(sameWithin(design[part], fields[part], tolerance, part)).toBeNull();
+    }
+    expect(saves).toEqual([]);
+  });
+
+  test("b8. with a board in progress the usual question comes first; Keep Editing leaves the kept board exactly as it was, Discard & Open opens the fit", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the question");
+    await page.goto("/");
+    await startPresetAndComeBack(page, "Shortboard");
+    await expect.poll(() => storedOpenBoard(page), { timeout: 30_000 }).not.toBeNull();
+    const before = await keptRaw(page);
+    const midlength = boardFile(MIDLENGTH);
+    const fields = brdBoardFields(lookOf(midlength.locked).fit, "Midlength.brd");
+    if (!fields) throw new Error("the fit would not open as a board");
+
+    await pickFile(page, "Midlength.brd", midlength.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    const question = page.getByRole("alertdialog");
+    await expect(question).toBeVisible();
+    await expect(question.getByRole("heading", { name: "Open this board file?" })).toBeVisible();
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+
+    await question.getByRole("button", { name: "Keep Editing" }).click();
+    await expect(question).toHaveCount(0);
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+    expect(await keptRaw(page)).toBe(before);
+
+    await pickFile(page, "Midlength.brd", midlength.locked);
+    await expect(dialogOf(page)).toBeVisible();
+    await dialogOf(page).getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Discard & Open" }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Midlength");
+    const design = (await storedOpenBoard(page))!.snapshot.design as unknown as Record<string, unknown>;
+    expect(design.blank).toBeNull();
+    for (const part of ["outline", "rocker", "foil"] as const) {
+      expect(sameWithin(design[part], fields[part], 1e-9, part)).toBeNull();
+    }
+  });
+
+  test("b9. Print Overview prints one page on a computer, opens a tab on an iPhone, downloads on Android; the preview stays and Close still changes nothing", async ({
+    page,
+  }, testInfo) => {
+    const file = boardFile(SHORTBOARD);
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const print = dialog.getByRole("button", { name: BRD_FIT_COPY.print, exact: true });
+    await expect(print).toBeEnabled();
+
+    if (testInfo.project.name === "android") {
+      const [download] = await Promise.all([page.waitForEvent("download"), print.click()]);
+      expect(download.suggestedFilename()).toMatch(/-closest-fit\.pdf$/);
+    } else if (testInfo.project.name === "iphone") {
+      const [tab] = await Promise.all([page.waitForEvent("popup"), print.click()]);
+      await expect.poll(() => tab.url(), { message: "the overview opens in a tab to print from" }).toMatch(/^blob:/);
+      await tab.close();
+    } else {
+      await print.click();
+      const frame = page.locator("iframe[data-print-pdf]");
+      await expect(frame).toHaveCount(1);
+      const pdf = await frame.evaluate(async (el) => {
+        const bytes = new Uint8Array(await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer());
+        return new TextDecoder("latin1").decode(bytes);
+      });
+      expect(pdf.slice(0, 5)).toBe("%PDF-");
+      expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(1);
+      const box = /MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(pdf);
+      if (!box) throw new Error("the PDF has no MediaBox");
+      expect(Number(box[1])).toBeCloseTo(595.28, 1);
+      expect(Number(box[2])).toBeCloseTo(792, 1);
+      expect(pdf).toContain("Nose tip");
+      expect(pdf).toContain("Our fit");
+      expect(pdf).toContain("Shortboard.brd");
+    }
+
+    // The preview is still open, Print Overview is ready again, and Close changes nothing.
+    await expect(dialog).toBeVisible();
+    await expect(print).toBeEnabled();
+    await expect(dialog.locator("[data-brd-fit-print-problem]")).toHaveCount(0);
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.close, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL((url) => url.pathname === "/");
+    expect(await storedOpenBoard(page)).toBeNull();
   });
 });
