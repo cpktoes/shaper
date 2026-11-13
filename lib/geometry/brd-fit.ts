@@ -27,6 +27,19 @@
  * deck carried straight on from 2" and 1" in, as if a straightedge were laid along them, and the point's own figures are
  * kept beside it for the shaper to read.
  *
+ * The rocker is the file's FINISHED rocker, along the stringer (quick 261113-gwr, the founder, 2026-11-13: "the rocker is
+ * tricky because we're trying to balance a foil without contours and square rails with a finished board's rocker along
+ * the stringer (which isn't always as smooth as the pre contoured rocker). But, for concaves the stringer rocker will
+ * always be more, and with flat, vee or belly the stringer rocker will always match"). Ours (the five stations and the
+ * foil) is the board BEFORE contours. Under a flat, vee or belly the two are the same line and nothing changes; under a
+ * concave the finished stringer reads more, by the concave's depth at the stringer there, so the board is planed that much
+ * lower: `fitBoardToBrd(lines, stringerLift)` fits the five-station rocker and the foil to the file's stringer LESS that
+ * lift (the deck stays: the planed deck is the finished deck), draws our finished stringer as the planed one plus the lift,
+ * and reports the closeness of the finished stringers. The smooth five-station rocker is never bent to chase the ripple
+ * where our concave's ends miss the file's: the ripple shows honestly in the closeness figure. Measured on a Shortboard
+ * with a 1/4" Deep Single Concave, written and read back: the refit's rocker and foil come back within 0.03 to 0.1 mm of
+ * the same board written flat (centre thickness 2.254" both; without the lift 2.087").
+ *
  * Nothing is rounded here: rounding is for what is shown (the founder's standing rule). Pure: no React, browser or
  * database import (CLAUDE.md Rule 1); all lengths are millimetres.
  */
@@ -64,6 +77,11 @@ export interface BrdFit {
   /** Our lines for drawing: the outline's right half as TEMPLATE closes it, and the bottom and deck, 201 stations tail to nose. */
   lines: { outline: P2[]; bottom: P2[]; deck: P2[] };
   closeness: { outline: Closeness; rocker: Closeness; thickness: Closeness };
+  /**
+   * How much our concaves lift the finished stringer above the planed one at the five rocker stations (all `mm(0)` for
+   * a fit made without a lift): what the board was planed lower by.
+   */
+  stringerLift: Record<RockerStationKey, Mm>;
 }
 
 /** The last inch at each tip is left out of the rocker and thickness figures: the file rounds its tips there, ours ends square. */
@@ -439,7 +457,7 @@ function fitOutline(lines: BrdLines): OutlineFit {
 // Rocker and thickness
 // ---------------------------------------------------------------------------------------------------------------------
 
-function fitSideProfile(lines: BrdLines): {
+function fitSideProfile(lines: BrdLines, stringerLift?: (station: Mm) => number): {
   rocker: FiveStationRocker;
   foil: FoilSpec;
   centre: number;
@@ -447,9 +465,14 @@ function fitSideProfile(lines: BrdLines): {
   deck: P2[];
   rockerCloseness: Closeness;
   thicknessCloseness: Closeness;
+  stringerLift: Record<RockerStationKey, Mm>;
 } {
   const length = lines.length;
-  const { bottom, deck } = lines;
+  const { deck } = lines;
+  // The file's bottom is its finished stringer. The board is planed lower than that by our concaves' lift there (see the
+  // header); with no lift the lines are the file's own, untouched.
+  const liftAt = (s: number): number => (stringerLift ? stringerLift(mm(s)) : 0);
+  const bottom: readonly P2[] = stringerLift ? lines.bottom.map(([x, y]): P2 => [x, y - liftAt(x)]) : lines.bottom;
   const inch = inchesToMm(1);
   const twelve = MEASURE_STATION_MM;
   const liftRange = { min: inchesToMm(ROCKER_LIFT_RANGE_IN.min), max: inchesToMm(ROCKER_LIFT_RANGE_IN.max) };
@@ -516,24 +539,29 @@ function fitSideProfile(lines: BrdLines): {
     );
   }
 
-  // Our drawn lines, and how far they lie from the file's, the inch at each tip left out.
+  // Our drawn lines, and how far they lie from the file's, the inch at each tip left out. Our bottom is drawn as the
+  // finished stringer (the planed one plus the lift there); the deck is the planed one, which is the finished deck.
   const profile = buildFallbackProfile(rocker, foil, mm(length));
   const ourBottom: P2[] = [];
   const ourDeck: P2[] = [];
   for (let i = 0; i <= DRAWN_STATIONS; i++) {
     const s = (length * i) / DRAWN_STATIONS;
     const low = centre + profile.rockerAt(mm(s));
-    ourBottom.push([s, low]);
+    ourBottom.push([s, stringerLift ? low + liftAt(s) : low]);
     ourDeck.push([s, low + profile.thicknessAt(mm(s))]);
   }
+  // The gaps are between FINISHED stringers: the file's own lines against ours with its lift put back.
+  const fileBottom = lines.bottom;
+  const finishedThickness = (s: number) => lineHighestAt(deck, s) - lineLowestAt(fileBottom, s);
   const worst = { rocker: { largest: 0, sum: 0, at: 0 }, thickness: { largest: 0, sum: 0, at: 0 } };
   let counted = 0;
   for (let i = 0; i <= CLOSENESS_STEPS; i++) {
     const s = (length * i) / CLOSENESS_STEPS;
     if (s < BRD_FIT_TIP_SKIP_MM || s > length - BRD_FIT_TIP_SKIP_MM) continue;
     counted++;
-    const rockerGap = Math.abs(lineLowestAt(bottom, s) - (centre + profile.rockerAt(mm(s))));
-    const thicknessGap = Math.abs(fileThickness(s) - profile.thicknessAt(mm(s)));
+    const finished = stringerLift ? liftAt(s) : 0;
+    const rockerGap = Math.abs(lineLowestAt(fileBottom, s) - (centre + profile.rockerAt(mm(s)) + finished));
+    const thicknessGap = Math.abs(finishedThickness(s) - (profile.thicknessAt(mm(s)) - finished));
     worst.rocker.sum += rockerGap;
     worst.thickness.sum += thicknessGap;
     if (rockerGap > worst.rocker.largest) worst.rocker = { ...worst.rocker, largest: rockerGap, at: s };
@@ -552,6 +580,9 @@ function fitSideProfile(lines: BrdLines): {
     deck: ourDeck,
     rockerCloseness: closeness(worst.rocker),
     thicknessCloseness: closeness(worst.thickness),
+    stringerLift: Object.fromEntries(
+      rockerStationPositions(mm(length)).map(({ key, station }) => [key, mm(stringerLift ? liftAt(station) : 0)]),
+    ) as Record<RockerStationKey, Mm>,
   };
 }
 
@@ -559,11 +590,11 @@ function fitSideProfile(lines: BrdLines): {
  * The closest board the controls can make to the board in `lines`, and how close it gets: see the file's header. Never
  * throws for lines a reader has accepted; the search budgets are fixed, so the time is the same whatever the file holds.
  */
-export function fitBoardToBrd(given: BrdLines): BrdFit {
+export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => number): BrdFit {
   // One length for both fits, always one the controls can make.
   const lines = { ...given, length: mm(clamp(given.length, inchesToMm(BOARD_LENGTH_RANGE_IN.min), inchesToMm(BOARD_LENGTH_RANGE_IN.max))) };
   const outline = fitOutline(lines);
-  const side = fitSideProfile(lines);
+  const side = fitSideProfile(lines, stringerLift);
   return {
     outline: outline.spec,
     rocker: side.rocker,
@@ -574,6 +605,7 @@ export function fitBoardToBrd(given: BrdLines): BrdFit {
       rocker: side.rockerCloseness,
       thickness: side.thicknessCloseness,
     },
+    stringerLift: side.stringerLift,
   };
 }
 

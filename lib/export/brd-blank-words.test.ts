@@ -4,7 +4,7 @@ import { readSeedCatalog, SEED_CSV_DIR } from "../blanks/seed-files";
 import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "../fit-defaults-preference";
 import { buildBoardSurface } from "../geometry/board-surface";
 import { prepareBlank } from "../geometry/blank-fit";
-import { brdFileStations, fitBoardToBrd } from "../geometry/brd-fit";
+import { brdFileStations } from "../geometry/brd-fit";
 import { suggestBlanks, type BrdBlankSuggestion } from "../geometry/brd-blank-suggest";
 import { formatRockerNote } from "../geometry/custom-rocker";
 import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../geometry/design";
@@ -14,7 +14,7 @@ import { inchesToMm, mm } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { brdText } from "./brd";
 import { BRD_BLANK_COPY, brdBlankWords, type BrdBlankState } from "./brd-blank-words";
-import { gapWhere, lessThan, type BrdFitLook } from "./brd-fit-preview";
+import { brdFitLook, gapWhere, lessThan, type BrdFitLook } from "./brd-fit-preview";
 import { readAnyBrd } from "./brd-read";
 
 /**
@@ -38,7 +38,7 @@ function lookOf(label: string): BrdFitLook {
   const read = readAnyBrd(Uint8Array.from(brdText(surface).text, (ch) => ch.charCodeAt(0)));
   if (!read.ok) throw new Error("the app's own file would not read");
   const b = read.board;
-  return { board: b, fit: fitBoardToBrd({ length: b.length, outline: b.outline, bottom: b.bottom, deck: b.deck }) };
+  return brdFitLook(b);
 }
 
 const look = lookOf("shortboard|asis|hard");

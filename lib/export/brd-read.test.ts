@@ -18,6 +18,7 @@ import {
   BRD_FILE_ACCEPT,
   BRD_READ_MAX_BYTES,
   BRD_READ_MAX_KNOTS,
+  BRD_READ_MAX_SECTIONS,
   isBrdFileName,
   readAnyBrd,
   type ReadBrdBoard,
@@ -158,11 +159,15 @@ describe("a hand-made file in AkuShaper's layout", () => {
   it("holds none of the header's text", () => {
     const everything = JSON.stringify(board);
     expect(everything).not.toMatch(/Somebody|secret|Users|1234567890|V4\.4/);
-    expect(Object.keys(board).sort()).toEqual(["bottom", "deck", "length", "outline", "thickness", "width"]);
+    expect(Object.keys(board).sort()).toEqual(["bottom", "deck", "length", "outline", "sections", "thickness", "width"]);
   });
 
-  it("reads the same locked, and never looks at the cross-sections (the junk in them is not read)", () => {
+  it("reads the same locked", () => {
     expect(mustRead(scrambleBrd(aku()))).toEqual(board);
+  });
+
+  it("drops a section with junk in it on its own, and the board still reads (the made-up section here holds words, not knots)", () => {
+    expect(board.sections).toEqual([]);
   });
 
   it("reads with plain line ends too", () => {
@@ -237,5 +242,113 @@ describe("every way a file can be damaged", () => {
     const tooShort = readAnyBrd(bytesOf(aku({ p01: "100.0" })));
     expect(tooShort).toMatchObject({ ok: false, problem: "out-of-range" });
     expect((tooShort as { length: number }).length).toBeLessThan(inchesToMm(BOARD_LENGTH_RANGE_IN.min));
+  });
+});
+
+/**
+ * The cross-sections (quick 261113-gwr). A hand-made file in AkuShaper's layout: a one-knot all-zero section closing the tail, two
+ * five-knot sections whose knots carry `true false`, the first with a `gps : (` guide-point block inside it, and a one-knot
+ * section closing the nose. Made-up numbers only.
+ */
+describe("the cross-sections", () => {
+  const section = (station: string, knots: string[], gps = false): string[] => [
+    `(p36 ${station} -1.0 -1.0`,
+    ...knots,
+    ...(gps ? ["gps : (", "(gp [20.49,-0.21])", "(gp [12.93,-0.13])", ")"] : []),
+    ")",
+  ];
+  const FIVE = (scale: number): string[] => [
+    "(cp [0.0,0.0,-5.0,0.0,5.0,0.0] true false)",
+    `(cp [${10 * scale},-0.1,${9 * scale},-0.1,${11 * scale},-0.1] true false)`,
+    `(cp [${11 * scale},0.5,${11 * scale},0.2,${11 * scale},0.9] true false)`,
+    `(cp [${9 * scale},1.2,${10 * scale},1.0,${8 * scale},1.5] true false)`,
+    "(cp [0.0,1.7,2.0,1.7,-3.0,1.7] true false)",
+  ];
+  const EMPTY = "(cp [0.0,0.0,0.0,0.0,0.0,0.0] false false)";
+  const withSections = (blocks: string[][], over: { mutate?: (lines: string[]) => string[] } = {}): string =>
+    aku({
+      mutate: (lines) => {
+        const at = lines.indexOf("p35 : (");
+        const out = [...lines.slice(0, at + 1), ...blocks.flat(), ")"];
+        return over.mutate ? over.mutate(out) : out;
+      },
+    });
+  const layout = () => withSections([section("0.0", [EMPTY]), section("30.48", FIVE(1), true), section("92.7", FIVE(1.2)), section("183.0", [EMPTY])]);
+  const read = (text: string) => mustRead(bytesOf(text));
+
+  it("reads the two real sections, in millimetres from the tail, each starting at the stringer, with the knots as read", () => {
+    const board = read(layout());
+    expect(board.sections).toHaveLength(2);
+    expect(board.sections.map((s) => s.station)).toEqual([expect.closeTo(304.8, 6), expect.closeTo(927, 6)]);
+    for (const s of board.sections) {
+      expect(s.knots).toHaveLength(5);
+      expect(s.points[0][0]).toBeCloseTo(0, 9);
+      expect(s.points[0][1]).toBeCloseTo(0, 9);
+      expect(s.points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))).toBe(true);
+      expect(s.points.length).toBeGreaterThan(5);
+    }
+    expect(board.sections[0].knots[1]).toEqual({ point: [10, -0.1], before: [9, -0.1], after: [11, -0.1], smooth: true });
+    // The board itself reads as before.
+    expect(board.length).toBeCloseTo(1830, 6);
+  });
+
+  it("reads the plain, the Windows-ended and the stamped copy the same", () => {
+    const plain = read(layout());
+    expect(read(layout().replace(/\r\n/g, "\n"))).toEqual(plain);
+    expect(mustRead(scrambleBrd(layout()))).toEqual(plain);
+  });
+
+  it("skips a gps block that stands after a section's closing bracket too", () => {
+    const after = withSections([section("0.0", [EMPTY]), section("30.48", FIVE(1)), ["gps : (", "(gp [1.0,2.0])", ")"], section("92.7", FIVE(1.2)), section("183.0", [EMPTY])]);
+    expect(read(after).sections.map((s) => s.station)).toEqual(read(layout()).sections.map((s) => s.station));
+  });
+
+  it("drops a section with one bad knot line and keeps the others, the board still reading", () => {
+    const bad = FIVE(1);
+    bad[2] = "(cp [11.0,not,11.0,0.2,11.0,0.9] true false)";
+    const board = read(withSections([section("0.0", [EMPTY]), section("30.48", bad), section("92.7", FIVE(1.2)), section("183.0", [EMPTY])]));
+    expect(board.sections).toHaveLength(1);
+    expect(board.sections[0].station).toBeCloseTo(927, 6);
+    expect(board.length).toBeCloseTo(1830, 6);
+  });
+
+  it("drops a section with a line that is not a knot, a bad station, or a station off the board", () => {
+    const junk = [...FIVE(1).slice(0, 2), "some words", ...FIVE(1).slice(2)];
+    const base = [section("92.7", FIVE(1.2))];
+    expect(read(withSections([section("30.48", junk), ...base])).sections).toHaveLength(1);
+    expect(read(withSections([section("abc", FIVE(1)), ...base])).sections).toHaveLength(1);
+    expect(read(withSections([section("-3.0", FIVE(1)), ...base])).sections).toHaveLength(1);
+    expect(read(withSections([section("191.0", FIVE(1)), ...base])).sections).toHaveLength(1);
+    expect(read(withSections([section("-0.5", FIVE(1)), ...base])).sections).toHaveLength(2);
+  });
+
+  it("drops a section with more knots than the cap, and keeps only the first BRD_READ_MAX_SECTIONS sections", () => {
+    const many = Array.from({ length: BRD_READ_MAX_KNOTS + 1 }, (_, i) => `(cp [${(i * 10) / BRD_READ_MAX_KNOTS},0.0,0.0,0.0,0.0,0.0] true false)`);
+    expect(read(withSections([section("30.48", many), section("92.7", FIVE(1.2))])).sections).toHaveLength(1);
+    const lots = Array.from({ length: BRD_READ_MAX_SECTIONS + 10 }, (_, i) => section(String(5 + i), FIVE(1)));
+    const board = read(withSections(lots));
+    expect(board.sections).toHaveLength(BRD_READ_MAX_SECTIONS);
+    expect(board.sections[0].station).toBeCloseTo(50, 6);
+  });
+
+  it("reads with sections [] for a file with no p35 block, an empty one, or one that never closes", () => {
+    expect(read(aku({ mutate: (l) => l.slice(0, l.indexOf("p35 : (")) })).sections).toEqual([]);
+    expect(read(withSections([])).sections).toEqual([]);
+    const unclosed = aku({ mutate: (l) => [...l.slice(0, l.indexOf("p35 : (") + 1), ...section("30.48", FIVE(1)).slice(0, -1)] });
+    expect(read(unclosed).sections).toEqual([]);
+  });
+
+  it("sorts sections by station", () => {
+    const board = read(withSections([section("92.7", FIVE(1.2)), section("30.48", FIVE(1))]));
+    expect(board.sections.map((s) => s.station)).toEqual([expect.closeTo(304.8, 6), expect.closeTo(927, 6)]);
+  });
+
+  it("reads every fitted section of the app's own Shortboard, the two one-knot tips dropped", () => {
+    const { sectionCount } = brdText(surface);
+    const board = mustRead(bytesOf(own));
+    expect(board.sections).toHaveLength(sectionCount);
+    expect(board.sections.every((s) => s.knots.length >= 2)).toBe(true);
+    expect(board.sections[0].station).toBeGreaterThan(0);
+    expect(board.sections[board.sections.length - 1].station).toBeLessThan(board.length);
   });
 });

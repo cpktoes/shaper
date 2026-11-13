@@ -11,7 +11,10 @@
  *
  * The file is anyone's, so it is read defensively: a size cap before anything is read, at most 50,000 lines and 200
  * knots a curve, every number finite and sensible, and the whole read guarded so a bad file is an answer, never a
- * throw into the page. Reading stops at the cross-sections, which are never read (R3). Of the header only the length,
+ * throw into the page. The cross-sections are read forgivingly and bounded: at most `BRD_READ_MAX_SECTIONS` of them,
+ * at most `BRD_READ_MAX_KNOTS` knots each; a section with a line that is not a knot, a bad figure or a station off the
+ * board is dropped on its own and the rest of the file still reads; AkuShaper's `gps : (` guide-point blocks inside a
+ * section are skipped. A file with no usable section reads with `sections: []`. Of the header only the length,
  * the thickness and the width are kept, as numbers: every other field (names, folder paths) is dropped on the spot.
  *
  * Written from the format's facts only, never from another program's code. Pure: no React, browser or database
@@ -21,7 +24,7 @@ import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { centimetresToMm, inchesToMm, mm, type Mm } from "../geometry/units";
 import type { BrdReadKnot } from "./brd";
-import { BRD_PREVIEW_CURVE_STEPS, sampleKnots } from "./brd-preview";
+import { BRD_PREVIEW_CURVE_STEPS, BRD_PREVIEW_SECTION_STEPS, sampleKnots } from "./brd-preview";
 import { BRD_MAGIC, unscrambleBrd } from "./brd-scramble";
 
 /** What Open a board file… adds to its file picker for a `.brd`; the shared `BOARD_FILE_ACCEPT` stays JSON only. */
@@ -30,9 +33,12 @@ export const BRD_FILE_ACCEPT = ".brd";
 /** The most bytes a `.brd` may be before it is not read at all. */
 export const BRD_READ_MAX_BYTES = 2 * 1024 * 1024;
 
-/** The most lines read, and the most knots one curve may hold. */
+/** The most lines read, and the most knots one curve (or one cross-section) may hold. */
 export const BRD_READ_MAX_LINES = 50_000;
 export const BRD_READ_MAX_KNOTS = 200;
+
+/** The most cross-sections kept (this app's own files write 20 to 35; AkuShaper's carry 4 to 7). */
+export const BRD_READ_MAX_SECTIONS = 64;
 
 /** A knot's numbers (centimetres) stay inside this: far beyond any board, short of anything that breaks a sum. */
 const BRD_READ_MAX_CM = 10_000;
@@ -43,6 +49,19 @@ const BRD_REACH_MM = 10;
 /** Whether a picked file's name says it is a `.brd`. */
 export function isBrdFileName(name: string): boolean {
   return /\.brd$/i.test(name);
+}
+
+/**
+ * One cross-section of the file (quick 261113-gwr): a half section from the bottom at the stringer, out along the bottom,
+ * round the rail to the deck at the stringer.
+ */
+export interface ReadBrdSection {
+  /** Along the board from the tail. */
+  station: Mm;
+  /** The whole half section sampled (out from the stringer, up from the stringer's bottom), stringer bottom first. */
+  points: P2[];
+  /** The knots as read, in centimetres (the rails fit can sample from these again if it needs to). */
+  knots: BrdReadKnot[];
 }
 
 /** A board read from a `.brd`: its length and size fields (where the file has them) and three curves in millimetres. */
@@ -56,6 +75,8 @@ export interface ReadBrdBoard {
   /** The bottom and the deck along the stringer, as (distance from the tail, height). */
   bottom: P2[];
   deck: P2[];
+  /** The cross-sections the file holds that could be used, tail to nose; `[]` when there are none. */
+  sections: ReadBrdSection[];
 }
 
 export type ReadAnyBrdResult =
@@ -65,6 +86,7 @@ export type ReadAnyBrdResult =
 
 const UNREADABLE = { ok: false, problem: "unreadable" } as const;
 
+const SECTION_HEAD = /^\(p36 (\S+)(?:\s|$)/;
 const KNOT = /^\(cp \[([^\]]*)\] (true|false) (true|false)\)$/;
 const FIELD = /^([A-Za-z0-9]+) : (.*)$/;
 
@@ -101,7 +123,7 @@ const isStamped = (bytes: Uint8Array): boolean =>
   bytes.length >= BRD_MAGIC.length && [...BRD_MAGIC].every((ch, i) => bytes[i] === ch.charCodeAt(0));
 
 /**
- * Reads any program's board file: the outline, bottom and deck. Never throws. `unreadable` is any file that is not a
+ * Reads any program's board file: the outline, bottom and deck, and its cross-sections where it has usable ones. Never throws. `unreadable` is any file that is not a
  * board's text, is damaged, holds a figure that is not a figure, or whose curves do not run from the tail to the nose;
  * `out-of-range` is a readable board whose length this app cannot make (`BOARD_LENGTH_RANGE_IN`), with that length.
  */
@@ -114,14 +136,59 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
 
     const header = new Map<string, number | null>();
     const curves = new Map<string, BrdReadKnot[]>();
+    const rawSections: { station: number; knots: BrdReadKnot[] }[] = [];
     let open: BrdReadKnot[] | null = null;
     let sawCurve = false;
+    // The cross-section block (`p35`): `inSections` while it runs, `section` the one being read, `skipping` inside a
+    // `gps : (` guide-point block (a lone `)` ends it). A damaged section is marked `bad` and dropped when it closes.
+    let inSections = false;
+    let sectionsDone = false;
+    let skipping = false;
+    let section: { station: number; knots: BrdReadKnot[]; bad: boolean } | null = null;
+    const closeSection = () => {
+      const done = section;
+      section = null;
+      if (!done || done.bad || done.knots.length < 2 || !Number.isFinite(done.station)) return;
+      if (rawSections.length >= BRD_READ_MAX_SECTIONS) return;
+      rawSections.push({ station: done.station, knots: done.knots });
+    };
     for (const raw of lines) {
       const line = raw.trim();
+      if (inSections) {
+        if (skipping) {
+          if (line === ")") skipping = false;
+          continue;
+        }
+        if (line.startsWith("gps : (")) {
+          skipping = true;
+          continue;
+        }
+        if (line === ")") {
+          if (section) closeSection();
+          else {
+            inSections = false;
+            sectionsDone = true;
+          }
+          continue;
+        }
+        if (rawSections.length >= BRD_READ_MAX_SECTIONS) continue;
+        const head = SECTION_HEAD.exec(line);
+        if (head) {
+          // A section that opens inside another one drops the first.
+          if (section) section.bad = true;
+          section = { station: Number(head[1]), knots: [], bad: false };
+          if (!Number.isFinite(section.station) || Math.abs(section.station) > BRD_READ_MAX_CM) section.bad = true;
+          continue;
+        }
+        if (!section || line === "") continue;
+        const knot = parseKnot(line);
+        if (!knot || section.knots.length >= BRD_READ_MAX_KNOTS) section.bad = true;
+        else section.knots.push(knot);
+        continue;
+      }
       if (open) {
         if (line === ")") {
           open = null;
-          if (curves.size === 3) break;
           continue;
         }
         if (line === "") continue;
@@ -133,8 +200,10 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
       const field = FIELD.exec(line);
       if (!field) continue;
       const [, key, value] = field;
-      // The cross-sections are never read (R3): nothing after this matters.
-      if (key === "p35" && value === "(") break;
+      if (key === "p35" && value === "(" && !sectionsDone && curves.size === 3) {
+        inSections = true;
+        continue;
+      }
       if ((key === "p32" || key === "p33" || key === "p34") && value === "(") {
         open = [];
         curves.set(key, open);
@@ -168,6 +237,17 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
     }
     const outline = outlineRaw.map(([x, y]): P2 => [x, Math.abs(y)]);
 
+    // The cross-sections that can be used: a station on the board (within 1 cm of it), every sampled point a figure.
+    const sections: ReadBrdSection[] = [];
+    for (const raw of rawSections) {
+      const station = centimetresToMm(raw.station);
+      if (station < -BRD_REACH_MM || station > lengthMm + BRD_REACH_MM) continue;
+      const points = sampleKnots(raw.knots, BRD_PREVIEW_SECTION_STEPS);
+      if (points.length < 2 || points.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y))) continue;
+      sections.push({ station: mm(station), points, knots: raw.knots });
+    }
+    sections.sort((a, b) => a.station - b.station);
+
     const width = header.get("p04");
     const thickness = header.get("p03");
     return {
@@ -179,6 +259,7 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
         outline,
         bottom,
         deck,
+        sections,
       },
     };
   } catch {

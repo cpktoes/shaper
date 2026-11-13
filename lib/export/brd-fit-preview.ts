@@ -18,10 +18,18 @@
 import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import {
+  brdFittedBottomBoard,
+  brdStringerLift,
+  fitBottomToBrd,
+  measureBrdBottom,
+  type BrdBottomFit,
+} from "../geometry/brd-bottom";
+import {
   BRD_FIT_TIP_SKIP_MM,
   BRD_STRAIGHTEDGE_MM,
   brdFileStations,
   brdFileWidths,
+  fitBoardToBrd,
   fitOutlineWidths,
   lineLowestAt,
   outlineGapSide,
@@ -46,10 +54,49 @@ import { BOARD_NAME_MAX_LENGTH } from "../models/board-file";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y } from "./brd-preview";
 import type { ReadBrdBoard } from "./brd-read";
 
-/** The file as read and our closest fit to it: all the preview holds. */
+/**
+ * The file as read and our closest fit to it: all the preview holds. `bottom` is the closest bottom BOTTOM's cuts make to the
+ * file's cross-sections (null when the file has no section the fit can use), and `planedBottom` the file's bottom line less the
+ * concaves' lift at the stringer: what the board is planed to before the concaves are cut (the file's own line when nothing
+ * lifts the stringer).
+ */
 export interface BrdFitLook {
   board: ReadBrdBoard;
   fit: BrdFit;
+  bottom: BrdBottomFit | null;
+  planedBottom: P2[];
+}
+
+/** How many stations along the board the stringer's lift is looked for, to decide whether any concave lifts it at all. */
+const LIFT_PROBES = 200;
+
+/**
+ * The whole look at a read board, worked out once when a `.brd` is picked (quick 261113-gwr): the outline, rocker and foil fit
+ * (`fitBoardToBrd`), the bottom's cuts fitted to the file's cross-sections on the board that fit makes, and, only when a fitted
+ * concave lifts the stringer anywhere, the rocker and foil fitted again to the file's stringer less that lift (the founder,
+ * 2026-11-13: "for concaves the stringer rocker will always be more, and with flat, vee or belly the stringer rocker will
+ * always match"). Under a flat, vee or belly the first fit stands untouched, to the last digit. The bottom's figures are
+ * finally measured on the board that opens, so what is shown is what a shaper gets.
+ */
+export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
+  const lines = { length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck };
+  const first = fitBoardToBrd(lines);
+  const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom };
+  if (board.sections.length === 0) return none;
+  const board0 = brdFittedBottomBoard(first);
+  const found = fitBottomToBrd(board.sections, board0);
+  if (!found) return none;
+  const lift = brdStringerLift(found.bottom, board0);
+  let lifted = false;
+  for (let i = 0; i <= LIFT_PROBES && !lifted; i++) if (lift(mm((board0.length * i) / LIFT_PROBES)) > 0) lifted = true;
+  if (!lifted) return { board, fit: first, bottom: measureBrdBottom(found.bottom, found.sections, board0), planedBottom: board.bottom };
+  const fit = fitBoardToBrd(lines, lift);
+  return {
+    board,
+    fit,
+    bottom: measureBrdBottom(found.bottom, found.sections, brdFittedBottomBoard(fit)),
+    planedBottom: board.bottom.map(([x, y]): P2 => [x, y - lift(mm(x))]),
+  };
 }
 
 /** The top and side views laid out for a box this wide, nose at the left, one scale along the board. */

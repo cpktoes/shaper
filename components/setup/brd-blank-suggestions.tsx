@@ -122,7 +122,8 @@ export function useBrdBlankWords(look: BrdFitLook, system: UnitsSystem): BrdBlan
       try {
         suggestions = suggestBlanks({
           fit: inputs.look.fit,
-          bottom: inputs.look.board.bottom,
+          // The blank is what is planed; the concave is cut afterwards (the file's stringer less our concaves' lift).
+          bottom: inputs.look.planedBottom,
           prepared: inputs.prepared,
           makers: inputs.makers,
           cut: inputs.cut,

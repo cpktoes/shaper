@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { brdText } from "@/lib/export/brd";
 import { readAnyBrd } from "@/lib/export/brd-read";
 import { BRD_BLANK_COPY, brdBlankWords, type BrdBlankState } from "@/lib/export/brd-blank-words";
-import { brdFitSheet, type BrdFitLook } from "@/lib/export/brd-fit-preview";
+import { brdFitLook, brdFitSheet, type BrdFitLook } from "@/lib/export/brd-fit-preview";
 import type { P2 } from "@/lib/geometry/bezier-fit";
 import { isPickable } from "@/lib/blanks/catalog";
 import { readSeedCatalog, SEED_CSV_DIR } from "@/lib/blanks/seed-files";
@@ -43,7 +43,7 @@ function appLook(label: string): BrdFitLook {
   const read = readAnyBrd(Uint8Array.from(brdText(surface).text, (ch) => ch.charCodeAt(0)));
   if (!read.ok) throw new Error("the app's own file would not read");
   const b = read.board;
-  return { board: b, fit: fitBoardToBrd({ length: b.length, outline: b.outline, bottom: b.bottom, deck: b.deck }) };
+  return brdFitLook(b);
 }
 
 function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
@@ -52,8 +52,8 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const outline: P2[] = [[0, 0], [0, half * 0.5], [L * 0.2, half * 0.9], [L * 0.45, half], [L * 0.8, half * 0.75], [L, 0]];
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
-  const board = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck };
-  return { board, fit: fitBoardToBrd({ length: board.length, outline, bottom, deck }) };
+  const board = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [] };
+  return { board, fit: fitBoardToBrd({ length: board.length, outline, bottom, deck }), bottom: null, planedBottom: bottom };
 }
 
 const LOOKS: [string, BrdFitLook][] = [
@@ -167,7 +167,7 @@ describe("buildBrdOverviewPdf", () => {
     const bottom: P2[] = [[0, 50], [6.35, 40], [L / 2, 0], [L - 6.35, 40], [L, 60]];
     const deck: P2[] = [[0, 50], [6.35, 80], [L / 2, 60], [L - 6.35, 90], [L, 60]];
     const board = { ...base, bottom, deck };
-    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }) };
+    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom };
     for (const system of ["imperial", "metric"] as UnitsSystem[]) {
       const sheet = brdFitSheet(look, "Egg.brd", system);
       expect(sheet.pointNotes).toHaveLength(2);
@@ -241,7 +241,7 @@ describe("buildBrdOverviewPdf", () => {
     const bottom: P2[] = [[0, 50], [L / 2, 0], [L - 6.35, 40], [L, 60]];
     const deck: P2[] = [[0, 80], [L / 2, 60], [L - 6.35, 90], [L, 60]];
     const board = { ...base, bottom, deck };
-    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }) };
+    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom };
     const sheet = brdFitSheet(look, "Egg.brd", "imperial");
     expect(sheet.pointNotes).toHaveLength(1);
     expect(buildBrdOverviewPdf({ look, sheet, fileName: "Egg.brd", height: 2 }).output()).toContain("comes to a point");

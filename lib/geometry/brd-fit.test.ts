@@ -4,7 +4,7 @@ import { readAnyBrd, type ReadBrdBoard } from "../export/brd-read";
 import type { P2 } from "./bezier-fit";
 import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { buildBoardSurface } from "./board-surface";
-import { handSetFromProfile } from "./board-profile";
+import { buildFallbackProfile, handSetFromProfile } from "./board-profile";
 import {
   BRD_FIT_TIP_SKIP_MM,
   BRD_POINT_MM,
@@ -483,5 +483,54 @@ describe("outlineGapSide", () => {
     expect(outlineGapSide(line(102), line(100), 500)).toBe("wider");
     expect(outlineGapSide(line(98), line(100), 500)).toBe("narrower");
     expect(outlineGapSide(line(100), line(100), 500)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The planed fit (quick 261113-gwr)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("fitBoardToBrd with a stringer lift: the board is planed lower under a concave", () => {
+  const trip = tripOf("shortboard|asis|hard");
+  const lines = { length: trip.file.length, outline: trip.file.outline, bottom: trip.file.bottom, deck: trip.file.deck };
+  const L = trip.file.length;
+  /** A made-up concave lifting the stringer up to 4 mm, smoothly, between 25% and 75% of the board. */
+  const lift = (s: number) => 4 * Math.max(0, Math.sin((Math.PI * (s / L - 0.25)) / 0.5)) ** 2;
+  const lifted = fitBoardToBrd(lines, (s) => mm(lift(s)));
+
+  it("changes nothing without a lift, to the last digit, and says the lift is nothing at all five stations", () => {
+    expect(fitBoardToBrd(lines, undefined)).toEqual(trip.fit);
+    expect(Object.values(trip.fit.stringerLift)).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  it("leaves the outline alone and records the lift at each of the five rocker stations", () => {
+    expect(lifted.outline).toEqual(trip.fit.outline);
+    expect(lifted.lines.outline).toEqual(trip.fit.lines.outline);
+    for (const { key, station } of rockerStationPositions(mm(L))) expect(lifted.stringerLift[key]).toBeCloseTo(lift(station), 9);
+    expect(lifted.stringerLift.center).toBeGreaterThan(3.9);
+  });
+
+  it("draws our finished stringer as the planed rocker plus the lift, and the deck as the planed one", () => {
+    const profile = buildFallbackProfile(lifted.rocker, lifted.foil, mm(L));
+    const planedCentre = lifted.lines.bottom[100][1] - lift(L / 2) - profile.rockerAt(mm(L / 2));
+    for (let i = 0; i <= 200; i++) {
+      const s = (L * i) / 200;
+      expect(lifted.lines.bottom[i][1]).toBeCloseTo(planedCentre + profile.rockerAt(mm(s)) + lift(s), 9);
+      expect(lifted.lines.deck[i][1]).toBeCloseTo(planedCentre + profile.rockerAt(mm(s)) + profile.thicknessAt(mm(s)), 9);
+    }
+    // The planed centre is the file's lowest point at the middle, less the lift there.
+    const lowered = lines.bottom.map(([x, y]): P2 => [x, y - lift(x)]);
+    expect(planedCentre).toBeCloseTo(lineLowestAt(lowered, L / 2), 9);
+  });
+
+  it("plans the foil thicker and the rocker lower by the lift there: the same fit as for the lowered file", () => {
+    const lowered = lines.bottom.map(([x, y]): P2 => [x, y - lift(x)]);
+    const direct = fitBoardToBrd({ ...lines, bottom: lowered });
+    expect(lifted.rocker).toEqual(direct.rocker);
+    expect(lifted.foil).toEqual(direct.foil);
+    expect(lifted.foil.center).toBeGreaterThan(trip.fit.foil.center + 3.5);
+    // The closeness is the finished stringers': within a hair of the lowered file's against the planed board.
+    expect(Math.abs(lifted.closeness.rocker.largest - direct.closeness.rocker.largest)).toBeLessThan(0.05);
+    expect(Math.abs(lifted.closeness.thickness.largest - direct.closeness.thickness.largest)).toBeLessThan(0.05);
   });
 });

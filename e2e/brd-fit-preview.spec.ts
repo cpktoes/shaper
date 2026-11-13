@@ -2,11 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
 import { BRD_BLANK_COPY } from "../lib/export/brd-blank-words";
 import { brdFile, brdText } from "../lib/export/brd";
-import { BRD_FIT_COPY, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
+import { BRD_FIT_COPY, brdFitLook, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
-import { fitBoardToBrd } from "../lib/geometry/brd-fit";
 import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
 import { mm } from "../lib/geometry/units";
@@ -68,8 +67,7 @@ const MIDLENGTH = "midlength|asis|hard";
 function lookOf(bytes: Uint8Array): BrdFitLook {
   const read = readAnyBrd(bytes);
   if (!read.ok) throw new Error(`the app's own file would not read: ${JSON.stringify(read)}`);
-  const { board } = read;
-  return { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck }) };
+  return brdFitLook(read.board);
 }
 const sheetOf = (bytes: Uint8Array, fileName: string, system: "imperial" | "metric"): BrdFitSheet =>
   brdFitSheet(lookOf(bytes), fileName, system);

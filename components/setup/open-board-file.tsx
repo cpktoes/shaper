@@ -33,8 +33,7 @@ import { BrdFitDialog } from "@/components/setup/brd-fit-dialog";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
 import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName, readAnyBrd } from "@/lib/export/brd-read";
-import { brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
-import { fitBoardToBrd } from "@/lib/geometry/brd-fit";
+import { brdFitLook, brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
 import { brdBoardFields } from "@/lib/models/brd-board";
 import { BOARD_FILE_ACCEPT, BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
@@ -93,9 +92,8 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       return;
     }
     try {
-      const { board } = read;
-      const fit = fitBoardToBrd({ length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck });
-      setLooking({ fileName: file.name, look: { board, fit }, fields: brdBoardFields(fit, file.name) });
+      const look = brdFitLook(read.board);
+      setLooking({ fileName: file.name, look, fields: brdBoardFields(look.fit, file.name) });
     } catch {
       setProblem(BOARD_FILE_COPY.brdUnreadable);
     }

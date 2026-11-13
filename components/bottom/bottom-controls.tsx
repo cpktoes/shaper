@@ -11,6 +11,8 @@ import { useUnits } from "@/components/units-provider";
 import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_CUT_NAMES,
+  BOTTOM_MARK_RANGES_IN,
+  BOTTOM_MARK_STEP_IN,
   BOTTOM_SECTIONS,
   CHANNEL_ANGLE_MAX,
   CHANNEL_ANGLE_STEP,
@@ -71,8 +73,8 @@ const SELECT_LABEL = "mb-1.5 text-sm text-surf-ink-muted font-normal";
 /** The floor sentence under a Depth row: ROCKER's too-close line exactly (`components/rocker/rocker-controls.tsx:416`). */
 const FLOOR_LINE = "mt-2 text-xs text-surf-warning-ink";
 
-/** The mark sliders' step (UI-SPEC §1): 1/16", 1 mm in Metric, through `measureSlider`. */
-const MARK_STEP_IN = 1 / 16;
+/** The mark sliders' step (UI-SPEC §1): 1/16", 1 mm in Metric, through `measureSlider`; it lives in `bottom.ts`. */
+const MARK_STEP_IN = BOTTOM_MARK_STEP_IN;
 /** Smoothness runs 0 to 100 in steps of 5. */
 const SMOOTHNESS = { min: 0, max: 100, step: 5 } as const;
 
@@ -95,11 +97,11 @@ interface MarkRowSpec {
   words?: (mark: string) => string;
 }
 const MARK_ROWS: Record<MarkField, MarkRowSpec> = {
-  offRail: { label: BOTTOM_COPY.offRail, rangeIn: { min: 0, max: 6 }, leftHint: BOTTOM_COPY.offRailLeft },
-  offStringer: { label: BOTTOM_COPY.offStringer, rangeIn: { min: 0, max: 9 }, leftHint: BOTTOM_COPY.offStringerLeft },
-  troughAt: { label: BOTTOM_COPY.troughAt, rangeIn: { min: 0.5, max: 8 }, words: BOTTOM_COPY.fromStringer },
-  depth: { label: BOTTOM_COPY.depth, rangeIn: { min: 0, max: 0.5 }, leftHint: BOTTOM_COPY.depthLeft },
-  veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: { min: 0, max: 0.5 } },
+  offRail: { label: BOTTOM_COPY.offRail, rangeIn: BOTTOM_MARK_RANGES_IN.offRail, leftHint: BOTTOM_COPY.offRailLeft },
+  offStringer: { label: BOTTOM_COPY.offStringer, rangeIn: BOTTOM_MARK_RANGES_IN.offStringer, leftHint: BOTTOM_COPY.offStringerLeft },
+  troughAt: { label: BOTTOM_COPY.troughAt, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
+  depth: { label: BOTTOM_COPY.depth, rangeIn: BOTTOM_MARK_RANGES_IN.depth, leftHint: BOTTOM_COPY.depthLeft },
+  veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: BOTTOM_MARK_RANGES_IN.veeLift },
 };
 
 /** One row of a cut's card. */
