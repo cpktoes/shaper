@@ -2,7 +2,7 @@
 sketch: 023
 name: bottom-side-profile
 question: "Where does the side profile — the deck, the bottom at the stringer and the bottom at the rail before the rails are shaped, Height ×1/×2/×4/×8 opening at ×4 — sit on the BOTTOM page: a third drawing in VIEWER (A), its own SIDE VIEW tab (B), or swapped with the bottom view by a FROM BELOW / FROM THE SIDE toggle (C)?"
-winner: null
+winner: "A, re-ordered: bottom view, cross-section, side view; side view opens at x1"
 builds_on: 021
 tags: [bottom, side-profile, rocker, contours, viewer, tabs, toolbar, phone, units, themes]
 ---
@@ -124,3 +124,10 @@ sized to fit.
 `npx tsx` from the worktree), `boards.json`, `app-side-profiles.json`, the page template, `build.py`, the edit script,
 `check.cjs` (the cross-check, the sweep, the live checks and the phone measurements) with its `check-results.json`,
 `shots.cjs` (the pictures) and `probe.cjs`.
+
+## Decision (the founder, 2026-11-12)
+*"I like A, but lets put the side view at the bottom: Bottom, crossection, side, with sides default scaling to 1x to
+minimize distortion of the rocker and use up the least amount of space."* So: **A**, with the drawings in the order
+**board from below, cross-section, side view**, and the side view opening at **Height ×1** (true proportions, the least
+height); the ×2/×4/×8 buttons stay for a closer look. The board from below and the side view still share one length
+scale, so the station line runs through both. B and C are kept in the file for the record.
