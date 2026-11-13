@@ -209,12 +209,17 @@ function thickestOf(board: ReadBrdBoard): number {
   return Math.max(...board.deck.map(([x, h]) => h - lineLowestAt(board.bottom, x)));
 }
 
+/** Where a gap sits, from the nearer end: `7" from the tail` or `3/8" from the nose` (a dim, in the shaper's system). */
+export function gapWhere(at: Mm, length: Mm, system: UnitsSystem): string {
+  return at <= length / 2 ? `${formatDim(at, system)} from the tail` : `${formatDim(mm(length - at), system)} from the nose`;
+}
+
 function closeWords(c: Closeness, length: Mm, side: BrdFitCloseWords["side"], system: UnitsSystem): BrdFitCloseWords {
   return {
     largest: formatMarkOrLess(c.largest, system),
     typical: formatMarkOrLess(c.typical, system),
     at: formatDim(c.at, system),
-    where: c.at <= length / 2 ? `${formatDim(c.at, system)} from the tail` : `${formatDim(mm(length - c.at), system)} from the nose`,
+    where: gapWhere(c.at, length, system),
     side,
   };
 }
@@ -340,7 +345,7 @@ export const BRD_FIT_COPY = {
 } as const;
 
 /** A figure that starts with `<` ("less than the smallest step") read as words: `<1/16"` becomes `less than 1/16"`. */
-function lessThan(figure: string): string {
+export function lessThan(figure: string): string {
   return figure.startsWith("<") ? `less than ${figure.slice(1)}` : figure;
 }
 
