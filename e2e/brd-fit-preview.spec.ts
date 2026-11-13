@@ -1,14 +1,25 @@
 import { expect, test, type Page } from "@playwright/test";
+import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
 import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
 import { BRD_BLANK_COPY } from "../lib/export/brd-blank-words";
-import { brdFile, brdText } from "../lib/export/brd";
-import { BRD_FIT_COPY, brdFitLook, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
+import { brdBottomStations, brdFile, brdText } from "../lib/export/brd";
+import { BRD_FIT_COPY, brdBottomFrames, brdBottomRows, brdFitLook, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
-import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "../lib/geometry/design";
+import { formatBottomStation } from "../lib/geometry/blank-reasons";
+import { sectionHeightLabel } from "../lib/geometry/bottom-draw";
+import { DEFAULT_BOTTOM, resolveBottom, resolveCut, startingCut, stationFromNearestTip } from "../lib/geometry/bottom";
+import {
+  designBottomBoard,
+  designCrossSectionInput,
+  designFinPlacement,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+} from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
-import { mm } from "../lib/geometry/units";
+import { inchesToMm, mm } from "../lib/geometry/units";
 import { phase16Boards } from "../lib/geometry/__fixtures__/phase16-boards";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { brdBoardFields } from "../lib/models/brd-board";
@@ -16,6 +27,7 @@ import { BOARD_FILE_ACCEPT } from "../lib/models/board-file";
 import { OPEN_BOARD_STORAGE_KEY } from "../lib/models/open-board";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { setMetricUnits } from "./helpers/guide";
+import { bottomFloorScanSettled, showBottomSection } from "./helpers/bottom";
 import { storedOpenBoard } from "./helpers/open-board";
 import { freshPracticeRack } from "./helpers/practice-rack";
 
@@ -650,5 +662,234 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
     await expect(button).toBeVisible({ timeout: 30_000 });
     await expect(button.locator("[data-blank-name]")).toHaveCount(0);
     await expect(button.locator("[data-blank-button-line]")).toContainText("long enough for this board");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick 261113-gwr: the file's bottom
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The Shortboard written with a 1/4" Deep Single Concave under it and a 3/16" Panel Vee tail, the way the app's own writer writes a contoured board. */
+let concave: Made | null = null;
+function concaveFile(): Made {
+  if (concave) return concave;
+  const fields = BOARDS.find((b) => b.label === SHORTBOARD)!.fields;
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const board = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  const bottom = {
+    ...structuredClone(DEFAULT_BOTTOM),
+    center: { ...startingCut("center", "Deep Single Concave", board), depth: inchesToMm(4 / 16) },
+    tail: { ...startingCut("tail", "Panel Vee", board), depth: inchesToMm(3 / 16) },
+  };
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board }),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  const options = { bottomStations: brdBottomStations(resolveBottom(bottom, board)) };
+  concave = { locked: Buffer.from(brdFile(surface, SHORTBOARD, options).data), text: brdText(surface, options).text };
+  return concave;
+}
+
+const COLUMNS = ["nose", "center", "tail"] as const;
+const ROW_KEYS = ["at", "file", "fit", "stations", "across"] as const;
+
+test.describe("The bottom of a .brd (quick 261113-gwr)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(180_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b13. the BOTTOM block: three cross-sections with the file's line and ours, the table's fifteen cells, the closeness line, the two-rockers line and the lift note are the sheet's; the section Height opens at x4 and leaves the side view's alone", async ({
+    page,
+  }, testInfo) => {
+    const exact = testInfo.project.name !== "iphone";
+    const file = concaveFile();
+    const look = lookOf(file.locked);
+    const sheet = brdFitSheet(look, "Shortboard.brd", "imperial");
+    if (!sheet.bottom.read) throw new Error("the concave Shortboard's bottom should have been read");
+    const block = sheet.bottom;
+
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const bottom = dialog.locator("[data-brd-fit-bottom]");
+    await bottom.scrollIntoViewIfNeeded();
+    await expect(bottom).toBeVisible();
+
+    // Three drawings, nose, centre, tail, each with the file's line and ours; each caption is the sheet's.
+    const figures = dialog.locator("[data-brd-fit-section]");
+    await expect(figures).toHaveCount(3);
+    for (const [i, key] of COLUMNS.entries()) {
+      const figure = dialog.locator(`[data-brd-fit-section="${key}"]`);
+      await expect(figure.locator('[data-brd-fit-line="file"]')).toHaveCount(1);
+      await expect(figure.locator('[data-brd-fit-line="fit"]')).toHaveCount(1);
+      await expect(figure.locator("[data-brd-fit-section-caption]")).toHaveText(block.columns[i].drawingCaption!);
+    }
+
+    // The table: Nose, Centre, Tail across; five rows down; every cell the sheet's (by shape on the iPhone, where the fit may differ in a last digit).
+    await expect(dialog.locator("[data-brd-fit-bottom-table] thead th")).toHaveText(block.columns.map((c) => c.label));
+    for (const row of block.rows) {
+      const cells = dialog.locator(`[data-brd-fit-bottom-row="${row.key}"]`);
+      await expect(cells.locator("th")).toHaveText(row.label);
+      for (const [i, key] of COLUMNS.entries()) {
+        const cell = cells.locator(`[data-brd-fit-cell="${key}"]`);
+        if (exact || row.key === "at" || row.key === "file") await expect(cell).toHaveText(row.cells[i]);
+        else await expect(cell).not.toHaveText("");
+      }
+    }
+    expect(ROW_KEYS).toEqual(block.rows.map((r) => r.key));
+    for (const note of block.notes) await expect(dialog.locator("[data-brd-fit-bottom-note]").filter({ hasText: note })).toHaveCount(1);
+
+    // The bottom's HOW CLOSE line; the two-rockers line and the lift note under the rocker table; the rocker table's figures.
+    const close = dialog.locator("[data-brd-fit-close-bottom]");
+    if (exact) await expect(close).toHaveText(sheet.closeness.bottom!);
+    else await expect(close).toHaveText(/^Bottom: (within|less than) .+, typically .+ — the widest gap at the section .+ out from the stringer/);
+    await expect(dialog.locator("[data-brd-fit-rocker-lines]")).toHaveText(sheet.rockerLines);
+    expect(sheet.stringerNote).not.toBeNull();
+    if (exact) await expect(dialog.locator("[data-brd-fit-stringer-note]")).toHaveText(sheet.stringerNote!);
+    else await expect(dialog.locator("[data-brd-fit-stringer-note]")).toContainText("lift its stringer");
+    if (exact) {
+      const tables = await tablesOf(dialog);
+      for (const [i, table] of tables.entries()) for (const [j, row] of table.rows.entries()) expect(row.fit).toBe(sheet.tables[i].rows[j].fit);
+      await expect(dialog.locator('[data-brd-fit-control="bottom"]')).toHaveText(sheet.controls.bottom!);
+    }
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notReadAfterBottom);
+
+    // The section Height opens at x4 and x8 changes the caption; the side view's own Height stays at x1.
+    const pressed = (which: "section" | "side") =>
+      dialog.locator(which === "section" ? "[data-brd-fit-section-height]" : "[data-brd-fit-height]").locator('button[aria-pressed="true"]');
+    await expect(pressed("section")).toHaveText(BOTTOM_COPY.heightButton(4));
+    await expect(pressed("side")).toHaveText(BOTTOM_COPY.heightButton(1));
+    const captionAt = (height: 1 | 2 | 4 | 8) => BRD_FIT_COPY.bottomSectionsCaption(sectionHeightLabel(brdBottomFrames(brdBottomRows(look), height)));
+    await expect(dialog.locator("[data-brd-fit-sections-caption]")).toHaveText(captionAt(4));
+    await dialog.locator("[data-brd-fit-section-height]").getByRole("button", { name: BOTTOM_COPY.heightButtonName(8) }).click();
+    await expect(pressed("section")).toHaveText(BOTTOM_COPY.heightButton(8));
+    await expect(dialog.locator("[data-brd-fit-sections-caption]")).toHaveText(captionAt(8));
+    await expect(pressed("side")).toHaveText(BOTTOM_COPY.heightButton(1));
+    await expect(dialog.locator("[data-brd-fit-side]")).toHaveAttribute("data-brd-fit-side-height", "1");
+
+    // Close changes nothing.
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.close }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await storedOpenBoard(page)).toBeNull();
+  });
+
+  test("b14. the app's own flat Shortboard reads flat everywhere: no lift note, and the file's and our cells say Flat", async ({ page }) => {
+    const file = boardFile(SHORTBOARD);
+    const sheet = sheetOf(file.locked, "Shortboard.brd", "imperial");
+    if (!sheet.bottom.read) throw new Error("the flat Shortboard's bottom should have been read");
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-brd-fit-bottom]")).toBeAttached();
+    await expect(dialog.locator("[data-brd-fit-stringer-note]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-rocker-lines]")).toHaveText(sheet.rockerLines);
+    for (const key of COLUMNS) {
+      await expect(dialog.locator(`[data-brd-fit-bottom-row="file"] [data-brd-fit-cell="${key}"]`)).toHaveText(BRD_FIT_COPY.bottomKinds.flat);
+    }
+    for (const [i, key] of COLUMNS.entries()) {
+      await expect(dialog.locator(`[data-brd-fit-bottom-row="fit"] [data-brd-fit-cell="${key}"]`)).toHaveText(sheet.bottom.read ? sheet.bottom.rows[2].cells[i] : "");
+      await expect(dialog.locator(`[data-brd-fit-bottom-row="stations"] [data-brd-fit-cell="${key}"]`)).toHaveText(BRD_FIT_COPY.noValue);
+    }
+  });
+
+  test("b15. Open as a Board carries the fitted bottom: the kept board holds the cuts and the planed rocker and foil, and BOTTOM shows the three names and the centre's sliders", async ({
+    page,
+  }, testInfo) => {
+    const file = concaveFile();
+    const look = lookOf(file.locked);
+    const fields = brdBoardFields(look.fit, "Shortboard.brd", look.bottom!.bottom);
+    if (!fields?.bottom) throw new Error("the concave Shortboard's fit should open with a bottom");
+    const saves = watchSaves(page);
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect(dialog).toHaveCount(0);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Shortboard");
+
+    const kept = await storedOpenBoard(page);
+    const design = kept!.snapshot.design as unknown as Record<string, unknown>;
+    const tolerance = testInfo.project.name === "iphone" ? 0.01 : 1e-9;
+    expect(design.blank).toBeNull();
+    for (const part of ["outline", "rocker", "foil", "bottom"] as const) {
+      expect(sameWithin(design[part], fields[part], tolerance, part)).toBeNull();
+    }
+    expect(saves).toEqual([]);
+
+    // BOTTOM, on the same board: the three cuts' names and, on a computer, the centre's three station sliders in their words.
+    await page.goto("/design/bottom");
+    for (const key of COLUMNS) {
+      await showBottomSection(page, key);
+      await expect(page.locator(`[data-bottom-card="${key}"] [data-bottom-cut-echo]`)).toHaveText(fields.bottom[key].name);
+    }
+    await bottomFloorScanSettled(page);
+    if (testInfo.project.name === "desktop") {
+      const opened = designBottomBoard(fields.outline, buildOutline(fields.outline), designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+      const resolved = resolveCut("center", fields.bottom.center, opened);
+      const card = page.locator('[data-bottom-card="center"]');
+      for (const [field, word] of [["start", BOTTOM_COPY.start], ["deepest", BOTTOM_COPY.deepestAt], ["end", BOTTOM_COPY.end]] as const) {
+        const words = BOTTOM_COPY.fromTip("center", formatBottomStation(stationFromNearestTip("center", resolved[field], opened), "imperial"));
+        await expect(card).toContainText(`${word} — ${words}`);
+      }
+    }
+  });
+
+  test("b16. a file with no cross-sections: the preview says so in one line, draws no section, keeps today's not-read line, and Open as a Board opens with no bottom", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for a file with no sections");
+    const full = boardFile(SHORTBOARD);
+    const cut = Buffer.from(full.text.slice(0, full.text.indexOf("p35 : (")), "latin1");
+    const sheet = sheetOf(cut, "No Sections.brd", "imperial");
+    expect(sheet.bottom).toEqual({ read: false, caption: BRD_FIT_COPY.bottomCaption, line: BRD_FIT_COPY.bottomUnread });
+    await page.goto("/");
+    await pickFile(page, "No Sections.brd", cut);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-brd-fit-bottom-unread]")).toHaveText(BRD_FIT_COPY.bottomUnread);
+    await expect(dialog.locator("[data-brd-fit-section]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-close-bottom]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notRead);
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("No Sections");
+    expect("bottom" in ((await storedOpenBoard(page))!.snapshot.design as unknown as Record<string, unknown>)).toBe(false);
+  });
+
+  test("b17. the printed overview of the concave board is one page or two A4-wide by Letter-tall pages, and carries BOTTOM, the fitted names and Our fit", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the print frame");
+    const file = concaveFile();
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.print, exact: true }).click();
+    const frame = page.locator("iframe[data-print-pdf]");
+    await expect(frame).toHaveCount(1);
+    const pdf = await frame.evaluate(async (el) => {
+      const bytes = new Uint8Array(await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer());
+      return new TextDecoder("latin1").decode(bytes);
+    });
+    expect(pdf.slice(0, 5)).toBe("%PDF-");
+    const pages = (pdf.match(/\/Type \/Page\b/g) ?? []).length;
+    expect(pages).toBeGreaterThanOrEqual(1);
+    expect(pages).toBeLessThanOrEqual(2);
+    for (const box of pdf.matchAll(/MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/g)) {
+      expect(Number(box[1])).toBeCloseTo(595.28, 1);
+      expect(Number(box[2])).toBeCloseTo(792, 1);
+    }
+    expect(pdf).toContain("BOTTOM");
+    expect(pdf).toContain("Deep Single Concave");
+    expect(pdf).toContain("Our fit");
   });
 });
