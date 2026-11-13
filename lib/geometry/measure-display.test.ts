@@ -3,6 +3,7 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { DIAMOND_BLOCK_MARGIN_MM, MEASURE_STATION_MM } from "./outline";
 import {
+  formatControlNumber,
   commitTypedMeasure,
   formatArea,
   formatCalibrationMark,
@@ -48,6 +49,29 @@ import {
   type Mm,
   type UnitsSystem,
 } from "./units";
+
+describe("formatControlNumber", () => {
+  it("reads every step a slider can land on exactly as it always has", () => {
+    expect(formatControlNumber(55)).toBe("55");
+    expect(formatControlNumber(50.5)).toBe("50.5");
+    expect(formatControlNumber(50.25)).toBe("50.25");
+    expect(formatControlNumber(0)).toBe("0");
+    expect(formatControlNumber(100)).toBe("100");
+  });
+
+  it("shortens a value between steps to two decimals — a board opened from a .brd file", () => {
+    expect(formatControlNumber(48.13482249200385)).toBe("48.13");
+    expect(formatControlNumber(56.35232831638945)).toBe("56.35");
+    expect(formatControlNumber(46.65387933287313)).toBe("46.65");
+    expect(formatControlNumber(89.999)).toBe("90");
+  });
+
+  it("never writes a minus zero or a non-number", () => {
+    expect(formatControlNumber(-0.001)).toBe("0");
+    expect(formatControlNumber(Number.NaN)).toBe("0");
+    expect(formatControlNumber(Number.POSITIVE_INFINITY)).toBe("0");
+  });
+});
 
 describe("formatDim", () => {
   it("imperial branch is formatInchesFraction, unchanged", () => {

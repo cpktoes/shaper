@@ -28,6 +28,7 @@ import {
 } from "@/lib/geometry/units";
 import {
   diamondDepthClampNote,
+  formatControlNumber,
   formatDim,
   formatLength,
   formatMark,
@@ -226,7 +227,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Nose Angle"
-          displayValue={`${outline.noseAngle}°`}
+          displayValue={`${formatControlNumber(outline.noseAngle)}°`}
           value={outline.noseAngle}
           min={35}
           max={90}
@@ -238,7 +239,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Fullness"
-          displayValue={`${outline.noseFullness}%`}
+          displayValue={`${formatControlNumber(outline.noseFullness)}%`}
           value={outline.noseFullness}
           min={0}
           max={100}
@@ -296,7 +297,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Tail Rail"
-          displayValue={`${outline.tailRailLength}%`}
+          displayValue={`${formatControlNumber(outline.tailRailLength)}%`}
           value={outline.tailRailLength}
           min={0}
           max={100}
@@ -308,7 +309,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Nose Rail"
-          displayValue={`${outline.noseRailLength}%`}
+          displayValue={`${formatControlNumber(outline.noseRailLength)}%`}
           value={outline.noseRailLength}
           min={0}
           max={100}
@@ -424,7 +425,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Tail Angle"
-          displayValue={`${outline.tailAngle}°`}
+          displayValue={`${formatControlNumber(outline.tailAngle)}°`}
           value={outline.tailAngle}
           min={30}
           max={90}
@@ -437,7 +438,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Fullness"
-          displayValue={`${outline.tailFullness}%`}
+          displayValue={`${formatControlNumber(outline.tailFullness)}%`}
           value={outline.tailFullness}
           min={0}
           max={100}

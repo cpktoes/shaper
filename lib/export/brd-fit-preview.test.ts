@@ -9,7 +9,7 @@ import {
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
-import { formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
+import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import { buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
@@ -112,11 +112,13 @@ describe("brdFitWords", () => {
     expect(words.controls.offset).toBe(formatSignedDim(look.fit.outline.widePointOffset, "imperial"));
   });
 
-  it("writes angles and percentages rounded for display only", () => {
+  it("writes angles and percentages the way the opened board's own labels will read them", () => {
     const words = brdFitWords(look, "imperial");
-    expect(words.controls.noseAngle).toBe(`${Math.round(look.fit.outline.noseAngle)}°`);
-    expect(words.controls.tailFullness).toBe(`${Math.round(look.fit.outline.tailFullness)}%`);
-    expect(words.controls.noseRail).toBe(`${Math.round(look.fit.outline.noseRailLength)}%`);
+    expect(words.controls.noseAngle).toBe(`${formatControlNumber(look.fit.outline.noseAngle)}°`);
+    expect(words.controls.tailFullness).toBe(`${formatControlNumber(look.fit.outline.tailFullness)}%`);
+    expect(words.controls.noseRail).toBe(`${formatControlNumber(look.fit.outline.noseRailLength)}%`);
+    // Two decimals at most, never the raw value.
+    expect(words.controls.noseAngle).toMatch(/^\d+(\.\d{1,2})?°$/);
   });
 
   it("names the tail and gives a squash its block and a pointed tail none", () => {

@@ -42,7 +42,7 @@ import {
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
-import { formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
+import { formatControlNumber, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { placedWings } from "@/lib/geometry/wings";
 import { spreadApart } from "./wing-view-layout";
 import { useUnits } from "@/components/units-provider";
@@ -738,22 +738,22 @@ export function OutlineViewer({
           { label: "Offset", value: formatSignedDim(outline.widePointOffset, system) },
         ];
       case "tailRailHandle":
-        return [{ label: "Tail Rail", value: `${outline.tailRailLength}%` }];
+        return [{ label: "Tail Rail", value: `${formatControlNumber(outline.tailRailLength)}%` }];
       case "noseRailHandle":
-        return [{ label: "Nose Rail", value: `${outline.noseRailLength}%` }];
+        return [{ label: "Nose Rail", value: `${formatControlNumber(outline.noseRailLength)}%` }];
       case "tailHandle":
         // A diamond tail's angle is pinned (its slider is greyed out and `solveOutlineDrag` never
         // writes it), so the card names only the field this drag can actually change.
         return geometry.tailAnglePinned
-          ? [{ label: "Fullness", value: `${outline.tailFullness}%` }]
+          ? [{ label: "Fullness", value: `${formatControlNumber(outline.tailFullness)}%` }]
           : [
-              { label: "Tail Angle", value: `${outline.tailAngle}°` },
-              { label: "Fullness", value: `${outline.tailFullness}%` },
+              { label: "Tail Angle", value: `${formatControlNumber(outline.tailAngle)}°` },
+              { label: "Fullness", value: `${formatControlNumber(outline.tailFullness)}%` },
             ];
       case "noseHandle":
         return [
-          { label: "Nose Angle", value: `${outline.noseAngle}°` },
-          { label: "Fullness", value: `${outline.noseFullness}%` },
+          { label: "Nose Angle", value: `${formatControlNumber(outline.noseAngle)}°` },
+          { label: "Fullness", value: `${formatControlNumber(outline.noseFullness)}%` },
         ];
     }
   }

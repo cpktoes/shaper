@@ -54,7 +54,7 @@ import {
   type GuideWindowSpec,
 } from "./guide-draw";
 import { GUIDE_FRAME, guidePush } from "./guide-push";
-import { formatDim, formatLength, formatMark, formatSignedDim, formatSignedMark, measureSlider } from "./measure-display";
+import { formatControlNumber, formatDim, formatLength, formatMark, formatSignedDim, formatSignedMark, measureSlider } from "./measure-display";
 import { buildOutline, MEASURE_STATION_MM, type OutlineGeometry } from "./outline";
 import { degrees, mm, type Mm, type UnitsSystem } from "./units";
 import { lockedWingStation } from "./wing-lock";
@@ -510,7 +510,7 @@ const naTag = (text: string): GuideTag => ({ kind: "na", text });
 const ON_THIS_BOARD: GuideTag = { kind: "on", text: "On this board" };
 
 /** A degree or a percentage as a pushed figure: the sidebar's own number, clear of float dust. */
-const plain = (v: number) => `${+v.toFixed(2)}`;
+const plain = formatControlNumber;
 
 function dashed(...parts: GuideTextPart[]): GuideCaption {
   return { kind: "dashed", parts };
@@ -561,15 +561,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   // Nose Controls.
   card(
     ids.noseAngle,
-    valueTag(`${o.noseAngle}°`),
+    valueTag(`${plain(o.noseAngle)}°`),
     dashed(guideFigure(`${plain(pushOf(ids.noseAngle)?.noseAngle ?? o.noseAngle)}°`)),
-    fig(ids.noseAngle, "nose", { label: { role: "value", parts: [guideFigure(`${o.noseAngle}°`)] } }),
+    fig(ids.noseAngle, "nose", { label: { role: "value", parts: [guideFigure(`${plain(o.noseAngle)}°`)] } }),
   );
   card(
     ids.noseFullness,
-    valueTag(`${o.noseFullness}%`),
+    valueTag(`${plain(o.noseFullness)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.noseFullness)?.noseFullness ?? o.noseFullness)}%`), guideText(" full")),
-    fig(ids.noseFullness, "nose", { label: { role: "value", parts: [guideFigure(`${o.noseFullness}%`), guideText(" full")] } }),
+    fig(ids.noseFullness, "nose", { label: { role: "value", parts: [guideFigure(`${plain(o.noseFullness)}%`), guideText(" full")] } }),
   );
 
   // Widepoint Controls.
@@ -590,15 +590,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   );
   card(
     ids.tailRail,
-    valueTag(`${o.tailRailLength}%`),
+    valueTag(`${plain(o.tailRailLength)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.tailRail)?.tailRailLength ?? o.tailRailLength)}%`), guideText(" long")),
-    fig(ids.tailRail, "tailhalf", { label: { role: "value", parts: [guideText("Tail Rail "), guideFigure(`${o.tailRailLength}%`)] } }),
+    fig(ids.tailRail, "tailhalf", { label: { role: "value", parts: [guideText("Tail Rail "), guideFigure(`${plain(o.tailRailLength)}%`)] } }),
   );
   card(
     ids.noseRail,
-    valueTag(`${o.noseRailLength}%`),
+    valueTag(`${plain(o.noseRailLength)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.noseRail)?.noseRailLength ?? o.noseRailLength)}%`), guideText(" long")),
-    fig(ids.noseRail, "nosehalf", { label: { role: "value", parts: [guideText("Nose Rail "), guideFigure(`${o.noseRailLength}%`)] } }),
+    fig(ids.noseRail, "nosehalf", { label: { role: "value", parts: [guideText("Nose Rail "), guideFigure(`${plain(o.noseRailLength)}%`)] } }),
   );
 
   // Tail Controls: the five tails, each on this board.
@@ -658,15 +658,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   // Tail Angle: `—` on a diamond, the board drawn as it is.
   card(
     ids.tailAngle,
-    g.tailAnglePinned ? naTag("—") : valueTag(`${o.tailAngle}°`),
+    g.tailAnglePinned ? naTag("—") : valueTag(`${plain(o.tailAngle)}°`),
     dashed(guideFigure(`${plain(pushOf(ids.tailAngle)?.tailAngle ?? o.tailAngle)}°`)),
-    fig(ids.tailAngle, "tail", g.tailAnglePinned ? {} : { label: { role: "value", parts: [guideFigure(`${o.tailAngle}°`)] } }),
+    fig(ids.tailAngle, "tail", g.tailAnglePinned ? {} : { label: { role: "value", parts: [guideFigure(`${plain(o.tailAngle)}°`)] } }),
   );
   card(
     ids.tailFullness,
-    valueTag(`${o.tailFullness}%`),
+    valueTag(`${plain(o.tailFullness)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.tailFullness)?.tailFullness ?? o.tailFullness)}%`), guideText(" full")),
-    fig(ids.tailFullness, "tail", { label: { role: "value", parts: [guideFigure(`${o.tailFullness}%`), guideText(" full")] } }),
+    fig(ids.tailFullness, "tail", { label: { role: "value", parts: [guideFigure(`${plain(o.tailFullness)}%`), guideText(" full")] } }),
   );
 
   // Wings: the board with the wing "+ Add a wing" would add first, or its own wing 1.

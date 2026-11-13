@@ -31,7 +31,7 @@ import {
   type Closeness,
 } from "../geometry/brd-fit";
 import type { SectionHeight } from "../geometry/bottom-draw";
-import { formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
+import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import type { RockerStationKey } from "../geometry/rocker";
 import {
   formatCentimetres,
@@ -219,8 +219,8 @@ function closeWords(c: Closeness, length: Mm, side: BrdFitCloseWords["side"], sy
   };
 }
 
-const percent = (value: number) => `${Math.round(value)}%`;
-const degreesWords = (value: number) => `${Math.round(value)}°`;
+const percent = (value: number) => `${formatControlNumber(value)}%`;
+const degreesWords = (value: number) => `${formatControlNumber(value)}°`;
 
 /** Every word of the preview, in `system`. */
 export function brdFitWords(look: BrdFitLook, system: UnitsSystem): BrdFitWords {
