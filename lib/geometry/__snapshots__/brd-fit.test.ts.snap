@@ -1,0 +1,593 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a file with no wing fits exactly as before > a hand-made outline with a smooth hip (1/8 inch, eased over 10 to 14 inches from the tail) 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 0,
+      "largest": 3.175,
+      "typical": 0.1808985196452589,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647488412412585,
+      "typical": 0.4996571819599673,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.50180439312426,
+      "typical": 0.5599062753352471,
+    },
+  },
+  "foil": {
+    "center": 57.243113268716186,
+    "nose12": 40.13421935575442,
+    "noseTip": 11.032394604446889,
+    "tail12": 39.34156220806313,
+    "tailTip": 24.337221966342074,
+  },
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 49.99750870648475,
+    "noseFullness": 20.002743760809896,
+    "noseRailLength": 49.99739488742422,
+    "tail": {
+      "endWidth": 93.86993183533681,
+      "kind": "squash",
+    },
+    "tailAngle": 62.427566872180165,
+    "tailFullness": 29.30424760584276,
+    "tailRailLength": 70.9786689044642,
+    "widePointOffset": -25.399999999999977,
+    "widePointWidth": 476.25,
+  },
+  "rocker": {
+    "nose12": 31.096194568172898,
+    "noseTip": 106.79661521699411,
+    "tail12": 20.36670726854311,
+    "tailTip": 38.99695441559179,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > fish|asis|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1723.0043863594992,
+      "largest": 0.4932809431337095,
+      "typical": 0.10285287368392781,
+    },
+    "rocker": {
+      "at": 146.81199999999998,
+      "largest": 0.9808679603367878,
+      "typical": 0.315865070467279,
+    },
+    "thickness": {
+      "at": 418.846,
+      "largest": 0.7311631224584119,
+      "typical": 0.2611156833125815,
+    },
+  },
+  "foil": {
+    "center": 63.65669267441762,
+    "nose12": 47.43218413639841,
+    "noseTip": 16.819458224962748,
+    "tail12": 46.86195422531158,
+    "tailTip": 19.90306353848385,
+  },
+  "outline": {
+    "length": 1727.1999999999998,
+    "noseAngle": 68.53509580379168,
+    "noseFullness": 54.20064113334876,
+    "noseRailLength": 50.0611621562277,
+    "tail": {
+      "endWidth": 253.83233800012607,
+      "kind": "squash",
+    },
+    "tailAngle": 41.27101858298796,
+    "tailFullness": 10.405600097408144,
+    "tailRailLength": 43.765793720314186,
+    "widePointOffset": 50.80000000000007,
+    "widePointWidth": 514.35,
+  },
+  "rocker": {
+    "nose12": 28.604514122132517,
+    "noseTip": 106.29980066183217,
+    "tail12": 19.3805862825873,
+    "tailTip": 48.333137248310656,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > longboard|asis|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 2723.2850530730657,
+      "largest": 2.30417220109276,
+      "typical": 0.7880247054292051,
+    },
+    "rocker": {
+      "at": 130.302,
+      "largest": 1.915524189620129,
+      "typical": 0.5435532609197901,
+    },
+    "thickness": {
+      "at": 2160.27,
+      "largest": 2.7274777390614915,
+      "typical": 0.8283651984723449,
+    },
+  },
+  "foil": {
+    "center": 75.88602015753467,
+    "nose12": 49.8742533797548,
+    "noseTip": 22.681091182926572,
+    "tail12": 49.465007257731386,
+    "tailTip": 23.11134017045773,
+  },
+  "outline": {
+    "length": 2743.2,
+    "noseAngle": 88.14935176810032,
+    "noseFullness": 100,
+    "noseRailLength": 67.1262104648857,
+    "tail": {
+      "endWidth": 216.23100922772525,
+      "kind": "squash",
+    },
+    "tailAngle": 30.068757113348294,
+    "tailFullness": 43.53425113782225,
+    "tailRailLength": 45.36234769791355,
+    "widePointOffset": 88.90000000000009,
+    "widePointWidth": 571.5,
+  },
+  "rocker": {
+    "nose12": 53.56651061484023,
+    "noseTip": 106.67772481628651,
+    "tail12": 42.03588367064627,
+    "tailTip": 88.4211918436493,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > longboard|pin|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 2723.2850530730657,
+      "largest": 2.30417220109276,
+      "typical": 0.976365528717358,
+    },
+    "rocker": {
+      "at": 130.302,
+      "largest": 1.915524189620129,
+      "typical": 0.5435532609197901,
+    },
+    "thickness": {
+      "at": 2160.27,
+      "largest": 2.7274770446615335,
+      "typical": 0.8283370108709831,
+    },
+  },
+  "foil": {
+    "center": 75.88602015753467,
+    "nose12": 49.8742533797548,
+    "noseTip": 22.681091182926572,
+    "tail12": 49.46496738621944,
+    "tailTip": 23.111364940277024,
+  },
+  "outline": {
+    "length": 2743.2,
+    "noseAngle": 88.14935176810032,
+    "noseFullness": 100,
+    "noseRailLength": 67.1262104648857,
+    "tail": {
+      "kind": "pin",
+    },
+    "tailAngle": 30,
+    "tailFullness": 41.81827251536826,
+    "tailRailLength": 45.95022211804475,
+    "widePointOffset": 88.90000000000009,
+    "widePointWidth": 571.5,
+  },
+  "rocker": {
+    "nose12": 53.56651061484023,
+    "noseTip": 106.67772481628651,
+    "tail12": 42.03588367064627,
+    "tailTip": 88.4211918436493,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > longboard|round|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 2723.2850530730657,
+      "largest": 2.30417220109276,
+      "typical": 0.976365528717358,
+    },
+    "rocker": {
+      "at": 130.302,
+      "largest": 1.915524189620129,
+      "typical": 0.5435532609197901,
+    },
+    "thickness": {
+      "at": 2160.27,
+      "largest": 2.7274770446615335,
+      "typical": 0.8283370108709831,
+    },
+  },
+  "foil": {
+    "center": 75.88602015753467,
+    "nose12": 49.8742533797548,
+    "noseTip": 22.681091182926572,
+    "tail12": 49.46496738621944,
+    "tailTip": 23.111364940277024,
+  },
+  "outline": {
+    "length": 2743.2,
+    "noseAngle": 88.14935176810032,
+    "noseFullness": 100,
+    "noseRailLength": 67.1262104648857,
+    "tail": {
+      "kind": "pin",
+    },
+    "tailAngle": 30,
+    "tailFullness": 41.81827251536826,
+    "tailRailLength": 45.95022211804475,
+    "widePointOffset": 88.90000000000009,
+    "widePointWidth": 571.5,
+  },
+  "rocker": {
+    "nose12": 53.56651061484023,
+    "noseTip": 106.67772481628651,
+    "tail12": 42.03588367064627,
+    "tailTip": 88.4211918436493,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > midlength|asis|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 439.88061268632384,
+      "largest": 0.21862407846217424,
+      "typical": 0.0887115570100908,
+    },
+    "rocker": {
+      "at": 2058.797,
+      "largest": 0.9204750467975344,
+      "typical": 0.33050076299060777,
+    },
+    "thickness": {
+      "at": 742.696,
+      "largest": 2.1168530178468004,
+      "typical": 0.7240692239630074,
+    },
+  },
+  "foil": {
+    "center": 69.82585076219962,
+    "nose12": 44.94949082362184,
+    "noseTip": 15.159367232603557,
+    "tail12": 47.08638703470601,
+    "tailTip": 19.877398296741735,
+  },
+  "outline": {
+    "length": 2184.4,
+    "noseAngle": 63.96370975658908,
+    "noseFullness": 67.50892208480974,
+    "noseRailLength": 76.22466644060934,
+    "tail": {
+      "kind": "round",
+    },
+    "tailAngle": 89.68550009327305,
+    "tailFullness": 45.12722566505385,
+    "tailRailLength": 77.36745086215927,
+    "widePointOffset": 69.4462427745666,
+    "widePointWidth": 539.731376412904,
+  },
+  "rocker": {
+    "nose12": 34.30385638128555,
+    "noseTip": 96.78475277771926,
+    "tail12": 25.471655790190265,
+    "tailTip": 56.88983311938113,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > midlength|pin|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 439.88061268632384,
+      "largest": 0.21862407846217424,
+      "typical": 0.0887115570100908,
+    },
+    "rocker": {
+      "at": 2058.797,
+      "largest": 0.9204750467975344,
+      "typical": 0.33050076299060777,
+    },
+    "thickness": {
+      "at": 742.696,
+      "largest": 2.1168530178468004,
+      "typical": 0.7240692239630074,
+    },
+  },
+  "foil": {
+    "center": 69.82585076219962,
+    "nose12": 44.94949082362184,
+    "noseTip": 15.159367232603557,
+    "tail12": 47.08638703470601,
+    "tailTip": 19.877398296741735,
+  },
+  "outline": {
+    "length": 2184.4,
+    "noseAngle": 63.96370975658908,
+    "noseFullness": 67.50892208480974,
+    "noseRailLength": 76.22466644060934,
+    "tail": {
+      "kind": "round",
+    },
+    "tailAngle": 89.68550009327305,
+    "tailFullness": 45.12722566505385,
+    "tailRailLength": 77.36745086215927,
+    "widePointOffset": 69.4462427745666,
+    "widePointWidth": 539.731376412904,
+  },
+  "rocker": {
+    "nose12": 34.30385638128555,
+    "noseTip": 96.78475277771926,
+    "tail12": 25.471655790190265,
+    "tailTip": 56.88983311938113,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > midlength|round|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 439.88061268632384,
+      "largest": 0.21862407846217424,
+      "typical": 0.0887115570100908,
+    },
+    "rocker": {
+      "at": 2058.797,
+      "largest": 0.9204750467975344,
+      "typical": 0.33050076299060777,
+    },
+    "thickness": {
+      "at": 742.696,
+      "largest": 2.1168530178468004,
+      "typical": 0.7240692239630074,
+    },
+  },
+  "foil": {
+    "center": 69.82585076219962,
+    "nose12": 44.94949082362184,
+    "noseTip": 15.159367232603557,
+    "tail12": 47.08638703470601,
+    "tailTip": 19.877398296741735,
+  },
+  "outline": {
+    "length": 2184.4,
+    "noseAngle": 63.96370975658908,
+    "noseFullness": 67.50892208480974,
+    "noseRailLength": 76.22466644060934,
+    "tail": {
+      "kind": "round",
+    },
+    "tailAngle": 89.68550009327305,
+    "tailFullness": 45.12722566505385,
+    "tailRailLength": 77.36745086215927,
+    "widePointOffset": 69.4462427745666,
+    "widePointWidth": 539.731376412904,
+  },
+  "rocker": {
+    "nose12": 34.30385638128555,
+    "noseTip": 96.78475277771926,
+    "tail12": 25.471655790190265,
+    "tailTip": 56.88983311938113,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > shortboard|asis|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1875.9117792612446,
+      "largest": 0.13408106935509148,
+      "typical": 0.03753279961412817,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647488412412585,
+      "typical": 0.4996571819599673,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.50180439312426,
+      "typical": 0.5599062753352471,
+    },
+  },
+  "foil": {
+    "center": 57.243113268716186,
+    "nose12": 40.13421935575442,
+    "noseTip": 11.032394604446889,
+    "tail12": 39.34156220806313,
+    "tailTip": 24.337221966342074,
+  },
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.44612616783152,
+      "kind": "squash",
+    },
+    "tailAngle": 54.88350472298883,
+    "tailFullness": 45.67321031092527,
+    "tailRailLength": 49.24457014481264,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+  },
+  "rocker": {
+    "nose12": 31.096194568172898,
+    "noseTip": 106.79661521699411,
+    "tail12": 20.36670726854311,
+    "tailTip": 38.99695441559179,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > shortboard|diamond|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 88.89999999999999,
+      "largest": 7.996051459616998,
+      "typical": 3.1062288942654086,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647464766463643,
+      "typical": 0.4996871496101308,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5018638717499684,
+      "typical": 0.5598051230439883,
+    },
+  },
+  "foil": {
+    "center": 57.24313733520165,
+    "nose12": 40.13403951002445,
+    "noseTip": 11.032369834627595,
+    "tail12": 39.34165301014916,
+    "tailTip": 24.336737411559984,
+  },
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "kind": "pin",
+    },
+    "tailAngle": 71.38639515829433,
+    "tailFullness": 77.09442520339344,
+    "tailRailLength": 99.61678311067553,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+  },
+  "rocker": {
+    "nose12": 31.096221766699607,
+    "noseTip": 106.79669115503319,
+    "tail12": 20.366749226062414,
+    "tailTip": 38.99591344146587,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > shortboard|pin|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 8.581313686606908,
+      "largest": 0.16956639526778472,
+      "typical": 0.0502061763049719,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647488412412585,
+      "typical": 0.4996571819599673,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.50180439312426,
+      "typical": 0.5598911965483792,
+    },
+  },
+  "foil": {
+    "center": 57.243113268716186,
+    "nose12": 40.13421935575442,
+    "noseTip": 11.032394604446889,
+    "tail12": 39.34156220806313,
+    "tailTip": 24.337456589438013,
+  },
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "kind": "pin",
+    },
+    "tailAngle": 55.41977332383615,
+    "tailFullness": 44.69465148331611,
+    "tailRailLength": 50.302925420554644,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+  },
+  "rocker": {
+    "nose12": 31.096194568172898,
+    "noseTip": 106.79661521699411,
+    "tail12": 20.36670726854311,
+    "tailTip": 38.99695441559179,
+  },
+}
+`;
+
+exports[`a file with no wing fits exactly as before > shortboard|round|hard 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 8.581313686606908,
+      "largest": 0.16956639526778472,
+      "typical": 0.0502061763049719,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647488412412585,
+      "typical": 0.4996571819599673,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.50180439312426,
+      "typical": 0.5598911965483792,
+    },
+  },
+  "foil": {
+    "center": 57.243113268716186,
+    "nose12": 40.13421935575442,
+    "noseTip": 11.032394604446889,
+    "tail12": 39.34156220806313,
+    "tailTip": 24.337456589438013,
+  },
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "kind": "pin",
+    },
+    "tailAngle": 55.41977332383615,
+    "tailFullness": 44.69465148331611,
+    "tailRailLength": 50.302925420554644,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+  },
+  "rocker": {
+    "nose12": 31.096194568172898,
+    "noseTip": 106.79661521699411,
+    "tail12": 20.36670726854311,
+    "tailTip": 38.99695441559179,
+  },
+}
+`;

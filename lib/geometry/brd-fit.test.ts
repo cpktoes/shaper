@@ -31,7 +31,8 @@ import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
 import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
 import { inchesToMm, mm } from "./units";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { phase16Boards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import { MAX_WINGS, WING_DEPTH_RANGE_IN, WING_POSITION_MIN_IN, WING_STEP_IN, clampWingStations, wingPositionTop, type Wing } from "./wings";
 
 /**
  * The closest-fit maths (quick 261113-d9b). The round trip is the best proof the fit works, because the right answer is
@@ -160,6 +161,13 @@ function tripOf(label: string, handSet = false): Trip {
   const board = BOARDS.find((b) => b.label === label);
   if (!board) throw new Error(`no board ${label}`);
   const fields: DesignSummaryFields = handSet ? { ...board.fields, blank: null, rocker: DEFAULT_FALLBACK_ROCKER } : board.fields;
+  return tripFromFields(key, fields);
+}
+
+/** A board written with the app's own `.brd` writer, read back and fitted, timed; kept under `key`. */
+function tripFromFields(key: string, fields: DesignSummaryFields): Trip {
+  const known = cache.get(key);
+  if (known) return known;
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -533,4 +541,163 @@ describe("fitBoardToBrd with a stringer lift: the board is planed lower under a 
     expect(Math.abs(lifted.closeness.rocker.largest - direct.closeness.rocker.largest)).toBeLessThan(0.05);
     expect(Math.abs(lifted.closeness.thickness.largest - direct.closeness.thickness.largest)).toBeLessThan(0.05);
   });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A file with no wing fits exactly as before (quick 261113-hyy)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Recorded on the code as it stood BEFORE wings were found (quick 261113-hyy): twelve wingless boards, each fit's outline
+ * controls, rocker, foil and closeness figures written out whole in `__snapshots__/brd-fit.test.ts.snap`. The wingless path
+ * must not move by a digit, so this snapshot is never re-recorded: a failure here means the fit changed for a file without a
+ * wing, which is the one thing that task promised not to do.
+ */
+describe("a file with no wing fits exactly as before", () => {
+  const SLOW = 120_000;
+  const smoothstep = (a: number, b: number, x: number) => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+
+  const labels = [...TRIP_LABELS, "fish|asis|hard", "shortboard|diamond|hard"];
+  it.each(labels)("%s", (label) => {
+    const { fit } = tripOf(label);
+    expect({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, closeness: fit.closeness }).toMatchSnapshot();
+  }, SLOW);
+
+  it("a hand-made outline with a smooth hip (1/8 inch, eased over 10 to 14 inches from the tail)", () => {
+    const trip = tripOf("shortboard|asis|hard");
+    const hip = drawn(trip.fields).map(([x, y]): P2 => [x, y - inchesToMm(1 / 8) * (1 - smoothstep(inchesToMm(10), inchesToMm(14), x))]);
+    const fit = fitBoardToBrd({ length: trip.file.length, outline: hip, bottom: trip.file.bottom, deck: trip.file.deck });
+    expect({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, closeness: fit.closeness }).toMatchSnapshot();
+  }, SLOW);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A file with wings: our curve and our wings fitted around them (quick 261113-hyy)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const WING_BOARDS = phase16WingBoards();
+
+/** A winged board as the app writes it, read back and fitted. `secondRadius` sets wing 2's corner radius (the app's own default rounds it as far as it fits). */
+function wingTripOf(label: string, secondRadius?: number): Trip {
+  const board = WING_BOARDS.find((b) => b.label === label);
+  if (!board) throw new Error(`no board ${label}`);
+  let fields = board.fields;
+  if (secondRadius !== undefined) {
+    const wings = fields.outline.wings!.map((w, k): Wing => (k === 1 ? { ...w, radius: mm(secondRadius) } : w));
+    fields = { ...fields, outline: { ...fields.outline, wings } };
+  }
+  return tripFromFields(`${label}|r${secondRadius ?? "default"}`, fields);
+}
+
+/** The curve alone (no wings) the fit drew, against the board's own, outside each true wing's stretch: the largest gap between the two lines. */
+function baseCurveGap(trip: Trip): number {
+  const fitSpec = { ...trip.fit.outline, wings: undefined };
+  const ownSpec = { ...trip.fields.outline, wings: undefined };
+  const truth = trip.fields.outline.wings ?? [];
+  const outside = ([s]: P2) => !truth.some((w) => s >= w.station - w.run - inchesToMm(1) && s <= w.station + inchesToMm(1));
+  return polylineGap(drawn({ ...trip.fields, outline: ownSpec }).filter(outside), drawn({ ...trip.fields, outline: fitSpec }).filter(outside)).largest;
+}
+
+/** Every wing sits inside the sliders' ranges and the order rule, as the WINGS tab would hold it. */
+function expectWingsHoldable(fit: BrdFit) {
+  const wings = fit.outline.wings!;
+  const geometry = buildOutline({ ...fit.outline, wings: undefined });
+  for (const w of wings) {
+    expect(w.station).toBeGreaterThanOrEqual(inchesToMm(WING_POSITION_MIN_IN) - 1e-9);
+    expect(w.station).toBeLessThanOrEqual(wingPositionTop(geometry) + 1e-9);
+    expect(w.depth).toBeGreaterThanOrEqual(inchesToMm(WING_DEPTH_RANGE_IN.min) - 1e-9);
+    expect(w.depth).toBeLessThanOrEqual(inchesToMm(WING_DEPTH_RANGE_IN.max) + 1e-9);
+    expect(w.run).toBeGreaterThanOrEqual(0);
+    expect(w.radius).toBe(0);
+    expect(w.lock).toBeNull();
+    expect(w.finOffset).toBe(0);
+  }
+  expect(clampWingStations(wings, geometry)).toEqual(wings);
+  expect(wings.length).toBeLessThanOrEqual(MAX_WINGS);
+}
+
+describe("every file without a wing keeps its fit as it was", () => {
+  it("has no wings key on its outline and no file wings, for every wingless round trip", () => {
+    for (const label of ["shortboard|asis|hard", "fish|asis|hard", "longboard|round|hard"]) {
+      const { fit } = tripOf(label);
+      expect("wings" in fit.outline).toBe(false);
+      expect(fit.fileWings).toEqual([]);
+    }
+  }, 120_000);
+});
+
+describe.each([
+  { label: "wing|shortboard|one", radius: undefined, nose: 1 },
+  { label: "wing|midlength|square", radius: undefined, nose: 1 },
+  { label: "wing|fish|rounded", radius: undefined, nose: 1 },
+  { label: "wing|longboard|deep", radius: undefined, nose: 3 },
+  { label: "wing|shortboard|two", radius: inchesToMm(1 / 4), nose: 1 },
+])("the round trip of $label (wing 2's corners $radius)", ({ label, radius, nose }) => {
+  const SLOW = 120_000;
+  const slider = inchesToMm(WING_STEP_IN);
+
+  it("finds the file's wings and comes back with ours within two slider steps of the truth", () => {
+    const trip = wingTripOf(label, radius);
+    const truth = trip.fields.outline.wings!;
+    const ours = trip.fit.outline.wings!;
+    expect(trip.fit.fileWings).toHaveLength(truth.length);
+    expect(ours).toHaveLength(truth.length);
+    truth.forEach((w, k) => {
+      expect(Math.abs(ours[k].station - w.station), `wing ${k + 1} station`).toBeLessThanOrEqual(2 * slider);
+      expect(Math.abs(ours[k].depth - w.depth), `wing ${k + 1} depth`).toBeLessThanOrEqual(2 * slider);
+      expect(Math.abs(ours[k].run - w.run), `wing ${k + 1} run`).toBeLessThanOrEqual(2 * slider);
+    });
+  }, SLOW);
+
+  it("opens the wings sharp, with no fin lock, inside every slider's range and the order rule", () => {
+    expectWingsHoldable(wingTripOf(label, radius).fit);
+    expectInsideRanges(wingTripOf(label, radius).fit);
+  }, SLOW);
+
+  it("comes back the same kind of tail", () => {
+    const trip = wingTripOf(label, radius);
+    // The same tail kind the same board's wingless fit makes (a swallow or diamond is fitted as a squash, as ever).
+    const preset = label.split("|")[1];
+    expect(trip.fit.outline.tail.kind).toBe(tripOf(`${preset}|asis|hard`).fit.outline.tail.kind);
+  }, SLOW);
+
+  it("draws a winged outline within a millimetre of the file (the Longboard's nose within 3), and the curve alone within a millimetre of the board's own", () => {
+    const trip = wingTripOf(label, radius);
+    expect(trip.fit.closeness.outline.largest).toBeLessThan(nose === 3 ? 3 : 1);
+    expect(baseCurveGap(trip)).toBeLessThan(nose === 3 ? 3 : 1);
+    // The drawn line is the winged one: the app's own applyWings on the fitted controls.
+    expect(trip.fit.lines.outline).toEqual(drawn({ ...trip.fields, outline: trip.fit.outline }));
+  }, SLOW);
+
+  it("beats the smooth curve a file with a wing used to be fitted with", () => {
+    const trip = wingTripOf(label, radius);
+    const without = polylineGap(trip.file.outline, drawn({ ...trip.fields, outline: { ...trip.fit.outline, wings: undefined } }));
+    expect(trip.fit.closeness.outline.largest).toBeLessThan(without.largest);
+  }, SLOW);
+});
+
+describe("the app's own default second wing", () => {
+  // "+ Add wing 2" rounds the wing as far as it fits (1 7/16" on a 1/2" run): that step is a long gentle S, and a sharp wing
+  // matches it with a longer run (measured 0.80" for 0.5") sitting a little forward. The outline still follows it closely;
+  // that is the honest limit of not fitting the corner radius, so only the outline and wing 1 are held to the truth here.
+  it("still finds two wings, draws an outline within a millimetre, and wing 1 within two slider steps", () => {
+    const trip = wingTripOf("wing|shortboard|two");
+    const truth = trip.fields.outline.wings!;
+    const ours = trip.fit.outline.wings!;
+    expect(trip.fit.fileWings).toHaveLength(2);
+    expect(ours).toHaveLength(2);
+    expect(trip.fit.closeness.outline.largest).toBeLessThan(1);
+    for (const key of ["station", "depth", "run"] as const) expect(Math.abs(ours[0][key] - truth[0][key])).toBeLessThanOrEqual(2 * inchesToMm(WING_STEP_IN));
+    expect(ours[0].station).toBeGreaterThan(ours[1].station);
+    expectWingsHoldable(trip.fit);
+  }, 120_000);
+
+  it("finishes the winged fit of a two-wing board in under a second and a half", () => {
+    const trip = wingTripOf("wing|shortboard|two", inchesToMm(1 / 4));
+    console.log(`the two-wing Shortboard's whole fit took ${trip.ms.toFixed(0)} ms (a wingless Shortboard ${tripOf("shortboard|asis|hard").ms.toFixed(0)} ms)`);
+    expect(trip.ms).toBeLessThan(1500);
+  }, 120_000);
 });

@@ -46,11 +46,22 @@
 import type { P2 } from "./bezier-fit";
 import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "./board";
 import { buildFallbackProfile } from "./board-profile";
+import { findBrdWings, type BrdFileWing } from "./brd-wings";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "./foil";
 import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
 import { ROCKER_LIFT_RANGE_IN, rockerStationPositions, type FiveStationRocker, type RockerStationKey } from "./rocker";
 import { degrees, inchesToMm, mm, type Mm } from "./units";
+import {
+  WING_DEPTH_RANGE_IN,
+  WING_POSITION_MIN_IN,
+  WING_RUN_RANGE_IN,
+  clampWingStations,
+  wingFootprint,
+  wingPositionTop,
+  wingTakeAt,
+  type Wing,
+} from "./wings";
 
 /** A board's three curves in millimetres: the shape a reader hands over (`lib/export/brd-read.ts`). */
 export interface BrdLines {
@@ -82,6 +93,11 @@ export interface BrdFit {
    * a fit made without a lift): what the board was planed lower by.
    */
   stringerLift: Record<RockerStationKey, Mm>;
+  /**
+   * The wings the file's outline draws, as measured (nose-most first, as wing 1 is on the WINGS tab); empty for a file with none.
+   * When there are any, `outline.wings` holds ours, fitted around them, in the same order: wing k here is wing k there.
+   */
+  fileWings: BrdFileWing[];
 }
 
 /** The last inch at each tip is left out of the rocker and thickness figures: the file rounds its tips there, ours ends square. */
@@ -358,6 +374,7 @@ const RAD_TO_DEG = 180 / Math.PI;
 interface OutlineFit {
   spec: OutlineSpec;
   drawn: P2[];
+  fileWings: BrdFileWing[];
 }
 
 function fitOutline(lines: BrdLines): OutlineFit {
@@ -430,14 +447,38 @@ function fitOutline(lines: BrdLines): OutlineFit {
     tailRailLength: fromUnit(x[2], limits.railLength),
     tail: squash ? { kind: "squash", endWidth: mm(clamp(x[3], 0, 1) * blockMax) } : { kind: "round" },
   });
-  const tailFamily = (squash: boolean) => {
+  const tailFamily = (squash: boolean, target: PackedLine = tailFilePacked) => {
     const tailScore = (x: readonly number[]) =>
-      score(gapBetween(tailFilePacked, packLine(drawnOutline(tailSpec(x, squash)).filter((p) => p[0] <= wideStation + 1e-6))));
+      score(gapBetween(target, packLine(drawnOutline(tailSpec(x, squash)).filter((p) => p[0] <= wideStation + 1e-6))));
     const endUnit = clamp((2 * endHalf) / blockMax, 0, 1);
     const starts = squash ? [[tailUnit, 0.3, 0.5, endUnit], [tailUnit, 0.7, 0.5, endUnit]] : [[tailUnit, 0.3, 0.5], [tailUnit, 0.7, 0.5]];
     const runs = starts.map((start) => nelderMead(tailScore, start));
     return runs[0].value <= runs[1].value ? runs[0] : runs[1];
   };
+  // A file whose outline steps in on the way to the tail has a wing (or two): the tail is then fitted around them.
+  const fileWings = findBrdWings(file);
+  if (fileWings.length > 0) {
+    const spec = fitTailAroundWings({
+      length: mm(length),
+      wideStation,
+      file,
+      tailFile,
+      tailFilePacked,
+      endHalf,
+      tailSpec,
+      tailFamily,
+      fileWings,
+      namePointed: (unit) => {
+        // A pointed tail is called pin or round by whichever preset's angle is nearer: the geometry draws the two alike.
+        const angle = fromUnit(unit, limits.tailAngle);
+        return Math.abs(angle - TAIL_PRESETS.pin.tailAngle) <= Math.abs(angle - TAIL_PRESETS.round.tailAngle) ? "pin" : "round";
+      },
+      fromUnit,
+      toUnit,
+    });
+    return { spec, drawn: drawnOutline(spec), fileWings };
+  }
+
   const pointed = tailFamily(false);
   const squashed = tailFamily(true);
   const useSquash = endHalf > 1 ? true : squashed.value < pointed.value - 0.1;
@@ -450,7 +491,125 @@ function fitOutline(lines: BrdLines): OutlineFit {
     const kind = Math.abs(angle - TAIL_PRESETS.pin.tailAngle) <= Math.abs(angle - TAIL_PRESETS.round.tailAngle) ? "pin" : "round";
     spec = { ...tailSpec(pointed.x, false), tail: { kind } };
   }
-  return { spec, drawn: drawnOutline(spec) };
+  return { spec, drawn: drawnOutline(spec), fileWings: [] };
+}
+
+/** What the winged tail fit needs from `fitOutline`: the file's tail half, the tail's own spec builder and its search. */
+interface TailAroundWings {
+  length: Mm;
+  wideStation: number;
+  file: readonly P2[];
+  /** The file's points up to its wide point: the indices in `fileWings` index this. */
+  tailFile: readonly P2[];
+  tailFilePacked: PackedLine;
+  endHalf: number;
+  tailSpec: (x: readonly number[], squash: boolean) => OutlineSpec;
+  tailFamily: (squash: boolean, target?: PackedLine) => { x: number[]; value: number };
+  fileWings: readonly BrdFileWing[];
+  namePointed: (angleUnit: number) => "pin" | "round";
+  fromUnit: (unit: number, range: { min: number; max: number }) => number;
+  toUnit: (value: number, range: { min: number; max: number }) => number;
+}
+
+/** Rounds of "fit the wings with the curve held, then refit the curve to what those wings leave": the best round is kept. */
+const WING_FIT_ROUNDS = 3;
+
+/**
+ * The tail, and our wings, fitted to a file whose outline has wings (quick 261113-hyy). The app draws a wing by taking its
+ * depth out of the curve behind it, fading linearly to nothing at the tail pod (construction A, `wings.ts`): ahead of the
+ * wing the outline IS the curve, behind it the curve less the wing's take. So the honest target is that the curve PLUS our
+ * wings, drawn by the app's own `buildOutline`, lies on the file's outline end to end, and the curve is fitted to the outline
+ * above the wing and to the tail block, never through the step:
+ *  1. The file with the wing taken back out (its depth added back, fading to nothing at the tail like the app's own) is a
+ *     smooth outline: the curve is fitted to that, both tail families as for any file.
+ *  2. Our wings are seeded where the file's are, their depths from what that curve stands above the file at each wing's inner
+ *     corner, and polished against the file's tail half with the curve held.
+ *  3. The curve is then refitted to what the polished wings leave behind them (the file's points the wings no longer cover,
+ *     lifted by exactly what the app takes there), and the wings polished again; three rounds, the best-scoring kept. The
+ *     polish alone gets a single wing right but two wings wander; refitting the curve from the wings fixes that.
+ * Measured on the Fryer squash twin's flyer: the file's wing 7 7/16" off the tail, 1/4" deep, 3/8" run; ours 7 3/8", 1/4",
+ * 3/8"; the outline's widest gap falls from 2.75 mm to 1.29 mm (what is left is the squash tail's rounded corner against ours
+ * square, the same limit a wingless squash has). Every wing opens with sharp corners (radius 0), no fin lock and its values as
+ * found, never rounded to the slider's grid: fitting the radius was tried and gained under 0.01 mm on the Fryer and was not
+ * stable on the app's own rounded wings (it trades against run and position).
+ */
+function fitTailAroundWings(c: TailAroundWings): OutlineSpec {
+  const { fileWings, tailFile, wideStation } = c;
+  const geometry = { length: c.length, widePointStation: mm(wideStation) };
+  const range = (r: { min: number; max: number }) => ({ min: inchesToMm(r.min), max: inchesToMm(r.max) });
+  const stationRange = { min: inchesToMm(WING_POSITION_MIN_IN), max: wingPositionTop(geometry) };
+  const depthRange = range(WING_DEPTH_RANGE_IN);
+  const runRange = range(WING_RUN_RANGE_IN);
+  const unit = (v: number, r: { min: number; max: number }) => clamp(c.toUnit(v, r), 0, 1);
+
+  /** Our wings from three unit numbers each, inside the sliders' ranges and the order rule. */
+  const wingsOf = (u: readonly number[]): Wing[] => [
+    ...clampWingStations(
+      fileWings.map((_, k) => ({
+        station: mm(c.fromUnit(u[3 * k], stationRange)),
+        depth: mm(c.fromUnit(u[3 * k + 1], depthRange)),
+        run: mm(c.fromUnit(u[3 * k + 2], runRange)),
+        radius: mm(0),
+        lock: null,
+        finOffset: mm(0),
+      })),
+      geometry,
+    ),
+  ];
+
+  /**
+   * The tail half's points less every wing's step and footprint: for wing k, each point before its outer corner that is
+   * either at or past its inner corner (by index) or nose-ward of `low[k]` less a millimetre. The outer corner's own point
+   * stays (a square step's two points share one station: only the index tells them apart).
+   */
+  const keep = (low: readonly number[]): P2[] =>
+    tailFile.filter(([x], i) => !fileWings.some((w, k) => i < w.outerIndex && (i >= w.innerIndex || x >= low[k] - 1)));
+
+  const score = (g: Closeness) => g.largest + g.typical;
+  const tailGap = (target: PackedLine, spec: OutlineSpec) => gapBetween(target, packLine(drawnOutline(spec).filter((p) => p[0] <= wideStation + 1e-6)));
+
+  // 1. The file with our wings taken back out: each kept point lifted by the wings' depths, fading to nothing at the tail.
+  const lifted = keep(fileWings.map((w) => w.inner)).map(([x, y]): P2 => [
+    x,
+    y + fileWings.reduce((sum, w) => sum + (x <= w.inner ? (w.depth * x) / w.inner : 0), 0),
+  ]);
+  const base = packLine(lifted);
+  const pointed = c.tailFamily(false, base);
+  const squashed = c.tailFamily(true, base);
+  const squash = c.endHalf > 1 ? true : squashed.value < pointed.value - 0.1;
+  let xs = [...(squash ? squashed.x : pointed.x)];
+
+  // 2. Seeds: the depth each wing must take, so that the curve less the wings stands on the file at the wing's inner corner.
+  const curve = drawnOutline(c.tailSpec(xs, squash));
+  const depths: number[] = [];
+  fileWings.forEach((w) => {
+    const before = depths.reduce((sum, d, j) => sum + d * Math.min(1, w.inner / fileWings[j].inner), 0);
+    depths.push(clamp(lineHighestAt(curve, w.inner) - before - lineHighestAt(c.file, w.inner), depthRange.min, depthRange.max));
+  });
+  let u = fileWings.flatMap((w, k) => [
+    unit(w.station, stationRange),
+    unit(depths[k], depthRange),
+    unit(clamp(w.run, runRange.min, runRange.max), runRange),
+  ]);
+
+  // 3. Polish the wings with the curve held, then refit the curve to what they leave; keep the best round.
+  let best: { value: number; xs: number[]; u: number[] } | null = null;
+  for (let round = 0; round < WING_FIT_ROUNDS; round++) {
+    const held = c.tailSpec(xs, squash);
+    const polished = nelderMead((x) => score(tailGap(c.tailFilePacked, { ...held, wings: wingsOf(x) })), u);
+    u = polished.x;
+    if (!best || polished.value < best.value) best = { value: polished.value, xs: [...xs], u: [...u] };
+    if (round === WING_FIT_ROUNDS - 1) break;
+    const wings = wingsOf(u);
+    const drawn = buildOutline({ ...held, wings });
+    const feet = wings.map((w) => wingFootprint(w).inner);
+    const behind = keep(fileWings.map((w, k) => Math.min(feet[k], w.inner))).map(([x, y]): P2 => [x, y + wingTakeAt(drawn, mm(x))]);
+    const target = packLine(behind);
+    xs = nelderMead((x) => score(tailGap(target, c.tailSpec(x, squash))), xs).x;
+  }
+  const answer = best as { value: number; xs: number[]; u: number[] };
+  const spec: OutlineSpec = { ...c.tailSpec(answer.xs, squash), wings: wingsOf(answer.u) };
+  return squash ? spec : { ...spec, tail: { kind: c.namePointed(answer.xs[0]) } };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -606,6 +765,7 @@ export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => n
       thickness: side.thicknessCloseness,
     },
     stringerLift: side.stringerLift,
+    fileWings: outline.fileWings,
   };
 }
 

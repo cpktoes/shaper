@@ -20,7 +20,7 @@ import { buildOutline } from "@/lib/geometry/outline";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
-import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import { phase16Boards, phase16WingBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { BOARD_NAME_MAX_LENGTH, readBoardEntry } from "./board-file";
 import { buildSnapshot } from "./design-snapshot";
 import { brdBoardFields, brdBoardName } from "./brd-board";
@@ -32,7 +32,7 @@ import { brdBoardFields, brdBoardName } from "./brd-board";
  */
 
 function fitOf(label: string) {
-  const fields = phase16Boards().find((b) => b.label === label)!.fields;
+  const fields = [...phase16Boards(), ...phase16WingBoards()].find((b) => b.label === label)!.fields;
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -177,5 +177,31 @@ describe("brdBoardFields with a bottom (quick 261113-gwr)", () => {
       worst = Math.max(worst, Math.abs(ours - drawn));
     }
     expect(worst).toBeLessThan(0.05);
+  }, 120_000);
+});
+
+describe("brdBoardFields with wings (quick 261113-hyy)", () => {
+  const winged = fitOf("wing|shortboard|one");
+  const plain = fitOf("shortboard|asis|hard");
+
+  it("keeps the fitted wing exactly, through the board reader, so it opens on the WINGS tab as a wing a shaper added", () => {
+    expect(winged.outline.wings).toHaveLength(1);
+    const fields = brdBoardFields(winged, "Flyer.brd")!;
+    expect(fields.outline.wings).toEqual(winged.outline.wings);
+    expect(fields.outline).toEqual(winged.outline);
+    expect(fields.outline.wings![0].lock).toBeNull();
+    // And the board draws the outline the preview's dashed line showed.
+    const theirs = buildOutline(fields.outline).points.map((p): P2 => [p.station, p.halfWidth]);
+    const drawnTheirs: P2[] = theirs[0][1] > 1e-6 ? [[theirs[0][0], 0], ...theirs] : theirs;
+    const ours = drawn(winged);
+    expect(drawnTheirs).toHaveLength(ours.length);
+    for (let i = 0; i < ours.length; i++) {
+      expect(drawnTheirs[i][0]).toBeCloseTo(ours[i][0], 9);
+      expect(drawnTheirs[i][1]).toBeCloseTo(ours[i][1], 9);
+    }
+  }, 120_000);
+
+  it("leaves a wingless fit with no wings key at all", () => {
+    expect("wings" in brdBoardFields(plain, "Plain.brd")!.outline).toBe(false);
   }, 120_000);
 });
