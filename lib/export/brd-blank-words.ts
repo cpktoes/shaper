@@ -28,6 +28,8 @@ export type BrdBlankState =
  * or a single inner list holding the one quiet line while loading or when the catalogue did not load.
  */
 export interface BrdBlankWords {
+  /** Where the suggestions are, so a screen or a page can tell the quiet lines from the real block. */
+  status: BrdBlankState["status"];
   caption: string;
   intro: string | null;
   lines: string[][];
@@ -48,14 +50,15 @@ export const BRD_BLANK_COPY = {
 /** The block's words in `system`. The file's figures are the ones the ROCKER table shows (`brdFileStations`). */
 export function brdBlankWords(state: BrdBlankState, look: BrdFitLook, system: UnitsSystem): BrdBlankWords {
   const caption = BRD_BLANK_COPY.caption;
-  if (state.status === "loading") return { caption, intro: null, lines: [[BRD_BLANK_COPY.loading]] };
-  if (state.status === "unavailable") return { caption, intro: null, lines: [[BRD_BLANK_COPY.unavailable]] };
+  if (state.status === "loading") return { status: "loading", caption, intro: null, lines: [[BRD_BLANK_COPY.loading]] };
+  if (state.status === "unavailable") return { status: "unavailable", caption, intro: null, lines: [[BRD_BLANK_COPY.unavailable]] };
 
   const length = look.fit.outline.length;
   const file = brdFileStations(look.board);
   const station = stationLabel(system);
   const within = (largest: number) => lessThan(formatMarkOrLess(mm(largest), system));
   return {
+    status: "ready",
     caption,
     intro: BRD_BLANK_COPY.intro,
     lines: state.suggestions.map(({ vendor, pick }) => {

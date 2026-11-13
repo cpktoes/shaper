@@ -82,6 +82,7 @@ describe("brdBlankWords — ready", () => {
   const words = brdBlankWords(ready(real), look, "imperial");
 
   it("gives the caption, the intro and one block of lines per maker, in the makers' order", () => {
+    expect(words.status).toBe("ready");
     expect(words.caption).toBe("SUGGESTED BLANKS");
     expect(words.caption).toBe(BRD_BLANK_COPY.caption);
     expect(words.intro).toBe(BRD_BLANK_COPY.intro);
@@ -145,6 +146,7 @@ describe("brdBlankWords — Metric", () => {
 describe("brdBlankWords — loading and unavailable", () => {
   it("is one quiet line while the catalogue loads, with no intro", () => {
     expect(brdBlankWords({ status: "loading" }, look, "imperial")).toEqual({
+      status: "loading",
       caption: "SUGGESTED BLANKS",
       intro: null,
       lines: [["Looking for blanks…"]],
@@ -153,6 +155,7 @@ describe("brdBlankWords — loading and unavailable", () => {
 
   it("is one quiet line when the catalogue did not load, with no intro", () => {
     const w = brdBlankWords({ status: "unavailable" }, look, "imperial");
+    expect(w.status).toBe("unavailable");
     expect(w.intro).toBeNull();
     expect(w.lines).toEqual([[BRD_BLANK_COPY.unavailable]]);
     expect(w.lines[0][0]).toContain("Pick one on ROCKER");

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, type RefObject } from "react";
 import { BAND_PAD, CAPTION_CLASS, FOOTER_BUTTON_CLASS, PRIMARY_CLASS } from "@/components/3d/brd-preview-dialog";
+import { BrdBlankSuggestions, useBrdBlankWords } from "@/components/setup/brd-blank-suggestions";
 import { THREE_D_COPY } from "@/components/3d/three-d-copy";
 import { HeightPicker } from "@/components/bottom/bottom-section";
 import { railLineProps } from "@/components/bottom/side-profile-key";
@@ -38,7 +39,10 @@ const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(
  * the setup screen asking its usual question first when a board is in progress) and Close, which changes nothing. Escape and
  * the backdrop close it too. `lib/export/brd-fit-preview.ts` works every shape, word and table out, once, in `brdFitSheet`,
  * which the printed page reads too; this only paints them, in the Board file preview's own family (same bands, same tokens,
- * same nose-left drawing). The PDF library loads only when Print Overview is pressed.
+ * same nose-left drawing). The PDF library loads only when Print Overview is pressed. Under the rocker table sits the SUGGESTED
+ * BLANKS block (quick 261113-gwo): one blank from each maker the shaper shows, its rocker closest to the file's, fetched and
+ * worked out only while this preview is open (`brd-blank-suggestions.tsx`); a suggestion only, Open as a Board still opens the
+ * fit with no blank picked.
  */
 export function BrdFitDialog({ look, fileName, onOpenBoard, onOpenChange, finalFocus }: BrdFitDialogProps) {
   return (
@@ -65,6 +69,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
   // Opens at true height each time (this body remounts); never saved.
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
   const sheet = useMemo(() => brdFitSheet(look, fileName, system), [look, fileName, system]);
+  const blanks = useBrdBlankWords(look, system);
   const [preparing, setPreparing] = useState(false);
   const [printProblem, setPrintProblem] = useState(false);
   const preparingRef = useRef(false);
@@ -206,6 +211,8 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
               </p>
             ))}
           </div>
+
+          <BrdBlankSuggestions words={blanks} />
 
           <div className="flex flex-col gap-1">
             <div className={CAPTION_CLASS}>{c.controls}</div>
