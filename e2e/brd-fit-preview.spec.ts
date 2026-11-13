@@ -19,8 +19,9 @@ import {
   LIVE_DESIGN_RULES,
 } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
+import { formatDim } from "../lib/geometry/measure-display";
 import { inchesToMm, mm } from "../lib/geometry/units";
-import { phase16Boards } from "../lib/geometry/__fixtures__/phase16-boards";
+import { phase16Boards, phase16WingBoards } from "../lib/geometry/__fixtures__/phase16-boards";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { brdBoardFields } from "../lib/models/brd-board";
 import { BOARD_FILE_ACCEPT } from "../lib/models/board-file";
@@ -44,9 +45,11 @@ import { freshPracticeRack } from "./helpers/practice-rack";
  */
 
 const BOARDS = phase16Boards();
+/** The boards with wings (quick 261113-hyy): written by the app's own writer like the others, found and fitted by the preview. */
+const WING_BOARDS = phase16WingBoards();
 
 function surfaceOf(label: string): BoardSurface {
-  const fields = BOARDS.find((b) => b.label === label)!.fields;
+  const fields = [...BOARDS, ...WING_BOARDS].find((b) => b.label === label)!.fields;
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -891,5 +894,116 @@ test.describe("The bottom of a .brd (quick 261113-gwr)", () => {
     expect(pdf).toContain("BOTTOM");
     expect(pdf).toContain("Deep Single Concave");
     expect(pdf).toContain("Our fit");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick 261113-hyy: a file's wings (the plan's w1-w4)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const WINGED = "wing|shortboard|one";
+
+test.describe("A wing in a .brd (quick 261113-hyy)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(180_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b18. a winged file's preview says its one wing, the file's beside ours, under HOW CLOSE, and the not-read line no longer mentions wings", async ({ page }, testInfo) => {
+    const exact = testInfo.project.name !== "iphone";
+    const file = boardFile(WINGED);
+    const sheet = sheetOf(file.locked, "Winged.brd", "imperial");
+    expect(sheet.wings).toHaveLength(1);
+
+    await page.goto("/");
+    await pickFile(page, "Winged.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const lines = dialog.locator("[data-brd-fit-wing]");
+    await expect(lines).toHaveCount(1);
+    await expect(lines.first()).toHaveAttribute("data-brd-fit-wing", "1");
+    // The fit is exact across V8 builds but WebKit's maths may differ in a last digit: by shape on the iPhone.
+    if (exact) await expect(lines.first()).toHaveText(sheet.wings[0]);
+    else await expect(lines.first()).toHaveText(/^Wing 1 — the file: .+ deep over a .+ run along the stringer, .+ off the tail\. Ours: .+ deep over a .+ run, .+ off the tail, sharp corners\.$/);
+    // It sits with the HOW CLOSE lines, after the outline's and before the tips note.
+    const order = await dialog.locator("[data-brd-fit-close-outline], [data-brd-fit-wing], [data-brd-fit-tips]").evaluateAll((els) =>
+      els.map((el) => (el.hasAttribute("data-brd-fit-wing") ? "wing" : el.hasAttribute("data-brd-fit-tips") ? "tips" : "outline")),
+    );
+    expect(order).toEqual(["outline", "wing", "tips"]);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(sheet.notRead);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).not.toContainText(/wing|flyer/i);
+    // The dashed outline is still drawn.
+    await expect(dialog.locator('[data-brd-fit-top] [data-brd-fit-line="fit"]')).toHaveCount(1);
+    if (testInfo.project.name !== "desktop") {
+      await lines.first().scrollIntoViewIfNeeded();
+      const box = await lines.first().boundingBox();
+      const viewport = page.viewportSize();
+      if (!box || !viewport) throw new Error("no box for the wing line or the viewport");
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
+    }
+  });
+
+  test("b19. in Metric the place off the tail reads in centimetres and the depth and run in whole millimetres", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for Metric");
+    await setMetricUnits(page);
+    const file = boardFile(WINGED);
+    const sheet = sheetOf(file.locked, "Winged.brd", "metric");
+    await page.goto("/");
+    await pickFile(page, "Winged.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const line = dialog.locator("[data-brd-fit-wing]");
+    await expect(line).toHaveText(sheet.wings[0]);
+    await expect(line).toContainText(" cm off the tail");
+    await expect(line).toContainText(" mm deep");
+    await expect(line).toContainText(" mm run along the stringer");
+    await expect(line).not.toContainText('"');
+  });
+
+  test("b20. Open as a Board opens with the wing: the kept board holds it sharp and unlocked, and TEMPLATE's WINGS tab shows it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the WINGS tab");
+    const file = boardFile(WINGED);
+    const look = lookOf(file.locked);
+    const fields = brdBoardFields(look.fit, "Winged.brd");
+    if (!fields?.outline.wings) throw new Error("the winged fit should open with a wing");
+    const wing = fields.outline.wings[0];
+    const saves = watchSaves(page);
+
+    await page.goto("/");
+    await pickFile(page, "Winged.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Winged");
+
+    const kept = (await storedOpenBoard(page))!.snapshot.design as unknown as { outline: { wings?: Record<string, unknown>[] } };
+    expect(kept.outline.wings).toHaveLength(1);
+    expect(sameWithin(kept.outline.wings![0], wing, 1e-9, "wing")).toBeNull();
+    expect(kept.outline.wings![0].lock).toBeNull();
+    expect(kept.outline.wings![0].radius).toBe(0);
+    expect(saves).toEqual([]);
+
+    // The tab strip names the one wing, and the tab shows it as a wing a shaper added: position as the WINGS tab words it.
+    const tab = page.getByRole("tab", { name: "WINGS · 1" });
+    await expect(tab).toBeVisible({ timeout: 30_000 });
+    await tab.click();
+    const row = page.locator('[data-wing-controls="1"]').getByText(/^Position from tail — /);
+    await expect(row).toHaveText(`Position from tail — ${formatDim(wing.station, "imperial")}`);
+    await expect(page.locator('[data-wing-controls="2"]')).toHaveCount(0);
+  });
+
+  test("b21. a file with no wing shows no wing line, and its not-read line is still about rails", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for a wingless file");
+    const file = boardFile(SHORTBOARD);
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('[data-brd-fit-top] [data-brd-fit-line="fit"]')).toHaveCount(1);
+    await expect(dialog.locator("[data-brd-fit-wing]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(/^Rails/);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).not.toContainText(/wing|flyer/i);
   });
 });
