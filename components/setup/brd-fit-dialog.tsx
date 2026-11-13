@@ -91,7 +91,8 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
       void (async () => {
         try {
           const { printBrdOverviewPdf } = await import("@/components/template/build-brd-overview-pdf");
-          printBrdOverviewPdf({ look, sheet, fileName, height }, tab);
+          // The suggested blanks print once they are worked out; asked for a second early, the page goes without the block.
+          printBrdOverviewPdf({ look, sheet, fileName, height, blanks: blanks.status === "loading" ? null : blanks }, tab);
         } catch {
           tab?.close();
           setPrintProblem(true);

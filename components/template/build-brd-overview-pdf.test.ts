@@ -2,8 +2,14 @@ import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
 import { brdText } from "@/lib/export/brd";
 import { readAnyBrd } from "@/lib/export/brd-read";
+import { BRD_BLANK_COPY, brdBlankWords, type BrdBlankState } from "@/lib/export/brd-blank-words";
 import { brdFitSheet, type BrdFitLook } from "@/lib/export/brd-fit-preview";
 import type { P2 } from "@/lib/geometry/bezier-fit";
+import { isPickable } from "@/lib/blanks/catalog";
+import { readSeedCatalog, SEED_CSV_DIR } from "@/lib/blanks/seed-files";
+import { DEFAULT_FIT_DEFAULTS, toFitSettings } from "@/lib/fit-defaults-preference";
+import { prepareBlank } from "@/lib/geometry/blank-fit";
+import { suggestBlanks } from "@/lib/geometry/brd-blank-suggest";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import type { SectionHeight } from "@/lib/geometry/bottom-draw";
 import { fitBoardToBrd } from "@/lib/geometry/brd-fit";
@@ -59,6 +65,44 @@ const LOOKS: [string, BrdFitLook][] = [
 
 const pageCount = (doc: jsPDF) => doc.getNumberOfPages();
 
+/**
+ * The longest SUGGESTED BLANKS block there can be: the Shortboard's real four picks (one per maker), each given a Customize
+ * Rocker order with a start at either end and a gap that reads in whole figures, so every maker has two lines.
+ */
+function longestBlanks(): BrdBlankState {
+  const [, look] = LOOKS[0];
+  const real = suggestBlanks({
+    fit: look.fit,
+    bottom: look.board.bottom,
+    prepared: readSeedCatalog(SEED_CSV_DIR).filter(isPickable).map(prepareBlank),
+    makers: ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"],
+    cut: { deckSkin: DEFAULT_FIT_DEFAULTS.deckSkin, tipStyle: DEFAULT_FIT_DEFAULTS.tipStyle },
+    settings: toFitSettings(DEFAULT_FIT_DEFAULTS),
+  });
+  return {
+    status: "ready",
+    suggestions: real.map(({ vendor, pick }) => ({
+      vendor,
+      pick: {
+        ...pick!,
+        gap: { largest: mm(inchesToMm(7 / 8)), at: mm(inchesToMm(111.5)) },
+        bends: {
+          spec: {
+            changes: [
+              { end: "nose", amount: mm(-inchesToMm(15 / 16)), fromTip: inchesToMm(18) },
+              { end: "tail", amount: inchesToMm(7 / 16), fromTip: inchesToMm(36) },
+            ],
+          },
+          largest: mm(inchesToMm(9 / 16)),
+          at: mm(inchesToMm(30)),
+        },
+      },
+    })),
+  };
+}
+const LONGEST = longestBlanks();
+const MAKER_NAMES = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"];
+
 describe("BRD_OVERVIEW_PAGE", () => {
   it("is the smaller of Letter and A4 on each axis, so it fits either paper at 100%", () => {
     expect(BRD_OVERVIEW_PAGE).toEqual({
@@ -85,6 +129,61 @@ describe("buildBrdOverviewPdf", () => {
         });
       }
     }
+  });
+
+  describe.each(LOOKS)("with the longest SUGGESTED BLANKS block, for %s", (_name, look) => {
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      for (const height of [1, 2, 4, 8] as SectionHeight[]) {
+        it(`still makes one page ${system} at Height x${height}, and prints the block and every maker`, () => {
+          const sheet = brdFitSheet(look, "Test Board.brd", system);
+          const blanks = brdBlankWords(LONGEST, look, system);
+          expect(blanks.lines.every((lines) => lines.length === 2)).toBe(true);
+          const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height, blanks });
+          expect(pageCount(doc)).toBe(1);
+          const text = doc.output();
+          expect(text).toContain(BRD_BLANK_COPY.caption);
+          for (const maker of MAKER_NAMES) expect(text).toContain(maker);
+          expect(text).toContain("Customize Rocker to");
+        });
+      }
+    }
+  });
+
+  it("leaves the page exactly as it was when the block is absent, null or still loading", () => {
+    const [, look] = LOOKS[0];
+    const sheet = brdFitSheet(look, "Test Board.brd", "imperial");
+    // The PDF stamps its own creation time and id; everything else is what is drawn and written.
+    const content = (doc: jsPDF) => doc.output().replace(/\/CreationDate \(D:[^)]*\)/, "").replace(/\/ID \[[^\]]*\]/, "");
+    const plain = content(buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2 }));
+    expect(plain).not.toContain(BRD_BLANK_COPY.caption);
+    expect(content(buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2, blanks: null }))).toBe(plain);
+    const loading = brdBlankWords({ status: "loading" }, look, "imperial");
+    expect(content(buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2, blanks: loading }))).toBe(plain);
+  });
+
+  it("still makes one page when both tips come to a point (two extra note lines) beside the longest block, at Height x8", () => {
+    const base = madeUp(84, 21).board;
+    const L = base.length;
+    const bottom: P2[] = [[0, 50], [6.35, 40], [L / 2, 0], [L - 6.35, 40], [L, 60]];
+    const deck: P2[] = [[0, 50], [6.35, 80], [L / 2, 60], [L - 6.35, 90], [L, 60]];
+    const board = { ...base, bottom, deck };
+    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }) };
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      const sheet = brdFitSheet(look, "Egg.brd", system);
+      expect(sheet.pointNotes).toHaveLength(2);
+      const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Egg.brd", height: 8, blanks: brdBlankWords(LONGEST, look, system) });
+      expect(pageCount(doc)).toBe(1);
+    }
+  });
+
+  it("prints the one quiet line when the catalogue did not load", () => {
+    const [, look] = LOOKS[0];
+    const sheet = brdFitSheet(look, "Test Board.brd", "imperial");
+    const blanks = brdBlankWords({ status: "unavailable" }, look, "imperial");
+    const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2, blanks });
+    expect(pageCount(doc)).toBe(1);
+    expect(doc.output()).toContain(BRD_BLANK_COPY.caption);
+    expect(doc.output()).toContain("Pick one on ROCKER");
   });
 
   it("holds the title, the file's name and size, and the table labels", () => {

@@ -20,6 +20,7 @@ import { THREE_D_COPY } from "@/components/3d/three-d-copy";
 import { printPdf } from "@/components/template/print-pdf";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
 import { PAPER_MM, TEMPLATE_MARGIN_MM } from "@/lib/geometry/template";
+import type { BrdBlankWords } from "@/lib/export/brd-blank-words";
 import { BRD_FIT_COPY, brdFitFramesInBox, type BrdFitLook, type BrdFitSheet, type BrdFitTable } from "@/lib/export/brd-fit-preview";
 import { brdBoardName } from "@/lib/models/brd-board";
 
@@ -127,11 +128,16 @@ export interface BuildBrdOverviewPdfOptions {
   fileName: string;
   /** How many times true height the side view is drawn: the dialog's current pick. */
   height: SectionHeight;
+  /**
+   * The SUGGESTED BLANKS block (quick 261113-gwo), worded for the shaper's system. Printed after the point notes when it is given
+   * and ready or quiet; left off when absent or still loading (the dialog passes null until the suggestions are worked out).
+   */
+  blanks?: BrdBlankWords | null;
 }
 
 /** Builds the one-page overview. Throws when it cannot fit its words on one page (never prints a clipped one). */
 export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF {
-  const { look, sheet, height } = options;
+  const { look, sheet, height, blanks } = options;
   const doc = new jsPDF({ unit: "mm", format: [BRD_OVERVIEW_PAGE.width, BRD_OVERVIEW_PAGE.height], orientation: "portrait" });
   doc.setDrawColor(0);
   doc.setTextColor(0);
@@ -163,6 +169,13 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
 
   // Everything under the drawings, measured before anything is drawn so the drawings can be given what is left.
   const body = (text: string) => wrapped(text, "normal", L.fonts.body, L.pitch.body);
+  /** The SUGGESTED BLANKS block: a gap, its caption, the intro when there is one, then every maker's lines as body text. */
+  const blankItems = (words: BrdBlankWords): Item[] => [
+    { kind: "gap", height: L.gap },
+    { kind: "text", lines: [words.caption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
+    ...(words.intro === null ? [] : [body(words.intro)]),
+    ...words.lines.flat().map(body),
+  ];
   const under: Item[] = [
     { kind: "key" },
     { kind: "gap", height: L.gap },
@@ -175,6 +188,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     ...sheet.tables.map((table): Item => ({ kind: "table", table })),
     body(sheet.rockerUse),
     ...sheet.pointNotes.map(body),
+    ...(blanks && blanks.status !== "loading" ? blankItems(blanks) : []),
     { kind: "gap", height: L.gap },
     { kind: "text", lines: [BRD_FIT_COPY.controls], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
     body(sheet.controls.outline),

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
+import { BRD_BLANK_COPY } from "../lib/export/brd-blank-words";
 import { brdFile, brdText } from "../lib/export/brd";
 import { BRD_FIT_COPY, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
@@ -502,5 +503,152 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
     await expect(dialog).toHaveCount(0);
     await expect(page).toHaveURL((url) => url.pathname === "/");
     expect(await storedOpenBoard(page)).toBeNull();
+  });
+
+  const CATALOGUE = "**/api/blank-catalog";
+  const MAKER_ORDER = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"];
+
+  test("b10. the catalogue is asked for once, only when a board file is looked at; the block names one blank per maker, US Blanks' the Shortboard's own 6'3\"RP; the footer still fits", async ({
+    page,
+  }, testInfo) => {
+    const file = boardFile(SHORTBOARD);
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/blank-catalog")) requests.push(request.url());
+    });
+
+    // The home page is not heavier for anybody: no catalogue request until a file is picked.
+    await page.goto("/");
+    await page.waitForTimeout(1_000);
+    expect(requests).toEqual([]);
+
+    const started = Date.now();
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const block = dialog.locator("[data-brd-blanks]");
+    await expect(block).toContainText(BRD_BLANK_COPY.caption);
+    const makers = block.locator("[data-brd-blanks-maker]");
+    await expect(makers).toHaveCount(4, { timeout: 10_000 });
+    const took = Date.now() - started;
+    testInfo.annotations.push({ type: "blank-suggestions-ms", description: `${took} ms from the file chosen to four makers showing` });
+    console.log(`b10 ${testInfo.project.name}: suggestions showing ${took} ms after the file was chosen`);
+    expect(took, "the block must show well inside five seconds").toBeLessThan(5_000);
+
+    await expect(block.locator("[data-brd-blanks-intro]")).toHaveText(BRD_BLANK_COPY.intro);
+    for (const [i, vendor] of MAKER_ORDER.entries()) {
+      await expect(makers.nth(i).locator("p").first()).toContainText(new RegExp(`^${vendor} `));
+    }
+    await expect(makers.nth(0).locator("p").first()).toContainText('US Blanks 6\'3"RP:');
+    expect(requests).toHaveLength(1);
+
+    // Close and look again in the same visit: the catalogue is already here, so no second request.
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.close, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await pickFile(page, "Shortboard.brd", file.locked);
+    await expect(dialogOf(page).locator("[data-brd-blanks-maker]")).toHaveCount(4, { timeout: 10_000 });
+    expect(requests).toHaveLength(1);
+
+    // The footer's three buttons are still in view and never overlap (as b6 checks), with the block in the body above them.
+    const names = [BRD_FIT_COPY.print, BRD_FIT_COPY.openBoard, BRD_FIT_COPY.close];
+    const boxes = [];
+    for (const name of names) {
+      const button = dialogOf(page).getByRole("button", { name, exact: true });
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      if (!box) throw new Error(`no box for ${name}`);
+      boxes.push(box);
+    }
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error("no viewport");
+    for (const box of boxes) {
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    }
+    for (let a = 0; a < boxes.length; a++) {
+      for (let b = a + 1; b < boxes.length; b++) {
+        const apart =
+          boxes[a].x + boxes[a].width <= boxes[b].x + 0.5 ||
+          boxes[b].x + boxes[b].width <= boxes[a].x + 0.5 ||
+          boxes[a].y + boxes[a].height <= boxes[b].y + 0.5 ||
+          boxes[b].y + boxes[b].height <= boxes[a].y + 0.5;
+        expect(apart, `${names[a]} and ${names[b]} must not overlap`).toBe(true);
+      }
+    }
+    // The block's text is never wider than the box that holds it, so nothing is clipped across a phone.
+    const overflow = await dialogOf(page).locator("[data-brd-blanks]").evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test("b11. when the catalogue can't load the block says so in one quiet line, Print Overview and Open as a Board still work, and a later look tries again", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the failure");
+    const file = boardFile(SHORTBOARD);
+    await page.route(CATALOGUE, (route) => route.fulfill({ status: 500, contentType: "text/plain", body: "no" }));
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const status = dialog.locator("[data-brd-blanks-status]");
+    await expect(status).toHaveText(BRD_BLANK_COPY.unavailable);
+    await expect(status).toHaveAttribute("role", "status");
+    await expect(dialog.locator("[data-brd-blanks-maker]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-blanks-intro]")).toHaveCount(0);
+
+    // Print Overview still makes its one page, carrying the same quiet line.
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.print, exact: true }).click();
+    const frame = page.locator("iframe[data-print-pdf]");
+    await expect(frame).toHaveCount(1);
+    const pdf = await frame.evaluate(async (el) => {
+      const bytes = new Uint8Array(await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer());
+      return new TextDecoder("latin1").decode(bytes);
+    });
+    expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect(pdf).toContain(BRD_BLANK_COPY.caption);
+    expect(pdf).toContain("Pick one on ROCKER");
+    await expect(dialog.locator("[data-brd-fit-print-problem]")).toHaveCount(0);
+
+    // Close, let the catalogue through, look again: a failure is not remembered.
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.close, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.unroute(CATALOGUE);
+    await pickFile(page, "Shortboard.brd", file.locked);
+    await expect(dialogOf(page).locator("[data-brd-blanks-maker]")).toHaveCount(4, { timeout: 10_000 });
+
+    // And with the catalogue down, Open as a Board still opens the fit on TEMPLATE with no blank.
+    await dialogOf(page).getByRole("button", { name: BRD_FIT_COPY.close, exact: true }).click();
+    await page.route(CATALOGUE, (route) => route.abort());
+    await page.reload();
+    await pickFile(page, "Shortboard.brd", file.locked);
+    await expect(dialogOf(page).locator("[data-brd-blanks-status]")).toHaveText(BRD_BLANK_COPY.unavailable);
+    await dialogOf(page).getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Shortboard");
+    expect(((await storedOpenBoard(page))!.snapshot.design as unknown as Record<string, unknown>).blank).toBeNull();
+  });
+
+  test("b12. Open as a Board after the suggestions show still opens with no blank picked: ROCKER's BLANK button offers Pick a Blank, not a blank's name", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the pick");
+    const file = boardFile(SHORTBOARD);
+    await page.goto("/");
+    await pickFile(page, "Shortboard.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog.locator("[data-brd-blanks-maker]")).toHaveCount(4, { timeout: 10_000 });
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Shortboard");
+    expect(((await storedOpenBoard(page))!.snapshot.design as unknown as Record<string, unknown>).blank).toBeNull();
+
+    await page.locator('a[href="/design/rocker"]:visible').first().click();
+    await expect(page).toHaveURL(/\/design\/rocker$/);
+    const button = page.locator("[data-blank-button]");
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    await expect(button.locator("[data-blank-name]")).toHaveCount(0);
+    await expect(button.locator("[data-blank-button-line]")).toContainText("long enough for this board");
   });
 });
