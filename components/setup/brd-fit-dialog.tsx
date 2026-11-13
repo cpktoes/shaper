@@ -13,7 +13,16 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } fr
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
 import { BRD_PREVIEW_SIDE_HEIGHT } from "@/lib/export/brd-preview";
-import { BRD_FIT_COPY, brdFitFrames, brdFitSheet, type BrdFitLook, type BrdFitTable } from "@/lib/export/brd-fit-preview";
+import {
+  BRD_FIT_COPY,
+  brdBottomFrames,
+  brdBottomRows,
+  brdFitFrames,
+  brdFitSheet,
+  type BrdFitBottomBlock,
+  type BrdFitLook,
+  type BrdFitTable,
+} from "@/lib/export/brd-fit-preview";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +51,9 @@ const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(
  * same nose-left drawing). The PDF library loads only when Print Overview is pressed. Under the rocker table sits the SUGGESTED
  * BLANKS block (quick 261113-gwo): one blank from each maker the shaper shows, its rocker closest to the file's, fetched and
  * worked out only while this preview is open (`brd-blank-suggestions.tsx`); a suggestion only, Open as a Board still opens the
- * fit with no blank picked.
+ * fit with no blank picked. Under that sits the BOTTOM block (quick 261113-gwr): three of the file's cross-sections with our
+ * fitted bottom dashed over each (their own Height pick, opening at x4), and a Nose / Centre / Tail table of what the file
+ * measures at each, the cut and depth we fitted, and its sliders. Open as a Board opens with those cuts on BOTTOM.
  */
 export function BrdFitDialog({ look, fileName, onOpenBoard, onOpenChange, finalFocus }: BrdFitDialogProps) {
   return (
@@ -68,6 +79,8 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
   const box = useSvgClientSize(topRef);
   // Opens at true height each time (this body remounts); never saved.
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
+  // The cross-sections have their own Height, opening at x4 as BOTTOM's own section does (D-13); never saved.
+  const [sectionHeight, setSectionHeight] = useState<SectionHeight>(4);
   const sheet = useMemo(() => brdFitSheet(look, fileName, system), [look, fileName, system]);
   const blanks = useBrdBlankWords(look, system);
   const [preparing, setPreparing] = useState(false);
@@ -75,6 +88,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
   const preparingRef = useRef(false);
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
   const frames = useMemo(() => (box.width > 0 ? brdFitFrames(look, box.width, height) : null), [look, box.width, height]);
+  const sections = useMemo(() => brdBottomFrames(brdBottomRows(look), sectionHeight), [look, sectionHeight]);
   const c = BRD_FIT_COPY;
 
   /** Print Overview: the sheet the screen is painted from, on paper (a tab to print from on an iPhone, a download on Android). */
@@ -92,7 +106,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
         try {
           const { printBrdOverviewPdf } = await import("@/components/template/build-brd-overview-pdf");
           // The suggested blanks print once they are worked out; asked for a second early, the page goes without the block.
-          printBrdOverviewPdf({ look, sheet, fileName, height, blanks: blanks.status === "loading" ? null : blanks }, tab);
+          printBrdOverviewPdf({ look, sheet, fileName, height, sectionHeight, blanks: blanks.status === "loading" ? null : blanks }, tab);
         } catch {
           tab?.close();
           setPrintProblem(true);
@@ -192,6 +206,11 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
             <p data-brd-fit-close-thickness className="text-xs text-surf-ink">
               {sheet.closeness.thickness}
             </p>
+            {sheet.closeness.bottom !== null && (
+              <p data-brd-fit-close-bottom className="text-xs text-surf-ink">
+                {sheet.closeness.bottom}
+              </p>
+            )}
             <p data-brd-fit-tips className="text-xs text-surf-ink-muted">
               {sheet.tipsNote}
             </p>
@@ -211,9 +230,19 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
                 {note}
               </p>
             ))}
+            <p data-brd-fit-rocker-lines className="text-xs text-surf-ink-muted">
+              {sheet.rockerLines}
+            </p>
+            {sheet.stringerNote !== null && (
+              <p data-brd-fit-stringer-note className="text-xs text-surf-ink-muted">
+                {sheet.stringerNote}
+              </p>
+            )}
           </div>
 
           <BrdBlankSuggestions words={blanks} />
+
+          <BottomBlock block={sheet.bottom} sections={sections} sectionHeight={sectionHeight} onSectionHeight={setSectionHeight} />
 
           <div className="flex flex-col gap-1">
             <div className={CAPTION_CLASS}>{c.controls}</div>
@@ -223,6 +252,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
               <p data-brd-fit-control="tail">{sheet.controls.tail}</p>
               <p data-brd-fit-control="rocker">{sheet.controls.rocker}</p>
               <p data-brd-fit-control="thickness">{sheet.controls.thickness}</p>
+              {sheet.controls.bottom !== null && <p data-brd-fit-control="bottom">{sheet.controls.bottom}</p>}
             </div>
           </div>
 
@@ -267,6 +297,119 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
           </DialogClose>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The BOTTOM block: its caption, then (when the file's bottom was read) the cross-sections with their own Height pick and the
+ * Nose / Centre / Tail table, or the one line saying it could not be read. Every word is the sheet's own; the drawings are
+ * `brdBottomFrames`'. Strokes keep their screen width however the drawing is scaled.
+ */
+function BottomBlock({
+  block,
+  sections,
+  sectionHeight,
+  onSectionHeight,
+}: {
+  block: BrdFitBottomBlock;
+  sections: ReturnType<typeof brdBottomFrames>;
+  sectionHeight: SectionHeight;
+  onSectionHeight: (height: SectionHeight) => void;
+}) {
+  if (!block.read) {
+    return (
+      <div data-brd-fit-bottom className="flex flex-col gap-1">
+        <div className={CAPTION_CLASS}>{block.caption}</div>
+        <p data-brd-fit-bottom-unread className="text-xs text-surf-ink-muted">
+          {block.line}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div data-brd-fit-bottom className="flex flex-col gap-2">
+      <div className={CAPTION_CLASS}>{block.caption}</div>
+      {sections.drawings.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className={CAPTION_CLASS} data-brd-fit-sections-caption>
+              {BRD_FIT_COPY.bottomSectionsCaption(sectionHeightLabel(sections))}
+            </div>
+            <div data-brd-fit-section-height>
+              <HeightPicker height={sectionHeight} onHeight={onSectionHeight} which="section" />
+            </div>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-3">
+            {sections.drawings.map((drawing) => {
+              const column = block.columns.find((col) => col.key === drawing.key);
+              return (
+                <figure key={drawing.key} data-brd-fit-section={drawing.key} className="m-0 flex flex-col gap-0.5">
+                  {/* The captions sit at the bottom of their row, so the three drawings stand level however a caption wraps. */}
+                  <figcaption data-brd-fit-section-caption className="flex flex-1 items-end text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
+                    {column?.drawingCaption}
+                  </figcaption>
+                  <svg role="img" aria-label={column?.drawingCaption ?? ""} viewBox={`0 0 ${sections.width} ${sections.height}`} className="block h-auto w-full">
+                    <line
+                      x1={drawing.straightedge.x1}
+                      x2={drawing.straightedge.x2}
+                      y1={drawing.straightedge.y}
+                      y2={drawing.straightedge.y}
+                      stroke="var(--outline-station-line)"
+                      strokeWidth={1}
+                      strokeDasharray="var(--outline-stringer-dash)"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <line
+                      x1={drawing.stringer.x}
+                      x2={drawing.stringer.x}
+                      y1={drawing.stringer.y1}
+                      y2={drawing.stringer.y2}
+                      stroke="var(--outline-station-line)"
+                      strokeWidth={1}
+                      strokeDasharray="var(--outline-stringer-dash)"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <polyline data-brd-fit-line="file" points={pointsOf(drawing.file)} fill="none" stroke="var(--outline-ink)" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
+                    <polyline data-brd-fit-line="fit" points={pointsOf(drawing.fit)} fill="none" {...railLineProps(1)} vectorEffect="non-scaling-stroke" />
+                  </svg>
+                </figure>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <table data-brd-fit-bottom-table className="w-full table-fixed border-collapse text-xs text-surf-ink">
+        <thead>
+          <tr className="border-b border-surf-line-faint">
+            <td className="w-[22%]" />
+            {block.columns.map((col) => (
+              <th key={col.key} scope="col" className="px-1 py-0.5 text-left font-semibold">
+                {col.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row) => (
+            <tr key={row.key} data-brd-fit-bottom-row={row.key} className="align-top">
+              <th scope="row" className="py-0.5 pr-1 text-left font-normal text-surf-ink-muted">
+                {row.label}
+              </th>
+              {row.cells.map((text, i) => (
+                <td key={block.columns[i].key} data-brd-fit-cell={block.columns[i].key} className="px-1 py-0.5 tabular-nums">
+                  {text}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {block.notes.map((note) => (
+        <p key={note} data-brd-fit-bottom-note className="text-xs text-surf-ink-muted">
+          {note}
+        </p>
+      ))}
     </div>
   );
 }

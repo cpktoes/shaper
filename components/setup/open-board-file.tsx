@@ -93,7 +93,7 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
     }
     try {
       const look = brdFitLook(read.board);
-      setLooking({ fileName: file.name, look, fields: brdBoardFields(look.fit, file.name) });
+      setLooking({ fileName: file.name, look, fields: brdBoardFields(look.fit, file.name, look.bottom?.bottom ?? null) });
     } catch {
       setProblem(BOARD_FILE_COPY.brdUnreadable);
     }

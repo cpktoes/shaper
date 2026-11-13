@@ -17,12 +17,21 @@
  */
 import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
+import { formatBottomStation } from "../geometry/blank-reasons";
+import {
+  cutKind,
+  resolveCut,
+  stationFromNearestTip,
+  type BottomCutSpec,
+  type BottomSectionKey,
+} from "../geometry/bottom";
 import {
   brdFittedBottomBoard,
   brdStringerLift,
   fitBottomToBrd,
   measureBrdBottom,
   type BrdBottomFit,
+  type BrdBottomSection,
 } from "../geometry/brd-bottom";
 import {
   BRD_FIT_TIP_SKIP_MM,
@@ -39,6 +48,7 @@ import {
   type Closeness,
 } from "../geometry/brd-fit";
 import type { SectionHeight } from "../geometry/bottom-draw";
+import { MEASURE_STATION_MM } from "../geometry/outline";
 import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import type { RockerStationKey } from "../geometry/rocker";
 import {
@@ -362,6 +372,33 @@ export const BRD_FIT_COPY = {
   thicknessLine: (noseTip: string, nose12: string, center: string, tail12: string, tailTip: string, station: string) =>
     `Thickness: nose ${noseTip} · nose ${station} ${nose12} · centre ${center} · tail ${station} ${tail12} · tail ${tailTip}`,
   notRead: "Rails, bottom contours and wings or flyers aren't read from the file. Add these by hand once the board is open.",
+  /** The line when the bottom WAS read: rails and wings are what is left to add by hand. */
+  notReadAfterBottom: "Rails and wings or flyers aren't read from the file. Add these by hand once the board is open.",
+  /**
+   * The BOTTOM block (quick 261113-gwr). The slider words are BOTTOM's own (`components/bottom/bottom-copy.ts`), copied because
+   * `lib/` cannot import a component; a test holds the two equal.
+   */
+  bottomCaption: "BOTTOM",
+  bottomSectionsCaption: (heightLabel: string) => `CROSS-SECTIONS · ${heightLabel}`,
+  bottomSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
+  bottomColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<BottomSectionKey, string>,
+  bottomRowLabels: { at: "Read at", file: "The file", fit: "Our fit", stations: "Start · Deepest At · End", across: "Across" } as const,
+  bottomSliderWords: { start: "Start", deepestAt: "Deepest At", end: "End", offRail: "Off Rail", offStringer: "Off Stringer", troughAt: "Trough At" } as const,
+  fromNose: (list: string) => `${list} from the nose`,
+  fromTail: (list: string) => `${list} from the tail`,
+  noValue: "—",
+  noSection: "No section here",
+  bottomKinds: { flat: "Flat", belly: "Belly", vee: "Vee", single: "Single concave", double: "Double concave" } as const,
+  bottomWindowNote:
+    "The bottom is read across each of the file's cross-sections, from the stringer to nine-tenths of the way out to the rail; the rail itself isn't read yet. A section that is all but flat reads as flat.",
+  sectionsRead: (used: number, total: number, tipSkip: string) =>
+    `Read from ${used} of the file's ${total} cross-sections; the ones within ${tipSkip} of a tip are left out.`,
+  bottomUnread: "The file's bottom couldn't be read: it has no cross-sections we could use, so the board opens with a flat bottom.",
+  bottomLine: (nose: string, center: string, tail: string) => `Bottom: ${nose} · ${center} · ${tail}`,
+  rockerLines:
+    "The file's rocker is the finished board's, along the stringer; ours is the board before contours. Under a concave the finished rocker reads more, by the concave's depth there; under a flat, vee or belly the two are the same line.",
+  stringerNote: (lift: string, station: string) =>
+    `Our fit's concaves lift its stringer by up to ${lift} (at ${station}): the figures above are the finished stringer's. The board is planed that much lower there, and ROCKER shows the rocker before contours once the board is open.`,
   close: "Close",
   topName: "The board file from above, with our closest fit",
   sideName: "The board file from the side, with our closest fit",
@@ -401,7 +438,7 @@ export function lessThan(figure: string): string {
  * awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one place that rule lives. The outline
  * also says which way the file lies from ours at its widest gap, since that is where a wing or a tweak belongs.
  */
-export function closenessSentence(what: "Outline" | "Rocker" | "Thickness", w: BrdFitCloseWords): string {
+export function closenessSentence(what: "Outline" | "Rocker" | "Thickness" | "Bottom", w: BrdFitCloseWords): string {
   const head = w.largest.startsWith("<") ? `${what}: ${lessThan(w.largest)} off` : `${what}: within ${w.largest}`;
   const side = w.side === null ? "" : `, where the file is ${w.side} than our fit`;
   return `${head}, typically ${lessThan(w.typical)} — the widest gap ${w.where}${side}`;
@@ -427,15 +464,40 @@ export interface BrdFitSheet {
   title: string;
   from: string;
   size: string;
-  closeness: { outline: string; rocker: string; thickness: string };
+  /** `bottom` is null when the file's cross-sections could not be read. */
+  closeness: { outline: string; rocker: string; thickness: string; bottom: string | null };
   tipsNote: string;
   tables: BrdFitTable[];
   /** One line per tip that comes to a point, nose first. */
   pointNotes: string[];
   rockerUse: string;
-  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string };
+  /** What the two rockers are (always shown under the rocker table). */
+  rockerLines: string;
+  /** Where our concaves lift the finished stringer, and by how much; null when none does. */
+  stringerNote: string | null;
+  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string; bottom: string | null };
+  /** The BOTTOM block: the table of what the file measures and what we fitted, or the one line saying it could not be read. */
+  bottom: BrdFitBottomBlock;
   notRead: string;
 }
+
+/** One column of the BOTTOM table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
+export interface BrdFitBottomColumn {
+  key: BottomSectionKey;
+  label: string;
+  drawingCaption: string | null;
+}
+
+/** One row of the BOTTOM table: its words, then the nose, centre and tail cells in that order. */
+export interface BrdFitBottomRow {
+  key: "at" | "file" | "fit" | "stations" | "across";
+  label: string;
+  cells: [string, string, string];
+}
+
+export type BrdFitBottomBlock =
+  | { read: true; caption: string; columns: BrdFitBottomColumn[]; rows: BrdFitBottomRow[]; notes: string[] }
+  | { read: false; caption: string; line: string };
 
 /** Where the wide point sits, as words: its distance forward or back of the middle, or "at centre". */
 function wideAtWords(offset: Mm, system: UnitsSystem): string {
@@ -500,6 +562,194 @@ function sideTable(
   };
 }
 
+/** The stringer note: where our concaves lift the finished stringer most, and by how much; null when none lifts it at a station. */
+function stringerNoteWords(fit: BrdFit, system: UnitsSystem): string | null {
+  let best: { key: RockerStationKey; lift: Mm } | null = null;
+  for (const key of SIDE_ROWS) {
+    const lift = fit.stringerLift[key];
+    if (lift > 0 && (!best || lift > best.lift)) best = { key, lift };
+  }
+  return best ? BRD_FIT_COPY.stringerNote(formatMark(best.lift, system), sideLabel(best.key, system)) : null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The BOTTOM block (quick 261113-gwr)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const BOTTOM_KEYS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
+
+/** A column of the BOTTOM block: which of the file's sections is read for a key, or none. */
+export interface BrdBottomRow {
+  key: BottomSectionKey;
+  section: BrdBottomSection | null;
+}
+
+/**
+ * The three sections the BOTTOM block shows, one per key: the file's own sections nearest 12" from the nose, the middle of the
+ * board and 12" from the tail, each section used once (the nearest pair is given first). A file with fewer sections leaves a
+ * row with none; a look with no bottom has three.
+ */
+export function brdBottomRows(look: BrdFitLook): BrdBottomRow[] {
+  const sections = look.bottom?.sections ?? [];
+  const length = look.board.length;
+  const wanted: Record<BottomSectionKey, number> = { nose: length - MEASURE_STATION_MM, center: length / 2, tail: MEASURE_STATION_MM };
+  const pairs = BOTTOM_KEYS.flatMap((key, k) => sections.map((section, i) => ({ key, i, k, distance: Math.abs(section.station - wanted[key]) })));
+  pairs.sort((a, b) => a.distance - b.distance || a.k - b.k || a.i - b.i);
+  const chosen = new Map<BottomSectionKey, BrdBottomSection>();
+  const used = new Set<number>();
+  for (const pair of pairs) {
+    if (chosen.has(pair.key) || used.has(pair.i)) continue;
+    chosen.set(pair.key, sections[pair.i]);
+    used.add(pair.i);
+  }
+  return BOTTOM_KEYS.map((key) => ({ key, section: chosen.get(key) ?? null }));
+}
+
+/** The drawings' own width in drawing units; the dialog and the paper scale it to their box. */
+export const BRD_BOTTOM_DRAWING_WIDTH = 1000;
+/** The air either side of the widest window, the pad above and below the lines, and the tallest the drawings may stand (units). */
+const BOTTOM_DRAWING = { air: 30, pad: 16, tallest: 260 } as const;
+
+/** One cross-section drawn: the file's bottom and ours, mirrored about the stringer, with the straightedge and the stringer. */
+export interface BrdBottomDrawing {
+  key: BottomSectionKey;
+  file: P2[];
+  fit: P2[];
+  straightedge: { x1: number; x2: number; y: number };
+  stringer: { x: number; y1: number; y2: number };
+}
+
+export interface BrdBottomFrames {
+  width: number;
+  height: number;
+  /** The Height pick, and the factor actually drawn (less than asked when the cut would not fit its room). */
+  heightAsked: SectionHeight;
+  heightDrawn: number;
+  /** Nose, centre, tail, for the rows that have a section. */
+  drawings: BrdBottomDrawing[];
+}
+
+/**
+ * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide: the bottom only, over the part that is read (the
+ * stringer to nine-tenths of the way to the rail, mirrored rail to rail), the file solid and ours dashed. One scale across for
+ * all three (the widest window fills the width less the air); up is exaggerated by the Height pick, less where that would
+ * leave the room. Heights are measured against the height at the stringer, so a concave hangs its rails below it and a vee lifts
+ * them above (up is up).
+ */
+export function brdBottomFrames(rows: readonly BrdBottomRow[], height: SectionHeight): BrdBottomFrames {
+  const { air, pad, tallest } = BOTTOM_DRAWING;
+  const drawn = rows.filter((row): row is { key: BottomSectionKey; section: BrdBottomSection } => row.section !== null && row.section.ours.length > 0);
+  const windowMax = Math.max(0, ...drawn.map((row) => row.section.across[row.section.across.length - 1]));
+  if (drawn.length === 0 || !(windowMax > 0)) {
+    return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, heightAsked: height, heightDrawn: height, drawings: [] };
+  }
+  const kx = (BRD_BOTTOM_DRAWING_WIDTH - 2 * air) / (2 * windowMax);
+  const values = drawn.flatMap((row) => [...row.section.file, ...row.section.ours]);
+  const up = Math.max(1, ...values);
+  const down = Math.max(1, -Math.min(...values));
+  let ky = kx * height;
+  if ((up + down) * ky > tallest - 2 * pad) ky = (tallest - 2 * pad) / (up + down);
+  const y0 = pad + up * ky;
+  const mirroredLine = (across: readonly number[], values: readonly number[]): P2[] => {
+    const right = across.map((a, j): P2 => [BRD_BOTTOM_DRAWING_WIDTH / 2 + a * kx, y0 - values[j] * ky]);
+    const left = across.map((a, j): P2 => [BRD_BOTTOM_DRAWING_WIDTH / 2 - a * kx, y0 - values[j] * ky]);
+    return [...left.slice(1).reverse(), ...right];
+  };
+  return {
+    width: BRD_BOTTOM_DRAWING_WIDTH,
+    height: 2 * pad + (up + down) * ky,
+    heightAsked: height,
+    heightDrawn: ky / kx,
+    drawings: drawn.map(({ key, section }) => ({
+      key,
+      // The left half runs from the section's far end back to the stringer's neighbour, so the whole line is one run, left to right.
+      file: mirroredLine(section.across, section.file),
+      fit: mirroredLine(section.across, section.ours),
+      straightedge: { x1: BRD_BOTTOM_DRAWING_WIDTH / 2 - windowMax * kx - 10, x2: BRD_BOTTOM_DRAWING_WIDTH / 2 + windowMax * kx + 10, y: y0 },
+      stringer: { x: BRD_BOTTOM_DRAWING_WIDTH / 2, y1: y0 - up * ky, y2: y0 + down * ky },
+    })),
+  };
+}
+
+const cutWords = (spec: BottomCutSpec, system: UnitsSystem): string =>
+  cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatMark(spec.depth, system)}`;
+
+/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), Trough At and Off Stringer; none for a vee, a belly or a flat. */
+function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
+  const w = BRD_FIT_COPY.bottomSliderWords;
+  const kind = cutKind(spec.name);
+  const mark = (word: string, value: Mm) => `${word} ${formatMark(value, system)}`;
+  if (kind === "double") {
+    const parts = [mark(w.troughAt, spec.troughAt), mark(w.offRail, spec.offRail)];
+    if (spec.offStringer > 0) parts.push(mark(w.offStringer, spec.offStringer));
+    return parts.join(" · ");
+  }
+  if (kind === "single") return mark(w.offRail, spec.offRail);
+  if (spec.name === "Tri-Plane Hull Center") return mark(w.offStringer, spec.offStringer);
+  return BRD_FIT_COPY.noValue;
+}
+
+/** The bottom's lines and block for `brdFitSheet`, all null or "unread" when the file's bottom could not be read. */
+function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitBottomBlock; closeness: string | null; controls: string | null } {
+  const c = BRD_FIT_COPY;
+  const found = look.bottom;
+  if (!found) return { block: { read: false, caption: c.bottomCaption, line: c.bottomUnread }, closeness: null, controls: null };
+  const length = look.board.length;
+  const board = brdFittedBottomBoard(look.fit);
+  const rows = brdBottomRows(look);
+  const cells = <T,>(make: (key: BottomSectionKey, row: BrdBottomRow) => T): [T, T, T] =>
+    [make("nose", rows[0]), make("center", rows[1]), make("tail", rows[2])];
+  const cut = (key: BottomSectionKey): BottomCutSpec => found.bottom[key];
+  const stations = (key: BottomSectionKey): string => {
+    const spec = cut(key);
+    if (cutKind(spec.name) === "flat") return c.noValue;
+    const resolved = resolveCut(key, spec, board);
+    const list = [resolved.start, resolved.deepest, resolved.end].map((s) => formatBottomStation(stationFromNearestTip(key, s, board), system)).join(" · ");
+    return key === "nose" ? c.fromNose(list) : c.fromTail(list);
+  };
+  const fileWords = (row: BrdBottomRow): string => {
+    if (!row.section) return c.noValue;
+    const { kind, depth } = row.section.reads;
+    return kind === "flat" ? c.bottomKinds.flat : `${c.bottomKinds[kind]} ${formatMark(depth, system)}`;
+  };
+  const w = closeWordsOf(found, length, system);
+  return {
+    block: {
+      read: true,
+      caption: c.bottomCaption,
+      columns: BOTTOM_KEYS.map((key, k) => ({
+        key,
+        label: c.bottomColumns[key],
+        drawingCaption: rows[k].section
+          ? c.bottomSectionCaption(gapWhere(rows[k].section.station, length, system), formatDim(mm(2 * rows[k].section.reach), system))
+          : null,
+      })),
+      rows: [
+        { key: "at", label: c.bottomRowLabels.at, cells: cells((_k, row) => (row.section ? gapWhere(row.section.station, length, system) : c.noSection)) },
+        { key: "file", label: c.bottomRowLabels.file, cells: cells((_k, row) => fileWords(row)) },
+        { key: "fit", label: c.bottomRowLabels.fit, cells: cells((key) => cutWords(cut(key), system)) },
+        { key: "stations", label: c.bottomRowLabels.stations, cells: cells((key) => stations(key)) },
+        { key: "across", label: c.bottomRowLabels.across, cells: cells((key) => acrossWords(cut(key), system)) },
+      ],
+      notes: [c.bottomWindowNote, c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))],
+    },
+    closeness: closenessSentence("Bottom", w),
+    controls: c.bottomLine(...cells((key) => cutWords(cut(key), system))),
+  };
+}
+
+/** How close the bottom is, as the other HOW CLOSE lines: the widest gap is in a section, so it says which, and how far out. */
+function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): BrdFitCloseWords {
+  const { largest, typical, station, across } = found.closeness;
+  return {
+    largest: formatMarkOrLess(largest, system),
+    typical: formatMarkOrLess(typical, system),
+    at: formatDim(station, system),
+    where: `at the section ${gapWhere(station, length, system)}, ${formatMark(across, system)} out from the stringer`,
+    side: null,
+  };
+}
+
 /**
  * Every line and table of the preview and the printed overview, in `system`. Dims (widths, where the wide point sits) read in
  * their own family and marks (rocker heights, thicknesses) in theirs (Rule 2). A tip that comes to a point gets a note line
@@ -525,6 +775,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       ),
     );
   }
+  const bottom = bottomSheetParts(look, system);
   return {
     title: BRD_FIT_COPY.title,
     from: BRD_FIT_COPY.from(cutName),
@@ -533,22 +784,28 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       outline: closenessSentence("Outline", words.outline),
       rocker: closenessSentence("Rocker", words.rocker),
       thickness: closenessSentence("Thickness", words.thickness),
+      bottom: bottom.closeness,
     },
     tipsNote: BRD_FIT_COPY.tipsNote(words.tipSkip),
     tables: [
       widthsTable(brdFileWidths(board), fitOutlineWidths(fit.outline), system),
-      sideTable("rocker", stations, (key) => (key === "center" ? mm(0) : fit.rocker[key]), system),
-      sideTable("thickness", stations, (key) => fit.foil[key], system),
+      // Our FINISHED stringer: the planed rocker plus our concaves' lift there, from the centre's own (nothing changes without a concave).
+      sideTable("rocker", stations, (key) => (key === "center" ? mm(0) : mm(fit.rocker[key] + fit.stringerLift[key] - fit.stringerLift.center)), system),
+      sideTable("thickness", stations, (key) => mm(fit.foil[key] - fit.stringerLift[key]), system),
     ],
     pointNotes,
     rockerUse: BRD_FIT_COPY.rockerUse,
+    rockerLines: BRD_FIT_COPY.rockerLines,
+    stringerNote: stringerNoteWords(fit, system),
     controls: {
       outline: BRD_FIT_COPY.outlineLine(w.length, w.width, w.offset),
       nose: BRD_FIT_COPY.noseLine(w.noseAngle, w.noseFullness, w.noseRail),
       tail: BRD_FIT_COPY.tailLine(w.tail, w.tailBlock, w.tailAngle, w.tailFullness, w.tailRail),
       rocker: BRD_FIT_COPY.rockerLine(w.rocker.noseTip, w.rocker.nose12, w.rocker.tail12, w.rocker.tailTip, w.station),
       thickness: BRD_FIT_COPY.thicknessLine(w.thickness.noseTip, w.thickness.nose12, w.thickness.center, w.thickness.tail12, w.thickness.tailTip, w.station),
+      bottom: bottom.controls,
     },
-    notRead: BRD_FIT_COPY.notRead,
+    bottom: bottom.block,
+    notRead: bottom.block.read ? BRD_FIT_COPY.notReadAfterBottom : BRD_FIT_COPY.notRead,
   };
 }

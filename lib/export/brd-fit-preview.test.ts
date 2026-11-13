@@ -3,9 +3,10 @@ import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { buildFallbackProfile } from "../geometry/board-profile";
 import { buildBoardSurface } from "../geometry/board-surface";
-import { DEFAULT_BOTTOM, cutKind, resolveBottom, startingCut, type BoardBottom, type BottomBoard, type BottomCutName } from "../geometry/bottom";
+import { DEFAULT_BOTTOM, cutKind, resolveBottom, resolveCut, startingCut, stationFromNearestTip, type BoardBottom, type BottomBoard, type BottomCutName } from "../geometry/bottom";
 import { brdFittedBottomBoard, brdStringerLift } from "../geometry/brd-bottom";
-import { BRD_STRAIGHTEDGE_MM, brdFileStations, brdFileWidths, fitBoardToBrd, fitOutlineWidths, outlineGapSide } from "../geometry/brd-fit";
+import { formatBottomStation } from "../geometry/blank-reasons";
+import { BRD_FIT_TIP_SKIP_MM, BRD_STRAIGHTEDGE_MM, brdFileStations, brdFileWidths, fitBoardToBrd, fitOutlineWidths, outlineGapSide } from "../geometry/brd-fit";
 import {
   designBottomBoard,
   designCrossSectionInput,
@@ -15,7 +16,7 @@ import {
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
 import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
-import { buildOutline } from "../geometry/outline";
+import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { brdBottomStations, brdText } from "./brd";
@@ -28,9 +29,14 @@ import {
   brdFitWords,
   brdLengthWords,
   closenessSentence,
+  gapWhere,
+  BRD_BOTTOM_DRAWING_WIDTH,
+  brdBottomFrames,
+  brdBottomRows,
   brdFitLook,
   type BrdFitLook,
 } from "./brd-fit-preview";
+import { BOTTOM_COPY } from "@/components/bottom/bottom-copy";
 import { BOARD_NAME_MAX_LENGTH } from "../models/board-file";
 import { readAnyBrd, type ReadBrdBoard } from "./brd-read";
 
@@ -361,8 +367,10 @@ describe("brdFitSheet", () => {
     expect(imperial.closeness.thickness).toBe(closenessSentence("Thickness", words.thickness));
     expect(imperial.tipsNote).toBe(BRD_FIT_COPY.tipsNote(words.tipSkip));
     expect(imperial.rockerUse).toBe(BRD_FIT_COPY.rockerUse);
-    expect(imperial.notRead).toBe(BRD_FIT_COPY.notRead);
-    expect(imperial.controls).toEqual({
+    // The bottom was read, so what is left to add by hand is the rails and the wings.
+    expect(imperial.notRead).toBe(BRD_FIT_COPY.notReadAfterBottom);
+    expect(imperial.notRead).not.toMatch(/bottom/i);
+    expect(imperial.controls).toMatchObject({
       outline: BRD_FIT_COPY.outlineLine(w.length, w.width, w.offset),
       nose: BRD_FIT_COPY.noseLine(w.noseAngle, w.noseFullness, w.noseRail),
       tail: BRD_FIT_COPY.tailLine(w.tail, w.tailBlock, w.tailAngle, w.tailFullness, w.tailRail),
@@ -484,5 +492,198 @@ describe("brdFitLook", () => {
       expect(out.bottom!.sections.length).toBeGreaterThan(10);
       expect(out.bottom!.closeness.largest).toBeLessThan(1.5);
     }, LONG);
+  });
+});
+
+describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
+  const LONG = 120_000;
+  const concaveFile = (() => {
+    const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+    const g = buildOutline(f.outline);
+    const p = designSideProfile(f, LIVE_DESIGN_RULES);
+    const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+    const board0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
+    const bottom = {
+      ...structuredClone(DEFAULT_BOTTOM),
+      center: { ...startingCut("center", "Deep Single Concave", board0), depth: inchesToMm(4 / 16) },
+      tail: { ...startingCut("tail", "Double Concave Exit", board0), depth: inchesToMm(2 / 16), troughAt: inchesToMm(4.5) },
+    };
+    const s = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: board0 }), geometry: g, rockerAt: p.rockerAt });
+    const back = readAnyBrd(Uint8Array.from(brdText(s, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text, (ch) => ch.charCodeAt(0)));
+    if (!back.ok) throw new Error("the app's own file would not read");
+    return back.board;
+  })();
+  const concave = brdFitLook(concaveFile);
+
+  it("assigns the file's own sections nearest 12\" from the nose, the middle and 12\" from the tail, each used once", () => {
+    const rows = brdBottomRows(concave);
+    expect(rows.map((r) => r.key)).toEqual(["nose", "center", "tail"]);
+    const L = concave.board.length;
+    const near = (target: number) => concave.bottom!.sections.reduce((a, b) => (Math.abs(a.station - target) <= Math.abs(b.station - target) ? a : b));
+    expect(rows[0].section).toBe(near(L - MEASURE_STATION_MM));
+    expect(rows[1].section).toBe(near(L / 2));
+    expect(rows[2].section).toBe(near(MEASURE_STATION_MM));
+    expect(new Set(rows.map((r) => r.section)).size).toBe(3);
+  }, LONG);
+
+  it("leaves exactly one row with no section for a file with two, and three for a look with no bottom", () => {
+    const two = { ...concave, bottom: { ...concave.bottom!, sections: concave.bottom!.sections.slice(0, 2) } };
+    expect(brdBottomRows(two).filter((r) => r.section === null)).toHaveLength(1);
+    expect(brdBottomRows({ ...concave, bottom: null }).every((r) => r.section === null)).toBe(true);
+    expect(brdBottomRows({ ...concave, bottom: null })).toHaveLength(3);
+  }, LONG);
+
+  it("draws nose, center and tail, mirrored about the middle, over the window of each section, at one scale", () => {
+    const frames = brdBottomFrames(brdBottomRows(concave), 4);
+    expect(frames.drawings.map((d) => d.key)).toEqual(["nose", "center", "tail"]);
+    expect(frames.width).toBe(BRD_BOTTOM_DRAWING_WIDTH);
+    for (const d of frames.drawings) {
+      for (const line of [d.file, d.fit]) {
+        expect(line[0][0]).toBeCloseTo(BRD_BOTTOM_DRAWING_WIDTH - line[line.length - 1][0], 9);
+        expect(line).toHaveLength(49);
+        expect(line[24][0]).toBeCloseTo(BRD_BOTTOM_DRAWING_WIDTH / 2, 9);
+      }
+      expect(d.stringer.x).toBe(BRD_BOTTOM_DRAWING_WIDTH / 2);
+      expect(d.straightedge.x1).toBeLessThan(d.file[0][0]);
+    }
+    const widest = Math.max(...frames.drawings.map((d) => d.file[48][0] - d.file[0][0]));
+    expect(widest).toBeCloseTo(BRD_BOTTOM_DRAWING_WIDTH - 60, 6);
+  }, LONG);
+
+  it("opens at four times the height unless capped, and a flat file still has a height", () => {
+    const rows = brdBottomRows(concave);
+    const one = brdBottomFrames(rows, 1);
+    const four = brdBottomFrames(rows, 4);
+    expect(one.heightDrawn).toBeCloseTo(1, 9);
+    expect(four.heightDrawn).toBeLessThanOrEqual(4 + 1e-9);
+    const eight = brdBottomFrames(rows, 8);
+    expect(eight.heightDrawn).toBeLessThanOrEqual(8 + 1e-9);
+    expect(eight.height).toBeLessThanOrEqual(260 + 1e-9);
+    const flat = brdBottomFrames(brdBottomRows(look), 4);
+    expect(flat.height).toBeGreaterThan(32);
+    expect(brdBottomFrames([], 4).drawings).toEqual([]);
+  }, LONG);
+
+  it("draws a concave below the stringer and a vee above it (up is up), the straightedge at the stringer's level", () => {
+    const frames = brdBottomFrames(brdBottomRows(concave), 4);
+    const center = frames.drawings.find((d) => d.key === "center")!;
+    const rail = center.file[center.file.length - 1];
+    expect(rail[1]).toBeGreaterThan(center.straightedge.y);
+    expect(center.file[24][1]).toBeCloseTo(center.straightedge.y, 9);
+  }, LONG);
+
+  describe("in the sheet", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      it(`words every cell from the fit, in ${system}`, () => {
+        const sheet = brdFitSheet(concave, "Concave.brd", system);
+        const block = sheet.bottom;
+        if (!block.read) throw new Error("expected a read bottom");
+        expect(block.caption).toBe(BRD_FIT_COPY.bottomCaption);
+        expect(block.columns.map((c) => c.label)).toEqual(["Nose", "Centre", "Tail"]);
+        expect(block.rows.map((r) => r.key)).toEqual(["at", "file", "fit", "stations", "across"]);
+        expect(block.rows.map((r) => r.label)).toEqual(Object.values(BRD_FIT_COPY.bottomRowLabels));
+        const rows = brdBottomRows(concave);
+        const board = brdFittedBottomBoard(concave.fit);
+        const row = (key: string) => block.rows.find((r) => r.key === key)!;
+        ["nose", "center", "tail"].forEach((key, k) => {
+          const section = rows[k].section!;
+          expect(row("at").cells[k]).toBe(gapWhere(section.station, concave.board.length, system));
+          expect(block.columns[k].drawingCaption).toBe(
+            BRD_FIT_COPY.bottomSectionCaption(gapWhere(section.station, concave.board.length, system), formatDim(mm(2 * section.reach), system)),
+          );
+          const spec = concave.bottom!.bottom[key as "nose" | "center" | "tail"];
+          const flat = cutKind(spec.name) === "flat";
+          expect(row("fit").cells[k]).toBe(flat ? spec.name : `${spec.name} ${formatMark(spec.depth, system)}`);
+          if (flat) {
+            expect(row("stations").cells[k]).toBe("—");
+            expect(row("across").cells[k]).toBe("—");
+          } else {
+            const r = resolveCut(key as "nose" | "center" | "tail", spec, board);
+            const list = [r.start, r.deepest, r.end]
+              .map((s) => formatBottomStation(stationFromNearestTip(key as "nose" | "center" | "tail", s, board), system))
+              .join(" · ");
+            expect(row("stations").cells[k]).toBe(key === "nose" ? `${list} from the nose` : `${list} from the tail`);
+          }
+        });
+        expect(row("file").cells[1]).toMatch(/^Single concave /);
+        expect(row("across").cells[1]).toBe(`Off Rail ${formatMark(concave.bottom!.bottom.center.offRail, system)}`);
+        expect(block.notes).toHaveLength(2);
+        expect(block.notes[0]).toBe(BRD_FIT_COPY.bottomWindowNote);
+        expect(block.notes[1]).toBe(
+          BRD_FIT_COPY.sectionsRead(concave.bottom!.sections.length, concave.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system)),
+        );
+      });
+    }
+
+    it("has a Bottom HOW CLOSE line with the section and how far out, and the Bottom control line", () => {
+      const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
+      const c = concave.bottom!.closeness;
+      expect(sheet.closeness.bottom).toBe(
+        closenessSentence("Bottom", {
+          largest: formatMarkOrLess(c.largest, "imperial"),
+          typical: formatMarkOrLess(c.typical, "imperial"),
+          at: formatDim(c.station, "imperial"),
+          where: `at the section ${gapWhere(c.station, concave.board.length, "imperial")}, ${formatMark(c.across, "imperial")} out from the stringer`,
+          side: null,
+        }),
+      );
+      expect(sheet.closeness.bottom).toMatch(/^Bottom: (within|less than)/);
+      expect(sheet.closeness.bottom).toContain("out from the stringer");
+      expect(sheet.controls.bottom).toMatch(/^Bottom: .* · .* · /);
+      expect(sheet.controls.bottom).toContain("Deep Single Concave");
+    }, LONG);
+
+    it("uses BOTTOM's own words for the sliders", () => {
+      expect(BRD_FIT_COPY.bottomSliderWords).toEqual({
+        start: BOTTOM_COPY.start,
+        deepestAt: BOTTOM_COPY.deepestAt,
+        end: BOTTOM_COPY.end,
+        offRail: BOTTOM_COPY.offRail,
+        offStringer: BOTTOM_COPY.offStringer,
+        troughAt: BOTTOM_COPY.troughAt,
+      });
+      expect(BRD_FIT_COPY.bottomRowLabels.stations).toBe(`${BOTTOM_COPY.start} · ${BOTTOM_COPY.deepestAt} · ${BOTTOM_COPY.end}`);
+    });
+
+    it("always says what the two rockers are, and notes the lift only when a concave lifts the stringer; the rocker table's Our fit is the finished stringer's", () => {
+      const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
+      expect(sheet.rockerLines).toBe(BRD_FIT_COPY.rockerLines);
+      expect(sheet.stringerNote).not.toBeNull();
+      const largest = Object.entries(concave.fit.stringerLift).reduce((a, b) => (b[1] > a[1] ? b : a));
+      expect(sheet.stringerNote).toContain(formatMark(largest[1] as never, "imperial"));
+      const flat = brdFitSheet(look, "Shortboard.brd", "imperial");
+      expect(flat.rockerLines).toBe(BRD_FIT_COPY.rockerLines);
+      expect(flat.stringerNote).toBeNull();
+      // Our fit is the planed rocker plus the lift, from the centre's own; the thickness is the planed thickness less the lift.
+      const rocker = sheet.tables.find((t) => t.kind === "rocker")!;
+      const thickness = sheet.tables.find((t) => t.kind === "thickness")!;
+      const fit = concave.fit;
+      for (const key of ["noseTip", "nose12", "tail12", "tailTip"] as const) {
+        expect(rocker.rows.find((r) => r.key === key)!.fit).toBe(formatMark(mm(fit.rocker[key] + fit.stringerLift[key] - fit.stringerLift.center), "imperial"));
+      }
+      for (const key of ["noseTip", "nose12", "center", "tail12", "tailTip"] as const) {
+        expect(thickness.rows.find((r) => r.key === key)!.fit).toBe(formatMark(mm(fit.foil[key] - fit.stringerLift[key]), "imperial"));
+      }
+      expect(rocker.rows.find((r) => r.key === "center")!.fit).toBe(formatMark(mm(0), "imperial"));
+    }, LONG);
+
+    it("says the bottom could not be read, and keeps the older not-read line, for a look with no bottom", () => {
+      const bare = { ...look, bottom: null };
+      const sheet = brdFitSheet(bare, "Bare.brd", "imperial");
+      expect(sheet.bottom).toEqual({ read: false, caption: BRD_FIT_COPY.bottomCaption, line: BRD_FIT_COPY.bottomUnread });
+      expect(sheet.closeness.bottom).toBeNull();
+      expect(sheet.controls.bottom).toBeNull();
+      expect(sheet.notRead).toBe(BRD_FIT_COPY.notRead);
+    });
+
+    it("leaves the flat Shortboard's rocker and thickness tables as they were: Our fit is the fit's own figures", () => {
+      const sheet = brdFitSheet(look, "Shortboard.brd", "imperial");
+      for (const key of ["noseTip", "nose12", "tail12", "tailTip"] as const) {
+        expect(sheet.tables[1].rows.find((r) => r.key === key)!.fit).toBe(formatMark(look.fit.rocker[key], "imperial"));
+      }
+      for (const key of ["noseTip", "nose12", "center", "tail12", "tailTip"] as const) {
+        expect(sheet.tables[2].rows.find((r) => r.key === key)!.fit).toBe(formatMark(look.fit.foil[key], "imperial"));
+      }
+    });
   });
 });

@@ -456,7 +456,7 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
     }
   });
 
-  test("b9. Print Overview prints one page on a computer, opens a tab on an iPhone, downloads on Android; the preview stays and Close still changes nothing", async ({
+  test("b9. Print Overview prints one or two pages on a computer, opens a tab on an iPhone, downloads on Android; the preview stays and Close still changes nothing", async ({
     page,
   }, testInfo) => {
     const file = boardFile(SHORTBOARD);
@@ -483,7 +483,9 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
         return new TextDecoder("latin1").decode(bytes);
       });
       expect(pdf.slice(0, 5)).toBe("%PDF-");
-      expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(1);
+      // One page is the aim; the BOTTOM block takes a second when the two views would be squeezed (quick 261113-gwr).
+      expect((pdf.match(/\/Type \/Page\b/g) ?? []).length).toBeLessThanOrEqual(2);
+      expect(pdf.match(/\/Type \/Page\b/g)).not.toBeNull();
       const box = /MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(pdf);
       if (!box) throw new Error("the PDF has no MediaBox");
       expect(Number(box[1])).toBeCloseTo(595.28, 1);
@@ -596,7 +598,7 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
     await expect(dialog.locator("[data-brd-blanks-maker]")).toHaveCount(0);
     await expect(dialog.locator("[data-brd-blanks-intro]")).toHaveCount(0);
 
-    // Print Overview still makes its one page, carrying the same quiet line.
+    // Print Overview still makes its page or two, carrying the same quiet line.
     await dialog.getByRole("button", { name: BRD_FIT_COPY.print, exact: true }).click();
     const frame = page.locator("iframe[data-print-pdf]");
     await expect(frame).toHaveCount(1);
@@ -604,7 +606,7 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
       const bytes = new Uint8Array(await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer());
       return new TextDecoder("latin1").decode(bytes);
     });
-    expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(1);
+    expect((pdf.match(/\/Type \/Page\b/g) ?? []).length).toBeLessThanOrEqual(2);
     expect(pdf).toContain(BRD_BLANK_COPY.caption);
     expect(pdf).toContain("Pick one on ROCKER");
     await expect(dialog.locator("[data-brd-fit-print-problem]")).toHaveCount(0);

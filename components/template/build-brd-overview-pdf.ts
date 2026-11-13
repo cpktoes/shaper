@@ -13,7 +13,9 @@
  *
  * Nothing is clipped, ever: the text under the drawings is measured first, the two drawings are given whatever height is
  * left, and a sheet that still would not fit throws — the dialog then says so — rather than print a line off its foot.
- * There is only ever one page.
+ * One page is the aim. The BOTTOM block (quick 261113-gwr: three cross-sections and a table of what the file measures and what
+ * we fitted) stays on the page when the two views keep at least `minViewsWithBottom` millimetres; when it would squeeze them
+ * below that, the BOTTOM block moves to a second page of its own, drawn from the top margin. Never a third page.
  */
 import jsPDF from "jspdf";
 import { THREE_D_COPY } from "@/components/3d/three-d-copy";
@@ -21,7 +23,16 @@ import { printPdf } from "@/components/template/print-pdf";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
 import { PAPER_MM, TEMPLATE_MARGIN_MM } from "@/lib/geometry/template";
 import type { BrdBlankWords } from "@/lib/export/brd-blank-words";
-import { BRD_FIT_COPY, brdFitFramesInBox, type BrdFitLook, type BrdFitSheet, type BrdFitTable } from "@/lib/export/brd-fit-preview";
+import {
+  BRD_BOTTOM_DRAWING_WIDTH,
+  BRD_FIT_COPY,
+  brdBottomFrames,
+  brdBottomRows,
+  brdFitFramesInBox,
+  type BrdFitLook,
+  type BrdFitSheet,
+  type BrdFitTable,
+} from "@/lib/export/brd-fit-preview";
 import { brdBoardName } from "@/lib/models/brd-board";
 
 /** The page: A4's width by Letter's height (millimetres), the smaller of the two papers on each axis. */
@@ -44,6 +55,11 @@ export const BRD_OVERVIEW_LAYOUT = {
   labelColumn: 24,
   /** The smallest the two drawings may be squeezed to before the sheet is refused: they would no longer be a drawing. */
   minDrawingHeight: 30,
+  /** The least the two views may be given while the BOTTOM block shares their page; under it the block goes to a second page. */
+  minViewsWithBottom: 45,
+  /** The BOTTOM table's label column, and the gap between its three drawings. */
+  bottomLabelColumn: 30,
+  bottomGap: 4,
   strokes: {
     // The file is a wide mid-grey line and our fit a thin black dashed one drawn over it, so where the two lie within a
     // hair of each other (most of the way round a close fit) the dashes still show inside the grey, and where they part both read.
@@ -101,7 +117,11 @@ type Item =
   | { kind: "text"; lines: string[]; style: FontStyle; size: number; pitch: number }
   | { kind: "table"; table: BrdFitTable }
   | { kind: "key" }
-  | { kind: "gap"; height: number };
+  | { kind: "gap"; height: number }
+  /** The BOTTOM block's three cross-sections in one row. */
+  | { kind: "sections"; height: number }
+  /** The BOTTOM block's table: a header row, then each row's cells wrapped to their column (a row is as tall as its tallest cell). */
+  | { kind: "bottomTable"; header: string[]; rows: { label: string; cells: string[][]; size: number }[]; height: number };
 
 const TABLE_HEIGHT = L.pitch.caption + 3 * L.pitch.row + 1.5;
 const KEY_HEIGHT = L.pitch.body + 1;
@@ -115,6 +135,8 @@ function heightOf(item: Item): number {
     case "key":
       return KEY_HEIGHT;
     case "gap":
+    case "sections":
+    case "bottomTable":
       return item.height;
   }
 }
@@ -128,6 +150,8 @@ export interface BuildBrdOverviewPdfOptions {
   fileName: string;
   /** How many times true height the side view is drawn: the dialog's current pick. */
   height: SectionHeight;
+  /** How many times true height the BOTTOM block's cross-sections are drawn: the dialog's own pick for them (it opens at x4). */
+  sectionHeight?: SectionHeight;
   /**
    * The SUGGESTED BLANKS block (quick 261113-gwo), worded for the shaper's system. Printed after the point notes when it is given
    * and ready or quiet; left off when absent or still loading (the dialog passes null until the suggestions are worked out).
@@ -138,6 +162,7 @@ export interface BuildBrdOverviewPdfOptions {
 /** Builds the one-page overview. Throws when it cannot fit its words on one page (never prints a clipped one). */
 export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF {
   const { look, sheet, height, blanks } = options;
+  const sectionHeight = options.sectionHeight ?? 4;
   const doc = new jsPDF({ unit: "mm", format: [BRD_OVERVIEW_PAGE.width, BRD_OVERVIEW_PAGE.height], orientation: "portrait" });
   doc.setDrawColor(0);
   doc.setTextColor(0);
@@ -176,19 +201,64 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     ...(words.intro === null ? [] : [body(words.intro)]),
     ...words.lines.flat().map(body),
   ];
-  const under: Item[] = [
+  /**
+   * The BOTTOM block (quick 261113-gwr): its caption, then the cross-sections' caption, the three drawings, the table and the notes;
+   * or the caption and the one line saying the bottom could not be read.
+   */
+  const bottomItems = (): Item[] => {
+    const caption: Item = { kind: "text", lines: [sheet.bottom.caption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption };
+    if (!sheet.bottom.read) return [{ kind: "gap", height: L.gap }, caption, body(sheet.bottom.line)];
+    const items: Item[] = [{ kind: "gap", height: L.gap }, caption];
+    if (bottomFrames.drawings.length > 0) {
+      items.push({ kind: "text", lines: [BRD_FIT_COPY.bottomSectionsCaption(sectionHeightLabel(bottomFrames))], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption });
+      items.push({ kind: "sections", height: L.pitch.caption + bottomFrames.height * bottomCell.scale + 1.5 });
+    }
+    items.push(bottomTable(sheet.bottom));
+    items.push(...sheet.bottom.notes.map(body));
+    return items;
+  };
+  const bottomCell = (() => {
+    const width = (CONTENT_WIDTH - 2 * L.bottomGap) / 3;
+    return { width, scale: width / BRD_BOTTOM_DRAWING_WIDTH };
+  })();
+  /** The table: each cell wrapped to its column at the table's size, up to two lines, the size shrunk a little if a cell would not fit in two. */
+  const bottomTable = (block: Extract<BrdFitSheet["bottom"], { read: true }>): Item => {
+    const column = (CONTENT_WIDTH - L.bottomLabelColumn) / 3;
+    const rows = block.rows.map((row) => {
+      let size: number = L.fonts.table;
+      let cells: string[][] = [];
+      for (;;) {
+        setFont("normal", size);
+        cells = row.cells.map((text) => wrap(doc, drawable(text), column - 2));
+        if (Math.max(...cells.map((c) => c.length)) <= 2 || size <= 5) break;
+        size -= 0.25;
+      }
+      return { label: row.label, cells, size };
+    });
+    const height = L.pitch.row + rows.reduce((sum, row) => sum + Math.max(...row.cells.map((c) => c.length)) * L.pitch.row, 0) + 1.5;
+    return { kind: "bottomTable", header: block.columns.map((c) => c.label), rows, height };
+  };
+  const bottomFrames = brdBottomFrames(brdBottomRows(look), sectionHeight);
+
+  const underBefore: Item[] = [
     { kind: "key" },
     { kind: "gap", height: L.gap },
     { kind: "text", lines: [BRD_FIT_COPY.howClose], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
     body(sheet.closeness.outline),
     body(sheet.closeness.rocker),
     body(sheet.closeness.thickness),
+    ...(sheet.closeness.bottom === null ? [] : [body(sheet.closeness.bottom)]),
     body(sheet.tipsNote),
     { kind: "gap", height: L.gap },
     ...sheet.tables.map((table): Item => ({ kind: "table", table })),
     body(sheet.rockerUse),
     ...sheet.pointNotes.map(body),
-    ...(blanks && blanks.status !== "loading" ? blankItems(blanks) : []),
+    body(sheet.rockerLines),
+    ...(sheet.stringerNote === null ? [] : [body(sheet.stringerNote)]),
+  ];
+  const underBlanks: Item[] = blanks && blanks.status !== "loading" ? blankItems(blanks) : [];
+  const underBottom = bottomItems();
+  const underAfter: Item[] = [
     { kind: "gap", height: L.gap },
     { kind: "text", lines: [BRD_FIT_COPY.controls], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
     body(sheet.controls.outline),
@@ -196,15 +266,33 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.controls.tail),
     body(sheet.controls.rocker),
     body(sheet.controls.thickness),
+    ...(sheet.controls.bottom === null ? [] : [body(sheet.controls.bottom)]),
     { kind: "gap", height: L.gap },
     body(sheet.notRead),
   ];
 
   const headHeight = head.reduce((sum, item) => sum + heightOf(item), 0);
-  const underHeight = under.reduce((sum, item) => sum + heightOf(item), 0);
+  const sum = (items: readonly Item[]) => items.reduce((total, item) => total + heightOf(item), 0);
   const top = MARGIN;
-  const boxHeight = BRD_OVERVIEW_PAGE.height - MARGIN - top - headHeight - underHeight - L.pitch.caption;
   const captionGap = L.pitch.caption + 2.5;
+  const boxFor = (under: readonly Item[]) => BRD_OVERVIEW_PAGE.height - MARGIN - top - headHeight - sum(under) - L.pitch.caption;
+  // One page when the two views keep their room beside the BOTTOM block; otherwise the block goes to a page of its own, and
+  // when the views are still under the plain minimum the SUGGESTED BLANKS go with it (a long block of makers on a board whose
+  // numbers read long, in Metric, is the case that needs it). (The one line saying the bottom could not be read moves only when
+  // even the plain minimum of room would be lost.)
+  let onSecondPage: "none" | "bottom" | "blanks and bottom" = "none";
+  let under = [...underBefore, ...underBlanks, ...underBottom, ...underAfter];
+  let boxHeight = boxFor(under);
+  if (boxHeight - captionGap < (sheet.bottom.read ? L.minViewsWithBottom : L.minDrawingHeight)) {
+    onSecondPage = "bottom";
+    under = [...underBefore, ...underBlanks, ...underAfter];
+    boxHeight = boxFor(under);
+    if (boxHeight - captionGap < L.minDrawingHeight && underBlanks.length > 0) {
+      onSecondPage = "blanks and bottom";
+      under = [...underBefore, ...underAfter];
+      boxHeight = boxFor(under);
+    }
+  }
   if (boxHeight - captionGap < L.minDrawingHeight) throw new Error("The overview's words leave no room for the two drawings.");
   const frames = brdFitFramesInBox(look, { width: CONTENT_WIDTH, height: boxHeight }, height, captionGap);
 
@@ -234,6 +322,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     at: number,
     closed: boolean,
     spec: { width: number; dash: readonly number[]; grey: number },
+    from: number = originX,
   ) => {
     if (points.length < 2) return;
     doc.setDrawColor(spec.grey);
@@ -241,7 +330,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     doc.setLineDashPattern([...spec.dash], 0);
     const [x0, y0] = points[0];
     const steps = points.slice(1).map(([x, py], i): [number, number] => [x - points[i][0], py - points[i][1]]);
-    doc.lines(steps, originX + x0, at + y0, [1, 1], "S", closed);
+    doc.lines(steps, from + x0, at + y0, [1, 1], "S", closed);
     doc.setLineDashPattern([], 0);
     doc.setDrawColor(0);
   };
@@ -314,25 +403,98 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     y += 1.5;
   };
 
-  for (const item of under) {
-    switch (item.kind) {
-      case "text":
-        drawText(item);
-        break;
-      case "table":
-        drawTable(item.table);
-        break;
-      case "key":
-        drawKey();
-        break;
-      case "gap":
-        y += item.height;
-        break;
+  /** The BOTTOM block's three cross-sections in a row: each with its own caption over it, the file solid and ours dashed. */
+  const drawSections = () => {
+    const columns = sheet.bottom.read ? sheet.bottom.columns : [];
+    const keys = ["nose", "center", "tail"] as const;
+    const rowTop = y;
+    for (const drawing of bottomFrames.drawings) {
+      const index = keys.indexOf(drawing.key);
+      const x = MARGIN + index * (bottomCell.width + L.bottomGap);
+      const caption = (columns[index]?.drawingCaption ?? "").toUpperCase();
+      let size: number = L.fonts.caption;
+      setFont("bold", size);
+      while (doc.getTextWidth(drawable(caption)) > bottomCell.width && size > 4.5) {
+        size -= 0.25;
+        doc.setFontSize(size);
+      }
+      line(caption, x, rowTop, L.pitch.caption);
+      const at = rowTop + L.pitch.caption;
+      const k = bottomCell.scale;
+      const scaled = (points: readonly (readonly [number, number])[]) => points.map(([px, py]): [number, number] => [px * k, py * k]);
+      doc.setDrawColor(L.strokes.stringer.grey);
+      doc.setLineWidth(L.strokes.stringer.width);
+      doc.setLineDashPattern([...L.strokes.stringer.dash], 0);
+      doc.line(x + drawing.straightedge.x1 * k, at + drawing.straightedge.y * k, x + drawing.straightedge.x2 * k, at + drawing.straightedge.y * k);
+      doc.line(x + drawing.stringer.x * k, at + drawing.stringer.y1 * k, x + drawing.stringer.x * k, at + drawing.stringer.y2 * k);
+      doc.setLineDashPattern([], 0);
+      stroke(scaled(drawing.file), at, false, L.strokes.file, x);
+      stroke(scaled(drawing.fit), at, false, L.strokes.fit, x);
+      lastBaseline = Math.max(lastBaseline, at + bottomFrames.height * k);
     }
-  }
+    y += heightOf({ kind: "sections", height: L.pitch.caption + bottomFrames.height * bottomCell.scale + 1.5 });
+  };
+
+  /** The BOTTOM block's table: a header, then each row's wrapped cells in their columns. */
+  const drawBottomTable = (item: Extract<Item, { kind: "bottomTable" }>) => {
+    const column = (CONTENT_WIDTH - L.bottomLabelColumn) / 3;
+    item.header.forEach((word, i) => cell(word, "bold", MARGIN + L.bottomLabelColumn + i * column + 1, y, column - 2));
+    y += L.pitch.row;
+    doc.setLineWidth(0.15);
+    doc.setDrawColor(0);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+    for (const row of item.rows) {
+      const lines = Math.max(...row.cells.map((c) => c.length));
+      setFont("normal", row.size);
+      cell(row.label, "bold", MARGIN, y, L.bottomLabelColumn - 1);
+      row.cells.forEach((cellLines, i) => {
+        setFont("normal", row.size);
+        cellLines.forEach((text, n) => line(text, MARGIN + L.bottomLabelColumn + i * column + 1, y + n * L.pitch.row, L.pitch.row));
+      });
+      y += lines * L.pitch.row;
+    }
+    y += 1.5;
+  };
+
+  const drawItems = (items: readonly Item[]) => {
+    for (const item of items) {
+      switch (item.kind) {
+        case "text":
+          drawText(item);
+          break;
+        case "table":
+          drawTable(item.table);
+          break;
+        case "key":
+          drawKey();
+          break;
+        case "gap":
+          y += item.height;
+          break;
+        case "sections":
+          drawSections();
+          break;
+        case "bottomTable":
+          drawBottomTable(item);
+          break;
+      }
+    }
+  };
+  drawItems(under);
 
   // A sheet whose last line would fall off its foot is never printed.
   if (lastBaseline > footLimit) throw new Error("The overview does not fit on one page.");
+  if (onSecondPage !== "none") {
+    // What did not fit takes a page of its own, from the top margin, in the order the screen shows it: a second page is the most
+    // there ever is.
+    doc.addPage([BRD_OVERVIEW_PAGE.width, BRD_OVERVIEW_PAGE.height], "portrait");
+    doc.setDrawColor(0);
+    doc.setTextColor(0);
+    lastBaseline = 0;
+    y = MARGIN;
+    drawItems(onSecondPage === "blanks and bottom" ? [...underBlanks.slice(1), ...underBottom] : underBottom.slice(1));
+    if (lastBaseline > footLimit) throw new Error("The overview's second page does not fit.");
+  }
   return doc;
 }
 

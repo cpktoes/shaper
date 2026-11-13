@@ -1,17 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { brdText } from "@/lib/export/brd";
+import { brdBottomStations, brdText } from "@/lib/export/brd";
+import { brdFitLook } from "@/lib/export/brd-fit-preview";
 import { readAnyBrd } from "@/lib/export/brd-read";
 import type { P2 } from "@/lib/geometry/bezier-fit";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import { fitBoardToBrd, type BrdFit } from "@/lib/geometry/brd-fit";
-import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
+import { DEFAULT_BOTTOM, bottomHasCut, resolveBottom, sectionsFoamOff, startingCut } from "@/lib/geometry/bottom";
+import { brdFittedBottomBoard } from "@/lib/geometry/brd-bottom";
+import {
+  designBottomBoard,
+  designCrossSectionInput,
+  designFinPlacement,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+} from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { buildOutline } from "@/lib/geometry/outline";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
-import { mm } from "@/lib/geometry/units";
+import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
-import { BOARD_NAME_MAX_LENGTH } from "./board-file";
+import { BOARD_NAME_MAX_LENGTH, readBoardEntry } from "./board-file";
+import { buildSnapshot } from "./design-snapshot";
 import { brdBoardFields, brdBoardName } from "./brd-board";
 
 /**
@@ -112,4 +123,59 @@ describe("brdBoardFields names", () => {
     expect(fields).not.toBeNull();
     expect(fields!.boardName).toBe("");
   });
+});
+
+describe("brdBoardFields with a bottom (quick 261113-gwr)", () => {
+  const fit = fitOf("shortboard|asis|hard");
+  const board0 = brdFittedBottomBoard(fit);
+  const concave = {
+    ...structuredClone(DEFAULT_BOTTOM),
+    nose: { ...startingCut("nose", "Blended Nose Concave", board0), depth: inchesToMm(3 / 16) },
+    center: { ...startingCut("center", "Deep Single Concave", board0), depth: inchesToMm(4 / 16) },
+    tail: { ...startingCut("tail", "Double Concave Exit", board0), depth: inchesToMm(2 / 16), troughAt: inchesToMm(4.625) },
+  };
+
+  it("carries a bottom that cuts, and it reads back deep-equal through the board reader", () => {
+    expect(bottomHasCut(concave)).toBe(true);
+    const fields = brdBoardFields(fit, "Cut.brd", concave)!;
+    expect(fields.bottom).toEqual(concave);
+    const entry = readBoardEntry({ name: fields.boardName, design: buildSnapshot(fields) }, {});
+    expect(entry?.fields.bottom).toEqual(concave);
+  });
+
+  it("leaves no bottom key for a flat bottom, for none, and for null, as a new board's opening bottom", () => {
+    for (const bottom of [DEFAULT_BOTTOM, undefined, null]) expect("bottom" in brdBoardFields(fit, "Flat.brd", bottom)!).toBe(false);
+  });
+
+  it("opens a board whose finished stringer is the file's: rocker plus the concave's lift, all 201 stations", () => {
+    const text = (() => {
+      const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+      const g = buildOutline(f.outline);
+      const p = designSideProfile(f, LIVE_DESIGN_RULES);
+      const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+      const b0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
+      const bottom = { ...structuredClone(DEFAULT_BOTTOM), center: { ...startingCut("center", "Deep Single Concave", b0), depth: inchesToMm(4 / 16) } };
+      const surface = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: b0 }), geometry: g, rockerAt: p.rockerAt });
+      return brdText(surface, { bottomStations: brdBottomStations(resolveBottom(bottom, b0)) }).text;
+    })();
+    const read = readAnyBrd(Uint8Array.from(text, (ch) => ch.charCodeAt(0)));
+    if (!read.ok) throw new Error("the app's own file would not read");
+    const look = brdFitLook(read.board);
+    expect(look.bottom).not.toBeNull();
+    const fields = brdBoardFields(look.fit, "Concave.brd", look.bottom!.bottom)!;
+    expect(fields.bottom).toBeDefined();
+    const opened = designBottomBoard(fields.outline, buildOutline(fields.outline), designSideProfile(fields, LIVE_DESIGN_RULES), designFinPlacement(fields));
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const resolved = resolveBottom(fields.bottom!, opened);
+    const finished = (s: number) => profile.rockerAt(mm(s)) + sectionsFoamOff(resolved, opened, mm(s), mm(0));
+    const L = look.fit.outline.length;
+    let worst = 0;
+    for (let i = 0; i <= 200; i++) {
+      const s = look.fit.lines.bottom[i][0];
+      const ours = finished(s) - finished(L / 2);
+      const drawn = look.fit.lines.bottom[i][1] - look.fit.lines.bottom[100][1];
+      worst = Math.max(worst, Math.abs(ours - drawn));
+    }
+    expect(worst).toBeLessThan(0.05);
+  }, 120_000);
 });

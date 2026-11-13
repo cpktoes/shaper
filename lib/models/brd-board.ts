@@ -6,12 +6,15 @@
  * same reader first: a board that file would refuse (a value outside its slider, a shape the rack can't draw) comes back
  * `null` rather than reaching the design.
  *
- * The defaults below are the ones the design store's `DEFAULT_DESIGN_STATE` makes for a new board (no bottom key, because the
- * opening bottom is left out of a snapshot altogether). Nothing is rounded: the board that opens holds the fit's own values,
+ * The defaults below are the ones the design store's `DEFAULT_DESIGN_STATE` makes for a new board. The bottom (quick 261113-gwr)
+ * opens with the board when the fit found a cut: the fitted cuts ride in the snapshot's own optional `bottom` (Phase 17, D-24),
+ * so they open on BOTTOM editable like any board's and need nothing new stored; a flat bottom leaves no key, exactly as a new
+ * board's opening bottom does. Nothing is rounded: the board that opens holds the fit's own values,
  * so it draws the dashed lines the preview showed.
  *
  * Pure: no React, browser or database import (CLAUDE.md Rule 1).
  */
+import { bottomHasCut, type BoardBottom } from "@/lib/geometry/bottom";
 import type { BrdFit } from "@/lib/geometry/brd-fit";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
@@ -27,9 +30,14 @@ export function brdBoardName(fileName: string): string {
 /**
  * The fields a new board starts from when it is the closest fit to `fileName`, or null when the board reader refuses them
  * (which the fit's own clamping means it never does). Read back through `readBoardEntry`, so its name is trimmed and cut to
- * the board-name limit exactly as a JSON file's is.
+ * the board-name limit exactly as a JSON file's is, and so is the bottom (the board reader's bounded, forgiving bottom rule).
+ * `bottom` is the fitted bottom, carried only when it cuts something.
  */
-export function brdBoardFields(fit: Pick<BrdFit, "outline" | "rocker" | "foil">, fileName: string): DesignSnapshotFields | null {
+export function brdBoardFields(
+  fit: Pick<BrdFit, "outline" | "rocker" | "foil">,
+  fileName: string,
+  bottom?: BoardBottom | null,
+): DesignSnapshotFields | null {
   const fields: DesignSnapshotFields = {
     outline: fit.outline,
     rocker: fit.rocker,
@@ -42,6 +50,7 @@ export function brdBoardFields(fit: Pick<BrdFit, "outline" | "rocker" | "foil">,
     boardName: brdBoardName(fileName),
     finSystem: "fcs2",
     blank: null,
+    ...(bottom && bottomHasCut(bottom) ? { bottom } : {}),
   };
   return readBoardEntry({ name: fields.boardName, design: buildSnapshot(fields) }, {})?.fields ?? null;
 }

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
-import { brdText } from "@/lib/export/brd";
+import { brdBottomStations, brdText } from "@/lib/export/brd";
 import { readAnyBrd } from "@/lib/export/brd-read";
 import { BRD_BLANK_COPY, brdBlankWords, type BrdBlankState } from "@/lib/export/brd-blank-words";
 import { brdFitLook, brdFitSheet, type BrdFitLook } from "@/lib/export/brd-fit-preview";
@@ -12,8 +12,16 @@ import { prepareBlank } from "@/lib/geometry/blank-fit";
 import { suggestBlanks } from "@/lib/geometry/brd-blank-suggest";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import type { SectionHeight } from "@/lib/geometry/bottom-draw";
+import { DEFAULT_BOTTOM, resolveBottom, startingCut } from "@/lib/geometry/bottom";
 import { fitBoardToBrd } from "@/lib/geometry/brd-fit";
-import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
+import {
+  designBottomBoard,
+  designCrossSectionInput,
+  designFinPlacement,
+  designSideProfile,
+  deriveEffectiveRails,
+  LIVE_DESIGN_RULES,
+} from "@/lib/geometry/design";
 import { formatFeetInches, inchesToMm, mm, type UnitsSystem } from "@/lib/geometry/units";
 import { buildOutline } from "@/lib/geometry/outline";
 import { PAPER_MM } from "@/lib/geometry/template";
@@ -66,6 +74,21 @@ const LOOKS: [string, BrdFitLook][] = [
 const pageCount = (doc: jsPDF) => doc.getNumberOfPages();
 
 /**
+ * A page of the PDF as text: what its content stream says. One page is the aim and two the most there are (quick 261113-gwr: the
+ * BOTTOM block goes to a second page when it would squeeze the two views under 45 mm), each A4 wide by Letter tall.
+ */
+function expectOnePageOrTwo(doc: jsPDF) {
+  expect(pageCount(doc)).toBeGreaterThanOrEqual(1);
+  expect(pageCount(doc)).toBeLessThanOrEqual(2);
+  for (let page = 1; page <= pageCount(doc); page++) {
+    doc.setPage(page);
+    expect(doc.internal.pageSize.getWidth()).toBeCloseTo(BRD_OVERVIEW_PAGE.width, 6);
+    expect(doc.internal.pageSize.getHeight()).toBeCloseTo(BRD_OVERVIEW_PAGE.height, 6);
+  }
+}
+const pageText = (doc: jsPDF, page: number): string => (doc.internal.pages as unknown as string[][])[page].join("\n");
+
+/**
  * The longest SUGGESTED BLANKS block there can be: the Shortboard's real four picks (one per maker), each given a Customize
  * Rocker order with a start at either end and a gap that reads in whole figures, so every maker has two lines.
  */
@@ -73,7 +96,7 @@ function longestBlanks(): BrdBlankState {
   const [, look] = LOOKS[0];
   const real = suggestBlanks({
     fit: look.fit,
-    bottom: look.board.bottom,
+    bottom: look.planedBottom,
     prepared: readSeedCatalog(SEED_CSV_DIR).filter(isPickable).map(prepareBlank),
     makers: ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"],
     cut: { deckSkin: DEFAULT_FIT_DEFAULTS.deckSkin, tipStyle: DEFAULT_FIT_DEFAULTS.tipStyle },
@@ -118,12 +141,14 @@ describe("buildBrdOverviewPdf", () => {
   describe.each(LOOKS)("for %s", (_name, look) => {
     for (const system of ["imperial", "metric"] as UnitsSystem[]) {
       for (const height of [1, 2, 4, 8] as SectionHeight[]) {
-        it(`makes one page ${system} at Height x${height}, A4 wide by Letter tall`, () => {
+        it(`makes one page, or two when the BOTTOM block needs them, ${system} at Height x${height}, A4 wide by Letter tall`, () => {
           const sheet = brdFitSheet(look, "Test Board.brd", system);
           const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height });
-          expect(pageCount(doc)).toBe(1);
-          expect(doc.internal.pageSize.getWidth()).toBeCloseTo(BRD_OVERVIEW_PAGE.width, 6);
-          expect(doc.internal.pageSize.getHeight()).toBeCloseTo(BRD_OVERVIEW_PAGE.height, 6);
+          expectOnePageOrTwo(doc);
+          // A file whose bottom could not be read prints the one line on the one page; one that was read prints its BOTTOM block.
+          if (look.bottom === null) expect(pageCount(doc)).toBe(1);
+          expect(doc.output()).toContain(look.bottom === null ? "couldn't be read" : "CROSS-SECTIONS");
+          doc.setPage(1);
           expect(doc.internal.pageSize.getWidth()).toBeLessThanOrEqual(Math.min(PAPER_MM.letter.width, PAPER_MM.a4.width) + 1e-9);
           expect(doc.internal.pageSize.getHeight()).toBeLessThanOrEqual(Math.min(PAPER_MM.letter.height, PAPER_MM.a4.height) + 1e-9);
         });
@@ -134,12 +159,12 @@ describe("buildBrdOverviewPdf", () => {
   describe.each(LOOKS)("with the longest SUGGESTED BLANKS block, for %s", (_name, look) => {
     for (const system of ["imperial", "metric"] as UnitsSystem[]) {
       for (const height of [1, 2, 4, 8] as SectionHeight[]) {
-        it(`still makes one page ${system} at Height x${height}, and prints the block and every maker`, () => {
+        it(`still makes at most two pages ${system} at Height x${height}, and prints the block and every maker`, () => {
           const sheet = brdFitSheet(look, "Test Board.brd", system);
           const blanks = brdBlankWords(LONGEST, look, system);
           expect(blanks.lines.every((lines) => lines.length === 2)).toBe(true);
           const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height, blanks });
-          expect(pageCount(doc)).toBe(1);
+          expectOnePageOrTwo(doc);
           const text = doc.output();
           expect(text).toContain(BRD_BLANK_COPY.caption);
           for (const maker of MAKER_NAMES) expect(text).toContain(maker);
@@ -161,7 +186,7 @@ describe("buildBrdOverviewPdf", () => {
     expect(content(buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2, blanks: loading }))).toBe(plain);
   });
 
-  it("still makes one page when both tips come to a point (two extra note lines) beside the longest block, at Height x8", () => {
+  it("still makes at most two pages when both tips come to a point (two extra note lines) beside the longest block, at Height x8", () => {
     const base = madeUp(84, 21).board;
     const L = base.length;
     const bottom: P2[] = [[0, 50], [6.35, 40], [L / 2, 0], [L - 6.35, 40], [L, 60]];
@@ -172,7 +197,7 @@ describe("buildBrdOverviewPdf", () => {
       const sheet = brdFitSheet(look, "Egg.brd", system);
       expect(sheet.pointNotes).toHaveLength(2);
       const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Egg.brd", height: 8, blanks: brdBlankWords(LONGEST, look, system) });
-      expect(pageCount(doc)).toBe(1);
+      expectOnePageOrTwo(doc);
     }
   });
 
@@ -181,7 +206,7 @@ describe("buildBrdOverviewPdf", () => {
     const sheet = brdFitSheet(look, "Test Board.brd", "imperial");
     const blanks = brdBlankWords({ status: "unavailable" }, look, "imperial");
     const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Test Board.brd", height: 2, blanks });
-    expect(pageCount(doc)).toBe(1);
+    expectOnePageOrTwo(doc);
     expect(doc.output()).toContain(BRD_BLANK_COPY.caption);
     expect(doc.output()).toContain("Pick one on ROCKER");
   });
@@ -219,12 +244,12 @@ describe("buildBrdOverviewPdf", () => {
     }
   });
 
-  it("survives a 200-letter file name, even one with no spaces to wrap at, and still makes one page", () => {
+  it("survives a 200-letter file name, even one with no spaces to wrap at, and still makes at most two pages", () => {
     const [, look] = LOOKS[0];
     for (const name of ["x".repeat(196) + ".brd", `${"Board ".repeat(33)}.brd`]) {
       const sheet = brdFitSheet(look, name, "imperial");
       const doc = buildBrdOverviewPdf({ look, sheet, fileName: name, height: 2 });
-      expect(pageCount(doc)).toBe(1);
+      expectOnePageOrTwo(doc);
     }
   });
 
@@ -232,7 +257,7 @@ describe("buildBrdOverviewPdf", () => {
     const [, look] = LOOKS[0];
     const name = "板 Surf Ünïcode ’quote’.brd";
     const doc = buildBrdOverviewPdf({ look, sheet: brdFitSheet(look, name, "imperial"), fileName: name, height: 1 });
-    expect(pageCount(doc)).toBe(1);
+    expectOnePageOrTwo(doc);
   });
 
   it("mentions a point's own figures when a tip comes to a point", () => {
@@ -245,6 +270,142 @@ describe("buildBrdOverviewPdf", () => {
     const sheet = brdFitSheet(look, "Egg.brd", "imperial");
     expect(sheet.pointNotes).toHaveLength(1);
     expect(buildBrdOverviewPdf({ look, sheet, fileName: "Egg.brd", height: 2 }).output()).toContain("comes to a point");
+  });
+});
+
+/** A Shortboard with a 1/4" Deep Single Concave and a 3/16" Panel Vee, written by the app's writer and read back: a concave file. */
+function concaveLook(): BrdFitLook {
+  const fields = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const board0 = designBottomBoard(fields.outline, geometry, profile, designFinPlacement(fields));
+  const bottom = {
+    ...structuredClone(DEFAULT_BOTTOM),
+    center: { ...startingCut("center", "Deep Single Concave", board0), depth: inchesToMm(4 / 16) },
+    tail: { ...startingCut("tail", "Panel Vee", board0), depth: inchesToMm(3 / 16) },
+  };
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length, { bottom, board: board0 }),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  const read = readAnyBrd(Uint8Array.from(brdText(surface, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text, (ch) => ch.charCodeAt(0)));
+  if (!read.ok) throw new Error("the app's own file would not read");
+  return brdFitLook(read.board);
+}
+
+describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
+  const concave = concaveLook();
+
+  it("prints its caption, the cross-sections' caption at the pick, the fitted names and the table's words, in both systems", () => {
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      const sheet = brdFitSheet(concave, "Concave.brd", system);
+      expect(sheet.bottom.read).toBe(true);
+      const text = buildBrdOverviewPdf({ look: concave, sheet, fileName: "Concave.brd", height: 2, sectionHeight: 4 }).output();
+      expect(text).toContain("(BOTTOM)");
+      expect(text).toContain("CROSS-SECTIONS");
+      expect(text).toContain("HEIGHT");
+      expect(text).toContain("Deep Single Concave");
+      expect(text).toContain("Panel Vee");
+      expect(text).toContain("Start");
+      expect(text).toContain("Bottom: within");
+      expect(text).toContain("Bottom: ");
+      expect(text).toContain(sheet.rockerLines.split(" ")[0]);
+      if (sheet.stringerNote) expect(text).toContain("lift its stringer");
+    }
+  });
+
+  it("says, for a concave, that the rocker it prints is the finished stringer's", () => {
+    const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
+    expect(sheet.stringerNote).not.toBeNull();
+    const doc = buildBrdOverviewPdf({ look: concave, sheet, fileName: "Concave.brd", height: 1, sectionHeight: 4 });
+    expect(doc.output()).toContain("lift its stringer");
+  });
+
+  it("makes the BOTTOM block the whole of the second page when it would squeeze the two views under the least, and never more than two pages", () => {
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      for (const height of [1, 2, 4, 8] as SectionHeight[]) {
+        const sheet = brdFitSheet(concave, "Concave.brd", system);
+        const doc = buildBrdOverviewPdf({ look: concave, sheet, fileName: "Concave.brd", height, sectionHeight: 4 });
+        expectOnePageOrTwo(doc);
+        const second = pageCount(doc) === 2;
+        expect(pageText(doc, 1).includes("(BOTTOM)")).toBe(!second);
+        if (second) {
+          expect(pageText(doc, 2)).toContain("(BOTTOM)");
+          expect(pageText(doc, 2)).toContain("CROSS-SECTIONS");
+          expect(pageText(doc, 1)).not.toContain("CROSS-SECTIONS");
+        }
+      }
+    }
+  });
+
+  it("keeps the BOTTOM block on the one page while the two views keep at least the least room, and takes it to page 2 when they would not", () => {
+    const sheet = brdFitSheet(concave, "C.brd", "imperial");
+    // The same sheet with the words that take most room taken out: the block now fits beside the views.
+    const lean = {
+      ...sheet,
+      tipsNote: "-",
+      rockerLines: "-",
+      stringerNote: null,
+      rockerUse: "-",
+      bottom: sheet.bottom.read ? { ...sheet.bottom, notes: ["-"] } : sheet.bottom,
+    };
+    const one = buildBrdOverviewPdf({ look: concave, sheet: lean, fileName: "C.brd", height: 1, sectionHeight: 4 });
+    expect(pageCount(one)).toBe(1);
+    expect(pageText(one, 1)).toContain("(BOTTOM)");
+    expect(pageText(one, 1)).toContain("CROSS-SECTIONS");
+    const full = buildBrdOverviewPdf({ look: concave, sheet, fileName: "C.brd", height: 1, sectionHeight: 4 });
+    expect(pageCount(full)).toBe(2);
+    expect(pageText(full, 1)).not.toContain("(BOTTOM)");
+    expect(pageText(full, 2)).toContain("(BOTTOM)");
+    expect(BRD_OVERVIEW_LAYOUT.minViewsWithBottom).toBe(45);
+    expect(BRD_OVERVIEW_LAYOUT.minViewsWithBottom).toBeGreaterThan(BRD_OVERVIEW_LAYOUT.minDrawingHeight);
+  });
+
+  it("takes the SUGGESTED BLANKS to the second page too, ahead of the BOTTOM block, when the page would otherwise leave the views no room; beyond that it refuses", () => {
+    const sheet = brdFitSheet(concave, "Concave.brd", "metric");
+    const blanks = brdBlankWords(LONGEST, concave, "metric");
+    const note = (i: number) => `${i + 1}. ${"A long note about a tip that comes to a point. ".repeat(4)}`;
+    const build = (notes: number) =>
+      buildBrdOverviewPdf({ look: concave, sheet: { ...sheet, pointNotes: Array.from({ length: notes }, (_, i) => note(i)) }, fileName: "Concave.brd", height: 1, sectionHeight: 4, blanks });
+    // More and more words on page 1: first the BOTTOM block goes over, then the blanks go with it, then the page is refused.
+    const stages: string[] = [];
+    for (let notes = 0; notes < 30; notes++) {
+      let stage: string;
+      try {
+        const doc = build(notes);
+        stage = pageCount(doc) === 1 ? "one page" : pageText(doc, 1).includes("(SUGGESTED BLANKS)") ? "bottom on page 2" : "blanks and bottom on page 2";
+        if (stage === "blanks and bottom on page 2") {
+          expect(pageText(doc, 2)).toContain("(SUGGESTED BLANKS)");
+          expect(pageText(doc, 2)).toContain("(BOTTOM)");
+          expect(pageText(doc, 2).indexOf("(SUGGESTED BLANKS)")).toBeLessThan(pageText(doc, 2).indexOf("(BOTTOM)"));
+        }
+      } catch (error) {
+        expect((error as Error).message).toMatch(/no room/);
+        stage = "refused";
+      }
+      if (stages[stages.length - 1] !== stage) stages.push(stage);
+    }
+    expect(stages).toEqual(["bottom on page 2", "blanks and bottom on page 2", "refused"]);
+  });
+
+  it("prints the unread line on the one page when the file's bottom could not be read, never a page of its own", () => {
+    const [, look] = LOOKS[2];
+    expect(look.bottom).toBeNull();
+    const sheet = brdFitSheet(look, "No Sections.brd", "imperial");
+    const doc = buildBrdOverviewPdf({ look, sheet, fileName: "No Sections.brd", height: 2 });
+    expect(pageCount(doc)).toBe(1);
+    expect(doc.output()).toContain("couldn't be read");
+    expect(doc.output()).toContain("Rails, bottom contours and wings");
+  });
+
+  it("changes with the section Height pick", () => {
+    const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
+    const at = (sectionHeight: SectionHeight) => buildBrdOverviewPdf({ look: concave, sheet, fileName: "C.brd", height: 1, sectionHeight }).output();
+    expect(at(1)).toContain("TRUE HEIGHT");
+    expect(at(8)).toContain("HEIGHT");
+    expect(at(1)).not.toBe(at(8));
   });
 });
 
