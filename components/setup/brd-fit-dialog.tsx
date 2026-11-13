@@ -211,6 +211,11 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
                 {sheet.closeness.bottom}
               </p>
             )}
+            {sheet.wings.map((words, k) => (
+              <p key={k} data-brd-fit-wing={k + 1} className="text-xs text-surf-ink">
+                {words}
+              </p>
+            ))}
             <p data-brd-fit-tips className="text-xs text-surf-ink-muted">
               {sheet.tipsNote}
             </p>

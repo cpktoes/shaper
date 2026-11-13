@@ -248,6 +248,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.closeness.rocker),
     body(sheet.closeness.thickness),
     ...(sheet.closeness.bottom === null ? [] : [body(sheet.closeness.bottom)]),
+    ...sheet.wings.map(body),
     body(sheet.tipsNote),
     { kind: "gap", height: L.gap },
     ...sheet.tables.map((table): Item => ({ kind: "table", table })),

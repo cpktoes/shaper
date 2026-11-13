@@ -25,7 +25,7 @@ import {
 import { formatFeetInches, inchesToMm, mm, type UnitsSystem } from "@/lib/geometry/units";
 import { buildOutline } from "@/lib/geometry/outline";
 import { PAPER_MM } from "@/lib/geometry/template";
-import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import { phase16Boards, phase16WingBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import {
   BRD_OVERVIEW_LAYOUT,
   BRD_OVERVIEW_PAGE,
@@ -39,7 +39,7 @@ import {
  */
 
 function appLook(label: string): BrdFitLook {
-  const fields = phase16Boards().find((b) => b.label === label)!.fields;
+  const fields = [...phase16Boards(), ...phase16WingBoards()].find((b) => b.label === label)!.fields;
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -69,6 +69,8 @@ const LOOKS: [string, BrdFitLook][] = [
   ["the Midlength", appLook("midlength|asis|hard")],
   ["a made-up 5'0\" x 25\" board", madeUp(60, 25)],
   ["a made-up 10'0\" board", madeUp(120, 23)],
+  ["the Shortboard with a wing", appLook("wing|shortboard|one")],
+  ["the Shortboard with two wings", appLook("wing|shortboard|two")],
 ];
 
 const pageCount = (doc: jsPDF) => doc.getNumberOfPages();
@@ -397,7 +399,7 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
     const doc = buildBrdOverviewPdf({ look, sheet, fileName: "No Sections.brd", height: 2 });
     expect(pageCount(doc)).toBe(1);
     expect(doc.output()).toContain("couldn't be read");
-    expect(doc.output()).toContain("Rails, bottom contours and wings");
+    expect(doc.output()).toContain("Rails and bottom contours");
   });
 
   it("changes with the section Height pick", () => {
@@ -406,6 +408,36 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
     expect(at(1)).toContain("TRUE HEIGHT");
     expect(at(8)).toContain("HEIGHT");
     expect(at(1)).not.toBe(at(8));
+  });
+});
+
+describe("the wing lines on paper (quick 261113-hyy)", () => {
+  const winged = LOOKS.find(([name]) => name === "the Shortboard with two wings")![1];
+  const one = LOOKS.find(([name]) => name === "the Shortboard with a wing")![1];
+  const plain = LOOKS[0][1];
+
+  it("prints one line per wing, the file's beside ours, under HOW CLOSE, and never more than two pages, in both systems at every Height", () => {
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      for (const height of [1, 2, 4, 8] as SectionHeight[]) {
+        for (const [look, lines] of [[one, 1], [winged, 2]] as const) {
+          const sheet = brdFitSheet(look, "Winged.brd", system);
+          expect(sheet.wings).toHaveLength(lines);
+          const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Winged.brd", height });
+          expectOnePageOrTwo(doc);
+          const text = doc.output();
+          for (let k = 1; k <= lines; k++) expect(text).toContain(`Wing ${k}`);
+          expect(text).not.toContain(`Wing ${lines + 1}`);
+          expect(text).toContain("sharp corners");
+        }
+      }
+    }
+  });
+
+  it("prints no wing line for a file with no wing, and no word of wings in the not-read line", () => {
+    const sheet = brdFitSheet(plain, "Plain.brd", "imperial");
+    expect(sheet.wings).toEqual([]);
+    expect(buildBrdOverviewPdf({ look: plain, sheet, fileName: "Plain.brd", height: 4 }).output()).not.toContain("Wing 1");
+    expect(sheet.notRead).not.toMatch(/wing|flyer/i);
   });
 });
 

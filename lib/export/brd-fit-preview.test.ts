@@ -18,7 +18,7 @@ import {
 import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
-import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
+import { phase16Boards, phase16WingBoards } from "../geometry/__fixtures__/phase16-boards";
 import { brdBottomStations, brdText } from "./brd";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y, brdStationX } from "./brd-preview";
 import {
@@ -685,5 +685,90 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
         expect(sheet.tables[2].rows.find((r) => r.key === key)!.fit).toBe(formatMark(look.fit.foil[key], "imperial"));
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The wing lines (quick 261113-hyy)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** A winged board written by the app's own writer, read back and looked at. */
+function wingedLook(label: string): BrdFitLook {
+  const f = phase16WingBoards().find((b) => b.label === label)!.fields;
+  const g = buildOutline(f.outline);
+  const p = designSideProfile(f, LIVE_DESIGN_RULES);
+  const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+  const surf = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length), geometry: g, rockerAt: p.rockerAt });
+  const got = readAnyBrd(Uint8Array.from(brdText(surf).text, (ch) => ch.charCodeAt(0)));
+  if (!got.ok) throw new Error("the app's own file would not read");
+  return brdFitLook(got.board);
+}
+
+describe("brdFitSheet's wing lines", () => {
+  const one = wingedLook("wing|shortboard|one");
+  const two = wingedLook("wing|shortboard|two");
+  const square = wingedLook("wing|shortboard|square");
+
+  /** The three figures of a wing as the sheet words them, built from the app's own display functions. */
+  const figures = (w: { station: number; depth: number; run: number }, system: "imperial" | "metric") => ({
+    off: formatDim(mm(w.station), system),
+    depth: formatMarkOrLess(mm(w.depth), system),
+    run: formatMark(mm(w.run), system),
+  });
+
+  it("says nothing for a file with no wing, and every other field as before", () => {
+    const sheet = brdFitSheet(look, "Shortboard.brd", "imperial");
+    expect(sheet.wings).toEqual([]);
+    expect(look.fit.fileWings).toEqual([]);
+  });
+
+  it("gives one line per wing, nose-most first: the file's wing as measured beside ours as fitted", () => {
+    for (const system of ["imperial", "metric"] as const) {
+      const sheet = brdFitSheet(two, "Two.brd", system);
+      expect(sheet.wings).toHaveLength(2);
+      sheet.wings.forEach((line, k) => {
+        const file = figures(two.fit.fileWings[k], system);
+        const ours = figures(two.fit.outline.wings![k], system);
+        expect(line.startsWith(`Wing ${k + 1} — the file: `)).toBe(true);
+        expect(line).toContain(`the file: ${file.depth} deep over a ${file.run} run along the stringer, ${file.off} off the tail.`);
+        expect(line).toContain(`Ours: ${ours.depth} deep over a ${ours.run} run, ${ours.off} off the tail, sharp corners.`);
+      });
+    }
+  });
+
+  it("reads the place off the tail as a dim and depth and run as marks: centimetres and whole millimetres in Metric", () => {
+    const line = brdFitSheet(one, "One.brd", "metric").wings[0];
+    expect(line).toMatch(/\d+\.\d cm off the tail/);
+    expect(line).toMatch(/\d+ mm deep over a \d+ mm run along the stringer/);
+    const imperial = brdFitSheet(one, "One.brd", "imperial").wings[0];
+    expect(imperial).toContain('"');
+    expect(imperial).not.toContain(" cm");
+  });
+
+  it("reads a step with no run as a square step, the file's and ours alike", () => {
+    const line = brdFitSheet(square, "Square.brd", "imperial").wings[0];
+    expect(line).toContain("in a square step");
+    expect(line).not.toContain("run");
+  });
+
+  it("never says anything about wings or flyers in the not-read line, and keeps the rails there", () => {
+    for (const sheet of [brdFitSheet(one, "One.brd", "imperial"), brdFitSheet(look, "Plain.brd", "imperial"), brdFitSheet({ ...look, bottom: null }, "Plain.brd", "imperial")]) {
+      expect(sheet.notRead).not.toMatch(/wing|flyer/i);
+      expect(sheet.notRead).toMatch(/^Rails/);
+    }
+  });
+
+  it("draws the winged fit: the dashed outline, the widths table and HOW CLOSE all come from the fit that holds the wings", () => {
+    const sheet = brdFitSheet(one, "One.brd", "imperial");
+    expect(one.fit.outline.wings).toHaveLength(1);
+    expect(one.fit.lines.outline).toEqual(
+      (() => {
+        const points = buildOutline(one.fit.outline).points.map((p): P2 => [p.station, p.halfWidth]);
+        return points[0][1] > 1e-6 ? [[points[0][0], 0], ...points] : points;
+      })(),
+    );
+    const widths = fitOutlineWidths(one.fit.outline);
+    expect(sheet.tables[0].rows.find((r) => r.key === "tail12")!.fit).toBe(formatDim(widths.tail12, "imperial"));
+    expect(sheet.closeness.outline).toBe(closenessSentence("Outline", brdFitWords(one, "imperial").outline));
   });
 });

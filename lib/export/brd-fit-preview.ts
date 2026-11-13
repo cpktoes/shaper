@@ -371,9 +371,18 @@ export const BRD_FIT_COPY = {
     `Rocker: nose ${noseTip} · nose ${station} ${nose12} · tail ${station} ${tail12} · tail ${tailTip}`,
   thicknessLine: (noseTip: string, nose12: string, center: string, tail12: string, tailTip: string, station: string) =>
     `Thickness: nose ${noseTip} · nose ${station} ${nose12} · centre ${center} · tail ${station} ${tail12} · tail ${tailTip}`,
-  notRead: "Rails, bottom contours and wings or flyers aren't read from the file. Add these by hand once the board is open.",
-  /** The line when the bottom WAS read: rails and wings are what is left to add by hand. */
-  notReadAfterBottom: "Rails and wings or flyers aren't read from the file. Add these by hand once the board is open.",
+  notRead: "Rails and bottom contours aren't read from the file. Add these by hand once the board is open.",
+  /** The line when the bottom WAS read: rails are what is left to add by hand. */
+  notReadAfterBottom: "Rails aren't read from the file. Add these by hand once the board is open.",
+  /**
+   * One wing the file draws beside the one we fitted (quick 261113-hyy): where it stands off the tail, how deep it is and how long
+   * its run is along the stringer. A run that reads as nothing is a square step. Ours always opens with sharp corners (the corner
+   * radius is not fitted) and says nothing about fins.
+   */
+  wingLine: (n: number, file: BrdWingWords, ours: BrdWingWords) => {
+    const how = (w: BrdWingWords, along: string) => `${w.depth} deep ${w.run === null ? "in a square step" : `over a ${w.run} run${along}`}, ${w.off} off the tail`;
+    return `Wing ${n} — the file: ${how(file, " along the stringer")}. Ours: ${how(ours, "")}, sharp corners.`;
+  },
   /**
    * The BOTTOM block (quick 261113-gwr). The slider words are BOTTOM's own (`components/bottom/bottom-copy.ts`), copied because
    * `lib/` cannot import a component; a test holds the two equal.
@@ -428,6 +437,13 @@ export const BRD_FIT_COPY = {
   printProblem: "The overview couldn't be made. Try again.",
 } as const;
 
+/** One wing's three figures, worded for the sheet: `run` is null for a square step (a run that reads as nothing). */
+export interface BrdWingWords {
+  off: string;
+  depth: string;
+  run: string | null;
+}
+
 /** A figure that starts with `<` ("less than the smallest step") read as words: `<1/16"` becomes `less than 1/16"`. */
 export function lessThan(figure: string): string {
   return figure.startsWith("<") ? `less than ${figure.slice(1)}` : figure;
@@ -466,6 +482,8 @@ export interface BrdFitSheet {
   size: string;
   /** `bottom` is null when the file's cross-sections could not be read. */
   closeness: { outline: string; rocker: string; thickness: string; bottom: string | null };
+  /** One line per wing the file draws, nose-most first: the file's wing as measured beside ours as fitted. Empty for a file with no wing. */
+  wings: string[];
   tipsNote: string;
   tables: BrdFitTable[];
   /** One line per tip that comes to a point, nose first. */
@@ -751,6 +769,22 @@ function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): Brd
 }
 
 /**
+ * The sheet's wing lines (quick 261113-hyy): for each wing found in the file, the file's own wing beside the one our fit drew,
+ * in the shaper's system. A wing's place off the tail is a dim (a distance along the board) and its depth and run are marks (the
+ * small figures a tape reads), as the WINGS tab shows them. Wing k of the file is wing k of ours (the fit keeps the order).
+ */
+function wingLines(fit: BrdFit, system: UnitsSystem): string[] {
+  const ours = fit.outline.wings ?? [];
+  const nothing = formatMark(mm(0), system);
+  const words = (w: { station: Mm; depth: Mm; run: Mm }): BrdWingWords => ({
+    off: formatDim(w.station, system),
+    depth: lessThan(formatMarkOrLess(w.depth, system)),
+    run: formatMark(w.run, system) === nothing ? null : lessThan(formatMarkOrLess(w.run, system)),
+  });
+  return fit.fileWings.slice(0, ours.length).map((file, k) => BRD_FIT_COPY.wingLine(k + 1, words(file), words(ours[k])));
+}
+
+/**
  * Every line and table of the preview and the printed overview, in `system`. Dims (widths, where the wide point sits) read in
  * their own family and marks (rocker heights, thicknesses) in theirs (Rule 2). A tip that comes to a point gets a note line
  * after the tables: its table figures are read with a straightedge, and the note gives the point's own.
@@ -786,6 +820,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       thickness: closenessSentence("Thickness", words.thickness),
       bottom: bottom.closeness,
     },
+    wings: wingLines(fit, system),
     tipsNote: BRD_FIT_COPY.tipsNote(words.tipSkip),
     tables: [
       widthsTable(brdFileWidths(board), fitOutlineWidths(fit.outline), system),
