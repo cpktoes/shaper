@@ -13,6 +13,7 @@ import {
   type ChannelCount,
   type ResolvedBottom,
 } from "../../lib/geometry/bottom";
+import type { BoardSideProfile } from "../../lib/geometry/board-profile";
 import { LIVE_DESIGN_RULES, designBottomBoard, designFinPlacement, designSideProfile } from "../../lib/geometry/design";
 import { buildOutline } from "../../lib/geometry/outline";
 import { BOARD_PRESETS } from "../../lib/geometry/presets";
@@ -34,6 +35,8 @@ export interface BoardWithBottom {
   kept: string;
   /** The board the bottom's maths reads — length, widths, fins — worked out by the app's own functions. */
   board: BottomBoard;
+  /** The planed side profile (rocker and thickness) the bottom's maths and the side view read. */
+  profile: BoardSideProfile;
   /** The bottom as it is stored. */
   bottom: BoardBottom;
   /** The bottom with every figure worked out, as the BOTTOM screen and the printed page read it. */
@@ -60,12 +63,8 @@ export function boardWithBottom(presetId: string, picks: BottomPicks): BoardWith
     finSystem: "fcs2",
   };
   const fins = designFinPlacement(fields);
-  const board = designBottomBoard(
-    fields.outline,
-    buildOutline(fields.outline),
-    designSideProfile(fields, LIVE_DESIGN_RULES),
-    fins,
-  );
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const board = designBottomBoard(fields.outline, buildOutline(fields.outline), profile, fins);
   let bottom: BoardBottom = DEFAULT_BOTTOM;
   for (const section of BOTTOM_SECTIONS) {
     const name = picks[section as BottomSectionKey];
@@ -75,6 +74,7 @@ export function boardWithBottom(presetId: string, picks: BottomPicks): BoardWith
   return {
     kept: openBoardCopyJson({ ...fields, bottom }, { modelId: null, ownerId: null, locked: false, dirty: true }),
     board,
+    profile,
     bottom,
     resolved: resolveBottom(bottom, board),
     frontPair: fins.marks.some((mark) => mark.role === "front"),

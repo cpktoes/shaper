@@ -1017,17 +1017,23 @@ describe("BOTTOM reads every measurement through the display boundary", () => {
   });
 
   it("the only numbers the screen rounds by hand are not measurements", () => {
-    // Two drawing facts written onto the page for the browser tests to read: how tall the section is drawn, and the
-    // station the cutting line stands at. (Until D-44 a third stood here, the fins' toe-in in the Run menu; a channel
+    // Two drawing facts written onto the page for the browser tests to read — how tall the section is drawn, and the
+    // station the cutting line stands at — and the same two for the side view (quick 261112-ogx): how tall it is drawn
+    // and the station its line stands at. (Until D-44 a third stood here, the fins' toe-in in the Run menu; a channel
     // angle is now written in one place for the screen and paper alike — see the next test.)
-    const allowed = [/data-height=\{[^}]*heightDrawn\.toFixed\(2\)/, /data-bottom-cut-at=\{station\.toFixed\(1\)\}/];
+    const allowed = [
+      /data-height=\{[^}]*heightDrawn\.toFixed\(2\)/,
+      /data-bottom-cut-at=\{station\.toFixed\(1\)\}/,
+      /data-bottom-side-cut-at=\{station\.toFixed\(1\)\}/,
+    ];
     const lines = bottomScreenFiles().flatMap((file) =>
       readStripped(file)
         .split("\n")
         .filter((line) => line.includes(".toFixed("))
         .map((line) => ({ file, line: line.trim() })),
     );
-    expect(lines.length, "expected the two known hand-rounded numbers on BOTTOM").toBe(allowed.length);
+    // Four lines, three patterns: the section's and the side view's data-height are the same pattern.
+    expect(lines.length, "expected the four known hand-rounded numbers on BOTTOM").toBe(allowed.length + 1);
     for (const { file, line } of lines) {
       expect(
         allowed.some((pattern) => pattern.test(line)),

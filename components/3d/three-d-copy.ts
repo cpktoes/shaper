@@ -6,6 +6,7 @@
  *
  * Pure: no React, browser or database import.
  */
+import { BOTTOM_COPY } from "@/components/bottom/bottom-copy";
 
 export const THREE_D_COPY = {
   // Where the screen is named (D-02: "3D" everywhere).
@@ -90,16 +91,16 @@ export const THREE_D_COPY = {
    * board maths: the deck down to whichever bottom line is lower. On a flat board they are equal, and both are shown.
    */
   previewFacts: (count: number, gap: string, dims: string, stringer: string, max: string) =>
-    `${count} slices · none more than ${gap} apart · ${dims} · ${stringer} at the stringer · ${max} side profile max`,
+    `${count} slices · none more than ${gap} apart · ${dims} · ${BOTTOM_COPY.sideFacts(stringer, max)}`,
   /** The side view's caption, with which Height is on (`sectionHeightLabel`'s words: TRUE HEIGHT or HEIGHT ×4). */
-  previewSideViewAt: (height: string) => `SIDE VIEW · ${height}`,
+  previewSideViewAt: BOTTOM_COPY.sideViewAt,
   /**
    * The key under the side view: what each bottom line is. The rail's line is worked out from the board, not read from
    * the file, and its entry says so (the founder's ruling, 2026-11-12); the dialog's line under the title stays as it is.
    */
-  previewKeyStringer: "at the stringer",
-  previewKeyRail: "at the rail, before the rails are shaped (from your bottom, not in the file)",
-  previewKeyOneLine: "at the stringer and at the rail — the same line on this bottom",
+  previewKeyStringer: BOTTOM_COPY.sideKeyStringer,
+  previewKeyRail: `${BOTTOM_COPY.sideKeyRail} (from your bottom, not in the file)`,
+  previewKeyOneLine: BOTTOM_COPY.sideKeyOneLine,
   /** The ‹ and › buttons' spoken names: ‹ moves the marked slice toward the nose (the left), › toward the tail. */
   previewTowardNose: "Slice toward the nose",
   previewTowardTail: "Slice toward the tail",

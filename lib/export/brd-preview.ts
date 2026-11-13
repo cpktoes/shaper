@@ -398,9 +398,9 @@ export function brdPreviewFrames(
 
 /**
  * The side view opens this many times true height (the founder, 2026-11-12: the same ×1 ×2 ×4 ×8 buttons as BOTTOM's
- * cross-section, opening at ×4).
+ * cross-section, opening at ×1 — true proportions, the least room — to match BOTTOM's own side view, quick 261112-ogx).
  */
-export const BRD_PREVIEW_SIDE_HEIGHT: SectionHeight = 4;
+export const BRD_PREVIEW_SIDE_HEIGHT: SectionHeight = 1;
 
 /** The words a shaper reads, in the system they picked: see `brdPreviewWords`. */
 export interface BrdPreviewWords {

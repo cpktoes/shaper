@@ -6,6 +6,7 @@ import { FULL_SCREEN_CLASS, LARGE_DIALOG_CLASS } from "@/components/rocker/blank
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { HeightPicker } from "@/components/bottom/bottom-section";
+import { railLineProps, SideProfileKey } from "@/components/bottom/side-profile-key";
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
@@ -109,36 +110,6 @@ function SliceLines({
   );
 }
 
-/**
- * One entry of the side view's key: a short swatch in the line's own stroke, then what the line is. The stringer's is the
- * board's ink edge, solid; the rail's is the dashed line the drawing gives it (`RAIL_LINE`).
- */
-function KeyEntry({ which, word }: { which: "stringer" | "rail" | "one"; word: string }) {
-  const dashed = which === "rail";
-  return (
-    <div data-brd-side-key={which} className="flex items-center gap-1.5">
-      <svg aria-hidden width={24} height={6} viewBox="0 0 24 6" className="flex-none">
-        <line
-          x1={0}
-          x2={24}
-          y1={3}
-          y2={3}
-          {...(dashed ? RAIL_LINE : { stroke: "var(--outline-ink)", strokeWidth: 1.1 })}
-        />
-      </svg>
-      <span>{word}</span>
-    </div>
-  );
-}
-
-/**
- * The bottom at the rail, as drawn in the side view and in its key: dashed like the GUIDE's pushed setting, but in the
- * full muted ink and a little heavier (the GUIDE's own token is a 75% tint, too pale to tell from the ink edge beside it
- * when the two lines lie 5 dots apart). The muted ink is the app's own and reads on the panel and the board fill in every
- * theme; it is distinct from the faint slice lines and the marked slice's dash-dot.
- */
-const RAIL_LINE = { stroke: "var(--surf-ink-muted)", strokeWidth: 1.5, strokeDasharray: "3 2" } as const;
-
 const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(([x, y]) => `${x},${y}`).join(" ");
 
 function PreviewBody({
@@ -159,7 +130,7 @@ function PreviewBody({
   const count = preview.slices.length;
   // The slice marked in both views and drawn large, as an index into the slices (the file's own order, tail first).
   const [selected, setSelected] = useState(preview.openingSlice);
-  // The side view's Height, as BOTTOM's cross-section has it: ×4 each time the preview opens (this body remounts), never
+  // The side view's Height, as BOTTOM's own side view has it: ×1 each time the preview opens (this body remounts), never
   // saved, and view-only, so a locked board keeps it.
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
   const words = useMemo(() => brdPreviewWords(preview, system, file.profile.maxThickness), [preview, system, file.profile.maxThickness]);
@@ -296,7 +267,7 @@ function PreviewBody({
                 {THREE_D_COPY.previewSideViewAt(sectionHeightLabel({ heightAsked: height, heightDrawn: height }))}
               </div>
               <div data-brd-preview-height>
-                <HeightPicker height={height} onHeight={setHeight} />
+                <HeightPicker height={height} onHeight={setHeight} which="side" />
               </div>
             </div>
             <svg
@@ -319,8 +290,8 @@ function PreviewBody({
                     strokeWidth={1.1}
                   />
                   {frames.side.rail && (
-                    // The bottom at the rail before the rails are shaped, dashed so it reads against the ink edge (see RAIL_LINE).
-                    <polyline data-brd-side-line="rail" points={pointsOf(frames.side.rail)} fill="none" {...RAIL_LINE} />
+                    // The bottom at the rail before the rails are shaped, dashed so it reads against the ink edge (see railLineProps).
+                    <polyline data-brd-side-line="rail" points={pointsOf(frames.side.rail)} fill="none" {...railLineProps(1)} />
                   )}
                   <SliceLines lines={frames.side.slices} selected={number} attr="side" />
                 </>
@@ -330,14 +301,7 @@ function PreviewBody({
               data-brd-preview-side-key
               className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surf-ink-muted"
             >
-              {file.profile.railBottom ? (
-                <>
-                  <KeyEntry which="stringer" word={THREE_D_COPY.previewKeyStringer} />
-                  <KeyEntry which="rail" word={THREE_D_COPY.previewKeyRail} />
-                </>
-              ) : (
-                <KeyEntry which="one" word={THREE_D_COPY.previewKeyOneLine} />
-              )}
+              <SideProfileKey twoLines={file.profile.railBottom !== null} railWord={THREE_D_COPY.previewKeyRail} />
             </div>
           </div>
 

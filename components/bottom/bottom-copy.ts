@@ -163,6 +163,11 @@ export const BOTTOM_COPY = {
   sideViewAt: (height: string) => `SIDE VIEW · ${height}`,
   sideHeight: "Side view height",
   sideHeightButtonName: (factor: number) => `Side view height ×${factor}`,
+  /** Under the side view: what each bottom line is (the Board file preview says the same words), and the two thicknesses. */
+  sideKeyStringer: "at the stringer",
+  sideKeyRail: "at the rail, before the rails are shaped",
+  sideKeyOneLine: "at the stringer and at the rail — the same line on this bottom",
+  sideFacts: (stringer: string, max: string) => `${stringer} at the stringer · ${max} side profile max`,
   sideViewName: (boardName: string, twoLines: boolean, heightLabel: string) =>
     `The side of ${boardName}, the deck and the bottom${twoLines ? " at the stringer and at the rail" : ""}, ${heightLabel.toLowerCase()}`,
 

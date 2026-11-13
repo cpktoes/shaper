@@ -345,8 +345,8 @@ describe.each(CASES)("the side view's Height on %s", (_label, surface, options, 
   const extras = (height: SectionHeight) => ({ railBottom: profile.railBottom, height });
   const HEIGHTS: SectionHeight[] = [1, 2, 4, 8];
 
-  it("opens at ×4", () => {
-    expect(BRD_PREVIEW_SIDE_HEIGHT).toBe(4);
+  it("opens at ×1", () => {
+    expect(BRD_PREVIEW_SIDE_HEIGHT).toBe(1);
   });
 
   it.each(HEIGHTS)("stretches only the side view's height, ×%i, and keeps the top view's frame", (height) => {

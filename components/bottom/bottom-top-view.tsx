@@ -4,7 +4,6 @@ import { memo, useId, useMemo, useRef, type PointerEvent as ReactPointerEvent } 
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
-import { TAP_MAX_TRAVEL_PX } from "@/components/viewer/drag-selection";
 import { zoomDashToken } from "@/components/viewer/zoom-viewport";
 import {
   bottomContourLines,
@@ -29,7 +28,8 @@ import { silhouette } from "@/lib/geometry/screen-tiles";
 import { mm, type Mm } from "@/lib/geometry/units";
 import { placedWings } from "@/lib/geometry/wings";
 import { BOTTOM_COPY, wingWords } from "./bottom-copy";
-import { useSectionStation, useSetSectionStation } from "./section-station";
+import { useSectionStation } from "./section-station";
+import { useStationPress } from "./station-press";
 
 /** The shade's strength per 1/32" level on the top view (UI-SPEC § Color; a GUIDE cartoon's is 5%). */
 const SHADE_OPACITY = 0.04;
@@ -57,14 +57,6 @@ interface BottomTopViewProps {
   boxHeight?: number;
 }
 
-/** The gesture under way: where it was pressed (in client dots) and whether it has travelled far enough to be a drag. */
-interface Gesture {
-  pointerId: number;
-  x: number;
-  y: number;
-  dragging: boolean;
-}
-
 /**
  * The bottom from below (Phase 17, D-12, D-31; UI-SPEC §3.2): nose left like ROCKER's top view, the board with its
  * stringer, wide point and front fins; the shade, one path per 1/32" level, clipped to the board; a contour line at
@@ -80,13 +72,9 @@ interface Gesture {
  */
 export function BottomTopView({ live, boardName, boxHeight }: BottomTopViewProps) {
   const { system } = useUnits();
-  // A press, drag or tap moves the section (from the tail, clamped to the board); only the cutting line reads it back.
-  const setStation = useSetSectionStation();
-  const onStation = (at: Mm) => setStation({ at });
   const { bottomBoard: board, resolvedBottom: resolved, outlineGeometry, finPlacement, outline } = useDesign();
   const svgRef = useRef<SVGSVGElement>(null);
   const drawingRef = useRef<SVGGElement>(null);
-  const gestureRef = useRef<Gesture | null>(null);
   const box = useSvgClientSize(svgRef);
   const clipId = useId();
 
@@ -119,33 +107,9 @@ export function BottomTopView({ live, boardName, boxHeight }: BottomTopViewProps
     return stationAtPointer(local.x, frame);
   }
 
-  // D-12: press anywhere on the top view and the section jumps there; drag and it follows the pointer. A press that
-  // moves less than `TAP_MAX_TRAVEL_PX` is a tap, so a finger's wobble leaves the section where it landed.
-  function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.button !== 0 || !frame) return;
-    const at = pointerStation(event);
-    if (at === null) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    gestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, dragging: false };
-    onStation(at);
-  }
-
-  function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const gesture = gestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    if (!gesture.dragging && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) <= TAP_MAX_TRAVEL_PX) return;
-    gesture.dragging = true;
-    const at = pointerStation(event);
-    if (at !== null) onStation(at);
-  }
-
-  function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    const gesture = gestureRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    gestureRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
+  // D-12: press anywhere on the top view and the section jumps there; drag and it follows the pointer; a tap leaves it where
+  // it landed (`useStationPress`, shared with the side view).
+  const press = useStationPress(pointerStation);
 
   return (
     <div
@@ -165,10 +129,10 @@ export function BottomTopView({ live, boardName, boxHeight }: BottomTopViewProps
         data-bottom-box="top"
         className={boxHeight === undefined ? "relative min-h-0 flex-1 touch-none select-none" : "relative min-h-0 touch-none select-none"}
         style={boxHeight === undefined ? undefined : { flex: `0 1 ${boxHeight}px` }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
+        onPointerDown={press.onPointerDown}
+        onPointerMove={press.onPointerMove}
+        onPointerUp={press.onPointerUp}
+        onPointerCancel={press.onPointerCancel}
         // The cutting line is pointer-only; its keyboard path is `Section at` (UI-SPEC §12). View-only, so a locked board
         // keeps it (UI-SPEC §7).
         data-lock-exempt

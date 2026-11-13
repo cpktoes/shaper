@@ -35,6 +35,9 @@ const LOCKABLE_FILES = [
   // this inventory reads, and the case below checks it.)
   "components/bottom/bottom-section.tsx",
   "components/bottom/bottom-editor.tsx",
+  // (Quick 261112-ogx: bottom-side-view.tsx holds no button or slider of its own — its Height buttons are the shared
+  // HeightPicker's, in bottom-section.tsx above, and its press box only moves the section's station; the BOTTOM case below
+  // checks that box says data-lock-exempt, so the file is read there and not listed here.)
   "components/fins/fin-controls.tsx",
   "components/volume/volume-controls.tsx",
   "components/summary/order-form.tsx",
@@ -200,12 +203,20 @@ describe("board-lock-scope — the control inventory", () => {
     const editor = interactiveTags("components/bottom/bottom-editor.tsx");
     expect(editor.map(({ name }) => name)).toEqual(["button", "Slider"]);
     for (const { tag } of editor) expect(tag).toMatch(/\bdata-lock-exempt\b/);
-    expect(editor[0].tag, "the phone's section row sets the live section and nothing else").toMatch(/onClick=\{\(\) => setLive\(section\)\}/);
+    expect(editor[0].tag, "the phone's section row sets the live section and nothing else").toMatch(/onClick=\{\(\) => onLive\(section\)\}/);
     // The cutting line's drag lives on the top view's box, which says it only moves the section.
     const topView = stripComments(read("components/bottom/bottom-top-view.tsx"));
     const press = openingTag(topView, topView.lastIndexOf("<div", topView.indexOf("onPointerDown=")));
     expect(press).toMatch(/onPointerDown=/);
     expect(press).toMatch(/\bdata-lock-exempt\b/);
+    // The side view's press box does the same for the section's station; it has no button or slider of its own (its Height
+    // buttons are the shared HeightPicker's, in bottom-section.tsx).
+    expect(interactiveTags("components/bottom/bottom-side-view.tsx")).toEqual([]);
+    const sideView = stripComments(read("components/bottom/bottom-side-view.tsx"));
+    const sidePress = openingTag(sideView, sideView.lastIndexOf("<div", sideView.indexOf("onPointerDown=")));
+    expect(sidePress).toMatch(/onPointerDown=/);
+    expect(sidePress).toMatch(/\bdata-lock-exempt\b/);
+    expect(sideView).toMatch(/<HeightPicker\b[^>]*which="side"/);
   });
 
   it("BOTTOM's WINGS menu is tied to the lock, and its store action refuses a locked board in one undo step (17-12, D-19)", () => {

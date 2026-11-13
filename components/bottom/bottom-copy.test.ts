@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { THREE_D_COPY } from "@/components/3d/three-d-copy";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_DATA_DEPTH_SHOWN,
@@ -384,8 +385,29 @@ describe("BOTTOM's viewer (17-10): Height, Section at and the finished rail — 
     }
   });
 
+  it("the side view's words (quick 261112-ogx): one copy of every word, shared with the Board file preview", () => {
+    expect(BOTTOM_COPY.sideKeyStringer).toBe("at the stringer");
+    expect(BOTTOM_COPY.sideKeyRail).toBe("at the rail, before the rails are shaped");
+    expect(BOTTOM_COPY.sideKeyOneLine).toBe("at the stringer and at the rail — the same line on this bottom");
+    expect(BOTTOM_COPY.sideFacts(`2 1/8"`, `2 1/4"`)).toBe(`2 1/8" at the stringer · 2 1/4" side profile max`);
+    expect([1, 2, 4, 8].map(BOTTOM_COPY.sideHeightButtonName)).toEqual(["Side view height ×1", "Side view height ×2", "Side view height ×4", "Side view height ×8"]);
+    expect(BOTTOM_COPY.sideHeight).toBe("Side view height");
+    expect(BOTTOM_COPY.sideViewAt("TRUE HEIGHT")).toBe("SIDE VIEW · TRUE HEIGHT");
+    expect(BOTTOM_COPY.sideViewAt("HEIGHT ×4")).toBe("SIDE VIEW · HEIGHT ×4");
+    expect(BOTTOM_COPY.sideViewName("Shortboard", true, "TRUE HEIGHT")).toBe("The side of Shortboard, the deck and the bottom at the stringer and at the rail, true height");
+    expect(BOTTOM_COPY.sideViewName("Shortboard", false, "HEIGHT ×4")).toBe("The side of Shortboard, the deck and the bottom, height ×4");
+    // The preview says the same words, built from these: the strings it always had.
+    expect(THREE_D_COPY.previewSideViewAt("TRUE HEIGHT")).toBe("SIDE VIEW · TRUE HEIGHT");
+    expect(THREE_D_COPY.previewKeyStringer).toBe(BOTTOM_COPY.sideKeyStringer);
+    expect(THREE_D_COPY.previewKeyRail).toBe("at the rail, before the rails are shaped (from your bottom, not in the file)");
+    expect(THREE_D_COPY.previewKeyOneLine).toBe(BOTTOM_COPY.sideKeyOneLine);
+    expect(THREE_D_COPY.previewFacts(21, `2"`, `6'2" × 18 3/4"`, `2 1/8"`, `2 1/4"`)).toBe(
+      `21 slices · none more than 2" apart · 6'2" × 18 3/4" · 2 1/8" at the stringer · 2 1/4" side profile max`,
+    );
+  });
+
   it("the ruler and the section's words ask only the section's own box: nothing under components/bottom reads the window or the device (C3)", () => {
-    for (const file of ["bottom-editor.tsx", "bottom-section.tsx", "bottom-top-view.tsx", "bottom-controls.tsx", "bottom-data.tsx"]) {
+    for (const file of ["bottom-editor.tsx", "bottom-section.tsx", "bottom-top-view.tsx", "bottom-side-view.tsx", "viewer-split.ts", "bottom-controls.tsx", "bottom-data.tsx"]) {
       const source = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
       expect(source, file).not.toMatch(/\binnerWidth\b|\bmatchMedia\b|\bouterWidth\b|\bdevicePixelRatio\b/);
     }
@@ -394,7 +416,7 @@ describe("BOTTOM's viewer (17-10): Height, Section at and the finished rail — 
 
   it("the view state — the station, Height, the finished-rail tick, the live cut — lives in BottomEditor alone, never in the store or a saved board (UI-SPEC §14)", () => {
     const editor = readFileSync(new URL("./bottom-editor.tsx", import.meta.url), "utf8");
-    for (const state of ["height", "showFinishedRail", "live"]) {
+    for (const state of ["height", "sideHeight", "showFinishedRail", "live"]) {
       expect(editor).toMatch(new RegExp(`const \\[${state}, set\\w+\\] = useState`));
     }
     // The station: a store of BottomEditor's own, made once when the page opens on the wide point.

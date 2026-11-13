@@ -1,9 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
 import { sectionHeightLabel } from "../lib/geometry/bottom-draw";
+import { formatDim } from "../lib/geometry/measure-display";
+import { sideProfileLines } from "../lib/geometry/side-profile";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { TOOLBAR_TIP_DISMISSAL_KEY } from "../lib/models/toolbar-tip";
 import { boardWithBottom, openOnBoard, type BoardWithBottom } from "./helpers/bottom-print";
+import { setMetricUnits } from "./helpers/guide";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 
 /**
@@ -96,5 +99,70 @@ test.describe("BOTTOM's side view", () => {
     const home = await lineX(page, "[data-bottom-side-cut-line]");
     await page.keyboard.press("End");
     await expect.poll(async () => Math.abs((await lineX(page, "[data-bottom-side-cut-line]")) - home)).toBeGreaterThan(100);
+  });
+
+  test("a tap on the side view moves the section to the tap, and a drag carries it", async ({ page }) => {
+    test.setTimeout(180_000);
+    await openBoard(page, boardWithBottom("shortboard", { center: "Deep Single Concave" }));
+    const box = await page.locator('[data-bottom-box="side"]').boundingBox();
+    if (!box) throw new Error("the side view is not on screen");
+    const cutAt = () => page.locator("[data-bottom-cut-at]").getAttribute("data-bottom-cut-at");
+    const before = await cutAt();
+
+    const third = box.x + box.width / 3;
+    await page.mouse.click(third, box.y + box.height / 2);
+    await expect.poll(cutAt).not.toBe(before);
+    await expect.poll(() => lineX(page, "[data-bottom-cut-line]")).toBeCloseTo(third, -1);
+    expect(Math.abs((await lineX(page, "[data-bottom-cut-line]")) - third)).toBeLessThan(1.5);
+    expect(Math.abs((await lineX(page, "[data-bottom-side-cut-line]")) - third)).toBeLessThan(1.5);
+    // the caption and `Section at` name the one station the line stands at
+    const station = await page.locator("[data-bottom-side-cut-at]").getAttribute("data-bottom-side-cut-at");
+    expect(station).toBe(await cutAt());
+    expect(await sectionAt(page).getAttribute("aria-valuetext")).toBeTruthy();
+
+    // a drag along it: the line follows the pointer
+    await page.mouse.move(third, box.y + box.height / 2);
+    await page.mouse.down();
+    const target = box.x + (box.width * 2) / 3;
+    await page.mouse.move(target, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => Math.abs((await lineX(page, "[data-bottom-side-cut-line]")) - target)).toBeLessThan(1.5);
+    expect(Math.abs((await lineX(page, "[data-bottom-cut-line]")) - target)).toBeLessThan(1.5);
+  });
+
+  test("the key says two lines on a Deep Single and one on the flat board; the facts quote both thicknesses in either system", async ({ page }) => {
+    test.setTimeout(240_000);
+    const deep = boardWithBottom("shortboard", { center: "Deep Single Concave" });
+    const keyOf = (which: string) => page.locator(`[data-bottom-side-key] [data-side-profile-key="${which}"]`);
+    const factsOf = (board: BoardWithBottom, system: "imperial" | "metric") => {
+      const lines = sideProfileLines(board.resolved, board.board, board.profile);
+      return BOTTOM_COPY.sideFacts(formatDim(lines.stringerThickness, system), formatDim(lines.maxThickness, system));
+    };
+
+    await openBoard(page, deep);
+    await expect(keyOf("stringer")).toHaveText(BOTTOM_COPY.sideKeyStringer);
+    await expect(keyOf("rail")).toHaveText(BOTTOM_COPY.sideKeyRail);
+    await expect(keyOf("one")).toHaveCount(0);
+    // polled: the page draws the stock board for a moment before the kept one
+    await expect(page.locator("[data-bottom-side-facts]")).toHaveText(factsOf(deep, "imperial"));
+    expect(factsOf(deep, "imperial")).toBe(`2 1/8" at the stringer · 2 1/4" side profile max`);
+
+    const flat = boardWithBottom("shortboard", {});
+    await openBoard(page, flat);
+    await expect(keyOf("one")).toHaveText(BOTTOM_COPY.sideKeyOneLine);
+    await expect(keyOf("stringer")).toHaveCount(0);
+    await expect(keyOf("rail")).toHaveCount(0);
+    await expect(page.locator("[data-bottom-side-facts]")).toHaveText(factsOf(flat, "imperial"));
+  });
+
+  test("in Metric the facts read centimetres to one decimal", async ({ page }) => {
+    test.setTimeout(180_000);
+    const deep = boardWithBottom("shortboard", { center: "Deep Single Concave" });
+    await setMetricUnits(page);
+    await openBoard(page, deep);
+    const lines = sideProfileLines(deep.resolved, deep.board, deep.profile);
+    const expected = BOTTOM_COPY.sideFacts(formatDim(lines.stringerThickness, "metric"), formatDim(lines.maxThickness, "metric"));
+    await expect(page.locator("[data-bottom-side-facts]")).toHaveText(expected);
+    expect(expected).toMatch(/^\d+\.\d cm at the stringer · \d+\.\d cm side profile max$/);
   });
 });

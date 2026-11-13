@@ -583,7 +583,7 @@ test.describe("Export .brd File on the 3D screen", () => {
     await expect(lines(page)).toHaveCount(2);
     await expect(lines(page).nth(0)).toHaveAttribute("data-brd-side-line", "stringer");
     await expect(lines(page).nth(1)).toHaveAttribute("data-brd-side-line", "rail");
-    const key = (target: Page, which: string) => previewDialog(target).locator(`[data-brd-preview-side-key] [data-brd-side-key="${which}"]`);
+    const key = (target: Page, which: string) => previewDialog(target).locator(`[data-brd-preview-side-key] [data-side-profile-key="${which}"]`);
     await expect(key(page, "stringer")).toHaveText(THREE_D_COPY.previewKeyStringer);
     await expect(key(page, "rail")).toHaveText(THREE_D_COPY.previewKeyRail);
     await expect(key(page, "one")).toHaveCount(0);
@@ -614,7 +614,7 @@ test.describe("Export .brd File on the 3D screen", () => {
     await flat.close();
   });
 
-  test("12. the Height buttons stretch the side view, opening at ×4, and keep the views lined up", async ({ page }) => {
+  test("12. the Height buttons stretch the side view, opening at ×1, and keep the views lined up", async ({ page }) => {
     await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
     await page.goto("/design/3d");
     await waitForBoard(page);
@@ -625,12 +625,12 @@ test.describe("Export .brd File on the 3D screen", () => {
     const top = dialog.locator("[data-brd-preview-top]");
     const caption = dialog.locator("[data-brd-preview-side-caption]");
     const captionOf = (height: SectionHeight) => THREE_D_COPY.previewSideViewAt(sectionHeightLabel({ heightAsked: height, heightDrawn: height }));
-    const pressed = (height: SectionHeight) => heightGroup.getByRole("button", { name: BOTTOM_COPY.heightButtonName(height), exact: true });
+    const pressed = (height: SectionHeight) => heightGroup.getByRole("button", { name: BOTTOM_COPY.sideHeightButtonName(height), exact: true });
 
-    // Opens at ×4, with that button pressed and the caption saying so.
-    await expect(side).toHaveAttribute("data-brd-preview-side-height", "4");
-    await expect(pressed(4)).toHaveAttribute("aria-pressed", "true");
-    await expect(caption).toHaveText(captionOf(4));
+    // Opens at ×1 (true height, as BOTTOM's own side view does), with that button pressed and the caption saying so.
+    await expect(side).toHaveAttribute("data-brd-preview-side-height", "1");
+    await expect(pressed(1)).toHaveAttribute("aria-pressed", "true");
+    await expect(caption).toHaveText(captionOf(1));
 
     const viewBoxHeight = async (svg: Locator) => {
       const box = (await svg.getAttribute("viewBox")) ?? "";
@@ -644,12 +644,12 @@ test.describe("Export .brd File on the 3D screen", () => {
       expect(a).toBe(b);
     };
     await lined();
-    const vb4 = await viewBoxHeight(side);
-
-    await pressed(1).click();
-    await expect(side).toHaveAttribute("data-brd-preview-side-height", "1");
-    await expect(caption).toHaveText(captionOf(1));
     const vb1 = await viewBoxHeight(side);
+
+    await pressed(4).click();
+    await expect(side).toHaveAttribute("data-brd-preview-side-height", "4");
+    await expect(caption).toHaveText(captionOf(4));
+    const vb4 = await viewBoxHeight(side);
     expect(await top.getAttribute("viewBox")).toBe(topBox);
     await lined();
 
