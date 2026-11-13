@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { THREE_D_COPY } from "./three-d-copy";
 
-const PRIMARY_CLASS = "border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85";
+export const PRIMARY_CLASS = "border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85";
 export const FOOTER_BUTTON_CLASS = "inline-flex items-center coarse:min-h-11";
 
 /** Padding of the header, body and footer: the same tightening under an upright phone and a short screen (never a third rule). */

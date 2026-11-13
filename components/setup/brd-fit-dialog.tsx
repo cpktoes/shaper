@@ -1,18 +1,18 @@
 "use client";
 
 import { useMemo, useRef, useState, type RefObject } from "react";
-import { BAND_PAD, CAPTION_CLASS, FOOTER_BUTTON_CLASS } from "@/components/3d/brd-preview-dialog";
+import { BAND_PAD, CAPTION_CLASS, FOOTER_BUTTON_CLASS, PRIMARY_CLASS } from "@/components/3d/brd-preview-dialog";
 import { THREE_D_COPY } from "@/components/3d/three-d-copy";
 import { HeightPicker } from "@/components/bottom/bottom-section";
 import { railLineProps } from "@/components/bottom/side-profile-key";
 import { FULL_SCREEN_CLASS, LARGE_DIALOG_CLASS } from "@/components/rocker/blank-picker-dialog";
-import { BOARD_FILE_COPY } from "@/components/setup/board-file-copy";
+import { openPrintTab } from "@/components/template/print-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
 import { BRD_PREVIEW_SIDE_HEIGHT } from "@/lib/export/brd-preview";
-import { brdFitFrames, brdFitWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
+import { BRD_FIT_COPY, brdFitFrames, brdFitSheet, type BrdFitLook, type BrdFitTable } from "@/lib/export/brd-fit-preview";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,8 @@ export interface BrdFitDialogProps {
   /** The picked file's name, shown as plain text (never as HTML). */
   fileName: string;
   onOpenChange: (open: boolean) => void;
+  /** Open as a Board: opens our closest fit as a new board and closes this preview. Null when the fit can't open (no button). */
+  onOpenBoard: (() => void) | null;
   /** The Open a board file… button: focus goes back to it when the dialog closes. */
   finalFocus: RefObject<HTMLButtonElement | null>;
 }
@@ -29,12 +31,16 @@ export interface BrdFitDialogProps {
 const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(([x, y]) => `${x},${y}`).join(" ");
 
 /**
- * The closest-fit look at a `.brd` file (quick 261113-d9b, the founder's ruling R1): the file in solid ink, our closest fit
- * dashed over it, how close that gets, and the settings that make it. A look only: Close is the one way out (Escape and the
- * backdrop close it too), and nothing is opened, saved or sent. `lib/export/brd-fit-preview.ts` works every shape and word
- * out; this only paints them, in the Board file preview's own family (same bands, same tokens, same nose-left drawing).
+ * The closest-fit preview of a `.brd` file (quick 261113-d9b, the founder's ruling R1; extended by quick 261113-et0, E1-E3):
+ * the file in solid ink, our closest fit dashed over it, how close that gets, the widths, rocker and thickness at our five
+ * stations beside the file's own, and the settings that make the fit. Three ways out, in the footer: Print Overview (a
+ * one-page sheet to keep beside the opened board; the preview stays open), Open as a Board (our fit as a new, unsaved board,
+ * the setup screen asking its usual question first when a board is in progress) and Close, which changes nothing. Escape and
+ * the backdrop close it too. `lib/export/brd-fit-preview.ts` works every shape, word and table out, once, in `brdFitSheet`,
+ * which the printed page reads too; this only paints them, in the Board file preview's own family (same bands, same tokens,
+ * same nose-left drawing). The PDF library loads only when Print Overview is pressed.
  */
-export function BrdFitDialog({ look, fileName, onOpenChange, finalFocus }: BrdFitDialogProps) {
+export function BrdFitDialog({ look, fileName, onOpenBoard, onOpenChange, finalFocus }: BrdFitDialogProps) {
   return (
     <Dialog open={look !== null} onOpenChange={onOpenChange}>
       <DialogContent
@@ -46,31 +52,59 @@ export function BrdFitDialog({ look, fileName, onOpenChange, finalFocus }: BrdFi
         initialFocus={() => document.querySelector<HTMLElement>("[data-brd-fit-close]")}
         className={cn(LARGE_DIALOG_CLASS, FULL_SCREEN_CLASS)}
       >
-        {look && <FitBody look={look} fileName={fileName} />}
+        {look && <FitBody look={look} fileName={fileName} onOpenBoard={onOpenBoard} />}
       </DialogContent>
     </Dialog>
   );
 }
 
-function FitBody({ look, fileName }: { look: BrdFitLook; fileName: string }) {
+function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: string; onOpenBoard: (() => void) | null }) {
   const { system } = useUnits();
   const topRef = useRef<SVGSVGElement>(null);
   const box = useSvgClientSize(topRef);
   // Opens at true height each time (this body remounts); never saved.
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
-  const words = useMemo(() => brdFitWords(look, system), [look, system]);
+  const sheet = useMemo(() => brdFitSheet(look, fileName, system), [look, fileName, system]);
+  const [preparing, setPreparing] = useState(false);
+  const [printProblem, setPrintProblem] = useState(false);
+  const preparingRef = useRef(false);
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
   const frames = useMemo(() => (box.width > 0 ? brdFitFrames(look, box.width, height) : null), [look, box.width, height]);
-  const c = BOARD_FILE_COPY;
-  const w = words.controls;
+  const c = BRD_FIT_COPY;
+
+  /** Print Overview: the sheet the screen is painted from, on paper (a tab to print from on an iPhone, a download on Android). */
+  const handlePrint = () => {
+    if (preparingRef.current) return;
+    preparingRef.current = true;
+    setPreparing(true);
+    setPrintProblem(false);
+    // On a finger the PDF opens in a new tab to print from, and that tab has to open inside the tap itself or the browser
+    // blocks it. On a mouse or trackpad nothing opens (`print-pdf.ts`).
+    const tab = openPrintTab();
+    // One tick later so "Preparing…" paints; the PDF library is fetched only now, so the home page doesn't carry it.
+    window.setTimeout(() => {
+      void (async () => {
+        try {
+          const { printBrdOverviewPdf } = await import("@/components/template/build-brd-overview-pdf");
+          printBrdOverviewPdf({ look, sheet, fileName, height }, tab);
+        } catch {
+          tab?.close();
+          setPrintProblem(true);
+        } finally {
+          preparingRef.current = false;
+          setPreparing(false);
+        }
+      })();
+    }, 0);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className={cn("flex-none border-b border-surf-line-faint", BAND_PAD)}>
-        <DialogTitle className="text-sm font-extrabold tracking-architectural text-surf-ink uppercase">{c.fitTitle}</DialogTitle>
-        <DialogDescription className="text-xs text-surf-ink-muted">{c.fitDescription}</DialogDescription>
+        <DialogTitle className="text-sm font-extrabold tracking-architectural text-surf-ink uppercase">{sheet.title}</DialogTitle>
+        <DialogDescription className="text-xs text-surf-ink-muted">{c.description}</DialogDescription>
         <p data-brd-fit-from className="text-xs text-surf-ink-muted">
-          {c.fitFrom(fileName)}
+          {sheet.from}
         </p>
       </div>
 
@@ -82,7 +116,7 @@ function FitBody({ look, fileName }: { look: BrdFitLook; fileName: string }) {
               ref={topRef}
               data-brd-fit-top
               role="img"
-              aria-label={c.fitTopName}
+              aria-label={c.topName}
               viewBox={frames ? `0 0 ${frames.width} ${frames.top.height}` : undefined}
               className="block w-full"
               style={{ height: frames ? frames.top.height : 0 }}
@@ -118,7 +152,7 @@ function FitBody({ look, fileName }: { look: BrdFitLook; fileName: string }) {
               data-brd-fit-side
               data-brd-fit-side-height={height}
               role="img"
-              aria-label={c.fitSideName}
+              aria-label={c.sideName}
               viewBox={frames ? `0 0 ${frames.width} ${frames.side.height}` : undefined}
               className="block w-full"
               style={{ height: frames ? frames.side.height : 0 }}
@@ -132,56 +166,98 @@ function FitBody({ look, fileName }: { look: BrdFitLook; fileName: string }) {
               )}
             </svg>
             <div data-brd-fit-key className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surf-ink-muted">
-              <KeyEntry dashed={false} word={c.fitKeyFile} />
-              <KeyEntry dashed word={c.fitKeyOurs} />
+              <KeyEntry dashed={false} word={c.keyFile} />
+              <KeyEntry dashed word={c.keyOurs} />
             </div>
           </div>
 
           <p data-brd-fit-size className="text-xs text-surf-ink">
-            {c.fitSize(words.size)}
+            {sheet.size}
           </p>
 
           <div className="flex flex-col gap-1">
-            <div className={CAPTION_CLASS}>{c.fitHowClose}</div>
+            <div className={CAPTION_CLASS}>{c.howClose}</div>
             <p data-brd-fit-close-outline className="text-xs text-surf-ink">
-              {c.fitCloseness("Outline", words.outline.largest, words.outline.typical, words.outline.at)}
+              {sheet.closeness.outline}
             </p>
             <p data-brd-fit-close-rocker className="text-xs text-surf-ink">
-              {c.fitCloseness("Rocker", words.rocker.largest, words.rocker.typical, words.rocker.at)}
+              {sheet.closeness.rocker}
             </p>
             <p data-brd-fit-close-thickness className="text-xs text-surf-ink">
-              {c.fitCloseness("Thickness", words.thickness.largest, words.thickness.typical, words.thickness.at)}
+              {sheet.closeness.thickness}
             </p>
             <p data-brd-fit-tips className="text-xs text-surf-ink-muted">
-              {c.fitTipsNote(words.tipSkip)}
+              {sheet.tipsNote}
             </p>
           </div>
 
+          <div data-brd-fit-tables className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4">
+            {sheet.tables.map((table) => (
+              <FitTable key={table.kind} table={table} />
+            ))}
+          </div>
           <div className="flex flex-col gap-1">
-            <div className={CAPTION_CLASS}>{c.fitControls}</div>
+            <p data-brd-fit-rocker-use className="text-xs text-surf-ink-muted">
+              {sheet.rockerUse}
+            </p>
+            {sheet.pointNotes.map((note) => (
+              <p key={note} data-brd-fit-point-note className="text-xs text-surf-ink-muted">
+                {note}
+              </p>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <div className={CAPTION_CLASS}>{c.controls}</div>
             <div data-brd-fit-controls className="flex flex-col gap-1 text-xs text-surf-ink">
-              <p data-brd-fit-control="outline">{c.fitOutlineLine(w.length, w.width, w.offset)}</p>
-              <p data-brd-fit-control="nose">{c.fitNoseLine(w.noseAngle, w.noseFullness, w.noseRail)}</p>
-              <p data-brd-fit-control="tail">{c.fitTailLine(w.tail, w.tailBlock, w.tailAngle, w.tailFullness, w.tailRail)}</p>
-              <p data-brd-fit-control="rocker">
-                {c.fitRockerLine(w.rocker.noseTip, w.rocker.nose12, w.rocker.tail12, w.rocker.tailTip, w.station)}
-              </p>
-              <p data-brd-fit-control="thickness">
-                {c.fitThicknessLine(w.thickness.noseTip, w.thickness.nose12, w.thickness.center, w.thickness.tail12, w.thickness.tailTip, w.station)}
-              </p>
+              <p data-brd-fit-control="outline">{sheet.controls.outline}</p>
+              <p data-brd-fit-control="nose">{sheet.controls.nose}</p>
+              <p data-brd-fit-control="tail">{sheet.controls.tail}</p>
+              <p data-brd-fit-control="rocker">{sheet.controls.rocker}</p>
+              <p data-brd-fit-control="thickness">{sheet.controls.thickness}</p>
             </div>
           </div>
 
           <p data-brd-fit-not-read className="text-xs text-surf-ink-muted">
-            {c.fitNotRead}
+            {sheet.notRead}
           </p>
         </div>
       </div>
 
-      <div className={cn("flex flex-none flex-wrap items-center justify-end gap-2 border-t border-surf-line-faint", BAND_PAD)}>
-        <DialogClose render={<Button type="button" variant="outline" data-lock-exempt data-brd-fit-close className={FOOTER_BUTTON_CLASS} />}>
-          {c.fitClose}
-        </DialogClose>
+      <div className={cn("flex flex-none flex-col gap-1 border-t border-surf-line-faint", BAND_PAD)}>
+        {printProblem && (
+          <p data-brd-fit-print-problem role="status" className="text-xs text-surf-warning-ink">
+            {c.printProblem}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            data-lock-exempt
+            data-brd-fit-print
+            disabled={preparing}
+            onClick={handlePrint}
+            className={FOOTER_BUTTON_CLASS}
+          >
+            {preparing ? c.printing : c.print}
+          </Button>
+          {onOpenBoard && (
+            <Button
+              type="button"
+              variant="outline"
+              data-lock-exempt
+              data-brd-fit-open
+              onClick={onOpenBoard}
+              className={cn(FOOTER_BUTTON_CLASS, PRIMARY_CLASS)}
+            >
+              {c.openBoard}
+            </Button>
+          )}
+          <DialogClose render={<Button type="button" variant="outline" data-lock-exempt data-brd-fit-close className={FOOTER_BUTTON_CLASS} />}>
+            {c.close}
+          </DialogClose>
+        </div>
       </div>
     </div>
   );
@@ -196,5 +272,40 @@ function KeyEntry({ dashed, word }: { dashed: boolean; word: string }) {
       </svg>
       <span>{word}</span>
     </div>
+  );
+}
+
+/** One table of the sheet: the file's figure and ours at each row, the figures right-aligned. */
+function FitTable({ table }: { table: BrdFitTable }) {
+  return (
+    <table data-brd-fit-table={table.kind} className="w-full border-collapse text-xs text-surf-ink">
+      <caption className={cn(CAPTION_CLASS, "mb-1 text-left")}>{table.caption}</caption>
+      <thead>
+        <tr className="border-b border-surf-line-faint">
+          <td />
+          <th scope="col" className="px-1 py-0.5 text-right font-semibold">
+            {BRD_FIT_COPY.columnFile}
+          </th>
+          <th scope="col" className="px-1 py-0.5 text-right font-semibold">
+            {BRD_FIT_COPY.columnFit}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((row) => (
+          <tr key={row.key} data-brd-fit-row={row.key}>
+            <th scope="row" className="py-0.5 pr-1 text-left font-normal text-surf-ink-muted">
+              {row.label}
+            </th>
+            <td data-brd-fit-cell="file" className="px-1 py-0.5 text-right tabular-nums">
+              {row.file}
+            </td>
+            <td data-brd-fit-cell="fit" className="px-1 py-0.5 text-right tabular-nums">
+              {row.fit}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

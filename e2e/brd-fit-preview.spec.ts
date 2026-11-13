@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
 import { brdFile, brdText } from "../lib/export/brd";
-import { brdFitWords, brdLengthWords, type BrdFitLook, type BrdFitWords } from "../lib/export/brd-fit-preview";
+import { BRD_FIT_COPY, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
@@ -21,11 +21,12 @@ import { freshPracticeRack } from "./helpers/practice-rack";
 /**
  * Opening a .brd with Open a board file… (quick 261113-d9b, the founder, 2026-11-13: look first, nothing saved). A board
  * file from AkuShaper or Shape3D opens a preview: the file in solid ink, our closest fit dashed over it, how close that
- * gets and the settings that make it, with Close the only way out. Nothing is opened, saved or sent.
+ * gets and the settings that make it. Close changes nothing; quick 261113-et0 adds Print Overview and Open as a Board
+ * (specs b6 onward).
  *
  * Every .brd here is made by the app's own writer (never read from anyone's machine): the Shortboard and the Midlength
- * from the preset boards. Every word comes from `BOARD_FILE_COPY` and every figure from `readAnyBrd` -> `fitBoardToBrd`
- * -> `brdFitWords` run in this file, never typed. The fit is exact across V8 builds but WebKit's maths library may differ
+ * from the preset boards. Every word comes from `BRD_FIT_COPY` and every figure from `readAnyBrd` -> `fitBoardToBrd`
+ * -> `brdFitSheet` run in this file, never typed. The fit is exact across V8 builds but WebKit's maths library may differ
  * in a last digit, so on the iPhone the fit-dependent lines are checked by their shape; the size line is exact everywhere.
  */
 
@@ -68,28 +69,8 @@ function lookOf(bytes: Uint8Array): BrdFitLook {
   const { board } = read;
   return { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck }) };
 }
-const wordsOf = (bytes: Uint8Array, system: "imperial" | "metric"): BrdFitWords => brdFitWords(lookOf(bytes), system);
-
-/** The how-close lines and the fitted settings, as the dialog writes them. */
-function closeLines(w: BrdFitWords) {
-  const c = BOARD_FILE_COPY;
-  return {
-    outline: c.fitCloseness("Outline", w.outline.largest, w.outline.typical, w.outline.at),
-    rocker: c.fitCloseness("Rocker", w.rocker.largest, w.rocker.typical, w.rocker.at),
-    thickness: c.fitCloseness("Thickness", w.thickness.largest, w.thickness.typical, w.thickness.at),
-  };
-}
-function controlLines(w: BrdFitWords) {
-  const c = BOARD_FILE_COPY;
-  const k = w.controls;
-  return {
-    outline: c.fitOutlineLine(k.length, k.width, k.offset),
-    nose: c.fitNoseLine(k.noseAngle, k.noseFullness, k.noseRail),
-    tail: c.fitTailLine(k.tail, k.tailBlock, k.tailAngle, k.tailFullness, k.tailRail),
-    rocker: c.fitRockerLine(k.rocker.noseTip, k.rocker.nose12, k.rocker.tail12, k.rocker.tailTip, k.station),
-    thickness: c.fitThicknessLine(k.thickness.noseTip, k.thickness.nose12, k.thickness.center, k.thickness.tail12, k.thickness.tailTip, k.station),
-  };
-}
+const sheetOf = (bytes: Uint8Array, fileName: string, system: "imperial" | "metric"): BrdFitSheet =>
+  brdFitSheet(lookOf(bytes), fileName, system);
 
 async function dismissBannerAndTip(page: Page) {
   await page.addInitScript(
@@ -135,16 +116,16 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
   test("b1. a .brd opens the preview with both views, the key, the figures and one Close; Close changes nothing", async ({ page }, testInfo) => {
     const file = boardFile(SHORTBOARD);
     const exact = testInfo.project.name !== "iphone";
-    const words = wordsOf(file.locked, "imperial");
-    const c = BOARD_FILE_COPY;
+    const sheet = sheetOf(file.locked, "Shortboard.brd", "imperial");
+    const c = BRD_FIT_COPY;
 
     await page.goto("/");
     expect(await storedOpenBoard(page)).toBeNull();
     await pickFile(page, "Shortboard.brd", file.locked);
     const dialog = dialogOf(page);
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("heading", { name: c.fitTitle })).toBeVisible();
-    await expect(dialog.locator("[data-brd-fit-from]")).toHaveText(c.fitFrom("Shortboard.brd"));
+    await expect(dialog.getByRole("heading", { name: c.title })).toBeVisible();
+    await expect(dialog.locator("[data-brd-fit-from]")).toHaveText(sheet.from);
 
     // Both drawings hold the file and our fit, and the key says which is which.
     await expect(dialog.locator('[data-brd-fit-top] [data-brd-fit-line="file"]')).toHaveCount(1);
@@ -152,30 +133,28 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
     await expect(dialog.locator('[data-brd-fit-side] [data-brd-fit-line="file"]')).toHaveCount(1);
     await expect(dialog.locator('[data-brd-fit-side] [data-brd-fit-line="fit-bottom"]')).toHaveCount(1);
     await expect(dialog.locator('[data-brd-fit-side] [data-brd-fit-line="fit-deck"]')).toHaveCount(1);
-    await expect(dialog.locator("[data-brd-fit-key]")).toContainText(c.fitKeyFile);
-    await expect(dialog.locator("[data-brd-fit-key]")).toContainText(c.fitKeyOurs);
+    await expect(dialog.locator("[data-brd-fit-key]")).toContainText(c.keyFile);
+    await expect(dialog.locator("[data-brd-fit-key]")).toContainText(c.keyOurs);
 
     // The file's own size (exact everywhere), then how close and the settings.
-    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(c.fitSize(words.size));
-    const close = closeLines(words);
+    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(sheet.size);
     for (const which of ["outline", "rocker", "thickness"] as const) {
       const line = dialog.locator(`[data-brd-fit-close-${which}]`);
-      if (exact) await expect(line).toHaveText(close[which]);
-      else await expect(line).toHaveText(new RegExp(`^${which[0].toUpperCase()}${which.slice(1)}: within .+, typically .+ — the widest gap .+ from the tail$`));
+      if (exact) await expect(line).toHaveText(sheet.closeness[which]);
+      else await expect(line).toHaveText(new RegExp(`^${which[0].toUpperCase()}${which.slice(1)}: (within|less than) .+, typically .+ — the widest gap .+ from the (tail|nose)`));
     }
-    await expect(dialog.locator("[data-brd-fit-tips]")).toHaveText(c.fitTipsNote(words.tipSkip));
-    const controls = controlLines(words);
+    await expect(dialog.locator("[data-brd-fit-tips]")).toHaveText(sheet.tipsNote);
     for (const which of ["outline", "nose", "tail", "rocker", "thickness"] as const) {
       const line = dialog.locator(`[data-brd-fit-control="${which}"]`);
-      if (exact) await expect(line).toHaveText(controls[which]);
+      if (exact) await expect(line).toHaveText(sheet.controls[which]);
       else await expect(line).not.toHaveText("");
     }
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(c.fitNotRead);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(sheet.notRead);
 
-    // One button in the footer, and on a phone a finger-sized one inside the screen.
-    const closeButton = dialog.getByRole("button", { name: c.fitClose });
+    // Close is in the footer, and on a phone a finger-sized one inside the screen.
+    const closeButton = dialog.getByRole("button", { name: c.close });
     await expect(closeButton).toHaveCount(1);
-    await expect(closeButton.locator("xpath=..").locator("button")).toHaveCount(1);
+    await expect(dialog.locator("[data-brd-fit-close]")).toHaveCount(1);
     if (testInfo.project.name !== "desktop") {
       const box = await closeButton.boundingBox();
       const viewport = page.viewportSize();
@@ -196,7 +175,7 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
     expect(await storedOpenBoard(page)).toBeNull();
     await expect(statusOf(page)).toHaveText("");
     if (testInfo.project.name === "desktop") {
-      await expect(page.getByRole("button", { name: c.button })).toBeFocused();
+      await expect(page.getByRole("button", { name: BOARD_FILE_COPY.button })).toBeFocused();
     }
   });
 
@@ -204,18 +183,17 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
     test.skip(testInfo.project.name !== "desktop", "one computer is enough for the plain copy");
     const file = boardFile(SHORTBOARD);
     const plain = Buffer.from(file.text.replace(/\n/g, "\r\n"), "latin1");
-    const words = wordsOf(file.locked, "imperial");
-    const close = closeLines(words);
+    const sheet = sheetOf(file.locked, "Shortboard_decrypt.brd", "imperial");
 
     await page.goto("/");
     await pickFile(page, "Shortboard_decrypt.brd", plain);
     const dialog = dialogOf(page);
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("[data-brd-fit-from]")).toHaveText(BOARD_FILE_COPY.fitFrom("Shortboard_decrypt.brd"));
+    await expect(dialog.locator("[data-brd-fit-from]")).toHaveText(sheet.from);
     for (const which of ["outline", "rocker", "thickness"] as const) {
-      await expect(dialog.locator(`[data-brd-fit-close-${which}]`)).toHaveText(close[which]);
+      await expect(dialog.locator(`[data-brd-fit-close-${which}]`)).toHaveText(sheet.closeness[which]);
     }
-    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(BOARD_FILE_COPY.fitSize(words.size));
+    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(sheet.size);
   });
 
   test("b3. with a board in progress, no question is asked and Escape leaves the kept board exactly as it was", async ({ page }, testInfo) => {
@@ -272,18 +250,17 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
     test.skip(testInfo.project.name !== "desktop", "one computer is enough for Metric");
     await setMetricUnits(page);
     const file = boardFile(SHORTBOARD);
-    const words = wordsOf(file.locked, "metric");
-    const close = closeLines(words);
+    const sheet = sheetOf(file.locked, "Shortboard.brd", "metric");
 
     await page.goto("/");
     await pickFile(page, "Shortboard.brd", file.locked);
     const dialog = dialogOf(page);
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(BOARD_FILE_COPY.fitSize(words.size));
-    expect(words.size.match(/cm/g)).toHaveLength(1);
+    await expect(dialog.locator("[data-brd-fit-size]")).toHaveText(sheet.size);
+    expect(sheet.size.match(/cm/g)).toHaveLength(1);
     for (const which of ["outline", "rocker", "thickness"] as const) {
       const line = dialog.locator(`[data-brd-fit-close-${which}]`);
-      await expect(line).toHaveText(close[which]);
+      await expect(line).toHaveText(sheet.closeness[which]);
       await expect(line).toContainText(" mm");
     }
   });

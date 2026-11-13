@@ -17,10 +17,13 @@
  * the shaper presses Save.
  *
  * A `.brd` (AkuShaper or Shape3D, quick 261113-d9b, the founder, 2026-11-13) is also accepted, and goes a different way
- * altogether (R1, R2, R3): it is read for its outline, rocker and thickness only, the closest board the app's own controls
- * can make is worked out, and both are shown together in a preview whose only way out is Close. It never reaches `onOpen`,
- * the design or the kept board: nothing is opened, saved or sent. One that can't be looked at says so in the same quiet
- * line under the button. Import my designs keeps taking JSON only.
+ * first (R1, R2, R3): it is read for its outline, rocker and thickness only, the closest board the app's own controls
+ * can make is worked out, and both are shown together in a preview. Close changes nothing: no board is opened, saved or sent.
+ * Quick 261113-et0 (E1) adds Open as a Board to that preview: our closest fit goes to `onOpen` as a new, unsaved board named
+ * after the file, exactly as a JSON board file does, so the setup screen asks "Open this board file?" first when a board is
+ * in progress, and nothing is saved until Save. The fields are worked out, and checked by the same reader a JSON board
+ * passes, when the preview is made, so the board that opens is exactly the fit the preview drew. One that can't be looked
+ * at says so in the same quiet line under the button. Import my designs keeps taking JSON only.
  */
 
 import { useRef, useState, type ChangeEvent } from "react";
@@ -32,6 +35,7 @@ import { useUnits } from "@/components/units-provider";
 import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName, readAnyBrd } from "@/lib/export/brd-read";
 import { brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
 import { fitBoardToBrd } from "@/lib/geometry/brd-fit";
+import { brdBoardFields } from "@/lib/models/brd-board";
 import { BOARD_FILE_ACCEPT, BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
@@ -60,12 +64,13 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
-  // The .brd being looked at, under the picked file's name; null while no preview is open. Held here and nowhere else.
-  const [looking, setLooking] = useState<{ fileName: string; look: BrdFitLook } | null>(null);
+  // The .brd being looked at, under the picked file's name, with the board its closest fit opens as (null if the board reader
+  // would refuse it, which the fit's clamping means it never does); null while no preview is open. Held here and nowhere else.
+  const [looking, setLooking] = useState<{ fileName: string; look: BrdFitLook; fields: DesignSnapshotFields | null } | null>(null);
   const tipStyle = useFitDefaults().defaults.tipStyle;
   const { system } = useUnits();
 
-  /** A `.brd`: read it, fit it, and show both. Nothing is opened, saved or sent (R1). */
+  /** A `.brd`: read it, fit it, and show both. Nothing is opened, saved or sent until Open as a Board (R1, E1). */
   const lookAtBrd = async (file: File) => {
     if (file.size > BRD_READ_MAX_BYTES) {
       setProblem(BOARD_FILE_COPY.brdTooBig);
@@ -90,7 +95,7 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
     try {
       const { board } = read;
       const fit = fitBoardToBrd({ length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck });
-      setLooking({ fileName: file.name, look: { board, fit } });
+      setLooking({ fileName: file.name, look: { board, fit }, fields: brdBoardFields(fit, file.name) });
     } catch {
       setProblem(BOARD_FILE_COPY.brdUnreadable);
     }
@@ -146,6 +151,16 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       <BrdFitDialog
         look={looking?.look ?? null}
         fileName={looking?.fileName ?? ""}
+        onOpenBoard={
+          looking?.fields
+            ? () => {
+                const fields = looking.fields;
+                // The preview closes, then the board opens the way a JSON file's does (the setup screen may ask first).
+                setLooking(null);
+                if (fields) onOpen(fields);
+              }
+            : null
+        }
         onOpenChange={(open) => {
           if (!open) setLooking(null);
         }}
