@@ -5,7 +5,20 @@ import type { P2 } from "./bezier-fit";
 import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { buildBoardSurface } from "./board-surface";
 import { handSetFromProfile } from "./board-profile";
-import { BRD_FIT_TIP_SKIP_MM, fitBoardToBrd, lineHighestAt, lineLowestAt, polylineGap, type BrdFit } from "./brd-fit";
+import {
+  BRD_FIT_TIP_SKIP_MM,
+  BRD_POINT_MM,
+  BRD_STRAIGHTEDGE_MM,
+  brdFileStations,
+  brdFileWidths,
+  fitBoardToBrd,
+  fitOutlineWidths,
+  lineHighestAt,
+  lineLowestAt,
+  outlineGapSide,
+  polylineGap,
+  type BrdFit,
+} from "./brd-fit";
 import {
   designCrossSectionInput,
   designSideProfile,
@@ -14,9 +27,9 @@ import {
   type DesignSummaryFields,
 } from "./design";
 import { FOIL_THICKNESS_RANGE_IN } from "./foil";
-import { buildOutline } from "./outline";
+import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
-import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN } from "./rocker";
+import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
 import { inchesToMm, mm } from "./units";
 import { phase16Boards } from "./__fixtures__/phase16-boards";
 
@@ -343,5 +356,132 @@ describe("a hand-made board in AkuShaper's layout", () => {
     expect(fit.outline.length).toBeCloseTo(read.board.length, 6);
     expect(fit.outline.widePointWidth).toBeCloseTo(2 * Math.max(...read.board.outline.map(([, y]) => y)), 6);
     expectInsideRanges(fit);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The file's own figures at our stations (quick 261113-et0, E3)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("brdFileStations", () => {
+  /** A V: the bottom runs from (0, 50) down to (1000, 0) and up to (2000, 80); the deck stands 50 above it. */
+  const L = 2000;
+  const vBottom: P2[] = [[0, 50], [1000, 0], [2000, 80]];
+  const vDeck: P2[] = vBottom.map(([x, y]): P2 => [x, y + 50]);
+  const stationOf = (rows: ReturnType<typeof brdFileStations>, key: string) => rows.find((r) => r.key === key)!;
+
+  it("gives the app's five stations tail to nose, the centre exactly 0, and the tips read at the very end", () => {
+    const rows = brdFileStations({ length: mm(L), bottom: vBottom, deck: vDeck });
+    expect(rows.map((r) => r.key)).toEqual(["tailTip", "tail12", "center", "nose12", "noseTip"]);
+    expect(rows.map((r) => r.station)).toEqual(rockerStationPositions(mm(L)).map((p) => p.station));
+    expect(stationOf(rows, "center").lift).toBe(0);
+    expect(stationOf(rows, "center").thickness).toBeCloseTo(50, 9);
+    expect(stationOf(rows, "tailTip").lift).toBeCloseTo(50, 9);
+    expect(stationOf(rows, "noseTip").lift).toBeCloseTo(80, 9);
+    expect(stationOf(rows, "noseTip").thickness).toBeCloseTo(50, 9);
+    expect(rows.every((r) => r.point === null)).toBe(true);
+  });
+
+  it("interpolates the 12 inch stations along the V", () => {
+    const rows = brdFileStations({ length: mm(L), bottom: vBottom, deck: vDeck });
+    expect(stationOf(rows, "tail12").lift).toBeCloseTo(50 * (1 - MEASURE_STATION_MM / 1000), 9);
+    expect(stationOf(rows, "nose12").lift).toBeCloseTo(80 * (1 - MEASURE_STATION_MM / 1000), 9);
+    expect(stationOf(rows, "nose12").thickness).toBeCloseTo(50, 9);
+  });
+
+  /** The nose rolls up over its last 6.35 mm: the bottom rises 20 mm and the deck comes down to meet it. */
+  const rolled = (endThickness: number) => {
+    const knee = L - 6.35;
+    const bottomAtKnee = 80 * ((knee - 1000) / 1000);
+    const bottom: P2[] = [[0, 50], [1000, 0], [knee, bottomAtKnee], [L, bottomAtKnee + 20]];
+    const deck: P2[] = [[0, 100], [1000, 50], [knee, bottomAtKnee + 50], [L, bottomAtKnee + 20 + endThickness]];
+    return { length: mm(L), bottom, deck };
+  };
+
+  it("carries the bottom and the deck straight on to a nose that comes to a point, and keeps the point's own figures", () => {
+    const rows = brdFileStations(rolled(0));
+    const nose = stationOf(rows, "noseTip");
+    expect(nose.lift).toBeCloseTo(80, 6);
+    expect(nose.thickness).toBeCloseTo(50, 6);
+    const knee = L - 6.35;
+    const bottomAtKnee = 80 * ((knee - 1000) / 1000);
+    expect(nose.point).not.toBeNull();
+    expect(nose.point!.lift).toBeCloseTo(bottomAtKnee + 20, 9);
+    expect(nose.point!.thickness).toBeCloseTo(0, 9);
+    expect(stationOf(rows, "tailTip").point).toBeNull();
+  });
+
+  it("calls a tip a point when it is thinner than 1/16 inch at the very end, and not when it is thicker", () => {
+    expect(stationOf(brdFileStations(rolled(BRD_POINT_MM - 0.01)), "noseTip").point).not.toBeNull();
+    expect(stationOf(brdFileStations(rolled(BRD_POINT_MM + 0.01)), "noseTip").point).toBeNull();
+    expect(BRD_POINT_MM).toBeCloseTo(inchesToMm(1 / 16), 12);
+    expect(BRD_STRAIGHTEDGE_MM.near).toBeCloseTo(inchesToMm(1), 12);
+    expect(BRD_STRAIGHTEDGE_MM.far).toBeCloseTo(inchesToMm(2), 12);
+  });
+
+  it("never lets a straightedge read a thickness below nothing", () => {
+    const bottom: P2[] = [[0, 0], [L, 0]];
+    // A deck that thins fast enough toward the tail that carrying it on goes negative.
+    const deck: P2[] = [[0, 0.01], [25.4, 2], [50.8, 20], [L - 50.8, 20], [L, 20]];
+    const rows = brdFileStations({ length: mm(L), bottom, deck });
+    const tail = stationOf(rows, "tailTip");
+    expect(tail.point).not.toBeNull();
+    expect(tail.thickness).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("brdFileWidths and fitOutlineWidths", () => {
+  const L = 2000;
+  const square: P2[] = [[0, 0], [0, 100], [500, 200], [1000, 260], [1500, 180], [L, 0]];
+  const closed: P2[] = [[0, 0], [300, 150], [1000, 260], [1500, 180], [L, 0]];
+
+  it("reads the 12 inch widths, the wide point and where it sits, and a square tail's end width", () => {
+    const w = brdFileWidths({ length: mm(L), outline: square });
+    expect(w.tail12).toBeCloseTo(2 * lineHighestAt(square, MEASURE_STATION_MM), 9);
+    expect(w.nose12).toBeCloseTo(2 * lineHighestAt(square, L - MEASURE_STATION_MM), 9);
+    expect(w.wide).toBeCloseTo(520, 9);
+    expect(w.wideOffset).toBeCloseTo(1000 - L / 2, 9);
+    expect(w.tailEnd).toBeCloseTo(200, 9);
+  });
+
+  it("says a tail that closes to the stringer has no flat end", () => {
+    expect(brdFileWidths({ length: mm(L), outline: closed }).tailEnd).toBeNull();
+  });
+
+  it("puts the wide point forward of centre as a plus and back of it as a minus", () => {
+    const back: P2[] = [[0, 0], [400, 150], [700, 260], [1500, 180], [L, 0]];
+    expect(brdFileWidths({ length: mm(L), outline: back }).wideOffset).toBeCloseTo(-300, 9);
+  });
+
+  it("reads our fit the way buildOutline does", () => {
+    for (const label of ["shortboard|asis|hard", "midlength|asis|hard"]) {
+      const spec = BOARDS.find((b) => b.label === label)!.fields.outline;
+      const g = buildOutline(spec);
+      const w = fitOutlineWidths(spec);
+      expect(w.nose12).toBeCloseTo(g.noseWidthAt12in, 9);
+      expect(w.tail12).toBeCloseTo(g.tailWidthAt12in, 9);
+      expect(w.wide).toBeCloseTo(2 * g.halfWidePointWidth, 9);
+      expect(w.wideOffset).toBeCloseTo(g.widePointStation - spec.length / 2, 9);
+      const endHalf = g.points[0].halfWidth;
+      if (endHalf * 2 < BRD_POINT_MM) expect(w.tailEnd).toBeNull();
+      else expect(w.tailEnd).toBeCloseTo(2 * endHalf, 9);
+    }
+  });
+
+  it("gives a squash tail its drawn end width and a round or pin tail none", () => {
+    const base = BOARDS.find((b) => b.label === "shortboard|asis|hard")!.fields.outline;
+    const squash = fitOutlineWidths({ ...base, tail: { kind: "squash", endWidth: inchesToMm(4) } });
+    expect(squash.tailEnd).toBeCloseTo(inchesToMm(4), 6);
+    expect(fitOutlineWidths({ ...base, tail: { kind: "round" } }).tailEnd).toBeNull();
+    expect(fitOutlineWidths({ ...base, tail: { kind: "pin" } }).tailEnd).toBeNull();
+  });
+});
+
+describe("outlineGapSide", () => {
+  const line = (half: number): P2[] => [[0, half], [500, half], [1000, half]];
+  it("says wider when the file stands out past ours, narrower when it stands inside, and nothing when they agree", () => {
+    expect(outlineGapSide(line(102), line(100), 500)).toBe("wider");
+    expect(outlineGapSide(line(98), line(100), 500)).toBe("narrower");
+    expect(outlineGapSide(line(100), line(100), 500)).toBeNull();
   });
 });

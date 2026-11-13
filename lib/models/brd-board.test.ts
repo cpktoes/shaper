@@ -1,0 +1,115 @@
+import { describe, expect, it } from "vitest";
+import { brdText } from "@/lib/export/brd";
+import { readAnyBrd } from "@/lib/export/brd-read";
+import type { P2 } from "@/lib/geometry/bezier-fit";
+import { buildBoardSurface } from "@/lib/geometry/board-surface";
+import { fitBoardToBrd, type BrdFit } from "@/lib/geometry/brd-fit";
+import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES } from "@/lib/geometry/design";
+import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
+import { buildOutline } from "@/lib/geometry/outline";
+import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
+import { mm } from "@/lib/geometry/units";
+import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
+import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import { BOARD_NAME_MAX_LENGTH } from "./board-file";
+import { brdBoardFields, brdBoardName } from "./brd-board";
+
+/**
+ * The board a closest fit opens as (quick 261113-et0, E1): the fit's outline, rocker and foil on a new board's defaults,
+ * read back through the same check a JSON board file passes. The app's own Shortboard and Midlength are written by the
+ * app's writer, read by the forgiving reader and fitted, so the right answer is known.
+ */
+
+function fitOf(label: string) {
+  const fields = phase16Boards().find((b) => b.label === label)!.fields;
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  const read = readAnyBrd(Uint8Array.from(brdText(surface).text, (ch) => ch.charCodeAt(0)));
+  if (!read.ok) throw new Error("the app's own file would not read");
+  const b = read.board;
+  return fitBoardToBrd({ length: b.length, outline: b.outline, bottom: b.bottom, deck: b.deck });
+}
+
+/** The outline the way the fit draws its own: a first point off the stringer gets its straight end. */
+function drawn(fit: BrdFit): P2[] {
+  const points = buildOutline(fit.outline).points.map((p): P2 => [p.station, p.halfWidth]);
+  return points[0][1] > 1e-6 ? [[points[0][0], 0], ...points] : points;
+}
+
+describe("brdBoardName", () => {
+  it("takes the file's name without a final .brd, in any case", () => {
+    expect(brdBoardName("6'10 Egg.brd")).toBe("6'10 Egg");
+    expect(brdBoardName("BOARD.BRD")).toBe("BOARD");
+    expect(brdBoardName("plain")).toBe("plain");
+    expect(brdBoardName("a.brd.brd")).toBe("a.brd");
+  });
+});
+
+describe.each(["shortboard|asis|hard", "midlength|asis|hard"])("brdBoardFields of the fitted %s", (label) => {
+  const fit = fitOf(label);
+  const fields = brdBoardFields(fit, "My Fit.brd")!;
+
+  it("opens, named after the file", () => {
+    expect(fields).not.toBeNull();
+    expect(fields.boardName).toBe("My Fit");
+  });
+
+  it("carries the fit's outline, rocker and foil exactly, no blank and no bottom", () => {
+    expect(fields.outline).toEqual(fit.outline);
+    expect(fields.rocker).toEqual(fit.rocker);
+    expect(fields.foil).toEqual(fit.foil);
+    expect(fields.blank).toBeNull();
+    expect("bottom" in fields).toBe(false);
+  });
+
+  it("leaves rails, fins and volume at a new board's defaults", () => {
+    expect(fields.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+    expect(fields.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
+    expect(fields.volume).toEqual(DEFAULT_VOLUME_SPEC);
+    expect(fields.finsImportTemplate).toBe(true);
+    expect(fields.railsImportFoilThickness).toBe(true);
+    expect(fields.finSystem).toBe("fcs2");
+  });
+
+  it("draws exactly the outline the preview's dashed line showed, point for point", () => {
+    const ours = drawn(fit);
+    const theirs = buildOutline(fields.outline).points.map((p): P2 => [p.station, p.halfWidth]);
+    const theirsDrawn: P2[] = theirs[0][1] > 1e-6 ? [[theirs[0][0], 0], ...theirs] : theirs;
+    expect(theirsDrawn).toHaveLength(fit.lines.outline.length);
+    for (let i = 0; i < ours.length; i++) {
+      expect(theirsDrawn[i][0]).toBeCloseTo(fit.lines.outline[i][0], 9);
+      expect(theirsDrawn[i][1]).toBeCloseTo(fit.lines.outline[i][1], 9);
+    }
+  });
+
+  it("draws exactly the side profile the preview showed at all 201 stations", () => {
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const centre = fit.lines.bottom[100][1];
+    for (let i = 0; i <= 200; i++) {
+      const s = mm(fit.lines.bottom[i][0]);
+      expect(profile.rockerAt(s)).toBeCloseTo(fit.lines.bottom[i][1] - centre, 9);
+      expect(profile.thicknessAt(s)).toBeCloseTo(fit.lines.deck[i][1] - fit.lines.bottom[i][1], 9);
+    }
+  });
+});
+
+describe("brdBoardFields names", () => {
+  const fit = fitOf("shortboard|asis|hard");
+
+  it("cuts a very long file name to the board name limit, in whole letters", () => {
+    const fields = brdBoardFields(fit, `${"é".repeat(250)}.brd`)!;
+    expect(Array.from(fields.boardName)).toHaveLength(BOARD_NAME_MAX_LENGTH);
+  });
+
+  it("gives a file with no name a board with an empty name rather than refusing it", () => {
+    const fields = brdBoardFields(fit, ".brd");
+    expect(fields).not.toBeNull();
+    expect(fields!.boardName).toBe("");
+  });
+});

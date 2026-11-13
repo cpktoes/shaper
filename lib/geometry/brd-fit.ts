@@ -19,6 +19,14 @@
  *    over the stretch from 1" to 12" in from that tip, found by a golden-section search; the closeness figures leave that
  *    last inch out too.
  *
+ * The file's OWN rocker and thickness at the app's five stations (quick 261113-et0, E3) are read separately, straight off the
+ * file's lines (`brdFileStations`), because they are the numbers a shaper matches a blank against. The true tip is the right
+ * figure unless the tip comes to a point: the rounded end of a file's bottom curve can climb to meet the deck (a 6'10 egg's
+ * nose reads 4 3/8" at its very point, but the bottom carried straight on reaches 3 15/16"), and a blank matched to the
+ * point would carry nearly half an inch too much nose rocker. So a tip thinner than 1/16" at its very end has its bottom and
+ * deck carried straight on from 2" and 1" in, as if a straightedge were laid along them, and the point's own figures are
+ * kept beside it for the shaper to read.
+ *
  * Nothing is rounded here: rounding is for what is shown (the founder's standing rule). Pure: no React, browser or
  * database import (CLAUDE.md Rule 1); all lengths are millimetres.
  */
@@ -28,7 +36,7 @@ import { buildFallbackProfile } from "./board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "./foil";
 import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
-import { ROCKER_LIFT_RANGE_IN, rockerStationPositions, type FiveStationRocker } from "./rocker";
+import { ROCKER_LIFT_RANGE_IN, rockerStationPositions, type FiveStationRocker, type RockerStationKey } from "./rocker";
 import { degrees, inchesToMm, mm, type Mm } from "./units";
 
 /** A board's three curves in millimetres: the shape a reader hands over (`lib/export/brd-read.ts`). */
@@ -567,4 +575,107 @@ export function fitBoardToBrd(given: BrdLines): BrdFit {
       thickness: side.thicknessCloseness,
     },
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The file's own figures (quick 261113-et0, E3)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** A tip thinner (or an outline narrower) than this at its very end comes to a point: there is no end a blank could match. */
+export const BRD_POINT_MM = inchesToMm(1 / 16);
+
+/** The two stations a straightedge is laid along when a tip comes to a point: 1" and 2" in from the tip. */
+export const BRD_STRAIGHTEDGE_MM: { near: Mm; far: Mm } = { near: inchesToMm(1), far: inchesToMm(2) };
+
+/** The file's lift and thickness at one of the app's five rocker stations. */
+export interface BrdFileStation {
+  key: RockerStationKey;
+  station: Mm;
+  /** Lift off the centre's low point (the app's own measure); the centre is exactly 0. */
+  lift: Mm;
+  thickness: Mm;
+  /** Tips only: the very end's own figures when the tip comes to a point (`lift` and `thickness` are then the straight-on ones). */
+  point: { lift: Mm; thickness: Mm } | null;
+}
+
+/**
+ * The file's own rocker and thickness at the app's five stations, tail to nose, read off its bottom and deck lines the way the
+ * app measures rocker. The centre and the two 12" stations are read as they stand; a tip is read at its very end, except a tip
+ * that comes to a point (thinner than `BRD_POINT_MM` there), where the bottom and the deck are carried straight on from 2" and
+ * 1" in, thickness never below nothing, and the point's own figures are kept in `point`. Nothing else is clamped: these are the
+ * file's figures, not ones a slider must be able to hold.
+ */
+export function brdFileStations(lines: Pick<BrdLines, "length" | "bottom" | "deck">): BrdFileStation[] {
+  const length = lines.length;
+  const centre = lineLowestAt(lines.bottom, length / 2);
+  const lift = (s: number) => lineLowestAt(lines.bottom, s) - centre;
+  const thick = (s: number) => lineHighestAt(lines.deck, s) - lineLowestAt(lines.bottom, s);
+  return rockerStationPositions(mm(length)).map(({ key, station }): BrdFileStation => {
+    if (key === "center") return { key, station, lift: mm(0), thickness: mm(thick(station)), point: null };
+    if (key !== "tailTip" && key !== "noseTip") return { key, station, lift: mm(lift(station)), thickness: mm(thick(station)), point: null };
+    // Distance from the tip, so one rule serves both ends.
+    const at = (d: number) => (key === "tailTip" ? d : length - d);
+    const end = { lift: mm(lift(at(0))), thickness: mm(thick(at(0))) };
+    if (end.thickness >= BRD_POINT_MM) return { key, station, lift: end.lift, thickness: end.thickness, point: null };
+    const { near, far } = BRD_STRAIGHTEDGE_MM;
+    return {
+      key,
+      station,
+      lift: mm(2 * lift(at(near)) - lift(at(far))),
+      thickness: mm(Math.max(0, 2 * thick(at(near)) - thick(at(far)))),
+      point: end,
+    };
+  });
+}
+
+/** The widths a shaper quotes, all full widths: 12" in from each end, the wide point and where it sits, and the tail's end. */
+export interface BrdOutlineWidths {
+  nose12: Mm;
+  wide: Mm;
+  /** The wide point's station less half the length: plus toward the nose, minus toward the tail. */
+  wideOffset: Mm;
+  tail12: Mm;
+  /** The straight end's full width, or null when the outline closes to the stringer (no flat end). */
+  tailEnd: Mm | null;
+}
+
+/** The file's widths, off its outline. */
+export function brdFileWidths(lines: Pick<BrdLines, "length" | "outline">): BrdOutlineWidths {
+  const length = lines.length;
+  let half = 0;
+  let wideAt = 0;
+  for (const [x, y] of lines.outline) {
+    if (y > half) {
+      half = y;
+      wideAt = x;
+    }
+  }
+  const end = 2 * lineHighestAt(lines.outline, 0);
+  return {
+    nose12: mm(2 * lineHighestAt(lines.outline, length - MEASURE_STATION_MM)),
+    wide: mm(2 * half),
+    wideOffset: mm(wideAt - length / 2),
+    tail12: mm(2 * lineHighestAt(lines.outline, MEASURE_STATION_MM)),
+    tailEnd: end < BRD_POINT_MM ? null : mm(end),
+  };
+}
+
+/** Our fit's widths, off the outline the controls draw: the same five figures as `brdFileWidths`. */
+export function fitOutlineWidths(spec: OutlineSpec): BrdOutlineWidths {
+  const g = buildOutline(spec);
+  const end = 2 * g.points[0].halfWidth;
+  return {
+    nose12: g.noseWidthAt12in,
+    wide: mm(2 * g.halfWidePointWidth),
+    wideOffset: mm(g.widePointStation - spec.length / 2),
+    tail12: g.tailWidthAt12in,
+    tailEnd: end < BRD_POINT_MM ? null : mm(end),
+  };
+}
+
+/** Which way the file's outline lies from ours at a station: wider (it stands out past ours), narrower, or null when they agree. */
+export function outlineGapSide(file: readonly P2[], ours: readonly P2[], at: number): "wider" | "narrower" | null {
+  const diff = lineHighestAt(file, at) - lineHighestAt(ours, at);
+  if (Math.abs(diff) < 0.01) return null;
+  return diff > 0 ? "wider" : "narrower";
 }
