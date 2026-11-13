@@ -406,6 +406,15 @@ test.describe("Open as a Board and Print Overview (quick 261113-et0)", () => {
       expect(sameWithin(design[part], fields[part], tolerance, part)).toBeNull();
     }
     expect(saves).toEqual([]);
+
+    // A fit sits between the sliders' steps. The board keeps those exact values (checked above), but every angle and
+    // percentage TEMPLATE shows reads to two decimals at most — never `48.13482249200385°`.
+    const onAStep = (value: number, step: number) => Number.isInteger(Math.round((value / step) * 1e6) / 1e6);
+    // The check below only means something while this fit really does sit off the sliders' steps.
+    expect(onAStep(fields.outline.noseAngle, 1) && onAStep(fields.outline.noseFullness, 0.25)).toBe(false);
+    const shown = await page.locator("body").innerText();
+    expect(shown).toMatch(/Nose Angle/);
+    expect(shown).not.toMatch(/\d\.\d{3,}\s*[°%]/);
   });
 
   test("b8. with a board in progress the usual question comes first; Keep Editing leaves the kept board exactly as it was, Discard & Open opens the fit", async ({
