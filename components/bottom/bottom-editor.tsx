@@ -196,7 +196,10 @@ export function BottomEditor() {
  * needs at its Height (x1 when the page opens), the board from below and the cross-section share the rest as they always
  * did — so it is measured here, from the boxes themselves, never from the window.
  *
- * On a short screen the three keep a floor between them (UI-SPEC §6) and the column scrolls to the rest.
+ * On a short screen the three keep a floor between them (UI-SPEC §6) and the column scrolls to the rest. The floor was 360
+ * dots for two drawings; measured on a sideways iPhone (844 x 390) and Pixel 7 (863 x 360) at ×1, 470 leaves the board from
+ * below 153 dots, the cross-section 123 and the side view 44 (460 left the board from below at 148, under the 150 the
+ * sideways spec holds it to).
  */
 function ViewerDrawings({
   live,
@@ -229,7 +232,7 @@ function ViewerDrawings({
     <div
       ref={wrapperRef}
       data-bottom-live={live}
-      className="flex min-h-0 flex-1 flex-col gap-2 print:hidden [@media(max-height:500px)]:min-h-[360px]"
+      className="flex min-h-0 flex-1 flex-col gap-2 print:hidden [@media(max-height:500px)]:min-h-[470px]"
     >
       {/* Phone only: RAILS' NOSE · CENTER · TAIL row (`rail-band-editor.tsx`), copied — which section's
           controls show beneath the pinned drawing, and the live cut. Hidden at the layout's width line.

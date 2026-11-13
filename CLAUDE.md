@@ -164,7 +164,9 @@ know why:
 
 - `app/design/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — the eight design screens, in the order
   a board is shaped: TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY and 3D. BOTTOM (Phase 17) is the
-  third, between ROCKER and RAILS — the bottom's contours are cut before the rails are banded. 3D (Phase 16) is
+  third, between ROCKER and RAILS — the bottom's contours are cut before the rails are banded; its VIEWER draws the
+  board from below, the cross-section and the side view (the deck and the bottom at the stringer and at the rail,
+  opening at true height; quick 261112-ogx, the founder's "Bottom, crossection, side"). 3D (Phase 16) is
   the last, after SUMMARY — the finished board seen as a solid, and Export .brd File, one AkuShaper board file that
   AkuShaper and Shape3D open (`lib/export/brd.ts`; quick 261110-tvk and after) — so SUMMARY's Next goes
   there and 3D has only Back. The file carries the outline, the rocker and deck, and twenty to thirty-five

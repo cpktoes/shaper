@@ -126,8 +126,12 @@ async function expectOneStation(page: Page) {
 /** A point on the top view at a share of its width, on the stringer's height. */
 async function topViewPoint(page: Page, share: number): Promise<{ x: number; y: number }> {
   const box = await topView(page).boundingBox();
-  if (!box) throw new Error("no top view");
-  return { x: box.x + box.width * share, y: box.y + box.height * 0.45 };
+  // A share of the way along the drawn board (its outline is the drawing's first path), not of the drawing's box: with
+  // the side view beneath, a short phone screen draws the board well inside its box, and a point past its tip would
+  // clamp to the tip (quick 261112-ogx).
+  const board = await topView(page).locator("> g > path").first().boundingBox();
+  if (!box || !board) throw new Error("no top view");
+  return { x: board.x + board.width * share, y: box.y + box.height * 0.45 };
 }
 
 test.describe("BOTTOM's viewer follows the shaper (17-10)", () => {
@@ -183,7 +187,9 @@ test.describe("BOTTOM's viewer follows the shaper (17-10)", () => {
     await expectOneStation(page);
   });
 
-  // The plan named the Longboard's belly here. Measured at 1280 × 800 (a section box 804 × 234 dots), its opening belly
+  const SECTION_HEIGHT_WALK_WINDOW = 900;
+  // The plan named the Longboard's belly here. Measured at 1280 × 900 (a section box 804 × 234 dots — at 800 the side view
+  // under the section leaves it 179, quick 261112-ogx, and the opening 1/4" cut then fits only ×6.9), its opening belly
   // is drawn at the full ×8 — a 22 1/2" board leaves room for about 14 mm of cut at ×8 — and no cut can be deeper than
   // its 1/2" Depth, so the Longboard is never fitted at this window. The Shortboard's narrower 18 3/4" is: its Deep
   // Single at 1/2" needs a factor of about 5.3 to fit, so that is the board this test fits.
@@ -192,6 +198,9 @@ test.describe("BOTTOM's viewer follows the shaper (17-10)", () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the computer's walk; the buttons are the same on a phone");
     test.setTimeout(240_000);
+    // A taller window than the 1280 x 800 the rest of this file uses: with the side view under the section (quick 261112-ogx)
+    // the section's box is shorter at 800, and this walk needs one where the opening 1/4" cut still fits at the full ×8.
+    await page.setViewportSize({ width: 1280, height: SECTION_HEIGHT_WALK_WINDOW });
     await forgetOpenBoardOnEveryLoad(page);
     await openBottom(page, "shortboard");
     await expect(page.getByRole("group", { name: BOTTOM_COPY.height, exact: true })).toBeVisible();

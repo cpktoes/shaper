@@ -367,8 +367,13 @@ const SIDEWAYS: Record<string, ReadonlyArray<{ width: number; height: number; wh
   ],
 };
 
-/** The least height VIEWER's two drawings keep between them on a short screen (UI-SPEC §6, open item 2). */
-const DRAWINGS_FLOOR = 360;
+/**
+ * The least height VIEWER's three drawings, with their captions, key and `Section at`, keep between them on a short screen
+ * (UI-SPEC §6, open item 2; 360 for two drawings, raised for the side view in quick 261112-ogx): measured on the sideways
+ * iPhone (844 x 390) and Pixel 7 (863 x 360) at ×1, it leaves the board from below at least 150 dots and the cross-section
+ * at least 100, and the side view its drawing.
+ */
+const DRAWINGS_FLOOR = 470;
 
 /** Waits until the drawing column has stopped changing size — two reads a tenth of a second apart that agree — so a
  * measurement is never taken halfway through the layout a turned phone asks for. */
@@ -400,6 +405,7 @@ async function sidewaysRead(page: Page) {
       drawings: box("[data-bottom-live]")?.height ?? 0,
       topView: box("[data-bottom-top-view]")?.height ?? 0,
       section: box("[data-bottom-section]")?.height ?? 0,
+      side: box('[data-bottom-box="side"]')?.height ?? 0,
       controls: { right: box("[data-design-controls-scroll]")?.right ?? 0, width: box("[data-design-controls-scroll]")?.width ?? 0 },
       pageMoved: window.scrollY,
       pageHeight: document.documentElement.scrollHeight,
@@ -455,15 +461,20 @@ test.describe("BOTTOM on a phone held sideways: the drawings keep their height a
 
       // The two drawings keep their floor, each tall enough to read, and the card holds them: the column is longer than
       // the screen and scrolls — the column, not the page.
-      expect(viewer.drawings, `${where}: the two drawings' height`).toBeGreaterThanOrEqual(DRAWINGS_FLOOR);
+      expect(viewer.drawings, `${where}: the three drawings' height`).toBeGreaterThanOrEqual(DRAWINGS_FLOOR);
       expect(viewer.topView, `${where}: the top view`).toBeGreaterThanOrEqual(150);
       expect(viewer.section, `${where}: the cross-section`).toBeGreaterThanOrEqual(100);
-      expect(viewer.card, `${where}: the card holds both drawings`).toBeGreaterThanOrEqual(viewer.drawings);
+      expect(viewer.side, `${where}: the side view`).toBeGreaterThanOrEqual(30);
+      expect(viewer.card, `${where}: the card holds the drawings`).toBeGreaterThanOrEqual(viewer.drawings);
       expect(viewer.column.scrolls, `${where}: the column may scroll`).toBe("auto");
       expect(viewer.column.holds, `${where}: the column holds more than it shows`).toBeGreaterThan(viewer.column.shows);
       await expect(page.locator("[data-bottom-top-view]")).toBeInViewport({ ratio: 0.5 });
       expect(await scrollColumnToEnd(page), `${where}: the column scrolled`).toBeGreaterThan(0);
       await expect(page.locator("[data-bottom-section]")).toBeInViewport({ ratio: 0.99 });
+      // the side view, its key and facts and `Section at` come into view too
+      await expect(page.locator("[data-bottom-side-view]")).toBeInViewport({ ratio: 0.99 });
+      await expect(page.locator("[data-bottom-side-key]")).toBeInViewport({ ratio: 0.99 });
+      await expect(page.locator("[data-bottom-side-facts]")).toBeInViewport({ ratio: 0.99 });
       await expect(page.getByRole("slider", { name: BOTTOM_COPY.sectionAt, exact: true }).locator('xpath=ancestor::*[@data-slot="slider-thumb"]')).toBeInViewport();
       await expectPageStill(page, `${where}, VIEWER`);
 
@@ -515,7 +526,7 @@ test.describe("BOTTOM on a phone held sideways: the drawings keep their height a
       await expectPageStill(page, `${where}, GUIDE`);
 
       notes.push(
-        `${where}: drawings ${Math.round(viewer.drawings)} (top view ${Math.round(viewer.topView)}, section ${Math.round(viewer.section)}), ` +
+        `${where}: drawings ${Math.round(viewer.drawings)} (top view ${Math.round(viewer.topView)}, section ${Math.round(viewer.section)}, side view ${Math.round(viewer.side)}), ` +
           `column shows ${viewer.column.shows} of ${viewer.column.holds}; DATA ${dataColumn.column.holds}; GUIDE ${guideColumn.column.holds}`,
       );
     }

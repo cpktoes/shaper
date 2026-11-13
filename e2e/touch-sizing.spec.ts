@@ -510,60 +510,63 @@ test.describe("touch sizing — every control at least 44px for a finger", () =>
     }
     expect(tabsMeasured, "VIEWER · DATA · GUIDE and NOSE · CENTER · TAIL").toBe(6);
 
-    // The Height buttons: drawn small, each inside a touch box 44 dots square or better; the boxes stand side by side
-    // without covering one another, and a finger anywhere in a box presses that button.
-    const buttons = page.locator("[data-bottom-height] button");
-    await expect(buttons).toHaveCount(4);
-    const boxes = await buttons.evaluateAll((els) =>
-      els.map((el) => {
+    for (const which of ["section", "side"] as const) {
+      // The Height buttons, the cross-section's and (quick 261112-ogx) the side view's: drawn small, each inside a touch box 44
+      // dots square or better; the boxes stand side by side without covering one another, and a finger anywhere in a box
+      // presses that button.
+      const buttons = page.locator(`[data-bottom-height="${which}"] button`);
+      await expect(buttons).toHaveCount(4);
+      const boxes = await buttons.evaluateAll((els) =>
+        els.map((el) => {
+          const drawn = el.getBoundingClientRect();
+          const after = getComputedStyle(el, "::after");
+          const left = drawn.left + parseFloat(after.left);
+          const top = drawn.top + parseFloat(after.top);
+          const width = parseFloat(after.width);
+          const height = parseFloat(after.height);
+          const hits = (x: number, y: number) => {
+            const hit = document.elementFromPoint(x, y);
+            return !!hit && (hit === el || el.contains(hit));
+          };
+          return {
+            name: el.getAttribute("aria-label") ?? "",
+            drawn: { width: drawn.width, height: drawn.height },
+            left,
+            right: left + width,
+            width,
+            height,
+            centre: hits(drawn.left + drawn.width / 2, drawn.top + drawn.height / 2),
+            corners: [
+              hits(left + 2, top + 2),
+              hits(left + width - 2, top + 2),
+              hits(left + 2, top + height - 2),
+              hits(left + width - 2, top + height - 2),
+            ],
+          };
+        }),
+      );
+      for (const [at, box] of boxes.entries()) {
+        expect(box.width, `${box.name}: touch box width`).toBeGreaterThanOrEqual(44);
+        expect(box.height, `${box.name}: touch box height`).toBeGreaterThanOrEqual(44);
+        expect(box.drawn.height, `${box.name}: drawn small, the drawing keeps the room`).toBeLessThan(24);
+        expect(box.centre, `${box.name}: its own centre is the button`).toBe(true);
+        expect(box.corners, `${box.name}: every corner of its touch box is the button`).toEqual([true, true, true, true]);
+        if (at > 0) expect(box.left, `${box.name}: its touch box starts where the one before ends`).toBeGreaterThanOrEqual(boxes[at - 1].right - 0.5);
+      }
+      // And a finger in the low part of a box — under the drawn button, over the top of the drawing — presses it.
+      const second = buttons.nth(1);
+      const before = await second.getAttribute("aria-pressed");
+      const target = await second.evaluate((el) => {
         const drawn = el.getBoundingClientRect();
         const after = getComputedStyle(el, "::after");
-        const left = drawn.left + parseFloat(after.left);
-        const top = drawn.top + parseFloat(after.top);
-        const width = parseFloat(after.width);
-        const height = parseFloat(after.height);
-        const hits = (x: number, y: number) => {
-          const hit = document.elementFromPoint(x, y);
-          return !!hit && (hit === el || el.contains(hit));
-        };
-        return {
-          name: el.getAttribute("aria-label") ?? "",
-          drawn: { width: drawn.width, height: drawn.height },
-          left,
-          right: left + width,
-          width,
-          height,
-          centre: hits(drawn.left + drawn.width / 2, drawn.top + drawn.height / 2),
-          corners: [
-            hits(left + 2, top + 2),
-            hits(left + width - 2, top + 2),
-            hits(left + 2, top + height - 2),
-            hits(left + width - 2, top + height - 2),
-          ],
-        };
-      }),
-    );
-    for (const [at, box] of boxes.entries()) {
-      expect(box.width, `${box.name}: touch box width`).toBeGreaterThanOrEqual(44);
-      expect(box.height, `${box.name}: touch box height`).toBeGreaterThanOrEqual(44);
-      expect(box.drawn.height, `${box.name}: drawn small, the drawing keeps the room`).toBeLessThan(24);
-      expect(box.centre, `${box.name}: its own centre is the button`).toBe(true);
-      expect(box.corners, `${box.name}: every corner of its touch box is the button`).toEqual([true, true, true, true]);
-      if (at > 0) expect(box.left, `${box.name}: its touch box starts where the one before ends`).toBeGreaterThanOrEqual(boxes[at - 1].right - 0.5);
+        return { x: drawn.left + drawn.width / 2, y: drawn.top + parseFloat(after.top) + parseFloat(after.height) - 6 };
+      });
+      await expect(async () => {
+        if ((await second.getAttribute("aria-pressed")) !== "true") await page.touchscreen.tap(target.x, target.y);
+        await expect(second).toHaveAttribute("aria-pressed", "true", { timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
+      expect(before, "the second Height button was not the pick when the page opened").toBe("false");
     }
-    // And a finger in the low part of a box — under the drawn button, over the top of the drawing — presses it.
-    const second = buttons.nth(1);
-    const before = await second.getAttribute("aria-pressed");
-    const target = await second.evaluate((el) => {
-      const drawn = el.getBoundingClientRect();
-      const after = getComputedStyle(el, "::after");
-      return { x: drawn.left + drawn.width / 2, y: drawn.top + parseFloat(after.top) + parseFloat(after.height) - 6 };
-    });
-    await expect(async () => {
-      if ((await second.getAttribute("aria-pressed")) !== "true") await page.touchscreen.tap(target.x, target.y);
-      await expect(second).toHaveAttribute("aria-pressed", "true", { timeout: 2_000 });
-    }).toPass({ timeout: 30_000 });
-    expect(before, "the second Height button was not the pick when the page opened").toBe("false");
   });
 });
 
