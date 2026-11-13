@@ -23,13 +23,13 @@ import { cn } from "@/lib/utils";
 import { THREE_D_COPY } from "./three-d-copy";
 
 const PRIMARY_CLASS = "border-surf-on-accent bg-surf-accent text-surf-on-accent hover:bg-surf-accent/85";
-const FOOTER_BUTTON_CLASS = "inline-flex items-center coarse:min-h-11";
+export const FOOTER_BUTTON_CLASS = "inline-flex items-center coarse:min-h-11";
 
 /** Padding of the header, body and footer: the same tightening under an upright phone and a short screen (never a third rule). */
-const BAND_PAD = "px-4 py-3 max-shell:px-3 max-shell:py-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2";
+export const BAND_PAD = "px-4 py-3 max-shell:px-3 max-shell:py-2 [@media(max-height:500px)]:px-3 [@media(max-height:500px)]:py-2";
 
 /** The small-caps caption above a drawing, the app's own label style. */
-const CAPTION_CLASS = "text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase";
+export const CAPTION_CLASS = "text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase";
 
 export interface BrdPreviewDialogProps {
   /** The file and the preview read back from its bytes; null while the dialog is closed. */
