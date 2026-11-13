@@ -109,7 +109,7 @@ export interface BrdFileWithPreview {
 const toKnot = (knot: BrdReadKnot): BezierKnot => knot;
 
 /** A run of knots in centimetres sampled into millimetre points, `steps` to every span. */
-function sampleKnots(knots: readonly BrdReadKnot[], steps: number): P2[] {
+export function sampleKnots(knots: readonly BrdReadKnot[], steps: number): P2[] {
   const points: P2[] = [];
   for (let i = 0; i + 1 < knots.length; i++) {
     for (let step = i === 0 ? 0 : 1; step <= steps; step++) {

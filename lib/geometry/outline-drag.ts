@@ -84,12 +84,14 @@ export interface OutlineDragPointAt {
  * unit the sliders are calibrated in — snapping in millimetres would land between eighths and show
  * a value the slider could not reproduce.
  */
-const LIMITS = {
+export const OUTLINE_SLIDER_LIMITS = {
   widePointOffsetIn: { min: -12, max: 12, step: 0.25 },
   railLength: { min: 0, max: 100, step: 0.25 },
   fullness: { min: 0, max: 100, step: 0.25 },
   tailAngle: { min: 30, max: 90, step: 1 },
   noseAngle: { min: 35, max: 90, step: 1 },
+  // Mirrors the Tail Block slider in `components/outline/outline-controls.tsx` (inches): the squash tail's end width.
+  tailBlockIn: { min: 0, max: 16, step: 0.125 },
 } as const;
 
 interface Limit {
@@ -182,7 +184,7 @@ export function solveOutlineDrag(
       // land on its slider.
       const offsetIn = quantise(
         mmToInches(mm(dragged.station - geometry.length / 2)),
-        LIMITS.widePointOffsetIn,
+        OUTLINE_SLIDER_LIMITS.widePointOffsetIn,
       );
       return { widePointOffset: inchesToMm(offsetIn) };
     }
@@ -200,8 +202,8 @@ export function solveOutlineDrag(
       const chord = isTail ? tailChord : noseChord;
       const maxLength = HANDLE_CAP * chord;
       const pct = quantise(
-        maxLength > 0 ? railPctFromMult(along / maxLength) : LIMITS.railLength.min,
-        LIMITS.railLength,
+        maxLength > 0 ? railPctFromMult(along / maxLength) : OUTLINE_SLIDER_LIMITS.railLength.min,
+        OUTLINE_SLIDER_LIMITS.railLength,
       );
       return isTail ? { tailRailLength: pct } : { noseRailLength: pct };
     }
@@ -219,7 +221,7 @@ export function solveOutlineDrag(
         // pinned angle. Returns fullness only, so a pinned angle is never written back.
         const pinnedRad = geometry.tailAngle / RAD_TO_DEG;
         const along = Math.max(0, vx * Math.cos(pinnedRad) + vy * Math.sin(pinnedRad));
-        if (along < MIN_DRAG_LENGTH_MM) return { tailFullness: LIMITS.fullness.min };
+        if (along < MIN_DRAG_LENGTH_MM) return { tailFullness: OUTLINE_SLIDER_LIMITS.fullness.min };
         const pinnedMax = tailHandleMaxLength(
           Math.sin(pinnedRad),
           tailChord,
@@ -228,22 +230,22 @@ export function solveOutlineDrag(
         );
         return {
           tailFullness: quantise(
-            pinnedMax > 0 ? (along / pinnedMax) * 100 : LIMITS.fullness.min,
-            LIMITS.fullness,
+            pinnedMax > 0 ? (along / pinnedMax) * 100 : OUTLINE_SLIDER_LIMITS.fullness.min,
+            OUTLINE_SLIDER_LIMITS.fullness,
           ),
         };
       }
       const length = Math.hypot(vx, vy);
-      if (length < MIN_DRAG_LENGTH_MM) return { tailFullness: LIMITS.fullness.min };
+      if (length < MIN_DRAG_LENGTH_MM) return { tailFullness: OUTLINE_SLIDER_LIMITS.fullness.min };
 
-      const angle = quantise(Math.atan2(vy, vx) * RAD_TO_DEG, LIMITS.tailAngle);
+      const angle = quantise(Math.atan2(vy, vx) * RAD_TO_DEG, OUTLINE_SLIDER_LIMITS.tailAngle);
       // The cap depends on the angle this same drag is changing, so it must be evaluated at the
       // NEW angle — using the old one would mis-scale fullness for the whole gesture.
       const dirY = Math.sin(angle / RAD_TO_DEG);
       const maxLength = tailHandleMaxLength(dirY, tailChord, halfWidePointWidth, tailPod.point.y);
       const fullness = quantise(
-        maxLength > 0 ? (length / maxLength) * 100 : LIMITS.fullness.min,
-        LIMITS.fullness,
+        maxLength > 0 ? (length / maxLength) * 100 : OUTLINE_SLIDER_LIMITS.fullness.min,
+        OUTLINE_SLIDER_LIMITS.fullness,
       );
       return { tailAngle: degrees(angle), tailFullness: fullness };
     }
@@ -254,14 +256,14 @@ export function solveOutlineDrag(
       const vx = dragged.station - noseTip.point.x;
       const vy = dragged.halfWidth - noseTip.point.y;
       const length = Math.hypot(vx, vy);
-      if (length < MIN_DRAG_LENGTH_MM) return { noseFullness: LIMITS.fullness.min };
+      if (length < MIN_DRAG_LENGTH_MM) return { noseFullness: OUTLINE_SLIDER_LIMITS.fullness.min };
 
-      const angle = quantise(Math.atan2(vy, -vx) * RAD_TO_DEG, LIMITS.noseAngle);
+      const angle = quantise(Math.atan2(vy, -vx) * RAD_TO_DEG, OUTLINE_SLIDER_LIMITS.noseAngle);
       const dirY = -Math.sin(angle / RAD_TO_DEG);
       const maxLength = noseHandleMaxLength(dirY, noseChord, halfWidePointWidth);
       const fullness = quantise(
-        maxLength > 0 ? (length / maxLength) * 100 : LIMITS.fullness.min,
-        LIMITS.fullness,
+        maxLength > 0 ? (length / maxLength) * 100 : OUTLINE_SLIDER_LIMITS.fullness.min,
+        OUTLINE_SLIDER_LIMITS.fullness,
       );
       return { noseAngle: degrees(angle), noseFullness: fullness };
     }
@@ -269,7 +271,7 @@ export function solveOutlineDrag(
 }
 
 /** Exported for tests and for any UI that wants to show a field's legal range. */
-export const OUTLINE_DRAG_LIMITS = LIMITS;
+export const OUTLINE_DRAG_LIMITS = OUTLINE_SLIDER_LIMITS;
 
 /**
  * Which of the five drag points a finger (or a mouse) has grabbed, when hit zones are big enough
