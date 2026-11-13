@@ -50,6 +50,11 @@ interface BottomTopViewProps {
   live: BottomCutKey;
   /** The board's name as the tab band shows it, for the drawing's spoken name. */
   boardName: string;
+  /**
+   * The box's height in screen dots when the VIEWER splits its room between three drawings (`bottomViewerSplit`); without
+   * it the box takes the share it always had, a little the larger of the two drawings.
+   */
+  boxHeight?: number;
 }
 
 /** The gesture under way: where it was pressed (in client dots) and whether it has travelled far enough to be a drag. */
@@ -73,7 +78,7 @@ interface Gesture {
  * paint agree. Every shape is `bottom-draw.ts`'s; this only paints (CLAUDE.md Rule 1). The shade and the lines are
  * worked out once per bottom, never per station (17-07: 45-85 ms a board).
  */
-export function BottomTopView({ live, boardName }: BottomTopViewProps) {
+export function BottomTopView({ live, boardName, boxHeight }: BottomTopViewProps) {
   const { system } = useUnits();
   // A press, drag or tap moves the section (from the tail, clamped to the board); only the cutting line reads it back.
   const setStation = useSetSectionStation();
@@ -143,7 +148,10 @@ export function BottomTopView({ live, boardName }: BottomTopViewProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-[1.25] flex-col">
+    <div
+      className={boxHeight === undefined ? "flex min-h-0 flex-[1.25] flex-col" : "flex min-h-0 flex-col"}
+      style={boxHeight === undefined ? undefined : { flex: "0 1 auto" }}
+    >
       {/* The caption row (UI-SPEC §3.1); on an upright phone it is hidden — width alone. */}
       <div className="flex flex-none items-center justify-between gap-2 pb-1 max-shell:hidden">
         <span className="text-[10px] font-bold uppercase tracking-architectural text-surf-ink-muted">{BOTTOM_COPY.topViewCaption}</span>
@@ -154,7 +162,9 @@ export function BottomTopView({ live, boardName }: BottomTopViewProps) {
       </div>
       <div
         data-bottom-top-view-press
-        className="relative min-h-0 flex-1 touch-none select-none"
+        data-bottom-box="top"
+        className={boxHeight === undefined ? "relative min-h-0 flex-1 touch-none select-none" : "relative min-h-0 touch-none select-none"}
+        style={boxHeight === undefined ? undefined : { flex: `0 1 ${boxHeight}px` }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}

@@ -419,7 +419,7 @@ export interface TopViewFrame {
 /** The drawing's width in units (the sketch's 1000). */
 export const DRAWING_WIDTH = 1000;
 /** The board's length spans at most this many units of the 1000, centred (the sketch's 900). */
-const TOP_VIEW_LENGTH_UNITS = 900;
+export const TOP_VIEW_LENGTH_UNITS = 900;
 /** Dots above the board for the upper rail, and below it for the lower rail and the grab dot (sketch line 583). */
 export const TOP_VIEW_ROOM_ABOVE = 30;
 export const TOP_VIEW_ROOM_BELOW = 46;
@@ -441,7 +441,7 @@ export function topViewFrame(board: Pick<BottomBoard, "length" | "widePointWidth
 }
 
 /** A station's x in the top view: nose left (the sketch's `X`). */
-export function topViewX(frame: TopViewFrame, station: number): number {
+export function topViewX(frame: Pick<TopViewFrame, "k" | "length">, station: number): number {
   return DRAWING_WIDTH / 2 + (frame.length / 2 - station) * frame.k;
 }
 
@@ -459,7 +459,7 @@ export function topViewMap(frame: TopViewFrame): BoardToDrawing {
  * Where a press, drag or tap on the top view puts the section (D-12; the sketch's `stationAt`, template.html
  * 1137–1141): the pointer's x in drawing units turned back into a station, clamped to the board, 0 to L.
  */
-export function stationAtPointer(x: number, frame: TopViewFrame): Mm {
+export function stationAtPointer(x: number, frame: Pick<TopViewFrame, "k" | "length">): Mm {
   return mm(Math.max(0, Math.min(frame.length, frame.length / 2 - (x - DRAWING_WIDTH / 2) / frame.k)));
 }
 

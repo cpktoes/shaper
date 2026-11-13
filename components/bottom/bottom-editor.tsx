@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import { useDesign } from "@/components/design/design-store";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
 import { BoardNameTab } from "@/components/design/board-name-tab";
@@ -12,13 +12,17 @@ import { TabbedPanel } from "@/components/viewer/tabbed-panel";
 import { bottomStationSlider, formatBottomStation } from "@/lib/geometry/blank-reasons";
 import { bottomFloorFlags, cutKind, type BottomChannelsSpec, type BottomCutName, type BottomSectionKey } from "@/lib/geometry/bottom";
 import type { BottomCutKey, SectionHeight } from "@/lib/geometry/bottom-draw";
+import { sideProfileRise } from "@/lib/geometry/bottom-side-view";
+import { sideProfileLines } from "@/lib/geometry/side-profile";
 import type { Mm } from "@/lib/geometry/units";
 import { BOTTOM_COPY, BOTTOM_SECTION_NAME } from "./bottom-copy";
 import { BottomControls } from "./bottom-controls";
 import { BottomData } from "./bottom-data";
 import { BottomGuide } from "./bottom-guide";
 import { BottomSection } from "./bottom-section";
+import { BottomSideView } from "./bottom-side-view";
 import { BottomTopView } from "./bottom-top-view";
+import { useViewerSplit } from "./viewer-split";
 import { createSectionStationStore, SectionStationContext, useSectionStation, useSetSectionStation } from "./section-station";
 
 type BottomPage = "viewer" | "data" | "guide";
@@ -28,7 +32,8 @@ const PHONE_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
 
 /**
  * BOTTOM, the eighth design screen (Phase 17, D-01): the board's bottom contours — pick a cut for the nose, the center
- * and the tail, and see it from below, across the board at a station, and in DATA's numbers. A third tab, GUIDE, says
+ * and the tail, and see it from below, across the board at a station, from the side, and in DATA's numbers. VIEWER's
+ * three drawings are the board from below, the cross-section and, since quick 261112-ogx, the side view (`ViewerDrawings`). A third tab, GUIDE, says
  * what every cut is, what it does and how it is shaped, each drawn on the open board (D-17).
  *
  * Everything drawn comes from the store's one bottom (`resolvedBottom`, `bottomBoard`) through the pure drawings in
@@ -37,14 +42,20 @@ const PHONE_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
  *
  * View state stays here, never in the store, the way RAILS keeps its own (`rail-band-editor.tsx`): which tab is open,
  * which cut is live (the last section touched — it owns the drawings' lower-rail marks and the ruler; the page opens on
- * CENTER), where the section is taken (the wide point when the page opens), the Height (×4 when the page opens) and
+ * CENTER), where the section is taken (the wide point when the page opens), the section's Height (×4 when the page opens),
+ * the side view's Height (×1 when the page opens — true proportions, the least room: the founder, 2026-11-12) and
  * whether the finished rail from RAILS is drawn (off when the page opens). None of it is saved with the board or is an
  * undo step (UI-SPEC §14), and all of it is view-only, so a locked board keeps it (`data-lock-exempt`, UI-SPEC §7).
  *
- * One station is shared three ways (D-12, UI-SPEC §3.6): the top view's cutting line (a drag or a tap), the section,
- * and the `Section at` slider under it — the cutting line's keyboard path. Moving any one moves the other two. It is
- * held in a small store of its own (`section-station.ts`) that only those three read, so a drag redraws them and
- * nothing else on the screen.
+ * One station is shared four ways (D-12, UI-SPEC §3.6): the top view's cutting line (a drag or a tap), the section, the
+ * side view's station line (also a drag or a tap) and the `Section at` slider under them all — the cutting line's keyboard
+ * path. Moving any one moves the others. It is held in a small store of its own (`section-station.ts`) that only those
+ * read, so a drag redraws them and nothing else on the screen.
+ *
+ * The three drawings share the card's height (`bottomViewerSplit`, measured by `useViewerSplit`): the side view takes only
+ * the height its drawing needs at its Height (never more than 40% of the room), and the board from below and the
+ * cross-section share the rest 1.25 to 1, the board from below never taller than its board needs. All three keep one
+ * length scale, so the section's station line runs straight through the board from below and the side view.
  *
  * On an upright phone (D-27, UI-SPEC §6) the drawing is pinned over the controls at 66% of the screen, the folder's card
  * the same height on every tab, and VIEWER's card opens with RAILS' NOSE · CENTER · TAIL row: the section tapped is the
@@ -52,7 +63,7 @@ const PHONE_SECTIONS: readonly BottomSectionKey[] = ["nose", "center", "tail"];
  * behind the layout's width line — nothing here reads the window — so a computer, and a phone held sideways, keep all
  * three cards and no row.
  *
- * On a short screen — a phone held sideways, by height alone — the two drawings keep 360 dots between them rather than
+ * On a short screen — a phone held sideways, by height alone — the three drawings keep a floor between them rather than
  * being squeezed into what is left under the top bar, the folder's cards grow with what they hold (`growOnShortScreen`,
  * RAILS' own rule) and the drawing column scrolls; DATA and GUIDE grow the same way and scroll with the column, so
  * nothing scrolls inside something that scrolls.
@@ -69,6 +80,8 @@ export function BottomEditor() {
   const [stationStore] = useState(() => createSectionStationStore({ follow: "wide" }));
   // ×4 when the page opens, kept while on the page, never saved (D-13).
   const [height, setHeight] = useState<SectionHeight>(4);
+  // The side view's Height: ×1 when the page opens (true proportions, the least room), kept while on the page, never saved.
+  const [sideHeight, setSideHeight] = useState<SectionHeight>(1);
   // The finished rail from RAILS: off when the page opens (D-13), never saved.
   const [showFinishedRail, setShowFinishedRail] = useState(false);
 
@@ -110,7 +123,7 @@ export function BottomEditor() {
   return (
     <SectionStationContext.Provider value={stationStore}>
       <DesignScreenShell
-        // Two drawings to hold, so the sketch's 66% (UI-SPEC § Already done) — the phone's own layout is 17-14's.
+        // Three drawings to hold in the sketch's 66% (UI-SPEC § Already done): the side view takes only what its drawing needs.
         phonePinned="66dvh"
         controls={
           <BottomControls
@@ -145,45 +158,17 @@ export function BottomEditor() {
             trailing={(strip) => <BoardNameTab touchClearance={strip.touchClearance} />}
           >
             {activePage === "viewer" && (
-              // The two drawings share the card, the top view a little the larger, then `Section at` (sketch line
-              // 299-311). BOTTOM is not printable: a shaper's paper is the order form (UI-SPEC §13).
-              // On a short screen the pair keeps a 360-dot floor (UI-SPEC §6) and the column scrolls to the rest.
-              <div
-                data-bottom-live={live}
-                className="flex min-h-0 flex-1 flex-col gap-2 print:hidden [@media(max-height:500px)]:min-h-[360px]"
-              >
-                {/* Phone only: RAILS' NOSE · CENTER · TAIL row (`rail-band-editor.tsx`), copied — which section's
-                    controls show beneath the pinned drawing, and the live cut. Hidden at the layout's width line.
-                    It only changes what is seen, so a locked board keeps it (`data-lock-exempt`). */}
-                <div data-bottom-phone-sections className="hidden flex-none gap-1.5 pt-[11px] max-shell:flex" role="tablist">
-                  {PHONE_SECTIONS.map((section) => {
-                    const on = section === phoneSection;
-                    return (
-                      <button
-                        key={section}
-                        type="button"
-                        role="tab"
-                        aria-selected={on}
-                        data-lock-exempt
-                        onClick={() => setLive(section)}
-                        className={
-                          "cursor-pointer rounded-t-lg border px-2 py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
-                          // Touch-only: a 44-dot hit area centred on the 22-dot tab (RAILS' own).
-                          "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-[''] " +
-                          (on
-                            ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
-                            : "border-transparent bg-transparent text-surf-ink-muted")
-                        }
-                      >
-                        {BOTTOM_SECTION_NAME[section]}
-                      </button>
-                    );
-                  })}
-                </div>
-                <BottomTopView live={live} boardName={shownName} />
-                <BottomSection height={height} onHeight={setHeight} live={live} showFinishedRail={showFinishedRail} />
-                <SectionAtRow length={bottomBoard.length} />
-              </div>
+              <ViewerDrawings
+                live={live}
+                onLive={setLive}
+                phoneSection={phoneSection}
+                boardName={shownName}
+                height={height}
+                onHeight={setHeight}
+                sideHeight={sideHeight}
+                onSideHeight={setSideHeight}
+                showFinishedRail={showFinishedRail}
+              />
             )}
             {activePage === "data" && (
               // On a short screen the tables take their own height and the column scrolls, not a box inside it.
@@ -202,6 +187,83 @@ export function BottomEditor() {
         }
       />
     </SectionStationContext.Provider>
+  );
+}
+
+/**
+ * VIEWER's three drawings (quick 261112-ogx; the founder, 2026-11-12): the board from below, the cross-section and the
+ * side view, then `Section at`. They share the card's height by `bottomViewerSplit` — the side view takes what its drawing
+ * needs at its Height (x1 when the page opens), the board from below and the cross-section share the rest as they always
+ * did — so it is measured here, from the boxes themselves, never from the window.
+ *
+ * On a short screen the three keep a floor between them (UI-SPEC §6) and the column scrolls to the rest.
+ */
+function ViewerDrawings({
+  live,
+  onLive,
+  phoneSection,
+  boardName,
+  height,
+  onHeight,
+  sideHeight,
+  onSideHeight,
+  showFinishedRail,
+}: {
+  live: BottomCutKey;
+  onLive: (live: BottomCutKey) => void;
+  phoneSection: BottomSectionKey;
+  boardName: string;
+  height: SectionHeight;
+  onHeight: (height: SectionHeight) => void;
+  sideHeight: SectionHeight;
+  onSideHeight: (height: SectionHeight) => void;
+  showFinishedRail: boolean;
+}) {
+  const { bottomBoard, resolvedBottom, sideProfile } = useDesign();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  // Both side profiles, worked out once per bottom (the same lines the split's rise and the drawing read).
+  const lines = useMemo(() => sideProfileLines(resolvedBottom, bottomBoard, sideProfile), [resolvedBottom, bottomBoard, sideProfile]);
+  const rise = useMemo(() => sideProfileRise(lines), [lines]);
+  const split = useViewerSplit(wrapperRef, { board: bottomBoard, rise, factor: sideHeight });
+  return (
+    <div
+      ref={wrapperRef}
+      data-bottom-live={live}
+      className="flex min-h-0 flex-1 flex-col gap-2 print:hidden [@media(max-height:500px)]:min-h-[360px]"
+    >
+      {/* Phone only: RAILS' NOSE · CENTER · TAIL row (`rail-band-editor.tsx`), copied — which section's
+          controls show beneath the pinned drawing, and the live cut. Hidden at the layout's width line.
+          It only changes what is seen, so a locked board keeps it (`data-lock-exempt`). */}
+      <div data-bottom-phone-sections className="hidden flex-none gap-1.5 pt-[11px] max-shell:flex" role="tablist">
+        {PHONE_SECTIONS.map((section) => {
+          const on = section === phoneSection;
+          return (
+            <button
+              key={section}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              data-lock-exempt
+              onClick={() => onLive(section)}
+              className={
+                "cursor-pointer rounded-t-lg border px-2 py-0.5 text-xs font-display font-bold tracking-architectural uppercase " +
+                // Touch-only: a 44-dot hit area centred on the 22-dot tab (RAILS' own).
+                "coarse:relative coarse:after:absolute coarse:after:inset-x-0 coarse:after:top-1/2 coarse:after:h-11 coarse:after:-translate-y-1/2 coarse:after:z-10 coarse:after:content-[''] " +
+                (on
+                  ? "border-surf-line border-b-0 bg-surf-tab-active text-surf-ink"
+                  : "border-transparent bg-transparent text-surf-ink-muted")
+              }
+            >
+              {BOTTOM_SECTION_NAME[section]}
+            </button>
+          );
+        })}
+      </div>
+      <BottomTopView live={live} boardName={boardName} boxHeight={split?.top} />
+      <BottomSection height={height} onHeight={onHeight} live={live} showFinishedRail={showFinishedRail} />
+      <BottomSideView lines={lines} board={bottomBoard} split={split} height={sideHeight} onHeight={onSideHeight} boardName={boardName} />
+      <SectionAtRow length={bottomBoard.length} />
+    </div>
   );
 }
 

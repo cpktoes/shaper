@@ -155,6 +155,17 @@ export const BOTTOM_COPY = {
   heightButton: (factor: number) => `×${factor}`,
   heightButtonName: (factor: number) => `Height ×${factor}`,
 
+  /**
+   * The side view under the cross-section (quick 261112-ogx): the caption (the Board file preview's own words, one formatter
+   * for both: `SIDE VIEW · TRUE HEIGHT`, `SIDE VIEW · HEIGHT ×4`), its own Height group's and buttons' spoken names, and the
+   * drawing's spoken name.
+   */
+  sideViewAt: (height: string) => `SIDE VIEW · ${height}`,
+  sideHeight: "Side view height",
+  sideHeightButtonName: (factor: number) => `Side view height ×${factor}`,
+  sideViewName: (boardName: string, twoLines: boolean, heightLabel: string) =>
+    `The side of ${boardName}, the deck and the bottom${twoLines ? " at the stringer and at the rail" : ""}, ${heightLabel.toLowerCase()}`,
+
   /** `Section at` (UI-SPEC §3.6): the row's word, the slider's spoken name, and its spoken value `36" from the tail`. */
   sectionAt: "Section at",
   sectionAtValue: (station: string) => `${station} from the tail`,

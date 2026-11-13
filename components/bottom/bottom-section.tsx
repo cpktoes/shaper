@@ -122,7 +122,7 @@ export function BottomSection({ height, onHeight, live, showFinishedRail }: Bott
         </span>
         <HeightPicker height={height} onHeight={onHeight} />
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div data-bottom-box="section" className="relative min-h-0 flex-1">
         <svg
           ref={svgRef}
           data-bottom-section
@@ -157,11 +157,22 @@ const HEIGHT_TOUCH_BOX =
  * into the gap under the top view and the rest hangs over the cross-section's empty top margin. (The zoom row's own
  * touch box adds 5 dots all round, which makes 44 of a 34-dot icon and only 27 of a button this small.)
  *
- * Exported because the Board file preview's side view on the 3D page uses the same buttons (quick 261112-lmr).
+ * Exported because the side views use the same buttons — the Board file preview's on the 3D page (quick 261112-lmr) and
+ * BOTTOM's own under the cross-section (quick 261112-ogx), `which="side"`, spoken as `Side view height ×N`. The side
+ * view's boxes reach 6 dots up into the gap under the section; the room under its caption row keeps the tail's deck clear.
  */
-export function HeightPicker({ height, onHeight }: { height: SectionHeight; onHeight: (height: SectionHeight) => void }) {
+export function HeightPicker({
+  height,
+  onHeight,
+  which = "section",
+}: {
+  height: SectionHeight;
+  onHeight: (height: SectionHeight) => void;
+  which?: "section" | "side";
+}) {
+  const side = which === "side";
   return (
-    <div role="group" aria-label={BOTTOM_COPY.height} data-lock-exempt data-bottom-height className="flex flex-none items-center gap-2 coarse:pr-1.5">
+    <div role="group" aria-label={side ? BOTTOM_COPY.sideHeight : BOTTOM_COPY.height} data-lock-exempt data-bottom-height={which} className="flex flex-none items-center gap-2 coarse:pr-1.5">
       <span className="text-xs text-surf-ink-muted font-normal max-shell:hidden [@media(max-height:500px)]:hidden">{BOTTOM_COPY.height}</span>
       <div className="flex gap-1 coarse:gap-3">
         {HEIGHTS.map((factor) => {
@@ -171,7 +182,7 @@ export function HeightPicker({ height, onHeight }: { height: SectionHeight; onHe
               key={factor}
               type="button"
               data-lock-exempt
-              aria-label={BOTTOM_COPY.heightButtonName(factor)}
+              aria-label={side ? BOTTOM_COPY.sideHeightButtonName(factor) : BOTTOM_COPY.heightButtonName(factor)}
               aria-pressed={pressed}
               onClick={() => onHeight(factor)}
               className={cn(
