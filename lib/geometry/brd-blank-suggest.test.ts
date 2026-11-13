@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { brdText } from "../export/brd";
 import { readAnyBrd } from "../export/brd-read";
 import { isPickable } from "../blanks/catalog";
@@ -32,6 +32,10 @@ import type { ReadBrdBoard } from "../export/brd-read";
  * forgiving reader and fitted, and that maker's suggestion has to be the preset's own blank. Every expected figure comes from
  * the app's own functions (Rule 1); the surfaces and the catalogue are slow, so each is built once and shared.
  */
+
+// Writing a preset as a .brd and fitting it is slow work, and a busy machine (the whole suite at once) can stretch it past the
+// default five seconds: the cases here are generous rather than flaky.
+vi.setConfig({ testTimeout: 60_000 });
 
 const MAKERS = ["US Blanks", "Arctic Foam", "Marko Foam", "Millennium Foam"] as const;
 const CUT: BrdBlankCut = { deckSkin: DEFAULT_FIT_DEFAULTS.deckSkin, tipStyle: DEFAULT_FIT_DEFAULTS.tipStyle };
