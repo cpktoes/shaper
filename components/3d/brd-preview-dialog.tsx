@@ -111,7 +111,7 @@ function SliceLines({
 
 /**
  * One entry of the side view's key: a short swatch in the line's own stroke, then what the line is. The stringer's is the
- * board's ink edge, solid; the rail's is the dashed line the drawing gives it, the same three stroke values.
+ * board's ink edge, solid; the rail's is the dashed line the drawing gives it (`RAIL_LINE`).
  */
 function KeyEntry({ which, word }: { which: "stringer" | "rail" | "one"; word: string }) {
   const dashed = which === "rail";
@@ -123,15 +123,21 @@ function KeyEntry({ which, word }: { which: "stringer" | "rail" | "one"; word: s
           x2={24}
           y1={3}
           y2={3}
-          stroke={dashed ? "var(--outline-push-line)" : "var(--outline-ink)"}
-          strokeWidth={dashed ? 1.2 : 1.1}
-          {...(dashed ? { strokeDasharray: "3 2" } : {})}
+          {...(dashed ? RAIL_LINE : { stroke: "var(--outline-ink)", strokeWidth: 1.1 })}
         />
       </svg>
       <span>{word}</span>
     </div>
   );
 }
+
+/**
+ * The bottom at the rail, as drawn in the side view and in its key: dashed like the GUIDE's pushed setting, but in the
+ * full muted ink and a little heavier (the GUIDE's own token is a 75% tint, too pale to tell from the ink edge beside it
+ * when the two lines lie 5 dots apart). The muted ink is the app's own and reads on the panel and the board fill in every
+ * theme; it is distinct from the faint slice lines and the marked slice's dash-dot.
+ */
+const RAIL_LINE = { stroke: "var(--surf-ink-muted)", strokeWidth: 1.5, strokeDasharray: "3 2" } as const;
 
 const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(([x, y]) => `${x},${y}`).join(" ");
 
@@ -313,17 +319,8 @@ function PreviewBody({
                     strokeWidth={1.1}
                   />
                   {frames.side.rail && (
-                    // The bottom at the rail before the rails are shaped, in the dash the GUIDE gives a pushed setting: a
-                    // token already checked for contrast on the panel and the board fill in every theme, and distinct from
-                    // the faint slice lines and the marked slice's dash-dot beside it.
-                    <polyline
-                      data-brd-side-line="rail"
-                      points={pointsOf(frames.side.rail)}
-                      fill="none"
-                      stroke="var(--outline-push-line)"
-                      strokeWidth={1.2}
-                      strokeDasharray="3 2"
-                    />
+                    // The bottom at the rail before the rails are shaped, dashed so it reads against the ink edge (see RAIL_LINE).
+                    <polyline data-brd-side-line="rail" points={pointsOf(frames.side.rail)} fill="none" {...RAIL_LINE} />
                   )}
                   <SliceLines lines={frames.side.slices} selected={number} attr="side" />
                 </>

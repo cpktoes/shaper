@@ -172,7 +172,10 @@ know why:
   out, both to be cut by hand and both said under the button (the founder, 2026-11-10 and 2026-11-12: neither program
   draws them well). Pressing the button opens a Board file preview drawn from the file's own bytes
   (`lib/export/brd-preview.ts`, quick 261112-dbi: the board from above, the picked slice, the side view, a line at
-  every slice) and the file is saved from the preview's Save .brd File. The DXF, STL and XYZ writers stay in `lib/export/`, tested and no longer offered. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
+  every slice; the side view also draws the bottom at the rail before the rails are shaped, a dashed line worked out from
+  the board in `lib/geometry/side-profile.ts` beside the file's own bottom at the stringer, stretched with BOTTOM's Height
+  buttons opening at ×4, and its facts line quotes the file's thickness at the stringer and the side profile's maximum;
+  quick 261112-lmr) and the file is saved from the preview's Save .brd File. The DXF, STL and XYZ writers stay in `lib/export/`, tested and no longer offered. One list, `NAV_LINKS` in `components/site-nav.tsx`, feeds the top row, the
   ☰ sheet's tiles and Back + Next alike
 - `components/design/design-store.tsx` — the shared board-design state
 - `components/{outline,rocker,bottom,rails,volume,fins,summary,3d}/` — per-screen UI

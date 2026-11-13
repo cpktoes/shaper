@@ -4,7 +4,9 @@ import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { brdFileBottom, readBrdText } from "../lib/export/brd";
 import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
-import { brdPreview, brdPreviewWords } from "../lib/export/brd-preview";
+import { BRD_PREVIEW_PAD_Y, brdPreview, brdPreviewWords } from "../lib/export/brd-preview";
+import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
+import { sectionHeightLabel, type SectionHeight } from "../lib/geometry/bottom-draw";
 import { DEFAULT_BOTTOM, pickCut, resolveBottom, startingChannels, switchChannelCount, type BoardBottom } from "../lib/geometry/bottom";
 import { LIVE_DESIGN_RULES, designBottomBoard, designFinPlacement, designSideProfile } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
@@ -610,6 +612,57 @@ test.describe("Export .brd File on the 3D screen", () => {
     const flatWords = await stringerMax(flat);
     expect(flatWords.stringer).toBe(flatWords.max);
     await flat.close();
+  });
+
+  test("12. the Height buttons stretch the side view, opening at ×4, and keep the views lined up", async ({ page }) => {
+    await keepBoard(page, "Shortboard", undefined, presetBottom("Shortboard", { deepSingle: true, channels: true }));
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await openPreview(page);
+    const dialog = previewDialog(page);
+    const heightGroup = dialog.locator("[data-brd-preview-height]");
+    const side = dialog.locator("[data-brd-preview-side]");
+    const top = dialog.locator("[data-brd-preview-top]");
+    const caption = dialog.locator("[data-brd-preview-side-caption]");
+    const captionOf = (height: SectionHeight) => THREE_D_COPY.previewSideViewAt(sectionHeightLabel({ heightAsked: height, heightDrawn: height }));
+    const pressed = (height: SectionHeight) => heightGroup.getByRole("button", { name: BOTTOM_COPY.heightButtonName(height), exact: true });
+
+    // Opens at ×4, with that button pressed and the caption saying so.
+    await expect(side).toHaveAttribute("data-brd-preview-side-height", "4");
+    await expect(pressed(4)).toHaveAttribute("aria-pressed", "true");
+    await expect(caption).toHaveText(captionOf(4));
+
+    const viewBoxHeight = async (svg: Locator) => {
+      const box = (await svg.getAttribute("viewBox")) ?? "";
+      return Number(box.split(" ")[3]);
+    };
+    const topBox = (await top.getAttribute("viewBox")) ?? "";
+    const lined = async () => {
+      // One slice's line in the top view stands directly above its twin in the side view, at every height.
+      const a = await top.locator('[data-brd-slice="5"]').getAttribute("x1");
+      const b = await side.locator('[data-brd-slice="5"]').getAttribute("x1");
+      expect(a).toBe(b);
+    };
+    await lined();
+    const vb4 = await viewBoxHeight(side);
+
+    await pressed(1).click();
+    await expect(side).toHaveAttribute("data-brd-preview-side-height", "1");
+    await expect(caption).toHaveText(captionOf(1));
+    const vb1 = await viewBoxHeight(side);
+    expect(await top.getAttribute("viewBox")).toBe(topBox);
+    await lined();
+
+    await pressed(8).click();
+    await expect(side).toHaveAttribute("data-brd-preview-side-height", "8");
+    await expect(caption).toHaveText(captionOf(8));
+    const vb8 = await viewBoxHeight(side);
+    expect(await top.getAttribute("viewBox")).toBe(topBox);
+    await lined();
+
+    // Only the height is stretched: what is left of the box after its margins is 4 and 8 times the true-height one.
+    expect((vb4 - 2 * BRD_PREVIEW_PAD_Y) / (vb1 - 2 * BRD_PREVIEW_PAD_Y)).toBeCloseTo(4, 3);
+    expect((vb8 - 2 * BRD_PREVIEW_PAD_Y) / (vb1 - 2 * BRD_PREVIEW_PAD_Y)).toBeCloseTo(8, 3);
   });
 });
 
