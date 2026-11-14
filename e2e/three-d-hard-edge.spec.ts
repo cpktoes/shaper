@@ -4,7 +4,7 @@ import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { formatDim } from "../lib/geometry/measure-display";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { defaultHardEdgeEndsAt } from "../lib/geometry/rail-bands";
+import { hardEdgeEndsAt } from "../lib/geometry/rail-bands";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -40,7 +40,7 @@ const isPhone = (testInfo: TestInfo) => testInfo.project.name !== "desktop";
 // says nothing, Ends At reaching the 36" centre at most. Every reading is the app's own formatter.
 const STOCK_LENGTH = DEFAULT_BOARD_SPEC.outline.length;
 const inches = (value: number) => formatDim(inchesToMm(value), "imperial");
-const STOCK_END = formatDim(defaultHardEdgeEndsAt(STOCK_LENGTH), "imperial");
+const STOCK_END = formatDim(hardEdgeEndsAt({}, STOCK_LENGTH), "imperial");
 const STOCK_CENTRE = formatDim(mm(STOCK_LENGTH / 2), "imperial");
 
 function threeDTailRail(page: Page) {

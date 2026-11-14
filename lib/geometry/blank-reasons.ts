@@ -33,7 +33,7 @@ import {
   HARD_EDGE_ENDS_AT_RANGE_IN,
   hardEdgeBlendsFromWindow,
   hardEdgeEndsAtWindow,
-  type HardEdgeWindow,
+  hardEdgeWindowOnGrid,
 } from "./rail-bands";
 import type { TipEnd, TipView } from "./tip-taper";
 import { inchesToMm, mm, mmToInches, type Mm, type UnitsSystem } from "./units";
@@ -366,21 +366,13 @@ export function formatHardEdgeEndsAt(value: Mm, system: UnitsSystem): string {
   return formatDim(value, system);
 }
 
-/** A window in millimetres as an inch range rounded inward onto the 1/2" grid (never inverted). */
-function hardEdgeRangeIn(window: HardEdgeWindow): { min: number; max: number } {
-  const { step } = HARD_EDGE_ENDS_AT_RANGE_IN;
-  const min = Math.ceil(mmToInches(window.min) / step - 1e-9) * step;
-  const max = Math.floor(mmToInches(window.max) / step + 1e-9) * step;
-  return { min, max: Math.max(min, max) };
-}
-
 /**
  * The Hard Edge Blends From slider (D-30): from 12" up to min(30", Ends At − 2", centre − 2")
  * (`hardEdgeBlendsFromWindow`, so it follows Ends At and the board's length), rounded inward onto the 1/2"
  * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider` — the component never converts a unit.
  */
 export function hardEdgeBlendsFromSlider(value: Mm, endsAt: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
-  const rangeIn = hardEdgeRangeIn(hardEdgeBlendsFromWindow(endsAt, length));
+  const rangeIn = hardEdgeWindowOnGrid(hardEdgeBlendsFromWindow(endsAt, length));
   return measureSlider(value, rangeIn, HARD_EDGE_BLENDS_FROM_RANGE_IN.step, 10, system);
 }
 
@@ -390,7 +382,7 @@ export function hardEdgeBlendsFromSlider(value: Mm, endsAt: Mm, length: Mm, syst
  * grid, in 1/2" steps with a 10 mm Metric step, through `measureSlider`.
  */
 export function hardEdgeEndsAtSlider(value: Mm, blendsFrom: Mm, length: Mm, system: UnitsSystem): MeasureSliderView {
-  const rangeIn = hardEdgeRangeIn(hardEdgeEndsAtWindow(blendsFrom, length));
+  const rangeIn = hardEdgeWindowOnGrid(hardEdgeEndsAtWindow(blendsFrom, length));
   return measureSlider(value, rangeIn, HARD_EDGE_ENDS_AT_RANGE_IN.step, 10, system);
 }
 

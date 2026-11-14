@@ -4,7 +4,7 @@ import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
 import { formatDim } from "../lib/geometry/measure-display";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { DEFAULT_RAIL_BAND_SPEC, defaultHardEdgeEndsAt } from "../lib/geometry/rail-bands";
+import { DEFAULT_RAIL_BAND_SPEC, hardEdgeEndsAt } from "../lib/geometry/rail-bands";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
@@ -817,7 +817,7 @@ const inches = (value: number) => formatDim(inchesToMm(value), "imperial");
 // The stock 6'0" board: Blends From 18" and Ends At 30" (its own default end, L/3 − 18 inches short of the 36"
 // centre) when it says nothing. Every reading below is the app's own formatter on the founder's figures.
 const STOCK_LENGTH = DEFAULT_BOARD_SPEC.outline.length;
-const STOCK_END = formatDim(defaultHardEdgeEndsAt(STOCK_LENGTH), "imperial");
+const STOCK_END = formatDim(hardEdgeEndsAt({}, STOCK_LENGTH), "imperial");
 const STOCK_CENTRE = formatDim(mm(STOCK_LENGTH / 2), "imperial");
 
 test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
@@ -1113,7 +1113,7 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const shortboard = BOARD_PRESETS.find((preset) => preset.id === "shortboard");
     if (!shortboard) throw new Error("no Shortboard preset");
     expect(shortboard.rails.tailHardEdge).toBe(true);
-    const ownEnd = formatDim(defaultHardEdgeEndsAt(shortboard.outline.length), "imperial");
+    const ownEnd = formatDim(hardEdgeEndsAt({}, shortboard.outline.length), "imperial");
     expect(ownEnd).not.toBe(STOCK_END);
 
     await dismissStrips(page);

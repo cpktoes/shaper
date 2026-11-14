@@ -38,8 +38,8 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
-  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  defaultHardEdgeEndsAt,
+  defaultTailRailBlendsFrom,
+  defaultTailRailEndsAt,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
   HARD_EDGE_BLENDS_FROM_RANGE_IN,
@@ -1052,7 +1052,7 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     };
   const length = FIXTURES[0].outline.length;
 
-  it("a board saved without either setting opens with no such keys and reads 18\" and 30\" (rule 13)", () => {
+  it("a board saved without either setting opens with no such keys and reads 12\" and the top of Ends At's slider (rule 13; D-30's 18\" and 30\" until quick 261113-psx)", () => {
     const stored = wire();
     for (const key of KEYS) expect(key in stored.design.rails).toBe(false);
     const opened = parseSnapshot(Object.freeze(stored));
@@ -1060,8 +1060,9 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
       expect(key in opened.rails).toBe(false);
       expect(JSON.stringify(opened.rails)).not.toContain(key);
     }
-    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
-    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultHardEdgeEndsAt(length));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(defaultTailRailBlendsFrom(length));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultTailRailEndsAt(defaultTailRailBlendsFrom(length), length));
   });
 
   it("a stored 20\"/26\" pair is kept exactly (rule 13)", () => {
@@ -1075,13 +1076,13 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(26));
   });
 
-  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 18\" (rule 13)", () => {
+  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 12\" (rule 13)", () => {
     const stored = wire();
     stored.design.rails.tailHardEdgeEndsAt = inchesToMm(22);
     const opened = parseSnapshot(Object.freeze(stored));
     expect("tailHardEdgeBlendsFrom" in opened.rails).toBe(false);
     expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(22));
-    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(defaultTailRailBlendsFrom(length));
     expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(22));
   });
 

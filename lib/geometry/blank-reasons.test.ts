@@ -57,7 +57,12 @@ import {
 import { BOARD_PRESETS } from "./presets";
 import { blankDisplayName } from "./custom-rocker";
 import { MEASURE_STATION_MM } from "./outline";
-import { HARD_EDGE_BLENDS_FROM_RANGE_IN, HARD_EDGE_MIN_BLEND_IN } from "./rail-bands";
+import {
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  HARD_EDGE_MIN_BLEND_IN,
+  hardEdgeBlendsFrom,
+  hardEdgeEndsAt,
+} from "./rail-bands";
 import { THINNING_START_MIN_MM, thinningStartRange, type TipFlag } from "./tip-taper";
 import {
   inchesToMm,
@@ -1261,6 +1266,30 @@ describe("Hard Edge Blends From and Ends At — dims, and their coupled sliders 
       const starts = hardEdgeBlendsFromSlider(inchesToMm(startMinIn), inchesToMm(toIn), length, "imperial");
       expect(starts.max).toBeLessThanOrEqual(toIn - gapIn);
       expect(starts.max).toBeLessThanOrEqual(startMaxIn);
+    }
+  });
+
+  it("a board that says nothing sits with both thumbs at their ends, and the labels agree (quick 261113-psx)", () => {
+    for (const lengthIn of [60, 68, 72, 73.25, 73.875, 74, 86, 108, 120]) {
+      const len = inchesToMm(lengthIn);
+      const from = hardEdgeBlendsFrom({}, len);
+      const to = hardEdgeEndsAt({}, len);
+      const fromImperial = hardEdgeBlendsFromSlider(from, to, len, "imperial");
+      const toImperial = hardEdgeEndsAtSlider(to, from, len, "imperial");
+      // Imperial: the stored default IS the bottom of Blends From's slider and the top of Ends At's (to the last
+      // hair of an mm-to-inch round trip).
+      expect(fromImperial.value, `${lengthIn}" Blends From`).toBeCloseTo(fromImperial.min, 9);
+      expect(fromImperial.min).toBe(HARD_EDGE_BLENDS_FROM_RANGE_IN.min);
+      expect(toImperial.value, `${lengthIn}" Ends At`).toBeCloseTo(toImperial.max, 9);
+      for (const system of systems) {
+        const f = hardEdgeBlendsFromSlider(from, to, len, system);
+        const t = hardEdgeEndsAtSlider(to, from, len, system);
+        // Metric: the whole-centimetre track clamps the value onto its own end, and the label is the stored figure's.
+        expect(f.value, `${lengthIn}" ${system} Blends From`).toBeCloseTo(f.min, 6);
+        expect(t.value, `${lengthIn}" ${system} Ends At`).toBeCloseTo(t.max, 6);
+        expect(formatHardEdgeBlendsFrom(from, system)).toBe(formatDim(from, system));
+        expect(formatHardEdgeEndsAt(to, system)).toBe(formatDim(to, system));
+      }
     }
   });
 
