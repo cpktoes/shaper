@@ -52,7 +52,7 @@ export const VOLUME_GUIDE_WORDS: readonly GuideWordsCard[] = [
   card(READS, "Estimated Volume", {
     is: "The board's volume in litres — how much foam is in it.",
     does: "More litres float you higher for paddling and glide and forgive a flat section; fewer sink into the wave face for hold and let the board turn off the rail. Shapers quote it against your weight and fitness.",
-    how: "Volume is read, not shaped: once the template, foil and rails are set it is what they add up to. To change it, go back to thickness and width first.",
+    how: "Volume is read, not shaped: once the template, foil, bottom and rails are set it is what they add up to. To change it, go back to thickness and width first.",
   }),
   card(READS, "Template Area", {
     is: "The board's plan area — the area of the template seen from above.",

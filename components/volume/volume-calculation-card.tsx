@@ -29,6 +29,10 @@ interface VolumeCalculationCardProps {
   lengthDisplay: string;
   widthDisplayLabel: string;
   centerThicknessDisplayLabel: string;
+  /** Whether BOTTOM cuts anything on this board (Phase 17). While importing, the litres' cross-sections carry the
+   * bottom's contours, so the method line and the foot sentence say so, and the quick-estimate rows above the litres
+   * — the rail's own figures — get a note that they are read before the bottom is cut (the founder, 2026-11-14). */
+  bottomCut?: boolean;
   /** The Summary dashboard's dense treatment: the same rows as the Volume screen, at the summary's
    * smaller type. What compact drops is chrome, not data — the closing estimate disclaimer. It
    * also used to drop a "Volume Calculation" heading, until that heading was removed from both
@@ -75,6 +79,7 @@ export function VolumeCalculationCard({
   lengthDisplay,
   widthDisplayLabel,
   centerThicknessDisplayLabel,
+  bottomCut = false,
   compact = false,
 }: VolumeCalculationCardProps) {
   const { system } = useUnits();
@@ -84,8 +89,18 @@ export function VolumeCalculationCard({
   // D-13's method disclosure: which of the two figures quotedVolumeLitres actually is. "Finished" since
   // quick 261102-gec plan 03 (the founder's D-V1, PV7): the cross-sections are the finished rail's.
   const methodLine = result.importingTemplate
-    ? "From the board's own finished cross-sections along its length."
+    ? bottomCut
+      ? "From the board's own finished cross-sections along its length, bottom contours included."
+      : "From the board's own finished cross-sections along its length."
     : "From the board-type factor tables (quick estimate).";
+  // The quick-estimate rows (Template Area, the three Cross-Section Thickness rows, the Length-Weighted figure) are the
+  // rail's own figures and do not move when a cut is added, while the litres under them do (the to-do of 2026-11-11).
+  const rowsNote = result.importingTemplate && bottomCut ? "The rows above are the rail's own figures, before the bottom is cut." : null;
+  const footSentence = result.importingTemplate
+    ? bottomCut
+      ? "This figure is real cross-sections taken along the board's own length, with the bottom's contours cut from them, added up with Simpson's rule."
+      : "This figure is real cross-sections taken along the board's own length, added up with Simpson's rule — checkable against a published blank's own stated volume."
+    : "This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing to a board of known dimensions and volume, you can tune the Board Type slider to calibrate for your purposes.";
   const supportingLine = result.importingTemplate
     ? `${crossSectionStationCount} cross-sections integrated`
     : `(${formatCubicVolume(result.volumeCubicInches, system)})`;
@@ -121,6 +136,11 @@ export function VolumeCalculationCard({
           </>
         )}
         <Row label={weightedThicknessLabel} value={formatMark(result.weightedThickness, system)} compact />
+        {rowsNote && (
+          <div data-volume-rows-note className="pt-0.5 text-right text-[10px] text-surf-ink-muted italic">
+            {rowsNote}
+          </div>
+        )}
 
         <div className="mt-1 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-1.5 pb-1">
           <span
@@ -174,6 +194,11 @@ export function VolumeCalculationCard({
           </>
         )}
         <Row label={weightedThicknessLabel} value={formatMark(result.weightedThickness, system)} />
+        {rowsNote && (
+          <div data-volume-rows-note className="pt-1 text-right text-xs text-surf-ink-muted italic">
+            {rowsNote}
+          </div>
+        )}
 
         <div className="mt-1.5 flex items-baseline justify-between border-t-2 border-surf-line-faint pt-3.5 pb-2">
           <span className="text-sm font-bold text-surf-ink-muted">Estimated Volume</span>
@@ -186,11 +211,7 @@ export function VolumeCalculationCard({
         </div>
         <div className="pt-1 text-right text-xs text-surf-ink-muted italic">{methodLine}</div>
       </div>
-      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-ink-muted italic">
-        {result.importingTemplate
-          ? "This figure is real cross-sections taken along the board's own length, added up with Simpson's rule — checkable against a published blank's own stated volume."
-          : "This is a rough estimate, not a 3D CAD model accurate calculation of volume. If comparing to a board of known dimensions and volume, you can tune the Board Type slider to calibrate for your purposes."}
-      </div>
+      <div className="mt-auto pt-4 text-[13px] leading-relaxed text-surf-ink-muted italic">{footSentence}</div>
     </div>
   );
 }

@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import { bottomHasCut } from "@/lib/geometry/bottom";
 import { useDesign } from "@/components/design/design-store";
 import { useUnits } from "@/components/units-provider";
 import { DesignScreenShell } from "@/components/design/design-screen-shell";
@@ -30,6 +31,7 @@ export function VolumeEstimator() {
     effectiveVolume,
     volumeResult,
     quotedVolumeLitres,
+    bottom,
     updateVolume,
     toggleImportDesignedBoard,
   } = useDesign();
@@ -73,6 +75,7 @@ export function VolumeEstimator() {
               lengthDisplay={formatLength(effectiveVolume.length, system)}
               widthDisplayLabel={formatDim(effectiveVolume.width, system)}
               centerThicknessDisplayLabel={formatDim(effectiveVolume.centerThickness, system)}
+              bottomCut={bottomHasCut(bottom)}
             />
           )}
         </TabbedPanel>
