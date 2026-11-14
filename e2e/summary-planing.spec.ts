@@ -1045,7 +1045,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       for (let v: number = THINNING_START_MIN_MM; v <= longestReach; v += 0.5) {
         thinning.add(thinningLine(mm(v), mm(v), system));
       }
-      // Non-vacuity guard: a start can print at least every half inch from 6" to 60".
+      // Non-vacuity guard: a start can print at least every half inch from 6" to 72" (half the longest board, 12'0").
       expect(thinning.size, "thinning line candidates").toBeGreaterThan(
         (BOARD_LENGTH_RANGE_IN.max / 2 - THINNING_START_MIN_MM / inchesToMm(1)) * 2,
       );

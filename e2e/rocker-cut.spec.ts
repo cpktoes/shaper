@@ -15,7 +15,6 @@ import { goToScreen } from "./helpers/screens";
 import { openAppSettings } from "./helpers/settings";
 import { forgetOpenBoardOnEveryLoad } from "./helpers/open-board";
 import { automaticButtonLabel } from "../lib/geometry/blank-reasons";
-import { BOARD_LENGTH_RANGE_IN } from "../lib/geometry/board";
 import { formatLength, stationLabel } from "../lib/geometry/measure-display";
 import { inchesToMm } from "../lib/geometry/units";
 
@@ -568,15 +567,17 @@ test.describe("ROCKER — where each tip's thinning starts (Phase 14, D-09 to D-
   test(`the fixture board: a 10'0" on the Arctic Foam 10'9" LB at the tail end starts its tail further in, and a hand-set 12" start says where it is thinnest until Automatic clears it`, async ({
     page,
   }) => {
-    // TEMPLATE: the longest board the app makes (10'0"), with the default 2 1/2" centre and tips.
+    // TEMPLATE: a 10'0" board — the longest the app made until quick 261113-si7, so the Arctic Foam 10'9" LB
+    // still lists — with the default 2 1/2" centre and tips. Set explicitly now (feet box 10, inches 0): the
+    // Length slider's End is 12'0" since the app makes boards that long.
     await page.goto("/design/outline");
-    const tenFoot = `Board Length — ${formatLength(inchesToMm(BOARD_LENGTH_RANGE_IN.max), "imperial")}`;
+    const tenFoot = `Board Length — ${formatLength(inchesToMm(10 * 12), "imperial")}`;
     const lengthLabel = page.getByText(/^Board Length — /);
-    const lengthSlider = lengthLabel.locator("xpath=..").getByRole("slider");
-    // Retried, because a key pressed before React owns the slider is lost.
+    const feetBox = page.locator('[data-slot="select-trigger"]').nth(0);
+    // Retried, because a tap before React owns the box reaches nothing.
     await expect(async () => {
-      await lengthSlider.focus();
-      await lengthSlider.press("End");
+      await feetBox.click();
+      await page.getByRole("option", { name: "10'", exact: true }).click({ timeout: 2_000 });
       await expect(lengthLabel).toHaveText(tenFoot, { timeout: 1_000 });
     }).toPass({ timeout: 30_000 });
 
