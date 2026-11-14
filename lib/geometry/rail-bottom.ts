@@ -196,6 +196,40 @@ export function railBottomLine(bottom: RailSectionBottom, from: Mm, to: Mm): Poi
   return [{ x: from, y: railDrawnBottom(bottom, from) }, ...between, { x: to, y: railDrawnBottom(bottom, to) }];
 }
 
+/**
+ * The planed bottom's drawn line from `from` to `to`, carried on under the tuck band where a channel reaches the last
+ * bottom mark (the founder, 2026-11-14: "Carry the line under the tuck"). Without channels, or where the drawn bottom
+ * at `to` stands no higher than the band's foot, this is `railBottomLine` exactly. Otherwise the channel's floor at the
+ * last mark stands above the planed bottom the band rises from, and the line would end in the air; so it goes on
+ * outboard along the drawn bottom — the channels' own points, walls and all — until it meets the band (the straight
+ * line from `bandFoot`, the band's point at `to`, to `bandTop`, both already on the bottom), and ends at the meeting
+ * point exactly. Should the floor stand above the whole band (no stock board does), the line ends under the band's top.
+ */
+export function railBottomLineToBand(bottom: RailSectionBottom, from: Mm, to: Mm, bandFoot: Point2D, bandTop: Point2D): Point2D[] {
+  const line = railBottomLine(bottom, from, to);
+  if (!bottom.channelCut || bandTop.x <= to) return line;
+  const bandY = (x: number) => bandFoot.y + ((bandTop.y - bandFoot.y) * (x - bandFoot.x)) / (bandTop.x - bandFoot.x);
+  const end = line[line.length - 1];
+  if (end.y <= bandY(end.x) + 1e-9) return line;
+  const onward = railBottomLine(bottom, to, bandTop.x);
+  let prev = onward[0];
+  for (let k = 1; k < onward.length; k++) {
+    const p = onward[k];
+    const gapPrev = prev.y - bandY(prev.x);
+    const gap = p.y - bandY(p.x);
+    if (gap <= 1e-9) {
+      // The crossing lies on the piece from `prev` to `p` (a wall's two points share an x: the crossing is the wall).
+      const t = p.x === prev.x ? 1 : gapPrev / (gapPrev - gap);
+      const x = mm(prev.x + (p.x - prev.x) * t);
+      line.push({ x, y: mm(bandY(x)) });
+      return line;
+    }
+    line.push(p);
+    prev = p;
+  }
+  return line;
+}
+
 /** The lowest the bottom falls anywhere from `from` out to the apex — 0 when it never falls below the rail's own
  * bottom — so a plot can make room for it. */
 export function railBottomLowest(bottom: RailSectionBottom, from: Mm): Mm {

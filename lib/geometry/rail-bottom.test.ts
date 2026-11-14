@@ -9,6 +9,7 @@ import {
   resolveBottom,
   sectionsFoamOff,
   startingChannels,
+  type ChannelCount,
   startingCut,
   type BoardBottom,
   type BottomBoard,
@@ -38,6 +39,7 @@ import {
   finishedRailOnBottom,
   railBottomFall,
   railBottomLine,
+  railBottomLineToBand,
   railBottomLowest,
   railDrawnBottom,
   railPointOnBottom,
@@ -57,7 +59,7 @@ const fieldsOf = (id: string): DesignSummaryFields => {
   return all.find((b) => b.label === `${id}|asis|${preset.rails.tailHardEdge ? "hard" : "soft"}`)!.fields;
 };
 
-function railsSetup(fields: DesignSummaryFields, names: Partial<Record<BottomSectionKey, BottomCutName>>) {
+function railsSetup(fields: DesignSummaryFields, names: Partial<Record<BottomSectionKey, BottomCutName>>, channels?: ChannelCount) {
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const board: BottomBoard = designBottomBoard(fields.outline, buildOutline(fields.outline), profile, designFinPlacement(fields));
   const bottom: BoardBottom = structuredClone(DEFAULT_BOTTOM);
@@ -65,6 +67,7 @@ function railsSetup(fields: DesignSummaryFields, names: Partial<Record<BottomSec
     const name = names[section];
     if (name) bottom[section] = startingCut(section, name, board);
   }
+  if (channels) bottom.channels = startingChannels(channels, board, bottom.channels);
   const resolved = resolveBottom(bottom, board);
   const effectiveRails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
   const anchors = railAnchorStations(profile.effectiveFoil, fields.outline.length);
@@ -904,5 +907,94 @@ describe("G-17-6 — RAILS draws every concave (the founder, 2026-11-11: \"Alway
         }
       }
     }
+  });
+});
+
+describe("railBottomLineToBand — the planed bottom's line carried on under the tuck band where a channel reaches the last mark (the founder, 2026-11-14: \"Carry the line under the tuck\")", () => {
+  /** The band rising from the last bottom mark, and the bottom line's ends, as the plot reads them. */
+  function parts(bands: RailBandsOutput, key: RailSectionKey) {
+    const out = bands[key];
+    const bottomConn = out.segments.find((seg) => seg.key === "bottomConn")!;
+    const band = out.segments.find((seg) => (seg.key === "tuck1" || seg.key === "tuck2") && seg.p2.x === bottomConn.p2.x && seg.p2.y === bottomConn.p2.y);
+    return { out, bottomConn, band };
+  }
+  const bandY = (foot: Point2D, top: Point2D, x: number) => foot.y + ((top.y - foot.y) * (x - foot.x)) / (top.x - foot.x);
+
+  it("the stock Longboard's rolled tail rail with 6 channels (the to-do's case): the line now ends on the band, where it used to end at the channel's floor above it", () => {
+    const { bands } = railsSetup(fieldsOf("longboard"), {}, 6);
+    const { out, bottomConn, band } = parts(bands, "tail");
+    const bottom = out.bottom!;
+    expect(bottom.channelCut).toBeDefined();
+    expect(band).toBeDefined();
+    const on = (p: Point2D) => railPointOnBottom(bottom, out.boardThickness, p);
+    const foot = on(bottomConn.p2);
+    const top = on(band!.p1);
+    const plain = railBottomLine(bottom, bottomConn.p1.x, bottomConn.p2.x);
+    const carried = railBottomLineToBand(bottom, bottomConn.p1.x, bottomConn.p2.x, foot, top);
+    // The gap that was: the plain line's end stands above the band's foot by a real amount.
+    const gapBefore = plain[plain.length - 1].y - foot.y;
+    expect(gapBefore).toBeGreaterThan(inchesToMm(0.03));
+    // The carried line is the plain line, then more points outboard, ending exactly on the band.
+    expect(carried.slice(0, plain.length)).toEqual(plain);
+    expect(carried.length).toBeGreaterThan(plain.length);
+    const end = carried[carried.length - 1];
+    expect(end.x).toBeGreaterThan(foot.x);
+    expect(end.x).toBeLessThanOrEqual(top.x);
+    expect(Math.abs(end.y - bandY(foot, top, end.x))).toBeLessThan(1e-9);
+    // Every carried point before the end stands on the drawn bottom, above the band.
+    for (const p of carried.slice(plain.length, -1)) {
+      expect(p.y).toBeCloseTo(railDrawnBottom(bottom, p.x), 9);
+      expect(p.y).toBeGreaterThan(bandY(foot, top, p.x));
+    }
+    // and x never goes back
+    for (let k = 1; k < carried.length; k++) expect(carried[k].x).toBeGreaterThanOrEqual(carried[k - 1].x);
+  });
+
+  it("without channels, and on a section whose channels never reach the last mark, it is railBottomLine exactly", () => {
+    // The Longboard's soft tail rail on a Rolled Vee, no channels: a band rises from the last mark, nothing to carry.
+    const vee = railsSetup(fieldsOf("longboard"), { tail: "Rolled Vee" });
+    const { out, bottomConn, band } = parts(vee.bands, "tail");
+    const bottom = out.bottom!;
+    expect(band).toBeDefined();
+    expect(bottom.channelCut).toBeUndefined();
+    const on = (p: Point2D) => railPointOnBottom(bottom, out.boardThickness, p);
+    expect(railBottomLineToBand(bottom, bottomConn.p1.x, bottomConn.p2.x, on(bottomConn.p2), on(band!.p1))).toEqual(
+      railBottomLine(bottom, bottomConn.p1.x, bottomConn.p2.x),
+    );
+    // A Hard Edge tail (the Shortboard's) has no band rising from the last mark: the plot hands the foot twice.
+    const hard = railsSetup(fieldsOf("shortboard"), {}, 6);
+    const h = parts(hard.bands, "tail");
+    expect(h.band).toBeUndefined();
+    const hb = h.out.bottom!;
+    const foot = railPointOnBottom(hb, h.out.boardThickness, h.bottomConn.p2);
+    expect(railBottomLineToBand(hb, h.bottomConn.p1.x, h.bottomConn.p2.x, foot, foot)).toEqual(railBottomLine(hb, h.bottomConn.p1.x, h.bottomConn.p2.x));
+  });
+
+  it("every preset, soft rail, every channel count: the line ends on the band or is the plain line, never in the air", () => {
+    let carriedSomewhere = 0;
+    for (const preset of BOARD_PRESETS) {
+      const soft = all.find((b) => b.label === `${preset.id}|asis|soft`)!.fields;
+      for (const count of [4, 6, 8] as const) {
+        const { bands } = railsSetup(soft, {}, count);
+        for (const key of SECTIONS) {
+          const { out, bottomConn, band } = parts(bands, key);
+          if (!out.bottom || !band) continue;
+          const on = (p: Point2D) => railPointOnBottom(out.bottom!, out.boardThickness, p);
+          const foot = on(bottomConn.p2);
+          const top = on(band.p1);
+          const plain = railBottomLine(out.bottom, bottomConn.p1.x, bottomConn.p2.x);
+          const carried = railBottomLineToBand(out.bottom, bottomConn.p1.x, bottomConn.p2.x, foot, top);
+          const end = carried[carried.length - 1];
+          if (carried.length === plain.length) {
+            expect(carried).toEqual(plain);
+            expect(end.y).toBeLessThanOrEqual(foot.y + 1e-9);
+          } else {
+            carriedSomewhere += 1;
+            expect(Math.abs(end.y - bandY(foot, top, end.x))).toBeLessThan(1e-9);
+          }
+        }
+      }
+    }
+    expect(carriedSomewhere).toBeGreaterThan(0);
   });
 });

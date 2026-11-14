@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { useUnits } from "@/components/units-provider";
 import { formatMarkBare } from "@/lib/geometry/measure-display";
 import { railPlotDots, type RailSectionKey, type RailSectionOutput, type RailSegmentKey } from "@/lib/geometry/rail-bands";
-import { finishedRailOnBottom, railBottomLine, railBottomLowest, railPointOnBottom } from "@/lib/geometry/rail-bottom";
+import { finishedRailOnBottom, railBottomLineToBand, railBottomLowest, railPointOnBottom } from "@/lib/geometry/rail-bottom";
 import { inchesToMm, mm, type Mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
 
 // px per inch, matches buildPlot's default scale for all output-card plots. Exported so a caller
@@ -622,6 +622,13 @@ export function RailSectionPlot({
   // bottom is the straight connector it always was.
   const { bottom } = output;
   const onBottom = (p: Point2D): Point2D => (bottom ? railPointOnBottom(bottom, boardThickness, p) : p);
+  // The tuck band that rises from the last bottom mark (Tuck 1 on a single tuck, Tuck 2 otherwise; none on a Hard
+  // Edge): with channels, the planed bottom's line is carried on under it until the two meet (quick 261114-l2p, the
+  // founder: "Carry the line under the tuck") instead of ending at a channel's floor above the band's foot.
+  const bottomConn = segments.find((seg) => seg.key === "bottomConn");
+  const bandFromLastMark = bottomConn
+    ? segments.find((seg) => (seg.key === "tuck1" || seg.key === "tuck2") && seg.p2.x === bottomConn.p2.x && seg.p2.y === bottomConn.p2.y)
+    : undefined;
   const segmentLines = segments.map((seg) => {
     const p1 = onBottom(seg.p1);
     const p2 = onBottom(seg.p2);
@@ -635,7 +642,13 @@ export function RailSectionPlot({
       // The planed bottom under a lifted rail: a line through the bottom's own samples, not a straight connector.
       bottomPoints:
         bottom && seg.key === "bottomConn"
-          ? railBottomLine(bottom, seg.p1.x, seg.p2.x)
+          ? railBottomLineToBand(
+              bottom,
+              seg.p1.x,
+              seg.p2.x,
+              p2,
+              bandFromLastMark ? onBottom(bandFromLastMark.p1) : p2,
+            )
               .map((p) => `${px(mmToInches(p.x))},${py(mmToInches(p.y))}`)
               .join(" ")
           : null,
