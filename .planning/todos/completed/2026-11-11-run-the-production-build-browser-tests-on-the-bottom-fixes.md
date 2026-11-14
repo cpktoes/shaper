@@ -24,3 +24,7 @@ founder was told before he said Go.
 
 `npm run test:e2e:prod` from the main folder once it is on `main` at or after `93c0ea8f` (the 3D spec matters most:
 17-20 changed the solid board's sections). Record the result in `17-UAT.md`'s gate table.
+
+## Done
+
+2026-11-14 — `npm run test:e2e:prod` run from the main folder on main `09cb0451`: 24 passed, 3 skipped (desktop runs of phone-only tests). Recorded in 17-UAT.md's gate table (fast task 208's docs commit).

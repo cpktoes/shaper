@@ -92,7 +92,7 @@ blocked: 0
 | The two tests that timed out during 17-22's build (board-lock-screens:824, rails-advanced:1109) | pass alone on a quiet machine at the normal time limit (7.4 s, 10.0 s) — load, not a slowdown |
 | Production build (Turbopack) | completes, with the test suite's stand-in settings |
 | Desktop baseline pictures under Turbopack | 6 of 6 pass — VOLUME's re-taken picture included |
-| Production-build browser tests (`e2e/prod`, five specs) | NOT RUN — they need the machine's own settings file, which lives only in the main folder (on another branch today) |
+| Production-build browser tests (`e2e/prod`, five specs) | NOT RUN at the gate — they need the machine's own settings file, which lives only in the main folder (on another branch that day). Run 2026-11-14 from the main folder on main `09cb0451` (after both go-lives, `93c0ea8f` included): 24 passed, 3 skipped (the desktop runs of phone-only tests) — the 3D spec among them |
 
 ## Fix-wave go-live (2026-11-11)
 

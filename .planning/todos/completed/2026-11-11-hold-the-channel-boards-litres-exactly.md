@@ -36,3 +36,7 @@ Also noted by the same review, none of them giving a wrong figure a shaper would
 
 A fresh record of the channelled boards' litres made from the live maths by a script that can run again, a test that
 holds every board to it exactly and fails if any branch never runs, and the three notes above tidied or ruled on.
+
+## Done
+
+2026-11-14 — fast task 208 (commit ba8db610): a re-runnable script writes today's litres; the test holds all 49 boards exactly and states the rule tally. IN-03's comment tidied; IN-01 and IN-02 left for the founder's ruling.
