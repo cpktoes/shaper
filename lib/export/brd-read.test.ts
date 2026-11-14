@@ -330,6 +330,16 @@ describe("the cross-sections", () => {
     expect(read(after).sections.map((s) => s.station)).toEqual(read(layout()).sections.map((s) => s.station));
   });
 
+  it("reads every section when a section carries its guide points on one line, not swallowing the section's closing bracket (quick 261114-118, WR-02)", () => {
+    const oneLine = (station: string, knots: string[]): string[] => [`(p36 ${station} -1.0 -1.0`, ...knots, "gps : ( (gp [1.0,2.0]) (gp [3.0,4.0]) )", ")"];
+    const blocks = [section("30.48", FIVE(1)), oneLine("92.7", FIVE(1.2)), section("150.0", FIVE(1.1))];
+    const board = read(withSections([section("0.0", [EMPTY]), ...blocks, section("183.0", [EMPTY])]));
+    expect(board.sections.map((s) => s.station)).toEqual([expect.closeTo(304.8, 6), expect.closeTo(927, 6), expect.closeTo(1500, 6)]);
+    // The same three with the block over several lines read back the same.
+    const spread = read(withSections([section("0.0", [EMPTY]), section("30.48", FIVE(1)), section("92.7", FIVE(1.2), true), section("150.0", FIVE(1.1)), section("183.0", [EMPTY])]));
+    expect(board.sections).toEqual(spread.sections);
+  });
+
   it("drops a section with one bad knot line and keeps the others, the board still reading", () => {
     const bad = FIVE(1);
     bad[2] = "(cp [11.0,not,11.0,0.2,11.0,0.9] true false)";

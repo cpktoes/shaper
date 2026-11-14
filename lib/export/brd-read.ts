@@ -54,6 +54,10 @@ const BRD_READ_MAX_CM = 10_000;
 /** A curve must reach within this of both ends of the board (1 cm), or it is not a board's curve. */
 const BRD_REACH_MM = 10;
 
+/** A line that opens an AkuShaper guide-point block, and whether that block also closes on the same line (`gps : ( (gp [..]) )`). */
+const opensGuideBlock = (line: string): boolean => line.startsWith("gps : (");
+const guideBlockEndsOnSameLine = (line: string): boolean => line.length > "gps : (".length && line.endsWith(")");
+
 /**
  * One cross-section of the file (quick 261113-gwr): a half section from the bottom at the stringer, out along the bottom,
  * round the rail to the deck at the stringer.
@@ -167,8 +171,9 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
           if (line === ")") skipping = false;
           continue;
         }
-        if (line.startsWith("gps : (")) {
-          skipping = true;
+        if (opensGuideBlock(line)) {
+          // On one line (`gps : ( (gp [..]) )`) there is nothing more to skip, so the section's own `)` must still close it.
+          skipping = !guideBlockEndsOnSameLine(line);
           continue;
         }
         if (line === ")") {
@@ -201,9 +206,8 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
           if (line === ")") skipping = false;
           continue;
         }
-        if (line.startsWith("gps : (")) {
-          // On one line (`gps : ( (gp [..]) )`) there is nothing more to skip.
-          skipping = !(line.length > "gps : (".length && line.endsWith(")"));
+        if (opensGuideBlock(line)) {
+          skipping = !guideBlockEndsOnSameLine(line);
           continue;
         }
         if (line === ")") {
