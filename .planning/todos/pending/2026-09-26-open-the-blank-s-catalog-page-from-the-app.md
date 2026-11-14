@@ -36,3 +36,7 @@ Rough shape, for a quick task once the address scheme per vendor is known:
 - If a vendor's catalog cannot be deep-linked to a page, link to the catalog's front and keep the
   page number in the words.
 - Touch sizes and the phone layout follow CLAUDE.md's switches as for every control.
+
+## Ruled (2026-11-14)
+
+The founder's pick: a small link on the picked blank's card beside Change Blank, and the DATASHEET's blank-line page number made a link. Not on the list rows. Opens the maker's page in a new tab; a maker with no page per blank opens the catalogue's front.

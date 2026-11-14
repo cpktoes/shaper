@@ -112,3 +112,7 @@ Rough shape, to be settled with the founder when it is planned:
 - **Re-measuring.** The table above came from a scratch `npx tsx` script of about 25 lines that imports
   `recordEdit` and `pickOutlineGhost` and feeds them a stand-in snapshot (`{ outline: { noseAngle } }`) with
   chosen timestamps. Re-create it at plan time and use it for the before-and-after numbers.
+
+## Ruled (2026-11-14)
+
+The founder, asked on 2026-11-14: Undo follows the same rule — one press-to-release is one Undo step, on every screen's sliders and drag points; typed boxes, arrow-key nudges and picks stay one edit each. Build as option (a) with the ghost pinned to the grab shape while held.

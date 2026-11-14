@@ -34,3 +34,7 @@ TBD — options the 261018-e6w planner measured:
   `Skill("sketch-findings-shaper")`).
 
 A review picture of the Pixel sideways case is in `.planning/quick/261018-e6w-…/pictures/` once that task runs.
+
+## Ruled (2026-11-14)
+
+The founder's pick: move the readings' top row clear of the toolbar's corner on a short screen; the board keeps its size.

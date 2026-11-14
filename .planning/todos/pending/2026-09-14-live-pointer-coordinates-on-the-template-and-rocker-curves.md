@@ -39,3 +39,7 @@ TBD — hints:
   handles already live on these curves, so on touch this is either a tap-to-read readout or left
   alone — decide that with the founder rather than guessing.
 - Keep the math in `lib/geometry/`; nothing about the stored design changes.
+
+## Ruled (2026-11-14)
+
+The founder's pick: hover only — a mouse or trackpad gets the readout (station up from the tail with the width on TEMPLATE, the rocker and thickness on ROCKER) and a dot on the curve; nothing on touch.
