@@ -175,6 +175,31 @@ describe("a hand-made file in AkuShaper's layout", () => {
   it("reads with plain line ends too", () => {
     expect(mustRead(bytesOf(aku().replace(/\r\n/g, "\n")))).toEqual(board);
   });
+
+  // A board drawn over guide points carries a `gps : (` block INSIDE its outline, bottom or deck, before the curve's
+  // own closing bracket — not only inside a cross-section. Such a file used to be turned away as unreadable.
+  it("skips a gps guide-point block inside the outline, the bottom or the deck, and reads the same board", () => {
+    const guides = ["gps : (", "(gp [20.49,-0.21])", "(gp [12.93,-0.13])", ")"];
+    for (const curve of ["p32 : (", "p33 : (", "p34 : ("]) {
+      const text = aku({
+        mutate: (l) => {
+          const close = l.indexOf(")", l.indexOf(curve));
+          return [...l.slice(0, close), ...guides, ...l.slice(close)];
+        },
+      });
+      expect(mustRead(bytesOf(text))).toEqual(board);
+    }
+  });
+
+  it("skips a gps block written on one line inside a curve without swallowing the curve's closing bracket", () => {
+    const text = aku({
+      mutate: (l) => {
+        const close = l.indexOf(")", l.indexOf("p32 : ("));
+        return [...l.slice(0, close), "gps : ( (gp [20.49,-0.21]) (gp [12.93,-0.13]) )", ...l.slice(close)];
+      },
+    });
+    expect(mustRead(bytesOf(text))).toEqual(board);
+  });
 });
 
 describe("every way a file can be damaged", () => {

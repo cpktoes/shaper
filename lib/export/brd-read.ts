@@ -201,6 +201,17 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
         continue;
       }
       if (open) {
+        // AkuShaper may put a `gps : (` guide-point block inside the outline, bottom or deck too (a board drawn over
+        // guide points): it is skipped like the ones inside a cross-section, and the curve's own `)` still closes it.
+        if (skipping) {
+          if (line === ")") skipping = false;
+          continue;
+        }
+        if (line.startsWith("gps : (")) {
+          // On one line (`gps : ( (gp [..]) )`) there is nothing more to skip.
+          skipping = !(line.length > "gps : (".length && line.endsWith(")"));
+          continue;
+        }
         if (line === ")") {
           open = null;
           continue;
