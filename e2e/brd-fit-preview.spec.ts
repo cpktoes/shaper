@@ -17,10 +17,13 @@ import {
   designSideProfile,
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
+  type DesignSummaryFields,
 } from "../lib/geometry/design";
 import { buildOutline } from "../lib/geometry/outline";
-import { formatDim } from "../lib/geometry/measure-display";
+import { keepFiguresTogether } from "../lib/geometry/keep-figures-together";
+import { formatDim, formatMark } from "../lib/geometry/measure-display";
 import { inchesToMm, mm } from "../lib/geometry/units";
+import { effectiveWingRadius, wingRadiusTop, type Wing } from "../lib/geometry/wings";
 import { phase16Boards, phase16WingBoards } from "../lib/geometry/__fixtures__/phase16-boards";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
 import { brdBoardFields } from "../lib/models/brd-board";
@@ -49,7 +52,10 @@ const BOARDS = phase16Boards();
 const WING_BOARDS = phase16WingBoards();
 
 function surfaceOf(label: string): BoardSurface {
-  const fields = [...BOARDS, ...WING_BOARDS].find((b) => b.label === label)!.fields;
+  return surfaceOfFields([...BOARDS, ...WING_BOARDS].find((b) => b.label === label)!.fields);
+}
+
+function surfaceOfFields(fields: DesignSummaryFields): BoardSurface {
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -72,6 +78,23 @@ function boardFile(label: string): Made {
   const surface = surfaceOf(label);
   const made1 = { locked: Buffer.from(brdFile(surface, label).data), text: brdText(surface).text };
   made.set(label, made1);
+  return made1;
+}
+
+/**
+ * The Shortboard's wing 1 made a 1 inch step over a 1 inch run, its corners rounded as far as the radius slider goes (quick
+ * 261113-m5w): written by the app's own writer like every file here. The corners are clearly rounded, so the preview says so.
+ */
+const ROUNDED = "wing|shortboard|rounded-deep";
+function roundedFile(): Made {
+  const known = made.get(ROUNDED);
+  if (known) return known;
+  const fields = WING_BOARDS.find((b) => b.label === "wing|shortboard|one")!.fields;
+  const step = { depth: inchesToMm(1), run: inchesToMm(1) };
+  const wing: Wing = { ...fields.outline.wings![0], ...step, radius: wingRadiusTop(step, "imperial") };
+  const surface = surfaceOfFields({ ...fields, outline: { ...fields.outline, wings: [wing] } });
+  const made1 = { locked: Buffer.from(brdFile(surface, "Rounded").data), text: brdText(surface).text };
+  made.set(ROUNDED, made1);
   return made1;
 }
 
@@ -924,7 +947,7 @@ test.describe("A wing in a .brd (quick 261113-hyy)", () => {
     await expect(lines.first()).toHaveAttribute("data-brd-fit-wing", "1");
     // The fit is exact across V8 builds but WebKit's maths may differ in a last digit: by shape on the iPhone.
     if (exact) await expect(lines.first()).toHaveText(sheet.wings[0]);
-    else await expect(lines.first()).toHaveText(/^Wing 1 — the file: .+ deep over a .+ run along the stringer, .+ off the tail\. Ours: .+ deep over a .+ run, .+ off the tail, sharp corners\.$/);
+    else await expect(lines.first()).toHaveText(/^Wing 1 — the file: .+\sdeep\sover a .+\srun along the stringer, .+\soff the tail, sharp corners\. Ours: .+\sdeep\sover a .+\srun, .+\soff the tail, sharp corners\.$/);
     // It sits with the HOW CLOSE lines, after the outline's and before the tips note.
     const order = await dialog.locator("[data-brd-fit-close-outline], [data-brd-fit-wing], [data-brd-fit-tips]").evaluateAll((els) =>
       els.map((el) => (el.hasAttribute("data-brd-fit-wing") ? "wing" : el.hasAttribute("data-brd-fit-tips") ? "tips" : "outline")),
@@ -1005,5 +1028,115 @@ test.describe("A wing in a .brd (quick 261113-hyy)", () => {
     await expect(dialog.locator("[data-brd-fit-wing]")).toHaveCount(0);
     await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(/^Rails/);
     await expect(dialog.locator("[data-brd-fit-not-read]")).not.toContainText(/wing|flyer/i);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick 261113-m5w: a wing's corners
+// ---------------------------------------------------------------------------------------------------------------------
+
+test.describe("A wing's corners in a .brd (quick 261113-m5w)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(180_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b28. a file whose wing is clearly rounded says the corners on both sides, and the dialog keeps the figures whole", async ({ page }, testInfo) => {
+    const exact = testInfo.project.name !== "iphone";
+    const file = roundedFile();
+    const sheet = sheetOf(file.locked, "Rounded.brd", "imperial");
+    expect(sheet.wings).toHaveLength(1);
+    expect(sheet.wings[0]).toContain("corners rounded about");
+    expect(sheet.wings[0]).toContain("corner radius.");
+    expect(sheet.wings[0]).not.toContain("sharp corners");
+
+    await page.goto("/");
+    await pickFile(page, "Rounded.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const lines = dialog.locator("[data-brd-fit-wing]");
+    await expect(lines).toHaveCount(1);
+    if (exact) {
+      await expect(lines.first()).toHaveText(sheet.wings[0]);
+      // The dialog draws the sheet's words with its figures kept together: the raw text is the sheet's, through the one house function.
+      expect(await lines.first().evaluate((el) => el.textContent)).toBe(keepFiguresTogether(sheet.wings[0]));
+    } else {
+      // WebKit's maths may differ in a last digit: by shape (a regex sees the no-break spaces, so \s sits beside every figure).
+      await expect(lines.first()).toHaveText(
+        /^Wing 1 — the file: .+\sdeep\sover a .+\srun along the stringer, .+\soff the tail, corners rounded about .+\. Ours: .+\sdeep\sover a .+\srun, .+\soff the tail, .+\scorner radius\.$/,
+      );
+    }
+  });
+
+  test("b29. in Metric the rounded line reads the radius in whole millimetres and the place off the tail in centimetres", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for Metric");
+    await setMetricUnits(page);
+    const file = roundedFile();
+    const sheet = sheetOf(file.locked, "Rounded.brd", "metric");
+    await page.goto("/");
+    await pickFile(page, "Rounded.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const line = dialog.locator("[data-brd-fit-wing]");
+    await expect(line).toHaveText(sheet.wings[0]);
+    await expect(line).toContainText("mm corner radius");
+    await expect(line).toContainText("corners rounded about");
+    await expect(line).toContainText("cm off the tail");
+    await expect(line).not.toContainText('"');
+  });
+
+  test("b30. Open as a Board opens the rounded wing: the kept board holds its radius, unlocked, and the WINGS tab's Corner radius already reads it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the WINGS tab");
+    const file = roundedFile();
+    const fields = brdBoardFields(lookOf(file.locked).fit, "Rounded.brd");
+    if (!fields?.outline.wings) throw new Error("the rounded fit should open with a wing");
+    const wing = fields.outline.wings[0];
+    expect(wing.radius).toBeGreaterThan(0);
+    const saves = watchSaves(page);
+
+    await page.goto("/");
+    await pickFile(page, "Rounded.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Rounded");
+
+    const kept = (await storedOpenBoard(page))!.snapshot.design as unknown as { outline: { wings?: Record<string, unknown>[] } };
+    expect(kept.outline.wings).toHaveLength(1);
+    expect(sameWithin(kept.outline.wings![0], wing, 1e-9, "wing")).toBeNull();
+    expect(kept.outline.wings![0].lock).toBeNull();
+    expect(kept.outline.wings![0].radius as number).toBeGreaterThan(0);
+    expect(saves).toEqual([]);
+
+    const tab = page.getByRole("tab", { name: "WINGS · 1" });
+    await expect(tab).toBeVisible({ timeout: 30_000 });
+    await tab.click();
+    const row = page.locator('[data-wing-controls="1"]').getByText(/^Corner radius — /);
+    await expect(row).toHaveText(`Corner radius — ${formatMark(effectiveWingRadius(wing), "imperial")}`);
+    await expect(page.locator('[data-wing-controls="2"]')).toHaveCount(0);
+  });
+
+  test("b31. on a phone the rounded line holds a no-break space inside every whole number with its fraction, and stays inside the screen", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === "desktop", "the phones are what wrap");
+    const file = roundedFile();
+    await page.goto("/");
+    await pickFile(page, "Rounded.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const line = dialog.locator("[data-brd-fit-wing]");
+    await expect(line).toHaveCount(1);
+    const raw = (await line.evaluate((el) => el.textContent)) ?? "";
+    // A whole number and its fraction ("7 7/16\"") are joined by a no-break space, never a plain one; the rounded line has some.
+    expect(raw).toMatch(/\d\u00a0\d+\/\d+/);
+    expect(raw).not.toMatch(/\d \d+\/\d+/);
+    // And a number is joined to its unit when it has one (none in Imperial): the same function, so no plain space either way.
+    expect(raw).not.toMatch(/\d (?:mm|cm|L)\b/);
+    await line.scrollIntoViewIfNeeded();
+    const box = await line.boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) throw new Error("no box for the wing line or the viewport");
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
   });
 });
