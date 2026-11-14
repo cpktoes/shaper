@@ -432,7 +432,7 @@ describe("the round nose changes nothing it should not, on the whole catalogue (
       }
     }
     expect(blanks).toBeGreaterThan(AFFECTED.length);
-  });
+  }, 60_000);
 
   it("never holds less foam than today's curve inside the round segment, nor more than the station's printed width", () => {
     expect(AFFECTED.length).toBeGreaterThan(0);

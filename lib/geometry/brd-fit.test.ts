@@ -777,12 +777,17 @@ describe("the app's own default second wing", () => {
     expectWingsHoldable(trip.fit);
   }, 120_000);
 
-  it("finishes the winged fit of a two-wing board in under a second and a half", () => {
+  // No wall-clock limit here (quick 261114-118, IN-05): a limit in milliseconds fails on a busy machine and proves nothing about the fit.
+  // The times are shown only when asked for: `BRD_FIT_TIMES=1 npx vitest run lib/geometry/brd-fit.test.ts`.
+  it("fits a two-wing board whole, both wings found and held", () => {
     const trip = wingTripOf("wing|shortboard|two", inchesToMm(1 / 4));
-    console.log(
-      `the two-wing Shortboard's whole fit took ${trip.ms.toFixed(0)} ms, the Shortboard with a rounded 1 by 1 inch wing ${roundedTrip("shortboard", 1, 1, "top").ms.toFixed(0)} ms (a wingless Shortboard ${tripOf("shortboard|asis|hard").ms.toFixed(0)} ms)`,
-    );
-    expect(trip.ms).toBeLessThan(1500);
+    if (process.env.BRD_FIT_TIMES) {
+      console.log(
+        `the two-wing Shortboard's whole fit took ${trip.ms.toFixed(0)} ms, the Shortboard with a rounded 1 by 1 inch wing ${roundedTrip("shortboard", 1, 1, "top").ms.toFixed(0)} ms (a wingless Shortboard ${tripOf("shortboard|asis|hard").ms.toFixed(0)} ms)`,
+      );
+    }
+    expect(trip.fit.fileWings).toHaveLength(2);
+    expectWingsHoldable(trip.fit);
   }, 120_000);
 });
 

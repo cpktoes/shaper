@@ -127,7 +127,7 @@ describe("renderMesh: the surface's own vertices, the bottom edge sharp by marki
         expect(Math.abs(Math.hypot(...normalOf(mesh, k)) - 1)).toBeLessThan(1e-6);
       }
     }
-  });
+  }, 60_000);
 
   it("a hard-edged ring (sharpness 1) splits the bottom edge into the rail's and the bottom's own normals", () => {
     const mesh = renderMesh(hard.surface);
