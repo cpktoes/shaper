@@ -42,9 +42,10 @@ import type {
   Point2D,
 } from "./board";
 import { type Degrees, type Mm, inchesToMm, mm } from "./units";
+import { WIDEPOINT_END_MARGIN_IN } from "./board-size";
 import { applyWings, type Wing } from "./wings";
 
-const MARGIN_MM = inchesToMm(16);
+const MARGIN_MM = inchesToMm(WIDEPOINT_END_MARGIN_IN);
 const DIAMOND_DEPTH_CAP_MM = inchesToMm(5);
 /** The room a diamond tail's point keeps from the tail block. */
 export const DIAMOND_BLOCK_MARGIN_MM = inchesToMm(2);

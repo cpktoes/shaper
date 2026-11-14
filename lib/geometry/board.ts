@@ -95,8 +95,9 @@ export interface OutlineSpec {
 }
 
 /**
- * The range of boards this app will draw, in inches — 5'0" to 10'0" long, 16" to 25" at the
- * widepoint.
+ * The range of boards this app will draw, in inches — 4'0" to 12'0" long; 16" to 25" at the
+ * widepoint under 8'0", to 31" from 8'0" (the founder, 2026-11-13, quick 261113-si7; until then it
+ * was 5'0" to 10'0" and 16" to 25" for every board).
  *
  * These are the bounds the outline editor's sliders have always clamped to; they live here now
  * because they stopped being a UI detail the moment something other than a slider needed to know
@@ -106,9 +107,22 @@ export interface OutlineSpec {
  *
  * Inches rather than `Mm`, deliberately: every consumer is a slider bound or a drawing scale, both
  * of which work in the inch domain, and a `Mm` constant would only be converted back at each use.
+ *
+ * The Width range now depends on the board's length — `widePointWidthRangeIn(length)` — and lives, with
+ * the Offset window and the hold on read, in `./board-size` (re-exported below).
  */
-export const BOARD_LENGTH_RANGE_IN = { min: 60, max: 120 } as const;
-export const WIDEPOINT_WIDTH_RANGE_IN = { min: 16, max: 25 } as const;
+export const BOARD_LENGTH_RANGE_IN = { min: 48, max: 144 } as const;
+export {
+  WIDEPOINT_WIDTH_RANGE_IN,
+  WIDE_BOARD_FROM_LENGTH_IN,
+  WIDE_BOARD_WIDEPOINT_MAX_IN,
+  WIDEPOINT_END_MARGIN_IN,
+  WIDEPOINT_OFFSET_MAX_IN,
+  WIDEPOINT_OFFSET_STEP_IN,
+  widePointWidthRangeIn,
+  widePointOffsetRangeIn,
+  holdOutlineToLength,
+} from "./board-size";
 
 /**
  * The single board-design object. Rails and fins become sibling keys in later phases, so screens

@@ -11,6 +11,7 @@ import {
   formatCentimetres,
   formatFeetInches,
   wholeFeetAndInches,
+  wholeFeetWithin,
   formatInchesFraction,
   formatInchesFractionOrLess,
   formatSignedInchesFraction,
@@ -31,6 +32,16 @@ import {
   squareMmToSquareCentimetres,
   squareMmToSquareInches,
 } from "./units";
+
+describe("wholeFeetWithin", () => {
+  it("lists every whole foot a Board Length range holds: 48-144in is 4' to 12'", () => {
+    expect(wholeFeetWithin({ min: 48, max: 144 })).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+  it("lists only the feet that fit inside a range that starts or ends between feet", () => {
+    expect(wholeFeetWithin({ min: 50, max: 100 })).toEqual([5, 6, 7, 8]);
+    expect(wholeFeetWithin({ min: 61, max: 71 })).toEqual([]);
+  });
+});
 
 describe("units boundary", () => {
   it("round-trips inches through mm", () => {
@@ -593,10 +604,10 @@ describe("units boundary", () => {
       expect(metricSliderRange(WIDEPOINT_WIDTH_RANGE_IN, 1)).toEqual({ min: 407, max: 635, step: 1 });
     });
 
-    it("BOARD_LENGTH_RANGE_IN (60-120in) at 10mm step lands on 1530-3040", () => {
-      // 60 * 25.4 = 1524mm, rounded up to the next 10mm stop (1530); 120 * 25.4 = 3048mm,
-      // rounded down to the prior 10mm stop (3040).
-      expect(metricSliderRange(BOARD_LENGTH_RANGE_IN, 10)).toEqual({ min: 1530, max: 3040, step: 10 });
+    it("BOARD_LENGTH_RANGE_IN (48-144in) at 10mm step lands on 1220-3650", () => {
+      // 48 * 25.4 = 1219.2mm, rounded up to the next 10mm stop (1220); 144 * 25.4 = 3657.6mm,
+      // rounded down to the prior 10mm stop (3650). Until quick si7 this range was 60-120in (1530-3040).
+      expect(metricSliderRange(BOARD_LENGTH_RANGE_IN, 10)).toEqual({ min: 1220, max: 3650, step: 10 });
     });
 
     it("a 48-144in range (FINS board length) at 10mm step lands on 1220-3650", () => {

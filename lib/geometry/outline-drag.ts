@@ -19,6 +19,7 @@
  */
 
 import type { OutlineSpec } from "./board";
+import { WIDEPOINT_OFFSET_MAX_IN, WIDEPOINT_OFFSET_STEP_IN, widePointOffsetRangeIn } from "./board-size";
 import {
   HANDLE_CAP,
   type OutlineGeometry,
@@ -85,7 +86,9 @@ export interface OutlineDragPointAt {
  * a value the slider could not reproduce.
  */
 export const OUTLINE_SLIDER_LIMITS = {
-  widePointOffsetIn: { min: -12, max: 12, step: 0.25 },
+  // The WIDEST the Offset window gets; a board under 4'8" has a narrower one (`widePointOffsetRangeIn`,
+  // quick 261113-si7) because the outline keeps the widest point 16" from each end.
+  widePointOffsetIn: { min: -WIDEPOINT_OFFSET_MAX_IN, max: WIDEPOINT_OFFSET_MAX_IN, step: WIDEPOINT_OFFSET_STEP_IN },
   railLength: { min: 0, max: 100, step: 0.25 },
   fullness: { min: 0, max: 100, step: 0.25 },
   tailAngle: { min: 30, max: 90, step: 1 },
@@ -181,11 +184,12 @@ export function solveOutlineDrag(
       // it is for the rail handles.
       //
       // The clamp to the 16in end margins already lives in buildOutline; here the offset only has to
-      // land on its slider.
-      const offsetIn = quantise(
-        mmToInches(mm(dragged.station - geometry.length / 2)),
-        OUTLINE_SLIDER_LIMITS.widePointOffsetIn,
-      );
+      // land on its slider — whose window is this board's own (±8" on a 4'0", ±12" from 4'8" up), so
+      // a drag past the tail margin writes what the drawing shows, never a number past it.
+      const offsetIn = quantise(mmToInches(mm(dragged.station - geometry.length / 2)), {
+        ...OUTLINE_SLIDER_LIMITS.widePointOffsetIn,
+        ...widePointOffsetRangeIn(geometry.length),
+      });
       return { widePointOffset: inchesToMm(offsetIn) };
     }
 
@@ -322,12 +326,12 @@ export const OUTLINE_DRAG_HIT_PX = 15;
 
 /**
  * The phone (coarse-pointer) drag hit-zone radius, in CSS px — measured, not assumed
- * (`components/viewer/drag-spacing.test.ts`, D-15/PHON-04). At the tightest realistic board (60in
- * length, 25in widepoint — `BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN` in `board.ts`), the
- * closest pair of the five drag points (`tailHandle`/`tailRailHandle`) still lands comfortably more
- * than twice this radius apart on screen at TEMPLATE's 66dvh pinned ceiling on both a 375x667
- * iPhone SE (~58.7px) and a 390x844 iPhone 14 (~61.2px), so the UI-SPEC's own 22px target needs no
- * shrinking for the outline.
+ * (`components/viewer/drag-spacing.test.ts`, D-15/PHON-04). At the tightest realistic board (48in
+ * length, 25in widepoint — `BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN` in `board.ts`; a 4'0" board
+ * since quick 261113-si7, a 5'0" one before), the closest pair of the five drag points
+ * (`tailHandle`/`tailRailHandle`) still lands more than twice this radius apart on screen at TEMPLATE's
+ * 66dvh pinned ceiling on both a 375x667 iPhone SE (~52.6px) and a 390x844 iPhone 14 (~54.7px) — over
+ * the 44px two 22px circles need — so the UI-SPEC's own 22px target needs no shrinking for the outline.
  */
 export const OUTLINE_DRAG_HIT_COARSE_PX = 22;
 

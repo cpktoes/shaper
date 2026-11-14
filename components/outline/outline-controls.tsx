@@ -11,9 +11,10 @@ import { Slider } from "@/components/ui/slider";
 import {
   BOARD_LENGTH_RANGE_IN,
   TAIL_PRESETS,
-  WIDEPOINT_WIDTH_RANGE_IN,
   type OutlineSpec,
   type TailShape,
+  widePointOffsetRangeIn,
+  widePointWidthRangeIn,
 } from "@/lib/geometry/board";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
@@ -25,6 +26,7 @@ import {
   type Mm,
   mmToInches,
   wholeFeetAndInches,
+  wholeFeetWithin,
 } from "@/lib/geometry/units";
 import {
   diamondDepthClampNote,
@@ -46,7 +48,7 @@ const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swal
 
 /** The two Board Length boxes' choices. One list feeds both the open list and the closed box, so
  * the box reads 6' and 0" the same way the list does (quick 261017-sru). */
-const FEET_ITEMS = [5, 6, 7, 8, 9, 10].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
+const FEET_ITEMS = wholeFeetWithin(BOARD_LENGTH_RANGE_IN).map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
 const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
 
 interface OutlineControlsProps {
@@ -255,7 +257,7 @@ export function OutlineControls({
         {(() => {
           const width = measureSlider(
             outline.widePointWidth,
-            WIDEPOINT_WIDTH_RANGE_IN,
+            widePointWidthRangeIn(outline.length),
             0.125,
             1,
             system,
@@ -276,7 +278,7 @@ export function OutlineControls({
           );
         })()}
         {(() => {
-          const offset = measureSlider(outline.widePointOffset, { min: -12, max: 12 }, 0.25, 1, system);
+          const offset = measureSlider(outline.widePointOffset, widePointOffsetRangeIn(outline.length), 0.25, 1, system);
           return (
             <SliderRow
               className="flex-1"

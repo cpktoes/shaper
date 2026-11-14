@@ -78,6 +78,7 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import { holdOutlineToLength } from "@/lib/geometry/board-size";
 import type { FiveStationRocker } from "@/lib/geometry/rocker";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
@@ -1188,8 +1189,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // `state.outline` whenever nothing moves. Quick 261015-hz7 (D2, D3): the same resolution keeps
   // every wing under the top and wing 2 behind wing 1, so a sidebar or grab-point write — which
   // always writes the list as shown — stores a wing 2 where it was pushed.
+  //
+  // Quick 261113-si7 (the founder's 4'0"–12'0" and 31" rulings, calls 2 and 3): the same place holds a
+  // board's Width and Offset to its length. A board 28" wide that is then shortened under 8'0" reads,
+  // draws and saves 25"; one shortened under 4'8" has its Offset held to where the wide point can
+  // really go. What was stored is kept in `state.outline`, so lengthening the board again brings the
+  // wider Width back until the Width slider itself is moved. The SAME object comes back for every
+  // board inside the old sizes (`holdOutlineToLength`), so none of them moves.
   const resolvedOutline = useMemo(
-    () => resolveWingStations(state.outline, state.fins, state.finsImportTemplate).outline,
+    () => resolveWingStations(holdOutlineToLength(state.outline), state.fins, state.finsImportTemplate).outline,
     [state.outline, state.fins, state.finsImportTemplate],
   );
   const outlineGeometry = useMemo(() => buildOutline(resolvedOutline), [resolvedOutline]);
@@ -1223,7 +1231,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // A ghost with a locked wing is resolved against the live fins, the same way the board is.
     () =>
       outlineGhost
-        ? buildOutline(resolveWingStations(outlineGhost, state.fins, state.finsImportTemplate).outline)
+        ? buildOutline(resolveWingStations(holdOutlineToLength(outlineGhost), state.fins, state.finsImportTemplate).outline)
         : null,
     [outlineGhost, state.fins, state.finsImportTemplate],
   );
@@ -1278,14 +1286,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const railBands = useMemo(() => computeRailBands(effectiveRails), [effectiveRails]);
 
   const templateValues: VolumeTemplateValues = useMemo(
-    () => deriveTemplateValues(state.outline, outlineGeometry),
-    // Deliberately narrower than "state.outline" (eslint-disable below): deriveTemplateValues
+    () => deriveTemplateValues(resolvedOutline, outlineGeometry),
+    // Deliberately narrower than "resolvedOutline" (eslint-disable below): deriveTemplateValues
     // only reads outline.length and outline.widePointWidth, and this dependency array is
     // unchanged from before the lib/geometry/design.ts extraction — widening it to the whole
     // outline object would recompute this memo on every unrelated outline edit (nose angle,
-    // tail shape, ...), which the extraction must not change.
+    // tail shape, ...), which the extraction must not change. It reads the HELD outline (quick
+    // 261113-si7), so VOLUME's imported width is the width the board is drawn at.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [outlineGeometry, state.outline.length, state.outline.widePointWidth],
+    [outlineGeometry, resolvedOutline.length, resolvedOutline.widePointWidth],
   );
 
   const railValues: VolumeRailValues = useMemo(() => deriveRailValues(railBands), [railBands]);
