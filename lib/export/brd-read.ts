@@ -41,12 +41,16 @@ export { brdFinWord, parseBrdFinLine };
 // picked and must not download this reader for them); they are re-exported here so everything else keeps importing them from here.
 export { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName };
 
-/** The most lines read, and the most knots one curve (or one cross-section) may hold. */
+/** The most lines read, and the most knots one curve (or one cross-section) may hold. The knot cap is a budget for the
+ * fit as much as a guard (the go-live review of 2026-11-14, WR-03: a crafted file with 64 sections of 200 knots took about
+ * 20 s to fit, an ordinary one 0.45 s): this app's own files write at most 22 knots on a curve and 15 in a section
+ * (measured 2026-11-14 on a 12'0" × 31" board with every cut and 8 channels), AkuShaper's fewer still. */
 export const BRD_READ_MAX_LINES = 50_000;
-export const BRD_READ_MAX_KNOTS = 200;
+export const BRD_READ_MAX_KNOTS = 64;
 
-/** The most cross-sections kept (this app's own files write 20 to 35; AkuShaper's carry 4 to 7). */
-export const BRD_READ_MAX_SECTIONS = 64;
+/** The most cross-sections kept: this app's own writer never writes more than 60 (`BRD_SECTIONS_MAX`; 46 on the longest
+ * board with every cut and 8 channels), AkuShaper's files carry 4 to 7. */
+export const BRD_READ_MAX_SECTIONS = 60;
 
 /** A knot's numbers (centimetres) stay inside this: far beyond any board, short of anything that breaks a sum. */
 const BRD_READ_MAX_CM = 10_000;

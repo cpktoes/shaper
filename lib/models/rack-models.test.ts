@@ -14,6 +14,7 @@ import {
 import { DEFAULT_BOTTOM, bottomHasCut, startingChannels, startingCut, type BoardBottom } from "@/lib/geometry/bottom";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC } from "@/lib/geometry/foil";
+import { holdOutlineToLength } from "@/lib/geometry/board-size";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { buildRackBoardArt } from "@/lib/geometry/rack-art";
@@ -154,6 +155,24 @@ describe("rackBoardFigures", () => {
 
   it("throws for the crafted 500 mm board in a blank", () => {
     expect(() => rackBoardFigures({ ...FIELDS, outline: { ...FIELDS.outline, length: mm(500) } })).toThrow();
+  });
+
+  // The go-live review of 2026-11-14, IN-04: a hand-made board file can carry a board too wide for its length (31" is
+  // allowed from 8'0" up, 25" below it). The design pages hold such a board in (quick 261113-si7); the rack card must
+  // read and draw the held board too, never a wider one than the pages show.
+  it("a board too wide for its length reads and draws on the rack as the design pages hold it", () => {
+    const wide: DesignSummaryFields = { ...FIELDS, blank: null, outline: { ...FIELDS.outline, length: inchesToMm(72), widePointWidth: inchesToMm(31) } };
+    const held = holdOutlineToLength(wide.outline);
+    expect(held).not.toBe(wide.outline);
+    expect(held.widePointWidth).toBeLessThan(wide.outline.widePointWidth);
+    const figures = rackBoardFigures(wide);
+    const asDrawn = { ...wide, outline: held };
+    expect(figures.summary).toEqual(summarizeDesign(asDrawn));
+    expect(figures.summary.widePointWidth).toBe(held.widePointWidth);
+    expect(figures.art).toEqual(buildRackBoardArt(designSideProfile(asDrawn, LIVE_DESIGN_RULES), buildOutline(held)));
+    // A board inside its size reads exactly as before — the same objects go through.
+    const inside = { ...FIELDS, blank: null };
+    expect(rackBoardFigures(inside).summary).toEqual(summarizeDesign(inside));
   });
 
   it.each(CASES)("%s: with its fins and Import Template box present and no bottom, the card reads exactly as before", (_, fields) => {

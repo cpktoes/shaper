@@ -238,12 +238,14 @@ describe("every way a file can be damaged", () => {
   });
 
   it("refuses a curve with more knots than the cap", () => {
-    const many = Array.from({ length: BRD_READ_MAX_KNOTS + 1 }, (_, i) => {
-      const x = (183 * i) / BRD_READ_MAX_KNOTS;
-      return `(cp [${x},5.0,${x},5.0,${x},5.0] true false)`;
-    });
-    expect(readAnyBrd(bytesOf(aku({ outlineKnots: many })))).toEqual(unreadable);
-    expect(readAnyBrd(bytesOf(aku({ outlineKnots: many.slice(0, BRD_READ_MAX_KNOTS) })))).toMatchObject({ ok: true });
+    // `n` knots spread from the tail (0) to the nose (183), the ends on the ends, so only the count can fail a read.
+    const knots = (n: number) =>
+      Array.from({ length: n }, (_, i) => {
+        const x = (183 * i) / (n - 1);
+        return `(cp [${x},5.0,${x},5.0,${x},5.0] true false)`;
+      });
+    expect(readAnyBrd(bytesOf(aku({ outlineKnots: knots(BRD_READ_MAX_KNOTS + 1) })))).toEqual(unreadable);
+    expect(readAnyBrd(bytesOf(aku({ outlineKnots: knots(BRD_READ_MAX_KNOTS) })))).toMatchObject({ ok: true });
   });
 
   it("refuses a curve that does not reach from the tail to the nose", () => {

@@ -17,6 +17,7 @@
  * Pure: no React, browser or database import.
  */
 import { LIVE_DESIGN_RULES, designSideProfile, summarizeDesign, type DesignSummary, type DesignSummaryFields } from "@/lib/geometry/design";
+import { holdOutlineToLength } from "@/lib/geometry/board-size";
 import { buildOutline } from "@/lib/geometry/outline";
 import { buildRackBoardArt, type RackBoardArt } from "@/lib/geometry/rack-art";
 import { hasPhase11Blank, parseSnapshot, type DesignSnapshotFields, type ParseSnapshotOptions } from "./design-snapshot";
@@ -60,13 +61,18 @@ export interface RackBoardFigures {
  * and its card is what it always was.
  */
 export function rackBoardFigures(fields: DesignSummaryFields): RackBoardFigures {
+  // The outline as the design pages draw it (quick 261113-si7's hold: a board too wide for its length, or with its
+  // wide point past a short board's window, is held in — the go-live review's IN-04, 2026-11-14): a hand-made board
+  // file can carry such a board, and its rack card must read and draw the same board the pages do.
+  const held = holdOutlineToLength(fields.outline);
+  const asDrawn = held === fields.outline ? fields : { ...fields, outline: held };
   const summary = summarizeDesign({
-    ...fields,
-    fins: fields.fins,
-    finsImportTemplate: fields.finsImportTemplate,
-    bottom: fields.bottom,
+    ...asDrawn,
+    fins: asDrawn.fins,
+    finsImportTemplate: asDrawn.finsImportTemplate,
+    bottom: asDrawn.bottom,
   });
-  const art = buildRackBoardArt(designSideProfile(fields, LIVE_DESIGN_RULES), buildOutline(fields.outline));
+  const art = buildRackBoardArt(designSideProfile(asDrawn, LIVE_DESIGN_RULES), buildOutline(asDrawn.outline));
   return { summary, art };
 }
 
