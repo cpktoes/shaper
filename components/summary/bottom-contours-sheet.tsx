@@ -81,6 +81,8 @@ export const BOTTOM_SHEET_COPY = {
   tablesPageTitle: "Bottom Contours · Tables",
   depthsPageTitle: "Bottom Contours · Depths",
   marksPageTitle: "Bottom Contours · Layout Marks",
+  /** The page mark's title for the tables' notes when they take the sheet after the tables (quick 261114-l6s). */
+  notesPageTitle: "Bottom Contours · Reading the Tables",
 } as const;
 
 /**
@@ -672,9 +674,24 @@ export function BottomContoursSheet({ layout }: { layout: BottomSheetLayout }) {
  *
  * On a board too long for both tables to share a sheet (`layout.tablesSplit`) the order form prints this twice, once
  * with `part="depths"` and once with `part="marks"`: one table alone, at today's rows, with DATA's notes for it
- * (`layout.splitNotes`). `part` is "both" — the sheet exactly as it always was — everywhere else.
+ * (`layout.splitNotes`). On a board whose tables' sheet cannot hold the notes even with its rows tight
+ * (`layout.notesOnOwnSheet`) it prints once more with `part="notes"`: the notes alone, on the sheet after the tables.
+ * `part` is "both" — the sheet exactly as it always was — everywhere else.
  */
-export function BottomTablesSheet({ layout, part = "both" }: { layout: BottomSheetLayout; part?: "both" | "depths" | "marks" }) {
+export function BottomTablesSheet({ layout, part = "both" }: { layout: BottomSheetLayout; part?: "both" | "depths" | "marks" | "notes" }) {
+  if (part === "notes") {
+    // The tables' notes on the sheet after the tables (`layout.notesOnOwnSheet`; the founder, 2026-11-14: "Notes onto
+    // the next sheet"): every note DATA has, at the top of the page, where the tables' sheet could not hold them.
+    return (
+      <div data-bottom-tables-sheet data-bottom-tables-part="notes" className="flex min-h-0 flex-1 flex-col gap-1">
+        <div data-bottom-sheet-part="table-notes" className="flex flex-none flex-col gap-[3px] px-0.5 pt-0.5 text-surf-ink-muted leading-tight order-form-micro">
+          {layout.notesOnOwnSheet.map((note) => (
+            <p key={note}>{note}</p>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (part === "both") {
     return (
       <div data-bottom-tables-sheet data-bottom-rows={layout.tablesTight ? "tight" : undefined} className="flex min-h-0 flex-1 flex-col gap-1">

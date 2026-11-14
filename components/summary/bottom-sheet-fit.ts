@@ -122,7 +122,14 @@ export interface BottomSheetLayout {
    * rows bold). Both empty unless `tablesSplit`.
    */
   splitNotes: { depths: string[]; marks: string[] };
-  /** How many sheets the bottom prints on: 1, 2 when the tables take their own, 3 when each table takes one. */
+  /**
+   * DATA's notes on a sheet of their own, after the tables' sheet, in DATA's order — every one — when they fit under the
+   * tables neither at today's rows nor at the tight rows (a 9'7" to 10'0" board with channels; quick 261114-l6s, the
+   * founder: "Notes onto the next sheet"). Empty whenever `tableNotes` or `splitNotes` carry them, or there are none.
+   */
+  notesOnOwnSheet: string[];
+  /** How many sheets the bottom prints on: 1, 2 when the tables take their own, 3 when each table takes one or the
+   * tables' notes take one after the tables. */
   sheets: 1 | 2 | 3;
 }
 
@@ -297,6 +304,7 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
     tablesOnOwnSheet && markColumns > 0 && spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, true)) < PAGE.spare;
   let tableNotes: string[] = [];
   let tablesTight = false;
+  let notesOnOwnSheet: string[] = [];
   const splitNotes: { depths: string[]; marks: string[] } = { depths: [], marks: [] };
   if (tablesSplit) {
     // One table a sheet has room to spare, at today's rows; each keeps its own note and the rows note, in DATA's order,
@@ -316,18 +324,20 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
       spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, tight) + tableNotesHeight(sheet, list)) >= PAGE.spare;
     if (fits(wanted, false)) {
       tableNotes = wanted;
-    } else {
-      // Every stock board fits every note here; only a hand-set board longer than any of them stops short, keeping
-      // as many notes as fit, in DATA's order — and every row.
+    } else if (fits(wanted, true)) {
+      // The 9'0" to 9'6" Longboards with channels (17-23, "Make it fit"): the rows two dots closer hold every note.
       tablesTight = true;
-      for (const note of wanted) {
-        if (!fits([...tableNotes, note], true)) break;
-        tableNotes.push(note);
-      }
+      tableNotes = wanted;
+    } else {
+      // A 9'7" to 10'0" board with channels: even the tight rows leave 25 to 30 dots too little for the notes, so every
+      // note goes whole onto the sheet after the tables (the founder, 2026-11-14: "Notes onto the next sheet") rather
+      // than two of them dropping. The tables keep today's rows unless they need the tight ones on their own.
+      notesOnOwnSheet = wanted;
+      tablesTight = !fits([], false);
     }
   }
-  const sheets = tablesSplit ? 3 : tablesOnOwnSheet ? 2 : 1;
-  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tablesSplit, tableNotes, tablesTight, splitNotes, sheets };
+  const sheets = tablesSplit || notesOnOwnSheet.length > 0 ? 3 : tablesOnOwnSheet ? 2 : 1;
+  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tablesSplit, tableNotes, tablesTight, splitNotes, notesOnOwnSheet, sheets };
 }
 
 /** The room, in dots, a sheet must have left over for its parts to count as fitting (for the tests). */
@@ -336,14 +346,14 @@ export const BOTTOM_SHEET_SPARE = PAGE.spare;
 /**
  * The room the arithmetic leaves on each sheet the bottom prints on, on the tighter of the two sheets it is counted
  * on: `page` for the BOTTOM CONTOURS page as it is laid out, `tables` for the tables' own sheet (null when they stay on
- * the page, or when each takes a sheet), its rows counted tight when the layout says so, and `split` for the depths
- * sheet and the layout-marks sheet of a board whose tables take one each (null otherwise). For the tests: a negative
- * figure is a page whose picture has to give way.
+ * the page, or when each takes a sheet), its rows counted tight when the layout says so, `split` for the depths
+ * sheet and the layout-marks sheet of a board whose tables take one each (null otherwise), and `notes` for the notes'
+ * own sheet when they take one (null otherwise). For the tests: a negative figure is a page whose picture has to give way.
  */
 export function bottomSheetSpare(
   layout: BottomSheetLayout,
   board: Pick<BottomBoard, "length" | "widePointWidth">,
-): { page: number; tables: number | null; split: { depths: number; marks: number } | null } {
+): { page: number; tables: number | null; split: { depths: number; marks: number } | null; notes: number | null } {
   const rows = layout.dataRows.length;
   const markColumns = layout.marks.columns.length;
   const page = spareAfter(
@@ -361,7 +371,9 @@ export function bottomSheetSpare(
         marks: spareAfter((sheet) => oneTableHeight(sheet, rows, "marks") + tableNotesHeight(sheet, layout.splitNotes.marks)),
       }
     : null;
-  return { page, tables, split };
+  // The notes' own sheet holds the notes alone: their lines, their gaps and the head above them.
+  const notes = layout.notesOnOwnSheet.length > 0 ? spareAfter((sheet) => tableNotesHeight(sheet, layout.notesOnOwnSheet)) : null;
+  return { page, tables, split, notes };
 }
 
 /**

@@ -183,7 +183,7 @@ describe("bottomSheetLayout: what the page carries", () => {
   it.each(CASES)("$label — the sheet count follows the tables, and the tables are never dropped", (c) => {
     for (const system of UNITS_SYSTEMS) {
       const layout = layoutOf(c, system);
-      expect(layout.sheets).toBe(layout.tablesSplit ? 3 : layout.tablesOnOwnSheet ? 2 : 1);
+      expect(layout.sheets).toBe(layout.tablesSplit || layout.notesOnOwnSheet.length > 0 ? 3 : layout.tablesOnOwnSheet ? 2 : 1);
       // The depths table has a row for the tail, every 6" and the nose tip whichever sheet it prints on.
       expect(layout.dataRows.length).toBeGreaterThan(2);
       expect(layout.marks.rows).toHaveLength(layout.dataRows.length);
@@ -208,6 +208,8 @@ describe("bottomSheetLayout: what the page carries", () => {
         expect(spare.tables, "the tables do not fit their own sheet").not.toBeNull();
         expect(spare.tables!).toBeGreaterThanOrEqual(0);
         expect(spare.split).toBeNull();
+        if (layout.notesOnOwnSheet.length > 0) expect(spare.notes!, "the notes do not fit their own sheet").toBeGreaterThanOrEqual(0);
+        else expect(spare.notes).toBeNull();
       } else {
         expect(spare.tables).toBeNull();
         expect(spare.split).toBeNull();
@@ -215,11 +217,12 @@ describe("bottomSheetLayout: what the page carries", () => {
     }
   });
 
-  it.each(CASES)("$label — DATA's notes on reading the tables print only on the tables' own sheet, in DATA's order", (c) => {
+  it.each(CASES)("$label — DATA's notes on reading the tables print only on the tables' own sheet, or the sheet after it, in DATA's order", (c) => {
     for (const system of UNITS_SYSTEMS) {
       const layout = layoutOf(c, system);
       if (!layout.tablesOnOwnSheet) {
         expect(layout.tableNotes).toEqual([]);
+        expect(layout.notesOnOwnSheet).toEqual([]);
         continue;
       }
       const wanted = [
@@ -228,6 +231,11 @@ describe("bottomSheetLayout: what the page carries", () => {
         referenceRowsNote(c.built.board, c.built.frontPair, system),
       ];
       expect(layout.tableNotes).toEqual(wanted.slice(0, layout.tableNotes.length));
+      // Never on both: under the tables, or on the sheet after them, whole.
+      if (layout.notesOnOwnSheet.length > 0) {
+        expect(layout.tableNotes).toEqual([]);
+        expect(layout.notesOnOwnSheet).toEqual(wanted);
+      }
     }
   });
 
@@ -338,17 +346,21 @@ describe("bottomSheetLayout: what the page carries", () => {
     }
   });
 
-  it("the split begins where today's last rung fails: 11'6\" keeps one tables sheet, tight and bare; 11'6 1/16\" splits", () => {
+  it("the split begins where today's last rung fails: 11'6\" keeps one tables sheet, tight, its notes on the sheet after it; 11'6 1/16\" splits", () => {
     for (const system of UNITS_SYSTEMS) {
       const before = longboardAt(138, SETS.every8);
       const keep = bottomSheetLayout(before.resolved, before.built.board, system, before.built.frontPair);
       expect(keep.dataRows).toHaveLength(24);
       expect(keep.tablesSplit).toBe(false);
-      expect(keep.sheets).toBe(2);
+      // The tables need the tight rows even on their own; the notes, which no longer fit under them at all, take the
+      // sheet after them, every one (quick 261114-l6s) — where before this they dropped.
       expect(keep.tablesTight).toBe(true);
       expect(keep.tableNotes).toEqual([]);
+      expect(keep.notesOnOwnSheet).toHaveLength(3);
+      expect(keep.sheets).toBe(3);
       expect(keep.splitNotes).toEqual({ depths: [], marks: [] });
       expect(bottomSheetSpare(keep, before.built.board).split).toBeNull();
+      expect(bottomSheetSpare(keep, before.built.board).notes!).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
       // 11'6 1/16" is where the 25th row begins (`bottomDataStations`: every 6" below the length less a millimetre).
       const after = longboardAt(138 + 1 / 16, SETS.every8);
       const over = bottomSheetLayout(after.resolved, after.built.board, system, after.built.frontPair);
@@ -406,6 +418,8 @@ describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-
     let ownSheet = 0;
     for (const { layout, wanted, board, what } of layoutsOf(label)) {
       expect(layout.sheets, what).toBe(layout.tablesOnOwnSheet ? 2 : 1);
+      // The stock 9'0" Longboards: the notes always fit under the tables, so none takes the sheet after them.
+      expect(layout.notesOnOwnSheet, what).toEqual([]);
       if (!layout.tablesOnOwnSheet) {
         expect(layout.tablesTight, `${what}: tables on the page never tighten`).toBe(false);
         expect(layout.tableNotes).toEqual([]);
@@ -434,6 +448,96 @@ describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-
       expect(layout.tableNotes, what).toEqual(layout.tablesOnOwnSheet ? wanted : []);
     }
   }, 60_000);
+});
+
+/*
+ * Quick 261114-l6s (the founder, 2026-11-14: "Notes onto the next sheet"): a 9'7" to 10'0" board with channels, whose
+ * tables' sheet cannot hold DATA's notes even with its rows tight, prints every note on the sheet after the tables; a
+ * board up to 9'6" prints exactly as it did (17-23's tight rows). Swept over the Longboard at every inch from 9'0" to
+ * 10'0" at its stock width, on the 96 setups, in both systems.
+ */
+describe("the notes' own sheet: 9'7\" to 10'0\" with channels, and nothing shorter moves", () => {
+  const SETUPS: { names: Names; count: ChannelCount | 0 }[] = [];
+  for (const nose of BOTTOM_CUT_NAMES.nose)
+    for (const tail of BOTTOM_CUT_NAMES.tail) for (const count of [0, 8] as const) SETUPS.push({ names: { nose, center: "Early Double Concave", tail }, count });
+  for (const center of BOTTOM_CUT_NAMES.center) for (const count of [0, 4, 6, 8] as const) SETUPS.push({ names: { center }, count });
+  const LENGTHS_IN = Array.from({ length: 13 }, (_, k) => 108 + k);
+
+  interface Swept {
+    what: string;
+    lengthIn: number;
+    count: number;
+    layout: BottomSheetLayout;
+    board: BottomBoard;
+    wanted: string[];
+  }
+  const swept: Swept[] = [];
+  const fields = presetFields("longboard");
+  for (const lengthIn of LENGTHS_IN) {
+    const built = build("swept", { ...fields, outline: { ...fields.outline, length: inchesToMm(lengthIn) } });
+    for (const { names, count } of SETUPS) {
+      const resolved = resolveBottom(bottomOf(built.board, names, count), built.board);
+      for (const system of UNITS_SYSTEMS) {
+        const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+        const wanted = [
+          BOTTOM_COPY.depthsNote,
+          ...(layout.marks.columns.length > 0 ? [layoutMarksNote(resolved.channels, system)] : []),
+          referenceRowsNote(built.board, built.frontPair, system),
+        ];
+        swept.push({ what: `${lengthIn}" ${Object.values(names).join(", ")} · ${count} channels · ${system}`, lengthIn, count, layout, board: built.board, wanted });
+      }
+    }
+  }
+
+  it("the sweep is 13 lengths on the 96 setups in both systems", () => {
+    expect(swept).toHaveLength(13 * 96 * 2);
+  });
+
+  it("every note DATA has prints — under the tables, or on the sheet after them — and every sheet has room", () => {
+    for (const { what, layout, board, wanted } of swept) {
+      if (!layout.tablesOnOwnSheet) continue;
+      expect([...layout.tableNotes, ...layout.notesOnOwnSheet], `${what}: every note, once`).toEqual(wanted);
+      const spare = bottomSheetSpare(layout, board);
+      expect(spare.tables!, `${what}: the tables' sheet has room`).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      if (layout.notesOnOwnSheet.length > 0) expect(spare.notes!, `${what}: the notes' sheet has room`).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+    }
+  });
+
+  it("up to 9'6\" nothing moves: no notes sheet, and the rows tight only where 17-23 made them", () => {
+    for (const { what, layout, lengthIn } of swept.filter((s) => s.lengthIn <= 114)) {
+      expect(layout.notesOnOwnSheet, what).toEqual([]);
+      expect(layout.sheets, what).toBeLessThanOrEqual(2);
+      if (layout.tablesTight) expect(lengthIn, `${what}: tight rows only on a tables sheet`).toBeGreaterThanOrEqual(108);
+    }
+  });
+
+  it("from 9'7\" to 10'0\" with channels the notes take the sheet after the tables, every one, and the tables keep today's rows", () => {
+    let own = 0;
+    for (const { what, layout, count } of swept.filter((s) => s.lengthIn >= 115)) {
+      if (!layout.tablesOnOwnSheet || count === 0) {
+        expect(layout.notesOnOwnSheet, `${what}: without channels every note fits under the tables`).toEqual([]);
+        continue;
+      }
+      own++;
+      expect(layout.notesOnOwnSheet, what).toHaveLength(3);
+      expect(layout.tableNotes, what).toEqual([]);
+      expect(layout.tablesTight, `${what}: the tables alone fit today's rows`).toBe(false);
+      expect(layout.sheets, what).toBe(3);
+    }
+    expect(own, "channelled boards from 9'7\" were swept (non-vacuity)").toBeGreaterThan(0);
+  });
+
+  it("the rule by its own definition: the notes take a sheet exactly when they fit under the tables neither at today's rows nor tight", () => {
+    for (const { what, layout, board } of swept) {
+      if (!layout.tablesOnOwnSheet) continue;
+      const allNotes = [...layout.tableNotes, ...layout.notesOnOwnSheet];
+      const atRows = bottomSheetSpare({ ...layout, tablesTight: false, tableNotes: allNotes }, board).tables!;
+      const tight = bottomSheetSpare({ ...layout, tablesTight: true, tableNotes: allNotes }, board).tables!;
+      expect(layout.notesOnOwnSheet.length > 0, `${what}: today's rows leave ${atRows.toFixed(1)}, tight ${tight.toFixed(1)}`).toBe(
+        atRows < BOTTOM_SHEET_SPARE && tight < BOTTOM_SHEET_SPARE,
+      );
+    }
+  });
 });
 
 /*
@@ -494,11 +598,11 @@ describe("the split's reach: no board up to 11'6\" ever splits, and every marked
     expect(over).toHaveLength(BOARD_PRESETS.length * OVER_IN.length * 3 * 11 * 2);
   });
 
-  it("no board up to 11'6\" splits, and none prints more than its page and one tables sheet", () => {
+  it("no board up to 11'6\" splits, and none prints more than its page, one tables sheet and — where the notes need it — a notes sheet", () => {
     for (const { what, layout } of fitting) {
       expect(layout.tablesSplit, what).toBe(false);
       expect(layout.splitNotes, what).toEqual({ depths: [], marks: [] });
-      expect(layout.sheets, what).toBeLessThanOrEqual(2);
+      expect(layout.sheets, what).toBeLessThanOrEqual(layout.notesOnOwnSheet.length > 0 ? 3 : 2);
     }
     // Non-vacuity: some of these boards do take a sheet for their tables, and some of them at 11'6" are tight.
     expect(fitting.some(({ layout }) => layout.tablesOnOwnSheet)).toBe(true);

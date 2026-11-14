@@ -1017,6 +1017,16 @@ export function OrderForm() {
             <PageMark page={4} of={sheetCount} title={BOTTOM_SHEET_COPY.tablesPageTitle} />
           </Sheet>
         )}
+        {/* A 9'7" to 10'0" board with channels, whose tables' sheet cannot hold DATA's notes on reading them even with
+            its rows tight: the notes, every one, on the sheet after the tables (quick 261114-l6s, the founder: "Notes
+            onto the next sheet"). */}
+        {bottomLayout && bottomLayout.notesOnOwnSheet.length > 0 && (
+          <Sheet variant="bottom">
+            {sheetHead}
+            <BottomTablesSheet layout={bottomLayout} part="notes" />
+            <PageMark page={5} of={sheetCount} title={BOTTOM_SHEET_COPY.notesPageTitle} />
+          </Sheet>
+        )}
         {/* A board too long for its two tables to share a sheet: the depths on one, the layout marks on the next,
             each whole from Tail to Nose tip (quick 261113-vya). */}
         {bottomLayout?.tablesSplit && (
