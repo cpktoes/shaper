@@ -34,3 +34,7 @@ Nothing here is broken; each was reported to the founder and left as it is:
 ## What is needed
 
 The founder's pick of which matter, then one small task for each.
+
+## Done
+
+2026-11-14 — the founder's pick, asked the same day: "None of these, leave all as is." The printed-tables bullet was settled anyway by quick 261114-l6s. Closed without a change.
