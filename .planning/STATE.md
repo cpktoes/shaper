@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: planning
-stopped_at: "Phase 17 (BOTTOM) COMPLETE 2026-11-11: walk-through 10 passed + 1 set aside (CNC files, superseded by the .brd export); seven fix plans 17-17..17-23 live as main 93c0ea8f and re-checked by the founder; security 37/37; fix-wave code review 0 blockers, 3 warnings filed as to-dos. The closing records are on claude/bottom-uat-17-d1559c, not pushed (paperwork only). Next: the .brd export on close-bottom-17 joins main; Phase 13 items remain."
-last_updated: "2026-11-12T04:28:20.818Z"
-last_activity: 2026-11-11
-last_activity_desc: Phase 17 (BOTTOM) closed — the founder's walk-through passed, its seven fixes are live and re-checked, five follow-ups filed
+stopped_at: "Board files both ways (.brd) CLOSED 2026-11-14: opening an AkuShaper or Shape3D .brd as a board, fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10 in, boards 4 ft to 12 ft and 31 in wide from 8 ft, the printed bottom tables on two sheets — twelve quick tasks and two fast tasks, live as main ce73ff35 after the full gate and a code review (0 blockers; three warnings fixed first); six follow-ups filed as to-dos. Phase 13 is the only phase still open (items 9 and 13)."
+last_updated: "2026-11-14T12:00:00.000Z"
+last_activity: 2026-11-14
+last_activity_desc: Board files both ways (.brd) and the new board sizes closed — live as main ce73ff35, records brought up to date, six follow-ups filed
 progress:
   total_phases: 6
   completed_phases: 5
@@ -24,9 +24,11 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 13 — Ready for the Shapers (its last items); Phases 16, 17 and 18 are complete and live. The .brd export (quicks 261110-tvk, 261110-veo on branch `close-bottom-17`) joins main next
+**Current focus:** Phase 13 — Ready for the Shapers (its last items); Phases 16, 17 and 18 are complete and live. Opening a .brd as a board, fins in the .brd export and boards from 4'0" to 12'0" went live 2026-11-14 (main `ce73ff35`); what is left from that work is filed as to-dos
 
 ## Current Position
+
+**Board files both ways (.brd), and the new board sizes — closed 2026-11-14, live as main `ce73ff35`.** Built as quick tasks on branch `close-bottom-17`, one at a time with the founder's look between, from his "I think we now need to try importing a .brd file into our app" (2026-11-13): Open a board file… takes an AkuShaper or Shape3D `.brd`, lays our closest fit over it (outline, rocker, thickness — 261113-d9b; the editable board and printed overview — et0; a blank from each maker — gwo; bottom contours with their sliders — gwr; wings and their corner radius — hyy, m5w; rails — kvo; fins — qyz) and opens it as a new board; the `.brd` export carries the board's fins (qyz); a new board's tail rail blends from 12" to the centre and saved boards follow it at his word (psx); a Twin's Aft/Forward position reaches 10" off the tail (qyz); boards run 4'0" to 12'0" and up to 31" wide from 8'0" (si7) with the printed bottom tables on a sheet each over 11'6" (vya); fast tasks 206 and 207. The go-live gate ran on the branch (the live commit had not moved): type check, lint, 13,687 unit tests, a production build with the production-only specs and the board-file and 3D export specs against it, and the full browser suite on a computer and two phones (1,989 passed; seven failures traced to two test defects and one load fluke, fixed or re-run green). A code review of the whole branch found no blockers; three of its four warnings were fixed before the push (261114-118: the home page no longer loads the fitting code for every visitor, the blank list is cached for an hour, a one-line guide-point block no longer loses sections). No database change. Not done, filed as to-dos dated 2026-11-14: quad and five-fin setups in a `.brd` (needs a real quad file); the exported fin files opened in AkuShaper and Shape3D; the founder's open calls on the preview; the review's leftovers; the printed plan drawings' axis numbers at two sizes; and the things worth his eye at 4'0" and 12'0".
 
 **Phase 17 — BOTTOM — complete 2026-11-11.** 23 of 23 plans. Live 2026-11-10 as main `ff5818c0` (16 plans), verified in code 6 of 6 success criteria and R1–R15. The founder walked the eleven checks on the live site (`17-UAT.md`): eight passed, the CNC-files check was set aside ("we're working on swapping this export to a .brd file" — recorded as accepted open, not tested), and two found things to fix: VOLUME should say what its litres count (G-17-5), and the finished rail rounded the channels (G-17-6). Seven fix plans, each approved from before-and-after pictures: 17-17 VOLUME's words; 17-18 RAILS draws channel walls straight up; 17-19 the channelled boards' litres recorded; 17-20 the litres, 3D board and export files cut channels straight up into the finished rail (Hard Edge tails unchanged, the Longboard's rolled rail up to +0.06 L); 17-21 RAILS shows channels on a flat tail and DATA's Rail lift counts the vee or belly only; 17-22 RAILS draws every concave; 17-23 BOTTOM's section gauge matches DATA, DATA's note in his sentence, the Longboard's printed tables sheet prints all three notes. Pushed on his Go as main `93c0ea8f` (live 19:13 Pacific) and re-checked by him ("Pass all 3"). The gate: tsc, lint, 12,586 unit tests, the full browser suite at 1,825 passed with nine phone load failures that each passed alone, the production build and the desktop pictures under Turbopack. **Said plainly:** the fix waves were pushed before their code review, and the five production-build browser tests were not run; the review was run afterwards on the live code (`17-FIXWAVE-REVIEW.md`: no blockers, three warnings) and on his word ("Close 17, log as follow-ups") those are to-dos. Security `17-SECURITY.md`, 37 of 37 closed.
 
@@ -40,7 +42,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Phase 17 complete and live; Phase 13 open (11 of 13 items); Phases 14, 15, 16 and 18 complete
+Status: Board files both ways (.brd) and the new board sizes closed and live 2026-11-14; Phase 13 open (11 of 13 items); Phases 14, 15, 16, 17 and 18 complete
 Last activity: 2026-11-14 - LIVE as main ce73ff35: opening a .brd as a board (outline, rocker, thickness, bottom, wings, rails, fins), fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10", boards 4'0"–12'0" and 31" wide from 8'0", the printed bottom tables on two sheets — quick tasks 261113-d9b … 261114-118 and fast 206–207; gate on d4dcaa25 (unit 13,687, production build + its tests, full browser suite 1,989 passed with seven failures traced to two test defects and one load fluke, re-run green)
 
 ## Performance Metrics
@@ -187,8 +189,14 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-11 pending (four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10. The off-rail fine-tuner todo was closed by quick 261018-dw6 on 2026-10-18. The retire-today's-curve todo was closed by quick 261018-dvu on 2026-10-18. The custom-rocker todo of 2026-09-28 was closed by quick 261016-mkb, live 2026-10-17, and the founder's follow-up on its popup's off view was built as quick 261017-ojc the same day):
+25 pending (six added 2026-11-14 from the board-file work; four of them are Phase 14's follow-ups, added 2026-10-02; one of them is a Phase 13 item: the catalogue links are item 9, skipped for now. The curve-flow todo became Phase 14 on 2026-10-02 and is no longer listed here. Closed by Phase 13 so far: the phone-width polish todo by item 2, the fin tail question by item 6, the order form's tips-and-passes todo by item 8, the ghost of the last edit by optional item 9b (live 2026-09-30; its todo was closed out on 2026-10-02), and the Contacts page by item 10. The off-rail fine-tuner todo was closed by quick 261018-dw6 on 2026-10-18. The retire-today's-curve todo was closed by quick 261018-dvu on 2026-10-18. The custom-rocker todo of 2026-09-28 was closed by quick 261016-mkb, live 2026-10-17, and the founder's follow-up on its popup's off view was built as quick 261017-ojc the same day):
 
+- [major/export] Read and write quad and five-fin setups in a .brd — `.planning/todos/pending/2026-11-14-read-and-write-quad-and-five-fin-setups-in-a-brd.md`
+- [minor/export] Open the exported fin files in AkuShaper and Shape3D — `.planning/todos/pending/2026-11-14-open-the-exported-fin-files-in-akushaper-and-shape3d.md`
+- [minor/ui] The board-file preview — the founder's open calls — `.planning/todos/pending/2026-11-14-brd-preview-open-calls.md`
+- [minor/general] Leftovers from the 2026-11-14 go-live code review — `.planning/todos/pending/2026-11-14-go-live-review-leftovers.md`
+- [minor/print] Printed plan drawings — the axis numbers come out at two sizes — `.planning/todos/pending/2026-11-14-printed-plan-drawings-axis-numbers-two-sizes.md`
+- [minor/ui] Boards at four feet and twelve feet — things worth the founder's eye — `.planning/todos/pending/2026-11-14-new-board-sizes-things-worth-a-look.md`
 - [minor/general] Add finished-board photo uploads with ratings — `.planning/todos/pending/2026-08-19-add-finished-board-photo-uploads-with-ratings.md`
 - [minor/general] Brand the order form with a shaper's own logo and contact details (paid tier) — `.planning/todos/pending/2026-09-06-brand-the-order-form-for-paid-shapers.md`
 - [minor/ui] Show live coordinates under the pointer on the Template and Rocker curves — `.planning/todos/pending/2026-09-14-live-pointer-coordinates-on-the-template-and-rocker-curves.md`
