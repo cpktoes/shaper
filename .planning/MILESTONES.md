@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.5 Ready for the Shapers (Shipped: 2026-11-14)
+
+**Phases completed:** 6 phases (13–18), 82 plans in Phases 14–18 (228 tasks) plus Phase 13's thirteen items, and about 85 quick tasks and 80 fast tasks
+**Commits:** 1,643 (2026-09-27 → 2026-11-14) on `main` and the phase branches merged into it (`surfboard-flow`, `board-3d`, `page-guides`, the BOTTOM branches, `close-bottom-17`) · **Code changed:** 704 code files outside the planning folder, the generated fixtures and the baseline pictures: +176,653 / −6,615
+**Audit:** none run — closed on each phase's own record: Phase 13's thirteen items in its Progress Log ([13-SPEC.md](milestones/v1.5-phases/13-ready-for-the-shapers/13-SPEC.md)); Phase 14 verified 8 of 9 in code with the two checks left to a person closed at the founder's word ([14-VERIFICATION.md](milestones/v1.5-phases/14-realistic-surfboard-flow/14-VERIFICATION.md)); Phase 15 complete 2026-10-06; Phase 16 verified 11 of 12 requirements in code and confirmed by the founder on iPhone and iPad; Phase 17 verified 6 of 6 success criteria and R1–R15, walked by the founder (10 passed, 1 set aside) with security 37/37; Phase 18 verified 15/15 with the founder's three rulings recorded ([18-VERIFICATION.md](milestones/v1.5-phases/18-a-guide-on-every-page/18-VERIFICATION.md))
+**Closeout:** override_closeout — closed at the founder's word on 2026-11-14 ("Both 13 and 14 are complete and can be closed.", then "Yes let's close it and clean everything up."). The pre-close scanner's stale records were settled first (two fixed bug notes filed as resolved, two quick-task records marked complete, Phase 18's open checks ruled or carried); what remains open is the 26 pending to-dos, acknowledged as deferred (see STATE.md Deferred Items).
+
+**Delivered:** The app the founder showed to a room of shapers on 2026-10-10, and everything they and he asked of it in the five weeks after. A shaper now designs a whole board the way it is shaped — TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY, 3D — on curves that flow like real foam, sees it as a solid, prints what the shop needs, carries it out as a file a CNC program opens, and brings a board in from AkuShaper or Shape3D. At the close: 13,687 unit tests and the full browser suite (1,989 passed on a computer and two phones) green on the code that is live as main `ce73ff35`.
+
+**Key accomplishments:**
+
+- **Ready for the room (Phase 13):** the security patch, three milestones of stale records cleared, the founder's open decisions made (the 1/4" floor, Deck Skin none–1", the four preset blanks, fins against the real tail), the order form's PLANING table, a Contact page with support@shaperassistant.com, account deletion, a privacy page with cookie-free visit counts, a friendly error screen and link preview, and the phone's chrome cut to the bone — shown to a room of shapers on 2026-10-10.
+- **Curves that flow like a real board (Phase 14):** a blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a Thinning Start that is automatic or set by hand — today's numbers pinned from the live commit first, saved boards redrawn with a report of how far each moved.
+- **The Board Rack (Phase 15):** "Your Boards" became a rack of boards standing sideways at one true scale, turning their real turn under a cursor or a swipe, reordered by drag or hold-and-slide, the unsaved board always first.
+- **The 3D board and its files (Phase 16, then the `.brd` export):** every board as a solid in a shaping room on its own 3D screen, one surface with the litres, with Contour Stripes, a wire view, fins and the blank as switches, a zip of DXF, XYZ and STL for a CNC program, and an AkuShaper / Shape3D `.brd` file with a preview.
+- **BOTTOM (Phase 17):** a screen between ROCKER and RAILS where the nose, centre and tail each take a named cut and the tail takes 4, 6 or 8 channels; one foam-off number read by the litres, the 3D board, the files and RAILS; depths under a straightedge and layout marks every 6" on screen and on a printed page.
+- **A GUIDE on every page (Phase 18):** 84 cards on TEMPLATE, ROCKER, RAILS, VOLUME and FINS — each the board's own drawing with one setting pushed, two sentences and a How to shape note — and FINS' MODEL INFO folded into them.
+- **Between and after the phases, as quick tasks:** Rails v2 (the finished rail and a fuller Advanced menu), wings on TEMPLATE, the blank picker popup with a fourth maker and custom rocker, board files both ways (save, open, import), bottom contours behind the founder's names — and, in the milestone's last two days, opening an AkuShaper or Shape3D `.brd` as a board (outline, rocker, thickness, bottom, wings, rails and fins fitted to the app's own controls), fins in the `.brd` export, and boards from 4'0" to 12'0" and 31" wide.
+
+---
+
 ## v1.4 Foil the Way a Shaper Cuts It (Shipped: 2026-09-27)
 
 **Phases completed:** 1 phase (12), 10 plans, 22 tasks

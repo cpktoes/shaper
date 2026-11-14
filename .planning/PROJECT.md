@@ -17,6 +17,24 @@ The rail-band and fin-placement calculators produce numbers a shaper trusts enou
 
 ## Current State
 
+**Shipped: v1.5 — Ready for the Shapers** (2026-11-14, Phases 13–18: Phase 13's thirteen items, 82 plans in Phases 14–18, and about 85 quick tasks between and after them)
+
+The app the founder showed to a room of shapers on 2026-10-10, and what was asked of it afterwards. A shaper designs a
+whole board in the order it is shaped — TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY, 3D — on curves drawn
+by the rule that follows real foam most closely, with a steady taper into each tip; keeps a quiver on the Board Rack;
+maps, measures and prints bottom contours; reads a GUIDE card for every control; sees the board as a solid in a
+shaping room; and carries it out as files a CNC program opens (DXF, XYZ, STL and an AkuShaper / Shape3D `.brd`).
+Since 2026-11-14 a `.brd` also comes in: Open a board file… lays the closest board the app's own controls can make
+over the file — outline, rocker, thickness, bottom contours, wings, rails and fins — prints an overview, suggests a
+blank from each maker and opens the fit as a new board. Boards run from 4'0" to 12'0" and up to 31" wide from 8'0".
+Around the design tool: a Contact page and support@shaperassistant.com, account deletion, a privacy page with
+cookie-free visit counts, a friendly error screen, and a phone layout with every band around the drawing cut down.
+
+Underneath: 13,687 unit tests and the full browser suite (1,989 passed on a computer and two phones) green on the
+live code (main `ce73ff35`); every calculator change pinned by a record taken from the live commit before it moved;
+no database change since the blank picker's stars (migration 0012). The paragraphs below are the milestone's later
+phases as they landed.
+
 **Live since 2026-11-10, closed 2026-11-11: Phase 17, BOTTOM.** Between ROCKER and RAILS a shaper now picks a named cut for the nose, center and tail (flat, belly, vee, single or double concave) and 4, 6 or 8 channels on the tail, sees the bottom from above shaded and lined at every 1/16" of depth, slides a cross-section with gauge readings, reads DATA every 6" and a GUIDE card per cut, and prints a BOTTOM CONTOURS page. One foam-off number feeds the litres, the 3D board, the export files and RAILS. The founder walked it on the live site; his two findings were fixed and re-checked the next day: VOLUME says its litres count the finished rail and the bottom contours, channels keep straight walls under the finished rail everywhere, RAILS draws channels on any tail and every concave, and rail lift means the vee or belly alone on RAILS, DATA and the section gauge. The CNC-files check was set aside, not tested, while that export is replaced by a .brd file.
 
 **Live since 2026-11-06: Phase 16, the 3D board and Export 3D Files.** Every board has a 3D screen, last after SUMMARY, a solid in a shaping room, and a zip of DXF, XYZ and STL files for a CNC program. The litres now count that same surface. Shape3D has not opened the files yet, so the export says it is experimental.
@@ -121,35 +139,17 @@ Before that, **v1.0 — the design tool, in inches** (2026-08-29, Phases 1–4):
 prototype ported into a real Next.js app and live on Vercel, with accounts and saved designs,
 verified geometry math, live volume, printable full-size templates, and the rocker and foil editors.
 
-Archives: [v1.4](milestones/v1.4-ROADMAP.md) · [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
+Archives: [v1.5](milestones/v1.5-ROADMAP.md) · [v1.4](milestones/v1.4-ROADMAP.md) · [v1.3](milestones/v1.3-ROADMAP.md) · [v1.2](milestones/v1.2-ROADMAP.md) · [v1.1](milestones/v1.1-ROADMAP.md) · [v1.0 phases](milestones/v1.0-phases/)
 
-## Current Milestone: v1.5 — Ready for the Shapers
+## Current Milestone: none open
 
-**Phase 13, opened 2026-09-27. Deadline: Saturday 2026-10-10**, when the founder shows the app to many
-shapers at once (the build guide's M4, "invite shapers, free for everyone, watch what they use").
-**Freeze:** Wednesday 2026-10-07 evening. Thirteen items, run one at a time with the founder's review
-between:
-
-1. security patch
-2. housekeeping
-3. retire the Extra Center Thickness column
-4. the five Phase 12 questions
-5. the four preset blanks
-6. the fin tail question
-7. volume proven against three real boards
-8. the order form's tips and planer passes
-9. catalogue links, if time allows
-10. a contact page
-11. visitor analytics and a privacy page
-12. a friendly error screen and a link preview
-13. a real-device rehearsal before the freeze
-
-The work list, who does each item, what "done" means, and the Progress Log are in
-[13-SPEC.md](phases/13-ready-for-the-shapers/13-SPEC.md). Going public with tiered subscriptions
-(M5) is the next milestone, v1.6, opened after the founder has heard from the shapers.
+v1.5 closed on 2026-11-14 at the founder's word. The next milestone is his to open with `/gsd-new-milestone`; the
+build guide's next step is M5, going public with tiered subscriptions, and 26 to-dos are carried forward in
+STATE.md — among them quad and five-fin setups in a `.brd`, the exported fin files checked in AkuShaper and
+Shape3D, and the founder's open calls on the board-file preview.
 
 <details>
-<summary>Carried forward — what Phase 13 does and does not take on</summary>
+<summary>Carried forward — what v1.5 left for later milestones</summary>
 
 - **Free/paid tier gating** (Clerk Billing): the build guide's M5, after the Oct 10 showing (M4) tells the founder what's worth paying for. The first candidate feature is branding the order form with a shaper's own logo and contact details (todo, 2026-09-06). The full M5 list is at the foot of 13-SPEC.md.
 - **Public sharing / model gallery** — build-guide milestone M6
@@ -193,6 +193,20 @@ The work list, who does each item, what "done" means, and the Progress Log are i
 
 - ✓ User can cut a board from its blank the way a planer works — a constant deck skin off the deck, the bottom planed down to centre thickness with the foam to remove shown as planer passes, the bottom parallel to the blank's rocker so the four rocker numbers are the blank's own, tips thinned last inside the last 12" with a pin-deck or bottom choice, Deck Skin, Planer Max Depth and Tip Style as saved defaults, and every Phase 11 board reopening with its five station numbers kept — v1.4, Phase 12: Foil the Way a Shaper Cuts It (2026-09-27; R1–R11 verified 11/11, UAT 8/8, security 35/35, production migrated before the deploy)
 
+- ✓ User can see the app is safe, tidy and ready to listen: a patched framework, a contact page and support address, account deletion, a privacy page with cookie-free visit counts, a friendly error screen — and an order form that carries the planer passes — v1.5, Phase 13: Ready for the Shapers (2026-09-27 → 2026-10-10; closed 2026-11-14)
+
+- ✓ User can trust every curve to flow the way a real board does: blank and hand-set curves drawn by the square-root rule, and a steady taper into each tip from a Thinning Start that is automatic or set by hand — v1.5, Phase 14: Realistic Surfboard Flow (2026-10-02)
+
+- ✓ User can keep a quiver on the Board Rack: boards standing sideways at one true scale, turning their real turn, in the order the shaper sets — v1.5, Phase 15: The Board Rack (2026-10-06)
+
+- ✓ User can see the board as a solid in a shaping room and export it for a CNC program (DXF, XYZ, STL and an AkuShaper / Shape3D `.brd`) — v1.5, Phase 16: 3D Board and CNC Export (2026-11-06) and the `.brd` export (2026-11-12)
+
+- ✓ User can map, measure and cut bottom contours: a named cut for nose, centre and tail and 4, 6 or 8 channels, one foam-off number read by the litres, the 3D board, the files and RAILS, on screen and on paper — v1.5, Phase 17: BOTTOM (2026-11-11)
+
+- ✓ User can read a GUIDE card for every control on TEMPLATE, ROCKER, RAILS, VOLUME and FINS — the board's own drawing with one setting pushed, two sentences and a How to shape note — v1.5, Phase 18: A GUIDE on Every Page (2026-11-10)
+
+- ✓ User can open an AkuShaper or Shape3D `.brd` as a board (the closest fit of the app's own controls, with a printed overview), and design boards from 4'0" to 12'0" and up to 31" wide — v1.5, quick tasks 261113-d9b … 261114-118 (2026-11-14)
+
 ### Active
 
 _(none — the next milestone's requirements are defined by `/gsd-new-milestone`)_
@@ -206,6 +220,8 @@ _(none — the next milestone's requirements are defined by `/gsd-new-milestone`
 - Public sharing / model gallery — deferred alongside billing (build guide milestone M6)
 
 ## Context
+
+**After v1.5 (2026-11-14):** 13,687 unit tests (Vitest, 232 files) and the full browser suite (Playwright: 1,989 passed on a computer and two phones, run on the branch at the close) green; eight design screens (TEMPLATE, ROCKER, BOTTOM, RAILS, VOLUME, FINS, SUMMARY, 3D); four blank makers in the catalogue; boards 4'0" to 12'0"; a `.brd` opens as a board and the `.brd` export carries the fins; runtime packages added this milestone: `three` (the 3D board), `@vercel/analytics`, `react-markdown` and `remark-gfm`; one new public read-only address, `/api/blank-catalog`, cached for an hour; live at shaperassistant.com as main `ce73ff35`.
 
 **After v1.4 (2026-09-27):** 3,043 unit tests (Vitest, 76 files) and 360 browser tests (Playwright, the full suite run on `main` at the close) green; the foil is cut the way a planer works, with Deck Skin, Planer Max Depth and Tip Style on the account (seven Fit & Tip Defaults) and saved boards at version 5; no new runtime dependency (R11); live at shaperassistant.com. Three todos filed during the milestone and still pending (a picked blank's catalogue page; the Summary's tip thicknesses and deck/bottom passes; a Contacts page); the bare-fraction parser bug 12-02 found was fixed by quick task 260927-ef8 the next morning, and the blank-maker tick boxes shipped as 260926-wmf.
 
@@ -282,6 +298,9 @@ templates ("the math is right").
 | A blank fits only if one deck pass and one bottom pass come off at the centre, and no point runs under 1/8" thick | "One on deck and one on bottom as a minimum" (D-10, D-15, D-18); the too-thin case is reachable only at centres of 1 1/2" or less | ✓ Working; ⚠️ the 1/8" floor at thin tips is a founder question still open |
 | Planer Max Depth replaces Extra Center Thickness as a saved default; the retired column stays declared until its own later DROP | Passes are counted from the printed numbers (D-03); a DROP cannot ride in the same migration run as an additive change (D-19, the CR-01 rule) | ✓ Good — 0006 on production before the deploy; the DROP is its own quick task |
 | A replaced calculator is pinned first by a golden generated from the last release tag, and the old maths survives only inside the carry-over reader | Nothing a shaper already cut to may move (R7, R9): the fixture made that promise a test over 39 Phase 11 boards, and the same read-only script proved it on production | ✓ Good — named test (f) green, 10 of 10 production boards open (v1.4) |
+| A calculator's default may change for boards that never set it; what they were cut to is kept by name | The tail rail's blend (12" to the centre, 2026-11-13): "saved boards following the new default is fine"; the old rule stays callable by name so every record taken before reads its own figures | ✓ Working — v1.5 |
+| A board from another program opens as the closest board the app's own controls can make, never as free curves | "Let's go with the editable board" (2026-11-13): a `.brd` is fitted — outline, rocker, thickness, bottom, wings, rails, fins — and what the fit cannot follow is said in the preview | ✓ Working — v1.5 |
+| A go-live is gated on the whole suite AND a code review of the whole branch, the review first | The 2026-11-14 review found the home page loading the fitting code for every visitor and an uncached public address after the long suite had started, forcing a restart | ✓ Working — v1.5 |
 
 ## Evolution
 
@@ -301,4 +320,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-11-11 after Phase 17*
+*Last updated: 2026-11-14 after the v1.5 milestone close*
