@@ -254,6 +254,23 @@ describe("every way a file can be damaged", () => {
     expect(readAnyBrd(bytesOf(aku({ outlineKnots: short })))).toEqual(unreadable);
   });
 
+  it("holds the header's length, width and thickness to the same 10,000 cm limit as a knot, so none can read as Infinity (quick 261114-118, IN-01)", () => {
+    // A length outside the limit is a figure that is not usable at all: the file is unreadable, never an out-of-range board of "Infinity".
+    expect(readAnyBrd(bytesOf(aku({ p01: "1e308" })))).toEqual(unreadable);
+    expect(readAnyBrd(bytesOf(aku({ p01: "10001" })))).toEqual(unreadable);
+    // A width or thickness outside it reads as absent (null), as a non-number does, and the board still reads.
+    for (const field of ["p03", "p04"]) {
+      const huge = mustRead(bytesOf(aku({ mutate: (l) => l.map((x) => (x.startsWith(`${field} :`) ? `${field} : 1e308` : x)) })));
+      expect(huge[field === "p03" ? "thickness" : "width"]).toBeNull();
+      expect(huge.length).toBeCloseTo(1830, 6);
+    }
+    // At the limit a figure still counts, and an ordinary file keeps its width and thickness.
+    expect(mustRead(bytesOf(aku({ mutate: (l) => l.map((x) => (x.startsWith("p04 :") ? "p04 : 10000" : x)) }))).width).toBeCloseTo(100_000, 6);
+    const ordinary = mustRead(bytesOf(aku()));
+    expect(ordinary.width).toBeCloseTo(470, 6);
+    expect(ordinary.thickness).toBeCloseTo(64, 6);
+  });
+
   it("refuses a missing or non-positive length", () => {
     expect(readAnyBrd(bytesOf(aku({ mutate: (l) => l.filter((x) => !x.startsWith("p01")) })))).toEqual(unreadable);
     expect(readAnyBrd(bytesOf(aku({ p01: "0.0" })))).toEqual(unreadable);

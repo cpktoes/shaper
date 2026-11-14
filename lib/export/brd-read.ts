@@ -122,10 +122,13 @@ function plainText(bytes: Uint8Array): string {
   return text;
 }
 
+// A size figure of the header is held to the same limit as a knot's (quick 261114-118, the go-live review's IN-01): one outside it is
+// treated like one that is not a number at all, so a crafted file cannot make a size line print "Infinity". Absent length: the file
+// is unreadable; absent width or thickness: the outline's own are used.
 const headerNumber = (value: string | undefined): number | null => {
   if (value === undefined) return null;
   const n = Number(value.trim());
-  return value.trim() !== "" && Number.isFinite(n) ? n : null;
+  return value.trim() !== "" && Number.isFinite(n) && Math.abs(n) <= BRD_READ_MAX_CM ? n : null;
 };
 
 const isStamped = (bytes: Uint8Array): boolean =>
