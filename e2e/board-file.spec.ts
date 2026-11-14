@@ -104,7 +104,10 @@ test.describe("Save board as file… on the Board Rack (quick 261103-k8o)", () =
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.name).toBe(FIRST.name);
-    expect(result.fields).toEqual({ ...parseSnapshot(FIRST.snapshot), boardName: FIRST.name });
+    // The same board to a millionth of a millimetre: a figure that went through the page and into the file can differ
+    // from the one worked out here in its last binary digit (1917.7 against 1917.6999999999998), which is not a
+    // different board.
+    expect(toTheMillionth(result.fields)).toEqual(toTheMillionth({ ...parseSnapshot(FIRST.snapshot), boardName: FIRST.name }));
 
     // The menu has closed and nothing on the rack changed.
     await expect(page.getByRole("menu")).toHaveCount(0);
@@ -127,6 +130,11 @@ test.describe("Save board as file… on the Board Rack (quick 261103-k8o)", () =
     expect(result.ok && result.name).toBe(FIRST.name);
   });
 });
+
+/** A deep copy with every number rounded to a millionth, so two readings of one board compare as the same board. */
+function toTheMillionth<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === "number" ? Number(v.toFixed(6)) : v))) as T;
+}
 
 /** The Fish practice board, in its blank, which a friend saved as a file under their own name. */
 const FISH = parseSnapshot(standInRackRows(4)[1].snapshot);
