@@ -27,3 +27,7 @@ The founder, 2026-11-11: "Close 17, log as follow-ups".
 
 Room for the notes on the longest boards with channels (a second tightening step, a shorter channel note, or the notes
 on the next sheet — the founder's call from a picture), and the fit test widened to every length up to 10'0".
+
+## Done
+
+2026-11-14 — quick 261114-l6s (commit ed5ae546), the founder's "Notes onto the next sheet": a third rung in the fit rule prints every note on the sheet after the tables; the fit test swept at every inch from 9'0" to 10'0".

@@ -27,8 +27,7 @@ Nothing here is broken; each was reported to the founder and left as it is:
 - The blank list is slow for a short, wide board (about 12 s for a 4'0" × 25"); a 12'0" × 31" `.brd` takes about 3.6 s to read.
 - The Paper Saver's caption still says "≤20.5" wide".
 - A 4'0" quad's rear fins start 1/4" ahead of where the fronts end; the Longboard preset's single fin has a 10 1/2" base on four feet.
-- The printed bottom tables: boards from 11'0" to 11'6" print none of the reading notes while a 12'0" now prints all (see also
-  the 2026-11-11 to-do on long boards with channels); and on short wide boards with every cut and 8 channels page 3's picture is squeezed.
+- ~~The printed bottom tables: boards from 11'0" to 11'6" print none of the reading notes while a 12'0" now prints all~~ (settled by quick 261114-l6s: the notes take the sheet after the tables); on short wide boards with every cut and 8 channels page 3's picture is squeezed.
 - RAILS: with Tail Rail Ends At at its lowest and Blends From at 12", Blends From has no room to move and its dot is not drawn;
   the new default puts that a click or two away.
 
