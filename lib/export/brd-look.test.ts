@@ -71,3 +71,31 @@ describe("brdLookFromBytes", () => {
     expect((out as { length: number }).length).toBeCloseTo(4000, 6);
   });
 });
+
+describe("brdLookFromBytes on a file with fins (quick 261113-qyz)", () => {
+  const twinText = text
+    .split("\n")
+    .flatMap((line) => (line.startsWith("p50 : ") ? ["p51 : Futures", "p50 : [24.13,13.208,35.814,12.7,0.0,0.0,0.0,0.0,5.4]"] : [line]))
+    .join("\n");
+  const result = brdLookFromBytes(Uint8Array.from(twinText, (ch) => ch.charCodeAt(0)), "Twin.brd");
+
+  it("opens the fitted fins on FINS: a Modern/Upright twin on the Futures system", () => {
+    if (!result.ok) throw new Error("the file would not read");
+    expect(result.look.fins).not.toBeNull();
+    expect(result.fields?.fins).toEqual(result.look.fins!.spec);
+    expect(result.fields?.fins.finSetup).toBe("twin");
+    expect(result.fields?.fins.twinTemplate).toBe("upright");
+    expect(result.fields?.finSystem).toBe("futures");
+  });
+
+  it("survives structured clone with nothing lost", () => {
+    expect(structuredClone(result)).toEqual(result);
+  });
+
+  it("a file with no fins opens a new board's fins and FCS II", () => {
+    const plain = brdLookFromBytes(bytes, "Short.brd");
+    if (!plain.ok) throw new Error("the file would not read");
+    expect(plain.look.fins).toBeNull();
+    expect(plain.fields?.finSystem).toBe("fcs2");
+  });
+});

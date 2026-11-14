@@ -61,6 +61,7 @@ import {
   LIVE_DESIGN_RULES,
   railAnchorStations,
 } from "./design";
+import type { FinPlacementSpec } from "./fins";
 import type { FoilSpec } from "./foil";
 import { buildOutline, MEASURE_STATION_MM } from "./outline";
 import {
@@ -203,12 +204,15 @@ export interface BrdRailBoard {
 
 /**
  * The board `brdBoardFields` opens, as the litres and the 3D board read it: the fit's outline, rocker and foil, no blank, the
- * bottom when it cuts something. The rails fitted are measured on this board, bottom and all.
+ * bottom when it cuts something. The rails fitted are measured on this board, bottom and all. `fins` are the fins fitted to a
+ * file that carries them (quick 261113-qyz): the bottom's tail cut stands from the front fins, so the board the rails are
+ * measured on has them in place; left out, a new board's fins as before. `brdRailBegins` calls this with no bottom at all, where
+ * the fins change nothing.
  */
-export function brdRailBoard(fit: Pick<BrdFit, "outline" | "rocker" | "foil">, bottom: BoardBottom | null): BrdRailBoard {
+export function brdRailBoard(fit: Pick<BrdFit, "outline" | "rocker" | "foil">, bottom: BoardBottom | null, fins?: FinPlacementSpec): BrdRailBoard {
   const geometry = buildOutline(fit.outline);
   const profile = designSideProfile({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, blank: null }, LIVE_DESIGN_RULES);
-  const board = designBottomBoard(fit.outline, geometry, profile, designFinPlacement({ outline: fit.outline }));
+  const board = designBottomBoard(fit.outline, geometry, profile, designFinPlacement({ outline: fit.outline, fins }));
   const cut = bottom && bottomHasCut(bottom) ? { bottom, board } : undefined;
   return {
     input: designCrossSectionInput(geometry, profile, DEFAULT_RAIL_BAND_SPEC, fit.outline.length, cut),

@@ -31,7 +31,7 @@ export function brdLookFromBytes(bytes: Uint8Array, fileName: string): BrdLookRe
     const read = readAnyBrd(bytes);
     if (!read.ok) return read.problem === "out-of-range" ? { ok: false, problem: "out-of-range", length: read.length } : { ok: false, problem: "unreadable" };
     const look = brdFitLook(read.board);
-    return { ok: true, look, fields: brdBoardFields(look.fit, fileName, look.bottom?.bottom ?? null, look.rails?.rails ?? null) };
+    return { ok: true, look, fields: brdBoardFields(look.fit, fileName, look.bottom?.bottom ?? null, look.rails?.rails ?? null, look.fins) };
   } catch {
     return { ok: false, problem: "unreadable" };
   }

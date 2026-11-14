@@ -83,6 +83,7 @@ import {
 } from "./bottom";
 import { BRD_FIT_TIP_SKIP_MM, type BrdFit } from "./brd-fit";
 import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_RULES } from "./design";
+import type { FinPlacementSpec } from "./fins";
 import { buildOutline } from "./outline";
 import { inchesToMm, mm, type Mm } from "./units";
 
@@ -283,12 +284,15 @@ export function brdBottomBlends(sections: readonly BrdBottomSection[]): BrdBotto
 /* ============ the board the fit is measured on ============ */
 
 /**
- * The board the bottom is measured against: the fit's own outline, rocker and foil, with no blank, and the fins on the picks a
- * new board starts from (`brdBoardFields` opens a board with exactly these), so it is the board that opens.
+ * The board the bottom is measured against: the fit's own outline, rocker and foil, with no blank, and the fins the board opens
+ * with (`brdBoardFields` opens a board with exactly these), so it is the board that opens. `fins` are the fins fitted to a file
+ * that carries them (quick 261113-qyz); a tail cut's Deepest At (and a channel's Start and Deepest At) is stored from the front
+ * fins, so the bottom must be fitted and measured with the fins in place that open with it. Left out, it is a new board's fins,
+ * exactly as before.
  */
-export function brdFittedBottomBoard(fit: Pick<BrdFit, "outline" | "rocker" | "foil">): BottomBoard {
+export function brdFittedBottomBoard(fit: Pick<BrdFit, "outline" | "rocker" | "foil">, fins?: FinPlacementSpec): BottomBoard {
   const profile = designSideProfile({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, blank: null }, LIVE_DESIGN_RULES);
-  return designBottomBoard(fit.outline, buildOutline(fit.outline), profile, designFinPlacement({ outline: fit.outline }));
+  return designBottomBoard(fit.outline, buildOutline(fit.outline), profile, designFinPlacement({ outline: fit.outline, fins }));
 }
 
 /** A name and a number of Depth steps, per section. */

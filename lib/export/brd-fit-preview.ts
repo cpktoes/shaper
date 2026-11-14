@@ -35,6 +35,7 @@ import {
   type BrdBottomFit,
   type BrdBottomSection,
 } from "../geometry/brd-bottom";
+import { fitBrdFins, type BrdFinsFit } from "../geometry/brd-fins";
 import {
   BRD_RAIL_FIRST_GAIN_MM,
   BRD_RAIL_FIRST_TRY_MM,
@@ -69,6 +70,7 @@ import {
 } from "../geometry/brd-fit";
 import { sectionHeightLabel, type SectionHeight } from "../geometry/bottom-draw";
 import { bottomRailLift, railsOnTheBottom } from "../geometry/design";
+import type { FinPlacementSpec } from "../geometry/fins";
 import {
   formatControlNumber,
   formatDim,
@@ -115,6 +117,12 @@ export interface BrdFitLook {
   bottom: BrdBottomFit | null;
   planedBottom: P2[];
   rails: BrdRailsFit | null;
+  /**
+   * The fins FINS' controls make closest to the file's, on the board that opens (quick 261113-qyz); null when the file has no
+   * fin the reader kept, and the board then opens with a new board's fins. The bottom and the rails were fitted on the board
+   * with these fins in place.
+   */
+  fins: BrdFinsFit | null;
 }
 
 /** How many stations along the board the stringer's lift is looked for, to decide whether any concave lifts it at all. */
@@ -131,8 +139,14 @@ type BottomStep = Pick<BrdFitLook, "fit" | "bottom" | "planedBottom"> & { bottom
  * Under a flat, vee or belly the first fit stands untouched, to the last digit. The bottom's figures are finally measured on
  * the board that opens, so what is shown is what a shaper gets. Null when no section can be used.
  */
-function bottomOn(board: ReadBrdBoard, lines: FitLines, first: BrdFit, windows?: readonly (Mm | undefined)[]): BottomStep | null {
-  const board0 = brdFittedBottomBoard(first);
+function bottomOn(
+  board: ReadBrdBoard,
+  lines: FitLines,
+  first: BrdFit,
+  fins: FinPlacementSpec | undefined,
+  windows?: readonly (Mm | undefined)[],
+): BottomStep | null {
+  const board0 = brdFittedBottomBoard(first, fins);
   const found = fitBottomToBrd(board.sections, board0, windows);
   if (!found) return null;
   const lift = brdStringerLift(found.bottom, board0);
@@ -142,7 +156,7 @@ function bottomOn(board: ReadBrdBoard, lines: FitLines, first: BrdFit, windows?:
   const fit = fitBoardToBrd(lines, lift, first);
   return {
     fit,
-    bottom: measureBrdBottom(found.bottom, found.sections, brdFittedBottomBoard(fit)),
+    bottom: measureBrdBottom(found.bottom, found.sections, brdFittedBottomBoard(fit, fins)),
     planedBottom: board.bottom.map(([x, y]): P2 => [x, y - lift(mm(x))]),
   };
 }
@@ -184,12 +198,17 @@ export function brdRailLines(board: ReadBrdBoard): { lines: BrdRailLine[]; index
 export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const lines = { length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck };
   const first = fitBoardToBrd(lines);
-  const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom, rails: null };
+  // The fins come first (quick 261113-qyz): a tail cut's Deepest At is stored from the front fins, so a bottom fitted on a
+  // board with a new board's fins would open, on the file's own fins, at a different station than the preview measured. The
+  // outline is never refitted after `first` (every later fit reuses it), so this one fin fit holds for every board below.
+  const finsFit = fitBrdFins(board.fins, board.outline, first.outline);
+  const fins = finsFit?.spec;
+  const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom, rails: null, fins: finsFit };
   if (board.sections.length === 0) return none;
-  const asRead = bottomOn(board, lines, first);
+  const asRead = bottomOn(board, lines, first, fins);
   if (!asRead) return none;
   const { lines: railLines, index } = brdRailLines(board);
-  if (railLines.length === 0) return { ...asRead, board, rails: null };
+  if (railLines.length === 0) return { ...asRead, board, rails: null, fins: finsFit };
 
   const stations = railLines.map((line) => line.station);
   const sectionWindows = (windows: readonly (Mm | undefined)[]): (Mm | undefined)[] => {
@@ -199,14 +218,14 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   };
   const read = brdAnchorSections(railLines, board.length);
   const readAt = { nose: read.nose?.station ?? null, center: read.center?.station ?? null, tail: read.tail?.station ?? null };
-  const onBoard = (step: BottomStep) => brdRailBoard(step.fit, step.bottom.bottom);
+  const onBoard = (step: BottomStep) => brdRailBoard(step.fit, step.bottom.bottom, fins);
 
   // Bottom first.
   let current = asRead;
   let settings = fitBrdRails(railLines, onBoard(current));
   const found = brdRailWindows(railLines, brdRailBegins(current.fit, brdRailsSpec(settings, current.fit.foil), stations));
   if (found.narrowed) {
-    const again = bottomOn(board, lines, first, sectionWindows(found.windows));
+    const again = bottomOn(board, lines, first, fins, sectionWindows(found.windows));
     if (again) {
       current = again;
       settings = fitBrdRails(railLines, onBoard(current), settings);
@@ -216,21 +235,21 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed });
   const whole = brdRailWholeValue(railLines, onBoard(current), bottomFirst.rails);
   const kinds = BOTTOM_KEYS.map((key) => cutKind(current.bottom.bottom[key].name));
-  const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst };
+  const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst, fins: finsFit };
   if (!(whole.largest > BRD_RAIL_FIRST_TRY_MM) || !kinds.some((kind) => kind === "vee" || kind === "belly")) return result;
 
   // Rails first, on a flat bottom.
-  const flat = brdRailBoard(first, null);
+  const flat = brdRailBoard(first, null, fins);
   const flatSettings = fitBrdRails(railLines, flat);
   const flatWindows = brdRailWindows(railLines, brdRailBegins(first, brdRailsSpec(flatSettings, flat.foil), stations));
   if (!flatWindows.narrowed) return result;
-  const railsFirst = bottomOn(board, lines, first, sectionWindows(flatWindows.windows));
+  const railsFirst = bottomOn(board, lines, first, fins, sectionWindows(flatWindows.windows));
   if (!railsFirst) return result;
   const polished = fitBrdRails(railLines, onBoard(railsFirst), flatSettings);
   const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true });
   const wholeFirst = brdRailWholeValue(railLines, onBoard(railsFirst), measured.rails);
   if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return result;
-  return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured };
+  return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured, fins: finsFit };
 }
 
 /** The top and side views laid out for a box this wide, nose at the left, one scale along the board. */
@@ -888,7 +907,7 @@ function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFi
   const found = look.bottom;
   if (!found) return { block: { read: false, caption: c.bottomCaption, line: c.bottomUnread }, closeness: null, controls: null };
   const length = look.board.length;
-  const board = brdFittedBottomBoard(look.fit);
+  const board = brdFittedBottomBoard(look.fit, look.fins?.spec);
   const rows = brdBottomRows(look);
   const cells = <T,>(make: (key: BottomSectionKey, row: BrdBottomRow) => T): [T, T, T] =>
     [make("nose", rows[0]), make("center", rows[1]), make("tail", rows[2])];
@@ -967,9 +986,9 @@ export function brdRailRows(look: BrdFitLook): BrdRailRow[] {
 /** RAILS' own outputs for the rails that open, as the design store makes them: the rails standing on the bottom the cuts leave. */
 function railOutputs(look: BrdFitLook): RailBandsOutput {
   const rails = look.rails!.rails;
-  const board = brdFittedBottomBoard(look.fit);
+  const board = brdFittedBottomBoard(look.fit, look.fins?.spec);
   const resolved = resolveBottom(look.bottom?.bottom ?? DEFAULT_BOTTOM, board);
-  const { anchors } = brdRailBoard(look.fit, look.bottom?.bottom ?? null);
+  const { anchors } = brdRailBoard(look.fit, look.bottom?.bottom ?? null, look.fins?.spec);
   return computeRailBands(railsOnTheBottom(rails, bottomRailLift(resolved, board), anchors));
 }
 

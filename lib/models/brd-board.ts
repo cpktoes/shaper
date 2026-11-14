@@ -11,14 +11,17 @@
  * so they open on BOTTOM editable like any board's and need nothing new stored; a flat bottom leaves no key, exactly as a new
  * board's opening bottom does. The rails (quick 261113-kvo) open the same way: the fitted settings ride in the snapshot's own
  * `rails` (every RAILS control is already saved there: design-snapshot rules 10-13), so they open on RAILS editable, and a
- * board with none read opens with a new board's rails exactly as before. Nothing is rounded: the board that opens holds the fit's own values,
+ * board with none read opens with a new board's rails exactly as before. The fins (quick 261113-qyz) open the same way again:
+ * the fitted setup, model and controls ride in the snapshot's own `fins` and the fin system in its `finSystem` (every FINS
+ * control is already saved there), so they open on FINS editable, and a file with no fins opens with a new board's fins and
+ * FCS II exactly as before. Nothing is rounded: the board that opens holds the fit's own values,
  * so it draws the dashed lines the preview showed.
  *
  * Pure: no React, browser or database import (CLAUDE.md Rule 1).
  */
 import { bottomHasCut, type BoardBottom } from "@/lib/geometry/bottom";
 import type { BrdFit } from "@/lib/geometry/brd-fit";
-import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
+import { DEFAULT_FIN_PLACEMENT_SPEC, type FinPlacementSpec, type FinSystem } from "@/lib/geometry/fins";
 import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import { readBoardEntry } from "./board-file";
@@ -33,25 +36,27 @@ export function brdBoardName(fileName: string): string {
  * The fields a new board starts from when it is the closest fit to `fileName`, or null when the board reader refuses them
  * (which the fit's own clamping means it never does). Read back through `readBoardEntry`, so its name is trimmed and cut to
  * the board-name limit exactly as a JSON file's is, and so is the bottom (the board reader's bounded, forgiving bottom rule).
- * `bottom` is the fitted bottom, carried only when it cuts something; `rails` the fitted rails (a new board's when absent).
+ * `bottom` is the fitted bottom, carried only when it cuts something; `rails` the fitted rails (a new board's when absent);
+ * `fins` the fitted fins and the fin system they open with (a new board's, and FCS II, when absent).
  */
 export function brdBoardFields(
   fit: Pick<BrdFit, "outline" | "rocker" | "foil">,
   fileName: string,
   bottom?: BoardBottom | null,
   rails?: RailBandSpec | null,
+  fins?: { spec: FinPlacementSpec; finSystem: FinSystem } | null,
 ): DesignSnapshotFields | null {
   const fields: DesignSnapshotFields = {
     outline: fit.outline,
     rocker: fit.rocker,
     foil: fit.foil,
     rails: rails ?? DEFAULT_RAIL_BAND_SPEC,
-    fins: DEFAULT_FIN_PLACEMENT_SPEC,
+    fins: fins?.spec ?? DEFAULT_FIN_PLACEMENT_SPEC,
     volume: DEFAULT_VOLUME_SPEC,
     finsImportTemplate: true,
     railsImportFoilThickness: true,
     boardName: brdBoardName(fileName),
-    finSystem: "fcs2",
+    finSystem: fins?.finSystem ?? "fcs2",
     blank: null,
     ...(bottom && bottomHasCut(bottom) ? { bottom } : {}),
   };

@@ -9,10 +9,12 @@ import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { buildFallbackProfile } from "../geometry/board-profile";
 import { buildBoardSurface } from "../geometry/board-surface";
 import { DEFAULT_BOTTOM, cutKind, resolveBottom, resolveCut, startingCut, stationFromNearestTip, type BoardBottom, type BottomBoard, type BottomCutName } from "../geometry/bottom";
-import { brdFittedBottomBoard, brdStringerLift } from "../geometry/brd-bottom";
-import { noBrdFins } from "../geometry/brd-fins";
+import { brdFittedBottomBoard, brdStringerLift, measureBrdBottom } from "../geometry/brd-bottom";
+import { fitBrdFins, noBrdFins } from "../geometry/brd-fins";
+import { DEFAULT_FIN_PLACEMENT_SPEC } from "../geometry/fins";
 import { formatBottomStation } from "../geometry/blank-reasons";
-import { RAIL_NUDGE_NAMES, computeRailSectionOutput, railFamilyLabel } from "../geometry/rail-bands";
+import { RAIL_NUDGE_NAMES, DEFAULT_RAIL_BAND_SPEC, computeRailSectionOutput, railFamilyLabel } from "../geometry/rail-bands";
+import { brdOurRailHalf, brdRailBoard } from "../geometry/brd-rails";
 import { BRD_FIT_TIP_SKIP_MM, BRD_STRAIGHTEDGE_MM, brdFileStations, brdFileWidths, fitBoardToBrd, fitOutlineWidths, outlineGapSide } from "../geometry/brd-fit";
 import {
   designBottomBoard,
@@ -27,7 +29,7 @@ import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { effectiveWingRadius, wingRadiusTop } from "../geometry/wings";
 import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "../geometry/__fixtures__/phase16-boards";
-import { brdBottomStations, brdText } from "./brd";
+import { brdBottomStations, brdFinHeaderFields, brdText } from "./brd";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y, brdStationX } from "./brd-preview";
 import {
   BRD_FIT_COPY,
@@ -246,7 +248,7 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
   const made = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [], fins: noBrdFins() };
-  return { board: made, fit: fitBoardToBrd({ length: made.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
+  return { board: made, fit: fitBoardToBrd({ length: made.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null, fins: null };
 }
 
 describe("brdFitFramesInBox", () => {
@@ -1028,5 +1030,87 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     const source = readFileSync(join(__dirname, "../../components/rails/rail-controls.tsx"), "utf8");
     for (const word of Object.values(BRD_FIT_COPY.railWords)) expect(source).toContain(word);
     expect(BRD_FIT_COPY.railColumns).toEqual({ nose: "Nose", center: "Centre", tail: "Tail" });
+  });
+});
+
+describe("brdFitLook fits the fins first, then the bottom and the rails on the board with those fins (quick 261113-qyz)", () => {
+  const TWIN = [24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 5.4];
+  /** The stock Shortboard with a Panel Vee tail, written by the app, its fin line and word set the way the writer sets them. */
+  const withFins = (nine: readonly number[], word: string | null): ReadBrdBoard => {
+    const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+    const g = buildOutline(f.outline);
+    const p = designSideProfile(f, LIVE_DESIGN_RULES);
+    const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+    const board0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
+    const bottom = { ...structuredClone(DEFAULT_BOTTOM), tail: { ...startingCut("tail", "Panel Vee", board0), depth: inchesToMm(3 / 16) } };
+    const s = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: board0 }), geometry: g, rockerAt: p.rockerAt });
+    const plain = brdText(s, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text;
+    const fields = brdFinHeaderFields({ p50: nine, p51: word ?? "" });
+    const text = plain
+      .split("\n")
+      .flatMap((line) => (line.startsWith("p50 : ") ? fields.filter(([k]) => word !== null || k === "p50").map(([k, v]) => `${k} : ${v}`) : [line]))
+      .join("\n");
+    const back = readAnyBrd(Uint8Array.from(text, (ch) => ch.charCodeAt(0)));
+    if (!back.ok) throw new Error("the app's own file would not read");
+    return back.board;
+  };
+  const twinFile = withFins(TWIN, "Futures");
+  const twin = brdFitLook(twinFile);
+  const bare = brdFitLook(withFins([0, 0, 0, 0, 0, 0, 0, 0, 0], null));
+
+  it("a file with fins gets them fitted on the outline that opens: a twin, Modern/Upright, the system from its word", () => {
+    expect(twin.fins).not.toBeNull();
+    expect(twin.fins!.spec.finSetup).toBe("twin");
+    expect(twin.fins!.spec.twinTemplate).toBe("upright");
+    expect(twin.fins!.finSystem).toBe("futures");
+    // the outline is the one fit once, the fins fitted on it
+    expect(twin.fins).toEqual(fitBrdFins(twinFile.fins, twinFile.outline, twin.fit.outline));
+  });
+
+  it("a file with no fins has none fitted and the look is otherwise the same as a file whose fins were never in it", () => {
+    expect(bare.fins).toBeNull();
+    // fitted with no fins argument, a new board's fins are what the bottom was measured on, exactly as before
+    const first = fitBoardToBrd({ length: bare.board.length, outline: bare.board.outline, bottom: bare.board.bottom, deck: bare.board.deck });
+    expect(brdFittedBottomBoard(first).frontFins).toBe(brdFittedBottomBoard(first, undefined).frontFins);
+    expect(brdFittedBottomBoard(first).frontFins).toBe(
+      brdFittedBottomBoard(first, DEFAULT_FIN_PLACEMENT_SPEC).frontFins,
+    );
+  });
+
+  it("measures the bottom on the board with the file's fins in place, the board that opens", () => {
+    expect(twin.bottom).not.toBeNull();
+    const withFinsBoard = brdFittedBottomBoard(twin.fit, twin.fins!.spec);
+    // the closeness the look quotes is the one measured on the board that opens
+    const measured = measureBrdBottom(twin.bottom!.bottom, twin.bottom!.sections, withFinsBoard);
+    expect(measured.closeness.largest).toBeCloseTo(twin.bottom!.closeness.largest, 9);
+    expect(measured.closeness.typical).toBeCloseTo(twin.bottom!.closeness.typical, 9);
+  });
+
+  it("opens the same bottom the preview showed: its tail cut stands where the preview measured, not where a new board's fins would put it", () => {
+    const spec = twin.fins!.spec;
+    const mine = brdFittedBottomBoard(twin.fit, spec);
+    const newBoards = brdFittedBottomBoard(twin.fit);
+    // the file's twin fins stand nearer the tail than a new board's thruster
+    expect(mine.frontFins).toBeLessThan(newBoards.frontFins - inchesToMm(1));
+    const stored = twin.bottom!.bottom;
+    const stationOnMine = resolveCut("tail", stored.tail, mine);
+    const stationOnNew = resolveCut("tail", stored.tail, newBoards);
+    expect(stationOnMine.deepest).not.toBeCloseTo(stationOnNew.deepest, 3);
+  });
+
+  it("the rails are measured on the same board: with the fins in place the finished rail at the tail is the one the bottom's cut shapes there", () => {
+    expect(twin.rails).not.toBeNull();
+    const onFins = brdRailBoard(twin.fit, twin.bottom!.bottom, twin.fins!.spec);
+    const onNew = brdRailBoard(twin.fit, twin.bottom!.bottom);
+    const at = (b: ReturnType<typeof brdRailBoard>, inches: number) => JSON.stringify(brdOurRailHalf(b, DEFAULT_RAIL_BAND_SPEC, mm(inchesToMm(inches))));
+    // somewhere along the tail the two boards' bottoms part (the fins stand 2" apart), so their finished rails do
+    expect([1, 2, 3, 4, 6, 8, 10, 12].some((inches) => at(onFins, inches) !== at(onNew, inches))).toBe(true);
+    expect(onFins.length).toBe(twin.fit.outline.length);
+    // and with no fins argument a rail board is a new board's, as it always was
+    expect(at(brdRailBoard(twin.fit, twin.bottom!.bottom, undefined), 4)).toBe(at(onNew, 4));
+  });
+
+  it("survives structured clone with nothing lost", () => {
+    expect(structuredClone(twin.fins)).toEqual(twin.fins);
   });
 });

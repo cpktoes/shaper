@@ -259,3 +259,47 @@ describe("brdBoardFields with a rounded wing (quick 261113-m5w)", () => {
     expect(fields.outline.wings![0].radius).not.toBe(0);
   }, 120_000);
 });
+
+describe("brdBoardFields carries the fitted fins and fin system (quick 261113-qyz)", () => {
+  const fit = fitOf("shortboard|asis|hard");
+  const twin = {
+    spec: {
+      ...DEFAULT_FIN_PLACEMENT_SPEC,
+      finSetup: "twin" as const,
+      twinTemplate: "upright" as const,
+      advanced: {
+        ...DEFAULT_FIN_PLACEMENT_SPEC.advanced,
+        forwardPositionOffset: mm(38.1),
+        forwardOffRailNudge: mm(9.197149841569768),
+        forwardToeOverride: mm(5.080000000000013),
+        baseLenForward: mm(116.84),
+        baseLenForwardOverridden: true,
+      },
+    },
+    finSystem: "futures" as const,
+  };
+
+  it("opens with the fitted spec and system, exactly, read back through the board reader", () => {
+    const fields = brdBoardFields(fit, "Twin.brd", null, null, twin)!;
+    expect(fields).not.toBeNull();
+    expect(fields.fins).toEqual(twin.spec);
+    expect(fields.finSystem).toBe("futures");
+    expect(fields.finsImportTemplate).toBe(true);
+  });
+
+  it("a file with no fins opens with a new board's fins and FCS II, byte for byte as before", () => {
+    for (const fins of [undefined, null]) {
+      const fields = brdBoardFields(fit, "Plain.brd", null, null, fins)!;
+      expect(fields.fins).toEqual(DEFAULT_FIN_PLACEMENT_SPEC);
+      expect(fields.finSystem).toBe("fcs2");
+    }
+    expect(brdBoardFields(fit, "Plain.brd", null, null, null)).toEqual(brdBoardFields(fit, "Plain.brd"));
+  });
+
+  it("accepts every setup a fit can pick, with every Advanced control it sets", () => {
+    for (const finSetup of ["single", "twin", "thruster", "2plus1"] as const) {
+      const spec = { ...twin.spec, finSetup, frontModel: "basic" as const, twinTemplate: "trailer" as const };
+      expect(brdBoardFields(fit, "X.brd", null, null, { spec, finSystem: "lokbox" })?.fins.finSetup).toBe(finSetup);
+    }
+  });
+});
