@@ -38,3 +38,7 @@ A review picture of the Pixel sideways case is in `.planning/quick/261018-e6w-â€
 ## Ruled (2026-11-14)
 
 The founder's pick: move the readings' top row clear of the toolbar's corner on a short screen; the board keeps its size.
+
+## Done
+
+2026-11-14 â€” quick 261114-loa (commit 5331652e): the readings slide clear of the toolbar on a short screen, pushing their neighbours along only as far as needed; proven on both phones, the computer unchanged.

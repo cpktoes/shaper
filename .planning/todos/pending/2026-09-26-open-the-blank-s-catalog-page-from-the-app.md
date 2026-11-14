@@ -40,3 +40,23 @@ Rough shape, for a quick task once the address scheme per vendor is known:
 ## Ruled (2026-11-14)
 
 The founder's pick: a small link on the picked blank's card beside Change Blank, and the DATASHEET's blank-line page number made a link. Not on the list rows. Opens the maker's page in a new tab; a maker with no page per blank opens the catalogue's front.
+
+## Found (2026-11-14, read-only web research)
+
+- **US Blanks** has a page per blank: `https://usblanks.com/catalog/<slug lowercased>/` — the app's `wake-surf/5-0-W`
+  maps straight onto `https://usblanks.com/catalog/wake-surf/5-0-w/` (200). But the site's slugs are hand-made (`510rp`,
+  `93y`, `5-0-w`, `5-9-p`, `5-11-yu-2`), so every seeded slug must be checked against the series listings; 6'3"RP has no
+  page under any likely slug and is absent from the shortboard and wake-surf listings. Whole catalogue PDF: 27.9 MB.
+- **Arctic Foam** (`arcticfoam.us`; `.com` is parked): no page per blank; one catalogue PDF at
+  `https://arcticfoam.us/s/2024Catalog.pdf` (302 to Squarespace, 33 pages, 9.1 MB) — `#page=N` should hold; family
+  pages such as `https://arcticfoam.us/rocker` list the SB blanks with no anchors.
+- **Marko Foam** (`markofoamblanks.com`, Shopify): a product page per blank, `…/products/<handle>` — the app's slug
+  `molded` is not a handle (`wakesurf-regular` is). Catalogue PDFs: 2026 (48 pages, 8.2 MB), 2023, 2017; which edition's
+  page 19 the seed's `pdf_page` means is unknown.
+- **Millennium** (`millenniumfoam.com`, BigCommerce): a store page per model, slugs irregular (`/53ws/` is the 50WS;
+  `customized-50ws` works for that blank only). No PDF.
+- No login walls; all PDFs serve inline.
+
+So the quick task needs a per-maker link rule in `lib/blanks/` AND a slug audit of the seed CSVs (US Blanks and Marko
+especially) before any link is shown — a wrong page is worse than none. Sized as a quick task with data work, not a fast one.
+
