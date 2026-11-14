@@ -41,7 +41,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
 Status: Phase 17 complete and live; Phase 13 open (11 of 13 items); Phases 14, 15, 16 and 18 complete
-Last activity: 2026-11-14 - Completed quick task 261114-118: the go-live code review's fixes (the home page stays light, the blank list is cached, small reader fixes)
+Last activity: 2026-11-14 - LIVE as main ce73ff35: opening a .brd as a board (outline, rocker, thickness, bottom, wings, rails, fins), fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10", boards 4'0"–12'0" and 31" wide from 8'0", the printed bottom tables on two sheets — quick tasks 261113-d9b … 261114-118 and fast 206–207; gate on d4dcaa25 (unit 13,687, production build + its tests, full browser suite 1,989 passed with seven failures traced to two test defects and one load fluke, re-run green)
 
 ## Performance Metrics
 
