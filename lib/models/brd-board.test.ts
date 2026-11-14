@@ -8,6 +8,7 @@ import { fitBoardToBrd, type BrdFit } from "@/lib/geometry/brd-fit";
 import { DEFAULT_BOTTOM, bottomHasCut, resolveBottom, sectionsFoamOff, startingCut } from "@/lib/geometry/bottom";
 import { brdFittedBottomBoard } from "@/lib/geometry/brd-bottom";
 import {
+  type DesignSummaryFields,
   designBottomBoard,
   designCrossSectionInput,
   designFinPlacement,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { buildOutline } from "@/lib/geometry/outline";
+import { effectiveWingRadius, outlineForFins, wingRadiusTop } from "@/lib/geometry/wings";
 import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
@@ -32,7 +34,10 @@ import { brdBoardFields, brdBoardName } from "./brd-board";
  */
 
 function fitOf(label: string) {
-  const fields = [...phase16Boards(), ...phase16WingBoards()].find((b) => b.label === label)!.fields;
+  return fitOfFields([...phase16Boards(), ...phase16WingBoards()].find((b) => b.label === label)!.fields);
+}
+
+function fitOfFields(fields: DesignSummaryFields) {
   const geometry = buildOutline(fields.outline);
   const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
   const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
@@ -203,5 +208,31 @@ describe("brdBoardFields with wings (quick 261113-hyy)", () => {
 
   it("leaves a wingless fit with no wings key at all", () => {
     expect("wings" in brdBoardFields(plain, "Plain.brd")!.outline).toBe(false);
+  }, 120_000);
+});
+
+describe("brdBoardFields with a rounded wing (quick 261113-m5w)", () => {
+  // The Shortboard's own wing 1 made a 1 inch step over a 1 inch run, rounded as far as the slider goes, written and read back.
+  const one = phase16WingBoards().find((b) => b.label === "wing|shortboard|one")!.fields;
+  const step = { depth: inchesToMm(1), run: inchesToMm(1) };
+  const rounded = fitOfFields({
+    ...one,
+    outline: { ...one.outline, wings: [{ ...one.outline.wings![0], ...step, radius: wingRadiusTop(step, "imperial") }] },
+  });
+
+  it("keeps the fitted wing, radius included, exactly through the board reader: the WINGS tab's Corner radius opens on it", () => {
+    expect(rounded.fileWingCorners[0].rounded).toBe(true);
+    expect(rounded.outline.wings![0].radius).toBeGreaterThan(0);
+    const fields = brdBoardFields(rounded, "Rounded.brd")!;
+    expect(fields.outline.wings).toEqual(rounded.outline.wings);
+    expect(fields.outline).toEqual(rounded.outline);
+    expect(fields.outline.wings![0].lock).toBeNull();
+    expect(effectiveWingRadius(fields.outline.wings![0])).toBeGreaterThan(0);
+  }, 120_000);
+
+  it("still reads the step sharp for the fins: outlineForFins takes the radius off", () => {
+    const fields = brdBoardFields(rounded, "Rounded.brd")!;
+    expect(outlineForFins(fields.outline).wings![0].radius).toBe(0);
+    expect(fields.outline.wings![0].radius).not.toBe(0);
   }, 120_000);
 });

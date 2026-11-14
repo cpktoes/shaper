@@ -7,7 +7,8 @@
  * curves. This finds the control values whose curves lie closest to the file's, so the look can say honestly how far off
  * the closest board the sliders can make is, per curve and where along the board. The answer is always a board the
  * controls could make: every value is clamped to its own control's range (imported, never restated), the tail is a
- * squash, pin or round (never a swallow or diamond, and no wings), and the rocker and foil are hand-set (no blank).
+ * squash, pin or round (never a swallow or diamond; a file whose outline has wings gets our own wing or two on the tail,
+ * see `fitTailAroundWings`), and the rocker and foil are hand-set (no blank).
  *
  * How it works, all measured before it was written down:
  *  - Outline. The wide point is read off the file (its largest half-width and where that stands). The nose half and the
@@ -46,7 +47,17 @@
 import type { P2 } from "./bezier-fit";
 import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "./board";
 import { buildFallbackProfile } from "./board-profile";
-import { findBrdWings, type BrdFileWing } from "./brd-wings";
+import {
+  BRD_WING_CORNER_PAD_MM,
+  BRD_WING_CORNER_WINDOW_MM,
+  BRD_WING_ROUND_BETTER_MIN_MM,
+  BRD_WING_ROUND_INSET_MIN_MM,
+  findBrdWings,
+  wingCornerInset,
+  wingFromFootprint,
+  type BrdFileWing,
+  type BrdWingCorner,
+} from "./brd-wings";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec } from "./foil";
 import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
@@ -98,6 +109,11 @@ export interface BrdFit {
    * When there are any, `outline.wings` holds ours, fitted around them, in the same order: wing k here is wing k there.
    */
   fileWings: BrdFileWing[];
+  /**
+   * How each of those wings' corners read in the file (quick 261113-m5w): same order and length as `fileWings`, `[]` for a file
+   * with none. A wing whose corners read as `rounded` is ours with that radius; any other opens sharp.
+   */
+  fileWingCorners: BrdWingCorner[];
 }
 
 /** The last inch at each tip is left out of the rocker and thickness figures: the file rounds its tips there, ours ends square. */
@@ -375,6 +391,7 @@ interface OutlineFit {
   spec: OutlineSpec;
   drawn: P2[];
   fileWings: BrdFileWing[];
+  fileWingCorners: BrdWingCorner[];
 }
 
 function fitOutline(lines: BrdLines): OutlineFit {
@@ -458,7 +475,7 @@ function fitOutline(lines: BrdLines): OutlineFit {
   // A file whose outline steps in on the way to the tail has a wing (or two): the tail is then fitted around them.
   const fileWings = findBrdWings(file);
   if (fileWings.length > 0) {
-    const spec = fitTailAroundWings({
+    const { spec, corners } = fitTailAroundWings({
       length: mm(length),
       wideStation,
       file,
@@ -476,7 +493,7 @@ function fitOutline(lines: BrdLines): OutlineFit {
       fromUnit,
       toUnit,
     });
-    return { spec, drawn: drawnOutline(spec), fileWings };
+    return { spec, drawn: drawnOutline(spec), fileWings, fileWingCorners: corners };
   }
 
   const pointed = tailFamily(false);
@@ -491,7 +508,7 @@ function fitOutline(lines: BrdLines): OutlineFit {
     const kind = Math.abs(angle - TAIL_PRESETS.pin.tailAngle) <= Math.abs(angle - TAIL_PRESETS.round.tailAngle) ? "pin" : "round";
     spec = { ...tailSpec(pointed.x, false), tail: { kind } };
   }
-  return { spec, drawn: drawnOutline(spec), fileWings: [] };
+  return { spec, drawn: drawnOutline(spec), fileWings: [], fileWingCorners: [] };
 }
 
 /** What the winged tail fit needs from `fitOutline`: the file's tail half, the tail's own spec builder and its search. */
@@ -529,11 +546,20 @@ const WING_FIT_ROUNDS = 3;
  *     polish alone gets a single wing right but two wings wander; refitting the curve from the wings fixes that.
  * Measured on the Fryer squash twin's flyer: the file's wing 7 7/16" off the tail, 1/4" deep, 3/8" run; ours 7 3/8", 1/4",
  * 3/8"; the outline's widest gap falls from 2.75 mm to 1.29 mm (what is left is the squash tail's rounded corner against ours
- * square, the same limit a wingless squash has). Every wing opens with sharp corners (radius 0), no fin lock and its values as
- * found, never rounded to the slider's grid: fitting the radius was tried and gained under 0.01 mm on the Fryer and was not
- * stable on the app's own rounded wings (it trades against run and position).
+ * square, the same limit a wingless squash has). Every wing opens with no fin lock and its values as found, never rounded to
+ * the slider's grid.
+ *
+ * Then the corners (quick 261113-m5w, `measureWingCorners`): each wing's footprint (where its step leaves the curve and where
+ * it reaches full depth) and its depth are searched again on the file's own stretch around the step, once with sharp corners
+ * and from three starting radii with rounded ones. A wing takes the rounded fit only when the file clearly rounds the corner
+ * (see `brd-wings.ts`: the corner sits at least 1.1 mm inside the sharp one and the step fits at least 0.1 mm closer); every
+ * other wing keeps exactly the sharp wing found above, so a sharp corner (the Fryer's flyer) and a corner rounded too
+ * slightly to tell open as they always did. A rounded wing reaches full depth further back than the sharp one did, so its fade
+ * to the tail moves the outline behind it: the curve is then refitted to what the rounded wings leave, and the whole tail
+ * keeps whichever of the sharp answer, the rounded wings on the same curve, or the refitted curve scores lowest by the fit's
+ * own measure (the largest gap plus the typical gap). The radius is kept as found, never more than fits.
  */
-function fitTailAroundWings(c: TailAroundWings): OutlineSpec {
+function fitTailAroundWings(c: TailAroundWings): { spec: OutlineSpec; corners: BrdWingCorner[] } {
   const { fileWings, tailFile, wideStation } = c;
   const geometry = { length: c.length, widePointStation: mm(wideStation) };
   const range = (r: { min: number; max: number }) => ({ min: inchesToMm(r.min), max: inchesToMm(r.max) });
@@ -608,8 +634,123 @@ function fitTailAroundWings(c: TailAroundWings): OutlineSpec {
     xs = nelderMead((x) => score(tailGap(target, c.tailSpec(x, squash))), xs).x;
   }
   const answer = best as { value: number; xs: number[]; u: number[] };
-  const spec: OutlineSpec = { ...c.tailSpec(answer.xs, squash), wings: wingsOf(answer.u) };
-  return squash ? spec : { ...spec, tail: { kind: c.namePointed(answer.xs[0]) } };
+
+  // 4. The corners: which wings the file clearly rounds, and our wings with those rounded.
+  const held = c.tailSpec(answer.xs, squash);
+  const sharpWings = wingsOf(answer.u);
+  const measured = measureWingCorners(c, held, sharpWings, geometry);
+  let chosenXs = answer.xs;
+  let chosenWings = sharpWings;
+  if (measured.corners.some((corner) => corner.rounded)) {
+    // The rounded wings reach full depth further back, so the curve behind them is refitted (round step 3's own refit).
+    const drawnRounded = buildOutline({ ...held, wings: measured.wings });
+    const feetRounded = measured.wings.map((w) => wingFootprint(w).inner);
+    const behindRounded = keep(fileWings.map((w, k) => Math.min(feetRounded[k], w.inner))).map(
+      ([x, y]): P2 => [x, y + wingTakeAt(drawnRounded, mm(x))],
+    );
+    const targetRounded = packLine(behindRounded);
+    const refitXs = nelderMead((x) => score(tailGap(targetRounded, c.tailSpec(x, squash))), answer.xs).x;
+    const scoreOf = (xsOf: readonly number[], wings: readonly Wing[]) => score(tailGap(c.tailFilePacked, { ...c.tailSpec(xsOf, squash), wings: [...wings] }));
+    const today = scoreOf(answer.xs, sharpWings);
+    const heldOnly = scoreOf(answer.xs, measured.wings);
+    const refit = scoreOf(refitXs, measured.wings);
+    if (refit < today || heldOnly < today) {
+      chosenWings = measured.wings;
+      if (refit <= heldOnly) chosenXs = refitXs;
+    }
+  }
+  const spec: OutlineSpec = { ...c.tailSpec(chosenXs, squash), wings: chosenWings };
+  return { spec: squash ? spec : { ...spec, tail: { kind: c.namePointed(chosenXs[0]) } }, corners: measured.corners };
+}
+
+/**
+ * How far apart two lines lie over one stretch of station: for each of `file`'s points in [lo, hi] its nearest distance to
+ * `ours` (their sum, over the count, is `typical`), and for each of `ours`' points in [lo, hi] its nearest distance to the
+ * file; `largest` is the biggest of all of them. Each line is packed from an inch either side of the stretch, so the
+ * nearest point may lie just outside it.
+ */
+function windowGap(file: readonly P2[], ours: readonly P2[], lo: number, hi: number): { largest: number; typical: number } {
+  const inch = inchesToMm(1);
+  const wide = (line: readonly P2[]) => packLine(line.filter(([x]) => x >= lo - inch && x <= hi + inch));
+  const packedFile = wide(file);
+  const packedOurs = wide(ours);
+  let largest = 0;
+  let sum = 0;
+  let counted = 0;
+  for (const [x, y] of file) {
+    if (x < lo || x > hi) continue;
+    const d = nearestDistance(x, y, packedOurs);
+    sum += d;
+    counted++;
+    if (d > largest) largest = d;
+  }
+  for (const [x, y] of ours) {
+    if (x < lo || x > hi) continue;
+    const d = nearestDistance(x, y, packedFile);
+    if (d > largest) largest = d;
+  }
+  return { largest, typical: counted > 0 ? sum / counted : 0 };
+}
+
+/**
+ * Each file wing's corners (quick 261113-m5w), and our wings with the clearly rounded ones rounded: see `fitTailAroundWings`
+ * and the header of `brd-wings.ts`. `held` is the tail with the curve held, `start` our sharp wings. Nose-most wing first, as
+ * `c.fileWings`. For each: our wing is described by its footprint (where the step leaves the curve, where it reaches full
+ * depth, its depth, and the radius as a share of the most that fits), searched on the file's stretch 1 1/2" either side of the
+ * step, by the app's own outline drawing (so the dashed line IS the board the WINGS tab will hold), once sharp and from three
+ * starting radii rounded; the corner is rounded when the rounded fit's inset and its improvement over the sharp fit at the
+ * step both clear their lines. A wing that is not rounded stays exactly as it was.
+ */
+function measureWingCorners(
+  c: TailAroundWings,
+  held: OutlineSpec,
+  start: readonly Wing[],
+  geometry: { length: Mm; widePointStation: Mm },
+): { wings: Wing[]; corners: BrdWingCorner[] } {
+  const depthRange = { min: inchesToMm(WING_DEPTH_RANGE_IN.min), max: inchesToMm(WING_DEPTH_RANGE_IN.max) };
+  const inch = inchesToMm(1);
+  let wings = [...start];
+  const corners: BrdWingCorner[] = [];
+  c.fileWings.forEach((fileWing, k) => {
+    const lo = fileWing.inner - BRD_WING_CORNER_WINDOW_MM;
+    const hi = fileWing.station + BRD_WING_CORNER_WINDOW_MM;
+    const filePoints = c.file.filter(([x]) => x >= lo - inch && x <= hi + inch);
+    // The seed: the wing the rounds found, as its footprint.
+    const seed = wings[k];
+    const stepStart0 = seed.station;
+    const inner0 = seed.station - seed.run;
+    const depth0 = seed.depth;
+    const candidate = (x: readonly number[], rounded: boolean): Wing[] => {
+      const depth = clamp(depth0 * (0.5 + x[2]), depthRange.min, depthRange.max);
+      const wing = wingFromFootprint(stepStart0 + (x[0] - 0.5) * 2 * inch, inner0 + (x[1] - 0.5) * 2 * inch, depth, rounded ? x[3] : 0, seed);
+      return [...clampWingStations(wings.map((w, j) => (j === k ? wing : w)), geometry)];
+    };
+    const drawn = (list: readonly Wing[]) => drawnOutline({ ...held, wings: [...list] });
+    const scoreOf = (list: readonly Wing[]) => {
+      const gap = windowGap(filePoints, drawn(list), lo, hi);
+      return gap.largest + gap.typical;
+    };
+    const sharp = nelderMead((x) => scoreOf(candidate(x, false)), [0.5, 0.5, 0.5]);
+    let round: { x: number[]; value: number } = { x: [...sharp.x, 0], value: Infinity };
+    for (const share of [0.15, 0.5, 0.9]) {
+      const tried = nelderMead((x) => scoreOf(candidate(x, true)), [...sharp.x, share]);
+      if (tried.value < round.value) round = tried;
+    }
+    const sharpList = candidate(sharp.x, false);
+    const roundList = candidate(round.x, true);
+    // The evidence is read at the step alone: the union of both fits' footprints, a quarter inch either side.
+    const footSharp = wingFootprint(sharpList[k]);
+    const footRound = wingFootprint(roundList[k]);
+    const nearLo = Math.min(footSharp.inner, footRound.inner) - BRD_WING_CORNER_PAD_MM;
+    const nearHi = Math.max(footSharp.stepStart, footRound.stepStart) + BRD_WING_CORNER_PAD_MM;
+    const better = windowGap(filePoints, drawn(sharpList), nearLo, nearHi).largest - windowGap(filePoints, drawn(roundList), nearLo, nearHi).largest;
+    const inset = wingCornerInset(roundList[k]);
+    const rounded = inset >= BRD_WING_ROUND_INSET_MIN_MM && better >= BRD_WING_ROUND_BETTER_MIN_MM;
+    const { station, depth, run, radius } = roundList[k];
+    corners.push({ rounded, measured: { station, depth, run, radius }, inset, better: mm(better) });
+    if (rounded) wings = roundList;
+  });
+  return { wings, corners };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -756,7 +897,12 @@ export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => n
   // The outline never depends on the stringer's lift, so a refit for a lift may take the first fit's outline as it stands (the search
   // is the costly part of a file with wings, and a second one would give the very same answer).
   const outline: OutlineFit = sameOutlineAs
-    ? { spec: sameOutlineAs.outline, drawn: sameOutlineAs.lines.outline, fileWings: sameOutlineAs.fileWings }
+    ? {
+        spec: sameOutlineAs.outline,
+        drawn: sameOutlineAs.lines.outline,
+        fileWings: sameOutlineAs.fileWings,
+        fileWingCorners: sameOutlineAs.fileWingCorners,
+      }
     : fitOutline(lines);
   const side = fitSideProfile(lines, stringerLift);
   return {
@@ -771,6 +917,7 @@ export function fitBoardToBrd(given: BrdLines, stringerLift?: (station: Mm) => n
     },
     stringerLift: side.stringerLift,
     fileWings: outline.fileWings,
+    fileWingCorners: outline.fileWingCorners,
   };
 }
 

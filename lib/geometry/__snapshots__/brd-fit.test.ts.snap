@@ -591,3 +591,616 @@ exports[`a file with no wing fits exactly as before > shortboard|round|hard 1`] 
   },
 }
 `;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|fish|rounded 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1723.0043863594992,
+      "largest": 0.4932809431337095,
+      "typical": 0.11131046755294165,
+    },
+    "rocker": {
+      "at": 146.81199999999998,
+      "largest": 0.9827063544109222,
+      "typical": 0.31594625318967795,
+    },
+    "thickness": {
+      "at": 418.846,
+      "largest": 0.7303303204494824,
+      "typical": 0.26119422222561745,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 12.588726324970938,
+      "dip": 11.73805090931134,
+      "inner": 264.0697438789308,
+      "innerIndex": 144,
+      "outerIndex": 168,
+      "run": 17.96051224213835,
+      "station": 282.03025612106916,
+    },
+  ],
+  "outline": {
+    "length": 1727.1999999999998,
+    "noseAngle": 68.53509580379168,
+    "noseFullness": 54.20064113334876,
+    "noseRailLength": 50.0611621562277,
+    "tail": {
+      "endWidth": 253.77447742440324,
+      "kind": "squash",
+    },
+    "tailAngle": 41.92298578477193,
+    "tailFullness": 9.701602468019585,
+    "tailRailLength": 44.599447065659604,
+    "widePointOffset": 50.80000000000007,
+    "widePointWidth": 514.35,
+    "wings": [
+      {
+        "depth": 12.71806361230206,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 13.476423149528445,
+        "station": 279.796303796028,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|longboard|deep 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 2723.2850530730657,
+      "largest": 2.30417220109276,
+      "typical": 0.7092883001833645,
+    },
+    "rocker": {
+      "at": 596.646,
+      "largest": 2.0661862557349266,
+      "typical": 0.5932764548433551,
+    },
+    "thickness": {
+      "at": 2160.27,
+      "largest": 2.7270686184543464,
+      "typical": 0.8508318209774427,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 25.686856395396834,
+      "dip": 23.29186253884984,
+      "inner": 254,
+      "innerIndex": 72,
+      "outerIndex": 96,
+      "run": 25.399999999999977,
+      "station": 279.4,
+    },
+  ],
+  "outline": {
+    "length": 2743.2,
+    "noseAngle": 88.14935176810032,
+    "noseFullness": 100,
+    "noseRailLength": 67.1262104648857,
+    "tail": {
+      "endWidth": 215.7846577676799,
+      "kind": "squash",
+    },
+    "tailAngle": 30.307779624002308,
+    "tailFullness": 45.429366333956814,
+    "tailRailLength": 42.067798345548795,
+    "widePointOffset": 88.90000000000009,
+    "widePointWidth": 571.5,
+    "wings": [
+      {
+        "depth": 25.39543109343847,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 25.393407510184772,
+        "station": 279.42848523726116,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|midlength|square 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 866.6327106933097,
+      "largest": 0.1857869479634585,
+      "typical": 0.0727983307950852,
+    },
+    "rocker": {
+      "at": 2058.797,
+      "largest": 0.9204750467975344,
+      "typical": 0.33050076299060777,
+    },
+    "thickness": {
+      "at": 742.696,
+      "largest": 2.117881126863132,
+      "typical": 0.7203824226982223,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 9.524999375134755,
+      "dip": 9.524996506535814,
+      "inner": 279.39997459999995,
+      "innerIndex": 72,
+      "outerIndex": 96,
+      "run": 0.000025400000026820635,
+      "station": 279.4,
+    },
+  ],
+  "outline": {
+    "length": 2184.4,
+    "noseAngle": 63.96370975658908,
+    "noseFullness": 67.50892208480974,
+    "noseRailLength": 76.22466644060934,
+    "tail": {
+      "kind": "round",
+    },
+    "tailAngle": 90,
+    "tailFullness": 44.8503806197893,
+    "tailRailLength": 77.61928069519743,
+    "widePointOffset": 69.4462427745666,
+    "widePointWidth": 539.731376412904,
+    "wings": [
+      {
+        "depth": 9.52802826499275,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 0.00002571821005967386,
+        "station": 279.4012013389315,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|deep 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1875.9117792612446,
+      "largest": 0.13408106935509148,
+      "typical": 0.043997847480830424,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482532205026708,
+      "typical": 0.5020810097634058,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.502320209969092,
+      "typical": 0.5589030479855636,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 25.83797783221963,
+      "dip": 22.19187137757126,
+      "inner": 254,
+      "innerIndex": 96,
+      "outerIndex": 120,
+      "run": 25.399999999999977,
+      "station": 279.4,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.42144166396159,
+      "kind": "squash",
+    },
+    "tailAngle": 55.28428086300441,
+    "tailFullness": 44.07484396780593,
+    "tailRailLength": 51.806640431057815,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 25.399806695616896,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 25.5448327143544,
+        "station": 279.5422771266393,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|infade 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 331.8819455296226,
+      "largest": 0.1570812636395654,
+      "typical": 0.05276009319443368,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.647488412412585,
+      "typical": 0.4996571819599673,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5018044706962925,
+      "typical": 0.5598969583799583,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 4.808986723607097,
+      "dip": 4.4428030958901275,
+      "inner": 552.4499999999999,
+      "innerIndex": 96,
+      "outerIndex": 120,
+      "run": 6.350000000000023,
+      "station": 558.8,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.46486680374491,
+      "kind": "squash",
+    },
+    "tailAngle": 55.98598847974059,
+    "tailFullness": 43.15381090578887,
+    "tailRailLength": 53.10936240615952,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 4.808585883371217,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 6.406816221560759,
+        "station": 558.9530476093034,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|one 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1875.9117792612446,
+      "largest": 0.13408106935509148,
+      "typical": 0.04125865741930251,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482605519264055,
+      "typical": 0.5021023366369256,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5023319859505975,
+      "typical": 0.5589788736890431,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 4.8390694549472375,
+      "dip": 4.343157460152639,
+      "inner": 273.04999999999995,
+      "innerIndex": 96,
+      "outerIndex": 120,
+      "run": 6.350000000000023,
+      "station": 279.4,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.6086006244316,
+      "kind": "squash",
+    },
+    "tailAngle": 54.55404935157276,
+    "tailFullness": 46.596000020317256,
+    "tailRailLength": 47.79196681032713,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 4.840925782123939,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 6.448119782560752,
+        "station": 279.4883136538578,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|rounded 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 306.38906989002686,
+      "largest": 0.4723786871360688,
+      "typical": 0.12241341485274948,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482556586658408,
+      "typical": 0.5020880996234838,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5023218026849605,
+      "typical": 0.55893160334843,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 12.455596630713107,
+      "dip": 10.975704476294794,
+      "inner": 265.0386149323521,
+      "innerIndex": 97,
+      "outerIndex": 119,
+      "run": 16.025840135464477,
+      "station": 281.0644550678166,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.46786469083484,
+      "kind": "squash",
+    },
+    "tailAngle": 54.44356288042333,
+    "tailFullness": 47.82424512707835,
+    "tailRailLength": 45.36267407955488,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 12.781032960807167,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 13.01224234288687,
+        "station": 279.3464281855579,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|square 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 1875.9117792612446,
+      "largest": 0.13408106935509148,
+      "typical": 0.0371956574365333,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482532203848415,
+      "typical": 0.5020810094197943,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.502320209892126,
+      "typical": 0.5589284183665184,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 9.524999340932533,
+      "dip": 9.524996824050731,
+      "inner": 279.39997459999995,
+      "innerIndex": 96,
+      "outerIndex": 120,
+      "run": 0.000025400000026820635,
+      "station": 279.4,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.74290753028203,
+      "kind": "squash",
+    },
+    "tailAngle": 54.34309948831532,
+    "tailFullness": 46.84918165261927,
+    "tailRailLength": 47.469009919652564,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 9.656842777304533,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 0.0017507882153560436,
+        "station": 279.4017522444591,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|two 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 186.6186196469216,
+      "largest": 0.17331946996612116,
+      "typical": 0.04929795113953871,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482605519264055,
+      "typical": 0.5019819411508417,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5023319859505975,
+      "typical": 0.5590724858097715,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 4.8390694549472375,
+      "dip": 4.284999277240416,
+      "inner": 273.04999999999995,
+      "innerIndex": 192,
+      "outerIndex": 216,
+      "run": 6.350000000000023,
+      "station": 279.4,
+    },
+    {
+      "depth": 5.037787051907233,
+      "dip": 3.072769509130154,
+      "inner": 186.06098930181577,
+      "innerIndex": 120,
+      "outerIndex": 144,
+      "run": 21.578021396368456,
+      "station": 207.63901069818422,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.48168479865998,
+      "kind": "squash",
+    },
+    "tailAngle": 54.42970421568521,
+    "tailFullness": 47.65062969911218,
+    "tailRailLength": 45.85766618585076,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 4.763928293242083,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 6.296167405448267,
+        "station": 279.335460564254,
+      },
+      {
+        "depth": 4.894075093608089,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 20.351664702564538,
+        "station": 206.97028434948612,
+      },
+    ],
+  },
+}
+`;
+
+exports[`a sharp-winged file fits exactly as before (quick 261113-m5w) > wing|shortboard|two, wing 2 rounded 1/4 inch 1`] = `
+{
+  "closeness": {
+    "outline": {
+      "at": 193.43158710533066,
+      "largest": 0.184186763531633,
+      "typical": 0.055722390894036716,
+    },
+    "rocker": {
+      "at": 1306.322,
+      "largest": 1.6482605519264055,
+      "typical": 0.5019819411508417,
+    },
+    "thickness": {
+      "at": 1320.4189999999999,
+      "largest": 2.5023319859505975,
+      "typical": 0.5590723673268234,
+    },
+  },
+  "fileWings": [
+    {
+      "depth": 4.8390694549472375,
+      "dip": 4.301341543639069,
+      "inner": 273.04999999999995,
+      "innerIndex": 192,
+      "outerIndex": 216,
+      "run": 6.350000000000023,
+      "station": 279.4,
+    },
+    {
+      "depth": 4.997189458947516,
+      "dip": 3.666481566539005,
+      "inner": 189.72799813944624,
+      "innerIndex": 120,
+      "outerIndex": 144,
+      "run": 14.24400372110756,
+      "station": 203.9720018605538,
+    },
+  ],
+  "outline": {
+    "length": 1879.6,
+    "noseAngle": 48.77139120488546,
+    "noseFullness": 21.524337037320016,
+    "noseRailLength": 48.66468263197281,
+    "tail": {
+      "endWidth": 101.25586663067217,
+      "kind": "squash",
+    },
+    "tailAngle": 55.37535341517563,
+    "tailFullness": 45.92845431225032,
+    "tailRailLength": 48.32490965846018,
+    "widePointOffset": -25.40000000000009,
+    "widePointWidth": 476.25,
+    "wings": [
+      {
+        "depth": 4.624049601356646,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 6.56501345786737,
+        "station": 279.5534628580024,
+      },
+      {
+        "depth": 5.016161550033317,
+        "finOffset": 0,
+        "lock": null,
+        "radius": 0,
+        "run": 12.96544887882633,
+        "station": 203.3079267813693,
+      },
+    ],
+  },
+}
+`;

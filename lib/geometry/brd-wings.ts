@@ -22,18 +22,45 @@
  * over it. Honest limit: a 1/16"-deep wing with a 1" to 2" run bends the rail by less than 1/32" and reads as part of the
  * curve; the fit's outline gap then shows it, at most about 1/16".
  *
+ * The corners (quick 261113-m5w, the founder, 2026-11-13: "Fit the corner radius too ... only round a corner when the file
+ * clearly has one"). A step's radius trades against its position and run: a short step with big rounds and a long step with
+ * small rounds draw nearly the same S. So a wing is searched by its FOOTPRINT instead (`wingFromFootprint`: where the step
+ * leaves the curve, where it reaches full depth, its depth, and the radius as a share of the most that fits), which the file
+ * shows plainly, and only the share is subtle. The share can only be read where the file really holds it. Through this app's
+ * own writer a sharp corner turning more than 30 degrees stays a corner, and every gentler one is smoothed by curves within
+ * half a millimetre, so a radius that moves the corner by less than about a millimetre cannot honestly be told from sharp.
+ * The evidence is the corner's INSET (`wingCornerInset`): how far the best rounded wing's corner sits inside the sharp corner
+ * it rounds. Sharp corners measured at most 0.43 mm (the Fryer's flyer 0.02 mm); clearly rounded ones 1.35 mm and up; the
+ * line is 1.1 mm (`BRD_WING_ROUND_INSET_MIN_MM`), 0.67 mm above every sharp corner and 0.05 mm over the slightest rounded
+ * one that cannot be told. The rounded wing must also fit the step 0.1 mm closer than the best sharp one
+ * (`BRD_WING_ROUND_BETTER_MIN_MM`): sharp corners gain at most 0.03 mm, every wing that came back rounded 0.12 mm or more. A
+ * corner between the two lines opens sharp, as ever: a gentle step's radius is nearly always below them (the app's own
+ * "+ Add wing 2" sits about 0.4 mm inside through the writer).
+ *
  * Pure: no React, browser or database import (CLAUDE.md Rule 1); all lengths are millimetres. It must not import
  * `brd-fit.ts` (that file imports this one), so it carries its own half-width reader.
  */
 import type { P2 } from "./bezier-fit";
 import { inchesToMm, mm, type Mm } from "./units";
-import { MAX_WINGS, WING_RUN_RANGE_IN } from "./wings";
+import { MAX_WINGS, WING_RUN_RANGE_IN, effectiveWingRadius, maxWingRadius, type Wing } from "./wings";
 
 /** The shallowest dip under a straightedge that is called a wing: 1/32", 25 times above the largest wobble measured on a wingless board. */
 export const BRD_WING_POCKET_MIN_MM = inchesToMm(1 / 32);
 
 /** The longest step a wing may take, measured along the stringer: the longest run (2") plus an inch for rounded corners. */
 export const BRD_WING_STEP_MAX_MM = inchesToMm(WING_RUN_RANGE_IN.max + 1);
+
+/** The stretch a wing's corners are fitted on: from the file wing's inner point less this to its outer corner plus this (1 1/2": the step, its rounds and room for the curve either side). */
+export const BRD_WING_CORNER_WINDOW_MM = inchesToMm(1.5);
+
+/** How far past the step the evidence for a rounded corner is read: a quarter inch either side, so the curve's own misfit further out never counts. */
+export const BRD_WING_CORNER_PAD_MM = inchesToMm(1 / 4);
+
+/** A corner reads as rounded only when it sits at least this far inside the sharp one: 0.67 mm above every sharp corner measured (at most 0.43 mm), 0.05 mm over the slightest rounded one that cannot be told. */
+export const BRD_WING_ROUND_INSET_MIN_MM = 1.1;
+
+/** ... and only when the rounded wing fits the step at least this much closer than the best sharp one: sharp corners gain at most 0.03 mm, every wing that came back rounded 0.12 mm or more. */
+export const BRD_WING_ROUND_BETTER_MIN_MM = 0.1;
 
 /** How far past the outer corner the outline's own slope is read, to take the curve's climb out of the depth. */
 const SLOPE_READ_MM = inchesToMm(1);
@@ -145,4 +172,47 @@ export function findBrdWings(outline: readonly P2[]): BrdFileWing[] {
     stretches.splice(stretch, 1, [lo, pocket.innerIndex], [pocket.outerIndex, hi]);
   }
   return found.sort((a, b) => b.station - a.station);
+}
+
+/**
+ * How far a wing's rounded corner sits inside the sharp corner it rounds: R (1 / cos(turn / 2) - 1), R the radius the step
+ * actually uses (never more than fits) and turn the step's own turn, atan2(depth, run). Nothing for a sharp wing; for a
+ * square step R (square root of 2, less 1). It is the evidence a file's corner is rounded: it measured 0.17 mm for a true
+ * 0.17 mm, 1.55 for 1.70, 3.08 for 3.53 on outlines drawn exactly.
+ */
+export function wingCornerInset(w: Pick<Wing, "depth" | "run" | "radius">): Mm {
+  const radius = effectiveWingRadius(w);
+  const turn = Math.atan2(w.depth, Math.max(w.run, 0));
+  return mm(radius * (1 / Math.cos(turn / 2) - 1));
+}
+
+/**
+ * A wing from its footprint: the inverse of `wingFootprint`. `stepStart` is where the step leaves the curve (nose-most),
+ * `inner` where it reaches full depth, and `share` (0 to 1) the corner radius as a share of the most that fits: 0 is the
+ * sharp wing from `stepStart` to `inner`, 1 the step rounded as far as it fits. With F the footprint and k = 1 - share^2, the
+ * run is (F - share sqrt(F^2 + k depth^2)) / k (or (F^2 - depth^2) / 2F as k reaches 0), nothing when the footprint is
+ * shorter than the rounds, and is held inside the WINGS tab's run range. Everything else about `base` (its lock and fin
+ * offset) is kept.
+ */
+export function wingFromFootprint(stepStart: number, inner: number, depth: number, share: number, base: Wing): Wing {
+  const footprint = Math.max(0, stepStart - inner);
+  const k = 1 - share * share;
+  const raw =
+    footprint <= 0 ? 0 : k < 1e-9 ? (footprint * footprint - depth * depth) / (2 * footprint) : (footprint - share * Math.sqrt(footprint * footprint + k * depth * depth)) / k;
+  const run = Math.min(inchesToMm(WING_RUN_RANGE_IN.max), Math.max(inchesToMm(WING_RUN_RANGE_IN.min), raw));
+  const radius = share * maxWingRadius({ depth: mm(depth), run: mm(run) });
+  const tangent = (share * Math.hypot(run, depth)) / 2;
+  return { ...base, station: mm(stepStart - tangent), depth: mm(depth), run: mm(run), radius: mm(radius) };
+}
+
+/** A file wing's corners as the fit measured them (see `wingCornerInset`). */
+export interface BrdWingCorner {
+  /** The rule in the header: the file's corners are clearly rounded. When false they read as sharp, however slightly rounded. */
+  rounded: boolean;
+  /** The rounded wing that fits the file's step best with our curve held, in the WINGS tab's terms. */
+  measured: { station: Mm; depth: Mm; run: Mm; radius: Mm };
+  /** `wingCornerInset` of `measured`. */
+  inset: Mm;
+  /** How much closer the rounded wing fits the step than the best sharp one, at the step's widest gap. */
+  better: Mm;
 }

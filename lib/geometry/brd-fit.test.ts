@@ -30,9 +30,22 @@ import { FOIL_THICKNESS_RANGE_IN } from "./foil";
 import { MEASURE_STATION_MM, buildOutline } from "./outline";
 import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
 import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
+import { BRD_WING_ROUND_INSET_MIN_MM } from "./brd-wings";
 import { inchesToMm, mm } from "./units";
 import { phase16Boards, phase16WingBoards } from "./__fixtures__/phase16-boards";
-import { MAX_WINGS, WING_DEPTH_RANGE_IN, WING_POSITION_MIN_IN, WING_STEP_IN, clampWingStations, wingPositionTop, type Wing } from "./wings";
+import {
+  MAX_WINGS,
+  WING_DEPTH_RANGE_IN,
+  WING_POSITION_MIN_IN,
+  WING_RUN_RANGE_IN,
+  WING_STEP_IN,
+  clampWingStations,
+  effectiveWingRadius,
+  maxWingRadius,
+  wingPositionTop,
+  wingRadiusTop,
+  type Wing,
+} from "./wings";
 
 /**
  * The closest-fit maths (quick 261113-d9b). The round trip is the best proof the fit works, because the right answer is
@@ -602,7 +615,7 @@ function baseCurveGap(trip: Trip): number {
 }
 
 /** Every wing sits inside the sliders' ranges and the order rule, as the WINGS tab would hold it. */
-function expectWingsHoldable(fit: BrdFit) {
+function expectWingsHoldable(fit: BrdFit, roundedAllowed = false) {
   const wings = fit.outline.wings!;
   const geometry = buildOutline({ ...fit.outline, wings: undefined });
   for (const w of wings) {
@@ -611,7 +624,14 @@ function expectWingsHoldable(fit: BrdFit) {
     expect(w.depth).toBeGreaterThanOrEqual(inchesToMm(WING_DEPTH_RANGE_IN.min) - 1e-9);
     expect(w.depth).toBeLessThanOrEqual(inchesToMm(WING_DEPTH_RANGE_IN.max) + 1e-9);
     expect(w.run).toBeGreaterThanOrEqual(0);
-    expect(w.radius).toBe(0);
+    if (roundedAllowed) {
+      // A fitted radius is kept as found, never more than fits (quick 261113-m5w).
+      expect(w.radius).toBeGreaterThanOrEqual(0);
+      expect(w.radius).toBeLessThanOrEqual(maxWingRadius(w) + 1e-9);
+      expect(w.run).toBeLessThanOrEqual(inchesToMm(WING_RUN_RANGE_IN.max) + 1e-9);
+    } else {
+      expect(w.radius).toBe(0);
+    }
     expect(w.lock).toBeNull();
     expect(w.finOffset).toBe(0);
   }
@@ -625,6 +645,7 @@ describe("every file without a wing keeps its fit as it was", () => {
       const { fit } = tripOf(label);
       expect("wings" in fit.outline).toBe(false);
       expect(fit.fileWings).toEqual([]);
+      expect(fit.fileWingCorners).toEqual([]);
     }
   }, 120_000);
 });
@@ -680,9 +701,11 @@ describe.each([
 });
 
 describe("the app's own default second wing", () => {
-  // "+ Add wing 2" rounds the wing as far as it fits (1 7/16" on a 1/2" run): that step is a long gentle S, and a sharp wing
-  // matches it with a longer run (measured 0.80" for 0.5") sitting a little forward. The outline still follows it closely;
-  // that is the honest limit of not fitting the corner radius, so only the outline and wing 1 are held to the truth here.
+  // "+ Add wing 2" rounds the wing as far as it fits (1 7/16" on a 1/2" run). Its corners sit only about 0.4 mm inside sharp ones
+  // (0.6 mm drawn exactly), too little to tell through the file's half-millimetre drawing (the writer smooths a gentle S within
+  // 0.5 mm), so they read sharp, and a sharp wing matches that long S with a longer run (measured 0.80" for 0.5") sitting a
+  // little forward. The outline still follows it closely; that is the honest limit, measured, so only the outline and wing 1
+  // are held to the truth here.
   it("still finds two wings, draws an outline within a millimetre, and wing 1 within two slider steps", () => {
     const trip = wingTripOf("wing|shortboard|two");
     const truth = trip.fields.outline.wings!;
@@ -697,7 +720,9 @@ describe("the app's own default second wing", () => {
 
   it("finishes the winged fit of a two-wing board in under a second and a half", () => {
     const trip = wingTripOf("wing|shortboard|two", inchesToMm(1 / 4));
-    console.log(`the two-wing Shortboard's whole fit took ${trip.ms.toFixed(0)} ms (a wingless Shortboard ${tripOf("shortboard|asis|hard").ms.toFixed(0)} ms)`);
+    console.log(
+      `the two-wing Shortboard's whole fit took ${trip.ms.toFixed(0)} ms, the Shortboard with a rounded 1 by 1 inch wing ${roundedTrip("shortboard", 1, 1, "top").ms.toFixed(0)} ms (a wingless Shortboard ${tripOf("shortboard|asis|hard").ms.toFixed(0)} ms)`,
+    );
     expect(trip.ms).toBeLessThan(1500);
   }, 120_000);
 });
@@ -719,5 +744,180 @@ describe("a refit for a stringer lift may reuse the first fit's outline (quick 2
     const reusedMs = performance.now() - reusedAt;
     expect(reused).toEqual(searched);
     expect(reusedMs).toBeLessThan(searchedMs);
+  }, 120_000);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A sharp-winged file fits exactly as before (quick 261113-m5w)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Recorded on the code as it stood BEFORE a wing's corners were read from the file (quick 261113-m5w): the winged boards of
+ * the app's own writer whose corners are sharp, or rounded too slightly to tell from sharp through a half-millimetre drawing,
+ * each fit's outline controls (our wings included), closeness and the wings the finder read, written out whole in the
+ * snapshot beside the wingless ones. A wing the file does not clearly round must not move by a digit, so this snapshot is
+ * never re-recorded either.
+ */
+describe("a sharp-winged file fits exactly as before (quick 261113-m5w)", () => {
+  const SLOW = 120_000;
+  const snapshotted: [string, () => Trip][] = [
+    ["wing|shortboard|one", () => wingTripOf("wing|shortboard|one")],
+    ["wing|shortboard|deep", () => wingTripOf("wing|shortboard|deep")],
+    ["wing|shortboard|square", () => wingTripOf("wing|shortboard|square")],
+    ["wing|shortboard|infade", () => wingTripOf("wing|shortboard|infade")],
+    ["wing|shortboard|rounded", () => wingTripOf("wing|shortboard|rounded")],
+    ["wing|fish|rounded", () => wingTripOf("wing|fish|rounded")],
+    ["wing|midlength|square", () => wingTripOf("wing|midlength|square")],
+    ["wing|longboard|deep", () => wingTripOf("wing|longboard|deep")],
+    ["wing|shortboard|two", () => wingTripOf("wing|shortboard|two")],
+    ["wing|shortboard|two, wing 2 rounded 1/4 inch", () => wingTripOf("wing|shortboard|two", inchesToMm(1 / 4))],
+  ];
+  it.each(snapshotted)("%s", (_name, trip) => {
+    const { fit } = trip();
+    expect({ outline: fit.outline, closeness: fit.closeness, fileWings: fit.fileWings }).toMatchSnapshot();
+  }, SLOW);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A wing's corners read from the file (quick 261113-m5w)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("a corner the file does not clearly round opens sharp", () => {
+  it.each(["wing|shortboard|one", "wing|shortboard|deep", "wing|shortboard|square", "wing|shortboard|infade", "wing|shortboard|rounded", "wing|fish|rounded", "wing|midlength|square", "wing|longboard|deep", "wing|shortboard|two"])(
+    "%s: every corner reads sharp, with its inset under the 1.1 mm line, and every wing's radius is 0",
+    (label) => {
+      const { fit } = wingTripOf(label);
+      expect(fit.fileWingCorners).toHaveLength(fit.fileWings.length);
+      fit.fileWingCorners.forEach((corner, k) => {
+        expect(corner.rounded, `wing ${k + 1}`).toBe(false);
+        expect(corner.inset, `wing ${k + 1} inset`).toBeLessThan(BRD_WING_ROUND_INSET_MIN_MM);
+      });
+      expectWingsHoldable(fit);
+    },
+    120_000,
+  );
+
+  it("wing 2 rounded 1/4 inch on the two-wing Shortboard also stays sharp", () => {
+    const { fit } = wingTripOf("wing|shortboard|two", inchesToMm(1 / 4));
+    expect(fit.fileWingCorners.map((corner) => corner.rounded)).toEqual([false, false]);
+    expectWingsHoldable(fit);
+  }, 120_000);
+});
+
+const ONE_WING = (label: string) => WING_BOARDS.find((b) => b.label === label)!.fields;
+
+/** The preset's wing 1 made `depthIn` deep over a `runIn` run with the corner radius `radius` ("top" is the slider's top), written, read back and fitted. */
+function roundedTrip(preset: string, depthIn: number, runIn: number, radius: number | "top"): Trip {
+  const fields = ONE_WING(`wing|${preset}|one`);
+  const step = { depth: inchesToMm(depthIn), run: inchesToMm(runIn) };
+  const wing: Wing = { ...fields.outline.wings![0], ...step, radius: radius === "top" ? wingRadiusTop(step, "imperial") : mm(radius) };
+  return tripFromFields(`rounded|${preset}|${depthIn}x${runIn}|${radius}`, { ...fields, outline: { ...fields.outline, wings: [wing] } });
+}
+
+/** Our wing 1 against the truth, in slider steps: station and depth within one, run and the radius that fits within three. */
+function expectRoundedWing(fit: BrdFit, truth: Wing) {
+  const ours = fit.outline.wings![0];
+  const step = inchesToMm(WING_STEP_IN);
+  expect(fit.fileWingCorners).toHaveLength(1);
+  expect(fit.fileWingCorners[0].rounded).toBe(true);
+  expect(fit.fileWingCorners[0].inset).toBeGreaterThanOrEqual(BRD_WING_ROUND_INSET_MIN_MM);
+  expect(ours.radius).toBeGreaterThan(0);
+  expect(Math.abs(ours.station - truth.station), "station").toBeLessThanOrEqual(step);
+  expect(Math.abs(ours.depth - truth.depth), "depth").toBeLessThanOrEqual(step);
+  expect(Math.abs(ours.run - truth.run), "run").toBeLessThanOrEqual(3 * step);
+  expect(Math.abs(effectiveWingRadius(ours) - effectiveWingRadius(truth)), "radius").toBeLessThanOrEqual(3 * step);
+  expect(ours.radius).toBeLessThanOrEqual(maxWingRadius(ours) + 1e-9);
+  expect(fit.fileWingCorners[0].measured).toEqual({ station: ours.station, depth: ours.depth, run: ours.run, radius: ours.radius });
+  expectWingsHoldable(fit, true);
+  expectInsideRanges(fit);
+}
+
+describe("a wing the file clearly rounds comes back rounded, and closer in position and run than a sharp wing was", () => {
+  const SLOW = 120_000;
+  const cases: [string, () => Trip, number][] = [
+    ["a 1 inch by 1 inch step rounded as far as it goes, on the Shortboard", () => roundedTrip("shortboard", 1, 1, "top"), 1],
+    ["... on the Fish", () => roundedTrip("fish", 1, 1, "top"), 1],
+    ["... on the Midlength", () => roundedTrip("midlength", 1, 1, "top"), 1],
+    ["... on the Longboard (its nose reads 2.3 mm either way)", () => roundedTrip("longboard", 1, 1, "top"), 3],
+    ["a square 3/8 inch step rounded 1/8 inch, on the Shortboard", () => roundedTrip("shortboard", 3 / 8, 0, inchesToMm(1 / 8)), 1],
+    ["... on the Midlength", () => roundedTrip("midlength", 3 / 8, 0, inchesToMm(1 / 8)), 1],
+    ["a square 3/8 inch step rounded as far as it goes, on the Shortboard", () => roundedTrip("shortboard", 3 / 8, 0, "top"), 1],
+    ["... on the Midlength", () => roundedTrip("midlength", 3 / 8, 0, "top"), 1],
+    ["a steep 3/4 inch step over a 1/4 inch run, rounded 1/4 inch, on the Shortboard", () => roundedTrip("shortboard", 3 / 4, 1 / 4, inchesToMm(1 / 4)), 1],
+  ];
+
+  it.each(cases)("%s", (_name, trip, widest) => {
+    const { fit, fields } = trip();
+    expectRoundedWing(fit, fields.outline.wings![0]);
+    expect(fit.closeness.outline.largest).toBeLessThan(widest);
+    expect(fit.lines.outline).toEqual(drawn({ ...fields, outline: fit.outline }));
+  }, SLOW);
+
+  it("moves a deep rounded wing's position and run back toward the truth: 11 1/16 and 1 1/8 inch where a sharp wing sat 11 5/16 and 1 5/8", () => {
+    const { fit, fields } = roundedTrip("shortboard", 1, 1, "top");
+    const truth = fields.outline.wings![0];
+    const sharp = wingTripOf("wing|shortboard|deep").fit.outline.wings![0];
+    expect(sharp.radius).toBe(0);
+    const ours = fit.outline.wings![0];
+    expect(Math.abs(ours.station - truth.station)).toBeLessThan(inchesToMm(0.05));
+    expect(Math.abs(ours.run - truth.run)).toBeLessThan(inchesToMm(0.13));
+    // What a sharp fit of this very file gave: forward and long. (The sharp fit of the same file, with the corner pass held off,
+    // was 11.317 inches and 1.655 inches; the rounded fit must be well inside that.)
+    expect(ours.station - truth.station).toBeLessThan(inchesToMm(0.317) / 2);
+    expect(ours.run).toBeLessThan(inchesToMm(1.655) - inchesToMm(0.3));
+  }, SLOW);
+
+  it("keeps the radius as found: not rounded to the slider's grid, and never more than fits", () => {
+    const { fit } = roundedTrip("shortboard", 3 / 8, 0, "top");
+    const ours = fit.outline.wings![0];
+    const grid = inchesToMm(WING_STEP_IN);
+    expect(Math.abs(ours.radius / grid - Math.round(ours.radius / grid))).toBeGreaterThan(1e-6);
+    expect(ours.radius).toBeLessThanOrEqual(maxWingRadius(ours) + 1e-9);
+  }, SLOW);
+});
+
+describe("a file drawn exactly (no writer's smoothing) rounds the corners that are clearly there", () => {
+  const SLOW = 120_000;
+  /** The same trip's lines, its outline replaced by the board's own drawn outline, fitted again. */
+  const exactFit = (trip: Trip): BrdFit =>
+    fitBoardToBrd({ length: trip.file.length, outline: drawn(trip.fields), bottom: trip.file.bottom, deck: trip.file.deck });
+
+  it.each([
+    ["a 1/2 inch by 1/2 inch step rounded as far as it goes, on the Shortboard", () => roundedTrip("shortboard", 1 / 2, 1 / 2, "top")],
+    ["... on the Fish", () => roundedTrip("fish", 1 / 2, 1 / 2, "top")],
+    ["a 1 inch by 1 inch step rounded as far as it goes, on the Fish", () => roundedTrip("fish", 1, 1, "top")],
+    ["a steep 3/4 inch step over a 1/4 inch run, rounded 1/4 inch, on the Shortboard", () => roundedTrip("shortboard", 3 / 4, 1 / 4, inchesToMm(1 / 4))],
+  ])("%s", (_name, trip) => {
+    const t = trip();
+    expectRoundedWing(exactFit(t), t.fields.outline.wings![0]);
+  }, SLOW);
+
+  it("opens a 1/2 inch by 1/2 inch step rounded 1/4 inch sharp: the rounding sits only about half a millimetre inside the sharp corner", () => {
+    const t = wingTripOf("wing|shortboard|rounded");
+    const fit = exactFit(t);
+    expect(fit.fileWingCorners[0].rounded).toBe(false);
+    expect(fit.fileWingCorners[0].inset).toBeLessThan(BRD_WING_ROUND_INSET_MIN_MM);
+    expect(fit.outline.wings![0].radius).toBe(0);
+  }, SLOW);
+});
+
+describe("two wings, both clearly rounded", () => {
+  it("come back rounded, in order, and the winged outline is within a millimetre of the file (a Fish)", () => {
+    const fields = ONE_WING("wing|fish|one");
+    const two = WING_BOARDS.find((b) => b.label === "wing|fish|two")!.fields.outline.wings!;
+    const deep = { depth: inchesToMm(1), run: inchesToMm(1) };
+    const wings: Wing[] = [
+      { ...two[0], ...deep, radius: wingRadiusTop(deep, "imperial") },
+      { ...two[1], station: inchesToMm(7), depth: inchesToMm(3 / 8), run: mm(0), radius: inchesToMm(3 / 16) },
+    ];
+    const trip = tripFromFields("rounded|fish|two", { ...fields, outline: { ...fields.outline, wings } });
+    const fit = trip.fit;
+    expect(fit.fileWingCorners.map((corner) => corner.rounded)).toEqual([true, true]);
+    expect(fit.outline.wings![0].station).toBeGreaterThan(fit.outline.wings![1].station);
+    expect(fit.outline.wings!.every((w) => w.radius > 0)).toBe(true);
+    expectWingsHoldable(fit, true);
+    expectInsideRanges(fit);
+    expect(fit.closeness.outline.largest).toBeLessThan(1);
+    expect(fit.lines.outline).toEqual(drawn({ ...trip.fields, outline: fit.outline }));
   }, 120_000);
 });

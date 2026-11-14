@@ -3,11 +3,30 @@ import { brdText } from "../export/brd";
 import { readAnyBrd } from "../export/brd-read";
 import type { P2 } from "./bezier-fit";
 import { buildBoardSurface } from "./board-surface";
-import { BRD_WING_POCKET_MIN_MM, BRD_WING_STEP_MAX_MM, findBrdWings } from "./brd-wings";
+import {
+  BRD_WING_CORNER_PAD_MM,
+  BRD_WING_CORNER_WINDOW_MM,
+  BRD_WING_POCKET_MIN_MM,
+  BRD_WING_ROUND_BETTER_MIN_MM,
+  BRD_WING_ROUND_INSET_MIN_MM,
+  BRD_WING_STEP_MAX_MM,
+  findBrdWings,
+  wingCornerInset,
+  wingFromFootprint,
+} from "./brd-wings";
 import { designCrossSectionInput, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES, type DesignSummaryFields } from "./design";
 import { buildOutline } from "./outline";
 import { inchesToMm, mm } from "./units";
-import { MAX_WINGS, WING_RUN_RANGE_IN, type Wing } from "./wings";
+import {
+  MAX_WINGS,
+  WING_RUN_RANGE_IN,
+  effectiveWingRadius,
+  maxWingRadius,
+  wingFootprint,
+  wingRadiusTop,
+  wingStepShape,
+  type Wing,
+} from "./wings";
 import { phase16Boards, phase16WingBoards } from "./__fixtures__/phase16-boards";
 
 /**
@@ -145,5 +164,115 @@ describe("findBrdWings: a wing is found, measured in the WINGS tab's terms", () 
     const found = findBrdWings(outline);
     expect(found).toHaveLength(MAX_WINGS);
     expect(found[0].station).toBeGreaterThan(found[1].station);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A wing's corners (quick 261113-m5w)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const wingOf = (depthIn: number, runIn: number, radius: number): Wing => ({
+  station: mm(11 * IN),
+  depth: mm(depthIn * IN),
+  run: mm(runIn * IN),
+  radius: mm(radius),
+  lock: null,
+  finOffset: mm(0),
+});
+
+/** The rounded steps the corner reading is checked on: each with the radius that makes it clearly rounded, and a sharp twin. */
+const ROUNDED_STEPS: [string, Wing][] = [
+  ["a square 3/8 inch step rounded 1/8 inch", wingOf(3 / 8, 0, IN / 8)],
+  ["a square 3/8 inch step rounded as far as it fits", wingOf(3 / 8, 0, wingRadiusTop({ depth: mm((3 * IN) / 8), run: mm(0) }, "imperial"))],
+  ["a 1/2 inch by 1/2 inch step rounded 1/4 inch", wingOf(1 / 2, 1 / 2, IN / 4)],
+  ["a 1/2 inch by 1/2 inch step rounded as far as it fits", wingOf(1 / 2, 1 / 2, wingRadiusTop({ depth: mm(IN / 2), run: mm(IN / 2) }, "imperial"))],
+  ["a 1 inch by 1 inch step rounded as far as it fits", wingOf(1, 1, wingRadiusTop({ depth: mm(IN), run: mm(IN) }, "imperial"))],
+];
+
+describe("the constants a wing's corners are read with", () => {
+  it("read the corner on a window 1 1/2 inches either side of the step, evidence a quarter inch past it, and call it rounded at 1.1 mm and 0.1 mm", () => {
+    expect(BRD_WING_CORNER_WINDOW_MM).toBeCloseTo(1.5 * IN, 9);
+    expect(BRD_WING_CORNER_PAD_MM).toBeCloseTo(IN / 4, 9);
+    expect(BRD_WING_ROUND_INSET_MIN_MM).toBe(1.1);
+    expect(BRD_WING_ROUND_BETTER_MIN_MM).toBe(0.1);
+  });
+});
+
+describe("wingCornerInset", () => {
+  it("is nothing for a sharp wing", () => {
+    expect(wingCornerInset(wingOf(1 / 2, 1 / 2, 0))).toBe(0);
+    expect(wingCornerInset(wingOf(3 / 8, 0, 0))).toBe(0);
+  });
+
+  it("is R (square root of 2, less 1) for a square step: its 90 degree turn", () => {
+    expect(wingCornerInset(wingOf(3 / 8, 0, IN / 8))).toBeCloseTo((IN / 8) * (Math.SQRT2 - 1), 9);
+  });
+
+  it.each(ROUNDED_STEPS)("is how far the step's own outer round sits inside the sharp corner, for %s", (_name, w) => {
+    const shape = wingStepShape(w);
+    // The outer round's centre stands (tangent, radius) from the sharp corner: its distance, less the radius, is the inset.
+    expect(Math.abs(wingCornerInset(w) - (Math.hypot(shape.tangent, shape.radius) - shape.radius))).toBeLessThan(1e-9);
+    expect(wingCornerInset(w)).toBeGreaterThan(0);
+  });
+
+  it("reads the radius that fits, so an asked radius above what fits gives the answer of the most that fits", () => {
+    const step = { depth: mm((3 * IN) / 8), run: mm(0) };
+    const asked = { ...step, radius: mm(10 * IN) };
+    const most = { ...step, radius: maxWingRadius(step) };
+    expect(wingCornerInset(asked)).toBeCloseTo(wingCornerInset(most), 12);
+    expect(effectiveWingRadius(asked)).toBeCloseTo(maxWingRadius(step), 12);
+  });
+});
+
+describe("wingFromFootprint", () => {
+  it.each(ROUNDED_STEPS)("gives back the step whose footprint it is, for %s, and its sharp twin", (_name, w) => {
+    const foot = wingFootprint(w);
+    const share = effectiveWingRadius(w) / maxWingRadius(w);
+    const back = wingFromFootprint(foot.stepStart, foot.inner, w.depth, share, w);
+    expect(back.station).toBeCloseTo(w.station, 6);
+    expect(back.run).toBeCloseTo(w.run, 6);
+    expect(back.depth).toBe(w.depth);
+    expect(back.radius).toBeCloseTo(effectiveWingRadius(w), 6);
+    const sharpTwin = { ...w, radius: mm(0) };
+    const sharpFoot = wingFootprint(sharpTwin);
+    const sharp = wingFromFootprint(sharpFoot.stepStart, sharpFoot.inner, w.depth, 0, w);
+    expect(sharp.station).toBeCloseTo(w.station, 6);
+    expect(sharp.run).toBeCloseTo(w.run, 6);
+    expect(sharp.radius).toBe(0);
+  });
+
+  it("keeps everything else about the wing it is given: its lock and its fin offset", () => {
+    const base: Wing = { ...wingOf(1 / 2, 1 / 2, 0), lock: "front-trailing", finOffset: mm(7) };
+    const w = wingFromFootprint(mm(300), mm(280), mm(10), 0, base);
+    expect(w.lock).toBe("front-trailing");
+    expect(w.finOffset).toBe(7);
+  });
+
+  it("with no share, is the sharp wing from the step's start to where it reaches full depth", () => {
+    const w = wingFromFootprint(mm(300), mm(280), mm(10), 0, wingOf(1 / 2, 1 / 2, 0));
+    expect(w.station).toBeCloseTo(300, 9);
+    expect(w.run).toBeCloseTo(20, 9);
+    expect(w.radius).toBe(0);
+  });
+
+  it("with a footprint shorter than the depth's rounds, is a square step", () => {
+    const w = wingFromFootprint(mm(300), mm(299), mm(10), 1, wingOf(1 / 2, 1 / 2, 0));
+    expect(w.run).toBe(0);
+    expect(w.radius).toBeCloseTo(maxWingRadius({ depth: mm(10), run: mm(0) }), 9);
+  });
+
+  it("never lets the run leave the WINGS tab's range", () => {
+    const long = wingFromFootprint(mm(1000), mm(100), mm(10), 0, wingOf(1 / 2, 1 / 2, 0));
+    expect(long.run).toBeCloseTo(inchesToMm(WING_RUN_RANGE_IN.max), 9);
+    const none = wingFromFootprint(mm(100), mm(300), mm(10), 0.5, wingOf(1 / 2, 1 / 2, 0));
+    expect(none.run).toBe(0);
+  });
+
+  it("never asks for more radius than fits: the radius is the share of the most that fits", () => {
+    for (const share of [0, 0.15, 0.5, 0.9, 1]) {
+      const w = wingFromFootprint(mm(300), mm(250), mm(12), share, wingOf(1 / 2, 1 / 2, 0));
+      expect(w.radius).toBeCloseTo(share * maxWingRadius(w), 9);
+      expect(w.radius).toBeLessThanOrEqual(maxWingRadius(w) + 1e-9);
+    }
   });
 });
