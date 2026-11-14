@@ -92,7 +92,7 @@
  * below), so it always reads upright on screen regardless of which way the board is turned.
  */
 
-import { type ReactNode, useRef } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
 import {
   CALLOUT_PX,
   CalloutChipFrame,
@@ -101,6 +101,7 @@ import {
   useViewerZoomUnit,
   type ViewerOrientation,
 } from "@/components/viewer/callout-primitives";
+import { useCoarsePointer } from "@/components/design/use-viewer-media";
 import { useUnits } from "@/components/units-provider";
 import { ScreenSizeGroup, useViewerZoom } from "@/components/viewer/zoom-viewport";
 import { parseViewBox, rectInContentFrame, scaleDash } from "@/components/viewer/zoom-math";
@@ -109,9 +110,9 @@ import { thinningMarksSentence } from "@/lib/geometry/blank-reasons";
 import { blankDisplayName, rockerSpecOf } from "@/lib/geometry/custom-rocker";
 import type { BlankSideView, BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilStationKey } from "@/lib/geometry/foil";
-import { formatMark, stationLabel } from "@/lib/geometry/measure-display";
+import { formatDim, formatMark, stationLabel } from "@/lib/geometry/measure-display";
 import { ROCKER_LIFT_RANGE_IN } from "@/lib/geometry/rocker";
-import { mm, type Mm, mmToInches } from "@/lib/geometry/units";
+import { inchesToMm, mm, type Mm, mmToInches } from "@/lib/geometry/units";
 import {
   BLANK_LINE_PX,
   cardPinScale,
@@ -206,6 +207,12 @@ export interface RockerViewerProps {
  * parent rotates `rotate(90)` for vertical (rather than the outline viewer's `rotate(-90)` for
  * horizontal), so the child here undoes it with `rotate(-90 x y)`.
  */
+/** The hover read-out card (quick 261114-lym): a letter, a row and the padding in screen dots, and its gap above the deck. */
+const HOVER_CHAR_PX = 7.2;
+const HOVER_ROW_PX = 18;
+const HOVER_PAD_PX = 8;
+const HOVER_GAP_PX = 14;
+
 function Upright({
   x,
   y,
@@ -715,6 +722,55 @@ export function RockerViewer({
    * same at every zoom. */
   const handleUnit = fitScale > 0 ? 1 / (fitScale * zoom) : 1;
 
+  /**
+   * The hover read-out (quick 261114-lym; the founder's request of 2026-09-14, "live coordinates", and his pick of
+   * 2026-11-14: hover only, nothing on touch): a mouse or trackpad over the board reads the station up from the tail,
+   * the rocker and the thickness there, off the very profile the drawing is made from (`profile.rockerAt`,
+   * `profile.thicknessAt`), with a dot on the bottom and one on the deck at that station and a faint station line
+   * between them. The station is read to a sixteenth so a hair of movement redraws nothing. Only the VIEWER's own
+   * grammar (`"full"`), never the order form's; `null` off the board, on a touch device, and while two fingers zoom.
+   */
+  const coarsePointer = useCoarsePointer();
+  const contentRef = useRef<SVGGElement>(null);
+  const [hoverStationIn, setHoverStationIn] = useState<number | null>(null);
+  function updateHover(event: ReactPointerEvent<SVGSVGElement>) {
+    if (callouts !== "full" || coarsePointer || event.pointerType === "touch") return;
+    const el = contentRef.current;
+    const ctm = el?.getScreenCTM();
+    if (!el || !ctm) return;
+    const local = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+    // `pxX` inverted: nose on the left, the tail tip `lengthIn` along from `PAD_X + boardOffsetX`.
+    const stationIn = lengthIn - (local.x - PAD_X - boardOffsetX) / scale;
+    const next = stationIn >= 0 && stationIn <= lengthIn ? Math.round(stationIn * 16) / 16 : null;
+    if (next !== hoverStationIn) setHoverStationIn(next);
+  }
+  const hover = (() => {
+    if (hoverStationIn === null || callouts !== "full") return null;
+    const station = inchesToMm(hoverStationIn);
+    const rocker = profile.rockerAt(station);
+    const thickness = profile.thicknessAt(station);
+    const x = pxX(hoverStationIn);
+    const bottomY = pxY(mmToInches(rocker));
+    const deckY = pxY(mmToInches(mm(rocker + thickness)));
+    const lines = [
+      { label: "Up from tail", value: formatDim(station, system) },
+      { label: "Rocker", value: formatMark(rocker, system) },
+      { label: "Thickness", value: formatMark(thickness, system) },
+    ];
+    // The card: above the deck at the station AND above the row of thickness cards that hang over the deck
+    // (`deckRailY`: their top edge turned flat, their cross-axis centre turned upright), so it never sits on a card;
+    // kept inside the frame's own width, its text screen-upright.
+    const longest = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
+    const width = Math.max(CALLOUT_PX.chipW, longest * HOVER_CHAR_PX + HOVER_PAD_PX * 2) * handleUnit;
+    const height = (lines.length * HOVER_ROW_PX + HOVER_PAD_PX * 2) * handleUnit;
+    const frameLeft = baseRect ? baseRect.x : 0;
+    const frameRight = baseRect ? baseRect.x + baseRect.width : width;
+    const cardX = Math.min(Math.max(x - width / 2, frameLeft), frameRight - width);
+    const cardsTopY = vertical ? deckRailY - (CALLOUT_PX.chipW / 2) * handleUnit : deckRailY;
+    const cardY = Math.min(deckY, cardsTopY) - HOVER_GAP_PX * handleUnit - height;
+    return { x, bottomY, deckY, lines, card: { x: cardX, y: cardY, width, height } };
+  })();
+
   // The measuring points: the board's five stations on its bottom and its deck, and with a blank,
   // every station the catalogue measured — rocker stations on the blank's bottom, thickness
   // stations on its deck (each attribute's own list, so a width-only station draws nothing here).
@@ -790,6 +846,13 @@ export function RockerViewer({
       // once zoomed in, so one finger pans the drawing) join in here. Outside one (the order form)
       // `svgProps` is empty and this svg is exactly what it was.
       {...svgProps}
+      onPointerMove={(event) => {
+        svgProps.onPointerMove?.(event);
+        updateHover(event);
+      }}
+      onPointerLeave={() => {
+        if (hoverStationIn !== null) setHoverStationIn(null);
+      }}
       className="absolute inset-0 block h-full w-full select-none"
       style={{ WebkitTouchCallout: "none", ...svgProps.style }}
       role="img"
@@ -799,7 +862,7 @@ export function RockerViewer({
           untouched — the rotation lives on this ONE group, so pxX/pxY and their call sites keep
           drawing the layout they always drew. React omits an `undefined` attribute, so in
           horizontal this is a plain pass-through container with no transform. */}
-      <g transform={vertical ? "rotate(90)" : undefined}>
+      <g ref={contentRef} transform={vertical ? "rotate(90)" : undefined}>
         {/* Quick 261007-fnz (D5, P8): zoomed in, a grid behind everything, counted from the board's
             tail tip along the board and from the rocker baseline across it — ROCKER's side view has
             no stringer, and the baseline is its zero line, the flat surface the board sits on.
@@ -1010,6 +1073,39 @@ export function RockerViewer({
                 pointerEvents="none"
               />
             ))}
+          </g>
+        )}
+        {hover && (
+          <g data-rocker-hover pointerEvents="none">
+            <line
+              x1={hover.x}
+              y1={hover.bottomY}
+              x2={hover.x}
+              y2={hover.deckY}
+              stroke="var(--outline-station-line)"
+              strokeWidth={zoomUnit}
+              strokeDasharray={scaleDash("5 4", zoomUnit)}
+            />
+            <circle cx={hover.x} cy={hover.bottomY} r={4 * handleUnit} fill="var(--outline-ink)" />
+            <circle cx={hover.x} cy={hover.deckY} r={4 * handleUnit} fill="var(--outline-ink)" />
+            <Upright x={hover.card.x + hover.card.width / 2} y={hover.card.y + hover.card.height / 2} vertical={vertical}>
+              <CalloutChipFrame x={hover.card.x} y={hover.card.y} width={hover.card.width} height={hover.card.height} />
+              {hover.lines.map((line, i) => (
+                <text
+                  key={line.label}
+                  x={hover.card.x + hover.card.width / 2}
+                  y={hover.card.y + HOVER_PAD_PX * handleUnit + HOVER_ROW_PX * handleUnit * (i + 0.75)}
+                  textAnchor="middle"
+                >
+                  <tspan style={{ fontSize: CALLOUT_PX.name * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }} fill="var(--outline-callout-label)">
+                    {line.label} —{" "}
+                  </tspan>
+                  <tspan style={{ fontSize: CALLOUT_PX.value * handleUnit, fontWeight: 700, fontFamily: "var(--font-body)" }} fill="var(--outline-ink)">
+                    {line.value}
+                  </tspan>
+                </text>
+              ))}
+            </Upright>
           </g>
         )}
       </g>

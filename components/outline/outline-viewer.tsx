@@ -450,6 +450,12 @@ export function OutlineViewer({
    * readout chip's anchor, so the card follows the THUMB rather than the point. `null` whenever no
    * touch gesture is live. */
   const [touchFingerBoard, setTouchFingerBoard] = useState<OutlineDragPoint | null>(null);
+  /** The point under a mouse or trackpad pointer (quick 261114-lym, the founder's request of 2026-09-14: "live
+   * coordinates"): its station up from the tail, to the millimetre, and which side of the stringer it is on (the sign
+   * of `halfWidth`; the magnitude is not used). Drives the hover read-out — the station and the board's width there —
+   * and its dot on the curve. `null` off the board, on a touch device (hover only, his pick of 2026-11-14), while a
+   * drag is live, and wherever the callouts are hidden. */
+  const [hoverBoard, setHoverBoard] = useState<OutlineDragPoint | null>(null);
   const { lengthIn, centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(
     geometry,
     hideCallouts,
@@ -933,11 +939,17 @@ export function OutlineViewer({
    * is (`callout-primitives.tsx`'s own doc comment), so both are multiplied by `handleUnit` once,
    * at the end, the same conversion `pinnedCalloutSizes` performs.
    */
-  let readoutChip:
-    | { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number }
-    | null = null;
-  if (touchDragTarget && touchFingerBoard) {
-    const lines = outlineReadoutLines(touchDragTarget);
+  type ReadoutChip = { lines: { label: string; value: string }[]; x: number; y: number; width: number; height: number };
+  /** The read-out card for `lines`, anchored at `anchorBoard` (a finger's own board point during a touch drag; the
+   * curve point under the pointer for the hover read-out) and placed clear of the board — one builder for both. */
+  function buildReadoutChip(
+    lines: { label: string; value: string }[],
+    anchorBoard: OutlineDragPoint,
+    // Boxes in the canonical frame the card must also keep clear of (the hover read-out: the station read-outs on
+    // the right rail and the input chips in the left gutter); each is read as sections at its top, middle and foot,
+    // the way the board's own silhouette is. The touch drag's card passes none, so it places exactly as it did.
+    obstacles: { x0: number; x1: number; y0: number; y1: number }[] = [],
+  ): ReadoutChip {
     const longestChars = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
     const widthPx = Math.max(CALLOUT_PX.chipW, longestChars * CALLOUT_CHAR_PX + READOUT_PAD_PX * 2);
     const heightPx = lines.length * READOUT_ROW_PX + READOUT_PAD_PX * 2;
@@ -948,8 +960,8 @@ export function OutlineViewer({
     const [vbMinX, vbMinY, vbWidth, vbHeight] = view
       ? [view.x, view.y, view.width, view.height]
       : viewBox.split(" ").map(Number);
-    const fingerCx = pxX(CONSTRUCTION_SIDE * mmToInches(touchFingerBoard.halfWidth));
-    const fingerCy = lenToY(mmToInches(touchFingerBoard.station));
+    const fingerCx = pxX(CONSTRUCTION_SIDE * mmToInches(anchorBoard.halfWidth));
+    const fingerCy = lenToY(mmToInches(anchorBoard.station));
     const anchor = toViewBoxPoint(fingerCx, fingerCy);
     let boxBottom = anchor.y - READOUT_GAP_PX * handleUnit;
     let boxTop = boxBottom - height;
@@ -989,6 +1001,11 @@ export function OutlineViewer({
     // the same point, so a card anchored right at the tail still sees it.
     const tailClosePoint = toViewBoxPoint(pxX(0), lenToY(centerCloseIn));
     boardSections.push(boardSection(tailClosePoint, tailClosePoint, horizontal ? "x" : "y"));
+    for (const box of obstacles) {
+      for (const y of [box.y0, (box.y0 + box.y1) / 2, box.y1]) {
+        boardSections.push(boardSection(toViewBoxPoint(box.x0, y), toViewBoxPoint(box.x1, y), horizontal ? "x" : "y"));
+      }
+    }
 
     // The card may use the whole VISIBLE drawing, not just the viewBox (D-07): both viewers draw
     // `xMidYMid meet`, so the letterbox slack either side of the fitted drawing is real, paintable
@@ -1018,8 +1035,9 @@ export function OutlineViewer({
       anchor,
     );
 
-    readoutChip = { lines, x: placed.x, y: placed.y, width, height };
+    return { lines, x: placed.x, y: placed.y, width, height };
   }
+
 
   // WP Offset is grouped with Widepoint (sketch 004) and carries no leader. In vertical it sits
   // directly beneath Widepoint in the same gutter column — stepping down by a chip height. Read
@@ -1072,6 +1090,53 @@ export function OutlineViewer({
   const chipHalfTurned = calloutSizes.chipW / 2;
   const wingStationYs = viewerWings.map((w) => lenToY(mmToInches(w.station)));
   const wingChipX = horizontal ? wpOffsetChipX : frame.chipRightX;
+
+  /** The hover read-out (quick 261114-lym): the station up from the tail and the board's full width there, read off
+   * the curve the viewer draws (`sampleOutline`), with its dot on the rail the pointer is nearer. Never while a touch
+   * drag's own card is up. */
+  const hoverSample = (() => {
+    if (!hoverBoard || touchDragTarget) return null;
+    const half = sampleOutline(geometry, hoverBoard.station);
+    const sideOfStringer = hoverBoard.halfWidth < 0 ? -1 : 1;
+    return {
+      station: hoverBoard.station,
+      halfWidthIn: mmToInches(half),
+      // `toBoardPoint` reads the side as `CONSTRUCTION_SIDE` times the pointer's x off the stringer, so the drawing's
+      // own x side is that sign times `CONSTRUCTION_SIDE` again.
+      xSide: sideOfStringer * CONSTRUCTION_SIDE,
+      anchor: { station: hoverBoard.station, halfWidth: mm(half * sideOfStringer) } as OutlineDragPoint,
+      lines: [
+        { label: "Up from tail", value: formatDim(hoverBoard.station, system) },
+        { label: "Width", value: formatDim(mm(half * 2), system) },
+      ],
+    };
+  })();
+  /** What the hover card keeps clear of besides the board: the three station read-outs on the right rail (a value
+   * above its line, the name below) and every input chip in the left gutter, as boxes in the canonical frame. */
+  const hoverObstacles = (() => {
+    if (!hoverSample) return [];
+    const railHalfW = Math.max(...stationReadouts.map((r) => Math.max(r.value.length * calloutSizes.value * 0.62, r.station.length * calloutSizes.name * 0.78))) / 2;
+    const rails = stationReadouts.map((r) => ({
+      x0: frame.outputValueX - 4,
+      x1: frame.outputValueX + railHalfW * 2 + 4,
+      y0: r.stationY - calloutSizes.value - 4,
+      y1: r.stationY + calloutSizes.name + 4,
+    }));
+    const chipYs = [lengthChipY, widepointChipY, wpOffsetChipY, tailBlockChipY, ...wingStationYs];
+    const chips = chipYs.map((y) => ({
+      x0: Math.min(frame.chipRightX, wingChipX) - calloutSizes.chipW,
+      x1: frame.chipRightX,
+      y0: y - calloutSizes.chipH / 2,
+      y1: y + calloutSizes.chipH / 2,
+    }));
+    return [...rails, ...chips];
+  })();
+  const readoutChip: ReadoutChip | null =
+    touchDragTarget && touchFingerBoard
+      ? buildReadoutChip(outlineReadoutLines(touchDragTarget), touchFingerBoard)
+      : hoverSample
+        ? buildReadoutChip(hoverSample.lines, hoverSample.anchor, hoverObstacles)
+        : null;
   let wingChipYs: number[] = [];
   let tailBlockSpreadY: number | undefined;
   if (viewerWings.length > 0 && horizontal) {
@@ -1112,10 +1177,31 @@ export function OutlineViewer({
   function onSvgPointerMove(event: ReactPointerEvent<SVGSVGElement>) {
     if (isPinching()) return;
     if (draggingRef.current) {
+      if (hoverBoard) setHoverBoard(null);
       handleDragMove(event);
       return;
     }
+    updateHover(event);
     zoomSvgProps.onPointerMove?.(event);
+  }
+  /** The hover read-out's point: a mouse or trackpad over the board, never a finger (quick 261114-lym). A new state
+   * only when the station moves a whole millimetre or the pointer crosses the stringer, so a hair of movement redraws
+   * nothing. */
+  function updateHover(event: ReactPointerEvent<SVGSVGElement>) {
+    if (hideCallouts || coarsePointer || event.pointerType === "touch") return;
+    const point = toBoardPoint(event);
+    const within = point !== null && point.station >= 0 && point.station <= outline.length;
+    if (!within) {
+      if (hoverBoard) setHoverBoard(null);
+      return;
+    }
+    const station = mm(Math.round(point.station));
+    const side = point.halfWidth < 0 ? -1 : 1;
+    if (hoverBoard && hoverBoard.station === station && (hoverBoard.halfWidth < 0 ? -1 : 1) === side) return;
+    setHoverBoard({ station, halfWidth: mm(side) });
+  }
+  function onSvgPointerLeave() {
+    if (hoverBoard) setHoverBoard(null);
   }
   function onSvgPointerEnd(event: ReactPointerEvent<SVGSVGElement>, cancelled: boolean) {
     if (onOutlineDrag) handleDragEnd(event, cancelled);
@@ -1153,6 +1239,7 @@ export function OutlineViewer({
       style={{ WebkitTouchCallout: "none", ...zoomSvgProps.style }}
       onPointerDownCapture={onSvgPress}
       onPointerMove={onSvgPointerMove}
+      onPointerLeave={onSvgPointerLeave}
       onPointerUp={(event) => onSvgPointerEnd(event, false)}
       onPointerCancel={(event) => onSvgPointerEnd(event, true)}
     >
@@ -1356,6 +1443,16 @@ export function OutlineViewer({
           </g>
         ))}
 
+      {hoverSample && (
+        <circle
+          data-hover-dot
+          cx={pxX(hoverSample.xSide * hoverSample.halfWidthIn)}
+          cy={lenToY(mmToInches(hoverSample.station))}
+          r={4 * handleUnit}
+          fill="var(--outline-ink)"
+          pointerEvents="none"
+        />
+      )}
       {!hideCallouts && (
         <>
           {/* Outputs: one shared right rail — the derived widths appear nowhere else on the
@@ -1445,11 +1542,11 @@ export function OutlineViewer({
       </g>
       {/* The drag readout chip (D-17): a sibling of the rotated content group above, not a
           child of it, so its box and text are always drawn screen-upright in the outer viewBox
-          space directly — no counter-rotation needed. Touch-only (`readoutChip` is `null` for a
-          mouse at every viewport width, PHON-05); `pointerEvents="none"` so it can never itself
-          swallow the pointermove that is still steering the drag underneath it. */}
+          space directly — no counter-rotation needed. A touch drag's card (PHON-05), or, for a mouse or
+          trackpad, the hover read-out (quick 261114-lym); `pointerEvents="none"` so it can never itself
+          swallow the pointermove that is still steering the drag — or the hover — underneath it. */}
       {readoutChip && (
-        <g data-readout-chip={touchDragTarget} pointerEvents="none">
+        <g data-readout-chip={touchDragTarget ?? "hover"} pointerEvents="none">
           <CalloutChipFrame x={readoutChip.x} y={readoutChip.y} width={readoutChip.width} height={readoutChip.height} />
           {readoutChip.lines.map((line, i) => (
             <text
