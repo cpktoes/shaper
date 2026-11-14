@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
+import { asD30Read, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import pin from "./__fixtures__/phase16-surface-litres-pin.json";
 import {
   designCrossSectionInput,
@@ -23,6 +23,9 @@ import { boardSectionEnds, boardSections, RAIL_CHARACTER_FADE, type RailCharacte
 
 const PIN = pin as { provenance: string; litres: Record<string, string> };
 const BOARDS = phase16SurfaceBoards();
+// Pinned before quick 261113-psx moved the tail rail's default blend; read as D-30 read it (the live rule, with D-30's
+// pair stored on each board). The pin's own rule (plan 16-15's) reads D-30's default by name, so it needs no help.
+const PINNED = BOARDS.map((board) => ({ ...board, fields: asD30Read(board.fields) }));
 const hasWing = (board: (typeof BOARDS)[number]) => (board.fields.outline.wings?.length ?? 0) > 0;
 
 /** Whether a board has a litres station narrower than a rail it reads there (either end of a blend): worked out
@@ -61,7 +64,7 @@ describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-
     });
   }
 
-  for (const board of BOARDS) {
+  for (const board of PINNED) {
     const narrow = hasNarrowStation(board);
     it(`${board.label}: with only the tips' fit on, it ${narrow ? "reads above the pin, for a narrow tip" : "has room for its rail and reads the pin to the last digit"}`, () => {
       const litres = summarizeDesignWith(board.fields, { ...LIVE_DESIGN_RULES, hardEdge: TIPS_ONLY }).volumeLitres;
@@ -80,7 +83,7 @@ describe("the 102 boards' litres, pinned before the wing and tip rules (D-34, D-
   }
 
   it("some boards have room for their rails and some don't, or the cases above prove nothing", () => {
-    const narrow = BOARDS.map(hasNarrowStation);
+    const narrow = PINNED.map(hasNarrowStation);
     expect(narrow.filter(Boolean).length).toBeGreaterThan(0);
     expect(narrow.filter((n) => !n).length).toBeGreaterThan(0);
   });

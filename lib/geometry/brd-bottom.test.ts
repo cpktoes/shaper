@@ -5,7 +5,7 @@ vi.setConfig({ testTimeout: 60_000 });
 import { brdBottomStations, brdText } from "../export/brd";
 import { readAnyBrd } from "../export/brd-read";
 import { brdBoardFields } from "../models/brd-board";
-import { phase16Boards } from "./__fixtures__/phase16-boards";
+import { asD30Read, phase16Boards } from "./__fixtures__/phase16-boards";
 import type { P2 } from "./bezier-fit";
 import { bottomStationSlider } from "./blank-reasons";
 import { buildBoardSurface } from "./board-surface";
@@ -71,7 +71,10 @@ const BOARDS = phase16Boards();
 const fieldsOf = (label: string): DesignSummaryFields => {
   const found = BOARDS.find((b) => b.label === label);
   if (!found) throw new Error(`no board ${label}`);
-  return found.fields;
+  // The bottom fit's precision was measured on boards whose rails blend as D-30 read them, before quick 261113-psx moved
+  // the default (the rails fit then finds a different tail on the new default's boards, which is its own test); so the
+  // two builders write boards read as D-30 read them and these cases test the same files as before.
+  return asD30Read(found.fields);
 };
 
 /** A board of the app's own, ready to be written with any bottom. */

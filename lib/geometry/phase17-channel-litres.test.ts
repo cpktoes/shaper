@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { asD30Read } from "./__fixtures__/phase16-boards";
 import { phase17ChannelBoards } from "./__fixtures__/phase17-channel-boards";
 import pin from "./__fixtures__/phase17-channel-litres-pin.json";
 import { bottomHasChannels } from "./bottom";
@@ -36,7 +37,8 @@ import { boardSections, TAIL_ROLL_PANELS, tailRollStations } from "./volume";
  */
 
 const PIN = pin as { provenance: string; litres: Record<string, string> };
-const BOARDS = phase17ChannelBoards();
+// Pinned before quick 261113-psx moved the tail rail's default blend; read as D-30 read it.
+const BOARDS = phase17ChannelBoards().map((board) => ({ ...board, fields: asD30Read(board.fields) }));
 
 /** The finished rail's run in a half: its outermost point (the deck run's last) down to its bottom edge. */
 const OUTERMOST = SECTION_POINTS.deck - 1;

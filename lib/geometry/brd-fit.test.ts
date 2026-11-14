@@ -35,7 +35,7 @@ import { OUTLINE_SLIDER_LIMITS } from "./outline-drag";
 import { DEFAULT_FALLBACK_ROCKER, ROCKER_LIFT_RANGE_IN, rockerStationPositions } from "./rocker";
 import { BRD_WING_ROUND_INSET_MIN_MM } from "./brd-wings";
 import { inchesToMm, mm } from "./units";
-import { phase16Boards, phase16WingBoards } from "./__fixtures__/phase16-boards";
+import { asD30Read, phase16Boards, phase16WingBoards } from "./__fixtures__/phase16-boards";
 import {
   MAX_WINGS,
   WING_DEPTH_RANGE_IN,
@@ -170,13 +170,16 @@ function ascii(text: string): Uint8Array {
   return Uint8Array.from(text, (ch) => ch.charCodeAt(0));
 }
 
-function tripOf(label: string, handSet = false): Trip {
-  const key = `${label}${handSet ? "|hand" : ""}`;
+function tripOf(label: string, handSet = false, d30 = false): Trip {
+  const key = `${label}${handSet ? "|hand" : ""}${d30 ? "|d30" : ""}`;
   const known = cache.get(key);
   if (known) return known;
   const board = BOARDS.find((b) => b.label === label);
   if (!board) throw new Error(`no board ${label}`);
-  const fields: DesignSummaryFields = handSet ? { ...board.fields, blank: null, rocker: DEFAULT_FALLBACK_ROCKER } : board.fields;
+  // `d30`: the board read as D-30 read it — the snapshots below were recorded before quick 261113-psx moved the tail
+  // rail's default blend, and are never re-recorded, so the files they fit are written from boards with D-30's pair stored.
+  const base = d30 ? asD30Read(board.fields) : board.fields;
+  const fields: DesignSummaryFields = handSet ? { ...base, blank: null, rocker: DEFAULT_FALLBACK_ROCKER } : base;
   return tripFromFields(key, fields);
 }
 
@@ -578,12 +581,12 @@ describe("a file with no wing fits exactly as before", () => {
 
   const labels = [...TRIP_LABELS, "fish|asis|hard", "shortboard|diamond|hard"];
   it.each(labels)("%s", (label) => {
-    const { fit } = tripOf(label);
+    const { fit } = tripOf(label, false, true);
     expect({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, closeness: fit.closeness }).toMatchSnapshot();
   }, SLOW);
 
   it("a hand-made outline with a smooth hip (1/8 inch, eased over 10 to 14 inches from the tail)", () => {
-    const trip = tripOf("shortboard|asis|hard");
+    const trip = tripOf("shortboard|asis|hard", false, true);
     const hip = drawn(trip.fields).map(([x, y]): P2 => [x, y - inchesToMm(1 / 8) * (1 - smoothstep(inchesToMm(10), inchesToMm(14), x))]);
     const fit = fitBoardToBrd({ length: trip.file.length, outline: hip, bottom: trip.file.bottom, deck: trip.file.deck });
     expect({ outline: fit.outline, rocker: fit.rocker, foil: fit.foil, closeness: fit.closeness }).toMatchSnapshot();
@@ -597,15 +600,16 @@ describe("a file with no wing fits exactly as before", () => {
 const WING_BOARDS = phase16WingBoards();
 
 /** A winged board as the app writes it, read back and fitted. `secondRadius` sets wing 2's corner radius (the app's own default rounds it as far as it fits). */
-function wingTripOf(label: string, secondRadius?: number): Trip {
+function wingTripOf(label: string, secondRadius?: number, d30 = false): Trip {
   const board = WING_BOARDS.find((b) => b.label === label);
   if (!board) throw new Error(`no board ${label}`);
-  let fields = board.fields;
+  // `d30`: read as D-30 read the board (see `tripOf`), for the sharp-winged snapshots, which are never re-recorded.
+  let fields = d30 ? asD30Read(board.fields) : board.fields;
   if (secondRadius !== undefined) {
     const wings = fields.outline.wings!.map((w, k): Wing => (k === 1 ? { ...w, radius: mm(secondRadius) } : w));
     fields = { ...fields, outline: { ...fields.outline, wings } };
   }
-  return tripFromFields(`${label}|r${secondRadius ?? "default"}`, fields);
+  return tripFromFields(`${label}|r${secondRadius ?? "default"}${d30 ? "|d30" : ""}`, fields);
 }
 
 /** The curve alone (no wings) the fit drew, against the board's own, outside each true wing's stretch: the largest gap between the two lines. */
@@ -764,16 +768,16 @@ describe("a refit for a stringer lift may reuse the first fit's outline (quick 2
 describe("a sharp-winged file fits exactly as before (quick 261113-m5w)", () => {
   const SLOW = 120_000;
   const snapshotted: [string, () => Trip][] = [
-    ["wing|shortboard|one", () => wingTripOf("wing|shortboard|one")],
-    ["wing|shortboard|deep", () => wingTripOf("wing|shortboard|deep")],
-    ["wing|shortboard|square", () => wingTripOf("wing|shortboard|square")],
-    ["wing|shortboard|infade", () => wingTripOf("wing|shortboard|infade")],
-    ["wing|shortboard|rounded", () => wingTripOf("wing|shortboard|rounded")],
-    ["wing|fish|rounded", () => wingTripOf("wing|fish|rounded")],
-    ["wing|midlength|square", () => wingTripOf("wing|midlength|square")],
-    ["wing|longboard|deep", () => wingTripOf("wing|longboard|deep")],
-    ["wing|shortboard|two", () => wingTripOf("wing|shortboard|two")],
-    ["wing|shortboard|two, wing 2 rounded 1/4 inch", () => wingTripOf("wing|shortboard|two", inchesToMm(1 / 4))],
+    ["wing|shortboard|one", () => wingTripOf("wing|shortboard|one", undefined, true)],
+    ["wing|shortboard|deep", () => wingTripOf("wing|shortboard|deep", undefined, true)],
+    ["wing|shortboard|square", () => wingTripOf("wing|shortboard|square", undefined, true)],
+    ["wing|shortboard|infade", () => wingTripOf("wing|shortboard|infade", undefined, true)],
+    ["wing|shortboard|rounded", () => wingTripOf("wing|shortboard|rounded", undefined, true)],
+    ["wing|fish|rounded", () => wingTripOf("wing|fish|rounded", undefined, true)],
+    ["wing|midlength|square", () => wingTripOf("wing|midlength|square", undefined, true)],
+    ["wing|longboard|deep", () => wingTripOf("wing|longboard|deep", undefined, true)],
+    ["wing|shortboard|two", () => wingTripOf("wing|shortboard|two", undefined, true)],
+    ["wing|shortboard|two, wing 2 rounded 1/4 inch", () => wingTripOf("wing|shortboard|two", inchesToMm(1 / 4), true)],
   ];
   it.each(snapshotted)("%s", (_name, trip) => {
     const { fit } = trip();

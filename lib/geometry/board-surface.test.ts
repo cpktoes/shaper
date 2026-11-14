@@ -67,6 +67,7 @@ import {
 } from "./volume";
 import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingShareSpan, wingStepShape } from "./wings";
 import {
+  asD30Read,
   phase16Boards,
   phase16RailCharacterBoards,
   phase16SurfaceBoards,
@@ -1001,8 +1002,14 @@ describe("wireLines on a winged board: the lines ignore the wing", () => {
     // this order. Never re-record this to make it pass. It narrowed once, with the founder's yes (D-46, 2026-11-06): the
     // outline's left side moved to match its right, so the pin stops at the nose and "the outline's two sides" below
     // holds the left side. This figure was recorded from the code as it stood before that move, and passes after it.
+    //
+    // The 74 surfaces it hashes are built from boards read as D-30 read them: pinned before quick 261113-psx moved the
+    // tail rail's default blend (the lines follow the rail's character, which that default decides).
+    const pinned = [...phase16Boards(), ...phase16RailCharacterBoards()].map((board) =>
+      built({ label: board.label, fields: asD30Read(board.fields) }),
+    );
     const hash = createHash("sha256");
-    for (const { surface } of BUILT_LIVE) {
+    for (const { surface } of pinned) {
       const wire = wireLines(surface);
       const nose = wire.outline.reduce((best, v, i) => (v[0] > wire.outline[best][0] ? i : best), 0);
       for (const lines of [wire.deck, wire.bottom, wire.rings, [wire.outline.slice(0, nose + 1)]]) {
