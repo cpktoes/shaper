@@ -19,3 +19,7 @@ template is imported.
 ## Suggested fix
 
 Feed those rows from the actual thickness and round only where they are displayed. The founder, 2026-11-05: "File a to-do."
+
+## Done
+
+2026-11-14 — fast task 209 (commit f71fb5b3): the rail-band builder takes a rounding choice and the estimator rows read the exact bands; RAILS keeps the 1/16" figures it shows.
