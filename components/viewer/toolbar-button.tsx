@@ -27,7 +27,7 @@
  * parking space left standing empty.
  */
 
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, ReactNode, Ref } from "react";
 import { useId } from "react";
 import { cn } from "@/lib/utils";
 
@@ -146,9 +146,9 @@ export function ViewerToolbarButton({
  * `data-viewer-toolbar` is a hook for the browser tests to find the row without depending on its
  * class string.
  */
-export function ViewerToolbar({ children, className }: { children: ReactNode; className?: string }) {
+export function ViewerToolbar({ children, className, boxRef }: { children: ReactNode; className?: string; boxRef?: Ref<HTMLDivElement> }) {
   return (
-    <div data-viewer-toolbar className={cn(VIEWER_TOOLBAR_ROW_CLASS, className)}>
+    <div ref={boxRef} data-viewer-toolbar className={cn(VIEWER_TOOLBAR_ROW_CLASS, className)}>
       {children}
     </div>
   );

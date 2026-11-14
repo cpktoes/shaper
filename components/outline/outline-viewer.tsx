@@ -38,6 +38,7 @@ import {
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import { sampleOutline } from "@/lib/geometry/outline";
 import { inchesToMm, mm, mmToInches } from "@/lib/geometry/units";
+import { readoutRowShiftsLeftPx } from "./readout-clear";
 import { formatControlNumber, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { placedWings } from "@/lib/geometry/wings";
 import { spreadApart } from "./wing-view-layout";
@@ -79,6 +80,8 @@ import { ZoomGrid } from "@/components/viewer/zoom-grid";
 const VIEW_W = 340;
 const VIEW_H = 620;
 const PAD_Y = 24;
+/** The air kept between a station read-out and the toolbar it slides clear of, in screen dots (quick 261114-loa). */
+const READOUT_CLEAR_GAP_PX = 10;
 /** The board's own historic half-width bound (from the centreline), used only when the callout
  * system is hidden entirely (`hideCallouts`) — this keeps preset-card thumbnails pixel-identical
  * to their pre-callout-system rendering; nothing about the board's own coordinate space changed. */
@@ -214,6 +217,13 @@ interface OutlineViewerProps {
    * template (components/summary/board-summary.tsx) and the setup-screen thumbnails, so this is
    * an additive per-consumer gate, not a change to `finMarksSvg` itself. Defaults to `false`. */
   hideFinMarks?: boolean;
+  /**
+   * The toolbar's box over the drawing's top-right corner, in CSS dots, on a short screen only (quick 261114-loa): a
+   * station read-out that would lie under it slides toward the nose until it stands clear, its tick on the true
+   * station and its extension line bent (`OutputRail`'s `readoutY`). Omitted or null — a computer, an upright phone,
+   * every print — nothing moves. Read only with the board turned (the read-outs run along the top) and at 1x.
+   */
+  topRightClearPx?: { width: number; height: number } | null;
   /**
    * Framing gate for the `hideCallouts` path, used by the order form's template window
    * (components/summary/order-form.tsx): replaces the 340-unit thumbnail frame with one sized from
@@ -394,6 +404,7 @@ export function OutlineViewer({
   finMarks = [],
   hideCallouts = false,
   hideFinMarks = false,
+  topRightClearPx = null,
   fixedFrame = false,
   showStationLines = false,
   onOutlineDrag,
@@ -848,6 +859,44 @@ export function OutlineViewer({
   // every render, even though it is only ever READ inside the touch-drag block further down.
   const svgClientSize = useSvgClientSize(svgRef);
   const calloutSizes = pinCalloutText ? pinnedCalloutSizes(shownFit) : UNPINNED_CALLOUT_SIZES;
+
+  /**
+   * Where each station read-out draws when the toolbar sits over the drawing's top-right corner on a short screen
+   * (quick 261114-loa): its own station, or — with the board turned, at 1x, where the tail end of the row would lie
+   * under the toolbar — a station further toward the nose. The Tail read-out slides until it stands a gap clear of the
+   * toolbar's left edge, and pushes the Center and Nose read-outs along only as far as it needs
+   * (`readoutRowShiftsLeftPx`). The boxes are this drawing's own arithmetic: a read-out's anchor at (`valueX`, station)
+   * in the upright frame lands, turned, at screen (station, −`valueX`); the value stands 1.15 names above the anchor
+   * and the name on it (`OutputRail`); the width is counted from the letters at the pinned sizes.
+   */
+  const stationReadouts: { stationY: number; value: string; station: string }[] = [
+    { stationY: lenToY(noseStationIn), value: formatDim(geometry.noseWidthAt12in, system), station: `Nose @ ${stationLabel(system)}` },
+    { stationY: lenToY(lengthIn / 2), value: formatDim(mm(inchesToMm(centerWidthAtStationIn)), system), station: "Center" },
+    { stationY: lenToY(tailStationIn), value: formatDim(geometry.tailWidthAt12in, system), station: `Tail @ ${stationLabel(system)}` },
+  ];
+  const readoutYs: (number | undefined)[] = (() => {
+    const none = stationReadouts.map(() => undefined);
+    if (!topRightClearPx || !horizontal || zoom !== 1 || shownFit <= 0 || svgClientSize.width <= 0) return none;
+    const fit = shownFit;
+    const vbLeft = baseMinY - noseEndPad;
+    const vbTop = -crossMaxX;
+    const offsetX = (svgClientSize.width - vbW * fit) / 2;
+    const offsetY = (svgClientSize.height - vbH * fit) / 2;
+    const anchorY = offsetY + (-frame.outputValueX - vbTop) * fit;
+    const boxes = stationReadouts.map(({ stationY, value, station }) => {
+      const halfWidthUnits = Math.max(value.length * calloutSizes.value * 0.62, station.length * calloutSizes.name * 0.78) / 2;
+      const centreX = offsetX + (stationY - vbLeft) * fit;
+      return {
+        left: centreX - halfWidthUnits * fit,
+        right: centreX + halfWidthUnits * fit,
+        top: anchorY - (calloutSizes.name * 1.15 + calloutSizes.value) * fit,
+        bottom: anchorY + calloutSizes.name * 0.3 * fit,
+      };
+    });
+    const shifts = readoutRowShiftsLeftPx(boxes, topRightClearPx, svgClientSize.width, READOUT_CLEAR_GAP_PX);
+    return shifts.map((shift, i) => (shift > 0 ? stationReadouts[i].stationY - shift / fit : undefined));
+  })();
+
   /** User units per CSS pixel — what the px-denominated handle sizes above are drawn in. Zoomed
    * in, a handle, its ring, its grab reach and the readout card keep their screen size, so the
    * reach is finer on the board and never harder to hit. */
@@ -1317,6 +1366,7 @@ export function OutlineViewer({
             y={lenToY(noseStationIn)}
             value={formatDim(geometry.noseWidthAt12in, system)}
             station={`Nose @ ${stationLabel(system)}`}
+            readoutY={readoutYs[0]}
           />
           <OutputRail
             valueX={frame.outputValueX}
@@ -1324,6 +1374,7 @@ export function OutlineViewer({
             y={lenToY(lengthIn / 2)}
             value={formatDim(mm(inchesToMm(centerWidthAtStationIn)), system)}
             station="Center"
+            readoutY={readoutYs[1]}
           />
           <OutputRail
             valueX={frame.outputValueX}
@@ -1331,6 +1382,7 @@ export function OutlineViewer({
             y={lenToY(tailStationIn)}
             value={formatDim(geometry.tailWidthAt12in, system)}
             station={`Tail @ ${stationLabel(system)}`}
+            readoutY={readoutYs[2]}
           />
 
           {/* Inputs: left gutter chips, each naming its own value (sketch 004). Shown in compact

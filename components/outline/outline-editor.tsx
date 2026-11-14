@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { GhostIcon, LocateFixedIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PrinterIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDesign } from "@/components/design/design-store";
@@ -196,6 +196,29 @@ export function OutlineEditor() {
   // the JSX tree into a variable, rather than written twice, because wide view (below) swaps out
   // the chrome AROUND this content — not the content itself — and two copies of ~40 lines of
   // absolutely-positioned buttons is exactly the kind of duplication that drifts.
+  // On a short screen (a phone held sideways) the toolbar's box is measured and handed to the drawing, so a station
+  // read-out that would lie under it slides clear (quick 261114-loa, the founder: "move the readings clear"). On any
+  // other screen nothing is handed over and the drawing is exactly what it always was.
+  const shortScreen = ViewerMedia.useShortScreen();
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarBox, setToolbarBox] = useState<{ width: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = toolbarRef.current;
+    if (!shortScreen || !el) {
+      setToolbarBox(null);
+      return;
+    }
+    const measure = () => {
+      const width = el.offsetWidth;
+      const height = el.offsetHeight;
+      setToolbarBox((prev) => (prev && prev.width === width && prev.height === height ? prev : { width, height }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [shortScreen]);
+
   const viewerContent = (
     // `relative` makes this div — the viewer panel's own content area — the positioning
     // context for the rotate button below, per D-06: the button sits INSIDE the panel's
@@ -209,7 +232,7 @@ export function OutlineEditor() {
           only, never saved (D2), keyed on the board's orientation so turning the board starts again
           at 1x (P9). A provider renders no element, so the panel's layout is untouched. */}
       <ViewerZoomProvider key={boardOrientation}>
-      <ViewerToolbar>
+      <ViewerToolbar boxRef={toolbarRef}>
         <ViewerToolbarButton
           onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
           label={
@@ -327,6 +350,7 @@ export function OutlineEditor() {
               // handlers when this is omitted (quick 261008-lsy). The store's guard backs it.
               onOutlineDrag={locked ? undefined : updateOutline}
               finMarks={finPlacement.marks}
+              topRightClearPx={toolbarBox}
               // D4: Show fin placement puts the fin marks on the VIEWER too — marks only, no dims.
               hideFinMarks={!showFins}
               pinCalloutText
