@@ -42,6 +42,20 @@ function watchScripts(page: Page) {
   return { found, seen };
 }
 
+/** A .brd the app's own writer made from the first fixture board (never anyone's file). */
+function madeFile(): Buffer {
+  const { fields } = phase16Boards()[0];
+  const geometry = buildOutline(fields.outline);
+  const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+  const surface = buildBoardSurface({
+    sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length),
+    geometry,
+    rockerAt: profile.rockerAt,
+  });
+  return Buffer.from(brdFile(surface, "Weight").data);
+}
+
 test.describe("the home page's weight", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(
@@ -65,17 +79,7 @@ test.describe("the home page's weight", () => {
     expect(seen.size, "the page loaded scripts, so the watch is working").toBeGreaterThan(3);
     expect(found, "nothing of the fitting code or the dialog before a pick").toEqual([]);
 
-    // A .brd the app's own writer made from the first fixture board (never anyone's file).
-    const { fields } = phase16Boards()[0];
-    const geometry = buildOutline(fields.outline);
-    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
-    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
-    const surface = buildBoardSurface({
-      sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length),
-      geometry,
-      rockerAt: profile.rockerAt,
-    });
-    const file = Buffer.from(brdFile(surface, "Weight").data);
+    const file = madeFile();
 
     const [chooser] = await Promise.all([page.waitForEvent("filechooser"), button.click()]);
     await chooser.setFiles({ name: "weight.brd", mimeType: "application/octet-stream", buffer: file });
@@ -84,5 +88,27 @@ test.describe("the home page's weight", () => {
     for (const f of found) test.info().annotations.push({ type: "after the pick", description: `${f.mark}: ${f.url}` });
     const marks = new Set(found.map((f) => f.mark));
     expect(marks, "after a pick the preview dialog and the fitting code arrive").toEqual(new Set(["fittingLibrary", "previewWords", "dialog"]));
+  });
+
+  test("w2: a background worker whose reply cannot be read leaves no one waiting: the page does the work and the preview opens (quick 261114-118, IN-06)", async ({ page }) => {
+    test.setTimeout(120_000);
+    // A stand-in worker that, on being given the file, answers with a message that cannot be read.
+    await page.addInitScript(() => {
+      class UnreadableReplyWorker {
+        onmessage: ((event: MessageEvent) => void) | null = null;
+        onerror: ((event: ErrorEvent) => void) | null = null;
+        onmessageerror: ((event: MessageEvent) => void) | null = null;
+        postMessage() {
+          window.setTimeout(() => this.onmessageerror?.(new MessageEvent("messageerror")), 0);
+        }
+        terminate() {}
+      }
+      (window as unknown as { Worker: unknown }).Worker = UnreadableReplyWorker;
+    });
+    await page.goto("/");
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: BOARD_FILE_COPY.button }).click()]);
+    await chooser.setFiles({ name: "weight.brd", mimeType: "application/octet-stream", buffer: madeFile() });
+    await expect(page.locator("[data-brd-fit]")).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("[data-brd-reading]")).toHaveCount(0);
   });
 });

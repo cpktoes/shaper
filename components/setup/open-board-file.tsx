@@ -169,6 +169,11 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       release();
       void lookOnPage(id, fileName, bytes);
     };
+    // A reply that cannot be read takes the same road as a worker that fails, so the page is never left waiting (quick 261114-118, IN-06).
+    worker.onmessageerror = () => {
+      release();
+      void lookOnPage(id, fileName, bytes);
+    };
     try {
       // Copied, not handed over, so the page still holds the bytes if the worker fails and the work falls back to the page.
       worker.postMessage({ id, bytes, fileName });
