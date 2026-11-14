@@ -26,3 +26,7 @@ branches there are two cards.
 Once both are on `main`: BOTTOM's GUIDE renders through the shared `GuideCard` / `GuideTab` (its cartoon stays its own), its
 words module keeps its page-tested pattern, and `bottom-guide.tsx`'s private card goes. No change to what a BOTTOM card says or
 draws; `e2e/bottom-guide.spec.ts` stays green. A quick task, after whichever phase lands second.
+
+## Done
+
+2026-11-14 — quick 261114-ko2 (commit adaf21bc): BOTTOM's GUIDE renders through the shared GuideTab / GuideCard with its own BottomCartoon; the private card is gone; bottom-guide.spec.ts green on all three devices.
