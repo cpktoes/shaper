@@ -941,9 +941,9 @@ export function gaugeReads(value: number, system: UnitsSystem): boolean {
  * - the gap at the stringer, its value below (a swallow's notch has none: the stringer is air);
  * - the rail lift, at each rail with extension lines — beside the rail (the value right of the right one) when there
  *   are 110 dots of room past it (60 in a box under 625), else the two lines just outside the rails and one value under
- *   the straightedge at the right rail. It is the vee's or belly's lift at the rail edge that remains (D-40), the very
- *   figure DATA's Rail lift column reads (`sectionsFoamOff` at the rail), held at the slab's thickness as every gauge
- *   is. A channel is cut after the rail is shaped and never counts, even one that runs out through the rail — there
+ *   the straightedge at the right rail. It is the vee's or belly's lift that remains (D-40), read at the outline's own
+ *   rail (`board.railAt`) — the very figure DATA's Rail lift column reads (`sectionsFoamOff` there) — and drawn with
+ *   its tick at the drawing's rail edge, held at the slab's thickness as every gauge is. A channel is cut after the rail is shaped and never counts, even one that runs out through the rail — there
  *   the tick runs up to where the vee or belly took the rail, a point in the channel's air. A flat tail or a concave
  *   lifts no rail, so it shows no rail lift (the founder, 2026-11-11: "Match DATA");
  * - a double's trough or a channel's floor, the deepest gap off the stringer, on its own line (a second line under the
