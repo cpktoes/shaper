@@ -25,6 +25,8 @@ export const BOARD_FILE_COPY = {
   readFailed: "Couldn't read that file. Try again.",
   /** Under the founder's line, muted: what a .brd does when it is picked. */
   brdHint: "An AkuShaper or Shape3D .brd file shows our closest fit laid over it, with an overview to print, and opens as a new board if you choose.",
+  /** Shown under the button, at once, while a picked .brd is read and fitted in the background (quick 261113-kvo). */
+  reading: "Reading the file…",
   brdTooBig: `That .brd file is too big to be a board (over ${BRD_READ_MAX_BYTES / (1024 * 1024)} MB).`,
   brdUnreadable: "That .brd file couldn't be read. It may be damaged, or written in a way this app doesn't know yet.",
   brdOutOfRange: (length: string, shortest: string, longest: string) =>

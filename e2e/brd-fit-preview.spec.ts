@@ -1140,3 +1140,36 @@ test.describe("A wing's corners in a .brd (quick 261113-m5w)", () => {
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
   });
 });
+
+test.describe("Reading a .brd in the background (quick 261113-kvo)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(120_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b22. picking a .brd says Reading the file… at once, keeps the page live while it is worked out, then opens the preview and the line is gone", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the line");
+    await page.goto("/");
+    await expect(page.locator("[data-brd-reading]")).toHaveCount(0);
+    // A tick every 20 ms on the page itself: the longest gap between two ticks is how long the page was stuck.
+    await page.evaluate(() => {
+      const w = window as unknown as { __ticks: number[] };
+      w.__ticks = [];
+      window.setInterval(() => w.__ticks.push(performance.now()), 20);
+    });
+    const shown = page.waitForSelector("[data-brd-reading]", { state: "attached" });
+    await pickFile(page, "Short.brd", boardFile(SHORTBOARD).locked);
+    await shown;
+    await expect(page.locator("[data-brd-reading]")).toHaveText(BOARD_FILE_COPY.reading);
+    await expect(dialogOf(page)).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator("[data-brd-reading]")).toHaveCount(0);
+    // The page was never stuck for long while the file was read and fitted (the dialog's own first paint aside).
+    const ticks = await page.evaluate(() => (window as unknown as { __ticks: number[] }).__ticks);
+    const stuck = Math.max(...ticks.slice(1).map((t, i) => t - ticks[i]));
+    console.log(`b22: longest gap between 20 ms ticks while reading ${stuck.toFixed(0)} ms`);
+    expect(stuck).toBeLessThan(400);
+    await dialogOf(page).locator("[data-brd-fit-close]").click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(statusOf(page)).toHaveText("");
+  });
+});

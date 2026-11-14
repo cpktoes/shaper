@@ -24,17 +24,23 @@
  * in progress, and nothing is saved until Save. The fields are worked out, and checked by the same reader a JSON board
  * passes, when the preview is made, so the board that opens is exactly the fit the preview drew. One that can't be looked
  * at says so in the same quiet line under the button. Import my designs keeps taking JSON only.
+ *
+ * Quick 261113-kvo (Task 3): reading and fitting a `.brd` takes a second or more on a long board, so the page says "Reading the
+ * file…" under the button the moment a file is picked and the work runs in a background worker (`brd-look.worker.ts`), which keeps
+ * the page live meanwhile: nothing is shown half-read (the preview opens only with the whole look), a newer pick or leaving the
+ * page drops the older answer, and the file is only ever handed to the app's own code in this browser. Where a worker cannot be
+ * made the very same work runs on the page itself, after the line has painted.
  */
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { BOARD_FILE_COPY } from "@/components/setup/board-file-copy";
 import { BrdFitDialog } from "@/components/setup/brd-fit-dialog";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
-import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName, readAnyBrd } from "@/lib/export/brd-read";
-import { brdFitLook, brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
-import { brdBoardFields } from "@/lib/models/brd-board";
+import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "@/lib/export/brd-read";
+import { brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
+import { brdLookFromBytes, type BrdLookResult } from "@/lib/export/brd-look";
 import { BOARD_FILE_ACCEPT, BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
@@ -59,6 +65,19 @@ function problemLine(result: Exclude<OneBoardFileResult, { ok: true }>): string 
   }
 }
 
+/** Resolves after the browser has painted what was just set (two frames), or after a quarter second where frames do not run. */
+function afterPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(resolve, 250);
+    window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => {
+        window.clearTimeout(timer);
+        resolve();
+      }),
+    );
+  });
+}
+
 export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -66,37 +85,100 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
   // The .brd being looked at, under the picked file's name, with the board its closest fit opens as (null if the board reader
   // would refuse it, which the fit's clamping means it never does); null while no preview is open. Held here and nowhere else.
   const [looking, setLooking] = useState<{ fileName: string; look: BrdFitLook; fields: DesignSnapshotFields | null } | null>(null);
+  // A picked .brd is being read and fitted in the background (quick 261113-kvo): which pick is current, and its worker.
+  const [reading, setReading] = useState(false);
+  const pickRef = useRef(0);
+  const workerRef = useRef<Worker | null>(null);
   const tipStyle = useFitDefaults().defaults.tipStyle;
   const { system } = useUnits();
 
+  /** Drops whatever is being read: a newer pick, a JSON pick, or leaving the page. Its answer, if it still comes, is ignored. */
+  const dropReading = () => {
+    pickRef.current += 1;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+  };
+  useEffect(() => dropReading, []);
+
+  /** The answer for pick `id`: the preview with the whole look, or the one quiet line why not. A stale answer is dropped. */
+  const finish = (id: number, fileName: string, result: BrdLookResult) => {
+    if (id !== pickRef.current) return;
+    setReading(false);
+    if (result.ok) {
+      setLooking({ fileName, look: result.look, fields: result.fields });
+      return;
+    }
+    setProblem(
+      result.problem === "too-big"
+        ? BOARD_FILE_COPY.brdTooBig
+        : result.problem === "out-of-range" && result.length !== undefined
+          ? BOARD_FILE_COPY.brdOutOfRange(...brdLengthWords(result.length, system))
+          : BOARD_FILE_COPY.brdUnreadable,
+    );
+  };
+
+  /** The same work on the page itself, once the "Reading the file…" line has painted: where no worker can be made, or one fails. */
+  const lookOnPage = async (id: number, fileName: string, bytes: Uint8Array) => {
+    await afterPaint();
+    if (id !== pickRef.current) return;
+    finish(id, fileName, brdLookFromBytes(bytes, fileName));
+  };
+
+  /** Starts the background worker for pick `id`; false when one cannot be made (the caller then works on the page). */
+  const lookInWorker = (id: number, fileName: string, bytes: Uint8Array): boolean => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./brd-look.worker.ts", import.meta.url), { type: "module" });
+    } catch {
+      return false;
+    }
+    workerRef.current = worker;
+    const release = () => {
+      worker.terminate();
+      if (workerRef.current === worker) workerRef.current = null;
+    };
+    worker.onmessage = (event: MessageEvent<{ id: number; result: BrdLookResult }>) => {
+      if (event.data.id !== id) return;
+      release();
+      finish(id, fileName, event.data.result);
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      release();
+      void lookOnPage(id, fileName, bytes);
+    };
+    try {
+      // Copied, not handed over, so the page still holds the bytes if the worker fails and the work falls back to the page.
+      worker.postMessage({ id, bytes, fileName });
+    } catch {
+      release();
+      return false;
+    }
+    return true;
+  };
+
   /** A `.brd`: read it, fit it, and show both. Nothing is opened, saved or sent until Open as a Board (R1, E1). */
   const lookAtBrd = async (file: File) => {
+    dropReading();
+    const id = pickRef.current;
     if (file.size > BRD_READ_MAX_BYTES) {
       setProblem(BOARD_FILE_COPY.brdTooBig);
       return;
     }
+    // Said at once: the file is read and fitted in the background, and the preview opens only with the whole look.
+    setReading(true);
     let bytes: Uint8Array;
     try {
       bytes = new Uint8Array(await file.arrayBuffer());
     } catch {
-      setProblem(BOARD_FILE_COPY.readFailed);
+      if (id === pickRef.current) {
+        setReading(false);
+        setProblem(BOARD_FILE_COPY.readFailed);
+      }
       return;
     }
-    const read = readAnyBrd(bytes);
-    if (!read.ok) {
-      setProblem(
-        read.problem === "out-of-range"
-          ? BOARD_FILE_COPY.brdOutOfRange(...brdLengthWords(read.length, system))
-          : BOARD_FILE_COPY.brdUnreadable,
-      );
-      return;
-    }
-    try {
-      const look = brdFitLook(read.board);
-      setLooking({ fileName: file.name, look, fields: brdBoardFields(look.fit, file.name, look.bottom?.bottom ?? null, look.rails?.rails ?? null) });
-    } catch {
-      setProblem(BOARD_FILE_COPY.brdUnreadable);
-    }
+    if (id !== pickRef.current) return;
+    if (!lookInWorker(id, file.name, bytes)) await lookOnPage(id, file.name, bytes);
   };
 
   const handlePick = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +188,9 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
     input.value = "";
     setProblem(null);
     if (!file) return;
+    // A board file that was still being read gives way to this pick (a .brd then starts its own read).
+    dropReading();
+    setReading(false);
     if (isBrdFileName(file.name)) {
       await lookAtBrd(file);
       return;
@@ -142,6 +227,14 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       <p className="text-xs text-surf-ink-muted">{BOARD_FILE_COPY.hint}</p>
       <p data-brd-hint className="text-xs text-surf-ink-muted">
         {BOARD_FILE_COPY.brdHint}
+      </p>
+      <p
+        role="status"
+        aria-live="polite"
+        {...(reading ? { "data-brd-reading": "" } : {})}
+        className="text-xs text-surf-ink-muted"
+      >
+        {reading ? BOARD_FILE_COPY.reading : null}
       </p>
       <p data-board-file-status role="status" aria-live="polite" className="text-xs text-surf-warning-ink">
         {problem}
