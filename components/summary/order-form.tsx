@@ -146,7 +146,7 @@ function Sheet({
    * the whole type scale. "instructions" is the third sheet (PRNT-05, D-09) — the fixed Rail Band
    * Instructions reference page, present only when the shaper has ticked the print preference.
    * "bottom" is the BOTTOM CONTOURS page (Phase 17, D-29), present only when the bottom has a cut, and
-   * the sheet its two tables take when the page cannot hold them. */
+   * the sheet, or two, its tables take when the page cannot hold them. */
   variant?: "form" | "reference" | "instructions" | "bottom";
   children: ReactNode;
 }) {
@@ -239,7 +239,7 @@ function OutlineHalf({ label, children }: { label: string; children: ReactNode }
 
 /**
  * What comes off the printer, said under the buttons. A flat bottom's two sentences are the form's own, word for
- * word; a bottom with a cut adds its page (or two, when its tables take a sheet of their own).
+ * word; a bottom with a cut adds its page (or two, when its tables take a sheet of their own, or three, when each table does).
  */
 function printHint(railInstructions: boolean, bottomSheets: number): string {
   if (bottomSheets === 0) {
@@ -247,7 +247,7 @@ function printHint(railInstructions: boolean, bottomSheets: number): string {
       ? "Two portrait pages, printed double-sided — plus a single-sided Rail Band Instructions page."
       : "Two portrait pages — print double-sided for a front-and-back form.";
   }
-  const bottomPages = bottomSheets === 1 ? "a Bottom Contours page" : "two Bottom Contours pages";
+  const bottomPages = bottomSheets === 1 ? "a Bottom Contours page" : bottomSheets === 2 ? "two Bottom Contours pages" : "three Bottom Contours pages";
   return railInstructions
     ? `Two portrait pages, printed double-sided — plus ${bottomPages} and a Rail Band Instructions page.`
     : `Two portrait pages, printed double-sided — plus ${bottomPages}.`;
@@ -1010,12 +1010,28 @@ export function OrderForm() {
           </Sheet>
         )}
         {/* A board whose cuts fill that page: the two tables, whole, on the sheet after it. */}
-        {bottomLayout?.tablesOnOwnSheet && (
+        {bottomLayout?.tablesOnOwnSheet && !bottomLayout.tablesSplit && (
           <Sheet variant="bottom">
             {sheetHead}
             <BottomTablesSheet layout={bottomLayout} />
             <PageMark page={4} of={sheetCount} title={BOTTOM_SHEET_COPY.tablesPageTitle} />
           </Sheet>
+        )}
+        {/* A board too long for its two tables to share a sheet: the depths on one, the layout marks on the next,
+            each whole from Tail to Nose tip (quick 261113-vya). */}
+        {bottomLayout?.tablesSplit && (
+          <>
+            <Sheet variant="bottom">
+              {sheetHead}
+              <BottomTablesSheet layout={bottomLayout} part="depths" />
+              <PageMark page={4} of={sheetCount} title={BOTTOM_SHEET_COPY.depthsPageTitle} />
+            </Sheet>
+            <Sheet variant="bottom">
+              {sheetHead}
+              <BottomTablesSheet layout={bottomLayout} part="marks" />
+              <PageMark page={5} of={sheetCount} title={BOTTOM_SHEET_COPY.marksPageTitle} />
+            </Sheet>
+          </>
         )}
 
         {/* ══════════ THE LAST PAGE — Rail Band Instructions ════════════════════════════════ */}

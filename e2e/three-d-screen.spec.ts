@@ -294,7 +294,7 @@ test.describe("the 3D screen", () => {
   });
 
   test("5. a board the surface can't be built for shows the can't-build message and no board", async ({ page }) => {
-    // 40" is a length a saved board may hold (30"–240") but outside the app's 60"–120", so the builder refuses it.
+    // 40" is a length a saved board may hold (30"–288") but outside the app's 48"–144" (4'0" to 12'0"), so the builder refuses it.
     await keepBoard(page, "Fish", inchesToMm(40));
     const errors: string[] = [];
     page.on("console", (message) => {

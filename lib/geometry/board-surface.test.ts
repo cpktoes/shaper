@@ -67,6 +67,7 @@ import {
 } from "./volume";
 import { outlineWithoutWings, WING_HAIR_MM, wingFootprint, wingShareSpan, wingStepShape } from "./wings";
 import {
+  asD30Read,
   phase16Boards,
   phase16RailCharacterBoards,
   phase16SurfaceBoards,
@@ -710,10 +711,22 @@ describe("a board the builder can't build is refused, naming the value", () => {
     const noWidth: BoardSurfaceInput = { ...input, sections: { ...input.sections, halfWidthAt: () => mm(Number.NaN) } };
     expect(() => buildBoardSurface(noWidth)).toThrow(/width/);
   });
-  it("refuses a length that is not a number, or outside 60\"–120\"", () => {
-    for (const length of [Number.NaN, inchesToMm(50), inchesToMm(130)]) {
+  it("refuses a length that is not a number, or outside 48\"–144\" (4'0\" to 12'0\", quick 261113-si7), naming the range", () => {
+    for (const length of [Number.NaN, inchesToMm(47.875), inchesToMm(144.125), inchesToMm(40), inchesToMm(200)]) {
       const bad: BoardSurfaceInput = { ...input, sections: { ...input.sections, length: mm(length) } };
       expect(() => buildBoardSurface(bad)).toThrow(/length/);
+    }
+    const tooLong: BoardSurfaceInput = { ...input, sections: { ...input.sections, length: inchesToMm(144.125) } };
+    expect(() => buildBoardSurface(tooLong)).toThrow(/outside 48"–144"/);
+  });
+  it("builds a 4'0\" board and a 12'0\" board (the ends of the range)", () => {
+    for (const lengthIn of [48, 144]) {
+      const fields = boardOf("fish|asis|hard");
+      const outline = { ...fields.outline, length: inchesToMm(lengthIn) };
+      const { input: sized } = surfaceInputOf({ ...fields, outline, blank: null });
+      const surface = buildBoardSurface(sized);
+      expect(surface.positions.length, `${lengthIn}"`).toBeGreaterThan(0);
+      expect(Array.from(surface.positions).every(Number.isFinite), `${lengthIn}"`).toBe(true);
     }
   });
 });
@@ -1001,8 +1014,14 @@ describe("wireLines on a winged board: the lines ignore the wing", () => {
     // this order. Never re-record this to make it pass. It narrowed once, with the founder's yes (D-46, 2026-11-06): the
     // outline's left side moved to match its right, so the pin stops at the nose and "the outline's two sides" below
     // holds the left side. This figure was recorded from the code as it stood before that move, and passes after it.
+    //
+    // The 74 surfaces it hashes are built from boards read as D-30 read them: pinned before quick 261113-psx moved the
+    // tail rail's default blend (the lines follow the rail's character, which that default decides).
+    const pinned = [...phase16Boards(), ...phase16RailCharacterBoards()].map((board) =>
+      built({ label: board.label, fields: asD30Read(board.fields) }),
+    );
     const hash = createHash("sha256");
-    for (const { surface } of BUILT_LIVE) {
+    for (const { surface } of pinned) {
       const wire = wireLines(surface);
       const nose = wire.outline.reduce((best, v, i) => (v[0] > wire.outline[best][0] ? i : best), 0);
       for (const lines of [wire.deck, wire.bottom, wire.rings, [wire.outline.slice(0, nose + 1)]]) {

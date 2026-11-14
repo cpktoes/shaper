@@ -4,7 +4,7 @@ import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { formatDim } from "../lib/geometry/measure-display";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { defaultHardEdgeEndsAt } from "../lib/geometry/rail-bands";
+import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "../lib/geometry/rail-bands";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -36,11 +36,13 @@ async function dismissStrips(page: Page) {
 
 const isPhone = (testInfo: TestInfo) => testInfo.project.name !== "desktop";
 
-// The stock 6'0" board (RAILS' own figures in e2e/rails-advanced.spec.ts): Blends From 18" and Ends At 30" when it
-// says nothing, Ends At reaching the 36" centre at most. Every reading is the app's own formatter.
+// The stock 6'0" board (RAILS' own figures in e2e/rails-advanced.spec.ts): Blends From 12" and Ends At 36", the top of
+// its slider (the centre), when it says nothing — the founder, 2026-11-13, quick 261113-psx. Both sit at their slider's
+// ends, so End on Ends At moves nothing. Every reading is the app's own formatter.
 const STOCK_LENGTH = DEFAULT_BOARD_SPEC.outline.length;
 const inches = (value: number) => formatDim(inchesToMm(value), "imperial");
-const STOCK_END = formatDim(defaultHardEdgeEndsAt(STOCK_LENGTH), "imperial");
+const STOCK_START = formatDim(hardEdgeBlendsFrom({}, STOCK_LENGTH), "imperial");
+const STOCK_END = formatDim(hardEdgeEndsAt({}, STOCK_LENGTH), "imperial");
 const STOCK_CENTRE = formatDim(mm(STOCK_LENGTH / 2), "imperial");
 
 function threeDTailRail(page: Page) {
@@ -125,36 +127,37 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
     await openThreeD(page);
     const group = threeDTailRail(page);
     await expect(page.getByText(THREE_D_COPY.railBlendHeading, { exact: true })).toBeVisible();
-    await expect(group.getByText(`${THREE_D_COPY.tailRailBlendsFrom} — ${inches(18)}`, { exact: true })).toBeVisible();
+    await expect(group.getByText(`${THREE_D_COPY.tailRailBlendsFrom} — ${STOCK_START}`, { exact: true })).toBeVisible();
     await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_END}`, { exact: true })).toBeVisible();
+    expect(STOCK_START).toBe(inches(12));
+    expect(STOCK_END).toBe(STOCK_CENTRE);
     // Always live: nothing dimmed, nothing out of reach.
     await expect(group.locator("[data-live]")).toHaveCount(0);
     await expect(group.locator("[inert]")).toHaveCount(0);
 
-    // Ends At all the way to the centre, on the 3D panel.
-    await endsAtSlider(page).press("End");
-    await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_CENTRE}`, { exact: true })).toBeVisible();
-    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(STOCK_CENTRE));
-    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(mm(STOCK_LENGTH / 2));
+    // Ends At all the way down, 2" past Blends From, on the 3D panel (it sits at its top until moved).
+    await endsAtSlider(page).press("Home");
+    const low = inches(14);
+    await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`, { exact: true })).toBeVisible();
+    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(low));
+    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(inchesToMm(14));
 
     // RAILS reads the very same value, under the same spoken name.
     let tail = await railsTail(page, testInfo);
-    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_CENTRE}`);
-    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(STOCK_CENTRE));
-
-    // Moved on RAILS (down to its lowest, 2" past Blends From), the 3D row follows.
-    tail = await railsTail(page, testInfo);
-    await endsAtSlider(page).press("Home");
-    const low = inches(20);
     await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`);
-    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(inchesToMm(20));
-    await openThreeD(page);
-    await expect(threeDTailRail(page).getByText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`, { exact: true })).toBeVisible();
     await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(low));
 
-    // VOLUME's litres moved: a shorter hard edge is less foam, enough for its two decimals. (Since the tail's roll,
-    // D-38, the longer fade above lands on the same 30.29 L as the board opens on.)
+    // VOLUME's litres moved: a shorter fade is less foam, enough for its two decimals.
     expect(await litres(page, litresBefore)).not.toBe(litresBefore);
+
+    // Moved on RAILS (all the way back up to the centre), the 3D row follows.
+    tail = await railsTail(page, testInfo);
+    await endsAtSlider(page).press("End");
+    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_CENTRE}`);
+    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(mm(STOCK_LENGTH / 2));
+    await openThreeD(page);
+    await expect(threeDTailRail(page).getByText(`${THREE_D_COPY.tailRailEndsAt} — ${STOCK_CENTRE}`, { exact: true })).toBeVisible();
+    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", THREE_D_COPY.tailRailFromTheTail(STOCK_CENTRE));
   });
 
   test("2. with the tail's Hard Edge off and its tucks ticked, the rows are live and move the litres", async ({ page }, testInfo) => {
@@ -200,14 +203,17 @@ test.describe("the 3D panel's Tail Rail rows share RAILS' values (D-30, D-32)", 
       expect(await sliders.nth(i).evaluate((el) => document.activeElement === el)).toBe(true);
     }
 
-    // Ends At to the centre on 3D: the tucked tail now fades over a longer run, and VOLUME's litres move.
-    await endsAtSlider(page).press("End");
+    // The Shortboard reads its own centre as Ends At until the slider moves.
     await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${centre}`, { exact: true })).toBeVisible();
-    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(mm(base.outline.length / 2));
+    // Ends At down to its lowest on 3D: the tucked tail now fades over a shorter run, and VOLUME's litres move.
+    await endsAtSlider(page).press("Home");
+    const low = inches(14);
+    await expect(group.getByText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`, { exact: true })).toBeVisible();
+    await expect.poll(() => kept(page, "tailHardEdgeEndsAt"), { timeout: 10_000 }).toBe(inchesToMm(14));
     expect(await litres(page, litresBefore)).not.toBe(litresBefore);
 
     // RAILS' row reads the new value.
     const tail = await railsTail(page, testInfo);
-    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${centre}`);
+    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`${THREE_D_COPY.tailRailEndsAt} — ${low}`);
   });
 });

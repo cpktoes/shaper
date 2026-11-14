@@ -223,18 +223,21 @@ export interface RailBandSpec {
    * where the tail's rail starts blending into the centre's, measured from the tail tip — the tail's rail as
    * set is full at and behind it. Since D-32 it governs the tail's whole rail character, not only the hard
    * edge; the field keeps its name because saved boards carry it. Absent on every board saved before D-30
-   * and on every preset, which read `DEFAULT_HARD_EDGE_BLENDS_FROM_IN` (18"); always read through
-   * `hardEdgeBlendsFrom`, which forgives anything outside its window.
+   * and on every preset. Absent now reads 12" — the bottom of its own slider, the tail's rail station (the founder,
+   * 2026-11-13, quick 261113-psx: "Let's change Tail Rail Blends From 12" and Ends At the max value as the new
+   * default"); D-30's 18" lives on by name (`D30_HARD_EDGE_BLENDS_FROM_IN`) for the old rules that read it. Always
+   * read through `hardEdgeBlendsFrom`, which forgives anything outside its window.
    */
   tailHardEdgeBlendsFrom?: Mm;
   /**
    * Tail Rail Ends At (Phase 16, D-20/D-30; named Hard Edge Ends At until D-32): where the rail has fully
    * blended into the centre's rail as set — since D-32 its whole character, Family and tucks alike —
    * measured from the tail tip; the field keeps its name because saved boards carry it. Absent on every
-   * board saved before Phase 16 and on every preset, which read the board's own `defaultHardEdgeEndsAt`
-   * (L/3 − 18 inches short of the centre: 30" on a 6'0"); always read
-   * through `hardEdgeEndsAt`, which keeps it at least `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past
-   * the board's centre.
+   * board saved before Phase 16 and on every preset. Absent now reads the top of its own slider — the board's
+   * centre on the 1/2" grid, 36" on a 6'0" (the founder, 2026-11-13, quick 261113-psx: "…and Ends At the max
+   * value as the new default"); D-30's L/6 + 18" (30" on a 6'0") lives on by name (`d30DefaultHardEdgeEndsAt`) for
+   * the old rules that read it. Always read through `hardEdgeEndsAt`, which keeps it at least
+   * `HARD_EDGE_MIN_BLEND_IN` past Blends From and never past the board's centre.
    */
   tailHardEdgeEndsAt?: Mm;
 }
@@ -246,8 +249,12 @@ export interface RailBandSpec {
  */
 export const HARD_EDGE_BLENDS_FROM_RANGE_IN = { min: 12, max: 30, step: 0.5 } as const;
 
-/** Where a tail's hard edge starts blending when the board says nothing else, in inches from the tail tip. */
-export const DEFAULT_HARD_EDGE_BLENDS_FROM_IN = 18;
+/**
+ * D-30's old default start, in inches from the tail tip: where a tail's rail started blending when a board said
+ * nothing, until quick 261113-psx. Read only by the old rules (`HARD_EDGE_FADE`, `RAIL_CHARACTER_FADE`), the old
+ * reports and the pins, through `d30HardEdgeBlendsFrom`; the live default is `defaultTailRailBlendsFrom`.
+ */
+export const D30_HARD_EDGE_BLENDS_FROM_IN = 18;
 
 /** The least distance, in inches, between Hard Edge Blends From and Hard Edge Ends At (D-30). */
 export const HARD_EDGE_MIN_BLEND_IN = 2;
@@ -259,22 +266,25 @@ export const HARD_EDGE_MIN_BLEND_IN = 2;
  */
 export const HARD_EDGE_ENDS_AT_RANGE_IN = { step: 0.5 } as const;
 
-/** The 18 in the founder's default-end rule, L/3 − 18 inches short of the centre (D-30). Its own number, not the
- * default start's: "Two independent values." */
-export const DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN = 18;
+/** The 18 in the founder's old default-end rule, L/3 − 18 inches short of the centre (D-30). Its own number, not the
+ * old default start's: "Two independent values." Read only through `d30DefaultHardEdgeEndsAt`. */
+export const D30_HARD_EDGE_ENDS_AT_RULE_IN = 18;
 
 /**
- * Where a tail's hard edge has fully blended into the centre's tucked rail when the board says nothing else, in
- * millimetres from the tail tip (Phase 16, D-30). The founder's rule, in his words: "Default start = 18". Default
+ * D-30's old default end — where a tail's hard edge had fully blended into the centre's tucked rail when the
+ * board said nothing, until quick 261113-psx made the live default the top of Ends At's slider. Kept by name,
+ * body unchanged, for the old rules, the old reports and the pins (Phase 14 D-25: the old rule stays callable by
+ * name, never a second argument on the live one). In millimetres from the tail tip (Phase 16, D-30). The
+ * founder's rule, in his words: "Default start = 18". Default
  * end at = L/3 − 18. Two independent values." — and L/3 − 18 is "Inches short of the centre". So, with L the
  * board's length in inches, the default end sits L/2 − (L/3 − 18) = L/6 + 18 inches from the tail, rounded to the
  * nearest 1/2" (the slider's step): 30" on a 6'0", 29 1/2" on a 5'8", 30 1/2" on a 6'2", 32 1/2" on a 7'2" and 36"
- * on a 9'0". It never reads the start (the two defaults are independent); `hardEdgeEndsAt` clamps it into
+ * on a 9'0". It never reads the start (the two defaults are independent); `d30HardEdgeEndsAt` clamps it into
  * [Blends From + 2", centre] like any value.
  */
-export function defaultHardEdgeEndsAt(length: Mm): Mm {
+export function d30DefaultHardEdgeEndsAt(length: Mm): Mm {
   const lengthIn = mmToInches(length);
-  const shortOfCentreIn = lengthIn / 3 - DEFAULT_HARD_EDGE_ENDS_AT_RULE_IN;
+  const shortOfCentreIn = lengthIn / 3 - D30_HARD_EDGE_ENDS_AT_RULE_IN;
   const fromTailIn = lengthIn / 2 - shortOfCentreIn;
   const { step } = HARD_EDGE_ENDS_AT_RANGE_IN;
   return inchesToMm(Math.round(fromTailIn / step) * step);
@@ -312,35 +322,125 @@ function endsAtWindow(blendsFrom: Mm, length: Mm): HardEdgeWindow {
 }
 
 /**
- * Hard Edge Blends From, read forgivingly (Phase 16, D-30; threat T-16-01): the stored
- * `tailHardEdgeBlendsFrom` when it is a finite number inside 12" to min(30", centre − 2"), and otherwise 18"
- * clamped into that same window (so a short board's default still leaves room to blend before the centre).
- * `length` is the board's length; its centre is half of it, the litres' own centre station. Since D-32 it
- * is Tail Rail Blends From, where the tail's whole rail character starts blending into the centre's.
+ * A rail's tail-blend start read forgivingly (Phase 16, D-30; threat T-16-01): the stored value when it is a
+ * finite number inside 12" to min(30", centre − 2"), and otherwise `fallback` clamped into that same window (so
+ * a short board's default still leaves room to blend before the centre). One helper under both the live reader
+ * and D-30's, so the window logic cannot drift between them.
  */
-export function hardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom">, length: Mm): Mm {
+function readBlendsFrom(stored: unknown, fallback: Mm, length: Mm): Mm {
   const window = blendsFromWindow(length);
-  const stored = rails.tailHardEdgeBlendsFrom;
   if (storedInside(stored, window)) return mm(stored);
-  return clampInto(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN), window);
+  return clampInto(fallback, window);
+}
+
+/** The same forgiving read for Ends At: the stored value when it is a finite number from `blendsFrom` + 2" to
+ * the board's centre, and otherwise `fallback` clamped into that window. */
+function readEndsAt(stored: unknown, blendsFrom: Mm, fallback: Mm, length: Mm): Mm {
+  const window = endsAtWindow(blendsFrom, length);
+  if (storedInside(stored, window)) return mm(stored);
+  return clampInto(fallback, window);
 }
 
 /**
- * Hard Edge Ends At — where the rail has fully blended into the centre's tucked rail — read forgivingly
- * (Phase 16, D-20/D-30; threat T-16-01): Blends From is resolved first, then the stored `tailHardEdgeEndsAt`
- * is kept when it is a finite number from Blends From + 2" to the board's centre, and otherwise the board's
- * own default end (`defaultHardEdgeEndsAt`, L/3 − 18 inches short of the centre) is clamped into that window.
- * So the two can never cross, and a crafted or stale pair always reads as a valid pair. Since D-32 it is Tail
- * Rail Ends At, where the tail's whole rail character has blended into the centre's.
+ * A window in millimetres as an inch range rounded inward onto the 1/2" grid (never inverted) — the very grid the
+ * Tail Rail sliders sit on (`hardEdgeBlendsFromSlider` / `hardEdgeEndsAtSlider` in blank-reasons.ts read it
+ * from here), so a default worked out on it lands exactly where a slider's end is.
+ */
+export function hardEdgeWindowOnGrid(window: HardEdgeWindow): { min: number; max: number } {
+  const { step } = HARD_EDGE_ENDS_AT_RANGE_IN;
+  const min = Math.ceil(mmToInches(window.min) / step - 1e-9) * step;
+  const max = Math.floor(mmToInches(window.max) / step + 1e-9) * step;
+  return { min, max: Math.max(min, max) };
+}
+
+/**
+ * Where Tail Rail Blends From sits when the board says nothing (the founder, 2026-11-13, quick 261113-psx): the
+ * bottom of its own window, the 12" station (`HARD_EDGE_BLENDS_FROM_RANGE_IN.min`, so RAILS' tail plot at its own
+ * station is always the full tail rail). Independent of the shaper's chosen system (Rule 2).
+ */
+export function defaultTailRailBlendsFrom(length: Mm): Mm {
+  return blendsFromWindow(length).min;
+}
+
+/**
+ * Where Tail Rail Ends At sits when the board says nothing (the founder, 2026-11-13, quick 261113-psx): the top
+ * of its own slider — the board's centre on the 1/2" grid (`hardEdgeWindowOnGrid`, the very grid the slider uses),
+ * so the thumb sits at its end and the label agrees. 36" on a 6'0", 37" on a 6'2", 34" on a 5'8", 43" on a 7'2",
+ * 54" on a 9'0"; on a board whose centre is off the grid (73 7/8": centre 36 15/16") the slider's own top, 36 1/2".
+ */
+export function defaultTailRailEndsAt(blendsFrom: Mm, length: Mm): Mm {
+  return inchesToMm(hardEdgeWindowOnGrid(endsAtWindow(blendsFrom, length)).max);
+}
+
+/**
+ * Tail Rail Blends From, read forgivingly (Phase 16, D-30; threat T-16-01): the stored `tailHardEdgeBlendsFrom`
+ * when it is a finite number inside 12" to min(30", centre − 2"), and otherwise `defaultTailRailBlendsFrom` (12")
+ * clamped into that same window. `length` is the board's length; its centre is half of it, the litres' own centre
+ * station. Since D-32 it is where the tail's whole rail character starts blending into the centre's. Since quick
+ * 261113-psx an absent value reads 12", where D-30 read 18" (`d30HardEdgeBlendsFrom`).
+ */
+export function hardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom">, length: Mm): Mm {
+  return readBlendsFrom(rails.tailHardEdgeBlendsFrom, defaultTailRailBlendsFrom(length), length);
+}
+
+/**
+ * Tail Rail Ends At — where the rail has fully blended into the centre's rail — read forgivingly (Phase 16,
+ * D-20/D-30; threat T-16-01): Blends From is resolved first, then the stored `tailHardEdgeEndsAt` is kept when it
+ * is a finite number from Blends From + 2" to the board's centre, and otherwise `defaultTailRailEndsAt` (the top
+ * of the slider) is clamped into that window. So the two can never cross, and a crafted or stale pair always reads
+ * as a valid pair. Since quick 261113-psx an absent value reads the board's centre, where D-30 read L/6 + 18"
+ * (`d30HardEdgeEndsAt`); a stored value left beyond the centre by a shortened board reads the centre, and the
+ * stored figure comes back if the board is lengthened again (nothing is rewritten until a slider moves).
  */
 export function hardEdgeEndsAt(
   rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt">,
   length: Mm,
 ): Mm {
-  const window = endsAtWindow(hardEdgeBlendsFrom(rails, length), length);
-  const stored = rails.tailHardEdgeEndsAt;
-  if (storedInside(stored, window)) return mm(stored);
-  return clampInto(defaultHardEdgeEndsAt(length), window);
+  const blendsFrom = hardEdgeBlendsFrom(rails, length);
+  return readEndsAt(rails.tailHardEdgeEndsAt, blendsFrom, defaultTailRailEndsAt(blendsFrom, length), length);
+}
+
+/**
+ * D-30's Blends From, kept by name (D-25): the same forgiving read with the OLD default, 18" clamped into the
+ * window. Read only by go-live 1's and plan 16-15's rules (`HARD_EDGE_FADE`, `RAIL_CHARACTER_FADE`), the old
+ * reports and the pins — never by a screen. Returns today's (pre-quick 261113-psx) numbers bit for bit.
+ */
+export function d30HardEdgeBlendsFrom(rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom">, length: Mm): Mm {
+  return readBlendsFrom(rails.tailHardEdgeBlendsFrom, inchesToMm(D30_HARD_EDGE_BLENDS_FROM_IN), length);
+}
+
+/**
+ * D-30's Ends At, kept by name (D-25): Blends From resolved with D-30's default, then the stored value kept when
+ * inside its window and otherwise D-30's default end (`d30DefaultHardEdgeEndsAt`) clamped into it. Same readers
+ * as `d30HardEdgeBlendsFrom`.
+ */
+export function d30HardEdgeEndsAt(
+  rails: Pick<RailBandSpec, "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt">,
+  length: Mm,
+): Mm {
+  return readEndsAt(
+    rails.tailHardEdgeEndsAt,
+    d30HardEdgeBlendsFrom(rails, length),
+    d30DefaultHardEdgeEndsAt(length),
+    length,
+  );
+}
+
+/**
+ * The rails with BOTH tail-blend fields stored exactly as D-30 resolved them, so the live readers read back what
+ * the site read before quick 261113-psx (measured bit for bit on the 102 stand-in boards). Used by every pin of the
+ * live rule written before that change, and by the saved-boards report's "before". Generic over the rails type;
+ * returns a copy.
+ */
+export function withD30TailRailBlend<R extends Pick<RailBandSpec, "tailHardEdgeBlendsFrom" | "tailHardEdgeEndsAt">>(
+  rails: R,
+  length: Mm,
+): R {
+  return {
+    ...rails,
+    tailHardEdgeBlendsFrom: d30HardEdgeBlendsFrom(rails, length),
+    tailHardEdgeEndsAt: d30HardEdgeEndsAt(rails, length),
+  };
 }
 
 /**

@@ -313,7 +313,7 @@ Tabs: VIEWER · DATA · INSTRUCTIONS · GUIDE. 17 cards.
 - does: A crisp line where the tuck meets the bottom releases water sooner — a touch of hard edge along the whole rail.
 - how: Cut the last tuck band but do not round where it meets the flat bottom; a light pass with a block keeps the line straight.
 
-**Tail Rail Blends From · Tail Rail Ends At** · tag on the Shortboard: `18" · 30 1/2"` · caption: `dashed · 24" · 36 1/2"`  
+**Tail Rail Blends From · Tail Rail Ends At** · tag on the Shortboard: `12" · 37"` · caption: `dashed · 18" · 37"`  
 - is: Where the tail's hard edge fades into the tucked rail: it runs sharp from the tail to Blends From, fades, and is fully tucked by Ends At.
 - does: A longer hard edge drives further up the rail for speed and release; a shorter one hands over to the tuck sooner for a smoother rail through the turn.
 - how: Pencil Blends From and Ends At on the rail from the tail; cut the edge hard behind the first mark and screen it progressively rounder until it is the tucked rail at the second.
@@ -505,7 +505,7 @@ Tabs: VIEWER · DATA · GUIDE. 23 cards.
 - how: Mark both ends of the base on the board — trailing edge first, then the base length forward along the toe line — and route the box to those marks.
 
 **Aft/Forward position** · tag on the Shortboard: `11"` · caption: `dashed · 1" forward`  
-- is: Slides a fin set forward or back from where its model puts it, up to an inch and a half either way.
+- is: Slides a fin set forward or back from where its model puts it, up to an inch and a half either way (a twin's pair may go forward as far as ten inches off the tail).
 - does: Back is drivey — the fins hold and the board tracks; forward is loose and quick to pivot.
 - how: Move both trailing-edge marks the same amount along the board before marking the leading edges; measure from the tail tip each time.
 
@@ -594,6 +594,7 @@ the maker's rocker order code (`+1/2"N18"`) stay in inches in both systems; they
 - Quad › McKee Longboard · info: `8'0"` → `243.8 cm`
 - Quad › McKee Longboard · how: `eight feet or longer` → `243.8 cm or longer`
 - Advanced › Aft/Forward position · is: `an inch and a half` → `38 mm`
+- Advanced › Aft/Forward position · is: `ten inches` → `254 mm`
 
 ## The pushes the cartoons draw (millimetres unless named)
 

@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { BOTTOM_COPY, layoutMarksNote, referenceRowsNote } from "@/components/bottom/bottom-copy";
 import { BOTTOM_GUIDE_WORDS, guideHow } from "@/components/bottom/bottom-guide-words";
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
-import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
+import { widePointWidthRangeIn } from "@/lib/geometry/board-size";
+import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_CUT_NAMES,
   BOTTOM_SECTIONS,
@@ -27,7 +28,7 @@ import { designBottomBoard, designFinPlacement, designSideProfile, LIVE_DESIGN_R
 import { formatDimBare, formatMark } from "@/lib/geometry/measure-display";
 import { buildOutline } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
-import { inchesToMm, UNITS_SYSTEMS, type UnitsSystem } from "@/lib/geometry/units";
+import { inchesToMm, mmToInches, UNITS_SYSTEMS, type UnitsSystem } from "@/lib/geometry/units";
 import {
   BOTTOM_SECTION_BOX,
   BOTTOM_SHEET_SPARE,
@@ -182,7 +183,7 @@ describe("bottomSheetLayout: what the page carries", () => {
   it.each(CASES)("$label — the sheet count follows the tables, and the tables are never dropped", (c) => {
     for (const system of UNITS_SYSTEMS) {
       const layout = layoutOf(c, system);
-      expect(layout.sheets).toBe(layout.tablesOnOwnSheet ? 2 : 1);
+      expect(layout.sheets).toBe(layout.tablesSplit ? 3 : layout.tablesOnOwnSheet ? 2 : 1);
       // The depths table has a row for the tail, every 6" and the nose tip whichever sheet it prints on.
       expect(layout.dataRows.length).toBeGreaterThan(2);
       expect(layout.marks.rows).toHaveLength(layout.dataRows.length);
@@ -199,11 +200,17 @@ describe("bottomSheetLayout: what the page carries", () => {
       const layout = layoutOf(c, system);
       const spare = bottomSheetSpare(layout, c.built.board);
       expect(spare.page, "the page's own parts do not fit their sheet").toBeGreaterThanOrEqual(0);
-      if (layout.tablesOnOwnSheet) {
+      if (layout.tablesSplit) {
+        expect(spare.tables).toBeNull();
+        expect(spare.split!.depths, "the depths do not fit their own sheet").toBeGreaterThanOrEqual(0);
+        expect(spare.split!.marks, "the layout marks do not fit their own sheet").toBeGreaterThanOrEqual(0);
+      } else if (layout.tablesOnOwnSheet) {
         expect(spare.tables, "the tables do not fit their own sheet").not.toBeNull();
         expect(spare.tables!).toBeGreaterThanOrEqual(0);
+        expect(spare.split).toBeNull();
       } else {
         expect(spare.tables).toBeNull();
+        expect(spare.split).toBeNull();
       }
     }
   });
@@ -263,9 +270,13 @@ describe("bottomSheetLayout: what the page carries", () => {
     expect(layout.sheets).toBe(1);
   });
 
-  it("the longest board the app allows, with every cut and 8 channels, keeps every row of both tables on their sheet", () => {
+  // Quick 261113-si7 raised the longest board to 12'0" (144"), where the tables' 25 rows no longer fit one sheet; quick
+  // 261113-vya answers that with a sheet each (the tests after this one). This check stays at the longest board the app
+  // allowed BEFORE si7 (10'0"): its two tables still share their own sheet, exactly as they print today.
+  const LONGEST_BEFORE_SI7_IN = 120;
+  it("the longest board before quick si7 (10'0\"), with every cut and 8 channels, keeps every row of both tables on their sheet", () => {
     const fields = presetFields("longboard");
-    const longest = build("longest", { ...fields, outline: { ...fields.outline, length: inchesToMm(BOARD_LENGTH_RANGE_IN.max) } });
+    const longest = build("longest", { ...fields, outline: { ...fields.outline, length: inchesToMm(LONGEST_BEFORE_SI7_IN) } });
     const { names, count } = SETS.every8;
     const resolved = resolveBottom(bottomOf(longest.board, names, count), longest.board);
     for (const system of UNITS_SYSTEMS) {
@@ -275,6 +286,75 @@ describe("bottomSheetLayout: what the page carries", () => {
       const spare = bottomSheetSpare(layout, longest.board);
       expect(spare.page).toBeGreaterThanOrEqual(0);
       expect(spare.tables!).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  /** A Longboard of this length, built through the app, with a bottom of the named setup — 31" wide, as a 12'0" board is. */
+  function longboardAt(lengthIn: number, setup: { names: Names; count: ChannelCount | 0 }) {
+    const fields = presetFields("longboard");
+    const built = build("long", { ...fields, outline: { ...fields.outline, length: inchesToMm(lengthIn) } });
+    return { built, resolved: resolveBottom(bottomOf(built.board, setup.names, setup.count), built.board) };
+  }
+
+  it("the longest board the app allows (12'0\"), with every cut and 8 channels, prints its two tables a sheet each, every row kept", () => {
+    const { built, resolved } = longboardAt(BOARD_LENGTH_RANGE_IN.max, SETS.every8);
+    for (const system of UNITS_SYSTEMS) {
+      const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+      expect(layout.dataRows).toEqual(bottomDataRows(resolved, built.board));
+      expect(layout.dataRows).toHaveLength(25);
+      expect(layout.marks.rows).toHaveLength(25);
+      expect(layout.tablesOnOwnSheet).toBe(true);
+      expect(layout.tablesSplit).toBe(true);
+      expect(layout.sheets).toBe(3);
+      expect(layout.tablesBeside).toBe(false);
+      expect(layout.tablesTight).toBe(false);
+      expect(layout.tableNotes).toEqual([]);
+      expect(layout.splitNotes.depths).toEqual([BOTTOM_COPY.depthsNote, referenceRowsNote(built.board, built.frontPair, system)]);
+      expect(layout.splitNotes.marks).toEqual([layoutMarksNote(resolved.channels, system), referenceRowsNote(built.board, built.frontPair, system)]);
+      const spare = bottomSheetSpare(layout, built.board);
+      expect(spare.page).toBeGreaterThanOrEqual(0);
+      expect(spare.tables).toBeNull();
+      expect(spare.split).not.toBeNull();
+      expect(spare.split!.depths).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      expect(spare.split!.marks).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+    }
+  });
+
+  it("a 12'0\" board whose bottom has no layout-mark column keeps its one tables sheet, both its notes, its rows as they are", () => {
+    const { built, resolved } = longboardAt(BOARD_LENGTH_RANGE_IN.max, { names: { tail: "Panel Vee" }, count: 0 });
+    for (const system of UNITS_SYSTEMS) {
+      const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+      expect(layout.marks.columns).toHaveLength(0);
+      expect(layout.dataRows).toHaveLength(25);
+      expect(layout.tablesSplit).toBe(false);
+      expect(layout.splitNotes).toEqual({ depths: [], marks: [] });
+      if (layout.tablesOnOwnSheet) {
+        expect(layout.sheets).toBe(2);
+        expect(layout.tablesTight).toBe(false);
+        expect(layout.tableNotes).toEqual([BOTTOM_COPY.depthsNote, referenceRowsNote(built.board, built.frontPair, system)]);
+      } else {
+        expect(layout.sheets).toBe(1);
+      }
+    }
+  });
+
+  it("the split begins where today's last rung fails: 11'6\" keeps one tables sheet, tight and bare; 11'6 1/16\" splits", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const before = longboardAt(138, SETS.every8);
+      const keep = bottomSheetLayout(before.resolved, before.built.board, system, before.built.frontPair);
+      expect(keep.dataRows).toHaveLength(24);
+      expect(keep.tablesSplit).toBe(false);
+      expect(keep.sheets).toBe(2);
+      expect(keep.tablesTight).toBe(true);
+      expect(keep.tableNotes).toEqual([]);
+      expect(keep.splitNotes).toEqual({ depths: [], marks: [] });
+      expect(bottomSheetSpare(keep, before.built.board).split).toBeNull();
+      // 11'6 1/16" is where the 25th row begins (`bottomDataStations`: every 6" below the length less a millimetre).
+      const after = longboardAt(138 + 1 / 16, SETS.every8);
+      const over = bottomSheetLayout(after.resolved, after.built.board, system, after.built.frontPair);
+      expect(over.dataRows).toHaveLength(25);
+      expect(over.tablesSplit).toBe(true);
+      expect(over.sheets).toBe(3);
     }
   });
 });
@@ -354,6 +434,121 @@ describe("the 9'+ Longboard's tables sheet prints every note (the founder, 2026-
       expect(layout.tableNotes, what).toEqual(layout.tablesOnOwnSheet ? wanted : []);
     }
   }, 60_000);
+});
+
+/*
+ * Quick 261113-vya: the rule is where today's last rung fails, so no board that fits today can ever move. Swept over the
+ * four shapes at 4'0" to 12'0", each at the narrowest, the stock and the widest width its length allows, with eleven
+ * bottoms (the nine of SETS, a Panel Vee tail alone and a Rolled Belly nose with that tail — neither has a layout-mark
+ * column), in both systems. Lengths are named with `inchesToMm`; the 25th row begins at 11'6 1/16" because
+ * `bottomDataStations` takes every station below the length less a millimetre — nothing here is a typed threshold of the rule.
+ */
+describe("the split's reach: no board up to 11'6\" ever splits, and every marked bottom over it does", () => {
+  const BOTTOMS: Record<string, { names: Names; count: ChannelCount | 0 }> = {
+    ...SETS,
+    panel: { names: { tail: "Panel Vee" }, count: 0 },
+    belly: { names: { nose: "Rolled Belly Entry", tail: "Panel Vee" }, count: 0 },
+  };
+  /** 4'0" to 11'0" every 6", then 11'5" and 11'6"; and the three lengths over 11'6" the sweep names. */
+  const FITTING_IN = [...Array.from({ length: 15 }, (_, k) => 48 + 6 * k), 137, 138];
+  const OVER_IN = [138 + 1 / 16, 141, 144];
+
+  interface Swept {
+    what: string;
+    layout: BottomSheetLayout;
+    board: BottomBoard;
+    marked: boolean;
+  }
+  function sweep(lengths: number[]): Swept[] {
+    const out: Swept[] = [];
+    for (const preset of BOARD_PRESETS) {
+      const fields = presetFields(preset.id);
+      for (const lengthIn of lengths) {
+        const range = widePointWidthRangeIn(inchesToMm(lengthIn));
+        const stock = Math.min(range.max, Math.max(range.min, +mmToInches(fields.outline.widePointWidth).toFixed(4)));
+        for (const widthIn of [...new Set([range.min, stock, range.max])]) {
+          const built = build("swept", { ...fields, outline: { ...fields.outline, length: inchesToMm(lengthIn), widePointWidth: inchesToMm(widthIn) } });
+          for (const [name, { names, count }] of Object.entries(BOTTOMS)) {
+            const resolved = resolveBottom(bottomOf(built.board, names, count), built.board);
+            for (const system of UNITS_SYSTEMS) {
+              const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+              out.push({
+                what: `${preset.id} ${lengthIn}" x ${widthIn}" ${name} ${system}`,
+                layout,
+                board: built.board,
+                marked: layout.marks.columns.length > 0,
+              });
+            }
+          }
+        }
+      }
+    }
+    return out;
+  }
+  // Computed once for the file's tests below.
+  const fitting = sweep(FITTING_IN);
+  const over = sweep(OVER_IN);
+
+  it("the sweep is the 11 bottoms on four shapes, three widths each, in both systems", () => {
+    expect(fitting).toHaveLength(BOARD_PRESETS.length * FITTING_IN.length * 3 * 11 * 2);
+    expect(over).toHaveLength(BOARD_PRESETS.length * OVER_IN.length * 3 * 11 * 2);
+  });
+
+  it("no board up to 11'6\" splits, and none prints more than its page and one tables sheet", () => {
+    for (const { what, layout } of fitting) {
+      expect(layout.tablesSplit, what).toBe(false);
+      expect(layout.splitNotes, what).toEqual({ depths: [], marks: [] });
+      expect(layout.sheets, what).toBeLessThanOrEqual(2);
+    }
+    // Non-vacuity: some of these boards do take a sheet for their tables, and some of them at 11'6" are tight.
+    expect(fitting.some(({ layout }) => layout.tablesOnOwnSheet)).toBe(true);
+    expect(fitting.some(({ layout, board }) => layout.tablesTight && layout.dataRows.length === 24 && board.length > inchesToMm(137))).toBe(true);
+  });
+
+  it("over 11'6\", every bottom with a layout-mark column splits, each sheet roomy and every note kept; one without never does", () => {
+    let splits = 0;
+    let unmarked = 0;
+    for (const { what, layout, board, marked } of over) {
+      expect(layout.dataRows, what).toHaveLength(25);
+      if (layout.cuts.length === 0) continue;
+      if (marked) {
+        splits++;
+        expect(layout.tablesSplit, what).toBe(true);
+        expect(layout.sheets, what).toBe(3);
+        const spare = bottomSheetSpare(layout, board);
+        expect(spare.split!.depths, what).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+        expect(spare.split!.marks, what).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+        expect(layout.splitNotes.depths, what).toHaveLength(2);
+        expect(layout.splitNotes.marks, what).toHaveLength(2);
+        expect(layout.tableNotes, what).toEqual([]);
+        expect(layout.tablesTight, what).toBe(false);
+      } else {
+        unmarked++;
+        expect(layout.tablesSplit, what).toBe(false);
+        expect(layout.sheets, what).toBeLessThanOrEqual(2);
+      }
+    }
+    expect(splits, "marked bottoms were swept (non-vacuity)").toBeGreaterThan(0);
+    expect(unmarked, "bottoms with no layout marks were swept (non-vacuity)").toBeGreaterThan(0);
+  });
+
+  it("the rule by its own definition: split exactly when the tables' sheet, tight and with no note, would leave under the spare", () => {
+    let own = 0;
+    let splits = 0;
+    for (const { what, layout, board } of [...fitting, ...over]) {
+      if (!layout.tablesOnOwnSheet) {
+        // The tables stay on the page: nothing to split.
+        expect(layout.tablesSplit, what).toBe(false);
+        continue;
+      }
+      own++;
+      const lastRung = bottomSheetSpare({ ...layout, tablesSplit: false, tablesTight: true, tableNotes: [] }, board).tables!;
+      expect(layout.tablesSplit, `${what}: today's last rung leaves ${lastRung.toFixed(1)}`).toBe(lastRung < BOTTOM_SHEET_SPARE);
+      if (layout.tablesSplit) splits++;
+    }
+    expect(own, "layouts whose tables take their own sheet (non-vacuity)").toBeGreaterThan(0);
+    expect(splits, "and some of them split (non-vacuity)").toBeGreaterThan(0);
+  });
 });
 
 describe("bottomSheetStationsLine: a cut's three stations in words", () => {

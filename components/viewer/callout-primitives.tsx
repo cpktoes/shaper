@@ -319,6 +319,38 @@ export function outlineMaxHalfWidthPx(centerlineX: number): number {
   return OUTLINE_OUTPUT_VALUE_X - OUTLINE_GUTTER_GAP - centerlineX;
 }
 
+/**
+ * The order form's template window (`fixedFrame`, quick 261113-si7, B4): the board it is sized FROM. A window
+ * that never resizes around the board loaded has to be sized from one, and this is the widest-for-its-length board
+ * the app made before boards of 4'0" existed: 5'0" x 25" (the per-board scale fits the board's LENGTH to the
+ * view, so it is highest for the shortest board, which makes the shortest-and-widest the widest thing ever
+ * drawn). Growing the window for 4'0" x 25" instead would draw every board smaller on every order form; so the
+ * window keeps today's size and a board wider for its length than this one draws a little shorter in it.
+ */
+export const FIXED_FRAME_REFERENCE = { lengthIn: 60, widthIn: 25 } as const;
+
+/**
+ * Half the order form's template window, in view units: the reference board's drawn half-width (the view's
+ * height less its two pads, over the reference length, times half the reference width) plus `cropPadX` of
+ * breathing room. The arithmetic is the order it always had, so every board's window is the same bits as before.
+ */
+export function fixedFrameHalfWidth(viewH: number, padY: number, cropPadX: number): number {
+  return (FIXED_FRAME_REFERENCE.widthIn / 2) * ((viewH - padY * 2) / FIXED_FRAME_REFERENCE.lengthIn) + cropPadX;
+}
+
+/**
+ * The scale a `fixedFrame` drawing uses: the scale it always had (`todayScale`, `hideCallouts`'s two-way fit), held
+ * so the board's drawn half-width stays inside the window less its crop pad. The hold applies only where it bites
+ * by more than a float's dust — for 5'0" x 25" it IS today's scale reached a second way, and every board inside the
+ * sizes the window was made for must come out bit for bit as it was. `halfWidthIn` is the board's half-width at its
+ * widest, in inches.
+ */
+export function fixedFrameScale(todayScale: number, halfWidthIn: number, frameHalfWidth: number, cropPadX: number): number {
+  if (!(halfWidthIn > 0)) return todayScale;
+  const held = (frameHalfWidth - cropPadX) / halfWidthIn;
+  return todayScale - held > 1e-9 ? held : todayScale;
+}
+
 /** The outline drawing's frame: the viewBox plus the two rails everything else hangs off. */
 export interface OutlineViewFrame {
   minX: number;

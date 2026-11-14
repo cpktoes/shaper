@@ -153,7 +153,9 @@ function buildWindows(
  * Tiles the rectangle spanning station 0..geometry.length by half-width 0..geometry.halfWidePointWidth
  * into a two-dimensional page grid — never a one-column list, because
  * `WIDEPOINT_WIDTH_RANGE_IN.max` (25in, half-width 12.5in) genuinely exceeds one page's usable
- * width on both supported paper sizes. Page order runs nose to tail, row-major: row 0 is the
+ * width on both supported paper sizes — and since quick 261113-si7 a board of 8'0" or longer may be 31in
+ * wide (half-width 15.5in), which from about 30in takes a third column of pages on both papers
+ * (measured: 8'0" x 31in is 30 pages on Letter, 12'0" x 31in is 45 on Letter and 42 on A4). Page order runs nose to tail, row-major: row 0 is the
  * nose-most station band, and within a row, column 0 is the one touching the stringer.
  */
 export function computeTemplateLayout(

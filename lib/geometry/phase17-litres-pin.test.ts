@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
+import { asD30Read, phase16SurfaceBoards } from "./__fixtures__/phase16-boards";
 import pin from "./__fixtures__/phase17-litres-pin.json";
 import { BOTTOM_SECTIONS, bottomHasChannels, bottomHasCut, DEFAULT_BOTTOM, type BoardBottom } from "./bottom";
 import { HALF_SECTION_POINT_COUNT } from "./finished-rail";
@@ -26,7 +26,8 @@ import { boardSections, computeCrossSectionVolume, halfSectionPointCount } from 
  */
 
 const PIN = pin as { provenance: string; litres: Record<string, string> };
-const BOARDS = phase16SurfaceBoards();
+// Pinned before quick 261113-psx moved the tail rail's default blend; read as D-30 read it.
+const BOARDS = phase16SurfaceBoards().map((board) => ({ ...board, fields: asD30Read(board.fields) }));
 
 /** Three flat sections carrying numbers no flat is stored with, and channels with a count of 0 but other numbers. */
 const FLAT_BUT_NOT_DEFAULT: BoardBottom = {

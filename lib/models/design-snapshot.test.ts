@@ -38,8 +38,8 @@ import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FOIL_SPEC, type FoilSpec } from "@/lib/geometry/foil";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import {
-  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  defaultHardEdgeEndsAt,
+  defaultTailRailBlendsFrom,
+  defaultTailRailEndsAt,
   DEFAULT_RAIL_BAND_SPEC,
   DEFAULT_TIP_RAIL_SCALE,
   HARD_EDGE_BLENDS_FROM_RANGE_IN,
@@ -64,6 +64,7 @@ import {
   BLANK_DECK_SKIN_MAX_MM,
   DESIGN_SNAPSHOT_VERSION,
   SNAPSHOT_BOARD_LENGTH_MM,
+  SNAPSHOT_SHORTEST_IN,
   blankRockerSpecSchema,
   boardBlankSchema,
   hasPhase11Blank,
@@ -697,6 +698,25 @@ describe("design-snapshot", () => {
       expect(SNAPSHOT_BOARD_LENGTH_MM.max).toBeGreaterThan(inchesToMm(BOARD_LENGTH_RANGE_IN.max));
     });
 
+    it("the shortest board a save carries stays 30\" (quick 261113-si7): half of 4'0\" would sit the centre on the 12\" stations", () => {
+      expect(SNAPSHOT_SHORTEST_IN).toBe(30);
+      expect(SNAPSHOT_BOARD_LENGTH_MM.min).toBe(inchesToMm(30));
+      expect(SNAPSHOT_BOARD_LENGTH_MM.max).toBe(inchesToMm(288));
+      // 24" (half of 4'0") is refused, with or without a blank; 30" and a 36" board open.
+      expect(() => parseSnapshot(wireAtLength(inchesToMm(24)))).toThrow();
+      const handSet = wireAtLength(inchesToMm(24));
+      handSet.design.blank = null as never;
+      expect(() => parseSnapshot(handSet)).toThrow();
+      expect(() => parseSnapshot(wireAtLength(inchesToMm(30)))).not.toThrow();
+    });
+
+    it("the boards the app now makes are in range: 4'0\" and 12'0\" keep their blank", () => {
+      expect(isBoardLengthInRange(inchesToMm(48))).toBe(true);
+      expect(isBoardLengthInRange(inchesToMm(144))).toBe(true);
+      expect(isBoardLengthInRange(inchesToMm(47))).toBe(false);
+      expect(isBoardLengthInRange(inchesToMm(145))).toBe(false);
+    });
+
     it("the reviewer's crafted 500 mm board in a blank is rejected as invalid — far below the range, too short to draw", () => {
       expect(500).toBeLessThan(SNAPSHOT_BOARD_LENGTH_MM.min);
       expect(() => parseSnapshot(wireAtLength(500))).toThrow();
@@ -1052,7 +1072,7 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     };
   const length = FIXTURES[0].outline.length;
 
-  it("a board saved without either setting opens with no such keys and reads 18\" and 30\" (rule 13)", () => {
+  it("a board saved without either setting opens with no such keys and reads 12\" and the top of Ends At's slider (rule 13; D-30's 18\" and 30\" until quick 261113-psx)", () => {
     const stored = wire();
     for (const key of KEYS) expect(key in stored.design.rails).toBe(false);
     const opened = parseSnapshot(Object.freeze(stored));
@@ -1060,8 +1080,9 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
       expect(key in opened.rails).toBe(false);
       expect(JSON.stringify(opened.rails)).not.toContain(key);
     }
-    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
-    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultHardEdgeEndsAt(length));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(defaultTailRailBlendsFrom(length));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+    expect(hardEdgeEndsAt(opened.rails, length)).toBe(defaultTailRailEndsAt(defaultTailRailBlendsFrom(length), length));
   });
 
   it("a stored 20\"/26\" pair is kept exactly (rule 13)", () => {
@@ -1075,13 +1096,13 @@ describe("the tail's Hard Edge Blends From and Ends At ride on the rails, read f
     expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(26));
   });
 
-  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 18\" (rule 13)", () => {
+  it("a board saved with only the first, single Hard Edge Ends At keeps it and reads its Blends From as 12\" (rule 13)", () => {
     const stored = wire();
     stored.design.rails.tailHardEdgeEndsAt = inchesToMm(22);
     const opened = parseSnapshot(Object.freeze(stored));
     expect("tailHardEdgeBlendsFrom" in opened.rails).toBe(false);
     expect(opened.rails.tailHardEdgeEndsAt).toBe(inchesToMm(22));
-    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
+    expect(hardEdgeBlendsFrom(opened.rails, length)).toBe(defaultTailRailBlendsFrom(length));
     expect(hardEdgeEndsAt(opened.rails, length)).toBe(inchesToMm(22));
   });
 

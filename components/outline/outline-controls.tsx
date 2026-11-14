@@ -11,9 +11,10 @@ import { Slider } from "@/components/ui/slider";
 import {
   BOARD_LENGTH_RANGE_IN,
   TAIL_PRESETS,
-  WIDEPOINT_WIDTH_RANGE_IN,
   type OutlineSpec,
   type TailShape,
+  widePointOffsetRangeIn,
+  widePointWidthRangeIn,
 } from "@/lib/geometry/board";
 import type { OutlineGeometry } from "@/lib/geometry/outline";
 import {
@@ -25,9 +26,11 @@ import {
   type Mm,
   mmToInches,
   wholeFeetAndInches,
+  wholeFeetWithin,
 } from "@/lib/geometry/units";
 import {
   diamondDepthClampNote,
+  formatControlNumber,
   formatDim,
   formatLength,
   formatMark,
@@ -45,7 +48,7 @@ const TAIL_SHAPES: IconTailShape[] = ["pin", "round", "diamond", "squash", "swal
 
 /** The two Board Length boxes' choices. One list feeds both the open list and the closed box, so
  * the box reads 6' and 0" the same way the list does (quick 261017-sru). */
-const FEET_ITEMS = [5, 6, 7, 8, 9, 10].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
+const FEET_ITEMS = wholeFeetWithin(BOARD_LENGTH_RANGE_IN).map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
 const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
 
 interface OutlineControlsProps {
@@ -226,7 +229,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Nose Angle"
-          displayValue={`${outline.noseAngle}°`}
+          displayValue={`${formatControlNumber(outline.noseAngle)}°`}
           value={outline.noseAngle}
           min={35}
           max={90}
@@ -238,7 +241,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Fullness"
-          displayValue={`${outline.noseFullness}%`}
+          displayValue={`${formatControlNumber(outline.noseFullness)}%`}
           value={outline.noseFullness}
           min={0}
           max={100}
@@ -254,7 +257,7 @@ export function OutlineControls({
         {(() => {
           const width = measureSlider(
             outline.widePointWidth,
-            WIDEPOINT_WIDTH_RANGE_IN,
+            widePointWidthRangeIn(outline.length),
             0.125,
             1,
             system,
@@ -275,7 +278,7 @@ export function OutlineControls({
           );
         })()}
         {(() => {
-          const offset = measureSlider(outline.widePointOffset, { min: -12, max: 12 }, 0.25, 1, system);
+          const offset = measureSlider(outline.widePointOffset, widePointOffsetRangeIn(outline.length), 0.25, 1, system);
           return (
             <SliderRow
               className="flex-1"
@@ -296,7 +299,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Tail Rail"
-          displayValue={`${outline.tailRailLength}%`}
+          displayValue={`${formatControlNumber(outline.tailRailLength)}%`}
           value={outline.tailRailLength}
           min={0}
           max={100}
@@ -308,7 +311,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Nose Rail"
-          displayValue={`${outline.noseRailLength}%`}
+          displayValue={`${formatControlNumber(outline.noseRailLength)}%`}
           value={outline.noseRailLength}
           min={0}
           max={100}
@@ -424,7 +427,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Tail Angle"
-          displayValue={`${outline.tailAngle}°`}
+          displayValue={`${formatControlNumber(outline.tailAngle)}°`}
           value={outline.tailAngle}
           min={30}
           max={90}
@@ -437,7 +440,7 @@ export function OutlineControls({
         <SliderRow
           className="flex-1"
           label="Fullness"
-          displayValue={`${outline.tailFullness}%`}
+          displayValue={`${formatControlNumber(outline.tailFullness)}%`}
           value={outline.tailFullness}
           min={0}
           max={100}

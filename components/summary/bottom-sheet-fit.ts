@@ -7,7 +7,9 @@
  * fits all four on one sheet. A long board with a cut in every section does not — nineteen rows of numbers twice over
  * will not sit under four drawings — and a number a shaper cuts foam to is never dropped or shrunk to fit. So this
  * file decides, from the board alone, whether the two tables stay on the page or take a sheet of their own, and the
- * order form counts its sheets and numbers its pages from the same answer.
+ * order form counts its sheets and numbers its pages from the same answer. And on a board so long that its two tables
+ * will not share even that sheet — over 11'6" (25 rows, every 6" and the nose tip) with a layout-mark column — each
+ * table takes a sheet to itself, whole from Tail to Nose tip (quick 261113-vya).
  *
  * Pure and the same on the server and in the browser: nothing here measures a screen. The heights below are the
  * page's own parts as they measured on the two sheets this form prints on — a computer's printed sheet and a phone's —
@@ -97,6 +99,12 @@ export interface BottomSheetLayout {
   /** Whether the two tables take a sheet of their own, after the page. */
   tablesOnOwnSheet: boolean;
   /**
+   * Whether the two tables, on that sheet of their own, still do not fit together: a board too long for them to share
+   * it — over 11'6", with a layout-mark column — prints the depths on one sheet and the layout marks on the next, each
+   * whole, Tail to Nose tip. False on every board that prints today. Only ever true when `tablesOnOwnSheet` is.
+   */
+  tablesSplit: boolean;
+  /**
    * DATA's notes on how to read the tables, for the tables' own sheet: every note DATA has for the board, in DATA's
    * order (the founder, 2026-11-11: "Make it fit") — fewer only on a hand-set board longer than any stock board, whose
    * sheet takes as many as fit. Empty when the tables stay on the page, which has no room for them.
@@ -108,8 +116,14 @@ export interface BottomSheetLayout {
    * whose notes fit today's rows, and whenever the tables stay on the page.
    */
   tablesTight: boolean;
-  /** How many sheets the bottom prints on: 1, or 2 when the tables take their own. */
-  sheets: 1 | 2;
+  /**
+   * DATA's notes for each of the two split sheets, in DATA's order: the depths sheet takes the depths note and the
+   * full-ink rows note, the marks sheet the layout-marks note and the full-ink rows note (both tables draw those two
+   * rows bold). Both empty unless `tablesSplit`.
+   */
+  splitNotes: { depths: string[]; marks: string[] };
+  /** How many sheets the bottom prints on: 1, 2 when the tables take their own, 3 when each table takes one. */
+  sheets: 1 | 2 | 3;
 }
 
 /**
@@ -236,6 +250,14 @@ function tablesHeight(sheet: SheetSizes, rows: number, markColumns: number, besi
   return markColumns === 0 ? depths : depths + PAGE.gap + sheet.tableFrameWide + sheet.tableHeadTwo + numbers;
 }
 
+/**
+ * One table alone on its own sheet, at the page's full width and today's rows (a board too long for both to share a
+ * sheet): the depths under a one-line heading row, the layout marks under their wrapped two.
+ */
+function oneTableHeight(sheet: SheetSizes, rows: number, table: "depths" | "marks"): number {
+  return sheet.tableFrameWide + (table === "depths" ? sheet.tableHeadOne : sheet.tableHeadTwo) + rows * sheet.tableRow;
+}
+
 /** The tables' notes' height under the tables, the gap above them included; nothing when there is no note. */
 function tableNotesHeight(sheet: SheetSizes, notes: readonly string[]): number {
   if (notes.length === 0) return 0;
@@ -268,9 +290,27 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
   // under today's rows, the rows lose their padding to make the room; the type is never made smaller. Whether the
   // tables take that sheet at all is decided above, at today's rows, so no board prints a sheet more or fewer.
   const tablesBeside = narrow && !tablesOnOwnSheet;
+  // Split only where today's last rung — the full-width tables with their rows tight and no note at all — still would
+  // not leave the room a sheet needs. Every sheet that fits today (every board up to 11'6", and any board whose bottom
+  // has no layout-mark column) stays exactly as it is.
+  const tablesSplit =
+    tablesOnOwnSheet && markColumns > 0 && spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, true)) < PAGE.spare;
   let tableNotes: string[] = [];
   let tablesTight = false;
-  if (tablesOnOwnSheet) {
+  const splitNotes: { depths: string[]; marks: string[] } = { depths: [], marks: [] };
+  if (tablesSplit) {
+    // One table a sheet has room to spare, at today's rows; each keeps its own note and the rows note, in DATA's order,
+    // for as long as they fit — they all do, but they are counted.
+    const rowsNote = referenceRowsNote(board, frontPair, system);
+    for (const table of ["depths", "marks"] as const) {
+      const wanted = [table === "depths" ? BOTTOM_COPY.depthsNote : layoutMarksNote(resolved.channels, system), rowsNote];
+      for (const note of wanted) {
+        const fits = spareAfter((sheet) => oneTableHeight(sheet, rows, table) + tableNotesHeight(sheet, [...splitNotes[table], note])) >= PAGE.spare;
+        if (!fits) break;
+        splitNotes[table].push(note);
+      }
+    }
+  } else if (tablesOnOwnSheet) {
     const wanted = [BOTTOM_COPY.depthsNote, ...(markColumns > 0 ? [layoutMarksNote(resolved.channels, system)] : []), referenceRowsNote(board, frontPair, system)];
     const fits = (list: readonly string[], tight: boolean) =>
       spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, tight) + tableNotesHeight(sheet, list)) >= PAGE.spare;
@@ -286,7 +326,8 @@ export function bottomSheetLayout(resolved: ResolvedBottom, board: BottomBoard, 
       }
     }
   }
-  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tableNotes, tablesTight, sheets: tablesOnOwnSheet ? 2 : 1 };
+  const sheets = tablesSplit ? 3 : tablesOnOwnSheet ? 2 : 1;
+  return { cuts, notes, dataRows, marks, tablesBeside, tablesOnOwnSheet, tablesSplit, tableNotes, tablesTight, splitNotes, sheets };
 }
 
 /** The room, in dots, a sheet must have left over for its parts to count as fitting (for the tests). */
@@ -295,10 +336,14 @@ export const BOTTOM_SHEET_SPARE = PAGE.spare;
 /**
  * The room the arithmetic leaves on each sheet the bottom prints on, on the tighter of the two sheets it is counted
  * on: `page` for the BOTTOM CONTOURS page as it is laid out, `tables` for the tables' own sheet (null when they stay on
- * the page), its rows counted tight when the layout says so. For the tests: a negative figure is a page whose picture
- * has to give way.
+ * the page, or when each takes a sheet), its rows counted tight when the layout says so, and `split` for the depths
+ * sheet and the layout-marks sheet of a board whose tables take one each (null otherwise). For the tests: a negative
+ * figure is a page whose picture has to give way.
  */
-export function bottomSheetSpare(layout: BottomSheetLayout, board: Pick<BottomBoard, "length" | "widePointWidth">): { page: number; tables: number | null } {
+export function bottomSheetSpare(
+  layout: BottomSheetLayout,
+  board: Pick<BottomBoard, "length" | "widePointWidth">,
+): { page: number; tables: number | null; split: { depths: number; marks: number } | null } {
   const rows = layout.dataRows.length;
   const markColumns = layout.marks.columns.length;
   const page = spareAfter(
@@ -306,10 +351,17 @@ export function bottomSheetSpare(layout: BottomSheetLayout, board: Pick<BottomBo
       pageHeightWithoutTables(sheet, board, layout.notes) +
       (layout.tablesOnOwnSheet ? 0 : PAGE.gap + tablesHeight(sheet, rows, markColumns, layout.tablesBeside)),
   );
-  const tables = layout.tablesOnOwnSheet
-    ? spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, layout.tablesTight) + tableNotesHeight(sheet, layout.tableNotes))
+  const tables =
+    layout.tablesOnOwnSheet && !layout.tablesSplit
+      ? spareAfter((sheet) => tablesHeight(sheet, rows, markColumns, false, layout.tablesTight) + tableNotesHeight(sheet, layout.tableNotes))
+      : null;
+  const split = layout.tablesSplit
+    ? {
+        depths: spareAfter((sheet) => oneTableHeight(sheet, rows, "depths") + tableNotesHeight(sheet, layout.splitNotes.depths)),
+        marks: spareAfter((sheet) => oneTableHeight(sheet, rows, "marks") + tableNotesHeight(sheet, layout.splitNotes.marks)),
+      }
     : null;
-  return { page, tables };
+  return { page, tables, split };
 }
 
 /**

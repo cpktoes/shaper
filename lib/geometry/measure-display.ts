@@ -58,6 +58,23 @@ function clampFinite(value: number, min: number, max: number): number {
 }
 
 /**
+ * A slider's bare number as it is shown: an outline angle (`55`), a fullness or rail length (`50.5`).
+ * At most two decimals, trailing zeros dropped — fine enough that every step a slider can land on
+ * (1 for the angles, 0.25 for the rest) reads exactly as it always has, and short enough that a value
+ * between steps reads `48.13` rather than `48.13482249200385`. A board opened from a `.brd` file carries
+ * such values: the closest fit to someone else's curve does not sit on a slider's step (quick 261113-et0).
+ *
+ * Display only (the founder, 2026-11-05: a board keeps its actual values; rounding is for what is shown
+ * or printed) — nothing stored is touched. Not a unit conversion: degrees and percentages read the same
+ * in Imperial and Metric, so there is no `system` here.
+ */
+export function formatControlNumber(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  // `+` drops the trailing zeros `toFixed` writes, and turns a rounded `-0` into `0`.
+  return `${+value.toFixed(2) || 0}`;
+}
+
+/**
  * A standalone dims-family value with its own unit, per D-09: imperial `20 1/4"`, metric
  * `51.4 cm`. Use for a board's length, widths and headline thickness wherever the value stands
  * alone (a slider label, a callout, a chip).

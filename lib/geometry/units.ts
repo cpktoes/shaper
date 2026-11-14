@@ -394,6 +394,16 @@ export function wholeFeetAndInches(value: Mm): { feet: number; inches: number } 
   return { feet, inches: totalInches - feet * 12 };
 }
 
+/**
+ * The whole feet a length range (in inches) spans, for a Board Length feet box: 48" to 144" is 4' to
+ * 12'. A range that does not start or end on a whole foot lists only the feet that fit inside it.
+ */
+export function wholeFeetWithin(rangeIn: { min: number; max: number }): number[] {
+  const first = Math.ceil(rangeIn.min / 12);
+  const last = Math.floor(rangeIn.max / 12);
+  return Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => first + i);
+}
+
 /** A whole number of feet as a Board Length picker shows it, `6'`. The pickers are Imperial-only. */
 export function formatWholeFeet(feet: number): string {
   return `${feet}'`;

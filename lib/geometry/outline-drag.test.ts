@@ -239,6 +239,28 @@ describe("clamping and snapping keep every result slider-representable", () => {
     );
   });
 
+  it("clamps a widepoint dragged past the tail margin on a 4'0\" board to -8\", not -12\" (quick 261113-si7)", () => {
+    const spec: OutlineSpec = { ...BASE, length: inchesToMm(48) };
+    const { geometry, point } = pointFor(spec, "widepoint");
+    const toTail = solveOutlineDrag(geometry, "widepoint", {
+      station: mm(point.station - 10_000),
+      halfWidth: point.halfWidth,
+    });
+    const toNose = solveOutlineDrag(geometry, "widepoint", {
+      station: mm(point.station + 10_000),
+      halfWidth: point.halfWidth,
+    });
+    expect(mmToInches(toTail.widePointOffset as Mm)).toBeCloseTo(-8, 9);
+    expect(mmToInches(toNose.widePointOffset as Mm)).toBeCloseTo(8, 9);
+    // The widest window stays the widest: a board of 4'8" and up still reaches the full 12".
+    const long = pointFor({ ...BASE, length: inchesToMm(60) }, "widepoint");
+    const far = solveOutlineDrag(long.geometry, "widepoint", {
+      station: mm(long.point.station + 10_000),
+      halfWidth: long.point.halfWidth,
+    });
+    expect(mmToInches(far.widePointOffset as Mm)).toBeCloseTo(12, 9);
+  });
+
   it("clamps a rail handle dragged backwards through its own knot to zero", () => {
     const { geometry, point } = pointFor(BASE, "tailRailHandle");
     // Past the widepoint entirely — a negative handle length, which has no meaning.

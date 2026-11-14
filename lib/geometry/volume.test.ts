@@ -64,8 +64,15 @@ import { DEFAULT_FALLBACK_ROCKER } from "./rocker";
 import {
   computeRailBands,
   DEFAULT_RAIL_BAND_SPEC,
-  DEFAULT_HARD_EDGE_BLENDS_FROM_IN,
-  defaultHardEdgeEndsAt,
+  D30_HARD_EDGE_BLENDS_FROM_IN,
+  d30DefaultHardEdgeEndsAt,
+  d30HardEdgeBlendsFrom,
+  d30HardEdgeEndsAt,
+  defaultTailRailEndsAt,
+  HARD_EDGE_BLENDS_FROM_RANGE_IN,
+  hardEdgeWindowOnGrid,
+  hardEdgeEndsAtWindow,
+  withD30TailRailBlend,
   DEFAULT_TIP_RAIL_SCALE,
   effectiveDeckPercent,
   hardEdgeBlendsFrom,
@@ -923,16 +930,36 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
   const anchorPoints = foilStationPoints(DEFAULT_FOIL_SPEC, length);
   const tail12 = anchorPoints[1].station;
   const anchors = { tail: tail12, center: anchorPoints[2].station, nose: anchorPoints[3].station };
-  // The board says nothing, so these are the defaults (18" and 30") as the readers resolve them.
+  // The board says nothing, so these are the defaults (12" and the board's centre, since quick 261113-psx) as the
+  // live readers resolve them.
   const blendsFrom = hardEdgeBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length);
   const endsAt = hardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC, length);
 
-  it("a board that says nothing blends from 18\" to 30\", both inside the board's tail half", () => {
-    expect(blendsFrom).toBe(inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN));
-    expect(endsAt).toBe(defaultHardEdgeEndsAt(length));
-    expect(endsAt).toBe(inchesToMm(30));
-    expect(blendsFrom).toBeGreaterThan(tail12);
-    expect(endsAt).toBeLessThan(anchors.center);
+  it("a board that says nothing blends from the 12\" station to the centre, and D-30's rules still read 18\" to 30\"", () => {
+    expect(blendsFrom).toBe(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min));
+    expect(endsAt).toBe(defaultTailRailEndsAt(blendsFrom, length));
+    expect(endsAt).toBe(inchesToMm(36));
+    // The tail's 12" station IS Blends From, so the tail plot there is a full tail rail; Ends At is the centre.
+    expect(blendsFrom).toBe(tail12);
+    expect(endsAt).toBe(anchors.center);
+    // Go-live 1's and plan 16-15's rules read D-30's default by name: 18" to L/6 + 18" (30" on a 6'0").
+    expect(d30HardEdgeBlendsFrom(DEFAULT_RAIL_BAND_SPEC, length)).toBe(inchesToMm(D30_HARD_EDGE_BLENDS_FROM_IN));
+    expect(d30HardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC, length)).toBe(d30DefaultHardEdgeEndsAt(length));
+    expect(d30HardEdgeEndsAt(DEFAULT_RAIL_BAND_SPEC, length)).toBe(inchesToMm(30));
+    // Each old rule weighs the stations by its own pair: a station at 24" is part way through D-30's blend and
+    // part way through the live one.
+    const at24 = inchesToMm(24);
+    const tailRails = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdge: true };
+    expect(HARD_EDGE_FADE.weight(at24, anchors, tailRails, length)).toBe(
+      tailHardEdgeWeight(at24, d30HardEdgeBlendsFrom(tailRails, length), d30HardEdgeEndsAt(tailRails, length)),
+    );
+    expect(RAIL_CHARACTER_FADE.at(at24, "tail", anchors, tailRails, length).tipWeight).toBe(
+      tailHardEdgeWeight(at24, d30HardEdgeBlendsFrom(tailRails, length), d30HardEdgeEndsAt(tailRails, length)),
+    );
+    expect(SMOOTH_SURFACE_FADE.at(at24, "tail", anchors, tailRails, length).tipWeight).toBe(
+      tailHardEdgeWeight(at24, blendsFrom, endsAt),
+    );
+    expect(SMOOTH_SURFACE_FADE.at(tail12, "tail", anchors, tailRails, length).tipWeight).toBe(1);
   });
 
   it("RAILS' tail station is always a full hard edge: Blends From never goes below the 12\" mark", () => {
@@ -1040,8 +1067,11 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
         if (!(section.tipWeight > 0 && section.tipWeight < 1)) continue;
         const ends = boardSectionEnds(boardInput, section.station);
         expect(ends.tipWeight).toBe(section.tipWeight);
-        const baseHalf = sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
-        const tipHalf = sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
+        // Each end's own half, as the live blend takes it: since quick 261113-psx the tail's rail starts blending at
+        // the 12" station, where a pin tail is narrower than its rail, so an end that does not fit its room is drawn
+        // into it (`drawn`, the fitted half) — and its exact area counts that half.
+        const baseHalf = ends.base.drawn ?? sampledFinishedRail(ends.base.result!, ends.base.domed, ends.base.halfWidth);
+        const tipHalf = ends.tip.drawn ?? sampledFinishedRail(ends.tip.result!, ends.tip.domed, ends.tip.halfWidth);
         const w = section.tipWeight;
         expect(section.blended).toEqual(liveBlend(ends, baseHalf, tipHalf, w));
         const expected =
@@ -1139,20 +1169,24 @@ describe("D-20/D-27/D-30 the hard edge's blend, from Blends From to Ends At", ()
     }
   }, 120_000);
 
-  it("a board that says nothing reads exactly as a board that says 18\" and 30\"", () => {
+  it("a board that says nothing reads exactly as a board that says 12\" and the top of Ends At's slider", () => {
+    const top = inchesToMm(hardEdgeWindowOnGrid(hardEdgeEndsAtWindow(inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min), length)).max);
     const said = computeCrossSectionVolume(
       input({
         ...DEFAULT_RAIL_BAND_SPEC,
-        tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN),
-        tailHardEdgeEndsAt: defaultHardEdgeEndsAt(length),
+        tailHardEdgeBlendsFrom: inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min),
+        tailHardEdgeEndsAt: top,
       }),
     );
     expect(computeCrossSectionVolume(input(DEFAULT_RAIL_BAND_SPEC)).volumeLitres).toBe(said.volumeLitres);
+    // ...and a board that says D-30's pair reads what the site read before quick 261113-psx.
+    const d30 = computeCrossSectionVolume(input(withD30TailRailBlend(DEFAULT_RAIL_BAND_SPEC, length)));
+    expect(d30.volumeLitres).not.toBe(said.volumeLitres);
   });
 
-  it("a board carrying only the old single Ends At reads its Blends From as 18\"", () => {
+  it("a board carrying only the old single Ends At reads its Blends From as 12\"", () => {
     const old = { ...DEFAULT_RAIL_BAND_SPEC, tailHardEdgeEndsAt: inchesToMm(24) };
-    const both = { ...old, tailHardEdgeBlendsFrom: inchesToMm(DEFAULT_HARD_EDGE_BLENDS_FROM_IN) };
+    const both = { ...old, tailHardEdgeBlendsFrom: inchesToMm(HARD_EDGE_BLENDS_FROM_RANGE_IN.min) };
     expect(computeCrossSectionVolume(input(old)).volumeLitres).toBe(computeCrossSectionVolume(input(both)).volumeLitres);
   });
 });
@@ -1666,14 +1700,14 @@ describe("D-34 the rail fits into a narrow tip", () => {
   const BOARDS = phase16SurfaceBoards().map((board) => ({ ...board, ...inputOf(board.fields) }));
   /** An old-fit rule holding a station's tip weight, so each end of a blend can be read alone. */
   const held = (tipWeight: number): RailCharacterRule => ({
-    at: (...args) => ({ ...RAIL_CHARACTER_FADE.at(...args), tipWeight }),
+    at: (...args) => ({ ...SMOOTH_SURFACE_FADE.at(...args), tipWeight }),
   });
 
   for (const { label, geometry, input } of BOARDS) {
     it(`${label}: a station narrower than its rail counts the fitted ring; one with room counts what it always did`, () => {
       const live = boardSections(input);
       // The tips' fit alone set back: the same actual rail thickness, cut off at the stringer.
-      const old = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at, fit: { ...OLD_SURFACE_FIT, rail: "exact" } });
+      const old = boardSectionsWith(input, { at: SMOOTH_SURFACE_FADE.at, fit: { ...OLD_SURFACE_FIT, rail: "exact" } });
       live.forEach((section, i) => {
         if (!section.result || section.blended || wingShareAt(geometry, section.station) !== 0) return;
         const before = old[i];
@@ -1866,7 +1900,7 @@ describe("a sharp bottom edge opens into a round one along the blend (the founde
       const [from, to] = zone(input, side);
       const s = mm((from + to) / 2);
       const [live] = boardSections(input, [s]);
-      const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+      const [corner] = boardSectionsWith(input, { at: SMOOTH_SURFACE_FADE.at }, [s]);
       const ends = boardSectionEnds(input, s);
       const round = ends.base.sharpness === 1 ? ends.tip : ends.base;
       const own = tuckTurn(halfOf(round));
@@ -1890,7 +1924,7 @@ describe("a sharp bottom edge opens into a round one along the blend (the founde
     const [from, to] = zone(input, "tail");
     const s = mm((from + to) / 2);
     const [live] = boardSections(input, [s]);
-    const [corner] = boardSectionsWith(input, { at: RAIL_CHARACTER_FADE.at }, [s]);
+    const [corner] = boardSectionsWith(input, { at: SMOOTH_SURFACE_FADE.at }, [s]);
     expect(live.blended).toEqual(corner.blended);
     expect(live.sharpness).toBe(1);
   });

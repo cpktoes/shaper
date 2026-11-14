@@ -60,7 +60,8 @@ describe("rackModelsFromRows", () => {
 
   it("keeps a board just outside the length range as a hand-set card instead of dropping it", () => {
     const log = vi.fn();
-    const short = inchesToMm(50);
+    // 46": a hair under the shortest board the app makes (4'0", quick 261113-si7), still above what a saved board can carry (30").
+    const short = inchesToMm(46);
     const models = rackModelsFromRows([row("short", { ...FIELDS, outline: { ...FIELDS.outline, length: short } })], log);
     expect(models).toHaveLength(1);
     expect(models[0].snapshot.blank).toBeNull();

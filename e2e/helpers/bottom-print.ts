@@ -19,6 +19,7 @@ import { buildOutline } from "../../lib/geometry/outline";
 import { BOARD_PRESETS } from "../../lib/geometry/presets";
 import { DEFAULT_VOLUME_SPEC } from "../../lib/geometry/volume";
 import type { DesignSnapshotFields } from "../../lib/models/design-snapshot";
+import { inchesToMm } from "../../lib/geometry/units";
 import { OPEN_BOARD_STORAGE_KEY, openBoardCopyJson } from "../../lib/models/open-board";
 
 /** Which cut each section of the bottom carries (a section left out stays flat), and how many channels. */
@@ -50,12 +51,20 @@ export interface BoardWithBottom {
  * the BOTTOM screen itself would give it on that board (`pickCut`, `startingChannels`), never a typed figure. A test
  * that prints a bottom starts here instead of clicking through BOTTOM's menus, which the BOTTOM specs already cover;
  * and it reads every number it expects on the page from `board` and `resolved` through the app's own unit rules.
+ *
+ * `size` makes it a stock board at another length and wide-point width, in inches (quick 261113-vya's 12'0" × 31"):
+ * the outline is set through `inchesToMm`, and the board carries no blank — a stock board's blank is shorter than a
+ * 12'0" one, so its side profile is the fallback rocker. With no `size`, everything returned is the stock board's own.
  */
-export function boardWithBottom(presetId: string, picks: BottomPicks): BoardWithBottom {
+export function boardWithBottom(presetId: string, picks: BottomPicks, size?: { lengthIn: number; widthIn: number }): BoardWithBottom {
   const preset = BOARD_PRESETS.find((p) => p.id === presetId);
   if (!preset) throw new Error(`No stock board named ${presetId}`);
+  const stock = presetDesignFields(preset);
   const fields: Omit<DesignSnapshotFields, "bottom"> = {
-    ...presetDesignFields(preset),
+    ...stock,
+    ...(size
+      ? { outline: { ...stock.outline, length: inchesToMm(size.lengthIn), widePointWidth: inchesToMm(size.widthIn) }, blank: null }
+      : {}),
     volume: DEFAULT_VOLUME_SPEC,
     finsImportTemplate: true,
     railsImportFoilThickness: true,

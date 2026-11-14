@@ -78,6 +78,7 @@ import {
 } from "@/lib/models/autosave";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type Point2D } from "@/lib/geometry/board";
 import { buildOutline, type OutlineGeometry } from "@/lib/geometry/outline";
+import { holdOutlineToLength } from "@/lib/geometry/board-size";
 import type { FiveStationRocker } from "@/lib/geometry/rocker";
 import { presetDesignFields } from "@/lib/blanks/preset-blanks";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
@@ -512,19 +513,21 @@ interface DesignContextValue {
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
-   * is one undo step. Never written when a board opens: a board without it reads 18" (`hardEdgeBlendsFrom`). */
+   * is one undo step. Never written when a board opens: a board without it reads 12" (`hardEdgeBlendsFrom`; D-30's
+   * 18" until quick 261113-psx). */
   setTailHardEdgeBlendsFrom: (value: Mm) => void;
   /** Sets where the rail has fully blended into the centre's tucked rail, in millimetres from the tail
    * (Phase 16, D-20/D-30) — the Hard Edge Ends At slider. One drag is one undo step. Never written when a board
-   * opens: a board without it reads 30" (`hardEdgeEndsAt`). */
+   * opens: a board without it reads the top of Ends At's slider, the
+   * board's centre (`hardEdgeEndsAt`; D-30's L/6 + 18" until quick 261113-psx). */
   setTailHardEdgeEndsAt: (value: Mm) => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
-   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Hard Edge Blends From and Ends At
-   * back to 18" and 30" (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` deleted, Phase 16 D-20/D-30) — one
-   * undo step. */
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At
+   * back to the 12" station and the board's centre (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` still deleted, Phase 16
+   * D-20/D-30; the defaults moved with quick 261113-psx, the founder 2026-11-13) — one undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
@@ -1066,7 +1069,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
   // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
   // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
-  // rule) and Hard Edge Blends From and Ends At back to 18" and 30" by deleting `tailHardEdgeBlendsFrom` and
+  // rule) and Tail Rail Blends From and Ends At back to 12" and the board's centre by deleting `tailHardEdgeBlendsFrom` and
   // `tailHardEdgeEndsAt` (Phase 16, D-20/D-30: a board without them reads the defaults) — all in one setState,
   // so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).
@@ -1186,8 +1189,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // `state.outline` whenever nothing moves. Quick 261015-hz7 (D2, D3): the same resolution keeps
   // every wing under the top and wing 2 behind wing 1, so a sidebar or grab-point write — which
   // always writes the list as shown — stores a wing 2 where it was pushed.
+  //
+  // Quick 261113-si7 (the founder's 4'0"–12'0" and 31" rulings, calls 2 and 3): the same place holds a
+  // board's Width and Offset to its length. A board 28" wide that is then shortened under 8'0" reads,
+  // draws and saves 25"; one shortened under 4'8" has its Offset held to where the wide point can
+  // really go. What was stored is kept in `state.outline`, so lengthening the board again brings the
+  // wider Width back until the Width slider itself is moved. The SAME object comes back for every
+  // board inside the old sizes (`holdOutlineToLength`), so none of them moves.
   const resolvedOutline = useMemo(
-    () => resolveWingStations(state.outline, state.fins, state.finsImportTemplate).outline,
+    () => resolveWingStations(holdOutlineToLength(state.outline), state.fins, state.finsImportTemplate).outline,
     [state.outline, state.fins, state.finsImportTemplate],
   );
   const outlineGeometry = useMemo(() => buildOutline(resolvedOutline), [resolvedOutline]);
@@ -1221,7 +1231,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     // A ghost with a locked wing is resolved against the live fins, the same way the board is.
     () =>
       outlineGhost
-        ? buildOutline(resolveWingStations(outlineGhost, state.fins, state.finsImportTemplate).outline)
+        ? buildOutline(resolveWingStations(holdOutlineToLength(outlineGhost), state.fins, state.finsImportTemplate).outline)
         : null,
     [outlineGhost, state.fins, state.finsImportTemplate],
   );
@@ -1276,14 +1286,15 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const railBands = useMemo(() => computeRailBands(effectiveRails), [effectiveRails]);
 
   const templateValues: VolumeTemplateValues = useMemo(
-    () => deriveTemplateValues(state.outline, outlineGeometry),
-    // Deliberately narrower than "state.outline" (eslint-disable below): deriveTemplateValues
+    () => deriveTemplateValues(resolvedOutline, outlineGeometry),
+    // Deliberately narrower than "resolvedOutline" (eslint-disable below): deriveTemplateValues
     // only reads outline.length and outline.widePointWidth, and this dependency array is
     // unchanged from before the lib/geometry/design.ts extraction — widening it to the whole
     // outline object would recompute this memo on every unrelated outline edit (nose angle,
-    // tail shape, ...), which the extraction must not change.
+    // tail shape, ...), which the extraction must not change. It reads the HELD outline (quick
+    // 261113-si7), so VOLUME's imported width is the width the board is drawn at.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [outlineGeometry, state.outline.length, state.outline.widePointWidth],
+    [outlineGeometry, resolvedOutline.length, resolvedOutline.widePointWidth],
   );
 
   const railValues: VolumeRailValues = useMemo(() => deriveRailValues(railBands), [railBands]);

@@ -3,6 +3,7 @@ import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import { BOARD_LENGTH_RANGE_IN, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
 import { DIAMOND_BLOCK_MARGIN_MM, MEASURE_STATION_MM } from "./outline";
 import {
+  formatControlNumber,
   commitTypedMeasure,
   formatArea,
   formatCalibrationMark,
@@ -48,6 +49,29 @@ import {
   type Mm,
   type UnitsSystem,
 } from "./units";
+
+describe("formatControlNumber", () => {
+  it("reads every step a slider can land on exactly as it always has", () => {
+    expect(formatControlNumber(55)).toBe("55");
+    expect(formatControlNumber(50.5)).toBe("50.5");
+    expect(formatControlNumber(50.25)).toBe("50.25");
+    expect(formatControlNumber(0)).toBe("0");
+    expect(formatControlNumber(100)).toBe("100");
+  });
+
+  it("shortens a value between steps to two decimals — a board opened from a .brd file", () => {
+    expect(formatControlNumber(48.13482249200385)).toBe("48.13");
+    expect(formatControlNumber(56.35232831638945)).toBe("56.35");
+    expect(formatControlNumber(46.65387933287313)).toBe("46.65");
+    expect(formatControlNumber(89.999)).toBe("90");
+  });
+
+  it("never writes a minus zero or a non-number", () => {
+    expect(formatControlNumber(-0.001)).toBe("0");
+    expect(formatControlNumber(Number.NaN)).toBe("0");
+    expect(formatControlNumber(Number.POSITIVE_INFINITY)).toBe("0");
+  });
+});
 
 describe("formatDim", () => {
   it("imperial branch is formatInchesFraction, unchanged", () => {
@@ -348,11 +372,11 @@ describe("measureSlider", () => {
   });
 
   it("D-07: a stored value below the metric minimum pins the display without writing back", () => {
-    // A 60in board is 1524mm, below the 1530mm metric floor (60-120in at a 10mm step).
-    const stored = mm(1524);
+    // A 48in board is 1219.2mm, below the 1220mm metric floor (48-144in at a 10mm step).
+    const stored = mm(1219.2);
     const view = measureSlider(stored, BOARD_LENGTH_RANGE_IN, 1, 10, "metric");
-    expect(view.min).toBe(1530);
-    expect(view.value).toBe(1530);
+    expect(view.min).toBe(1220);
+    expect(view.value).toBe(1220);
     // Nothing in constructing the view calls toMm — only an actual drag does, so the flip itself
     // never touches the store (the caller only writes on onValueChange, never on render).
   });
@@ -360,17 +384,17 @@ describe("measureSlider", () => {
 
 describe("typedFieldBounds", () => {
   // Provenance: measureSlider(mm(1880), BOARD_LENGTH_RANGE_IN, 1, 10, "metric").min/max are
-  // 1530/3040 (60-120in -> 1524-3048mm, rounded inward to the 10mm grid — metricSliderRange's own
+  // 1220/3650 (48-144in -> 1219.2-3657.6mm, rounded inward to the 10mm grid — metricSliderRange's own
   // tests in units.test.ts pin this). typedFieldBounds must convert those millimetre-domain slider
   // bounds down to the centimetre-domain field bounds commitTypedMeasure expects for "length"/"dim".
   const metricLengthView = measureSlider(mm(1880), BOARD_LENGTH_RANGE_IN, 1, 10, "metric");
   const imperialLengthView = measureSlider(inchesToMm(74), BOARD_LENGTH_RANGE_IN, 1, 10, "imperial");
 
   it("metric length family converts the slider's millimetre bounds to centimetres", () => {
-    expect(metricLengthView.min).toBe(1530);
-    expect(metricLengthView.max).toBe(3040);
+    expect(metricLengthView.min).toBe(1220);
+    expect(metricLengthView.max).toBe(3650);
     const bounds = typedFieldBounds(metricLengthView, "length", "metric");
-    expect(bounds).toEqual({ min: 153, max: 304 });
+    expect(bounds).toEqual({ min: 122, max: 365 });
   });
 
   it("metric dim family converts the slider's millimetre bounds to centimetres, same as length", () => {
@@ -390,9 +414,9 @@ describe("typedFieldBounds", () => {
   it("imperial leaves the slider's inch bounds unchanged, for every family", () => {
     expect(imperialLengthView.min).toBe(BOARD_LENGTH_RANGE_IN.min);
     expect(imperialLengthView.max).toBe(BOARD_LENGTH_RANGE_IN.max);
-    expect(typedFieldBounds(imperialLengthView, "length", "imperial")).toEqual({ min: 60, max: 120 });
-    expect(typedFieldBounds(imperialLengthView, "dim", "imperial")).toEqual({ min: 60, max: 120 });
-    expect(typedFieldBounds(imperialLengthView, "mark", "imperial")).toEqual({ min: 60, max: 120 });
+    expect(typedFieldBounds(imperialLengthView, "length", "imperial")).toEqual({ min: 48, max: 144 });
+    expect(typedFieldBounds(imperialLengthView, "dim", "imperial")).toEqual({ min: 48, max: 144 });
+    expect(typedFieldBounds(imperialLengthView, "mark", "imperial")).toEqual({ min: 48, max: 144 });
   });
 
   describe("integration: the real Board Length wiring (outline/fins/volume-controls.tsx)", () => {
@@ -413,7 +437,7 @@ describe("typedFieldBounds", () => {
       expect(result.display).toBe("188.0 cm");
     });
 
-    it("a value below the metric floor clamps to 1530mm (the slider's own minimum), not a millimetre-scale accident", () => {
+    it("a value below the metric floor clamps to 1220mm (the slider's own minimum), not a millimetre-scale accident", () => {
       const view = measureSlider(mm(1880), BOARD_LENGTH_RANGE_IN, 1, 10, "metric");
       const bounds = typedFieldBounds(view, "length", "metric");
       const result = commitTypedMeasure({
@@ -426,7 +450,7 @@ describe("typedFieldBounds", () => {
         bare: false,
       });
       expect(result.error).toBeNull();
-      expect(result.value).toBe(mm(1530));
+      expect(result.value).toBe(mm(1220));
     });
 
     it("committing the field's own blurred display string round-trips to the same stored value", () => {
@@ -455,19 +479,19 @@ describe("typedFieldBounds", () => {
       expect(second.error).toBeNull();
     });
 
-    it("REGRESSION (CR-01): passing the slider's raw millimetre bounds straight through — the old, broken wiring — produces the 10x-too-long 15300mm this fix eliminates", () => {
+    it("REGRESSION (CR-01): passing the slider's raw millimetre bounds straight through — the old, broken wiring — produces the 10x-too-long 12200mm this fix eliminates", () => {
       const view = measureSlider(mm(1880), BOARD_LENGTH_RANGE_IN, 1, 10, "metric");
       const brokenResult = commitTypedMeasure({
         typed: "188",
         current: mm(1880),
         family: "length",
-        min: view.min, // WRONG: millimetre-scale (1530), not run through typedFieldBounds
-        max: view.max, // WRONG: millimetre-scale (3040)
+        min: view.min, // WRONG: millimetre-scale (1220), not run through typedFieldBounds
+        max: view.max, // WRONG: millimetre-scale (3650)
         system: "metric",
         bare: false,
       });
       expect(brokenResult.error).toBeNull();
-      expect(brokenResult.value).toBe(mm(15300));
+      expect(brokenResult.value).toBe(mm(12200));
     });
   });
 });

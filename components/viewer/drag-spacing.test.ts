@@ -22,8 +22,9 @@
  * less the phone shell's `p-2` inset (8px each side, 16px total).
  *
  * The outline case uses the tightest realistic board a shaper can build — the shortest length paired
- * with the widest widepoint (`BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN`) — because a short,
- * wide board is what pulls the five drag points closest together on screen.
+ * with the widest widepoint of a board that short (`BOARD_LENGTH_RANGE_IN`/`WIDEPOINT_WIDTH_RANGE_IN`:
+ * 4'0" x 25", since quick 261113-si7 — a 5'0" x 25" before) — because a short, wide board is what pulls
+ * the five drag points closest together on screen.
  *
  * The rocker half of this file retired with D-14 (Phase 11): the rocker drawing's four curve
  * handles went with the three-knot Bezier they steered, so there is nothing on that drawing to
@@ -160,8 +161,9 @@ function pxPerMm(userUnitsPerInch: number, fit: number): number {
 }
 
 describe("the tightest realistic board is actually the one measured", () => {
-  it("60in length, 25in widepoint — BOARD_LENGTH_RANGE_IN/WIDEPOINT_WIDTH_RANGE_IN's own worst case", () => {
-    expect(BOARD_LENGTH_RANGE_IN.min).toBe(60);
+  it("48in length, 25in widepoint — BOARD_LENGTH_RANGE_IN/WIDEPOINT_WIDTH_RANGE_IN's own worst case", () => {
+    // 4'0" since quick 261113-si7 (it was 5'0"); 4'0" x 25" measures 52.6px apart on an iPhone SE and 54.7px on an iPhone 14.
+    expect(BOARD_LENGTH_RANGE_IN.min).toBe(48);
     expect(WIDEPOINT_WIDTH_RANGE_IN.max).toBe(25);
   });
 });

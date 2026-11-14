@@ -20,12 +20,23 @@
 import { DEFAULT_BOARD_SPEC, type OutlineSpec, type TailShape } from "../board";
 import type { DesignSummaryFields } from "../design";
 import { BOARD_PRESETS } from "../presets";
-import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "../rail-bands";
+import { DEFAULT_RAIL_BAND_SPEC, withD30TailRailBlend, type RailBandSpec } from "../rail-bands";
 import { inchesToMm } from "../units";
 import { DEFAULT_VOLUME_SPEC } from "../volume";
 import { buildOutline } from "../outline";
 import { NO_FIN_EDGES, nextWing, type Wing } from "../wings";
 import { recordedPresetDesignFields } from "./phase14-preset-blanks";
+
+/**
+ * A board's fields read as D-30 read them (quick 261113-psx): both tail-blend fields stored as the old default
+ * resolved them (18", and L/6 + 18" from the tail), so the live rule reads exactly what the site read before the
+ * founder made the default 12" to the centre. Every pin of the live rule written before that change reads its
+ * boards through this, so each keeps reproducing its recorded figures to the last digit; a test whose subject is
+ * the default itself does not use it.
+ */
+export function asD30Read(fields: DesignSummaryFields): DesignSummaryFields {
+  return { ...fields, rails: withD30TailRailBlend(fields.rails, fields.outline.length) };
+}
 
 /** The five tails each preset is tried with; `asis` keeps the preset's own tail. */
 export const PHASE16_TAILS: Readonly<Record<"asis" | "swallow" | "diamond" | "pin" | "round", TailShape | null>> = {
@@ -152,7 +163,8 @@ export function phase16LiveBoards(): { label: string; fields: DesignSummaryField
  * - `…|deep` — w1 1" deep with a 1" run, sharp: the deepest wing TEMPLATE allows.
  * - `…|square` — w1 3/8" deep with no run, sharp: a square step, two widths at one station.
  * - `…|rounded` — w1 1/2" deep, a 1/2" run, a 1/4" corner radius.
- * - `…|infade` — w1 moved to 22", inside the tail rail's fade (Blends From 18" to Ends At).
+ * - `…|infade` — w1 moved to 22", inside the tail rail's fade (D-30's 18" to 30" on a 6'0" when it was pinned, and the new
+ *   12"-to-centre one of quick 261113-psx: it sits inside both).
  * - `…|one-soft` — `[w1]` with the tail's Hard Edge off, so the tail's tuck is the one the wing steps.
  *
  * Every size goes through `inchesToMm` (Rule 2).

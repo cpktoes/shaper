@@ -84,12 +84,15 @@ describe("buildRailsGuide — the Shortboard as its card opens it", () => {
     expect(read(ids.sharpBottomTuck)).toEqual(["", "dashed · sharp"]);
   });
 
-  it("reads Tail Rail Blends From · Ends At as RAILS' own sliders do — the app's 30 1/2\", where the words page says 30 5/16\"", () => {
+  it("reads Tail Rail Blends From · Ends At as RAILS' own sliders do — the new default, 12\" and the Shortboard's centre, 37\"", () => {
     const from = hardEdgeBlendsFrom(shortboard.effectiveRails, shortboard.boardLength);
     const ends = hardEdgeEndsAt(shortboard.effectiveRails, shortboard.boardLength);
     expect(tagOf(shortboard, ids.blends).text).toBe(`${formatDim(from, "imperial")} · ${formatDim(ends, "imperial")}`);
-    expect(tagOf(shortboard, ids.blends).text).toBe('18" · 30 1/2"');
-    expect(captionOf(shortboard, ids.blends)).toBe('dashed · 24" · 36 1/2"');
+    // The founder, 2026-11-13 (quick 261113-psx): 12" and the top of Ends At's slider (the 6'2"'s centre). The dashed
+    // "what if" can only move Blends From, 6" toward the nose: both marks sit at their ends, so the pair cannot move.
+    expect(tagOf(shortboard, ids.blends).text).toBe('12" · 37"');
+    expect(captionOf(shortboard, ids.blends)).toBe('dashed · 18" · 37"');
+    expect(buildRailsGuide(shortboard, "metric").get(ids.blends)!.tag.text).toBe(`${formatDim(from, "metric")} · ${formatDim(ends, "metric")}`);
   });
 
   it("tags a toggle On this board only while it is ticked", () => {
@@ -152,9 +155,25 @@ describe("railsGuideVariants — every push is the board with one field changed,
       expect(spec(ids.domedDeckBand).nudges.domedDeckBand).toBeCloseTo(push.domedBand, 9);
       expect(spec(ids.bottomTuck1).nudges.bottomTuck1).toBeCloseTo(push.tuck1, 9);
       expect(spec(ids.bottomTuck3).nudges.bottomTuck3).toBeCloseTo(push.tuck3, 9);
+      // On the default Shortboard both marks sit at their slider's ends, so the pair cannot move together: Blends From
+      // alone moves by the push toward the nose and Ends At stays (quick 261113-psx).
       const blends = v[ids.blends] as { blendsFrom: number; endsAt: number };
       expect(blends.blendsFrom).toBeCloseTo(hardEdgeBlendsFrom(shortboard.effectiveRails, shortboard.boardLength) + push.blends, 9);
-      expect(blends.endsAt).toBeCloseTo(hardEdgeEndsAt(shortboard.effectiveRails, shortboard.boardLength) + push.blends, 9);
+      expect(blends.endsAt).toBeCloseTo(hardEdgeEndsAt(shortboard.effectiveRails, shortboard.boardLength), 9);
+    }
+  });
+
+  it("pushes a stored mid pair as a pair, the push toward the centre, as before the new default", () => {
+    const fields = presetDesignFields(BOARD_PRESETS.find((p) => p.id === "shortboard")!);
+    const stored = railsGuideInputFromFields({
+      ...fields,
+      rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(20), tailHardEdgeEndsAt: inchesToMm(26) },
+    });
+    for (const system of UNITS_SYSTEMS) {
+      const push = guidePush(system).rails;
+      const blends = railsGuideVariants(stored, system)[ids.blends] as { blendsFrom: number; endsAt: number };
+      expect(blends.blendsFrom).toBeCloseTo(inchesToMm(20) + push.blends, 9);
+      expect(blends.endsAt).toBeCloseTo(inchesToMm(26) + push.blends, 9);
     }
   });
 
@@ -285,6 +304,22 @@ describe("buildRailsGuide — Rule 2, the page's colours, and every drawing in i
   it("draws a section card 186 tall and the tail from above 176 (UI-SPEC §4)", () => {
     for (const card of buildRailsGuide(shortboard, "imperial").values()) {
       expect(card.figure.height, card.id).toBe(card.id === ids.blends ? 176 : 186);
+    }
+  });
+});
+
+describe("buildRailsGuide — the new default's labels stay inside their box (quick 261113-psx)", () => {
+  // Blends From now starts at the 12" station, a hand from the window's tail edge: its figure (`30.5 cm` runs longest) would
+  // pass that edge, so it slides back under its own mark. Every preset, both systems, at the card's three text fits.
+  it("keeps both figures whole and inside the window on every preset in both systems", () => {
+    for (const preset of PRESETS) {
+      const input = guideRailsInput(preset);
+      for (const system of UNITS_SYSTEMS) {
+        const card = buildRailsGuide(input, system).get(ids.blends)!;
+        for (const fit of [0.7, 0.79, 1.26]) {
+          expect(guideLabelOverlaps(card.figure, fit), `${preset} ${system} at ${fit}`).toEqual([]);
+        }
+      }
     }
   });
 });

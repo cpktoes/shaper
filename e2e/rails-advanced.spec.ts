@@ -2,9 +2,10 @@ import { expect, test, type Locator, type Page, type TestInfo } from "@playwrigh
 import { BOARD_LOCK_COPY } from "../components/design/board-lock-copy";
 import { DEFAULT_BOARD_SPEC } from "../lib/geometry/board";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
+import { hardEdgeBlendsFromSlider } from "../lib/geometry/blank-reasons";
 import { formatDim } from "../lib/geometry/measure-display";
 import { BOARD_PRESETS } from "../lib/geometry/presets";
-import { DEFAULT_RAIL_BAND_SPEC, defaultHardEdgeEndsAt } from "../lib/geometry/rail-bands";
+import { DEFAULT_RAIL_BAND_SPEC, hardEdgeBlendsFrom, hardEdgeEndsAt } from "../lib/geometry/rail-bands";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "../lib/geometry/volume";
 import type { DesignSnapshotFields } from "../lib/models/design-snapshot";
@@ -814,14 +815,16 @@ async function keptTailRail(page: Page, key: "tailHardEdgeBlendsFrom" | "tailHar
 /** A distance as RAILS reads it in Imperial, from the app's own formatter. */
 const inches = (value: number) => formatDim(inchesToMm(value), "imperial");
 
-// The stock 6'0" board: Blends From 18" and Ends At 30" (its own default end, L/3 − 18 inches short of the 36"
-// centre) when it says nothing. Every reading below is the app's own formatter on the founder's figures.
+// The stock 6'0" board: Blends From 12" (the bottom of its slider) and Ends At 36" (the top of its slider, the centre)
+// when it says nothing — the founder, 2026-11-13, quick 261113-psx (D-30's 18" and 30" before). Both sit at their
+// slider's ends. Every reading below is the app's own formatter on the founder's figures.
 const STOCK_LENGTH = DEFAULT_BOARD_SPEC.outline.length;
-const STOCK_END = formatDim(defaultHardEdgeEndsAt(STOCK_LENGTH), "imperial");
+const STOCK_START = formatDim(hardEdgeBlendsFrom({}, STOCK_LENGTH), "imperial");
+const STOCK_END = formatDim(hardEdgeEndsAt({}, STOCK_LENGTH), "imperial");
 const STOCK_CENTRE = formatDim(mm(STOCK_LENGTH / 2), "imperial");
 
 test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
-  test("1. with the tail's Hard Edge on, Advanced ends Blends From — 18\", Ends At — 30\", Reset; moving either moves VOLUME's litres, and a reload keeps them", async ({
+  test("1. with the tail's Hard Edge on, Advanced ends Blends From — 12\", Ends At — 36\", Reset; moving either moves VOLUME's litres, and a reload keeps them", async ({
     page,
   }, testInfo) => {
     // Three screen walks and a reload, each of which may wait on a cold dev server.
@@ -832,50 +835,54 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const rows = await advancedRows(await openAdvanced(tail));
     // The caption above the two rows sends a shaper to the 3D page, the only place they can be seen working.
     await expect(tail.getByText("These controls are invisible here and corresponding controls with visual verification are found on the 3D page.", { exact: true })).toBeVisible();
-    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(18)}`);
+    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${STOCK_START}`);
     expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${STOCK_END}`);
-    expect(STOCK_END).toBe(inches(30));
+    expect(STOCK_START).toBe(inches(12));
+    expect(STOCK_END).toBe(inches(36));
     expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
+    // Both thumbs sit at their slider's ends, and the spoken values agree with the labels.
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${STOCK_START} from the tail`);
+    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", `${STOCK_END} from the tail`);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
     const litresAtDefaults = await estimatedVolume(page).textContent();
 
-    // Ends At down to its lowest, 2" past Blends From: a shorter hard edge is less foam, enough for VOLUME's two
-    // decimals. (Since the tail's roll, D-38, a longer fade lands on the same 30.29 L as the board opens on.)
+    // Blends From up to its top, 30": the hard edge holds out longer, so there is more of it — enough for VOLUME's two
+    // decimals. (Ends At cannot go any higher than the centre it already sits at, so End on it moves nothing.)
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await endsAtSlider(page).press("Home");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
-    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", `${inches(20)} from the tail`);
+    await blendsFromSlider(page).press("End");
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(30)}`);
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${inches(30)} from the tail`);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
     await expect(estimatedVolume(page)).not.toHaveText(litresAtDefaults ?? "");
-    const litresEndMoved = await estimatedVolume(page).textContent();
+    const litresStartMoved = await estimatedVolume(page).textContent();
 
-    // Blends From down to the 12" mark.
+    // Ends At down to its lowest, 2" past Blends From (32"): a shorter fade, a different amount of foam.
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await blendsFromSlider(page).press("Home");
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
-    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${inches(12)} from the tail`);
+    await endsAtSlider(page).press("Home");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(32)}`);
+    await expect(endsAtSlider(page)).toHaveAttribute("aria-valuetext", `${inches(32)} from the tail`);
 
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
-    await expect(estimatedVolume(page)).not.toHaveText(litresEndMoved ?? "");
+    await expect(estimatedVolume(page)).not.toHaveText(litresStartMoved ?? "");
 
     // The board this browser keeps holds both, in millimetres through the app's own conversion, before the reload.
-    await expect.poll(() => keptTailRail(page, "tailHardEdgeEndsAt")).toBe(inchesToMm(20));
-    await expect.poll(() => keptTailRail(page, "tailHardEdgeBlendsFrom")).toBe(inchesToMm(12));
+    await expect.poll(() => keptTailRail(page, "tailHardEdgeEndsAt")).toBe(inchesToMm(32));
+    await expect.poll(() => keptTailRail(page, "tailHardEdgeBlendsFrom")).toBe(inchesToMm(30));
     await page.reload();
     await goToScreen(page, "RAILS");
     tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`, { timeout: 30_000 });
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(32)}`, { timeout: 30_000 });
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(30)}`);
   });
 
   test("2. with Hard Edge off both rows still show, after the tuck rows and above Reset, with the values set before; a tucked tail's Ends At then moves VOLUME's litres", async ({
@@ -889,8 +896,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     let body = await openAdvanced(tail);
     // Ends At down to its lowest, 2" past Blends From, before Hard Edge goes off.
     await endsAtSlider(page).press("Home");
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(18)}`);
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(14)}`);
 
     await hardEdge.click();
     await expect(hardEdge).not.toBeChecked();
@@ -901,10 +908,11 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const rows = await advancedRows(body);
     expect(rows.at(-5)).toBe("Sharp Bottom Tuck");
     expect(rows.at(-4)).toBe("These controls are invisible here and corresponding controls with visual verification are found on the 3D page.");
-    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(18)}`);
-    expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${inches(20)}`);
+    expect(rows.at(-3)).toBe(`Tail Rail Blends From — ${inches(12)}`);
+    expect(rows.at(-2)).toBe(`Tail Rail Ends At — ${inches(14)}`);
     expect(rows.at(-1)).toMatch(/^↺ Reset Advanced Settings$/);
-    await expect(blendsFromSlider(page)).toBeEnabled();
+    // (With Ends At at its floor, 2" past a Blends From at its own floor, Blends From has nowhere to go and its dot is
+    // not drawn; the two sliders are both checked live below, once Ends At has moved back up.)
     await expect(endsAtSlider(page)).toBeEnabled();
 
     // The tail's Sharp Bottom Tuck and Use Single Tuck ticked (a Sharp Bottom Tuck alone keeps under a
@@ -924,6 +932,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(hardEdge).not.toBeChecked();
     await endsAtSlider(page).press("End");
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_CENTRE}`);
+    await expect(blendsFromSlider(page)).toBeEnabled();
+    await expect(endsAtSlider(page)).toBeEnabled();
     await goToScreen(page, "VOLUME");
     await expect(estimatedVolume(page)).toHaveText(/^\d+\.\d\d L$/);
     await expect(estimatedVolume(page)).not.toHaveText(litresTucked ?? "");
@@ -935,21 +945,27 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await openRails(page);
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    // From the defaults (18" / 30"): the end as low as it goes is 2" past the start…
+    // From the defaults (12" / 36"): the end as low as it goes is 2" past the start…
     await endsAtSlider(page).press("Home");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
-    // …and the start then goes no higher than 2" short of that end.
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(14)}`);
+    // …up a page (Base UI moves a slider 10 inches on PageUp) and the start then goes no higher than 2" short of that end…
+    await endsAtSlider(page).press("PageUp");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(24)}`);
     await blendsFromSlider(page).press("End");
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(18)}`);
-    // With the end at the centre, the start's top is 30" (its own limit), and the end's floor follows it to 32".
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(22)}`);
+    // …and the end, taken down again, stops 2" past that start.
+    await endsAtSlider(page).press("Home");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(24)}`);
+    // With the end back at the centre, the start's top is 30" (its own limit).
     await endsAtSlider(page).press("End");
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_END}`);
     await blendsFromSlider(page).press("End");
     await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(30)}`);
-    await endsAtSlider(page).press("Home");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(32)}`);
+    await blendsFromSlider(page).press("Home");
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${STOCK_START}`);
   });
 
-  test("4. Reset Advanced Settings puts both back to 18\" and the board's default end with the rest, and one Undo brings all of it back", async ({
+  test("4. Reset Advanced Settings puts both back to 12\" and the board's centre with the rest, and one Undo brings all of it back", async ({
     page,
   }, testInfo) => {
     await openRails(page);
@@ -960,14 +976,16 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await nudgeThumb(page, "tail", "Deck Mark 1").press("ArrowRight");
     await expect(deckMark1).toHaveText(/\(\+1\/16"\)$/);
     const deckMark1Moved = await deckMark1.textContent();
-    await blendsFromSlider(page).press("Home");
-    await endsAtSlider(page).press("End");
+    // Both off their slider's ends, one step each (they sit at the ends until moved).
+    await blendsFromSlider(page).press("ArrowRight");
     await endsAtSlider(page).press("ArrowLeft");
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12.5)}`);
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(35.5)}`);
+    await expect.poll(() => keptTailRail(page, "tailHardEdgeBlendsFrom")).toBe(inchesToMm(12.5));
+    await expect.poll(() => keptTailRail(page, "tailHardEdgeEndsAt")).toBe(inchesToMm(35.5));
 
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(18)}`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${STOCK_START}`);
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_END}`);
     await expect(deckMark1).toHaveText(deckMark1Before ?? "");
     // Reset deletes both stored values rather than writing the defaults.
@@ -976,12 +994,12 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
 
     const undo = page.locator("[data-phone-undo-bar]").getByRole("button", { name: "Undo" });
     await undo.click();
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12)}`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(12.5)}`);
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(35.5)}`);
     await expect(deckMark1).toHaveText(deckMark1Moved ?? "");
   });
 
-  test("5. in Metric the rows read 45.7 cm and 76.2 cm; a keyboard step lands on the whole-centimetre track and each step after is 1.0 cm, stored as a whole millimetre", async ({
+  test("5. in Metric the rows read 30.5 cm and 91.4 cm; a keyboard step lands on the whole-centimetre track and each step after is 1.0 cm, stored as a whole millimetre", async ({
     page,
   }, testInfo) => {
     await page.addInitScript((key) => window.localStorage.setItem(key, "metric"), UNITS_STORAGE_KEY);
@@ -989,19 +1007,24 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
     const metric = (value: number) => formatDim(inchesToMm(value), "metric");
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${metric(18)}`);
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${metric(30)}`);
-    expect(metric(18)).toBe("45.7 cm");
-    expect(metric(30)).toBe("76.2 cm");
-    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${metric(18)} from the tail`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${metric(12)}`);
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${metric(36)}`);
+    expect(metric(12)).toBe("30.5 cm");
+    expect(metric(36)).toBe("91.4 cm");
+    await expect(blendsFromSlider(page)).toHaveAttribute("aria-valuetext", `${metric(12)} from the tail`);
 
-    // 18" is 45.72 cm, between two whole centimetres of the Metric track, so the first step lands on the next one.
+    // 12" is 30.48 cm, between two whole centimetres of the Metric track, so the thumb sits at the track's own end,
+    // 31.0 cm, and the first keyboard step lands on the next centimetre — where the slider's own view puts it.
+    const length = DEFAULT_BOARD_SPEC.outline.length;
+    const view = hardEdgeBlendsFromSlider(hardEdgeBlendsFrom({}, length), hardEdgeEndsAt({}, length), length, "metric");
+    const firstStep = view.toMm(view.value + view.step);
     await blendsFromSlider(page).press("ArrowRight");
-    await expect(blendsFromLabel(tail)).not.toHaveText(`Tail Rail Blends From — ${metric(18)}`);
+    await expect(blendsFromLabel(tail)).not.toHaveText(`Tail Rail Blends From — ${metric(12)}`);
     const onTrack = centimetres(await blendsFromLabel(tail).textContent());
+    expect(onTrack).toBeCloseTo(firstStep / 10, 5);
     expect(Number.isInteger(onTrack)).toBe(true);
-    expect(onTrack).toBeGreaterThan(45.7);
-    expect(onTrack - 45.7).toBeLessThanOrEqual(1.3 + 1e-9);
+    expect(onTrack).toBeGreaterThan(30.5);
+    expect(onTrack - 30.5).toBeLessThanOrEqual(1.5 + 1e-9);
     await blendsFromSlider(page).press("ArrowRight");
     await expect(blendsFromLabel(tail)).not.toHaveText(`Tail Rail Blends From — ${onTrack.toFixed(1)} cm`);
     const next = centimetres(await blendsFromLabel(tail).textContent());
@@ -1037,7 +1060,7 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     });
     const tail = await showRail(page, testInfo, "tail");
     await openAdvanced(tail);
-    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${inches(18)}`);
+    await expect(blendsFromLabel(tail)).toHaveText(`Tail Rail Blends From — ${STOCK_START}`);
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${STOCK_END}`);
     for (const label of [blendsFromLabel(tail), endsAtLabel(tail)]) {
       await expect(label.locator("xpath=..")).toHaveClass(/opacity-40/);
@@ -1046,7 +1069,7 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     await expect(endsAtSlider(page)).toBeDisabled();
   });
 
-  test("8. a board kept with a pair that crosses (26\" / 20\") opens reading 26\" and its default end, never a crossed pair", async ({
+  test("8. a board kept with a pair that crosses (26\" / 20\") opens reading 26\" and the top of Ends At's slider, never a crossed pair", async ({
     page,
   }, testInfo) => {
     const fields = stockBoardFields();
@@ -1091,7 +1114,7 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     // One setting only: moving both at once can leave the litres where they were (an earlier start takes off
     // about what a later end keeps), and this case is about what the page says when the litres DO move.
     await endsAtSlider(page).press("Home");
-    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(20)}`);
+    await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${inches(14)}`);
     const railsAfter = await pageLines(page);
     const railsChanged = changedLines(railsBefore, railsAfter);
     expect(railsChanged.length).toBeGreaterThan(0);
@@ -1106,14 +1129,14 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     for (const line of volumeChanged) expect(line).toMatch(LITRES_LINE);
   });
 
-  test("10. a preset that says nothing reads its own length's default end — the Shortboard — and Reset returns to it", async ({
+  test("10. a preset that says nothing reads its own centre as its end — the Shortboard — and Reset returns to it", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the per-length default is maths, proven once in a browser");
     const shortboard = BOARD_PRESETS.find((preset) => preset.id === "shortboard");
     if (!shortboard) throw new Error("no Shortboard preset");
     expect(shortboard.rails.tailHardEdge).toBe(true);
-    const ownEnd = formatDim(defaultHardEdgeEndsAt(shortboard.outline.length), "imperial");
+    const ownEnd = formatDim(hardEdgeEndsAt({}, shortboard.outline.length), "imperial");
     expect(ownEnd).not.toBe(STOCK_END);
 
     await dismissStrips(page);
@@ -1127,7 +1150,8 @@ test.describe("Tail Rail Blends From and Ends At (Phase 16, D-30/D-32)", () => {
     const tail = await showRail(page, testInfo, "tail");
     const body = await openAdvanced(tail);
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${ownEnd}`);
-    await endsAtSlider(page).press("End");
+    expect(ownEnd).toBe(inches(37));
+    await endsAtSlider(page).press("Home");
     await expect(endsAtLabel(tail)).not.toHaveText(`Tail Rail Ends At — ${ownEnd}`);
     await body.getByRole("button", { name: /Reset Advanced Settings/ }).click();
     await expect(endsAtLabel(tail)).toHaveText(`Tail Rail Ends At — ${ownEnd}`);

@@ -172,6 +172,21 @@ export const BOTTOM_SHADE_STEP: Mm = inchesToMm(1 / 32);
 /** The least foam the bottom ever leaves under the deck: the app's own thinnest foil (D-09). */
 export const BOTTOM_FLOOR: Mm = inchesToMm(FOIL_THICKNESS_RANGE_IN.min);
 
+/**
+ * The mark sliders' step and ranges on BOTTOM (D-06, UI-SPEC §1), in inches: 1/16" steps (1 mm in Metric, through
+ * `measureSlider`), the Depth slider 0 to 1/2", Off Rail 0 to 6", Off Stringer 0 to 9", Trough At 1/2" to 8", Vee Lift
+ * 0 to 1/2". They live here so the page's sliders and the .brd fit read one set of numbers (quick 261113-gwr).
+ */
+export const BOTTOM_MARK_STEP_IN = 1 / 16;
+export const BOTTOM_DEPTH_RANGE_IN = { min: 0, max: 0.5 } as const;
+export const BOTTOM_MARK_RANGES_IN = {
+  offRail: { min: 0, max: 6 },
+  offStringer: { min: 0, max: 9 },
+  troughAt: { min: 0.5, max: 8 },
+  depth: BOTTOM_DEPTH_RANGE_IN,
+  veeLift: { min: 0, max: 0.5 },
+} as const;
+
 /* ============ the starting numbers (D-08) ============ */
 
 /** A cut's numbers with every station from the tail, as the sketch's `makeCut` gives them. */

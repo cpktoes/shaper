@@ -69,6 +69,8 @@ import {
   buildRailProfile,
   computeRailSection,
   effectiveDeckPercent,
+  d30HardEdgeBlendsFrom,
+  d30HardEdgeEndsAt,
   hardEdgeBlendsFrom,
   hardEdgeEndsAt,
 } from "./rail-bands";
@@ -805,10 +807,12 @@ export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): num
  * Go-live 1's hard edge (Phase 16, D-20/D-27/D-30, the founder) — the live rule until D-32 (plan 16-15) made the
  * tail's whole rail fade, kept as it was and named only by the 74-board pin test
  * (`phase16-live-litres-pin.test.ts`) and by the rail-character report (`lib/models/rail-character-report.ts`);
- * no screen uses it. While the tail's Hard Edge is on it is full at
- * and behind Hard Edge Blends From (`hardEdgeBlendsFrom`, 18" when the board says nothing) and fades by
- * `tailHardEdgeWeight` until it is gone at Hard Edge Ends At (`hardEdgeEndsAt`, 30" when the board says
- * nothing), where the rail is fully the centre's tucked rail; off, it is nowhere. Blends From never goes below
+ * no screen uses it. It reads D-30's old default BY NAME (`d30HardEdgeBlendsFrom`, 18" when the board says
+ * nothing; `d30HardEdgeEndsAt`, 30" on a 6'0" when the board says nothing) — not the live readers, which since
+ * quick 261113-psx start at 12" and end at the board's centre — so the 74-board pin still reproduces its figures.
+ * While the tail's Hard Edge is on it is full at
+ * and behind Blends From and fades by `tailHardEdgeWeight` until it is gone at Ends At, where the rail is fully
+ * the centre's tucked rail; off, it is nowhere. Blends From never goes below
  * the 12" mark, so the tail 12" station is always a full hard edge. The tucked side of every station nearest
  * the tail reads the CENTRE's Single Tuck and Sharp Bottom Tuck — the tail's own are hidden on RAILS while
  * Hard Edge is on, so a hidden box can never move the litres (research pitfall 8).
@@ -816,7 +820,7 @@ export function tailHardEdgeWeight(station: Mm, blendsFrom: Mm, endsAt: Mm): num
 export const HARD_EDGE_FADE: HardEdgeRule = {
   weight(station, _anchors, rails, length) {
     if (!rails.tailHardEdge) return 0;
-    return tailHardEdgeWeight(station, hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
+    return tailHardEdgeWeight(station, d30HardEdgeBlendsFrom(rails, length), d30HardEdgeEndsAt(rails, length));
   },
   tuckSource(nearest, rails) {
     return rails.tailHardEdge && nearest === "tail" ? "center" : nearest;
@@ -983,14 +987,39 @@ export function tailRollStations(panels: number): Mm[] {
 export type SectionRule = HardEdgeRule | RailCharacterRule;
 
 /**
+ * The one body of the tail-and-nose rail-character fade, read through whichever pair of tail-blend readers it is
+ * given — so `RAIL_CHARACTER_FADE` (D-30's readers, by name) and `SMOOTH_SURFACE_FADE` (the live readers) share
+ * every other line and their `at`s cannot drift.
+ */
+function railCharacterFadeAt(
+  blendsFromOf: typeof hardEdgeBlendsFrom,
+  endsAtOf: typeof hardEdgeEndsAt,
+): RailCharacterRule["at"] {
+  return (station, _nearest, anchors, rails, length) => {
+    const base = railCharacterOf(rails, "center");
+    if (station <= anchors.center) {
+      const tip = railCharacterOf(rails, "tail");
+      if (railCharacterDifferences(rails, "tail").length === 0) return { base, tip, tipWeight: 0 };
+      const tipWeight = tailHardEdgeWeight(station, blendsFromOf(rails, length), endsAtOf(rails, length));
+      return { base, tip, tipWeight };
+    }
+    const tip = railCharacterOf(rails, "nose");
+    if (railCharacterDifferences(rails, "nose").length === 0) return { base, tip, tipWeight: 0 };
+    return { base, tip, tipWeight: noseRailWeight(station, anchors.center, anchors.nose) };
+  };
+}
+
+/**
  * The live rule (Phase 16, D-32, the founder 2026-11-04: "we should also treat 'sharp bottom tuck' like a hard
  * edge at the tail station. The same blend from and to applies"). Nothing about the rail switches anywhere:
  *
  * - The tail: at and behind the centre the base is the centre's rail as set and the tip the tail's
  *   (`railCharacterOf`). Whenever they differ in anything (`railCharacterDifferences`) — Hard Edge ticked or
  *   not — the tip's weight is `tailHardEdgeWeight` between Tail Rail Blends From and Tail Rail Ends At
- *   (`hardEdgeBlendsFrom` / `hardEdgeEndsAt`, the shaper's two settings): the tail's rail full at and behind
- *   Blends From, the centre's at and beyond Ends At, the point blend of the two between (D-31).
+ *   (D-30's two readers by name here, `d30HardEdgeBlendsFrom` / `d30HardEdgeEndsAt`: 18" and L/6 + 18" when the
+ *   board says nothing): the tail's rail full at and behind Blends From, the centre's at and beyond Ends At, the
+ *   point blend of the two between (D-31). This is plan 16-15's rule as it was, named by the 102-board pin and the
+ *   two reports; the live rule below reads the live readers.
  * - The nose, with no control and nothing stored ("Only the tail rail gets the users blend. The nose is a
  *   default that always gets applied."): ahead of the centre the tip is the nose's rail, and whenever it
  *   differs from the centre's the tip's weight is `noseRailWeight`, from the centre to the nose 12" station.
@@ -999,18 +1028,7 @@ export type SectionRule = HardEdgeRule | RailCharacterRule;
  * before.
  */
 export const RAIL_CHARACTER_FADE: RailCharacterRule = {
-  at(station, _nearest, anchors, rails, length) {
-    const base = railCharacterOf(rails, "center");
-    if (station <= anchors.center) {
-      const tip = railCharacterOf(rails, "tail");
-      if (railCharacterDifferences(rails, "tail").length === 0) return { base, tip, tipWeight: 0 };
-      const tipWeight = tailHardEdgeWeight(station, hardEdgeBlendsFrom(rails, length), hardEdgeEndsAt(rails, length));
-      return { base, tip, tipWeight };
-    }
-    const tip = railCharacterOf(rails, "nose");
-    if (railCharacterDifferences(rails, "nose").length === 0) return { base, tip, tipWeight: 0 };
-    return { base, tip, tipWeight: noseRailWeight(station, anchors.center, anchors.nose) };
-  },
+  at: railCharacterFadeAt(d30HardEdgeBlendsFrom, d30HardEdgeEndsAt),
 };
 
 /**
@@ -1022,9 +1040,12 @@ export const RAIL_CHARACTER_FADE: RailCharacterRule = {
  * (`tailRollDrop`, D-38), with a sharp bottom edge opening into a round one along a blend (`openedFinishedRail`), and
  * a domed deck's rail built from its thickness itself, not rounded to a sixteenth. `RAIL_CHARACTER_FADE` itself is kept as plan 16-15 left it, named by the 102-board pin
  * test and the two reports (`lib/models/surface-report.ts`, `lib/models/rail-character-report.ts`); no screen uses it.
+ * Since quick 261113-psx this rule has its own `at`, on the LIVE readers (`hardEdgeBlendsFrom` / `hardEdgeEndsAt`: the
+ * tail's rail blends from the 12" station to the board's centre when the board says nothing), where it used to
+ * share `RAIL_CHARACTER_FADE`'s; both come from the one `railCharacterFadeAt`, so they cannot drift.
  */
 export const SMOOTH_SURFACE_FADE: RailCharacterRule = {
-  at: RAIL_CHARACTER_FADE.at,
+  at: railCharacterFadeAt(hardEdgeBlendsFrom, hardEdgeEndsAt),
   fit: { wings: "share", tips: "fit", tail: "roll", tuck: "open", rail: "exact" },
 };
 
@@ -1761,9 +1782,10 @@ export function boardSectionEnds(
  * D-32. The DISCRETE fields — the rail character (`RailCharacter`: the tail's Hard Edge, `family`,
  * `symmetrical`, `singleTuck` and `sharpBottomTuck`), which cannot be "halfway" — blend as whole sections
  * (Phase 16, D-32, the founder 2026-11-04, `RAIL_CHARACTER_FADE`): on the tail side the tail's rail as set is
- * full at and behind Tail Rail Blends From (`hardEdgeBlendsFrom`, 18" unless the board says otherwise) and
- * eases by smoothstep into the centre's rail as set, which is full at and beyond Tail Rail Ends At
- * (`hardEdgeEndsAt`, 30" on a 6'0" unless the board says otherwise) — Hard Edge ticked or not; on the nose side
+ * full at and behind Tail Rail Blends From (`hardEdgeBlendsFrom`, the 12" station unless the board says otherwise)
+ * and eases by smoothstep into the centre's rail as set, which is full at and beyond Tail Rail Ends At
+ * (`hardEdgeEndsAt`, the board's centre — 36" on a 6'0" — unless the board says otherwise; D-30's 18" and 30" before
+ * quick 261113-psx) — Hard Edge ticked or not; on the nose side
  * the centre's rail eases into the nose's by smoothstep from the centre to the nose 12" station, with no
  * control (`noseRailWeight`). A blending station counts the foam the 3D board draws there — the two end
  * finished rails blended point for point by that weight — corrected by the same hair the drawn board loses to

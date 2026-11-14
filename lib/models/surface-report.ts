@@ -8,6 +8,9 @@
  * each line is the move he will see. The bracket gives this plan's share of that move, against `RAIL_CHARACTER_FADE`:
  * the rest is the whole rail's fade, the very move `--rail-character-report` prints for the boards it lists with its
  * reasons, and nothing at all on a board it leaves out (this report's test holds the two together on all 102 boards).
+ * Since quick 261113-psx moved the tail rail's default blend, "after" reads each board as D-30 read it (both blend
+ * settings stored at D-30's 18" and L/6 + 18", `withD30TailRailBlend`), so it still prints go-live 2's figures as they
+ * were; what the new default moves is `--tail-blend-report`.
  *
  * It prints board ids, wing counts, tail kinds and litres only — never a board's name, an account, a snapshot or a
  * connection string — and a board that did not open is counted, never printed. Pure: no React, browser API or
@@ -20,6 +23,7 @@ import {
   summarizeDesignWith,
   type DesignSummaryFields,
 } from "@/lib/geometry/design";
+import { withD30TailRailBlend } from "@/lib/geometry/rail-bands";
 import type { Litres } from "@/lib/geometry/units";
 import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE } from "@/lib/geometry/volume";
 
@@ -36,7 +40,8 @@ export interface SurfaceLitresMove {
 export function surfaceLitresMove(fields: DesignSummaryFields): SurfaceLitresMove | null {
   const before = summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: HARD_EDGE_FADE }).volumeLitres;
   const faded = summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
-  const after = summarizeDesign(fields).volumeLitres;
+  // The live rule on the board as D-30 read it: go-live 2's figures, reproduced (quick 261113-psx).
+  const after = summarizeDesign({ ...fields, rails: withD30TailRailBlend(fields.rails, fields.outline.length) }).volumeLitres;
   return before === after ? null : { before, faded, after };
 }
 

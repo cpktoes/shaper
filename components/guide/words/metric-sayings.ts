@@ -145,6 +145,8 @@ export const GUIDE_METRIC_SAYINGS: Readonly<Record<string, readonly GuideMetricS
   [guideCardId("fins", "Advanced", "Aft/Forward position")]: [
     // The Aft/Forward slider's own Metric limit.
     { field: "is", imperial: "an inch and a half", metric: "38 mm" },
+    // A twin's forward end: `TWIN_FORWARD_LIMIT_OFF_TAIL_IN`, a distance off the tail (a mark).
+    { field: "is", imperial: "ten inches", metric: "254 mm" },
   ],
 };
 

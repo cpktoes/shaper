@@ -17,20 +17,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { TailShapeIcon, type IconTailShape } from "@/components/outline/tail-shape-icon";
 import {
+  FIN_BASE_LENGTH_RANGE_IN,
   FIN_SETUPS,
+  FIN_TOE_RANGE_IN,
   OFF_RAIL_TUNER_STEP_IN,
+  QUAD_REAR_OFF_RAIL_RANGE_IN,
+  QUAD_REAR_OFF_TAIL_RANGE_IN,
   QUAD_REAR_MODELS,
   THRUSTER_FRONT_MODELS,
   TWIN_TEMPLATES,
   defaultCenterBaseLength,
   effectiveQuadRearModel,
+  finPositionRangeIn,
   forwardFinsHeading,
+  heldFinPositionOffset,
   isQuadRearModelAvailable,
   offRailTunerRangeIn,
   resetAdvanced,
   twinTemplateChange,
   type FinAdvancedSpec,
   type FinPlacementResult,
+  type FinPositionGroup,
   type FinPlacementSpec,
   type FinSetup,
   type FinTailShape,
@@ -81,11 +88,7 @@ const FIN_SETUP_ORDER: FinSetupKind[] = ["single", "twin", "thruster", "2plus1",
 const FEET_ITEMS = [4, 5, 6, 7, 8, 9, 10, 11, 12].map((feet) => ({ value: feet, label: formatWholeFeet(feet) }));
 const INCHES_ITEMS = Array.from({ length: 12 }, (_, inches) => ({ value: inches, label: formatWholeInches(inches) }));
 
-const BASE_LEN_BOUNDS = { min: 2.5, max: 10.5, step: 0.125 };
-const POS_BOUNDS = { min: -1.5, max: 1.5, step: 1 / 16 };
-const TOE_BOUNDS = { min: 0, max: 0.5, step: 1 / 16 };
-const OFF_RAIL_BOUNDS = { min: 1, max: 2, step: 1 / 16 };
-const OFF_TAIL_OVERRIDE_BOUNDS = { min: 0.5, max: 12, step: 1 / 16 };
+// The five slider ranges live in lib/geometry/fins.ts (quick 261113-qyz), so a board file's fins are fitted inside them.
 
 function clampFinite(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -163,7 +166,7 @@ function PillButton({
  * the slider — the base length then stays the shaper's own until they move it again. Fast task 155
  * (2026-10-08): the founder retired the text box and its Override button ("doesn't work well on a
  * phone … funny behaviour on a computer"); dragging the familiar slider is the override now. The
- * slider's domain is the caller's `measureSlider` view against `BASE_LEN_BOUNDS`, so nothing here
+ * slider's domain is the caller's `measureSlider` view against `FIN_BASE_LENGTH_RANGE_IN`, so nothing here
  * converts (CLAUDE.md Rule 2). */
 function baseLengthLabel(label: string, value: Mm, overridden: boolean, system: UnitsSystem): string {
   return `${label} — ${formatMark(value, system)}${overridden ? "" : " (standard)"}`;
@@ -217,9 +220,9 @@ export function FinControls({
   // Each Fin Base Length field's own display-domain bounds/step/toMm (D-06: 64-266mm stepping 1
   // in Metric, 2.5-10.5in stepping 1/8 in Imperial since fast task 156) — one measureSlider call per field,
   // computed here so the slider itself never converts (CLAUDE.md Rule 2).
-  const baseLenCenterSlider = measureSlider(spec.advanced.baseLenCenter, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
-  const baseLenForwardSlider = measureSlider(spec.advanced.baseLenForward, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
-  const baseLenRearSlider = measureSlider(spec.advanced.baseLenRear, BASE_LEN_BOUNDS, BASE_LEN_BOUNDS.step, 1, system);
+  const baseLenCenterSlider = measureSlider(spec.advanced.baseLenCenter, FIN_BASE_LENGTH_RANGE_IN, FIN_BASE_LENGTH_RANGE_IN.step, 1, system);
+  const baseLenForwardSlider = measureSlider(spec.advanced.baseLenForward, FIN_BASE_LENGTH_RANGE_IN, FIN_BASE_LENGTH_RANGE_IN.step, 1, system);
+  const baseLenRearSlider = measureSlider(spec.advanced.baseLenRear, FIN_BASE_LENGTH_RANGE_IN, FIN_BASE_LENGTH_RANGE_IN.step, 1, system);
 
   const updateAdvanced = (patch: Partial<FinAdvancedSpec>) => onChange({ advanced: { ...spec.advanced, ...patch } });
 
@@ -242,11 +245,17 @@ export function FinControls({
   // value from the one the track holds, and the two must not be conflated. The Off-Rail tuners are
   // built the same way: the track holds the held nudge, the label prints the distance the fins end up
   // from the rail, and the track's two ends are the tuner window (offRailTunerRangeIn).
-  const centerPositionSlider = measureSlider(spec.advanced.centerPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
-  const forwardPositionSlider = measureSlider(spec.advanced.forwardPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
-  const rearPositionSlider = measureSlider(spec.advanced.rearPositionOffset, POS_BOUNDS, POS_BOUNDS.step, 1, system);
-  const forwardToeSlider = measureSlider(resolved.forwardToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
-  const rearToeSlider = measureSlider(resolved.rearToe, TOE_BOUNDS, TOE_BOUNDS.step, 1, system);
+  // Each position slider runs over its own range for the setup and template picked (a Twin's forward pair reaches 10" off
+  // the tail), and shows the offset the fins actually USE: the stored one held inside that range (`heldFinPositionOffset`).
+  const positionSlider = (group: FinPositionGroup, stored: Mm) => {
+    const range = finPositionRangeIn(spec.finSetup, spec.twinTemplate, group);
+    return measureSlider(heldFinPositionOffset(stored, spec.finSetup, spec.twinTemplate, group), range, range.step, 1, system);
+  };
+  const centerPositionSlider = positionSlider("center", spec.advanced.centerPositionOffset);
+  const forwardPositionSlider = positionSlider("forward", spec.advanced.forwardPositionOffset);
+  const rearPositionSlider = positionSlider("rear", spec.advanced.rearPositionOffset);
+  const forwardToeSlider = measureSlider(resolved.forwardToe, FIN_TOE_RANGE_IN, FIN_TOE_RANGE_IN.step, 1, system);
+  const rearToeSlider = measureSlider(resolved.rearToe, FIN_TOE_RANGE_IN, FIN_TOE_RANGE_IN.step, 1, system);
   const forwardOffRailSlider = measureSlider(
     resolved.forwardOffRailNudge,
     offRailTunerRangeIn(resolved.forwardOffRailTemplate, "forward", system),
@@ -261,11 +270,11 @@ export function FinControls({
     1,
     system,
   );
-  const quadRearOffRailSlider = measureSlider(resolved.quadRearOffRail, OFF_RAIL_BOUNDS, OFF_RAIL_BOUNDS.step, 1, system);
+  const quadRearOffRailSlider = measureSlider(resolved.quadRearOffRail, QUAD_REAR_OFF_RAIL_RANGE_IN, QUAD_REAR_OFF_RAIL_RANGE_IN.step, 1, system);
   const quadRearOffTailSlider = measureSlider(
     resolved.quadRearOffTailBase,
-    OFF_TAIL_OVERRIDE_BOUNDS,
-    OFF_TAIL_OVERRIDE_BOUNDS.step,
+    QUAD_REAR_OFF_TAIL_RANGE_IN,
+    QUAD_REAR_OFF_TAIL_RANGE_IN.step,
     1,
     system,
   );

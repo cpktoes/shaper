@@ -38,7 +38,6 @@ import presetBlanks from "@/lib/blanks/preset-blanks.generated.json";
 import { readSeedCatalog } from "@/lib/blanks/seed-files";
 import type { BlankRecord } from "@/lib/geometry/blank";
 import { placementRange, prepareBlank, type PreparedBlank } from "@/lib/geometry/blank-fit";
-import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { MEASURE_STATION_MM } from "@/lib/geometry/outline";
 import { BOARD_PRESETS } from "@/lib/geometry/presets";
 import { rockerStationPositions, type RockerStationKey } from "@/lib/geometry/rocker";
@@ -47,6 +46,12 @@ import { inchesToMm, mm, mmToInches, type Mm } from "@/lib/geometry/units";
 const DEFAULT_OUT = path.resolve(process.cwd(), "lib/geometry/__fixtures__/phase11-foil-golden.json");
 const GUARDED_FILES = ["lib/geometry/blank-fit.ts", "lib/geometry/pchip.ts"] as const;
 const TAG = "v1.3";
+/**
+ * The board lengths this script's sweep covers, in inches: 5'0" to 10'0", the range the app made when
+ * the committed fixture was generated. It is the script's own number now (quick 261113-si7 widened the
+ * app's `BOARD_LENGTH_RANGE_IN` to 4'0"-12'0"), so a re-run reproduces the committed fixture exactly.
+ */
+const FIXTURE_LENGTH_RANGE_IN = { min: 60, max: 120 } as const;
 
 /**
  * Phase 11's `boardOnBlank`, as this script calls it. Declared here rather than imported so the
@@ -161,8 +166,8 @@ function buildCases(catalogue: readonly BlankRecord[]): CaseInput[] {
     [inchesToMm(1 / 16), -inchesToMm(1 / 8)],
     [-inchesToMm(1 / 16), inchesToMm(1 / 8)],
   ];
-  const minLength = inchesToMm(BOARD_LENGTH_RANGE_IN.min);
-  const maxLength = inchesToMm(BOARD_LENGTH_RANGE_IN.max);
+  const minLength = inchesToMm(FIXTURE_LENGTH_RANGE_IN.min);
+  const maxLength = inchesToMm(FIXTURE_LENGTH_RANGE_IN.max);
   const pickable = catalogue.filter(isPickable);
   let position = 0;
   for (let index = 0; index < pickable.length; index += 4) {

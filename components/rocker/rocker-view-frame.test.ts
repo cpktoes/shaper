@@ -28,6 +28,7 @@ import {
   RAIL_LABEL_TRACKING_EM,
   READOUT_NAME_DY,
   READOUT_VALUE_DY,
+  ROCKER_CARD_REFERENCE_LENGTH_IN,
   STATION_CARD_HEIGHT,
   STATION_CARD_WIDTH,
   STATION_NAME_SIZE,
@@ -59,7 +60,7 @@ import {
  * viewer always reserves on the frame's cross axis — matches planner finding 5's own 14in. */
 const MAX_DECK_IN = 14;
 
-/** Board lengths from 60in (5'0") to 120in (10'0") in 6in steps, matching the plan's own sweep. */
+/** Board lengths from 48in (4'0") to 144in (12'0") in 6in steps — the whole range the app now makes (quick 261113-si7). */
 const LENGTHS_IN = Array.from(
   { length: (BOARD_LENGTH_RANGE_IN.max - BOARD_LENGTH_RANGE_IN.min) / 6 + 1 },
   (_, i) => BOARD_LENGTH_RANGE_IN.min + i * 6,
@@ -319,6 +320,113 @@ describe("rockerViewLayout — card pitch", () => {
   it("STATION_CARD_WIDTH stays 74 wide, STATION_CARD_HEIGHT is 35 tall", () => {
     expect(STATION_CARD_WIDTH).toBeCloseTo(74, 6);
     expect(STATION_CARD_HEIGHT).toBe(35);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Boards longer than 10'0" (quick 261113-si7, B1). The cards were sized on a 10'0" board; the app now makes
+// 12'0" ones, which draw their 12" spacing at 68.3 units (65.0 in a 12'6" blank), under the 82 the cards were made
+// for. The applied card scale is held to the drawn spacing — card and type together — and only there.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** A blank that reaches `totalIn` in all (board plus overhang), split evenly past the tips. */
+function blankOf(lengthIn: number, totalIn: number) {
+  const over = (totalIn - lengthIn) / 2;
+  return { tailOverhangIn: over, noseOverhangIn: over, lowestBottomIn: 0, highestDeckIn: 10 };
+}
+
+describe("rockerViewLayout — cards never touch on a board longer than 10'0\" (quick 261113-si7)", () => {
+  const CASES: { label: string; lengthIn: number; blankTotalIn?: number }[] = [
+    { label: "a 12'0\" board, no blank", lengthIn: 144 },
+    { label: "a 12'0\" board in a 146.126in blank (US Blanks 12'1\" EPS)", lengthIn: 144, blankTotalIn: 146.126 },
+    { label: "a 12'0\" board in a 151.5in blank (US Blanks 12'6\" EPS, the tightest case)", lengthIn: 144, blankTotalIn: 151.5 },
+    { label: "a 10'0\" board in the 12'6\" blank (it overlapped before)", lengthIn: 120, blankTotalIn: 151.5 },
+    { label: "an 11'0\" board, no blank", lengthIn: 132 },
+  ];
+
+  for (const { label, lengthIn, blankTotalIn } of CASES) {
+    it(`${label}: at least CARD_GUTTER between neighbouring cards along the rail, nose-left and nose-up (pin at its ceiling), and the type shrinks with the card`, () => {
+      for (const orientation of ORIENTATIONS) {
+        for (const side of SIDES) {
+          const layout = rockerViewLayout({
+            lengthIn,
+            maxDeckIn: MAX_DECK_IN,
+            orientation,
+            fitToBoard: true,
+            stationRails: "full",
+            // The editor's pin at its ceiling: the most any card may ask for.
+            cardScale: maxCardPinScale(orientation),
+            blankSpanIn: blankTotalIn ? blankOf(lengthIn, blankTotalIn) : undefined,
+          });
+          const pxX = (stationIn: number) => PAD_X + layout.boardOffsetX + (lengthIn - stationIn) * layout.scale;
+          const cards = stationsIn(lengthIn).map((s) => stationCardRect(layout, pxX(s), orientation, side));
+          const along = orientation === "horizontal" ? "x" : "y";
+          const size = orientation === "horizontal" ? "width" : "height";
+          const sorted = cards.slice().sort((a, b) => a[along] - b[along]);
+          for (let i = 1; i < sorted.length; i++) {
+            const gutter = sorted[i][along] - (sorted[i - 1][along] + sorted[i - 1][size]);
+            expect(gutter, `${orientation} ${side} ${i}`).toBeGreaterThanOrEqual(CARD_GUTTER - 1e-6);
+          }
+          // The card's type is the module's own type times the SAME scalar that scaled the box.
+          expect(layout.cardType.valueSize).toBeCloseTo(STATION_VALUE_SIZE * layout.cardScale, 9);
+          expect(layout.cardType.nameSize).toBeCloseTo(STATION_NAME_SIZE * layout.cardScale, 9);
+          expect(layout.cardWidth).toBeCloseTo(STATION_CARD_WIDTH * layout.cardScale, 9);
+          expect(layout.cardHeight).toBeCloseTo(STATION_CARD_HEIGHT * layout.cardScale, 9);
+        }
+      }
+    });
+  }
+
+  it("a 12'0\" board in the 12'6\" blank draws its cards at about 77% of today's size", () => {
+    const layout = rockerViewLayout({
+      lengthIn: 144,
+      maxDeckIn: MAX_DECK_IN,
+      orientation: "horizontal",
+      fitToBoard: true,
+      stationRails: "full",
+      blankSpanIn: blankOf(144, 151.5),
+    });
+    expect(layout.cardScale).toBeCloseTo(0.7696, 3);
+    expect(layout.cardType.nameSize).toBeCloseTo(STATION_NAME_SIZE * 0.7696, 2);
+  });
+
+  it("every drawing that spans 10'0\" or less keeps exactly the card it always had, in both orientations", () => {
+    const spans: { lengthIn: number; blankTotalIn?: number }[] = [
+      ...LENGTHS_IN.filter((l) => l <= 120).map((lengthIn) => ({ lengthIn })),
+      { lengthIn: 72, blankTotalIn: 114 },
+      { lengthIn: 108, blankTotalIn: 120 },
+      { lengthIn: 60, blankTotalIn: 120 },
+    ];
+    for (const { lengthIn, blankTotalIn } of spans) {
+      for (const orientation of ORIENTATIONS) {
+        const common = {
+          lengthIn,
+          maxDeckIn: MAX_DECK_IN,
+          orientation,
+          fitToBoard: true,
+          stationRails: "full" as const,
+          blankSpanIn: blankTotalIn ? blankOf(lengthIn, blankTotalIn) : undefined,
+        };
+        const plain = rockerViewLayout(common);
+        expect(plain.cardScale, `${lengthIn}/${blankTotalIn} ${orientation}`).toBe(1);
+        expect(plain.cardWidth).toBe(STATION_CARD_WIDTH);
+        expect(plain.cardHeight).toBe(STATION_CARD_HEIGHT);
+        const pinned = rockerViewLayout({ ...common, cardScale: maxCardPinScale(orientation) });
+        expect(pinned.cardScale, `${lengthIn}/${blankTotalIn} ${orientation} at the ceiling`).toBe(maxCardPinScale(orientation));
+      }
+    }
+  });
+
+  it("the order form's path (fitToBoard: false) still draws every board of 10'0\" or less at one shared scale, and a 12'0\" board whole", () => {
+    const at = (lengthIn: number) =>
+      rockerViewLayout({ lengthIn, maxDeckIn: MAX_DECK_IN, orientation: "horizontal", fitToBoard: false, stationRails: "compact" });
+    const shared = (VIEW_W - 2 * PAD_X) / ROCKER_CARD_REFERENCE_LENGTH_IN;
+    for (const lengthIn of LENGTHS_IN.filter((l) => l <= ROCKER_CARD_REFERENCE_LENGTH_IN)) {
+      expect(at(lengthIn).scale, `${lengthIn}"`).toBe(shared);
+    }
+    const long = at(144);
+    expect(long.scale).toBeCloseTo((VIEW_W - 2 * PAD_X) / 144, 12);
+    expect(144 * long.scale).toBeLessThanOrEqual(VIEW_W - 2 * PAD_X + 1e-9);
   });
 });
 
@@ -969,7 +1077,9 @@ describe("maxCardPinScale", () => {
 
   it("vertical resolves to the station-pitch ceiling, greater than 2 and finite", () => {
     const expected =
-      (12 * (VIEW_W - 2 * PAD_X)) / BOARD_LENGTH_RANGE_IN.max / STATION_CARD_HEIGHT -
+      // The ceiling is anchored to the named 10'0" the cards were sized on — NOT the app's current longest board,
+      // which grew to 12'0" in quick 261113-si7 without moving a single card.
+      (12 * (VIEW_W - 2 * PAD_X)) / ROCKER_CARD_REFERENCE_LENGTH_IN / STATION_CARD_HEIGHT -
       CARD_GUTTER / STATION_CARD_HEIGHT;
     const actual = maxCardPinScale("vertical");
     expect(Number.isFinite(actual)).toBe(true);
@@ -1390,7 +1500,7 @@ describe("rockerViewLayout — rail titles: no overlap with their own Center car
 });
 
 describe("rockerViewLayout — rail titles: no collision with the NEXT station's card, vertical (the neighbour-collision proof)", () => {
-  it("keeps a title's glyph box clear of the Nose @ 12in card on the same rail across the whole length sweep, worst case at the SHORTEST board, at least 100 units clear at the vertical ceiling", () => {
+  it("keeps a title's glyph box clear of the Nose @ 12in card on the same rail across the whole length sweep, worst case at the SHORTEST board, at least 95 units clear at the vertical ceiling", () => {
     const ceiling = maxCardPinScale("vertical");
     let minClearance = Infinity;
     let minClearanceLengthIn = Number.NaN;
@@ -1424,7 +1534,8 @@ describe("rockerViewLayout — rail titles: no collision with the NEXT station's
       }
     }
     expect(minClearanceLengthIn).toBe(BOARD_LENGTH_RANGE_IN.min);
-    expect(minClearance).toBeGreaterThanOrEqual(100);
+    // Measured 95.8 units at 4'0" (the shortest board since quick 261113-si7); 100+ when 5'0" was the shortest.
+    expect(minClearance).toBeGreaterThanOrEqual(95);
   });
 });
 

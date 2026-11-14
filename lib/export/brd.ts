@@ -5,7 +5,13 @@
  * and deck along the stringer, and twenty to thirty-five cross-sections at chosen stations — with BOTTOM's concaves, vees and
  * bellies in them, because the sections are read off the cut surface. Channels are left out: the 3D page writes the
  * board as it stands before they are cut (`brdFileBottom`, quick 261112-c2d, the founder 2026-11-12 — neither
- * AkuShaper nor Shape3D carries a straight, sharp-walled channel well). Fins are not written.
+ * AkuShaper nor Shape3D carries a straight, sharp-walled channel well). Fins are written from FINS' own placement
+ * (quick 261113-qyz, the founder 2026-11-13: "we should export our fin info into the .brd export if the format handles
+ * it"): the format's one fin line, p50, holds a side pair and a centre fin in centimetres from the tail end, and p51 the
+ * fin system's word (`lib/geometry/brd-fins.ts` says how). A single fin writes its centre fin, a twin its side pair, a
+ * thruster and a 2+1 both; a quad writes none for now, because how AkuShaper stores a quad's or five-fin's rear pair is not
+ * known yet (2026-11-13) and the front pair alone would be read as a twin. Slots 6 to 8 of p50 (the fins' depths and splay
+ * angle: FINS has none) are always zero. With no fins given the header is exactly what it always was.
  *
  * The file is text in centimetres, tail at x = 0, locked with AkuShaper's own scramble (`brd-scramble.ts`). The outline,
  * rocker and deck are runs of cubic Bézier knots (`lib/geometry/bezier-fit.ts`) fitted through points of the surface to
@@ -28,7 +34,8 @@
  *
  * Header: only fields known to open — the founder's egg's machine settings, verbatim (that exact header opened in both
  * programs). Left out on purpose: p58 (a stamp neither program checks), p10 (a blank's file path on someone's PC) and
- * the name fields p08, p45, p48, p49, p51, p54, whose meanings are not sure. The file's own name carries the board's name.
+ * the name fields p08, p45, p48, p49, p54, whose meanings are not sure. The file's own name carries the board's name.
+ * p51 is written only with fins, just before p50 as the founder's own file has it.
  *
  * A swallow is written as a square tail at the width of its points, to be cut by hand: the outline runs (0, 0) to
  * (0, half the points' width) as a corner and then up the rail, its x never going backwards (a 3D view reads the outline
@@ -52,6 +59,7 @@ import {
   type BottomBoard,
   type ResolvedBottom,
 } from "../geometry/bottom";
+import type { BrdFinFields } from "../geometry/brd-fins";
 import { inchesToMm, mm, mmToCentimetres, type Mm } from "../geometry/units";
 import { boardFileStem } from "../models/board-file";
 import { scrambleBrd } from "./brd-scramble";
@@ -229,6 +237,16 @@ export interface BrdCurves {
 /** What shapes the file beyond the surface: the stations where the bottom changes, from `brdBottomStations`. */
 export interface BrdOptions {
   bottomStations?: readonly Mm[];
+  /** The board's fins as the file carries them (`brdFinFields`): written as p51 and p50. Absent or null leaves p50 all zeros and no p51. */
+  fins?: BrdFinFields | null;
+}
+
+/** The two header fields a file carries for fins, in file order: the fin system's word (p51), then the nine figures (p50). */
+export function brdFinHeaderFields(fins: BrdFinFields): [string, string][] {
+  return [
+    ["p51", fins.p51],
+    ["p50", `[${fins.p50.map(formatBrdNumber).join(",")}]`],
+  ];
 }
 
 /**
@@ -751,7 +769,10 @@ export function brdText(surface: BoardSurface, options: BrdOptions = {}): { text
   field("p02", cm(curves.bottomLength));
   field("p03", cm(curves.thickness));
   field("p04", cm(curves.width));
-  for (const [key, value] of BRD_MACHINE_FIELDS) field(key, value);
+  for (const [key, value] of BRD_MACHINE_FIELDS) {
+    if (key === "p50" && options.fins) for (const [k, v] of brdFinHeaderFields(options.fins)) field(k, v);
+    else field(key, value);
+  }
   const block = (key: string, knots: readonly BezierKnot[]) => {
     field(key, "(");
     for (const knot of knots) lines.push(knotLine(knot));

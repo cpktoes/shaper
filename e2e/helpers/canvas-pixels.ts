@@ -94,7 +94,12 @@ export function countDifferent(a: Uint8Array, b: Uint8Array, tolerance: number):
 
 /** A `#rrggbb` colour as its three channels. */
 export function hexToRgb(hex: string): [number, number, number] {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  const text = hex.trim();
+  // The short form too (`#fff`): the dev server's own stylesheet shortens `#ffffff` to it, so a token read off the page
+  // can arrive either way.
+  const short = /^#?([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(text);
+  if (short) return [parseInt(short[1] + short[1], 16), parseInt(short[2] + short[2], 16), parseInt(short[3] + short[3], 16)];
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(text);
   if (!m) throw new Error(`not a #rrggbb colour: ${hex}`);
   return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
 }

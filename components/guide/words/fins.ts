@@ -177,7 +177,7 @@ export const FINS_GUIDE_WORDS: readonly GuideWordsCard[] = [
     how: "Mark both ends of the base on the board — trailing edge first, then the base length forward along the toe line — and route the box to those marks.",
   }),
   card(ADVANCED, "Aft/Forward position", {
-    is: "Slides a fin set forward or back from where its model puts it, up to an inch and a half either way.",
+    is: "Slides a fin set forward or back from where its model puts it, up to an inch and a half either way (a twin's pair may go forward as far as ten inches off the tail).",
     does: "Back is drivey — the fins hold and the board tracks; forward is loose and quick to pivot.",
     info: null,
     how: "Move both trailing-edge marks the same amount along the board before marking the leading edges; measure from the tail tip each time.",

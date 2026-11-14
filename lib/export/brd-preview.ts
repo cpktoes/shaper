@@ -15,7 +15,8 @@ import { bezierPoint, type BezierKnot, type P2 } from "../geometry/bezier-fit";
 import { BOTTOM_DATA_DEPTH_SHOWN, type BottomBoard, type ResolvedBottom } from "../geometry/bottom";
 import type { SectionHeight } from "../geometry/bottom-draw";
 import { sideProfileAt, sideProfileLines, type SideProfileReader } from "../geometry/side-profile";
-import { formatDim } from "../geometry/measure-display";
+import { brdFinsFromLine, finMarksOfFile, noBrdFins, type BrdFileFins } from "../geometry/brd-fins";
+import { formatDim, formatMark } from "../geometry/measure-display";
 import {
   centimetresToMm,
   formatCentimetres,
@@ -26,6 +27,7 @@ import {
   type UnitsSystem,
 } from "../geometry/units";
 import { brdFile, readBrdText, type BrdOptions, type BrdRead, type BrdReadKnot } from "./brd";
+import { brdFinWord, parseBrdFinLine } from "./brd-fin-line";
 import { unscrambleBrd } from "./brd-scramble";
 import type { BoardSurface } from "../geometry/board-surface";
 
@@ -72,6 +74,8 @@ export interface BrdPreview {
   widestGap: Mm;
   /** The index of the slice nearest the outline's widest knot: the one the preview opens on. */
   openingSlice: number;
+  /** The fins the file's own fin line holds (quick 261113-qyz), read back from its bytes with the same rules as any file's. */
+  fins: BrdFileFins;
 }
 
 /**
@@ -109,7 +113,7 @@ export interface BrdFileWithPreview {
 const toKnot = (knot: BrdReadKnot): BezierKnot => knot;
 
 /** A run of knots in centimetres sampled into millimetre points, `steps` to every span. */
-function sampleKnots(knots: readonly BrdReadKnot[], steps: number): P2[] {
+export function sampleKnots(knots: readonly BrdReadKnot[], steps: number): P2[] {
   const points: P2[] = [];
   for (let i = 0; i + 1 < knots.length; i++) {
     for (let step = i === 0 ? 0 : 1; step <= steps; step++) {
@@ -175,8 +179,21 @@ export function brdPreview(read: BrdRead): BrdPreview {
   const widest = read.outline.reduce((best, knot) => (knot.point[1] > best.point[1] ? knot : best), read.outline[0]);
   const openingSlice = brdSliceNearest({ slices } as BrdPreview, centimetresToMm(widest.point[0]));
 
+  const length = centimetresToMm(headerField(read, "p01"));
+  const finField = (key: string) => read.header.find(([name]) => name === key)?.[1];
+  const finFigures = parseBrdFinLine(finField("p50") ?? "");
+  const word = brdFinWord(finField("p51") ?? "");
+  const fins = finFigures
+    ? brdFinsFromLine(
+        finFigures,
+        outline.map(([x, y]): P2 => [x, Math.abs(y)]),
+        length,
+        word,
+      )
+    : noBrdFins();
+
   return {
-    length: centimetresToMm(headerField(read, "p01")),
+    length,
     width: centimetresToMm(headerField(read, "p04")),
     thickness: centimetresToMm(headerField(read, "p03")),
     outline,
@@ -185,6 +202,7 @@ export function brdPreview(read: BrdRead): BrdPreview {
     slices,
     widestGap: centimetresToMm(widestGap),
     openingSlice,
+    fins,
   };
 }
 
@@ -431,5 +449,31 @@ export function brdPreviewWords(preview: BrdPreview, system: UnitsSystem, maxThi
     profileMax: formatDim(maxThickness, system),
     gap: formatDim(preview.widestGap, system),
     stations: preview.slices.map((slice) => formatDim(slice.station, system)),
+  };
+}
+
+/**
+ * What the file's fins are, in the shaper's system, for the Board file preview's one line (quick 261113-qyz): `shape` is the
+ * name AkuShaper gives the setup its fin line draws (a side pair alone TWIN, a side pair and a centre fin TRI, a centre fin
+ * alone SINGLE; the founder checked this in AkuShaper 3.1.3, 2026-11-13), and every distance is a mark (whole millimetres in
+ * Metric). Null when the file holds no fins (a quad's file: its rear fins aren't written yet).
+ */
+export interface BrdPreviewFinsWords {
+  shape: "TWIN" | "TRI" | "SINGLE";
+  side: { offTail: string; inFromRail: string } | null;
+  centre: { offTail: string } | null;
+  /** The fin system's word as the file carries it, or null. */
+  system: string | null;
+}
+
+export function brdPreviewFinsWords(preview: Pick<BrdPreview, "fins" | "outline">, system: UnitsSystem): BrdPreviewFinsWords | null {
+  const { fins } = preview;
+  if (!fins.side && !fins.centre) return null;
+  const { marks } = finMarksOfFile(fins, preview.outline);
+  return {
+    shape: fins.side && fins.centre ? "TRI" : fins.side ? "TWIN" : "SINGLE",
+    side: marks.side ? { offTail: formatMark(marks.side.offTail, system), inFromRail: formatMark(marks.side.inFromRail, system) } : null,
+    centre: marks.centre ? { offTail: formatMark(marks.centre.offTail, system) } : null,
+    system: fins.word,
   };
 }

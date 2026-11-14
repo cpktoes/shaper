@@ -46,7 +46,7 @@
  *      within ±4000 mm, each fine-tune within ±50 mm, and the copy must pass the same pickable rule
  *      (`isPickable`) the blank list uses. `app/design/actions.ts` re-parses every save through here.
  *    - The board's LENGTH is bounded too (WR-05): a length more than a factor of two outside the
- *      app's own 60"-120" range rejects the snapshot, and a blank on a board outside that range
+ *      app's own 4'0"-12'0" range (30" to 288") rejects the snapshot, and a blank on a board outside that range
  *      (but not that far) is dropped, so the board reopens hand-set instead of crashing the rack.
  *    - `foil.center` stays the board's ONE stored centre thickness (D-12); the blank carries no
  *      board centre of its own.
@@ -144,8 +144,9 @@
  *    2026-11-03, D-30 2026-11-04), both in millimetres from the tail tip: `tailHardEdgeBlendsFrom` (Hard
  *    Edge Blends From, where the hard edge starts blending into the tucked rail) and `tailHardEdgeEndsAt`
  *    (Hard Edge Ends At, where the rail has fully blended into the centre's tucked rail). Absent — every
- *    board saved before them, and a board saved with only the first, single Ends At — reads 18" and 30"
- *    through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. Anything that is not a finite number that could sit on
+ *    board saved before them, and a board saved with only the first, single Ends At — reads the default pair
+ *    through `hardEdgeBlendsFrom` / `hardEdgeEndsAt` — 12" and the top of Ends At's slider (the board's centre) since quick
+ *    261113-psx, the founder 2026-11-13; D-30's 18" and L/6 + 18" before. Anything that is not a finite number that could sit on
  *    some board (Blends From 12"-30", Ends At 14" to the centre of the longest board) leaves no key at all,
  *    so a crafted value never rejects the board; a value that fits some board but not this one, or a pair
  *    that crosses, is forgiven by those readers on every read. Nothing is rewritten until the shaper saves.
@@ -238,15 +239,24 @@ const tailShapeSchema = z.discriminatedUnion("kind", [
 ]);
 
 /**
- * The board lengths a saved board can hold at all (WR-05): anything more than a factor of two
- * outside the app's own board-length range (`BOARD_LENGTH_RANGE_IN`, 60"-120", so 30"-240") is not
- * a board this app ever drew, and the snapshot is rejected as invalid. The lower end also keeps
- * every board long enough for its five stations to run in order (tail tip, tail 12", centre,
- * nose 12", nose tip — the centre must sit past the 12" station), which the side profile needs to
- * be drawn at all; `design-snapshot.test.ts` checks that still holds.
+ * The shortest board a saved board or board file can carry, in inches. Until quick 261113-si7 this
+ * was half the shortest board the app made (60" / 2 = 30"); the app now makes 4'0" boards, and half
+ * of THAT, 24", would put the board's centre exactly on its 12" stations (12" = 12"), where the five
+ * stations no longer run in order. So the floor stays 30" by name: a board a quarter under 4'0" still
+ * opens (hand-set, with no blank), and a 24" one is refused.
+ */
+export const SNAPSHOT_SHORTEST_IN = 30;
+
+/**
+ * The board lengths a saved board can hold at all (WR-05): shorter than `SNAPSHOT_SHORTEST_IN` or
+ * more than a factor of two over the longest board the app draws (`BOARD_LENGTH_RANGE_IN`, 4'0"-12'0",
+ * so up to 288") is not a board this app ever drew, and the snapshot is rejected as invalid. The
+ * lower end also keeps every board long enough for its five stations to run in order (tail tip, tail
+ * 12", centre, nose 12", nose tip — the centre must sit past the 12" station), which the side profile
+ * needs to be drawn at all; `design-snapshot.test.ts` checks that still holds.
  */
 export const SNAPSHOT_BOARD_LENGTH_MM = {
-  min: inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2),
+  min: inchesToMm(SNAPSHOT_SHORTEST_IN),
   max: inchesToMm(BOARD_LENGTH_RANGE_IN.max * 2),
 } as const;
 
@@ -254,7 +264,7 @@ export const SNAPSHOT_BOARD_LENGTH_MM = {
 const BOARD_LENGTH_TOLERANCE_MM = 1;
 
 /**
- * Whether a board's length is inside the app's own board-length range (60"-120"), give or take a
+ * Whether a board's length is inside the app's own board-length range (4'0"-12'0"), give or take a
  * millimetre of round-trip slack — the only boards the blank maths is built for. A saved board in
  * a blank whose length is outside it reopens hand-set instead (see `parseSnapshot`).
  */

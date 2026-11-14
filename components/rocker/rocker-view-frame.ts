@@ -419,9 +419,20 @@ export const COMPACT_DECK_BAND = COMPACT_CURVE_GAP + COMPACT_CAP + COMPACT_EDGE_
  * the same depth as the deck band now that all four rocker figures share one row. */
 export const COMPACT_BOTTOM_BAND = COMPACT_CURVE_GAP + COMPACT_CAP + COMPACT_EDGE_GUTTER;
 
-/** The range-derived fixed scale — `PX_PER_INCH` before this module existed, and still what
- * `fitToBoard: false` (the order form's path) resolves to for every board length alike. */
-const FIXED_SCALE = (VIEW_W - PAD_X * 2) / BOARD_LENGTH_RANGE_IN.max;
+/**
+ * The longest board the station cards were sized for, in inches: 10'0", drawn at the frame's full width.
+ * The card size was set on that board and it stays that size (quick 261113-si7: the app now makes boards
+ * up to 12'0", and following the new top would narrow every card on every board and change every ROCKER
+ * frame), so every drawing that spans 10'0" or less overall comes out exactly as it always did. A board or
+ * board-plus-blank that spans MORE than this draws its 12" spacing shorter than the cards were made for, and
+ * `rockerViewLayout` shrinks the cards to that spacing (card and type together).
+ */
+export const ROCKER_CARD_REFERENCE_LENGTH_IN = 120;
+
+/** The card-reference fixed scale — `PX_PER_INCH` before this module existed, and still what
+ * `fitToBoard: false` (the order form's path) resolves to for every board up to 10'0". A longer board on that
+ * path draws at the scale that makes it span the drawing area (`resolveScale`). */
+const FIXED_SCALE = (VIEW_W - PAD_X * 2) / ROCKER_CARD_REFERENCE_LENGTH_IN;
 
 /**
  * Each station card's width, in SVG user units — derived from the rail's own narrowest column
@@ -539,14 +550,14 @@ export function cardPinScale(fitScale: number, targetValuePx: number, orientatio
 
 /**
  * A corrupt saved board must not blank the screen (threat T-TMJ-02): a zero, negative or
- * non-finite length falls back to `BOARD_LENGTH_RANGE_IN.max` (the same board `FIXED_SCALE`
- * itself is derived from) rather than propagating a `NaN`; any finite positive length is clamped
+ * non-finite length falls back to `ROCKER_CARD_REFERENCE_LENGTH_IN` (the 10'0" board `FIXED_SCALE`
+ * itself is derived from, as it always did) rather than propagating a `NaN`; any finite positive length is clamped
  * into `BOARD_LENGTH_RANGE_IN` first, so a value outside the app's own slider range still
  * produces a sane frame. Shared by `scale` and the vertical frame's own long-axis span below, so
  * the two never disagree about how long the drawn board actually is.
  */
 function resolveEffectiveLengthIn(lengthIn: number): number {
-  if (!Number.isFinite(lengthIn) || lengthIn <= 0) return BOARD_LENGTH_RANGE_IN.max;
+  if (!Number.isFinite(lengthIn) || lengthIn <= 0) return ROCKER_CARD_REFERENCE_LENGTH_IN;
   return Math.min(Math.max(lengthIn, BOARD_LENGTH_RANGE_IN.min), BOARD_LENGTH_RANGE_IN.max);
 }
 
@@ -558,9 +569,11 @@ function resolveEffectiveLengthIn(lengthIn: number): number {
  */
 function resolveScale(lengthIn: number, fitToBoard: boolean, overhangIn: number = 0): number {
   if (!fitToBoard) {
-    if (overhangIn === 0) return FIXED_SCALE;
-    // A blank on the fixed frame: keep the shared scale unless the whole blank would not fit in
-    // the drawing area at it — the whole blank is always in view (D-15).
+    // The shared scale, unless the whole board (and any blank beyond it) would not fit in the drawing
+    // area at it — the whole blank is always in view (D-15). Until quick 261113-si7 a board with no blank
+    // always took the shared scale, because no board was longer than the one it was derived from; boards up
+    // to 12'0" are now, and a longer one is fitted to the area like a blank is. For every board of 10'0" or
+    // less the second term is never the smaller one, so each of those is exactly what it was.
     return Math.min(FIXED_SCALE, (VIEW_W - PAD_X * 2) / (resolveEffectiveLengthIn(lengthIn) + overhangIn));
   }
   // With a blank, the blank's whole length fills the drawing area instead of the board's: the
@@ -625,7 +638,20 @@ export function rockerViewLayout({
   // For `"full"`/`"none"`, `effectiveHorizontal` already equals `horizontal`, so this resolves to
   // exactly `maxCardPinScale(orientation)` there — no behaviour change on either of those paths.
   const pinCeiling = maxCardPinScale(effectiveHorizontal ? "horizontal" : orientation);
-  const appliedScale = showStationCards ? clamp(cardScale, 1, pinCeiling) : 1;
+  // The scale the caller asked for, then held to the drawn 12" spacing (quick 261113-si7, B1): a card's extent
+  // along the station axis (its width nose-left, its height nose-up) times the applied scale may be at most the
+  // spacing less `CARD_GUTTER`. That is at least what the card was sized for on every drawing spanning 10'0" or
+  // less, so the hold only ever bites on a longer one — a 12'0" board draws its 12" spacing at 68.3 units, 65.0
+  // in the 12'6" EPS — and then it takes the card and its type DOWN with the spacing, below 1 if it must. Applied
+  // only where it bites by more than a float's dust, so a 10'0" board's cards are the very numbers they were.
+  const requestedScale = showStationCards ? clamp(cardScale, 1, pinCeiling) : 1;
+  const spacingScale = showStationCards
+    ? (12 * scale - CARD_GUTTER) / (effectiveHorizontal ? STATION_CARD_WIDTH : STATION_CARD_HEIGHT)
+    : Infinity;
+  const appliedScale =
+    showStationCards && Number.isFinite(spacingScale) && spacingScale > 0 && requestedScale - spacingScale > 1e-9
+      ? spacingScale
+      : requestedScale;
   const cardWidth = STATION_CARD_WIDTH * appliedScale;
   const cardHeight = STATION_CARD_HEIGHT * appliedScale;
   // The frame's own reserve, at the CEILING, never at `appliedScale` — see the header note above

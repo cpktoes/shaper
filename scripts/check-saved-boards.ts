@@ -96,6 +96,20 @@
  * A board that does not open is counted, never printed with data. It only reads; it never prints a board name,
  * a snapshot, a user id or the connection string, and it never changes the exit code.
  *
+ * `--tail-blend-report` (quick 261113-psx, the 14 D-18 report rule; read-only, board ids, settings and litres only): the
+ * founder's check, before the new tail-rail default goes live, of which saved boards' litres it moves. A board that
+ * says nothing now reads Tail Rail Blends From = 12" and Tail Rail Ends At = the top of its slider (the board's centre),
+ * where it read 18" and L/6 + 18"; a board that moved the sliders keeps its own figures. For each board whose litres
+ * move it prints the two settings before and after (in inches, `(default)` where it stores none of its own) and the
+ * litres before (the board with the old pair stored, `withD30TailRailBlend`) and after (the board as stored), worked out
+ * in lib/models/tail-blend-report.ts (`tailBlendReportLines`):
+ *   tail-blend report: N saved boards; k open[, d did not open]; m whose litres move
+ *   <id>: blends from <before> → <after> · ends at <before> → <after> — <before> → <after> L (<move>)
+ *                                                                              one per such board, the largest move first
+ *   largest move: <id>, <move> L                                              (or: largest move: none)
+ * A board that does not open is counted, never printed with data. It only reads (one select); it never prints a board
+ * name, a snapshot, a user id or the connection string, and it never changes the exit code.
+ *
  * `--bottom-report` (Phase 17 D-24; read-only, board ids and litres only): the founder's check, before BOTTOM's
  * saving ships, that nothing a shaper has saved changes when it does. For every saved board it says that the board
  * opens, whether it has a bottom cut (none can before the page that makes them is live), and its litres beside the
@@ -133,6 +147,9 @@
  *   production, the bottom report — the founder only (Phase 17's go-live, plan 17-12), the same form:
  *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --bottom-report; rm -f .env.production.pull
  *   development, the bottom report: either development command above with ` --bottom-report` added.
+ *   production, the tail-blend report — the founder only (quick 261113-psx), the same form as the surface report:
+ *     npx vercel env pull --yes --environment=production .env.production.pull && CHECK_ENV_FILE=.env.production.pull npx --no-install tsx scripts/check-saved-boards.ts --tail-blend-report; rm -f .env.production.pull
+ *   development, the tail-blend report: either development command above with ` --tail-blend-report` added.
  *
  * Which env file is read is controlled by `CHECK_ENV_FILE` (default `.env.local`, resolved from the
  * current directory), exactly as scripts/check-preference-columns.ts: when the file exists, any
@@ -186,6 +203,7 @@ async function main(): Promise<void> {
   type HardEdgeReportRow = import("../lib/models/hard-edge-report").HardEdgeReportRow;
   const { railCharacterReportLines } = await import("../lib/models/rail-character-report");
   const { surfaceReportLines } = await import("../lib/models/surface-report");
+  const { tailBlendReportLines } = await import("../lib/models/tail-blend-report");
   const { bottomReportLines } = await import("../lib/models/bottom-report");
 
   type Mm = import("../lib/geometry/units").Mm;
@@ -201,6 +219,7 @@ async function main(): Promise<void> {
   const hardEdgeReportFlag = process.argv.includes("--hard-edge-report");
   const railCharacterReportFlag = process.argv.includes("--rail-character-report");
   const surfaceReportFlag = process.argv.includes("--surface-report");
+  const tailBlendReportFlag = process.argv.includes("--tail-blend-report");
   const bottomReportFlag = process.argv.includes("--bottom-report");
   const floor = MIN_FOIL_THICKNESS_MM - FIT_EPSILON_MM;
 
@@ -218,7 +237,7 @@ async function main(): Promise<void> {
   let kept = 0;
   const moved: string[] = [];
   let noLongerFits = 0;
-  // --hard-edge-report (Phase 16 D-20), --rail-character-report (D-32) and --surface-report (D-33, D-34): each board's id and its opened fields
+  // --hard-edge-report (Phase 16 D-20), --rail-character-report (D-32), --surface-report (D-33, D-34) and --tail-blend-report (quick 261113-psx): each board's id and its opened fields
   // (null when it did not open) — the one collection both reports read.
   const hardEdgeRows: HardEdgeReportRow[] = [];
 
@@ -380,6 +399,9 @@ async function main(): Promise<void> {
 
   // --surface-report (Phase 16 D-33 to D-38): ids, wing counts, tail kinds and litres only; never changes the exit code.
   if (surfaceReportFlag) for (const line of surfaceReportLines(hardEdgeRows)) console.log(line);
+
+  // --tail-blend-report (quick 261113-psx): ids, settings and litres only; never changes the exit code.
+  if (tailBlendReportFlag) for (const line of tailBlendReportLines(hardEdgeRows)) console.log(line);
 
   // --bottom-report (Phase 17 D-24): ids and litres only, from the rows already read; never changes the exit code.
   if (bottomReportFlag) {

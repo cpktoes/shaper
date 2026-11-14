@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// Writing a board file several times over is slow work, and a busy machine (the whole suite at once) can stretch a case past
+// the default five seconds: the cases here are generous rather than flaky.
+vi.setConfig({ testTimeout: 60_000 });
 import {
   buildBoardSurface,
   type BoardSurface,
@@ -24,7 +27,7 @@ import {
   type DesignSummaryFields,
 } from "../geometry/design";
 import { buildOutline } from "../geometry/outline";
-import { formatDim } from "../geometry/measure-display";
+import { formatDim, formatMark } from "../geometry/measure-display";
 import {
   centimetresToMm,
   formatCentimetres,
@@ -50,6 +53,7 @@ import {
   BRD_PREVIEW_PAD_Y,
   brdFileWithPreview,
   brdPreview,
+  brdPreviewFinsWords,
   brdPreviewProfile,
   brdPreviewFrames,
   brdPreviewWords,
@@ -60,6 +64,9 @@ import {
   type BrdSideProfileInput,
 } from "./brd-preview";
 import type { SectionHeight } from "../geometry/bottom-draw";
+import { brdFinFields, finMarksOfPlacement } from "../geometry/brd-fins";
+import { DEFAULT_FIN_PLACEMENT_SPEC, resetAdvanced, type FinSetup } from "../geometry/fins";
+import { THREE_D_COPY } from "../../components/3d/three-d-copy";
 
 /**
  * The preview on three boards: the flat Shortboard, the Fish and the Shortboard with a Deep Single Concave and four
@@ -435,5 +442,68 @@ describe("the preview's rail line (quick 261112-lmr)", () => {
     const plain = brdPreviewFrames(preview, 760);
     expect(brdPreviewFrames(preview, 760, { railBottom: null })).toEqual(plain);
     expect(plain.side.rail).toBeNull();
+  });
+});
+
+describe("the fins the file carries (quick 261113-qyz)", () => {
+  const fields = fieldsOf("shortboard|asis|hard");
+  const surface = flatSurface(fields);
+  const sides = sidesOf(fields);
+  const placementOf = (setup: FinSetup) =>
+    designFinPlacement({ outline: fields.outline, fins: { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: setup, advanced: resetAdvanced(setup, "upright") }, finsImportTemplate: true });
+  const previewOf = (setup: FinSetup) => brdFileWithPreview(surface, "Fins", { fins: brdFinFields(placementOf(setup), "futures") }, sides).preview;
+
+  it("reads the fins back from the file's own bytes: the marks equal the ones written", () => {
+    for (const setup of ["twin", "thruster", "2plus1", "single"] as const) {
+      const placement = placementOf(setup);
+      const marks = finMarksOfPlacement(placement);
+      const preview = previewOf(setup);
+      if (marks.side) {
+        expect(preview.fins.side!.back[0], setup).toBeCloseTo(marks.side.offTail, 6);
+        expect(preview.fins.side!.front[0] - preview.fins.side!.back[0], setup).toBeCloseTo(marks.side.base, 5);
+      } else expect(preview.fins.side, setup).toBeNull();
+      if (marks.centre) expect(preview.fins.centre!.back, setup).toBeCloseTo(marks.centre.offTail, 6);
+      else expect(preview.fins.centre, setup).toBeNull();
+      expect(preview.fins.word).toBe("Futures");
+    }
+  });
+
+  it("names what AkuShaper shows: a side pair alone TWIN, side and centre TRI, a centre alone SINGLE", () => {
+    expect(brdPreviewFinsWords(previewOf("twin"), "imperial")!.shape).toBe("TWIN");
+    expect(brdPreviewFinsWords(previewOf("thruster"), "imperial")!.shape).toBe("TRI");
+    expect(brdPreviewFinsWords(previewOf("2plus1"), "imperial")!.shape).toBe("TRI");
+    expect(brdPreviewFinsWords(previewOf("single"), "imperial")!.shape).toBe("SINGLE");
+  });
+
+  it("says the marks in the shaper's system, and the line reads whole through the copy", () => {
+    const preview = previewOf("thruster");
+    const marks = finMarksOfPlacement(placementOf("thruster"));
+    const imperial = brdPreviewFinsWords(preview, "imperial")!;
+    expect(imperial.side!.offTail).toBe(formatMark(marks.side!.offTail, "imperial"));
+    expect(imperial.side!.inFromRail).toBe(formatMark(marks.side!.inFromRail, "imperial"));
+    expect(imperial.centre!.offTail).toBe(formatMark(marks.centre!.offTail, "imperial"));
+    const metric = brdPreviewFinsWords(preview, "metric")!;
+    expect(metric.side!.offTail).toMatch(/^\d+ mm$/);
+    expect(metric.centre!.offTail).toMatch(/^\d+ mm$/);
+    const line = THREE_D_COPY.previewFins(imperial.side, imperial.centre, imperial.shape, imperial.system);
+    expect(line).toBe(
+      `Fins in the file: a side pair ${imperial.side!.offTail} off the tail and ${imperial.side!.inFromRail} in from the rail, and a centre fin ${imperial.centre!.offTail} off the tail — AkuShaper shows this as TRI. Fin system: Futures.`,
+    );
+    expect(THREE_D_COPY.previewFins(null, imperial.centre, "SINGLE", null)).toBe(
+      `Fins in the file: a centre fin ${imperial.centre!.offTail} off the tail — AkuShaper shows this as SINGLE.`,
+    );
+  });
+
+  it("a quad's file carries no fins: no line to say, and the copy says they are not written yet", () => {
+    expect(brdFinFields(placementOf("quad"), "futures")).toBeNull();
+    const preview = brdFileWithPreview(surface, "Quad", { fins: brdFinFields(placementOf("quad"), "futures") }, sides).preview;
+    expect(preview.fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
+    expect(brdPreviewFinsWords(preview, "imperial")).toBeNull();
+    expect(THREE_D_COPY.exportQuadNote).toBe("A quad's fins aren't written to the file yet.");
+  });
+
+  it("a file with no fins option reads back with none", () => {
+    const preview = brdFileWithPreview(surface, "Plain", {}, sides).preview;
+    expect(brdPreviewFinsWords(preview, "imperial")).toBeNull();
   });
 });

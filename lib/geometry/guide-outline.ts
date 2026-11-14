@@ -20,7 +20,7 @@
  * Every figure is printed through the page's own formatters; degrees and percentages as the sidebar prints
  * them. Pure; no React, browser or database (CLAUDE.md Rule 1).
  */
-import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec, type TailShape } from "./board";
+import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, type OutlineSpec, type TailShape, widePointOffsetRangeIn, widePointWidthRangeIn } from "./board";
 import type { FinMark } from "./fins";
 import {
   GUIDE_NO_CAPTION,
@@ -54,7 +54,7 @@ import {
   type GuideWindowSpec,
 } from "./guide-draw";
 import { GUIDE_FRAME, guidePush } from "./guide-push";
-import { formatDim, formatLength, formatMark, formatSignedDim, formatSignedMark, measureSlider } from "./measure-display";
+import { formatControlNumber, formatDim, formatLength, formatMark, formatSignedDim, formatSignedMark, measureSlider } from "./measure-display";
 import { buildOutline, MEASURE_STATION_MM, type OutlineGeometry } from "./outline";
 import { degrees, mm, type Mm, type UnitsSystem } from "./units";
 import { lockedWingStation } from "./wing-lock";
@@ -240,9 +240,9 @@ export function templateGuideVariants(input: TemplateGuideInput, system: UnitsSy
   set(ids.boardLength, pushed(pushWithin(o.length, p.length, length.lo, length.hi), (v) => ({ ...o, length: mm(v) })));
   set(ids.noseAngle, pushed(pushWithin(o.noseAngle, p.angle, 35, 90), (v) => ({ ...o, noseAngle: degrees(v) })));
   set(ids.noseFullness, pushed(pushWithin(o.noseFullness, p.full, 0, 100), (v) => ({ ...o, noseFullness: v })));
-  const width = sliderLimits(o.widePointWidth, WIDEPOINT_WIDTH_RANGE_IN, 0.125, 1, system);
+  const width = sliderLimits(o.widePointWidth, widePointWidthRangeIn(o.length), 0.125, 1, system);
   set(ids.width, pushed(pushWithin(o.widePointWidth, p.width, width.lo, width.hi), (v) => ({ ...o, widePointWidth: mm(v) })));
-  const offset = sliderLimits(o.widePointOffset, { min: -12, max: 12 }, 0.25, 1, system);
+  const offset = sliderLimits(o.widePointOffset, widePointOffsetRangeIn(o.length), 0.25, 1, system);
   set(ids.offset, pushed(pushWithin(o.widePointOffset, p.offset, offset.lo, offset.hi), (v) => ({ ...o, widePointOffset: mm(v) })));
   set(ids.tailRail, pushed(pushWithin(o.tailRailLength, p.rail, 0, 100), (v) => ({ ...o, tailRailLength: v })));
   set(ids.noseRail, pushed(pushWithin(o.noseRailLength, p.rail, 0, 100), (v) => ({ ...o, noseRailLength: v })));
@@ -510,7 +510,7 @@ const naTag = (text: string): GuideTag => ({ kind: "na", text });
 const ON_THIS_BOARD: GuideTag = { kind: "on", text: "On this board" };
 
 /** A degree or a percentage as a pushed figure: the sidebar's own number, clear of float dust. */
-const plain = (v: number) => `${+v.toFixed(2)}`;
+const plain = formatControlNumber;
 
 function dashed(...parts: GuideTextPart[]): GuideCaption {
   return { kind: "dashed", parts };
@@ -561,15 +561,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   // Nose Controls.
   card(
     ids.noseAngle,
-    valueTag(`${o.noseAngle}°`),
+    valueTag(`${plain(o.noseAngle)}°`),
     dashed(guideFigure(`${plain(pushOf(ids.noseAngle)?.noseAngle ?? o.noseAngle)}°`)),
-    fig(ids.noseAngle, "nose", { label: { role: "value", parts: [guideFigure(`${o.noseAngle}°`)] } }),
+    fig(ids.noseAngle, "nose", { label: { role: "value", parts: [guideFigure(`${plain(o.noseAngle)}°`)] } }),
   );
   card(
     ids.noseFullness,
-    valueTag(`${o.noseFullness}%`),
+    valueTag(`${plain(o.noseFullness)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.noseFullness)?.noseFullness ?? o.noseFullness)}%`), guideText(" full")),
-    fig(ids.noseFullness, "nose", { label: { role: "value", parts: [guideFigure(`${o.noseFullness}%`), guideText(" full")] } }),
+    fig(ids.noseFullness, "nose", { label: { role: "value", parts: [guideFigure(`${plain(o.noseFullness)}%`), guideText(" full")] } }),
   );
 
   // Widepoint Controls.
@@ -590,15 +590,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   );
   card(
     ids.tailRail,
-    valueTag(`${o.tailRailLength}%`),
+    valueTag(`${plain(o.tailRailLength)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.tailRail)?.tailRailLength ?? o.tailRailLength)}%`), guideText(" long")),
-    fig(ids.tailRail, "tailhalf", { label: { role: "value", parts: [guideText("Tail Rail "), guideFigure(`${o.tailRailLength}%`)] } }),
+    fig(ids.tailRail, "tailhalf", { label: { role: "value", parts: [guideText("Tail Rail "), guideFigure(`${plain(o.tailRailLength)}%`)] } }),
   );
   card(
     ids.noseRail,
-    valueTag(`${o.noseRailLength}%`),
+    valueTag(`${plain(o.noseRailLength)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.noseRail)?.noseRailLength ?? o.noseRailLength)}%`), guideText(" long")),
-    fig(ids.noseRail, "nosehalf", { label: { role: "value", parts: [guideText("Nose Rail "), guideFigure(`${o.noseRailLength}%`)] } }),
+    fig(ids.noseRail, "nosehalf", { label: { role: "value", parts: [guideText("Nose Rail "), guideFigure(`${plain(o.noseRailLength)}%`)] } }),
   );
 
   // Tail Controls: the five tails, each on this board.
@@ -658,15 +658,15 @@ export function buildTemplateGuide(input: TemplateGuideInput, system: UnitsSyste
   // Tail Angle: `—` on a diamond, the board drawn as it is.
   card(
     ids.tailAngle,
-    g.tailAnglePinned ? naTag("—") : valueTag(`${o.tailAngle}°`),
+    g.tailAnglePinned ? naTag("—") : valueTag(`${plain(o.tailAngle)}°`),
     dashed(guideFigure(`${plain(pushOf(ids.tailAngle)?.tailAngle ?? o.tailAngle)}°`)),
-    fig(ids.tailAngle, "tail", g.tailAnglePinned ? {} : { label: { role: "value", parts: [guideFigure(`${o.tailAngle}°`)] } }),
+    fig(ids.tailAngle, "tail", g.tailAnglePinned ? {} : { label: { role: "value", parts: [guideFigure(`${plain(o.tailAngle)}°`)] } }),
   );
   card(
     ids.tailFullness,
-    valueTag(`${o.tailFullness}%`),
+    valueTag(`${plain(o.tailFullness)}%`),
     dashed(guideFigure(`${plain(pushOf(ids.tailFullness)?.tailFullness ?? o.tailFullness)}%`), guideText(" full")),
-    fig(ids.tailFullness, "tail", { label: { role: "value", parts: [guideFigure(`${o.tailFullness}%`), guideText(" full")] } }),
+    fig(ids.tailFullness, "tail", { label: { role: "value", parts: [guideFigure(`${plain(o.tailFullness)}%`), guideText(" full")] } }),
   );
 
   // Wings: the board with the wing "+ Add a wing" would add first, or its own wing 1.

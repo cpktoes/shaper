@@ -21,7 +21,7 @@ import type { OutlineSpec } from "@/lib/geometry/board";
 import { MEASURE_STATION_MM, type OutlineGeometry, outlinePlanArea, sampleOutline } from "@/lib/geometry/outline";
 import { computeOverviewDrawingBox, computeOverviewOutlineScale } from "@/lib/geometry/overview-layout";
 import { PAPER_MM, TEMPLATE_MARGIN_MM, type PaperSize } from "@/lib/geometry/template";
-import { formatArea, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
+import { formatArea, formatControlNumber, formatDim, formatLength, formatMark, formatSignedDim, stationLabel } from "@/lib/geometry/measure-display";
 import { mm, squareMmToSquareInches, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { wingPrintName, type WingFigures } from "@/lib/geometry/wing-figures";
 import { wrapTextToWidth } from "@/components/template/build-template-pdf";
@@ -144,11 +144,11 @@ export function overviewSpecLines(
   const stationText = stationLabel(system);
   const lines = [
     `Length: ${formatLength(outline.length, system)}`,
-    `Nose Angle: ${outline.noseAngle}°  ·  Fullness: ${outline.noseFullness}%`,
+    `Nose Angle: ${formatControlNumber(outline.noseAngle)}°  ·  Fullness: ${formatControlNumber(outline.noseFullness)}%`,
     `Nose Width @${stationText} (calculated): ${formatDim(geometry.noseWidthAt12in, system)}`,
     `Widepoint Width: ${formatDim(outline.widePointWidth, system)}`,
     `WP Offset: ${formatSignedDim(outline.widePointOffset, system)}`,
-    `Rail Length: Tail ${outline.tailRailLength}%  ·  Nose ${outline.noseRailLength}%`,
+    `Rail Length: Tail ${formatControlNumber(outline.tailRailLength)}%  ·  Nose ${formatControlNumber(outline.noseRailLength)}%`,
     `Tail Shape: ${tailShapeLabel(outline.tail.kind)}`,
     `Tail Block: ${formatDim(mm(geometry.halfTailBlockWidth * 2), system)}`,
   ];
@@ -164,7 +164,7 @@ export function overviewSpecLines(
     lines.push(`${WING_ROW_INDENT}Radius: ${f.radius}`);
     if (f.offset !== null) lines.push(`${WING_ROW_INDENT}Offset: ${f.offset}`);
   }
-  lines.push(`Tail Angle: ${outline.tailAngle}°  ·  Fullness: ${outline.tailFullness}%`);
+  lines.push(`Tail Angle: ${formatControlNumber(outline.tailAngle)}°  ·  Fullness: ${formatControlNumber(outline.tailFullness)}%`);
   lines.push(`Tail Width @${stationText} (calculated): ${formatDim(geometry.tailWidthAt12in, system)}`);
   // The outline as drawn, tail cut included (quick 261103-gcm): the same figure as VOLUME's Template Area.
   const planArea = outlinePlanArea(geometry);

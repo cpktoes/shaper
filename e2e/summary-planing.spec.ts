@@ -1045,7 +1045,7 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
       for (let v: number = THINNING_START_MIN_MM; v <= longestReach; v += 0.5) {
         thinning.add(thinningLine(mm(v), mm(v), system));
       }
-      // Non-vacuity guard: a start can print at least every half inch from 6" to 60".
+      // Non-vacuity guard: a start can print at least every half inch from 6" to 72" (half the longest board, 12'0").
       expect(thinning.size, "thinning line candidates").toBeGreaterThan(
         (BOARD_LENGTH_RANGE_IN.max / 2 - THINNING_START_MIN_MM / inchesToMm(1)) * 2,
       );
@@ -1130,40 +1130,60 @@ test.describe("Summary — the PLANING table (Phase 13 item 8, quick 260928-r9h;
  *
  * The page is laid out by arithmetic (`components/summary/bottom-sheet-fit.ts` decides, from the board alone, whether
  * the two tables stay on the page or take a sheet of their own), and arithmetic about a page is only as good as the
- * page agrees with it. This is where the page is asked: four boards — the fullest bottom the rule keeps on one page,
+ * page agrees with it. This is where the page is asked: five boards — the fullest bottom the rule keeps on one page,
  * a long board with three cuts, the worst bottom there is (a cut in every section and eight channels on the longest
- * stock board, nineteen rows under eleven columns of marks), and the same worst bottom on the widest stock board,
- * whose picture from above stands tallest over four sections — on a computer's printed sheet and on a phone's
+ * stock board, nineteen rows under eleven columns of marks), the same worst bottom on the widest stock board,
+ * whose picture from above stands tallest over four sections, and the longest board the app makes (12'0" x 31", 25
+ * rows a table) whose two tables take a sheet each (quick 261113-vya) — on a computer's printed sheet and on a phone's
  * sheet at every width the other pages are swept at, in both systems. On every one: no sheet clips, no box on the page
  * clips, every table is inside its box and has every row, the content stops above the page mark, and the bottom's own
  * picture is drawn at its full size (it is the one part allowed to give way, so a page the rule says fits must never
  * have needed it to). Then both papers are printed and the PDF has exactly as many pages as the form has sheets, each
  * at true size — nothing pushed onto a blank extra page.
  */
-const BOTTOM_FIT_BOARDS: { name: string; preset: string; picks: BottomPicks; tablesOnOwnSheet: boolean }[] = [
+const BOTTOM_FIT_BOARDS: {
+  name: string;
+  preset: string;
+  picks: BottomPicks;
+  size?: { lengthIn: number; widthIn: number };
+  tablesOnOwnSheet: boolean;
+  tablesSplit: boolean;
+}[] = [
   {
     name: "the fullest bottom the page holds whole — a Shortboard with a Deep Single Concave and 6 channels",
     preset: "shortboard",
     picks: { center: "Deep Single Concave", channels: 6 },
     tablesOnOwnSheet: false,
+    tablesSplit: false,
   },
   {
     name: "a Longboard with a cut in every section",
     preset: "longboard",
     picks: { nose: "Teardrop Nose Concave", center: "Continuous Belly / Rolled Mid", tail: "Rolled Vee" },
     tablesOnOwnSheet: true,
+    tablesSplit: false,
   },
   {
     name: "the worst bottom — a Longboard with a cut in every section and 8 channels",
     preset: "longboard",
     picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
     tablesOnOwnSheet: true,
+    tablesSplit: false,
   },
   {
     name: "the fullest page of drawings — a Fish with a cut in every section and 8 channels",
     preset: "fish",
     picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
     tablesOnOwnSheet: true,
+    tablesSplit: false,
+  },
+  {
+    name: "the longest board — a 12'0\" x 31\" Longboard with a cut in every section and 8 channels",
+    preset: "longboard",
+    picks: { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
+    size: { lengthIn: 144, widthIn: 31 },
+    tablesOnOwnSheet: true,
+    tablesSplit: true,
   },
 ];
 
@@ -1243,12 +1263,13 @@ test.describe("Summary — the BOTTOM CONTOURS page fits its sheet (Phase 17, D-
         test.skip(testInfo.project.name !== "desktop", "measures layout at print sizes; one engine is enough");
         test.slow(); // nine layouts of a four-sheet form, then two PDFs
 
-        const board = boardWithBottom(fit.preset, fit.picks);
+        const board = boardWithBottom(fit.preset, fit.picks, fit.size);
         const layout = bottomSheetLayout(board.resolved, board.board, system, board.frontPair);
         const rows = bottomDataRows(board.resolved, board.board).length;
         const markColumns = bottomLayoutMarks(board.resolved, board.board).columns.length;
         // Non-vacuity: the board is the case its name says, by the rule the order form itself asks.
         expect(layout.tablesOnOwnSheet, `${fit.name}: the fit rule's answer`).toBe(fit.tablesOnOwnSheet);
+        expect(layout.tablesSplit, `${fit.name}: the fit rule's answer on a sheet each`).toBe(fit.tablesSplit);
         expect(rows, `${fit.name}: rows to print`).toBeGreaterThan(10);
         const sheetCount = 2 + layout.sheets;
 
@@ -1305,18 +1326,25 @@ test.describe("Summary — the BOTTOM CONTOURS page fits its sheet (Phase 17, D-
           );
           expect(bottomPage.topViewSqueeze, `${run.label}: the bottom's picture is drawn at its full size`).toBeLessThanOrEqual(0.5);
 
-          const withTables = fit.tablesOnOwnSheet ? run.sheets[3] : bottomPage;
+          // The tables' sheets: none (they stay on the page), one, or — on a board too long for both — one each.
+          const tablesSheets = run.sheets.filter((sheet) => sheet.kind === "tables");
+          expect(tablesSheets, `${run.label}: how many sheets carry tables`).toHaveLength(fit.tablesSplit ? 2 : fit.tablesOnOwnSheet ? 1 : 0);
           if (fit.tablesOnOwnSheet) {
-            expect(withTables.kind, `${run.label}: the fourth sheet carries the tables`).toBe("tables");
-            // DATA's notes on reading the tables follow them only where the rule found room (`layout.tableNotes`).
-            expect(withTables.parts, `${run.label}: the tables' sheet`).toEqual(
-              layout.tableNotes.length > 0 ? ["tables", "table-notes"] : ["tables"],
-            );
+            // They follow the page, in order, right after it.
+            tablesSheets.forEach((sheet, k) => expect(sheet, `${run.label}: tables sheet ${k + 1} follows the page`).toBe(run.sheets[3 + k]));
+            // DATA's notes on reading the tables follow them only where the rule found room (`layout.tableNotes`, or
+            // `layout.splitNotes` for each sheet of a split).
+            tablesSheets.forEach((sheet, k) => {
+              const notes = fit.tablesSplit ? (k === 0 ? layout.splitNotes.depths : layout.splitNotes.marks) : layout.tableNotes;
+              expect(sheet.parts, `${run.label}: tables sheet ${k + 1}`).toEqual(notes.length > 0 ? ["tables", "table-notes"] : ["tables"]);
+            });
           }
-          expect(
-            withTables.tables.map((table) => table.rows),
-            `${run.label}: both tables, every row`,
-          ).toEqual(markColumns > 0 ? [rows, rows] : [rows]);
+          const tableRows = fit.tablesOnOwnSheet ? tablesSheets.flatMap((sheet) => sheet.tables.map((table) => table.rows)) : bottomPage.tables.map((table) => table.rows);
+          expect(tableRows, `${run.label}: both tables, every row`).toEqual(markColumns > 0 ? [rows, rows] : [rows]);
+          if (fit.tablesSplit) {
+            // One table a sheet: the depths, then the layout marks.
+            expect(tablesSheets.map((sheet) => sheet.tables.length), `${run.label}: a table on each sheet`).toEqual([1, 1]);
+          }
 
           for (const sheet of run.sheets.filter((s) => s.kind !== null)) {
             expect(sheet.boxClip, `${run.label}: a box on the ${sheet.kind} sheet hides part of what it holds`).toBeLessThanOrEqual(0.5);

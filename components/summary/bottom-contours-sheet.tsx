@@ -16,7 +16,8 @@
  *    take with a gauge. Under each, the same numbers in words, so nothing depends on a label finding room on a drawing.
  * 3. **The two tables from BOTTOM's DATA tab** — the depths under a straightedge every 6", and the layout marks off the
  *    stringer — in the order form's table dress. When the page cannot hold them they move, whole, to a sheet of their
- *    own (`bottom-sheet-fit.ts` decides; the order form numbers its pages from the same answer). Never dropped.
+ *    own; on a board so long that they will not share even that, to a sheet each (`bottom-sheet-fit.ts` decides; the
+ *    order form numbers its pages from the same answer). Never dropped.
  * 4. **How to shape it**: the GUIDE's own note for each cut, word for word.
  *
  * Every shape is `lib/geometry/bottom-draw.ts`'s and every number goes through `lib/geometry/units.ts` (CLAUDE.md Rules
@@ -75,9 +76,11 @@ export const BOTTOM_SHEET_COPY = {
   atTheDeepest: "At the deepest:",
   /** The How to shape box's caption — the GUIDE cards' own heading. */
   howToShape: "How to shape",
-  /** The page mark's title for the page, and for the tables' own sheet. */
+  /** The page mark's title for the page, for the tables' own sheet, and for the two sheets of a board too long for one. */
   pageTitle: "Bottom Contours",
   tablesPageTitle: "Bottom Contours · Tables",
+  depthsPageTitle: "Bottom Contours · Depths",
+  marksPageTitle: "Bottom Contours · Layout Marks",
 } as const;
 
 /**
@@ -666,14 +669,35 @@ export function BottomContoursSheet({ layout }: { layout: BottomSheetLayout }) {
  * DATA's own notes on how to read them — every one (`layout.tableNotes`; the founder, 2026-11-11: "Make it fit"). Where
  * they would not otherwise all fit, the rows sit two dots closer together (`layout.tablesTight`, marked
  * `data-bottom-rows="tight"`), every row kept and the type the same size.
+ *
+ * On a board too long for both tables to share a sheet (`layout.tablesSplit`) the order form prints this twice, once
+ * with `part="depths"` and once with `part="marks"`: one table alone, at today's rows, with DATA's notes for it
+ * (`layout.splitNotes`). `part` is "both" — the sheet exactly as it always was — everywhere else.
  */
-export function BottomTablesSheet({ layout }: { layout: BottomSheetLayout }) {
+export function BottomTablesSheet({ layout, part = "both" }: { layout: BottomSheetLayout; part?: "both" | "depths" | "marks" }) {
+  if (part === "both") {
+    return (
+      <div data-bottom-tables-sheet data-bottom-rows={layout.tablesTight ? "tight" : undefined} className="flex min-h-0 flex-1 flex-col gap-1">
+        <Tables layout={layout} beside={false} tight={layout.tablesTight} />
+        {layout.tableNotes.length > 0 && (
+          <div data-bottom-sheet-part="table-notes" className="flex flex-none flex-col gap-[3px] px-0.5 pt-0.5 text-surf-ink-muted leading-tight order-form-micro">
+            {layout.tableNotes.map((note) => (
+              <p key={note}>{note}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+  const notes = layout.splitNotes[part];
   return (
-    <div data-bottom-tables-sheet data-bottom-rows={layout.tablesTight ? "tight" : undefined} className="flex min-h-0 flex-1 flex-col gap-1">
-      <Tables layout={layout} beside={false} tight={layout.tablesTight} />
-      {layout.tableNotes.length > 0 && (
+    <div data-bottom-tables-sheet data-bottom-tables-part={part} className="flex min-h-0 flex-1 flex-col gap-1">
+      <div data-bottom-sheet-part="tables" className="flex flex-none flex-col gap-1">
+        {part === "depths" ? <DepthsTable layout={layout} /> : <MarksTable layout={layout} />}
+      </div>
+      {notes.length > 0 && (
         <div data-bottom-sheet-part="table-notes" className="flex flex-none flex-col gap-[3px] px-0.5 pt-0.5 text-surf-ink-muted leading-tight order-form-micro">
-          {layout.tableNotes.map((note) => (
+          {notes.map((note) => (
             <p key={note}>{note}</p>
           ))}
         </div>
