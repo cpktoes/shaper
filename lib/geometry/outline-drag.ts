@@ -93,7 +93,8 @@ export const OUTLINE_SLIDER_LIMITS = {
   fullness: { min: 0, max: 100, step: 0.25 },
   tailAngle: { min: 30, max: 90, step: 1 },
   noseAngle: { min: 35, max: 90, step: 1 },
-  // Mirrors the Tail Block slider in `components/outline/outline-controls.tsx` (inches): the squash tail's end width.
+  // The Tail Block slider's range (inches), read by `components/outline/outline-controls.tsx` and the .brd fit alike:
+  // the squash tail's end width.
   tailBlockIn: { min: 0, max: 16, step: 0.125 },
 } as const;
 

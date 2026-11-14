@@ -1,5 +1,6 @@
 "use client";
 
+import { OUTLINE_SLIDER_LIMITS } from "@/lib/geometry/outline-drag";
 import {
   Select,
   SelectContent,
@@ -370,7 +371,8 @@ export function OutlineControls({
       <div className="flex gap-4">
         {(() => {
           const tailBlockMm = tailBlockPinned ? mm(0) : inchesToMm(tailEndWidthIn(outline.tail));
-          const tailBlock = measureSlider(tailBlockMm, { min: 0, max: 16 }, 0.125, 1, system);
+          // One source for the range (the go-live review of 2026-11-14, IN-03): the .brd fit reads the same limits.
+          const tailBlock = measureSlider(tailBlockMm, OUTLINE_SLIDER_LIMITS.tailBlockIn, OUTLINE_SLIDER_LIMITS.tailBlockIn.step, 1, system);
           return (
             <SliderRow
               className="flex-1"
