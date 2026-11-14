@@ -783,7 +783,7 @@ test.describe("The bottom of a .brd (quick 261113-gwr)", () => {
       for (const [i, table] of tables.entries()) for (const [j, row] of table.rows.entries()) expect(row.fit).toBe(sheet.tables[i].rows[j].fit);
       await expect(dialog.locator('[data-brd-fit-control="bottom"]')).toHaveText(sheet.controls.bottom!);
     }
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notReadAfterBottom);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notReadAfterRails);
 
     // The section Height opens at x4 and x8 changes the caption; the side view's own Height stays at x1.
     const pressed = (which: "section" | "side") =>
@@ -1017,7 +1017,7 @@ test.describe("A wing in a .brd (quick 261113-hyy)", () => {
     await expect(page.locator('[data-wing-controls="2"]')).toHaveCount(0);
   });
 
-  test("b21. a file with no wing shows no wing line, and its not-read line is still about rails", async ({ page }, testInfo) => {
+  test("b21. a file with no wing shows no wing line, and its not-read line is about the fins, the rails now being read", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer is enough for a wingless file");
     const file = boardFile(SHORTBOARD);
     await page.goto("/");
@@ -1026,7 +1026,7 @@ test.describe("A wing in a .brd (quick 261113-hyy)", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('[data-brd-fit-top] [data-brd-fit-line="fit"]')).toHaveCount(1);
     await expect(dialog.locator("[data-brd-fit-wing]")).toHaveCount(0);
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(/^Rails/);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(/^Fins/);
     await expect(dialog.locator("[data-brd-fit-not-read]")).not.toContainText(/wing|flyer/i);
   });
 });

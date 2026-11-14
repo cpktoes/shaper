@@ -15,7 +15,11 @@
  * left, and a sheet that still would not fit throws — the dialog then says so — rather than print a line off its foot.
  * One page is the aim. The BOTTOM block (quick 261113-gwr: three cross-sections and a table of what the file measures and what
  * we fitted) stays on the page when the two views keep at least `minViewsWithBottom` millimetres; when it would squeeze them
- * below that, the BOTTOM block moves to a second page of its own, drawn from the top margin. Never a third page.
+ * below that, the BOTTOM block moves to a second page of its own, drawn from the top margin. The RAILS block (quick 261113-kvo:
+ * the same three cross-sections at true height with the rail drawn, and a table of the fitted settings) always rides with the
+ * BOTTOM block, after it: on the first page when that holds both, else on the second. Only if the second page cannot hold the
+ * RAILS block as well does it take a third page of its own, which none of the app's own boards nor the founder's four AkuShaper
+ * files have needed.
  */
 import jsPDF from "jspdf";
 import { THREE_D_COPY } from "@/components/3d/three-d-copy";
@@ -29,6 +33,8 @@ import {
   brdBottomFrames,
   brdBottomRows,
   brdFitFramesInBox,
+  brdRailFrames,
+  brdRailRows,
   type BrdFitLook,
   type BrdFitSheet,
   type BrdFitTable,
@@ -121,7 +127,9 @@ type Item =
   /** The BOTTOM block's three cross-sections in one row. */
   | { kind: "sections"; height: number }
   /** The BOTTOM block's table: a header row, then each row's cells wrapped to their column (a row is as tall as its tallest cell). */
-  | { kind: "bottomTable"; header: string[]; rows: { label: string; cells: string[][]; size: number }[]; height: number };
+  | { kind: "bottomTable"; header: string[]; rows: { label: string; cells: string[][]; size: number }[]; height: number }
+  /** The RAILS block's three cross-sections in one row (the same table kind, `bottomTable`, then carries its words). */
+  | { kind: "railSections"; height: number };
 
 const TABLE_HEIGHT = L.pitch.caption + 3 * L.pitch.row + 1.5;
 const KEY_HEIGHT = L.pitch.body + 1;
@@ -137,6 +145,7 @@ function heightOf(item: Item): number {
     case "gap":
     case "sections":
     case "bottomTable":
+    case "railSections":
       return item.height;
   }
 }
@@ -222,7 +231,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     return { width, scale: width / BRD_BOTTOM_DRAWING_WIDTH };
   })();
   /** The table: each cell wrapped to its column at the table's size, up to two lines, the size shrunk a little if a cell would not fit in two. */
-  const bottomTable = (block: Extract<BrdFitSheet["bottom"], { read: true }>): Item => {
+  const bottomTable = (block: { columns: { label: string }[]; rows: { label: string; cells: string[] }[] }): Item => {
     const column = (CONTENT_WIDTH - L.bottomLabelColumn) / 3;
     const rows = block.rows.map((row) => {
       let size: number = L.fonts.table;
@@ -239,6 +248,20 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     return { kind: "bottomTable", header: block.columns.map((c) => c.label), rows, height };
   };
   const bottomFrames = brdBottomFrames(brdBottomRows(look), sectionHeight);
+  /** The RAILS block (quick 261113-kvo): its caption, the cross-sections' caption, the three drawings, the table and the notes; or the caption and the one unread line. */
+  const railItems = (): Item[] => {
+    const caption: Item = { kind: "text", lines: [sheet.rails.caption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption };
+    if (!sheet.rails.read) return [{ kind: "gap", height: L.gap }, caption, body(sheet.rails.line)];
+    const items: Item[] = [{ kind: "gap", height: L.gap }, caption];
+    if (railFrames.drawings.length > 0) {
+      items.push({ kind: "text", lines: [sheet.rails.drawingsCaption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption });
+      items.push({ kind: "railSections", height: L.pitch.caption + railFrames.height * bottomCell.scale + 1.5 });
+    }
+    items.push(bottomTable(sheet.rails));
+    items.push(...sheet.rails.notes.map(body));
+    return items;
+  };
+  const railFrames = brdRailFrames(brdRailRows(look), look);
 
   const underBefore: Item[] = [
     { kind: "key" },
@@ -248,6 +271,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.closeness.rocker),
     body(sheet.closeness.thickness),
     ...(sheet.closeness.bottom === null ? [] : [body(sheet.closeness.bottom)]),
+    ...(sheet.closeness.rails === null ? [] : [body(sheet.closeness.rails)]),
     ...sheet.wings.map(body),
     body(sheet.tipsNote),
     { kind: "gap", height: L.gap },
@@ -258,7 +282,9 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     ...(sheet.stringerNote === null ? [] : [body(sheet.stringerNote)]),
   ];
   const underBlanks: Item[] = blanks && blanks.status !== "loading" ? blankItems(blanks) : [];
-  const underBottom = bottomItems();
+  const underBottomOnly = bottomItems();
+  const underRails = railItems();
+  const underBottom = [...underBottomOnly, ...underRails];
   const underAfter: Item[] = [
     { kind: "gap", height: L.gap },
     { kind: "text", lines: [BRD_FIT_COPY.controls], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
@@ -268,6 +294,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.controls.rocker),
     body(sheet.controls.thickness),
     ...(sheet.controls.bottom === null ? [] : [body(sheet.controls.bottom)]),
+    ...(sheet.controls.rails === null ? [] : [body(sheet.controls.rails)]),
     { kind: "gap", height: L.gap },
     body(sheet.notRead),
   ];
@@ -436,6 +463,37 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     y += heightOf({ kind: "sections", height: L.pitch.caption + bottomFrames.height * bottomCell.scale + 1.5 });
   };
 
+  /** The RAILS block's three cross-sections in a row: each with its own caption over it, the file solid and ours dashed, the rail at the right. */
+  const drawRailSections = () => {
+    const columns = sheet.rails.read ? sheet.rails.columns : [];
+    const keys = ["nose", "center", "tail"] as const;
+    const rowTop = y;
+    for (const drawing of railFrames.drawings) {
+      const index = keys.indexOf(drawing.key);
+      const x = MARGIN + index * (bottomCell.width + L.bottomGap);
+      const caption = (columns[index]?.drawingCaption ?? "").toUpperCase();
+      let size: number = L.fonts.caption;
+      setFont("bold", size);
+      while (doc.getTextWidth(drawable(caption)) > bottomCell.width && size > 4.5) {
+        size -= 0.25;
+        doc.setFontSize(size);
+      }
+      line(caption, x, rowTop, L.pitch.caption);
+      const at = rowTop + L.pitch.caption;
+      const k = bottomCell.scale;
+      const scaled = (points: readonly (readonly [number, number])[]) => points.map(([px, py]): [number, number] => [px * k, py * k]);
+      doc.setDrawColor(L.strokes.stringer.grey);
+      doc.setLineWidth(L.strokes.stringer.width);
+      doc.setLineDashPattern([...L.strokes.stringer.dash], 0);
+      doc.line(x + drawing.bottomLine.x1 * k, at + drawing.bottomLine.y * k, x + drawing.bottomLine.x2 * k, at + drawing.bottomLine.y * k);
+      doc.setLineDashPattern([], 0);
+      stroke(scaled(drawing.file), at, false, L.strokes.file, x);
+      stroke(scaled(drawing.fit), at, false, L.strokes.fit, x);
+      lastBaseline = Math.max(lastBaseline, at + railFrames.height * k);
+    }
+    y += heightOf({ kind: "railSections", height: L.pitch.caption + railFrames.height * bottomCell.scale + 1.5 });
+  };
+
   /** The BOTTOM block's table: a header, then each row's wrapped cells in their columns. */
   const drawBottomTable = (item: Extract<Item, { kind: "bottomTable" }>) => {
     const column = (CONTENT_WIDTH - L.bottomLabelColumn) / 3;
@@ -478,6 +536,9 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
         case "bottomTable":
           drawBottomTable(item);
           break;
+        case "railSections":
+          drawRailSections();
+          break;
       }
     }
   };
@@ -493,8 +554,20 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     doc.setTextColor(0);
     lastBaseline = 0;
     y = MARGIN;
-    drawItems(onSecondPage === "blanks and bottom" ? [...underBlanks.slice(1), ...underBottom] : underBottom.slice(1));
+    // The RAILS block rides with BOTTOM on this page; when this page cannot hold both, RAILS alone takes a page of its own.
+    const lead = onSecondPage === "blanks and bottom" ? [...underBlanks.slice(1), ...underBottomOnly] : underBottomOnly.slice(1);
+    const railsOwnPage = MARGIN + sum(lead) + sum(underRails) > footLimit;
+    drawItems(railsOwnPage ? lead : [...lead, ...underRails]);
     if (lastBaseline > footLimit) throw new Error("The overview's second page does not fit.");
+    if (railsOwnPage) {
+      doc.addPage([BRD_OVERVIEW_PAGE.width, BRD_OVERVIEW_PAGE.height], "portrait");
+      doc.setDrawColor(0);
+      doc.setTextColor(0);
+      lastBaseline = 0;
+      y = MARGIN;
+      drawItems(underRails.slice(1));
+      if (lastBaseline > footLimit) throw new Error("The overview's third page does not fit.");
+    }
   }
   return doc;
 }

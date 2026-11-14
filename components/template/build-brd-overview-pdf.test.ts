@@ -352,6 +352,10 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
       stringerNote: null,
       rockerUse: "-",
       bottom: sheet.bottom.read ? { ...sheet.bottom, notes: ["-"] } : sheet.bottom,
+      // The RAILS block rides with BOTTOM (quick 261113-kvo), so it too is cut down to its one line here.
+      rails: { read: false as const, caption: sheet.rails.caption, line: "-" },
+      closeness: { ...sheet.closeness, rails: null, bottom: null },
+      controls: { ...sheet.controls, rails: null, bottom: null },
     };
     const one = buildBrdOverviewPdf({ look: concave, sheet: lean, fileName: "C.brd", height: 1, sectionHeight: 4 });
     expect(pageCount(one)).toBe(1);
@@ -371,7 +375,9 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
     const note = (i: number) => `${i + 1}. ${"A long note about a tip that comes to a point. ".repeat(4)}`;
     const build = (notes: number) =>
       buildBrdOverviewPdf({ look: concave, sheet: { ...sheet, pointNotes: Array.from({ length: notes }, (_, i) => note(i)) }, fileName: "Concave.brd", height: 1, sectionHeight: 4, blanks });
-    // More and more words on page 1: first the BOTTOM block goes over, then the blanks go with it, then the page is refused.
+    // More and more words on page 1: the BOTTOM block (and the RAILS block that rides with it) goes over, then the blanks go with it,
+    // then the page is refused. With the RAILS block's two extra lines on page 1 (its HOW CLOSE and its control line) the blanks go
+    // over from the start on this longest case, so the middle stage is gone.
     const stages: string[] = [];
     for (let notes = 0; notes < 30; notes++) {
       let stage: string;
@@ -389,7 +395,7 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
       }
       if (stages[stages.length - 1] !== stage) stages.push(stage);
     }
-    expect(stages).toEqual(["bottom on page 2", "blanks and bottom on page 2", "refused"]);
+    expect(stages).toEqual(["blanks and bottom on page 2", "refused"]);
   });
 
   it("prints the unread line on the one page when the file's bottom could not be read, never a page of its own", () => {
@@ -408,6 +414,97 @@ describe("the BOTTOM block on paper (quick 261113-gwr)", () => {
     expect(at(1)).toContain("TRUE HEIGHT");
     expect(at(8)).toContain("HEIGHT");
     expect(at(1)).not.toBe(at(8));
+  });
+});
+
+describe("the RAILS block on paper (quick 261113-kvo)", () => {
+  const concave = concaveLook();
+  const looks: [string, BrdFitLook][] = [
+    ["the flat Shortboard", LOOKS[0][1]],
+    ["the Midlength", LOOKS[1][1]],
+    ["the concave Shortboard", concave],
+  ];
+
+  it("prints its caption, the cross-sections, the table's words in RAILS' own words, the closeness line and the control line", () => {
+    for (const [, look] of looks) {
+      for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+        const sheet = brdFitSheet(look, "Rails.brd", system);
+        const text = buildBrdOverviewPdf({ look, sheet, fileName: "Rails.brd", height: 2, sectionHeight: 4 }).output();
+        expect(text).toContain("(RAILS)");
+        expect(text).toContain("TRUE HEIGHT");
+        expect(text).toContain("Deck Profile");
+        expect(text).toContain("Family");
+        expect(text).toContain("Rails: within");
+        expect(text).toContain("Rails: Nose");
+        expect(text).toContain("Fins aren't read");
+        expect(text).not.toContain("Rails aren't read");
+      }
+    }
+  });
+
+  it("rides with the BOTTOM block, after it, on whichever page carries it, and is one or two pages at every Height in both systems", () => {
+    for (const [, look] of looks) {
+      for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+        for (const height of [1, 2, 4, 8] as SectionHeight[]) {
+          const sheet = brdFitSheet(look, "Rails.brd", system);
+          const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Rails.brd", height, sectionHeight: 4 });
+          expectOnePageOrTwo(doc);
+          for (let page = 1; page <= pageCount(doc); page++) {
+            const text = pageText(doc, page);
+            expect(text.includes("(BOTTOM)")).toBe(text.includes("(RAILS)"));
+            if (text.includes("(RAILS)")) expect(text.indexOf("(BOTTOM)")).toBeLessThan(text.indexOf("(RAILS)"));
+          }
+        }
+      }
+    }
+  });
+
+  it("keeps every baseline inside its own page", () => {
+    for (const [, look] of looks) {
+      const sheet = brdFitSheet(look, "Rails.brd", "metric");
+      expect(() => buildBrdOverviewPdf({ look, sheet, fileName: "Rails.brd", height: 8, sectionHeight: 8 })).not.toThrow();
+    }
+  });
+
+  it("gives the RAILS block a page of its own only when the second page cannot hold it beside BOTTOM", () => {
+    const sheet = brdFitSheet(concave, "Concave.brd", "imperial");
+    const block = sheet.rails;
+    if (!block.read) throw new Error("unreachable");
+    const note = (i: number) => `${i + 1}. ${"A long note about the rails, so that the page runs out of room. ".repeat(3)}`;
+    // More and more notes under RAILS: page 2 holds it beside BOTTOM at first, then RAILS goes to a page of its own.
+    const build = (notes: number) =>
+      buildBrdOverviewPdf({
+        look: concave,
+        sheet: { ...sheet, rails: { ...block, notes: [...block.notes, ...Array.from({ length: notes }, (_, i) => note(i))] } },
+        fileName: "Concave.brd",
+        height: 1,
+        sectionHeight: 4,
+      });
+    expect(pageCount(build(0))).toBe(2);
+    const tries = [10, 14, 18, 22, 26, 30];
+    // (A sheet so crowded that even a page of its own cannot hold RAILS is refused, as ever: counted as 0.)
+    const counts = tries.map((notes) => {
+      try {
+        return pageCount(build(notes));
+      } catch {
+        return 0;
+      }
+    });
+    expect(counts).toContain(3);
+    const doc = build(tries[counts.indexOf(3)]);
+    expect(pageText(doc, 2)).toContain("(BOTTOM)");
+    expect(pageText(doc, 2)).not.toContain("(RAILS)");
+    expect(pageText(doc, 3)).toContain("(RAILS)");
+    expect(pageText(doc, 3)).not.toContain("(BOTTOM)");
+  });
+
+  it("prints the one unread line for a file whose rails could not be read", () => {
+    const [, look] = LOOKS[2];
+    const sheet = brdFitSheet(look, "No Sections.brd", "imperial");
+    expect(sheet.rails.read).toBe(false);
+    const doc = buildBrdOverviewPdf({ look, sheet, fileName: "No Sections.brd", height: 2 });
+    expect(pageCount(doc)).toBe(1);
+    expect(doc.output()).toContain("rails couldn't be read");
   });
 });
 

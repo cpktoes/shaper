@@ -19,7 +19,9 @@ import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { formatBottomStation } from "../geometry/blank-reasons";
 import {
+  DEFAULT_BOTTOM,
   cutKind,
+  resolveBottom,
   resolveCut,
   stationFromNearestTip,
   type BottomCutSpec,
@@ -45,7 +47,9 @@ import {
   brdRailsSpec,
   fitBrdRails,
   measureBrdRails,
+  type BrdRailGap,
   type BrdRailLine,
+  type BrdRailSection,
   type BrdRailsFit,
 } from "../geometry/brd-rails";
 import {
@@ -62,8 +66,26 @@ import {
   type BrdOutlineWidths,
   type Closeness,
 } from "../geometry/brd-fit";
-import type { SectionHeight } from "../geometry/bottom-draw";
-import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
+import { sectionHeightLabel, type SectionHeight } from "../geometry/bottom-draw";
+import { bottomRailLift, railsOnTheBottom } from "../geometry/design";
+import {
+  formatControlNumber,
+  formatDim,
+  formatMark,
+  formatMarkOrLess,
+  formatSignedDim,
+  formatSignedMark,
+  stationLabel,
+} from "../geometry/measure-display";
+import {
+  RAIL_NUDGE_KEYS,
+  RAIL_NUDGE_NAMES,
+  computeRailBands,
+  railFamilyLabel,
+  railPlotBounds,
+  type RailBandsOutput,
+  type RailSectionKey,
+} from "../geometry/rail-bands";
 import type { RockerStationKey } from "../geometry/rocker";
 import {
   formatCentimetres,
@@ -473,8 +495,10 @@ export const BRD_FIT_COPY = {
   thicknessLine: (noseTip: string, nose12: string, center: string, tail12: string, tailTip: string, station: string) =>
     `Thickness: nose ${noseTip} · nose ${station} ${nose12} · centre ${center} · tail ${station} ${tail12} · tail ${tailTip}`,
   notRead: "Rails and bottom contours aren't read from the file. Add these by hand once the board is open.",
-  /** The line when the bottom WAS read: rails are what is left to add by hand. */
+  /** The line when the bottom WAS read but the rails were not: rails are what is left to add by hand. */
   notReadAfterBottom: "Rails aren't read from the file. Add these by hand once the board is open.",
+  /** The line when the rails were read too (quick 261113-kvo): the fins are all that is left, and a new board's stand in. */
+  notReadAfterRails: "Fins aren't read from the file: the board opens with the fins a new board starts with.",
   /** A wing's corners when they are sharp, or rounded too slightly for the file's drawing to tell (quick 261113-m5w). */
   wingSharpCorners: "sharp corners",
   /** The file's corners when it clearly rounds them: the radius as the rounded wing that fits its step best measured. */
@@ -512,6 +536,37 @@ export const BRD_FIT_COPY = {
     `Read from ${used} of the file's ${total} cross-sections; the ones within ${tipSkip} of a tip are left out.`,
   bottomUnread: "The file's bottom couldn't be read: it has no cross-sections we could use, so the board opens with a flat bottom.",
   bottomLine: (nose: string, center: string, tail: string) => `Bottom: ${nose} · ${center} · ${tail}`,
+  /**
+   * The RAILS block (quick 261113-kvo). The control words are RAILS' own (`components/rails/rail-controls.tsx`), copied because
+   * `lib/` cannot import a component; a test holds each to that file's text. The nudge names come from `RAIL_NUDGE_NAMES`.
+   */
+  railsCaption: "RAILS",
+  railSectionsCaption: (heightLabel: string) => `CROSS-SECTIONS · ${heightLabel}`,
+  railSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
+  railColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<RailSectionKey, string>,
+  railRowLabels: { at: "Read at", deck: "Deck Profile", shape: "Family · Ratio", ticked: "Ticked", advanced: "Advanced", close: "How close" } as const,
+  railWords: {
+    deckProfile: "Deck Profile",
+    family: "Family",
+    ratio: "Ratio",
+    symmetrical: "Symmetrical",
+    hardEdge: "Hard Edge",
+    scaledFromCenter: "Scaled from center by",
+    singleTuck: "Use Single Tuck",
+    sharpBottomTuck: "Sharp Bottom Tuck",
+  } as const,
+  /** Where a rail's widest gap sits, as words: `at the rail`, `on the deck 4 3/8" in from the rail`. */
+  railAtRail: "at the rail",
+  railOnDeck: (inFromRail: string) => `on the deck ${inFromRail} in from the rail`,
+  railOnBottom: (inFromRail: string) => `on the bottom ${inFromRail} in from the rail`,
+  railWhereSection: (station: string, where: string) => `at the section ${station}, ${where}`,
+  railCellClose: (largest: string, typical: string) => `${largest.startsWith("<") ? lessThan(largest) : `within ${largest}`}, typically ${lessThan(typical)}`,
+  railRegionNote:
+    "Each rail is read from the outer 3\" of the file's bottom, round the rail and over the deck to the stringer, against our board's own cross-section at the same place — our bottom included. Between the three, RAILS blends one rail into the next.",
+  railsFirstNote: "This file's rail rolls in from well off the rail, so its rails were fitted first and its bottom read only out to where our rail begins.",
+  railBlendNote: "Tail Rail Blends From and Ends At are left where a new board puts them.",
+  railsUnread: "The file's rails couldn't be read: it has no cross-sections we could use, so the board opens with a new board's rails.",
+  railLine: (nose: string, center: string, tail: string) => `Rails: Nose ${nose} · Centre ${center} · Tail ${tail}`,
   rockerLines:
     "The file's rocker is the finished board's, along the stringer; ours is the board before contours. Under a concave the finished rocker reads more, by the concave's depth there; under a flat, vee or belly the two are the same line.",
   stringerNote: (lift: string, station: string) =>
@@ -564,7 +619,7 @@ export function lessThan(figure: string): string {
  * awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one place that rule lives. The outline
  * also says which way the file lies from ours at its widest gap, since that is where a wing or a tweak belongs.
  */
-export function closenessSentence(what: "Outline" | "Rocker" | "Thickness" | "Bottom", w: BrdFitCloseWords): string {
+export function closenessSentence(what: "Outline" | "Rocker" | "Thickness" | "Bottom" | "Rails", w: BrdFitCloseWords): string {
   const head = w.largest.startsWith("<") ? `${what}: ${lessThan(w.largest)} off` : `${what}: within ${w.largest}`;
   const side = w.side === null ? "" : `, where the file is ${w.side} than our fit`;
   return `${head}, typically ${lessThan(w.typical)} — the widest gap ${w.where}${side}`;
@@ -591,7 +646,7 @@ export interface BrdFitSheet {
   from: string;
   size: string;
   /** `bottom` is null when the file's cross-sections could not be read. */
-  closeness: { outline: string; rocker: string; thickness: string; bottom: string | null };
+  closeness: { outline: string; rocker: string; thickness: string; bottom: string | null; rails: string | null };
   /** One line per wing the file draws, nose-most first: the file's wing as measured beside ours as fitted. Empty for a file with no wing. */
   wings: string[];
   tipsNote: string;
@@ -603,11 +658,31 @@ export interface BrdFitSheet {
   rockerLines: string;
   /** Where our concaves lift the finished stringer, and by how much; null when none does. */
   stringerNote: string | null;
-  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string; bottom: string | null };
+  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string; bottom: string | null; rails: string | null };
   /** The BOTTOM block: the table of what the file measures and what we fitted, or the one line saying it could not be read. */
   bottom: BrdFitBottomBlock;
+  /** The RAILS block (quick 261113-kvo): the same, for the rails. */
+  rails: BrdFitRailsBlock;
   notRead: string;
 }
+
+/** One column of the RAILS table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
+export interface BrdFitRailColumn {
+  key: RailSectionKey;
+  label: string;
+  drawingCaption: string | null;
+}
+
+/** One row of the RAILS table: its words, then the nose, centre and tail cells in that order. */
+export interface BrdFitRailRow {
+  key: "at" | "deck" | "shape" | "ticked" | "advanced" | "close";
+  label: string;
+  cells: [string, string, string];
+}
+
+export type BrdFitRailsBlock =
+  | { read: true; caption: string; drawingsCaption: string; columns: BrdFitRailColumn[]; rows: BrdFitRailRow[]; notes: string[] }
+  | { read: false; caption: string; line: string };
 
 /** One column of the BOTTOM table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
 export interface BrdFitBottomColumn {
@@ -867,6 +942,210 @@ function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): Brd
   };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// The RAILS block (quick 261113-kvo)
+// ---------------------------------------------------------------------------------------------------------------------
+
+const RAIL_KEYS: readonly RailSectionKey[] = ["nose", "center", "tail"];
+
+/** A column of the RAILS block: which of the file's sections the rail was fitted to there, as it was measured, or none. */
+export interface BrdRailRow {
+  key: RailSectionKey;
+  section: BrdRailSection | null;
+}
+
+/**
+ * The three sections the RAILS block shows, one per key: the file section each rail was fitted to (`BrdRailsFit.read`), measured
+ * on the board that opens. A look with no rails has three nulls.
+ */
+export function brdRailRows(look: BrdFitLook): BrdRailRow[] {
+  const rails = look.rails;
+  return RAIL_KEYS.map((key) => ({ key, section: rails && rails.read[key] !== null ? (rails.sections.find((s) => s.station === rails.read[key]) ?? null) : null }));
+}
+
+/** RAILS' own outputs for the rails that open, as the design store makes them: the rails standing on the bottom the cuts leave. */
+function railOutputs(look: BrdFitLook): RailBandsOutput {
+  const rails = look.rails!.rails;
+  const board = brdFittedBottomBoard(look.fit);
+  const resolved = resolveBottom(look.bottom?.bottom ?? DEFAULT_BOTTOM, board);
+  const { anchors } = brdRailBoard(look.fit, look.bottom?.bottom ?? null);
+  return computeRailBands(railsOnTheBottom(rails, bottomRailLift(resolved, board), anchors));
+}
+
+/** One cross-section's rail drawn: the file's and ours, the rail at the right, running in toward the stringer at the left. */
+export interface BrdRailDrawing {
+  key: RailSectionKey;
+  file: P2[];
+  fit: P2[];
+  /** The height of the bottom at the stringer, across the span: the line the rail's bottom turns up from. */
+  bottomLine: { x1: number; x2: number; y: number };
+}
+
+export interface BrdRailFrames {
+  width: number;
+  height: number;
+  /** How far in from the widest point the drawings run (millimetres): the stretch RAILS' own plot shows, never past the stringer. */
+  span: Mm;
+  /** Nose, centre, tail, for the rows that have a section. */
+  drawings: BrdRailDrawing[];
+}
+
+/** The part of a polyline at or beyond `xMin`, cut cleanly at it. */
+function clipFrom(points: readonly P2[], xMin: number): P2[] {
+  const out: P2[] = [];
+  for (let k = 0; k < points.length; k++) {
+    const [x, y] = points[k];
+    if (x >= xMin) {
+      if (out.length === 0 && k > 0 && points[k - 1][0] < xMin) {
+        const [px, py] = points[k - 1];
+        out.push([xMin, py + ((y - py) * (xMin - px)) / (x - px)]);
+      }
+      out.push([x, y]);
+    } else if (k + 1 < points.length && points[k + 1][0] >= xMin && out.length > 0) {
+      const [nx, ny] = points[k + 1];
+      out.push([xMin, y + ((ny - y) * (xMin - x)) / (nx - x)]);
+    }
+  }
+  return out;
+}
+
+/**
+ * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide, the way RAILS draws a rail: true proportions (one scale
+ * both ways, no Height pick), the rail at the right with the stringer toward the left, the file solid and ours dashed. All three
+ * share one scale; the span in from the widest point is the widest stretch RAILS' own plot shows for our fitted rails (2" beyond
+ * the Domed Deck Band, `railPlotBounds`), never past the stringer, and fills the width less the air. Heights are measured from the
+ * stringer's bottom, so a concave hangs the rail's bottom below it and a vee lifts it above.
+ */
+export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook): BrdRailFrames {
+  const { air, pad } = BOTTOM_DRAWING;
+  const drawn = rows.filter((row): row is { key: RailSectionKey; section: BrdRailSection } => row.section !== null && row.section.ours.length > 0 && row.section.file.length > 0);
+  if (drawn.length === 0 || !look.rails) return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, span: mm(0), drawings: [] };
+  const outputs = railOutputs(look);
+  const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
+  const widestPlot = Math.max(...drawn.map((row) => -railPlotBounds(outputs[row.key].result).xAxisMin));
+  const widestReach = Math.max(...drawn.map((row) => reachOf(row.section.file)));
+  const span = mm(Math.min(widestPlot, widestReach));
+  const kx = (BRD_BOTTOM_DRAWING_WIDTH - 2 * air) / span;
+  const right = BRD_BOTTOM_DRAWING_WIDTH - air;
+  const cut = (row: { key: RailSectionKey; section: BrdRailSection }) => {
+    const reach = reachOf(row.section.file);
+    const xMin = Math.max(0, reach - span);
+    return { reach, file: clipFrom(row.section.file, xMin), fit: clipFrom(row.section.ours, xMin) };
+  };
+  const cuts = drawn.map((row) => ({ row, ...cut(row) }));
+  const values = cuts.flatMap((c) => [...c.file, ...c.fit].map((p) => p[1]));
+  const up = Math.max(1, ...values);
+  const down = Math.max(0, -Math.min(0, ...values));
+  const y0 = pad + up * kx;
+  return {
+    width: BRD_BOTTOM_DRAWING_WIDTH,
+    height: 2 * pad + (up + down) * kx,
+    span,
+    drawings: cuts.map(({ row, reach, file, fit }) => {
+      const x = (v: number) => right - (reach - v) * kx;
+      const line = (points: readonly P2[]): P2[] => points.map(([a, h]): P2 => [x(a), y0 - h * kx]);
+      return {
+        key: row.key,
+        file: line(file),
+        fit: line(fit),
+        bottomLine: { x1: Math.max(air - 10, x(Math.max(0, reach - span)) - 10), x2: right + 10, y: y0 },
+      };
+    }),
+  };
+}
+
+/** Which of RAILS' boxes a rail has ticked, in RAILS' own words. */
+function tickedWords(key: RailSectionKey, look: BrdFitLook): string[] {
+  const w = BRD_FIT_COPY.railWords;
+  const rails = look.rails!.rails;
+  const section = rails[key];
+  const hard = key === "tail" && rails.tailHardEdge;
+  return [
+    ...(section.symmetrical && !hard ? [w.symmetrical] : []),
+    ...(hard ? [w.hardEdge] : []),
+    ...(section.singleTuck && !hard ? [w.singleTuck] : []),
+    ...(section.sharpBottomTuck && !hard ? [w.sharpBottomTuck] : []),
+  ];
+}
+
+/** What is moved in the Advanced menu: Scaled from center by (a tip, off 1.00), then each nudge off its formula. */
+function advancedWords(key: RailSectionKey, look: BrdFitLook, system: UnitsSystem): string[] {
+  const section = look.rails!.rails[key];
+  const out: string[] = [];
+  if (key !== "center" && Math.abs(section.scaleFromCenter - 1) > 1e-9) out.push(`${BRD_FIT_COPY.railWords.scaledFromCenter} ${section.scaleFromCenter.toFixed(2)}`);
+  for (const nudge of RAIL_NUDGE_KEYS) if (Math.abs(section.nudges[nudge]) > 1e-9) out.push(`${RAIL_NUDGE_NAMES[nudge]} ${formatSignedMark(section.nudges[nudge], system)}`);
+  return out;
+}
+
+/** Where a rail's widest gap sits, in words. */
+function railWhereWords(where: BrdRailGap["where"], inFromRail: Mm, system: UnitsSystem): string {
+  if (where === "rail") return BRD_FIT_COPY.railAtRail;
+  const inFrom = formatMark(inFromRail, system);
+  return where === "deck" ? BRD_FIT_COPY.railOnDeck(inFrom) : BRD_FIT_COPY.railOnBottom(inFrom);
+}
+
+/** The rails' lines and block for `brdFitSheet`, all null or "unread" when the file's rails could not be read. */
+function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitRailsBlock; closeness: string | null; controls: string | null } {
+  const c = BRD_FIT_COPY;
+  const found = look.rails;
+  if (!found) return { block: { read: false, caption: c.railsCaption, line: c.railsUnread }, closeness: null, controls: null };
+  const length = look.board.length;
+  const rows = brdRailRows(look);
+  const outputs = railOutputs(look);
+  const cells = <T,>(make: (key: RailSectionKey, row: BrdRailRow) => T): [T, T, T] => [make("nose", rows[0]), make("center", rows[1]), make("tail", rows[2])];
+  const settingOf = (key: RailSectionKey) => found.rails[key];
+  const shape = (key: RailSectionKey) => `${railFamilyLabel(settingOf(key).family)} ${settingOf(key).ratioTopPercent}/${100 - settingOf(key).ratioTopPercent}`;
+  const list = (words: string[]) => (words.length > 0 ? words.join(" · ") : c.noValue);
+  const { closeness } = found;
+  const w: BrdFitCloseWords = {
+    largest: formatMarkOrLess(closeness.largest, system),
+    typical: formatMarkOrLess(closeness.typical, system),
+    at: formatDim(closeness.station, system),
+    where: c.railWhereSection(gapWhere(closeness.station, length, system), railWhereWords(closeness.where, closeness.inFromRail, system)),
+    side: null,
+  };
+  const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
+  const notes = [c.railRegionNote, c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))];
+  if (found.order === "rails-first") notes.push(c.railsFirstNote);
+  notes.push(c.railBlendNote);
+  return {
+    block: {
+      read: true,
+      caption: c.railsCaption,
+      drawingsCaption: c.railSectionsCaption(sectionHeightLabel({ heightAsked: 1, heightDrawn: 1 })),
+      columns: RAIL_KEYS.map((key, k) => ({
+        key,
+        label: c.railColumns[key],
+        drawingCaption: rows[k].section
+          ? c.railSectionCaption(gapWhere(rows[k].section.station, length, system), formatDim(mm(2 * reachOf(rows[k].section.file)), system))
+          : null,
+      })),
+      rows: [
+        { key: "at", label: c.railRowLabels.at, cells: cells((_k, row) => (row.section ? gapWhere(row.section.station, length, system) : c.noSection)) },
+        { key: "deck", label: c.railRowLabels.deck, cells: cells((key) => formatMark(outputs[key].railThicknessClamped, system)) },
+        { key: "shape", label: c.railRowLabels.shape, cells: cells((key) => shape(key)) },
+        { key: "ticked", label: c.railRowLabels.ticked, cells: cells((key) => list(tickedWords(key, look))) },
+        { key: "advanced", label: c.railRowLabels.advanced, cells: cells((key) => list(advancedWords(key, look, system))) },
+        {
+          key: "close",
+          label: c.railRowLabels.close,
+          cells: cells((_k, row) =>
+            row.section ? c.railCellClose(formatMarkOrLess(row.section.gap.largest, system), formatMarkOrLess(row.section.gap.mean, system)) : c.noValue,
+          ),
+        },
+      ],
+      notes,
+    },
+    closeness: closenessSentence("Rails", w),
+    controls: c.railLine(
+      ...cells((key) => {
+        const ticked = tickedWords(key, look);
+        return ticked.length > 0 ? `${shape(key)}, ${ticked.join(" · ")}` : shape(key);
+      }),
+    ),
+  };
+}
+
 /**
  * The sheet's wing lines (quick 261113-hyy): for each wing found in the file, the file's own wing beside the one our fit drew,
  * in the shaper's system. A wing's place off the tail is a dim (a distance along the board) and its depth, run and corner radius
@@ -924,6 +1203,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
     );
   }
   const bottom = bottomSheetParts(look, system);
+  const rails = railsSheetParts(look, system);
   return {
     title: BRD_FIT_COPY.title,
     from: BRD_FIT_COPY.from(cutName),
@@ -933,6 +1213,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       rocker: closenessSentence("Rocker", words.rocker),
       thickness: closenessSentence("Thickness", words.thickness),
       bottom: bottom.closeness,
+      rails: rails.closeness,
     },
     wings: wingLines(fit, system),
     tipsNote: BRD_FIT_COPY.tipsNote(words.tipSkip),
@@ -953,8 +1234,10 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       rocker: BRD_FIT_COPY.rockerLine(w.rocker.noseTip, w.rocker.nose12, w.rocker.tail12, w.rocker.tailTip, w.station),
       thickness: BRD_FIT_COPY.thicknessLine(w.thickness.noseTip, w.thickness.nose12, w.thickness.center, w.thickness.tail12, w.thickness.tailTip, w.station),
       bottom: bottom.controls,
+      rails: rails.controls,
     },
     bottom: bottom.block,
-    notRead: bottom.block.read ? BRD_FIT_COPY.notReadAfterBottom : BRD_FIT_COPY.notRead,
+    rails: rails.block,
+    notRead: look.rails ? BRD_FIT_COPY.notReadAfterRails : bottom.block.read ? BRD_FIT_COPY.notReadAfterBottom : BRD_FIT_COPY.notRead,
   };
 }
