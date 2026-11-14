@@ -9,8 +9,9 @@
  * (quick 261113-qyz, the founder 2026-11-13: "we should export our fin info into the .brd export if the format handles
  * it"): the format's one fin line, p50, holds a side pair and a centre fin in centimetres from the tail end, and p51 the
  * fin system's word (`lib/geometry/brd-fins.ts` says how). A single fin writes its centre fin, a twin its side pair, a
- * thruster and a 2+1 both; a quad writes none, because the line has no room for its rear pair and the front pair alone
- * would be read as a twin. Slots 6 to 8 of p50 are always zero. With no fins given the header is exactly what it always was.
+ * thruster and a 2+1 both; a quad writes none for now, because how AkuShaper stores a quad's or five-fin's rear pair is not
+ * known yet (2026-11-13) and the front pair alone would be read as a twin. Slots 6 to 8 of p50 (the fins' depths and splay
+ * angle: FINS has none) are always zero. With no fins given the header is exactly what it always was.
  *
  * The file is text in centimetres, tail at x = 0, locked with AkuShaper's own scramble (`brd-scramble.ts`). The outline,
  * rocker and deck are runs of cubic Bézier knots (`lib/geometry/bezier-fit.ts`) fitted through points of the surface to

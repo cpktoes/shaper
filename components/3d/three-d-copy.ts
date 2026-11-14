@@ -69,6 +69,20 @@ export const THREE_D_COPY = {
   exportSwallowNote: "A swallow tail is written as a square tail at its points — cut the swallow by hand.",
   /** Under the note on a board with channels only (quick 261112-c2d): the file is the board before the channels are cut. */
   exportChannelsNote: "Channels are left out of the file — cut them by hand.",
+  /** Under the note on a quad only (quick 261113-qyz): a quad's fins are not written to the file yet. */
+  exportQuadNote: "A quad's fins aren't written to the file yet.",
+  /**
+   * The preview's one line on the fins the file carries (quick 261113-qyz), read back from the file's own bytes: a side pair's
+   * and a centre fin's distances off the tail (and the side pair's in from the rail, as marks), then what AkuShaper shows it as
+   * (TWIN, TRI or SINGLE), then the fin system's word when the file has one.
+   */
+  previewFins: (side: { offTail: string; inFromRail: string } | null, centre: { offTail: string } | null, shape: string, system: string | null) =>
+    `Fins in the file: ${[
+      side === null ? null : `a side pair ${side.offTail} off the tail and ${side.inFromRail} in from the rail`,
+      centre === null ? null : `a centre fin ${centre.offTail} off the tail`,
+    ]
+      .filter((part) => part !== null)
+      .join(", and ")} — AkuShaper shows this as ${shape}.${system === null ? "" : ` Fin system: ${system}.`}`,
   exportDone: (file: string, sections: number) =>
     `Downloaded ${file}. The outline, rocker, deck and ${sections} cross-sections.`,
   /** The preview dialog's title (quick 261112-dbi): Export .brd File opens it, and nothing is saved until its Save button. */

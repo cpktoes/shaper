@@ -72,7 +72,11 @@ export const BRD_OVERVIEW_LAYOUT = {
     file: { width: 0.55, dash: [] as number[], grey: 150 },
     fit: { width: 0.25, dash: [1.6, 1.1], grey: 0 },
     stringer: { width: 0.15, dash: [4, 2], grey: 160 },
+    // A fin is a short line, so the file's is a little darker and wider than its outline's grey, to read as a fin.
+    finFile: { width: 0.7, dash: [] as number[], grey: 90 },
   },
+  /** The FINS table's label column; its two columns (the file, ours) share the rest of the width. */
+  finLabelColumn: 52,
   keyLine: 10,
 } as const;
 
@@ -129,7 +133,9 @@ type Item =
   /** The BOTTOM block's table: a header row, then each row's cells wrapped to their column (a row is as tall as its tallest cell). */
   | { kind: "bottomTable"; header: string[]; rows: { label: string; cells: string[][]; size: number }[]; height: number }
   /** The RAILS block's three cross-sections in one row (the same table kind, `bottomTable`, then carries its words). */
-  | { kind: "railSections"; height: number };
+  | { kind: "railSections"; height: number }
+  /** The FINS block's table (quick 261113-qyz): a header, then a row for each mark the file has. */
+  | { kind: "finTable"; rows: { label: string; file: string; fit: string }[]; height: number };
 
 const TABLE_HEIGHT = L.pitch.caption + 3 * L.pitch.row + 1.5;
 const KEY_HEIGHT = L.pitch.body + 1;
@@ -146,6 +152,7 @@ function heightOf(item: Item): number {
     case "sections":
     case "bottomTable":
     case "railSections":
+    case "finTable":
       return item.height;
   }
 }
@@ -262,6 +269,17 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     return items;
   };
   const railFrames = brdRailFrames(brdRailRows(look), look);
+  /** The FINS block (quick 261113-qyz), after RAILS: its caption, the table of the file's fins beside ours, and the notes. Nothing for a file with no fins. */
+  const finItems = (): Item[] => {
+    if (!sheet.fins) return [];
+    const rows = sheet.fins.rows.map((r) => ({ label: r.label, file: r.file, fit: r.fit }));
+    return [
+      { kind: "gap", height: L.gap },
+      { kind: "text", lines: [sheet.fins.caption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption },
+      { kind: "finTable", rows, height: L.pitch.row * (rows.length + 1) + 1.5 },
+      ...sheet.fins.notes.map(body),
+    ];
+  };
 
   const underBefore: Item[] = [
     { kind: "key" },
@@ -272,6 +290,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.closeness.thickness),
     ...(sheet.closeness.bottom === null ? [] : [body(sheet.closeness.bottom)]),
     ...(sheet.closeness.rails === null ? [] : [body(sheet.closeness.rails)]),
+    ...(sheet.closeness.fins === null ? [] : [body(sheet.closeness.fins)]),
     ...sheet.wings.map(body),
     body(sheet.tipsNote),
     { kind: "gap", height: L.gap },
@@ -283,7 +302,8 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
   ];
   const underBlanks: Item[] = blanks && blanks.status !== "loading" ? blankItems(blanks) : [];
   const underBottomOnly = bottomItems();
-  const underRails = railItems();
+  // The FINS block rides with RAILS, after it: on the first page when that holds all three, else with RAILS on the next page.
+  const underRails = [...railItems(), ...finItems()];
   const underBottom = [...underBottomOnly, ...underRails];
   const underAfter: Item[] = [
     { kind: "gap", height: L.gap },
@@ -295,6 +315,7 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.controls.thickness),
     ...(sheet.controls.bottom === null ? [] : [body(sheet.controls.bottom)]),
     ...(sheet.controls.rails === null ? [] : [body(sheet.controls.rails)]),
+    ...(sheet.controls.fins === null ? [] : [body(sheet.controls.fins)]),
     { kind: "gap", height: L.gap },
     body(sheet.notRead),
   ];
@@ -374,6 +395,9 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
   );
   doc.setLineDashPattern([], 0);
   stroke(frames.top.fit, topY, true, L.strokes.fit);
+  // The fins: the file's solid, ours dashed (a short line each, a pair mirrored).
+  for (const segment of frames.top.fins.file) stroke(segment, topY, false, L.strokes.finFile);
+  for (const segment of frames.top.fins.fit) stroke(segment, topY, false, L.strokes.fit);
 
   const sideCaptionY = topY + frames.top.height + 0.5;
   setFont("bold", L.fonts.caption);
@@ -515,6 +539,24 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     y += 1.5;
   };
 
+  /** The FINS block's table: a header (the file, ours), then each mark's label and its two figures. */
+  const drawFinTable = (item: Extract<Item, { kind: "finTable" }>) => {
+    const column = (CONTENT_WIDTH - L.finLabelColumn) / 2;
+    cell(BRD_FIT_COPY.columnFile, "bold", MARGIN + L.finLabelColumn + 1, y, column - 2);
+    cell(BRD_FIT_COPY.columnFit, "bold", MARGIN + L.finLabelColumn + column + 1, y, column - 2);
+    y += L.pitch.row;
+    doc.setLineWidth(0.15);
+    doc.setDrawColor(0);
+    doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+    for (const row of item.rows) {
+      cell(row.label, "bold", MARGIN, y, L.finLabelColumn - 1);
+      cell(row.file, "normal", MARGIN + L.finLabelColumn + 1, y, column - 2);
+      cell(row.fit, "normal", MARGIN + L.finLabelColumn + column + 1, y, column - 2);
+      y += L.pitch.row;
+    }
+    y += 1.5;
+  };
+
   const drawItems = (items: readonly Item[]) => {
     for (const item of items) {
       switch (item.kind) {
@@ -538,6 +580,9 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
           break;
         case "railSections":
           drawRailSections();
+          break;
+        case "finTable":
+          drawFinTable(item);
           break;
       }
     }

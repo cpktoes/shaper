@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { describe, expect, it } from "vitest";
-import { brdBottomStations, brdText } from "@/lib/export/brd";
+import { brdBottomStations, brdFinHeaderFields, brdText } from "@/lib/export/brd";
 import { readAnyBrd } from "@/lib/export/brd-read";
 import { BRD_BLANK_COPY, brdBlankWords, type BrdBlankState } from "@/lib/export/brd-blank-words";
 import { brdFitLook, brdFitSheet, type BrdFitLook } from "@/lib/export/brd-fit-preview";
@@ -442,7 +442,8 @@ describe("the RAILS block on paper (quick 261113-kvo)", () => {
         expect(text).toContain("Family");
         expect(text).toContain("Rails: within");
         expect(text).toContain("Rails: Nose");
-        expect(text).toContain("Fins aren't read");
+        expect(text).toContain("The file has no fins");
+        expect(text).not.toContain("(FINS)");
         expect(text).not.toContain("Rails aren't read");
       }
     }
@@ -553,5 +554,83 @@ describe("brdOverviewFileName", () => {
   it("falls back for a name with no letters or digits", () => {
     expect(brdOverviewFileName("板板.brd")).toBe("board-file-closest-fit.pdf");
     expect(brdOverviewFileName("")).toBe("board-file-closest-fit.pdf");
+  });
+});
+
+describe("the FINS block on paper (quick 261113-qyz)", () => {
+  /** The stock Shortboard written by the app with the founder's twin figures in its fin line, read back and fitted. */
+  const finLook = (nine: readonly number[], word: string | null): BrdFitLook => {
+    const fields = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+    const geometry = buildOutline(fields.outline);
+    const profile = designSideProfile(fields, LIVE_DESIGN_RULES);
+    const rails = deriveEffectiveRails(fields.rails, profile.effectiveFoil, fields.railsImportFoilThickness);
+    const surface = buildBoardSurface({ sections: designCrossSectionInput(geometry, profile, rails, fields.outline.length), geometry, rockerAt: profile.rockerAt });
+    const header = brdFinHeaderFields({ p50: nine, p51: word ?? "" });
+    const text = brdText(surface)
+      .text.split("\n")
+      .flatMap((line) => (line.startsWith("p50 : ") ? header.filter(([k]) => word !== null || k === "p50").map(([k, v]) => `${k} : ${v}`) : [line]))
+      .join("\n");
+    const read = readAnyBrd(Uint8Array.from(text, (ch) => ch.charCodeAt(0)));
+    if (!read.ok) throw new Error("the app's own file would not read");
+    return brdFitLook(read.board);
+  };
+  const twin = finLook([24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 5.4], "Futures");
+  const tri = finLook([24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], "Futures");
+  const none = LOOKS[0][1];
+
+  it("prints its caption, the file's marks beside ours, the closeness line and FINS' own control words", () => {
+    for (const look of [twin, tri]) {
+      for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+        const sheet = brdFitSheet(look, "Fins.brd", system);
+        const text = buildBrdOverviewPdf({ look, sheet, fileName: "Fins.brd", height: 1 }).output();
+        expect(text).toContain("(FINS)");
+        expect(text).toContain("(Side fins ");
+        expect(text).toContain("off the tail)");
+        expect(text).toContain("Fins: less than");
+        expect(text).toContain("Aft/Forward position");
+        expect(text).toContain("Fin Base Length");
+        expect(text).toContain("Futures");
+        expect(text).toContain("splay angle");
+      }
+    }
+  });
+
+  it("leaves FINS off the page for a file with no fins", () => {
+    for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+      const sheet = brdFitSheet(none, "None.brd", system);
+      expect(sheet.fins).toBeNull();
+      expect(buildBrdOverviewPdf({ look: none, sheet, fileName: "None.brd", height: 1 }).output()).not.toContain("(FINS)");
+    }
+  });
+
+  it("rides after RAILS on the same page, is at most two pages at every Height in both systems, and keeps every baseline in its page", () => {
+    for (const look of [twin, tri]) {
+      for (const system of ["imperial", "metric"] as UnitsSystem[]) {
+        for (const height of [1, 2, 4, 8] as SectionHeight[]) {
+          const sheet = brdFitSheet(look, "Fins.brd", system);
+          const doc = buildBrdOverviewPdf({ look, sheet, fileName: "Fins.brd", height, sectionHeight: 4 });
+          expectOnePageOrTwo(doc);
+          let found = 0;
+          for (let page = 1; page <= pageCount(doc); page++) {
+            const text = pageText(doc, page);
+            if (text.includes("(FINS)")) {
+              found++;
+              expect(text.indexOf("(RAILS)")).toBeGreaterThanOrEqual(0);
+              expect(text.indexOf("(RAILS)")).toBeLessThan(text.indexOf("(FINS)"));
+            }
+          }
+          expect(found).toBe(1);
+        }
+      }
+    }
+  });
+
+  it("RAILS still comes after BOTTOM, as before", () => {
+    const sheet = brdFitSheet(twin, "Fins.brd", "imperial");
+    const doc = buildBrdOverviewPdf({ look: twin, sheet, fileName: "Fins.brd", height: 4, sectionHeight: 4 });
+    for (let page = 1; page <= pageCount(doc); page++) {
+      const text = pageText(doc, page);
+      if (text.includes("(RAILS)")) expect(text.indexOf("(BOTTOM)")).toBeLessThan(text.indexOf("(RAILS)"));
+    }
   });
 });

@@ -40,6 +40,7 @@ import {
   brdLengthWords,
   closenessSentence,
   gapWhere,
+  lessThan,
   BRD_BOTTOM_DRAWING_WIDTH,
   brdBottomFrames,
   brdBottomRows,
@@ -379,8 +380,8 @@ describe("brdFitSheet", () => {
     expect(imperial.closeness.thickness).toBe(closenessSentence("Thickness", words.thickness));
     expect(imperial.tipsNote).toBe(BRD_FIT_COPY.tipsNote(words.tipSkip));
     expect(imperial.rockerUse).toBe(BRD_FIT_COPY.rockerUse);
-    // The bottom and the rails were read, so what is left unread is the fins (quick 261113-kvo)…
-    expect(imperial.notRead).toBe(BRD_FIT_COPY.notReadAfterRails);
+    // The bottom and the rails were read, so the sections part is gone; the file has no fins, which the line now says (quick 261113-qyz)…
+    expect(imperial.notRead).toBe(BRD_FIT_COPY.noFins);
     expect(imperial.notRead).not.toMatch(/bottom|rail/i);
     expect(imperial.controls).toMatchObject({
       outline: BRD_FIT_COPY.outlineLine(w.length, w.width, w.offset),
@@ -703,7 +704,7 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
       expect(sheet.bottom).toEqual({ read: false, caption: BRD_FIT_COPY.bottomCaption, line: BRD_FIT_COPY.bottomUnread });
       expect(sheet.closeness.bottom).toBeNull();
       expect(sheet.controls.bottom).toBeNull();
-      expect(sheet.notRead).toBe(BRD_FIT_COPY.notRead);
+      expect(sheet.notRead).toBe(`${BRD_FIT_COPY.notRead} ${BRD_FIT_COPY.noFins}`);
     });
 
     it("leaves the flat Shortboard's rocker and thickness tables as they were: Our fit is the fit's own figures", () => {
@@ -783,10 +784,10 @@ describe("brdFitSheet's wing lines", () => {
     expect(line).not.toContain("run");
   });
 
-  it("never says anything about wings or flyers in the not-read line, which is about the fins now the rails are read", () => {
+  it("never says anything about wings or flyers in the not-read line, which is about the fins now the rails are read (a file with none says so)", () => {
     for (const sheet of [brdFitSheet(one, "One.brd", "imperial"), brdFitSheet(look, "Plain.brd", "imperial"), brdFitSheet({ ...look, bottom: null }, "Plain.brd", "imperial")]) {
       expect(sheet.notRead).not.toMatch(/wing|flyer/i);
-      expect(sheet.notRead).toMatch(/^Fins/);
+      expect(sheet.notRead).toBe(BRD_FIT_COPY.noFins);
     }
   });
 
@@ -973,7 +974,7 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
       expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck$/);
       expect(sheet.rails.notes[0]).toBe(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), system)));
       expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(BRD_FIT_COPY.railBlendNote);
-      expect(sheet.notRead).toBe(BRD_FIT_COPY.notReadAfterRails);
+      expect(sheet.notRead).toBe(BRD_FIT_COPY.noFins);
     }
   }, LONG);
 
@@ -1005,8 +1006,8 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     expect(sheet.rails).toEqual({ read: false, caption: "RAILS", line: BRD_FIT_COPY.railsUnread });
     expect(sheet.closeness.rails).toBeNull();
     expect(sheet.controls.rails).toBeNull();
-    expect(sheet.notRead).toBe(BRD_FIT_COPY.notReadAfterBottom);
-    expect(brdFitSheet({ ...none, bottom: null }, "T.brd", "imperial").notRead).toBe(BRD_FIT_COPY.notRead);
+    expect(sheet.notRead).toBe(`${BRD_FIT_COPY.notReadAfterBottom} ${BRD_FIT_COPY.noFins}`);
+    expect(brdFitSheet({ ...none, bottom: null }, "T.brd", "imperial").notRead).toBe(`${BRD_FIT_COPY.notRead} ${BRD_FIT_COPY.noFins}`);
   });
 
   it("says the rail region in the shaper's system, never a bare inch figure in Metric", () => {
@@ -1033,27 +1034,28 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
   });
 });
 
+const TWIN = [24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 5.4];
+/** The stock Shortboard with a Panel Vee tail, written by the app, its fin line and word set the way the writer sets them. */
+const withFins = (nine: readonly number[], word: string | null): ReadBrdBoard => {
+  const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
+  const g = buildOutline(f.outline);
+  const p = designSideProfile(f, LIVE_DESIGN_RULES);
+  const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
+  const board0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
+  const bottom = { ...structuredClone(DEFAULT_BOTTOM), tail: { ...startingCut("tail", "Panel Vee", board0), depth: inchesToMm(3 / 16) } };
+  const s = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: board0 }), geometry: g, rockerAt: p.rockerAt });
+  const plain = brdText(s, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text;
+  const fields = brdFinHeaderFields({ p50: nine, p51: word ?? "" });
+  const text = plain
+    .split("\n")
+    .flatMap((line) => (line.startsWith("p50 : ") ? fields.filter(([k]) => word !== null || k === "p50").map(([k, v]) => `${k} : ${v}`) : [line]))
+    .join("\n");
+  const back = readAnyBrd(Uint8Array.from(text, (ch) => ch.charCodeAt(0)));
+  if (!back.ok) throw new Error("the app's own file would not read");
+  return back.board;
+};
+
 describe("brdFitLook fits the fins first, then the bottom and the rails on the board with those fins (quick 261113-qyz)", () => {
-  const TWIN = [24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 5.4];
-  /** The stock Shortboard with a Panel Vee tail, written by the app, its fin line and word set the way the writer sets them. */
-  const withFins = (nine: readonly number[], word: string | null): ReadBrdBoard => {
-    const f = phase16Boards().find((b) => b.label === "shortboard|asis|hard")!.fields;
-    const g = buildOutline(f.outline);
-    const p = designSideProfile(f, LIVE_DESIGN_RULES);
-    const r = deriveEffectiveRails(f.rails, p.effectiveFoil, f.railsImportFoilThickness);
-    const board0 = designBottomBoard(f.outline, g, p, designFinPlacement(f));
-    const bottom = { ...structuredClone(DEFAULT_BOTTOM), tail: { ...startingCut("tail", "Panel Vee", board0), depth: inchesToMm(3 / 16) } };
-    const s = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, f.outline.length, { bottom, board: board0 }), geometry: g, rockerAt: p.rockerAt });
-    const plain = brdText(s, { bottomStations: brdBottomStations(resolveBottom(bottom, board0)) }).text;
-    const fields = brdFinHeaderFields({ p50: nine, p51: word ?? "" });
-    const text = plain
-      .split("\n")
-      .flatMap((line) => (line.startsWith("p50 : ") ? fields.filter(([k]) => word !== null || k === "p50").map(([k, v]) => `${k} : ${v}`) : [line]))
-      .join("\n");
-    const back = readAnyBrd(Uint8Array.from(text, (ch) => ch.charCodeAt(0)));
-    if (!back.ok) throw new Error("the app's own file would not read");
-    return back.board;
-  };
   const twinFile = withFins(TWIN, "Futures");
   const twin = brdFitLook(twinFile);
   const bare = brdFitLook(withFins([0, 0, 0, 0, 0, 0, 0, 0, 0], null));
@@ -1112,5 +1114,159 @@ describe("brdFitLook fits the fins first, then the bottom and the rails on the b
 
   it("survives structured clone with nothing lost", () => {
     expect(structuredClone(twin.fins)).toEqual(twin.fins);
+  });
+});
+
+describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
+  const twin = brdFitLook(withFins(TWIN, "Futures"));
+  const none = brdFitLook(withFins([0, 0, 0, 0, 0, 0, 0, 0, 0], null));
+  const keel = brdFitLook(withFins([15.24, 10.16, 30.48, 7.62, 0, 0, 0, 0, 5.4], "Futures"));
+  const tri = brdFitLook(withFins([24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], "Futures"));
+  const single = brdFitLook(withFins([0, 0, 0, 0, 15.24, 35.56, 0, 0, 0], null));
+  const c = BRD_FIT_COPY;
+
+  it("has rows for exactly the fins the file has: a side pair's four marks, a centre fin's two", () => {
+    expect(brdFitSheet(twin, "T.brd", "imperial").fins!.rows.map((r) => r.key)).toEqual(["sideOffTail", "sideInFromRail", "sideToeIn", "sideBase"]);
+    expect(brdFitSheet(tri, "T.brd", "imperial").fins!.rows.map((r) => r.key)).toEqual(["sideOffTail", "sideInFromRail", "sideToeIn", "sideBase", "centreOffTail", "centreBase"]);
+    expect(brdFitSheet(single, "T.brd", "imperial").fins!.rows.map((r) => r.key)).toEqual(["centreOffTail", "centreBase"]);
+  });
+
+  it("says the file's marks and ours as marks: the founder's twin figures in Imperial, whole millimetres in Metric", () => {
+    const imperial = brdFitSheet(twin, "T.brd", "imperial").fins!;
+    expect(imperial.caption).toBe(c.finsCaption);
+    const off = imperial.rows.find((r) => r.key === "sideOffTail")!;
+    expect(off.label).toBe(c.finRowLabels.sideOffTail);
+    expect(off.file).toBe(formatMark(twin.fins!.file.side!.offTail, "imperial"));
+    expect(off.fit).toBe(formatMark(twin.fins!.ours.side!.offTail, "imperial"));
+    expect(off.file).toBe(off.fit);
+    const metric = brdFitSheet(twin, "T.brd", "metric").fins!;
+    for (const row of metric.rows) {
+      for (const figure of [row.file, row.fit]) expect(figure, row.key).toMatch(/^\d+ mm$/);
+    }
+    expect(metric.rows.find((r) => r.key === "sideOffTail")!.file).toBe(formatMark(twin.fins!.file.side!.offTail, "metric"));
+  });
+
+  it("says how close, by the one less-than rule, and names the widest gap when it is wider", () => {
+    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe(`Fins: ${lessThan(formatMarkOrLess(mm(Math.max(twin.fins!.largest.gap, 1e-6)), "imperial"))} off`);
+    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe('Fins: less than 1/16" off');
+    expect(brdFitSheet(twin, "T.brd", "metric").closeness.fins).toBe("Fins: less than 1 mm off");
+    // the Keel pattern's toe-in stops at FINS' 1/2" top, which leaves the toe-in as the widest gap
+    const wide = brdFitSheet(keel, "K.brd", "imperial").closeness.fins!;
+    expect(wide).toBe(c.finsClose(formatMarkOrLess(keel.fins!.largest.gap, "imperial"), c.finGapWhich[keel.fins!.largest.which]));
+    expect(wide).toMatch(/^Fins: within .+, the widest gap the side fins' toe-in$/);
+  });
+
+  it("writes the controls line in FINS' own words and figures: the model, the system, then each label's figure", () => {
+    const line = brdFitSheet(twin, "T.brd", "imperial").controls.fins!;
+    expect(line).toBe(
+      `Fins: Twin — Modern/Upright · Futures · Forward fins: Aft/Forward position — ${formatMark(twin.fins!.ours.side!.offTail, "imperial")} · Off-Rail — ${formatMark(twin.fins!.ours.side!.inFromRail, "imperial")} · Toe-In — ${formatMark(twin.fins!.ours.side!.toeIn, "imperial")} · Fin Base Length — ${formatMark(twin.fins!.ours.side!.base, "imperial")}`,
+    );
+    const centre = brdFitSheet(tri, "T.brd", "imperial").controls.fins!;
+    expect(centre).toMatch(/ · Centre fin: Aft\/Forward position — .+ · Fin (Base|Box) Length — /);
+    expect(brdFitSheet(single, "S.brd", "imperial").controls.fins).toMatch(/^Fins: Single Fin · FCS II · Centre fin: Aft\/Forward position — .+ · Fin Box Length — /);
+  });
+
+  it("uses FINS' own control words as fin-controls.tsx writes them", () => {
+    const source = readFileSync(join(__dirname, "../../components/fins/fin-controls.tsx"), "utf8") + readFileSync(join(__dirname, "../geometry/fins.ts"), "utf8");
+    for (const word of Object.values(c.finWords)) expect(source).toContain(word);
+  });
+
+  it("says a control that stopped short: the Keel pattern's toe-in, by how much, and the farthest FINS goes", () => {
+    const notes = brdFitSheet(keel, "K.brd", "imperial").fins!.notes;
+    const hold = keel.fins!.short.find((s) => s.control === "toeIn")!;
+    expect(hold).toBeDefined();
+    expect(notes).toContain(
+      c.finHold(c.finHoldSubjects.sideToe, lessThan(formatMarkOrLess(hold.by, "imperial")), c.finHoldDirections.less, c.finWords.toeIn, formatMark(keel.fins!.ours.side!.toeIn, "imperial")),
+    );
+    expect(brdFitSheet(twin, "T.brd", "imperial").fins!.notes.filter((n) => n.includes("goes no further than"))).toEqual([]);
+  });
+
+  it("says a toe-out, and an unnamed system with the file's word only when it is a plain one", () => {
+    const out = brdFitLook(withFins([24.13, 12.7, 35.814, 13.208, 0, 0, 0, 0, 0], "Futures"));
+    expect(brdFitSheet(out, "O.brd", "imperial").fins!.notes).toContain(c.finToeOut);
+    const quoted = brdFitLook(withFins(TWIN, "Thunderbolt"));
+    expect(brdFitSheet(quoted, "Q.brd", "imperial").fins!.notes).toContain(c.finSystemQuoted("Thunderbolt"));
+    expect(brdFitSheet(single, "S.brd", "imperial").fins!.notes).toContain(c.finSystemUnnamed);
+    // a named system says nothing about it
+    expect(brdFitSheet(twin, "T.brd", "imperial").fins!.notes.join(" ")).not.toMatch(/fin system/);
+  });
+
+  it("a file with no fins has no block, no closeness line, no controls line, no fin lines, and says so in the not-read line", () => {
+    const sheet = brdFitSheet(none, "N.brd", "imperial");
+    expect(sheet.fins).toBeNull();
+    expect(sheet.closeness.fins).toBeNull();
+    expect(sheet.controls.fins).toBeNull();
+    expect(sheet.notRead).toBe(c.noFins);
+    const frames = brdFitFrames(none, 800);
+    expect(frames.top.fins).toEqual({ file: [], fit: [] });
+  });
+
+  it("the not-read line: a fin's depth and splay angle (cant) and a quad's rear fins when the file has fins; the fins don't sit when they were refused", () => {
+    // the founder's twin figures carry a splay angle of 5.4 degrees (slot 8) and no depth
+    expect(brdFitSheet(twin, "T.brd", "imperial").notRead).toBe(c.notReadFins(null, "5.4°"));
+    const plain = brdFitLook(withFins([24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 0], "Futures"));
+    expect(brdFitSheet(plain, "P.brd", "imperial").notRead).toBe(c.notReadFins(null, null));
+    expect(c.notReadFins(null, null)).toMatch(/^A fin's depth and splay angle \(cant\) aren't read: FINS has no control for either\./);
+    expect(c.notReadFins(null, null)).toMatch(/A quad's rear fins aren't read from a file yet\.$/);
+    expect(c.notReadFins(null, null)).not.toMatch(/no room|can't/);
+    const refused = brdFitLook(withFins([35.814, 13.208, 24.13, 12.7, 0, 0, 0, 0, 0], null));
+    expect(refused.fins).toBeNull();
+    expect(brdFitSheet(refused, "R.brd", "imperial").notRead).toBe(c.finsDontSit);
+    // the sections part still comes first when the rails were not read
+    expect(brdFitSheet({ ...twin, rails: null }, "T.brd", "imperial").notRead).toBe(`${c.notReadAfterBottom} ${c.notReadFins(null, "5.4°")}`);
+  });
+
+  it("quotes the file's fin depth and splay angle when it has them (slots 7 and 8, as AkuShaper's own panel names them), never fitted", () => {
+    const deep = brdFitLook(withFins([24.13, 13.208, 35.814, 12.7, 0, 0, 0, 9.5, 5.4], "Futures"));
+    const imperial = brdFitSheet(deep, "D.brd", "imperial").notRead;
+    expect(imperial).toBe(c.notReadFins('3 3/4"', "5.4°"));
+    expect(imperial).toBe(`The file's side fins are 3 3/4" deep at a splay angle (cant) of 5.4°: FINS has no control for either, so they aren't read. A quad's rear fins aren't read from a file yet.`);
+    expect(brdFitSheet(deep, "D.brd", "metric").notRead).toContain("95 mm deep at a splay angle (cant) of 5.4°");
+    // neither figure moves the fit
+    expect(deep.fins).toEqual(twin.fins);
+    const splayOnly = brdFitLook(withFins([24.13, 13.208, 35.814, 12.7, 0, 0, 0, 0, 5.4], "Futures"));
+    expect(brdFitSheet(splayOnly, "S.brd", "imperial").notRead).toBe(c.notReadFins(null, "5.4°"));
+    expect(c.notReadFins('3 3/4"', null)).toMatch(/is not$|isn't read\./);
+  });
+
+  it("draws one line per fin on the top view, a pair mirrored: the file's two and ours two, inside the drawing, nose at the left", () => {
+    const frames = brdFitFrames(twin, 800);
+    expect(frames.top.fins.file).toHaveLength(2);
+    expect(frames.top.fins.fit).toHaveLength(2);
+    for (const [a, b] of [...frames.top.fins.file, ...frames.top.fins.fit]) {
+      for (const [x, y] of [a, b]) {
+        expect(x).toBeGreaterThan(0);
+        expect(x).toBeLessThan(frames.width);
+        expect(y).toBeGreaterThan(0);
+        expect(y).toBeLessThan(frames.top.height);
+      }
+      // the back end is nearer the tail, so further right
+      expect(a[0]).toBeGreaterThan(b[0]);
+    }
+    const centreY = frames.top.stringer.y;
+    const [above, below] = frames.top.fins.file;
+    expect(above[0][1] + below[0][1]).toBeCloseTo(2 * centreY, 6);
+    // the file's back end stands where the file says, through the same station transform as the outline
+    expect(above[0][0]).toBeCloseTo(BRD_PREVIEW_PAD_X + (twin.board.length - twin.board.fins.side!.back[0]) * frames.scale, 6);
+    // our fins are FINS' own marks
+    const ours = frames.top.fins.fit.map(([a]) => a[0]);
+    expect(ours[0]).toBeCloseTo(BRD_PREVIEW_PAD_X + (twin.board.length - twin.fins!.ours.side!.offTail) * frames.scale, 6);
+  });
+
+  it("draws a centre fin on the stringer and a thruster's three fins for a side-and-centre file", () => {
+    const frames = brdFitFrames(tri, 800);
+    expect(frames.top.fins.file).toHaveLength(3);
+    const onStringer = frames.top.fins.file.filter(([a, b]) => a[1] === frames.top.stringer.y && b[1] === frames.top.stringer.y);
+    expect(onStringer).toHaveLength(1);
+    expect(frames.top.fins.fit).toHaveLength(3);
+  });
+
+  it("lays the fin lines out in a box on paper through the same transform", () => {
+    const frames = brdFitFramesInBox(twin, { width: 180, height: 120 }, 1, 6);
+    expect(frames.top.fins.file).toHaveLength(2);
+    for (const [a, b] of frames.top.fins.file) {
+      expect(a[0]).toBeLessThanOrEqual(180 + 1e-9);
+      expect(b[0]).toBeGreaterThanOrEqual(-1e-9);
+    }
   });
 });

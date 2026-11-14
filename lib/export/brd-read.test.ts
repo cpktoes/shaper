@@ -377,12 +377,12 @@ describe("the fins (quick 261113-qyz)", () => {
 
   it("reads the four-number line the fixture carries as no fins", () => {
     const board = mustRead(bytesOf(aku()));
-    expect(board.fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(board.fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
   });
 
   it("reads all zeros, and no fin line at all, as no fins", () => {
-    expect(withFins("[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]").fins).toEqual({ side: null, centre: null, word: null, dropped: false });
-    expect(withFins(null).fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(withFins("[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]").fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
+    expect(withFins(null).fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
   });
 
   it("reads a side fin and the word beside it, in millimetres from the tail", () => {
@@ -406,12 +406,12 @@ describe("the fins (quick 261113-qyz)", () => {
   });
 
   it("ignores a fin line that stands after the curves, as it does the sizes", () => {
-    expect(withFins(TWIN, "Futures", "afterCurves").fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(withFins(TWIN, "Futures", "afterCurves").fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
   });
 
   it("reads a fin line that is not nine finite figures as no fins, and a fin that is not on the board as dropped", () => {
     for (const bad of ["[1,2,3]", "[a,b,c,d,e,f,g,h,i]", "[1,2,3,4,5,6,7,8,9,10]", "24.13", "[24.13,8.0,35.814,7.5,,0.0,0.0,0.0,0.0]", "[1e999,0,0,0,0,0,0,0,0]", "[20000,0,0,0,0,0,0,0,0]"]) {
-      expect(withFins(bad).fins, bad).toEqual({ side: null, centre: null, word: null, dropped: false });
+      expect(withFins(bad).fins, bad).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
     }
     // A side fin whose front is behind its back, and a centre fin past the nose.
     const refused = withFins("[35.814,8.0,24.13,7.5,100.0,190.0,0.0,0.0,0.0]").fins;
@@ -444,7 +444,7 @@ describe("the fins (quick 261113-qyz)", () => {
   });
 
   it("reads this app's own file with no fins as no fins, and one written with fins as those fins", () => {
-    expect(mustRead(bytesOf(own)).fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(mustRead(bytesOf(own)).fins).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
     const written = brdText(surface, { fins: { p50: [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], p51: "Probox" } }).text;
     const fins = mustRead(bytesOf(written)).fins;
     expect(fins.word).toBe("Probox");

@@ -23,6 +23,7 @@ import {
   brdRailRows,
   type BrdFitBottomBlock,
   type BrdFitLook,
+  type BrdFitFinsBlock,
   type BrdFitRailsBlock,
   type BrdFitTable,
 } from "@/lib/export/brd-fit-preview";
@@ -161,6 +162,12 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
                     strokeDasharray="var(--outline-stringer-dash)"
                   />
                   <polygon data-brd-fit-line="fit" points={pointsOf(frames.top.fit)} fill="none" {...railLineProps(1)} />
+                  {frames.top.fins.file.map(([a, b], k) => (
+                    <line key={`file-${k}`} data-brd-fit-fin="file" x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="var(--outline-ink)" strokeWidth={1.8} strokeLinecap="round" />
+                  ))}
+                  {frames.top.fins.fit.map(([a, b], k) => (
+                    <line key={`fit-${k}`} data-brd-fit-fin="fit" x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} fill="none" {...railLineProps(1)} />
+                  ))}
                 </>
               )}
             </svg>
@@ -223,6 +230,11 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
                 {keepFiguresTogether(sheet.closeness.rails)}
               </p>
             )}
+            {sheet.closeness.fins !== null && (
+              <p data-brd-fit-close-fins className="text-xs text-surf-ink">
+                {keepFiguresTogether(sheet.closeness.fins)}
+              </p>
+            )}
             {sheet.wings.map((words, k) => (
               <p key={k} data-brd-fit-wing={k + 1} className="text-xs text-surf-ink">
                 {keepFiguresTogether(words)}
@@ -263,6 +275,8 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
 
           <RailsBlock block={sheet.rails} drawings={railDrawings} />
 
+          {sheet.fins !== null && <FinsBlock block={sheet.fins} />}
+
           <div className="flex flex-col gap-1">
             <div className={CAPTION_CLASS}>{c.controls}</div>
             <div data-brd-fit-controls className="flex flex-col gap-1 text-xs text-surf-ink">
@@ -273,6 +287,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
               <p data-brd-fit-control="thickness">{sheet.controls.thickness}</p>
               {sheet.controls.bottom !== null && <p data-brd-fit-control="bottom">{sheet.controls.bottom}</p>}
               {sheet.controls.rails !== null && <p data-brd-fit-control="rails">{keepFiguresTogether(sheet.controls.rails)}</p>}
+              {sheet.controls.fins !== null && <p data-brd-fit-control="fins">{keepFiguresTogether(sheet.controls.fins)}</p>}
             </div>
           </div>
 
@@ -523,6 +538,48 @@ function RailsBlock({ block, drawings }: { block: BrdFitRailsBlock; drawings: Re
 }
 
 /** One swatch of the key: a short line in the drawing's own stroke, then what it is (like `SideProfileKey`'s entries). */
+/** The FINS block (quick 261113-qyz): the file's fins beside ours as marks, then what stopped short and what the file did not say. */
+function FinsBlock({ block }: { block: BrdFitFinsBlock }) {
+  return (
+    <div data-brd-fit-fins className="flex flex-col gap-2">
+      <div className={CAPTION_CLASS}>{block.caption}</div>
+      <table data-brd-fit-fins-table className="w-full border-collapse text-xs text-surf-ink">
+        <thead>
+          <tr className="border-b border-surf-line-faint">
+            <td />
+            <th scope="col" className="px-1 py-0.5 text-right font-semibold">
+              {BRD_FIT_COPY.columnFile}
+            </th>
+            <th scope="col" className="px-1 py-0.5 text-right font-semibold">
+              {BRD_FIT_COPY.columnFit}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row) => (
+            <tr key={row.key} data-brd-fit-fins-row={row.key}>
+              <th scope="row" className="py-0.5 pr-1 text-left font-normal text-surf-ink-muted">
+                {row.label}
+              </th>
+              <td data-brd-fit-cell="file" className="px-1 py-0.5 text-right tabular-nums">
+                {keepFiguresTogether(row.file)}
+              </td>
+              <td data-brd-fit-cell="fit" className="px-1 py-0.5 text-right tabular-nums">
+                {keepFiguresTogether(row.fit)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {block.notes.map((note) => (
+        <p key={note} data-brd-fit-fins-note className="text-xs text-surf-ink-muted">
+          {keepFiguresTogether(note)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function KeyEntry({ dashed, word }: { dashed: boolean; word: string }) {
   return (
     <div data-brd-fit-key-entry={dashed ? "fit" : "file"} className="flex items-center gap-1.5">

@@ -27,11 +27,14 @@
  */
 import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
-import { BRD_FIN_WORD_MAX, brdFinsFromLine, noBrdFins, type BrdFileFins } from "../geometry/brd-fins";
+import { brdFinsFromLine, noBrdFins, type BrdFileFins } from "../geometry/brd-fins";
 import { centimetresToMm, inchesToMm, mm, type Mm } from "../geometry/units";
 import type { BrdReadKnot } from "./brd";
 import { BRD_PREVIEW_CURVE_STEPS, BRD_PREVIEW_SECTION_STEPS, sampleKnots } from "./brd-preview";
+import { brdFinWord, parseBrdFinLine } from "./brd-fin-line";
 import { BRD_MAGIC, unscrambleBrd } from "./brd-scramble";
+
+export { brdFinWord, parseBrdFinLine };
 
 /** What Open a board file… adds to its file picker for a `.brd`; the shared `BOARD_FILE_ACCEPT` stays JSON only. */
 export const BRD_FILE_ACCEPT = ".brd";
@@ -119,30 +122,6 @@ function plainText(bytes: Uint8Array): string {
   let text = "";
   for (let i = 0; i < bytes.length; i += 8192) text += String.fromCharCode(...bytes.subarray(i, i + 8192));
   return text;
-}
-
-/**
- * A fin line's nine figures: `[a,b,c,d,e,f,g,h,i]`, every one a finite number within `BRD_READ_MAX_CM`, or null (any other
- * line, a different count, a figure that is not a figure). The figures are centimetres, as the file has them.
- */
-export function parseBrdFinLine(value: string): number[] | null {
-  const match = /^\[([^\]]*)\]$/.exec(value.trim());
-  if (!match) return null;
-  const parts = match[1].split(",").map((part) => part.trim());
-  if (parts.length !== 9 || parts.some((part) => part === "")) return null;
-  const figures = parts.map(Number);
-  return figures.every((n) => Number.isFinite(n) && Math.abs(n) <= BRD_READ_MAX_CM) ? figures : null;
-}
-
-/**
- * A file's fin word (p51) as it may be shown: 1 to 32 characters of letters, digits, spaces and `+ - ( ) . / ' &`, with at
- * least one letter, trimmed; anything else (a path, a name in quotes, an empty field) is null.
- */
-export function brdFinWord(value: string): string | null {
-  const word = value.trim();
-  if (word.length < 1 || word.length > BRD_FIN_WORD_MAX) return null;
-  if (!/^[A-Za-z0-9 +\-().\/'&]+$/.test(word) || !/[A-Za-z]/.test(word)) return null;
-  return word;
 }
 
 const headerNumber = (value: string | undefined): number | null => {

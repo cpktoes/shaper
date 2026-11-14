@@ -784,7 +784,7 @@ test.describe("The bottom of a .brd (quick 261113-gwr)", () => {
       for (const [i, table] of tables.entries()) for (const [j, row] of table.rows.entries()) expect(row.fit).toBe(sheet.tables[i].rows[j].fit);
       await expect(dialog.locator('[data-brd-fit-control="bottom"]')).toHaveText(sheet.controls.bottom!);
     }
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notReadAfterRails);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
 
     // The section Height opens at x4 and x8 changes the caption; the side view's own Height stays at x1.
     const pressed = (which: "section" | "side") =>
@@ -884,7 +884,7 @@ test.describe("The bottom of a .brd (quick 261113-gwr)", () => {
     await expect(dialog.locator("[data-brd-fit-bottom-unread]")).toHaveText(BRD_FIT_COPY.bottomUnread);
     await expect(dialog.locator("[data-brd-fit-section]")).toHaveCount(0);
     await expect(dialog.locator("[data-brd-fit-close-bottom]")).toHaveCount(0);
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notRead);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(`${BRD_FIT_COPY.notRead} ${BRD_FIT_COPY.noFins}`);
     await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
     await expect(page).toHaveURL(/\/design\/outline$/);
     await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("No Sections");
@@ -1260,7 +1260,7 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
       await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(/^Rails: Nose .+ · Centre .+ · Tail .+Use Single Tuck · Sharp Bottom Tuck$/);
     }
     await expect(dialog.locator("[data-brd-fit-rails-note]").first()).toHaveText(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), "imperial")));
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notReadAfterRails);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
   });
 
   test("b24. Open as a Board carries the rails: the kept board holds them, and RAILS shows the centre's Ratio and Family as fitted and the tail's Use Single Tuck ticked", async ({
@@ -1332,7 +1332,7 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     await expect(dialog.locator("[data-brd-fit-rail-section]")).toHaveCount(0);
     await expect(dialog.locator("[data-brd-fit-close-rails]")).toHaveCount(0);
     await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveCount(0);
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.notRead);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(`${BRD_FIT_COPY.notRead} ${BRD_FIT_COPY.noFins}`);
     await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
     await expect(page).toHaveURL(/\/design\/outline$/);
     await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("No Sections");

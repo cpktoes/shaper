@@ -455,7 +455,7 @@ export function ThreeDScreen() {
   const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
   const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
   const exportButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [prepared, setPrepared] = useState<{ file: BrdFileWithPreview; swallowNote: boolean; channelsNote: boolean } | null>(null);
+  const [prepared, setPrepared] = useState<{ file: BrdFileWithPreview; swallowNote: boolean; channelsNote: boolean; quadNote: boolean } | null>(null);
   const onExport = () => {
     if (!built.ok) return;
     try {
@@ -482,7 +482,7 @@ export function ThreeDScreen() {
         board: bottomBoard,
         profile: sideProfile,
       }, brdFinFields(finPlacement, finSystem));
-      setPrepared({ file, swallowNote: brdTailWrittenSquare(built.surface), channelsNote: brdLeavesChannelsOut(bottom) });
+      setPrepared({ file, swallowNote: brdTailWrittenSquare(built.surface), channelsNote: brdLeavesChannelsOut(bottom), quadNote: effectiveFins.finSetup === "quad" });
     } catch (error) {
       console.error("The board file could not be made:", error);
       setExportResult({ kind: "failed" });
@@ -1437,6 +1437,7 @@ export function ThreeDScreen() {
       prepared={prepared?.file ?? null}
       swallowNote={prepared?.swallowNote ?? false}
       channelsNote={prepared?.channelsNote ?? false}
+      quadNote={prepared?.quadNote ?? false}
       onSave={onSaveBrd}
       onOpenChange={(open) => {
         if (!open) setPrepared(null);

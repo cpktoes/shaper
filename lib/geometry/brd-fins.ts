@@ -5,11 +5,15 @@
  * The format's fin facts, as verified in AkuShaper 3.1.3 on the founder's Mac: one header line, `p50 : [a,b,c,d,e,f,g,h,i]`,
  * nine numbers in centimetres, x measured from the tail end (x = 0) and y off the stringer. Slots 0-1 are a side fin's
  * back end (from the tail, off the stringer), slots 2-3 its front end (a front nearer the stringer than the back is the
- * fin's toe-in), slots 4-5 a centre fin's back and front from the tail (it stands on the stringer). Slots 6-7 are unknown
- * (filling them changed nothing on Board Info) and slot 8 (5.4 in the founder's twin) is believed to be a cant, which is
- * not verified: they are never read here, and the app writes them as zero. AkuShaper's "Fin setup" is DERIVED from those
- * numbers: all zero is NONE, a centre alone SINGLE, a side pair alone TWIN, both TRI. There is no room in the line for a
- * quad's rear pair. `p51` is a word that reads `Futures` in the founder's file, believed to name the fin system.
+ * fin's toe-in), slots 4-5 a centre fin's back and front from the tail (it stands on the stringer). Slot 7 is the side fin's
+ * DEPTH in centimetres and slot 8 the side fins' SPLAY ANGLE (a cant) in degrees — both read off AkuShaper's own Fins panel
+ * by the founder, 2026-11-13, for a file whose p50 held 9.5 and 5.4: a front fin "Depth 3 3/4"", "Splay Angle 5.4 Deg"; slot 6
+ * is believed to be the centre fin's depth by the same pattern, not separately verified. FINS has no control for a fin's depth
+ * or a splay angle, so neither is fitted: they are read only so the preview can say so (`BrdFileFins.depth`, `.splay`) and
+ * are written as zero. AkuShaper's "Fin setup" is DERIVED from the numbers: all zero is NONE, a centre alone SINGLE, a side
+ * pair alone TWIN, both TRI; its list goes on to QUAD and FIVE, and how a quad's or a five-fin's rear pair is stored in the
+ * file is not known yet (2026-11-13), so neither is read or written. `p51` is a word that reads `Futures` in the founder's
+ * file, believed to name the fin system.
  *
  * FINS never stores where a fin sits: it CALCULATES the placement from a setup, a model or template and a few controls
  * (`FinPlacementSpec`). So reading a file's fins is a fit, like the outline's: find the setup and the controls whose
@@ -62,6 +66,10 @@ export const BRD_FIN_TIE_MM: Mm = inchesToMm(1 / 32);
 /** A fin's end may stand this far outside the file's outline and still count as on the board (the outline is sampled). */
 export const BRD_FIN_EDGE_SLACK_MM = 0.5;
 
+/** The deepest fin and the widest splay angle read as sensible figures (30 cm, 45 degrees); anything else is not said. */
+export const BRD_FIN_DEPTH_MAX_CM = 30;
+export const BRD_FIN_SPLAY_MAX_DEGREES = 45;
+
 /** The longest p51 word kept, in characters. */
 export const BRD_FIN_WORD_MAX = 32;
 
@@ -73,13 +81,16 @@ export interface BrdFileFins {
   centre: { back: Mm; front: Mm } | null;
   /** The file's p51 word, kept only beside a fin the rules kept, 1 to 32 plain characters. */
   word: string | null;
+  /** The side fins' depth (slot 7) and splay angle in degrees (slot 8), when a side fin was kept and the figure is a sensible non-zero one. Said, never fitted. */
+  depth: Mm | null;
+  splay: number | null;
   /** True when the line held a fin the rules refused (off the board, front behind its back). */
   dropped: boolean;
 }
 
 /** A file with no fins: what every sample file's all-zero line reads as. */
 export function noBrdFins(): BrdFileFins {
-  return { side: null, centre: null, word: null, dropped: false };
+  return { side: null, centre: null, word: null, depth: null, splay: null, dropped: false };
 }
 
 /** The outline's half-width at a distance from the tail: the widest of the outline's segments reaching it. */
@@ -96,7 +107,8 @@ function halfWidthAt(outline: readonly P2[], x: number): number {
 
 /**
  * What the file's fin line says, held to rules (the file is anyone's). `nineCm` is the line's nine figures in centimetres,
- * `outline` the file's own outline (tail to nose, half-widths) and `length` its length. Slots 6-8 are never read. A side
+ * `outline` the file's own outline (tail to nose, half-widths) and `length` its length. Slots 6 is never read; slots 7 and 8 (a side
+ * fin's depth and the splay angle) are kept beside a side fin only to be said. A side
  * fin is kept only when 0 <= back x < front x <= length and each end stands off the stringer by more than nothing and
  * no further than the file's own outline reaches at that x (a negative off-stringer reads as its size: the pair is mirrored);
  * a centre fin only when 0 <= back < front <= length. A fin the rules refuse is left out and `dropped` says so.
@@ -130,6 +142,11 @@ export function brdFinsFromLine(
     else result.dropped = true;
   }
   if ((result.side || result.centre) && word !== null) result.word = word;
+  if (result.side) {
+    const [depth, splay] = [nineCm[7], nineCm[8]];
+    if (depth > 0 && depth <= BRD_FIN_DEPTH_MAX_CM) result.depth = centimetresToMm(depth);
+    if (splay > 0 && splay <= BRD_FIN_SPLAY_MAX_DEGREES) result.splay = splay;
+  }
   return result;
 }
 
@@ -459,8 +476,9 @@ export interface BrdFinFields {
 /**
  * The fins a board's `.brd` carries, from FINS' own placement: the right-hand front fin (a pair is mirrored in the
  * format) and the centre fin, each from its trailing edge to its leading edge, off the tail and off the stringer, in
- * centimetres, with slots 6-8 zero; and the fin system's word. Null when the board has a rear fin (a quad: the format
- * holds one side pair and a centre fin, so the front pair alone would read as a twin) or no fin at all.
+ * centimetres, with slots 6-8 zero (FINS has no fin depth or splay angle to write); and the fin system's word. Null when the
+ * board has a rear fin (a quad): how AkuShaper stores a quad's or five-fin's rear pair is not known yet (2026-11-13), and the
+ * front pair alone would read as a twin, so a quad writes no fins for now; or no fin at all.
  */
 export function brdFinFields(placement: FinPlacementResult, system: FinSystem): BrdFinFields | null {
   if (placement.marks.some((m) => m.role === "rear")) return null;

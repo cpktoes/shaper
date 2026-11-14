@@ -131,8 +131,8 @@ describe("brdFinsFromLine: the rules a file's fins are held to", () => {
   });
 
   it("reads all zeros as no fins at all", () => {
-    expect(read([0, 0, 0, 0, 0, 0, 0, 0, 0])).toEqual({ side: null, centre: null, word: null, dropped: false });
-    expect(noBrdFins()).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(read([0, 0, 0, 0, 0, 0, 0, 0, 0])).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
+    expect(noBrdFins()).toEqual({ side: null, centre: null, word: null, depth: null, splay: null, dropped: false });
   });
 
   it("reads a negative off-stringer as its size: a pair is mirrored", () => {
@@ -400,10 +400,22 @@ describe("the coordinator's AkuShaper variants, as figures", () => {
     expect(fit).toBeNull();
   });
 
-  it("slots 6 and 7 are never read: filling them changes nothing", () => {
-    const a = fitStock([24.13, 13.208, 35.814, 12.7, 12.7, 22.86, 10.16, 9.5, 5.4]).board.fins;
-    const b = fitStock([24.13, 13.208, 35.814, 12.7, 12.7, 22.86, 0, 0, 0]).board.fins;
-    expect(a).toEqual(b);
+  it("slot 6 is never read; slots 7 and 8 (a side fin's depth and the splay angle) are kept only to be said and never move the fit", () => {
+    const a = fitStock([24.13, 13.208, 35.814, 12.7, 12.7, 22.86, 10.16, 9.5, 5.4]);
+    const b = fitStock([24.13, 13.208, 35.814, 12.7, 12.7, 22.86, 0, 0, 0]);
+    expect(a.board.fins.side).toEqual(b.board.fins.side);
+    expect(a.board.fins.centre).toEqual(b.board.fins.centre);
+    expect(a.fit).toEqual(b.fit);
+    expect(a.board.fins.depth).toBeCloseTo(95, 9);
+    expect(a.board.fins.splay).toBe(5.4);
+    expect(b.board.fins.depth).toBeNull();
+    expect(b.board.fins.splay).toBeNull();
+    // a figure that is not a sensible depth or angle is not said
+    const odd = fitStock([24.13, 13.208, 35.814, 12.7, 0, 0, 0, 99, 99]).board.fins;
+    expect(odd.depth).toBeNull();
+    expect(odd.splay).toBeNull();
+    // and a centre fin alone has no side fins to speak for
+    expect(fitStock([0, 0, 0, 0, 15.24, 35.56, 0, 9.5, 5.4]).board.fins.depth).toBeNull();
   });
 });
 

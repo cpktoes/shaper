@@ -10,8 +10,10 @@ import { railLineProps, SideProfileKey } from "@/components/bottom/side-profile-
 import { useUnits } from "@/components/units-provider";
 import { useSvgClientSize } from "@/components/viewer/callout-primitives";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 import {
   BRD_PREVIEW_SIDE_HEIGHT,
+  brdPreviewFinsWords,
   brdPreviewFrames,
   brdPreviewWords,
   brdSliceNearest,
@@ -37,6 +39,8 @@ export interface BrdPreviewDialogProps {
   /** The page's own two lines, shown again here when they apply to this file (a swallow written square, channels left out). */
   swallowNote: boolean;
   channelsNote: boolean;
+  /** A quad's fins aren't written (quick 261113-qyz): the one line saying why, shown instead of the fins the file carries. */
+  quadNote: boolean;
   onSave: () => void;
   onOpenChange: (open: boolean) => void;
   /** The Export button: focus goes back to it when the dialog closes. */
@@ -53,6 +57,7 @@ export function BrdPreviewDialog({
   prepared,
   swallowNote,
   channelsNote,
+  quadNote,
   onSave,
   onOpenChange,
   finalFocus,
@@ -68,7 +73,7 @@ export function BrdPreviewDialog({
         initialFocus={() => document.querySelector<HTMLElement>("[data-brd-preview-cancel]")}
         className={cn(LARGE_DIALOG_CLASS, FULL_SCREEN_CLASS)}
       >
-        {prepared && <PreviewBody file={prepared} swallowNote={swallowNote} channelsNote={channelsNote} onSave={onSave} />}
+        {prepared && <PreviewBody file={prepared} swallowNote={swallowNote} channelsNote={channelsNote} quadNote={quadNote} onSave={onSave} />}
       </DialogContent>
     </Dialog>
   );
@@ -116,11 +121,13 @@ function PreviewBody({
   file,
   swallowNote,
   channelsNote,
+  quadNote,
   onSave,
 }: {
   file: BrdFileWithPreview;
   swallowNote: boolean;
   channelsNote: boolean;
+  quadNote: boolean;
   onSave: () => void;
 }) {
   const { preview } = file;
@@ -134,6 +141,8 @@ function PreviewBody({
   // saved, and view-only, so a locked board keeps it.
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
   const words = useMemo(() => brdPreviewWords(preview, system, file.profile.maxThickness), [preview, system, file.profile.maxThickness]);
+  // The fins the file carries, read back from its own bytes (quick 261113-qyz); none for a quad, whose note says why instead.
+  const finsWords = useMemo(() => brdPreviewFinsWords(preview, system), [preview, system]);
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
   const frames = useMemo(
     () => (box.width > 0 ? brdPreviewFrames(preview, box.width, { railBottom: file.profile.railBottom, height }) : null),
@@ -308,6 +317,16 @@ function PreviewBody({
           <div data-brd-preview-facts className="text-xs text-surf-ink">
             {THREE_D_COPY.previewFacts(count, words.gap, words.dims, words.stringer, words.profileMax)}
           </div>
+          {finsWords !== null && (
+            <p data-brd-preview-fins className="text-xs text-surf-ink">
+              {keepFiguresTogether(THREE_D_COPY.previewFins(finsWords.side, finsWords.centre, finsWords.shape, finsWords.system))}
+            </p>
+          )}
+          {quadNote && (
+            <p data-brd-preview-quad className="text-xs text-surf-ink-muted">
+              {THREE_D_COPY.exportQuadNote}
+            </p>
+          )}
           {swallowNote && (
             <p data-brd-preview-swallow className="text-xs text-surf-ink-muted">
               {THREE_D_COPY.exportSwallowNote}

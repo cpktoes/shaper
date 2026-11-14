@@ -29,7 +29,7 @@ function download(name: string, data: Uint8Array, type: string): void {
  * screen's one download — the board as an AkuShaper `.brd` file, built from the very surface the screen draws, so the
  * file can never describe a different board from the one on screen. The bare board (D-16) plus, since quick 261113-qyz
  * (the founder, 2026-11-13), the board's fins and its fin system as FINS places and names them (`fins`, from
- * `brdFinFields`; null for a quad, whose rear fins the format has no room for): it reads the surface, the board's name
+ * `brdFinFields`; null for a quad, whose rear fins aren't written yet): it reads the surface, the board's name
  * and those fin fields and nothing else, so the 3D screen's Fins, Blank and Contour Stripes switches can still never reach
  * the file — the file carries FINS' placement whatever the 3D view shows.
  *

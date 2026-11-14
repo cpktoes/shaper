@@ -35,7 +35,7 @@ import {
   type BrdBottomFit,
   type BrdBottomSection,
 } from "../geometry/brd-bottom";
-import { fitBrdFins, type BrdFinsFit } from "../geometry/brd-fins";
+import { fitBrdFins, type BrdFinMarkKey, type BrdFinsFit } from "../geometry/brd-fins";
 import {
   BRD_RAIL_FIRST_GAIN_MM,
   BRD_RAIL_FIRST_TRY_MM,
@@ -69,8 +69,8 @@ import {
   type Closeness,
 } from "../geometry/brd-fit";
 import { sectionHeightLabel, type SectionHeight } from "../geometry/bottom-draw";
-import { bottomRailLift, railsOnTheBottom } from "../geometry/design";
-import type { FinPlacementSpec } from "../geometry/fins";
+import { bottomRailLift, designFinPlacement, railsOnTheBottom } from "../geometry/design";
+import { FIN_SYSTEMS, type FinPlacementResult, type FinPlacementSpec } from "../geometry/fins";
 import {
   formatControlNumber,
   formatDim,
@@ -265,6 +265,11 @@ export interface BrdFitFrames {
     /** Our closest fit's outline, closed the same way. */
     fit: P2[];
     stringer: { x1: number; x2: number; y: number };
+    /**
+     * One short line per fin, from its trailing edge to its leading edge (a pair mirrored): the file's own fins, and ours as
+     * FINS places them on the board that opens (quick 261113-qyz). Both empty when the file has no fins.
+     */
+    fins: { file: [P2, P2][]; fit: [P2, P2][] };
   };
   side: {
     height: number;
@@ -282,6 +287,38 @@ const mirrored = (right: readonly P2[], centre: number, scale: number, x: (stati
   ...right.map(([station, half]): P2 => [x(station), centre - half * scale]),
   ...right.map(([station, half]): P2 => [x(station), centre + half * scale]).reverse(),
 ];
+
+/**
+ * The fins as short lines on the top view (quick 261113-qyz): the file's own, each from its back end to its front end with a
+ * side pair mirrored about the stringer and a centre fin on it, and ours, from FINS' own marks on the board that opens
+ * (`designFinPlacement` on the fit's outline with the fitted fin spec, the same call the bottom was fitted on). A file with no
+ * fins draws none.
+ */
+function finSegments(look: BrdFitLook, sx: (station: number) => number, centre: number, scale: number): { file: [P2, P2][]; fit: [P2, P2][] } {
+  if (!look.fins) return { file: [], fit: [] };
+  const file: [P2, P2][] = [];
+  const { side, centre: middle } = look.board.fins;
+  if (side) {
+    for (const sign of [-1, 1]) {
+      file.push([
+        [sx(side.back[0]), centre + sign * side.back[1] * scale],
+        [sx(side.front[0]), centre + sign * side.front[1] * scale],
+      ]);
+    }
+  }
+  if (middle) file.push([[sx(middle.back), centre], [sx(middle.front), centre]]);
+  const placed = finPlacementOf(look);
+  const fit = (placed?.marks ?? []).map((m): [P2, P2] => [
+    [sx(m.offTail), centre + m.lateral * scale],
+    [sx(m.leadingOffTail), centre + m.leadingLateral * scale],
+  ]);
+  return { file, fit };
+}
+
+/** FINS' own placement on the board that opens, or null when the file carries no fins. */
+function finPlacementOf(look: BrdFitLook): FinPlacementResult | null {
+  return look.fins ? designFinPlacement({ outline: look.fit.outline, fins: look.fins.spec, finsImportTemplate: true }) : null;
+}
 
 /** The board's own extremes, shared by every layout: the widest half-width and the highest and lowest the side view reaches. */
 function extremes(look: BrdFitLook): { half: number; high: number; low: number } {
@@ -315,6 +352,7 @@ function framesAt(look: BrdFitLook, scale: number, padX: number, padY: number, h
       file: mirrored(board.outline, centre, scale, sx),
       fit: mirrored(fit.lines.outline, centre, scale, sx),
       stringer: { x1: sx(length), x2: sx(0), y: centre },
+      fins: finSegments(look, sx, centre, scale),
     },
     side: {
       height: 2 * padY + (high - low) * scale * height,
@@ -517,8 +555,72 @@ export const BRD_FIT_COPY = {
   notRead: "Rails and bottom contours aren't read from the file. Add these by hand once the board is open.",
   /** The line when the bottom WAS read but the rails were not: rails are what is left to add by hand. */
   notReadAfterBottom: "Rails aren't read from the file. Add these by hand once the board is open.",
-  /** The line when the rails were read too (quick 261113-kvo): the fins are all that is left, and a new board's stand in. */
-  notReadAfterRails: "Fins aren't read from the file: the board opens with the fins a new board starts with.",
+  /**
+   * The fins part of the not-read line (quick 261113-qyz; before it, the rails-read line said "Fins aren't read from the file"):
+   * after the sections part. A file with fins: what a .brd cannot carry. A file with none, or whose fin figures do not sit on
+   * the board: the board opens with a new board's fins.
+   */
+  notReadFins: (depth: string | null, splay: string | null) => {
+    const rear = "A quad's rear fins aren't read from a file yet.";
+    if (depth === null && splay === null) return `A fin's depth and splay angle (cant) aren't read: FINS has no control for either. ${rear}`;
+    if (depth !== null && splay !== null) {
+      return `The file's side fins are ${depth} deep at a splay angle (cant) of ${splay}: FINS has no control for either, so they aren't read. ${rear}`;
+    }
+    if (depth !== null) return `The file's side fins are ${depth} deep: FINS has no control for a fin's depth, so it isn't read. ${rear}`;
+    return `The file's side fins are at a splay angle (cant) of ${splay}: FINS has no control for a splay angle, so it isn't read. ${rear}`;
+  },
+  noFins: "The file has no fins: the board opens with the fins a new board starts with.",
+  finsDontSit: "The file's fin figures don't sit on the board, so it opens with the fins a new board starts with.",
+  /**
+   * The FINS block (quick 261113-qyz). The control words are FINS' own (`components/fins/fin-controls.tsx`), copied because `lib/`
+   * cannot import a component; a test holds each to that file's text.
+   */
+  finsCaption: "FINS",
+  finRowLabels: {
+    sideOffTail: "Side fins — off the tail",
+    sideInFromRail: "Side fins — in from the rail",
+    sideToeIn: "Side fins — toe-in",
+    sideBase: "Side fins — base length",
+    centreOffTail: "Centre fin — off the tail",
+    centreBase: "Centre fin — base length",
+  } as const satisfies Record<BrdFinMarkKey, string>,
+  finWords: {
+    aftForward: "Aft/Forward position",
+    offRail: "Off-Rail",
+    toeIn: "Toe-In",
+    baseLength: "Fin Base Length",
+    boxLength: "Fin Box Length",
+  } as const,
+  /** Which mark the widest gap is, as words after "the widest gap". */
+  finGapWhich: {
+    sideOffTail: "the side fins' distance off the tail",
+    sideInFromRail: "the side fins' distance in from the rail",
+    sideToeIn: "the side fins' toe-in",
+    sideBase: "the side fins' base length",
+    centreOffTail: "the centre fin's distance off the tail",
+    centreBase: "the centre fin's base length",
+  } as const satisfies Record<BrdFinMarkKey, string>,
+  finsClose: (largest: string, which: string) => (largest.startsWith("<") ? `Fins: ${lessThan(largest)} off` : `Fins: within ${largest}, the widest gap ${which}`),
+  finsLine: (model: string, system: string, forward: string | null, centre: string | null) =>
+    `Fins: ${model} · ${system}${forward === null ? "" : ` · Forward fins: ${forward}`}${centre === null ? "" : ` · Centre fin: ${centre}`}`,
+  /** A control that stopped at the end of its range: what it left, and the farthest FINS' own control goes. */
+  finHold: (subject: string, by: string, direction: string, control: string, limit: string) =>
+    `${subject} ${by} ${direction} the file's: FINS' ${control} goes no further than ${limit}.`,
+  finHoldSubjects: { side: "Our side fins sit", centre: "Our centre fin sits", sideToe: "Our side fins toe in", sideBase: "Our side fins' base is", centreBase: "Our centre fin's base is" } as const,
+  finHoldDirections: {
+    nearerTail: "nearer the tail than",
+    furtherTail: "further from the tail than",
+    nearerRail: "nearer the rail than",
+    furtherRail: "further from the rail than",
+    less: "less than",
+    more: "more than",
+    shorter: "shorter than",
+    longer: "longer than",
+  } as const,
+  finToeOut: "The file's side fins point out toward the rail at the front, which FINS can't do: they open with no toe-in.",
+  finSystemQuoted: (word: string) => `The file names its fin system "${word}", which FINS doesn't have: the board opens on FCS II.`,
+  finSystemUnnamed: "The file doesn't name a fin system FINS has, so the board opens on FCS II.",
+  finsPartDropped: "Part of the file's fin line didn't sit on the board and was left out.",
   /** A wing's corners when they are sharp, or rounded too slightly for the file's drawing to tell (quick 261113-m5w). */
   wingSharpCorners: "sharp corners",
   /** The file's corners when it clearly rounds them: the radius as the rounded wing that fits its step best measured. */
@@ -666,7 +768,7 @@ export interface BrdFitSheet {
   from: string;
   size: string;
   /** `bottom` is null when the file's cross-sections could not be read. */
-  closeness: { outline: string; rocker: string; thickness: string; bottom: string | null; rails: string | null };
+  closeness: { outline: string; rocker: string; thickness: string; bottom: string | null; rails: string | null; fins: string | null };
   /** One line per wing the file draws, nose-most first: the file's wing as measured beside ours as fitted. Empty for a file with no wing. */
   wings: string[];
   tipsNote: string;
@@ -678,12 +780,21 @@ export interface BrdFitSheet {
   rockerLines: string;
   /** Where our concaves lift the finished stringer, and by how much; null when none does. */
   stringerNote: string | null;
-  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string; bottom: string | null; rails: string | null };
+  controls: { outline: string; nose: string; tail: string; rocker: string; thickness: string; bottom: string | null; rails: string | null; fins: string | null };
   /** The BOTTOM block: the table of what the file measures and what we fitted, or the one line saying it could not be read. */
   bottom: BrdFitBottomBlock;
   /** The RAILS block (quick 261113-kvo): the same, for the rails. */
   rails: BrdFitRailsBlock;
+  /** The FINS block (quick 261113-qyz): the file's fins beside ours, as marks; null when the file has none the reader kept. */
+  fins: BrdFitFinsBlock | null;
   notRead: string;
+}
+
+/** The FINS block: a caption, one row per mark the file has (the file's figure and ours), and its notes. */
+export interface BrdFitFinsBlock {
+  caption: string;
+  rows: BrdFitRow[];
+  notes: string[];
 }
 
 /** One column of the RAILS table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
@@ -1166,6 +1277,112 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
   };
 }
 
+/** The mark's figure as the sheet shows it: a mark, whole millimetres in Metric. */
+const finMark = (value: Mm, system: UnitsSystem): string => formatMark(value, system);
+
+/**
+ * The fins' lines and block for `brdFitSheet` (quick 261113-qyz), all null when the file holds no fin the reader kept. The rows
+ * are the marks FINS shows (off the tail, in from the rail, toe-in, base length; for a centre fin, off the tail and base
+ * length), the file's beside ours on the board that opens; the controls line is FINS' own words with the figure each of its
+ * labels shows; and every control that stopped at the end of its range says by how much it fell short.
+ */
+function finsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitFinsBlock | null; closeness: string | null; controls: string | null } {
+  const c = BRD_FIT_COPY;
+  const found = look.fins;
+  if (!found) return { block: null, closeness: null, controls: null };
+  const { file, ours } = found;
+  const rows: BrdFitRow[] = [];
+  const row = (key: BrdFinMarkKey, fileValue: Mm | undefined, ourValue: Mm | undefined) => {
+    if (fileValue === undefined) return;
+    rows.push({ key, label: c.finRowLabels[key], file: finMark(fileValue, system), fit: ourValue === undefined ? c.noValue : finMark(ourValue, system) });
+  };
+  row("sideOffTail", file.side?.offTail, ours.side?.offTail);
+  row("sideInFromRail", file.side?.inFromRail, ours.side?.inFromRail);
+  row("sideToeIn", file.side?.toeIn, ours.side?.toeIn);
+  row("sideBase", file.side?.base, ours.side?.base);
+  row("centreOffTail", file.centre?.offTail, ours.centre?.offTail);
+  row("centreBase", file.centre?.base, ours.centre?.base);
+
+  // What FINS' own labels show on the board that opens.
+  const placement = finPlacementOf(look)!;
+  const resolved = placement.resolved;
+  const spec = found.spec;
+  const system0 = FIN_SYSTEMS.find((o) => o.value === found.finSystem)!.label;
+  const w = c.finWords;
+  const forwardOffTail = spec.finSetup === "2plus1" ? resolved.sideOffTail : spec.finSetup === "twin" ? resolved.twinOffTail : resolved.frontOffTail;
+  const forward = placement.flags.hasForwardSection
+    ? [
+        `${w.aftForward} — ${finMark(forwardOffTail, system)}`,
+        `${w.offRail} — ${finMark(resolved.forwardOffRail, system)}`,
+        `${w.toeIn} — ${finMark(resolved.forwardToe, system)}`,
+        `${w.baseLength} — ${finMark(spec.advanced.baseLenForward, system)}`,
+      ].join(" · ")
+    : null;
+  const centre = placement.flags.hasCenterSection
+    ? [
+        `${w.aftForward} — ${finMark(resolved.centerOffTail, system)}`,
+        `${placement.flags.centerBaseLenFieldLabel} — ${finMark(spec.advanced.baseLenCenter, system)}`,
+      ].join(" · ")
+    : null;
+  const modelHeader = placement.modelHeader;
+
+  const notes: string[] = [];
+  const hold = c.finHoldDirections;
+  const subject = c.finHoldSubjects;
+  for (const { control, by } of found.short) {
+    const size = lessThan(formatMarkOrLess(by, system));
+    const o = ours.side;
+    const oc = ours.centre;
+    const f = file.side;
+    const fc = file.centre;
+    switch (control) {
+      case "forwardPosition":
+        if (o && f) notes.push(c.finHold(subject.side, size, o.offTail < f.offTail ? hold.nearerTail : hold.furtherTail, w.aftForward, `${finMark(o.offTail, system)} off the tail`));
+        break;
+      case "centrePosition":
+        if (oc && fc) notes.push(c.finHold(subject.centre, size, oc.offTail < fc.offTail ? hold.nearerTail : hold.furtherTail, w.aftForward, `${finMark(oc.offTail, system)} off the tail`));
+        break;
+      case "offRail":
+        if (o && f) notes.push(c.finHold(subject.side, size, o.inFromRail < f.inFromRail ? hold.nearerRail : hold.furtherRail, w.offRail, finMark(o.inFromRail, system)));
+        break;
+      case "toeIn":
+        if (o && f) notes.push(c.finHold(subject.sideToe, size, o.toeIn < f.toeIn ? hold.less : hold.more, w.toeIn, finMark(o.toeIn, system)));
+        break;
+      case "forwardBase":
+        if (o && f) notes.push(c.finHold(subject.sideBase, size, o.base < f.base ? hold.shorter : hold.longer, w.baseLength, finMark(o.base, system)));
+        break;
+      case "centreBase":
+        if (oc && fc) notes.push(c.finHold(subject.centreBase, size, oc.base < fc.base ? hold.shorter : hold.longer, placement.flags.centerBaseLenFieldLabel, finMark(oc.base, system)));
+        break;
+    }
+  }
+  if (found.toeOut) notes.push(c.finToeOut);
+  if (!found.systemNamed) notes.push(found.fileWord === null ? c.finSystemUnnamed : c.finSystemQuoted(found.fileWord));
+  if (look.board.fins.dropped) notes.push(c.finsPartDropped);
+
+  // A fit that lands on the file's marks exactly leaves a gap of nothing, which is still "less than the smallest step" (a figure of
+  // nothing is read as that, never as "within 0").
+  const largest = formatMarkOrLess(mm(Math.max(found.largest.gap, 1e-6)), system);
+  return {
+    block: { caption: c.finsCaption, rows, notes },
+    closeness: c.finsClose(largest, c.finGapWhich[found.largest.which]),
+    controls: c.finsLine(modelHeader, system0, forward, centre),
+  };
+}
+
+/** The not-read line: the sections part (nothing when the rails were read), then the fins part. */
+function notReadWords(look: BrdFitLook, bottomRead: boolean, system: UnitsSystem): string {
+  const c = BRD_FIT_COPY;
+  const sections = look.rails ? null : bottomRead ? c.notReadAfterBottom : c.notRead;
+  const file = look.board.fins;
+  const fins = look.fins
+    ? c.notReadFins(file.depth === null ? null : formatMark(file.depth, system), file.splay === null ? null : degreesWords(file.splay))
+    : file.dropped
+      ? c.finsDontSit
+      : c.noFins;
+  return sections === null ? fins : `${sections} ${fins}`;
+}
+
 /**
  * The sheet's wing lines (quick 261113-hyy): for each wing found in the file, the file's own wing beside the one our fit drew,
  * in the shaper's system. A wing's place off the tail is a dim (a distance along the board) and its depth, run and corner radius
@@ -1224,6 +1441,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
   }
   const bottom = bottomSheetParts(look, system);
   const rails = railsSheetParts(look, system);
+  const fins = finsSheetParts(look, system);
   return {
     title: BRD_FIT_COPY.title,
     from: BRD_FIT_COPY.from(cutName),
@@ -1234,6 +1452,7 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       thickness: closenessSentence("Thickness", words.thickness),
       bottom: bottom.closeness,
       rails: rails.closeness,
+      fins: fins.closeness,
     },
     wings: wingLines(fit, system),
     tipsNote: BRD_FIT_COPY.tipsNote(words.tipSkip),
@@ -1255,9 +1474,11 @@ export function brdFitSheet(look: BrdFitLook, fileName: string, system: UnitsSys
       thickness: BRD_FIT_COPY.thicknessLine(w.thickness.noseTip, w.thickness.nose12, w.thickness.center, w.thickness.tail12, w.thickness.tailTip, w.station),
       bottom: bottom.controls,
       rails: rails.controls,
+      fins: fins.controls,
     },
     bottom: bottom.block,
     rails: rails.block,
-    notRead: look.rails ? BRD_FIT_COPY.notReadAfterRails : bottom.block.read ? BRD_FIT_COPY.notReadAfterBottom : BRD_FIT_COPY.notRead,
+    fins: fins.block,
+    notRead: notReadWords(look, bottom.block.read, system),
   };
 }
