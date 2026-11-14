@@ -34,6 +34,21 @@ import {
   type BrdBottomSection,
 } from "../geometry/brd-bottom";
 import {
+  BRD_RAIL_FIRST_GAIN_MM,
+  BRD_RAIL_FIRST_TRY_MM,
+  BRD_RAIL_SAMPLE_STEPS,
+  brdAnchorSections,
+  brdRailBegins,
+  brdRailBoard,
+  brdRailWholeValue,
+  brdRailWindows,
+  brdRailsSpec,
+  fitBrdRails,
+  measureBrdRails,
+  type BrdRailLine,
+  type BrdRailsFit,
+} from "../geometry/brd-rails";
+import {
   BRD_FIT_TIP_SKIP_MM,
   BRD_STRAIGHTEDGE_MM,
   brdFileStations,
@@ -48,7 +63,6 @@ import {
   type Closeness,
 } from "../geometry/brd-fit";
 import type { SectionHeight } from "../geometry/bottom-draw";
-import { MEASURE_STATION_MM } from "../geometry/outline";
 import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import type { RockerStationKey } from "../geometry/rocker";
 import {
@@ -62,52 +76,138 @@ import {
 } from "../geometry/units";
 import { effectiveWingRadius } from "../geometry/wings";
 import { BOARD_NAME_MAX_LENGTH } from "../models/board-file";
-import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y } from "./brd-preview";
+import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y, sampleKnots } from "./brd-preview";
 import type { ReadBrdBoard } from "./brd-read";
 
 /**
  * The file as read and our closest fit to it: all the preview holds. `bottom` is the closest bottom BOTTOM's cuts make to the
  * file's cross-sections (null when the file has no section the fit can use), and `planedBottom` the file's bottom line less the
  * concaves' lift at the stringer: what the board is planed to before the concaves are cut (the file's own line when nothing
- * lifts the stringer).
+ * lifts the stringer). `rails` is the closest rails RAILS' controls make to the same cross-sections, measured on the board that
+ * opens (quick 261113-kvo); null with the bottom, when the file has no section to read.
  */
 export interface BrdFitLook {
   board: ReadBrdBoard;
   fit: BrdFit;
   bottom: BrdBottomFit | null;
   planedBottom: P2[];
+  rails: BrdRailsFit | null;
 }
 
 /** How many stations along the board the stringer's lift is looked for, to decide whether any concave lifts it at all. */
 const LIFT_PROBES = 200;
 
+type FitLines = Pick<ReadBrdBoard, "length" | "outline" | "bottom" | "deck">;
+type BottomStep = Pick<BrdFitLook, "fit" | "bottom" | "planedBottom"> & { bottom: BrdBottomFit };
+
 /**
- * The whole look at a read board, worked out once when a `.brd` is picked (quick 261113-gwr): the outline, rocker and foil fit
- * (`fitBoardToBrd`), the bottom's cuts fitted to the file's cross-sections on the board that fit makes, and, only when a fitted
- * concave lifts the stringer anywhere, the rocker and foil fitted again to the file's stringer less that lift (the founder,
- * 2026-11-13: "for concaves the stringer rocker will always be more, and with flat, vee or belly the stringer rocker will
- * always match"). Under a flat, vee or belly the first fit stands untouched, to the last digit. The bottom's figures are
- * finally measured on the board that opens, so what is shown is what a shaper gets.
+ * The bottom's cuts fitted to the file's cross-sections on the board `first` makes (read out to `windows` where a section's
+ * reading width was narrowed to where our rail begins, else to nine-tenths of the way), and, only when a fitted concave lifts
+ * the stringer anywhere, the rocker and foil fitted again to the file's stringer less that lift (the founder, 2026-11-13:
+ * "for concaves the stringer rocker will always be more, and with flat, vee or belly the stringer rocker will always match").
+ * Under a flat, vee or belly the first fit stands untouched, to the last digit. The bottom's figures are finally measured on
+ * the board that opens, so what is shown is what a shaper gets. Null when no section can be used.
  */
-export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
-  const lines = { length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck };
-  const first = fitBoardToBrd(lines);
-  const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom };
-  if (board.sections.length === 0) return none;
+function bottomOn(board: ReadBrdBoard, lines: FitLines, first: BrdFit, windows?: readonly (Mm | undefined)[]): BottomStep | null {
   const board0 = brdFittedBottomBoard(first);
-  const found = fitBottomToBrd(board.sections, board0);
-  if (!found) return none;
+  const found = fitBottomToBrd(board.sections, board0, windows);
+  if (!found) return null;
   const lift = brdStringerLift(found.bottom, board0);
   let lifted = false;
   for (let i = 0; i <= LIFT_PROBES && !lifted; i++) if (lift(mm((board0.length * i) / LIFT_PROBES)) > 0) lifted = true;
-  if (!lifted) return { board, fit: first, bottom: measureBrdBottom(found.bottom, found.sections, board0), planedBottom: board.bottom };
+  if (!lifted) return { fit: first, bottom: measureBrdBottom(found.bottom, found.sections, board0), planedBottom: board.bottom };
   const fit = fitBoardToBrd(lines, lift, first);
   return {
-    board,
     fit,
     bottom: measureBrdBottom(found.bottom, found.sections, brdFittedBottomBoard(fit)),
     planedBottom: board.bottom.map(([x, y]): P2 => [x, y - lift(mm(x))]),
   };
+}
+
+/** The file's sections the rails are read from: the bottom's own (the usable ones), each as its half at 48 steps a span, with where it stands in `board.sections`. */
+export function brdRailLines(board: ReadBrdBoard): { lines: BrdRailLine[]; index: number[] } {
+  const lines: BrdRailLine[] = [];
+  const index: number[] = [];
+  const near = BRD_FIT_TIP_SKIP_MM - 0.5;
+  board.sections.forEach((section, i) => {
+    if (section.points.length < 2 || section.station < near || section.station > board.length - near) return;
+    const points = sampleKnots(section.knots, BRD_RAIL_SAMPLE_STEPS);
+    if (points.length < 2 || !(Math.max(...points.map((p) => p[0])) > 0)) return;
+    lines.push({ station: section.station, points });
+    index.push(i);
+  });
+  return { lines, index };
+}
+
+/**
+ * The whole look at a read board, worked out once when a `.brd` is picked (quick 261113-gwr, 261113-kvo): the outline, rocker
+ * and foil fit (`fitBoardToBrd`), the bottom's cuts fitted to the file's cross-sections on the board that fit makes, and the
+ * rails RAILS' controls make closest to them on the board that opens, bottom and all. Two orders, the closer wins:
+ *
+ *  - **Bottom first** (always): the bottom as it has always been read (to nine-tenths of the way out), the rails fitted on it,
+ *    and, where our fitted rail begins more than 1/4" inside a section's reading width, the bottom read again on the widths
+ *    that stop there and the rails polished on the board that makes. On the founder's four AkuShaper files no width narrows, so
+ *    their bottoms are what they were.
+ *  - **Rails first** (only when bottom-first leaves some whole section, bottom and rail together, more than 4 mm off AND its
+ *    bottom holds a vee or a belly): the rails fitted on a flat bottom, the bottom read out to where those rails begin, and the
+ *    rails polished on it; chosen only when it is at least 0.25 mm closer over the whole sections. The order decides who claims
+ *    a rise near the rail: a bottom read first takes a soft 50/50 rail for a belly (the founder's longboard), a rail fitted
+ *    first takes a rolled-in bottom edge for rail (the Scoop Noserider: 3.22 mm became 7.58 mm), so the bottom's reading is kept
+ *    unless the rail's is clearly closer.
+ *
+ * The stringer is never moved by the rails: the rocker and thickness are fitted to the file's stringer before the rails exist,
+ * and only the bottom's concaves plan the board lower (the founder's rule above).
+ */
+export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
+  const lines = { length: board.length, outline: board.outline, bottom: board.bottom, deck: board.deck };
+  const first = fitBoardToBrd(lines);
+  const none: BrdFitLook = { board, fit: first, bottom: null, planedBottom: board.bottom, rails: null };
+  if (board.sections.length === 0) return none;
+  const asRead = bottomOn(board, lines, first);
+  if (!asRead) return none;
+  const { lines: railLines, index } = brdRailLines(board);
+  if (railLines.length === 0) return { ...asRead, board, rails: null };
+
+  const stations = railLines.map((line) => line.station);
+  const sectionWindows = (windows: readonly (Mm | undefined)[]): (Mm | undefined)[] => {
+    const all: (Mm | undefined)[] = board.sections.map(() => undefined);
+    windows.forEach((w, k) => (all[index[k]] = w));
+    return all;
+  };
+  const read = brdAnchorSections(railLines, board.length);
+  const readAt = { nose: read.nose?.station ?? null, center: read.center?.station ?? null, tail: read.tail?.station ?? null };
+  const onBoard = (step: BottomStep) => brdRailBoard(step.fit, step.bottom.bottom);
+
+  // Bottom first.
+  let current = asRead;
+  let settings = fitBrdRails(railLines, onBoard(current));
+  const found = brdRailWindows(railLines, brdRailBegins(current.fit, brdRailsSpec(settings, current.fit.foil), stations));
+  if (found.narrowed) {
+    const again = bottomOn(board, lines, first, sectionWindows(found.windows));
+    if (again) {
+      current = again;
+      settings = fitBrdRails(railLines, onBoard(current), settings);
+    }
+  }
+  const narrowed = found.narrowed;
+  const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed });
+  const whole = brdRailWholeValue(railLines, onBoard(current), bottomFirst.rails);
+  const kinds = BOTTOM_KEYS.map((key) => cutKind(current.bottom.bottom[key].name));
+  const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst };
+  if (!(whole.largest > BRD_RAIL_FIRST_TRY_MM) || !kinds.some((kind) => kind === "vee" || kind === "belly")) return result;
+
+  // Rails first, on a flat bottom.
+  const flat = brdRailBoard(first, null);
+  const flatSettings = fitBrdRails(railLines, flat);
+  const flatWindows = brdRailWindows(railLines, brdRailBegins(first, brdRailsSpec(flatSettings, flat.foil), stations));
+  if (!flatWindows.narrowed) return result;
+  const railsFirst = bottomOn(board, lines, first, sectionWindows(flatWindows.windows));
+  if (!railsFirst) return result;
+  const polished = fitBrdRails(railLines, onBoard(railsFirst), flatSettings);
+  const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true });
+  const wholeFirst = brdRailWholeValue(railLines, onBoard(railsFirst), measured.rails);
+  if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return result;
+  return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured };
 }
 
 /** The top and side views laid out for a box this wide, nose at the left, one scale along the board. */
@@ -618,19 +718,8 @@ export interface BrdBottomRow {
  * row with none; a look with no bottom has three.
  */
 export function brdBottomRows(look: BrdFitLook): BrdBottomRow[] {
-  const sections = look.bottom?.sections ?? [];
-  const length = look.board.length;
-  const wanted: Record<BottomSectionKey, number> = { nose: length - MEASURE_STATION_MM, center: length / 2, tail: MEASURE_STATION_MM };
-  const pairs = BOTTOM_KEYS.flatMap((key, k) => sections.map((section, i) => ({ key, i, k, distance: Math.abs(section.station - wanted[key]) })));
-  pairs.sort((a, b) => a.distance - b.distance || a.k - b.k || a.i - b.i);
-  const chosen = new Map<BottomSectionKey, BrdBottomSection>();
-  const used = new Set<number>();
-  for (const pair of pairs) {
-    if (chosen.has(pair.key) || used.has(pair.i)) continue;
-    chosen.set(pair.key, sections[pair.i]);
-    used.add(pair.i);
-  }
-  return BOTTOM_KEYS.map((key) => ({ key, section: chosen.get(key) ?? null }));
+  const chosen = brdAnchorSections(look.bottom?.sections ?? [], look.board.length);
+  return BOTTOM_KEYS.map((key) => ({ key, section: chosen[key] }));
 }
 
 /** The drawings' own width in drawing units; the dialog and the paper scale it to their box. */

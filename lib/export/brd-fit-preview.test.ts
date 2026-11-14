@@ -240,7 +240,7 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
   const made = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [] };
-  return { board: made, fit: fitBoardToBrd({ length: made.length, outline, bottom, deck }), bottom: null, planedBottom: bottom };
+  return { board: made, fit: fitBoardToBrd({ length: made.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
 }
 
 describe("brdFitFramesInBox", () => {
@@ -429,6 +429,24 @@ describe("brdFitLook", () => {
     expect(bareLook.bottom).toBeNull();
     expect(bareLook.fit).toEqual(fitBoardToBrd(linesOf(bare)));
     expect(bareLook.planedBottom).toBe(bare.bottom);
+  });
+
+  it("reads the rails of a file with sections: bottom-first with no window narrowed, measured on every usable section (quick 261113-kvo)", () => {
+    expect(look.rails).not.toBeNull();
+    expect(look.rails!.order).toBe("bottom-first");
+    expect(look.rails!.narrowed).toBe(false);
+    expect(look.rails!.sections.length).toBeGreaterThan(10);
+    expect(look.rails!.sections.map((s) => s.station)).toEqual([...look.rails!.sections.map((s) => s.station)].sort((a, b) => a - b));
+    expect(look.rails!.read.center).not.toBeNull();
+    expect(look.rails!.closeness.largest).toBeLessThan(3);
+    expect(look.rails!.closeness.typical).toBeLessThan(look.rails!.closeness.largest);
+    // the look's fit and bottom are what they were: the rails never move the rocker, the thickness or the bottom
+    expect(look.fit).toEqual(fitBoardToBrd(linesOf(board)));
+    expect(look.planedBottom).toBe(board.bottom);
+  });
+
+  it("a board with no section has no rails either (quick 261113-kvo)", () => {
+    expect(brdFitLook({ ...board, sections: [] }).rails).toBeNull();
   });
 
   it("is, for the flat Shortboard and for a vee and a belly, exactly the side fit as before, with the file's own bottom line planed to", () => {

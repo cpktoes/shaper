@@ -61,7 +61,7 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
   const board = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [] };
-  return { board, fit: fitBoardToBrd({ length: board.length, outline, bottom, deck }), bottom: null, planedBottom: bottom };
+  return { board, fit: fitBoardToBrd({ length: board.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
 }
 
 const LOOKS: [string, BrdFitLook][] = [
@@ -194,7 +194,7 @@ describe("buildBrdOverviewPdf", () => {
     const bottom: P2[] = [[0, 50], [6.35, 40], [L / 2, 0], [L - 6.35, 40], [L, 60]];
     const deck: P2[] = [[0, 50], [6.35, 80], [L / 2, 60], [L - 6.35, 90], [L, 60]];
     const board = { ...base, bottom, deck };
-    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom };
+    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
     for (const system of ["imperial", "metric"] as UnitsSystem[]) {
       const sheet = brdFitSheet(look, "Egg.brd", system);
       expect(sheet.pointNotes).toHaveLength(2);
@@ -268,7 +268,7 @@ describe("buildBrdOverviewPdf", () => {
     const bottom: P2[] = [[0, 50], [L / 2, 0], [L - 6.35, 40], [L, 60]];
     const deck: P2[] = [[0, 80], [L / 2, 60], [L - 6.35, 90], [L, 60]];
     const board = { ...base, bottom, deck };
-    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom };
+    const look = { board, fit: fitBoardToBrd({ length: board.length, outline: board.outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
     const sheet = brdFitSheet(look, "Egg.brd", "imperial");
     expect(sheet.pointNotes).toHaveLength(1);
     expect(buildBrdOverviewPdf({ look, sheet, fileName: "Egg.brd", height: 2 }).output()).toContain("comes to a point");

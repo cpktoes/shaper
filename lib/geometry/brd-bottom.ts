@@ -41,6 +41,12 @@
  * `lib/export/brd.ts`), so it is the file as those programs draw it. The figures SHOWN are measured only on the file's own
  * sections, with this app's own slow `sectionsFoamOff`.
  *
+ * **Where our rail begins** (quick 261113-kvo). The window above stops at nine-tenths of the way out, but a soft rolled rail begins
+ * well inside that and then reads as a belly (the founder's own longboard, 5.25 mm off). Once the rails are fitted
+ * (`brd-rails.ts`), a section's window may stop where our finished rail begins instead, when that is more than 1/4" inside the
+ * nine-tenths line, and the bottom is read again on those widths: `brdBottomSections`, `brdBottomBlends` and `fitBottomToBrd`
+ * take an optional window per section and read exactly today's when none is given.
+ *
  * Never channels, never wings, at any stage. A cut's Smoothness, Vee Lift and Closes to a point stay the name's own. Once the
  * sliders move, two names of one kind in one section are the same cut with different starting numbers (a Deep or a Shallow
  * Single Concave, a Panel or a Rolled Vee), so the name shown may be either; the kind, the depth and the sliders are what the
@@ -133,7 +139,9 @@ export interface BrdBottomSection {
   station: Mm;
   /** The section's widest reach, out from the stringer. */
   reach: Mm;
-  /** The 25 distances out from the stringer the bottom is read at: 0 to `BRD_BOTTOM_WINDOW` x reach. */
+  /** How far out the bottom is read here: `BRD_BOTTOM_WINDOW` x reach, or less where our fitted rail begins (quick 261113-kvo). */
+  window: Mm;
+  /** The 25 distances out from the stringer the bottom is read at: 0 to `window`. */
   across: Mm[];
   /** The file's own bottom at each: its height less the height at the stringer, + up (toward the deck). */
   file: Mm[];
@@ -178,11 +186,16 @@ export function readBrdBottom(across: readonly number[], file: readonly number[]
  * The file's bottom at each usable section, tail to nose. A section is dropped when it has fewer than two points, when it
  * stands within the skipped inch of a tip (the file rounds its tips there: `BRD_FIT_TIP_SKIP_MM`, less half a millimetre for
  * the file's own rounding of a station written at exactly 1"), or when it has no width. The bottom is the run from the
- * stringer to the widest point (each point further out than the last), read at 25 equal steps of the window.
+ * stringer to the widest point (each point further out than the last), read at 25 equal steps of the window. `windows[i]`, where
+ * given, is how far out `sections[i]` is read instead of `BRD_BOTTOM_WINDOW` x its reach (quick 261113-kvo); it is never wider.
  */
-export function brdBottomSections(sections: readonly BrdSectionLine[], length: Mm): BrdBottomSection[] {
+export function brdBottomSections(
+  sections: readonly BrdSectionLine[],
+  length: Mm,
+  windows?: readonly (Mm | undefined)[],
+): BrdBottomSection[] {
   const out: BrdBottomSection[] = [];
-  for (const section of sections) {
+  for (const [index, section] of sections.entries()) {
     const points = section.points;
     if (points.length < 2) continue;
     const near = BRD_FIT_TIP_SKIP_MM - TIP_ALLOWANCE_MM;
@@ -193,7 +206,9 @@ export function brdBottomSections(sections: readonly BrdSectionLine[], length: M
     for (let k = 0; k <= apex; k++) if (run.length === 0 || points[k][0] > run[run.length - 1][0]) run.push(points[k]);
     const reach = run[run.length - 1][0];
     if (run.length < 2 || !(reach > 0)) continue;
-    const window = BRD_BOTTOM_WINDOW * reach;
+    const usual = BRD_BOTTOM_WINDOW * reach;
+    const asked = windows?.[index];
+    const window = asked !== undefined && asked > 0 && asked < usual ? asked : usual;
     const first = run[0][1];
     const across: Mm[] = [];
     const file: Mm[] = [];
@@ -205,6 +220,7 @@ export function brdBottomSections(sections: readonly BrdSectionLine[], length: M
     out.push({
       station: section.station,
       reach: mm(reach),
+      window: mm(window),
       across,
       file,
       flat: file.every((v) => Math.abs(v) <= BRD_BOTTOM_FLAT_MM),
@@ -231,7 +247,8 @@ const targetOf = (section: BrdBottomSection): Mm[] => (section.flat ? section.fi
 
 /**
  * The read sections' targets, and between each two neighbouring ones more than `BRD_BOTTOM_BLEND_MAX_IN` apart the blends
- * (`ceil(gap / 6") - 1` of them, evenly spaced): at the share `t` of the way, the reach is the two reaches blended, the 25
+ * (`ceil(gap / 6") - 1` of them, evenly spaced): at the share `t` of the way, the reach is the two reaches blended (and the window, where
+ * a section's was narrowed, likewise), the 25
  * across stations are the same shares of the window, and each target is `(1 - t)` of the first section's plus `t` of the
  * second's (their flat-tested targets, so two flat sections blend flat). None before the first read section or after the last.
  * Why: a 3D program draws a board between two of its sections as their blend, so this is the file as those programs draw it,
@@ -250,7 +267,9 @@ export function brdBottomBlends(sections: readonly BrdBottomSection[]): BrdBotto
     for (let k = 1; k < n; k++) {
       const t = k / n;
       const reach = a.reach + t * (b.reach - a.reach);
-      const window = BRD_BOTTOM_WINDOW * reach;
+      // Today's width (nine-tenths of the blended reach) unless a section was narrowed, then the two widths blended the same way.
+      const usual = a.window === BRD_BOTTOM_WINDOW * a.reach && b.window === BRD_BOTTOM_WINDOW * b.reach;
+      const window = usual ? BRD_BOTTOM_WINDOW * reach : a.window + t * (b.window - a.window);
       out.push({
         station: mm(a.station + t * (b.station - a.station)),
         across: a.across.map((_, j) => mm((window * j) / BRD_BOTTOM_ACROSS_STEPS)),
@@ -715,8 +734,12 @@ export interface BrdBottomFit {
  * sliders free, the closest three refined in full, and the choice (the seed's names unless another cut brings the fit
  * `BRD_BOTTOM_EXTRA_CUT_MM` closer; of those within that, the fewest cuts). Null when the file has no section the fit can use.
  */
-export function fitBottomToBrd(sections: readonly BrdSectionLine[], board0: BottomBoard): BrdBottomFit | null {
-  const read = brdBottomSections(sections, board0.length);
+export function fitBottomToBrd(
+  sections: readonly BrdSectionLine[],
+  board0: BottomBoard,
+  windows?: readonly (Mm | undefined)[],
+): BrdBottomFit | null {
+  const read = brdBottomSections(sections, board0.length, windows);
   if (read.length === 0) return null;
   const board = rememberBoard(board0);
   const seedPicks = seedSearch(

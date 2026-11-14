@@ -174,6 +174,52 @@ describe("brdBottomSections", () => {
   });
 });
 
+describe("brdBottomSections with a window per section (quick 261113-kvo)", () => {
+  const L = mm(1000);
+  const section = (station: number, reach = 100): BrdSectionLine => ({
+    station: mm(station),
+    points: [...Array.from({ length: 21 }, (_, k): P2 => [(reach * k) / 20, (0.3 * reach * k) / 20 / 20]), [reach, 30], [reach / 2, 60], [0, 60]],
+  });
+
+  it("with no windows, or windows that are all undefined, reads exactly as before, and stores the nine-tenths window", () => {
+    const sections = [section(200), section(500, 120)];
+    const plain = brdBottomSections(sections, L);
+    expect(brdBottomSections(sections, L, [])).toEqual(plain);
+    expect(brdBottomSections(sections, L, [undefined, undefined])).toEqual(plain);
+    expect(plain.map((s) => s.window)).toEqual([BRD_BOTTOM_WINDOW * 100, BRD_BOTTOM_WINDOW * 120].map((w) => expect.closeTo(w, 9)));
+  });
+
+  it("reads a section with its own window out to that window in 24 steps, and keeps the others' nine-tenths", () => {
+    const [a, b] = brdBottomSections([section(200), section(500)], L, [mm(60), undefined]);
+    expect(a.window).toBe(60);
+    expect(a.across).toHaveLength(BRD_BOTTOM_ACROSS_STEPS + 1);
+    expect(a.across[BRD_BOTTOM_ACROSS_STEPS]).toBeCloseTo(60, 9);
+    expect(a.reach).toBeCloseTo(100, 9);
+    expect(b.across[BRD_BOTTOM_ACROSS_STEPS]).toBeCloseTo(BRD_BOTTOM_WINDOW * 100, 9);
+  });
+
+  it("is never wider than nine-tenths of the reach, and takes windows by the section's place in the list even when one is dropped", () => {
+    const [wide] = brdBottomSections([section(200)], L, [mm(99)]);
+    expect(wide.window).toBeCloseTo(BRD_BOTTOM_WINDOW * 100, 9);
+    // The first is within the skipped inch and is dropped: the second window still belongs to the second section.
+    const [kept] = brdBottomSections([section(5), section(500)], L, [mm(10), mm(50)]);
+    expect(kept.station).toBe(500);
+    expect(kept.window).toBe(50);
+  });
+
+  it("blends the windows as it blends the reaches, and keeps today's blend where nothing narrowed", () => {
+    const [a, b] = brdBottomSections([section(inchesToMm(10), 100), section(inchesToMm(30), 140)], mm(inchesToMm(120)), [mm(40), mm(100)]);
+    const out = brdBottomBlends([a, b]);
+    [1, 2, 3].forEach((k) => {
+      const t = k / 4;
+      expect(out[k].across[BRD_BOTTOM_ACROSS_STEPS]).toBeCloseTo(40 + t * 60, 9);
+    });
+    const [c, d] = brdBottomSections([section(inchesToMm(10), 100), section(inchesToMm(30), 140)], mm(inchesToMm(120)));
+    const plain = brdBottomBlends([c, d]);
+    [1, 2, 3].forEach((k) => expect(plain[k].across[BRD_BOTTOM_ACROSS_STEPS]).toBeCloseTo(BRD_BOTTOM_WINDOW * (100 + (k / 4) * 40), 12));
+  });
+});
+
 describe("brdBottomBlends", () => {
   const L = mm(inchesToMm(120));
   const flat = (station: number): BrdBottomSection => brdBottomSections([{ station: mm(station), points: [[0, 0], [100, 0], [100, 30]] }], L)[0];

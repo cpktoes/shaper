@@ -19,7 +19,7 @@ import {
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { buildOutline } from "@/lib/geometry/outline";
 import { effectiveWingRadius, outlineForFins, wingRadiusTop } from "@/lib/geometry/wings";
-import { DEFAULT_RAIL_BAND_SPEC } from "@/lib/geometry/rail-bands";
+import { DEFAULT_RAIL_BAND_SPEC, type RailBandSpec } from "@/lib/geometry/rail-bands";
 import { inchesToMm, mm } from "@/lib/geometry/units";
 import { DEFAULT_VOLUME_SPEC } from "@/lib/geometry/volume";
 import { phase16Boards, phase16WingBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
@@ -183,6 +183,29 @@ describe("brdBoardFields with a bottom (quick 261113-gwr)", () => {
     }
     expect(worst).toBeLessThan(0.05);
   }, 120_000);
+});
+
+describe("brdBoardFields with rails (quick 261113-kvo)", () => {
+  const fit = fitOf("shortboard|asis|hard");
+  const fitted: RailBandSpec = {
+    ...DEFAULT_RAIL_BAND_SPEC,
+    tailHardEdge: false,
+    nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, family: 2, ratioTopPercent: 62.5, deckPercent: 87.5, scaleFromCenter: 0.85 },
+    center: { ...DEFAULT_RAIL_BAND_SPEC.center, symmetrical: true, ratioTopPercent: 50, nudges: { ...DEFAULT_RAIL_BAND_SPEC.center.nudges, domedDeckBand: inchesToMm(1) } },
+    tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, singleTuck: true, sharpBottomTuck: true },
+  };
+
+  it("carries the fitted rails, and they read back deep-equal through the board reader", () => {
+    const fields = brdBoardFields(fit, "Rails.brd", null, fitted)!;
+    expect(fields.rails).toEqual(fitted);
+    const entry = readBoardEntry({ name: fields.boardName, design: buildSnapshot(fields) }, {});
+    expect(entry?.fields.rails).toEqual(fitted);
+  });
+
+  it("opens with a new board's rails exactly when no rails are given, as before", () => {
+    for (const rails of [undefined, null]) expect(brdBoardFields(fit, "Plain.brd", null, rails)!.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+    expect(brdBoardFields(fit, "Plain.brd")!.rails).toEqual(DEFAULT_RAIL_BAND_SPEC);
+  });
 });
 
 describe("brdBoardFields with wings (quick 261113-hyy)", () => {
