@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BOTTOM_COPY, layoutMarksNote, referenceRowsNote } from "@/components/bottom/bottom-copy";
 import { BOTTOM_GUIDE_WORDS, guideHow } from "@/components/bottom/bottom-guide-words";
 import { phase16Boards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import { BOARD_LENGTH_RANGE_IN } from "@/lib/geometry/board";
 import { formatBottomStation } from "@/lib/geometry/blank-reasons";
 import {
   BOTTOM_CUT_NAMES,
@@ -262,11 +263,10 @@ describe("bottomSheetLayout: what the page carries", () => {
     expect(layout.sheets).toBe(1);
   });
 
-  // Quick 261113-si7: the app now makes boards up to 12'0" (144"), and on one that long the two tables' 25 rows
-  // overflow their own sheet by 26 dots (measured, both systems; 11'6" still fits with 7 to spare). That is the named
-  // follow-up si7-B, not built here, so this check stays at the longest board the app allowed BEFORE si7 (10'0").
+  // Quick 261113-si7 raised the longest board to 12'0" (144"), where the tables' 25 rows no longer fit one sheet; quick
+  // 261113-vya answers that with a sheet each (the tests after this one). This check stays at the longest board the app
+  // allowed BEFORE si7 (10'0"): its two tables still share their own sheet, exactly as they print today.
   const LONGEST_BEFORE_SI7_IN = 120;
-  it.todo("the longest board the app allows (12'0\") keeps every row — quick si7-B");
   it("the longest board before quick si7 (10'0\"), with every cut and 8 channels, keeps every row of both tables on their sheet", () => {
     const fields = presetFields("longboard");
     const longest = build("longest", { ...fields, outline: { ...fields.outline, length: inchesToMm(LONGEST_BEFORE_SI7_IN) } });
@@ -279,6 +279,75 @@ describe("bottomSheetLayout: what the page carries", () => {
       const spare = bottomSheetSpare(layout, longest.board);
       expect(spare.page).toBeGreaterThanOrEqual(0);
       expect(spare.tables!).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  /** A Longboard of this length, built through the app, with a bottom of the named setup — 31" wide, as a 12'0" board is. */
+  function longboardAt(lengthIn: number, setup: { names: Names; count: ChannelCount | 0 }) {
+    const fields = presetFields("longboard");
+    const built = build("long", { ...fields, outline: { ...fields.outline, length: inchesToMm(lengthIn) } });
+    return { built, resolved: resolveBottom(bottomOf(built.board, setup.names, setup.count), built.board) };
+  }
+
+  it("the longest board the app allows (12'0\"), with every cut and 8 channels, prints its two tables a sheet each, every row kept", () => {
+    const { built, resolved } = longboardAt(BOARD_LENGTH_RANGE_IN.max, SETS.every8);
+    for (const system of UNITS_SYSTEMS) {
+      const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+      expect(layout.dataRows).toEqual(bottomDataRows(resolved, built.board));
+      expect(layout.dataRows).toHaveLength(25);
+      expect(layout.marks.rows).toHaveLength(25);
+      expect(layout.tablesOnOwnSheet).toBe(true);
+      expect(layout.tablesSplit).toBe(true);
+      expect(layout.sheets).toBe(3);
+      expect(layout.tablesBeside).toBe(false);
+      expect(layout.tablesTight).toBe(false);
+      expect(layout.tableNotes).toEqual([]);
+      expect(layout.splitNotes.depths).toEqual([BOTTOM_COPY.depthsNote, referenceRowsNote(built.board, built.frontPair, system)]);
+      expect(layout.splitNotes.marks).toEqual([layoutMarksNote(resolved.channels, system), referenceRowsNote(built.board, built.frontPair, system)]);
+      const spare = bottomSheetSpare(layout, built.board);
+      expect(spare.page).toBeGreaterThanOrEqual(0);
+      expect(spare.tables).toBeNull();
+      expect(spare.split).not.toBeNull();
+      expect(spare.split!.depths).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+      expect(spare.split!.marks).toBeGreaterThanOrEqual(BOTTOM_SHEET_SPARE);
+    }
+  });
+
+  it("a 12'0\" board whose bottom has no layout-mark column keeps its one tables sheet, both its notes, its rows as they are", () => {
+    const { built, resolved } = longboardAt(BOARD_LENGTH_RANGE_IN.max, { names: { tail: "Panel Vee" }, count: 0 });
+    for (const system of UNITS_SYSTEMS) {
+      const layout = bottomSheetLayout(resolved, built.board, system, built.frontPair);
+      expect(layout.marks.columns).toHaveLength(0);
+      expect(layout.dataRows).toHaveLength(25);
+      expect(layout.tablesSplit).toBe(false);
+      expect(layout.splitNotes).toEqual({ depths: [], marks: [] });
+      if (layout.tablesOnOwnSheet) {
+        expect(layout.sheets).toBe(2);
+        expect(layout.tablesTight).toBe(false);
+        expect(layout.tableNotes).toEqual([BOTTOM_COPY.depthsNote, referenceRowsNote(built.board, built.frontPair, system)]);
+      } else {
+        expect(layout.sheets).toBe(1);
+      }
+    }
+  });
+
+  it("the split begins where today's last rung fails: 11'6\" keeps one tables sheet, tight and bare; 11'6 1/16\" splits", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const before = longboardAt(138, SETS.every8);
+      const keep = bottomSheetLayout(before.resolved, before.built.board, system, before.built.frontPair);
+      expect(keep.dataRows).toHaveLength(24);
+      expect(keep.tablesSplit).toBe(false);
+      expect(keep.sheets).toBe(2);
+      expect(keep.tablesTight).toBe(true);
+      expect(keep.tableNotes).toEqual([]);
+      expect(keep.splitNotes).toEqual({ depths: [], marks: [] });
+      expect(bottomSheetSpare(keep, before.built.board).split).toBeNull();
+      // 11'6 1/16" is where the 25th row begins (`bottomDataStations`: every 6" below the length less a millimetre).
+      const after = longboardAt(138 + 1 / 16, SETS.every8);
+      const over = bottomSheetLayout(after.resolved, after.built.board, system, after.built.frontPair);
+      expect(over.dataRows).toHaveLength(25);
+      expect(over.tablesSplit).toBe(true);
+      expect(over.sheets).toBe(3);
     }
   });
 });
