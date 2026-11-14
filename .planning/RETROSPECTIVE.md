@@ -126,6 +126,50 @@
 
 ---
 
+## Milestone: v1.5 — Ready for the Shapers
+
+**Shipped:** 2026-11-14
+**Phases:** 6 (13–18) | **Plans:** 82 in Phases 14–18, plus Phase 13's thirteen items and about 85 quick tasks | **Sessions:** many, across 2026-09-27 → 2026-11-14
+
+### What Was Built
+- Phase 13: the app made safe, tidy and ready to listen for the founder's showing to a room of shapers on 2026-10-10 — the security patch, his open decisions, the order form's PLANING table, a contact page and domain email, account deletion, a privacy page, a friendly error screen, the phone's chrome minimised.
+- Phases 14–18: curves and tips that flow like a real board; the Board Rack; the 3D board and its CNC files; BOTTOM, where contours are mapped, measured and printed; a GUIDE card for every control on five pages.
+- Between and after the phases, as quick tasks with the founder's look between: Rails v2, wings, the blank picker with a fourth maker and custom rocker, board files both ways, the AkuShaper / Shape3D `.brd` export, and in the last two days opening a `.brd` as a board (outline, rocker, thickness, bottom, wings, rails, fins), the tail rail's new default and boards from 4'0" to 12'0".
+
+### What Worked
+- **One change per task, a look between.** The `.brd` import grew from "let's try importing one" to a seven-part fit in two days because each step was small, pictured and tried on a preview server before the next was planned.
+- **Measure first, in scratch, before designing.** Every planner reproduced the problem and tabled the numbers before proposing a fix; two plans changed shape because of what the measuring found (fins must be fitted before the bottom; the bottom-tables overflow printed over the footer rather than off the page).
+- **A record from the live commit before a calculator moves, and the old rule kept by name.** Phase 14's pin, the litres pins and the tail-rail default all let later changes prove "nothing else moved" to the last digit without re-recording anything.
+- **The code review earned its place at the gate.** It found the home page loading the board-file fitting code for every visitor and a public address reading the database on every request — neither visible to any test.
+- **Sketches before screens.** The rack, wings, the blank picker, custom rocker, BOTTOM and the GUIDE were each decided on a throwaway sketch the founder tried on his phone, so the built screen was rarely argued with.
+
+### What Was Inefficient
+- The go-live gate's long browser suite was started before the code review came back; the review's fixes forced a restart from the top. Review first, then the suite.
+- Timing assertions and five-second limits on slow geometry tests failed on a busy machine at nearly every gate until they were removed or lengthened; a stopwatch does not belong in a unit test.
+- Two browser tests had failed under one build tool for weeks ("known, not ours") because earlier gates ran under the other. A known failure carried from gate to gate is a defect in the test; fix it the first time.
+- A planner's PDF comparison script compared nothing and reported "identical"; an executor caught it. A comparison has to be seen to fail before its "same" is trusted.
+- I told the founder a file format "had no room" for a quad's fins from what a program showed for files I had altered; his own screenshot showed otherwise. What a format cannot hold is only known from a file the program itself saved.
+- Phases 13 and 14 sat open on the books for six weeks after their work was live, and the roadmap and the project log disagreed about Phase 14 the whole time.
+
+### Patterns Established
+- A brief written first (the founder's words locked, what to measure, the house rules), a planner that measures in scratch, an executor in the same checkout, and the orchestrator checking types, tests and every picture before logging the task.
+- A preview server started with the browser suite's own stand-in settings, so executors' specs reuse the server the founder is trying the feature on.
+- Rulings that arrive mid-build go to the running executor as a message, as one extra commit, rather than waiting for a new task.
+- The go-live gate as one detached script that writes each step's exit line to a status file; nothing is pushed in the same call that reads a log.
+- Open items at a close are filed as dated to-dos with the measured facts in them, not left in a summary.
+
+### Key Lessons
+1. A founder's "as the new default" needs the question "for boards already saved, too?" answered with numbers before it is built — the tail rail's default moved one preset card by a tenth of a litre and 18 of 102 test boards by more.
+2. Whatever every visitor downloads is part of the home page; a feature most never use loads when it is asked for, and a test watches for it.
+3. A lock a program puts on its own unpaid saves is not ours to work around, however useful the file inside would be; ask for a real file instead.
+4. Close a phase when its work is live. A phase left open for a rehearsal that has passed is a record nobody trusts.
+
+### Cost Observations
+- Model mix: planners and the gate's code review on opus; executors, the fixer and most verification on sonnet; the orchestrator reading every picture itself.
+- Notable: the last two days ran twelve quick tasks, a full go-live gate with a review, and three closes (the work, two phases, the milestone) in one long session.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -137,6 +181,7 @@
 | v1.2 | ~12 | 3 (8–10) | Real-device sweeps as the only proof for phone work; code review between last code wave and human checkpoint; Playwright projects + desktop baselines |
 | v1.3 | ~3 | 1 (11) | Opus executors in worktrees; founder rulings as D-NN before planning; expand-first migrations; the production step run with the founder present; the DONE WHEN walked first in UAT |
 | v1.4 | ~2 | 1 (12) | A golden from the last release tag before replacing a calculator; expand-and-contract on types; research counted the carry-over before the founder ruled; review notes ruled out become founder questions in the UAT |
+| v1.5 | many | 6 (13–18) | One change per quick task with the founder's look between; planners that measure in scratch first; a preview server on the suite's own settings; the go-live gate as one script with a code review of the whole branch; old rules kept by name instead of re-recording pins |
 
 ### Cumulative Quality
 
@@ -147,6 +192,7 @@
 | v1.2 | 2,463 unit + 225 browser | — | Playwright (dev-only) |
 | v1.3 | 2,865 unit + 293 browser | — | 0 new deps (D-20) |
 | v1.4 | 3,043 unit + 360 browser | — | 0 new deps (R11) |
+| v1.5 | 13,687 unit + 1,989 browser (three devices) | — | `three`, `@vercel/analytics`, `react-markdown`, `remark-gfm` |
 
 ### Top Lessons (Verified Across Milestones)
 1. Proof that a machine can run (golden fixtures, byte-identical PDFs, compiled-CSS contracts) beats prose in a summary — every milestone found at least one "Self-Check: PASSED" that main's own run disproved.
