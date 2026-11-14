@@ -25,11 +25,7 @@
  */
 
 import { type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
-import {
-  BOARD_LENGTH_RANGE_IN,
-  WIDEPOINT_WIDTH_RANGE_IN,
-  type OutlineSpec,
-} from "@/lib/geometry/board";
+import type { OutlineSpec } from "@/lib/geometry/board";
 import type { FinMark } from "@/lib/geometry/fins";
 import type { OutlineDragPoint, OutlineDragTarget } from "@/lib/geometry/outline-drag";
 import {
@@ -64,6 +60,8 @@ import {
   CalloutChipFrame,
   MIN_PINNED_FIT_SCALE,
   OUTLINE_CHIP_HEIGHT,
+  fixedFrameHalfWidth,
+  fixedFrameScale,
   OutputRail,
   outlineViewFrame,
   CalloutSizeProvider,
@@ -89,17 +87,18 @@ const LEGACY_MAX_HALF_WIDTH_PX = VIEW_W / 2 - 30;
 const CROP_PAD_X = 14;
 
 /**
- * Half the `fixedFrame` viewBox, in view units — the widest half-width any board can DRAW at.
+ * Half the `fixedFrame` viewBox, in view units — the widest half-width any board of the sizes it was made
+ * for can DRAW at.
  *
  * Note which extreme this is taken from. The per-board scale fits the board to the view's height,
  * so it is highest for the SHORTEST board; the widest thing ever rendered is therefore the
  * shortest-and-widest board, not the widest one. Sizing from `max` length instead would produce a
- * frame that a 5'0" x 25" board overflows.
+ * frame that a 5'0" x 25" board overflows. Since quick 261113-si7 the window is still sized from that
+ * 5'0" x 25" (`FIXED_FRAME_REFERENCE`) rather than from the new shortest board, 4'0": a 4'0" x 25" would
+ * have grown it and drawn every board smaller on every order form. Instead a board wider for its length
+ * than the reference draws a little shorter in the window (`fixedFrameScale`, in `outlineViewMetrics`).
  */
-const FIXED_FRAME_HALF_W =
-  (WIDEPOINT_WIDTH_RANGE_IN.max / 2) *
-    ((VIEW_H - PAD_Y * 2) / BOARD_LENGTH_RANGE_IN.min) +
-  CROP_PAD_X;
+const FIXED_FRAME_HALF_W = fixedFrameHalfWidth(VIEW_H, PAD_Y, CROP_PAD_X);
 /** Vertical gap between the Widepoint chip and the leaderless WP Offset chip stacked beneath it. */
 const CHIP_STACK_GAP = 6;
 /** Which rail the construction overlay draws on: -1 is the left, the input side (see the overlay
@@ -288,14 +287,17 @@ interface OutlineViewerProps {
  * alone and lets the frame widen instead: fitting on width too meant a 25" board drew 24% shorter
  * than a 19" one, because the gutters' share of a fixed frame grew with the board.
  */
-export function outlineViewMetrics(geometry: OutlineGeometry, hideCallouts = false) {
+export function outlineViewMetrics(geometry: OutlineGeometry, hideCallouts = false, fixedFrame = false) {
   const lengthIn = mmToInches(geometry.length);
   const cwIn = mmToInches(geometry.halfWidePointWidth);
   const centerlineX = VIEW_W / 2;
   const lengthFitScale = (VIEW_H - PAD_Y * 2) / lengthIn;
-  const scale = hideCallouts
+  const twoWayScale = hideCallouts
     ? Math.min(LEGACY_MAX_HALF_WIDTH_PX / cwIn, lengthFitScale)
     : lengthFitScale;
+  // The order form's template window never resizes, so a board wider for its length than the board it was sized
+  // from (5'0" x 25") is held to fit it whole (quick 261113-si7, B4); no other board's scale moves.
+  const scale = hideCallouts && fixedFrame ? fixedFrameScale(twoWayScale, cwIn, FIXED_FRAME_HALF_W, CROP_PAD_X) : twoWayScale;
   return {
     lengthIn,
     centerlineX,
@@ -314,7 +316,7 @@ export function outlineViewMetrics(geometry: OutlineGeometry, hideCallouts = fal
  * is character-identical.
  */
 function outlineFrameNumbers(geometry: OutlineGeometry, hideCallouts: boolean, fixedFrame: boolean) {
-  const { centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(geometry, hideCallouts);
+  const { centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(geometry, hideCallouts, fixedFrame);
   const pxX = (halfWidthIn: number) => centerlineX + halfWidthIn * scale;
   // The widepoint's half-width, read exactly as the component reads it (`xAtStationIn(wpYIn)`).
   const wpHalfWidthIn = mmToInches(
@@ -440,6 +442,7 @@ export function OutlineViewer({
   const { lengthIn, centerlineX, scale, frame, tailPy, tipPy } = outlineViewMetrics(
     geometry,
     hideCallouts,
+    fixedFrame,
   );
   const lenToY = (stationIn: number) => tailPy - stationIn * scale;
   const pxX = (halfWidthIn: number) => centerlineX + halfWidthIn * scale;
