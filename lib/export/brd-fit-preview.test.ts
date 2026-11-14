@@ -968,7 +968,7 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
       expect(sheet.closeness.rails).toMatch(/^Rails: (within|less than) /);
       expect(sheet.closeness.rails).toMatch(/at the rail|on the (deck|bottom) .+ in from the rail/);
       expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck$/);
-      expect(sheet.rails.notes[0]).toBe(BRD_FIT_COPY.railRegionNote);
+      expect(sheet.rails.notes[0]).toBe(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), system)));
       expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(BRD_FIT_COPY.railBlendNote);
       expect(sheet.notRead).toBe(BRD_FIT_COPY.notReadAfterRails);
     }
@@ -1004,6 +1004,14 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     expect(sheet.controls.rails).toBeNull();
     expect(sheet.notRead).toBe(BRD_FIT_COPY.notReadAfterBottom);
     expect(brdFitSheet({ ...none, bottom: null }, "T.brd", "imperial").notRead).toBe(BRD_FIT_COPY.notRead);
+  });
+
+  it("says the rail region in the shaper's system, never a bare inch figure in Metric", () => {
+    const metric = brdFitSheet(tucked, "T.brd", "metric");
+    if (!metric.rails.read) throw new Error("unreachable");
+    expect(metric.rails.notes[0]).toContain(formatDim(inchesToMm(3), "metric"));
+    expect(metric.rails.notes[0]).not.toContain('3"');
+    expect(brdFitSheet(tucked, "T.brd", "imperial").rails.read && (brdFitSheet(tucked, "T.brd", "imperial").rails as { notes: string[] }).notes[0]).toContain('3"');
   });
 
   it("the rails-first note appears only when the rails were fitted first", () => {

@@ -220,7 +220,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
             )}
             {sheet.closeness.rails !== null && (
               <p data-brd-fit-close-rails className="text-xs text-surf-ink">
-                {sheet.closeness.rails}
+                {keepFiguresTogether(sheet.closeness.rails)}
               </p>
             )}
             {sheet.wings.map((words, k) => (
@@ -272,7 +272,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
               <p data-brd-fit-control="rocker">{sheet.controls.rocker}</p>
               <p data-brd-fit-control="thickness">{sheet.controls.thickness}</p>
               {sheet.controls.bottom !== null && <p data-brd-fit-control="bottom">{sheet.controls.bottom}</p>}
-              {sheet.controls.rails !== null && <p data-brd-fit-control="rails">{sheet.controls.rails}</p>}
+              {sheet.controls.rails !== null && <p data-brd-fit-control="rails">{keepFiguresTogether(sheet.controls.rails)}</p>}
             </div>
           </div>
 
@@ -464,7 +464,7 @@ function RailsBlock({ block, drawings }: { block: BrdFitRailsBlock; drawings: Re
               return (
                 <figure key={drawing.key} data-brd-fit-rail-section={drawing.key} className="m-0 flex flex-col gap-0.5">
                   <figcaption data-brd-fit-rail-section-caption className="flex flex-1 items-end text-[10px] font-bold tracking-architectural text-surf-ink-muted uppercase">
-                    {column?.drawingCaption}
+                    {keepFiguresTogether(column?.drawingCaption ?? "")}
                   </figcaption>
                   <svg role="img" aria-label={column?.drawingCaption ?? ""} viewBox={`0 0 ${drawings.width} ${drawings.height}`} className="block h-auto w-full">
                     <line
@@ -505,7 +505,8 @@ function RailsBlock({ block, drawings }: { block: BrdFitRailsBlock; drawings: Re
               </th>
               {row.cells.map((text, i) => (
                 <td key={block.columns[i].key} data-brd-fit-cell={block.columns[i].key} className="px-1 py-0.5 tabular-nums">
-                  {text}
+                  {/* A figure and its unit, or a whole number and its fraction, never split across two lines. */}
+                  {keepFiguresTogether(text)}
                 </td>
               ))}
             </tr>

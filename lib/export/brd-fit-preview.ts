@@ -39,6 +39,7 @@ import {
   BRD_RAIL_FIRST_GAIN_MM,
   BRD_RAIL_FIRST_TRY_MM,
   BRD_RAIL_SAMPLE_STEPS,
+  BRD_RAIL_STRIP_MM,
   brdAnchorSections,
   brdRailBegins,
   brdRailBoard,
@@ -531,7 +532,7 @@ export const BRD_FIT_COPY = {
   noSection: "No section here",
   bottomKinds: { flat: "Flat", belly: "Belly", vee: "Vee", single: "Single concave", double: "Double concave" } as const,
   bottomWindowNote:
-    "The bottom is read across each of the file's cross-sections, from the stringer to nine-tenths of the way out to the rail; the rail itself isn't read yet. A section that is all but flat reads as flat.",
+    "The bottom is read across each of the file's cross-sections, from the stringer to nine-tenths of the way out to the rail, or less where our fitted rail begins (the rail is read below). A section that is all but flat reads as flat.",
   sectionsRead: (used: number, total: number, tipSkip: string) =>
     `Read from ${used} of the file's ${total} cross-sections; the ones within ${tipSkip} of a tip are left out.`,
   bottomUnread: "The file's bottom couldn't be read: it has no cross-sections we could use, so the board opens with a flat bottom.",
@@ -561,8 +562,8 @@ export const BRD_FIT_COPY = {
   railOnBottom: (inFromRail: string) => `on the bottom ${inFromRail} in from the rail`,
   railWhereSection: (station: string, where: string) => `at the section ${station}, ${where}`,
   railCellClose: (largest: string, typical: string) => `${largest.startsWith("<") ? lessThan(largest) : `within ${largest}`}, typically ${lessThan(typical)}`,
-  railRegionNote:
-    "Each rail is read from the outer 3\" of the file's bottom, round the rail and over the deck to the stringer, against our board's own cross-section at the same place — our bottom included. Between the three, RAILS blends one rail into the next.",
+  railRegionNote: (strip: string) =>
+    `Each rail is read from the outer ${strip} of the file's bottom, round the rail and over the deck to the stringer, against our board's own cross-section at the same place — our bottom included. Between the three, RAILS blends one rail into the next.`,
   railsFirstNote: "This file's rail rolls in from well off the rail, so its rails were fitted first and its bottom read only out to where our rail begins.",
   railBlendNote: "Tail Rail Blends From and Ends At are left where a new board puts them.",
   railsUnread: "The file's rails couldn't be read: it has no cross-sections we could use, so the board opens with a new board's rails.",
@@ -1105,7 +1106,7 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
     side: null,
   };
   const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
-  const notes = [c.railRegionNote, c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))];
+  const notes = [c.railRegionNote(formatDim(BRD_RAIL_STRIP_MM, system)), c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))];
   if (found.order === "rails-first") notes.push(c.railsFirstNote);
   notes.push(c.railBlendNote);
   return {
