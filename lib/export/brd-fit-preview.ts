@@ -16,7 +16,6 @@
  * Pure: no React, browser or database import (CLAUDE.md Rule 1).
  */
 import type { P2 } from "../geometry/bezier-fit";
-import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { formatBottomStation } from "../geometry/blank-reasons";
 import {
   DEFAULT_BOTTOM,
@@ -94,7 +93,6 @@ import {
   formatCentimetres,
   formatFeetInches,
   formatInchesFraction,
-  inchesToMm,
   mm,
   type Mm,
   type UnitsSystem,
@@ -102,7 +100,10 @@ import {
 import { effectiveWingRadius } from "../geometry/wings";
 import { BOARD_NAME_MAX_LENGTH } from "../models/board-file";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y, sampleKnots } from "./brd-preview";
+import { brdLengthWords, lengthWords } from "./brd-length-words";
 import type { ReadBrdBoard } from "./brd-read";
+
+export { brdLengthWords };
 
 /**
  * The file as read and our closest fit to it: all the preview holds. `bottom` is the closest bottom BOTTOM's cuts make to the
@@ -429,9 +430,6 @@ export interface BrdFitWords {
   };
 }
 
-/** A length the way a size line writes it: feet and inches, or centimetres with their unit. */
-const lengthWords = (value: Mm, system: UnitsSystem): string => (system === "metric" ? formatDim(value, system) : formatFeetInches(value));
-
 /**
  * A board's size line: length × width × thickness. Imperial `6'2" × 18 3/4" × 2 1/2"`; Metric `188.0 × 51.4 × 6.7 cm`, the
  * unit carried once at the end (a running line of text, CLAUDE.md Rule 2).
@@ -510,18 +508,6 @@ export function brdFitWords(look: BrdFitLook, system: UnitsSystem): BrdFitWords 
       station: stationLabel(system),
     },
   };
-}
-
-/**
- * A length, and the app's shortest and longest board, in the shaper's system: the three words the "that board is too long
- * or too short" line needs, in that order.
- */
-export function brdLengthWords(length: Mm, system: UnitsSystem): [string, string, string] {
-  return [
-    lengthWords(length, system),
-    lengthWords(inchesToMm(BOARD_LENGTH_RANGE_IN.min), system),
-    lengthWords(inchesToMm(BOARD_LENGTH_RANGE_IN.max), system),
-  ];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

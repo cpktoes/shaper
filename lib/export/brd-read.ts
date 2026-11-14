@@ -33,14 +33,13 @@ import type { BrdReadKnot } from "./brd";
 import { BRD_PREVIEW_CURVE_STEPS, BRD_PREVIEW_SECTION_STEPS, sampleKnots } from "./brd-preview";
 import { brdFinWord, parseBrdFinLine } from "./brd-fin-line";
 import { BRD_MAGIC, unscrambleBrd } from "./brd-scramble";
+import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "./brd-file-basics";
 
 export { brdFinWord, parseBrdFinLine };
 
-/** What Open a board file… adds to its file picker for a `.brd`; the shared `BOARD_FILE_ACCEPT` stays JSON only. */
-export const BRD_FILE_ACCEPT = ".brd";
-
-/** The most bytes a `.brd` may be before it is not read at all. */
-export const BRD_READ_MAX_BYTES = 2 * 1024 * 1024;
+// The picker word, the size cap and the file-name test live in `brd-file-basics.ts` (the home page needs them before a file is
+// picked and must not download this reader for them); they are re-exported here so everything else keeps importing them from here.
+export { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName };
 
 /** The most lines read, and the most knots one curve (or one cross-section) may hold. */
 export const BRD_READ_MAX_LINES = 50_000;
@@ -54,11 +53,6 @@ const BRD_READ_MAX_CM = 10_000;
 
 /** A curve must reach within this of both ends of the board (1 cm), or it is not a board's curve. */
 const BRD_REACH_MM = 10;
-
-/** Whether a picked file's name says it is a `.brd`. */
-export function isBrdFileName(name: string): boolean {
-  return /\.brd$/i.test(name);
-}
 
 /**
  * One cross-section of the file (quick 261113-gwr): a half section from the bottom at the stringer, out along the bottom,

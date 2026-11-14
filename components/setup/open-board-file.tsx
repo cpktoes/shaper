@@ -30,19 +30,30 @@
  * the page live meanwhile: nothing is shown half-read (the preview opens only with the whole look), a newer pick or leaving the
  * page drops the older answer, and the file is only ever handed to the app's own code in this browser. Where a worker cannot be
  * made the very same work runs on the page itself, after the line has painted.
+ *
+ * Quick 261114-118 (the go-live review's WR-04): the home page stays light. The preview dialog and the fitting library (the worker's
+ * own code, and the on-page fallback's) are fetched only when a `.brd` is picked; what the button needs before a pick (the picker word,
+ * the size cap, the file-name test, the length words) comes from two small modules that do not pull the fitting library in.
  */
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { BOARD_FILE_COPY } from "@/components/setup/board-file-copy";
-import { BrdFitDialog } from "@/components/setup/brd-fit-dialog";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
-import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "@/lib/export/brd-read";
-import { brdLengthWords, type BrdFitLook } from "@/lib/export/brd-fit-preview";
-import { brdLookFromBytes, type BrdLookResult } from "@/lib/export/brd-look";
+import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "@/lib/export/brd-file-basics";
+import { brdLengthWords } from "@/lib/export/brd-length-words";
+// Types only (erased at build time): the fitting library itself and the preview dialog are fetched only once a .brd is picked.
+import type { BrdFitLook } from "@/lib/export/brd-fit-preview";
+import type { BrdLookResult } from "@/lib/export/brd-look";
 import { BOARD_FILE_ACCEPT, BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
+
+/**
+ * The `.brd` preview dialog, fetched only when a `.brd` is picked (quick 261114-118, the go-live review's WR-04): it brings the
+ * whole fitting library and the 3D page's dialog styling with it, and the home page must not get heavier for everybody.
+ */
+const BrdFitDialog = lazy(() => import("@/components/setup/brd-fit-dialog").then((m) => ({ default: m.BrdFitDialog })));
 
 interface OpenBoardFileProps {
   /** A readable board from the picked file: its design, under the file's name. */
@@ -87,6 +98,8 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
   const [looking, setLooking] = useState<{ fileName: string; look: BrdFitLook; fields: DesignSnapshotFields | null } | null>(null);
   // A picked .brd is being read and fitted in the background (quick 261113-kvo): which pick is current, and its worker.
   const [reading, setReading] = useState(false);
+  // Set by the first picked .brd: from then on the preview dialog is on the page (closed until a whole look arrives).
+  const [dialogWanted, setDialogWanted] = useState(false);
   const pickRef = useRef(0);
   const workerRef = useRef<Worker | null>(null);
   const tipStyle = useFitDefaults().defaults.tipStyle;
@@ -121,7 +134,16 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
   const lookOnPage = async (id: number, fileName: string, bytes: Uint8Array) => {
     await afterPaint();
     if (id !== pickRef.current) return;
-    finish(id, fileName, brdLookFromBytes(bytes, fileName));
+    // The fitting library is fetched here, only when the worker could not do the work.
+    let result: BrdLookResult;
+    try {
+      const { brdLookFromBytes } = await import("@/lib/export/brd-look");
+      result = brdLookFromBytes(bytes, fileName);
+    } catch {
+      result = { ok: false, problem: "unreadable" };
+    }
+    if (id !== pickRef.current) return;
+    finish(id, fileName, result);
   };
 
   /** Starts the background worker for pick `id`; false when one cannot be made (the caller then works on the page). */
@@ -167,6 +189,8 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
     }
     // Said at once: the file is read and fitted in the background, and the preview opens only with the whole look.
     setReading(true);
+    // Starts fetching the preview dialog now, while the file is read, so it is ready when the whole look arrives.
+    setDialogWanted(true);
     let bytes: Uint8Array;
     try {
       bytes = new Uint8Array(await file.arrayBuffer());
@@ -239,24 +263,28 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       <p data-board-file-status role="status" aria-live="polite" className="text-xs text-surf-warning-ink">
         {problem}
       </p>
-      <BrdFitDialog
-        look={looking?.look ?? null}
-        fileName={looking?.fileName ?? ""}
-        onOpenBoard={
-          looking?.fields
-            ? () => {
-                const fields = looking.fields;
-                // The preview closes, then the board opens the way a JSON file's does (the setup screen may ask first).
-                setLooking(null);
-                if (fields) onOpen(fields);
-              }
-            : null
-        }
-        onOpenChange={(open) => {
-          if (!open) setLooking(null);
-        }}
-        finalFocus={buttonRef}
-      />
+      {dialogWanted ? (
+        <Suspense fallback={null}>
+        <BrdFitDialog
+          look={looking?.look ?? null}
+          fileName={looking?.fileName ?? ""}
+          onOpenBoard={
+            looking?.fields
+              ? () => {
+                  const fields = looking.fields;
+                  // The preview closes, then the board opens the way a JSON file's does (the setup screen may ask first).
+                  setLooking(null);
+                  if (fields) onOpen(fields);
+                }
+              : null
+          }
+          onOpenChange={(open) => {
+            if (!open) setLooking(null);
+          }}
+          finalFocus={buttonRef}
+        />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

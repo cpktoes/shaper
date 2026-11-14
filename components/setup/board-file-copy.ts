@@ -11,7 +11,7 @@
  * says lives in `BRD_FIT_COPY` (`lib/export/brd-fit-preview.ts`, quick 261113-et0), because the printed overview says it too.
  * They are ours to be reworded after his look: plain English, a shaper's words ("the file", "our closest fit").
  */
-import { BRD_READ_MAX_BYTES } from "../../lib/export/brd-read";
+import { BRD_READ_MAX_BYTES } from "../../lib/export/brd-file-basics";
 
 export const BOARD_FILE_COPY = {
   button: "Open a board file…",
