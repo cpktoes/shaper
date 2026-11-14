@@ -29,3 +29,7 @@ ruled on those words only. Left exactly as they are:
 ## What is needed
 
 The founder's words for each, then the change (GUIDE words on his page first, then the code, in one change).
+
+## Done
+
+2026-11-14 — fast task 210 (commit 9396847d), the founder's "Use the drafts": the three sentences changed on a board with a bottom cut, the rows' note added, the GUIDE card's how line changed on the words page and in the code.
