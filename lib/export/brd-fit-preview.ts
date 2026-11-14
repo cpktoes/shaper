@@ -60,6 +60,7 @@ import {
   type Mm,
   type UnitsSystem,
 } from "../geometry/units";
+import { effectiveWingRadius } from "../geometry/wings";
 import { BOARD_NAME_MAX_LENGTH } from "../models/board-file";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y } from "./brd-preview";
 import type { ReadBrdBoard } from "./brd-read";
@@ -374,14 +375,21 @@ export const BRD_FIT_COPY = {
   notRead: "Rails and bottom contours aren't read from the file. Add these by hand once the board is open.",
   /** The line when the bottom WAS read: rails are what is left to add by hand. */
   notReadAfterBottom: "Rails aren't read from the file. Add these by hand once the board is open.",
+  /** A wing's corners when they are sharp, or rounded too slightly for the file's drawing to tell (quick 261113-m5w). */
+  wingSharpCorners: "sharp corners",
+  /** The file's corners when it clearly rounds them: the radius as the rounded wing that fits its step best measured. */
+  wingFileRounded: (radius: string) => `corners rounded about ${radius}`,
+  /** Our wing's corners when it opens rounded: the Corner radius the WINGS tab will hold. */
+  wingOursRounded: (radius: string) => `${radius} corner radius`,
   /**
-   * One wing the file draws beside the one we fitted (quick 261113-hyy): where it stands off the tail, how deep it is and how long
-   * its run is along the stringer. A run that reads as nothing is a square step. Ours always opens with sharp corners (the corner
-   * radius is not fitted) and says nothing about fins.
+   * One wing the file draws beside the one we fitted (quick 261113-hyy): where it stands off the tail, how deep it is, how long its
+   * run is along the stringer, and its corners (quick 261113-m5w), the file's as measured and ours as fitted. A run that reads as
+   * nothing is a square step.
    */
   wingLine: (n: number, file: BrdWingWords, ours: BrdWingWords) => {
-    const how = (w: BrdWingWords, along: string) => `${w.depth} deep ${w.run === null ? "in a square step" : `over a ${w.run} run${along}`}, ${w.off} off the tail`;
-    return `Wing ${n} — the file: ${how(file, " along the stringer")}. Ours: ${how(ours, "")}, sharp corners.`;
+    const how = (w: BrdWingWords, along: string) =>
+      `${w.depth} deep ${w.run === null ? "in a square step" : `over a ${w.run} run${along}`}, ${w.off} off the tail, ${w.corners}`;
+    return `Wing ${n} — the file: ${how(file, " along the stringer")}. Ours: ${how(ours, "")}.`;
   },
   /**
    * The BOTTOM block (quick 261113-gwr). The slider words are BOTTOM's own (`components/bottom/bottom-copy.ts`), copied because
@@ -437,11 +445,13 @@ export const BRD_FIT_COPY = {
   printProblem: "The overview couldn't be made. Try again.",
 } as const;
 
-/** One wing's three figures, worded for the sheet: `run` is null for a square step (a run that reads as nothing). */
+/** One wing's figures and corners, worded for the sheet: `run` is null for a square step (a run that reads as nothing). */
 export interface BrdWingWords {
   off: string;
   depth: string;
   run: string | null;
+  /** Its corners: "sharp corners", or the radius when they are rounded. */
+  corners: string;
 }
 
 /** A figure that starts with `<` ("less than the smallest step") read as words: `<1/16"` becomes `less than 1/16"`. */
@@ -770,18 +780,33 @@ function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): Brd
 
 /**
  * The sheet's wing lines (quick 261113-hyy): for each wing found in the file, the file's own wing beside the one our fit drew,
- * in the shaper's system. A wing's place off the tail is a dim (a distance along the board) and its depth and run are marks (the
- * small figures a tape reads), as the WINGS tab shows them. Wing k of the file is wing k of ours (the fit keeps the order).
+ * in the shaper's system. A wing's place off the tail is a dim (a distance along the board) and its depth, run and corner radius
+ * are marks (the small figures a tape reads), as the WINGS tab shows them. Wing k of the file is wing k of ours (the fit keeps
+ * the order), and its corners (quick 261113-m5w) are read from the same index. A file whose corners are clearly rounded is
+ * worded by the rounded wing that fit its step best (the finder's raw run counts the rounds, so it is not the one to quote);
+ * any other file's wing is worded as the finder measured it, with sharp corners.
  */
 function wingLines(fit: BrdFit, system: UnitsSystem): string[] {
   const ours = fit.outline.wings ?? [];
   const nothing = formatMark(mm(0), system);
-  const words = (w: { station: Mm; depth: Mm; run: Mm }): BrdWingWords => ({
+  const words = (w: { station: Mm; depth: Mm; run: Mm }, corners: string): BrdWingWords => ({
     off: formatDim(w.station, system),
     depth: lessThan(formatMarkOrLess(w.depth, system)),
     run: formatMark(w.run, system) === nothing ? null : lessThan(formatMarkOrLess(w.run, system)),
+    corners,
   });
-  return fit.fileWings.slice(0, ours.length).map((file, k) => BRD_FIT_COPY.wingLine(k + 1, words(file), words(ours[k])));
+  const count = Math.min(fit.fileWings.length, fit.fileWingCorners.length, ours.length);
+  const lines: string[] = [];
+  for (let k = 0; k < count; k++) {
+    const corner = fit.fileWingCorners[k];
+    const file = corner.rounded
+      ? words(corner.measured, BRD_FIT_COPY.wingFileRounded(formatMark(corner.measured.radius, system)))
+      : words(fit.fileWings[k], BRD_FIT_COPY.wingSharpCorners);
+    const radius = effectiveWingRadius(ours[k]);
+    const mine = words(ours[k], radius > 0 ? BRD_FIT_COPY.wingOursRounded(formatMark(radius, system)) : BRD_FIT_COPY.wingSharpCorners);
+    lines.push(BRD_FIT_COPY.wingLine(k + 1, file, mine));
+  }
+  return lines;
 }
 
 /**

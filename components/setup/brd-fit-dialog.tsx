@@ -24,6 +24,7 @@ import {
   type BrdFitTable,
 } from "@/lib/export/brd-fit-preview";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 import { cn } from "@/lib/utils";
 
 export interface BrdFitDialogProps {
@@ -213,7 +214,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
             )}
             {sheet.wings.map((words, k) => (
               <p key={k} data-brd-fit-wing={k + 1} className="text-xs text-surf-ink">
-                {words}
+                {keepFiguresTogether(words)}
               </p>
             ))}
             <p data-brd-fit-tips className="text-xs text-surf-ink-muted">

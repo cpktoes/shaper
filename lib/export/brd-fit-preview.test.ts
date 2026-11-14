@@ -18,6 +18,7 @@ import {
 import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
+import { effectiveWingRadius, wingRadiusTop } from "../geometry/wings";
 import { phase16Boards, phase16WingBoards } from "../geometry/__fixtures__/phase16-boards";
 import { brdBottomStations, brdText } from "./brd";
 import { BRD_PREVIEW_PAD_X, BRD_PREVIEW_PAD_Y, brdStationX } from "./brd-preview";
@@ -730,8 +731,10 @@ describe("brdFitSheet's wing lines", () => {
         const file = figures(two.fit.fileWings[k], system);
         const ours = figures(two.fit.outline.wings![k], system);
         expect(line.startsWith(`Wing ${k + 1} — the file: `)).toBe(true);
-        expect(line).toContain(`the file: ${file.depth} deep over a ${file.run} run along the stringer, ${file.off} off the tail.`);
-        expect(line).toContain(`Ours: ${ours.depth} deep over a ${ours.run} run, ${ours.off} off the tail, sharp corners.`);
+        expect(line).toBe(
+          `Wing ${k + 1} — the file: ${file.depth} deep over a ${file.run} run along the stringer, ${file.off} off the tail, sharp corners. ` +
+            `Ours: ${ours.depth} deep over a ${ours.run} run, ${ours.off} off the tail, sharp corners.`,
+        );
       });
     }
   });
@@ -770,5 +773,86 @@ describe("brdFitSheet's wing lines", () => {
     const widths = fitOutlineWidths(one.fit.outline);
     expect(sheet.tables[0].rows.find((r) => r.key === "tail12")!.fit).toBe(formatDim(widths.tail12, "imperial"));
     expect(sheet.closeness.outline).toBe(closenessSentence("Outline", brdFitWords(one, "imperial").outline));
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The corners on both sides of the wing line (quick 261113-m5w)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The Shortboard's wing 1 made 1 inch deep over a 1 inch run, rounded as far as the slider goes: written by the app's writer, read back and looked at. */
+function roundedLook(): BrdFitLook {
+  const f = phase16WingBoards().find((b) => b.label === "wing|shortboard|one")!.fields;
+  const step = { depth: inchesToMm(1), run: inchesToMm(1) };
+  const fields = { ...f, outline: { ...f.outline, wings: [{ ...f.outline.wings![0], ...step, radius: wingRadiusTop(step, "imperial") }] } };
+  const g = buildOutline(fields.outline);
+  const p = designSideProfile(fields, LIVE_DESIGN_RULES);
+  const r = deriveEffectiveRails(fields.rails, p.effectiveFoil, fields.railsImportFoilThickness);
+  const surf = buildBoardSurface({ sections: designCrossSectionInput(g, p, r, fields.outline.length), geometry: g, rockerAt: p.rockerAt });
+  const got = readAnyBrd(Uint8Array.from(brdText(surf).text, (ch) => ch.charCodeAt(0)));
+  if (!got.ok) throw new Error("the app's own file would not read");
+  return brdFitLook(got.board);
+}
+
+describe("brdFitSheet's wing lines say the corners on both sides", () => {
+  const sharpLooks = ["wing|shortboard|one", "wing|shortboard|two", "wing|shortboard|square"].map((label) => [label, wingedLook(label)] as const);
+  const rounded = roundedLook();
+
+  const figures = (w: { station: number; depth: number; run: number }, system: "imperial" | "metric") => ({
+    off: formatDim(mm(w.station), system),
+    depth: formatMarkOrLess(mm(w.depth), system),
+    run: formatMark(mm(w.run), system),
+    square: formatMark(mm(w.run), system) === formatMark(mm(0), system),
+  });
+  const how = (f: ReturnType<typeof figures>, along: string) =>
+    `${f.depth} deep ${f.square ? "in a square step" : `over a ${f.run} run${along}`}, ${f.off} off the tail`;
+
+  it.each(sharpLooks)("%s: a file with sharp corners reads sharp corners beside both the file's wing and ours, in both systems", (_label, sharp) => {
+    for (const system of ["imperial", "metric"] as const) {
+      const sheet = brdFitSheet(sharp, "Wing.brd", system);
+      expect(sheet.wings).toHaveLength(sharp.fit.fileWings.length);
+      sheet.wings.forEach((line, k) => {
+        const file = figures(sharp.fit.fileWings[k], system);
+        const ours = figures(sharp.fit.outline.wings![k], system);
+        expect(sharp.fit.fileWingCorners[k].rounded).toBe(false);
+        expect(line).toBe(`Wing ${k + 1} — the file: ${how(file, " along the stringer")}, sharp corners. Ours: ${how(ours, "")}, sharp corners.`);
+      });
+    }
+  });
+
+  it("a file with clearly rounded corners reads the measured rounded wing's figures and radius, and ours with its corner radius", () => {
+    expect(rounded.fit.fileWingCorners[0].rounded).toBe(true);
+    for (const system of ["imperial", "metric"] as const) {
+      const measured = rounded.fit.fileWingCorners[0].measured;
+      const ours = rounded.fit.outline.wings![0];
+      const file = figures(measured, system);
+      const mine = figures(ours, system);
+      const line = brdFitSheet(rounded, "Rounded.brd", system).wings[0];
+      expect(line).toBe(
+        `Wing 1 — the file: ${how(file, " along the stringer")}, corners rounded about ${formatMark(measured.radius, system)}. ` +
+          `Ours: ${how(mine, "")}, ${formatMark(effectiveWingRadius(ours), system)} corner radius.`,
+      );
+    }
+  });
+
+  it("reads the radius as a whole-millimetre mark and the place off the tail in centimetres in Metric, inches in Imperial", () => {
+    const metric = brdFitSheet(rounded, "Rounded.brd", "metric").wings[0];
+    expect(metric).toMatch(/corners rounded about \d+ mm\./);
+    expect(metric).toMatch(/, \d+ mm corner radius\.$/);
+    expect(metric).toMatch(/\d+\.\d cm off the tail/);
+    const imperial = brdFitSheet(rounded, "Rounded.brd", "imperial").wings[0];
+    expect(imperial).toMatch(/corners rounded about [\d /]+"\./);
+    expect(imperial).toMatch(/, [\d /]+" corner radius\.$/);
+  });
+
+  it("keeps the sheet's words in plain spaces: no no-break space (the dialog adds them as it draws)", () => {
+    for (const [, sharp] of sharpLooks) for (const system of ["imperial", "metric"] as const) expect(brdFitSheet(sharp, "Wing.brd", system).wings.join("")).not.toContain("\u00a0");
+    for (const system of ["imperial", "metric"] as const) expect(brdFitSheet(rounded, "Rounded.brd", system).wings.join("")).not.toContain("\u00a0");
+  });
+
+  it("leaves a wingless look with no wing line and every other field as before", () => {
+    const sheet = brdFitSheet(look, "Plain.brd", "imperial");
+    expect(sheet.wings).toEqual([]);
+    expect(look.fit.fileWingCorners).toEqual([]);
   });
 });
