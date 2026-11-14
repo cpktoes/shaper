@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { phase16SurfaceBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
+import { asD30Read, phase16SurfaceBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
@@ -19,7 +19,8 @@ const beforeLitres = (fields: (typeof BOARDS)[number]["fields"]) =>
   summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: HARD_EDGE_FADE }).volumeLitres;
 const fadedLitres = (fields: (typeof BOARDS)[number]["fields"]) =>
   summarizeDesignWith(fields, { ...LIVE_DESIGN_RULES, hardEdge: RAIL_CHARACTER_FADE }).volumeLitres;
-const afterLitres = (fields: (typeof BOARDS)[number]["fields"]) => summarizeDesign(fields).volumeLitres;
+// Go-live 2's figures, reproduced: the live rule on the board as D-30 read it (quick 261113-psx moved the live default).
+const afterLitres = (fields: (typeof BOARDS)[number]["fields"]) => summarizeDesign(asD30Read(fields)).volumeLitres;
 
 /** A saved board as the site stores it, under a name the report must never print, read back the way the check
  * reads every board. */

@@ -3,7 +3,7 @@ import { phase16LiveBoards } from "@/lib/geometry/__fixtures__/phase16-boards";
 import { LIVE_DESIGN_RULES, summarizeDesign, summarizeDesignWith } from "@/lib/geometry/design";
 import { DEFAULT_FIN_PLACEMENT_SPEC } from "@/lib/geometry/fins";
 import { formatDim } from "@/lib/geometry/measure-display";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "@/lib/geometry/rail-bands";
+import { d30HardEdgeBlendsFrom, d30HardEdgeEndsAt } from "@/lib/geometry/rail-bands";
 import { DEFAULT_FALLBACK_ROCKER } from "@/lib/geometry/rocker";
 import { inchesToMm } from "@/lib/geometry/units";
 import { HARD_EDGE_FADE, RAIL_CHARACTER_FADE, railCharacterDifferences } from "@/lib/geometry/volume";
@@ -101,9 +101,9 @@ describe("railCharacterReportLines", () => {
       after: fadedLitres(fields),
       tail: words(railCharacterDifferences(fields.rails, "tail")),
       nose: words(railCharacterDifferences(fields.rails, "nose")),
-      // No test board stores either setting, so both read the defaults.
-      from: formatDim(hardEdgeBlendsFrom(fields.rails, fields.outline.length), "imperial"),
-      to: formatDim(hardEdgeEndsAt(fields.rails, fields.outline.length), "imperial"),
+      // No test board stores either setting, so both read the defaults — D-30's, which this report's two rules read.
+      from: formatDim(d30HardEdgeBlendsFrom(fields.rails, fields.outline.length), "imperial"),
+      to: formatDim(d30HardEdgeEndsAt(fields.rails, fields.outline.length), "imperial"),
     }));
     const sorted = moves
       .map((m, index) => ({ m, index }))

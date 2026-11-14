@@ -11,6 +11,10 @@
  * at all, this prints what differs on each side in RAILS' own words, the tail's two settings as the board reads them,
  * and its litres both ways with the app's own functions.
  *
+ * Since quick 261113-psx moved the tail rail's default blend (12" to the board's centre), both rules here read the
+ * D-30 readers by name (18" and L/6 + 18" when a board says nothing) and the settings are printed as D-30 read them,
+ * so the report still prints go-live 2's figures as they were.
+ *
  * It prints board ids, settings and litres only — never a board's name, an account, a snapshot or a connection
  * string — and a board that did not open is counted, never printed. Pure: no React, browser API or database
  * import; the script does the one read-only select and hands the opened boards in.
@@ -18,7 +22,7 @@
 
 import { LIVE_DESIGN_RULES, summarizeDesignWith, type DesignSummaryFields } from "@/lib/geometry/design";
 import { formatDim } from "@/lib/geometry/measure-display";
-import { hardEdgeBlendsFrom, hardEdgeEndsAt } from "@/lib/geometry/rail-bands";
+import { d30HardEdgeBlendsFrom, d30HardEdgeEndsAt } from "@/lib/geometry/rail-bands";
 import type { Litres, Mm } from "@/lib/geometry/units";
 import {
   HARD_EDGE_FADE,
@@ -112,8 +116,8 @@ export function railCharacterReportLines(rows: readonly RailCharacterReportRow[]
       move = railCharacterLitresMove(row.fields);
       if (move) {
         const { rails, outline } = row.fields;
-        const from = hardEdgeBlendsFrom(rails, outline.length);
-        const to = hardEdgeEndsAt(rails, outline.length);
+        const from = d30HardEdgeBlendsFrom(rails, outline.length);
+        const to = d30HardEdgeEndsAt(rails, outline.length);
         text =
           `tail ${differencesText(railCharacterDifferences(rails, "tail"))}` +
           ` · blends from ${settingText(from, rails.tailHardEdgeBlendsFrom)}` +

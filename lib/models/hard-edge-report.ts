@@ -4,7 +4,8 @@
  * Before Phase 16 a hard-edged tail kept its full hard edge out to halfway between the 12" mark and the centre,
  * then switched off (`HARD_EDGE_SWITCH`, named only here and in the pin test); now it is full to the board's Hard
  * Edge Blends From (18" when the board says nothing) and has fully blended into the centre's tucked rail by its
- * Hard Edge Ends At (30"). For each saved board with a hard-edged tail this prints both settings as the board reads
+ * Hard Edge Ends At (30"). (Since quick 261113-psx the live rule's default is 12" to the board's centre; this report's
+ * "after" is that live rule as the file reads boards, so it now blends from 12" to the centre.) For each saved board with a hard-edged tail this prints both settings as the board reads
  * them, works out the litres both ways with the app's own functions, and lists the move.
  *
  * It prints board ids, the two settings and litres only — never a board's name, an account, a snapshot or a

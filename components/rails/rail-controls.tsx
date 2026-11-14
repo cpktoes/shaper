@@ -157,8 +157,9 @@ interface RailSectionControlsProps {
   onToggleAdvancedOpen: () => void;
   tailHardEdge?: boolean;
   onToggleHardEdge?: () => void;
-  /** The tail's stored Tail Rail Blends From and Ends At (Phase 16, D-20/D-30/D-32); absent reads 18" and 30"
-   * through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. */
+  /** The tail's stored Tail Rail Blends From and Ends At (Phase 16, D-20/D-30/D-32); absent reads 12" and the top
+   * of Ends At's slider (the board's centre) through `hardEdgeBlendsFrom` / `hardEdgeEndsAt` (quick 261113-psx; D-30's
+   * 18" and 30" before). */
   tailHardEdgeBlendsFrom?: Mm;
   tailHardEdgeEndsAt?: Mm;
   /** The board's length: the tail rail's two settings' windows run to its centre (D-30). */
@@ -500,8 +501,9 @@ function RailSectionControls({
             {isTail && tailRailRows()}
 
             {/* Reset Advanced Settings (PC20): every nudge to 0, the scale to its default (1.00 since fast task 189), Single Tuck and
-                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At back to 18"
-                and the board's default end (Phase 16) — one store action, so one undo step. */}
+                Sharp Bottom Tuck off (plan 05) and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At back to 12"
+                and the board's centre, the top of Ends At's slider (Phase 16; the new default since quick 261113-psx) — one store
+                action, so one undo step. */}
             <button
               type="button"
               disabled={locked}

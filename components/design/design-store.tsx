@@ -512,19 +512,21 @@ interface DesignContextValue {
   toggleTailHardEdge: () => void;
   /** Sets where the tail's hard edge starts blending into the tucked rail, in millimetres from the tail
    * (Phase 16, D-30) — the Hard Edge Blends From slider on RAILS (and, in a later plan, the 3D page). One drag
-   * is one undo step. Never written when a board opens: a board without it reads 18" (`hardEdgeBlendsFrom`). */
+   * is one undo step. Never written when a board opens: a board without it reads 12" (`hardEdgeBlendsFrom`; D-30's
+   * 18" until quick 261113-psx). */
   setTailHardEdgeBlendsFrom: (value: Mm) => void;
   /** Sets where the rail has fully blended into the centre's tucked rail, in millimetres from the tail
    * (Phase 16, D-20/D-30) — the Hard Edge Ends At slider. One drag is one undo step. Never written when a board
-   * opens: a board without it reads 30" (`hardEdgeEndsAt`). */
+   * opens: a board without it reads the top of Ends At's slider, the
+   * board's centre (`hardEdgeEndsAt`; D-30's L/6 + 18" until quick 261113-psx). */
   setTailHardEdgeEndsAt: (value: Mm) => void;
   /** Sets one rail mark's nudge off its formula, in millimetres (quick 261102-gec plan 02, PC19). Each mark
    * is its own undo step, so dragging Deck Mark 1 and then Bottom Tuck 3 undoes one at a time. */
   updateRailNudge: (key: RailSectionKey, nudgeKey: RailNudgeKey, value: Mm) => void;
   /** Reset Advanced Settings for one rail (PC20): every nudge 0, the scale back to `DEFAULT_TIP_RAIL_SCALE` on the nose and tail
-   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Hard Edge Blends From and Ends At
-   * back to 18" and 30" (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` deleted, Phase 16 D-20/D-30) — one
-   * undo step. */
+   * (1 on the centre), Single Tuck off and, on the tail, Hard Edge back on and Tail Rail Blends From and Ends At
+   * back to the 12" station and the board's centre (`tailHardEdgeBlendsFrom` and `tailHardEdgeEndsAt` still deleted, Phase 16
+   * D-20/D-30; the defaults moved with quick 261113-psx, the founder 2026-11-13) — one undo step. */
   resetRailAdvanced: (key: RailSectionKey) => void;
   updateFins: (patch: Partial<FinPlacementSpec>) => void;
   updateVolume: (patch: Partial<VolumeSpec>) => void;
@@ -1066,7 +1068,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // Reset Advanced Settings (PC20): every nudge back to 0 — the Domed Deck Band's with the rest (plan 04,
   // R18) — the scale back to its default, Single Tuck off, Sharp Bottom Tuck off (plan 05, R22: through
   // `defaultRailAdvanced`, no logic of its own here) and, on the tail, Hard Edge back on (the founder's
-  // rule) and Hard Edge Blends From and Ends At back to 18" and 30" by deleting `tailHardEdgeBlendsFrom` and
+  // rule) and Tail Rail Blends From and Ends At back to 12" and the board's centre by deleting `tailHardEdgeBlendsFrom` and
   // `tailHardEdgeEndsAt` (Phase 16, D-20/D-30: a board without them reads the defaults) — all in one setState,
   // so it is ONE undo step. A discrete action like
   // toggleTailHardEdge, hence noteEdit(null).

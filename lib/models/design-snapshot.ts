@@ -144,8 +144,9 @@
  *    2026-11-03, D-30 2026-11-04), both in millimetres from the tail tip: `tailHardEdgeBlendsFrom` (Hard
  *    Edge Blends From, where the hard edge starts blending into the tucked rail) and `tailHardEdgeEndsAt`
  *    (Hard Edge Ends At, where the rail has fully blended into the centre's tucked rail). Absent — every
- *    board saved before them, and a board saved with only the first, single Ends At — reads 18" and 30"
- *    through `hardEdgeBlendsFrom` / `hardEdgeEndsAt`. Anything that is not a finite number that could sit on
+ *    board saved before them, and a board saved with only the first, single Ends At — reads the default pair
+ *    through `hardEdgeBlendsFrom` / `hardEdgeEndsAt` — 12" and the top of Ends At's slider (the board's centre) since quick
+ *    261113-psx, the founder 2026-11-13; D-30's 18" and L/6 + 18" before. Anything that is not a finite number that could sit on
  *    some board (Blends From 12"-30", Ends At 14" to the centre of the longest board) leaves no key at all,
  *    so a crafted value never rejects the board; a value that fits some board but not this one, or a pair
  *    that crosses, is forgiven by those readers on every read. Nothing is rewritten until the shaper saves.

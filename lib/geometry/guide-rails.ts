@@ -189,8 +189,12 @@ function nudgePush(current: Mm, amount: Mm, key: RailNudgeKey, system: UnitsSyst
   return null;
 }
 
-/** The blend pair moved together by the push, within RAILS' own slider windows; the other way when there is no
- * room toward the centre; `null` with no room either way. */
+/**
+ * The blend pair pushed, within RAILS' own slider windows: the pair together toward the centre, else the other way;
+ * and, since quick 261113-psx, when the pair cannot move together — a board that says nothing sits with Blends From at
+ * the bottom of its slider and Ends At at the top of its own — Blends From alone toward the centre (a longer hard
+ * edge), else Ends At alone toward the tail; `null` with no room any of those ways.
+ */
 function blendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: Mm; endsAt: Mm } | null {
   const L = input.boardLength;
   const from = hardEdgeBlendsFrom(input.effectiveRails, L);
@@ -204,6 +208,12 @@ function blendsPush(input: RailsGuideInput, system: UnitsSystem): { blendsFrom: 
     const tw = hardEdgeEndsAtWindow(f, L);
     if (f >= fw.min - e && f <= fw.max + e && t >= tw.min - e && t <= tw.max + e) return { blendsFrom: f, endsAt: t };
   }
+  const startAlone = mm(from + amount);
+  const startWindow = hardEdgeBlendsFromWindow(ends, L);
+  if (startAlone >= startWindow.min - e && startAlone <= startWindow.max + e) return { blendsFrom: startAlone, endsAt: ends };
+  const endAlone = mm(ends - amount);
+  const endWindow = hardEdgeEndsAtWindow(from, L);
+  if (endAlone >= endWindow.min - e && endAlone <= endWindow.max + e) return { blendsFrom: from, endsAt: endAlone };
   return null;
 }
 
@@ -542,7 +552,12 @@ function blendsFigure(input: RailsGuideInput, pushedPair: { blendsFrom: Mm; ends
   // Each mark's figure under the stringer, Blends From toward the tail and Ends At toward the nose, so the two
   // run away from each other and never meet.
   const labelY = f1(Y(0) + 3);
-  prims.push({ kind: "text", role: "value", x: f1(X(from) + 3), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(from, system))], anchor: "start" });
+  // Blends From's figure starts at its mark and runs toward the tail, and on the default (the 12" station, a hand from
+  // the tail's end) it would run past the window's tail edge, as Ends At's can past its nose edge, so it is held inside
+  // that edge the same way, at the narrowest card's text size: it slides back under its own mark by just what it needs.
+  const startLabel = (x: number): GuidePrim => ({ kind: "text", role: "value", x: f1(x), y: labelY, dy: 0.85, parts: [guideFigure(formatDim(from, system))], anchor: "start" });
+  const startWidth = guideTextBox(startLabel(0), GUIDE_MIN_FIT)?.w ?? 0;
+  prims.push(startLabel(Math.min(X(from) + 3, box.x + box.w - 2 - startWidth)));
   // On a short board Ends At sits close to the window's nose edge, and its figure would run off that edge and
   // lose its first digit (`9 1/2"` for 29 1/2"). So the figure is held inside the window at the narrowest card's
   // text size: it slides back under its own mark by just what it needs, and still ends well short of Blends From's.
