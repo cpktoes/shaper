@@ -6,6 +6,7 @@ import {
   finRoundingGrain,
   MIN_MCKEE_LONGBOARD_QUAD_LENGTH,
   TWIN_FORWARD_BASE_IN,
+  TWIN_FORWARD_LIMIT_OFF_TAIL_IN,
   type FinPlacementSpec,
 } from "@/lib/geometry/fins";
 import { guideCardId, type GuidePage } from "@/lib/geometry/guide-card";
@@ -305,6 +306,7 @@ const APP_NUMBERS: { key: string; imperial: string; source: string; metric: stri
   { key: guideCardId("fins", "Quad", "McKee Longboard"), imperial: "eight feet or longer", source: "MIN_MCKEE_LONGBOARD_QUAD_LENGTH · formatLength", metric: `${formatLength(MIN_MCKEE_LONGBOARD_QUAD_LENGTH, "metric")} or longer` },
   { key: guideCardId("fins", "Quad", "McKee Longboard"), imperial: `8'0"`, source: "MIN_MCKEE_LONGBOARD_QUAD_LENGTH · formatLength", metric: formatLength(MIN_MCKEE_LONGBOARD_QUAD_LENGTH, "metric") },
   { key: guideCardId("fins", "Advanced", "Aft/Forward position"), imperial: "an inch and a half", source: "FIN_POSITION_RANGE_IN (lib/geometry/fins.ts) · measureSlider metric top · formatMark", metric: sliderTopM(AFT_FORWARD) },
+  { key: guideCardId("fins", "Advanced", "Aft/Forward position"), imperial: "ten inches", source: "TWIN_FORWARD_LIMIT_OFF_TAIL_IN · formatMark (a distance off the tail)", metric: inchMark(TWIN_FORWARD_LIMIT_OFF_TAIL_IN) },
 ];
 
 describe("every number of the app in a saying is the app's own Metric figure", () => {

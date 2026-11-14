@@ -22,8 +22,9 @@
  * set to the ACTUAL figure that puts our fin on the file's, held inside the control's own range (`FIN_*_RANGE_IN`, the very
  * constants FINS' sliders run over), never rounded to a slider step: the founder's rule is to round only for display, and
  * FINS' sliders already hold values off their Imperial step. A control stays at its template when the file's figure is
- * within a hundredth of a millimetre of it, so an unmoved board opens unmodified. Where a range stops short (FINS'
- * Aft/Forward position runs 1 1/2" either way from a twin's template), the fit says which control and by how much.
+ * within a hundredth of a millimetre of it, so an unmoved board opens unmodified. Where a range stops short (a twin's
+ * Aft/Forward position carries the pair as far as 10" off the tail, the founder's ruling of 2026-11-13; every other pair
+ * and the centre fin run 1 1/2" either way from their template), the fit says which control and by how much.
  *
  * Written from the format facts above, never from another program's code. Pure: no React, browser, database or
  * `lib/export` import (CLAUDE.md Rule 1); lengths are millimetres, every inch figure goes through `units.ts`.
@@ -34,9 +35,9 @@ import { designFinPlacement } from "./design";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   FIN_BASE_LENGTH_RANGE_IN,
-  FIN_POSITION_RANGE_IN,
   FIN_SYSTEMS,
   FIN_TOE_RANGE_IN,
+  finPositionRangeIn,
   offRailTunerWindow,
   resetAdvanced,
   type FinAdvancedSpec,
@@ -331,14 +332,15 @@ function trial(
 
   if (hasSide && file.side) {
     const want = file.side.offTail - forwardOffTail(p0, c.setup);
-    const held = holdInRange(want, FIN_POSITION_RANGE_IN);
+    // The forward pair's own range for this setup and template: a twin's reaches 10" off the tail (the founder, 2026-11-13).
+    const held = holdInRange(want, finPositionRangeIn(c.setup, twinTemplate, "forward"));
     if (Math.abs(held) >= BRD_FIN_SAME_MM) adv.forwardPositionOffset = mm(held);
     noteShort("forwardPosition", want, held);
     moved += mmToInches(mm(Math.abs(adv.forwardPositionOffset)));
   }
   if (hasCentre && file.centre) {
     const want = file.centre.offTail - p0.resolved.centerOffTail;
-    const held = holdInRange(want, FIN_POSITION_RANGE_IN);
+    const held = holdInRange(want, finPositionRangeIn(c.setup, twinTemplate, "center"));
     if (Math.abs(held) >= BRD_FIN_SAME_MM) adv.centerPositionOffset = mm(held);
     noteShort("centrePosition", want, held);
     moved += mmToInches(mm(Math.abs(adv.centerPositionOffset)));

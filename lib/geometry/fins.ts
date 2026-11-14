@@ -438,6 +438,73 @@ export function offRailTunerRangeIn(
 export const FIN_BASE_LENGTH_RANGE_IN = { min: 2.5, max: 10.5, step: 0.125 } as const;
 /** Aft/Forward position of a pair or the centre fin, either way from its template: 1 1/2". */
 export const FIN_POSITION_RANGE_IN = { min: -1.5, max: 1.5, step: 1 / 16 } as const;
+/**
+ * Where each Twin template puts its pair's trailing edges off the tail, in inches: Modern/Upright 7 1/2", Keel 6 1/4",
+ * Upright + Trailer 10". The twin maths reads this table and the Aft/Forward position's range reads it too, so the two
+ * can never disagree about where the template stands.
+ */
+export const TWIN_TEMPLATE_OFF_TAIL_IN: Record<TwinTemplate, number> = { upright: 7.5, keel: 6.25, trailer: 10 };
+
+/**
+ * How far forward a Twin's Aft/Forward position may carry the pair, as a distance off the tail, in inches (the founder,
+ * 2026-11-13, on seeing the slider stop 1/2" short of his twin file's fin: "Twin aft/fwd slider can be loosened to 10 in.").
+ * The slider's forward end is whatever puts the pair 10" off the tail on the template picked: +2 1/2" on Modern/Upright,
+ * +3 3/4" on a Keel. An Upright + Trailer already stands there, so it keeps the usual range.
+ */
+export const TWIN_FORWARD_LIMIT_OFF_TAIL_IN = 10;
+
+/** Which fin group an Aft/Forward position slider moves: the forward pair (a twin's, a thruster's front, a 2+1's side bites), a quad's rear pair, the centre fin. */
+export type FinPositionGroup = "forward" | "rear" | "center";
+
+/**
+ * The Aft/Forward position's range for a fin setup and twin template, in inches, as `{ min, max, step }`: exactly
+ * `FIN_POSITION_RANGE_IN` for every setup and group but a Twin's pair on Modern/Upright or a Keel, whose forward end is
+ * extended to put the pair `TWIN_FORWARD_LIMIT_OFF_TAIL_IN` off the tail (never shorter than the usual range).
+ */
+export function finPositionRangeIn(
+  setup: FinSetup,
+  twinTemplate: TwinTemplate,
+  group: FinPositionGroup = "forward",
+): { min: number; max: number; step: number } {
+  if (setup !== "twin" || group !== "forward") return FIN_POSITION_RANGE_IN;
+  const toLimit = TWIN_FORWARD_LIMIT_OFF_TAIL_IN - TWIN_TEMPLATE_OFF_TAIL_IN[twinTemplate];
+  return toLimit > FIN_POSITION_RANGE_IN.max ? { ...FIN_POSITION_RANGE_IN, max: toLimit } : FIN_POSITION_RANGE_IN;
+}
+
+/** A stored position offset only ever counts to within this of the end of its range (a figure that came through millimetres can sit a hair past it). */
+const POSITION_HOLD_SLACK_IN = 1e-9;
+
+/**
+ * The offset a setup actually USES: the stored one held inside that setup's own range. The stored offset is shared by every
+ * setup and template, so a Twin's +2 1/2" must never carry a thruster's, a 2+1's, a quad's or an Upright + Trailer's fins
+ * further than their own range when the shaper switches. A figure inside its range (or a hair past the end) comes back
+ * untouched, bit for bit; a figure that is not a number is left alone.
+ */
+export function heldFinPositionOffset(
+  offset: Mm,
+  setup: FinSetup,
+  twinTemplate: TwinTemplate,
+  group: FinPositionGroup = "forward",
+): Mm {
+  if (!Number.isFinite(offset)) return offset;
+  const range = finPositionRangeIn(setup, twinTemplate, group);
+  const lo = inchesToMm(range.min);
+  const hi = inchesToMm(range.max);
+  const slack = inchesToMm(POSITION_HOLD_SLACK_IN);
+  if (offset > hi + slack) return hi;
+  if (offset < lo - slack) return lo;
+  return offset;
+}
+
+/** `heldFinPositionOffset` in inches, for the inch-domain core: the same range, the same slack, the same bit-for-bit pass-through. */
+function holdPositionInches(value: number, setup: FinSetup, twinTemplate: TwinTemplate, group: FinPositionGroup): number {
+  if (!Number.isFinite(value)) return value;
+  const range = finPositionRangeIn(setup, twinTemplate, group);
+  if (value > range.max + POSITION_HOLD_SLACK_IN) return range.max;
+  if (value < range.min - POSITION_HOLD_SLACK_IN) return range.min;
+  return value;
+}
+
 /** Toe-In, a fin pair's: 0 to 1/2". */
 export const FIN_TOE_RANGE_IN = { min: 0, max: 0.5, step: 1 / 16 } as const;
 /** A quad's Basic - Off-Rail rear pair, distance from the rail: 1" to 2". */
@@ -773,6 +840,9 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   const adv = spec.advanced;
   const clampToe = (v: number) => Math.max(0, Math.min(0.5, v));
   const clampOffRail = (v: number) => Math.max(1, Math.min(2, v));
+  // The Aft/Forward offsets a setup USES are the stored ones held inside that setup's own range (`heldFinPositionOffset`),
+  // so a figure stored for another setup or template can never carry these fins further than their slider goes.
+  const heldOffset = (value: number, group: FinPositionGroup) => holdPositionInches(value, spec.finSetup, spec.twinTemplate, group);
 
   const isThruster = spec.finSetup === "thruster";
   const isQuad = spec.finSetup === "quad";
@@ -870,7 +940,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   if (isBasicOffRail) {
     quadModels.basicOffRail.rear = adv.quadRearOffTailOverride ?? frontBase / 2 + 0.25;
   }
-  const frontFinal = frontBase + (isThruster || isQuad ? adv.forwardPositionOffset : 0);
+  const frontFinal = frontBase + (isThruster || isQuad ? heldOffset(adv.forwardPositionOffset, "forward") : 0);
   // frontSpread turns an off-rail distance into a lateral position through the outline half
   // width at the fin's OWN off-tail, not at the tail or at 12".
   const frontSpread = effectiveHalfWidthAtInches(spec.tailShape, w12, spec.importedTail, frontFinal) - frontOffRail;
@@ -878,7 +948,7 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   const centerSuggestedThruster = activeThrusterModel.center;
 
   const rearBase = quadModels[spec.quadRearModel].rear ?? 0;
-  const rearFinal = rearBase + (isQuad ? adv.rearPositionOffset : 0);
+  const rearFinal = rearBase + (isQuad ? heldOffset(adv.rearPositionOffset, "rear") : 0);
   const quadRearOffRailValue = clampOffRail(adv.quadRearOffRailOverride ?? 1.25);
   // spreadTemplate is a HALF spread: for basicOffRail it comes from half width minus off-rail; for
   // every other model it is the model's own full spread divided by two.
@@ -907,8 +977,8 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
   const spread = spreadTemplate - (rearOffRailFinal - rearOffRailTemplate);
 
   // ---- Twin (§6) ----
-  const mainOffTailBase = spec.twinTemplate === "keel" ? 6.25 : spec.twinTemplate === "trailer" ? 10 : 7.5;
-  const mainOffTail = mainOffTailBase + (isTwin ? adv.forwardPositionOffset : 0);
+  const mainOffTailBase = TWIN_TEMPLATE_OFF_TAIL_IN[spec.twinTemplate];
+  const mainOffTail = mainOffTailBase + (isTwin ? heldOffset(adv.forwardPositionOffset, "forward") : 0);
   const mainOffRail = isTwin ? forwardOffRailFinal : mainOffRailTemplate;
   const twinToeFixed = spec.twinTemplate === "keel" ? 0.125 : 0.1875;
   const trailerOffTail = 4.0;
@@ -922,11 +992,11 @@ function computeFinPlacementInches(spec: FinPlacementSpecInches): FinPlacementRe
         : isTwin && spec.twinTemplate === "trailer"
           ? trailerOffTail
           : 0;
-  const centerFinal = centerSuggested + (hasCenterSection ? adv.centerPositionOffset : 0);
+  const centerFinal = centerSuggested + (hasCenterSection ? heldOffset(adv.centerPositionOffset, "center") : 0);
 
   // ---- 2+1 side bites (§7) ----
   const sideBase = L / 48 + 13.5;
-  const sideFinal = sideBase + (isTwoPlusOne ? adv.forwardPositionOffset : 0);
+  const sideFinal = sideBase + (isTwoPlusOne ? heldOffset(adv.forwardPositionOffset, "forward") : 0);
   const activeSideOffRail = isTwoPlusOne ? forwardOffRailFinal : sideOffRailTemplate;
   const sideToeFixedDefault = 0.1875;
 

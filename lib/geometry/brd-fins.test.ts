@@ -23,7 +23,9 @@ import { designCrossSectionInput, designFinPlacement, designSideProfile, deriveE
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
   FIN_BASE_LENGTH_RANGE_IN,
-  FIN_POSITION_RANGE_IN,
+  TWIN_FORWARD_LIMIT_OFF_TAIL_IN,
+  TWIN_TEMPLATE_OFF_TAIL_IN,
+  finPositionRangeIn,
   FIN_SYSTEMS,
   FIN_TOE_RANGE_IN,
   offRailTunerWindow,
@@ -294,14 +296,18 @@ describe("the founder's twin, as its nine figures on a stock board", () => {
     expect(fit!.spec.twinTemplate).toBe("upright");
   });
 
-  it("holds the Aft/Forward position at its end and says it stopped 1/2\" short", () => {
+  it("carries the pair out to 9 1/2\" with the Aft/Forward position at +2\" (a twin's slider now reaches 10\" off the tail, +2 1/2\"): nothing falls short", () => {
     const a = fit!.spec.advanced;
-    expect(a.forwardPositionOffset).toBeCloseTo(IN(FIN_POSITION_RANGE_IN.max), 9);
-    expect(fit!.short).toHaveLength(1);
-    expect(fit!.short[0].control).toBe("forwardPosition");
-    expect(fit!.short[0].by).toBeCloseTo(IN(0.5), 6);
-    expect(fit!.largest.which).toBe("sideOffTail");
-    expect(fit!.largest.gap).toBeCloseTo(IN(0.5), 6);
+    expect(a.forwardPositionOffset).toBeCloseTo(IN(2), 6);
+    expect(fit!.short).toEqual([]);
+    expect(fit!.largest.gap).toBeLessThan(BRD_FIN_SAME_MM);
+    expect(fit!.gaps.side!.offTail).toBeLessThan(BRD_FIN_SAME_MM);
+  });
+
+  it("chooses Modern/Upright over a Keel, which now reaches 9 1/2\" too: the two tie on every mark and the Keel moves FINS' controls more", () => {
+    // Keel's own template stands at 6 1/4" (a +3 1/4" slide) and its base is 6 1/2" (a 1.9" shorter base is set): more moved.
+    expect(fit!.spec.twinTemplate).toBe("upright");
+    expect(fit!.spec.advanced.forwardPositionOffset).toBeLessThan(IN(TWIN_FORWARD_LIMIT_OFF_TAIL_IN - TWIN_TEMPLATE_OFF_TAIL_IN.upright) + 1e-6);
   });
 
   it("lands the rail, the toe-in and the base length on the file's, exactly", () => {
@@ -311,6 +317,7 @@ describe("the founder's twin, as its nine figures on a stock board", () => {
     expect(fit!.file.side!.toeIn).toBeCloseTo(IN(0.2), 6);
     expect(fit!.file.side!.base).toBeCloseTo(IN(4.6), 6);
     expect(fit!.file.side!.offTail).toBeCloseTo(IN(9.5), 6);
+    expect(fit!.ours.side!.offTail).toBeCloseTo(IN(9.5), 6);
   });
 
   it("takes the toe-in and the base as actual figures, not slider steps", () => {
@@ -330,7 +337,9 @@ describe("the founder's twin, as its nine figures on a stock board", () => {
     const placement = place(fit!.spec);
     expect(placement.marks.map((m) => m.role).sort()).toEqual(["front", "front"]);
     const a = fit!.spec.advanced;
-    expect(Math.abs(a.forwardPositionOffset)).toBeLessThanOrEqual(IN(FIN_POSITION_RANGE_IN.max) + 1e-9);
+    const range = finPositionRangeIn("twin", "upright", "forward");
+    expect(a.forwardPositionOffset).toBeLessThanOrEqual(IN(range.max) + 1e-9);
+    expect(a.forwardPositionOffset).toBeGreaterThanOrEqual(IN(range.min) - 1e-9);
     expect(a.forwardToeOverride!).toBeGreaterThanOrEqual(IN(FIN_TOE_RANGE_IN.min));
     expect(a.forwardToeOverride!).toBeLessThanOrEqual(IN(FIN_TOE_RANGE_IN.max));
     expect(a.baseLenForward).toBeGreaterThanOrEqual(IN(FIN_BASE_LENGTH_RANGE_IN.min));

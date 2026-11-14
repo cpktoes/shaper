@@ -18,7 +18,6 @@ import { Slider } from "@/components/ui/slider";
 import { TailShapeIcon, type IconTailShape } from "@/components/outline/tail-shape-icon";
 import {
   FIN_BASE_LENGTH_RANGE_IN,
-  FIN_POSITION_RANGE_IN,
   FIN_SETUPS,
   FIN_TOE_RANGE_IN,
   OFF_RAIL_TUNER_STEP_IN,
@@ -29,13 +28,16 @@ import {
   TWIN_TEMPLATES,
   defaultCenterBaseLength,
   effectiveQuadRearModel,
+  finPositionRangeIn,
   forwardFinsHeading,
+  heldFinPositionOffset,
   isQuadRearModelAvailable,
   offRailTunerRangeIn,
   resetAdvanced,
   twinTemplateChange,
   type FinAdvancedSpec,
   type FinPlacementResult,
+  type FinPositionGroup,
   type FinPlacementSpec,
   type FinSetup,
   type FinTailShape,
@@ -243,9 +245,15 @@ export function FinControls({
   // value from the one the track holds, and the two must not be conflated. The Off-Rail tuners are
   // built the same way: the track holds the held nudge, the label prints the distance the fins end up
   // from the rail, and the track's two ends are the tuner window (offRailTunerRangeIn).
-  const centerPositionSlider = measureSlider(spec.advanced.centerPositionOffset, FIN_POSITION_RANGE_IN, FIN_POSITION_RANGE_IN.step, 1, system);
-  const forwardPositionSlider = measureSlider(spec.advanced.forwardPositionOffset, FIN_POSITION_RANGE_IN, FIN_POSITION_RANGE_IN.step, 1, system);
-  const rearPositionSlider = measureSlider(spec.advanced.rearPositionOffset, FIN_POSITION_RANGE_IN, FIN_POSITION_RANGE_IN.step, 1, system);
+  // Each position slider runs over its own range for the setup and template picked (a Twin's forward pair reaches 10" off
+  // the tail), and shows the offset the fins actually USE: the stored one held inside that range (`heldFinPositionOffset`).
+  const positionSlider = (group: FinPositionGroup, stored: Mm) => {
+    const range = finPositionRangeIn(spec.finSetup, spec.twinTemplate, group);
+    return measureSlider(heldFinPositionOffset(stored, spec.finSetup, spec.twinTemplate, group), range, range.step, 1, system);
+  };
+  const centerPositionSlider = positionSlider("center", spec.advanced.centerPositionOffset);
+  const forwardPositionSlider = positionSlider("forward", spec.advanced.forwardPositionOffset);
+  const rearPositionSlider = positionSlider("rear", spec.advanced.rearPositionOffset);
   const forwardToeSlider = measureSlider(resolved.forwardToe, FIN_TOE_RANGE_IN, FIN_TOE_RANGE_IN.step, 1, system);
   const rearToeSlider = measureSlider(resolved.rearToe, FIN_TOE_RANGE_IN, FIN_TOE_RANGE_IN.step, 1, system);
   const forwardOffRailSlider = measureSlider(

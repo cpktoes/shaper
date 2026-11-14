@@ -1,19 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FIN_PLACEMENT_SPEC,
+  FIN_POSITION_RANGE_IN,
   MIN_MCKEE_LONGBOARD_QUAD_LENGTH,
   OFF_RAIL_TUNER_STEP_IN,
   TWIN_FORWARD_BASE_IN,
+  TWIN_FORWARD_LIMIT_OFF_TAIL_IN,
+  TWIN_TEMPLATE_OFF_TAIL_IN,
   computeFinPlacement,
   defaultCenterBaseLength,
   defaultForwardBaseLength,
   effectiveQuadRearModel,
+  finPositionRangeIn,
   finRoundingGrain,
   finRoundingNote,
   fullSpreadRoundingAside,
   forwardFinsHeading,
   frontFinStation,
   frontFinToeDegrees,
+  heldFinPositionOffset,
   importedFinTailFromOutline,
   isQuadRearModelAvailable,
   offRailTunerRangeIn,
@@ -1477,6 +1482,94 @@ describe("the front fins as the bottom reads them (Phase 17, D-03, D-10)", () =>
       const toe = frontFinToeDegrees(placement);
       expect(toe).toBeGreaterThan(0);
       expect(Number.isInteger(toe * 100)).toBe(false);
+    }
+  });
+});
+
+describe("the Aft/Forward position's range, and the offset a setup uses (the founder, 2026-11-13: \"Twin aft/fwd slider can be loosened to 10 in.\")", () => {
+  const inch = (v: number) => inchesToMm(v) as number;
+  const spec = (finSetup: FinSetup, twinTemplate: TwinTemplate, adv: Partial<FinAdvancedSpec>): FinPlacementSpec => ({
+    ...DEFAULT_FIN_PLACEMENT_SPEC,
+    finSetup,
+    twinTemplate,
+    advanced: { ...resetAdvanced(finSetup, twinTemplate), ...adv },
+  });
+  const mark = (p: ReturnType<typeof computeFinPlacement>, role: "front" | "rear" | "center") => p.marks.find((m) => m.role === role && m.side !== -1)!;
+
+  it("the twin templates stand where the maths has always put them, and the limit is 10 inches", () => {
+    expect(TWIN_TEMPLATE_OFF_TAIL_IN).toEqual({ upright: 7.5, keel: 6.25, trailer: 10 });
+    expect(TWIN_FORWARD_LIMIT_OFF_TAIL_IN).toBe(10);
+    for (const t of ["upright", "keel", "trailer"] as const) {
+      const p = computeFinPlacement(spec("twin", t, {}));
+      expect(mmToInches(mark(p, "front").offTail)).toBeCloseTo(TWIN_TEMPLATE_OFF_TAIL_IN[t], 9);
+    }
+  });
+
+  it("a twin's forward end puts the pair 10 inches off the tail: +2 1/2\" on Modern/Upright, +3 3/4\" on a Keel; the aft end is unchanged", () => {
+    const upright = finPositionRangeIn("twin", "upright");
+    const keel = finPositionRangeIn("twin", "keel");
+    expect(upright).toEqual({ ...FIN_POSITION_RANGE_IN, max: 2.5 });
+    expect(keel).toEqual({ ...FIN_POSITION_RANGE_IN, max: 3.75 });
+    expect(upright.min).toBe(FIN_POSITION_RANGE_IN.min);
+    for (const [t, r] of [["upright", upright], ["keel", keel]] as const) {
+      const at = computeFinPlacement(spec("twin", t, { forwardPositionOffset: mm(inch(r.max)) }));
+      expect(mmToInches(mark(at, "front").offTail)).toBeCloseTo(10, 9);
+    }
+  });
+
+  it("an Upright + Trailer (already at 10\") and every other setup and group keep exactly FIN_POSITION_RANGE_IN", () => {
+    expect(finPositionRangeIn("twin", "trailer")).toBe(FIN_POSITION_RANGE_IN);
+    for (const setup of ["single", "thruster", "2plus1", "quad"] as const) {
+      for (const t of ["upright", "keel", "trailer"] as const) {
+        for (const group of ["forward", "rear", "center"] as const) expect(finPositionRangeIn(setup, t, group)).toBe(FIN_POSITION_RANGE_IN);
+      }
+    }
+    for (const t of ["upright", "keel", "trailer"] as const) {
+      expect(finPositionRangeIn("twin", t, "rear")).toBe(FIN_POSITION_RANGE_IN);
+      expect(finPositionRangeIn("twin", t, "center")).toBe(FIN_POSITION_RANGE_IN);
+    }
+  });
+
+  it("the range's step still lands on its ends in Imperial's sixteenths", () => {
+    for (const t of ["upright", "keel"] as const) {
+      const r = finPositionRangeIn("twin", t);
+      expect((r.max - r.min) / r.step).toBe(Math.round((r.max - r.min) / r.step));
+    }
+  });
+
+  it("the offset a setup uses is the stored one held inside that setup's range, bit for bit when it is inside", () => {
+    const stored = mm(inch(2.5));
+    expect(heldFinPositionOffset(stored, "twin", "upright")).toBe(stored);
+    expect(heldFinPositionOffset(stored, "twin", "keel")).toBe(stored);
+    expect(heldFinPositionOffset(stored, "twin", "trailer")).toBe(inch(1.5));
+    for (const setup of ["thruster", "2plus1", "quad", "single"] as const) expect(heldFinPositionOffset(stored, setup, "upright")).toBe(inch(1.5));
+    expect(heldFinPositionOffset(mm(inch(-3)), "twin", "upright")).toBe(inch(-1.5));
+    expect(heldFinPositionOffset(mm(inch(3.9)), "twin", "keel")).toBe(inch(3.75));
+    // inside the range, or a hair past its end, nothing moves
+    for (const v of [0, inch(1.5), inch(-1.5), inch(1.5) + 1e-12, 38.1, -25.4]) expect(heldFinPositionOffset(mm(v), "thruster", "upright")).toBe(v);
+    expect(Number.isNaN(heldFinPositionOffset(mm(Number.NaN), "twin", "upright"))).toBe(true);
+  });
+
+  it("a twin's +2 1/2\" never carries a thruster's, 2+1's, quad's or trailer twin's fins further than their own range, in the maths", () => {
+    const big = { forwardPositionOffset: mm(inch(2.5)), rearPositionOffset: mm(inch(2.5)), centerPositionOffset: mm(inch(2.5)) };
+    const held = { forwardPositionOffset: mm(inch(1.5)), rearPositionOffset: mm(inch(1.5)), centerPositionOffset: mm(inch(1.5)) };
+    const cases: [FinSetup, TwinTemplate][] = [["thruster", "upright"], ["2plus1", "upright"], ["quad", "upright"], ["single", "upright"], ["twin", "trailer"]];
+    for (const [setup, template] of cases) {
+      const a = computeFinPlacement(spec(setup, template, big));
+      const b = computeFinPlacement(spec(setup, template, held));
+      expect(a.marks, `${setup} ${template}`).toEqual(b.marks);
+      expect(a.resolved, `${setup} ${template}`).toEqual(b.resolved);
+    }
+  });
+
+  it("a board whose offsets are inside today's range still moves its fins by exactly that offset, to the range's own ends", () => {
+    const roleOf: Record<string, "front" | "rear" | "center"> = { single: "center", twin: "front", thruster: "front", "2plus1": "front", quad: "rear" };
+    for (const setup of ["thruster", "2plus1", "quad", "single", "twin"] as const) {
+      const base = computeFinPlacement(spec(setup, "upright", {}));
+      for (const v of [-1.5, -0.5, 0, 0.5, 1.5]) {
+        const p = computeFinPlacement(spec(setup, "upright", { forwardPositionOffset: mm(inch(v)), rearPositionOffset: mm(inch(v)), centerPositionOffset: mm(inch(v)) }));
+        expect(mmToInches(mark(p, roleOf[setup]).offTail) - mmToInches(mark(base, roleOf[setup]).offTail), `${setup} ${v}`).toBeCloseTo(v, 9);
+      }
     }
   });
 });
