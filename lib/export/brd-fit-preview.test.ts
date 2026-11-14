@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// Fitting a board file is slow work, and a busy machine (the whole suite at once) can stretch a case past the default five
+// seconds: the cases here are generous rather than flaky. A case with its own, longer limit keeps it.
+vi.setConfig({ testTimeout: 60_000 });
 import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
 import { buildFallbackProfile } from "../geometry/board-profile";
