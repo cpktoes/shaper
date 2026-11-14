@@ -45,7 +45,7 @@
  * database import (CLAUDE.md Rule 1); all lengths are millimetres.
  */
 import type { P2 } from "./bezier-fit";
-import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec } from "./board";
+import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, type OutlineSpec, widePointOffsetRangeIn, widePointWidthRangeIn } from "./board";
 import { buildFallbackProfile } from "./board-profile";
 import {
   BRD_WING_CORNER_PAD_MM,
@@ -407,9 +407,13 @@ function fitOutline(lines: BrdLines): OutlineFit {
       wideAt = x;
     }
   }
-  const offsetLimit = inchesToMm(OUTLINE_SLIDER_LIMITS.widePointOffsetIn.max);
-  const widePointWidth = mm(clamp(2 * half, inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.min), inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max)));
-  const widePointOffset = mm(clamp(wideAt - length / 2, -offsetLimit, offsetLimit));
+  // The width and offset the controls can make for THIS length: up to 31" from 8'0" and 25" under it, and an offset window
+  // that stops where the outline stops the wide point on a board under 4'8" (quick 261113-si7). `length` is already the
+  // clamped length the fit is made at.
+  const widthRange = widePointWidthRangeIn(mm(length));
+  const offsetRange = widePointOffsetRangeIn(mm(length));
+  const widePointWidth = mm(clamp(2 * half, inchesToMm(widthRange.min), inchesToMm(widthRange.max)));
+  const widePointOffset = mm(clamp(wideAt - length / 2, inchesToMm(offsetRange.min), inchesToMm(offsetRange.max)));
 
   const limits = OUTLINE_SLIDER_LIMITS;
   const base: OutlineSpec = {

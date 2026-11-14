@@ -23,11 +23,11 @@
  * change; the character-length ceilings recorded here are its answer:
  *
  * - Every Metric dimension-cell string this app can produce is 8 characters or fewer
- *   (`"304.8 cm"`, the longest board at its own length range's maximum) — the base size.
+ *   (`"365.8 cm"`, the longest board, 12'0", at its own length range's maximum) — the base size.
  * - The longest Imperial Nose/Widepoint/Tail/Offset strings run 9-10 characters
- *   (`"24 15/16""`, `"-11 15/16""`) — the first step down.
- * - The longest string of all is the Length cell in Imperial, at 11 characters
- *   (`"5'10 11/16""`) — the second step down.
+ *   (`"30 15/16""`, `"-11 15/16""`) — the first step down.
+ * - The longest string of all is the Length cell in Imperial, at 12 characters
+ *   (`"11'11 15/16""`, a hair under 12'0") — the second step down.
  *
  * The CSS classes these names select are declared in `app/design/summary/order-form.css`, each
  * derived from `--order-form-dim` and each floored with the same `clamp()` minimum the rest of the

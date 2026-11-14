@@ -20,7 +20,7 @@
  * Every figure is printed through the page's own formatters; degrees and percentages as the sidebar prints
  * them. Pure; no React, browser or database (CLAUDE.md Rule 1).
  */
-import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN, type OutlineSpec, type TailShape } from "./board";
+import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, type OutlineSpec, type TailShape, widePointOffsetRangeIn, widePointWidthRangeIn } from "./board";
 import type { FinMark } from "./fins";
 import {
   GUIDE_NO_CAPTION,
@@ -240,9 +240,9 @@ export function templateGuideVariants(input: TemplateGuideInput, system: UnitsSy
   set(ids.boardLength, pushed(pushWithin(o.length, p.length, length.lo, length.hi), (v) => ({ ...o, length: mm(v) })));
   set(ids.noseAngle, pushed(pushWithin(o.noseAngle, p.angle, 35, 90), (v) => ({ ...o, noseAngle: degrees(v) })));
   set(ids.noseFullness, pushed(pushWithin(o.noseFullness, p.full, 0, 100), (v) => ({ ...o, noseFullness: v })));
-  const width = sliderLimits(o.widePointWidth, WIDEPOINT_WIDTH_RANGE_IN, 0.125, 1, system);
+  const width = sliderLimits(o.widePointWidth, widePointWidthRangeIn(o.length), 0.125, 1, system);
   set(ids.width, pushed(pushWithin(o.widePointWidth, p.width, width.lo, width.hi), (v) => ({ ...o, widePointWidth: mm(v) })));
-  const offset = sliderLimits(o.widePointOffset, { min: -12, max: 12 }, 0.25, 1, system);
+  const offset = sliderLimits(o.widePointOffset, widePointOffsetRangeIn(o.length), 0.25, 1, system);
   set(ids.offset, pushed(pushWithin(o.widePointOffset, p.offset, offset.lo, offset.hi), (v) => ({ ...o, widePointOffset: mm(v) })));
   set(ids.tailRail, pushed(pushWithin(o.tailRailLength, p.rail, 0, 100), (v) => ({ ...o, tailRailLength: v })));
   set(ids.noseRail, pushed(pushWithin(o.noseRailLength, p.rail, 0, 100), (v) => ({ ...o, noseRailLength: v })));

@@ -8,7 +8,7 @@
  * tail) and cut (`DEFAULT_BLANK_CUT`), no fine-tunes; the default outline stretched to the board's
  * length; kept only when the blank passes the list's two floors (`floorCheck`) with the default fit
  * settings; and laid at three placements — the tail end, the centre and the nose end of the slider
- * (`placementRange`). Boards longer than the app's 10'0" limit are kept — the set as defined — and
+ * (`placementRange`). Boards outside the app's current length limits (`BOARD_LENGTH_RANGE_IN`: 4'0" to 12'0" since quick 261113-si7, 5'0" to 10'0" before) are kept — the set as defined — and
  * each case says whether the app could build it (`buildable`).
  *
  * Test-only: no React, browser or database import, and nothing outside the tests and the pin's

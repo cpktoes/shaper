@@ -711,10 +711,22 @@ describe("a board the builder can't build is refused, naming the value", () => {
     const noWidth: BoardSurfaceInput = { ...input, sections: { ...input.sections, halfWidthAt: () => mm(Number.NaN) } };
     expect(() => buildBoardSurface(noWidth)).toThrow(/width/);
   });
-  it("refuses a length that is not a number, or outside 60\"–120\"", () => {
-    for (const length of [Number.NaN, inchesToMm(50), inchesToMm(130)]) {
+  it("refuses a length that is not a number, or outside 48\"–144\" (4'0\" to 12'0\", quick 261113-si7), naming the range", () => {
+    for (const length of [Number.NaN, inchesToMm(47.875), inchesToMm(144.125), inchesToMm(40), inchesToMm(200)]) {
       const bad: BoardSurfaceInput = { ...input, sections: { ...input.sections, length: mm(length) } };
       expect(() => buildBoardSurface(bad)).toThrow(/length/);
+    }
+    const tooLong: BoardSurfaceInput = { ...input, sections: { ...input.sections, length: inchesToMm(144.125) } };
+    expect(() => buildBoardSurface(tooLong)).toThrow(/outside 48"–144"/);
+  });
+  it("builds a 4'0\" board and a 12'0\" board (the ends of the range)", () => {
+    for (const lengthIn of [48, 144]) {
+      const fields = boardOf("fish|asis|hard");
+      const outline = { ...fields.outline, length: inchesToMm(lengthIn) };
+      const { input: sized } = surfaceInputOf({ ...fields, outline, blank: null });
+      const surface = buildBoardSurface(sized);
+      expect(surface.positions.length, `${lengthIn}"`).toBeGreaterThan(0);
+      expect(Array.from(surface.positions).every(Number.isFinite), `${lengthIn}"`).toBe(true);
     }
   });
 });

@@ -5,7 +5,7 @@ vi.setConfig({ testTimeout: 60_000 });
 import { brdText } from "../export/brd";
 import { readAnyBrd, type ReadBrdBoard } from "../export/brd-read";
 import type { P2 } from "./bezier-fit";
-import { BOARD_LENGTH_RANGE_IN, TAIL_PRESETS, WIDEPOINT_WIDTH_RANGE_IN } from "./board";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, TAIL_PRESETS, widePointOffsetRangeIn, widePointWidthRangeIn } from "./board";
 import { buildBoardSurface } from "./board-surface";
 import { buildFallbackProfile, handSetFromProfile } from "./board-profile";
 import {
@@ -152,6 +152,54 @@ describe("polylineGap", () => {
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
+// The sizes the controls can make (quick 261113-si7)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("fitBoardToBrd at the new sizes: a width and an offset the controls can make for the fitted length", () => {
+  /** A plain file of a board with this outline: the outline drawn as the fit draws it, a flat bottom, a flat 70 mm deck. */
+  function linesOf(lengthIn: number, widthIn: number, offsetIn: number) {
+    const outline = { ...DEFAULT_BOARD_SPEC.outline, length: inchesToMm(lengthIn), widePointWidth: inchesToMm(widthIn), widePointOffset: inchesToMm(offsetIn) };
+    const points = buildOutline(outline).points.map((p): P2 => [p.station, p.halfWidth]);
+    const stations = Array.from({ length: 41 }, (_, i) => (i * outline.length) / 40);
+    return {
+      length: outline.length,
+      outline: points[0][1] > 1e-6 ? ([[points[0][0], 0], ...points] as P2[]) : points,
+      bottom: stations.map((x): P2 => [x, 0]),
+      deck: stations.map((x): P2 => [x, 70]),
+    };
+  }
+
+  it("fits a 12'0\" x 31\" file at 144\" x 31\"", () => {
+    const fit = fitBoardToBrd(linesOf(144, 31, 0));
+    expect(fit.outline.length).toBeCloseTo(inchesToMm(144), 6);
+    expect(fit.outline.widePointWidth).toBeCloseTo(inchesToMm(31), 6);
+    expectInsideRanges(fit);
+  });
+
+  it("fits a 7'0\" file whose widest point is 28\" at 25\" wide (a short board's top)", () => {
+    const fit = fitBoardToBrd(linesOf(84, 28, 0));
+    expect(fit.outline.widePointWidth).toBeCloseTo(inchesToMm(25), 6);
+    expectInsideRanges(fit);
+  });
+
+  it("fits a 4'0\" file whose widest point is 12\" off centre at an offset of 8\" (where the wide point can go)", () => {
+    // Another maker's outline can put the widest point 12" in front of the centre (our own outline never would on a 4'0": it keeps
+    // the widest point 16" from each end). A lens whose widest point is 3/4 of the way to the nose.
+    const lengthMm = inchesToMm(48);
+    const half = inchesToMm(10);
+    const outline = Array.from({ length: 121 }, (_, i): P2 => {
+      const t = i / 120;
+      const u = t <= 0.75 ? (0.5 * t) / 0.75 : 0.5 + (0.5 * (t - 0.75)) / 0.25;
+      return [t * lengthMm, half * Math.sin(Math.PI * u)];
+    });
+    const stations = Array.from({ length: 41 }, (_, i) => (i * lengthMm) / 40);
+    const fit = fitBoardToBrd({ length: mm(lengthMm), outline, bottom: stations.map((x): P2 => [x, 0]), deck: stations.map((x): P2 => [x, 70]) });
+    expect(fit.outline.widePointOffset).toBeCloseTo(inchesToMm(8), 6);
+    expectInsideRanges(fit);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The round trip
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -218,8 +266,12 @@ function expectInsideRanges(fit: BrdFit) {
     expect(value).toBeLessThanOrEqual(max + 1e-9);
   };
   within(o.length, inchesToMm(BOARD_LENGTH_RANGE_IN.min), inchesToMm(BOARD_LENGTH_RANGE_IN.max));
-  within(o.widePointWidth, inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.min), inchesToMm(WIDEPOINT_WIDTH_RANGE_IN.max));
-  within(o.widePointOffset, inchesToMm(OUTLINE_SLIDER_LIMITS.widePointOffsetIn.min), inchesToMm(OUTLINE_SLIDER_LIMITS.widePointOffsetIn.max));
+  // The width and the offset a board of THIS length can have (quick 261113-si7): 31" from 8'0" and 25" under, and an offset
+  // window that stops where the outline stops the wide point on a board under 4'8".
+  const widthRange = widePointWidthRangeIn(o.length);
+  within(o.widePointWidth, inchesToMm(widthRange.min), inchesToMm(widthRange.max));
+  const offsetRange = widePointOffsetRangeIn(o.length);
+  within(o.widePointOffset, inchesToMm(offsetRange.min), inchesToMm(offsetRange.max));
   within(o.noseAngle, OUTLINE_SLIDER_LIMITS.noseAngle.min, OUTLINE_SLIDER_LIMITS.noseAngle.max);
   within(o.tailAngle, OUTLINE_SLIDER_LIMITS.tailAngle.min, OUTLINE_SLIDER_LIMITS.tailAngle.max);
   for (const v of [o.noseFullness, o.tailFullness]) within(v, OUTLINE_SLIDER_LIMITS.fullness.min, OUTLINE_SLIDER_LIMITS.fullness.max);

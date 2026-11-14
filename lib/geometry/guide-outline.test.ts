@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readGuideWordsPage } from "@/components/guide/words/read-words-page";
 import { guideTemplateInput, guideTemplateInputWithWings } from "./__fixtures__/guide-template-input";
-import { TAIL_PRESETS, type OutlineSpec, type TailShape } from "./board";
+import { TAIL_PRESETS, type OutlineSpec, type TailShape, widePointOffsetRangeIn, widePointWidthRangeIn } from "./board";
 import { guideCaptionText, guideCardId, GUIDE_MIN_FIT, type GuideFigure, type GuidePrim } from "./guide-card";
 import { guideLabelOverlaps, guideStripInset, guideTextBox } from "./guide-draw";
 import {
@@ -15,7 +15,7 @@ import {
 import { formatDim, formatLength, formatMark } from "./measure-display";
 import { buildOutline, DIAMOND_BLOCK_MARGIN_MM } from "./outline";
 import { BOARD_PRESETS } from "./presets";
-import { mm, UNITS_SYSTEMS, type UnitsSystem } from "./units";
+import { inchesToMm, mm, UNITS_SYSTEMS, type UnitsSystem } from "./units";
 import { nextWing, wingRadiusTop } from "./wings";
 
 const ids = TEMPLATE_GUIDE_CARD_IDS;
@@ -284,6 +284,48 @@ describe("TEMPLATE's figures in both systems", EVERY_BOARD, () => {
             expect(guideLabelOverlaps(card.figure, fit), `${label} ${system} ${card.id} ${fit}`).toEqual([]);
           }
         }
+      }
+    }
+  });
+});
+
+describe("TEMPLATE's Width and Offset cards follow the board's own size (quick 261113-si7)", () => {
+  /** The Shortboard's input at another size, its geometry rebuilt for it. */
+  function sizedInput(lengthIn: number, widthIn: number, offsetIn = 0): TemplateGuideInput {
+    const base = guideTemplateInput("shortboard");
+    const outline = { ...base.outline, length: inchesToMm(lengthIn), widePointWidth: inchesToMm(widthIn), widePointOffset: inchesToMm(offsetIn) };
+    return { ...base, outline, outlineGeometry: buildOutline(outline) };
+  }
+
+  it("never pushes the Width past the board's own top: 31\" from 8'0\", 25\" under", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (const [lengthIn, widthIn] of [
+        [144, 30.9],
+        [96, 30.9],
+        [84, 24.9],
+        [60, 24.95],
+      ] as const) {
+        const input = sizedInput(lengthIn, widthIn);
+        const pushed = templateGuideVariants(input, system)[ids.width].push;
+        expect(pushed, `${lengthIn}" x ${widthIn}"`).not.toBeNull();
+        // Pushed up when there is room above, down otherwise; either way inside this board's range.
+        expect(pushed!.widePointWidth).toBeLessThanOrEqual(inchesToMm(widePointWidthRangeIn(input.outline.length).max) + 1e-6);
+        expect(pushed!.widePointWidth).toBeGreaterThanOrEqual(inchesToMm(widePointWidthRangeIn(input.outline.length).min) - 1e-6);
+      }
+      // A 12'0" board at 30" can be pushed UP past 25" (31" is its top); a 7'0" board at 25" can only be pushed down.
+      expect(templateGuideVariants(sizedInput(144, 30), system)[ids.width].push!.widePointWidth).toBeGreaterThan(inchesToMm(30));
+      expect(templateGuideVariants(sizedInput(84, 25), system)[ids.width].push!.widePointWidth).toBeLessThan(inchesToMm(25));
+    }
+  });
+
+  it("keeps the Offset card inside the board's own window: +/-8\" on a 4'0\"", () => {
+    for (const system of UNITS_SYSTEMS) {
+      const input = sizedInput(48, 20, 7.9);
+      const window = widePointOffsetRangeIn(input.outline.length);
+      const pushed = templateGuideVariants(input, system)[ids.offset].push;
+      if (pushed) {
+        expect(pushed.widePointOffset).toBeLessThanOrEqual(inchesToMm(window.max) + 1e-6);
+        expect(pushed.widePointOffset).toBeGreaterThanOrEqual(inchesToMm(window.min) - 1e-6);
       }
     }
   });

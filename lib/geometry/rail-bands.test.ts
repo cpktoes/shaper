@@ -965,7 +965,9 @@ describe("hardEdgeBlendsFrom and hardEdgeEndsAt — the tail rail's blend, 12\" 
   // A 6'0" board (the default) and a short one whose whole window is a hair wide.
   const length = DEFAULT_BOARD_SPEC.outline.length;
   const centre = mm(length / 2);
-  const shortLength = inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2);
+  // The shortest board a saved board or file can carry — 30", the floor in design-snapshot.ts — NOT half of the app's own
+  // shortest board (4'0" / 2 = 24" since quick 261113-si7): at 24" Ends At's 14" floor passes the centre, a board the 30" floor refuses.
+  const shortLength = inchesToMm(30);
   const shortCentre = mm(shortLength / 2);
   const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
   // The founder (2026-11-13): "Let's change Tail Rail Blends From 12" and Ends At the max value as the new default."
@@ -1141,7 +1143,9 @@ describe("D-30's old default, kept by name — d30HardEdgeBlendsFrom, d30HardEdg
   // The figures below are the ones the site read before quick 261113-psx: 18" and L/3 − 18 inches short of the
   // centre. They are read only by go-live 1's and plan 16-15's rules, the old reports and the pins.
   const length = DEFAULT_BOARD_SPEC.outline.length;
-  const shortLength = inchesToMm(BOARD_LENGTH_RANGE_IN.min / 2);
+  // The shortest board a saved board or file can carry — 30", the floor in design-snapshot.ts — NOT half of the app's own
+  // shortest board (4'0" / 2 = 24" since quick 261113-si7): at 24" Ends At's 14" floor passes the centre, a board the 30" floor refuses.
+  const shortLength = inchesToMm(30);
   const shortCentre = mm(shortLength / 2);
   const gap = inchesToMm(HARD_EDGE_MIN_BLEND_IN);
   const start = inchesToMm(D30_HARD_EDGE_BLENDS_FROM_IN);

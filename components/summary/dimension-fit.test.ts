@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DIMENSION_FIT_STEPS, dimensionValueFitClass } from "./dimension-fit";
-import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN } from "@/lib/geometry/board";
+import { BOARD_LENGTH_RANGE_IN, DEFAULT_BOARD_SPEC, WIDEPOINT_WIDTH_RANGE_IN, WIDE_BOARD_WIDEPOINT_MAX_IN } from "@/lib/geometry/board";
 import { buildOutline } from "@/lib/geometry/outline";
 import { formatDim, formatLength, formatSignedDim } from "@/lib/geometry/measure-display";
 import { inchesToMm, mm, mmToInches, type UnitsSystem } from "@/lib/geometry/units";
@@ -76,7 +76,8 @@ function allDimensionCellStrings(): string[] {
   const { nose, tail } = noseAndTailStrings();
   return [
     ...lengthStrings(),
-    ...dimStrings(WIDEPOINT_WIDTH_RANGE_IN.min, WIDEPOINT_WIDTH_RANGE_IN.max),
+    // Up to 31" now (quick 261113-si7: a board of 8'0" or longer): the Widepoint cell reads `30 15/16"` and `78.7 cm`.
+    ...dimStrings(WIDEPOINT_WIDTH_RANGE_IN.min, WIDE_BOARD_WIDEPOINT_MAX_IN),
     ...offsetStrings(),
     ...dimStrings(CENTER_THICKNESS_RANGE_IN.min, CENTER_THICKNESS_RANGE_IN.max),
     ...nose,
@@ -168,6 +169,8 @@ describe("the Metric print audit's automatable half — extremes of the app's ow
   const EXTREME_PRESETS: { name: string; lengthIn: number; widePointWidthIn: number }[] = [
     { name: "the longest board", lengthIn: BOARD_LENGTH_RANGE_IN.max, widePointWidthIn: DEFAULT_WIDEPOINT_WIDTH_IN },
     { name: "the widest board", lengthIn: DEFAULT_LENGTH_IN, widePointWidthIn: WIDEPOINT_WIDTH_RANGE_IN.max },
+    // Quick 261113-si7: 12'0" is 365.8 cm and 31" is 78.7 cm; the biggest board is also the biggest in litres.
+    { name: "the longest and widest board (12'0\" x 31\")", lengthIn: BOARD_LENGTH_RANGE_IN.max, widePointWidthIn: WIDE_BOARD_WIDEPOINT_MAX_IN },
   ];
 
   it.each(EXTREME_PRESETS)(

@@ -64,6 +64,7 @@ import {
   BLANK_DECK_SKIN_MAX_MM,
   DESIGN_SNAPSHOT_VERSION,
   SNAPSHOT_BOARD_LENGTH_MM,
+  SNAPSHOT_SHORTEST_IN,
   blankRockerSpecSchema,
   boardBlankSchema,
   hasPhase11Blank,
@@ -695,6 +696,25 @@ describe("design-snapshot", () => {
       expect(SNAPSHOT_BOARD_LENGTH_MM.min / 2).toBeGreaterThan(MEASURE_STATION_MM);
       expect(SNAPSHOT_BOARD_LENGTH_MM.min).toBeLessThan(inchesToMm(BOARD_LENGTH_RANGE_IN.min));
       expect(SNAPSHOT_BOARD_LENGTH_MM.max).toBeGreaterThan(inchesToMm(BOARD_LENGTH_RANGE_IN.max));
+    });
+
+    it("the shortest board a save carries stays 30\" (quick 261113-si7): half of 4'0\" would sit the centre on the 12\" stations", () => {
+      expect(SNAPSHOT_SHORTEST_IN).toBe(30);
+      expect(SNAPSHOT_BOARD_LENGTH_MM.min).toBe(inchesToMm(30));
+      expect(SNAPSHOT_BOARD_LENGTH_MM.max).toBe(inchesToMm(288));
+      // 24" (half of 4'0") is refused, with or without a blank; 30" and a 36" board open.
+      expect(() => parseSnapshot(wireAtLength(inchesToMm(24)))).toThrow();
+      const handSet = wireAtLength(inchesToMm(24));
+      handSet.design.blank = null as never;
+      expect(() => parseSnapshot(handSet)).toThrow();
+      expect(() => parseSnapshot(wireAtLength(inchesToMm(30)))).not.toThrow();
+    });
+
+    it("the boards the app now makes are in range: 4'0\" and 12'0\" keep their blank", () => {
+      expect(isBoardLengthInRange(inchesToMm(48))).toBe(true);
+      expect(isBoardLengthInRange(inchesToMm(144))).toBe(true);
+      expect(isBoardLengthInRange(inchesToMm(47))).toBe(false);
+      expect(isBoardLengthInRange(inchesToMm(145))).toBe(false);
     });
 
     it("the reviewer's crafted 500 mm board in a blank is rejected as invalid — far below the range, too short to draw", () => {
