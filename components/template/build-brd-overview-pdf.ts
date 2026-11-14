@@ -25,6 +25,7 @@ import jsPDF from "jspdf";
 import { THREE_D_COPY } from "@/components/3d/three-d-copy";
 import { printPdf } from "@/components/template/print-pdf";
 import { sectionHeightLabel, type SectionHeight } from "@/lib/geometry/bottom-draw";
+import { keepFiguresTogether } from "@/lib/geometry/keep-figures-together";
 import { PAPER_MM, TEMPLATE_MARGIN_MM } from "@/lib/geometry/template";
 import type { BrdBlankWords } from "@/lib/export/brd-blank-words";
 import {
@@ -315,7 +316,8 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     body(sheet.controls.thickness),
     ...(sheet.controls.bottom === null ? [] : [body(sheet.controls.bottom)]),
     ...(sheet.controls.rails === null ? [] : [body(sheet.controls.rails)]),
-    ...(sheet.controls.fins === null ? [] : [body(sheet.controls.fins)]),
+    // The fins line keeps a figure with its fraction or unit across a line break, as the screen does.
+    ...(sheet.controls.fins === null ? [] : [body(keepFiguresTogether(sheet.controls.fins))]),
     { kind: "gap", height: L.gap },
     body(sheet.notRead),
   ];

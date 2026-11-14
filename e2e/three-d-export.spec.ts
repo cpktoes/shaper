@@ -3,6 +3,10 @@ import { devices, expect, test, type Download, type Locator, type Page } from "@
 import { THREE_D_COPY } from "../components/3d/three-d-copy";
 import { presetDesignFields } from "../lib/blanks/preset-blanks";
 import { brdFileBottom, readBrdText } from "../lib/export/brd";
+import { brdFinFields, finMarksOfPlacement } from "../lib/geometry/brd-fins";
+import { resetAdvanced } from "../lib/geometry/fins";
+import { keepFiguresTogether } from "../lib/geometry/keep-figures-together";
+import { formatMark } from "../lib/geometry/measure-display";
 import { BRD_MAGIC, unscrambleBrd } from "../lib/export/brd-scramble";
 import { BRD_PREVIEW_PAD_Y, brdPreview, brdPreviewWords } from "../lib/export/brd-preview";
 import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
@@ -663,6 +667,53 @@ test.describe("Export .brd File on the 3D screen", () => {
     // Only the height is stretched: what is left of the box after its margins is 4 and 8 times the true-height one.
     expect((vb4 - 2 * BRD_PREVIEW_PAD_Y) / (vb1 - 2 * BRD_PREVIEW_PAD_Y)).toBeCloseTo(4, 3);
     expect((vb8 - 2 * BRD_PREVIEW_PAD_Y) / (vb1 - 2 * BRD_PREVIEW_PAD_Y)).toBeCloseTo(8, 3);
+  });
+
+  test("13. a thruster board's file carries FINS' fins and the fin system: p51 reads FCS II, p50's nine figures are FINS' marks in centimetres, and the preview's fins line says TRI", async ({ page }) => {
+    const fields = presetFields("Shortboard");
+    const placement = designFinPlacement(fields);
+    const want = brdFinFields(placement, "fcs2")!;
+    const marks = finMarksOfPlacement(placement);
+    await keepBoard(page, "Shortboard");
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-quad]")).toHaveCount(0);
+    await expect(previewDialog(page).locator("[data-brd-preview-fins]")).toHaveText(
+      keepFiguresTogether(
+        THREE_D_COPY.previewFins(
+          { offTail: formatMark(marks.side!.offTail, "imperial"), inFromRail: formatMark(marks.side!.inFromRail, "imperial") },
+          { offTail: formatMark(marks.centre!.offTail, "imperial") },
+          "TRI",
+          "FCS II",
+        ),
+      ),
+    );
+    const download = await savePreview(page);
+    const read = readBrdText(unscrambleBrd(await downloadedBytes(download)));
+    const header = new Map(read.header);
+    expect(header.get("p51")).toBe("FCS II");
+    const nine = header.get("p50")!.slice(1, -1).split(",").map(Number);
+    expect(nine).toHaveLength(9);
+    for (const [i, figure] of want.p50.entries()) expect(Math.abs(nine[i] - figure), `p50 slot ${i}`).toBeLessThan(1e-9);
+    expect(nine.slice(6)).toEqual([0, 0, 0]);
+  });
+
+  test("14. a quad board's file has no fins: p50 is nine zeros and there is no p51, and the preview says a quad's fins aren't written yet", async ({ page }) => {
+    const base = presetFields("Shortboard");
+    const quad: DesignSnapshotFields = { ...base, fins: { ...base.fins, finSetup: "quad", advanced: resetAdvanced("quad", base.fins.twinTemplate) } };
+    const raw = openBoardCopyJson(quad, { modelId: null, ownerId: null, locked: false, dirty: true });
+    await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [OPEN_BOARD_STORAGE_KEY, raw] as const);
+    await page.goto("/design/3d");
+    await waitForBoard(page);
+    await openPreview(page);
+    await expect(previewDialog(page).locator("[data-brd-preview-quad]")).toHaveText(THREE_D_COPY.exportQuadNote);
+    await expect(previewDialog(page).locator("[data-brd-preview-fins]")).toHaveCount(0);
+    const download = await savePreview(page);
+    const read = readBrdText(unscrambleBrd(await downloadedBytes(download)));
+    const header = new Map(read.header);
+    expect(header.has("p51")).toBe(false);
+    expect(header.get("p50")).toBe("[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]");
   });
 });
 

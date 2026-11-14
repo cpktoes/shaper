@@ -24,6 +24,7 @@ import { keepFiguresTogether } from "../lib/geometry/keep-figures-together";
 import { formatDim, formatMark } from "../lib/geometry/measure-display";
 import { inchesToMm, mm } from "../lib/geometry/units";
 import { DEFAULT_RAIL_BAND_SPEC, railFamilyLabel, type RailBandSpec } from "../lib/geometry/rail-bands";
+import { DEFAULT_FIN_PLACEMENT_SPEC } from "../lib/geometry/fins";
 import { effectiveWingRadius, wingRadiusTop, type Wing } from "../lib/geometry/wings";
 import { phase16Boards, phase16RailCharacterBoards, phase16WingBoards } from "../lib/geometry/__fixtures__/phase16-boards";
 import { BANNER_DISMISSAL_KEY } from "../lib/models/banner-dismissal";
@@ -1027,7 +1028,7 @@ test.describe("A wing in a .brd (quick 261113-hyy)", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('[data-brd-fit-top] [data-brd-fit-line="fit"]')).toHaveCount(1);
     await expect(dialog.locator("[data-brd-fit-wing]")).toHaveCount(0);
-    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(/^Fins/);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
     await expect(dialog.locator("[data-brd-fit-not-read]")).not.toContainText(/wing|flyer/i);
   });
 });
@@ -1365,5 +1366,216 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     expect(pdf).toContain("RAILS");
     expect(pdf).toContain("Use Single Tuck");
     expect(pdf).toContain("Our fit");
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Quick 261113-qyz: a file's fins (b32 onward)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The founder's twin's nine fin figures (centimetres), as figures only, on the app's own Shortboard: written by the app's writer. */
+const TWIN_FINS = [24.13, 13.208, 35.814, 12.7, 0, 0, 0, 9.5, 5.4];
+const finFiles = new Map<string, Made>();
+function finFile(key: string, nine: readonly number[], word: string): Made {
+  const known = finFiles.get(key);
+  if (known) return known;
+  const surface = surfaceOf(SHORTBOARD);
+  const made1 = { locked: Buffer.from(brdFile(surface, key, { fins: { p50: nine, p51: word } }).data), text: brdText(surface, { fins: { p50: nine, p51: word } }).text };
+  finFiles.set(key, made1);
+  return made1;
+}
+const twinFile = () => finFile("Twin", TWIN_FINS, "Futures");
+
+test.describe("The fins of a .brd (quick 261113-qyz)", () => {
+  test.beforeEach(async ({ page }) => {
+    test.setTimeout(180_000);
+    await dismissBannerAndTip(page);
+  });
+
+  test("b32. a twin file's FINS block: the rows, the close line, the controls line and the not-read line are the sheet's, two file and two fit fin lines are drawn inside the top view, and on a phone nothing runs off the right", async ({
+    page,
+  }, testInfo) => {
+    const file = twinFile();
+    const sheet = sheetOf(file.locked, "Twin.brd", "imperial");
+    if (!sheet.fins) throw new Error("the twin's fins should be read");
+    const exact = testInfo.project.name !== "iphone";
+    await page.goto("/");
+    await pickFile(page, "Twin.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const block = dialog.locator("[data-brd-fit-fins]");
+    await expect(block).toBeAttached();
+    await expect(block.locator("[data-brd-fit-fins-row]")).toHaveCount(sheet.fins.rows.length);
+    for (const row of sheet.fins.rows) {
+      const line = block.locator(`[data-brd-fit-fins-row="${row.key}"]`);
+      await expect(line.locator("th")).toHaveText(row.label);
+      if (exact) {
+        await expect(line.locator('[data-brd-fit-cell="file"]')).toHaveText(keepFiguresTogether(row.file));
+        await expect(line.locator('[data-brd-fit-cell="fit"]')).toHaveText(keepFiguresTogether(row.fit));
+      } else {
+        await expect(line.locator('[data-brd-fit-cell="file"]')).not.toHaveText("");
+      }
+    }
+    if (exact) {
+      await expect(dialog.locator("[data-brd-fit-close-fins]")).toHaveText(keepFiguresTogether(sheet.closeness.fins!));
+      await expect(dialog.locator('[data-brd-fit-control="fins"]')).toHaveText(keepFiguresTogether(sheet.controls.fins!));
+    } else {
+      await expect(dialog.locator("[data-brd-fit-close-fins]")).toHaveText(/^Fins: (within|less than) /);
+      await expect(dialog.locator('[data-brd-fit-control="fins"]')).toHaveText(/^Fins: Twin — Modern\/Upright · Futures · Forward fins: Aft\/Forward position — /);
+    }
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(sheet.notRead);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toContainText("splay angle (cant) of 5.4°");
+
+    // Two fin lines of the file and two of ours, inside the top view.
+    const top = dialog.locator("[data-brd-fit-top]");
+    await top.scrollIntoViewIfNeeded();
+    await expect(top.locator('[data-brd-fit-fin="file"]')).toHaveCount(2);
+    await expect(top.locator('[data-brd-fit-fin="fit"]')).toHaveCount(2);
+    const frame = (await top.boundingBox())!;
+    for (const which of ["file", "fit"]) {
+      const boxes = await top.locator(`[data-brd-fit-fin="${which}"]`).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
+      for (const box of boxes) {
+        expect(box.x).toBeGreaterThanOrEqual(frame.x - 1);
+        expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+        expect(box.y).toBeGreaterThanOrEqual(frame.y - 1);
+        expect(box.y + box.height).toBeLessThanOrEqual(frame.y + frame.height + 1);
+      }
+    }
+
+    // Nothing runs off the right of the screen, a phone included, and no figure is split from its unit or fraction.
+    const viewport = page.viewportSize()!;
+    for (const selector of ["[data-brd-fit-fins]", "[data-brd-fit-close-fins]", '[data-brd-fit-control="fins"]', "[data-brd-fit-not-read]"]) {
+      const target = dialog.locator(selector);
+      await target.scrollIntoViewIfNeeded();
+      const box = (await target.boundingBox())!;
+      expect(box.x, selector).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, selector).toBeLessThanOrEqual(viewport.width + 0.5);
+    }
+    const text = (await dialog.locator('[data-brd-fit-control="fins"]').textContent()) ?? "";
+    expect(text).not.toMatch(/\d \d+\/\d+/);
+  });
+
+  test("b33. Open as a Board opens the twin on FINS: the kept board holds the fitted fins and the Futures system, and FINS shows Twin, Modern/Upright with Aft/Forward position, Off-Rail, Toe-In and Fin Base Length as fitted", async ({
+    page,
+  }, testInfo) => {
+    const file = twinFile();
+    const look = lookOf(file.locked);
+    if (!look.fins) throw new Error("the twin's fins should be read");
+    const fields = brdBoardFields(look.fit, "Twin.brd", look.bottom?.bottom ?? null, look.rails?.rails ?? null, look.fins);
+    if (!fields) throw new Error("the twin's fit should open");
+    await page.goto("/");
+    await pickFile(page, "Twin.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Twin");
+    const design = (await storedOpenBoard(page))!.snapshot.design as unknown as Record<string, unknown>;
+    const tolerance = testInfo.project.name === "iphone" ? 0.01 : 1e-9;
+    expect(sameWithin(design.fins, fields.fins, tolerance, "fins")).toBeNull();
+    expect(design.finSystem).toBe("futures");
+    expect((design.fins as { finSetup: string; twinTemplate: string }).finSetup).toBe("twin");
+    expect((design.fins as { finSetup: string; twinTemplate: string }).twinTemplate).toBe("upright");
+
+    if (testInfo.project.name !== "desktop") return;
+    await page.goto("/design/fins");
+    await expect(page.getByRole("button", { name: "Twin", exact: true })).toHaveClass(/bg-surf-accent/, { timeout: 60_000 });
+    await expect(page.getByRole("button", { name: "Modern/Upright", exact: true })).toHaveClass(/bg-surf-accent/);
+    const advanced = page.getByRole("button", { name: /^Advanced/ });
+    await expect.poll(() => advanced.evaluate((el) => Object.keys(el).some((key) => key.startsWith("__reactFiber")))).toBe(true);
+    if ((await page.getByRole("button", { name: /Reset Advanced Settings/ }).count()) === 0) await advanced.click();
+    const ours = look.fins.ours.side!;
+    await expect(page.getByText(/^Aft\/Forward position — /).filter({ visible: true }).first()).toHaveText(`Aft/Forward position — ${formatMark(ours.offTail, "imperial")}`);
+    await expect(page.getByText(/^Off-Rail — /).filter({ visible: true }).first()).toHaveText(`Off-Rail — ${formatMark(ours.inFromRail, "imperial")}`);
+    await expect(page.getByText(/^Toe-In — /).filter({ visible: true }).first()).toHaveText(`Toe-In — ${formatMark(ours.toeIn, "imperial")}`);
+    await expect(page.getByText(/^Fin Base Length — /).filter({ visible: true }).first()).toHaveText(`Fin Base Length — ${formatMark(ours.base, "imperial")}`);
+  });
+
+  for (const [id, key, nine, setup] of [
+    ["b34a", "Tri", [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], null],
+    ["b34b", "Single", [0, 0, 0, 0, 15.24, 35.56, 0, 0, 0], "single"],
+  ] as const) {
+    test(`${id}. a ${setup === "single" ? "centre-only file opens as a Single Fin" : "side-and-centre file opens as a setup with a centre fin"}`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "desktop", "the kept board is checked once, on a computer");
+      const file = finFile(key, nine, "Futures");
+      const look = lookOf(file.locked);
+      if (!look.fins) throw new Error(`${key}'s fins should be read`);
+      expect(["single", "thruster", "2plus1", "twin"]).toContain(look.fins.spec.finSetup);
+      if (setup) expect(look.fins.spec.finSetup).toBe(setup);
+      else expect(look.fins.ours.centre).not.toBeNull();
+      await page.goto("/");
+      await pickFile(page, `${key}.brd`, file.locked);
+      const dialog = dialogOf(page);
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator('[data-brd-fit-fins-row="centreOffTail"]')).toBeAttached();
+      await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+      await expect(page).toHaveURL(/\/design\/outline$/);
+      await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe(key);
+      const design = (await storedOpenBoard(page))!.snapshot.design as unknown as { fins: { finSetup: string; twinTemplate: string } };
+      expect(design.fins.finSetup).toBe(look.fins.spec.finSetup);
+      expect(design.fins.twinTemplate).toBe(look.fins.spec.twinTemplate);
+    });
+  }
+
+  test("b35. a file with no fins: no FINS block, no fin lines, the has-no-fins line, and Open as a Board keeps a new board's fins", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the absence");
+    const file = boardFile(SHORTBOARD);
+    await page.goto("/");
+    await pickFile(page, "Plain.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-brd-fit-top]")).toBeVisible();
+    await expect(dialog.locator("[data-brd-fit-fins]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-fin]")).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-close-fins]")).toHaveCount(0);
+    await expect(dialog.locator('[data-brd-fit-control="fins"]')).toHaveCount(0);
+    await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Plain");
+    const design = (await storedOpenBoard(page))!.snapshot.design as unknown as { fins: unknown; finSystem: string };
+    expect(sameWithin(design.fins, DEFAULT_FIN_PLACEMENT_SPEC, 1e-9, "fins")).toBeNull();
+    expect(design.finSystem).toBe("fcs2");
+  });
+
+  test("b36. in Metric the FINS rows read in whole millimetres", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for Metric");
+    const file = twinFile();
+    const sheet = sheetOf(file.locked, "Twin.brd", "metric");
+    await setMetricUnits(page);
+    await page.goto("/");
+    await pickFile(page, "Twin.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    for (const row of sheet.fins!.rows) {
+      const line = dialog.locator(`[data-brd-fit-fins-row="${row.key}"]`);
+      await expect(line.locator('[data-brd-fit-cell="file"]')).toHaveText(row.file);
+      await expect(line.locator('[data-brd-fit-cell="file"]')).toHaveText(/^\d+\s?mm$/);
+      await expect(line.locator('[data-brd-fit-cell="fit"]')).toHaveText(/^\d+\s?mm$/);
+    }
+    await expect(dialog.locator("[data-brd-fit-close-fins]")).toHaveText("Fins: less than 1 mm off");
+  });
+
+  test("b37. the printed overview of the twin is one or two pages and carries FINS", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one computer is enough for the print frame");
+    const file = twinFile();
+    await page.goto("/");
+    await pickFile(page, "Twin.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.print, exact: true }).click();
+    const frame = page.locator("iframe[data-print-pdf]");
+    await expect(frame).toHaveCount(1);
+    const pdf = await frame.evaluate(async (el) => {
+      const bytes = new Uint8Array(await (await fetch((el as HTMLIFrameElement).src)).arrayBuffer());
+      return new TextDecoder("latin1").decode(bytes);
+    });
+    expect(pdf.slice(0, 5)).toBe("%PDF-");
+    const pages = (pdf.match(/\/Type \/Page\b/g) ?? []).length;
+    expect(pages).toBeGreaterThanOrEqual(1);
+    expect(pages).toBeLessThanOrEqual(2);
+    expect(pdf).toContain("FINS");
+    expect(pdf).toContain("Side fins");
+    expect(pdf).toContain("Aft/Forward position");
   });
 });
