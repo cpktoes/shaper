@@ -29,3 +29,7 @@ The founder, 2026-11-11, on the three review findings: "Close 17, log as follow-
 A look question for the founder first: carry the thin line on under the tuck, or close it with a straight drop at the
 last mark. Then the drawing change, with a before-and-after picture on the Longboard (screen and printed Rail Band
 Reference) and a geometry test that the thin line and the tuck band share an end point.
+
+## Done
+
+2026-11-14 — quick 261114-l2p (commit c72bcfe4), the founder's "Carry the line under the tuck": the bottom line runs on along the channels to meet the band; pictures before and after in the task folder.
