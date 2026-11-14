@@ -9,13 +9,14 @@ import type { UnitsSystem } from "@/lib/geometry/units";
 import { guideLines, type GuideWordsCard, type GuideWordsGroup } from "./guide-copy";
 
 /** One card as `GuideCard` draws it. Every field is made once per board and system, so a memoised card
- * redraws only when its own tag, caption, drawing or words change. */
+ * redraws only when its own tag, caption, drawing or words change. `figure` is `null` on a card whose
+ * drawing is handed to `GuideCard` ready-made (BOTTOM's own cartoon, quick 261114-ko2). */
 export type GuideViewCard = {
   id: string;
   name: string;
   tag: GuideTag;
   caption: GuideCaption;
-  figure: GuideFigure;
+  figure: GuideFigure | null;
   lines: { is: string; does: string; info: string | null; how: string };
 };
 

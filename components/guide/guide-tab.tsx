@@ -1,12 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MIN_PINNED_FIT_SCALE } from "@/components/viewer/callout-primitives";
-import { GUIDE_VIEWBOX_WIDTH, guideSlug, type GuidePage } from "@/lib/geometry/guide-card";
+import { GUIDE_VIEWBOX_WIDTH, guideSlug } from "@/lib/geometry/guide-card";
 import { GuideCard } from "./guide-card";
 import { GuideFitContext } from "./guide-cartoon";
-import { GUIDE_COPY } from "./guide-copy";
-import type { GuideViewGroup } from "./guide-view";
+import { GUIDE_COPY, type GuideTabPage } from "./guide-copy";
+import type { GuideViewCard, GuideViewGroup } from "./guide-view";
 
 /**
  * The GUIDE tab's body, the same on every page (Phase 18, D-01, D-14, D-15; UI-SPEC §2, §6, §9): the
@@ -20,11 +20,26 @@ import type { GuideViewGroup } from "./guide-view";
  *
  * It also measures, once for the whole tab, how many screen dots a drawing unit is on these cards, so every
  * drawing's words are pinned at 10 screen dots whatever the card's width.
+ *
+ * A page that draws its own pictures (BOTTOM, quick 261114-ko2) hands in `renderArt`, called once per card
+ * with the card it draws for; `rootAttributes` lets it keep its own marker on the scroller (`data-bottom-guide`).
  */
 
 const GROUP_HEADING = "mt-4 mb-2 text-[10px] font-display text-surf-ink uppercase tracking-architectural font-extrabold";
 
-export function GuideTab({ page, intro, groups }: { page: GuidePage; intro: string; groups: readonly GuideViewGroup[] }) {
+export function GuideTab({
+  page,
+  intro,
+  groups,
+  renderArt,
+  rootAttributes,
+}: {
+  page: GuideTabPage;
+  intro: string;
+  groups: readonly GuideViewGroup[];
+  renderArt?: (card: GuideViewCard) => ReactNode;
+  rootAttributes?: Record<`data-${string}`, string>;
+}) {
   const scroller = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
 
@@ -46,6 +61,7 @@ export function GuideTab({ page, intro, groups }: { page: GuidePage; intro: stri
     <div
       ref={scroller}
       data-guide
+      {...rootAttributes}
       role="region"
       aria-label={GUIDE_COPY.regionLabel(page)}
       tabIndex={0}
@@ -69,7 +85,7 @@ export function GuideTab({ page, intro, groups }: { page: GuidePage; intro: stri
               className="grid list-none gap-2 [grid-template-columns:repeat(auto-fill,minmax(max(236px,calc((100%-16px)/3)),1fr))]"
             >
               {group.cards.map((card) => (
-                <GuideCard key={card.id} card={card} />
+                <GuideCard key={card.id} card={card} art={renderArt?.(card)} />
               ))}
             </ul>
           </section>

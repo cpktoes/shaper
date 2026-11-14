@@ -13,10 +13,15 @@ import type { UnitsSystem } from "@/lib/geometry/units";
 import { screenWord } from "@/lib/screen-steps";
 import { GUIDE_METRIC_SAYINGS, type GuideMetricSaying } from "./words/metric-sayings";
 
-/** The page labels, as the top bar names the five pages. */
-const PAGE_LABELS: Record<GuidePage, string> = {
+/** The pages a `GuideTab` draws: the five with words on the words page, and BOTTOM, whose GUIDE (Phase 17) keeps its
+ * own words module and cartoon but is drawn through the same tab and card (quick 261114-ko2). */
+export type GuideTabPage = GuidePage | "bottom";
+
+/** The page labels, as the top bar names the pages. */
+const PAGE_LABELS: Record<GuideTabPage, string> = {
   template: "TEMPLATE",
   rocker: "ROCKER",
+  bottom: "BOTTOM",
   rails: "RAILS",
   volume: "VOLUME",
   fins: "FINS",
@@ -32,7 +37,7 @@ export const GUIDE_COPY = {
   /** The label over a FINS card's Model info note (the fourteen notes that live on FINS' GUIDE cards). */
   modelInfo: "Model info",
   /** The scroller's spoken name: `Guide to Volume`. */
-  regionLabel(page: GuidePage): string {
+  regionLabel(page: GuideTabPage): string {
     return `Guide to ${screenWord(PAGE_LABELS[page])}`;
   },
 } as const;

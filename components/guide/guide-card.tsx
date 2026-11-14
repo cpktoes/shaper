@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { GuideCartoon } from "./guide-cartoon";
 import { GUIDE_COPY } from "./guide-copy";
@@ -13,6 +13,10 @@ import type { GuideViewCard } from "./guide-view";
  *
  * A card is words and a picture, never a control: nothing on it can be pressed or focused, and nothing on
  * it changes the board. It is drawn again only when its own tag, caption, drawing or words change.
+ *
+ * The picture is the shared `GuideCartoon` of the card's `figure`, or, where a page draws its own (BOTTOM's
+ * cartoon of a cut, quick 261114-ko2), the `art` node it hands in — hidden from a screen reader either way,
+ * because the words say what it shows.
  */
 
 /** The small accent capitals: a word tag and the `How to shape` label. */
@@ -24,7 +28,7 @@ const VALUE_TAG = "text-[11px] font-semibold tabular-nums whitespace-nowrap text
 /** A note under its own dashed rule. */
 const NOTE = "border-t border-dashed border-surf-line-faint pt-2 text-xs leading-normal text-surf-ink-muted";
 
-export const GuideCard = memo(function GuideCard({ card }: { card: GuideViewCard }) {
+export const GuideCard = memo(function GuideCard({ card, art }: { card: GuideViewCard; art?: ReactNode }) {
   const { tag, caption, lines } = card;
   const on = tag.kind === "on";
   return (
@@ -45,7 +49,7 @@ export const GuideCard = memo(function GuideCard({ card }: { card: GuideViewCard
         )}
       </div>
       <div aria-hidden="true" className="flex flex-col gap-1">
-        <GuideCartoon figure={card.figure} />
+        {art ?? (card.figure !== null && <GuideCartoon figure={card.figure} />)}
         {caption.kind !== "none" && (
           <p
             data-guide-caption={caption.kind}
