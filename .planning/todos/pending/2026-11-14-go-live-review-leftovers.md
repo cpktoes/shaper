@@ -26,8 +26,8 @@ Not fixed before the go-live, on purpose:
   knots at 64) was not taken because the app's own 12'0" export may carry more than 40 sections — measure first.
 - IN-04: a hand-made board file whose board is too wide for its length draws wider on the Board Rack than on the design pages
   (the width hold happens in the design store only).
-- IN-03: the Tail Block slider's range is written in two places.
-- `lib/geometry/tip-flow.test.ts` still asserts a stopwatch (`elapsed < 1000`), which can fail on a busy machine.
+- ~~IN-03: the Tail Block slider's range is written in two places.~~ Done 2026-11-14, fast 211 (927e464d).
+- ~~`lib/geometry/tip-flow.test.ts` still asserts a stopwatch (`elapsed < 1000`), which can fail on a busy machine.~~ Done 2026-11-14, fast 211 (927e464d). (`brd-fit.test.ts:389` still holds a round trip under 1 s — left, it is a real budget.)
 - `e2e/viewer-zoom.spec.ts` "a trackpad pinch…" failed once in the full suite: for a moment ROCKER had two BLANK buttons, one
   loading and one ready. It passed alone four times of four. Harmless on screen, but a real transient worth a look.
 
