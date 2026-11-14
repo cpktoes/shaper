@@ -60,6 +60,7 @@ import {
   type RailNudgeKey,
   type RailSectionKey,
   type RailSectionOutput,
+  type RailBandSpec,
   type RailSectionSpec,
 } from "./rail-bands";
 import golden from "./__fixtures__/rails-v2-golden.json";
@@ -1234,5 +1235,45 @@ describe("D-30's old default, kept by name — d30HardEdgeBlendsFrom, d30HardEdg
     expect(kept).not.toBe(rails);
     expect(kept.tail).toBe(rails.tail);
     expect("tailHardEdgeBlendsFrom" in rails).toBe(false);
+  });
+});
+
+describe("the tapered rail thickness, rounded to the 1/16\" or kept exact (Phase 16 D-41, the to-do of 2026-11-05)", () => {
+  const center = DEFAULT_RAIL_BAND_SPEC.center;
+  // 2.53" × 85% = 2.1505" — not on a sixteenth (2 2/16" = 2.125" is the nearest).
+  const domed: RailSectionSpec = { ...center, boardThickness: inchesToMm(2.53), deckPercent: 85 };
+
+  it("defaults to sixteenths: the same output as before, the rail's thickness on a sixteenth", () => {
+    const byDefault = computeRailSectionOutput("center", domed, false);
+    const named = computeRailSectionOutput("center", domed, false, "sixteenths");
+    expect(byDefault).toEqual(named);
+    expect(byDefault.thicknessEff).toBe(roundToSixteenthInch(byDefault.thicknessEff));
+    expect(byDefault.result.thickness).toBe(byDefault.railThicknessClamped);
+  });
+
+  it("exact keeps the thickness itself on a domed deck, and still reports the rounded figure for the places that print it", () => {
+    const exact = computeRailSectionOutput("center", domed, false, "exact");
+    const rounded = computeRailSectionOutput("center", domed, false);
+    expect(exact.thicknessEff).toBe(mm((domed.boardThickness * 85) / 100));
+    expect(exact.thicknessEff).not.toBe(rounded.thicknessEff);
+    expect(exact.railThicknessClamped).toBe(rounded.railThicknessClamped);
+    expect(exact.boardThickness).toBe(rounded.boardThickness);
+    expect(exact.result.thickness).toBe(exact.thicknessEff);
+    // The marks the sheet works from that thickness move with it.
+    expect(exact.profile).not.toEqual(rounded.profile);
+  });
+
+  it("on a flat deck the two are identical: there is nothing to round", () => {
+    const flat: RailSectionSpec = { ...center, boardThickness: inchesToMm(2.53), deckPercent: 100 };
+    expect(computeRailSectionOutput("center", flat, false, "exact")).toEqual(computeRailSectionOutput("center", flat, false));
+  });
+
+  it("computeRailBands passes the rounding to all three sections", () => {
+    const spec: RailBandSpec = { ...DEFAULT_RAIL_BAND_SPEC, nose: { ...DEFAULT_RAIL_BAND_SPEC.nose, deckPercent: 85 }, center: domed, tail: { ...DEFAULT_RAIL_BAND_SPEC.tail, deckPercent: 85 } };
+    const exact = computeRailBands(spec, "exact");
+    for (const key of ["nose", "center", "tail"] as const) {
+      expect(exact[key]).toEqual(computeRailSectionOutput(key, spec[key], key === "tail" ? spec.tailHardEdge : false, "exact"));
+    }
+    expect(computeRailBands(spec)).toEqual(computeRailBands(spec, "sixteenths"));
   });
 });

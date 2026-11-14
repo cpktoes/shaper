@@ -1297,7 +1297,10 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     [outlineGeometry, resolvedOutline.length, resolvedOutline.widePointWidth],
   );
 
-  const railValues: VolumeRailValues = useMemo(() => deriveRailValues(railBands), [railBands]);
+  // VOLUME's Cross-Section Thickness rows are built on the actual rail thickness (D-41, the founder: round only
+  // for display), the same rail the litres' cross-sections read — not the 1/16"-rounded bands RAILS draws.
+  const estimatorRailBands = useMemo(() => computeRailBands(effectiveRails, "exact"), [effectiveRails]);
+  const railValues: VolumeRailValues = useMemo(() => deriveRailValues(estimatorRailBands), [estimatorRailBands]);
 
   // Import Template's mapping, now `deriveEffectiveFins` in lib/geometry/design.ts (quick
   // 261014-wii) so the wing lock places the fins exactly as this screen does. It reads the WINGED

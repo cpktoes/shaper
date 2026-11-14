@@ -34,7 +34,8 @@ export function volumeGuideInputFromFields(
   const effectiveRails = deriveEffectiveRails(fields.rails, sideProfile.effectiveFoil, true);
   const railBands = computeRailBands(effectiveRails);
   const templateValues = deriveTemplateValues(fields.outline, outlineGeometry);
-  const railValues = deriveRailValues(railBands);
+  // As the store does: the rows read the actual rail thickness (D-41), RAILS' drawing the rounded bands.
+  const railValues = deriveRailValues(computeRailBands(effectiveRails, "exact"));
   const effectiveVolume = deriveEffectiveVolume(storedVolume, templateValues, railValues);
   const volumeResult = computeVolume(effectiveVolume, templateValues, railValues);
   const crossSection = computeCrossSectionVolume(

@@ -1036,20 +1036,33 @@ export interface RailBandsOutput {
 }
 
 /**
+ * How a domed deck's tapered rail thickness is taken before the sheet's rules run (Phase 16, D-41 — the founder:
+ * "We ONLY want to round to a 1/16\" when we output/display data"). `"sixteenths"` rounds it to the nearest 1/16", the
+ * reference page's own habit (`r16`) — what RAILS' plots, DATA, the GUIDE and the order form show, and the default.
+ * `"exact"` keeps the thickness itself — what the litres' cross-sections are built on (`SurfaceFit.rail` in volume.ts)
+ * and, since 2026-11-14, VOLUME's Cross-Section Thickness rows too, so a row and the litres beside it never sit on
+ * different rails. `railThicknessClamped` is the rounded figure either way, for the places that print it.
+ */
+export type RailThicknessRounding = "sixteenths" | "exact";
+
+/**
  * One rail section's full output — the one per-rail builder `computeRailBands` and the INSTRUCTIONS
  * example both use. Deck Profile is held at 75% or more (R7) before the tapered rail thickness is
- * rounded to the 1/16" (as the reference page's `thicknesses()` does with its `r16`); the centre's scale
- * is always 1 (R10); a section saved before the scale and nudges existed reads their defaults.
+ * rounded to the 1/16" (as the reference page's `thicknesses()` does with its `r16`) — or kept exact, by
+ * `rounding`; the centre's scale is always 1 (R10); a section saved before the scale and nudges existed
+ * reads their defaults.
  */
 export function computeRailSectionOutput(
   key: RailSectionKey,
   sectionSpec: RailSectionSpec,
   hardEdge: boolean,
+  rounding: RailThicknessRounding = "sixteenths",
 ): RailSectionOutput {
   const deckPercent = effectiveDeckPercent(sectionSpec.deckPercent);
   const domed = deckPercent < 100;
-  const railThicknessClamped = roundToSixteenthInch(mm((sectionSpec.boardThickness * deckPercent) / 100));
-  const thicknessEff = domed ? railThicknessClamped : sectionSpec.boardThickness;
+  const railThickness = mm((sectionSpec.boardThickness * deckPercent) / 100);
+  const railThicknessClamped = roundToSixteenthInch(railThickness);
+  const thicknessEff = !domed ? sectionSpec.boardThickness : rounding === "exact" ? railThickness : railThicknessClamped;
   const result = computeRailSection({
     thickness: thicknessEff,
     boardThickness: sectionSpec.boardThickness,
@@ -1077,11 +1090,11 @@ export function computeRailSectionOutput(
 }
 
 /** Every rail section's output: the nose and centre never have a hard edge; the tail's follows the flag. */
-export function computeRailBands(spec: RailBandSpec): RailBandsOutput {
+export function computeRailBands(spec: RailBandSpec, rounding: RailThicknessRounding = "sixteenths"): RailBandsOutput {
   return {
-    nose: computeRailSectionOutput("nose", spec.nose, false),
-    center: computeRailSectionOutput("center", spec.center, false),
-    tail: computeRailSectionOutput("tail", spec.tail, spec.tailHardEdge),
+    nose: computeRailSectionOutput("nose", spec.nose, false, rounding),
+    center: computeRailSectionOutput("center", spec.center, false, rounding),
+    tail: computeRailSectionOutput("tail", spec.tail, spec.tailHardEdge, rounding),
   };
 }
 

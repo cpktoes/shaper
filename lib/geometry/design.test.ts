@@ -256,6 +256,27 @@ describe("deriveRailValues", () => {
     expect(result.tailProfile).toBe(railBands.tail.profile);
   });
 
+  // D-41 (the to-do of 2026-11-05): the Cross-Section Thickness rows are built on the actual rail thickness, rounding
+  // only where shown. On a domed deck a 1/100" of board thickness moves the exact rows and leaves the rounded ones still.
+  it("on a domed deck the rows built from the exact bands follow the board thickness; the 1/16\"-rounded bands step", () => {
+    const preset = BOARD_PRESETS[0];
+    const geometry = buildOutline(preset.outline);
+    const templateValues = deriveTemplateValues(preset.outline, geometry);
+    const spec = { ...DEFAULT_VOLUME_SPEC, importTemplateDimensions: true, importRailThickness: true };
+    const rowsFor = (thicknessIn: number, rounding: "exact" | "sixteenths") => {
+      const rails: RailBandSpec = { ...preset.rails, center: { ...preset.rails.center, boardThickness: inchesToMm(thicknessIn), deckPercent: 85 } };
+      return computeVolume(spec, templateValues, deriveRailValues(computeRailBands(rails, rounding))).centerCrossSectionThickness!;
+    };
+    // 2.50" × 85% = 2.125" (on a sixteenth); 2.51" × 85% = 2.1335" rounds to the same sixteenth, so the rounded bands
+    // read the same rail for both and only the board thickness itself moves their row; the exact bands move the rail too.
+    const roundedStep = rowsFor(2.51, "sixteenths") - rowsFor(2.5, "sixteenths");
+    const exactStep = rowsFor(2.51, "exact") - rowsFor(2.5, "exact");
+    expect(roundedStep).toBeGreaterThan(0);
+    expect(exactStep).toBeGreaterThan(roundedStep);
+    expect(rowsFor(2.51, "exact")).not.toBe(rowsFor(2.51, "sixteenths"));
+    expect(rowsFor(2.5, "exact")).toBe(rowsFor(2.5, "sixteenths"));
+  });
+
   // One basis (quick 261102-gec plan 03, the founder's D-V1, PV2/PV5): VOLUME's working rows read the same
   // finished rail the quoted litres do, through the same helper.
   it.each(BOARD_PRESETS)("$id: carries each section's own finished-rail blend area (one rail)", (preset) => {
