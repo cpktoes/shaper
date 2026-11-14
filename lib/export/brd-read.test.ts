@@ -19,7 +19,9 @@ import {
   BRD_READ_MAX_BYTES,
   BRD_READ_MAX_KNOTS,
   BRD_READ_MAX_SECTIONS,
+  brdFinWord,
   isBrdFileName,
+  parseBrdFinLine,
   readAnyBrd,
   type ReadBrdBoard,
 } from "./brd-read";
@@ -159,7 +161,7 @@ describe("a hand-made file in AkuShaper's layout", () => {
   it("holds none of the header's text", () => {
     const everything = JSON.stringify(board);
     expect(everything).not.toMatch(/Somebody|secret|Users|1234567890|V4\.4/);
-    expect(Object.keys(board).sort()).toEqual(["bottom", "deck", "length", "outline", "sections", "thickness", "width"]);
+    expect(Object.keys(board).sort()).toEqual(["bottom", "deck", "fins", "length", "outline", "sections", "thickness", "width"]);
   });
 
   it("reads the same locked", () => {
@@ -350,5 +352,103 @@ describe("the cross-sections", () => {
     expect(board.sections.every((s) => s.knots.length >= 2)).toBe(true);
     expect(board.sections[0].station).toBeGreaterThan(0);
     expect(board.sections[board.sections.length - 1].station).toBeLessThan(board.length);
+  });
+});
+
+describe("the fins (quick 261113-qyz)", () => {
+  /** The hand-made file with its fin line (and word) set; the original line `p50 : [0.0,0.0,0.0,0.0]` is the four-number one. */
+  const withFins = (p50: string | null, p51: string | null = null, where: "header" | "afterCurves" = "header"): ReadBrdBoard =>
+    mustRead(
+      bytesOf(
+        aku({
+          mutate: (lines) => {
+            const out = lines.filter((l) => !l.startsWith("p50 : "));
+            const at = out.indexOf("p15 : 3.08E-4");
+            const fields = [...(p51 === null ? [] : [`p51 : ${p51}`]), ...(p50 === null ? [] : [`p50 : ${p50}`])];
+            if (where === "header") out.splice(at, 0, ...fields);
+            else out.push(...fields);
+            return out;
+          },
+        }),
+      ),
+    );
+  // Sized for this narrow hand-made board (about 12 cm of half-width 24 cm from the tail).
+  const TWIN = "[24.13,8.0,35.814,7.5,0.0,0.0,0.0,0.0,5.4]";
+
+  it("reads the four-number line the fixture carries as no fins", () => {
+    const board = mustRead(bytesOf(aku()));
+    expect(board.fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+  });
+
+  it("reads all zeros, and no fin line at all, as no fins", () => {
+    expect(withFins("[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]").fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    expect(withFins(null).fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+  });
+
+  it("reads a side fin and the word beside it, in millimetres from the tail", () => {
+    const fins = withFins(TWIN, "Futures").fins;
+    expect(fins.side!.back[0]).toBeCloseTo(241.3, 6);
+    expect(fins.side!.back[1]).toBeCloseTo(80, 6);
+    expect(fins.side!.front[0]).toBeCloseTo(358.14, 6);
+    expect(fins.side!.front[1]).toBeCloseTo(75, 6);
+    expect(fins.centre).toBeNull();
+    expect(fins.word).toBe("Futures");
+    expect(fins.dropped).toBe(false);
+  });
+
+  it("reads a centre fin and a side pair together, and the same locked", () => {
+    const text = aku({ mutate: (l) => l.map((x) => (x.startsWith("p50 : ") ? "p50 : [24.13,8.0,35.814,7.5,8.89,20.32,0.0,0.0,0.0]" : x)) });
+    const plain = mustRead(bytesOf(text)).fins;
+    expect(plain.centre!.back).toBeCloseTo(88.9, 6);
+    expect(plain.centre!.front).toBeCloseTo(203.2, 6);
+    expect(plain.side).not.toBeNull();
+    expect(mustRead(scrambleBrd(text)).fins).toEqual(plain);
+  });
+
+  it("ignores a fin line that stands after the curves, as it does the sizes", () => {
+    expect(withFins(TWIN, "Futures", "afterCurves").fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+  });
+
+  it("reads a fin line that is not nine finite figures as no fins, and a fin that is not on the board as dropped", () => {
+    for (const bad of ["[1,2,3]", "[a,b,c,d,e,f,g,h,i]", "[1,2,3,4,5,6,7,8,9,10]", "24.13", "[24.13,8.0,35.814,7.5,,0.0,0.0,0.0,0.0]", "[1e999,0,0,0,0,0,0,0,0]", "[20000,0,0,0,0,0,0,0,0]"]) {
+      expect(withFins(bad).fins, bad).toEqual({ side: null, centre: null, word: null, dropped: false });
+    }
+    // A side fin whose front is behind its back, and a centre fin past the nose.
+    const refused = withFins("[35.814,8.0,24.13,7.5,100.0,190.0,0.0,0.0,0.0]").fins;
+    expect(refused.side).toBeNull();
+    expect(refused.centre).toBeNull();
+    expect(refused.dropped).toBe(true);
+  });
+
+  it("keeps a plain word, and refuses an empty, an over-long, a path-like or a letterless one", () => {
+    expect(withFins(TWIN, "FCS II").fins.word).toBe("FCS II");
+    expect(withFins(TWIN, "FCS (Original)").fins.word).toBe("FCS (Original)");
+    expect(withFins(TWIN, "").fins.word).toBeNull();
+    expect(withFins(TWIN, "A".repeat(33)).fins.word).toBeNull();
+    expect(withFins(TWIN, "C:\\Users\\Somebody").fins.word).toBeNull();
+    expect(withFins(TWIN, '"Somebody\'s board"').fins.word).toBeNull();
+    expect(withFins(TWIN, "12345").fins.word).toBeNull();
+    expect(withFins(TWIN, "A".repeat(32)).fins.word).toBe("A".repeat(32));
+  });
+
+  it("parses the line and the word the same way on their own", () => {
+    expect(parseBrdFinLine(" [1, 2, 3, 4, 5, 6, 7, 8, 9] ")).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(parseBrdFinLine("[1,2,3]")).toBeNull();
+    expect(brdFinWord("  Futures ")).toBe("Futures");
+    expect(brdFinWord("no/way<")).toBeNull();
+  });
+
+  it("never lets any other header text through with the fins", () => {
+    const everything = JSON.stringify(withFins(TWIN, "Futures"));
+    expect(everything).not.toMatch(/Somebody|secret|Users|1234567890|V4\.4/);
+  });
+
+  it("reads this app's own file with no fins as no fins, and one written with fins as those fins", () => {
+    expect(mustRead(bytesOf(own)).fins).toEqual({ side: null, centre: null, word: null, dropped: false });
+    const written = brdText(surface, { fins: { p50: [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], p51: "Probox" } }).text;
+    const fins = mustRead(bytesOf(written)).fins;
+    expect(fins.word).toBe("Probox");
+    expect(fins.side!.back[0]).toBeCloseTo(241.3, 6);
+    expect(fins.centre!.front).toBeCloseTo(203.2, 6);
   });
 });

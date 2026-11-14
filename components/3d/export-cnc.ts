@@ -1,5 +1,6 @@
 import { brdFileWithPreview, type BrdFileWithPreview, type BrdSideProfileInput } from "@/lib/export/brd-preview";
 import { cncZip } from "@/lib/export/cnc-files";
+import type { BrdFinFields } from "@/lib/geometry/brd-fins";
 import type { BoardSurface } from "@/lib/geometry/board-surface";
 import type { Mm } from "@/lib/geometry/units";
 
@@ -26,8 +27,11 @@ function download(name: string, data: Uint8Array, type: string): void {
 /**
  * Export .brd File (quick 261110-tvk; the founder, 2026-11-10: "let's only export the .brd file for now"): the 3D
  * screen's one download — the board as an AkuShaper `.brd` file, built from the very surface the screen draws, so the
- * file can never describe a different board from the one on screen. The bare board only (D-16): it reads the surface and
- * the board's name and nothing else, so the Fins, Blank and Contour Stripes switches can never reach the file.
+ * file can never describe a different board from the one on screen. The bare board (D-16) plus, since quick 261113-qyz
+ * (the founder, 2026-11-13), the board's fins and its fin system as FINS places and names them (`fins`, from
+ * `brdFinFields`; null for a quad, whose rear fins the format has no room for): it reads the surface, the board's name
+ * and those fin fields and nothing else, so the 3D screen's Fins, Blank and Contour Stripes switches can still never reach
+ * the file — the file carries FINS' placement whatever the 3D view shows.
  *
  * Since quick 261112-dbi the Export tap only MAKES the file, with the preview read back from its own bytes
  * (`lib/export/brd-preview.ts`), and downloads nothing: the shaper looks at the slices first. The download is the
@@ -45,8 +49,9 @@ export function makeBrdExport(
   boardName: string,
   bottomStations: readonly Mm[],
   sides: BrdSideProfileInput,
+  fins: BrdFinFields | null,
 ): BrdFileWithPreview {
-  return brdFileWithPreview(surface, boardName, { bottomStations }, sides);
+  return brdFileWithPreview(surface, boardName, { bottomStations, fins }, sides);
 }
 
 /**

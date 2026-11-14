@@ -10,6 +10,7 @@ import { buildFallbackProfile } from "../geometry/board-profile";
 import { buildBoardSurface } from "../geometry/board-surface";
 import { DEFAULT_BOTTOM, cutKind, resolveBottom, resolveCut, startingCut, stationFromNearestTip, type BoardBottom, type BottomBoard, type BottomCutName } from "../geometry/bottom";
 import { brdFittedBottomBoard, brdStringerLift } from "../geometry/brd-bottom";
+import { noBrdFins } from "../geometry/brd-fins";
 import { formatBottomStation } from "../geometry/blank-reasons";
 import { RAIL_NUDGE_NAMES, computeRailSectionOutput, railFamilyLabel } from "../geometry/rail-bands";
 import { BRD_FIT_TIP_SKIP_MM, BRD_STRAIGHTEDGE_MM, brdFileStations, brdFileWidths, fitBoardToBrd, fitOutlineWidths, outlineGapSide } from "../geometry/brd-fit";
@@ -244,7 +245,7 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const outline: P2[] = [[0, 0], [0, half * 0.5], [L * 0.2, half * 0.9], [L * 0.45, half], [L * 0.8, half * 0.75], [L, 0]];
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
-  const made = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [] };
+  const made = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [], fins: noBrdFins() };
   return { board: made, fit: fitBoardToBrd({ length: made.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
 }
 
@@ -347,7 +348,7 @@ describe("brdFitSheet", () => {
     const bottom: P2[] = [[0, 50], [1000, 0], [1993.65, 79.492], [2000, 99.492]];
     const deck: P2[] = [[0, 100], [1000, 50], [1993.65, 129.492], [2000, 99.492]];
     const outline: P2[] = [[0, 0], [0, 120], [700, 240], [1000, 260], [1500, 200], [2000, 0]];
-    const made = { length: mm(2000), width: null, thickness: null, outline, bottom, deck, sections: [] };
+    const made = { length: mm(2000), width: null, thickness: null, outline, bottom, deck, sections: [], fins: noBrdFins() };
     const pointed = brdFitSheet({ ...look, board: made }, "Egg.brd", "imperial");
     expect(pointed.pointNotes).toHaveLength(1);
     const stations = brdFileStations(made);

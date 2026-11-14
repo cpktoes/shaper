@@ -98,6 +98,7 @@ import { makeBrdExport, saveBrdExport } from "./export-cnc";
 import { BrdPreviewDialog } from "./brd-preview-dialog";
 import type { BrdFileWithPreview } from "@/lib/export/brd-preview";
 import { brdBottomStations, brdFileBottom, brdLeavesChannelsOut, brdTailWrittenSquare } from "@/lib/export/brd";
+import { brdFinFields } from "@/lib/geometry/brd-fins";
 import { resolveBottom } from "@/lib/geometry/bottom";
 
 /**
@@ -318,6 +319,7 @@ export function ThreeDScreen() {
     boardName,
     modelId,
     finPlacement,
+    finSystem,
     effectiveFins,
     bottom,
     bottomBoard,
@@ -447,9 +449,9 @@ export function ThreeDScreen() {
   // Export .brd File (16-12, D-14, D-16; quick 261110-tvk; quick 261112-dbi): the tap builds the .brd of the very surface
   // drawn here and opens a preview drawn from the file's own bytes; nothing is downloaded until the preview's Save, which
   // downloads those same bytes inside its own tap with nothing awaited first (Safari's rule). It reads the surface and
-  // the board's name only — never the Fins, Blank, Contour Stripes or Wire View switches — and needs no 3D drawing. The
-  // done line stays until the next export or until the shaper leaves the screen (this state goes with the screen); a
-  // board that can't be built has nothing to export.
+  // the board's name and FINS' own fins and fin system (quick 261113-qyz) — never the Fins, Blank, Contour Stripes or Wire
+  // View switches — and needs no 3D drawing. The done line stays until the next export or until the shaper leaves the
+  // screen (this state goes with the screen); a board that can't be built has nothing to export.
   const [exportResult, setExportResult] = useState<ExportState>({ kind: "idle" });
   const exportState: ExportState = built.ok ? exportResult : { kind: "cant-build" };
   const exportButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -479,7 +481,7 @@ export function ThreeDScreen() {
         resolved: fileResolved,
         board: bottomBoard,
         profile: sideProfile,
-      });
+      }, brdFinFields(finPlacement, finSystem));
       setPrepared({ file, swallowNote: brdTailWrittenSquare(built.surface), channelsNote: brdLeavesChannelsOut(bottom) });
     } catch (error) {
       console.error("The board file could not be made:", error);

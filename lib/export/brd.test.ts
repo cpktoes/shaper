@@ -28,6 +28,8 @@ import {
   LIVE_DESIGN_RULES,
   type DesignSummaryFields,
 } from "../geometry/design";
+import { brdFinFields } from "../geometry/brd-fins";
+import { DEFAULT_FIN_PLACEMENT_SPEC, FIN_SYSTEMS, resetAdvanced, type FinSetup } from "../geometry/fins";
 import { buildOutline } from "../geometry/outline";
 import { inchesToMm, mm, mmToCentimetres } from "../geometry/units";
 import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
@@ -43,6 +45,7 @@ import {
   BRD_WALL_LEAN_ROOM,
   BRD_WALL_SECTION_SPACING_IN,
   brdBottomStations,
+  brdFinHeaderFields,
   brdBlendStray,
   brdCurves,
   brdFile,
@@ -732,5 +735,66 @@ describe("readBrdText", () => {
     expect(() => readBrdText(text.replace("p32 : (", "p32 : ( "))).toThrow();
     expect(() => readBrdText(text.replace(" false)\n", " maybe)\n"))).toThrow();
     expect(() => readBrdText(text.slice(0, -2))).toThrow();
+  });
+});
+
+describe("the fins in the file's header (quick 261113-qyz)", () => {
+  const fields = fieldsOf("shortboard|asis|hard");
+  const finsOf = (setup: FinSetup, system: (typeof FIN_SYSTEMS)[number]["value"] = "futures") => {
+    const spec = { ...DEFAULT_FIN_PLACEMENT_SPEC, finSetup: setup, advanced: resetAdvanced(setup, "upright") };
+    return brdFinFields(designFinPlacement({ outline: fields.outline, fins: spec, finsImportTemplate: true }), system);
+  };
+  const plain = brdText(shortboard);
+
+  it("with no fins option writes the header it always wrote: no p51, p50 all zeros", () => {
+    const read = readBrdText(plain.text);
+    expect(read.header.map(([k]) => k)).not.toContain("p51");
+    expect(new Map(read.header).get("p50")).toBe("[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]");
+    expect(brdText(shortboard, { fins: null }).text).toBe(plain.text);
+    expect(brdText(shortboard, {}).text).toBe(plain.text);
+  });
+
+  it("a thruster's file has p51 just before p50, p50's nine figures through the file's number format, and no other header change", () => {
+    const fins = finsOf("thruster")!;
+    const text = brdText(shortboard, { fins }).text;
+    const read = readBrdText(text);
+    const keys = read.header.map(([k]) => k);
+    expect(keys).toEqual([
+      "p01", "p02", "p03", "p04",
+      ...BRD_MACHINE_FIELDS.map(([k]) => k).flatMap((k) => (k === "p50" ? ["p51", "p50"] : [k])),
+    ]);
+    const header = new Map(read.header);
+    expect(header.get("p51")).toBe("Futures");
+    expect(header.get("p50")).toBe(`[${fins.p50.map(formatBrdNumber).join(",")}]`);
+    expect(header.get("p50")!.split(",")).toHaveLength(9);
+    for (const [k, v] of BRD_MACHINE_FIELDS) if (k !== "p50") expect(header.get(k)).toBe(v);
+    expect(/^[\x20-\x7e\n]*$/.test(text)).toBe(true);
+  });
+
+  it("every curve and section line is exactly the no-fins text's", () => {
+    const withFins = brdText(shortboard, { fins: finsOf("twin")! }).text.split("\n");
+    const without = plain.text.split("\n");
+    const from = (lines: string[]) => lines.slice(lines.indexOf("p32 : ("));
+    expect(from(withFins)).toEqual(from(without));
+    expect(withFins.length).toBe(without.length + 1);
+  });
+
+  it("the header fields are p51's word then p50's line, from the same figures", () => {
+    const fins = finsOf("single", "lokbox")!;
+    expect(brdFinHeaderFields(fins)).toEqual([
+      ["p51", "Lokbox"],
+      ["p50", `[${fins.p50.map(formatBrdNumber).join(",")}]`],
+    ]);
+  });
+
+  it("a quad writes no fins at all: the file is today's bytes", () => {
+    expect(finsOf("quad")).toBeNull();
+    expect(brdText(shortboard, { fins: finsOf("quad") }).text).toBe(plain.text);
+  });
+
+  it("a file with fins is the same locked file as ever: scrambled and read back", () => {
+    const file = brdFile(shortboard, "My Board", { fins: finsOf("thruster")! });
+    expect(readBrdText(unscrambleBrd(file.data)).header.map(([k]) => k)).toContain("p51");
+    expect(brdFile(shortboard, "My Board").data).toEqual(brdFile(shortboard, "My Board", { fins: null }).data);
   });
 });

@@ -429,6 +429,22 @@ export function offRailTunerRangeIn(
   return { min: min + 0, max: max + 0 };
 }
 
+/**
+ * FINS' slider ranges, in inches (`min`, `max`, `step` — the step is the Imperial one; Metric steps a whole millimetre).
+ * They lived in `fin-controls.tsx` and moved here, values unchanged (quick 261113-qyz), so a board file's fin figures can
+ * be held inside the very ranges FINS' own controls run over, never a copy that could drift.
+ */
+/** Fin Base Length (forward, rear, centre — "Fin Box Length" on a single fin and a 2+1's centre): 2 1/2" to 10 1/2". */
+export const FIN_BASE_LENGTH_RANGE_IN = { min: 2.5, max: 10.5, step: 0.125 } as const;
+/** Aft/Forward position of a pair or the centre fin, either way from its template: 1 1/2". */
+export const FIN_POSITION_RANGE_IN = { min: -1.5, max: 1.5, step: 1 / 16 } as const;
+/** Toe-In, a fin pair's: 0 to 1/2". */
+export const FIN_TOE_RANGE_IN = { min: 0, max: 0.5, step: 1 / 16 } as const;
+/** A quad's Basic - Off-Rail rear pair, distance from the rail: 1" to 2". */
+export const QUAD_REAR_OFF_RAIL_RANGE_IN = { min: 1, max: 2, step: 1 / 16 } as const;
+/** A quad's rear pair's Off-Tail override: 1/2" to 12". */
+export const QUAD_REAR_OFF_TAIL_RANGE_IN = { min: 0.5, max: 12, step: 1 / 16 } as const;
+
 export const TWIN_TEMPLATES: { value: TwinTemplate; label: string }[] = [
   { value: "upright", label: "Modern/Upright" },
   { value: "keel", label: "Keel" },

@@ -13,6 +13,7 @@ import { suggestBlanks } from "@/lib/geometry/brd-blank-suggest";
 import { buildBoardSurface } from "@/lib/geometry/board-surface";
 import type { SectionHeight } from "@/lib/geometry/bottom-draw";
 import { DEFAULT_BOTTOM, resolveBottom, startingCut } from "@/lib/geometry/bottom";
+import { noBrdFins } from "@/lib/geometry/brd-fins";
 import { fitBoardToBrd } from "@/lib/geometry/brd-fit";
 import {
   designBottomBoard,
@@ -60,7 +61,7 @@ function madeUp(lengthIn: number, widthIn: number): BrdFitLook {
   const outline: P2[] = [[0, 0], [0, half * 0.5], [L * 0.2, half * 0.9], [L * 0.45, half], [L * 0.8, half * 0.75], [L, 0]];
   const bottom: P2[] = [[0, 60], [L * 0.1, 20], [L / 2, 0], [L * 0.9, 25], [L, 90]];
   const deck: P2[] = bottom.map(([x, y]): P2 => [x, y + (x === 0 || x === L ? 25 : 60)]);
-  const board = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [] };
+  const board = { length: mm(L), width: mm(2 * half), thickness: mm(60), outline, bottom, deck, sections: [], fins: noBrdFins() };
   return { board, fit: fitBoardToBrd({ length: board.length, outline, bottom, deck }), bottom: null, planedBottom: bottom, rails: null };
 }
 

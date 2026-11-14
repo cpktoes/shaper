@@ -261,7 +261,7 @@ const offRailFront = offRail.marks.find((k) => k.role === "front")!.offTail;
 const offRailRear = offRail.marks.find((k) => k.role === "rear")!.offTail;
 const bendFrom = GUIDE_PUSH_TABLE.find((e) => e.key === "bendFrom")!.inches!;
 const FINE_TUNE = sourceBounds("../../rocker/rocker-controls.tsx", "FINE_TUNE_RANGE_IN");
-const AFT_FORWARD = sourceBounds("../../fins/fin-controls.tsx", "POS_BOUNDS");
+const AFT_FORWARD = sourceBounds("../../../lib/geometry/fins.ts", "FIN_POSITION_RANGE_IN");
 
 /**
  * Every number of the app a saying quotes: the saying, where the number comes from, and the Metric phrase
@@ -304,7 +304,7 @@ const APP_NUMBERS: { key: string; imperial: string; source: string; metric: stri
   { key: guideCardId("fins", "Quad", "Basic - Off-Rail"), imperial: '+1/4"', source: "computeFinPlacement, rear off-tail less half the front's · formatMark", metric: `+${markM(mm(offRailRear - offRailFront / 2))}` },
   { key: guideCardId("fins", "Quad", "McKee Longboard"), imperial: "eight feet or longer", source: "MIN_MCKEE_LONGBOARD_QUAD_LENGTH · formatLength", metric: `${formatLength(MIN_MCKEE_LONGBOARD_QUAD_LENGTH, "metric")} or longer` },
   { key: guideCardId("fins", "Quad", "McKee Longboard"), imperial: `8'0"`, source: "MIN_MCKEE_LONGBOARD_QUAD_LENGTH · formatLength", metric: formatLength(MIN_MCKEE_LONGBOARD_QUAD_LENGTH, "metric") },
-  { key: guideCardId("fins", "Advanced", "Aft/Forward position"), imperial: "an inch and a half", source: "fin-controls POS_BOUNDS · measureSlider metric top · formatMark", metric: sliderTopM(AFT_FORWARD) },
+  { key: guideCardId("fins", "Advanced", "Aft/Forward position"), imperial: "an inch and a half", source: "FIN_POSITION_RANGE_IN (lib/geometry/fins.ts) · measureSlider metric top · formatMark", metric: sliderTopM(AFT_FORWARD) },
 ];
 
 describe("every number of the app in a saying is the app's own Metric figure", () => {

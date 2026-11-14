@@ -15,13 +15,19 @@
  * at most `BRD_READ_MAX_KNOTS` knots each; a section with a line that is not a knot, a bad figure or a station off the
  * board is dropped on its own and the rest of the file still reads; AkuShaper's `gps : (` guide-point blocks inside a
  * section are skipped. A file with no usable section reads with `sections: []`. Of the header only the length,
- * the thickness and the width are kept, as numbers: every other field (names, folder paths) is dropped on the spot.
+ * the thickness and the width are kept, as numbers, and — since quick 261113-qyz — the fin line (p50, nine figures) and
+ * the fin system's word (p51): every other field (names, folder paths) is dropped on the spot. The fin line is read before
+ * the first curve only (as the sizes are), as nine finite figures within `BRD_READ_MAX_CM` or not at all; `brdFinsFromLine`
+ * (`lib/geometry/brd-fins.ts`) then holds its fins to the rules (on the board, front ahead of back). The word is kept only
+ * as 1 to 32 plain characters with a letter in them, and only beside a fin that was kept: it is the one piece of the file's
+ * header text that is ever shown.
  *
  * Written from the format's facts only, never from another program's code. Pure: no React, browser or database
  * import (CLAUDE.md Rule 1). Lengths come out in millimetres, through `centimetresToMm`.
  */
 import type { P2 } from "../geometry/bezier-fit";
 import { BOARD_LENGTH_RANGE_IN } from "../geometry/board";
+import { BRD_FIN_WORD_MAX, brdFinsFromLine, noBrdFins, type BrdFileFins } from "../geometry/brd-fins";
 import { centimetresToMm, inchesToMm, mm, type Mm } from "../geometry/units";
 import type { BrdReadKnot } from "./brd";
 import { BRD_PREVIEW_CURVE_STEPS, BRD_PREVIEW_SECTION_STEPS, sampleKnots } from "./brd-preview";
@@ -77,6 +83,8 @@ export interface ReadBrdBoard {
   deck: P2[];
   /** The cross-sections the file holds that could be used, tail to nose; `[]` when there are none. */
   sections: ReadBrdSection[];
+  /** The fins the file's p50 holds that sit on the board, and its p51 word beside them (quick 261113-qyz). */
+  fins: BrdFileFins;
 }
 
 export type ReadAnyBrdResult =
@@ -113,6 +121,30 @@ function plainText(bytes: Uint8Array): string {
   return text;
 }
 
+/**
+ * A fin line's nine figures: `[a,b,c,d,e,f,g,h,i]`, every one a finite number within `BRD_READ_MAX_CM`, or null (any other
+ * line, a different count, a figure that is not a figure). The figures are centimetres, as the file has them.
+ */
+export function parseBrdFinLine(value: string): number[] | null {
+  const match = /^\[([^\]]*)\]$/.exec(value.trim());
+  if (!match) return null;
+  const parts = match[1].split(",").map((part) => part.trim());
+  if (parts.length !== 9 || parts.some((part) => part === "")) return null;
+  const figures = parts.map(Number);
+  return figures.every((n) => Number.isFinite(n) && Math.abs(n) <= BRD_READ_MAX_CM) ? figures : null;
+}
+
+/**
+ * A file's fin word (p51) as it may be shown: 1 to 32 characters of letters, digits, spaces and `+ - ( ) . / ' &`, with at
+ * least one letter, trimmed; anything else (a path, a name in quotes, an empty field) is null.
+ */
+export function brdFinWord(value: string): string | null {
+  const word = value.trim();
+  if (word.length < 1 || word.length > BRD_FIN_WORD_MAX) return null;
+  if (!/^[A-Za-z0-9 +\-().\/'&]+$/.test(word) || !/[A-Za-z]/.test(word)) return null;
+  return word;
+}
+
 const headerNumber = (value: string | undefined): number | null => {
   if (value === undefined) return null;
   const n = Number(value.trim());
@@ -139,6 +171,9 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
     const rawSections: { station: number; knots: BrdReadKnot[] }[] = [];
     let open: BrdReadKnot[] | null = null;
     let sawCurve = false;
+    // The fin line and the fin system's word, raw, read before the first curve like the size fields (quick 261113-qyz).
+    let finLine: string | null = null;
+    let finWord: string | null = null;
     // The cross-section block (`p35`): `inSections` while it runs, `section` the one being read, `skipping` inside a
     // `gps : (` guide-point block (a lone `)` ends it). A damaged section is marked `bad` and dropped when it closes.
     let inSections = false;
@@ -210,8 +245,11 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
         sawCurve = true;
         continue;
       }
-      // Only the three size fields are kept, and only as numbers; every other field's text is dropped here.
+      // Only the three size fields are kept, as numbers, and the two fin fields, as the strings the rules above handle;
+      // every other field's text is dropped here.
       if (!sawCurve && (key === "p01" || key === "p03" || key === "p04")) header.set(key, headerNumber(value));
+      else if (!sawCurve && key === "p50") finLine = value;
+      else if (!sawCurve && key === "p51") finWord = brdFinWord(value);
     }
 
     const length = header.get("p01");
@@ -250,6 +288,8 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
 
     const width = header.get("p04");
     const thickness = header.get("p03");
+    const finFigures = finLine === null ? null : parseBrdFinLine(finLine);
+    const fins = finFigures ? brdFinsFromLine(finFigures, outline, mm(lengthMm), finWord) : noBrdFins();
     return {
       ok: true,
       board: {
@@ -260,6 +300,7 @@ export function readAnyBrd(bytes: Uint8Array): ReadAnyBrdResult {
         bottom,
         deck,
         sections,
+        fins,
       },
     };
   } catch {
