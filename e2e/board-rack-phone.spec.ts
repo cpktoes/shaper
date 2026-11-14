@@ -788,11 +788,15 @@ test.describe("the Board Rack on an iPhone — the status pill's live region", (
     await expect(region).toHaveAttribute("role", "status");
     await expect(region).toHaveAttribute("aria-live", "polite");
     await expect(region).toHaveText("");
-    // The only other live region on the home page is Open a board file…'s own quiet line under the
-    // preset cards (quick 261103-k8o), empty until a picked file can't open — so the rack still has one.
-    await expect(page.locator('[role="status"]:not([data-board-file-status])')).toHaveCount(1);
+    // The only other live regions on the home page are Open a board file…'s own two quiet lines under the
+    // preset cards: the one that says why a picked file can't open (quick 261103-k8o) and the one that says
+    // "Reading the file…" while a .brd is worked out (quick 261113-kvo). Both are empty until a file is
+    // picked — so the rack still has one.
+    await expect(page.locator('[role="status"]:not([data-board-file-status]):not([data-board-file-reading-line])')).toHaveCount(1);
     await expect(page.locator("[data-board-file-status]")).toHaveCount(1);
     await expect(page.locator("[data-board-file-status]")).toHaveText("");
+    await expect(page.locator("[data-board-file-reading-line]")).toHaveCount(1);
+    await expect(page.locator("[data-board-file-reading-line]")).toHaveText("");
   });
 });
 

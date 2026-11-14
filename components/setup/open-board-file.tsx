@@ -258,6 +258,7 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
         {BOARD_FILE_COPY.brdHint}
       </p>
       <p
+        data-board-file-reading-line
         role="status"
         aria-live="polite"
         {...(reading ? { "data-brd-reading": "" } : {})}
