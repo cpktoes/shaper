@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 13-ready-for-the-shapers
 source: [13-SPEC.md item 13]
 started: 2026-09-30T21:31:08.000Z
-updated: 2026-10-06T14:40:00.000Z
+updated: 2026-11-14T12:30:00.000Z
 ---
 
 ## Current Test
 
-number: 4
-name: The whole trip on the founder's iPhone
-expected: |
-  Every step of "The walk" below passes on the founder's iPhone on the live site, including page 2 of a real order-form print made from the iPhone (item 8b's last open check)
-awaiting: user response
+[none — the rehearsal was closed on 2026-11-14 at the founder's word, after the 2026-10-10 showing: "Both 13 and 14 are complete and can be closed."]
 
 ## Tests
 
@@ -35,15 +31,15 @@ who: the founder, on either phone, with a spare email address — afterwards the
 
 ### 4. The whole trip on the founder's iPhone
 expected: Every step of "The walk" below passes on the founder's iPhone on the live site, including page 2 of a real order-form print made from the iPhone (item 8b's last open check)
-result: [pending]
+result: skipped — not recorded one by one; closed with the phase on 2026-11-14 at the founder's word, after the 2026-10-10 showing
 
 ### 5. The whole trip on a real Android phone
 expected: Every step of "The walk" below passes on a real Android phone on the live site — borrowed if need be, because shapers in the room will be carrying them
-result: [pending]
+result: skipped — not recorded one by one; closed with the phase on 2026-11-14 at the founder's word, after the 2026-10-10 showing
 
 ### 6. The whole trip on the Oct 10 laptop
 expected: Every step of "The walk" below passes on the laptop and browser that will be used on Oct 10, with a real print of the order form, and on the projector or TV too if one will be used
-result: [pending]
+result: skipped — not recorded one by one; closed with the phase on 2026-11-14 at the founder's word, after the 2026-10-10 showing
 
 ### 7. Someone else signs up with Google
 expected: A friend, on their own phone, taps Continue with Google on the live site, gets past Google's screen with no "access blocked" message, lands signed in and saves a board — and notes the name Google's screen shows (Shaper Assistant, or only the web address)
@@ -53,11 +49,11 @@ who: a friend (not the founder), about 5 minutes
 
 ### 8. The demo account holds a few finished boards
 expected: The account shown on Oct 10 holds three or four finished boards, each with a blank picked on ROCKER and fins set on FINS, and each one opens on the laptop and prints its order form
-result: [pending]
+result: skipped — not recorded one by one; closed with the phase on 2026-11-14 at the founder's word, after the 2026-10-10 showing
 
 ### 9. The freeze from Wednesday Oct 7 evening
 expected: The live site is the build this walk passed (or passed after fixes); its commit is tagged and its Vercel deployment written on the demo-day card with the rollback steps; after that nothing is pushed or changed in Clerk, Google, Neon or Vercel except a fix for something this walk found, on the founder's go
-result: [pending]
+result: skipped — not recorded one by one; closed with the phase on 2026-11-14 at the founder's word, after the 2026-10-10 showing
 who: Claude and the founder, Wednesday Oct 7 evening
 
 ## Summary
@@ -65,8 +61,8 @@ who: Claude and the founder, Wednesday Oct 7 evening
 total: 9
 passed: 4
 issues: 0
-pending: 5
-skipped: 0
+pending: 0
+skipped: 5
 blocked: 0
 
 ## How this rehearsal works

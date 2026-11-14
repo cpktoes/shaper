@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Ready for the Shapers
 status: planning
-stopped_at: "Board files both ways (.brd) CLOSED 2026-11-14: opening an AkuShaper or Shape3D .brd as a board, fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10 in, boards 4 ft to 12 ft and 31 in wide from 8 ft, the printed bottom tables on two sheets — twelve quick tasks and two fast tasks, live as main ce73ff35 after the full gate and a code review (0 blockers; three warnings fixed first); six follow-ups filed as to-dos. Phase 13 is the only phase still open (items 9 and 13)."
+stopped_at: "Board files both ways (.brd) CLOSED 2026-11-14: opening an AkuShaper or Shape3D .brd as a board, fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10 in, boards 4 ft to 12 ft and 31 in wide from 8 ft, the printed bottom tables on two sheets — twelve quick tasks and two fast tasks, live as main ce73ff35 after the full gate and a code review (0 blockers; three warnings fixed first); six follow-ups filed as to-dos. Phases 13 and 14 closed the same day at the founder's word (item 9 of Phase 13 closed unbuilt, kept as a to-do): all six phases of v1.5 are complete; the milestone itself is not yet closed."
 last_updated: "2026-11-14T12:00:00.000Z"
 last_activity: 2026-11-14
-last_activity_desc: Board files both ways (.brd) and the new board sizes closed — live as main ce73ff35, records brought up to date, six follow-ups filed
+last_activity_desc: Phases 13 and 14 closed at the founder's word; board files both ways (.brd) and the new board sizes closed and live as main ce73ff35
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 82
   completed_plans: 82
-  percent: 83
+  percent: 100
 current_phase: 13
 current_phase_name: Ready for the Shapers
 ---
@@ -24,9 +24,11 @@ current_phase_name: Ready for the Shapers
 See: .planning/PROJECT.md (updated 2026-09-27)
 
 **Core value:** The rail-band and fin-placement calculators produce numbers a shaper trusts enough to cut foam to — everything else supports that.
-**Current focus:** Phase 13 — Ready for the Shapers (its last items); Phases 16, 17 and 18 are complete and live. Opening a .brd as a board, fins in the .brd export and boards from 4'0" to 12'0" went live 2026-11-14 (main `ce73ff35`); what is left from that work is filed as to-dos
+**Current focus:** Every phase of milestone v1.5 (13–18) is complete and live; the milestone itself is still open (`/gsd-complete-milestone` when the founder says). Opening a .brd as a board, fins in the .brd export and boards from 4'0" to 12'0" went live 2026-11-14 (main `ce73ff35`); what is left from that work is filed as to-dos
 
 ## Current Position
+
+**Phases 13 and 14 — closed 2026-11-14 at the founder's word** ("Both 13 and 14 are complete and can be closed."). Phase 13 (Ready for the Shapers): 13 of 13 items closed — twelve done and live, item 9 (blank catalogue links) closed unbuilt and kept as a to-do; item 13's rehearsal has four of nine checks recorded as passed (2026-10-03) and the rest closed unrecorded after the 2026-10-10 showing. Phase 14 (Realistic Surfboard Flow): 18 of 18 plans, live since 2026-10-02 in two go-lives; its two checks left to a person are closed the same way (`14-VERIFICATION.md`). The paragraphs on both phases further down are kept as their history.
 
 **Board files both ways (.brd), and the new board sizes — closed 2026-11-14, live as main `ce73ff35`.** Built as quick tasks on branch `close-bottom-17`, one at a time with the founder's look between, from his "I think we now need to try importing a .brd file into our app" (2026-11-13): Open a board file… takes an AkuShaper or Shape3D `.brd`, lays our closest fit over it (outline, rocker, thickness — 261113-d9b; the editable board and printed overview — et0; a blank from each maker — gwo; bottom contours with their sliders — gwr; wings and their corner radius — hyy, m5w; rails — kvo; fins — qyz) and opens it as a new board; the `.brd` export carries the board's fins (qyz); a new board's tail rail blends from 12" to the centre and saved boards follow it at his word (psx); a Twin's Aft/Forward position reaches 10" off the tail (qyz); boards run 4'0" to 12'0" and up to 31" wide from 8'0" (si7) with the printed bottom tables on a sheet each over 11'6" (vya); fast tasks 206 and 207. The go-live gate ran on the branch (the live commit had not moved): type check, lint, 13,687 unit tests, a production build with the production-only specs and the board-file and 3D export specs against it, and the full browser suite on a computer and two phones (1,989 passed; seven failures traced to two test defects and one load fluke, fixed or re-run green). A code review of the whole branch found no blockers; three of its four warnings were fixed before the push (261114-118: the home page no longer loads the fitting code for every visitor, the blank list is cached for an hour, a one-line guide-point block no longer loses sections). No database change. Not done, filed as to-dos dated 2026-11-14: quad and five-fin setups in a `.brd` (needs a real quad file); the exported fin files opened in AkuShaper and Shape3D; the founder's open calls on the preview; the review's leftovers; the printed plan drawings' axis numbers at two sizes; and the things worth his eye at 4'0" and 12'0".
 
@@ -42,7 +44,7 @@ See: .planning/PROJECT.md (updated 2026-09-27)
 
 Before this: v1.4 — Foil the Way a Shaper Cuts It — closed 2026-09-27 (Phase 12, verified 11/11, UAT 8/8, security 35/35), archived under .planning/milestones/ and tagged `v1.4`; v1.0–v1.3 sit alongside.
 
-Status: Board files both ways (.brd) and the new board sizes closed and live 2026-11-14; Phase 13 open (11 of 13 items); Phases 14, 15, 16, 17 and 18 complete
+Status: All six phases of v1.5 (13–18) complete; board files both ways (.brd) and the new board sizes closed and live 2026-11-14; the milestone is still open
 Last activity: 2026-11-14 - LIVE as main ce73ff35: opening a .brd as a board (outline, rocker, thickness, bottom, wings, rails, fins), fins in the .brd export, the tail rail's new default, a Twin's Aft/Forward to 10", boards 4'0"–12'0" and 31" wide from 8'0", the printed bottom tables on two sheets — quick tasks 261113-d9b … 261114-118 and fast 206–207; gate on d4dcaa25 (unit 13,687, production build + its tests, full browser suite 1,989 passed with seven failures traced to two test defects and one load fluke, re-run green)
 
 ## Performance Metrics

@@ -61,8 +61,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Milestone v1.5 — Ready for the Shapers (in progress)**
 
-- [ ] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7
-- [ ] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze
+- [x] **Phase 13: Ready for the Shapers** - Safe, clean, credible and ready to listen by the founder's showing to many shapers on 2026-10-10: the security patch, housekeeping, the founder's open decisions, volume proven against real boards, the order form completed, a contact page, visitor analytics and a privacy page, a friendly error screen and link preview, and a real-device rehearsal before a freeze on Oct 7 (completed 2026-11-14 at the founder's word)
+- [x] **Phase 14: Realistic Surfboard Flow** - A blank's bottom, thickness and width drawn between their printed stations by the square-root rule that redraws real blanks most closely, a hand-set board drawn the same way, and a steady taper into each tip from a start that is automatic and can be set by hand (6" to the board's centre) — built before the Oct 7 freeze (live 2026-10-02 in two go-lives; completed 2026-11-14 at the founder's word)
 - [x] **Phase 15: The Board Rack** - "Your Boards" on the home page becomes the Board Rack: the shaper's boards stand sideways at one true scale like a shop rack, name and dims running up beside each, and the board under the cursor or in the middle of a phone's swipe turns its real turn to show its outline; the shaper sets the rack's order (drag on a computer, hold then slide on a phone) and the unsaved board stays first — live before the Oct 7 freeze
 - [x] **Phase 16: 3D Board and CNC Export** - The board drawn as a realistic 3D surface on its own 3D screen, spun and moved in every direction under shaping-room lighting that shows its contours, built from the same cross-sections the litres count; and that surface exported as a file a CNC shaping program (Shape3D, AkuShaper) can take in as a 3D guide (completed 2026-11-06; opened 2026-11-03 on branch `board-3d`; the Shape3D test left open by the founder)
 - [x] **Phase 17: BOTTOM — Bottom Contours a Shaper Can Map, Measure and Cut** - A BOTTOM screen between ROCKER and RAILS: Nose, Center and Tail each take one of six named cuts (flat, belly, vee, single or double concave) and the tail 4, 6 or 8 channels cut last; the bottom seen from above as a shade with a line every 1/16" of depth, a cross-section at a sliding station with gauge-style depths, DATA every 6" and a GUIDE card per cut; one foam-off number read by VOLUME, the 3D board, the CNC files and RAILS (opened 2026-11-08 from sketches 019–021) (completed 2026-11-11)
@@ -171,7 +171,7 @@ founder questions stand open as decisions, not defects. Full phase detail archiv
 **Goal:** When a room of shapers sees the app on Saturday 2026-10-10 (the build guide's M4, "invite shapers"), it is safe, tidy, and credible on the numbers they know best, and it is ready to hear from them: the security patch live, the project clean, the founder's open decisions made, volume proven against real boards, the printed order form complete, a way for shapers to reach the founder and a count of which screens they use, and the whole trip rehearsed on real phones before a freeze on Wednesday 2026-10-07.
 **Requirements**: Items 1–13 in `.planning/phases/13-ready-for-the-shapers/13-SPEC.md` (ordered; who does each and what "done" means), run one at a time with the founder's review between
 **Depends on:** Phase 12
-**Plans:** 11/13 items, plus 8b, 11a, 9b, 9c, 9d and 9e — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
+**Plans:** 13/13 items closed (12 done; item 9 closed unbuilt), plus 8b, 11a, 9b, 9c, 9d and 9e — each code item runs as its own `/gsd-quick` task named "Phase 13 item N"; founder items are recorded in the SPEC's Progress Log
 
 Plans:
 
@@ -192,7 +192,7 @@ Plans:
 - [x] 7. Volume proven against three real boards with known litres (the founder checked the four presets against their expected volumes: all within 1/2–1 L, 2026-09-28)
 - [x] 8. The order form carries the tip thicknesses and the planer passes (the founder's redirect: the tips stay on page 1's ROCKER strip; page 2 gets a PLANING table — Deck / Bottom, Foam Off and Passes — to the LEFT of the rail markings; quick 260928-r9h + 260928-tst + fast task 128, live 2026-09-29)
 - [x] 8b. Page 2 on a phone print: the rail markings stop running into Fin Placement (founder's addition 2026-09-29; page-2 type on a phone sheet fits its page, every rail mark and fin number in its own box from 560 to 900 dots, the fin note's last line per system — quick 260928-vpi, live 2026-09-29)
-- [ ] 9. Blank catalogue links (if time allows before the freeze) — skipped for now at the founder's word, 2026-09-29
+- [x] 9. Blank catalogue links (if time allows before the freeze) — skipped for now at the founder's word, 2026-09-29; closed unbuilt with the phase on 2026-11-14 — the idea stays as the to-do "Open the blank's own catalog page from the app"
 - [x] 9b. Optional: a ghost of the last edit on TEMPLATE (founder's addition 2026-09-27; the founder's three choices — one edit ago from the undo history, stays with a hide button in the viewer toolbar, TEMPLATE only; a faint solid line at 55% — quick 260930-lia + fast task 138, live 2026-09-30)
 - [x] 9c. Undo and redo buttons on every design screen on a computer — the phone's floating bottom-right pair extended to the desktop shell, appearing once there is something to take back (founder's addition 2026-09-30; quick 260930-lo8, live 2026-09-30)
 - [x] 9d. A phone held sideways gets a thin top bar — the phone's compact bar and hamburger menu (with the six screens) replace the desktop row on a short screen, so the wordmark no longer wraps (founder's addition 2026-09-30, from walking the live site sideways; quick 260930-r8s, live 2026-09-30)
@@ -207,7 +207,7 @@ Plans:
 
 **Rehearse, then freeze (Tue–Thu, Oct 6–8)**
 
-- [ ] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze — prepared 2026-09-30: the walk sheet is `13-UAT.md`
+- [x] 13. Real-device rehearsal on the live site (Android, iPhone, the presenting laptop, a non-founder Google sign-up), then the freeze — prepared 2026-09-30: the walk sheet is `13-UAT.md` — closed 2026-11-14 at the founder's word, after the 2026-10-10 showing; four of the nine checks were recorded as passed on 2026-10-03, the others were not recorded one by one
 
 ### Phase 14: Realistic Surfboard Flow
 
@@ -546,8 +546,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 (v1.0, complete) → 5 → 
 | 10. The Whole App on a Phone | 11/11 | Complete    | 2026-09-12 |
 | 11. Rocker from Real Blanks | 13/13 | Complete    | 2026-09-26 |
 | 12. Foil the Way a Shaper Cuts It | 10/10 | Complete    | 2026-09-27 |
-| 13. Ready for the Shapers | 11/13 items | In progress | - |
-| 14. Realistic Surfboard Flow | 18/18 | In Progress|  |
+| 13. Ready for the Shapers | 13/13 items | Complete    | 2026-11-14 |
+| 14. Realistic Surfboard Flow | 18/18 | Complete    | 2026-11-14 |
 | 15. The Board Rack | 13/13 | Complete    | 2026-10-06 |
 | 16. 3D Board and CNC Export | 18/18 | Complete    | 2026-11-06 |
 | 17. BOTTOM — Bottom Contours | 23/23 | Complete    | 2026-11-11 |

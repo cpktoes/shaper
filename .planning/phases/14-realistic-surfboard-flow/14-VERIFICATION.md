@@ -1,7 +1,8 @@
 ---
 phase: 14-realistic-surfboard-flow
 verified: 2026-10-02T23:59:00Z
-status: human_needed
+status: passed
+human_verified: "2026-11-14 — closed at the founder's word, after the 2026-10-10 showing: 'Both 13 and 14 are complete and can be closed.'"
 score: 8/9 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -148,3 +149,7 @@ No gaps. Notes for the founder's awareness, none of which blocks the phase:
 
 _Verified: 2026-10-02_
 _Verifier: Claude (gsd-verifier)_
+
+## Closed 2026-11-14
+
+The two checks left to a person above (the rehearsal walk on real devices, and the look and feel of the Thinning Starts sliders in Metric on a real phone) were not recorded one by one. The phase is closed at the founder's word, after the 2026-10-10 showing and six weeks of the curves and tips being live: "Both 13 and 14 are complete and can be closed."
