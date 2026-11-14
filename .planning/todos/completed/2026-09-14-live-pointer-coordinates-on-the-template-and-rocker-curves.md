@@ -43,3 +43,7 @@ TBD — hints:
 ## Ruled (2026-11-14)
 
 The founder's pick: hover only — a mouse or trackpad gets the readout (station up from the tail with the width on TEMPLATE, the rocker and thickness on ROCKER) and a dot on the curve; nothing on touch.
+
+## Done
+
+2026-11-14 — quick 261114-lym (commit 39067740): hover read-outs on TEMPLATE and ROCKER, nothing on touch; proven on all three devices.

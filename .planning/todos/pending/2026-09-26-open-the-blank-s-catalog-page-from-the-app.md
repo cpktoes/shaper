@@ -60,3 +60,19 @@ The founder's pick: a small link on the picked blank's card beside Change Blank,
 So the quick task needs a per-maker link rule in `lib/blanks/` AND a slug audit of the seed CSVs (US Blanks and Marko
 especially) before any link is shown — a wrong page is worse than none. Sized as a quick task with data work, not a fast one.
 
+## Audited (2026-11-14) — see `.planning/research/blank-link-audit-2026-11-14.md`
+
+Every seeded blank checked against the makers' live sites (each URL fetched, its title matched to the blank):
+
+- **US Blanks — 101 of 101 have a page.** 61 seed slugs are right, 40 wrong (wrong series folder such as `fish-egss`,
+  hyphenation the site does not use, two WordPress `-2` suffixes, the Superfused EPS slugs missing/holding `eps`), and
+  two are the dangerous kind — a 200 for the wrong blank (`6'9"EAX` → the 6'9" EA page; `11'8"BG` → the 10'8" BG page).
+- **Marko Foam — 23 of 28 have a page; 5 none** (10'2" M, 10'2" M Thick, 9'6" MK, 8'0" Gun, 10'6" Gun). The seed's
+  `catalog_slug` holds section labels (`molded`, `block-cut`, `sup`), not handles: all need a Shopify handle.
+- **Millennium — 59 of 61 have a page; 2 none** (611P, 119P). Slugs irregular (`/53ws/` is the 50WS): all need a slug.
+- **Arctic Foam** — the catalogue PDF with `#page=`, no page per blank.
+
+So this task is: a `catalog_url` (or corrected slug) per blank in the seed CSVs from the audit's tables, a per-maker link
+rule in `lib/blanks/`, the seed re-applied to both databases (an additive data change — production first, with the
+founder present, as every seed run has been), and only then the links on the picked blank's card and the DATASHEET.
+
