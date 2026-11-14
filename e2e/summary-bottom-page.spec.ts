@@ -19,7 +19,9 @@ import { boardWithBottom, openOnBoard, type BoardWithBottom } from "./helpers/bo
  * - one cut adds the page, third, numbered with the others, and the Rail Band Instructions follow it;
  * - every number on the page is the board's own, said in the system the shaper picked — in Metric the stations read in
  *   centimetres, the depths and marks in whole millimetres, and not one inch mark is left on the page;
- * - a board whose cuts fill the page prints its two tables whole on a sheet of their own, never dropped.
+ * - a board whose cuts fill the page prints its two tables whole on a sheet of their own, never dropped;
+ * - and a 12'0" board, whose 25 rows will not let the two tables share even that sheet, prints them a sheet each
+ *   (quick 261113-vya), every row kept from Tail to Nose tip.
  *
  * Boards with a bottom are opened through `helpers/bottom-print.ts`, which builds them with the BOTTOM screen's own
  * starting numbers; no expected figure below is typed — each is read from the board through the app's own unit rules
@@ -316,4 +318,83 @@ test.describe("Summary — the printed BOTTOM CONTOURS page (Phase 17, D-29)", (
     await expect(sheets(page).nth(3)).toHaveText(pageMark("Bottom Contours · Tables", 4, 5));
     await expect(sheets(page).nth(4)).toHaveText(pageMark("Rail Band Reference", 5, 5));
   });
+
+  // Quick 261113-vya: a 12'0" board has 25 rows a table, and with layout marks the two will not share one sheet — so
+  // each takes its own, the depths first. The 9'0" test above stays the pin for the one shared sheet.
+  for (const system of SYSTEMS) {
+    test(`a 12'0" board too long for its two tables to share a sheet prints them a sheet each, every row kept (${system})`, async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name !== "desktop", "one computer pass is enough to pin the sheets");
+      test.slow();
+      const board = boardWithBottom(
+        "longboard",
+        { nose: "Teardrop Nose Concave", center: "Early Double Concave", tail: "Spiral Vee", channels: 8 },
+        { lengthIn: 144, widthIn: 31 },
+      );
+      // Non-vacuity: this really is a board whose tables the rule splits, with the rows it is meant to keep.
+      const layout = bottomSheetLayout(board.resolved, board.board, system, board.frontPair);
+      expect(layout.tablesSplit, "the fit rule gives each table a sheet").toBe(true);
+      expect(layout.dataRows, "a row every 6 inches and the nose tip, on a 12'0\" board").toHaveLength(25);
+      expect(layout.sheets).toBe(3);
+
+      await selectSystem(page, system);
+      await openSummaryOn(page, board);
+      const rows = bottomDataRows(board.resolved, board.board);
+      const marks = bottomLayoutMarks(board.resolved, board.board);
+
+      await expect(sheets(page)).toHaveCount(5);
+      await expect(sheets(page).nth(0)).toHaveText(/Page\s1\sof\s5\s*$/);
+      const pageThree = sheets(page).nth(2);
+      await expect(pageThree).toHaveText(pageMark("Bottom Contours", 3, 5));
+      await expect(pageThree.locator("table")).toHaveCount(0);
+
+      const depthsSheet = sheets(page).nth(3);
+      await expect(depthsSheet).toHaveText(pageMark("Bottom Contours · Depths", 4, 5));
+      await expect(depthsSheet.locator("table")).toHaveCount(1);
+      const depths = depthsSheet.locator("table[data-bottom-sheet-depths]");
+      await expect(depths.locator("tbody tr")).toHaveCount(25);
+      const depthRows = await tableCells(depths);
+      expect(depthRows[0][0]).toBe(BOTTOM_COPY.rowTail);
+      expect(depthRows[24][0]).toBe(BOTTOM_COPY.rowNoseTip);
+      expect(depthRows.map((cells) => cells[0])).toEqual(rows.map((row) => rowLabel(row, system)));
+      await expect(depthsSheet.locator('[data-bottom-sheet-part="table-notes"] p')).toHaveText(layout.splitNotes.depths);
+
+      const marksSheet = sheets(page).nth(4);
+      await expect(marksSheet).toHaveText(pageMark("Bottom Contours · Layout Marks", 5, 5));
+      await expect(marksSheet.locator("table")).toHaveCount(1);
+      const marksTable = marksSheet.locator("table[data-bottom-sheet-marks]");
+      await expect(marksTable.locator("tbody tr")).toHaveCount(25);
+      await expect(marksTable.locator("thead th")).toHaveCount(marks.columns.length + 1);
+      const markRows = await tableCells(marksTable);
+      expect(markRows[0][0]).toBe(BOTTOM_COPY.rowTail);
+      expect(markRows[24][0]).toBe(BOTTOM_COPY.rowNoseTip);
+      expect(markRows).toEqual(
+        marks.rows.map((markRow, r) => [
+          rowLabel(rows[r], system),
+          ...markRow.cells.map((value) => (value === null ? BOTTOM_COPY.emptyCell : formatMarkBare(value, system))),
+        ]),
+      );
+      await expect(marksSheet.locator('[data-bottom-sheet-part="table-notes"] p')).toHaveText(layout.splitNotes.marks);
+      expect(layout.splitNotes.marks[0], "the marks sheet carries the layout-marks note").toBe(layoutMarksNote(board.resolved.channels, system));
+
+      // Rows as they are everywhere else: nothing tightened to make this fit.
+      await expect(page.locator('[data-bottom-rows="tight"]')).toHaveCount(0);
+      await expect(page.getByText("Two portrait pages, printed double-sided — plus three Bottom Contours pages.", { exact: true })).toBeVisible();
+
+      if (system === "metric") {
+        for (const sheet of [depthsSheet, marksSheet]) {
+          expect((await sheet.locator("[data-bottom-tables-sheet]").textContent()) ?? "", "a Metric sheet carries no inch mark").not.toContain('"');
+        }
+        expect((await marksSheet.locator("[data-bottom-tables-sheet]").textContent()) ?? "").toContain("(mm)");
+      }
+
+      // The Rail Band Instructions still print last, and the page marks count the extra sheet.
+      await tickRailInstructions(page, 5);
+      await expect(sheets(page).nth(0)).toHaveText(/Page\s1\sof\s6\s*$/);
+      await expect(sheets(page).nth(4)).toHaveText(pageMark("Bottom Contours · Layout Marks", 5, 6));
+      await expect(sheets(page).nth(5)).toHaveText(pageMark("Rail Band Reference", 6, 6));
+      await expect(
+        page.getByText("Two portrait pages, printed double-sided — plus three Bottom Contours pages and a Rail Band Instructions page.", { exact: true }),
+      ).toBeVisible();
+    });
+  }
 });
