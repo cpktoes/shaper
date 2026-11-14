@@ -1,7 +1,8 @@
 ---
 phase: 18-a-guide-on-every-page
 verified: 2026-11-10T15:19:36Z
-status: human_needed
+status: passed
+human_verified: "2026-11-10 — the founder tried the live site on his phone and ruled on the name (leave it off), the speed (fast enough) and the inch code (keep it); recorded in 18-10-SUMMARY.md. The words and the screen-reader caption stay his with no deadline (a to-do of 2026-11-14 carries the caption)."
 score: 15/15 must-haves verified (R13, the go-live, is pending by design in plan 18-10 and is not counted)
 behavior_unverified: 0
 overrides_applied: 0
@@ -183,3 +184,7 @@ No gaps. Every requirement from R1 to R12 is met in the code as it stands, the f
 
 _Verified: 2026-11-10T15:19:36Z_
 _Verifier: Claude (gsd-verifier)_
+
+## Closed 2026-11-14 (the v1.5 milestone close)
+
+Of the five checks left to a person above, the founder ruled three on 2026-11-10 after trying the live site on his phone (`18-10-SUMMARY.md`): the board's name stays off narrow ROCKER and RAILS strips, a GUIDE opens fast enough, and the maker's inch rocker code stays on a Metric shaper's card. The cards' words are his to edit at any time. The one question never answered — whether a drawing's caption should be read to a screen reader (LW-05) — is carried as a to-do dated 2026-11-14, not as an open check on this phase.

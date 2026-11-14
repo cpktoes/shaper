@@ -74,6 +74,7 @@ coverage:
         status: unknown
     human_judgment: true
     rationale: "Requires the orchestrator's Playwright run at every phone print width plus a real PDF check; the 560-dot hand-off also needs the founder's own read of the measured numbers before item 8b is planned."
+status: complete
 ---
 
 # Quick Task 260928-tst: The PLANING Column Becomes a Deck/Bottom Table Summary

@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "finished-rail-rounds-channels: the founder says the finished rail messes with the channels' shape: the channels must be kept, and the finished rail should not round them."
 created: 2026-11-10T00:00:00Z
-updated: 2026-11-10T01:30:00Z
+updated: 2026-11-14T13:00:00Z
 goal: find_root_cause_only
 ---
 
@@ -170,3 +170,6 @@ root_cause: |
 fix: (diagnose only - not applied)
 verification: (diagnose only)
 files_changed: []
+
+## Resolution
+shipped: Phase 17 fix plan 17-20 (channels cut straight up into the finished rail, everywhere), live 2026-11-11 as main 93c0ea8f and re-checked by the founder in his walk-through. Closed 2026-11-14 at the v1.5 milestone close.

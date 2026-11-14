@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "volume-litres-say-what-they-include — The VOLUME page's litres should say that they take into account the finished rail shape and the bottom contours (UAT 17 test 5, G-17-5)"
 created: 2026-11-10T00:00:00Z
-updated: 2026-11-10T00:00:00Z
+updated: 2026-11-14T13:00:00Z
 ---
 
 ## Current Focus
@@ -94,3 +94,6 @@ root_cause: A missing label, not a maths error. The VOLUME litres already count 
 fix: (diagnose only — not applied)
 verification: (diagnose only)
 files_changed: []
+
+## Resolution
+shipped: Phase 17 fix plan 17-17 (the founder's sentence on VOLUME's INPUTS card; BOTTOM named on the GUIDE's Import Designed Board card), live 2026-11-11 as main 93c0ea8f and re-checked by the founder. The ESTIMATE tab's other words stay as the to-do of 2026-11-11. Closed 2026-11-14 at the v1.5 milestone close.
