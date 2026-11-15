@@ -51,3 +51,7 @@ on the catalogue and shown on the fixture above.
 ## Ruled (2026-11-14)
 
 The founder's pick: **Steer it** — the blank keeps fitting; a line under Tip Style says the tail would sit below the board's centre and suggests Bottom. To build with a named geometry test on the catalogue and shown on the fixture picture.
+
+## Done
+
+2026-11-15 — quick 261115-dhq (commit 1df94397): a line under Pin tips to says which end would sit below the board's center and by how much, and suggests Bottom; shown only under Deck. The named catalogue test (`lib/geometry/tip-below-center.test.ts`) finds the Arctic 7'9" SBF case gone since the founder's 2026-10-14 rocker correction and the drop alive on thick-tipped thin boards (35 blanks at a 1" centre with a 1" tail tip). Browser spec on three devices, pictures in the task folder.
