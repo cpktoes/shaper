@@ -450,6 +450,7 @@ export function RockerEditor({
           ) : (
             <RockerDatasheet
               profile={sideProfile}
+              catalog={blanks}
               rocker={rocker}
               foil={foil}
               outlineGeometry={outlineGeometry}

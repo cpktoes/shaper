@@ -73,6 +73,7 @@ describe("blankRecordToRow / blankRowToRecord", () => {
     expect(Object.keys(blankRecordToRow(catalog[0])).sort()).toEqual(
       [
         "catalogSlug",
+        "catalogUrl",
         "deckLengthMm",
         "lengthMm",
         "name",

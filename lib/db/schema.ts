@@ -138,6 +138,8 @@ export const blanks = pgTable(
     volumeLitres: doublePrecision("volume_litres"),
     catalogSlug: text("catalog_slug").notNull(),
     pdfPage: integer("pdf_page").notNull(),
+    /** The maker's own page for the blank, in full, or null where it has none (quick 261114-vwo, migration 0013). */
+    catalogUrl: text("catalog_url"),
     stations: jsonb("stations").$type<BlankStation[]>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

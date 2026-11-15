@@ -58,6 +58,7 @@ import { EMPTY_BROWSE_FILTERS, type BlankBrowseFilters, type BlankSort, type Ran
 import { blankRowMeta, blankRowVolume, emptyListMessage, pickBlankSummary } from "@/lib/geometry/blank-reasons";
 import { cn } from "@/lib/utils";
 import { BlankThumbnail } from "./blank-card";
+import { BlankCatalogLink } from "./blank-catalog-link";
 import { BlankFlag } from "./blank-flag";
 import { RemoveBlankDialog } from "./remove-blank-dialog";
 import { BlankPickerDialog, type BlankBrowseState } from "./blank-picker-dialog";
@@ -73,6 +74,9 @@ const GO_CLASS = "mt-0.5 text-[11px] font-bold tracking-architectural text-surf-
 
 interface BlankButtonProps {
   buttonRef: RefObject<HTMLButtonElement | null>;
+  /** The streamed catalogue — read by the Catalog Page link alone, and only for a copy saved before the
+   * address column existed (quick 261114-vwo). */
+  catalog: Promise<BlankCatalogResult>;
   /** The line under "Pick a Blank" with no blank picked. */
   line: ReactNode;
   /** True once the streamed catalogue has arrived and the list is judged — what the browser tests wait on. */
@@ -82,13 +86,20 @@ interface BlankButtonProps {
   onOpen: () => void;
 }
 
-/** The BLANK section's one button (D-01) — the board's own blank, or Pick a Blank. */
-function BlankButton({ buttonRef, line, ready, canOpen, onOpen }: BlankButtonProps) {
+/**
+ * The BLANK section's one button (D-01) — the board's own blank, or Pick a Blank. With a blank picked, the maker's
+ * Catalog Page link (quick 261114-vwo) stands on the line under Change Blank, flush with it: a SIBLING of the
+ * button in a relative wrapper, laid over the card by position, never a child — a link inside a button is not
+ * valid HTML, and a tap on it would open the popup as well. The button keeps an invisible line of the same words
+ * for it to stand on, shown only while the link exists (`group-has`). Nothing is drawn where the maker has no page.
+ */
+function BlankButton({ buttonRef, catalog, line, ready, canOpen, onOpen }: BlankButtonProps) {
   const { system } = useUnits();
   const { blank, preparedBlank } = useDesign();
   const picked = blank !== null;
   const volume = picked ? blankRowVolume(blank.copy) : null;
   return (
+    <div className="group/blank-card relative">
     <button
       ref={buttonRef}
       type="button"
@@ -126,6 +137,11 @@ function BlankButton({ buttonRef, line, ready, canOpen, onOpen }: BlankButtonPro
             <span className={GO_CLASS}>
               Change Blank <span aria-hidden>›</span>
             </span>
+            {/* The line the Catalog Page link (a sibling, laid over the card) stands on, under Change Blank — kept
+                only while that link exists, so a blank with no maker's page leaves no empty line behind. */}
+            <span aria-hidden className={cn(GO_CLASS, "invisible hidden group-has-[[data-blank-catalog-link]]/blank-card:block")}>
+              Catalog Page
+            </span>
           </>
         ) : (
           <>
@@ -140,6 +156,8 @@ function BlankButton({ buttonRef, line, ready, canOpen, onOpen }: BlankButtonPro
         )}
       </span>
     </button>
+    {picked && <BlankCatalogLink record={blank.copy} catalog={catalog} look="card" />}
+    </div>
   );
 }
 
@@ -184,6 +202,7 @@ function BlankPickerHost({ catalog, savedBlanks, open, setOpen, buttonRef, brows
         <>
           <BlankButton
             buttonRef={buttonRef}
+            catalog={catalog}
             line="The blank catalog didn't load."
             ready
             canOpen
@@ -194,6 +213,7 @@ function BlankPickerHost({ catalog, savedBlanks, open, setOpen, buttonRef, brows
       ) : (
         <JudgedPicker
           records={result.blanks}
+          catalog={catalog}
           open={open}
           setOpen={setOpen}
           buttonRef={buttonRef}
@@ -208,12 +228,13 @@ function BlankPickerHost({ catalog, savedBlanks, open, setOpen, buttonRef, brows
 
 function JudgedPicker({
   records,
+  catalog,
   open,
   setOpen,
   buttonRef,
   browse,
   onChangeFitRules,
-}: Omit<HostProps, "catalog" | "savedBlanks"> & { records: readonly BlankRecord[] }) {
+}: Omit<HostProps, "savedBlanks"> & { records: readonly BlankRecord[] }) {
   const { system } = useUnits();
   const { outline, foil } = useDesign();
   const { hidden } = useBlankMakers();
@@ -239,7 +260,7 @@ function JudgedPicker({
   }
   return (
     <>
-      <BlankButton buttonRef={buttonRef} line={line} ready canOpen onOpen={() => setOpen(true)} />
+      <BlankButton buttonRef={buttonRef} catalog={catalog} line={line} ready canOpen onOpen={() => setOpen(true)} />
       <BlankPickerDialog
         open={open}
         onOpenChange={setOpen}
@@ -294,7 +315,14 @@ export function BlankPicker({
       <Suspense
         fallback={
           <>
-            <BlankButton buttonRef={buttonRef} line="Loading blanks…" ready={false} canOpen={false} onOpen={() => {}} />
+            <BlankButton
+              buttonRef={buttonRef}
+              catalog={catalog}
+              line="Loading blanks…"
+              ready={false}
+              canOpen={false}
+              onOpen={() => {}}
+            />
             {/* The same Customize Rocker button, not yet live, so the sidebar never jumps. */}
             {blank && <CustomizeRockerButton custom={!isNaturalSpec(blank.rocker)} waiting />}
           </>

@@ -1,0 +1,1 @@
+ALTER TABLE "blanks" ADD COLUMN "catalog_url" text;

@@ -91,6 +91,8 @@ describe("the four seeded catalogues (R7)", () => {
       else expect(blank.volumeLitres, where).toBe(Number(volume));
       expect(blank.catalogSlug, where).toBe(row[col("catalog_slug")]);
       expect(blank.pdfPage, where).toBe(Number(row[col("pdf_page")]));
+      const url = row[col("catalog_url")];
+      expect(blank.catalogUrl, where).toBe(url === "" ? null : url);
     }
   });
 
@@ -166,7 +168,7 @@ describe("empty cells and flags (R8, R9, edge coverage)", () => {
       expect(blank!.stations).toHaveLength(size);
       // No station-numbered fields on the record: stations is the only per-station data.
       expect(Object.keys(blank!).sort()).toEqual(
-        ["catalogSlug", "deckLengthMm", "lengthMm", "name", "pdfPage", "stations", "vendor", "volumeLitres"],
+        ["catalogSlug", "catalogUrl", "deckLengthMm", "lengthMm", "name", "pdfPage", "stations", "vendor", "volumeLitres"],
       );
     }
   });

@@ -47,6 +47,7 @@ import type { ReactNode } from "react";
 import { MeasureField } from "@/components/design/measure-field";
 import { useUnits } from "@/components/units-provider";
 import { BLANK_CATALOG_NOTE } from "@/lib/blanks/vendors";
+import type { BlankCatalogResult } from "@/lib/db/blanks";
 import { formatThinningStartBare } from "@/lib/geometry/blank-reasons";
 import { CATALOG_STATION_LABELS, type BoardSideProfile } from "@/lib/geometry/board-profile";
 import { FOIL_THICKNESS_RANGE_IN, type FoilSpec, type FoilStationKey } from "@/lib/geometry/foil";
@@ -62,11 +63,15 @@ import { sampleOutline, type OutlineGeometry } from "@/lib/geometry/outline";
 import { ROCKER_LIFT_RANGE_IN, type FiveStationRocker } from "@/lib/geometry/rocker";
 import { mm, type Mm, type UnitsSystem } from "@/lib/geometry/units";
 import { blankDisplayLines, customPrintedStations, formatRockerNote, isNaturalSpec, rockerSpecOf } from "@/lib/geometry/custom-rocker";
+import { BlankCatalogLink } from "./blank-catalog-link";
 import { customRockerFootnote, customRockerRowLabel, naturalRockerRowLabel } from "@/lib/geometry/custom-rocker-text";
 
 interface RockerDatasheetProps {
   /** The store's one side profile — every read-only number on the sheet comes from here. */
   profile: BoardSideProfile;
+  /** The streamed catalogue — read by the footnote's Catalog Page link alone, and only for a blank copy saved
+   * before the address column existed (quick 261114-vwo). */
+  catalog: Promise<BlankCatalogResult>;
   /** The hand-set rocker (D-14) — what the fallback's typed Rocker row edits. */
   rocker: FiveStationRocker;
   foil: FoilSpec;
@@ -147,6 +152,7 @@ function GroupLabel({ children }: { children: ReactNode }) {
 
 export function RockerDatasheet({
   profile,
+  catalog,
   rocker,
   foil,
   outlineGeometry,
@@ -399,8 +405,14 @@ export function RockerDatasheet({
 
       {blank && (
         <div className="flex flex-col gap-1 text-xs text-surf-ink-muted font-normal">
-          <p>
-            {`From the ${blank.record.vendor} catalog, page ${blank.record.pdfPage}. Station names are the catalog's own — N0 and T0 are the nose and tail tips, N12 and T12 are 12 inches in from them, and C is the center.`}
+          {/* The page number is the link to the maker's own page for the blank (quick 261114-vwo, the founder's
+              ruling of 2026-11-14), in a new tab; where the maker has none the number prints plain, as it always did. */}
+          <p data-datasheet-catalog-note>
+            {`From the ${blank.record.vendor} catalog, `}
+            <BlankCatalogLink record={blank.record} catalog={catalog} look="inline">
+              {`page ${blank.record.pdfPage}`}
+            </BlankCatalogLink>
+            {`. Station names are the catalog's own — N0 and T0 are the nose and tail tips, N12 and T12 are 12 inches in from them, and C is the center.`}
           </p>
           <p data-datasheet-foam-off-note>
             {

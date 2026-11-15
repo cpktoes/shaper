@@ -109,6 +109,7 @@ async function main(): Promise<void> {
           volumeLitres: excluded(blanks.volumeLitres),
           catalogSlug: excluded(blanks.catalogSlug),
           pdfPage: excluded(blanks.pdfPage),
+          catalogUrl: excluded(blanks.catalogUrl),
           stations: excluded(blanks.stations),
           updatedAt: new Date(),
         },
@@ -148,6 +149,7 @@ async function main(): Promise<void> {
       volumeLitres: blanks.volumeLitres,
       catalogSlug: blanks.catalogSlug,
       pdfPage: blanks.pdfPage,
+      catalogUrl: blanks.catalogUrl,
       stations: blanks.stations,
     })
     .from(blanks);
