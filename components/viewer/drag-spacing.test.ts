@@ -199,7 +199,9 @@ describe("rocker: nothing on the drawing to space — the placement slider's thu
   it("the rocker drawing has no drag targets, no hit circles and no hit radius to space", () => {
     expect(ROCKER_VIEWER_CODE).not.toContain("data-drag-target");
     expect(ROCKER_VIEWER_CODE).not.toMatch(/SIDE_PROFILE_DRAG_HIT(_COARSE)?_PX|hitRadius/);
-    expect(ROCKER_VIEWER_CODE).not.toMatch(/onPointer(Down|Move|Up|Cancel)/);
+    // `onPointerMove` / `onPointerLeave` are the hover read-out's (quick 261114-lym): a mouse reads the curve, drags nothing.
+    expect(ROCKER_VIEWER_CODE).not.toMatch(/onPointer(Down|Up|Cancel)/);
+    expect(ROCKER_VIEWER_CODE).not.toMatch(/draggingRef|handleDragMove|setPointerCapture/);
   });
 
   it("the shared slider thumb (which the placement slider uses) carries its 44px touch ring on a coarse pointer", () => {

@@ -108,8 +108,10 @@ describe("outline-viewer.tsx: shares the pick/drag state machine, never re-imple
 describe("rocker-viewer.tsx: the drawing is read-only since Phase 11 (D-14)", () => {
   const code = stripComments(readSource(ROCKER_VIEWER_PATH));
 
-  it("has no pointer handler of any kind — nothing on the drawing responds to a press", () => {
-    expect(code).not.toMatch(/onPointer(Down|Move|Up|Cancel)/);
+  it("has no press, release or drag handler — a mouse's hover reads the curve (quick 261114-lym), nothing on the drawing responds to a press", () => {
+    // `onPointerMove` / `onPointerLeave` are the hover read-out's (quick 261114-lym): a mouse reads the curve, drags nothing.
+    expect(code).not.toMatch(/onPointer(Down|Up|Cancel)/);
+    expect(code).not.toMatch(/draggingRef|handleDragMove|setPointerCapture/);
     expect(code).not.toMatch(/onMouseDown|onTouchStart|onMouseMove|onTouchMove/);
     expect(code).not.toContain("setPointerCapture");
   });

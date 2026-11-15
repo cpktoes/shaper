@@ -107,7 +107,8 @@ describe("viewer toolbar button extraction (05-06)", () => {
   // the shared row component; each file opens it exactly once and closes it exactly once.
   it("all three editors open and close the shared ViewerToolbar row exactly once", () => {
     for (const source of [outlineSource, rockerSource, railsSource]) {
-      expect(source.match(/<ViewerToolbar>/g)?.length).toBe(1);
+      // TEMPLATE's row carries a `boxRef` (quick 261114-loa: the toolbar's box is measured on a short screen).
+      expect(source.match(/<ViewerToolbar\b[^>]*>/g)?.length).toBe(1);
       expect(source.match(/<\/ViewerToolbar>/g)?.length).toBe(1);
     }
   });
