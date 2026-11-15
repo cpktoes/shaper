@@ -76,6 +76,7 @@ import {
 import { useViewerZoom, zoomDashToken } from "@/components/viewer/zoom-viewport";
 import { parseViewBox, rectInContentFrame } from "@/components/viewer/zoom-math";
 import { ZoomGrid } from "@/components/viewer/zoom-grid";
+import { useEditHold } from "@/components/design/edit-hold";
 
 const VIEW_W = 340;
 const VIEW_H = 620;
@@ -637,6 +638,11 @@ export function OutlineViewer({
     if (event.pointerType === "touch") setTouchFingerBoard(boardPoint);
   }
 
+  // The hold (quick 261114-vwy): a grabbed point opens one and the lift, cancel or pinch that ends the
+  // gesture closes it, so a whole drag — however slow, however long it pauses — is one Undo step and the
+  // ghost stays the shape at the grab. No-ops where this viewer is drawn outside the design store.
+  const { beginHold, endHold } = useEditHold();
+
   /**
    * The one delegated drag-start pick (D-15, RESEARCH.md Pitfall 2): a press anywhere on the
    * drawing converts to board coordinates and asks `nearestOutlineDragTarget` which of the five
@@ -673,6 +679,7 @@ export function OutlineViewer({
         maxTravelPx: 0,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
+      beginHold();
       return true;
     }
 
@@ -697,6 +704,7 @@ export function OutlineViewer({
       fingerClientStart: { x: event.clientX, y: event.clientY },
       maxTravelPx: 0,
     };
+    beginHold();
     setSelectedTarget(decision.selected);
     setTouchDragTarget(decision.selected);
     setTouchFingerBoard(boardPoint);
@@ -736,6 +744,7 @@ export function OutlineViewer({
       );
       setSelectedTarget(result.selected);
     }
+    if (gesture) endHold();
     draggingRef.current = null;
     if (touchDragTarget !== null) setTouchDragTarget(null);
     if (touchFingerBoard !== null) setTouchFingerBoard(null);

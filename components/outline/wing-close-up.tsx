@@ -58,6 +58,7 @@ import {
   wingCardHeightPx,
   wingWindow,
 } from "./wing-view-layout";
+import { useEditHold } from "@/components/design/edit-hold";
 
 /**
  * The WINGS tab's drawing: the last 26" of the tail, close up, with each wing's step (quick
@@ -213,6 +214,9 @@ export function WingCloseUp({
   // pinch that lands mid-drag ends the drag where it is.
   const baseViewBox = `0 0 ${frame.width} ${frame.height}`;
   const baseRect = parseViewBox(baseViewBox);
+  // The hold (quick 261114-vwy): a grabbed wing point opens one; the lift, cancel or a pinch closes it, so a
+  // whole drag is one Undo step and TEMPLATE's ghost holds the shape at the grab. No-op outside the store.
+  const { beginHold, endHold } = useEditHold();
   const {
     zoom,
     zoomUnit,
@@ -226,6 +230,7 @@ export function WingCloseUp({
     onPinchStart: () => {
       if (!dragRef.current) return;
       dragRef.current = null;
+      endHold();
       setHeldWindow(null);
     },
   });
@@ -274,6 +279,7 @@ export function WingCloseUp({
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { target: hit, dropMm };
+    beginHold();
     setHeldWindow(win);
   }
 
@@ -288,6 +294,7 @@ export function WingCloseUp({
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
     if (!dragRef.current) return;
     dragRef.current = null;
+    endHold();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }

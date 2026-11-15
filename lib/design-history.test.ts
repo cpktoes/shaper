@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   COALESCE_WINDOW_MS,
   HISTORY_LIMIT,
+  beginHold,
   canRedo,
   canUndo,
   emptyHistory,
+  endHold,
+  holdHasRecorded,
+  isHolding,
   isTextEntryTarget,
   recordEdit,
   redo,
@@ -211,5 +215,140 @@ describe("isTextEntryTarget", () => {
     expect(isTextEntryTarget({ tagName: "button" })).toBe(false);
     expect(isTextEntryTarget({ tagName: "svg" })).toBe(false);
     expect(isTextEntryTarget(null)).toBe(false);
+  });
+});
+
+/** The stand-in's own "same board" test, the store's JSON comparison in miniature. */
+const sameStub = (a: Stub, b: Stub) => a.value === b.value;
+
+/**
+ * A held control (quick 261114-vwy, the founder's ruling of 2026-11-14): everything between the press
+ * and the release is one step, however slowly the hand moves. The 600 ms gaps below are longer than
+ * COALESCE_WINDOW_MS, exactly the slow drag the to-do of 2026-10-02 measured splitting into five steps.
+ */
+describe("beginHold / endHold — one hold is one step", () => {
+  /** A slow drag from 60 up through the given values, every change 600 ms after the last. */
+  function heldDrag(history: ReturnType<typeof emptyHistory<Stub>>, values: number[], from = 60) {
+    let h = beginHold(history);
+    let before = from;
+    let at = 1_000;
+    for (const value of values) {
+      h = recordEdit(h, stub(before), "k", at);
+      before = value;
+      at += COALESCE_WINDOW_MS + 100;
+    }
+    return { history: h, live: stub(before) };
+  }
+
+  it("a hold of five changes 600 ms apart is ONE step, and Undo returns to where the hold began", () => {
+    const { history, live } = heldDrag(emptyHistory<Stub>(), [61, 62, 63, 64, 65]);
+    expect(isHolding(history)).toBe(true);
+    expect(holdHasRecorded(history)).toBe(true);
+    expect(history.past).toHaveLength(1);
+
+    const released = endHold(history, live, sameStub);
+    expect(isHolding(released)).toBe(false);
+    expect(released.past).toHaveLength(1);
+
+    const undone = undo(released, live)!;
+    expect(undone.restored).toEqual(stub(60));
+    expect(canUndo(undone.history)).toBe(false);
+  });
+
+  it("Redo puts the whole hold back in one step", () => {
+    const { history, live } = heldDrag(emptyHistory<Stub>(), [61, 62, 63, 64, 65]);
+    const released = endHold(history, live, sameStub);
+    const undone = undo(released, live)!;
+    const redone = redo(undone.history, undone.restored)!;
+    expect(redone.restored).toEqual(stub(65));
+    expect(canRedo(redone.history)).toBe(false);
+    expect(redone.history.past).toHaveLength(1);
+  });
+
+  it("a hold that comes back to its starting value records nothing — and keeps whatever Redo was waiting", () => {
+    // One real edit, undone, so a redo is waiting when the hold begins.
+    const edited = recordEdit(emptyHistory<Stub>(), stub(50), "k", 0);
+    const undone = undo(edited, stub(60))!;
+    expect(canRedo(undone.history)).toBe(true);
+
+    // Press, wander 51, 52, 51, and come back to 50 — slowly.
+    const { history, live } = heldDrag(undone.history, [51, 52, 51, 50], 50);
+    expect(live).toEqual(stub(50));
+    expect(history.past).toHaveLength(1);
+    expect(history.future).toEqual([]);
+
+    const released = endHold(history, live, sameStub);
+    expect(released.past).toBe(undone.history.past);
+    expect(released.future).toBe(undone.history.future);
+    expect(canUndo(released)).toBe(false);
+    expect(canRedo(released)).toBe(true);
+    expect(isHolding(released)).toBe(false);
+  });
+
+  it("a press that never moves the value simply closes, leaving the history as it was", () => {
+    const edited = recordEdit(emptyHistory<Stub>(), stub(50), "k", 0);
+    const held = beginHold(edited);
+    expect(isHolding(held)).toBe(true);
+    expect(holdHasRecorded(held)).toBe(false);
+    const released = endHold(held, stub(60), sameStub);
+    expect(released.past).toBe(edited.past);
+    expect(isHolding(released)).toBe(false);
+  });
+
+  it("endHold with no hold open returns the very same history object (the window backstop's no-op)", () => {
+    const edited = recordEdit(emptyHistory<Stub>(), stub(50), "k", 0);
+    expect(endHold(edited, stub(60), sameStub)).toBe(edited);
+  });
+
+  it("a second press while one is held changes nothing", () => {
+    const held = beginHold(emptyHistory<Stub>());
+    expect(beginHold(held)).toBe(held);
+  });
+
+  it("the hold's first change never folds onto an edit made just before the press, even within the window", () => {
+    const nudged = recordEdit(emptyHistory<Stub>(), stub(60), "k", 1_000);
+    const held = beginHold(nudged);
+    const moved = recordEdit(held, stub(61), "k", 1_100);
+    expect(moved.past).toHaveLength(2);
+    expect(moved.past[1]).toEqual(stub(61));
+  });
+
+  it("a change under a DIFFERENT key during the hold still folds into the hold's one step", () => {
+    const { history } = heldDrag(emptyHistory<Stub>(), [61, 62]);
+    const other = recordEdit(history, stub(62), "other", 99_000);
+    expect(other.past).toHaveLength(1);
+    expect(other.past[0]).toEqual(stub(60));
+  });
+
+  it("a nudge after the release, outside the window, is its own step; one inside the window folds (today's rule)", () => {
+    const { history, live } = heldDrag(emptyHistory<Stub>(), [61, 62]);
+    const released = endHold(history, live, sameStub);
+
+    const late = recordEdit(released, stub(62), "k", released.lastAt + COALESCE_WINDOW_MS + 1);
+    expect(late.past).toHaveLength(2);
+
+    const straggler = recordEdit(released, stub(62), "k", released.lastAt + 10);
+    expect(straggler.past).toHaveLength(1);
+  });
+
+  it("Undo during a hold closes it, and the held control's next change starts a fresh step", () => {
+    const { history, live } = heldDrag(emptyHistory<Stub>(), [61, 62]);
+    const undone = undo(history, live)!;
+    expect(isHolding(undone.history)).toBe(false);
+    expect(undone.restored).toEqual(stub(60));
+    const next = recordEdit(undone.history, stub(60), "k", 99_000);
+    expect(next.past).toHaveLength(1);
+  });
+
+  it("a hold that pushes past HISTORY_LIMIT still knows it recorded, and the oldest step goes", () => {
+    let h = emptyHistory<Stub>();
+    for (let i = 0; i < HISTORY_LIMIT; i++) h = recordEdit(h, stub(i), null, i * 1_000);
+    expect(h.past).toHaveLength(HISTORY_LIMIT);
+    const held = beginHold(h);
+    const moved = recordEdit(held, stub(100), "k", 999_000);
+    expect(holdHasRecorded(moved)).toBe(true);
+    expect(moved.past).toHaveLength(HISTORY_LIMIT);
+    expect(moved.past[0]).toEqual(stub(1));
+    expect(moved.past[HISTORY_LIMIT - 1]).toEqual(stub(100));
   });
 });
