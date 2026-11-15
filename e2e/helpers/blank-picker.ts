@@ -9,12 +9,15 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 /** The BLANK section's one button — the board's own blank, or Pick a Blank. */
 export function blankButton(page: Page): Locator {
-  return page.locator("[data-blank-button]");
+  // Only the one that can be seen. The ready button streams in inside React's hidden chunk and is swapped
+  // in a tick later, so for that tick the page holds two — the fallback and the hidden ready one — and a
+  // bare locator trips strict mode (the full suite saw it once, 2026-11-14; fast task 213).
+  return page.locator("[data-blank-button]").filter({ visible: true });
 }
 
 /** The BLANK button while a blank is picked — it carries the blank's name and Change Blank. */
 export function pickedCard(page: Page): Locator {
-  return page.locator("[data-picked-blank]");
+  return page.locator("[data-picked-blank]").filter({ visible: true });
 }
 
 /** The PICK A BLANK popup. */
