@@ -763,8 +763,10 @@ export function RockerViewer({
     const longest = Math.max(...lines.map((l) => `${l.label} — ${l.value}`.length));
     const width = Math.max(CALLOUT_PX.chipW, longest * HOVER_CHAR_PX + HOVER_PAD_PX * 2) * handleUnit;
     const height = (lines.length * HOVER_ROW_PX + HOVER_PAD_PX * 2) * handleUnit;
-    const frameLeft = baseRect ? baseRect.x : 0;
-    const frameRight = baseRect ? baseRect.x + baseRect.width : width;
+    // Inside the part of the frame on screen: the zoomed window when zoomed, the whole frame at 1x.
+    const shown = view ?? baseRect;
+    const frameLeft = shown ? shown.x : 0;
+    const frameRight = shown ? shown.x + shown.width : width;
     const cardX = Math.min(Math.max(x - width / 2, frameLeft), frameRight - width);
     const cardsTopY = vertical ? deckRailY - (CALLOUT_PX.chipW / 2) * handleUnit : deckRailY;
     const cardY = Math.min(deckY, cardsTopY) - HOVER_GAP_PX * handleUnit - height;
