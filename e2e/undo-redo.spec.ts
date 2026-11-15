@@ -154,7 +154,9 @@ test.describe("undo/redo — taking a design change back", () => {
 
     // Click into the Board Length typed field (Metric renders it as a real text input, D-08),
     // type a digit, then press the shortcut WHILE STILL FOCUSED THERE.
-    const boardLengthField = page.getByLabel("Board Length");
+    // The typed box, by role: since quick 261115-dv3 the Board Length slider is named too, and a bare label would
+    // reach both.
+    const boardLengthField = page.getByRole("textbox", { name: "Board Length" });
     await boardLengthField.click();
     await boardLengthField.type("9");
     await page.keyboard.press("ControlOrMeta+KeyZ");
