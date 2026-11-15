@@ -76,3 +76,7 @@ Sources: Swaylocks threads 6720 (rolled vee vs displacement hull), 11733, 24741,
 21852, 2725, 79995, 41977 (longboard nose concave: function or fantasy?); Greenlight's bottom-contour design guide; Swellnet
 "Bottom curves part 1", "Bottom contours part 2", "The persistent history of channels", "Phil Myers: channeling past master";
 Lost "Channel bottoms explained"; Brock Jones, "Nose concave" (blog).
+
+## Done
+
+2026-11-15 — closed at the founder's word: "I trust the bottom numbers, lets keep them as is and close that to do out." The researched starting numbers above, live on BOTTOM since Phase 17, are the app's starting numbers. Nothing changed.
