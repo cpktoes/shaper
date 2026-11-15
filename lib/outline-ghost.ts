@@ -72,11 +72,23 @@ export function outlinesMatch(a: OutlineSpec, b: OutlineSpec): boolean {
  *
  * Takes no `future` parameter at all, so the redo stack can never feed it — see this file's own
  * header comment for why that is exactly what makes Undo/Redo correct for free.
+ *
+ * `pinned` (quick 261114-vwy, the founder's ruling of 2026-11-14 on the to-do of 2026-10-02): true
+ * while a slider or a drag point is held AND has recorded its step (`holdHasRecorded` in
+ * `lib/design-history.ts`). Then the ghost is the top entry's outline, full stop — the shape at the
+ * grab — and the walk for a differing entry is skipped, so passing the live line back through the
+ * start can no longer make the ghost vanish or flip to an older shape. After the release the walk
+ * above carries on exactly as before.
  */
 export function pickOutlineGhost<T extends { outline: OutlineSpec }>(
   past: readonly T[],
   live: OutlineSpec,
+  pinned = false,
 ): OutlineSpec | null {
+  // Pinned (quick 261114-vwy): a control is held and has moved the board, so `past`'s top entry
+  // is the board exactly as it was at the press. That is the ghost — even when the live shape has
+  // wandered back onto it. The two lines then sit on top of each other, the honest picture.
+  if (pinned && past.length > 0) return past[past.length - 1]!.outline;
   for (let i = past.length - 1; i >= 0; i--) {
     const candidate = past[i]!.outline;
     if (!outlinesMatch(candidate, live)) return candidate;

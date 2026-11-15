@@ -11,7 +11,11 @@
  *    is what turns all of that into a single undo entry: an edit folds into the one before it
  *    when it carries the same named key and lands within `COALESCE_WINDOW_MS` of the last one
  *    under that key, and the window restarts on every fold so a long, unbroken drag never grows
- *    past one step no matter how long it runs.
+ *    past one step no matter how long it runs. A HOLD (quick 261114-vwy, the founder's ruling of
+ *    2026-11-14 on the to-do of 2026-10-02) overrides the clock: while a control is held — a
+ *    slider's dot pressed, a drag point grabbed — every change between `beginHold` and `endHold`
+ *    is one step, however slowly the hand moves or however long it pauses, and a hold that comes
+ *    back to exactly where it began records nothing at all.
  * 3. The keyboard shortcut and the typed-field guard, as pure decisions over a plain event shape
  *    rather than a real `KeyboardEvent` — so both are as easy to prove in Vitest's node
  *    environment as the stacks are.
@@ -53,11 +57,24 @@ export interface DesignHistory<T> {
   future: T[];
   lastKey: string | null;
   lastAt: number;
+  /** The open hold, or `null` when no control is held. See `beginHold`. */
+  hold: HoldRecord<T> | null;
 }
 
-/** A fresh history: nothing to undo, nothing to redo. */
+/**
+ * What a hold remembers: the two stacks exactly as they stood when the control was pressed. They
+ * are the same array objects (never copies — every function here treats arrays as immutable), so
+ * `past !== hold.past` is the whole test for "this hold has recorded its step", and putting them
+ * back when a hold ends where it began costs nothing.
+ */
+export interface HoldRecord<T> {
+  past: T[];
+  future: T[];
+}
+
+/** A fresh history: nothing to undo, nothing to redo, nothing held. */
 export function emptyHistory<T>(): DesignHistory<T> {
-  return { past: [], future: [], lastKey: null, lastAt: 0 };
+  return { past: [], future: [], lastKey: null, lastAt: 0, hold: null };
 }
 
 export function canUndo<T>(history: DesignHistory<T>): boolean {
@@ -87,8 +104,19 @@ export function canRedo<T>(history: DesignHistory<T>): boolean {
  * forward into a board that still exists.
  */
 export function recordEdit<T>(history: DesignHistory<T>, before: T, key: string | null, at: number): DesignHistory<T> {
+  // While a control is held, the hold is the whole rule: its first change pushes, every later one
+  // folds — no clock, no key. The key and time are still noted, so a change that straggles in just
+  // after the release (see endHold) folds under the ordinary window rather than opening a step.
+  if (history.hold !== null && holdHasRecorded(history)) {
+    return { ...history, future: [], lastKey: key, lastAt: at };
+  }
+
   const canFold =
-    key !== null && key === history.lastKey && history.past.length > 0 && at - history.lastAt <= COALESCE_WINDOW_MS;
+    history.hold === null &&
+    key !== null &&
+    key === history.lastKey &&
+    history.past.length > 0 &&
+    at - history.lastAt <= COALESCE_WINDOW_MS;
 
   if (canFold) {
     return { ...history, future: [], lastAt: at };
@@ -97,7 +125,58 @@ export function recordEdit<T>(history: DesignHistory<T>, before: T, key: string 
   const pushed = [...history.past, before];
   const past = pushed.length > HISTORY_LIMIT ? pushed.slice(pushed.length - HISTORY_LIMIT) : pushed;
 
-  return { past, future: [], lastKey: key, lastAt: at };
+  return { past, future: [], lastKey: key, lastAt: at, hold: history.hold };
+}
+
+/**
+ * A control has been pressed (quick 261114-vwy): from here until `endHold`, every recorded change
+ * is one step. Remembers both stacks as they stand, so a hold that ends where it began can put them
+ * back untouched. `lastKey` is forgotten so the hold's first change never folds onto an edit made
+ * just before the press — the step before the hold is the step before the hold. A second press
+ * while one is already held (a second finger) changes nothing: the first hold stands.
+ */
+export function beginHold<T>(history: DesignHistory<T>): DesignHistory<T> {
+  if (history.hold !== null) return history;
+  return { ...history, lastKey: null, hold: { past: history.past, future: history.future } };
+}
+
+/**
+ * The control was released. With no hold open this is the history unchanged — the same object, so
+ * a React state setter can bail out — which is what lets a window-level "any pointer came up" be
+ * wired to it as a backstop. Otherwise the hold closes, and when the hold recorded a step whose
+ * `before` is `equals` to `current` (the board now), the hold moved nothing in the end: both stacks
+ * go back to how they stood at the press, so there is no empty step to undo and whatever Redo was
+ * waiting is still there. `lastKey`/`lastAt` are left as the last recorded change set them, so a
+ * change of the same key that lands within the ordinary window right after the release folds into
+ * the hold's step rather than starting its own (the release and the last movement are separate
+ * events, and the movement's record can arrive a beat later). A hold that recorded nothing — a
+ * press that never moved the value — simply closes.
+ */
+export function endHold<T>(history: DesignHistory<T>, current: T, equals: (a: T, b: T) => boolean): DesignHistory<T> {
+  const hold = history.hold;
+  if (hold === null) return history;
+  if (holdHasRecorded(history)) {
+    const before = history.past[history.past.length - 1]!;
+    if (equals(before, current)) {
+      return { past: hold.past, future: hold.future, lastKey: null, lastAt: history.lastAt, hold: null };
+    }
+  }
+  return { ...history, hold: null };
+}
+
+/** Whether a control is held right now. */
+export function isHolding<T>(history: DesignHistory<T>): boolean {
+  return history.hold !== null;
+}
+
+/**
+ * Whether the open hold has pushed its one step yet — true from the hold's first recorded change
+ * until its release. While it is true, `past`'s top entry is the board exactly as it was at the
+ * press, which is what the ghost is pinned to (`pickOutlineGhost`'s third argument). False with no
+ * hold open, and false for a hold that has not moved anything yet.
+ */
+export function holdHasRecorded<T>(history: DesignHistory<T>): boolean {
+  return history.hold !== null && history.past !== history.hold.past;
 }
 
 /** What `undo`/`redo` hand back: the next history, and the snapshot the caller should apply. */
@@ -113,14 +192,16 @@ export interface HistoryStep<T> {
  *
  * `current` (the board as it stands right now, before the undo) moves onto `future` so `redo` can
  * put it back. `lastKey` is reset to `null` — an undo is not itself an edit that can be folded
- * into, and nothing recorded afterwards should fold onto what it left behind either.
+ * into, and nothing recorded afterwards should fold onto what it left behind either. An open hold
+ * is closed too (Cmd+Z pressed while a slider is still held): the step it was building is the one
+ * being undone, and whatever the held control does next starts afresh under the ordinary rule.
  */
 export function undo<T>(history: DesignHistory<T>, current: T): HistoryStep<T> | null {
   if (history.past.length === 0) return null;
   const restored = history.past[history.past.length - 1];
   const past = history.past.slice(0, -1);
   const future = [...history.future, current];
-  return { history: { past, future, lastKey: null, lastAt: history.lastAt }, restored };
+  return { history: { past, future, lastKey: null, lastAt: history.lastAt, hold: null }, restored };
 }
 
 /** The mirror of `undo` — steps one entry forward, or returns `null` on an empty future. */
@@ -129,7 +210,7 @@ export function redo<T>(history: DesignHistory<T>, current: T): HistoryStep<T> |
   const restored = history.future[history.future.length - 1];
   const future = history.future.slice(0, -1);
   const past = [...history.past, current];
-  return { history: { past, future, lastKey: null, lastAt: history.lastAt }, restored };
+  return { history: { past, future, lastKey: null, lastAt: history.lastAt, hold: null }, restored };
 }
 
 /** The plain shape `undoShortcut` and `isTextEntryTarget` read, instead of a real DOM event —

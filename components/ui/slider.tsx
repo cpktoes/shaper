@@ -1,6 +1,7 @@
 import { Slider as SliderPrimitive } from "@base-ui/react/slider"
 import { useLayoutEffect, useRef, useState } from "react"
 
+import { useEditHold } from "@/components/design/edit-hold"
 import { cn } from "@/lib/utils"
 
 /**
@@ -72,9 +73,17 @@ function Slider({
   max = 100,
   thumbAriaLabel,
   thumbAriaValueText,
+  onValueCommitted,
   ...props
 }: SliderPrimitive.Root.Props & SliderThumbA11yProps) {
   const [controlRef, thumbEpoch] = useRemountThumbWhenShown()
+  // The hold (quick 261114-vwy): a press anywhere on the control — the dot or the bar — opens one, and
+  // Base UI's own commit on the release closes it, so everything a shaper does between pressing and
+  // letting go is one Undo step and TEMPLATE's ghost holds still. Base UI commits nothing for a press
+  // that never moved the value, so the design store also ends a hold on any pointer coming up; and a
+  // keyboard nudge commits with no press before it, so its endHold finds nothing held and does nothing.
+  // Outside the design store (the home page's blank filter) both calls are no-ops.
+  const { beginHold, endHold } = useEditHold()
   // Every slider in this app gets exactly one dot. It used to get two, one hidden exactly
   // underneath the other — this fallback used to build a two-entry [min, max] array whenever
   // `value`/`defaultValue` was a plain number rather than a two-ended range, and this app never
@@ -101,10 +110,15 @@ function Slider({
       min={min}
       max={max}
       thumbAlignment="edge"
+      onValueCommitted={(committed, eventDetails) => {
+        endHold()
+        onValueCommitted?.(committed, eventDetails)
+      }}
       {...props}
     >
       <SliderPrimitive.Control
         ref={controlRef}
+        onPointerDown={() => beginHold()}
         className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col"
       >
         <SliderPrimitive.Track

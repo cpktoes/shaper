@@ -116,3 +116,10 @@ Rough shape, to be settled with the founder when it is planned:
 ## Ruled (2026-11-14)
 
 The founder, asked on 2026-11-14: Undo follows the same rule — one press-to-release is one Undo step, on every screen's sliders and drag points; typed boxes, arrow-key nudges and picks stay one edit each. Build as option (a) with the ghost pinned to the grab shape while held.
+
+## Done
+
+2026-11-14 — built as quick 261114-vwy, commit 76f45327: the history carries a hold (`beginHold`/`endHold` in
+`lib/design-history.ts`), every slider and TEMPLATE's drag points report theirs, the ghost is pinned to the grab shape
+while held (`pickOutlineGhost`'s third argument), and one hold is one Undo step on every design screen. Proved by unit
+tests with controlled timestamps and `e2e/hold-ghost.spec.ts` on a computer and Android.

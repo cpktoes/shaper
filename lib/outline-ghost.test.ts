@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BOARD_SPEC, type OutlineSpec } from "./geometry/board";
 import { degrees, mm } from "./geometry/units";
-import { COALESCE_WINDOW_MS, emptyHistory, recordEdit, redo, undo } from "./design-history";
+import { COALESCE_WINDOW_MS, beginHold, emptyHistory, endHold, holdHasRecorded, recordEdit, redo, undo } from "./design-history";
 import { outlinesMatch, pickOutlineGhost } from "./outline-ghost";
 
 /** A minimal stand-in for the store's own history entry shape — just enough for
@@ -193,5 +193,86 @@ describe("outlinesMatch", () => {
         { ...LIVE, tail: { kind: "squash", endWidth: mm(110) } },
       ),
     ).toBe(false);
+  });
+});
+
+/**
+ * The pinned ghost (quick 261114-vwy): the to-do of 2026-10-02 measured a slow held drag from 60 walking the
+ * ghost 60, 61, 62, 63, 64 (one notch behind the live line), and a drag back through its start making the
+ * ghost vanish for an instant. With the hold rule the ghost is the grab shape at every sample.
+ */
+describe("pickOutlineGhost — pinned to the grab shape while a control is held", () => {
+  const sameSnapshot = (a: Snapshot, b: Snapshot) => outlinesMatch(a.outline, b.outline);
+
+  it("a slow held drag, 600 ms between changes, shows the grab shape at every sample and is one step", () => {
+    const grab = withLength(1800);
+    let history = beginHold(emptyHistory<Snapshot>());
+    let live = grab;
+    let at = 1_000;
+    const seen: (OutlineSpec | null)[] = [];
+    for (const length of [1810, 1820, 1830, 1840, 1850]) {
+      const next = withLength(length);
+      history = recordEdit(history, snap(live), "outline:length", at);
+      live = next;
+      at += COALESCE_WINDOW_MS + 100;
+      seen.push(pickOutlineGhost(history.past, live, holdHasRecorded(history)));
+    }
+    expect(seen.every((ghost) => ghost === grab)).toBe(true);
+    expect(history.past).toHaveLength(1);
+
+    history = endHold(history, snap(live), sameSnapshot);
+    expect(pickOutlineGhost(history.past, live, holdHasRecorded(history))).toBe(grab);
+    expect(undo(history, snap(live))!.restored.outline).toBe(grab);
+  });
+
+  it("the live shape passing back through the grab shape keeps the ghost on it, never null, never an older shape", () => {
+    // An earlier, finished edit from 1780 to 1800, so there IS an older shape the ghost could flip to.
+    const older = withLength(1780);
+    const grab = withLength(1800);
+    let history = recordEdit(emptyHistory<Snapshot>(), snap(older), "outline:length", 0);
+
+    history = beginHold(history);
+    let live = grab;
+    let at = 10_000;
+    const walk = [1810, 1820, 1810, 1800, 1790];
+    const seen: (OutlineSpec | null)[] = [];
+    for (const length of walk) {
+      history = recordEdit(history, snap(live), "outline:length", at);
+      live = withLength(length);
+      at += 16;
+      seen.push(pickOutlineGhost(history.past, live, holdHasRecorded(history)));
+    }
+    // At the fourth sample the live shape IS the grab shape; pinned, the ghost is still the grab shape.
+    expect(seen[3]).toBe(grab);
+    expect(seen.every((ghost) => ghost === grab)).toBe(true);
+    expect(pickOutlineGhost(history.past, live, false)).not.toBeNull();
+  });
+
+  it("a hold that ends where it began leaves the ghost exactly as it was before the press", () => {
+    const older = withLength(1780);
+    const grab = withLength(1800);
+    let history = recordEdit(emptyHistory<Snapshot>(), snap(older), "outline:length", 0);
+    const ghostBefore = pickOutlineGhost(history.past, grab, holdHasRecorded(history));
+    expect(ghostBefore).toBe(older);
+
+    history = beginHold(history);
+    history = recordEdit(history, snap(grab), "outline:length", 1_000);
+    history = recordEdit(history, snap(withLength(1810)), "outline:length", 1_700);
+    history = endHold(history, snap(grab), sameSnapshot);
+    expect(history.past).toHaveLength(1);
+    expect(pickOutlineGhost(history.past, grab, holdHasRecorded(history))).toBe(older);
+  });
+
+  it("before the hold's first change the ordinary rule still applies — a press alone moves nothing", () => {
+    const older = withLength(1780);
+    const grab = withLength(1800);
+    let history = recordEdit(emptyHistory<Snapshot>(), snap(older), "outline:length", 0);
+    history = beginHold(history);
+    expect(holdHasRecorded(history)).toBe(false);
+    expect(pickOutlineGhost(history.past, grab, holdHasRecorded(history))).toBe(older);
+  });
+
+  it("pinned with an empty past is still null", () => {
+    expect(pickOutlineGhost([], LIVE, true)).toBeNull();
   });
 });

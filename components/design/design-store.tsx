@@ -67,7 +67,7 @@
  * (D-10). The blank is prepared through `prepareBoardBlank`, so the bent rocker reaches every screen.
  */
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { saveModel } from "@/app/design/actions";
 import {
@@ -182,9 +182,12 @@ import {
   reconcileOpenBoardOwner,
 } from "@/lib/models/open-board";
 import {
+  beginHold,
   canRedo,
   canUndo,
   emptyHistory,
+  endHold,
+  holdHasRecorded,
   isTextEntryTarget,
   recordEdit,
   redo,
@@ -193,6 +196,7 @@ import {
   type DesignHistory,
 } from "@/lib/design-history";
 import { pickOutlineGhost } from "@/lib/outline-ghost";
+import { EditHoldContext, type EditHold } from "@/components/design/edit-hold";
 
 /** What one undo/redo step holds — `DesignSnapshotFields` (D-11's eleven-field saved-board shape)
  * minus `boardName`. The exclusion is deliberate and structural, not a special case bolted onto
@@ -201,6 +205,13 @@ import { pickOutlineGhost } from "@/lib/outline-ghost";
  * never a field this history's own `useMemo` looks at — a typed board name can never produce a
  * new snapshot identity, and so can never record a step, by construction rather than by a
  * separate guard that could drift out of sync with it. */
+/** Whether two undo snapshots describe the same board — the deliberately blunt JSON comparison the
+ * recording effect has always used (see its own comment), shared with `endHold` so a hold that comes
+ * back to where it began is judged by exactly the same rule as an edit that changed nothing. */
+function sameHistorySnapshot(a: DesignHistorySnapshot, b: DesignHistorySnapshot): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 type DesignHistorySnapshot = Omit<DesignSnapshotFields, "boardName"> & {
   /** The bottom (Phase 17, 17-08) rides in every undo step, so Undo and Redo take a cut pick or a cut slider back.
    * Always present here, even when it is the opening bottom — unlike a save (`DesignSnapshotFields`, 17-12), which
@@ -838,9 +849,42 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     const pendingKey = pendingEditKeyRef.current;
     pendingEditKeyRef.current = undefined;
     if (pendingKey === undefined || before === historySnapshot) return;
-    if (JSON.stringify(before) === JSON.stringify(historySnapshot)) return;
+    if (sameHistorySnapshot(before, historySnapshot)) return;
     setHistory((prev) => recordEdit(prev, before, pendingKey, Date.now()));
   }, [historySnapshot]);
+
+  // The hold (quick 261114-vwy, the founder's ruling of 2026-11-14 on the to-do of 2026-10-02): a
+  // slider's dot pressed or a drag point grabbed opens one, its release closes it, and between the two
+  // the history folds every change into one step with no clock (`beginHold`/`endHold` in
+  // lib/design-history.ts) while TEMPLATE's ghost stays pinned to the shape at the press (below). The
+  // controls report through `EditHoldContext` — the shared Slider and the two viewers that drag — and
+  // the window listeners here are the backstop that makes "never a stuck ghost" true: a press that
+  // never moved the value (Base UI commits nothing for it), a cancelled touch, a window that loses the
+  // pointer, or a screen left mid-drag all end in a pointer coming up or the window blurring, and
+  // `endHold` with nothing held is the same history object, so React bails out of the setState.
+  //
+  // `endHold` compares the board now (the last committed snapshot) with the board at the press: equal,
+  // and the hold recorded nothing. Both setters are functional updates, so a change still on its way
+  // through the recording effect lands in the right order against them.
+  const beginEditHold = useCallback(() => setHistory((prev) => beginHold(prev)), []);
+  const endEditHold = useCallback(
+    () => setHistory((prev) => endHold(prev, historyPrevSnapshotRef.current, sameHistorySnapshot)),
+    [],
+  );
+  useEffect(() => {
+    window.addEventListener("pointerup", endEditHold);
+    window.addEventListener("pointercancel", endEditHold);
+    window.addEventListener("blur", endEditHold);
+    return () => {
+      window.removeEventListener("pointerup", endEditHold);
+      window.removeEventListener("pointercancel", endEditHold);
+      window.removeEventListener("blur", endEditHold);
+    };
+  }, [endEditHold]);
+  const editHold: EditHold = useMemo(
+    () => ({ beginHold: beginEditHold, endHold: endEditHold }),
+    [beginEditHold, endEditHold],
+  );
 
   /** Called as the FIRST statement of every design mutator, before its own setState — records
    * what this edit should be filed under (or null for a discrete flip that must never coalesce
@@ -1223,9 +1267,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   // `history` — nothing here ever writes to it, so the ghost can never itself become an undo step
   // or leak into a save. `outlineGhost` depends on `[history.past, state.outline]` rather than the
   // whole `history` object so a redo (which only ever touches `future`) never recomputes it.
+  // While a held control has moved the board, the ghost is pinned to the shape at the press (quick
+  // 261114-vwy) — `pickOutlineGhost`'s third argument; after the release the O-1 walk carries on.
+  const ghostPinned = holdHasRecorded(history);
   const outlineGhost = useMemo(
-    () => pickOutlineGhost(history.past, state.outline),
-    [history.past, state.outline],
+    () => pickOutlineGhost(history.past, state.outline, ghostPinned),
+    [history.past, state.outline, ghostPinned],
   );
   const outlineGhostGeometry = useMemo(
     // A ghost with a locked wing is resolved against the live fins, the same way the board is.
@@ -2193,7 +2240,11 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     quotedVolumeLitresBeforeBottom,
   };
 
-  return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;
+  return (
+    <EditHoldContext.Provider value={editHold}>
+      <DesignContext.Provider value={value}>{children}</DesignContext.Provider>
+    </EditHoldContext.Provider>
+  );
 }
 
 export function useDesign(): DesignContextValue {
