@@ -1055,7 +1055,9 @@ test.describe("A wing's corners in a .brd (quick 261113-m5w)", () => {
     await page.goto("/");
     await pickFile(page, "Rounded.brd", file.locked);
     const dialog = dialogOf(page);
-    await expect(dialog).toBeVisible();
+    // The rounded wing's fit is the heaviest look there is, and since quick 261114-vyl the look also searches the tail blend: on
+    // WebKit it runs past the default five seconds, so the wait is the one b22 gives the page while a file is worked out.
+    await expect(dialog).toBeVisible({ timeout: 60_000 });
     const lines = dialog.locator("[data-brd-fit-wing]");
     await expect(lines).toHaveCount(1);
     if (exact) {
