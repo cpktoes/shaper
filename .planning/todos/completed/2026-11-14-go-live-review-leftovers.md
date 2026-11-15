@@ -36,3 +36,7 @@ Not fixed before the go-live, on purpose:
 One small task each, or one sweep: a time limit or a section budget for the fit that keeps our own longest exports; the width
 hold applied where the rack reads a board; one source for the Tail Block range; the stopwatch assertion removed; the BLANK
 button's loading and ready states never in the page together.
+
+## Done
+
+2026-11-15 — the last item, the BLANK button's two states in the page together: fast task 213 (commit 26e29294). It is React streaming, not a fault on the page — the ready button arrives inside a hidden chunk and is swapped in a tick later, so for that tick the fallback and the hidden ready one coexist and a bare locator trips strict mode. The browser helpers (`blankButton`, `pickedCard`) now match only the visible button. Every item on this list is closed.
