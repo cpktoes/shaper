@@ -26,3 +26,7 @@ being in place, and relates to the roadmap's later "public sharing" direction.
 TBD. Rough shape: photo upload (needs blob storage — e.g. Vercel Blob), attach photos +
 a rating to a saved board model, and a browsable/featured feed surface. Consider moderation
 needs before anything is public. Revisit when planning the sharing/community milestone.
+
+## Superseded
+
+2026-11-15 — replaced at the founder's word ("Rather than uploading board photos, let make a community board rack …") by `2026-11-15-community-board-rack.md`: a Board Rack of boards shapers have made public, which serves the same two purposes without photo uploads, storage or image moderation. Nothing was built under this to-do.
