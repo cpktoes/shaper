@@ -107,6 +107,7 @@ import { Live } from "./live";
 import { liveControls, type RockerTab } from "./rocker-live-controls";
 import { ImportedReadoutCard } from "@/components/design/imported-readout-card";
 import type { ImportedReadout } from "@/lib/geometry/imported-readout";
+import { tipBelowCenterLine, tipsBelowCenter } from "@/lib/geometry/tip-below-center";
 
 /** The sections that open and close: BLANK, the hand-set Rocker & Foil and Foil (quick 261019-gqo — BOARD ON
  * BLANK is gone). Foil's Advanced fold is not here: `FoilSection` owns it (plan 03, P-22). */
@@ -473,6 +474,9 @@ function FoilSection({
   const [advancedOpen, setAdvancedOpen] = useState(() => hasFineTune(blank));
   const noTweak = !hasFineTune(blank);
   const station = stationLabel(system);
+  // The steer line (quick 261115-dhq, the founder's pick of 2026-11-14): under Deck a tip can sit below the board's
+  // own centre; the blank keeps fitting, and this says so and points at Bottom, where it never happens.
+  const steer = view.cut.tipStyle === "pinDeck" ? tipBelowCenterLine(tipsBelowCenter(sideProfile), system) : null;
 
   return (
     <Live on={live.thicknessHeading}>
@@ -504,6 +508,11 @@ function FoilSection({
                     {TIP_STYLE_HINT[view.cut.tipStyle]}
                   </div>
                 </div>
+                {steer && (
+                  <p data-tip-below-center className={cn("mt-2 text-xs text-surf-warning-ink", locked && "opacity-40")}>
+                    {steer}
+                  </p>
+                )}
               </div>
             </Live>
 
