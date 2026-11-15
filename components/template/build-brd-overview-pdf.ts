@@ -16,7 +16,7 @@
  * One page is the aim. The BOTTOM block (quick 261113-gwr: three cross-sections and a table of what the file measures and what
  * we fitted) stays on the page when the two views keep at least `minViewsWithBottom` millimetres; when it would squeeze them
  * below that, the BOTTOM block moves to a second page of its own, drawn from the top margin. The RAILS block (quick 261113-kvo:
- * the same three cross-sections at true height with the rail drawn, and a table of the fitted settings) always rides with the
+ * the same three cross-sections with the rail drawn, at the dialog's Height pick for them, and a table of the fitted settings) always rides with the
  * BOTTOM block, after it: on the first page when that holds both, else on the second. Only if the second page cannot hold the
  * RAILS block as well does it take a third page of its own, which none of the app's own boards nor the founder's four AkuShaper
  * files have needed.
@@ -169,6 +169,8 @@ export interface BuildBrdOverviewPdfOptions {
   height: SectionHeight;
   /** How many times true height the BOTTOM block's cross-sections are drawn: the dialog's own pick for them (it opens at x4). */
   sectionHeight?: SectionHeight;
+  /** How many times true height the RAILS block's cross-sections are drawn: the dialog's pick for them (it opens at true height; quick 261114-vyl). */
+  railHeight?: SectionHeight;
   /**
    * The SUGGESTED BLANKS block (quick 261113-gwo), worded for the shaper's system. Printed after the point notes when it is given
    * and ready or quiet; left off when absent or still loading (the dialog passes null until the suggestions are worked out).
@@ -180,6 +182,7 @@ export interface BuildBrdOverviewPdfOptions {
 export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF {
   const { look, sheet, height, blanks } = options;
   const sectionHeight = options.sectionHeight ?? 4;
+  const railHeight = options.railHeight ?? 1;
   const doc = new jsPDF({ unit: "mm", format: [BRD_OVERVIEW_PAGE.width, BRD_OVERVIEW_PAGE.height], orientation: "portrait" });
   doc.setDrawColor(0);
   doc.setTextColor(0);
@@ -262,14 +265,14 @@ export function buildBrdOverviewPdf(options: BuildBrdOverviewPdfOptions): jsPDF 
     if (!sheet.rails.read) return [{ kind: "gap", height: L.gap }, caption, body(sheet.rails.line)];
     const items: Item[] = [{ kind: "gap", height: L.gap }, caption];
     if (railFrames.drawings.length > 0) {
-      items.push({ kind: "text", lines: [sheet.rails.drawingsCaption], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption });
+      items.push({ kind: "text", lines: [BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(railFrames))], style: "bold", size: L.fonts.caption, pitch: L.pitch.caption });
       items.push({ kind: "railSections", height: L.pitch.caption + railFrames.height * bottomCell.scale + 1.5 });
     }
     items.push(bottomTable(sheet.rails));
     items.push(...sheet.rails.notes.map(body));
     return items;
   };
-  const railFrames = brdRailFrames(brdRailRows(look), look);
+  const railFrames = brdRailFrames(brdRailRows(look), look, railHeight);
   /** The FINS block (quick 261113-qyz), after RAILS: its caption, the table of the file's fins beside ours, and the notes. Nothing for a file with no fins. */
   const finItems = (): Item[] => {
     if (!sheet.fins) return [];

@@ -24,6 +24,7 @@ import {
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
+import { sectionHeightLabel } from "../geometry/bottom-draw";
 import { formatControlNumber, formatDim, formatGapMark, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
@@ -47,6 +48,7 @@ import {
   brdFitLook,
   brdRailFrames,
   brdRailRows,
+  RAIL_DRAWING_TALLEST,
   type BrdFitLook,
 } from "./brd-fit-preview";
 import { BOTTOM_COPY } from "@/components/bottom/bottom-copy";
@@ -959,13 +961,61 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     expect(brdRailFrames(brdRailRows({ ...tucked, rails: null }), { ...tucked, rails: null }).drawings).toEqual([]);
   }, LONG);
 
+  it("brdRailFrames takes a Height (quick 261114-vyl): ×1 is true height exactly as before, ×4 stretches every line four times up on the same scale across, and a pick the room cannot hold is drawn as tall as it can be and says so", () => {
+    const rows = brdRailRows(tucked);
+    const one = brdRailFrames(rows, tucked);
+    expect(brdRailFrames(rows, tucked, 1)).toEqual(one);
+    expect(one.heightAsked).toBe(1);
+    expect(one.heightDrawn).toBe(1);
+    expect(sectionHeightLabel(one)).toBe("TRUE HEIGHT");
+    const four = brdRailFrames(rows, tucked, 4);
+    expect(four.heightAsked).toBe(4);
+    expect(four.width).toBe(one.width);
+    expect(four.span).toBe(one.span);
+    const kx = (BRD_BOTTOM_DRAWING_WIDTH - 60) / one.span;
+    if (four.heightDrawn === 4) {
+      expect(sectionHeightLabel(four)).toBe("HEIGHT ×4");
+      for (const [k, drawing] of four.drawings.entries()) {
+        const before = one.drawings[k];
+        // the same x for every point; the height above the bottom line four times what it was
+        for (const [i, [x, y]] of drawing.file.entries()) {
+          expect(x).toBeCloseTo(before.file[i][0], 9);
+          expect(drawing.bottomLine.y - y).toBeCloseTo(4 * (before.bottomLine.y - before.file[i][1]), 6);
+        }
+        for (const [i, [x, y]] of drawing.fit.entries()) {
+          expect(x).toBeCloseTo(before.fit[i][0], 9);
+          expect(drawing.bottomLine.y - y).toBeCloseTo(4 * (before.bottomLine.y - before.fit[i][1]), 6);
+        }
+      }
+    } else {
+      // held to the room: taller than true height, no taller than the BOTTOM block's sections may stand, and the label says the factor drawn
+      expect(four.heightDrawn).toBeGreaterThan(1);
+      expect(four.heightDrawn).toBeLessThan(4);
+      expect(four.height).toBeLessThanOrEqual(RAIL_DRAWING_TALLEST + 1e-6);
+      expect(sectionHeightLabel(four)).toBe(`HEIGHT ×${four.heightDrawn.toFixed(1)}`);
+    }
+    const eight = brdRailFrames(rows, tucked, 8);
+    expect(eight.heightDrawn).toBeGreaterThanOrEqual(four.heightDrawn - 1e-9);
+    expect(eight.heightDrawn).toBeLessThanOrEqual(8);
+    expect(eight.height).toBeLessThanOrEqual(Math.max(one.height, RAIL_DRAWING_TALLEST) + 1e-6);
+    // the scale across never moves with the Height
+    for (const frames of [four, eight]) {
+      for (const [k, drawing] of frames.drawings.entries()) expect(drawing.file.map((p) => p[0])).toEqual(one.drawings[k].file.map((p) => p[0]));
+    }
+    // and a look with no rails still answers its Height
+    const none = brdRailFrames(brdRailRows({ ...tucked, rails: null }), { ...tucked, rails: null }, 4);
+    expect(none.drawings).toEqual([]);
+    expect(none.heightAsked).toBe(4);
+    void kx;
+  }, LONG);
+
   it("words the RAILS block in both systems: columns, six rows, the ticked boxes in RAILS' own words, and the closeness sentence", () => {
     for (const system of ["imperial", "metric"] as const) {
       const sheet = brdFitSheet(tucked, "Tucked.brd", system);
       expect(sheet.rails.read).toBe(true);
       if (!sheet.rails.read) throw new Error("unreachable");
       expect(sheet.rails.caption).toBe("RAILS");
-      expect(sheet.rails.drawingsCaption).toBe("CROSS-SECTIONS · TRUE HEIGHT");
+      expect(BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(brdRailFrames(brdRailRows(tucked), tucked)))).toBe("CROSS-SECTIONS · TRUE HEIGHT");
       expect(sheet.rails.columns.map((c) => c.label)).toEqual(["Nose", "Centre", "Tail"]);
       expect(sheet.rails.rows.map((r) => r.key)).toEqual(["at", "deck", "shape", "ticked", "advanced", "close"]);
       const row = (key: string) => sheet.rails.read && sheet.rails.rows.find((r) => r.key === key)!;

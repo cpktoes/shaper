@@ -69,7 +69,7 @@ import {
   type BrdOutlineWidths,
   type Closeness,
 } from "../geometry/brd-fit";
-import { sectionHeightLabel, type SectionHeight } from "../geometry/bottom-draw";
+import type { SectionHeight } from "../geometry/bottom-draw";
 import { bottomRailLift, designFinPlacement, railsOnTheBottom } from "../geometry/design";
 import { FIN_SYSTEMS, type FinPlacementResult, type FinPlacementSpec } from "../geometry/fins";
 import {
@@ -652,6 +652,7 @@ export const BRD_FIT_COPY = {
    * `lib/` cannot import a component; a test holds each to that file's text. The nudge names come from `RAIL_NUDGE_NAMES`.
    */
   railsCaption: "RAILS",
+  /** The rail drawings' caption, from the frames' own Height (quick 261114-vyl): `CROSS-SECTIONS · TRUE HEIGHT`, `… · HEIGHT ×4`. */
   railSectionsCaption: (heightLabel: string) => `CROSS-SECTIONS · ${heightLabel}`,
   railSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
   railColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<RailSectionKey, string>,
@@ -803,7 +804,7 @@ export interface BrdFitRailRow {
 }
 
 export type BrdFitRailsBlock =
-  | { read: true; caption: string; drawingsCaption: string; columns: BrdFitRailColumn[]; rows: BrdFitRailRow[]; notes: string[] }
+  | { read: true; caption: string; columns: BrdFitRailColumn[]; rows: BrdFitRailRow[]; notes: string[] }
   | { read: false; caption: string; line: string };
 
 /** One column of the BOTTOM table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
@@ -1108,6 +1109,9 @@ export interface BrdRailFrames {
   height: number;
   /** How far in from the widest point the drawings run (millimetres): the stretch RAILS' own plot shows, never past the stringer. */
   span: Mm;
+  /** The Height pick (quick 261114-vyl), and the factor actually drawn (less than asked when the rail would not fit its room). */
+  heightAsked: SectionHeight;
+  heightDrawn: number;
   /** Nose, centre, tail, for the rows that have a section. */
   drawings: BrdRailDrawing[];
 }
@@ -1132,16 +1136,22 @@ function clipFrom(points: readonly P2[], xMin: number): P2[] {
 }
 
 /**
- * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide, the way RAILS draws a rail: true proportions (one scale
- * both ways, no Height pick), the rail at the right with the stringer toward the left, the file solid and ours dashed. All three
- * share one scale; the span in from the widest point is the widest stretch RAILS' own plot shows for our fitted rails (2" beyond
- * the Domed Deck Band, `railPlotBounds`), never past the stringer, and fills the width less the air. Heights are measured from the
- * stringer's bottom, so a concave hangs the rail's bottom below it and a vee lifts it above.
+ * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide, the way RAILS draws a rail: the rail at the right with the
+ * stringer toward the left, the file solid and ours dashed. All three share one scale across; the span in from the widest point is
+ * the widest stretch RAILS' own plot shows for our fitted rails (2" beyond the Domed Deck Band, `railPlotBounds`), never past the
+ * stringer, and fills the width less the air. Up is the Height pick times that scale (quick 261114-vyl, the founder 2026-11-14: the
+ * rails were small at true height and the two lines hid each other where they agree, so the block gets BOTTOM's Height buttons):
+ * ×1 is true proportions exactly as the block always drew, and a taller pick is held to a drawing as tall as it is wide
+ * (`RAIL_DRAWING_TALLEST`), `heightDrawn` saying what was drawn. Heights are measured from the stringer's bottom, so a concave hangs the rail's
+ * bottom below it and a vee lifts it above.
  */
-export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook): BrdRailFrames {
+/** The tallest a rail drawing may stand under a Height pick: as tall as it is wide (units). */
+export const RAIL_DRAWING_TALLEST = BRD_BOTTOM_DRAWING_WIDTH;
+
+export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook, height: SectionHeight = 1): BrdRailFrames {
   const { air, pad } = BOTTOM_DRAWING;
   const drawn = rows.filter((row): row is { key: RailSectionKey; section: BrdRailSection } => row.section !== null && row.section.ours.length > 0 && row.section.file.length > 0);
-  if (drawn.length === 0 || !look.rails) return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, span: mm(0), drawings: [] };
+  if (drawn.length === 0 || !look.rails) return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, span: mm(0), heightAsked: height, heightDrawn: height, drawings: [] };
   const outputs = railOutputs(look);
   const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
   const widestPlot = Math.max(...drawn.map((row) => -railPlotBounds(outputs[row.key].result).xAxisMin));
@@ -1158,14 +1168,20 @@ export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook): Br
   const values = cuts.flatMap((c) => [...c.file, ...c.fit].map((p) => p[1]));
   const up = Math.max(1, ...values);
   const down = Math.max(0, -Math.min(0, ...values));
-  const y0 = pad + up * kx;
+  // True height at ×1, always; a taller pick is held to a drawing as tall as it is wide (a rail stands tall over its short span
+  // already, so the BOTTOM sections' room would leave no stretch at all).
+  let ky = kx * height;
+  if (height > 1 && (up + down) * ky > RAIL_DRAWING_TALLEST - 2 * pad) ky = Math.max(kx, (RAIL_DRAWING_TALLEST - 2 * pad) / (up + down));
+  const y0 = pad + up * ky;
   return {
     width: BRD_BOTTOM_DRAWING_WIDTH,
-    height: 2 * pad + (up + down) * kx,
+    height: 2 * pad + (up + down) * ky,
     span,
+    heightAsked: height,
+    heightDrawn: ky / kx,
     drawings: cuts.map(({ row, reach, file, fit }) => {
       const x = (v: number) => right - (reach - v) * kx;
-      const line = (points: readonly P2[]): P2[] => points.map(([a, h]): P2 => [x(a), y0 - h * kx]);
+      const line = (points: readonly P2[]): P2[] => points.map(([a, h]): P2 => [x(a), y0 - h * ky]);
       return {
         key: row.key,
         file: line(file),
@@ -1234,7 +1250,6 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
     block: {
       read: true,
       caption: c.railsCaption,
-      drawingsCaption: c.railSectionsCaption(sectionHeightLabel({ heightAsked: 1, heightDrawn: 1 })),
       columns: RAIL_KEYS.map((key, k) => ({
         key,
         label: c.railColumns[key],

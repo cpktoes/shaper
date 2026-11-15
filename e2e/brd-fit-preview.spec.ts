@@ -3,7 +3,7 @@ import { BOTTOM_COPY } from "../components/bottom/bottom-copy";
 import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
 import { BRD_BLANK_COPY } from "../lib/export/brd-blank-words";
 import { brdBottomStations, brdFile, brdText } from "../lib/export/brd";
-import { BRD_FIT_COPY, brdBottomFrames, brdBottomRows, brdFitLook, brdFitSheet, brdLengthWords, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
+import { BRD_FIT_COPY, brdBottomFrames, brdBottomRows, brdFitLook, brdFitSheet, brdLengthWords, brdRailFrames, brdRailRows, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
@@ -1211,11 +1211,12 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     await dismissBannerAndTip(page);
   });
 
-  test("b23. the RAILS block: three cross-sections with the file's rail and ours, the table's eighteen cells and the Rails lines are the sheet's, the tail's tucks are named in RAILS' words, and the fins are all that is not read", async ({
+  test("b23. the RAILS block: three cross-sections with the file's rail and ours under their own Height (opening at true height), the table's eighteen cells and the Rails lines are the sheet's, the tail's tucks are named in RAILS' words, and the fins are all that is not read", async ({
     page,
   }, testInfo) => {
     const file = tuckedFile();
-    const sheet = sheetOf(file.locked, "Tucked.brd", "imperial");
+    const look = lookOf(file.locked);
+    const sheet = brdFitSheet(look, "Tucked.brd", "imperial");
     if (!sheet.rails.read) throw new Error("the tucked Shortboard's rails should be read");
     const exact = testInfo.project.name !== "iphone";
     await page.goto("/");
@@ -1224,7 +1225,10 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.locator("[data-brd-fit-rails]")).toBeAttached();
     await expect(dialog.locator("[data-brd-fit-rails] [data-brd-fit-rails-unread]")).toHaveCount(0);
-    await expect(dialog.locator("[data-brd-fit-rail-sections-caption]")).toHaveText(sheet.rails.drawingsCaption);
+    // The drawings' caption carries their Height; the block opens at true height, as it always drew (quick 261114-vyl).
+    const captionAt = (height: 1 | 2 | 4 | 8) => BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(brdRailFrames(brdRailRows(look), look, height)));
+    await expect(dialog.locator("[data-brd-fit-rail-sections-caption]")).toHaveText(captionAt(1));
+    expect(captionAt(1)).toBe("CROSS-SECTIONS · TRUE HEIGHT");
 
     const figures = dialog.locator("[data-brd-fit-rail-section]");
     await expect(figures).toHaveCount(3);
@@ -1262,6 +1266,40 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     }
     await expect(dialog.locator("[data-brd-fit-rails-note]").first()).toHaveText(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), "imperial")));
     await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
+
+    // The rails' own Height: ×1 pressed when the block opens; ×4 stretches the drawings and changes the caption, and leaves the
+    // BOTTOM block's sections (×4) and the side view (×1) at their own picks. On a touch screen each button has its 44-dot box.
+    const picker = dialog.locator("[data-brd-fit-rail-height]");
+    const pressed = (where: ReturnType<typeof dialog.locator>) => where.locator('button[aria-pressed="true"]');
+    await picker.scrollIntoViewIfNeeded();
+    await expect(pressed(picker)).toHaveText(BOTTOM_COPY.heightButton(1));
+    const tallBefore = await dialog.locator('[data-brd-fit-rail-section="center"] svg').evaluate((el) => el.getBoundingClientRect().height);
+    await picker.getByRole("button", { name: BOTTOM_COPY.heightButtonName(4) }).click();
+    await expect(pressed(picker)).toHaveText(BOTTOM_COPY.heightButton(4));
+    await expect(dialog.locator("[data-brd-fit-rail-sections-caption]")).toHaveText(captionAt(4));
+    expect(captionAt(4)).not.toBe(captionAt(1));
+    const tallAfter = await dialog.locator('[data-brd-fit-rail-section="center"] svg').evaluate((el) => el.getBoundingClientRect().height);
+    expect(tallAfter).toBeGreaterThan(tallBefore * 1.5);
+    await expect(pressed(dialog.locator("[data-brd-fit-section-height]"))).toHaveText(BOTTOM_COPY.heightButton(4));
+    await expect(pressed(dialog.locator("[data-brd-fit-height]"))).toHaveText(BOTTOM_COPY.heightButton(1));
+    await expect(dialog.locator("[data-brd-fit-side]")).toHaveAttribute("data-brd-fit-side-height", "1");
+    if (testInfo.project.name !== "desktop") {
+      for (const button of await picker.getByRole("button").all()) {
+        const box = await button.boundingBox();
+        expect(box).not.toBeNull();
+        // the invisible touch box reaches 44 dots: the pressable area is measured by a tap at the box's edge landing on the button
+        const edge = await button.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          const after = getComputedStyle(el, "::after");
+          return { h: parseFloat(after.height), r: r.height };
+        });
+        expect(edge.h).toBeGreaterThanOrEqual(44);
+      }
+    }
+    // Back to true height: the drawing is as it opened.
+    await picker.getByRole("button", { name: BOTTOM_COPY.heightButtonName(1) }).click();
+    await expect(dialog.locator("[data-brd-fit-rail-sections-caption]")).toHaveText(captionAt(1));
+    expect(await dialog.locator('[data-brd-fit-rail-section="center"] svg').evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(tallBefore, 0);
   });
 
   test("b24. Open as a Board carries the rails: the kept board holds them, and RAILS shows the centre's Ratio and Family as fitted and the tail's Use Single Tuck ticked", async ({
