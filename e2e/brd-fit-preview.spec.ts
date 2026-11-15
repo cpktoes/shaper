@@ -1492,17 +1492,17 @@ test.describe("The fins of a .brd (quick 261113-qyz)", () => {
   });
 
   for (const [id, key, nine, setup] of [
-    ["b34a", "Tri", [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], null],
+    ["b34a", "Tri", [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0], "thruster"],
     ["b34b", "Single", [0, 0, 0, 0, 15.24, 35.56, 0, 0, 0], "single"],
   ] as const) {
-    test(`${id}. a ${setup === "single" ? "centre-only file opens as a Single Fin" : "side-and-centre file opens as a setup with a centre fin"}`, async ({ page }, testInfo) => {
+    test(`${id}. a ${setup === "single" ? "centre-only file opens as a Single Fin" : "side-and-centre file (AkuShaper's TRI) always opens as a Thruster"}`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== "desktop", "the kept board is checked once, on a computer");
       const file = finFile(key, nine, "Futures");
       const look = lookOf(file.locked);
       if (!look.fins) throw new Error(`${key}'s fins should be read`);
-      expect(["single", "thruster", "2plus1", "twin"]).toContain(look.fins.spec.finSetup);
-      if (setup) expect(look.fins.spec.finSetup).toBe(setup);
-      else expect(look.fins.ours.centre).not.toBeNull();
+      // A TRI is a Thruster, never a 2+1 or an Upright + Trailer (the founder, 2026-11-14, quick 261114-vyl).
+      expect(look.fins.spec.finSetup).toBe(setup);
+      if (setup === "thruster") expect(look.fins.ours.centre).not.toBeNull();
       await page.goto("/");
       await pickFile(page, `${key}.brd`, file.locked);
       const dialog = dialogOf(page);

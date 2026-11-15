@@ -12,8 +12,11 @@
  * or a splay angle, so neither is fitted: they are read only so the preview can say so (`BrdFileFins.depth`, `.splay`) and
  * are written as zero. AkuShaper's "Fin setup" is DERIVED from the numbers: all zero is NONE, a centre alone SINGLE, a side
  * pair alone TWIN, both TRI; its list goes on to QUAD and FIVE, and how a quad's or a five-fin's rear pair is stored in the
- * file is not known yet (2026-11-13), so neither is read or written. `p51` is a word that reads `Futures` in the founder's
- * file, believed to name the fin system.
+ * file is not known yet (2026-11-13), so neither is read or written. A TRI always opens as a Thruster (the founder,
+ * 2026-11-14, quick 261114-vyl): the fit tries the four Thruster front models and never a 2+1 or an Upright + Trailer, so
+ * a three-fin file lands on the setup AkuShaper means by its word, even where another of FINS' three-fin layouts would
+ * reach a mark a Thruster's controls stop short of (then the fit says which control, and by how much). `p51` is a word
+ * that reads `Futures` in the founder's file, believed to name the fin system.
  *
  * FINS never stores where a fin sits: it CALCULATES the placement from a setup, a model or template and a few controls
  * (`FinPlacementSpec`). So reading a file's fins is a fit, like the outline's: find the setup and the controls whose
@@ -278,7 +281,11 @@ interface Candidate {
   twinTemplate?: TwinTemplate;
 }
 
-/** The candidates a file's fins offer, in the fixed order that settles a tie. */
+/**
+ * The candidates a file's fins offer, in the fixed order that settles a tie. A side pair with a centre fin — AkuShaper's TRI —
+ * is a Thruster on one of its four front models and nothing else (the founder, 2026-11-14): never a 2+1, never an Upright +
+ * Trailer, however close either would land.
+ */
 function candidatesFor(file: BrdFileFins): Candidate[] {
   if (file.side && file.centre) {
     return [
@@ -286,8 +293,6 @@ function candidatesFor(file: BrdFileFins): Candidate[] {
       { setup: "thruster", frontModel: "mckeeGun" },
       { setup: "thruster", frontModel: "basic" },
       { setup: "thruster", frontModel: "proportional" },
-      { setup: "2plus1" },
-      { setup: "twin", twinTemplate: "trailer" },
     ];
   }
   // A side pair alone is never an Upright + Trailer: that template adds a centre fin the file does not have.
@@ -436,7 +441,7 @@ function trial(
  * The setup and FINS controls whose calculated fins land closest on a file's, on the outline that opens (`outline`, the
  * fitted one) — `fileOutline` is the file's own, for the file's in-from-the-rail figure. Null when the file has no fin
  * the rules kept. The candidates are by content (a side pair alone: a twin, Modern/Upright or Keel; side and centre: a
- * thruster on each front model, a 2+1, or an Upright + Trailer; a centre alone: a single fin); the closest wins, and
+ * Thruster on each of its front models, always — AkuShaper's TRI; a centre alone: a single fin); the closest wins, and
  * candidates within `BRD_FIN_TIE_MM` of it are settled by the least movement of FINS' controls, then the fixed order.
  */
 export function fitBrdFins(file: BrdFileFins, fileOutline: readonly P2[], outline: OutlineSpec): BrdFinsFit | null {

@@ -17,6 +17,7 @@ import {
   finSystemFromBrdWord,
   fitBrdFins,
   noBrdFins,
+  type BrdFinControlKey,
 } from "./brd-fins";
 import { fitBoardToBrd } from "./brd-fit";
 import { designCrossSectionInput, designFinPlacement, designSideProfile, deriveEffectiveRails, LIVE_DESIGN_RULES, type DesignSummaryFields } from "./design";
@@ -367,13 +368,43 @@ describe("the founder's twin, as its nine figures on a stock board", () => {
 });
 
 describe("the coordinator's AkuShaper variants, as figures", () => {
-  it("a side pair with a centre fin 3 1/2\" to 8\" opens as a Thruster or an Upright + Trailer, whichever lands every mark", () => {
-    // On the founder's own 6'4 1/2" twin the trailer reaches all six marks and the closest Thruster stops 0.23" short, so
-    // it opens as an Upright + Trailer there; on this stock 6'0" the Basic Thruster lands them all exactly.
+  it("a side pair with a centre fin 3 1/2\" to 8\" opens as a Thruster, the Basic front model landing every mark exactly", () => {
+    // AkuShaper's TRI: a Thruster, never a 2+1 or an Upright + Trailer (the founder, 2026-11-14). On this stock 6'0" the
+    // Basic Thruster lands all six marks exactly.
     const { fit } = fitStock([24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 5.4]);
-    expect(["thruster", "twin"]).toContain(fit!.spec.finSetup);
+    expect(fit!.spec.finSetup).toBe("thruster");
+    expect(fit!.spec.frontModel).toBe("basic");
     expect(fit!.largest.gap).toBeLessThan(BRD_FIN_SAME_MM);
-    expect(fit!.spec.finSetup === "twin" ? fit!.spec.twinTemplate : fit!.spec.frontModel).toBe(fit!.spec.finSetup === "twin" ? "trailer" : "basic");
+  });
+
+  it("a TRI whose side pair sits where only a twin's slider could reach still opens as a Thruster, and says what fell short", () => {
+    // The founder's twin's pair pulled back to 8" off the tail with a centre fin added: an Upright + Trailer's Aft/Forward
+    // position (to 10" off the tail) would land it, a Thruster's front pair runs only 1 1/2" from its template. The file
+    // reads TRI, so it is a Thruster, held at the end of its range, and the preview is told which control and by how much.
+    const { fit } = fitStock([20.32, 13.208, 32.004, 12.7, 8.89, 20.32, 0, 0, 5.4]);
+    expect(fit!.spec.finSetup).toBe("thruster");
+    expect(fit!.short.map((s) => s.control)).toContain("forwardPosition");
+    const short = fit!.short.find((s) => s.control === "forwardPosition")!;
+    expect(short.by).toBeGreaterThan(BRD_FIN_SAME_MM);
+    expect(fit!.largest.which).toBe("sideOffTail");
+    expect(fit!.largest.gap).toBeCloseTo(short.by, 6);
+    // the Thruster's own range, not a twin's
+    const range = finPositionRangeIn("thruster", fit!.spec.twinTemplate, "forward");
+    expect(fit!.spec.advanced.forwardPositionOffset).toBeCloseTo(IN(range.min), 6);
+  });
+
+  it("every TRI candidate is a Thruster: the three-fin file never opens as a 2+1 or an Upright + Trailer", () => {
+    for (const nine of [
+      [24.13, 13.208, 35.814, 12.7, 8.89, 20.32, 0, 0, 0],
+      [20.32, 13.208, 32.004, 12.7, 8.89, 20.32, 0, 0, 0],
+      [27.94, 12.7, 39.37, 12.065, 12.7, 22.86, 0, 0, 0],
+      [22.86, 14.605, 34.29, 13.97, 5.08, 17.78, 0, 0, 0],
+    ]) {
+      const { fit } = fitStock(nine);
+      expect(fit!.spec.finSetup).toBe("thruster");
+      expect(fit!.ours.centre).not.toBeNull();
+      expect(fit!.ours.side).not.toBeNull();
+    }
   });
 
   it("a centre fin alone, 6\" to 14\", opens as a Single Fin, exact", () => {
@@ -454,10 +485,22 @@ describe("choosing between candidates", () => {
     expect(BRD_FIN_TIE_MM).toBeCloseTo(IN(1 / 32), 9);
   });
 
-  it("a 2+1 written as a 2+1 comes back as a 2+1, its long centre box leaning it away from a thruster", () => {
+  it("a 2+1 written as a 2+1 comes back as a Thruster: the file reads TRI, and a TRI is a Thruster (the founder, 2026-11-14)", () => {
     const nine = brdFinFields(place(specOf("2plus1")), "fcs2")!.p50;
     const { fit } = fitStock(nine, "FCS II");
-    expect(fit!.spec.finSetup).toBe("2plus1");
+    expect(fit!.spec.finSetup).toBe("thruster");
+    // A 2+1's side bites and centre fin sit further from a Thruster's templates than its position sliders travel, so the preview
+    // says both positions fell short (and by how much), and the board still opens as the Thruster the file means.
+    expect(fit!.short.map((s) => s.control).sort()).toEqual(["centrePosition", "forwardPosition"]);
+    for (const { by } of fit!.short) expect(by).toBeGreaterThan(BRD_FIN_SAME_MM);
+    expect(fit!.ours.centre).not.toBeNull();
+  });
+
+  it("an Upright + Trailer written into a file comes back as a Thruster too, never as the twin's own template", () => {
+    const nine = brdFinFields(place(specOf("twin", {}, undefined, "trailer")), "fcs2")!.p50;
+    const { fit } = fitStock(nine, "FCS II");
+    expect(fit!.spec.finSetup).toBe("thruster");
+    expect(fit!.ours.centre).not.toBeNull();
   });
 
   it("file marks are FINS' own: in from the rail is measured on the file's outline", () => {
@@ -511,27 +554,35 @@ function roundTrip(label: string, fields: DesignSummaryFields) {
     const fit = fitBrdFins(board.fins, board.outline, fitted.outline);
     const tag = `${label} · ${c.name}`;
     expect(fit, tag).not.toBeNull();
-    // The same setup and twin template every time.
-    expect(fit!.spec.finSetup, tag).toBe(c.setup);
-    if (c.setup === "twin") expect(fit!.spec.twinTemplate, tag).toBe(template);
+    // A side pair with a centre fin reads TRI in the file, and a TRI is a Thruster (the founder, 2026-11-14): a 2+1 or an
+    // Upright + Trailer written into a file comes back as a Thruster. Every other setup comes back as itself.
+    const threeFin = c.setup === "2plus1" || (c.setup === "twin" && template === "trailer");
+    expect(fit!.spec.finSetup, tag).toBe(threeFin ? "thruster" : c.setup);
+    if (c.setup === "twin" && !threeFin) expect(fit!.spec.twinTemplate, tag).toBe(template);
     // An unmoved Thruster comes back on its own model (a moved one may read as another model that draws the same fins).
     if (c.setup === "thruster" && c.unmoved) expect(fit!.spec.frontModel, tag).toBe(c.model);
     expect(fit!.finSystem, tag).toBe("fcs2");
     // FINS' own marks on the original against FINS' own on what opened.
     const was = finMarksOfPlacement(original);
     const now = finMarksOfPlacement(designFinPlacement({ outline: fitted.outline, fins: fit!.spec, finsImportTemplate: true }));
+    // A mark a Thruster's own controls cannot reach is allowed only when the fit says that control fell short.
+    const short = new Set(fit!.short.map((s) => s.control));
+    const lands = (gap: number, bar: number, control: BrdFinControlKey, what: string) => {
+      if (threeFin && short.has(control)) expect(gap, `${what} is said to fall short`).toBeGreaterThanOrEqual(BRD_FIN_SAME_MM);
+      else expect(gap, what).toBeLessThan(bar);
+    };
     if (was.side) {
-      expect(Math.abs(now.side!.offTail - was.side.offTail), `${tag} off the tail`).toBeLessThan(BRD_FIN_SAME_MM);
-      expect(Math.abs(now.side!.toeIn - was.side.toeIn), `${tag} toe-in`).toBeLessThan(BRD_FIN_SAME_MM);
-      expect(Math.abs(now.side!.base - was.side.base), `${tag} base`).toBeLessThan(BRD_FIN_SAME_MM);
-      expect(Math.abs(now.side!.inFromRail - was.side.inFromRail), `${tag} in from the rail`).toBeLessThan(SIXTEENTH_MM);
+      lands(Math.abs(now.side!.offTail - was.side.offTail), BRD_FIN_SAME_MM, "forwardPosition", `${tag} off the tail`);
+      lands(Math.abs(now.side!.toeIn - was.side.toeIn), BRD_FIN_SAME_MM, "toeIn", `${tag} toe-in`);
+      lands(Math.abs(now.side!.base - was.side.base), BRD_FIN_SAME_MM, "forwardBase", `${tag} base`);
+      lands(Math.abs(now.side!.inFromRail - was.side.inFromRail), SIXTEENTH_MM, "offRail", `${tag} in from the rail`);
     } else expect(now.side, tag).toBeNull();
     if (was.centre) {
-      expect(Math.abs(now.centre!.offTail - was.centre.offTail), `${tag} centre off the tail`).toBeLessThan(BRD_FIN_SAME_MM);
-      expect(Math.abs(now.centre!.base - was.centre.base), `${tag} centre base`).toBeLessThan(BRD_FIN_SAME_MM);
+      lands(Math.abs(now.centre!.offTail - was.centre.offTail), BRD_FIN_SAME_MM, "centrePosition", `${tag} centre off the tail`);
+      lands(Math.abs(now.centre!.base - was.centre.base), BRD_FIN_SAME_MM, "centreBase", `${tag} centre base`);
     } else expect(now.centre, tag).toBeNull();
-    // And never a fin the file does not have.
-    expect(fit!.short, tag).toEqual([]);
+    // And never a fin the file does not have; nothing falls short unless the file's three fins asked a Thruster for more than its controls give.
+    if (!threeFin) expect(fit!.short, tag).toEqual([]);
   }
 }
 
