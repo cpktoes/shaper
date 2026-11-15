@@ -22,8 +22,9 @@ import { BoardLockContext, useControlsLocked } from "@/components/design/use-con
  * - EXPLICIT: everything else (raw sliders, selects, tick boxes, two-option toggles, pills,
  *   steppers, Reset buttons, the Fin System select) is given `disabled={locked}` by its own file.
  * - VIEW-ONLY controls — tabs, zoom, rotate, Show Construction and the other show/hide ticks, section
- *   open/close, the toe/aim table, the print ticks, Print and Export — carry `data-lock-exempt` and
- *   are never disabled. A locked board is for looking at, and for printing.
+ *   open/close, the toe/aim table, the print ticks, Print and Export, and the blank's Catalog Page
+ *   link (it opens the maker's page, quick 261114-vwo) — carry `data-lock-exempt` and are never
+ *   disabled. A locked board is for looking at, and for printing.
  *
  * Why not one `<fieldset disabled>` or `inert` around each panel: either would also switch off the
  * view-only controls that live in the same panels; `inert` would also hide the values from screen

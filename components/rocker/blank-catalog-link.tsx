@@ -63,6 +63,8 @@ function Anchor({ record, look, children }: { record: BlankCatalogLinkSource; lo
       rel="noopener noreferrer"
       aria-label={link.label}
       data-blank-catalog-link={look}
+      // Opening the maker's page never changes the board, so a locked board keeps the link live (`board-lock-scope.tsx`).
+      data-lock-exempt
       className={cn(look === "card" ? CARD_CLASS : INLINE_CLASS)}
     >
       {look === "card" ? "Catalog Page" : children}
