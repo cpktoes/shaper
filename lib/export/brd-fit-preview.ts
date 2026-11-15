@@ -6,7 +6,9 @@
  *
  * Every figure a shaper reads goes through `lib/geometry/units.ts` and `measure-display.ts` (Rule 2): dims (a size, a
  * distance along the board) and marks (a gap, a rocker height, a thickness) read in their own families, in the system the
- * shaper picked. Rounding happens here, for display only; the fit itself keeps actual values.
+ * shaper picked. Rounding happens here, for display only; the fit itself keeps actual values. A how-close figure — how far
+ * our fit misses the file — is rounded UP (`formatGapMark`, the founder 2026-11-14, quick 261114-vyl); a setting or a size
+ * read off the file (a wing's depth, a point's thickness) rounds to the nearest as every mark does.
  *
  * Quick 261113-et0 (the founder, 2026-11-13) makes the preview something a shaper keeps and builds from: `BRD_FIT_COPY` holds
  * every word of the preview AND of the one-page overview that prints from it, and `brdFitSheet` builds every line and table
@@ -73,6 +75,7 @@ import { FIN_SYSTEMS, type FinPlacementResult, type FinPlacementSpec } from "../
 import {
   formatControlNumber,
   formatDim,
+  formatGapMark,
   formatMark,
   formatMarkOrLess,
   formatSignedDim,
@@ -452,8 +455,8 @@ export function gapWhere(at: Mm, length: Mm, system: UnitsSystem): string {
 
 function closeWords(c: Closeness, length: Mm, side: BrdFitCloseWords["side"], system: UnitsSystem): BrdFitCloseWords {
   return {
-    largest: formatMarkOrLess(c.largest, system),
-    typical: formatMarkOrLess(c.typical, system),
+    largest: formatGapMark(c.largest, system),
+    typical: formatGapMark(c.typical, system),
     at: formatDim(c.at, system),
     where: gapWhere(c.at, length, system),
     side,
@@ -723,9 +726,11 @@ export function lessThan(figure: string): string {
 }
 
 /**
- * How close one curve gets, as a sentence. A figure under the smallest step reads "less than", never "within <1/16"" (the
- * awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one place that rule lives. The outline
- * also says which way the file lies from ours at its widest gap, since that is where a wing or a tweak belongs.
+ * How close one curve gets, as a sentence. Every figure is a gap, so it is rounded UP to the next sixteenth or whole
+ * millimetre (`formatGapMark`; the founder, 2026-11-14: a 0.01" miss never reads as exact), and a gap of nothing reads "less
+ * than", never "within <1/16"" (the awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one
+ * place that rule lives. The outline also says which way the file lies from ours at its widest gap, since that is where a
+ * wing or a tweak belongs.
  */
 export function closenessSentence(what: "Outline" | "Rocker" | "Thickness" | "Bottom" | "Rails", w: BrdFitCloseWords): string {
   const head = w.largest.startsWith("<") ? `${what}: ${lessThan(w.largest)} off` : `${what}: within ${w.largest}`;
@@ -1051,8 +1056,8 @@ function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFi
 function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): BrdFitCloseWords {
   const { largest, typical, station, across } = found.closeness;
   return {
-    largest: formatMarkOrLess(largest, system),
-    typical: formatMarkOrLess(typical, system),
+    largest: formatGapMark(largest, system),
+    typical: formatGapMark(typical, system),
     at: formatDim(station, system),
     where: `at the section ${gapWhere(station, length, system)}, ${formatMark(across, system)} out from the stringer`,
     side: null,
@@ -1215,8 +1220,8 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
   const list = (words: string[]) => (words.length > 0 ? words.join(" · ") : c.noValue);
   const { closeness } = found;
   const w: BrdFitCloseWords = {
-    largest: formatMarkOrLess(closeness.largest, system),
-    typical: formatMarkOrLess(closeness.typical, system),
+    largest: formatGapMark(closeness.largest, system),
+    typical: formatGapMark(closeness.typical, system),
     at: formatDim(closeness.station, system),
     where: c.railWhereSection(gapWhere(closeness.station, length, system), railWhereWords(closeness.where, closeness.inFromRail, system)),
     side: null,
@@ -1247,7 +1252,7 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
           key: "close",
           label: c.railRowLabels.close,
           cells: cells((_k, row) =>
-            row.section ? c.railCellClose(formatMarkOrLess(row.section.gap.largest, system), formatMarkOrLess(row.section.gap.mean, system)) : c.noValue,
+            row.section ? c.railCellClose(formatGapMark(row.section.gap.largest, system), formatGapMark(row.section.gap.mean, system)) : c.noValue,
           ),
         },
       ],
@@ -1316,7 +1321,7 @@ function finsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitF
   const hold = c.finHoldDirections;
   const subject = c.finHoldSubjects;
   for (const { control, by } of found.short) {
-    const size = lessThan(formatMarkOrLess(by, system));
+    const size = lessThan(formatGapMark(by, system));
     const o = ours.side;
     const oc = ours.centre;
     const f = file.side;
@@ -1346,9 +1351,9 @@ function finsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitF
   if (!found.systemNamed) notes.push(found.fileWord === null ? c.finSystemUnnamed : c.finSystemQuoted(found.fileWord));
   if (look.board.fins.dropped) notes.push(c.finsPartDropped);
 
-  // A fit that lands on the file's marks exactly leaves a gap of nothing, which is still "less than the smallest step" (a figure of
-  // nothing is read as that, never as "within 0").
-  const largest = formatMarkOrLess(mm(Math.max(found.largest.gap, 1e-6)), system);
+  // A fit that lands on the file's marks exactly leaves a gap of nothing, which reads "less than the smallest step" (never
+  // "within 0"); anything more rounds up to the step above it, like every how-close figure.
+  const largest = formatGapMark(found.largest.gap, system);
   return {
     block: { caption: c.finsCaption, rows, notes },
     closeness: c.finsClose(largest, c.finGapWhich[found.largest.which]),

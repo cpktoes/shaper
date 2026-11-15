@@ -14,12 +14,14 @@ import {
   wholeFeetWithin,
   formatInchesFraction,
   formatInchesFractionOrLess,
+  formatInchesFractionUp,
   formatSignedInchesFraction,
   formatWholeFeet,
   formatWholeInches,
   formatTenthMm,
   formatWholeMm,
   formatWholeMmOrLess,
+  formatWholeMmUp,
   inchesToMm,
   metricSliderRange,
   mm,
@@ -471,6 +473,74 @@ describe("units boundary", () => {
     });
   });
 
+  // The founder, 2026-11-14 (quick 261114-vyl): the board-file preview's how-close figures "round up", so a 0.01" miss
+  // never reads as 0. Every boundary below is worked from the conversion, never read off a page.
+  describe("formatInchesFractionUp", () => {
+    const sixteenth = inchesToMm(1 / 16);
+
+    it("rounds a gap UP to the next sixteenth: a hair over one reads two", () => {
+      expect(formatInchesFractionUp(mm(2.07))).toBe('1/8"');
+      expect(formatInchesFraction(mm(2.07))).toBe('1/16"');
+      expect(formatInchesFractionUp(mm(sixteenth + 0.01))).toBe('1/8"');
+      expect(formatInchesFractionUp(mm(0.3))).toBe('1/16"');
+      expect(formatInchesFractionUp(mm(0.001))).toBe('1/16"');
+      expect(formatInchesFractionUp(inchesToMm(1 / 32))).toBe('1/16"');
+      expect(formatInchesFractionUp(inchesToMm(3 / 32))).toBe('1/8"');
+      expect(formatInchesFractionUp(inchesToMm(2.51))).toBe('2 9/16"');
+    });
+
+    it("leaves a gap that is exactly a sixteenth on it, float noise included, and nothing at all as nothing", () => {
+      for (const inches of [1 / 16, 1 / 8, 3 / 16, 1 / 4, 0.5, 1, 2.625, 18.5]) {
+        const value = inchesToMm(inches);
+        expect(formatInchesFractionUp(value)).toBe(formatInchesFraction(value));
+        expect(formatInchesFractionUp(mm(value + 1e-10))).toBe(formatInchesFraction(value));
+        expect(formatInchesFractionUp(mm(value - 1e-10))).toBe(formatInchesFraction(value));
+      }
+      expect(formatInchesFractionUp(mm(0))).toBe('0"');
+      expect(formatInchesFractionUp(mm(1e-12))).toBe('0"');
+    });
+
+    it("never reads less than the nearest-sixteenth figure", () => {
+      for (let k = 0; k < 400; k++) {
+        const value = mm(k * 0.137);
+        const up = formatInchesFractionUp(value);
+        const nearest = formatInchesFraction(value);
+        expect(parseFractionIn(up)).toBeGreaterThanOrEqual(parseFractionIn(nearest) - 1e-9);
+        expect(parseFractionIn(up) * 16).toBeGreaterThanOrEqual(mmToInches(value) * 16 - 1e-6);
+        expect(parseFractionIn(up) * 16).toBeLessThan(mmToInches(value) * 16 + 1 + 1e-6);
+      }
+    });
+
+    it("a gap has no sign: a negative value reads as its size", () => {
+      expect(formatInchesFractionUp(mm(-2.07))).toBe('1/8"');
+      expect(formatInchesFractionUp(mm(-0.3))).toBe('1/16"');
+    });
+  });
+
+  describe("formatWholeMmUp", () => {
+    it("rounds a gap UP to the next whole millimetre", () => {
+      expect(formatWholeMmUp(mm(2.07))).toBe("3");
+      expect(formatWholeMm(mm(2.07))).toBe("2");
+      expect(formatWholeMmUp(mm(0.3))).toBe("1");
+      expect(formatWholeMmUp(mm(0.001))).toBe("1");
+      expect(formatWholeMmUp(mm(1.0001))).toBe("2");
+    });
+
+    it("leaves a whole millimetre on it, float noise included, and nothing at all as nothing", () => {
+      for (const value of [1, 2, 3, 25, 514]) {
+        expect(formatWholeMmUp(mm(value))).toBe(`${value}`);
+        expect(formatWholeMmUp(mm(value + 1e-10))).toBe(`${value}`);
+        expect(formatWholeMmUp(mm(value - 1e-10))).toBe(`${value}`);
+      }
+      expect(formatWholeMmUp(mm(0))).toBe("0");
+      expect(formatWholeMmUp(mm(1e-12))).toBe("0");
+    });
+
+    it("a gap has no sign: a negative value reads as its size", () => {
+      expect(formatWholeMmUp(mm(-2.07))).toBe("3");
+    });
+  });
+
   // 07-01 D-02: the app's one millimetre value that carries a decimal, because the printed
   // scale-check square is a calibration reference that has to agree with what is actually drawn,
   // not a shaping mark following the whole-millimetre house rule formatWholeMm applies everywhere
@@ -681,3 +751,12 @@ describe("mmToFeet (Phase 16, D-22: a single fin's depth is the board's length i
     }
   });
 });
+
+/** `2 9/16"` back to inches, for the round-up sweep: a whole, a fraction, or a whole then a space then a fraction. */
+function parseFractionIn(text: string): number {
+  const m = /^(-?)(\d+)?(?: (\d+)\/(\d+)|\/(\d+))?"$/.exec(text);
+  if (!m) throw new Error(`not a fraction: ${text}`);
+  // `3/4"`: the leading digits are the numerator, the second branch holds the denominator.
+  const inches = m[5] ? Number(m[2]) / Number(m[5]) : (m[2] ? Number(m[2]) : 0) + (m[3] ? Number(m[3]) / Number(m[4]) : 0);
+  return (m[1] === "-" ? -1 : 1) * inches;
+}

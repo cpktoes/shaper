@@ -369,6 +369,32 @@ export function formatWholeMmOrLess(value: Mm): string {
 }
 
 /**
+ * `formatInchesFraction` for a GAP — how far one thing misses another — rounded UP to the next sixteenth, never to the
+ * nearest (the founder, 2026-11-14, quick 261114-vyl: the board-file preview's how-close figures "round up", so a shaper is
+ * never told a fit is exact when it is not). A 2.07 mm miss reads `1/8"` (it is over a sixteenth), where the nearest
+ * sixteenth would have read `1/16"`; a 0.3 mm miss reads `1/16"`. A gap within the same `1e-9` the other formatters nudge
+ * by of a sixteenth is that sixteenth, so a measured `1/16"` never climbs to `1/8"` on float noise, and nothing at all
+ * (`NOTHING_THERE` or less) reads `0"`. For gaps, which have no sign: a negative value is read as its size.
+ */
+export function formatInchesFractionUp(value: Mm): string {
+  const size = Math.abs(value);
+  if (size <= NOTHING_THERE) return formatInchesFraction(mm(0));
+  const sixteenths = Math.ceil(mmToInches(mm(size)) * 16 - 1e-9);
+  return formatInchesFraction(inchesToMm(sixteenths / 16));
+}
+
+/**
+ * The Metric counterpart of `formatInchesFractionUp`: a gap rounded UP to the next whole millimetre, bare like
+ * `formatWholeMm` (the caller adds `mm`). A 2.07 mm miss reads `3`, a 0.3 mm one `1`; a gap within `1e-9` of a whole
+ * millimetre is that millimetre, and nothing at all reads `0`.
+ */
+export function formatWholeMmUp(value: Mm): string {
+  const size = Math.abs(value);
+  if (size <= NOTHING_THERE) return "0";
+  return `${Math.ceil(size - 1e-9)}`;
+}
+
+/**
  * Snaps a millimetre value to the nearest 1/16 inch. Ported from the prototype's `round16`
  * (reference/project/Rails.dc.html line 652: `Math.round(x * 16) / 16`), applied here in the
  * inch domain then converted back to Mm. This is not a display nicety — it's the taper clamp

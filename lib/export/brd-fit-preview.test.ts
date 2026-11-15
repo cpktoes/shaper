@@ -24,7 +24,7 @@ import {
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
-import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
+import { formatControlNumber, formatDim, formatGapMark, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { effectiveWingRadius, wingRadiusTop } from "../geometry/wings";
@@ -118,14 +118,14 @@ describe("brdFitWords", () => {
     );
     const c = look.fit.closeness;
     expect(words.outline).toEqual({
-      largest: formatMarkOrLess(c.outline.largest, "imperial"),
-      typical: formatMarkOrLess(c.outline.typical, "imperial"),
+      largest: formatGapMark(c.outline.largest, "imperial"),
+      typical: formatGapMark(c.outline.typical, "imperial"),
       at: formatDim(c.outline.at, "imperial"),
       where: expect.stringMatching(/ from the (tail|nose)$/),
       side: outlineGapSide(board.outline, look.fit.lines.outline, c.outline.at),
     });
     expect(words.rocker.at).toBe(formatDim(c.rocker.at, "imperial"));
-    expect(words.thickness.largest).toBe(formatMarkOrLess(c.thickness.largest, "imperial"));
+    expect(words.thickness.largest).toBe(formatGapMark(c.thickness.largest, "imperial"));
     expect(words.tipSkip).toBe(formatDim(inchesToMm(1), "imperial"));
     expect(words.controls.station).toBe(stationLabel("imperial"));
     expect(words.controls.length).toBe(formatFeetInches(look.fit.outline.length));
@@ -165,14 +165,25 @@ describe("brdFitWords", () => {
     expect(words.controls.rocker.nose12).toMatch(/^\d+ mm$/);
   });
 
-  it("says less than a millimetre for a gap that is there but under half one, and 0 for none", () => {
+  it("rounds every how-close figure UP: a gap that is there reads the step above it, and only nothing at all reads less than a step (the founder, 2026-11-14)", () => {
     const tiny = (largest: number) => ({
       ...look,
-      fit: { ...look.fit, closeness: { ...look.fit.closeness, outline: { largest: mm(largest), typical: mm(largest), at: mm(0) } } },
+      fit: { ...look.fit, closeness: { ...look.fit.closeness, outline: { largest: mm(largest), typical: mm(largest / 2), at: mm(0) } } },
     });
-    expect(brdFitWords(tiny(0.3), "metric").outline.largest).toBe("<1 mm");
-    expect(brdFitWords(tiny(0), "metric").outline.largest).toBe("0 mm");
-    expect(brdFitWords(tiny(0.3), "imperial").outline.largest).toBe('<1/16"');
+    expect(brdFitWords(tiny(0.3), "metric").outline.largest).toBe("1 mm");
+    expect(brdFitWords(tiny(0.3), "imperial").outline.largest).toBe('1/16"');
+    // 2.07 mm is a hair over a sixteenth (1.5875 mm): it used to read 1/16", the nearest; now 1/8", honest about the hair
+    expect(brdFitWords(tiny(2.07), "imperial").outline.largest).toBe('1/8"');
+    expect(brdFitWords(tiny(2.07), "metric").outline.largest).toBe("3 mm");
+    expect(brdFitWords(tiny(2.07), "imperial").outline.typical).toBe('1/16"');
+    // nothing off at all is less than the smallest step, never "within 0"
+    expect(brdFitWords(tiny(0), "metric").outline.largest).toBe("<1 mm");
+    expect(brdFitWords(tiny(0), "imperial").outline.largest).toBe('<1/16"');
+    for (const system of ["imperial", "metric"] as const) {
+      const words = brdFitWords(look, system);
+      expect(words.outline.largest).toBe(formatGapMark(look.fit.closeness.outline.largest, system));
+      expect(words.rocker.typical).toBe(formatGapMark(look.fit.closeness.rocker.typical, system));
+    }
   });
 
   it("falls back to the lines for a file with no size fields", () => {
@@ -651,8 +662,8 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
       const c = concave.bottom!.closeness;
       expect(sheet.closeness.bottom).toBe(
         closenessSentence("Bottom", {
-          largest: formatMarkOrLess(c.largest, "imperial"),
-          typical: formatMarkOrLess(c.typical, "imperial"),
+          largest: formatGapMark(c.largest, "imperial"),
+          typical: formatGapMark(c.typical, "imperial"),
           at: formatDim(c.station, "imperial"),
           where: `at the section ${gapWhere(c.station, concave.board.length, "imperial")}, ${formatMark(c.across, "imperial")} out from the stringer`,
           side: null,
@@ -1147,12 +1158,12 @@ describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
   });
 
   it("says how close, by the one less-than rule, and names the widest gap when it is wider", () => {
-    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe(`Fins: ${lessThan(formatMarkOrLess(mm(Math.max(twin.fins!.largest.gap, 1e-6)), "imperial"))} off`);
+    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe(`Fins: ${lessThan(formatGapMark(twin.fins!.largest.gap, "imperial"))} off`);
     expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe('Fins: less than 1/16" off');
     expect(brdFitSheet(twin, "T.brd", "metric").closeness.fins).toBe("Fins: less than 1 mm off");
     // the Keel pattern's toe-in stops at FINS' 1/2" top, which leaves the toe-in as the widest gap
     const wide = brdFitSheet(keel, "K.brd", "imperial").closeness.fins!;
-    expect(wide).toBe(c.finsClose(formatMarkOrLess(keel.fins!.largest.gap, "imperial"), c.finGapWhich[keel.fins!.largest.which]));
+    expect(wide).toBe(c.finsClose(formatGapMark(keel.fins!.largest.gap, "imperial"), c.finGapWhich[keel.fins!.largest.which]));
     expect(wide).toMatch(/^Fins: within .+, the widest gap the side fins' toe-in$/);
   });
 
@@ -1176,7 +1187,7 @@ describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
     const hold = keel.fins!.short.find((s) => s.control === "toeIn")!;
     expect(hold).toBeDefined();
     expect(notes).toContain(
-      c.finHold(c.finHoldSubjects.sideToe, lessThan(formatMarkOrLess(hold.by, "imperial")), c.finHoldDirections.less, c.finWords.toeIn, formatMark(keel.fins!.ours.side!.toeIn, "imperial")),
+      c.finHold(c.finHoldSubjects.sideToe, lessThan(formatGapMark(hold.by, "imperial")), c.finHoldDirections.less, c.finWords.toeIn, formatMark(keel.fins!.ours.side!.toeIn, "imperial")),
     );
     expect(brdFitSheet(twin, "T.brd", "imperial").fins!.notes.filter((n) => n.includes("goes no further than"))).toEqual([]);
   });
