@@ -50,6 +50,7 @@ export function blankRecordToRow(record: BlankRecord): BlankInsertRow {
     volumeLitres: record.volumeLitres,
     catalogSlug: record.catalogSlug,
     pdfPage: record.pdfPage,
+    catalogUrl: record.catalogUrl ?? null,
     stations: record.stations.map((station) => ({ ...station })),
   };
 }
@@ -63,6 +64,7 @@ export function blankRowToRecord(row: BlankReadRow): BlankRecord {
     name: row.name,
     catalogSlug: row.catalogSlug,
     pdfPage: row.pdfPage,
+    catalogUrl: row.catalogUrl,
     lengthMm: mm(row.lengthMm),
     deckLengthMm: optionalMm(row.deckLengthMm),
     volumeLitres: row.volumeLitres === null ? null : litres(row.volumeLitres),
@@ -114,6 +116,7 @@ function isUsableRow(value: unknown): value is BlankReadRow {
     typeof row.name === "string" &&
     typeof row.catalogSlug === "string" &&
     Number.isInteger(row.pdfPage) &&
+    isTextOrNull(row.catalogUrl) &&
     isFiniteNumber(row.lengthMm) &&
     isFiniteOrNull(row.deckLengthMm) &&
     isFiniteOrNull(row.volumeLitres) &&
@@ -159,6 +162,7 @@ async function readBlankRows(): Promise<BlankReadRow[]> {
       volumeLitres: blanks.volumeLitres,
       catalogSlug: blanks.catalogSlug,
       pdfPage: blanks.pdfPage,
+      catalogUrl: blanks.catalogUrl,
       stations: blanks.stations,
     })
     .from(blanks);

@@ -29,6 +29,7 @@ export const BLANK_CSV_COLUMNS = [
   "volume_l",
   "catalog_slug",
   "pdf_page",
+  "catalog_url",
   "flag",
 ] as const;
 
@@ -104,11 +105,21 @@ export function rowsToBlankRecords(rows: string[][], sourceName: string): BlankR
       if (!Number.isInteger(pdfPage)) {
         throw new Error(`${sourceName} line ${line} column pdf_page: "${cell("pdf_page")}" is not a page number`);
       }
+      // The maker's page for the blank (quick 261114-vwo): empty where the maker has none, otherwise a
+      // full https address — checked here only for its shape; which addresses may become a link is
+      // `lib/blanks/catalog-link.ts`'s rule.
+      const catalogUrl = cell("catalog_url");
+      if (catalogUrl !== "" && (!/^https:\/\/\S+$/.test(catalogUrl) || catalogUrl.length > BLANK_URL_MAX)) {
+        throw new Error(
+          `${sourceName} line ${line} column catalog_url: "${catalogUrl}" is not an https address of at most ${BLANK_URL_MAX} characters`,
+        );
+      }
       blank = {
         vendor,
         name,
         catalogSlug: text("catalog_slug"),
         pdfPage,
+        catalogUrl: catalogUrl === "" ? null : catalogUrl,
         lengthMm: inchesToMm(required("length_in")),
         deckLengthMm: inches("deck_length_in"),
         volumeLitres: volume === null ? null : litres(volume),
@@ -157,6 +168,8 @@ export function isPickable(record: BlankRecord): boolean {
 /** A blank's longest identity string (vendor, name, catalogue slug). The longest in the seeded
  * catalogues is well under half this. */
 export const BLANK_TEXT_MAX = 120;
+/** The longest maker's-page address a blank may carry. The longest seeded is under 60 characters. */
+export const BLANK_URL_MAX = 200;
 /** A catalogue flag's longest text. The longest seeded flag is 262 characters. */
 const BLANK_FLAG_MAX = 400;
 /** A blank's most stations. The seeded catalogues print 5 to 15. */
@@ -190,6 +203,9 @@ export const blankRecordShapeSchema = z
     name: z.string().max(BLANK_TEXT_MAX),
     catalogSlug: z.string().max(BLANK_TEXT_MAX),
     pdfPage: z.number().int().min(0).max(10000),
+    // Optional: a board's copy saved before 2026-11-14 has no such field. Named here so zod keeps it on
+    // every saved board that does — a key the schema does not name is stripped on parse.
+    catalogUrl: z.string().max(BLANK_URL_MAX).nullable().optional(),
     lengthMm: z.number().gt(0).max(BLANK_LENGTH_MAX_MM),
     deckLengthMm: z.number().min(0).max(BLANK_LENGTH_MAX_MM).nullable(),
     volumeLitres: z.number().min(0).max(1000).nullable(),

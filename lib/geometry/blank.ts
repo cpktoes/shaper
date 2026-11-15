@@ -39,6 +39,14 @@ export interface BlankRecord {
   catalogSlug: string;
   /** The page of the catalogue PDF the rows were read from (provenance). */
   pdfPage: number;
+  /**
+   * The maker's own web page for this blank, written out in full (quick 261114-vwo, the founder's ruling of
+   * 2026-11-14): a US Blanks catalogue page, a Marko Foam or Millennium Foam store page, or Arctic Foam's
+   * catalogue PDF opened at the blank's page. `null` where the maker has no page for the blank; ABSENT on a
+   * board's copy saved before the column existed. Only `lib/blanks/catalog-link.ts` turns it into a link,
+   * and only when it starts with that maker's known address.
+   */
+  catalogUrl?: string | null;
   /** Tip-to-tip length. */
   lengthMm: Mm;
   /** Deck length where the catalogue prints one, else null. */
