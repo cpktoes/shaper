@@ -47,3 +47,7 @@ below the center lands on 0 when the board becomes hand-set (review fix `40cb76e
 
 The founder has picked one of the options (or another), and the pick is built with a named geometry test
 on the catalogue and shown on the fixture above.
+
+## Ruled (2026-11-14)
+
+The founder's pick: **Steer it** — the blank keeps fitting; a line under Tip Style says the tail would sit below the board's centre and suggests Bottom. To build with a named geometry test on the catalogue and shown on the fixture picture.

@@ -31,3 +31,7 @@ Also not done: opening a `.brd` on the live site itself (the feature was proved 
 ## What is needed
 
 His word on each, then a small task for whichever he wants. The live-site check is his to try with one of his own files.
+
+## Ruled (2026-11-14)
+
+The founder picked all four: a TRI always opens as a Thruster; the how-close figures round up; a Height picker (×1/×2/×4/×8) on the preview's RAILS block; Tail Rail Blends From and Ends At fitted from the file. One quick task, or one per item. The live-site check of a .brd stays his to try.

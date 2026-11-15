@@ -22,3 +22,7 @@ dashed line shows on this board, is not. The review (LW-05) put it to the founde
 
 His word on whether the caption should be read aloud. If yes: the caption leaves the hidden figure (or the card gains a text
 alternative saying the same), on all 84 cards and BOTTOM's, with the screen-reader checks in the GUIDE browser specs updated.
+
+## Done
+
+2026-11-14 — the founder's word: "No, leave it hidden" — the words already say what the card shows. Closed without a change.
