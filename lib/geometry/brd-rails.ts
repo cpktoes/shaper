@@ -35,14 +35,26 @@
  *     Scoop Noserider: 3.22 mm became 7.58 mm), so the bottom's reading is kept unless the rail's is clearly closer
  *     (`BRD_RAIL_FIRST_GAIN_MM`, 0.25 mm over the whole section, bottom and rail together).
  *
+ *  7. **Fits where the tail's rail blends into the centre's** (quick 261114-vyl, the founder 2026-11-14). Once the three rails
+ *     are settled, Tail Rail Blends From and Tail Rail Ends At — the two sliders that say where the tail's rail character
+ *     (its Hard Edge, Family and tucks) starts fading into the centre's and where it has fully gone — are searched on their
+ *     own 1/2" grids (`fitBrdTailBlend`) so our sections BETWEEN the tail 12" and the centre land closest on the file's own
+ *     sections there, by the same rail-region measure. Coarse every 2" then fine every 1/2" round the best; a new board's
+ *     values (12" and the centre) are kept unless a pair is at least 0.1 mm closer, and a pair within 0.1 mm of the best that
+ *     moves fewer of the two off a new board's values wins. Nothing to fit — and the two left where a new board puts them —
+ *     when the tail's rail is the centre's in character (then the blend changes no section) or the file has no section
+ *     strictly between the two anchors. The continuous settings (Ratio, Deck Profile, the nudges) blend straight from the
+ *     tail 12" to the centre whatever these two say, so only a character difference is fitted here.
+ *
  * What the model cannot follow (findings, with the number, not failures): a deck crowned right across (RAILS' deck is flat
  * inside the Domed Deck Band; the Egg's nose deck keeps falling from the stringer, so Deck Profile runs to its 75% floor
  * and the dome to its limit and the rail is still 2.07 mm off); between the three stations (our rail blends straight from one
  * station's numbers to the next, while the Scoop's own sections between its centre and nose are 3.22 mm off); a board built
  * on a blank (its thickness curve is the blank's, the fit opens a hand-set five-station foil, so about 5 mm on a long
- * board); the tail's Rail Blends From and Ends At (an AkuShaper file's few sections cannot show where a tail's rail blends,
- * so they stay where a new board puts them); and settings that draw nearly the same rail (Family against Apex Thickness,
- * the scale against the deck marks), so the shape is what is stood behind, and the words may differ from the board's own.
+ * board); and settings that draw nearly the same rail (Family against Apex Thickness, the scale against the deck marks), so
+ * the shape is what is stood behind, and the words may differ from the board's own. The bottom's reading widths
+ * (`brdRailWindows`) are read with a new board's blend, before the blend is fitted: where our rail begins at an in-between
+ * station may move a hair once it is, a second-order matter left as it is.
  *
  * Pure: no React, browser, database or `lib/export` import (CLAUDE.md Rule 1); every length is millimetres, every inch figure
  * goes through `inchesToMm`, nothing is rounded (the controls' own steps are grids, not rounding).
@@ -66,6 +78,12 @@ import type { FoilSpec } from "./foil";
 import { buildOutline, MEASURE_STATION_MM } from "./outline";
 import {
   DEFAULT_RAIL_BAND_SPEC,
+  defaultTailRailBlendsFrom,
+  defaultTailRailEndsAt,
+  hardEdgeBlendsFromWindow,
+  hardEdgeEndsAtWindow,
+  hardEdgeWindowOnGrid,
+  HARD_EDGE_ENDS_AT_RANGE_IN,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
   RAIL_NUDGE_STEP_IN,
@@ -81,7 +99,7 @@ import {
   type RailSectionSpec,
 } from "./rail-bands";
 import { inchesToMm, mm, mmToInches, type Mm } from "./units";
-import { boardSections, type CrossSectionVolumeInput, type RailAnchorStations } from "./volume";
+import { boardSections, railCharacterDifferences, type CrossSectionVolumeInput, type RailAnchorStations } from "./volume";
 
 /* ============ the constants (each one measured; see the header) ============ */
 
@@ -103,6 +121,8 @@ export const BRD_RAIL_NARROW_MIN_MM: Mm = inchesToMm(1 / 4);
 export const BRD_RAIL_FIRST_TRY_MM: Mm = mm(4);
 /** Rails-first is chosen only when it is at least this much closer over the whole sections (bottom and rail together). */
 export const BRD_RAIL_FIRST_GAIN_MM: Mm = mm(0.25);
+/** The tail blend's coarse search step, in inches: every 2" over both sliders, then every slider step round the best. */
+export const BRD_BLEND_COARSE_STEP_IN = 2;
 
 /** The deck's meeting with the rail: a gap within this of the widest point is "at the rail" (1/4"). */
 const RAIL_AT_MM: Mm = inchesToMm(1 / 4);
@@ -165,8 +185,17 @@ export function newBoardRailSetting(key: RailSectionKey): BrdRailSetting {
 
 const FOIL_KEY: Record<RailSectionKey, "nose12" | "center" | "tail12"> = { nose: "nose12", center: "center", tail: "tail12" };
 
-/** The rails a fit opens with: each anchor's section on a new board's, with the fitted controls and the foil's thickness there. */
-export function brdRailsSpec(settings: BrdRailSettings, foil: FoilSpec): RailBandSpec {
+/** The tail rail's two blend settings (quick 261114-vyl), in millimetres from the tail tip: where its character starts fading into the centre's, and where it has fully gone. */
+export interface BrdTailBlend {
+  blendsFrom: Mm;
+  endsAt: Mm;
+}
+
+/**
+ * The rails a fit opens with: each anchor's section on a new board's, with the fitted controls and the foil's thickness there, and
+ * the tail blend when one was fitted (left out — a new board's 12" to the centre — when `blend` is null or not given).
+ */
+export function brdRailsSpec(settings: BrdRailSettings, foil: FoilSpec, blend?: BrdTailBlend | null): RailBandSpec {
   const hardEdge = settings.tail.hardEdge;
   const section = (key: RailSectionKey): RailSectionSpec => {
     const s = settings[key];
@@ -184,7 +213,13 @@ export function brdRailsSpec(settings: BrdRailSettings, foil: FoilSpec): RailBan
       nudges: { ...s.nudges },
     };
   };
-  return { nose: section("nose"), center: section("center"), tail: section("tail"), tailHardEdge: hardEdge };
+  return {
+    nose: section("nose"),
+    center: section("center"),
+    tail: section("tail"),
+    tailHardEdge: hardEdge,
+    ...(blend ? { tailHardEdgeBlendsFrom: blend.blendsFrom, tailHardEdgeEndsAt: blend.endsAt } : {}),
+  };
 }
 
 /** One setting put on all three anchors (the centre's scale 1): the section at any station is exactly that setting, no fade. */
@@ -224,11 +259,19 @@ export function brdRailBoard(fit: Pick<BrdFit, "outline" | "rocker" | "foil">, b
 
 /** Our half section at `station` with `rails`, stringer bottom first, every height less the stringer bottom's; `[]` where there is no foam. */
 export function brdOurRailHalf(board: BrdRailBoard, rails: RailBandSpec, station: Mm): P2[] {
-  const ring = ghostRail(boardSections({ ...board.input, rails }, [station]), station);
-  if (!ring || ring.length === 0) return [];
-  const half = [...ring].reverse();
-  const base = half[0][1];
-  return half.map(([x, y]): P2 => [x, y - base]);
+  return brdOurRailHalves(board, rails, [station])[0];
+}
+
+/** `brdOurRailHalf` at several stations from one build of the sections (the blend search reads a handful at a time). */
+export function brdOurRailHalves(board: BrdRailBoard, rails: RailBandSpec, stations: readonly Mm[]): P2[][] {
+  const sections = boardSections({ ...board.input, rails }, [...stations]);
+  return stations.map((station) => {
+    const ring = ghostRail(sections, station);
+    if (!ring || ring.length === 0) return [];
+    const half = [...ring].reverse();
+    const base = half[0][1];
+    return half.map(([x, y]): P2 => [x, y - base]);
+  });
 }
 
 /* ============ how close two rails are ============ */
@@ -742,6 +785,115 @@ export function brdRailWindows(lines: readonly BrdRailLine[], begins: readonly M
   return { windows, narrowed: windows.some((w) => w !== undefined) };
 }
 
+/* ============ where the tail's rail blends into the centre's ============ */
+
+/** What the blend fit found (quick 261114-vyl). */
+export interface BrdTailBlendFit {
+  /** The two settings the board opens with when they were read from the file; null leaves them where a new board puts them. */
+  blend: BrdTailBlend | null;
+  /** Fitted; or not: the tail's rail is the centre's (nothing to blend), or the file has no section strictly between the two anchors. */
+  read: "fitted" | "sameRail" | "noSections";
+  /** How many of the file's sections lie between the tail anchor and the centre anchor, both included, that the fit read. */
+  sections: number;
+  /** How close our sections there come to the file's with the blend chosen (the largest gap, and the mean of the means); null when nothing was read. */
+  closeness: { largest: Mm; typical: Mm } | null;
+}
+
+/** The two left where a new board puts them. */
+const noBlend = (read: BrdTailBlendFit["read"], sections = 0): BrdTailBlendFit => ({ blend: null, read, sections, closeness: null });
+
+/**
+ * Tail Rail Blends From and Ends At fitted to the file (quick 261114-vyl, the founder 2026-11-14): once `settings` are chosen, the
+ * two are searched on their own sliders' 1/2" grids (`hardEdgeBlendsFromWindow` / `hardEdgeEndsAtWindow`, as RAILS' sliders run)
+ * so our sections between the tail anchor and the centre anchor, both included, land closest on the file's — the largest rail gap
+ * plus the mean, the fit's own bar. Coarse every `BRD_BLEND_COARSE_STEP_IN`, then every slider step within a coarse step of the
+ * best. A new board's pair (12" and the centre) is kept unless a pair is at least `BRD_RAIL_MOVE_GAIN_MM` closer; among pairs
+ * within `BRD_RAIL_PRUNE_MM` of the best, the one moving fewer of the two off a new board's values wins, then the closer. Nothing is
+ * fitted when the tail's rail is the centre's in character (the blend then changes no section) or the file has no section
+ * strictly between the anchors; `read` says which.
+ */
+export function fitBrdTailBlend(lines: readonly BrdRailLine[], board: BrdRailBoard, settings: BrdRailSettings): BrdTailBlendFit {
+  const { length, foil } = board;
+  if (railCharacterDifferences(brdRailsSpec(settings, foil), "tail").length === 0) return noBlend("sameRail");
+  const chosen = brdAnchorSections(lines, length);
+  if (!chosen.tail || !chosen.center) return noBlend("noSections");
+  const between = lines.filter((line) => line.station >= chosen.tail!.station && line.station <= chosen.center!.station);
+  if (between.length < 3) return noBlend("noSections", between.length);
+  const stations = between.map((line) => line.station);
+  const targets = between.map((line) => prepared(line).target);
+
+  const value = (blend: BrdTailBlend): { value: number; largest: number; mean: number } => {
+    const halves = brdOurRailHalves(board, brdRailsSpec(settings, foil, blend), stations);
+    let largest = 0;
+    let sum = 0;
+    halves.forEach((half, i) => {
+      const gap = gapAgainst(targets[i], half);
+      largest = Math.max(largest, gap.largest);
+      sum += gap.mean;
+    });
+    const mean = sum / halves.length;
+    return { value: largest + mean, largest, mean };
+  };
+
+  const step = HARD_EDGE_ENDS_AT_RANGE_IN.step;
+  const onStep = (inches: number) => Number((Math.round(inches / step) * step).toFixed(9));
+  const fromGrid = hardEdgeWindowOnGrid(hardEdgeBlendsFromWindow(mm(length / 2), length));
+  const endsGrid = (blendsFromIn: number) => hardEdgeWindowOnGrid(hardEdgeEndsAtWindow(inchesToMm(blendsFromIn), length));
+  const base: BrdTailBlend = { blendsFrom: defaultTailRailBlendsFrom(length), endsAt: mm(0) };
+  base.endsAt = defaultTailRailEndsAt(base.blendsFrom, length);
+  const baseIn = { from: onStep(mmToInches(base.blendsFrom)), ends: onStep(mmToInches(base.endsAt)) };
+
+  type Scored = { from: number; ends: number; v: ReturnType<typeof value> };
+  const memo = new Map<string, Scored>();
+  const score = (from: number, ends: number): Scored => {
+    const key = `${from}|${ends}`;
+    const hit = memo.get(key);
+    if (hit) return hit;
+    const s: Scored = { from, ends, v: value({ blendsFrom: inchesToMm(from), endsAt: inchesToMm(ends) }) };
+    memo.set(key, s);
+    return s;
+  };
+  /** Every grid value from `min` to `max` every `by`, the top included. */
+  const run = (min: number, max: number, by: number): number[] => {
+    const out: number[] = [];
+    for (let v = min; v < max - 1e-9; v += by) out.push(onStep(v));
+    out.push(onStep(max));
+    return [...new Set(out)];
+  };
+  const tryPairs = (froms: number[], ends: (from: number) => number[]) => {
+    for (const from of froms) for (const end of ends(from)) score(from, end);
+  };
+
+  const baseline = score(baseIn.from, baseIn.ends);
+  tryPairs(run(fromGrid.min, fromGrid.max, BRD_BLEND_COARSE_STEP_IN), (from) => {
+    const g = endsGrid(from);
+    return run(g.min, g.max, BRD_BLEND_COARSE_STEP_IN);
+  });
+  const bestOf = () => [...memo.values()].sort((a, b) => a.v.value - b.v.value)[0];
+  const coarse = bestOf();
+  tryPairs(
+    run(Math.max(fromGrid.min, coarse.from - BRD_BLEND_COARSE_STEP_IN), Math.min(fromGrid.max, coarse.from + BRD_BLEND_COARSE_STEP_IN), step),
+    (from) => {
+      const g = endsGrid(from);
+      return run(Math.max(g.min, coarse.ends - BRD_BLEND_COARSE_STEP_IN), Math.min(g.max, coarse.ends + BRD_BLEND_COARSE_STEP_IN), step);
+    },
+  );
+  const best = bestOf();
+  const moved = (s: Scored) => Number(s.from !== baseIn.from) + Number(s.ends !== baseIn.ends);
+  const pick =
+    baseline.v.value <= best.v.value + BRD_RAIL_MOVE_GAIN_MM
+      ? baseline
+      : [...memo.values()]
+          .filter((s) => s.v.value <= best.v.value + BRD_RAIL_PRUNE_MM)
+          .sort((a, b) => moved(a) - moved(b) || a.v.value - b.v.value || a.from - b.from || b.ends - a.ends)[0];
+  return {
+    blend: { blendsFrom: inchesToMm(pick.from), endsAt: inchesToMm(pick.ends) },
+    read: "fitted",
+    sections: between.length,
+    closeness: { largest: mm(pick.v.largest), typical: mm(pick.v.mean) },
+  };
+}
+
 /* ============ what is shown ============ */
 
 /** One usable section, measured on the board that opens: the file's half, ours, and the rail gap. */
@@ -764,16 +916,18 @@ export interface BrdRailsFit {
   closeness: { largest: Mm; typical: Mm; station: Mm; where: BrdRailGap["where"]; inFromRail: Mm };
   /** Some section's bottom window stopped where our rail begins. */
   narrowed: boolean;
+  /** Where the tail's rail blends into the centre's, fitted to the file's sections between them, or why it was left (quick 261114-vyl). */
+  blend: BrdTailBlendFit;
 }
 
-/** `settings` measured against every usable section, the slow exact way, on the board that opens. */
+/** `settings` measured against every usable section, the slow exact way, on the board that opens, with `extra.blend` in the rails. */
 export function measureBrdRails(
   lines: readonly BrdRailLine[],
   board: BrdRailBoard,
   settings: BrdRailSettings,
-  extra: Pick<BrdRailsFit, "order" | "read" | "narrowed">,
+  extra: Pick<BrdRailsFit, "order" | "read" | "narrowed" | "blend">,
 ): BrdRailsFit {
-  const rails = brdRailsSpec(settings, board.foil);
+  const rails = brdRailsSpec(settings, board.foil, extra.blend.blend);
   const sections = lines.map((line): BrdRailSection => {
     const p = prepared(line);
     const ours = brdOurRailHalf(board, rails, line.station);
@@ -799,5 +953,6 @@ export function measureBrdRails(
       inFromRail: worst ? worst.gap.inFromRail : mm(0),
     },
     narrowed: extra.narrowed,
+    blend: extra.blend,
   };
 }

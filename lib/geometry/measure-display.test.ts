@@ -13,6 +13,7 @@ import {
   formatLength,
   formatMark,
   formatMarkBare,
+  formatGapMark,
   formatMarkOrLess,
   formatMarkOrLessBare,
   formatPasses,
@@ -123,6 +124,39 @@ describe("formatMarkBare", () => {
   it("is left as it was: a size too small for the tape still reads as a bare zero here", () => {
     expect(formatMarkBare(mm(0.3), "imperial")).toBe('0"');
     expect(formatMarkBare(mm(0.3), "metric")).toBe("0");
+  });
+});
+
+// The founder, 2026-11-14 (quick 261114-vyl): a how-close figure rounds UP, so a fit is never called exact when it is not.
+describe("formatGapMark", () => {
+  it("rounds a gap up to the next sixteenth or whole millimetre, with its unit", () => {
+    expect(formatGapMark(mm(2.07), "imperial")).toBe('1/8"');
+    expect(formatGapMark(mm(2.07), "metric")).toBe("3 mm");
+    expect(formatGapMark(mm(0.3), "imperial")).toBe('1/16"');
+    expect(formatGapMark(mm(0.3), "metric")).toBe("1 mm");
+    expect(formatGapMark(inchesToMm(1 / 16), "imperial")).toBe('1/16"');
+    expect(formatGapMark(mm(1), "metric")).toBe("1 mm");
+  });
+
+  it("never reads below formatMark's nearest figure, and never reads as nothing when something is off", () => {
+    for (const system of UNITS_SYSTEMS) {
+      for (let k = 1; k < 300; k++) {
+        const value = mm(k * 0.0731);
+        const up = formatGapMark(value, system);
+        expect(up).not.toBe(formatMark(mm(0), system));
+        expect(up.startsWith("<")).toBe(false);
+      }
+    }
+  });
+
+  it("nothing off at all reads less than the smallest step, never within 0", () => {
+    expect(formatGapMark(mm(0), "imperial")).toBe('<1/16"');
+    expect(formatGapMark(mm(0), "metric")).toBe("<1 mm");
+    expect(formatGapMark(mm(1e-9), "imperial")).toBe('<1/16"');
+    expect(formatGapMark(mm(1e-7), "metric")).toBe("<1 mm");
+    // a millionth of a millimetre is the line: a gap past it is a gap
+    expect(formatGapMark(mm(2e-6), "imperial")).toBe('1/16"');
+    expect(formatGapMark(mm(2e-6), "metric")).toBe("1 mm");
   });
 });
 

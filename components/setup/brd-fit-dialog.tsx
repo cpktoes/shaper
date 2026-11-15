@@ -59,8 +59,9 @@ const pointsOf = (points: readonly (readonly [number, number])[]) => points.map(
  * fit with no blank picked. Under that sits the BOTTOM block (quick 261113-gwr): three of the file's cross-sections with our
  * fitted bottom dashed over each (their own Height pick, opening at x4), and a Nose / Centre / Tail table of what the file
  * measures at each, the cut and depth we fitted, and its sliders. Open as a Board opens with those cuts on BOTTOM. Under that
- * sits the RAILS block (quick 261113-kvo): the same three cross-sections at true height with the rail drawn, the file's solid and
- * ours dashed, and a table of the fitted RAILS settings in RAILS' own words; Open as a Board opens with those rails on RAILS.
+ * sits the RAILS block (quick 261113-kvo): the same three cross-sections with the rail drawn, the file's solid and ours dashed,
+ * under their own Height pick (opening at true height; quick 261114-vyl), and a table of the fitted RAILS settings in RAILS' own
+ * words; Open as a Board opens with those rails on RAILS.
  */
 export function BrdFitDialog({ look, fileName, onOpenBoard, onOpenChange, finalFocus }: BrdFitDialogProps) {
   return (
@@ -88,6 +89,8 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
   const [height, setHeight] = useState<SectionHeight>(BRD_PREVIEW_SIDE_HEIGHT);
   // The cross-sections have their own Height, opening at x4 as BOTTOM's own section does (D-13); never saved.
   const [sectionHeight, setSectionHeight] = useState<SectionHeight>(4);
+  // The RAILS block's cross-sections have their own Height too (quick 261114-vyl), opening at true height as the block always drew; never saved.
+  const [railHeight, setRailHeight] = useState<SectionHeight>(1);
   const sheet = useMemo(() => brdFitSheet(look, fileName, system), [look, fileName, system]);
   const blanks = useBrdBlankWords(look, system);
   const [preparing, setPreparing] = useState(false);
@@ -96,7 +99,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
   // Nothing is drawn until the column is measured, so the server and the first client paint agree.
   const frames = useMemo(() => (box.width > 0 ? brdFitFrames(look, box.width, height) : null), [look, box.width, height]);
   const sections = useMemo(() => brdBottomFrames(brdBottomRows(look), sectionHeight), [look, sectionHeight]);
-  const railDrawings = useMemo(() => brdRailFrames(brdRailRows(look), look), [look]);
+  const railDrawings = useMemo(() => brdRailFrames(brdRailRows(look), look, railHeight), [look, railHeight]);
   const c = BRD_FIT_COPY;
 
   /** Print Overview: the sheet the screen is painted from, on paper (a tab to print from on an iPhone, a download on Android). */
@@ -114,7 +117,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
         try {
           const { printBrdOverviewPdf } = await import("@/components/template/build-brd-overview-pdf");
           // The suggested blanks print once they are worked out; asked for a second early, the page goes without the block.
-          printBrdOverviewPdf({ look, sheet, fileName, height, sectionHeight, blanks: blanks.status === "loading" ? null : blanks }, tab);
+          printBrdOverviewPdf({ look, sheet, fileName, height, sectionHeight, railHeight, blanks: blanks.status === "loading" ? null : blanks }, tab);
         } catch {
           tab?.close();
           setPrintProblem(true);
@@ -273,7 +276,7 @@ function FitBody({ look, fileName, onOpenBoard }: { look: BrdFitLook; fileName: 
 
           <BottomBlock block={sheet.bottom} sections={sections} sectionHeight={sectionHeight} onSectionHeight={setSectionHeight} />
 
-          <RailsBlock block={sheet.rails} drawings={railDrawings} />
+          <RailsBlock block={sheet.rails} drawings={railDrawings} height={railHeight} onHeight={setRailHeight} />
 
           {sheet.fins !== null && <FinsBlock block={sheet.fins} />}
 
@@ -450,11 +453,23 @@ function BottomBlock({
 }
 
 /**
- * The RAILS block (quick 261113-kvo), in the BOTTOM block's family: its caption, the three cross-sections at true height with
- * the file's rail solid and ours dashed (the rail at the right, the stringer toward the left), and the Nose / Centre / Tail table
- * of the fitted settings in RAILS' own words and how close. Every word is the sheet's own; the drawings are `brdRailFrames`'.
+ * The RAILS block (quick 261113-kvo), in the BOTTOM block's family: its caption, the three cross-sections with the file's rail
+ * solid and ours dashed (the rail at the right, the stringer toward the left) under their own Height pick — BOTTOM's buttons,
+ * opening at true height, so a small rail can be opened up to read (quick 261114-vyl, the founder 2026-11-14) — and the Nose /
+ * Centre / Tail table of the fitted settings in RAILS' own words and how close. Every word is the sheet's own but the drawings'
+ * caption, which says the Height the frames were drawn at; the drawings are `brdRailFrames`'.
  */
-function RailsBlock({ block, drawings }: { block: BrdFitRailsBlock; drawings: ReturnType<typeof brdRailFrames> }) {
+function RailsBlock({
+  block,
+  drawings,
+  height,
+  onHeight,
+}: {
+  block: BrdFitRailsBlock;
+  drawings: ReturnType<typeof brdRailFrames>;
+  height: SectionHeight;
+  onHeight: (height: SectionHeight) => void;
+}) {
   if (!block.read) {
     return (
       <div data-brd-fit-rails className="flex flex-col gap-1">
@@ -470,8 +485,13 @@ function RailsBlock({ block, drawings }: { block: BrdFitRailsBlock; drawings: Re
       <div className={CAPTION_CLASS}>{block.caption}</div>
       {drawings.drawings.length > 0 && (
         <div className="flex flex-col gap-1">
-          <div className={CAPTION_CLASS} data-brd-fit-rail-sections-caption>
-            {block.drawingsCaption}
+          <div className="flex items-center justify-between gap-2">
+            <div className={CAPTION_CLASS} data-brd-fit-rail-sections-caption>
+              {BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(drawings))}
+            </div>
+            <div data-brd-fit-rail-height>
+              <HeightPicker height={height} onHeight={onHeight} which="section" />
+            </div>
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-3">
             {drawings.drawings.map((drawing) => {

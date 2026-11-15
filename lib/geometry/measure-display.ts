@@ -28,10 +28,12 @@ import {
   formatFeetInches,
   formatInchesFraction,
   formatInchesFractionOrLess,
+  formatInchesFractionUp,
   formatSignedInchesFraction,
   formatTenthMm,
   formatWholeMm,
   formatWholeMmOrLess,
+  formatWholeMmUp,
   inchesToMm,
   metricSliderRange,
   mm,
@@ -120,6 +122,23 @@ export function formatMarkOrLess(value: Mm, system: UnitsSystem): string {
 /** The bare form of `formatMarkOrLess`, for a table whose column head carries the unit: `<1/16"`, `<1`. */
 export function formatMarkOrLessBare(value: Mm, system: UnitsSystem): string {
   return system === "metric" ? formatWholeMmOrLess(value) : formatInchesFractionOrLess(value);
+}
+
+/** A gap this small is nothing off: the float noise an exact landing leaves (a millionth of a millimetre). */
+const NOTHING_OFF: Mm = mm(1e-6);
+
+/**
+ * A gap's size — how far one thing misses another — as a mark that never understates it (the founder, 2026-11-14, quick
+ * 261114-vyl: the board-file preview's how-close figures "round up", so a shaper is never told a fit is exact when it is
+ * not). Rounded UP to the next sixteenth in Imperial (`formatInchesFractionUp`), the next whole millimetre in Metric
+ * (`formatWholeMmUp`): a 2.07 mm miss reads `1/8"` / `3 mm`, a 0.3 mm one `1/16"` / `1 mm`. Nothing at all off — a gap of
+ * no more than `NOTHING_OFF`, a millionth of a millimetre, the float noise an exact landing leaves — reads "less than the
+ * smallest step", `<1/16"` / `<1 mm`, never `0"`: there is no such thing as a fit the tape could call exact, only one it
+ * cannot see. Every other how-close figure is at least one step. For gaps only; a setting or a size reads `formatMark`.
+ */
+export function formatGapMark(value: Mm, system: UnitsSystem): string {
+  if (Math.abs(value) <= NOTHING_OFF) return system === "metric" ? "<1 mm" : '<1/16"';
+  return system === "metric" ? `${formatWholeMmUp(value)} mm` : formatInchesFractionUp(value);
 }
 
 /**

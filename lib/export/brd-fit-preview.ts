@@ -6,7 +6,9 @@
  *
  * Every figure a shaper reads goes through `lib/geometry/units.ts` and `measure-display.ts` (Rule 2): dims (a size, a
  * distance along the board) and marks (a gap, a rocker height, a thickness) read in their own families, in the system the
- * shaper picked. Rounding happens here, for display only; the fit itself keeps actual values.
+ * shaper picked. Rounding happens here, for display only; the fit itself keeps actual values. A how-close figure — how far
+ * our fit misses the file — is rounded UP (`formatGapMark`, the founder 2026-11-14, quick 261114-vyl); a setting or a size
+ * read off the file (a wing's depth, a point's thickness) rounds to the nearest as every mark does.
  *
  * Quick 261113-et0 (the founder, 2026-11-13) makes the preview something a shaper keeps and builds from: `BRD_FIT_COPY` holds
  * every word of the preview AND of the one-page overview that prints from it, and `brdFitSheet` builds every line and table
@@ -47,6 +49,7 @@ import {
   brdRailWindows,
   brdRailsSpec,
   fitBrdRails,
+  fitBrdTailBlend,
   measureBrdRails,
   type BrdRailGap,
   type BrdRailLine,
@@ -67,12 +70,13 @@ import {
   type BrdOutlineWidths,
   type Closeness,
 } from "../geometry/brd-fit";
-import { sectionHeightLabel, type SectionHeight } from "../geometry/bottom-draw";
+import type { SectionHeight } from "../geometry/bottom-draw";
 import { bottomRailLift, designFinPlacement, railsOnTheBottom } from "../geometry/design";
 import { FIN_SYSTEMS, type FinPlacementResult, type FinPlacementSpec } from "../geometry/fins";
 import {
   formatControlNumber,
   formatDim,
+  formatGapMark,
   formatMark,
   formatMarkOrLess,
   formatSignedDim,
@@ -233,7 +237,9 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
     }
   }
   const narrowed = found.narrowed;
-  const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed });
+  // The tail blend last (quick 261114-vyl): where the tail's rail fades into the centre's, read from the sections between them.
+  const blend = fitBrdTailBlend(railLines, onBoard(current), settings);
+  const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed, blend });
   const whole = brdRailWholeValue(railLines, onBoard(current), bottomFirst.rails);
   const kinds = BOTTOM_KEYS.map((key) => cutKind(current.bottom.bottom[key].name));
   const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst, fins: finsFit };
@@ -247,7 +253,8 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const railsFirst = bottomOn(board, lines, first, fins, sectionWindows(flatWindows.windows));
   if (!railsFirst) return result;
   const polished = fitBrdRails(railLines, onBoard(railsFirst), flatSettings);
-  const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true });
+  const blendFirst = fitBrdTailBlend(railLines, onBoard(railsFirst), polished);
+  const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true, blend: blendFirst });
   const wholeFirst = brdRailWholeValue(railLines, onBoard(railsFirst), measured.rails);
   if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return result;
   return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured, fins: finsFit };
@@ -452,8 +459,8 @@ export function gapWhere(at: Mm, length: Mm, system: UnitsSystem): string {
 
 function closeWords(c: Closeness, length: Mm, side: BrdFitCloseWords["side"], system: UnitsSystem): BrdFitCloseWords {
   return {
-    largest: formatMarkOrLess(c.largest, system),
-    typical: formatMarkOrLess(c.typical, system),
+    largest: formatGapMark(c.largest, system),
+    typical: formatGapMark(c.typical, system),
     at: formatDim(c.at, system),
     where: gapWhere(c.at, length, system),
     side,
@@ -649,10 +656,11 @@ export const BRD_FIT_COPY = {
    * `lib/` cannot import a component; a test holds each to that file's text. The nudge names come from `RAIL_NUDGE_NAMES`.
    */
   railsCaption: "RAILS",
+  /** The rail drawings' caption, from the frames' own Height (quick 261114-vyl): `CROSS-SECTIONS · TRUE HEIGHT`, `… · HEIGHT ×4`. */
   railSectionsCaption: (heightLabel: string) => `CROSS-SECTIONS · ${heightLabel}`,
   railSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
   railColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<RailSectionKey, string>,
-  railRowLabels: { at: "Read at", deck: "Deck Profile", shape: "Family · Ratio", ticked: "Ticked", advanced: "Advanced", close: "How close" } as const,
+  railRowLabels: { at: "Read at", deck: "Deck Profile", shape: "Family · Ratio", ticked: "Ticked", advanced: "Advanced", blend: "Tail Rail blend", close: "How close" } as const,
   railWords: {
     deckProfile: "Deck Profile",
     family: "Family",
@@ -662,7 +670,11 @@ export const BRD_FIT_COPY = {
     scaledFromCenter: "Scaled from center by",
     singleTuck: "Use Single Tuck",
     sharpBottomTuck: "Sharp Bottom Tuck",
+    blendsFrom: "Tail Rail Blends From",
+    endsAt: "Tail Rail Ends At",
   } as const,
+  /** The Tail Rail blend row's tail cell (quick 261114-vyl): the two sliders' words with the dims they open at. */
+  railBlendCell: (blendsFrom: string, endsAt: string) => `Blends From ${blendsFrom} · Ends At ${endsAt}`,
   /** Where a rail's widest gap sits, as words: `at the rail`, `on the deck 4 3/8" in from the rail`. */
   railAtRail: "at the rail",
   railOnDeck: (inFromRail: string) => `on the deck ${inFromRail} in from the rail`,
@@ -672,9 +684,18 @@ export const BRD_FIT_COPY = {
   railRegionNote: (strip: string) =>
     `Each rail is read from the outer ${strip} of the file's bottom, round the rail and over the deck to the stringer, against our board's own cross-section at the same place — our bottom included. Between the three, RAILS blends one rail into the next.`,
   railsFirstNote: "This file's rail rolls in from well off the rail, so its rails were fitted first and its bottom read only out to where our rail begins.",
-  railBlendNote: "Tail Rail Blends From and Ends At are left where a new board puts them.",
+  /**
+   * The tail blend's note (quick 261114-vyl): fitted to the file's sections between the tail and the centre, with how close
+   * (`railCellClose`'s words), or left where a new board puts them and why.
+   */
+  railBlendFitted: (sections: number, close: string) =>
+    `Tail Rail Blends From and Ends At were fitted to the ${sections} cross-sections from the tail's rail to the centre's: ${close}.`,
+  railBlendSameRail: "Tail Rail Blends From and Ends At are left where a new board puts them: the tail's rail is the centre's, so there is nothing to blend.",
+  railBlendNoSections:
+    "Tail Rail Blends From and Ends At are left where a new board puts them: the file has too few cross-sections between the tail and the centre to read them from.",
   railsUnread: "The file's rails couldn't be read: it has no cross-sections we could use, so the board opens with a new board's rails.",
-  railLine: (nose: string, center: string, tail: string) => `Rails: Nose ${nose} · Centre ${center} · Tail ${tail}`,
+  railLine: (nose: string, center: string, tail: string, blend: string | null = null) =>
+    `Rails: Nose ${nose} · Centre ${center} · Tail ${tail}${blend === null ? "" : ` · ${blend}`}`,
   rockerLines:
     "The file's rocker is the finished board's, along the stringer; ours is the board before contours. Under a concave the finished rocker reads more, by the concave's depth there; under a flat, vee or belly the two are the same line.",
   stringerNote: (lift: string, station: string) =>
@@ -723,9 +744,11 @@ export function lessThan(figure: string): string {
 }
 
 /**
- * How close one curve gets, as a sentence. A figure under the smallest step reads "less than", never "within <1/16"" (the
- * awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one place that rule lives. The outline
- * also says which way the file lies from ours at its widest gap, since that is where a wing or a tweak belongs.
+ * How close one curve gets, as a sentence. Every figure is a gap, so it is rounded UP to the next sixteenth or whole
+ * millimetre (`formatGapMark`; the founder, 2026-11-14: a 0.01" miss never reads as exact), and a gap of nothing reads "less
+ * than", never "within <1/16"" (the awkward wording 261113-d9b shipped, ruled on by the founder 2026-11-13): this is the one
+ * place that rule lives. The outline also says which way the file lies from ours at its widest gap, since that is where a
+ * wing or a tweak belongs.
  */
 export function closenessSentence(what: "Outline" | "Rocker" | "Thickness" | "Bottom" | "Rails", w: BrdFitCloseWords): string {
   const head = w.largest.startsWith("<") ? `${what}: ${lessThan(w.largest)} off` : `${what}: within ${w.largest}`;
@@ -792,13 +815,13 @@ export interface BrdFitRailColumn {
 
 /** One row of the RAILS table: its words, then the nose, centre and tail cells in that order. */
 export interface BrdFitRailRow {
-  key: "at" | "deck" | "shape" | "ticked" | "advanced" | "close";
+  key: "at" | "deck" | "shape" | "ticked" | "advanced" | "blend" | "close";
   label: string;
   cells: [string, string, string];
 }
 
 export type BrdFitRailsBlock =
-  | { read: true; caption: string; drawingsCaption: string; columns: BrdFitRailColumn[]; rows: BrdFitRailRow[]; notes: string[] }
+  | { read: true; caption: string; columns: BrdFitRailColumn[]; rows: BrdFitRailRow[]; notes: string[] }
   | { read: false; caption: string; line: string };
 
 /** One column of the BOTTOM table: a section key, its heading, and the caption of the drawing above it (null: no section here). */
@@ -1051,8 +1074,8 @@ function bottomSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFi
 function closeWordsOf(found: BrdBottomFit, length: Mm, system: UnitsSystem): BrdFitCloseWords {
   const { largest, typical, station, across } = found.closeness;
   return {
-    largest: formatMarkOrLess(largest, system),
-    typical: formatMarkOrLess(typical, system),
+    largest: formatGapMark(largest, system),
+    typical: formatGapMark(typical, system),
     at: formatDim(station, system),
     where: `at the section ${gapWhere(station, length, system)}, ${formatMark(across, system)} out from the stringer`,
     side: null,
@@ -1103,6 +1126,9 @@ export interface BrdRailFrames {
   height: number;
   /** How far in from the widest point the drawings run (millimetres): the stretch RAILS' own plot shows, never past the stringer. */
   span: Mm;
+  /** The Height pick (quick 261114-vyl), and the factor actually drawn (less than asked when the rail would not fit its room). */
+  heightAsked: SectionHeight;
+  heightDrawn: number;
   /** Nose, centre, tail, for the rows that have a section. */
   drawings: BrdRailDrawing[];
 }
@@ -1127,16 +1153,22 @@ function clipFrom(points: readonly P2[], xMin: number): P2[] {
 }
 
 /**
- * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide, the way RAILS draws a rail: true proportions (one scale
- * both ways, no Height pick), the rail at the right with the stringer toward the left, the file solid and ours dashed. All three
- * share one scale; the span in from the widest point is the widest stretch RAILS' own plot shows for our fitted rails (2" beyond
- * the Domed Deck Band, `railPlotBounds`), never past the stringer, and fills the width less the air. Heights are measured from the
- * stringer's bottom, so a concave hangs the rail's bottom below it and a vee lifts it above.
+ * The cross-sections as drawings, `BRD_BOTTOM_DRAWING_WIDTH` units wide, the way RAILS draws a rail: the rail at the right with the
+ * stringer toward the left, the file solid and ours dashed. All three share one scale across; the span in from the widest point is
+ * the widest stretch RAILS' own plot shows for our fitted rails (2" beyond the Domed Deck Band, `railPlotBounds`), never past the
+ * stringer, and fills the width less the air. Up is the Height pick times that scale (quick 261114-vyl, the founder 2026-11-14: the
+ * rails were small at true height and the two lines hid each other where they agree, so the block gets BOTTOM's Height buttons):
+ * ×1 is true proportions exactly as the block always drew, and a taller pick is held to a drawing as tall as it is wide
+ * (`RAIL_DRAWING_TALLEST`), `heightDrawn` saying what was drawn. Heights are measured from the stringer's bottom, so a concave hangs the rail's
+ * bottom below it and a vee lifts it above.
  */
-export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook): BrdRailFrames {
+/** The tallest a rail drawing may stand under a Height pick: as tall as it is wide (units). */
+export const RAIL_DRAWING_TALLEST = BRD_BOTTOM_DRAWING_WIDTH;
+
+export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook, height: SectionHeight = 1): BrdRailFrames {
   const { air, pad } = BOTTOM_DRAWING;
   const drawn = rows.filter((row): row is { key: RailSectionKey; section: BrdRailSection } => row.section !== null && row.section.ours.length > 0 && row.section.file.length > 0);
-  if (drawn.length === 0 || !look.rails) return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, span: mm(0), drawings: [] };
+  if (drawn.length === 0 || !look.rails) return { width: BRD_BOTTOM_DRAWING_WIDTH, height: 2 * pad, span: mm(0), heightAsked: height, heightDrawn: height, drawings: [] };
   const outputs = railOutputs(look);
   const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
   const widestPlot = Math.max(...drawn.map((row) => -railPlotBounds(outputs[row.key].result).xAxisMin));
@@ -1153,14 +1185,20 @@ export function brdRailFrames(rows: readonly BrdRailRow[], look: BrdFitLook): Br
   const values = cuts.flatMap((c) => [...c.file, ...c.fit].map((p) => p[1]));
   const up = Math.max(1, ...values);
   const down = Math.max(0, -Math.min(0, ...values));
-  const y0 = pad + up * kx;
+  // True height at ×1, always; a taller pick is held to a drawing as tall as it is wide (a rail stands tall over its short span
+  // already, so the BOTTOM sections' room would leave no stretch at all).
+  let ky = kx * height;
+  if (height > 1 && (up + down) * ky > RAIL_DRAWING_TALLEST - 2 * pad) ky = Math.max(kx, (RAIL_DRAWING_TALLEST - 2 * pad) / (up + down));
+  const y0 = pad + up * ky;
   return {
     width: BRD_BOTTOM_DRAWING_WIDTH,
-    height: 2 * pad + (up + down) * kx,
+    height: 2 * pad + (up + down) * ky,
     span,
+    heightAsked: height,
+    heightDrawn: ky / kx,
     drawings: cuts.map(({ row, reach, file, fit }) => {
       const x = (v: number) => right - (reach - v) * kx;
-      const line = (points: readonly P2[]): P2[] => points.map(([a, h]): P2 => [x(a), y0 - h * kx]);
+      const line = (points: readonly P2[]): P2[] => points.map(([a, h]): P2 => [x(a), y0 - h * ky]);
       return {
         key: row.key,
         file: line(file),
@@ -1215,8 +1253,8 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
   const list = (words: string[]) => (words.length > 0 ? words.join(" · ") : c.noValue);
   const { closeness } = found;
   const w: BrdFitCloseWords = {
-    largest: formatMarkOrLess(closeness.largest, system),
-    typical: formatMarkOrLess(closeness.typical, system),
+    largest: formatGapMark(closeness.largest, system),
+    typical: formatGapMark(closeness.typical, system),
     at: formatDim(closeness.station, system),
     where: c.railWhereSection(gapWhere(closeness.station, length, system), railWhereWords(closeness.where, closeness.inFromRail, system)),
     side: null,
@@ -1224,12 +1262,20 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
   const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
   const notes = [c.railRegionNote(formatDim(BRD_RAIL_STRIP_MM, system)), c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))];
   if (found.order === "rails-first") notes.push(c.railsFirstNote);
-  notes.push(c.railBlendNote);
+  // The tail blend (quick 261114-vyl): the two sliders' dims when they were read, and the note saying how close or why not.
+  const { blend } = found;
+  const blendWords = blend.blend ? c.railBlendCell(formatDim(blend.blend.blendsFrom, system), formatDim(blend.blend.endsAt, system)) : null;
+  notes.push(
+    blend.read === "fitted" && blend.closeness
+      ? c.railBlendFitted(blend.sections, c.railCellClose(formatGapMark(blend.closeness.largest, system), formatGapMark(blend.closeness.typical, system)))
+      : blend.read === "sameRail"
+        ? c.railBlendSameRail
+        : c.railBlendNoSections,
+  );
   return {
     block: {
       read: true,
       caption: c.railsCaption,
-      drawingsCaption: c.railSectionsCaption(sectionHeightLabel({ heightAsked: 1, heightDrawn: 1 })),
       columns: RAIL_KEYS.map((key, k) => ({
         key,
         label: c.railColumns[key],
@@ -1243,11 +1289,12 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
         { key: "shape", label: c.railRowLabels.shape, cells: cells((key) => shape(key)) },
         { key: "ticked", label: c.railRowLabels.ticked, cells: cells((key) => list(tickedWords(key, look))) },
         { key: "advanced", label: c.railRowLabels.advanced, cells: cells((key) => list(advancedWords(key, look, system))) },
+        { key: "blend", label: c.railRowLabels.blend, cells: [c.noValue, c.noValue, blendWords ?? c.noValue] },
         {
           key: "close",
           label: c.railRowLabels.close,
           cells: cells((_k, row) =>
-            row.section ? c.railCellClose(formatMarkOrLess(row.section.gap.largest, system), formatMarkOrLess(row.section.gap.mean, system)) : c.noValue,
+            row.section ? c.railCellClose(formatGapMark(row.section.gap.largest, system), formatGapMark(row.section.gap.mean, system)) : c.noValue,
           ),
         },
       ],
@@ -1259,6 +1306,7 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
         const ticked = tickedWords(key, look);
         return ticked.length > 0 ? `${shape(key)}, ${ticked.join(" · ")}` : shape(key);
       }),
+      blend.blend ? `${c.railWords.blendsFrom} ${formatDim(blend.blend.blendsFrom, system)} · ${c.railWords.endsAt} ${formatDim(blend.blend.endsAt, system)}` : null,
     ),
   };
 }
@@ -1316,7 +1364,7 @@ function finsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitF
   const hold = c.finHoldDirections;
   const subject = c.finHoldSubjects;
   for (const { control, by } of found.short) {
-    const size = lessThan(formatMarkOrLess(by, system));
+    const size = lessThan(formatGapMark(by, system));
     const o = ours.side;
     const oc = ours.centre;
     const f = file.side;
@@ -1346,9 +1394,9 @@ function finsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFitF
   if (!found.systemNamed) notes.push(found.fileWord === null ? c.finSystemUnnamed : c.finSystemQuoted(found.fileWord));
   if (look.board.fins.dropped) notes.push(c.finsPartDropped);
 
-  // A fit that lands on the file's marks exactly leaves a gap of nothing, which is still "less than the smallest step" (a figure of
-  // nothing is read as that, never as "within 0").
-  const largest = formatMarkOrLess(mm(Math.max(found.largest.gap, 1e-6)), system);
+  // A fit that lands on the file's marks exactly leaves a gap of nothing, which reads "less than the smallest step" (never
+  // "within 0"); anything more rounds up to the step above it, like every how-close figure.
+  const largest = formatGapMark(found.largest.gap, system);
   return {
     block: { caption: c.finsCaption, rows, notes },
     closeness: c.finsClose(largest, c.finGapWhich[found.largest.which]),

@@ -24,7 +24,8 @@ import {
   deriveEffectiveRails,
   LIVE_DESIGN_RULES,
 } from "../geometry/design";
-import { formatControlNumber, formatDim, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
+import { sectionHeightLabel } from "../geometry/bottom-draw";
+import { formatControlNumber, formatDim, formatGapMark, formatMark, formatMarkOrLess, formatSignedDim, formatSignedMark, stationLabel } from "../geometry/measure-display";
 import { MEASURE_STATION_MM, buildOutline } from "../geometry/outline";
 import { formatCentimetres, formatFeetInches, formatInchesFraction, inchesToMm, mm } from "../geometry/units";
 import { effectiveWingRadius, wingRadiusTop } from "../geometry/wings";
@@ -47,6 +48,7 @@ import {
   brdFitLook,
   brdRailFrames,
   brdRailRows,
+  RAIL_DRAWING_TALLEST,
   type BrdFitLook,
 } from "./brd-fit-preview";
 import { BOTTOM_COPY } from "@/components/bottom/bottom-copy";
@@ -118,14 +120,14 @@ describe("brdFitWords", () => {
     );
     const c = look.fit.closeness;
     expect(words.outline).toEqual({
-      largest: formatMarkOrLess(c.outline.largest, "imperial"),
-      typical: formatMarkOrLess(c.outline.typical, "imperial"),
+      largest: formatGapMark(c.outline.largest, "imperial"),
+      typical: formatGapMark(c.outline.typical, "imperial"),
       at: formatDim(c.outline.at, "imperial"),
       where: expect.stringMatching(/ from the (tail|nose)$/),
       side: outlineGapSide(board.outline, look.fit.lines.outline, c.outline.at),
     });
     expect(words.rocker.at).toBe(formatDim(c.rocker.at, "imperial"));
-    expect(words.thickness.largest).toBe(formatMarkOrLess(c.thickness.largest, "imperial"));
+    expect(words.thickness.largest).toBe(formatGapMark(c.thickness.largest, "imperial"));
     expect(words.tipSkip).toBe(formatDim(inchesToMm(1), "imperial"));
     expect(words.controls.station).toBe(stationLabel("imperial"));
     expect(words.controls.length).toBe(formatFeetInches(look.fit.outline.length));
@@ -165,14 +167,25 @@ describe("brdFitWords", () => {
     expect(words.controls.rocker.nose12).toMatch(/^\d+ mm$/);
   });
 
-  it("says less than a millimetre for a gap that is there but under half one, and 0 for none", () => {
+  it("rounds every how-close figure UP: a gap that is there reads the step above it, and only nothing at all reads less than a step (the founder, 2026-11-14)", () => {
     const tiny = (largest: number) => ({
       ...look,
-      fit: { ...look.fit, closeness: { ...look.fit.closeness, outline: { largest: mm(largest), typical: mm(largest), at: mm(0) } } },
+      fit: { ...look.fit, closeness: { ...look.fit.closeness, outline: { largest: mm(largest), typical: mm(largest / 2), at: mm(0) } } },
     });
-    expect(brdFitWords(tiny(0.3), "metric").outline.largest).toBe("<1 mm");
-    expect(brdFitWords(tiny(0), "metric").outline.largest).toBe("0 mm");
-    expect(brdFitWords(tiny(0.3), "imperial").outline.largest).toBe('<1/16"');
+    expect(brdFitWords(tiny(0.3), "metric").outline.largest).toBe("1 mm");
+    expect(brdFitWords(tiny(0.3), "imperial").outline.largest).toBe('1/16"');
+    // 2.07 mm is a hair over a sixteenth (1.5875 mm): it used to read 1/16", the nearest; now 1/8", honest about the hair
+    expect(brdFitWords(tiny(2.07), "imperial").outline.largest).toBe('1/8"');
+    expect(brdFitWords(tiny(2.07), "metric").outline.largest).toBe("3 mm");
+    expect(brdFitWords(tiny(2.07), "imperial").outline.typical).toBe('1/16"');
+    // nothing off at all is less than the smallest step, never "within 0"
+    expect(brdFitWords(tiny(0), "metric").outline.largest).toBe("<1 mm");
+    expect(brdFitWords(tiny(0), "imperial").outline.largest).toBe('<1/16"');
+    for (const system of ["imperial", "metric"] as const) {
+      const words = brdFitWords(look, system);
+      expect(words.outline.largest).toBe(formatGapMark(look.fit.closeness.outline.largest, system));
+      expect(words.rocker.typical).toBe(formatGapMark(look.fit.closeness.rocker.typical, system));
+    }
   });
 
   it("falls back to the lines for a file with no size fields", () => {
@@ -651,8 +664,8 @@ describe("the BOTTOM block's rows and drawings (quick 261113-gwr)", () => {
       const c = concave.bottom!.closeness;
       expect(sheet.closeness.bottom).toBe(
         closenessSentence("Bottom", {
-          largest: formatMarkOrLess(c.largest, "imperial"),
-          typical: formatMarkOrLess(c.typical, "imperial"),
+          largest: formatGapMark(c.largest, "imperial"),
+          typical: formatGapMark(c.typical, "imperial"),
           at: formatDim(c.station, "imperial"),
           where: `at the section ${gapWhere(c.station, concave.board.length, "imperial")}, ${formatMark(c.across, "imperial")} out from the stringer`,
           side: null,
@@ -948,15 +961,63 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     expect(brdRailFrames(brdRailRows({ ...tucked, rails: null }), { ...tucked, rails: null }).drawings).toEqual([]);
   }, LONG);
 
-  it("words the RAILS block in both systems: columns, six rows, the ticked boxes in RAILS' own words, and the closeness sentence", () => {
+  it("brdRailFrames takes a Height (quick 261114-vyl): ×1 is true height exactly as before, ×4 stretches every line four times up on the same scale across, and a pick the room cannot hold is drawn as tall as it can be and says so", () => {
+    const rows = brdRailRows(tucked);
+    const one = brdRailFrames(rows, tucked);
+    expect(brdRailFrames(rows, tucked, 1)).toEqual(one);
+    expect(one.heightAsked).toBe(1);
+    expect(one.heightDrawn).toBe(1);
+    expect(sectionHeightLabel(one)).toBe("TRUE HEIGHT");
+    const four = brdRailFrames(rows, tucked, 4);
+    expect(four.heightAsked).toBe(4);
+    expect(four.width).toBe(one.width);
+    expect(four.span).toBe(one.span);
+    const kx = (BRD_BOTTOM_DRAWING_WIDTH - 60) / one.span;
+    if (four.heightDrawn === 4) {
+      expect(sectionHeightLabel(four)).toBe("HEIGHT ×4");
+      for (const [k, drawing] of four.drawings.entries()) {
+        const before = one.drawings[k];
+        // the same x for every point; the height above the bottom line four times what it was
+        for (const [i, [x, y]] of drawing.file.entries()) {
+          expect(x).toBeCloseTo(before.file[i][0], 9);
+          expect(drawing.bottomLine.y - y).toBeCloseTo(4 * (before.bottomLine.y - before.file[i][1]), 6);
+        }
+        for (const [i, [x, y]] of drawing.fit.entries()) {
+          expect(x).toBeCloseTo(before.fit[i][0], 9);
+          expect(drawing.bottomLine.y - y).toBeCloseTo(4 * (before.bottomLine.y - before.fit[i][1]), 6);
+        }
+      }
+    } else {
+      // held to the room: taller than true height, no taller than the BOTTOM block's sections may stand, and the label says the factor drawn
+      expect(four.heightDrawn).toBeGreaterThan(1);
+      expect(four.heightDrawn).toBeLessThan(4);
+      expect(four.height).toBeLessThanOrEqual(RAIL_DRAWING_TALLEST + 1e-6);
+      expect(sectionHeightLabel(four)).toBe(`HEIGHT ×${four.heightDrawn.toFixed(1)}`);
+    }
+    const eight = brdRailFrames(rows, tucked, 8);
+    expect(eight.heightDrawn).toBeGreaterThanOrEqual(four.heightDrawn - 1e-9);
+    expect(eight.heightDrawn).toBeLessThanOrEqual(8);
+    expect(eight.height).toBeLessThanOrEqual(Math.max(one.height, RAIL_DRAWING_TALLEST) + 1e-6);
+    // the scale across never moves with the Height
+    for (const frames of [four, eight]) {
+      for (const [k, drawing] of frames.drawings.entries()) expect(drawing.file.map((p) => p[0])).toEqual(one.drawings[k].file.map((p) => p[0]));
+    }
+    // and a look with no rails still answers its Height
+    const none = brdRailFrames(brdRailRows({ ...tucked, rails: null }), { ...tucked, rails: null }, 4);
+    expect(none.drawings).toEqual([]);
+    expect(none.heightAsked).toBe(4);
+    void kx;
+  }, LONG);
+
+  it("words the RAILS block in both systems: columns, seven rows, the ticked boxes in RAILS' own words, and the closeness sentence", () => {
     for (const system of ["imperial", "metric"] as const) {
       const sheet = brdFitSheet(tucked, "Tucked.brd", system);
       expect(sheet.rails.read).toBe(true);
       if (!sheet.rails.read) throw new Error("unreachable");
       expect(sheet.rails.caption).toBe("RAILS");
-      expect(sheet.rails.drawingsCaption).toBe("CROSS-SECTIONS · TRUE HEIGHT");
+      expect(BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(brdRailFrames(brdRailRows(tucked), tucked)))).toBe("CROSS-SECTIONS · TRUE HEIGHT");
       expect(sheet.rails.columns.map((c) => c.label)).toEqual(["Nose", "Centre", "Tail"]);
-      expect(sheet.rails.rows.map((r) => r.key)).toEqual(["at", "deck", "shape", "ticked", "advanced", "close"]);
+      expect(sheet.rails.rows.map((r) => r.key)).toEqual(["at", "deck", "shape", "ticked", "advanced", "blend", "close"]);
       const row = (key: string) => sheet.rails.read && sheet.rails.rows.find((r) => r.key === key)!;
       const rails = tucked.rails!.rails;
       // the tapered thickness RAILS' own Deck Profile label shows, as a mark
@@ -971,12 +1032,48 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
       expect((row("close") as { cells: string[] }).cells.every((c) => /^(within|less than) /.test(c))).toBe(true);
       expect(sheet.closeness.rails).toMatch(/^Rails: (within|less than) /);
       expect(sheet.closeness.rails).toMatch(/at the rail|on the (deck|bottom) .+ in from the rail/);
-      expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck$/);
+      expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck · Tail Rail Blends From .+ · Tail Rail Ends At .+$/);
       expect(sheet.rails.notes[0]).toBe(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), system)));
-      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(BRD_FIT_COPY.railBlendNote);
+      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toMatch(/^Tail Rail Blends From and Ends At were fitted to the \d+ cross-sections/);
       expect(sheet.notRead).toBe(BRD_FIT_COPY.noFins);
     }
   }, LONG);
+
+  it("words the tail blend (quick 261114-vyl): the Tail Rail row's tail cell, the controls line's last piece and the note carry the two dims and how close, or say why the two were left", () => {
+    const blend = tucked.rails!.blend;
+    expect(blend.read).toBe("fitted");
+    if (!blend.blend || !blend.closeness) throw new Error("the tucked board's tail blend should be fitted");
+    for (const system of ["imperial", "metric"] as const) {
+      const sheet = brdFitSheet(tucked, "T.brd", system);
+      if (!sheet.rails.read) throw new Error("unreachable");
+      const row = sheet.rails.rows.find((r) => r.key === "blend")!;
+      expect(row.label).toBe("Tail Rail blend");
+      expect(row.cells[0]).toBe(BRD_FIT_COPY.noValue);
+      expect(row.cells[1]).toBe(BRD_FIT_COPY.noValue);
+      // the two are dims — a distance along the board — so centimetres to one decimal in Metric, never millimetres
+      expect(row.cells[2]).toBe(`Blends From ${formatDim(blend.blend.blendsFrom, system)} · Ends At ${formatDim(blend.blend.endsAt, system)}`);
+      if (system === "metric") expect(row.cells[2]).toMatch(/^Blends From \d+\.\d cm · Ends At \d+\.\d cm$/);
+      expect(sheet.controls.rails!.endsWith(` · Tail Rail Blends From ${formatDim(blend.blend.blendsFrom, system)} · Tail Rail Ends At ${formatDim(blend.blend.endsAt, system)}`)).toBe(true);
+      const note = sheet.rails.notes[sheet.rails.notes.length - 1];
+      expect(note).toBe(
+        BRD_FIT_COPY.railBlendFitted(blend.sections, BRD_FIT_COPY.railCellClose(formatGapMark(blend.closeness.largest, system), formatGapMark(blend.closeness.typical, system))),
+      );
+      expect(note).toMatch(/^Tail Rail Blends From and Ends At were fitted to the \d+ cross-sections from the tail's rail to the centre's: (within|less than) .+, typically .+\.$/);
+    }
+    // left where a new board puts them: the cell is empty, the controls line stops at the tail, and the note says why
+    for (const [read, words] of [
+      ["sameRail", BRD_FIT_COPY.railBlendSameRail],
+      ["noSections", BRD_FIT_COPY.railBlendNoSections],
+    ] as const) {
+      const left = { ...tucked, rails: { ...tucked.rails!, blend: { blend: null, read, sections: 0, closeness: null } } };
+      const sheet = brdFitSheet(left, "T.brd", "imperial");
+      if (!sheet.rails.read) throw new Error("unreachable");
+      expect(sheet.rails.rows.find((r) => r.key === "blend")!.cells).toEqual([BRD_FIT_COPY.noValue, BRD_FIT_COPY.noValue, BRD_FIT_COPY.noValue]);
+      expect(sheet.controls.rails).toMatch(/Use Single Tuck · Sharp Bottom Tuck$/);
+      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(words);
+      expect(words).toMatch(/^Tail Rail Blends From and Ends At are left where a new board puts them: /);
+    }
+  });
 
   it("words the Advanced menu's moved settings: Scaled from center by on a tip, then each nudge as a signed mark", () => {
     const base = brdFitSheet(tucked, "T.brd", "imperial");
@@ -1147,12 +1244,12 @@ describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
   });
 
   it("says how close, by the one less-than rule, and names the widest gap when it is wider", () => {
-    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe(`Fins: ${lessThan(formatMarkOrLess(mm(Math.max(twin.fins!.largest.gap, 1e-6)), "imperial"))} off`);
+    expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe(`Fins: ${lessThan(formatGapMark(twin.fins!.largest.gap, "imperial"))} off`);
     expect(brdFitSheet(twin, "T.brd", "imperial").closeness.fins).toBe('Fins: less than 1/16" off');
     expect(brdFitSheet(twin, "T.brd", "metric").closeness.fins).toBe("Fins: less than 1 mm off");
     // the Keel pattern's toe-in stops at FINS' 1/2" top, which leaves the toe-in as the widest gap
     const wide = brdFitSheet(keel, "K.brd", "imperial").closeness.fins!;
-    expect(wide).toBe(c.finsClose(formatMarkOrLess(keel.fins!.largest.gap, "imperial"), c.finGapWhich[keel.fins!.largest.which]));
+    expect(wide).toBe(c.finsClose(formatGapMark(keel.fins!.largest.gap, "imperial"), c.finGapWhich[keel.fins!.largest.which]));
     expect(wide).toMatch(/^Fins: within .+, the widest gap the side fins' toe-in$/);
   });
 
@@ -1176,7 +1273,7 @@ describe("the FINS block, its lines and its drawing (quick 261113-qyz)", () => {
     const hold = keel.fins!.short.find((s) => s.control === "toeIn")!;
     expect(hold).toBeDefined();
     expect(notes).toContain(
-      c.finHold(c.finHoldSubjects.sideToe, lessThan(formatMarkOrLess(hold.by, "imperial")), c.finHoldDirections.less, c.finWords.toeIn, formatMark(keel.fins!.ours.side!.toeIn, "imperial")),
+      c.finHold(c.finHoldSubjects.sideToe, lessThan(formatGapMark(hold.by, "imperial")), c.finHoldDirections.less, c.finWords.toeIn, formatMark(keel.fins!.ours.side!.toeIn, "imperial")),
     );
     expect(brdFitSheet(twin, "T.brd", "imperial").fins!.notes.filter((n) => n.includes("goes no further than"))).toEqual([]);
   });

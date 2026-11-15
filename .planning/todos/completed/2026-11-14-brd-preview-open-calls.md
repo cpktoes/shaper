@@ -35,3 +35,17 @@ His word on each, then a small task for whichever he wants. The live-site check 
 ## Ruled (2026-11-14)
 
 The founder picked all four: a TRI always opens as a Thruster; the how-close figures round up; a Height picker (×1/×2/×4/×8) on the preview's RAILS block; Tail Rail Blends From and Ends At fitted from the file. One quick task, or one per item. The live-site check of a .brd stays his to try.
+
+## Done (2026-11-14, quick 261114-vyl)
+
+All four built, each its own commit on the worktree's branch, with unit tests on the pure code and the board-file browser
+spec extended for the two that change the screen:
+
+- `6792693c` — a TRI always opens as a Thruster (`lib/geometry/brd-fins.ts`).
+- `6f8b06a9` — every how-close figure rounds up (`formatInchesFractionUp` / `formatWholeMmUp` in `units.ts`,
+  `formatGapMark` in `measure-display.ts`); the printed overview reads the same sheet.
+- `33dccef8` — the RAILS block's Height picker (×1 ×2 ×4 ×8, opening at true height), on the screen and the printed page.
+- `786f321a` — Tail Rail Blends From and Ends At fitted from the file's sections between the tail and the centre
+  (`fitBrdTailBlend` in `brd-rails.ts`), a Tail Rail blend row, the note and the controls line; the opened board carries them.
+
+The live-site check of a `.brd` stays the founder's to try.
