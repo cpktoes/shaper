@@ -76,3 +76,15 @@ So this task is: a `catalog_url` (or corrected slug) per blank in the seed CSVs 
 rule in `lib/blanks/`, the seed re-applied to both databases (an additive data change — production first, with the
 founder present, as every seed run has been), and only then the links on the picked blank's card and the DATASHEET.
 
+
+## Done (2026-11-14, quick 261114-vwo)
+
+Built to the founder's ruling. Every blank in the four seed files now carries `catalog_url`, written out in full from
+the audit's verified pages (US Blanks 101 of 101, Marko Foam 23 of 28, Millennium Foam 59 of 61; Arctic Foam's 2024
+catalogue PDF at the blank's own page, all 33 pages checked against the seed with pypdf). `lib/blanks/catalog-link.ts`
+is the one rule that turns the stored address into a link — only when it starts with that maker's known address — and
+`components/rocker/blank-catalog-link.tsx` draws it in the two ruled places: a CATALOG PAGE action beside Change Blank
+on the BLANK button's card, and the DATASHEET footnote's "page N". A board saved before the column existed looks its
+address up in the loaded catalogue by maker and name. The old `catalog_slug` column stays as it was — it is the
+transcription's provenance, not the link. Development migrated (0013) and re-seeded; production is the founder's:
+migrate → seed → deploy, in the task's SUMMARY.
