@@ -117,3 +117,9 @@ How a correction round runs (part 1 is the worked example):
   recorded boards are pinned to the blanks they were recorded on
   (`lib/geometry/__fixtures__/phase11-foil-golden-blanks.json`), so later rounds do not disturb
   those tests.
+
+## Done
+
+2026-11-15 — closed at the founder's word ("pretty sure I've updated the blank catalogue dims already with my corrections"), fast task 214. The founder's own list was worked on 2026-10-14 through the outlier page of quick 261013-uoj, which ran all 223 blanks from the four makers: the first review changed 52 station figures across three makers (5160d4b3), the second three more (d54d885b), each row's note saying what changed, from what, on what day and why — 53 flagged "by the founder" in the seed. Both are on the live main, and production's seed check on 2026-11-14 read 223 of 223 matching the catalogue files exactly.
+
+Of the curve research's five flags (2026-10-02): the 6'5"R's tail 12" rocker was corrected to 15/16". The 9'9"B, the 6'2"P's nose 6", and the Marko 8'0" and 10'6" Guns' nose rockers were on the page the founder reviewed and were left as printed — his call, and they stay as the catalog prints them.
