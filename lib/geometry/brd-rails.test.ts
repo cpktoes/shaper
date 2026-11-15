@@ -28,6 +28,7 @@ import {
   brdRailWindows,
   brdRailsSpec,
   fitBrdRails,
+  fitBrdTailBlend,
   newBoardRailSetting,
   type BrdRailLine,
   type BrdRailSettings,
@@ -44,6 +45,10 @@ import {
 import { buildOutline } from "./outline";
 import {
   DEFAULT_RAIL_BAND_SPEC,
+  defaultTailRailBlendsFrom,
+  defaultTailRailEndsAt,
+  hardEdgeBlendsFrom,
+  hardEdgeEndsAt,
   RAIL_NUDGE_KEYS,
   RAIL_NUDGE_LIMIT_IN,
   RAIL_NUDGE_STEP_IN,
@@ -508,4 +513,113 @@ describe("the stringer (R5)", () => {
       expect(shared).toBeGreaterThan(20);
     });
   }
+});
+
+/* ============ where the tail's rail blends into the centre's (quick 261114-vyl) ============ */
+
+describe("fitBrdTailBlend", () => {
+  const stockHard = results.find((r) => r.c.name.startsWith("H1"))!;
+  const tucked = results.find((r) => r.c.name.startsWith("H5"))!;
+  const half = (inches: number) => Math.abs(mmToInches(inchesToMm(inches)));
+  /** The stock board written with its tail blend set, read back and looked at whole. */
+  const withBlend = (fields: DesignSummaryFields, from: number, ends: number) => {
+    const c: Case = { name: `blend ${from}/${ends}`, fields: { ...fields, rails: { ...fields.rails, tailHardEdgeBlendsFrom: inchesToMm(from), tailHardEdgeEndsAt: inchesToMm(ends) } }, exact: false };
+    const file = writtenAndRead(c);
+    return { file, look: brdFitLook(file) };
+  };
+
+  it("a board written with a new board's blend comes back on it: 12 inches and the centre, said as fitted", () => {
+    for (const { look } of [stockHard, tucked]) {
+      const blend = look.rails!.blend;
+      expect(blend.read).toBe("fitted");
+      expect(blend.sections).toBeGreaterThanOrEqual(3);
+      expect(blend.closeness).not.toBeNull();
+      expect(mmToInches(blend.blend!.blendsFrom)).toBeCloseTo(mmToInches(defaultTailRailBlendsFrom(look.fit.outline.length)), 6);
+      expect(mmToInches(blend.blend!.endsAt)).toBeCloseTo(mmToInches(defaultTailRailEndsAt(blend.blend!.blendsFrom, look.fit.outline.length)), 6);
+    }
+  }, 120_000);
+
+  it("a Hard Edge tail written to blend from 18 to 28 inches comes back within half an inch of each, and 14 to 20 too", () => {
+    for (const [from, ends] of [
+      [18, 28],
+      [14, 20],
+    ] as const) {
+      const { look } = withBlend(stock, from, ends);
+      const blend = look.rails!.blend;
+      expect(blend.read, `${from}/${ends}`).toBe("fitted");
+      expect(Math.abs(mmToInches(blend.blend!.blendsFrom) - from), `${from}/${ends} blends from`).toBeLessThanOrEqual(half(0.5) + 1e-6);
+      expect(Math.abs(mmToInches(blend.blend!.endsAt) - ends), `${from}/${ends} ends at`).toBeLessThanOrEqual(half(0.5) + 1e-6);
+      // on the sliders' own grid, inside their windows
+      for (const v of [blend.blend!.blendsFrom, blend.blend!.endsAt]) expect(Math.abs((mmToInches(v) / 0.5) % 1)).toBeLessThan(1e-6);
+      expect(hardEdgeBlendsFrom(look.rails!.rails, look.fit.outline.length)).toBeCloseTo(blend.blend!.blendsFrom, 6);
+      expect(hardEdgeEndsAt(look.rails!.rails, look.fit.outline.length)).toBeCloseTo(blend.blend!.endsAt, 6);
+      // the two ride in the rails the board opens with, and in the sections measured
+      expect(look.rails!.rails.tailHardEdgeBlendsFrom).toBe(blend.blend!.blendsFrom);
+      expect(look.rails!.rails.tailHardEdgeEndsAt).toBe(blend.blend!.endsAt);
+    }
+  }, 240_000);
+
+  it("is at least as close over the sections between the tail and the centre as a new board's blend would be there", () => {
+    const { file, look } = withBlend(stock, 18, 28);
+    const { lines } = brdRailLines(file);
+    const board = brdRailBoard(look.fit, look.bottom!.bottom, look.fins?.spec);
+    const between = lines.filter((l) => l.station >= look.rails!.read.tail! && l.station <= look.rails!.read.center!);
+    expect(between.length).toBe(look.rails!.blend.sections);
+    const value = (rails: RailBandSpec) => {
+      let largest = 0;
+      let sum = 0;
+      for (const line of between) {
+        const gap = brdRailLineGap(line, brdOurRailHalf(board, rails, line.station));
+        largest = Math.max(largest, gap.largest);
+        sum += gap.mean;
+      }
+      return largest + sum / between.length;
+    };
+    const fitted = value(look.rails!.rails);
+    const plain = value(brdRailsSpec(look.rails!.settings, look.fit.foil));
+    expect(fitted).toBeLessThan(plain - 0.1);
+    expect(look.rails!.blend.closeness!.largest + look.rails!.blend.closeness!.typical).toBeCloseTo(fitted, 6);
+  }, 120_000);
+
+  it("leaves the two alone when the tail's rail is the centre's: nothing to blend", () => {
+    const board = brdRailBoard(stockHard.look.fit, stockHard.look.bottom!.bottom);
+    const settings: BrdRailSettings = { nose: newBoardRailSetting("nose"), center: newBoardRailSetting("center"), tail: { ...newBoardRailSetting("tail"), hardEdge: false } };
+    const fit = fitBrdTailBlend(brdRailLines(stockHard.file).lines, board, settings);
+    expect(fit).toEqual({ blend: null, read: "sameRail", sections: 0, closeness: null });
+    // and the rails spec carries nothing for them, so the board opens exactly as a new one
+    const spec = brdRailsSpec(settings, board.foil, fit.blend);
+    expect("tailHardEdgeBlendsFrom" in spec).toBe(false);
+    expect("tailHardEdgeEndsAt" in spec).toBe(false);
+  });
+
+  it("leaves the two alone when the file has too few sections between the tail and the centre", () => {
+    const board = brdRailBoard(stockHard.look.fit, stockHard.look.bottom!.bottom);
+    const { lines } = brdRailLines(stockHard.file);
+    const read = stockHard.look.rails!.read;
+    const anchorsOnly = lines.filter((l) => l.station === read.tail || l.station === read.center || l.station === read.nose);
+    expect(anchorsOnly.length).toBe(3);
+    const fit = fitBrdTailBlend(anchorsOnly, board, stockHard.look.rails!.settings);
+    expect(fit.read).toBe("noSections");
+    expect(fit.blend).toBeNull();
+    expect(fit.sections).toBe(2);
+    expect(fitBrdTailBlend([], board, stockHard.look.rails!.settings)).toEqual({ blend: null, read: "noSections", sections: 0, closeness: null });
+  });
+
+  it("brdRailsSpec carries the blend only when given one", () => {
+    const settings = stockHard.look.rails!.settings;
+    const foil = stockHard.look.fit.foil;
+    const blend = { blendsFrom: inchesToMm(16), endsAt: inchesToMm(30) };
+    expect(brdRailsSpec(settings, foil, blend)).toEqual({ ...brdRailsSpec(settings, foil), tailHardEdgeBlendsFrom: blend.blendsFrom, tailHardEdgeEndsAt: blend.endsAt });
+    expect(brdRailsSpec(settings, foil, null)).toEqual(brdRailsSpec(settings, foil));
+  });
+
+  it("the fitted blend rides in the opened board and reads back through the board reader", () => {
+    const { look } = withBlend(stock, 18, 28);
+    const fields = brdBoardFields(look.fit, "Blend.brd", look.bottom?.bottom ?? null, look.rails!.rails)!;
+    expect(fields.rails.tailHardEdgeBlendsFrom).toBeCloseTo(look.rails!.blend.blend!.blendsFrom, 9);
+    expect(fields.rails.tailHardEdgeEndsAt).toBeCloseTo(look.rails!.blend.blend!.endsAt, 9);
+    const back = readBoardEntry({ name: "Blend", design: buildSnapshot(fields) }, {})!.fields;
+    expect(back.rails.tailHardEdgeBlendsFrom).toBeCloseTo(look.rails!.blend.blend!.blendsFrom, 9);
+    expect(back.rails.tailHardEdgeEndsAt).toBeCloseTo(look.rails!.blend.blend!.endsAt, 9);
+  }, 120_000);
 });

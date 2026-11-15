@@ -7,7 +7,7 @@ import { BRD_FIT_COPY, brdBottomFrames, brdBottomRows, brdFitLook, brdFitSheet, 
 import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
-import { formatBottomStation } from "../lib/geometry/blank-reasons";
+import { formatBottomStation, formatHardEdgeBlendsFrom, formatHardEdgeEndsAt } from "../lib/geometry/blank-reasons";
 import { sectionHeightLabel } from "../lib/geometry/bottom-draw";
 import { DEFAULT_BOTTOM, resolveBottom, resolveCut, startingCut, stationFromNearestTip } from "../lib/geometry/bottom";
 import {
@@ -1246,8 +1246,8 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
     }
 
-    // The table: six rows by three columns, the words RAILS' own.
-    await expect(dialog.locator("[data-brd-fit-rails-row]")).toHaveCount(6);
+    // The table: seven rows by three columns, the words RAILS' own (the Tail Rail blend row since quick 261114-vyl).
+    await expect(dialog.locator("[data-brd-fit-rails-row]")).toHaveCount(7);
     for (const row of sheet.rails.rows) {
       for (const [i, key] of COLUMNS.entries()) {
         const cell = dialog.locator(`[data-brd-fit-rails-row="${row.key}"] [data-brd-fit-cell="${key}"]`);
@@ -1262,7 +1262,7 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
       await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(sheet.controls.rails!);
     } else {
       await expect(dialog.locator("[data-brd-fit-close-rails]")).toHaveText(/^Rails: (within|less than) /);
-      await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(/^Rails: Nose .+ · Centre .+ · Tail .+Use Single Tuck · Sharp Bottom Tuck$/);
+      await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(/^Rails: Nose .+ · Centre .+ · Tail .+Use Single Tuck · Sharp Bottom Tuck( · Tail Rail Blends From .+ · Tail Rail Ends At .+)?$/);
     }
     await expect(dialog.locator("[data-brd-fit-rails-note]").first()).toHaveText(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), "imperial")));
     await expect(dialog.locator("[data-brd-fit-not-read]")).toHaveText(BRD_FIT_COPY.noFins);
@@ -1334,6 +1334,61 @@ test.describe("The rails of a .brd (quick 261113-kvo)", () => {
     await expect(tail.getByRole("checkbox", { name: "Use Single Tuck" })).toBeChecked();
     await expect(tail.getByRole("checkbox", { name: "Sharp Bottom Tuck" })).toBeChecked();
     await expect(tail.getByRole("checkbox", { name: "Hard Edge" })).not.toBeChecked();
+  });
+
+  test("b38. a file whose tail rail blends from 18\" to 28\" opens with Tail Rail Blends From and Ends At fitted: the Tail Rail row, the note and the Rails line carry them, the kept board holds them, and RAILS' two sliders read them", async ({
+    page,
+  }, testInfo) => {
+    const file = railsFile("rails|blend-18-28", (r) => ({ ...r, tailHardEdgeBlendsFrom: inchesToMm(18), tailHardEdgeEndsAt: inchesToMm(28) }));
+    const look = lookOf(file.locked);
+    const sheet = brdFitSheet(look, "Blend.brd", "imperial");
+    if (!sheet.rails.read || !look.rails) throw new Error("the blended Shortboard's rails should be read");
+    const { blend } = look.rails;
+    if (blend.read !== "fitted" || !blend.blend) throw new Error("the blend should be fitted from the file's sections");
+    // within half an inch of what was written, on the sliders' 1/2" grid
+    expect(Math.abs(blend.blend.blendsFrom - inchesToMm(18))).toBeLessThanOrEqual(inchesToMm(0.5) + 1e-6);
+    expect(Math.abs(blend.blend.endsAt - inchesToMm(28))).toBeLessThanOrEqual(inchesToMm(0.5) + 1e-6);
+    const exact = testInfo.project.name !== "iphone";
+    const saves = watchSaves(page);
+    await page.goto("/");
+    await pickFile(page, "Blend.brd", file.locked);
+    const dialog = dialogOf(page);
+    await expect(dialog).toBeVisible();
+    const cell = dialog.locator('[data-brd-fit-rails-row="blend"] [data-brd-fit-cell="tail"]');
+    const row = sheet.rails.rows.find((r) => r.key === "blend")!;
+    if (exact) await expect(cell).toHaveText(row.cells[2]);
+    else await expect(cell).toHaveText(/^Blends From \d.*" · Ends At \d.*"$/);
+    await expect(dialog.locator('[data-brd-fit-rails-row="blend"] [data-brd-fit-cell="nose"]')).toHaveText(BRD_FIT_COPY.noValue);
+    const note = dialog.locator("[data-brd-fit-rails-note]").last();
+    if (exact) await expect(note).toHaveText(sheet.rails.notes[sheet.rails.notes.length - 1]);
+    else await expect(note).toHaveText(/^Tail Rail Blends From and Ends At were fitted to the \d+ cross-sections/);
+    if (exact) await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(sheet.controls.rails!);
+    else await expect(dialog.locator('[data-brd-fit-control="rails"]')).toHaveText(/ · Tail Rail Blends From .+ · Tail Rail Ends At .+$/);
+    // The cell stays inside the screen, a phone included.
+    await cell.scrollIntoViewIfNeeded();
+    const box = await cell.boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) throw new Error("no box for the blend cell or the viewport");
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
+
+    // Open as a Board: the kept board carries the two.
+    await dialog.getByRole("button", { name: BRD_FIT_COPY.openBoard, exact: true }).click();
+    await expect(page).toHaveURL(/\/design\/outline$/);
+    await expect.poll(async () => (await storedOpenBoard(page))?.snapshot.design.boardName, { timeout: 30_000 }).toBe("Blend");
+    const design = (await storedOpenBoard(page))!.snapshot.design as unknown as { rails: { tailHardEdgeBlendsFrom?: number; tailHardEdgeEndsAt?: number } };
+    const tolerance = testInfo.project.name === "iphone" ? inchesToMm(0.5) + 0.01 : 1e-6;
+    expect(Math.abs((design.rails.tailHardEdgeBlendsFrom ?? Number.NaN) - blend.blend.blendsFrom)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs((design.rails.tailHardEdgeEndsAt ?? Number.NaN) - blend.blend.endsAt)).toBeLessThanOrEqual(tolerance);
+    expect(saves).toEqual([]);
+
+    if (testInfo.project.name !== "desktop") return;
+    await page.goto("/design/rails");
+    const tail = page.locator('[data-rail-group="tail"]');
+    await expect(tail.getByText(/^Deck Profile — /)).toBeVisible({ timeout: 60_000 });
+    // The two rows live in the tail's Advanced menu, as b24 opens it.
+    await tail.getByRole("button", { name: /^Advanced [▾▸]$/ }).click();
+    await expect(tail.getByText(/^Tail Rail Blends From — /)).toHaveText(`Tail Rail Blends From — ${formatHardEdgeBlendsFrom(blend.blend.blendsFrom, "imperial")}`);
+    await expect(tail.getByText(/^Tail Rail Ends At — /)).toHaveText(`Tail Rail Ends At — ${formatHardEdgeEndsAt(blend.blend.endsAt, "imperial")}`);
   });
 
   test("b25. a log's soft Symmetrical rail goes rails-first: every bottom reads flat, the rails-first note shows, and each rail's Ticked cell reads Symmetrical", async ({ page }, testInfo) => {

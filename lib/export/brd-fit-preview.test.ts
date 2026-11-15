@@ -1009,7 +1009,7 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
     void kx;
   }, LONG);
 
-  it("words the RAILS block in both systems: columns, six rows, the ticked boxes in RAILS' own words, and the closeness sentence", () => {
+  it("words the RAILS block in both systems: columns, seven rows, the ticked boxes in RAILS' own words, and the closeness sentence", () => {
     for (const system of ["imperial", "metric"] as const) {
       const sheet = brdFitSheet(tucked, "Tucked.brd", system);
       expect(sheet.rails.read).toBe(true);
@@ -1017,7 +1017,7 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
       expect(sheet.rails.caption).toBe("RAILS");
       expect(BRD_FIT_COPY.railSectionsCaption(sectionHeightLabel(brdRailFrames(brdRailRows(tucked), tucked)))).toBe("CROSS-SECTIONS · TRUE HEIGHT");
       expect(sheet.rails.columns.map((c) => c.label)).toEqual(["Nose", "Centre", "Tail"]);
-      expect(sheet.rails.rows.map((r) => r.key)).toEqual(["at", "deck", "shape", "ticked", "advanced", "close"]);
+      expect(sheet.rails.rows.map((r) => r.key)).toEqual(["at", "deck", "shape", "ticked", "advanced", "blend", "close"]);
       const row = (key: string) => sheet.rails.read && sheet.rails.rows.find((r) => r.key === key)!;
       const rails = tucked.rails!.rails;
       // the tapered thickness RAILS' own Deck Profile label shows, as a mark
@@ -1032,12 +1032,48 @@ describe("the RAILS block's rows, drawings and words (quick 261113-kvo)", () => 
       expect((row("close") as { cells: string[] }).cells.every((c) => /^(within|less than) /.test(c))).toBe(true);
       expect(sheet.closeness.rails).toMatch(/^Rails: (within|less than) /);
       expect(sheet.closeness.rails).toMatch(/at the rail|on the (deck|bottom) .+ in from the rail/);
-      expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck$/);
+      expect(sheet.controls.rails).toMatch(/^Rails: Nose .+ · Centre .+ · Tail .+, Use Single Tuck · Sharp Bottom Tuck · Tail Rail Blends From .+ · Tail Rail Ends At .+$/);
       expect(sheet.rails.notes[0]).toBe(BRD_FIT_COPY.railRegionNote(formatDim(inchesToMm(3), system)));
-      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(BRD_FIT_COPY.railBlendNote);
+      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toMatch(/^Tail Rail Blends From and Ends At were fitted to the \d+ cross-sections/);
       expect(sheet.notRead).toBe(BRD_FIT_COPY.noFins);
     }
   }, LONG);
+
+  it("words the tail blend (quick 261114-vyl): the Tail Rail row's tail cell, the controls line's last piece and the note carry the two dims and how close, or say why the two were left", () => {
+    const blend = tucked.rails!.blend;
+    expect(blend.read).toBe("fitted");
+    if (!blend.blend || !blend.closeness) throw new Error("the tucked board's tail blend should be fitted");
+    for (const system of ["imperial", "metric"] as const) {
+      const sheet = brdFitSheet(tucked, "T.brd", system);
+      if (!sheet.rails.read) throw new Error("unreachable");
+      const row = sheet.rails.rows.find((r) => r.key === "blend")!;
+      expect(row.label).toBe("Tail Rail blend");
+      expect(row.cells[0]).toBe(BRD_FIT_COPY.noValue);
+      expect(row.cells[1]).toBe(BRD_FIT_COPY.noValue);
+      // the two are dims — a distance along the board — so centimetres to one decimal in Metric, never millimetres
+      expect(row.cells[2]).toBe(`Blends From ${formatDim(blend.blend.blendsFrom, system)} · Ends At ${formatDim(blend.blend.endsAt, system)}`);
+      if (system === "metric") expect(row.cells[2]).toMatch(/^Blends From \d+\.\d cm · Ends At \d+\.\d cm$/);
+      expect(sheet.controls.rails!.endsWith(` · Tail Rail Blends From ${formatDim(blend.blend.blendsFrom, system)} · Tail Rail Ends At ${formatDim(blend.blend.endsAt, system)}`)).toBe(true);
+      const note = sheet.rails.notes[sheet.rails.notes.length - 1];
+      expect(note).toBe(
+        BRD_FIT_COPY.railBlendFitted(blend.sections, BRD_FIT_COPY.railCellClose(formatGapMark(blend.closeness.largest, system), formatGapMark(blend.closeness.typical, system))),
+      );
+      expect(note).toMatch(/^Tail Rail Blends From and Ends At were fitted to the \d+ cross-sections from the tail's rail to the centre's: (within|less than) .+, typically .+\.$/);
+    }
+    // left where a new board puts them: the cell is empty, the controls line stops at the tail, and the note says why
+    for (const [read, words] of [
+      ["sameRail", BRD_FIT_COPY.railBlendSameRail],
+      ["noSections", BRD_FIT_COPY.railBlendNoSections],
+    ] as const) {
+      const left = { ...tucked, rails: { ...tucked.rails!, blend: { blend: null, read, sections: 0, closeness: null } } };
+      const sheet = brdFitSheet(left, "T.brd", "imperial");
+      if (!sheet.rails.read) throw new Error("unreachable");
+      expect(sheet.rails.rows.find((r) => r.key === "blend")!.cells).toEqual([BRD_FIT_COPY.noValue, BRD_FIT_COPY.noValue, BRD_FIT_COPY.noValue]);
+      expect(sheet.controls.rails).toMatch(/Use Single Tuck · Sharp Bottom Tuck$/);
+      expect(sheet.rails.notes[sheet.rails.notes.length - 1]).toBe(words);
+      expect(words).toMatch(/^Tail Rail Blends From and Ends At are left where a new board puts them: /);
+    }
+  });
 
   it("words the Advanced menu's moved settings: Scaled from center by on a tip, then each nudge as a signed mark", () => {
     const base = brdFitSheet(tucked, "T.brd", "imperial");

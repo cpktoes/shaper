@@ -49,6 +49,7 @@ import {
   brdRailWindows,
   brdRailsSpec,
   fitBrdRails,
+  fitBrdTailBlend,
   measureBrdRails,
   type BrdRailGap,
   type BrdRailLine,
@@ -236,7 +237,9 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
     }
   }
   const narrowed = found.narrowed;
-  const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed });
+  // The tail blend last (quick 261114-vyl): where the tail's rail fades into the centre's, read from the sections between them.
+  const blend = fitBrdTailBlend(railLines, onBoard(current), settings);
+  const bottomFirst = measureBrdRails(railLines, onBoard(current), settings, { order: "bottom-first", read: readAt, narrowed, blend });
   const whole = brdRailWholeValue(railLines, onBoard(current), bottomFirst.rails);
   const kinds = BOTTOM_KEYS.map((key) => cutKind(current.bottom.bottom[key].name));
   const result: BrdFitLook = { board, fit: current.fit, bottom: current.bottom, planedBottom: current.planedBottom, rails: bottomFirst, fins: finsFit };
@@ -250,7 +253,8 @@ export function brdFitLook(board: ReadBrdBoard): BrdFitLook {
   const railsFirst = bottomOn(board, lines, first, fins, sectionWindows(flatWindows.windows));
   if (!railsFirst) return result;
   const polished = fitBrdRails(railLines, onBoard(railsFirst), flatSettings);
-  const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true });
+  const blendFirst = fitBrdTailBlend(railLines, onBoard(railsFirst), polished);
+  const measured = measureBrdRails(railLines, onBoard(railsFirst), polished, { order: "rails-first", read: readAt, narrowed: true, blend: blendFirst });
   const wholeFirst = brdRailWholeValue(railLines, onBoard(railsFirst), measured.rails);
   if (!(wholeFirst.value <= whole.value - BRD_RAIL_FIRST_GAIN_MM)) return result;
   return { board, fit: railsFirst.fit, bottom: railsFirst.bottom, planedBottom: railsFirst.planedBottom, rails: measured, fins: finsFit };
@@ -656,7 +660,7 @@ export const BRD_FIT_COPY = {
   railSectionsCaption: (heightLabel: string) => `CROSS-SECTIONS · ${heightLabel}`,
   railSectionCaption: (where: string, width: string) => `${where} · ${width} wide`,
   railColumns: { nose: "Nose", center: "Centre", tail: "Tail" } as const satisfies Record<RailSectionKey, string>,
-  railRowLabels: { at: "Read at", deck: "Deck Profile", shape: "Family · Ratio", ticked: "Ticked", advanced: "Advanced", close: "How close" } as const,
+  railRowLabels: { at: "Read at", deck: "Deck Profile", shape: "Family · Ratio", ticked: "Ticked", advanced: "Advanced", blend: "Tail Rail blend", close: "How close" } as const,
   railWords: {
     deckProfile: "Deck Profile",
     family: "Family",
@@ -666,7 +670,11 @@ export const BRD_FIT_COPY = {
     scaledFromCenter: "Scaled from center by",
     singleTuck: "Use Single Tuck",
     sharpBottomTuck: "Sharp Bottom Tuck",
+    blendsFrom: "Tail Rail Blends From",
+    endsAt: "Tail Rail Ends At",
   } as const,
+  /** The Tail Rail blend row's tail cell (quick 261114-vyl): the two sliders' words with the dims they open at. */
+  railBlendCell: (blendsFrom: string, endsAt: string) => `Blends From ${blendsFrom} · Ends At ${endsAt}`,
   /** Where a rail's widest gap sits, as words: `at the rail`, `on the deck 4 3/8" in from the rail`. */
   railAtRail: "at the rail",
   railOnDeck: (inFromRail: string) => `on the deck ${inFromRail} in from the rail`,
@@ -676,9 +684,18 @@ export const BRD_FIT_COPY = {
   railRegionNote: (strip: string) =>
     `Each rail is read from the outer ${strip} of the file's bottom, round the rail and over the deck to the stringer, against our board's own cross-section at the same place — our bottom included. Between the three, RAILS blends one rail into the next.`,
   railsFirstNote: "This file's rail rolls in from well off the rail, so its rails were fitted first and its bottom read only out to where our rail begins.",
-  railBlendNote: "Tail Rail Blends From and Ends At are left where a new board puts them.",
+  /**
+   * The tail blend's note (quick 261114-vyl): fitted to the file's sections between the tail and the centre, with how close
+   * (`railCellClose`'s words), or left where a new board puts them and why.
+   */
+  railBlendFitted: (sections: number, close: string) =>
+    `Tail Rail Blends From and Ends At were fitted to the ${sections} cross-sections from the tail's rail to the centre's: ${close}.`,
+  railBlendSameRail: "Tail Rail Blends From and Ends At are left where a new board puts them: the tail's rail is the centre's, so there is nothing to blend.",
+  railBlendNoSections:
+    "Tail Rail Blends From and Ends At are left where a new board puts them: the file has too few cross-sections between the tail and the centre to read them from.",
   railsUnread: "The file's rails couldn't be read: it has no cross-sections we could use, so the board opens with a new board's rails.",
-  railLine: (nose: string, center: string, tail: string) => `Rails: Nose ${nose} · Centre ${center} · Tail ${tail}`,
+  railLine: (nose: string, center: string, tail: string, blend: string | null = null) =>
+    `Rails: Nose ${nose} · Centre ${center} · Tail ${tail}${blend === null ? "" : ` · ${blend}`}`,
   rockerLines:
     "The file's rocker is the finished board's, along the stringer; ours is the board before contours. Under a concave the finished rocker reads more, by the concave's depth there; under a flat, vee or belly the two are the same line.",
   stringerNote: (lift: string, station: string) =>
@@ -798,7 +815,7 @@ export interface BrdFitRailColumn {
 
 /** One row of the RAILS table: its words, then the nose, centre and tail cells in that order. */
 export interface BrdFitRailRow {
-  key: "at" | "deck" | "shape" | "ticked" | "advanced" | "close";
+  key: "at" | "deck" | "shape" | "ticked" | "advanced" | "blend" | "close";
   label: string;
   cells: [string, string, string];
 }
@@ -1245,7 +1262,16 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
   const reachOf = (half: readonly P2[]) => Math.max(...half.map((p) => p[0]));
   const notes = [c.railRegionNote(formatDim(BRD_RAIL_STRIP_MM, system)), c.sectionsRead(found.sections.length, look.board.sections.length, formatDim(BRD_FIT_TIP_SKIP_MM, system))];
   if (found.order === "rails-first") notes.push(c.railsFirstNote);
-  notes.push(c.railBlendNote);
+  // The tail blend (quick 261114-vyl): the two sliders' dims when they were read, and the note saying how close or why not.
+  const { blend } = found;
+  const blendWords = blend.blend ? c.railBlendCell(formatDim(blend.blend.blendsFrom, system), formatDim(blend.blend.endsAt, system)) : null;
+  notes.push(
+    blend.read === "fitted" && blend.closeness
+      ? c.railBlendFitted(blend.sections, c.railCellClose(formatGapMark(blend.closeness.largest, system), formatGapMark(blend.closeness.typical, system)))
+      : blend.read === "sameRail"
+        ? c.railBlendSameRail
+        : c.railBlendNoSections,
+  );
   return {
     block: {
       read: true,
@@ -1263,6 +1289,7 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
         { key: "shape", label: c.railRowLabels.shape, cells: cells((key) => shape(key)) },
         { key: "ticked", label: c.railRowLabels.ticked, cells: cells((key) => list(tickedWords(key, look))) },
         { key: "advanced", label: c.railRowLabels.advanced, cells: cells((key) => list(advancedWords(key, look, system))) },
+        { key: "blend", label: c.railRowLabels.blend, cells: [c.noValue, c.noValue, blendWords ?? c.noValue] },
         {
           key: "close",
           label: c.railRowLabels.close,
@@ -1279,6 +1306,7 @@ function railsSheetParts(look: BrdFitLook, system: UnitsSystem): { block: BrdFit
         const ticked = tickedWords(key, look);
         return ticked.length > 0 ? `${shape(key)}, ${ticked.join(" · ")}` : shape(key);
       }),
+      blend.blend ? `${c.railWords.blendsFrom} ${formatDim(blend.blend.blendsFrom, system)} · ${c.railWords.endsAt} ${formatDim(blend.blend.endsAt, system)}` : null,
     ),
   };
 }
