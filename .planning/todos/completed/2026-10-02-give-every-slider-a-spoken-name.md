@@ -29,3 +29,7 @@ identically to the eye; only what a screen reader says changes.
 `getByRole("slider", { name: ... })` finds every slider by its label on all five design screens, each
 slider's spoken value equals the value its label shows in both unit systems, and the server-render pin in
 `components/design/slider-row.test.ts` is updated deliberately.
+
+## Done
+
+2026-11-15 — quick 261115-dv3 (commit 1196fc59): the shared row reads its spoken name and value out of the label it prints (`components/design/slider-spoken.ts`), so every row is named at once; the six hand-rolled sliders (Board Length ×3, Tail Width @ 12", Family, Ratio) named by hand; the server-render pin in `slider-row.test.ts` updated deliberately. `e2e/slider-spoken-names.spec.ts` holds every slider on every design screen to its row, in both systems, on three devices.
