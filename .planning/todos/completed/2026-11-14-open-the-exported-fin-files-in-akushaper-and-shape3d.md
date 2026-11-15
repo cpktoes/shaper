@@ -24,3 +24,7 @@ believed) shows as.
 Export a single, twin, twin with trailer, thruster and 2+1 from the 3D page and open each in AkuShaper (Board Info, logged in,
 shows From Tail, From Rail, Toe-in and Marks dist for each fin) and in Shape3D. Compare with FINS' own marks. Ask the founder
 before opening files in his AkuShaper: on 2026-11-13 a test file left it on the Blank Fitting tab.
+
+## Done
+
+2026-11-15 — the founder's check: the app's exported .brd files open in AkuShaper with their fins, tested on a Twin and a Thruster; Shape3D opens them too, though its free Lite version does not appear to draw fins at all, so fins cannot be checked there. A quad does not work yet — that stays with `2026-11-14-read-and-write-quad-and-five-fin-setups-in-a-brd.md`.

@@ -16,6 +16,7 @@ updated: 2026-11-07T07:50:00Z
 expected: Shape3D accepts each file, with the tail at x = 0, the deck up and the length in millimetres, and fits its own curves to it
 result: skipped
 reason: The founder shipped without it, "shape3d I'll have to come back to" (2026-11-06). The Export button says the export is experimental and Shape3D may or may not import the files yet. The file layout is now live unverified.
+superseded: 2026-11-15 — the zip of DXF, XYZ and STL is no longer offered; since quick 261110-tvk the 3D page exports one AkuShaper .brd instead. The founder, 2026-11-15: "Our .brd files open in both Shape3D (Free Lite version doesn't appear to show fins) and Akushaper (fins included - tested Twin and Thruster, quad doesn't work yet)." R8's purpose — a file Shape3D opens — is met by the .brd.
 
 ### 2. Mac Safari trackpad pinch on the live 3D screen
 expected: A two-finger pinch zooms toward the pinch point, and the page itself never zooms

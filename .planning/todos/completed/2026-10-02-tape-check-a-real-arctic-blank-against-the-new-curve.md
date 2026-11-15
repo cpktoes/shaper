@@ -34,3 +34,7 @@ ship first and measure when a blank is at hand; this todo keeps that measurement
 A real Arctic (and ideally a Marko) blank's bottom has been measured every 6" and compared with the app's
 curve, and the result — within the printed stations' tolerance, or a difference worth a correction — is
 recorded in this file and read back to the founder.
+
+## Closed
+
+2026-11-15 — closed at the founder's word: "arctic blank check is not going to happen." The curves stay as they went live on the catalogue evidence (Phase 14). No measurement was taken.

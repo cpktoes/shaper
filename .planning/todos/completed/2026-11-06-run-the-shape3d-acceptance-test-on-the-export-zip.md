@@ -24,3 +24,7 @@ Run the Fish's zip through Shape3D's Scan import, as in 16-RESEARCH.md §C and t
 Board with the board unit set to mm, one slice file as a Slice, the outline file as an Outline, the .stl as a scan.
 Each should load with the tail at x = 0, the deck up and the length in millimetres. If all pass, the caption can
 lose "experimental" and R8 closes. If any fail, change only what Shape3D refused.
+
+## Done
+
+2026-11-15 — superseded and met. The zip is no longer offered: since quick 261110-tvk the 3D page exports one AkuShaper .brd. The founder, 2026-11-15: "Our .brd files open in both Shape3D (Free Lite version doesn't appear to show fins) and Akushaper." Phase 16's UAT test 1 (R8) is marked superseded with the same words. The DXF, STL and XYZ writers stay in `lib/export/`, tested and unoffered.
