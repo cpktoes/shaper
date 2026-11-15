@@ -249,27 +249,39 @@ describe("SliderRow's sliderLabel and sliderValueText (WR-01)", () => {
     expect(html.match(/aria-valuetext=/g)).toHaveLength(1);
   });
 
-  it("each prop works on its own", () => {
+  it("each prop works on its own, over what the label would have said", () => {
     const named = rangeInput(renderToStaticMarkup(createElement(SliderRow, { ...base, sliderLabel: "Nose Thinning Starts" })));
     expect(named).toContain('aria-label="Nose Thinning Starts"');
     expect(named).not.toContain("aria-valuetext");
     const spoken = rangeInput(renderToStaticMarkup(createElement(SliderRow, { ...base, sliderValueText: '25 1/2"' })));
     expect(spoken).toContain('aria-valuetext="25 1/2&quot;"');
-    expect(spoken).not.toContain("aria-label=");
+    expect(spoken).toContain('aria-label="Tail Thinning Starts"');
   });
 
-  it("a row without them carries neither attribute, and renders the same as one passing them as undefined", () => {
-    for (const props of [
-      base,
-      { ...base, displayValue: '12"' },
-      { ...base, leftHint: "Near the tip", rightHint: "The center", note: "A note", density: "tight" as const },
-      { ...base, disabled: true, className: "flex-1" },
-    ]) {
-      const html = renderToStaticMarkup(createElement(SliderRow, props));
-      expect(html).not.toContain("aria-label=");
-      expect(html).not.toContain("aria-valuetext=");
+  /**
+   * Since quick 261115-dv3 (the to-do of 2026-10-02) a row without them speaks what its label line prints: the name,
+   * and the value where the line has one — beside the name (`displayValue`), in a box (`valueBox`) or folded in after
+   * the house separator. The pin below is the deliberate change the to-do asked for; a label-less row still says nothing.
+   */
+  it("a row without them speaks its label line, and renders the same as one passing them as undefined", () => {
+    const cases: { props: Record<string, unknown>; name: string | null; valueText: string | null }[] = [
+      { props: base, name: "Tail Thinning Starts", valueText: null },
+      { props: { ...base, displayValue: '12"' }, name: "Tail Thinning Starts", valueText: '12&quot;' },
+      { props: { ...base, label: "Center Thickness — 2 1/2\"" }, name: "Center Thickness", valueText: "2 1/2&quot;" },
+      { props: { ...base, label: "Nose Tip", valueBox: "5/8\"" }, name: "Nose Tip", valueText: "5/8&quot;" },
+      { props: { ...base, leftHint: "Near the tip", rightHint: "The center", note: "A note", density: "tight" as const }, name: "Tail Thinning Starts", valueText: null },
+      { props: { ...base, disabled: true, className: "flex-1" }, name: "Tail Thinning Starts", valueText: null },
+      { props: { ...base, label: "" }, name: null, valueText: null },
+    ];
+    for (const { props, name, valueText } of cases) {
+      const html = renderToStaticMarkup(createElement(SliderRow, props as never));
+      const input = rangeInput(html);
+      if (name === null) expect(html).not.toContain("aria-label=");
+      else expect(input).toContain(`aria-label="${name}"`);
+      if (valueText === null) expect(html).not.toContain("aria-valuetext=");
+      else expect(input).toContain(`aria-valuetext="${valueText}"`);
       const explicit = renderToStaticMarkup(
-        createElement(SliderRow, { ...props, sliderLabel: undefined, sliderValueText: undefined }),
+        createElement(SliderRow, { ...props, sliderLabel: undefined, sliderValueText: undefined } as never),
       );
       expect(withoutIds(explicit)).toBe(withoutIds(html));
     }

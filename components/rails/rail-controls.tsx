@@ -348,6 +348,8 @@ function RailSectionControls({
             disabled={locked}
             onValueChange={(v) => onChange({ family: clampFinite(sliderValue(v), 1, 5) as RailFamily })}
             className="slider-accent"
+            thumbAriaLabel="Family"
+            thumbAriaValueText={railFamilyLabel(spec.family)}
           />
           <div className="mt-0.5 flex justify-between text-xs text-surf-ink-muted font-normal">
             <span>Boxy</span>
@@ -385,6 +387,8 @@ function RailSectionControls({
               })
             }
             className="slider-accent"
+            thumbAriaLabel="Ratio"
+            thumbAriaValueText={`${spec.ratioTopPercent}/${100 - spec.ratioTopPercent}`}
           />
           <RatioTickCaptions />
           {/* Symmetrical on a line of its own under the marks (PC15, the founder's answer 2026-11-02),

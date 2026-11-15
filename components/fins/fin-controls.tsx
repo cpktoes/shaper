@@ -382,6 +382,8 @@ export function FinControls({
               disabled={locked}
               onValueChange={(v) => onChange({ boardLength: boardLength.toMm(sliderValue(v)) })}
               className="slider-accent"
+              thumbAriaLabel="Board Length"
+              thumbAriaValueText={formatLength(spec.boardLength, system)}
             />
           </div>
 
@@ -397,6 +399,8 @@ export function FinControls({
               disabled={locked}
               onValueChange={(v) => onChange({ tailWidth12: tailWidth12Slider.toMm(sliderValue(v)) })}
               className="slider-accent"
+              thumbAriaLabel={`Tail Width @ ${stationLabel(system)}`}
+              thumbAriaValueText={formatDim(spec.tailWidth12, system)}
             />
           </div>
 

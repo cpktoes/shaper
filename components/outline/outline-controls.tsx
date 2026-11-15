@@ -220,6 +220,8 @@ export function OutlineControls({
               disabled={locked}
               onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
               className="slider-accent"
+              thumbAriaLabel="Board Length"
+              thumbAriaValueText={formatLength(outline.length, system)}
             />
           </div>
         );

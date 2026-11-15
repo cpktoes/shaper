@@ -208,6 +208,8 @@ export function VolumeControls({
               disabled={locked}
               onValueChange={(v) => onChange({ length: boardLength.toMm(sliderValue(v)) })}
               className="slider-accent"
+              thumbAriaLabel="Board Length"
+              thumbAriaValueText={formatLength(effectiveVolume.length, system)}
             />
           </div>
 

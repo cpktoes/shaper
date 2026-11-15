@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useControlsLocked } from "@/components/design/use-controls-locked";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { spokenSlider } from "./slider-spoken";
 
 /**
  * Reads a slider's committed value out of Base UI's `onValueChange` callback, which hands back
@@ -72,15 +73,17 @@ export interface SliderRowProps {
   density?: "default" | "tight";
   /**
    * The slider's own accessible name, for a screen reader — the label line above is a plain line of
-   * text and names nothing. Given to the two Thinning Starts rows (Phase 14 code review WR-01), whose
-   * sliders are otherwise twins told apart only by nose and tail. Absent, the row renders exactly as
-   * before.
+   * text and names nothing. Since quick 261115-dv3 every row speaks the name its label prints
+   * (`spokenSlider` reads it back out of `label`, `displayValue` or `valueBox`); a row passes this only
+   * to say something else — the Thinning Starts twins told apart by nose and tail (Phase 14 code review
+   * WR-01), the hand-set grid whose label line is empty.
    */
   sliderLabel?: string;
   /**
    * What a screen reader says for the slider's value, worded the way the label line prints it (a
-   * Metric start reads `64.8 cm`, not the bare millimetres the slider runs on). Absent, the row
-   * renders exactly as before.
+   * Metric start reads `64.8 cm`, not the bare millimetres the slider runs on). Since quick 261115-dv3
+   * it is read from the label by default; passed only where the row prints its value somewhere else
+   * (the 3D rack's raise rows keep it in a hint).
    */
   sliderValueText?: string;
   /**
@@ -123,6 +126,7 @@ export function SliderRow({
   const disabled = disabledProp || (locked && !lockExempt);
   // `false` counts as no action, so a caller can write `hintAction={cond && <Button />}`.
   const hasAction = hintAction !== undefined && hintAction !== null && hintAction !== false;
+  const spoken = spokenSlider({ label, displayValue, valueBox, sliderLabel, sliderValueText });
   return (
     <div className={cn(className, disabled && "opacity-40")}>
       {valueBox !== undefined ? (
@@ -155,8 +159,8 @@ export function SliderRow({
         disabled={disabled}
         onValueChange={(v) => onValueChange(sliderValue(v))}
         className="slider-accent"
-        thumbAriaLabel={sliderLabel}
-        thumbAriaValueText={sliderValueText}
+        thumbAriaLabel={spoken.name}
+        thumbAriaValueText={spoken.valueText}
         {...(lockExempt ? { "data-lock-exempt": true } : {})}
       />
       {(leftHint || rightHint || hintAction) && (
