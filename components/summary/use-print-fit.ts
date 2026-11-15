@@ -68,6 +68,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { PRINT_FIT_EVENT } from "@/components/viewer/callout-primitives";
 
 /** Must match the `@page` margin declared in `app/design/summary/order-form.css`. */
 const PAGE_MARGIN_MM = 8;
@@ -210,6 +211,12 @@ export function useOrderFormPrintFit() {
         const scale = overflow > 1 ? sheetHeight / sheet.scrollHeight : 1;
         sheet.style.zoom = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
       }
+
+      // Last, once every sheet is sized: tell the drawings to pin their text to the boxes they now
+      // have, in this same call, before the snapshot (`PRINT_FIT_EVENT`, callout-primitives.tsx) —
+      // their ResizeObservers would answer too late as often as not, and the same board printed its
+      // axis numbers at two sizes (quick 261115-e0c).
+      window.dispatchEvent(new Event(PRINT_FIT_EVENT));
     };
 
     const afterPrint = () => {

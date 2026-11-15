@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { flushSync } from "react-dom";
 import { chipValueFontSize } from "./chip-value-fit";
 
 /**
@@ -144,6 +145,23 @@ function svgLayoutSize(el: SVGSVGElement, entry?: ResizeObserverEntry): { width:
 }
 
 /**
+ * The event the printed order form sends once it has sized its sheets for the paper (`use-print-fit.ts`,
+ * inside `beforeprint`), telling every pinned drawing to measure itself again NOW — synchronously, the
+ * render flushed — rather than when its ResizeObserver next delivers (quick 261115-e0c).
+ *
+ * Why: the observer delivers at the next rendering opportunity, and a print snapshot is taken right
+ * after `beforeprint` returns. Which came first was a coin toss, so the same board printed its axis
+ * numbers at 9pt one time (measured after the sheet was pinned to the paper's 733px) and at 11pt the
+ * next (still measured against the 880px screen sheet) — 160 PDFs compared on 2026-11-14 found nine such
+ * pairs, on pages the change under test never touched. A `beforeprint` listener of the hook's own would
+ * not do: a child's effect runs before its parent's, so the drawing would hear the event before the form
+ * had pinned anything. The form speaks last, after its own sizing, and the drawings answer in the same
+ * call. Dispatched on `window`; a drawing that is not printed re-measures its own box, which changes
+ * nothing.
+ */
+export const PRINT_FIT_EVENT = "shaper:print-fit";
+
+/**
  * The px-per-user-unit an svg's `preserveAspectRatio="…meet"` fit is currently applying — px of the
  * svg's own laid-out box, before any ancestor transform (see `svgLayoutSize` above).
  *
@@ -173,7 +191,13 @@ export function useSvgFitScale(
     measure();
     const observer = new ResizeObserver((entries) => measure(entries[0]));
     observer.observe(el);
-    return () => observer.disconnect();
+    // The print snapshot cannot wait for the observer (see PRINT_FIT_EVENT): measure and render now.
+    const onPrintFit = () => flushSync(() => measure());
+    window.addEventListener(PRINT_FIT_EVENT, onPrintFit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(PRINT_FIT_EVENT, onPrintFit);
+    };
   }, [ref, viewBoxWidth, viewBoxHeight]);
 
   return scale;
@@ -211,7 +235,12 @@ export function useSvgClientSize(ref: RefObject<SVGSVGElement | null>): { width:
     measure();
     const observer = new ResizeObserver((entries) => measure(entries[0]));
     observer.observe(el);
-    return () => observer.disconnect();
+    const onPrintFit = () => flushSync(() => measure());
+    window.addEventListener(PRINT_FIT_EVENT, onPrintFit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(PRINT_FIT_EVENT, onPrintFit);
+    };
   }, [ref]);
 
   return size;

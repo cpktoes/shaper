@@ -497,6 +497,29 @@ describe("order form print path (G-08-10, PRNT-06)", () => {
   // — and pinning one in pixels would re-impose from inside the app the exact absolute width iOS
   // refuses to honour, undoing the fix invisibly. A re-introduced inline width on the touch path is
   // the one change that would quietly break this without looking like a diff anyone should question.
+  /**
+   * Quick 261115-evi: the drawings pin their text to a box a ResizeObserver measures, and the snapshot is taken as
+   * soon as `beforeprint` returns — so the handler's LAST act is to tell them to measure again now, and they answer in
+   * the same call with the render flushed. Pinned here so neither end can quietly drift: the event is sent after the
+   * last sheet is sized, and both fit hooks listen for it with `flushSync`.
+   */
+  it("the print handler tells the pinned drawings to re-measure last, and both fit hooks answer synchronously", () => {
+    const hookSource = readStripped(USE_PRINT_FIT_PATH).replace(/\s+/g, " ");
+    const dispatchIdx = hookSource.indexOf("window.dispatchEvent(new Event(PRINT_FIT_EVENT))");
+    expect(dispatchIdx, "use-print-fit.ts never sends PRINT_FIT_EVENT").toBeGreaterThanOrEqual(0);
+    const lastZoomIdx = hookSource.lastIndexOf("sheet.style.zoom = String(");
+    expect(lastZoomIdx).toBeGreaterThanOrEqual(0);
+    expect(dispatchIdx, "the drawings must be told after the last sheet is sized, never before").toBeGreaterThan(lastZoomIdx);
+    const afterPrintIdx = hookSource.indexOf("const afterPrint = ");
+    expect(dispatchIdx, "the event belongs inside beforePrint").toBeLessThan(afterPrintIdx);
+
+    const primitives = readStripped("components/viewer/callout-primitives.tsx");
+    expect(primitives).toMatch(/export const PRINT_FIT_EVENT = "shaper:print-fit";/);
+    expect(primitives.match(/window\.addEventListener\(PRINT_FIT_EVENT, onPrintFit\)/g)?.length, "both fit hooks listen").toBe(2);
+    expect(primitives.match(/const onPrintFit = \(\) => flushSync\(\(\) => measure\(\)\);/g)?.length, "both answer with flushSync").toBe(2);
+    expect(primitives.match(/window\.removeEventListener\(PRINT_FIT_EVENT, onPrintFit\)/g)?.length, "both let go on unmount").toBe(2);
+  });
+
   it("the print handler returns before writing anything on the touch path", () => {
     const hookSource = readStripped(USE_PRINT_FIT_PATH).replace(/\s+/g, " ");
 
