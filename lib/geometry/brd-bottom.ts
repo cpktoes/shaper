@@ -24,7 +24,8 @@
  *     invents a cut.
  *  4. **Moves the sliders.** Each cut's Start, Deepest At and End are tried over BOTTOM's own station grid (every 4", then
  *     every step near the best one), at the depth and one Depth step either side, then its Depth, then its across marks on
- *     their own 1/16" steps. A move is made only when it brings the fit at least 0.1 mm closer (`BRD_BOTTOM_MOVE_GAIN_MM`), so
+ *     their own 1/16" steps (a belly's Off Stringer, its flat panel, moves like the Tri-Plane's: every 1/4" over 0" to 9", then every
+ *     1/16" within reach of the best; quick 261116-jqz, D-04). A move is made only when it brings the fit at least 0.1 mm closer (`BRD_BOTTOM_MOVE_GAIN_MM`), so
  *     a slider the file cannot see stays at the name's own starting number. Every move is made the way a drag makes it
  *     (`storeCutStation` and `keepStationsInOrder`, the moved one winning), and sits on its slider's own step and inside its
  *     own range, imported from the code that owns them.
@@ -32,6 +33,12 @@
  *     nose, a Panel Vee against a double concave), then chooses: a cut that is not in the seed must bring the fit 0.25 mm
  *     closer (`BRD_BOTTOM_EXTRA_CUT_MM`) or the seed's names stay. Measured: at 0.1 mm a round trip gained a spurious 1/16" nose cut;
  *     at 0.25 mm every round trip came back.
+ *     The Tri-Plane Hull Center is reached for last (`chooseBrdBottom`, the founder, 2026-11-16): it is kept only when it
+ *     scores `BRD_BOTTOM_TRI_PLANE_MM` (1 mm) closer than the closest bottom without one, and in a tie or near tie any
+ *     other name wins. Measured on the founder's twelve files: 92Log and Scoop-Noserider come in with a Continuous Belly
+ *     instead (the Tri-Plane led by 0.55 and 0.09 mm), and so does quadtesting (0.86 mm; its vee tail is deeper than the
+ *     Panel Vee reaches, so either centre cut stands in for it). A 7/16" or deeper Tri-Plane the app wrote itself still
+ *     comes back as one, 1.5 to 2.85 mm clear.
  *
  * **Between the file's sections.** An AkuShaper file holds only 3 to 5 usable sections, and a slider fitted to so few can fade
  * a cut in and out between two of them where nothing is measured (measured: a 7/16" nose concave fading from nothing to full
@@ -99,6 +106,14 @@ export const BRD_BOTTOM_FLAT_MM: Mm = mm(1);
 export const BRD_BOTTOM_PREFER_MM: Mm = mm(0.1);
 /** A cut that is not in the seed must bring the final fit this much closer to be chosen. */
 export const BRD_BOTTOM_EXTRA_CUT_MM: Mm = mm(0.25);
+/**
+ * The Tri-Plane Hull Center is the rarest bottom (the founder, 2026-11-16: "tri-hull should be the rarest bottom type"). It is
+ * kept only when it scores at least this much closer than the closest bottom without one; in a tie, or a near tie, any other
+ * name wins. Measured on the founder's twelve files: the Tri-Plane was this much closer than the closest bottom without one,
+ * on the fit's own score, on 92Log 0.55 mm, Scoop-Noserider 0.09 mm and quadtesting 0.86 mm, and never closer on the other nine.
+ * At 0.5 mm 92Log and quadtesting keep it, at 0.75 mm quadtesting does, and from 1 mm all three come in as a belly.
+ */
+export const BRD_BOTTOM_TRI_PLANE_MM: Mm = mm(1);
 /** A slider moves only when that brings the fit at least this much closer. */
 export const BRD_BOTTOM_MOVE_GAIN_MM: Mm = mm(0.1);
 /** The fit also compares the bottom between two of the file's sections that stand further apart than this (inches). */
@@ -679,7 +694,13 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
         }
 
         const marks: ("offRail" | "offStringer" | "troughAt")[] =
-          kind === "double" ? ["troughAt", "offRail"] : kind === "single" ? ["offRail"] : s[key].spec.name === "Tri-Plane Hull Center" ? ["offStringer"] : [];
+          kind === "double"
+            ? ["troughAt", "offRail"]
+            : kind === "single"
+              ? ["offRail"]
+              : kind === "belly" || s[key].spec.name === "Tri-Plane Hull Center"
+                ? ["offStringer"]
+                : [];
         for (const field of marks) {
           const { min, max } = BOTTOM_MARK_RANGES_IN[field];
           const make = (x: number): BottomCutSpec => {
@@ -724,6 +745,28 @@ export function brdBottomScorer(board0: BottomBoard, targets: readonly BrdBottom
 
 /** How many of the three sections hold a cut. */
 const cutsIn = (specs: Specs): number => BOTTOM_SECTIONS.filter((key) => cutKind(specs[key].name) !== "flat").length;
+
+/**
+ * The fit's choice from its pool (`seed` is the refined seed, which is in the pool): the Tri-Plane Hull Center is reached for
+ * last, so its candidates stay only when the pool holds nothing else, or when the closest of them scores at least
+ * `BRD_BOTTOM_TRI_PLANE_MM` below the closest other (a Tri-Plane seed is never saved by the seed's stickiness). Then today's
+ * rule, unchanged: among the candidates within `BRD_BOTTOM_EXTRA_CUT_MM` of the closest, the fewest cuts, the seed kept when
+ * it is among them and has the fewest, else the closest of the fewest.
+ */
+export function chooseBrdBottom<T extends { specs: Record<BottomSectionKey, BottomCutSpec>; value: number }>(pool: readonly T[], seed: T): T {
+  const isTriPlane = (p: T) => p.specs.center.name === "Tri-Plane Hull Center";
+  const others = pool.filter((p) => !isTriPlane(p));
+  let kept = pool;
+  if (others.length > 0) {
+    const closestOther = Math.min(...others.map((p) => p.value));
+    const closestTri = Math.min(...pool.filter(isTriPlane).map((p) => p.value));
+    kept = closestTri <= closestOther - BRD_BOTTOM_TRI_PLANE_MM ? pool : others;
+  }
+  const closest = Math.min(...kept.map((p) => p.value));
+  const near = kept.filter((p) => p.value <= closest + BRD_BOTTOM_EXTRA_CUT_MM);
+  const fewest = Math.min(...near.map((p) => cutsIn(p.specs)));
+  return near.includes(seed) && cutsIn(seed.specs) === fewest ? seed : near.filter((p) => cutsIn(p.specs) === fewest).sort((a, b) => a.value - b.value)[0];
+}
 
 /** The bottom the fit chose, measured on the file's own sections (see `measureBrdBottom`). */
 export interface BrdBottomFit {
@@ -780,11 +823,7 @@ export function fitBottomToBrd(
   }
   neighbours.sort((a, b) => a.value - b.value);
   const pool = [best, ...neighbours.slice(0, FULL_NEIGHBOURS).map((n) => scorer.refine(n.specs)), ...neighbours.slice(FULL_NEIGHBOURS)];
-  const closest = Math.min(...pool.map((p) => p.value));
-  const near = pool.filter((p) => p.value <= closest + BRD_BOTTOM_EXTRA_CUT_MM);
-  const fewest = Math.min(...near.map((p) => cutsIn(p.specs)));
-  const chosen =
-    near.includes(best) && cutsIn(best.specs) === fewest ? best : near.filter((p) => cutsIn(p.specs) === fewest).sort((a, b) => a.value - b.value)[0];
+  const chosen = chooseBrdBottom(pool, best);
 
   return measureBrdBottom(bottomOfSpecs(chosen.specs), read, board0);
 }

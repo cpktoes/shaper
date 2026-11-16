@@ -190,7 +190,7 @@ export function brdRailLines(board: ReadBrdBoard): { lines: BrdRailLine[]; index
  *    and, where our fitted rail begins more than 1/4" inside a section's reading width, the bottom read again on the widths
  *    that stop there and the rails polished on the board that makes. On the founder's four AkuShaper files no width narrows, so
  *    their bottoms are what they were.
- *  - **Rails first** (only when bottom-first leaves some whole section, bottom and rail together, more than 4 mm off AND its
+ *  - **Rails first** (only when bottom-first leaves some whole section, bottom and rail together, more than 3 mm off AND its
  *    bottom holds a vee or a belly): the rails fitted on a flat bottom, the bottom read out to where those rails begin, and the
  *    rails polished on it; chosen only when it is at least 0.25 mm closer over the whole sections. The order decides who claims
  *    a rise near the rail: a bottom read first takes a soft 50/50 rail for a belly (the founder's longboard), a rail fitted
@@ -1006,7 +1006,7 @@ export function brdBottomFrames(rows: readonly BrdBottomRow[], height: SectionHe
 const cutWords = (spec: BottomCutSpec, system: UnitsSystem): string =>
   cutKind(spec.name) === "flat" ? spec.name : `${spec.name} ${formatMark(spec.depth, system)}`;
 
-/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), Trough At and Off Stringer; none for a vee, a belly or a flat. */
+/** A fitted cut's across marks as BOTTOM words them: Off Rail (a single or a double), Trough At and Off Stringer (a double's, the Tri-Plane's, and a belly's once it is over 0"); none for another vee, a belly at 0" or a flat. */
 function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
   const w = BRD_FIT_COPY.bottomSliderWords;
   const kind = cutKind(spec.name);
@@ -1018,6 +1018,7 @@ function acrossWords(spec: BottomCutSpec, system: UnitsSystem): string {
   }
   if (kind === "single") return mark(w.offRail, spec.offRail);
   if (spec.name === "Tri-Plane Hull Center") return mark(w.offStringer, spec.offStringer);
+  if (kind === "belly" && spec.offStringer > 0) return mark(w.offStringer, spec.offStringer);
   return BRD_FIT_COPY.noValue;
 }
 
