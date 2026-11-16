@@ -1522,3 +1522,42 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
     }
   });
 });
+
+describe("a double concave's trough rule rides on the cut, optional and forgiving on its own (quick 261115-mc1, D-06)", () => {
+  const board = designBottomBoard(
+    FIXTURES[0].outline,
+    buildOutline(FIXTURES[0].outline),
+    designSideProfile(FIXTURES[0], LIVE_DESIGN_RULES),
+    designFinPlacement(FIXTURES[0]),
+  );
+  const tailWith = (patch: Record<string, unknown>) => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, tail: startingCut("tail", "Double Concave Exit", board) };
+    const stored = JSON.parse(JSON.stringify(buildSnapshot({ ...FIXTURES[0], bottom }))) as { version: number; design: { bottom: { tail: Record<string, unknown> } } };
+    Object.assign(stored.design.bottom.tail, patch);
+    return { stored, bottom };
+  };
+
+  it("a tail with a rule round-trips", () => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, tail: { ...startingCut("tail", "Double Concave Exit", board), troughRun: "centered" } };
+    expect(roundTrip({ ...FIXTURES[0], bottom }).bottom).toEqual(bottom);
+  });
+
+  it("a board saved without a rule opens with no troughRun key, and saves again the same way", () => {
+    const { stored, bottom } = tailWith({});
+    expect("troughRun" in stored.design.bottom.tail).toBe(false);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(Object.keys(opened.bottom!.tail)).toEqual(Object.keys(bottom.tail));
+    expect("troughRun" in opened.bottom!.tail).toBe(false);
+    expect(roundTrip(opened).bottom).toEqual(opened.bottom);
+  });
+
+  it("a bad rule is dropped alone and the rest of the cut is kept", () => {
+    for (const bad of ["diagonal", 7, null, true, {}, ["centered"]]) {
+      const { stored, bottom } = tailWith({ troughRun: bad });
+      expect(() => parseSnapshot(stored)).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom!.tail, String(bad)).toEqual(bottom.tail);
+      expect("troughRun" in opened.bottom!.tail).toBe(false);
+    }
+  });
+});

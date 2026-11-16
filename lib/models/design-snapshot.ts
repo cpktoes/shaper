@@ -574,6 +574,15 @@ const bottomCutSchema = (section: BottomSectionKey) =>
       veeLift: bottomDepthSchema,
       smoothness: bottomSmoothnessSchema,
       closesToPoint: z.boolean(),
+      // A double's trough rule (quick 261115-mc1, D-06), in the D-44 angle's spirit: forgiving on its own, so a bad rule
+      // never costs a board its cut. Absent reads Parallel — the key is never written for a cut that never chose one.
+      troughRun: z.enum(["parallel", "centered", "hand"]).optional().catch(undefined),
+    })
+    // A rule that was bad (or never there) is left out of the cut altogether, not kept as an empty key: a board that
+    // never chose one stores and reads back exactly the keys it always did.
+    .transform((cut) => {
+      if (cut.troughRun === undefined) delete cut.troughRun;
+      return cut;
     })
     .catch(() => ({ ...DEFAULT_BOTTOM[section] }));
 

@@ -70,7 +70,7 @@ export interface BottomCutSpec {
   offRail: Mm;
   /** A vee's flat panel either side of the stringer, a double's flat (a mark). */
   offStringer: Mm;
-  /** A double's trough, out from the stringer (a mark). */
+  /** A double's trough, out from the stringer (a mark) — what Parallel holds it to all along the cut. */
   troughAt: Mm;
   start: Mm;
   deepest: Mm;
@@ -83,7 +83,27 @@ export interface BottomCutSpec {
   smoothness: number;
   /** A nose single that closes to a point toward the center (the Teardrop's, D-06 / D-32). */
   closesToPoint: boolean;
+  /**
+   * How a double's trough runs along the board (quick 261115-mc1, D-01). Absent reads Parallel — today's rule — so every
+   * board saved before the rule existed, and every cut a shaper has just picked, stores no new key (D-05, D-06).
+   */
+  troughRun?: DoubleTroughRun;
+  /** By hand: the trough's distance off the stringer at the cut's Start (a mark). Absent reads Trough At (D-06). */
+  troughStart?: Mm;
+  /** By hand: the trough's distance off the stringer at the cut's End (a mark). Absent reads Trough At (D-06). */
+  troughEnd?: Mm;
 }
+
+/**
+ * The three ways a double concave's trough can run along the board (D-01), in the order BOTTOM's Trough menu lists them:
+ * **Parallel** — Trough At off the stringer all the way (D-02); **Centered** — halfway between the flat's edge and the
+ * cut's edge at every station, so it follows the outline in toward a narrow tail (D-03); **By hand** — a straight line
+ * from Trough at Start to Trough at End, like a batten laid between two marks (D-04).
+ */
+export type DoubleTroughRun = "parallel" | "centered" | "hand";
+
+/** The three rules, in the menu's order. */
+export const DOUBLE_TROUGH_RUNS: readonly DoubleTroughRun[] = ["parallel", "centered", "hand"];
 
 /**
  * The channels as STORED (D-10, D-11, D-44; resolved by 17-05). `startFromFins` and `deepestFromFins` ride with the
@@ -359,6 +379,8 @@ export interface ResolvedCut {
   veeLift: Mm;
   smoothness: number;
   closesToPoint: boolean;
+  /** How a double's trough runs (D-01): the stored rule, Parallel when none is stored (D-06). */
+  troughRun: DoubleTroughRun;
 }
 
 /**
@@ -401,7 +423,7 @@ export interface ResolvedBottom {
  */
 export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board: BottomBoard): ResolvedCut {
   const kind = cutKind(spec.name);
-  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false };
+  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false, troughRun: "parallel" };
   const abs = absoluteStations(section, spec, board);
   const deepest = abs.deepest;
   let { start, end } = abs;
@@ -424,6 +446,7 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
     veeLift: spec.veeLift,
     smoothness: spec.smoothness,
     closesToPoint: spec.closesToPoint,
+    troughRun: spec.troughRun ?? "parallel",
   };
 }
 
@@ -600,6 +623,16 @@ export function startingChannels(count: ChannelCount, board: BottomBoard, curren
 }
 
 /**
+ * A rule picked from BOTTOM's `Trough` menu (quick 261115-mc1, D-01): the rule written onto a double's cut, every other
+ * number kept as it is. A cut that is not a double, or the rule already in use (none stored reads Parallel), comes back
+ * as the very same spec, so a pick that changes nothing is no edit at all.
+ */
+export function switchTroughRun(spec: BottomCutSpec, run: DoubleTroughRun): BottomCutSpec {
+  if (cutKind(spec.name) !== "double" || (spec.troughRun ?? "parallel") === run) return spec;
+  return { ...spec, troughRun: run };
+}
+
+/**
  * A channel count picked from BOTTOM's `Channels` menu (D-10, D-11; the orchestrator's ruling at 17-09): the count, and
  * that count's starting width (2 1/2" · 1 3/4" · 1 1/4") unless the width there now was set by hand — `startingChannels`'
  * own width rule — with every other channel number kept as it is. `None` (0) hides the set and keeps every number, so
@@ -736,12 +769,14 @@ export function cutHalfWidth(cut: ResolvedCut, board: BottomBoard, rule: BottomW
 
 /**
  * A double's two across marks at half-width `C`, kept in order (the sketch's `doubleMarks`): the flat at the stringer
- * (Off Stringer, at most half the cut's width), then the trough (Trough At, at least 1/4" outside the flat and inside
- * 85% of the width).
+ * (Off Stringer, at most half the cut's width), then the trough, at least 1/4" outside the flat and inside 85% of the
+ * width. Where the trough wants to sit before that is the cut's `troughRun` (quick 261115-mc1): Parallel's Trough At
+ * (D-02), or Centered's midpoint of the flat's edge and the cut's edge `C` (D-03).
  */
-export function doubleMarks(cut: Pick<ResolvedCut, "offStringer" | "troughAt">, C: Mm): { flat: Mm; trough: Mm } {
+export function doubleMarks(cut: Pick<ResolvedCut, "offStringer" | "troughAt" | "troughRun">, C: Mm): { flat: Mm; trough: Mm } {
   const a = Math.min(cut.offStringer, Math.max(0, C * DOUBLE_FLAT_SHARE));
-  const t = Math.max(a + DOUBLE_TROUGH_GAP, Math.min(cut.troughAt, C * DOUBLE_TROUGH_SHARE));
+  const wanted = cut.troughRun === "centered" ? (a + C) / 2 : cut.troughAt;
+  const t = Math.max(a + DOUBLE_TROUGH_GAP, Math.min(wanted, C * DOUBLE_TROUGH_SHARE));
   return { flat: mm(a), trough: mm(t) };
 }
 

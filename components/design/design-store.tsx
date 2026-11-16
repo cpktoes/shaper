@@ -126,6 +126,7 @@ import {
   resolveBottom,
   switchChannelCount,
   switchChannelRun,
+  switchTroughRun,
   type BoardBottom,
   type BottomBoard,
   type BottomChannelsSpec,
@@ -133,6 +134,7 @@ import {
   type BottomCutSpec,
   type BottomSectionKey,
   type BottomWingRule,
+  type DoubleTroughRun,
   type ResolvedBottom,
 } from "@/lib/geometry/bottom";
 import { builtSectionAt } from "@/lib/geometry/bottom-draw";
@@ -501,6 +503,9 @@ interface DesignContextValue {
   /** The `Closes to a point toward the center` tick box on a Nose single concave (D-06, D-32): a tick, not a drag, so
    * one undo step each. Nothing on a locked board. */
   setBottomClosesToPoint: (section: BottomSectionKey, on: boolean) => void;
+  /** A double concave's `Trough` menu (quick 261115-mc1, D-01): Parallel, Centered or By hand, every other number kept
+   * (`switchTroughRun`). A menu pick, so one undo step each. Nothing on a locked board. */
+  setBottomTroughRun: (section: BottomSectionKey, run: DoubleTroughRun) => void;
   /** WINGS on BOTTOM (D-19): where Off Rail is measured from on a winged board — the narrowest outline, or the curve
    * drawn before the wing. One setting for the whole bottom; one undo step each. Nothing on a locked board. */
   setBottomWingRule: (rule: BottomWingRule) => void;
@@ -1542,6 +1547,18 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // A double's Trough menu (quick 261115-mc1): a discrete pick, so its own undo step: noteEdit(null).
+  const setBottomTroughRun = (section: BottomSectionKey, run: DoubleTroughRun) => {
+    if (lockedRef.current) return;
+    noteEdit(null);
+    setState((prev) => ({
+      ...startedFrom(prev, liveTipsRef.current),
+      bottom: { ...prev.bottom, [section]: switchTroughRun(prev.bottom[section], run) },
+      boardStarted: true,
+      dirty: true,
+    }));
+  };
+
   // WINGS (D-19): which outline every cut's Off Rail is measured from on a winged board. A menu pick is a discrete
   // choice, so its own undo step: noteEdit(null).
   const setBottomWingRule = (rule: BottomWingRule) => {
@@ -2191,6 +2208,7 @@ export function DesignProvider({ children }: { children: ReactNode }) {
     pickBottomCut,
     updateBottomCut,
     setBottomClosesToPoint,
+    setBottomTroughRun,
     setBottomWingRule,
     setChannelCount,
     setChannelRun,

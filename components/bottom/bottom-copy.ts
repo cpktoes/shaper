@@ -20,6 +20,7 @@ import {
   type BottomSectionKey,
   type BottomWingRule,
   type channelReadout,
+  type DoubleTroughRun,
   type ResolvedChannels,
 } from "@/lib/geometry/bottom";
 import { CHANNEL_RUN_NAME, formatChannelAngle } from "@/lib/geometry/bottom-print";
@@ -72,6 +73,19 @@ export const BOTTOM_COPY = {
   offStringer: "Off Stringer",
   offStringerLeft: "At the stringer",
   troughAt: "Trough At",
+  /**
+   * A double's Trough menu (quick 261115-mc1, D-01): how the trough runs along the board. The spoken name reads like the
+   * Cut menu's (`Tail Trough`), the three options are the rules' plain names, and the muted line under the menu says in
+   * one sentence what the picked rule does to the board.
+   */
+  troughRunLabel: "Trough",
+  troughRunSelectName: (section: BottomSectionKey) => `${BOTTOM_SECTION_NAME[section]} Trough`,
+  troughRunOptions: { parallel: "Parallel", centered: "Centered", hand: "By hand" } satisfies Record<DoubleTroughRun, string>,
+  troughRunNotes: {
+    parallel: "The same distance off the stringer all the way along, pulled in only where the cut runs out of room.",
+    centered: "Halfway between the flat and the edge at every station, so it follows the outline in toward a narrow tail.",
+    hand: "A straight line from where you set it at the Start to where you set it at the End.",
+  } satisfies Record<DoubleTroughRun, string>,
   /** `4" from the stringer`: Trough At's value as its label reads it. */
   fromStringer: (mark: string) => `${mark} from the stringer`,
   veeLift: "Vee Lift",
