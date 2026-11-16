@@ -4,7 +4,7 @@ import { BOARD_FILE_COPY } from "../components/setup/board-file-copy";
 import { BRD_BLANK_COPY } from "../lib/export/brd-blank-words";
 import { brdBottomStations, brdFile, brdText } from "../lib/export/brd";
 import { BRD_FIT_COPY, brdBottomFrames, brdBottomRows, brdFitLook, brdFitSheet, brdLengthWords, brdRailFrames, brdRailRows, type BrdFitLook, type BrdFitSheet } from "../lib/export/brd-fit-preview";
-import { BRD_FILE_ACCEPT, readAnyBrd } from "../lib/export/brd-read";
+import { readAnyBrd } from "../lib/export/brd-read";
 import { BRD_MAGIC } from "../lib/export/brd-scramble";
 import { buildBoardSurface, type BoardSurface } from "../lib/geometry/board-surface";
 import { formatBottomStation, formatHardEdgeBlendsFrom, formatHardEdgeEndsAt } from "../lib/geometry/blank-reasons";
@@ -254,15 +254,13 @@ test.describe("Open a board file… takes a .brd (quick 261113-d9b)", () => {
     expect(await keptRaw(page)).toBe(before);
   });
 
-  test("b4. a file that can't be looked at gets one quiet line; the input takes .json and .brd, and the account import stays JSON", async ({
+  test("b4. a file that can't be looked at gets one quiet line; the input offers every file (an iPhone greys out a .brd under a list), and the account import stays JSON", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "one computer is enough for the quiet lines");
     const c = BOARD_FILE_COPY;
     await page.goto("/");
-    const accept = await page.locator("[data-board-file-input]").getAttribute("accept");
-    expect(accept).toContain(".json");
-    expect(accept).toContain(BRD_FILE_ACCEPT);
+    await expect(page.locator("[data-board-file-input]")).not.toHaveAttribute("accept", /./);
     expect(BOARD_FILE_ACCEPT).not.toContain(".brd");
 
     const junk = Buffer.alloc(BRD_MAGIC.length + 64);

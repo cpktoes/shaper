@@ -15,7 +15,6 @@ import { phase16Boards } from "../geometry/__fixtures__/phase16-boards";
 import { BOARD_FILE_ACCEPT } from "../models/board-file";
 import { brdFile, brdText } from "./brd";
 import {
-  BRD_FILE_ACCEPT,
   BRD_READ_MAX_BYTES,
   BRD_READ_MAX_KNOTS,
   BRD_READ_MAX_SECTIONS,
@@ -110,8 +109,7 @@ describe("the file's name", () => {
     expect(isBrdFileName("brd")).toBe(false);
   });
 
-  it("is added to Open a board file only: the shared accept list stays JSON", () => {
-    expect(BRD_FILE_ACCEPT).toBe(".brd");
+  it("reads at most 2 MB, and the shared accept list (Import my designs) stays JSON", () => {
     expect(BOARD_FILE_ACCEPT).not.toContain(".brd");
     expect(BRD_READ_MAX_BYTES).toBe(2 * 1024 * 1024);
   });

@@ -41,12 +41,12 @@ import { useFitDefaults } from "@/components/fit-defaults-provider";
 import { BOARD_FILE_COPY } from "@/components/setup/board-file-copy";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/components/units-provider";
-import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "@/lib/export/brd-file-basics";
+import { BRD_READ_MAX_BYTES, isBrdFileName } from "@/lib/export/brd-file-basics";
 import { brdLengthWords } from "@/lib/export/brd-length-words";
 // Types only (erased at build time): the fitting library itself and the preview dialog are fetched only once a .brd is picked.
 import type { BrdFitLook } from "@/lib/export/brd-fit-preview";
 import type { BrdLookResult } from "@/lib/export/brd-look";
-import { BOARD_FILE_ACCEPT, BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
+import { BOARD_FILE_MAX_BYTES, readOneBoardFile, type OneBoardFileResult } from "@/lib/models/board-file";
 import type { DesignSnapshotFields } from "@/lib/models/design-snapshot";
 
 /**
@@ -248,7 +248,8 @@ export function OpenBoardFile({ onOpen }: OpenBoardFileProps) {
       <input
         ref={inputRef}
         type="file"
-        accept={`${BOARD_FILE_ACCEPT},${BRD_FILE_ACCEPT}`}
+        // No `accept` list: an iPhone greys out a .brd in Files (it has no file type for the ending and drops it from the
+        // list), so every file is offered on every device and the pick is sorted by its name and contents below.
         hidden
         data-board-file-input
         onChange={(event) => void handlePick(event)}

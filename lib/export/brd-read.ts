@@ -33,13 +33,13 @@ import type { BrdReadKnot } from "./brd";
 import { BRD_PREVIEW_CURVE_STEPS, BRD_PREVIEW_SECTION_STEPS, sampleKnots } from "./brd-preview";
 import { brdFinWord, parseBrdFinLine } from "./brd-fin-line";
 import { BRD_MAGIC, unscrambleBrd } from "./brd-scramble";
-import { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName } from "./brd-file-basics";
+import { BRD_READ_MAX_BYTES, isBrdFileName } from "./brd-file-basics";
 
 export { brdFinWord, parseBrdFinLine };
 
-// The picker word, the size cap and the file-name test live in `brd-file-basics.ts` (the home page needs them before a file is
+// The size cap and the file-name test live in `brd-file-basics.ts` (the home page needs them before a file is
 // picked and must not download this reader for them); they are re-exported here so everything else keeps importing them from here.
-export { BRD_FILE_ACCEPT, BRD_READ_MAX_BYTES, isBrdFileName };
+export { BRD_READ_MAX_BYTES, isBrdFileName };
 
 /** The most lines read, and the most knots one curve (or one cross-section) may hold. The knot cap is a budget for the
  * fit as much as a guard (the go-live review of 2026-11-14, WR-03: a crafted file with 64 sections of 200 knots took about
