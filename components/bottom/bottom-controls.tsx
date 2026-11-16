@@ -83,15 +83,13 @@ const SMOOTHNESS = { min: 0, max: 100, step: 5 } as const;
 /** WINGS' two rules, in the menu's order: the narrowest outline first, where every board opens (D-19). */
 const WING_RULES: readonly BottomWingRule[] = ["narrowest", "natural"];
 
-/** The Trough menu's rules, in the menu's order (D-01). */
-const TROUGH_RUNS_SHOWN: readonly DoubleTroughRun[] = DOUBLE_TROUGH_RUNS.filter((run) => run !== "hand");
 
 const STATION_FIELDS = ["start", "deepest", "end"] as const;
 type StationField = (typeof STATION_FIELDS)[number];
 const STATION_LABEL: Record<StationField, string> = { start: BOTTOM_COPY.start, deepest: BOTTOM_COPY.deepestAt, end: BOTTOM_COPY.end };
 
 /** A cut's mark rows (UI-SPEC §1's slider table). */
-type MarkField = "offRail" | "offStringer" | "troughAt" | "depth" | "veeLift";
+type MarkField = "offRail" | "offStringer" | "troughAt" | "troughStart" | "troughEnd" | "depth" | "veeLift";
 interface MarkRowSpec {
   label: string;
   /** The slider's inch range; `measureSlider` rounds it inward onto whole millimetres in Metric. */
@@ -105,6 +103,9 @@ const MARK_ROWS: Record<MarkField, MarkRowSpec> = {
   offRail: { label: BOTTOM_COPY.offRail, rangeIn: BOTTOM_MARK_RANGES_IN.offRail, leftHint: BOTTOM_COPY.offRailLeft },
   offStringer: { label: BOTTOM_COPY.offStringer, rangeIn: BOTTOM_MARK_RANGES_IN.offStringer, leftHint: BOTTOM_COPY.offStringerLeft },
   troughAt: { label: BOTTOM_COPY.troughAt, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
+  // By hand's two ends read like Trough At: the same range, the same 1/16" steps (1 mm in Metric), the same words.
+  troughStart: { label: BOTTOM_COPY.troughAtStart, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
+  troughEnd: { label: BOTTOM_COPY.troughAtEnd, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
   depth: { label: BOTTOM_COPY.depth, rangeIn: BOTTOM_MARK_RANGES_IN.depth, leftHint: BOTTOM_COPY.depthLeft },
   veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: BOTTOM_MARK_RANGES_IN.veeLift },
 };
@@ -124,10 +125,11 @@ function cutRows(cut: Pick<ResolvedCut, "kind" | "name" | "spiral" | "troughRun"
   const rows: CutRow[] = [];
   if (cut.kind === "single" || cut.kind === "double") rows.push("offRail");
   if (cut.kind === "double" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
-  // A double's Trough menu (quick 261115-mc1), then the one distance its rule reads: Trough At under Parallel; Centered
-  // has no distance to set.
+  // A double's Trough menu (quick 261115-mc1), then the distances its rule reads: Trough At under Parallel, Trough at
+  // Start and Trough at End under By hand; Centered has no distance to set.
   if (cut.kind === "double") rows.push("troughRun");
   if (cut.kind === "double" && cut.troughRun === "parallel") rows.push("troughAt");
+  if (cut.kind === "double" && cut.troughRun === "hand") rows.push("troughStart", "troughEnd");
   rows.push(...STATION_FIELDS, "depth");
   if (cut.spiral) rows.push("veeLift");
   rows.push("smoothness");
@@ -456,7 +458,7 @@ function BottomSectionCard({
  */
 function TroughRunRow({ section, run, onPick }: { section: BottomSectionKey; run: DoubleTroughRun; onPick: (run: DoubleTroughRun) => void }) {
   const locked = useControlsLocked();
-  const items = TROUGH_RUNS_SHOWN.map((value) => ({ value, label: BOTTOM_COPY.troughRunOptions[value] }));
+  const items = DOUBLE_TROUGH_RUNS.map((value) => ({ value, label: BOTTOM_COPY.troughRunOptions[value] }));
   return (
     <div data-bottom-trough-run className="flex flex-col gap-3.5">
       <div className={cn(locked && "opacity-40")}>

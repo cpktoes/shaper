@@ -577,11 +577,17 @@ const bottomCutSchema = (section: BottomSectionKey) =>
       // A double's trough rule (quick 261115-mc1, D-06), in the D-44 angle's spirit: forgiving on its own, so a bad rule
       // never costs a board its cut. Absent reads Parallel — the key is never written for a cut that never chose one.
       troughRun: z.enum(["parallel", "centered", "hand"]).optional().catch(undefined),
+      // By hand's two ends, each forgiving on its own (outer bound 0–12", clear of the slider's 8"): a bad one reads
+      // Trough At, and the cut and its rule are kept.
+      troughStart: bottomAcrossSchema.optional().catch(undefined),
+      troughEnd: bottomAcrossSchema.optional().catch(undefined),
     })
-    // A rule that was bad (or never there) is left out of the cut altogether, not kept as an empty key: a board that
-    // never chose one stores and reads back exactly the keys it always did.
+    // A rule or an end that was bad (or never there) is left out of the cut altogether, not kept as an empty key: a
+    // board that never chose one stores and reads back exactly the keys it always did.
     .transform((cut) => {
       if (cut.troughRun === undefined) delete cut.troughRun;
+      if (cut.troughStart === undefined) delete cut.troughStart;
+      if (cut.troughEnd === undefined) delete cut.troughEnd;
       return cut;
     })
     .catch(() => ({ ...DEFAULT_BOTTOM[section] }));

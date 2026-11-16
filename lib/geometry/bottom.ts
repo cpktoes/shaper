@@ -381,6 +381,10 @@ export interface ResolvedCut {
   closesToPoint: boolean;
   /** How a double's trough runs (D-01): the stored rule, Parallel when none is stored (D-06). */
   troughRun: DoubleTroughRun;
+  /** By hand: the trough's distance off the stringer at Start — Trough At when none is stored (D-06). */
+  troughStart: Mm;
+  /** By hand: the trough's distance off the stringer at End — Trough At when none is stored (D-06). */
+  troughEnd: Mm;
 }
 
 /**
@@ -423,7 +427,7 @@ export interface ResolvedBottom {
  */
 export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board: BottomBoard): ResolvedCut {
   const kind = cutKind(spec.name);
-  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false, troughRun: "parallel" };
+  if (kind === "flat") return { ...flatSpec(spec.name), section, kind, spiral: false, troughRun: "parallel", troughStart: mm(0), troughEnd: mm(0) };
   const abs = absoluteStations(section, spec, board);
   const deepest = abs.deepest;
   let { start, end } = abs;
@@ -447,6 +451,8 @@ export function resolveCut(section: BottomSectionKey, spec: BottomCutSpec, board
     smoothness: spec.smoothness,
     closesToPoint: spec.closesToPoint,
     troughRun: spec.troughRun ?? "parallel",
+    troughStart: spec.troughStart ?? spec.troughAt,
+    troughEnd: spec.troughEnd ?? spec.troughAt,
   };
 }
 
@@ -499,8 +505,12 @@ export function resolveBottom(bottom: BoardBottom, board: BottomBoard): Resolved
  * cut's Deepest At stays measured from the fins.
  *
  * A double's two across marks are kept in order too, against its half-width at Deepest At (never read under an inch):
- * Off Stringer at most half of it, Trough At at least Off Stringer + 1/4" and at most 85% of it. `rule` is the bottom's
- * own `wingRule`, which the half-width is measured against (D-19).
+ * Off Stringer at most half of it, Trough At at least Off Stringer + 1/4" and at most 85% of it. By hand's two ends
+ * (Trough at Start and Trough at End), when the cut has them, are kept the very same way — against the half-width at
+ * Deepest At and not each end's own, because a Spiral Vee ends at the tail where a narrow board's cut is about an inch
+ * wide, and holding its End there would swing the whole trough in the moment By hand was picked (quick 261115-mc1,
+ * D-05). Where a cut still runs out of room near a narrow tail, `doubleMarks` pulls the drawn trough in there, as it
+ * does for Trough At. `rule` is the bottom's own `wingRule`, which the half-width is measured against (D-19).
  */
 export function keepStationsInOrder(
   section: BottomSectionKey,
@@ -519,7 +529,12 @@ export function keepStationsInOrder(
   if (kind === "double") {
     const C = Math.max(DOUBLE_MIN_HALF_WIDTH, refAt(board, rule, c.deepest) - spec.offRail);
     kept.offStringer = mm(Math.min(spec.offStringer, C * DOUBLE_FLAT_SHARE));
-    kept.troughAt = mm(Math.max(kept.offStringer + DOUBLE_TROUGH_GAP, Math.min(spec.troughAt, C * DOUBLE_TROUGH_SHARE)));
+    const keepTrough = (v: Mm) => mm(Math.max(kept.offStringer + DOUBLE_TROUGH_GAP, Math.min(v, C * DOUBLE_TROUGH_SHARE)));
+    kept.troughAt = keepTrough(spec.troughAt);
+    // By hand's two ends are kept exactly as Trough At is — only when the cut has them, so a cut that never went By
+    // hand gains no key (quick 261115-mc1, D-04, D-06).
+    if (spec.troughStart !== undefined) kept.troughStart = keepTrough(spec.troughStart);
+    if (spec.troughEnd !== undefined) kept.troughEnd = keepTrough(spec.troughEnd);
   }
   return kept;
 }
@@ -624,11 +639,16 @@ export function startingChannels(count: ChannelCount, board: BottomBoard, curren
 
 /**
  * A rule picked from BOTTOM's `Trough` menu (quick 261115-mc1, D-01): the rule written onto a double's cut, every other
- * number kept as it is. A cut that is not a double, or the rule already in use (none stored reads Parallel), comes back
- * as the very same spec, so a pick that changes nothing is no edit at all.
+ * number kept as it is — except that By hand starts both its ends at the Trough At there now. A cut that is not a
+ * double, or the rule already in use (none stored reads Parallel), comes back as the very same spec, so a pick that
+ * changes nothing is no edit at all, and a shaper's two By-hand figures survive a second pick of By hand.
  */
 export function switchTroughRun(spec: BottomCutSpec, run: DoubleTroughRun): BottomCutSpec {
   if (cutKind(spec.name) !== "double" || (spec.troughRun ?? "parallel") === run) return spec;
+  // By hand opens with both ends at the Trough At the cut has now, so nothing on the board jumps (D-05). The ends are
+  // deliberately NOT run through `keepStationsInOrder`: on a pin tail that keep pulls an opening Trough At in on the
+  // first drag of any slider, and the switch itself must not move a board.
+  if (run === "hand") return { ...spec, troughRun: run, troughStart: spec.troughAt, troughEnd: spec.troughAt };
   return { ...spec, troughRun: run };
 }
 
@@ -768,14 +788,36 @@ export function cutHalfWidth(cut: ResolvedCut, board: BottomBoard, rule: BottomW
 }
 
 /**
+ * The trough's distance off the stringer at station `s` (from the tail) under By hand (D-04): a straight line from
+ * `troughStart` at the cut's Start to `troughEnd` at its End, like a batten laid between two marks. At or ahead of
+ * Start it holds `troughStart`, at or behind End `troughEnd`; a cut whose Start and End meet reads `troughStart`
+ * (nothing to divide by). The clamps in `doubleMarks` come after.
+ */
+export function troughByHandAt(cut: Pick<ResolvedCut, "start" | "end" | "troughStart" | "troughEnd">, s: Mm): Mm {
+  if (s >= cut.start) return cut.troughStart;
+  if (s <= cut.end) return cut.troughEnd;
+  return mm(cut.troughEnd + ((cut.troughStart - cut.troughEnd) * (s - cut.end)) / (cut.start - cut.end));
+}
+
+/**
  * A double's two across marks at half-width `C`, kept in order (the sketch's `doubleMarks`): the flat at the stringer
  * (Off Stringer, at most half the cut's width), then the trough, at least 1/4" outside the flat and inside 85% of the
  * width. Where the trough wants to sit before that is the cut's `troughRun` (quick 261115-mc1): Parallel's Trough At
- * (D-02), or Centered's midpoint of the flat's edge and the cut's edge `C` (D-03).
+ * (D-02), Centered's midpoint of the flat's edge and the cut's edge `C` (D-03), or By hand's straight line between its
+ * two ends (D-04), which needs `s`, the station from the tail the marks are read at — left out it reads the cut's Deepest
+ * At, so a two-argument call is still the cut's deepest place.
  */
-export function doubleMarks(cut: Pick<ResolvedCut, "offStringer" | "troughAt" | "troughRun">, C: Mm): { flat: Mm; trough: Mm } {
+export function doubleMarks(
+  cut: Pick<ResolvedCut, "offStringer" | "troughAt" | "troughRun"> & Partial<Pick<ResolvedCut, "start" | "deepest" | "end" | "troughStart" | "troughEnd">>,
+  C: Mm,
+  s?: Mm,
+): { flat: Mm; trough: Mm } {
   const a = Math.min(cut.offStringer, Math.max(0, C * DOUBLE_FLAT_SHARE));
-  const wanted = cut.troughRun === "centered" ? (a + C) / 2 : cut.troughAt;
+  let wanted: number = cut.troughAt;
+  if (cut.troughRun === "centered") wanted = (a + C) / 2;
+  else if (cut.troughRun === "hand" && cut.start !== undefined && cut.end !== undefined && cut.troughStart !== undefined && cut.troughEnd !== undefined) {
+    wanted = troughByHandAt({ start: cut.start, end: cut.end, troughStart: cut.troughStart, troughEnd: cut.troughEnd }, s ?? cut.deepest ?? cut.start);
+  }
   const t = Math.max(a + DOUBLE_TROUGH_GAP, Math.min(wanted, C * DOUBLE_TROUGH_SHARE));
   return { flat: mm(a), trough: mm(t) };
 }
@@ -808,7 +850,7 @@ export function cutFoamOffParts(cut: ResolvedCut, board: BottomBoard, rule: Bott
     if (C > 0 && y < C) {
       if (cut.kind === "single") concave += cut.depth * f * Math.min(1, C / PINCH) * sec(y / C, r);
       else {
-        const { flat: a, trough: t } = doubleMarks(cut, C);
+        const { flat: a, trough: t } = doubleMarks(cut, C, s);
         if (y > a) {
           const D = cut.depth * f * Math.min(1, (C - a) / PINCH);
           const u = y < t ? (t - y) / (t - a) : (y - t) / (C - t);
@@ -1395,7 +1437,7 @@ function marksOf(cut: ResolvedCut, board: BottomBoard, rule: BottomWingRule, s: 
   if (cut.kind === "double") {
     const C = cutHalfWidth(cut, board, rule, s);
     if (C <= BOTTOM_DATA_EDGE) return [];
-    const { flat, trough } = doubleMarks(cut, C);
+    const { flat, trough } = doubleMarks(cut, C, s);
     const out = [{ key: key("flat"), y: flat }, { key: key("trough"), y: trough }];
     if (C < W) out.push({ key: key("edge"), y: C });
     return out.filter((m) => m.y > BOTTOM_DATA_EDGE);
@@ -1477,7 +1519,7 @@ export function bottomFloorFlags(resolved: ResolvedBottom, board: BottomBoard, s
         for (let j = 0; j <= DEEPEST_SPANS; j++) across.push(inner + ((W - inner) * j) / DEEPEST_SPANS);
         if (cut.kind === "double") {
           const C = cutHalfWidth(cut, board, rule, s);
-          const { trough } = doubleMarks(cut, C);
+          const { trough } = doubleMarks(cut, C, s);
           if (C > 0 && trough > inner) across.push(trough);
         }
         const meets = across.some((y) => cutFoamOffParts(cut, board, rule, s, mm(y)).concave > 0 && foamOffParts(resolved, board, s, mm(y)).concave > cap);

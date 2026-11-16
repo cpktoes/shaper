@@ -111,6 +111,12 @@ function cutLine(section: BottomSectionKey, cut: ResolvedCut, board: BottomBoard
     if (cut.troughRun === "centered") {
       return `${lead}flat ${formatMark(cut.offStringer, system)} off the stringer and trough centered between the flat and the edge.`;
     }
+    if (cut.troughRun === "hand") {
+      return (
+        `${lead}flat ${formatMark(cut.offStringer, system)} off the stringer and trough ${formatMark(cut.troughStart, system)} off it ` +
+        `at the start, ${formatMark(cut.troughEnd, system)} at the end.`
+      );
+    }
     return `${lead}flat ${formatMark(cut.offStringer, system)} and trough ${formatMark(cut.troughAt, system)} off the stringer.`;
   }
   // A vee or a belly lifts the rail; the Tri-Plane's flat panel is the one across mark it has.

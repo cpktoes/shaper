@@ -337,8 +337,8 @@ function cutPencilLines(cut: ResolvedCut, board: BottomBoard, resolved: Resolved
   if (cut.kind === "single") return [line("edge", "edge", C, PENCIL_STEPS.cut)];
   if (cut.kind === "double") {
     return [
-      line("flat", "flat", (s) => doubleMarks(cut, C(s)).flat, PENCIL_STEPS.cut),
-      line("trough", "trough", (s) => doubleMarks(cut, C(s)).trough, PENCIL_STEPS.cut),
+      line("flat", "flat", (s) => doubleMarks(cut, C(s), mm(s)).flat, PENCIL_STEPS.cut),
+      line("trough", "trough", (s) => doubleMarks(cut, C(s), mm(s)).trough, PENCIL_STEPS.cut),
       line("edge", "edge", C, PENCIL_STEPS.cut),
     ];
   }

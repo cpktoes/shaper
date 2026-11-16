@@ -73,6 +73,9 @@ export const BOTTOM_COPY = {
   offStringer: "Off Stringer",
   offStringerLeft: "At the stringer",
   troughAt: "Trough At",
+  /** By hand's two sliders (D-04): where the trough stands off the stringer at the cut's Start and at its End. */
+  troughAtStart: "Trough at Start",
+  troughAtEnd: "Trough at End",
   /**
    * A double's Trough menu (quick 261115-mc1, D-01): how the trough runs along the board. The spoken name reads like the
    * Cut menu's (`Tail Trough`), the three options are the rules' plain names, and the muted line under the menu says in
