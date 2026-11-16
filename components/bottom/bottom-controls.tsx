@@ -17,6 +17,7 @@ import {
   CHANNEL_ANGLE_MAX,
   CHANNEL_ANGLE_STEP,
   channelDefaultAngle,
+  DOUBLE_TROUGH_RUNS,
   channelReadout,
   snapChannelAngle,
   stationFromNearestTip,
@@ -29,6 +30,7 @@ import {
   type BottomFloorFlag,
   type BottomSectionKey,
   type BottomWingRule,
+  type DoubleTroughRun,
   type ResolvedChannels,
   type ResolvedCut,
 } from "@/lib/geometry/bottom";
@@ -81,12 +83,13 @@ const SMOOTHNESS = { min: 0, max: 100, step: 5 } as const;
 /** WINGS' two rules, in the menu's order: the narrowest outline first, where every board opens (D-19). */
 const WING_RULES: readonly BottomWingRule[] = ["narrowest", "natural"];
 
+
 const STATION_FIELDS = ["start", "deepest", "end"] as const;
 type StationField = (typeof STATION_FIELDS)[number];
 const STATION_LABEL: Record<StationField, string> = { start: BOTTOM_COPY.start, deepest: BOTTOM_COPY.deepestAt, end: BOTTOM_COPY.end };
 
 /** A cut's mark rows (UI-SPEC §1's slider table). */
-type MarkField = "offRail" | "offStringer" | "troughAt" | "depth" | "veeLift";
+type MarkField = "offRail" | "offStringer" | "troughAt" | "troughStart" | "troughEnd" | "depth" | "veeLift";
 interface MarkRowSpec {
   label: string;
   /** The slider's inch range; `measureSlider` rounds it inward onto whole millimetres in Metric. */
@@ -100,12 +103,15 @@ const MARK_ROWS: Record<MarkField, MarkRowSpec> = {
   offRail: { label: BOTTOM_COPY.offRail, rangeIn: BOTTOM_MARK_RANGES_IN.offRail, leftHint: BOTTOM_COPY.offRailLeft },
   offStringer: { label: BOTTOM_COPY.offStringer, rangeIn: BOTTOM_MARK_RANGES_IN.offStringer, leftHint: BOTTOM_COPY.offStringerLeft },
   troughAt: { label: BOTTOM_COPY.troughAt, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
+  // By hand's two ends read like Trough At: the same range, the same 1/16" steps (1 mm in Metric), the same words.
+  troughStart: { label: BOTTOM_COPY.troughAtStart, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
+  troughEnd: { label: BOTTOM_COPY.troughAtEnd, rangeIn: BOTTOM_MARK_RANGES_IN.troughAt, words: BOTTOM_COPY.fromStringer },
   depth: { label: BOTTOM_COPY.depth, rangeIn: BOTTOM_MARK_RANGES_IN.depth, leftHint: BOTTOM_COPY.depthLeft },
   veeLift: { label: BOTTOM_COPY.veeLift, rangeIn: BOTTOM_MARK_RANGES_IN.veeLift },
 };
 
 /** One row of a cut's card. */
-type CutRow = MarkField | StationField | "smoothness";
+type CutRow = MarkField | StationField | "smoothness" | "troughRun";
 
 /**
  * Which rows a cut shows, in D-04's order (UI-SPEC § The side panel, the "Shown for" column): Off Rail on a single or a
@@ -114,12 +120,16 @@ type CutRow = MarkField | StationField | "smoothness";
  * Vee Lift on the Spiral Vee, and Smoothness. A flat shows none. Which rows to draw is the screen's question; every
  * number in them is the maths'.
  */
-function cutRows(cut: Pick<ResolvedCut, "kind" | "name" | "spiral">): CutRow[] {
+function cutRows(cut: Pick<ResolvedCut, "kind" | "name" | "spiral" | "troughRun">): CutRow[] {
   if (cut.kind === "flat") return [];
   const rows: CutRow[] = [];
   if (cut.kind === "single" || cut.kind === "double") rows.push("offRail");
   if (cut.kind === "double" || cut.name === "Tri-Plane Hull Center") rows.push("offStringer");
-  if (cut.kind === "double") rows.push("troughAt");
+  // A double's Trough menu (quick 261115-mc1), then the distances its rule reads: Trough At under Parallel, Trough at
+  // Start and Trough at End under By hand; Centered has no distance to set.
+  if (cut.kind === "double") rows.push("troughRun");
+  if (cut.kind === "double" && cut.troughRun === "parallel") rows.push("troughAt");
+  if (cut.kind === "double" && cut.troughRun === "hand") rows.push("troughStart", "troughEnd");
   rows.push(...STATION_FIELDS, "depth");
   if (cut.spiral) rows.push("veeLift");
   rows.push("smoothness");
@@ -184,6 +194,7 @@ export const BottomControls = memo(function BottomControls({
     resolvedBottom,
     updateBottomCut,
     setBottomClosesToPoint,
+    setBottomTroughRun,
     setBottomWingRule,
     setChannelRun,
     resetChannelAngle,
@@ -280,6 +291,7 @@ export const BottomControls = memo(function BottomControls({
           onPick={(name) => onPick(section, name)}
           onChange={(patch, changed) => updateBottomCut(section, patch, changed)}
           onClosesToPoint={(on) => setBottomClosesToPoint(section, on)}
+          onTroughRun={(run) => setBottomTroughRun(section, run)}
         >
           {section === "tail" && (
             <ChannelsBlock
@@ -325,6 +337,7 @@ interface BottomSectionCardProps {
   onPick: (name: BottomCutName) => void;
   onChange: (patch: Partial<BottomCutSpec>, changed?: StationField) => void;
   onClosesToPoint: (on: boolean) => void;
+  onTroughRun: (run: DoubleTroughRun) => void;
   /** Drawn under the card's last row: TAIL's CHANNELS block. */
   children?: ReactNode;
 }
@@ -346,6 +359,7 @@ function BottomSectionCard({
   onPick,
   onChange,
   onClosesToPoint,
+  onTroughRun,
   children,
 }: BottomSectionCardProps) {
   const locked = useControlsLocked();
@@ -388,6 +402,9 @@ function BottomSectionCard({
       {resolved.kind === "flat" && <p className="text-sm text-surf-ink-muted font-normal">{flatNote}</p>}
 
       {cutRows(resolved).map((row) => {
+        if (row === "troughRun") {
+          return <TroughRunRow key={row} section={section} run={resolved.troughRun} onPick={onTroughRun} />;
+        }
         if (row === "smoothness") {
           return <SmoothnessRow key={row} name={BOTTOM_COPY.sliderName(section, BOTTOM_COPY.smoothness)} value={resolved.smoothness} onChange={(v) => onChange({ smoothness: v })} />;
         }
@@ -431,6 +448,37 @@ function BottomSectionCard({
       )}
 
       {children}
+    </div>
+  );
+}
+
+/**
+ * A double's Trough menu (quick 261115-mc1, D-01), laid out like the WINGS block: a label, the menu, then one muted line
+ * saying what the picked rule does. A menu pick is one undo step; nothing on a locked board.
+ */
+function TroughRunRow({ section, run, onPick }: { section: BottomSectionKey; run: DoubleTroughRun; onPick: (run: DoubleTroughRun) => void }) {
+  const locked = useControlsLocked();
+  const items = DOUBLE_TROUGH_RUNS.map((value) => ({ value, label: BOTTOM_COPY.troughRunOptions[value] }));
+  return (
+    <div data-bottom-trough-run className="flex flex-col gap-3.5">
+      <div className={cn(locked && "opacity-40")}>
+        <div className={SELECT_LABEL}>{BOTTOM_COPY.troughRunLabel}</div>
+        <Select items={items} value={run} onValueChange={(value) => onPick(value as DoubleTroughRun)} disabled={locked}>
+          <SelectTrigger aria-label={BOTTOM_COPY.troughRunSelectName(section)} className={CUT_TRIGGER}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {items.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <p data-bottom-trough-note className="text-xs text-surf-ink-muted font-normal">
+        {BOTTOM_COPY.troughRunNotes[run]}
+      </p>
     </div>
   );
 }

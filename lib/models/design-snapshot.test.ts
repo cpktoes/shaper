@@ -1522,3 +1522,71 @@ describe("the bottom rides on the board, optional and read forgivingly (rule 14,
     }
   });
 });
+
+describe("a double concave's trough rule rides on the cut, optional and forgiving on its own (quick 261115-mc1, D-06)", () => {
+  const board = designBottomBoard(
+    FIXTURES[0].outline,
+    buildOutline(FIXTURES[0].outline),
+    designSideProfile(FIXTURES[0], LIVE_DESIGN_RULES),
+    designFinPlacement(FIXTURES[0]),
+  );
+  const tailWith = (patch: Record<string, unknown>) => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, tail: startingCut("tail", "Double Concave Exit", board) };
+    const stored = JSON.parse(JSON.stringify(buildSnapshot({ ...FIXTURES[0], bottom }))) as { version: number; design: { bottom: { tail: Record<string, unknown> } } };
+    Object.assign(stored.design.bottom.tail, patch);
+    return { stored, bottom };
+  };
+
+  it("a tail with a rule round-trips", () => {
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, tail: { ...startingCut("tail", "Double Concave Exit", board), troughRun: "centered" } };
+    expect(roundTrip({ ...FIXTURES[0], bottom }).bottom).toEqual(bottom);
+  });
+
+  it("a board saved without a rule opens with no troughRun key, and saves again the same way", () => {
+    const { stored, bottom } = tailWith({});
+    expect("troughRun" in stored.design.bottom.tail).toBe(false);
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect(Object.keys(opened.bottom!.tail)).toEqual(Object.keys(bottom.tail));
+    expect("troughRun" in opened.bottom!.tail).toBe(false);
+    expect(roundTrip(opened).bottom).toEqual(opened.bottom);
+  });
+
+  it("a bad rule is dropped alone and the rest of the cut is kept", () => {
+    for (const bad of ["diagonal", 7, null, true, {}, ["centered"]]) {
+      const { stored, bottom } = tailWith({ troughRun: bad });
+      expect(() => parseSnapshot(stored)).not.toThrow();
+      const opened = parseSnapshot(Object.freeze(stored));
+      expect(opened.bottom!.tail, String(bad)).toEqual(bottom.tail);
+      expect("troughRun" in opened.bottom!.tail).toBe(false);
+    }
+  });
+
+  it("Trough at Start and Trough at End round-trip; absent stays absent", () => {
+    const tail = { ...startingCut("tail", "Double Concave Exit", board), troughRun: "hand" as const, troughStart: mm(inchesToMm(4)), troughEnd: mm(inchesToMm(1.5)) };
+    const bottom: BoardBottom = { ...DEFAULT_BOTTOM, tail };
+    expect(roundTrip({ ...FIXTURES[0], bottom }).bottom).toEqual(bottom);
+    const { stored } = tailWith({});
+    const opened = parseSnapshot(Object.freeze(stored));
+    expect("troughStart" in opened.bottom!.tail).toBe(false);
+    expect("troughEnd" in opened.bottom!.tail).toBe(false);
+  });
+
+  it("a bad By-hand distance is dropped alone, reads Trough At, and the cut and the rule are kept", () => {
+    const BAD: [string, unknown][] = [
+      ["not a number (stored as nothing)", null],
+      ["below zero", -1],
+      ["a billion millimetres", 1e9],
+      ["in words", "x"],
+      ["a box", {}],
+    ];
+    for (const key of ["troughStart", "troughEnd"] as const) {
+      for (const [what, value] of BAD) {
+        const { stored, bottom } = tailWith({ troughRun: "hand", [key]: value });
+        expect(() => parseSnapshot(stored), what).not.toThrow();
+        const opened = parseSnapshot(Object.freeze(stored));
+        expect(opened.bottom!.tail, `${key} ${what}`).toEqual({ ...bottom.tail, troughRun: "hand" });
+        expect(key in opened.bottom!.tail, `${key} ${what}`).toBe(false);
+      }
+    }
+  });
+});
