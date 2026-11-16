@@ -130,3 +130,9 @@ division guarded by the Start-equals-End case and clamped (T-mc1-02), and no fix
 
 Files found: `lib/geometry/bottom-trough.test.ts`, `e2e/bottom-trough.spec.ts`, the seven pictures. Commits found:
 b8f47313, 35bffc0a, 1ae0c553.
+
+## The founder's ruling, 2026-11-15
+
+On the open question — near a narrow tail, which gives way, the drawing or the End slider — the founder chose **"The drawing
+pulls in, the slider keeps your figure"**: By hand's two ends stay held against the cut's width at Deepest At, as Trough At
+is, so switching to By hand never moves the trough. As built; nothing changes.
